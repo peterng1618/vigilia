@@ -8,6 +8,7 @@ import {
   openCanvasPlayer,
   probe,
   sourceColorFraction,
+  waitForInk,
 } from "./canvas-probe.js";
 import { openPaused } from "./clock.js";
 
@@ -173,6 +174,43 @@ async function profileOfAsset(
 }
 
 test.describe("the scene reaches the canvas", () => {
+  test("waits out a slow asset rather than outspending it in simulated time", async ({
+    page,
+  }) => {
+    // The regression guard for this suite's flake under parallel load. The ink
+    // guard in `openCanvasPlayer` waits by advancing a *paused clock*, but an
+    // asset fetch and decode is *real*-time async work that no amount of
+    // simulated time can advance. Under load the decode outran the budget and
+    // the guard threw "the artboard never painted" at two tests in this file.
+    //
+    // A delayed response proves the mechanism with no load at all: measured
+    // against the pre-fix guard, 800 ms and 1500 ms both reported 0 pixels
+    // while 0, 300 and 3000 ms passed — the delay is dwarfed by the ~150 ms of
+    // wall time two `runFor(100)` calls cost, so the budget is spent before the
+    // bytes land. The delay is deliberately inside that window.
+    await page.route("**/assets/**", async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 1200));
+      await route.continue();
+    });
+
+    await openCanvasPlayer(page, "/?theme=assets");
+
+    // The teeth are the line above: the pre-fix guard threw here. This only
+    // pins that the guard still refuses a blank artboard rather than returning
+    // early on a timeout — it deliberately does *not* assert that the delayed
+    // assets have decoded, because `openCanvasPlayer` promises ink, not that
+    // every asset has arrived.
+    const size = page.viewportSize() ?? { width: 1280, height: 720 };
+    expect(
+      await drawnFractionIn(page, {
+        x: 0,
+        y: 0,
+        width: size.width,
+        height: size.height,
+      }),
+    ).toBeGreaterThan(0.1);
+  });
+
   test("builds identified canvas objects", async ({ page }) => {
     await openCanvasPlayer(page);
 
@@ -625,9 +663,31 @@ test.describe("every fixture renders", () => {
   test("unknown hosted themes show a clear load failure", async ({ page }) => {
     await page.goto("/?theme=does-not-exist");
 
-    await expect(page.locator("#artboard")).toHaveText(
-      /Vigilia could not load this theme/,
-    );
+    // The failure is a **page**, not a line of text in the artboard: F1.14
+    // replaced a bare `<pre>` so a display that could not load cannot be read
+    // as a dashboard with a gap. This assertion was still reaching for the old
+    // copy, which `player/src` has not contained since, so it passed against
+    // nothing and failed against the real page. The control is the one the
+    // failure page carries.
+    const failure = page.locator("[data-vigilia-load-failure]");
+    await expect(failure).toBeVisible();
+    await expect(failure).toContainText("nothing to show");
+    // The reason is shown, not swallowed — a display that says only "nothing"
+    // tells a reader nothing actionable.
+    await expect(
+      page.locator("[data-vigilia-load-failure-reason]"),
+    ).toContainText("Reason:");
+    // Two ways out, because a display that cannot be left is a display that
+    // stays broken: a retry and the host.
+    await expect(
+      page.locator("[data-vigilia-load-failure-retry]"),
+    ).toBeVisible();
+    await expect(
+      page.locator("[data-vigilia-load-failure-host]"),
+    ).toBeVisible();
+    // And no scene is drawn behind it, so the page cannot be mistaken for a
+    // dashboard that happens to be empty.
+    await expect(page.locator("#artboard canvas")).toHaveCount(0);
   });
 
   test("keeps invisible nodes in the scene without painting them", async ({
@@ -646,7 +706,7 @@ test.describe("every fixture renders", () => {
         process.env["VIGILIA_CAPTURE_DIR"] ??
         (process.env["VIGILIA_CAPTURE"] === undefined
           ? "test-results/screenshots"
-          : "../../.agents/screenshots");
+          : "../../docs/evidence/screenshots");
 
       await openCanvasPlayer(page, `/?theme=${fixture.name}`);
       const size = page.viewportSize()!;
@@ -671,6 +731,12 @@ test.describe("every fixture renders", () => {
   test("is byte-stable at a fixed clock on one platform", async ({
     browser,
   }) => {
+    // Three captures, each advancing 1500 ms of simulated time, and `runFor`
+    // pays simulated milliseconds in browser-protocol round trips (~4.5 ms of
+    // wall each, measured). The wait is deliberately not shortened: the drift
+    // this guards against over 1500 ms is what `clock.ts` measured, so a shorter
+    // window would blunt the very regression. It needs the headroom instead.
+    test.slow();
     const capture = async (): Promise<Buffer> => {
       const page = await browser.newPage({
         viewport: { width: 1280, height: 720 },
@@ -680,7 +746,17 @@ test.describe("every fixture renders", () => {
         "/?theme=stress&static=1",
         'canvas[data-vigilia="artboard"]',
       );
+      // The 1500 ms window is the regression this test exists for (see above)
+      // and stays. What it could not guarantee is that anything was painted by
+      // the end of it: `runFor` spends only *simulated* time, while the scene's
+      // first paint also waits on real-time work (asset fetch and decode, font
+      // load). Under load that outran the window — measured, the two captures
+      // came back 117173 and 8051 bytes, one of them a nearly empty artboard.
+      // Bytes that differ because one image is blank say nothing about frame
+      // determinism, so the ink condition is asserted before the two captures
+      // are compared.
       await page.clock.runFor(1500);
+      await waitForInk(page);
       await page.evaluate(() => document.fonts.ready);
       const shot = await page
         .locator('canvas[data-vigilia="artboard"]')

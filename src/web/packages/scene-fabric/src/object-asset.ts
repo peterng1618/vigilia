@@ -29,7 +29,12 @@ export function objectAssetReference(
   return isFabricAssetReference(value) ? value : undefined;
 }
 
-function isFabricAssetReference(value: unknown): value is FabricAssetReference {
+/** Exported so a scene read as plain JSON is held to the same rule as one read
+ *  off a Fabric object: the reference has exactly two keys, and `assetId` has
+ *  to name something. */
+export function isFabricAssetReference(
+  value: unknown,
+): value is FabricAssetReference {
   if (typeof value !== "object" || value === null) return false;
   const reference = value as Record<string, unknown>;
   return (

@@ -1,5 +1,8 @@
 # Theme Thumbnails
 
+- **Status:** in progress. Plan: [`2026-09-24-theme-thumbnails.md`](../plans/2026-09-24-theme-thumbnails.md).
+- **Plan:** [`2026-09-24-theme-thumbnails.md`](../plans/2026-09-24-theme-thumbnails.md)
+
 ## Why
 
 The theme library lists themes as text. A consumer choosing between "Unanswerable
@@ -19,17 +22,36 @@ opening the editor, and it must never be the thing a display loads.
 
 ## Design
 
-### Rendered, then stored beside the package
+### Rendered, then stored in the theme's own folder
 
 The host renders the thumbnail at save time using the player's existing renderer
-path, and stores it next to the package in the theme store. The package format
-does **not** change.
+path, and stores it inside the theme's own folder, beside `theme.json` and
+`assets/`.
 
-Why not inside the package: `theme-package` deliberately admits exactly
+**The package format does change, and this section previously said it did not.**
+The original reasoning is recorded below because the ruling that overturned it is
+worth keeping, but **it is no longer the decision.**
+
+The package carries the thumbnail too, so whoever receives the file can see the
+theme before importing it or having the app installed. It shows how the theme
+should look as its author intended, and which sensors it wants — neither of which
+a manifest can say. That is worth more than strict portability, and a package you
+cannot see is a package you cannot evaluate. §139's "immutable share artifact" is
+read accordingly: the picture is chosen into the package, not swept up by it, and
+the export still writes the envelope, the declared assets and that picture and
+**nothing else** — a file in the theme folder is not in the package for being in
+the folder. A picture the library would refuse (not a PNG, or over its ceiling)
+is dropped rather than failing the import, because the theme is the thing that
+matters.
+
+**The original argument, overturned:** `theme-package` deliberately admits exactly
 `manifest.json`, `theme.json` and `assets/*`, and it is a validated, portable
 artifact that is explicitly format-free of presentation concerns. A thumbnail is
-a rendering of a machine's fonts and GPU, so it is not portable and does not
-belong in the immutable share artifact (§139).
+a rendering of a machine's fonts and GPU, so it was held to be not portable and
+not to belong in the immutable share artifact (§139). **The portability argument
+is real and the conclusion drawn from it was wrong**: a picture *is* machine-made,
+and that is precisely why it is useful to a reader — it is the author's machine
+showing the author what they made.
 
 Why not render on demand per request: a headless browser in the host is a large
 runtime dependency for a picture, and the host currently has zero non-renderer
@@ -53,9 +75,10 @@ captures: no animation, a fixed clock, fonts awaited before the shot.
 
 ### Storage
 
-Beside the package, under the theme store's directory, named for the theme id.
-A missing or unreadable thumbnail is not an error: the library falls back to the
-name-only listing it has today.
+Inside the theme's own folder, as `thumbnail.png` (ADR-0017). A theme is a
+folder, so a theme and its picture are one thing on disk, and removing the
+folder removes the picture. A missing or unreadable thumbnail is not an error:
+the library falls back to the name-only listing it has today.
 
 ### Served like any other theme read
 

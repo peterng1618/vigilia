@@ -4,6 +4,7 @@ import { DEFAULT_LHM_URL } from "../providers/lhm.js";
 import {
   DEFAULT_HOST,
   DEFAULT_PORT,
+  DEFAULT_SETTINGS_DIR,
   DEFAULT_THEMES_DIR,
   HELP_TEXT,
   isLoopbackHost,
@@ -25,6 +26,7 @@ describe("parseArgs", () => {
         host: DEFAULT_HOST,
         openBrowser: true,
         themesDir: DEFAULT_THEMES_DIR,
+        settingsDir: DEFAULT_SETTINGS_DIR,
         lhmUrl: DEFAULT_LHM_URL,
       },
     });
@@ -100,9 +102,60 @@ describe("parseArgs", () => {
         host: "0.0.0.0",
         openBrowser: false,
         themesDir: path.resolve("my-themes"),
+        settingsDir: DEFAULT_SETTINGS_DIR,
         lhmUrl: DEFAULT_LHM_URL,
       },
     });
+  });
+
+  /**
+   * The settings moved out of the themes directory (ADR-0017), so `--app-dir`
+   * is how a private install is made: one flag relocates the library *and* the
+   * state, rather than a library that writes into the real settings.
+   */
+  it("relocates the library and the settings together for --app-dir", () => {
+    const app = path.resolve("my-app");
+    for (const argv of [
+      ["--app-dir", "my-app"],
+      // Order-independent, because the second flag must not be read as
+      // "explicitly left at the default" by the first.
+      ["--app-dir", "my-app", "--app-dir", "my-app"],
+    ]) {
+      expect(run(...argv)).toMatchObject({
+        kind: "run",
+        options: {
+          themesDir: path.join(app, "themes"),
+          settingsDir: path.join(app, "settings"),
+        },
+      });
+    }
+  });
+
+  it("lets --themes-dir override the library inside a relocated app", () => {
+    expect(
+      run("--app-dir", "my-app", "--themes-dir", "elsewhere"),
+    ).toMatchObject({
+      kind: "run",
+      options: {
+        themesDir: path.resolve("elsewhere"),
+        settingsDir: path.join(path.resolve("my-app"), "settings"),
+      },
+    });
+    // And the other way round, so neither order reads as the default.
+    expect(
+      run("--themes-dir", "elsewhere", "--app-dir", "my-app"),
+    ).toMatchObject({
+      kind: "run",
+      options: {
+        themesDir: path.resolve("elsewhere"),
+        settingsDir: path.join(path.resolve("my-app"), "settings"),
+      },
+    });
+  });
+
+  it("refuses --app-dir without a directory", () => {
+    expect(run("--app-dir").kind).toBe("error");
+    expect(run("--app-dir", "-n").kind).toBe("error");
   });
 
   describe("refusing bad input rather than coercing it", () => {

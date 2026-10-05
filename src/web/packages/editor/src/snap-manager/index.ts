@@ -1,4 +1,5 @@
 import type { Canvas, FabricObject } from "fabric/es";
+import { ActiveSelection } from "fabric/es";
 import type { ErrorManager } from "../error-manager/index.js";
 import { getObjectExactBounds, type ObjectBounds } from "./bounds.js";
 import {
@@ -16,6 +17,15 @@ import {
   type FinalMovementGeometry,
 } from "./movement-snapping-resolver.js";
 import { MovementSnappingRuntime } from "./movement-snapping-runtime.js";
+import {
+  createScaleSnappingController,
+  type ScaleSnappingEvent,
+} from "./scaling/scale-snapping-controller.js";
+import {
+  createTextWidthResizeController,
+  type TextWidthResizeEvent,
+} from "./scaling/text-width-resize-controller.js";
+import { isSupportedActiveSelection } from "./selection-eligibility.js";
 import type { GuideLine } from "./types.js";
 
 export interface SnapManager {
@@ -29,16 +39,14 @@ export interface SnapManagerOptions {
   readonly errors: ErrorManager;
 }
 
-/** Any movable object snaps; Vigilia has no composite type to allow-list. */
+/** Alignable content, following the fork's object filter: visibility and
+ * explicit exclusion decide, not lock. Locking prevents moving an object, not
+ * aligning to it. */
 function isSnapTarget(
   object: FabricObject,
   excluded: Set<FabricObject>,
 ): boolean {
-  return (
-    object.selectable === true &&
-    object.get("locked") !== true &&
-    !shouldIgnoreObject({ object, excluded })
-  );
+  return !shouldIgnoreObject({ object, excluded });
 }
 
 /** Builds one candidate source from an eligible neighbour object. */
@@ -48,7 +56,6 @@ function toSnapSource(
   excluded: Set<FabricObject>,
 ): MovementSnapCandidateSource | undefined {
   if (!isSnapTarget(object, excluded)) return undefined;
-  if (excluded.has(object)) return undefined;
   const bounds = getObjectExactBounds({ object });
   if (bounds === null) return undefined;
   return {
@@ -58,9 +65,91 @@ function toSnapSource(
   };
 }
 
+/**
+ * Picks the browser event as the step marker, exactly as the fork does. Fabric
+ * reuses one marker per native pointer event, so the runtime can tell a repeat
+ * of the same event (a target and its selection both moving) from a new step.
+ */
+export function readMovementMarker({
+  event,
+}: {
+  event: { readonly e?: unknown } | undefined;
+}): object {
+  const browserEvent = event?.e;
+  if (
+    (typeof browserEvent === "object" && browserEvent !== null) ||
+    typeof browserEvent === "function"
+  ) {
+    return browserEvent;
+  }
+  return event ?? {};
+}
+
+/** Ctrl escapes snapping on both paths; Shift constrains a resize. One reader
+ * for both so the scale path cannot read Shift from a helper that omits it. */
+export function readMovementModifiers({
+  event,
+}: {
+  event: { readonly e?: unknown } | undefined;
+}): { readonly ctrlKey: boolean; readonly shiftKey: boolean } {
+  const browserEvent = event?.e;
+  const isBrowserEvent =
+    typeof browserEvent === "object" && browserEvent !== null;
+  return {
+    ctrlKey:
+      isBrowserEvent &&
+      (browserEvent as { ctrlKey?: unknown }).ctrlKey === true,
+    shiftKey:
+      isBrowserEvent &&
+      (browserEvent as { shiftKey?: unknown }).shiftKey === true,
+  };
+}
+
+/**
+ * Snap sources for one gesture: every eligible neighbour, then the artboard as
+ * a domain-boundary line set. Shared by the movement and resize paths so both
+ * see the same candidates.
+ */
+export function collectSnapSources({
+  canvas,
+  bounds,
+  activeObject,
+}: {
+  canvas: Canvas;
+  bounds: () => ObjectBounds;
+  activeObject: FabricObject;
+}): MovementSnapCandidateSource[] {
+  const excluded = collectExcludedObjects({ activeObject });
+  const sources: MovementSnapCandidateSource[] = [];
+  canvas.forEachObject((object, index) => {
+    const source = toSnapSource(object, index, excluded);
+    if (source !== undefined) sources.push(source);
+  });
+  const artboard = bounds();
+  sources.push({
+    id: "artboard",
+    bounds: {
+      ...artboard,
+      centerX: artboard.left + (artboard.right - artboard.left) / 2,
+      centerY: artboard.top + (artboard.bottom - artboard.top) / 2,
+    },
+    edgeCategory: "domain-boundary",
+    useForSpacing: false,
+  });
+
+  return sources;
+}
+
 export function createSnapManager(options: SnapManagerOptions): SnapManager {
   const { canvas, bounds, errors } = options;
   const runtime = new MovementSnappingRuntime();
+  const scaleController = createScaleSnappingController({ canvas, bounds });
+  // A Textbox's `ml`/`mr` are Fabric `changeWidth` controls, so that gesture
+  // arrives as `object:resizing` and never reaches the scale path's binding.
+  const textWidthController = createTextWidthResizeController({
+    canvas,
+    bounds,
+  });
 
   let target: FabricObject | undefined;
   /** The dragged object's exact start bounds, cached at gesture start. */
@@ -69,47 +158,63 @@ export function createSnapManager(options: SnapManagerOptions): SnapManager {
   let lastGuides: readonly GuideLine[] = [];
   let lastSpacingGuides: readonly unknown[] = [];
   let gestureActive = false;
-  /**
-   * One marker per gesture: Fabric may deliver several object:moving events
-   * for the same pointer marker, and the runtime's duplicate detection is
-   * keyed on marker identity.
-   */
-  let gestureMarker: object | undefined;
+  /** The drag that owns the gesture; a second object's move must not join it. */
+  let gestureTarget: FabricObject | undefined;
 
   const stopGesture = (): void => {
     if (gestureActive) runtime.finishSession();
+    // Idempotent: both return without a session when the gesture was a resize.
+    scaleController.finishGesture();
+    textWidthController.finishGesture();
     gestureActive = false;
     target = undefined;
     targetStartBounds = undefined;
-    gestureMarker = undefined;
+    gestureTarget = undefined;
     lastGuides = [];
     lastSpacingGuides = [];
     canvas.requestRenderAll();
   };
 
-  const startGesture = (): void => {
+  // The resize path owns its own session: `mouse:down` never starts it, because
+  // Fabric fires `object:scaling` for a handle grab the movement path never saw.
+  const scaleRunStep = (event: { readonly e?: unknown } | undefined): void => {
+    lastGuides = scaleController.runStep(
+      event as ScaleSnappingEvent | undefined,
+    );
+    if (lastGuides.length > 0) canvas.requestRenderAll();
+  };
+
+  const textWidthRunStep = (
+    event: { readonly e?: unknown } | undefined,
+  ): void => {
+    lastGuides = textWidthController.runStep(
+      event as TextWidthResizeEvent | undefined,
+    );
+    if (lastGuides.length > 0) canvas.requestRenderAll();
+  };
+
+  const startGesture = (event: { readonly e?: unknown } | undefined): void => {
+    // Fabric has already built the transform for this pointerdown; the resize
+    // path needs that start geometry, which `object:scaling` no longer carries.
+    scaleController.startGesture(event as ScaleSnappingEvent | undefined);
+    textWidthController.startGesture(event as TextWidthResizeEvent | undefined);
     const active = canvas.getActiveObject();
     if (active === undefined) return;
+    // A composed selection the fork declined must not join a gesture: a scaled
+    // text selection would let the movement path be reinterpreted as an
+    // unfinished scale.
+    if (
+      active instanceof ActiveSelection &&
+      !isSupportedActiveSelection({ selection: active })
+    )
+      return;
     const startBounds = getObjectExactBounds({ object: active });
     if (startBounds === null) return;
 
-    const excluded = collectExcludedObjects({ activeObject: active });
-    const sources: MovementSnapCandidateSource[] = [];
-    canvas.forEachObject((object, index) => {
-      const source = toSnapSource(object, index, excluded);
-      if (source !== undefined) sources.push(source);
-    });
-    // The artboard extent participates as a domain-boundary snap line set.
-    const artboard = bounds();
-    sources.push({
-      id: "artboard",
-      bounds: {
-        ...artboard,
-        centerX: artboard.left + (artboard.right - artboard.left) / 2,
-        centerY: artboard.top + (artboard.bottom - artboard.top) / 2,
-      },
-      edgeCategory: "domain-boundary",
-      useForSpacing: false,
+    const sources = collectSnapSources({
+      canvas,
+      bounds,
+      activeObject: active,
     });
 
     runtime.startSession({
@@ -128,26 +233,28 @@ export function createSnapManager(options: SnapManagerOptions): SnapManager {
     });
     target = active;
     targetStartBounds = startBounds;
-    gestureMarker = { gesture: "moving" };
+    gestureTarget = active;
     gestureActive = true;
   };
 
-  const runStep = (): void => {
+  const runStep = (event: { readonly e?: unknown } | undefined): void => {
     const moved = target;
     const startBounds = targetStartBounds;
     if (
       !gestureActive ||
       moved === undefined ||
       startBounds === undefined ||
-      gestureMarker === undefined
+      moved !== gestureTarget
     )
       return;
 
-    // One marker per gesture: repeated object:moving events with unchanged
-    // geometry hit the runtime's duplicate path instead of re-planning.
-    const marker = gestureMarker;
-    const duplicate = runtime.getDuplicateStep({ marker });
-    if (duplicate !== null) return;
+    // One marker per native pointer event, as in the fork: Fabric delivers
+    // several object:moving events for one pointer move (target plus any
+    // active selection), and the runtime's duplicate detection is keyed on
+    // marker identity. The browser event is a fresh object per pointermove,
+    // so each real movement step re-plans; a repeat of the same event is
+    // recognised as a duplicate instead of being re-applied.
+    const marker = readMovementMarker({ event });
 
     const rawBounds = getObjectExactBounds({ object: moved });
     if (rawBounds === null) return;
@@ -172,8 +279,11 @@ export function createSnapManager(options: SnapManagerOptions): SnapManager {
           left: moved.get("left") ?? startBounds.left,
           top: moved.get("top") ?? startBounds.top,
         },
-        axes: { x: true, y: true },
-        modifiers: { ctrlKey: false },
+        axes: {
+          x: moved.lockMovementX !== true,
+          y: moved.lockMovementY !== true,
+        },
+        modifiers: readMovementModifiers({ event }),
       },
     });
     if (step.kind !== "planned") return;
@@ -222,7 +332,7 @@ export function createSnapManager(options: SnapManagerOptions): SnapManager {
     if (lastGuides.length === 0 && lastSpacingGuides.length === 0) return;
     renderSnappingGuides({
       canvas,
-      guideBounds: null,
+      guideBounds: bounds(),
       guides: lastGuides,
       spacingGuides: lastSpacingGuides as never,
     });
@@ -231,6 +341,8 @@ export function createSnapManager(options: SnapManagerOptions): SnapManager {
   const bindings = [
     ["mouse:down", startGesture],
     ["object:moving", runStep],
+    ["object:scaling", scaleRunStep],
+    ["object:resizing", textWidthRunStep],
     ["mouse:up", stopGesture],
     ["selection:created", stopGesture],
     ["selection:updated", stopGesture],
@@ -240,10 +352,10 @@ export function createSnapManager(options: SnapManagerOptions): SnapManager {
     ["after:render", afterRender],
   ] as const;
 
-  const guard = (step: () => void): (() => void) => {
-    return () => {
+  const guard = (step: (event?: never) => void): ((event?: never) => void) => {
+    return (event?: never) => {
       try {
-        step();
+        step(event);
       } catch (error) {
         errors.error("snapping", "A snapping step failed.", error);
       }
@@ -278,7 +390,9 @@ export function createSnapManager(options: SnapManagerOptions): SnapManager {
       window.removeEventListener("pointercancel", windowCancel);
       window.removeEventListener("touchcancel", windowCancel);
       window.removeEventListener("blur", windowCancel);
-      if (gestureActive) stopGesture();
+      // Always: a resize session is owned by the scale controller, not by
+      // `gestureActive`, and finishGesture is idempotent when none is active.
+      stopGesture();
     },
   };
 }

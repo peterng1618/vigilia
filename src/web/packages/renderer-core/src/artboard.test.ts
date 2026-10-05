@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   computeArtboardTransform,
   documentToViewport,
-  type FitMode,
+  type ContentFit,
   isFullyVisible,
   toCssTransform,
   viewportToDocument,
@@ -17,7 +17,7 @@ describe("computeArtboardTransform — contain", () => {
     const t = computeArtboardTransform({
       artboard: wide,
       viewport: { width: 960, height: 1080 },
-      fitMode: "contain",
+      contentFit: "contain",
     });
 
     expect(t.scale).toBe(0.5); // min(960/1920, 1080/1080) = min(0.5, 1)
@@ -27,7 +27,7 @@ describe("computeArtboardTransform — contain", () => {
     const t = computeArtboardTransform({
       artboard: wide,
       viewport: { width: 960, height: 1080 },
-      fitMode: "contain",
+      contentFit: "contain",
     });
 
     // Scaled to 960x540 inside a 960x1080 viewport: 540 left over vertically.
@@ -40,7 +40,7 @@ describe("computeArtboardTransform — contain", () => {
     const t = computeArtboardTransform({
       artboard: wide,
       viewport: { width: 300, height: 2000 },
-      fitMode: "contain",
+      contentFit: "contain",
     });
 
     expect(t.crop).toEqual({ x: 0, y: 0 });
@@ -51,20 +51,20 @@ describe("computeArtboardTransform — contain", () => {
     const t = computeArtboardTransform({
       artboard: wide,
       viewport: { width: 480, height: 270 },
-      fitMode: "contain",
+      contentFit: "contain",
     });
 
     expect(t.scale).toBe(0.25);
     expect(t.bars).toEqual({ x: 0, y: 0 }); // exact aspect match, no leftover
   });
 
-  it("defaults to contain when no fitMode is given", () => {
+  it("defaults to contain when no contentFit is given", () => {
     const t = computeArtboardTransform({
       artboard: wide,
       viewport: { width: 960, height: 1080 },
     });
 
-    expect(t.fitMode).toBe("contain");
+    expect(t.contentFit).toBe("contain");
     expect(t.scale).toBe(0.5);
   });
 });
@@ -74,7 +74,7 @@ describe("computeArtboardTransform — cover", () => {
     const t = computeArtboardTransform({
       artboard: wide,
       viewport: { width: 960, height: 1080 },
-      fitMode: "cover",
+      contentFit: "cover",
     });
 
     expect(t.scale).toBe(1); // max(0.5, 1)
@@ -84,7 +84,7 @@ describe("computeArtboardTransform — cover", () => {
     const t = computeArtboardTransform({
       artboard: wide,
       viewport: { width: 960, height: 1080 },
-      fitMode: "cover",
+      contentFit: "cover",
     });
 
     // At scale 1 the 1920-wide design sits in a 960-wide viewport: 960 hidden,
@@ -99,7 +99,7 @@ describe("computeArtboardTransform — cover", () => {
     const t = computeArtboardTransform({
       artboard: { width: 100, height: 1000 },
       viewport: { width: 1000, height: 1000 },
-      fitMode: "cover",
+      contentFit: "cover",
     });
 
     expect(t.scale).toBe(10);
@@ -111,7 +111,7 @@ describe("computeArtboardTransform — cover", () => {
     const t = computeArtboardTransform({
       artboard: wide,
       viewport: { width: 960, height: 1080 },
-      fitMode: "cover",
+      contentFit: "cover",
     });
 
     expect(t.bars).toEqual({ x: 0, y: 0 });
@@ -122,7 +122,7 @@ describe("computeArtboardTransform — cover", () => {
     const t = computeArtboardTransform({
       artboard: { width: 100, height: 100 },
       viewport: { width: 400, height: 800 },
-      fitMode: "cover",
+      contentFit: "cover",
     });
 
     expect(t.scale).toBe(8); // max(4, 8)
@@ -132,9 +132,9 @@ describe("computeArtboardTransform — cover", () => {
 });
 
 describe("computeArtboardTransform — invariants that hold in both modes", () => {
-  it.each<FitMode>(["contain", "cover"])(
+  it.each<ContentFit>(["contain", "cover"])(
     "leaves at most one axis non-zero for bars and crop (%s)",
-    (fitMode) => {
+    (contentFit) => {
       const viewports = [
         { width: 100, height: 1000 },
         { width: 1000, height: 100 },
@@ -147,7 +147,7 @@ describe("computeArtboardTransform — invariants that hold in both modes", () =
         const t = computeArtboardTransform({
           artboard: wide,
           viewport,
-          fitMode,
+          contentFit,
         });
 
         // If both axes had slack (or both overflowed) the scale would be wrong.
@@ -163,12 +163,12 @@ describe("computeArtboardTransform — invariants that hold in both modes", () =
     const contain = computeArtboardTransform({
       artboard: wide,
       viewport,
-      fitMode: "contain",
+      contentFit: "contain",
     });
     const cover = computeArtboardTransform({
       artboard: wide,
       viewport,
-      fitMode: "cover",
+      contentFit: "cover",
     });
 
     expect(contain.scale).toBe(cover.scale);
@@ -181,15 +181,15 @@ describe("computeArtboardTransform — invariants that hold in both modes", () =
     expect(isFullyVisible(cover)).toBe(true);
   });
 
-  it.each<FitMode>(["contain", "cover"])(
+  it.each<ContentFit>(["contain", "cover"])(
     "preserves fractional offsets rather than rounding (%s)",
-    (fitMode) => {
+    (contentFit) => {
       // 1081 is odd, so centring yields a .5 offset. Rounding it would
       // reintroduce the per-frame drift this deliberately avoids.
       const t = computeArtboardTransform({
         artboard: { width: 100, height: 100 },
         viewport: { width: 100, height: 1081 },
-        fitMode,
+        contentFit,
       });
 
       const fractional = [t.offsetX, t.offsetY].some(
@@ -199,13 +199,13 @@ describe("computeArtboardTransform — invariants that hold in both modes", () =
     },
   );
 
-  it.each<FitMode>(["contain", "cover"])(
+  it.each<ContentFit>(["contain", "cover"])(
     "handles an extreme aspect ratio (%s)",
-    (fitMode) => {
+    (contentFit) => {
       const t = computeArtboardTransform({
         artboard: { width: 1, height: 1000 },
         viewport: { width: 1000, height: 1 },
-        fitMode,
+        contentFit,
       });
 
       expect(Number.isFinite(t.scale)).toBe(true);
@@ -271,13 +271,13 @@ describe("computeArtboardTransform — degenerate and invalid input", () => {
 });
 
 describe("point mapping", () => {
-  it.each<FitMode>(["contain", "cover"])(
+  it.each<ContentFit>(["contain", "cover"])(
     "round-trips exactly (%s)",
-    (fitMode) => {
+    (contentFit) => {
       const t = computeArtboardTransform({
         artboard: wide,
         viewport: { width: 837, height: 1131 },
-        fitMode,
+        contentFit,
       });
 
       for (const point of [
@@ -301,7 +301,7 @@ describe("point mapping", () => {
     const t = computeArtboardTransform({
       artboard: wide,
       viewport: { width: 960, height: 1080 },
-      fitMode: "contain",
+      contentFit: "contain",
     });
 
     expect(documentToViewport(t, { x: 0, y: 0 })).toEqual({ x: 0, y: 270 });
@@ -312,7 +312,7 @@ describe("point mapping", () => {
     const t = computeArtboardTransform({
       artboard: wide,
       viewport,
-      fitMode: "contain",
+      contentFit: "contain",
     });
 
     const centre = documentToViewport(t, {
@@ -339,7 +339,7 @@ describe("toCssTransform", () => {
     const t = computeArtboardTransform({
       artboard: wide,
       viewport: { width: 960, height: 1080 },
-      fitMode: "contain",
+      contentFit: "contain",
     });
 
     expect(toCssTransform(t)).toBe("translate(0px, 270px) scale(0.5)");

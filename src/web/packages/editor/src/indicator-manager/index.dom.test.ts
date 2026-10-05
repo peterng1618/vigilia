@@ -170,4 +170,30 @@ describe("IndicatorManager", () => {
     expect(document.querySelector(".vigilia-angle-indicator")).toBeNull();
     expect(document.querySelector(".vigilia-size-indicator")).toBeNull();
   });
+
+  it("reports scene size rather than screen size when the camera is zoomed", () => {
+    const canvas = new Canvas(document.createElement("canvas"));
+    const object = new Rect({
+      id: "shape",
+      width: 100,
+      height: 50,
+      strokeWidth: 0,
+    });
+    canvas.add(object);
+    // Zoom the CAMERA, not the object: `getScaledWidth()` must ignore this, or the
+    // readout would report the on-screen size and disagree with the inspector.
+    canvas.setViewportTransform([2, 0, 0, 2, 0, 0]);
+    const indicators = createIndicatorManager({ canvas });
+
+    canvas.fire(
+      "object:scaling" as never,
+      { transform: { target: object }, e: pointer() } as never,
+    );
+
+    expect(
+      document.querySelector<HTMLElement>(".vigilia-size-indicator")
+        ?.textContent,
+    ).toBe("100 × 50");
+    indicators.destroy();
+  });
 });

@@ -1,37 +1,218 @@
-import { type Canvas, IText } from "fabric/es";
+import type { TextContent, TextRun } from "@vigilia/renderer-core";
+import {
+  type PlanTextObject,
+  VIGILIA_TEXT_PROPERTY,
+} from "@vigilia/scene-fabric";
+import { type Canvas, IText, Textbox } from "fabric/es";
+import { uiCopy } from "../ui-copy.js";
 
 export interface TextManager {
-  addText(options?: Readonly<Record<string, unknown>>): IText;
+  /** A `Textbox`, so the run editor's Wrap and Overflow mean what they say. */
+  addText(options?: Readonly<Record<string, unknown>>): Textbox;
+  /**
+   * Who paints an object's authoring view when the author starts editing it.
+   * The session owns the run display that painting comes from, and the shell
+   * that creates this manager has no session yet, so it is set rather than
+   * passed.
+   */
+  setAuthoringView(paint: (object: IText) => void): void;
+  /** Paints the object's authored runs over what Fabric left behind, which is
+      how a refused in-place edit puts back what it would have dropped. */
+  setRepaint(paint: (object: IText) => void): void;
   destroy(): void;
 }
 
+/** The runs and box this object was authored with, or nothing to write back. */
+function authoredOf(object: PlanTextObject): TextContent | undefined {
+  const authored = object.get(VIGILIA_TEXT_PROPERTY);
+  return typeof authored === "object" &&
+    authored !== null &&
+    Array.isArray((authored as Record<string, unknown>)["runs"])
+    ? (authored as TextContent)
+    : undefined;
+}
+
 /**
- * Enters text editing on a double-click. Fabric's own double-click handler only
- * selects a word *while already editing* — it returns early otherwise — so
- * entering editing is the application's responsibility, not a Fabric default.
+ * What the author typed becomes the object's authored run.
+ *
+ * A value run has no text of its own, so there is nothing to keep the reading
+ * *and* the words: typing over one replaces it with a literal, keeping the type
+ * preset and colour it was painted with. The run editor turns it back into a
+ * reading when the author wants one.
+ *
+ * Refused outright once the object carries more than one run. Fabric hands back
+ * one flat string and no way to say which run each character came from, so the
+ * only write available here drops the siblings — and an object that was "32" and
+ * "%" would come back as one run of whatever was typed, with the reading gone
+ * and no record that it had been. The run editor owns each run's text, and it
+ * can refuse nothing: this says so rather than losing the work.
+ */
+function keepTypedText(object: PlanTextObject): "written" | "refused" {
+  const authored = authoredOf(object);
+  if (authored === undefined) return "written";
+  if (authored.runs.length > 1) return "refused";
+
+  const first = authored.runs[0] as TextRun | undefined;
+  object.set(VIGILIA_TEXT_PROPERTY, {
+    ...authored,
+    runs: [
+      {
+        kind: "literal",
+        text: object.text,
+        ...(first?.typePreset === undefined
+          ? {}
+          : { typePreset: first.typePreset }),
+        ...(first?.style === undefined ? {} : { style: first.style }),
+      },
+    ],
+  });
+  return "written";
+}
+
+/**
+ * A width the author dragged is the new authored box.
+ *
+ * Fabric's `changeWidth` writes through `set`, which re-enters
+ * `initDimensions`; the scene's width guard puts the dragged number back before
+ * `object:resizing` reports it, so what arrives here is the author's.
+ */
+function adoptResizedBox(object: object): void {
+  const target = (object as { transform?: { target?: unknown } }).transform
+    ?.target;
+  if (!isText(target)) return;
+
+  const authored = authoredOf(target);
+  if (authored?.box === undefined) return;
+
+  const scaleX = target.scaleX === 0 ? 1 : target.scaleX;
+  target.set(VIGILIA_TEXT_PROPERTY, {
+    ...authored,
+    box: { ...authored.box, width: target.width * scaleX },
+  });
+}
+
+function isText(value: unknown): value is PlanTextObject & {
+  readonly width: number;
+  readonly scaleX: number;
+} {
+  return value instanceof IText;
+}
+
+/**
+ * A double-click on a text object: it shows the run's binding, selects the
+ * whole run so typing replaces it, and keeps what was typed.
+ *
+ * Fabric owns the gesture — it enters editing itself, on the first click's
+ * mouse-up — so what is left to the application is the authored side: the runs,
+ * the box, and the history entry.
  */
 export function createTextManager(
   canvas: Canvas,
   save: () => void,
+  /** How a refused edit reaches the author; the shell's diagnostics own it. */
+  warn?: (message: string) => void,
 ): TextManager {
+  let showAuthoringView: (object: IText) => void = () => {};
+  /** Repaints the authored runs, so a refused edit does not leave un-authored
+      text standing on the canvas as though it had been kept. */
+  let repaint: (object: IText) => void = () => {};
+
   const onDoubleClick = (event: { target?: unknown }): void => {
     const target = event.target;
 
-    if (!(target instanceof IText) || target.isEditing) {
+    if (!(target instanceof IText)) {
       return;
     }
 
+    // Fabric enters inline editing on the second click's mouse-up
+    // (`Text.mouseUpHandler`, `index.mjs:17824`/`:17833` — the first leaves
+    // `this.selected` false, so its guard at `:17832` is never reached), so the
+    // object is already editing by the time the double-click arrives. Bailing
+    // on `isEditing` instead is what left the first keystroke editing a reading:
+    // the token has to be painted now, and the whole run selected, or Fabric's
+    // hidden textarea still holds the reading and typing edits that rather than
+    // what is on screen.
     target.enterEditing();
+    showAuthoringView(target);
+    // What the authoring view painted, so an edit that changed nothing can be
+    // told apart from one that did — see the `editing:exited` handler.
+    const painted = target.text;
+    // Fabric writes the hidden textarea exactly once, as it enters editing
+    // (`enterEditingImpl`, `index.mjs:16908`), and `_updateTextarea` then only
+    // ever syncs the *selection*. So a run painted after that point is what the
+    // author sees and not what their keystrokes edit — the first one lands in
+    // the reading still in the box. Fabric publishes no call to rewrite the
+    // value, so this repeats Fabric's own write rather than changing what
+    // Fabric does. The upgrade path, if that field ever moves, is to paint the
+    // token before `enterEditing` — which needs a signal that a *double*-click
+    // is coming, and Fabric enters editing on the second click's mouse-up, so
+    // there is none.
+    if (target.hiddenTextarea) {
+      target.hiddenTextarea.value = target.text;
+    }
+    target.selectAll();
+    // Fabric collapses the caret again after this handler — the second
+    // mouse-up's own behaviour re-runs `initDelayedCursor` — so the whole-run
+    // selection is re-asserted once every listener has had its say. A keystroke
+    // can only arrive in a later task, by which point this has run.
+    requestAnimationFrame(() => {
+      if (target.isEditing) {
+        target.selectAll();
+        canvas.requestRenderAll();
+      }
+    });
     canvas.requestRenderAll();
-    // One history entry per edit, once the text has settled.
-    target.once("editing:exited", save);
+    target.once("editing:exited", () => {
+      // Fabric's `exitEditing` (`index.mjs:17102-17105`) compares
+      // `_textBeforeEdit` to decide whether to fire `modified` and never
+      // restores it, so after a double-click and nothing else `text` is still
+      // the token this view painted. Writing that back would turn a sensor card
+      // into prose from a gesture that changed nothing.
+      if (target.text === painted) {
+        return;
+      }
+      if (keepTypedText(target) === "refused") {
+        warn?.(uiCopy.inspectorFields.multiRunRefused);
+        // Fabric has already left editing, so the object's own text is the only
+        // thing standing where the authored runs should be. Putting them back
+        // is what makes the refusal honest rather than a warning the author
+        // watches scroll away from text that was never kept.
+        repaint(target);
+        canvas.requestRenderAll();
+        return;
+      }
+      save();
+    });
+  };
+
+  const onResizing = (event: object): void => {
+    // Fabric reports a resize on every step of the drag, and `adoptResizedBox`
+    // changes the authored box on each one, so this only records the box. The
+    // history entry waits for `object:modified` — Fabric reports the gesture as
+    // finished only then, and a per-step save is a full scene serialisation and
+    // an undo entry per tick.
+    adoptResizedBox(event);
+  };
+
+  const onModified = (event: { target?: unknown }): void => {
+    if (event.target instanceof IText) {
+      save();
+    }
   };
 
   canvas.on("mouse:dblclick" as never, onDoubleClick as never);
+  canvas.on("object:resizing" as never, onResizing as never);
+  canvas.on("object:modified" as never, onModified as never);
 
   return {
     addText(options = {}) {
-      const text = new IText(
+      // A `Textbox`, not an `IText`. Two of the three controls the run editor
+      // offers a text object — Wrap and Overflow — are `Textbox` behaviour, and
+      // an `IText` accepts both, records both, and does neither: the text runs
+      // past the box the author set instead of wrapping inside it. It is also
+      // the class every text object in a shipped theme is authored as, so this
+      // is the editor making the same object the scene does.
+      const text = new Textbox(
         typeof options["text"] === "string" ? options["text"] : "",
         { id: `text-${crypto.randomUUID()}`, ...options },
       );
@@ -40,8 +221,16 @@ export function createTextManager(
       save();
       return text;
     },
+    setAuthoringView(paint) {
+      showAuthoringView = paint;
+    },
+    setRepaint(paint) {
+      repaint = paint;
+    },
     destroy() {
       canvas.off("mouse:dblclick" as never, onDoubleClick as never);
+      canvas.off("object:resizing" as never, onResizing as never);
+      canvas.off("object:modified" as never, onModified as never);
     },
   };
 }

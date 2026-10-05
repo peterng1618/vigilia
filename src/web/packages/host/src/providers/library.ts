@@ -1,18 +1,36 @@
 import type { Sample, SampleEntry } from "@vigilia/renderer-core";
 import { describeSemanticKey, diskDeviceId } from "@vigilia/renderer-core";
 import type { DeviceAssignment } from "./lhm-mapping.js";
+import {
+  type BlockDeviceLike,
+  type DriveDevice,
+  type DriveLayoutLike as DiskLayoutLike,
+  drivesFrom,
+  driveFor,
+  nameFor,
+  volumesOf,
+} from "./library-devices.js";
 import type {
   ProviderHealth,
   SensorDescriptor,
   SensorProvider,
 } from "./provider.js";
+import { redactForBrowser } from "./provider.js";
 
 /**
  * Hardware metrics come from `systeminformation` rather than a collector Vigilia
  * maintains (§97). The library owns the platform-specific reads; this provider
  * only maps its answers onto the semantic vocabulary and reports honestly when
  * the platform will not say.
+ *
+ * One device answers a group, and this provider names that same device: the
+ * assigned one, or the one the machine reports. Every GPU, VRAM and disk figure
+ * and every caption comes out of one selection, so a name can never sit over
+ * another device's readings. See `docs/decisions/0004`.
  */
+
+/** Identity text, not measurements: read on demand, never per sample. */
+const CPU_NAME_KEYS = ["cpu.manufacturer", "cpu.brand", "cpu.model"];
 
 export const LIBRARY_PROVIDER_ID = "library";
 
@@ -23,18 +41,23 @@ const MEGABIT_PER_BYTE_PER_SECOND = 8 / 1_000_000;
 const LIBRARY_KEYS = [
   "cpu.load",
   "cpu.clock",
+  "cpu.manufacturer",
+  "cpu.brand",
+  "cpu.model",
   "ram.used",
   "ram.used.percent",
   "ram.total",
   "gpu.load",
   "gpu.temp",
   "gpu.power",
+  "gpu.name",
   "vram.used",
   "vram.total",
   "vram.used.percent",
   "disk.used",
   "disk.used.percent",
   "disk.total",
+  "disk.name",
   "disk.data.used",
   "disk.data.used.percent",
   "disk.data.total",
@@ -77,6 +100,14 @@ export interface LibraryReadings {
   readonly dataDiskTotalGb?: number;
   readonly download?: number;
   readonly upload?: number;
+  /** What the machine calls its own hardware, as display text. */
+  readonly cpuManufacturer?: string;
+  readonly cpuBrand?: string;
+  readonly cpuModel?: string;
+  /** The selected card's name; absent when no single card was selected. */
+  readonly gpuName?: string;
+  /** The selected volume's name; absent when the keys describe them all. */
+  readonly diskName?: string;
 }
 
 interface MemLike {
@@ -84,7 +115,19 @@ interface MemLike {
   readonly active?: number;
 }
 
-interface FsSizeLike {
+interface NetStatsLike {
+  readonly rx_sec?: number | null;
+  readonly tx_sec?: number | null;
+}
+
+/** The CPU identity fields the library reports, all three of which differ. */
+export interface CpuLike {
+  readonly manufacturer?: string;
+  readonly brand?: string;
+  readonly model?: string;
+}
+
+export interface FsSizeLike {
   readonly size?: number;
   readonly used?: number;
   /** Mount point or drive letter, used to identify the volume. */
@@ -92,17 +135,7 @@ interface FsSizeLike {
   readonly fs?: string;
 }
 
-interface NetStatsLike {
-  readonly rx_sec?: number | null;
-  readonly tx_sec?: number | null;
-}
-
-interface DiskLayoutLike {
-  readonly name?: string;
-  readonly device?: string;
-}
-
-interface ControllerLike {
+export interface ControllerLike {
   /** GPU model name, used only to identify the device to a consumer. */
   readonly model?: string | null;
   readonly utilizationGpu?: number | null;
@@ -151,20 +184,62 @@ function diskTotals(
     : undefined;
 }
 
-/** Highest GPU value across controllers: one figure should describe the busiest. */
-function highest(
-  controllers: readonly ControllerLike[],
-  pick: (controller: ControllerLike) => number | undefined,
-): number | undefined {
-  let best: number | undefined;
+/** The device a controller is, and the name a consumer would recognise it by. */
+export interface GpuSelection {
+  readonly controller: ControllerLike;
+  /**
+   * Absent when the machine reports the card but does not name it. One field
+   * rather than two, because both come from the same reported model and a
+   * caption must not be resolvable without the id that names it.
+   */
+  readonly identity?: { readonly deviceId: string; readonly name: string };
+}
 
-  for (const controller of controllers) {
-    const value = pick(controller);
-    if (value === undefined) continue;
-    best = best === undefined ? value : Math.max(best, value);
+/**
+ * The one card a theme's unsuffixed `gpu.*`/`vram.*` keys describe.
+ *
+ * Every figure comes from this single controller, so a caption naming it is
+ * never a caption over another card's temperature — the reason a maximum is
+ * wrong here where it is not wrong for a network total.
+ *
+ * A card the machine does not name still answers when it is the only one: its
+ * figures are real, and dropping them would be a worse lie than a missing
+ * caption. Only the name is absent, and `pushText` reports that as a gap.
+ *
+ * With no assignment, the first card the machine can name answers, so a machine
+ * whose first controller reports no model still gets a caption from the one
+ * after it. That is a choice the consumer can change on the settings page, and
+ * it is stable frame to frame, which a "busiest" default would not be: the
+ * caption would change text every sample as load moved between cards.
+ */
+export function selectGpu(
+  controllers: readonly ControllerLike[],
+  assigned: string | undefined,
+): GpuSelection | undefined {
+  const byModel = (controller: ControllerLike): string | undefined =>
+    typeof controller.model === "string" && controller.model.length > 0
+      ? diskDeviceId(controller.model)
+      : undefined;
+
+  // An assigned card must be matchable, so only named cards can satisfy one.
+  const chosen =
+    assigned === undefined
+      ? (controllers.find((controller) => byModel(controller) !== undefined) ??
+        controllers[0])
+      : controllers.find((controller) => byModel(controller) === assigned);
+
+  if (chosen === undefined) {
+    return undefined;
   }
 
-  return best;
+  const deviceId = byModel(chosen);
+
+  return {
+    controller: chosen,
+    ...(deviceId === undefined || typeof chosen.model !== "string"
+      ? {}
+      : { identity: { deviceId, name: chosen.model } }),
+  };
 }
 
 /** Sums per-interface throughput: total host traffic, not one link's. */
@@ -206,7 +281,8 @@ export function readingsFromLibrary(input: {
   readonly mem?: MemLike | undefined;
   readonly filesystems?: readonly FsSizeLike[] | undefined;
   readonly network?: readonly NetStatsLike[] | undefined;
-  readonly controllers?: readonly ControllerLike[] | undefined;
+  /** The one card answering the GPU keys; absent when none is reported. */
+  readonly gpu?: GpuSelection | undefined;
 }): LibraryReadings {
   const mem = input.mem;
   const totalGb = bytesToGb(mem?.total);
@@ -216,11 +292,10 @@ export function readingsFromLibrary(input: {
     input.filesystems === undefined ? undefined : diskTotals(input.filesystems);
   const net =
     input.network === undefined ? undefined : throughput(input.network);
-  const controllers = input.controllers ?? [];
-  const vramTotalRaw = highest(controllers, (c) =>
-    finite(c.vram ?? c.memoryTotal ?? undefined),
-  );
-  const vramUsedRaw = highest(controllers, (c) => finite(c.memoryUsed));
+  const card = input.gpu?.controller;
+  // The library reports VRAM in MB; the vocabulary declares GB.
+  const vramTotalMb = finite(card?.vram ?? card?.memoryTotal ?? undefined);
+  const vramUsedMb = finite(card?.memoryUsed);
 
   return {
     ...(finite(input.load?.currentLoad) === undefined
@@ -231,17 +306,17 @@ export function readingsFromLibrary(input: {
       : { cpuClockMhz: finite(input.speed?.avg)! * 1000 }),
     ...(usedGb === undefined ? {} : { ramUsedGb: usedGb }),
     ...(totalGb === undefined ? {} : { ramTotalGb: totalGb }),
-    ...(highest(controllers, (c) => finite(c.utilizationGpu)) === undefined
+    ...(finite(card?.utilizationGpu) === undefined
       ? {}
-      : { gpuLoad: highest(controllers, (c) => finite(c.utilizationGpu))! }),
-    ...(highest(controllers, (c) => finite(c.temperatureGpu)) === undefined
+      : { gpuLoad: finite(card?.utilizationGpu)! }),
+    ...(finite(card?.temperatureGpu) === undefined
       ? {}
-      : { gpuTempC: highest(controllers, (c) => finite(c.temperatureGpu))! }),
-    ...(highest(controllers, (c) => finite(c.powerDraw)) === undefined
+      : { gpuTempC: finite(card?.temperatureGpu)! }),
+    ...(finite(card?.powerDraw) === undefined
       ? {}
-      : { gpuPowerW: highest(controllers, (c) => finite(c.powerDraw))! }),
-    ...(vramUsedRaw === undefined ? {} : { vramUsedGb: vramUsedRaw / 1024 }),
-    ...(vramTotalRaw === undefined ? {} : { vramTotalGb: vramTotalRaw / 1024 }),
+      : { gpuPowerW: finite(card?.powerDraw)! }),
+    ...(vramUsedMb === undefined ? {} : { vramUsedGb: vramUsedMb / 1024 }),
+    ...(vramTotalMb === undefined ? {} : { vramTotalGb: vramTotalMb / 1024 }),
     ...(disks === undefined
       ? {}
       : { diskUsedGb: disks.usedGb, diskTotalGb: disks.totalGb }),
@@ -291,6 +366,42 @@ export function samplesFromLibrary(
     entries.push({ semanticKey, sample });
   };
 
+  /**
+   * A name is a reading like any other: omitted when there is none, and never
+   * a placeholder, or a display would show invented text with no gap and no
+   * reason.
+   *
+   * The reason is per key, because the two gaps call for different things: a
+   * CPU the library could not read is a hardware question, while an unnamed
+   * volume usually means no drive is assigned — and that is answered on the
+   * settings page, not by replacing a hard drive.
+   */
+  const pushText = (
+    semanticKey: string,
+    text: string | undefined,
+    gap: string,
+  ): void => {
+    if (!semanticKeys.includes(semanticKey)) {
+      return;
+    }
+
+    const sensorId = `${LIBRARY_PROVIDER_ID}:${semanticKey}`;
+    const trimmed = text?.trim();
+
+    if (trimmed === undefined || trimmed.length === 0) {
+      entries.push({
+        semanticKey,
+        sample: { sensorId, timestamp, status: "missing", message: gap },
+      });
+      return;
+    }
+
+    entries.push({
+      semanticKey,
+      sample: { sensorId, timestamp, status: "ok", textValue: trimmed },
+    });
+  };
+
   const ramPercent =
     readings.ramUsedGb !== undefined &&
     readings.ramTotalGb !== undefined &&
@@ -337,48 +448,83 @@ export function samplesFromLibrary(
   );
   push("network.download", readings.download);
   push("network.upload", readings.upload);
+  const cpuGap = "this machine reports no CPU identity for that key";
+  pushText("cpu.manufacturer", readings.cpuManufacturer, cpuGap);
+  pushText("cpu.brand", readings.cpuBrand, cpuGap);
+  pushText("cpu.model", readings.cpuModel, cpuGap);
+  pushText(
+    "gpu.name",
+    readings.gpuName,
+    "this machine reports no name for that graphics card",
+  );
+  pushText(
+    "disk.name",
+    readings.diskName,
+    // Two causes, one message: unassigned, the keys measure every volume and
+    // no one drive's name describes that sum; assigned but absent, they measure
+    // nothing. Neither is a name.
+    "no drive is assigned, so these keys describe every volume at once; " +
+      "choose one on the settings page",
+  );
 
   return entries;
 }
 
-/** The assigned volume's own figures, or undefined when it is not present. */
-function pickDataDisk(
-  filesystems: readonly FsSizeLike[],
-  assigned: string | undefined,
+/** One volume's own figures, or undefined when it reports no capacity. */
+function volumeTotals(
+  volumes: readonly FsSizeLike[],
 ): { readonly usedGb: number; readonly totalGb: number } | undefined {
-  if (assigned === undefined) {
-    return undefined;
-  }
+  let used = 0;
+  let total = 0;
 
-  for (const fsEntry of filesystems) {
-    // A volume is identified by its mount, and by both spellings the library
-    // and the device list use ("C:" and "C:"/"C:\").
-    const mount = (fsEntry.mount ?? fsEntry.fs ?? "").replace(/\$/, "");
-    if (diskDeviceId(mount) !== assigned && mount !== assigned) {
+  for (const volume of volumes) {
+    const size = finite(volume.size);
+    const usedBytes = finite(volume.used);
+
+    if (size === undefined || usedBytes === undefined || size <= 0) {
       continue;
     }
 
-    const size = finite(fsEntry.size);
-    const used = finite(fsEntry.used);
-
-    if (size === undefined || used === undefined || size <= 0) {
-      return undefined;
-    }
-
-    return { usedGb: used / BYTES_PER_GB, totalGb: size / BYTES_PER_GB };
+    total += size;
+    used += usedBytes;
   }
 
-  return undefined;
+  return total > 0
+    ? { usedGb: used / BYTES_PER_GB, totalGb: total / BYTES_PER_GB }
+    : undefined;
 }
 
-type LibraryModule = {
+/** The CPU identity strings, trimmed; a blank field is a gap, not a name. */
+function cpuNames(cpu: CpuLike | undefined): {
+  readonly cpuManufacturer?: string;
+  readonly cpuBrand?: string;
+  readonly cpuModel?: string;
+} {
+  const text = (value: string | undefined): string | undefined => {
+    const trimmed = value?.trim();
+    return trimmed === undefined || trimmed.length === 0 ? undefined : trimmed;
+  };
+  const manufacturer = text(cpu?.manufacturer);
+  const brand = text(cpu?.brand);
+  const model = text(cpu?.model);
+
+  return {
+    ...(manufacturer === undefined ? {} : { cpuManufacturer: manufacturer }),
+    ...(brand === undefined ? {} : { cpuBrand: brand }),
+    ...(model === undefined ? {} : { cpuModel: model }),
+  };
+}
+
+export type LibraryModule = {
   currentLoad(): Promise<{ currentLoad?: number }>;
   cpuCurrentSpeed(): Promise<{ avg?: number }>;
+  cpu(): Promise<CpuLike>;
   mem(): Promise<MemLike>;
   fsSize(): Promise<readonly FsSizeLike[]>;
   networkStats(): Promise<readonly NetStatsLike[]>;
   graphics(): Promise<{ controllers?: readonly ControllerLike[] }>;
   diskLayout(): Promise<readonly DiskLayoutLike[]>;
+  blockDevices(): Promise<readonly BlockDeviceLike[]>;
 };
 
 export class LibrarySensorProvider implements SensorProvider {
@@ -386,23 +532,43 @@ export class LibrarySensorProvider implements SensorProvider {
   readonly label = "System information (baseline)";
 
   private failure: string | undefined;
-  /** Which volume answers each disk slot; refreshed by the host. */
-  private systemDisk: string | undefined;
-  private dataDisk: string | undefined;
+  /**
+   * Read once per sample, into a local, after the fetch and before the two
+   * cached discovery reads, so the caption and the figures beside it are scoped
+   * by one object. Nothing between that read and the samples it produces is
+   * awaited from the network — the two discovery reads that follow are resolved
+   * before the selection is made — so an assignment published mid-sample
+   * cannot split the pair, and no generation counter is needed.
+   */
+  private assignment: DeviceAssignment = {};
+  /**
+   * `diskLayout` and `blockDevices` cost seconds and cannot change while the
+   * host runs, so the model→volume join is built once and reused. Cleared when
+   * the consumer republishes an assignment or opens the settings page, and
+   * when a read fails, so a transient failure costs one retry rather than the
+   * rest of the session.
+   * `ponytail:` a drive plugged in mid-session is not seen until one of those;
+   * add a miss-triggers-rebuild check when that shows up as a real defect.
+   */
+  private drives: Promise<readonly DriveDevice[]> | undefined;
+  /** Read once like the drive index, but *not* refreshed by `describeDevices`:
+   * a CPU's identity cannot change while the host runs. */
+  private cpu: Promise<CpuLike> | undefined;
 
   constructor(private readonly library?: LibraryModule) {}
 
   /** Called when the consumer changes device assignments (§145). */
   setAssignment(assignment: DeviceAssignment): void {
-    this.systemDisk = assignment.systemDisk;
-    this.dataDisk = assignment.dataDisk;
+    this.assignment = assignment;
+    this.drives = undefined;
+    this.cpu = undefined;
   }
 
   /**
    * The GPUs and drives this machine reports, so a consumer can choose which
-   * one a theme describes. The library names a disk by its model, the same
-   * identifier the LHM provider slugs, so a choice made with either provider
-   * matches the other.
+   * one a theme describes. A drive is named by its model, the same identifier
+   * the LHM provider slugs, so a choice made with either provider reaches the
+   * same drive.
    */
   async describeDevices(): Promise<{
     readonly gpus: readonly { readonly id: string; readonly name: string }[];
@@ -410,11 +576,12 @@ export class LibrarySensorProvider implements SensorProvider {
   }> {
     try {
       const library = await this.module();
-      const [graphics, filesystems] = await Promise.all([
+      const [graphics, drives] = await Promise.all([
         library.graphics(),
-        library.fsSize(),
+        this.driveIndex(library),
       ]);
 
+      this.drives = undefined;
       const gpus = (graphics.controllers ?? [])
         .map((controller) => controller.model)
         .filter(
@@ -422,18 +589,55 @@ export class LibrarySensorProvider implements SensorProvider {
             typeof model === "string" && model.length > 0,
         )
         .map((model) => ({ id: diskDeviceId(model), name: model }));
-      // Volumes are listed by mount, because a mount is what this library can
-      // actually resolve a reading for. A model name would be a nicer label but
-      // could never match an assigned id back to a volume here.
-      const disks = filesystems
-        .map((entry) => (entry.mount ?? entry.fs ?? "").replace(/\$/, ""))
-        .filter((mount) => mount.length > 0)
-        .map((mount) => ({ id: diskDeviceId(mount), name: mount }));
 
-      return { gpus, disks };
+      return {
+        gpus,
+        disks: drives.map((drive) => ({
+          id: drive.deviceId,
+          name: drive.name,
+        })),
+      };
     } catch {
       return { gpus: [], disks: [] };
     }
+  }
+
+  /**
+   * The model→volume join, read once and reused across samples.
+   *
+   * A rejected read is never cached: one transient failure would otherwise
+   * poison the field for the life of the host and turn every later sample into
+   * a gap. Clearing on the way out costs one retry, and a volume is a gap until
+   * it resolves rather than a wrong name.
+   */
+  private async driveIndex(
+    library: LibraryModule,
+  ): Promise<readonly DriveDevice[]> {
+    this.drives ??= Promise.all([
+      library.diskLayout(),
+      library.blockDevices(),
+    ]).then(([layout, blockDevices]) => drivesFrom(layout, blockDevices));
+
+    try {
+      return await this.drives;
+    } catch (error) {
+      this.drives = undefined;
+      throw error;
+    }
+  }
+
+  /**
+   * The CPU's identity strings, read once like the drive index: `si.cpu()`
+   * costs ~1.5 s against a 1 s poll, and a CPU's manufacturer, brand and model
+   * cannot change while the host runs.
+   */
+  private cpuIdentity(library: LibraryModule): Promise<CpuLike> {
+    this.cpu ??= library.cpu().catch((error: unknown) => {
+      this.cpu = undefined;
+      throw error;
+    });
+
+    return this.cpu;
   }
 
   /** Loaded lazily so a host that never needs metrics does not pay for it. */
@@ -476,42 +680,96 @@ export class LibrarySensorProvider implements SensorProvider {
 
       this.failure = undefined;
 
+      // Read once, here, after the reads: one selection answers the figures and
+      // the caption, and an assignment published mid-sample is this one. The
+      // two expensive discovery reads that follow are cached, so this is the
+      // first sample that pays and not every one.
+      const { gpu, systemDisk, dataDisk, names } = this.assignment;
+      // Neither is read for a theme that binds nothing needing it. Both disk
+      // slots need the model→volume join, not just the unsuffixed keys:
+      // `disk.data.*` answers a drive too.
+      const wantsCpuNames = owned.some((key) => CPU_NAME_KEYS.includes(key));
+      const wantsVolumes = owned.some((key) => key.startsWith("disk."));
+      // Each is contained: a machine whose CPU cannot be read still answers
+      // every other key it owns, and a volume is a gap rather than a name that
+      // could belong to another drive.
+      const [cpu, drives] = await Promise.all([
+        wantsCpuNames
+          ? this.cpuIdentity(library).catch(() => undefined)
+          : undefined,
+        wantsVolumes
+          ? this.driveIndex(library).catch(() => undefined)
+          : undefined,
+      ]);
+
+      const card = selectGpu(graphics.controllers ?? [], gpu);
+      const systemDrive =
+        systemDisk === undefined
+          ? undefined
+          : driveFor(drives ?? [], systemDisk);
+      const dataDrive =
+        dataDisk === undefined ? undefined : driveFor(drives ?? [], dataDisk);
+      // An assigned drive this PC does not have answers nothing: falling back
+      // to every volume would be a different device's figures under the name
+      // the consumer chose for the one they removed.
+      const systemVolumes =
+        systemDisk === undefined
+          ? filesystems
+          : systemDrive === undefined
+            ? []
+            : volumesOf(filesystems, systemDrive);
+      const dataVolumes =
+        dataDrive === undefined ? [] : volumesOf(filesystems, dataDrive);
+      const slot = volumeTotals(dataVolumes);
+
       const readings = readingsFromLibrary({
         load,
         speed,
         mem,
-        // With a system disk assigned, the aggregate keys describe that volume
-        // alone, matching what the assignment means for the LHM provider.
-        filesystems:
-          this.systemDisk === undefined
-            ? filesystems
-            : filesystems.filter(
-                (entry) =>
-                  diskDeviceId(
-                    (entry.mount ?? entry.fs ?? "").replace(/\$/, ""),
-                  ) === this.systemDisk,
-              ),
+        // The unsuffixed keys describe the assigned drive alone, and every
+        // volume at once otherwise — which is why the caption is then a gap.
+        filesystems: systemVolumes,
         network,
-        controllers: graphics.controllers ?? [],
+        gpu: card,
       });
 
-      // The data slot describes the assigned volume alone, matching the device
-      // ids the settings page lists so a choice made there applies here too.
-      const slot = pickDataDisk(filesystems, this.dataDisk);
-
       return samplesFromLibrary(
-        slot === undefined
-          ? readings
-          : {
-              ...readings,
-              dataDiskUsedGb: slot.usedGb,
-              dataDiskTotalGb: slot.totalGb,
-            },
+        {
+          ...readings,
+          ...cpuNames(cpu),
+          ...(card?.identity === undefined
+            ? {}
+            : {
+                gpuName: nameFor(
+                  names,
+                  card.identity.deviceId,
+                  card.identity.name,
+                ),
+              }),
+          ...(systemDrive === undefined || systemDisk === undefined
+            ? {}
+            : {
+                diskName: nameFor(
+                  names,
+                  systemDrive.deviceId,
+                  systemDrive.name,
+                ),
+              }),
+          ...(slot === undefined
+            ? {}
+            : { dataDiskUsedGb: slot.usedGb, dataDiskTotalGb: slot.totalGb }),
+        },
         owned,
         nowMs,
       );
     } catch (error) {
-      this.failure = error instanceof Error ? error.message : String(error);
+      // `systeminformation` shells out, so its errors quote the command and
+      // the machine's own paths. This message reaches every display on the
+      // network, so the string is cleaned where it is composed rather than on
+      // arrival — the contract at `ProviderHealth` says these are redacted.
+      this.failure = redactForBrowser(
+        error instanceof Error ? error.message : String(error),
+      );
       const timestamp = new Date(nowMs).toISOString();
 
       return owned.map((semanticKey) => ({

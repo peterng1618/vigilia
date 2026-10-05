@@ -70,17 +70,20 @@ describe("buildGaugeOption", () => {
 
       // §83: a gap, not a zero. A visible zero-length arc would read as "0 %".
       expect(option.series[0].progress.show).toBe(false);
+      expect(option.series[0].data).toEqual([]);
     },
   );
 
   it("draws the progress arc for an ok sample", () => {
     const option = buildGaugeOption(defaultGaugeSettings, sample());
     expect(option.series[0].progress.show).toBe(true);
+    expect(option.series[0].data).toHaveLength(1);
   });
 
   it("treats an undefined sample as missing rather than zero", () => {
     const option = buildGaugeOption(defaultGaugeSettings, undefined);
     expect(option.series[0].progress.show).toBe(false);
+    expect(option.series[0].data).toEqual([]);
   });
 
   it("disables animation when asked, for deterministic screenshots", () => {
@@ -294,5 +297,84 @@ describe("the progress arc colour", () => {
 
     expect(option.series[0].axisLine.lineStyle.color).toEqual([[1, "#111111"]]);
     expect(option.series[0].progress.itemStyle.color).toBe("#eeeeee");
+  });
+});
+
+// 0007: the same gap, in the gauge's own vocabulary — `progress.show` is
+// already the no-value state a missing sample uses.
+describe("a gauge whose progress paint has no palette entry", () => {
+  const unresolved: GaugeSettings = {
+    ...defaultGaugeSettings,
+    progress: { ref: "palette.absent" },
+  };
+
+  it("draws no arc at all, so the ring shows no number it cannot colour", () => {
+    const option = buildGaugeOption(unresolved, sample(50), false, {});
+    expect(option.series[0].progress.show).toBe(false);
+    // The track still resolves, so the panel is visibly empty rather than
+    // showing a bar with no colour.
+    const track = defaultGaugeSettings.track as { readonly color: string };
+    expect(option.series[0].axisLine.lineStyle.color).toEqual([
+      [1, track.color],
+    ]);
+  });
+});
+
+/**
+ * 0008: the datum and the arc's visibility are one decision, because ECharts
+ * 6.1.0's `GaugeView._renderPointer` reads its own `_progressEls` inside the
+ * data-diff `update` callback and only assigns it after a render that drew an
+ * arc. A datum that outlives `progress.show: false` therefore throws inside the
+ * renderer — `TypeError: Cannot read properties of undefined (reading '0')` —
+ * and the per-chart guard in the player turns it into a grey ring with no arc.
+ */
+describe("the gauge's datum follows its arc", () => {
+  const cases: readonly {
+    label: string;
+    option: () => ReturnType<typeof buildGaugeOption>;
+  }[] = [
+    {
+      label: "an ok sample",
+      option: () => buildGaugeOption(defaultGaugeSettings, sample()),
+    },
+    {
+      label: "a missing sample",
+      option: () => buildGaugeOption(defaultGaugeSettings, undefined),
+    },
+    {
+      label: "a non-ok sample",
+      option: () =>
+        buildGaugeOption(defaultGaugeSettings, sampleWithoutValue("error")),
+    },
+    {
+      label: "a progress paint that resolves to nothing",
+      option: () =>
+        buildGaugeOption(
+          { ...defaultGaugeSettings, progress: { ref: "palette.absent" } },
+          sample(),
+          false,
+          {},
+        ),
+    },
+  ];
+
+  it.each(cases)(
+    "carries a datum exactly when $label has an arc",
+    (testCase) => {
+      const series = testCase.option().series[0];
+
+      // The invariant, not the two halves of it: ECharts can survive a flag
+      // flipping under a datum, and cannot survive a flag flipping under nothing.
+      expect(series.data.length > 0).toBe(series.progress.show);
+    },
+  );
+
+  it("keeps the datum equal to the clamped reading, not the raw one", () => {
+    const option = buildGaugeOption(
+      { ...defaultGaugeSettings, min: 0, max: 100 },
+      sample(137),
+    );
+
+    expect(option.series[0].data[0]!.value).toBe(100);
   });
 });

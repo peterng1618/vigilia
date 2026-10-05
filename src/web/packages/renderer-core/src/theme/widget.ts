@@ -36,17 +36,69 @@ export interface InstantiateWidgetResult {
 
 const MAX_ID_LENGTH = 64;
 
+/**
+ * Mints the ids a copy takes: `${prefix}-${original}`, sanitised to
+ * `STABLE_ID_PATTERN`, truncated before any collision suffix and suffixed until
+ * the destination is free. Asking twice for one id gives one id back.
+ *
+ * Exported because "a copy is a copy" is one rule and not two. A Fabric scene
+ * object is minted here too — the editor's document is Fabric JSON (§134), not
+ * a `ThemeNode` list — and an author reading a tree of inserted units cannot be
+ * shown two policies for what a fresh id looks like.
+ */
+export function createWidgetIdAllocator(
+  prefix: string,
+  existingIds: Iterable<string> | undefined,
+  issues: WidgetIssue[],
+): (original: string) => string {
+  const taken = new Set(existingIds ?? []);
+  const minted = new Map<string, string>();
+
+  return (original: string): string => {
+    const already = minted.get(original);
+    if (already !== undefined) return already;
+
+    const sanitized = sanitizeId(`${prefix}-${original}`);
+
+    if (sanitized === "") {
+      issues.push({
+        code: "invalid-id",
+        detail: `Could not derive a valid id from prefix "${prefix}" and "${original}".`,
+      });
+      minted.set(original, original);
+      return original;
+    }
+
+    let candidate = sanitized;
+    let counter = 2;
+
+    while (taken.has(candidate)) {
+      const suffix = `-${counter}`;
+      candidate = `${sanitized.slice(0, MAX_ID_LENGTH - suffix.length)}${suffix}`;
+      counter += 1;
+    }
+
+    taken.add(candidate);
+    minted.set(original, candidate);
+    return candidate;
+  };
+}
+
 /** Embeds a copy. Issues are returned so recoverable mapping problems remain inspectable. */
 export function instantiateWidget(
   nodes: readonly ThemeNode[],
   options: InstantiateWidgetOptions,
 ): InstantiateWidgetResult {
   const issues: WidgetIssue[] = [];
-  const taken = new Set(options.existingIds ?? []);
   const idMap = new Map<string, string>();
+  const allocateId = createWidgetIdAllocator(
+    options.idPrefix,
+    options.existingIds,
+    issues,
+  );
 
   // Allocate all IDs first so references can point forward or backward safely.
-  collectIds(nodes, options.idPrefix, taken, idMap, issues);
+  collectIds(nodes, allocateId, idMap, issues);
 
   const copied = nodes.map((node) =>
     copyNode(node, options, idMap, issues, true),
@@ -57,29 +109,27 @@ export function instantiateWidget(
 
 function collectIds(
   nodes: readonly ThemeNode[],
-  prefix: string,
-  taken: Set<string>,
+  allocateId: (original: string) => string,
   idMap: Map<string, string>,
   issues: WidgetIssue[],
 ): void {
   for (const node of nodes) {
-    allocate(node.id, prefix, taken, idMap, issues);
+    claim(node.id, allocateId, idMap, issues);
 
     for (const binding of node.bindings ?? []) {
-      allocate(binding.id, prefix, taken, idMap, issues);
+      claim(binding.id, allocateId, idMap, issues);
     }
 
     if (node.type === "group") {
-      collectIds(node.children, prefix, taken, idMap, issues);
+      collectIds(node.children, allocateId, idMap, issues);
     }
   }
 }
 
-/** Allocates a readable stable ID, truncating before any collision suffix. */
-function allocate(
+/** One declaration, one id: a second declaration of an id is a widget's own defect. */
+function claim(
   original: string,
-  prefix: string,
-  taken: Set<string>,
+  allocateId: (original: string) => string,
   idMap: Map<string, string>,
   issues: WidgetIssue[],
 ): void {
@@ -91,28 +141,7 @@ function allocate(
     return;
   }
 
-  const sanitized = sanitizeId(`${prefix}-${original}`);
-
-  if (sanitized === "") {
-    issues.push({
-      code: "invalid-id",
-      detail: `Could not derive a valid id from prefix "${prefix}" and "${original}".`,
-    });
-    idMap.set(original, original);
-    return;
-  }
-
-  let candidate = sanitized;
-  let counter = 2;
-
-  while (taken.has(candidate)) {
-    const suffix = `-${counter}`;
-    candidate = `${sanitized.slice(0, MAX_ID_LENGTH - suffix.length)}${suffix}`;
-    counter += 1;
-  }
-
-  taken.add(candidate);
-  idMap.set(original, candidate);
+  idMap.set(original, allocateId(original));
 }
 
 function sanitizeId(value: string): string {

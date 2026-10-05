@@ -7,6 +7,7 @@ const envelope: FabricThemeEnvelope = {
   fabricVersion: "7.4.0",
   id: "living-room",
   artboard: { width: 1920, height: 1080 },
+  metadata: { themeLanguage: "en" },
   scene: { version: "7.4.0", objects: [] },
 };
 
@@ -62,7 +63,7 @@ describe("loadHostedTheme", () => {
       loadHostedFontAssets("living-room", theme, fetcher),
     ).resolves.toEqual({ "assets/inter-400.woff2": new Uint8Array([1, 2]) });
     expect(fetcher).toHaveBeenCalledWith(
-      "/api/themes/living-room/assets/assets%2Finter-400.woff2",
+      "/api/themes/living-room/assets/inter-400.woff2",
     );
   });
 

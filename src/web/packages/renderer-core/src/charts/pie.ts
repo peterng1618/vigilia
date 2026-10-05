@@ -6,7 +6,7 @@ import {
   type EngineAnimation,
   toEngineAnimation,
 } from "./animation.js";
-import { resolveChartPaint } from "./chart-paint.js";
+import { NO_INK, resolveChartPaint } from "./chart-paint.js";
 import { type EngineColor, resolveFlatColor } from "./fill.js";
 
 /**
@@ -179,24 +179,27 @@ export function buildPieOption(
       name: slice.label,
       value: slice.value,
       itemStyle: {
-        color: resolveFlatColor(fill, slice.share),
+        // A slice whose colour failed to resolve keeps its share: dropping it
+        // would renumber the composition around a paint failure, which §83
+        // forbids. The face shows no ink, so it shows no number either (0007).
+        color:
+          fill === undefined ? NO_INK : resolveFlatColor(fill, slice.share),
         borderRadius,
       },
     };
   });
 
   if (composition.remainder !== undefined && composition.remainder > 0) {
+    const remainder = resolveChartPaint(
+      settings.remainderFill ?? { kind: "solid", color: "#2a2f3a" },
+      palette,
+    );
     data.push({
       name: "remainder",
       value: composition.remainder,
       itemStyle: {
-        color: resolveFlatColor(
-          resolveChartPaint(
-            settings.remainderFill ?? { kind: "solid", color: "#2a2f3a" },
-            palette,
-          ),
-          1,
-        ),
+        color:
+          remainder === undefined ? NO_INK : resolveFlatColor(remainder, 1),
         borderRadius,
       },
     });

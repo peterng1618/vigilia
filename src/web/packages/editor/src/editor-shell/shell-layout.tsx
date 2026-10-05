@@ -1,37 +1,47 @@
 import { Menu } from "@base-ui/react/menu";
 import { Tabs } from "@base-ui/react/tabs";
+import { Check } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { createRoot, type Root } from "react-dom/client";
 import { useSyncExternalStore } from "react";
 import { uiCopy } from "../ui-copy.js";
+import { insertGroups, type InsertableObject } from "../new-object-panel.js";
+import { arrangeActions, arrangeEligible } from "../object-actions.js";
 import type { ActiveKind, EditorShellBridge, EditorShellSnapshot } from "./bridge.js";
+import { CanvasContextMenu } from "./canvas-context-menu.js";
 import { CanvasDock } from "./canvas-dock.js";
+import { DiagnosticMessage } from "./diagnostic-message.js";
+import { LayerPanel } from "./layer-panel.js";
+import { PaneBar, type RailPane } from "./pane-bar.js";
+import { PaletteMenu } from "./palette-menu.js";
+import { SaveState } from "./save-state.js";
+import { DisplaySwitch } from "./display-switch.js";
+import { applyShellPalette, DEFAULT_SHELL_PALETTE, readShellPalette } from "./palette.js";
 import {
-  applyShellPalette,
-  DEFAULT_SHELL_PALETTE,
-  readShellPalette,
-  shellPalettes,
-  writeShellPalette,
-} from "./palette.js";
-import type { RunDisplayMode } from "../run-placeholder.js";
+  DEFAULT_RUN_DISPLAY_MODE,
+  type RunDisplayMode,
+} from "../run-placeholder.js";
 import type { EditorViewControls } from "./session-facade.js";
+import type { EditorActionFacade } from "./session-facade.js";
 
-/** Rail entries own one pane each; the inspector keeps the document panels. */
-export type RailPane = "layers" | "add" | "assets" | "settings";
+export type { RailPane } from "./pane-bar.js";
+
 export type InspectorTab = "design" | "data" | "style";
 
 /** Persistent DOM owners the imperative panels mount into. React positions
- * these; it never renders panel content. */
+ * these; it never renders panel content. The Layers pane has no node here: the
+ * tree is React-owned and renders inside `Shell` from the bridge directly. */
 export interface ShellHosts {
   readonly canvas: HTMLElement;
-  readonly layers: HTMLElement;
   readonly add: HTMLElement;
   readonly assets: HTMLElement;
   readonly document: HTMLElement;
   readonly chart: HTMLElement;
   /** Properties of the selected object, in the Design tab. */
   readonly selection: HTMLElement;
+  /** What the selection's references resolve to, in the Style tab. */
+  readonly style: HTMLElement;
   readonly status: HTMLElement;
   readonly dock: HTMLElement;
 }
@@ -115,6 +125,40 @@ function useSelection(store: SelectionStore): EditorShellSnapshot {
   return useSyncExternalStore(store.subscribe, store.get, store.get);
 }
 
+/** Arrange sits above the canvas because it needs a multi-selection, not one
+ * object. It stays visible and greyed rather than being filtered out like the
+ * dock's actions, so the controls are discoverable before a selection exists. */
+function ArrangeToolbar({
+  store,
+}: {
+  readonly store: SelectionStore;
+}): React.JSX.Element {
+  const selection = useSelection(store);
+  return (
+    <div
+      className="editor-shell-arrange editor-glass"
+      role="toolbar"
+      aria-label={uiCopy.arrangeToolbar.label}
+      data-vigilia-arrange-toolbar=""
+    >
+      {arrangeActions().map(({ id, icon: Icon, label }) => (
+        <button
+          key={id}
+          type="button"
+          aria-label={label}
+          title={label}
+          // Per action: distribute needs three objects where align needs two,
+          // and a button that is enabled but refused is a silent no-op.
+          disabled={!arrangeEligible(selection.selectedCount, selection.locked, id)}
+          onClick={() => store.bridge?.run(id)}
+        >
+          <Icon aria-hidden size={15} strokeWidth={1.75} />
+        </button>
+      ))}
+    </div>
+  );
+}
+
 function readStorage(): Storage | undefined {
   try {
     return window.localStorage;
@@ -142,6 +186,111 @@ function MenuGroup({
   );
 }
 
+/** Two insertable objects can share a label — a shape Line and a chart Line. */
+function keyOf(object: InsertableObject): string {
+  switch (object.kind) {
+    case "text":
+      return "text";
+    case "card":
+      return `card:${object.card}`;
+    case "shape":
+      return `shape:${object.shape}`;
+    case "chart":
+      return `chart:${object.family}`;
+  }
+}
+
+/** One item per insertable object, dispatching the construction its owner
+    holds. The menu reaches it through the session façade, as every other menu
+    action does. */
+function insertItem(
+  object: InsertableObject,
+  session: EditorActionFacade | undefined,
+): React.JSX.Element {
+  const run = (): void => {
+    switch (object.kind) {
+      case "text":
+        session?.addText();
+        return;
+      case "card":
+        session?.insertCard(object.card);
+        return;
+      case "shape":
+        session?.addShape(object.shape);
+        return;
+      case "chart":
+        session?.addChart(object.family);
+    }
+  };
+
+  return (
+    // A shape Line and a chart Line share a label, and `key` is what tells two
+    // siblings apart — so the key carries what makes them different rather than
+    // what they are called.
+    <Menu.Item key={keyOf(object)} onClick={run}>
+      {object.label}
+    </Menu.Item>
+  );
+}
+
+/** The tick a checked radio choice carries, reserving its width whether or not
+ *  it is showing so the labels either side of it do not shift as the setting
+ *  changes. */
+const checkSlot = (state: { readonly checked: boolean }): React.CSSProperties => ({
+  display: "inline-block",
+  width: 13,
+  visibility: state.checked ? "visible" : "hidden",
+});
+
+/** One View setting as a submenu of its own values.
+ *
+ *  These were three items that flipped a boolean on click, which read as
+ *  settings and behaved as switches: nothing on screen said the other value
+ *  existed, `Chart refresh` moved 30 FPS to 1 FPS on one mis-click with nothing
+ *  to explain the preview that then looked hung, and no `aria-checked` meant a
+ *  screen reader heard a plain menu item and never which state was current.
+ *  The zoom badge beside them is the idiom already in this shell — a trigger
+ *  naming the current value, a popup listing every one — and the trigger's
+ *  `aria-haspopup` is what now distinguishes the two.
+ *
+ *  The choices stay open after one is picked, so the tick can be seen moving and
+ *  the other value is still one gesture away rather than a reopen.
+ */
+function ViewSetting<T extends string | number>({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  readonly label: string;
+  readonly value: T;
+  readonly options: readonly (readonly [T, string])[];
+  readonly onChange: (next: T) => void;
+}): React.JSX.Element {
+  const current = options.find(([id]) => id === value)?.[1] ?? "";
+  return (
+    <Menu.SubmenuRoot>
+      <Menu.SubmenuTrigger>{`${label}: ${current}`}</Menu.SubmenuTrigger>
+      <Menu.Portal>
+        <Menu.Positioner className="editor-shell-positioner">
+          <Menu.Popup className="editor-shell-menu-popup">
+            <Menu.RadioGroup value={value} onValueChange={onChange}>
+              {options.map(([id, text]) => (
+                <Menu.RadioItem key={id} value={id}>
+                  <Menu.RadioItemIndicator keepMounted style={checkSlot}>
+                    <Check aria-hidden size={12} strokeWidth={2.5} />
+                  </Menu.RadioItemIndicator>
+                  {text}
+                </Menu.RadioItem>
+              ))}
+            </Menu.RadioGroup>
+          </Menu.Popup>
+        </Menu.Positioner>
+      </Menu.Portal>
+    </Menu.SubmenuRoot>
+  );
+}
+
 function ShellMenuBar({
   store,
   getView,
@@ -154,12 +303,12 @@ function ShellMenuBar({
   const session = store.bridge?.session;
   const [source, setSource] = useState<"preview" | "live">("preview");
   const [rate, setRate] = useState<1 | 30>(30);
-  const [runDisplay, setRunDisplay] = useState<RunDisplayMode>("tokens");
+  const [runDisplay, setRunDisplay] = useState<RunDisplayMode>(DEFAULT_RUN_DISPLAY_MODE);
 
   useEffect(() => {
     setSource(getView()?.sourceMode() ?? "preview");
     setRate(getView()?.chartRefreshRate() ?? 30);
-    setRunDisplay(getView()?.runDisplay() ?? "tokens");
+    setRunDisplay(getView()?.runDisplay() ?? DEFAULT_RUN_DISPLAY_MODE);
   }, [getView, selection.selectedCount]);
 
   const item = (label: string, run: () => void, disabled = false) => (
@@ -172,6 +321,7 @@ function ShellMenuBar({
     <nav className="editor-shell-menubar" aria-label="Editor menus">
       <MenuGroup label={uiCopy.menus.file}>
         {item(uiCopy.file.newDocument, () => void session?.newDocument())}
+        {item(uiCopy.file.newFromStarter, () => void session?.newFromStarter())}
         {item(uiCopy.file.openPackage, () => session?.openPackage())}
         {item(uiCopy.file.savePackage, () => void session?.savePackage())}
         {item(uiCopy.file.releasePackage, () => void session?.releasePackage())}
@@ -195,46 +345,61 @@ function ShellMenuBar({
         )}
       </MenuGroup>
       <MenuGroup label={uiCopy.menus.insert}>
-        {item(uiCopy.panels.text, () => session?.addText())}
-        {item(uiCopy.chartFamilies.gauge, () => session?.addChart("gauge"))}
-        {item(uiCopy.chartFamilies.line, () => session?.addChart("line"))}
-        {item(uiCopy.chartFamilies.bar, () => session?.addChart("bar"))}
-        {item(uiCopy.chartFamilies.pie, () => session?.addChart("pie"))}
-      </MenuGroup>
-      <MenuGroup label={uiCopy.menus.arrange}>
-        {item(
-          uiCopy.actions.align,
-          () => session?.arrange("align-left"),
-          session?.canArrange("align-left") !== true,
-        )}
-        {item(
-          uiCopy.actions.distribute,
-          () => session?.arrange("distribute-x"),
-          session?.canArrange("distribute-x") !== true,
+        {/* The Add pane's own list, not a second copy of it: this menu had
+            drifted to five flat entries with no panel and no shape in it, and
+            "Line" meant whichever of the two things the reader happened to see
+            first. The groups are the pane's, so the word is as unambiguous
+            here as it is there. */}
+        {insertGroups().map((group) =>
+          group.label === undefined ? (
+            group.objects.map((object) => insertItem(object, session))
+          ) : (
+            <Menu.Group key={group.label}>
+              <Menu.GroupLabel className="editor-shell-menu-label">
+                {group.label}
+              </Menu.GroupLabel>
+              {group.objects.map((object) => insertItem(object, session))}
+            </Menu.Group>
+          ),
         )}
       </MenuGroup>
       <MenuGroup label={uiCopy.menus.view}>
-        {item(
-          `${uiCopy.view.dataSource}: ${source === "preview" ? uiCopy.view.preview : uiCopy.view.live}`,
-          () => {
-            const next = source === "preview" ? "live" : "preview";
+        <ViewSetting
+          label={uiCopy.view.dataSource}
+          value={source}
+          options={[
+            ["preview", uiCopy.view.preview],
+            ["live", uiCopy.view.live],
+          ]}
+          onChange={(next) => {
             getView()?.setSourceMode(next);
             setSource(next);
-          },
-        )}
-        {item(`${uiCopy.view.chartRefresh}: ${rate} FPS`, () => {
-          const next: 1 | 30 = rate === 30 ? 1 : 30;
-          getView()?.setChartRefreshRate(next);
-          setRate(next);
-        })}
-        {item(
-          `${uiCopy.view.valueRuns}: ${runDisplay === "tokens" ? uiCopy.view.tokens : uiCopy.view.values}`,
-          () => {
-            const next = runDisplay === "tokens" ? "values" : "tokens";
+          }}
+        />
+        <ViewSetting
+          label={uiCopy.view.chartRefresh}
+          value={rate}
+          options={[
+            [30, uiCopy.view.fps30],
+            [1, uiCopy.view.fps1],
+          ]}
+          onChange={(next) => {
+            getView()?.setChartRefreshRate(next);
+            setRate(next);
+          }}
+        />
+        <ViewSetting
+          label={uiCopy.view.valueRuns}
+          value={runDisplay}
+          options={[
+            ["values", uiCopy.view.values],
+            ["tokens", uiCopy.view.tokens],
+          ]}
+          onChange={(next) => {
             getView()?.setRunDisplay(next);
             setRunDisplay(next);
-          },
-        )}
+          }}
+        />
       </MenuGroup>
     </nav>
   );
@@ -244,44 +409,116 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
   const storage = readStorage();
   const initial =
     storage === undefined ? DEFAULT_SHELL_PALETTE : readShellPalette(storage);
-  applyShellPalette(root, initial);
+  applyShellPalette(initial);
 
   const hosts: ShellHosts = {
     canvas: element(),
-    layers: element("vigiliaPanelHostLayers"),
     add: element("vigiliaPanelHostAdd"),
     assets: element("vigiliaPanelHostAssets"),
     document: element("vigiliaPanelHostDocument"),
     chart: element("vigiliaPanelHostChart"),
     selection: element("vigiliaPanelHostSelection"),
+    style: element("vigiliaPanelHostStyle"),
     status: document.createElement("span"),
     dock: document.createElement("nav"),
   };
   hosts.canvas.id = "canvas-host";
 
-  let bridge: EditorShellBridge | undefined;
   let view: EditorViewControls | undefined;
   let reactRoot: Root | undefined;
   const store = new SelectionStore();
   const getView = (): EditorViewControls | undefined => view;
 
+  /** The `+` opens the insert popover, which arrives with Task 3; until then
+   *  the bar renders the affordance and this is what it calls.
+   *
+   *  ponytail: inert for one task. Task 3 replaces this with the popover's
+   *  open handler and deletes the `Insert` pane's separate list from the menu
+   *  bar in the same change. */
+  const openInsertPopover = (): void => undefined;
+
   function Shell(): React.JSX.Element {
     const [palette, setPalette] = useState(initial);
     const [pane, setPane] = useState<RailPane>("layers");
+    const [collapsed, setCollapsed] = useState(false);
     const kind = useSelection(store).activeKind;
+    /** Re-frame on the panel toggle, once the viewport has the new width.
+     *
+     * A resize does not need this any more: the viewport derives whether the
+     * camera was fitted and re-fits that one itself. What it deliberately will
+     * not do is touch a camera the author has zoomed or panned, and collapsing a
+     * panel is not a window nudge — the author handed the canvas 288px on
+     * purpose — so this is the one case where their view still follows. Still
+     * waiting on the change event rather than a frame: the aside re-renders
+     * after the frame, so a fit measured then reads the old box and lands on the
+     * collapsed zoom on the way back in.
+     */
+    const refitOnViewportChange = (): void => {
+      const viewport = store.bridge?.editor.viewport;
+      if (viewport === undefined) return;
+      const off = viewport.onChange(() => {
+        off();
+        viewport.zoomToFit();
+      });
+    };
 
-    const rail: readonly [RailPane, string][] = [
-      ["layers", uiCopy.rail.layers],
-      ["add", uiCopy.rail.add],
-      ["assets", uiCopy.rail.assets],
-      ["settings", uiCopy.rail.settings],
-    ];
+    /** Each pane's scroll offset, kept across the swap.
+     *
+     * The bar is single-panel, so opening Assets really does tear the layer
+     * list down and build it again — the selection, the inspector's geometry
+     * and the canvas handles all survive, and only the scroll was lost. With
+     * the Starter's 52 rows and more in a theme an author has built, finding
+     * your place again after a glance at the assets is the whole cost of it. */
+    const scrollOf = useRef(new Map<RailPane, number>());
+    const paneBody = useRef<HTMLElement | null>(null);
+
+    /** The segment already showing closes the panel; any other segment — and
+     *  the closed one itself — shows it. The canvas is what an author works
+     *  in, so the chrome around it is allowed to get out of the way. */
+    const choosePane = (id: RailPane): void => {
+      // Read the offset off the DOM rather than off an event: the panel is torn
+      // down by the swap, so anything held in state is already gone by the time
+      // this runs for the next pane. Taken before any branch, because every
+      // branch but the collapse hides the panel and a `display: none` box has
+      // no scroll offset to read — the getter answers 0, so a save taken after
+      // the collapse writes the author's place back as the top of the list.
+      if (!collapsed && paneBody.current !== null) {
+        scrollOf.current.set(pane, paneBody.current.scrollTop);
+      }
+      if (!collapsed && pane === id) {
+        setCollapsed(true);
+        // Collapsing hands the canvas 288px, and the refit runs here too rather
+        // than only on a pane swap.
+        refitOnViewportChange();
+        return;
+      }
+      setPane(id);
+      setCollapsed(false);
+      const restore = scrollOf.current.get(id) ?? 0;
+      // After the pane's own content is laid out, or the offset lands on
+      // whatever height it has at that moment.
+      requestAnimationFrame(() => {
+        if (paneBody.current !== null) paneBody.current.scrollTop = restore;
+        // Only when the panel is coming back. A swap between two open panes
+        // changes which pane shows, not how wide the panel is, so nothing
+        // resizes and no change event ever arrives — the listener would sit
+        // armed until the author's next pan or zoom, and that gesture is the one
+        // it ate, snapping the view back to fit.
+        if (collapsed) refitOnViewportChange();
+      });
+    };
+
     return (
       <div className="editor-shell">
         <header className="editor-shell-header editor-glass">
           <strong>{uiCopy.brand}</strong>
           <span className="editor-shell-tagline">{uiCopy.editor}</span>
           <ShellMenuBar store={store} getView={getView} />
+          <PaletteMenu
+            storage={storage}
+            palette={palette}
+            onChange={setPalette}
+          />
           <button
             className="editor-shell-primary"
             type="button"
@@ -291,52 +528,30 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
             {uiCopy.file.savePackage}
           </button>
         </header>
-        <div className="editor-shell-body">
-          <nav
-            className="editor-shell-rail editor-glass"
-            aria-label="Editor areas"
+        <div className="editor-shell-body" data-collapsed={collapsed}>
+          {/* The bar heads the left column rather than standing beside it, so
+              the canvas gets the rail's 52px back and the segments read as the
+              column's own header rather than a second place to navigate. */}
+          <PaneBar
+            pane={pane}
+            collapsed={collapsed}
+            onChoose={choosePane}
+            onInsert={openInsertPopover}
+          />
+          <aside
+            className="editor-shell-panel editor-glass"
+            hidden={collapsed}
+            ref={paneBody}
           >
-            {rail.map(([id, label]) => (
-              <button
-                key={id}
-                type="button"
-                aria-label={label}
-                title={label}
-                aria-pressed={pane === id}
-                onClick={() => setPane(id)}
-              >
-                {uiCopy.railMark[id]}
-              </button>
-            ))}
-          </nav>
-          <aside className="editor-shell-panel editor-glass">
-            <Host node={hosts.layers} hidden={pane !== "layers"} />
-            <Host node={hosts.add} hidden={pane !== "add"} />
-            <Host node={hosts.assets} hidden={pane !== "assets"} />
-            <div hidden={pane !== "settings"}>
-              <label className="editor-shell-palette">
-                {uiCopy.palette}
-                <select
-                  aria-label={uiCopy.palette}
-                  value={palette}
-                  onChange={(event) => {
-                    const next = event.target.value as typeof initial;
-                    writeShellPalette(storage ?? window.localStorage, next);
-                    applyShellPalette(root, next);
-                    setPalette(next);
-                  }}
-                >
-                  {shellPalettes.map((entry) => (
-                    <option key={entry} value={entry}>
-                      {entry}
-                    </option>
-                  ))}
-                </select>
-              </label>
+            <div hidden={pane !== "layers"}>
+              <LayerPanel bridge={store.bridge} />
             </div>
+            <Host node={hosts.add} hidden={pane !== "insert"} />
+            <Host node={hosts.assets} hidden={pane !== "assets"} />
           </aside>
           <main id="stage" className="editor-shell-stage" aria-label="Editor canvas">
             <Host node={hosts.canvas} />
+            <ArrangeToolbar store={store} />
             <nav
               className="editor-shell-dock editor-glass"
               aria-label={uiCopy.dock.label}
@@ -347,6 +562,14 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
                 }
               }}
             />
+            {/* The store, not a local: a late-set bridge must reach the readout
+                the same way it reaches the inspector and menus. */}
+            {store.bridge === undefined ? null : (
+              <DisplaySwitch viewport={store.bridge.editor.viewport} />
+            )}
+            {/* Renders no DOM of its own: it only binds the canvas's own
+                `contextmenu` listener, so it sits with the stage it listens to. */}
+            <CanvasContextMenu bridge={store.bridge} />
           </main>
           <aside className="editor-shell-inspector editor-glass">
             <Tabs.Root defaultValue="design">
@@ -365,7 +588,7 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
                   <p className="editor-shell-hint">
                     {kind === "chart"
                       ? "Chart settings are under Data."
-                      : "Move, arrange and lock the selection with the canvas dock."}
+                      : "Move and lock the selection with the canvas dock."}
                   </p>
                 )}
                 <Host node={hosts.document} />
@@ -374,16 +597,15 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
                 <Host node={hosts.chart} />
               </Tabs.Panel>
               <Tabs.Panel value="style" keepMounted>
-                <p className="editor-shell-hint">
-                  Colours and type resolve through the theme palette and type
-                  presets.
-                </p>
+                <Host node={hosts.style} />
               </Tabs.Panel>
             </Tabs.Root>
           </aside>
         </div>
         <footer id="status" className="editor-shell-status">
           <Host node={hosts.status} />
+          <DiagnosticMessage canvas={store.bridge?.editor.canvas} />
+          <SaveState session={store.bridge?.session} />
         </footer>
       </div>
     );

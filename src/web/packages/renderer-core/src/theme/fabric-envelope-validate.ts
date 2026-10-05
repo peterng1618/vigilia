@@ -1,11 +1,25 @@
-import { isTimeZoneName } from "../scene/datetime-format.js";
+import { isTimeZoneName } from "../scene/datetime/instant.js";
+import { isLocaleName } from "../scene/datetime/names.js";
 import {
+  MAX_ARTBOARD_DIMENSION,
   MAX_NODE_COUNT,
   MAX_NODE_DEPTH,
   STABLE_ID_PATTERN,
 } from "./document.js";
 import type { FabricThemeEnvelope } from "./fabric-envelope.js";
-import { type ValidationIssue, validateThemeDocument } from "./validate.js";
+import {
+  isGlassTreatment,
+  MAX_GLASS_BLUR_RADIUS,
+  supportsGlass,
+  VIGILIA_GLASS_PROPERTY,
+} from "./glass.js";
+import { isObjectName, VIGILIA_NAME_PROPERTY } from "./object-name.js";
+import {
+  envelopeKeysFor,
+  knownKeysFor,
+  type ValidationIssue,
+  validateThemeDocument,
+} from "./validate.js";
 
 /** Bounds malformed Fabric JSON before it reaches Fabric's asynchronous revival. */
 const MAX_SCENE_DEPTH = MAX_NODE_DEPTH + 8;
@@ -48,24 +62,7 @@ export function validateFabricThemeEnvelope(
   }
 
   const issues: ValidationIssue[] = [];
-  unknownKeys(
-    input,
-    "",
-    [
-      "schemaVersion",
-      "fabricVersion",
-      "id",
-      "metadata",
-      "artboard",
-      "globals",
-      "assets",
-      "bindings",
-      "editorMetadata",
-      "scene",
-    ],
-    "A Fabric theme",
-    issues,
-  );
+  unknownKeys(input, "", envelopeKeysFor("envelope"), "A Fabric theme", issues);
   if (
     typeof input["fabricVersion"] !== "string" ||
     !/^\d+\.\d+\.\d+$/.test(input["fabricVersion"])
@@ -79,6 +76,7 @@ export function validateFabricThemeEnvelope(
     );
   }
   issues.push(...sharedSemanticIssues(input));
+  themeLanguage(input["metadata"], issues);
   v2Globals(input["globals"], issues);
   artboardPaintReferences(input["artboard"], input["globals"], issues);
   paletteNone(input["globals"], issues);
@@ -100,6 +98,48 @@ export function validateFabricThemeEnvelope(
   return issues.length === 0
     ? { ok: true, envelope: input as unknown as FabricThemeEnvelope }
     : { ok: false, issues };
+}
+
+/**
+ * A v2 theme states the language its text is written in, so its clock reads in
+ * the language its author wrote it in and a library can filter on the fact. A
+ * tag that is malformed, or well formed and unsupported, is refused here rather
+ * than rendered as English behind the author's back.
+ */
+function themeLanguage(metadata: unknown, issues: ValidationIssue[]): void {
+  if (!isRecord(metadata)) {
+    issues.push(
+      issue(
+        "missing-field",
+        "/metadata/themeLanguage",
+        "A theme must declare its language, so its text reads in the language it was written in.",
+      ),
+    );
+    return;
+  }
+
+  const language = metadata["themeLanguage"];
+
+  if (language === undefined) {
+    issues.push(
+      issue(
+        "missing-field",
+        "/metadata/themeLanguage",
+        "A theme must declare its language, so its text reads in the language it was written in.",
+      ),
+    );
+    return;
+  }
+
+  if (typeof language !== "string" || !isLocaleName(language)) {
+    issues.push(
+      issue(
+        "invalid-enum",
+        "/metadata/themeLanguage",
+        `themeLanguage "${String(language)}" is not a language this runtime can render.`,
+      ),
+    );
+  }
 }
 
 function fontPresetFaces(
@@ -188,10 +228,13 @@ function sceneTypeReferences(
   const visit = (object: unknown, path: string): void => {
     if (!isRecord(object)) return;
     if (isTextObject(object)) {
+      const authored = isRecord(object["vigiliaText"])
+        ? object["vigiliaText"]
+        : undefined;
+      textBox(authored?.["box"], `${path}/vigiliaText/box`, issues);
       const runs =
-        isRecord(object["vigiliaText"]) &&
-        Array.isArray(object["vigiliaText"]["runs"])
-          ? object["vigiliaText"]["runs"]
+        authored !== undefined && Array.isArray(authored["runs"])
+          ? authored["runs"]
           : undefined;
       if (runs === undefined || runs.length === 0) {
         issues.push(
@@ -275,6 +318,46 @@ function isTextObject(object: Record<string, unknown>): boolean {
   );
 }
 
+/**
+ * A fixed text box, on the v2 scene's own copy of the authored content.
+ *
+ * Fabric keeps `width` on the object too, but that is a cache the renderer
+ * re-asserts: this is the copy the author's size survives in, so a malformed
+ * one is refused before anything measures text into it.
+ */
+function textBox(
+  value: unknown,
+  path: string,
+  issues: ValidationIssue[],
+): void {
+  if (value === undefined) return;
+
+  const sized = (dimension: "width" | "height"): boolean => {
+    const size = isRecord(value) ? value[dimension] : undefined;
+    return (
+      typeof size === "number" &&
+      Number.isFinite(size) &&
+      size > 0 &&
+      size <= MAX_ARTBOARD_DIMENSION
+    );
+  };
+
+  if (
+    !isRecord(value) ||
+    Object.keys(value).some((key) => key !== "width" && key !== "height") ||
+    !sized("width") ||
+    !sized("height")
+  ) {
+    issues.push(
+      issue(
+        "invalid-fabric-scene",
+        path,
+        `A text box must be exactly { width, height }, each a number from 0 to ${MAX_ARTBOARD_DIMENSION} scene units.`,
+      ),
+    );
+  }
+}
+
 /** v2 removes legacy global groups; palette and type presets own authored style. */
 function v2Globals(value: unknown, issues: ValidationIssue[]): void {
   if (value === undefined) return;
@@ -287,7 +370,7 @@ function v2Globals(value: unknown, issues: ValidationIssue[]): void {
   unknownKeys(
     value,
     "/globals",
-    ["palette", "typePresets"],
+    envelopeKeysFor("globals"),
     "v2 globals",
     issues,
   );
@@ -340,24 +423,30 @@ function scenePaintReferences(
     const refs = isRecord(object["vigiliaPaint"])
       ? object["vigiliaPaint"]
       : undefined;
-    for (const property of ["fill", "stroke"] as const) {
-      if (
-        object[property] === undefined ||
-        object[property] === null ||
-        object[property] === ""
-      )
-        continue;
+    for (const property of ["fill", "stroke", "shadowColor"] as const) {
+      if (!hasResolvedPaint(object, property)) continue;
       const ref = refs?.[property];
-      if (
-        typeof ref !== "string" ||
-        !ref.startsWith("palette.") ||
-        palette?.[ref.slice("palette.".length)] === undefined
-      ) {
+      const token = paletteToken(ref, palette);
+      if (token === undefined) {
         issues.push(
           issue(
             "unresolved-global-ref",
             `${path}/${property}`,
             `${property} must reference an existing palette token through vigiliaPaint.`,
+          ),
+        );
+        continue;
+      }
+      // Fabric's Shadow.color is a string, so a gradient token cannot paint
+      // one. Refusing it here matches how every other unappliable reference is
+      // reported, instead of leaving a ref that resolves on paper and is
+      // silently dropped at paint time.
+      if (property === "shadowColor" && !isSolidPaint(token)) {
+        issues.push(
+          issue(
+            "unresolved-global-ref",
+            `${path}/${property}`,
+            "shadowColor must reference a solid palette token.",
           ),
         );
       }
@@ -369,6 +458,53 @@ function scenePaintReferences(
   };
   scene["objects"].forEach((object, index) =>
     visit(object, `/scene/objects/${index}`),
+  );
+}
+
+/** The palette entry a `palette.` reference names, or `undefined` if none. */
+function paletteToken(
+  ref: unknown,
+  palette: Record<string, unknown> | undefined,
+): unknown {
+  if (typeof ref !== "string" || !ref.startsWith("palette.")) return undefined;
+  return palette?.[ref.slice("palette.".length)];
+}
+
+/** A palette value that can become a single Fabric colour. */
+function isSolidPaint(entry: unknown): boolean {
+  // Older fixtures and `applyPaints` both accept a bare string; the published
+  // shape nests it under `value`.
+  if (typeof entry === "string") return entry.length > 0;
+  if (!isRecord(entry)) return false;
+  const value = entry["value"];
+  if (typeof value === "string") return value.length > 0;
+  return isRecord(value) && value["kind"] === "solid";
+}
+
+/**
+ * A shadow carries its colour inside Fabric's own nested object, so the
+ * presence test differs from the flat fill/stroke properties. Fabric also
+ * accepts the CSS string form and parses it into a real Shadow, so a string is
+ * a resolved colour too and must be checked the same way.
+ */
+function hasResolvedPaint(
+  object: Record<string, unknown>,
+  property: "fill" | "stroke" | "shadowColor",
+): boolean {
+  if (property === "shadowColor") {
+    const shadow = object["shadow"];
+    if (typeof shadow === "string") return shadow.trim().length > 0;
+    return (
+      isRecord(shadow) &&
+      shadow["color"] !== undefined &&
+      shadow["color"] !== null &&
+      shadow["color"] !== ""
+    );
+  }
+  return (
+    object[property] !== undefined &&
+    object[property] !== null &&
+    object[property] !== ""
   );
 }
 
@@ -700,22 +836,7 @@ function bindings(
         issues.push(issue("wrong-type", path, "A binding must be an object."));
         continue;
       }
-      unknownKeys(
-        entry,
-        path,
-        [
-          "id",
-          "semanticKey",
-          "precision",
-          "unitDisplay",
-          "scale",
-          "offset",
-          "format",
-          "timeZone",
-        ],
-        "A binding",
-        issues,
-      );
+      unknownKeys(entry, path, knownKeysFor("binding"), "A binding", issues);
       if (stableId(entry["id"], `${path}/id`, "A binding id", issues)) {
         if (ids.has(entry["id"])) {
           issues.push(
@@ -908,6 +1029,8 @@ function sceneObject(
       ),
     );
   }
+  objectGlass(value, path, issues);
+  objectName(value, path, issues);
   if (!jsonSafe(value, path, depth, issues)) return;
   if (value["objects"] !== undefined) {
     if (!Array.isArray(value["objects"])) {
@@ -931,6 +1054,61 @@ function sceneObject(
       }
     }
   }
+}
+
+/**
+ * The authored glass treatment, refused before revival rather than coerced.
+ * An unsupported object kind is a separate refusal: Task 1 measured a clipped
+ * backdrop for rectangles and groups only, so anything else is refused until
+ * it has been measured rather than rendering an unproven treatment.
+ */
+function objectGlass(
+  value: Record<string, unknown>,
+  path: string,
+  issues: ValidationIssue[],
+): void {
+  const treatment = value[VIGILIA_GLASS_PROPERTY];
+  if (treatment === undefined) return;
+  if (typeof value["type"] === "string" && !supportsGlass(value["type"])) {
+    issues.push(
+      issue(
+        "invalid-enum",
+        `${path}/${VIGILIA_GLASS_PROPERTY}`,
+        `A ${value["type"]} cannot carry a glass treatment.`,
+      ),
+    );
+    return;
+  }
+  if (!isGlassTreatment(treatment))
+    issues.push(
+      issue(
+        "invalid-fabric-scene",
+        `${path}/${VIGILIA_GLASS_PROPERTY}`,
+        `A glass treatment must be exactly { blurRadius }, a number from 0 to ${MAX_GLASS_BLUR_RADIUS} artboard units.`,
+      ),
+    );
+}
+
+/**
+ * The display name an object carries beside its stable id, refused before
+ * revival rather than coerced. Absence is legal and means the id stands in —
+ * a scene authored before the field still opens — so only a present value that
+ * is not a readable label is a refusal.
+ */
+function objectName(
+  value: Record<string, unknown>,
+  path: string,
+  issues: ValidationIssue[],
+): void {
+  const name = value[VIGILIA_NAME_PROPERTY];
+  if (name === undefined || isObjectName(name)) return;
+  issues.push(
+    issue(
+      "invalid-fabric-scene",
+      `${path}/${VIGILIA_NAME_PROPERTY}`,
+      "A Fabric object name must be a non-blank string, so the layer list has something to show.",
+    ),
+  );
 }
 
 function jsonSafe(

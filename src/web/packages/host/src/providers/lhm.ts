@@ -1,17 +1,24 @@
 import type { Sample, SampleEntry } from "@vigilia/renderer-core";
-import { describeSemanticKey, diskDeviceOf } from "@vigilia/renderer-core";
+import {
+  describeSemanticKey,
+  diskDeviceId,
+  diskDeviceOf,
+} from "@vigilia/renderer-core";
 import {
   type DeviceAssignment,
   diskDeviceReadings,
   gpuDeviceReadings,
+  lhmDeviceName,
   matchLhmSensorsAssigned,
 } from "./lhm-mapping.js";
+import { displayNameFor } from "../settings/devices.js";
 import { flattenLhmSensors } from "./lhm-tree.js";
 import type {
   ProviderHealth,
   SensorDescriptor,
   SensorProvider,
 } from "./provider.js";
+import { redactForBrowser } from "./provider.js";
 
 /**
  * LibreHardwareMonitor as an optional external program (§97): Vigilia reads the
@@ -43,12 +50,14 @@ const LHM_KEYS = [
   "gpu.power",
   "gpu.clock",
   "gpu.fan",
+  "gpu.name",
   "vram.used",
   "vram.used.percent",
   "vram.total",
   "disk.used",
   "disk.used.percent",
   "disk.total",
+  "disk.name",
   "network.download",
   "network.upload",
 ] as const;
@@ -190,21 +199,30 @@ export class LhmSensorProvider implements SensorProvider {
       this.failure = undefined;
     } catch (error) {
       // Absent LHM is ordinary: the registry falls back and the display sees a
-      // gap with a reason, never an invented reading.
-      this.failure = error instanceof Error ? error.message : String(error);
+      // gap with a reason, never an invented reading. The reason is redacted
+      // where it is composed, because this message reaches every display on
+      // the network and the transport address is the host's, not the reader's.
+      this.failure = redactForBrowser(
+        error instanceof Error ? error.message : String(error),
+      );
       return owned.map((semanticKey) => ({
         semanticKey,
         sample: missing(
           `${LHM_PROVIDER_ID}:${semanticKey}`,
           timestamp,
-          `LibreHardwareMonitor is not reachable at ${this.baseUrl}: ${this.failure}`,
+          `LibreHardwareMonitor is not reachable at its configured address: ${this.failure}`,
         ),
       }));
     }
 
     const sensors = flattenLhmSensors(payload);
+    // One read, here, that both the figures and the caption below are scoped
+    // by. Reading `this.assignment` at each use site would hold only by
+    // accident: there is no `await` between them today, and one added await
+    // would let the two resolve against different assignments.
+    const assignment = this.assignment;
     const matched = new Map(
-      matchLhmSensorsAssigned(sensors, owned, this.assignment).map((match) => [
+      matchLhmSensorsAssigned(sensors, owned, assignment).map((match) => [
         match.semanticKey,
         match.value,
       ]),
@@ -217,9 +235,45 @@ export class LhmSensorProvider implements SensorProvider {
       matched.set(`disk.${device.deviceId}.used.percent`, device.usedPercent);
     }
 
+    // Captions come from the same selection the figures above were scoped to,
+    // so a name can never sit over another device's reading. A name the
+    // consumer chose wins over the model, which is what the settings page
+    // edits.
+    const gpuName = lhmDeviceName(sensors, "gpu", assignment);
+    const diskName = lhmDeviceName(sensors, "storage", assignment);
+    const names = assignment.names ?? {};
+    const named = new Map<string, string>();
+
+    if (gpuName !== undefined) {
+      named.set(
+        "gpu.name",
+        displayNameFor(names, diskDeviceId(gpuName), gpuName),
+      );
+    }
+
+    if (diskName !== undefined) {
+      named.set(
+        "disk.name",
+        displayNameFor(names, diskDeviceId(diskName), diskName),
+      );
+    }
+
     return owned.map((semanticKey) => {
       const value = matched.get(semanticKey);
       const declared = describeSemanticKey(semanticKey);
+      const name = named.get(semanticKey);
+
+      if (name !== undefined) {
+        return {
+          semanticKey,
+          sample: {
+            sensorId: `${LHM_PROVIDER_ID}:${semanticKey}`,
+            timestamp,
+            status: "ok" as const,
+            textValue: name,
+          },
+        };
+      }
 
       if (value === undefined) {
         return {

@@ -1,4 +1,4 @@
-import { writeFileSync } from "node:fs";
+import { mkdirSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import {
   type APIRequestContext,
@@ -9,9 +9,10 @@ import {
 import {
   HOST_DISK_THEME_ID,
   HOST_PORT,
+  HOST_SETTINGS_DIR,
   HOST_THEME_ID,
-  HOST_THEMES_DIR,
 } from "./host-theme.js";
+import { isDesktopSurface } from "./surface.js";
 
 /** Drives the consumer settings page against the real host. The page is the
  * only surface where global settings and a theme's own questions meet, and the
@@ -20,13 +21,15 @@ import {
 
 const HOST = `http://127.0.0.1:${HOST_PORT}`;
 
-/** Every store sits in the seeded fixture directory, so each state below is
- * reachable by writing the same file the host reads — including after a
- * recycled server left state behind. */
-const ACTIVE_FILE = path.join(HOST_THEMES_DIR, "active-theme.json");
-const ANSWERS_FILE = path.join(HOST_THEMES_DIR, "theme-answers.json");
+/** Every store sits in the app folder's settings directory, so each state below
+ * is reachable by writing the same file the host reads — including after a
+ * recycled server left state behind. They left the themes directory so that a
+ * theme folder is only ever a theme (ADR-0017). */
+const ACTIVE_FILE = path.join(HOST_SETTINGS_DIR, "active-theme.json");
+const ANSWERS_FILE = path.join(HOST_SETTINGS_DIR, "theme-answers.json");
 
 function resetStores(): void {
+  mkdirSync(HOST_SETTINGS_DIR, { recursive: true });
   writeFileSync(ACTIVE_FILE, "{}\n", "utf8");
   writeFileSync(ANSWERS_FILE, "{}\n", "utf8");
 }
@@ -91,7 +94,7 @@ test.describe("the settings page a consumer configures", () => {
     request,
   }, testInfo) => {
     test.skip(
-      testInfo.project.name !== "desktop-chromium",
+      !isDesktopSurface(testInfo),
       "one desktop pass owns the shared host state",
     );
 
@@ -118,7 +121,7 @@ test.describe("the settings page a consumer configures", () => {
     request,
   }, testInfo) => {
     test.skip(
-      testInfo.project.name !== "desktop-chromium",
+      !isDesktopSurface(testInfo),
       "one desktop pass owns the shared host state",
     );
 
@@ -148,7 +151,7 @@ test.describe("the settings page a consumer configures", () => {
     request,
   }, testInfo) => {
     test.skip(
-      testInfo.project.name !== "desktop-chromium",
+      !isDesktopSurface(testInfo),
       "one desktop pass owns the shared host state",
     );
 
@@ -176,10 +179,12 @@ test.describe("the settings page a consumer configures", () => {
       await expect(page.locator("#groups input[data-name]")).toHaveCount(
         before.available.gpus.length + before.available.disks.length,
       );
-      await expect(page.locator(`label:has(input[data-name="${other}"])`)).toHaveText(
-        reported,
+      await expect(
+        page.locator(`label:has(input[data-name="${other}"])`),
+      ).toHaveText(reported);
+      await expect(page.locator('select[data-group="data-disk"]')).toHaveValue(
+        "",
       );
-      await expect(page.locator('select[data-group="data-disk"]')).toHaveValue("");
 
       await field.fill("Archive");
       await field.blur();
@@ -202,7 +207,7 @@ test.describe("the settings page a consumer configures", () => {
     request,
   }, testInfo) => {
     test.skip(
-      testInfo.project.name !== "desktop-chromium",
+      !isDesktopSurface(testInfo),
       "one desktop pass owns the shared host state",
     );
 
@@ -246,7 +251,7 @@ test.describe("the settings page a consumer configures", () => {
     request,
   }, testInfo) => {
     test.skip(
-      testInfo.project.name !== "desktop-chromium",
+      !isDesktopSurface(testInfo),
       "one desktop pass owns the shared host state",
     );
 
@@ -293,7 +298,7 @@ test.describe("the settings page a consumer configures", () => {
     page,
   }, testInfo) => {
     test.skip(
-      testInfo.project.name !== "desktop-chromium",
+      !isDesktopSurface(testInfo),
       "one desktop pass owns the shared host state",
     );
 
@@ -307,7 +312,7 @@ test.describe("the settings page a consumer configures", () => {
 test.describe("the settings page in a screenshot", () => {
   test("captures the question a theme raises", async ({ page }, testInfo) => {
     test.skip(
-      testInfo.project.name !== "desktop-chromium" ||
+      !isDesktopSurface(testInfo) ||
         process.env["VIGILIA_CAPTURE"] === undefined,
       "captures run on demand",
     );
@@ -325,7 +330,7 @@ test.describe("the settings page in a screenshot", () => {
     await expect(questions(page)).toBeVisible();
 
     const directory =
-      process.env["VIGILIA_CAPTURE_DIR"] ?? "../../.agents/screenshots";
+      process.env["VIGILIA_CAPTURE_DIR"] ?? "../../docs/evidence/screenshots";
     const name = `settings-theme-question-${testInfo.project.name}.png`;
     const screenshot = await page.screenshot({
       fullPage: true,

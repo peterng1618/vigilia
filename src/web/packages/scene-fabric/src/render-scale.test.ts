@@ -39,13 +39,37 @@ describe("clampRenderScale", () => {
     expect(clampRenderScale(MAX_RENDER_SCALE, 300, 180)).toBe(MAX_RENDER_SCALE);
   });
 
+  it("delivers the default oversample to a chart the size the product ships", () => {
+    // U9: the shipped starter's trends chart is 963x215, and the old budget
+    // clamped it to 1.53x — the largest chart on the board, and the only one
+    // below the default, which is what read as a visibly aliased graph. A
+    // budget that makes the documented default untrue for the composition the
+    // product ships is not a safety net, it is a bug.
+    expect(clampRenderScale(DEFAULT_RENDER_SCALE, 963, 215)).toBe(
+      DEFAULT_RENDER_SCALE,
+    );
+    // Every chart in the starter, at the default.
+    const shipped: readonly (readonly [number, number])[] = [
+      [230, 56],
+      [240, 56],
+      [218, 218],
+      [430, 26],
+      [430, 70],
+    ];
+    for (const [width, height] of shipped) {
+      expect(clampRenderScale(DEFAULT_RENDER_SCALE, width, height)).toBe(
+        DEFAULT_RENDER_SCALE,
+      );
+    }
+  });
+
   it("never undersamples, however large the chart", () => {
     // Below 1 the backing store is smaller than the box it fills and the chart
     // is visibly soft, which buys memory with resolution the author asked for.
     // A chart too big to afford at 1x is a layout problem.
-    // 1200x800 is already 960,000 px at 1x — twice the budget — so the cap
-    // stops oversampling and goes no further.
-    expect(clampRenderScale(2, 1200, 800)).toBe(1);
+    // 2400x1200 is 2.88 M px at 1x — past the budget — so the cap stops
+    // oversampling and goes no further.
+    expect(clampRenderScale(2, 2400, 1200)).toBe(1);
     expect(clampRenderScale(2, 4000, 4000)).toBe(1);
   });
 

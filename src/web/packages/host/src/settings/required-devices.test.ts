@@ -8,6 +8,7 @@ function themeWith(keys: readonly string[]): FabricThemeEnvelope {
     fabricVersion: "7.4.0",
     id: "t",
     artboard: { width: 100, height: 100 },
+    metadata: { themeLanguage: "en" },
     scene: {},
     bindings: Object.fromEntries(
       keys.map((key, index) => [
@@ -44,6 +45,15 @@ describe("the device slots a theme needs", () => {
   it("asks for a graphics card when the theme reads gpu or vram", () => {
     expect(requiredDeviceGroups(themeWith(["gpu.load"]))).toEqual(["gpu"]);
     expect(requiredDeviceGroups(themeWith(["vram.used"]))).toEqual(["gpu"]);
+  });
+
+  it("asks for the device a caption names, because a caption needs one", () => {
+    // A theme that shows only a GPU name still has to say which card that is,
+    // or the caption is ambiguous on a machine with two.
+    expect(requiredDeviceGroups(themeWith(["gpu.name"]))).toEqual(["gpu"]);
+    expect(requiredDeviceGroups(themeWith(["disk.name"]))).toEqual([
+      "system-disk",
+    ]);
   });
 
   it("returns the slots in the order the page presents them", () => {

@@ -32,9 +32,18 @@ export function writeShellPalette(
   storage.setItem(storageKey, palette);
 }
 
-export function applyShellPalette(
-  root: HTMLElement,
-  palette: ShellPalette,
-): void {
-  root.dataset["shellPalette"] = palette;
+/** The palette is written to `document.documentElement` and nowhere else.
+ *
+ * Base UI portals every popup, popover, tooltip and dialog to `document.body`,
+ * which is a sibling of the editor's `#app` rather than a descendant, so an
+ * attribute on `#app` is invisible to all of them and they repaint with the
+ * bare `:root` defaults no matter which palette is in force. The document
+ * element is the one node every one of those surfaces descends from, and it is
+ * also what `:root` selects, so one attribute reaches the chrome and its
+ * portalled surfaces together.
+ *
+ * There is deliberately no element parameter: every caller passed a subtree,
+ * which is the mistake this signature exists to make impossible. */
+export function applyShellPalette(palette: ShellPalette): void {
+  document.documentElement.dataset["shellPalette"] = palette;
 }

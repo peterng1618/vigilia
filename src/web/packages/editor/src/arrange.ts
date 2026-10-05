@@ -51,11 +51,13 @@ export function canArrange(
   const objects = active.getObjects() as ArrangeObject[];
   return (
     !objects.some((object) => object.locked) &&
-    objects.length >= minimum(action)
+    objects.length >= arrangeMinimum(action)
   );
 }
 
-function minimum(action: ArrangeAction): number {
+/** How many objects an action needs. The one owner of the threshold, so a
+    surface that gates a control cannot advertise an action this one refuses. */
+export function arrangeMinimum(action: ArrangeAction): number {
   return action === "distribute-x" || action === "distribute-y" ? 3 : 2;
 }
 

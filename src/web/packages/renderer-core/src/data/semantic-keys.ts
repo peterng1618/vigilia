@@ -78,6 +78,27 @@ export const SEMANTIC_KEYS: readonly SemanticKeyDescriptor[] = [
     unit: "RPM",
     expectedTier: "extended",
   },
+  // Three separate keys, not one: the library reports a manufacturer, a brand
+  // and a model that all differ ("Intel" / "Core™ i9-10850K" / "165"), and which
+  // one reads best on a card is the theme author's choice.
+  {
+    key: "cpu.manufacturer",
+    family: "cpu",
+    label: "CPU manufacturer",
+    expectedTier: "baseline",
+  },
+  {
+    key: "cpu.brand",
+    family: "cpu",
+    label: "CPU brand",
+    expectedTier: "baseline",
+  },
+  {
+    key: "cpu.model",
+    family: "cpu",
+    label: "CPU model",
+    expectedTier: "baseline",
+  },
 
   // RAM absolute values and used share.
   {
@@ -138,6 +159,14 @@ export const SEMANTIC_KEYS: readonly SemanticKeyDescriptor[] = [
     label: "GPU fan",
     unit: "RPM",
     expectedTier: "extended",
+  },
+  // The assigned card's name. A text reading, not a measurement, and resolved
+  // by the same device selection that answers the `gpu.*` figures beside it.
+  {
+    key: "gpu.name",
+    family: "gpu",
+    label: "GPU model",
+    expectedTier: "baseline",
   },
 
   // VRAM is a separate family from system RAM.
@@ -225,6 +254,15 @@ export const SEMANTIC_KEYS: readonly SemanticKeyDescriptor[] = [
     family: "disk",
     label: "Disk total",
     unit: "GB",
+    expectedTier: "baseline",
+  },
+  // The selected volume's name, from the same selection that answers the
+  // unsuffixed disk keys. It is a gap whenever those keys describe every
+  // volume at once, because no one volume's name describes a sum.
+  {
+    key: "disk.name",
+    family: "disk",
+    label: "Volume name",
     expectedTier: "baseline",
   },
   {

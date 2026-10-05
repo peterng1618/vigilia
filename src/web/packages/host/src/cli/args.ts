@@ -9,6 +9,8 @@ export interface HostOptions {
   readonly host: string;
   readonly openBrowser: boolean;
   readonly themesDir: string;
+  /** Where the host's own state lives; beside the themes, never among them. */
+  readonly settingsDir: string;
   /** Endpoint of a LibreHardwareMonitor web server, if the owner runs one. */
   readonly lhmUrl: string;
   /** Path to `LibreHardwareMonitor.exe`; set to launch it with the host. */
@@ -22,8 +24,14 @@ export const DEFAULT_PORT = 5227;
 /** Loopback by default; LAN exposure must be explicit. */
 export const DEFAULT_HOST = "127.0.0.1";
 
-/** Stable Vigilia data location for theme packages across platforms. */
-export const DEFAULT_THEMES_DIR = path.join(os.homedir(), ".vigilia", "themes");
+/** Stable Vigilia data location across platforms; the app folder. */
+export const DEFAULT_APP_DIR = path.join(os.homedir(), ".vigilia");
+
+/** One directory per theme, read and written in place (ADR-0017). */
+export const DEFAULT_THEMES_DIR = path.join(DEFAULT_APP_DIR, "themes");
+
+/** Host state, kept out of the library so a theme folder is only ever a theme. */
+export const DEFAULT_SETTINGS_DIR = path.join(DEFAULT_APP_DIR, "settings");
 
 /** Bounded upward port fallback. */
 export const MAX_PORT_ATTEMPTS = 10;
@@ -39,7 +47,9 @@ Options:
   -p, --port <port>       Port to listen on (default: ${DEFAULT_PORT})
   -H, --host <addr>       Address to bind (default: ${DEFAULT_HOST}, loopback only)
   -n, --no-browser        Do not open a browser
-      --themes-dir <dir>  Directory for saved theme packages
+      --app-dir <dir>     App folder; themes/ and settings/ live inside it
+                          (default ${DEFAULT_APP_DIR})
+      --themes-dir <dir>  Directory for the theme library (default: the app folder's themes/)
       --lhm-url <url>     LibreHardwareMonitor web server (default ${DEFAULT_LHM_URL})
       --lhm-exe <path>    Launch LibreHardwareMonitor.exe with the host
       --register-lhm-task Register LHM to start elevated at sign-in (one prompt)
@@ -87,10 +97,15 @@ export function parseArgs(
   let port = DEFAULT_PORT;
   let host = DEFAULT_HOST;
   let openBrowser = true;
-  let themesDir = DEFAULT_THEMES_DIR;
+  let themesDir: string | undefined;
+  // A relocated app folder takes the library and the settings with it, so one
+  // flag gives a private install rather than a library that writes into the
+  // real settings. `--themes-dir` overrides the library on its own.
+  let settingsDir: string | undefined;
   let lhmUrl = DEFAULT_LHM_URL;
   let lhmExecutable: string | undefined;
   let registerLhmTask = false;
+  let appDirOverride: string | undefined;
 
   for (let index = 0; index < argv.length; index += 1) {
     const arg = argv[index];
@@ -184,6 +199,21 @@ export function parseArgs(
         break;
       }
 
+      case "--app-dir": {
+        const value = argv[index + 1];
+
+        if (value === undefined || value.startsWith("-")) {
+          return { kind: "error", message: `${arg} needs a directory path.` };
+        }
+
+        const appDir = path.resolve(value);
+
+        settingsDir = path.join(appDir, "settings");
+        appDirOverride = appDir;
+        index += 1;
+        break;
+      }
+
       default:
         return {
           kind: "error",
@@ -198,7 +228,9 @@ export function parseArgs(
       port,
       host,
       openBrowser,
-      themesDir,
+      themesDir:
+        themesDir ?? path.join(appDirOverride ?? DEFAULT_APP_DIR, "themes"),
+      settingsDir: settingsDir ?? DEFAULT_SETTINGS_DIR,
       lhmUrl,
       ...(lhmExecutable === undefined ? {} : { lhmExecutable }),
       ...(registerLhmTask ? { registerLhmTask } : {}),

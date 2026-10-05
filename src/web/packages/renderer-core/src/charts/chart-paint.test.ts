@@ -46,6 +46,32 @@ describe("chart paint", () => {
     });
   });
 
+  // A gap and a transparent fill look identical on screen and are not the same
+  // fact, so the resolver has to say which one it produced (0007).
+  it("resolves a reference with no palette entry to no paint at all", () => {
+    expect(
+      resolveChartPaint({ ref: "palette.absent" }, palette),
+    ).toBeUndefined();
+    expect(
+      resolveChartPaint({ ref: "palette.absent" }, undefined),
+    ).toBeUndefined();
+    expect(
+      resolveChartPaint(
+        { kind: "thresholds", bands: [{ offset: 1, ref: "palette.absent" }] },
+        palette,
+      ),
+    ).toBeUndefined();
+  });
+
+  it("keeps resolving a palette entry whose value is transparent", () => {
+    // An author may genuinely ask for no ink. That is a colour they chose, so
+    // it resolves like any other and only the missing entry is a gap.
+    expect(resolveChartPaint({ ref: "palette.none" }, palette)).toEqual({
+      kind: "solid",
+      color: "transparent",
+    });
+  });
+
   it("reassigns token references in chart settings before a palette deletion", () => {
     const settings = {
       track: { ref: "palette.old" },

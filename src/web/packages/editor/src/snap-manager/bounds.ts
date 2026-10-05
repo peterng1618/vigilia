@@ -10,24 +10,9 @@ export type ObjectBounds = {
   centerY: number;
 };
 
-/** How to read exact bounds versus rounded bounds compatible with older code. */
-type VisualBoundsMode = "exact" | "compatible";
-
 /** Objects may report their own snapping extent; the fork's crop frame did. */
 interface SnappingBoundsSource {
   getObjectSnappingBounds?: () => ObjectBounds | undefined;
-}
-
-/** Custom bounds are usable in geometry only when every component is finite. */
-function isFiniteObjectBounds({ bounds }: { bounds: ObjectBounds }): boolean {
-  return (
-    Number.isFinite(bounds.left) &&
-    Number.isFinite(bounds.right) &&
-    Number.isFinite(bounds.top) &&
-    Number.isFinite(bounds.bottom) &&
-    Number.isFinite(bounds.centerX) &&
-    Number.isFinite(bounds.centerY)
-  );
 }
 
 /** Builds object bounds and derives centres from the same exact values. */
@@ -79,24 +64,18 @@ function assertExactObjectBounds({
 /** Visible bounds of an object without custom snapping geometry. */
 function getObjectVisualBounds({
   object,
-  mode,
 }: {
   object: FabricObject;
-  mode: VisualBoundsMode;
 }): ObjectBounds | null {
   try {
     object.setCoords();
     const rect = object.getBoundingRect();
-    const left = mode === "compatible" ? (rect.left ?? 0) : rect.left;
-    const top = mode === "compatible" ? (rect.top ?? 0) : rect.top;
-    const width = mode === "compatible" ? (rect.width ?? 0) : rect.width;
-    const height = mode === "compatible" ? (rect.height ?? 0) : rect.height;
 
     return createObjectBounds({
-      left,
-      right: left + width,
-      top,
-      bottom: top + height,
+      left: rect.left,
+      right: rect.left + rect.width,
+      top: rect.top,
+      bottom: rect.top + rect.height,
     });
   } catch {
     return null;
@@ -123,7 +102,7 @@ export const getObjectExactBounds = ({
     return createObjectBounds(customBounds);
   }
 
-  const visualBounds = getObjectVisualBounds({ object, mode: "exact" });
+  const visualBounds = getObjectVisualBounds({ object });
   if (!visualBounds) return null;
 
   assertExactObjectBounds({
@@ -132,37 +111,4 @@ export const getObjectExactBounds = ({
   });
 
   return visualBounds;
-};
-
-/** Object bounds rounded to whole pixels, transform included. */
-export const getObjectBounds = ({
-  object,
-}: {
-  object?: FabricObject | null;
-}): ObjectBounds | null => {
-  if (!object) return null;
-
-  const customBounds = (
-    object as FabricObject & SnappingBoundsSource
-  ).getObjectSnappingBounds?.();
-  if (customBounds && isFiniteObjectBounds({ bounds: customBounds })) {
-    return customBounds;
-  }
-
-  const bounds = getObjectVisualBounds({ object, mode: "compatible" });
-  if (!bounds) return null;
-
-  const roundedWidth = Math.round(bounds.right - bounds.left);
-  const roundedHeight = Math.round(bounds.bottom - bounds.top);
-  const right = bounds.left + roundedWidth;
-  const bottom = bounds.top + roundedHeight;
-
-  return {
-    left: bounds.left,
-    right,
-    top: bounds.top,
-    bottom,
-    centerX: bounds.left + roundedWidth / 2,
-    centerY: bounds.top + roundedHeight / 2,
-  };
 };

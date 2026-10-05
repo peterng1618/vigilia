@@ -41,7 +41,7 @@ Observed by driving the running editor, not by reading code:
 | `editor/src/editor-session.ts` | Compose the inspector into the document inspectors' slot |
 | `editor/src/font-preview.ts` (existing) | Unchanged; the inspector links to the preset panel rather than duplicating it |
 | `editor/src/ui-copy.ts` | New field labels |
-| `tests/e2e/editor-fork.spec.ts` | Rendered inspection of each selection state |
+| `tests/e2e/editor.spec.ts` | Rendered inspection of each selection state |
 
 ## Tasks
 
@@ -106,7 +106,7 @@ Observed by driving the running editor, not by reading code:
       npm run build && npm run size`.
 - [ ] Full local `npm run test:e2e`.
 - [ ] Capture and inspect each selection state (shape, text, chart, none).
-- [ ] Update `.agents/status.md`, `.agents/architecture.md` (new owner) and the
+- [ ] Update `docs/architecture/ownership.md` and the
       spec's acceptance section.
 - [ ] Commit.
 

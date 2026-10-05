@@ -1,5 +1,8 @@
 # Consumer Journey — pick, configure, forget
 
+- **Status:** in progress. Plan: [`2026-09-24-consumer-journey.md`](../plans/2026-09-24-consumer-journey.md).
+- **Plan:** [`2026-09-24-consumer-journey.md`](../plans/2026-09-24-consumer-journey.md)
+
 ## Why
 
 The author and consumer journeys were conflated. The evidence, from driving the

@@ -8,7 +8,7 @@
   "artboard": {
     "width": 960,
     "height": 540,
-    "fitMode": "contain",
+    "contentFit": "contain",
     "background": { "value": "#101318" }
   },
   "globals": {

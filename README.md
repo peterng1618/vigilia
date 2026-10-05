@@ -62,9 +62,10 @@ trusted networks only — never the internet.
 
 ## Docs
 
-Start with [`AGENTS.md`](AGENTS.md) and [current status](.agents/status.md).
-Read [product requirements](.agents/product-requirements.md),
-[architecture](.agents/architecture.md), [decisions](.agents/decisions.md) and
-[active specs](.agents/specs/) as needed. Active implementation plans live in
-[`docs/superpowers/plans/`](docs/superpowers/plans/).
+For ongoing work, start with [`STATUS.md`](STATUS.md). Agent rules are in [`AGENTS.md`](AGENTS.md), and the full documentation map is in [docs/README.md](docs/README.md).
+Current product truth lives in [product requirements](docs/product/requirements.md),
+[current architecture](docs/architecture/README.md), and the
+[ownership map](docs/architecture/ownership.md). Major architecture choices are
+recorded as [ADRs](docs/adr/). Superpowers owns feature
+[specs](docs/superpowers/specs/) and [implementation plans](docs/superpowers/plans/).
 Licences: [`THIRD-PARTY-NOTICES.md`](THIRD-PARTY-NOTICES.md).

@@ -92,13 +92,21 @@ the document model as it already stands.
 
 ### Task 6 — Integration proof
 
+> **Stale, and must be re-derived before dispatch (2026-09-27).** This plan predates
+> reference-theme fidelity, which changes the surface Task 6 proves: panels and their
+> material controls, glass, tracked typography, gauge and caption authoring, chart
+> families, the semantic key vocabulary and the device-identity rules. Its checkboxes
+> are a starting hypothesis, not the work. The re-derivation is now owned by
+> `docs/superpowers/specs/2026-09-27-author-journey-proof-design.md`, which also
+> closes this plan and its siblings on observed evidence.
+
 - [ ] `npm run format:check && npm run lint && npm run typecheck && npm test &&
       npm run build && npm run size`.
 - [ ] Full local `npm run test:e2e`.
 - [ ] Capture and inspect each state: shape, text, run, chart, none.
 - [ ] Inspect the **persisted envelope** after save/reopen for each change, not
       only the live DOM.
-- [ ] Update `.agents/status.md`, `.agents/architecture.md` and the spec.
+- [ ] Update `docs/architecture/README.md` / `docs/architecture/ownership.md` and the spec.
 - [ ] Commit.
 
 ## Self-Review

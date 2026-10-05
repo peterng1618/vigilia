@@ -8,7 +8,7 @@ on:
         required: true
         type: string
       project:
-        description: Playwright project (desktop-chromium or phone-chromium)
+        description: Playwright project (desktop-chromium, phone-chromium or desktop-host)
         default: desktop-chromium
         required: true
         type: string

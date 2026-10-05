@@ -80,7 +80,7 @@ indistinguishable `—` or a live number.
 - [ ] Full local `npm run test:e2e`.
 - [ ] Capture and inspect all three authoring states, and the same theme in the
       player.
-- [ ] Update `.agents/status.md`, `.agents/architecture.md` (the new owner) and
+- [ ] Update `docs/architecture/ownership.md` and
       the spec.
 - [ ] Commit.
 

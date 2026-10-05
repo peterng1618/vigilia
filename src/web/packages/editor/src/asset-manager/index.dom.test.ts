@@ -107,14 +107,14 @@ describe("AssetManager", () => {
     const asset = await manager.adoptFont(face, new Uint8Array([0, 1, 2]));
 
     expect(asset).toMatchObject({
-      id: "inter-700",
+      id: face.id,
       kind: "font",
-      path: "assets/inter-700.woff2",
-      family: "Inter",
-      weight: 700,
+      path: `assets/${face.id}.woff2`,
+      family: face.family,
+      weight: face.weight,
       format: "woff2",
     });
-    expect(manager.assets["assets/inter-700.woff2"]).toEqual(
+    expect(manager.assets[`assets/${face.id}.woff2`]).toEqual(
       new Uint8Array([0, 1, 2]),
     );
   });
@@ -143,6 +143,31 @@ describe("AssetManager", () => {
 
     expect(createObjectURL).toHaveBeenCalledOnce();
     expect(revokeObjectURL).toHaveBeenCalledWith("blob:logo");
+  });
+
+  it("answers a reference it cannot name with nothing rather than throwing", () => {
+    // This is what a scene revival asks, before Fabric loads anything: an
+    // asset the manager has no bytes for has to be a miss the caller can
+    // handle. It threw before, out of a revival that had no way to catch it.
+    const manager = new AssetManager();
+    manager.load(
+      {
+        assets: [
+          { id: "logo", kind: "image", path: "assets/logo.png" },
+          { id: "clip", kind: "video", path: "assets/clip.mp4" },
+        ],
+      },
+      { "assets/clip.mp4": new Uint8Array([1]) },
+    );
+    vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:probe");
+
+    // `logo` is declared and its bytes never arrived, which is what a document
+    // opened without its package looks like.
+    expect(manager.previewUrl("logo")).toBeUndefined();
+    expect(manager.previewUrl("clip")).toBeUndefined();
+    expect(manager.previewUrl("never-declared")).toBeUndefined();
+    // Readable, so the miss is a wrong answer rather than a crash.
+    expect(manager.previewUrl("logo")).not.toBe("blob:probe");
   });
 
   it("hydrates an asset-referenced Fabric image from declared package bytes", async () => {
@@ -202,6 +227,105 @@ describe("AssetManager", () => {
     expect(element.height).toBe(2048);
     manager.destroy();
   });
+
+  it("replaces an asset's bytes in place, keeping its id and path", async () => {
+    // U1: "Replace" had no path that swapped bytes. It declared a *new* asset
+    // and re-pointed whichever object was selected, so the chosen asset kept
+    // the bytes it had and the package grew by one file per press.
+    const manager = new AssetManager();
+    const original = await manager.import(file(PNG, "logo.png", "image/png"));
+    const replacement = new Uint8Array([137, 80, 78, 72]);
+
+    const next = await manager.replace(
+      original.id,
+      file(replacement, "other.png", "image/png"),
+    );
+
+    expect(next).toMatchObject({
+      id: "logo",
+      kind: "image",
+      path: "assets/logo.png",
+    });
+    expect(manager.declarations).toHaveLength(1);
+    expect(manager.assets["assets/logo.png"]).toEqual(replacement);
+    expect(manager.previewUrl("logo")).toBeDefined();
+  });
+
+  it("revokes the stale preview so the new bytes are what a preview shows", async () => {
+    const manager = new AssetManager();
+    const created = vi
+      .spyOn(URL, "createObjectURL")
+      .mockReturnValueOnce("blob:old")
+      .mockReturnValue("blob:new");
+    const revoke = vi.spyOn(URL, "revokeObjectURL");
+    const original = await manager.import(file(PNG, "logo.png", "image/png"));
+    expect(manager.previewUrl("logo")).toBe("blob:old");
+
+    await manager.replace(
+      original.id,
+      file(new Uint8Array([1, 2, 3]), "logo.png", "image/png"),
+    );
+
+    expect(revoke).toHaveBeenCalledWith("blob:old");
+    expect(manager.previewUrl("logo")).toBe("blob:new");
+    created.mockRestore();
+  });
+
+  it("refuses to replace an asset it does not hold", async () => {
+    const manager = new AssetManager();
+
+    await expect(
+      manager.replace("missing", file(PNG, "logo.png", "image/png")),
+    ).rejects.toThrow(/missing/);
+  });
+
+  it("refuses a replacement whose MIME type does not match its extension", async () => {
+    const manager = new AssetManager();
+    const original = await manager.import(file(PNG, "logo.png", "image/png"));
+
+    await expect(
+      manager.replace(original.id, file(PNG, "logo.jpg", "image/png")),
+    ).rejects.toThrow(/MIME/);
+    expect(manager.assets["assets/logo.png"]).toEqual(PNG);
+  });
+
+  it("refuses a replacement that would change the declared file extension", async () => {
+    const manager = new AssetManager();
+    const original = await manager.import(file(PNG, "logo.png", "image/png"));
+
+    await expect(
+      manager.replace(original.id, file(PNG, "logo.jpg", "image/jpeg")),
+    ).rejects.toThrow(/extension/);
+    expect(manager.assets["assets/logo.png"]).toEqual(PNG);
+  });
+
+  it("replaces a font's bytes without touching its curated metadata", async () => {
+    const manager = new AssetManager();
+    const trio = fontTrio("minimal");
+    const face = trio?.faces[0];
+    if (trio === undefined || face === undefined)
+      throw new Error("the catalogue has no faces");
+    await manager.adoptFont(face, new Uint8Array([1]));
+    const other = { ...face, id: "other", family: "Other" };
+    await manager.adoptFont(other, new Uint8Array([9]));
+    const before = manager.declarations.length;
+
+    await manager.replace(
+      "other",
+      file(new Uint8Array([7, 7]), "other.woff2", "font/woff2"),
+    );
+
+    expect(manager.declarations).toHaveLength(before);
+    // The catalogue owns family, weight, licence and source; the file owns the
+    // bytes and the digest, and replacing the file must not rewrite the former.
+    expect(manager.declarations.find((a) => a.id === "other")).toMatchObject({
+      family: "Other",
+      license: face.license,
+    });
+    expect(manager.assets["assets/other.woff2"]).toEqual(
+      new Uint8Array([7, 7]),
+    );
+  });
 });
 
 /** jsdom reports zero natural size, so declare it the way a decode would. */
@@ -211,3 +335,44 @@ function oversizedImage(width: number, height: number): HTMLImageElement {
   Object.defineProperty(element, "naturalHeight", { value: height });
   return element;
 }
+
+describe("AssetManager.placeImage", () => {
+  it("does not declare a file twice when the caller already declared it", async () => {
+    // The pane imports a file and then places it. `placeImage` imports as well,
+    // so a caller that hands over its own declaration must not be given a
+    // second one — one Import click produced `name` and `name-2` with one
+    // object on the canvas, and an author has no way to tell which is which.
+    const manager = new AssetManager();
+    const source = file(PNG, "test-image.png", "image/png");
+    const declared = await manager.import(source);
+    const editor = {
+      imageManager: {
+        importImage: vi.fn(async () => ({
+          image: new FabricImage(document.createElement("img")),
+        })),
+      },
+      canvas: { setActiveObject: vi.fn() },
+    } as never;
+
+    await manager.placeImage(editor, source, declared);
+
+    expect(manager.declarations).toHaveLength(1);
+    expect(manager.declarations[0]?.id).toBe(declared.id);
+  });
+
+  it("declares the file itself when the caller has not", async () => {
+    const manager = new AssetManager();
+    const editor = {
+      imageManager: {
+        importImage: vi.fn(async () => ({
+          image: new FabricImage(document.createElement("img")),
+        })),
+      },
+      canvas: { setActiveObject: vi.fn() },
+    } as never;
+
+    await manager.placeImage(editor, file(PNG, "solo.png", "image/png"));
+
+    expect(manager.declarations).toHaveLength(1);
+  });
+});

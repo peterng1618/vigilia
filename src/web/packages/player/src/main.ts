@@ -6,11 +6,13 @@ import {
   type ChartContent,
   createAssetResolver,
   createLiveSource,
+  type FabricPalette,
   type FabricThemeEnvelope,
   type LiveSourceHandle,
   type LiveSourceStatus,
   type MeasurementSystem,
   missingFontFamilies,
+  type PlanIssue,
   requiredSemanticKeys,
   SAMPLE_STREAM_PATH,
   type SampleSource,
@@ -20,18 +22,27 @@ import {
   validateThemeDocument,
 } from "@vigilia/renderer-core";
 import {
+  applyAuthoredText,
+  type FabricSceneHandle,
   loadFontAssets,
   mountFabricScene,
   refreshBoundText,
   reviveThemeEnvelope,
+  sceneBoxesOf,
   startChartRefresh,
   VigiliaChart,
 } from "@vigilia/scene-fabric";
+import { Group } from "fabric/es";
+import { type ArtboardSize, cropNoticeText } from "./artboard-crop.js";
+import { availabilityNoticeText } from "./availability-notice.js";
+import { boundSemanticKeys } from "./bound-keys.js";
+import { showLoadFailure } from "./load-failure.js";
 import { type DisplaySessionToken, displaySession } from "./session.js";
 import {
   loadDisplayPreferences,
   loadHostedFontAssets,
   loadHostedTheme,
+  ThemeLoadError,
 } from "./theme-loader.js";
 import { uiCopy } from "./ui-copy.js";
 
@@ -73,7 +84,7 @@ async function start(host: HTMLElement): Promise<void> {
   }
 
   if (requested === null) {
-    showFailure(host, "A theme id is required.");
+    showLoadFailure(host, new ThemeLoadError("missing-id", "No ?theme=."));
     return;
   }
 
@@ -85,13 +96,38 @@ async function start(host: HTMLElement): Promise<void> {
     await startHostedTheme(
       host,
       await loadHostedTheme(requested, session.fetch),
-      parameters,
       session,
     );
   } catch (error) {
-    showFailure(host, error instanceof Error ? error.message : String(error));
+    showLoadFailure(host, error);
     return;
   }
+}
+
+/**
+ * A glass panel this renderer cannot composite — an unsupported `ctx.filter`, a
+ * cross-origin asset that taints the surface, a sample over the size ceiling.
+ * The player has no user-visible diagnostic surface, so this follows the
+ * convention `onUnsupported` already sets: a named, greppable warning rather
+ * than a silently missing blur.
+ */
+function reportGlassError(message: string): void {
+  console.warn(`Vigilia: glass cannot be rendered as authored — ${message}`);
+}
+
+/** A repaint that threw. Reported, not shown: the scene keeps rendering, so
+ *  replacing it with a failure panel would hide a display that still works. */
+function reportRepaintError(message: string): void {
+  console.warn(`Vigilia: ${message}`);
+}
+
+/** A packaged face that would not load, or that declared no bytes. `loadFontAssets`
+ *  reports and carries on, so the scene is already mounted and drawing in a
+ *  fallback — the same case as `reportRepaintError`, and reported the same way.
+ *  It used to take the display down, which turned a wrong typeface into a blank
+ *  screen and a page that claims nothing is being shown. */
+function reportFontError(message: string): void {
+  console.warn(`Vigilia: ${message}`);
 }
 
 function startFixtureTheme(
@@ -102,6 +138,7 @@ function startFixtureTheme(
   animate: boolean,
   measurement: MeasurementSystem,
 ): void {
+  declareDocumentLanguage(theme.metadata?.themeLanguage);
   // Fake vs live is explicit. Never fall back to invented data when live telemetry fails.
   const live = parameters.get("data") === "live";
   const fake = live ? undefined : createDemoSource(Date.now());
@@ -154,10 +191,12 @@ function startFixtureTheme(
         `Vigilia: node "${nodeId}" cannot be drawn as authored — ${reason}`,
       );
     },
+    onGlassError: reportGlassError,
   });
 
   reportIssues(first);
   reportMissingFonts(first);
+  showCropNotice(handle, theme.artboard);
 
   if (fake === undefined) {
     showConnectionState("connecting", requiredSemanticKeys(theme).length);
@@ -186,7 +225,9 @@ function startFixtureTheme(
       return;
     }
     tick();
-    chartRefresh = startChartRefresh(tick, 30);
+    chartRefresh = startChartRefresh(tick, 30, undefined, {
+      onError: reportRepaintError,
+    });
   };
 
   const pause = (): void => {
@@ -214,8 +255,21 @@ function startFixtureTheme(
     window.setTimeout(() => handle.resize(), 200);
   });
 
-  // Closing removes this display's keys from the host polling union.
-  window.addEventListener("pagehide", () => liveHandle?.close());
+  // Closing removes this display's keys from the host polling union, and
+  // releases the scene: its glass handle, media layer and video frame callback
+  // are not covered by anything else here. `once` because a `visibilitychange`
+  // that arrives after this would otherwise restart the refresh loop against a
+  // disposed scene.
+  window.addEventListener(
+    "pagehide",
+    () => {
+      liveHandle?.close();
+      pause();
+      observer.disconnect();
+      handle.dispose();
+    },
+    { once: true },
+  );
 
   run();
   exposeForDiagnostics(handle, liveHandle);
@@ -224,15 +278,13 @@ function startFixtureTheme(
 async function startHostedTheme(
   host: HTMLElement,
   theme: FabricThemeEnvelope,
-  parameters: URLSearchParams,
   session: DisplaySessionToken,
 ): Promise<void> {
+  declareDocumentLanguage(theme.metadata?.themeLanguage);
   // Fetch before allocating live resources so a failed font request has nothing to release.
   const fontBytes = await loadHostedFontAssets(theme.id, theme, session.fetch);
   const measurement = await loadDisplayPreferences(session.fetch);
-  const keys = Object.values(theme.bindings ?? {})
-    .flat()
-    .map((binding) => binding.semanticKey);
+  const keys = boundSemanticKeys(theme);
   const liveHandle = createLiveSource({
     url: session.streamUrl(
       SAMPLE_STREAM_PATH,
@@ -242,11 +294,7 @@ async function startHostedTheme(
       showConnectionState(status, keys.length, detail),
   });
   const resolveAsset = createAssetResolver(theme.assets, {
-    // Fabric fetches these itself, so the token rides in the URL: a paired
-    // phone could not load a packaged image or SVG without it.
-    baseUrl: session.withToken(
-      `/api/themes/${encodeURIComponent(parameters.get("theme") ?? "")}/`,
-    ),
+    baseUrl: `/api/themes/${encodeURIComponent(theme.id)}/`,
   });
   const handle = mountFabricScene({
     host,
@@ -255,20 +303,39 @@ async function startHostedTheme(
     assets: theme.assets ?? [],
     resolveAsset: (assetId) => {
       const url = resolveAsset(assetId);
-      return url === undefined ? undefined : { url };
+      // Fabric fetches these itself, so the token rides in the URL: a paired
+      // phone could not load a packaged image or SVG without it. It goes on the
+      // finished URL — a query belongs at the end of one, and the path this
+      // resolver appends has to come before it.
+      return url === undefined ? undefined : { url: session.withToken(url) };
     },
+    onGlassError: reportGlassError,
   });
   const releaseFonts = await loadFontAssets({
     assets: theme.assets ?? [],
     bytes: fontBytes,
-    onError: (message) => showFailure(host, message),
+    onError: reportFontError,
   });
-  await reviveThemeEnvelope(handle.canvas, theme);
+  // The scene's own asset references resolve here, the way background media
+  // already does: an object that names a packaged image has to load from the
+  // host, because the `src` the editor saved is a handle into that session.
+  await reviveThemeEnvelope(handle.canvas, theme, (assetId) => {
+    const url = resolveAsset(assetId);
+    return url === undefined ? undefined : session.withToken(url);
+  });
+  // Every text object, bound or not, takes its box, its alignment and its
+  // clip from the authored content once after revival. `refreshBoundText`
+  // only visits objects a binding resolves, so without this an unbound label
+  // would keep whatever geometry the save happened to carry.
+  applyAuthoredText(handle.canvas, theme.globals, {
+    ...(theme.bindings === undefined ? {} : { bindings: theme.bindings }),
+  });
   const refresh = (): void => {
     hydrateCharts(
       handle.canvas.getObjects(),
       theme.bindings ?? {},
       liveHandle.source,
+      theme.globals?.palette,
     );
     // Revived text carries the authored runs, not the sampled readings: the
     // saved scene keeps placeholders, so every cadence re-resolves the runs
@@ -279,6 +346,7 @@ async function startHostedTheme(
       liveHandle.source,
       theme.globals,
       measurement,
+      theme.metadata?.themeLanguage,
     );
     handle.canvas.requestRenderAll();
     // Refreshed here because a provider's reason exists only once data has
@@ -287,8 +355,13 @@ async function startHostedTheme(
   };
 
   refresh();
+  // Measured after revival and the first text pass: before them the boxes on
+  // the canvas are the saved ones, not the ones the display will draw.
+  showCropNotice(handle, theme.artboard);
   showConnectionState("connecting", keys.length);
-  const chartRefresh = startChartRefresh(refresh, 30);
+  const chartRefresh = startChartRefresh(refresh, 30, undefined, {
+    onError: reportRepaintError,
+  });
   const observer = new ResizeObserver(() => handle.resize());
   observer.observe(host);
   window.addEventListener(
@@ -298,6 +371,9 @@ async function startHostedTheme(
       chartRefresh.dispose();
       observer.disconnect();
       liveHandle.close();
+      // The scene owns the glass handle, the media layer and any video frame
+      // callback, and none of them is released by the teardown above.
+      handle.dispose();
     },
     { once: true },
   );
@@ -309,7 +385,7 @@ function envelopePlan(theme: FabricThemeEnvelope): ScenePlan {
     artboard: {
       width: theme.artboard.width,
       height: theme.artboard.height,
-      fitMode: theme.artboard.fitMode ?? "contain",
+      contentFit: theme.artboard.contentFit ?? "contain",
       background: theme.artboard.background ?? "#000",
       barColor: theme.artboard.barColor ?? "#000",
     },
@@ -322,11 +398,20 @@ function hydrateCharts(
   objects: readonly { get(key: string): unknown }[],
   bindings: Readonly<Record<string, readonly Binding[]>>,
   source: SampleSource,
+  palette: FabricPalette | undefined,
 ): void {
+  const issues: PlanIssue[] = [];
   for (const object of objects) {
     if (object instanceof VigiliaChart) {
       const id = object.get("id");
-      if (typeof id === "string") {
+      if (typeof id !== "string") continue;
+      // **Per chart, deliberately.** A chart that throws must cost that chart
+      // and nothing else: this runs in the same callback as the text repaint
+      // and the render, so an unguarded throw here would leave every reading on
+      // the display frozen at whatever it last showed — which is a total
+      // freeze caused by one bad option, and the defect this file already had
+      // one level up in the frame loop.
+      try {
         const content = {
           family: object.family,
           settings: object.settings,
@@ -340,14 +425,36 @@ function hydrateCharts(
             nowMs: Date.now(),
             animate: false,
           },
-          [],
-          undefined,
+          issues,
+          palette,
         );
         object.setOption(plan.option);
+      } catch (error) {
+        reportRepaintError(
+          `Chart "${id}" failed to draw and was left as it was. ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
       }
     }
+    // A chart inside a group is still a chart a reader is watching, so the
+    // walk goes into groups: the starter's cards are groups, and stopping at
+    // the canvas would freeze every reading in the composition at load.
+    if (object instanceof Group) {
+      hydrateCharts(object.getObjects(), bindings, source, palette);
+    }
+  }
+  // One line per distinct cause: this runs on every refresh cadence, and a
+  // display repeating the same refusal every 30 s teaches nobody anything.
+  for (const issue of issues) {
+    const message = `Chart "${issue.nodeId}" ${issue.detail}`;
+    if (reportedChartIssues.has(message)) continue;
+    reportedChartIssues.add(message);
+    reportRepaintError(message);
   }
 }
+
+const reportedChartIssues = new Set<string>();
 
 /** Logs frame issues while affected values remain visibly missing rather than fabricated. */
 function reportIssues(plan: ScenePlan): void {
@@ -377,24 +484,14 @@ function reportMissingFonts(plan: ScenePlan): void {
   });
 }
 
-/** Shows a document-load failure on screen rather than leaving a blank display. */
-function showFailure(host: HTMLElement, message: string): void {
-  const panel = document.createElement("pre");
-  panel.textContent = uiCopy.loadFailure(message);
-  panel.style.cssText =
-    "position:absolute;inset:0;margin:0;padding:24px;color:#ff8f73;background:#14161c;" +
-    "font:14px/1.5 ui-monospace,monospace;white-space:pre-wrap;overflow:auto";
-  host.append(panel);
-}
-
 /**
  * Names the sensors this display cannot read, and why. Section 97 requires an
  * unavailable sensor to explain itself; without this the consumer sees empty
- * charts and no reason for them. The reason comes from the sample the host
- * sent, so it is the provider's own words.
+ * charts and no reason for them.
  *
- * Renders nothing when every key has a reading, and only the first few reasons
- * so a theme with many unreadable keys stays readable.
+ * Renders nothing when every key has a reading. The wording is
+ * `availabilityNoticeText`'s, which groups by cause so a reason shared by
+ * several sensors is said once rather than repeated in a row.
  */
 function showAvailabilityNotice(
   source: SampleSource,
@@ -403,32 +500,77 @@ function showAvailabilityNotice(
   const id = "vigilia-availability";
   document.getElementById(id)?.remove();
 
-  const reasons = semanticKeys
-    .map((key) => source.latest(key))
-    .filter(
-      (sample): sample is NonNullable<typeof sample> =>
-        sample !== undefined && sample.status !== "ok",
-    );
+  const text = availabilityNoticeText(
+    semanticKeys.map((key) => source.latest(key)),
+  );
 
-  if (reasons.length === 0) {
+  if (text === undefined) {
     return;
   }
 
-  const shown = reasons.slice(0, 3);
-  const more = reasons.length - shown.length;
   const notice = document.createElement("div");
   notice.id = id;
   notice.dataset["vigiliaAvailability"] = "";
-  notice.textContent =
-    `${reasons.length} of ${semanticKeys.length} sensors have no reading. ` +
-    shown
-      .map((sample) => sample.message ?? `${sample.sensorId}: ${sample.status}`)
-      .join(" ") +
-    (more > 0 ? ` (and ${more} more)` : "");
+  notice.textContent = text;
   notice.style.cssText =
-    "position:fixed;left:0;right:0;top:0;z-index:9;padding:6px 12px;text-align:center;" +
+    "padding:6px 12px;text-align:center;" +
     "background:#3a2a00;color:#ffce6a;font:12px/1.4 ui-monospace,monospace;letter-spacing:0.02em";
-  document.body.append(notice);
+  topNotices().append(notice);
+}
+
+/**
+ * The full-width strips along the display's top edge, stacked.
+ *
+ * A column rather than a `position: fixed` strip per notice: a theme can be
+ * both short of a reading and holding objects the artboard does not contain,
+ * and two fixed strips at `top: 0` would draw over one another. Section 97
+ * wants those two gaps to look different, not to hide one another.
+ */
+function topNotices(): HTMLElement {
+  const id = "vigilia-notices";
+  const existing = document.getElementById(id);
+  if (existing !== null) return existing;
+
+  const column = document.createElement("div");
+  column.id = id;
+  column.style.cssText =
+    "position:fixed;left:0;right:0;top:0;z-index:9;display:flex;flex-direction:column";
+  document.body.append(column);
+  return column;
+}
+
+/**
+ * Says what this artboard does not contain, and that it is not being shown.
+ *
+ * The other notices here all describe the *transport* — a sensor with no
+ * reading, a host that went away. This one describes the *composition*, and it
+ * is told once and left: no reading arriving will bring a cropped panel back,
+ * and a strip that came and went would read as a fault the display recovered
+ * from. Only a re-saved theme can change it.
+ */
+function showCropNotice(
+  handle: FabricSceneHandle,
+  artboard: ArtboardSize,
+): void {
+  document.getElementById("vigilia-crop")?.remove();
+
+  const text = cropNoticeText(
+    sceneBoxesOf(handle.canvas.getObjects()),
+    artboard,
+  );
+  if (text === undefined) return;
+
+  const notice = document.createElement("div");
+  notice.id = "vigilia-crop";
+  notice.dataset["vigiliaCrop"] = "";
+  notice.textContent = text;
+  // Slate rather than the amber of `showAvailabilityNotice`: a missing reading
+  // is this instant's news and a crop is a standing property of the theme, and
+  // §97 requires the two gaps not to read as the same kind of gap.
+  notice.style.cssText =
+    "padding:6px 12px;text-align:center;" +
+    "background:#1d2230;color:#c3cde3;font:12px/1.4 ui-monospace,monospace;letter-spacing:0.02em";
+  topNotices().append(notice);
 }
 
 /** Persistent disclosure that displayed values are synthetic. */
@@ -439,6 +581,35 @@ function showScaffoldBanner(keyCount: number, themeName: string): void {
     "position:fixed;left:0;right:0;bottom:0;z-index:9;padding:6px 12px;text-align:center;" +
     "background:#4a2c00;color:#ffc14d;font:12px/1.4 ui-monospace,monospace;letter-spacing:0.04em";
   document.body.append(banner);
+}
+
+/**
+ * Declares the theme's language on the page that shows it.
+ *
+ * The author's Language setting says what the text on this display is written
+ * in, and the page said `en` whatever it was. `dir` is the half that matters
+ * most and costs nothing to get right: Arabic and Urdu are both offered, and
+ * without it the player's own chrome lays out left-to-right under a theme that
+ * reads right-to-left. Both come from the runtime — `Intl.Locale` knows a
+ * language's script and direction, and a hand-written table of fifteen would
+ * be a worse copy of it that drifts from CLDR.
+ *
+ * The theme's own strings are the author's text and are left exactly as
+ * authored; this declares the page they sit in.
+ */
+function declareDocumentLanguage(themeLanguage: string | undefined): void {
+  if (themeLanguage === undefined || themeLanguage.length === 0) return;
+  try {
+    const { language, script } = new Intl.Locale(themeLanguage);
+    const root = document.documentElement;
+    root.lang = script === undefined ? language : `${language}-${script}`;
+    const direction = new Intl.Locale(themeLanguage).getTextInfo?.().direction;
+    if (direction === "rtl") root.dir = "rtl";
+    else root.removeAttribute("dir");
+  } catch {
+    // A tag this runtime cannot parse leaves the page as it was, which is the
+    // same place a document with no declared language starts.
+  }
 }
 
 /** Shows non-live connection states; a healthy live display needs no badge. */

@@ -17,6 +17,7 @@ import {
   type BackgroundMediaSource,
   mountBackgroundMedia,
 } from "./background-media.js";
+import { createGlass } from "./glass.js";
 import { clampRenderScale } from "./render-scale.js";
 
 /**
@@ -36,6 +37,9 @@ export interface FabricSceneOptions
   /** Reports an unresolvable declared background; distinct from the adapter's
    * per-node `onAssetError`. */
   readonly onMediaError?: (message: string) => void;
+  /** Reports a glass panel this renderer cannot composite, such as a browser
+   * without `ctx.filter` or a cross-origin asset that taints the surface. */
+  readonly onGlassError?: (message: string) => void;
 }
 
 export interface FabricSceneHandle extends SceneHandle {
@@ -80,6 +84,7 @@ export function mountFabricScene(
     ...withoutHostAndPlan(options),
   });
   let currentArtboard = options.artboard;
+  let disposed = false;
   const media =
     options.resolveAsset === undefined || currentArtboard === undefined
       ? undefined
@@ -88,10 +93,22 @@ export function mountFabricScene(
           artboard: currentArtboard,
           assets: options.assets,
           resolveAsset: options.resolveAsset,
+          // The video is not a Fabric object, so nothing else would repaint.
+          onFrame: () => canvas.requestRenderAll(),
           ...(options.onMediaError === undefined
             ? {}
             : { onMediaError: options.onMediaError }),
         });
+
+  // Glass is not a plan feature: it is a property on revived Fabric objects, so
+  // the owner re-resolves them from the canvas rather than from `update()`.
+  const glass = createGlass({
+    canvas,
+    ...(media === undefined ? {} : { backdrop: () => media.backdrop() }),
+    ...(options.onGlassError === undefined
+      ? {}
+      : { onGlassError: options.onGlassError }),
+  });
 
   let currentTransform = fit();
 
@@ -99,7 +116,7 @@ export function mountFabricScene(
     const transform = computeArtboardTransform({
       artboard: { width: plan.artboard.width, height: plan.artboard.height },
       viewport: { width: host.clientWidth, height: host.clientHeight },
-      fitMode: plan.artboard.fitMode,
+      contentFit: plan.artboard.contentFit,
     });
 
     // Letterbox bars are host background, not artboard paint (§53).
@@ -151,12 +168,14 @@ export function mountFabricScene(
     },
 
     update(next: ScenePlan): void {
+      if (disposed) return;
       plan = next;
       currentTransform = fit();
       adapter.apply(next);
     },
 
     updateArtboard(artboard: Artboard): void {
+      if (disposed) return;
       currentArtboard = artboard;
       if (media === undefined || options.resolveAsset === undefined) return;
       media.update({
@@ -167,12 +186,21 @@ export function mountFabricScene(
     },
 
     resize(): void {
+      // A `ResizeObserver` and an `orientationchange` handler both outlive a
+      // teardown, and the player's `pagehide` is not the only way a mount ends.
+      if (disposed) return;
       currentTransform = fit();
       canvas.requestRenderAll();
     },
 
     dispose(): void {
+      // Fabric's own `destroy()` throws on a second call, and a teardown path
+      // is exactly where a handle gets disposed twice.
+      if (disposed) return;
+      disposed = true;
       adapter.dispose();
+      // Before the media: the glass sampler reads the media layer.
+      glass.dispose();
       media?.destroy();
       // `destroy()` also disposes remaining Fabric objects.
       void canvas.destroy();

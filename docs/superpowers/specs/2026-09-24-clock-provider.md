@@ -1,5 +1,10 @@
 # Clock and date as sensors
 
+- **Status:** superseded by `2026-09-26-clock-and-theme-locale.md`. Its provider,
+  keys, author format tokens and per-binding zone survive there; its "month and
+  weekday names are English" decision does not.
+- **Requirement:** the clock half of the author journey
+
 ## Why
 
 A dashboard without a clock is not a dashboard. Today the starter theme's clock

@@ -78,9 +78,56 @@ describe("ImageManager", () => {
     expect(canvas.getActiveObject()).toBe(result?.image);
     expect(save).toHaveBeenCalledOnce();
     expect(createObjectURL).toHaveBeenCalledWith(file);
-    expect(revokeObjectURL).toHaveBeenCalledWith("blob:image");
+    expect(revokeObjectURL).not.toHaveBeenCalled();
     expect(result?.image.get("id")).toMatch(/^image-[0-9a-f-]{36}$/);
+    // An unnamed row falls back to its id (see `object-name.ts`), which here is
+    // `image-<uuid>` — 42 characters in the layer list. Every other creator
+    // names through `newObjectName`; the paste path was the one that did not.
+    expect(result?.image.get("name")).toBe("Image");
     expect(result?.image.get("format")).toBe("png");
+  });
+
+  it("keeps the object URL alive for as long as a history entry can name it", async () => {
+    // U4: the URL was revoked the moment decode finished, but the image's
+    // persisted `src` is that URL. Any history restore then re-read a dead
+    // blob, Fabric could not enliven the image, and undo deleted the asset
+    // instead of the edit. A history entry outlives the image instance —
+    // undo replaces every object — so removing the image is not the end of it.
+    const canvas = new Canvas(document.createElement("canvas"));
+    const revokeObjectURL = vi.spyOn(URL, "revokeObjectURL");
+    vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:image");
+    interceptDecode();
+    const manager = createImageManager(canvas, vi.fn());
+
+    const result = await manager.importImage({
+      source: new File(["pixels"], "logo.png", { type: "image/png" }),
+    });
+    expect(revokeObjectURL).not.toHaveBeenCalled();
+
+    canvas.remove(result?.image as FabricImage);
+    expect(revokeObjectURL).not.toHaveBeenCalled();
+
+    manager.destroy();
+    expect(revokeObjectURL).toHaveBeenCalledWith("blob:image");
+  });
+
+  it("revokes the URL of a file that never decoded", async () => {
+    const canvas = new Canvas(document.createElement("canvas"));
+    const revokeObjectURL = vi.spyOn(URL, "revokeObjectURL");
+    vi.spyOn(URL, "createObjectURL").mockReturnValue("blob:image");
+    const manager = createImageManager(canvas, vi.fn());
+    vi.spyOn(HTMLImageElement.prototype, "src", "set").mockImplementation(
+      function (this: HTMLImageElement) {
+        this.dispatchEvent(new Event("error"));
+      },
+    );
+
+    await expect(
+      manager.importImage({
+        source: new File(["pixels"], "logo.png", { type: "image/png" }),
+      }),
+    ).rejects.toThrow();
+    expect(revokeObjectURL).toHaveBeenCalledWith("blob:image");
   });
 
   it("derives format from the source MIME type", async () => {

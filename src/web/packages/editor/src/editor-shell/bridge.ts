@@ -1,26 +1,29 @@
+import { type Binding, isObjectName } from "@vigilia/renderer-core";
 import { VigiliaChart } from "@vigilia/scene-fabric";
 import { ActiveSelection, type FabricObject, Group } from "fabric/es";
 import { type ArrangeAction, applyArrange, canArrange } from "../arrange.js";
 import type { EditorInteraction } from "../editor-interaction.js";
+import { GROUP_CONTEXT_EVENT } from "../grouping-manager/index.js";
+import {
+  actionEnabled,
+  type ObjectActionId,
+  type ObjectTarget,
+} from "../object-actions.js";
+import {
+  findById,
+  type LayerRow,
+  ownerOf,
+  pathTo,
+  projectLayers,
+} from "./layer-tree.js";
+
 import type { EditorActionFacade } from "./session-facade.js";
 
 /** Selection-kind routing for menu/tab eligibility. Transient, never persisted. */
 export type ActiveKind = "none" | "object" | "group" | "chart";
 
-export type ShellAction =
-  | "duplicate"
-  | "copy"
-  | "cut"
-  | "delete"
-  | "front"
-  | "bring-forward"
-  | "send-backward"
-  | "back"
-  | "lock"
-  | "unlock"
-  | "group"
-  | "ungroup"
-  | { readonly type: "arrange"; readonly action: ArrangeAction };
+/** The object actions the shell can run; the registry owns the ids. */
+export type ShellAction = ObjectActionId;
 
 export interface EditorShellSnapshot {
   readonly selectedCount: number;
@@ -30,10 +33,43 @@ export interface EditorShellSnapshot {
 
 export interface EditorShellBridge {
   snapshot(): EditorShellSnapshot;
+  /** The registry's view of the selection. Serializable; never a FabricObject. */
+  target(): ObjectTarget;
   can(action: ShellAction): boolean;
+  canArrange(action: ArrangeAction): boolean;
+  /** The layer tree, projected from Fabric on demand (§172). */
+  layers(): readonly LayerRow[];
+  /** Ids of the entered group, as the panel reads them — never Fabric objects.
+   * The group's descendants are inside the context too, which the panel derives
+   * from the projection's own parent links. */
+  groupContext(): readonly string[];
+  /** Selects a row's object: directly inside the entered group, else through the
+   * group that owns it. */
+  selectLayer(id: string): void;
+  /** Hiding leaves the selection alone; showing reveals the whole ancestor path. */
+  setLayerVisible(id: string, visible: boolean): void;
+  setLayerLocked(id: string, locked: boolean): void;
+  /** Transient view state: never authored history, never a Fabric write (§67).
+   * A group with children is shut until this opens it. */
+  setCollapsed(id: string, collapsed: boolean): void;
+  /** Editor-only display state: never authored history, never a Fabric write. */
+  renameLayer(id: string, name: string): void;
+  /** Whether both ids share one parent, i.e. whether `reorderLayer` would
+   * accept the drop. The panel asks this to mark only reachable slots. */
+  sameLayerParent(a: string, b: string): boolean;
+  /** Restacks `id` directly above `beforeId`, inside one parent only.
+   * `true` when the move happened; a refusal changes nothing. */
+  reorderLayer(id: string, beforeId: string): boolean;
   subscribe(listener: () => void): () => void;
   run(action: ShellAction): void;
+  /**
+   * The product's own library picture, as a data URL. e2e measures this rather
+   * than re-deriving `toCanvasElement`, which is how a change to the capture
+   * would otherwise stop being measured (0007).
+   */
+  capture(): string | undefined;
   readonly session: EditorActionFacade;
+  readonly editor: EditorInteraction;
   destroy(): void;
 }
 
@@ -50,18 +86,41 @@ function activeKindOf(active: FabricObject | undefined): ActiveKind {
 export function createEditorShellBridge(input: {
   readonly editor: EditorInteraction;
   readonly session: EditorActionFacade;
+  /** The document's semantic bindings, keyed by Fabric object id. Envelope
+   * state the session owns; a layer row reads it so the key it prints is the
+   * document's rather than a string the panel wrote. Optional, and absent reads
+   * as no bindings — a bridge with no document behind it says so rather than
+   * refusing to project. */
+  readonly bindings?: () => Readonly<Record<string, readonly Binding[]>>;
+  /** The product's own library capture; see `EditorShellBridge.capture`. */
+  readonly capture: () => string | undefined;
 }): EditorShellBridge {
   const { canvas } = input.editor;
   const listeners = new Set<() => void>();
   const notify = (): void => {
     for (const listener of listeners) listener();
   };
+  // The projection reads object state — the display name lives on the object
+  // beside the id — so a change to an object republishes the rows. Selection
+  // alone is not enough: renaming from the inspector moves no selection, and a
+  // stale row would leave the layer list disagreeing with the field that
+  // changed it.
   const events = [
     "selection:created",
     "selection:updated",
     "selection:cleared",
+    "object:modified",
+    // A deleted object fires no selection event, so the layer list kept
+    // showing a row for something the canvas no longer had — and the inspector
+    // went on reading its geometry. Deletion is the one edit that most needs the
+    // projection to move, because the row it removes is the proof it happened.
+    "object:removed",
+    "object:added",
+    // Entering or leaving a group moves no selection, so Fabric fires nothing
+    // for it — the panel would repaint only when something unrelated did.
+    GROUP_CONTEXT_EVENT,
   ] as const;
-  for (const event of events) canvas.on(event, notify);
+  for (const event of events) canvas.on(event as never, notify);
   const activeObject = ():
     | (FabricObject & { readonly locked?: boolean })
     | undefined =>
@@ -81,34 +140,218 @@ export function createEditorShellBridge(input: {
       activeKind: activeKindOf(active),
     };
   };
-  const can = (action: ShellAction): boolean => {
-    const active = activeObject();
-    if (active === undefined) return false;
-    const locked = active.get("locked") === true;
-    if (typeof action === "object")
-      return canArrange(input.editor, action.action);
-    if (action === "unlock") return locked;
-    if (action === "group")
-      return (
-        active instanceof ActiveSelection && active.getObjects().length > 1
-      );
-    if (action === "ungroup") return active instanceof Group;
-    return !locked;
+  const target = (): ObjectTarget => {
+    const base = snapshot();
+    const active = canvas.getActiveObject();
+    return {
+      kind: base.activeKind,
+      locked: base.locked,
+      memberCount: base.selectedCount,
+      // ActiveSelection extends Group, so the negative case has to be explicit:
+      // a bare multi-selection is not a Group for ungroup/group eligibility.
+      isGroup: active instanceof Group && !(active instanceof ActiveSelection),
+    };
+  };
+  const canArrangeAction = (action: ArrangeAction): boolean =>
+    canArrange(input.editor, action);
+  const gate = { target, canArrange: canArrangeAction };
+  // Eligibility is owned by the registry; this only adds the selection gate.
+  const can = (action: ShellAction): boolean =>
+    activeObject() !== undefined && actionEnabled(gate, action);
+  /** The entered group, as objects — the manager's own transient state (§67). */
+  const enteredContext = (): readonly FabricObject[] =>
+    input.editor.groupingManager.groupContext();
+  const groupContext = (): readonly string[] =>
+    enteredContext()
+      .map((object) => (object as { id?: unknown }).id)
+      .filter((id): id is string => typeof id === "string");
+  // View state lives here, not in the panel: the projection reads it, so a
+  // remount keeps the groups the author opened. It holds the *open* groups
+  // rather than the shut ones, so a group is shut by default — an eight-card
+  // starter opens as ten rows rather than sixty — without this shell having to
+  // enumerate groups to seed anything, and a group created later is shut too.
+  const openedGroups = new Set<string>();
+  /**
+   * What the panel is shown: the author's own openings, plus whatever the
+   * canvas has entered.
+   *
+   * **Derived, not recorded.** A double-click that enters a card makes the
+   * author inside it, and a tree still showing that card shut with an *Expand*
+   * button is telling them they are somewhere they are not — the one place the
+   * panel could contradict the canvas outright. Reading the context here rather
+   * than writing to `openedGroups` from `grouping-manager` is what keeps the two
+   * surfaces on one path: leaving the group shuts it again because the context
+   * no longer names it, and a group the author had opened themselves stays open,
+   * which a recorded expansion would have shut behind them.
+   *
+   * The ancestor path is included because a group is entered by one hop from
+   * whatever was selected, so a nested entry whose parent is shut would
+   * otherwise expand a row the panel never shows.
+   */
+  const expansionFor = (): ReadonlySet<string> => {
+    const entered = groupContext();
+    if (entered.length === 0) return openedGroups;
+    const expanded = new Set(openedGroups);
+    const root = canvas.getObjects();
+    for (const id of entered)
+      for (const ancestor of pathTo(root, id)) {
+        const ancestorId = (ancestor as { id?: unknown }).id;
+        if (typeof ancestorId === "string") expanded.add(ancestorId);
+      }
+    return expanded;
+  };
+  const layers = (): readonly LayerRow[] => {
+    const active = canvas.getActiveObject();
+    const selected =
+      active instanceof ActiveSelection
+        ? active.getObjects()
+        : active === undefined
+          ? []
+          : [active];
+    return projectLayers({
+      root: canvas.getObjects(),
+      selected,
+      expanded: expansionFor(),
+      // Pulled, never held: bindings are envelope state the session owns, and a
+      // row whose bound key went stale after an edit would name a key the
+      // document no longer declares.
+      ...(input.bindings === undefined ? {} : { bindings: input.bindings() }),
+    });
+  };
+  const selectLayer = (id: string): void => {
+    const root = canvas.getObjects();
+    const target = findById(root, id);
+    if (target === undefined) return;
+    const owner = ownerOf(root, id);
+    // Inside the entered group its children are reachable in their own right, so
+    // a tree click selects one directly; anywhere else a group child is selected
+    // through its owning group, since a bare child has no transform controls.
+    const inContext = owner !== undefined && enteredContext().includes(owner);
+    canvas.setActiveObject(inContext ? target : (owner ?? target));
+    canvas.requestRenderAll();
+    notify();
+  };
+  const setLayerVisible = (id: string, visible: boolean): void => {
+    const target = findById(canvas.getObjects(), id);
+    if (target === undefined) return;
+    // Showing a descendant whose ancestor is hidden would show nothing, so the
+    // whole path is revealed; hiding touches only the requested object.
+    if (visible)
+      for (const entry of pathTo(canvas.getObjects(), id))
+        entry.set("visible", true);
+    else target.set("visible", false);
+    target.setCoords();
+    canvas.requestRenderAll();
+    input.editor.historyManager.saveState();
+    notify();
+  };
+  const setLayerLocked = (id: string, locked: boolean): void => {
+    const root = canvas.getObjects();
+    const target = findById(root, id);
+    if (target === undefined) return;
+    // Locks go through the owning group for the same reason selection does.
+    const subject = ownerOf(root, id) ?? target;
+    if (locked) input.editor.objectLockManager.lockObject({ object: subject });
+    else input.editor.objectLockManager.unlockObject({ object: subject });
+    notify();
+  };
+  const setCollapsed = (id: string, collapsed: boolean): void => {
+    if (collapsed) openedGroups.delete(id);
+    else openedGroups.add(id);
+    notify();
+  };
+  const renameLayer = (id: string, name: string): void => {
+    const target = findById(canvas.getObjects(), id);
+    if (target === undefined) return;
+    const trimmed = name.trim();
+    if (trimmed === "") target.set("name", undefined);
+    else if (isObjectName(trimmed)) target.set("name", trimmed);
+    // Anything else is refused rather than written: clearing on a too-long
+    // name would make an author's typing vanish. The caller re-reads the
+    // projection afterwards, so a refused rename reverts the row to the name
+    // the object actually carries.
+    else return;
+    // The name is authored document state on the object, so this is a
+    // committed edit like any other: one history entry (§67).
+    canvas.requestRenderAll();
+    input.editor.historyManager.saveState();
+    notify();
+  };
+  // The owner comparison `reorderLayer` refuses on, exposed so the panel can
+  // mark only the drops that would land. Never `object.group`: an active
+  // selection temporarily repoints it at the selection itself.
+  const sameLayerParent = (a: string, b: string): boolean => {
+    const root = canvas.getObjects();
+    return (
+      findById(root, a) !== undefined &&
+      findById(root, b) !== undefined &&
+      ownerOf(root, a) === ownerOf(root, b)
+    );
+  };
+  const reorderLayer = (id: string, beforeId: string): boolean => {
+    const root = canvas.getObjects();
+    const moved = findById(root, id);
+    const anchor = findById(root, beforeId);
+    if (moved === undefined || anchor === undefined) return false;
+    // v1 restacks inside one parent only: crossing a group boundary changes
+    // membership, which is a different operation with different semantics.
+    if (ownerOf(root, id) !== ownerOf(root, beforeId)) return false;
+    const parent = ownerOf(root, id);
+    const siblings = parent === undefined ? root : parent.getObjects();
+    const from = siblings.indexOf(moved);
+    const anchorAt = siblings.indexOf(anchor);
+    // Defence in depth, NOT the thing that stops a reparent: with the receiver
+    // below chosen from the same `parent` these indices came from, a mismatch
+    // can no longer cross arrays. Keep it for an inconsistent read.
+    if (from < 0 || anchorAt < 0) return false;
+    // `beforeId` means directly above that row in the panel, and the panel paints
+    // topmost-first, so in Fabric's bottom-first paint order the target is one
+    // past the anchor. Fabric's `moveObjectTo` removes the object and then
+    // splices at `index` in the *post-removal* array, so an upward move in paint
+    // order shifts down by one.
+    let target = anchorAt + 1;
+    if (from < target) target -= 1;
+    // The receiver must be the collection `siblings` came from. `moveObjectTo` is
+    // `createCollectionMixin`'s and exists on `Group` too (`index.mjs:1978`,
+    // `:9132`), but it splices `this._objects` — so calling it on the canvas while
+    // indexing the group's array inserts the child into the canvas root and
+    // leaves it inside the group, giving Fabric's paint and serialization arrays
+    // one object each. Its boolean return is the move's own verdict — it answers
+    // false when the object already sits at `target` — so keep checking it.
+    if (!(parent ?? canvas).moveObjectTo(moved, target)) return false;
+    canvas.requestRenderAll();
+    input.editor.historyManager.saveState();
+    notify();
+    return true;
   };
   return {
     snapshot,
+    target,
     can,
+    canArrange: canArrangeAction,
+    layers,
+    groupContext,
+    selectLayer,
+    setLayerVisible,
+    setLayerLocked,
+    setCollapsed,
+    renameLayer,
+    sameLayerParent,
+    reorderLayer,
     session: input.session,
+    editor: input.editor,
+    capture: input.capture,
     subscribe(listener) {
       listeners.add(listener);
       return () => listeners.delete(listener);
     },
     run(action) {
       if (!can(action)) return;
-      const active = canvas.getActiveObject() as FabricObject | undefined;
-      if (active === undefined) return;
-      if (typeof action === "object") {
-        applyArrange(input.editor, action.action);
+      if (action.startsWith("arrange:")) {
+        applyArrange(
+          input.editor,
+          action.slice("arrange:".length) as ArrangeAction,
+        );
         notify();
         return;
       }
@@ -131,7 +374,7 @@ export function createEditorShellBridge(input: {
       notify();
     },
     destroy() {
-      for (const event of events) canvas.off(event, notify);
+      for (const event of events) canvas.off(event as never, notify);
       listeners.clear();
     },
   };

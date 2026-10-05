@@ -1,7 +1,11 @@
-import { Tooltip } from "@base-ui/react/tooltip";
-import { useEffect, useState } from "react";
-import { uiCopy } from "../ui-copy.js";
-import type { EditorShellBridge, ShellAction } from "./bridge.js";
+import { useEffect, useRef, useState } from "react";
+import {
+  actionEnabled,
+  type ObjectActionId,
+  OBJECT_ACTIONS,
+} from "../object-actions.js";
+import type { EditorShellBridge } from "./bridge.js";
+import { tooltip } from "./controls/tooltip.js";
 
 const noSelection = {
   selectedCount: 0,
@@ -9,34 +13,41 @@ const noSelection = {
   activeKind: "none",
 } as const;
 
-/** The dock carries the retired floating toolbar's action set verbatim. */
-export function dockActions(locked: boolean): readonly (readonly [
-  ShellAction,
-  string,
-  string,
-])[] {
-  const lock = locked
-    ? (["unlock", "\u{1F513}", uiCopy.actions.unlock] as const)
-    : (["lock", "\u{1F512}", uiCopy.actions.lock] as const);
-  return [
-    ["duplicate", "⧉", uiCopy.actions.duplicate],
-    lock,
-    ["front", "↑↑", uiCopy.actions.front],
-    ["bring-forward", "↑", uiCopy.actions.bringForward],
-    ["send-backward", "↓", uiCopy.actions.sendBackward],
-    ["back", "↓↓", uiCopy.actions.back],
-    ["group", "▣", uiCopy.actions.group],
-    ["ungroup", "▦", uiCopy.actions.ungroup],
-    [{ type: "arrange", action: "align-left" }, "⫷", uiCopy.actions.align],
-    [
-      { type: "arrange", action: "distribute-x" },
-      "↔",
-      uiCopy.actions.distribute,
-    ],
-    ["delete", "×", uiCopy.actions.delete],
-  ];
+/**
+ * One dock action. The tooltip is a DOM control, so React owns the button and
+ * the effect owns the popup — a React tooltip here would be a second owner for
+ * something the selection inspector, which never sees React, also has to use.
+ */
+function Action({
+  bridge,
+  id,
+  label,
+  children,
+}: {
+  readonly bridge: EditorShellBridge | undefined;
+  readonly id: ObjectActionId;
+  readonly label: string;
+  readonly children: React.ReactNode;
+}): React.JSX.Element {
+  const ref = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    const button = ref.current;
+    if (button === null) return;
+    return tooltip({ trigger: button, text: label }).destroy;
+  }, [label]);
+  return (
+    <button
+      ref={ref}
+      type="button"
+      aria-label={label}
+      onClick={() => bridge?.run(id)}
+    >
+      {children}
+    </button>
+  );
 }
 
+/** The dock renders object actions only: arrange belongs to the top toolbar. */
 export function CanvasDock({
   bridge,
   onVisibility,
@@ -56,29 +67,18 @@ export function CanvasDock({
     [onVisibility, snapshot.selectedCount],
   );
 
-  const actions = dockActions(snapshot.locked);
+  const actions =
+    bridge === undefined
+      ? []
+      : OBJECT_ACTIONS.filter((action) => actionEnabled(bridge, action.id));
 
   return (
     <>
-      {actions
-        .filter(([action]) => bridge?.can(action) === true)
-        .map(([action, icon, label]) => (
-          <Tooltip.Root key={label}>
-            <Tooltip.Trigger
-              aria-label={label}
-              onClick={() => bridge?.run(action)}
-            >
-              {icon}
-            </Tooltip.Trigger>
-            <Tooltip.Portal>
-              <Tooltip.Positioner side="top" sideOffset={8}>
-                <Tooltip.Popup className="editor-shell-tooltip" role="tooltip">
-                  {label}
-                </Tooltip.Popup>
-              </Tooltip.Positioner>
-            </Tooltip.Portal>
-          </Tooltip.Root>
-        ))}
+      {actions.map(({ id, icon: Icon, label }) => (
+        <Action key={id} bridge={bridge} id={id} label={label}>
+          <Icon aria-hidden size={15} strokeWidth={1.75} />
+        </Action>
+      ))}
     </>
   );
 }

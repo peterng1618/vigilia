@@ -14,9 +14,22 @@ body,
 
 /* Shell chrome tokens. The editorial palette is the default and is defined on
    bare :root so a fresh profile renders it before any palette attribute is
-   applied. Glass palettes below override only what they change. */
+   applied. Glass palettes below override only what they change.
+
+   `applyShellPalette` writes `data-shell-palette` onto the document element,
+   so `:root` and the in-force palette selector are the same node and the
+   cascade picks the right one. Everything below resolves for all six.
+
+   The swatch joins this selector because a chip is a *self-contained scope*
+   rather than a window onto whatever is in force: it carries the attribute of
+   the palette it NAMES, and without a declaration here it would inherit the
+   live palette's tokens instead of resolving its own — an ember chip under
+   graphite painted graphite's dark glass behind an ember ring. Declaring the
+   baseline on the chip makes every token it paints its own, and the palette
+   blocks below override it by later source order at equal specificity. */
 :root,
-[data-shell-palette="editorial"] {
+[data-shell-palette="editorial"],
+.editor-shell-palette-swatch {
   --shell-backdrop: #f5f1e8;
   --shell-surface: #fffdf7;
   --shell-surface-strong: #fffdf7;
@@ -30,6 +43,49 @@ body,
   --shell-primary-text: #f5f1e8;
   --shell-display: ui-serif, Georgia, "Times New Roman", serif;
   --shell-flat: 1;
+}
+
+/* Editor-wide control tokens, so the existing panel controls inherit the
+   palette with no per-control overrides. These derive from the `--shell-*` layer
+   rather than restating its colours, so a palette that moves one moves these.
+   On `:root`, not on the editorial selector, so all six resolve — a reference to
+   a token declared under only one palette is invalid at computed-value time and
+   the declaration using it is dropped whole, which is how the header's palette
+   trigger was left transparent under five of six.
+
+   This block sits ABOVE the palette blocks on purpose. `:root` and
+   `[data-shell-palette="x"]` have equal specificity, so a palette can only
+   override a base value by source order; below them, this block silently won
+   and graphite's control surface never applied.
+
+   The values with no `--shell-*` counterpart keep literals because no shell
+   token is that colour: `--vigilia-input-bg` is a text field's own white,
+   `--vigilia-subdued` and `--vigilia-selection-bg` sit between the shell's
+   muted and its surface, and the scrollbar trio has no shell token at all.
+   `--vigilia-accent` is editorial's *warm*, not its accent — the control
+   layer's highlight was brown, and reading it as `--shell-accent` would have
+   repainted it ink. `--vigilia-control-bg` cannot alias `--shell-backdrop`
+   either: that holds this same colour under editorial and nothing else, since
+   the glass palettes declare a gradient there, and aliasing it painted the
+   whole page gradient onto every button. A palette that needs a different
+   control surface declares one below. */
+:root {
+  --vigilia-canvas-bg: #26241f;
+  --vigilia-text: var(--shell-text);
+  --vigilia-panel-bg: var(--shell-surface);
+  --vigilia-panel-border: var(--shell-edge);
+  --vigilia-control-bg: #f5f1e8;
+  --vigilia-control-border: var(--shell-edge);
+  --vigilia-input-bg: #ffffff;
+  --vigilia-muted: var(--shell-muted);
+  --vigilia-subdued: #8a8272;
+  --vigilia-selection-bg: #e4ddcb;
+  --vigilia-accent: var(--shell-warm);
+  --vigilia-accent-dim: #8a5a2b22;
+  --vigilia-guide: var(--shell-danger);
+  --vigilia-scrollbar-thumb: #c9c2b1;
+  --vigilia-scrollbar-thumb-hover: #a9a191;
+  --vigilia-scrollbar-track: transparent;
 }
 
 [data-shell-palette="graphite"] {
@@ -49,18 +105,55 @@ body,
   --shell-primary-text: #0a1116;
   --shell-display: system-ui, sans-serif;
   --shell-flat: 0;
+  /* The only `--vigilia-*` token a palette overrides. Editorial's paper
+     control is unreadable on graphite's dark chrome, and the backdrop cannot
+     be aliased here because it is a gradient. */
+  --vigilia-control-bg: #0a1116c9;
 }
+/* `ember`, `moss` and `plum` used to declare an accent and nothing else, so
+   their surface, edge and text were editorial's byte for byte — a picker
+   offering four options that differ only in a ring. Each now carries a tinted
+   paper of its own, an edge and a text colour that read on it, and a control
+   surface one step under it.
+
+   Their accents are deepened from the pastel that named them. A light accent
+   on a light surface carries nothing: `--shell-accent` paints hover colour and
+   the focus ring, so `#ffb36b` on a peach paper was a hover the author could
+   not see. Each is now the same hue at a value that holds 4.5:1 against both
+   its own surface and the glass overlay the non-editorial rules put over it,
+   and the ring still reads as ember, moss or plum. */
 [data-shell-palette="ember"] {
-  --shell-accent: #ffb36b;
+  --shell-backdrop: #e9cdb4;
+  --shell-surface: #f7e2d2;
+  --shell-surface-strong: #fbeade;
+  --shell-edge: #8a4a24;
+  --shell-text: #2e1a0f;
+  --shell-muted: #6d5138;
+  --shell-accent: #8f4208;
   --shell-warm: #ff7e6e;
+  --vigilia-control-bg: #f0d3bc;
 }
 [data-shell-palette="moss"] {
-  --shell-accent: #b7e46b;
+  --shell-backdrop: #cfe0bb;
+  --shell-surface: #e4efd9;
+  --shell-surface-strong: #eff6e7;
+  --shell-edge: #4a6b2c;
+  --shell-text: #1c2a12;
+  --shell-muted: #4f6242;
+  --shell-accent: #38601a;
   --shell-warm: #e8c56a;
+  --vigilia-control-bg: #d8e8c8;
 }
 [data-shell-palette="plum"] {
-  --shell-accent: #d0a6ff;
+  --shell-backdrop: #dccdef;
+  --shell-surface: #ece3f7;
+  --shell-surface-strong: #f3ecfb;
+  --shell-edge: #5f3f86;
+  --shell-text: #241634;
+  --shell-muted: #5a4870;
+  --shell-accent: #543484;
   --shell-warm: #ffb2a1;
+  --vigilia-control-bg: #ded1ef;
 }
 [data-shell-palette="light"] {
   --shell-surface: #eff9f2bf;
@@ -69,28 +162,49 @@ body,
   --shell-text: #102119;
   --shell-muted: #4f6659;
   --shell-backdrop: linear-gradient(145deg, #d8ebe4, #afd4d1);
+  /* The one palette that never declared an accent and inherited editorial's
+     ink, which on mint read as a gap rather than as a choice. */
+  --shell-accent: #1c6b4f;
 }
 
-/* The editorial palette restyles the editor-wide control tokens so the
-   existing panel controls inherit it with no per-control overrides. The
-   canvas surround stays neutral rather than paper. */
-[data-shell-palette="editorial"] {
-  --vigilia-canvas-bg: #26241f;
-  --vigilia-text: #14120e;
-  --vigilia-panel-bg: #fffdf7;
-  --vigilia-panel-border: #14120e;
-  --vigilia-control-bg: #f5f1e8;
-  --vigilia-control-border: #14120e;
-  --vigilia-input-bg: #ffffff;
-  --vigilia-muted: #5a5449;
-  --vigilia-subdued: #8a8272;
-  --vigilia-selection-bg: #e4ddcb;
-  --vigilia-accent: #8a5a2b;
-  --vigilia-accent-dim: #8a5a2b22;
-  --vigilia-guide: #a4291f;
-  --vigilia-scrollbar-thumb: #c9c2b1;
-  --vigilia-scrollbar-thumb-hover: #a9a191;
-  --vigilia-scrollbar-track: transparent;
+/* The scale: one 4px spacing base, three radii, three sizes, two elevations.
+   It lives in `@theme`, not on a plain `:root`, and that is load-bearing.
+
+   Tailwind emits its own defaults into `@layer theme`, and an *unlayered*
+   `:root` beats a layered rule whatever its specificity — so declaring these
+   names on `:root` silently overrode `text-sm`, `text-xs` and `rounded-md`
+   across every component that uses them, with no error anywhere. Overriding
+   inside `@theme` is the same intent stated in the layer that owns it, and it
+   also finishes what Plan 10 would otherwise have had to convert.
+
+   The `--text-*` line-height companions are stated, not inherited. Tailwind
+   computes each one for its own size — `--text-sm--line-height` is
+   `calc(1.25 / .875)`, written for 14px — so changing the size alone leaves a
+   ratio belonging to a size the token no longer has. 1.25 is a deliberately
+   tight one: these are labels inside 24–32px rows, where a loose line is what
+   pushes the row out of shape. The shell's own body text stays at its `1.4`,
+   which is a different layer at a different size.
+
+   The values are the editor's existing density, not a new scale — 11/12/13px
+   and an 8px radius are what the shell's stylesheet already uses throughout.
+
+   `static` because Tailwind drops any theme variable no utility references, and
+   four of these are referenced by nothing yet: `--text-md`, `--radius-lg` and
+   both elevations would have been emitted nowhere, which is the same
+   resolves-to-nothing defect the `--vigilia-*` block had. */
+@theme static {
+  --spacing: 0.25rem;
+  --radius-sm: 4px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+  --text-xs: 11px;
+  --text-xs--line-height: 1.25;
+  --text-sm: 12px;
+  --text-sm--line-height: 1.25;
+  --text-md: 13px;
+  --text-md--line-height: 1.25;
+  --shadow-raised: 0 12px 28px #0000003d;
+  --shadow-overlay: 0 18px 44px #0006;
 }
 
 /* Glass treatment belongs to the glass palettes only; editorial is flat. */
@@ -191,15 +305,26 @@ body,
 .editor-shell-menubar button[data-popup-open] {
   background: color-mix(in srgb, var(--shell-text) 10%, transparent);
 }
-/* Base UI portals the popup to `body`; the positioner must establish its own
-   stacking context or the stage (which is a positioned element inside #app,
-   later in paint order) intercepts pointer events over the menu. */
+/* Base UI portals the popup to `body` and sets `position` inline, so this rule
+   contributes the stacking context the popup needs: without it the stage — a
+   positioned element inside #app, later in paint order — intercepts pointer
+   events over the menu. */
 .editor-shell-positioner {
   z-index: 60;
-  position: relative;
 }
 .editor-shell-menu-popup {
   min-width: 190px;
+  /* A menu taller than the room it was given scrolls rather than running off the
+     bottom of the window. The canvas menu carries the Add pane's whole list —
+     13 entries under two headings, 470px — which fits 720px and not a shorter
+     window, and the last families were simply unreachable. Base UI measures the
+     space on the popup's chosen side and publishes it as `--available-height`,
+     and a context menu is positioned with the collision avoidance meant for
+     dropdowns that limit themselves to exactly that, so the two halves are the
+     library's own. Its arrow-key handling scrolls the active entry into view, so
+     the keyboard follows the scroll rather than walking off the end. */
+  max-height: var(--available-height);
+  overflow-y: auto;
   padding: 5px;
   border-radius: 8px;
   border: 1px solid var(--shell-edge);
@@ -226,6 +351,27 @@ body,
   background: color-mix(in srgb, var(--shell-text) 12%, transparent);
   outline: none;
 }
+/* The chosen display's tick, in the gutter before the label. A fixed width so
+   the labels stay left-aligned whether or not one is showing: picking a
+   display moves *every* label, including the one the pointer is travelling
+   toward. `visibility` rather than `display`, so an unticked row reserves the
+   gutter without painting it.
+
+   The gutter only exists because the indicator is rendered with `keepMounted`
+   (`display-switch.tsx`); Base UI otherwise unmounts it on every unchecked
+   item, and the `:not([data-checked])` rule below would match nothing. */
+.editor-shell-menu-tick {
+  display: inline-block;
+  width: 1em;
+  color: var(--shell-muted);
+  vertical-align: baseline;
+}
+.editor-shell-menu-tick[data-checked] {
+  visibility: visible;
+}
+.editor-shell-menu-tick:not([data-checked]) {
+  visibility: hidden;
+}
 .editor-shell-menu-label {
   display: block;
   padding: 6px 9px 3px;
@@ -233,6 +379,63 @@ body,
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--shell-muted);
+}
+/* The shell palette control. It is a trigger, not a `<select>`, so it needs
+   the same surface the other header controls draw on — the old label-and-select
+   in the Settings pane was styled by the pane's own control rules, which the
+   control no longer lives inside. */
+.editor-shell-palette {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 10px;
+  border: 1px solid var(--shell-edge);
+  border-radius: 8px;
+  background: var(--vigilia-control-bg);
+  color: var(--shell-text);
+  cursor: pointer;
+  font: inherit;
+}
+.editor-shell-palette:hover,
+.editor-shell-palette[data-popup-open] {
+  border-color: var(--shell-accent);
+  color: var(--shell-accent);
+}
+/* The swatch is a chip of the palette it names, painted from that palette's
+   own `--shell-*` tokens through `data-shell-palette` rather than from a colour
+   table here: `palette.ts` is the owner of which palettes exist, and a chip that
+   read the tokens in JS at mount would still be showing the old palette after
+   the choice changed. The class is in the token block's selector list above, so
+   a chip resolves the palette it names instead of inheriting the one in force.
+   `inline-block` because a bare `<span>` is inline, and a width on an inline
+   box is not a width. */
+.editor-shell-palette-swatch {
+  flex: none;
+  display: inline-block;
+  vertical-align: -3px;
+  width: 14px;
+  height: 14px;
+  border-radius: 4px;
+  border: 1px solid var(--shell-edge);
+  background: var(--shell-surface);
+  box-shadow: inset 0 0 0 3px var(--shell-accent);
+}
+/* The popup's rows are blocks by default, which would put the tick, the chip and
+   the name on separate lines; the palette row is the one with three parts. */
+.editor-shell-menu-popup [role="menuitemradio"].editor-shell-palette-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.editor-shell-menu-check {
+  display: inline-block;
+  width: 13px;
+  /* The tick reserves its width whether or not it is showing, so the names do
+     not shift sideways as the palette changes. */
+  visibility: hidden;
+}
+.editor-shell-menu-check[data-checked] {
+  visibility: visible;
 }
 .editor-shell-primary {
   margin-left: auto;
@@ -244,55 +447,112 @@ body,
   cursor: pointer;
   font-weight: 600;
 }
+/* The pane bar heads the left column rather than standing beside it, so the
+   stage gets the rail's 52px back. The bar is above the panel rather than
+   beside it, which is why the areas are named: collapsing has to move the bar
+   across to keep it pressable without the canvas losing the column's width, and
+   per-element `grid-column` would have to be restated for every child to say
+   that. */
 .editor-shell-body {
   display: grid;
-  grid-template-columns: 52px 280px minmax(0, 1fr) 280px;
+  grid-template-areas: "bar stage inspector" "panel stage inspector";
+  /* The layer panel is 340px because a row now carries three things it did not
+     before: a 40px kind specimen, the name, and the semantic key it reads.
+
+     The width was worth keeping once the room the two state controls need was
+     scoped to the rows that draw them (see `.vigilia-layer-bound`) rather than
+     held open on all sixty — measured on canvas at 1600×900 with every group
+     open and the panel's scrollbar in place, 340px ellipsises 2 of the 60
+     names, 320px ellipsises 3 and 280px ellipsises 15. So a 320px column buys
+     20px of canvas with one extra clipped name, and the name is what the
+     row's own flex gives up last (`.vigilia-layer-name`). Scoping is
+     width-independent, so the panel kept 340px and the stage kept 948.
+
+     The canvas is `minmax(0, 1fr)`, so every pixel here comes off the stage,
+     which is the most valuable space in this app: the whole design is that the
+     editor exists to author a phone display. That is why the 20px was measured
+     and declined rather than taken on faith. */
+  grid-template-columns: 340px minmax(0, 1fr) 280px;
+  grid-template-rows: auto minmax(0, 1fr);
   gap: 8px;
   min-height: 0;
   flex: 1;
   padding: 8px;
 }
-.editor-shell-rail,
+/* Collapsing drops the panel rather than narrowing it. The aside is `hidden`,
+   so it is no longer a grid item, and the bar — the only route back to it —
+   widens across the top rather than holding the column open on its own. The
+   panel's width and one gap both go back to the canvas. */
+.editor-shell-body[data-collapsed="true"] {
+  grid-template-areas: "bar bar bar" "stage stage inspector";
+}
+/* A horizontal segmented header: one segment per pane, the `+` at the end. A
+   row rather than the rail's column, and labelled rather than icon-only, so
+   nothing here needs a hover to say what it opens. */
+.editor-shell-pane-bar {
+  grid-area: bar;
+  display: flex;
+  align-items: stretch;
+  gap: 4px;
+  padding: 5px;
+  border-radius: 12px;
+  overflow: visible;
+}
+.editor-shell-panel {
+  grid-area: panel;
+  padding: 12px;
+  color: var(--shell-muted);
+}
+.editor-shell-stage {
+  grid-area: stage;
+}
+.editor-shell-inspector {
+  grid-area: inspector;
+}
 .editor-shell-panel,
 .editor-shell-inspector {
   min-height: 0;
   overflow: auto;
   border-radius: 12px;
 }
-.editor-shell-rail {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-  padding: 8px;
-  overflow: visible;
-}
-.editor-shell-rail button {
-  min-height: 38px;
-  font-size: 16px;
-  line-height: 1;
-}
-.editor-shell-rail button,
+.editor-shell-pane-bar button,
 .editor-shell-inspector button,
-.editor-shell-dock button {
+.editor-shell-dock button,
+.editor-shell-arrange button {
   color: var(--shell-text);
   border: 0;
   background: transparent;
   border-radius: 7px;
   cursor: pointer;
 }
-.editor-shell-rail button {
-  min-height: 38px;
+.editor-shell-pane-bar button {
+  flex: 1;
+  min-height: 32px;
+  padding: 0 8px;
+  font: inherit;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
-.editor-shell-rail button[aria-pressed="true"] {
+/* The `+` is one fixed mark beside three words that share the row, so it takes
+   its own width rather than a share of the bar's. The button selector above is
+   the more specific pair, so this names the element too. */
+.editor-shell-pane-bar button.editor-shell-pane-bar-add {
+  flex: none;
+  width: 32px;
+  padding: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.editor-shell-pane-bar button[aria-pressed="true"] {
   background: color-mix(in srgb, var(--shell-text) 14%, transparent);
+  font-weight: 600;
 }
-.editor-shell-rail button:hover,
-.editor-shell-dock button:hover {
+.editor-shell-pane-bar button:hover,
+.editor-shell-dock button:hover,
+.editor-shell-arrange button:hover {
   background: color-mix(in srgb, var(--shell-text) 10%, transparent);
-}
-.editor-shell-panel {
-  padding: 12px;
-  color: var(--shell-muted);
 }
 .editor-shell-panel h2,
 .editor-shell-inspector h2 {
@@ -315,6 +575,25 @@ body,
   display: block;
   margin-top: 12px;
 }
+/* The Add pane's two construction lists are groups, because "Line" is both a
+   chart family and a shape and a flat chip list would put the same word on two
+   buttons. The UA groove border and legend are the only things reset: the
+   shell's own 1px edge and muted caps are what the rest of the panel is drawn
+   in. */
+.editor-shell-panel fieldset {
+  margin: 12px 0 0;
+  padding: 2px 6px 4px;
+  min-inline-size: 0;
+  border: 1px solid var(--shell-edge);
+  border-radius: 8px;
+}
+.editor-shell-panel legend {
+  padding: 0 4px;
+  color: var(--shell-muted);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
 .editor-shell-panel button,
 .editor-shell-panel input,
 .editor-shell-panel select,
@@ -332,10 +611,21 @@ body,
 .editor-shell-panel input,
 .editor-shell-panel select,
 .editor-shell-inspector input,
-.editor-shell-inspector select {
-  display: block;
-  width: 100%;
+.editor-shell-inspector select,
+.editor-shell-inspector textarea {
   padding: 4px 6px;
+}
+/* A polyline's points and a path's data are documents, so their field takes
+   the panel's own control surface rather than the browser's default one. */
+.editor-shell-inspector textarea {
+  max-width: 100%;
+  margin: 3px 4px 3px 0;
+  border: 1px solid var(--shell-edge);
+  border-radius: 6px;
+  background: var(--vigilia-control-bg);
+  color: var(--shell-text);
+  font: inherit;
+  resize: vertical;
 }
 .editor-shell-panel button,
 .editor-shell-inspector button {
@@ -345,6 +635,481 @@ body,
 .editor-shell-inspector button:hover {
   border-color: var(--shell-accent);
   color: var(--shell-accent);
+}
+
+/* Restrained motion: only compositor-owned properties, never a layout one. The
+   root is listed because a palette switch restyles its color/background. */
+.editor-shell,
+.editor-shell button,
+.editor-shell input,
+.editor-shell select,
+.editor-shell [role="tab"],
+.editor-shell [role="menuitem"] {
+  transition:
+    background-color 140ms ease,
+    border-color 140ms ease,
+    color 140ms ease,
+    transform 140ms ease,
+    opacity 140ms ease;
+}
+.editor-shell button:active {
+  transform: translateY(1px);
+}
+/* The popup is portalled outside `.editor-shell`, so this rule misses it — that
+   portal is the only protection, since Base UI marks menu items `tabindex="-1"`
+   and one moved in-shell would match through `[tabindex]`. `:where` drops the
+   tabpanel without raising this rule's specificity. */
+.editor-shell
+:is(
+  button,
+  input,
+  select,
+  [role="tab"],
+  [tabindex]:not(:where([role="tabpanel"]))
+):focus-visible {
+  outline: 2px solid var(--shell-accent, #7dd3fc);
+  outline-offset: 1px;
+}
+/* Panel reveal: opacity 0→1 with a 4px rise, on mount only — no list stagger. */
+.editor-shell-panel,
+.editor-shell-inspector {
+  animation: vigilia-panel-in 160ms ease-out;
+}
+@keyframes vigilia-panel-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+/* Base UI portals the menu popup, its positioner and the tooltip to `body`, so
+   the descendant selector below cannot reach them; name those classes too. */
+@media (prefers-reduced-motion: reduce) {
+  .editor-shell,
+  .editor-shell *,
+  .editor-shell-menu-popup,
+  .editor-shell-menu-popup *,
+  .editor-shell-positioner,
+  .editor-shell-positioner *,
+  .editor-shell-tooltip,
+  .editor-shell-tooltip * {
+    transition: none !important;
+    animation: none !important;
+  }
+}
+
+/* The chooser `New` opens before its document exists, so it is the first thing
+   an author sees in a blank theme and has to read on its own: the shell's own
+   surface and type, sized for a dialog rather than a panel.
+
+   `margin: auto` is stated rather than inherited because Tailwind's preflight
+   zeroes it, and the UA's centring of a modal dialog is exactly that margin.
+   Without it the dialog lands in the top-left corner — over the File menu it was
+   opened from. */
+.vigilia-dialog {
+  margin: auto;
+  min-width: 340px;
+  padding: 20px 24px 18px;
+  border: 1px solid var(--shell-edge);
+  border-radius: 12px;
+  background: var(--shell-surface);
+  color: var(--shell-text);
+  box-shadow: 0 18px 44px #0006;
+}
+.vigilia-dialog::backdrop {
+  background: #0009;
+}
+.vigilia-dialog .vigilia-dialog-lead {
+  margin: 0;
+  font-weight: 600;
+}
+.vigilia-dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 20px;
+}
+.vigilia-dialog .vigilia-dialog-size {
+  font-variant-numeric: tabular-nums;
+}
+
+/* Opt-in density primitives: a panel chooses a dense row rather than the shell
+   forcing every control onto its own full-width line. */
+.vigilia-field {
+  display: grid;
+  grid-template-columns: 72px 1fr;
+  align-items: center;
+  gap: 6px;
+  margin-top: 12px;
+}
+.vigilia-field-row {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  margin-top: 12px;
+}
+.vigilia-numeric {
+  font-variant-numeric: tabular-nums;
+}
+.vigilia-field input,
+.vigilia-field select,
+.vigilia-field textarea,
+.vigilia-field-row input,
+.vigilia-field-row select {
+  width: auto;
+  display: inline-block;
+  margin: 0;
+}
+/* The shell gives panel labels a line of their own; inside a field the row owns
+   the line. */
+.vigilia-field > label,
+.vigilia-field > span,
+.vigilia-field-row > label,
+.vigilia-field-row > span {
+  display: block;
+  margin-top: 0;
+}
+/* A pair is one flex line, so its label takes the same 72px the grid would have
+   given the label column and the paired fields line up with single ones. */
+.vigilia-field-row {
+  flex-wrap: wrap;
+}
+.vigilia-field-row > .vigilia-pair-label {
+  flex: none;
+  width: 72px;
+}
+/* A numeric box is a fixed measure, never a column-wide one: the artboard pair
+   puts two of them on the same row. */
+.vigilia-field input[type="number"],
+.vigilia-field-row input[type="number"] {
+  width: 4.5em;
+}
+.vigilia-field [role="alert"],
+.vigilia-field-row [role="alert"] {
+  margin: 4px 0 0;
+  color: var(--shell-danger);
+  font-size: 12px;
+}
+.vigilia-field [role="alert"] {
+  grid-column: 1 / -1;
+}
+.vigilia-field-row [role="alert"] {
+  flex-basis: 100%;
+}
+/* A bounded field's slider sits in the control column, under the box that stays
+   the precise instrument, and its bound reads as part of the field rather than
+   as a failure. */
+.vigilia-field input[type="range"] {
+  grid-column: 2;
+  width: 100%;
+  margin: 0;
+}
+.vigilia-field .vigilia-field-bound {
+  grid-column: 1 / -1;
+  margin: 4px 0 0;
+  color: var(--shell-muted);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
+
+/* The layer tree: one dense line per layer, indentation carrying the depth. */
+[data-vigilia-panel="layers"] [role="tree"] {
+  position: relative;
+}
+.vigilia-layer-row {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding-left: calc(6px + var(--layer-depth, 0) * 13px);
+  padding-right: 4px;
+  height: 24px;
+  overflow: hidden;
+  border-radius: 5px;
+  /* The state controls are laid over this edge, so the row is their containing
+     block. */
+  position: relative;
+  /* A row is draggable, so it says so the way Fabric's own handles say what
+     they do: the pointer changes to the gesture, not to a text I-beam. The
+     buttons inside keep their own `pointer` below. */
+  cursor: grab;
+}
+.vigilia-layer-row button {
+  cursor: pointer;
+}
+
+/* The reorder rule, stated once in the panel rather than only in a cursor. */
+.vigilia-layer-rule {
+  margin: 0 0 4px;
+  color: var(--shell-muted);
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+/* Mid-gesture there are three answers and all three are visible. Before this
+   the row under the pointer was the same row it had been all along, so a
+   refused drop and a landing one looked identical until release. */
+.vigilia-layer-row[data-drop="refused"] {
+  /* Unreachable, the same word the panel already uses for a hidden or
+     out-of-context row — but struck through, because refusing to let go of a
+     layer is not the same as greying one out. */
+  opacity: 0.45;
+  text-decoration: line-through;
+  cursor: not-allowed;
+}
+.vigilia-layer-row[data-drop="slot"] {
+  cursor: copy;
+}
+/* Every row the drag cannot land on recedes, so the slot reads as the one
+   place the drop would go rather than as one more row of the same list. */
+[data-vigilia-panel="layers"]
+  [role="tree"][data-dragging]
+  .vigilia-layer-row:not([data-drop="slot"]) {
+  opacity: 0.4;
+}
+/* The refusal is held a shade stronger than the rest, so "no" is still legible
+   against a list that is already dimmed. */
+[data-vigilia-panel="layers"]
+  [role="tree"][data-dragging]
+  .vigilia-layer-row[data-drop="refused"] {
+  opacity: 0.65;
+}
+/* The row being moved says so too, so the author can see what they picked up. */
+[data-vigilia-panel="layers"]
+  [role="tree"][data-dragging]
+  .vigilia-layer-row[data-drag-source] {
+  cursor: grabbing;
+  opacity: 0.65;
+}
+/* Only an entered group dims anything: with no group entered every top-level
+   layer is selectable on the canvas, and a tree greyed out by default would
+   say the opposite. */
+.vigilia-layer-row[data-context="false"] {
+  opacity: 0.45;
+}
+/* A hidden layer is dimmed the way an unreachable one is, for the same reason:
+   the canvas honours the eye button, so the row has to say what the canvas is
+   doing. Without it the only difference is a tooltip's title, which is a mouse
+   affordance for a state an author sets once and then forgets. */
+.vigilia-layer-row[data-hidden="true"] {
+  opacity: 0.45;
+}
+/* Entering a group already dims what it makes unreachable; a hidden row inside
+   one should not stack two opacities into an unreadable row. */
+.vigilia-layer-row[data-hidden="true"][data-context="false"] {
+  opacity: 0.45;
+}
+
+/* One line for the whole tree, positioned at the slot the drop would land on,
+   so a moved row can never leave a second marker behind. */
+.vigilia-layer-dropline {
+  position: absolute;
+  top: var(--layer-dropline-top, 0);
+  left: var(--layer-dropline-left, 6px);
+  right: 6px;
+  height: 2px;
+  border-radius: 1px;
+  background: var(--shell-accent);
+  pointer-events: none;
+}
+[data-vigilia-layer-actions] {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 2px;
+  margin-top: 8px;
+  padding-top: 6px;
+  border-top: 1px solid color-mix(in srgb, var(--shell-text) 16%, transparent);
+}
+[data-vigilia-layer-actions] button {
+  min-height: 22px;
+  width: 22px;
+  margin: 0;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: transparent;
+}
+.vigilia-layer-row[data-selected="true"] {
+  background: color-mix(in srgb, var(--shell-text) 14%, transparent);
+  color: var(--shell-text);
+}
+.vigilia-layer-row button {
+  min-height: 20px;
+  width: 20px;
+  margin: 0;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  background: transparent;
+}
+.vigilia-layer-row button:hover {
+  border: 0;
+}
+/* The twisty column, whether the row draws one or only reserves its place.
+   Fixed rather than left to its content: measured on canvas, a button-sized
+   twisty next to a 20px placeholder left the column ~4px narrower than the
+   button is wide, and the flexible bound column absorbed the difference — so
+   the *name* re-flowed every time a row gained or lost its twisty. */
+.vigilia-layer-twisty,
+.vigilia-layer-row > button:first-child {
+  flex: 0 0 20px;
+  width: 20px;
+  display: inline-flex;
+  justify-content: center;
+}
+/* The kind, drawn as the thing. One slot for all five arms, so every row's
+   name starts on the same left edge — which is what makes a column of them
+   scannable at all.
+
+   40px, chosen from the budget rather than from the ideal, and kept there after
+   measuring the narrower alternative. At 28px the clipped-specimen count goes
+   from 4 to 7, and the three it adds are the ones that should not be shortened:
+   `Storage`, `VRAM` and `VIGILIA`, which are titles rather than noise. At 40px
+   the four that clip are `Network` by 1px, a three-item legend by 60,
+   `Performance Trends` by 56 and `SYSTEM INSIGHTS` by 49 — a legend and a
+   strapline are meant to run long, and 40px still holds `CPU`, `RAM` and
+   `VIGILIA` whole, which is what this column is *for*. Four of the five arms
+   are narrower than 28px. A specimen that runs long ellipsises, and its `title`
+   carries the whole string. */
+.vigilia-layer-mark {
+  flex: 0 0 40px;
+  min-width: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+.vigilia-layer-sample {
+  /* 11px is the smallest the shell reads comfortably, and a specimen is not
+     read — it is recognised, so it clips rather than shrinks. Left-aligned
+     inside the slot so a long word starts where every other one starts. */
+  font-size: 11px;
+  line-height: 1;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  justify-content: flex-start;
+  color: var(--shell-text);
+}
+.vigilia-layer-swatch {
+  /* Sized here rather than on `.vigilia-layer-mark`: `flex-basis` sets the
+     main size, so a `width` on the same element would be overridden and a
+     10px swatch would draw as a 40px bar. */
+  flex: 0 0 auto;
+  width: 10px;
+  height: 10px;
+  border-radius: 2px;
+  /* The outline is what a shape with no flat paint — a gradient, or ink alone —
+     shows instead, so it is always drawn and the fill sits inside it. */
+  border: 1px solid color-mix(in srgb, var(--shell-text) 35%, transparent);
+  box-sizing: border-box;
+}
+.vigilia-layer-thumb {
+  flex: 0 0 auto;
+  width: 18px;
+  height: 12px;
+  border-radius: 2px;
+  object-fit: cover;
+  /* A picture that has not decoded is a hole, not a picture, so the frame is
+     drawn before it arrives rather than after. */
+  background: color-mix(in srgb, var(--shell-text) 12%, transparent);
+}
+/* The name is the row's identity, so it is the one thing that does not give up
+   its width: everything beside it is allowed to shrink first. */
+.vigilia-layer-name {
+  flex: 1 1 auto;
+  min-width: 6ch;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* A group holds others, and a bold name says so without a mark repeating it. */
+.vigilia-layer-row[data-kind="group"] .vigilia-layer-name {
+  font-weight: 600;
+}
+/* The two state icons, laid over the row's right edge rather than held open
+   beside it.
+
+   Both were measured. Reserving 48px of the row's width cost the *name* 48px
+   on every row, permanently, on every theme — so the room the controls need is
+   held open only on the rows that draw them, which is the `:has` rule under
+   `.vigilia-layer-bound`. Overlaying is what makes that rule affordable: the
+   two controls only exist on the row under the pointer, where the author is
+   looking at them rather than reading the key they cover.
+
+   The shift this takes is not nothing, and it is worth naming: the attended
+   row's name narrows by whatever its key does not take — measured at 15.83px
+   on `network-chart` — while every other row holds still. That is the whole
+   cost, charged to the one row the pointer is on, and it is deliberate: the
+   alternative was paying it on all sixty. The bound column is what gives way,
+   and it is the right thing to give way, because it is on the row as a fact
+   and a key is one hover away. */
+.vigilia-layer-state {
+  position: absolute;
+  right: 2px;
+  top: 0;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  /* The row's own surface, so a key running underneath is covered rather than
+     showing through the gaps between two icons. */
+  background: var(--shell-surface);
+  border-radius: 4px;
+  padding-left: 6px;
+}
+
+/* What the row reads. Muted so a name still leads the row, and flexible so a
+   three-key chart gives way before the layer's own name does — the one thing a
+   layer list must never ellipsise. */
+.vigilia-layer-bound {
+  flex: 0 1 auto;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--shell-muted);
+  font-size: 11px;
+}
+/* Room for the two state controls, and only on a row that draws them.
+
+   `:has` asks the controls themselves, so this holds the space open exactly
+   where something would cover the key — hovered, focused, selected, locked or
+   hidden — and nowhere else. At rest, with nothing selected, zero of the
+   starter's sixty rows draw a control and zero reserve anything. Held open on
+   every row instead, it cost the *name* 50px permanently, on all sixty.
+
+   What scoping bought is width independence, not width: 340px clips 2 of the
+   starter's 60 names, 320px clips 3 and 280px clips 15, so the panel kept the
+   340px it was widened to rather than buying canvas with one more ellipsised
+   name.
+
+   The cost falls on the attended row, where the name narrows by whatever the
+   key does not take: measured at 15.83px on `network-chart`, with every other
+   row holding still. That is the price of not taking it from every row in
+   every theme, and it is charged to the one row the author is looking at.
+
+   `margin-right` rather than `padding-right`, and on the bound rather than on
+   the row: padding a flex item whose width is already its content's pads a box
+   that does not move, and measured on canvas that left the icons covering 48px
+   of the end of the key. `calc` rather than a fixed number because the row is
+   299px wide inside the panel's 340px column here and 239px in the narrow
+   layout below, and the controls are a fixed size in both. */
+.vigilia-layer-row:has(.vigilia-layer-state button) .vigilia-layer-bound {
+  max-width: calc(100% - 50px);
+  margin-right: 50px;
+}
+.vigilia-layer-rename {
+  flex: 1;
+  min-width: 0;
+  min-height: 22px;
+  margin: 0;
 }
 .editor-shell-stage {
   min-width: 0;
@@ -385,6 +1150,61 @@ body,
   opacity: 0.35;
   cursor: default;
 }
+/* Top-centre: the dock owns the bottom-centre and the zoom readout the
+   bottom-right, so this is the only unclaimed edge of the stage. */
+.editor-shell-arrange {
+  position: absolute;
+  z-index: 3;
+  top: 12px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  gap: 3px;
+  padding: 4px;
+  border-radius: 10px;
+}
+.editor-shell-arrange button {
+  width: 30px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.editor-shell-arrange button:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+.editor-shell-arrange button:disabled:hover {
+  background: transparent;
+}
+.editor-shell-zoom {
+  position: absolute;
+  z-index: 3;
+  right: 12px;
+  bottom: 12px;
+  /* Wide enough for the widest readout the camera can reach (`6400 %` at
+     MAX_ZOOM), so zooming does not resize the trigger under the pointer that
+     is zooming. The trigger shows a percentage and never a display name. */
+  min-width: 56px;
+  padding: 5px 9px;
+  border-radius: 8px;
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  text-align: center;
+}
+/* The display the stage looks through: its screen, drawn where the camera
+   frames through it. Positioned in canvas coordinates by `editor-shell.ts`
+   beside the media layer, because it is a DOM sibling of the canvas rather
+   than a Fabric object — a Fabric frame would be a scene object, and would
+   change what `canvas.getObjects()` means.
+
+   An outline only. It must not cover the artboard or dim the pasteboard: the
+   claim it makes is where the screen's edges are, and anything more would be
+   the lens deciding what the author can see. */
+[data-vigilia-display-screen] {
+  border: 1px solid var(--vigilia-subdued);
+  box-sizing: border-box;
+}
 .editor-shell-inspector {
   padding: 12px;
 }
@@ -422,12 +1242,48 @@ body,
   font-size: 12px;
   color: var(--shell-muted);
 }
+/* A refusal is a claim about what the editor just did, so it takes the room it
+   needs and the mark that says how seriously; the icon and the word carry it,
+   not the colour alone. */
+.editor-shell-diagnostic {
+  flex: 1;
+  min-width: 0;
+  margin: 0;
+  display: flex;
+  align-items: baseline;
+  gap: 6px;
+  color: var(--shell-warm);
+}
+.editor-shell-diagnostic[data-severity="error"] {
+  color: var(--shell-danger);
+}
+/* Not a message: it has to survive every one that replaces the status line, so
+   it sits at the far end of the footer and says the same thing until the
+   document is saved again. */
+.editor-shell-save-state {
+  flex: none;
+  margin: 0;
+  color: var(--shell-warm);
+  font-weight: 600;
+  white-space: nowrap;
+}
+.editor-shell-diagnostic svg {
+  flex: none;
+  align-self: center;
+}
 [hidden] {
   display: none !important;
 }
 @media (max-width: 980px) {
   .editor-shell-body {
-    grid-template-columns: 52px 240px minmax(0, 1fr);
+    grid-template-areas: "bar stage" "panel stage";
+    /* 280px rather than the wide layout's 340px, because the stage is sharing
+       a narrow window with it. The bound column is what gives way first, which
+       is the same order the row's own flex uses. */
+    grid-template-columns: 280px minmax(0, 1fr);
+  }
+  .editor-shell-body[data-collapsed="true"] {
+    grid-template-areas: "bar bar" "stage stage";
   }
   .editor-shell-inspector {
     display: none;

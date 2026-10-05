@@ -3,12 +3,12 @@
   "id": "portrait-cover",
   "metadata": {
     "name": "Portrait strip, cover",
-    "description": "Tall 9:19.5 artboard with fitMode cover — the §55 path the showcase theme never takes. On a landscape viewport this must FILL and crop, not letterbox. Deliberately places content near every edge so a crop that centres wrongly is visible."
+    "description": "Tall 9:19.5 artboard with contentFit cover — the §55 path the showcase theme never takes. On a landscape viewport this must FILL and crop, not letterbox. Deliberately places content near every edge so a crop that centres wrongly is visible."
   },
   "artboard": {
     "width": 440,
     "height": 956,
-    "fitMode": "cover",
+    "contentFit": "cover",
     "background": { "value": "#07090d" },
     "barColor": { "value": "#ff00ff" }
   },

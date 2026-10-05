@@ -1,6 +1,7 @@
 import {
   type Binding,
   type ChartContent,
+  type ChartFamily,
   chartPaintFieldsFor,
   type FabricPalette,
   SEMANTIC_KEYS,
@@ -16,17 +17,40 @@ export interface ChartPropertyPanel {
           readonly id: string;
           readonly content: ChartContent;
           readonly bindings: readonly Binding[];
+          /**
+           * The ratio this chart is at, or `undefined` when it is at none the
+           * control group offers — a chart dragged to an arbitrary shape names
+           * no button rather than lighting up whichever is nearest. Read from
+           * the chart rather than remembered from the last click, so it is
+           * right after a drag too.
+           */
+          readonly aspect?: number;
         }
       | undefined,
     palette?: FabricPalette,
   ): void;
 }
 
+/**
+ * How many readings a family draws, per `buildChartPlan`: a line series, a bar
+ * and a slice are one binding each, and a gauge reads `bindings[0]` and nothing
+ * else. So the gauge's second binding would be a control that accepts an edit
+ * and applies none — the outcome `panel.ts`'s own doc comment rules out.
+ */
+const MAX_BINDINGS: Readonly<Record<ChartFamily, number>> = {
+  gauge: 1,
+  line: Number.POSITIVE_INFINITY,
+  bar: Number.POSITIVE_INFINITY,
+  pie: Number.POSITIVE_INFINITY,
+};
+
 export function createChartPropertyPanel(
   host: HTMLElement,
   onChange: (id: string, settings: ChartContent["settings"]) => void,
   onBindingChange: (id: string, binding: Binding) => void,
   onAspectChange: (id: string, ratio: number) => void,
+  onAddBinding: (id: string, semanticKey: string) => void,
+  onRemoveBinding: (id: string, bindingId: string) => void,
 ): ChartPropertyPanel {
   const root = document.createElement("section");
   host.prepend(root);
@@ -50,6 +74,11 @@ export function createChartPropertyPanel(
           button.type = "button";
           button.dataset["vigiliaChartAspect"] = String(ratio);
           button.textContent = `${ratio}:1`;
+          // Three buttons that looked alike left no way to tell 2:1 from 3:1
+          // after the click. `aria-pressed` is what the rest of the shell's
+          // toggles already carry, so it states the active ratio to assistive
+          // technology and to the eye through the same attribute.
+          button.setAttribute("aria-pressed", String(chart.aspect === ratio));
           button.addEventListener("click", () =>
             onAspectChange(chart.id, ratio),
           );
@@ -57,10 +86,55 @@ export function createChartPropertyPanel(
         }
         root.append(aspect);
       }
+
+      /**
+       * The control that declares the *first* binding, which is what a chart
+       * arrives without. A chooser of keys rather than a button: a binding
+       * cannot exist without the key it names, so asking for both at once
+       * removes the state where a chart holds one the panel would then have to
+       * refuse or repair.
+       */
+      const series = uiCopy.inspectorFields.runSeries;
+      const seriesLabel = document.createElement("label");
+      const add = document.createElement("select");
+      add.dataset["vigiliaChartBindingAdd"] = "";
+      const prompt = document.createElement("option");
+      prompt.value = "";
+      prompt.textContent = series;
+      add.append(prompt);
+      for (const descriptor of SEMANTIC_KEYS) {
+        const option = document.createElement("option");
+        option.value = descriptor.key;
+        option.textContent = descriptor.label;
+        add.append(option);
+      }
+      add.addEventListener("change", () => {
+        const key = add.value;
+        // Reset first: a chooser that held its choice would create a second
+        // series on every re-render of the panel.
+        add.value = "";
+        if (key !== "") onAddBinding(chart.id, key);
+      });
+      seriesLabel.textContent = series;
+      seriesLabel.htmlFor = add.id = "vigilia-chart-series";
+      const full = chart.bindings.length >= MAX_BINDINGS[chart.content.family];
+      add.disabled = full;
+      root.append(seriesLabel, add);
+      if (full) {
+        const note = document.createElement("p");
+        note.className = "vigilia-run-note";
+        note.dataset["vigiliaChartBindingFull"] = "";
+        note.textContent = uiCopy.inspectorFields.runSeriesFull(
+          chart.content.family,
+        );
+        root.append(note);
+      }
+
       for (const binding of chart.bindings) {
         const label = document.createElement("label");
         label.textContent = `Binding: ${binding.id}`;
         const select = document.createElement("select");
+        label.htmlFor = select.id = `vigilia-chart-binding-${binding.id}`;
         select.dataset["vigiliaBinding"] = binding.id;
         const keys = new Set([
           binding.semanticKey,
@@ -81,6 +155,11 @@ export function createChartPropertyPanel(
         root.append(
           label,
           select,
+          ...removeBindingControl(
+            binding,
+            (id) => onRemoveBinding(chart.id, id),
+            chart.bindings.length > 1,
+          ),
           ...bindingNumber(
             binding.id,
             "precision",
@@ -128,6 +207,11 @@ export function createChartPropertyPanel(
         const input = document.createElement(
           field.kind === "select" ? "select" : "input",
         );
+        // Keyed by the setting itself, so it is unique across every field this
+        // section builds and addressable by name in a test. This panel was the
+        // one place in the shell where neither the control had an id nor its
+        // label an `htmlFor`.
+        label.htmlFor = input.id = `vigilia-chart-setting-${field.property}`;
         input.dataset["vigiliaChartSetting"] = field.property;
         const value = (
           chart.content.settings as unknown as Record<string, unknown>
@@ -208,6 +292,26 @@ export function createChartPropertyPanel(
   };
 }
 
+/**
+ * Removes one series. Withheld on the last binding for the reason the add
+ * control is disabled at the gauge's limit: a chart with nothing bound draws
+ * its frame and no data, and a control that reaches that state is a control
+ * that can empty a card.
+ */
+function removeBindingControl(
+  binding: Binding,
+  onRemove: (id: string) => void,
+  moreThanOne: boolean,
+): readonly HTMLElement[] {
+  if (!moreThanOne) return [];
+  const button = document.createElement("button");
+  button.type = "button";
+  button.dataset["vigiliaChartBindingRemove"] = binding.id;
+  button.textContent = uiCopy.inspectorFields.removeSeries(binding.semanticKey);
+  button.addEventListener("click", () => onRemove(binding.id));
+  return [button];
+}
+
 function paintPicker(
   labelText: string,
   key: string,
@@ -218,6 +322,9 @@ function paintPicker(
   const label = document.createElement("label");
   label.textContent = labelText;
   const select = document.createElement("select");
+  // A `multiple` paint row names its slices `palette.0`, `palette.1`, so the id
+  // carries the index — a control per slice, each with its own label.
+  label.htmlFor = select.id = `vigilia-chart-paint-${key.replaceAll(".", "-")}`;
   select.dataset["vigiliaChartPaint"] = key;
   const current = isPaletteReference(value) ? value.ref : "";
   for (const [id, entry] of Object.entries(palette ?? {})) {
@@ -252,6 +359,7 @@ function bindingNumber(
   const label = document.createElement("label");
   label.textContent = labelText;
   const input = document.createElement("input");
+  label.htmlFor = input.id = `vigilia-chart-binding-${bindingId}-${property}`;
   input.dataset["vigiliaBindingField"] = `${bindingId}.${property}`;
   input.type = "number";
   input.value = value === undefined ? "" : String(value);
@@ -284,13 +392,10 @@ function unitDisplay(
   const label = document.createElement("label");
   label.textContent = uiCopy.panels.unitDisplay;
   const select = document.createElement("select");
+  label.htmlFor =
+    select.id = `vigilia-chart-binding-${binding.id}-unit-display`;
   select.dataset["vigiliaBindingField"] = `${binding.id}.unitDisplay`;
-  for (const [value, text] of [
-    ["", "Default"],
-    ["none", "None"],
-    ["short", "Short"],
-    ["long", "Long"],
-  ] as const) {
+  for (const [value, text] of Object.entries(uiCopy.unitDisplayOptions)) {
     const option = document.createElement("option");
     option.value = value;
     option.textContent = text;

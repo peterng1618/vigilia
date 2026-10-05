@@ -1,11 +1,39 @@
 import { describe, expect, it } from "vitest";
-import { validateFabricThemeEnvelope } from "./fabric-envelope-validate.js";
+import {
+  type FabricEnvelopeValidationResult,
+  validateFabricThemeEnvelope,
+} from "./fabric-envelope-validate.js";
+import { MAX_OBJECT_NAME_LENGTH } from "./object-name.js";
+import type { ValidationIssue } from "./validate.js";
+
+function withMetadata(
+  base: Record<string, unknown>,
+  metadata: Record<string, unknown>,
+): Record<string, unknown> {
+  return { ...base, metadata };
+}
+
+function withoutKey(
+  base: Record<string, unknown>,
+  key: string,
+): Record<string, unknown> {
+  const copy = { ...base };
+  delete copy[key];
+  return copy;
+}
+
+function issuesOf(
+  result: FabricEnvelopeValidationResult,
+): readonly ValidationIssue[] {
+  return result.ok ? [] : result.issues;
+}
 
 function envelope(): Record<string, unknown> {
   return {
     schemaVersion: 2,
     fabricVersion: "7.4.0",
     id: "theme",
+    metadata: { themeLanguage: "en" },
     artboard: { width: 400, height: 300 },
     bindings: { chart: [{ id: "cpu", semanticKey: "cpu.load", precision: 0 }] },
     scene: {
@@ -101,7 +129,7 @@ describe("Fabric theme envelope validation", () => {
     expect(
       validateFabricThemeEnvelope({
         ...envelope(),
-        metadata: { version: "1.2.3" },
+        metadata: { version: "1.2.3", themeLanguage: "en" },
         artboard: {
           width: 400,
           height: 300,
@@ -115,7 +143,7 @@ describe("Fabric theme envelope validation", () => {
   it("rejects malformed versions and invalid background-media references", () => {
     const result = validateFabricThemeEnvelope({
       ...envelope(),
-      metadata: { version: "v1.2.3" },
+      metadata: { version: "v1.2.3", themeLanguage: "en" },
       artboard: {
         width: 400,
         height: 300,
@@ -222,7 +250,7 @@ describe("Fabric theme envelope validation", () => {
   it("keeps shared semantics valid while refusing obsolete GIF assets", () => {
     const result = validateFabricThemeEnvelope({
       ...envelope(),
-      metadata: { name: "Valid", unexpected: true },
+      metadata: { name: "Valid", themeLanguage: "en", unexpected: true },
       assets: [{ id: "animated", kind: "gif", path: "assets/animated.gif" }],
       editorMetadata: ["not-an-object"],
     });
@@ -349,6 +377,185 @@ describe("Fabric theme envelope validation", () => {
         }),
       ]),
     });
+  });
+
+  it("requires a palette reference for the string form of a shadow", () => {
+    // Fabric accepts a shadow as a CSS string and parses it into a real Shadow
+    // with a real colour, so the unowned-literal hole is the same one the
+    // object form has. A hand-edited theme would otherwise smuggle a resolved
+    // colour past the check that exists precisely to prevent that.
+    const result = validateFabricThemeEnvelope({
+      ...withoutKey(
+        {
+          ...envelope(),
+          globals: {
+            palette: {
+              none: {
+                name: "None",
+                value: { kind: "solid", color: "transparent" },
+              },
+              edge: {
+                name: "Edge",
+                value: { kind: "solid", color: "#0a0f16" },
+              },
+            },
+          },
+        },
+        "bindings",
+      ),
+      scene: {
+        version: "7.4.0",
+        objects: [{ type: "Rect", id: "panel", shadow: "0 0 18 #123456" }],
+      },
+    });
+
+    expect(result).toMatchObject({
+      ok: false,
+      issues: expect.arrayContaining([
+        expect.objectContaining({
+          code: "unresolved-global-ref",
+          path: "/scene/objects/0/shadowColor",
+        }),
+      ]),
+    });
+  });
+
+  it("refuses a shadow colour reference the renderer cannot apply", () => {
+    // A gradient token resolves fine, but Fabric's `Shadow.color` is a string;
+    // applyingPaints drops it. A reference that cannot be applied must be an
+    // issue, matching how an unresolvable palette ref is already reported,
+    // rather than a silent no-op that leaves the shadow unowned in practice.
+    const result = validateFabricThemeEnvelope({
+      ...withoutKey(
+        {
+          ...envelope(),
+          globals: {
+            palette: {
+              none: {
+                name: "None",
+                value: { kind: "solid", color: "transparent" },
+              },
+              edge: {
+                name: "Edge",
+                value: {
+                  kind: "gradient",
+                  angle: 90,
+                  stops: [
+                    { offset: 0, color: "#0a0f16" },
+                    { offset: 1, color: "#0d1b2a" },
+                  ],
+                },
+              },
+            },
+          },
+        },
+        "bindings",
+      ),
+      scene: {
+        version: "7.4.0",
+        objects: [
+          {
+            type: "Rect",
+            id: "panel",
+            shadow: { color: "#0a0f16", blur: 18 },
+            vigiliaPaint: { shadowColor: "palette.edge" },
+          },
+        ],
+      },
+    });
+
+    expect(result).toMatchObject({
+      ok: false,
+      issues: expect.arrayContaining([
+        expect.objectContaining({
+          code: "unresolved-global-ref",
+          path: "/scene/objects/0/shadowColor",
+        }),
+      ]),
+    });
+  });
+
+  it("requires a palette reference for a persisted shadow colour", () => {
+    // Shadow is a native Fabric property, so its colour is resolved state
+    // exactly like fill and stroke: it needs an owner in `vigiliaPaint`.
+    const withPalette = {
+      ...withoutKey(
+        {
+          ...envelope(),
+          globals: {
+            palette: {
+              none: {
+                name: "None",
+                value: { kind: "solid", color: "transparent" },
+              },
+              edge: {
+                name: "Edge",
+                value: { kind: "solid", color: "#0a0f16" },
+              },
+            },
+          },
+        },
+        "bindings",
+      ),
+    };
+
+    expect(
+      validateFabricThemeEnvelope({
+        ...withPalette,
+        scene: {
+          version: "7.4.0",
+          objects: [
+            {
+              type: "Rect",
+              id: "panel",
+              shadow: { color: "#0a0f16", blur: 18 },
+              vigiliaPaint: { shadowColor: "palette.edge" },
+            },
+          ],
+        },
+      }).ok,
+    ).toBe(true);
+
+    expect(
+      validateFabricThemeEnvelope({
+        ...withPalette,
+        scene: {
+          version: "7.4.0",
+          objects: [
+            {
+              type: "Rect",
+              id: "panel",
+              shadow: { color: "#0a0f16", blur: 18 },
+            },
+          ],
+        },
+      }),
+    ).toMatchObject({
+      ok: false,
+      issues: expect.arrayContaining([
+        expect.objectContaining({
+          code: "unresolved-global-ref",
+          path: "/scene/objects/0/shadowColor",
+        }),
+      ]),
+    });
+
+    expect(
+      validateFabricThemeEnvelope({
+        ...withPalette,
+        scene: {
+          version: "7.4.0",
+          objects: [
+            {
+              type: "Rect",
+              id: "panel",
+              shadow: { color: "#0a0f16", blur: 18 },
+              vigiliaPaint: { shadowColor: "palette.gone" },
+            },
+          ],
+        },
+      }).ok,
+    ).toBe(false);
   });
 
   it("requires palette references for persisted chart paint", () => {
@@ -579,5 +786,381 @@ describe("Fabric theme envelope validation", () => {
         }),
       ]),
     });
+  });
+
+  it("requires the theme to declare the language its text is written in", () => {
+    // The realistic case: every v2 theme already has a metadata bag with a name
+    // and author, so the refusal that matters is a bag without `themeLanguage` in it —
+    // not a document missing metadata entirely. Both paths are pinned, since the
+    // validator handles them separately.
+    const withoutLocale = withMetadata(envelope(), {
+      name: "Fixture",
+      author: "Vigilia",
+    });
+
+    const missing = validateFabricThemeEnvelope(withoutLocale);
+    expect(missing.ok).toBe(false);
+    // A refusal that names the field, not a crash: a theme saved before this
+    // change must fail legibly.
+    expect(issuesOf(missing)).toContainEqual(
+      expect.objectContaining({ path: "/metadata/themeLanguage" }),
+    );
+
+    const withoutMetadata = withoutKey(envelope(), "metadata");
+    expect(
+      issuesOf(validateFabricThemeEnvelope(withoutMetadata)),
+    ).toContainEqual(
+      expect.objectContaining({ path: "/metadata/themeLanguage" }),
+    );
+  });
+
+  it("refuses a language this runtime cannot render", () => {
+    for (const language of ["en_US", "xx-YY"]) {
+      const result = validateFabricThemeEnvelope(
+        withMetadata(envelope(), { name: "Fixture", themeLanguage: language }),
+      );
+
+      expect(result.ok).toBe(false);
+      expect(issuesOf(result)).toContainEqual(
+        expect.objectContaining({ path: "/metadata/themeLanguage" }),
+      );
+    }
+  });
+
+  it("accepts a theme that declares a language but binds no clock", () => {
+    // The language is a fact about the document, not a demand that it show a clock.
+    const result = validateFabricThemeEnvelope(
+      withMetadata(envelope(), { name: "Fixture", themeLanguage: "ja" }),
+    );
+
+    expect(result.ok).toBe(true);
+  });
+
+  it("accepts a theme that declares a language but binds nothing at all", () => {
+    // The factory's own binding is `cpu.load`, so the case above only proves the
+    // absence of a clock key. A theme with no bindings whatsoever must also
+    // validate: a language is a fact about the document, not a promise that any
+    // reading is bound. Both spellings of "no bindings" are pinned, since the
+    // validator only skips the bag entirely when the key is absent.
+    const noBindingsKey = withoutKey(envelope(), "bindings");
+    expect(
+      validateFabricThemeEnvelope(
+        withMetadata(noBindingsKey, { name: "Fixture", themeLanguage: "ja" }),
+      ).ok,
+    ).toBe(true);
+
+    const emptyBindings = { ...envelope(), bindings: {} };
+    expect(
+      validateFabricThemeEnvelope(
+        withMetadata(emptyBindings, { name: "Fixture", themeLanguage: "ja" }),
+      ).ok,
+    ).toBe(true);
+  });
+});
+
+describe("authored glass treatment", () => {
+  function withObjects(objects: readonly unknown[]): Record<string, unknown> {
+    // The shared fixture binds a chart; these cases replace the scene, so the
+    // binding would fail for an unrelated reason and hide the real one.
+    return withoutKey(
+      { ...envelope(), scene: { version: "7.4.0", objects } },
+      "bindings",
+    );
+  }
+
+  it("accepts a bounded radius, and treats absence as off", () => {
+    // Absence must stay legal forever: a theme authored before glass existed
+    // is not invalid because it lacks the property.
+    expect(
+      validateFabricThemeEnvelope(withObjects([{ type: "Rect", id: "panel" }]))
+        .ok,
+    ).toBe(true);
+    expect(
+      validateFabricThemeEnvelope(
+        withObjects([
+          { type: "Rect", id: "panel", vigiliaGlass: { blurRadius: 0 } },
+          { type: "Rect", id: "soft", vigiliaGlass: { blurRadius: 48 } },
+        ]),
+      ).ok,
+    ).toBe(true);
+  });
+
+  it("refuses a radius that is out of range, non-finite or the wrong type", () => {
+    for (const blurRadius of [
+      -1,
+      48.5,
+      Number.NaN,
+      Number.POSITIVE_INFINITY,
+      "12",
+      null,
+    ]) {
+      const result = validateFabricThemeEnvelope(
+        withObjects([
+          { type: "Rect", id: "panel", vigiliaGlass: { blurRadius } },
+        ]),
+      );
+      expect(result, `blurRadius ${String(blurRadius)}`).toMatchObject({
+        ok: false,
+        issues: expect.arrayContaining([
+          expect.objectContaining({
+            code: "invalid-fabric-scene",
+            path: "/scene/objects/0/vigiliaGlass",
+          }),
+        ]),
+      });
+    }
+  });
+
+  it("refuses a treatment that is not an object, or carries extra authored state", () => {
+    for (const vigiliaGlass of [
+      12,
+      "glass",
+      {},
+      { radius: 12 },
+      // A resolved surface or sampled pixel is exactly the derived state a
+      // portable document must not carry.
+      { blurRadius: 12, surface: "data:image/png;base64,AAAA" },
+      { blurRadius: 12, sample: 42.7 },
+    ]) {
+      expect(
+        validateFabricThemeEnvelope(
+          withObjects([{ type: "Rect", id: "panel", vigiliaGlass }]),
+        ),
+        JSON.stringify(vigiliaGlass),
+      ).toMatchObject({ ok: false });
+    }
+  });
+
+  it("refuses glass on an object kind with no sampleable clipped area", () => {
+    const result = validateFabricThemeEnvelope(
+      withObjects([
+        { type: "Textbox", id: "label", vigiliaGlass: { blurRadius: 12 } },
+      ]),
+    );
+
+    expect(result).toMatchObject({
+      ok: false,
+      issues: expect.arrayContaining([
+        expect.objectContaining({
+          code: "invalid-enum",
+          path: "/scene/objects/0/vigiliaGlass",
+        }),
+      ]),
+    });
+  });
+
+  it("accepts a treatment on every kind the product proves is closed", () => {
+    // The round trip the widening exists for: written on a Circle, an Ellipse,
+    // a Triangle and a Polygon as well as a Rect, the envelope accepts it.
+    // Refusing any of these would be a theme that saves and will not open.
+    for (const type of ["Rect", "Circle", "Ellipse", "Triangle", "Polygon"]) {
+      expect(
+        validateFabricThemeEnvelope(
+          withObjects([
+            { type, id: "panel", vigiliaGlass: { blurRadius: 24 } },
+          ]),
+        ),
+        type,
+      ).toMatchObject({ ok: true });
+    }
+  });
+
+  it("refuses an open path, whose interior there is nothing to sample", () => {
+    // Polyline and Line are open; a `Path` is arbitrary author data whose
+    // closedness the product cannot know. Naming the three here is the point:
+    // the set is the geometry claim, and a silent widening of it would frost
+    // a shape with no area under the blur.
+    for (const type of ["Polyline", "Line", "Path"]) {
+      expect(
+        validateFabricThemeEnvelope(
+          withObjects([
+            { type, id: "sketch", vigiliaGlass: { blurRadius: 24 } },
+          ]),
+        ),
+        type,
+      ).toMatchObject({
+        ok: false,
+        issues: expect.arrayContaining([
+          expect.objectContaining({
+            code: "invalid-enum",
+            path: "/scene/objects/0/vigiliaGlass",
+          }),
+        ]),
+      });
+    }
+  });
+
+  it("refuses a malformed treatment on a newly admitted kind", () => {
+    // Widening the vocabulary must not widen what counts as a treatment: the
+    // kind rule and the value rule are separate, and a bad radius on a Circle
+    // is refused exactly as it is on a Rect.
+    expect(
+      validateFabricThemeEnvelope(
+        withObjects([
+          { type: "Circle", id: "orb", vigiliaGlass: { blurRadius: 999 } },
+        ]),
+      ),
+    ).toMatchObject({
+      ok: false,
+      issues: expect.arrayContaining([
+        expect.objectContaining({
+          code: "invalid-fabric-scene",
+          path: "/scene/objects/0/vigiliaGlass",
+        }),
+      ]),
+    });
+  });
+
+  it("validates a nested treatment at the child's own path", () => {
+    // The scene walk is the only thing that reaches a group child, so a
+    // treatment validated only at the top level would let a bad nested value
+    // through into revival.
+    const result = validateFabricThemeEnvelope(
+      withObjects([
+        {
+          type: "Group",
+          id: "card",
+          objects: [
+            { type: "Rect", id: "panel", vigiliaGlass: { blurRadius: 12 } },
+            { type: "Rect", id: "inner", vigiliaGlass: { blurRadius: 999 } },
+          ],
+        },
+      ]),
+    );
+
+    expect(result).toMatchObject({
+      ok: false,
+      issues: expect.arrayContaining([
+        expect.objectContaining({
+          code: "invalid-fabric-scene",
+          path: "/scene/objects/0/objects/1/vigiliaGlass",
+        }),
+      ]),
+    });
+  });
+});
+
+describe("an object's authored display name", () => {
+  function withObjects(objects: readonly unknown[]): Record<string, unknown> {
+    // The shared fixture binds a chart; these cases replace the scene, so the
+    // binding would fail for an unrelated reason and hide the real one.
+    return withoutKey(
+      { ...envelope(), scene: { version: "7.4.0", objects } },
+      "bindings",
+    );
+  }
+
+  it("accepts a name, and treats absence as unnamed", () => {
+    // Absence must stay legal forever: a scene authored before the field is not
+    // invalid because it lacks the property, and the id is what it falls back
+    // to.
+    expect(
+      validateFabricThemeEnvelope(withObjects([{ type: "Rect", id: "panel" }]))
+        .ok,
+    ).toBe(true);
+    expect(
+      validateFabricThemeEnvelope(
+        withObjects([
+          { type: "Rect", id: "panel", name: "Header panel" },
+          {
+            type: "Rect",
+            id: "body",
+            name: "x".repeat(MAX_OBJECT_NAME_LENGTH),
+          },
+        ]),
+      ).ok,
+    ).toBe(true);
+  });
+
+  it("refuses a name that is not a label an author could read", () => {
+    // The envelope is the trust boundary: a value that is not a name is
+    // refused rather than kept and printed into a layer row.
+    for (const name of [
+      42,
+      null,
+      ["Header panel"],
+      { text: "Header panel" },
+      // A blank name is worse than none: it prints as an empty row, where
+      // absence falls back to the id.
+      "",
+      "   ",
+      "x".repeat(MAX_OBJECT_NAME_LENGTH + 1),
+    ]) {
+      expect(
+        validateFabricThemeEnvelope(
+          withObjects([{ type: "Rect", id: "panel", name }]),
+        ),
+        JSON.stringify(name),
+      ).toMatchObject({ ok: false });
+    }
+  });
+
+  it("validates a nested name at the child's own path", () => {
+    // The scene walk is the only thing that reaches a group child, so a name
+    // validated only at the top level would let a bad nested value through.
+    const result = validateFabricThemeEnvelope(
+      withObjects([
+        {
+          type: "Group",
+          id: "card",
+          objects: [{ type: "Rect", id: "inner", name: 42 }],
+        },
+      ]),
+    );
+
+    expect(result).toMatchObject({
+      ok: false,
+      issues: expect.arrayContaining([
+        expect.objectContaining({
+          path: "/scene/objects/0/objects/0/name",
+        }),
+      ]),
+    });
+  });
+});
+
+describe("a text object's fixed box", () => {
+  const withBox = (box: unknown): Record<string, unknown> => {
+    const base = envelope();
+    return {
+      ...base,
+      scene: {
+        version: "7.4.0",
+        objects: [
+          {
+            type: "Textbox",
+            id: "label",
+            fill: "#fff",
+            vigiliaText: {
+              box,
+              runs: [{ kind: "literal", text: "CPU" }],
+            },
+          },
+        ],
+      },
+    };
+  };
+
+  /** Whether anything complained about the box, whatever else it did. */
+  const boxIssues = (box: unknown): readonly ValidationIssue[] =>
+    issuesOf(validateFabricThemeEnvelope(withBox(box))).filter(
+      (issue) => issue.path === "/scene/objects/0/vigiliaText/box",
+    );
+
+  it("accepts the two dimensions an author wrote", () => {
+    expect(boxIssues({ width: 180, height: 72 })).toEqual([]);
+  });
+
+  it("refuses a box it cannot lay text into", () => {
+    // Fabric re-measures the width on every refresh, so a box that is missing a
+    // dimension is not a box the renderer can honour — it is a silent fallback.
+    for (const box of [
+      { width: 180 },
+      { width: 0, height: 72 },
+      { width: 180, height: Number.NaN },
+      { width: 180, height: 72, top: 30 },
+    ]) {
+      expect(boxIssues(box), JSON.stringify(box)).toHaveLength(1);
+    }
   });
 });

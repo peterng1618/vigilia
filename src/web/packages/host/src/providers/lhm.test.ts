@@ -375,6 +375,29 @@ describe("LHM provider", () => {
     expect(provider.health().available).toBe(false);
   });
 
+  it("keeps the host's own transport address out of a message a browser reads", async () => {
+    // The sample message is served over the sample stream to every display on
+    // the network, and `ProviderHealth` says in as many words that these are
+    // redacted. The address is the host's business, not the reader's.
+    const provider = providerReturning(new Error("connect ECONNREFUSED"));
+
+    const message = (await provider.sample(["cpu.temp"], 0))[0]?.sample.message;
+
+    expect(message).not.toContain("127.0.0.1");
+    expect(message).not.toContain("8085");
+    // The sentence still says what is wrong, so the display is not left with
+    // a reason it cannot act on.
+    expect(message).toContain("LibreHardwareMonitor is not reachable");
+    expect(message).toContain("ECONNREFUSED");
+  });
+
+  it("keeps the address out of its health too, which is the other browser-facing one", async () => {
+    const provider = providerReturning(new Error("connect ECONNREFUSED"));
+    await provider.sample(["cpu.temp"], 0);
+
+    expect(provider.health().message ?? "").not.toContain("127.0.0.1");
+  });
+
   it("reports a sensor the machine does not have as a gap", async () => {
     const provider = providerReturning({
       ok: true,

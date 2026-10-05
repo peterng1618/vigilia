@@ -6,7 +6,7 @@ import {
   type EngineAnimation,
   toEngineAnimation,
 } from "./animation.js";
-import { resolveChartPaint } from "./chart-paint.js";
+import { NO_INK, NO_PAINT, resolveChartPaint } from "./chart-paint.js";
 import {
   type EngineColor,
   normalizePosition,
@@ -33,6 +33,15 @@ export interface BarSettings {
   readonly fill: ChartPaint;
   /** Unfilled remainder; present makes this a progress bar. */
   readonly track?: ChartPaint;
+  /**
+   * The track's own corner radius, independent of the bar's.
+   *
+   * The two ends of a progress bar are drawn by two different ECharts
+   * properties — the bar's `itemStyle.borderRadius`, the track's
+   * `backgroundStyle.borderRadius` — so one authorable value each is what makes
+   * them independent. Absent means square, as a track has always been.
+   */
+  readonly trackCornerRadius?: number;
   readonly showAxes: boolean;
   readonly showCategoryLabels: boolean;
   readonly animation?: AnimationSettings;
@@ -47,6 +56,9 @@ export const defaultBarSettings: BarSettings = {
   cornerRadius: 7,
   fill: { kind: "solid", color: "#00b8d9" },
   track: { kind: "solid", color: "#2a2f3a" },
+  // Matches the bar by default, because the two share one slot's geometry — but
+  // it is its own value, so a theme can round one and not the other.
+  trackCornerRadius: 7,
   showAxes: false,
   showCategoryLabels: false,
 };
@@ -97,7 +109,10 @@ export interface BarOption extends EngineAnimation {
       readonly barWidth?: number;
       readonly barCategoryGap: string;
       readonly showBackground: boolean;
-      readonly backgroundStyle?: { readonly color: EngineColor };
+      readonly backgroundStyle?: {
+        readonly color: EngineColor;
+        readonly borderRadius?: number;
+      };
       readonly silent: true;
     },
   ];
@@ -156,7 +171,7 @@ export function buildBarOption(
         showBackground: settings.track !== undefined,
         ...(settings.track === undefined
           ? {}
-          : { backgroundStyle: { color: toTrackColor(settings, palette) } }),
+          : { backgroundStyle: toBackgroundStyle(settings, palette) }),
         silent: true,
       },
     ],
@@ -174,7 +189,7 @@ export function toBarDataItem(
   if (!hasPlottableValue(input.sample)) {
     return {
       value: null,
-      itemStyle: { color: "transparent", borderRadius },
+      itemStyle: { color: NO_INK, borderRadius },
     };
   }
 
@@ -182,10 +197,14 @@ export function toBarDataItem(
   // Clamp only what is drawn; preserve the raw reading elsewhere (§83).
   const display = Math.min(Math.max(raw, settings.min), settings.max);
   const position = normalizePosition(raw, settings.min, settings.max);
+  const color = toBarColor(settings, position, palette);
 
+  // A bar whose paint resolved to nothing carries no value either: a bar of
+  // transparent ink over a live number is the one rendering that looks like
+  // data and is not (0007).
   return {
-    value: display,
-    itemStyle: { color: toBarColor(settings, position, palette), borderRadius },
+    value: color === undefined ? null : display,
+    itemStyle: { color: color ?? NO_INK, borderRadius },
   };
 }
 
@@ -194,8 +213,9 @@ export function toBarColor(
   settings: BarSettings,
   position: number,
   palette?: FabricPalette,
-): EngineColor {
+): EngineColor | undefined {
   const fill = resolveChartPaint(settings.fill, palette);
+  if (fill === undefined) return undefined;
   if (fill.kind === "gradient") {
     return toLinearGradient(
       fill.stops,
@@ -204,6 +224,28 @@ export function toBarColor(
   }
 
   return resolveFlatColor(fill, position);
+}
+
+/**
+ * The track rectangle ECharts draws behind the bar.
+ *
+ * `backgroundStyle.borderRadius` sets the zrender `Rect`'s own `r`, and that
+ * rect *is* the track — the full value-axis span of the slot — so a number
+ * rounds the two ends of the progress bar rather than the outside of a larger
+ * background.
+ */
+function toBackgroundStyle(
+  settings: BarSettings,
+  palette: FabricPalette | undefined,
+): { readonly color: EngineColor; readonly borderRadius?: number } {
+  const radius = settings.trackCornerRadius;
+
+  return {
+    color: toTrackColor(settings, palette),
+    // Absent stays absent: ECharts reads a missing key as no radius, and an
+    // authored one is clamped the same way the bar's is.
+    ...(radius === undefined ? {} : { borderRadius: Math.max(0, radius) }),
+  };
 }
 
 /** Track gradients span the whole slot; threshold tracks resolve to their top band. */
@@ -217,7 +259,7 @@ function toTrackColor(
     return "transparent";
   }
 
-  const resolved = resolveChartPaint(track, palette);
+  const resolved = resolveChartPaint(track, palette) ?? NO_PAINT;
   if (resolved.kind === "gradient") {
     return toLinearGradient(
       resolved.stops,

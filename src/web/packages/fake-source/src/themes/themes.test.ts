@@ -221,7 +221,7 @@ describe("the fixture set", () => {
     const modes = new Set(
       VALID_THEMES.map(
         (fixture) =>
-          validated(fixture.document, fixture.name).artboard.fitMode ??
+          validated(fixture.document, fixture.name).artboard.contentFit ??
           "contain",
       ),
     );

@@ -1,4 +1,5 @@
 import { type BarInput, buildBarOption } from "../charts/bar.js";
+import { resolveChartPaint } from "../charts/chart-paint.js";
 import type { ChartOptionByFamily } from "../charts/engine-option.js";
 import { buildGaugeOption } from "../charts/gauge.js";
 import {
@@ -7,6 +8,7 @@ import {
   type SeriesInput,
 } from "../charts/line.js";
 import { buildPieOption, type PieSliceInput } from "../charts/pie.js";
+import { chartPaintFieldsFor } from "../charts/settings-fields.js";
 import { describeSemanticKey } from "../data/semantic-keys.js";
 import type { SampleSource } from "../data/source.js";
 import type {
@@ -15,6 +17,7 @@ import type {
   ChartContent,
   ChartFamily,
   Globals,
+  PalettePaint,
   StyleMap,
   StyleValue,
   TextContent,
@@ -24,7 +27,7 @@ import type {
   TypePreset,
 } from "../theme/document.js";
 import type { Sample, SensorStatus } from "../types.js";
-import { formatInstant } from "./datetime-format.js";
+import { formatInstant } from "./datetime/format.js";
 import {
   convertForDisplay,
   DEFAULT_MEASUREMENT_SYSTEM,
@@ -128,7 +131,7 @@ export interface ScenePlan {
   readonly artboard: {
     readonly width: number;
     readonly height: number;
-    readonly fitMode: "contain" | "cover";
+    readonly contentFit: "contain" | "cover";
     readonly background: unknown;
     readonly barColor: unknown;
   };
@@ -147,6 +150,11 @@ export interface PlanContext {
   readonly longUnits?: Readonly<Record<string, string>>;
   /** The consumer's measurement preference; metric shows what was measured. */
   readonly measurement?: MeasurementSystem;
+  /**
+   * The language the document's text is written in. A runtime input like
+   * `longUnits`, never persisted scene state: the theme's own `metadata` owns it.
+   */
+  readonly themeLanguage?: string;
 }
 
 /** Runtime inputs required to derive one authored chart's display option. */
@@ -156,20 +164,30 @@ export type ChartPlanContext = Pick<
 >;
 
 export function buildScenePlan(context: PlanContext): ScenePlan {
-  const issues: PlanIssue[] = [];
-  const globals = context.document.globals ?? {};
+  // The document's own `metadata.themeLanguage` is the theme's language; a
+  // caller that sets `context.themeLanguage` overrides it for one plan.
+  // Normalized once, so the two `Pick` sites downstream only ever see a string
+  // or nothing.
+  const plan: PlanContext =
+    context.themeLanguage === undefined &&
+    context.document.metadata?.themeLanguage !== undefined
+      ? { ...context, themeLanguage: context.document.metadata.themeLanguage }
+      : context;
 
-  const nodes = context.document.nodes.map((node) =>
-    planNode(node, context, globals, issues),
+  const issues: PlanIssue[] = [];
+  const globals = plan.document.globals ?? {};
+
+  const nodes = plan.document.nodes.map((node) =>
+    planNode(node, plan, globals, issues),
   );
 
-  const artboard = context.document.artboard;
+  const artboard = plan.document.artboard;
 
   return {
     artboard: {
       width: artboard.width,
       height: artboard.height,
-      fitMode: artboard.fitMode ?? "contain",
+      contentFit: artboard.contentFit ?? "contain",
       background: resolveStyleValue(
         artboard.background,
         globals,
@@ -279,6 +297,7 @@ function planContent(
         node.bindings ?? [],
         context,
         issues,
+        chartPalette(globals),
       );
 
     case "image": {
@@ -396,7 +415,10 @@ export function resolveTextSegments(
   nodeId: string,
   runs: readonly TextRun[],
   bindings: readonly Binding[],
-  context: Pick<PlanContext, "source" | "longUnits" | "measurement">,
+  context: Pick<
+    PlanContext,
+    "source" | "longUnits" | "measurement" | "themeLanguage"
+  >,
   globals: Globals,
   issues: PlanIssue[],
 ): PlanTextSegment[] {
@@ -443,7 +465,7 @@ function formatValueSegment(
   binding: Binding,
   run: Extract<TextRun, { kind: "value" }>,
   style: ResolvedStyle,
-  context: Pick<PlanContext, "longUnits" | "measurement">,
+  context: Pick<PlanContext, "longUnits" | "measurement" | "themeLanguage">,
 ): PlanTextSegment {
   if (sample.status !== "ok") {
     return {
@@ -471,10 +493,10 @@ function formatValueSegment(
       sample.unit,
       context.measurement ?? DEFAULT_MEASUREMENT_SYSTEM,
     );
-    text = formatNumber(converted.value, precision);
+    text = formatNumber(converted.value, precision, context.themeLanguage);
     shown = converted.unit;
   } else if (sample.textValue !== undefined) {
-    text = formatTextReading(binding, sample.textValue);
+    text = formatTextReading(binding, sample.textValue, context.themeLanguage);
   } else if (sample.booleanValue !== undefined) {
     text = sample.booleanValue ? "on" : "off";
   } else {
@@ -491,7 +513,11 @@ function formatValueSegment(
  * decide how it reads; any other text is shown exactly as the provider sent it.
  * A value no formatter can read is shown raw rather than blanked.
  */
-function formatTextReading(binding: Binding, value: string): string {
+function formatTextReading(
+  binding: Binding,
+  value: string,
+  themeLanguage: string | undefined,
+): string {
   const instant = describeSemanticKey(binding.semanticKey)?.instant;
 
   if (instant === undefined) {
@@ -503,6 +529,7 @@ function formatTextReading(binding: Binding, value: string): string {
       value,
       binding.format ?? instant.defaultFormat,
       binding.timeZone,
+      themeLanguage,
     ) ?? value
   );
 }
@@ -511,13 +538,76 @@ function formatTextReading(binding: Binding, value: string): string {
 export function formatNumber(
   value: number,
   precision: number | undefined,
+  themeLanguage?: string,
 ): string {
+  // `Intl` distinguishes negative zero and prints it; `toFixed`, which this
+  // used, did not. A reading of `-0` on a dashboard is a rounding artefact
+  // dressed as a measurement, and it is exactly the case a sensor hits.
+  const measured = value === 0 ? 0 : value;
+
   if (precision !== undefined) {
-    return value.toFixed(Math.min(Math.max(Math.trunc(precision), 0), 6));
+    const digits = Math.min(Math.max(Math.trunc(precision), 0), 6);
+    return numberFormat(themeLanguage, digits, digits).format(measured);
   }
 
-  const rounded = Math.round(value * 10) / 10;
-  return Number.isInteger(rounded) ? rounded.toFixed(0) : rounded.toFixed(1);
+  // At most one decimal, and none where the value has none: `toFixed(1)` used
+  // to decide that itself, and a reading ending `.0` is a place of width an
+  // authored text box then has to be laid out around.
+  const rounded = Math.round(measured * 10) / 10;
+  return numberFormat(
+    themeLanguage,
+    0,
+    Number.isInteger(rounded) ? 0 : 1,
+  ).format(rounded === 0 ? 0 : rounded);
+}
+
+// Built once per language per digit pair: this runs per text run per refresh,
+// and constructing a formatter is expensive.
+const numberFormatters = new Map<string, Intl.NumberFormat>();
+
+/**
+ * The reading in the theme's own number format.
+ *
+ * Grouping is off on purpose. The separator is what a reader recognises — a
+ * German reads `17,6` where the default wrote `17.6` — while grouping changes
+ * how wide every four-digit reading is, and a dashboard lays its text out in
+ * boxes an author sized by hand. A locale's number format is not ours to
+ * second-guess in the one respect that moves the layout.
+ */
+function numberFormat(
+  themeLanguage: string | undefined,
+  minimumFractionDigits: number,
+  maximumFractionDigits: number,
+): Intl.NumberFormat {
+  if (themeLanguage === undefined) {
+    return new Intl.NumberFormat(undefined, {
+      useGrouping: false,
+      minimumFractionDigits,
+      maximumFractionDigits,
+    });
+  }
+  const key = `${themeLanguage} ${minimumFractionDigits} ${maximumFractionDigits}`;
+  const cached = numberFormatters.get(key);
+  if (cached !== undefined) return cached;
+
+  let created: Intl.NumberFormat;
+  try {
+    created = new Intl.NumberFormat(themeLanguage, {
+      useGrouping: false,
+      minimumFractionDigits,
+      maximumFractionDigits,
+    });
+  } catch {
+    // A tag the runtime dropped since validation reads as the runtime's own
+    // rather than failing a paint. Validation is what refuses an unusable tag.
+    created = new Intl.NumberFormat(undefined, {
+      useGrouping: false,
+      minimumFractionDigits,
+      maximumFractionDigits,
+    });
+  }
+  numberFormatters.set(key, created);
+  return created;
 }
 
 export function formatUnit(
@@ -562,6 +652,7 @@ export function buildChartPlan(
       });
     }
   }
+  reportUnresolvedChartPaint(nodeId, content, palette, issues);
 
   switch (content.family) {
     case "gauge": {
@@ -642,6 +733,39 @@ export function buildChartPlan(
         settings: content.settings,
         option: buildPieOption(content.settings, slices, animate, palette),
       };
+    }
+  }
+}
+
+/**
+ * A paint reference the document does not define draws no ink, which on the
+ * display is indistinguishable from no reading. Reported under the code
+ * `resolveStyleValue` already uses, so the two absences stay two facts (0007).
+ */
+function reportUnresolvedChartPaint(
+  nodeId: string,
+  content: ChartContent,
+  palette: import("../theme/fabric-envelope.js").FabricPalette | undefined,
+  issues: PlanIssue[],
+): void {
+  const settings = content.settings as unknown as Record<string, unknown>;
+  for (const field of chartPaintFieldsFor(content.family)) {
+    const declared = settings[field.property];
+    const paints =
+      field.multiple === true && Array.isArray(declared)
+        ? declared
+        : declared === undefined
+          ? []
+          : [declared];
+    for (const paint of paints) {
+      if (paint === undefined || resolveChartPaint(paint as never, palette))
+        continue;
+      const ref = (paint as { readonly ref?: string }).ref;
+      issues.push({
+        code: "unresolved-global",
+        nodeId,
+        detail: `Chart paint "${ref ?? field.property}" is not defined in this document.`,
+      });
     }
   }
 }
@@ -778,6 +902,41 @@ function isTypePreset(value: unknown): value is TypePreset {
       (typeof preset["lineHeight"] === "number" &&
         Number.isFinite(preset["lineHeight"]) &&
         preset["lineHeight"] > 0))
+  );
+}
+
+/**
+ * The chart builders take a `FabricPalette`; a document's `globals.palette` is
+ * the same map with an unvalidated `value`. An entry that is not palette paint
+ * is dropped rather than cast, so an unresolvable reference is a gap (0007).
+ */
+function chartPalette(
+  globals: Globals,
+): import("../theme/fabric-envelope.js").FabricPalette | undefined {
+  const entries = Object.entries(globals.palette ?? {}).filter(
+    (
+      entry,
+    ): entry is [
+      string,
+      import("../theme/fabric-envelope.js").FabricPaletteEntry,
+    ] => isPalettePaint(entry[1].value),
+  );
+  return entries.length === 0 ? undefined : Object.fromEntries(entries);
+}
+
+function isPalettePaint(value: unknown): value is PalettePaint {
+  if (typeof value !== "object" || value === null) return false;
+  const paint = value as Record<string, unknown>;
+  if (paint["kind"] === "solid") return typeof paint["color"] === "string";
+  return (
+    paint["kind"] === "gradient" &&
+    Array.isArray(paint["stops"]) &&
+    paint["stops"].every(
+      (stop) =>
+        typeof stop === "object" &&
+        stop !== null &&
+        typeof (stop as Record<string, unknown>)["color"] === "string",
+    )
   );
 }
 

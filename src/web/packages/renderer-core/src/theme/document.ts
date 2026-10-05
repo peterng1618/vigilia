@@ -123,7 +123,12 @@ export interface Artboard {
   readonly width: number;
   readonly height: number;
   readonly background?: StyleValue;
-  readonly fitMode?: "contain" | "cover";
+  /**
+   * How the artboard's *content* fills the viewport. Not the background media's
+   * own `fit`, which is the only fit an author sets; this is a guarantee of the
+   * model rather than a choice, and absent means contain.
+   */
+  readonly contentFit?: "contain" | "cover";
   readonly barColor?: StyleValue;
   readonly backgroundMedia?: BackgroundMedia;
 }
@@ -170,8 +175,27 @@ export type TextRun =
       readonly style?: StyleMap;
     };
 
+/**
+ * The author's fixed box, in scene units.
+ *
+ * Fabric's `Textbox` derives its width from the longest unbreakable run and its
+ * height from its line count, so neither is available to hold a box the text
+ * cannot widen. This is the copy that survives a save; the Fabric object's own
+ * width is a cache this re-asserts. The box's top-left is the object's
+ * `left`/`top`, so only the two dimensions belong here.
+ */
+export interface TextBox {
+  readonly width: number;
+  readonly height: number;
+}
+
 export interface TextContent {
   readonly runs: readonly TextRun[];
+  /**
+   * The fixed box. Absent means the text measures its own, which is what a
+   * document saved before fixed boxes existed keeps doing.
+   */
+  readonly box?: TextBox;
   readonly wrap?: boolean;
   readonly overflow?: "clip" | "ellipsis" | "visible";
   readonly align?: "left" | "center" | "right";
@@ -272,6 +296,16 @@ export interface ThemeMetadata {
   readonly version?: string;
   readonly createdAt?: string;
   readonly updatedAt?: string;
+  /**
+   * The language this theme's text is written in, as a BCP 47 tag. Required on
+   * v2 envelopes: text a theme shows belongs to the theme's language, and a
+   * theme library filters on it. Absent means English when a v1 document is read.
+   *
+   * Named for the language rather than the locale: the value is a bare language
+   * tag from the curated list, and it states a fact about this theme rather than
+   * the runtime's formatting preferences. See docs/decisions/0022.
+   */
+  readonly themeLanguage?: string;
 }
 
 export interface ThemeDocument {

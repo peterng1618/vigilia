@@ -1,7 +1,15 @@
 import { ActiveSelection, type FabricObject } from "fabric/es";
 
-/** No Vigilia object type is excluded by id. */
-export const IGNORED_IDS: readonly string[] = [];
+/** Scene objects that are decoration rather than alignable content. The
+ * artboard plate spans the whole artboard, so it is "aligned" with every object
+ * on the cross axis and its stroke edges sit half a pixel outside the true
+ * artboard bounds, winning boundary snaps over the artboard's own source.
+ * It is excluded by id — `background` is the plate's conventional id, which
+ * the starter used to author and an author can still draw — not by
+ * `selectable`, which would also drop locked neighbours. The starter no longer
+ * authors one: its backdrop is packaged media mounted below the canvas
+ * (`docs/decisions/0011`), so nothing on the canvas spans the artboard. */
+export const IGNORED_IDS: readonly string[] = ["background"];
 
 /** Collects the set of objects excluded from processing. */
 export const collectExcludedObjects = ({

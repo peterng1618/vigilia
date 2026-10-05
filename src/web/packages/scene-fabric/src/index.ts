@@ -1,3 +1,15 @@
+export type { ArtboardSize, SceneBox } from "./artboard-crop.js";
+export {
+  bottom,
+  countable,
+  EDGE_TOLERANCE,
+  outsideBoxes,
+  outsideCount,
+  outsideEdges,
+  right,
+  sceneBoxesOf,
+} from "./artboard-crop.js";
+export { writeAuthoredBoxDimension } from "./authored-box.js";
 /** Fabric ScenePlan renderer. Keep Fabric out of renderer-core; player code uses `fabric/es` StaticCanvas only. */
 
 export type {
@@ -15,6 +27,7 @@ export {
   type BackgroundMediaHandle,
   type BackgroundMediaOptions,
   type BackgroundMediaSource,
+  mediaDrawArgs,
   mountBackgroundMedia,
 } from "./background-media.js";
 export type {
@@ -30,10 +43,18 @@ export { type ChartRefreshRate, startChartRefresh } from "./chart-refresh.js";
 export type { UnsupportedReporter } from "./fabric-nodes.js";
 export {
   applyAuthoredText,
+  type PlanTextObject,
   refreshBoundText,
   VIGILIA_TEXT_PROPERTY,
 } from "./fabric-text.js";
 export { type FontAssetLoadOptions, loadFontAssets } from "./font-assets.js";
+export {
+  type BackdropMedia,
+  createGlass,
+  type DeviceRect,
+  type GlassHandle,
+  type GlassOptions,
+} from "./glass.js";
 export {
   type FabricAssetReference,
   objectAssetReference,
@@ -43,13 +64,18 @@ export {
 export {
   applyObjectPalettePaints,
   type FabricPaintRefs,
+  paintPropertyFor,
   VIGILIA_PAINT_PROPERTY,
 } from "./object-paint.js";
 export {
   applyObjectTypePresets,
   reassignObjectTypePresetReferences,
 } from "./object-type.js";
-export { reassignObjectPaletteReferences } from "./palette-references.js";
+export {
+  objectPaletteReferences,
+  type PaletteReference,
+  reassignObjectPaletteReferences,
+} from "./palette-references.js";
 export type { SerialisedScene } from "./persist.js";
 export {
   assertFabricThemeEnvelopeCompatible,

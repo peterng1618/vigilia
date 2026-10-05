@@ -9,23 +9,29 @@ import { ProviderRegistry, unionOfKeys } from "./registry.js";
 
 const NOW = Date.parse("2026-01-01T00:00:10Z");
 
-function sample(sensorId: string, value: number): Sample {
+function sample(sensorId: string, value: number | string): Sample {
   return {
     sensorId,
     timestamp: new Date(NOW).toISOString(),
     status: "ok",
-    value,
-    unit: "%",
+    ...(typeof value === "string"
+      ? { textValue: value }
+      : { value, unit: "%" }),
   };
 }
 
 /** A provider that answers a fixed set of keys and records every call. */
 function stubProvider(
   id: string,
-  answers: Record<string, number>,
-  options: { readonly failWith?: string } = {},
+  answers: Record<string, number | string>,
+  options: {
+    readonly failWith?: string;
+    /** Keys this provider reports as a gap rather than answering. */
+    readonly gaps?: readonly string[];
+  } = {},
 ): SensorProvider & { readonly calls: string[][] } {
   const calls: string[][] = [];
+  const gaps = new Set(options.gaps ?? []);
 
   return {
     id,
@@ -53,7 +59,14 @@ function stubProvider(
           .filter((key) => key in answers)
           .map((key) => ({
             semanticKey: key,
-            sample: sample(`${id}:${key}`, answers[key] ?? 0),
+            sample: gaps.has(key)
+              ? {
+                  sensorId: `${id}:${key}`,
+                  timestamp: new Date(NOW).toISOString(),
+                  status: "missing" as const,
+                  message: `${id} cannot name that device`,
+                }
+              : sample(`${id}:${key}`, answers[key] ?? 0),
           })),
       );
     },
@@ -227,6 +240,84 @@ describe("ProviderRegistry", () => {
       const cycle = await registry.sample(["cpu.temp.package"], NOW);
 
       expect(cycle.entries[0]?.sample.sensorId).toBe("lhm:cpu.temp.package");
+    });
+
+    it("gives an overlapping caption to the earlier provider, as it does a reading", async () => {
+      // What precedence alone guarantees: one provider owns both keys. The
+      // pair's coherence is not the registry's to decide — it is each provider
+      // emitting a caption only for the device it also answered figures for.
+      const registry = new ProviderRegistry([
+        stubProvider("lhm", {
+          "gpu.temp": 60,
+          "gpu.name": "AMD Radeon RX 6800",
+        }),
+        stubProvider("library", {
+          "gpu.temp": 55,
+          "gpu.name": "GeForce RTX 3080",
+        }),
+      ]);
+
+      const cycle = await registry.sample(["gpu.temp", "gpu.name"], NOW);
+      const ids = cycle.entries.map((entry) => entry.sample.sensorId);
+
+      expect(ids).toEqual(["lhm:gpu.temp", "lhm:gpu.name"]);
+    });
+
+    it("splits the pair when the preferred provider answers the figure but not the name", async () => {
+      // The cross-provider residual, pinned rather than wished away: LHM read a
+      // temperature it could not attribute, and the library's caption claims
+      // the key anyway. Both providers are internally consistent, so nothing
+      // here is wrong — but the frame pairs one provider's figure with
+      // another's name. Closing it needs a host-owned epoch, which is a
+      // provider-contract change and deliberately not in this task.
+      const registry = new ProviderRegistry([
+        stubProvider(
+          "lhm",
+          { "gpu.temp": 60, "gpu.name": "AMD Radeon RX 6800" },
+          { gaps: ["gpu.name"] },
+        ),
+        stubProvider("library", {
+          "gpu.temp": 55,
+          "gpu.name": "GeForce RTX 3080",
+        }),
+      ]);
+
+      const cycle = await registry.sample(["gpu.temp", "gpu.name"], NOW);
+      const ids = cycle.entries.map((entry) => entry.sample.sensorId);
+
+      expect(ids).toEqual(["lhm:gpu.temp", "library:gpu.name"]);
+      // The declined caption carried the preferred provider's reason, so the
+      // display can tell "cannot name it" from "never read".
+      expect(
+        cycle.entries.find((entry) => entry.semanticKey === "gpu.name")?.sample,
+      ).toMatchObject({ textValue: "GeForce RTX 3080" });
+    });
+
+    it("does not let a declined caption block a later provider's", async () => {
+      const registry = new ProviderRegistry([
+        stubProvider("lhm", { "gpu.temp": 60 }, { failWith: "not running" }),
+        stubProvider("library", { "gpu.name": "GeForce RTX 3080" }),
+      ]);
+
+      const cycle = await registry.sample(["gpu.name"], NOW);
+
+      expect(cycle.entries.map((entry) => entry.sample.sensorId)).toEqual([
+        "library:gpu.name",
+      ]);
+    });
+
+    it("falls through for a caption when the preferred provider cannot read", async () => {
+      const registry = new ProviderRegistry([
+        stubProvider("lhm", {}, { failWith: "not running" }),
+        stubProvider("library", { "gpu.name": "GeForce RTX 3080" }),
+      ]);
+
+      const cycle = await registry.sample(["gpu.name"], NOW);
+
+      expect(cycle.entries[0]?.sample.sensorId).toBe("library:gpu.name");
+      expect(cycle.failures).toEqual([
+        { providerId: "lhm", message: "not running" },
+      ]);
     });
   });
 

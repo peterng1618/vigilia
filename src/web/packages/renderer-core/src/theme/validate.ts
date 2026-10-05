@@ -1,4 +1,4 @@
-import { isTimeZoneName } from "../scene/datetime-format.js";
+import { isTimeZoneName } from "../scene/datetime/instant.js";
 import { isKnownStyleProperty } from "./capabilities.js";
 import {
   ASSET_PATH_PATTERN,
@@ -72,7 +72,13 @@ const CHART_BINDING_ARITY: Record<
   pie: { min: 1, max: 64 },
 };
 
-/** Known keys mirror schema shapes with `additionalProperties: false`. */
+/**
+ * Known keys mirror schema shapes with `additionalProperties: false`.
+ *
+ * This module is the decider (docs/decisions/0023). The published schema is a
+ * hand-written contract held to it by `envelope-keys-disagreement.test.ts`,
+ * which derives the schema's own key sets from the file and compares them here.
+ */
 const KNOWN_KEYS = {
   document: [
     "schemaVersion",
@@ -91,12 +97,13 @@ const KNOWN_KEYS = {
     "version",
     "createdAt",
     "updatedAt",
+    "themeLanguage",
   ],
   artboard: [
     "width",
     "height",
     "background",
-    "fitMode",
+    "contentFit",
     "barColor",
     "backgroundMedia",
   ],
@@ -114,8 +121,20 @@ const KNOWN_KEYS = {
     "bindings",
     "children",
   ],
-  binding: ["id", "semanticKey", "precision", "unitDisplay", "scale", "offset"],
-  textContent: ["runs", "wrap", "overflow", "align", "verticalAlign"],
+  // `format` and `timeZone` are validated below and authored by the editor's
+  // runs panel; omitting them here refused the key before that code ran.
+  binding: [
+    "id",
+    "semanticKey",
+    "precision",
+    "unitDisplay",
+    "scale",
+    "offset",
+    "format",
+    "timeZone",
+  ],
+  textContent: ["runs", "box", "wrap", "overflow", "align", "verticalAlign"],
+  textBox: ["width", "height"],
   literalRun: ["kind", "text", "typePreset", "style"],
   valueRun: [
     "kind",
@@ -191,6 +210,7 @@ const KNOWN_KEYS = {
     "cornerRadius",
     "fill",
     "track",
+    "trackCornerRadius",
     "showAxes",
     "showCategoryLabels",
     "animation",
@@ -215,6 +235,45 @@ export type KnownKeyShape = keyof typeof KNOWN_KEYS;
 /** Exposed for schema drift tests. */
 export function knownKeysFor(shape: KnownKeyShape): readonly string[] {
   return KNOWN_KEYS[shape];
+}
+
+/** Every shape this module decides, so the drift test can insist each one is accounted for. */
+export function knownKeyShapes(): readonly KnownKeyShape[] {
+  return Object.keys(KNOWN_KEYS) as KnownKeyShape[];
+}
+
+/**
+ * The v2 envelope's own bags. The v1 semantic document above still validates —
+ * the player and the fake-source themes are v1 — so the envelope root is a
+ * separate decision from `KNOWN_KEYS.document` rather than a second spelling
+ * of it. A binding's keys are the same fact in both versions and are read from
+ * `KNOWN_KEYS` above.
+ */
+const ENVELOPE_KEYS = {
+  envelope: [
+    "schemaVersion",
+    "fabricVersion",
+    "id",
+    "metadata",
+    "artboard",
+    "globals",
+    "assets",
+    "bindings",
+    "editorMetadata",
+    "scene",
+  ],
+  globals: ["palette", "typePresets"],
+  backgroundMedia: ["assetId", "fit"],
+} as const;
+
+export type EnvelopeKeyBag = keyof typeof ENVELOPE_KEYS;
+
+export function envelopeKeysFor(bag: EnvelopeKeyBag): readonly string[] {
+  return ENVELOPE_KEYS[bag];
+}
+
+export function envelopeKeyBags(): readonly EnvelopeKeyBag[] {
+  return Object.keys(ENVELOPE_KEYS) as EnvelopeKeyBag[];
 }
 
 class Issues {
@@ -434,12 +493,12 @@ function validateArtboard(issues: Issues, value: unknown): void {
     }
   }
 
-  if (value["fitMode"] !== undefined) {
+  if (value["contentFit"] !== undefined) {
     issues.enumValue(
-      value["fitMode"],
+      value["contentFit"],
       ["contain", "cover"] as const,
-      "/artboard/fitMode",
-      "fitMode",
+      "/artboard/contentFit",
+      "contentFit",
     );
   }
 }
@@ -521,7 +580,7 @@ function validateBackgroundMedia(
   if (!issues.object(value, "/artboard/backgroundMedia", "backgroundMedia"))
     return;
   for (const key of Object.keys(value))
-    if (key !== "assetId" && key !== "fit")
+    if (!ENVELOPE_KEYS.backgroundMedia.includes(key as never))
       issues.add(
         "unknown-field",
         `/artboard/backgroundMedia/${key}`,
@@ -1352,6 +1411,8 @@ function validateTextContent(
 
   issues.unknownKeys(value, path, "textContent", "A text node's content");
 
+  validateTextBox(issues, value["box"], `${path}/box`);
+
   const runs = value["runs"];
 
   if (!Array.isArray(runs)) {
@@ -1422,6 +1483,44 @@ function validateTextContent(
       `${runPath}/typePreset`,
       globalKeys,
     );
+  }
+}
+
+/**
+ * A fixed text box.
+ *
+ * The two dimensions are the whole box, so a half-written one is refused
+ * rather than completed from a measurement: a default would put the author
+ * somewhere they did not choose, and the clip would then hide text against a
+ * boundary nobody drew.
+ */
+function validateTextBox(issues: Issues, value: unknown, path: string): void {
+  if (value === undefined) return;
+  if (!issues.object(value, path, "A text node's fixed box")) return;
+
+  issues.unknownKeys(value, path, "textBox", "A text node's fixed box");
+
+  for (const dimension of ["width", "height"] as const) {
+    const size = (value as Record<string, unknown>)[dimension];
+    if (typeof size !== "number" || !Number.isFinite(size)) {
+      issues.add(
+        "missing-field",
+        `${path}/${dimension}`,
+        `A text box needs a finite ${dimension}.`,
+      );
+    } else if (size <= 0) {
+      issues.add(
+        "out-of-range",
+        `${path}/${dimension}`,
+        `A text box ${dimension} must be greater than zero.`,
+      );
+    } else if (size > MAX_ARTBOARD_DIMENSION) {
+      issues.add(
+        "out-of-range",
+        `${path}/${dimension}`,
+        `A text box ${dimension} must not exceed ${MAX_ARTBOARD_DIMENSION} scene units.`,
+      );
+    }
   }
 }
 

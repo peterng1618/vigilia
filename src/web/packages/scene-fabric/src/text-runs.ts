@@ -23,7 +23,14 @@ export interface FabricTextShape {
 
 export type GraphemeSplitter = (value: string) => readonly string[];
 
-/** Fabric per-character key → authored properties that may feed it. */
+/**
+ * Fabric per-character key → authored properties that may feed it.
+ *
+ * `charSpacing` is deliberately absent: Fabric measures it once from the
+ * object, so a per-character entry would be accepted and then ignored. The
+ * object's own tracking is applied by `object-type.ts`, and a run that asks for
+ * a different value is reported through `unsupported` below.
+ */
 const PER_RUN_PAINT_SOURCES: Readonly<Record<string, readonly string[]>> = {
   fill: ["color", "fill"],
   fontFamily: ["fontFamily"],

@@ -17,6 +17,7 @@ import { createSessionStore } from "./session/pairing.js";
 import { createActiveThemeStore } from "./settings/active-theme.js";
 import { createDeviceSettingsStore } from "./settings/devices.js";
 import { createDisplaySettingsStore } from "./settings/display.js";
+import { createFontFavoritesStore } from "./settings/font-favorites.js";
 import { createThemeSettingsStore } from "./settings/theme-settings.js";
 import { createThemeStore } from "./themes/store.js";
 import { createThumbnailStore } from "./themes/thumbnails.js";
@@ -54,6 +55,7 @@ export async function run(argv: readonly string[]): Promise<number> {
     host,
     openBrowser: shouldOpen,
     themesDir,
+    settingsDir,
     lhmUrl,
     lhmExecutable,
     registerLhmTask: shouldRegisterTask,
@@ -104,13 +106,17 @@ export async function run(argv: readonly string[]): Promise<number> {
   // Sessions exist only when the server is LAN-reachable; a loopback-only host
   // refuses non-loopback reads outright rather than trusting them.
   const sessions = servingLan ? createSessionStore() : undefined;
-  // Device assignments are admin state, stored beside the themes.
-  const deviceSettings = createDeviceSettingsStore(themesDir);
+  // Everything the host knows about *this* machine lives in one settings
+  // folder, so a theme folder is only ever a theme (ADR-0017).
+  const deviceSettings = createDeviceSettingsStore(settingsDir);
   // The consumer's display preferences, read by the provider that acquires the
   // readings they apply to.
-  const displaySettings = createDisplaySettingsStore(themesDir);
+  const displaySettings = createDisplaySettingsStore(settingsDir);
   // Which theme this host displays; consumer state beside the device choices.
-  const activeTheme = createActiveThemeStore(themesDir);
+  const activeTheme = createActiveThemeStore(settingsDir);
+  // Which curated font trios this author reaches for. Author preference about
+  // this PC, so it sits with the other settings and never in a theme folder.
+  const fontFavorites = createFontFavoritesStore(settingsDir);
 
   const hosted = createHostServer({
     registry,
@@ -121,11 +127,16 @@ export async function run(argv: readonly string[]): Promise<number> {
       admin: path.join(packagesDir, "host", "public"),
     },
     themeStore: createThemeStore(themesDir),
+    // A thumbnail is this machine's rendering of a theme, so it lives in that
+    // theme's own folder rather than in a directory of its own. The editor
+    // writes it after the save that replaced the folder, which is why the
+    // library always has a picture for what was just saved.
     thumbnails: createThumbnailStore(themesDir),
-    themeSettings: createThemeSettingsStore(themesDir),
+    themeSettings: createThemeSettingsStore(settingsDir),
     ...(sessions === undefined ? {} : { sessions }),
     devices: deviceSettings,
     display: displaySettings,
+    fontFavorites,
     onDisplayChange: (settings) => clockProvider.setTimeZone(settings.timeZone),
     activeTheme,
     onDeviceAssignment: (assignment) => {
@@ -140,11 +151,12 @@ export async function run(argv: readonly string[]): Promise<number> {
         lhmProvider.describeDevices(),
         libraryProvider.describeDevices(),
       ]);
-      // Not a union: the two providers name a drive differently (LHM by model,
-      // the library by mount) and LHM reports no mount, so listing both would
-      // show one physical drive twice. The list must describe what the provider
-      // that answers readings can actually serve, so LHM's list wins whenever
-      // it has one and the library's fills in only when it does not.
+      // Not a union: both providers name a drive by its model now, so LHM's
+      // list already covers the drives the library can reach, and concatenating
+      // them would list one physical drive twice under two different slugs.
+      // The list must describe what the provider that answers readings can
+      // actually serve, so LHM's list wins whenever it has one and the
+      // library's fills in only when it does not.
       const prefer = <T extends { readonly id: string }>(
         first: readonly T[],
         second: readonly T[],

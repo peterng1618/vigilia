@@ -5,6 +5,7 @@ import { defaultPieSettings } from "../charts/pie.js";
 import { defaultGaugeSettings } from "../types.js";
 import { STYLE_PROPERTIES } from "./capabilities.js";
 import {
+  MAX_ARTBOARD_DIMENSION,
   MAX_NODE_DEPTH,
   requiredSemanticKeys,
   SUPPORTED_SCHEMA_VERSION,
@@ -17,7 +18,7 @@ function baseDocument(): Record<string, unknown> {
   return {
     schemaVersion: SUPPORTED_SCHEMA_VERSION,
     id: "demo-theme",
-    artboard: { width: 1920, height: 1080, fitMode: "contain" },
+    artboard: { width: 1920, height: 1080, contentFit: "contain" },
     nodes: [],
   };
 }
@@ -109,13 +110,25 @@ describe("artboard", () => {
     ).toContain("wrong-type");
   });
 
-  it("rejects an unknown fit mode", () => {
+  it("rejects an unknown content fit", () => {
     expect(
       codes({
         ...baseDocument(),
-        artboard: { width: 10, height: 10, fitMode: "stretch" },
+        artboard: { width: 10, height: 10, contentFit: "stretch" },
       }),
     ).toContain("invalid-enum");
+  });
+
+  it("refuses the superseded fitMode name rather than ignoring it", () => {
+    // Pre-release, so the old key dies with the rename instead of being read as
+    // a second, quieter way to say the same thing. A silent drop would let a
+    // theme that asks for a crop open letterboxed and blame the player.
+    expect(
+      codes({
+        ...baseDocument(),
+        artboard: { width: 10, height: 10, fitMode: "cover" },
+      }),
+    ).toContain("unknown-field");
   });
 });
 
@@ -603,6 +616,49 @@ describe("chart content (§87)", () => {
   });
 });
 
+describe("a fixed text box", () => {
+  const node = (box: unknown): Record<string, unknown> => ({
+    ...baseDocument(),
+    nodes: [
+      {
+        id: "t",
+        type: "text",
+        content: { runs: [{ kind: "literal", text: "x" }], box },
+      },
+    ],
+  });
+
+  it("accepts the two dimensions an author wrote", () => {
+    expect(codes(node({ width: 180, height: 72 }))).toEqual([]);
+  });
+
+  it("rejects a box with no height, rather than completing it from the text", () => {
+    // A default would put the author inside a box they did not choose, and the
+    // clip would then hide text against a boundary nobody drew.
+    expect(codes(node({ width: 180 }))).toEqual(["missing-field"]);
+  });
+
+  it("rejects a dimension that is not a positive number", () => {
+    expect(codes(node({ width: 0, height: 72 }))).toEqual(["out-of-range"]);
+    expect(codes(node({ width: 180, height: -1 }))).toEqual(["out-of-range"]);
+    expect(codes(node({ width: Number.NaN, height: 72 }))).toEqual([
+      "missing-field",
+    ]);
+  });
+
+  it("rejects a box larger than the artboard it sits on", () => {
+    expect(
+      codes(node({ width: 180, height: MAX_ARTBOARD_DIMENSION + 1 })),
+    ).toEqual(["out-of-range"]);
+  });
+
+  it("rejects a box carrying anything but its two dimensions", () => {
+    expect(codes(node({ width: 180, height: 72, top: 30 }))).toEqual([
+      "unknown-field",
+    ]);
+  });
+});
+
 describe("text content (§89)", () => {
   const textNode = (
     content: unknown,
@@ -968,7 +1024,7 @@ describe("unknown fields", () => {
       artboard: {
         width: 100,
         height: 100,
-        fitMode: "cover",
+        contentFit: "cover",
         background: { ref: "palette.background" },
         barColor: { ref: "palette.bars" },
       },

@@ -181,6 +181,13 @@ export const CHART_SETTINGS_FIELDS: Readonly<
       kind: "number",
       min: 0,
     },
+    {
+      property: "trackCornerRadius",
+      label: "Track corner radius",
+      kind: "number",
+      min: 0,
+      hint: "The unfilled remainder's own rounding, beside the bar's. Empty leaves it square.",
+    },
     { property: "showAxes", label: "Show axes", kind: "boolean" },
     { property: "showCategoryLabels", label: "Show labels", kind: "boolean" },
   ],

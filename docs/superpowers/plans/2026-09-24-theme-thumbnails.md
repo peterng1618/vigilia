@@ -87,7 +87,7 @@ to the host. If the maintainer prefers option 2 or 3, Tasks 1–2 change.
 - [ ] `npm run format:check && npm run lint && npm run typecheck && npm test &&
       npm run build && npm run size`.
 - [ ] Full local `npm run test:e2e`.
-- [ ] Update `.agents/status.md`, `.agents/architecture.md` (the new owner) and
+- [ ] Update `docs/architecture/ownership.md` and
       the spec's acceptance section.
 - [ ] Commit.
 

@@ -3,22 +3,138 @@ import {
   buildChartPlan,
   type ChartContent,
   type ChartFamily,
+  chartPaintFieldsFor,
   type FabricGlobals,
   reassignChartPaintReferences,
   type SampleSource,
 } from "@vigilia/renderer-core";
 import { type SceneAdapter, VigiliaChart } from "@vigilia/scene-fabric";
-import { Group } from "fabric/es";
+import { type FabricObject, Group } from "fabric/es";
 import type { EditorInteraction } from "../editor-interaction.js";
-import { createNewChartDefaults } from "../new-object-defaults.js";
+import {
+  createNewChartDefaults,
+  newObjectName,
+  nextNewObjectPlacement,
+} from "../new-object-defaults.js";
 import { createChartPropertyPanel } from "./panel.js";
+
+/**
+ * The family's per-series paint, with one entry per series.
+ *
+ * `buildChartPlan` makes a line series, a bar and a slice one binding each, and
+ * `chartPaintFieldsFor` declares the paint that repeats as `multiple` — so the
+ * two are the same length by definition and the editor keeps them so. A new
+ * entry repeats the last one, which is what an author extending a chart means:
+ * the same look, once more, until they choose otherwise. A gauge's paints are
+ * not per-series and are left alone.
+ */
+function seriesPaintFor(
+  family: ChartFamily,
+  settings: ChartContent["settings"],
+  series: number,
+): ChartContent["settings"] {
+  const field = chartPaintFieldsFor(family).find((entry) => entry.multiple);
+  if (field === undefined) return settings;
+  const current = (settings as unknown as Record<string, unknown>)[
+    field.property
+  ];
+  if (!Array.isArray(current)) return settings;
+  const wanted = Math.max(1, series);
+  if (current.length === wanted) return settings;
+  const last = current.at(-1);
+  return {
+    ...settings,
+    [field.property]: Array.from(
+      { length: wanted },
+      (_, index) => current[index] ?? last,
+    ),
+  } as ChartContent["settings"];
+}
+
+/**
+ * Each surviving series' own paint, in its new order.
+ *
+ * The per-series paint is a positional array sitting beside the bindings, so
+ * filtering the bindings without it slides every later series onto its
+ * neighbour's colour — silently, with nothing on screen that looks wrong.
+ * Measured on the reference trends chart: removing the middle of CPU/GPU/RAM
+ * left CPU on its blue and painted **RAM with the GPU's green**, because the GPU
+ * entry was still sitting at index 1.
+ */
+export function carriedPaintFor(
+  family: ChartFamily,
+  settings: ChartContent["settings"],
+  previous: readonly Binding[],
+  next: readonly Binding[],
+): ChartContent["settings"] {
+  const field = chartPaintFieldsFor(family).find((entry) => entry.multiple);
+  if (field === undefined) return settings;
+  const current = (settings as unknown as Record<string, unknown>)[
+    field.property
+  ];
+  if (!Array.isArray(current)) return settings;
+  // **A series is the same series when its `id` is the same.** `next.includes`
+  // asked whether the *object* survived, and the one caller that repoints a key
+  // hands over `{ ...binding, semanticKey }` — a fresh object for a binding that
+  // was not touched. So changing a chart's key reported every series removed,
+  // the paint array was emptied, and `seriesPaintFor` grew the empty array back
+  // to one entry by repeating `current.at(-1)`, which is `undefined`. The
+  // envelope then carried `palette: [null]`.
+  //
+  // That is not a document the validator can accept: `chartPaint` reads a
+  // non-record as "must reference a palette token", so the *next* `snapshot()`
+  // threw `Invalid Fabric theme`. `isDirty()` runs inside React's
+  // `useSyncExternalStore`, so the throw landed in the render phase and React
+  // unmounted the whole editor — canvas, status line and every panel gone —
+  // which is what `reference-theme.spec.ts:533` then timed out on, waiting 90 s
+  // for a save button that was no longer in the document. Measured: repointing
+  // the starter's own sparkline from `cpu.load` to `gpu.load` unmounted the
+  // editor in 200 ms.
+  //
+  // `id` is the identity a binding is minted with and keyed by everywhere else
+  // (`panel.ts` mints it, the run editor keys its bindings by it), so it is the
+  // identity this filter should have used.
+  const kept = previous.flatMap((binding, index) =>
+    next.some((survivor) => survivor.id === binding.id) &&
+    index < current.length
+      ? [current[index]]
+      : [],
+  );
+  if (kept.length === current.length) return settings;
+  return {
+    ...settings,
+    [field.property]: kept,
+  } as ChartContent["settings"];
+}
 
 function newChart(
   family: ChartFamily,
   globals: FabricGlobals | undefined,
   id: string,
+  placement: { readonly left: number; readonly top: number },
 ): VigiliaChart {
-  const common = { id, left: 120, top: 80, width: 240, height: 160 };
+  const common = {
+    id,
+    // The family is what the author just chose, so it is what the layer list
+    // shows; a new chart that arrived as a bare uuid would be unreadable.
+    name: newObjectName(family),
+    // The same cascade a shape and a text object take. A chart used to carry
+    // its own `120, 80`, which is how a gauge inserted after a rectangle landed
+    // in a second corner rather than beside it: two origins for one rule, and
+    // neither of them knew the other existed.
+    ...placement,
+    width: 240,
+    height: 160,
+    // Artboard coordinates, as a panel and a text object now both are, so the
+    // inspector's X and Y are the chart's corner. A chart is the object whose
+    // position a dashboard is most sensitive to — six of them, each sitting in
+    // a card — and a centre origin put every one of them half its own size away
+    // from where the author put it: measured, a 200 × 200 gauge placed at
+    // (1069, 258) drew at (969, 158). `boxFrom` converts between the two
+    // origins on the way out, so a saved chart is unaffected.
+    originX: "left",
+    originY: "top",
+  };
 
   switch (family) {
     case "gauge":
@@ -46,6 +162,31 @@ function newChart(
         settings: createNewChartDefaults(globals, family),
       });
   }
+}
+
+/** The ratios the line-chart control group offers, widest last. */
+const ASPECT_RATIOS: readonly number[] = [2, 3, 4];
+
+/**
+ * The offered ratio a chart is at, or nothing when it is at none of them.
+ *
+ * Read off the object rather than remembered from the last click, so a chart
+ * the author dragged is described by its own shape. A chart at 2.004:1 is at
+ * none of them: rounding to the nearest would light up a ratio that was never
+ * applied, which is the disagreement this state exists to remove.
+ */
+function aspectOf(
+  chart: VigiliaChart,
+  ratios: readonly number[],
+): { readonly aspect: number } | Record<string, never> {
+  const width = chart.width * chart.scaleX;
+  const height = chart.height * chart.scaleY;
+  if (!Number.isFinite(width) || !Number.isFinite(height) || height <= 0) {
+    return {};
+  }
+  const ratio = width / height;
+  const match = ratios.find((candidate) => Math.abs(candidate - ratio) < 0.01);
+  return match === undefined ? {} : { aspect: match };
 }
 
 /** Vigilia-owned chart semantics layered on the editor's generic canvas mechanics. */
@@ -80,6 +221,26 @@ export class ChartManager {
       (id, binding) =>
         this.#updateBinding(id, binding, options.onBindingsChange),
       (id, ratio) => this.#resizeToAspect(id, ratio),
+      (id, semanticKey) =>
+        this.#writeBindings(
+          id,
+          [
+            ...(this.#bindings[id] ?? []),
+            // Minted here rather than in the panel: the id is what the run
+            // editor's bindings are keyed by, so one shape for both keeps a
+            // document's two kinds of reference legible together.
+            { id: `binding-${crypto.randomUUID()}`, semanticKey },
+          ],
+          options.onBindingsChange,
+        ),
+      (id, bindingId) =>
+        this.#writeBindings(
+          id,
+          (this.#bindings[id] ?? []).filter(
+            (binding) => binding.id !== bindingId,
+          ),
+          options.onBindingsChange,
+        ),
     );
     this.#editor.canvas.on("selection:created", this.#drawPanel);
     this.#editor.canvas.on("selection:updated", this.#drawPanel);
@@ -118,6 +279,18 @@ export class ChartManager {
     this.refresh();
   }
 
+  /**
+   * The envelope's bindings, whenever they changed somewhere other than here.
+   *
+   * A chart's series **are** its bindings, so a manager still holding only what
+   * it was constructed with draws every chart it did not write itself with no
+   * series at all — which is every chart in an inserted card.
+   */
+  setBindings(bindings: Readonly<Record<string, readonly Binding[]>>): void {
+    this.#bindings = bindings;
+    this.refresh();
+  }
+
   setSource(source: SampleSource): void {
     this.#source = source;
     this.refresh();
@@ -134,7 +307,14 @@ export class ChartManager {
   /** Add a typed chart while preserving the editor's canvas and history ownership. */
   addChart(family: ChartFamily): void {
     const id = `chart-${crypto.randomUUID()}`;
-    const chart = newChart(family, this.#globals, id);
+    // Placed before the chart joins the canvas, so it takes the n-th slot rather
+    // than counting itself.
+    const chart = newChart(
+      family,
+      this.#globals,
+      id,
+      nextNewObjectPlacement(this.#editor),
+    );
     this.#editor.canvas.add(chart);
     this.#editor.canvas.setActiveObject(chart);
     this.#applyChart(id, chart);
@@ -144,7 +324,13 @@ export class ChartManager {
   }
 
   reassignPaletteReferences(from: string, to: string): void {
-    const visit = (object: { get(key: string): unknown }): void => {
+    // §75: deleting a referenced global forces reassignment, so a chart still
+    // naming the deleted token would be a dangling reference in the saved
+    // document. A live `Group` keeps its children in `_objects` and exposes
+    // `getObjects()` — it has no `objects` property — so reading
+    // `object.get("objects")` never descended into one and every chart inside
+    // a card kept the token its whole group had just lost.
+    const visit = (object: FabricObject): void => {
       if (object instanceof VigiliaChart) {
         const settings = reassignChartPaintReferences(
           object.settings,
@@ -157,17 +343,7 @@ export class ChartManager {
           if (typeof id === "string") this.#applyChart(id, object);
         }
       }
-      const children = object.get("objects");
-      if (Array.isArray(children))
-        children.forEach((child) => {
-          if (
-            typeof child === "object" &&
-            child !== null &&
-            "get" in child &&
-            typeof child.get === "function"
-          )
-            visit(child as { get(key: string): unknown });
-        });
+      if (object instanceof Group) object.getObjects().forEach(visit);
     };
     this.#editor.canvas.getObjects().forEach(visit);
     this.#editor.canvas.requestRenderAll();
@@ -187,6 +363,7 @@ export class ChartManager {
               settings: chart.settings,
             } as ChartContent,
             bindings: this.#bindings[id] ?? [],
+            ...aspectOf(chart, ASPECT_RATIOS),
           },
       this.#globals?.palette,
     );
@@ -210,13 +387,46 @@ export class ChartManager {
       | ((id: string, bindings: readonly Binding[]) => void)
       | undefined,
   ): void {
-    const current = this.#bindings[id] ?? [];
-    const bindings = current.map((binding) =>
-      binding.id === nextBinding.id ? nextBinding : binding,
+    this.#writeBindings(
+      id,
+      (this.#bindings[id] ?? []).map((binding) =>
+        binding.id === nextBinding.id ? nextBinding : binding,
+      ),
+      onBindingsChange,
     );
+  }
+
+  /**
+   * The one place a chart's binding list is written: the key chooser, the key
+   * picker and the remove button all end here, so the envelope, the redraw and
+   * the panel cannot disagree about what a chart reads.
+   */
+  #writeBindings(
+    id: string,
+    bindings: readonly Binding[],
+    onBindingsChange:
+      | ((id: string, bindings: readonly Binding[]) => void)
+      | undefined,
+  ): void {
+    const previous = this.#bindings[id] ?? [];
     this.#bindings = { ...this.#bindings, [id]: bindings };
     const chart = this.#chartFor(id);
-    if (chart instanceof VigiliaChart) this.#applyChart(id, chart);
+    if (chart instanceof VigiliaChart) {
+      // A per-series paint is one entry per series, and a series is a binding.
+      // Without this a chart inserted from the Add pane declares one series
+      // colour and keeps it however many sensors are bound to it, so a
+      // three-series trends chart has three lines and **one** colour control —
+      // measured, and the reason the target's blue/violet/teal is unreachable.
+      chart.set(
+        "settings",
+        seriesPaintFor(
+          chart.family,
+          carriedPaintFor(chart.family, chart.settings, previous, bindings),
+          bindings.length,
+        ),
+      );
+      this.#applyChart(id, chart);
+    }
     this.#editor.canvas.requestRenderAll();
     onBindingsChange?.(id, bindings);
     this.#drawPanel();
@@ -235,6 +445,13 @@ export class ChartManager {
     chart.resizeTo(width, width / ratio);
     this.#editor.canvas.requestRenderAll();
     this.#drawPanel();
+    // A ratio is a geometry edit, and the object is changed by the time the
+    // chart's own panel has redrawn — measured, 215 → 241 at 4:1 and 482 at
+    // 2:1. The selection inspector re-reads on `object:modified` and on nothing
+    // else, so without this the Height field kept reporting the height the
+    // chart had before the click, on a control an author types into. Announced
+    // the way `canvas-nudge` announces a programmatic move.
+    this.#editor.canvas.fire("object:modified", { target: chart });
   }
 
   readonly #rerasterizeScaledChart = (event: { target?: unknown }): void => {
@@ -251,6 +468,10 @@ export class ChartManager {
       return;
     }
     chart.resizeTo(width, height);
+    // A drag changes the ratio too, so the control group has to re-read it —
+    // otherwise the buttons name whichever ratio was last clicked, on a chart
+    // that is no longer at it.
+    this.#drawPanel();
   };
 
   /** A revived v2 chart deliberately has no persisted engine pixels or samples. */
@@ -283,19 +504,31 @@ export class ChartManager {
   }
 
   #applyChart(id: string, chart: VigiliaChart): void {
-    const plan = buildChartPlan(
-      id,
-      { family: chart.family, settings: chart.settings } as ChartContent,
-      this.#bindings[id] ?? [],
-      {
-        source: this.#source,
-        nowMs: Date.now(),
-        animate: false,
-      },
-      [],
-      this.#globals?.palette,
-    );
-    chart.setOption(plan.option);
+    // **Per chart, and reported, not swallowed.** `refresh()` runs beside the
+    // text repaint in one callback, so a chart that throws would take every
+    // bound reading on the canvas down with it. One bad chart costs that chart.
+    try {
+      const plan = buildChartPlan(
+        id,
+        { family: chart.family, settings: chart.settings } as ChartContent,
+        this.#bindings[id] ?? [],
+        {
+          source: this.#source,
+          nowMs: Date.now(),
+          animate: false,
+        },
+        [],
+        this.#globals?.palette,
+      );
+      chart.setOption(plan.option);
+    } catch (error) {
+      this.#editor.errorManager.warn(
+        "controls",
+        `Chart "${id}" failed to draw and was left as it was. ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      );
+    }
   }
 
   #selectedChart(): VigiliaChart | undefined {

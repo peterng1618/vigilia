@@ -1,9 +1,62 @@
 // @vitest-environment jsdom
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { fontTrio } from "../font-catalog.js";
 import { createTypePresetPanel } from "./panel.js";
 
+// The panel appends to the host it is given, and several of these tests read
+// through `document` rather than through the panel's own root, so one test's
+// markup would otherwise be the next test's first match.
+afterEach(() => document.body.replaceChildren());
+
 describe("type preset panel", () => {
+  it("puts every field's label in the shell's own label column", () => {
+    // With a delete action and a second preset, so the reassign row — one of
+    // the nine — is on screen rather than absent.
+    const panel = createTypePresetPanel(document.body, vi.fn(), vi.fn(), {
+      preview: vi.fn(async () => {}),
+      applyFace: vi.fn(async () => {}),
+      applyTrio: vi.fn(async () => {}),
+    });
+    panel.render({
+      body: { name: "Body", value: { family: "Inter", size: 16 } },
+      caption: { name: "Caption", value: { family: "Inter", size: 12 } },
+    });
+
+    // The defect this replaces: each control was wrapped in a `<label>`, so
+    // the shell's `label { display: block }` rule printed "Name" and then the
+    // box it names on the same line, pressed against it. Every other panel
+    // lays the pair out as a `.vigilia-field` grid row with a 72px label
+    // column; a wrapped label can never take a column, because a grid item
+    // that wraps its own control is one box, not two.
+    const fields = [
+      "type-name",
+      "type-family",
+      "type-size",
+      "type-weight",
+      "type-line-height",
+      "type-letter-spacing",
+      "font-face",
+      "font-trio",
+      "type-replacement",
+    ];
+    for (const key of fields) {
+      const control = panel.root.querySelector<HTMLElement>(
+        `[data-vigilia-${key}]`,
+      )!;
+      const row = control.closest(".vigilia-field");
+      if (row === null) throw new Error(`${key} has no field row`);
+      // The label is a sibling, not an ancestor: that is what puts it in the
+      // column beside the control rather than above it.
+      const label = row.querySelector<HTMLLabelElement>(":scope > label");
+      if (label === null) throw new Error(`${key} has no own label`);
+      expect(label.htmlFor, key).toBe(control.id);
+      expect(label.textContent, key).not.toBe("");
+      // And the control is the row's own second child, so nothing sits between
+      // the label and the input it names.
+      expect([...row.children].indexOf(control), key).toBe(1);
+    }
+  });
+
   it("edits a global type token", () => {
     const onChange = vi.fn();
     const panel = createTypePresetPanel(document.body, onChange);

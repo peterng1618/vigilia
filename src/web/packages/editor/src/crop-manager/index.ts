@@ -10,11 +10,31 @@ export interface CropRect {
 
 export interface CropManager {
   readonly active: boolean;
+  /**
+   * The image an open session is cropping, or undefined when none is.
+   *
+   * A session makes its frame the active object, so a panel that follows the
+   * selection alone would describe the frame rather than the image the author
+   * is cropping. The session is the only thing that knows which image that is.
+   */
+  readonly target: FabricObject | undefined;
   /** False when the active object cannot host a crop session. */
   begin(image?: FabricObject): boolean;
   setAspect(ratio: number | undefined): void;
   apply(): void;
   cancel(): void;
+}
+
+/**
+ * Whether this object can host a crop session, narrowing it to the image a
+ * session would then take.
+ *
+ * The control that offers a crop and the session that refuses one read the same
+ * two conditions from here, so the button cannot appear for a selection the
+ * session would then turn away.
+ */
+export function canCrop(target: object | undefined): target is FabricImage {
+  return target instanceof FabricImage && (target.angle ?? 0) === 0;
 }
 
 export interface CropManagerOptions {
@@ -74,19 +94,29 @@ export function createCropManager(options: CropManagerOptions): CropManager {
       return frame !== undefined;
     },
 
+    get target(): FabricObject | undefined {
+      return image;
+    },
+
     begin(target = canvas.getActiveObject() ?? undefined): boolean {
       if (frame !== undefined) return false;
-      if (!(target instanceof FabricImage)) {
-        errors.warn("crop", "Select an image before starting a crop.");
-        return false;
-      }
-      if ((target.angle ?? 0) !== 0) {
-        errors.warn("crop", "A rotated image cannot be cropped yet.");
+      if (!canCrop(target)) {
+        errors.warn(
+          "crop",
+          target instanceof FabricImage
+            ? "A rotated image cannot be cropped yet."
+            : "Select an image before starting a crop.",
+        );
         return false;
       }
       const bounds = target.getBoundingRect();
       image = target;
       frame = new Rect({
+        // `getBoundingRect` reports a corner and a `Rect` is anchored at its
+        // centre, so without these the frame drew a whole image up and to the
+        // left of the image, three of its four crop edges off the canvas.
+        originX: "left",
+        originY: "top",
         left: bounds.left,
         top: bounds.top,
         width: bounds.width,

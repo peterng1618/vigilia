@@ -13,7 +13,10 @@ playwright-report/
 playwright/.cache/
 blob-report/
 # Versioned host-theme packages seeded by the browser suite.
-.e2e-host-themes/
+.e2e-host-app/
+# The display proof's host store: the package the editor's own Save control
+# produced, written where a real host serves it.
+.e2e-display-app/
 # Downloaded e2e font bytes; the licence is declared in the fixture envelope.
 .e2e-font-cache/
 # Staged third-party release binaries (LibreHardwareMonitor). Provenance is
@@ -35,15 +38,18 @@ secrets.local.json
 
 # ---------- Screenshot evidence ----------
 # Commit the written results; keep raw captures local.
-.agents/screenshots/**/raw/
+docs/evidence/screenshots/**/raw/
 
 # ---------- Agent environment ----------
 # Personal overrides; the committed .claude/settings.json is the shared one.
 .claude/settings.local.json
 # Throwaway implementation plans are not repository content. Tracked specs live
-# in .agents/specs/ instead.
+# in docs/superpowers/specs/ instead.
 .claude/plans/
 .worktrees/
+# Playwright MCP scratch: screenshots, snapshots and console logs from an
+# interactive browser session. Regenerated at will, never evidence.
+.playwright-mcp/
 
 # Credentials, at any depth. A Claude Code process launched with a cwd inside
 # this repo and a home that did not resolve once created a whole config home
@@ -62,3 +68,6 @@ secrets.local.json
 *.swp
 .DS_Store
 Thumbs.db
+
+# Agents leave scratch in the tree; it is never a deliverable.
+src/web/.agent-scratch/

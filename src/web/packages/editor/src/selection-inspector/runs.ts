@@ -2,6 +2,7 @@ import type {
   Binding,
   FabricGlobals,
   FabricPalette,
+  SampleSource,
   TextRun,
 } from "@vigilia/renderer-core";
 import {
@@ -26,6 +27,31 @@ import { uiCopy } from "../ui-copy.js";
  */
 
 const TEXT_PROPERTY = "vigiliaText";
+
+let controlSeq = 0;
+
+/**
+ * A label that names its control explicitly rather than by containment.
+ *
+ * Containment is an association the platform reads, so a label wrapping its own
+ * control is legitimate — and it is how these fields were built until the Format
+ * field put a live preview and a token vocabulary inside its own label, which
+ * the browser then announced as
+ *
+ *   "Format 04:38 Tokens: YYYY YY · MMMM MMM MM M · dddd ddd · DD D · HH H
+ *   hh h · mm ss · A a. Words in [square brackets]."
+ *
+ * The name of a field changed every minute, because it had swallowed a clock.
+ * An `id` cannot be swallowed: `htmlFor` names the control and nothing else,
+ * whatever else the label goes on to contain. The wrapper stays, because the
+ * styling and the reading order both want the words beside the control.
+ */
+function labelled(label: string, control: HTMLElement): HTMLLabelElement {
+  const element = document.createElement("label");
+  element.textContent = label;
+  element.htmlFor = control.id = `vigilia-run-${++controlSeq}`;
+  return element;
+}
 
 interface ObjectWithText {
   get(name: string): unknown;
@@ -54,18 +80,87 @@ export function describeRun(run: TextRun): string {
       : text;
 }
 
-/** The palette tokens a run's colour may reference. */
-function paletteTokens(globals: FabricGlobals | undefined): readonly string[] {
-  return Object.keys((globals?.palette as FabricPalette | undefined) ?? {})
-    .filter((id) => id !== "none")
-    .map((id) => `palette.${id}`);
+/**
+ * The palette tokens a run's colour may reference, each under its stored
+ * reference and the name its author gave it.
+ *
+ * The name, not the id, for the reason `presetOptions` gives: the palette panel,
+ * `panel.ts` and `chart-manager` all print the authored name, and printing `cpu`
+ * here put the same tokens in the run editor under a second vocabulary, one
+ * field below the preset dropdown that had just been fixed for it.
+ */
+function paletteOptions(
+  globals: FabricGlobals | undefined,
+): readonly { readonly ref: `palette.${string}`; readonly name: string }[] {
+  return Object.entries((globals?.palette as FabricPalette | undefined) ?? {})
+    .filter(([id]) => id !== "none")
+    .map(([id, entry]) => ({ ref: `palette.${id}`, name: entry.name }));
 }
 
-/** The type presets a run may reference. */
-function presetIds(globals: FabricGlobals | undefined): readonly string[] {
-  return Object.keys(globals?.typePresets ?? {}).map(
-    (id) => `typePresets.${id}`,
-  );
+/**
+ * The type presets a run may reference, each under its stored reference and the
+ * name its author gave it.
+ *
+ * The name, not the id, because every other reference picker in the editor names
+ * what it offers — `panel.ts`'s palette tokens, `chart-manager`'s paints, the
+ * preset panel's own chooser. Printing `24-400` here put thirteen presets in the
+ * inspector under one vocabulary and the same thirteen, one field lower, under
+ * another, so an author who read `Ring unit` could not find it.
+ */
+function presetOptions(
+  globals: FabricGlobals | undefined,
+): readonly { readonly ref: `typePresets.${string}`; readonly name: string }[] {
+  return Object.entries(globals?.typePresets ?? {}).map(([id, entry]) => ({
+    ref: `typePresets.${id}`,
+    name: entry.name,
+  }));
+}
+
+/**
+ * The runs whose tracking the object cannot carry separately.
+ *
+ * Fabric measures spacing once, from the object, so only the first run's
+ * preset reaches the screen. A later run asking for the *same* value loses
+ * nothing, so it is not a gap — which is also the condition `textShapeFor`
+ * reports on. Matching the model rather than "any letterSpacing" is what keeps
+ * this from warning about a run that is already painted as asked.
+ */
+function presetGaps(
+  globals: FabricGlobals | undefined,
+  runs: readonly TextRun[],
+): readonly string[] {
+  // Undefined for an untracked preset, which is also what the object paints
+  // when its first run is untracked — so a later tracked run is a real gap.
+  const painted = letterSpacingOf(globals, runs[0]?.typePreset);
+
+  // A `Set` because the note names a preset, not a run: three runs sharing one
+  // mismatching preset are one thing the canvas cannot do, and saying it three
+  // times reads as three problems.
+  const gaps = new Set<string>();
+  for (const run of runs.slice(1)) {
+    const spacing = letterSpacingOf(globals, run.typePreset);
+    if (spacing === undefined || spacing === painted) continue;
+    gaps.add(
+      uiCopy.inspectorFields.runTrackingNotSeparate(run.typePreset ?? ""),
+    );
+  }
+  return [...gaps];
+}
+
+/** A preset's authored tracking, or undefined when it asks for none. */
+function letterSpacingOf(
+  globals: FabricGlobals | undefined,
+  ref: `typePresets.${string}` | undefined,
+): number | undefined {
+  const id = ref?.slice("typePresets.".length);
+  // `GlobalEntry.value` is `unknown` on purpose — the panel is a second reader
+  // of a document shape it does not own — so this narrows to the one field.
+  const value: unknown = (
+    globals?.typePresets?.[id ?? ""]?.value as
+      | { readonly letterSpacing?: unknown }
+      | undefined
+  )?.letterSpacing;
+  return typeof value === "number" ? value : undefined;
 }
 
 export interface RunEditor {
@@ -115,8 +210,47 @@ function rebound(binding: Binding, key: string): Binding {
 }
 
 /**
+ * What a value run is bound to, and whether anything is arriving.
+ *
+ * The canvas paints the reading, so a run that names nothing and a run whose
+ * sensor is missing look the same on it — both show the em dash. Three states
+ * have to stay apart here, because two of them need a different fix: a run that
+ * names a binding this object does not declare, a run that is declared and has
+ * no reading yet, and a run that is simply working.
+ */
+function bindingState(
+  run: Extract<TextRun, { kind: "value" }>,
+  bound: Binding | undefined,
+  source: (() => SampleSource) | undefined,
+): HTMLElement {
+  const note = document.createElement("p");
+  note.className = "vigilia-run-note";
+  note.dataset["vigiliaRunBinding"] = run.bindingId;
+
+  if (bound === undefined) {
+    note.dataset["vigiliaRunProblem"] = "undeclared";
+    note.textContent = uiCopy.inspectorFields.runUndeclared(run.bindingId);
+    return note;
+  }
+
+  note.textContent = uiCopy.inspectorFields.runBinding(bound.semanticKey);
+  // No reading is not the same as no binding: one needs a sensor, the other an
+  // edit here. Asked of the source rather than guessed from the run.
+  if (source?.().latest(bound.semanticKey) === undefined) {
+    note.dataset["vigiliaRunProblem"] = "unmapped";
+    note.textContent = uiCopy.inspectorFields.runUnmapped(bound.semanticKey);
+  }
+
+  return note;
+}
+
+/**
  * One row per run: its text, its preset and its colour. A run's overrides live
  * in the same `style` map the renderer already reads.
+ *
+ * `source` is what keeps the binding visible now the canvas paints readings
+ * rather than tokens: which key a run names, and whether a reading has arrived
+ * for it, are both things the author can only be told here.
  */
 export function createRunEditor(
   editor: EditorInteraction,
@@ -124,6 +258,8 @@ export function createRunEditor(
   object: ObjectWithText,
   onChange: () => void,
   bindingPort?: RunBindingPort,
+  locale?: string,
+  source?: () => SampleSource,
 ): RunEditor {
   const root = document.createElement("div");
   root.dataset["vigiliaRuns"] = "";
@@ -157,8 +293,6 @@ export function createRunEditor(
     current: string,
     onPick: (value: string) => void,
   ): HTMLElement => {
-    const wrapper = document.createElement("label");
-    wrapper.textContent = label;
     const select = document.createElement("select");
     select.dataset[data] = "";
     for (const [value, text] of options) {
@@ -169,6 +303,7 @@ export function createRunEditor(
     }
     select.value = current;
     select.addEventListener("change", () => onPick(select.value));
+    const wrapper = labelled(label, select);
     wrapper.append(select);
     return wrapper;
   };
@@ -184,6 +319,25 @@ export function createRunEditor(
       ],
       typeof content["align"] === "string" ? content["align"] : "left",
       (value) => setLayout({ align: value }),
+    ),
+    choice(
+      uiCopy.inspectorFields.verticalAlign,
+      // `text-vertical-align`, not `align-top`: the dataset name and the
+      // accessible name both have to say this moves text within its box, because
+      // arrange's `align-*` vocabulary is on screen for the same selection and
+      // means moving the object itself.
+      "vigiliaTextVerticalAlign",
+      [
+        ["top", uiCopy.inspectorFields.verticalTop],
+        ["middle", uiCopy.inspectorFields.verticalMiddle],
+        ["bottom", uiCopy.inspectorFields.verticalBottom],
+      ],
+      // The renderer's own fallback, so an unset value and an explicit `top` are
+      // the same thing to the author looking at the control.
+      typeof content["verticalAlign"] === "string"
+        ? content["verticalAlign"]
+        : "top",
+      (value) => setLayout({ verticalAlign: value }),
     ),
     choice(
       uiCopy.inspectorFields.wrap,
@@ -239,8 +393,6 @@ export function createRunEditor(
     index: number,
     port: RunBindingPort,
   ): HTMLElement => {
-    const wrapper = document.createElement("label");
-    wrapper.textContent = uiCopy.inspectorFields.runSource;
     const select = document.createElement("select");
     select.dataset["vigiliaRunSource"] = String(index);
     const prose = document.createElement("option");
@@ -290,8 +442,57 @@ export function createRunEditor(
       onChange();
     });
 
+    const wrapper = labelled(uiCopy.inspectorFields.runSource, select);
     wrapper.append(select);
     return wrapper;
+  };
+
+  /**
+   * What a prose run says.
+   *
+   * `change`, not per keystroke, like the format field below: a half-typed
+   * sentence is not an edit, and re-painting the canvas on every character
+   * would be a history entry per character.
+   */
+  const runTextField = (
+    run: Extract<TextRun, { readonly kind: "literal" }>,
+    index: number,
+  ): HTMLElement => {
+    const input = document.createElement("input");
+    input.type = "text";
+    input.dataset["vigiliaRunText"] = String(index);
+    input.value = run.text;
+    input.addEventListener("change", () =>
+      commit(index, { ...run, text: input.value }),
+    );
+    const wrapper = labelled(uiCopy.inspectorFields.runText, input);
+    wrapper.append(input);
+    return wrapper;
+  };
+
+  /**
+   * Drops a run, and the binding it was the only reader of.
+   *
+   * The binding goes with it for the reason the source field gives when a run
+   * returns to prose: nothing else can be reading it, and a binding left behind
+   * is one the document declares and no run can paint.
+   */
+  const removeRun = (index: number): void => {
+    const gone = runs[index];
+    object.set(TEXT_PROPERTY, {
+      ...(object.get(TEXT_PROPERTY) as Record<string, unknown> | undefined),
+      runs: runs.filter((_, at) => at !== index),
+    });
+    const port = bindingPort;
+    if (port !== undefined && gone?.kind === "value") {
+      port.setBindings(
+        port.bindings().filter((binding) => binding.id !== gone.bindingId),
+      );
+    }
+    applyAuthoredText(editor.canvas, globals);
+    editor.canvas.requestRenderAll();
+    editor.historyManager.saveState();
+    onChange();
   };
 
   /**
@@ -303,11 +504,9 @@ export function createRunEditor(
     index: number,
     binding: Binding,
     port: RunBindingPort,
-  ): HTMLElement => {
+  ): DocumentFragment => {
     const instant = describeSemanticKey(binding.semanticKey)?.instant;
     const fallback = instant?.defaultFormat ?? "";
-    const wrapper = document.createElement("label");
-    wrapper.textContent = uiCopy.inspectorFields.runFormat;
     const input = document.createElement("input");
     input.type = "text";
     input.dataset["vigiliaRunFormat"] = String(index);
@@ -324,8 +523,12 @@ export function createRunEditor(
     // so what is shown here is what the run paints.
     const show = (pattern: string): void => {
       preview.textContent =
-        formatInstant(instantIn(Date.now()), pattern, binding.timeZone) ??
-        uiCopy.inspectorFields.unresolved;
+        formatInstant(
+          instantIn(Date.now()),
+          pattern,
+          binding.timeZone,
+          locale,
+        ) ?? uiCopy.inspectorFields.unresolved;
     };
     const pattern = (): string => (input.value === "" ? fallback : input.value);
     show(pattern());
@@ -345,8 +548,23 @@ export function createRunEditor(
       onChange();
     });
 
-    wrapper.append(input, preview);
-    return wrapper;
+    // The vocabulary, because a token the formatter does not know renders
+    // itself — visible in this preview, and visible on a wall display too, where
+    // the author never was.
+    const hint = document.createElement("p");
+    // The class the run editor's other notes already use, so this reads as one.
+    hint.className = "vigilia-run-note";
+    hint.dataset["vigiliaRunFormatHint"] = String(index);
+    hint.textContent = uiCopy.inspectorFields.runFormatTokens;
+
+    // Siblings, not children: a label names its control by its own words, and
+    // these two are not its words. A fragment rather than a wrapper because the
+    // row is already the container.
+    const row = document.createDocumentFragment();
+    const wrapper = labelled(uiCopy.inspectorFields.runFormat, input);
+    wrapper.append(input);
+    row.append(wrapper, preview, hint);
+    return row;
   };
 
   /**
@@ -360,8 +578,6 @@ export function createRunEditor(
     binding: Binding,
     port: RunBindingPort,
   ): HTMLElement => {
-    const wrapper = document.createElement("label");
-    wrapper.textContent = uiCopy.inspectorFields.runZone;
     const select = document.createElement("select");
     select.dataset["vigiliaRunZone"] = String(index);
     const follows = document.createElement("option");
@@ -396,6 +612,59 @@ export function createRunEditor(
       onChange();
     });
 
+    const wrapper = labelled(uiCopy.inspectorFields.runZone, select);
+    wrapper.append(select);
+    return wrapper;
+  };
+
+  /**
+   * Whether the reading prints its own unit, or the author writes one beside it.
+   *
+   * The reference theme does the second: `cpu-card-value` is a value run on
+   * `cpu.load` with `unitDisplay: "none"` and the "%" as a styled literal at the
+   * caption's size. Nothing here could author that — the chart panel has this
+   * control and the run panel did not, so an author who wanted it got the
+   * reading's unit and their literal both, and "45%%" on the display's face.
+   *
+   * It writes the **run**, not the binding: a run's own `unitDisplay` takes
+   * precedence, so setting the binding would be silently shadowed by exactly the
+   * theme this control exists to reproduce.
+   */
+  const unitDisplayField = (
+    index: number,
+    run: Extract<TextRun, { kind: "value" }>,
+  ): HTMLElement => {
+    const select = document.createElement("select");
+    select.dataset["vigiliaRunUnitDisplay"] = String(index);
+    for (const [value, text] of Object.entries(uiCopy.unitDisplayOptions)) {
+      const option = document.createElement("option");
+      option.value = value;
+      option.textContent = text;
+      select.append(option);
+    }
+    select.value = run.unitDisplay ?? "";
+    select.addEventListener("change", () => {
+      const chosen = select.value;
+      // Built from the run without its `unitDisplay`, then set or not: dropping
+      // it after a spread would leave the key present with the old value.
+      const { unitDisplay: _previous, ...rest } = run;
+      commit(
+        index,
+        chosen === ""
+          ? rest
+          : {
+              ...rest,
+              // `exactOptionalPropertyTypes` is on: present with one of the
+              // three values, or absent.
+              unitDisplay: chosen as NonNullable<
+                Extract<TextRun, { kind: "value" }>["unitDisplay"]
+              >,
+            },
+      );
+      onChange();
+    });
+
+    const wrapper = labelled(uiCopy.panels.unitDisplay, select);
     wrapper.append(select);
     return wrapper;
   };
@@ -409,42 +678,53 @@ export function createRunEditor(
     label.textContent = describeRun(run);
     row.append(label);
 
-    // Preset reference, per run.
-    const presetLabel = document.createElement("label");
-    presetLabel.textContent = uiCopy.inspectorFields.runPreset;
+    // What a prose run says. A value run has no text of its own — the panel
+    // below says where its reading comes from instead — and a field over one
+    // would accept an edit and persist nothing, which is the one thing this
+    // panel's doc comment rules out.
+    if (run.kind === "literal") {
+      row.append(runTextField(run, index));
+    }
+
+    // Preset reference, per run. The option's value is the stored reference and
+    // its text is the preset's authored name, so what the author picks is what
+    // persists and what they read back is the word they chose it by.
     const preset = document.createElement("select");
     preset.dataset["vigiliaRunPreset"] = String(index);
-    for (const id of presetIds(globals)) {
+    const options = presetOptions(globals);
+    for (const { ref, name } of options) {
       const option = document.createElement("option");
-      option.value = id;
-      option.textContent = id.replace("typePresets.", "");
+      option.value = ref;
+      option.textContent = name;
       preset.append(option);
     }
-    preset.value = run.typePreset ?? presetIds(globals)[0] ?? "";
+    preset.value = run.typePreset ?? options[0]?.ref ?? "";
     preset.addEventListener("change", () =>
       commit(index, {
         ...run,
         typePreset: preset.value as `typePresets.${string}`,
       }),
     );
+    const presetLabel = labelled(uiCopy.inspectorFields.runPreset, preset);
     presetLabel.append(preset);
     row.append(presetLabel);
 
     // Colour reference, per run: the `style` map the renderer already reads.
-    const colourLabel = document.createElement("label");
-    colourLabel.textContent = uiCopy.inspectorFields.runColour;
     const colour = document.createElement("select");
     colour.dataset["vigiliaRunColour"] = String(index);
     const current = (
       run.style?.["color"] as { readonly ref?: string } | undefined
     )?.ref;
-    for (const ref of paletteTokens(globals)) {
+    // The same split as the preset dropdown above: the label is the authored
+    // name, the value is the reference the run keeps.
+    const colours = paletteOptions(globals);
+    for (const { ref, name } of colours) {
       const option = document.createElement("option");
       option.value = ref;
-      option.textContent = ref.replace("palette.", "");
+      option.textContent = name;
       colour.append(option);
     }
-    colour.value = current ?? paletteTokens(globals)[0] ?? "";
+    colour.value = current ?? colours[0]?.ref ?? "";
     colour.addEventListener("change", () =>
       commit(index, {
         ...run,
@@ -454,6 +734,7 @@ export function createRunEditor(
         },
       }),
     );
+    const colourLabel = labelled(uiCopy.inspectorFields.runColour, colour);
     colourLabel.append(colour);
     row.append(colourLabel);
 
@@ -466,6 +747,10 @@ export function createRunEditor(
         run.kind === "value"
           ? port.bindings().find((binding) => binding.id === run.bindingId)
           : undefined;
+      if (run.kind === "value") {
+        row.append(bindingState(run, bound, source));
+        row.append(unitDisplayField(index, run));
+      }
       if (
         bound !== undefined &&
         describeSemanticKey(bound.semanticKey)?.instant !== undefined
@@ -478,7 +763,55 @@ export function createRunEditor(
     }
 
     root.append(row);
+
+    // Removed from the row rather than the foot of the panel so the author
+    // reads which run they are deleting. Offered only when something would
+    // remain: a text object with no runs paints nothing at all, so a control
+    // that could reach that state is a control that can empty the canvas.
+    if (runs.length > 1) {
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.dataset["vigiliaRunRemove"] = String(index);
+      remove.textContent = uiCopy.inspectorFields.removeRun(index + 1);
+      remove.addEventListener("click", () => removeRun(index));
+      row.append(remove);
+    }
   });
+
+  /**
+   * A new run, looking the way the one before it does.
+   *
+   * Inheriting is the only default that is never wrong: a unit appended to a
+   * reading wants the reading's colour and a smaller preset, and a run that
+   * arrived in a different face reads as a mistake before the author has
+   * chosen its own. The id is the same shape the source field mints, so the
+   * two ways a run becomes a reading stay one convention.
+   */
+  const add = document.createElement("button");
+  add.type = "button";
+  add.dataset["vigiliaRunAdd"] = "";
+  add.textContent = uiCopy.inspectorFields.addRun;
+  add.addEventListener("click", () => {
+    const last = runs.at(-1);
+    const inherited = last === undefined ? {} : lookOf(last);
+    object.set(TEXT_PROPERTY, {
+      ...(object.get(TEXT_PROPERTY) as Record<string, unknown> | undefined),
+      runs: [...runs, { kind: "literal", text: "", ...inherited }],
+    });
+    applyAuthoredText(editor.canvas, globals);
+    editor.canvas.requestRenderAll();
+    editor.historyManager.saveState();
+    onChange();
+  });
+  root.append(add);
+
+  for (const gap of presetGaps(globals, runs)) {
+    const note = document.createElement("p");
+    note.className = "vigilia-run-note";
+    note.dataset["vigiliaRunNote"] = "";
+    note.textContent = gap;
+    root.append(note);
+  }
 
   return { root };
 }

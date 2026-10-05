@@ -2,7 +2,7 @@ import type { FabricPalette } from "../theme/fabric-envelope.js";
 import type { Fill, GaugeSettings, GradientStop, Sample } from "../types.js";
 import { hasPlottableValue } from "../types.js";
 import { type EngineAnimation, toEngineAnimation } from "./animation.js";
-import { resolveChartPaint } from "./chart-paint.js";
+import { NO_PAINT, resolveChartPaint } from "./chart-paint.js";
 import {
   colorAt,
   type EngineColor,
@@ -62,6 +62,13 @@ export function buildGaugeOption(
   palette?: FabricPalette,
 ): GaugeOption {
   const plottable = hasPlottableValue(sample);
+  const track = resolveChartPaint(settings.track, palette);
+  const progress = resolveChartPaint(settings.progress, palette);
+
+  // One condition for the whole arc. Missing samples show only the track,
+  // never a false zero (§83); a paint that resolves to nothing is the same
+  // absence, an arc the author cannot see the value in (0007).
+  const arcDrawn = plottable && progress !== undefined;
 
   // Clamp only the drawn arc; preserve the raw reading elsewhere (§83).
   const displayValue = plottable
@@ -82,22 +89,14 @@ export function buildGaugeOption(
           roundCap: settings.roundCap,
           lineStyle: {
             width: settings.thickness,
-            color: toColorSegments(
-              resolveChartPaint(settings.track, palette),
-              settings,
-            ),
+            color: toColorSegments(track ?? NO_PAINT, settings),
           },
         },
         progress: {
-          // Missing samples show only the track, never a false zero (§83).
-          show: plottable,
+          show: arcDrawn,
           width: settings.thickness,
           roundCap: settings.roundCap,
-          ...progressItemStyle(
-            resolveChartPaint(settings.progress, palette),
-            settings,
-            displayValue,
-          ),
+          ...progressItemStyle(progress ?? NO_PAINT, settings, displayValue),
         },
         // Chart typography is rendered by shared text elements (§91).
         pointer: { show: false },
@@ -105,7 +104,11 @@ export function buildGaugeOption(
         splitLine: { show: false },
         axisLabel: { show: false },
         detail: { show: false },
-        data: [{ value: displayValue }],
+        // No arc, no datum. ECharts reads its own previous progress element
+        // inside the data-diff update callback and only fills it after a render
+        // that drew an arc, so a datum outliving `progress.show: false` throws
+        // inside its renderer (0008).
+        data: arcDrawn ? [{ value: displayValue }] : [],
         silent: true,
         ...toEngineAnimation(settings.animation, animate),
       },

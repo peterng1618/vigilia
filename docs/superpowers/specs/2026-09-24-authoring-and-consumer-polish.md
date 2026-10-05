@@ -1,5 +1,8 @@
 # Authoring and Consumer Polish — Critique and Design
 
+- **Status:** in progress. Plan: [`2026-09-24-authoring-and-consumer-polish.md`](../plans/2026-09-24-authoring-and-consumer-polish.md).
+- **Plan:** [`2026-09-24-authoring-and-consumer-polish.md`](../plans/2026-09-24-authoring-and-consumer-polish.md)
+
 ## Why
 
 Vigilia's engine is sound: real telemetry through two providers, a Fabric

@@ -103,7 +103,10 @@ describe("buildBarOption", () => {
   });
 
   it("shows a background only when a track is configured", () => {
-    const withTrack = buildBarOption(defaultBarSettings, []);
+    // No authored track radius: the track is the plain rectangle it always was.
+    const unround = { ...defaultBarSettings };
+    delete (unround as { trackCornerRadius?: unknown }).trackCornerRadius;
+    const withTrack = buildBarOption(unround, []);
     expect(withTrack.series[0].showBackground).toBe(true);
     expect(withTrack.series[0].backgroundStyle).toEqual({ color: "#2a2f3a" });
 
@@ -112,6 +115,52 @@ describe("buildBarOption", () => {
     const withoutTrack = buildBarOption(plain, []);
     expect(withoutTrack.series[0].showBackground).toBe(false);
     expect("backgroundStyle" in withoutTrack.series[0]).toBe(false);
+  });
+
+  it("rounds the track from its own radius, and leaves the bar's alone", () => {
+    // The two ends of a progress bar are drawn by two different ECharts
+    // properties — the bar's `itemStyle.borderRadius`, the track's
+    // `backgroundStyle.borderRadius` — so one authorable value each is what
+    // makes them independent.
+    const option = buildBarOption(
+      { ...defaultBarSettings, cornerRadius: 2, trackCornerRadius: 20 },
+      [{ sensorId: "a", sample: sample(50) }],
+    );
+
+    expect(option.series[0].backgroundStyle?.borderRadius).toBe(20);
+    expect(option.series[0].data[0]?.itemStyle.borderRadius).toBe(2);
+  });
+
+  it("leaves the bar's radius alone when only the track's is set", () => {
+    const option = buildBarOption(
+      { ...defaultBarSettings, trackCornerRadius: 20 },
+      [{ sensorId: "a", sample: sample(50) }],
+    );
+
+    expect(option.series[0].data[0]?.itemStyle.borderRadius).toBe(
+      defaultBarSettings.cornerRadius,
+    );
+  });
+
+  it("omits the track's radius entirely rather than rounding it to zero", () => {
+    // exactOptionalPropertyTypes: an absent authored value has to stay absent,
+    // because ECharts reads a missing key as "no radius" and a present 0 as a
+    // rounded rect with no corners — the same picture, two different documents.
+    const settings = { ...defaultBarSettings };
+    delete (settings as { trackCornerRadius?: unknown }).trackCornerRadius;
+
+    const option = buildBarOption(settings, []);
+    expect("borderRadius" in (option.series[0].backgroundStyle ?? {})).toBe(
+      false,
+    );
+  });
+
+  it("never rounds a track radius negative", () => {
+    const option = buildBarOption(
+      { ...defaultBarSettings, trackCornerRadius: -5 },
+      [],
+    );
+    expect(option.series[0].backgroundStyle?.borderRadius).toBe(0);
   });
 
   it("omits barWidth entirely when unset", () => {
@@ -316,5 +365,37 @@ describe("category order", () => {
     if (axis.type === "category") {
       expect(axis.inverse).toBe(false);
     }
+  });
+});
+
+// 0007: a value the renderer cannot colour is a gap, not a transparent bar
+// carrying a live number. `noValue` is the same datum shape a missing sample
+// produces, so the two absences stay distinguishable only through the issue
+// `buildChartPlan` reports.
+describe("a bar whose fill has no palette entry", () => {
+  const unresolved: BarSettings = {
+    ...defaultBarSettings,
+    trackCornerRadius: 20,
+    fill: { ref: "palette.absent" },
+  };
+
+  it("draws no value rather than a transparent bar on a live number", () => {
+    const option = buildBarOption(unresolved, [
+      { sensorId: "disk.used", sample: sample(46.8) },
+    ]);
+    expect(option.series[0].data[0]!.value).toBeNull();
+  });
+
+  it("still resolves the track, which is not the value", () => {
+    const option = buildBarOption(
+      { ...unresolved, track: { ref: "palette.track" } },
+      [{ sensorId: "disk.used", sample: sample(46.8) }],
+      false,
+      { track: { name: "Track", value: { kind: "solid", color: "#2a2f3a" } } },
+    );
+    expect(option.series[0].backgroundStyle).toEqual({
+      color: "#2a2f3a",
+      borderRadius: 20,
+    });
   });
 });

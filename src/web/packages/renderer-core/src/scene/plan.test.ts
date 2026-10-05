@@ -37,11 +37,13 @@ function storeWith(entries: Record<string, Sample>): SampleStore {
 function documentWith(
   nodes: readonly ThemeNode[],
   globals?: ThemeDocument["globals"],
+  metadata?: ThemeDocument["metadata"],
 ): ThemeDocument {
   return {
     schemaVersion: 1,
     id: "demo",
-    artboard: { width: 800, height: 480, fitMode: "contain" },
+    artboard: { width: 800, height: 480, contentFit: "contain" },
+    ...(metadata === undefined ? {} : { metadata }),
     ...(globals === undefined ? {} : { globals }),
     nodes,
   };
@@ -63,7 +65,7 @@ describe("artboard", () => {
     expect(result.artboard).toMatchObject({
       width: 800,
       height: 480,
-      fitMode: "contain",
+      contentFit: "contain",
     });
   });
 
@@ -74,7 +76,7 @@ describe("artboard", () => {
       artboard: { width: 100, height: 100 },
       nodes: [],
     };
-    expect(plan(document).artboard.fitMode).toBe("contain");
+    expect(plan(document).artboard.contentFit).toBe("contain");
   });
 
   it("resolves the background through globals", () => {
@@ -380,6 +382,102 @@ describe("text (§89)", () => {
 
     // 14:07 +07:00 is 16:07 in Tokyo, which is the reading the author asked for.
     expect(result.segments[0]!.text).toBe("16:07");
+  });
+
+  it("takes a theme's language from the document when the context sets none", () => {
+    const source = storeWith({
+      "date.today": instant("2026-09-24T14:07:09+07:00", "clock:date.today"),
+    });
+    const result = plan(
+      documentWith(
+        [
+          node(
+            [{ id: "b", semanticKey: "date.today", format: "dddd" }],
+            [{ kind: "value", bindingId: "b" }],
+          ),
+        ],
+        undefined,
+        { themeLanguage: "ja" },
+      ),
+      { source },
+    );
+    const content = result.nodes[0]!.content;
+    if (content.kind !== "text") throw new Error("expected a text node");
+
+    // 2026-09-24 is a Thursday, however the language spells it.
+    expect(content.segments[0]!.text).toBe("木曜日");
+  });
+
+  it("lets a caller's language override the document's", () => {
+    // Both are declared, and the caller's wins: `context.themeLanguage` is how a
+    // consumer renders one plan in a language that is not the theme's own.
+    const source = storeWith({
+      "date.today": instant("2026-09-24T14:07:09+07:00", "clock:date.today"),
+    });
+    const result = plan(
+      documentWith(
+        [
+          node(
+            [{ id: "b", semanticKey: "date.today", format: "dddd" }],
+            [{ kind: "value", bindingId: "b" }],
+          ),
+        ],
+        undefined,
+        { themeLanguage: "ja" },
+      ),
+      { source, themeLanguage: "en" },
+    );
+    const content = result.nodes[0]!.content;
+    if (content.kind !== "text") throw new Error("expected a text node");
+
+    // The document says `ja`, and the caller still gets English: the theme's
+    // language did not win.
+    expect(content.segments[0]!.text).toBe("Thursday");
+  });
+
+  it("takes names from the pinned zone's own date, not from UTC", () => {
+    const source = storeWith({
+      "date.today": instant("2026-09-24T20:00:00Z", "clock:date.today"),
+    });
+    const result = segments(
+      source,
+      [
+        {
+          id: "b",
+          semanticKey: "date.today",
+          format: "dddd",
+          timeZone: "Asia/Tokyo",
+        },
+      ],
+      [{ kind: "value", bindingId: "b" }],
+      { themeLanguage: "en" },
+    );
+
+    // 20:00 UTC is already Friday the 25th in Tokyo, so a formatter that read the
+    // instant's UTC day would answer Thursday.
+    expect(result.segments[0]!.text).toBe("Friday");
+  });
+
+  it("leaves every numeric token in ASCII digits in every language", () => {
+    const source = storeWith({
+      "date.today": instant("2026-09-24T14:07:09+07:00", "clock:date.today"),
+    });
+    const result = segments(
+      source,
+      [
+        {
+          id: "b",
+          semanticKey: "date.today",
+          format: "DD/MM/YYYY HH:mm",
+        },
+      ],
+      [{ kind: "value", bindingId: "b" }],
+      { themeLanguage: "ar" },
+    );
+
+    // `ar` is the sharpest case: its own calendar and digits are not Latin, and
+    // the tokens deliberately keep both the padding and the ASCII forms.
+    expect(result.segments[0]!.text).toBe("24/09/2026 14:07");
   });
 
   it("shows a text key that is not a time exactly as it was sent", () => {
@@ -907,6 +1005,27 @@ describe("formatNumber", () => {
     expect(formatNumber(45.0, undefined)).toBe("45");
   });
 
+  it("writes the reading in the theme's own number format", () => {
+    // The Language setting says what language this dashboard is in, and a
+    // German reading `17.6` where their keyboard writes `17,6` is the setting
+    // doing nothing — which is what the row recorded.
+    expect(formatNumber(17.6, undefined, "de")).toBe("17,6");
+    expect(formatNumber(17.6, undefined, "fr")).toBe("17,6");
+    expect(formatNumber(17.6, undefined, "ru")).toBe("17,6");
+    expect(formatNumber(17.6, 1, "de")).toBe("17,6");
+    // Explicit precision still holds, and a tag this runtime cannot parse reads
+    // as its own rather than failing a paint.
+    expect(formatNumber(45, 2, "de")).toBe("45,00");
+    expect(formatNumber(17.6, undefined, "not-a-tag")).toBe("17.6");
+  });
+
+  it("leaves the width of a reading where the author laid it out", () => {
+    // Grouping is deliberately off: a dashboard's text sits in boxes an author
+    // sized by hand, and only the separator is worth moving.
+    expect(formatNumber(8667.25, undefined, "en")).toBe("8667.3");
+    expect(formatNumber(8667.25, undefined, "de")).toBe("8667,3");
+  });
+
   it("handles negatives", () => {
     expect(formatNumber(-3.25, 1)).toBe("-3.3");
     expect(formatNumber(-0.04, undefined)).toBe("0");
@@ -1058,5 +1177,56 @@ describe("computeMaxLines", () => {
   it("ignores a nonsensical line height instead of dividing by zero", () => {
     expect(computeMaxLines(60, 20, 0)).toBe(2);
     expect(computeMaxLines(60, 20, -3)).toBe(2);
+  });
+});
+
+// 0007: a chart's paint references resolve from the document's own globals, and
+// one that cannot is reported with the code `resolveStyleValue` already uses.
+describe("chart paint references in the plan", () => {
+  const paletteGlobals = {
+    palette: {
+      storage: {
+        name: "Storage",
+        value: { kind: "solid" as const, color: "#00b8d9" },
+      },
+    },
+  };
+
+  const storageBar = {
+    id: "bar",
+    type: "chart",
+    bindings: [{ id: "b", semanticKey: "disk.used" }],
+    content: {
+      family: "bar",
+      settings: { ...defaultBarSettings, fill: { ref: "palette.storage" } },
+    },
+  } as unknown as ThemeNode;
+
+  function storagePlan(withGlobals: boolean) {
+    return plan(
+      documentWith([storageBar], withGlobals ? paletteGlobals : undefined),
+      { source: storeWith({ "disk.used": ok(46.8) }) },
+    );
+  }
+
+  function barOf(result: ReturnType<typeof storagePlan>) {
+    const content = result.nodes[0]!.content;
+    if (content.kind !== "chart" || content.family !== "bar") {
+      throw new Error("expected a bar chart");
+    }
+    return content;
+  }
+
+  it("resolves a bar fill from the document palette", () => {
+    expect(
+      barOf(storagePlan(true)).option.series[0].data[0]!.itemStyle.color,
+    ).toBe("#00b8d9");
+  });
+
+  it("leaves a bar whose paint reference the document does not define unpainted", () => {
+    // The datum is absent, not a transparent bar on a live number (0007).
+    expect(
+      barOf(storagePlan(false)).option.series[0].data[0]!.value,
+    ).toBeNull();
   });
 });

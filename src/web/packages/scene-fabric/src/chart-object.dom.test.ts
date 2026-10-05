@@ -323,6 +323,65 @@ describe("an engine repaint reaches the canvas", () => {
   });
 });
 
+describe("a gauge crossing from no value to a value", () => {
+  /** The real built options, so this breaks if `gauge.ts` regresses. */
+  function gauge(noValue: boolean, value: number) {
+    return buildGaugeOption(
+      defaultGaugeSettings,
+      noValue ? undefined : sample(value),
+      false,
+    );
+  }
+
+  function gaugeChart(option: ReturnType<typeof buildGaugeOption>) {
+    return new VigiliaChart(
+      chartOptions({
+        family: "gauge",
+        settings: defaultGaugeSettings,
+        option,
+      }),
+    );
+  }
+
+  it("survives the transition the engine cannot survive with a datum", () => {
+    // **0008, and the throw it removes.** ECharts 6.1.0's
+    // `GaugeView._renderPointer` reads its own `_progressEls` inside the
+    // data-diff `update` callback, and only assigns it after a render that
+    // actually drew a progress arc. `DataDiffer` only calls `update` for a
+    // datum present in both the old and the new data, so the first render is
+    // safe and the second is not: a gauge mounted before telemetry has arrived
+    // — which is exactly what the player does, and the editor does not — threw
+    // `TypeError: Cannot read properties of undefined (reading '0')` the moment
+    // its first sample landed, and the per-chart guard in `hydrateCharts` left
+    // the ring as a grey track with no arc.
+    //
+    // The option is the fix's own claim: no arc, no datum, so the differ emits
+    // `add`, which is the one path that never reads `_progressEls`.
+    const chart = gaugeChart(gauge(true, 0));
+
+    expect(() => chart.setOption(gauge(false, 59.79))).not.toThrow();
+    chart.dispose();
+  });
+
+  it("survives it repeatedly, in both directions", () => {
+    // A display is not a one-shot: telemetry flaps between readings, gaps and
+    // non-`ok` statuses, and each crossing is another `update` callback. The
+    // defect hid behind a single transition; the fix has to hold for all of
+    // them, so this walks the cycle rather than one step of it.
+    const chart = gaugeChart(gauge(true, 0));
+
+    const crossing = () => {
+      chart.setOption(gauge(false, 59.79));
+      chart.setOption(gauge(true, 0));
+      chart.setOption(gauge(false, 12.5));
+    };
+
+    expect(crossing).not.toThrow();
+    expect(crossing).not.toThrow();
+    chart.dispose();
+  });
+});
+
 describe("disposal", () => {
   it("is idempotent and refuses further work", () => {
     // Whatever owns the canvas must call this: `canvas.remove()` does not.

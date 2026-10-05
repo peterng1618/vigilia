@@ -1,4 +1,5 @@
 import { type Canvas, FabricImage, type FabricObject } from "fabric/es";
+import { newObjectName } from "../new-object-defaults.js";
 
 /**
  * Decoded-pixel ceiling for imported and rehydrated images. Unrelated to
@@ -13,6 +14,8 @@ export interface ImageManager {
     readonly withoutAdding?: boolean;
     readonly withoutSave?: boolean;
   }): Promise<{ readonly image: FabricObject } | null>;
+  /** Revokes every object URL still held. */
+  destroy(): void;
 }
 
 /** The MIME subtype (e.g. "png" from "image/png"); empty when unrecognised. */
@@ -87,25 +90,51 @@ export function createImageManager(
   canvas: Canvas,
   save: () => void,
 ): ImageManager {
+  /**
+   * Every object URL this session minted.
+   *
+   * An image's persisted `src` is its object URL, and a history entry names it
+   * for as long as that entry can be restored — which outlives the image
+   * instance, because undo replaces every object with a new one. Revoking on
+   * removal therefore broke redo, and revoking on decode (what this did) broke
+   * undo outright: Fabric could not enliven the image and dropped it, so undo
+   * deleted the author's asset instead of the edit they asked it to reverse.
+   *
+   * The list is bounded by the number of imports in one editing session and is
+   * released with the manager.
+   */
+  const live = new Set<string>();
+
   return {
     async importImage(options) {
       const url = URL.createObjectURL(options.source);
+      let decoded: HTMLImageElement;
       try {
-        const decoded = await decode(url);
-        const image = new FabricImage(boundedImageElement(decoded));
-        image.set({
-          id: `image-${crypto.randomUUID()}`,
-          format: formatOf(options.source.type),
-        });
-        if (!options.withoutAdding) {
-          canvas.add(image);
-          canvas.setActiveObject(image);
-          if (!options.withoutSave) save();
-        }
-        return { image };
-      } finally {
+        decoded = await decode(url);
+      } catch (error) {
+        // Nothing decoded and no history entry will ever name this URL, so this
+        // is the one case where revoking immediately is right.
         URL.revokeObjectURL(url);
+        throw error;
       }
+      live.add(url);
+      const image = new FabricImage(boundedImageElement(decoded));
+      image.set({
+        id: `image-${crypto.randomUUID()}`,
+        name: newObjectName("image"),
+        format: formatOf(options.source.type),
+      });
+      if (!options.withoutAdding) {
+        canvas.add(image);
+        canvas.setActiveObject(image);
+        if (!options.withoutSave) save();
+      }
+      return { image };
+    },
+
+    destroy(): void {
+      for (const url of live) URL.revokeObjectURL(url);
+      live.clear();
     },
   };
 }

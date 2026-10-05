@@ -24,14 +24,23 @@ import type {
   DisplaySettings,
   DisplaySettingsStore,
 } from "./settings/display.js";
+import type { FontFavoritesStore } from "./settings/font-favorites.js";
 import { requiredDeviceGroups } from "./settings/required-devices.js";
 import type { ThemeSettingsStore } from "./settings/theme-settings.js";
 import {
   createThemeStore,
   isValidThemeId,
+  ThemeAssetLimitError,
+  ThemeConflictError,
   type ThemeStore,
 } from "./themes/store.js";
+import { SHIPPED_TEMPLATES } from "./themes/templates.js";
 import type { ThumbnailStore } from "./themes/thumbnails.js";
+import {
+  type DecodedThemeSave,
+  decodeThemeSave,
+  encodeThemeContent,
+} from "./themes/wire.js";
 import { SseConnection } from "./transport/sse.js";
 
 /** HTTP routing for bundles, discovery, sample streaming, and theme packages. */
@@ -69,6 +78,9 @@ export interface HostServerOptions {
   readonly onDeviceAssignment?: (assignment: DeviceAssignment) => void;
   /** The consumer's display preferences. Omit when the host stores none. */
   readonly display?: DisplaySettingsStore;
+  /** Which curated font trios this author favours. Omit when the host stores
+   *  none — the route then reports that rather than serving an empty list. */
+  readonly fontFavorites?: FontFavoritesStore;
   /** Called after a display change so providers read readings the new way. */
   readonly onDisplayChange?: (settings: DisplaySettings) => void;
   /** Devices a consumer may choose between. Omitted when none are known. */
@@ -85,7 +97,9 @@ export interface HostServer {
 }
 
 export const DEFAULT_SAMPLE_INTERVAL_MS = 1000;
-const MAX_THEME_UPLOAD_BYTES = 64 * 1024 * 1024;
+/** A save is JSON with base64 assets, so the wire is a third larger than the
+ *  archive it replaced; the store enforces its own bounds on the decoded side. */
+const MAX_THEME_UPLOAD_BYTES = 96 * 1024 * 1024;
 /** A dashboard screenshot; the store enforces the same bound. */
 const MAX_THUMBNAIL_BYTES = 2 * 1024 * 1024;
 
@@ -142,85 +156,6 @@ function sendJson(
  * The dashboard's first-run state. Plain HTML with no build step and no
  * dependency, matching the settings page.
  */
-/**
- * Several themes are saved and none is chosen. The consumer's next step is to
- * pick one, so the dashboard leads there rather than picking for them.
- */
-function libraryPage(
-  themes: readonly { readonly id: string; readonly name: string }[],
-): string {
-  const counts = new Map<string, number>();
-  for (const theme of themes) {
-    counts.set(theme.name, (counts.get(theme.name) ?? 0) + 1);
-  }
-
-  const items = themes
-    .map((theme) => {
-      // Two themes can share a display name; the id is what tells them apart.
-      const label =
-        (counts.get(theme.name) ?? 0) > 1
-          ? `${theme.name} (${theme.id})`
-          : theme.name;
-      return `<li><button type="button" data-theme="${theme.id}">${label}</button></li>`;
-    })
-    .join("");
-
-  return `<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="color-scheme" content="light dark" />
-    <title>Vigilia — choose a theme</title>
-    <style>
-      html, body { margin: 0; height: 100%; }
-      body {
-        display: grid;
-        place-items: center;
-        background: #14161c;
-        color: #e8ecf3;
-        font: 15px/1.6 system-ui, sans-serif;
-        padding: 24px;
-      }
-      main { max-width: 32em; text-align: center; }
-      h1 { font-size: 22px; margin: 0 0 8px; }
-      p { color: #8a97ab; margin: 0 0 20px; }
-      ul { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
-      button {
-        width: 100%;
-        padding: 12px 16px;
-        border-radius: 8px;
-        border: 1px solid #2a3242;
-        background: #1d2530;
-        color: inherit;
-        font: inherit;
-        cursor: pointer;
-      }
-      button:hover { border-color: #e8ecf3; }
-    </style>
-  </head>
-  <body>
-    <main>
-      <h1>Choose a theme</h1>
-      <p>This PC has several saved themes. Pick the one your displays should show.</p>
-      <ul>${items}</ul>
-    </main>
-    <script type="module">
-      for (const button of document.querySelectorAll("button[data-theme]")) {
-        button.addEventListener("click", async () => {
-          await fetch("/api/themes/active", {
-            method: "PUT",
-            headers: { "content-type": "application/json" },
-            body: JSON.stringify({ id: button.dataset.theme }),
-          });
-          location.reload();
-        });
-      }
-    </script>
-  </body>
-</html>`;
-}
-
 function firstRunPage(): string {
   return `<!doctype html>
 <html lang="en">
@@ -229,6 +164,11 @@ function firstRunPage(): string {
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="color-scheme" content="light dark" />
     <title>Vigilia</title>
+    <!-- The host's own pages are separate documents from the two bundles, so
+         they need their own copy of the mark: without a link the browser
+         probes \`/favicon.ico\` and logs a 404 on every load. The same file the
+         editor and the player keep, taken rather than authored. -->
+    <link rel="icon" type="image/svg+xml" href="/settings/favicon.svg" />
     <style>
       html, body { margin: 0; height: 100%; }
       body {
@@ -259,7 +199,8 @@ function firstRunPage(): string {
       <h1>No dashboard yet</h1>
       <p>
         This PC has no saved theme, so there is nothing to display. Open the
-        editor to build one, then save it to this PC's library.
+        editor to start from the ${SHIPPED_TEMPLATES[0]?.name ?? "template"},
+        or build one of your own, then save it to this PC's library.
       </p>
       <a href="/editor/">Open the editor</a>
     </main>
@@ -288,12 +229,19 @@ function sendText(
   response.end(body);
 }
 
-/** Serves a bundle file; extension-less routes may fall back to index.html. */
+/**
+ * Serves a bundle file. An extension-less path is a client route and may fall
+ * back to `index.html` — but only where the bundle actually has client routes.
+ * The editor does; the player is one document, and answering every unmatched
+ * path with it hands an operator a live display for a typo, which is harder to
+ * notice than a 404 and impossible to debug from the page.
+ */
 async function serveStatic(
   response: http.ServerResponse,
   root: string,
   urlPath: string,
   missingBundleHint: string,
+  clientRoutes = true,
 ): Promise<void> {
   const resolved = resolveStaticPath(root, urlPath);
 
@@ -304,7 +252,7 @@ async function serveStatic(
 
   const candidates = [resolved];
 
-  if (path.extname(resolved) === "") {
+  if (clientRoutes && path.extname(resolved) === "") {
     candidates.push(
       path.join(resolved, "index.html"),
       path.join(root, "index.html"),
@@ -328,7 +276,15 @@ async function serveStatic(
     }
   }
 
-  sendText(response, 404, missingBundleHint);
+  // The hint is only true when the bundle itself is missing its entry; a file
+  // that simply is not in a built bundle must not send the reader rebuilding
+  // one they already built. See ADR-0018.
+  const built = await fs
+    .stat(path.join(root, "index.html"))
+    .then(() => true)
+    .catch(() => false);
+
+  sendText(response, 404, built ? "Not found." : missingBundleHint);
 }
 
 export function createHostServer(options: HostServerOptions): HostServer {
@@ -342,6 +298,7 @@ export function createHostServer(options: HostServerOptions): HostServer {
   const sessions = options.sessions;
   const devices = options.devices;
   const display = options.display;
+  const fontFavorites = options.fontFavorites;
   const activeTheme = options.activeTheme;
   const thumbnails = options.thumbnails;
   const themeSettings = options.themeSettings;
@@ -385,6 +342,9 @@ export function createHostServer(options: HostServerOptions): HostServer {
       ...(gpu === undefined ? {} : { gpu }),
       ...(systemDisk === undefined ? {} : { systemDisk }),
       ...(dataDisk === undefined ? {} : { dataDisk }),
+      // The consumer's chosen names ride with the choice, so a rename reaches
+      // the caption and the readings it names in the same publish.
+      names: stored.names,
     };
   }
 
@@ -607,6 +567,63 @@ export function createHostServer(options: HostServerOptions): HostServer {
       return;
     }
 
+    // Which curated trios this author reaches for. Author state about this PC,
+    // beside the display preferences and out of every theme package; the same
+    // asymmetry as `/api/display`, so a paired display may read what this PC
+    // holds and only this PC may change it.
+    if (url.pathname === "/api/font-favorites") {
+      if (fontFavorites === undefined) {
+        sendText(
+          response,
+          404,
+          "Font favourites are not enabled on this host.",
+        );
+        return;
+      }
+
+      if (request.method === "GET") {
+        if (
+          !isLoopbackRemote(request.socket.remoteAddress) &&
+          !allowed(request, url)
+        ) {
+          sendText(response, 403, "This display is not paired with the host.");
+          return;
+        }
+
+        sendJson(response, 200, { favorites: await fontFavorites.read() });
+        return;
+      }
+
+      if (request.method === "PUT") {
+        if (!isLoopbackRemote(request.socket.remoteAddress)) {
+          sendText(
+            response,
+            403,
+            "Font favourites are available on this PC only.",
+          );
+          return;
+        }
+
+        try {
+          const body = JSON.parse(await readBody(request)) as unknown;
+          // The answer is what the editor repaints from, so it carries the
+          // stored list rather than an echo of what was sent.
+          const favorites = await fontFavorites.write(body);
+          sendJson(response, 200, { favorites });
+        } catch (error: unknown) {
+          sendText(
+            response,
+            400,
+            error instanceof Error ? error.message : String(error),
+          );
+        }
+        return;
+      }
+
+      sendText(response, 405, "Only GET and PUT are supported.");
+      return;
+    }
+
     if (url.pathname === "/api/health") {
       sendJson(response, 200, {
         displays: connections.size,
@@ -619,9 +636,25 @@ export function createHostServer(options: HostServerOptions): HostServer {
       return;
     }
 
+    // **The bundle is not dashboard content**, and it comes before this guard
+    // because a credential cannot reach it. A session token rides in the query
+    // string — `fetch` and `EventSource` carry one and `<script src>` cannot — so
+    // a paired phone was served the document and then refused its own scripts
+    // with a blank page. The bundle is the same bytes any loopback visitor
+    // already has: no reading, no theme, no device in it. Everything this guard
+    // exists to protect stays behind it — `/api/themes/**`, the sample stream,
+    // `/api/display` — and `/editor` keeps its own loopback guard.
+    // See `docs/decisions/0019`.
+    const isBundleAsset =
+      url.pathname.startsWith("/assets/") ||
+      // The browser probes this unprompted and without a token, and the repo
+      // already links the mark deliberately so it does not.
+      url.pathname === "/favicon.svg";
+
     // Display reads stay open on loopback; from the LAN they need a session so
     // dashboard content is not served to every device on the network.
     if (
+      !isBundleAsset &&
       !isLoopbackRemote(request.socket.remoteAddress) &&
       !allowed(request, url)
     ) {
@@ -634,7 +667,13 @@ export function createHostServer(options: HostServerOptions): HostServer {
         sendText(response, 405, "Only GET is supported.");
         return;
       }
-      sendJson(response, 200, { themes: await themeStore.list() });
+      // Templates travel beside the stored themes and are kept out of them: a
+      // template has no file, so counting it among the author's own would be
+      // counting something the PC does not have.
+      sendJson(response, 200, {
+        themes: await themeStore.list(),
+        templates: SHIPPED_TEMPLATES,
+      });
       return;
     }
 
@@ -666,6 +705,7 @@ export function createHostServer(options: HostServerOptions): HostServer {
         sendJson(response, 200, {
           active: chosen,
           themes: available,
+          templates: SHIPPED_TEMPLATES,
           requiredDevices: requiredDeviceGroups(record?.envelope),
         });
         return;
@@ -707,8 +747,11 @@ export function createHostServer(options: HostServerOptions): HostServer {
       return;
     }
 
+    // A declared asset path already begins with `assets/`, so the capture is
+    // the whole package-relative path and the lookup is verbatim. The `assets/`
+    // anchor is what keeps `/document`, `/answers` and `/thumbnail` out.
     const assetMatch = url.pathname.match(
-      /^\/api\/themes\/([^/]+)\/assets\/(.+)$/,
+      /^\/api\/themes\/([^/]+)\/(assets\/.+)$/,
     );
     if (assetMatch) {
       if (request.method !== "GET") {
@@ -730,12 +773,15 @@ export function createHostServer(options: HostServerOptions): HostServer {
       );
       const bytes =
         declared === undefined ? undefined : record?.assets[declared.path];
-      if (bytes === undefined) {
+      if (declared === undefined || bytes === undefined) {
         sendText(response, 404, "Theme asset not found.");
         return;
       }
       response.writeHead(200, {
-        "content-type": "application/octet-stream",
+        // A browser will not decode an `<img>` or a `<video>` whose response is
+        // not a media type, and never sniffs SVG, so octet-stream here is a
+        // packaged image no display can show.
+        "content-type": contentTypeFor(declared.path),
         "cache-control": "no-store",
       });
       response.end(Buffer.from(bytes));
@@ -894,11 +940,10 @@ export function createHostServer(options: HostServerOptions): HostServer {
           sendText(response, 404, "Theme not found.");
           return;
         }
-        response.writeHead(200, {
-          "content-type": "application/octet-stream",
-          "cache-control": "no-store",
-        });
-        response.end(Buffer.from(record.bytes));
+        // The editor reads a theme back the way it wrote one, so the pair of
+        // routes is symmetric: what a save put in the folder, an open takes out
+        // — plus the `base` that says which stored document this is.
+        sendJson(response, 200, encodeThemeContent(record, record.base));
         return;
       }
 
@@ -912,34 +957,47 @@ export function createHostServer(options: HostServerOptions): HostServer {
           return;
         }
 
-        let receivedBytes = 0;
-        const chunks: Buffer[] = [];
-        let aborted = false;
-
-        for await (const chunk of request) {
-          const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
-          receivedBytes += buf.byteLength;
-          if (receivedBytes > MAX_THEME_UPLOAD_BYTES) {
-            aborted = true;
-            break;
-          }
-          chunks.push(buf);
+        let body: string;
+        try {
+          body = await readBody(request, MAX_THEME_UPLOAD_BYTES);
+        } catch {
+          sendText(response, 413, "That theme is too large to save.");
+          return;
         }
 
-        if (aborted) {
+        let decoded: DecodedThemeSave;
+        try {
+          decoded = decodeThemeSave(body);
+        } catch (error) {
           sendText(
             response,
-            413,
-            "Theme package exceeds maximum size of 64 MiB.",
+            400,
+            error instanceof Error ? error.message : String(error),
           );
           return;
         }
 
-        const body = new Uint8Array(Buffer.concat(chunks));
         try {
-          const entry = await themeStore.write(rawId, body);
-          sendJson(response, 200, { ok: true, ...entry });
+          const saved = await themeStore.write(rawId, decoded.content, {
+            ...(decoded.base === undefined ? {} : { base: decoded.base }),
+            overwrite: decoded.overwrite,
+          });
+          sendJson(response, 200, { ok: true, ...saved });
         } catch (error) {
+          // A refusal is not a malformed theme: nothing was written, the
+          // stored version is intact, and the author is the one who has to
+          // choose what happens next — so it is not dressed as a 400.
+          if (error instanceof ThemeConflictError) {
+            sendText(response, 409, error.message);
+            return;
+          }
+          // The same 413 this route already answers an oversized body with: the
+          // theme is well-formed and the author is the one who has to make it
+          // smaller, so it is not dressed as a malformed request either.
+          if (error instanceof ThemeAssetLimitError) {
+            sendText(response, 413, error.message);
+            return;
+          }
           sendText(
             response,
             400,
@@ -949,7 +1007,44 @@ export function createHostServer(options: HostServerOptions): HostServer {
         return;
       }
 
-      sendText(response, 405, "Only GET and PUT are supported.");
+      if (request.method === "DELETE") {
+        // Removing authored work is this PC's business, like saving it: a
+        // paired phone reads themes, it does not lose them.
+        if (!isLoopbackRemote(request.socket.remoteAddress)) {
+          sendText(response, 403, "Theme modification is loopback only.");
+          return;
+        }
+        if (!isValidThemeId(rawId)) {
+          sendText(response, 400, "Invalid theme id.");
+          return;
+        }
+
+        try {
+          // The store moves the folder to the OS trash (docs/decisions/0021) and
+          // answers false for anything it would not have listed, so a 404 here
+          // means the same "no such theme" an open would have said.
+          const removed = await themeStore.remove(rawId);
+          sendJson(
+            response,
+            removed ? 200 : 404,
+            removed
+              ? { ok: true }
+              : { error: `No theme "${rawId}" in this library.` },
+          );
+        } catch (error) {
+          // A trash that refused is not a malformed request: nothing was
+          // removed, the theme is exactly where it was, and the author's copy
+          // is intact. The reason is the platform's own, so it travels as is.
+          sendText(
+            response,
+            500,
+            error instanceof Error ? error.message : String(error),
+          );
+        }
+        return;
+      }
+
+      sendText(response, 405, "Only GET, PUT and DELETE are supported.");
       return;
     }
 
@@ -1035,11 +1130,29 @@ export function createHostServer(options: HostServerOptions): HostServer {
       if (theme === undefined) {
         // Nothing to show: either a first run, or a choice to make. Both lead
         // the consumer somewhere they can act rather than to an error.
-        sendHtml(
-          response,
-          200,
-          available.length === 0 ? firstRunPage() : libraryPage(available),
-        );
+        if (available.length > 0) {
+          // Several themes and none chosen. The chooser is one of the host's
+          // own pages, sharing the settings page's theme rows, so both show a
+          // thumbnail; a second list here would be the copy without one.
+          if (bundles.admin !== undefined) {
+            await serveStatic(
+              response,
+              bundles.admin,
+              "/library.html",
+              "The theme chooser is missing from this installation.",
+            );
+            return;
+          }
+
+          sendText(
+            response,
+            404,
+            "The theme chooser is missing from this installation.",
+          );
+          return;
+        }
+
+        sendHtml(response, 200, firstRunPage());
         return;
       }
       url.searchParams.set("theme", theme);
@@ -1057,6 +1170,11 @@ export function createHostServer(options: HostServerOptions): HostServer {
       bundles.player,
       url.pathname,
       "The player bundle is not built. Run: npx vite build packages/player",
+      // The player is one document. Everything else that reaches here is a path
+      // the bundle does not declare, and answering it with a live dashboard is
+      // worse than a 404: an operator whose display URL is wrong sees a
+      // working display and no reason to look for the reason.
+      url.pathname === "/",
     );
   }
 

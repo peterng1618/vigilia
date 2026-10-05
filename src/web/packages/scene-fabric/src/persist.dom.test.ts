@@ -5,7 +5,11 @@ import { fileURLToPath } from "node:url";
 import {
   buildLineOption,
   defaultLineSettings,
+  glassTreatment,
+  objectName,
   type Sample,
+  VIGILIA_GLASS_PROPERTY,
+  VIGILIA_NAME_PROPERTY,
   validateFabricThemeEnvelope,
 } from "@vigilia/renderer-core";
 import {
@@ -16,10 +20,11 @@ import {
   Group,
   Path,
   Rect,
+  Shadow,
   StaticCanvas,
   Textbox,
 } from "fabric/es";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, beforeEach, vi } from "vitest";
 import { VigiliaChart, type VigiliaChartOptions } from "./chart-object.js";
 import { refreshBoundText, VIGILIA_TEXT_PROPERTY } from "./fabric-text.js";
 import {
@@ -103,6 +108,28 @@ function canvasOf(...objects: readonly object[]): StaticCanvas {
   return canvas;
 }
 
+/**
+ * The scene JSON `reviveScene` hands to `loadFromJSON`, without the load.
+ *
+ * jsdom never decodes an image, so a real revive of one that names a URL waits
+ * on an `onload` that cannot arrive. What is under test is what Fabric is
+ * given, so the load is captured rather than performed.
+ */
+async function sceneFabricWouldLoad(
+  scene: SerialisedScene,
+  resolveAsset?: (assetId: string) => string | undefined,
+): Promise<SerialisedScene> {
+  let handed: SerialisedScene | undefined;
+  const canvas = new StaticCanvas(undefined, { width: 400, height: 300 });
+  vi.spyOn(canvas, "loadFromJSON").mockImplementation((json: unknown) => {
+    handed = json as SerialisedScene;
+    return Promise.resolve(canvas);
+  });
+  await reviveScene(canvas, scene, resolveAsset);
+  if (handed === undefined) throw new Error("Fabric was never asked to load.");
+  return handed;
+}
+
 function keysOf(
   scene: { readonly objects: readonly Readonly<Record<string, unknown>>[] },
   index = 0,
@@ -127,6 +154,9 @@ describe("the persisted key set, per class", () => {
       [
         "Rect",
         () => new Rect({ width: 10, height: 10 }),
+        // No `vigiliaGlass`: the allowlist makes a property *available*, not
+        // mandatory, so an old scene gains no key. This exact-key assertion is
+        // what proves that, for every listed class.
         ["height", "id", "left", "top", "type", "version", "width"],
       ],
       [
@@ -241,12 +271,12 @@ describe("Fabric’s own keys are held to the same rule", () => {
     expect(keys).not.toContain("layoutManager");
   });
 
-  it("lets them straight back in once the editor enables group entry", () => {
-    // Pinned rather than warned about. Spec 0013 stage 4 adopts
-    // `subTargetCheck` + `interactive` for group entry/exit, which makes them
-    // non-default and therefore persisted — editor state in a portable
-    // document. This test is how that arrives: as a failure naming the keys,
-    // in the commit that causes it, rather than as a surprise in a saved file.
+  it("strips them again when a save happens while the editor has group entry on", () => {
+    // Spec 0013 stage 4 arms `subTargetCheck` + `interactive` on the group an
+    // author entered, which makes them non-default and therefore serialized.
+    // Saving from inside a group is a third path out of that state, beside
+    // exit and history reload, so serialization strips them rather than letting
+    // editor state land in a portable document (§67).
     const group = new Group([new Rect({ width: 4, height: 4 })], {
       subTargetCheck: true,
       interactive: true,
@@ -256,10 +286,8 @@ describe("Fabric’s own keys are held to the same rule", () => {
     expect(keysOf(serialiseScene(canvasOf(group)))).toEqual([
       "height",
       "id",
-      "interactive",
       "left",
       "objects",
-      "subTargetCheck",
       "top",
       "type",
       "version",
@@ -269,6 +297,28 @@ describe("Fabric’s own keys are held to the same rule", () => {
 });
 
 describe("identity survives a round trip", () => {
+  // jsdom cannot drawImage an image it never decoded, and reviving an image
+  // that names a URL makes Fabric render it. A proxy over a real context
+  // forwards everything and no-ops only drawImage.
+  beforeEach(() => {
+    const real = document.createElement("canvas").getContext("2d");
+    if (real === null) return;
+    vi.spyOn(HTMLCanvasElement.prototype, "getContext").mockImplementation(
+      () =>
+        new Proxy(real, {
+          get(target, property) {
+            if (property === "drawImage") return (): void => {};
+            const value = Reflect.get(target, property, target);
+            return typeof value === "function" ? value.bind(target) : value;
+          },
+          set(target, property, value) {
+            if (property === "patternQuality") return true;
+            return Reflect.set(target, property, value);
+          },
+        }) as unknown as CanvasRenderingContext2D,
+    );
+  });
+
   it("retains an image asset reference without serialising its preview URL", async () => {
     const source = image();
     setObjectAssetReference(source, { assetId: "logo", kind: "svg" });
@@ -287,6 +337,144 @@ describe("identity survives a round trip", () => {
     });
   });
 
+  it("does not persist the URL an asset-referenced image was decoded from", () => {
+    // Fabric writes `src` on every image whatever the caller asked for, so it
+    // has to be taken back off. What it wrote was the `blob:` handle of
+    // whichever session decoded it, and every reader resolves the reference
+    // before the load — persisting it shipped a dead handle beside the live
+    // thing, and into every exported package.
+    const source = image();
+    setObjectAssetReference(source, { assetId: "logo", kind: "image" });
+    // Not awaited: these cases are about what the serialiser leaves out, and the
+    // synchronous test bodies have nothing to wait on. `void` says that out loud,
+    // where a bare call reads as an oversight.
+    void source.setSrc?.("blob:http://127.0.0.1:5311/081c983e");
+
+    const scene = serialiseScene(canvasOf(source));
+
+    expect(scene.objects[0]![VIGILIA_ASSET_PROPERTY]).toEqual({
+      assetId: "logo",
+      kind: "image",
+    });
+    expect(scene.objects[0]).not.toHaveProperty("src");
+  });
+
+  it("keeps the URL of an image nothing declared", () => {
+    // The strip is for objects whose picture is the asset. An image with no
+    // reference has nothing to resolve, and dropping its `src` would leave a
+    // picture no reader could load — the one case where the URL is all there is.
+    const scene = serialiseScene(canvasOf(image()));
+
+    expect(scene.objects[0]![VIGILIA_ASSET_PROPERTY]).toBeUndefined();
+    expect(scene.objects[0]!["src"]).toBeDefined();
+  });
+
+  it("takes the URL off an asset-referenced image inside a group too", () => {
+    const inside = image();
+    setObjectAssetReference(inside, { assetId: "logo", kind: "image" });
+    // Not awaited: this case is about what the serialiser leaves out, and the
+    // synchronous test body has nothing to wait on. `void` says that out loud,
+    // where a bare call reads as an oversight.
+    void inside.setSrc?.("blob:http://127.0.0.1:5311/inside");
+    const plain = image();
+    const scene = serialiseScene(canvasOf(new Group([inside, plain])));
+
+    const children = scene.objects[0]!["objects"] as Record<string, unknown>[];
+    expect(children[0]).not.toHaveProperty("src");
+    expect(children[1]).toHaveProperty("src");
+  });
+
+  it("hands Fabric the URL an asset resolves to, not the one the save carried", async () => {
+    // A pasted image saves the `blob:` URL of the session that decoded it,
+    // which means nothing in another tab, another browser or on a phone — the
+    // bytes ship, the picture does not. Fabric enlivens from `src` alone, so
+    // the reference has to be resolved BEFORE the load; after it, the image is
+    // already missing. The load itself is stubbed because jsdom never decodes an
+    // image and would wait on an `onload` that cannot come.
+    const source = new FabricImage(null as unknown as HTMLImageElement, {
+      left: 0,
+      top: 0,
+      width: 4,
+      height: 4,
+    });
+    setObjectAssetReference(source, { assetId: "pasted-probe", kind: "image" });
+    const scene = serialiseScene(canvasOf(source));
+    // What the editor's session happened to be holding when it saved.
+    (scene.objects[0] as Record<string, unknown>)["src"] =
+      "blob:http://127.0.0.1:5311/081c983e";
+    const asked: string[] = [];
+
+    const handed = await sceneFabricWouldLoad(scene, (assetId) => {
+      asked.push(assetId);
+      return assetId === "pasted-probe"
+        ? "/api/themes/demo/assets/pasted-probe.png?t=session"
+        : undefined;
+    });
+
+    expect(asked).toEqual(["pasted-probe"]);
+    expect(handed.objects[0]!["src"]).toBe(
+      "/api/themes/demo/assets/pasted-probe.png?t=session",
+    );
+    // The reference is untouched: it is the authored truth, and the URL is what
+    // this session resolves it to.
+    expect(handed.objects[0]![VIGILIA_ASSET_PROPERTY]).toEqual({
+      assetId: "pasted-probe",
+      kind: "image",
+    });
+  });
+
+  it("resolves an image inside a group, and leaves one nobody can name alone", async () => {
+    // Nothing is invented for an asset the resolver cannot name: the object
+    // keeps the `src` it arrived with and fails visibly, rather than being
+    // pointed at a placeholder that would paint the wrong picture.
+    const inside = new FabricImage(null as unknown as HTMLImageElement, {
+      left: 0,
+      top: 0,
+      width: 4,
+      height: 4,
+    });
+    setObjectAssetReference(inside, { assetId: "known", kind: "image" });
+    const missing = new FabricImage(null as unknown as HTMLImageElement, {
+      left: 8,
+      top: 0,
+      width: 4,
+      height: 4,
+    });
+    setObjectAssetReference(missing, { assetId: "unknown", kind: "image" });
+    const group = new Group([inside, missing], { left: 0, top: 0 });
+    const scene = serialiseScene(canvasOf(group));
+    const children = scene.objects[0]!["objects"] as Record<string, unknown>[];
+    children[0]!["src"] = "blob:http://x/known";
+    children[1]!["src"] = "blob:http://x/unknown";
+
+    const handed = await sceneFabricWouldLoad(scene, (assetId) =>
+      assetId === "known" ? "/assets/known.png" : undefined,
+    );
+
+    const revivedChildren = handed.objects[0]!["objects"] as Record<
+      string,
+      unknown
+    >[];
+    expect(revivedChildren[0]!["src"]).toBe("/assets/known.png");
+    expect(revivedChildren[1]!["src"]).toBe("blob:http://x/unknown");
+  });
+
+  it("changes nothing when the caller has no resolver", async () => {
+    const source = new FabricImage(null as unknown as HTMLImageElement, {
+      left: 0,
+      top: 0,
+      width: 4,
+      height: 4,
+    });
+    setObjectAssetReference(source, { assetId: "pasted-probe", kind: "image" });
+    const scene = serialiseScene(canvasOf(source));
+    (scene.objects[0] as Record<string, unknown>)["src"] = "blob:http://x/y";
+
+    const handed = await sceneFabricWouldLoad(scene);
+
+    expect(handed.objects[0]!["src"]).toBe("blob:http://x/y");
+  });
+
   it("persists palette references and reapplies their resolved paint", async () => {
     const rect = new Rect({ width: 10, height: 10, fill: "#000" });
     rect.set("id", "panel");
@@ -303,6 +491,209 @@ describe("identity survives a round trip", () => {
       fill: "palette.panel",
     });
     expect(revived.getObjects()[0]!.fill).toBe("#123456");
+  });
+
+  it("retains an authored glass treatment through serialisation and revival", async () => {
+    // The registration that matters here is the persisted-properties
+    // allowlist, not a Fabric subclass: an unlisted property is dropped on
+    // save, so a missing entry fails here rather than at some later render.
+    const panel = new Rect({ width: 40, height: 24, rx: 8, ry: 8 });
+    panel.set("id", "panel");
+    panel.set(VIGILIA_GLASS_PROPERTY, { blurRadius: 16 });
+    const scene = serialiseScene(canvasOf(panel));
+    const revived = new StaticCanvas(undefined, { width: 400, height: 300 });
+
+    await reviveScene(revived, scene);
+
+    expect(scene.objects[0]![VIGILIA_GLASS_PROPERTY]).toEqual({
+      blurRadius: 16,
+    });
+    expect(glassTreatment(revived.getObjects()[0]!)).toEqual({
+      blurRadius: 16,
+    });
+  });
+
+  it("retains an authored display name through serialisation and revival", async () => {
+    // The registration that matters here is the persisted-properties
+    // allowlist, not a Fabric subclass: an unlisted property is dropped on
+    // save, so a missing entry fails here rather than at some later render.
+    const rect = new Rect({ width: 40, height: 24 });
+    rect.set("id", "panel");
+    rect.set(VIGILIA_NAME_PROPERTY, "Header panel");
+    const scene = serialiseScene(canvasOf(rect));
+    const revived = new StaticCanvas(undefined, { width: 400, height: 300 });
+
+    await reviveScene(revived, scene);
+
+    expect(scene.objects[0]![VIGILIA_NAME_PROPERTY]).toBe("Header panel");
+    expect(objectName(revived.getObjects()[0]!)).toBe("Header panel");
+  });
+
+  it("adds no name key to an object that has none", async () => {
+    // Absence is the backward-compatibility contract: a scene authored before
+    // the field must not grow an empty name on the next save.
+    const rect = new Rect({ width: 40, height: 24 });
+    rect.set("id", "panel");
+    const scene = serialiseScene(canvasOf(rect));
+    const revived = new StaticCanvas(undefined, { width: 400, height: 300 });
+
+    await reviveScene(revived, scene);
+
+    expect(keysOf(scene)).not.toContain(VIGILIA_NAME_PROPERTY);
+    expect(objectName(revived.getObjects()[0]!)).toBeUndefined();
+  });
+
+  it("drops the name again when an author clears it", async () => {
+    // Clearing is a real edit, not a blank label: the key goes rather than
+    // holding "", so the reader falls back to the id exactly as it would for a
+    // scene that never had a name.
+    const rect = new Rect({ width: 40, height: 24 });
+    rect.set("id", "panel");
+    rect.set(VIGILIA_NAME_PROPERTY, "Header panel");
+    const canvas = canvasOf(rect);
+    rect.set(VIGILIA_NAME_PROPERTY, undefined);
+
+    const scene = serialiseScene(canvas);
+
+    expect(keysOf(scene)).not.toContain(VIGILIA_NAME_PROPERTY);
+  });
+
+  it("retains a nested display name on a grouped child", async () => {
+    const panel = new Rect({ width: 40, height: 24 });
+    panel.set("id", "panel");
+    panel.set(VIGILIA_NAME_PROPERTY, "Header panel");
+    const group = new Group([panel]);
+    group.set("id", "card");
+    group.set(VIGILIA_NAME_PROPERTY, "Card");
+    const scene = serialiseScene(canvasOf(group));
+    const revived = new StaticCanvas(undefined, { width: 400, height: 300 });
+
+    await reviveScene(revived, scene);
+
+    const [revivedGroup] = revived.getObjects();
+    expect(objectName(revivedGroup!)).toBe("Card");
+    // A group's children are read through Fabric's own accessor; the persisted
+    // key list reaches them, but the revived instance is what a surface sees.
+    const child = (revivedGroup as Group).getObjects()[0]!;
+    expect(objectName(child)).toBe("Header panel");
+  });
+
+  it("retains a nested glass treatment on a grouped panel", async () => {
+    const panel = new Rect({ width: 40, height: 24, rx: 8, ry: 8 });
+    panel.set("id", "panel");
+    panel.set(VIGILIA_GLASS_PROPERTY, { blurRadius: 24 });
+    const group = new Group([panel]);
+    group.set("id", "card");
+    const scene = serialiseScene(canvasOf(group));
+    const revived = new StaticCanvas(undefined, { width: 400, height: 300 });
+
+    await reviveScene(revived, scene);
+
+    const children = (revived.getObjects()[0] as Group).getObjects();
+    expect(glassTreatment(children[0]!)).toEqual({ blurRadius: 24 });
+  });
+
+  it("never hands a renderer a treatment that revival could not validate", async () => {
+    // `reviveScene` restores Fabric JSON as given; it is not a validator, and
+    // the envelope validator is what refuses a bad radius at import. This
+    // pins the second layer: a scene that reaches revival by another route
+    // still cannot produce a live treatment, because the reader treats a
+    // malformed value as off instead of coercing it to a default.
+    const revived = new StaticCanvas(undefined, { width: 400, height: 300 });
+
+    await reviveScene(revived, {
+      version: "7.4.0",
+      objects: [
+        { type: "Rect", id: "a", vigiliaGlass: { blurRadius: 9999 } },
+        { type: "Rect", id: "b", vigiliaGlass: { blurRadius: "16" } },
+        { type: "Rect", id: "c", vigiliaGlass: { blurRadius: 16, surface: 1 } },
+        { type: "Rect", id: "d", vigiliaGlass: { blurRadius: 12 } },
+      ],
+    });
+
+    expect(
+      revived.getObjects().map((object) => glassTreatment(object)),
+    ).toEqual([undefined, undefined, undefined, { blurRadius: 12 }]);
+  });
+
+  it("carries a glass treatment through the duplicate a clipboard makes", async () => {
+    // Duplicate is the other author-mutating save path: it clones with the
+    // same allowlist, so a treatment survives it only if the entry exists.
+    const panel = new Rect({ width: 40, height: 24, rx: 8, ry: 8 });
+    panel.set("id", "panel");
+    panel.set(VIGILIA_GLASS_PROPERTY, { blurRadius: 12 });
+
+    const copy = await panel.clone([...SCENE_PERSISTED_PROPERTIES]);
+    copy.set("id", "panel-copy");
+
+    const scene = serialiseScene(canvasOf(copy as Rect));
+    expect(scene.objects[0]![VIGILIA_GLASS_PROPERTY]).toEqual({
+      blurRadius: 12,
+    });
+  });
+
+  it("persists no surface, resolved colour, reading or media with the treatment", () => {
+    // The saved document is the product's portable state. Whatever a live
+    // render attaches to the object — a scratch surface, a device-pixel
+    // blur, a sampled reading, a video element — must not ride along, or a
+    // theme package would carry device state between machines.
+    const panel = new Rect({ width: 40, height: 24, rx: 8, ry: 8 });
+    panel.set("id", "panel");
+    panel.set(VIGILIA_GLASS_PROPERTY, { blurRadius: 16 });
+    panel.set("vigiliaGlassSurface", { width: 1280, height: 720 });
+    panel.set("vigiliaGlassTint", "rgba(10,15,22,0.82)");
+    panel.set("vigiliaGlassSample", 42.7);
+    panel.set("vigiliaGlassMedia", { kind: "video", element: "<video />" });
+
+    const scene = serialiseScene(canvasOf(panel));
+    const json = JSON.stringify(scene);
+
+    expect(scene.objects[0]![VIGILIA_GLASS_PROPERTY]).toEqual({
+      blurRadius: 16,
+    });
+    for (const leak of [
+      "vigiliaGlassSurface",
+      "vigiliaGlassTint",
+      "vigiliaGlassSample",
+      "vigiliaGlassMedia",
+      "42.7",
+      "<video",
+    ]) {
+      expect(json, leak).not.toContain(leak);
+    }
+  });
+
+  it("resolves a persisted shadow colour through the palette, not a literal", async () => {
+    // The assertion has to end on serialised output: reading the live object
+    // after `applyObjectPalettePaints` would pass even if the palette never
+    // reached the save path, because the same in-memory object is inspected.
+    // Re-serialising proves the reference survived the round trip *and* that
+    // the resolved colour is what the document now carries.
+    const panel = new Rect({
+      width: 40,
+      height: 24,
+      shadow: new Shadow({ color: "#000000", blur: 18, offsetY: 4 }),
+    });
+    panel.set("id", "panel");
+    panel.set(VIGILIA_PAINT_PROPERTY, { shadowColor: "palette.edge" });
+    const scene = serialiseScene(canvasOf(panel));
+    const revived = new StaticCanvas(undefined, { width: 400, height: 300 });
+
+    await reviveScene(revived, scene);
+    applyObjectPalettePaints(revived, {
+      palette: { edge: { name: "Edge", value: "#123456" } },
+    });
+
+    const saved = serialiseScene(revived).objects[0]!;
+    const shadow = saved["shadow"] as Record<string, unknown>;
+
+    expect(saved[VIGILIA_PAINT_PROPERTY]).toEqual({
+      shadowColor: "palette.edge",
+    });
+    expect(shadow["color"]).toBe("#123456");
+    // The native geometry stays the author's; only the colour is resolved.
+    expect(shadow["blur"]).toBe(18);
+    expect(shadow["offsetY"]).toBe(4);
   });
 
   it("reapplies a persisted text run type preset", () => {
@@ -425,6 +816,79 @@ describe("identity survives a round trip", () => {
     expect(serialiseScene(canvas).objects[0]!.text).toBe("CPU —");
   });
 
+  it("reapplies ellipsis when a bound value grows at runtime", () => {
+    const text = new Textbox("--", {
+      width: 40,
+      fontSize: 20,
+      textAlign: "right",
+      left: 100,
+    });
+    text.set("id", "readout");
+    text.clipPath = new Rect({ width: 40, height: 30 });
+    text.set(VIGILIA_TEXT_PROPERTY, {
+      runs: [{ kind: "value", bindingId: "load" }],
+      wrap: false,
+      overflow: "ellipsis",
+      align: "right",
+      verticalAlign: "bottom",
+    });
+
+    refreshBoundText(
+      canvasOf(text),
+      { readout: [{ id: "load", semanticKey: "cpu.load" }] },
+      {
+        latest: () => sample(123456789),
+        history: () => [],
+      },
+      undefined,
+    );
+
+    expect(text.text).toContain("…");
+    expect(text.text).not.toBe("123456789");
+    expect((text.clipPath as Rect).width).toBe(40);
+  });
+
+  it("repositions a revived visible value at its authored edge", async () => {
+    const text = new FabricText("--", {
+      fontSize: 20,
+      textAlign: "right",
+      left: 100,
+      top: 100,
+    });
+    text.set("id", "readout");
+    text.set(VIGILIA_TEXT_PROPERTY, {
+      runs: [{ kind: "value", bindingId: "load" }],
+      overflow: "visible",
+      align: "right",
+      verticalAlign: "bottom",
+    });
+
+    const revived = new StaticCanvas(undefined, { width: 400, height: 300 });
+    await reviveScene(revived, serialiseScene(canvasOf(text)));
+    const restored = revived.getObjects()[0] as FabricText;
+    const right = restored.left + (restored.width * restored.scaleX) / 2;
+    const bottom = restored.top + (restored.height * restored.scaleY) / 2;
+
+    refreshBoundText(
+      revived,
+      { readout: [{ id: "load", semanticKey: "cpu.load" }] },
+      {
+        latest: () => sample(123456789),
+        history: () => [],
+      },
+      undefined,
+    );
+
+    expect(restored.left + (restored.width * restored.scaleX) / 2).toBeCloseTo(
+      right,
+      6,
+    );
+    expect(restored.top + (restored.height * restored.scaleY) / 2).toBeCloseTo(
+      bottom,
+      6,
+    );
+  });
+
   it("paints a hosted reading in the consumer's units, not the author's", () => {
     const text = new FabricText("--");
     text.set("id", "readout");
@@ -476,6 +940,60 @@ describe("identity survives a round trip", () => {
     expect(
       (objects[1] as Group).getObjects().map((object) => object.get("id")),
     ).toEqual(["child"]);
+  });
+
+  it("keeps an authored interaction lock across a round trip", async () => {
+    // The bug this pins: undo revives through this save path, and Fabric omits
+    // `selectable`, `evented` and `locked` from `toObject`, so a scene saved
+    // without them came back with every object selectable — an authored
+    // background, or a locked object, unbroke itself on the first undo. The
+    // first mount looked correct only because the authored JSON still carried
+    // the flags literally; nothing had been saved and revived yet.
+    const background = new Rect({ width: 400, height: 300, fill: "#123" });
+    background.set({ id: "background", selectable: false, evented: false });
+    const locked = new Rect({ width: 10, height: 10 });
+    locked.set({
+      id: "locked",
+      selectable: false,
+      evented: false,
+      locked: true,
+    });
+    const ordinary = new Rect({ width: 10, height: 10 });
+    ordinary.set("id", "ordinary");
+
+    const revived = new StaticCanvas(undefined, { width: 400, height: 300 });
+    await reviveScene(
+      revived,
+      serialiseScene(canvasOf(background, locked, ordinary)),
+    );
+
+    const state = revived
+      .getObjects()
+      .map((object) => [
+        object.get("id"),
+        object.selectable,
+        object.evented,
+        object.get("locked"),
+      ]);
+
+    expect(state).toEqual([
+      ["background", false, false, undefined],
+      ["locked", false, false, true],
+      // The other half of the contract: an ordinary object is still selectable,
+      // so a fix that disarmed everything would fail here rather than pass.
+      ["ordinary", true, true, undefined],
+    ]);
+  });
+
+  it("strips the interaction flags again for an object that is ordinary", () => {
+    const ordinary = new Rect({ width: 10, height: 10 });
+    ordinary.set("id", "ordinary");
+
+    // Listing a property is not the same as persisting it: defaults still go,
+    // so an ordinary object adds no keys to the document.
+    expect(keysOf(serialiseScene(canvasOf(ordinary)))).not.toContain(
+      "selectable",
+    );
   });
 
   it("matches by id and never by position", async () => {
@@ -561,6 +1079,7 @@ describe("the Fabric theme envelope", () => {
     const envelope = serialiseThemeEnvelope(canvasOf(rect), {
       id: "theme",
       artboard: { width: 400, height: 300 },
+      metadata: { themeLanguage: "en" },
       bindings: { rect: [] },
     });
 
@@ -695,9 +1214,18 @@ describe("there is exactly one owner of scene serialisation", () => {
     ).toBeGreaterThan(10);
     expect(SCENE_PERSISTED_PROPERTIES).toEqual([
       "id",
+      VIGILIA_NAME_PROPERTY,
       VIGILIA_TEXT_PROPERTY,
       VIGILIA_PAINT_PROPERTY,
       VIGILIA_ASSET_PROPERTY,
+      VIGILIA_GLASS_PROPERTY,
+      // Which unit an inserted card was copied from (§77). Named literally
+      // rather than through a constant, because there is no Fabric-side
+      // constant for it and one would have a single reader.
+      "provenance",
+      "selectable",
+      "evented",
+      "locked",
     ]);
   });
 });

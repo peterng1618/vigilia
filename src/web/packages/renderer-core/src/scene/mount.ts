@@ -83,7 +83,7 @@ export function mountScene(options: MountOptions): SceneHandle {
     const transform = computeArtboardTransform({
       artboard: { width: plan.artboard.width, height: plan.artboard.height },
       viewport: { width: host.clientWidth, height: host.clientHeight },
-      fitMode: plan.artboard.fitMode,
+      contentFit: plan.artboard.contentFit,
     });
 
     artboard.style.transform = toCssTransform(transform);

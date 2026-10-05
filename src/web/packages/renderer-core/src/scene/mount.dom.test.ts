@@ -33,7 +33,7 @@ function documentWith(nodes: readonly ThemeNode[]): ThemeDocument {
   return {
     schemaVersion: 1,
     id: "churn",
-    artboard: { width: 800, height: 480, fitMode: "contain" },
+    artboard: { width: 800, height: 480, contentFit: "contain" },
     nodes,
   };
 }

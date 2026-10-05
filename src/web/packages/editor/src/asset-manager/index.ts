@@ -7,11 +7,15 @@ import {
   objectAssetReference,
   setObjectAssetReference,
 } from "@vigilia/scene-fabric";
-import { FabricImage, Group, type StaticCanvas } from "fabric/es";
+import {
+  FabricImage,
+  type FabricObject,
+  Group,
+  type StaticCanvas,
+} from "fabric/es";
 import type { EditorInteraction } from "../editor-interaction.js";
 import type { CuratedFontFace } from "../font-catalog.js";
 import { boundedImageElement } from "../image-manager/index.js";
-import { uiCopy } from "../ui-copy.js";
 
 const TYPES = {
   png: { mime: "image/png", kind: "image" },
@@ -29,9 +33,14 @@ const TYPES = {
 
 type AssetExtension = keyof typeof TYPES;
 type AssetKind = (typeof TYPES)[AssetExtension]["kind"];
-type LocalAssetReference =
+export type LocalAssetReference =
   | (AssetReference & { readonly kind: AssetKind })
   | FontAssetReference;
+/** The kinds a canvas image can be bound to; a video or a font is packaged
+    without ever becoming an object. */
+export type PlacedAssetReference = AssetReference & {
+  readonly kind: "image" | "svg";
+};
 
 /** Owns declared package bytes and the disposable browser previews derived from them. */
 export class AssetManager {
@@ -45,6 +54,44 @@ export class AssetManager {
 
   get declarations(): readonly LocalAssetReference[] {
     return this.#declarations;
+  }
+
+  /**
+   * Declares a file as an asset AND puts it on the canvas.
+   *
+   * Both halves or neither. An image placed without a declaration keeps the
+   * `blob:` URL it was decoded from, which is a handle into one browser
+   * session's memory: it means nothing in another tab, on a phone, or on a
+   * second visit — and the document still saves, so the loss is silent. The
+   * assets pane and a pasted image both go through here so neither can take the
+   * half-only path.
+   */
+  async placeImage(
+    editor: EditorInteraction,
+    file: File,
+    /** The declaration the caller already made, so a caller that imports first
+     *  and then places does not declare the same file twice. */
+    declared?: LocalAssetReference,
+  ): Promise<FabricImage | undefined> {
+    const asset = declared ?? (await this.import(file));
+    const imported = await editor.imageManager.importImage({
+      source: file,
+      scale: "image-contain",
+      withoutSave: true,
+    });
+    if (imported === null || !(imported.image instanceof FabricImage)) {
+      return undefined;
+    }
+    // Only images and SVG reach here, and both are the kinds an image object
+    // can carry — a font or a video has no image object to point at.
+    if (asset.kind !== "image" && asset.kind !== "svg") return undefined;
+    setObjectAssetReference(imported.image, {
+      assetId: asset.id,
+      kind: asset.kind,
+    });
+    imported.image.setCoords();
+    editor.canvas.setActiveObject(imported.image);
+    return imported.image;
   }
 
   async import(file: File): Promise<LocalAssetReference> {
@@ -113,6 +160,55 @@ export class AssetManager {
     return true;
   }
 
+  /**
+   * Swaps an asset's bytes for another's, keeping the id and path.
+   *
+   * Replacing is not importing: the author picked an existing asset, so every
+   * object and every reference bound to that id keeps working and the package
+   * does not grow. The declaration keeps its curated metadata — a font's family
+   * and licence came from the catalogue, not from the file — and only the
+   * digest and the bytes change.
+   */
+  async replace(assetId: string, file: File): Promise<LocalAssetReference> {
+    const index = this.#declarations.findIndex((asset) => asset.id === assetId);
+    const existing = this.#declarations[index];
+    if (index < 0 || existing === undefined)
+      throw new Error(`No declared asset to replace: ${assetId}.`);
+
+    const extension = extensionOf(file.name);
+    if (extension === undefined)
+      throw new Error("Unsupported asset file type.");
+    const type = TYPES[extension];
+    if (file.type !== type.mime)
+      throw new Error("File MIME type does not match its extension.");
+    // A different extension would leave the declared path claiming bytes of a
+    // format the package's readers do not expect at that name.
+    if (extensionOf(existing.path) !== extension)
+      throw new Error("A replacement must keep the asset's file extension.");
+
+    const bytes = new Uint8Array(await file.arrayBuffer());
+    const previewBytes = extension === "svg" ? sanitisedSvg(bytes) : bytes;
+    this.#assets[existing.path] = bytes;
+    const { sha256: _drop, ...kept } = existing;
+    const next: LocalAssetReference = {
+      ...kept,
+      sha256: await sha256(bytes),
+    };
+    this.#declarations.splice(index, 1, next);
+    // The preview URL is a blob of the old bytes; keeping it would leave the
+    // pane showing the picture the author just replaced.
+    this.#revoke(assetId);
+    if (type.kind === "image" || type.kind === "svg") {
+      this.#previewUrls.set(
+        assetId,
+        URL.createObjectURL(
+          new Blob([previewBytes as unknown as BlobPart], { type: type.mime }),
+        ),
+      );
+    }
+    return next;
+  }
+
   load(
     envelope: Pick<FabricThemeEnvelope, "assets">,
     assets: Readonly<Record<string, Uint8Array>>,
@@ -156,11 +252,20 @@ export class AssetManager {
     canvas.requestRenderAll();
   }
 
+  /**
+   * A URL for an image or SVG asset, owned by this manager and revoked when it
+   * is destroyed. A declaration with no bytes answers `undefined` rather than
+   * throwing: this is what a caller resolving a scene reference asks, and a
+   * reference it cannot name has to be a miss the caller can handle, not an
+   * exception out of a revival.
+   */
   previewUrl(assetId: string): string | undefined {
     const asset = this.#declarations.find(
       (candidate) => candidate.id === assetId,
     );
-    return asset === undefined || asset.kind === "video"
+    return asset === undefined ||
+      asset.kind === "video" ||
+      this.#assets[asset.path] === undefined
       ? undefined
       : this.#preview(asset);
   }
@@ -239,120 +344,6 @@ export class AssetManager {
   }
 }
 
-/** Local-file controls; the editor continues to own canvas selection and history. */
-export function createAssetPanel(
-  host: HTMLElement,
-  manager: AssetManager,
-  editor: EditorInteraction,
-  changed: () => void,
-  isReferenced?: (assetId: string) => boolean,
-): HTMLElement {
-  const root = document.createElement("section");
-  const select = document.createElement("select");
-  const importInput = input("data-vigilia-asset-import");
-  const replaceInput = input("data-vigilia-asset-replace");
-  const remove = document.createElement("button");
-  remove.type = "button";
-  remove.dataset["vigiliaAssetRemove"] = "";
-  remove.textContent = uiCopy.panels.removeAsset;
-  root.append(
-    Object.assign(document.createElement("h2"), {
-      textContent: uiCopy.panels.assets,
-    }),
-    select,
-    importInput,
-    replaceInput,
-    remove,
-  );
-  host.append(root);
-  const render = (): void => {
-    select.replaceChildren(
-      ...manager.declarations.map((asset) =>
-        Object.assign(document.createElement("option"), {
-          value: asset.id,
-          textContent: asset.id,
-        }),
-      ),
-    );
-  };
-  const add = async (file: File, replaceSelected: boolean): Promise<void> => {
-    const asset = await manager.import(file);
-    if (asset.kind === "video" || asset.kind === "font") {
-      changed();
-      render();
-      return;
-    }
-    const target = editor.canvas.getActiveObject();
-    if (
-      replaceSelected &&
-      target instanceof FabricImage &&
-      objectAssetReference(target) !== undefined
-    ) {
-      const url = manager.previewUrl(asset.id);
-      if (url === undefined) return;
-      const image = await FabricImage.fromURL(url);
-      setObjectAssetReference(target, { assetId: asset.id, kind: asset.kind });
-      target.setElement(image.getElement());
-      target.setCoords();
-    } else {
-      const imported = await editor.imageManager.importImage({
-        source: file,
-        scale: "image-contain",
-        withoutSave: true,
-      });
-      if (imported === null || !(imported.image instanceof FabricImage)) return;
-      setObjectAssetReference(imported.image, {
-        assetId: asset.id,
-        kind: asset.kind,
-      });
-      imported.image.setCoords();
-      editor.canvas.setActiveObject(imported.image);
-    }
-    editor.historyManager.saveState();
-    editor.canvas.requestRenderAll();
-    changed();
-    render();
-  };
-  importInput.addEventListener("change", () => {
-    const file = importInput.files?.[0];
-    if (file !== undefined) void add(file, false);
-    importInput.value = "";
-  });
-  replaceInput.addEventListener("change", () => {
-    const file = replaceInput.files?.[0];
-    if (file !== undefined) void add(file, true);
-    replaceInput.value = "";
-  });
-  remove.addEventListener("click", () => {
-    const id = select.value;
-    if (
-      [...editor.canvas.getObjects()].some(
-        (object) => objectAssetReference(object)?.assetId === id,
-      ) ||
-      isReferenced?.(id) === true
-    )
-      return;
-    if (manager.remove(id)) {
-      changed();
-      render();
-    }
-  });
-  render();
-  return root;
-}
-
-function input(
-  data: "data-vigilia-asset-import" | "data-vigilia-asset-replace",
-): HTMLInputElement {
-  const element = document.createElement("input");
-  element.type = "file";
-  element.accept =
-    ".png,.jpg,.jpeg,.webp,.svg,.mp4,.webm,.woff2,.woff,.ttf,.otf";
-  element.hidden = true;
-  element.setAttribute(data, "");
-  return element;
-}
-
 function extensionOf(name: string): AssetExtension | undefined {
   const extension = name.toLowerCase().split(".").pop();
   return extension !== undefined && extension in TYPES
@@ -405,9 +396,28 @@ async function sha256(bytes: Uint8Array): Promise<string> {
     .join("");
 }
 
-function* objectsOf(objects: readonly object[]): Generator<object> {
+function* objectsOf(objects: readonly FabricObject[]): Generator<FabricObject> {
   for (const object of objects) {
     yield object;
     if (object instanceof Group) yield* objectsOf(object.getObjects());
   }
+}
+
+/**
+ * Whether any object in the scene — at any depth — carries a reference to this
+ * asset.
+ *
+ * Depth is the whole point. `canvas.getObjects()` is the root only, so an image
+ * the author had grouped reported itself unused and its declaration was removed
+ * out from under a live object. `hydrate` above already walked with
+ * `objectsOf`; this is the same walk answering a different question.
+ */
+export function assetReferencedBy(
+  objects: readonly FabricObject[],
+  assetId: string,
+): boolean {
+  for (const object of objectsOf(objects)) {
+    if (objectAssetReference(object)?.assetId === assetId) return true;
+  }
+  return false;
 }
