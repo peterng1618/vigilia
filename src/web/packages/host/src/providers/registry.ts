@@ -1,5 +1,5 @@
-import type { SampleEntry } from '@vigilia/renderer-core';
-import type { SensorDescriptor, SensorProvider } from './provider.js';
+import type { SampleEntry } from "@vigilia/renderer-core";
+import type { SensorDescriptor, SensorProvider } from "./provider.js";
 
 /** Scheduler: polls the requested-key union once and isolates provider failures. */
 
@@ -21,7 +21,9 @@ export interface DescribedSensor extends SensorDescriptor {
 }
 
 /** Stable sorted union of keys requested by active clients. */
-export function unionOfKeys(perClientKeys: Iterable<readonly string[]>): readonly string[] {
+export function unionOfKeys(
+  perClientKeys: Iterable<readonly string[]>,
+): readonly string[] {
   const union = new Set<string>();
 
   for (const keys of perClientKeys) {
@@ -53,11 +55,16 @@ export class ProviderRegistry {
       }),
     );
 
-    return settled.flatMap((result) => (result.status === 'fulfilled' ? result.value : []));
+    return settled.flatMap((result) =>
+      result.status === "fulfilled" ? result.value : [],
+    );
   }
 
   /** Polls providers concurrently and preserves successful results when another fails. */
-  async sample(semanticKeys: readonly string[], nowMs: number): Promise<SampleCycle> {
+  async sample(
+    semanticKeys: readonly string[],
+    nowMs: number,
+  ): Promise<SampleCycle> {
     if (semanticKeys.length === 0) {
       return { entries: [], failures: [], unmapped: [] };
     }
@@ -69,6 +76,8 @@ export class ProviderRegistry {
     const entries: SampleEntry[] = [];
     const failures: ProviderFailure[] = [];
     const claimed = new Set<string>();
+    /** Samples every provider returned, `ok` or not, in precedence order. */
+    const returned: SampleEntry[] = [];
 
     settled.forEach((result, index) => {
       const provider = this.providers[index];
@@ -77,14 +86,21 @@ export class ProviderRegistry {
         return;
       }
 
-      if (result.status === 'rejected') {
-        failures.push({ providerId: provider.id, message: describeError(result.reason) });
+      if (result.status === "rejected") {
+        failures.push({
+          providerId: provider.id,
+          message: describeError(result.reason),
+        });
         return;
       }
 
       for (const entry of result.value) {
-        // Keep the earliest provider's answer for each semantic key.
-        if (claimed.has(entry.semanticKey)) {
+        returned.push(entry);
+
+        // Keep the earliest provider's answer for each semantic key. A
+        // non-`ok` sample does not claim the key, so a later provider with the
+        // same sensor can still answer it (§97's fallback).
+        if (entry.sample.status !== "ok" || claimed.has(entry.semanticKey)) {
           continue;
         }
 
@@ -93,10 +109,30 @@ export class ProviderRegistry {
       }
     });
 
+    // A key no provider measured still needs a sample, or a display cannot tell
+    // "no reading yet" from "nothing reports this". The earliest gap wins, so a
+    // specific reason from the preferred provider is the one shown.
+    const gap = new Set<string>();
+
+    for (const entry of returned) {
+      if (
+        claimed.has(entry.semanticKey) ||
+        gap.has(entry.semanticKey) ||
+        !semanticKeys.includes(entry.semanticKey)
+      ) {
+        continue;
+      }
+
+      gap.add(entry.semanticKey);
+      entries.push(entry);
+    }
+
     return {
       entries,
       failures,
-      unmapped: semanticKeys.filter((key) => !claimed.has(key)),
+      unmapped: semanticKeys.filter(
+        (key) => !claimed.has(key) && !gap.has(key),
+      ),
     };
   }
 }

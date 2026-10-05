@@ -1,5 +1,5 @@
-import type { Page } from '@playwright/test';
-import { installFixedClock } from './clock.js';
+import type { Page } from "@playwright/test";
+import { installFixedClock } from "./clock.js";
 
 /**
  * Canvas-aware probes for the Fabric player path.
@@ -26,20 +26,217 @@ type HandleWindow = typeof window & {
   vigilia: { handle: Record<string, unknown> };
 };
 
-/** Opens the player on the default path and advances past entrance animation. */
-export async function openCanvasPlayer(page: Page, query = '/?theme=demo'): Promise<void> {
+/**
+ * One object's property by id, groups descended.
+ *
+ * The starter's cards are groups, so a card's gauge, value and bar are not in
+ * `getObjects()`; they live inside it. A root-only `.find` reported
+ * `undefined` for `cpu-card` and `storage-bar`, objects the author can see on
+ * the wall, and the assertion failed as a *missing object* rather than as a
+ * search that stopped too early — which is the harder failure to read, because
+ * nothing in it names grouping.
+ *
+ * The adapter is asked first: it indexes what a plan applied, and a scene
+ * revived from a saved package never went through one. The walk is inlined
+ * rather than shared because `page.evaluate` serializes the function it is
+ * handed and cannot reach a module binding; {@link sceneBounds} carries the
+ * same one, and the two cannot drift because neither can be called.
+ */
+export async function sceneProperty(
+  page: Page,
+  nodeId: string,
+  key: string,
+): Promise<unknown> {
+  return page.evaluate(
+    ([id, prop]) => {
+      type Obj = {
+        get(key: string): unknown;
+        getObjects?(): readonly Obj[];
+      };
+      const { handle } = (window as unknown as HandleWindow).vigilia;
+      const adapter = handle["adapter"] as {
+        objectFor(nodeId: string): Obj | undefined;
+      };
+      const canvas = handle["canvas"] as { getObjects(): readonly Obj[] };
+      const find = (objects: readonly Obj[]): Obj | undefined => {
+        for (const candidate of objects) {
+          if (candidate.get("id") === id) return candidate;
+          const found = find(candidate.getObjects?.() ?? []);
+          if (found !== undefined) return found;
+        }
+        return undefined;
+      };
+      return (adapter.objectFor(id) ?? find(canvas.getObjects()))?.get(prop);
+    },
+    [nodeId, key] as const,
+  );
+}
+
+/**
+ * One object's **world** box by id, groups descended.
+ *
+ * World rather than group-local, because a part's own `left` is its position
+ * *inside* its card: reading it told the caller a reading ended at 1645.9 when
+ * the ink it was measuring was somewhere else entirely. `getBoundingRect`
+ * composes the ancestor transform, which is the box a display actually paints.
+ */
+export async function sceneBounds(
+  page: Page,
+  nodeId: string,
+): Promise<{ right: number; width: number } | undefined> {
+  return page.evaluate((id) => {
+    type Obj = {
+      getObjects?(): readonly Obj[];
+      getBoundingRect?: () => { right: number; width: number };
+    };
+    const { handle } = (window as unknown as HandleWindow).vigilia;
+    const canvas = handle["canvas"] as { getObjects(): readonly Obj[] };
+    const find = (objects: readonly Obj[]): Obj | undefined => {
+      for (const candidate of objects) {
+        if ((candidate as { get(id: string): unknown }).get("id") === id)
+          return candidate;
+        const found = find(candidate.getObjects?.() ?? []);
+        if (found !== undefined) return found;
+      }
+      return undefined;
+    };
+    const rect = find(canvas.getObjects())?.getBoundingRect?.();
+    return rect === undefined
+      ? undefined
+      : { right: rect.right, width: rect.width };
+  }, nodeId);
+}
+
+/**
+ * Simulated ms advanced per ink attempt, real ms allowed before giving up, and
+ * how long to wait between attempts.
+ *
+ * ## Both budgets, because the two are not interchangeable
+ *
+ * The clock is paused, so `runFor` is the only thing that moves simulated time
+ * and it is what a paint needs: measured, a paused page with 21 objects built
+ * draws **zero** pixels no matter how much real time passes, and paints on the
+ * first simulated advance.
+ *
+ * But the pixels cannot arrive before the asset bytes do, and a fetch plus a
+ * decode is *real*-time async work that no amount of `runFor` can advance. The
+ * first version of this guard had only the simulated budget — two `runFor(100)`
+ * calls, ~150 ms of wall time — so a decode slower than that left nothing to
+ * paint and the guard threw "the artboard never painted". Under parallel load
+ * that happened in two tests in this file; reproduced with no load at all by
+ * delaying an asset response past that window.
+ *
+ * So the loop spends simulated time *and* real time, and gives up on a
+ * real-time deadline rather than on an attempt count. The simulated steps stay
+ * small so a slow asset is noticed quickly, and the wall-clock budget is what
+ * genuinely covers decode latency.
+ */
+const INK_STEP_MS = 100;
+const INK_ATTEMPT_GAP_MS = 50;
+const INK_TIMEOUT_MS = 15_000;
+
+/**
+ * Painted pixels on the artboard; 0 means nothing has been drawn yet.
+ *
+ * Anything non-zero counts as painted. The plate is a solid rect covering the
+ * whole artboard, so every pixel that has been touched is opaque and nothing
+ * that has not is transparent — a clean on/off, which is why this needs no
+ * threshold and no notion of what colour the theme happens to use.
+ */
+async function drawnPixels(page: Page): Promise<number> {
+  return page.evaluate(() => {
+    const element = document.querySelector<HTMLCanvasElement>(
+      'canvas[data-vigilia="artboard"]',
+    );
+    const context = element?.getContext("2d");
+
+    if (element === null || context === null || context === undefined) {
+      return 0;
+    }
+
+    const data = context.getImageData(0, 0, element.width, element.height).data;
+    let drawn = 0;
+
+    for (let i = 0; i < data.length; i += 4) {
+      if (
+        data[i] !== 0 ||
+        data[i + 1] !== 0 ||
+        data[i + 2] !== 0 ||
+        data[i + 3] !== 0
+      ) {
+        drawn += 1;
+      }
+    }
+
+    return drawn;
+  });
+}
+
+/**
+ * Opens the player on the default path, painted and settled.
+ *
+ * ## `static=1`, and how much simulated time this costs
+ *
+ * Entrance animation off means one frame paints the scene, so the wait is a
+ * couple of hundred simulated ms instead of 1500. That matters because
+ * `clock.runFor` is linear in simulated time and pays it in browser-protocol
+ * round trips — measured on this machine, ~4.5 ms wall per simulated ms:
+ * `runFor(1500)` alone is 8.2 s against a 495 ms page load, and those waits
+ * were ~90% of this suite's wall time.
+ *
+ * `fastForward` is not a substitute: it is a flat ~120 ms but skips the
+ * intermediate frames, and 10 cases need them to mount at all.
+ *
+ * The ink guard is load-bearing rather than decorative: what a shortened wait
+ * can land on is a frame still blank, which would turn every ink assertion in
+ * the file into a vacuous pass. Measured, a blank artboard is a real state —
+ * 0 painted pixels at `runFor(500)` and `runFor(750)`.
+ */
+export async function openCanvasPlayer(
+  page: Page,
+  query = "/?theme=stress",
+): Promise<void> {
   await installFixedClock(page);
-  await page.goto(query);
+  await page.goto(
+    query.includes("?") ? `${query}&static=1` : `${query}?static=1`,
+  );
+  await waitForInk(page);
+}
+
+/**
+ * Advances simulated time until the artboard actually carries ink, or throws.
+ *
+ * Exported because the byte-stability test waits on the same condition and
+ * cannot use {@link openCanvasPlayer}: it navigates with its own `openPaused`
+ * so it can pin the URL. A second copy of this loop is what let that test keep
+ * its own, weaker, `runFor(1500)` — see the constants above for why the
+ * distinction between simulated and real time is load-bearing.
+ */
+export async function waitForInk(page: Page): Promise<void> {
   await page.waitForSelector('canvas[data-vigilia="artboard"]');
-  // A chart whose content is entirely animated draws nothing until time advances.
-  await page.clock.runFor(1500);
+  // The artboard element existing is not the scene being in it: the theme
+  // envelope is revived asynchronously after mount, and a chart's clear/redraw
+  // leaves the canvas genuinely blank for a frame. So require ink rather than
+  // assuming one short advance lands on it — a blank frame here would turn every
+  // ink assertion in this file into a vacuous pass. Advancing in steps also
+  // makes the loaded case robust: under worker load the scene can still be in
+  // flight when the clock moves, and the loop simply waits for it.
+  //
+  // The deadline is real time, not an attempt count — see the constants above.
+  const deadline = Date.now() + INK_TIMEOUT_MS;
+  while (Date.now() < deadline) {
+    await page.clock.runFor(INK_STEP_MS);
+    if ((await drawnPixels(page)) > 0) return;
+    await new Promise((resolve) => setTimeout(resolve, INK_ATTEMPT_GAP_MS));
+  }
+  throw new Error("the artboard never painted");
 }
 
 /** Reads the scene through the handle the player already exposes. */
 export async function probe(page: Page): Promise<CanvasProbe> {
   return page.evaluate(() => {
     const { handle } = (window as unknown as HandleWindow).vigilia;
-    const canvas = handle['canvas'] as {
+    const canvas = handle["canvas"] as {
       getObjects(): { get(key: string): unknown }[];
       viewportTransform: number[];
       getWidth(): number;
@@ -52,16 +249,16 @@ export async function probe(page: Page): Promise<CanvasProbe> {
 
     const collect = (list: { get(key: string): unknown }[]): void => {
       for (const object of list) {
-        all.push(String(object.get('id')));
+        all.push(String(object.get("id")));
 
         // By a property only a chart has, not by `type`: Fabric's instance
         // getter lower-cases the class name and its own source says not to
         // build on it ("DO NOT build new code around this type value").
-        if (typeof object.get('family') === 'string') {
-          scales.push(Number(object.get('renderScale')));
+        if (typeof object.get("family") === "string") {
+          scales.push(Number(object.get("renderScale")));
         }
 
-        const children = object.get('_objects');
+        const children = object.get("_objects");
 
         if (Array.isArray(children)) {
           collect(children as { get(key: string): unknown }[]);
@@ -73,7 +270,7 @@ export async function probe(page: Page): Promise<CanvasProbe> {
 
     return {
       objectCount: objects.length,
-      ids: objects.map((object) => String(object.get('id'))),
+      ids: objects.map((object) => String(object.get("id"))),
       allIds: all,
       viewportTransform: [...canvas.viewportTransform],
       canvasSize: { width: canvas.getWidth(), height: canvas.getHeight() },
@@ -83,103 +280,34 @@ export async function probe(page: Page): Promise<CanvasProbe> {
   });
 }
 
-/** A text object's joined runs, e.g. a readout's value plus its unit. */
-export async function canvasText(page: Page, nodeId: string): Promise<string | undefined> {
-  return readObject<string>(page, nodeId, 'text', isString);
-}
-
 /** One scalar Fabric property; anything else means the probe asked wrong. */
 export async function canvasProp(
   page: Page,
   nodeId: string,
   key: string,
 ): Promise<string | number | boolean | undefined> {
-  return readObject(page, nodeId, key, isScalar);
+  const value = await sceneProperty(page, nodeId, key);
+  return value !== undefined && value !== null && isScalar(value)
+    ? value
+    : undefined;
 }
 
 /** Presence, for object-valued properties like shadows that cannot cross. */
-export async function canvasHas(page: Page, nodeId: string, key: string): Promise<boolean> {
-  // Checked in-page: values like clipPath hold circular refs that do not survive serialization.
-  return page.evaluate(
-    ([id, prop]) => {
-      const { handle } = (window as unknown as HandleWindow).vigilia;
-      const adapter = handle['adapter'] as {
-        objectFor(nodeId: string): { get(key: string): unknown } | undefined;
-      };
-      const value = adapter.objectFor(id)?.get(prop);
-
-      return value !== undefined && value !== null;
-    },
-    [nodeId, key] as const,
-  );
-}
-
-/** §57: a child rendered inside its group object, not as a sibling. */
-export async function canvasChildOf(
-  page: Page,
-  childId: string,
-  parentId: string,
-): Promise<boolean> {
-  return page.evaluate(
-    ([child, parent]) => {
-      const { handle } = (window as unknown as HandleWindow).vigilia;
-      const adapter = handle['adapter'] as {
-        objectFor(nodeId: string): { group?: unknown } | undefined;
-      };
-      const childObject = adapter.objectFor(child);
-
-      return childObject !== undefined && childObject.group === adapter.objectFor(parent);
-    },
-    [childId, parentId] as const,
-  );
-}
-
-/** Styled runs reach the canvas as per-grapheme styles on one object. */
-export async function hasRunStyles(page: Page, nodeId: string): Promise<boolean> {
-  const styles = await readObject<Record<string, unknown>>(page, nodeId, 'styles', isRecord);
-
-  return (
-    styles !== undefined &&
-    Object.values(styles).some((line) => isRecord(line) && Object.keys(line).length > 0)
-  );
-}
-
-function isString(value: unknown): value is string {
-  return typeof value === 'string';
-}
-
-function isScalar(value: unknown): value is string | number | boolean {
-  return typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean';
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null;
-}
-
-/** Read one Fabric property through the adapter; missing means no such object. */
-async function readObject<T>(
+export async function canvasHas(
   page: Page,
   nodeId: string,
   key: string,
-  guard: (value: unknown) => value is T,
-): Promise<T | undefined> {
-  const value = await page.evaluate(
-    ([id, prop]) => {
-      const { handle } = (window as unknown as HandleWindow).vigilia;
-      const adapter = handle['adapter'] as {
-        objectFor(nodeId: string): { get(key: string): unknown } | undefined;
-      };
+): Promise<boolean> {
+  // Checked in-page: values like clipPath hold circular refs that do not survive serialization.
+  return (await sceneProperty(page, nodeId, key)) !== undefined;
+}
 
-      return adapter.objectFor(id)?.get(prop);
-    },
-    [nodeId, key] as const,
+function isScalar(value: unknown): value is string | number | boolean {
+  return (
+    typeof value === "string" ||
+    typeof value === "number" ||
+    typeof value === "boolean"
   );
-
-  if (value === undefined || value === null) {
-    return undefined;
-  }
-
-  return guard(value) ? value : undefined;
 }
 
 /** True when data ticks update the node without replacing its object. */
@@ -190,18 +318,18 @@ export async function keepsObjectIdentity(
 ): Promise<boolean> {
   await page.evaluate((id) => {
     const { handle } = (window as unknown as HandleWindow).vigilia;
-    const adapter = handle['adapter'] as {
+    const adapter = handle["adapter"] as {
       objectFor(nodeId: string): unknown;
     };
 
-    Reflect.set(window, '__vigiliaMarked', adapter.objectFor(id));
+    Reflect.set(window, "__vigiliaMarked", adapter.objectFor(id));
   }, nodeId);
 
   await page.clock.runFor(runMs);
 
   return page.evaluate((id) => {
     const { handle } = (window as unknown as HandleWindow).vigilia;
-    const adapter = handle['adapter'] as {
+    const adapter = handle["adapter"] as {
       objectFor(nodeId: string): unknown;
     };
 
@@ -230,8 +358,10 @@ export async function drawnFractionIn(
   region: { x: number; y: number; width: number; height: number },
 ): Promise<number> {
   return page.evaluate((box) => {
-    const element = document.querySelector<HTMLCanvasElement>('canvas[data-vigilia="artboard"]');
-    const context = element?.getContext('2d');
+    const element = document.querySelector<HTMLCanvasElement>(
+      'canvas[data-vigilia="artboard"]',
+    );
+    const context = element?.getContext("2d");
 
     if (element === null || context === null || context === undefined) {
       return -1;
@@ -298,12 +428,22 @@ export async function drawnFractionIn(
  * through the viewport transform — rather than from a rectangle copied out of a
  * fixture, so it cannot drift from what is actually drawn.
  */
-export async function drawnFractionOf(page: Page, nodeId: string): Promise<number> {
+export async function drawnFractionOf(
+  page: Page,
+  nodeId: string,
+): Promise<number> {
   const region = await page.evaluate((id) => {
     const { handle } = (window as unknown as HandleWindow).vigilia;
-    const adapter = handle['adapter'] as {
+    const adapter = handle["adapter"] as {
       objectFor(nodeId: string):
-        | { getBoundingRect(): { left: number; top: number; width: number; height: number } }
+        | {
+            getBoundingRect(): {
+              left: number;
+              top: number;
+              width: number;
+              height: number;
+            };
+          }
         | undefined;
     };
     const object = adapter.objectFor(id);
@@ -312,9 +452,10 @@ export async function drawnFractionOf(page: Page, nodeId: string): Promise<numbe
       return undefined;
     }
 
-    const canvas = handle['canvas'] as { viewportTransform: number[] };
+    const canvas = handle["canvas"] as { viewportTransform: number[] };
     const rect = object.getBoundingRect();
-    const [scale = 1, , , , offsetX = 0, offsetY = 0] = canvas.viewportTransform;
+    const [scale = 1, , , , offsetX = 0, offsetY = 0] =
+      canvas.viewportTransform;
 
     return {
       x: rect.left * scale + offsetX,
@@ -336,11 +477,13 @@ export async function sourceColorFraction(
   return page.evaluate(
     ([id, expected]) => {
       const { handle } = (window as unknown as HandleWindow).vigilia;
-      const adapter = handle['adapter'] as {
-        objectFor(nodeId: string): { getElement?(): HTMLCanvasElement } | undefined;
+      const adapter = handle["adapter"] as {
+        objectFor(
+          nodeId: string,
+        ): { getElement?(): HTMLCanvasElement } | undefined;
       };
       const source = adapter.objectFor(id)?.getElement?.();
-      const context = source?.getContext('2d');
+      const context = source?.getContext("2d");
 
       if (source === undefined || context === null || context === undefined) {
         return -1;

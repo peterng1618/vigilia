@@ -1,0 +1,21 @@
+{
+  "$schema": "./src/web/node_modules/@biomejs/biome/configuration_schema.json",
+  "vcs": { "enabled": true, "clientKind": "git", "useIgnoreFile": true },
+  "files": { "includes": ["src/web/**/*.ts", "src/web/**/*.json", "src/web/**/*.css"] },
+  "formatter": { "enabled": true, "indentStyle": "space", "indentWidth": 2 },
+  "css": {
+    "parser": { "tailwindDirectives": true }
+  },
+  "linter": {
+    "enabled": true,
+    "rules": {
+      "recommended": false,
+      "correctness": {
+        "noUnusedImports": "error",
+        "noUnusedVariables": "error"
+      },
+      "nursery": { "noFloatingPromises": "error" },
+      "suspicious": { "noDoubleEquals": "error" }
+    }
+  }
+}

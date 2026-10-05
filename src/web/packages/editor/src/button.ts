@@ -10,12 +10,12 @@ export interface ButtonOptions {
   readonly height?: string;
   readonly fontSize?: string;
   readonly padding?: string;
-  readonly variant?: 'solid' | 'ghost';
+  readonly variant?: "solid" | "ghost";
 }
 
 export function createButton(options: ButtonOptions): HTMLButtonElement {
-  const button = document.createElement('button');
-  button.type = 'button';
+  const button = document.createElement("button");
+  button.type = "button";
   button.textContent = options.text;
   button.title = options.title;
 
@@ -24,67 +24,67 @@ export function createButton(options: ButtonOptions): HTMLButtonElement {
   }
 
   button.style.cssText = buttonStyle(options);
-  button.addEventListener('click', options.onClick);
+  button.addEventListener("click", options.onClick);
   return button;
 }
 
 export function buttonStyle(
   options: Pick<
     ButtonOptions,
-    'flex' | 'width' | 'height' | 'fontSize' | 'padding' | 'variant'
+    "flex" | "width" | "height" | "fontSize" | "padding" | "variant"
   > = {},
 ): string {
   return [
-    `flex:${options.flex ?? 'none'}`,
+    `flex:${options.flex ?? "none"}`,
     options.width === undefined ? undefined : `width:${options.width}`,
-    `height:${options.height ?? '22px'}`,
-    `padding:${options.padding ?? '0 8px'}`,
-    `background:${options.variant === 'ghost' ? 'none' : 'var(--vigilia-control-bg)'}`,
-    'color:var(--vigilia-muted)',
-    `border:1px solid ${options.variant === 'ghost' ? 'transparent' : 'var(--vigilia-control-border)'}`,
-    'border-radius:3px',
-    'cursor:pointer',
-    `font:${options.fontSize ?? '11px'}/1 system-ui,sans-serif`,
-    'min-width:0',
+    `height:${options.height ?? "22px"}`,
+    `padding:${options.padding ?? "0 8px"}`,
+    `background:${options.variant === "ghost" ? "none" : "var(--vigilia-control-bg)"}`,
+    "color:var(--vigilia-muted)",
+    `border:1px solid ${options.variant === "ghost" ? "transparent" : "var(--vigilia-control-border)"}`,
+    "border-radius:3px",
+    "cursor:pointer",
+    `font:${options.fontSize ?? "11px"}/1 system-ui,sans-serif`,
+    "min-width:0",
   ]
     .filter((part) => part !== undefined)
-    .join(';');
+    .join(";");
 }
 
-export function inputStyle(font = '12px/1.4 ui-monospace,monospace'): string {
+export function inputStyle(font = "12px/1.4 ui-monospace,monospace"): string {
   return [
-    'flex:1',
-    'min-width:0',
-    'background:var(--vigilia-input-bg)',
-    'color:var(--vigilia-text)',
-    'border:1px solid var(--vigilia-control-border)',
-    'border-radius:3px',
-    'padding:2px 5px',
+    "flex:1",
+    "min-width:0",
+    "background:var(--vigilia-input-bg)",
+    "color:var(--vigilia-text)",
+    "border:1px solid var(--vigilia-control-border)",
+    "border-radius:3px",
+    "padding:2px 5px",
     `font:${font}`,
-  ].join(';');
+  ].join(";");
 }
 
 /** Shared scrolling treatment; reserves scrollbar space and suppresses horizontal bars. */
-export function scrollAreaStyle(extra = ''): string {
+export function scrollAreaStyle(extra = ""): string {
   return [
-    'overflow-y:auto',
-    'overflow-x:hidden',
-    'scrollbar-gutter:stable',
-    'min-height:0',
-    'min-width:0',
+    "overflow-y:auto",
+    "overflow-x:hidden",
+    "scrollbar-gutter:stable",
+    "min-height:0",
+    "min-width:0",
     extra,
   ]
-    .filter((part) => part !== '')
-    .join(';');
+    .filter((part) => part !== "")
+    .join(";");
 }
 
-export function sectionHeadingStyle(margin = '14px 2px 10px'): string {
+export function sectionHeadingStyle(margin = "14px 2px 10px"): string {
   return [
     `margin:${margin}`,
-    'font-size:11px',
-    'text-transform:uppercase',
-    'letter-spacing:0.06em',
-    'color:var(--vigilia-muted)',
-    'font-weight:600',
-  ].join(';');
+    "font-size:11px",
+    "text-transform:uppercase",
+    "letter-spacing:0.06em",
+    "color:var(--vigilia-muted)",
+    "font-weight:600",
+  ].join(";");
 }

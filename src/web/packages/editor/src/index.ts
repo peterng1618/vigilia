@@ -1,2 +1,6 @@
-/** Public boundary for the adopted editor fork. */
-export { mountForkShell, type ForkShell, type ForkShellOptions } from './fork-shell.js';
+/** Public boundary for the Vigilia editor. */
+export {
+  type EditorShell,
+  type EditorShellOptions,
+  mountEditorShell,
+} from "./editor-shell.js";

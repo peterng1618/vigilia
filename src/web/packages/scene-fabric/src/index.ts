@@ -1,35 +1,82 @@
+export type { ArtboardSize, SceneBox } from "./artboard-crop.js";
+export {
+  bottom,
+  countable,
+  EDGE_TOLERANCE,
+  outsideBoxes,
+  outsideCount,
+  outsideEdges,
+  right,
+  sceneBoxesOf,
+} from "./artboard-crop.js";
+export { writeAuthoredBoxDimension } from "./authored-box.js";
 /** Fabric ScenePlan renderer. Keep Fabric out of renderer-core; player code uses `fabric/es` StaticCanvas only. */
 
-export type { ChartSerialisedKey, VigiliaChartOptions } from './chart-object.js';
-
-export { CHART_SERIALISED_KEYS, VigiliaChart, withoutEngineAnimation } from './chart-object.js';
-
-export type { SceneAdapter, SceneAdapterOptions } from './adapter.js';
-
-export { createSceneAdapter } from './adapter.js';
-export { cssArtboardPaint, fabricArtboardPaint } from './artboard-paint.js';
+export type {
+  FabricThemeEnvelope,
+  FabricThemeEnvelopeInput,
+} from "@vigilia/renderer-core";
+export type { SceneAdapter, SceneAdapterOptions } from "./adapter.js";
+export { createSceneAdapter } from "./adapter.js";
 export {
-  mountBackgroundMedia,
+  artboardPaintKey,
+  cssArtboardPaint,
+  fabricArtboardPaint,
+} from "./artboard-paint.js";
+export {
   type BackgroundMediaHandle,
   type BackgroundMediaOptions,
   type BackgroundMediaSource,
-} from './background-media.js';
-export { applyObjectPalettePaints, VIGILIA_PAINT_PROPERTY, type FabricPaintRefs } from './object-paint.js';
-export { VIGILIA_TEXT_PROPERTY } from './fabric-text.js';
+  mediaDrawArgs,
+  mountBackgroundMedia,
+} from "./background-media.js";
+export type {
+  ChartSerialisedKey,
+  VigiliaChartOptions,
+} from "./chart-object.js";
 export {
+  CHART_SERIALISED_KEYS,
+  VigiliaChart,
+  withoutEngineAnimation,
+} from "./chart-object.js";
+export { type ChartRefreshRate, startChartRefresh } from "./chart-refresh.js";
+export type { UnsupportedReporter } from "./fabric-nodes.js";
+export {
+  applyAuthoredText,
+  type PlanTextObject,
+  refreshBoundText,
+  VIGILIA_TEXT_PROPERTY,
+} from "./fabric-text.js";
+export { type FontAssetLoadOptions, loadFontAssets } from "./font-assets.js";
+export {
+  type BackdropMedia,
+  createGlass,
+  type DeviceRect,
+  type GlassHandle,
+  type GlassOptions,
+} from "./glass.js";
+export {
+  type FabricAssetReference,
   objectAssetReference,
   setObjectAssetReference,
   VIGILIA_ASSET_PROPERTY,
-  type FabricAssetReference,
-} from './object-asset.js';
-export { applyObjectTypePresets, reassignObjectTypePresetReferences } from './object-type.js';
-export { reassignObjectPaletteReferences } from './palette-references.js';
-export { loadFontAssets, type FontAssetLoadOptions } from './font-assets.js';
-
-export type { SerialisedScene } from './persist.js';
-
-export type { FabricThemeEnvelope, FabricThemeEnvelopeInput } from '@vigilia/renderer-core';
-
+} from "./object-asset.js";
+export {
+  applyObjectPalettePaints,
+  type FabricPaintRefs,
+  paintPropertyFor,
+  VIGILIA_PAINT_PROPERTY,
+} from "./object-paint.js";
+export {
+  applyObjectTypePresets,
+  reassignObjectTypePresetReferences,
+} from "./object-type.js";
+export {
+  objectPaletteReferences,
+  type PaletteReference,
+  reassignObjectPaletteReferences,
+} from "./palette-references.js";
+export type { SerialisedScene } from "./persist.js";
 export {
   assertFabricThemeEnvelopeCompatible,
   disposeScene,
@@ -38,17 +85,12 @@ export {
   SCENE_PERSISTED_PROPERTIES,
   serialiseScene,
   serialiseThemeEnvelope,
-} from './persist.js';
-
-export type { FabricSceneHandle, FabricSceneOptions } from './scene.js';
-
-export { mountFabricScene } from './scene.js';
-
-export type { UnsupportedReporter } from './fabric-nodes.js';
-
+} from "./persist.js";
 export {
   clampRenderScale,
   DEFAULT_RENDER_SCALE,
   MAX_BACKING_PIXELS,
   MAX_RENDER_SCALE,
-} from './render-scale.js';
+} from "./render-scale.js";
+export type { FabricSceneHandle, FabricSceneOptions } from "./scene.js";
+export { mountFabricScene } from "./scene.js";

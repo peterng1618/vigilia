@@ -5,11 +5,11 @@
 
 /** Live-data easing options; excludes curves that imply overshoot. */
 export const ANIMATION_EASINGS = [
-  'linear',
-  'cubicOut',
-  'cubicInOut',
-  'quadraticInOut',
-  'quinticInOut',
+  "linear",
+  "cubicOut",
+  "cubicInOut",
+  "quadraticInOut",
+  "quinticInOut",
 ] as const;
 
 export type AnimationEasing = (typeof ANIMATION_EASINGS)[number];
@@ -26,9 +26,9 @@ export interface AnimationSettings {
 /** Matches the §122 one-second sampling baseline. */
 export const defaultAnimationSettings: AnimationSettings = {
   durationMs: 1000,
-  easing: 'linear',
+  easing: "linear",
   appearMs: 650,
-  appearEasing: 'cubicOut',
+  appearEasing: "cubicOut",
 };
 
 export interface EngineAnimation {
@@ -50,9 +50,9 @@ export function toEngineAnimation(
     return {
       animation: false,
       animationDuration: 0,
-      animationEasing: 'linear',
+      animationEasing: "linear",
       animationDurationUpdate: 0,
-      animationEasingUpdate: 'linear',
+      animationEasingUpdate: "linear",
     };
   }
 

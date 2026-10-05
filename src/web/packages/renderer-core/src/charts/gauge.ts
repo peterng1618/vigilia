@@ -1,23 +1,22 @@
-import type { ChartPaint, Fill, GaugeSettings, GradientStop, Sample } from '../types.js';
-import { hasPlottableValue } from '../types.js';
-import { toEngineAnimation, type EngineAnimation } from './animation.js';
+import type { FabricPalette } from "../theme/fabric-envelope.js";
+import type { Fill, GaugeSettings, GradientStop, Sample } from "../types.js";
+import { hasPlottableValue } from "../types.js";
+import { type EngineAnimation, toEngineAnimation } from "./animation.js";
+import { NO_PAINT, resolveChartPaint } from "./chart-paint.js";
 import {
   colorAt,
-  mixHex,
+  type EngineColor,
   normalizePosition,
   resolveFlatColor,
-  toLinearGradient,
-  type EngineColor,
-} from './fill.js';
-import { resolveChartPaint } from './chart-paint.js';
-import type { FabricPalette } from '../theme/fabric-envelope.js';
+} from "./fill.js";
 
 // Preserved public export; implementation moved to fill.ts.
-export { mixHex };
+export { mixHex } from "./fill.js";
 
 /**
- * Gauge adapter. ECharts supports arbitrary sweeps, but not true angular
- * gradients on `axisLine`; track gradients are approximated with segments (§85).
+ * Gauge adapter. ECharts supports arbitrary sweeps, and gauge track/progress
+ * paint accepts arc segments, so a gradient follows the ring rather than a
+ * cartesian axis.
  */
 
 type ColorSegment = [number, string];
@@ -26,7 +25,7 @@ type ColorSegment = [number, string];
 export interface GaugeOption {
   series: [
     {
-      type: 'gauge';
+      type: "gauge";
       startAngle: number;
       endAngle: number;
       min: number;
@@ -41,7 +40,9 @@ export interface GaugeOption {
         show: boolean;
         width: number;
         roundCap: boolean;
-        itemStyle: { color: EngineColor };
+        /** ECharts applies progress colour across the swept arc, so a gradient
+         * is expressed as arc segments exactly like the track. */
+        itemStyle: { color: EngineColor | ColorSegment[] };
       };
       pointer: { show: false };
       axisTick: { show: false };
@@ -61,33 +62,41 @@ export function buildGaugeOption(
   palette?: FabricPalette,
 ): GaugeOption {
   const plottable = hasPlottableValue(sample);
+  const track = resolveChartPaint(settings.track, palette);
+  const progress = resolveChartPaint(settings.progress, palette);
+
+  // One condition for the whole arc. Missing samples show only the track,
+  // never a false zero (§83); a paint that resolves to nothing is the same
+  // absence, an arc the author cannot see the value in (0007).
+  const arcDrawn = plottable && progress !== undefined;
 
   // Clamp only the drawn arc; preserve the raw reading elsewhere (§83).
-  const displayValue = plottable ? clamp(sample.value, settings.min, settings.max) : settings.min;
+  const displayValue = plottable
+    ? clamp(sample.value, settings.min, settings.max)
+    : settings.min;
 
   return {
     series: [
       {
-        type: 'gauge',
+        type: "gauge",
         startAngle: settings.startAngle,
         endAngle: settings.endAngle,
         min: settings.min,
         max: settings.max,
-        radius: '100%',
+        radius: "100%",
         splitNumber: 1,
         axisLine: {
           roundCap: settings.roundCap,
           lineStyle: {
             width: settings.thickness,
-            color: toColorSegments(resolveChartPaint(settings.track, palette), settings),
+            color: toColorSegments(track ?? NO_PAINT, settings),
           },
         },
         progress: {
-          // Missing samples show only the track, never a false zero (§83).
-          show: plottable,
+          show: arcDrawn,
           width: settings.thickness,
           roundCap: settings.roundCap,
-        ...progressItemStyle(resolveChartPaint(settings.progress, palette), settings, displayValue),
+          ...progressItemStyle(progress ?? NO_PAINT, settings, displayValue),
         },
         // Chart typography is rendered by shared text elements (§91).
         pointer: { show: false },
@@ -95,7 +104,11 @@ export function buildGaugeOption(
         splitLine: { show: false },
         axisLabel: { show: false },
         detail: { show: false },
-        data: [{ value: displayValue }],
+        // No arc, no datum. ECharts reads its own previous progress element
+        // inside the data-diff update callback and only fills it after a render
+        // that drew an arc, so a datum outliving `progress.show: false` throws
+        // inside its renderer (0008).
+        data: arcDrawn ? [{ value: displayValue }] : [],
         silent: true,
         ...toEngineAnimation(settings.animation, animate),
       },
@@ -104,15 +117,18 @@ export function buildGaugeOption(
 }
 
 /** Convert a fill to ECharts `[proportion, color]` ring segments. */
-export function toColorSegments(fill: Fill, settings: GaugeSettings): ColorSegment[] {
+export function toColorSegments(
+  fill: Fill,
+  settings: GaugeSettings,
+): ColorSegment[] {
   switch (fill.kind) {
-    case 'solid':
+    case "solid":
       return [[1, fill.color]];
 
-    case 'thresholds':
+    case "thresholds":
       return normalizeBands(fill.bands);
 
-    case 'gradient':
+    case "gradient":
       return approximateGradient(fill.stops, settings.gradientSegments ?? 64);
   }
 }
@@ -120,7 +136,7 @@ export function toColorSegments(fill: Fill, settings: GaugeSettings): ColorSegme
 /** ECharts needs ascending, unique segment ends covering the full ring. */
 function normalizeBands(bands: readonly GradientStop[]): ColorSegment[] {
   if (bands.length === 0) {
-    return [[1, 'transparent']];
+    return [[1, "transparent"]];
   }
 
   const sorted = [...bands]
@@ -152,7 +168,7 @@ export function approximateGradient(
   segmentCount: number,
 ): ColorSegment[] {
   if (stops.length === 0) {
-    return [[1, 'transparent']];
+    return [[1, "transparent"]];
   }
 
   if (stops.length === 1) {
@@ -176,21 +192,28 @@ export function approximateGradient(
 }
 
 /**
- * Resolve the progress arc separately from the track. Gradient progress uses a
- * cartesian gradient, so it does not follow the arc; that remains a §85 gap.
+ * Resolve the progress arc separately from the track.
+ *
+ * A gradient fill is expressed as arc segments, because ECharts applies gauge
+ * `progress` colour across the swept arc: a cartesian `to-right` gradient would
+ * not follow it. A threshold fill stays a flat colour per current value, which
+ * is what a threshold means for a progress arc.
  */
 function progressItemStyle(
   fill: Fill,
   settings: GaugeSettings,
   value: number,
-): { itemStyle: { color: EngineColor } } {
-  if (fill.kind === 'gradient') {
-    return { itemStyle: { color: toLinearGradient(fill.stops, 'to-right') } };
+): { itemStyle: { color: EngineColor | ColorSegment[] } } {
+  if (fill.kind === "gradient") {
+    return { itemStyle: { color: toColorSegments(fill, settings) } };
   }
 
   return {
     itemStyle: {
-      color: resolveFlatColor(fill, normalizePosition(value, settings.min, settings.max)),
+      color: resolveFlatColor(
+        fill,
+        normalizePosition(value, settings.min, settings.max),
+      ),
     },
   };
 }

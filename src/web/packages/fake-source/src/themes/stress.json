@@ -8,7 +8,7 @@
   "artboard": {
     "width": 1024,
     "height": 768,
-    "fitMode": "contain",
+    "contentFit": "contain",
     "background": { "value": "#0a0a0c" }
   },
   "globals": {
@@ -74,13 +74,22 @@
                   "id": "nest-leaf",
                   "type": "ellipse",
                   "transform": { "x": 0, "y": 0, "width": 80, "height": 80 },
-                  "style": { "fill": { "value": "#a78bfa" }, "opacity": { "value": 0.75 } }
+                  "style": {
+                    "fill": { "value": "#a78bfa" },
+                    "opacity": { "value": 0.75 }
+                  }
                 },
                 {
                   "id": "nest-hairline",
                   "type": "line",
                   "name": "Line as a thin rotated rectangle",
-                  "transform": { "x": 0, "y": 100, "width": 200, "height": 1, "rotation": 12 },
+                  "transform": {
+                    "x": 0,
+                    "y": 100,
+                    "width": 200,
+                    "height": 1,
+                    "rotation": 12
+                  },
                   "style": { "fill": { "ref": "palette.dim" } }
                 }
               ]
@@ -129,7 +138,9 @@
       "type": "chart",
       "name": "Reverse sweep, gradient track",
       "transform": { "x": 820, "y": 30, "width": 160, "height": 160 },
-      "bindings": [{ "id": "s-ratio", "semanticKey": "fan.ratio", "scale": 100 }],
+      "bindings": [
+        { "id": "s-ratio", "semanticKey": "fan.ratio", "scale": 100 }
+      ],
       "content": {
         "family": "gauge",
         "settings": {
@@ -147,7 +158,14 @@
               { "offset": 1, "color": "#374151" }
             ]
           },
-          "progress": { "kind": "solid", "color": "#f472b6" }
+          "progress": {
+            "kind": "gradient",
+            "stops": [
+              { "offset": 0, "color": "#00b8d9" },
+              { "offset": 0.5, "color": "#ffab00" },
+              { "offset": 1, "color": "#ff5630" }
+            ]
+          }
         }
       }
     },
@@ -200,6 +218,35 @@
           "maxPoints": 8,
           "showAxes": true,
           "sampling": "lttb"
+        }
+      }
+    },
+    {
+      "id": "threshold-line",
+      "type": "chart",
+      "name": "Threshold line: colour follows the value",
+      "transform": { "x": 620, "y": 380, "width": 240, "height": 120 },
+      "bindings": [{ "id": "s-thresh", "semanticKey": "cpu.load" }],
+      "content": {
+        "family": "line",
+        "settings": {
+          "lineWidth": 3,
+          "interpolation": "smooth",
+          "min": 0,
+          "max": 100,
+          "stroke": {
+            "kind": "thresholds",
+            "bands": [
+              { "offset": 0.4, "color": "#22d3ee" },
+              { "offset": 0.75, "color": "#fbbf24" },
+              { "offset": 1, "color": "#f472b6" }
+            ]
+          },
+          "showMarkers": false,
+          "markerSize": 3,
+          "windowSeconds": 15,
+          "maxPoints": 8,
+          "showAxes": true
         }
       }
     },
@@ -373,11 +420,17 @@
       "type": "text",
       "name": "Unbroken string, clipped",
       "transform": { "x": 40, "y": 628, "width": 200, "height": 24 },
-      "style": { "fontSize": { "value": 14 }, "color": { "ref": "palette.dim" } },
+      "style": {
+        "fontSize": { "value": 14 },
+        "color": { "ref": "palette.dim" }
+      },
       "content": {
         "overflow": "clip",
         "runs": [
-          { "kind": "literal", "text": "unbreakable_identifier_with_no_spaces_at_all_0123456789" }
+          {
+            "kind": "literal",
+            "text": "unbreakable_identifier_with_no_spaces_at_all_0123456789"
+          }
         ]
       }
     },
@@ -386,11 +439,17 @@
       "type": "text",
       "name": "Single-line ellipsis",
       "transform": { "x": 40, "y": 658, "width": 200, "height": 24 },
-      "style": { "fontSize": { "value": 14 }, "color": { "ref": "palette.dim" } },
+      "style": {
+        "fontSize": { "value": 14 },
+        "color": { "ref": "palette.dim" }
+      },
       "content": {
         "overflow": "ellipsis",
         "runs": [
-          { "kind": "literal", "text": "this line is far too long for two hundred pixels of box" }
+          {
+            "kind": "literal",
+            "text": "this line is far too long for two hundred pixels of box"
+          }
         ]
       }
     },
@@ -410,7 +469,12 @@
         { "id": "s-p6", "semanticKey": "cpu.temp", "precision": 6 },
         { "id": "s-pnone", "semanticKey": "cpu.temp", "unitDisplay": "none" },
         { "id": "s-plong", "semanticKey": "cpu.power", "unitDisplay": "long" },
-        { "id": "s-poffset", "semanticKey": "cpu.temp", "scale": 1.8, "offset": 32 }
+        {
+          "id": "s-poffset",
+          "semanticKey": "cpu.temp",
+          "scale": 1.8,
+          "offset": 32
+        }
       ],
       "content": {
         "wrap": true,
@@ -449,7 +513,12 @@
         "shadowBlur": { "value": 24 }
       },
       "bindings": [
-        { "id": "s-huge", "semanticKey": "cpu.load", "precision": 0, "unitDisplay": "none" }
+        {
+          "id": "s-huge",
+          "semanticKey": "cpu.load",
+          "precision": 0,
+          "unitDisplay": "none"
+        }
       ],
       "content": {
         "align": "right",
@@ -493,7 +562,9 @@
       "transform": { "x": 0, "y": 0, "width": 100, "height": 20 },
       "visible": false,
       "locked": true,
-      "content": { "runs": [{ "kind": "literal", "text": "must not be visible" }] }
+      "content": {
+        "runs": [{ "kind": "literal", "text": "must not be visible" }]
+      }
     }
   ]
 }

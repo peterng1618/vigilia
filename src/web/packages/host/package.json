@@ -15,11 +15,13 @@
   },
   "scripts": {
     "build": "vite build",
-    "typecheck": "tsc --noEmit -p tsconfig.json"
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "vendor:lhm": "node ./scripts/vendor-lhm.mjs"
   },
   "dependencies": {
     "@vigilia/renderer-core": "*",
-    "@vigilia/theme-package": "*"
+    "@vigilia/theme-package": "*",
+    "systeminformation": "^5.33.13"
   },
   "devDependencies": {
     "@types/node": "22.10.2"

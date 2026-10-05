@@ -1,5 +1,9 @@
-import { describe, expect, it } from 'vitest';
-import { CHART_SERIALISED_KEYS, VigiliaChart, withoutEngineAnimation } from './chart-object.js';
+import { describe, expect, it } from "vitest";
+import {
+  CHART_SERIALISED_KEYS,
+  VigiliaChart,
+  withoutEngineAnimation,
+} from "./chart-object.js";
 
 /**
  * The chart object's decisions and its shape.
@@ -16,28 +20,28 @@ import { CHART_SERIALISED_KEYS, VigiliaChart, withoutEngineAnimation } from './c
  * shape — so those are asserted here rather than deferred.
  */
 
-describe('the persisted surface', () => {
-  it('carries only authored configuration', () => {
+describe("the persisted surface", () => {
+  it("carries only authored configuration", () => {
     // The §67 rule, structural rather than reviewed. These are `ChartContent`'s
     // keys: the family and the typed settings the document already stores.
-    expect([...CHART_SERIALISED_KEYS]).toEqual(['family', 'settings']);
+    expect([...CHART_SERIALISED_KEYS]).toEqual(["family", "settings"]);
   });
 
-  it('never carries the built engine option', () => {
+  it("never carries the built engine option", () => {
     // The built option is derived — `plan.ts` rebuilds it from the settings,
     // the theme's tokens and the current samples on every frame — and it holds
     // live readings inside `series[].data`. Serialising it put telemetry in the
     // persisted document where no key-name check could see it: a canvas
     // snapshot would bake a reading into the next undo entry taken for an
     // unrelated reason, and undo would restore a stale number.
-    expect([...CHART_SERIALISED_KEYS]).not.toContain('option');
+    expect([...CHART_SERIALISED_KEYS]).not.toContain("option");
 
     // Device state, too: renderScale is DPR x viewport zoom, so persisting it
     // would carry the authoring machine's display into a portable document.
-    expect([...CHART_SERIALISED_KEYS]).not.toContain('renderScale');
+    expect([...CHART_SERIALISED_KEYS]).not.toContain("renderScale");
   });
 
-  it('is what Fabric actually emits, not a parallel list', () => {
+  it("is what Fabric actually emits, not a parallel list", () => {
     // Fabric's own `toObject` concatenates `customProperties` into the keys it
     // picks, so deriving this from CHART_SERIALISED_KEYS makes the declaration
     // and the behaviour one thing. The previous `toObject` override kept a
@@ -45,18 +49,18 @@ describe('the persisted surface', () => {
     expect(VigiliaChart.customProperties).toEqual([...CHART_SERIALISED_KEYS]);
   });
 
-  it('leaves revival entirely to Fabric', () => {
+  it("leaves revival entirely to Fabric", () => {
     // `FabricObject.fromObject` routes through `_fromObject`, which runs
     // `enlivenObjectEnlivables` first — the step that turns a serialised
     // clipPath, gradient or pattern back into an instance. An override calling
     // `new VigiliaChart(object)` skipped it and revived a clip path as a plain
     // object, which matters from stage 2, where content is clipped to the
     // artboard.
-    expect(Object.hasOwn(VigiliaChart, 'fromObject')).toBe(false);
+    expect(Object.hasOwn(VigiliaChart, "fromObject")).toBe(false);
   });
 });
 
-describe('every property Fabric may assign is assignable', () => {
+describe("every property Fabric may assign is assignable", () => {
   /**
    * Fabric has exactly one way in: `_setOptions` walks the options bag and does
    * `this[key] = value` for every key (`CommonMethods.ts:9-40`). That path is
@@ -73,17 +77,24 @@ describe('every property Fabric may assign is assignable', () => {
    * `Object.create` gives a prototype-backed instance without running the
    * constructor, so the assignment path is exercised for real with no DOM.
    */
-  const assignableKeys = [...VigiliaChart.customProperties, 'option', 'renderScale'];
+  const assignableKeys = [
+    ...VigiliaChart.customProperties,
+    "option",
+    "renderScale",
+  ];
 
-  it.each(assignableKeys)('accepts an assignment to `%s`', (key) => {
-    const instance = Object.create(VigiliaChart.prototype) as Record<string, unknown>;
+  it.each(assignableKeys)("accepts an assignment to `%s`", (key) => {
+    const instance = Object.create(VigiliaChart.prototype) as Record<
+      string,
+      unknown
+    >;
 
     expect(() => {
       instance[key] = undefined;
     }).not.toThrow();
   });
 
-  it('has no getter-only accessor anywhere on the prototype chain', () => {
+  it("has no getter-only accessor anywhere on the prototype chain", () => {
     // The general form of the same defect, so a future property cannot
     // reintroduce it under a different name. A read-only view of internal
     // state must not be reachable by a name Fabric might assign.
@@ -109,12 +120,12 @@ describe('every property Fabric may assign is assignable', () => {
     // cannot throw. Anything else appearing here is the bug above returning —
     // give the property a setter, or rename it so it cannot collide with a
     // Fabric property.
-    expect(offenders.sort()).toEqual(['disposed']);
+    expect(offenders.sort()).toEqual(["disposed"]);
   });
 });
 
-describe('the defaults Fabric actually applies', () => {
-  it('declares them once, through Fabric’s own mechanism', () => {
+describe("the defaults Fabric actually applies", () => {
+  it("declares them once, through Fabric’s own mechanism", () => {
     // `FabricObject`'s constructor assigns `FabricObject.ownDefaults` by name
     // rather than calling `this.constructor.getDefaults()` (`Object.ts:370`),
     // so a subclass must assign its own — the pattern `Rect` and `Group` use.
@@ -123,17 +134,20 @@ describe('the defaults Fabric actually applies', () => {
     expect(VigiliaChart.getDefaults()).toMatchObject(VigiliaChart.ownDefaults);
   });
 
-  it('uses Fabric’s centre origin rather than the deprecated top-left', () => {
+  it("uses Fabric’s centre origin rather than the deprecated top-left", () => {
     // Fabric 7 marks every origin except `center` deprecated ("please use
     // 'center' as value in new projects"). The PlanBox top-left -> centre
     // conversion is two additions in the adapter. Note this value is *not*
     // persisted — it equals the default and defaults are stripped, which is
     // deliberate; see `persist.ts`. It still has to be declared, because
     // `_render` and every box measurement work in centred local space.
-    expect(VigiliaChart.ownDefaults).toMatchObject({ originX: 'center', originY: 'center' });
+    expect(VigiliaChart.ownDefaults).toMatchObject({
+      originX: "center",
+      originY: "center",
+    });
   });
 
-  it('carries no stroke, so the bounding box is the chart’s box', () => {
+  it("carries no stroke, so the bounding box is the chart’s box", () => {
     // Fabric adds strokeWidth into `_getTransformedDimensions`, so the default
     // of 1 inflates the bounding box, the hit area and every control position.
     // It is the whole 1.4 px error measured at 37 degrees: 1 x (cos 37 + sin 37)
@@ -142,7 +156,7 @@ describe('the defaults Fabric actually applies', () => {
     expect(VigiliaChart.ownDefaults.strokeWidth).toBe(0);
   });
 
-  it('never caches the object', () => {
+  it("never caches the object", () => {
     // 7.99 ms mean / 36.5 ms p95 at DPR 2.75 against 0.12/0.2 ms, and past
     // viewport zoom ~8 the capped raster is upscaled — the bitmap label §91
     // forbids.
@@ -150,23 +164,23 @@ describe('the defaults Fabric actually applies', () => {
   });
 });
 
-describe('withoutEngineAnimation', () => {
-  it('disables the engine animation loop', () => {
+describe("withoutEngineAnimation", () => {
+  it("disables the engine animation loop", () => {
     // Measured: with animation on, one data push fires the invalidation hook
     // ~31 times and repaints the whole canvas each time, for one visible
     // change. Vigilia's own appear animations live in the plan instead.
-    const option = { series: [{ type: 'line' }] } as never;
+    const option = { series: [{ type: "line" }] } as never;
 
     expect(withoutEngineAnimation(option)).toMatchObject({ animation: false });
   });
 
-  it('overrides an option that asked for animation', () => {
+  it("overrides an option that asked for animation", () => {
     const option = { animation: true, series: [] } as never;
 
     expect(withoutEngineAnimation(option)).toMatchObject({ animation: false });
   });
 
-  it('does not mutate the plan option it was given', () => {
+  it("does not mutate the plan option it was given", () => {
     // The option comes from `plan.ts`, which is pure and may share a value
     // between frames. Mutating it would reach back into the plan.
     const option = { animation: true, series: [] };
@@ -176,11 +190,11 @@ describe('withoutEngineAnimation', () => {
     expect(option.animation).toBe(true);
   });
 
-  it('keeps everything else the option said', () => {
-    const option = { series: [{ type: 'gauge' }], grid: { left: 4 } } as never;
+  it("keeps everything else the option said", () => {
+    const option = { series: [{ type: "gauge" }], grid: { left: 4 } } as never;
 
     expect(withoutEngineAnimation(option)).toMatchObject({
-      series: [{ type: 'gauge' }],
+      series: [{ type: "gauge" }],
       grid: { left: 4 },
     });
   });

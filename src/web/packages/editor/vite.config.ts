@@ -1,30 +1,25 @@
-import { defineConfig } from 'vite';
-import { resolve } from 'node:path';
-import { fileURLToPath } from 'node:url';
-
-const EDITOR_ROOT = fileURLToPath(new URL('.', import.meta.url));
+import { fileURLToPath } from "node:url";
+import tailwindcss from "@tailwindcss/vite";
+import { defineConfig } from "vite";
 
 export default defineConfig({
+  plugins: [tailwindcss()],
   resolve: {
     alias: {
-      '@vigilia/renderer-core': fileURLToPath(
-        new URL('../renderer-core/src/index.ts', import.meta.url),
+      // shadcn's own convention, and the reason a components.json can point at
+      // this package's source without every generated import being rewritten.
+      "@": fileURLToPath(new URL("./src", import.meta.url)),
+      "@vigilia/renderer-core": fileURLToPath(
+        new URL("../renderer-core/src/index.ts", import.meta.url),
       ),
-      '@vigilia/theme-package': fileURLToPath(
-        new URL('../theme-package/src/index.ts', import.meta.url),
+      "@vigilia/theme-package": fileURLToPath(
+        new URL("../theme-package/src/index.ts", import.meta.url),
       ),
       // SCAFFOLD: the fixture themes and the synthetic sample source. The
       // editor will open real documents (Gate 4) and preview live data through
       // the transport (Gate 3) instead.
-      '@vigilia/fake-source': fileURLToPath(
-        new URL('../fake-source/src/index.ts', import.meta.url),
-      ),
-      // The adopted fork is compiled at its package boundary. Resolve that
-      // entry explicitly: Rolldown 1.2 intermittently misses this Git package's
-      // otherwise valid `exports` map on Windows.
-      '@anu3ev/fabric-image-editor': resolve(
-        EDITOR_ROOT,
-        '../../node_modules/@anu3ev/fabric-image-editor/dist/main.js',
+      "@vigilia/fake-source": fileURLToPath(
+        new URL("../fake-source/src/index.ts", import.meta.url),
       ),
     },
   },
@@ -36,16 +31,16 @@ export default defineConfig({
   // not. A relative base is the only one correct at both mount points; the host
   // redirects `/editor` to `/editor/` so it resolves against the right
   // directory (see `host/src/serve/static-path.ts`).
-  base: './',
+  base: "./",
   build: {
     // §124's floor applies to the player; the editor is desktop-only, and this
     // matches it so both are built by one toolchain rather than two.
-    target: 'es2022',
+    target: "es2022",
     sourcemap: true,
   },
   server: {
     // Loopback only (§145). The editor is an admin surface and has no business
     // being reachable from the LAN.
-    host: '127.0.0.1',
+    host: "127.0.0.1",
   },
 });

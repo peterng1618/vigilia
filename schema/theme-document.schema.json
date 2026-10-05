@@ -32,7 +32,8 @@
         "description": { "type": "string", "maxLength": 2000 },
         "version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
         "createdAt": { "type": "string", "format": "date-time" },
-        "updatedAt": { "type": "string", "format": "date-time" }
+        "updatedAt": { "type": "string", "format": "date-time" },
+        "themeLanguage": { "type": "string", "maxLength": 64 }
       }
     },
     "paletteReference": {
@@ -45,7 +46,7 @@
         "width": { "type": "number", "exclusiveMinimum": 0, "maximum": 16384 },
         "height": { "type": "number", "exclusiveMinimum": 0, "maximum": 16384 },
         "background": { "$ref": "#/$defs/paletteReference" },
-        "fitMode": { "enum": ["contain", "cover"] },
+        "contentFit": { "enum": ["contain", "cover"] },
         "barColor": { "$ref": "#/$defs/paletteReference" },
         "backgroundMedia": { "$ref": "#/$defs/backgroundMedia" }
       }
@@ -134,7 +135,9 @@
         "semanticKey": { "type": "string", "minLength": 1, "maxLength": 120 },
         "precision": { "type": "integer", "minimum": 0, "maximum": 6 },
         "unitDisplay": { "enum": ["none", "short", "long"] },
-        "scale": { "type": "number" }, "offset": { "type": "number" }
+        "scale": { "type": "number" }, "offset": { "type": "number" },
+        "format": { "type": "string", "maxLength": 64 },
+        "timeZone": { "type": "string", "maxLength": 64 }
       }
     },
     "fabricScene": {
@@ -146,7 +149,35 @@
       },
       "additionalProperties": { "$ref": "#/$defs/jsonValue" }
     },
-    "fabricObject": { "type": "object", "additionalProperties": { "$ref": "#/$defs/jsonValue" } },
+    "fabricObject": {
+      "type": "object",
+      "properties": {
+        "vigiliaGlass": { "$ref": "#/$defs/glassTreatment" },
+        "name": { "$ref": "#/$defs/objectName" }
+      },
+      "allOf": [
+        {
+          "if": { "required": ["vigiliaGlass"] },
+          "then": {
+            "properties": {
+              "type": {
+                "enum": ["Rect", "Circle", "Ellipse", "Triangle", "Polygon", "Group"]
+              }
+            }
+          }
+        }
+      ],
+      "additionalProperties": { "$ref": "#/$defs/jsonValue" }
+    },
+    "objectName": {
+      "description": "Display name shown in the layer list and selection. The id stays the stable key and is what this falls back to when the name is absent.",
+      "type": "string", "minLength": 1, "maxLength": 120
+    },
+    "glassTreatment": {
+      "description": "Authored backdrop blur. Absence means off; 0 means no blur. Artboard units.",
+      "type": "object", "additionalProperties": false, "required": ["blurRadius"],
+      "properties": { "blurRadius": { "type": "number", "minimum": 0, "maximum": 48 } }
+    },
     "jsonValue": {
       "oneOf": [
         { "type": "null" }, { "type": "boolean" }, { "type": "number" }, { "type": "string" },

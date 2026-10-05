@@ -1,5 +1,10 @@
-import { FakeSampleSource } from '@vigilia/fake-source';
-import { SampleStore, type SampleSource } from '@vigilia/renderer-core';
+import { FakeSampleSource } from "@vigilia/fake-source";
+import {
+  LIVE_SOURCE_CHART_PLAYBACK_DELAY_MS,
+  type SampleSource,
+} from "@vigilia/renderer-core";
+
+const PREVIEW_HISTORY_SECONDS = 300;
 
 export function createPreviewSource(options: {
   readonly keys: readonly string[];
@@ -7,28 +12,24 @@ export function createPreviewSource(options: {
 }): { readonly source: SampleSource } {
   const keys = new Set(options.keys);
   const waveform = new FakeSampleSource(0);
-  const store = new SampleStore();
-  let sampledAt = Number.NaN;
-
-  const update = (): void => {
-    const now = options.now();
-    if (!Number.isFinite(now) || now === sampledAt) return;
-    waveform.setNow(now);
-    store.ingest([...keys].map((key) => [key, waveform.sampleAt(key, now)] as const), now);
-    sampledAt = now;
-  };
 
   return {
     source: {
+      chartPlaybackDelayMs: LIVE_SOURCE_CHART_PLAYBACK_DELAY_MS,
       latest(key) {
         if (!keys.has(key)) return undefined;
-        update();
-        return store.latest(key);
+        const now = options.now();
+        return Number.isFinite(now) ? waveform.sampleAt(key, now) : undefined;
       },
       history(key, windowSeconds) {
         if (!keys.has(key)) return [];
-        update();
-        return store.history(key, windowSeconds);
+        const now = options.now();
+        if (!Number.isFinite(now)) return [];
+        waveform.setNow(now);
+        return waveform.history(
+          key,
+          Math.min(windowSeconds, PREVIEW_HISTORY_SECONDS),
+        );
       },
     },
   };

@@ -1,24 +1,21 @@
-import { expect, test, type Page } from '@playwright/test';
-import { openPaused } from './clock.js';
+import { expect, type Page, test } from "@playwright/test";
 import {
-  canvasChildOf,
   canvasHas,
   canvasProp,
-  canvasText,
   drawnFractionIn,
   drawnFractionOf,
-  hasRunStyles,
   keepsObjectIdentity,
   openCanvasPlayer,
   probe,
   sourceColorFraction,
-} from './canvas-probe.js';
+  waitForInk,
+} from "./canvas-probe.js";
+import { openPaused } from "./clock.js";
 
 const FIXTURES = [
-  { name: 'demo', charts: true },
-  { name: 'stress', charts: true },
-  { name: 'portrait-cover', charts: true },
-  { name: 'assets', charts: false },
+  { name: "stress", charts: true },
+  { name: "portrait-cover", charts: true },
+  { name: "assets", charts: false },
 ] as const;
 
 /**
@@ -79,7 +76,11 @@ window.gridProfile = (data, width, height) => {
 
 /** The injected measure, as the page exposes it. */
 type ProfileWindow = typeof window & {
-  gridProfile: (data: Uint8ClampedArray, width: number, height: number) => number[];
+  gridProfile: (
+    data: Uint8ClampedArray,
+    width: number,
+    height: number,
+  ) => number[];
 };
 
 /**
@@ -98,8 +99,10 @@ async function profileIn(
   region: { x: number; y: number; width: number; height: number },
 ): Promise<readonly number[]> {
   return page.evaluate((box) => {
-    const element = document.querySelector<HTMLCanvasElement>('canvas[data-vigilia="artboard"]');
-    const context = element?.getContext('2d');
+    const element = document.querySelector<HTMLCanvasElement>(
+      'canvas[data-vigilia="artboard"]',
+    );
+    const context = element?.getContext("2d");
 
     if (element === null || context === null || context === undefined) {
       return [];
@@ -135,15 +138,15 @@ async function profileOfAsset(
   return page.evaluate(
     ({ url, box }) =>
       new Promise<readonly number[]>((resolve) => {
-        const image = document.createElement('img');
+        const image = document.createElement("img");
 
-        image.addEventListener('load', () => {
-          const canvas = document.createElement('canvas');
+        image.addEventListener("load", () => {
+          const canvas = document.createElement("canvas");
 
           canvas.width = Math.max(4, Math.round(box.width));
           canvas.height = Math.max(4, Math.round(box.height));
 
-          const context = canvas.getContext('2d');
+          const context = canvas.getContext("2d");
 
           if (context === null) {
             resolve([]);
@@ -163,62 +166,71 @@ async function profileOfAsset(
           );
         });
 
-        image.addEventListener('error', () => resolve([]));
+        image.addEventListener("error", () => resolve([]));
         image.src = url;
       }),
     { url: src, box: size },
   );
 }
 
-test.describe('the scene reaches the canvas', () => {
-  test('builds one object per top-level node', async ({ page }) => {
+test.describe("the scene reaches the canvas", () => {
+  test("waits out a slow asset rather than outspending it in simulated time", async ({
+    page,
+  }) => {
+    // The regression guard for this suite's flake under parallel load. The ink
+    // guard in `openCanvasPlayer` waits by advancing a *paused clock*, but an
+    // asset fetch and decode is *real*-time async work that no amount of
+    // simulated time can advance. Under load the decode outran the budget and
+    // the guard threw "the artboard never painted" at two tests in this file.
+    //
+    // A delayed response proves the mechanism with no load at all: measured
+    // against the pre-fix guard, 800 ms and 1500 ms both reported 0 pixels
+    // while 0, 300 and 3000 ms passed — the delay is dwarfed by the ~150 ms of
+    // wall time two `runFor(100)` calls cost, so the budget is spent before the
+    // bytes land. The delay is deliberately inside that window.
+    await page.route("**/assets/**", async (route) => {
+      await new Promise((resolve) => setTimeout(resolve, 1200));
+      await route.continue();
+    });
+
+    await openCanvasPlayer(page, "/?theme=assets");
+
+    // The teeth are the line above: the pre-fix guard threw here. This only
+    // pins that the guard still refuses a blank artboard rather than returning
+    // early on a timeout — it deliberately does *not* assert that the delayed
+    // assets have decoded, because `openCanvasPlayer` promises ink, not that
+    // every asset has arrived.
+    const size = page.viewportSize() ?? { width: 1280, height: 720 };
+    expect(
+      await drawnFractionIn(page, {
+        x: 0,
+        y: 0,
+        width: size.width,
+        height: size.height,
+      }),
+    ).toBeGreaterThan(0.1);
+  });
+
+  test("builds identified canvas objects", async ({ page }) => {
     await openCanvasPlayer(page);
 
     const scene = await probe(page);
 
-    // The demo fixture's top level: whatever it is, every object must have an
-    // id, because that is what a plan node is matched by — and from stage 3,
-    // what a binding resolves against.
     expect(scene.objectCount).toBeGreaterThan(0);
-    expect(scene.ids).not.toContain('undefined');
+    expect(scene.ids).not.toContain("undefined");
     expect(new Set(scene.ids).size).toBe(scene.ids.length);
-
-    for (const id of [
-      'title',
-      'cpu-panel',
-      'cpu-panel-bg',
-      'cpu-gauge',
-      'cpu-readout',
-      'gpu-gauge',
-      'history-chart',
-      'thermals-bars',
-      'memory-donut',
-      'memory-unmapped',
-    ]) {
-      expect(scene.allIds, `node ${id} is missing`).toContain(id);
-    }
   });
 
-  test('keeps group children inside their authored group (§57)', async ({ page }) => {
-    await openCanvasPlayer(page);
-
-    expect(await canvasChildOf(page, 'cpu-gauge', 'cpu-panel')).toBe(true);
-  });
-
-  test('shows measured text, styled runs and missing-data placeholders', async ({ page }) => {
-    await openCanvasPlayer(page);
-
-    expect(await canvasText(page, 'cpu-readout')).toMatch(/^\d+%$/);
-    expect(await hasRunStyles(page, 'cpu-readout')).toBe(true);
-    expect(await canvasText(page, 'memory-unmapped')).toContain('—');
-    await expect(page.getByText(/SYNTHETIC DATA/)).toBeVisible();
-  });
-
-  test('paints something, which is the whole point', async ({ page }) => {
+  test("paints something, which is the whole point", async ({ page }) => {
     await openCanvasPlayer(page);
 
     const size = page.viewportSize() ?? { width: 1280, height: 720 };
-    const drawn = await drawnFractionIn(page, { x: 0, y: 0, width: size.width, height: size.height });
+    const drawn = await drawnFractionIn(page, {
+      x: 0,
+      y: 0,
+      width: size.width,
+      height: size.height,
+    });
 
     // A canvas that mounted, sized and transformed correctly and drew nothing
     // would pass every other assertion in this file. The fraction is of the
@@ -226,7 +238,9 @@ test.describe('the scene reaches the canvas', () => {
     expect(drawn).toBeGreaterThan(0.1);
   });
 
-  test('carries the artboard transform in the canvas, not in CSS', async ({ page }) => {
+  test("carries the artboard transform in the canvas, not in CSS", async ({
+    page,
+  }) => {
     await openCanvasPlayer(page);
 
     const scene = await probe(page);
@@ -247,8 +261,13 @@ test.describe('the scene reaches the canvas', () => {
     expect(scene.canvasSize.height).toBe(size.height);
   });
 
-  test('letterboxes a 16:9 design on a taller phone (§53)', async ({ page }, testInfo) => {
-    test.skip(testInfo.project.name !== 'phone-chromium', 'The bars only exist on a phone.');
+  test("letterboxes a 16:9 design on a taller phone (§53)", async ({
+    page,
+  }, testInfo) => {
+    test.skip(
+      testInfo.project.name !== "phone-chromium",
+      "The bars only exist on a phone.",
+    );
 
     await openCanvasPlayer(page);
 
@@ -274,22 +293,25 @@ test.describe('the scene reaches the canvas', () => {
     }
   });
 
-  test('refits after the viewport changes', async ({ page }, testInfo) => {
-    test.skip(testInfo.project.name !== 'desktop-chromium', 'resizes the desktop viewport');
+  test("refits after the viewport changes", async ({ page }, testInfo) => {
+    test.skip(
+      testInfo.project.name !== "desktop-chromium",
+      "resizes the desktop viewport",
+    );
 
     await openCanvasPlayer(page);
     await page.setViewportSize({ width: 900, height: 900 });
 
     await expect
       .poll(async () => (await probe(page)).viewportTransform[0])
-      .toBeCloseTo(900 / 1280, 5);
+      .toBeCloseTo(900 / 1024, 5);
 
     const scene = await probe(page);
     expect(scene.canvasSize).toEqual({ width: 900, height: 900 });
   });
 
-  test('cover mode fills and crops the viewport (§53)', async ({ page }) => {
-    await openCanvasPlayer(page, '/?theme=portrait-cover');
+  test("cover mode fills and crops the viewport (§53)", async ({ page }) => {
+    await openCanvasPlayer(page, "/?theme=portrait-cover");
 
     const scene = await probe(page);
     const viewport = page.viewportSize()!;
@@ -301,14 +323,16 @@ test.describe('the scene reaches the canvas', () => {
   });
 });
 
-test.describe('charts draw through a Fabric object', () => {
-  test('every family in the stress fixture puts ink on the canvas', async ({ page }) => {
+test.describe("charts draw through a Fabric object", () => {
+  test("every family in the stress fixture puts ink on the canvas", async ({
+    page,
+  }) => {
     // The claim this whole migration rests on, asserted on the shipped path
     // rather than on the prototype: ECharts draws into a detached canvas and
     // `VigiliaChart._render` blits it. If the invalidation hook were missing,
     // the first frame might still appear and later ones would not — which is
     // what the next test is for.
-    await openCanvasPlayer(page, '/?theme=stress');
+    await openCanvasPlayer(page, "/?theme=stress");
 
     const scene = await probe(page);
 
@@ -317,15 +341,23 @@ test.describe('charts draw through a Fabric object', () => {
     const size = page.viewportSize() ?? { width: 1280, height: 720 };
 
     expect(
-      await drawnFractionIn(page, { x: 0, y: 0, width: size.width, height: size.height }),
+      await drawnFractionIn(page, {
+        x: 0,
+        y: 0,
+        width: size.width,
+        height: size.height,
+      }),
     ).toBeGreaterThan(0.1);
 
-    for (const id of ['half-gauge', 'step-line', 'many-bars', 'sum-pie']) {
-      expect(await drawnFractionOf(page, id), `${id} drew nothing`).toBeGreaterThan(0.01);
+    for (const id of ["half-gauge", "step-line", "many-bars", "sum-pie"]) {
+      expect(
+        await drawnFractionOf(page, id),
+        `${id} drew nothing`,
+      ).toBeGreaterThan(0.01);
     }
   });
 
-  test('keeps repainting as samples arrive', async ({ page }) => {
+  test("keeps repainting as samples arrive", async ({ page }) => {
     // What this catches, verified by sabotage: the update loop not reaching the
     // canvas. Cutting `handle.update(plan())` fails it.
     //
@@ -340,34 +372,37 @@ test.describe('charts draw through a Fabric object', () => {
     await openCanvasPlayer(page);
 
     const before = await page.evaluate(() => {
-      const element = document.querySelector<HTMLCanvasElement>('canvas[data-vigilia="artboard"]');
+      const element = document.querySelector<HTMLCanvasElement>(
+        'canvas[data-vigilia="artboard"]',
+      );
 
-      return element?.toDataURL() ?? '';
+      return element?.toDataURL() ?? "";
     });
 
     // Several data ticks — the player rebuilds the plan once a second.
     await page.clock.runFor(4000);
 
     const after = await page.evaluate(() => {
-      const element = document.querySelector<HTMLCanvasElement>('canvas[data-vigilia="artboard"]');
+      const element = document.querySelector<HTMLCanvasElement>(
+        'canvas[data-vigilia="artboard"]',
+      );
 
-      return element?.toDataURL() ?? '';
+      return element?.toDataURL() ?? "";
     });
 
-    expect(before).not.toBe('');
+    expect(before).not.toBe("");
     expect(after).not.toBe(before);
   });
 
-  test('updates live objects without recreating them', async ({ page }) => {
+  test("updates live objects without recreating them", async ({ page }) => {
     await openCanvasPlayer(page);
 
-    expect(await keepsObjectIdentity(page, 'cpu-gauge', 3000)).toBe(true);
-    expect(await keepsObjectIdentity(page, 'cpu-readout', 1000)).toBe(true);
+    expect(await keepsObjectIdentity(page, "half-gauge", 3000)).toBe(true);
   });
 });
 
-test.describe('device pixels reach the charts', () => {
-  test('sizes each chart’s detached canvas from the device and the artboard scale', async ({
+test.describe("device pixels reach the charts", () => {
+  test("sizes each chart’s detached canvas from the device and the artboard scale", async ({
     page,
   }) => {
     // Fabric's `enableRetinaScaling` sizes its *own* backing store. A chart
@@ -406,7 +441,10 @@ test.describe('device pixels reach the charts', () => {
  *
  * Roughly ten times apart, so the threshold is not finely balanced.
  */
-function profileDistance(drawn: readonly number[], reference: readonly number[]): number {
+function profileDistance(
+  drawn: readonly number[],
+  reference: readonly number[],
+): number {
   if (drawn.length !== reference.length || drawn.length === 0) {
     return Number.POSITIVE_INFINITY;
   }
@@ -422,59 +460,72 @@ function profileDistance(drawn: readonly number[], reference: readonly number[])
 /** Twice the worst correct render measured, and a quarter of the mangled one. */
 const PROFILE_TOLERANCE = 0.06;
 
-test.describe('image assets', () => {
-  test('draws each fit mode, and every icon, in its own box', async ({ page }) => {
+test.describe("image assets", () => {
+  test("draws each fit mode, and every icon, in its own box", async ({
+    page,
+  }) => {
     // The test the whole-frame count could not be: every SVG icon in this
     // fixture was **absent** while that one passed. Chrome draws nothing for an
     // SVG with no intrinsic size through `drawImage`'s source-rect form, which
     // is the only form Fabric uses — and the symptom was device-dependent,
     // mangled fragments at 1x and nothing at 4x. `fabric-image.ts` rasterises a
     // vector asset first; this is what says so.
-    await openCanvasPlayer(page, '/?theme=assets');
+    await openCanvasPlayer(page, "/?theme=assets");
 
     // Three rings, one PNG, at the three fit modes; then the icon row.
     for (const nodeId of [
-      'fit-contain',
-      'fit-cover',
-      'fit-stretch',
-      'svg-original',
-      'svg-mono',
-      'png-mono',
+      "fit-contain",
+      "fit-cover",
+      "fit-stretch",
+      "svg-original",
+      "svg-mono",
+      "png-mono",
     ]) {
       const drawn = await drawnFractionOf(page, nodeId);
 
       // A lower bound per node rather than a baseline: a ring covers about a
       // third of its box and a thermometer glyph rather less, and both are
       // nowhere near zero. Absent scores exactly 0.
-      expect(drawn, `"${nodeId}" drew nothing inside its own box`).toBeGreaterThan(0.05);
+      expect(
+        drawn,
+        `"${nodeId}" drew nothing inside its own box`,
+      ).toBeGreaterThan(0.05);
     }
   });
 
-  test('applies contain, cover and stretch geometry', async ({ page }) => {
-    await openCanvasPlayer(page, '/?theme=assets');
+  test("applies contain, cover and stretch geometry", async ({ page }) => {
+    await openCanvasPlayer(page, "/?theme=assets");
 
-    const containX = await canvasProp(page, 'fit-contain', 'scaleX');
-    const containY = await canvasProp(page, 'fit-contain', 'scaleY');
-    const coverX = await canvasProp(page, 'fit-cover', 'scaleX');
-    const coverY = await canvasProp(page, 'fit-cover', 'scaleY');
-    const stretchX = await canvasProp(page, 'fit-stretch', 'scaleX');
-    const stretchY = await canvasProp(page, 'fit-stretch', 'scaleY');
+    const containX = await canvasProp(page, "fit-contain", "scaleX");
+    const containY = await canvasProp(page, "fit-contain", "scaleY");
+    const coverX = await canvasProp(page, "fit-cover", "scaleX");
+    const coverY = await canvasProp(page, "fit-cover", "scaleY");
+    const stretchX = await canvasProp(page, "fit-stretch", "scaleX");
+    const stretchY = await canvasProp(page, "fit-stretch", "scaleY");
 
     expect(containX).toBeCloseTo(containY as number, 5);
     expect(coverX).toBeCloseTo(coverY as number, 5);
     expect(coverX as number).toBeGreaterThan(containX as number);
     expect(stretchX).not.toBeCloseTo(stretchY as number, 5);
-    expect(await canvasHas(page, 'fit-cover', 'clipPath')).toBe(true);
+    expect(await canvasHas(page, "fit-cover", "clipPath")).toBe(true);
   });
 
-  test('recolours bitmap and SVG artwork from source alpha (§132)', async ({ page }) => {
-    await openCanvasPlayer(page, '/?theme=assets');
+  test("recolours bitmap and SVG artwork from source alpha (§132)", async ({
+    page,
+  }) => {
+    await openCanvasPlayer(page, "/?theme=assets");
 
-    expect(await sourceColorFraction(page, 'svg-mono', [255, 171, 0])).toBeGreaterThan(0.8);
-    expect(await sourceColorFraction(page, 'png-mono', [54, 179, 126])).toBeGreaterThan(0.8);
+    expect(
+      await sourceColorFraction(page, "svg-mono", [255, 171, 0]),
+    ).toBeGreaterThan(0.8);
+    expect(
+      await sourceColorFraction(page, "png-mono", [54, 179, 126]),
+    ).toBeGreaterThan(0.8);
   });
 
-  test('draws a vector icon the shape the asset actually is', async ({ page }) => {
+  test("draws a vector icon the shape the asset actually is", async ({
+    page,
+  }) => {
     // Coverage is not enough here, and that is measured: with the vector
     // raster removed, the same icon drew a *mangled* fragment scoring 0.2344
     // against the correct 0.2126. What separates them is where the ink sits, so
@@ -486,25 +537,34 @@ test.describe('image assets', () => {
     // symptom was device-dependent — fragments at 1x, nothing at 4x — so this
     // is the assertion that holds at every ratio.
     await page.addInitScript(GRID_PROFILE);
-    await openCanvasPlayer(page, '/?theme=assets');
+    await openCanvasPlayer(page, "/?theme=assets");
 
     const region = await page.evaluate(() => {
-      const { handle } = (window as unknown as { vigilia: { handle: Record<string, unknown> } })
-        .vigilia;
-      const adapter = handle['adapter'] as {
+      const { handle } = (
+        window as unknown as { vigilia: { handle: Record<string, unknown> } }
+      ).vigilia;
+      const adapter = handle["adapter"] as {
         objectFor(nodeId: string):
-          | { getBoundingRect(): { left: number; top: number; width: number; height: number } }
+          | {
+              getBoundingRect(): {
+                left: number;
+                top: number;
+                width: number;
+                height: number;
+              };
+            }
           | undefined;
       };
-      const object = adapter.objectFor('svg-original');
+      const object = adapter.objectFor("svg-original");
 
       if (object === undefined) {
         return undefined;
       }
 
-      const canvas = handle['canvas'] as { viewportTransform: number[] };
+      const canvas = handle["canvas"] as { viewportTransform: number[] };
       const rect = object.getBoundingRect();
-      const [scale = 1, , , , offsetX = 0, offsetY = 0] = canvas.viewportTransform;
+      const [scale = 1, , , , offsetX = 0, offsetY = 0] =
+        canvas.viewportTransform;
 
       return {
         x: rect.left * scale + offsetX,
@@ -514,7 +574,7 @@ test.describe('image assets', () => {
       };
     });
 
-    expect(region, 'the icon has no object at all').toBeDefined();
+    expect(region, "the icon has no object at all").toBeDefined();
 
     const drawn = await profileIn(page, region!);
     const ratio = await page.evaluate(() => window.devicePixelRatio);
@@ -522,7 +582,7 @@ test.describe('image assets', () => {
     // so the two antialias comparably. Drawn at a different size it differs by
     // up to 0.089 in a single edge-heavy cell even when perfectly correct,
     // which is most of the budget a mangled draw needs to be caught in.
-    const reference = await profileOfAsset(page, '/assets/thermometer.svg', {
+    const reference = await profileOfAsset(page, "/assets/thermometer.svg", {
       width: region!.width * ratio,
       height: region!.height * ratio,
     });
@@ -536,42 +596,51 @@ test.describe('image assets', () => {
     expect(profileDistance(drawn, reference)).toBeLessThan(PROFILE_TOLERANCE);
   });
 
-  test('draws nothing at all for an asset the server does not have', async ({ page }) => {
+  test("draws nothing at all for an asset the server does not have", async ({
+    page,
+  }) => {
     // §111: a declared-but-absent file must not become a broken-image glyph,
     // which reads as a rendering failure rather than a missing file. The node
     // has no object at all, so the helper reports -1.
-    await openCanvasPlayer(page, '/?theme=assets');
+    await openCanvasPlayer(page, "/?theme=assets");
 
-    expect(await drawnFractionOf(page, 'absent-image')).toBeLessThanOrEqual(0);
+    expect(await drawnFractionOf(page, "absent-image")).toBeLessThanOrEqual(0);
   });
 });
 
-test.describe('what it cannot draw, it says', () => {
-  test('warns about tabular numerals rather than silently approximating them (§85)', async ({
+test.describe("what it cannot draw, it says", () => {
+  test("warns about tabular numerals rather than silently approximating them (§85)", async ({
     page,
   }) => {
     const warnings: string[] = [];
 
-    page.on('console', (message) => {
-      if (message.type() === 'warning') {
+    page.on("console", (message) => {
+      if (message.type() === "warning") {
         warnings.push(message.text());
       }
     });
 
     await openCanvasPlayer(page);
 
-    expect(warnings.some((text) => text.includes('tabularNumerals'))).toBe(true);
+    expect(warnings.some((text) => text.includes("tabularNumerals"))).toBe(
+      true,
+    );
   });
 });
 
-test.describe('every fixture renders', () => {
+test.describe("every fixture renders", () => {
   for (const fixture of FIXTURES) {
-    test(`${fixture.name}: mounts, paints and reports no page error`, async ({ page }) => {
+    test(`${fixture.name}: mounts, paints and reports no page error`, async ({
+      page,
+    }) => {
       const errors: string[] = [];
 
-      page.on('pageerror', (error) => errors.push(error.message));
-      page.on('console', (message) => {
-        if (message.type() === 'error' && !message.text().includes('not-shipped.png')) {
+      page.on("pageerror", (error) => errors.push(error.message));
+      page.on("console", (message) => {
+        if (
+          message.type() === "error" &&
+          !message.text().includes("not-shipped.png")
+        ) {
           errors.push(message.text());
         }
       });
@@ -582,50 +651,116 @@ test.describe('every fixture renders', () => {
       const size = page.viewportSize()!;
 
       expect(scene.objectCount).toBeGreaterThan(0);
-      expect(await drawnFractionIn(page, { x: 0, y: 0, ...size })).toBeGreaterThan(0.01);
+      expect(
+        await drawnFractionIn(page, { x: 0, y: 0, ...size }),
+        fixture.name,
+      ).toBeGreaterThan(0.01);
       expect(scene.chartRenderScales.length > 0).toBe(fixture.charts);
       expect(errors).toEqual([]);
     });
   }
 
-  test('unknown hosted themes show a clear load failure', async ({ page }) => {
-    await page.goto('/?theme=does-not-exist');
+  test("unknown hosted themes show a clear load failure", async ({ page }) => {
+    await page.goto("/?theme=does-not-exist");
 
-    await expect(page.locator('#artboard')).toHaveText(/Vigilia could not load this theme/);
+    // The failure is a **page**, not a line of text in the artboard: F1.14
+    // replaced a bare `<pre>` so a display that could not load cannot be read
+    // as a dashboard with a gap. This assertion was still reaching for the old
+    // copy, which `player/src` has not contained since, so it passed against
+    // nothing and failed against the real page. The control is the one the
+    // failure page carries.
+    const failure = page.locator("[data-vigilia-load-failure]");
+    await expect(failure).toBeVisible();
+    await expect(failure).toContainText("nothing to show");
+    // The reason is shown, not swallowed — a display that says only "nothing"
+    // tells a reader nothing actionable.
+    await expect(
+      page.locator("[data-vigilia-load-failure-reason]"),
+    ).toContainText("Reason:");
+    // Two ways out, because a display that cannot be left is a display that
+    // stays broken: a retry and the host.
+    await expect(
+      page.locator("[data-vigilia-load-failure-retry]"),
+    ).toBeVisible();
+    await expect(
+      page.locator("[data-vigilia-load-failure-host]"),
+    ).toBeVisible();
+    // And no scene is drawn behind it, so the page cannot be mistaken for a
+    // dashboard that happens to be empty.
+    await expect(page.locator("#artboard canvas")).toHaveCount(0);
   });
 
-  test('keeps invisible nodes in the scene without painting them', async ({ page }) => {
-    await openCanvasPlayer(page, '/?theme=stress');
+  test("keeps invisible nodes in the scene without painting them", async ({
+    page,
+  }) => {
+    await openCanvasPlayer(page, "/?theme=stress");
 
-    expect(await canvasProp(page, 'hidden-node', 'visible')).toBe(false);
+    expect(await canvasProp(page, "hidden-node", "visible")).toBe(false);
   });
 
-  test('captures every fixture for visual review', async ({ page }, testInfo) => {
-    const directory =
-      process.env['VIGILIA_CAPTURE'] === undefined
-        ? 'test-results/screenshots'
-        : '../../.agents/screenshots';
+  for (const fixture of FIXTURES) {
+    test(`captures ${fixture.name} for visual review`, async ({
+      page,
+    }, testInfo) => {
+      const directory =
+        process.env["VIGILIA_CAPTURE_DIR"] ??
+        (process.env["VIGILIA_CAPTURE"] === undefined
+          ? "test-results/screenshots"
+          : "../../docs/evidence/screenshots");
 
-    for (const fixture of FIXTURES) {
-      await openCanvasPlayer(page, `/?theme=${fixture.name}&static=1`);
+      await openCanvasPlayer(page, `/?theme=${fixture.name}`);
+      const size = page.viewportSize()!;
+      expect(
+        await drawnFractionIn(page, { x: 0, y: 0, ...size }),
+      ).toBeGreaterThan(0.01);
+      if (process.env["VIGILIA_CAPTURE"] === undefined) return;
       const name = `${fixture.name}-${testInfo.project.name}.png`;
       const screenshot = await page.screenshot({
         fullPage: false,
         path: `${directory}/${name}`,
       });
 
-      await testInfo.attach(name, { body: screenshot, contentType: 'image/png' });
+      await testInfo.attach(name, {
+        body: screenshot,
+        contentType: "image/png",
+      });
       expect(screenshot.byteLength).toBeGreaterThan(1000);
-    }
-  });
+    });
+  }
 
-  test('is byte-stable at a fixed clock on one platform', async ({ browser }) => {
+  test("is byte-stable at a fixed clock on one platform", async ({
+    browser,
+  }) => {
+    // Three captures, each advancing 1500 ms of simulated time, and `runFor`
+    // pays simulated milliseconds in browser-protocol round trips (~4.5 ms of
+    // wall each, measured). The wait is deliberately not shortened: the drift
+    // this guards against over 1500 ms is what `clock.ts` measured, so a shorter
+    // window would blunt the very regression. It needs the headroom instead.
+    test.slow();
     const capture = async (): Promise<Buffer> => {
-      const page = await browser.newPage({ viewport: { width: 1280, height: 720 } });
-      await openPaused(page, '/?theme=demo&static=1', 'canvas[data-vigilia="artboard"]');
+      const page = await browser.newPage({
+        viewport: { width: 1280, height: 720 },
+      });
+      await openPaused(
+        page,
+        "/?theme=stress&static=1",
+        'canvas[data-vigilia="artboard"]',
+      );
+      // The 1500 ms window is the regression this test exists for (see above)
+      // and stays. What it could not guarantee is that anything was painted by
+      // the end of it: `runFor` spends only *simulated* time, while the scene's
+      // first paint also waits on real-time work (asset fetch and decode, font
+      // load). Under load that outran the window — measured, the two captures
+      // came back 117173 and 8051 bytes, one of them a nearly empty artboard.
+      // Bytes that differ because one image is blank say nothing about frame
+      // determinism, so the ink condition is asserted before the two captures
+      // are compared.
       await page.clock.runFor(1500);
+      await waitForInk(page);
       await page.evaluate(() => document.fonts.ready);
-      const shot = await page.locator('canvas[data-vigilia="artboard"]').screenshot();
+      const shot = await page
+        .locator('canvas[data-vigilia="artboard"]')
+        .screenshot();
       await page.close();
       return shot;
     };

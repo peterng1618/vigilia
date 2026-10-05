@@ -1,52 +1,76 @@
-import { StaticCanvas } from 'fabric/es';
 import {
-  computeArtboardTransform,
-  type ArtboardTransform,
   type Artboard,
-  type ScenePlan,
-  type SceneHandle,
+  type ArtboardTransform,
   type AssetReference,
-} from '@vigilia/renderer-core';
-import { createSceneAdapter, type SceneAdapter, type SceneAdapterOptions } from './adapter.js';
-import { clampRenderScale } from './render-scale.js';
-import { cssArtboardPaint } from './artboard-paint.js';
-import { mountBackgroundMedia, type BackgroundMediaSource } from './background-media.js';
+  computeArtboardTransform,
+  type SceneHandle,
+  type ScenePlan,
+} from "@vigilia/renderer-core";
+import { StaticCanvas } from "fabric/es";
+import {
+  createSceneAdapter,
+  type SceneAdapter,
+  type SceneAdapterOptions,
+} from "./adapter.js";
+import { cssArtboardPaint } from "./artboard-paint.js";
+import {
+  type BackgroundMediaSource,
+  mountBackgroundMedia,
+} from "./background-media.js";
+import { createGlass } from "./glass.js";
+import { clampRenderScale } from "./render-scale.js";
 
 /**
  * Owns the canvas element, viewport/artboard fit and DPR. `adapter.ts` owns plan
  * reconciliation. Detached charts receive artboard scale × Fabric retina scale.
  */
 
-export interface FabricSceneOptions extends Omit<SceneAdapterOptions, 'canvas'> {
+export interface FabricSceneOptions
+  extends Omit<SceneAdapterOptions, "canvas"> {
   readonly host: HTMLElement;
   readonly plan: ScenePlan;
   readonly artboard?: Artboard;
   readonly assets?: readonly AssetReference[];
-  readonly resolveAsset?: (assetId: string) => BackgroundMediaSource | undefined;
+  readonly resolveAsset?: (
+    assetId: string,
+  ) => BackgroundMediaSource | undefined;
+  /** Reports an unresolvable declared background; distinct from the adapter's
+   * per-node `onAssetError`. */
+  readonly onMediaError?: (message: string) => void;
+  /** Reports a glass panel this renderer cannot composite, such as a browser
+   * without `ctx.filter` or a cross-origin asset that taints the surface. */
+  readonly onGlassError?: (message: string) => void;
 }
 
 export interface FabricSceneHandle extends SceneHandle {
   readonly canvas: StaticCanvas;
   readonly adapter: SceneAdapter;
+  /**
+   * `ScenePlan` never carries `backgroundMedia`, so a document-level artboard
+   * change cannot travel through `update()`.
+   */
+  updateArtboard(artboard: Artboard): void;
 }
 
-export function mountFabricScene(options: FabricSceneOptions): FabricSceneHandle {
+export function mountFabricScene(
+  options: FabricSceneOptions,
+): FabricSceneHandle {
   const { host } = options;
   let plan = options.plan;
 
-  host.textContent = '';
-  host.style.overflow = 'hidden';
+  host.textContent = "";
+  host.style.overflow = "hidden";
 
   // Preserve hosts already positioned by their own layout.
-  if (getComputedStyle(host).position === 'static') {
-    host.style.position = 'relative';
+  if (getComputedStyle(host).position === "static") {
+    host.style.position = "relative";
   }
 
-  const element = document.createElement('canvas');
-  element.dataset['vigilia'] = 'artboard';
-  element.style.position = 'absolute';
-  element.style.top = '0';
-  element.style.left = '0';
+  const element = document.createElement("canvas");
+  element.dataset["vigilia"] = "artboard";
+  element.style.position = "absolute";
+  element.style.top = "0";
+  element.style.left = "0";
   host.append(element);
 
   const canvas = new StaticCanvas(element, {
@@ -55,8 +79,36 @@ export function mountFabricScene(options: FabricSceneOptions): FabricSceneHandle
     renderOnAddRemove: false,
   });
 
-  const adapter = createSceneAdapter({ canvas, ...withoutHostAndPlan(options) });
-  const media = options.resolveAsset === undefined || options.artboard === undefined ? undefined : mountBackgroundMedia({ host, artboard: options.artboard, assets: options.assets, resolveAsset: options.resolveAsset });
+  const adapter = createSceneAdapter({
+    canvas,
+    ...withoutHostAndPlan(options),
+  });
+  let currentArtboard = options.artboard;
+  let disposed = false;
+  const media =
+    options.resolveAsset === undefined || currentArtboard === undefined
+      ? undefined
+      : mountBackgroundMedia({
+          host,
+          artboard: currentArtboard,
+          assets: options.assets,
+          resolveAsset: options.resolveAsset,
+          // The video is not a Fabric object, so nothing else would repaint.
+          onFrame: () => canvas.requestRenderAll(),
+          ...(options.onMediaError === undefined
+            ? {}
+            : { onMediaError: options.onMediaError }),
+        });
+
+  // Glass is not a plan feature: it is a property on revived Fabric objects, so
+  // the owner re-resolves them from the canvas rather than from `update()`.
+  const glass = createGlass({
+    canvas,
+    ...(media === undefined ? {} : { backdrop: () => media.backdrop() }),
+    ...(options.onGlassError === undefined
+      ? {}
+      : { onGlassError: options.onGlassError }),
+  });
 
   let currentTransform = fit();
 
@@ -64,13 +116,19 @@ export function mountFabricScene(options: FabricSceneOptions): FabricSceneHandle
     const transform = computeArtboardTransform({
       artboard: { width: plan.artboard.width, height: plan.artboard.height },
       viewport: { width: host.clientWidth, height: host.clientHeight },
-      fitMode: plan.artboard.fitMode,
+      contentFit: plan.artboard.contentFit,
     });
 
     // Letterbox bars are host background, not artboard paint (§53).
-    host.style.background = cssArtboardPaint(plan.artboard.barColor) ?? '#000';
-    element.style.visibility = transform.isDegenerate ? 'hidden' : 'visible';
-    if (!transform.isDegenerate) media?.setBounds({ left: transform.offsetX, top: transform.offsetY, width: plan.artboard.width * transform.scale, height: plan.artboard.height * transform.scale });
+    host.style.background = cssArtboardPaint(plan.artboard.barColor) ?? "#000";
+    element.style.visibility = transform.isDegenerate ? "hidden" : "visible";
+    if (!transform.isDegenerate)
+      media?.setBounds({
+        left: transform.offsetX,
+        top: transform.offsetY,
+        width: plan.artboard.width * transform.scale,
+        height: plan.artboard.height * transform.scale,
+      });
 
     if (transform.isDegenerate) {
       return transform;
@@ -110,30 +168,59 @@ export function mountFabricScene(options: FabricSceneOptions): FabricSceneHandle
     },
 
     update(next: ScenePlan): void {
+      if (disposed) return;
       plan = next;
       currentTransform = fit();
       adapter.apply(next);
     },
 
+    updateArtboard(artboard: Artboard): void {
+      if (disposed) return;
+      currentArtboard = artboard;
+      if (media === undefined || options.resolveAsset === undefined) return;
+      media.update({
+        artboard,
+        assets: options.assets,
+        resolveAsset: options.resolveAsset,
+      });
+    },
+
     resize(): void {
+      // A `ResizeObserver` and an `orientationchange` handler both outlive a
+      // teardown, and the player's `pagehide` is not the only way a mount ends.
+      if (disposed) return;
       currentTransform = fit();
       canvas.requestRenderAll();
     },
 
     dispose(): void {
+      // Fabric's own `destroy()` throws on a second call, and a teardown path
+      // is exactly where a handle gets disposed twice.
+      if (disposed) return;
+      disposed = true;
       adapter.dispose();
+      // Before the media: the glass sampler reads the media layer.
+      glass.dispose();
       media?.destroy();
       // `destroy()` also disposes remaining Fabric objects.
       void canvas.destroy();
-      host.textContent = '';
+      host.textContent = "";
     },
   };
 }
 /** Forward adapter options explicitly so scene-only options cannot leak through later. */
-function withoutHostAndPlan(options: FabricSceneOptions): Omit<SceneAdapterOptions, 'canvas'> {
+function withoutHostAndPlan(
+  options: FabricSceneOptions,
+): Omit<SceneAdapterOptions, "canvas"> {
   return {
-    ...(options.renderScale === undefined ? {} : { renderScale: options.renderScale }),
-    ...(options.onAssetError === undefined ? {} : { onAssetError: options.onAssetError }),
-    ...(options.onUnsupported === undefined ? {} : { onUnsupported: options.onUnsupported }),
+    ...(options.renderScale === undefined
+      ? {}
+      : { renderScale: options.renderScale }),
+    ...(options.onAssetError === undefined
+      ? {}
+      : { onAssetError: options.onAssetError }),
+    ...(options.onUnsupported === undefined
+      ? {}
+      : { onUnsupported: options.onUnsupported }),
   };
 }

@@ -1,18 +1,21 @@
-import { SAMPLE_EVENT, decodeBatch } from './protocol.js';
-import type { SampleSource } from './source.js';
-import { SampleStore } from './store.js';
+import { decodeBatch, SAMPLE_EVENT } from "./protocol.js";
+import type { SampleSource } from "./source.js";
+import { SampleStore } from "./store.js";
 
 /** Push transport → bounded pull `SampleSource`; downstream rendering stays transport-agnostic. */
 
 export type LiveSourceStatus =
-  | 'connecting'
-  | 'live'
-  | 'reconnecting'
-  | 'refused';
+  | "connecting"
+  | "live"
+  | "reconnecting"
+  | "refused";
 
 /** Minimal injectable `EventSource` surface for the state machine. */
 export interface EventSourceLike {
-  addEventListener(type: string, listener: (event: { readonly data: string }) => void): void;
+  addEventListener(
+    type: string,
+    listener: (event: { readonly data: string }) => void,
+  ): void;
   close(): void;
 }
 
@@ -31,6 +34,9 @@ export interface LiveSourceHandle {
   close(): void;
 }
 
+/** Keep complete live segments one cadence ahead of the visible chart edge. */
+export const LIVE_SOURCE_CHART_PLAYBACK_DELAY_MS = 1_000;
+
 /** Protocol refusal closes permanently; ordinary EventSource errors keep retrying. */
 export function createLiveSource(options: LiveSourceOptions): LiveSourceHandle {
   const store = options.store ?? new SampleStore();
@@ -39,9 +45,18 @@ export function createLiveSource(options: LiveSourceOptions): LiveSourceHandle {
     options.open ??
     ((url: string) => new EventSource(url) as unknown as EventSourceLike);
 
-  let status: LiveSourceStatus = 'connecting';
+  let status: LiveSourceStatus = "connecting";
   let batchCount = 0;
   let closed = false;
+  const source: SampleSource = {
+    chartPlaybackDelayMs: LIVE_SOURCE_CHART_PLAYBACK_DELAY_MS,
+    latest(semanticKey) {
+      return store.latest(semanticKey);
+    },
+    history(semanticKey, windowSeconds) {
+      return store.history(semanticKey, windowSeconds);
+    },
+  };
 
   const stream = openStream(options.url);
 
@@ -67,16 +82,16 @@ export function createLiveSource(options: LiveSourceOptions): LiveSourceHandle {
     stream.close();
   };
 
-  stream.addEventListener('open', () => {
+  stream.addEventListener("open", () => {
     // An open socket is not yet evidence of live samples.
-    if (status === 'reconnecting') {
-      setStatus('connecting');
+    if (status === "reconnecting") {
+      setStatus("connecting");
     }
   });
 
-  stream.addEventListener('error', () => {
-    if (status !== 'refused') {
-      setStatus('reconnecting');
+  stream.addEventListener("error", () => {
+    if (status !== "refused") {
+      setStatus("reconnecting");
     }
   });
 
@@ -84,22 +99,30 @@ export function createLiveSource(options: LiveSourceOptions): LiveSourceHandle {
     const result = decodeBatch(event.data);
 
     if (!result.ok) {
-      setStatus('refused', result.reason);
+      setStatus("refused", result.reason);
       close();
       return;
     }
 
+    const timestamp = now();
+    const presentationTimestamp = new Date(timestamp).toISOString();
     store.ingest(
-      result.batch.samples.map((entry) => [entry.semanticKey, entry.sample] as const),
-      now(),
+      result.batch.samples.map(
+        (entry) =>
+          [
+            entry.semanticKey,
+            { ...entry.sample, presentationTimestamp },
+          ] as const,
+      ),
+      timestamp,
     );
 
     batchCount += 1;
-    setStatus('live');
+    setStatus("live");
   });
 
   return {
-    source: store,
+    source,
     get status() {
       return status;
     },

@@ -1,13 +1,14 @@
-import * as echarts from 'echarts/core';
-import { classRegistry, FabricObject } from 'fabric/es';
 import {
-  toEngineOption,
   type ChartContent,
   type ChartFamily,
   type ChartOption,
-} from '@vigilia/renderer-core';
-import './chart-engine.js';
-import { clampRenderScale, DEFAULT_RENDER_SCALE } from './render-scale.js';
+  type LineOption,
+  toEngineOption,
+} from "@vigilia/renderer-core";
+import * as echarts from "echarts/core";
+import { classRegistry, FabricObject } from "fabric/es";
+import "./chart-engine.js";
+import { clampRenderScale, DEFAULT_RENDER_SCALE } from "./render-scale.js";
 
 /**
  * Fabric object backed by a detached ECharts canvas. Keep caching and engine
@@ -17,13 +18,18 @@ import { clampRenderScale, DEFAULT_RENDER_SCALE } from './render-scale.js';
  */
 
 /** Authored chart properties persisted beyond Fabric's own state. */
-export const CHART_SERIALISED_KEYS = ['family', 'settings'] as const satisfies readonly (keyof ChartContent)[];
+export const CHART_SERIALISED_KEYS = [
+  "family",
+  "settings",
+] as const satisfies readonly (keyof ChartContent)[];
 
 export type ChartSerialisedKey = (typeof CHART_SERIALISED_KEYS)[number];
 
 /** Compile-time guard: every `ChartContent` key must be persisted. */
 type AssertNever<T extends never> = T;
-type _EveryContentKeyIsPersisted = AssertNever<Exclude<keyof ChartContent, ChartSerialisedKey>>;
+type _EveryContentKeyIsPersisted = AssertNever<
+  Exclude<keyof ChartContent, ChartSerialisedKey>
+>;
 
 /** Disable ECharts animation without mutating the pure plan option. */
 export function withoutEngineAnimation(option: ChartOption): ChartOption {
@@ -40,14 +46,16 @@ export type VigiliaChartOptions = ChartContent &
   };
 
 export class VigiliaChart extends FabricObject {
-  public static override type = 'VigiliaChart';
+  public static override type = "VigiliaChart";
 
-  public static override customProperties: string[] = [...CHART_SERIALISED_KEYS];
+  public static override customProperties: string[] = [
+    ...CHART_SERIALISED_KEYS,
+  ];
 
   /** Fabric-native defaults; declare once so caller options are not overwritten later. */
   public static override ownDefaults: Record<string, unknown> = {
-    originX: 'center',
-    originY: 'center',
+    originX: "center",
+    originY: "center",
     objectCaching: false,
     strokeWidth: 0,
   };
@@ -57,9 +65,9 @@ export class VigiliaChart extends FabricObject {
   }
 
   /** Field initializer would overwrite values assigned by `setOptions`. */
-  public declare family: ChartFamily;
+  declare public family: ChartFamily;
 
-  private _settings!: ChartContent['settings'];
+  private _settings!: ChartContent["settings"];
 
   private _renderScale: number = DEFAULT_RENDER_SCALE;
 
@@ -84,17 +92,21 @@ export class VigiliaChart extends FabricObject {
     }
 
     // `renderScale` may be assigned before width/height by `setOptions`.
-    this._renderScale = clampRenderScale(this._renderScale, this.width, this.height);
+    this._renderScale = clampRenderScale(
+      this._renderScale,
+      this.width,
+      this.height,
+    );
 
     this._mount();
   }
 
   /** Deep-freeze because Fabric serializes custom-property objects by reference. */
-  public get settings(): ChartContent['settings'] {
+  public get settings(): ChartContent["settings"] {
     return this._settings;
   }
 
-  public set settings(settings: ChartContent['settings']) {
+  public set settings(settings: ChartContent["settings"]) {
     this._settings = freezeDeep(settings);
   }
 
@@ -132,6 +144,7 @@ export class VigiliaChart extends FabricObject {
       return;
     }
 
+    this._resizeBackingCanvas();
     this._chart?.setOption(toEngineOption(withoutEngineAnimation(option)), {
       notMerge: true,
       lazyUpdate: false,
@@ -160,7 +173,7 @@ export class VigiliaChart extends FabricObject {
 
     this._renderScale = next;
     this._resizeBackingCanvas();
-    this.set('dirty', true);
+    this.set("dirty", true);
   }
 
   /**
@@ -174,7 +187,7 @@ export class VigiliaChart extends FabricObject {
     }
 
     this._disposed = true;
-    this._chart?.getZr().off('rendered', this._onEngineRendered);
+    this._chart?.getZr().off("rendered", this._onEngineRendered);
     this._chart?.dispose();
     this._chart = undefined;
 
@@ -196,12 +209,12 @@ export class VigiliaChart extends FabricObject {
     }
 
     ctx.imageSmoothingEnabled = true;
-    ctx.imageSmoothingQuality = 'high';
+    ctx.imageSmoothingQuality = "high";
     ctx.drawImage(
       element,
       0,
       0,
-      element.width,
+      this._visibleBackingWidth(),
       element.height,
       -this.width / 2,
       -this.height / 2,
@@ -216,12 +229,12 @@ export class VigiliaChart extends FabricObject {
       return;
     }
 
-    this.set('dirty', true);
+    this.set("dirty", true);
     this.canvas?.requestRenderAll();
   };
 
   private _mount(): void {
-    const element = document.createElement('canvas');
+    const element = document.createElement("canvas");
     this._element = element;
 
     const { width, height } = this._backingSize();
@@ -230,21 +243,51 @@ export class VigiliaChart extends FabricObject {
 
     // Backing dimensions already include oversampling; keep zrender DPR fixed at 1.
     this._chart = echarts.init(element, null, {
-      renderer: 'canvas',
+      renderer: "canvas",
       devicePixelRatio: 1,
       width,
       height,
     });
 
-    this._chart.getZr().on('rendered', this._onEngineRendered);
+    this._chart.getZr().on("rendered", this._onEngineRendered);
     this.setOption(this._option);
   }
 
   private _backingSize(): { width: number; height: number } {
+    const width = Math.max(1, Math.round(this.width * this._renderScale));
     return {
-      width: Math.max(1, Math.round(this.width * this._renderScale)),
+      width: width + this._overscanWidth(width),
       height: Math.max(1, Math.round(this.height * this._renderScale)),
     };
+  }
+
+  private _visibleBackingWidth(): number {
+    return Math.max(1, Math.round(this.width * this._renderScale));
+  }
+
+  private _overscanWidth(visibleWidth: number): number {
+    const option = this._option;
+    if (!isOverscannedLineOption(option)) {
+      return 0;
+    }
+
+    const overscanMs = option.renderOverscanRightMs;
+    const windowMs = option.xAxis.max - option.xAxis.min - (overscanMs ?? 0);
+    if (
+      overscanMs === undefined ||
+      overscanMs <= 0 ||
+      !Number.isFinite(windowMs) ||
+      windowMs <= 0
+    ) {
+      return 0;
+    }
+
+    const left = typeof option.grid.left === "number" ? option.grid.left : 0;
+    const right = typeof option.grid.right === "number" ? option.grid.right : 0;
+    return Math.max(
+      1,
+      Math.ceil(((visibleWidth - left - right) * overscanMs) / windowMs),
+    );
   }
 
   private _resizeBackingCanvas(): void {
@@ -254,15 +297,28 @@ export class VigiliaChart extends FabricObject {
       return;
     }
 
-    chart.resize(this._backingSize());
+    const size = this._backingSize();
+    if (
+      this._element?.width === size.width &&
+      this._element.height === size.height
+    ) {
+      return;
+    }
+    chart.resize(size);
     // `resize()` defers painting; flush before Fabric can blit a half-cleared canvas.
     chart.getZr().flush();
   }
 }
 
+function isOverscannedLineOption(
+  option: ChartOption | undefined,
+): option is LineOption {
+  return option !== undefined && "renderOverscanRightMs" in option;
+}
+
 /** Deep-freeze authored settings so snapshots cannot be mutated through aliases. */
 function freezeDeep<T>(value: T): T {
-  if (typeof value !== 'object' || value === null || Object.isFrozen(value)) {
+  if (typeof value !== "object" || value === null || Object.isFrozen(value)) {
     return value;
   }
 

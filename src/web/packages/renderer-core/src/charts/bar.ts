@@ -1,22 +1,26 @@
-import type { ChartPaint, Fill, Sample } from '../types.js';
-import { hasPlottableValue } from '../types.js';
-import { toEngineAnimation, type AnimationSettings, type EngineAnimation } from './animation.js';
+import type { FabricPalette } from "../theme/fabric-envelope.js";
+import type { ChartPaint, Sample } from "../types.js";
+import { hasPlottableValue } from "../types.js";
 import {
+  type AnimationSettings,
+  type EngineAnimation,
+  toEngineAnimation,
+} from "./animation.js";
+import { NO_INK, NO_PAINT, resolveChartPaint } from "./chart-paint.js";
+import {
+  type EngineColor,
   normalizePosition,
   resolveFlatColor,
   toLinearGradient,
-  type EngineColor,
-} from './fill.js';
-import { cartesianGrid, type CartesianGrid } from './grid.js';
-import { resolveChartPaint } from './chart-paint.js';
-import type { FabricPalette } from '../theme/fabric-envelope.js';
+} from "./fill.js";
+import { type CartesianGrid, cartesianGrid } from "./grid.js";
 
 /**
  * Bar/progress adapter. Thresholds are native per bar; one-category bars with a
  * track are progress bars. Missing samples emit `null`, never zero (§83).
  */
 
-export type BarOrientation = 'horizontal' | 'vertical';
+export type BarOrientation = "horizontal" | "vertical";
 
 export interface BarSettings {
   readonly orientation: BarOrientation;
@@ -29,20 +33,32 @@ export interface BarSettings {
   readonly fill: ChartPaint;
   /** Unfilled remainder; present makes this a progress bar. */
   readonly track?: ChartPaint;
+  /**
+   * The track's own corner radius, independent of the bar's.
+   *
+   * The two ends of a progress bar are drawn by two different ECharts
+   * properties — the bar's `itemStyle.borderRadius`, the track's
+   * `backgroundStyle.borderRadius` — so one authorable value each is what makes
+   * them independent. Absent means square, as a track has always been.
+   */
+  readonly trackCornerRadius?: number;
   readonly showAxes: boolean;
   readonly showCategoryLabels: boolean;
   readonly animation?: AnimationSettings;
 }
 
 export const defaultBarSettings: BarSettings = {
-  orientation: 'horizontal',
+  orientation: "horizontal",
   min: 0,
   max: 100,
   barWidth: 14,
   categoryGapPercent: 40,
   cornerRadius: 7,
-  fill: { kind: 'solid', color: '#00b8d9' },
-  track: { kind: 'solid', color: '#2a2f3a' },
+  fill: { kind: "solid", color: "#00b8d9" },
+  track: { kind: "solid", color: "#2a2f3a" },
+  // Matches the bar by default, because the two share one slot's geometry — but
+  // it is its own value, so a theme can round one and not the other.
+  trackCornerRadius: 7,
   showAxes: false,
   showCategoryLabels: false,
 };
@@ -55,11 +71,14 @@ export interface BarInput {
 
 export interface BarDataItem {
   readonly value: number | null;
-  readonly itemStyle: { readonly color: EngineColor; readonly borderRadius: number };
+  readonly itemStyle: {
+    readonly color: EngineColor;
+    readonly borderRadius: number;
+  };
 }
 
 interface CategoryAxis {
-  readonly type: 'category';
+  readonly type: "category";
   readonly show: boolean;
   readonly data: readonly string[];
   readonly axisTick: { readonly show: false };
@@ -71,7 +90,7 @@ interface CategoryAxis {
 }
 
 interface ValueAxis {
-  readonly type: 'value';
+  readonly type: "value";
   readonly show: boolean;
   readonly min: number;
   readonly max: number;
@@ -85,12 +104,15 @@ export interface BarOption extends EngineAnimation {
   readonly yAxis: CategoryAxis | ValueAxis;
   readonly series: readonly [
     {
-      readonly type: 'bar';
+      readonly type: "bar";
       readonly data: readonly BarDataItem[];
       readonly barWidth?: number;
       readonly barCategoryGap: string;
       readonly showBackground: boolean;
-      readonly backgroundStyle?: { readonly color: EngineColor };
+      readonly backgroundStyle?: {
+        readonly color: EngineColor;
+        readonly borderRadius?: number;
+      };
       readonly silent: true;
     },
   ];
@@ -102,10 +124,10 @@ export function buildBarOption(
   animate = true,
   palette?: FabricPalette,
 ): BarOption {
-  const horizontal = settings.orientation === 'horizontal';
+  const horizontal = settings.orientation === "horizontal";
 
   const categoryAxis: CategoryAxis = {
-    type: 'category',
+    type: "category",
     show: settings.showAxes || settings.showCategoryLabels,
     data: inputs.map((input) => input.label ?? input.sensorId),
     axisTick: { show: false },
@@ -116,7 +138,7 @@ export function buildBarOption(
   };
 
   const valueAxis: ValueAxis = {
-    type: 'value',
+    type: "value",
     show: settings.showAxes,
     // Keep bar fractions stable instead of auto-rescaling with current data.
     min: settings.min,
@@ -140,14 +162,16 @@ export function buildBarOption(
     yAxis: horizontal ? categoryAxis : valueAxis,
     series: [
       {
-        type: 'bar',
+        type: "bar",
         data: inputs.map((input) => toBarDataItem(settings, input, palette)),
-        ...(settings.barWidth === undefined ? {} : { barWidth: settings.barWidth }),
+        ...(settings.barWidth === undefined
+          ? {}
+          : { barWidth: settings.barWidth }),
         barCategoryGap: `${clampPercent(settings.categoryGapPercent)}%`,
         showBackground: settings.track !== undefined,
         ...(settings.track === undefined
           ? {}
-          : { backgroundStyle: { color: toTrackColor(settings, palette) } }),
+          : { backgroundStyle: toBackgroundStyle(settings, palette) }),
         silent: true,
       },
     ],
@@ -155,13 +179,17 @@ export function buildBarOption(
 }
 
 /** Missing samples return `null`; a zero-length bar would be indistinguishable from real zero. */
-export function toBarDataItem(settings: BarSettings, input: BarInput, palette?: FabricPalette): BarDataItem {
+export function toBarDataItem(
+  settings: BarSettings,
+  input: BarInput,
+  palette?: FabricPalette,
+): BarDataItem {
   const borderRadius = Math.max(0, settings.cornerRadius);
 
   if (!hasPlottableValue(input.sample)) {
     return {
       value: null,
-      itemStyle: { color: 'transparent', borderRadius },
+      itemStyle: { color: NO_INK, borderRadius },
     };
   }
 
@@ -169,39 +197,73 @@ export function toBarDataItem(settings: BarSettings, input: BarInput, palette?: 
   // Clamp only what is drawn; preserve the raw reading elsewhere (§83).
   const display = Math.min(Math.max(raw, settings.min), settings.max);
   const position = normalizePosition(raw, settings.min, settings.max);
+  const color = toBarColor(settings, position, palette);
 
+  // A bar whose paint resolved to nothing carries no value either: a bar of
+  // transparent ink over a live number is the one rendering that looks like
+  // data and is not (0007).
   return {
-    value: display,
-    itemStyle: { color: toBarColor(settings, position, palette), borderRadius },
+    value: color === undefined ? null : display,
+    itemStyle: { color: color ?? NO_INK, borderRadius },
   };
 }
 
 /** Resolve per-bar solid/threshold colour or a cartesian growth-direction gradient. */
-export function toBarColor(settings: BarSettings, position: number, palette?: FabricPalette): EngineColor {
+export function toBarColor(
+  settings: BarSettings,
+  position: number,
+  palette?: FabricPalette,
+): EngineColor | undefined {
   const fill = resolveChartPaint(settings.fill, palette);
-  if (fill.kind === 'gradient') {
+  if (fill === undefined) return undefined;
+  if (fill.kind === "gradient") {
     return toLinearGradient(
       fill.stops,
-      settings.orientation === 'horizontal' ? 'to-right' : 'to-top',
+      settings.orientation === "horizontal" ? "to-right" : "to-top",
     );
   }
 
   return resolveFlatColor(fill, position);
 }
 
+/**
+ * The track rectangle ECharts draws behind the bar.
+ *
+ * `backgroundStyle.borderRadius` sets the zrender `Rect`'s own `r`, and that
+ * rect *is* the track — the full value-axis span of the slot — so a number
+ * rounds the two ends of the progress bar rather than the outside of a larger
+ * background.
+ */
+function toBackgroundStyle(
+  settings: BarSettings,
+  palette: FabricPalette | undefined,
+): { readonly color: EngineColor; readonly borderRadius?: number } {
+  const radius = settings.trackCornerRadius;
+
+  return {
+    color: toTrackColor(settings, palette),
+    // Absent stays absent: ECharts reads a missing key as no radius, and an
+    // authored one is clamped the same way the bar's is.
+    ...(radius === undefined ? {} : { borderRadius: Math.max(0, radius) }),
+  };
+}
+
 /** Track gradients span the whole slot; threshold tracks resolve to their top band. */
-function toTrackColor(settings: BarSettings, palette: FabricPalette | undefined): EngineColor {
+function toTrackColor(
+  settings: BarSettings,
+  palette: FabricPalette | undefined,
+): EngineColor {
   const track = settings.track;
 
   if (track === undefined) {
-    return 'transparent';
+    return "transparent";
   }
 
-  const resolved = resolveChartPaint(track, palette);
-  if (resolved.kind === 'gradient') {
+  const resolved = resolveChartPaint(track, palette) ?? NO_PAINT;
+  if (resolved.kind === "gradient") {
     return toLinearGradient(
       resolved.stops,
-      settings.orientation === 'horizontal' ? 'to-right' : 'to-top',
+      settings.orientation === "horizontal" ? "to-right" : "to-top",
     );
   }
 

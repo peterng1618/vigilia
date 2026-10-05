@@ -1,18 +1,18 @@
 import {
-  STABLE_ID_PATTERN,
   type Binding,
   type Globals,
+  STABLE_ID_PATTERN,
   type StyleMap,
   type StyleValue,
   type TextRun,
   type ThemeNode,
   type WidgetProvenance,
-} from './document.js';
+} from "./document.js";
 
 /** Inserts a reusable subtree as a copy with fresh IDs and explicit global mapping. */
 
 export interface WidgetIssue {
-  readonly code: 'unmapped-global' | 'id-collision' | 'invalid-id';
+  readonly code: "unmapped-global" | "id-collision" | "invalid-id";
   readonly detail: string;
 }
 
@@ -36,86 +36,117 @@ export interface InstantiateWidgetResult {
 
 const MAX_ID_LENGTH = 64;
 
+/**
+ * Mints the ids a copy takes: `${prefix}-${original}`, sanitised to
+ * `STABLE_ID_PATTERN`, truncated before any collision suffix and suffixed until
+ * the destination is free. Asking twice for one id gives one id back.
+ *
+ * Exported because "a copy is a copy" is one rule and not two. A Fabric scene
+ * object is minted here too — the editor's document is Fabric JSON (§134), not
+ * a `ThemeNode` list — and an author reading a tree of inserted units cannot be
+ * shown two policies for what a fresh id looks like.
+ */
+export function createWidgetIdAllocator(
+  prefix: string,
+  existingIds: Iterable<string> | undefined,
+  issues: WidgetIssue[],
+): (original: string) => string {
+  const taken = new Set(existingIds ?? []);
+  const minted = new Map<string, string>();
+
+  return (original: string): string => {
+    const already = minted.get(original);
+    if (already !== undefined) return already;
+
+    const sanitized = sanitizeId(`${prefix}-${original}`);
+
+    if (sanitized === "") {
+      issues.push({
+        code: "invalid-id",
+        detail: `Could not derive a valid id from prefix "${prefix}" and "${original}".`,
+      });
+      minted.set(original, original);
+      return original;
+    }
+
+    let candidate = sanitized;
+    let counter = 2;
+
+    while (taken.has(candidate)) {
+      const suffix = `-${counter}`;
+      candidate = `${sanitized.slice(0, MAX_ID_LENGTH - suffix.length)}${suffix}`;
+      counter += 1;
+    }
+
+    taken.add(candidate);
+    minted.set(original, candidate);
+    return candidate;
+  };
+}
+
 /** Embeds a copy. Issues are returned so recoverable mapping problems remain inspectable. */
 export function instantiateWidget(
   nodes: readonly ThemeNode[],
   options: InstantiateWidgetOptions,
 ): InstantiateWidgetResult {
   const issues: WidgetIssue[] = [];
-  const taken = new Set(options.existingIds ?? []);
   const idMap = new Map<string, string>();
+  const allocateId = createWidgetIdAllocator(
+    options.idPrefix,
+    options.existingIds,
+    issues,
+  );
 
   // Allocate all IDs first so references can point forward or backward safely.
-  collectIds(nodes, options.idPrefix, taken, idMap, issues);
+  collectIds(nodes, allocateId, idMap, issues);
 
-  const copied = nodes.map((node) => copyNode(node, options, idMap, issues, true));
+  const copied = nodes.map((node) =>
+    copyNode(node, options, idMap, issues, true),
+  );
 
   return { nodes: copied, idMap, issues };
 }
 
 function collectIds(
   nodes: readonly ThemeNode[],
-  prefix: string,
-  taken: Set<string>,
+  allocateId: (original: string) => string,
   idMap: Map<string, string>,
   issues: WidgetIssue[],
 ): void {
   for (const node of nodes) {
-    allocate(node.id, prefix, taken, idMap, issues);
+    claim(node.id, allocateId, idMap, issues);
 
     for (const binding of node.bindings ?? []) {
-      allocate(binding.id, prefix, taken, idMap, issues);
+      claim(binding.id, allocateId, idMap, issues);
     }
 
-    if (node.type === 'group') {
-      collectIds(node.children, prefix, taken, idMap, issues);
+    if (node.type === "group") {
+      collectIds(node.children, allocateId, idMap, issues);
     }
   }
 }
 
-/** Allocates a readable stable ID, truncating before any collision suffix. */
-function allocate(
+/** One declaration, one id: a second declaration of an id is a widget's own defect. */
+function claim(
   original: string,
-  prefix: string,
-  taken: Set<string>,
+  allocateId: (original: string) => string,
   idMap: Map<string, string>,
   issues: WidgetIssue[],
 ): void {
   if (idMap.has(original)) {
     issues.push({
-      code: 'id-collision',
+      code: "id-collision",
       detail: `The widget declares "${original}" more than once. Its copies will share one id.`,
     });
     return;
   }
 
-  const sanitized = sanitizeId(`${prefix}-${original}`);
-
-  if (sanitized === '') {
-    issues.push({
-      code: 'invalid-id',
-      detail: `Could not derive a valid id from prefix "${prefix}" and "${original}".`,
-    });
-    idMap.set(original, original);
-    return;
-  }
-
-  let candidate = sanitized;
-  let counter = 2;
-
-  while (taken.has(candidate)) {
-    const suffix = `-${counter}`;
-    candidate = `${sanitized.slice(0, MAX_ID_LENGTH - suffix.length)}${suffix}`;
-    counter += 1;
-  }
-
-  taken.add(candidate);
-  idMap.set(original, candidate);
+  idMap.set(original, allocateId(original));
 }
 
 function sanitizeId(value: string): string {
-  const cleaned = value.replace(/[^A-Za-z0-9_-]/g, '-').slice(0, MAX_ID_LENGTH);
-  return STABLE_ID_PATTERN.test(cleaned) ? cleaned : '';
+  const cleaned = value.replace(/[^A-Za-z0-9_-]/g, "-").slice(0, MAX_ID_LENGTH);
+  return STABLE_ID_PATTERN.test(cleaned) ? cleaned : "";
 }
 
 function copyNode(
@@ -128,44 +159,60 @@ function copyNode(
   const base = {
     ...node,
     id: idMap.get(node.id) ?? node.id,
-    ...(node.transform === undefined && !isRoot ? {} : { transform: offsetTransform(node, options, isRoot) }),
+    ...(node.transform === undefined && !isRoot
+      ? {}
+      : { transform: offsetTransform(node, options, isRoot) }),
     ...(node.style === undefined
       ? {}
       : { style: remapStyleMap(node.style, options, issues) }),
     ...(node.bindings === undefined
       ? {}
-      : { bindings: node.bindings.map((binding) => copyBinding(binding, idMap)) }),
+      : {
+          bindings: node.bindings.map((binding) => copyBinding(binding, idMap)),
+        }),
     // Provenance belongs on inserted roots, not every descendant.
-    ...(isRoot && options.provenance !== undefined ? { provenance: options.provenance } : {}),
+    ...(isRoot && options.provenance !== undefined
+      ? { provenance: options.provenance }
+      : {}),
   };
 
   switch (node.type) {
-    case 'group':
+    case "group":
       return {
         ...base,
-        type: 'group',
-        children: node.children.map((child) => copyNode(child, options, idMap, issues, false)),
+        type: "group",
+        children: node.children.map((child) =>
+          copyNode(child, options, idMap, issues, false),
+        ),
       };
 
-    case 'text':
+    case "text":
       return {
         ...base,
-        type: 'text',
+        type: "text",
         content: {
           ...node.content,
-          runs: node.content.runs.map((run) => copyRun(run, options, idMap, issues)),
+          runs: node.content.runs.map((run) =>
+            copyRun(run, options, idMap, issues),
+          ),
         },
       };
 
-    case 'image':
+    case "image":
       return {
         ...base,
-        type: 'image',
+        type: "image",
         content: {
           ...node.content,
           ...(node.content.monochrome === undefined
             ? {}
-            : { monochrome: remapStyleValue(node.content.monochrome, options, issues) }),
+            : {
+                monochrome: remapStyleValue(
+                  node.content.monochrome,
+                  options,
+                  issues,
+                ),
+              }),
         },
       };
 
@@ -178,7 +225,7 @@ function offsetTransform(
   node: ThemeNode,
   options: InstantiateWidgetOptions,
   isRoot: boolean,
-): NonNullable<ThemeNode['transform']> {
+): NonNullable<ThemeNode["transform"]> {
   const transform = node.transform ?? {};
 
   // Child coordinates are group-local, so only inserted roots receive the placement offset.
@@ -194,7 +241,10 @@ function offsetTransform(
 }
 
 /** Freshens binding identity while preserving its semantic key. */
-function copyBinding(binding: Binding, idMap: ReadonlyMap<string, string>): Binding {
+function copyBinding(
+  binding: Binding,
+  idMap: ReadonlyMap<string, string>,
+): Binding {
   return { ...binding, id: idMap.get(binding.id) ?? binding.id };
 }
 
@@ -205,9 +255,11 @@ function copyRun(
   issues: WidgetIssue[],
 ): TextRun {
   const style =
-    run.style === undefined ? undefined : remapStyleMap(run.style, options, issues);
+    run.style === undefined
+      ? undefined
+      : remapStyleMap(run.style, options, issues);
 
-  if (run.kind === 'literal') {
+  if (run.kind === "literal") {
     return { ...run, ...(style === undefined ? {} : { style }) };
   }
 
@@ -238,7 +290,7 @@ function remapStyleValue(
   options: InstantiateWidgetOptions,
   issues: WidgetIssue[],
 ): StyleValue {
-  if (!('ref' in value) || value.ref === undefined) {
+  if (!("ref" in value) || value.ref === undefined) {
     return value;
   }
 
@@ -255,11 +307,11 @@ function remapStyleValue(
   }
 
   issues.push({
-    code: 'unmapped-global',
+    code: "unmapped-global",
     detail:
       `The widget references "${value.ref}", which is not mapped to a global in this document. ` +
-      'Map it explicitly or supply the widget\'s globals so it can be made a local literal — ' +
-      'a same-named global here may mean something else entirely.',
+      "Map it explicitly or supply the widget's globals so it can be made a local literal — " +
+      "a same-named global here may mean something else entirely.",
   });
 
   return value;
@@ -270,10 +322,10 @@ function lookupGlobal(globals: Globals | undefined, ref: string): unknown {
     return undefined;
   }
 
-  const [group, ...rest] = ref.split('.');
-  const entryId = rest.join('.');
+  const [group, ...rest] = ref.split(".");
+  const entryId = rest.join(".");
 
-  if (group === undefined || entryId === '') {
+  if (group === undefined || entryId === "") {
     return undefined;
   }
 

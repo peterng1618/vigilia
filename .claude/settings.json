@@ -1,0 +1,59 @@
+{
+  "enabledPlugins": {
+    "superpowers@claude-plugins-official": true,
+    "claude-mem@thedotmack": true,
+    "andrej-karpathy-skills@karpathy-skills": true
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "shell": "powershell",
+            "timeout": 10,
+            "command": "$p = if ($env:CLAUDE_PROJECT_DIR) { $env:CLAUDE_PROJECT_DIR } else { $PWD }; node \"$p/scripts/reuse-gate.mjs\""
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "matcher": "*",
+        "hooks": [
+          {
+            "type": "command",
+            "shell": "powershell",
+            "timeout": 20,
+            "command": "$p = if ($env:CLAUDE_PROJECT_DIR) { $env:CLAUDE_PROJECT_DIR } else { $PWD }; node \"$p/scripts/sdd-checkpoint.mjs\" snapshot"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "startup",
+        "hooks": [
+          {
+            "type": "command",
+            "shell": "powershell",
+            "timeout": 20,
+            "command": "$p = if ($env:CLAUDE_PROJECT_DIR) { $env:CLAUDE_PROJECT_DIR } else { $PWD }; node \"$p/scripts/sdd-checkpoint.mjs\" start"
+          }
+        ]
+      },
+      {
+        "matcher": "compact",
+        "hooks": [
+          {
+            "type": "command",
+            "shell": "powershell",
+            "timeout": 20,
+            "command": "$p = if ($env:CLAUDE_PROJECT_DIR) { $env:CLAUDE_PROJECT_DIR } else { $PWD }; node \"$p/scripts/sdd-checkpoint.mjs\" resume"
+          }
+        ]
+      }
+    ]
+  }
+}

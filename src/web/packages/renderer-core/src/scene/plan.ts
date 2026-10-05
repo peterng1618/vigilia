@@ -1,24 +1,38 @@
-import type { SampleSource } from '../data/source.js';
-import type { Sample, SensorStatus } from '../types.js';
-import { buildBarOption, type BarInput } from '../charts/bar.js';
-import { buildGaugeOption } from '../charts/gauge.js';
-import { buildLineOption, type SeriesInput } from '../charts/line.js';
-import { buildPieOption, type PieSliceInput } from '../charts/pie.js';
-import type { ChartOptionByFamily } from '../charts/engine-option.js';
+import { type BarInput, buildBarOption } from "../charts/bar.js";
+import { resolveChartPaint } from "../charts/chart-paint.js";
+import type { ChartOptionByFamily } from "../charts/engine-option.js";
+import { buildGaugeOption } from "../charts/gauge.js";
+import {
+  buildLineOption,
+  linePlaybackDelayMs,
+  type SeriesInput,
+} from "../charts/line.js";
+import { buildPieOption, type PieSliceInput } from "../charts/pie.js";
+import { chartPaintFieldsFor } from "../charts/settings-fields.js";
+import { describeSemanticKey } from "../data/semantic-keys.js";
+import type { SampleSource } from "../data/source.js";
 import type {
   AssetKind,
   Binding,
   ChartContent,
   ChartFamily,
   Globals,
+  PalettePaint,
   StyleMap,
   StyleValue,
   TextContent,
   TextRun,
-  TypePreset,
   ThemeDocument,
   ThemeNode,
-} from '../theme/document.js';
+  TypePreset,
+} from "../theme/document.js";
+import type { Sample, SensorStatus } from "../types.js";
+import { formatInstant } from "./datetime/format.js";
+import {
+  convertForDisplay,
+  DEFAULT_MEASUREMENT_SYSTEM,
+  type MeasurementSystem,
+} from "./measurement.js";
 
 /**
  * Pure document + telemetry → render plan. All renderer-independent decisions
@@ -26,7 +40,7 @@ import type {
  * never fabricated zeroes (§83).
  */
 
-export const MISSING_VALUE_TEXT = '—';
+export const MISSING_VALUE_TEXT = "—";
 
 export type ResolvedStyle = Readonly<Record<string, unknown>>;
 
@@ -52,9 +66,9 @@ export interface PlanTextSegment {
 
 export interface PlanTextLayout {
   readonly wrap: boolean;
-  readonly overflow: 'clip' | 'ellipsis' | 'visible';
-  readonly align: 'left' | 'center' | 'right';
-  readonly verticalAlign: 'top' | 'middle' | 'bottom';
+  readonly overflow: "clip" | "ellipsis" | "visible";
+  readonly align: "left" | "center" | "right";
+  readonly verticalAlign: "top" | "middle" | "bottom";
   /** Computed wrapped-line capacity when font metrics are knowable. */
   readonly maxLines?: number;
 }
@@ -62,20 +76,20 @@ export interface PlanTextLayout {
 /** Authored chart state paired with this frame's derived engine option. */
 export type PlanChart = {
   [F in ChartFamily]: Extract<ChartContent, { readonly family: F }> & {
-    readonly kind: 'chart';
+    readonly kind: "chart";
     readonly option: ChartOptionByFamily[F];
   };
 }[ChartFamily];
 
 export type PlanContent =
-  | { readonly kind: 'group' }
+  | { readonly kind: "group" }
   | {
-      readonly kind: 'shape';
-      readonly shape: 'rectangle' | 'ellipse' | 'line';
+      readonly kind: "shape";
+      readonly shape: "rectangle" | "ellipse" | "line";
       readonly cornerRadius: number;
     }
   | {
-      readonly kind: 'text';
+      readonly kind: "text";
       /** Authored runs survive Fabric serialization for v2 live text updates. */
       readonly authored: TextContent;
       readonly segments: readonly PlanTextSegment[];
@@ -83,15 +97,15 @@ export type PlanContent =
     }
   | PlanChart
   | {
-      readonly kind: 'image';
+      readonly kind: "image";
       readonly src: string | undefined;
       /** Asset declaration, needed where vector/raster handling differs. */
       readonly assetKind: AssetKind | undefined;
-      readonly fit: 'contain' | 'cover' | 'stretch';
+      readonly fit: "contain" | "cover" | "stretch";
       readonly monochrome?: string;
     }
   | {
-      readonly kind: 'video';
+      readonly kind: "video";
       readonly src: string | undefined;
       readonly loop: boolean;
       readonly muted: boolean;
@@ -108,7 +122,7 @@ export interface PlanNode {
 
 /** Runtime frame diagnostics, not document-validation errors. */
 export interface PlanIssue {
-  readonly code: 'unmapped-key' | 'unresolved-global' | 'unresolved-asset';
+  readonly code: "unmapped-key" | "unresolved-global" | "unresolved-asset";
   readonly nodeId: string;
   readonly detail: string;
 }
@@ -117,7 +131,7 @@ export interface ScenePlan {
   readonly artboard: {
     readonly width: number;
     readonly height: number;
-    readonly fitMode: 'contain' | 'cover';
+    readonly contentFit: "contain" | "cover";
     readonly background: unknown;
     readonly barColor: unknown;
   };
@@ -134,26 +148,58 @@ export interface PlanContext {
   readonly resolveAsset?: (assetId: string) => string | undefined;
   /** Long unit names keyed by short symbol; absent entries fall back to short. */
   readonly longUnits?: Readonly<Record<string, string>>;
+  /** The consumer's measurement preference; metric shows what was measured. */
+  readonly measurement?: MeasurementSystem;
+  /**
+   * The language the document's text is written in. A runtime input like
+   * `longUnits`, never persisted scene state: the theme's own `metadata` owns it.
+   */
+  readonly themeLanguage?: string;
 }
 
 /** Runtime inputs required to derive one authored chart's display option. */
-export type ChartPlanContext = Pick<PlanContext, 'source' | 'nowMs' | 'animate'>;
+export type ChartPlanContext = Pick<
+  PlanContext,
+  "source" | "nowMs" | "animate"
+>;
 
 export function buildScenePlan(context: PlanContext): ScenePlan {
+  // The document's own `metadata.themeLanguage` is the theme's language; a
+  // caller that sets `context.themeLanguage` overrides it for one plan.
+  // Normalized once, so the two `Pick` sites downstream only ever see a string
+  // or nothing.
+  const plan: PlanContext =
+    context.themeLanguage === undefined &&
+    context.document.metadata?.themeLanguage !== undefined
+      ? { ...context, themeLanguage: context.document.metadata.themeLanguage }
+      : context;
+
   const issues: PlanIssue[] = [];
-  const globals = context.document.globals ?? {};
+  const globals = plan.document.globals ?? {};
 
-  const nodes = context.document.nodes.map((node) => planNode(node, context, globals, issues));
+  const nodes = plan.document.nodes.map((node) =>
+    planNode(node, plan, globals, issues),
+  );
 
-  const artboard = context.document.artboard;
+  const artboard = plan.document.artboard;
 
   return {
     artboard: {
       width: artboard.width,
       height: artboard.height,
-      fitMode: artboard.fitMode ?? 'contain',
-      background: resolveStyleValue(artboard.background, globals, 'artboard', issues),
-      barColor: resolveStyleValue(artboard.barColor, globals, 'artboard', issues),
+      contentFit: artboard.contentFit ?? "contain",
+      background: resolveStyleValue(
+        artboard.background,
+        globals,
+        "artboard",
+        issues,
+      ),
+      barColor: resolveStyleValue(
+        artboard.barColor,
+        globals,
+        "artboard",
+        issues,
+      ),
     },
     nodes,
     issues,
@@ -177,8 +223,10 @@ function planNode(
     style,
     content: planContent(node, context, globals, issues, box, style),
     children:
-      node.type === 'group'
-        ? node.children.map((child) => planNode(child, context, globals, issues))
+      node.type === "group"
+        ? node.children.map((child) =>
+            planNode(child, context, globals, issues),
+          )
         : [],
   };
 }
@@ -206,48 +254,77 @@ function planContent(
   style: ResolvedStyle,
 ): PlanContent {
   switch (node.type) {
-    case 'group':
-      return { kind: 'group' };
+    case "group":
+      return { kind: "group" };
 
-    case 'rectangle':
-      return { kind: 'shape', shape: 'rectangle', cornerRadius: node.content?.cornerRadius ?? 0 };
-
-    case 'ellipse':
-      return { kind: 'shape', shape: 'ellipse', cornerRadius: 0 };
-
-    case 'line':
-      return { kind: 'shape', shape: 'line', cornerRadius: 0 };
-
-    case 'text':
-      const segments = planTextSegments(node.id, node.content.runs, node.bindings ?? [], context, globals, issues);
+    case "rectangle":
       return {
-        kind: 'text',
-        authored: node.content,
-        segments,
-        layout: planTextLayout(node.content, box.height, segments[0]?.style ?? {}),
+        kind: "shape",
+        shape: "rectangle",
+        cornerRadius: node.content?.cornerRadius ?? 0,
       };
 
-    case 'chart':
-      return buildChartPlan(node.id, node.content, node.bindings ?? [], context, issues);
+    case "ellipse":
+      return { kind: "shape", shape: "ellipse", cornerRadius: 0 };
 
-    case 'image': {
+    case "line":
+      return { kind: "shape", shape: "line", cornerRadius: 0 };
+
+    case "text":
+      const segments = resolveTextSegments(
+        node.id,
+        node.content.runs,
+        node.bindings ?? [],
+        context,
+        globals,
+        issues,
+      );
+      return {
+        kind: "text",
+        authored: node.content,
+        segments,
+        layout: planTextLayout(
+          node.content,
+          box.height,
+          segments[0]?.style ?? {},
+        ),
+      };
+
+    case "chart":
+      return buildChartPlan(
+        node.id,
+        node.content,
+        node.bindings ?? [],
+        context,
+        issues,
+        chartPalette(globals),
+      );
+
+    case "image": {
       const src = resolveAsset(node.id, node.content.assetId, context, issues);
-      const monochrome = resolveStyleValue(node.content.monochrome, globals, node.id, issues);
+      const monochrome = resolveStyleValue(
+        node.content.monochrome,
+        globals,
+        node.id,
+        issues,
+      );
       const assetKind = assetKindOf(node.content.assetId, context);
 
       return {
-        kind: 'image',
+        kind: "image",
         src,
         assetKind,
-        fit: node.content.fit ?? 'contain',
-        ...(typeof monochrome === 'string' && monochrome.length > 0 ? { monochrome } : {}),
+        fit: node.content.fit ?? "contain",
+        ...(typeof monochrome === "string" && monochrome.length > 0
+          ? { monochrome }
+          : {}),
       };
     }
 
-    case 'video': {
+    case "video": {
       const src = resolveAsset(node.id, node.content.assetId, context, issues);
       return {
-        kind: 'video',
+        kind: "video",
         src,
         loop: node.content.loop ?? true,
         muted: node.content.muted ?? true,
@@ -256,7 +333,10 @@ function planContent(
   }
 }
 
-function assetKindOf(assetId: string, context: PlanContext): AssetKind | undefined {
+function assetKindOf(
+  assetId: string,
+  context: PlanContext,
+): AssetKind | undefined {
   return context.document.assets?.find((asset) => asset.id === assetId)?.kind;
 }
 
@@ -270,7 +350,7 @@ function resolveAsset(
 
   if (src === undefined) {
     issues.push({
-      code: 'unresolved-asset',
+      code: "unresolved-asset",
       nodeId,
       detail: `Asset "${assetId}" could not be resolved to a URL.`,
     });
@@ -287,18 +367,18 @@ function planTextLayout(
   style: ResolvedStyle,
 ): PlanTextLayout {
   const wrap = content.wrap ?? false;
-  const overflow = content.overflow ?? 'clip';
+  const overflow = content.overflow ?? "clip";
 
   const maxLines =
-    wrap && overflow === 'ellipsis'
-      ? computeMaxLines(boxHeight, style['fontSize'], style['lineHeight'])
+    wrap && overflow === "ellipsis"
+      ? computeMaxLines(boxHeight, style["fontSize"], style["lineHeight"])
       : undefined;
 
   return {
     wrap,
     overflow,
-    align: content.align ?? 'left',
-    verticalAlign: content.verticalAlign ?? 'top',
+    align: content.align ?? "left",
+    verticalAlign: content.verticalAlign ?? "top",
     ...(maxLines === undefined ? {} : { maxLines }),
   };
 }
@@ -313,38 +393,52 @@ export function computeMaxLines(
     return undefined;
   }
 
-  if (typeof fontSize !== 'number' || !Number.isFinite(fontSize) || fontSize <= 0) {
+  if (
+    typeof fontSize !== "number" ||
+    !Number.isFinite(fontSize) ||
+    fontSize <= 0
+  ) {
     return undefined;
   }
 
   const factor =
-    typeof lineHeight === 'number' && Number.isFinite(lineHeight) && lineHeight > 0
+    typeof lineHeight === "number" &&
+    Number.isFinite(lineHeight) &&
+    lineHeight > 0
       ? lineHeight
       : DEFAULT_LINE_HEIGHT;
 
   return Math.max(1, Math.floor(boxHeight / (fontSize * factor)));
 }
 
-function planTextSegments(
+export function resolveTextSegments(
   nodeId: string,
   runs: readonly TextRun[],
   bindings: readonly Binding[],
-  context: PlanContext,
+  context: Pick<
+    PlanContext,
+    "source" | "longUnits" | "measurement" | "themeLanguage"
+  >,
   globals: Globals,
   issues: PlanIssue[],
 ): PlanTextSegment[] {
   return runs.map((run) => {
-    const style = { ...resolveTypePreset(run.typePreset, globals, nodeId, issues), ...resolveStyleMap(run.style, globals, nodeId, issues) };
+    const style = {
+      ...resolveTypePreset(run.typePreset, globals, nodeId, issues),
+      ...resolveStyleMap(run.style, globals, nodeId, issues),
+    };
 
-    if (run.kind === 'literal') {
+    if (run.kind === "literal") {
       return { text: run.text, style };
     }
 
-    const binding = bindings.find((candidate) => candidate.id === run.bindingId);
+    const binding = bindings.find(
+      (candidate) => candidate.id === run.bindingId,
+    );
 
     if (binding === undefined) {
       issues.push({
-        code: 'unmapped-key',
+        code: "unmapped-key",
         nodeId,
         detail: `Text run references binding "${run.bindingId}", which this node does not declare.`,
       });
@@ -355,7 +449,7 @@ function planTextSegments(
 
     if (sample === undefined) {
       issues.push({
-        code: 'unmapped-key',
+        code: "unmapped-key",
         nodeId,
         detail: `No sensor is mapped to "${binding.semanticKey}".`,
       });
@@ -369,11 +463,11 @@ function planTextSegments(
 function formatValueSegment(
   sample: Sample,
   binding: Binding,
-  run: Extract<TextRun, { kind: 'value' }>,
+  run: Extract<TextRun, { kind: "value" }>,
   style: ResolvedStyle,
-  context: PlanContext,
+  context: Pick<PlanContext, "longUnits" | "measurement" | "themeLanguage">,
 ): PlanTextSegment {
-  if (sample.status !== 'ok') {
+  if (sample.status !== "ok") {
     return {
       text: MISSING_VALUE_TEXT,
       style,
@@ -383,46 +477,149 @@ function formatValueSegment(
   }
 
   const precision = run.precision ?? binding.precision;
-  const unitDisplay = run.unitDisplay ?? binding.unitDisplay ?? 'short';
+  const unitDisplay = run.unitDisplay ?? binding.unitDisplay ?? "short";
 
   let text: string;
+  let shown = sample.unit;
 
-  if (typeof sample.value === 'number' && Number.isFinite(sample.value)) {
+  if (typeof sample.value === "number" && Number.isFinite(sample.value)) {
     const scaled = sample.value * (binding.scale ?? 1) + (binding.offset ?? 0);
-    text = formatNumber(scaled, precision);
+    // The consumer's measurement preference converts what is displayed, after
+    // the binding's own scale and offset and before formatting, so a converted
+    // value is never fed back through a scale.
+    const converted = convertForDisplay(
+      binding.semanticKey,
+      scaled,
+      sample.unit,
+      context.measurement ?? DEFAULT_MEASUREMENT_SYSTEM,
+    );
+    text = formatNumber(converted.value, precision, context.themeLanguage);
+    shown = converted.unit;
   } else if (sample.textValue !== undefined) {
-    text = sample.textValue;
+    text = formatTextReading(binding, sample.textValue, context.themeLanguage);
   } else if (sample.booleanValue !== undefined) {
-    text = sample.booleanValue ? 'on' : 'off';
+    text = sample.booleanValue ? "on" : "off";
   } else {
-    return { text: MISSING_VALUE_TEXT, style, status: 'error' };
+    return { text: MISSING_VALUE_TEXT, style, status: "error" };
   }
 
-  const unit = formatUnit(sample.unit, unitDisplay, context.longUnits);
+  const unit = formatUnit(shown, unitDisplay, context.longUnits);
 
-  return { text: unit === '' ? text : `${text}${unit}`, style };
+  return { text: unit === "" ? text : `${text}${unit}`, style };
+}
+
+/**
+ * A time/date reading arrives as an instant, so the author's format and zone
+ * decide how it reads; any other text is shown exactly as the provider sent it.
+ * A value no formatter can read is shown raw rather than blanked.
+ */
+function formatTextReading(
+  binding: Binding,
+  value: string,
+  themeLanguage: string | undefined,
+): string {
+  const instant = describeSemanticKey(binding.semanticKey)?.instant;
+
+  if (instant === undefined) {
+    return value;
+  }
+
+  return (
+    formatInstant(
+      value,
+      binding.format ?? instant.defaultFormat,
+      binding.timeZone,
+      themeLanguage,
+    ) ?? value
+  );
 }
 
 /** Explicit precision preserves trailing zeroes; default uses at most one decimal. */
-export function formatNumber(value: number, precision: number | undefined): string {
+export function formatNumber(
+  value: number,
+  precision: number | undefined,
+  themeLanguage?: string,
+): string {
+  // `Intl` distinguishes negative zero and prints it; `toFixed`, which this
+  // used, did not. A reading of `-0` on a dashboard is a rounding artefact
+  // dressed as a measurement, and it is exactly the case a sensor hits.
+  const measured = value === 0 ? 0 : value;
+
   if (precision !== undefined) {
-    return value.toFixed(Math.min(Math.max(Math.trunc(precision), 0), 6));
+    const digits = Math.min(Math.max(Math.trunc(precision), 0), 6);
+    return numberFormat(themeLanguage, digits, digits).format(measured);
   }
 
-  const rounded = Math.round(value * 10) / 10;
-  return Number.isInteger(rounded) ? rounded.toFixed(0) : rounded.toFixed(1);
+  // At most one decimal, and none where the value has none: `toFixed(1)` used
+  // to decide that itself, and a reading ending `.0` is a place of width an
+  // authored text box then has to be laid out around.
+  const rounded = Math.round(measured * 10) / 10;
+  return numberFormat(
+    themeLanguage,
+    0,
+    Number.isInteger(rounded) ? 0 : 1,
+  ).format(rounded === 0 ? 0 : rounded);
+}
+
+// Built once per language per digit pair: this runs per text run per refresh,
+// and constructing a formatter is expensive.
+const numberFormatters = new Map<string, Intl.NumberFormat>();
+
+/**
+ * The reading in the theme's own number format.
+ *
+ * Grouping is off on purpose. The separator is what a reader recognises — a
+ * German reads `17,6` where the default wrote `17.6` — while grouping changes
+ * how wide every four-digit reading is, and a dashboard lays its text out in
+ * boxes an author sized by hand. A locale's number format is not ours to
+ * second-guess in the one respect that moves the layout.
+ */
+function numberFormat(
+  themeLanguage: string | undefined,
+  minimumFractionDigits: number,
+  maximumFractionDigits: number,
+): Intl.NumberFormat {
+  if (themeLanguage === undefined) {
+    return new Intl.NumberFormat(undefined, {
+      useGrouping: false,
+      minimumFractionDigits,
+      maximumFractionDigits,
+    });
+  }
+  const key = `${themeLanguage} ${minimumFractionDigits} ${maximumFractionDigits}`;
+  const cached = numberFormatters.get(key);
+  if (cached !== undefined) return cached;
+
+  let created: Intl.NumberFormat;
+  try {
+    created = new Intl.NumberFormat(themeLanguage, {
+      useGrouping: false,
+      minimumFractionDigits,
+      maximumFractionDigits,
+    });
+  } catch {
+    // A tag the runtime dropped since validation reads as the runtime's own
+    // rather than failing a paint. Validation is what refuses an unusable tag.
+    created = new Intl.NumberFormat(undefined, {
+      useGrouping: false,
+      minimumFractionDigits,
+      maximumFractionDigits,
+    });
+  }
+  numberFormatters.set(key, created);
+  return created;
 }
 
 export function formatUnit(
   unit: string | undefined,
-  display: 'none' | 'short' | 'long',
+  display: "none" | "short" | "long",
   longUnits: Readonly<Record<string, string>> | undefined,
 ): string {
-  if (display === 'none' || unit === undefined || unit === '') {
-    return '';
+  if (display === "none" || unit === undefined || unit === "") {
+    return "";
   }
 
-  if (display === 'long') {
+  if (display === "long") {
     const long = longUnits?.[unit];
     return long === undefined ? spaced(unit) : ` ${long}`;
   }
@@ -441,7 +638,7 @@ export function buildChartPlan(
   bindings: readonly Binding[],
   context: ChartPlanContext,
   issues: PlanIssue[],
-  palette?: import('../theme/fabric-envelope.js').FabricPalette,
+  palette?: import("../theme/fabric-envelope.js").FabricPalette,
 ): PlanChart {
   const animate = context.animate ?? true;
 
@@ -449,65 +646,90 @@ export function buildChartPlan(
   for (const binding of bindings) {
     if (context.source.latest(binding.semanticKey) === undefined) {
       issues.push({
-        code: 'unmapped-key',
+        code: "unmapped-key",
         nodeId,
         detail: `No sensor is mapped to "${binding.semanticKey}".`,
       });
     }
   }
+  reportUnresolvedChartPaint(nodeId, content, palette, issues);
 
   switch (content.family) {
-    case 'gauge': {
+    case "gauge": {
       const binding = bindings[0];
-      const sample = binding === undefined ? undefined : context.source.latest(binding.semanticKey);
+      const sample =
+        binding === undefined
+          ? undefined
+          : context.source.latest(binding.semanticKey);
 
       return {
-        kind: 'chart',
-        family: 'gauge',
+        kind: "chart",
+        family: "gauge",
         settings: content.settings,
-        option: buildGaugeOption(content.settings, applyTransform(sample, binding), animate, palette),
+        option: buildGaugeOption(
+          content.settings,
+          applyTransform(sample, binding),
+          animate,
+          palette,
+        ),
       };
     }
 
-    case 'line': {
+    case "line": {
+      const historySeconds =
+        content.settings.windowSeconds +
+        linePlaybackDelayMs(context.source.chartPlaybackDelayMs) / 1000;
       const series: SeriesInput[] = bindings.map((binding) => ({
         sensorId: binding.semanticKey,
         samples: context.source
-          .history(binding.semanticKey, content.settings.windowSeconds)
+          .history(binding.semanticKey, historySeconds)
           .map((sample) => transformSample(sample, binding)),
       }));
 
       return {
-        kind: 'chart',
-        family: 'line',
+        kind: "chart",
+        family: "line",
         settings: content.settings,
-        option: buildLineOption(content.settings, series, context.nowMs, animate, palette),
+        option: buildLineOption(
+          content.settings,
+          series,
+          context.nowMs,
+          animate,
+          palette,
+          context.source.chartPlaybackDelayMs,
+        ),
       };
     }
 
-    case 'bar': {
+    case "bar": {
       const inputs: BarInput[] = bindings.map((binding) => ({
         sensorId: binding.semanticKey,
-        sample: applyTransform(context.source.latest(binding.semanticKey), binding),
+        sample: applyTransform(
+          context.source.latest(binding.semanticKey),
+          binding,
+        ),
       }));
 
       return {
-        kind: 'chart',
-        family: 'bar',
+        kind: "chart",
+        family: "bar",
         settings: content.settings,
         option: buildBarOption(content.settings, inputs, animate, palette),
       };
     }
 
-    case 'pie': {
+    case "pie": {
       const slices: PieSliceInput[] = bindings.map((binding) => ({
         sensorId: binding.semanticKey,
-        sample: applyTransform(context.source.latest(binding.semanticKey), binding),
+        sample: applyTransform(
+          context.source.latest(binding.semanticKey),
+          binding,
+        ),
       }));
 
       return {
-        kind: 'chart',
-        family: 'pie',
+        kind: "chart",
+        family: "pie",
         settings: content.settings,
         option: buildPieOption(content.settings, slices, animate, palette),
       };
@@ -515,8 +737,44 @@ export function buildChartPlan(
   }
 }
 
+/**
+ * A paint reference the document does not define draws no ink, which on the
+ * display is indistinguishable from no reading. Reported under the code
+ * `resolveStyleValue` already uses, so the two absences stay two facts (0007).
+ */
+function reportUnresolvedChartPaint(
+  nodeId: string,
+  content: ChartContent,
+  palette: import("../theme/fabric-envelope.js").FabricPalette | undefined,
+  issues: PlanIssue[],
+): void {
+  const settings = content.settings as unknown as Record<string, unknown>;
+  for (const field of chartPaintFieldsFor(content.family)) {
+    const declared = settings[field.property];
+    const paints =
+      field.multiple === true && Array.isArray(declared)
+        ? declared
+        : declared === undefined
+          ? []
+          : [declared];
+    for (const paint of paints) {
+      if (paint === undefined || resolveChartPaint(paint as never, palette))
+        continue;
+      const ref = (paint as { readonly ref?: string }).ref;
+      issues.push({
+        code: "unresolved-global",
+        nodeId,
+        detail: `Chart paint "${ref ?? field.property}" is not defined in this document.`,
+      });
+    }
+  }
+}
+
 /** Apply authored scale/offset only to ok numeric samples. */
-function applyTransform(sample: Sample | undefined, binding: Binding | undefined): Sample | undefined {
+function applyTransform(
+  sample: Sample | undefined,
+  binding: Binding | undefined,
+): Sample | undefined {
   if (sample === undefined || binding === undefined) {
     return sample;
   }
@@ -532,7 +790,7 @@ function transformSample(sample: Sample, binding: Binding): Sample {
     return sample;
   }
 
-  if (sample.status !== 'ok' || typeof sample.value !== 'number') {
+  if (sample.status !== "ok" || typeof sample.value !== "number") {
     return sample;
   }
 
@@ -572,18 +830,20 @@ export function resolveStyleValue(
     return undefined;
   }
 
-  if (!('ref' in value) || value.ref === undefined) {
+  if (!("ref" in value) || value.ref === undefined) {
     return value.value;
   }
 
-  const [group, ...rest] = value.ref.split('.');
-  const entryId = rest.join('.');
+  const [group, ...rest] = value.ref.split(".");
+  const entryId = rest.join(".");
   const entry =
-    group === undefined ? undefined : globals[group as keyof Globals]?.[entryId];
+    group === undefined
+      ? undefined
+      : globals[group as keyof Globals]?.[entryId];
 
   if (entry === undefined) {
     issues.push({
-      code: 'unresolved-global',
+      code: "unresolved-global",
       nodeId,
       detail: `Global "${value.ref}" is not defined in this document.`,
     });
@@ -596,39 +856,97 @@ export function resolveStyleValue(
 
 /** Presets are resolved per run so label, value and unit never inherit one text-object preset. */
 function resolveTypePreset(
-  ref: TextRun['typePreset'],
+  ref: TextRun["typePreset"],
   globals: Globals,
   nodeId: string,
   issues: PlanIssue[],
 ): ResolvedStyle {
   if (ref === undefined) return {};
-  const id = ref.slice('typePresets.'.length);
+  const id = ref.slice("typePresets.".length);
   const value = globals.typePresets?.[id]?.value;
   if (!isTypePreset(value)) {
-    issues.push({ code: 'unresolved-global', nodeId, detail: `Type preset "${ref}" is not defined or invalid.` });
+    issues.push({
+      code: "unresolved-global",
+      nodeId,
+      detail: `Type preset "${ref}" is not defined or invalid.`,
+    });
     return {};
   }
   return {
     fontFamily: value.family,
     fontSize: value.size,
     ...(value.weight === undefined ? {} : { fontWeight: value.weight }),
-    ...(value.letterSpacing === undefined ? {} : { letterSpacing: value.letterSpacing }),
+    ...(value.letterSpacing === undefined
+      ? {}
+      : { letterSpacing: value.letterSpacing }),
     ...(value.lineHeight === undefined ? {} : { lineHeight: value.lineHeight }),
   };
 }
 
 function isTypePreset(value: unknown): value is TypePreset {
-  if (typeof value !== 'object' || value === null) return false;
+  if (typeof value !== "object" || value === null) return false;
   const preset = value as Record<string, unknown>;
-  return typeof preset['family'] === 'string' && preset['family'].length > 0 &&
-    typeof preset['size'] === 'number' && Number.isFinite(preset['size']) && preset['size'] > 0 &&
-    (preset['weight'] === undefined || typeof preset['weight'] === 'string' || typeof preset['weight'] === 'number') &&
-    (preset['letterSpacing'] === undefined || typeof preset['letterSpacing'] === 'number' && Number.isFinite(preset['letterSpacing'])) &&
-    (preset['lineHeight'] === undefined || typeof preset['lineHeight'] === 'number' && Number.isFinite(preset['lineHeight']) && preset['lineHeight'] > 0);
+  return (
+    typeof preset["family"] === "string" &&
+    preset["family"].length > 0 &&
+    typeof preset["size"] === "number" &&
+    Number.isFinite(preset["size"]) &&
+    preset["size"] > 0 &&
+    (preset["weight"] === undefined ||
+      typeof preset["weight"] === "string" ||
+      typeof preset["weight"] === "number") &&
+    (preset["letterSpacing"] === undefined ||
+      (typeof preset["letterSpacing"] === "number" &&
+        Number.isFinite(preset["letterSpacing"]))) &&
+    (preset["lineHeight"] === undefined ||
+      (typeof preset["lineHeight"] === "number" &&
+        Number.isFinite(preset["lineHeight"]) &&
+        preset["lineHeight"] > 0))
+  );
 }
 
-function isSolidPalettePaint(value: unknown): value is { readonly kind: 'solid'; readonly color: string } {
-  return typeof value === 'object' && value !== null &&
-    (value as Record<string, unknown>)['kind'] === 'solid' &&
-    typeof (value as Record<string, unknown>)['color'] === 'string';
+/**
+ * The chart builders take a `FabricPalette`; a document's `globals.palette` is
+ * the same map with an unvalidated `value`. An entry that is not palette paint
+ * is dropped rather than cast, so an unresolvable reference is a gap (0007).
+ */
+function chartPalette(
+  globals: Globals,
+): import("../theme/fabric-envelope.js").FabricPalette | undefined {
+  const entries = Object.entries(globals.palette ?? {}).filter(
+    (
+      entry,
+    ): entry is [
+      string,
+      import("../theme/fabric-envelope.js").FabricPaletteEntry,
+    ] => isPalettePaint(entry[1].value),
+  );
+  return entries.length === 0 ? undefined : Object.fromEntries(entries);
+}
+
+function isPalettePaint(value: unknown): value is PalettePaint {
+  if (typeof value !== "object" || value === null) return false;
+  const paint = value as Record<string, unknown>;
+  if (paint["kind"] === "solid") return typeof paint["color"] === "string";
+  return (
+    paint["kind"] === "gradient" &&
+    Array.isArray(paint["stops"]) &&
+    paint["stops"].every(
+      (stop) =>
+        typeof stop === "object" &&
+        stop !== null &&
+        typeof (stop as Record<string, unknown>)["color"] === "string",
+    )
+  );
+}
+
+function isSolidPalettePaint(
+  value: unknown,
+): value is { readonly kind: "solid"; readonly color: string } {
+  return (
+    typeof value === "object" &&
+    value !== null &&
+    (value as Record<string, unknown>)["kind"] === "solid" &&
+    typeof (value as Record<string, unknown>)["color"] === "string"
+  );
 }

@@ -1,15 +1,15 @@
-import { describe, expect, it } from 'vitest';
-import { KeepLatestSlot } from './keep-latest.js';
+import { describe, expect, it } from "vitest";
+import { KeepLatestSlot } from "./keep-latest.js";
 
-describe('KeepLatestSlot', () => {
-  it('starts empty', () => {
+describe("KeepLatestSlot", () => {
+  it("starts empty", () => {
     const slot = new KeepLatestSlot<number>();
 
     expect(slot.hasPending).toBe(false);
     expect(slot.take()).toBeUndefined();
   });
 
-  it('holds one offered snapshot', () => {
+  it("holds one offered snapshot", () => {
     const slot = new KeepLatestSlot<number>();
 
     expect(slot.offer(1)).toBe(false);
@@ -18,7 +18,7 @@ describe('KeepLatestSlot', () => {
     expect(slot.hasPending).toBe(false);
   });
 
-  it('keeps the NEWEST snapshot, not the oldest, and never queues (§111)', () => {
+  it("keeps the NEWEST snapshot, not the oldest, and never queues (§111)", () => {
     const slot = new KeepLatestSlot<number>();
 
     slot.offer(1);
@@ -31,26 +31,26 @@ describe('KeepLatestSlot', () => {
     expect(slot.take()).toBeUndefined();
   });
 
-  it('reports displacement so a slow client is measurable, not assumed', () => {
+  it("reports displacement so a slow client is measurable, not assumed", () => {
     const slot = new KeepLatestSlot<string>();
 
-    expect(slot.offer('a')).toBe(false);
-    expect(slot.offer('b')).toBe(true);
-    expect(slot.offer('c')).toBe(true);
+    expect(slot.offer("a")).toBe(false);
+    expect(slot.offer("b")).toBe(true);
+    expect(slot.offer("c")).toBe(true);
     expect(slot.droppedCount).toBe(2);
   });
 
-  it('does not count a drop when the slot was drained between offers', () => {
+  it("does not count a drop when the slot was drained between offers", () => {
     const slot = new KeepLatestSlot<string>();
 
-    slot.offer('a');
+    slot.offer("a");
     slot.take();
-    expect(slot.offer('b')).toBe(false);
+    expect(slot.offer("b")).toBe(false);
     expect(slot.droppedCount).toBe(0);
     expect(slot.deliveredCount).toBe(1);
   });
 
-  it('counts deliveries only when something was actually taken', () => {
+  it("counts deliveries only when something was actually taken", () => {
     const slot = new KeepLatestSlot<number>();
 
     slot.take();
@@ -59,7 +59,7 @@ describe('KeepLatestSlot', () => {
     expect(slot.deliveredCount).toBe(0);
   });
 
-  it('holds falsy values, which are legitimate snapshots', () => {
+  it("holds falsy values, which are legitimate snapshots", () => {
     const slot = new KeepLatestSlot<number>();
 
     slot.offer(0);

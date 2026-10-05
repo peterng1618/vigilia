@@ -1,0 +1,1442 @@
+// @vitest-environment jsdom
+
+import type { FabricThemeEnvelope } from "@vigilia/renderer-core";
+import { beforeEach, describe, expect, it, vi } from "vitest";
+
+const saveMock = vi.hoisted(() => vi.fn(async () => {}));
+const markSavedMock = vi.hoisted(() => vi.fn());
+/** Shared, so a test can recover the registered `(id, handler)` pairs. */
+const registerMock = vi.hoisted(() => vi.fn());
+/** The dirty-document question and the answer given to it, held so a test can
+ *  set both. The default is a clean document and a replacement nobody objects
+ *  to, which is what every other test in this file is. */
+const dirtyMock = vi.hoisted(() => vi.fn(() => false));
+const replaceMock = vi.hoisted(() => vi.fn(async () => "discard"));
+/** The library dialog has no jsdom implementation. Opening a theme by URL
+ *  reaches a document through this same call, so what the dialog answered is
+ *  the only difference between arriving two ways. */
+const libraryChoiceMock = vi.hoisted(() =>
+  vi.fn(async () => ({ kind: "theme" as const, id: "saved-theme" })),
+);
+/** What the author answered about a refused save, and the default is to think
+ *  about it: a refusal that resolved by itself would be one nothing is said
+ *  about, which is the failure this whole path exists to prevent. */
+const conflictMock = vi.hoisted(() =>
+  vi.fn(async (): Promise<"reload" | "overwrite" | undefined> => undefined),
+);
+vi.mock("./theme-library-dialog.js", () => ({
+  promptThemeSelection: () => libraryChoiceMock(),
+  promptThemeConflict: () => conflictMock(),
+}));
+
+vi.mock("./artboard-panel.js", () => ({ createArtboardPanel: () => panel() }));
+vi.mock("./palette-manager/index.js", () => ({
+  createPalettePanel: () => panel(),
+}));
+vi.mock("./type-preset-manager/index.js", () => ({
+  createTypePresetPanel: () => panel(),
+}));
+vi.mock("./new-object-panel.js", () => ({
+  createNewObjectPanel: () => panel(),
+}));
+vi.mock("./chart-manager/index.js", () => ({
+  ChartManager: class {
+    destroy = vi.fn();
+    setGlobals = vi.fn();
+    reassignPaletteReferences = vi.fn();
+  },
+}));
+vi.mock("./persistence-manager/index.js", () => ({
+  PersistenceManager: class {
+    destroy = vi.fn();
+    isDirty = dirtyMock;
+    save = saveMock;
+    markSaved = markSavedMock;
+  },
+  confirmDocumentReplacement: replaceMock,
+}));
+vi.mock("./shortcut-manager/index.js", () => ({
+  ShortcutManager: class {
+    destroy = vi.fn();
+    register = registerMock;
+  },
+}));
+
+import { AssetManager } from "./asset-manager/index.js";
+import { EditorSession } from "./editor-session.js";
+import { fontTrio } from "./font-catalog.js";
+import { idleCrop } from "./selection-inspector/idle-crop.test-stage.js";
+import { ThemeConflictError } from "./theme-library-client.js";
+
+/** What the chooser answered, per test. The chooser is a modal dialog with no
+    jsdom implementation, so it is stubbed here and driven where it is real. */
+const chooserMock = vi.hoisted(() =>
+  vi.fn(async () => ({
+    ratio: "16:9" as const,
+    resolution: "1080p" as const,
+    orientation: "landscape" as const,
+  })),
+);
+vi.mock("./new-document-chooser.js", () => ({
+  chooseArtboardPreset: () => chooserMock(),
+}));
+
+const envelope: FabricThemeEnvelope = {
+  schemaVersion: 2,
+  fabricVersion: "7.4.0",
+  id: "theme",
+  metadata: { themeLanguage: "en" },
+  artboard: { width: 100, height: 100 },
+  scene: { version: "7.4.0", objects: [] },
+};
+
+describe("EditorSession", () => {
+  beforeEach(() => {
+    saveMock.mockReset();
+    markSavedMock.mockReset();
+    registerMock.mockReset();
+    document.body.replaceChildren();
+  });
+
+  it("dispatches package and library actions through the shell façade", async () => {
+    const editor = {
+      canvas: {
+        on: vi.fn(),
+        off: vi.fn(),
+        getActiveObject: () => undefined,
+        getObjects: () => [],
+        requestRenderAll: vi.fn(),
+      },
+      clipboardManager: { setImageImporter: vi.fn(), setBindings: vi.fn() },
+      textManager: {
+        addText: vi.fn(),
+        setAuthoringView: vi.fn(),
+        setRepaint: vi.fn(),
+      },
+      cropManager: idleCrop(),
+    };
+    const onOpenPackage = vi.fn();
+    const onSaved = vi.fn();
+    const mockClient = {
+      list: vi.fn(async () => []),
+      open: vi.fn(async () => ({ envelope, assets: {} })),
+      save: vi.fn(async () => "base-after-save"),
+    };
+
+    const extensions = new EditorSession({
+      assetManager: new AssetManager(),
+      shell: {
+        editor,
+        scene: {},
+        snapshot: vi.fn(() => envelope),
+        setBackgroundMedia: vi.fn(),
+      } as never,
+      source: {} as never,
+      envelope,
+      panelHosts: {
+        add: document.body,
+        assets: document.body,
+        document: document.body,
+        chart: document.body,
+        selection: document.body,
+        style: document.body,
+      },
+      libraryClient: mockClient,
+      onNew: vi.fn(),
+      onNewFromStarter: vi.fn(),
+      onOpenPackage,
+      onSaved,
+    });
+
+    // The File menu owns these now; the panel section is gone.
+    expect(
+      document.body.querySelector("[data-vigilia-file-actions]"),
+    ).toBeNull();
+    const session = extensions.actionFacade();
+
+    session.openPackage();
+    await Promise.resolve();
+    expect(onOpenPackage).toHaveBeenCalled();
+
+    await session.savePackage();
+    expect(onSaved).toHaveBeenCalled();
+
+    await session.saveLibrary();
+    expect(mockClient.save).toHaveBeenCalled();
+
+    extensions.destroy();
+  });
+
+  it("New creates at the size the chooser answered, and a dismissal creates nothing", async () => {
+    const onNew = vi.fn(async () => undefined);
+    const extensions = new EditorSession({
+      assetManager: new AssetManager(),
+      shell: {
+        editor: {
+          canvas: {
+            on: vi.fn(),
+            off: vi.fn(),
+            getActiveObject: () => undefined,
+            getObjects: () => [],
+            requestRenderAll: vi.fn(),
+          },
+          clipboardManager: { setImageImporter: vi.fn(), setBindings: vi.fn() },
+          textManager: {
+            addText: vi.fn(),
+            setAuthoringView: vi.fn(),
+            setRepaint: vi.fn(),
+          },
+          cropManager: idleCrop(),
+        },
+        scene: {},
+        snapshot: vi.fn(() => envelope),
+        setBackgroundMedia: vi.fn(),
+      } as never,
+      source: {} as never,
+      envelope,
+      panelHosts: {
+        add: document.body,
+        assets: document.body,
+        document: document.body,
+        chart: document.body,
+        selection: document.body,
+        style: document.body,
+      },
+      onNew,
+      onNewFromStarter: vi.fn(),
+      onSaved: vi.fn(),
+    });
+    const session = extensions.actionFacade();
+
+    chooserMock.mockResolvedValueOnce({
+      ratio: "4:3",
+      resolution: "2k",
+      orientation: "portrait",
+    } as never);
+    await session.newDocument();
+    // The three ids the author picked, resolved into the size they mean: 4:3
+    // portrait at 2K is 1440 wide by 1920 high, the short edge being the width
+    // once the orientation swaps. The chooser owns that arithmetic, so the
+    // session must not restate it.
+    expect(onNew).toHaveBeenCalledWith({ width: 1440, height: 1920 });
+
+    // A chooser dismissed resolves nothing, and a New that creates nothing must
+    // not be a New: the open document is untouched.
+    onNew.mockClear();
+    chooserMock.mockResolvedValueOnce(undefined as never);
+    await session.newDocument();
+    expect(onNew).not.toHaveBeenCalled();
+
+    extensions.destroy();
+  });
+
+  it("New from starter creates the composition, and does not ask for a size", async () => {
+    const onNewFromStarter = vi.fn(async () => undefined);
+    const extensions = new EditorSession({
+      assetManager: new AssetManager(),
+      shell: {
+        editor: {
+          canvas: {
+            on: vi.fn(),
+            off: vi.fn(),
+            getActiveObject: () => undefined,
+            getObjects: () => [],
+            requestRenderAll: vi.fn(),
+          },
+          clipboardManager: { setImageImporter: vi.fn(), setBindings: vi.fn() },
+          textManager: {
+            addText: vi.fn(),
+            setAuthoringView: vi.fn(),
+            setRepaint: vi.fn(),
+          },
+          cropManager: idleCrop(),
+        },
+        scene: {},
+        snapshot: vi.fn(() => envelope),
+        setBackgroundMedia: vi.fn(),
+      } as never,
+      source: {} as never,
+      envelope,
+      panelHosts: {
+        add: document.body,
+        assets: document.body,
+        document: document.body,
+        chart: document.body,
+        selection: document.body,
+        style: document.body,
+      },
+      onNew: vi.fn(),
+      onNewFromStarter,
+      onSaved: vi.fn(),
+    });
+
+    chooserMock.mockClear();
+    await extensions.actionFacade().newFromStarter();
+
+    // The starter is what it always was, at its own 1672x941: a template is
+    // not resized to a preset the new-document list happens to offer.
+    expect(onNewFromStarter).toHaveBeenCalled();
+    expect(chooserMock).not.toHaveBeenCalled();
+
+    extensions.destroy();
+  });
+
+  it("bumps the release version only from Release", async () => {
+    vi.stubGlobal(
+      "prompt",
+      vi.fn(() => "patch"),
+    );
+    const shell = {
+      editor: {
+        canvas: {
+          on: vi.fn(),
+          off: vi.fn(),
+          getActiveObject: () => undefined,
+          getObjects: () => [],
+          requestRenderAll: vi.fn(),
+        },
+        clipboardManager: { setImageImporter: vi.fn(), setBindings: vi.fn() },
+        textManager: {
+          addText: vi.fn(),
+          setAuthoringView: vi.fn(),
+          setRepaint: vi.fn(),
+        },
+        cropManager: idleCrop(),
+      },
+      scene: {},
+      snapshot: vi.fn((input) => ({ ...envelope, ...input })),
+      setBackgroundMedia: vi.fn(),
+    };
+    const extensions = new EditorSession({
+      assetManager: new AssetManager(),
+      shell: shell as never,
+      source: {} as never,
+      envelope: {
+        ...envelope,
+        metadata: { version: "1.2.3", themeLanguage: "en" },
+      },
+      panelHosts: {
+        add: document.body,
+        assets: document.body,
+        document: document.body,
+        chart: document.body,
+        selection: document.body,
+        style: document.body,
+      },
+      onNew: vi.fn(),
+      onNewFromStarter: vi.fn(),
+      onSaved: vi.fn(),
+    });
+
+    const session = extensions.actionFacade();
+    // The third argument is the picture the package carries; this canvas has
+    // nothing laid out, so it renders none and the export happens regardless.
+    await session.savePackage();
+    expect(saveMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        metadata: { version: "1.2.3", themeLanguage: "en" },
+      }),
+      expect.anything(),
+      undefined,
+    );
+
+    await session.releasePackage();
+    expect(saveMock).toHaveBeenLastCalledWith(
+      expect.objectContaining({
+        metadata: { version: "1.2.4", themeLanguage: "en" },
+      }),
+      expect.anything(),
+      undefined,
+    );
+    extensions.destroy();
+  });
+
+  it("adopts a trio and replaces every assigned preset face", async () => {
+    const fetch = vi.fn(async () => new Response(new Uint8Array([1, 2, 3])));
+    vi.stubGlobal("fetch", fetch);
+    const shell = {
+      editor: {
+        canvas: {
+          on: vi.fn(),
+          off: vi.fn(),
+          getActiveObject: () => undefined,
+          getObjects: () => [],
+          requestRenderAll: vi.fn(),
+        },
+        clipboardManager: { setImageImporter: vi.fn(), setBindings: vi.fn() },
+        textManager: {
+          addText: vi.fn(),
+          setAuthoringView: vi.fn(),
+          setRepaint: vi.fn(),
+        },
+        cropManager: idleCrop(),
+        historyManager: { saveState: vi.fn() },
+      },
+      scene: {},
+      snapshot: vi.fn((input) => ({ ...envelope, ...input })),
+      setBackgroundMedia: vi.fn(),
+      setGlobals: vi.fn(),
+    };
+    const extensions = new EditorSession({
+      assetManager: new AssetManager(),
+      shell: shell as never,
+      source: {} as never,
+      envelope: {
+        ...envelope,
+        globals: {
+          typePresets: {
+            heading: {
+              name: "Heading",
+              value: {
+                family: "Segoe UI",
+                size: 32,
+                weight: "500",
+                trioRole: "heading",
+              },
+            },
+            metric: {
+              name: "Metric",
+              value: {
+                family: "Segoe UI",
+                size: 70,
+                weight: "300",
+                trioRole: "heading",
+              },
+            },
+            custom: { name: "Custom", value: { family: "Georgia", size: 19 } },
+          },
+        },
+      },
+      panelHosts: {
+        add: document.body,
+        assets: document.body,
+        document: document.body,
+        chart: document.body,
+        selection: document.body,
+        style: document.body,
+      },
+      onNew: vi.fn(),
+      onNewFromStarter: vi.fn(),
+      onSaved: vi.fn(),
+    });
+
+    const result = await extensions.applyFontTrio("minimal");
+    const heading = fontTrio("minimal")!.faces[0]!;
+
+    expect(fetch).toHaveBeenCalledTimes(3);
+    expect(result.globals?.typePresets).toMatchObject({
+      heading: {
+        value: {
+          family: heading.family,
+          size: 32,
+          weight: heading.weight,
+          face: { assetId: heading.id },
+        },
+      },
+      metric: {
+        value: {
+          family: heading.family,
+          size: 70,
+          weight: heading.weight,
+          face: { assetId: heading.id },
+        },
+      },
+      custom: { name: "Custom", value: { family: "Georgia", size: 19 } },
+    });
+    expect(result.assets).toEqual(
+      expect.arrayContaining([expect.objectContaining({ id: heading.id })]),
+    );
+    expect(shell.editor.historyManager.saveState).toHaveBeenCalledTimes(1);
+    extensions.destroy();
+  });
+
+  it("adopts one face without changing the preset role or scale", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(new Uint8Array([1, 2, 3]))),
+    );
+    const body = fontTrio("minimal")!.faces[1]!;
+    const shell = {
+      editor: {
+        canvas: {
+          on: vi.fn(),
+          off: vi.fn(),
+          getActiveObject: () => undefined,
+          getObjects: () => [],
+          requestRenderAll: vi.fn(),
+        },
+        clipboardManager: { setImageImporter: vi.fn(), setBindings: vi.fn() },
+        textManager: {
+          addText: vi.fn(),
+          setAuthoringView: vi.fn(),
+          setRepaint: vi.fn(),
+        },
+        cropManager: idleCrop(),
+        historyManager: { saveState: vi.fn() },
+      },
+      scene: {},
+      snapshot: vi.fn((input) => ({ ...envelope, ...input })),
+      setBackgroundMedia: vi.fn(),
+      setGlobals: vi.fn(),
+    };
+    const extensions = new EditorSession({
+      assetManager: new AssetManager(),
+      shell: shell as never,
+      source: {} as never,
+      envelope: {
+        ...envelope,
+        globals: {
+          typePresets: {
+            heading: {
+              name: "Heading",
+              value: {
+                family: "Segoe UI",
+                size: 32,
+                weight: "700",
+                trioRole: "heading",
+                face: { assetId: fontTrio("minimal")!.faces[0]!.id },
+              },
+            },
+          },
+        },
+      },
+      panelHosts: {
+        add: document.body,
+        assets: document.body,
+        document: document.body,
+        chart: document.body,
+        selection: document.body,
+        style: document.body,
+      },
+      onNew: vi.fn(),
+      onNewFromStarter: vi.fn(),
+      onSaved: vi.fn(),
+    });
+
+    const result = await extensions.applyPresetFace("heading", body);
+
+    expect(result.globals?.typePresets).toMatchObject({
+      heading: {
+        value: {
+          family: body.family,
+          size: 32,
+          weight: body.weight,
+          trioRole: "heading",
+          face: { assetId: body.id },
+        },
+      },
+    });
+    expect(result.assets).toEqual(
+      expect.arrayContaining([expect.objectContaining({ id: body.id })]),
+    );
+    extensions.destroy();
+  });
+
+  it("closes an open nudge burst before undoing", async () => {
+    let suspended = 0;
+    const suspend = vi.fn(() => {
+      suspended += 1;
+      let released = false;
+      return () => {
+        if (released) return;
+        released = true;
+        suspended -= 1;
+      };
+    });
+    const saveState = vi.fn();
+    const undo = vi.fn();
+    const object = {
+      locked: false,
+      getRelativeCenterPoint: () => ({ x: 10, y: 20 }),
+      setPositionByOrigin: vi.fn(),
+      setCoords: vi.fn(),
+    };
+    // The inspector renders whatever is selectable at construction, so the
+    // selection is armed only once the session exists.
+    const selection = { active: undefined as unknown };
+    const shell = {
+      editor: {
+        canvas: {
+          on: vi.fn(),
+          off: vi.fn(),
+          fire: vi.fn(),
+          getActiveObject: () => selection.active,
+          getObjects: () => [],
+          requestRenderAll: vi.fn(),
+        },
+        clipboardManager: { setImageImporter: vi.fn(), setBindings: vi.fn() },
+        textManager: {
+          addText: vi.fn(),
+          setAuthoringView: vi.fn(),
+          setRepaint: vi.fn(),
+        },
+        cropManager: idleCrop(),
+        historyManager: { suspend, saveState, undo, redo: vi.fn() },
+      },
+      scene: {},
+      snapshot: vi.fn((input) => ({ ...envelope, ...input })),
+      setBackgroundMedia: vi.fn(),
+    };
+    const extensions = new EditorSession({
+      assetManager: new AssetManager(),
+      shell: shell as never,
+      source: {} as never,
+      envelope,
+      panelHosts: {
+        add: document.body,
+        assets: document.body,
+        document: document.body,
+        chart: document.body,
+        selection: document.body,
+        style: document.body,
+      },
+      onNew: vi.fn(),
+      onNewFromStarter: vi.fn(),
+      onSaved: vi.fn(),
+    });
+
+    const handler = (id: string): ((event?: KeyboardEvent) => void) => {
+      const call = registerMock.mock.calls.find(([key]) => key === id);
+      if (call === undefined) throw new Error(`${id} is not registered`);
+      return call[1] as (event?: KeyboardEvent) => void;
+    };
+    const press = new KeyboardEvent("keydown", { key: "ArrowRight" });
+
+    // Two presses, so the burst is open and nothing is recorded yet.
+    selection.active = object;
+    handler("canvas.nudge-right")(press);
+    handler("canvas.nudge-right")(press);
+    expect(suspended).toBe(1);
+    expect(saveState).not.toHaveBeenCalled();
+
+    // Undo inside the idle window: the burst must close first, or the entry it
+    // would step back to does not exist yet.
+    handler("edit.undo")();
+    expect(saveState).toHaveBeenCalledTimes(1);
+    expect(suspend).toHaveBeenCalledTimes(1);
+    expect(suspended).toBe(0);
+    expect(undo).toHaveBeenCalledTimes(1);
+
+    extensions.destroy();
+  });
+
+  it("leaves the document unchanged when a trio download fails", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi
+        .fn()
+        .mockResolvedValueOnce(new Response(new Uint8Array([1])))
+        .mockResolvedValueOnce(new Response("", { status: 404 })),
+    );
+    const shell = {
+      editor: {
+        canvas: {
+          on: vi.fn(),
+          off: vi.fn(),
+          getActiveObject: () => undefined,
+          getObjects: () => [],
+          requestRenderAll: vi.fn(),
+        },
+        clipboardManager: { setImageImporter: vi.fn(), setBindings: vi.fn() },
+        textManager: {
+          addText: vi.fn(),
+          setAuthoringView: vi.fn(),
+          setRepaint: vi.fn(),
+        },
+        cropManager: idleCrop(),
+        historyManager: { saveState: vi.fn() },
+      },
+      scene: {},
+      snapshot: vi.fn((input) => ({ ...envelope, ...input })),
+      setBackgroundMedia: vi.fn(),
+      setGlobals: vi.fn(),
+    };
+    const extensions = new EditorSession({
+      assetManager: new AssetManager(),
+      shell: shell as never,
+      source: {} as never,
+      envelope: {
+        ...envelope,
+        globals: {
+          typePresets: {
+            heading: {
+              name: "Heading",
+              value: { family: "Segoe UI", size: 32, trioRole: "heading" },
+            },
+          },
+        },
+      },
+      panelHosts: {
+        add: document.body,
+        assets: document.body,
+        document: document.body,
+        chart: document.body,
+        selection: document.body,
+        style: document.body,
+      },
+      onNew: vi.fn(),
+      onNewFromStarter: vi.fn(),
+      onSaved: vi.fn(),
+    });
+
+    await expect(extensions.applyFontTrio("minimal")).rejects.toThrow("404");
+    expect(extensions.envelope.globals?.typePresets).toEqual({
+      heading: {
+        name: "Heading",
+        value: { family: "Segoe UI", size: 32, trioRole: "heading" },
+      },
+    });
+    expect(shell.editor.historyManager.saveState).not.toHaveBeenCalled();
+    extensions.destroy();
+  });
+
+  it("re-hydrates declared image bytes after an undo rebuilds the scene", async () => {
+    // U4: an undo crossed an image and the image never came back, because the
+    // persisted `src` is an object URL `image-manager` already revoked. The
+    // author saw their asset deleted rather than their transform reverted.
+    const listeners = new Map<string, (() => void)[]>();
+    const editor = {
+      canvas: {
+        on: vi.fn((event: string, handler: () => void) => {
+          listeners.set(event, [...(listeners.get(event) ?? []), handler]);
+        }),
+        off: vi.fn(),
+        getActiveObject: () => undefined,
+        getObjects: () => [],
+        requestRenderAll: vi.fn(),
+      },
+      clipboardManager: { setImageImporter: vi.fn(), setBindings: vi.fn() },
+      textManager: {
+        addText: vi.fn(),
+        setAuthoringView: vi.fn(),
+        setRepaint: vi.fn(),
+      },
+      cropManager: idleCrop(),
+    };
+    const hydrate = vi.spyOn(AssetManager.prototype, "hydrate");
+    const extensions = new EditorSession({
+      assetManager: new AssetManager(),
+      shell: {
+        editor,
+        scene: {},
+        snapshot: vi.fn(() => envelope),
+        setBackgroundMedia: vi.fn(),
+      } as never,
+      source: {} as never,
+      envelope,
+      panelHosts: {
+        add: document.body,
+        assets: document.body,
+        document: document.body,
+        chart: document.body,
+        selection: document.body,
+        style: document.body,
+      },
+      onNew: vi.fn(),
+      onNewFromStarter: vi.fn(),
+      onSaved: vi.fn(),
+    });
+
+    // Several owners listen on this one event, so every handler runs — the
+    // mock is a single-handler map in some other test, and it hid this one.
+    expect(listeners.get("editor:history-state-loaded")).toBeDefined();
+    expect(hydrate).not.toHaveBeenCalled();
+
+    for (const handler of listeners.get("editor:history-state-loaded") ?? [])
+      handler();
+
+    await vi.waitFor(() => expect(hydrate).toHaveBeenCalledOnce());
+
+    extensions.destroy();
+    hydrate.mockRestore();
+  });
+});
+
+/** Opening a theme replaces the open document, whichever way it was asked
+ *  for. `?theme=<id>` reaches a document through exactly this call, so a
+ *  second guard beside this one would be a question asked twice about the same
+ *  work — and a URL route that skipped this one would drop it silently. */
+describe("opening a theme over a document that has unsaved changes", () => {
+  const shell = () => ({
+    editor: {
+      canvas: {
+        on: vi.fn(),
+        off: vi.fn(),
+        getActiveObject: () => undefined,
+        getObjects: () => [],
+        requestRenderAll: vi.fn(),
+      },
+      clipboardManager: { setImageImporter: vi.fn(), setBindings: vi.fn() },
+      textManager: {
+        addText: vi.fn(),
+        setAuthoringView: vi.fn(),
+        setRepaint: vi.fn(),
+      },
+      cropManager: idleCrop(),
+    },
+    scene: {},
+    snapshot: vi.fn(() => envelope),
+    setBackgroundMedia: vi.fn(),
+  });
+
+  const sessionWith = (overrides?: Record<string, unknown>): EditorSession =>
+    new EditorSession({
+      assetManager: new AssetManager(),
+      shell: shell() as never,
+      source: {} as never,
+      envelope,
+      panelHosts: {
+        add: document.body,
+        assets: document.body,
+        document: document.body,
+        chart: document.body,
+        selection: document.body,
+        style: document.body,
+      },
+      onNew: vi.fn(),
+      onNewFromStarter: vi.fn(),
+      onSaved: vi.fn(),
+      ...overrides,
+    });
+
+  beforeEach(() => {
+    dirtyMock.mockReset();
+    dirtyMock.mockReturnValue(false);
+    replaceMock.mockReset();
+    replaceMock.mockResolvedValue("discard");
+    libraryChoiceMock.mockClear();
+  });
+
+  it("asks before discarding, and opens nothing when the author says no", async () => {
+    dirtyMock.mockReturnValue(true);
+    replaceMock.mockResolvedValue("cancel");
+    const onOpenTheme = vi.fn();
+    const open = vi.fn();
+    const extensions = sessionWith({
+      onOpenTheme,
+      libraryClient: {
+        list: vi.fn(async () => []),
+        open,
+        save: vi.fn(async () => undefined),
+      },
+    });
+
+    await extensions.actionFacade().openLibrary();
+
+    expect(replaceMock).toHaveBeenCalledOnce();
+    // The question is only worth anything if answering it stops the open.
+    expect(open).not.toHaveBeenCalled();
+    expect(onOpenTheme).not.toHaveBeenCalled();
+    extensions.destroy();
+  });
+
+  it("opens the theme once the author has answered", async () => {
+    dirtyMock.mockReturnValue(true);
+    const onOpenTheme = vi.fn();
+    const extensions = sessionWith({
+      onOpenTheme,
+      libraryClient: {
+        list: vi.fn(async () => []),
+        open: vi.fn(async () => ({ envelope, assets: {} })),
+        save: vi.fn(async () => undefined),
+      },
+    });
+
+    await extensions.actionFacade().openLibrary();
+
+    expect(onOpenTheme).toHaveBeenCalledOnce();
+    extensions.destroy();
+  });
+
+  it("asks nothing of a document nobody has changed", async () => {
+    const onOpenTheme = vi.fn();
+    const extensions = sessionWith({
+      onOpenTheme,
+      libraryClient: {
+        list: vi.fn(async () => []),
+        open: vi.fn(async () => ({ envelope, assets: {} })),
+        save: vi.fn(async () => undefined),
+      },
+    });
+
+    await extensions.actionFacade().openLibrary();
+
+    expect(replaceMock).not.toHaveBeenCalled();
+    expect(onOpenTheme).toHaveBeenCalledOnce();
+    extensions.destroy();
+  });
+});
+
+/**
+ * A save the host refused because the stored theme moved on. The claim under
+ * test is that a refusal costs the author nothing and says so: the document
+ * stays, the refusal arrives in the same words as any failed save, and the two
+ * ways forward are offered rather than guessed.
+ */
+describe("a save the host refused", () => {
+  const shell = () => ({
+    editor: {
+      canvas: {
+        on: vi.fn(),
+        off: vi.fn(),
+        getActiveObject: () => undefined,
+        getObjects: () => [],
+        requestRenderAll: vi.fn(),
+      },
+      clipboardManager: { setImageImporter: vi.fn(), setBindings: vi.fn() },
+      textManager: {
+        addText: vi.fn(),
+        setAuthoringView: vi.fn(),
+        setRepaint: vi.fn(),
+      },
+      cropManager: idleCrop(),
+    },
+    scene: {},
+    snapshot: vi.fn(() => envelope),
+    setBackgroundMedia: vi.fn(),
+  });
+
+  const panelHosts = {
+    add: document.body,
+    assets: document.body,
+    document: document.body,
+    chart: document.body,
+    selection: document.body,
+    style: document.body,
+  };
+
+  const stored = { ...envelope, metadata: { name: "Edited elsewhere" } };
+
+  /** A client whose first save is refused, standing in for the stored theme
+   *  having been saved by another tab since this one opened it. */
+  function refusingClient(): {
+    readonly client: Record<string, ReturnType<typeof vi.fn>>;
+    readonly saves: ReturnType<typeof vi.fn>[];
+  } {
+    const saves = [
+      vi.fn(async (..._args: unknown[]): Promise<string> => {
+        throw new ThemeConflictError(
+          '"theme" was changed by someone else after this document was opened.',
+        );
+      }),
+      vi.fn(
+        async (..._args: unknown[]): Promise<string> => "base-after-overwrite",
+      ),
+    ];
+    return {
+      client: {
+        list: vi.fn(async () => []),
+        open: vi.fn(async () => ({
+          envelope: stored,
+          assets: {},
+          base: "base-as-stored",
+        })),
+        save: vi.fn(async (...args: unknown[]) => {
+          // The first save is the refused one; every save after it is the
+          // deliberate one and succeeds.
+          const call = saves[0]?.mock.calls.length ? saves[1] : saves[0];
+          return (call as (...a: unknown[]) => Promise<string>)(...args);
+        }),
+      },
+      saves,
+    };
+  }
+
+  beforeEach(() => {
+    conflictMock.mockReset();
+    conflictMock.mockResolvedValue(undefined);
+    markSavedMock.mockReset();
+  });
+
+  it("says the save did not happen, and keeps the document", async () => {
+    const onError = vi.fn();
+    const onSaved = vi.fn();
+    const { client } = refusingClient();
+    const extensions = new EditorSession({
+      assetManager: new AssetManager(),
+      shell: shell() as never,
+      source: {} as never,
+      envelope,
+      panelHosts,
+      libraryClient: client as never,
+      onNew: vi.fn(),
+      onNewFromStarter: vi.fn(),
+      onSaved,
+      onError,
+    });
+
+    await extensions.actionFacade().saveLibrary();
+
+    // The editor's own words for a save that did not happen. A silent refusal
+    // is as bad as a silent clobber: the work would look saved.
+    expect(onError).toHaveBeenCalledWith(
+      expect.stringContaining("Could not save to library:"),
+    );
+    expect(onError.mock.calls[0]?.[0]).toContain("changed by someone else");
+    // Not marked saved, and the author was asked rather than told.
+    expect(markSavedMock).not.toHaveBeenCalled();
+    expect(onSaved).not.toHaveBeenCalled();
+    expect(conflictMock).toHaveBeenCalledOnce();
+
+    // And the document is still the author's, so the next save is the same one
+    // rather than a save of nothing.
+    expect(shell().snapshot).toBeDefined();
+    extensions.destroy();
+  });
+
+  it("overwrites only because the author said to", async () => {
+    conflictMock.mockResolvedValueOnce("overwrite");
+    const onSaved = vi.fn();
+    const { client, saves } = refusingClient();
+    const extensions = new EditorSession({
+      assetManager: new AssetManager(),
+      shell: shell() as never,
+      source: {} as never,
+      envelope,
+      panelHosts,
+      libraryClient: client as never,
+      onNew: vi.fn(),
+      onNewFromStarter: vi.fn(),
+      onSaved,
+      onError: vi.fn(),
+    });
+
+    await extensions.actionFacade().saveLibrary();
+
+    expect(saves[1]).toHaveBeenCalledOnce();
+    expect(saves[1]?.mock.calls[0]?.[2]).toEqual({ overwrite: true });
+    expect(onSaved).toHaveBeenCalledWith("Saved to library");
+    // The base moves onto what the overwrite wrote, so the next save is made
+    // on the document that is actually stored.
+    await extensions.actionFacade().saveLibrary();
+    expect(saves[1]?.mock.calls[1]?.[1]).toMatchObject({
+      base: "base-after-overwrite",
+    });
+    extensions.destroy();
+  });
+
+  it("reloads onto the stored document, base and all", async () => {
+    conflictMock.mockResolvedValueOnce("reload");
+    const onOpenTheme = vi.fn();
+    const { client, saves } = refusingClient();
+    const extensions = new EditorSession({
+      assetManager: new AssetManager(),
+      shell: shell() as never,
+      source: {} as never,
+      envelope,
+      panelHosts,
+      libraryClient: client as never,
+      onNew: vi.fn(),
+      onNewFromStarter: vi.fn(),
+      onSaved: vi.fn(),
+      onError: vi.fn(),
+      onOpenTheme,
+    });
+
+    await extensions.actionFacade().saveLibrary();
+
+    expect(onOpenTheme).toHaveBeenCalledWith(stored, {}, "base-as-stored");
+    // Reloading is taking the stored version, not replacing it: nothing was
+    // written a second time.
+    expect(saves[1]).not.toHaveBeenCalled();
+
+    // The document is now the stored one, so this save is based on it.
+    const reloaded = new EditorSession({
+      assetManager: new AssetManager(),
+      shell: {
+        ...shell(),
+        snapshot: vi.fn(() => stored),
+      } as never,
+      source: {} as never,
+      envelope: stored,
+      panelHosts,
+      libraryClient: client as never,
+      onNew: vi.fn(),
+      onNewFromStarter: vi.fn(),
+      onSaved: vi.fn(),
+      onError: vi.fn(),
+    });
+    await reloaded.actionFacade().saveLibrary();
+    expect(saves[1]).toHaveBeenCalled();
+    extensions.destroy();
+  });
+
+  it("sends the base it opened, and takes the one each save answers", async () => {
+    const saves = [
+      vi.fn(async (..._args: unknown[]): Promise<string> => "base-after-first"),
+    ];
+    const client = {
+      list: vi.fn(async () => []),
+      open: vi.fn(async () => ({
+        envelope: stored,
+        assets: {},
+        base: "base-as-stored",
+      })),
+      save: vi.fn(async (...args: unknown[]) =>
+        (saves[0] as (...a: unknown[]) => Promise<string>)(...args),
+      ),
+    };
+    const extensions = new EditorSession({
+      assetManager: new AssetManager(),
+      shell: shell() as never,
+      source: {} as never,
+      envelope,
+      panelHosts,
+      libraryClient: client as never,
+      onNew: vi.fn(),
+      onNewFromStarter: vi.fn(),
+      onSaved: vi.fn(),
+      onError: vi.fn(),
+      onOpenTheme: vi.fn(),
+    });
+    const session = extensions.actionFacade();
+
+    // A document that came from nowhere claims no base, so its first save is
+    // a first save and is not refused.
+    await session.saveLibrary();
+    expect(saves[0]?.mock.calls[0]?.[1]).not.toHaveProperty("base");
+
+    await session.openLibrary();
+    await session.saveLibrary();
+    expect(saves[0]?.mock.calls[1]?.[1]).toMatchObject({
+      base: "base-as-stored",
+    });
+    await session.saveLibrary();
+    expect(saves[0]?.mock.calls[2]?.[1]).toMatchObject({
+      base: "base-after-first",
+    });
+    extensions.destroy();
+  });
+
+  it("hands the base to the session that replaces this one", async () => {
+    // Opening a theme builds a new session, so a base kept only on this one
+    // dies with it — and the session that inherits the document then saves
+    // with no idea what it is based on, which is an ungated write. A stale tab
+    // reached through `?theme=` was exactly that, until this was threaded.
+    const onOpenTheme = vi.fn();
+    const { client } = refusingClient();
+    const extensions = new EditorSession({
+      assetManager: new AssetManager(),
+      shell: shell() as never,
+      source: {} as never,
+      envelope,
+      panelHosts,
+      libraryClient: client as never,
+      onNew: vi.fn(),
+      onNewFromStarter: vi.fn(),
+      onSaved: vi.fn(),
+      onError: vi.fn(),
+      onOpenTheme,
+    });
+    const session = extensions.actionFacade();
+
+    await session.openLibrary();
+    expect(onOpenTheme).toHaveBeenCalledWith(stored, {}, "base-as-stored");
+
+    conflictMock.mockResolvedValueOnce("reload");
+    await session.saveLibrary();
+    expect(onOpenTheme).toHaveBeenLastCalledWith(stored, {}, "base-as-stored");
+    extensions.destroy();
+  });
+
+  it("does not gate the export, which is not a save against the store", async () => {
+    const { client, saves } = refusingClient();
+    const extensions = new EditorSession({
+      assetManager: new AssetManager(),
+      shell: shell() as never,
+      source: {} as never,
+      envelope,
+      panelHosts,
+      libraryClient: client as never,
+      onNew: vi.fn(),
+      onNewFromStarter: vi.fn(),
+      onSaved: vi.fn(),
+      onError: vi.fn(),
+    });
+
+    await extensions.actionFacade().savePackage();
+
+    // A `.vigilia-theme` an author shares is a file, not a write to the
+    // library: refusing it would break sharing a theme.
+    expect(client.save).not.toHaveBeenCalled();
+    expect(saves[0]).not.toHaveBeenCalled();
+    expect(saveMock).toHaveBeenCalled();
+    extensions.destroy();
+  });
+});
+
+/**
+ * What actually goes over the wire.
+ *
+ * The claim is not "the saved theme is right" — that was true before, and would
+ * stay true with this removed. It is that a save carries the bytes the host
+ * does not already have, so every assertion here is on the payload the client
+ * was handed rather than on what the host did with it.
+ */
+describe("a save that carries only what changed", () => {
+  const shell = () => ({
+    editor: {
+      canvas: {
+        on: vi.fn(),
+        off: vi.fn(),
+        getActiveObject: () => undefined,
+        getObjects: () => [],
+        requestRenderAll: vi.fn(),
+      },
+      clipboardManager: { setImageImporter: vi.fn(), setBindings: vi.fn() },
+      textManager: {
+        addText: vi.fn(),
+        setAuthoringView: vi.fn(),
+        setRepaint: vi.fn(),
+      },
+      cropManager: idleCrop(),
+      historyManager: { saveState: vi.fn() },
+    },
+    scene: {},
+    // The real snapshot hands back the document it was given, assets included,
+    // which is what makes the payload read here the one a real save sends.
+    snapshot: vi.fn((document: unknown) => document),
+    setBackgroundMedia: vi.fn(),
+    setGlobals: vi.fn(),
+  });
+
+  const panelHosts = {
+    add: document.body,
+    assets: document.body,
+    document: document.body,
+    chart: document.body,
+    selection: document.body,
+    style: document.body,
+  };
+
+  const backdrop = new TextEncoder().encode("backdrop-bytes");
+  const badge = new TextEncoder().encode("<svg/>");
+  // The digests the stored document declares. What the editor compares is one
+  // declared digest against another, so literals say what the test is about.
+  const storedBackdrop = {
+    id: "backdrop",
+    kind: "image" as const,
+    path: "assets/backdrop.png",
+    sha256: "a".repeat(64),
+  };
+  const storedBadge = {
+    id: "badge",
+    kind: "image" as const,
+    path: "assets/badge.svg",
+    sha256: "b".repeat(64),
+  };
+  const opened: FabricThemeEnvelope = {
+    ...envelope,
+    assets: [storedBackdrop, storedBadge],
+  };
+  const bytes = {
+    "assets/backdrop.png": backdrop,
+    "assets/badge.svg": badge,
+  };
+  // Loaded here, as the mount that produces a session does: the manager is
+  // the document's bytes and nobody builds it inside the session any more.
+  const loadedAssets = (): AssetManager => {
+    const manager = new AssetManager();
+    manager.load(opened, bytes);
+    return manager;
+  };
+
+  const sessionWith = (
+    save: ReturnType<typeof vi.fn>,
+    overrides?: Record<string, unknown>,
+  ): EditorSession =>
+    new EditorSession({
+      assetManager: loadedAssets(),
+      shell: shell() as never,
+      source: {} as never,
+      envelope: opened,
+      libraryBase: "base-as-stored",
+      panelHosts,
+      libraryClient: {
+        list: vi.fn(async () => []),
+        open: vi.fn(async () => ({
+          envelope: opened,
+          assets: bytes,
+          base: "base-as-stored",
+        })),
+        save,
+      } as never,
+      onNew: vi.fn(),
+      onNewFromStarter: vi.fn(),
+      onSaved: vi.fn(),
+      onError: vi.fn(),
+      ...overrides,
+    });
+
+  /** The paths one save put in its request, which is the whole claim. */
+  const pathsOf = (call: unknown): string[] =>
+    Object.keys(
+      (call as { readonly assets: Readonly<Record<string, Uint8Array>> })
+        .assets,
+    ).sort();
+
+  const everyPath = ["assets/backdrop.png", "assets/badge.svg"];
+
+  beforeEach(() => {
+    conflictMock.mockReset();
+    conflictMock.mockResolvedValue(undefined);
+  });
+
+  it("transmits no asset the stored document already holds, on any save", async () => {
+    const save = vi.fn(
+      async (
+        _id: string,
+        content: unknown,
+        _options?: unknown,
+      ): Promise<string> => {
+        void content;
+        return "base-after-save";
+      },
+    );
+    const extensions = sessionWith(save);
+
+    await extensions.actionFacade().saveLibrary();
+    await extensions.actionFacade().saveLibrary();
+
+    // The backdrop and the badge are both declared, both held, and neither goes
+    // over the wire — twice, because the base each save answers carries the
+    // claim forward rather than resetting it to "I know nothing".
+    expect(pathsOf(save.mock.calls[0]?.[1])).toEqual([]);
+    expect(pathsOf(save.mock.calls[1]?.[1])).toEqual([]);
+    expect(save.mock.calls[0]?.[1]).toMatchObject({
+      base: "base-as-stored",
+    });
+    expect(save.mock.calls[1]?.[1]).toMatchObject({ base: "base-after-save" });
+    // The document still declares both, so the request is a whole theme that
+    // happens to carry no bytes: what was left out is what the host holds, not
+    // what was dropped.
+    expect(
+      (save.mock.calls[0]?.[1] as { envelope: FabricThemeEnvelope }).envelope
+        .assets,
+    ).toHaveLength(2);
+    extensions.destroy();
+  });
+
+  it("transmits exactly the asset whose digest moved", async () => {
+    // A curated face the stored theme already declares, adopted again over the
+    // same id: the declaration is replaced and its digest recomputed, which is
+    // how an asset's bytes change without a new id appearing.
+    const face = fontTrio("minimal")?.faces[0];
+    if (face === undefined) throw new Error("no curated face");
+    const fontPath = `assets/${face.id}.woff2`;
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async () => new Response(new TextEncoder().encode("inter"))),
+    );
+    const save = vi.fn(
+      async (
+        _id: string,
+        content: unknown,
+        _options?: unknown,
+      ): Promise<string> => {
+        void content;
+        return "base-after-save";
+      },
+    );
+    const extensions = sessionWith(save, {
+      envelope: {
+        ...opened,
+        globals: {
+          typePresets: {
+            heading: { name: "Heading", value: { family: "Inter" } },
+          },
+        },
+        assets: [
+          storedBackdrop,
+          {
+            id: face.id,
+            kind: "font" as const,
+            path: fontPath,
+            family: face.family,
+            weight: face.weight,
+            style: face.style,
+            format: face.format,
+            sourceUrl: face.sourceUrl,
+            license: face.license,
+            sha256: "c".repeat(64),
+          },
+        ],
+      },
+    });
+
+    await extensions.applyPresetFace("heading", face);
+    await extensions.actionFacade().saveLibrary();
+
+    // The font, whose digest no longer matches the stored one — and not the
+    // backdrop, whose digest never moved.
+    expect(pathsOf(save.mock.calls[0]?.[1])).toEqual([fontPath]);
+    expect(save.mock.calls[0]?.[1]).toMatchObject({
+      base: "base-as-stored",
+    });
+    vi.unstubAllGlobals();
+    extensions.destroy();
+  });
+
+  it("transmits everything on a first save, which has nothing to leave out", async () => {
+    const save = vi.fn(
+      async (
+        _id: string,
+        content: unknown,
+        _options?: unknown,
+      ): Promise<string> => {
+        void content;
+        return "base-after-save";
+      },
+    );
+    const extensions = sessionWith(save, { libraryBase: undefined });
+
+    await extensions.actionFacade().saveLibrary();
+
+    // A document that came from nowhere claims no base, and that is what says
+    // it is a first save — so the host has no folder to take anything from.
+    expect(save.mock.calls[0]?.[1]).not.toHaveProperty("base");
+    expect(pathsOf(save.mock.calls[0]?.[1])).toEqual(everyPath);
+    extensions.destroy();
+  });
+
+  it("transmits everything for a deliberate overwrite, and nothing for the refusal before it", async () => {
+    // The other half of the guard: the road past it is the one road where what
+    // is on disk is not the document this save came from, so it cannot claim to
+    // have left anything out of it.
+    conflictMock.mockResolvedValueOnce("overwrite");
+    const save = vi.fn(
+      async (
+        _id: string,
+        _content: unknown,
+        options?: { readonly overwrite?: boolean },
+      ): Promise<string> => {
+        if (options?.overwrite !== true) {
+          throw new ThemeConflictError('"theme" was changed by someone else.');
+        }
+        return "base-after-overwrite";
+      },
+    );
+    const extensions = sessionWith(save);
+
+    await extensions.actionFacade().saveLibrary();
+
+    expect(save.mock.calls).toHaveLength(2);
+    // The refused save was made on the document it opened with, so it could be
+    // partial — and would have been refused for being stale, not for its size.
+    expect(save.mock.calls[0]?.[2]).toEqual({ overwrite: false });
+    expect(pathsOf(save.mock.calls[0]?.[1])).toEqual([]);
+    // The deliberate one is the whole theme.
+    expect(save.mock.calls[1]?.[2]).toEqual({ overwrite: true });
+    expect(pathsOf(save.mock.calls[1]?.[1])).toEqual(everyPath);
+    extensions.destroy();
+  });
+});
+
+function panel() {
+  return {
+    root: document.createElement("section"),
+    render: vi.fn(),
+    setAssets: vi.fn(),
+    setGlobals: vi.fn(),
+  };
+}

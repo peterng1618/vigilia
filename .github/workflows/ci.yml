@@ -4,6 +4,7 @@ on:
   push:
     branches: [main]
   pull_request:
+    branches: [main]
   workflow_dispatch:
 
 permissions:
@@ -32,6 +33,21 @@ jobs:
           cache-dependency-path: src/web/package-lock.json
 
       - run: npm ci
+
+      - name: Format check
+        run: npm run format:check
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Status handoff
+        run: npm run status:check
+
+      - name: Agent hook self-checks
+        # The hook script swallows every error so a hook can never block
+        # compaction, which also means a broken one is silent. This is the only
+        # thing that runs its self-check.
+        run: npm run hooks:check
 
       - name: Typecheck
         # The npm script, not a hand-written list. The list was enumerated here
@@ -73,17 +89,9 @@ jobs:
         run: npx playwright install --with-deps chromium
 
       - name: Display tests (browser)
-        run: npx playwright test --project=desktop-chromium
-
-      - name: Upload dashboard screenshots
-        # Evidence for review, not a pass/fail baseline — glyph rasterisation
-        # differs between this runner and a Windows development machine.
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: dashboard-screenshots
-          path: src/web/test-results/screenshots/
-          if-no-files-found: warn
+        # Every project, not just desktop-chromium: the host specs live in their
+        # own serial projects now, so naming one project would silently drop them.
+        run: npx playwright test
 
   licences:
     name: Licence notices present

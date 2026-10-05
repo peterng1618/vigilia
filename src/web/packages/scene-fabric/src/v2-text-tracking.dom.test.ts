@@ -1,0 +1,381 @@
+// @vitest-environment jsdom
+import {
+  type FabricGlobals,
+  type Globals,
+  emptySampleSource,
+  resolveTextSegments,
+} from "@vigilia/renderer-core";
+import {
+  FabricText,
+  type FabricObject,
+  Rect,
+  StaticCanvas,
+  Textbox,
+} from "fabric/es";
+import { describe, expect, it } from "vitest";
+import { applyObjectTypePresets } from "./object-type.js";
+import {
+  applyAuthoredText,
+  refreshBoundText,
+  VIGILIA_TEXT_PROPERTY,
+} from "./fabric-text.js";
+import { reviveScene, serialiseScene } from "./persist.js";
+import { textShapeFor } from "./text-runs.js";
+
+/**
+ * Tracked text through the v2 revival and refresh path.
+ *
+ * `refreshBoundText` and `applyAuthoredText` rewrite a text object's content
+ * from its authored runs, so they are where a runtime change can quietly undo
+ * what the preset applied. Objects are measured in real glyph metrics, so what
+ * is asserted is a box the text stays inside and an edge it stays against — the
+ * properties, not a pixel count a different font stack would change.
+ *
+ * Unwrapped objects are `FabricText`, whose `width` is the measured run. A
+ * `Textbox`'s width is its authored box, which would make a "the reading got
+ * wider" assertion vacuous — the failure mode this file exists to avoid.
+ */
+
+const NOW = new Date("2026-09-20T00:00:00.000Z");
+
+const BOX = { left: 40, top: 40, width: 200, height: 60 };
+
+function instant(key: string, iso: string) {
+  return {
+    latest: (semanticKey: string) =>
+      semanticKey === key
+        ? {
+            sensorId: key,
+            timestamp: NOW.toISOString(),
+            status: "ok" as const,
+            textValue: iso,
+          }
+        : undefined,
+    history: () => [],
+  };
+}
+
+function number(key: string, value: number, unit?: string) {
+  return {
+    latest: (semanticKey: string) =>
+      semanticKey === key
+        ? {
+            sensorId: key,
+            timestamp: NOW.toISOString(),
+            status: "ok" as const,
+            value,
+            ...(unit === undefined ? {} : { unit }),
+          }
+        : undefined,
+    history: () => [],
+  };
+}
+
+/**
+ * A tracked preset, in the shape the v2 path reads it. `FabricGlobals` is the
+ * narrower type the text functions take; `applyObjectTypePresets` accepts it.
+ */
+function globalsWith(
+  value: Readonly<Record<string, unknown>>,
+  id = "tracked",
+): FabricGlobals {
+  return {
+    typePresets: {
+      [id]: { name: id, value: { family: "Inter", size: 32, ...value } },
+    },
+  };
+}
+
+function canvasOf(objects: readonly FabricObject[]): StaticCanvas {
+  const canvas = new StaticCanvas(undefined, { width: 400, height: 300 });
+  canvas.add(...objects);
+  return canvas;
+}
+
+/**
+ * An unwrapped reading inside a fixed authored box. The clip carries the box,
+ * so `runtimeLayout` reconstructs what the author drew rather than the text's
+ * own measured edges.
+ */
+function reading(
+  id: string,
+  runs: readonly Readonly<Record<string, unknown>>[],
+  layout: Readonly<Record<string, unknown>> = {},
+  box: { left: number; top: number; width: number; height: number } = BOX,
+): FabricText {
+  const object = new FabricText("—", {
+    id,
+    left: box.left + box.width / 2,
+    top: box.top + box.height / 2,
+    fontSize: 32,
+  });
+  object.set(VIGILIA_TEXT_PROPERTY, { wrap: false, ...layout, runs });
+  object.clipPath = new Rect({
+    width: box.width,
+    height: box.height,
+    left: 0,
+    top: 0,
+    originX: "center",
+    originY: "center",
+  });
+  return object;
+}
+
+function textbox(
+  id: string,
+  runs: readonly Readonly<Record<string, unknown>>[],
+  layout: Readonly<Record<string, unknown>> = {},
+): Textbox {
+  const object = new Textbox("—", { id, width: BOX.width, fontSize: 32 });
+  object.set(VIGILIA_TEXT_PROPERTY, { runs, ...layout });
+  return object;
+}
+
+function clipWidthOf(object: { clipPath?: unknown }): number | undefined {
+  return (object.clipPath as { width: number } | undefined)?.width;
+}
+
+describe("the v2 path applies tracking", () => {
+  it("tracks a revived object from its persisted runs", async () => {
+    const source = textbox("metric", [
+      { kind: "literal", text: "CPU", typePreset: "typePresets.tracked" },
+    ]);
+    const canvas = canvasOf([source]);
+    applyObjectTypePresets(canvas, globalsWith({ letterSpacing: 0.8 }));
+
+    const scene = serialiseScene(canvas);
+    const revived = new StaticCanvas(undefined, { width: 400, height: 300 });
+    await reviveScene(revived, scene);
+
+    // The display never re-resolves the preset; the persisted object is the only
+    // place tracking can reach it, so the round trip is the whole claim.
+    expect((revived.getObjects()[0] as Textbox).charSpacing).toBeCloseTo(25, 6);
+  });
+
+  it("keeps tracking through a live content refresh", () => {
+    // `refreshBoundText` rewrites text and styles from the runs. If it reset the
+    // object's own type, tracking would vanish on the first sample.
+    const object = textbox("clock", [
+      { kind: "value", bindingId: "t", typePreset: "typePresets.tracked" },
+    ]);
+    const canvas = canvasOf([object]);
+    const globals = globalsWith({ letterSpacing: 0.8 });
+    applyObjectTypePresets(canvas, globals);
+
+    refreshBoundText(
+      canvas,
+      { clock: [{ id: "t", semanticKey: "time.now" }] },
+      instant("time.now", "2026-09-20T09:41:00.000Z"),
+      globals,
+      undefined,
+      "en",
+    );
+
+    expect(object.text).toBe("09:41");
+    expect(object.charSpacing).toBeCloseTo(25, 6);
+  });
+
+  it("keeps tracking when the editor repaints authored text", () => {
+    const object = textbox("wordmark", [
+      { kind: "literal", text: "VIGILIA", typePreset: "typePresets.tracked" },
+    ]);
+    const canvas = canvasOf([object]);
+    const globals = globalsWith({ letterSpacing: 0.8 });
+    applyObjectTypePresets(canvas, globals);
+
+    applyAuthoredText(canvas, globals, { bindings: {} });
+
+    expect(object.text).toBe("VIGILIA");
+    expect(object.charSpacing).toBeCloseTo(25, 6);
+  });
+});
+
+describe("fixed boxes survive a changing reading", () => {
+  it("holds a centre-aligned label on its box as the reading widens", () => {
+    // The hard case the brief names: a capacity label whose text grows a digit
+    // when a value crosses a boundary. Centred means its centre must not move.
+    const object = reading(
+      "capacity",
+      [
+        { kind: "literal", text: "MEM ", typePreset: "typePresets.tracked" },
+        { kind: "value", bindingId: "m", typePreset: "typePresets.tracked" },
+      ],
+      { align: "center", overflow: "ellipsis" },
+    );
+    const canvas = canvasOf([object]);
+    const globals = globalsWith({ letterSpacing: 0.8 });
+    applyObjectTypePresets(canvas, globals);
+    const bindings = { capacity: [{ id: "m", semanticKey: "ram.used" }] };
+
+    const after = (used: number): { centre: number; width: number } => {
+      refreshBoundText(
+        canvas,
+        bindings,
+        number("ram.used", used, "GB"),
+        globals,
+      );
+      return { centre: object.left, width: object.width * object.scaleX };
+    };
+
+    const one = after(9);
+    const two = after(10);
+
+    // Each assertion is load-bearing: without tracking in effect, and without
+    // the reading genuinely widening, every claim below would hold for free.
+    expect(object.charSpacing).toBeCloseTo(25, 6);
+    expect(two.width).toBeGreaterThan(one.width);
+    expect(two.centre).toBeCloseTo(one.centre, 6);
+    expect(two.centre).toBeCloseTo(BOX.left + BOX.width / 2, 6);
+    expect(clipWidthOf(object)).toBe(BOX.width);
+  });
+
+  it("keeps a right-aligned reading against its authored right edge", () => {
+    const object = reading(
+      "reading",
+      [{ kind: "value", bindingId: "m", typePreset: "typePresets.tracked" }],
+      { align: "right", overflow: "ellipsis" },
+    );
+    const canvas = canvasOf([object]);
+    const globals = globalsWith({ letterSpacing: 0.8 });
+    applyObjectTypePresets(canvas, globals);
+    const bindings = { reading: [{ id: "m", semanticKey: "ram.used" }] };
+
+    const rightAfter = (used: number): { right: number; width: number } => {
+      refreshBoundText(
+        canvas,
+        bindings,
+        number("ram.used", used, "GB"),
+        globals,
+      );
+      const width = object.width * object.scaleX;
+      return { right: object.left + width / 2, width };
+    };
+
+    const one = rightAfter(9);
+    const two = rightAfter(10);
+
+    // The reading really did get wider; a right-aligned label then has to move
+    // its own left edge to keep the right one on the box.
+    expect(object.charSpacing).toBeCloseTo(25, 6);
+    expect(two.width).toBeGreaterThan(one.width);
+    expect(two.right).toBeCloseTo(one.right, 6);
+    expect(two.right).toBeCloseTo(BOX.left + BOX.width, 6);
+  });
+
+  it("ellipsises a tracked reading that outgrows its box instead of spilling", () => {
+    const object = reading(
+      "reading",
+      [{ kind: "value", bindingId: "m", typePreset: "typePresets.tracked" }],
+      { align: "right", overflow: "ellipsis" },
+      { ...BOX, width: 90 },
+    );
+    const canvas = canvasOf([object]);
+    const globals = globalsWith({ letterSpacing: 0.8 });
+    applyObjectTypePresets(canvas, globals);
+
+    refreshBoundText(
+      canvas,
+      { reading: [{ id: "m", semanticKey: "ram.used" }] },
+      number("ram.used", 123456, "GB"),
+      globals,
+    );
+
+    expect(object.charSpacing).toBeCloseTo(25, 6);
+    expect(object.text).toContain("…");
+    expect(object.width * object.scaleX).toBeLessThanOrEqual(90);
+    expect(clipWidthOf(object)).toBe(90);
+  });
+
+  it("keeps a date in its box when the locale changes the month name", () => {
+    // Locale-dependent length is the other variable-width case: the string the
+    // author previewed in English is not the string the display paints.
+    const object = reading(
+      "date",
+      [{ kind: "value", bindingId: "d", typePreset: "typePresets.tracked" }],
+      { align: "center", overflow: "ellipsis" },
+    );
+    const canvas = canvasOf([object]);
+    const globals = globalsWith({ letterSpacing: 0.8 });
+    applyObjectTypePresets(canvas, globals);
+    const bindings = {
+      date: [{ id: "d", semanticKey: "date.today", format: "DD MMMM" }],
+    };
+    const stamp = "2026-09-20T00:00:00.000Z";
+    const inLocale = (locale: string): string => {
+      refreshBoundText(
+        canvas,
+        bindings,
+        instant("date.today", stamp),
+        globals,
+        undefined,
+        locale,
+      );
+      return object.text;
+    };
+
+    const english = inLocale("en");
+    const englishWidth = object.width * object.scaleX;
+    const french = inLocale("fr");
+
+    expect(object.charSpacing).toBeCloseTo(25, 6);
+    expect(french).not.toBe(english);
+    // A width that did not move would mean the second refresh never ran.
+    expect(object.width * object.scaleX).not.toBe(englishWidth);
+    expect(object.width * object.scaleX).toBeLessThanOrEqual(BOX.width);
+    expect(object.left).toBeCloseTo(BOX.left + BOX.width / 2, 6);
+    expect(clipWidthOf(object)).toBe(BOX.width);
+  });
+});
+
+describe("the mixed-run limit", () => {
+  it("shows one run's tracking, and can still tell the runs apart", () => {
+    // Two halves of one claim, because they are one behaviour. Fabric's
+    // `charSpacing` is a whole-object property in 1/1000 em and per-character
+    // spacing is not something it measures, so a second run's value cannot
+    // reach the screen — the object keeps the first run's. But the *difference*
+    // has to stay detectable, or an author who tracks a second run has no way
+    // to learn their choice did nothing: the run editor's disclosure reads
+    // exactly these two values to decide whether to warn.
+    const globals: Globals = {
+      typePresets: {
+        tracked: {
+          name: "Tracked",
+          value: { family: "Inter", size: 32, letterSpacing: 0.8 },
+        },
+        other: {
+          name: "Other",
+          value: { family: "Inter", size: 32, letterSpacing: 4 },
+        },
+      },
+    };
+    const runs = [
+      { kind: "literal", text: "CPU ", typePreset: "typePresets.tracked" },
+      { kind: "literal", text: "42%", typePreset: "typePresets.other" },
+    ] as const;
+
+    // Detectable: both values resolve, and the difference is reported.
+    const segments = resolveTextSegments(
+      "mixed",
+      runs,
+      [],
+      { source: emptySampleSource },
+      globals,
+      [],
+    );
+    expect(segments[0]?.style["letterSpacing"]).toBe(0.8);
+    expect(segments[1]?.style["letterSpacing"]).toBe(4);
+    expect(
+      textShapeFor(segments, {}, (value) => [...value]).unsupported,
+    ).toContain("letterSpacing");
+
+    // And only one reaches Fabric: the first run's. The `other` preset is
+    // deliberately absent from the globals the object is applied with, so this
+    // is exactly the case where the object cannot honour the second run.
+    const object = textbox("mixed", [...runs]);
+    applyObjectTypePresets(
+      canvasOf([object]),
+      globalsWith({ letterSpacing: 0.8 }),
+    );
+    expect(object.charSpacing).toBeCloseTo(25, 6);
+  });
+});

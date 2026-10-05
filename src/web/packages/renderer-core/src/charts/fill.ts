@@ -1,4 +1,4 @@
-import type { Fill, GradientStop } from '../types.js';
+import type { Fill, GradientStop } from "../types.js";
 
 /**
  * Shared chart fill resolution. Threshold offsets are upper bounds, so
@@ -6,15 +6,18 @@ import type { Fill, GradientStop } from '../types.js';
  */
 
 /** Direction colour travels through a cartesian gradient. */
-export type GradientDirection = 'to-right' | 'to-bottom' | 'to-top';
+export type GradientDirection = "to-right" | "to-bottom" | "to-top";
 
 export interface LinearGradientColor {
-  readonly type: 'linear';
+  readonly type: "linear";
   readonly x: number;
   readonly y: number;
   readonly x2: number;
   readonly y2: number;
-  readonly colorStops: readonly { readonly offset: number; readonly color: string }[];
+  readonly colorStops: readonly {
+    readonly offset: number;
+    readonly color: string;
+  }[];
 }
 
 export type EngineColor = string | LinearGradientColor;
@@ -25,7 +28,7 @@ export function toLinearGradient(
   direction: GradientDirection,
 ): EngineColor {
   if (stops.length === 0) {
-    return 'transparent';
+    return "transparent";
   }
 
   if (stops.length === 1) {
@@ -35,7 +38,7 @@ export function toLinearGradient(
   const axis = gradientAxis(direction);
 
   return {
-    type: 'linear',
+    type: "linear",
     ...axis,
     colorStops: [...stops]
       .sort((a, b) => a.offset - b.offset)
@@ -50,11 +53,11 @@ function gradientAxis(direction: GradientDirection): {
   y2: number;
 } {
   switch (direction) {
-    case 'to-right':
+    case "to-right":
       return { x: 0, y: 0, x2: 1, y2: 0 };
-    case 'to-bottom':
+    case "to-bottom":
       return { x: 0, y: 0, x2: 0, y2: 1 };
-    case 'to-top':
+    case "to-top":
       return { x: 0, y: 1, x2: 0, y2: 0 };
   }
 }
@@ -65,7 +68,7 @@ export function resolveThresholdColor(
   position: number,
 ): string {
   if (bands.length === 0) {
-    return 'transparent';
+    return "transparent";
   }
 
   const sorted = [...bands].sort((a, b) => a.offset - b.offset);
@@ -83,19 +86,22 @@ export function resolveThresholdColor(
 /** Resolve a fill to one flat colour at `position`. */
 export function resolveFlatColor(fill: Fill, position: number): string {
   switch (fill.kind) {
-    case 'solid':
+    case "solid":
       return fill.color;
-    case 'thresholds':
+    case "thresholds":
       return resolveThresholdColor(fill.bands, position);
-    case 'gradient':
+    case "gradient":
       return colorAt(fill.stops, position);
   }
 }
 
 /** Interpolate a gradient at `position`, clamping outside the stop range. */
-export function colorAt(stops: readonly GradientStop[], position: number): string {
+export function colorAt(
+  stops: readonly GradientStop[],
+  position: number,
+): string {
   if (stops.length === 0) {
-    return 'transparent';
+    return "transparent";
   }
 
   const sorted = [...stops]
@@ -144,7 +150,7 @@ export function mixHex(from: string, to: string, t: number): string {
 
 /** Parse `#rgb` or `#rrggbb`; reject CSS names and other formats. */
 export function parseHex(color: string): [number, number, number] | undefined {
-  const hex = color.trim().replace(/^#/, '');
+  const hex = color.trim().replace(/^#/, "");
 
   if (!/^(?:[0-9a-f]{3}|[0-9a-f]{6})$/i.test(hex)) {
     return undefined;
@@ -169,11 +175,15 @@ export function parseHex(color: string): [number, number, number] | undefined {
 }
 
 function toHexByte(value: number): string {
-  return Math.max(0, Math.min(255, value)).toString(16).padStart(2, '0');
+  return Math.max(0, Math.min(255, value)).toString(16).padStart(2, "0");
 }
 
 /** Normalise a raw value to 0–1; a zero-width range maps to 0. */
-export function normalizePosition(value: number, min: number, max: number): number {
+export function normalizePosition(
+  value: number,
+  min: number,
+  max: number,
+): number {
   const span = max - min;
   if (span === 0) {
     return 0;

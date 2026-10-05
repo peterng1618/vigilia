@@ -1,6 +1,6 @@
 /** Uniform mapping from logical artboard coordinates to a viewport. */
 
-export type FitMode = 'contain' | 'cover';
+export type ContentFit = "contain" | "cover";
 
 export interface ArtboardSize {
   readonly width: number;
@@ -29,7 +29,7 @@ export interface ArtboardTransform {
   readonly scale: number;
   readonly offsetX: number;
   readonly offsetY: number;
-  readonly fitMode: FitMode;
+  readonly contentFit: ContentFit;
   readonly bars: ArtboardBars;
   readonly crop: ArtboardCrop;
   /** Legitimate zero-area viewport state, e.g. hidden or mid-rotation. */
@@ -39,7 +39,7 @@ export interface ArtboardTransform {
 export interface ComputeArtboardTransformInput {
   readonly artboard: ArtboardSize;
   readonly viewport: ViewportSize;
-  readonly fitMode?: FitMode;
+  readonly contentFit?: ContentFit;
 }
 
 /** Computes the centred contain/cover transform. Invalid artboard geometry throws. */
@@ -47,12 +47,12 @@ export function computeArtboardTransform(
   input: ComputeArtboardTransformInput,
 ): ArtboardTransform {
   const { artboard, viewport } = input;
-  const fitMode = input.fitMode ?? 'contain';
+  const contentFit = input.contentFit ?? "contain";
 
-  assertFinite(artboard.width, 'artboard.width');
-  assertFinite(artboard.height, 'artboard.height');
-  assertFinite(viewport.width, 'viewport.width');
-  assertFinite(viewport.height, 'viewport.height');
+  assertFinite(artboard.width, "artboard.width");
+  assertFinite(artboard.height, "artboard.height");
+  assertFinite(viewport.width, "viewport.width");
+  assertFinite(viewport.height, "viewport.height");
 
   if (artboard.width <= 0 || artboard.height <= 0) {
     throw new RangeError(
@@ -69,7 +69,7 @@ export function computeArtboardTransform(
       scale: 0,
       offsetX: 0,
       offsetY: 0,
-      fitMode,
+      contentFit,
       bars: { x: 0, y: 0 },
       crop: { x: 0, y: 0 },
       isDegenerate: true,
@@ -78,7 +78,10 @@ export function computeArtboardTransform(
 
   const ratioX = viewportWidth / artboard.width;
   const ratioY = viewportHeight / artboard.height;
-  const scale = fitMode === 'contain' ? Math.min(ratioX, ratioY) : Math.max(ratioX, ratioY);
+  const scale =
+    contentFit === "contain"
+      ? Math.min(ratioX, ratioY)
+      : Math.max(ratioX, ratioY);
 
   const scaledWidth = artboard.width * scale;
   const scaledHeight = artboard.height * scale;
@@ -87,12 +90,12 @@ export function computeArtboardTransform(
   const offsetX = (viewportWidth - scaledWidth) / 2;
   const offsetY = (viewportHeight - scaledHeight) / 2;
 
-  if (fitMode === 'contain') {
+  if (contentFit === "contain") {
     return {
       scale,
       offsetX,
       offsetY,
-      fitMode,
+      contentFit,
       bars: { x: Math.max(0, offsetX), y: Math.max(0, offsetY) },
       crop: { x: 0, y: 0 },
       isDegenerate: false,
@@ -103,7 +106,7 @@ export function computeArtboardTransform(
     scale,
     offsetX,
     offsetY,
-    fitMode,
+    contentFit,
     bars: { x: 0, y: 0 },
     crop: {
       x: Math.max(0, -offsetX / scale),
@@ -118,7 +121,10 @@ export interface Point {
   readonly y: number;
 }
 
-export function documentToViewport(transform: ArtboardTransform, point: Point): Point {
+export function documentToViewport(
+  transform: ArtboardTransform,
+  point: Point,
+): Point {
   return {
     x: point.x * transform.scale + transform.offsetX,
     y: point.y * transform.scale + transform.offsetY,
@@ -126,7 +132,10 @@ export function documentToViewport(transform: ArtboardTransform, point: Point): 
 }
 
 /** Exact inverse for finite transforms; degenerate transforms map to the origin. */
-export function viewportToDocument(transform: ArtboardTransform, point: Point): Point {
+export function viewportToDocument(
+  transform: ArtboardTransform,
+  point: Point,
+): Point {
   if (transform.scale === 0) {
     return { x: 0, y: 0 };
   }
@@ -143,7 +152,9 @@ export function toCssTransform(transform: ArtboardTransform): string {
 }
 
 export function isFullyVisible(transform: ArtboardTransform): boolean {
-  return !transform.isDegenerate && transform.crop.x === 0 && transform.crop.y === 0;
+  return (
+    !transform.isDegenerate && transform.crop.x === 0 && transform.crop.y === 0
+  );
 }
 
 function assertFinite(value: number, name: string): void {

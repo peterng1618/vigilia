@@ -1,0 +1,108 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="color-scheme" content="light dark" />
+    <title>Vigilia — choose a theme</title>
+    <!-- The host's own pages are separate documents from the two bundles, so
+         they need their own copy of the mark: without a link the browser
+         probes `/favicon.ico` and logs a 404 on every load. The same file the
+         editor and the player keep, taken rather than authored. -->
+    <link rel="icon" type="image/svg+xml" href="/settings/favicon.svg" />
+    <!-- The settings page's own assets, absolute because this page is served
+         at `/`. Sharing them is the point: the rows below are drawn by the
+         module that draws the settings page's, so both show a picture. The
+         icon is absolute for the same reason and the same hazard: `/` and
+         `/settings` are different directories, so a relative href would
+         resolve against whichever this document was served from. -->
+    <link rel="stylesheet" href="/settings/vigilia-page.css" />
+    <style>
+      /* One decision, so one column of choices and no navigation. */
+      main {
+        max-width: 30em;
+      }
+      .theme-shot {
+        width: 128px;
+      }
+      #status {
+        margin-top: 16px;
+        color: var(--muted);
+        font-family: ui-monospace, monospace;
+        font-size: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <h1>Choose a theme</h1>
+      <p class="lead">
+        This PC has several saved themes. Pick the one your displays should
+        show, or start from the template the product ships.
+      </p>
+      <div id="themes"></div>
+      <p class="elsewhere">
+        Building a theme, or changing one?
+        <a id="editor-link" href="/editor/">Open the editor</a>.
+      </p>
+      <div id="status"></div>
+    </main>
+    <script type="module">
+      import { deleteTheme, themeList } from "/settings/theme-list.js";
+
+      const themesHost = document.querySelector("#themes");
+      const status = document.querySelector("#status");
+
+      async function load() {
+        const response = await fetch("/api/themes/active");
+        if (!response.ok) {
+          themesHost.append(
+            "The saved themes could not be read. Reload to try again.",
+          );
+          return;
+        }
+        const body = await response.json();
+        render(body.themes ?? [], body.templates ?? [], body.active ?? null);
+      }
+
+      function render(themes, templates, active) {
+        // A consumer who picked a theme and then goes to change it means that
+        // one, so the editor link carries whichever this page is showing. The
+        // active theme is in the same response the rows came from.
+        const editorLink = document.querySelector("#editor-link");
+        if (editorLink !== null) {
+          editorLink.href =
+            active === null || active === undefined
+              ? "/editor/"
+              : `/editor/?theme=${encodeURIComponent(active)}`;
+        }
+        themesHost.replaceChildren(
+          themeList(themes, {
+            templates,
+            onChoose: async (id) => {
+              status.textContent = "Saving…";
+              const saved = await fetch("/api/themes/active", {
+                method: "PUT",
+                headers: { "content-type": "application/json" },
+                body: JSON.stringify({ id }),
+              });
+              if (!saved.ok) {
+                status.textContent = `Could not save: ${await saved.text()}`;
+                return;
+              }
+              // The host now resolves `/` to this theme, so the reload lands
+              // on the dashboard the consumer just chose.
+              location.reload();
+            },
+            // This is the surface that lists the library, so it is where an
+            // author looks to clear an experiment away. The host moves the
+            // folder to the recycle bin, and says so before they confirm.
+            onDelete: deleteTheme,
+          }),
+        );
+      }
+
+      await load();
+    </script>
+  </body>
+</html>

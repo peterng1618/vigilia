@@ -7,49 +7,58 @@
  * the first step back towards the mirrored pair ADR-0007 removed.
  */
 
-export type { ArgsResult, HostOptions } from './cli/args.js';
+export type { ArgsResult, HostOptions } from "./cli/args.js";
 
 export {
   DEFAULT_HOST,
   DEFAULT_PORT,
   HELP_TEXT,
-  MAX_PORT_ATTEMPTS,
   isLoopbackHost,
+  MAX_PORT_ATTEMPTS,
   parseArgs,
-} from './cli/args.js';
+} from "./cli/args.js";
 
-export { lanAddress, listenWithFallback, openBrowser, waitUntilReachable } from './cli/net.js';
+export {
+  lanAddress,
+  listenWithFallback,
+  openBrowser,
+  waitUntilReachable,
+} from "./cli/net.js";
+export { run } from "./main.js";
 
+export {
+  DEFAULT_LHM_URL,
+  LHM_DESCRIPTORS,
+  LHM_PROVIDER_ID,
+  LhmSensorProvider,
+} from "./providers/lhm.js";
+export { type LhmMatch, matchLhmSensors } from "./providers/lhm-mapping.js";
+export {
+  flattenLhmSensors,
+  type LhmSensor,
+} from "./providers/lhm-tree.js";
+export {
+  LIBRARY_DESCRIPTORS,
+  LIBRARY_PROVIDER_ID,
+  type LibraryReadings,
+  LibrarySensorProvider,
+  readingsFromLibrary,
+  samplesFromLibrary,
+} from "./providers/library.js";
 export type {
   ProviderHealth,
   SensorDescriptor,
   SensorProvider,
   SensorTier,
-} from './providers/provider.js';
-
-export type { CpuTimes, OsReadings } from './providers/os.js';
-
-export {
-  OS_DESCRIPTORS,
-  OS_PROVIDER_ID,
-  OsSensorProvider,
-  cpuLoadBetween,
-  readingsFromCpus,
-  samplesFromReadings,
-} from './providers/os.js';
-
-export type { DescribedSensor, ProviderFailure, SampleCycle } from './providers/registry.js';
-
-export { ProviderRegistry, unionOfKeys } from './providers/registry.js';
-
-export { KeepLatestSlot } from './transport/keep-latest.js';
-
-export { SseConnection } from './transport/sse.js';
-
-export { contentTypeFor, resolveStaticPath } from './serve/static-path.js';
-
-export type { BundleRoots, HostServer, HostServerOptions } from './server.js';
-
-export { DEFAULT_SAMPLE_INTERVAL_MS, createHostServer } from './server.js';
-
-export { run } from './main.js';
+} from "./providers/provider.js";
+export type {
+  DescribedSensor,
+  ProviderFailure,
+  SampleCycle,
+} from "./providers/registry.js";
+export { ProviderRegistry, unionOfKeys } from "./providers/registry.js";
+export { contentTypeFor, resolveStaticPath } from "./serve/static-path.js";
+export type { BundleRoots, HostServer, HostServerOptions } from "./server.js";
+export { createHostServer, DEFAULT_SAMPLE_INTERVAL_MS } from "./server.js";
+export { KeepLatestSlot } from "./transport/keep-latest.js";
+export { SseConnection } from "./transport/sse.js";
