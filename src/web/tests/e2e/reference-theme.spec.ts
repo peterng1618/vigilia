@@ -1544,12 +1544,35 @@ test.describe("the reference composition, captured", () => {
       const occupied = context
         .getImageData(left, top, width, height)
         .data.some((_, index) => index % 4 === 3 && _ > 0);
-      return { blurred, control, width, height, occupied };
+      return {
+        blurred,
+        control,
+        width,
+        height,
+        occupied,
+        sceneWidth: rect.width,
+        sceneHeight: rect.height,
+        scale: vp[0] * retina,
+      };
     });
 
     // Non-vacuous: the band really is a text run and not an empty box.
-    expect(reading.width).toBeGreaterThan(100);
-    expect(reading.height).toBeGreaterThan(20);
+    //
+    // **In scene units, not device rows.** `width` and `height` are the band as
+    // the canvas is currently scaled, so a floor written in them is a floor on
+    // the camera: 20 rows was a 40px run at Fit's 0.78 and the same run is 14
+    // rows at the display lens's 0.48, which is a stale constant reading as a
+    // product failure. Whether the band is a text run is a fact about the
+    // document, so it is asserted there; and the device band is then held to
+    // the transform, which is what makes the pixel read mean this run.
+    expect(reading.sceneWidth).toBeGreaterThan(100);
+    expect(reading.sceneHeight).toBeGreaterThan(20);
+    expect(
+      Math.abs(reading.width - reading.sceneWidth * reading.scale),
+    ).toBeLessThanOrEqual(1);
+    expect(
+      Math.abs(reading.height - reading.sceneHeight * reading.scale),
+    ).toBeLessThanOrEqual(1);
     expect(reading.occupied).toBe(true);
     // A one-pixel transition scores near 1 whatever the contrast; a transition
     // spread over a 16px blur scores near 1/16.

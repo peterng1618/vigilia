@@ -79,6 +79,93 @@ async function selectAuthoringPanel(page: Page): Promise<void> {
   await page.getByRole("tab", { name: "Design", exact: true }).click();
 }
 
+/** Screen distance a click must keep from a selected object's handles.
+ *
+ * Fabric draws the top-middle and rotation handles around the selected
+ * object, and the rotation handle sits directly above the top-middle, so a
+ * panel stacked above a selected one has its centre under them. */
+const HANDLE_CLEARANCE_PX = 24;
+
+/**
+ * A point on `id` that a shift-click will reach, rather than one of the
+ * currently selected object's handles.
+ *
+ * **The neighbour's centre is not a safe click point, and whether it is safe
+ * depends on the camera.** A selected object owns the area around its bounds,
+ * so a click there grabs a handle instead of extending the selection:
+ * Fabric reports the mouse down and up and no selection change at all, and a
+ * test waiting for the two-object selection waits out its whole budget. The
+ * handles are a *screen*-space size while the gap between two panels is a
+ * *scene*-space distance, so lowering the camera walks the neighbour's centre
+ * into them — measured on this fixture, the centre is clear at zoom 0.98 and
+ * covered at the display lens's 0.60, which is why the lens turned a passing
+ * test into a 30s timeout.
+ *
+ * So the offset is a screen distance, taken in the space the handles are sized
+ * in, and clamped to the object's own half-width so a camera zoomed far enough
+ * out to make the object narrower than the clearance still lands on it.
+ */
+async function clearOfHandles(
+  page: Page,
+  id: string,
+): Promise<{
+  x: number;
+  y: number;
+}> {
+  const centre = await clientOfScene(page, id, GLASS_ARTBOARD.width);
+  const halfWidth = await page.evaluate(
+    ([objectId]) => {
+      const find = (
+        objects: ReadonlyArray<{
+          get(name: string): unknown;
+          getObjects?: () => ReadonlyArray<{
+            get(name: string): unknown;
+            getBoundingRect(): { width: number };
+          }>;
+        }>,
+      ): { getBoundingRect(): { width: number } } | undefined => {
+        for (const candidate of objects) {
+          if (candidate.get("id") === objectId) return candidate;
+          const found = find(candidate.getObjects?.() ?? []);
+          if (found !== undefined) return found;
+        }
+        return undefined;
+      };
+      const bridge = (
+        window as unknown as {
+          vigiliaEditorBridge: {
+            editor: {
+              canvas: {
+                getObjects(): Array<{
+                  get(name: string): unknown;
+                  getObjects?: () => Array<{
+                    get(name: string): unknown;
+                    getBoundingRect(): { width: number };
+                  }>;
+                }>;
+                getZoom?(): number;
+                viewportTransform: number[];
+              };
+            };
+          };
+        }
+      ).vigiliaEditorBridge;
+      const object = find(bridge.editor.canvas.getObjects());
+      if (object === undefined)
+        throw new Error(`no object with id ${objectId}`);
+      const zoom =
+        bridge.editor.canvas.getZoom?.() ??
+        bridge.editor.canvas.viewportTransform[0];
+      return (object.getBoundingRect().width * zoom) / 2 - 2;
+    },
+    [id] as [string],
+  );
+  return {
+    x: centre.x + Math.min(HANDLE_CLEARANCE_PX, halfWidth),
+    y: centre.y,
+  };
+}
+
 /** Replaces a numeric field's value from the keyboard alone. */
 async function typeInto(
   page: Page,
@@ -354,7 +441,7 @@ test.describe("authoring frosted glass through the inspector", () => {
     );
 
     // Group it with the ordinary panel beside it, through the dock's own action.
-    const neighbour = await clientOfScene(page, "plain", GLASS_ARTBOARD.width);
+    const neighbour = await clearOfHandles(page, "plain");
     await page.keyboard.down("Shift");
     await page.mouse.click(neighbour.x, neighbour.y);
     await page.keyboard.up("Shift");

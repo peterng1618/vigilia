@@ -1,6 +1,7 @@
 import { expect, type Page, test } from "@playwright/test";
 import { writeThemePackage } from "@vigilia/theme-package";
 import {
+  clearSceneX,
   clientOfScene,
   objectHandleScenePoint,
   objectRect as sceneObjectRect,
@@ -280,12 +281,50 @@ const GUIDE_ROWS_ABSENT = 20;
  * the snap threshold (5 screen px), so a dropped snap cannot pass, and above
  * the half pixel a client-coordinate rounding leaves behind. */
 const SNAPPED_TOLERANCE = 1;
-/** Landing tolerance for a gesture whose own numbers are being compared to
- * each other — the raw landing is derived through two client-pixel roundings,
- * so it drifts by a device pixel or two from the scene value asked for. Still
- * far below the snap threshold, so it cannot absorb a snap that should have
- * happened. */
-const RAW_TOLERANCE = 3.5;
+
+/** `SNAP_THRESHOLD`, restated because it is a *screen* distance and every
+ * scene-space comparison in this file has to divide it by the zoom. Read from
+ * `snap-manager/constants.ts` rather than invented; a test that restates it is
+ * the thing that broke when the default camera changed. */
+const SNAP_THRESHOLD_SCREEN_PX = 5;
+/** Client-pixel drift a raw landing may carry: the pointer position Chromium
+ * delivers, and the inverse conversion Fabric applies to it. */
+const RAW_CLIENT_PX = 2;
+
+/** The camera's zoom right now. Every scene distance below is measured against
+ * it, because the two constants above are screen distances and the scene is
+ * not: at zoom 0.78 the 5px threshold spans 6.4 scene units and at the
+ * display lens's 0.48 it spans 10.4. */
+async function liveZoom(page: Page): Promise<number> {
+  return page.evaluate(() => {
+    const editor = (
+      window as unknown as {
+        vigiliaEditorBridge: {
+          editor: {
+            canvas: {
+              getZoom?(): number;
+              viewportTransform: number[];
+            };
+          };
+        };
+      }
+    ).vigiliaEditorBridge.editor;
+    return editor.canvas.getZoom?.() ?? editor.canvas.viewportTransform[0];
+  });
+}
+
+/** How far a gesture may land from the raw intent, in scene units at the
+ * present zoom. A literal here is only true at one zoom — 3.5 was the answer
+ * at Fit's 0.78, and the display lens's 0.48 wants 4.2. */
+async function rawTolerance(page: Page): Promise<number> {
+  return RAW_CLIENT_PX / (await liveZoom(page));
+}
+
+/** The acquire threshold in scene units: how far from a line a gesture has to
+ * be for snapping not to reach it. */
+async function snapAcquire(page: Page): Promise<number> {
+  return SNAP_THRESHOLD_SCREEN_PX / (await liveZoom(page));
+}
 
 async function sceneTravel(
   page: Page,
@@ -511,14 +550,38 @@ for (const kind of ["shape", "text", "group"] as const) {
       test(`${gesture} hold re-plans every pointer step`, async ({ page }) => {
         await openFixture(page, kind, "steps");
         const line = (await objectRect(page, "first-source")).left;
-        // The second leg lands inside the snap threshold, the first well
-        // outside it. Both are in SCENE units, and the threshold is 5 *screen*
-        // pixels — about 6.4 scene units at this zoom — so 3 is inside it with
-        // room to spare while 140 is nowhere near.
-        const result = await steps(page, line - 140, line - 3);
+        const width = (await objectRect(page, "mover")).width;
+        const acquire = await snapAcquire(page);
+
+        // **The first leg has to be clear of every candidate, and how much room
+        // that takes is a function of the camera.** The threshold is 5 *screen*
+        // pixels, so it spans 6.4 scene units at Fit's zoom and 10.4 at the
+        // display lens's. The old first leg aimed 140 short of the line and
+        // called that "nowhere near", but it put the mover's trailing edge
+        // within 9 units of the artboard's centre line — clear at one zoom and
+        // inside the threshold at the other, so the leg snapped and the raw
+        // landing this test is about never happened. Every x in this window
+        // keeps all three of the mover's edges at least `acquire` from every
+        // candidate, and `clearSceneX` picks the roomiest of them.
+        const clear = await clearSceneX(
+          page,
+          "mover",
+          width + acquire,
+          ARTBOARD_WIDTH / 2 - width - acquire,
+          ARTBOARD_WIDTH,
+        );
+        expect(
+          clear.distance,
+          "the first leg is clear of every snap line at this zoom",
+        ).toBeGreaterThan(acquire);
+
+        // The second leg lands inside the threshold, so it must snap. Half the
+        // threshold, rather than the 3 this used to name: 3 is inside the
+        // threshold only while the threshold is wider than 6 scene units.
+        const result = await steps(page, clear.x, line - acquire / 2);
         await expectActiveTarget(page);
-        expect(Math.abs(result.first - (line - 140))).toBeLessThan(
-          RAW_TOLERANCE,
+        expect(Math.abs(result.first - clear.x)).toBeLessThan(
+          await rawTolerance(page),
         );
         expect(Math.abs(result.second - line)).toBeLessThan(SNAPPED_TOLERANCE);
         expect(result.rows).toBeGreaterThan(GUIDE_ROWS_PRESENT);
@@ -559,7 +622,9 @@ for (const kind of ["shape", "text", "group"] as const) {
         await openFixture(page, kind);
         const result = await perform(page, gesture === "moving" ? 300 : 260);
         await expectActiveTarget(page);
-        expect(Math.abs(edge(result) - result.raw)).toBeLessThan(RAW_TOLERANCE);
+        expect(Math.abs(edge(result) - result.raw)).toBeLessThan(
+          await rawTolerance(page),
+        );
         expect(result.guideRows).toBeLessThan(GUIDE_ROWS_ABSENT);
       });
 
@@ -570,7 +635,9 @@ for (const kind of ["shape", "text", "group"] as const) {
         const line = (await objectRect(page, "source")).left;
         const result = await perform(page, line - 2, { ctrl: true });
         await expectActiveTarget(page);
-        expect(Math.abs(edge(result) - result.raw)).toBeLessThan(RAW_TOLERANCE);
+        expect(Math.abs(edge(result) - result.raw)).toBeLessThan(
+          await rawTolerance(page),
+        );
         expect(Math.abs(edge(result) - line)).toBeGreaterThan(
           SNAPPED_TOLERANCE,
         );
@@ -708,7 +775,7 @@ test.describe("a part inside a card", () => {
     expect(
       Math.abs(landed - result.raw),
       "the gesture moved the edge rather than being refused",
-    ).toBeLessThan(RAW_TOLERANCE);
+    ).toBeLessThan(await rawTolerance(page));
   });
 
   test("the same gesture snaps between two loose shapes", async ({ page }) => {
