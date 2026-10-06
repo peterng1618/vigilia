@@ -2,9 +2,7 @@ import { expect, type Page, test } from "@playwright/test";
 import {
   captureVisualReview,
   chooseAssetFile,
-  expandLayer,
-  objectRect,
-  sceneToClient,
+  enterLayer,
 } from "./editor-canvas.js";
 import { openPane } from "./editor-pane-bar.js";
 import {
@@ -30,10 +28,6 @@ import { isDesktopSurface } from "./surface.js";
  */
 
 const EDITOR = "http://127.0.0.1:4174/";
-
-/** The starter scene's artboard width. Scene coordinates are artboard units,
- * and a stale width puts every derived client point somewhere unintended. */
-const STARTER_WIDTH = 1672;
 
 /** The remainder slice's own ink: the blank document's `palette.chartTrack`,
  * which is what a new pie's `remainderFill` resolves through. */
@@ -277,23 +271,17 @@ async function openPackage(
 }
 
 /**
- * Selects the starter's gauge, by entering the RAM card the way an author does.
+ * Selects the starter's gauge through the layer tree, the way an author does.
  *
- * A layer row reaches a part *through its owning group*, so the tree cannot
- * select a chart; the canvas double-click is what enters the card. The point is
- * above the gauge's centred reading — a click on the reading selects the label
- * text, which has no chart fields.
+ * A layer row reaches a part *through its owning group*: `bridge.selectLayer`
+ * takes `owner ?? target`, so with the RAM card merely open a click on
+ * `ram-gauge`'s row hands back the card. Entering is what makes the gauge a row
+ * a click selects — the canvas double-click this used to borrow entered the
+ * same card, by a gesture the row has since grown a control for.
  */
 async function selectStarterGauge(page: Page): Promise<void> {
-  await expandLayer(page, "group-ram-card");
-  const rect = await objectRect(page, "ram-gauge");
-  const point = await sceneToClient(
-    page,
-    STARTER_WIDTH,
-    rect.left + rect.width / 2,
-    rect.top + rect.height * 0.06,
-  );
-  await page.mouse.dblclick(point.x, point.y);
+  await enterLayer(page, "group-ram-card");
+  await page.locator('[data-vigilia-layer="ram-gauge"]').click();
   await expect
     .poll(() =>
       page.evaluate(

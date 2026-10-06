@@ -14,6 +14,7 @@ import {
   chooseAssetFile,
   clearSceneX,
   clientOfScene,
+  enterLayer,
   expandLayer,
   objectHandleScenePoint,
   objectRect,
@@ -1098,14 +1099,18 @@ test.describe("Fabric editor route", () => {
     // The card is a rectangle carrying the treatment, a two-run reading and a
     // line chart — so it is selected and inspected like anything else an
     // author would click, and the control reads back what the document says.
-    // Clicked left of the reading rather than at the card's centre: the centre
-    // is where the value run is, and a text object is selectable in its own
-    // right, exactly as every other label on a starter card is.
-    const spot = await sceneToClient(page, STARTER_WIDTH, 438, 420);
-    // The card is a group, so a click on it selects the card; the frosted panel
-    // the treatment lives on is a part of it. The card's middle is over its own
-    // panel, so entering lands there.
-    await page.mouse.dblclick(spot.x, spot.y);
+    // **The frosted panel is a part of the card's group**, and a part is
+    // selectable only while that group is entered: a click on the card alone
+    // selects the card, which carries none of the treatment below. Entering is
+    // what makes the panel a row a click can pick.
+    await enterLayer(page, "group-cpu-card");
+    // The tree's two answers, one gesture apart and both asserted: the entered
+    // card's *own* row still selects the card, and the panel's row selects the
+    // part. A tree that answered the part for both would put the card beyond
+    // reach the moment the author went into it.
+    await page.locator('[data-vigilia-layer="group-cpu-card"]').click();
+    await expect.poll(() => activeId(page)).toBe("group-cpu-card");
+    await page.locator('[data-vigilia-layer="cpu-card"]').click();
     await expect.poll(() => activeId(page)).toBe("cpu-card");
     await openInspectorTab(page, "Design");
     const enabled = page.locator("[data-vigilia-glass-enabled]");
@@ -1459,7 +1464,7 @@ test.describe("Fabric editor route", () => {
     // shape the author can click. Entering the card is also the gesture the spec
     // defines for reaching a part, and it opens the card in the layer tree on
     // the way — so the icon is selected the way an author selects it.
-    await enterStarterCard(page, "group-cpu-card");
+    await enterLayer(page, "group-cpu-card");
     await page.locator('[data-vigilia-layer="cpu-card-icon"]').click();
     await expect.poll(() => activeId(page)).toBe("cpu-card-icon");
     await openInspectorTab(page, "Design");
@@ -1533,7 +1538,7 @@ test.describe("Fabric editor route", () => {
     // of the time card, and a part is reached by **entering** its group: with
     // the card merely opened in the tree, a row click still selects the card,
     // which has no run controls.
-    await enterStarterCard(page, "group-time-card");
+    await enterLayer(page, "group-time-card");
     await page.locator('[data-vigilia-layer="time"]').click();
     const source = page.locator('[data-vigilia-run-source="0"]');
     await expect(source).toBeVisible();
@@ -1978,8 +1983,17 @@ test.describe("Fabric editor route", () => {
   }, testInfo) => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
+    // **The canvas route, deliberately, and the reason this does not call
+    // `selectStarterChart`.** That helper reaches the gauge from the layer
+    // tree, which is the route the tree grew; this test's *subject* is the
+    // other one, where the double-click's first press selects the card and the
+    // second enters it, and the manager re-resolves the part under the pointer.
+    // Both routes must reach the same chart, and only a test that makes the
+    // gesture itself can say so.
     await page.goto(EDITOR);
-    await selectStarterChart(page);
+    const centre = await clientOfStarterGauge(page);
+    await page.mouse.dblclick(centre.x, centre.y);
+    await expect.poll(() => activeId(page)).toBe("ram-gauge");
     await expect(
       page.locator('[data-vigilia-chart-setting="thickness"]'),
     ).toBeVisible();
@@ -4617,22 +4631,23 @@ async function clientOfStarterGauge(
 }
 
 /**
- * Selects the RAM card's gauge, by entering the card.
+ * Selects the RAM card's gauge, by entering the card and picking its row.
  *
  * **Two gestures, because the spec says they are two** (§3): a click *selects*
  * and gives the card's settings; entering gives the parts. The RAM gauge is a
- * part, so it is reached by entering — the first click of the double-click
- * selects the card and the manager then re-resolves the child under the pointer,
- * which is the gauge.
+ * part, so it is reached by entering — `bridge.selectLayer` takes
+ * `owner ?? target`, so with the card merely open a click on the gauge's row
+ * hands back the card.
  *
  * The single click this used to be asserted `ram-gauge` and now gets
  * `group-ram-card`, which is the correct answer to a different question: the
  * card *is* what a click on it selects. This helper's subject is the chart, so
- * it takes the gesture that reaches a chart.
+ * it takes the route that reaches a chart — a canvas double-click until the
+ * row grew a control for entering, and the row's own since.
  */
 async function selectStarterChart(page: Page): Promise<void> {
-  const centre = await clientOfStarterGauge(page);
-  await page.mouse.dblclick(centre.x, centre.y);
+  await enterLayer(page, "group-ram-card");
+  await page.locator('[data-vigilia-layer="ram-gauge"]').click();
   // The precondition this helper never had: the tab lookup below turns a wrong
   // selection into a confusing timeout, so name the failure here instead.
   await expect
@@ -4658,26 +4673,6 @@ async function selectStarterChart(page: Page): Promise<void> {
   await expect(
     page.locator('[data-vigilia-chart-setting="thickness"]'),
   ).toBeVisible();
-}
-
-/**
- * Enters a starter card by double-clicking its middle.
- *
- * The centre rather than an edge because the card's own parts are what the
- * manager re-resolves to, and the middle of a card is over one of them — an
- * edge click lands on the frosted panel. Enters *some* part, which is what the
- * gesture means; the caller names the part it then wants from the tree.
- */
-async function enterStarterCard(page: Page, groupId: string): Promise<void> {
-  const card = await objectRect(page, groupId);
-  const centre = await sceneToClient(
-    page,
-    STARTER_WIDTH,
-    card.left + card.width / 2,
-    card.top + card.height / 2,
-  );
-  await page.mouse.dblclick(centre.x, centre.y);
-  await expect.poll(() => activeId(page)).not.toBe(groupId);
 }
 
 /**

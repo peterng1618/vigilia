@@ -164,9 +164,10 @@ export async function objectHandleScenePoint(
  * out its whole budget on a locator that never matches, and reports a broken
  * click rather than a shut tree.
  *
- * `button[aria-expanded]` rather than a label prefix: a row carries three
- * buttons — the twisty, Hide and Lock — so `button[aria-label]` is a
- * strict-mode violation, and only the twisty declares expansion at all.
+ * `button[aria-expanded]` rather than a label prefix: a group row carries four
+ * buttons — the twisty, Hide, Lock and the entry control — so
+ * `button[aria-label]` is a strict-mode violation, and only the twisty declares
+ * expansion at all.
  */
 export async function expandLayer(page: Page, groupId: string): Promise<void> {
   const twisty = page.locator(
@@ -175,6 +176,40 @@ export async function expandLayer(page: Page, groupId: string): Promise<void> {
   if ((await twisty.getAttribute("aria-expanded")) === "true") return;
   await twisty.click();
   await expect(twisty).toHaveAttribute("aria-expanded", "true");
+}
+
+/**
+ * Enters a group from its own row, the way an author does.
+ *
+ * **Entering and expanding are two acts**, and this is the entry one: the
+ * twisty opens a group's rows, while entering makes its parts *selectable*.
+ * `bridge.selectLayer` takes `owner ?? target`, so with the group merely open a
+ * click on a part's row hands back the group. Hover is required rather than
+ * decorative — the control is drawn on an attended row only, so it is not in
+ * the DOM until the pointer is on the row, and entering expands the group on
+ * the way.
+ *
+ * **Waits on the bridge's `groupContext()` naming the id**, not on the button
+ * and not on the row's own attribute: the click repaints the row before the
+ * panel has re-projected the tree around the new context, so a helper that
+ * resolved on the DOM would leave the next action in the same spec racing the
+ * re-projection. Returns immediately when the group is already entered, also
+ * read from the bridge rather than from the row's label.
+ */
+export async function enterLayer(page: Page, groupId: string): Promise<void> {
+  const entered = (): Promise<readonly string[]> =>
+    page.evaluate(() =>
+      (
+        window as unknown as {
+          vigiliaEditorBridge: { groupContext(): readonly string[] };
+        }
+      ).vigiliaEditorBridge.groupContext(),
+    );
+  if ((await entered()).includes(groupId)) return;
+  const row = page.locator(`[data-vigilia-layer="${groupId}"]`);
+  await row.hover();
+  await row.locator("[data-vigilia-layer-entry]").click();
+  await expect.poll(entered).toContain(groupId);
 }
 
 /**
