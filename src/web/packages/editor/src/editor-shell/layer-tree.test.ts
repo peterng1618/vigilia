@@ -896,10 +896,18 @@ describe("the row's role, in the document's own terms", () => {
     const bare = card("bare-card");
     const idOnly = card("id-only-card", { widgetId: "odd" });
     const notAString = card("odd-card", { widgetId: "odd", widgetName: 7 });
+    // A stamp that names the unit with nothing says nothing, exactly as an
+    // absent one does — and a `??` at the render site cannot tell them apart,
+    // so the projection is where the blank stops being a unit name.
+    const blank = card("blank-card", { widgetId: "blank", widgetName: "" });
+    const spaces = card("spaces-card", {
+      widgetId: "spaces",
+      widgetName: "   ",
+    });
 
     const rows = projectLayers({
       ...base,
-      root: [stamped, bare, idOnly, notAString],
+      root: [stamped, bare, idOnly, notAString, blank, spaces],
     });
     const at = (id: string): LayerRole | undefined =>
       rows.find((row) => row.id === id)?.role;
@@ -909,6 +917,8 @@ describe("the row's role, in the document's own terms", () => {
     expect(at("bare-card")).toEqual({ kind: "group", unit: undefined });
     expect(at("id-only-card")).toEqual({ kind: "group", unit: undefined });
     expect(at("odd-card")).toEqual({ kind: "group", unit: undefined });
+    expect(at("blank-card")).toEqual({ kind: "group", unit: undefined });
+    expect(at("spaces-card")).toEqual({ kind: "group", unit: undefined });
   });
 
   it("gives every kind the projection can return a role arm of its own", () => {

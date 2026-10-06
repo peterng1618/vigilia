@@ -284,6 +284,10 @@ function chartRole(object: FabricObject, own: readonly Binding[]): LayerRole {
  * starter's own builders do not, so on the starter every card row is the bare
  * arm. Reading a neighbouring card's stamp, or a stage or a default, would be
  * the role claiming something the document does not.
+ *
+ * A stamp that names the unit with a blank says nothing, the same as an absent
+ * one, and is reported the same way — the guard `nameOf` already applies to an
+ * id. Left as a string, it reaches the row as a role span with no text at all.
  */
 function groupRole(object: FabricObject): LayerRole {
   const stamp: unknown = object.get("provenance");
@@ -291,7 +295,9 @@ function groupRole(object: FabricObject): LayerRole {
     typeof stamp === "object" && stamp !== null
       ? (stamp as { readonly widgetName?: unknown }).widgetName
       : undefined;
-  return { kind: "group", unit: typeof unit === "string" ? unit : undefined };
+  const named =
+    typeof unit === "string" && unit.trim() !== "" ? unit : undefined;
+  return { kind: "group", unit: named };
 }
 
 function roleOf(
