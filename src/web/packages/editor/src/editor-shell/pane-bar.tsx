@@ -28,6 +28,9 @@ export function PaneBar({
   collapsed,
   onChoose,
   onInsert,
+  addRef,
+  addExpanded = false,
+  addDisabled = false,
 }: {
   readonly pane: RailPane;
   readonly collapsed: boolean;
@@ -35,6 +38,15 @@ export function PaneBar({
    *  that: the bar cannot tell a swap from a close. */
   readonly onChoose: (pane: RailPane) => void;
   readonly onInsert: () => void;
+  /** The `+` itself, for the shell to anchor the chooser to. The button stays
+   *  the bar's; only what a press opens belongs to the popover. */
+  readonly addRef?: React.Ref<HTMLButtonElement>;
+  /** Whether that chooser is showing. The `+` carries no pane state, so this is
+   *  the only pressed-or-not mark it has. */
+  readonly addExpanded?: boolean;
+  /** Refused rather than opening rows that could dispatch nothing: before a
+   *  document is open there is no façade for an item to reach. */
+  readonly addDisabled?: boolean;
 }): React.JSX.Element {
   return (
     <nav
@@ -58,11 +70,17 @@ export function PaneBar({
       ))}
       {/* Icon-only, so its name is `aria-label` and never the content: a `+`
           stored as a translatable string is announced as a word of its own and
-          cannot inherit a shell colour the way the icon beside it does. */}
+          cannot inherit a shell colour the way the icon beside it does. It
+          still says it opens a menu, because a mark that quietly produces a
+          list of twenty-one rows is one a screen reader user cannot anticipate. */}
       <button
+        ref={addRef}
         type="button"
         className="editor-shell-pane-bar-add"
         aria-label={uiCopy.rail.insertObject}
+        aria-haspopup="menu"
+        aria-expanded={addExpanded}
+        disabled={addDisabled}
         onClick={onInsert}
       >
         <Plus aria-hidden size={16} strokeWidth={1.75} />

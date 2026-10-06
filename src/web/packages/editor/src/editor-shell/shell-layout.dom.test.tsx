@@ -3,7 +3,11 @@ import { Canvas } from "fabric/es";
 import { act } from "react";
 import { afterEach, expect, it, vi } from "vitest";
 import { createErrorManager } from "../error-manager/index.js";
-import { createNewObjectPanel } from "../new-object-panel.js";
+import {
+  createNewObjectPanel,
+  type InsertGroup,
+  insertGroups,
+} from "../new-object-panel.js";
 import { arrangeActions } from "../object-actions.js";
 import { uiCopy } from "../ui-copy.js";
 import type { ViewportManager } from "../viewport-manager/index.js";
@@ -861,6 +865,75 @@ it("inserts the same objects from the Insert menu as the Add pane offers", async
   // quietly dropped it would offer six shapes, four charts and no card.
   insertMenuEntry(uiCopy.panels.cards, uiCopy.cardLibrary.cpu)?.click();
   expect(session.insertCard).toHaveBeenCalledWith("group-cpu-card");
+
+  layout.destroy();
+});
+
+/** `insertGroups()` in the shape the two readers above return: the entries that
+    stand alone first, then each labelled group. Same shape because the one
+    assertion below is what keeps the popover from growing a list of its own. */
+function groupsOf(
+  groups: readonly InsertGroup[],
+): readonly (readonly [string | null, readonly string[]])[] {
+  return [
+    [
+      null,
+      groups
+        .filter((group) => group.label === undefined)
+        .flatMap((group) => group.objects.map((object) => object.label)),
+    ],
+    ...groups
+      .filter((group) => group.label !== undefined)
+      .map(
+        (group): readonly [string | null, readonly string[]] => [
+          group.label ?? null,
+          group.objects.map((object) => object.label),
+        ],
+      ),
+  ];
+}
+
+it("opens the insert chooser from the plus, offering the pane's own list", async () => {
+  const root = document.createElement("div");
+  const layout = createShellLayout(root);
+  const session = facade();
+  layout.setBridge(bridgeStub({ session }), undefined);
+  await Promise.resolve();
+
+  const plus = root.querySelector<HTMLButtonElement>(".editor-shell-pane-bar-add");
+  expect(plus?.getAttribute("aria-label")).toBe(uiCopy.rail.insertObject);
+  expect(plus?.disabled).toBe(false);
+
+  plus?.click();
+  await Promise.resolve();
+
+  // Both halves, read from the popover's own DOM and compared to the owner.
+  expect(insertMenuGroups()).toEqual(groupsOf(insertGroups()));
+
+  // The card arm, which no stub façade can fail for us.
+  insertMenuEntry(uiCopy.panels.cards, uiCopy.cardLibrary.cpu)?.click();
+  expect(session.insertCard).toHaveBeenCalledWith("group-cpu-card");
+  // …and a primitive from the same menu, so "both" is one assertion, not two runs.
+  insertMenuEntry(uiCopy.panels.shapes, uiCopy.shapeKinds.rect)?.click();
+  expect(session.addShape).toHaveBeenCalledWith("rect");
+
+  layout.destroy();
+});
+
+it("refuses the chooser rather than offering rows that could insert nothing", async () => {
+  const root = document.createElement("div");
+  const layout = createShellLayout(root);
+  await Promise.resolve();
+
+  // No document yet, so no façade for an item to reach. A `+` that opened
+  // twenty-one rows that each dispatched into `undefined` is the failure a
+  // reader cannot diagnose: the gesture lands and nothing happens.
+  const plus = root.querySelector<HTMLButtonElement>(".editor-shell-pane-bar-add");
+  expect(plus?.disabled).toBe(true);
+
+  plus?.click();
+  await Promise.resolve();
+  expect(document.querySelector(".editor-shell-menu-popup[data-open]")).toBeNull();
 
   layout.destroy();
 });

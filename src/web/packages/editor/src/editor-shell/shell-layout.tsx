@@ -11,6 +11,7 @@ import type { ActiveKind, EditorShellBridge, EditorShellSnapshot } from "./bridg
 import { CanvasContextMenu } from "./canvas-context-menu.js";
 import { CanvasDock } from "./canvas-dock.js";
 import { DiagnosticMessage } from "./diagnostic-message.js";
+import { InsertPopover } from "./insert-popover.js";
 import { LayerPanel } from "./layer-panel.js";
 import { PaneBar, type RailPane } from "./pane-bar.js";
 import { PaletteMenu } from "./palette-menu.js";
@@ -422,18 +423,19 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
   const store = new SelectionStore();
   const getView = (): EditorViewControls | undefined => view;
 
-  /** The `+` opens the insert popover, which arrives with Task 3; until then
-   *  the bar renders the affordance and this is what it calls.
-   *
-   *  ponytail: inert for one task. Task 3 replaces this with the popover's
-   *  open handler and deletes the `Insert` pane's separate list from the menu
-   *  bar in the same change. */
-  const openInsertPopover = (): void => undefined;
-
   function Shell(): React.JSX.Element {
     const [palette, setPalette] = useState(initial);
     const [pane, setPane] = useState<RailPane>("layers");
     const [collapsed, setCollapsed] = useState(false);
+    /** The `+` opens the insert chooser, and the shell owns whether it is
+     *  showing: the button belongs to the pane bar, so the bar hands the press
+     *  up and the popover anchors back to the element that press landed on.
+     *
+     *  Before a document is open there is no session for a row to dispatch to,
+     *  and a menu of twenty-one rows that silently do nothing is the one failure
+     *  an author cannot diagnose — so the `+` is refused instead. */
+    const [insertOpen, setInsertOpen] = useState(false);
+    const addRef = useRef<HTMLButtonElement | null>(null);
     const kind = useSelection(store).activeKind;
     /** Re-frame on the panel toggle, once the viewport has the new width.
      *
@@ -529,7 +531,16 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
             pane={pane}
             collapsed={collapsed}
             onChoose={choosePane}
-            onInsert={openInsertPopover}
+            onInsert={() => setInsertOpen(true)}
+            addRef={addRef}
+            addExpanded={insertOpen}
+            addDisabled={store.bridge === undefined}
+          />
+          <InsertPopover
+            session={store.bridge?.session}
+            open={insertOpen}
+            onOpenChange={setInsertOpen}
+            anchor={addRef}
           />
           <aside
             className="editor-shell-panel editor-glass"
