@@ -901,7 +901,9 @@ screenshot of the composition panel under the style tab's name.
 - Consumes: `openPane` (`editor-pane-bar.ts:24`), `expandLayer` and `enterLayer`
   (`editor-canvas.ts:171`, Task 6), `selectLayer` and `readScene` (`rebuild-driver.ts:179`,
   `:39`), and the `LayerPanel`'s own markers — `data-vigilia-layer`, `data-vigilia-layer-mark`,
-  `data-vigilia-layer-role`, `data-vigilia-layer-bound`.
+  `data-vigilia-layer-role`, and `.vigilia-layer-bound` (**a class, not a data attribute** —
+  `layer-panel.tsx:689`; the `data-` spelling here was a slip, and the three other places this
+  plan names it, `:34`, `:237` and `:513`, already have it right).
 - Produces: the browser contract for the whole panel, and the capture rows in the evidence
   table pointing at this spec.
 
