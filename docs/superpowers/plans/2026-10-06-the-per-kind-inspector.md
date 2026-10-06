@@ -190,13 +190,17 @@ reference.
   decidable, so the strong half of the rule stays a review judgement and the test catches
   only the copy-paste case. An earlier draft of this plan called it "the assertion that makes
   restating a failure rather than a taste"; that was false and the independent review said so.
-- Unit: **at least one descriptor is marked `advanced`, per family that has one** — the
-  spec's "obscure ones at the end, in a collapsed section" had zero members at `b5046f2`,
-  which makes the rule untested and the treatment unreachable. The four families' obscure
-  settings are: gauge `gradientSegments`; line `sampling` and `maxPoints`; bar
-  `trackCornerRadius` and `categoryGapPercent`; pie `padAngle`, `cornerRadius` and the
-  `startAngle`/`endAngle` pair. **The list is a judgement, not a measurement** — an author who
-  disagrees moves a field, and nothing but the list changes.
+- Unit: **at least one descriptor is marked `advanced`, per family that has one — and it is
+  not an animation field.** The spec's "obscure ones at the end, in a collapsed section" had
+  zero members at `b5046f2`, which makes the rule untested and the treatment unreachable. As
+  first written this assertion was **vacuous**: Task 3 marked `animation.appearMs` and
+  `appearEasing`, so "at least one" already held at `378e0f64` and the test would have passed
+  before a single mark was added. The shipped form excludes the animation block, and is red
+  before the marks. The four families' obscure settings are: gauge `gradientSegments`; line
+  `sampling` and `maxPoints`; bar `trackCornerRadius` and `categoryGapPercent`; pie
+  `padAngle`, `cornerRadius` and the `startAngle`/`endAngle` pair. **The list is a judgement,
+  not a measurement** — an author who disagrees moves a field, and nothing but the list
+  changes.
 - Unit: the descriptor order within each family is unchanged from before this task, pinned
   against the order as it is today rather than against a list re-derived from the new code.
 - Unit: a section not in `SETTINGS_SECTIONS` fails to typecheck (this is a compile-time
@@ -279,7 +283,9 @@ partial `AnimationSettings` written because only one of its four fields was mate
 - Modify: `src/web/packages/renderer-core/src/charts/settings-fields.test.ts`
 - Modify: `src/web/packages/renderer-core/src/theme/validate.ts`
 - Modify: `src/web/packages/renderer-core/src/index.ts` (drop the removed export)
-- Test: `src/web/packages/renderer-core/src/theme/validate.test.ts`
+- Test: `src/web/packages/renderer-core/src/theme/validate.test.ts` (checked, **not edited** —
+  `validateSettingsRange`'s control cases pass unmodified, because the `never` default is a
+  compile-time claim and `CHART_FAMILIES` cannot produce a fifth value at runtime)
 
 **Interfaces:**
 - Produces: one coverage record per family, typed
@@ -686,6 +692,13 @@ decided above, each with the reason it was decided that way:
    question, already has one non-test consumer, and `ownership.md` gives it the row. A
    parallel editor-side table would be a second owner; a generic nested-descriptor tree
    would outlive the two settings that need nesting. Argument and searches: ADR-0028.
+   **One file, re-ruled at 675 lines.** Task 4 measured `settings-fields.ts` at 677 before it
+   and 675 after — past the repo's 500-line signal, well under its 800-line stop. The brief
+   named ~650 as the point to revisit the one-file decision, so it is revisited here and
+   **kept**: the completeness gate works only while the data and the types it must exhaust sit
+   in one place, and a split for line count would put the coverage record in a different file
+   from the keys it classifies. The split to make, if 800 arrives, is per-family data against
+   the types and `SETTINGS_SECTIONS` — not one family per file.
 2. **"Grouped and hinted" is `section` plus a required `hint` plus `advanced`.** Grouping by
    the question the field answers, order by array position, hints as a type rule. The one
    place section order is decided is `SETTINGS_SECTIONS`.
