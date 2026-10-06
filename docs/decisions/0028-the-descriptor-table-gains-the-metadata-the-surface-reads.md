@@ -171,8 +171,10 @@ per-setting enum with `enumDescriptions`.
 metadata choice rather than contradicting it.** The one thing VS Code does not
 have to solve is the nested write: its settings are a flat object of dotted keys,
 so a dependent value is a string convention, not a structural path. Our `total`
-and `animation` are structural, which is exactly why `path` and `presence` are
-ours to invent and why no VS Code setting corresponds to them.
+and `animation` are structural, which is exactly why `path` is ours to invent and
+why no VS Code setting corresponds to it. (A toggle that materialised the
+optional `animation` block was considered alongside it and rejected — see the
+Decision.)
 
 **Query 3 — `Blender RNA property description subtype properties editor tooltip
 widget metadata`.** Read: `bpy.types.Property` (the `description` and `subtype`
@@ -191,8 +193,8 @@ The Properties editor reads all of it and picks a widget from type+subtype.
 *How its shape compares to ours:* **matches on metadata, differs on nesting.**
 Blender's pointer/collection properties exist, but they are rendered as
 sub-panels by a hand-written draw function, not generated from a descriptor tree
-— the closest analogue to what our `presence` toggle and our per-kind column
-are doing. So the comparable tool also declines to build a generic nested
+— the closest analogue to what our nested `animation.*` fields and our per-kind
+column are doing. So the comparable tool also declines to build a generic nested
 descriptor renderer.
 
 **Query 4 — `JSON Schema UI schema conditional field visibility dependencies
@@ -222,8 +224,8 @@ and a duplicated condition; one (VS Code) solves the metadata half on a flat
 settings object and has no nested write to solve; one (Blender) solves the
 metadata half with a hand-written renderer and declines the generic nested tree.
 The vertical split they all have is the thing our one table exists to avoid, and
-none of them has a `presence` toggle whose on-state materialises a whole optional
-block from that block's own defaults. There is nothing to reuse, and the useful
+none of them writes a nested field that materialises its optional parent from
+that parent's own defaults. There is nothing to reuse, and the useful
 finding is the *convergence on metadata keys* (`section`/`group`/`order`, a
 required `description`/`hint`, `advanced` as a tag, per-value descriptions) and
 the *divergence on nesting*.
@@ -232,9 +234,9 @@ the *divergence on nesting*.
 
 | Option | Fit | Cost | Risk | Verdict |
 |---|---|---|---|---|
-| **Extend `SettingsFieldDescriptor` in place** | the table already owns the question (`ownership.md:152`), already has the one settings consumer, and is the same file the two holes belong to | six new optional/required fields and one new `SettingsFieldKind` on one interface; the existing consumer keeps working because every addition is additive except `hint` | `hint` becomes required, so every descriptor must gain one — a one-time edit the compiler enforces; `exactOptionalPropertyTypes` means each new field is spelled exactly once | **chosen** |
+| **Extend `SettingsFieldDescriptor` in place** | the table already owns the question (`ownership.md:152`), already has the one settings consumer, and is the same file the two holes belong to | five new descriptor fields and no new `SettingsFieldKind` on one interface; the existing consumer keeps working because every addition is additive except `hint` | `hint` becomes required, so every descriptor must gain one — a one-time edit the compiler enforces; `exactOptionalPropertyTypes` means each new field is spelled exactly once | **chosen** |
 | **A parallel editor-side table** | could carry `section`/`group` without touching `renderer-core` | a second list of 34 keys, keyed by the same property strings | **a second owner for one concept** — the exact failure the table's header was written to end; the two lists drift and the editor wins silently; violates *one owner per concept* | rejected |
-| **A generic nested-descriptor tree** (children arrays, recursive render) | would express `total.value` and `animation.*` without `path`, and any future nesting | recursion in `renderer-core` (must stay Fabric- and DOM-free), a node type distinct from a field, an id-uniqueness scheme for arbitrary depth, and a render walk that must terminate per open section | **the machinery outlives the need**: exactly **two** settings need nesting — `PieSettings.total` (pie only) and the optional `AnimationSettings` block (four families, one shape). General recursion for two cases is a framework where a `path` array and a `presence` toggle do the job | rejected — `path` + `visibleWhen` + `presence` |
+| **A generic nested-descriptor tree** (children arrays, recursive render) | would express `total.value` and `animation.*` without `path`, and any future nesting | recursion in `renderer-core` (must stay Fabric- and DOM-free), a node type distinct from a field, an id-uniqueness scheme for arbitrary depth, and a render walk that must terminate per open section | **the machinery outlives the need**: exactly **two** settings need nesting — `PieSettings.total` (pie only) and the optional `AnimationSettings` block (four families, one shape). General recursion for two cases is a framework where a `path` array does the job | rejected — `path` + `visibleWhen` |
 | **Adopt a form/schema-rendering library** (RJSF, JSON Forms, or a React renderer) | it already has grouping, order, widgets and conditional visibility — rung 4 confirms the vocabulary | a new shipped dependency + its transitive graph, a licence review, a UI-schema file beside the data, and rewriting the panel body as components | **puts a framework boundary where the repo has none**: `chart-manager/panel.ts` builds 24 `document.createElement` calls and imports no React; the panel body is imperative DOM by design, and the RJSF/JSON Forms model *is* the parallel UI layer this decision rejects, plus the duplicated condition rung 4 shows drifting | rejected |
 
 ## Rung 6 — probe
@@ -278,7 +280,9 @@ it is the file the two unreachable settings live in. `settingsFieldsFor` and
 `chart-manager/panel.ts` keeps working unchanged while the metadata is added
 around it.
 
-The interface gains, precisely:
+The descriptor interfaces gain, precisely — the first three on both the settings
+and the paint descriptor; `path` and `visibleWhen` on the settings descriptor,
+where a nested write exists:
 
 - **`section: SettingsSection`** (required) — `"content" | "position" | "layer" |
   "paint" | "spends"`, the ordered vocabulary whose one owner is
@@ -292,16 +296,26 @@ The interface gains, precisely:
   treatment matches VS Code's `advanced` tag.
 - **`path?: readonly string[]`** — the write target inside the settings object,
   defaulting to `[property]`. This is the smallest thing that reaches
-  `total.value`; a generic nested tree is rejected because only two settings need
-  it.
+  `total.value` and `animation.durationMs`; a generic nested tree is rejected
+  because only two settings need it.
 - **`visibleWhen?: { readonly path: readonly string[]; readonly equals: string }`**
   — the one dependent-visibility case we have, on the descriptor it qualifies, so
   it cannot drift from the validation layer the way rung 4 shows the ecosystem's
   duplicated conditions do.
-- **`SettingsFieldKind` gains `"presence"`** — a toggle whose on-state
-  materialises an optional block from **that block's own `default*Settings`**
-  (the table declares no defaults and must not start) and whose off-state removes
-  the key rather than writing `{}`.
+
+`SettingsFieldKind` is **unchanged**: the four nested `animation.*` descriptors
+are ordinary `number`/`select` fields, and the first write to one materialises
+their parent from `defaultAnimationSettings` — the owner that already declares
+those defaults, so the table still declares none.
+
+**Why no animation toggle.** An on/off control that materialised the
+`AnimationSettings` block, and a field kind to express it, were considered and
+rejected: `toEngineAnimation(settings, animate)` takes `animate` as a parameter
+that defaults to `true` at all four call sites, so an **absent** `animation`
+block means *the defaults apply*, not *this chart is static*. The flag that
+decides whether a chart animates at all comes from the build, not from the
+settings object — so a toggle would be a capability nobody filed, and it would
+give the editor an on/off distinction the renderer does not read.
 
 **Why not the generic nested tree.** Exactly **two** settings need nesting:
 `PieSettings.total` (a union, pie only) and the optional `AnimationSettings`
@@ -322,5 +336,5 @@ exact shape: the two libraries that come closest (RJSF, JSON Forms) solve a
 superset for arbitrary schemas and pay with a second UI layer, and the two
 inspectors (VS Code, Blender) solve the metadata half on flat data and hand-roll
 the nesting. So the metadata keys are conventional and the nested mechanism is
-ours — which is a reason to keep `path`/`visibleWhen`/`presence` minimal and let
+ours — which is a reason to keep `path`/`visibleWhen` minimal and let
 the implementation tasks grow them only if a third nested setting appears.
