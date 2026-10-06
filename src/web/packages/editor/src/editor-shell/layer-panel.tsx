@@ -8,6 +8,8 @@ import {
   Gauge,
   type LucideIcon,
   Lock,
+  LogIn,
+  LogOut,
   ChartColumn,
   Unlock,
 } from "lucide-react";
@@ -321,7 +323,8 @@ export function LayerPanel({
   // Read at render, not mirrored into state: the store re-reads the projection
   // and publishes on every selection change, so entering a group re-renders
   // here with the context the manager has already recorded.
-  const context = contextRows(rows, bridge?.groupContext() ?? []);
+  const entered = bridge?.groupContext() ?? [];
+  const context = contextRows(rows, entered);
 
   const [editing, setEditing] = useState<string | undefined>(undefined);
   const cancelled = useRef(false);
@@ -417,6 +420,14 @@ export function LayerPanel({
           const attended = hovered === row.id || focused === row.id;
           const showLock = attended || row.selected || row.locked;
           const showVisibility = attended || row.selected || !row.visible;
+          // The twisty's own gate, read once so the control below cannot ask a
+          // second, slightly different question about the same fact.
+          const expandable = row.hasChildren;
+          // Entry is not a toggle: the entered group carries the way *out*, so
+          // the row the author is inside draws this one without being attended.
+          const isEntered = entered.includes(row.id);
+          const showEnter = expandable && (attended || row.selected || isEntered);
+          const entry = isEntered ? uiCopy.panels.leave : uiCopy.panels.enter;
           return (
             <div
               // The row's own id is not unique once an object moves: a stale
@@ -597,7 +608,7 @@ export function LayerPanel({
                 }
               }}
             >
-              {row.hasChildren ? (
+              {expandable ? (
                 <button
                   type="button"
                   aria-label={`${twisty} ${row.name}`}
@@ -685,8 +696,37 @@ export function LayerPanel({
                   land in the same place on every row; the room they need
                   beside the key is held open by the stylesheet only on rows
                   that actually draw them, because holding it open everywhere
-                  cost the *name* 50px on all sixty rows. */}
+                  cost the *name* 50px on all sixty rows.
+
+                  Entry is the third control and the one that is not a state
+                  toggle: it appears on a group the author can go into, under
+                  the attention rule the two beside it keep — and the row the
+                  author is *inside* draws it unattended, so the way out is
+                  never the one thing a quiet row withholds. */}
               <span className="vigilia-layer-state">
+                {showEnter ? (
+                  <button
+                    type="button"
+                    data-vigilia-layer-entry={isEntered ? "leave" : "enter"}
+                    aria-label={`${entry} ${row.name}`}
+                    onClick={(event) => {
+                      event.stopPropagation();
+                      // Entering and expanding are two acts: this is the only
+                      // control that changes the context, and the twisty above
+                      // is the only one that changes what is open.
+                      store.mutate(() => {
+                        if (isEntered) bridge?.exitGroup();
+                        else bridge?.enterGroup(row.id);
+                      });
+                    }}
+                  >
+                    {isEntered ? (
+                      <LogOut aria-hidden size={13} strokeWidth={1.75} />
+                    ) : (
+                      <LogIn aria-hidden size={13} strokeWidth={1.75} />
+                    )}
+                  </button>
+                ) : null}
                 {showVisibility ? (
                   <button
                     type="button"

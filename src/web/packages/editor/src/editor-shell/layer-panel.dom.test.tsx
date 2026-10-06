@@ -5,9 +5,10 @@ import { fileURLToPath } from "node:url";
 import { expect, it, vi } from "vitest";
 import { createRoot } from "react-dom/client";
 import { act } from "react";
-import { Canvas, Rect } from "fabric/es";
+import { Canvas, Group, Rect } from "fabric/es";
 import { LayerPanel } from "./layer-panel.js";
 import { createEditorShellBridge, type EditorShellBridge } from "./bridge.js";
+import { createGroupingManager } from "../grouping-manager/index.js";
 import type {
   LayerKind,
   LayerMark,
@@ -1257,4 +1258,194 @@ it("carries a role on every one of two hundred rows", async () => {
   expect(roleSpan(host, "card-19")?.textContent).toBe("Group");
   // The role is not a control, so a quiet panel stays quiet at two hundred rows.
   expect(host.querySelectorAll(".vigilia-layer-role button")).toHaveLength(0);
+});
+
+// ── …and entering a group is an act of its own ──────────────────────────────
+
+const card = layerRow({
+  id: "card",
+  name: "CPU card",
+  kind: "group",
+  hasChildren: true,
+});
+const trends = layerRow({
+  id: "trends",
+  name: "Trends",
+  kind: "group",
+  hasChildren: true,
+});
+
+/** A row's entry control, by its own attribute rather than by a label: a group
+ *  row carries three buttons, so `button[aria-label]` inside it matches three
+ *  elements and a locator that resolved to the first would be measuring the
+ *  twisty. */
+function entryButton(host: HTMLElement, id: string): HTMLButtonElement | null {
+  return host.querySelector<HTMLButtonElement>(
+    `[data-vigilia-layer="${id}"] [data-vigilia-layer-entry]`,
+  );
+}
+
+/** A pointer over one row, which is one of the three ways a row is attended. */
+async function hover(host: HTMLElement, id: string): Promise<void> {
+  await act(async () =>
+    host
+      .querySelector<HTMLElement>(`[data-vigilia-layer="${id}"]`)
+      ?.dispatchEvent(new MouseEvent("mouseover", { bubbles: true })),
+  );
+}
+
+it("draws no enter control on a group row the author is not on", async () => {
+  // The third control in a slot the panel keeps deliberately quiet, and the
+  // group row is the case the first two never covered: a row with a twisty and
+  // nothing else, exactly as it was before this control existed.
+  const host = await renderPanel([card, trends]);
+
+  expect(entryButton(host, "card")).toBeNull();
+  expect(
+    host
+      .querySelectorAll<HTMLElement>('[data-vigilia-layer="card"] button'),
+  ).toHaveLength(1);
+});
+
+it("offers no entry on a row that is not a group or holds nothing", async () => {
+  // Both rows are *selected* so the state slot is drawn and the absence is the
+  // gate rather than the attention rule — a row that drew nothing because it
+  // was quiet would satisfy a weaker version of this.
+  const host = await renderPanel([
+    layerRow({ id: "wordmark", name: "Wordmark", kind: "text", selected: true }),
+    layerRow({
+      id: "empty",
+      name: "Empty",
+      kind: "group",
+      hasChildren: false,
+      selected: true,
+    }),
+  ]);
+
+  expect(entryButton(host, "wordmark")).toBeNull();
+  expect(entryButton(host, "empty")).toBeNull();
+});
+
+it("enters the group its own row names, and no other", async () => {
+  // The name is the whole of the assertion: three identical "Enter" buttons in
+  // one tree are controls a reader cannot tell apart, so each carries the group
+  // it opens — and the press carries that row's id, which a count alone would
+  // not say.
+  const enterGroup = vi.fn();
+  const host = await renderPanel([card, trends], { enterGroup });
+  document.body.append(host);
+
+  await hover(host, "card");
+  const label = entryButton(host, "card")?.getAttribute("aria-label");
+  expect(label).toBe("Enter CPU card");
+  await hover(host, "trends");
+  const other = entryButton(host, "trends")?.getAttribute("aria-label");
+  expect(other).toBe("Enter Trends");
+  expect(label).not.toBe(other);
+
+  // Hovering the other row withdrew the first one's control, so the press has
+  // to come back to a control the panel is actually drawing.
+  await hover(host, "card");
+  await act(async () => entryButton(host, "card")?.click());
+  expect(enterGroup.mock.calls).toEqual([["card"]]);
+  host.remove();
+});
+
+it("leaves the entered group from its own row, in other words", async () => {
+  // The entered group draws the control without being attended, because the way
+  // out is the one thing a quiet row must not withhold — and it says a
+  // different word, so the row the author is inside is distinguishable from the
+  // rows they could go into.
+  const exitGroup = vi.fn();
+  const enterGroup = vi.fn();
+  const host = await renderPanel([card, trends], {
+    exitGroup,
+    enterGroup,
+    groupContext: () => ["card"],
+  });
+  document.body.append(host);
+
+  const button = entryButton(host, "card")!;
+  expect(button.getAttribute("aria-label")).toBe("Leave CPU card");
+  await hover(host, "trends");
+  expect(entryButton(host, "trends")?.getAttribute("aria-label")).toBe(
+    "Enter Trends",
+  );
+
+  await act(async () => button.click());
+  expect(exitGroup.mock.calls).toEqual([[]]);
+  expect(enterGroup).not.toHaveBeenCalled();
+  host.remove();
+});
+
+it("keeps expansion and entry as two acts on two controls", async () => {
+  // Selection, expansion and entry are three acts, and this is where the first
+  // two are told apart from the third: the twisty changes what is open and
+  // never what is entered, and no key binding moves to make room for either.
+  const setCollapsed = vi.fn();
+  const enterGroup = vi.fn();
+  const host = await renderPanel([card], { setCollapsed, enterGroup });
+
+  await act(async () =>
+    host.querySelector<HTMLButtonElement>('[aria-label="Collapse CPU card"]')?.click(),
+  );
+  expect(setCollapsed.mock.calls).toEqual([["card", true]]);
+  expect(enterGroup).not.toHaveBeenCalled();
+});
+
+it("makes a group's parts reachable once its control has entered it", async () => {
+  // The capability the control buys, over the real bridge and the real grouping
+  // manager rather than a stub: `selectLayer` takes `owner ?? target`, so with
+  // the card shut a part's row click lands on the card, and inside the entered
+  // context the same click lands on the part itself. A stub bridge would agree
+  // with either answer.
+  const canvas = new Canvas(document.createElement("canvas"));
+  const part = new Rect({ id: "part", width: 10, height: 10 });
+  const group = new Group([part]);
+  group.set("id", "card");
+  canvas.add(group);
+  const real = createEditorShellBridge({
+    editor: {
+      canvas,
+      groupingManager: createGroupingManager({
+        canvas,
+        save: () => undefined,
+        suspend: () => () => undefined,
+      }),
+      historyManager: { saveState: () => undefined },
+    },
+    session: {} as never,
+    capture: () => undefined,
+  } as never);
+
+  const host = document.createElement("div");
+  await act(async () =>
+    (await Promise.resolve(createRoot(host))).render(<LayerPanel bridge={real} />),
+  );
+  const row = (id: string): HTMLElement =>
+    host.querySelector<HTMLElement>(`[data-vigilia-layer="${id}"]`)!;
+  const click = async (id: string): Promise<void> => {
+    await act(async () =>
+      row(id).dispatchEvent(new MouseEvent("click", { bubbles: true })),
+    );
+  };
+
+  // A group's parts are rows only while it is open, so the part has to exist
+  // before its row can be shown to select the wrong object.
+  await act(async () =>
+    row("card")
+      .querySelector<HTMLButtonElement>("button[aria-expanded]")
+      ?.click(),
+  );
+  expect(row("part")).not.toBeNull();
+
+  await click("part");
+  expect(canvas.getActiveObject()?.get("id")).toBe("card");
+
+  await hover(host, "card");
+  await act(async () => entryButton(host, "card")?.click());
+  expect(real.groupContext()).toEqual(["card"]);
+
+  await click("part");
+  expect(canvas.getActiveObject()?.get("id")).toBe("part");
 });

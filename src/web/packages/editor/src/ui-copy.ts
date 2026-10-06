@@ -499,6 +499,16 @@ export const uiCopy = {
     rename: "Rename",
     collapse: "Collapse",
     expand: "Expand",
+    /** Going into a group and coming back out of it.
+     *
+     *  Both carry the group's name, unlike the two words above. A twisty can
+     *  say "Expand" on every row because the row it sits in is the thing it
+     *  acts on; three "Enter" buttons in one tree would be the same word
+     *  repeated with nothing telling a reader which group each one opens. The
+     *  two verbs differ as well as the names, so the row the author is inside
+     *  says something different again. */
+    enter: "Enter",
+    leave: "Leave",
     /** The drag rule, in the panel's own words rather than in a cursor. A drop
      * across a group boundary is refused by design (Fabric membership is a
      * different operation), and a refusal nothing says reads as a panel being

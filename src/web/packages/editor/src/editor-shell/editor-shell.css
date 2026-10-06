@@ -1158,6 +1158,14 @@ body,
   max-width: calc(100% - 50px);
   margin-right: 50px;
 }
+/* A group row can draw three: the same 6px of padding and one 20px button and
+   4px gap more. Scoped to the rows that do, so the room a two-control row holds
+   open is still 50px and the name of every ordinary row is untouched. */
+.vigilia-layer-row:has(.vigilia-layer-state button:nth-child(3))
+.vigilia-layer-bound {
+  max-width: calc(100% - 74px);
+  margin-right: 74px;
+}
 .vigilia-layer-rename {
   flex: 1;
   min-width: 0;
