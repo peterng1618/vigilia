@@ -52,7 +52,7 @@ The loop, in order:
 
 ## Next
 
-1. **Task 8 is in flight** — the document's references move left and the tab strip goes, closing `vg-146`. It leaves the e2e suite red until Task 9 rewires the ~26 tab clicks, which is expected and named in its commit. Briefs for Tasks 8–11 are written and measured in `.superpowers/sdd/2026-10-06-the-composition-panel/`; the dispatch is recorded in `dispatch-ad2672acb238ec546.md`.
+1. **Task 8 is in flight** — the document's references move left and the tab strip goes, closing `vg-146`. It leaves the e2e suite red until Task 9 rewires the ~26 tab clicks, which is expected and named in its commit. Briefs for Tasks 8–11 are written and measured in `.superpowers/sdd/2026-10-06-the-composition-panel/`; the dispatch is recorded in `dispatch-ad2672acb238ec546.md`. **Two panes the user ruled against on 2026-10-07 are filed and queued, neither this plan's:** `vg-153` dissolves the Document pane and gives the theme globals a surface of their own, `vg-154` drops the asset panel and moves insert to the Add pane and replace onto the selection. Task 8 lands the listing in that pane anyway, as the interim home that lets the Style tab go.
 2. **The standing loop still applies to plan 4's own work:** use the built editor and host as an author, file what breaks, dispatch against the register, and verify the landed work by using it again rather than by reading the agent's report.
 3. **Resume the font catalogue plan when someone picks it up** — Task 6 landed and its review failed; its `progress.md` is the resume point. Not this plan's.
 4. **Three rows plan 3 leaves open, plus one it filed about the gate itself, are in *Blockers*** and none is closable by a status edit: `vg-146` (which Task 8 closes), `vg-147`, `vg-148` and `vg-144`.
