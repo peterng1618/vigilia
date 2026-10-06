@@ -46,6 +46,13 @@ export interface EditorShellBridge {
   /** Selects a row's object: directly inside the entered group, else through the
    * group that owns it. */
   selectLayer(id: string): void;
+  /** Enters the group a row names, so its descendants become the reachable rows
+   * the panel stops dimming. A row that is not a group, and an id the tree no
+   * longer holds, change nothing. */
+  enterGroup(id: string): void;
+  /** Steps back out of the entered group. Nothing entered leaves everything
+   * alone. */
+  exitGroup(): void;
   /** Hiding leaves the selection alone; showing reveals the whole ancestor path. */
   setLayerVisible(id: string, visible: boolean): void;
   setLayerLocked(id: string, locked: boolean): void;
@@ -231,6 +238,32 @@ export function createEditorShellBridge(input: {
     canvas.requestRenderAll();
     notify();
   };
+  const enterGroup = (id: string): void => {
+    const root = canvas.getObjects();
+    const target = findById(root, id);
+    // A non-group row is something to select, not somewhere to go: handed
+    // straight to the manager it would resolve to whatever group owns it — an
+    // entry the author never asked for.
+    if (!(target instanceof Group)) return;
+    // `enterGroup` enters the group *around* the object it is handed, one hop up
+    // `ownerGroup`. A group inside another therefore has to be reached through
+    // one of its own children: handing over the group itself would enter its
+    // owner, and the panel would dim the rows around the parent the author did
+    // not press while the row they did press named something else. A nested
+    // group with no children has nothing to reach it through, so it stays shut.
+    const entry =
+      target.parent instanceof Group ? target.getObjects()[0] : target;
+    if (entry === undefined) return;
+    input.editor.groupingManager.enterGroup({ object: entry });
+    // Unconditional, as in `selectLayer`: the manager announces a context change
+    // only when there is one, so an entry the projection already agreed with
+    // would otherwise leave the panel rendering the context it had.
+    notify();
+  };
+  const exitGroup = (): void => {
+    input.editor.groupingManager.exitGroup();
+    notify();
+  };
   const setLayerVisible = (id: string, visible: boolean): void => {
     const target = findById(canvas.getObjects(), id);
     if (target === undefined) return;
@@ -332,6 +365,8 @@ export function createEditorShellBridge(input: {
     layers,
     groupContext,
     selectLayer,
+    enterGroup,
+    exitGroup,
     setLayerVisible,
     setLayerLocked,
     setCollapsed,

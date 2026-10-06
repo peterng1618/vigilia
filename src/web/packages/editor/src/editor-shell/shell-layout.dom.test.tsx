@@ -90,6 +90,8 @@ function bridgeStub(
     layers: () => [],
     groupContext: () => [],
     selectLayer: vi.fn(),
+    enterGroup: vi.fn(),
+    exitGroup: vi.fn(),
     setLayerVisible: vi.fn(),
     setLayerLocked: vi.fn(),
     setCollapsed: vi.fn(),

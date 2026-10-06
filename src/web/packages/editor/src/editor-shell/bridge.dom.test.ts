@@ -2,7 +2,13 @@
 
 import { MAX_OBJECT_NAME_LENGTH } from "@vigilia/renderer-core";
 import { VigiliaChart } from "@vigilia/scene-fabric";
-import { ActiveSelection, Canvas, Group, Rect } from "fabric/es";
+import {
+  ActiveSelection,
+  Canvas,
+  type FabricObject,
+  Group,
+  Rect,
+} from "fabric/es";
 import { beforeEach, expect, it, vi } from "vitest";
 import { objectAction } from "../object-actions.js";
 import { createEditorShellBridge } from "./bridge.js";
@@ -357,6 +363,151 @@ it("expands the entered group in the projection, so the panel agrees with the ca
   // still open when they come back out of some *other* group.
   entered = [];
   expect(ids()).toEqual(["group"]);
+});
+
+it("enters the group a row names, so its children become the reachable rows", () => {
+  const child = new Rect({ id: "child", width: 10, height: 10 });
+  const group = new Group([child]);
+  group.set("id", "group");
+  // The manager records the entry and answers the context with it, which is what
+  // the panel dims and expands from; the stub mirrors that rather than the
+  // bridge being told what to think.
+  let entered: readonly FabricObject[] = [];
+  const enterGroup = vi.fn((options: { object: FabricObject }) => {
+    entered = [options.object];
+  });
+  const { bridge } = bridgeFor(group, {
+    groupingManager: { groupContext: () => entered, enterGroup },
+  });
+
+  // Shut until entered, because a group is the default view state (§67).
+  expect(bridge.layers().map((row) => row.id)).toEqual(["group"]);
+  bridge.enterGroup("group");
+
+  expect(enterGroup).toHaveBeenCalledWith({ object: group });
+  // Asserted through the projection the panel reads, not through the manager:
+  // the part the author is inside is a row now, on one click from the tree.
+  expect(bridge.groupContext()).toEqual(["group"]);
+  expect(bridge.layers().map((row) => row.id)).toEqual(["group", "child"]);
+});
+
+it("enters the group a nested row names, not the group that owns it", () => {
+  // `enterGroup` enters the group *around* the object it is handed, one hop up
+  // `ownerGroup` — so handing it the nested group itself would enter `outer`,
+  // dimming the rows around the parent the author never pressed while the row
+  // they did press named `inner`. The nested group is reached through one of its
+  // own children instead, which is the same one hop pointing the other way.
+  const leaf = new Rect({ id: "leaf", width: 10, height: 10 });
+  const inner = new Group([leaf]);
+  inner.set("id", "inner");
+  const outer = new Group([inner]);
+  outer.set("id", "outer");
+  let entered: readonly FabricObject[] = [];
+  const enterGroup = vi.fn((options: { object: FabricObject }) => {
+    // The manager's own rule, in the test's hands: this is what the entry turns
+    // into, so the context below is the one the panel would be shown.
+    const owner = options.object.parent;
+    entered = [owner instanceof Group ? owner : options.object];
+  });
+  const { bridge } = bridgeFor(outer, {
+    groupingManager: { groupContext: () => entered, enterGroup },
+  });
+
+  bridge.enterGroup("inner");
+
+  expect(enterGroup).toHaveBeenCalledTimes(1);
+  // The consequence first: what the panel would dim is the group the author is
+  // inside, and the trap shows up here as `["outer"]`.
+  expect(bridge.groupContext()).toEqual(["inner"]);
+  expect(enterGroup).toHaveBeenCalledWith({ object: leaf });
+});
+
+it("enters nothing for an id the tree no longer holds", () => {
+  // Review Focus 3: the row was painted from a projection taken before the undo,
+  // delete or ungroup that rebuilt the scene, so the id names nothing the canvas
+  // has. A verb that handed the id straight on would give the manager no object,
+  // and the manager falls back to the *active* object — entering a group nobody
+  // asked for, from a row for something that is gone.
+  const child = new Rect({ id: "child", width: 10, height: 10 });
+  const group = new Group([child]);
+  group.set("id", "group");
+  let entered: readonly FabricObject[] = [];
+  const enterGroup = vi.fn((options?: { object?: FabricObject }) => {
+    // The manager's own fallback, `options?.object ?? canvas.getActiveObject()`,
+    // with the group standing in for what is active.
+    entered = [options?.object ?? group];
+  });
+  const { bridge } = bridgeFor(group, {
+    groupingManager: { groupContext: () => entered, enterGroup },
+  });
+
+  expect(() => bridge.enterGroup("deleted")).not.toThrow();
+
+  expect(enterGroup).not.toHaveBeenCalled();
+  expect(bridge.groupContext()).toEqual([]);
+  expect(bridge.layers().map((row) => row.id)).toEqual(["group"]);
+});
+
+it("enters nothing for a row that is not a group", () => {
+  const child = new Rect({ id: "child", width: 10, height: 10 });
+  const group = new Group([child]);
+  group.set("id", "group");
+  const enterGroup = vi.fn();
+  const { bridge } = bridgeFor(group, {
+    groupingManager: { groupContext: () => [], enterGroup },
+  });
+
+  // The row names something to select, not somewhere to go: handed on, the
+  // manager would resolve it to `group`, an entry the author never asked for.
+  bridge.enterGroup("child");
+  expect(enterGroup).not.toHaveBeenCalled();
+});
+
+it("republishes on entry even when the entered context already agreed", () => {
+  const child = new Rect({ id: "child", width: 10, height: 10 });
+  const group = new Group([child]);
+  group.set("id", "group");
+  const { bridge } = bridgeFor(group, {
+    // Already entered, so the manager fires no context event for the same entry
+    // again — and a verb leaning on that event alone would repaint nothing.
+    groupingManager: { groupContext: () => [group], enterGroup: vi.fn() },
+  });
+  const heard = vi.fn();
+  bridge.subscribe(heard);
+
+  bridge.enterGroup("group");
+
+  expect(heard).toHaveBeenCalled();
+});
+
+it("leaves the entered group, and leaves an empty context alone", () => {
+  const child = new Rect({ id: "child", width: 10, height: 10 });
+  const group = new Group([child]);
+  group.set("id", "group");
+  let entered: readonly FabricObject[] = [];
+  const exitGroup = vi.fn(() => {
+    const before = [...entered];
+    entered = before.slice(0, -1);
+    return before;
+  });
+  const { bridge } = bridgeFor(group, {
+    groupingManager: { groupContext: () => entered, exitGroup },
+  });
+  const rows = (): readonly string[] => bridge.layers().map((row) => row.id);
+
+  // Nothing entered: the manager refuses and no row moves. The bridge still
+  // republishes, as `selectLayer` does for a selection it refused.
+  bridge.exitGroup();
+  expect(bridge.groupContext()).toEqual([]);
+  expect(rows()).toEqual(["group"]);
+
+  entered = [group];
+  expect(rows()).toEqual(["group", "child"]);
+  bridge.exitGroup();
+
+  expect(exitGroup).toHaveBeenCalledTimes(2);
+  expect(bridge.groupContext()).toEqual([]);
+  expect(rows()).toEqual(["group"]);
 });
 
 it("reveals a hidden ancestor path but hides only the requested object", () => {

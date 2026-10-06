@@ -95,6 +95,8 @@ function bridge(rows: readonly LayerRow[], overrides = {}): EditorShellBridge {
     layers: () => rows.map((row) => layerRow(row)) as never,
     groupContext: () => [],
     selectLayer: vi.fn(),
+    enterGroup: vi.fn(),
+    exitGroup: vi.fn(),
     setLayerVisible: vi.fn(),
     setLayerLocked: vi.fn(),
     renameLayer: vi.fn(),
