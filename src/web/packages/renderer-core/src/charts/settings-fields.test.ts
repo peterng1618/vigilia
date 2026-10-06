@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { CHART_FAMILIES } from "../theme/document.js";
+import { CHART_FAMILIES, type ChartFamily } from "../theme/document.js";
 import { defaultGaugeSettings } from "../types.js";
 import { defaultBarSettings } from "./bar.js";
 import { defaultLineSettings } from "./line.js";
@@ -10,6 +10,7 @@ import {
   CHART_SETTINGS_FIELDS,
   chartPaintFieldsFor,
   NON_SCALAR_SETTINGS,
+  SETTINGS_SECTIONS,
   settingsFieldsFor,
   settingsKeyFor,
 } from "./settings-fields.js";
@@ -121,6 +122,131 @@ describe("coverage against the real settings shapes", () => {
       }
     }
   });
+});
+
+describe("the section vocabulary", () => {
+  it("orders the five questions, each with a label", () => {
+    expect(SETTINGS_SECTIONS.map((section) => section.id)).toEqual([
+      "content",
+      "position",
+      "layer",
+      "paint",
+      "spends",
+    ]);
+    expect(SETTINGS_SECTIONS.every((section) => section.label.length > 0)).toBe(
+      true,
+    );
+  });
+});
+
+describe("every descriptor answers a question", () => {
+  it("uses a section from the vocabulary, for settings and paint alike", () => {
+    const ids = SETTINGS_SECTIONS.map((section) => section.id);
+
+    for (const family of CHART_FAMILIES) {
+      for (const field of [
+        ...settingsFieldsFor(family),
+        ...chartPaintFieldsFor(family),
+      ]) {
+        expect(ids).toContain(field.section);
+      }
+    }
+  });
+
+  it("makes every paint descriptor answer Paint", () => {
+    for (const family of CHART_FAMILIES) {
+      expect(
+        chartPaintFieldsFor(family).every((field) => field.section === "paint"),
+      ).toBe(true);
+    }
+  });
+});
+
+describe("every descriptor carries a hint that earns it", () => {
+  it("is non-empty, and never just the label again", () => {
+    for (const family of CHART_FAMILIES) {
+      for (const field of [
+        ...settingsFieldsFor(family),
+        ...chartPaintFieldsFor(family),
+      ]) {
+        expect(field.hint.trim().length).toBeGreaterThan(0);
+        expect(field.hint).not.toBe(field.label);
+      }
+    }
+  });
+});
+
+describe("descriptor order is the likelihood order", () => {
+  // Written from the table as it stood before sections and hints were added. A
+  // re-sort would silently change which settings surface first, so the order is
+  // pinned here rather than re-derived from the table it guards.
+  const expected: Record<ChartFamily, readonly string[]> = {
+    gauge: [
+      "startAngle",
+      "endAngle",
+      "min",
+      "max",
+      "thickness",
+      "roundCap",
+      "gradientSegments",
+    ],
+    line: [
+      "lineWidth",
+      "interpolation",
+      "dash",
+      "showMarkers",
+      "markerSize",
+      "windowSeconds",
+      "maxPoints",
+      "min",
+      "max",
+      "showAxes",
+      "sampling",
+    ],
+    bar: [
+      "orientation",
+      "min",
+      "max",
+      "barWidth",
+      "categoryGapPercent",
+      "cornerRadius",
+      "trackCornerRadius",
+      "showAxes",
+      "showCategoryLabels",
+    ],
+    pie: [
+      "innerRadiusPercent",
+      "outerRadiusPercent",
+      "startAngle",
+      "endAngle",
+      "padAngle",
+      "cornerRadius",
+      "showLabels",
+    ],
+  };
+
+  for (const family of CHART_FAMILIES) {
+    it(`keeps ${family}'s settings in their authored order`, () => {
+      expect(settingsFieldsFor(family).map((field) => field.property)).toEqual(
+        expected[family],
+      );
+    });
+  }
+
+  const expectedPaint: Record<ChartFamily, readonly string[]> = {
+    gauge: ["track", "progress"],
+    line: ["stroke", "palette", "area"],
+    bar: ["fill", "track"],
+    pie: ["remainderFill", "palette"],
+  };
+
+  for (const family of CHART_FAMILIES) {
+    it(`keeps ${family}'s paint fields in their authored order`, () => {
+      expect(
+        chartPaintFieldsFor(family).map((field) => field.property),
+      ).toEqual(expectedPaint[family]);
+    });
+  }
 });
 
 describe("settingsKeyFor", () => {
