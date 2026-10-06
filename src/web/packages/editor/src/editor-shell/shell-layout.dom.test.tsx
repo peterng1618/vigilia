@@ -139,11 +139,12 @@ it("mounts the editorial palette, menus, pane bar, inspector and dock hosts", ()
   expect(root.querySelector(".editor-shell-dock")?.parentElement).toBe(
     root.querySelector("#stage"),
   );
-  // Three segments and the `+`. The rail's fourth entry went with the Settings
+  // Four segments and the `+`. The rail's fourth entry went with the Settings
   // pane it held, and a segment with nothing in it is the defect this plan
   // exists to fix — so the count is a claim about the left column, not a
-  // snapshot of how many icons happen to be there.
-  expect(root.querySelectorAll(".editor-shell-pane-bar button")).toHaveLength(4);
+  // snapshot of how many icons happen to be there. The Document segment is the
+  // fifth button because the `+` is a `button` too and is not a pane.
+  expect(root.querySelectorAll(".editor-shell-pane-bar button")).toHaveLength(5);
   expect(root.querySelector(".editor-shell-rail")).toBeNull();
   expect(root.textContent).toContain("File");
   // The Arrange menu is gone: the arrange toolbar above the canvas already
@@ -330,6 +331,55 @@ it("switches panes without closing when the panel is already open", async () => 
   expect(segment(root, uiCopy.rail.insert).getAttribute("aria-pressed")).toBe(
     "true",
   );
+
+  layout.destroy();
+});
+
+it("shows the theme's own panels in the left column, and toggles them like a pane", async () => {
+  const root = document.createElement("div");
+  const layout = createShellLayout(root);
+  const panel = root.querySelector<HTMLElement>(".editor-shell-panel")!;
+  const inspector = root.querySelector<HTMLElement>(".editor-shell-inspector")!;
+  const slot = layout.hosts.document.parentElement;
+
+  // The move, asserted as a place rather than a count: the host is the left
+  // column's, and the inspector's Design tab is not where it lives any more.
+  // `Host` reparents one node, so the tab left holding a copy would leave one
+  // of the two slots empty and the panel gone from whichever mounted second.
+  expect(slot?.closest(".editor-shell-panel")).toBe(panel);
+  expect(inspector.contains(layout.hosts.document)).toBe(false);
+  expect(
+    Array.from(root.querySelectorAll("*")).filter(
+      (node) => node === layout.hosts.document,
+    ),
+  ).toHaveLength(1);
+  // Closed to begin with: Layers is the pane the shell starts on.
+  expect(slot?.hidden).toBe(true);
+
+  await act(async () => segment(root, uiCopy.rail.document).click());
+
+  // Reachable: the panel under the segment is the visible one and holds the
+  // document's own controls, with nothing above them `hidden`.
+  expect(panel.hidden).toBe(false);
+  expect(slot?.hidden).toBe(false);
+  expect(slot?.closest("[hidden]")).toBeNull();
+  expect(segment(root, uiCopy.rail.document).getAttribute("aria-pressed")).toBe(
+    "true",
+  );
+
+  // Swapping to another pane must not close the panel, and coming back must
+  // not have torn the document panels' slot down.
+  await act(async () => segment(root, uiCopy.rail.assets).click());
+  expect(panel.hidden).toBe(false);
+  expect(slot?.hidden).toBe(true);
+  await act(async () => segment(root, uiCopy.rail.document).click());
+  expect(panel.hidden).toBe(false);
+  expect(slot?.hidden).toBe(false);
+
+  // Pressed again, closed: the pane toggle rule is the shell's, not a branch
+  // added for Document.
+  await act(async () => segment(root, uiCopy.rail.document).click());
+  expect(panel.hidden).toBe(true);
 
   layout.destroy();
 });
@@ -655,8 +705,19 @@ it("keeps a chart's fields in the Design column, with no Data tab to reach for",
 
   layout.setBridge(bridge, undefined);
   await Promise.resolve();
-  // The document panels stay reachable whatever the selection is.
-  expect(root.contains(layout.hosts.document)).toBe(true);
+  // The theme's own panels are the left column's now, and the pane is what
+  // reaches them: the inspector's Design column holds the selection's fields
+  // and no longer carries the document host at all.
+  expect(
+    root
+      .querySelector(".editor-shell-inspector")
+      ?.contains(layout.hosts.document),
+  ).toBe(false);
+  expect(
+    root
+      .querySelector(".editor-shell-panel")
+      ?.contains(layout.hosts.document),
+  ).toBe(true);
   const tabs = (): (string | null)[] =>
     Array.from(root.querySelectorAll<HTMLElement>('[role="tab"]')).map(
       (tab) => tab.textContent,

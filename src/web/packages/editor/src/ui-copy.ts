@@ -85,7 +85,7 @@ const glassRefusals: Readonly<Record<string, string>> = {
 export const uiCopy = {
   brand: "Vigilia",
   editor: "Editor",
-  /** The pane bar's three segments, and the two names the bar itself carries.
+  /** The pane bar's segments, and the two names the bar itself carries.
    *  A segment's label is its content, so it is also its accessible name; the
    *  `+` beside them is icon-only and takes its name from `insertObject`
    *  instead — a glyph stored as a translatable string is announced as a word
@@ -97,6 +97,10 @@ export const uiCopy = {
     layers: "Layers",
     insert: "Insert",
     assets: "Assets",
+    /** The artboard, palette and type-preset panels — one pane, because they
+     *  are one host, and the word names what they are the settings of. Not
+     *  "Style", which the inspector's own tab already answers to. */
+    document: "Document",
     /** The `+`, named as what it opens rather than as the mark it draws. */
     insertObject: "Insert an object",
   },

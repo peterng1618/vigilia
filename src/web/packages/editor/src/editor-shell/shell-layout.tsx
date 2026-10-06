@@ -547,6 +547,7 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
             </div>
             <Host node={hosts.add} hidden={pane !== "insert"} />
             <Host node={hosts.assets} hidden={pane !== "assets"} />
+            <Host node={hosts.document} hidden={pane !== "document"} />
           </aside>
           <main id="stage" className="editor-shell-stage" aria-label="Editor canvas">
             <Host node={hosts.canvas} />
@@ -582,11 +583,9 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
                   </Tabs.Tab>
                 ))}
               </Tabs.List>
-              {/* Document panels stay mounted in Design: a selection must not
-                  make the theme's own settings unreachable. A chart's own
-                  fields are in this same panel — the selection inspector's
-                  column asks the chart owner for them — so a chart is not the
-                  one kind whose questions are behind another tab. */}
+              {/* A chart's own fields are in this same panel — the selection
+                  inspector's column asks the chart owner for them — so a chart
+                  is not the one kind whose questions are behind another tab. */}
               <Tabs.Panel value="design" keepMounted>
                 <Host node={hosts.selection} />
                 {kind !== "none" && (
@@ -594,7 +593,6 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
                     Move and lock the selection with the canvas dock.
                   </p>
                 )}
-                <Host node={hosts.document} />
               </Tabs.Panel>
               <Tabs.Panel value="style" keepMounted>
                 <Host node={hosts.style} />

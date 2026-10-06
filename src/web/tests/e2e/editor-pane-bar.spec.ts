@@ -65,6 +65,31 @@ test("asking for a shut pane opens it, and asking again does not close it", asyn
   await expect(page.locator(".editor-shell-panel")).toBeVisible();
 });
 
+test("shows the theme's own panel in the left column, and swaps away from it", async ({
+  page,
+}, testInfo) => {
+  test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+
+  await page.goto(EDITOR);
+  await expect(
+    page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+  ).toBeVisible();
+
+  // The artboard panel's width field stands for the document host: three panels
+  // append into that one node, so a control of any of them being reachable is
+  // the host having moved into the pane rather than into the inspector's tab.
+  await openPane(page, "Document");
+  await expect(page.locator("[data-vigilia-artboard-width]")).toBeVisible();
+
+  // Swapping the pane hides the whole host rather than unmounting it, and coming
+  // back must not have left it behind — the slot is the bar's, not the tab's.
+  await openPane(page, "Assets");
+  await expect(page.locator("[data-vigilia-artboard-width]")).toBeHidden();
+
+  await openPane(page, "Document");
+  await expect(page.locator("[data-vigilia-artboard-width]")).toBeVisible();
+});
+
 test("a collapse between two swaps does not lose the list's scroll", async ({
   page,
 }, testInfo) => {

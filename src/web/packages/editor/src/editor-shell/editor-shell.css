@@ -529,7 +529,13 @@ body,
   cursor: pointer;
 }
 .editor-shell-pane-bar button {
-  flex: 1;
+  /* Sized to its own label, not an equal share of the row. With `flex: 1`
+     (basis 0) four labels share 302px — 75.5px each — and "Document" measures
+     75.86px unselected and ~79px pressed, so the longest word ellipsized in a
+     bar with 73px of slack in it. Measured at the shipped 360px column, both
+     states: content basis gives Document 94px and every other label its own
+     word plus an equal share of what is left. */
+  flex: 1 1 auto;
   min-height: 32px;
   padding: 0 8px;
   font: inherit;
@@ -537,9 +543,9 @@ body,
   overflow: hidden;
   text-overflow: ellipsis;
 }
-/* The `+` is one fixed mark beside three words that share the row, so it takes
-   its own width rather than a share of the bar's. The button selector above is
-   the more specific pair, so this names the element too. */
+/* The `+` is one fixed mark beside the pane's words, so it takes its own width
+   rather than a share of the bar's. The button selector above is the more
+   specific pair, so this names the element too. */
 .editor-shell-pane-bar button.editor-shell-pane-bar-add {
   flex: none;
   width: 32px;

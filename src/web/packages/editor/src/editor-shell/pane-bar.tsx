@@ -1,17 +1,18 @@
 import { Plus } from "lucide-react";
 import { uiCopy } from "../ui-copy.js";
 
-/** The left column's panes; the inspector keeps the document panels.
+/** The left column's panes, the theme's own document panels among them.
  *
  *  It lives here rather than in `shell-layout.tsx` because the bar is what
  *  enumerates them — two owners of "which panes there are" would drift. */
-export type RailPane = "layers" | "insert" | "assets";
+export type RailPane = "layers" | "insert" | "assets" | "document";
 
-/** The three segments, in bar order. */
+/** The segments, in bar order. */
 const PANES: readonly (readonly [RailPane, string])[] = [
   ["layers", uiCopy.rail.layers],
   ["insert", uiCopy.rail.insert],
   ["assets", uiCopy.rail.assets],
+  ["document", uiCopy.rail.document],
 ];
 
 /** The left column's header: one segment per pane and the insert action.

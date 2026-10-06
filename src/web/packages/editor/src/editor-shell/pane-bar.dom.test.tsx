@@ -61,10 +61,18 @@ afterEach(() => {
 it("names one segment per pane and presses the chosen one", () => {
   const host = mount({ pane: "assets" });
 
-  // Derived from the copy table rather than restated, so a fourth pane cannot
-  // be added to the bar without a word for it appearing here.
-  expect(segments(host).slice(0, 3).map((button) => button.textContent)).toEqual(
-    [uiCopy.rail.layers, uiCopy.rail.insert, uiCopy.rail.assets],
+  // Every segment, derived from the copy table rather than restated, so a new
+  // pane cannot be added to the bar without a word for it appearing here. The
+  // `+` is the last button and is not a pane, so it is dropped rather than
+  // sliced off at a number: a prefix of three kept covering three and let the
+  // fourth arrive silently, which is the claim this line now makes true.
+  expect(segments(host).slice(0, -1).map((button) => button.textContent)).toEqual(
+    [
+      uiCopy.rail.layers,
+      uiCopy.rail.insert,
+      uiCopy.rail.assets,
+      uiCopy.rail.document,
+    ],
   );
   expect(segment(host, uiCopy.rail.assets).getAttribute("aria-pressed")).toBe(
     "true",
@@ -133,8 +141,9 @@ it("announces a collapsed panel on every segment rather than drawing it", () => 
   const host = mount({ pane: "layers", collapsed: true });
 
   // Pressed stays true while the panel is out, so the bar still shows what
-  // reopening restores; expanded is how the closed state is announced.
-  for (const button of segments(host).slice(0, 3)) {
+  // reopening restores; expanded is how the closed state is announced. Every
+  // segment but the trailing `+`, which carries neither state.
+  for (const button of segments(host).slice(0, -1)) {
     expect(button.getAttribute("aria-expanded")).toBe("false");
   }
   expect(segment(host, uiCopy.rail.layers).getAttribute("aria-pressed")).toBe(
