@@ -44,6 +44,9 @@ result, not merely a mounted editor.
 | Glass authoring | Turn frosted glass on for a panel over a real backdrop and set its blur radius | `editor-glass-authoring` / `gives an ordinary panel a real, measured backdrop blur` |
 | Starter composition | Select the starter's frosted CPU card and read its live value | `editor-starter-cpu-card` / `ships the starter's frosted CPU card` |
 | Starter backdrop | The new document's frosted card over its packaged photograph | `editor-starter-backdrop` / `the starter's frosted card reads a real backdrop` |
+| Composition panel | The row's role, mark and bound key, with a card entered | `composition-panel-starter` / `carries the document's binding, and selecting a card and entering it are separate acts` |
+| Composition panel | The panel at two hundred loose shapes | `composition-panel-two-hundred` / `two hundred loose shapes, re-measured` |
+| Composition panel | The Document pane's own controls over a selected card | `composition-panel-document` / `keeps the document's own controls reachable while a card is selected` |
 | Assets | Import, replace and reopen a packaged image | `editor-assets-desktop-chromium` / `imports and round-trips packaged images` |
 | Palette | Edit or reassign a palette token | `editor-palette-solid` or `editor-palette-reassignment` / `edits an artboard palette token|reassigns palette references` |
 | Type presets | Edit, reassign or apply a font trio | `editor-type-preset`, `editor-type-reassignment` or `editor-font-trio` / `edits a global type preset|reassigns text type presets|captures curated font trio` |
@@ -70,5 +73,5 @@ the units choice) are evidence from the same file.
 Mechanics ported from the retired editor fork need captures only when Vigilia
 changes their rendered outcome. Keep this table aligned with the specs that
 carry the captures: `src/web/tests/e2e/editor.spec.ts`,
-`reference-theme.spec.ts`, `glass-authoring.spec.ts` and
-`inspector-sections.spec.ts`.
+`reference-theme.spec.ts`, `glass-authoring.spec.ts`,
+`inspector-sections.spec.ts` and `composition-panel.spec.ts`.
