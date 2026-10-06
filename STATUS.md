@@ -43,11 +43,11 @@ The loop, in order:
 
 ## Last completed change
 
-- **Plan 3 is written, and it is the plan the redesign was missing.** `docs/superpowers/plans/2026-10-06-the-per-kind-inspector.md`, eleven tasks in three phases — the descriptor contract, the column, the proof.
-- **It decides the four questions the spec deliberately left to it.** The descriptor table is extended rather than paralleled; "grouped and hinted" is a `section` plus a **required** `hint` plus `advanced`; the completeness gate is a typed `Record<keyof XSettings, "setting" | "paint">` so a new settings key is a compile error; and `vg-121`/`vg-122` close by *gaining descriptors*, not by re-curating the surface.
-- **Task 1 is the decision note, not source**, and it is first because `AGENTS.md`'s reuse rule requires a note before the first write to a mechanism boundary: `renderer-core/src/charts/` and `renderer-core/src/theme/` are both watchlisted. **The gate did not actually refuse anything** — `0005` already claims the charts directory and `0022`/`0023` claim the theme one, so the gate answers "has any note ever claimed this path", not "is this change argued for". Filed as `vg-144`.
-- **Two things the plan decides against, with reasons recorded.** Validation does **not** start consuming descriptor bounds (authoring bounds and validation invariants are different jobs, and conflating them would reject documents that validate today), and the right column does not empty completely on deselect until plan 4 moves the document panel to the left column.
-- **The measurements that shaped it:** the descriptor table is line 11/15, bar 9/12, pie 7/11 plus paints; hints exist on 5 of 34 descriptors; the inspector is 7 207 lines in 8 modules with 154 jsdom tests; `runs.ts` is 817, past the repo's 800-line stop, so this plan's structure lands in new modules.
+- **The descriptor table now says what each setting is for.** `b5046f2`: `section` and a **required** `hint` on every descriptor, `advanced` for the obscure ones, and `SETTINGS_SECTIONS` as the one place section order is decided. All 34 settings descriptors are Content and all 9 paint descriptors are Paint — a chart's settings are what the chart shows.
+- **A section is a native `<details>` disclosure, not a button and a panel.** `a4028d55` + `29fa4e4c`: the count lives in the summary, so a closed section still says how much it holds; an empty body renders no header at all; `setBody` follows the body and never collapses what the author opened.
+- **Three hints are guesses and are being checked.** The gauge and pie `endAngle` and the bar's axes/labels were inferred from the option builders rather than from a comment — the independent review is cross-checking them against `gauge.ts`, `pie.ts` and `bar.ts`.
+- **ADR-0028 landed and was corrected the same hour.** `5c3c31c4` + `f49511e9`: the table is extended in place; the `presence` field kind was removed from the design after reading the consumer — `animate` defaults to true at all four `toEngineAnimation` call sites, so an absent block means defaults apply, not static.
+- Gates green on both code tasks: typecheck exit 0, biome lint and format clean, 24/24 `settings-fields.test.ts`, 23/23 `controls.dom.test.ts`.
 
 ## Next
 
