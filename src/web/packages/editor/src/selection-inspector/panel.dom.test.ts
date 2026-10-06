@@ -526,6 +526,29 @@ describe("shape material and a shape's own fields", () => {
     },
   );
 
+  it("files a shape's material under Paint and its own geometry under Position", () => {
+    const polygon = new Polygon([...CORNERS], PLACED);
+    const { host, field } = setup(polygon);
+
+    // Material is what ink; a side count is where and how big. A shape's own
+    // fields are not a lesser selection, and they are not one section either.
+    expect(
+      field<HTMLElement>(
+        '[data-vigilia-section="paint"] [data-vigilia-panel-fill]',
+      ),
+    ).not.toBeNull();
+    expect(
+      field<HTMLElement>(
+        '[data-vigilia-section="position"] [data-vigilia-shape-sides]',
+      ),
+    ).not.toBeNull();
+    expect(
+      host.querySelector(
+        '[data-vigilia-section="paint"] [data-vigilia-shape-sides]',
+      ),
+    ).toBeNull();
+  });
+
   it("writes a chosen fill onto a shape that is not a rectangle", () => {
     const triangle = new Triangle({ ...PLACED, width: 360, height: 200 });
     const { history, field } = setup(triangle);

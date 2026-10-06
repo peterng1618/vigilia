@@ -94,11 +94,14 @@ export type {
   ChartPaintFieldDescriptor,
   SettingsFieldDescriptor,
   SettingsFieldKind,
+  SettingsSection,
+  SettingsSectionDefinition,
 } from "./charts/settings-fields.js";
 export {
   CHART_PAINT_FIELDS,
   CHART_SETTINGS_FIELDS,
   chartPaintFieldsFor,
+  SETTINGS_SECTIONS,
   settingsFieldsFor,
   settingsKeyFor,
 } from "./charts/settings-fields.js";

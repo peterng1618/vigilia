@@ -6,34 +6,25 @@ import type {
 import { applyAuthoredText } from "@vigilia/scene-fabric";
 import type { FabricObject } from "fabric/es";
 import type { EditorInteraction } from "../editor-interaction.js";
-import { linkedPair } from "../editor-shell/controls/linked-pair.js";
-import { numberField } from "../editor-shell/controls/number-field.js";
+import type { PropertySection } from "../editor-shell/controls/property-section.js";
 import { uiCopy } from "../ui-copy.js";
 import {
-  type AppearanceContext,
-  createNameField,
-  createOpacityField,
-  createResolutionLine,
-  createTypePresetReveal,
-  nameOfRef,
-  paintReferencesOf,
-  resolveToken,
-  resolveTypePreset,
-  typePresetOf,
-} from "./appearance.js";
-import { createBleedField } from "./bleed.js";
-import { createCropRow } from "./crop.js";
-import { createGlassFields } from "./glass.js";
-import { createPanelFields } from "./panel.js";
-import { createRunEditor, type RunBindingPort } from "./runs.js";
+  type ColumnContext,
+  type ColumnSectionId,
+  type GeometryKey,
+  perKindColumn,
+} from "./per-kind-column.js";
 
 /**
  * Properties of the selected object. An author's most common action is "select a
  * thing, change a thing", which had no control surface at all: the inspector
  * offered only document-level settings.
  *
- * Reads the live Fabric object and writes through the canvas, saving history once
- * per committed edit (§67). Whole artboard units (§57).
+ * The surface itself — which sections a selection gets, and which question each
+ * field answers — is `perKindColumn`, which returns it as data. This module owns
+ * the object: which one is described (`target`), how a field writes it, and the
+ * commit path. Reads the live Fabric object and writes through the canvas,
+ * saving history once per committed edit (§67). Whole artboard units (§57).
  */
 
 export interface SelectionInspector {
@@ -45,32 +36,21 @@ export interface SelectionInspector {
   /** The document's language changed, so a formatted preview may have too. */
   setLocale(next: string | undefined): void;
 }
-/** A geometry field, in whole artboard units. */
-interface GeometryField {
-  readonly key: "left" | "top" | "width" | "height" | "angle";
-  readonly label: string;
-  readonly min?: number;
-}
 
-const GEOMETRY_FIELDS: Readonly<Record<GeometryField["key"], GeometryField>> = {
-  left: { key: "left", label: uiCopy.inspectorFields.x },
-  top: { key: "top", label: uiCopy.inspectorFields.y },
-  width: { key: "width", label: uiCopy.inspectorFields.width, min: 1 },
-  height: { key: "height", label: uiCopy.inspectorFields.height, min: 1 },
-  angle: { key: "angle", label: uiCopy.inspectorFields.rotation },
-};
+/** The two dimensions a text object's authored box carries. */
+type BoxKey = "width" | "height";
 
 /**
  * The box a text object was authored with, when it has one.
  *
  * `vigiliaText.box` is the owner (ADR 0003): a `Textbox` cannot hold a box,
  * because `width` re-enters `initDimensions` and widens the object to its
- * longest run. So the Size fields below write this rather than a scale, and
- * read it back, and the type stays the size its preset says it is.
+ * longest run. So the Size fields write this rather than a scale, and read it
+ * back, and the type stays the size its preset says it is.
  */
 function authoredBoxOf(
   object: FabricObject,
-  key: GeometryField["key"],
+  key: GeometryKey,
 ): number | undefined {
   if (key !== "width" && key !== "height") return undefined;
   const authored = object.get("vigiliaText") as
@@ -144,7 +124,7 @@ function measuredEdgeOf(
  */
 function writeAuthoredBox(
   object: FabricObject,
-  key: "width" | "height",
+  key: BoxKey,
   value: number,
 ): void {
   const authored = object.get("vigiliaText") as Record<string, unknown>;
@@ -152,7 +132,7 @@ function writeAuthoredBox(
     width?: number;
     height?: number;
   };
-  const measured = (dimension: "width" | "height"): number =>
+  const measured = (dimension: BoxKey): number =>
     box[dimension] ??
     (typeof object.get(dimension) === "number"
       ? (object.get(dimension) as number)
@@ -175,7 +155,7 @@ function writeAuthoredBox(
  * artboard — not the drawn box, which also includes any stroke and the group
  * context, so the numbers an author types match what they placed.
  */
-function readField(object: FabricObject, key: GeometryField["key"]): number {
+function readField(object: FabricObject, key: GeometryKey): number {
   const box = authoredBoxOf(object, key);
   if (box !== undefined) return box;
   if (key === "width") return object.width * object.scaleX;
@@ -221,6 +201,56 @@ export interface SelectionInspectorOptions {
   readonly refreshGlass: () => void;
 }
 
+/** The input types that hold a caret. A checkbox has focus and nothing to type. */
+const TEXT_ENTRY: ReadonlySet<string> = new Set([
+  "text",
+  "number",
+  "search",
+  "url",
+  "tel",
+  "email",
+  "password",
+]);
+
+/**
+ * The field the author is typing into, named by the data hook it carries.
+ *
+ * A re-render replaces a section's body, and a field that was focused is one of
+ * the elements it replaces — so the caret would land on nothing. The hook is
+ * what survives the rebuild: the same field keeps the same `data-vigilia-*`
+ * value, so focus can be put back in it.
+ *
+ * **Only a caret-bearing field is put back.** Restoring every focused element
+ * gave focus its own consequences back: `focus` is what opens the glass
+ * control's reason popup, so a re-render while that checkbox was focused
+ * re-opened a popup the author had just dismissed with Escape. The requirement
+ * is the caret, and a checkbox has none to move.
+ */
+function focusedControl():
+  | { readonly hook: string; readonly value: string }
+  | undefined {
+  const active = document.activeElement;
+  const typing =
+    (active instanceof HTMLInputElement && TEXT_ENTRY.has(active.type)) ||
+    active instanceof HTMLTextAreaElement;
+  if (!typing) return undefined;
+  const [hook, value] =
+    Object.entries((active as HTMLElement).dataset)[0] ?? [];
+  return hook === undefined ? undefined : { hook, value: value ?? "" };
+}
+
+function restoreFocus(
+  root: HTMLElement,
+  focused: { readonly hook: string; readonly value: string } | undefined,
+): void {
+  if (focused === undefined) return;
+  const attribute = `data-${focused.hook.replace(
+    /[A-Z]/g,
+    (letter) => `-${letter.toLowerCase()}`,
+  )}`;
+  root.querySelector<HTMLElement>(`[${attribute}="${focused.value}"]`)?.focus();
+}
+
 export function createSelectionInspector(
   host: HTMLElement,
   options: SelectionInspectorOptions,
@@ -229,10 +259,16 @@ export function createSelectionInspector(
   let globals = options.globals;
   /** The document's language; a format preview is spelled in it. */
   let locale: string | undefined;
-  const context = (): AppearanceContext => ({ editor, globals });
   const root = document.createElement("section");
   root.dataset["vigiliaPanel"] = "selection";
   host.append(root);
+
+  /**
+   * The sections this inspector has built, kept for its whole life. Rebuilding
+   * the column from this map is what keeps an open section open: a fresh
+   * `propertySection` would start at its default every render.
+   */
+  const sections = new Map<ColumnSectionId, PropertySection>();
 
   const selected = (): FabricObject | undefined =>
     editor.canvas.getActiveObject() ?? undefined;
@@ -310,7 +346,7 @@ export function createSelectionInspector(
       caller can batch several writes into one entry. */
   const write = (
     object: FabricObject,
-    key: GeometryField["key"],
+    key: GeometryKey,
     value: number,
   ): void => {
     switch (key) {
@@ -373,10 +409,18 @@ export function createSelectionInspector(
   };
 
   const render = (): void => {
+    const focused = focusedControl();
     root.replaceChildren();
     const object = target();
 
     if (object === undefined) {
+      // One line naming where to choose from, rather than an empty column: the
+      // panel is the only thing on this tab that explains its own emptiness.
+      const line = document.createElement("p");
+      line.className = "vigilia-resolution";
+      line.dataset["vigiliaNothingSelected"] = "";
+      line.textContent = uiCopy.inspectorFields.nothingSelected;
+      root.append(line);
       return;
     }
 
@@ -392,234 +436,40 @@ export function createSelectionInspector(
     // `eligible` predicates read the selection's kind and membership but never
     // its lock; and run bindings, which `#setBindings` writes without reading
     // one. Gating those here would advertise a refusal that never happens, so
-    // only the fields that write the object directly are withheld.
-    const locked = object.get("locked") === true;
-    if (locked) {
+    // only the fields that write the object directly are withheld — and the
+    // read-only sections still render, because the author can still read them.
+    if (object.get("locked") === true) {
       const note = document.createElement("p");
       note.className = "vigilia-resolution";
       note.textContent = uiCopy.inspectorFields.locked;
       root.append(note);
     }
 
-    if (!locked) {
-      // What the object is called, above the numbers that describe it: this is
-      // the field the layer list and every reference-facing surface read.
-      root.append(
-        createNameField(context(), object, (candidate) =>
-          stillTarget(candidate),
-        ),
-      );
-
-      const geometry = document.createElement("div");
-
-      /** A refused edit restores the field itself (the primitives own that);
-          the panel only has to report it, as it always has. */
-      const refused = (): void => {
-        editor.errorManager.warn(
-          "controls",
-          uiCopy.inspectorFields.invalidValue,
-        );
-      };
-
-      // X/Y and W/H are pairs — an author reads and edits them together — while
-      // rotation stands alone. The pair primitive keeps the two boxes on one
-      // `.vigilia-field-row` line, as the artboard panel's Size row does.
-      const pair = (
-        rowLabel: string,
-        first: GeometryField,
-        second: GeometryField,
-      ): HTMLElement =>
-        linkedPair({
-          rowLabel,
-          first: {
-            label: first.label,
-            value: Math.round(readField(object, first.key)),
-            data: "vigiliaGeometry",
-            dataValue: first.key,
-          },
-          second: {
-            label: second.label,
-            value: Math.round(readField(object, second.key)),
-            data: "vigiliaGeometry",
-            dataValue: second.key,
-          },
-          ...(first.min === undefined ? {} : { min: first.min }),
-          invalidMessage: uiCopy.inspectorFields.invalidValue,
-          onReject: refused,
-          // Each half writes only its own key: X/Y and W/H are independent, and
-          // writing the sibling would quantise a fractional dimension the author
-          // never touched.
-          onCommitFirst: (value) => {
-            if (!stillTarget(object)) return;
-            write(object, first.key, value);
-            commit();
-          },
-          onCommitSecond: (value) => {
-            if (!stillTarget(object)) return;
-            write(object, second.key, value);
-            commit();
-          },
-        }).row;
-
-      geometry.append(
-        pair(
-          uiCopy.inspectorFields.position,
-          GEOMETRY_FIELDS.left,
-          GEOMETRY_FIELDS.top,
-        ),
-        pair(
-          uiCopy.inspectorFields.size,
-          GEOMETRY_FIELDS.width,
-          GEOMETRY_FIELDS.height,
-        ),
-      );
-
-      const rotation = numberField({
-        label: GEOMETRY_FIELDS.angle.label,
-        value: Math.round(readField(object, "angle")),
-        data: "vigiliaGeometry",
-        dataValue: "angle",
-        invalidMessage: uiCopy.inspectorFields.invalidValue,
-        onReject: refused,
-        onCommit: (value) => {
-          if (!stillTarget(object)) return;
-          write(object, "angle", value);
-          commit();
-        },
-      });
-      geometry.append(rotation.row);
-
-      // The Size pair reads the authored box, which is what it writes. Where
-      // the object's own edge is a different number, the author is told which
-      // is which rather than left to compare a panel against a canvas.
-      const edge = measuredEdgeOf(object);
-      if (edge !== undefined) {
-        const line = document.createElement("p");
-        line.className = "vigilia-resolution";
-        line.dataset["vigiliaResolution"] = uiCopy.inspectorFields.size;
-        line.textContent = uiCopy.inspectorFields.sizeDisagrees(
-          `${Math.round(readField(object, "width"))} × ${Math.round(readField(object, "height"))}`,
-          `${edge.width} × ${edge.height}`,
-        );
-        geometry.append(line);
-      }
-
-      // Crop sits with the geometry it changes, and only for a selection that
-      // can hold one — an image, which is the only kind `canCrop` admits.
-      const crop = createCropRow(editor, object, stillTarget);
-      if (crop !== undefined) geometry.append(crop);
-
-      // The mark that says this object's overhang is deliberate. It is beside
-      // crop rather than under appearance because what it changes is the crop
-      // notice both surfaces print, not how the object paints.
-      geometry.append(
-        createBleedField(context(), object, {
-          stillTarget: () => stillTarget(object),
-          commit,
-          onChange: render,
-        }),
-      );
-
-      root.append(geometry);
-    }
-
-    // Appearance, and what the object's references actually resolve to. The
-    // resolution lines are read-only, so a locked object still gets them: the
-    // author can see what the object is made of even when they cannot move it.
-    const appearance = document.createElement("div");
-    if (!locked) {
-      appearance.append(
-        createOpacityField(context(), object, (candidate) =>
-          stillTarget(candidate),
-        ),
-      );
-      // Panel material, for a selection whose kind can carry it.
-      const panelFields = createPanelFields(context(), object, {
-        stillTarget: () => stillTarget(object),
-        commit,
-        onChange: render,
-      });
-      if (panelFields !== undefined) appearance.append(panelFields);
-      // Frosted glass, for a selection whose backdrop can actually be sampled.
-      const glassFields = createGlassFields(context(), object, {
-        stillTarget: () => stillTarget(object),
-        commit,
-        onChange: render,
-        refreshGlass: options.refreshGlass,
-      });
-      if (glassFields !== undefined) appearance.append(glassFields);
-    }
-    const references = paintReferencesOf(object);
-    if (references.length === 0) {
-      appearance.append(
-        createResolutionLine(
-          uiCopy.inspectorFields.paint,
-          undefined,
-          undefined,
-        ),
-      );
-    } else {
-      for (const { label, ref } of references) {
-        appearance.append(
-          createResolutionLine(
-            label,
-            nameOfRef(context().globals, ref),
-            resolveToken(context().globals, ref),
-          ),
-        );
-      }
-    }
-
-    // Type belongs to a text object; a shape has none, so it gets no line.
-    const preset = typePresetOf(object);
-    if (preset !== undefined) {
-      // `nameOfRef`, because this line printed `typePresets.24-400` while the
-      // panel beside it and both dropdowns printed `Card title`. That is what
-      // made vg-089 read as a mis-bound dropdown: the screenshot had caught
-      // this line, not the control it was blamed on.
-      appearance.append(
-        createResolutionLine(
-          uiCopy.inspectorFields.runPreset,
-          nameOfRef(context().globals, preset),
-          resolveTypePreset(context().globals, preset),
-        ),
-      );
-      const reveal = options.revealTypePresets;
-      if (reveal !== undefined) {
-        appearance.append(createTypePresetReveal(reveal));
-      }
-    }
-
-    root.append(appearance);
-
-    // Styled runs, for a text object (§89). Nothing is shown for a run-less
-    // selection, so a shape's inspector stays as it was.
-    const id = object.get("id");
-    const inspectable = object as unknown as {
-      get(n: string): unknown;
-      set(n: string, v: unknown): void;
+    const context: ColumnContext = {
+      editor,
+      globals,
+      locale,
+      geometry: {
+        read: readField,
+        write,
+        measuredEdge: measuredEdgeOf,
+      },
+      stillTarget,
+      commit,
+      rerender: render,
+      revealTypePresets: options.revealTypePresets,
+      refreshGlass: options.refreshGlass,
+      nodeBindings: options.nodeBindings,
+      onNodeBindingsChange: options.onNodeBindingsChange,
+      sampleSource: options.sampleSource,
+      sections,
     };
-    // Without an id there is no node to key a binding by, so the run list stays
-    // what it was: a purely visual editor.
-    const port: RunBindingPort | undefined =
-      typeof id !== "string" || id.length === 0
-        ? undefined
-        : {
-            bindings: () => options.nodeBindings?.(id) ?? [],
-            setBindings: (next) => options.onNodeBindingsChange?.(id, next),
-          };
 
-    root.append(
-      createRunEditor(
-        editor,
-        globals,
-        inspectable,
-        render,
-        port,
-        locale,
-        options.sampleSource,
-      ).root,
-    );
+    for (const section of perKindColumn(object, context)) {
+      root.append(section.root);
+    }
+
+    restoreFocus(root, focused);
   };
 
   // Fabric reports a finished drag/resize/rotate as `object:modified`; the fields

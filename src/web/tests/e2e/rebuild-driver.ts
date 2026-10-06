@@ -239,6 +239,26 @@ const GEOMETRY = {
   h: "height",
 } as const;
 
+/**
+ * Opens the Position section.
+ *
+ * Geometry is the one section closed by default — an author adjusts it once and
+ * chooses the binding constantly — so every geometry control is behind a
+ * disclosure. A helper that filled one without opening it would wait on a hidden
+ * input, which is a hidden control and not a failing one.
+ */
+export async function openPosition(page: Page): Promise<void> {
+  const summary = page
+    .locator('[data-vigilia-section="position"] summary')
+    .first();
+  if ((await summary.count()) === 0) return;
+  const open = await summary.evaluate(
+    (node) =>
+      (node.closest("details") as HTMLDetailsElement | null)?.open === true,
+  );
+  if (!open) await summary.click();
+}
+
 /** Places and sizes the selection, in whole artboard units. */
 export async function place(
   page: Page,
@@ -249,6 +269,7 @@ export async function place(
     readonly h: number;
   },
 ): Promise<void> {
+  await openPosition(page);
   for (const [key, value] of [
     [GEOMETRY.x, box.x],
     [GEOMETRY.y, box.y],

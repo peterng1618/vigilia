@@ -60,6 +60,9 @@ export const uiCopy = {
     name: "Name",
     /** Shown when a name is rejected rather than truncated to the published bound. */
     invalidName: "That name cannot be applied to the selection.",
+    /** The section the obscure fields collapse into — present and findable, and
+        out of the way of the questions an author asks on every edit. */
+    advanced: "Advanced",
     x: "X",
     y: "Y",
     /** The Size pair marks its boxes W and H, as the artboard panel's does: the

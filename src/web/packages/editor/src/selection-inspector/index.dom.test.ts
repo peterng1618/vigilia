@@ -16,6 +16,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { uiCopy } from "../ui-copy.js";
 import { idleCrop } from "./idle-crop.test-stage.js";
 import { createSelectionInspector } from "./index.js";
+import { perKindColumn } from "./per-kind-column.js";
 
 /** A chart with settings but no live ECharts behind it: what the inspector
     reads is the object, not the engine that paints it. */
@@ -99,9 +100,15 @@ describe("the selection inspector", () => {
     rect = new Rect({ left: 0, top: 0, width: 40, height: 20 });
   });
 
-  it("renders nothing with no selection", () => {
+  it("names where to choose from when nothing is selected", () => {
     const { host } = setup(undefined);
 
+    // One line saying what to do, rather than an empty column or a section
+    // header standing over no fields.
+    expect(
+      host.querySelector("[data-vigilia-nothing-selected]")?.textContent,
+    ).toBe(uiCopy.inspectorFields.nothingSelected);
+    expect(host.querySelectorAll("[data-vigilia-section]")).toHaveLength(0);
     expect(host.querySelectorAll("[data-vigilia-geometry]")).toHaveLength(0);
   });
 
@@ -587,6 +594,200 @@ describe("the selection inspector", () => {
       expect(preview()).not.toBe(weekdayWord(instant, "en"));
     } finally {
       vi.useRealTimers();
+    }
+  });
+});
+
+describe("the column's sections", () => {
+  let rect: Rect;
+
+  beforeEach(() => {
+    rect = new Rect({ left: 0, top: 0, width: 40, height: 20 });
+  });
+
+  const ids = (host: HTMLElement): (string | undefined)[] =>
+    [...host.querySelectorAll<HTMLElement>("[data-vigilia-section]")].map(
+      (section) => section.dataset["vigiliaSection"],
+    );
+
+  const isOpen = (host: HTMLElement, id: string): boolean | undefined =>
+    host.querySelector<HTMLDetailsElement>(
+      `[data-vigilia-section="${id}"] details`,
+    )?.open;
+
+  const summaryOf = (host: HTMLElement, id: string): HTMLElement =>
+    host.querySelector<HTMLElement>(`[data-vigilia-section="${id}"] summary`)!;
+
+  it("asks the five questions in order, and only Position starts closed", () => {
+    const { host } = setup(rect);
+
+    expect(ids(host)).toEqual([
+      "content",
+      "position",
+      "layer",
+      "paint",
+      "spends",
+    ]);
+    // Geometry is adjusted once and the binding is chosen constantly, so the
+    // one section that is not asked repeatedly is the one put away.
+    expect(isOpen(host, "position")).toBe(false);
+    for (const id of ["content", "layer", "paint", "spends"]) {
+      expect(isOpen(host, id), id).toBe(true);
+    }
+  });
+
+  it("says how much the closed Position holds, so collapsed is not hidden", () => {
+    const { host } = setup(rect);
+    const section = host.querySelector<HTMLElement>(
+      '[data-vigilia-section="position"]',
+    )!;
+
+    // The count is the body's own length: a header that could claim more than
+    // the section holds is the defect the section control exists to prevent.
+    const count = Number(
+      section.querySelector(".vigilia-section-count")?.textContent,
+    );
+    const body = section.querySelector(".vigilia-section-body")!;
+    expect(count).toBe(body.childElementCount);
+    expect(body.childElementCount).toBeGreaterThan(0);
+  });
+
+  it("keeps the sections the author opened across a re-render", () => {
+    const { host, inspector } = setup(rect);
+    summaryOf(host, "position").click();
+    summaryOf(host, "paint").click();
+    expect(isOpen(host, "position")).toBe(true);
+    expect(isOpen(host, "paint")).toBe(false);
+
+    inspector.render();
+
+    // The author's own arrangement, not a fresh default: rebuilding the column
+    // would collapse Position again and reopen Paint under their hands.
+    expect(isOpen(host, "position")).toBe(true);
+    expect(isOpen(host, "paint")).toBe(false);
+  });
+
+  it("puts the caret back in the field being typed into", () => {
+    const { host, inspector } = setup(rect);
+    // Attached, because nothing is focusable while it is detached and jsdom
+    // would report `body` as the active element whatever this does.
+    document.body.append(host);
+    const name = host.querySelector<HTMLInputElement>("[data-vigilia-name]")!;
+    name.focus();
+    expect(document.activeElement).toBe(name);
+
+    inspector.render();
+
+    // The re-render replaces the field, so the caret has to be put back in the
+    // new element — the two share only the data hook that names them.
+    const after = host.querySelector<HTMLInputElement>("[data-vigilia-name]")!;
+    expect(after).not.toBe(name);
+    expect(document.activeElement).toBe(after);
+    host.remove();
+  });
+
+  it("does not put focus back on a control that only toggles", () => {
+    const { host, inspector } = setup(rect);
+    document.body.append(host);
+    const glass = host.querySelector<HTMLInputElement>(
+      "[data-vigilia-glass-enabled]",
+    )!;
+    glass.focus();
+    expect(document.activeElement).toBe(glass);
+
+    inspector.render();
+
+    // `focus` is not free here: it is what opens the glass control's reason
+    // popup, so restoring it re-opened a reason the author had just dismissed
+    // with Escape. A checkbox has no caret to lose.
+    expect(document.activeElement).not.toBe(
+      host.querySelector("[data-vigilia-glass-enabled]"),
+    );
+    host.remove();
+  });
+
+  it("renders no header at all for a section with nothing in it", () => {
+    rect.set({ locked: true });
+    const { host } = setup(rect);
+
+    // Every field that writes is withheld, so Content has no question left to
+    // ask and must not stand a header over nothing.
+    expect(host.querySelector('[data-vigilia-section="content"]')).toBeNull();
+    // Read-only, so the author still sees what the object resolves to.
+    expect(
+      host.querySelector('[data-vigilia-section="spends"]'),
+    ).not.toBeNull();
+  });
+
+  it("puts each field under the question it answers", () => {
+    const { host } = setup(rect);
+    const inSection = (id: string, selector: string): Element | null =>
+      host.querySelector(`[data-vigilia-section="${id}"] ${selector}`);
+
+    expect(inSection("content", "[data-vigilia-name]")).not.toBeNull();
+    expect(
+      inSection("position", '[data-vigilia-geometry="left"]'),
+    ).not.toBeNull();
+    expect(
+      inSection("position", '[data-vigilia-geometry="width"]'),
+    ).not.toBeNull();
+    expect(inSection("position", "[data-vigilia-bleeds]")).not.toBeNull();
+    expect(
+      inSection("layer", '[data-vigilia-geometry="angle"]'),
+    ).not.toBeNull();
+    expect(inSection("layer", "[data-vigilia-opacity]")).not.toBeNull();
+    expect(inSection("paint", "[data-vigilia-panel-fill]")).not.toBeNull();
+    expect(inSection("spends", "[data-vigilia-resolution]")).not.toBeNull();
+
+    // ...and nowhere else: rotation is not a position, and what an object
+    // resolves to is not how it is painted.
+    expect(inSection("position", '[data-vigilia-geometry="angle"]')).toBeNull();
+    expect(inSection("paint", "[data-vigilia-resolution]")).toBeNull();
+  });
+
+  it("is a plan a test can read as data, before anything renders", () => {
+    const editor = {
+      canvas: canvasWith(rect),
+      historyManager: { saveState: vi.fn() },
+      errorManager: { warn: vi.fn(), error: vi.fn() },
+      cropManager: idleCrop(),
+    };
+    const sections = perKindColumn(rect, {
+      editor: editor as never,
+      globals: undefined,
+      locale: undefined,
+      geometry: {
+        read: () => 0,
+        write: () => {},
+        measuredEdge: () => undefined,
+      },
+      stillTarget: () => true,
+      commit: () => {},
+      rerender: () => {},
+      revealTypePresets: undefined,
+      refreshGlass: () => {},
+      nodeBindings: undefined,
+      onNodeBindingsChange: undefined,
+      sampleSource: undefined,
+      sections: new Map(),
+    });
+
+    expect(sections.map((section) => section.section)).toEqual([
+      "content",
+      "position",
+      "layer",
+      "paint",
+      "spends",
+    ]);
+    expect(
+      sections
+        .filter((section) => section.defaultOpen)
+        .map((section) => section.section),
+    ).toEqual(["content", "layer", "paint", "spends"]);
+    for (const section of sections) {
+      expect(section.count, section.section).toBe(
+        section.root.querySelectorAll(".vigilia-section-body > *").length,
+      );
     }
   });
 });

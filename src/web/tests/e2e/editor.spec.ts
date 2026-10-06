@@ -456,6 +456,27 @@ async function dragToLine(
   return { left, raw: startLeft + travelled };
 }
 
+/**
+ * Opens the Position section.
+ *
+ * Geometry is the one section the inspector closes by default — an author
+ * adjusts it once and chooses the binding constantly — so the geometry controls
+ * are behind a disclosure. A helper that measured or typed into one without
+ * opening it first would be driving a hidden input, which is a hidden control
+ * rather than a failing one.
+ */
+async function openPosition(page: Page): Promise<void> {
+  const summary = page
+    .locator('[data-vigilia-section="position"] summary')
+    .first();
+  if ((await summary.count()) === 0) return;
+  const open = await summary.evaluate(
+    (node) =>
+      (node.closest("details") as HTMLDetailsElement | null)?.open === true,
+  );
+  if (!open) await summary.click();
+}
+
 /** The inspector's two geometry pairs, measured from the built bundle. jsdom
  * cannot lay out, so a wrapped pair and a same-line pair return the identical
  * row element there; only a browser can tell the two apart.
@@ -470,6 +491,7 @@ async function geometryPairBoxes(page: Page): Promise<{
   widthTop: number;
   heightTop: number;
 }> {
+  await openPosition(page);
   return page.evaluate(() => {
     const input = (key: string): HTMLInputElement => {
       const field = document.querySelector<HTMLInputElement>(
@@ -504,6 +526,7 @@ test.describe("Fabric editor route", () => {
     // Selecting through the layer row, not a canvas click: the stage
     // letterboxes the artboard, so a scene coordinate is not a stable page one.
     await page.locator('[data-vigilia-layer="wordmark"]').click();
+    await openPosition(page);
     await expect(page.locator('[data-vigilia-geometry="width"]')).toBeVisible();
 
     // "One line" is the two inputs sharing a top, not a row-height threshold:
@@ -513,6 +536,42 @@ test.describe("Fabric editor route", () => {
     // ...and the wrap shows up as height, so the Size row must be no taller
     // than the Position row that already fits.
     expect(boxes.sizeRowHeight).toBeLessThanOrEqual(boxes.positionRowHeight);
+  });
+
+  test("collapses Position on a fresh selection and leaves the other questions open", async ({
+    page,
+  }, testInfo) => {
+    test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+
+    await page.goto(EDITOR);
+    await page.locator('[data-vigilia-layer="wordmark"]').click();
+
+    const isOpen = (id: string): Promise<boolean> =>
+      page
+        .locator(`[data-vigilia-section="${id}"] details`)
+        .evaluate((node) => (node as HTMLDetailsElement).open);
+
+    // Geometry is adjusted once and the binding is chosen constantly, so the
+    // one question an author does not return to is the one put away — and it
+    // is put away rather than hidden: the summary carries the count.
+    await expect(
+      page.locator('[data-vigilia-section="position"]'),
+    ).toBeVisible();
+    expect(await isOpen("position")).toBe(false);
+    for (const id of ["content", "layer", "paint", "spends"]) {
+      expect(await isOpen(id), id).toBe(true);
+    }
+    await expect(
+      page.locator('[data-vigilia-section="position"] .vigilia-section-count'),
+    ).not.toHaveText("0");
+
+    // The section opens, and the geometry it was always made of is inside it.
+    await page
+      .locator('[data-vigilia-section="position"] summary')
+      .first()
+      .click();
+    await expect(page.locator('[data-vigilia-geometry="left"]')).toBeVisible();
+    await expect(page.locator('[data-vigilia-geometry="width"]')).toBeVisible();
   });
 
   test("keeps the drag marquee drawn while the pointer rests", async ({
@@ -960,6 +1019,9 @@ test.describe("Fabric editor route", () => {
     // it has no corner radius to show, and it has a side count of its own.
     await expect(page.locator("[data-vigilia-panel-fill]")).toBeVisible();
     await expect(page.locator("[data-vigilia-panel-radius]")).toHaveCount(0);
+    // The side count is geometry, and geometry is the one section the column
+    // starts closed — so it is opened the way an author opens it.
+    await openPosition(page);
     const sides = page.locator("[data-vigilia-shape-sides]");
     await expect(sides).toBeVisible();
     await typeInto(page, sides, "5");

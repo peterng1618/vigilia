@@ -206,8 +206,15 @@ function tokenOptions(
     .map(([id, entry]) => ({ id, name: entry.name }));
 }
 
-/** The panel's appearance fields, or nothing when it is not a panel. */
-export function createPanelFields(
+/**
+ * The panel's material fields — fill, stroke, border, radius, shadow — or
+ * nothing when the selection is not a panel.
+ *
+ * Split from `createShapeGeometryFields` because the column answers two
+ * different questions with them: material is Paint (what ink), while a
+ * polygon's side count and a sweep's angles are Position (where and how big).
+ */
+export function createPanelMaterialFields(
   context: AppearanceContext,
   object: FabricObject,
   hooks: PanelFieldHooks,
@@ -394,9 +401,26 @@ export function createPanelFields(
     );
   }
 
-  root.append(...createShapeFields(object, hooks, refused));
-
   return root;
+}
+
+/**
+ * The geometry that belongs to this one kind of shape — a polygon's sides, a
+ * polyline's points, a line's endpoints, a sweep's angles, a path's data — or
+ * nothing when every number the shape has is already the general W/H pair.
+ */
+export function createShapeGeometryFields(
+  context: AppearanceContext,
+  object: FabricObject,
+  hooks: PanelFieldHooks,
+): readonly HTMLElement[] {
+  /** A refused edit restores the field itself; this only reports it. */
+  const refused = (): void =>
+    context.editor.errorManager.warn(
+      "controls",
+      uiCopy.inspectorFields.invalidValue,
+    );
+  return createShapeFields(object, hooks, refused);
 }
 
 /** The fewest sides a closed shape can have, and the most an author can ask
