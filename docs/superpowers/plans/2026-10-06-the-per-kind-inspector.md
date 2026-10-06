@@ -535,8 +535,13 @@ default and moves the field the author was typing into.
 **Interfaces:**
 - Consumes the existing per-kind gates rather than re-deriving them: `supportsPanelFields`
   (`panel.ts:84`), `supportsGlassControl` (`glass.ts:84`), `canCrop` (`crop.ts:70`),
-  `isTextObject` (`index.ts:86`), `typePresetOf` (`appearance.ts:170`), and the shape's own
-  fields (`createShapeFields`, `panel.ts:397`).
+  `typePresetOf` (`appearance.ts:170`), and the shape's own fields
+  (`createShapeGeometryFields`, `panel.ts:397`).
+- **`isTextObject` (`index.ts:86`) is not on that list, and this plan named it wrongly.** Task
+  8 measured it: it is module-private in `index.ts`, and `index.ts` imports *this* module, so
+  consuming it would be a cycle. Kind classification asks Fabric's own `type` tag instead —
+  the same spelling `layer-tree.ts` already uses. A later reader sent to import it will find
+  no export and should not add one.
 - Produces: the per-kind rules — **shape**: its own material fields and geometry at the same
   density as a card's, not a lesser selection; **text**: typography by reference plus its
   runs and layout; **chart**: content and paint (Task 9 mounts the chart's own fields);
@@ -566,10 +571,17 @@ reported from a stale snapshot after the child changes.
 - Unit: a group shows bounds and the children's effective appearance, and shows no panel
   material, no crop and no typography — the negative half is what "not a lesser selection"
   means for a kind that genuinely lacks the question.
-- Unit: `runs.ts` does not exceed its current length, asserted by the repo's own source-size
-  check rather than by inspection.
+- Unit: `runs.ts` does not grow. **The "repo's own source-size check" this line used to name
+  does not exist** — Task 8 looked for it, and no script in `scripts/` and no test reads a
+  line count. The constraint is satisfied the stronger way instead: `runs.ts` carries a
+  **zero diff** in the task's commit, checked with `git show --stat`, and the 500/800 numbers
+  in `AGENTS.md` stay a judgement a reviewer makes rather than a gate that runs.
 - Browser: a card, a free shape, a text box and a chart each open a column that answers
-  their own first question, photographed for the evidence table.
+  their own first question. **The photographs are Task 10's, not this task's** — this task
+  cannot register them, because `docs/evidence/screenshots/README.md` keeps its table aligned
+  with `src/web/tests/e2e/editor.spec.ts` and both files belong to Task 10; a row registered
+  with no backing action captures nothing. Task 8's own browser pass asserts the section
+  counts and the field sets per kind in real Chromium, and hands the captures forward.
 
 **Commit:** `feat(editor): every kind answers its own questions`
 
