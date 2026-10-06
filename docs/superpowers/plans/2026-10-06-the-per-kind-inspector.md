@@ -105,10 +105,16 @@ rather than a review habit.
 **Files:**
 - Create: `docs/decisions/0028-the-descriptor-table-gains-the-metadata-the-surface-reads.md`
 
-**Constraint:** No source file may be touched until this note exists and claims both
-`src/web/packages/renderer-core/src/charts/` and `src/web/packages/renderer-core/src/theme/`.
-The gate is mechanical and checks presence only, so the note itself is where the argument
-lives.
+**Constraint:** `AGENTS.md`'s *Reuse before build* rule requires this note before the first
+write to a mechanism boundary, and both paths this plan touches are on the watchlist.
+
+**Measured while doing it, and it changes what "evidence" means here:** the reuse gate did
+**not** refuse anything, because earlier notes already claim the same directories —
+`0005-chart-glow-is-skipped-pending-an-artboard-unit.md` claims
+`renderer-core/src/charts/`, and `0022`/`0023` claim `renderer-core/src/theme/`. The gate
+answers *has any note ever claimed this path*, not *is this change argued for*, so a
+refusal-then-permission pair cannot be produced for either path. Filed as `vg-144`; the note
+is written because the rule requires it, not because a hook was going to stop the work.
 
 **What the note must establish, at the rungs `docs/decisions/README.md` sets out:**
 
@@ -132,15 +138,17 @@ lives.
 - Rung 6 — probe: which of these the repo can actually verify. If a claim cannot be probed
   in this repo, say so rather than asserting it.
 - **Decision:** extend `SettingsFieldDescriptor` in place — the table already owns the
-  question, already has exactly one non-test consumer, and a parallel table would be a
-  second owner for one concept. Record why the generic nested tree was rejected (two
+  question, `settingsFieldsFor` already has exactly one non-test consumer
+  (`chart-manager/panel.ts:204`) and `chartPaintFieldsFor` has three, and a parallel
+  editor-side table would be a second owner for one concept. Record why the generic nested tree was rejected (two
   settings need nesting; the machinery would outlive the need) and why no form library was
   adopted (the panel body is imperative DOM by design, and a React renderer would put a
   framework boundary where the repo has none).
 
-**Verification:** `node scripts/reuse-gate.mjs` (or the hook that wraps it) permits a write
-to a watched path afterwards and refused it before. Show the refusal, then the permission —
-that pair is the evidence.
+**Verification:** the note parses with the gate's own regex and claims both paths —
+`printf '{"tool_input":{"file_path":"<path>"}}' | node scripts/reuse-gate.mjs` exits 0 for
+each of them. Record in the note's report that the gate was already satisfied before the
+note existed, so the next reader does not mistake the exit code for the argument.
 
 **Commit:** `docs(decisions): the descriptor table gains what the surface reads from it`
 
