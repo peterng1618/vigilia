@@ -972,6 +972,12 @@ fails if the Style tab still exists, not a check of the composition panel nearby
 `npm run status:check` runs from `src/web/` before the commit. The status names **plan 5, units
 alongside primitives**, as the next work, with its landmarks.
 
+**A third plan move is adjacent, and it is `vg-152`'s, not this task's.** Plans 1 and 2 are closed
+and still sit in the live plans directory while plan 3 was archived; the row carries the measurement
+that nothing live references either plan file. This task moves **only its own plan** — clearing
+`vg-152` is two `git mv`s against the same rule and the same owner, and folding it in here would
+put a second finding inside a close-out commit that a reviewer then has to separate.
+
 **Verification:** `node scripts/backlog-check.mjs` passes; the archive greps for `vg-146`; the
 named sha is an ancestor of `HEAD`; `STATUS.md` names plan 5 and carries no bullet promising the
 Style tab.
