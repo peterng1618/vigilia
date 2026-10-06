@@ -328,6 +328,22 @@ npx vitest run packages/editor/src/editor-shell/shell-layout.dom.test.tsx packag
 
 - [ ] **Step 6: Commit.** `feat(editor): the + opens a chooser carrying both halves`
 
+**As executed** (`577c44e5`, verified by the controller: 70/70 on the three files, break/restore
+red on the named test alone, typecheck and biome exit 0). Two places the plan's own text was
+wrong, corrected here so a later reader is not misled:
+
+- **Step 1's `groupsOf` cannot be the literal mapping written above.** `insertGroups()` puts the
+  lone Text group *second*, while `insertMenuGroups()` and `paneGroups()` both hoist every
+  ungrouped entry *first* (`insertMenuGroups`, `shell-layout.dom.test.tsx:189`). The literal
+  mapping therefore compares unequal to a correct popover. `groupsOf` hoists the same way. The
+  comparison stays a set comparison, as this task's prose says — the price is that the ungrouped
+  entry's *position* in the popover is not pinned by it, only its membership and the other three
+  groups' order.
+- **Review Focus 5 needs a second test and a mechanism this task did not name.** The Step 1 block
+  pins only the with-session case. The refusal case is pinned by a second test, and the mechanism
+  chosen is `disabled` on the `+` while `store.bridge === undefined`, carried by three optional
+  `PaneBar` props (`addRef`, `addExpanded`, `addDisabled`) so the button stays the bar's own.
+
 ### Task 2: One mapping, every surface
 
 **Files:**
