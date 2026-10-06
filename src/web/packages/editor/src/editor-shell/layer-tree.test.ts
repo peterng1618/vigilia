@@ -1,6 +1,10 @@
 // @vitest-environment jsdom
+import { readFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { Arc } from "@vigilia/scene-fabric";
 import {
+  FabricImage,
   Gradient,
   Group,
   Path,
@@ -21,7 +25,15 @@ import {
   VigiliaChart,
 } from "@vigilia/scene-fabric";
 import { createNewFabricTheme } from "../new-fabric-theme.js";
-import { findById, ownerOf, pathTo, projectLayers } from "./layer-tree.js";
+import { uiCopy } from "../ui-copy.js";
+import {
+  findById,
+  type LayerKind,
+  type LayerRole,
+  ownerOf,
+  pathTo,
+  projectLayers,
+} from "./layer-tree.js";
 
 /** Nothing is open: the default an author meets, and the state a flat scene is
  * permanently in. A group with children is shut unless it is named here. */
@@ -802,5 +814,151 @@ describe("layer tree lookups", () => {
     outer.set("id", "outer");
     expect(pathTo([outer], "child")).toEqual([outer, inner, child]);
     expect(pathTo([outer], "missing")).toEqual([]);
+  });
+});
+
+describe("the row's role, in the document's own terms", () => {
+  it("counts a chart's series from its own bindings and names its family", () => {
+    const trends = new VigiliaChart({
+      id: "trends",
+      family: "line",
+      settings: defaultLineSettings,
+      width: 10,
+      height: 10,
+    });
+    const rows = projectLayers({
+      ...base,
+      root: [trends],
+      bindings: {
+        trends: [
+          { id: "a", semanticKey: "cpu.load" },
+          { id: "b", semanticKey: "gpu.load" },
+          { id: "c", semanticKey: "ram.used.percent" },
+        ],
+      },
+    });
+    // The count is the length of the same list the bound column prints, so the
+    // two cannot disagree.
+    expect(rows[0]?.role).toEqual({ kind: "chart", family: "line", series: 3 });
+    expect(rows[0]?.bound).toHaveLength(3);
+  });
+
+  it("counts no series for a chart the document binds to nothing", () => {
+    // An unbound chart must not throw, and must report zero rather than one:
+    // the count is the document's, not a default a chart is assumed to have.
+    const gauge = new VigiliaChart({
+      id: "gauge",
+      family: "gauge",
+      settings: defaultGaugeSettings,
+      width: 10,
+      height: 10,
+    });
+    const rows = projectLayers({ ...base, root: [gauge] });
+    expect(rows[0]?.role).toEqual({
+      kind: "chart",
+      family: "gauge",
+      series: 0,
+    });
+  });
+
+  it("names no family for a chart family this build does not know", () => {
+    // Review Focus 1. The settings are a gauge's, and the mark already refuses
+    // to claim that family — the role must refuse it for the same reason, or
+    // the row names a kind the document never did. A theme made by a newer
+    // build is the case, so the cast is the point rather than a convenience.
+    const future = new VigiliaChart({
+      id: "future",
+      family: "mystery",
+      settings: defaultGaugeSettings,
+      width: 10,
+      height: 10,
+    } as unknown as ConstructorParameters<typeof VigiliaChart>[0]);
+    const rows = projectLayers({
+      ...base,
+      root: [future],
+      bindings: { future: [{ id: "x", semanticKey: "cpu.load" }] },
+    });
+    expect(rows[0]?.role).toEqual({
+      kind: "chart",
+      family: undefined,
+      series: 1,
+    });
+  });
+
+  it("reads a card's unit from the document's own stamp, and nothing without one", () => {
+    const card = (id: string, provenance?: unknown): Group => {
+      const group = new Group([new Rect({ width: 10, height: 10 })]);
+      group.set("id", id);
+      if (provenance !== undefined) group.set("provenance", provenance);
+      return group;
+    };
+    const stamped = card("cpu-card", { widgetId: "cpu", widgetName: "CPU" });
+    const bare = card("bare-card");
+    const idOnly = card("id-only-card", { widgetId: "odd" });
+    const notAString = card("odd-card", { widgetId: "odd", widgetName: 7 });
+
+    const rows = projectLayers({
+      ...base,
+      root: [stamped, bare, idOnly, notAString],
+    });
+    const at = (id: string): LayerRole | undefined =>
+      rows.find((row) => row.id === id)?.role;
+    // The starter's cards carry no stamp, so `bare-card` is the common case
+    // rather than the edge: the correct answer is the bare group arm.
+    expect(at("cpu-card")).toEqual({ kind: "group", unit: "CPU" });
+    expect(at("bare-card")).toEqual({ kind: "group", unit: undefined });
+    expect(at("id-only-card")).toEqual({ kind: "group", unit: undefined });
+    expect(at("odd-card")).toEqual({ kind: "group", unit: undefined });
+  });
+
+  it("gives every kind the projection can return a role arm of its own", () => {
+    // Driven from the kind union rather than from one example object: a kind
+    // added to `LayerKind` without an arm breaks the `Record` below, so the
+    // gap is a compile failure and not an unfilled field.
+    const group = new Group([]);
+    group.set("id", "group-1");
+    const examples: Record<LayerKind, FabricObject> = {
+      text: new Textbox("hi", { id: "text-1" }),
+      shape: new Rect({ id: "shape-1", width: 10, height: 10 }),
+      chart: new VigiliaChart({
+        id: "chart-1",
+        family: "gauge",
+        settings: defaultGaugeSettings,
+        width: 10,
+        height: 10,
+      }),
+      group,
+      image: new FabricImage(document.createElement("img"), {
+        id: "image-1",
+        width: 10,
+        height: 10,
+      }),
+    };
+    for (const kind of Object.keys(examples) as LayerKind[]) {
+      const rows = projectLayers({ ...base, root: [examples[kind]] });
+      expect(rows[0]?.kind, kind).toBe(kind);
+      expect(rows[0]?.role.kind, kind).toBe(kind);
+    }
+  });
+
+  it("keeps the five kind words out of the projection", () => {
+    // Read from the source rather than from a rendered row: the assertion is
+    // that the words have one owner, `uiCopy.panels.layerKinds`, and that a
+    // private copy is not sitting beside the projection waiting to drift.
+    // The path is built from the string `import.meta.url` rather than from a
+    // `URL` object: under jsdom that object is jsdom's own class, which Node's
+    // `fileURLToPath` refuses as "not of scheme file".
+    const source = readFileSync(
+      resolve(dirname(fileURLToPath(import.meta.url)), "layer-tree.ts"),
+      "utf8",
+    );
+    expect(source).not.toMatch(/["'](Text|Shape|Chart|Group|Image)["']/);
+    expect(uiCopy.panels.layerKinds).toEqual({
+      text: "Text",
+      shape: "Shape",
+      chart: "Chart",
+      group: "Group",
+      image: "Image",
+    });
   });
 });

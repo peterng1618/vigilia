@@ -12,6 +12,7 @@ import {
 } from "@vigilia/scene-fabric";
 import { type FabricObject, FabricImage, Group } from "fabric/es";
 import { runPlaceholder } from "../run-placeholder.js";
+import { uiCopy } from "../ui-copy.js";
 
 export type LayerKind = "text" | "shape" | "chart" | "group" | "image";
 
@@ -41,11 +42,41 @@ export type LayerMark =
   | { readonly kind: "image"; readonly src: string | undefined }
   | { readonly kind: "group" };
 
+/**
+ * What the document says a row is, in the document's own terms.
+ *
+ * Raw facts rather than words: the panel renders one of these through
+ * `uiCopy.panels.layerRoles`, so the vocabulary has a single owner. Each arm
+ * reports what the object carries and **never a neighbour** — the rule
+ * `chartMark` already states for a family this build does not know. A chart
+ * with an unrecognised family is therefore `family: undefined` rather than the
+ * fallback's family, and a group with no stamp carries no unit, which is the
+ * document's answer rather than a gap.
+ */
+export type LayerRole =
+  | {
+      readonly kind: "chart";
+      readonly family: ChartFamily | undefined;
+      /** How many readings this chart draws — the length of the same binding
+       * list `bound` is projected from, so it cannot disagree with the keys
+       * printed beside it. */
+      readonly series: number;
+    }
+  /** The unit a stamped card was inserted as, where the document says one. The
+   * starter's own builders write no stamp, so on it every card row is the bare
+   * arm — which is what that document says, not a missing value. */
+  | { readonly kind: "group"; readonly unit: string | undefined }
+  | { readonly kind: "text" }
+  | { readonly kind: "shape" }
+  | { readonly kind: "image" };
+
 export interface LayerRow {
   readonly id: string;
   readonly name: string;
   readonly kind: LayerKind;
   readonly mark: LayerMark;
+  /** What this row is, in the words the document uses. */
+  readonly role: LayerRole;
   /** The semantic keys this node reads, in the order the document declares
    * them. Empty for an object bound to nothing, which is a fact about the
    * document rather than a gap to be filled in. */
@@ -100,15 +131,6 @@ function layerIds(): (object: FabricObject) => string {
   };
 }
 
-/** Empty rows help nobody, so a nameless row falls back to its kind. */
-const kindLabels: Readonly<Record<LayerKind, string>> = {
-  text: "Text",
-  shape: "Shape",
-  chart: "Chart",
-  group: "Group",
-  image: "Image",
-};
-
 /** Fabric type tags are lowercase class names; the envelope keeps "VigiliaChart". */
 function kindOf(object: FabricObject): LayerKind {
   if (object instanceof VigiliaChart) return "chart";
@@ -128,7 +150,9 @@ function nameOf(object: FabricObject, id: string, kind: LayerKind): string {
   const authored = objectName(object);
   if (authored !== undefined) return authored;
   if (id.trim() !== "") return id;
-  return kindLabels[kind];
+  // Empty rows help nobody, so a nameless row falls back to its kind — from
+  // the one owner of the kind words rather than a private table beside it.
+  return uiCopy.panels.layerKinds[kind];
 }
 
 /**
@@ -235,6 +259,60 @@ function imageMark(object: FabricObject): LayerMark {
   };
 }
 
+/**
+ * A chart's role: the family it names, and how many readings it draws.
+ *
+ * The family is read from the object and matched against the families this
+ * build knows, exactly as `chartMark` does — an unrecognised one is `undefined`
+ * rather than defaulted to a neighbour. The count is the object's own binding
+ * list, the same array `bound` is projected from, so the row's `×n` can never
+ * disagree with the keys printed beside it.
+ */
+function chartRole(object: FabricObject, own: readonly Binding[]): LayerRole {
+  const family: unknown = object.get("family");
+  return {
+    kind: "chart",
+    family: CHART_FAMILIES.find((known) => known === family),
+    series: own.length,
+  };
+}
+
+/**
+ * A group's role: the unit it was stamped with, where the document says one.
+ *
+ * The library stamps `{ widgetId, widgetName }` on an inserted root; the
+ * starter's own builders do not, so on the starter every card row is the bare
+ * arm. Reading a neighbouring card's stamp, or a stage or a default, would be
+ * the role claiming something the document does not.
+ */
+function groupRole(object: FabricObject): LayerRole {
+  const stamp: unknown = object.get("provenance");
+  const unit =
+    typeof stamp === "object" && stamp !== null
+      ? (stamp as { readonly widgetName?: unknown }).widgetName
+      : undefined;
+  return { kind: "group", unit: typeof unit === "string" ? unit : undefined };
+}
+
+function roleOf(
+  object: FabricObject,
+  kind: LayerKind,
+  own: readonly Binding[],
+): LayerRole {
+  switch (kind) {
+    case "chart":
+      return chartRole(object, own);
+    case "group":
+      return groupRole(object);
+    case "text":
+      return { kind: "text" };
+    case "shape":
+      return { kind: "shape" };
+    case "image":
+      return { kind: "image" };
+  }
+}
+
 function markOf(
   object: FabricObject,
   kind: LayerKind,
@@ -306,6 +384,7 @@ export function projectLayers({
           name: nameOf(object, id, kind),
           kind,
           mark: markOf(object, kind, own),
+          role: roleOf(object, kind, own),
           bound: own.map((entry) => entry.semanticKey),
           depth,
           parentId,

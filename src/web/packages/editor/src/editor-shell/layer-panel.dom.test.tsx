@@ -5,7 +5,12 @@ import { act } from "react";
 import { Canvas, Rect } from "fabric/es";
 import { LayerPanel } from "./layer-panel.js";
 import { createEditorShellBridge, type EditorShellBridge } from "./bridge.js";
-import type { LayerKind, LayerMark, LayerRow } from "./layer-tree.js";
+import type {
+  LayerKind,
+  LayerMark,
+  LayerRole,
+  LayerRow,
+} from "./layer-tree.js";
 import { actionEnabled, OBJECT_ACTIONS } from "../object-actions.js";
 import { uiCopy } from "../ui-copy.js";
 
@@ -31,12 +36,28 @@ function markFor(kind: LayerKind): LayerMark {
   }
 }
 
+/** The role a fixture gets unless it names its own: the bare arm for its kind.
+ *  A chart's family and series count come from a document, so a fixture whose
+ *  case is about either fills them in. */
+function roleFor(kind: LayerKind): LayerRole {
+  switch (kind) {
+    case "chart":
+      return { kind, family: undefined, series: 1 };
+    case "group":
+      return { kind, unit: undefined };
+    case "text":
+    case "shape":
+    case "image":
+      return { kind };
+  }
+}
+
 /** A row as the projection emits it, from the parts a test cares about.
  *
- * The mark and the bound key are required by the projection, so a fixture that
- * left them out would crash the panel before the assertion under test ran.
- * Filling them here keeps twenty fixtures that are about selection from each
- * restating a treatment none of them is looking at. */
+ * The mark, the role and the bound key are required by the projection, so a
+ * fixture that left them out would crash the panel before the assertion under
+ * test ran. Filling them here keeps twenty fixtures that are about selection
+ * from each restating a treatment none of them is looking at. */
 function layerRow(
   parts: Partial<Omit<LayerRow, "mark">> & { readonly mark?: LayerMark } = {},
 ): LayerRow {
@@ -46,6 +67,7 @@ function layerRow(
     name: "Layer",
     kind,
     mark: markFor(kind),
+    role: roleFor(kind),
     bound: [],
     depth: 0,
     parentId: undefined,

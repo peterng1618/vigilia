@@ -1,7 +1,55 @@
 /** Typed package-local visible editor copy (§35). Authored theme text,
  * telemetry values and developer errors stay outside this module. */
 
+import type { ChartFamily } from "@vigilia/renderer-core";
 import type { DisplayLensId } from "./display-lens.js";
+
+/**
+ * The one name per chart family, hoisted so the layer role vocabulary can
+ * compose a row's string from the same words the Add pane and the Insert menu
+ * offer. A second spelling of `Gauge` would be a second owner of the same fact.
+ */
+const chartFamilyLabels = {
+  gauge: "Gauge",
+  line: "Line",
+  bar: "Bar",
+  pie: "Pie",
+} as const satisfies Record<ChartFamily, string>;
+
+/**
+ * The generic word for each kind of layer. `layer-tree.ts`'s row-name fallback
+ * reads these, so the five kind words have one owner rather than a private
+ * table beside the projection. Keys mirror `LayerKind`: a kind added there
+ * without one fails to compile where the projection indexes this.
+ */
+const layerKindLabels = {
+  text: "Text",
+  shape: "Shape",
+  chart: "Chart",
+  group: "Group",
+  image: "Image",
+} as const;
+
+/**
+ * How a row's role reads: one function per arm of `LayerRole`, each turning the
+ * facts the projection reports into the words the row shows.
+ *
+ * A chart whose family this build does not know shows the kind word rather than
+ * a neighbour's family the document never claimed, and a chart drawing more
+ * than one series says how many (`Line ×3`) — the family alone would hide the
+ * difference between one reading and three.
+ */
+const layerRoles = {
+  text: (): string => layerKindLabels.text,
+  shape: (): string => layerKindLabels.shape,
+  image: (): string => layerKindLabels.image,
+  group: (unit: string | undefined): string => unit ?? layerKindLabels.group,
+  chart: (family: ChartFamily | undefined, series: number): string => {
+    const label =
+      family === undefined ? layerKindLabels.chart : chartFamilyLabels[family];
+    return series > 1 ? `${label} ×${series}` : label;
+  },
+} as const;
 
 /**
  * One reason per kind, keyed by the kind `renderer-core` is asked with.
@@ -352,13 +400,9 @@ export const uiCopy = {
     } satisfies Record<DisplayLensId, string>,
   },
   palette: "Shell palette",
-  /** Chart family labels, shared by the Add panel and the Insert menu. */
-  chartFamilies: {
-    gauge: "Gauge",
-    line: "Line",
-    bar: "Bar",
-    pie: "Pie",
-  },
+  /** Chart family labels, shared by the Add panel, the Insert menu and the
+   *  layer row's role. */
+  chartFamilies: chartFamilyLabels,
   /**
    * One label per primitive shape. The Add pane's shape list, the defaults that
    * build each kind and the inspector's own fields all read this, so a shape is
@@ -431,6 +475,11 @@ export const uiCopy = {
   /** Panel copy. Panel factories own their DOM contract; this owns the words. */
   panels: {
     layers: "Layers",
+    /** The generic word for each kind of layer, the one owner of the five kind
+     *  words — `layer-tree.ts` reads these where it once held a private table. */
+    layerKinds: layerKindLabels,
+    /** A row's role, in words. One function per arm of `LayerRole`. */
+    layerRoles,
     /** Layer-tree row controls. The twisty and the rename field carry the
      * layer's name as well, so those two names are unique; the state icons do
      * not, because "Hide" on every row is the same control repeated and the row
