@@ -360,7 +360,6 @@ describe("property section", () => {
       title: "Paint",
       body: [line("Opacity")],
       defaultOpen: false,
-      count: 3,
     });
     document.body.append(section.root);
     const { details, summary, body } = parts(section);
@@ -370,9 +369,12 @@ describe("property section", () => {
     ).not.toBeNull();
     expect(details?.open).toBe(false);
     // Collapsed is not hidden: the count is in the summary, so a closed section
-    // still says how much it holds, and the title is there to name it.
+    // still says how much it holds, and the title is there to name it. The count
+    // is the body's own length — there is no other number it could be.
     expect(summary?.textContent).toContain("Paint");
-    expect(summary?.textContent).toContain("3");
+    expect(
+      section.root.querySelector(".vigilia-section-count")?.textContent,
+    ).toBe("1");
     // Closed, the body is still in the DOM — a section that unmounted it would
     // drop every field the next re-render replaced instead of updating.
     expect(body?.textContent).toBe("Opacity");
@@ -382,26 +384,32 @@ describe("property section", () => {
     expect(body?.textContent).toBe("Opacity");
   });
 
-  it("names the summary by the title, not by its count", () => {
+  it("keeps the title and the count as separate text, neither replacing the other", () => {
     const section = propertySection({
       id: "position",
       title: "Position",
       body: [line("X")],
       defaultOpen: false,
-      count: 12,
     });
     document.body.append(section.root);
     const { summary } = parts(section);
 
-    const labelled = summary?.getAttribute("aria-labelledby") ?? "";
-    const name = document.getElementById(labelled)?.textContent;
-    // The count is visible but it is not the name: a summary whose accessible
-    // name is only a number tells a screen reader nothing about the section.
-    expect(name).toBe("Position");
-    expect(summary?.textContent).toContain("12");
+    // The summary is named by its own content, so the name is title + count.
+    // Naming it by the title span alone (an `aria-labelledby`, now removed)
+    // would announce "Position" and drop the count from the name — the reviewer
+    // reasoned this from the mechanism; jsdom computes no accessible name, so it
+    // is not measured here.
+    expect(summary?.hasAttribute("aria-labelledby")).toBe(false);
+    const title = summary?.querySelector(".vigilia-section-title");
+    const count = summary?.querySelector(".vigilia-section-count");
+    expect(title?.textContent).toBe("Position");
+    expect(count?.textContent).toBe("1");
+    // Two nodes and a separator, not one fused string: "Position1" would read
+    // as a single word.
+    expect(summary?.textContent).toBe("Position 1");
   });
 
-  it("toggles from the keyboard-reachable summary the platform provides", () => {
+  it("focuses the summary the platform makes tabbable and toggles it on click", () => {
     const section = propertySection({
       id: "content",
       title: "Content",
@@ -416,10 +424,10 @@ describe("property section", () => {
     // not a div the panel had to make tabbable.
     expect(document.activeElement).toBe(summary);
 
-    // jsdom runs no keyboard activation for any element — it toggles a
-    // `<details>` only through the click a browser synthesizes for Enter on a
-    // focused summary — so the platform's activation is driven directly rather
-    // than through a keydown jsdom would ignore.
+    // This is a focus-and-click test, not a keyboard-activation one: jsdom runs
+    // no keyboard activation for any element — a browser toggles `<details>`
+    // through the click it synthesizes for Enter on a focused summary — so the
+    // activation is driven directly rather than through a keydown jsdom ignores.
     summary?.click();
     expect(details?.open).toBe(true);
     summary?.click();
@@ -461,7 +469,6 @@ describe("property section", () => {
       title: "Layer",
       body: [],
       defaultOpen: true,
-      count: 0,
     });
     document.body.append(section.root);
 
@@ -477,10 +484,12 @@ describe("property section", () => {
       title: "Paint",
       body: [line("Fill"), line("Stroke"), line("Opacity")],
       defaultOpen: true,
-      count: 3,
     });
     document.body.append(section.root);
 
+    expect(
+      section.root.querySelector(".vigilia-section-count")?.textContent,
+    ).toBe("3");
     section.setBody([line("Fill"), line("Stroke")]);
 
     // A header that still says three over a body holding two is the same lie as
@@ -489,7 +498,7 @@ describe("property section", () => {
     expect(
       section.root.querySelector(".vigilia-section-count")?.textContent,
     ).toBe("2");
-    expect(parts(section).summary?.textContent).toBe("Paint2");
+    expect(parts(section).summary?.textContent).toBe("Paint 2");
     expect(section.isOpen()).toBe(true);
   });
 
@@ -499,7 +508,6 @@ describe("property section", () => {
       title: "Layer",
       body: [line("Opacity")],
       defaultOpen: false,
-      count: 1,
     });
     document.body.append(section.root);
     section.open();

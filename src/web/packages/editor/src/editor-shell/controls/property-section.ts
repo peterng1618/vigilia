@@ -22,10 +22,6 @@ export interface PropertySectionOptions {
   readonly title: string;
   readonly body: readonly HTMLElement[];
   readonly defaultOpen: boolean;
-  /** Rendered in the summary when given, and kept in step with the body by
-      `setBody`. A count of zero on a body that has fields is the caller's
-      mistake, not this control's to invent one for. */
-  readonly count?: number;
 }
 
 export interface PropertySection {
@@ -38,8 +34,6 @@ export interface PropertySection {
   setBody(next: readonly HTMLElement[]): void;
 }
 
-let seq = 0;
-
 export function propertySection(
   options: PropertySectionOptions,
 ): PropertySection {
@@ -51,10 +45,10 @@ export function propertySection(
   let content: HTMLElement | undefined;
   let counter: HTMLElement | undefined;
 
-  const build = (
-    children: readonly HTMLElement[],
-    count: number | undefined,
-  ): void => {
+  // One rule for the count, everywhere it is written: it is the body's length.
+  // A caller-supplied count could disagree with the body it sits over, which is
+  // the defect this control exists to prevent.
+  const build = (children: readonly HTMLElement[]): void => {
     const section = document.createElement("section");
     section.className = "vigilia-section";
     section.dataset["vigiliaSection"] = options.id;
@@ -68,19 +62,16 @@ export function propertySection(
     const title = document.createElement("span");
     title.className = "vigilia-section-title";
     title.textContent = options.title;
-    // The title is the summary's accessible name; without this the name would
-    // be the title and the count run together, and a header whose name is only
-    // a number would tell a screen reader nothing about the section.
-    title.id = `vigilia-section-title-${++seq}`;
-    summary.setAttribute("aria-labelledby", title.id);
-    summary.append(title);
-    if (count !== undefined) {
-      const element = document.createElement("span");
-      element.className = "vigilia-section-count";
-      element.textContent = String(count);
-      summary.append(element);
-      counter = element;
-    }
+    const count = document.createElement("span");
+    count.className = "vigilia-section-count";
+    count.textContent = String(children.length);
+    // The summary's accessible name is its own text — the title first, then the
+    // count — so a screen reader hears "Paint, 3", not "Paint". Naming it by the
+    // title alone would drop the count from the name, which is the opposite of
+    // "collapsed is not hidden". The space keeps the two apart as text rather
+    // than fusing them into "Paint3".
+    summary.append(title, " ", count);
+    counter = count;
 
     const body = document.createElement("div");
     body.className = "vigilia-section-body";
@@ -94,7 +85,7 @@ export function propertySection(
   };
 
   // Nothing to hold means nothing to disclose: no header, no count of zero.
-  if (options.body.length > 0) build(options.body, options.count);
+  if (options.body.length > 0) build(options.body);
 
   return {
     root,
@@ -115,7 +106,7 @@ export function propertySection(
         return;
       }
       if (content === undefined) {
-        build(next, options.count === undefined ? undefined : next.length);
+        build(next);
         return;
       }
       // A count that can lie is worse than no count: the header follows the
