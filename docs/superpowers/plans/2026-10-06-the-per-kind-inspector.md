@@ -404,7 +404,11 @@ that renders empty and still shows a header with a count of zero.
   `id = vigilia-chart-setting-${descriptor.property}`,
   `dataset["vigiliaChartSetting"] = descriptor.property` — so existing specs and
   screenshots address the same controls they address now.
-- Consumes: `readSetting`/`writeSetting` from Task 3 for a descriptor carrying a `path`.
+- **Consumes, in the caller rather than the control:** `readSetting`/`writeSetting` from
+  Task 3, and an exported `isSettingVisible(descriptor, settings)` for `visibleWhen`. An
+  earlier draft said the control consumes the settings object; it cannot — its options carry
+  a value and a callback, and nothing else. Making the panel evaluate visibility also makes
+  "renders nothing" observable where the other fields are, which is where a test can see it.
 - Consumes: `tooltip` (`editor-shell/controls/tooltip.ts`) for the hint.
 
 **Constraints:** the hint is presented **twice on purpose**: as a tooltip for a pointer and
