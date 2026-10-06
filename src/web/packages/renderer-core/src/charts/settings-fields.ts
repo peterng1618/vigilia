@@ -1,4 +1,5 @@
 import type { ChartFamily } from "../theme/document.js";
+import { ANIMATION_EASINGS, type AnimationEasing } from "./animation.js";
 
 /**
  * Which settings each chart family accepts, as editable field descriptors.
@@ -30,6 +31,15 @@ import type { ChartFamily } from "../theme/document.js";
  * carry the whole meaning, and a descriptor without one does not compile.
  * `advanced` marks a field for the collapsed-and-counted treatment, never for
  * removal.
+ *
+ * ## Two settings one level down
+ *
+ * `path` names where a field writes when it is not the top-level `property`, and
+ * `visibleWhen` asks it only in the state it applies to. Both exist for exactly
+ * two settings — `PieSettings.total.value` and the optional `AnimationSettings`
+ * block on all four families — which is why ADR-0028 chose a path over a nested
+ * descriptor tree. A surface reads and writes them through `settings-path.ts`,
+ * so the write path is the renderer's read path.
  *
  * ## It does not restate the defaults
  *
@@ -83,7 +93,10 @@ export const SETTINGS_SECTIONS: readonly SettingsSectionDefinition[] = [
 ];
 
 export interface SettingsFieldDescriptor {
-  /** The key inside the family's settings object. */
+  /**
+   * The field's name: the key inside the family's settings object, or a dotted
+   * path for a nested field, so it stays unique within the family.
+   */
   readonly property: string;
   readonly label: string;
   readonly kind: SettingsFieldKind;
@@ -93,6 +106,19 @@ export interface SettingsFieldDescriptor {
   readonly hint: string;
   /** Present when the field belongs behind the collapsed-and-counted treatment. */
   readonly advanced?: true;
+  /**
+   * Where inside the settings object this field writes, when that is not the
+   * top-level `property`. Defaults to `[property]`.
+   */
+  readonly path?: readonly string[];
+  /**
+   * The field is a question about one state of another, asked only in that
+   * state — `total.value` applies when `total.kind` is `fixed`.
+   */
+  readonly visibleWhen?: {
+    readonly path: readonly string[];
+    readonly equals: string;
+  };
   readonly min?: number;
   readonly max?: number;
   readonly step?: number;
@@ -139,6 +165,72 @@ const ORIENTATION = [
   { value: "horizontal", label: "Horizontal" },
   { value: "vertical", label: "Vertical" },
 ] as const;
+
+/** Every easing named for an author; a `Record` so a new one must be named too. */
+const EASING_LABELS: Readonly<Record<AnimationEasing, string>> = {
+  linear: "Linear",
+  cubicOut: "Cubic out",
+  cubicInOut: "Cubic in-out",
+  quadraticInOut: "Quadratic in-out",
+  quinticInOut: "Quintic in-out",
+};
+
+const EASING = ANIMATION_EASINGS.map((value) => ({
+  value,
+  label: EASING_LABELS[value],
+}));
+
+/**
+ * The animation block — one level down, the same four fields on every family.
+ *
+ * `AnimationSettings` is optional but, when present, a whole object, so a write
+ * into it materialises the block from its own owner (`charts/animation.ts`) and
+ * the table still declares no default. There is deliberately no on/off field:
+ * absence means the defaults apply, not that the chart is static — `animate` is
+ * supplied by the build (ADR-0028, *Why no animation toggle*).
+ */
+const ANIMATION_FIELDS: readonly SettingsFieldDescriptor[] = [
+  {
+    property: "animation.durationMs",
+    label: "Transition duration",
+    kind: "number",
+    section: "layer",
+    hint: "How long the chart takes to move an existing reading to its new value, in milliseconds.",
+    path: ["animation", "durationMs"],
+    min: 0,
+    max: 5000,
+  },
+  {
+    property: "animation.easing",
+    label: "Transition easing",
+    kind: "select",
+    section: "layer",
+    hint: "The curve that change follows; Linear is constant, the others start or end gently.",
+    path: ["animation", "easing"],
+    options: EASING,
+  },
+  {
+    property: "animation.appearMs",
+    label: "Appearance duration",
+    kind: "number",
+    section: "layer",
+    hint: "How long the chart takes to draw itself in when it first appears, in milliseconds.",
+    path: ["animation", "appearMs"],
+    advanced: true,
+    min: 0,
+    max: 5000,
+  },
+  {
+    property: "animation.appearEasing",
+    label: "Appearance easing",
+    kind: "select",
+    section: "layer",
+    hint: "The curve the chart follows as it draws itself in.",
+    path: ["animation", "appearEasing"],
+    advanced: true,
+    options: EASING,
+  },
+];
 
 /**
  * Every scalar setting, per family.
@@ -211,6 +303,7 @@ export const CHART_SETTINGS_FIELDS: Readonly<
       min: 2,
       max: 256,
     },
+    ...ANIMATION_FIELDS,
   ],
   line: [
     {
@@ -297,6 +390,7 @@ export const CHART_SETTINGS_FIELDS: Readonly<
       hint: "Render-time only. LTTB keeps the visible shape of a dense series at a fraction of the draw cost; it changes what is drawn, never what was measured.",
       options: SAMPLING,
     },
+    ...ANIMATION_FIELDS,
   ],
   bar: [
     {
@@ -368,6 +462,7 @@ export const CHART_SETTINGS_FIELDS: Readonly<
       section: "content",
       hint: "Draws each series' name beside its own bar.",
     },
+    ...ANIMATION_FIELDS,
   ],
   pie: [
     {
@@ -423,12 +518,35 @@ export const CHART_SETTINGS_FIELDS: Readonly<
       min: 0,
     },
     {
+      property: "total",
+      label: "Total",
+      kind: "select",
+      section: "content",
+      hint: "What the slices add up to: the parts themselves, or a total you fix so what no part accounts for is drawn as a remainder.",
+      path: ["total", "kind"],
+      options: [
+        { value: "sum", label: "Sum of the parts" },
+        { value: "fixed", label: "A fixed total" },
+      ],
+    },
+    {
+      property: "total.value",
+      label: "Fixed total",
+      kind: "number",
+      section: "content",
+      hint: "The whole each slice is a share of; anything no part accounts for is drawn as the remainder slice.",
+      path: ["total", "value"],
+      visibleWhen: { path: ["total", "kind"], equals: "fixed" },
+      min: 0,
+    },
+    {
       property: "showLabels",
       label: "Show labels",
       kind: "boolean",
       section: "content",
       hint: "Draws each slice's name and its leader line.",
     },
+    ...ANIMATION_FIELDS,
   ],
 };
 
@@ -540,5 +658,5 @@ export const NON_SCALAR_SETTINGS: Readonly<
   gauge: ["track", "progress", "animation"],
   line: ["stroke", "palette", "area", "animation"],
   bar: ["fill", "track", "animation"],
-  pie: ["remainderFill", "palette", "total", "animation"],
+  pie: ["remainderFill", "palette", "animation"],
 };

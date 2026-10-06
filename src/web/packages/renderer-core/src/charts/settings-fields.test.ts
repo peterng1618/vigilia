@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import { CHART_FAMILIES, type ChartFamily } from "../theme/document.js";
 import { defaultGaugeSettings } from "../types.js";
+import { ANIMATION_EASINGS } from "./animation.js";
 import { defaultBarSettings } from "./bar.js";
 import { defaultLineSettings } from "./line.js";
 import { defaultPieSettings } from "./pie.js";
@@ -177,9 +178,17 @@ describe("every descriptor carries a hint that earns it", () => {
 });
 
 describe("descriptor order is the likelihood order", () => {
-  // Written from the table as it stood before sections and hints were added. A
-  // re-sort would silently change which settings surface first, so the order is
-  // pinned here rather than re-derived from the table it guards.
+  // Written from the table as it stood before sections and hints were added,
+  // with the two nested settings appended where Task 3 put them. A re-sort would
+  // silently change which settings surface first, so the order is pinned here
+  // rather than re-derived from the table it guards.
+  const ANIMATION_PROPERTIES = [
+    "animation.durationMs",
+    "animation.easing",
+    "animation.appearMs",
+    "animation.appearEasing",
+  ];
+
   const expected: Record<ChartFamily, readonly string[]> = {
     gauge: [
       "startAngle",
@@ -189,6 +198,7 @@ describe("descriptor order is the likelihood order", () => {
       "thickness",
       "roundCap",
       "gradientSegments",
+      ...ANIMATION_PROPERTIES,
     ],
     line: [
       "lineWidth",
@@ -202,6 +212,7 @@ describe("descriptor order is the likelihood order", () => {
       "max",
       "showAxes",
       "sampling",
+      ...ANIMATION_PROPERTIES,
     ],
     bar: [
       "orientation",
@@ -213,6 +224,7 @@ describe("descriptor order is the likelihood order", () => {
       "trackCornerRadius",
       "showAxes",
       "showCategoryLabels",
+      ...ANIMATION_PROPERTIES,
     ],
     pie: [
       "innerRadiusPercent",
@@ -221,7 +233,10 @@ describe("descriptor order is the likelihood order", () => {
       "endAngle",
       "padAngle",
       "cornerRadius",
+      "total",
+      "total.value",
       "showLabels",
+      ...ANIMATION_PROPERTIES,
     ],
   };
 
@@ -247,6 +262,82 @@ describe("descriptor order is the likelihood order", () => {
       ).toEqual(expectedPaint[family]);
     });
   }
+});
+
+describe("the two settings one level down", () => {
+  it("keeps pie's fixed total directly below the tag it depends on", () => {
+    const properties = settingsFieldsFor("pie").map((field) => field.property);
+    const tag = properties.indexOf("total");
+
+    expect(tag).toBeGreaterThan(-1);
+    expect(properties[tag + 1]).toBe("total.value");
+  });
+
+  it("writes the total through its nested path, and asks for the number only when fixed", () => {
+    const total = settingsFieldsFor("pie").find((f) => f.property === "total");
+    const value = settingsFieldsFor("pie").find(
+      (f) => f.property === "total.value",
+    );
+
+    expect(total?.path).toEqual(["total", "kind"]);
+    expect(total?.options?.map((option) => option.value)).toEqual([
+      "sum",
+      "fixed",
+    ]);
+    expect(total?.options?.map((option) => option.label)).toEqual([
+      "Sum of the parts",
+      "A fixed total",
+    ]);
+    expect(value?.path).toEqual(["total", "value"]);
+    expect(value?.visibleWhen).toEqual({
+      path: ["total", "kind"],
+      equals: "fixed",
+    });
+  });
+
+  it("declares the same four animation fields for every family", () => {
+    for (const family of CHART_FAMILIES) {
+      const animation = settingsFieldsFor(family).filter((field) =>
+        field.property.startsWith("animation."),
+      );
+
+      expect(animation.map((field) => field.property)).toEqual([
+        "animation.durationMs",
+        "animation.easing",
+        "animation.appearMs",
+        "animation.appearEasing",
+      ]);
+      expect(animation.every((field) => field.section === "layer")).toBe(true);
+      expect(animation.every((field) => field.path?.[0] === "animation")).toBe(
+        true,
+      );
+      // The obscure half is collapsed and counted, never removed.
+      expect(
+        animation.filter((field) => field.advanced).map((f) => f.property),
+      ).toEqual(["animation.appearMs", "animation.appearEasing"]);
+    }
+  });
+
+  it("names every easing for an author rather than showing its identifier", () => {
+    for (const family of CHART_FAMILIES) {
+      for (const property of ["animation.easing", "animation.appearEasing"]) {
+        const field = settingsFieldsFor(family).find(
+          (f) => f.property === property,
+        );
+
+        expect(field?.kind).toBe("select");
+        expect(field?.options?.map((option) => option.value)).toEqual([
+          ...ANIMATION_EASINGS,
+        ]);
+        expect(
+          field?.options?.every((option) => option.label.trim().length > 0),
+        ).toBe(true);
+        expect(
+          field?.options?.every((option) => option.label !== option.value),
+        ).toBe(true);
+      }
+    }
+  });
 });
 
 describe("settingsKeyFor", () => {
