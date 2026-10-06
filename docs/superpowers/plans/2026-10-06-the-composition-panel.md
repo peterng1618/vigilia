@@ -71,8 +71,9 @@ Copied from the spec and from `AGENTS.md`; every task's requirements include the
 - **`exactOptionalPropertyTypes` and `noUncheckedIndexedAccess` are on.** Refuse invalid
   numeric input rather than coercing it to zero.
 - **500 lines is a signal, 800 a stop.** `editor-shell/layer-panel.tsx` was **707** at
-  `0ebe4804` and is **748** after Task 2 (`38fe07a2`) — **52 lines of headroom, and Task 5 adds
-  a third control to the same row.** `editor-shell/layer-tree.ts` is **415** (`wc -l` on
+  `0ebe4804`, **748** after Task 2 (`38fe07a2`) and **788** after Task 5 (`4d15992c`) — **12 lines
+  of headroom, and the next task that grows this row must extract the state slot into its own
+  module rather than trim prose.** `editor-shell/layer-tree.ts` is **415** (`wc -l` on
   `0ebe4804` — the plan first recorded 393, which no commit contains; corrected rather than
   carried, because Task 1 is the task that grows this file and a starting figure 22 lines low is
   a figure that cannot be used to judge the end state). This plan's
@@ -477,11 +478,12 @@ case the projection already agreed with it.
 
 **Interfaces:**
 - Consumes: `bridge.enterGroup(id)` / `bridge.exitGroup()` from Task 4, and
-  `bridge.groupContext()` which the panel already reads at `layer-panel.tsx:302`.
+  `bridge.groupContext()` which the panel already reads at `layer-panel.tsx:324` (the plan first
+  said `:302`; Task 2's role span shifted it).
 - Produces: one control in the state slot (`.vigilia-layer-state`), on a row whose
   `hasChildren` is true, whose label names the group and whose direction depends on whether that
   group is the one entered — *enter* for any other group, *leave* for the entered one.
-- Keeps: the visibility rule the slot already implements (`layer-panel.tsx:395-397`) —
+- Keeps: the visibility rule the slot already implements (`layer-panel.tsx:417-419`) —
   `attended || row.selected || <non-default>`. The entered group **is** the non-default case for
   this control, so the row the author is inside always carries its way out.
 
@@ -494,14 +496,33 @@ binding changes** — Enter stays rename's, Space stays selection's, Escape stay
 shortcut that leaves a group (`editor-session.ts:498-501`). The control is a plain button in the
 row's own tab order, which is how a keyboard author already reaches Hide and Lock.
 
-**Headroom, measured after Task 2.** `layer-panel.tsx` is **748** lines at `38fe07a2` against
-the 800 stop — Task 2's role span plus its `roleText` switch took 707 to 748. This task adds a
-control to the same row, and Global Constraints already rules that **`layer-panel.tsx` is not
-the place to grow**: where a row gains structure it moves into `layer-tree.ts` as data. The
-control's *shape* — which arm of `groupContext` applies, whether the row is inside this group —
-is exactly that kind of derived fact, so it belongs in the projection, not in a third `? :` in
-the row's JSX. If the file would pass 800, say so in the report rather than trimming a comment
-to fit.
+**Headroom, and the instruction here contradicted itself — landed at `4d15992c`.** `layer-panel.tsx`
+was 748 lines at `38fe07a2` and is **788** now, against the 800 stop: **12 lines of headroom.** The
+paragraph that stood here told the executor the control's shape "belongs in the projection, not in
+a third `? :` in the row's JSX" — while this task's own Files list forbids `layer-tree.ts` and the
+brief forbade a new `LayerRow` field. Those cannot all hold, and the executor said so instead of
+picking one silently. **The resolution, which is the right one:** which group is entered is
+transient (§67) and the bridge already publishes it, so the derivation stayed in the panel and no
+projection field was added.
+
+**And nothing budgeted the slot's width.** The stylesheet held 50px open for two controls; a third
+needs 74px. The landed rule scopes the extra 24px to the rows that actually draw three, so an
+ordinary row's bound column is untouched:
+
+```css
+.vigilia-layer-row:has(.vigilia-layer-state button:nth-child(3)) .vigilia-layer-bound {
+  max-width: calc(100% - 74px);
+  margin-right: 74px;
+}
+```
+
+The 24px comes off the **bound** column rather than the name, which keeps Task 3's rule — the name
+is the element that gives up width last — but it is **unmeasured**: no task in this plan, including
+Task 3's browser pass, ever put a third control on a row. Task 10 owns confirming it.
+
+**The squeeze point is now real.** 12 lines, and `layer-panel.dom.test.tsx` is 1451 lines. The next
+task that grows this row should extract the state slot into its own module under `editor-shell/`
+rather than trimming prose.
 
 **The capability this buys, and the assertion that it is real:** `bridge.selectLayer` takes
 `owner ?? target` by design, so with the group shut a row click selects the group. After
@@ -519,12 +540,26 @@ derives the ancestor path already (`bridge.ts:191-202`, `expansionFor`), and thi
 does rather than re-deriving it; losing the canonical "the tree cannot select a chart" comment
 without replacing it with the behaviour that made it true.
 
+**Corrections from the landed task**, each a claim of this plan's that the code falsified:
+
+- **`expandable` is a local inside `moveFocus` (`:252`), not reachable from the render** — and this
+  plan's Task 5 brief cited `:268` as the anchor to reuse without checking its scope. The executor
+  hoisted `const expandable = row.hasChildren` into the row map and pointed the twisty at it, so
+  there is exactly one `hasChildren` test per row, which is what the instruction was reaching for.
+- **"Is this row the entered group is a lookup in the context the panel already has" is not quite
+  true.** `contextRows`'s set holds the entered group's **descendants too**, so `context.has(row.id)`
+  is true for every child. The landed code keeps `entered` (the ids) and `context` (the dimming set)
+  from **one** `bridge.groupContext()` call — no second bridge call, no new `LayerRow` field.
+- The plan's test anchors (`:916`, `:941`, `:965`) are stale by the same 23 lines as everything else
+  in this task.
+
 **Verification:**
 - Unit: a default group row draws no enter control, and the two existing state-absence cases
-  (`layer-panel.dom.test.tsx:916`, `:965`) still hold.
+  (`layer-panel.dom.test.tsx:941`, `:953` after Task 2) still hold.
 - Unit: hovering, focusing or selecting a group row shows the control; pressing it calls
   `enterGroup` with that row's id and nothing else — a count-only assertion would pass on a
-  control that entered the wrong group.
+  control that entered the wrong group. *Proved red at `4d15992c` by dropping the group's name
+  from the label: `expected 'Enter' to be 'Enter CPU card'`.*
 - Unit: on the entered group the control calls `exitGroup` instead, and its label differs from
   the other rows' — asserted on the label text, since a reader hearing three identical buttons
   is the defect.
