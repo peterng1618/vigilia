@@ -37,6 +37,9 @@ result, not merely a mounted editor.
 | History | Save changed document or undo visible drag | add when changed |
 | Editor mechanics | Transform/group/duplicate/delete/reorder | `editor-snap-guides` / `snaps a dragged object`; `editor-snap-resize` / `snaps a resized object`; `editor-snap-resize-ctrl` / `Ctrl-resizes near a neighbour without snapping or showing a guide`; `editor-rotation-indicator` / `rotation-angle indicator`; `editor-toolbar` / `captures the canvas dock over a selected object`; `editor-canvas-context-menu` / `captures the canvas context menu over a selected object` |
 | Object tools | Add/edit shape, text, image or SVG | `editor-arc-and-wedge` / `captures an arc and a wedge on the canvas` |
+| Right column | Select a card and open its Position section | `editor-inspector-card` / `captures the sectioned column a card gets` |
+| Right column | Select a free shape and read its own column | `editor-inspector-shape` / `captures the sectioned column a shape gets` |
+| Right column | Select the starter's gauge and read the chart's column | `editor-inspector-chart` / `captures the chart's column` |
 | Panel authoring | Insert a panel and set its fill, border, radius and shadow | `editor-panel-authoring` / `authors a panel from the Add panel` |
 | Glass authoring | Turn frosted glass on for a panel over a real backdrop and set its blur radius | `editor-glass-authoring` / `gives an ordinary panel a real, measured backdrop blur` |
 | Starter composition | Select the starter's frosted CPU card and read its live value | `editor-starter-cpu-card` / `ships the starter's frosted CPU card` |
@@ -65,5 +68,7 @@ The capture is the whole page, so the Devices and Display sections (including
 the units choice) are evidence from the same file.
 
 Mechanics ported from the retired editor fork need captures only when Vigilia
-changes their rendered outcome. Keep this table aligned with
-`src/web/tests/e2e/editor.spec.ts`.
+changes their rendered outcome. Keep this table aligned with the specs that
+carry the captures: `src/web/tests/e2e/editor.spec.ts`,
+`reference-theme.spec.ts`, `glass-authoring.spec.ts` and
+`inspector-sections.spec.ts`.
