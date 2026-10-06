@@ -51,11 +51,11 @@ The loop, in order:
 
 ## Next
 
-1. **Plan 2's acceptance is not yet met, and two of its items are the plan's, not a task's.** `vg-046` closes only when the artboard clip is **measured** to collide with neither the crop manager's authored per-image clip nor the derived text-box clip — the same overhang put through the editor and the player and compared, because a collision that is not measured is not disproved. The final review confirmed the DOM route avoids the collision in Fabric's source and **that nobody ran the measurement**.
-2. **The lens list changed three times, and the plan is stale for all three.** `cb679056` moved the default off the landscape phone because that justification was false — the starter is 1672 × 941, which is 16:9 — `e648f3ea` renamed every lens by its aspect ratio, and this commit widened three lenses to the six the presets' own ratios imply. The plan (lines 137–140, 169) and its Acceptance list still name *Phone landscape · Phone portrait · Wall panel* as the default and as the control's entries; the plan is a record and should be annotated, not rewritten.
-3. **The group/bleed product question is open and is the user's.** A marked card still reports once per part, because a child's box is always inside its group's — so "child outside" and "card overhangs" are the same fact and the plan's protection cannot fire. ADR-0027 records the conditional form the final review proposed and nobody has tried.
+1. **Plan 2 is complete and its acceptance is met.** `vg-046` is closed `verified` at `b4142af2` on a pixel measurement: the same overhang put through the editor and the player for both the crop manager's authored clip and the derived text-box clip, largest disagreement 3.3 scene units, no collision, no repair owed.
+2. **The plan and spec prose is stale in three places, deliberately.** `docs/superpowers/plans/2026-10-04-the-device-lens.md` lines 137-140 and 169 still name Phone landscape / Phone portrait / Wall panel; `docs/superpowers/specs/2026-10-03-dashboard-authoring-design.md` lines 31-32, 269, 289 carry the old device vocabulary. `AGENTS.md` says a plan is annotated rather than rewritten, so this note is the annotation.
+3. **The lens changed shape by decision, not only by rename.** Six lenses are now `ARTBOARD_RATIOS x ARTBOARD_ORIENTATIONS` derived, grouped by an `artboardOrientation` predicate lifted out of `nearestArtboardPreset`, and a square takes the landscape group because one predicate is simpler than two.
 4. **`vg-129` and `vg-130` are `scene-fabric/src/persist.ts`'s**, one owner: editor-only state reaching a shareable artifact, the same class as the `blob:` src leak beside it.
-5. **Drive the product again.** `vg-139` and the plan's nine second-writer defects were all found by sabotaging, never by reading; the rows still open were read, not driven.
+5. **Drive the product again.** Every defect this plan found came from sabotaging a change, never from reading; the rows still open were read, not driven.
 
 ## Blockers / unverified
 
