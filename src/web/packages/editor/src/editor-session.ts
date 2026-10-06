@@ -11,7 +11,6 @@ import { sceneBoxesOf } from "@vigilia/scene-fabric";
 import { ActiveSelection, type FabricObject } from "fabric/es";
 import { applyArrange, canArrange } from "./arrange.js";
 import { type ArtboardPanel, createArtboardPanel } from "./artboard-panel.js";
-import type { ArtboardSize } from "./artboard-presets.js";
 import { AssetManager } from "./asset-manager/index.js";
 import { createAssetPanel } from "./asset-manager/panel.js";
 import {
@@ -34,7 +33,10 @@ import {
   type IndicatorManager,
 } from "./indicator-manager/index.js";
 import { LiveRuntime } from "./live-runtime.js";
-import { chooseArtboardSize } from "./new-document-chooser.js";
+import {
+  chooseArtboardSize,
+  type NewDocumentAnswer,
+} from "./new-document-chooser.js";
 import {
   createNewObjectPanel,
   insertNewShape,
@@ -155,7 +157,7 @@ export interface EditorSessionOptions {
   /** Creates a blank document at the artboard the author chose. The chooser
    *  itself is the session's, so the size is asked before the open document is
    *  even offered up for replacement. */
-  readonly onNew: (artboard: ArtboardSize) => Promise<void>;
+  readonly onNew: (answer: NewDocumentAnswer) => Promise<void>;
   /** Creates a document from the reference composition, as a template. */
   readonly onNewFromStarter: () => Promise<void>;
   readonly onOpen?: () => void;
@@ -921,11 +923,15 @@ export class EditorSession {
     // It opens on the display the artboard being replaced is, so a document
     // already settled on a phone portrait is not thrown back to a wall panel
     // without being asked.
-    const artboard = await chooseArtboardSize(this.#envelope.artboard);
-    if (artboard === undefined) return;
+    //
+    // The whole answer travels, not just its size: the display the author
+    // picked is what the new document is shown through, and dropping it here
+    // is what left a portrait artboard inside a landscape frame.
+    const answer = await chooseArtboardSize(this.#envelope.artboard);
+    if (answer === undefined) return;
     if (!(await this.#confirmReplacement(options))) return;
     this.#libraryBase = undefined;
-    await options.onNew(artboard);
+    await options.onNew(answer);
   }
 
   async #newFromStarter(options: EditorSessionOptions): Promise<void> {

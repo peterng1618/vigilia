@@ -507,7 +507,68 @@ describe("artboard presets in the panel", () => {
     panel.render({ width: 1000, height: 1000 });
 
     expect(note()).not.toContain("are now outside");
-    panel.root.remove();
+    panel.destroy();
+  });
+
+  it("stops reading the canvas once it is destroyed", () => {
+    // The one line of lifecycle this panel's own contract promises. `destroy()`
+    // releases a subscription on a canvas that outlives the panel — the session
+    // replaces the panel on every document — so a panel that only removed its
+    // element would go on recomputing a figure for a document it no longer
+    // describes. Nothing else in the suite exercises it, which is why
+    // replacing `off` with `root.remove()` leaves every other test green.
+    const listeners = new Map<string, Set<() => void>>();
+    const canvasEvents = {
+      on: (event: string, handler: () => void): void => {
+        const forEvent = listeners.get(event) ?? new Set<() => void>();
+        forEvent.add(handler);
+        listeners.set(event, forEvent);
+      },
+      off: (event: string, handler: () => void): void => {
+        listeners.get(event)?.delete(handler);
+      },
+    };
+    const boxes: SceneBox[] = [
+      {
+        visible: true,
+        bleeds: false,
+        left: 950,
+        top: 100,
+        width: 100,
+        height: 100,
+        depth: 0,
+      },
+    ];
+    const panel = createArtboardPanel(document.body, undefined, vi.fn(), {
+      canvasEvents,
+      sceneBoxes: () => boxes,
+    });
+    const note = (): string =>
+      panel.root.querySelector("[data-vigilia-artboard-note]")?.textContent ??
+      "";
+
+    panel.render({ width: 1000, height: 1000 });
+    const outside = note();
+    expect(outside, "the figure is on screen to begin with").toContain(
+      "are now outside",
+    );
+
+    // The scene moves and the canvas says so — the subscription is live. Two
+    // different moves, one before and one after `destroy()`, because firing the
+    // same scene twice changes nothing and would make the second half of this
+    // test pass for the wrong reason.
+    boxes[0] = { ...boxes[0]!, bleeds: true };
+    listeners.get("object:modified")?.forEach((handler) => handler());
+    expect(note(), "a live panel follows the scene").not.toBe(outside);
+
+    panel.destroy();
+    const afterDestroy = note();
+    boxes[0] = { ...boxes[0]!, left: -400, top: -400, bleeds: false };
+    for (const handler of listeners.get("object:modified") ?? []) handler();
+    expect(
+      note(),
+      "a destroyed panel is not still recomputing a figure for the next document",
+    ).toBe(afterDestroy);
   });
 
   it("describes the width box with that note, so it reaches a screen reader too", () => {

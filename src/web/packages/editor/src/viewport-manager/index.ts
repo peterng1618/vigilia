@@ -105,10 +105,10 @@ export function createViewportManager({
   /**
    * The display the stage looks through, or `undefined` for Fit.
    *
-   * Starts on the default rather than on Fit, because the starter is drawn
-   * landscape and opening on Fit would letterbox the reference composition on
-   * the very first paint. Read through the lens rather than mirrored into
-   * React: it is camera state, like the zoom.
+   * Starts on the default rather than on Fit, because the starter is drawn in
+   * the shape the default lens is and opening on Fit would letterbox the
+   * reference composition on the very first paint. Read through the lens rather
+   * than mirrored into React: it is camera state, like the zoom.
    */
   let lens: DisplayLensId | undefined = DEFAULT_DISPLAY_LENS;
 

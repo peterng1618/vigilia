@@ -8,7 +8,6 @@ import {
   loadFontAssets,
   startChartRefresh,
 } from "@vigilia/scene-fabric";
-import type { ArtboardSize } from "./artboard-presets.js";
 import { AssetManager } from "./asset-manager/index.js";
 import { EditorSession } from "./editor-session.js";
 import {
@@ -21,6 +20,7 @@ import { mountEditorShell } from "./editor-shell.js";
 import "./editor-shell/editor-shell.css";
 import { bootTheme } from "./boot-theme.js";
 import { createEditorSource } from "./live-source.js";
+import type { NewDocumentAnswer } from "./new-document-chooser.js";
 import {
   createBlankFabricTheme,
   createNewFabricTheme,
@@ -190,12 +190,18 @@ async function start(): Promise<void> {
       },
       libraryClient,
       onBindingsChange: replaceSource,
-      onNew: async (artboard: ArtboardSize) => {
-        const fresh = createBlankFabricTheme(artboard);
+      onNew: async (answer: NewDocumentAnswer) => {
+        const fresh = createBlankFabricTheme(answer.size);
         await mount({
           input: envelopeInputFor(fresh),
           envelope: fresh,
         });
+        // The lens the author answered, asked of the camera the new document is
+        // seen through — not written into the document (§67). This runs after
+        // the mount because the camera belongs to the shell the mount just
+        // built; the previous one is already destroyed. Fit for a Custom answer
+        // is `undefined`, the same reading the chooser gives it.
+        active?.shell.viewport.showDisplay(answer.display);
         status.textContent = "New theme";
       },
       // The reference composition, reachable as what it is: a template the

@@ -4,9 +4,11 @@ import {
   ARTBOARD_RATIOS,
   ARTBOARD_RESOLUTIONS,
   type ArtboardOrientation,
+  type ArtboardPresetChoice,
   type ArtboardRatioId,
   type ArtboardResolutionId,
   type ArtboardSize,
+  artboardPresetFor,
   artboardSize,
   DEFAULT_ARTBOARD_PRESET,
   nearestArtboardPreset,
@@ -105,36 +107,49 @@ export function newDocumentChooser(current?: ArtboardSize): HTMLDialogElement {
   custom.hidden = true;
 
   const ratio = selectControl("ratio", uiCopy.panels.ratio, (value) => {
+    if (!completable()) return refuse(ratio.select);
     chosen = derive(
       value as ArtboardRatioId,
-      readOrientation(),
-      readResolution(),
+      readOrientation() as ArtboardOrientation,
+      readResolution() as ArtboardResolutionId,
     );
   });
   for (const entry of ARTBOARD_RATIOS) {
     ratio.select.append(new Option(entry.id, entry.id));
   }
+  // The same reading the panel's three carry, and disabled for the same reason:
+  // it is what a size no preset names looks like in these controls, not an
+  // answer an author can pick. Without it the controls would have to keep
+  // claiming whichever preset was last chosen.
+  ratio.select.append(customReading());
 
   const orientation = selectControl(
     "orientation",
     uiCopy.panels.orientation,
     (value) => {
+      if (!completable()) return refuse(orientation.select);
       chosen = derive(
-        readRatio(),
+        readRatio() as ArtboardRatioId,
         value as ArtboardOrientation,
-        readResolution(),
+        readResolution() as ArtboardResolutionId,
       );
     },
   );
   for (const id of ARTBOARD_ORIENTATIONS) {
     orientation.select.append(new Option(uiCopy.artboardOrientations[id], id));
   }
+  orientation.select.append(customReading());
 
   const resolution = selectControl(
     "resolution",
     uiCopy.panels.resolution,
     () => {
-      chosen = derive(readRatio(), readOrientation(), readResolution());
+      if (!completable()) return refuse(resolution.select);
+      chosen = derive(
+        readRatio() as ArtboardRatioId,
+        readOrientation() as ArtboardOrientation,
+        readResolution() as ArtboardResolutionId,
+      );
     },
   );
   for (const entry of ARTBOARD_RESOLUTIONS) {
@@ -142,6 +157,7 @@ export function newDocumentChooser(current?: ArtboardSize): HTMLDialogElement {
       new Option(uiCopy.artboardResolutions[entry.id], entry.id),
     );
   }
+  resolution.select.append(customReading());
 
   // The free size the panel already carries. `linkedPair` is its own, so the
   // chooser and the panel bound an author's own dimensions the same way rather
@@ -183,16 +199,47 @@ export function newDocumentChooser(current?: ArtboardSize): HTMLDialogElement {
     size.textContent = `${chosen.width} × ${chosen.height}`;
   }
 
-  /** The three ids, read off the selects. None of them carries a Custom option,
-   *  so every value is one the option list wrote; an id nothing names would be
-   *  collapsed to `""` by the DOM, and `artboardSize` refuses that rather than
-   *  answering a size nobody chose. */
-  const readRatio = (): ArtboardRatioId =>
-    ratio.select.value as ArtboardRatioId;
-  const readOrientation = (): ArtboardOrientation =>
-    orientation.select.value as ArtboardOrientation;
-  const readResolution = (): ArtboardResolutionId =>
-    resolution.select.value as ArtboardResolutionId;
+  /** The three ids, read off the selects. Each carries a Custom reading, so a
+   *  value is either an id the option list wrote or the empty reading — and an
+   *  empty reading is a refusal to derive rather than an id to derive from.
+   *  `artboardSize` would throw on it; `completable` refuses it first, with a
+   *  reason the author can act on. */
+  const readRatio = (): ArtboardRatioId | typeof CUSTOM =>
+    ratio.select.value as ArtboardRatioId | typeof CUSTOM;
+  const readOrientation = (): ArtboardOrientation | typeof CUSTOM =>
+    orientation.select.value as ArtboardOrientation | typeof CUSTOM;
+  const readResolution = (): ArtboardResolutionId | typeof CUSTOM =>
+    resolution.select.value as ArtboardResolutionId | typeof CUSTOM;
+
+  /** Whether the three ids name a size between them — so the three can be read
+   *  as one answer rather than three independent controls. */
+  const completable = (): boolean =>
+    readRatio() !== CUSTOM &&
+    readOrientation() !== CUSTOM &&
+    readResolution() !== CUSTOM;
+
+  /** Whether the three ids between them name a size at all.
+   *
+   *  A preset is three answers, and an author who has typed their own
+   *  dimensions has answered with two free numbers instead. Any *one* of the
+   *  three dropdowns then cannot say what the new size is, and filling the
+   *  other two in for them is how a typed 3000 × 3000 came back as a 3840 ×
+   *  2160 nobody asked for. So the change is **refused and the control put
+   *  back**, which is the panel's own refusal idiom (`artboard-panel.ts`) and
+   *  the same rule the Custom reading exists to express.
+   *
+   *  Putting it back is the half that matters. Leaving the author's pick on a
+   *  control that did nothing reads as a control that *did* something, and is
+   *  the same defect wearing a different hat: a control claiming an answer the
+   *  document does not carry. Back to presets by naming a display, or by typing
+   *  a size that is one — one action either way, and the dialog opens on a
+   *  preset, so these three are live for every journey that starts there. */
+  const refuse = (select: HTMLSelectElement): void => {
+    // Rewritten from `chosen`, not from `select`: the reading is a function of
+    // the size, so one writer produces the value the control must show.
+    writePresets(artboardPresetFor(chosen));
+    select.blur();
+  };
 
   /** A preset named by two of the three dropdowns and derived whole, so no
    *  control is left reading a preset the size is not at. */
@@ -201,22 +248,33 @@ export function newDocumentChooser(current?: ArtboardSize): HTMLDialogElement {
     nextOrientation: ArtboardOrientation,
     nextResolution: ArtboardResolutionId,
   ): ArtboardSize {
-    ratio.select.value = nextRatio;
-    orientation.select.value = nextOrientation;
-    resolution.select.value = nextResolution;
     const derived = artboardSize(nextRatio, nextResolution, nextOrientation);
     adopt(derived);
     return derived;
   }
 
-  /** The one writer of the size: the two free fields and the readout together,
-   *  so the answer read at confirm time and the number shown cannot be two
-   *  different sizes. It writes the fields even when hidden — the answer is
-   *  read off them. */
+  /** The one writer of the size: the two free fields, the three dropdowns and
+   *  the readout together, so the answer read at confirm time, the number shown
+   *  and the presets the controls claim cannot be three different sizes.
+   *
+   *  It writes the fields even when hidden — the answer is read off them — and
+   *  it writes the dropdowns from `artboardPresetFor` rather than from what was
+   *  chosen, because a control must not claim a preset the document is not at. */
   function adopt(next: ArtboardSize): void {
     chosen = next;
     dimensions.setValues(next.width, next.height);
+    writePresets(artboardPresetFor(next));
     paintSize();
+  }
+
+  /** The three dropdowns, written as the *reading* of a size rather than as the
+   *  author's last choice: `undefined` is a size no preset names, so each shows
+   *  Custom. The same writer serves `adopt` and a refusal, so a control cannot
+   *  be showing one thing while the size is another. */
+  function writePresets(preset: ArtboardPresetChoice | undefined): void {
+    ratio.select.value = preset?.ratio ?? CUSTOM;
+    orientation.select.value = preset?.orientation ?? CUSTOM;
+    resolution.select.value = preset?.resolution ?? CUSTOM;
   }
 
   function readWidth(): number {
@@ -226,9 +284,6 @@ export function newDocumentChooser(current?: ArtboardSize): HTMLDialogElement {
     return Number(dimensions.second.value);
   }
 
-  ratio.select.value = preset.ratio;
-  orientation.select.value = preset.orientation;
-  resolution.select.value = preset.resolution;
   display.select.value = openingDisplay(preset);
   custom.hidden = display.select.value !== CUSTOM;
   adopt(opening);
@@ -269,28 +324,58 @@ export function newDocumentChooser(current?: ArtboardSize): HTMLDialogElement {
 }
 
 /**
- * Asks for the artboard, and resolves the size — or `undefined` when the author
- * dismissed it, which is how a `New` pressed by accident leaves the open
+ * What the author answered: the artboard to create, and the display to see it
+ * through.
+ *
+ * **Both halves travel together because both were asked.** The display is the
+ * first question in the dialog and was previously written and never read — a
+ * 1080 × 2340 document opened inside a landscape frame, wasting stage on bars
+ * the author had already told us not to want. Carrying only the size made the
+ * answer to that question unreachable from here.
+ *
+ * The display is a **view preference and never document content** (§67), which
+ * is why it is a separate field rather than something derived from the size:
+ * nothing about `size` names a lens, and a caller that wants one has to ask.
+ */
+export interface NewDocumentAnswer {
+  readonly size: ArtboardSize;
+  /** The display chosen, or `undefined` for Custom — see `chooseArtboardSize`. */
+  readonly display: DisplayLensId | undefined;
+}
+
+/**
+ * Asks for the artboard, and resolves the answer — or `undefined` when the
+ * author dismissed it, which is how a `New` pressed by accident leaves the open
  * document alone.
  *
  * `current` is the artboard of the document about to be replaced; the dialog
  * opens on the display that size is, so a settled shape is offered back rather
  * than reset.
  *
- * The answer is a size, not a preset: three of the four ways to reach one here
- * are a preset and one is an author's own dimensions, and a type that cannot
- * carry both would have the session guess which the author meant.
+ * `display` is `undefined` when the answer is **Custom**, and the caller frames
+ * the new document with Fit. That is the reading, not a gap: Custom is the
+ * author declining to name a display, and Fit is the framing that names none —
+ * the same answer the Display menu's `Fit` item gives, one click away in the
+ * other direction. Framing a shape no display is through a display that is not
+ * its shape is the letterboxing this whole plan exists to stop. A document at a
+ * display's own shape, by contrast, is offered back with that display already
+ * ticked, so an author who never touched the control is framed by their own
+ * answer.
+ *
+ * The size is not a preset: three of the four ways to reach one here are a
+ * preset and one is an author's own dimensions, and a type that cannot carry
+ * both would have the session guess which the author meant.
  */
 export function chooseArtboardSize(
   current?: ArtboardSize,
-): Promise<ArtboardSize | undefined> {
+): Promise<NewDocumentAnswer | undefined> {
   const dialog = newDocumentChooser(current);
   let done = false;
 
   return new Promise((resolve) => {
-    /** The size the author confirmed, or nothing for a dismissal. Read out of
-     *  the fields at the moment of the answer, so a later change to the
-     *  palette cannot alter what was agreed. */
+    /** What the author confirmed, or nothing for a dismissal. Read out of the
+     *  fields and the display control at the moment of the answer, so a later
+     *  change to the palette cannot alter what was agreed. */
     const settle = (confirmed: boolean): void => {
       if (done) return;
       done = true;
@@ -303,15 +388,28 @@ export function chooseArtboardSize(
         }
         return field;
       };
-      dialog.remove();
-      resolve(
-        confirmed
-          ? {
+      /** The lens the author named, or `undefined` for Custom. Read off the
+       *  control rather than remembered, so the answer cannot be a display the
+       *  dialog is no longer offering. */
+      const displayOf = (): DisplayLensId | undefined => {
+        const value = dialog.querySelector<HTMLSelectElement>(
+          "[data-vigilia-new-document-display]",
+        )?.value;
+        return value === undefined || value === CUSTOM
+          ? undefined
+          : (value as DisplayLensId);
+      };
+      const answer = confirmed
+        ? {
+            size: {
               width: Number(size("width").value),
               height: Number(size("height").value),
-            }
-          : undefined,
-      );
+            },
+            display: displayOf(),
+          }
+        : undefined;
+      dialog.remove();
+      resolve(answer);
     };
 
     // Driven here rather than through `method="dialog"`, so the chooser does
@@ -349,6 +447,14 @@ export function chooseArtboardSize(
 }
 
 let fieldSeq = 0;
+
+/** The disabled Custom entry the three technical selects carry: the reading a
+ *  size no preset names, offered the way `artboard-panel.ts` offers it. */
+function customReading(): HTMLOptionElement {
+  const option = new Option(uiCopy.panels.customSize, CUSTOM);
+  option.disabled = true;
+  return option;
+}
 
 function selectControl(
   marker: string,

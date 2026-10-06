@@ -62,8 +62,10 @@ export {
   VIGILIA_ASSET_PROPERTY,
 } from "./object-asset.js";
 export {
+  ARC_FILL_REFUSED,
   applyObjectPalettePaints,
   type FabricPaintRefs,
+  type PaintApplicationOptions,
   paintPropertyFor,
   VIGILIA_PAINT_PROPERTY,
 } from "./object-paint.js";

@@ -23,7 +23,13 @@ import {
   isFabricAssetReference,
   VIGILIA_ASSET_PROPERTY,
 } from "./object-asset.js";
-import { VIGILIA_PAINT_PROPERTY, refusesFill } from "./object-paint.js";
+import {
+  ARC_FILL_REFUSED,
+  type PaintApplicationOptions,
+  VIGILIA_PAINT_PROPERTY,
+  refusalIsPaintPasses,
+  refusesFill,
+} from "./object-paint.js";
 
 // `fabric/es` is selective: register every baseline scene class that v2 JSON
 // may revive instead of relying on another renderer import to do it first.
@@ -119,6 +125,7 @@ export async function reviveScene(
   canvas: StaticCanvas,
   scene: SerialisedScene,
   resolveAsset?: (assetId: string) => string | undefined,
+  paint: PaintApplicationOptions = {},
 ): Promise<void> {
   disposeScene(canvas);
   // `loadFromJSON` assigns every canvas-level property the document omits, so
@@ -132,7 +139,7 @@ export async function reviveScene(
   await canvas.loadFromJSON(resolveAssetSources(scene, resolveAsset));
   if (clipPath !== undefined) canvas.clipPath = clipPath;
   if (backgroundColor !== undefined) canvas.backgroundColor = backgroundColor;
-  refuseUndrawablePaint(canvas.getObjects());
+  refuseUndrawablePaint(canvas.getObjects(), paint);
 }
 
 /**
@@ -148,11 +155,29 @@ export async function reviveScene(
  * The authored reference is kept, so refusing on a display does not quietly
  * rewrite the author's theme. `refusesFill` is the one answer to which kind this
  * is; nothing here restates it.
+ *
+ * **The half only this site can report is reported here.** An arc carrying a
+ * `vigiliaPaint` is refused again by the editor's paint pass, which has its own
+ * channel and says the same sentence — so reporting it here too would say it
+ * twice on one load. An arc with no reference never reaches that pass, and was
+ * previously refused in silence: the author watched a figure vanish with nothing
+ * said. That case is this function's alone, so `refusalIsPaintPasses` decides it
+ * and no second copy of the rule appears.
  */
-function refuseUndrawablePaint(objects: readonly FabricObject[]): void {
+function refuseUndrawablePaint(
+  objects: readonly FabricObject[],
+  paint: PaintApplicationOptions,
+): void {
   for (const object of objects) {
-    if (object instanceof Group) refuseUndrawablePaint(object.getObjects());
-    else if (refusesFill(object)) object.set("fill", "");
+    if (object instanceof Group) {
+      refuseUndrawablePaint(object.getObjects(), paint);
+      continue;
+    }
+    if (!refusesFill(object)) continue;
+    object.set("fill", "");
+    if (!refusalIsPaintPasses(object)) {
+      paint.onRefusedPaint?.(ARC_FILL_REFUSED);
+    }
   }
 }
 
@@ -161,9 +186,15 @@ export async function reviveThemeEnvelope(
   canvas: StaticCanvas,
   envelope: FabricThemeEnvelope,
   resolveAsset?: (assetId: string) => string | undefined,
+  paint: PaintApplicationOptions = {},
 ): Promise<void> {
   assertFabricThemeEnvelopeCompatible(envelope);
-  await reviveScene(canvas, envelope.scene as SerialisedScene, resolveAsset);
+  await reviveScene(
+    canvas,
+    envelope.scene as SerialisedScene,
+    resolveAsset,
+    paint,
+  );
 }
 
 /**

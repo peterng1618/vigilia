@@ -303,18 +303,22 @@ function createNativeEditor(input: {
     artboard: () => input.artboard(),
   });
   const unbindNavigation = bindViewportNavigation({ canvas, viewport });
+  // Before the history, because undo revives through it and a refusal raised
+  // there is reported the same way a refusal raised on load is.
+  const errors = createErrorManager(canvas);
   const history = new EditorHistory({
     canvas,
     serialize: serialiseScene,
     revive: (target, scene) =>
-      reviveScene(target, scene, input.resolveSceneAsset),
+      reviveScene(target, scene, input.resolveSceneAsset, {
+        onRefusedPaint: (message) => errors.warn("paint", message),
+      }),
   });
   history.reset();
   const save = (): void => history.save();
   /** A completed mouse-driven move/scale/rotate needs the same history entry
    * explicit actions get; Fabric only reports it after the gesture ends. */
   canvas.on("object:modified", save);
-  const errors = createErrorManager(canvas);
   const deletion = createDeletionManager(canvas, save);
   const images = createImageManager(canvas, save);
   const text = createTextManager(canvas, save, (message) =>
@@ -471,7 +475,13 @@ export async function mountEditorShell({
     editor.canvas.on("editor:history-state-loaded" as never, restorePlate);
 
     if (envelope !== undefined) {
-      await reviveThemeEnvelope(editor.canvas, envelope, resolveSceneAsset);
+      // The same warning channel the paint pass reports through, so a document
+      // that loses a figure at revival says so through the shell's own line —
+      // and says it once, because `refuseUndrawablePaint` leaves the
+      // reference-carrying arc to the paint pass below.
+      await reviveThemeEnvelope(editor.canvas, envelope, resolveSceneAsset, {
+        onRefusedPaint: (message) => editor.errorManager.warn("paint", message),
+      });
       editor.historyManager.resetHistory();
     }
 

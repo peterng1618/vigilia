@@ -44,13 +44,18 @@ const globals = {
   },
 } as never;
 
-function setup(active: unknown) {
+/** `others` is what else the canvas holds — the selection is `active`, and the
+ *  paint pass is whole-canvas, so an edit to one object re-resolves all of
+ *  them. That is why the shape of the *rest* of the scene decides whether an
+ *  inspector edit is silent. */
+function setup(active: unknown, others: readonly unknown[] = []) {
   const host = document.createElement("div");
   const history = { saveState: vi.fn() };
   const editor = {
     canvas: {
       getActiveObject: () => active,
-      getObjects: () => (active === undefined ? [] : [active]),
+      getObjects: () =>
+        active === undefined ? [...others] : [active, ...others],
       requestRenderAll: vi.fn(),
       on: vi.fn(),
       off: vi.fn(),
@@ -172,6 +177,30 @@ describe("panel fields in the selection inspector", () => {
     expect(rect.fill).toBe("#ecf5ff");
     expect(rect.get(VIGILIA_PAINT_PROPERTY)).toEqual({ fill: "palette.text" });
     expect(history.saveState).toHaveBeenCalledTimes(1);
+  });
+
+  it("says so when an inspector edit refuses an arc elsewhere in the scene", () => {
+    // The pass this control runs is **whole-canvas**: it walks every object, so
+    // editing a panel's fill re-refuses an arc on the far side of the scene.
+    // It used to pass no reporter at all, so an author watching a figure
+    // disappear because they had recoloured something else was told nothing.
+    const arc = createNewShape("arc", globals, "arc", { left: 0, top: 0 });
+    arc.set({ fill: "#ecf5ff" });
+    arc.set(VIGILIA_PAINT_PROPERTY, { fill: "palette.text" });
+    const rect = panel();
+    const { editor, field } = setup(rect, [arc]);
+
+    // Non-vacuous: the arc is one that refuses, so a reporter wired to nothing
+    // could not satisfy this.
+    expect(arc.fill, "the arc starts filled").toBe("#ecf5ff");
+
+    pick(field<HTMLSelectElement>("[data-vigilia-panel-fill]"), "palette.text");
+
+    expect(arc.fill, "the arc's fill is withheld").toBe("");
+    expect(
+      editor.errorManager.warn,
+      "and the author is told the shell's own way",
+    ).toHaveBeenCalledWith("paint", expect.stringMatching(/arc/i));
   });
 
   it("keeps the other references when one paint changes", () => {

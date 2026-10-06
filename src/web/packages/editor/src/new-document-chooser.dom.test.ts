@@ -78,7 +78,10 @@ describe("the new-document chooser", () => {
     expect(dialog.textContent).toContain("1920 × 1080");
 
     create(dialog);
-    await expect(pending).resolves.toEqual({ width: 1920, height: 1080 });
+    await expect(pending).resolves.toEqual({
+      size: { width: 1920, height: 1080 },
+      display: "wall-panel",
+    });
   });
 
   it("opens on the display the document it would replace is at", async () => {
@@ -94,7 +97,10 @@ describe("the new-document chooser", () => {
     expect(dialog.textContent).not.toContain("1920 × 1080");
 
     create(dialog);
-    await expect(pending).resolves.toEqual({ width: 1080, height: 2340 });
+    await expect(pending).resolves.toEqual({
+      size: { width: 1080, height: 2340 },
+      display: "phone-portrait",
+    });
   });
 
   it("opens a shape no display frames on Custom, with that shape already chosen", async () => {
@@ -112,9 +118,13 @@ describe("the new-document chooser", () => {
     expect(read(dialog, "orientation")).toBe("landscape");
 
     create(dialog);
-    const size = await pending;
-    // The nearest preset the shape has, at the resolution it always opened at.
-    expect(size).toEqual({ width: 1440, height: 1080 });
+    // The nearest preset the shape has, at the resolution it always opened at,
+    // and no display: Custom is the author declining to name one, and Fit is
+    // the framing that names none.
+    expect(await pending).toEqual({
+      size: { width: 1440, height: 1080 },
+      display: undefined,
+    });
   });
 
   it.each([
@@ -130,7 +140,7 @@ describe("the new-document chooser", () => {
       set(dialog, "display", lens);
       create(dialog);
 
-      await expect(pending).resolves.toEqual(size);
+      await expect(pending).resolves.toEqual({ size, display: lens });
     },
   );
 
@@ -186,9 +196,22 @@ describe("the new-document chooser", () => {
         ),
       ].map((option) => option.value);
 
-    expect(values("ratio")).toEqual(["16:9", "19.5:9", "4:3"]);
-    expect(values("orientation")).toEqual(["landscape", "portrait"]);
-    expect(values("resolution")).toEqual(["1080p", "2k", "4k"]);
+    // The Custom reading is carried on each, disabled — asserted separately, so
+    // here only the *choices* are listed.
+    expect(values("ratio").filter((value) => value !== "")).toEqual([
+      "16:9",
+      "19.5:9",
+      "4:3",
+    ]);
+    expect(values("orientation").filter((value) => value !== "")).toEqual([
+      "landscape",
+      "portrait",
+    ]);
+    expect(values("resolution").filter((value) => value !== "")).toEqual([
+      "1080p",
+      "2k",
+      "4k",
+    ]);
 
     // The three still combine into a size on screen, so no preset became a
     // guess an author has to commit to before seeing the number.
@@ -201,8 +224,8 @@ describe("the new-document chooser", () => {
 
     create(dialog);
     await expect(pending).resolves.toEqual({
-      width: 2160,
-      height: 4680,
+      size: { width: 2160, height: 4680 },
+      display: undefined,
     });
   });
 
@@ -224,7 +247,10 @@ describe("the new-document chooser", () => {
     expect(dialog.textContent).toContain("4000 × 4000");
 
     create(dialog);
-    await expect(pending).resolves.toEqual({ width: 4000, height: 4000 });
+    await expect(pending).resolves.toEqual({
+      size: { width: 4000, height: 4000 },
+      display: undefined,
+    });
   });
 
   it("refuses a size that is not a dimension, rather than creating one", async () => {
@@ -243,7 +269,75 @@ describe("the new-document chooser", () => {
     expect(read(dialog, "width")).toBe("1920");
 
     create(dialog);
-    await expect(pending).resolves.toEqual({ width: 1920, height: 2000 });
+    await expect(pending).resolves.toEqual({
+      size: { width: 1920, height: 2000 },
+      display: undefined,
+    });
+  });
+
+  it("keeps a typed size when an unrelated control changes", async () => {
+    // The finding: the chooser never wrote the three dropdowns, so they kept
+    // reading whichever preset was last chosen. Type 3000 × 3000, touch
+    // resolution, and the old code ran `derive("16:9", …, "4k")` — 3840 × 2160,
+    // silently, from a ratio the author never chose and had no way to see had
+    // been assumed on their behalf.
+    const chooserErrors: string[] = [];
+    window.addEventListener("error", (event) =>
+      chooserErrors.push(String(event.message)),
+    );
+    const pending = chooseArtboardSize();
+    const dialog = opened();
+    set(dialog, "display", "");
+    type(dialog, "width", "3000");
+    type(dialog, "height", "3000");
+
+    // The controls stop claiming a preset the document is not at, the way the
+    // panel's three already did.
+    expect({
+      ratio: read(dialog, "ratio"),
+      orientation: read(dialog, "orientation"),
+      resolution: read(dialog, "resolution"),
+    }).toEqual({ ratio: "", orientation: "", resolution: "" });
+
+    set(dialog, "resolution", "4k");
+    expect(
+      dialog.textContent,
+      "the author's own size is still on screen",
+    ).toContain("3000 × 3000");
+    // **The refusal is a refusal, not a crash.** Without this the test passes
+    // for the wrong reason: `artboardSize("")` throws a RangeError, the handler
+    // dies before it can write anything, and the size on screen is unchanged
+    // because the derive never ran rather than because it was declined. So the
+    // control must be *restored* to its reading — a throw leaves the DOM
+    // showing whatever the author just set.
+    expect(
+      read(dialog, "resolution"),
+      "the control is put back, so the refusal is visible as one",
+    ).toBe("");
+    // And no error escaped: an unhandled throw here would be the same crash.
+    expect(chooserErrors).toEqual([]);
+
+    create(dialog);
+    await expect(pending).resolves.toEqual({
+      size: { width: 3000, height: 3000 },
+      display: undefined,
+    });
+  });
+
+  it("offers the Custom reading unselectably, the way the panel does", () => {
+    // A reading of the document, not a size an author can ask for: selectable,
+    // it would either do nothing or strand them on a value that derives nothing.
+    const dialog = newDocumentChooser();
+
+    for (const marker of ["ratio", "orientation", "resolution"]) {
+      const custom = [
+        ...dialog.querySelectorAll<HTMLOptionElement>(
+          `[data-vigilia-new-document-${marker}] option`,
+        ),
+      ].find((option) => option.value === "");
+      expect(custom, `${marker} carries a Custom reading`).toBeDefined();
+      expect(custom?.disabled, `${marker}'s Custom is a reading`).toBe(true);
+    }
   });
 
   it("cancels to no choice and closes, so a New pressed by accident changes nothing", async () => {

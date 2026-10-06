@@ -2,6 +2,7 @@ import {
   ARTBOARD_RATIOS,
   type ArtboardRatioId,
   type ArtboardShape,
+  DEFAULT_ARTBOARD_PRESET,
 } from "./artboard-presets.js";
 
 /**
@@ -78,11 +79,40 @@ export const DISPLAY_LENSES: readonly DisplayLens[] = [
 ];
 
 /**
- * The lens the editor opens on: a landscape phone, which is the shape the
- * starter theme is already drawn in, so the reference composition is framed
- * correctly the moment the editor opens rather than after a click.
+ * The lens the editor opens on: the shape a new document opens at, read out of
+ * `DEFAULT_ARTBOARD_PRESET` rather than written here.
+ *
+ * **The starter is what makes that shape the right one.** It is 1672 × 941 —
+ * 1.7768, which is 16:9 — so the wall panel frames the reference composition
+ * edge to edge the moment the editor opens, and a 19.5:9 lens would spend about
+ * 18 % of a 1600 px stage on bars around it. The default used to claim a
+ * landscape phone, on the stated grounds that the starter is drawn in one; it
+ * is not, and the claim cost the stage 287 px of nothing.
+ *
+ * Resolved rather than typed, for the reason `ratioOf` exists: a second number
+ * here is a second answer to the same question, and the two had already
+ * drifted apart. A shape no lens frames throws, exactly as a missing ratio
+ * does — a default would frame the stage at a shape nobody chose.
  */
-export const DEFAULT_DISPLAY_LENS: DisplayLensId = "phone-landscape";
+export const DEFAULT_DISPLAY_LENS: DisplayLensId = lensIdForShape({
+  ratio: DEFAULT_ARTBOARD_PRESET.ratio,
+  orientation: DEFAULT_ARTBOARD_PRESET.orientation,
+});
+
+/** The lens showing `shape`, or a throw rather than the nearest one. */
+function lensIdForShape(shape: ArtboardShape): DisplayLensId {
+  const found = DISPLAY_LENSES.find(
+    (entry) =>
+      entry.shape.ratio === shape.ratio &&
+      entry.shape.orientation === shape.orientation,
+  );
+  if (found === undefined) {
+    throw new RangeError(
+      `no display lens shows a ${shape.orientation} ${shape.ratio} artboard`,
+    );
+  }
+  return found.id;
+}
 
 export function displayLens(id: DisplayLensId): DisplayLens {
   const found = DISPLAY_LENSES.find((entry) => entry.id === id);

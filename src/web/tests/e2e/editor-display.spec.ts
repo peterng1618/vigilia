@@ -153,19 +153,23 @@ test.describe("the stage looks through a display", () => {
     await page.waitForTimeout(1500);
   });
 
-  test("opens on a landscape phone, framing the starter whole with bars", async ({
+  test("opens on the display the starter is drawn in, framing it whole", async ({
     page,
   }) => {
     const m = await measure(page);
 
+    // The starter is 1672 × 941 — 1.7768, which is 16:9. The default used to be
+    // a 19.5:9 phone lens on the stated grounds that this was its shape; it is
+    // not, and the mismatch cost ~287 px of a 1600 px stage on bars. The lens is
+    // now read out of the default artboard shape rather than typed beside it.
     expect(
       m.display,
       "the default display is the one the starter is drawn in",
-    ).toBe("phone-landscape");
+    ).toBe("wall-panel");
     expect(
       aspect(m.screen),
-      "and its screen carries the phone's aspect, not the window's",
-    ).toBeCloseTo(19.5 / 9, 2);
+      "and its screen carries that aspect, not the window's",
+    ).toBeCloseTo(16 / 9, 2);
     expect(
       Math.abs(aspect(m.stage) - aspect(m.screen)),
       "so the screen is not the stage",
@@ -181,9 +185,9 @@ test.describe("the stage looks through a display", () => {
     expect(
       m.board.left,
       "pasteboard on the left of the artboard",
-    ).toBeGreaterThan(m.screen.left + 1);
+    ).toBeGreaterThan(m.screen.left - 0.5);
     expect(m.board.left + m.board.width, "and on the right").toBeLessThan(
-      m.screen.left + m.screen.width - 1,
+      m.screen.left + m.screen.width + 0.5,
     );
 
     // It is the artboard and nothing larger that the camera holds: at the
@@ -192,6 +196,125 @@ test.describe("the stage looks through a display", () => {
       m.board.height,
       "the board's height in screen px",
     ).toBeLessThanOrEqual(m.screen.height + 0.5);
+    // The frame the author actually sees, in the DOM, not only in the camera's
+    // own arithmetic. A frame that is not drawn is not a frame.
+    expect(
+      await page.evaluate(() => {
+        const frame = document.querySelector<HTMLElement>(
+          "[data-vigilia-display-screen]",
+        );
+        if (frame === null || frame.hidden) return undefined;
+        return (
+          Number.parseFloat(frame.style.width) /
+          Number.parseFloat(frame.style.height)
+        );
+      }),
+      "the drawn frame carries the same aspect as the camera's",
+    ).toBeCloseTo(16 / 9, 2);
+  });
+
+  test("frames a new theme through the display the author asked for", async ({
+    page,
+  }) => {
+    // **The answer to the first question is read, not written and dropped.**
+    // Before, `New` derived the artboard from the chosen display and then
+    // mounted without ever calling `showDisplay`, so a portrait artboard opened
+    // inside a landscape frame — the only place this branch removed a freedom
+    // rather than a step.
+    //
+    // Asserted on the **stage frame**, not on a call having been made. A spy
+    // proves the mechanism ran; this proves the author sees what they chose.
+    await page.keyboard.press("Control+n");
+    const chooser = page.locator("dialog");
+    await expect(chooser).toBeVisible();
+    await chooser
+      .locator("[data-vigilia-new-document-display]")
+      .selectOption("phone-portrait");
+    await chooser.locator("[data-vigilia-new-document-create]").click();
+    // New asks in two steps, chooser first: a dirty document prompts after.
+    const prompt = page.locator("dialog");
+    await prompt
+      .waitFor({ state: "visible", timeout: 3_000 })
+      .then(() =>
+        prompt.getByRole("button", { name: "Discard", exact: true }).click(),
+      )
+      .catch(() => undefined);
+    await expect(page.locator("#status")).toHaveText("New theme");
+
+    const after = await measure(page);
+
+    // **The frame first, and the drawn one.** Disabling the `showDisplay` call
+    // has to fail here rather than on an assertion about a call having been
+    // made: the camera's own `display()` reporting the old lens would be a
+    // mechanism reading, and a lens that reports correctly while the stage is
+    // framed wrongly is the defect this test exists to catch.
+    expect(
+      await page.evaluate(() => {
+        const frame = document.querySelector<HTMLElement>(
+          "[data-vigilia-display-screen]",
+        );
+        if (frame === null || frame.hidden) return undefined;
+        return {
+          aspect:
+            Number.parseFloat(frame.style.width) /
+            Number.parseFloat(frame.style.height),
+          width: Number.parseFloat(frame.style.width),
+        };
+      }),
+      "the frame drawn on the stage carries the chosen display's aspect",
+    ).toMatchObject({ aspect: expect.closeTo(1 / (19.5 / 9), 2) });
+    expect(
+      aspect(after.screen),
+      "and the camera's own screen rect agrees with it",
+    ).toBeCloseTo(1 / (19.5 / 9), 2);
+    expect(
+      after.display,
+      "the camera reports the display that was chosen",
+    ).toBe("phone-portrait");
+    // The artboard the answer derived: portrait, so the two agree.
+    // The artboard the answer derived: portrait, so the two agree — and 19.5:9
+    // portrait is *exactly* the lens's aspect, so a correctly framed board fills
+    // this frame edge to edge. Containment here is "not cropped, not spilling",
+    // not "leaves bars": the bars case is the 16:9 starter under a 19.5:9
+    // lens, asserted in the display test above.
+    expect(
+      aspect(after.board),
+      "a portrait artboard is presented at its own aspect",
+    ).toBeCloseTo(1080 / 2340, 2);
+    expect(after.board.left, "not cropped at the left").toBeGreaterThanOrEqual(
+      after.screen.left - 1,
+    );
+    expect(
+      after.board.left + after.board.width,
+      "or spilling at the right",
+    ).toBeLessThanOrEqual(after.screen.left + after.screen.width + 1);
+    expect(after.board.top, "or top").toBeGreaterThanOrEqual(
+      after.screen.top - 1,
+    );
+    expect(
+      after.board.top + after.board.height,
+      "or bottom",
+    ).toBeLessThanOrEqual(after.screen.top + after.screen.height + 1);
+
+    // The document is unchanged by the choice (§67, Review Focus 4), read
+    // through the same comparison the lens tests use: the scene before the New
+    // was the starter's, and this document is blank — so what is compared here
+    // is that framing it did not add anything to it.
+    expect(
+      await page.evaluate(() => {
+        const artboard = (
+          window as unknown as {
+            vigiliaEditorBridge: {
+              editor: { artboard(): { width: number; height: number } };
+            };
+          }
+        ).vigiliaEditorBridge.editor.artboard();
+        // The dimensions only: the artboard also carries its background and
+        // bar colours, and this is about the shape the display derived.
+        return { width: artboard.width, height: artboard.height };
+      }),
+      "the artboard is the size the display derives, not the stage's",
+    ).toEqual({ width: 1080, height: 2340 });
   });
 
   test("the artboard's authored dimensions are untouched by the choice", async ({

@@ -160,7 +160,13 @@ function frostTheSurface(
   const frost = frostedShapeFill(context.globals, paintRefs(object).fill);
   if (frost === undefined) return;
   writeRef(object, "fill", frost);
-  applyObjectPalettePaints(context.editor.canvas, context.globals);
+  // The shell's own channel, for the same reason `panel.ts` passes it: this is a
+  // whole-canvas pass, so an arc elsewhere in the scene is refused by it too and
+  // must not do so in silence.
+  applyObjectPalettePaints(context.editor.canvas, context.globals, {
+    onRefusedPaint: (message) =>
+      context.editor.errorManager.warn("paint", message),
+  });
 }
 
 /**

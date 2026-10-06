@@ -1405,3 +1405,103 @@ describe("a refusal both surfaces apply", () => {
     expect((revived.getObjects()[0] as Arc).fill).toBe("");
   });
 });
+
+/**
+ * The refusal is reported **once**, from whichever site raised it.
+ *
+ * Two sites refuse, and both are load-bearing for the render (ADR-0026): revival
+ * withholds what Fabric restored, and the editor's paint pass declines to
+ * re-resolve the reference afterwards. Only one of them can be the one that
+ * speaks for a given arc, because otherwise a single load says the same
+ * sentence twice — and the half that said *nothing* was the half no test
+ * reached, because every arc fixture in the suite set `VIGILIA_PAINT_PROPERTY`.
+ */
+describe("a refusal is spoken once, from the site that raised it", () => {
+  /** A filled arc as a hand-authored file carries it, with or without a
+   *  palette reference — the two cases that belong to different sites. */
+  const envelopeWith = (arc: Arc): ReturnType<typeof serialiseThemeEnvelope> =>
+    serialiseThemeEnvelope(canvasOf(arc), {
+      id: "theme",
+      artboard: { width: 1920, height: 1080 },
+    });
+
+  const bareArc = (): Arc =>
+    new Arc({
+      left: 20,
+      top: 20,
+      radius: 100,
+      startAngle: 0,
+      endAngle: 90,
+      fill: "#4da3ff",
+      stroke: "",
+    });
+
+  it("speaks for the arc no palette reference points at", async () => {
+    // The silent half. Revival refuses it; the paint pass never sees it, because
+    // there is no reference to walk. Before, the author watched a figure vanish
+    // from their document with nothing said at all.
+    const told: string[] = [];
+    const canvas = new StaticCanvas(undefined, { width: 400, height: 300 });
+    await reviveThemeEnvelope(canvas, envelopeWith(bareArc()), undefined, {
+      onRefusedPaint: (message) => told.push(message),
+    });
+
+    expect((canvas.getObjects()[0] as Arc).fill, "the fill is withheld").toBe(
+      "",
+    );
+    expect(told, "and the author is told").toHaveLength(1);
+    expect(told[0]).toMatch(/arc/i);
+  });
+
+  it("leaves the reference-carrying arc to the paint pass, so it is not said twice", async () => {
+    // Both sites refuse this one and both have a channel. Reporting it here as
+    // well would make one load two identical sentences, which is the same
+    // crying wolf the diagnostic exists to avoid.
+    const arc = bareArc();
+    arc.set(VIGILIA_PAINT_PROPERTY, { fill: "palette.cpu" });
+    const told: string[] = [];
+    const canvas = new StaticCanvas(undefined, { width: 400, height: 300 });
+    await reviveThemeEnvelope(canvas, envelopeWith(arc), undefined, {
+      onRefusedPaint: (message) => told.push(message),
+    });
+
+    const revived = canvas.getObjects()[0] as Arc;
+    expect(revived.fill, "the render is refused either way").toBe("");
+    expect(told, "revival stays quiet about the pass's arc").toEqual([]);
+
+    // And the pass says it, exactly once.
+    const said: string[] = [];
+    applyObjectPalettePaints(canvas, globalsForRefusal, {
+      onRefusedPaint: (message) => said.push(message),
+    });
+    expect(said, "the paint pass is the one site that speaks").toHaveLength(1);
+  });
+
+  it("says nothing at all for a wedge, whose sector is a region it has", async () => {
+    const told: string[] = [];
+    const canvas = new StaticCanvas(undefined, { width: 400, height: 300 });
+    await reviveThemeEnvelope(
+      canvas,
+      envelopeWith(
+        new Wedge({
+          left: 20,
+          top: 20,
+          radius: 100,
+          startAngle: 0,
+          endAngle: 90,
+          fill: "#4da3ff",
+        }),
+      ),
+      undefined,
+      { onRefusedPaint: (message) => told.push(message) },
+    );
+
+    expect((canvas.getObjects()[0] as Wedge).fill).toBe("#4da3ff");
+    expect(told).toEqual([]);
+  });
+});
+
+/** The palette the refusal cases resolve against; no token matters but one. */
+const globalsForRefusal = {
+  palette: { cpu: { name: "CPU", value: { kind: "solid", color: "#4da3ff" } } },
+} as never;

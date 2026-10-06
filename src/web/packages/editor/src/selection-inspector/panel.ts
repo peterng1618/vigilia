@@ -233,11 +233,20 @@ export function createPanelFields(
     hooks.commit();
     hooks.onChange();
   };
-  /** A reference change, resolved by the owner the palette editor also uses. */
+  /** A reference change, resolved by the owner the palette editor also uses.
+   *
+   *  The channel is the shell's own, and it is here rather than only in
+   *  `applyArtboardPaint` because this pass is whole-canvas: it walks every
+   *  object, so an arc anywhere in the scene loses its fill on an inspector
+   *  edit that had nothing to do with it. Passing nothing here is what made
+   *  that silent. */
   const commitRef = (write: () => void): void => {
     commit(() => {
       write();
-      applyObjectPalettePaints(context.editor.canvas, context.globals);
+      applyObjectPalettePaints(context.editor.canvas, context.globals, {
+        onRefusedPaint: (message) =>
+          context.editor.errorManager.warn("paint", message),
+      });
     });
   };
 

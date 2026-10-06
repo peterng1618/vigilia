@@ -18,8 +18,11 @@ export const VIGILIA_PAINT_PROPERTY = "vigiliaPaint";
  * the document is not malformed, it asks for a figure the product declines to
  * paint. The sentence is here rather than in the editor because the refusal
  * happens here, and a caller with no way to hear it would have no way to say it.
+ *
+ * Exported so `persist.ts` says the same words about the same refusal from the
+ * site that raises it: the sentence is one, wherever it is spoken from.
  */
-const ARC_FILL_REFUSED =
+export const ARC_FILL_REFUSED =
   "This arc's fill was not drawn. An arc is an open curve, and filling one paints the segment its chord cuts rather than the sweep the document asked for, so it is drawn as the curve it is.";
 
 /** Properties a palette reference may own. */
@@ -125,6 +128,9 @@ export function applyObjectPalettePaints(
  * author. Where there is an editor, a refusal is reported rather than applied
  * quietly: an author cannot otherwise tell that their document asked for a figure
  * the editor declined to draw.
+ *
+ * **The same channel revival reports through**, so the sentence and its
+ * category are written once whatever raised the refusal.
  */
 export interface PaintApplicationOptions {
   readonly onRefusedPaint?: (message: string) => void;
@@ -188,4 +194,20 @@ function isPaintRefs(value: unknown): value is FabricPaintRefs {
       typeof ref === "string" &&
       ref.startsWith("palette."),
   );
+}
+
+/**
+ * Whether a revival-time refusal would be reported anyway, by the paint pass.
+ *
+ * Revival refuses every `refusesFill` object whether or not it carries a
+ * palette reference, so it is the only site that sees a hand-authored arc with
+ * no `vigiliaPaint` at all. That is the case a report belongs to; the
+ * reference-carrying arc is this pass's to report, and revival staying quiet
+ * about it is what keeps one refusal from being said twice on one load.
+ */
+export function refusalIsPaintPasses(
+  object: Pick<FabricObject, "get">,
+): boolean {
+  const refs = object.get(VIGILIA_PAINT_PROPERTY);
+  return isPaintRefs(refs) && refs?.fill !== undefined;
 }

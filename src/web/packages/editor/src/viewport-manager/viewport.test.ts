@@ -281,9 +281,32 @@ describe("viewport camera on a host resize", () => {
  * screen — it is a lens that quietly becomes a document.
  */
 describe("the display lens", () => {
-  it("opens on a landscape phone, the shape the starter is drawn in", () => {
+  it("opens on the wall panel, because the starter is drawn in that shape", () => {
+    // **One owner for "the default shape", not two constants that disagree.**
+    // The default used to be a 19.5:9 phone lens held beside a 16:9 document
+    // default, justified by a comment claiming the starter is drawn in a
+    // landscape phone. It is 1672 × 941 — 1.7768, which is 16:9 — so the claim
+    // was false and the stage spent ~287 px of a 1600 px one on bars. The lens
+    // is now read out of the artboard default; this pins what that resolves to
+    // and the arithmetic that makes the old comment false.
     const { camera } = setup({ fitted: false });
-    expect(camera.display()).toBe("phone-landscape");
+
+    // Not a phone's 19.5:9: the two differ by 0.39, so this is the whole claim.
+    expect(
+      Math.abs(1672 / 941 - 16 / 9),
+      "the starter is 16:9, not a phone's 19.5:9",
+    ).toBeLessThan(0.001);
+    expect(
+      Math.abs(1672 / 941 - 19.5 / 9),
+      "and nowhere near the shape the old default claimed",
+    ).toBeGreaterThan(0.3);
+    expect(camera.display()).toBe("wall-panel");
+    const screen = camera.displayScreenRect();
+    if (screen === undefined) throw new Error("no display screen rect");
+    expect(
+      screen.width / screen.height,
+      "so the frame it opens in carries the starter's own aspect",
+    ).toBeCloseTo(16 / 9, 6);
   });
 
   it("frames the artboard to the display's shape, not the window's", () => {

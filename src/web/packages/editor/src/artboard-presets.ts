@@ -37,17 +37,25 @@ export const ARTBOARD_ORIENTATIONS: ReadonlyArray<ArtboardOrientation> = [
   "portrait",
 ];
 
-/** The one a new document opens on: the ratio and resolution a wall display is
-    measured in, and the orientation a wall is hung. */
+/**
+ * The shape a new document opens at, and the one the stage opens looking at.
+ *
+ * **One owner for both answers.** A document and the lens that frames it are
+ * different questions, but "what shape does this product assume" is one, and it
+ * was two constants that disagreed: a 16:9 landscape document and a 19.5:9
+ * lens. `DEFAULT_DISPLAY_LENS` reads its shape from here rather than holding a
+ * second number, so a lens that stopped being this shape is visible here
+ * instead of only to whoever measures the stage.
+ *
+ * The ratio and resolution a wall display is measured in, and the orientation a
+ * wall is hung. `wall-panel` is this shape by construction, which is why
+ * `openingDisplay` finds it for a blank document without being told.
+ */
 export const DEFAULT_ARTBOARD_PRESET = {
   ratio: "16:9",
   resolution: "1080p",
   orientation: "landscape",
-} as const satisfies {
-  ratio: ArtboardRatioId;
-  resolution: ArtboardResolutionId;
-  orientation: ArtboardOrientation;
-};
+} as const satisfies ArtboardPresetChoice;
 
 export interface ArtboardPresetChoice {
   readonly ratio: ArtboardRatioId;

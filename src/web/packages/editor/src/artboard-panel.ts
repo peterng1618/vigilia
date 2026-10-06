@@ -14,7 +14,7 @@ import {
   ARTBOARD_RESOLUTIONS,
   artboardPresetFor,
   artboardSize,
-  DEFAULT_ARTBOARD_PRESET,
+  nearestArtboardPreset,
 } from "./artboard-presets.js";
 import { linkedPair } from "./editor-shell/controls/linked-pair.js";
 import { languageLabel, THEME_LANGUAGES } from "./theme-languages.js";
@@ -336,19 +336,19 @@ export function createArtboardPanel(
 
   /** A Custom control is one the document's own size left unset, and choosing
       any of the three means choosing all three — so the ones left Custom take
-      the default the chooser opens on rather than leaving a size the controls
-      then deny. */
+      **the preset nearest this document's own size**, which is what
+      `nearestArtboardPreset` answers and what the new-document chooser opens
+      on for the same size. Not `DEFAULT_ARTBOARD_PRESET`: the chooser reaches
+      its offer through `nearestArtboardPreset` and never through that
+      constant, so a comment naming it was naming a default the chooser does
+      not use — and for a 1280 × 2778 phone it named 16:9 landscape against the
+      chooser's 19.5:9 portrait, which is the shape the author is holding. */
   function submitPreset(): void {
+    const nearest = nearestArtboardPreset(current);
     const chosen = {
-      ratio: presetId(ratio.select, DEFAULT_ARTBOARD_PRESET.ratio),
-      resolution: presetId(
-        resolution.select,
-        DEFAULT_ARTBOARD_PRESET.resolution,
-      ),
-      orientation: presetId(
-        orientation.select,
-        DEFAULT_ARTBOARD_PRESET.orientation,
-      ),
+      ratio: presetId(ratio.select, nearest.ratio),
+      resolution: presetId(resolution.select, nearest.resolution),
+      orientation: presetId(orientation.select, nearest.orientation),
     };
     ratio.select.value = chosen.ratio;
     resolution.select.value = chosen.resolution;
