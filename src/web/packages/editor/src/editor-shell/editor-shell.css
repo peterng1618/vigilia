@@ -1062,6 +1062,23 @@ body,
 .vigilia-layer-row[data-kind="group"] .vigilia-layer-name {
   font-weight: 600;
 }
+/* What the row is, in the document's own words. Rendered on every row, unlike
+   the bound column beside it: a missing key is the fact "this reads nothing",
+   while a missing role is a row that is not identified — and on four kinds in
+   five this span is the only thing a screen reader hears about the row's kind,
+   because the mark beside the name is `aria-hidden` or absent.
+
+   `flex: none`, so it is never the element that gives up width: a role that
+   clipped or ellipsised would say nothing, and the name and the key already
+   have the row's shrinking to do. Muted and 11px like the key, so the name
+   still leads the row; the visible form of the two together is measured at the
+   panel's width rather than decided here. */
+.vigilia-layer-role {
+  flex: none;
+  white-space: nowrap;
+  color: var(--shell-muted);
+  font-size: 11px;
+}
 /* The two state icons, laid over the row's right edge rather than held open
    beside it.
 

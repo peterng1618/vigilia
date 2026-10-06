@@ -1,4 +1,7 @@
 // @vitest-environment jsdom
+import { readFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { expect, it, vi } from "vitest";
 import { createRoot } from "react-dom/client";
 import { act } from "react";
@@ -1071,4 +1074,185 @@ it("selects any one of two hundred rows through the panel's own click", async ()
     expect(selectLayer.mock.calls).toEqual([[id]]);
     selectLayer.mockClear();
   }
+});
+
+// ── …and says what it is, to a screen reader as well as to an eye ───────────
+
+function roleSpan(host: HTMLElement, id: string): HTMLElement | null {
+  return host.querySelector<HTMLElement>(
+    `[data-vigilia-layer="${id}"] .vigilia-layer-role`,
+  );
+}
+
+/** The name a treeitem is announced under, read off the row's own columns: the
+ *  text of everything inside it that is not `aria-hidden`.
+ *
+ *  jsdom computes no accessible name, so this is the floor the row's content
+ *  puts under it rather than the whole platform algorithm — a browser also folds
+ *  in an embedded control's own label. That is the point of reading content
+ *  rather than an attribute: the role has to reach the name as *content*, and a
+ *  row that carried the same words in an `aria-label` would be named twice. */
+function nameFromContent(row: HTMLElement): string {
+  const clone = row.cloneNode(true) as HTMLElement;
+  for (const hidden of clone.querySelectorAll('[aria-hidden="true"]')) {
+    hidden.remove();
+  }
+  return clone.textContent?.replace(/\s+/g, " ").trim() ?? "";
+}
+
+it("draws a role on every row, in the vocabulary's own words", async () => {
+  // Driven from a list of arms rather than from one example object, so an arm
+  // that renders another arm's word — or nothing at all — is a failing case
+  // rather than an unfilled field. The group with no unit, the chart with one
+  // series and the chart whose family this build does not know are here because
+  // a happy-path fixture reaches none of them, and the last must say `Chart`
+  // rather than a neighbour's family the document never claimed.
+  const cases: readonly { id: string; role: LayerRole; says: string }[] = [
+    { id: "one", role: { kind: "text" }, says: "Text" },
+    { id: "two", role: { kind: "shape" }, says: "Shape" },
+    { id: "three", role: { kind: "image" }, says: "Image" },
+    { id: "four", role: { kind: "group", unit: undefined }, says: "Group" },
+    { id: "five", role: { kind: "group", unit: "CPU" }, says: "CPU" },
+    {
+      id: "six",
+      role: { kind: "chart", family: undefined, series: 1 },
+      says: "Chart",
+    },
+    { id: "seven", role: { kind: "chart", family: "line", series: 1 }, says: "Line" },
+    {
+      id: "eight",
+      role: { kind: "chart", family: "line", series: 3 },
+      says: "Line ×3",
+    },
+  ];
+  const host = await renderPanel(
+    cases.map((one) => layerRow({ id: one.id, name: one.id, role: one.role })),
+  );
+
+  for (const one of cases) {
+    const span = roleSpan(host, one.id);
+    expect(span?.textContent).toBe(one.says);
+    // The attribute names the arm that drew, so a browser case measures the
+    // treatment rather than inferring it from a class — the idiom the mark uses.
+    expect(span?.getAttribute("data-vigilia-layer-role")).toBe(one.role.kind);
+  }
+});
+
+it("names a chart row's family and a shape row's kind for a screen reader", async () => {
+  // Review Focus 2, and the reason this task exists. A chart's icon, a shape's
+  // swatch and an image's `alt=""` contribute nothing to a treeitem's name,
+  // which is the concatenation of its own columns, and a group draws no element
+  // at all — so before the role a chart row and a shape row were the same row to
+  // a screen reader. The name is read off the row's own content rather than off
+  // an attribute, because an `aria-label` on a row already named from its
+  // columns is the second name this case exists to rule out.
+  const host = await renderPanel([
+    layerRow({
+      id: "trends",
+      name: "Trends",
+      kind: "chart",
+      mark: { kind: "chart", family: "line" },
+      role: { kind: "chart", family: "line", series: 3 },
+    }),
+    layerRow({
+      id: "panel",
+      name: "Panel",
+      kind: "shape",
+      mark: { kind: "shape", paint: "#2ee6a8" },
+      role: { kind: "shape" },
+    }),
+  ]);
+  const row = (id: string): HTMLElement =>
+    host.querySelector<HTMLElement>(`[data-vigilia-layer="${id}"]`)!;
+
+  const chart = nameFromContent(row("trends"));
+  expect(chart).toContain("Trends");
+  expect(chart).toContain("Line ×3");
+  // The shape is the other half: its swatch is `aria-hidden`, so without the
+  // role the row would announce its name and nothing about what it is.
+  const shape = nameFromContent(row("panel"));
+  expect(shape).toContain("Panel");
+  expect(shape).toContain("Shape");
+});
+
+it("says a row's role once, outside the mark and outside a title", async () => {
+  // The three ways this could be said twice or said where nobody reads it:
+  // inside the mark, which `flex-basis`es a 40px slot and would clip it; in a
+  // `title`, which a pointer hears and a keyboard author does not; and hidden,
+  // which is text no screen reader reads at all.
+  const host = await renderPanel([
+    layerRow({
+      id: "trends",
+      name: "Trends",
+      kind: "chart",
+      bound: ["cpu.load"],
+      mark: { kind: "chart", family: "line" },
+      role: { kind: "chart", family: "line", series: 3 },
+    }),
+  ]);
+  const row = host.querySelector<HTMLElement>('[data-vigilia-layer="trends"]')!;
+
+  expect(row.querySelectorAll(".vigilia-layer-role")).toHaveLength(1);
+  expect(row.querySelector(".vigilia-layer-mark .vigilia-layer-role")).toBeNull();
+  const span = row.querySelector<HTMLElement>(".vigilia-layer-role")!;
+  expect(span.getAttribute("title")).toBeNull();
+  expect(span.getAttribute("aria-hidden")).toBeNull();
+  // The key beside it keeps its own tooltip: the role is visible text, and the
+  // one column whose tooltip earns its place is the one that clips.
+  expect(row.querySelector(".vigilia-layer-bound")?.getAttribute("title")).toBe(
+    "cpu.load",
+  );
+});
+
+it("gives the role a fixed width and keeps the name the row's flexible column", async () => {
+  // jsdom applies no stylesheet, so a computed style here would be theatre; the
+  // declaration is exactly what the browser paints, and a browser case confirms
+  // it — the same reading the specimen's own face gets above.
+  const css = readFileSync(
+    resolve(dirname(fileURLToPath(import.meta.url)), "editor-shell.css"),
+    "utf8",
+  );
+  const declarations = (selector: string): string => {
+    const at = css.indexOf(`\n${selector} {`);
+    expect(at, `${selector} is not in the stylesheet`).toBeGreaterThan(-1);
+    return css.slice(at, css.indexOf("}", at));
+  };
+
+  // The role gives up nothing: one that shrank or ellipsised would say nothing,
+  // so it is never the row's flexible element.
+  expect(declarations(".vigilia-layer-role")).toMatch(/flex:\s*none/);
+  expect(declarations(".vigilia-layer-role")).not.toMatch(/flex:\s*1/);
+  // …and the name keeps the growth, which is the whole of the row's width rule.
+  expect(declarations(".vigilia-layer-name")).toMatch(/flex:\s*1 1 auto/);
+});
+
+it("carries a role on every one of two hundred rows", async () => {
+  // The scale the panel is judged at, with the group arm in it because a group
+  // draws no mark at all: on those rows the role is the only thing the row says
+  // about its kind, so a row that skipped it would be identified by nothing.
+  const rows = Array.from({ length: 200 }, (_, at) =>
+    at % 20 === 19
+      ? layerRow({
+          id: `card-${at}`,
+          name: `card-${at}`,
+          kind: "group",
+          hasChildren: true,
+          role: { kind: "group", unit: undefined },
+        })
+      : layerRow({ id: `loose-${at}`, name: `loose-${at}`, kind: "shape" }),
+  );
+  const host = await renderPanel(rows);
+
+  const rendered = [...host.querySelectorAll<HTMLElement>("[data-vigilia-layer]")];
+  expect(rendered).toHaveLength(200);
+  expect(host.querySelectorAll("[data-vigilia-layer-role]")).toHaveLength(200);
+  for (const row of rendered) {
+    // Never the empty string, on any arm: a name that begins with a gap is a row
+    // identified by nothing.
+    expect(row.querySelector(".vigilia-layer-role")?.textContent?.trim()).not.toBe("");
+  }
+  expect(roleSpan(host, "loose-0")?.textContent).toBe("Shape");
+  expect(roleSpan(host, "card-19")?.textContent).toBe("Group");
+  // The role is not a control, so a quiet panel stays quiet at two hundred rows.
+  expect(host.querySelectorAll(".vigilia-layer-role button")).toHaveLength(0);
 });

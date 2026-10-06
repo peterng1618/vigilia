@@ -16,7 +16,7 @@ import { useSyncExternalStore } from "react";
 import { actionEnabled, OBJECT_ACTIONS } from "../object-actions.js";
 import { uiCopy } from "../ui-copy.js";
 import type { EditorShellBridge } from "./bridge.js";
-import type { LayerMark, LayerRow } from "./layer-tree.js";
+import type { LayerMark, LayerRole, LayerRow } from "./layer-tree.js";
 
 /**
  * A chart's family mark, one icon per family the document can name.
@@ -149,6 +149,28 @@ function treatment(mark: LayerMark): React.JSX.Element | null {
       );
     case "group":
       return null;
+  }
+}
+
+/**
+ * The row's role in words, from the facts the projection reports.
+ *
+ * One arm per `LayerRole`, so a kind added to the union is a compile error here
+ * rather than a row that names nothing — and the words come from `uiCopy` rather
+ * than from this file, so the vocabulary keeps its one owner.
+ */
+function roleText(role: LayerRole): string {
+  switch (role.kind) {
+    case "text":
+      return uiCopy.panels.layerRoles.text();
+    case "shape":
+      return uiCopy.panels.layerRoles.shape();
+    case "image":
+      return uiCopy.panels.layerRoles.image();
+    case "group":
+      return uiCopy.panels.layerRoles.group(role.unit);
+    case "chart":
+      return uiCopy.panels.layerRoles.chart(role.family, role.series);
   }
 }
 
@@ -617,6 +639,25 @@ export function LayerPanel({
               ) : (
                 <span className="vigilia-layer-name">{row.name}</span>
               )}
+              {/* What the row *is*, in the document's own words — and on four
+                  rows in five the only thing a screen reader hears about it: a
+                  chart's icon, a shape's swatch and an image's thumbnail are
+                  `aria-hidden` and a group draws no mark at all, so this is the
+                  row's whole statement of its kind. It is therefore rendered on
+                  every row, and never made conditional the way the bound column
+                  below is — a missing key is the fact "this reads nothing",
+                  while a missing role is a row that is not identified at all.
+
+                  One element, never repeated: no `title` (a tooltip reaches no
+                  keyboard author), nothing inside `.vigilia-layer-mark` (whose
+                  `flex-basis` would clip it), and never hidden, because a
+                  treeitem's name is the concatenation of its own columns. */}
+              <span
+                className="vigilia-layer-role"
+                data-vigilia-layer-role={row.role.kind}
+              >
+                {roleText(row.role)}
+              </span>
               {/* What the row reads, taken from the document's own binding — and
                   nothing at all where it reads nothing.
 
