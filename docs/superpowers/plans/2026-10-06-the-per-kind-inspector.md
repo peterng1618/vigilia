@@ -608,6 +608,35 @@ naming the Data tab; a spec that opens the Data tab and now silently asserts not
 chart column rendering the fields twice because both the shell host and the column mount
 them.
 
+**Also owned here — `vg-145`, the bound Task 6 put under an author's number.** Task 7 found
+`author-journey-rebuild.spec.ts:516` red and filed it rather than fixed it, correctly: *which
+side is wrong is a design decision*, and the decision is this task's because the spec is
+already in this task's file list. The chain, each link measured: the journey fills
+`[data-vigilia-chart-setting="endAngle"]` with **405** for `ram-gauge` and asserts the object
+carries it; `settings-fields.ts:279-280` bounds gauge `endAngle` at ±360; `numberField`'s own
+doc comment says it "lands an out-of-range value on the **bound** it crossed instead of
+reverting it"; and `f254259b` (Task 6) moved the Data tab's loop onto `settingsField`, where
+the loop it replaced wrote `Number(input.value)` with **no bound check at all**. So Task 6
+turned this assertion red without touching the assertion.
+
+**What is not yet measured, and is this task's first step:** whether `endAngle: 405` draws
+anything a canonical angle cannot. `gauge.ts:82-83` passes both angles to ECharts **raw**, so
+the sweep is the engine's arithmetic and not this repo's — which means the answer is a canvas
+measurement, not a reading of the descriptor. The hypothesis to test: 135 → 405 is a
+**270°** clockwise sweep, which is what a three-quarter memory ring is, and ECharts does not
+reduce either angle modulo 360, so ±360 is narrower than what the document format and the
+renderer both accept. **Decisive on the validator side and already measured:**
+`validateSettingsRange` bounds **no** `endAngle` in any family — it requires a finite number
+and `max > min` and nothing else — so a document carrying `endAngle: 405` **validates today**.
+That is ADR-0028's own distinction applied to itself: descriptor bounds are authoring bounds,
+and an authoring bound narrower than the format silently rewrites an author's number.
+
+Resolve it in one of two directions and **say which, with the measurement**: widen the gauge
+`endAngle` authoring bound so a value the format accepts survives the control, or correct the
+journey to a canonical angle — in which case the journey was asserting an angle the engine
+reduces, and the row records that. Either way the spec at `:516` is green before this task
+commits, and `vg-145` is closed in Task 11 against the check that closed it.
+
 **Verification:**
 - Unit: selecting a chart renders its family settings and its bindings in the Design
   column, and the Data tab is not in the tab list.
