@@ -43,11 +43,11 @@ The loop, in order:
 
 ## Last completed change
 
-- **The descriptor table now says what each setting is for.** `b5046f2`: `section` and a **required** `hint` on every descriptor, `advanced` for the obscure ones, and `SETTINGS_SECTIONS` as the one place section order is decided. All 34 settings descriptors are Content and all 9 paint descriptors are Paint — a chart's settings are what the chart shows.
-- **A section is a native `<details>` disclosure, not a button and a panel.** `a4028d55` + `29fa4e4c`: the count lives in the summary, so a closed section still says how much it holds; an empty body renders no header at all; `setBody` follows the body and never collapses what the author opened.
-- **Three hints are guesses and are being checked.** The gauge and pie `endAngle` and the bar's axes/labels were inferred from the option builders rather than from a comment — the independent review is cross-checking them against `gauge.ts`, `pie.ts` and `bar.ts`.
-- **ADR-0028 landed and was corrected the same hour.** `5c3c31c4` + `f49511e9`: the table is extended in place; the `presence` field kind was removed from the design after reading the consumer — `animate` defaults to true at all four `toEngineAnimation` call sites, so an absent block means defaults apply, not static.
-- Gates green on both code tasks: typecheck exit 0, biome lint and format clean, 24/24 `settings-fields.test.ts`, 23/23 `controls.dom.test.ts`.
+- **Both findings plan 3 owns are now reachable.** `84b11f51`: a pie takes a `sum | fixed` total with a dependent value field, and all four families take `durationMs`, `easing`, `appearMs` and `appearEasing` — nested writes through `writeSetting`, proven by two red-test breaks and by a round-trip through the real option builders.
+- **An independent review mutation-probed the landed work and found ten things.** The guards that matter do go red when their production counterpart is removed; three that were claimed to guard more than they do are corrected here.
+- **The one that changed the design:** six hints promise an "absent" state no control can reach — `min`/`max`, `barWidth`, `trackCornerRadius`, pie `endAngle`. Absent means the renderer decides, so the author must be able to get back to absent; descriptors gain `optional?: true` and clearing one removes the key.
+- **A live regression is open and Task 6 is closing it.** `84b11f51` added `path`-carrying descriptors while the Data tab still commits every descriptor with a flat spread, so picking "A fixed total" writes a string where a union belongs. That is why Task 6 runs before Task 4.
+- **Also corrected:** the hint test's guarantee was weaker than the plan claimed (a reworded restatement passes it), `advanced` had zero members so the collapsed-section rule was untested, and a section's count had two rules that disagreed.
 
 ## Next
 
