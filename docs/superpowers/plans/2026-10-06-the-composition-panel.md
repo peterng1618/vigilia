@@ -70,11 +70,12 @@ Copied from the spec and from `AGENTS.md`; every task's requirements include the
   spec's own primitive-library ruling (§8) is deferred to plan 9 and is not pre-empted here.
 - **`exactOptionalPropertyTypes` and `noUncheckedIndexedAccess` are on.** Refuse invalid
   numeric input rather than coercing it to zero.
-- **500 lines is a signal, 800 a stop.** `editor-shell/layer-panel.tsx` is **707** and must not
-  reach 800; `editor-shell/layer-tree.ts` is **415** (`wc -l` on `0ebe4804` — the plan first
-  recorded 393, which no commit contains; corrected rather than carried, because Task 1 is the
-  task that grows this file and a starting figure 22 lines low is a figure that cannot be used
-  to judge the end state). This plan's
+- **500 lines is a signal, 800 a stop.** `editor-shell/layer-panel.tsx` was **707** at
+  `0ebe4804` and is **748** after Task 2 (`38fe07a2`) — **52 lines of headroom, and Task 5 adds
+  a third control to the same row.** `editor-shell/layer-tree.ts` is **415** (`wc -l` on
+  `0ebe4804` — the plan first recorded 393, which no commit contains; corrected rather than
+  carried, because Task 1 is the task that grows this file and a starting figure 22 lines low is
+  a figure that cannot be used to judge the end state). This plan's
   structure lands in new exports the projection already has room for, and **`layer-panel.tsx` is
   not the place to grow**: where a row gains structure, it moves into `layer-tree.ts` as data.
 - **No new files under `scripts/`.** The reuse gate's watchlist (`scripts/reuse-gate.mjs`)
@@ -255,6 +256,16 @@ name changed: a chart row's accessible name contains its family, which it did no
 screen reader hears it once by accident; a group's role arm rendering the empty string, which
 would make a row's name silently begin with a gap.
 
+**That last one was reachable, and Task 2 found it.** `uiCopy.panels.layerRoles.group` is
+`unit ?? layerKindLabels.group`, and `??` cannot catch a blank — while `groupRole` accepted any
+string, so a stamp of `{ widgetName: "" }` rendered a role span with no text at all. The plan
+called it unreachable; it is reachable from `layer-tree.ts`, though not from the starter. **Fixed
+in the projection rather than the vocabulary** — a stamp that names the unit with a blank says
+nothing, exactly as an absent one does, so the projection is where the blank stops being a unit
+name. That is also the guard `nameOf` already applies to an id at `layer-tree.ts:152`, which is
+what decided between the two owners. Regression case: a `{ widgetName: "" }` card *and* a
+whitespace-only one both report `unit: undefined`.
+
 **Verification:**
 - Unit: each arm renders its own string, driven from a list of roles — including the group with
   `unit: undefined` and the chart with `series: 1`, which are the two arms a happy-path fixture
@@ -263,13 +274,20 @@ would make a row's name silently begin with a gap.
   word** — computed from the row's own content, not read from an attribute. This is Review
   Focus 2.
 - Unit: the role is `flex: none`'s class and the name is the row's flexible element — asserted
-  on the declaration the stylesheet sets, the way `layer-panel.dom.test.tsx:813-844` asserts the
+  on the declaration the stylesheet sets, the way `layer-panel.dom.test.tsx:838-868` asserts the
   specimen's face; jsdom applies no stylesheet, so a computed style here would be theatre.
-- Unit: the 200-row cases that exist today (`layer-panel.dom.test.tsx:1003`, `:1026`) pass
-  unmodified except that every row now also carries a role, and the assertion that no default
-  row draws a button (`:1023`) still holds — the role is not a control.
+  **The plan first cited `:813-844`, which is the drag test.** The landed case at `:1207-1227`
+  is the better idiom and the one Task 3 should copy: it reads `editor-shell.css` off disk
+  through the `import.meta.url` **string** and matches the declaration in the source.
+- Unit: the 200-row cases that exist today (`layer-panel.dom.test.tsx:1028`, `:1051` after Task
+  2) pass unmodified except that every row now also carries a role, and the assertion that no
+  default row draws a button (`:941`) still holds — the role is not a control. **The plan first
+  cited `:1003`, `:1026` and `:1023`, none of which is the case it names**; the state-absence
+  cases are `:941` and `:953`, not `:916` and `:965`.
 - Unit: a row whose role string is the empty string is not reachable — the union's arms are
-  exhaustive and the vocabulary has no empty member.
+  exhaustive and the vocabulary has no empty member. **This one was false as written**, and the
+  mechanism is above: the arms were exhaustive, but an *arm* could still yield `""`. Two cases
+  added in the projection (`layer-tree.test.ts`) now pin it.
 
 **Commit:** `feat(editor): a row says what it is, and a screen reader hears it`
 
@@ -403,6 +421,15 @@ keep their tree semantics (`moveFocus`, `layer-panel.tsx:230-287`), and **no exi
 binding changes** — Enter stays rename's, Space stays selection's, Escape stays the product
 shortcut that leaves a group (`editor-session.ts:498-501`). The control is a plain button in the
 row's own tab order, which is how a keyboard author already reaches Hide and Lock.
+
+**Headroom, measured after Task 2.** `layer-panel.tsx` is **748** lines at `38fe07a2` against
+the 800 stop — Task 2's role span plus its `roleText` switch took 707 to 748. This task adds a
+control to the same row, and Global Constraints already rules that **`layer-panel.tsx` is not
+the place to grow**: where a row gains structure it moves into `layer-tree.ts` as data. The
+control's *shape* — which arm of `groupContext` applies, whether the row is inside this group —
+is exactly that kind of derived fact, so it belongs in the projection, not in a third `? :` in
+the row's JSX. If the file would pass 800, say so in the report rather than trimming a comment
+to fit.
 
 **The capability this buys, and the assertion that it is real:** `bridge.selectLayer` takes
 `owner ?? target` by design, so with the group shut a row click selects the group. After

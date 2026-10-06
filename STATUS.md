@@ -44,10 +44,11 @@ The loop, in order:
 
 ## Last completed change
 
-- **Plan 4 Task 1 landed at `61b9673d`** — `LayerRow` gains a required `role`, and `LayerRole` is a discriminated union of raw facts: a chart's `family` and `series`, a group's `unit`, and bare arms for text, shape and image. Derived inside `projectLayers` beside `markOf`, so it adds no second walk and a test reads it without rendering.
-- **The role reports what the document says and never a neighbour.** A chart whose family this build does not know is `family: undefined` rather than the fallback's — the rule `chartMark` already stated — proved red by defaulting it to `gauge`, which failed exactly that one test.
-- **The five kind words have one owner now.** `layer-tree.ts`'s private `kindLabels` is gone, replaced by `uiCopy.panels.layerKinds`, and `uiCopy.panels.layerRoles` holds one function per role arm; `chartFamilies` is hoisted so a row's family word is the same string the Add pane and Insert menu offer.
-- **Verified independently: typecheck exit 0, 100 tests across 10 suites green**, tree clean at the commit, and the one-line `layer-row` fixture fix confirmed present in a file the plan had listed only under Task 2. Filed `vg-149` — **biome's `files.includes` matches no `.tsx` path, so all 23 tracked React files are outside both the lint and the format gate.**
+- **Plan 4 Tasks 1 and 2 have landed, `61b9673d` → `38fe07a2`,** so a layer row now carries a `role` and says it: a `span.vigilia-layer-role` between the name and the bound column, with `data-vigilia-layer-role` naming the arm. `LayerRole` is raw facts — a chart's `family` and `series`, a group's `unit` — and a chart whose family this build does not know reports `family: undefined` rather than a neighbour's.
+- **The role renders on every row, deliberately unlike the bound column beside it.** A missing key is the fact "this reads nothing"; a missing role is a row that is not identified — three of the five mark arms are `aria-hidden` and a group draws no mark, so the span is a row's only statement of its kind to a screen reader. That case was proved red by removing the span: `expected 'Trends' to contain 'Line ×3'`.
+- **`eeda9a30` closed a hole Task 2 found and the plan had called unreachable:** `groupRole` accepted any string, so `{ widgetName: "" }` reached the row as an empty role span. Fixed in the projection, where `nameOf` already guards a blank id; proved red with exactly that one case failing.
+- **Verified here, not on report: typecheck exit 0, 100 tests across 10 suites green, tree clean.** Filed `vg-149` — **biome's `files.includes` matches no `.tsx` path, so all 23 tracked React files are outside both the lint and the format gate**, and a plan can name "biome lint clean" as a gate on a `.tsx`-only task.
+- **`layer-panel.tsx` is 748 lines against the 800 stop, with Task 5 still to add a third control to the same row** — recorded in the plan so Task 5 puts the control's derived shape in the projection rather than in a third ternary in the row's JSX.
 
 ## Next
 
