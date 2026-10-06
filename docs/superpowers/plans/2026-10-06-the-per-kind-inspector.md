@@ -739,6 +739,47 @@ image is for a human. One sample of a flaky spec is not a measurement.
 - Gates: `npm run typecheck` exit 0, `./node_modules/.bin/biome lint ..` clean, the full
   vitest suite, and the affected Playwright specs with `--workers=1`.
 
+**Corrections measured in Task 10 (`8b4274b7`) — six, and two of them are the plan's own
+claims being untestable as written.**
+
+- **Eight layer rows is wrong; the starter has ten.** Assert the count the DOM has rather than
+  a number remembered from an earlier pass.
+- **Claim 3 cannot hold on the editor, and no amount of care in the spec would fix it.**
+  `chart-manager/index.ts:578` passes `animate: false`, so the editor's own `_option` is
+  `{animation: false, animationDurationUpdate: 0, animationEasingUpdate: "linear"}` **both
+  before and after** an author sets 2500 / `cubicInOut`. The values are reachable, settable and
+  survive save-and-reopen — that half is real and the column reads them back — but the
+  option-builder half is only true at `animate: true`, which is the player's path and is
+  unit-covered in `animation.test.ts`. Stated because the claim as written asks a browser to
+  show something the editor is built not to show.
+- **Claim 2's canvas route needs a region, not a colour count.** The editor stage paints
+  `#223047`, which is the same colour as a new pie's `remainderFill`, so counting that colour
+  across the whole canvas measures the background. Counted **inside the object's own rect**
+  over `palette.frost` instead: 0 before, >1000 after fixing the total, 0 after switching it
+  back to `sum`. That is a measurement; the first version was not.
+- **`openInspectorTab`, `activeGeometry` and `geometryPairBoxes` are module-local to
+  `editor.spec.ts`** and cannot be reused from a new spec — `openInspectorTab` is `openTab` in
+  `rebuild-driver.ts`. The reuse list read as a shared library and is not one; no new driver
+  helper was needed.
+- **`--outputFile` is not a Playwright flag.** The JSON report goes through
+  `PLAYWRIGHT_JSON_OUTPUT_NAME`. It *is* the right flag for vitest, which is where the
+  instruction came from and why it was repeated to every task.
+- **The vitest figure quoted around this plan is suites, not files.** The reporter's `701` is
+  describe blocks; the measured file count is **206** of the 231 spec files under `src/web`.
+  Anyone comparing a baseline to a run should compare the same field.
+
+**The undo claim held, and it was proved load-bearing rather than merely green.** Claim 7
+passed, and then the event `#announce` fires (`chart-manager/index.ts:431`) was renamed to an
+unlistened name, the editor rebuilt, and the test **failed** — after undo the field still read
+`8`. Restored, rebuilt, 10/10 again. That is the difference between a test that passes and a
+test that would notice.
+
+**Still unverified after this task, and it stays that way:** claim 3's option-builder half in a
+browser (blocked by `animate: false`; unit-covered only), and `vg-148`'s other lock routes —
+only the layer row's own control was measured. The rebuild journey carried one red, `the
+storage bar`, at the 30-second default sampled three times as 2 red / 1 green; it is `vg-147`'s
+pre-existing timeout, this task changes no product source, and it is not a regression here.
+
 **Commit:** `test(inspector): the sections, the kinds and the two settings that were lost`
 
 ### Task 11: The register, the status, and the plan's close
