@@ -8,7 +8,7 @@ that thing has a control, ordered and grouped rather than trimmed.
 
 **Architecture:** The descriptor table in `renderer-core/src/charts/settings-fields.ts`
 stays the one owner of "which settings exist", and grows the metadata the surface needs
-(`section`, a required `hint`, `advanced`, a nested write path, and a presence toggle).
+(`section`, a required `hint`, `advanced`, and a nested write path).
 The editor gains two shared controls — a disclosure section and a descriptor-driven field —
 and the inspector column is rebuilt from them as a per-kind plan, so the column's shape is
 data the tests can read rather than a render function nobody can enumerate.
@@ -193,34 +193,41 @@ reference.
   `src/web/packages/renderer-core/src/charts/settings-fields.test.ts`
 
 **Interfaces:**
-- Produces: `SettingsFieldKind` gains `"presence"` — a control whose on-state materialises a
-  whole optional settings block and whose off-state removes it.
 - Produces: on `SettingsFieldDescriptor` — `path?: readonly string[]` (the write target
   inside the settings object; defaults to `[property]`) and
   `visibleWhen?: { readonly path: readonly string[]; readonly equals: string }`.
-- Produces in `settings-path.ts`: `readSetting(settings, path)`,
-  `writeSetting(settings, path, value)` and `toggleBlock(settings, block, on)`, all
-  returning a new settings object and never mutating the argument.
+- Produces in `settings-path.ts`: `readSetting(settings, path)` and
+  `writeSetting(settings, path, value)`, returning a new settings object and never mutating
+  the argument.
 - Produces: pie descriptors for `total` (a `select` over `sum | fixed`) and `total.value`
   (a `number` with `path: ["total","value"]`, `visibleWhen` `total.kind === "fixed"`), for
-  **every** family; and `animation` (a `presence` toggle) plus its four fields
-  (`durationMs`, `easing`, `appearMs`, `appearEasing`), for **every** family, the two
-  appearance fields marked `advanced`.
+  **every** family; and four `animation` descriptors — `animation.durationMs`,
+  `animation.easing`, `animation.appearMs`, `animation.appearEasing` — for **every** family,
+  the two `appear*` fields marked `advanced`.
 - Closes: `vg-121`, `vg-122`.
 
-**Constraints:** `writeSetting` writes the shape the renderer already reads — `PieTotal` is
-a union, so writing `total.kind = "sum"` **drops** `total.value` rather than leaving a
-sibling the union does not have; the validator accepts either today, which is exactly why
-this needs a test rather than care. `toggleBlock` takes its defaults from the owner that
-already declares them (`defaultAnimationSettings`) — the table declares no defaults, and the
-existing test that asserts that stays green. `readSetting` on an absent parent returns
-`undefined`, never a fabricated default: an absent animation is *no animation*, not a
-zero-duration one.
+**Constraints:** `writeSetting` writes the shape the renderer already reads. `PieTotal` is a
+union, so writing `total.kind = "sum"` **drops** `total.value` rather than leaving a sibling
+the union does not have; the validator accepts either today, which is exactly why this needs
+a test rather than care. `AnimationSettings` is a **required whole object**, so
+`writeSetting` materialises an absent parent from the block's own owner —
+`defaultAnimationSettings`, the object `toEngineAnimation` already falls back to — and then
+applies the one field. `readSetting` on an absent parent returns `undefined`, never a
+fabricated default.
 
-**Failure modes to design against:** the flat-spread commit of Review Focus 3; a
-`visibleWhen` that hides `total.value` while the property is set, so the author cannot see
-what they authored; a presence toggle that writes `{}` rather than `undefined`, which
-validates and animates nothing; `total.value` accepted while `total.kind` is `sum`.
+**Do not invent an on/off animation toggle.** `toEngineAnimation(settings, animate)`
+defaults `animate` to true (`pie.ts:166` and its three siblings), so an absent `animation`
+block means *the defaults apply*, not *this chart is static*; the flag that decides whether a
+chart animates at all is supplied by the build, not by the settings object. A presence
+toggle would be a capability nobody filed, and the descriptor table is not where new
+capabilities are invented.
+
+**Failure modes to design against:** the flat-spread commit of Review Focus 3 — the two
+blocks this task writes into are one level down, so `{...settings, animation: value}` writes
+a shape the renderer ignores while the validator shrugs; a `visibleWhen` that hides
+`total.value` while the property is set, so the author cannot see what they authored; a
+partial `AnimationSettings` written because only one of its four fields was materialised;
+`total.value` accepted while `total.kind` is `sum`.
 
 **Verification:**
 - Unit: **`computeComposition` shows a remainder only after the author's `total` choice
@@ -229,12 +236,16 @@ validates and animates nothing; `total.value` accepted while `total.kind` is `su
   This is Review Focus 1: a descriptor that exists and writes nowhere fails here.
 - Unit: writing `total.kind = "sum"` leaves no `value` key; writing it back to `fixed`
   without a new value leaves the field absent rather than zero.
-- Unit: toggling animation on produces exactly `defaultAnimationSettings`; toggling it off
-  removes the key rather than writing an empty object.
+- Unit: writing one animation field onto settings with **no** `animation` key produces a
+  complete `AnimationSettings` — the author's field plus `defaultAnimationSettings` for the
+  other three — and the existing "declares no default values" test still passes, because the
+  defaults come from their owner and not from the table.
+- Unit: the animation descriptors the renderer's option builders read resolve to what
+  `writeSetting` wrote — a round-trip through the real option builder, not a restatement.
 - Unit: `readSetting` on a path whose parent is absent returns `undefined` and does not
   throw, including for a path two levels deep.
 - Unit: the descriptors for `total` and `total.value` resolve, through `readSetting`, to the
-  same values the validator accepts — a round-trip, not a restatement.
+  same values the validator accepts.
 
 **Commit:** `feat(charts): a pie can be given a total, and a chart can be animated`
 
@@ -360,9 +371,7 @@ still shows a header with a count of zero.
 as an `aria-describedby` description for a screen reader, matching the pattern
 `artboard-panel.ts` already uses. A disabled field renders its reason through the same
 `aria-disabled` + tooltip idiom `glass.ts` uses — a control that refuses without saying why
-is the defect that idiom was written for. `presence` renders a checkbox whose on-state
-writes `defaultAnimationSettings` and whose off-state removes the block; its dependent
-fields render disabled with the toggle named as the reason, never hidden. A `visibleWhen`
+is the defect that idiom was written for. A `visibleWhen`
 descriptor that does not match renders nothing — it is genuinely not a question for this
 state, unlike a disabled field, which is a question being refused.
 
@@ -374,7 +383,7 @@ keyboard-only author reaches; an id collision between a nested property and a to
 **Verification:**
 - Unit: each kind renders the control the platform provides — `number` an `<input
   type="number">` carrying min/max/step, `boolean` a checkbox, `select` a `<select>` with its
-  options in descriptor order, `presence` a checkbox.
+  options in descriptor order, `boolean` a checkbox.
 - Unit: **clearing a number field leaves the setting unchanged and reports it**, rather than
   writing `0`.
 - Unit: a field's hint reaches the DOM as an `aria-describedby` target and the description
@@ -564,8 +573,9 @@ image is for a human. One sample of a flaky spec is not a measurement.
   closed, and **opening it reveals the same numbers as before this plan**.
 - **A pie with a fixed total shows a remainder slice whose size is the fixed total minus the
   known total** — measured on the rendered canvas, not read from the settings object.
-- Animation on a line chart is reachable, settable, survives save and reopen, and the
-  reopened document shows the toggle on with the author's values.
+- Animation durations and easings on a line chart are reachable, settable, survive save and
+  reopen, and the reopened document shows the author's values rather than the defaults —
+  read through the option builder the renderer runs, not from the settings object.
 - A free shape, a text box, an image and a group each open a non-empty column, and no kind
   shows a property it does not have.
 - Nothing selected: the column names where to choose from, and the string comes from the
@@ -616,9 +626,12 @@ decided above, each with the reason it was decided that way:
    the runtime half proves each classification resolves to a real descriptor. It replaces
    both the old key-enumeration test and `NON_SCALAR_SETTINGS`.
 4. **`vg-121` and `vg-122` close by gaining descriptors, not by amending the surface's
-   curation.** `total` becomes a select plus a dependent number; `animation` becomes a
-   presence toggle plus four fields. Both need nested writes, which is why `path`,
-   `visibleWhen` and `presence` exist and nothing more general does.
+   curation.** `total` becomes a select plus a dependent number; `animation` becomes four
+   fields one level down, materialising their parent from `defaultAnimationSettings`. Both
+   need nested writes, which is why `path` and `visibleWhen` exist and nothing more general
+   does. **An animation on/off toggle was considered and rejected**: `animate` defaults to
+   true and is supplied by the build, so absence means *defaults apply*, not *static*, and
+   the finding asks only that the timings be reachable.
 
 ## Out of scope
 
