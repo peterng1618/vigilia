@@ -1,7 +1,6 @@
 // @vitest-environment jsdom
-import { IText, Rect } from "fabric/es";
-import { describe, expect, it, vi } from "vitest";
-import { createStylePanel } from "./style.js";
+import { describe, expect, it } from "vitest";
+import { createDocumentReferencesPanel } from "./style.js";
 
 const globals = {
   palette: {
@@ -12,20 +11,10 @@ const globals = {
   },
 } as never;
 
-function setup(active: unknown) {
+function setup() {
   const host = document.createElement("div");
   let current = globals;
-  const panel = createStylePanel(host, {
-    editor: {
-      canvas: {
-        getActiveObject: () => active,
-        requestRenderAll: vi.fn(),
-        on: vi.fn(),
-        off: vi.fn(),
-      },
-      historyManager: { saveState: vi.fn() },
-      errorManager: { warn: vi.fn(), error: vi.fn() },
-    } as never,
+  const panel = createDocumentReferencesPanel(host, {
     globals: () => current,
   });
   return {
@@ -37,41 +26,39 @@ function setup(active: unknown) {
   };
 }
 
-describe("the style tab", () => {
-  it("shows a selection's resolved paint and type", () => {
-    const text = new IText("Hi", { left: 0, top: 0 });
-    text.set({
-      vigiliaPaint: { fill: "palette.ink" },
-      vigiliaText: {
-        runs: [{ kind: "literal", text: "Hi", typePreset: "typePresets.body" }],
-      },
-    });
-    const { host } = setup(text);
+describe("the document's references", () => {
+  it("lists the document's tokens and presets by name, and resolves them", () => {
+    const { host } = setup();
 
-    // What the author picked, and what it actually means — under the names they
-    // picked it by. The Style tab is a second reader of the same selection the
-    // inspector describes, so it names tokens the same way.
-    const lines = [...host.querySelectorAll("[data-vigilia-resolution]")]
-      .map((line) => line.textContent)
-      .join("\n");
-    expect(lines).toContain("Ink");
-    expect(lines).toContain("Body");
-    expect(lines).not.toContain("palette.ink");
-    expect(lines).not.toContain("typePresets.body");
-    expect(lines).toContain("#e8ecf3");
-    expect(lines).toContain("Inter");
+    // The authored name, then what it resolves to: the panel answers "what can
+    // this document reference, and what does each one mean".
+    const ink = host.querySelector('[data-vigilia-resolution="Ink"]');
+    expect(ink?.textContent).toContain("Ink");
+    expect(ink?.textContent).toContain("#e8ecf3");
+    const body = host.querySelector('[data-vigilia-resolution="Body"]');
+    expect(body?.textContent).toContain("Body");
+    expect(body?.textContent).toContain("Inter");
   });
 
-  it("lists the document's globals when nothing is selected", () => {
-    const { host } = setup(undefined);
+  it("skips the absence of a token", () => {
+    const { host, panel, setGlobals } = setup();
+    setGlobals({
+      palette: {
+        none: { name: "None", value: { kind: "solid", color: "#00000000" } },
+        ink: { name: "Ink", value: { kind: "solid", color: "#e8ecf3" } },
+      },
+      typePresets: {},
+    });
+    panel.render();
 
-    const text = host.textContent ?? "";
-    expect(text).toContain("Ink");
-    expect(text).toContain("Body");
+    // `none` is the absence of a token, not one of them: listing it would offer
+    // the author a reference that means "no reference".
+    expect(host.textContent).toContain("Ink");
+    expect(host.textContent).not.toContain("None");
   });
 
   it("shows globals that changed after the panel mounted", () => {
-    const { host, panel, setGlobals } = setup(undefined);
+    const { host, panel, setGlobals } = setup();
 
     setGlobals({
       palette: {
@@ -84,12 +71,5 @@ describe("the style tab", () => {
 
     // Read on demand, so a theme edit cannot leave a stale resolution behind.
     expect(host.textContent).toContain("Accent");
-  });
-
-  it("stops listing globals once something is selected", () => {
-    const rect = new Rect({ left: 0, top: 0, width: 10, height: 10 });
-    const { host } = setup(rect);
-
-    expect(host.querySelector("[data-vigilia-globals]")).toBeNull();
   });
 });

@@ -60,8 +60,8 @@ import {
   type SelectionInspector,
 } from "./selection-inspector/index.js";
 import {
-  createStylePanel,
-  type StylePanel,
+  createDocumentReferencesPanel,
+  type DocumentReferencesPanel,
 } from "./selection-inspector/style.js";
 import { ShortcutManager } from "./shortcut-manager/index.js";
 import { createSnapManager, type SnapManager } from "./snap-manager/index.js";
@@ -122,12 +122,13 @@ export interface EditorPanelHosts {
   readonly add: HTMLElement;
   /** Imported asset list and controls. */
   readonly assets: HTMLElement;
-  /** Document-level panels shown when nothing is selected. */
+  /** The document's own panels, in the Document pane: the artboard, palette
+      and type presets it edits, and the references they resolve to. Shown by
+      the pane, not by an empty selection — a theme setting must stay reachable
+      while something is selected. */
   readonly document: HTMLElement;
-  /** Properties of the selected object, shown in the Design tab. */
+  /** Properties of the selected object, in the right column. */
   readonly selection: HTMLElement;
-  /** What the selection's references resolve to, shown in the Style tab. */
-  readonly style: HTMLElement;
 }
 
 export interface EditorSessionOptions {
@@ -182,7 +183,7 @@ export class EditorSession {
   readonly #types: TypePresetPanel;
   readonly #newObjects: NewObjectPanel;
   readonly #selection: SelectionInspector;
-  readonly #style: StylePanel;
+  readonly #documentReferences: DocumentReferencesPanel;
   readonly #snapping: SnapManager;
   readonly #indicators: IndicatorManager;
   readonly #persistence: PersistenceManager;
@@ -384,12 +385,12 @@ export class EditorSession {
     // authored runs belong. The runtime owns what an object paints, so the
     // put-back goes through it rather than a second repaint path here.
     options.shell.editor.textManager.setRepaint(() => this.#runtime.refresh());
-    this.#style = createStylePanel(options.panelHosts.style, {
-      editor: options.shell.editor,
+    this.#documentReferences = createDocumentReferencesPanel(
+      options.panelHosts.document,
       // Pulled, not held: the panel is mounted for the session and read-only, so
       // this cannot show a copy of globals that a theme edit has since changed.
-      globals: () => this.#envelope.globals,
-    });
+      { globals: () => this.#envelope.globals },
+    );
     this.charts = new ChartManager({
       editor: options.shell.editor,
       scene: options.shell.scene,
@@ -680,7 +681,7 @@ export class EditorSession {
     this.#assetPanel.remove();
     this.charts.destroy();
     this.#selection.root.remove();
-    this.#style.destroy();
+    this.#documentReferences.destroy();
     this.#artboard.destroy();
     this.#palette.root.remove();
     this.#types.root.remove();
@@ -1130,7 +1131,7 @@ export class EditorSession {
     this.#newObjects.setGlobals(this.#envelope.globals);
     this.#artboard.setGlobals(this.#envelope.globals);
     this.#selection.setGlobals(this.#envelope.globals);
-    this.#style.render();
+    this.#documentReferences.render();
     this.#palette.render(palette);
   }
 
@@ -1156,7 +1157,7 @@ export class EditorSession {
     this.#newObjects.setGlobals(this.#envelope.globals);
     this.#artboard.setGlobals(this.#envelope.globals);
     this.#selection.setGlobals(this.#envelope.globals);
-    this.#style.render();
+    this.#documentReferences.render();
     this.#artboard.render(artboard);
     this.#palette.render(palette);
   }
@@ -1170,7 +1171,7 @@ export class EditorSession {
     this.#runtime.setGlobals(this.#envelope.globals);
     this.#newObjects.setGlobals(this.#envelope.globals);
     this.#types.render(typePresets);
-    this.#style.render();
+    this.#documentReferences.render();
   }
 
   async #downloadFace(face: CuratedFontFace): Promise<Uint8Array> {
@@ -1208,7 +1209,7 @@ export class EditorSession {
     shell.setGlobals(this.#envelope.globals);
     this.#newObjects.setGlobals(this.#envelope.globals);
     this.#types.render(typePresets);
-    this.#style.render();
+    this.#documentReferences.render();
   }
 
   #snapshot(shell: EditorShell): FabricThemeEnvelope {

@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import type { Page } from "@playwright/test";
+import { openPane } from "./editor-pane-bar.js";
 import { isDesktopSurface } from "./surface.js";
 
 /**
@@ -11,11 +12,13 @@ import { isDesktopSurface } from "./surface.js";
  * `data-vigilia-layer-role` and `.vigilia-layer-name`.
  *
  * Which task owns which case:
- * - **Task 3** owns both cases below: what the row's role costs the row's width,
+ * - **Task 3** owns the two cases below: what the row's role costs the row's width,
  *   and that every row still carries its role and its mark at the same height.
  * - Task 5 adds the row's enter control; Task 6 the route into a group's parts.
- * - Task 8 the Document pane, and Task 10 the capture-backed cases (the panel at
- *   two hundred rows) plus the evidence-table rows that point at them.
+ * - **Task 8** owns the third case: the Document pane stays reachable while
+ *   something is selected. Task 10 extends this file with the capture-backed
+ *   cases (the panel at two hundred rows) and the evidence-table rows that point
+ *   at them.
  *
  * The editor is a separate preview server on its own port, so `use.baseURL` —
  * 4173, the player — is never the right address here.
@@ -187,4 +190,26 @@ test("the width the panel ships is the one that clips the fewest names", async (
   ] as const) {
     testInfo.annotations.push({ type, description: String(value) });
   }
+});
+
+test("keeps the document's own controls reachable while a card is selected", async ({
+  page,
+}, testInfo) => {
+  test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+
+  await openStarterEditor(page);
+
+  // The state the old Design tab showed the theme's own panel under the
+  // selection column in: a card selected, its fields in the right column.
+  await page.locator('[data-vigilia-layer="group-cpu-card"]').click();
+  await expect(page.locator('[data-vigilia-panel="selection"]')).toBeVisible();
+
+  await openPane(page, "Document");
+
+  // The artboard's controls and the document's own resolved tokens are both in
+  // this pane, with the selection still standing. Neither is behind the
+  // selection's surface, so neither can be hidden by making a selection — the
+  // property the `keepMounted` Design tab used to carry.
+  await expect(page.locator("[data-vigilia-artboard-width]")).toBeVisible();
+  await expect(page.locator("[data-vigilia-globals]")).toBeVisible();
 });

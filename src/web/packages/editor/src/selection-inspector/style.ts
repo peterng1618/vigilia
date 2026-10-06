@@ -1,28 +1,24 @@
 import type { FabricGlobals, FabricPalette } from "@vigilia/renderer-core";
-import type { FabricObject } from "fabric/es";
-import type { EditorInteraction } from "../editor-interaction.js";
 import { uiCopy } from "../ui-copy.js";
 import {
   createResolutionLine,
-  nameOfRef,
-  paintReferencesOf,
   resolveToken,
   resolveTypePreset,
-  typePresetOf,
 } from "./appearance.js";
 
 /**
- * The Style tab: what the selection's references resolve to, or — with nothing
- * selected — what the document itself offers. It answers "what does this look
- * like" without the author having to select something first, which the Design
- * tab cannot.
+ * The document's own references: every palette token and type preset an object
+ * can reference, resolved. It lives in the left column's Document pane, beside
+ * the palette and type-preset panels it lists, because it answers a question
+ * about the document rather than about a selection.
  *
- * Read-only by design. Every value here is edited in Design, where the selection
- * it belongs to is visible; a second editable copy would be a second owner.
+ * Read-only by design. Every value here is edited in the palette and type-preset
+ * panels next to it; a second editable copy would be a second owner. The
+ * selection's own resolved references are the selection column's Spends section,
+ * which answers that different question in the column the selection lives in.
  */
 
-export interface StylePanelOptions {
-  readonly editor: EditorInteraction;
+export interface DocumentReferencesOptions {
   /**
    * Read on demand rather than held: this panel is mounted for the whole
    * session and never writes, so pulling the current globals on each render
@@ -31,17 +27,18 @@ export interface StylePanelOptions {
   readonly globals: () => FabricGlobals | undefined;
 }
 
-export interface StylePanel {
+export interface DocumentReferencesPanel {
   readonly root: HTMLElement;
-  /** Re-reads the selection; call on every selection change. */
+  /** Re-reads the document's globals; call when a theme edit changes them. */
   render(): void;
   destroy(): void;
 }
 
 /**
- * What the document offers, for when nothing is selected: the palette tokens and
- * type presets an object can reference. Read from globals directly — the panel
- * lists what exists, so it must not resolve through a selection.
+ * What the document offers: the palette tokens and type presets an object can
+ * reference. Read from globals directly — the panel lists what exists, so it must
+ * not resolve through a selection, and it renders the same list whether or not
+ * something is selected.
  */
 function documentGlobals(globals: FabricGlobals | undefined): HTMLElement {
   const section = document.createElement("section");
@@ -78,64 +75,23 @@ function documentGlobals(globals: FabricGlobals | undefined): HTMLElement {
   return section;
 }
 
-export function createStylePanel(
+export function createDocumentReferencesPanel(
   host: HTMLElement,
-  options: StylePanelOptions,
-): StylePanel {
+  options: DocumentReferencesOptions,
+): DocumentReferencesPanel {
   const root = document.createElement("section");
   root.dataset["vigiliaPanel"] = "style";
   host.append(root);
 
   const render = (): void => {
-    const globals = options.globals();
-    root.replaceChildren();
-    const active = options.editor.canvas.getActiveObject() as
-      | FabricObject
-      | undefined;
-
-    if (active === undefined) {
-      root.append(documentGlobals(globals));
-      return;
-    }
-
-    for (const { label, ref } of paintReferencesOf(active)) {
-      root.append(
-        createResolutionLine(
-          label,
-          nameOfRef(globals, ref),
-          resolveToken(globals, ref),
-        ),
-      );
-    }
-
-    const preset = typePresetOf(active);
-    if (preset !== undefined) {
-      root.append(
-        createResolutionLine(
-          uiCopy.inspectorFields.runPreset,
-          nameOfRef(globals, preset),
-          resolveTypePreset(globals, preset),
-        ),
-      );
-    }
+    root.replaceChildren(documentGlobals(options.globals()));
   };
-
-  // The tab is mounted for the whole session, so it follows selection itself
-  // rather than relying on the active tab to be re-rendered.
-  const events = [
-    "selection:created",
-    "selection:updated",
-    "selection:cleared",
-    "object:modified",
-  ] as const;
-  for (const event of events) options.editor.canvas.on(event, render);
   render();
 
   return {
     root,
     render,
     destroy() {
-      for (const event of events) options.editor.canvas.off(event, render);
       root.remove();
     },
   };

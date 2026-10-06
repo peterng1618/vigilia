@@ -1,5 +1,4 @@
 import { Menu } from "@base-ui/react/menu";
-import { Tabs } from "@base-ui/react/tabs";
 import { Check } from "lucide-react";
 import { type ReactNode, useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
@@ -27,8 +26,6 @@ import type { EditorActionFacade } from "./session-facade.js";
 
 export type { RailPane } from "./pane-bar.js";
 
-export type InspectorTab = "design" | "style";
-
 /** Persistent DOM owners the imperative panels mount into. React positions
  * these; it never renders panel content. The Layers pane has no node here: the
  * tree is React-owned and renders inside `Shell` from the bridge directly. */
@@ -37,11 +34,9 @@ export interface ShellHosts {
   readonly add: HTMLElement;
   readonly assets: HTMLElement;
   readonly document: HTMLElement;
-  /** Properties of the selected object, in the Design tab. A chart's family
-      settings and bindings are part of that column, not a tab of their own. */
+  /** Properties of the selected object. A chart's family settings and bindings
+      are part of that column, not a panel of their own. */
   readonly selection: HTMLElement;
-  /** What the selection's references resolve to, in the Style tab. */
-  readonly style: HTMLElement;
   readonly status: HTMLElement;
   readonly dock: HTMLElement;
 }
@@ -417,7 +412,6 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
     assets: element("vigiliaPanelHostAssets"),
     document: element("vigiliaPanelHostDocument"),
     selection: element("vigiliaPanelHostSelection"),
-    style: element("vigiliaPanelHostStyle"),
     status: document.createElement("span"),
     dock: document.createElement("nav"),
   };
@@ -575,29 +569,20 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
             <CanvasContextMenu bridge={store.bridge} />
           </main>
           <aside className="editor-shell-inspector editor-glass">
-            <Tabs.Root defaultValue="design">
-              <Tabs.List className="editor-shell-tabs">
-                {(["design", "style"] as const).map((tab) => (
-                  <Tabs.Tab key={tab} value={tab}>
-                    {uiCopy.inspector[tab]}
-                  </Tabs.Tab>
-                ))}
-              </Tabs.List>
-              {/* A chart's own fields are in this same panel — the selection
-                  inspector's column asks the chart owner for them — so a chart
-                  is not the one kind whose questions are behind another tab. */}
-              <Tabs.Panel value="design" keepMounted>
-                <Host node={hosts.selection} />
-                {kind !== "none" && (
-                  <p className="editor-shell-hint">
-                    Move and lock the selection with the canvas dock.
-                  </p>
-                )}
-              </Tabs.Panel>
-              <Tabs.Panel value="style" keepMounted>
-                <Host node={hosts.style} />
-              </Tabs.Panel>
-            </Tabs.Root>
+            {/* One panel, so no tab strip: a strip with one tab is a control
+                that cannot choose. The theme's own settings used to sit under
+                this panel behind a `keepMounted` Design tab, which existed so
+                a selection could not hide them; they are in the left column's
+                Document pane now, which no selection can hide either, so the
+                property is discharged by the move rather than by an attribute.
+                A chart's own fields are still in this column — its owner is
+                asked for them — so a chart keeps every question it has. */}
+            <Host node={hosts.selection} />
+            {kind !== "none" && (
+              <p className="editor-shell-hint">
+                Move and lock the selection with the canvas dock.
+              </p>
+            )}
           </aside>
         </div>
         <footer id="status" className="editor-shell-status">

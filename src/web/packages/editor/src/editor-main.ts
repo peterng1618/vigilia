@@ -185,7 +185,6 @@ async function start(): Promise<void> {
         assets: layout.hosts.assets,
         document: layout.hosts.document,
         selection: layout.hosts.selection,
-        style: layout.hosts.style,
       },
       libraryClient,
       onBindingsChange: replaceSource,

@@ -143,7 +143,6 @@ function wiredSession(): Wired {
       assets: document.body,
       document: document.body,
       selection: document.body,
-      style: document.body,
     },
     onNew: vi.fn(),
     onNewFromStarter: vi.fn(),

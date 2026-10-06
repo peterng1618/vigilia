@@ -1275,21 +1275,6 @@ body,
 .editor-shell-inspector {
   padding: 12px;
 }
-.editor-shell-tabs {
-  display: flex;
-  gap: 2px;
-  margin-bottom: 10px;
-}
-.editor-shell-tabs button {
-  flex: 1;
-  font-size: 11px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  padding: 5px 0;
-}
-.editor-shell-tabs button[data-selected] {
-  background: color-mix(in srgb, var(--shell-text) 14%, transparent);
-}
 .editor-shell-hint {
   color: var(--shell-muted);
   margin: 0;

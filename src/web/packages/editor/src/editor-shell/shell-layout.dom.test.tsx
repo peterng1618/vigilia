@@ -525,9 +525,18 @@ it("keeps panel hosts mounted outside React's control", () => {
   expect(layout.hosts.assets).toBeInstanceOf(HTMLElement);
   expect(layout.hosts.document.parentElement).not.toBeNull();
   expect(layout.hosts.status.parentElement).not.toBeNull();
-  // The Style tab holds a panel, not a sentence: the appearance section needs a
-  // host the same way the other tabs do.
-  expect(layout.hosts.style.parentElement).not.toBeNull();
+  // The selection column holds a panel, not a sentence: its appearance section
+  // needs a host the same way the panes do. And it is the right column that
+  // holds it — the theme's own panels are the left one's.
+  expect(layout.hosts.selection.parentElement).not.toBeNull();
+  expect(
+    root
+      .querySelector(".editor-shell-inspector")
+      ?.contains(layout.hosts.selection),
+  ).toBe(true);
+  expect(
+    root.querySelector(".editor-shell-panel")?.contains(layout.hosts.document),
+  ).toBe(true);
 
   layout.destroy();
 });
@@ -570,11 +579,19 @@ it("puts a diagnostic surface in the status line, and it reports a refusal", asy
   logged.mockRestore();
 });
 
-it("gives the Style tab a panel host instead of a placeholder sentence", () => {
+it("has no tab strip, and nothing in the copy names one", () => {
   const root = document.createElement("div");
   const layout = createShellLayout(root);
 
-  expect(root.textContent).not.toContain("Colours and type resolve");
+  // One panel is not a choice: a strip with a single tab is a control that
+  // cannot choose, and the second tab's surface moved to the left column.
+  expect(root.querySelectorAll('[role="tab"]')).toHaveLength(0);
+  expect(root.querySelector('[role="tablist"]')).toBeNull();
+
+  // Asserted on the copy object rather than the render: a leftover `inspector`
+  // key is a string promising a place that no longer exists, and an unrendered
+  // string is exactly the kind a render assertion cannot catch.
+  expect(uiCopy).not.toHaveProperty("inspector");
 
   layout.destroy();
 });
@@ -718,25 +735,22 @@ it("keeps a chart's fields in the Design column, with no Data tab to reach for",
       .querySelector(".editor-shell-panel")
       ?.contains(layout.hosts.document),
   ).toBe(true);
-  const tabs = (): (string | null)[] =>
-    Array.from(root.querySelectorAll<HTMLElement>('[role="tab"]')).map(
-      (tab) => tab.textContent,
-    );
-  // Two questions, not three: a chart's own fields are in the selection's
-  // column, so a Data tab would be a second door to one room.
-  expect(tabs()).toEqual(["Design", "Style"]);
+  // No tab: a chart's own fields are in the selection's column, so a Data tab
+  // would be a second door to one room, and the column itself is the only door.
+  expect(root.querySelectorAll('[role="tab"]')).toHaveLength(0);
 
   kind = "chart";
   for (const listener of listeners) listener();
   await Promise.resolve();
 
   // Selecting a chart changes nothing about where its fields live — the
-  // Design tab was and is the only door.
-  expect(tabs()).toEqual(["Design", "Style"]);
+  // selection's column was and is the only door.
+  expect(root.querySelectorAll('[role="tab"]')).toHaveLength(0);
   expect(
-    root.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]')
-      ?.textContent,
-  ).toBe("Design");
+    root
+      .querySelector(".editor-shell-inspector")
+      ?.contains(layout.hosts.selection),
+  ).toBe(true);
 
   layout.destroy();
 });

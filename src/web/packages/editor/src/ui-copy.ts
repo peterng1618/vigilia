@@ -97,14 +97,13 @@ export const uiCopy = {
     layers: "Layers",
     insert: "Insert",
     assets: "Assets",
-    /** The artboard, palette and type-preset panels — one pane, because they
-     *  are one host, and the word names what they are the settings of. Not
-     *  "Style", which the inspector's own tab already answers to. */
+    /** The artboard, palette, type-preset and document-references panels — one
+     *  pane, because they are one host, and the word names what they are the
+     *  settings of. */
     document: "Document",
     /** The `+`, named as what it opens rather than as the mark it draws. */
     insertObject: "Insert an object",
   },
-  inspector: { design: "Design", style: "Style" },
   /** Selection inspector field labels. */
   inspectorFields: {
     selection: "Selection",
