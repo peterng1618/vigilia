@@ -159,13 +159,13 @@ test.describe("the stage looks through a display", () => {
     const m = await measure(page);
 
     // The starter is 1672 × 941 — 1.7768, which is 16:9. The default used to be
-    // a 19.5:9 phone lens on the stated grounds that this was its shape; it is
-    // not, and the mismatch cost ~287 px of a 1600 px stage on bars. The lens is
-    // now read out of the default artboard shape rather than typed beside it.
+    // a 19.5:9 lens on the stated grounds that this was its shape; it is not,
+    // and the mismatch cost ~287 px of a 1600 px stage on bars. The lens is now
+    // read out of the default artboard shape rather than typed beside it.
     expect(
       m.display,
       "the default display is the one the starter is drawn in",
-    ).toBe("wall-panel");
+    ).toBe("16:9");
     expect(
       aspect(m.screen),
       "and its screen carries that aspect, not the window's",
@@ -229,7 +229,7 @@ test.describe("the stage looks through a display", () => {
     await expect(chooser).toBeVisible();
     await chooser
       .locator("[data-vigilia-new-document-display]")
-      .selectOption("phone-portrait");
+      .selectOption("9:19.5");
     await chooser.locator("[data-vigilia-new-document-create]").click();
     // New asks in two steps, chooser first: a dirty document prompts after.
     const prompt = page.locator("dialog");
@@ -270,7 +270,7 @@ test.describe("the stage looks through a display", () => {
     expect(
       after.display,
       "the camera reports the display that was chosen",
-    ).toBe("phone-portrait");
+    ).toBe("9:19.5");
     // The artboard the answer derived: portrait, so the two agree.
     // The artboard the answer derived: portrait, so the two agree — and 19.5:9
     // portrait is *exactly* the lens's aspect, so a correctly framed board fills
@@ -333,7 +333,7 @@ test.describe("the stage looks through a display", () => {
 
     expect(await read(), "the starter is 16:9 to begin with").toEqual(STARTER);
 
-    for (const name of ["Phone portrait", "Wall panel", "Fit"]) {
+    for (const name of ["9:19.5", "16:9", "Fit"]) {
       // Every entry is a radio: Fit is "no display" and the three lenses are
       // displays, so they are one fact with four values, not two controls.
       await page.locator("[data-vigilia-zoom]").click();
@@ -349,9 +349,9 @@ test.describe("the stage looks through a display", () => {
     const seen: { readonly name: string; readonly aspect: number }[] = [];
 
     for (const [name, want] of [
-      ["Phone landscape", 19.5 / 9],
-      ["Phone portrait", 1 / (19.5 / 9)],
-      ["Wall panel", 16 / 9],
+      ["19.5:9", 19.5 / 9],
+      ["9:19.5", 1 / (19.5 / 9)],
+      ["16:9", 16 / 9],
     ] as const) {
       await chooseDisplay(page, name);
       const m = await measure(page);
@@ -402,7 +402,7 @@ test.describe("the stage looks through a display", () => {
     const ticked = await labelOffsets(page);
     expect(Object.keys(ticked), "the menu offered its labels").toHaveLength(4);
 
-    await page.getByRole("menuitemradio", { name: "Wall panel" }).click();
+    await page.getByRole("menuitemradio", { name: "16:9" }).click();
     await openMenu(page);
     const moved = await labelOffsets(page);
 
@@ -416,7 +416,7 @@ test.describe("the stage looks through a display", () => {
     // Control: the menu really did re-render with a different tick, or the
     // comparison above is measuring a menu that never changed.
     await expect(
-      page.getByRole("menuitemradio", { name: "Wall panel" }),
+      page.getByRole("menuitemradio", { name: "16:9" }),
     ).toHaveAttribute("aria-checked", "true");
     await expect(
       page.getByRole("menuitemradio", { name: "Fit" }),
@@ -510,7 +510,7 @@ test.describe("the stage looks through a display", () => {
       "the scene was not empty, so this proves nothing",
     ).toBeGreaterThan(200);
 
-    for (const name of ["Phone portrait", "Wall panel", "Phone landscape"]) {
+    for (const name of ["9:19.5", "16:9", "19.5:9"]) {
       await chooseDisplay(page, name);
       expect(await scene(), `the document after choosing ${name}`).toBe(before);
     }
@@ -518,7 +518,7 @@ test.describe("the stage looks through a display", () => {
     // And the view really did move — a control that changed nothing would leave
     // the scene equal too, so the comparison above needs this to mean anything.
     const fitted = await measure(page);
-    await chooseDisplay(page, "Phone portrait");
+    await chooseDisplay(page, "9:19.5");
     const portrait = await measure(page);
     expect(
       Math.abs(portrait.board.width - fitted.board.width),

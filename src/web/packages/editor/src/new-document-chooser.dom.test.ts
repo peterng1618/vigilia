@@ -49,12 +49,7 @@ describe("the new-document chooser", () => {
     const dialog = newDocumentChooser();
 
     const values = display(dialog);
-    expect(values).toEqual([
-      "phone-landscape",
-      "phone-portrait",
-      "wall-panel",
-      "",
-    ]);
+    expect(values).toEqual(["19.5:9", "9:19.5", "16:9", ""]);
     // And Custom is not a corner: it is the last option of the same control,
     // one click from the three.
     expect(
@@ -64,33 +59,33 @@ describe("the new-document chooser", () => {
     ).toBe("Custom size");
   });
 
-  it("opens a theme with no document on the wall panel, at 1920 × 1080", async () => {
+  it("opens a theme with no document on 16:9, at 1920 × 1080", async () => {
     // A product decision rather than an accident, so it is asserted rather than
     // left for a reader to re-derive: `DEFAULT_ARTBOARD_PRESET` is 16:9
     // landscape, `openingDisplay` matches that shape against the lenses, and it
-    // lands on the wall. "Wall panel" is the honest label because a starter
-    // theme is 1672 × 941 — also 16:9 — so the shape a new theme actually opens
-    // at is the wall's, not a fallback the chooser had to settle for.
+    // lands on the 16:9 one. That is the honest frame because a starter theme
+    // is 1672 × 941 — also 16:9 — so the shape a new theme actually opens at is
+    // the 16:9 lens's, not a fallback the chooser had to settle for.
     const pending = chooseArtboardSize();
     const dialog = opened();
 
-    expect(read(dialog, "display")).toBe("wall-panel");
+    expect(read(dialog, "display")).toBe("16:9");
     expect(dialog.textContent).toContain("1920 × 1080");
 
     create(dialog);
     await expect(pending).resolves.toEqual({
       size: { width: 1920, height: 1080 },
-      display: "wall-panel",
+      display: "16:9",
     });
   });
 
   it("opens on the display the document it would replace is at", async () => {
-    // 19.5:9 portrait is a phone hung upright, so it is offered back rather
-    // than reset — the same finding as before, asked as the right question.
+    // 9:19.5 is 19.5:9 stood upright, so it is offered back rather than reset —
+    // the same finding as before, asked as the right question.
     const pending = chooseArtboardSize({ width: 1080, height: 2340 });
     const dialog = opened();
 
-    expect(read(dialog, "display")).toBe("phone-portrait");
+    expect(read(dialog, "display")).toBe("9:19.5");
     // And the size it would actually produce, so the carry-over is visible
     // rather than something the author has to infer from a dropdown.
     expect(dialog.textContent).toContain("1080 × 2340");
@@ -99,7 +94,7 @@ describe("the new-document chooser", () => {
     create(dialog);
     await expect(pending).resolves.toEqual({
       size: { width: 1080, height: 2340 },
-      display: "phone-portrait",
+      display: "9:19.5",
     });
   });
 
@@ -108,7 +103,8 @@ describe("the new-document chooser", () => {
     // fallback branch of `openingDisplay` is the one taken here. It is the
     // branch that makes "does not silently open on a display that is not its
     // shape" true: 1280 × 960 comes back as a 4:3 document, with the ratio and
-    // orientation already naming it, rather than framed as a phone or a wall.
+    // orientation already naming it, rather than framed through a lens that is
+    // not its shape.
     const pending = chooseArtboardSize({ width: 1280, height: 960 });
     const dialog = opened();
 
@@ -128,9 +124,9 @@ describe("the new-document chooser", () => {
   });
 
   it.each([
-    ["phone-landscape", { width: 2340, height: 1080 }],
-    ["phone-portrait", { width: 1080, height: 2340 }],
-    ["wall-panel", { width: 1920, height: 1080 }],
+    ["19.5:9", { width: 2340, height: 1080 }],
+    ["9:19.5", { width: 1080, height: 2340 }],
+    ["16:9", { width: 1920, height: 1080 }],
   ] as const)(
     "a new theme from %s arrives at those dimensions",
     async (lens, size) => {
@@ -166,7 +162,7 @@ describe("the new-document chooser", () => {
     // written twice, and `derive` is the one writer of the second.
     const dialog = newDocumentChooser();
 
-    set(dialog, "display", "phone-portrait");
+    set(dialog, "display", "9:19.5");
     expect({
       ratio: read(dialog, "ratio"),
       orientation: read(dialog, "orientation"),

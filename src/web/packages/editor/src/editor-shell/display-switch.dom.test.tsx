@@ -22,7 +22,7 @@ afterEach(async () => {
   }
 });
 
-function setup(display: DisplayLensId | undefined = "phone-landscape") {
+function setup(display: DisplayLensId | undefined = "19.5:9") {
   const showDisplay = vi.fn();
   const zoomToSelection = vi.fn();
   const reset = vi.fn();
@@ -99,7 +99,7 @@ async function choose(label: string): Promise<void> {
 }
 
 it("keeps reading the camera's zoom, because that readout is not this task's to remove", async () => {
-  const { host, render, setZoom, setDisplay } = setup("phone-landscape");
+  const { host, render, setZoom, setDisplay } = setup("19.5:9");
   await render();
   // Not the display's name, under any choice: two browser tests pin this
   // control as the place the author reads the camera's scale, and a display is
@@ -120,22 +120,17 @@ it("offers every display and Fit, and each is one click away", async () => {
   const { render, showDisplay, zoomToSelection, reset } = setup();
   await render();
 
-  for (const label of [
-    "Fit",
-    "Phone landscape",
-    "Phone portrait",
-    "Wall panel",
-  ]) {
+  for (const label of ["Fit", "19.5:9", "9:19.5", "16:9"]) {
     expect(
       document.querySelector(`[aria-label="${label}"]`),
       `${label} is offered`,
     ).not.toBeNull();
   }
 
-  await choose("Phone portrait");
+  await choose("9:19.5");
   // The id, not a boolean: an id the camera cannot resolve is a display that
   // silently did nothing, and `showDisplay` throws on an unknown one.
-  expect(showDisplay).toHaveBeenCalledWith("phone-portrait");
+  expect(showDisplay).toHaveBeenCalledWith("9:19.5");
 
   await choose("Fit");
   // `undefined` is Fit — no display at all, rather than a display with no
@@ -150,7 +145,7 @@ it("offers every display and Fit, and each is one click away", async () => {
 });
 
 it("marks the chosen display in the menu, so the trigger and the menu agree", async () => {
-  const { render, setDisplay, setFitted } = setup("wall-panel");
+  const { render, setDisplay, setFitted } = setup("16:9");
   await render();
 
   const checked = (label: string): boolean =>
@@ -158,13 +153,13 @@ it("marks the chosen display in the menu, so the trigger and the menu agree", as
       .querySelector(`[aria-label="${label}"]`)
       ?.getAttribute("aria-checked") === "true";
 
-  expect(checked("Wall panel"), "the chosen display is marked").toBe(true);
+  expect(checked("16:9"), "the chosen display is marked").toBe(true);
   expect(checked("Fit"), "and the others are not").toBe(false);
 
   await setDisplay(undefined);
   await setFitted(true);
   expect(checked("Fit"), "Fit is marked when the camera is fitted").toBe(true);
-  expect(checked("Wall panel")).toBe(false);
+  expect(checked("16:9")).toBe(false);
 });
 
 /** The Fit tick is a claim about the camera, so it has to survive a camera
@@ -188,7 +183,7 @@ it("ticks nothing when the camera is neither a display nor a fit", async () => {
   await setDisplay(undefined);
   await setFitted(false);
   expect(checked("Fit"), "100 % is not Fit").toBe(false);
-  for (const label of ["Phone landscape", "Phone portrait", "Wall panel"]) {
+  for (const label of ["19.5:9", "9:19.5", "16:9"]) {
     expect(checked(label), `${label} is not it either`).toBe(false);
   }
 
@@ -200,8 +195,8 @@ it("ticks nothing when the camera is neither a display nor a fit", async () => {
 
   // A display still ticks under a lens even once the camera has moved within
   // it: the window is still the window, which is the fact this menu holds.
-  await setDisplay("phone-portrait");
-  expect(checked("Phone portrait")).toBe(true);
+  await setDisplay("9:19.5");
+  expect(checked("9:19.5")).toBe(true);
 });
 
 /** The gutter the label offset is measured against. Base UI unmounts an
@@ -210,7 +205,7 @@ it("ticks nothing when the camera is neither a display nor a fit", async () => {
  *  to the left. Asserted on the DOM here because jsdom has no layout; the
  *  measured pixel offset is in `tests/e2e/editor-display.spec.ts`. */
 it("gives every item its tick slot, ticked or not, so the labels cannot shift", async () => {
-  const { render, setDisplay } = setup("wall-panel");
+  const { render, setDisplay } = setup("16:9");
   await render();
 
   const tickCount = (label: string): number =>
@@ -218,12 +213,12 @@ it("gives every item its tick slot, ticked or not, so the labels cannot shift", 
       .querySelector(`[aria-label="${label}"]`)
       ?.querySelectorAll(".editor-shell-menu-tick").length ?? 0;
 
-  expect(tickCount("Wall panel"), "the ticked item").toBe(1);
+  expect(tickCount("16:9"), "the ticked item").toBe(1);
   expect(tickCount("Fit"), "an unticked one has the slot too").toBe(1);
-  expect(tickCount("Phone landscape")).toBe(1);
+  expect(tickCount("19.5:9")).toBe(1);
 
   // The slot survives the tick moving, which is the whole claim.
   await setDisplay(undefined);
   expect(tickCount("Fit")).toBe(1);
-  expect(tickCount("Wall panel")).toBe(1);
+  expect(tickCount("16:9")).toBe(1);
 });

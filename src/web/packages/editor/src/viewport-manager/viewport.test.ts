@@ -281,26 +281,26 @@ describe("viewport camera on a host resize", () => {
  * screen — it is a lens that quietly becomes a document.
  */
 describe("the display lens", () => {
-  it("opens on the wall panel, because the starter is drawn in that shape", () => {
+  it("opens on 16:9, because the starter is drawn in that shape", () => {
     // **One owner for "the default shape", not two constants that disagree.**
-    // The default used to be a 19.5:9 phone lens held beside a 16:9 document
-    // default, justified by a comment claiming the starter is drawn in a
-    // landscape phone. It is 1672 × 941 — 1.7768, which is 16:9 — so the claim
-    // was false and the stage spent ~287 px of a 1600 px one on bars. The lens
-    // is now read out of the artboard default; this pins what that resolves to
-    // and the arithmetic that makes the old comment false.
+    // The default used to be a 19.5:9 lens held beside a 16:9 document default,
+    // justified by a comment claiming the starter is drawn in a landscape
+    // phone. It is 1672 × 941 — 1.7768, which is 16:9 — so the claim was false
+    // and the stage spent ~287 px of a 1600 px one on bars. The lens is now read
+    // out of the artboard default; this pins what that resolves to and the
+    // arithmetic that makes the old comment false.
     const { camera } = setup({ fitted: false });
 
-    // Not a phone's 19.5:9: the two differ by 0.39, so this is the whole claim.
+    // Not 19.5:9: the two differ by 0.39, so this is the whole claim.
     expect(
       Math.abs(1672 / 941 - 16 / 9),
-      "the starter is 16:9, not a phone's 19.5:9",
+      "the starter is 16:9, not 19.5:9",
     ).toBeLessThan(0.001);
     expect(
       Math.abs(1672 / 941 - 19.5 / 9),
       "and nowhere near the shape the old default claimed",
     ).toBeGreaterThan(0.3);
-    expect(camera.display()).toBe("wall-panel");
+    expect(camera.display()).toBe("16:9");
     const screen = camera.displayScreenRect();
     if (screen === undefined) throw new Error("no display screen rect");
     expect(
@@ -310,16 +310,16 @@ describe("the display lens", () => {
   });
 
   it("frames the artboard to the display's shape, not the window's", () => {
-    const { camera } = setup({ lens: "phone-landscape" });
+    const { camera } = setup({ lens: "19.5:9" });
     const screen = camera.displayScreenRect();
     if (screen === undefined) throw new Error("no display screen rect");
     // The screen carries the display's aspect...
     expect(screen.width / screen.height).toBeCloseTo(19.5 / 9, 6);
     // ...and the artboard sits inside it at its own aspect, letterboxed rather
-    // than cropped. This board (16:9) is narrower than a landscape phone
-    // (19.5:9), so it fills the screen's height and leaves bars at the sides.
-    // Cropping to fill them would be the lens deciding what the display shows,
-    // which is the one thing a preview must not do.
+    // than cropped. This board (16:9) is narrower than a 19.5:9 screen, so it
+    // fills the screen's height and leaves bars at the sides. Cropping to fill
+    // them would be the lens deciding what the display shows, which is the one
+    // thing a preview must not do.
     const board = camera.artboardScreenRect();
     expect(board.width / board.height).toBeCloseTo(16 / 9, 6);
     expect(board.left).toBeGreaterThan(screen.left + 1);
@@ -338,14 +338,14 @@ describe("the display lens", () => {
   });
 
   it("rotates the screen for a portrait display and keeps the artboard upright", () => {
-    const landscape = setup({ lens: "phone-landscape" }).camera;
-    const portrait = setup({ lens: "phone-portrait" }).camera;
+    const landscape = setup({ lens: "19.5:9" }).camera;
+    const portrait = setup({ lens: "9:19.5" }).camera;
     const wide = landscape.displayScreenRect();
     const tall = portrait.displayScreenRect();
     if (wide === undefined || tall === undefined) {
       throw new Error("no display screen rect");
     }
-    // The same phone turned: the exact reciprocal of the landscape aspect,
+    // The same screen turned: the exact reciprocal of the landscape aspect,
     // because a display's two orientations cannot drift apart.
     expect(tall.width / tall.height).toBeCloseTo(1 / (19.5 / 9), 6);
     // The artboard does not rotate with it — it is the author's composition,
@@ -357,8 +357,8 @@ describe("the display lens", () => {
   });
 
   it("restores the whole-stage fit, one click away", () => {
-    const { camera } = setup({ lens: "wall-panel" });
-    expect(camera.display()).toBe("wall-panel");
+    const { camera } = setup({ lens: "16:9" });
+    expect(camera.display()).toBe("16:9");
     camera.showDisplay(undefined);
     expect(camera.display()).toBeUndefined();
     // Fit is exactly what it was before the display existed: the artboard
@@ -370,14 +370,14 @@ describe("the display lens", () => {
   it("keeps a camera the author has moved, rather than re-framing it", () => {
     // The fight the brief names: a display and a manual zoom both wanting to
     // own the camera. The author wins, and a host resize must not take it back.
-    const { camera, resizeHost } = setup({ lens: "phone-landscape" });
+    const { camera, resizeHost } = setup({ lens: "19.5:9" });
     camera.zoomBy(2);
     const zoomed = camera.zoom();
 
     resizeHost(1400, 900);
 
     expect(camera.display(), "the lens is still the one they chose").toBe(
-      "phone-landscape",
+      "19.5:9",
     );
     expect(camera.zoom(), "and their zoom survived the resize").toBeCloseTo(
       zoomed,
@@ -386,7 +386,7 @@ describe("the display lens", () => {
   });
 
   it("reports the camera's fit, so the menu's tick can be read off the camera", () => {
-    const { camera } = setup({ lens: "phone-landscape" });
+    const { camera } = setup({ lens: "19.5:9" });
     expect(camera.isFitted(), "choosing a display fits through it").toBe(true);
 
     // The defect this predicate exists for: `reset` clears the lens and parks
@@ -407,7 +407,7 @@ describe("the display lens", () => {
   });
 
   it("re-frames through the same display when the host resizes", () => {
-    const { camera, resizeHost } = setup({ lens: "phone-landscape" });
+    const { camera, resizeHost } = setup({ lens: "19.5:9" });
     const before = camera.artboardScreenRect();
     resizeHost(700, 900);
     const after = camera.artboardScreenRect();
@@ -421,12 +421,8 @@ describe("the display lens", () => {
     // The lens is a lens: a 3:1 board and a square one are both authored at
     // their own size, and choosing a display must not reach into either. The
     // board here is the harness's 1280x720; nothing below may change it.
-    const { camera } = setup({ lens: "wall-panel" });
-    for (const lens of [
-      "phone-portrait",
-      "phone-landscape",
-      undefined,
-    ] as const) {
+    const { camera } = setup({ lens: "16:9" });
+    for (const lens of ["9:19.5", "19.5:9", undefined] as const) {
       camera.showDisplay(lens);
       const board = camera.artboardScreenRect();
       const scale = board.width / 1280;

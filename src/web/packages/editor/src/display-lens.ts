@@ -18,8 +18,13 @@ import {
  * here — `host/src/settings/devices.ts`, and the theme's own device readings —
  * and a lens that framed *those* would be a different idea. The word the spec
  * uses is the display, and this is the same thing.
+ *
+ * **Each lens is named by the aspect it frames.** "Phone" and "wall panel" say
+ * where a screen happens to hang and mean different things to different people;
+ * the ratio is the fact the lens actually holds, so it is the only name here
+ * that cannot be argued with.
  */
-export type DisplayLensId = "phone-landscape" | "phone-portrait" | "wall-panel";
+export type DisplayLensId = "19.5:9" | "9:19.5" | "16:9";
 
 export interface DisplayLens {
   readonly id: DisplayLensId;
@@ -39,7 +44,7 @@ export interface DisplayLens {
  * A ratio's number, from the one owner of artboard ratios.
  *
  * Read rather than restated: `19.5:9` written here as well as there is a
- * number that can drift, and a lens that quietly stopped being a phone is
+ * number that can drift, and a lens whose id and aspect quietly disagree is
  * invisible until somebody measures it.
  *
  * A missing id throws rather than defaulting, for the reason `artboardSize`
@@ -67,15 +72,19 @@ function lens(id: DisplayLensId, shape: ArtboardShape): DisplayLens {
   };
 }
 
-/** The two physical displays, named by the ratio each is measured in. The
- *  phone's two entries share one ratio rather than two spellings of it. */
-const phone: ArtboardShape = { ratio: "19.5:9", orientation: "landscape" };
-const wall: ArtboardShape = { ratio: "16:9", orientation: "landscape" };
+/** The two landscape shapes, each held by the ratio its lens is named for
+ *  rather than written beside it. The upright 19.5:9 lens is the first turned,
+ *  so it reads the ratio off the same shape. */
+const nineteenFiveNine: ArtboardShape = {
+  ratio: "19.5:9",
+  orientation: "landscape",
+};
+const sixteenNine: ArtboardShape = { ratio: "16:9", orientation: "landscape" };
 
 export const DISPLAY_LENSES: readonly DisplayLens[] = [
-  lens("phone-landscape", phone),
-  lens("phone-portrait", { ratio: phone.ratio, orientation: "portrait" }),
-  lens("wall-panel", wall),
+  lens("19.5:9", nineteenFiveNine),
+  lens("9:19.5", { ratio: nineteenFiveNine.ratio, orientation: "portrait" }),
+  lens("16:9", sixteenNine),
 ];
 
 /**
@@ -83,11 +92,11 @@ export const DISPLAY_LENSES: readonly DisplayLens[] = [
  * `DEFAULT_ARTBOARD_PRESET` rather than written here.
  *
  * **The starter is what makes that shape the right one.** It is 1672 × 941 —
- * 1.7768, which is 16:9 — so the wall panel frames the reference composition
+ * 1.7768, which is 16:9 — so the 16:9 lens frames the reference composition
  * edge to edge the moment the editor opens, and a 19.5:9 lens would spend about
- * 18 % of a 1600 px stage on bars around it. The default used to claim a
- * landscape phone, on the stated grounds that the starter is drawn in one; it
- * is not, and the claim cost the stage 287 px of nothing.
+ * 18 % of a 1600 px stage on bars around it. The default used to claim a 19.5:9
+ * lens, on the stated grounds that the starter is drawn in one; it is not, and
+ * the claim cost the stage 287 px of nothing.
  *
  * Resolved rather than typed, for the reason `ratioOf` exists: a second number
  * here is a second answer to the same question, and the two had already

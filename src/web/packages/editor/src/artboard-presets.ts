@@ -47,8 +47,8 @@ export const ARTBOARD_ORIENTATIONS: ReadonlyArray<ArtboardOrientation> = [
  * second number, so a lens that stopped being this shape is visible here
  * instead of only to whoever measures the stage.
  *
- * The ratio and resolution a wall display is measured in, and the orientation a
- * wall is hung. `wall-panel` is this shape by construction, which is why
+ * The ratio and resolution a new document opens at, and the orientation it is
+ * held. The 16:9 lens is this shape by construction, which is why
  * `openingDisplay` finds it for a blank document without being told.
  */
 export const DEFAULT_ARTBOARD_PRESET = {

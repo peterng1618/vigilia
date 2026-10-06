@@ -921,7 +921,7 @@ export class EditorSession {
     // `New` and then thinks better of it must not be asked to confirm
     // discarding their work on the way to deciding they wanted none of it.
     // It opens on the display the artboard being replaced is, so a document
-    // already settled on a phone portrait is not thrown back to a wall panel
+    // already settled on an upright lens is not thrown back to the 16:9 one
     // without being asked.
     //
     // The whole answer travels, not just its size: the display the author

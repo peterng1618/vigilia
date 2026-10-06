@@ -11,7 +11,7 @@ import { mountEditorShell } from "./editor-shell.js";
  * The document is byte-identical before and after every choice, and the undo
  * history does not grow. Those are the two ways a view preference becomes a
  * document — by being serialised, or by being recorded — and neither fails
- * loudly: the theme still opens, it just also remembers which phone you were
+ * loudly: the theme still opens, it just also remembers which lens you were
  * looking through, and the author's next Ctrl+Z silently discards their work
  * instead of the edit they meant.
  *
@@ -42,12 +42,7 @@ beforeEach(() => {
   }
 });
 
-const LENSES = [
-  "phone-landscape",
-  "phone-portrait",
-  "wall-panel",
-  undefined,
-] as const;
+const LENSES = ["19.5:9", "9:19.5", "16:9", undefined] as const;
 
 describe("the display lens is a view preference, not document content", () => {
   it("leaves the serialised scene byte-identical across every choice", async () => {

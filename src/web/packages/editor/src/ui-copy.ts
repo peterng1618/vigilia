@@ -336,11 +336,13 @@ export const uiCopy = {
     toSelection: "Zoom to selection",
     actualSize: "100 %",
     /** One name per lens, keyed by `DisplayLensId` so a lens cannot be added
-     *  to the vocabulary without a label to offer it by. */
+     *  to the vocabulary without a label to offer it by. Each name is the
+     *  aspect it frames — the same word the id is, so a screen nobody has
+     *  heard of is still nameable. */
     displays: {
-      "phone-landscape": "Phone landscape",
-      "phone-portrait": "Phone portrait",
-      "wall-panel": "Wall panel",
+      "19.5:9": "19.5:9",
+      "9:19.5": "9:19.5",
+      "16:9": "16:9",
     } satisfies Record<DisplayLensId, string>,
   },
   palette: "Shell palette",
