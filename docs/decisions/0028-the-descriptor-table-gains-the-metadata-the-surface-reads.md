@@ -46,17 +46,19 @@ its test `settings-fields.test.ts`; every non-test consumer of both accessors
 Found: **the table already owns the question, and it is the only owner.** It
 declares **34 scalar descriptors** across the four families (gauge 7, line 11,
 bar 9, pie 7) and 9 paint descriptors. Crucially, the non-test consumer count is
-**one** for the settings accessor and **three** for the paint accessor — a
+**one** for the settings accessor and **four** for the paint accessor — a
 distinction worth stating because the plan says "exactly one non-test consumer":
 
 - `settingsFieldsFor`: `editor/src/chart-manager/panel.ts:204` only.
 - `chartPaintFieldsFor`: `editor/src/chart-manager/panel.ts:258`,
   `editor/src/chart-manager/index.ts:36` and `:70`,
-  `editor/src/selection-inspector/appearance.ts:68`.
+  `editor/src/selection-inspector/appearance.ts:68`, and
+  `renderer-core/src/scene/plan.ts:752`.
 
-So the paint half is read by three editor modules, but all three are in the
-editor and none re-declares the list; the question is still owned once. Nothing
-in the repo is a second table, a schema renderer, or a per-surface curation list.
+So the paint half is read at four call sites — three editor modules and one
+`renderer-core` module — but none re-declares the list; the question is still
+owned once. Nothing in the repo is a second table, a schema renderer, or a
+per-surface curation list.
 
 `NON_SCALAR_SETTINGS` lists `animation` for all four families and `total` for pie.
 Its doc comment ("Exported so a test can assert this list and the editable list
@@ -246,11 +248,13 @@ What this repo can actually measure, and what it cannot.
 - **The consumer count is a measurement, not an assertion.** `rg` over `src/web`
   for `settingsFieldsFor` / `chartPaintFieldsFor` / `CHART_SETTINGS_FIELDS` /
   `CHART_PAINT_FIELDS` returns: one non-test consumer of the settings accessor
-  (`panel.ts:204`) and three of the paint accessor (`panel.ts:258`,
-  `chart-manager/index.ts:36,70`, `selection-inspector/appearance.ts:68`). This is
-  why a parallel table would be *one more reader of one concept*, not a clean
-  second owner — the paint half already has more than one reader and still no
-  second list.
+  (`panel.ts:204`) and four of the paint accessor (`panel.ts:258`,
+  `chart-manager/index.ts:36,70`, `selection-inspector/appearance.ts:68`,
+  `renderer-core/src/scene/plan.ts:752`). This is why a parallel table would be
+  *one more reader of one concept*, not a clean second owner — the paint half
+  already has four call sites across two packages and still no second list. That
+  the fourth is in `renderer-core` and not the editor makes the point sharper:
+  `plan.ts` reads the table, it does not re-declare it.
 - **The two holes are countable.** The table declares 34 scalar descriptors; the
   settings types declare two keys with no descriptor reachable from it —
   `PieSettings.total` and `animation` — the latter on all four families.
