@@ -173,6 +173,23 @@ export interface GeometryPort {
   ): { readonly width: number; readonly height: number } | undefined;
 }
 
+/**
+ * What a chart's column asks its owner for.
+ *
+ * Declared here for the reason `GeometryPort` is: the column names the
+ * questions and its owner answers them, so nothing in this module knows how a
+ * chart's settings, bindings or ratio are written. `chart-manager` is that
+ * owner — a chart's bindings and family settings render here without this
+ * column becoming a second writer of either.
+ *
+ * Two bodies, because a chart answers Content (what it shows) and Paint (what
+ * ink) with different questions.
+ */
+export interface ChartFieldsPort {
+  content(chart: VigiliaChart): readonly HTMLElement[];
+  paint(chart: VigiliaChart): readonly HTMLElement[];
+}
+
 export interface ColumnContext {
   readonly editor: EditorInteraction;
   readonly globals: FabricGlobals | undefined;
@@ -192,6 +209,12 @@ export interface ColumnContext {
     | ((nodeId: string, bindings: readonly Binding[]) => void)
     | undefined;
   readonly sampleSource: (() => SampleSource) | undefined;
+  /**
+   * The chart owner's own fields, for a chart selection. Absent when no owner
+   * is mounted: a column built without one still answers every other kind, and
+   * a chart is not a kind this column invents questions for.
+   */
+  readonly chartFields?: ChartFieldsPort;
   /**
    * The section handles this column keeps, keyed by section. Handed in rather
    * than held here so the state belongs to the inspector's lifetime: a
@@ -364,6 +387,18 @@ function contentBody(
   // the section's own count say two over one field.
   if (runs.childElementCount > 0) body.push(runs);
 
+  // A chart's own questions: the readings it draws and how its family is set.
+  // The owner answers them through the port; asking here is what puts them in
+  // the column they answer rather than behind a second tab. Withheld on a
+  // locked chart like every other writing field.
+  if (
+    !locked &&
+    target instanceof VigiliaChart &&
+    context.chartFields !== undefined
+  ) {
+    body.push(...context.chartFields.content(target));
+  }
+
   return body;
 }
 
@@ -448,6 +483,11 @@ function paintBody(
       refreshGlass: context.refreshGlass,
     }),
   );
+
+  // What a chart paints its data with, from the owner that writes it.
+  if (target instanceof VigiliaChart && context.chartFields !== undefined) {
+    body.push(...context.chartFields.paint(target));
+  }
 
   return body;
 }

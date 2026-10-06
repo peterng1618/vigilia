@@ -602,9 +602,9 @@ test.describe("the reference composition, authored", () => {
     );
     await page.mouse.dblclick(sparkline.x, sparkline.y);
     await expect.poll(() => activeId(page)).toBe("cpu-card-sparkline");
-    // A chart selection routes the inspector to its Data tab, which is where
-    // the binding select lives.
-    await page.getByRole("tab", { name: "Data", exact: true }).click();
+    // A chart's own fields are in its column with the selection, which is
+    // where the binding select lives.
+    await page.getByRole("tab", { name: "Design", exact: true }).click();
     const bindingSelect = page.locator("[data-vigilia-binding]").first();
     await expect(bindingSelect).toBeVisible();
     const keys = await bindingSelect

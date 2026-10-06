@@ -16,33 +16,59 @@ import {
 } from "../editor-shell/controls/settings-field.js";
 import { uiCopy } from "../ui-copy.js";
 
-export interface ChartPropertyPanel {
-  readonly root: HTMLElement;
-  render(
-    chart:
-      | {
-          readonly id: string;
-          readonly content: ChartContent;
-          readonly bindings: readonly Binding[];
-          /**
-           * The ratio this chart is at, or `undefined` when it is at none the
-           * control group offers — a chart dragged to an arbitrary shape names
-           * no button rather than lighting up whichever is nearest. Read from
-           * the chart rather than remembered from the last click, so it is
-           * right after a drag too.
-           */
-          readonly aspect?: number;
-        }
-      | undefined,
-    palette?: FabricPalette,
-  ): void;
+/**
+ * The chart's own fields, as two bodies the per-kind column mounts.
+ *
+ * The chart manager owns the chart — which one is selected, its settings, its
+ * bindings — and this module owns only the controls. `ChartFieldsPort` is what
+ * the column asks for them with: a body per question, built fresh on every
+ * render, so the section's count is the number of controls it actually holds.
+ *
+ * Ids and datasets are what they were when the panel rendered these controls
+ * into a Data tab, so every spec, screenshot and driver selector that addressed
+ * `vigilia-chart-setting-*`, `vigilia-chart-binding-*` and
+ * `vigilia-chart-paint-*` still addresses the same control.
+ */
+
+/** Everything the controls read, gathered by the owner so the column restates
+    none of it: the family and settings off the object, the bindings off the
+    envelope, and the ratio read off the object's own shape. */
+export interface ChartFieldTarget {
+  readonly id: string;
+  readonly content: ChartContent;
+  readonly bindings: readonly Binding[];
+  readonly aspect?: number;
+}
+
+/** The writes the chart owner accepts. Nothing here writes anything itself. */
+export interface ChartFieldHandlers {
+  readonly onSettings: (id: string, settings: ChartContent["settings"]) => void;
+  readonly onBinding: (id: string, binding: Binding) => void;
+  readonly onAspect: (id: string, ratio: number) => void;
+  readonly onAddBinding: (id: string, semanticKey: string) => void;
+  readonly onRemoveBinding: (id: string, bindingId: string) => void;
+}
+
+/**
+ * What a chart's column asks its owner for. Two bodies, because a chart answers
+ * Content (what it shows) and Paint (what ink) with different questions.
+ */
+export interface ChartFieldsPort {
+  content(
+    target: ChartFieldTarget,
+    palette: FabricPalette | undefined,
+  ): readonly HTMLElement[];
+  paint(
+    target: ChartFieldTarget,
+    palette: FabricPalette | undefined,
+  ): readonly HTMLElement[];
 }
 
 /**
  * How many readings a family draws, per `buildChartPlan`: a line series, a bar
  * and a slice are one binding each, and a gauge reads `bindings[0]` and nothing
  * else. So the gauge's second binding would be a control that accepts an edit
- * and applies none — the outcome `panel.ts`'s own doc comment rules out.
+ * and applies none.
  */
 const MAX_BINDINGS: Readonly<Record<ChartFamily, number>> = {
   gauge: 1,
@@ -51,219 +77,212 @@ const MAX_BINDINGS: Readonly<Record<ChartFamily, number>> = {
   pie: Number.POSITIVE_INFINITY,
 };
 
-export function createChartPropertyPanel(
-  host: HTMLElement,
-  onChange: (id: string, settings: ChartContent["settings"]) => void,
-  onBindingChange: (id: string, binding: Binding) => void,
-  onAspectChange: (id: string, ratio: number) => void,
-  onAddBinding: (id: string, semanticKey: string) => void,
-  onRemoveBinding: (id: string, bindingId: string) => void,
-): ChartPropertyPanel {
-  const root = document.createElement("section");
-  host.prepend(root);
-
+export function createChartFieldsPort(
+  handlers: ChartFieldHandlers,
+): ChartFieldsPort {
   return {
-    root,
-    render(chart, palette) {
-      root.replaceChildren();
-      if (chart === undefined) {
-        root.textContent = uiCopy.panels.selectChart;
-        return;
-      }
-      const heading = document.createElement("h2");
-      heading.textContent = `${chart.content.family} chart`;
-      root.append(heading);
-      if (chart.content.family === "line") {
-        const aspect = document.createElement("section");
-        aspect.append("Aspect ratio ");
-        for (const ratio of [2, 3, 4]) {
-          const button = document.createElement("button");
-          button.type = "button";
-          button.dataset["vigiliaChartAspect"] = String(ratio);
-          button.textContent = `${ratio}:1`;
-          // Three buttons that looked alike left no way to tell 2:1 from 3:1
-          // after the click. `aria-pressed` is what the rest of the shell's
-          // toggles already carry, so it states the active ratio to assistive
-          // technology and to the eye through the same attribute.
-          button.setAttribute("aria-pressed", String(chart.aspect === ratio));
-          button.addEventListener("click", () =>
-            onAspectChange(chart.id, ratio),
-          );
-          aspect.append(button);
-        }
-        root.append(aspect);
-      }
-
-      /**
-       * The control that declares the *first* binding, which is what a chart
-       * arrives without. A chooser of keys rather than a button: a binding
-       * cannot exist without the key it names, so asking for both at once
-       * removes the state where a chart holds one the panel would then have to
-       * refuse or repair.
-       */
-      const series = uiCopy.inspectorFields.runSeries;
-      const seriesLabel = document.createElement("label");
-      const add = document.createElement("select");
-      add.dataset["vigiliaChartBindingAdd"] = "";
-      const prompt = document.createElement("option");
-      prompt.value = "";
-      prompt.textContent = series;
-      add.append(prompt);
-      for (const descriptor of SEMANTIC_KEYS) {
-        const option = document.createElement("option");
-        option.value = descriptor.key;
-        option.textContent = descriptor.label;
-        add.append(option);
-      }
-      add.addEventListener("change", () => {
-        const key = add.value;
-        // Reset first: a chooser that held its choice would create a second
-        // series on every re-render of the panel.
-        add.value = "";
-        if (key !== "") onAddBinding(chart.id, key);
-      });
-      seriesLabel.textContent = series;
-      seriesLabel.htmlFor = add.id = "vigilia-chart-series";
-      const full = chart.bindings.length >= MAX_BINDINGS[chart.content.family];
-      add.disabled = full;
-      root.append(seriesLabel, add);
-      if (full) {
-        const note = document.createElement("p");
-        note.className = "vigilia-run-note";
-        note.dataset["vigiliaChartBindingFull"] = "";
-        note.textContent = uiCopy.inspectorFields.runSeriesFull(
-          chart.content.family,
-        );
-        root.append(note);
-      }
-
-      for (const binding of chart.bindings) {
-        const label = document.createElement("label");
-        label.textContent = `Binding: ${binding.id}`;
-        const select = document.createElement("select");
-        label.htmlFor = select.id = `vigilia-chart-binding-${binding.id}`;
-        select.dataset["vigiliaBinding"] = binding.id;
-        const keys = new Set([
-          binding.semanticKey,
-          ...SEMANTIC_KEYS.map((descriptor) => descriptor.key),
-        ]);
-        for (const key of keys) {
-          const option = document.createElement("option");
-          option.value = key;
-          option.textContent =
-            SEMANTIC_KEYS.find((descriptor) => descriptor.key === key)?.label ??
-            key;
-          select.append(option);
-        }
-        select.value = binding.semanticKey;
-        select.addEventListener("change", () =>
-          onBindingChange(chart.id, { ...binding, semanticKey: select.value }),
-        );
-        root.append(
-          label,
-          select,
-          ...removeBindingControl(
-            binding,
-            (id) => onRemoveBinding(chart.id, id),
-            chart.bindings.length > 1,
-          ),
-          ...bindingNumber(
-            binding.id,
-            "precision",
-            "Precision",
-            binding.precision,
-            0,
-            6,
-            (precision) =>
-              onBindingChange(
-                chart.id,
-                without(binding, "precision", precision),
-              ),
-          ),
-          ...unitDisplay(binding, (unitDisplay) =>
-            onBindingChange(
-              chart.id,
-              without(binding, "unitDisplay", unitDisplay),
-            ),
-          ),
-          ...bindingNumber(
-            binding.id,
-            "scale",
-            "Scale",
-            binding.scale,
-            undefined,
-            undefined,
-            (scale) =>
-              onBindingChange(chart.id, without(binding, "scale", scale)),
-          ),
-          ...bindingNumber(
-            binding.id,
-            "offset",
-            "Offset",
-            binding.offset,
-            undefined,
-            undefined,
-            (offset) =>
-              onBindingChange(chart.id, without(binding, "offset", offset)),
-          ),
-        );
-      }
-      for (const field of settingsFieldsFor(chart.content.family)) {
-        // A `visibleWhen` that does not match is not a question in this state,
-        // so it renders nothing — unlike a refused field, which renders and
-        // says why.
-        if (!isSettingVisible(field, chart.content.settings)) continue;
-        const path = field.path ?? [field.property];
-        root.append(
-          settingsField(field, {
-            value: readSetting(chart.content.settings, path),
-            // A nested setting commits through its own `path`: a flat
-            // `{...settings, [property]: value}` writes a key the validator
-            // accepts and the renderer never reads, so the author's choice
-            // survives the click and dies on reopen.
-            onChange: (next) =>
-              onChange(
-                chart.id,
-                commitSetting(chart.content.settings, path, next),
-              ),
-          }),
-        );
-      }
-      for (const field of chartPaintFieldsFor(chart.content.family)) {
-        const value = (
-          chart.content.settings as unknown as Record<string, unknown>
-        )[field.property];
-        if (field.multiple && Array.isArray(value)) {
-          value.forEach((paint, index) =>
-            root.append(
-              ...paintPicker(
-                `${field.label} ${index + 1}`,
-                `${field.property}.${index}`,
-                paint,
-                palette,
-                (ref) =>
-                  onChange(chart.id, {
-                    ...chart.content.settings,
-                    [field.property]: value.map((entry, item) =>
-                      item === index ? { ref } : entry,
-                    ),
-                  } as ChartContent["settings"]),
-              ),
-            ),
-          );
-        } else if (!Array.isArray(value) && value !== undefined) {
-          root.append(
-            ...paintPicker(field.label, field.property, value, palette, (ref) =>
-              onChange(chart.id, {
-                ...chart.content.settings,
-                [field.property]: { ref },
-              } as ChartContent["settings"]),
-            ),
-          );
-        }
-      }
-    },
+    content: (target, palette) => chartContentFields(target, palette, handlers),
+    paint: (target, palette) => chartPaintFields(target, palette, handlers),
   };
+}
+
+/** What the chart shows: its family's settings, and the series it reads. */
+export function chartContentFields(
+  target: ChartFieldTarget,
+  palette: FabricPalette | undefined,
+  handlers: ChartFieldHandlers,
+): readonly HTMLElement[] {
+  const { id, content } = target;
+  const body: HTMLElement[] = [];
+
+  if (content.family === "line") {
+    const aspect = document.createElement("section");
+    aspect.append("Aspect ratio ");
+    for (const ratio of [2, 3, 4]) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.dataset["vigiliaChartAspect"] = String(ratio);
+      button.textContent = `${ratio}:1`;
+      // Three buttons that looked alike left no way to tell 2:1 from 3:1
+      // after the click. `aria-pressed` is what the rest of the shell's
+      // toggles already carry, so it states the active ratio to assistive
+      // technology and to the eye through the same attribute.
+      button.setAttribute("aria-pressed", String(target.aspect === ratio));
+      button.addEventListener("click", () => handlers.onAspect(id, ratio));
+      aspect.append(button);
+    }
+    body.push(aspect);
+  }
+
+  /**
+   * The control that declares the *first* binding, which is what a chart
+   * arrives without. A chooser of keys rather than a button: a binding
+   * cannot exist without the key it names, so asking for both at once
+   * removes the state where a chart holds one the panel would then have to
+   * refuse or repair.
+   */
+  const series = uiCopy.inspectorFields.runSeries;
+  const seriesLabel = document.createElement("label");
+  const add = document.createElement("select");
+  add.dataset["vigiliaChartBindingAdd"] = "";
+  const prompt = document.createElement("option");
+  prompt.value = "";
+  prompt.textContent = series;
+  add.append(prompt);
+  for (const descriptor of SEMANTIC_KEYS) {
+    const option = document.createElement("option");
+    option.value = descriptor.key;
+    option.textContent = descriptor.label;
+    add.append(option);
+  }
+  add.addEventListener("change", () => {
+    const key = add.value;
+    // Reset first: a chooser that held its choice would create a second
+    // series on every re-render of the fields.
+    add.value = "";
+    if (key !== "") handlers.onAddBinding(id, key);
+  });
+  seriesLabel.textContent = series;
+  seriesLabel.htmlFor = add.id = "vigilia-chart-series";
+  const full = target.bindings.length >= MAX_BINDINGS[content.family];
+  add.disabled = full;
+  body.push(seriesLabel, add);
+  if (full) {
+    const note = document.createElement("p");
+    note.className = "vigilia-run-note";
+    note.dataset["vigiliaChartBindingFull"] = "";
+    note.textContent = uiCopy.inspectorFields.runSeriesFull(content.family);
+    body.push(note);
+  }
+
+  for (const binding of target.bindings) {
+    const label = document.createElement("label");
+    label.textContent = `Binding: ${binding.id}`;
+    const select = document.createElement("select");
+    label.htmlFor = select.id = `vigilia-chart-binding-${binding.id}`;
+    select.dataset["vigiliaBinding"] = binding.id;
+    const keys = new Set([
+      binding.semanticKey,
+      ...SEMANTIC_KEYS.map((descriptor) => descriptor.key),
+    ]);
+    for (const key of keys) {
+      const option = document.createElement("option");
+      option.value = key;
+      option.textContent =
+        SEMANTIC_KEYS.find((descriptor) => descriptor.key === key)?.label ??
+        key;
+      select.append(option);
+    }
+    select.value = binding.semanticKey;
+    select.addEventListener("change", () =>
+      handlers.onBinding(id, { ...binding, semanticKey: select.value }),
+    );
+    body.push(
+      label,
+      select,
+      ...removeBindingControl(
+        binding,
+        (bindingId) => handlers.onRemoveBinding(id, bindingId),
+        target.bindings.length > 1,
+      ),
+      ...bindingNumber(
+        binding.id,
+        "precision",
+        "Precision",
+        binding.precision,
+        0,
+        6,
+        (precision) =>
+          handlers.onBinding(id, without(binding, "precision", precision)),
+      ),
+      ...unitDisplay(binding, (unitDisplay) =>
+        handlers.onBinding(id, without(binding, "unitDisplay", unitDisplay)),
+      ),
+      ...bindingNumber(
+        binding.id,
+        "scale",
+        "Scale",
+        binding.scale,
+        undefined,
+        undefined,
+        (scale) => handlers.onBinding(id, without(binding, "scale", scale)),
+      ),
+      ...bindingNumber(
+        binding.id,
+        "offset",
+        "Offset",
+        binding.offset,
+        undefined,
+        undefined,
+        (offset) => handlers.onBinding(id, without(binding, "offset", offset)),
+      ),
+    );
+  }
+
+  for (const field of settingsFieldsFor(content.family)) {
+    // A `visibleWhen` that does not match is not a question in this state,
+    // so it renders nothing — unlike a refused field, which renders and
+    // says why.
+    if (!isSettingVisible(field, content.settings)) continue;
+    const path = field.path ?? [field.property];
+    body.push(
+      settingsField(field, {
+        value: readSetting(content.settings, path),
+        // A nested setting commits through its own `path`: a flat
+        // `{...settings, [property]: value}` writes a key the validator
+        // accepts and the renderer never reads, so the author's choice
+        // survives the click and dies on reopen.
+        onChange: (next) =>
+          handlers.onSettings(id, commitSetting(content.settings, path, next)),
+      }),
+    );
+  }
+
+  return body;
+}
+
+/** What ink: the family's own paint fields, one control per reference. */
+export function chartPaintFields(
+  target: ChartFieldTarget,
+  palette: FabricPalette | undefined,
+  handlers: ChartFieldHandlers,
+): readonly HTMLElement[] {
+  const { id, content } = target;
+  const body: HTMLElement[] = [];
+  for (const field of chartPaintFieldsFor(content.family)) {
+    const value = (content.settings as unknown as Record<string, unknown>)[
+      field.property
+    ];
+    if (field.multiple && Array.isArray(value)) {
+      value.forEach((paint, index) =>
+        body.push(
+          ...paintPicker(
+            `${field.label} ${index + 1}`,
+            `${field.property}.${index}`,
+            paint,
+            palette,
+            (ref) =>
+              handlers.onSettings(id, {
+                ...content.settings,
+                [field.property]: value.map((entry, item) =>
+                  item === index ? { ref } : entry,
+                ),
+              } as ChartContent["settings"]),
+          ),
+        ),
+      );
+    } else if (!Array.isArray(value) && value !== undefined) {
+      body.push(
+        ...paintPicker(field.label, field.property, value, palette, (ref) =>
+          handlers.onSettings(id, {
+            ...content.settings,
+            [field.property]: { ref },
+          } as ChartContent["settings"]),
+        ),
+      );
+    }
+  }
+  return body;
 }
 
 /**

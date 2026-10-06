@@ -124,8 +124,6 @@ export interface EditorPanelHosts {
   readonly assets: HTMLElement;
   /** Document-level panels shown when nothing is selected. */
   readonly document: HTMLElement;
-  /** Chart settings and bindings, shown for a chart selection. */
-  readonly chart: HTMLElement;
   /** Properties of the selected object, shown in the Design tab. */
   readonly selection: HTMLElement;
   /** What the selection's references resolve to, shown in the Style tab. */
@@ -371,6 +369,9 @@ export class EditorSession {
       // The shell owns the glass handle; the inspector writes the property and
       // asks it to re-resolve.
       refreshGlass: () => options.shell.refreshGlass(),
+      // A chart's own fields. A getter, because the chart manager is built
+      // below — and because a chart selection is the only thing that asks.
+      chartFields: () => this.charts.fields,
     });
     this.#selection.setLocale(options.envelope.metadata?.themeLanguage);
     // Entering inline editing asks the runtime for the authoring view: the
@@ -399,7 +400,6 @@ export class EditorSession {
       ...(options.envelope.globals === undefined
         ? {}
         : { globals: options.envelope.globals }),
-      panelHost: options.panelHosts.chart,
       onBindingsChange: (id, bindings) => this.#setBindings(id, bindings),
     });
     this.#newObjects = createNewObjectPanel(

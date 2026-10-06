@@ -142,7 +142,6 @@ function wiredSession(): Wired {
       add: document.body,
       assets: document.body,
       document: document.body,
-      chart: document.body,
       selection: document.body,
       style: document.body,
     },

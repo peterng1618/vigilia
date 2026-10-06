@@ -52,7 +52,7 @@ export const uiCopy = {
     /** The `+`, named as what it opens rather than as the mark it draws. */
     insertObject: "Insert an object",
   },
-  inspector: { design: "Design", data: "Data", style: "Style" },
+  inspector: { design: "Design", style: "Style" },
   /** Selection inspector field labels. */
   inspectorFields: {
     selection: "Selection",
@@ -534,7 +534,6 @@ export const uiCopy = {
     applyFont: "Apply font",
     applyTrio: "Apply trio",
     unitDisplay: "Unit display",
-    selectChart: "Select a chart to edit its settings.",
     /** Field labels shared by more than one panel. */
     name: "Name",
     author: "Author",

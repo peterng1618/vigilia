@@ -384,7 +384,7 @@ export async function buildGpuCard(page: Page): Promise<void> {
     paint: ["GPU violet"],
   });
   // A card sparkline has no axes in the target, and the family offers them.
-  await openTab(page, "Data");
+  await openTab(page, "Design");
   await page.locator('[data-vigilia-chart-setting="showAxes"]').uncheck();
 }
 
@@ -427,10 +427,12 @@ export async function buildMemoryRings(page: Page): Promise<void> {
     series: ["ram.used.percent"],
     paint: [undefined, "RAM teal"],
   });
-  await openTab(page, "Data");
-  // 270 degrees open at the bottom, which is the target's RAM ring.
+  await openTab(page, "Design");
+  // 270 degrees open at the bottom, which is the target's RAM ring. `45` and
+  // `405` are the same arc — ECharts reduces both mod 360 — and `45` is the one
+  // the bounded field accepts, measured identical to the pixel.
   await fill(page, '[data-vigilia-chart-setting="startAngle"]', 135);
-  await fill(page, '[data-vigilia-chart-setting="endAngle"]', 405);
+  await fill(page, '[data-vigilia-chart-setting="endAngle"]', 45);
   await fill(page, '[data-vigilia-chart-setting="thickness"]', 14);
   await page.locator('[data-vigilia-chart-setting="roundCap"]').check();
   await chooseToken(page, '[data-vigilia-chart-paint="track"]', "Chart track");
@@ -553,7 +555,7 @@ export async function buildTrends(page: Page): Promise<void> {
     series: ["cpu.load", "gpu.load", "ram.used.percent"],
     paint: ["CPU blue", "GPU violet", "RAM teal"],
   });
-  await openTab(page, "Data");
+  await openTab(page, "Design");
   await page.locator('[data-vigilia-chart-setting="showAxes"]').uncheck();
 }
 
@@ -615,7 +617,7 @@ export async function buildStorage(page: Page): Promise<void> {
     series: ["disk.used.percent"],
     paint: ["CPU blue"],
   });
-  await openTab(page, "Data");
+  await openTab(page, "Design");
   await page.locator('[data-vigilia-chart-setting="showAxes"]').uncheck();
   await page
     .locator('[data-vigilia-chart-setting="showCategoryLabels"]')
@@ -684,7 +686,7 @@ export async function buildNetwork(page: Page): Promise<void> {
     series: ["network.download", "network.upload"],
     paint: ["CPU blue", "GPU violet"],
   });
-  await openTab(page, "Data");
+  await openTab(page, "Design");
   await page.locator('[data-vigilia-chart-setting="showAxes"]').uncheck();
 }
 

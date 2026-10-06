@@ -834,7 +834,7 @@ test.describe("Fabric editor route", () => {
       .locator('[data-vigilia-panel="add"]')
       .getByRole("button", { name: "Gauge" })
       .click();
-    await openInspectorTab(page, "Data");
+    await openInspectorTab(page, "Design");
     await expect(
       page.locator('[data-vigilia-chart-setting="thickness"]'),
     ).toBeVisible();
@@ -2182,8 +2182,8 @@ test.describe("Fabric editor route", () => {
       .getByRole("group", { name: "Chart" })
       .getByRole("button", { name: "Line", exact: true })
       .click();
-    // A chart's paint pickers are on the Data tab; Design only summarises them.
-    await openInspectorTab(page, "Data");
+    // A chart's paint pickers are in its own column, with its settings.
+    await openInspectorTab(page, "Design");
 
     // The key carries the index — `palette.0` — which is the token the original
     // DOM read named, `[stroke, palette.0]` before and `[]` after.
@@ -4653,8 +4653,8 @@ async function selectStarterChart(page: Page): Promise<void> {
       ),
     )
     .toBe("ram-gauge");
-  // A chart selection routes the inspector to its Data tab.
-  await openInspectorTab(page, "Data");
+  // A chart's own fields are in the column with the selection, not another tab.
+  await openInspectorTab(page, "Design");
   await expect(
     page.locator('[data-vigilia-chart-setting="thickness"]'),
   ).toBeVisible();

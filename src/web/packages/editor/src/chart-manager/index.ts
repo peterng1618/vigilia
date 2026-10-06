@@ -16,7 +16,13 @@ import {
   newObjectName,
   nextNewObjectPlacement,
 } from "../new-object-defaults.js";
-import { createChartPropertyPanel } from "./panel.js";
+import type { ChartFieldsPort } from "../selection-inspector/per-kind-column.js";
+import {
+  type ChartFieldHandlers,
+  type ChartFieldTarget,
+  chartContentFields,
+  chartPaintFields,
+} from "./panel.js";
 
 /**
  * The family's per-series paint, with one entry per series.
@@ -217,9 +223,61 @@ export class ChartManager {
   readonly #editor: EditorInteraction;
   readonly #scene: SceneAdapter;
   #source: SampleSource;
-  readonly #panel;
   #bindings: Readonly<Record<string, readonly Binding[]>>;
   #globals: FabricGlobals | undefined;
+  #onBindingsChange:
+    | ((id: string, bindings: readonly Binding[]) => void)
+    | undefined;
+
+  /**
+   * The chart's own fields, for the selection inspector's column to mount.
+   *
+   * The mount point moved out of a Data tab and into the chart's own column;
+   * the owner did not. Every write these controls make lands on the methods
+   * below, so the envelope, the canvas and the panel cannot disagree about what
+   * a chart reads.
+   */
+  readonly fields: ChartFieldsPort = {
+    content: (chart) => {
+      const target = this.#targetFor(chart);
+      return target === undefined
+        ? []
+        : chartContentFields(target, this.#globals?.palette, this.#handlers);
+    },
+    paint: (chart) => {
+      const target = this.#targetFor(chart);
+      return target === undefined
+        ? []
+        : chartPaintFields(target, this.#globals?.palette, this.#handlers);
+    },
+  };
+
+  readonly #handlers: ChartFieldHandlers = {
+    onSettings: (id, settings) => this.#updateSettings(id, settings),
+    onBinding: (id, binding) =>
+      this.#updateBinding(id, binding, this.#onBindingsChange),
+    onAspect: (id, ratio) => this.#resizeToAspect(id, ratio),
+    onAddBinding: (id, semanticKey) =>
+      this.#writeBindings(
+        id,
+        [
+          ...(this.#bindings[id] ?? []),
+          // Minted here rather than in the panel: the id is what the run
+          // editor's bindings are keyed by, so one shape for both keeps a
+          // document's two kinds of reference legible together.
+          { id: `binding-${crypto.randomUUID()}`, semanticKey },
+        ],
+        this.#onBindingsChange,
+      ),
+    onRemoveBinding: (id, bindingId) =>
+      this.#writeBindings(
+        id,
+        (this.#bindings[id] ?? []).filter(
+          (binding) => binding.id !== bindingId,
+        ),
+        this.#onBindingsChange,
+      ),
+  };
 
   constructor(options: {
     readonly editor: EditorInteraction;
@@ -227,7 +285,6 @@ export class ChartManager {
     readonly source: SampleSource;
     readonly bindings?: Readonly<Record<string, readonly Binding[]>>;
     readonly globals?: FabricGlobals;
-    readonly panelHost: HTMLElement;
     readonly onBindingsChange?: (
       id: string,
       bindings: readonly Binding[],
@@ -238,36 +295,7 @@ export class ChartManager {
     this.#source = options.source;
     this.#bindings = options.bindings ?? {};
     this.#globals = options.globals;
-    this.#panel = createChartPropertyPanel(
-      options.panelHost,
-      (id, settings) => this.#updateSettings(id, settings),
-      (id, binding) =>
-        this.#updateBinding(id, binding, options.onBindingsChange),
-      (id, ratio) => this.#resizeToAspect(id, ratio),
-      (id, semanticKey) =>
-        this.#writeBindings(
-          id,
-          [
-            ...(this.#bindings[id] ?? []),
-            // Minted here rather than in the panel: the id is what the run
-            // editor's bindings are keyed by, so one shape for both keeps a
-            // document's two kinds of reference legible together.
-            { id: `binding-${crypto.randomUUID()}`, semanticKey },
-          ],
-          options.onBindingsChange,
-        ),
-      (id, bindingId) =>
-        this.#writeBindings(
-          id,
-          (this.#bindings[id] ?? []).filter(
-            (binding) => binding.id !== bindingId,
-          ),
-          options.onBindingsChange,
-        ),
-    );
-    this.#editor.canvas.on("selection:created", this.#drawPanel);
-    this.#editor.canvas.on("selection:updated", this.#drawPanel);
-    this.#editor.canvas.on("selection:cleared", this.#drawPanel);
+    this.#onBindingsChange = options.onBindingsChange;
     this.#editor.canvas.on("object:modified", this.#rerasterizeScaledChart);
     this.#editor.canvas.on(
       "editor:history-state-loaded" as never,
@@ -278,13 +306,9 @@ export class ChartManager {
       this.#hydrateRevivedCharts,
     );
     this.#hydrateRevivedCharts();
-    this.#drawPanel();
   }
 
   destroy(): void {
-    this.#editor.canvas.off("selection:created", this.#drawPanel);
-    this.#editor.canvas.off("selection:updated", this.#drawPanel);
-    this.#editor.canvas.off("selection:cleared", this.#drawPanel);
     this.#editor.canvas.off("object:modified", this.#rerasterizeScaledChart);
     this.#editor.canvas.off(
       "editor:history-state-loaded" as never,
@@ -294,7 +318,6 @@ export class ChartManager {
       "editor:object-pasted" as never,
       this.#hydrateRevivedCharts,
     );
-    this.#panel.root.remove();
   }
 
   setGlobals(globals: FabricGlobals | undefined): void {
@@ -343,7 +366,7 @@ export class ChartManager {
     this.#applyChart(id, chart);
     this.#editor.historyManager.saveState();
     this.#editor.canvas.requestRenderAll();
-    this.#drawPanel();
+    this.#announce(chart);
   }
 
   reassignPaletteReferences(from: string, to: string): void {
@@ -370,27 +393,43 @@ export class ChartManager {
     };
     this.#editor.canvas.getObjects().forEach(visit);
     this.#editor.canvas.requestRenderAll();
-    this.#drawPanel();
+    // The reassignment runs with the palette's own fan-out, which re-renders
+    // the column a moment later; this is for the chart the author is looking
+    // at, whose settings just changed under it.
+    this.#announce(this.#selectedChart());
   }
 
-  readonly #drawPanel = (): void => {
-    const chart = this.#selectedChart();
-    const id = chart?.get("id");
-    this.#panel.render(
-      chart === undefined || typeof id !== "string"
-        ? undefined
-        : {
-            id,
-            content: {
-              family: chart.family,
-              settings: chart.settings,
-            } as ChartContent,
-            bindings: this.#bindings[id] ?? [],
-            ...aspectOf(chart, ASPECT_RATIOS),
-          },
-      this.#globals?.palette,
-    );
-  };
+  /**
+   * Reads one chart as the fields' own input: the family and settings off the
+   * object, the bindings off the envelope, the ratio off its shape. `undefined`
+   * for anything that is not a chart this manager owns by id.
+   */
+  #targetFor(chart: FabricObject): ChartFieldTarget | undefined {
+    if (!(chart instanceof VigiliaChart)) return undefined;
+    const id = chart.get("id");
+    if (typeof id !== "string") return undefined;
+    return {
+      id,
+      content: {
+        family: chart.family,
+        settings: chart.settings,
+      } as ChartContent,
+      bindings: this.#bindings[id] ?? [],
+      ...aspectOf(chart, ASPECT_RATIOS),
+    };
+  }
+
+  /**
+   * Says the object changed, which is what the selection inspector re-reads on.
+   *
+   * A settings or binding edit is not a canvas gesture, so nothing else would
+   * tell the column its fields are stale — the panel used to redraw itself, and
+   * the column is redrawn by the inspector instead.
+   */
+  #announce(chart: FabricObject | undefined): void {
+    if (!(chart instanceof VigiliaChart)) return;
+    this.#editor.canvas.fire("object:modified", { target: chart });
+  }
 
   #updateSettings(id: string, settings: ChartContent["settings"]): void {
     const chart = this.#chartFor(id);
@@ -400,7 +439,7 @@ export class ChartManager {
       this.#applyChart(id, chart);
       this.#editor.canvas.requestRenderAll();
     }
-    this.#drawPanel();
+    this.#announce(chart);
   }
 
   #updateBinding(
@@ -452,7 +491,7 @@ export class ChartManager {
     }
     this.#editor.canvas.requestRenderAll();
     onBindingsChange?.(id, bindings);
-    this.#drawPanel();
+    this.#announce(chart);
   }
 
   #resizeToAspect(id: string, ratio: number): void {
@@ -467,14 +506,13 @@ export class ChartManager {
     }
     chart.resizeTo(width, width / ratio);
     this.#editor.canvas.requestRenderAll();
-    this.#drawPanel();
     // A ratio is a geometry edit, and the object is changed by the time the
-    // chart's own panel has redrawn — measured, 215 → 241 at 4:1 and 482 at
-    // 2:1. The selection inspector re-reads on `object:modified` and on nothing
-    // else, so without this the Height field kept reporting the height the
-    // chart had before the click, on a control an author types into. Announced
-    // the way `canvas-nudge` announces a programmatic move.
-    this.#editor.canvas.fire("object:modified", { target: chart });
+    // column has redrawn — measured, 215 → 241 at 4:1 and 482 at 2:1. The
+    // selection inspector re-reads on `object:modified` and on nothing else, so
+    // without this the Height field kept reporting the height the chart had
+    // before the click, on a control an author types into. Announced the way
+    // `canvas-nudge` announces a programmatic move.
+    this.#announce(chart);
   }
 
   readonly #rerasterizeScaledChart = (event: { target?: unknown }): void => {
@@ -490,11 +528,10 @@ export class ChartManager {
     ) {
       return;
     }
+    // A drag changes the ratio too, and this runs on the `object:modified` the
+    // inspector re-reads the ratio buttons on — so the buttons follow the drag
+    // without anything here announcing a second time.
     chart.resizeTo(width, height);
-    // A drag changes the ratio too, so the control group has to re-read it —
-    // otherwise the buttons name whichever ratio was last clicked, on a chart
-    // that is no longer at it.
-    this.#drawPanel();
   };
 
   /** A revived v2 chart deliberately has no persisted engine pixels or samples. */

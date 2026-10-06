@@ -184,7 +184,6 @@ async function start(): Promise<void> {
         add: layout.hosts.add,
         assets: layout.hosts.assets,
         document: layout.hosts.document,
-        chart: layout.hosts.chart,
         selection: layout.hosts.selection,
         style: layout.hosts.style,
       },

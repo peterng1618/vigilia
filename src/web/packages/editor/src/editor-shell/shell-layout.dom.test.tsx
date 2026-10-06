@@ -634,7 +634,7 @@ it("keeps arrange off the dock even when a multi-selection is eligible", async (
   layout.destroy();
 });
 
-it("routes the inspector to tabs on selection and back to document panels", async () => {
+it("keeps a chart's fields in the Design column, with no Data tab to reach for", async () => {
   const root = document.createElement("div");
   const layout = createShellLayout(root);
   let kind: "none" | "object" | "chart" = "none";
@@ -655,19 +655,25 @@ it("routes the inspector to tabs on selection and back to document panels", asyn
   await Promise.resolve();
   // The document panels stay reachable whatever the selection is.
   expect(root.contains(layout.hosts.document)).toBe(true);
-  expect(root.querySelector('[role="tablist"]')).not.toBeNull();
+  const tabs = (): (string | null)[] =>
+    Array.from(root.querySelectorAll<HTMLElement>('[role="tab"]')).map(
+      (tab) => tab.textContent,
+    );
+  // Two questions, not three: a chart's own fields are in the selection's
+  // column, so a Data tab would be a second door to one room.
+  expect(tabs()).toEqual(["Design", "Style"]);
 
   kind = "chart";
   for (const listener of listeners) listener();
   await Promise.resolve();
 
-  const dataTab = Array.from(
-    root.querySelectorAll<HTMLElement>('[role="tab"]'),
-  ).find((tab) => tab.textContent === "Data");
-  expect(dataTab).not.toBeUndefined();
-  dataTab?.click();
-  await Promise.resolve();
-  expect(layout.hosts.chart.parentElement).not.toBeNull();
+  // Selecting a chart changes nothing about where its fields live — the
+  // Design tab was and is the only door.
+  expect(tabs()).toEqual(["Design", "Style"]);
+  expect(
+    root.querySelector<HTMLElement>('[role="tab"][aria-selected="true"]')
+      ?.textContent,
+  ).toBe("Design");
 
   layout.destroy();
 });

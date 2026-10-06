@@ -149,8 +149,8 @@ export async function insert(page: Page, label: string): Promise<void> {
   // The bar shows one pane, and selecting a layer switches it to Layers — so
   // an author comes back to Insert the same way this does.
   await openPane(page, "Insert");
-  // The selection inspector is in the Design tab and a chart's settings are in
-  // Data, so a fresh object always brings the author back to Design.
+  // The selection inspector and a chart's own fields are both in the Design
+  // tab, so a fresh object always brings the author back to Design.
   await openTab(page, "Design");
   const before = (await readScene(page)).length;
   const button = addButton(page, label);
@@ -401,9 +401,9 @@ export async function addChart(
   await insert(page, chart.family);
   await setName(page, chart.name);
   await place(page, chart);
-  await openTab(page, "Data");
+  await openTab(page, "Design");
   for (const key of chart.series) {
-    // Scrolled first: the Data tab's panel is inside a scrolling inspector, and
+    // Scrolled first: the chart's fields sit in a scrolling inspector, and
     // `selectOption` waits for visibility rather than scrolling to it.
     const chooser = page.locator("[data-vigilia-chart-binding-add]");
     // The last of the three waits that spent this suite's whole budget saying
@@ -440,7 +440,7 @@ export async function addChart(
  *
  * **Keyed by the family's own name, which is lower case.** `CHART_FAMILIES` is
  * `["gauge", "line", "bar", "pie"]` and `chart.family` carries one of those —
- * measured live as `line` on the object behind the Data tab. The Add pane's
+ * measured live as `line` on the object whose fields the inspector shows. The Add pane's
  * button is the capitalised *label*, and `insert` matches on the label, so this
  * driver was holding the label in `family` and comparing it against a value that
  * is never the label. The lookup missed, so `PAINT_KEY[family]` was `undefined`

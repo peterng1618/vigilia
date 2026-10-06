@@ -20,6 +20,25 @@ import { ChartManager, carriedPaintFor } from "./index.js";
 /** The authored frame a new chart has to land inside, as the editor supplies it. */
 const artboard = () => ({ width: 1920, height: 1080 });
 
+/**
+ * Mounts the chart's own fields the way the inspector's column does: the two
+ * bodies the owner hands over, into a host the test can query.
+ *
+ * The manager no longer owns a panel that redraws itself, so a test that reads
+ * a control after a change rebuilds these bodies the way the inspector does —
+ * on the `object:modified` the manager announces.
+ */
+function mountFields(
+  manager: ChartManager,
+  chart: VigiliaChart,
+  host: HTMLElement,
+): void {
+  host.replaceChildren(
+    ...manager.fields.content(chart),
+    ...manager.fields.paint(chart),
+  );
+}
+
 describe("ChartManager", () => {
   it.each(["gauge", "line", "bar", "pie"] as const)(
     "adds, selects and records a palette-backed %s",
@@ -33,6 +52,9 @@ describe("ChartManager", () => {
         getObjects: vi.fn(() => objects),
         requestRenderAll: vi.fn(),
         setActiveObject: vi.fn(),
+        // A settings write is announced the way a gesture is, so the inspector
+        // re-reads the column; a stub canvas carries the same event channel.
+        fire: vi.fn(),
       };
       const historyManager = { saveState: vi.fn() };
       const manager = new ChartManager({
@@ -55,7 +77,6 @@ describe("ChartManager", () => {
             },
           },
         },
-        panelHost: document.body,
       });
 
       manager.addChart(family);
@@ -238,7 +259,6 @@ describe("ChartManager", () => {
       editor: { canvas, artboard } as unknown as EditorInteraction,
       scene: {} as SceneAdapter,
       source: createDemoSource(0),
-      panelHost: document.body,
     });
 
     expect(chart.option?.series).toHaveLength(0);
@@ -266,6 +286,7 @@ describe("ChartManager", () => {
       getObjects: vi.fn(() => objects),
       requestRenderAll: vi.fn(),
       setActiveObject: vi.fn(),
+      fire: vi.fn(),
     };
     const manager = new ChartManager({
       editor: {
@@ -287,7 +308,6 @@ describe("ChartManager", () => {
           },
         },
       },
-      panelHost: document.body,
     });
 
     manager.addChart("gauge");
@@ -327,7 +347,6 @@ describe("ChartManager", () => {
       } as unknown as EditorInteraction,
       scene: {} as SceneAdapter,
       source: createDemoSource(0),
-      panelHost: document.body,
     });
 
     expect(() => manager.addChart("gauge")).toThrow("palette token");
@@ -366,7 +385,6 @@ describe("ChartManager", () => {
           },
         },
       },
-      panelHost: document.body,
     });
 
     expect(chart.option).toMatchObject({ series: expect.any(Array) });
@@ -390,6 +408,8 @@ describe("ChartManager", () => {
       resizeTo: vi.fn(),
     }) as VigiliaChart;
     let revivedChart = chart;
+    const host = document.createElement("div");
+    document.body.append(host);
     const canvas = {
       on: vi.fn((event: string, listener: (event?: unknown) => void) =>
         listeners.set(event, listener),
@@ -398,6 +418,9 @@ describe("ChartManager", () => {
       getActiveObject: vi.fn(() => chart),
       getObjects: vi.fn(() => [revivedChart]),
       requestRenderAll: vi.fn(),
+      // The inspector re-reads the column on `object:modified`, so a test
+      // reading a control after a change rebuilds these bodies the same way.
+      fire: () => mountFields(manager, chart, host),
     };
     const scene = { objectFor: vi.fn(() => chart) } as unknown as SceneAdapter;
     const manager = new ChartManager({
@@ -418,23 +441,22 @@ describe("ChartManager", () => {
           },
         },
       },
-      panelHost: document.body,
     });
+    mountFields(manager, chart, host);
 
     expect(chart.option).toMatchObject({ series: expect.any(Array) });
 
     listeners.get("object:modified")!({ target: chart });
     expect(chart.resizeTo).toHaveBeenCalledWith(200, 150);
 
-    listeners.get("selection:created")!();
-    const binding = document.querySelector<HTMLSelectElement>(
+    const binding = host.querySelector<HTMLSelectElement>(
       '[data-vigilia-binding="cpu"]',
     )!;
     binding.value = "ram.used";
     binding.dispatchEvent(new Event("change"));
     expect(chart.option).toMatchObject({ series: expect.any(Array) });
 
-    const thickness = document.querySelector<HTMLInputElement>(
+    const thickness = host.querySelector<HTMLInputElement>(
       '[data-vigilia-chart-setting="thickness"]',
     )!;
     thickness.value = "24";
@@ -442,12 +464,12 @@ describe("ChartManager", () => {
 
     expect(chart.settings).toMatchObject({ thickness: 24 });
     expect(
-      document.querySelector<HTMLInputElement>(
+      host.querySelector<HTMLInputElement>(
         '[data-vigilia-chart-setting="thickness"]',
       )!.value,
     ).toBe("24");
 
-    const progress = document.querySelector<HTMLSelectElement>(
+    const progress = host.querySelector<HTMLSelectElement>(
       '[data-vigilia-chart-paint="progress"]',
     )!;
     progress.value = "palette.track";
@@ -468,7 +490,8 @@ describe("ChartManager", () => {
     expect(revivedChart.option).toMatchObject({ series: expect.any(Array) });
 
     manager.destroy();
-    expect(canvas.off).toHaveBeenCalledTimes(6);
+    // `object:modified`, `editor:history-state-loaded`, `editor:object-pasted`.
+    expect(canvas.off).toHaveBeenCalledTimes(3);
   });
 
   it("announces a ratio resize, so a geometry field re-reads the chart", () => {
@@ -507,8 +530,8 @@ describe("ChartManager", () => {
       editor: { canvas, artboard } as unknown as EditorInteraction,
       scene: {} as SceneAdapter,
       source: createDemoSource(0),
-      panelHost: host,
     });
+    mountFields(manager, chart, host);
 
     host
       .querySelector<HTMLButtonElement>('[data-vigilia-chart-aspect="2"]')!
@@ -562,8 +585,8 @@ describe("ChartManager", () => {
       editor: { canvas, artboard } as unknown as EditorInteraction,
       scene: {} as SceneAdapter,
       source: createDemoSource(0),
-      panelHost: host,
     });
+    mountFields(manager, chart, host);
 
     const pressed = (): (string | null)[] =>
       [...host.querySelectorAll("[data-vigilia-chart-aspect]")].map((button) =>
@@ -577,6 +600,8 @@ describe("ChartManager", () => {
       .querySelector<HTMLButtonElement>('[data-vigilia-chart-aspect="3"]')!
       .click();
 
+    // The manager announced the change, and the column is what re-reads it.
+    mountFields(manager, chart, host);
     expect(pressed()).toEqual(["false", "true", "false"]);
 
     // A chart dragged to a ratio the control group does not offer names none
@@ -586,6 +611,7 @@ describe("ChartManager", () => {
     chart.scaleX = 1;
     chart.scaleY = 1;
     listeners.get("object:modified")!({ target: chart });
+    mountFields(manager, chart, host);
 
     expect(pressed()).toEqual(["false", "false", "false"]);
 
@@ -614,8 +640,8 @@ describe("ChartManager", () => {
       editor: { canvas, artboard } as unknown as EditorInteraction,
       scene: {} as SceneAdapter,
       source: createDemoSource(0),
-      panelHost: host,
     });
+    mountFields(manager, chart, host);
 
     host
       .querySelector<HTMLButtonElement>('[data-vigilia-chart-aspect="4"]')!
@@ -676,8 +702,6 @@ describe("ChartManager", () => {
         height: 200,
       }),
     );
-    const host = document.createElement("div");
-    document.body.append(host);
     const manager = new ChartManager({
       editor: {
         canvas,
@@ -692,7 +716,6 @@ describe("ChartManager", () => {
           gpu: { name: "GPU", value: { kind: "solid", color: "#00b8d9" } },
         },
       } as never,
-      panelHost: host,
     });
 
     manager.reassignPaletteReferences("palette.ink", "palette.gpu");
@@ -757,7 +780,6 @@ describe("a chart that throws", () => {
       } as unknown as EditorInteraction,
       scene: {} as SceneAdapter,
       source: createDemoSource(0),
-      panelHost: document.body,
     });
 
     // The constructor hydrates too, so the spies are cleared and the assertion
@@ -798,9 +820,9 @@ describe("a chart's series paint", () => {
       on: vi.fn(),
       off: vi.fn(),
       requestRenderAll: vi.fn(),
+      fire: vi.fn(),
     };
-    const panelHost = document.createElement("div");
-    let bindings: readonly Binding[] = [];
+    const host = document.createElement("div");
     const manager = new ChartManager({
       editor: {
         canvas,
@@ -815,40 +837,51 @@ describe("a chart's series paint", () => {
           ink: { name: "Ink", value: { kind: "solid", color: "#102030" } },
         },
       } as never,
-      panelHost,
     });
-    return { manager, panelHost, objects, bindingsOf: () => bindings };
+    // The manager announces on change and the column rebuilds; this is the
+    // column standing in for the inspector.
+    const draw = (): void => {
+      const chart = objects.at(-1);
+      if (chart !== undefined)
+        host.replaceChildren(
+          ...manager.fields.content(chart),
+          ...manager.fields.paint(chart),
+        );
+    };
+    return { manager, host, draw, objects };
   }
 
   it("gains a series paint for every series bound", () => {
-    const { manager, panelHost, objects } = harness();
+    const { manager, host, draw, objects } = harness();
     manager.addChart("line");
     const palette = (): unknown =>
       (objects[0]?.settings as unknown as Record<string, unknown>)["palette"];
     expect(Array.isArray(palette()) && (palette() as unknown[]).length).toBe(1);
 
     for (const semanticKey of ["cpu.load", "gpu.load", "ram.used.percent"]) {
-      const chooser = panelHost.querySelector<HTMLSelectElement>(
+      draw();
+      const chooser = host.querySelector<HTMLSelectElement>(
         "[data-vigilia-chart-binding-add]",
       )!;
       chooser.value = semanticKey;
       chooser.dispatchEvent(new Event("change"));
     }
+    draw();
 
     expect((palette() as unknown[]).length).toBe(3);
     // The control follows the array, so three entries means three pickers.
     expect(
-      panelHost.querySelectorAll("[data-vigilia-chart-paint^='palette']")
-        .length,
+      host.querySelectorAll("[data-vigilia-chart-paint^='palette']").length,
     ).toBe(3);
     manager.destroy();
   });
 
   it("leaves a gauge's paints alone, because a gauge has no series", () => {
-    const { manager, panelHost, objects } = harness();
+    const { manager, host, draw, objects } = harness();
     manager.addChart("gauge");
     const before = objects[0]?.settings;
-    const chooser = panelHost.querySelector<HTMLSelectElement>(
+    draw();
+    const chooser = host.querySelector<HTMLSelectElement>(
       "[data-vigilia-chart-binding-add]",
     )!;
     chooser.value = "cpu.load";

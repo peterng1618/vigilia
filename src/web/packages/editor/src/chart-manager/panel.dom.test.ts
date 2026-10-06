@@ -6,10 +6,55 @@ import {
   computeComposition,
   defaultLineSettings,
   defaultPieSettings,
+  type FabricPalette,
   type LineSettings,
   type PieSettings,
 } from "@vigilia/renderer-core";
-import { type ChartPropertyPanel, createChartPropertyPanel } from "./panel.js";
+import {
+  type ChartFieldHandlers,
+  type ChartFieldTarget,
+  chartContentFields,
+  chartPaintFields,
+} from "./panel.js";
+
+/**
+ * The chart's fields gathered into one body, the way the inspector's column
+ * mounts them by question. The panel's own `root` used to be that body; the
+ * controls, their ids and their labels are what these assertions are about, and
+ * those are still the builders above.
+ */
+function chartPanelOf(
+  host: HTMLElement,
+  onChange: ChartFieldHandlers["onSettings"],
+  onBindingChange: ChartFieldHandlers["onBinding"],
+  onAspect: ChartFieldHandlers["onAspect"],
+  onAddBinding: ChartFieldHandlers["onAddBinding"],
+  onRemoveBinding: ChartFieldHandlers["onRemoveBinding"],
+): {
+  readonly root: HTMLElement;
+  render(chart: ChartFieldTarget | undefined, palette?: FabricPalette): void;
+} {
+  const root = document.createElement("div");
+  host.append(root);
+  const handlers: ChartFieldHandlers = {
+    onSettings: onChange,
+    onBinding: onBindingChange,
+    onAspect,
+    onAddBinding,
+    onRemoveBinding,
+  };
+  return {
+    root,
+    render(chart, palette) {
+      root.replaceChildren();
+      if (chart === undefined) return;
+      root.append(
+        ...chartContentFields(chart, palette, handlers),
+        ...chartPaintFields(chart, palette, handlers),
+      );
+    },
+  };
+}
 
 describe("every control the panel offers", () => {
   // The panel was the one place in the shell where a control had no id and its
@@ -103,7 +148,7 @@ describe("every control the panel offers", () => {
   ];
 
   it("reaches every control by its label rather than by position", () => {
-    const panel = createChartPropertyPanel(
+    const panel = chartPanelOf(
       document.body,
       vi.fn(),
       vi.fn(),
@@ -113,7 +158,7 @@ describe("every control the panel offers", () => {
     );
 
     for (const chart of charts) {
-      panel.render(chart as Parameters<ChartPropertyPanel["render"]>[0]);
+      panel.render(chart as ChartFieldTarget);
       const controls = [
         ...panel.root.querySelectorAll<HTMLInputElement | HTMLSelectElement>(
           "input, select, textarea",
@@ -139,7 +184,7 @@ describe("every control the panel offers", () => {
     // Two bindings render the same fields twice and a `multiple` paint row
     // renders one control per slice, so a positional id would collide and the
     // second control's label would name the first.
-    const panel = createChartPropertyPanel(
+    const panel = chartPanelOf(
       document.body,
       vi.fn(),
       vi.fn(),
@@ -147,7 +192,7 @@ describe("every control the panel offers", () => {
       vi.fn(),
       vi.fn(),
     );
-    panel.render(charts[1] as Parameters<ChartPropertyPanel["render"]>[0]);
+    panel.render(charts[1] as ChartFieldTarget);
 
     const ids = [...panel.root.querySelectorAll<HTMLElement>("[id]")].map(
       (element) => element.id,
@@ -158,7 +203,7 @@ describe("every control the panel offers", () => {
   it("reaches the corner-radius control by its label", () => {
     // The exact lookup that returned nothing twice: name the control, not find
     // it by walking the section.
-    const panel = createChartPropertyPanel(
+    const panel = chartPanelOf(
       document.body,
       vi.fn(),
       vi.fn(),
@@ -166,7 +211,7 @@ describe("every control the panel offers", () => {
       vi.fn(),
       vi.fn(),
     );
-    panel.render(charts[2] as Parameters<ChartPropertyPanel["render"]>[0]);
+    panel.render(charts[2] as ChartFieldTarget);
 
     const byLabel = [...panel.root.querySelectorAll("label")].find(
       (l) => l.textContent?.trim() === "Corner radius",
@@ -195,7 +240,7 @@ describe("chart property panel", () => {
     // manager; this is the control that reaches it, and it names the reading so
     // an author can tell three "Remove" buttons apart.
     const onRemoveBinding = vi.fn();
-    const panel = createChartPropertyPanel(
+    const panel = chartPanelOf(
       document.body,
       vi.fn(),
       vi.fn(),
@@ -250,7 +295,7 @@ describe("chart property panel", () => {
 
   it("offers line aspect presets and visible history", () => {
     const resize = vi.fn();
-    const panel = createChartPropertyPanel(
+    const panel = chartPanelOf(
       document.body,
       vi.fn(),
       vi.fn(),
@@ -298,7 +343,7 @@ describe("chart property panel", () => {
   it("derives controls from the shared field descriptors and returns authored settings", () => {
     const change = vi.fn();
     const bindingChange = vi.fn();
-    const panel = createChartPropertyPanel(
+    const panel = chartPanelOf(
       document.body,
       change,
       bindingChange,
@@ -400,7 +445,7 @@ describe("chart property panel", () => {
 describe("the series a chart reads", () => {
   const trend = (
     bindings: readonly { id: string; semanticKey: string }[],
-  ): Parameters<ChartPropertyPanel["render"]>[0] => ({
+  ): ChartFieldTarget => ({
     id: "trends",
     content: {
       family: "line",
@@ -423,7 +468,7 @@ describe("the series a chart reads", () => {
     // and a chart inserted through the Add pane declares none — so the whole
     // family was unauthorable from the surface.
     const add = vi.fn();
-    const panel = createChartPropertyPanel(
+    const panel = chartPanelOf(
       document.body,
       vi.fn(),
       vi.fn(),
@@ -447,7 +492,7 @@ describe("the series a chart reads", () => {
 
   it("removes a series, but never the last one", () => {
     const remove = vi.fn();
-    const panel = createChartPropertyPanel(
+    const panel = chartPanelOf(
       document.body,
       vi.fn(),
       vi.fn(),
@@ -479,7 +524,7 @@ describe("the series a chart reads", () => {
     // `buildChartPlan` reads `bindings[0]` for a gauge and ignores the rest, so
     // a second one would be a control that accepts an edit and applies none.
     const add = vi.fn();
-    const panel = createChartPropertyPanel(
+    const panel = chartPanelOf(
       document.body,
       vi.fn(),
       vi.fn(),
@@ -530,7 +575,7 @@ function sample(sensorId: string, value: number) {
 function panelOf(
   change: (id: string, settings: ChartContent["settings"]) => void,
 ) {
-  return createChartPropertyPanel(
+  return chartPanelOf(
     document.body,
     change,
     vi.fn(),

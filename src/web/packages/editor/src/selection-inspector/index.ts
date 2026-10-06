@@ -9,6 +9,7 @@ import type { EditorInteraction } from "../editor-interaction.js";
 import type { PropertySection } from "../editor-shell/controls/property-section.js";
 import { uiCopy } from "../ui-copy.js";
 import {
+  type ChartFieldsPort,
   type ColumnContext,
   type ColumnSectionId,
   type GeometryKey,
@@ -199,6 +200,15 @@ export interface SelectionInspectorOptions {
    * enable control would accept an edit and paint nothing.
    */
   readonly refreshGlass: () => void;
+  /**
+   * The chart owner's own fields, for a chart selection.
+   *
+   * A getter rather than the port: the chart manager is built after this
+   * inspector, in the session that owns both, so the column asks for them at
+   * render time — and the owner a later document mount replaces is the one it
+   * gets.
+   */
+  readonly chartFields?: () => ChartFieldsPort | undefined;
 }
 
 /** The input types that hold a caret. A checkbox has focus and nothing to type. */
@@ -445,6 +455,7 @@ export function createSelectionInspector(
       root.append(note);
     }
 
+    const chartFields = options.chartFields?.();
     const context: ColumnContext = {
       editor,
       globals,
@@ -462,6 +473,7 @@ export function createSelectionInspector(
       nodeBindings: options.nodeBindings,
       onNodeBindingsChange: options.onNodeBindingsChange,
       sampleSource: options.sampleSource,
+      ...(chartFields === undefined ? {} : { chartFields }),
       sections,
     };
 

@@ -5,7 +5,11 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { expect, it, vi } from "vitest";
 import { createArtboardPanel } from "./artboard-panel.js";
-import { createChartPropertyPanel } from "./chart-manager/panel.js";
+import {
+  chartContentFields,
+  chartPaintFields,
+  type ChartFieldHandlers,
+} from "./chart-manager/panel.js";
 import { catalogFaces, fontTrios } from "./font-catalog.js";
 import { FontPicker } from "./font-picker/font-picker.js";
 import { createPalettePanel } from "./palette-manager/panel.js";
@@ -273,14 +277,17 @@ function mountUnitDisplayPanels(root: HTMLElement): void {
     },
     bindings: [{ id: "g", semanticKey: "ram.used.percent" }],
   };
-  createChartPropertyPanel(
-    root,
-    vi.fn(),
-    vi.fn(),
-    vi.fn(),
-    vi.fn(),
-    vi.fn(),
-  ).render(gauge as never);
+  const handlers: ChartFieldHandlers = {
+    onSettings: vi.fn(),
+    onBinding: vi.fn(),
+    onAspect: vi.fn(),
+    onAddBinding: vi.fn(),
+    onRemoveBinding: vi.fn(),
+  };
+  root.append(
+    ...chartContentFields(gauge, undefined, handlers),
+    ...chartPaintFields(gauge, undefined, handlers),
+  );
 
   const canvas = new Canvas(document.createElement("canvas"));
   const object = new Textbox("", { id: "clock-label" });

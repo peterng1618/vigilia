@@ -27,7 +27,7 @@ import type { EditorActionFacade } from "./session-facade.js";
 
 export type { RailPane } from "./pane-bar.js";
 
-export type InspectorTab = "design" | "data" | "style";
+export type InspectorTab = "design" | "style";
 
 /** Persistent DOM owners the imperative panels mount into. React positions
  * these; it never renders panel content. The Layers pane has no node here: the
@@ -37,8 +37,8 @@ export interface ShellHosts {
   readonly add: HTMLElement;
   readonly assets: HTMLElement;
   readonly document: HTMLElement;
-  readonly chart: HTMLElement;
-  /** Properties of the selected object, in the Design tab. */
+  /** Properties of the selected object, in the Design tab. A chart's family
+      settings and bindings are part of that column, not a tab of their own. */
   readonly selection: HTMLElement;
   /** What the selection's references resolve to, in the Style tab. */
   readonly style: HTMLElement;
@@ -416,7 +416,6 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
     add: element("vigiliaPanelHostAdd"),
     assets: element("vigiliaPanelHostAssets"),
     document: element("vigiliaPanelHostDocument"),
-    chart: element("vigiliaPanelHostChart"),
     selection: element("vigiliaPanelHostSelection"),
     style: element("vigiliaPanelHostStyle"),
     status: document.createElement("span"),
@@ -577,27 +576,25 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
           <aside className="editor-shell-inspector editor-glass">
             <Tabs.Root defaultValue="design">
               <Tabs.List className="editor-shell-tabs">
-                {(["design", "data", "style"] as const).map((tab) => (
+                {(["design", "style"] as const).map((tab) => (
                   <Tabs.Tab key={tab} value={tab}>
                     {uiCopy.inspector[tab]}
                   </Tabs.Tab>
                 ))}
               </Tabs.List>
               {/* Document panels stay mounted in Design: a selection must not
-                  make the theme's own settings unreachable. */}
+                  make the theme's own settings unreachable. A chart's own
+                  fields are in this same panel — the selection inspector's
+                  column asks the chart owner for them — so a chart is not the
+                  one kind whose questions are behind another tab. */}
               <Tabs.Panel value="design" keepMounted>
                 <Host node={hosts.selection} />
                 {kind !== "none" && (
                   <p className="editor-shell-hint">
-                    {kind === "chart"
-                      ? "Chart settings are under Data."
-                      : "Move and lock the selection with the canvas dock."}
+                    Move and lock the selection with the canvas dock.
                   </p>
                 )}
                 <Host node={hosts.document} />
-              </Tabs.Panel>
-              <Tabs.Panel value="data" keepMounted>
-                <Host node={hosts.chart} />
               </Tabs.Panel>
               <Tabs.Panel value="style" keepMounted>
                 <Host node={hosts.style} />

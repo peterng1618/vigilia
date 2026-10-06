@@ -30,6 +30,7 @@ import { uiCopy } from "../ui-copy.js";
 import { idleCrop } from "./idle-crop.test-stage.js";
 import { createSelectionInspector } from "./index.js";
 import {
+  type ChartFieldsPort,
   KIND_QUESTIONS,
   perKindColumn,
   SELECTION_KINDS,
@@ -808,6 +809,61 @@ describe("the column's sections", () => {
         section.root.querySelectorAll(".vigilia-section-body > *").length,
       );
     }
+  });
+
+  it("mounts a chart's own fields in the chart's own column", () => {
+    // The seam the Data tab used to be. A chart's settings and bindings are
+    // written by the chart manager and mounted here, in the Content and Paint
+    // sections of the selection's column — so the question "where is this
+    // chart's data?" is answered where the author already is, and the count
+    // over each section includes the fields the owner handed over.
+    const chart = chartOf("gauge", defaultGaugeSettings);
+    const field = (marker: string): HTMLElement => {
+      const element = document.createElement("div");
+      element.dataset["marker"] = marker;
+      return element;
+    };
+    const chartFields: ChartFieldsPort = {
+      content: () => [field("content")],
+      paint: () => [field("paint")],
+    };
+    const sections = perKindColumn(chart, {
+      editor: {
+        canvas: canvasWith(chart),
+        historyManager: { saveState: vi.fn() },
+        errorManager: { warn: vi.fn(), error: vi.fn() },
+        cropManager: idleCrop(),
+      } as never,
+      globals: undefined,
+      locale: undefined,
+      geometry: {
+        read: () => 0,
+        write: () => {},
+        measuredEdge: () => undefined,
+      },
+      stillTarget: () => true,
+      commit: () => {},
+      rerender: () => {},
+      revealTypePresets: undefined,
+      refreshGlass: () => {},
+      nodeBindings: undefined,
+      onNodeBindingsChange: undefined,
+      sampleSource: undefined,
+      sections: new Map(),
+      chartFields,
+    });
+    const inSection = (name: string, marker: string): HTMLElement | null =>
+      sections
+        .find((section) => section.section === name)
+        ?.root.querySelector<HTMLElement>(`[data-marker="${marker}"]`) ?? null;
+
+    expect(inSection("content", "content")).not.toBeNull();
+    expect(inSection("paint", "paint")).not.toBeNull();
+    // Nowhere else: a chart's paint is not a content field, and the count over
+    // each section is what tells the two apart when both are mounted.
+    expect(inSection("paint", "content")).toBeNull();
+    expect(inSection("content", "paint")).toBeNull();
+    expect(sections.find((s) => s.section === "content")?.count).toBe(2);
   });
 });
 

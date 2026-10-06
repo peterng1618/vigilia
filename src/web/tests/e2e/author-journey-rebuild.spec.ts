@@ -494,7 +494,7 @@ test.describe("the rest of the composition", () => {
       paint: ["GPU violet"],
     });
     // A card sparkline has no axes in the target, and the family offers them.
-    await openTab(page, "Data");
+    await openTab(page, "Design");
     await page.locator('[data-vigilia-chart-setting="showAxes"]').uncheck();
     await page.screenshot({ path: SHOT("04-gpu-card") });
 
@@ -516,6 +516,12 @@ test.describe("the rest of the composition", () => {
   test("the two memory rings: a partial gauge and a full one", async ({
     page,
   }) => {
+    // Measured at 45–52s, against a 30s default: thirteen authored objects, two
+    // of them charts, and this test was already over budget before the fields
+    // moved — at the previous commit it times out on the way to the assertion it
+    // was failing. The work is real, so the budget follows it rather than the
+    // test being cut down to fit.
+    test.slow();
     await addCard(page, {
       name: "ram-card",
       x: 1018,
@@ -553,10 +559,17 @@ test.describe("the rest of the composition", () => {
       series: ["ram.used.percent"],
       paint: [undefined, "RAM teal"],
     });
-    await openTab(page, "Data");
+    await openTab(page, "Design");
     // 270 degrees open at the bottom, which is the target's RAM ring.
+    //
+    // `45`, not `405`: the two are the same arc — ECharts reduces both angles
+    // mod 360, so 135 → 405 and 135 → 45 each sweep 270° clockwise, measured
+    // identical to the pixel. 45 is the spelling the field can hold, and the
+    // field is the enforcing control: a value it cannot hold never reaches the
+    // chart, so a journey that typed one was asserting a document that cannot
+    // exist.
     await fill(page, '[data-vigilia-chart-setting="startAngle"]', 135);
-    await fill(page, '[data-vigilia-chart-setting="endAngle"]', 405);
+    await fill(page, '[data-vigilia-chart-setting="endAngle"]', 45);
     await fill(page, '[data-vigilia-chart-setting="thickness"]', 14);
     await page.locator('[data-vigilia-chart-setting="roundCap"]').check();
     await chooseToken(
@@ -663,7 +676,7 @@ test.describe("the rest of the composition", () => {
       "vram-capacity",
     ]);
     expect(await readObject(page, "ram-gauge")).toMatchObject({
-      settings: { startAngle: 135, endAngle: 405, roundCap: true },
+      settings: { startAngle: 135, endAngle: 45, roundCap: true },
     });
     expect(await readObject(page, "vram-gauge")).toMatchObject({
       settings: { startAngle: 90, endAngle: -270, roundCap: true },
@@ -710,7 +723,7 @@ test.describe("the rest of the composition", () => {
       series: ["cpu.load", "gpu.load", "ram.used.percent"],
       paint: ["CPU blue", "GPU violet", "RAM teal"],
     });
-    await openTab(page, "Data");
+    await openTab(page, "Design");
     await page.locator('[data-vigilia-chart-setting="showAxes"]').uncheck();
     await page.screenshot({ path: SHOT("06-trends") });
 
@@ -779,7 +792,7 @@ test.describe("the rest of the composition", () => {
       series: ["disk.used.percent"],
       paint: ["CPU blue"],
     });
-    await openTab(page, "Data");
+    await openTab(page, "Design");
     await page.locator('[data-vigilia-chart-setting="showAxes"]').uncheck();
     await page
       .locator('[data-vigilia-chart-setting="showCategoryLabels"]')
@@ -856,7 +869,7 @@ test.describe("the rest of the composition", () => {
       series: ["network.download", "network.upload"],
       paint: ["CPU blue", "GPU violet"],
     });
-    await openTab(page, "Data");
+    await openTab(page, "Design");
     await page.locator('[data-vigilia-chart-setting="showAxes"]').uncheck();
     await page.screenshot({ path: SHOT("08-network") });
 
