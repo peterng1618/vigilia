@@ -22,8 +22,9 @@ export interface PropertySectionOptions {
   readonly title: string;
   readonly body: readonly HTMLElement[];
   readonly defaultOpen: boolean;
-  /** Rendered in the summary when given. A count of zero on a body that has
-      fields is the caller's mistake, not this control's to invent one for. */
+  /** Rendered in the summary when given, and kept in step with the body by
+      `setBody`. A count of zero on a body that has fields is the caller's
+      mistake, not this control's to invent one for. */
   readonly count?: number;
 }
 
@@ -32,7 +33,8 @@ export interface PropertySection {
   isOpen(): boolean;
   open(): void;
   /** Replaces the body and leaves the open state alone: a re-render must not
-      collapse the section the author just opened. */
+      collapse the section the author just opened. An empty body removes the
+      section, and a body that follows builds it again at `defaultOpen`. */
   setBody(next: readonly HTMLElement[]): void;
 }
 
@@ -47,8 +49,12 @@ export function propertySection(
   const root = document.createElement("div");
   let details: HTMLDetailsElement | undefined;
   let content: HTMLElement | undefined;
+  let counter: HTMLElement | undefined;
 
-  const build = (children: readonly HTMLElement[]): void => {
+  const build = (
+    children: readonly HTMLElement[],
+    count: number | undefined,
+  ): void => {
     const section = document.createElement("section");
     section.className = "vigilia-section";
     section.dataset["vigiliaSection"] = options.id;
@@ -68,11 +74,12 @@ export function propertySection(
     title.id = `vigilia-section-title-${++seq}`;
     summary.setAttribute("aria-labelledby", title.id);
     summary.append(title);
-    if (options.count !== undefined) {
-      const count = document.createElement("span");
-      count.className = "vigilia-section-count";
-      count.textContent = String(options.count);
-      summary.append(count);
+    if (count !== undefined) {
+      const element = document.createElement("span");
+      element.className = "vigilia-section-count";
+      element.textContent = String(count);
+      summary.append(element);
+      counter = element;
     }
 
     const body = document.createElement("div");
@@ -87,7 +94,7 @@ export function propertySection(
   };
 
   // Nothing to hold means nothing to disclose: no header, no count of zero.
-  if (options.body.length > 0) build(options.body);
+  if (options.body.length > 0) build(options.body, options.count);
 
   return {
     root,
@@ -96,10 +103,24 @@ export function propertySection(
       if (details !== undefined) details.open = true;
     },
     setBody: (next) => {
-      if (content === undefined) {
-        if (next.length > 0) build(next);
+      if (next.length === 0) {
+        // An emptied body is an empty section, so the header goes with it
+        // rather than claiming a count over nothing. A later body builds it
+        // again at `defaultOpen`: a section that disappeared has no open state
+        // left to preserve, and reopening it closed is the only honest reset.
+        root.replaceChildren();
+        details = undefined;
+        content = undefined;
+        counter = undefined;
         return;
       }
+      if (content === undefined) {
+        build(next, options.count === undefined ? undefined : next.length);
+        return;
+      }
+      // A count that can lie is worse than no count: the header follows the
+      // body it now holds.
+      if (counter !== undefined) counter.textContent = String(next.length);
       content.replaceChildren(...next);
     },
   };

@@ -470,4 +470,58 @@ describe("property section", () => {
     expect(section.root.querySelector("details")).toBeNull();
     expect(section.root.textContent).toBe("");
   });
+
+  it("follows a shrinking body with its count", () => {
+    const section = propertySection({
+      id: "paint",
+      title: "Paint",
+      body: [line("Fill"), line("Stroke"), line("Opacity")],
+      defaultOpen: true,
+      count: 3,
+    });
+    document.body.append(section.root);
+
+    section.setBody([line("Fill"), line("Stroke")]);
+
+    // A header that still says three over a body holding two is the same lie as
+    // a count of zero on fields: the count describes the body it is attached to.
+    expect(parts(section).body?.children).toHaveLength(2);
+    expect(
+      section.root.querySelector(".vigilia-section-count")?.textContent,
+    ).toBe("2");
+    expect(parts(section).summary?.textContent).toBe("Paint2");
+    expect(section.isOpen()).toBe(true);
+  });
+
+  it("empties with its body and builds again when the body comes back", () => {
+    const section = propertySection({
+      id: "layer",
+      title: "Layer",
+      body: [line("Opacity")],
+      defaultOpen: false,
+      count: 1,
+    });
+    document.body.append(section.root);
+    section.open();
+    expect(section.isOpen()).toBe(true);
+
+    section.setBody([]);
+
+    // An emptied body is an empty section: the header goes with it rather than
+    // standing over nothing.
+    expect(section.root.querySelector("details")).toBeNull();
+    expect(section.root.textContent).toBe("");
+
+    section.setBody([line("Scale"), line("Rotation")]);
+
+    // A section that disappeared has no open state to preserve, so the rebuilt
+    // one is `defaultOpen` again — and its count follows the new body, not the
+    // one it was constructed with.
+    expect(parts(section).details).not.toBeNull();
+    expect(section.isOpen()).toBe(false);
+    expect(parts(section).body?.children).toHaveLength(2);
+    expect(
+      section.root.querySelector(".vigilia-section-count")?.textContent,
+    ).toBe("2");
+  });
 });
