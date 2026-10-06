@@ -10,7 +10,6 @@ import {
   fill,
   insert,
   openBlank,
-  openTab,
   place,
   readObject,
   readScene,
@@ -90,9 +89,9 @@ test.describe("the reference composition, built from blank", () => {
       ).toBeGreaterThan(0);
     }
 
-    // The inspector's own read of what the document offers, so "populated" is
-    // measured rather than assumed.
-    await openTab(page, "Style");
+    // The document's own read of what it offers, in the Document pane beside
+    // the palette it lists, so "populated" is measured rather than assumed.
+    await openPane(page, "Document");
     const offered = await page
       .locator("[data-vigilia-resolution]")
       .allInnerTexts();
@@ -331,7 +330,6 @@ test.describe("the reference composition, built from blank", () => {
       series: ["cpu.load"],
       paint: ["CPU blue"],
     });
-    await openTab(page, "Design");
     await selectLayer(page, "cpu-card-value");
 
     await page.screenshot({ path: SHOT("03-cpu-card") });
@@ -410,9 +408,8 @@ async function reading(
     colour: "palette.text",
   });
   await selectLayer(page, name);
-  // The run editor lives in Design, and a chart's settings live in Data — so
-  // coming back from a chart is a tab click, the way an author does it.
-  await openTab(page, "Design");
+  // The run editor lives in the selection's own column, which no pane choice
+  // affects, so reaching it needs no click at all.
   await page.locator('[data-vigilia-run-source="0"]').selectOption(key);
   await page.locator("[data-vigilia-run-add]").click();
   await fill(page, '[data-vigilia-run-text="1"]', "%");
@@ -494,7 +491,6 @@ test.describe("the rest of the composition", () => {
       paint: ["GPU violet"],
     });
     // A card sparkline has no axes in the target, and the family offers them.
-    await openTab(page, "Design");
     await page.locator('[data-vigilia-chart-setting="showAxes"]').uncheck();
     await page.screenshot({ path: SHOT("04-gpu-card") });
 
@@ -559,7 +555,6 @@ test.describe("the rest of the composition", () => {
       series: ["ram.used.percent"],
       paint: [undefined, "RAM teal"],
     });
-    await openTab(page, "Design");
     // 270 degrees open at the bottom, which is the target's RAM ring.
     //
     // `45`, not `405`: the two are the same arc — ECharts reduces both angles
@@ -723,7 +718,6 @@ test.describe("the rest of the composition", () => {
       series: ["cpu.load", "gpu.load", "ram.used.percent"],
       paint: ["CPU blue", "GPU violet", "RAM teal"],
     });
-    await openTab(page, "Design");
     await page.locator('[data-vigilia-chart-setting="showAxes"]').uncheck();
     await page.screenshot({ path: SHOT("06-trends") });
 
@@ -792,7 +786,6 @@ test.describe("the rest of the composition", () => {
       series: ["disk.used.percent"],
       paint: ["CPU blue"],
     });
-    await openTab(page, "Design");
     await page.locator('[data-vigilia-chart-setting="showAxes"]').uncheck();
     await page
       .locator('[data-vigilia-chart-setting="showCategoryLabels"]')
@@ -869,7 +862,6 @@ test.describe("the rest of the composition", () => {
       series: ["network.download", "network.upload"],
       paint: ["CPU blue", "GPU violet"],
     });
-    await openTab(page, "Design");
     await page.locator('[data-vigilia-chart-setting="showAxes"]').uncheck();
     await page.screenshot({ path: SHOT("08-network") });
 

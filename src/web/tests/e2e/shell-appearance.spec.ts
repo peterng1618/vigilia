@@ -1,4 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
+import { openPane } from "./editor-pane-bar.js";
 import { isDesktopSurface } from "./surface.js";
 
 /**
@@ -48,6 +49,11 @@ async function openEditor(page: Page): Promise<void> {
   await expect(
     page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
   ).toBeVisible();
+  // The document panels — the artboard's and the palette's — are the chrome's
+  // form controls, and they live in the left column's Document pane. Its width
+  // and ratio controls are what `shellColours` reads, so the pane has to be
+  // showing for them to have a box.
+  await openPane(page, "Document");
 }
 
 /** Choose a palette the way an author does: open the menu, click the entry.
@@ -81,8 +87,8 @@ async function shellColours(page: Page): Promise<Record<string, string>> {
     };
     return {
       paletteTrigger: read("[data-vigilia-palette]"),
-      inspectorInput: read(".editor-shell-inspector input"),
-      inspectorSelect: read(".editor-shell-inspector select"),
+      documentInput: read(".editor-shell-panel input"),
+      documentSelect: read(".editor-shell-panel select"),
       stage: read(".editor-shell-stage"),
     };
   });

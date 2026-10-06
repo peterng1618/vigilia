@@ -133,10 +133,6 @@ export async function openBlank(
   await expect.poll(async () => (await readScene(page)).length).toBe(0);
 }
 
-export async function openTab(page: Page, tab: string): Promise<void> {
-  await page.getByRole("tab", { name: tab, exact: true }).click();
-}
-
 /** The button in the Add pane that makes an object, by the word on it. */
 export function addButton(page: Page, label: string): Locator {
   return page
@@ -147,11 +143,9 @@ export function addButton(page: Page, label: string): Locator {
 /** Inserts an object from the Add pane, by the word on the control. */
 export async function insert(page: Page, label: string): Promise<void> {
   // The bar shows one pane, and selecting a layer switches it to Layers — so
-  // an author comes back to Insert the same way this does.
+  // an author comes back to Insert the same way this does. The selection's own
+  // fields are in the right column, which no pane affects.
   await openPane(page, "Insert");
-  // The selection inspector and a chart's own fields are both in the Design
-  // tab, so a fresh object always brings the author back to Design.
-  await openTab(page, "Design");
   const before = (await readScene(page)).length;
   const button = addButton(page, label);
   // "Line" is a shape and a chart, and the legend above each is what tells them
@@ -298,6 +292,9 @@ export async function addColour(
   name: string,
   hex: string,
 ): Promise<void> {
+  // The palette panel is a document panel, so it lives in the Document pane
+  // and is hidden until the pane is asked for.
+  await openPane(page, "Document");
   await page.getByRole("button", { name: "Add colour", exact: true }).click();
   await fill(page, "[data-vigilia-palette-name]", name);
   await fill(page, "[data-vigilia-palette-color]", hex);
@@ -401,7 +398,6 @@ export async function addChart(
   await insert(page, chart.family);
   await setName(page, chart.name);
   await place(page, chart);
-  await openTab(page, "Design");
   for (const key of chart.series) {
     // Scrolled first: the chart's fields sit in a scrolling inspector, and
     // `selectOption` waits for visibility rather than scrolling to it.

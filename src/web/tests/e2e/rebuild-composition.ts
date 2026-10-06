@@ -15,7 +15,6 @@ import {
   fill,
   insert,
   openBlank,
-  openTab,
   place,
   selectLayer,
   setName,
@@ -112,9 +111,8 @@ async function reading(
     colour: "text",
   });
   await selectLayer(page, name);
-  // The run editor lives in Design, and a chart's settings live in Data — so
-  // coming back from a chart is a tab click, the way an author does it.
-  await openTab(page, "Design");
+  // The run editor lives in the selection's own column, which no pane choice
+  // affects, so reaching it needs no click at all.
   await page.locator('[data-vigilia-run-source="0"]').selectOption(key);
   await page.locator("[data-vigilia-run-add]").click();
   await fill(page, '[data-vigilia-run-text="1"]', "%");
@@ -319,7 +317,6 @@ export async function buildCpuCard(page: Page): Promise<void> {
     series: ["cpu.load"],
     paint: ["CPU blue"],
   });
-  await openTab(page, "Design");
   await selectLayer(page, "cpu-card-value");
 }
 
@@ -384,7 +381,6 @@ export async function buildGpuCard(page: Page): Promise<void> {
     paint: ["GPU violet"],
   });
   // A card sparkline has no axes in the target, and the family offers them.
-  await openTab(page, "Design");
   await page.locator('[data-vigilia-chart-setting="showAxes"]').uncheck();
 }
 
@@ -427,7 +423,6 @@ export async function buildMemoryRings(page: Page): Promise<void> {
     series: ["ram.used.percent"],
     paint: [undefined, "RAM teal"],
   });
-  await openTab(page, "Design");
   // 270 degrees open at the bottom, which is the target's RAM ring. `45` and
   // `405` are the same arc — ECharts reduces both mod 360 — and `45` is the one
   // the bounded field accepts, measured identical to the pixel.
@@ -555,7 +550,6 @@ export async function buildTrends(page: Page): Promise<void> {
     series: ["cpu.load", "gpu.load", "ram.used.percent"],
     paint: ["CPU blue", "GPU violet", "RAM teal"],
   });
-  await openTab(page, "Design");
   await page.locator('[data-vigilia-chart-setting="showAxes"]').uncheck();
 }
 
@@ -617,7 +611,6 @@ export async function buildStorage(page: Page): Promise<void> {
     series: ["disk.used.percent"],
     paint: ["CPU blue"],
   });
-  await openTab(page, "Design");
   await page.locator('[data-vigilia-chart-setting="showAxes"]').uncheck();
   await page
     .locator('[data-vigilia-chart-setting="showCategoryLabels"]')
@@ -686,7 +679,6 @@ export async function buildNetwork(page: Page): Promise<void> {
     series: ["network.download", "network.upload"],
     paint: ["CPU blue", "GPU violet"],
   });
-  await openTab(page, "Design");
   await page.locator('[data-vigilia-chart-setting="showAxes"]').uncheck();
 }
 
@@ -737,12 +729,10 @@ export async function importBackdrop(page: Page, file: string): Promise<void> {
     .filter({ hasText: label })
     .getAttribute("value");
 
-  // **Design**, not Data: the artboard panel is a *document* panel, and the
-  // shell mounts it in the Design tab with the comment "a selection must not
-  // make the theme's own settings unreachable". Data is the chart host, where
-  // the select exists in the DOM but inside a `display: none` tab panel — so
-  // the wrong tab is a 10-minute timeout, not a clear failure.
-  await openTab(page, "Design");
+  // The artboard panel is a *document* panel, so it lives in the left column's
+  // Document pane and is hidden until the pane is asked for. The Assets pane
+  // was the last one shown, so this is a real swap, not a no-op.
+  await openPane(page, "Document");
   const media = page.locator("[data-vigilia-background-asset]");
   await media.scrollIntoViewIfNeeded();
   await media.selectOption(assetId ?? "");

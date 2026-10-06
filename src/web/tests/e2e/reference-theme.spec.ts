@@ -435,7 +435,6 @@ test.describe("the reference composition, authored", () => {
       .click();
     const authored = (await activeId(page)) ?? "";
     expect(authored).not.toBe("");
-    await page.getByRole("tab", { name: "Design", exact: true }).click();
     await typeInto(page, page.locator("[data-vigilia-panel-radius]"), "18");
     const radius = page.locator("[data-vigilia-panel-radius]");
     await expect(radius).toHaveValue("18");
@@ -557,7 +556,6 @@ test.describe("the reference composition, authored", () => {
 
     // **Style**, by keyboard: a radius, then a glass radius through the
     // checkbox's own Space key.
-    await page.getByRole("tab", { name: "Design", exact: true }).click();
     await typeInto(page, page.locator("[data-vigilia-panel-radius]"), "22");
     const glassToggle = page.locator("[data-vigilia-glass-enabled]");
     await glassToggle.focus();
@@ -600,7 +598,6 @@ test.describe("the reference composition, authored", () => {
     await expect.poll(() => activeId(page)).toBe("cpu-card-sparkline");
     // A chart's own fields are in its column with the selection, which is
     // where the binding select lives.
-    await page.getByRole("tab", { name: "Design", exact: true }).click();
     const bindingSelect = page.locator("[data-vigilia-binding]").first();
     await expect(bindingSelect).toBeVisible();
     const keys = await bindingSelect
@@ -738,7 +735,6 @@ test.describe("the reference composition, authored", () => {
     // property "errors preserve recoverable work" actually means.
     const after = (await sceneFacts(page)).find((f) => f.id === panelId);
     expect(after?.rect).toEqual(before?.rect);
-    await page.getByRole("tab", { name: "Design", exact: true }).click();
     await typeInto(page, page.locator("[data-vigilia-panel-radius]"), "9");
     await expect(page.locator("[data-vigilia-panel-radius]")).toHaveValue("9");
     const saved = await savePackage(page);
@@ -827,7 +823,6 @@ test.describe("the reference composition, authored", () => {
     );
     await page.mouse.click(centre.x, centre.y);
     await expect.poll(() => activeId(page)).toBe("authoring");
-    await page.getByRole("tab", { name: "Design", exact: true }).click();
     const glassToggle = page.locator("[data-vigilia-glass-enabled]");
     await glassToggle.focus();
     await page.keyboard.press("Space");
@@ -2323,7 +2318,6 @@ test.describe("the reference composition, at the sizes it is read at", () => {
     );
     await page.mouse.click(centre.x, centre.y);
     await expect.poll(() => activeId(page)).toBe("authoring");
-    await page.getByRole("tab", { name: "Design", exact: true }).click();
     const toggle = page.locator("[data-vigilia-glass-enabled]");
     await toggle.focus();
     await page.keyboard.press("Space");
@@ -2411,6 +2405,9 @@ test.describe("background media", () => {
       mimeType: "image/png",
       buffer: PIXEL_PNG,
     });
+    // The artboard's own panel is a document panel, so it is in the Document
+    // pane; the Assets pane was showing, so this is a real swap.
+    await openPane(page, "Document");
     await page.locator("[data-vigilia-background-asset]").selectOption("hero");
     await expect(page.locator("[data-vigilia-background-asset]")).toHaveValue(
       "hero",
@@ -2424,6 +2421,7 @@ test.describe("background media", () => {
 
     // **A second image under the same name.** A repeated filename is suffixed,
     // so it lands beside the first rather than on top of it.
+    await openPane(page, "Assets");
     await chooseAssetFile(page, "import", {
       name: "hero.png",
       mimeType: "image/png",
@@ -2439,6 +2437,7 @@ test.describe("background media", () => {
     expect(ids.filter((id) => id.startsWith("hero"))).toHaveLength(2);
 
     // **Repoint.** The artboard names the new one, and the layer follows it.
+    await openPane(page, "Document");
     await page
       .locator("[data-vigilia-background-asset]")
       .selectOption("hero-2");
@@ -2474,6 +2473,8 @@ test.describe("background media", () => {
       mimeType: "video/mp4",
       buffer: Buffer.from("not a decodable video"),
     });
+    // The artboard's own panel is a document panel, so it is in the Document pane.
+    await openPane(page, "Document");
     await page.locator("[data-vigilia-background-asset]").selectOption("loop");
     await expect(page.locator("[data-vigilia-background-asset]")).toHaveValue(
       "loop",

@@ -10,7 +10,6 @@ import {
   insert,
   openBlank,
   openPosition,
-  openTab,
   readScene,
   selectLayer,
   type SceneObject,
@@ -354,6 +353,8 @@ test.describe("the per-kind inspector column", () => {
     // The stage behind a transparent chart is the same `#223047` as the
     // remainder's own ink, so the artboard is given a different ground first:
     // otherwise "no remainder" measures 6,610 pixels of somebody else's paint.
+    // The artboard panel is a document panel, so it is in the Document pane.
+    await openPane(page, "Document");
     await page
       .locator("[data-vigilia-artboard-background]")
       .selectOption("palette.frost");
@@ -518,7 +519,6 @@ test.describe("the per-kind inspector column", () => {
       mimeType: "image/png",
       buffer: EDITOR_PNG,
     });
-    await openTab(page, "Design");
     await report("image");
     await expect(page.locator("[data-vigilia-crop]")).toHaveCount(1);
     await expect(page.locator("[data-vigilia-panel-fill]")).toHaveCount(0);

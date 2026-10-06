@@ -691,6 +691,9 @@ test.describe("Fabric editor route", () => {
 
     await page.goto(EDITOR);
     await expect(page.locator("#status")).toHaveText("Fabric editor ready");
+    // "Add colour" is the palette panel's control, and the palette is a
+    // document panel in the left column's Document pane.
+    await openPane(page, "Document");
     await page.getByRole("button", { name: "Add colour" }).click();
     const field = page.locator("[data-vigilia-palette-color]");
 
@@ -835,7 +838,6 @@ test.describe("Fabric editor route", () => {
       .locator('[data-vigilia-panel="add"]')
       .getByRole("button", { name: "Gauge" })
       .click();
-    await openInspectorTab(page, "Design");
     await expect(
       page.locator('[data-vigilia-chart-setting="thickness"]'),
     ).toBeVisible();
@@ -878,7 +880,6 @@ test.describe("Fabric editor route", () => {
     // The Add pane's shapes are a group: "Line" is both a chart family and a
     // primitive, so the legend is what tells the two apart.
     await insertShape(page, "Rectangle");
-    await openInspectorTab(page, "Design");
 
     // Insertion selects what it inserted, so the controls belong to the new
     // panel without a second click.
@@ -1014,7 +1015,6 @@ test.describe("Fabric editor route", () => {
     ).toHaveCount(2);
 
     await insertShape(page, "Polygon");
-    await openInspectorTab(page, "Design");
 
     // A shape that is not a rectangle is still a shape: it carries material,
     // it has no corner radius to show, and it has a side count of its own.
@@ -1051,7 +1051,6 @@ test.describe("Fabric editor route", () => {
     // The Add pane's shapes are a group: "Line" is both a chart family and a
     // primitive, so the legend is what tells the two apart.
     await insertShape(page, "Rectangle");
-    await openInspectorTab(page, "Design");
     const panelId = (await activeId(page)) ?? "";
     await page
       .locator("[data-vigilia-panel-stroke]")
@@ -1060,7 +1059,9 @@ test.describe("Fabric editor route", () => {
       .locator("[data-vigilia-panel-shadow]")
       .selectOption("palette.text");
 
-    // `text` is the token the new panel's border and shadow now point at.
+    // `text` is the token the new panel's border and shadow now point at. The
+    // palette panel is a document panel, so it is in the Document pane.
+    await openPane(page, "Document");
     await page.locator("[data-vigilia-palette-token]").selectOption("text");
     await page
       .locator("[data-vigilia-palette-replacement]")
@@ -1112,7 +1113,6 @@ test.describe("Fabric editor route", () => {
     await expect.poll(() => activeId(page)).toBe("group-cpu-card");
     await page.locator('[data-vigilia-layer="cpu-card"]').click();
     await expect.poll(() => activeId(page)).toBe("cpu-card");
-    await openInspectorTab(page, "Design");
     const enabled = page.locator("[data-vigilia-glass-enabled]");
     const blur = page.locator("[data-vigilia-glass-blur]");
     await expect(enabled).toBeChecked();
@@ -1467,7 +1467,6 @@ test.describe("Fabric editor route", () => {
     await enterLayer(page, "group-cpu-card");
     await page.locator('[data-vigilia-layer="cpu-card-icon"]').click();
     await expect.poll(() => activeId(page)).toBe("cpu-card-icon");
-    await openInspectorTab(page, "Design");
 
     const control = page.locator("[data-vigilia-glass-enabled]");
     await expect(control).toHaveAttribute("aria-disabled", "true");
@@ -1618,6 +1617,8 @@ test.describe("Fabric editor route", () => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     await page.goto(EDITOR);
+    // The artboard panel is a document panel, so it is in the Document pane.
+    await openPane(page, "Document");
     await page.locator("[data-vigilia-artboard-width]").fill("1000");
     await page.locator("[data-vigilia-artboard-width]").press("Tab");
     await page
@@ -1723,6 +1724,8 @@ test.describe("Fabric editor route", () => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     await page.goto(EDITOR);
+    // The palette panel is a document panel, so it is in the Document pane.
+    await openPane(page, "Document");
     await page
       .locator("[data-vigilia-palette-token]")
       .selectOption("background");
@@ -1748,6 +1751,8 @@ test.describe("Fabric editor route", () => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     await page.goto(EDITOR);
+    // The palette panel is a document panel, so it is in the Document pane.
+    await openPane(page, "Document");
     // The token deleted has to be one the **artboard** references, or the
     // reassignment has nothing to reassign and the test passes for the wrong
     // reason. `bars` is the artboard's `barColor`; its own paint is `none`
@@ -1777,6 +1782,8 @@ test.describe("Fabric editor route", () => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     await page.goto(EDITOR);
+    // The palette panel is a document panel, so it is in the Document pane.
+    await openPane(page, "Document");
     await page
       .locator("[data-vigilia-palette-token]")
       .selectOption("chartTrack");
@@ -1813,6 +1820,8 @@ test.describe("Fabric editor route", () => {
     await page.route("https://cdn.jsdelivr.net/fontsource/fonts/**", (route) =>
       route.fulfill({ body: Buffer.from([0, 1, 2]) }),
     );
+    // The type-preset panel is a document panel, so it is in the Document pane.
+    await openPane(page, "Document");
     await page.locator("[data-vigilia-type-preset]").selectOption("36-500");
     // Read the option the panel offers rather than typing an id: the picker's
     // rows come from the generated catalogue, so a literal here pins one
@@ -1840,6 +1849,8 @@ test.describe("Fabric editor route", () => {
     await expect(page.locator("#status")).toHaveText(
       "Opened type-preset.vigilia-theme",
     );
+    // Reopening a package remounts the shell, so the pane is shut again.
+    await openPane(page, "Document");
     await page.locator("[data-vigilia-type-preset]").selectOption("36-500");
     const reopened = (await saveEnvelope(page)) as {
       globals: {
@@ -1880,6 +1891,8 @@ test.describe("Fabric editor route", () => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     await page.goto(EDITOR);
+    // The type-preset panel is a document panel, so it is in the Document pane.
+    await openPane(page, "Document");
     await page.locator("[data-vigilia-type-preset]").selectOption("36-500");
     const tracking = page.locator("[data-vigilia-type-letter-spacing]");
 
@@ -1904,6 +1917,8 @@ test.describe("Fabric editor route", () => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     await page.goto(EDITOR);
+    // The type-preset panel is a document panel, so it is in the Document pane.
+    await openPane(page, "Document");
     await page.locator("[data-vigilia-type-preset]").selectOption("36-500");
     const face = page.locator("[data-vigilia-font-face]");
     await face.scrollIntoViewIfNeeded();
@@ -1920,6 +1935,8 @@ test.describe("Fabric editor route", () => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     await page.goto(EDITOR);
+    // The type-preset panel is a document panel, so it is in the Document pane.
+    await openPane(page, "Document");
     await page.locator("[data-vigilia-type-preset]").selectOption("20-400");
     await page
       .locator("[data-vigilia-type-replacement]")
@@ -2005,6 +2022,8 @@ test.describe("Fabric editor route", () => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     await page.goto(EDITOR);
+    // The artboard panel is a document panel, so it is in the Document pane.
+    await openPane(page, "Document");
     await page
       .locator("[data-vigilia-background-media-fit]")
       .selectOption("contain");
@@ -2042,9 +2061,9 @@ test.describe("Fabric editor route", () => {
     // because it sat above "Media fit" and chose between the same two words.
     // It was the artboard content's fit, it is always contain, and no author
     // sets it — so the panel must not offer it, and must still offer the media's.
-    // No pane is opened first: the artboard panel is document-level, so it is
-    // in the inspector's Design tab whatever the left column is showing.
+    // The artboard panel is a document panel, so the Document pane shows it.
     await page.goto(EDITOR);
+    await openPane(page, "Document");
     await page.waitForSelector(
       "[data-vigilia-artboard-fit-mode], [data-vigilia-background-media-fit]",
     );
@@ -2065,16 +2084,16 @@ test.describe("Fabric editor route", () => {
     await expect(mediaFit).toHaveValue("contain");
   });
 
-  test("shows the Style tab's resolved appearance for a selection", async ({
+  test("lists the document's references, and the selection's own in its Spends column", async ({
     page,
   }, testInfo) => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     await page.goto(EDITOR);
-    await setThemePackage(page, "style-tab.vigilia-theme", {
+    await setThemePackage(page, "document-references.vigilia-theme", {
       schemaVersion: 2,
       fabricVersion: "7.4.0",
-      id: "style-tab",
+      id: "document-references",
       metadata: { themeLanguage: "en" },
       artboard: {
         width: 320,
@@ -2127,28 +2146,31 @@ test.describe("Fabric editor route", () => {
       },
     });
 
-    // With nothing selected the tab lists what the document offers, which is
-    // what an author needs before they have picked anything.
-    await openInspectorTab(page, "Style");
+    // The document's own references, in the left column's Document pane: what
+    // the document offers before the author has picked anything.
+    await openPane(page, "Document");
     const style = page.locator('[data-vigilia-panel="style"]');
-    // The tab names the token and its value, not the `palette.ink` string the
+    // The panel names the token and its value, not the `palette.ink` string the
     // reference is written as. `Ink → #00b8d9` is the same fact in the author's
     // words, and asserting it keeps both halves of the claim — which token, and
     // what it resolves to here.
     await expect(style).toContainText("Ink");
     await expect(style).toContainText("#00b8d9");
     await expect(style).toContainText("Body");
+    // It lists the document the same way whatever is selected, so its globals
+    // stay put — the selection's own resolution is a different column.
+    await expect(style.locator("[data-vigilia-globals]")).toHaveCount(1);
 
-    // Selecting the text replaces the document's list with its own resolution.
-    // Select through the layer row: the canvas origin is not a stable coordinate
-    // to click, because the stage letterboxes the artboard inside its host.
+    // Selecting the text shows its own resolution in the Spends section, not in
+    // the document panel, which cannot see a selection. Select through the layer
+    // row: the canvas origin is not a stable coordinate to click, because the
+    // stage letterboxes the artboard inside its host. The tree lives in the
+    // Layers pane, so the row is only clickable once that pane is showing.
+    await openPane(page, "Layers");
     await page.locator('[data-vigilia-layer="cpu-label"]').click();
-    await openInspectorTab(page, "Style");
-    await expect(style).toContainText("Ink");
-    await expect(style).toContainText("Body → sans-serif 16px");
-    await expect(style.locator("[data-vigilia-globals]")).toHaveCount(0);
-
-    await captureVisualReview(page, testInfo, "editor-style-tab");
+    const spends = page.locator('[data-vigilia-section="spends"]');
+    await expect(spends).toContainText("Ink");
+    await expect(spends).toContainText("Body → sans-serif 16px");
   });
 
   test("persists a selected chart binding", async ({ page }, testInfo) => {
@@ -2197,7 +2219,6 @@ test.describe("Fabric editor route", () => {
       .getByRole("button", { name: "Line", exact: true })
       .click();
     // A chart's paint pickers are in its own column, with its settings.
-    await openInspectorTab(page, "Design");
 
     // The key carries the index — `palette.0` — which is the token the original
     // DOM read named, `[stroke, palette.0]` before and `[]` after.
@@ -2501,7 +2522,6 @@ test.describe("Fabric editor route", () => {
 
     await page.goto(EDITOR);
     await page.locator('[data-vigilia-layer="wordmark"]').click();
-    await openInspectorTab(page, "Design");
 
     // Driven through the control, not the bridge: reaching into the page would
     // prove the bridge works, not that an author can name anything.
@@ -2570,7 +2590,6 @@ test.describe("Fabric editor route", () => {
       "panel",
     );
     await page.locator('[data-vigilia-layer="panel"]').click();
-    await openInspectorTab(page, "Design");
     await page.locator("[data-vigilia-name]").fill("Card");
     await page.locator("[data-vigilia-name]").press("Tab");
     await expect(page.locator('[data-vigilia-layer="panel"]')).toContainText(
@@ -2865,6 +2884,8 @@ test.describe("Fabric editor route", () => {
         "base64",
       ),
     });
+    // The artboard's own panel is a document panel, so it is in the Document pane.
+    await openPane(page, "Document");
     await page.locator("[data-vigilia-background-asset]").selectOption("hero");
     await page
       .locator("[data-vigilia-background-media-fit]")
@@ -4613,10 +4634,6 @@ async function setUncheckedThemePackage(
   });
 }
 
-async function openInspectorTab(page: Page, name: string): Promise<void> {
-  await page.getByRole("tab", { name, exact: true }).click();
-}
-
 /**
  * A point inside the starter gauge that is not covered by the reading centred in
  * it. The gauge's own centre is the obvious choice and the wrong one: a text
@@ -4669,7 +4686,6 @@ async function selectStarterChart(page: Page): Promise<void> {
     )
     .toBe("ram-gauge");
   // A chart's own fields are in the column with the selection, not another tab.
-  await openInspectorTab(page, "Design");
   await expect(
     page.locator('[data-vigilia-chart-setting="thickness"]'),
   ).toBeVisible();

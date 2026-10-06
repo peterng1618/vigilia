@@ -1,4 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
+import { openPane } from "./editor-pane-bar.js";
 import { isDesktopSurface } from "./surface.js";
 
 /**
@@ -93,8 +94,10 @@ test.describe("the settings panels name every control", () => {
     );
     await page.goto(EDITOR);
     await page.waitForSelector("[data-vigilia-panel]");
-    // No pane is opened first: these panels are document-level, so they are in
-    // the inspector's Design tab whatever the left column is showing.
+    // The theme-settings, palette and type-preset panels are document panels,
+    // so they live in the left column's Document pane and are hidden until the
+    // pane is asked for — not behind a tab in the inspector.
+    await openPane(page, "Document");
     // The gradient and delete branches render controls a solid token does not,
     // so the audit has to open the same branches an author opens. A token with
     // other tokens to reassign to is what puts the delete row on screen.

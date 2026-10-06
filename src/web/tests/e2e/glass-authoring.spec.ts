@@ -1,6 +1,7 @@
 import { expect, type Locator, type Page, test } from "@playwright/test";
 import { readThemePackage, writeThemePackage } from "@vigilia/theme-package";
 import { captureVisualReview, clientOfScene } from "./editor-canvas.js";
+import { openPane } from "./editor-pane-bar.js";
 import {
   AUTHORING_PANEL_ID,
   GLASS_ARTBOARD,
@@ -67,7 +68,10 @@ function activeId(page: Page): Promise<string | undefined> {
   );
 }
 
-/** Selects the authoring panel by clicking the canvas, through the camera. */
+/** Selects the authoring panel by clicking the canvas, through the camera.
+ *
+ *  The selection's fields are in the right column, which no pane choice reaches,
+ *  so the click is the whole gesture. */
 async function selectAuthoringPanel(page: Page): Promise<void> {
   const centre = await clientOfScene(
     page,
@@ -76,7 +80,6 @@ async function selectAuthoringPanel(page: Page): Promise<void> {
   );
   await page.mouse.click(centre.x, centre.y);
   await expect.poll(() => activeId(page)).toBe(AUTHORING_PANEL_ID);
-  await page.getByRole("tab", { name: "Design", exact: true }).click();
 }
 
 /** Screen distance a click must keep from a selected object's handles.
@@ -377,7 +380,9 @@ test.describe("authoring frosted glass through the inspector", () => {
     // The **stroke** token, not the fill: replacing the panel's own tint with
     // an opaque colour would legitimately hide the glass and the blur would
     // then have nothing to show. Changing the outline is a palette edit the
-    // treatment has to survive, with the backdrop still visible behind it.
+    // treatment has to survive, with the backdrop still visible behind it. The
+    // palette panel is a document panel, so it is in the Document pane.
+    await openPane(page, "Document");
     await page.locator("[data-vigilia-palette-token]").selectOption("edge");
     const colour = page.locator("[data-vigilia-palette-color]");
     await colour.fill("rgb(200 220 255)");
