@@ -99,7 +99,6 @@ export {
   CHART_PAINT_FIELDS,
   CHART_SETTINGS_FIELDS,
   chartPaintFieldsFor,
-  NON_SCALAR_SETTINGS,
   settingsFieldsFor,
   settingsKeyFor,
 } from "./charts/settings-fields.js";

@@ -30,7 +30,9 @@ import { ANIMATION_EASINGS, type AnimationEasing } from "./animation.js";
  * what the setting does in the author's language, so the label never has to
  * carry the whole meaning, and a descriptor without one does not compile.
  * `advanced` marks a field for the collapsed-and-counted treatment, never for
- * removal.
+ * removal. **Which fields are `advanced` is a judgement, not a measurement** —
+ * it is which settings an author reaches for rarely, and moving one costs
+ * nothing but this list.
  *
  * ## Two settings one level down
  *
@@ -49,15 +51,20 @@ import { ANIMATION_EASINGS, type AnimationEasing } from "./animation.js";
  * no authored value shows its placeholder and the renderer's default applies —
  * the same rule the style rows follow.
  *
- * ## The range duplication that is still open
+ * ## Why the validator does not read this table
  *
- * `min`/`max` below agree with `validate.ts`'s `validateSettingsRange` and the
- * schema by inspection, not by construction. That function is also **not a
- * `switch`**: it handles gauge/bar, then line, then falls through to a block
- * commented `// Pie.` which runs unconditionally — so a fifth family's settings
- * would be range-checked as a pie. Driving it from this table is the next step
- * and closes both problems at once. Recorded here rather than left to be
- * rediscovered.
+ * `min`/`max` below are **authoring bounds**: the range a control offers and the
+ * range its option builder clamps to. `validate.ts`'s `validateSettingsRange`
+ * holds **invariants an adapter cannot recover from** — a gauge whose `max` is
+ * not above its `min`, a fixed pie total with no finite value. Driving validation
+ * from this table was the obvious next step and it is **decided against**
+ * (ADR-0028): the two bound sets answer different questions, so consuming these
+ * would start refusing documents that validate today. That is a data decision,
+ * not a tidy-up, so the duplication stays — by decision, not by neglect.
+ *
+ * The other half of the old note is closed: `validateSettingsRange` is now an
+ * exhaustive `switch (family)` with a `never` default, so a fifth family is a
+ * compile error rather than falling through to the pie block.
  */
 
 /** How a settings field is edited. */
@@ -140,8 +147,8 @@ export interface SettingsFieldDescriptor {
 export interface ChartPaintFieldDescriptor {
   readonly property: string;
   readonly label: string;
-  /** Paint answers one question; the paint tokens are what ink. */
-  readonly section: SettingsSection;
+  /** Paint answers one question, and it is this one — the type says so. */
+  readonly section: "paint";
   /** What the setting does, in the author's language — never its label again. */
   readonly hint: string;
   /** Present when the field belongs behind the collapsed-and-counted treatment. */
@@ -268,7 +275,7 @@ export const CHART_SETTINGS_FIELDS: Readonly<
       label: "End angle",
       kind: "number",
       section: "content",
-      hint: "Where the drawn arc stops; the reading sweeps from the start angle to here.",
+      hint: "Where the drawn arc stops. The reading fills a share of the sweep, so it reaches here only at the maximum.",
       min: -360,
       max: 360,
     },
@@ -307,6 +314,7 @@ export const CHART_SETTINGS_FIELDS: Readonly<
       kind: "number",
       section: "content",
       optional: true,
+      advanced: true,
       hint: "How finely a gradient arc is approximated. The engine cannot draw a true angular gradient (§85).",
       min: 2,
       max: 256,
@@ -336,7 +344,7 @@ export const CHART_SETTINGS_FIELDS: Readonly<
       kind: "select",
       section: "content",
       optional: true,
-      hint: "The stroke's own pattern — solid, dashed or dotted.",
+      hint: "Draws the stroke broken rather than solid, so two series that share a colour are still told apart.",
       options: DASH,
     },
     {
@@ -367,6 +375,7 @@ export const CHART_SETTINGS_FIELDS: Readonly<
       label: "Max points",
       kind: "number",
       section: "content",
+      advanced: true,
       hint: "The hardest cap on drawn points; older ones are dropped, never interpolated over.",
       min: 2,
     },
@@ -399,6 +408,7 @@ export const CHART_SETTINGS_FIELDS: Readonly<
       kind: "select",
       section: "content",
       optional: true,
+      advanced: true,
       hint: "Render-time only. LTTB keeps the visible shape of a dense series at a fraction of the draw cost; it changes what is drawn, never what was measured.",
       options: SAMPLING,
     },
@@ -441,6 +451,7 @@ export const CHART_SETTINGS_FIELDS: Readonly<
       label: "Category gap %",
       kind: "number",
       section: "content",
+      advanced: true,
       hint: "How much of each category slot is left as space between bars.",
       min: 0,
       max: 100,
@@ -459,6 +470,7 @@ export const CHART_SETTINGS_FIELDS: Readonly<
       kind: "number",
       section: "content",
       optional: true,
+      advanced: true,
       hint: "The unfilled remainder's own rounding, beside the bar's. Empty leaves it square.",
       min: 0,
     },
@@ -502,6 +514,7 @@ export const CHART_SETTINGS_FIELDS: Readonly<
       label: "Start angle",
       kind: "number",
       section: "content",
+      advanced: true,
       hint: "Where the first slice begins, in degrees — 0 points right of centre and 90 straight up.",
       min: -360,
       max: 360,
@@ -512,6 +525,7 @@ export const CHART_SETTINGS_FIELDS: Readonly<
       kind: "number",
       section: "content",
       optional: true,
+      advanced: true,
       hint: "Where the ring stops; empty closes it into a full circle.",
       min: -360,
       max: 360,
@@ -521,6 +535,7 @@ export const CHART_SETTINGS_FIELDS: Readonly<
       label: "Slice gap",
       kind: "number",
       section: "content",
+      advanced: true,
       hint: "The gap left between neighbouring slices, in degrees.",
       min: 0,
     },
@@ -529,6 +544,7 @@ export const CHART_SETTINGS_FIELDS: Readonly<
       label: "Corner radius",
       kind: "number",
       section: "content",
+      advanced: true,
       hint: "How much each slice's outer corners are rounded, in pixels.",
       min: 0,
     },
@@ -657,21 +673,3 @@ export function chartPaintFieldsFor(
 export function settingsKeyFor(family: ChartFamily): string {
   return `${family}Settings`;
 }
-
-/**
- * Settings that exist in the types but are **not** editable here, and why.
- *
- * Exported so a test can assert this list and the editable list together
- * account for every property of each settings interface — otherwise a new
- * setting is simply invisible, which is the state every chart setting was in
- * before this file existed.
- */
-export const NON_SCALAR_SETTINGS: Readonly<
-  Record<ChartFamily, readonly string[]>
-> = {
-  // `Fill` values and animation: theme-level colour (D3) and a separate shape.
-  gauge: ["track", "progress", "animation"],
-  line: ["stroke", "palette", "area", "animation"],
-  bar: ["fill", "track", "animation"],
-  pie: ["remainderFill", "palette", "animation"],
-};

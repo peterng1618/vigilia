@@ -1,17 +1,17 @@
 import { describe, expect, it } from "vitest";
 
 import { CHART_FAMILIES, type ChartFamily } from "../theme/document.js";
-import { defaultGaugeSettings } from "../types.js";
-import { ANIMATION_EASINGS } from "./animation.js";
-import { defaultBarSettings } from "./bar.js";
-import { defaultLineSettings } from "./line.js";
-import { defaultPieSettings } from "./pie.js";
+import { defaultGaugeSettings, type GaugeSettings } from "../types.js";
+import { ANIMATION_EASINGS, type AnimationSettings } from "./animation.js";
+import { defaultBarSettings, type BarSettings } from "./bar.js";
+import { defaultLineSettings, type LineSettings } from "./line.js";
+import { defaultPieSettings, type PieSettings } from "./pie.js";
 import {
   CHART_PAINT_FIELDS,
   CHART_SETTINGS_FIELDS,
   chartPaintFieldsFor,
-  NON_SCALAR_SETTINGS,
   SETTINGS_SECTIONS,
+  type SettingsFieldDescriptor,
   settingsFieldsFor,
   settingsKeyFor,
 } from "./settings-fields.js";
@@ -73,11 +73,6 @@ describe("the chart paint declaration", () => {
         (field) => field.property,
       );
       expect(new Set(properties).size).toBe(properties.length);
-      expect(properties).toEqual(
-        NON_SCALAR_SETTINGS[family].filter(
-          (property) => property !== "animation" && property !== "total",
-        ),
-      );
       expect(
         chartPaintFieldsFor(family).every((field) => field.label.length > 0),
       ).toBe(true);
@@ -85,42 +80,202 @@ describe("the chart paint declaration", () => {
   });
 });
 
+/**
+ * Every key of every settings interface, classified.
+ *
+ * **The type is the gate.** A key added to one of these interfaces and not
+ * classified here does not compile, and a classification the interface does not
+ * have does not compile either. The runtime half below proves each
+ * classification resolves to a real descriptor, in both directions.
+ *
+ * This replaces `NON_SCALAR_SETTINGS`, an allowlist whose doc comment said it
+ * existed so the declared list and the excluded list "together account for every
+ * property" — which was true and useless, because `animation` and `total` sat in
+ * the excluded list and had no control at all (`vg-122`).
+ */
+const GAUGE_COVERAGE: Record<keyof GaugeSettings, "setting" | "paint"> = {
+  startAngle: "setting",
+  endAngle: "setting",
+  min: "setting",
+  max: "setting",
+  thickness: "setting",
+  track: "paint",
+  progress: "paint",
+  roundCap: "setting",
+  gradientSegments: "setting",
+  animation: "setting",
+};
+
+const LINE_COVERAGE: Record<keyof LineSettings, "setting" | "paint"> = {
+  lineWidth: "setting",
+  interpolation: "setting",
+  stroke: "paint",
+  palette: "paint",
+  dash: "setting",
+  area: "paint",
+  showMarkers: "setting",
+  markerSize: "setting",
+  windowSeconds: "setting",
+  maxPoints: "setting",
+  min: "setting",
+  max: "setting",
+  showAxes: "setting",
+  sampling: "setting",
+  animation: "setting",
+};
+
+const BAR_COVERAGE: Record<keyof BarSettings, "setting" | "paint"> = {
+  orientation: "setting",
+  min: "setting",
+  max: "setting",
+  barWidth: "setting",
+  categoryGapPercent: "setting",
+  cornerRadius: "setting",
+  fill: "paint",
+  track: "paint",
+  trackCornerRadius: "setting",
+  showAxes: "setting",
+  showCategoryLabels: "setting",
+  animation: "setting",
+};
+
+const PIE_COVERAGE: Record<keyof PieSettings, "setting" | "paint"> = {
+  innerRadiusPercent: "setting",
+  outerRadiusPercent: "setting",
+  startAngle: "setting",
+  endAngle: "setting",
+  padAngle: "setting",
+  cornerRadius: "setting",
+  total: "setting",
+  remainderFill: "paint",
+  palette: "paint",
+  showLabels: "setting",
+  animation: "setting",
+};
+
+const ANIMATION_COVERAGE: Record<keyof AnimationSettings, "setting"> = {
+  durationMs: "setting",
+  easing: "setting",
+  appearMs: "setting",
+  appearEasing: "setting",
+};
+
+const COVERAGE: Record<
+  ChartFamily,
+  Readonly<Record<string, "setting" | "paint">>
+> = {
+  gauge: GAUGE_COVERAGE,
+  line: LINE_COVERAGE,
+  bar: BAR_COVERAGE,
+  pie: PIE_COVERAGE,
+};
+
+const DEFAULTS: Record<ChartFamily, object> = {
+  gauge: defaultGaugeSettings,
+  line: defaultLineSettings,
+  bar: defaultBarSettings,
+  pie: defaultPieSettings,
+};
+
+/**
+ * The top-level settings key a descriptor accounts for.
+ *
+ * A nested descriptor resolves through its `path` prefix — `total.value` answers
+ * for `total`, and each `animation.*` answers for `animation` — which is what
+ * lets one record cover the two settings that sit a level down.
+ */
+function topLevelKey(field: SettingsFieldDescriptor): string {
+  return field.path?.[0] ?? field.property.split(".")[0] ?? field.property;
+}
+
 describe("coverage against the real settings shapes", () => {
-  // The point of these: a setting added to an interface but not declared here
-  // is simply invisible in the editor, which is the state every chart setting
-  // was in before this file existed.
-  const shapes = {
-    gauge: defaultGaugeSettings,
-    line: defaultLineSettings,
-    bar: defaultBarSettings,
-    pie: defaultPieSettings,
-  } as const;
-
   for (const family of CHART_FAMILIES) {
-    it(`accounts for every property of ${family}Settings`, () => {
-      const declared = new Set(
-        settingsFieldsFor(family).map((field) => field.property),
-      );
-      const excluded = new Set(NON_SCALAR_SETTINGS[family]);
-      const actual = Object.keys(shapes[family]);
+    it(`resolves every ${family} key the record calls a setting`, () => {
+      const fields = settingsFieldsFor(family);
+      const unresolved = Object.entries(COVERAGE[family])
+        .filter(([, kind]) => kind === "setting")
+        .map(([key]) => key)
+        .filter((key) => !fields.some((field) => topLevelKey(field) === key));
 
-      const unaccounted = actual.filter(
-        (property) => !declared.has(property) && !excluded.has(property),
+      expect(unresolved).toEqual([]);
+    });
+
+    it(`resolves every ${family} key the record calls paint`, () => {
+      const paintKeys = Object.entries(COVERAGE[family])
+        .filter(([, kind]) => kind === "paint")
+        .map(([key]) => key);
+
+      expect(paintKeys.length).toBeGreaterThan(0);
+      expect(
+        chartPaintFieldsFor(family)
+          .map((field) => field.property)
+          .sort(),
+      ).toEqual([...paintKeys].sort());
+    });
+
+    it(`classifies every ${family} descriptor as a setting`, () => {
+      const stray = settingsFieldsFor(family)
+        .map(topLevelKey)
+        .filter((key) => COVERAGE[family][key] !== "setting");
+
+      expect(stray).toEqual([]);
+    });
+
+    it(`resolves every key ${family}'s defaults set`, () => {
+      const fields = settingsFieldsFor(family);
+      const paints = new Set(
+        chartPaintFieldsFor(family).map((field) => field.property),
       );
 
-      expect(unaccounted).toEqual([]);
+      const unresolved = Object.keys(DEFAULTS[family]).filter((key) => {
+        const kind = COVERAGE[family][key];
+
+        if (kind === "setting") {
+          return !fields.some((field) => topLevelKey(field) === key);
+        }
+
+        return kind !== "paint" || !paints.has(key);
+      });
+
+      expect(unresolved).toEqual([]);
     });
   }
 
-  it("excludes only paint and animation, and says so", () => {
-    // Colour is theme-level (spec 0011 D3), so a `Fill` editor writing a
-    // literal onto an element would contradict that the day it shipped.
+  it("resolves every AnimationSettings key through the animation descriptors", () => {
     for (const family of CHART_FAMILIES) {
-      for (const excluded of NON_SCALAR_SETTINGS[family]) {
-        expect(
-          settingsFieldsFor(family).some((f) => f.property === excluded),
-        ).toBe(false);
-      }
+      const fields = settingsFieldsFor(family);
+      const animation = fields.filter(
+        (field) => topLevelKey(field) === "animation",
+      );
+
+      const unresolved = Object.keys(ANIMATION_COVERAGE).filter(
+        (key) => !animation.some((field) => field.path?.[1] === key),
+      );
+      const stray = animation
+        .map((field) => field.path?.[1])
+        .filter((key) => key === undefined || !(key in ANIMATION_COVERAGE));
+
+      expect(unresolved).toEqual([]);
+      expect(stray).toEqual([]);
+    }
+  });
+});
+
+describe("the collapsed-and-counted treatment", () => {
+  it("collapses at least one obscure setting of each family's own", () => {
+    // The animation appearance pair is obscure too, so a family whose only
+    // advanced fields were that pair would leave the treatment unreachable for
+    // the settings that family's author rarely touches. Which settings those
+    // are is a judgement, not a measurement — the list lives in the table.
+    for (const family of CHART_FAMILIES) {
+      const advanced = settingsFieldsFor(family).filter(
+        (field) => field.advanced,
+      );
+
+      expect(advanced.length).toBeGreaterThan(0);
+      expect(
+        advanced.some((field) => !field.property.startsWith("animation.")),
+      ).toBe(true);
     }
   });
 });

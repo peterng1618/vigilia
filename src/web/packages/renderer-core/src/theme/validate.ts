@@ -1602,76 +1602,100 @@ function validateChartContent(
   validateSettingsRange(issues, settings, `${path}/settings`, family);
 }
 
-/** Validates only settings invariants adapters cannot recover from. */
+/**
+ * Validates only settings invariants adapters cannot recover from.
+ *
+ * Exhaustive over the families on purpose: the branches used to fall through to
+ * the pie block, so a fifth family's settings would have been range-checked as
+ * a pie. The `never` default makes that a compile error instead. The bounds
+ * checked here are *not* the descriptor table's `min`/`max` — those are
+ * authoring bounds, and consuming them here would start refusing documents that
+ * validate today (`charts/settings-fields.ts` header, ADR-0028).
+ */
 function validateSettingsRange(
   issues: Issues,
   settings: Record<string, unknown>,
   path: string,
   family: (typeof CHART_FAMILIES)[number],
 ): void {
-  if (family === "gauge" || family === "bar") {
-    const min = settings["min"];
-    const max = settings["max"];
+  switch (family) {
+    case "gauge":
+    case "bar": {
+      const min = settings["min"];
+      const max = settings["max"];
 
-    const minOk = issues.finiteNumber(min, `${path}/min`, "min");
-    const maxOk = issues.finiteNumber(max, `${path}/max`, "max");
+      const minOk = issues.finiteNumber(min, `${path}/min`, "min");
+      const maxOk = issues.finiteNumber(max, `${path}/max`, "max");
 
-    if (minOk && maxOk && (max as number) <= (min as number)) {
-      issues.add(
-        "out-of-range",
-        `${path}/max`,
-        "max must be greater than min.",
-      );
-    }
-    return;
-  }
-
-  if (family === "line") {
-    for (const key of ["windowSeconds", "maxPoints"] as const) {
-      const raw = settings[key];
-      if (
-        issues.finiteNumber(raw, `${path}/${key}`, key) &&
-        (raw as number) <= 0
-      ) {
-        issues.add("out-of-range", `${path}/${key}`, `${key} must be above 0.`);
+      if (minOk && maxOk && (max as number) <= (min as number)) {
+        issues.add(
+          "out-of-range",
+          `${path}/max`,
+          "max must be greater than min.",
+        );
       }
+      return;
     }
-    return;
-  }
 
-  const inner = settings["innerRadiusPercent"];
-  const outer = settings["outerRadiusPercent"];
+    case "line": {
+      for (const key of ["windowSeconds", "maxPoints"] as const) {
+        const raw = settings[key];
+        if (
+          issues.finiteNumber(raw, `${path}/${key}`, key) &&
+          (raw as number) <= 0
+        ) {
+          issues.add(
+            "out-of-range",
+            `${path}/${key}`,
+            `${key} must be above 0.`,
+          );
+        }
+      }
+      return;
+    }
 
-  const innerOk = issues.finiteNumber(
-    inner,
-    `${path}/innerRadiusPercent`,
-    "innerRadiusPercent",
-  );
-  const outerOk = issues.finiteNumber(
-    outer,
-    `${path}/outerRadiusPercent`,
-    "outerRadiusPercent",
-  );
+    case "pie": {
+      const inner = settings["innerRadiusPercent"];
+      const outer = settings["outerRadiusPercent"];
 
-  if (innerOk && outerOk && (outer as number) <= (inner as number)) {
-    issues.add(
-      "out-of-range",
-      `${path}/outerRadiusPercent`,
-      "outerRadiusPercent must be greater than innerRadiusPercent.",
-    );
-  }
+      const innerOk = issues.finiteNumber(
+        inner,
+        `${path}/innerRadiusPercent`,
+        "innerRadiusPercent",
+      );
+      const outerOk = issues.finiteNumber(
+        outer,
+        `${path}/outerRadiusPercent`,
+        "outerRadiusPercent",
+      );
 
-  const total = settings["total"];
-  if (
-    isRecord(total) &&
-    total["kind"] === "fixed" &&
-    !Number.isFinite(total["value"])
-  ) {
-    issues.add(
-      "wrong-type",
-      `${path}/total/value`,
-      "A fixed total needs a finite value.",
-    );
+      if (innerOk && outerOk && (outer as number) <= (inner as number)) {
+        issues.add(
+          "out-of-range",
+          `${path}/outerRadiusPercent`,
+          "outerRadiusPercent must be greater than innerRadiusPercent.",
+        );
+      }
+
+      const total = settings["total"];
+      if (
+        isRecord(total) &&
+        total["kind"] === "fixed" &&
+        !Number.isFinite(total["value"])
+      ) {
+        issues.add(
+          "wrong-type",
+          `${path}/total/value`,
+          "A fixed total needs a finite value.",
+        );
+      }
+      return;
+    }
+
+    default: {
+      const unhandled: never = family;
+      throw new Error(`Unhandled chart family: ${String(unhandled)}`);
+    }
   }
 }
 
