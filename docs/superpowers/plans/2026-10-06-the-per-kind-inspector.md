@@ -663,8 +663,16 @@ commits, and `vg-145` is closed in Task 11 against the check that closed it.
   points at it
 
 **Interfaces:**
-- Consumes: `openInspectorTab`, `activeGeometry`, `geometryPairBoxes`, `place`, `choose`
-  from the existing e2e helpers; a new helper only if two specs need the same interaction.
+- Consumes: `openInspectorTab`, `geometryPairBoxes`, `place`, `choose` from the existing e2e
+  helpers, plus the `openPosition` helpers Task 7 added — an exported one in
+  `tests/e2e/rebuild-driver.ts` and a local one in `tests/e2e/editor.spec.ts`; a new helper
+  only if two specs need the same interaction.
+- **`activeGeometry` is not one of them, and this plan said it was.** Task 7 measured it: it
+  reads through `window.vigiliaEditorBridge` and never touches a DOM geometry input, so
+  collapsing Position cannot break it and it needed no change. Only `geometryPairBoxes`, the
+  Size-pair spec and the polygon spec reach a geometry input and needed opening first. The
+  correction is recorded because the wrong version sends a later reader to edit a helper that
+  is already correct.
 
 **Constraints:** capture requires `VIGILIA_CAPTURE=1` and `--workers=1`, and an action not
 registered in `docs/evidence/screenshots/README.md` is not captured. Screenshots are
