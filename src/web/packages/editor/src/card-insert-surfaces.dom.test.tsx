@@ -300,6 +300,8 @@ function bridgeOf(
     session: facade,
     editor: {
       canvas,
+      // Read by the display switch for the group of previews that leads.
+      artboard: () => ({ width: 1920, height: 1080 }),
       // The zoom readout subscribes to it, so an absent camera is a throw
       // rather than an exercise of the shell.
       viewport: {

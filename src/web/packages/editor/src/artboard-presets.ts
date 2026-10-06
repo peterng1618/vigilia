@@ -123,6 +123,23 @@ export function artboardPresetFor(
 }
 
 /**
+ * Which way up a size is.
+ *
+ * **One predicate, in the one place that has to know.** `nearestArtboardPreset`
+ * and the display lens's grouping both answer "is this document portrait", and
+ * two `height > width` tests are two answers that can drift — a portrait theme
+ * offered landscape previews is exactly the failure the owner ruled a square
+ * acceptable to avoid.
+ *
+ * A square is not taller, so it reads landscape. The owner's ruling: it keeps
+ * this one comparison rather than a second one for the case neither half of
+ * the table names.
+ */
+export function artboardOrientation(size: ArtboardSize): ArtboardOrientation {
+  return size.height > size.width ? "portrait" : "landscape";
+}
+
+/**
  * The preset a new document should open on, given the document it replaces.
  *
  * **A different question from `artboardPresetFor`, in the same module.** That
@@ -164,9 +181,7 @@ export function nearestArtboardPreset(
   return {
     ratio: closest.id,
     resolution: nearest.id,
-    // Taller than wide is portrait; a square is not taller, and a square is
-    // not a shape this table names either way.
-    orientation: size.height > size.width ? "portrait" : "landscape",
+    orientation: artboardOrientation(size),
   };
 }
 

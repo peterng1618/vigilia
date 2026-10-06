@@ -2,6 +2,7 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
+import type { ArtboardSize } from "../artboard-presets.js";
 import type { DisplayLensId } from "../display-lens.js";
 import type { ViewportManager } from "../viewport-manager/index.js";
 import { DisplaySwitch } from "./display-switch.js";
@@ -22,7 +23,10 @@ afterEach(async () => {
   }
 });
 
-function setup(display: DisplayLensId | undefined = "19.5:9") {
+function setup(
+  display: DisplayLensId | undefined = "19.5:9",
+  artboard: ArtboardSize = { width: 2340, height: 1080 },
+) {
   const showDisplay = vi.fn();
   const zoomToSelection = vi.fn();
   const reset = vi.fn();
@@ -66,7 +70,9 @@ function setup(display: DisplayLensId | undefined = "19.5:9") {
     zoomToSelection,
     reset,
     render: () =>
-      act(async () => root.render(<DisplaySwitch viewport={viewport} />)),
+      act(async () =>
+        root.render(<DisplaySwitch viewport={viewport} artboard={() => artboard} />),
+      ),
     setZoom(value: number): Promise<void> {
       return act(async () => {
         zoom = value;
@@ -120,7 +126,15 @@ it("offers every display and Fit, and each is one click away", async () => {
   const { render, showDisplay, zoomToSelection, reset } = setup();
   await render();
 
-  for (const label of ["Fit", "19.5:9", "9:19.5", "16:9"]) {
+  for (const label of [
+    "Fit",
+    "16:9",
+    "19.5:9",
+    "4:3",
+    "9:16",
+    "9:19.5",
+    "3:4",
+  ]) {
     expect(
       document.querySelector(`[aria-label="${label}"]`),
       `${label} is offered`,
@@ -183,7 +197,7 @@ it("ticks nothing when the camera is neither a display nor a fit", async () => {
   await setDisplay(undefined);
   await setFitted(false);
   expect(checked("Fit"), "100 % is not Fit").toBe(false);
-  for (const label of ["19.5:9", "9:19.5", "16:9"]) {
+  for (const label of ["19.5:9", "9:19.5", "16:9", "4:3"]) {
     expect(checked(label), `${label} is not it either`).toBe(false);
   }
 
@@ -222,3 +236,56 @@ it("gives every item its tick slot, ticked or not, so the labels cannot shift", 
   expect(tickCount("Fit")).toBe(1);
   expect(tickCount("16:9")).toBe(1);
 });
+
+/** The previews are two labelled groups, and the artboard decides which leads.
+ *
+ *  Six bare ratios read as one undifferentiated list: an author whose theme is
+ *  a phone has to work out for themselves that three of the six are the wrong
+ *  way up. The order is the artboard's own orientation read through
+ *  `artboardOrientation`, the predicate `nearestArtboardPreset` also reads, so
+ *  a portrait document cannot be handed the landscape half first by a second
+ *  reading of its size that disagrees with the first.
+ */
+it.each([
+  [{ width: 2340, height: 1080 }, ["Landscape", "Portrait"], ["16:9", "9:16"]],
+  [{ width: 1080, height: 2340 }, ["Portrait", "Landscape"], ["9:16", "16:9"]],
+  // A square is not taller than wide, so it takes landscape — the owner's
+  // ruling, and the reason this is one comparison rather than two.
+  [{ width: 1000, height: 1000 }, ["Landscape", "Portrait"], ["16:9", "9:16"]],
+] as const)(
+  "groups the previews with the %o orientation leading",
+  async (artboard, headings, leading) => {
+    const { render } = setup("16:9", artboard);
+    await render();
+
+    expect(groupLabels(), "the two headings, in order").toEqual(headings);
+    expect(leadingLensPerGroup(), "and the first preview under each").toEqual(
+      leading,
+    );
+  },
+);
+
+/** The menu's group headings, in the order they are painted. */
+function groupLabels(): string[] {
+  return [...document.querySelectorAll(".editor-shell-menu-label")].map(
+    (label) => label.textContent ?? "",
+  );
+}
+
+/** The first preview of each *labelled* group — enough to say which leads. The
+ *  radio group itself is a `role="group"` too, and is skipped by requiring the
+ *  heading the two preview groups carry. */
+function leadingLensPerGroup(): string[] {
+  return [...document.querySelectorAll<HTMLElement>('[role="group"]')]
+    .filter(
+      (group) =>
+        group.firstElementChild?.classList.contains("editor-shell-menu-label") ??
+        false,
+    )
+    .map(
+      (group) =>
+        group.querySelector('[role="menuitemradio"]')?.getAttribute(
+          "aria-label",
+        ) ?? "",
+    );
+}

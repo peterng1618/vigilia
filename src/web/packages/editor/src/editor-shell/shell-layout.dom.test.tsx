@@ -107,6 +107,8 @@ function bridgeStub(
     // throws inside the render, taking the whole shell down with it rather
     // than failing the one assertion about the camera.
     editor: {
+      // Read by the display switch for the group of previews that leads.
+      artboard: () => ({ width: 1920, height: 1080 }),
       viewport: {
         zoom: () => 1,
         display: () => undefined,
@@ -338,6 +340,7 @@ it("re-frames on the panel toggle even for a camera the author has moved", async
   const bridge = bridgeStub({
     editor: {
       canvas: new Canvas(document.createElement("canvas")),
+      artboard: () => ({ width: 1920, height: 1080 }),
       viewport: {
         zoom: () => 1,
         display: () => undefined,
@@ -381,6 +384,7 @@ it("leaves the camera alone after a swap between two open panes", async () => {
   const bridge = bridgeStub({
     editor: {
       canvas: new Canvas(document.createElement("canvas")),
+      artboard: () => ({ width: 1920, height: 1080 }),
       viewport: {
         zoom: () => 1,
         display: () => undefined,
@@ -418,6 +422,7 @@ it("re-frames when a collapsed panel is reopened by asking for a pane", async ()
   const bridge = bridgeStub({
     editor: {
       canvas: new Canvas(document.createElement("canvas")),
+      artboard: () => ({ width: 1920, height: 1080 }),
       viewport: {
         zoom: () => 1,
         display: () => undefined,
@@ -482,6 +487,7 @@ it("puts a diagnostic surface in the status line, and it reports a refusal", asy
   const bridge = bridgeStub({
     editor: {
       canvas,
+      artboard: () => ({ width: 1920, height: 1080 }),
       viewport: {
         zoom: () => 1,
         display: () => undefined,

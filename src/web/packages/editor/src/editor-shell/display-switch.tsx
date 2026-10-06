@@ -1,6 +1,11 @@
 import { Menu } from "@base-ui/react/menu";
 import { useCallback, useSyncExternalStore } from "react";
-import { DISPLAY_LENSES, type DisplayLensId } from "../display-lens.js";
+import {
+  artboardOrientation,
+  type ArtboardOrientation,
+  type ArtboardSize,
+} from "../artboard-presets.js";
+import { type DisplayLens, type DisplayLensId, displayLensGroups } from "../display-lens.js";
 import { uiCopy } from "../ui-copy.js";
 import type { ViewportManager } from "../viewport-manager/index.js";
 
@@ -34,6 +39,27 @@ function useIsFitted(viewport: ViewportManager): boolean {
   return useSyncExternalStore(subscribe, () => viewport.isFitted());
 }
 
+/** Which group of previews leads — the artboard's own orientation, read
+ *  through the one predicate, as a primitive for the reason the three above
+ *  are: an object here would re-render the control on every camera change.
+ *
+ *  The camera's change event is also how a new **artboard** announces itself:
+ *  `setArtboard` refits, and a refit notifies. So this is a document fact
+ *  arriving on the camera's channel, which is worth knowing before someone
+ *  looks for a second subscription to add. */
+function useArtboardOrientation(
+  viewport: ViewportManager,
+  artboard: () => ArtboardSize,
+): ArtboardOrientation {
+  const subscribe = useCallback(
+    (listener: () => void) => viewport.onChange(listener),
+    [viewport],
+  );
+  return useSyncExternalStore(subscribe, () =>
+    artboardOrientation(artboard()),
+  );
+}
+
 /** The radio value standing for Fit — the whole stage, with no display in it. */
 const NO_DISPLAY = "";
 
@@ -45,12 +71,17 @@ const NEITHER = "neither";
 
 export function DisplaySwitch({
   viewport,
+  artboard,
 }: {
   readonly viewport: ViewportManager;
+  /** The document's own size, so the group of previews that suits it leads. */
+  readonly artboard: () => ArtboardSize;
 }): React.JSX.Element {
   const zoom = useZoom(viewport);
   const display = useDisplay(viewport);
   const isFitted = useIsFitted(viewport);
+  const orientation = useArtboardOrientation(viewport, artboard);
+  const groups = displayLensGroups(orientation);
   const percent = `${Math.round(zoom * 100)}%`;
 
   return (
@@ -114,21 +145,17 @@ export function DisplaySwitch({
                 </Menu.RadioItemIndicator>
                 {uiCopy.display.fit}
               </Menu.RadioItem>
-              {DISPLAY_LENSES.map((lens) => (
-                <Menu.RadioItem
-                  key={lens.id}
-                  value={lens.id}
-                  closeOnClick
-                  aria-label={uiCopy.display.displays[lens.id]}
-                >
-                  <Menu.RadioItemIndicator
-                    className="editor-shell-menu-tick"
-                    keepMounted
-                  >
-                    {"•"}
-                  </Menu.RadioItemIndicator>
-                  {uiCopy.display.displays[lens.id]}
-                </Menu.RadioItem>
+              {/* Two labelled groups rather than six bare ratios: the author
+                  has to see which of them is the way up their theme is before
+                  they can tell any of them apart, and a portrait theme is
+                  usually not looking for a landscape preview. */}
+              {groups.map((group) => (
+                <Menu.Group key={group.orientation}>
+                  <Menu.GroupLabel className="editor-shell-menu-label">
+                    {uiCopy.artboardOrientations[group.orientation]}
+                  </Menu.GroupLabel>
+                  {group.lenses.map(lensItem)}
+                </Menu.Group>
               ))}
             </Menu.RadioGroup>
             <Menu.Item
@@ -147,5 +174,26 @@ export function DisplaySwitch({
         </Menu.Positioner>
       </Menu.Portal>
     </Menu.Root>
+  );
+}
+
+/** One preview, named by the aspect it frames. Extracted so the group's map and
+ *  the tick's gutter comment are not read apart from each other. */
+function lensItem(lens: DisplayLens): React.JSX.Element {
+  return (
+    <Menu.RadioItem
+      key={lens.id}
+      value={lens.id}
+      closeOnClick
+      aria-label={uiCopy.display.displays[lens.id]}
+    >
+      <Menu.RadioItemIndicator
+        className="editor-shell-menu-tick"
+        keepMounted
+      >
+        {"•"}
+      </Menu.RadioItemIndicator>
+      {uiCopy.display.displays[lens.id]}
+    </Menu.RadioItem>
   );
 }

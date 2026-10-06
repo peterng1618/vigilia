@@ -42,7 +42,15 @@ beforeEach(() => {
   }
 });
 
-const LENSES = ["19.5:9", "9:19.5", "16:9", undefined] as const;
+const LENSES = [
+  "16:9",
+  "19.5:9",
+  "4:3",
+  "9:16",
+  "9:19.5",
+  "3:4",
+  undefined,
+] as const;
 
 describe("the display lens is a view preference, not document content", () => {
   it("leaves the serialised scene byte-identical across every choice", async () => {

@@ -565,7 +565,10 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
             {/* The store, not a local: a late-set bridge must reach the readout
                 the same way it reaches the inspector and menus. */}
             {store.bridge === undefined ? null : (
-              <DisplaySwitch viewport={store.bridge.editor.viewport} />
+              <DisplaySwitch
+                viewport={store.bridge.editor.viewport}
+                artboard={store.bridge.editor.artboard}
+              />
             )}
             {/* Renders no DOM of its own: it only binds the canvas's own
                 `contextmenu` listener, so it sits with the stage it listens to. */}

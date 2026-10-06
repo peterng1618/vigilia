@@ -349,9 +349,12 @@ test.describe("the stage looks through a display", () => {
     const seen: { readonly name: string; readonly aspect: number }[] = [];
 
     for (const [name, want] of [
-      ["19.5:9", 19.5 / 9],
-      ["9:19.5", 1 / (19.5 / 9)],
       ["16:9", 16 / 9],
+      ["19.5:9", 19.5 / 9],
+      ["4:3", 4 / 3],
+      ["9:16", 1 / (16 / 9)],
+      ["9:19.5", 1 / (19.5 / 9)],
+      ["3:4", 1 / (4 / 3)],
     ] as const) {
       await chooseDisplay(page, name);
       const m = await measure(page);
@@ -364,8 +367,8 @@ test.describe("the stage looks through a display", () => {
       seen.push({ name, aspect: aspect(m.screen) });
     }
 
-    // Three genuinely different framings, not one zoom relabelled three times.
-    expect(new Set(seen.map((row) => row.aspect.toFixed(2))).size).toBe(3);
+    // Six genuinely different framings, not one zoom relabelled six times.
+    expect(new Set(seen.map((row) => row.aspect.toFixed(2))).size).toBe(6);
 
     await page.locator("[data-vigilia-zoom]").click();
     await page.getByRole("menuitemradio", { name: "Fit" }).click();
@@ -388,6 +391,50 @@ test.describe("the stage looks through a display", () => {
     ).toMatch(/^\d+%$/);
   });
 
+  test("the previews are two labelled groups, and a portrait theme leads with portrait", async ({
+    page,
+  }) => {
+    // The starter is landscape, so the landscape group leads — through the same
+    // predicate that decides what a new document opens at. A switch to a
+    // portrait document moves the leading group, which is the half of this
+    // that cannot be satisfied by a fixed order in the source.
+    const headings = async () =>
+      page.evaluate(() =>
+        [...document.querySelectorAll(".editor-shell-menu-label")]
+          .map((label) => label.textContent)
+          .filter((text): text is string => text !== null),
+      );
+
+    await openMenu(page);
+    expect(
+      await headings(),
+      "the landscape starter leads with Landscape",
+    ).toEqual(["Landscape", "Portrait"]);
+    await page.keyboard.press("Escape");
+
+    await page.keyboard.press("Control+n");
+    const chooser = page.locator("dialog");
+    await expect(chooser).toBeVisible();
+    await chooser
+      .locator("[data-vigilia-new-document-display]")
+      .selectOption("9:19.5");
+    await chooser.locator("[data-vigilia-new-document-create]").click();
+    const prompt = page.locator("dialog");
+    await prompt
+      .waitFor({ state: "visible", timeout: 3_000 })
+      .then(() =>
+        prompt.getByRole("button", { name: "Discard", exact: true }).click(),
+      )
+      .catch(() => undefined);
+    await expect(page.locator("#status")).toHaveText("New theme");
+
+    await openMenu(page);
+    expect(
+      await headings(),
+      "a portrait document leads with Portrait, from the one predicate",
+    ).toEqual(["Portrait", "Landscape"]);
+  });
+
   test("the menu labels do not move when the tick moves between them", async ({
     page,
   }) => {
@@ -400,7 +447,9 @@ test.describe("the stage looks through a display", () => {
     // travelling toward — which is the reason the gutter has to exist.
     await openMenu(page);
     const ticked = await labelOffsets(page);
-    expect(Object.keys(ticked), "the menu offered its labels").toHaveLength(4);
+    // Fit plus six previews; the two group headings are not menu items and
+    // carry no label of their own.
+    expect(Object.keys(ticked), "the menu offered its labels").toHaveLength(7);
 
     await page.getByRole("menuitemradio", { name: "16:9" }).click();
     await openMenu(page);

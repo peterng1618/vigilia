@@ -3,6 +3,7 @@ import {
   ARTBOARD_ORIENTATIONS,
   ARTBOARD_RATIOS,
   ARTBOARD_RESOLUTIONS,
+  artboardOrientation,
   type ArtboardOrientation,
   type ArtboardPresetChoice,
   type ArtboardRatioId,
@@ -14,9 +15,10 @@ import {
   nearestArtboardPreset,
 } from "./artboard-presets.js";
 import {
-  DISPLAY_LENSES,
   type DisplayLensId,
   displayLens,
+  displayLensGroups,
+  displayLensIdForShape,
 } from "./display-lens.js";
 import { linkedPair } from "./editor-shell/controls/linked-pair.js";
 import { uiCopy } from "./ui-copy.js";
@@ -93,10 +95,16 @@ export function newDocumentChooser(current?: ArtboardSize): HTMLDialogElement {
       );
     },
   );
-  for (const lens of DISPLAY_LENSES) {
-    display.select.append(
-      new Option(uiCopy.display.displays[lens.id], lens.id),
-    );
+  // Grouped by the display menu's own grouping, through `<optgroup>`: a select
+  // has no way to draw headings of its own, and six bare ratios read as one
+  // undifferentiated list whichever control offers them.
+  for (const group of displayLensGroups(artboardOrientation(opening))) {
+    const set = document.createElement("optgroup");
+    set.label = uiCopy.artboardOrientations[group.orientation];
+    for (const lens of group.lenses) {
+      set.append(new Option(uiCopy.display.displays[lens.id], lens.id));
+    }
+    display.select.append(set);
   }
   display.select.append(new Option(uiCopy.newDocument.custom, CUSTOM));
 
@@ -284,8 +292,12 @@ export function newDocumentChooser(current?: ArtboardSize): HTMLDialogElement {
     return Number(dimensions.second.value);
   }
 
-  display.select.value = openingDisplay(preset);
-  custom.hidden = display.select.value !== CUSTOM;
+  // Every shape the presets name now has a lens in both orientations, so the
+  // dialog opens on a display rather than on Custom — a 4:3 document used to
+  // open on Custom here, back when 4:3 was a shape nothing could frame. Custom
+  // is still the author's own, one option away.
+  display.select.value = displayLensIdForShape(preset);
+  custom.hidden = true;
   adopt(opening);
 
   const create = document.createElement("button");
@@ -306,21 +318,6 @@ export function newDocumentChooser(current?: ArtboardSize): HTMLDialogElement {
   form.append(heading, display.row, custom, sizeRow, actions);
   dialog.append(form);
   return dialog;
-
-  /** The display this preset's shape is, or Custom for a shape no display is
-   *  — a 4:3 document opens on Custom with 4:3 already chosen, rather than on
-   *  a display that is not its shape. */
-  function openingDisplay(presetChoice: {
-    readonly ratio: ArtboardRatioId;
-    readonly orientation: ArtboardOrientation;
-  }): DisplayLensId | typeof CUSTOM {
-    const match = DISPLAY_LENSES.find(
-      (lens) =>
-        lens.shape.ratio === presetChoice.ratio &&
-        lens.shape.orientation === presetChoice.orientation,
-    );
-    return match?.id ?? CUSTOM;
-  }
 }
 
 /**

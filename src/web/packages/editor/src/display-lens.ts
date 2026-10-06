@@ -1,9 +1,18 @@
 import {
+  ARTBOARD_ORIENTATIONS,
   ARTBOARD_RATIOS,
+  type ArtboardOrientation,
   type ArtboardRatioId,
   type ArtboardShape,
   DEFAULT_ARTBOARD_PRESET,
 } from "./artboard-presets.js";
+
+/** A ratio's own name stood on its side — `19.5:9` as `9:19.5`. A type rather
+ *  than a list, because the portrait names are nowhere written down: they are
+ *  the landscape ones, read the other way up. */
+type Upright<Id extends string> = Id extends `${infer W}:${infer H}`
+  ? `${H}:${W}`
+  : never;
 
 /**
  * The displays a theme can be seen through, and the lens the stage looks
@@ -23,8 +32,15 @@ import {
  * where a screen happens to hang and mean different things to different people;
  * the ratio is the fact the lens actually holds, so it is the only name here
  * that cannot be argued with.
+ *
+ * **A portrait id is the reciprocal, not a second ratio id.** `ArtboardRatioId`
+ * holds landscape ratios only, so `9:19.5` is deliberately not one — widening
+ * that type would put six shapes into the artboard presets', the chooser's and
+ * the validator's vocabulary, and the persisted shape list is not what needs a
+ * portrait name. The number still comes from the landscape entry through
+ * `ratioOf`, so nothing writes a ratio twice.
  */
-export type DisplayLensId = "19.5:9" | "9:19.5" | "16:9";
+export type DisplayLensId = ArtboardRatioId | Upright<ArtboardRatioId>;
 
 export interface DisplayLens {
   readonly id: DisplayLensId;
@@ -62,30 +78,95 @@ function ratioOf(id: ArtboardRatioId): number {
 /** A lens's aspect, read from the shape it names rather than written beside
  *  it — the same reason `ratioOf` exists, one step further on. Portrait is the
  *  same display turned, so one ratio covers both orientations and the two
- *  cannot drift apart, which is also why `artboardSize` swaps its edges. */
-function lens(id: DisplayLensId, shape: ArtboardShape): DisplayLens {
+ *  cannot drift apart, which is also why `artboardSize` swaps its edges.
+ *
+ *  The id comes out of the shape for the same reason: a lens named `9:19.5` is
+ *  a second spelling of `19.5:9`, and two spellings of one number is the drift
+ *  `ratioOf` exists to prevent. */
+function lens(shape: ArtboardShape): DisplayLens {
   const wide = ratioOf(shape.ratio);
+  const upright = shape.orientation === "portrait";
   return {
-    id,
+    id: upright ? turned(shape.ratio) : shape.ratio,
     shape,
-    aspect: shape.orientation === "portrait" ? 1 / wide : wide,
+    aspect: upright ? 1 / wide : wide,
   };
 }
 
-/** The two landscape shapes, each held by the ratio its lens is named for
- *  rather than written beside it. The upright 19.5:9 lens is the first turned,
- *  so it reads the ratio off the same shape. */
-const nineteenFiveNine: ArtboardShape = {
-  ratio: "19.5:9",
-  orientation: "landscape",
-};
-const sixteenNine: ArtboardShape = { ratio: "16:9", orientation: "landscape" };
+/** A ratio's own id turned on its side — the name the portrait lens of the same
+ *  shape carries. Split from the id rather than written out, so a ratio added
+ *  to the presets brings its upright id with it instead of needing a second
+ *  entry here that can disagree with the first. The split is a pair because
+ *  every `ArtboardRatioId` holds exactly one colon. */
+function turned(id: ArtboardRatioId): Upright<ArtboardRatioId> {
+  const [wide, tall] = id.split(":") as [string, string];
+  return `${tall}:${wide}` as Upright<ArtboardRatioId>;
+}
 
-export const DISPLAY_LENSES: readonly DisplayLens[] = [
-  lens("19.5:9", nineteenFiveNine),
-  lens("9:19.5", { ratio: nineteenFiveNine.ratio, orientation: "portrait" }),
-  lens("16:9", sixteenNine),
-];
+/**
+ * Every shape the artboard presets name, each way up: `ARTBOARD_RATIOS` crossed
+ * with `ARTBOARD_ORIENTATIONS`, six lenses derived rather than written.
+ *
+ * **Derived, so a lens cannot name a shape the presets cannot build.** A fourth
+ * ratio in `artboard-presets.ts` is a fourth pair of previews here with nothing
+ * to add to this file — and a lens whose ratio was written here alone would be
+ * a number nothing else can check it against, which is the whole argument for
+ * `ratioOf` above.
+ *
+ * **The cross product is not a constraint on the artboard.** These are the
+ * common device shapes to *look through*, offered because an author whose theme
+ * is for a phone wants the phone's proportions; a super thin strip and a square
+ * are not in the table and are not the less authorable for it. The panel's
+ * width and height fields and its Custom size are untouched, and nothing here
+ * is ever written into the document (§67).
+ */
+export const DISPLAY_LENSES: readonly DisplayLens[] =
+  ARTBOARD_ORIENTATIONS.flatMap((orientation) =>
+    ARTBOARD_RATIOS.map((entry) => lens({ ratio: entry.id, orientation })),
+  );
+
+/** One orientation's previews, under the label the pickers head them with. */
+export interface DisplayLensGroup {
+  readonly orientation: ArtboardOrientation;
+  readonly lenses: readonly DisplayLens[];
+}
+
+/**
+ * The lenses by orientation, the artboard's own orientation first.
+ *
+ * **One list, grouped once, for both pickers.** The display menu and the
+ * new-theme chooser ask the same question — which previews suit this theme — and
+ * either building its own groups would be a second answer to it. Landscape and
+ * portrait are two labels rather than one run of six, because an author reading
+ * a list of ratios cannot see at a glance which four of them will not help.
+ *
+ * **Ordered by the artboard through the predicate that already exists.** Both
+ * callers read the orientation with `artboardOrientation` — the very function
+ * `nearestArtboardPreset` reads its own through — so a portrait theme leads
+ * with the portrait previews and the two cannot come to disagree about what a
+ * size is. A square is not taller than wide and leads with landscape: the
+ * owner's ruling, kept because it keeps the logic to one comparison.
+ */
+export function displayLensGroups(
+  leading: ArtboardOrientation,
+): readonly DisplayLensGroup[] {
+  const groups: DisplayLensGroup[] = [];
+  for (const group of groupedLenses) {
+    if (group.orientation === leading) groups.unshift(group);
+    else groups.push(group);
+  }
+  return groups;
+}
+
+/** Built once from the list above; `displayLensGroups` only reorders it. */
+const groupedLenses: readonly DisplayLensGroup[] = ARTBOARD_ORIENTATIONS.map(
+  (orientation) => ({
+    orientation,
+    lenses: DISPLAY_LENSES.filter(
+      (entry) => entry.shape.orientation === orientation,
+    ),
+  }),
+);
 
 /**
  * The lens the editor opens on: the shape a new document opens at, read out of
@@ -103,13 +184,15 @@ export const DISPLAY_LENSES: readonly DisplayLens[] = [
  * drifted apart. A shape no lens frames throws, exactly as a missing ratio
  * does — a default would frame the stage at a shape nobody chose.
  */
-export const DEFAULT_DISPLAY_LENS: DisplayLensId = lensIdForShape({
+export const DEFAULT_DISPLAY_LENS: DisplayLensId = displayLensIdForShape({
   ratio: DEFAULT_ARTBOARD_PRESET.ratio,
   orientation: DEFAULT_ARTBOARD_PRESET.orientation,
 });
 
-/** The lens showing `shape`, or a throw rather than the nearest one. */
-function lensIdForShape(shape: ArtboardShape): DisplayLensId {
+/** The lens showing `shape`, or a throw rather than the nearest one. Also the
+ *  answer `DEFAULT_DISPLAY_LENS` is built from, so a shape the table cannot
+ *  frame is refused where the table is read rather than by each caller. */
+export function displayLensIdForShape(shape: ArtboardShape): DisplayLensId {
   const found = DISPLAY_LENSES.find(
     (entry) =>
       entry.shape.ratio === shape.ratio &&

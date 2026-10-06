@@ -45,19 +45,62 @@ describe("the new-document chooser", () => {
   it("asks what the theme is for first, and offers Custom beside it", () => {
     // The finding the redesign exists for: three "Custom"s as the starting
     // state asks an author to know a ratio before knowing what the thing is
-    // for. The first control is the question, and every display is on it.
+    // for. The first control is the question, and every display is on it —
+    // every ratio the presets name, each way up.
     const dialog = newDocumentChooser();
 
     const values = display(dialog);
-    expect(values).toEqual(["19.5:9", "9:19.5", "16:9", ""]);
+    expect(values).toEqual([
+      "16:9",
+      "19.5:9",
+      "4:3",
+      "9:16",
+      "9:19.5",
+      "3:4",
+      "",
+    ]);
     // And Custom is not a corner: it is the last option of the same control,
-    // one click from the three.
+    // one click from the six.
     expect(
       dialog.querySelector(
         `[data-vigilia-new-document-display] option[value=""]`,
       )?.textContent,
     ).toBe("Custom size");
   });
+
+  /** The headings the six previews are grouped under, in the order offered.
+   *
+   *  A select has no way to draw headings of its own, so `<optgroup>` is the
+   *  only grouping it can have — and without one, six bare ratios read as one
+   *  undifferentiated list. The order is the artboard's own orientation, read
+   *  through the one predicate, so a portrait document is not handed the
+   *  landscape half first. */
+  it.each([
+    [
+      { width: 1920, height: 1080 },
+      ["Landscape", "Portrait"],
+      ["16:9", "9:16"],
+    ],
+    [
+      { width: 1080, height: 2340 },
+      ["Portrait", "Landscape"],
+      ["9:16", "16:9"],
+    ],
+    // A square is not taller than wide, so it takes landscape.
+    [
+      { width: 1000, height: 1000 },
+      ["Landscape", "Portrait"],
+      ["16:9", "9:16"],
+    ],
+  ] as const)(
+    "groups the displays by orientation for a %o artboard",
+    (current, labels, leading) => {
+      const dialog = newDocumentChooser(current);
+
+      expect(displayGroups(dialog), "the two groups, in order").toEqual(labels);
+      expect(leadingPerGroup(dialog)).toEqual(leading);
+    },
+  );
 
   it("opens a theme with no document on 16:9, at 1920 × 1080", async () => {
     // A product decision rather than an accident, so it is asserted rather than
@@ -98,28 +141,26 @@ describe("the new-document chooser", () => {
     });
   });
 
-  it("opens a shape no display frames on Custom, with that shape already chosen", async () => {
-    // 4:3 is a shape the preset tables name and no display lens is, so the
-    // fallback branch of `openingDisplay` is the one taken here. It is the
-    // branch that makes "does not silently open on a display that is not its
-    // shape" true: 1280 × 960 comes back as a 4:3 document, with the ratio and
-    // orientation already naming it, rather than framed through a lens that is
-    // not its shape.
+  it("opens a 4:3 document on the 4:3 preview, because there is one now", async () => {
+    // 4:3 used to be a shape the presets named and no lens framed, so this
+    // opened on Custom and answered `display: undefined` — the framing that
+    // names none. Every ratio the presets hold is now a lens in both
+    // orientations, and a 4:3 document framed through a 4:3 preview is the
+    // whole point of widening the list.
     const pending = chooseArtboardSize({ width: 1280, height: 960 });
     const dialog = opened();
 
-    expect(read(dialog, "display")).toBe("");
-    expect(customQuestion(dialog).hidden).toBe(false);
+    expect(read(dialog, "display")).toBe("4:3");
+    expect(customQuestion(dialog).hidden).toBe(true);
     expect(read(dialog, "ratio")).toBe("4:3");
     expect(read(dialog, "orientation")).toBe("landscape");
 
     create(dialog);
     // The nearest preset the shape has, at the resolution it always opened at,
-    // and no display: Custom is the author declining to name one, and Fit is
-    // the framing that names none.
+    // seen through the lens of that shape.
     expect(await pending).toEqual({
       size: { width: 1440, height: 1080 },
-      display: undefined,
+      display: "4:3",
     });
   });
 
@@ -127,6 +168,9 @@ describe("the new-document chooser", () => {
     ["19.5:9", { width: 2340, height: 1080 }],
     ["9:19.5", { width: 1080, height: 2340 }],
     ["16:9", { width: 1920, height: 1080 }],
+    ["4:3", { width: 1440, height: 1080 }],
+    ["9:16", { width: 1080, height: 1920 }],
+    ["3:4", { width: 1080, height: 1440 }],
   ] as const)(
     "a new theme from %s arrives at those dimensions",
     async (lens, size) => {
@@ -402,6 +446,24 @@ function display(dialog: HTMLElement): string[] {
       "[data-vigilia-new-document-display] option",
     ),
   ].map((option) => option.value);
+}
+
+/** The `<optgroup>` labels the display question is grouped into. */
+function displayGroups(dialog: HTMLElement): (string | undefined)[] {
+  return [
+    ...dialog.querySelectorAll<HTMLOptGroupElement>(
+      "[data-vigilia-new-document-display] optgroup",
+    ),
+  ].map((group) => group.label);
+}
+
+/** The first option of each group — enough to say which group leads. */
+function leadingPerGroup(dialog: HTMLElement): string[] {
+  return [
+    ...dialog.querySelectorAll<HTMLOptGroupElement>(
+      "[data-vigilia-new-document-display] optgroup",
+    ),
+  ].map((group) => group.querySelector("option")?.value ?? "");
 }
 
 /** The controls behind Custom, as one thing to show and hide. */

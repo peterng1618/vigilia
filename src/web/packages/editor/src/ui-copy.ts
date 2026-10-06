@@ -340,9 +340,12 @@ export const uiCopy = {
      *  aspect it frames — the same word the id is, so a screen nobody has
      *  heard of is still nameable. */
     displays: {
-      "19.5:9": "19.5:9",
-      "9:19.5": "9:19.5",
       "16:9": "16:9",
+      "19.5:9": "19.5:9",
+      "4:3": "4:3",
+      "9:16": "9:16",
+      "9:19.5": "9:19.5",
+      "3:4": "3:4",
     } satisfies Record<DisplayLensId, string>,
   },
   palette: "Shell palette",
