@@ -44,11 +44,11 @@ The loop, in order:
 
 ## Last completed change
 
-- **Plan 4: Task 11 landed and the plan is closed.** `vg-146` moved to `verified` and into `docs/product/backlog-archive.jsonl`.
-- **`vg-146`'s two halves, both checked here.** `check` is `grep -rnE "Style tab|the Style panel|inspector\.style" src/web/packages src/web/tests`, returning no match now the tab and its `style.ts` are gone; `artefacts` is `9f62b0d3`, the commit that deleted them, confirmed an ancestor of HEAD.
-- **`vg-056` and `vg-087` are carried, not closed.** The composition panel keeps the row click, the drag handlers, the same-parent rule and the refusal marks, but neither multi-select nor drag-to-reorder is implemented by this plan.
-- **`vg-151` stays open, against the plan's own instruction to close it.** `75e9c6d4` passes but `104adefc` and plan 4's HEAD both fail at 0.74 against the 0.8024 the same run computes, so the zoom-coupled floor is still red and no honest `verified` check exists. `vg-157` and `vg-158` are open too.
-- **`vg-152` files the same archive rule against plans 1 and 2** — two closed plans still live while plan 3 was archived. Linked here, not done here; this task moves only its own plan.
+- **Plan 4's whole-plan review ran here, after the plan had closed, because it never had one** — its workspace held no review diffs while plan 2's held eleven.
+- **The review's doc-truth findings are corrected in this commit.** `ownership.md:99` and `architecture/README.md:42` still named the deleted Style tab, and `requirements.md:47` still said "inspector tabs"; all three now say the Document pane and the pane bar.
+- **Dead CSS removed.** Two `[role="tab"]` rules in `editor-shell.css` matched nothing, because no element carries that role; `editor-pane-bar.spec.ts` is 4/4 green on the rebuilt bundle.
+- **`editor.spec.ts`'s pane helper now names its precondition** — a wrong selection used to surface as a confusing timeout in the lookup below it.
+- **`vg-159` and `vg-160` are filed, not fixed** — three verification bullets plan 4 wrote have no test behind them, and the Document pane still sets a panel marker named `style` whose reason to keep it has expired.
 
 ## Next
 

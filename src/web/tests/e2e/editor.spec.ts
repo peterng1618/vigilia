@@ -4665,8 +4665,8 @@ async function clientOfStarterGauge(
 async function selectStarterChart(page: Page): Promise<void> {
   await enterLayer(page, "group-ram-card");
   await page.locator('[data-vigilia-layer="ram-gauge"]').click();
-  // The precondition this helper never had: the tab lookup below turns a wrong
-  // selection into a confusing timeout, so name the failure here instead.
+  // The precondition this helper never had: a wrong selection used to surface
+  // as a confusing timeout in the lookup below, so name the failure here.
   await expect
     .poll(() =>
       page.evaluate(

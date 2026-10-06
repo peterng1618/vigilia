@@ -44,7 +44,7 @@ verification plus appropriate tests. State what was not verified.
 ## §35 — Application shell
 
 The editor shell migrated to React 19 over Base UI with Tailwind (2026-09-24):
-header menus, rail plus pane, inspector tabs and a canvas dock, over the
+header menus, rail plus pane bar, and a canvas dock, over the
 unchanged imperative Fabric boundary in `mountEditorShell`. The player and host
 keep their own UIs.
 

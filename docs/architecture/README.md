@@ -39,7 +39,7 @@ dirty-work confirmation and deterministic disposal. `scene-fabric`'s
 changes that a `ScenePlan` cannot carry (it never carries `backgroundMedia`).
 
 `editor-shell/` is React chrome over that boundary: it owns the header menus,
-rail, inspector tabs and canvas dock, and React re-renders only on selection
+rail, pane bar and canvas dock, and React re-renders only on selection
 changes. It never creates or mirrors Fabric objects — menus and dock dispatch
 through `editor-session.ts`'s action façade and `EditorInteraction`, and panels
 keep their own DOM, relocated into React-owned host nodes.

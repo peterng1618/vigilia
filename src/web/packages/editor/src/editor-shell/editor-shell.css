@@ -652,7 +652,6 @@ body,
 .editor-shell button,
 .editor-shell input,
 .editor-shell select,
-.editor-shell [role="tab"],
 .editor-shell [role="menuitem"] {
   transition:
     background-color 140ms ease,
@@ -673,7 +672,6 @@ body,
   button,
   input,
   select,
-  [role="tab"],
   [tabindex]:not(:where([role="tabpanel"]))
 ):focus-visible {
   outline: 2px solid var(--shell-accent, #7dd3fc);
