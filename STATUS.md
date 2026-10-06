@@ -51,11 +51,11 @@ The loop, in order:
 
 ## Next
 
-1. **Plan 2 continues: the device lens** (`docs/superpowers/plans/`). Tasks 1 and 2 landed — the editor-side clip and the display switch. Task 3 asks a new theme what it is for, and the arc and wedge shapes in `SHAPE_KINDS` are still unconstructible.
-2. **`vg-129` and `vg-130` are `scene-fabric/src/persist.ts`'s**, one owner: editor-only state reaching a shareable artifact, the same class as the `blob:` src leak beside it.
-3. **The catalogue resumes where it stopped**: Task 6's fix round from `task-6-review.md`, clamped badge first, since two tests lock in the wrong behaviour. Task 7 must include the four `data-vigilia-font-face` call sites its report undercounted. `#release` must be read before `Release package`'s verb is decided — a preserved capability, not a deletable one.
-4. **`vg-046` closes only when the artboard clip is measured and demonstrably collides with neither the crop manager's authored per-image clip nor the derived text-box clip** — the same overhang put through the editor and the player and compared, because a collision that is not measured is not disproved.
-5. **Drive the product again.** `vg-139` was found by fixing a neighbouring row and named a cause that was wrong on inspection; the rest of the sweep's rows were read, not driven. The next find is whatever the editor does when used.
+1. **Plan 2's acceptance is not yet met, and two of its items are the plan's, not a task's.** `vg-046` closes only when the artboard clip is **measured** to collide with neither the crop manager's authored per-image clip nor the derived text-box clip — the same overhang put through the editor and the player and compared, because a collision that is not measured is not disproved. The final review confirmed the DOM route avoids the collision in Fabric's source and **that nobody ran the measurement**.
+2. **The default lens moved from phone-landscape to wall-panel** in `cb679056`, because the justification for phone-landscape was false — the starter is 1672 × 941, which is 16:9. The plan (line 140) and its Acceptance list still name phone landscape and are now wrong; the plan is a record and should be annotated, not rewritten.
+3. **The group/bleed product question is open and is the user's.** A marked card still reports once per part, because a child's box is always inside its group's — so "child outside" and "card overhangs" are the same fact and the plan's protection cannot fire. ADR-0027 records the conditional form the final review proposed and nobody has tried.
+4. **`vg-129` and `vg-130` are `scene-fabric/src/persist.ts`'s**, one owner: editor-only state reaching a shareable artifact, the same class as the `blob:` src leak beside it.
+5. **Drive the product again.** `vg-139` and the plan's nine second-writer defects were all found by sabotaging, never by reading; the rows still open were read, not driven.
 
 ## Blockers / unverified
 
