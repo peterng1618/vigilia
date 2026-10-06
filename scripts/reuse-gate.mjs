@@ -41,6 +41,19 @@ const WATCHLIST = [
   "src/web/packages/host/src/providers/",
   "src/web/packages/host/src/serve/static-path.ts",
   "src/web/packages/host/src/server.ts",
+  // The editor's own mechanism boundaries. Added after a pass found the list
+  // covered no editor path at all while the editor is where most of these
+  // decisions now live: the Fabric/React boundary, the row projection, the
+  // persistent-host shell, the session lifecycle, the one primitive library
+  // the spec rules on, and the references panel that is read-only by design.
+  // The editor's ordinary layout and copy are deliberately absent — a wrong
+  // decision there is visible on the next render rather than invisible.
+  "src/web/packages/editor/src/editor-shell/bridge.ts",
+  "src/web/packages/editor/src/editor-shell/layer-tree.ts",
+  "src/web/packages/editor/src/editor-shell/shell-layout.tsx",
+  "src/web/packages/editor/src/editor-session.ts",
+  "src/web/packages/editor/src/components/ui/",
+  "src/web/packages/editor/src/selection-inspector/style.ts",
   "scripts/",
 ];
 

@@ -779,6 +779,14 @@ naming the Style tab; `editor-session.ts` destroying a panel it no longer builds
 typecheck is read for exit 0, not for the absence of the word "error"; the right column becoming
 an unstyled `div` where a `Tabs.Panel` was, since the panel carried layout the tab provided.
 
+**A comment in this task's own file list that Task 7 proved is still wrong.** Task 7 could not
+touch `editor-session.ts` — it was on its must-not-touch list — and it measured that
+`editor-session.ts:125`'s *"Document-level panels shown when nothing is selected"* is **false now
+and was aspirational before**: what shows those panels is the pane, not the emptiness of the
+selection. This plan predicted the comment would "become true rather than aspirational", and that
+prediction was wrong in the same way the pane bar's "three segments" was. `editor-session.ts` is in
+your file list, so correct it here.
+
 **Verification:**
 - Unit: the document panel lists the tokens and presets by name and resolves them, with nothing
   selected **and** with a selection — the difference from today is the second half, and it is
@@ -806,11 +814,15 @@ an unstyled `div` where a `Tabs.Panel` was, since the panel carried layout the t
 - Modify: `src/web/tests/e2e/author-journey-rebuild.spec.ts` (eight `"Design"` sites and one
   `"Style"` at `:95`)
 - Modify: `src/web/tests/e2e/editor.spec.ts` — the local `openInspectorTab` definition at
-  `:4602` (whose body is the `getByRole("tab")` at `:4603`), its **twelve** call sites, and the
-  `editor-style-tab` capture at `:2137`
+  `:4616` (whose body is the `getByRole("tab")` at `:4617`), its **twelve** call sites, and the
+  `editor-style-tab` capture at `:2151` (all three moved by Task 6; the plan carried the
+  pre-Task-6 numbers)
 - Modify: `src/web/tests/e2e/reference-theme.spec.ts` (six sites)
 - Modify: `src/web/tests/e2e/glass-authoring.spec.ts` (one site)
 - Modify: `src/web/tests/e2e/inspector-sections.spec.ts` (one site)
+- Modify: `src/web/tests/e2e/panel-labels.spec.ts` and
+  `src/web/tests/e2e/shell-appearance.spec.ts` — **added by Task 7's finding, below; neither was
+  in any task's file list**
 
 **Interfaces:**
 - Consumes: the shell Task 8 left — no tab strip, the selection column and the document pane in
@@ -839,6 +851,22 @@ this plan those two live in different columns, so the test splits or the second 
 the Spends section. The `editor-style-tab` capture is retired with the panel it captured; it was
 never registered in `docs/evidence/screenshots/README.md`, so the table needs no row removed —
 **verify that by grepping the table rather than trusting this sentence**.
+
+**Task 7 found a second class of reach this count does not include, and it is the larger one.** The
+42 sites all *click a tab*. But the document panels were reachable **without clicking anything**
+while the Design tab was `keepMounted`, and the specs that used that reach never name a tab at all.
+Task 7 measured the consequence: `editor.spec.ts`'s *"edits an artboard palette token through the
+property surface"* now times out waiting for `[data-vigilia-palette-token]` with *"element is not
+visible"*, because the panel moved into a pane that is hidden until it is asked for.
+
+Measured across `tests/e2e`: **64 references to `[data-vigilia-artboard-*]`, `[data-vigilia-palette-*]`
+and `[data-vigilia-type-preset]` across 7 files** — `editor.spec.ts` 29, `panel-labels.spec.ts` 22,
+`shell-appearance.spec.ts` 5, `editor-pane-bar.spec.ts` 3 (Task 7's own new case),
+`glass-authoring.spec.ts` 2, `rebuild-driver.ts` 2, `inspector-sections.spec.ts` 1. **A reference
+count is not a failure count** — the failures are the cases that reach *on load*, and the way to
+enumerate them is to run each spec, not to count greps. **`panel-labels.spec.ts` and
+`shell-appearance.spec.ts` were in no task's file list at all**, which is why they are in this one
+now. The route for every one of them is `openPane(page, "Document")`.
 
 **Failure modes to design against:** Review Focus 5 — a helper, a comment or a doc still naming
 the Style tab; a spec whose tab click is deleted along with the assertion that followed it; a
