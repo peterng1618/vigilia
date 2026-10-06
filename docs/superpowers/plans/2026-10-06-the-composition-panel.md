@@ -413,6 +413,26 @@ manager records the entry **before** it sets the active object, because `selecti
 fires synchronously and the bridge re-projects the tree on it — a bridge that recorded anything
 itself would be the second owner of the entered group (§67 puts it in the manager).
 
+**The manager's one-hop rule, and the nested group it makes wrong.** `ownerGroup` is
+`object.parent` — **one hop, no walk** (`grouping-manager/index.ts:43`) — and Fabric types `parent`
+as `Group | undefined`, never a `Canvas` (`fabric/dist/src/shapes/Object/Object.d.ts:638`). So
+`enterGroup` enters the group *around* the object it is handed, which means **handing it the group
+you mean enters that group's owner instead.** This plan named that as a failure mode and then did
+not settle it; the landed task did, at `7c35c6a8`:
+
+- **The rule: resolve the id, require `target instanceof Group`, then hand the manager one of the
+  group's own children when `target.parent instanceof Group`, and the group itself otherwise.**
+- The `instanceof Group` guard is not decoration. "Pass the id-resolved object and the manager's
+  own refusal gives you the non-group no-op" — which the first version of this plan asserted, and
+  which Task 4's brief repeated — **is true only for a top-level non-group.** A non-group *child*
+  of a group resolves to its owner, so passing it through would enter a group the author never
+  pressed. The guard is what keeps a text box's row from being somewhere to go.
+- A nested group with no children has nothing to reach it through, so it stays **shut** — a no-op
+  rather than a silent entry into its owner. Not testable from the panel, since Task 5 renders the
+  control only when `hasChildren`.
+- The cost, stated plainly: an arbitrary child of the group ends up the active object. It is
+  inside the entered context, so it contradicts nothing the author sees.
+
 **Failure modes to design against:** Review Focus 3 — an entry that survives an undo into a
 scene `loadFromJSON` rebuilt, which `grouping-manager`'s own `onHistoryLoaded` already re-resolves
 by id, so the bridge must pass an id and not an object; an `enterGroup` that enters the *owner*
@@ -427,10 +447,20 @@ case the projection already agreed with it.
 - Unit: entering a group makes `groupContext()` name it, and the projection's rows for its
   children are no longer marked `data-context="false"` — asserted through `layers()` rather than
   through the manager.
+  *(As written this was wrong twice: `layers()` has no `data-context` field — that is Task 5's
+  panel attribute — so the landed case at `7c35c6a8` asserts the projection the panel actually
+  reads: the entered group is no longer `collapsed` and its child rows are present.)*
 - Unit: entering an id the tree does not hold leaves the context unchanged and throws nothing —
   the id from a projection taken before a delete. Review Focus 3.
-- Unit: entering a non-group id leaves the context unchanged.
-- Unit: `exitGroup` on an empty context is a no-op.
+- Unit: entering a non-group id leaves the context unchanged, **and for a non-group that is a
+  child of a group** — the case the guard above exists for.
+- Unit: `exitGroup` on an empty context is a no-op. **Ruled at `7c35c6a8`: it delegates to the
+  manager, which refuses, and still calls `notify()` — one republish and no state movement.** The
+  bullet means no *state* changes, not "the manager must not be called": there is no id to look up
+  here, so `selectLayer`'s early return has no counterpart, and adding a `groupContext().length`
+  check to suppress the republish would be a second owner of "is there anything to leave" beside
+  the manager's own answer. `selectLayer` notifies unconditionally whenever it does act; this
+  acts, trivially, and notifies once.
 - Unit: entering twice names the group once — a context holding one group twice would dim every
   row twice over and is what the manager's own `context[0] !== entry` guard prevents; assert
   the bridge does not defeat it.

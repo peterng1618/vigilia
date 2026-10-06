@@ -44,11 +44,11 @@ The loop, in order:
 
 ## Last completed change
 
-- **Plan 4's Phase 1 is done: Tasks 1–3 landed, `61b9673d` → `104adefc`.** A layer row carries a `role` in the projection, shows it as a visible span that is also its only statement of kind to a screen reader, and the column is now **360px** because that is what the role cost.
-- **The role cost a number, and the number chose the fix:** 4 of 60 names clipped at the recorded 340px, 2 of 60 without the role. Widening to 360px — the knee is 350px — buys both back; the stage gives up 948 → 928. Reproduced independently: `rows=60 clipped@shipped=2 clipped@shipped-without-role=2 clipped@340=4`.
-- **That measurement also settled the deferred string question:** the spec's illustrated `chart · line ×3` clips **7 of 60** at 340px against the landed `Line ×3`'s 4, so the short visible form stands — decided by a count, not by taste.
-- **The spec asserts directions, not pixels:** `shipped ≤ withoutRole` and `shipped ≤ recorded`, with the counts in test annotations, because an exact width is a golden file for one font stack. Verified here: typecheck exit 0, 88 tests green, tree clean.
-- **Two gates this run proved were not what the plan said.** `vg-149`: biome's `files.includes` matches no `.tsx`, so all 23 tracked React files are outside lint and format. `vg-150`: `PLAYWRIGHT_JSON_OUTPUT_NAME` only applies when the run also passes `--reporter=json` — the config's own json reporter wins otherwise, and on a shared machine that reads another session's numbers.
+- **Plan 4's Phase 1 is closed and Phase 2 is open: Tasks 1–4 landed, `61b9673d` → `7c35c6a8`.** A layer row carries a `role` and says it; the column is **360px** because that is what the role cost; and the bridge now has `enterGroup(id)` / `exitGroup()`, so entering a group is a verb the panel can call rather than a canvas double-click.
+- **The role cost a number and the number chose the fix:** 4 of 60 names clipped at the recorded 340px against 2 without it; widening to 360px (knee 350px) buys both back, stage 948 → 928. Reproduced here: `rows=60 clipped@shipped=2 clipped@shipped-without-role=2 clipped@340=4`. The same count settled the deferred string — the spec's `chart · line ×3` clips 7 of 60 against the landed `Line ×3`'s 4.
+- **`enterGroup` had a one-hop trap the plan named but never settled.** `ownerGroup` is `object.parent`, so handing the manager a nested group enters **its owner**. Ruled at `7c35c6a8`: resolve the id, require `target instanceof Group`, and hand over one of the group's own children when the group is itself nested. A nested group with no children stays shut rather than silently entering its parent. Proved red at `expected [ 'outer' ] to deeply equal [ 'inner' ]`.
+- **Three gates this run proved were not what the plan said.** `vg-149`: biome's `files.includes` matches no `.tsx`, so all 23 tracked React files sit outside lint and format. `vg-150`: `PLAYWRIGHT_JSON_OUTPUT_NAME` applies only when the run also passes `--reporter=json`. And two plan verification bullets were unwritable as stated — `layers()` carries no `data-context`, and the non-group no-op is free only for a *top-level* non-group.
+- **Verified here, not on report:** typecheck exit 0, 230 tests across 37 editor-shell suites green, tree clean at every commit.
 
 ## Next
 
