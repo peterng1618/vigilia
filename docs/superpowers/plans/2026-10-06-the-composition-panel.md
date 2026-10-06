@@ -71,7 +71,10 @@ Copied from the spec and from `AGENTS.md`; every task's requirements include the
 - **`exactOptionalPropertyTypes` and `noUncheckedIndexedAccess` are on.** Refuse invalid
   numeric input rather than coercing it to zero.
 - **500 lines is a signal, 800 a stop.** `editor-shell/layer-panel.tsx` is **707** and must not
-  reach 800; `editor-shell/layer-tree.ts` is **393** (both measured with `wc -l`). This plan's
+  reach 800; `editor-shell/layer-tree.ts` is **415** (`wc -l` on `0ebe4804` — the plan first
+  recorded 393, which no commit contains; corrected rather than carried, because Task 1 is the
+  task that grows this file and a starting figure 22 lines low is a figure that cannot be used
+  to judge the end state). This plan's
   structure lands in new exports the projection already has room for, and **`layer-panel.tsx` is
   not the place to grow**: where a row gains structure, it moves into `layer-tree.ts` as data.
 - **No new files under `scripts/`.** The reuse gate's watchlist (`scripts/reuse-gate.mjs`)
@@ -134,6 +137,9 @@ projection so the panel renders a fact rather than deriving one.
 - Modify: `src/web/packages/editor/src/editor-shell/layer-tree.ts`
 - Modify: `src/web/packages/editor/src/ui-copy.ts`
 - Test: `src/web/packages/editor/src/editor-shell/layer-tree.test.ts`
+- Test: `src/web/packages/editor/src/editor-shell/layer-panel.dom.test.tsx` — **its `layerRow`
+  fixture (`:44`) needs a `role` the moment the field is required**, which is why this file is
+  here and not only in Task 2. Not in the plan as first written; added after `61b9673d` hit it.
 
 **Interfaces:**
 - Produces on `LayerRow` (today at `layer-tree.ts:44-63`) — a required
@@ -169,6 +175,8 @@ second-owner defect this task exists to delete rather than to add.
 **Verification:**
 - Unit: a chart with three bindings reports `series: 3` and the family the object carries; a
   chart whose `family` is `"mystery"` reports `family: undefined` — Review Focus 1.
+  *(As landed at `61b9673d`: proved red by defaulting the unknown family to `"gauge"`, which
+  failed exactly this one test.)*
 - Unit: a group carrying `provenance: { widgetId, widgetName: "CPU" }` reports `unit: "CPU"`; a
   group with no `provenance`, and one whose `provenance` has no string `widgetName`, both report
   `unit: undefined`.
@@ -180,6 +188,29 @@ second-owner defect this task exists to delete rather than to add.
 - Unit: `layer-tree.ts` contains no kind word — the assertion is that `uiCopy.panels.layerKinds`
   is the only place these five strings appear, read from the source rather than from a rendered
   row.
+  *(Corrected at `61b9673d`: "the only place these five strings appear" is not literally
+  implementable — `ui-copy.ts` already holds `panels.text/image/group/charts/shapes` for other
+  surfaces, and `layer-tree.ts` contains the identifiers `Group` and `FabricImage`. The
+  achievable and meaningful assertion, which is what landed, is **no quoted capitalised kind word
+  in `layer-tree.ts`**, plus `uiCopy.panels.layerKinds` equal to the five words.)*
+
+**Two corrections from the landed task, `61b9673d`:**
+
+1. **A required `role` breaks a file this task's Files list omits.** `layer-panel.dom.test.tsx`'s
+   `layerRow` fixture (`:44`) must satisfy every `LayerRow` field, so `tsc` fails the moment
+   `role` is required — and that file is listed only under Task 2. The landed fix is the minimal
+   one, a `roleFor(kind)` companion to the existing `markFor(kind)`, so the workspace typechecks
+   at this commit. The file is now in Task 1's list and Task 2 extends the same helper.
+2. **`fileURLToPath(new URL(…, import.meta.url))` throws under jsdom** — `The URL must be of
+   scheme file`. The repo's own idiom for reading a source file in a test passes the
+   `import.meta.url` **string** (`selection-inspector/glass.dom.test.ts:65-67`,
+   `host/settings-page.dom.test.ts:18-19`); `import.meta.dirname` does not typecheck here because
+   `packages/editor/tsconfig.json` deliberately omits `@types/node`.
+
+**One note for Task 3, not a correction:** the role renders `Line ×3`, not the spec's illustrated
+`chart · line ×3`. Whether the `·` form is wanted is a *visible-form* question, and Task 3's
+measurement is where the visible form is decided — so it is deferred there rather than settled by
+guess here.
 
 **Commit:** `feat(editor): a layer row carries what the document says it is`
 
@@ -493,6 +524,12 @@ helper's comment already records for "Insert". `panelHosts.document` and
 `EditorPanelHosts.document`'s comment ("Document-level panels shown when nothing is selected")
 become true rather than aspirational, and the comment stays.
 
+**One comment this task makes false, verified at `0ebe4804`:** `pane-bar.tsx:4` reads "The left
+column's panes; **the inspector keeps the document panels**" — which is decision 4's own premise
+inverted, and is exactly the Review Focus 5 class (a docstring promising a place that no longer
+exists), one step earlier than the tab strip. It is in this task's file list, so correct it here;
+leaving it is how a comment talks the next reader out of the change that was just made.
+
 **Failure modes to design against:** Review Focus 4's second half — `scrollOf` is keyed by
 `RailPane` (`shell-layout.tsx:471`) and the restore is read off the DOM after a swap, so the new
 pane must participate in the same map rather than being special-cased; a `choosePane` that
@@ -530,8 +567,11 @@ is what would drop it.
 - Modify: `src/web/packages/editor/src/ui-copy.ts` (`inspector.design` / `inspector.style`)
 - Modify: `src/web/packages/editor/src/card-insert-surfaces.dom.test.tsx` and
   `src/web/packages/editor/src/editor-session.dom.test.ts` — **thirteen** `style: document.body`
-  entries, twelve in the first and one in the second (measured:
-  `grep -rc "style: document.body" packages/editor/src/editor-session.dom.test.ts packages/editor/src/card-insert-surfaces.dom.test.tsx`)
+  entries, **twelve in `editor-session.dom.test.ts` and one in
+  `card-insert-surfaces.dom.test.tsx`**. Measured on `0ebe4804` with the Grep tool; the plan
+  first wrote this as "twelve in the first and one in the second", where "first" named the
+  first-listed file and the count is in the second — an ambiguity a reader would resolve wrong
+  half the time, so the files are named instead.
 - Test: `src/web/packages/editor/src/editor-shell/shell-layout.dom.test.tsx`
 
 **Interfaces:**

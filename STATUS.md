@@ -44,11 +44,10 @@ The loop, in order:
 
 ## Last completed change
 
-- **Plan 3, the per-kind inspector, is closed.** Tasks 1–11 landed from `5c3c31c4` to `8b4274b7`: the right column is five questions — content, position, layer, paint, spends — built from a per-kind plan as data, Position starts closed, and every kind the editor can select renders a non-empty column.
-- **The descriptor table in `renderer-core/src/charts/settings-fields.ts` stays the one owner of which settings exist**, and the gap between a settings type and the table is a red gate: `NON_SCALAR_SETTINGS` is deleted, a typed coverage record makes a settings key with no descriptor a compile error, and `validateSettingsRange` is an exhaustive family switch.
-- **`vg-121` and `vg-122` are `verified`** — a pie can be given a fixed total, so its remainder is measurable (`remainder = 64 - 32` through the real `computeComposition`), and animation is reachable on all four families through a nested `writeSetting` that materialises the whole `AnimationSettings` block from `defaultAnimationSettings`.
-- **The Data tab is gone and a chart answers in its own column.** `chart-manager` keeps every write and hands two field bodies to the column through a `ChartFieldsPort`; the `#announce` replacement keeps a settings edit undoable, and Task 10 proved it load-bearing by renaming the event until the new browser test failed.
-- **`vg-145` closed on a measurement that refuted the plan's own hypothesis** — ECharts reduces both sweep angles modulo 360, so the descriptor's ±360 bound was right and the journey was corrected to `45`. Task 10 added six more corrections, including that the `701` vitest figure is describe blocks and the measured file count is **206**.
+- **Plan 4 Task 1 landed at `61b9673d`** — `LayerRow` gains a required `role`, and `LayerRole` is a discriminated union of raw facts: a chart's `family` and `series`, a group's `unit`, and bare arms for text, shape and image. Derived inside `projectLayers` beside `markOf`, so it adds no second walk and a test reads it without rendering.
+- **The role reports what the document says and never a neighbour.** A chart whose family this build does not know is `family: undefined` rather than the fallback's — the rule `chartMark` already stated — proved red by defaulting it to `gauge`, which failed exactly that one test.
+- **The five kind words have one owner now.** `layer-tree.ts`'s private `kindLabels` is gone, replaced by `uiCopy.panels.layerKinds`, and `uiCopy.panels.layerRoles` holds one function per role arm; `chartFamilies` is hoisted so a row's family word is the same string the Add pane and Insert menu offer.
+- **Verified independently: typecheck exit 0, 100 tests across 10 suites green**, tree clean at the commit, and the one-line `layer-row` fixture fix confirmed present in a file the plan had listed only under Task 2. Filed `vg-149` — **biome's `files.includes` matches no `.tsx` path, so all 23 tracked React files are outside both the lint and the format gate.**
 
 ## Next
 
