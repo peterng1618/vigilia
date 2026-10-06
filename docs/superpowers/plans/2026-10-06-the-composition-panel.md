@@ -87,8 +87,13 @@ Copied from the spec and from `AGENTS.md`; every task's requirements include the
   Playwright MCP browser — never use that browser; launch Chromium directly with
   `ignoreDefaultArgs: ["--hide-scrollbars"]`. **A single sample of a flaky spec is not a
   measurement:** re-run it against a previous sample of the same commit before reporting.
-- **Playwright's JSON report goes through `PLAYWRIGHT_JSON_OUTPUT_NAME`.** `--outputFile` is
-  vitest's flag, not Playwright's; plan 3 lost time to that confusion and it is not repeated.
+- **Playwright's JSON report goes through `PLAYWRIGHT_JSON_OUTPUT_NAME`, and the run must also
+  pass `--reporter=json` on the command line or the variable has nothing to apply to.** The
+  config declares its own json reporter with an `outputFile` (`playwright.config.ts:60-65`,
+  writing the shared `test-results/summary.json`) and that wins; a CLI `--reporter` *replaces*
+  the config's list, and only then does the environment variable take effect. Measured both ways
+  at `104adefc` — see `vg-150`. **`--outputFile` is vitest's flag**, not Playwright's; plan 3
+  lost time to that confusion and it is not repeated.
 - Stage explicit paths; never `git add -A`. No licence headers. Conventional Commits.
   `npm run status:check` from `src/web/` before any commit that touches `STATUS.md`.
 
@@ -307,6 +312,26 @@ whitespace-only one both report `unit: undefined`.
   320px, 3; 280px, 15) and this task **replaces that record with the post-role numbers**, or
   keeps the width and says why.
 
+**Landed at `104adefc`, and here is what it measured** — recorded because the numbers are the
+task's whole product and a later reader should not have to re-run a browser:
+
+| width | clipped / total |
+|---|---|
+| 340px, role in the row | **4 / 60** |
+| 340px, role taken out | **2 / 60** |
+| 350px (the knee; 348px still 3, 344px still 4) | 2 / 60 |
+| **shipped, now 360px** | **2 / 60** |
+
+So the role costs +2 clipped names at the recorded width, and the same 20px question the record
+decided before buys both back — the panel ships **360px** and the stage goes 948 → 928. 360 rather
+than the 350px knee so the panel is not balanced 2px wide on one font stack. Reproduced
+independently by the controller: `rows=60 clipped@shipped=2 clipped@shipped-without-role=2
+clipped@340=4`.
+
+**And the deferred string question is now settled by that number, not by taste.** The spec's
+illustrated `chart · line ×3` costs **7 of 60** at 340px against the landed `Line ×3`'s 4. The
+short form stands.
+
 **Constraints:** the number to beat is the comment's own record, and it is a record rather than
 this task's measurement — **measure, do not restate it**. The rows to measure are the starter
 with **every group open**, because that is what the comment measured and what a card-heavy
@@ -321,6 +346,23 @@ shortens — **not** the role's accessible form, which is Review Focus 2's and h
 10 rows and the column is not under pressure; a browser case that asserts an exact pixel width,
 which is a golden file for one font stack and not a contract; a decision taken from the
 comment's numbers rather than a run, which is the error this task exists to avoid.
+
+**Two corrections from the landed task**, both about things this plan asserted and had not
+measured:
+
+1. **"The count of names is not 60 any more" was false** — written into Task 3's own brief. With
+   every group open the starter is exactly **60** names, so the record's denominator still holds.
+   The landed case asserts `shipped.total === rows in the DOM` rather than a remembered number,
+   which is the right shape and is why the wrong guess cost nothing.
+2. **`--reporter=json` is not optional, and this plan's instruction omitted it.** The plan, the
+   Global Constraints and Task 3's brief all said to route Playwright's JSON through
+   `PLAYWRIGHT_JSON_OUTPUT_NAME`; none said to also pass the flag. Measured both ways by the
+   controller: **with** the flag the variable applies and `test-results/summary.json` is not
+   written at all; **without** it the config's own json reporter (`playwright.config.ts:60-65`)
+   wins and the variable does nothing. On a machine where two sessions run the same suite, an
+   agent that follows the instruction as written reads a file it did not write. Filed as
+   `vg-150`, **corrected there to this narrower condition** after the first version called the
+   variable simply inert. The instruction below now names the flag.
 
 **Verification (browser, against the built bundle):**
 - The count of rows whose name is clipped, at the width the stylesheet ships, **with a number
