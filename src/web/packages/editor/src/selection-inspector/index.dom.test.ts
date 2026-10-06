@@ -10,13 +10,32 @@ import {
   instantIn,
   MAX_OBJECT_NAME_LENGTH,
 } from "@vigilia/renderer-core";
-import { VigiliaChart } from "@vigilia/scene-fabric";
-import { IText, Rect, Textbox } from "fabric/es";
+import { VigiliaChart, Wedge } from "@vigilia/scene-fabric";
+import {
+  ActiveSelection,
+  type FabricObject,
+  FabricImage,
+  Group,
+  IText,
+  Line,
+  Path,
+  Point,
+  Polygon,
+  Polyline,
+  Rect,
+  Textbox,
+} from "fabric/es";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { uiCopy } from "../ui-copy.js";
 import { idleCrop } from "./idle-crop.test-stage.js";
 import { createSelectionInspector } from "./index.js";
-import { perKindColumn } from "./per-kind-column.js";
+import {
+  KIND_QUESTIONS,
+  perKindColumn,
+  SELECTION_KINDS,
+  type SelectionKind,
+  selectionKindOf,
+} from "./per-kind-column.js";
 
 /** A chart with settings but no live ECharts behind it: what the inspector
     reads is the object, not the engine that paints it. */
@@ -979,5 +998,293 @@ describe("the size of a text object", () => {
         ?.value,
     ).toBe("720");
     expect(sizeLine(host)).toBeUndefined();
+  });
+});
+
+describe("the column a kind gets", () => {
+  /** A shape that carries a paint reference, so a container built from it has
+      something for its own appearance question to read. */
+  function paintedRect(id: string): Rect {
+    const rect = new Rect({ left: 0, top: 0, width: 40, height: 20, id });
+    rect.set("vigiliaPaint", { fill: "palette.ink" });
+    return rect;
+  }
+
+  /** A text object with authored runs: the only kind that has typography. */
+  function textBox(): Textbox {
+    const text = new Textbox("Hi", {
+      left: 0,
+      top: 0,
+      width: 40,
+      id: "label-1",
+    });
+    text.set("vigiliaText", {
+      runs: [{ kind: "literal", text: "Hi", typePreset: "typePresets.body" }],
+    });
+    return text;
+  }
+
+  /**
+   * One live example per kind, in the brief's own terms: a `Wedge`, a text box,
+   * a chart, an image, a group, and a selection spanning two kinds. The list is
+   * the driver — a kind added to `SELECTION_KINDS` arrives here without an
+   * example and fails to compile, rather than passing unnoticed.
+   */
+  const EXAMPLE: Readonly<Record<SelectionKind, () => FabricObject>> = {
+    shape: () =>
+      new Wedge({
+        left: 0,
+        top: 0,
+        radius: 20,
+        startAngle: 0,
+        endAngle: 90,
+      }),
+    text: () => textBox(),
+    chart: () => chartOf("gauge", defaultGaugeSettings),
+    image: () =>
+      new FabricImage("", { left: 0, top: 0, width: 40, height: 40 }),
+    group: () => new Group([paintedRect("panel-1"), textBox()]),
+    activeSelection: () =>
+      new ActiveSelection([paintedRect("panel-1"), textBox()]),
+  };
+
+  /**
+   * Everything each kind rendered **before** the column learned its kinds, read
+   * off the pre-change DOM rather than off the column — otherwise the test would
+   * only restate whatever the column now does, and would agree with a bug.
+   *
+   * `shape`'s reference is the `Wedge`, so the corner radius is absent on
+   * purpose and asserted separately: `rx` is a `Rect`'s property and no other
+   * shape reads it.
+   */
+  const EVERY_OBJECT: readonly string[] = [
+    "[data-vigilia-name]",
+    '[data-vigilia-geometry="left"]',
+    '[data-vigilia-geometry="top"]',
+    '[data-vigilia-geometry="width"]',
+    '[data-vigilia-geometry="height"]',
+    '[data-vigilia-geometry="angle"]',
+    "[data-vigilia-opacity]",
+    "[data-vigilia-bleeds]",
+    "[data-vigilia-glass-enabled]",
+    "[data-vigilia-resolution]",
+  ];
+
+  const PRE_PLAN: Readonly<Record<SelectionKind, readonly string[]>> = {
+    shape: [
+      ...EVERY_OBJECT,
+      "[data-vigilia-panel-fill]",
+      "[data-vigilia-panel-stroke]",
+      "[data-vigilia-panel-border]",
+      "[data-vigilia-panel-shadow]",
+      '[data-vigilia-shape-angle="startAngle"]',
+      '[data-vigilia-shape-angle="endAngle"]',
+    ],
+    text: [
+      ...EVERY_OBJECT,
+      "[data-vigilia-runs]",
+      "[data-vigilia-text-align]",
+      "[data-vigilia-text-vertical-align]",
+      "[data-vigilia-text-wrap]",
+      "[data-vigilia-text-overflow]",
+      "[data-vigilia-run-source]",
+      '[data-vigilia-resolution="Type preset"]',
+      "[data-vigilia-reveal-type-presets]",
+    ],
+    chart: [...EVERY_OBJECT],
+    image: [...EVERY_OBJECT, "[data-vigilia-crop]"],
+    group: [...EVERY_OBJECT],
+    activeSelection: [...EVERY_OBJECT],
+  };
+
+  it.each([...SELECTION_KINDS])(
+    "answers a %s with a column rather than an empty one",
+    (kind) => {
+      const { host } = setup(EXAMPLE[kind]());
+
+      // Not "has the fields I expected". The defect this pins is a kind that
+      // reaches the column with no rule and renders nothing at all — the
+      // original unreachability defect with a new cause — so the assertion is
+      // that the column answered with something.
+      expect(
+        host.querySelectorAll("[data-vigilia-section]").length,
+        kind,
+      ).toBeGreaterThan(0);
+      expect(
+        host.querySelectorAll(
+          "[data-vigilia-section] input, [data-vigilia-section] select, [data-vigilia-section] button",
+        ).length,
+        kind,
+      ).toBeGreaterThan(0);
+    },
+  );
+
+  it.each([...SELECTION_KINDS])(
+    "keeps every field a %s had before the column was per-kind",
+    (kind) => {
+      const { host } = setup(EXAMPLE[kind]());
+
+      for (const selector of PRE_PLAN[kind]) {
+        expect(
+          host.querySelector(selector),
+          `${kind}: ${selector}`,
+        ).not.toBeNull();
+      }
+    },
+  );
+
+  it.each([...SELECTION_KINDS])(
+    "reads its %s example as that kind and no other",
+    (kind) => {
+      // The two containers share a class — Fabric's `ActiveSelection` *is* a
+      // `Group` — so this is what would catch a dispatch that named the parent
+      // first and described a multi-selection as one object.
+      expect(selectionKindOf(EXAMPLE[kind]())).toBe(kind);
+    },
+  );
+
+  it("has a rule for every kind it lists, so none reaches the column unhandled", () => {
+    // The runtime half of a compile-time claim: a kind in the list with no entry
+    // in `KIND_QUESTIONS` is a type error, and this is the same fact at runtime.
+    expect(Object.keys(KIND_QUESTIONS).sort()).toEqual(
+      [...SELECTION_KINDS].sort(),
+    );
+  });
+
+  it("answers a locked object rather than standing a header over nothing", () => {
+    const locked = new Rect({
+      left: 0,
+      top: 0,
+      width: 40,
+      height: 20,
+      locked: true,
+    });
+    const { host } = setup(locked);
+
+    // Every field that writes is withheld, so one section is left — the
+    // read-only one — and it has a body rather than a count of zero.
+    expect(host.querySelectorAll("[data-vigilia-section]")).toHaveLength(1);
+    expect(host.querySelector("[data-vigilia-resolution]")).not.toBeNull();
+    expect(host.querySelector("[data-vigilia-name]")).toBeNull();
+  });
+
+  it("keeps a rectangle's corner radius, which no other shape reads", () => {
+    const { host } = setup(
+      new Rect({ left: 0, top: 0, width: 40, height: 20 }),
+    );
+
+    // The radius is a `Rect` property. A column that answered every shape with
+    // the same fields would offer it to a `Wedge` and read back `NaN`.
+    expect(host.querySelector("[data-vigilia-panel-radius]")).not.toBeNull();
+    expect(
+      setup(EXAMPLE.shape()).host.querySelector("[data-vigilia-panel-radius]"),
+    ).toBeNull();
+  });
+
+  it.each([
+    [
+      "a Polygon",
+      () =>
+        new Polygon([new Point(0, -20), new Point(20, 20), new Point(-20, 20)]),
+      "[data-vigilia-shape-sides]",
+    ],
+    [
+      "a Polyline",
+      () => new Polyline([new Point(0, 0), new Point(20, 20)]),
+      "[data-vigilia-shape-points]",
+    ],
+    ["a Line", () => new Line([0, 0, 20, 20]), "[data-vigilia-shape-line]"],
+    [
+      "a Path",
+      () => new Path("M 0 0 L 20 20 L 40 0"),
+      "[data-vigilia-shape-path]",
+    ],
+  ])(
+    "keeps %s's own geometry, which no other shape has",
+    (_name, make, selector) => {
+      const { host } = setup(make());
+
+      // The general W/H pair belongs to every shape; these numbers belong to one
+      // kind each. A per-kind column that answered every shape the same way
+      // would be the "lesser selection" this task exists to prevent.
+      expect(host.querySelector(selector)).not.toBeNull();
+    },
+  );
+
+  describe("a container", () => {
+    /** The two kinds whose appearance is their children's. */
+    const CONTAINERS: readonly (readonly [
+      SelectionKind,
+      () => FabricObject,
+    ])[] = [
+      ["group", EXAMPLE.group],
+      ["activeSelection", EXAMPLE.activeSelection],
+    ];
+
+    it.each(CONTAINERS)(
+      "shows bounds and the children's appearance for a %s, and not the questions it lacks",
+      (_kind, make) => {
+        const { host } = setup(make());
+
+        // Bounds: the same Position pair every other object gets, at the same
+        // density — a group is not a lesser selection.
+        expect(
+          host.querySelector('[data-vigilia-geometry="width"]'),
+        ).not.toBeNull();
+        expect(
+          host.querySelector('[data-vigilia-geometry="left"]'),
+        ).not.toBeNull();
+
+        // The children's appearance, read off the children: the container has no
+        // ink of its own, so a line about its own fill could only say "none"
+        // while the canvas behind it is painted.
+        expect(
+          host.querySelector('[data-vigilia-resolution="Paint"]')?.textContent,
+        ).toContain("Ink");
+        expect(
+          host.querySelector('[data-vigilia-resolution="Type preset"]')
+            ?.textContent,
+        ).toContain("Body");
+
+        // ...and the questions this kind genuinely does not have, which is what
+        // "not a lesser selection" means for a kind that lacks them: nothing is
+        // shown, rather than a control that would accept an edit and apply none.
+        for (const absent of [
+          "[data-vigilia-panel-fill]",
+          "[data-vigilia-panel-stroke]",
+          "[data-vigilia-crop]",
+          "[data-vigilia-runs]",
+          "[data-vigilia-text-align]",
+        ]) {
+          expect(host.querySelector(absent), absent).toBeNull();
+        }
+      },
+    );
+
+    it("still says a container resolves to nothing when none of its children is painted", () => {
+      const { host } = setup(new Group([new Rect({ width: 10, height: 10 })]));
+
+      // The line the container carried before it learned to read its children:
+      // the question is still asked, and the answer is still "none".
+      expect(
+        host.querySelector('[data-vigilia-resolution="Paint"]')?.textContent,
+      ).toContain(uiCopy.inspectorFields.notSet);
+    });
+
+    it("answers one line per token, not one per child", () => {
+      const card = new Group([
+        paintedRect("panel-1"),
+        paintedRect("panel-2"),
+        paintedRect("panel-3"),
+      ]);
+      const { host } = setup(card);
+
+      // Three children sharing one token resolve to that one token; repeating it
+      // three times would make the section a copy of the canvas rather than an
+      // answer to what the selection is made of.
+      expect(
+        host.querySelectorAll('[data-vigilia-resolution="Paint"]'),
+      ).toHaveLength(1);
+    });
   });
 });

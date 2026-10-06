@@ -5,7 +5,13 @@ import type {
   SettingsSection,
 } from "@vigilia/renderer-core";
 import { SETTINGS_SECTIONS } from "@vigilia/renderer-core";
-import type { FabricObject } from "fabric/es";
+import { VigiliaChart } from "@vigilia/scene-fabric";
+import {
+  ActiveSelection,
+  type FabricObject,
+  FabricImage,
+  Group,
+} from "fabric/es";
 import type { EditorInteraction } from "../editor-interaction.js";
 import { linkedPair } from "../editor-shell/controls/linked-pair.js";
 import { numberField } from "../editor-shell/controls/number-field.js";
@@ -63,6 +69,90 @@ export interface ColumnSection {
   /** How many controls the section holds; the summary prints it. */
   readonly count: number;
 }
+
+/**
+ * The kinds of thing the editor can have selected. This is the partition the
+ * column's questions fall on, not the roster of Fabric class names.
+ *
+ * Deliberately not `layer-tree`'s `LayerKind`, which answers a different
+ * question — which label and icon a tree row carries — and always describes one
+ * object. A selection is not always one object: `activeSelection` is a kind of
+ * its own here, and folding it into `group` would make the column describe a
+ * multi-selection as though the author had selected a single thing.
+ *
+ * **Total by construction.** Every kind needs an entry in `KIND_QUESTIONS`, so
+ * extending this list without deciding what the new kind asks does not compile —
+ * the alternative is a kind that silently renders an empty column, which is the
+ * unreachability defect wearing a new cause.
+ */
+export const SELECTION_KINDS = [
+  "shape",
+  "text",
+  "chart",
+  "image",
+  "group",
+  "activeSelection",
+] as const;
+
+export type SelectionKind = (typeof SELECTION_KINDS)[number];
+
+/** Fabric lowercases `type` on the instance, so these are its own spellings. */
+function isTextKind(object: FabricObject): boolean {
+  const type = (object as { readonly type?: string }).type;
+  return type === "textbox" || type === "i-text" || type === "text";
+}
+
+/**
+ * Which kind a selection is.
+ *
+ * Ordered so the two containers are named before the class they extend: Fabric's
+ * `ActiveSelection` **is** a `Group`, so a group tested first would answer for a
+ * selection the author made across several objects.
+ */
+export function selectionKindOf(target: FabricObject): SelectionKind {
+  if (target instanceof ActiveSelection) return "activeSelection";
+  if (target instanceof VigiliaChart) return "chart";
+  if (target instanceof Group) return "group";
+  if (isTextKind(target)) return "text";
+  if (target instanceof FabricImage) return "image";
+  return "shape";
+}
+
+/**
+ * What a kind asks that no gate can answer for it.
+ *
+ * Everything else a kind decides is already owned elsewhere, and is asked rather
+ * than restated: `supportsPanelFields` says whether it has material,
+ * `createShapeGeometryFields` whether it has geometry of its own, `canCrop`
+ * whether it can hold a crop, `supportsGlassControl` whether its backdrop can be
+ * sampled, `typePresetOf` whether it carries type. A copy of any of those here
+ * would agree with its owner only until someone widened it.
+ */
+interface KindQuestions {
+  /**
+   * Whether this selection's appearance is its children's rather than its own.
+   *
+   * A group and a multi-selection are the two selections with no ink, no type
+   * and no material of their own — Fabric gives a group nothing to paint with —
+   * so the read-only section that says what the selection resolves to has
+   * nothing to read on the selection and reads its children instead. A single
+   * object is asked the other way round: its own property *is* the answer, and
+   * walking a rectangle's children would be the same "a question this kind does
+   * not have" defect in reverse.
+   */
+  readonly childrenAppearance: boolean;
+}
+
+/** Total over `SELECTION_KINDS`: a kind added there and not here is a compile
+    error, so a Fabric kind nobody thought about cannot reach an empty column. */
+export const KIND_QUESTIONS: Readonly<Record<SelectionKind, KindQuestions>> = {
+  shape: { childrenAppearance: false },
+  text: { childrenAppearance: false },
+  chart: { childrenAppearance: false },
+  image: { childrenAppearance: false },
+  group: { childrenAppearance: true },
+  activeSelection: { childrenAppearance: true },
+};
 
 /** The five geometry fields, in whole artboard units. */
 export type GeometryKey = "left" | "top" | "width" | "height" | "angle";
@@ -362,12 +452,86 @@ function paintBody(
   return body;
 }
 
+/** Every object under this one, at any depth, in document order. A kind with no
+    children answers with an empty list rather than an error: asking is not the
+    same as having something to find. */
+function descendantsOf(target: FabricObject): readonly FabricObject[] {
+  const children =
+    (target as { getObjects?: () => FabricObject[] }).getObjects?.() ?? [];
+  return children.flatMap((child) => [child, ...descendantsOf(child)]);
+}
+
+/**
+ * What a container resolves to, read from its children.
+ *
+ * Deduplicated by reference: a card whose five labels share one token resolves
+ * to that one token, and repeating it five times would make the section a copy
+ * of the canvas rather than an answer to "what is this made of". Each line keeps
+ * the label its own reader gave it, so a chart child's paint is named by its
+ * family's field descriptor and a shape's by the Paint field.
+ */
+function childrenResolution(
+  target: FabricObject,
+  context: ColumnContext,
+): {
+  readonly paints: readonly HTMLElement[];
+  readonly presets: readonly HTMLElement[];
+} {
+  const paints = new Map<string, string>();
+  const presets = new Set<string>();
+
+  for (const child of descendantsOf(target)) {
+    for (const { label, ref } of paintReferencesOf(child)) {
+      if (!paints.has(ref)) paints.set(ref, label);
+    }
+    const preset = typePresetOf(child);
+    if (preset !== undefined) presets.add(preset);
+  }
+
+  return {
+    paints: [...paints].map(([ref, label]) =>
+      createResolutionLine(
+        label,
+        nameOfRef(context.globals, ref),
+        resolveToken(context.globals, ref),
+      ),
+    ),
+    presets: [...presets].map((preset) =>
+      createResolutionLine(
+        uiCopy.inspectorFields.runPreset,
+        nameOfRef(context.globals, preset),
+        resolveTypePreset(context.globals, preset),
+      ),
+    ),
+  };
+}
+
 /** What it resolves to. Read-only, so a locked object still gets it: the author
     can see what the object is made of even when they cannot move it. */
 function spendsBody(
   target: FabricObject,
   context: ColumnContext,
+  questions: KindQuestions,
 ): readonly HTMLElement[] {
+  if (questions.childrenAppearance) {
+    const { paints, presets } = childrenResolution(target, context);
+    // A container whose children resolve to nothing still answers the paint
+    // question — with "none" — exactly as a single unpainted object does, so the
+    // section keeps the line it had before it learned to read the children.
+    return [
+      ...(paints.length === 0
+        ? [
+            createResolutionLine(
+              uiCopy.inspectorFields.paint,
+              undefined,
+              undefined,
+            ),
+          ]
+        : paints),
+      ...presets,
+    ];
+  }
+
   const body: HTMLElement[] = [];
   const references = paintReferencesOf(target);
 
@@ -422,6 +586,10 @@ export function perKindColumn(
   context: ColumnContext,
 ): readonly ColumnSection[] {
   const locked = target.get("locked") === true;
+  // The selection's kind is asked once, and its answers are read by name — so a
+  // kind that reaches here without a rule cannot have been added to
+  // `SELECTION_KINDS` without a compile error. See `KIND_QUESTIONS`.
+  const questions = KIND_QUESTIONS[selectionKindOf(target)];
 
   // Built in question order already; sorted anyway so the order is a statement
   // this module makes rather than one it inherits from the lines above.
@@ -433,7 +601,7 @@ export function perKindColumn(
     ["position", positionBody(target, context, locked)],
     ["layer", layerBody(target, context, locked)],
     ["paint", paintBody(target, context, locked)],
-    ["spends", spendsBody(target, context)],
+    ["spends", spendsBody(target, context, questions)],
   ];
 
   return bodies
