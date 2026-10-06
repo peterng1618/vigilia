@@ -183,12 +183,26 @@ reference.
 **Verification:**
 - Unit: every descriptor in every family has a section, and every section used is one of
   `SETTINGS_SECTIONS`.
-- Unit: **every descriptor has a non-empty hint, and no hint equals its own label** — the
-  assertion that makes "restates the label" a failure rather than a taste.
+- Unit: **every descriptor has a non-empty hint, and no hint equals its own label.**
+  **This is a degenerate guard and the plan will not pretend otherwise** — measured on
+  `b5046f2`, a hint that restates its label in other words ("The angle the arc starts at."
+  for "Start angle") passes it. Whether a hint *adds information* is not mechanically
+  decidable, so the strong half of the rule stays a review judgement and the test catches
+  only the copy-paste case. An earlier draft of this plan called it "the assertion that makes
+  restating a failure rather than a taste"; that was false and the independent review said so.
+- Unit: **at least one descriptor is marked `advanced`, per family that has one** — the
+  spec's "obscure ones at the end, in a collapsed section" had zero members at `b5046f2`,
+  which makes the rule untested and the treatment unreachable. The four families' obscure
+  settings are: gauge `gradientSegments`; line `sampling` and `maxPoints`; bar
+  `trackCornerRadius` and `categoryGapPercent`; pie `padAngle`, `cornerRadius` and the
+  `startAngle`/`endAngle` pair. **The list is a judgement, not a measurement** — an author who
+  disagrees moves a field, and nothing but the list changes.
 - Unit: the descriptor order within each family is unchanged from before this task, pinned
-  by the existing key-order expectations rather than by a re-derived list.
+  against the order as it is today rather than against a list re-derived from the new code.
 - Unit: a section not in `SETTINGS_SECTIONS` fails to typecheck (this is a compile-time
   claim; assert it by construction, not at runtime).
+- Unit: `ChartPaintFieldDescriptor.section` is the **literal** `"paint"`, not the five-way
+  union — the Paint rule should be a type, not a runtime convention.
 
 **Commit:** `feat(charts): every setting says which question it answers, and what it means`
 
@@ -327,31 +341,49 @@ per-kind plan that decides which of them a given selection sees.
 
 **Interfaces:**
 - Produces: `propertySection(options: PropertySectionOptions): PropertySection`, where the
-  options carry `{ id: SettingsSection | "advanced", title, body: readonly HTMLElement[],
-  defaultOpen?: boolean, count?: number }` and the handle carries
-  `{ root: HTMLElement, isOpen(): boolean, open(): void, setBody(next): void }`.
+  options carry `{ id, title, body: readonly HTMLElement[], defaultOpen: boolean }` and the
+  handle carries `{ root: HTMLElement, isOpen(): boolean, open(): void, setBody(next): void }`.
+  **There is no `count` option** — see the correction below.
 - Produces: a stable hook for tests and specs — `data-vigilia-section="<id>"` on the
   `<section>`, and the disclosure's own `open` state readable from the DOM.
 
-**Constraints:** **`<details>`/`<summary>`, not a hand-rolled button and panel.** The
-disclosure keyboard behaviour, the expanded/collapsed state and the accessible name are the
-platform's job; this control's job is the section's identity, its order and its count. A
-required `hint`-style tooltip on a section header is not needed. `defaultOpen` is the only
-per-section policy, and it is supplied by the caller — this control knows no section
-semantics. The count renders inside the summary so a **collapsed** section still says how
-much is in it: collapsed is not hidden.
+**Corrections from the independent review of `a4028d55`/`29fa4e4c`** — three, all measured:
 
-**Failure modes to design against:** a summary whose accessible name is the count alone; a
-body that is removed from the DOM when closed (which would make a subsequent
-`replaceChildren` from a re-render silently drop fields); a section that renders empty and
-still shows a header with a count of zero.
+1. **The count had two rules and they disagreed.** Construction honoured a caller-supplied
+   `count` that could differ from the body; `setBody` rewrote it to the body's length. A
+   header could therefore still claim more than it held, which is the defect the follow-up
+   commit set out to kill, half-killed. **One rule: the count is the body's length,
+   always** — so the option goes, and a section's header cannot lie by construction.
+2. **`aria-labelledby` on the summary removed the count from the accessible name**, which is
+   the opposite of "collapsed is not hidden": a disclosure announced as "Paint" rather than
+   "Paint, 3". Name-from-content already yields both. Drop the attribute and the generated
+   `id`, and keep the title and the count separated so the name is not "Paint3".
+   *(Reasoned from the mechanism — jsdom computes no accessible name, so no test here can
+   settle it; say so rather than claiming it was measured.)*
+3. **The keyboard test's name did not match what it asserted.** It focuses the summary and
+   then calls `.click()`, which proves focusability and click-toggling; jsdom implements no
+   keyboard activation for `<summary>` at all. Rename it to what it measures.
+
+**Constraints:** **`<details>`/`<summary>`, not a hand-rolled button and panel.** The
+disclosure's expanded state and the accessible name are the platform's job; this control's
+job is the section's identity, its order and its count. A `hint`-style tooltip on a section
+header is not needed. `defaultOpen` is the only per-section policy, and it is supplied by the
+caller — this control knows no section semantics. The count renders inside the summary so a
+**collapsed** section still says how much is in it: collapsed is not hidden.
+
+**Failure modes to design against:** a body that is removed from the DOM when closed (which
+would make a subsequent `replaceChildren` from a re-render silently drop fields); a section
+that renders empty and still shows a header with a count of zero.
 
 **Verification:**
 - Unit: a closed section's summary contains its count and its title, and the body is
   reachable after opening — asserted through the real control, not by reading attributes.
-- Unit: opening and closing is keyboard-reachable (focus the summary, press Enter, assert
-  `open`).
-- Unit: `setBody` replaces the body and leaves the open state untouched.
+- Unit: **the summary is focusable and toggles** — which is what a jsdom test can measure,
+  since the platform does keyboard activation for `<summary>` and jsdom implements none.
+  Name the test for that, not for keyboard activation.
+- Unit: `setBody` replaces the body, keeps the count equal to the body's length, and leaves
+  the open state untouched; an emptied body removes the section and a later non-empty
+  `setBody` rebuilds it at `defaultOpen`.
 - Unit: a section with no body renders nothing at all rather than an empty header.
 
 **Commit:** `feat(editor): a section is a disclosure that says how much it holds`
@@ -388,12 +420,36 @@ state, unlike a disabled field, which is a question being refused.
 rather than re-deriving the parse); a hint rendered as a `title` attribute only, which no
 keyboard-only author reaches; an id collision between a nested property and a top-level one.
 
+**An optional setting must be un-settable, and today it is not.** Six hints landed at
+`b5046f2` promising the *absent* state — `min`/`max` ("empty lets the data choose it"),
+`barWidth` ("empty sizes it to the category"), `trackCornerRadius` ("empty leaves it
+square"), pie `endAngle` ("empty closes it into a full circle") — and no control can reach
+it: the panel writes `Number("")` = `0`, and the repo's rule would refuse the empty input
+instead. **Absent means the renderer decides; an explicit value overrides it.** That is a
+real authorable state, and the spec's rule that nothing is locked to a default cuts both
+ways. So: descriptors for optional settings carry `optional?: true`, and clearing one of
+those fields **removes the key** rather than refusing. A non-optional setting still refuses,
+because an empty required number is not a state the renderer can read.
+
+**Ordering note.** This task runs **before** Task 4, out of numeric order, because `84b11f51`
+left the Data tab rendering five new controls per chart through the panel's flat
+`{...settings, [property]: value}` commit — picking "A fixed total" writes `total: "fixed"`
+and an animation edit writes a literal `"animation.durationMs"` key. The plan always owned
+the fix here; the review of Task 3 is what set the order. Task 4 does not depend on this one.
+
 **Verification:**
 - Unit: each kind renders the control the platform provides — `number` an `<input
   type="number">` carrying min/max/step, `boolean` a checkbox, `select` a `<select>` with its
-  options in descriptor order, `boolean` a checkbox.
-- Unit: **clearing a number field leaves the setting unchanged and reports it**, rather than
-  writing `0`.
+  options in descriptor order.
+- Unit: **clearing a non-optional number field leaves the setting unchanged and reports it**,
+  rather than writing `0`.
+- Unit: **clearing an `optional` field removes the key**, and the value the renderer then
+  reads is its own fallback — asserted through the option builder, not from the settings
+  object.
+- Unit: **a nested descriptor commits through `writeSetting`** — set `total.kind` to `fixed`
+  and `animation.durationMs` through the control and assert the settings object the panel
+  hands on is a legal `PieSettings`/`LineSettings` (a string where a union belongs, or a
+  literal `"animation.durationMs"` key, fails this and passes a naive assertion).
 - Unit: a field's hint reaches the DOM as an `aria-describedby` target and the description
   text is the descriptor's hint.
 - Unit: a disabled field's tooltip text is the `disabledReason`, and the control is
