@@ -107,6 +107,13 @@ export interface SettingsFieldDescriptor {
   /** Present when the field belongs behind the collapsed-and-counted treatment. */
   readonly advanced?: true;
   /**
+   * The settings interface declares this key optional, so **absent is an
+   * authorable state**: the renderer decides and an explicit value overrides it.
+   * A control for one has to be able to get back to it — clearing the field
+   * removes the key rather than writing a value the author did not choose.
+   */
+  readonly optional?: true;
+  /**
    * Where inside the settings object this field writes, when that is not the
    * top-level `property`. Defaults to `[property]`.
    */
@@ -299,6 +306,7 @@ export const CHART_SETTINGS_FIELDS: Readonly<
       label: "Gradient segments",
       kind: "number",
       section: "content",
+      optional: true,
       hint: "How finely a gradient arc is approximated. The engine cannot draw a true angular gradient (§85).",
       min: 2,
       max: 256,
@@ -327,6 +335,7 @@ export const CHART_SETTINGS_FIELDS: Readonly<
       label: "Dash",
       kind: "select",
       section: "content",
+      optional: true,
       hint: "The stroke's own pattern — solid, dashed or dotted.",
       options: DASH,
     },
@@ -366,6 +375,7 @@ export const CHART_SETTINGS_FIELDS: Readonly<
       label: "Y minimum",
       kind: "number",
       section: "content",
+      optional: true,
       hint: "The value at the bottom of the axis; empty lets the data choose it.",
     },
     {
@@ -373,6 +383,7 @@ export const CHART_SETTINGS_FIELDS: Readonly<
       label: "Y maximum",
       kind: "number",
       section: "content",
+      optional: true,
       hint: "The value at the top of the axis; empty lets the data choose it.",
     },
     {
@@ -387,6 +398,7 @@ export const CHART_SETTINGS_FIELDS: Readonly<
       label: "Downsampling",
       kind: "select",
       section: "content",
+      optional: true,
       hint: "Render-time only. LTTB keeps the visible shape of a dense series at a fraction of the draw cost; it changes what is drawn, never what was measured.",
       options: SAMPLING,
     },
@@ -420,6 +432,7 @@ export const CHART_SETTINGS_FIELDS: Readonly<
       label: "Bar width",
       kind: "number",
       section: "content",
+      optional: true,
       hint: "How thick each bar is, in pixels; empty sizes it to the category.",
       min: 0,
     },
@@ -445,6 +458,7 @@ export const CHART_SETTINGS_FIELDS: Readonly<
       label: "Track corner radius",
       kind: "number",
       section: "content",
+      optional: true,
       hint: "The unfilled remainder's own rounding, beside the bar's. Empty leaves it square.",
       min: 0,
     },
@@ -497,6 +511,7 @@ export const CHART_SETTINGS_FIELDS: Readonly<
       label: "End angle",
       kind: "number",
       section: "content",
+      optional: true,
       hint: "Where the ring stops; empty closes it into a full circle.",
       min: -360,
       max: 360,

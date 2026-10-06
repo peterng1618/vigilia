@@ -56,6 +56,42 @@ export function writeSetting<T extends object>(
   return writeBlock(settings as SettingsRecord, path, value) as T;
 }
 
+/**
+ * `settings` with the key at `path` gone, as a new object.
+ *
+ * Absence is an authorable state — a hint that says "empty lets the data choose
+ * it" promises it — and it cannot be written as a value: an explicit `undefined`
+ * at the key is refused by `exactOptionalPropertyTypes` and reads as authored to
+ * anything that lists the keys. A parent block the removal empties is kept, so
+ * `total.kind = "fixed"` with its `value` removed stays the union member it is.
+ */
+export function removeSetting<T extends object>(
+  settings: T,
+  path: readonly string[],
+): T {
+  const head = path[0];
+  const record = settings as SettingsRecord;
+
+  if (head === undefined || !isRecord(record) || !(head in record)) {
+    return settings;
+  }
+
+  const rest = path.slice(1);
+
+  if (rest.length === 0) {
+    const { [head]: _removed, ...remaining } = record;
+    return remaining as T;
+  }
+
+  const child = record[head];
+
+  if (!isRecord(child)) {
+    return settings;
+  }
+
+  return { ...record, [head]: removeSetting(child, rest) } as T;
+}
+
 function writeBlock(
   settings: SettingsRecord,
   path: readonly string[],

@@ -1,5 +1,14 @@
 // @vitest-environment jsdom
 import { describe, expect, it, vi } from "vitest";
+import {
+  buildPieOption,
+  type ChartContent,
+  computeComposition,
+  defaultLineSettings,
+  defaultPieSettings,
+  type LineSettings,
+  type PieSettings,
+} from "@vigilia/renderer-core";
 import { type ChartPropertyPanel, createChartPropertyPanel } from "./panel.js";
 
 describe("every control the panel offers", () => {
@@ -504,5 +513,154 @@ describe("the series a chart reads", () => {
       panel.root.querySelector("[data-vigilia-chart-binding-full]")!
         .textContent,
     ).toContain("gauge");
+  });
+});
+
+/** A reading the composition can actually measure. */
+function sample(sensorId: string, value: number) {
+  return {
+    sensorId,
+    timestamp: "2026-01-01T00:00:00Z",
+    status: "ok" as const,
+    value,
+    unit: "GB",
+  };
+}
+
+function panelOf(
+  change: (id: string, settings: ChartContent["settings"]) => void,
+) {
+  return createChartPropertyPanel(
+    document.body,
+    change,
+    vi.fn(),
+    vi.fn(),
+    vi.fn(),
+    vi.fn(),
+  );
+}
+
+const pieOf = (settings: PieSettings) => ({
+  id: "ram",
+  content: { family: "pie" as const, settings },
+  bindings: [],
+});
+
+/** The last settings the panel committed. */
+function committed<T>(change: ReturnType<typeof vi.fn>): T {
+  return change.mock.calls.at(-1)?.[1] as T;
+}
+
+describe("a setting one level down", () => {
+  it("commits the fixed total where the renderer reads it, not as a flat key", () => {
+    // The live regression this replaces: the panel committed
+    // `{...settings, [property]: value}`, so picking "A fixed total" wrote
+    // `total: "fixed"` — a string where the union belongs — and the number
+    // behind it wrote a literal `"total.value"` key the renderer never reads.
+    const change = vi.fn();
+    const panel = panelOf(change);
+    panel.render(pieOf(defaultPieSettings));
+
+    const total = panel.root.querySelector<HTMLSelectElement>(
+      '[data-vigilia-chart-setting="total"]',
+    )!;
+    total.value = "fixed";
+    total.dispatchEvent(new Event("change"));
+
+    const fixed = committed<PieSettings>(change);
+    expect(fixed.total).toEqual({ kind: "fixed" });
+    expect("total.value" in fixed).toBe(false);
+
+    panel.render(pieOf(fixed));
+    const value = panel.root.querySelector<HTMLInputElement>(
+      '[data-vigilia-chart-setting="total.value"]',
+    )!;
+    value.value = "64";
+    value.dispatchEvent(new Event("change"));
+
+    const authored = committed<PieSettings>(change);
+    expect("total.value" in authored).toBe(false);
+    expect(authored.total).toEqual({ kind: "fixed", value: 64 });
+
+    // Measured through the renderer that draws it rather than restated from the
+    // settings object: the remainder exists only because the path the descriptor
+    // declares is the path `computeComposition` reads.
+    const composition = computeComposition(authored, [
+      { sensorId: "ram.used", sample: sample("ram.used", 20) },
+      { sensorId: "ram.cached", sample: sample("ram.cached", 12) },
+    ]);
+    expect(composition.remainder).toBe(64 - 32);
+  });
+
+  it("writes an animation field into the block, not under a dotted key", () => {
+    const change = vi.fn();
+    const panel = panelOf(change);
+    panel.render({
+      id: "trend",
+      content: { family: "line", settings: { ...defaultLineSettings } },
+      bindings: [],
+    });
+
+    const duration = panel.root.querySelector<HTMLInputElement>(
+      '[data-vigilia-chart-setting="animation.durationMs"]',
+    )!;
+    duration.value = "2400";
+    duration.dispatchEvent(new Event("change"));
+
+    const authored = committed<LineSettings>(change);
+    expect("animation.durationMs" in authored).toBe(false);
+    // The author's one field plus the other three from the block's own owner.
+    expect(authored.animation).toEqual({
+      durationMs: 2400,
+      easing: "linear",
+      appearMs: 650,
+      appearEasing: "cubicOut",
+    });
+  });
+
+  it("asks the fixed-total question only while the total is fixed", () => {
+    const panel = panelOf(vi.fn());
+
+    panel.render(pieOf(defaultPieSettings));
+    // Not a disabled control: a question that does not apply here is not asked.
+    expect(
+      panel.root.querySelector('[data-vigilia-chart-setting="total.value"]'),
+    ).toBeNull();
+
+    panel.render(
+      pieOf({ ...defaultPieSettings, total: { kind: "fixed", value: 64 } }),
+    );
+    expect(
+      panel.root.querySelector('[data-vigilia-chart-setting="total.value"]'),
+    ).not.toBeNull();
+  });
+
+  it("clears an optional setting back to the renderer's own choice", () => {
+    const change = vi.fn();
+    const panel = panelOf(change);
+    panel.render(pieOf({ ...defaultPieSettings, endAngle: 200 }));
+
+    const end = panel.root.querySelector<HTMLInputElement>(
+      '[data-vigilia-chart-setting="endAngle"]',
+    )!;
+    expect(end.value).toBe("200");
+    end.value = "";
+    end.dispatchEvent(new Event("change"));
+
+    const cleared = committed<PieSettings>(change);
+    expect("endAngle" in cleared).toBe(false);
+
+    // Through the option builder, not the settings object: absent means the
+    // builder leaves `endAngle` off and the engine closes the ring.
+    const ring = (settings: PieSettings) =>
+      (
+        buildPieOption(settings, []) as unknown as {
+          readonly series: readonly Record<string, unknown>[];
+        }
+      ).series[0];
+    expect(ring({ ...defaultPieSettings, endAngle: 200 })?.["endAngle"]).toBe(
+      200,
+    );
+    expect(ring(cleared)?.["endAngle"]).toBeUndefined();
   });
 });

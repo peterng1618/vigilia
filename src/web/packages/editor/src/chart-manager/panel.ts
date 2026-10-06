@@ -4,9 +4,16 @@ import {
   type ChartFamily,
   chartPaintFieldsFor,
   type FabricPalette,
+  readSetting,
+  removeSetting,
   SEMANTIC_KEYS,
   settingsFieldsFor,
+  writeSetting,
 } from "@vigilia/renderer-core";
+import {
+  isSettingVisible,
+  settingsField,
+} from "../editor-shell/controls/settings-field.js";
 import { uiCopy } from "../ui-copy.js";
 
 export interface ChartPropertyPanel {
@@ -202,58 +209,25 @@ export function createChartPropertyPanel(
         );
       }
       for (const field of settingsFieldsFor(chart.content.family)) {
-        const label = document.createElement("label");
-        label.textContent = field.label;
-        const input = document.createElement(
-          field.kind === "select" ? "select" : "input",
+        // A `visibleWhen` that does not match is not a question in this state,
+        // so it renders nothing — unlike a refused field, which renders and
+        // says why.
+        if (!isSettingVisible(field, chart.content.settings)) continue;
+        const path = field.path ?? [field.property];
+        root.append(
+          settingsField(field, {
+            value: readSetting(chart.content.settings, path),
+            // A nested setting commits through its own `path`: a flat
+            // `{...settings, [property]: value}` writes a key the validator
+            // accepts and the renderer never reads, so the author's choice
+            // survives the click and dies on reopen.
+            onChange: (next) =>
+              onChange(
+                chart.id,
+                commitSetting(chart.content.settings, path, next),
+              ),
+          }),
         );
-        // Keyed by the setting itself, so it is unique across every field this
-        // section builds and addressable by name in a test. This panel was the
-        // one place in the shell where neither the control had an id nor its
-        // label an `htmlFor`.
-        label.htmlFor = input.id = `vigilia-chart-setting-${field.property}`;
-        input.dataset["vigiliaChartSetting"] = field.property;
-        const value = (
-          chart.content.settings as unknown as Record<string, unknown>
-        )[field.property];
-        if (field.kind === "boolean") {
-          const checkbox = input as HTMLInputElement;
-          checkbox.type = "checkbox";
-          checkbox.checked = value === true;
-        } else if (field.kind === "number") {
-          const number = input as HTMLInputElement;
-          number.type = "number";
-          number.value = value === undefined ? "" : String(value);
-          if (field.min !== undefined) number.min = String(field.min);
-          if (field.max !== undefined) number.max = String(field.max);
-          number.step = String(field.step ?? 1);
-        } else {
-          for (const option of field.options ?? []) {
-            const element = document.createElement("option");
-            element.value = option.value;
-            element.textContent = option.label;
-            (input as HTMLSelectElement).append(element);
-          }
-          (input as HTMLSelectElement).value =
-            typeof value === "string" ? value : "";
-        }
-        input.addEventListener("change", () => {
-          const next =
-            field.kind === "boolean"
-              ? (input as HTMLInputElement).checked
-              : field.kind === "number"
-                ? Number((input as HTMLInputElement).value)
-                : (input as HTMLSelectElement).value;
-          if (field.kind === "number" && !Number.isFinite(next)) {
-            this.render(chart);
-            return;
-          }
-          onChange(chart.id, {
-            ...chart.content.settings,
-            [field.property]: next,
-          } as ChartContent["settings"]);
-        });
-        root.append(label, input);
       }
       for (const field of chartPaintFieldsFor(chart.content.family)) {
         const value = (
@@ -422,4 +396,20 @@ function without<K extends keyof Binding>(
     return rest as Binding;
   }
   return { ...binding, [key]: value } as Binding;
+}
+
+/**
+ * One committed setting, at the path its descriptor declares.
+ *
+ * `undefined` is the absent state, not a value: the field is one the settings
+ * interface declares optional, so the key goes and the renderer decides again.
+ */
+function commitSetting(
+  settings: ChartContent["settings"],
+  path: readonly string[],
+  value: unknown,
+): ChartContent["settings"] {
+  return value === undefined
+    ? removeSetting(settings, path)
+    : writeSetting(settings, path, value);
 }

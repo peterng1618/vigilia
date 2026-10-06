@@ -43,11 +43,10 @@ The loop, in order:
 
 ## Last completed change
 
-- **Both findings plan 3 owns are now reachable.** `84b11f51`: a pie takes a `sum | fixed` total with a dependent value field, and all four families take `durationMs`, `easing`, `appearMs` and `appearEasing` — nested writes through `writeSetting`, proven by two red-test breaks and by a round-trip through the real option builders.
-- **An independent review mutation-probed the landed work and found ten things.** The guards that matter do go red when their production counterpart is removed; three that were claimed to guard more than they do are corrected here.
-- **The one that changed the design:** six hints promise an "absent" state no control can reach — `min`/`max`, `barWidth`, `trackCornerRadius`, pie `endAngle`. Absent means the renderer decides, so the author must be able to get back to absent; descriptors gain `optional?: true` and clearing one removes the key.
-- **A live regression is open and Task 6 is closing it.** `84b11f51` added `path`-carrying descriptors while the Data tab still commits every descriptor with a flat spread, so picking "A fixed total" writes a string where a union belongs. That is why Task 6 runs before Task 4.
-- **Also corrected:** the hint test's guarantee was weaker than the plan claimed (a reworded restatement passes it), `advanced` had zero members so the collapsed-section rule was untested, and a section's count had two rules that disagreed.
+- **One control renders a chart setting descriptor.** `settingsField` covers `number` (through `numberField`), `boolean` and `select`, and the panel's flat `{...settings, [property]: value}` commit is gone: a `path` descriptor commits through `writeSetting`, so a fixed total and an animation edit write where the renderer reads them.
+- **The regression `84b11f51` left is closed, and the proof is red.** Restoring the flat commit turns three new panel tests red — a string where `PieSettings.total`'s union belongs, a literal `"animation.durationMs"` key, and the cleared optional key — and with the control in place a fixed total is measured through `computeComposition` and a cleared angle through `buildPieOption`, not restated from the settings object.
+- **Absent is authorable now.** Eight descriptors carry `optional?: true` — gauge `gradientSegments`; line `dash`, `min`, `max`, `sampling`; bar `barWidth`, `trackCornerRadius`; pie `endAngle` — and clearing one removes the key through a new `removeSetting` rather than refusing or writing a zero; a non-optional field still refuses and says so.
+- **The hint reaches the author twice.** Every field carries the descriptor's `hint` as an `aria-describedby` description and, armed on the first `pointerover`, as a tooltip; a non-matching `visibleWhen` renders nothing, and a `disabledReason` renders `aria-disabled` plus its reason.
 
 ## Next
 

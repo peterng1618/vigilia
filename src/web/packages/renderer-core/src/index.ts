@@ -103,6 +103,11 @@ export {
   settingsFieldsFor,
   settingsKeyFor,
 } from "./charts/settings-fields.js";
+export {
+  readSetting,
+  removeSetting,
+  writeSetting,
+} from "./charts/settings-path.js";
 export type {
   EventSourceLike,
   LiveSourceHandle,
