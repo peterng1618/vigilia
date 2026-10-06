@@ -588,6 +588,15 @@ reported from a stale snapshot after the child changes.
 ### Task 9: A chart answers in its own column, and the Data tab goes
 
 **Files:**
+- **This list was short by nine files, and a reader should treat it as a floor rather than a
+  plan.** Task 9's commit touched everything below *plus* `chart-manager/index.ts` (the port
+  the panel never needed while it drew itself), `selection-inspector/index.ts` and
+  `per-kind-column.ts` (where the port is consumed), `editor-session.ts` and `editor-main.ts`
+  (`ShellHosts.chart` / `EditorPanelHosts.chart` / `panelHost` all go away with the tab), and
+  the four suites that mounted the old panel — `chart-manager/panel.dom.test.ts`,
+  `selection-inspector/index.dom.test.ts`, `ui-copy.test.ts`, `editor-session.dom.test.ts`,
+  `card-insert-surfaces.dom.test.tsx`. A panel that draws itself is wired in more places than
+  its own file, and the count is the lesson.
 - Modify: `src/web/packages/editor/src/chart-manager/panel.ts` (export its field
   construction for the column to mount; it keeps ownership of chart selection, settings and
   bindings — `ownership.md` row 75)
@@ -649,6 +658,23 @@ journey to a canonical angle — in which case the journey was asserting an angl
 reduces, and the row records that. Either way the spec at `:516` is green before this task
 commits, and `vg-145` is closed in Task 11 against the check that closed it.
 
+**RESOLVED — direction 2, and the hypothesis above was wrong.** Kept in the plan because a
+refuted hypothesis is the expensive kind of wrong to rediscover: two agents and this plan all
+reasoned that a 270° sweep must differ from a 90° one, and it does not. Measured on the canvas
+in `1082b7da`, with a control: of 2087 opaque pixels, `135→405` against `135→45` differs by
+**0**, as does `135→405` against `-225/45` and against `-225/405` — while `135→405` against
+`135→360` differs by **1337**, which is what shows the comparison can tell two arcs apart.
+ECharts reduces both angles modulo 360, so `405` reaches no chart. **The descriptor bound is
+right and the journey was wrong**; it is corrected to `45` at
+`author-journey-rebuild.spec.ts:559,:666` and `rebuild-composition.ts:433`. `vg-145` is
+`verified` in the archive against `1082b7da`.
+
+**One invariant this task established by reading and could not test.** `#drawPanel` was the
+*only* route from a settings edit to `object:modified`, which is the event `history.save()`
+listens on — so deleting it without the replacement `#announce` would have made every chart
+settings edit silently **non-undoable**, with no test anywhere to catch it. Task 10 pins the
+undo round-trip in the browser, because that is the surface where it is visible.
+
 **Verification:**
 - Unit: selecting a chart renders its family settings and its bindings in the Design
   column, and the Data tab is not in the tab list.
@@ -701,6 +727,12 @@ image is for a human. One sample of a flaky spec is not a measurement.
   read through the option builder the renderer runs, not from the settings object.
 - A free shape, a text box, an image and a group each open a non-empty column, and no kind
   shows a property it does not have.
+- **A chart settings edit is undoable.** Task 9 found by reading that `#drawPanel` was the
+  *only* route from a settings edit to `object:modified`, which is the event `history.save()`
+  listens on — so deleting it without the replacement `#announce` would have made every chart
+  settings edit silently non-undoable, and **no test anywhere covers that**. Change a family
+  setting on the starter's chart, undo, and assert the canvas and the column both go back; the
+  write path is undoable or it is not, and this is the only surface where that is visible.
 - Nothing selected: the column names where to choose from, and the string comes from the
   existing `uiCopy.inspectorFields.nothingSelected` rather than a new literal.
 - Screenshots: the sectioned column for a card and for a shape, and the chart's column.
