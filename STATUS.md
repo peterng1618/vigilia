@@ -1,6 +1,6 @@
 # Vigilia status
 
-Updated: 2026-10-06
+Updated: 2026-10-07
 Branch: `develop`
 
 ## Current objective
@@ -44,18 +44,18 @@ The loop, in order:
 
 ## Last completed change
 
-- **Plan 4: Task 8 landed at `9f62b0d3`, closing `vg-146`.** The Style tab's selection mode is deleted, its document mode moved unchanged into the left column's Document pane, and the right column's tab strip is gone — the column itself stays. Eleven files, **-69 net lines**. Verified here, not on report: typecheck exit 0, `biome lint` exit 0, **1491 tests / 285 suites, 0 failed**, no `role="tab"` in the shell, 0 `style: document.body` fixtures left.
-- **The marker looked lost and was not.** `data-vigilia-globals` appears nowhere as a literal because it is set through `section.dataset["vigiliaGlobals"]` at `style.ts:45`; the DOM attribute is right and both browser assertions still read it. A grep for the literal is the wrong query, not a regression.
-- **The third falsified comment in this plan is corrected.** `editor-session.ts:125-129` now says the pane shows those panels, not an empty selection — after `editor-canvas.ts`'s "three buttons" and `pane-bar.tsx`'s "three segments", each fixed by the task that made it wrong.
-- **The brief's suggested red proof was impossible and the agent said so.** The deletion leaves no `active === undefined` gate to disable, so that case cannot go red; the tab-strip test was used instead and fails exactly when the fix is undone. A brief proposing a proof that cannot fail is a defect in the brief, and this one was caught rather than faked.
-- **`biome check` is not a project gate.** Its `organizeImports` failure on `composition-panel.spec.ts` pre-dates Task 8 (verified against `9f62b0d3^`) and `package.json` runs `lint`, `format`, `lint:fix`, `format:check` — **no script runs `check`**. No row filed, and recorded so nobody re-derives it.
+- **Plan 4: Task 9 landed at `f4647683`, closing the red window Task 8 opened.** Both tab helpers are **removed**, not made no-ops — a helper that silently asserts nothing is the failure this task exists to prevent — and the tab clicks and document-panel reaches now go through `openPane(page, "Document")`, called rather than re-implemented. Nine files, all under `src/web/tests/e2e/**`, **net zero tests removed**.
+- **Verified here, not on report:** all six affected specs pass with `--workers=1` — `editor` 65, `shell-appearance` 6, `inspector-sections` 10, `glass-authoring` 5, `panel-labels` 4, `reference-theme` 12 — with **one** unexpected failure, `reference-theme.spec.ts:1436`, which is `vg-151`'s sharpness red and not this task's. Both gate greps return nothing; the other two `reference-theme` failures are `test.fail` pins by design.
+- **Task 9 found reaches the brief's pattern did not cover.** Three more marker families — `[data-vigilia-background-asset]`, `[data-vigilia-background-media-fit]`, `[data-vigilia-theme-*]`/`[data-vigilia-font-*]` — were reachable on load while the Design tab was `keepMounted`. Found *and* fixed inside the task, so no row is filed.
+- **`vg-119` was re-measured and its title corrected.** Two of its three causes are fixed: the 13-button count is generalised at `author-journey-rebuild.spec.ts:74-75`, and all four `[data-vigilia-panel-*]` attributes exist again at `selection-inspector/panel.ts:268,286,300,313`. Only the run-colour cause stands, in the **display** suite — which `playwright.config.ts` `testIgnore`s, so no command runs it.
+- **The rebuild suite's wordmark test is a load flake, not a regression.** 28.1 s and 28.2 s on two quiet samples against a 30 s default; 36.2 s and a timeout on a box still carrying a finished suite run. `vg-147` predicts exactly this and needed no new row.
 
 ## Next
 
-1. **Task 9 is next and it is the red-window closer** — the editor e2e suite has been failing since Task 8 deleted the `role="tab"` both helpers click, so this rewires ~26 call sites across 7 files by reading each one, never by making a helper a no-op. Its brief is measured in `.superpowers/sdd/2026-10-06-the-composition-panel/` and now also carries Task 8's two handovers: `editor.spec.ts:2068`'s stale case title and `:2133`'s `[data-vigilia-panel="style"]`, which needs a pane choice *as well as* losing its tab click. **Rows the user raised on 2026-10-07, none of them this plan's:** `vg-153` (dissolve the Document pane, give the theme globals their own surface), `vg-154` (drop the asset panel), `vg-155` (an import silently does one of two things), `vg-156` (JPEGs placed but only some listed — cause not established).
-2. **The standing loop still applies to plan 4's own work:** use the built editor and host as an author, file what breaks, dispatch against the register, and verify the landed work by using it again rather than by reading the agent's report.
-3. **Resume the font catalogue plan when someone picks it up** — Task 6 landed and its review failed; its `progress.md` is the resume point. Not this plan's.
-4. **Three rows plan 3 leaves open, plus one it filed about the gate itself, are in *Blockers*** and none is closable by a status edit: `vg-146` (which Task 8 closes), `vg-147`, `vg-148` and `vg-144`.
+1. **Task 10 is next: the evidence a reviewer can re-run.** It extends `composition-panel.spec.ts` and re-measures the two-hundred-row document plan 1 probed, plus a group entered inside it. **Two traps its brief now carries:** no generator survives, so Task 10 writes one, and the probe JSON records **no viewport** — its `clientHeight` 721 sits above the configured 720, so any row-width or overflow number must say which browser it came from. It also owes `vg-151`'s bisect, and the shas check out: `75e9c6d4` is `104adefc^` and an ancestor of HEAD.
+2. **Task 11 closes the plan after that.** `vg-146` goes to `verified` with a `check` naming one of `style`, `empty`, `group`, `multi`, `selection` — **`panel` is filtered by the checker's `NOISE` list** — then the archive move, and STATUS names plan 5. `vg-056` and `vg-087` are carried, not closed.
+3. **Rows the user raised on 2026-10-07, none of them this plan's:** `vg-153` (dissolve the Document pane, give the theme globals their own surface), `vg-154` (drop the asset panel), `vg-155` (an import silently does one of two things), `vg-156` (JPEGs placed but only some listed — cause not established).
+4. **Resume the font catalogue plan when someone picks it up** — Task 6 landed and its review failed; its `progress.md` is the resume point. Not this plan's.
 5. **Two stale-prose callouts stay until a later pass touches them.** The spec's acceptance at line 534 still says Content/Appearance/Spends where the corrected vocabulary is Content/Position/Layer/Paint/Spends, and its lines 31-32, 269, 289 still carry the old device vocabulary that plan 2 replaced.
 
 ## Blockers / unverified
