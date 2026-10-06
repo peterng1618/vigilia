@@ -618,6 +618,42 @@ races the re-projection. Wait on the bridge's `groupContext()`, not on the butto
 
 **Commit:** `feat(editor): the tree reaches a group's parts, and the canvas workaround goes`
 
+**Landed at `a418bd9b`, and these are the corrections the run measured.**
+
+- **The sweep was 9 lines, not the three the Files list names, and it is now 5.** `git grep
+  dblclick 9bc5ac25 -- src/web/tests/e2e` reads 9; at HEAD it reads 5. Four were rewired to the row
+  (`inspector-sections:296`, `reference-theme:603`, `editor:1108`, and the one inside
+  `selectStarterChart`), one was **deliberately re-inlined** at `editor.spec.ts:1976` — that test's
+  subject *is* the canvas route, and it now asserts `activeId` where it previously asserted only a
+  field's visibility, so the diff is one assertion stronger there and two stronger at `:1108`. Four
+  are untouched because they are the gesture itself or a fixture's setup: `:2942`, `:3115`, `:4389`
+  (a row double-click that opens rename) and `snapping.spec.ts:981`.
+- **The count in this plan's own brief was unreliable and the commit is honest about it.**
+  `enterStarterCard` was deleted with its docstring, and the assertion it carried
+  (`expect.poll(activeId).not.toBe(groupId)`) moved into `enterLayer`, where it is strictly stronger:
+  the helper waits on `groupContext()` naming the id. No test was deleted; two gained assertions.
+- **"Entering expands the group on the way" is true, and it is documented product behaviour rather
+  than a coincidence** — `bridge.ts:198-209`'s `expansionFor()` adds the entered group *and its
+  ancestors* to `expanded`, with the reason at `:186-196` ("a tree still showing that card shut with
+  an *Expand* button is telling them they are somewhere they are not"). A helper docstring resting on
+  this was verified rather than assumed, because the whole sweep depends on it.
+- **The red proof this plan's template asks for was not produced and is not owed one.** This task
+  changes test files only — `git show --stat a418bd9b` is four specs and the register, no product
+  source — so there is no production counterpart to disable. The behaviour the rewired specs pin was
+  red-proved where it was written: `4d15992c` dropped the group's name from the control's label and
+  read `expected 'Enter' to be 'Enter CPU card'`. What the specs add here is a route, and the route
+  failing is structural: `enterLayer`'s first act is to click `[data-vigilia-layer-entry]`, so its
+  absence is a timeout, not a silent pass.
+- **A red test this task inherited is now `vg-151`, and Task 10 owns settling whether this plan
+  caused it.** `reference-theme.spec.ts:1441` ("text above a glass panel stays sharp through a real
+  mount") failed on two samples at 0.74 against its 0.8024 floor. The task's own diff cannot cause it
+  — no product source, and the spec's body is byte-identical to base — but the reading is a function
+  of the fit zoom (`:1501-1502` sizes the sampled band at `rect.width * vp[0] * retina`), which makes
+  **`104adefc`, this plan's Task 3, a candidate**: it widened the left column 340px → 360px and so
+  took 20px off the width the canvas fills. Not established. **Task 10's re-measurement includes the
+  bisect that settles it** — `:1441` at `75e9c6d4` (before `104adefc`) and at plan 4's HEAD, with the
+  bundle rebuilt for each.
+
 ---
 
 ## Phase 3 — The left column's Document pane
@@ -873,6 +909,16 @@ sample of a flaky spec is not a measurement.
   one machine — say so in the case's own comment and in the commit, the way the spec's acceptance
   says it of plan 1's figures. A number that moved is reported as a number that moved, with the
   previous sample beside it; a machine under another session's load is not a regression.
+- **`vg-151`'s bisect, which this plan owes because the plan may have caused it.**
+  `reference-theme.spec.ts:1441` fails at 0.74 against its 0.8024 floor. The reading is sized by
+  the fit zoom, and Task 3 (`104adefc`) took 20px off the stage by widening the left column
+  340px → 360px, so run that one test **at `75e9c6d4`** — the commit before `104adefc` — and at
+  plan 4's HEAD, **rebuilding `@vigilia/editor` for each**, because the spec measures a built
+  bundle. Two samples, both recorded. If the earlier commit passes, the floor is a zoom-coupled
+  constant of the `vg-136`/`vg-137` class and `vg-151` closes with that as its `check`; if it fails
+  there too, plan 4 did not cause it and the row keeps its open state with the bisect recorded as
+  the evidence that this plan is clear. **Either answer closes the question — what is not
+  acceptable is leaving it as "the task's diff cannot cause it", which is true and unhelpful.**
 - Screenshots: the composition panel over the starter with a card entered; the panel at two
   hundred rows; the Document pane. Register each in the evidence table.
 - Gates: `npm run typecheck` exit 0, `./node_modules/.bin/biome lint ..` clean, the full vitest
