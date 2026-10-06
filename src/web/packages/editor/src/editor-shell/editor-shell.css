@@ -815,6 +815,25 @@ body,
   font-variant-numeric: tabular-nums;
 }
 
+/* An inspector section is a native disclosure. The panel's caps and display
+   face make the summary read as a heading without becoming one, and the count
+   stays inside the summary so a collapsed section still says how much it
+   holds — collapsing is ordering, not removal. */
+.vigilia-section-details > summary {
+  cursor: pointer;
+  color: var(--shell-muted);
+  font-family: var(--shell-display);
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+}
+.vigilia-section-count {
+  margin-left: 6px;
+  color: var(--shell-muted);
+  font-variant-numeric: tabular-nums;
+  letter-spacing: normal;
+}
+
 /* The layer tree: one dense line per layer, indentation carrying the depth. */
 [data-vigilia-panel="layers"] [role="tree"] {
   position: relative;

@@ -2,6 +2,7 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { linkedPair } from "./linked-pair.js";
 import { numberField } from "./number-field.js";
+import { propertySection } from "./property-section.js";
 
 afterEach(() => {
   document.body.replaceChildren();
@@ -329,5 +330,144 @@ describe("linked pair", () => {
     const alerts = pair.row.querySelectorAll("[role=alert]");
     expect(alerts).toHaveLength(2);
     for (const alert of alerts) expect(alert.parentElement).toBe(pair.row);
+  });
+});
+
+/** A field stand-in: the section only carries the elements it is given, so the
+    test needs something addressable inside the body, not a real control. */
+function line(text: string): HTMLElement {
+  const element = document.createElement("p");
+  element.textContent = text;
+  return element;
+}
+
+/** The section's parts, found the way a spec finds them: by the hook and by
+    the element the platform provides, never by a private class. */
+function parts(section: ReturnType<typeof propertySection>) {
+  const details = section.root.querySelector("details");
+  const summary = section.root.querySelector("summary");
+  return {
+    details,
+    summary,
+    body: section.root.querySelector(".vigilia-section-body"),
+  };
+}
+
+describe("property section", () => {
+  it("keeps the title and the count in a closed summary and reveals the body when opened", () => {
+    const section = propertySection({
+      id: "paint",
+      title: "Paint",
+      body: [line("Opacity")],
+      defaultOpen: false,
+      count: 3,
+    });
+    document.body.append(section.root);
+    const { details, summary, body } = parts(section);
+
+    expect(
+      section.root.querySelector('[data-vigilia-section="paint"]'),
+    ).not.toBeNull();
+    expect(details?.open).toBe(false);
+    // Collapsed is not hidden: the count is in the summary, so a closed section
+    // still says how much it holds, and the title is there to name it.
+    expect(summary?.textContent).toContain("Paint");
+    expect(summary?.textContent).toContain("3");
+    // Closed, the body is still in the DOM — a section that unmounted it would
+    // drop every field the next re-render replaced instead of updating.
+    expect(body?.textContent).toBe("Opacity");
+
+    section.open();
+    expect(details?.open).toBe(true);
+    expect(body?.textContent).toBe("Opacity");
+  });
+
+  it("names the summary by the title, not by its count", () => {
+    const section = propertySection({
+      id: "position",
+      title: "Position",
+      body: [line("X")],
+      defaultOpen: false,
+      count: 12,
+    });
+    document.body.append(section.root);
+    const { summary } = parts(section);
+
+    const labelled = summary?.getAttribute("aria-labelledby") ?? "";
+    const name = document.getElementById(labelled)?.textContent;
+    // The count is visible but it is not the name: a summary whose accessible
+    // name is only a number tells a screen reader nothing about the section.
+    expect(name).toBe("Position");
+    expect(summary?.textContent).toContain("12");
+  });
+
+  it("toggles from the keyboard-reachable summary the platform provides", () => {
+    const section = propertySection({
+      id: "content",
+      title: "Content",
+      body: [line("Title")],
+      defaultOpen: false,
+    });
+    document.body.append(section.root);
+    const { details, summary } = parts(section);
+
+    summary?.focus();
+    // Reachable by keyboard: the summary is the platform's own focus target,
+    // not a div the panel had to make tabbable.
+    expect(document.activeElement).toBe(summary);
+
+    // jsdom runs no keyboard activation for any element — it toggles a
+    // `<details>` only through the click a browser synthesizes for Enter on a
+    // focused summary — so the platform's activation is driven directly rather
+    // than through a keydown jsdom would ignore.
+    summary?.click();
+    expect(details?.open).toBe(true);
+    summary?.click();
+    expect(details?.open).toBe(false);
+  });
+
+  it("replaces the body and leaves the open state untouched", () => {
+    const open = propertySection({
+      id: "layer",
+      title: "Layer",
+      body: [line("Opacity")],
+      defaultOpen: true,
+    });
+    const closed = propertySection({
+      id: "spends",
+      title: "Spends",
+      body: [line("Preview")],
+      defaultOpen: false,
+    });
+    document.body.append(open.root, closed.root);
+
+    open.setBody([line("Scale"), line("Rotation")]);
+    closed.setBody([line("Live")]);
+
+    // A re-render must not collapse the section the author just opened, nor
+    // open one the author left closed.
+    expect(open.isOpen()).toBe(true);
+    expect(closed.isOpen()).toBe(false);
+    const body = open.root.querySelector(".vigilia-section-body");
+    expect(body?.children).toHaveLength(2);
+    expect(body?.textContent).toBe("ScaleRotation");
+    // The replaced field is gone rather than appended beside the old one.
+    expect(body?.textContent).not.toContain("Opacity");
+  });
+
+  it("renders nothing at all for a section with no body", () => {
+    const section = propertySection({
+      id: "layer",
+      title: "Layer",
+      body: [],
+      defaultOpen: true,
+      count: 0,
+    });
+    document.body.append(section.root);
+
+    // Not a header with a count of zero: with nothing to hold there is nothing
+    // to disclose, so there is no disclosure.
+    expect(section.root.querySelector("details")).toBeNull();
+    expect(section.root.textContent).toBe("");
   });
 });
