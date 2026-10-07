@@ -59,11 +59,45 @@ async function remount(): Promise<HTMLDivElement> {
   return mount();
 }
 
-it("renders nothing when this host is not on the LAN", async () => {
+it("offers to serve the LAN, and says what that costs before it does", async () => {
   hostAnswers({ lan: false, address: null, port: null, sessions: [] });
   const container = await mount();
 
-  await vi.waitFor(() => expect(container.firstChild).toBeNull());
+  await vi.waitFor(() =>
+    expect(container.textContent).toContain(uiCopy.publish.warning),
+  );
+
+  const button = container.querySelector("button");
+  expect(button?.textContent).toBe(uiCopy.publish.start);
+  expect(button?.getAttribute("aria-pressed")).toBe("false");
+});
+
+it("shows the host's own reason when it refuses the interface", async () => {
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input) !== "/api/hosting") return new Response("", { status: 404 });
+      if (init?.method === "PUT") {
+        return new Response("Port 5227 is not free on 0.0.0.0: EADDRINUSE", {
+          status: 409,
+        });
+      }
+      return new Response(
+        JSON.stringify({ lan: false, address: null, port: null, sessions: [] }),
+      );
+    }),
+  );
+
+  const container = await mount();
+  await vi.waitFor(() =>
+    expect(container.textContent).toContain(uiCopy.publish.warning),
+  );
+
+  // `act` because the click starts a state update; without it React has not
+  // re-rendered by the time the assertion runs.
+  await act(async () => container.querySelector("button")?.click());
+
+  await vi.waitFor(() => expect(container.textContent).toContain("EADDRINUSE"));
 });
 
 it("shows the address the host named, with a code for it", async () => {

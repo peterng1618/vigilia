@@ -63,6 +63,40 @@ export async function mintSession(
   }
 }
 
+/** Asks the host to serve the LAN, or to stop. The host owns the binding, so a
+ *  refusal comes back in its words — the editor has no way to know which
+ *  interface refused or why, and a message composed here would be a guess. */
+export async function setLan(
+  on: boolean,
+  fetcher: typeof fetch = fetch,
+): Promise<
+  { ok: true; answer: HostingAnswer } | { ok: false; reason: string }
+> {
+  try {
+    const response = await fetcher("/api/hosting", {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ lan: on }),
+    });
+
+    if (!response.ok) {
+      // The host's own words: it is the only thing that knows why a socket
+      // refused, and a message composed here would be a guess shown as a fact.
+      return { ok: false, reason: (await response.text()).trim() };
+    }
+
+    const answer = await readHosting(fetcher);
+    return answer === undefined
+      ? { ok: false, reason: "The host answered with something unreadable." }
+      : { ok: true, answer };
+  } catch (error) {
+    return {
+      ok: false,
+      reason: error instanceof Error ? error.message : String(error),
+    };
+  }
+}
+
 /** The URL the QR carries. The token rides in the query because `EventSource`
  *  cannot set a request header, which is why it is short-lived. */
 export function displayUrl(

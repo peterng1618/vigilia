@@ -44,11 +44,11 @@ The loop, in order:
 
 ## Last completed change
 
-- **Task 3.2 lands: the LAN binding moves at runtime, and the port does not** — `cli/hosting.ts` rebinds the one listener between `127.0.0.1` and `0.0.0.0` on the port it already holds, answers a refused interface with a reason, and restores the old binding so a refusal is not an outage; it deliberately has no `close()`, because `hosted.close()` already clears the sample timer and the SSE connections.
-- **`args.ts` records `hostGiven`**, so `--host` wins for the run and a run without it obeys the stored hosting preference; the reachability probe and the terminal's LAN banner follow the host actually bound rather than the flag.
-- **The PUT route sits inside Task 1.3's `/api/hosting` block**, replacing its 405 guard with a three-way dispatch, with the loopback check still ahead of it so a remote PUT is 403 and a refused rebind answers 409 with the reason without calling `rememberLan`.
-- **`main.ts` passes `hosting: () => hostingState()`**, a `let` indirection assigned the binding's reader after the first bind, because `createHostServer` captures `options.hosting` once (`server.ts:319`) and its options are fixed before `listenWithFallback` reports a port.
-- **The break-proof was not inert, but its failure mode was not the plan's**, and `28630937` fixes that: deleting the `await bind(host)` restore line turned "keeps the port" red at `reachable(port)` as predicted, but by a 20 s timeout, because the squatter holds `0.0.0.0:port`, accepts the connection to `127.0.0.1:port` and never answers — it now answers `"squatter"`, so the same regression fails in milliseconds, measured both ways.
+- **Task 3.3 lands: publishing is a control in the header, not a command-line flag** — `PublishControl` now renders whenever a host answers, with §145's "trusted networks only, never the internet" as a sentence on the surface, a `Publish to a phone`/`Stop publishing` button whose `aria-pressed` is the LAN's own state, and the address, QR and expiry only while the LAN is on.
+- **`hosting-client.ts` gains `setLan`**, a PUT to `/api/hosting` that returns the host's own 409 body as the reason rather than composing one in the editor — the host is the only thing that knows why a socket refused.
+- **A refused toggle re-reads the host rather than assuming where it landed**, because Task 3.2 restores the old binding on refusal and the button's prior state is not evidence of the host's; turning the LAN off clears the address and the session, so no stale URL stays on screen.
+- **The plan's obsolete test was replaced, not kept** — `renders nothing when this host is not on the LAN` is deleted, because the off state now carries the warning and the offer and a header that renders nothing there is a feature nobody can find.
+- **The break-proof was not inert.** Replacing `(await response.text()).trim()` with a fixed string failed the `EADDRINUSE` assertion in "shows the host's own reason when it refuses the interface" at 1042 ms; restored and green at 4 tests.
 
 ## Next
 

@@ -325,6 +325,9 @@ export const uiCopy = {
    *  words that turn it on have to say what it is. */
   publish: {
     qrName: (url: string): string => `QR code: ${url}`,
+    start: "Publish to a phone",
+    stop: "Stop publishing",
+    starting: "Opening the LAN…",
     address: "Phone address",
     warning:
       "Plain HTTP on your own network — trusted networks only, never the internet.",
