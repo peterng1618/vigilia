@@ -80,6 +80,12 @@ test("? opens the sheet, and the document behind it does not change", async ({
   // count is a property of the projection rather than of this test.
   await expect(sheet.locator("kbd")).toHaveCount(19);
 
+  // The capture is taken **here, with the sheet open**, because a shot named
+  // for the reference that shows no reference is not evidence of one. Its
+  // footer reads `Unsaved changes` — that is `vg-188`, entering a group marking
+  // the document dirty, and it happens before this test presses anything.
+  await captureVisualReview(page, testInfo, "keyboard-reference");
+
   // Nothing reaches the document behind it. This is the assertion for Review
   // Focus 2, and it is a *visible* one: if the Delete press landed, the layer
   // the author had selected would stop existing.
@@ -103,6 +109,4 @@ test("? opens the sheet, and the document behind it does not change", async ({
   // does not exist in a browser. These two lines are the regression proof.
   await expect(selected).toBeVisible();
   await expect(selected).toHaveCount(1);
-
-  await captureVisualReview(page, testInfo, "keyboard-reference");
 });
