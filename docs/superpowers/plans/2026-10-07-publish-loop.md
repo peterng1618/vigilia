@@ -1981,7 +1981,15 @@ describe("createHostBinding", () => {
 
   it("keeps the port when the interface will not take it, and says so", async () => {
     const { server, port } = await listening("127.0.0.1");
-    const squatter = http.createServer();
+    // The squatter **answers**, and that is not decoration. It is bound to
+    // `0.0.0.0:port`, so if the host's own socket is ever lost this one accepts
+    // the connection instead — a squatter with no request listener leaves the
+    // probe hanging until the 20 s test timeout, so a regression would read as a
+    // slow suite rather than a wrong answer. Answering something other than "ok"
+    // makes the loss immediate and legible.
+    const squatter = http.createServer((_request, response) =>
+      response.end("squatter"),
+    );
     open.push(squatter);
     // `error` is handled because this bind is the one that can legitimately
     // fail: loopback and wildcard coexist on this platform, but that is a
@@ -1998,7 +2006,9 @@ describe("createHostBinding", () => {
     expect(turned.ok).toBe(false);
     // The host is still answering where it was, which is the whole point of
     // refusing rather than falling back to another port — and the only
-    // assertion here that can tell a restored socket from a closed one.
+    // assertion here that can tell a restored socket from a closed one. With
+    // the restore line gone this resolves "squatter", not "ok": the failure is
+    // a wrong answer rather than a hang.
     expect(await reachable(port)).toBe("ok");
     expect(binding.state().lan).toBe(false);
     expect(binding.state().port).toBe(port);
@@ -2008,10 +2018,20 @@ describe("createHostBinding", () => {
 
 Add to `src/web/packages/host/src/cli/args.test.ts`:
 
+`parseArgs` answers a discriminated `ArgsResult`, where `options` exists only on the `"run"`
+variant — so the assertion has to narrow rather than reach through `?.`, which does not
+typecheck:
+
 ```ts
 it("says whether the address was asked for or defaulted", () => {
-  expect(parseArgs([], "0.0.0").options?.hostGiven).toBe(false);
-  expect(parseArgs(["--host", "0.0.0.0"], "0.0.0").options?.hostGiven).toBe(true);
+  expect(parseArgs([], "0.0.0")).toMatchObject({
+    kind: "run",
+    options: { hostGiven: false },
+  });
+  expect(parseArgs(["--host", "0.0.0.0"], "0.0.0")).toMatchObject({
+    kind: "run",
+    options: { hostGiven: true },
+  });
 });
 ```
 
@@ -2055,7 +2075,6 @@ export interface HostBinding {
   setLan(
     on: boolean,
   ): Promise<{ readonly ok: true } | { readonly ok: false; readonly reason: string }>;
-  close(): Promise<void>;
 }
 
 export function createHostBinding(
@@ -2174,7 +2193,11 @@ storedHosting.lan ? "0.0.0.0" : DEFAULT_HOST`) into `initialHost`, `listenWithFa
 that host, then `createHostBinding`. **`--host` wins for the run; the stored preference is
 what a run without it obeys.** Keep `hosted.close()` at both shutdown sites (`:221`, `:325`) —
 see Constraints. Keep the terminal print at `:249-287` — a terminal-launched host should still
-say where it is, and `boundPort` at `:106,213` is replaced by `hostingState`.
+say where it is, and `boundPort` at `:106,213` is replaced by `hostingState`. **"Kept" means
+its output, not its variable**: the print keyed off the `--host` value, which stops being the
+bound address the moment the stored preference can drive the bind, so the reachability probe,
+`displayHost` and the LAN banner all read `initialHost` instead. As executed (`f3a825ad`) that
+was the change, and the text printed is unchanged.
 
 Add the route that turns it on and off **inside Task 1.3's `/api/hosting` block**, replacing
 its `if (request.method !== "GET")` guard with a branch. Do **not** add a second
@@ -2257,8 +2280,11 @@ loopback `PUT {lan:true}` answers 200 with `lan: true`; a `PUT` from `10.0.0.2` 
 - [ ] **Step 6: Prove the tests can fail**
 
 In `createHostBinding.setLan`, delete the `await bind(host)` restore line. Re-run Step 5.
-Expected: **FAIL on the "keeps the port" case at the `reachable(port)` assertion**, with a
-connection refused. Restore the line.
+Expected: **FAIL on the "keeps the port" case at the `reachable(port)` assertion**, which
+answers `"squatter"` instead of `"ok"`. Restore the line. (Measured as first written: the
+squatter had no listener, so a lost socket was *accepted* and never answered, and the run went
+red as a 20 s timeout rather than as a failed assertion. A regression that reads as a slow
+suite is the failure this test was supposed to make legible.)
 
 **The assertion that fails is `reachable`, and that is deliberate.** `state()` reads the
 `host` and `port` variables, and a failed rebind never assigns them — so `state()` reports the

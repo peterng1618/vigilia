@@ -71,7 +71,13 @@ describe("createHostBinding", () => {
 
   it("keeps the port when the interface will not take it, and says so", async () => {
     const { server, port } = await listening("127.0.0.1");
-    const squatter = http.createServer();
+    // The squatter **answers**, and that is not decoration. It is bound to
+    // `0.0.0.0:port`, so if the host's own socket is ever lost this one accepts
+    // the connection instead — with no request listener the probe hangs until
+    // the 20 s timeout, which reads as a slow suite rather than a wrong answer.
+    const squatter = http.createServer((_request, response) =>
+      response.end("squatter"),
+    );
     open.push(squatter);
     // `error` is handled because this bind is the one that can legitimately
     // fail: loopback and wildcard coexist on this platform, but that is a
@@ -88,7 +94,9 @@ describe("createHostBinding", () => {
     expect(turned.ok).toBe(false);
     // The host is still answering where it was, which is the whole point of
     // refusing rather than falling back to another port — and the only
-    // assertion here that can tell a restored socket from a closed one.
+    // assertion here that can tell a restored socket from a closed one. With
+    // the restore line gone this resolves "squatter", not "ok": the failure is
+    // a wrong answer rather than a hang.
     expect(await reachable(port)).toBe("ok");
     expect(binding.state().lan).toBe(false);
     expect(binding.state().port).toBe(port);
