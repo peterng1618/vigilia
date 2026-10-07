@@ -3601,6 +3601,16 @@ git commit -m "feat(player): a display follows what the author is publishing"
 - Test: `src/web/packages/editor/src/publish-client.test.ts`
 - Modify: `src/web/packages/editor/src/editor-main.ts`
 - Modify: `src/web/packages/editor/src/editor-shell/publish-control.tsx`
+- Modify: `src/web/packages/editor/src/editor-shell/shell-layout.tsx` — one prop line, to
+  pass the publish port into the control (the Files block omitted this and it is not
+  optional: the control cannot reach `editor-main`'s publisher without it)
+- Modify: `src/web/packages/editor/src/ui-copy.ts` — `publish.live` and `publish.unsaved`,
+  which do not exist yet
+- Test (existing, one line each): `editor-shell/bridge.dom.test.ts`,
+  `editor-shell/canvas-context-menu.dom.test.tsx`, `editor-shell/shell-layout.dom.test.tsx`
+  — each builds a stub of `EditorActionFacade`, and making `publishableDocument` required
+  breaks all three until they carry it. That is the type system doing its job, not churn to
+  be minimised away.
 
 **Interfaces:**
 - Consumes: `PUT`/`DELETE /api/publish?id=` (Task 4.1); `subscribeDocumentChange` and
@@ -3642,7 +3652,14 @@ afterEach(() => vi.unstubAllGlobals());
 const document = { id: "living-room", envelope: { schemaVersion: 2 } as never };
 
 it("sends the latest document once, not every edit", async () => {
-  const fetch = vi.fn(async () => new Response(JSON.stringify({ ok: true, revision: 1 })));
+  // The parameters are declared even though the mock ignores them: `vi.fn()`
+  // with no signature gives `mock.calls` the type `[][]`, so reading `[url]`
+  // out of a call is TS2493 — "Tuple type '[]' of length '0' has no element at
+  // index '0'". This test does not typecheck as it was first written.
+  const fetch = vi.fn(
+    async (_input: RequestInfo | URL, _init?: RequestInit) =>
+      new Response(JSON.stringify({ ok: true, revision: 1 })),
+  );
   vi.stubGlobal("fetch", fetch);
 
   const publisher = createPublisher({ debounceMs: 5 });
@@ -3662,7 +3679,10 @@ it("sends the latest document once, not every edit", async () => {
 });
 
 it("stops by telling the host, so the display goes back to the stored theme", async () => {
-  const fetch = vi.fn(async () => new Response(JSON.stringify({ ok: true })));
+  const fetch = vi.fn(
+    async (_input: RequestInfo | URL, _init?: RequestInit) =>
+      new Response(JSON.stringify({ ok: true })),
+  );
   vi.stubGlobal("fetch", fetch);
 
   const publisher = createPublisher({ debounceMs: 5 });
@@ -3763,22 +3783,32 @@ export function createPublisher(
 ```
 
 In `session-facade.ts` add the method to `EditorActionFacade`, and in `editor-session.ts`
-implement it from `#snapshot` and the id the session already tracks for its base:
+implement it from `#snapshot`, the base as the never-saved gate, and the **document's own**
+id:
 
 ```ts
     publishableDocument: () => {
-      const id = this.#libraryBase?.id;
-      return id === undefined
-        ? undefined
-        : { id, envelope: this.#snapshot(options.shell) };
+      // A document with no stored base has no folder, and a published
+      // document's assets are served from the theme's own folder — so a
+      // display given one would render a theme with holes. The base's own
+      // `id` is a content hash of the stored document, not the folder it
+      // lives in, so the id published under is the document's.
+      if (this.#libraryBase === undefined) return undefined;
+      const envelope = this.#snapshot(this.#shell);
+      return { id: envelope.id, envelope };
     },
 ```
 
-`#libraryBase` is the field, and its `id` is the one a save already sends as
-`base: base.id` — **there is no second id to add.** It is cleared wherever the document is
-replaced by something else, which is precisely the never-saved case the `undefined` return
-is for, so the id and the "is this published document the library's" question cannot drift
-apart. Verify it is still that field before you write the line; it was at `ffd62db6`.
+**The id published under is `envelope.id`, and this paragraph previously said the opposite.**
+It claimed `#libraryBase.id` was "the one a save already sends as `base: base.id`", which
+was written from the name rather than the value. `base` is `contentId(serialized)` — the
+**sha256 of the stored document's bytes** (`themes/store.ts:431-433`, `:732`), and
+`theme-library-client.ts:181` hands that straight back as `saved.base`. Following the old
+line would have published under a 64-character hash, and `/api/publish` requires the id both
+to name a folder (`server.ts:1270`) and to equal the envelope's own id (`server.ts:1296`), so
+**every publish would have 404'd and the display would never have followed.** The base is
+still the right *gate* — undefined means never saved, which is exactly the case the
+`undefined` return is for — it is only the wrong *id*. Pinned by `1f8d0389`.
 
 In `editor-main.ts`, hold one publisher for the session's lifetime: subscribe to
 `active.bridge.session.subscribeDocumentChange`, and on each change call
@@ -3791,10 +3821,17 @@ publishing off, or the page is going away, `await publisher.stop()`:
   });
 ```
 
-In `publish-control.tsx`, when the LAN is on, publishing is on: the control offers the
-document through a callback the shell passes it, and shows `uiCopy.publish.live(name)` for
-the document it is publishing, or `uiCopy.publish.unsaved` when
-`publishableDocument()` answered `undefined`.
+In `publish-control.tsx`, when the LAN is on, publishing is on, and the control shows
+`uiCopy.publish.live(name)` for the document being published or `uiCopy.publish.unsaved`
+when `publishableDocument()` answered `undefined`.
+
+**The control does not own the offer.** An earlier draft of this paragraph said it "offers
+the document through a callback the shell passes it", which contradicts the `editor-main.ts`
+paragraph directly above: that one holds a single publisher for the session's lifetime and
+offers on every document change. Both cannot be the owner, and `editor-main` is the right
+one — a control that mounts, unmounts and re-renders is the wrong place for the debounce
+timer that decides what a burst sends. The control switches publishing and renders the
+reading; the shell passes the port through one new prop line in `shell-layout.tsx`.
 
 - [ ] **Step 4: Run the tests to verify they pass**
 
