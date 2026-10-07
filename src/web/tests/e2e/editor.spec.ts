@@ -4200,10 +4200,7 @@ test.describe("Fabric editor route", () => {
     // document is open (its arrange half greys before a selection), so a press at
     // the horizontal centre lands on the toolbar and the drag never reaches the
     // canvas. Left of the toolbar's width the band is clear at every X.
-    const [sx, sy] = [
-      canvasBox.x + 40,
-      canvasBox.y + canvasBox.height - 16,
-    ];
+    const [sx, sy] = [canvasBox.x + 40, canvasBox.y + canvasBox.height - 16];
     // Both sides in client space: `rect` is canvas-relative, so its client
     // position is `canvasBox` + `rect`. Without the offsets these guards compare a
     // client point against a canvas-space edge and pass on a drag that is nowhere
