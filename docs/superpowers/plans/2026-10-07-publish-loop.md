@@ -155,7 +155,11 @@ task's requirements implicitly include this section.
   make every task red for reasons this plan does not own.
 - **`npm run format:check` is also a gate**, run from `src/web/`. Plan 5 ended with this
   red because its constraint list named `biome lint` alone, which does not check
-  formatting. Every task's final step runs both.
+  formatting. Every task's final step runs both. **This plan's code blocks are written for
+  review, not for the formatter** — Biome wraps the lines it wants wrapped, so a block pasted
+  verbatim can fail the gate on line breaks alone. Run the formatter over what you paste and
+  never hand-edit toward the plan: the repository's formatting is authoritative, and the
+  substance being checked is the code, not its wrapping.
 - **Playwright never uses the shared MCP browser.** Run it as a CLI, always
   `--workers=1`, and read results **from the JSON report file**: pass `--reporter=json`
   together with `PLAYWRIGHT_JSON_OUTPUT_NAME` pointing at a path under
@@ -1868,7 +1872,6 @@ git commit -m "feat(host): remember whether this PC serves the LAN"
     /** Rebinds on the same port. Resolves false, with a reason, when the new
      *  interface will not take that port — the old binding is restored. */
     setLan(on: boolean): Promise<{ readonly ok: true } | { readonly ok: false; readonly reason: string }>;
-    close(): Promise<void>;
   }
   export function createHostBinding(
     server: http.Server,
@@ -1885,6 +1888,17 @@ host and answers `{ ok: false, reason }` — the control shows the reason. Live 
 connections are closed on the way through (`closeAllConnections()`), because they belong to
 displays that must reconnect to the new binding anyway.
 
+**The binding does not own the server's lifecycle, so it has no `close()`.** `hosted.close()`
+(`server.ts:1303-1321`) clears the sample-interval timer *and* closes the SSE connections
+*before* closing the socket; a `binding.close()` would close the socket alone and quietly drop
+the first two. Shutdown stays `hosted.close()` at both call sites.
+
+**The PUT route goes *inside* Task 1.3's `/api/hosting` block, not after it.** That block
+already ends with `if (request.method !== "GET") { sendText(response, 405, …); return; }` — so
+a second `if (url.pathname === "/api/hosting" && …)` placed after it is unreachable, and the
+405 it answers already advertises PUT. The method guard becomes a three-way dispatch in the
+one block.
+
 - [ ] **Step 1: Write the failing tests**
 
 Create `src/web/packages/host/src/cli/hosting.test.ts`:
@@ -1897,13 +1911,34 @@ import { createHostBinding } from "./hosting.js";
 const open: http.Server[] = [];
 
 function listening(host: string): Promise<{ server: http.Server; port: number }> {
-  return new Promise((resolve) => {
+  return new Promise((resolve, reject) => {
     const server = http.createServer((_request, response) => response.end("ok"));
     open.push(server);
+    server.once("error", reject);
     server.listen(0, host, () => {
       const address = server.address();
       resolve({ server, port: typeof address === "object" && address !== null ? address.port : 0 });
     });
+  });
+}
+
+/** Whether the host is still answering on that port, rather than only *saying*
+ *  it is. The distinction is the whole of the "keeps the port" case: `state()`
+ *  reads the variables `setLan` writes, so it reports the old binding whether or
+ *  not the socket was ever restored, and a test that stops at `state()` passes
+ *  with the restore line deleted. */
+function reachable(port: number): Promise<string> {
+  return new Promise((resolve, reject) => {
+    http
+      .get({ host: "127.0.0.1", port }, (response) => {
+        let body = "";
+        response.setEncoding("utf8");
+        response.on("data", (chunk: string) => {
+          body += chunk;
+        });
+        response.on("end", () => resolve(body));
+      })
+      .on("error", reject);
   });
 }
 
@@ -1934,14 +1969,23 @@ describe("createHostBinding", () => {
     const { server, port } = await listening("127.0.0.1");
     const squatter = http.createServer();
     open.push(squatter);
-    await new Promise<void>((resolve) => squatter.listen(port, "0.0.0.0", () => resolve()));
+    // `error` is handled because this bind is the one that can legitimately
+    // fail: loopback and wildcard coexist on this platform, but that is a
+    // platform behaviour rather than a guarantee, and an unhandled 'error' here
+    // leaves the promise unsettled and the suite hanging instead of red.
+    await new Promise<void>((resolve, reject) => {
+      squatter.once("error", reject);
+      squatter.listen(port, "0.0.0.0", () => resolve());
+    });
 
     const binding = createHostBinding(server, { port, host: "127.0.0.1" });
     const turned = await binding.setLan(true);
 
     expect(turned.ok).toBe(false);
     // The host is still answering where it was, which is the whole point of
-    // refusing rather than falling back to another port.
+    // refusing rather than falling back to another port — and the only
+    // assertion here that can tell a restored socket from a closed one.
+    expect(await reachable(port)).toBe("ok");
     expect(binding.state().lan).toBe(false);
     expect(binding.state().port).toBe(port);
   });
@@ -2055,14 +2099,12 @@ export function createHostBinding(
         };
       }
     },
-
-    close() {
-      server.closeAllConnections();
-      return new Promise((resolve) => server.close(() => resolve()));
-    },
   };
 }
 ```
+
+No `close()`: the server's lifecycle is `createHostServer`'s, and `hosted.close()` already
+does more than this could.
 
 - [ ] **Step 4: Wire it into the launcher**
 
@@ -2084,43 +2126,96 @@ In `main.ts`, replace the sessions line and the startup listen:
   });
 ```
 
-…but the binding needs the port *after* the first bind, so order it as: choose the initial
-host (`parsed.options.hostGiven ? parsed.options.host : storedHosting.lan ? "0.0.0.0" :
-DEFAULT_HOST`), `listenWithFallback`, then `createHostBinding`. Pass
-`hosting: binding.state` into `createHostServer`'s options, and use `binding.close()`
-instead of `hosted.close()` at the shutdown site. **`--host` wins for the run; the stored
-preference is what a run without it obeys.** Keep the terminal print at `:249-287` — a
-terminal-launched host should still say where it is.
-
-Add the route that turns it on and off, immediately after the `GET /api/hosting` block
-from Task 1.3:
+**The binding cannot be handed to `createHostServer` directly, and this is the part to get
+right.** `createHostServer` is what *creates* `hosted.server` (`:123`), so its options are
+fixed before `listenWithFallback` (`:207`) can report a port; `createHostBinding` needs that
+port; and `createHostServer` captures `options.hosting` once, at `server.ts:319`, as
+`const hosting = options.hosting ?? (() => NO_HOSTING)`. So the options object cannot be
+patched afterwards, and the three have a circular dependency. The seam is a function
+indirection, resolved before the first request can arrive:
 
 ```ts
-    if (url.pathname === "/api/hosting" && request.method === "PUT") {
-      // The guard above has already run: this whole block is loopback-only.
-      let body: { readonly lan?: unknown };
-      try {
-        body = JSON.parse(await readBody(request)) as { readonly lan?: unknown };
-      } catch {
-        sendText(response, 400, "That is not a hosting setting.");
+  // Read per request; assigned the binding's own reader once the socket exists.
+  // `createHostServer` captures `options.hosting` at creation (server.ts:319), so
+  // a later assignment to the options object would have no effect, and a request
+  // arriving in the window between `listenWithFallback` and the binding's
+  // construction would hit a `const binding` still in its temporal dead zone.
+  const NO_HOSTING_STATE: HostingState = { lan: false, address: null, port: null };
+  let hostingState = (): HostingState => NO_HOSTING_STATE;
+```
+
+Pass `hosting: () => hostingState()` where the `--host`-only closure is today (`:130-132`),
+then, after the first bind:
+
+```ts
+  const binding = createHostBinding(hosted.server, {
+    port: bound,
+    host: initialHost,
+  });
+  hostingState = binding.state;
+```
+
+Order it as: choose the initial host (`parsed.options.hostGiven ? parsed.options.host :
+storedHosting.lan ? "0.0.0.0" : DEFAULT_HOST`) into `initialHost`, `listenWithFallback` with
+that host, then `createHostBinding`. **`--host` wins for the run; the stored preference is
+what a run without it obeys.** Keep `hosted.close()` at both shutdown sites (`:221`, `:325`) —
+see Constraints. Keep the terminal print at `:249-287` — a terminal-launched host should still
+say where it is, and `boundPort` at `:106,213` is replaced by `hostingState`.
+
+Add the route that turns it on and off **inside Task 1.3's `/api/hosting` block**, replacing
+its `if (request.method !== "GET")` guard with a branch. Do **not** add a second
+`if (url.pathname === "/api/hosting" && …)` block after that one: the existing block ends in
+`if (request.method !== "GET") { …405…; return; }`, so everything after it is unreachable and
+the 405 it sends names PUT as supported while refusing it. The block becomes:
+
+```ts
+    if (url.pathname === "/api/hosting") {
+      if (!isLoopbackRemote(request.socket.remoteAddress)) {
+        sendText(response, 403, "Hosting settings are available on this PC only.");
         return;
       }
 
-      if (typeof body.lan !== "boolean") {
-        sendText(response, 400, "Hosting is on or off, and nothing else.");
+      // The PUT branch goes here, before the method guard below — the guard's
+      // own message already promises PUT, and a block placed after it would be
+      // dead code.
+      if (request.method === "PUT") {
+        let body: { readonly lan?: unknown };
+        try {
+          body = JSON.parse(await readBody(request)) as { readonly lan?: unknown };
+        } catch {
+          sendText(response, 400, "That is not a hosting setting.");
+          return;
+        }
+
+        if (typeof body.lan !== "boolean") {
+          sendText(response, 400, "Hosting is on or off, and nothing else.");
+          return;
+        }
+
+        const outcome = await toggled(body.lan);
+        if (!outcome.ok) {
+          sendText(response, 409, outcome.reason);
+          return;
+        }
+
+        await saved(body.lan);
+        // The same redaction Task 1.3's GET makes, for the same reason: a
+        // `DisplaySession` carries `token`, and this route answers about
+        // hosting, not about credentials.
+        sendJson(response, 200, {
+          ...hosting(),
+          sessions: (sessions?.list() ?? []).map(
+            ({ token: _credential, ...peer }) => peer,
+          ),
+        });
         return;
       }
 
-      const outcome = await toggled(body.lan);
-      if (!outcome.ok) {
-        sendText(response, 409, outcome.reason);
+      if (request.method !== "GET") {
+        sendText(response, 405, "Only GET and PUT are supported.");
         return;
       }
 
-      await saved(body.lan);
-      // The same redaction Task 1.3's GET makes, for the same reason: a
-      // `DisplaySession` carries `token`, and this route answers about hosting,
-      // not about credentials.
       sendJson(response, 200, {
         ...hosting(),
         sessions: (sessions?.list() ?? []).map(
@@ -2148,7 +2243,16 @@ loopback `PUT {lan:true}` answers 200 with `lan: true`; a `PUT` from `10.0.0.2` 
 - [ ] **Step 6: Prove the tests can fail**
 
 In `createHostBinding.setLan`, delete the `await bind(host)` restore line. Re-run Step 5.
-Expected: FAIL on the "keeps the port" case — the host is left unbound. Restore it.
+Expected: **FAIL on the "keeps the port" case at the `reachable(port)` assertion**, with a
+connection refused. Restore the line.
+
+**The assertion that fails is `reachable`, and that is deliberate.** `state()` reads the
+`host` and `port` variables, and a failed rebind never assigns them — so `state()` reports the
+old binding whether or not the socket came back, and a test stopping at `state()` would pass
+with the restore line deleted. That is why this case makes a real request: it is the only
+assertion here that can tell a restored socket from a closed one. If deleting the line leaves
+the suite green, the tests are the defect — see this plan's Global Constraints on prescribed
+breaks.
 
 - [ ] **Step 7: Commit**
 
