@@ -2980,6 +2980,14 @@ the right folder.
     `published.read()?.id === id`, and the stored one otherwise.
   - `GET /api/published` — display-readable with a session, like `/api/display` — →
     `{ id, revision }`, which is what a phone polls.
+
+  **`/api/publish` and `/api/published` are two surfaces, not two spellings of one.** Task
+  4.1's `/api/publish` is the *editor's* admin route — loopback only, `PUT` to publish and
+  `DELETE` to stop — and Task 4.1's `GET` on it answers the editor for its own bookkeeping.
+  `/api/published` is the *phone's* read: behind the display guard, it never answers what the
+  document contains, only which id is live and at which revision, which is all a poll needs.
+  Nothing should be added to either that blurs them; a phone must not be able to cause a
+  publish, and an editor must not be the thing that enumerates displays.
   - `/` resolves through the published id first, then the stored choice.
 
 **Constraints.** The overlay replaces the **document** and nothing else: the theme's own
