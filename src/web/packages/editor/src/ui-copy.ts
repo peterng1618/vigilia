@@ -321,6 +321,11 @@ export const uiCopy = {
     cancel: "Cancel",
   },
   saveState: { unsaved: "Unsaved changes" },
+  /** The publish surface. §145: plain LAN HTTP has no confidentiality, so the
+   *  words that turn it on have to say what it is. */
+  publish: {
+    qrName: (url: string): string => `QR code: ${url}`,
+  },
   /** The View menu. Each setting names itself and its current value; the values
    *  are listed here rather than composed from a number and a unit, so the menu
    *  cannot say `1` and leave the reader to guess FPS from the neighbour.
