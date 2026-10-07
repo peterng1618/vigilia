@@ -35,7 +35,7 @@ The loop, in order:
 
 ## Active work
 
-- **Plan 5, units alongside primitives, is closed and archived — no plan is active.** [Its plan file](docs/superpowers/plans/archive/2026-10-07-units-alongside-primitives.md); its landmark from the spec's table at `:475` is met — the `+` offers **units and primitives, neither greyed, neither described as a fallback** (acceptance `:537`).
+- **Plan 6, the publish loop, is the active plan and its plan file is being authored.** Plan 5 closed and archived ([its plan file](docs/superpowers/plans/archive/2026-10-07-units-alongside-primitives.md)), its landmark from the spec's table at `:475` met — the `+` offers **units and primitives, neither greyed, neither described as a fallback** (acceptance `:537`).
 - **The `+` was inert and now opens a chooser.** `shell-layout.tsx:431` was `const openInsertPopover = (): void => undefined;` under a `ponytail:` marker naming a Task 3 that never landed; the chooser is a **fourth rendering** of `insertGroups()`, never a fourth list, and Task 2 left `insertItem` with exactly one definition.
 - **Plan 4's hand-forward landed in Task 5.** The starter's cards carried no `provenance`, so every card row on the reference composition read the bare `Group` arm; `cardGroup(id, unit, …)` now stamps the root alone, and Task 6 corrected `layer-tree.ts:280-291`, whose docstring had documented the absence as deliberate.
 - **Seven plan claims were wrong, and each is corrected in the plan where its task is read.** The mapping compared unequal to a correct popover; Task 2 could not watch its own test fail; the browser spec's `[role=group]` matches nothing in the Add pane; the pane is shut at `goto`; `cardGroup` has seven call sites, not eight; Task 4's ownership premise named two map rows that do not exist; and Task 6's row assertion compared against paint order while the walk reverses.
@@ -52,7 +52,7 @@ The loop, in order:
 
 ## Next
 
-1. **Plan 6, the publish loop, is next** — plan 5 is closed, and plan 6 has no plan file yet, so it needs one written and self-reviewed before it is dispatched.
+1. **Plan 6's plan file is being written now** by a dispatched author working from spec §6; its own self-review and the controller's read of it gate the first task.
 2. **Two decisions are the user's, not an agent's.** Whether the right column should empty on deselect, which the spec ruled it must and the product does not (`vg-157`); and which side of `vg-151` is wrong — the zoom-coupled floor, or the blur path it measures.
 3. **Rows the user raised on 2026-10-07, none of them plan 4's:** `vg-153` (dissolve the Document pane, give the theme globals their own surface), `vg-154` (drop the asset panel), `vg-155` (an import silently does one of two things), `vg-156` (JPEGs placed but only some listed — cause not established).
 4. **Resume the font catalogue plan when someone picks it up** — Task 6 landed and its review failed; its `progress.md` is the resume point. Not plan 5's.
