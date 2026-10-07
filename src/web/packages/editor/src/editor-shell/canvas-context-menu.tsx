@@ -33,7 +33,7 @@ interface MenuGroup {
  * `CHART_FAMILIES` itself — so it could not drift on charts, which is why it
  * was never F1.7's defect — but it was still a third place that knew what can
  * be inserted, and the one that most needed the other two's rule. It offered
- * five of the thirteen things the product inserts, with no shape in it, so a
+ * five of the things the product inserts, with no shape in it, so a
  * right-click on empty canvas was a strictly poorer version of the Insert menu
  * one gesture away. Now it is that menu's list: `insertGroups()` is the owner
  * it already declared itself to be, and the group headings are what keep

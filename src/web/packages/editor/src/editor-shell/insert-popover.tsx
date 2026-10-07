@@ -7,7 +7,7 @@ import type { EditorActionFacade } from "./session-facade.js";
 /** Two insertable objects can share a label — a shape Line and a chart Line —
  *  so the key carries what makes them different rather than what they are
  *  called, and the two stay two rows. */
-function entryKey(object: InsertableObject): string {
+function keyOf(object: InsertableObject): string {
   switch (object.kind) {
     case "text":
       return "text";
@@ -20,12 +20,19 @@ function entryKey(object: InsertableObject): string {
   }
 }
 
-/** One row, dispatching the construction its own owner holds.
+/** One insertable object as a menu row, dispatching the construction its own
+ *  owner holds.
+ *
+ *  **The one mapping, and every surface that offers the list renders through
+ *  it.** The menubar's Insert group and the `+`'s chooser are the same mapping
+ *  rendered twice rather than two mappings to be kept in step by hand — the
+ *  drift that put a panel out of the menu while the Add pane had it is what one
+ *  owner exists to prevent, and a second copy of this switch would put it back.
  *
  *  A card's refusal is the session's to report — `insertCard` returns nothing
  *  and the session tells the author itself — so the arm is left bare and
  *  nothing here reports it a second time. */
-function entry(
+export function insertItem(
   object: InsertableObject,
   session: EditorActionFacade | undefined,
 ): React.JSX.Element {
@@ -46,7 +53,7 @@ function entry(
   };
 
   return (
-    <Menu.Item key={entryKey(object)} onClick={run}>
+    <Menu.Item key={keyOf(object)} onClick={run}>
       {object.label}
     </Menu.Item>
   );
@@ -86,13 +93,13 @@ export function InsertPopover({
           >
             {insertGroups().map((group) =>
               group.label === undefined ? (
-                group.objects.map((object) => entry(object, session))
+                group.objects.map((object) => insertItem(object, session))
               ) : (
                 <Menu.Group key={group.label}>
                   <Menu.GroupLabel className="editor-shell-menu-label">
                     {group.label}
                   </Menu.GroupLabel>
-                  {group.objects.map((object) => entry(object, session))}
+                  {group.objects.map((object) => insertItem(object, session))}
                 </Menu.Group>
               ),
             )}

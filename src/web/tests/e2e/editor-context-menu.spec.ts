@@ -4,12 +4,12 @@ import { isDesktopSurface } from "./surface.js";
 /**
  * The canvas context menu in a window too short to hold it.
  *
- * It carries the Add pane's whole list — 13 entries under two headings — which
- * is 470px tall. That fits a 720px window and does not fit a shorter one, and it
- * had no scroll: the entries below the fold were simply gone, with no scrollbar
- * and no keyboard route to them. The editor is desktop-only, but a desktop
- * window can still be short, and the menu is the one surface that has to work
- * at whatever height the author dragged the window to.
+ * It carries the Add pane's whole list — 21 entries in four groups — and that
+ * does not fit a short window, and it had no scroll: the entries below the fold
+ * were simply gone, with no scrollbar and no keyboard route to them. The editor
+ * is desktop-only, but a desktop window can still be short, and the menu is the
+ * one surface that has to work at whatever height the author dragged the window
+ * to.
  *
  * Geometry, not a class name: the claim is that the last entry can be *reached*,
  * and only a rendered popup answers that. Nothing here writes scene state — the

@@ -183,27 +183,49 @@ function menubarEntry(root: HTMLElement, label: string): HTMLButtonElement {
   return entry;
 }
 
-/** The open menu's own groups, as the headings and labels an author reads.
-    `data-open` rather than the class: the zoom readout's popup is kept mounted
-    and closed, so the class alone is not the menu an author has open. */
-function insertMenuGroups(): readonly (readonly [string | null, readonly string[]])[] {
+/** One popup's own groups, as the headings and labels an author reads. Shared
+    by both menu readers so the shape they return cannot drift from each other. */
+function menuGroupsIn(
+  popup: HTMLElement,
+): readonly (readonly [string | null, readonly string[]])[] {
+  const items = Array.from(popup.querySelectorAll<HTMLElement>("[role=menuitem]"));
   return [
     [
       null,
-      menuItems()
+      items
         .filter((item) => item.closest("[role=group]") === null)
         .map((item) => item.textContent ?? ""),
     ],
-    ...Array.from(openPopup().querySelectorAll<HTMLElement>("[role=group]")).map(
+    ...Array.from(popup.querySelectorAll<HTMLElement>("[role=group]")).map(
       (group): readonly [string | null, readonly string[]] => [
         document.getElementById(group.getAttribute("aria-labelledby") ?? "")
           ?.textContent ?? null,
-        menuItems()
+        items
           .filter((item) => item.closest("[role=group]") === group)
           .map((item) => item.textContent ?? ""),
       ],
     ),
   ];
+}
+
+/** The open menu's own groups, as the headings and labels an author reads.
+    `data-open` rather than the class: the zoom readout's popup is kept mounted
+    and closed, so the class alone is not the menu an author has open. */
+function insertMenuGroups(): readonly (readonly [string | null, readonly string[]])[] {
+  return menuGroupsIn(openPopup());
+}
+
+/** The `+`'s chooser, read the same way. The `+` says it is expanded for exactly
+    as long as the popup showing is the one it opened, which is what keeps this
+    reader from reading whichever other menu happens to be up. */
+function popoverGroups(
+  root: HTMLElement,
+): readonly (readonly [string | null, readonly string[]])[] {
+  const plus = root.querySelector<HTMLElement>(".editor-shell-pane-bar-add");
+  if (plus?.getAttribute("aria-expanded") !== "true") {
+    throw new Error("The plus did not open a chooser.");
+  }
+  return menuGroupsIn(openPopup());
 }
 
 /** The Add pane's own groups, read the same way: the lone button, then each
@@ -865,6 +887,21 @@ it("inserts the same objects from the Insert menu as the Add pane offers", async
   // quietly dropped it would offer six shapes, four charts and no card.
   insertMenuEntry(uiCopy.panels.cards, uiCopy.cardLibrary.cpu)?.click();
   expect(session.insertCard).toHaveBeenCalledWith("group-cpu-card");
+
+  // Three surfaces, one owner: the pane, the menubar's Insert menu and the `+`.
+  // The `+`'s chooser is compared to the pane *and* to `insertGroups()` itself,
+  // because two renderings that agree on a list neither read from the owner
+  // would pass the first comparison and fail the second — which is the whole
+  // reason the owner is in the assertion at all.
+  document.dispatchEvent(
+    new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+  );
+  await Promise.resolve();
+  root.querySelector<HTMLButtonElement>(".editor-shell-pane-bar-add")?.click();
+  await Promise.resolve();
+
+  expect(popoverGroups(root)).toEqual(paneGroups(pane.root));
+  expect(popoverGroups(root)).toEqual(groupsOf(insertGroups()));
 
   layout.destroy();
 });

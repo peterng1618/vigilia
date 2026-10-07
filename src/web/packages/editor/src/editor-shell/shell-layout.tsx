@@ -5,13 +5,13 @@ import { flushSync } from "react-dom";
 import { createRoot, type Root } from "react-dom/client";
 import { useSyncExternalStore } from "react";
 import { uiCopy } from "../ui-copy.js";
-import { insertGroups, type InsertableObject } from "../new-object-panel.js";
+import { insertGroups } from "../new-object-panel.js";
 import { arrangeActions, arrangeEligible } from "../object-actions.js";
 import type { ActiveKind, EditorShellBridge, EditorShellSnapshot } from "./bridge.js";
 import { CanvasContextMenu } from "./canvas-context-menu.js";
 import { CanvasDock } from "./canvas-dock.js";
 import { DiagnosticMessage } from "./diagnostic-message.js";
-import { InsertPopover } from "./insert-popover.js";
+import { insertItem, InsertPopover } from "./insert-popover.js";
 import { LayerPanel } from "./layer-panel.js";
 import { PaneBar, type RailPane } from "./pane-bar.js";
 import { PaletteMenu } from "./palette-menu.js";
@@ -179,53 +179,6 @@ function MenuGroup({
         </Menu.Positioner>
       </Menu.Portal>
     </Menu.Root>
-  );
-}
-
-/** Two insertable objects can share a label — a shape Line and a chart Line. */
-function keyOf(object: InsertableObject): string {
-  switch (object.kind) {
-    case "text":
-      return "text";
-    case "card":
-      return `card:${object.card}`;
-    case "shape":
-      return `shape:${object.shape}`;
-    case "chart":
-      return `chart:${object.family}`;
-  }
-}
-
-/** One item per insertable object, dispatching the construction its owner
-    holds. The menu reaches it through the session façade, as every other menu
-    action does. */
-function insertItem(
-  object: InsertableObject,
-  session: EditorActionFacade | undefined,
-): React.JSX.Element {
-  const run = (): void => {
-    switch (object.kind) {
-      case "text":
-        session?.addText();
-        return;
-      case "card":
-        session?.insertCard(object.card);
-        return;
-      case "shape":
-        session?.addShape(object.shape);
-        return;
-      case "chart":
-        session?.addChart(object.family);
-    }
-  };
-
-  return (
-    // A shape Line and a chart Line share a label, and `key` is what tells two
-    // siblings apart — so the key carries what makes them different rather than
-    // what they are called.
-    <Menu.Item key={keyOf(object)} onClick={run}>
-      {object.label}
-    </Menu.Item>
   );
 }
 
