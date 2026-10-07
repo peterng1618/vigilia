@@ -49,10 +49,11 @@ The loop, in order:
 - **A refused toggle re-reads the host rather than assuming where it landed**, because Task 3.2 restores the old binding on refusal and the button's prior state is not evidence of the host's; turning the LAN off clears the address and the session, so no stale URL stays on screen.
 - **The plan's obsolete test was replaced, not kept** — `renders nothing when this host is not on the LAN` is deleted, because the off state now carries the warning and the offer and a header that renders nothing there is a feature nobody can find.
 - **The break-proof was not inert.** Replacing `(await response.text()).trim()` with a fixed string failed the `EADDRINUSE` assertion in "shows the host's own reason when it refuses the interface" at 1042 ms; restored and green at 4 tests.
+- **`e5081276` closed an accessibility gap the tests could not see**: the button's name offers to publish and says nothing about the cost, and §145's warning sat beside it associated with nothing — `aria-describedby` binds them, and the test asserts the attribute before using it as a selector, so dropping it fails as "expected null to be truthy" rather than as a selector syntax error.
 
 ## Next
 
-1. **Tasks 3.1 and 3.2 have landed, so Task 3.3 is next: the header's control** — `PublishControl` renders its off state with the §145 warning and an offer to serve the LAN, `hosting-client.ts` gains `setLan`, and the host's own 409 reason is shown on the surface rather than composed there.
+1. **Task 3.3 has landed, so Task 3.4 is next and closes Phase 3: proving the LAN without a phone** — the publish header spec reads the control off→on at 1680 px and at 390 px in a real browser, and the plan states plainly what no test here can cover: that a camera on a real phone, at a real distance, in real light, scans the code off a glossy screen.
 2. **Two decisions are the user's, not an agent's.** Whether the right column should empty on deselect, which the spec ruled it must and the product does not (`vg-157`); and which side of `vg-151` is wrong — the zoom-coupled floor, or the blur path it measures.
 3. **Rows the user raised on 2026-10-07, none of them plan 4's:** `vg-153` (dissolve the Document pane, give the theme globals their own surface), `vg-154` (drop the asset panel), `vg-155` (an import silently does one of two things), `vg-156` (JPEGs placed but only some listed — cause not established).
 4. **Resume the font catalogue plan when someone picks it up** — Task 6 landed and its review failed; its `progress.md` is the resume point. Not plan 5's.
