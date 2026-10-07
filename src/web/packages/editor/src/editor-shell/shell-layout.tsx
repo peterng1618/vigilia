@@ -264,8 +264,9 @@ function ShellMenuBar({
         {/* A row names an id only when that binding reaches the same manager the
             row calls through the session — `edit.undo` and this row both end at
             `historyManager.undo()`, and so on for the six. The File rows carry
-            none: `session.savePackage()` is not `file.save`, and pairing them by
-            eye would teach a key that runs something else. */}
+            none because that is what the plan enumerated, not because they fail
+            the rule: `file.new`, `file.open` and `file.save` each reach the same
+            call their row does. That disagreement is open as `vg-185`. */}
         {item(
           uiCopy.actions.undo,
           () => session?.undo(),
