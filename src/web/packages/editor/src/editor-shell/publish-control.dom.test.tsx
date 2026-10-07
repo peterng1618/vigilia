@@ -110,6 +110,62 @@ it("shows the host's own reason when it refuses the interface", async () => {
   await vi.waitFor(() => expect(container.textContent).toContain("EADDRINUSE"));
 });
 
+it("shows the host's refusal when the move it accepted did not happen", async () => {
+  // A PUT answers 200 with the state the host had *before* it moved — it has
+  // to, because it cannot rebind while that answer is still on its socket
+  // (vg-173). So a refusal arrives on the read that follows, in the host's own
+  // words, and the button ends up showing them rather than the state it asked
+  // for.
+  let reads = 0;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input) !== "/api/hosting") {
+        return new Response("", { status: 404 });
+      }
+
+      if (init?.method === "PUT") {
+        return new Response(
+          JSON.stringify({
+            lan: false,
+            address: null,
+            port: null,
+            refusal: null,
+            sessions: [],
+          }),
+        );
+      }
+
+      reads += 1;
+      return new Response(
+        JSON.stringify({
+          lan: false,
+          address: null,
+          port: null,
+          refusal:
+            reads === 1
+              ? null
+              : "Port 5227 is not free on 0.0.0.0: EADDRINUSE",
+          sessions: [],
+        }),
+      );
+    }),
+  );
+
+  const container = await mount();
+  await vi.waitFor(() =>
+    expect(container.textContent).toContain(uiCopy.publish.warning),
+  );
+
+  const button = container.querySelector("button");
+  await act(async () => button?.click());
+
+  await vi.waitFor(() => expect(container.textContent).toContain("EADDRINUSE"));
+  // The state it asked for never arrived, so the control still offers to start.
+  expect(button?.textContent).toBe(uiCopy.publish.start);
+  expect(button?.getAttribute("aria-pressed")).toBe("false");
+});
+
 it("shows the address the host named, with a code for it", async () => {
   hostAnswers({ lan: true, address: "192.168.1.42", port: 5227, sessions: [] });
   const container = await mount();

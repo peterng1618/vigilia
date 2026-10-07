@@ -11,6 +11,11 @@ export interface HostingAnswer {
   readonly lan: boolean;
   readonly address: string | null;
   readonly port: number | null;
+  /** The last move the host refused, in its own words, or null. A refusal
+   *  cannot come back in the answer to the PUT that asked for the move — the
+   *  host cannot rebind while that answer is on its socket — so this is where
+   *  one is read from, on the read that follows. */
+  readonly refusal: string | null;
   readonly session?: { readonly token: string; readonly expiresAt: string };
 }
 
@@ -34,10 +39,36 @@ export async function readHosting(
       lan: body["lan"],
       address: body["address"] === null ? null : (body["address"] as string),
       port: body["port"] === null ? null : (body["port"] as number),
+      // A host that says nothing about a refusal has not refused anything this
+      // reader can act on, so it reads as none rather than as unreadable.
+      refusal: isString(body["refusal"]) ? body["refusal"] : null,
     };
   } catch {
     return undefined;
   }
+}
+
+/** How long the read that follows a move keeps trying. The port is closed and
+ *  reopened across a move, so a read that lands in that window is refused by
+ *  the operating system rather than answered by the host — measured at 4 ms for
+ *  the rebind, with this a wide margin. **Bounded on purpose: an unbounded
+ *  retry is a hang**, and a host that is genuinely gone should say so. */
+const SETTLE_ATTEMPTS = 10;
+const SETTLE_PAUSE_MS = 40;
+
+async function readSettled(
+  fetcher: typeof fetch,
+): Promise<HostingAnswer | undefined> {
+  for (let attempt = 0; attempt < SETTLE_ATTEMPTS; attempt += 1) {
+    const answer = await readHosting(fetcher);
+    if (answer !== undefined) return answer;
+
+    if (attempt < SETTLE_ATTEMPTS - 1) {
+      await new Promise((resolve) => setTimeout(resolve, SETTLE_PAUSE_MS));
+    }
+  }
+
+  return undefined;
 }
 
 /** Mints a display credential. The host refuses anything but loopback, which is
@@ -65,7 +96,12 @@ export async function mintSession(
 
 /** Asks the host to serve the LAN, or to stop. The host owns the binding, so a
  *  refusal comes back in its words — the editor has no way to know which
- *  interface refused or why, and a message composed here would be a guess. */
+ *  interface refused or why, and a message composed here would be a guess.
+ *
+ *  **A 200 means the host accepted the request, not that it moved.** It answers
+ *  first and moves afterwards, because it cannot rebind while its answer is
+ *  still on the socket. So where it landed — and a refusal, if it made one — is
+ *  read from the host after the move has settled. */
 export async function setLan(
   on: boolean,
   fetcher: typeof fetch = fetch,
@@ -85,7 +121,7 @@ export async function setLan(
       return { ok: false, reason: (await response.text()).trim() };
     }
 
-    const answer = await readHosting(fetcher);
+    const answer = await readSettled(fetcher);
     return answer === undefined
       ? { ok: false, reason: "The host answered with something unreadable." }
       : { ok: true, answer };

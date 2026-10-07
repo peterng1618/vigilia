@@ -7,6 +7,7 @@ import {
   SAMPLE_STREAM_PATH,
 } from "@vigilia/renderer-core";
 import { DEFAULT_THEMES_DIR } from "./cli/args.js";
+import type { HostBinding } from "./cli/hosting.js";
 import type { DeviceAssignment } from "./providers/lhm-mapping.js";
 import { ProviderRegistry, unionOfKeys } from "./providers/registry.js";
 import {
@@ -88,17 +89,16 @@ export interface HostServerOptions {
     readonly gpus: readonly { readonly id: string; readonly name: string }[];
     readonly disks: readonly { readonly id: string; readonly name: string }[];
   }>;
-  /** Where a phone should point, and whether it can reach this host at all.
-   *  Supplied rather than introspected: `server.address()` is null for a server
-   *  that is not listening, which is every test, and the thing that binds the
-   *  socket is the thing that knows. */
-  readonly hosting?: () => HostingState;
-  /** Move the one listener onto or off the LAN, on the port it already holds.
+  /** Where a phone should point, whether it can reach this host at all, and how
+   *  to move it there. Supplied rather than introspected: `server.address()` is
+   *  null for a server that is not listening, which is every test, and the
+   *  thing that binds the socket is the thing that knows.
+   *
    *  Omitted when this host cannot move its binding; the route then refuses
-   *  rather than pretending it moved. */
-  readonly setLan?: (
-    on: boolean,
-  ) => Promise<{ ok: true } | { ok: false; reason: string }>;
+   *  rather than pretending it moved. **Included as `undefined` explicitly**
+   *  because the binding needs the port and the port needs the server, so the
+   *  host hands over a getter that is read per request. */
+  readonly hosting?: HostBinding | undefined;
   /** Persist the choice so the next run obeys it. Omitted when the host
    *  remembers nothing; the binding still moves for this run. */
   readonly rememberLan?: (on: boolean) => Promise<void>;
@@ -111,13 +111,22 @@ export interface HostingState {
   readonly address: string | null;
   /** The port this host is bound to, or null when it is not bound. */
   readonly port: number | null;
+  /** The last move the host refused, in its own words, or null. A refusal can
+   *  never ride the answer that asked for the move — the asker reads it here
+   *  on the next GET. Cleared by the next move that lands. */
+  readonly refusal: string | null;
 }
 
 /** A paired phone as the header may see it: `DisplaySession` **minus its
  *  credential**. `list()` returns whole sessions, so the route maps. */
 export type HostingPeer = Omit<DisplaySession, "token">;
 
-const NO_HOSTING: HostingState = { lan: false, address: null, port: null };
+const NO_HOSTING: HostingState = {
+  lan: false,
+  address: null,
+  port: null,
+  refusal: null,
+};
 
 export interface HostServer {
   readonly server: http.Server;
@@ -325,8 +334,6 @@ export function createHostServer(options: HostServerOptions): HostServer {
   /** Keys no provider answered in the last poll; surfaced through `/api/health`. */
   let lastUnmapped: readonly string[] = [];
   const sessions = options.sessions;
-  const hosting = options.hosting ?? (() => NO_HOSTING);
-  const toggled = options.setLan;
   const saved = options.rememberLan;
   const devices = options.devices;
   const display = options.display;
@@ -343,6 +350,18 @@ export function createHostServer(options: HostServerOptions): HostServer {
    */
   async function publishAssignment(): Promise<void> {
     options.onDeviceAssignment?.(await currentAssignment());
+  }
+
+  /**
+   * The move a PUT asked for, run once that PUT's answer is on the wire. Its
+   * refusal is state rather than a status for the same reason: the request that
+   * asked for the move cannot be answered with its outcome, so the next GET
+   * reads `refusal` back (vg-173).
+   */
+  async function moveLan(on: boolean): Promise<void> {
+    const outcome = await options.hosting?.setLan(on);
+    // A refused binding moved nothing, so nothing is remembered.
+    if (outcome?.ok === true) await saved?.(on);
   }
 
   /** Assignments in the shape providers consume; unset groups mean defaults. */
@@ -682,8 +701,10 @@ export function createHostServer(options: HostServerOptions): HostServer {
         return;
       }
 
+      const binding = options.hosting;
+
       if (request.method === "PUT") {
-        if (toggled === undefined) {
+        if (binding === undefined) {
           sendText(response, 409, "This host cannot move its binding.");
           return;
         }
@@ -703,19 +724,34 @@ export function createHostServer(options: HostServerOptions): HostServer {
           return;
         }
 
-        const outcome = await toggled(body.lan);
-        if (!outcome.ok) {
-          // The binding was refused, so nothing moved and nothing is remembered.
-          sendText(response, 409, outcome.reason);
-          return;
-        }
+        const wanted = body.lan;
 
-        await saved?.(body.lan);
+        // **The answer goes first, and it is not the outcome of the move.** One
+        // server cannot rebind while the response that asked it to rebind is
+        // still on its socket: `close()` waits for that connection, and that
+        // connection waits for this response. So the move starts on `finish` —
+        // the bytes are with the OS, not merely queued — and an asker that
+        // wants to know where it landed reads the GET that follows (vg-173).
+        response.once("finish", () => {
+          // Displays are holding streams open and `close()` waits for them.
+          // The host is what tracks those streams, so the host is what closes
+          // them; `closeIdleConnections()` will not take one that is open.
+          for (const connection of connections) {
+            connection.close();
+          }
+
+          connections.clear();
+
+          void moveLan(wanted).catch(() => {
+            // A refusal is reported through `refusal`, never as a rejection.
+          });
+        });
+
         // The same redaction the GET makes, for the same reason: a
         // `DisplaySession` carries `token`, and this route answers about
         // hosting, not about credentials.
         sendJson(response, 200, {
-          ...hosting(),
+          ...binding.state(),
           sessions: (sessions?.list() ?? []).map(
             ({ token: _credential, ...peer }) => peer,
           ),
@@ -728,8 +764,13 @@ export function createHostServer(options: HostServerOptions): HostServer {
         return;
       }
 
+      // A reader that follows a move sees where it landed rather than where it
+      // started: the move runs after the PUT's answer, so it can still be in
+      // flight here.
+      await binding?.idle();
+
       sendJson(response, 200, {
-        ...hosting(),
+        ...(binding?.state() ?? NO_HOSTING),
         sessions: (sessions?.list() ?? []).map(
           ({ token: _credential, ...peer }) => peer,
         ),

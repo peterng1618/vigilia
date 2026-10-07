@@ -10,10 +10,15 @@ import {
   type FabricThemeEnvelope,
 } from "@vigilia/renderer-core";
 import { writeThemePackage } from "@vigilia/theme-package";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { type HostBinding, createHostBinding } from "./cli/hosting.js";
 import type { DeviceAssignment } from "./providers/lhm-mapping.js";
 import { ProviderRegistry } from "./providers/registry.js";
-import { createHostServer, type HostServerOptions } from "./server.js";
+import {
+  createHostServer,
+  type HostServerOptions,
+  type HostingState,
+} from "./server.js";
 import { createSessionStore } from "./session/pairing.js";
 import { createActiveThemeStore } from "./settings/active-theme.js";
 import { createDeviceSettingsStore } from "./settings/devices.js";
@@ -224,6 +229,10 @@ function request(
         json: () => JSON.parse(buffer.toString("utf8")),
         text: () => buffer.toString("utf8"),
       });
+      // A real response emits `finish` once its bytes are with the OS, and the
+      // hosting route starts a binding move only then (vg-173). Without this
+      // the fake response is one the route never moves after.
+      res.emit("finish");
       return res;
     }) as unknown as typeof res.end;
 
@@ -1777,6 +1786,16 @@ describe("The hosting route answers where a phone should point (§145)", () => {
     });
   }
 
+  /** A binding that reports one state and moves nothing. The route's own shape
+   *  is what these cases are about; the socket that actually moves is
+   *  `cli/hosting.test.ts`'s and the real-socket case below. */
+  function stillBinding(
+    state: HostingState,
+    setLan: HostBinding["setLan"] = async () => ({ ok: true }),
+  ): HostBinding {
+    return { state: () => state, setLan, idle: async () => {} };
+  }
+
   afterEach(async () => {
     await hosted.close();
     await fs.rm(hostingDir, { recursive: true, force: true });
@@ -1785,7 +1804,12 @@ describe("The hosting route answers where a phone should point (§145)", () => {
   it("answers where a phone should go, and nothing else", async () => {
     const store = createSessionStore({ randomToken: () => "t".repeat(43) });
     build({
-      hosting: () => ({ lan: true, address: "192.168.1.42", port: 5227 }),
+      hosting: stillBinding({
+        lan: true,
+        address: "192.168.1.42",
+        port: 5227,
+        refusal: null,
+      }),
       sessions: store,
     });
 
@@ -1795,6 +1819,7 @@ describe("The hosting route answers where a phone should point (§145)", () => {
       lan: true,
       address: "192.168.1.42",
       port: 5227,
+      refusal: null,
       sessions: [],
     });
 
@@ -1815,7 +1840,12 @@ describe("The hosting route answers where a phone should point (§145)", () => {
 
   it("keeps hosting settings on this PC", async () => {
     build({
-      hosting: () => ({ lan: true, address: "192.168.1.42", port: 5227 }),
+      hosting: stillBinding({
+        lan: true,
+        address: "192.168.1.42",
+        port: 5227,
+        refusal: null,
+      }),
     });
 
     const answered = await request(
@@ -1836,22 +1866,27 @@ describe("The hosting route answers where a phone should point (§145)", () => {
       lan: false,
       address: null,
       port: null,
+      refusal: null,
       sessions: [],
     });
   });
 
-  it("moves the binding from this PC, and answers with its new state", async () => {
+  it("answers with the state it has now, and moves the binding only after", async () => {
     let lan = false;
     let remembered: boolean | undefined;
     build({
-      hosting: () => ({
-        lan,
-        address: lan ? "192.168.1.42" : null,
-        port: 5227,
-      }),
-      setLan: async (on) => {
-        lan = on;
-        return { ok: true };
+      hosting: {
+        state: () => ({
+          lan,
+          address: lan ? "192.168.1.42" : null,
+          port: 5227,
+          refusal: null,
+        }),
+        setLan: async (on) => {
+          lan = on;
+          return { ok: true };
+        },
+        idle: async () => {},
       },
       rememberLan: async (on) => {
         remembered = on;
@@ -1865,24 +1900,33 @@ describe("The hosting route answers where a phone should point (§145)", () => {
       JSON.stringify({ lan: true }),
     );
 
+    // The answer is where the host is *now*, because it cannot be rebound while
+    // this response is still on its socket — so it carries no verdict on the
+    // move. The client reads where it landed from the GET that follows.
     expect(answered.status).toBe(200);
     expect(answered.json()).toEqual({
-      lan: true,
-      address: "192.168.1.42",
+      lan: false,
+      address: null,
       port: 5227,
+      refusal: null,
       sessions: [],
     });
-    expect(remembered).toBe(true);
+
+    // And the move does happen, once that answer has finished.
+    await vi.waitFor(() => expect(remembered).toBe(true));
+    expect(lan).toBe(true);
   });
 
   it("refuses to move the binding for anything but this PC", async () => {
     let moved = false;
     build({
-      hosting: () => ({ lan: false, address: null, port: 5227 }),
-      setLan: async () => {
-        moved = true;
-        return { ok: true };
-      },
+      hosting: stillBinding(
+        { lan: false, address: null, port: 5227, refusal: null },
+        async () => {
+          moved = true;
+          return { ok: true };
+        },
+      ),
     });
 
     const answered = await request(
@@ -1897,14 +1941,18 @@ describe("The hosting route answers where a phone should point (§145)", () => {
     expect(moved).toBe(false);
   });
 
-  it("answers the reason when the interface will not take the port, and remembers nothing", async () => {
+  it("reports a refused move through the read that follows it, and remembers nothing", async () => {
+    let refusal: string | null = null;
     let remembered = false;
     build({
-      hosting: () => ({ lan: false, address: null, port: 5227 }),
-      setLan: async () => ({
-        ok: false,
-        reason: "Port 5227 is not free on 0.0.0.0: EADDRINUSE",
-      }),
+      hosting: {
+        state: () => ({ lan: false, address: null, port: 5227, refusal }),
+        setLan: async () => {
+          refusal = "Port 5227 is not free on 0.0.0.0: EADDRINUSE";
+          return { ok: false, reason: refusal };
+        },
+        idle: async () => {},
+      },
       rememberLan: async () => {
         remembered = true;
       },
@@ -1917,8 +1965,136 @@ describe("The hosting route answers where a phone should point (§145)", () => {
       JSON.stringify({ lan: true }),
     );
 
-    expect(answered.status).toBe(409);
-    expect(answered.text()).toContain("not free");
+    // The answer predates the move and carries no verdict on it, which is the
+    // whole of vg-173: the host's own words about a socket it would not take
+    // cannot be in the response that asked it to take one.
+    expect(answered.status).toBe(200);
+    expect(answered.json()).toMatchObject({ lan: false, refusal: null });
+
+    await vi.waitFor(() => expect(refusal).not.toBeNull());
+    const after = await request(hosted.server, "GET", "/api/hosting");
+
+    // Read from the route that follows, which is where the editor shows it.
+    expect(after.json()).toMatchObject({
+      lan: false,
+      refusal: "Port 5227 is not free on 0.0.0.0: EADDRINUSE",
+    });
     expect(remembered).toBe(false);
+  });
+
+  it("waits for a move in flight before it says where the host is", async () => {
+    let answered = false;
+    let settle: (() => void) | undefined;
+    const inFlight = new Promise<void>((resolve) => {
+      settle = resolve;
+    });
+    build({
+      hosting: {
+        state: () => ({
+          lan: true,
+          address: "192.168.1.42",
+          port: 5227,
+          refusal: null,
+        }),
+        setLan: async () => ({ ok: true }),
+        idle: async () => inFlight,
+      },
+    });
+
+    const reading = request(hosted.server, "GET", "/api/hosting").then(() => {
+      answered = true;
+    });
+
+    // A reader that follows a move must see where the host landed, not where it
+    // started — and mid-move it is not bound at all, so answering here would
+    // report the binding that is on its way out.
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(answered).toBe(false);
+
+    settle?.();
+    await reading;
+    expect(answered).toBe(true);
+  });
+});
+
+/**
+ * `vg-173`. The defect is a real socket: the response is owed on the connection
+ * the move destroys, and none of that reproduces against the fake
+ * request/response the rest of this file drives the handler with — an emitted
+ * `request` event has no connection to lose. So this is a listening server and
+ * a real `createHostBinding`, reached with `fetch`.
+ */
+describe("A LAN move answers before the socket it moves (vg-173)", () => {
+  let moveDir: string;
+  let hosted: ReturnType<typeof createHostServer>;
+
+  beforeEach(async () => {
+    moveDir = await fs.mkdtemp(
+      path.join(os.tmpdir(), "vigilia-host-move-test-"),
+    );
+  });
+
+  afterEach(async () => {
+    // `fetch` leaves a keep-alive socket, and `close()` waits for connections,
+    // so a teardown that only closed the server would hang on its own client.
+    hosted.server.closeAllConnections();
+    await hosted.close();
+    await fs.rm(moveDir, { recursive: true, force: true });
+  });
+
+  /** A host on a real port, with a binding that can actually move it. The
+   *  binding needs the port, and the port needs the server, so the binding is
+   *  handed over once both exist. */
+  async function listeningHost(): Promise<number> {
+    const held: { binding?: HostBinding } = {};
+    hosted = createHostServer({
+      registry: new ProviderRegistry([]),
+      bundles: { player: moveDir, editor: moveDir },
+      themeStore: createThemeStore(moveDir),
+      get hosting() {
+        return held.binding;
+      },
+    });
+
+    const port = await new Promise<number>((resolve, reject) => {
+      hosted.server.once("error", reject);
+      hosted.server.listen(0, "127.0.0.1", () => {
+        const address = hosted.server.address();
+        resolve(
+          typeof address === "object" && address !== null ? address.port : 0,
+        );
+      });
+    });
+
+    held.binding = createHostBinding(hosted.server, {
+      port,
+      host: "127.0.0.1",
+    });
+    return port;
+  }
+
+  it("answers a PUT that moves the binding", async () => {
+    const port = await listeningHost();
+
+    // The response is owed on the connection the move destroys, so a host that
+    // tears down first answers nothing at all: `fetch` rejects with an empty
+    // reply rather than returning a status. This is vg-173.
+    const answered = await fetch(`http://127.0.0.1:${port}/api/hosting`, {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ lan: true }),
+    });
+
+    expect(answered.status).toBe(200);
+    await expect(answered.json()).resolves.toMatchObject({
+      lan: expect.any(Boolean),
+    });
+
+    // And the move itself still happened, read back through the route that
+    // waits for it: a 200 that moved nothing would pass the assertion above.
+    const after = await (
+      await fetch(`http://127.0.0.1:${port}/api/hosting`)
+    ).json();
+    expect(after).toMatchObject({ lan: true, refusal: null });
   });
 });

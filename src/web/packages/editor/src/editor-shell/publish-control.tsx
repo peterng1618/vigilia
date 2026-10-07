@@ -79,6 +79,11 @@ export function PublishControl(): React.JSX.Element | null {
     }
 
     setHosting(outcome.answer);
+
+    // The host answers a move before it makes it, so a refusal arrives here —
+    // on the read that follows — rather than in the answer to the PUT.
+    if (outcome.answer.refusal !== null) setReason(outcome.answer.refusal);
+
     if (!outcome.answer.lan) {
       setSession(undefined);
       return;

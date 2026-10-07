@@ -20,7 +20,28 @@ describe("readHosting", () => {
         sessions: [],
       }),
     );
-    expect(read).toEqual({ lan: true, address: "192.168.1.42", port: 5227 });
+    expect(read).toEqual({
+      lan: true,
+      address: "192.168.1.42",
+      port: 5227,
+      refusal: null,
+    });
+  });
+
+  it("reads a refusal the host recorded against its last move", async () => {
+    // A refused move cannot come back in the answer to the PUT that asked for
+    // it — the host answers first and moves afterwards (vg-173) — so the
+    // refusal is state the next read carries, in the host's own words.
+    const read = await readHosting(
+      answer("/api/hosting", {
+        lan: false,
+        address: null,
+        port: 5227,
+        refusal: "Port 5227 is not free on 0.0.0.0: EADDRINUSE",
+        sessions: [],
+      }),
+    );
+    expect(read?.refusal).toBe("Port 5227 is not free on 0.0.0.0: EADDRINUSE");
   });
 
   it("answers nothing when no host is behind the editor", async () => {

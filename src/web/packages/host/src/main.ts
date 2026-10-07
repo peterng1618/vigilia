@@ -1,7 +1,7 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { DEFAULT_HOST, isLoopbackHost, parseArgs } from "./cli/args.js";
-import { createHostBinding } from "./cli/hosting.js";
+import { type HostBinding, createHostBinding } from "./cli/hosting.js";
 import {
   lanAddress,
   listenWithFallback,
@@ -13,7 +13,7 @@ import { LhmSensorProvider } from "./providers/lhm.js";
 import { launchLhm, registerLhmTask } from "./providers/lhm-launcher.js";
 import { LibrarySensorProvider } from "./providers/library.js";
 import { ProviderRegistry } from "./providers/registry.js";
-import { type HostingState, createHostServer } from "./server.js";
+import { createHostServer } from "./server.js";
 import { createSessionStore } from "./session/pairing.js";
 import { createActiveThemeStore } from "./settings/active-theme.js";
 import { createDeviceSettingsStore } from "./settings/devices.js";
@@ -123,25 +123,20 @@ export async function run(argv: readonly string[]): Promise<number> {
   // this PC, so it sits with the other settings and never in a theme folder.
   const fontFavorites = createFontFavoritesStore(settingsDir);
 
-  // Read per request; assigned the binding's own reader once the socket exists.
-  // `createHostServer` captures `options.hosting` at creation (server.ts:319), so
-  // a later assignment to the options object would have no effect, and a request
-  // arriving in the window between `listenWithFallback` and the binding's
-  // construction would hit a `const binding` still in its temporal dead zone.
-  const NO_HOSTING_STATE: HostingState = {
-    lan: false,
-    address: null,
-    port: null,
-  };
-  let hostingState = (): HostingState => NO_HOSTING_STATE;
+  // The server needs the binding, and the binding needs the port the socket
+  // actually took — which is not known until the socket is listening. So the
+  // option is a getter over this variable rather than a reader captured at
+  // construction: it is read per request, and a request that arrives before the
+  // binding exists reads `undefined`, which the route already answers.
+  let lanBinding: HostBinding | undefined;
 
   const hosted = createHostServer({
     registry,
-    // Where a phone should point, and whether one can reach this host at all.
-    hosting: () => hostingState(),
-    // The route moves the one listener; the binding is built once the port the
-    // socket actually took is known, so these read it when they are called.
-    setLan: (on) => binding.setLan(on),
+    // Where a phone should point, whether one can reach this host at all, and
+    // how to move it there.
+    get hosting() {
+      return lanBinding;
+    },
     rememberLan: async (on) => {
       await hosting.write({ lan: on });
     },
@@ -231,11 +226,10 @@ export async function run(argv: readonly string[]): Promise<number> {
     return 1;
   }
 
-  const binding = createHostBinding(hosted.server, {
+  lanBinding = createHostBinding(hosted.server, {
     port: bound,
     host: initialHost,
   });
-  hostingState = binding.state;
 
   const reachable = await waitUntilReachable(bound, initialHost);
 
