@@ -806,6 +806,10 @@ npm run typecheck ; echo "typecheck exit=$?"
   docstring)
 - Test: `src/web/packages/editor/src/editor-shell/layer-tree.test.ts`
 - Test: `src/web/tests/e2e/composition-panel.spec.ts` (extend)
+- Replace: `STATUS.md`'s "Last completed change" — **added after Task 5**, because this plan's
+  earlier tasks omitted it and AGENTS.md requires it before each completed task's commit. Task 7
+  owns the close-out rewrite; this is the per-task one. Run `npm run status:check` from `src/web/`
+  and read its exit code.
 
 **Interfaces:**
 - Consumes: `LayerRole`'s group arm and `groupRole()` as they already are; the starter's new
