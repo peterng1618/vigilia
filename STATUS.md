@@ -44,11 +44,9 @@ The loop, in order:
 
 ## Last completed change
 
-- **Plan 6's Phase 2 close-out is written into the plan, and Task 1.3's carry-forward into Task 1.3's own Files block** — `main.ts` supplies `HostServerOptions.hosting` from `--host`, because nothing did and every host answered `lan: false`.
-- **Four more plan claims are corrected against what shipped**: Step 1's third test used `rerender`, which re-runs no `[]` effect and so could not pass the plan's own mount-once implementation; the spec's host flags name `--themes-dir` where the binary takes `--app-dir`; the shell's tokens are `--shell-*`, not `--vigilia-*`; and `ui-copy.publish.copy`/`.copied` are rendered by nothing in any task.
-- **`vg-172` was materialised from Task 2.3's commit trailer** — the header overflows at 390 px and puts the publish surface off-screen, uncovered because `tests/e2e/surface.ts` gates every editor spec to a desktop surface.
-- **`vg-135`'s title was refuted by its own detail and is corrected** — a Base UI menu-trigger stall, not dead rAF; the row now reddens the full unit suite, 3 timeouts at HEAD against 1 in isolation at `9d334e09`.
-- **Recorded in the plan as unverifiable by it**: no test in this plan proves a real phone camera scans the code off a real screen, only that the matrix is a QR symbol for the URL.
+- **Phase 3 opens with Task 3.1: `settings/hosting.ts` remembers whether this PC serves the LAN** — `{ lan: false }` on creation, a normaliser that refuses a present non-boolean `lan` and treats an absent or emptied one as the default, mirroring `settings/display.ts`.
+- **The default is the safe direction (§145)**: a missing, unreadable, malformed or choice-less `hosting.json` all answer `{ lan: false }`, because the failure that matters is serving a home network because something could not be read.
+- **The break-proof landed**: flipping `DEFAULT_HOSTING_SETTINGS` to `{ lan: true }` failed 4 of 5 tests — every default assertion names the literal `false`, so the constant cannot mask its own wrong value — and passed only "remembers the choice across a restart", which states its own `{ lan: true }`.
 
 ## Next
 
