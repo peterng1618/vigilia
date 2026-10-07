@@ -1,6 +1,7 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { isLoopbackHost, parseArgs } from "./cli/args.js";
+import { DEFAULT_HOST, isLoopbackHost, parseArgs } from "./cli/args.js";
+import { createHostBinding } from "./cli/hosting.js";
 import {
   lanAddress,
   listenWithFallback,
@@ -12,12 +13,13 @@ import { LhmSensorProvider } from "./providers/lhm.js";
 import { launchLhm, registerLhmTask } from "./providers/lhm-launcher.js";
 import { LibrarySensorProvider } from "./providers/library.js";
 import { ProviderRegistry } from "./providers/registry.js";
-import { createHostServer } from "./server.js";
+import { type HostingState, createHostServer } from "./server.js";
 import { createSessionStore } from "./session/pairing.js";
 import { createActiveThemeStore } from "./settings/active-theme.js";
 import { createDeviceSettingsStore } from "./settings/devices.js";
 import { createDisplaySettingsStore } from "./settings/display.js";
 import { createFontFavoritesStore } from "./settings/font-favorites.js";
+import { createHostingSettingsStore } from "./settings/hosting.js";
 import { createThemeSettingsStore } from "./settings/theme-settings.js";
 import { createThemeStore } from "./themes/store.js";
 import { createThumbnailStore } from "./themes/thumbnails.js";
@@ -53,6 +55,7 @@ export async function run(argv: readonly string[]): Promise<number> {
   const {
     port: wanted,
     host,
+    hostGiven,
     openBrowser: shouldOpen,
     themesDir,
     settingsDir,
@@ -101,13 +104,13 @@ export async function run(argv: readonly string[]): Promise<number> {
   ]);
   const here = path.dirname(fileURLToPath(import.meta.url));
   const packagesDir = path.resolve(here, "..", "..");
-  const servingLan = !isLoopbackHost(host);
-  // Read by the `/api/hosting` answer above, set once the socket is bound.
-  let boundPort: number | null = null;
 
-  // Sessions exist only when the server is LAN-reachable; a loopback-only host
-  // refuses non-loopback reads outright rather than trusting them.
-  const sessions = servingLan ? createSessionStore() : undefined;
+  // Sessions exist whether or not the LAN is on, because the control can turn it
+  // on after launch; the binding decides whether anything but loopback can reach
+  // them at all (§145).
+  const sessions = createSessionStore();
+  const hosting = createHostingSettingsStore(settingsDir);
+  const storedHosting = await hosting.read();
   // Everything the host knows about *this* machine lives in one settings
   // folder, so a theme folder is only ever a theme (ADR-0017).
   const deviceSettings = createDeviceSettingsStore(settingsDir);
@@ -120,17 +123,28 @@ export async function run(argv: readonly string[]): Promise<number> {
   // this PC, so it sits with the other settings and never in a theme folder.
   const fontFavorites = createFontFavoritesStore(settingsDir);
 
+  // Read per request; assigned the binding's own reader once the socket exists.
+  // `createHostServer` captures `options.hosting` at creation (server.ts:319), so
+  // a later assignment to the options object would have no effect, and a request
+  // arriving in the window between `listenWithFallback` and the binding's
+  // construction would hit a `const binding` still in its temporal dead zone.
+  const NO_HOSTING_STATE: HostingState = {
+    lan: false,
+    address: null,
+    port: null,
+  };
+  let hostingState = (): HostingState => NO_HOSTING_STATE;
+
   const hosted = createHostServer({
     registry,
     // Where a phone should point, and whether one can reach this host at all.
-    // The binding decision is already made by `--host`; the port is only known
-    // once the socket is bound, so the answer is a closure over it. Phase 3's
-    // binding owner replaces this with the thing that actually rebinds.
-    hosting: () => ({
-      lan: servingLan,
-      address: servingLan ? (lanAddress() ?? null) : null,
-      port: boundPort,
-    }),
+    hosting: () => hostingState(),
+    // The route moves the one listener; the binding is built once the port the
+    // socket actually took is known, so these read it when they are called.
+    setLan: (on) => binding.setLan(on),
+    rememberLan: async (on) => {
+      await hosting.write({ lan: on });
+    },
     bundles: {
       player: path.join(packagesDir, "player", "dist"),
       editor: path.join(packagesDir, "editor", "dist"),
@@ -201,18 +215,29 @@ export async function run(argv: readonly string[]): Promise<number> {
   lhmProvider.setAssignment(initialAssignment);
   libraryProvider.setAssignment(initialAssignment);
 
+  // `--host` wins for the run; a run without it obeys what this PC remembers.
+  const initialHost = hostGiven
+    ? host
+    : storedHosting.lan
+      ? "0.0.0.0"
+      : DEFAULT_HOST;
+
   let bound: number;
 
   try {
-    bound = await listenWithFallback(hosted.server, wanted, host);
+    bound = await listenWithFallback(hosted.server, wanted, initialHost);
   } catch (error) {
     console.error(error instanceof Error ? error.message : String(error));
     return 1;
   }
 
-  boundPort = bound;
+  const binding = createHostBinding(hosted.server, {
+    port: bound,
+    host: initialHost,
+  });
+  hostingState = binding.state;
 
-  const reachable = await waitUntilReachable(bound, host);
+  const reachable = await waitUntilReachable(bound, initialHost);
 
   if (!reachable) {
     console.error(
@@ -222,7 +247,10 @@ export async function run(argv: readonly string[]): Promise<number> {
     return 1;
   }
 
-  const displayHost = host === "0.0.0.0" || host === "::" ? "localhost" : host;
+  const displayHost =
+    initialHost === "0.0.0.0" || initialHost === "::"
+      ? "localhost"
+      : initialHost;
   const url = `http://${displayHost}:${bound}`;
 
   console.log(`\nVigilia v${VERSION}`);
@@ -259,13 +287,13 @@ export async function run(argv: readonly string[]): Promise<number> {
     );
   }
 
-  if (!isLoopbackHost(host)) {
+  if (!isLoopbackHost(initialHost)) {
     const lan = lanAddress();
 
     console.log(
       style(
         "33",
-        `\n  LAN serving is ON (bound ${host}).` +
+        `\n  LAN serving is ON (bound ${initialHost}).` +
           (lan === undefined
             ? ""
             : ` Phones on this Wi-Fi: http://${lan}:${bound}`),

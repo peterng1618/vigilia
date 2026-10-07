@@ -93,6 +93,15 @@ export interface HostServerOptions {
    *  that is not listening, which is every test, and the thing that binds the
    *  socket is the thing that knows. */
   readonly hosting?: () => HostingState;
+  /** Move the one listener onto or off the LAN, on the port it already holds.
+   *  Omitted when this host cannot move its binding; the route then refuses
+   *  rather than pretending it moved. */
+  readonly setLan?: (
+    on: boolean,
+  ) => Promise<{ ok: true } | { ok: false; reason: string }>;
+  /** Persist the choice so the next run obeys it. Omitted when the host
+   *  remembers nothing; the binding still moves for this run. */
+  readonly rememberLan?: (on: boolean) => Promise<void>;
 }
 
 export interface HostingState {
@@ -317,6 +326,8 @@ export function createHostServer(options: HostServerOptions): HostServer {
   let lastUnmapped: readonly string[] = [];
   const sessions = options.sessions;
   const hosting = options.hosting ?? (() => NO_HOSTING);
+  const toggled = options.setLan;
+  const saved = options.rememberLan;
   const devices = options.devices;
   const display = options.display;
   const fontFavorites = options.fontFavorites;
@@ -668,6 +679,47 @@ export function createHostServer(options: HostServerOptions): HostServer {
           403,
           "Hosting settings are available on this PC only.",
         );
+        return;
+      }
+
+      if (request.method === "PUT") {
+        if (toggled === undefined) {
+          sendText(response, 409, "This host cannot move its binding.");
+          return;
+        }
+
+        let body: { readonly lan?: unknown };
+        try {
+          body = JSON.parse(await readBody(request)) as {
+            readonly lan?: unknown;
+          };
+        } catch {
+          sendText(response, 400, "That is not a hosting setting.");
+          return;
+        }
+
+        if (typeof body.lan !== "boolean") {
+          sendText(response, 400, "Hosting is on or off, and nothing else.");
+          return;
+        }
+
+        const outcome = await toggled(body.lan);
+        if (!outcome.ok) {
+          // The binding was refused, so nothing moved and nothing is remembered.
+          sendText(response, 409, outcome.reason);
+          return;
+        }
+
+        await saved?.(body.lan);
+        // The same redaction the GET makes, for the same reason: a
+        // `DisplaySession` carries `token`, and this route answers about
+        // hosting, not about credentials.
+        sendJson(response, 200, {
+          ...hosting(),
+          sessions: (sessions?.list() ?? []).map(
+            ({ token: _credential, ...peer }) => peer,
+          ),
+        });
         return;
       }
 

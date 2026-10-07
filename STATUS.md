@@ -44,11 +44,11 @@ The loop, in order:
 
 ## Last completed change
 
-- **Phase 3 opens with Task 3.1: `settings/hosting.ts` remembers whether this PC serves the LAN** — `{ lan: false }` on creation, a normaliser that refuses a present non-boolean `lan` and treats an absent or emptied one as the default, mirroring `settings/display.ts`.
-- **The default is the safe direction (§145)**: a missing, unreadable, malformed or choice-less `hosting.json` all answer `{ lan: false }`, because the failure that matters is serving a home network because something could not be read.
-- **The break-proof landed**: flipping `DEFAULT_HOSTING_SETTINGS` to `{ lan: true }` failed 4 of 5 tests — every default assertion names the literal `false`, so the constant cannot mask its own wrong value — and passed only "remembers the choice across a restart", which states its own `{ lan: true }`.
-- **Task 3.2's plan text carried three defects, all fixed before dispatch.** The PUT route was prescribed *after* a block that answers 405 to every non-GET, so it was dead code while that 405 advertised PUT as supported; `hosting: binding.state` could not be passed to `createHostServer`, which creates the very server the port comes from and captures `hosting` once (`server.ts:319`); and `binding.close()` at the shutdown site would have dropped `clearInterval(timer)`, which `hosted.close()` does.
-- **Task 3.2's "keeps the port" break-proof was inert too** — `state()` reads the variables a failed rebind never assigns, so it reports the old binding whether or not the socket came back; the case now makes a real HTTP request, the only assertion that can tell a restored socket from a closed one. Fourth prescribed break in this plan found not to break.
+- **Task 3.2 lands: the LAN binding moves at runtime, and the port does not** — `cli/hosting.ts` rebinds the one listener between `127.0.0.1` and `0.0.0.0` on the port it already holds, answers a refused interface with a reason, and restores the old binding so a refusal is not an outage; it deliberately has no `close()`, because `hosted.close()` already clears the sample timer and the SSE connections.
+- **`args.ts` records `hostGiven`**, so `--host` wins for the run and a run without it obeys the stored hosting preference; the reachability probe and the terminal's LAN banner follow the host actually bound rather than the flag.
+- **The PUT route sits inside Task 1.3's `/api/hosting` block**, replacing its 405 guard with a three-way dispatch, with the loopback check still ahead of it so a remote PUT is 403 and a refused rebind answers 409 with the reason without calling `rememberLan`.
+- **`main.ts` passes `hosting: () => hostingState()`**, a `let` indirection assigned the binding's reader after the first bind, because `createHostServer` captures `options.hosting` once (`server.ts:319`) and its options are fixed before `listenWithFallback` reports a port.
+- **The break-proof was not inert, but its failure mode was not the plan's**: deleting the `await bind(host)` restore line turned "keeps the port" red at the `reachable(port)` assertion as predicted, but by a 20 s timeout rather than connection refused — the squatter holds `0.0.0.0:port`, accepts the connection to `127.0.0.1:port`, and never answers.
 
 ## Next
 

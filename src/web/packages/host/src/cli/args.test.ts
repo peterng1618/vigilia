@@ -24,6 +24,7 @@ describe("parseArgs", () => {
       options: {
         port: DEFAULT_PORT,
         host: DEFAULT_HOST,
+        hostGiven: false,
         openBrowser: true,
         themesDir: DEFAULT_THEMES_DIR,
         settingsDir: DEFAULT_SETTINGS_DIR,
@@ -51,6 +52,13 @@ describe("parseArgs", () => {
     ["-H", "192.168.1.10"],
   ])("reads an address from %s", (flag, value) => {
     expect(run(flag, value)).toMatchObject({ options: { host: value } });
+  });
+
+  it("says whether the address was asked for or defaulted", () => {
+    expect(run()).toMatchObject({ options: { hostGiven: false } });
+    expect(run("--host", "0.0.0.0")).toMatchObject({
+      options: { hostGiven: true },
+    });
   });
 
   it("reads a themes directory from --themes-dir", () => {
@@ -100,6 +108,7 @@ describe("parseArgs", () => {
       options: {
         port: 9000,
         host: "0.0.0.0",
+        hostGiven: true,
         openBrowser: false,
         themesDir: path.resolve("my-themes"),
         settingsDir: DEFAULT_SETTINGS_DIR,

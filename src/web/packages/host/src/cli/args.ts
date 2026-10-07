@@ -7,6 +7,9 @@ import { DEFAULT_LHM_URL } from "../providers/lhm.js";
 export interface HostOptions {
   readonly port: number;
   readonly host: string;
+  /** True when `--host` was passed. A run that names an address obeys it for
+   *  that run; one that does not obeys the stored hosting preference. */
+  readonly hostGiven: boolean;
   readonly openBrowser: boolean;
   readonly themesDir: string;
   /** Where the host's own state lives; beside the themes, never among them. */
@@ -96,6 +99,7 @@ export function parseArgs(
 ): ArgsResult {
   let port = DEFAULT_PORT;
   let host = DEFAULT_HOST;
+  let hostGiven = false;
   let openBrowser = true;
   let themesDir: string | undefined;
   // A relocated app folder takes the library and the settings with it, so one
@@ -152,6 +156,7 @@ export function parseArgs(
         }
 
         host = value;
+        hostGiven = true;
         index += 1;
         break;
       }
@@ -227,6 +232,7 @@ export function parseArgs(
     options: {
       port,
       host,
+      hostGiven,
       openBrowser,
       themesDir:
         themesDir ?? path.join(appDirOverride ?? DEFAULT_APP_DIR, "themes"),

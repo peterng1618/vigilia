@@ -1839,4 +1839,86 @@ describe("The hosting route answers where a phone should point (§145)", () => {
       sessions: [],
     });
   });
+
+  it("moves the binding from this PC, and answers with its new state", async () => {
+    let lan = false;
+    let remembered: boolean | undefined;
+    build({
+      hosting: () => ({
+        lan,
+        address: lan ? "192.168.1.42" : null,
+        port: 5227,
+      }),
+      setLan: async (on) => {
+        lan = on;
+        return { ok: true };
+      },
+      rememberLan: async (on) => {
+        remembered = on;
+      },
+    });
+
+    const answered = await request(
+      hosted.server,
+      "PUT",
+      "/api/hosting",
+      JSON.stringify({ lan: true }),
+    );
+
+    expect(answered.status).toBe(200);
+    expect(answered.json()).toEqual({
+      lan: true,
+      address: "192.168.1.42",
+      port: 5227,
+      sessions: [],
+    });
+    expect(remembered).toBe(true);
+  });
+
+  it("refuses to move the binding for anything but this PC", async () => {
+    let moved = false;
+    build({
+      hosting: () => ({ lan: false, address: null, port: 5227 }),
+      setLan: async () => {
+        moved = true;
+        return { ok: true };
+      },
+    });
+
+    const answered = await request(
+      hosted.server,
+      "PUT",
+      "/api/hosting",
+      JSON.stringify({ lan: true }),
+      { remoteAddress: "10.0.0.2" },
+    );
+
+    expect(answered.status).toBe(403);
+    expect(moved).toBe(false);
+  });
+
+  it("answers the reason when the interface will not take the port, and remembers nothing", async () => {
+    let remembered = false;
+    build({
+      hosting: () => ({ lan: false, address: null, port: 5227 }),
+      setLan: async () => ({
+        ok: false,
+        reason: "Port 5227 is not free on 0.0.0.0: EADDRINUSE",
+      }),
+      rememberLan: async () => {
+        remembered = true;
+      },
+    });
+
+    const answered = await request(
+      hosted.server,
+      "PUT",
+      "/api/hosting",
+      JSON.stringify({ lan: true }),
+    );
+
+    expect(answered.status).toBe(409);
+    expect(answered.text()).toContain("not free");
+    expect(remembered).toBe(false);
+  });
 });
