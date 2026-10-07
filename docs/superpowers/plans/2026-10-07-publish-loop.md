@@ -3928,10 +3928,17 @@ test("an edit reaches the display while the editor has it open", async ({ page, 
   // `bridge.editor.artboard` is a getter (`display-switch.tsx:52`), so a
   // `page.evaluate` here would be the finding rather than the technique.
   //
-  // Both boxes commit on `change` (`controls/number-field.ts:161`), which is the
-  // event `fill` fires — no Enter, and no blur.
+  // Both boxes commit on `change` (`controls/number-field.ts:161-163`), and
+  // **`fill` does not dispatch `change`** — it dispatches `input`, and `change`
+  // arrives when the field loses focus, which is what an author does by leaving
+  // the box. An earlier revision of this task said "no Enter, and no blur" and
+  // that is wrong: with no blur neither edit is ever published, `/api/publish`
+  // sees no request at all, and the test times out on a poll nothing can clear.
+  // That is measured, not reasoned — see the comment in the spec itself.
   await page.locator("[data-vigilia-artboard-width]").fill("320");
+  await page.locator("[data-vigilia-artboard-width]").blur();
   await page.locator("[data-vigilia-artboard-height]").fill("240");
+  await page.locator("[data-vigilia-artboard-height]").blur();
   await expect(page.locator("[data-vigilia-publish]")).toContainText(/publishing|live/i);
 
   await expect
