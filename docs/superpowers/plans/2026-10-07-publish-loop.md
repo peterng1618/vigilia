@@ -3156,15 +3156,23 @@ git commit -m "feat(host): hold the document an author is publishing"
 ### Task 4.2: A display prefers it to the stored theme
 
 **Files:**
-- Modify: `src/web/packages/host/src/server.ts` — **add** `/api/themes/:id/document`, change
-  `/` routing, add the revision route
+- Modify: `src/web/packages/host/src/server.ts` — the `docMatch` block, `/` routing, and the
+  revision route
 - Test: `src/web/packages/host/src/server.test.ts`
 
-**`/api/themes/:id/document` does not exist today** — this task creates it. The per-theme
-routes are regex matches rather than a router (`server.ts:893`, `:938`), so the new one is
-`/^\/api\/themes\/([^/]+)\/document$/` with `decodeURIComponent(match[1] ?? "")` and the same
-`isValidThemeId` guard the two beside it use; it goes next to them, not in a new block. The
-player already builds its asset base from the theme id — `/api/themes/${theme.id}/`
+**`/api/themes/:id/document` already exists and this task modifies it.** `339edebc feat(host):
+store validated theme packages` added it; it is a regex match beside the asset, answers and
+thumbnail routes, guarded by the same `isValidThemeId`, and it currently answers
+`record.envelope` from the store. The change is the published-overlay branch *ahead of* the
+store read — the shape Step 3 gives — and not a new route.
+
+**A previous version of this paragraph said the opposite, and it was wrong.** It claimed the
+route "does not exist today" and sent the implementer to add it; that claim was written from
+reading the routes *beside* it rather than the route itself, and it was committed as fact
+(`ce69eebe`). A reader who "corrects" this back will send the next implementer hunting for a
+route that is already there. Check the block, not the neighbours.
+
+The player already builds its asset base from the theme id — `/api/themes/${theme.id}/`
 (`packages/player/src/main.ts:297`) — which is what makes an overlay keyed on that id reach
 the right folder.
 
@@ -3199,8 +3207,21 @@ Add to `server.test.ts`:
 ```ts
 it("serves the published document to a display that asks for that theme", async () => {
   const host = createTestServer({});
-  // Seed a stored theme, publish a different document over it, and read both.
+
+  // **The library starts empty**, so a document to publish *over* has to exist
+  // first. This line was missing and the test could not have passed without it:
+  // the read below would have been a 404 and the assertion after it would have
+  // compared `undefined` to an artboard.
+  await request(
+    host.server,
+    "PUT",
+    "/api/themes/living-room",
+    themeBody(createValidPackage()),
+  );
+
   const stored = await request(host.server, "GET", "/api/themes/living-room/document");
+  expect(stored.status).toBe(200);
+
   const publishedBody = JSON.stringify({
     envelope: { ...(stored.json() as object), artboard: { width: 320, height: 240 } },
     assets: {},
@@ -3237,7 +3258,9 @@ Expected: FAIL — the second read still answers the stored artboard.
 
 - [ ] **Step 3: Write the minimal implementation**
 
-In the `docMatch` block (`server.ts:910-928`), before the store read:
+In the `docMatch` block in `server.ts` — the one whose guard is
+`/^\/api\/themes\/([^/]+)\/document$/` — **before** the `themeStore.read(rawId)` that is
+already there, so the early return wins:
 
 ```ts
       // A display showing the theme an author is editing shows the document as
