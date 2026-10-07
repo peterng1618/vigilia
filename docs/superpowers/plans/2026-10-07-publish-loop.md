@@ -171,6 +171,12 @@ task's requirements implicitly include this section.
   deliberate break.
 - **A new regression test must fail when the fix is disabled before it is trusted.** Every
   task that adds one says, in its own steps, how it was disabled and what failed.
+- **There is no `@testing-library/react` in this workspace, and no task may add one.** A DOM
+  test mounts with `createRoot` + `act` from `react-dom/client` and queries the container
+  directly, waiting with `vi.waitFor`; `publish-control.dom.test.tsx` is the working example to
+  copy. Any block in this plan that says `render(`, `getByRole`, `getByText` or a bare
+  `waitFor` is shorthand for that idiom and **will not resolve as written** — three such
+  blocks reached this plan's text before being caught, in Tasks 2.2, 2.3 and 3.3.
 - **Visible behaviour needs rendered browser inspection**, not object counts or geometry
   assertions. A green unit test is not a proof that a header shows an address.
 - **`npm run gates:self-test`** from `src/web/` after touching anything under `scripts/` or
@@ -2298,13 +2304,24 @@ that test** with the off-state test in Step 1 below; do not keep both.
 
 Add to `publish-control.dom.test.tsx`:
 
+Both tests are written in the file's own idiom — `mount()`, the container, `vi.waitFor` —
+because this workspace has no `@testing-library/react` (Global Constraints). `mount()` already
+rethrew Task 2.3's `waitFor` idiom, so **delete** the existing `renders nothing when this host
+is not on the LAN` test and write the first one below in its place: the off state now has
+something to say, and a header that renders nothing is a feature nobody can find.
+
 ```tsx
 it("offers to serve the LAN, and says what that costs before it does", async () => {
   hostAnswers({ lan: false, address: null, port: null, sessions: [] });
-  const { getByRole, getByText } = render(<PublishControl />);
+  const container = await mount();
 
-  await waitFor(() => expect(getByText(uiCopy.publish.warning)).toBeTruthy());
-  expect(getByRole("button", { name: uiCopy.publish.start }).getAttribute("aria-pressed")).toBe("false");
+  await vi.waitFor(() =>
+    expect(container.textContent).toContain(uiCopy.publish.warning),
+  );
+
+  const button = container.querySelector("button");
+  expect(button?.textContent).toBe(uiCopy.publish.start);
+  expect(button?.getAttribute("aria-pressed")).toBe("false");
 });
 
 it("shows the host's own reason when it refuses the interface", async () => {
@@ -2313,24 +2330,35 @@ it("shows the host's own reason when it refuses the interface", async () => {
     vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
       if (String(input) !== "/api/hosting") return new Response("", { status: 404 });
       if (init?.method === "PUT") {
-        return new Response("Port 5227 is not free on 0.0.0.0: EADDRINUSE", { status: 409 });
+        return new Response("Port 5227 is not free on 0.0.0.0: EADDRINUSE", {
+          status: 409,
+        });
       }
-      return new Response(JSON.stringify({ lan: false, address: null, port: null, sessions: [] }));
+      return new Response(
+        JSON.stringify({ lan: false, address: null, port: null, sessions: [] }),
+      );
     }),
   );
 
-  const { getByRole, getByText } = render(<PublishControl />);
-  await waitFor(() => expect(getByText(uiCopy.publish.warning)).toBeTruthy());
-  getByRole("button", { name: uiCopy.publish.start }).click();
+  const container = await mount();
+  await vi.waitFor(() =>
+    expect(container.textContent).toContain(uiCopy.publish.warning),
+  );
 
-  await waitFor(() => expect(getByText(/EADDRINUSE/)).toBeTruthy());
+  // `act` because the click starts a state update; without it React has not
+  // re-rendered by the time the assertion runs.
+  await act(async () => container.querySelector("button")?.click());
+
+  await vi.waitFor(() => expect(container.textContent).toContain("EADDRINUSE"));
 });
 ```
 
 - [ ] **Step 2: Run them to verify they fail**
 
 Run: `npx vitest run packages/editor/src/editor-shell/publish-control.dom.test.tsx`
-Expected: FAIL — `uiCopy.publish.start` is undefined and no button is rendered.
+Expected: FAIL — `uiCopy.publish.start` does not exist yet, so the first test's button
+assertion fails, and no button is rendered at all because the control still returns `null`
+when the LAN is off.
 
 - [ ] **Step 3: Write the minimal implementation**
 
@@ -2382,7 +2410,8 @@ clears both, so a stale URL is never on screen. A `setLan` failure renders the r
 - [ ] **Step 4: Run the tests to verify they pass**
 
 Run: `npx vitest run packages/editor/src/editor-shell/publish-control.dom.test.tsx`
-Expected: PASS, all five.
+Expected: PASS, four — the file holds three today, one of which this task replaces, and one is
+added.
 
 - [ ] **Step 5: Prove the tests can fail**
 
@@ -2452,14 +2481,19 @@ test("the LAN is turned on from the editor, and the port does not move", async (
   await expect(publish.locator("code")).toHaveCount(0);
 });
 
-test("refuses the LAN to anything but this PC", async ({ request }) => {
-  const refused = await request.put(`http://127.0.0.1:${PORT}/api/hosting`, {
+test("a forwarded-for header does not move the guard off the socket", async ({
+  request,
+}) => {
+  const answered = await request.put(`http://127.0.0.1:${PORT}/api/hosting`, {
     data: { lan: true },
     headers: { "x-forwarded-for": "192.168.1.50" },
   });
-  // The guard reads the socket, not a header: from loopback this is allowed,
-  // which is why the refusal itself is `server.test.ts`'s to prove.
-  expect(refused.status()).toBe(200);
+  // A *header* claiming another origin changes nothing, because the guard reads
+  // `request.socket.remoteAddress` — which is why this is 200 from loopback and
+  // why the refusal itself is `server.test.ts`'s to prove, not this file's. The
+  // test is here to pin the direction: a proxy header must never be what decides
+  // whether this PC is exposed.
+  expect(answered.status()).toBe(200);
 });
 ```
 
@@ -2477,10 +2511,16 @@ address, the code and the expiry.
 
 - [ ] **Step 3: Prove the browser test can fail**
 
-Comment out the `binding.setLan` wiring in `main.ts` so `PUT` answers 200 without moving
-the socket. Rebuild the host, re-run Step 2. Expected: FAIL — `aria-pressed` flips but the
-address never appears, because the host is still loopback-only and `/api/hosting` still
-answers `lan: false`. Restore and rebuild.
+In `main.ts`, hand `createHostServer` a `setLan` that answers success without moving the
+socket — `async () => ({ ok: true })` — so `PUT` answers 200 while `hostingState` stays where
+it was. Rebuild the host, re-run Step 2. Expected: **FAIL on the first `aria-pressed`
+assertion**, because the route reports success and then returns the state it actually has,
+which is still `lan: false`; the toggle never flips and the address never appears. Restore and
+rebuild.
+
+Do not break it by *removing* the `setLan` option instead: the route calls it, so an absent
+one is a 500 rather than an honest success, and the failure you would be reading is a crash
+rather than the claim.
 
 - [ ] **Step 4: Run the whole gate**
 
