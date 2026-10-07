@@ -614,6 +614,14 @@ in this task writes into them.
 
 - [ ] **Step 6: Typecheck, lint, format, build**
 
+> **Corrected 2026-10-08 by Task 1.1's executor: the test source in Step 1 is not
+> `format:check`-clean, so this step fails on the file Step 1 supplied.** Every
+> `putStrip({…})` call in that block exceeds the formatter's line width. The block is
+> otherwise right and was written as given, then formatted in place; the landed file is
+> `8cb99931`. Read this as a warning for Steps 1 and 6 of Tasks 1.2 and 1.3 too — a block
+> pasted verbatim from this plan is a starting point, and `npm run format:check` is the
+> gate that decides, not the block's own line breaks.
+
 ```bash
 cd src/web
 npm run typecheck
