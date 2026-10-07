@@ -200,6 +200,7 @@ export {
   formatNumber,
   formatUnit,
   MISSING_VALUE_TEXT,
+  planArtboard,
   resolveStyleValue,
   resolveTextSegments,
 } from "./scene/plan.js";

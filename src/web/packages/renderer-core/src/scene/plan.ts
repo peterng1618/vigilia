@@ -12,6 +12,7 @@ import { chartPaintFieldsFor } from "../charts/settings-fields.js";
 import { describeSemanticKey } from "../data/semantic-keys.js";
 import type { SampleSource } from "../data/source.js";
 import type {
+  Artboard,
   AssetKind,
   Binding,
   ChartContent,
@@ -181,28 +182,42 @@ export function buildScenePlan(context: PlanContext): ScenePlan {
     planNode(node, plan, globals, issues),
   );
 
-  const artboard = plan.document.artboard;
-
   return {
-    artboard: {
-      width: artboard.width,
-      height: artboard.height,
-      contentFit: artboard.contentFit ?? "contain",
-      background: resolveStyleValue(
-        artboard.background,
-        globals,
-        "artboard",
-        issues,
-      ),
-      barColor: resolveStyleValue(
-        artboard.barColor,
-        globals,
-        "artboard",
-        issues,
-      ),
-    },
+    artboard: planArtboard(plan.document.artboard, globals, issues),
     nodes,
     issues,
+  };
+}
+
+/**
+ * The artboard's geometry with its two paints resolved through `globals`, the way
+ * a node's style is.
+ *
+ * **The one owner of artboard paint resolution.** Two things build a `ScenePlan`
+ * — this module from a document, the player from a hosted envelope whose scene
+ * Fabric revives — and the block written twice is how one builder came to pass a
+ * palette reference through unresolved, which paints nothing at all. Keep both on
+ * this.
+ *
+ * `scene-fabric` accepts the resolved forms only: a CSS string or a
+ * `{ kind: "solid" | "gradient" }` object, never a reference.
+ */
+export function planArtboard(
+  artboard: Artboard,
+  globals: Globals,
+  issues: PlanIssue[],
+): ScenePlan["artboard"] {
+  return {
+    width: artboard.width,
+    height: artboard.height,
+    contentFit: artboard.contentFit ?? "contain",
+    background: resolveStyleValue(
+      artboard.background,
+      globals,
+      "artboard",
+      issues,
+    ),
+    barColor: resolveStyleValue(artboard.barColor, globals, "artboard", issues),
   };
 }
 

@@ -36,6 +36,7 @@ import { Group } from "fabric/es";
 import { type ArtboardSize, cropNoticeText } from "./artboard-crop.js";
 import { availabilityNoticeText } from "./availability-notice.js";
 import { boundSemanticKeys } from "./bound-keys.js";
+import { envelopePlan } from "./hosted-plan.js";
 import { showLoadFailure } from "./load-failure.js";
 import { followPublished } from "./publish-follower.js";
 import { type DisplaySessionToken, displaySession } from "./session.js";
@@ -391,20 +392,6 @@ async function startHostedTheme(
     { once: true },
   );
   exposeForDiagnostics(handle, liveHandle);
-}
-
-function envelopePlan(theme: FabricThemeEnvelope): ScenePlan {
-  return {
-    artboard: {
-      width: theme.artboard.width,
-      height: theme.artboard.height,
-      contentFit: theme.artboard.contentFit ?? "contain",
-      background: theme.artboard.background ?? "#000",
-      barColor: theme.artboard.barColor ?? "#000",
-    },
-    nodes: [],
-    issues: [],
-  };
 }
 
 function hydrateCharts(

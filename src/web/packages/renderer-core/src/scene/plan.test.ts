@@ -90,6 +90,31 @@ describe("artboard", () => {
 
     expect(plan(withBackground).artboard.background).toBe("#101216");
   });
+
+  // The palette's other shape — `{ kind: "solid" }` rather than a bare colour —
+  // and the artboard's second paint, which comes from the same globals. A solid
+  // paint resolves to its colour, which is the form the renderer paints.
+  it("resolves a structured palette value and the bar colour too", () => {
+    const document = documentWith([], {
+      palette: {
+        paper: { name: "Paper", value: { kind: "solid", color: "#e8e4da" } },
+        bars: { name: "Bars", value: "#101318" },
+      },
+    });
+    const withPaints: ThemeDocument = {
+      ...document,
+      artboard: {
+        ...document.artboard,
+        background: { ref: "palette.paper" },
+        barColor: { ref: "palette.bars" },
+      },
+    };
+
+    expect(plan(withPaints).artboard).toMatchObject({
+      background: "#e8e4da",
+      barColor: "#101318",
+    });
+  });
 });
 
 describe("type presets", () => {
