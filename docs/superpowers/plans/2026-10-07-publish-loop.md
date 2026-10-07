@@ -2581,9 +2581,14 @@ stored theme; the editor pushes on change and stops when asked.
   }
   export function createPublishedStore(): PublishedStore;
   ```
-- Routes, both loopback-only: `PUT /api/publish` (body: the save wire, `overwrite`
-  ignored) → `{ ok: true, id, revision }`; `DELETE /api/publish` → the same with
-  `id: null`. `GET /api/publish` → `{ id, revision }` or `{ id: null, revision }`.
+- Routes, all loopback-only. **The id rides in the query string** — `PUT
+  /api/publish?id=<id>`, body: the save wire, `overwrite` ignored → `{ ok: true, id, revision }`.
+  A missing or malformed id is **400** (`isValidThemeId`, the same owner `/api/themes/:id`
+  uses; the save wire is the editor's existing document and is not extended to carry an id).
+  `DELETE /api/publish` → `{ ok: true, id: null, revision }`. `GET /api/publish` →
+  `{ id, revision }` or `{ id: null, revision }`. **Tasks 4.2 and 4.4 call this with
+  `?id=`** — the query is the contract between them, so a `PUT /api/publish` with no query
+  is the malformed case, not the happy path.
 
 **Constraints.** **The document is validated before it is held**, with the same validator
 the store uses — the overlay bypasses `themeStore.write`, so nothing else would check it,
@@ -2626,33 +2631,117 @@ describe("the published document", () => {
 });
 ```
 
-Add to `server.test.ts`:
+Add to `server.test.ts`, **in the file's own idiom** — there is no `createTestServer`, and no
+task may invent one. A host is `createHostServer({ registry: new ProviderRegistry([]), bundles:
+{ player: dir, editor: dir }, themeStore: createThemeStore(dir) })` over a `mkdtemp` directory,
+and a theme is seeded by publishing it through `PUT /api/themes/:id` with `themeBody(...)`.
+`createValidPackage()` already builds a valid envelope whose id is `living-room`. Each test
+closes the host and removes the directory in a `finally`.
 
 ```ts
-it("holds a published document, and only for a theme it has", async () => {
-  const host = createTestServer({});
-
-  const refused = await request(
-    host.server, "PUT", "/api/publish",
-    JSON.stringify({ envelope: { schemaVersion: 2 }, assets: {} }),
-    { headers: { "content-type": "application/json" } },
-  );
-  expect(refused.status()).toBe(409);
-
-  const fromTheLan = await request(host.server, "PUT", "/api/publish", "{}", {
-    remoteAddress: "10.0.0.2",
+it("publishes a theme this library has, and says no to everything else", async () => {
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), "vigilia-publish-"));
+  const hosted = createHostServer({
+    registry: new ProviderRegistry([]),
+    bundles: { player: dir, editor: dir },
+    themeStore: createThemeStore(dir),
   });
-  expect(fromTheLan.status).toBe(403);
+
+  try {
+    // The assets a display fetches come from the theme's own folder, so there
+    // has to be a folder before anything can be published against it.
+    await request(
+      hosted.server,
+      "PUT",
+      "/api/themes/living-room",
+      themeBody(createValidPackage()),
+    );
+    const body = themeBody(createValidPackage());
+
+    // No id at all is the caller's mistake, and it says so.
+    const missing = await request(hosted.server, "PUT", "/api/publish", body);
+    expect(missing.status).toBe(400);
+
+    // A well-formed id this library does not have is a different answer.
+    const unknown = await request(
+      hosted.server,
+      "PUT",
+      "/api/publish?id=kitchen",
+      body,
+    );
+    expect(unknown.status).toBe(409);
+
+    // A document whose own id disagrees with the id it would be served under is
+    // refused, exactly as a save refuses it — publishing bypasses `write`, so
+    // this is the only place that check can live.
+    const mismatched = await request(
+      hosted.server,
+      "PUT",
+      "/api/publish?id=living-room",
+      themeBody(createValidPackage("kitchen")),
+    );
+    expect(mismatched.status).toBe(400);
+
+    const published = await request(
+      hosted.server,
+      "PUT",
+      "/api/publish?id=living-room",
+      body,
+    );
+    expect(published.status).toBe(200);
+    expect(published.json()).toMatchObject({ ok: true, id: "living-room" });
+
+    // The LAN is refused the whole surface, not just the body.
+    const fromTheLan = await request(
+      hosted.server,
+      "PUT",
+      "/api/publish?id=living-room",
+      body,
+      { remoteAddress: "10.0.0.2" },
+    );
+    expect(fromTheLan.status).toBe(403);
+
+    const stop = await request(hosted.server, "DELETE", "/api/publish");
+    expect(stop.json()).toMatchObject({ ok: true, id: null });
+    expect((await request(hosted.server, "GET", "/api/publish")).json()).toMatchObject({
+      id: null,
+    });
+  } finally {
+    await hosted.close();
+    await fs.rm(dir, { recursive: true, force: true });
+  }
 });
 
 it("refuses a document it cannot validate", async () => {
-  const host = createTestServer({});
-  const bad = await request(
-    host.server, "PUT", "/api/publish",
-    JSON.stringify({ envelope: { schemaVersion: 99 }, assets: {} }),
-    { headers: { "content-type": "application/json" } },
-  );
-  expect(bad.status).toBe(400);
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), "vigilia-publish-"));
+  const hosted = createHostServer({
+    registry: new ProviderRegistry([]),
+    bundles: { player: dir, editor: dir },
+    themeStore: createThemeStore(dir),
+  });
+
+  try {
+    await request(
+      hosted.server,
+      "PUT",
+      "/api/themes/living-room",
+      themeBody(createValidPackage()),
+    );
+
+    // `decodeThemeSave` accepts this — it checks that the envelope is an object
+    // and nothing more — so it is the overlay's own validator that must refuse
+    // it. That is the point of the case.
+    const bad = await request(
+      hosted.server,
+      "PUT",
+      "/api/publish?id=living-room",
+      JSON.stringify({ envelope: { schemaVersion: 99 }, assets: {} }),
+    );
+    expect(bad.status).toBe(400);
+  } finally {
+    await hosted.close();
+    await fs.rm(dir, { recursive: true, force: true });
+  }
 });
 ```
 
@@ -2737,21 +2826,46 @@ it (`const published = options.published ?? createPublishedStore();`), and add t
         }
 
         const id = url.searchParams.get("id") ?? "";
+        // A malformed id and an unknown one are different answers, and the save
+        // route already draws this line: the first is the caller's mistake, the
+        // second is a fact about this library.
+        if (!isValidThemeId(id)) {
+          sendText(response, 400, "Invalid theme id.");
+          return;
+        }
+
         // The assets a display fetches come from the theme's own folder, so a
         // document with no folder would render with holes. Refusing is honest;
         // publishing it anyway is not.
-        if (!isValidThemeId(id) || (await themeStore?.read(id)) === undefined) {
+        if ((await themeStore?.read(id)) === undefined) {
           sendText(response, 409, `No theme "${id}" in this library to publish.`);
           return;
         }
 
         const checked = validateFabricThemeEnvelope(decoded.content.envelope);
         if (!checked.ok) {
-          sendText(response, 400, `That document is not a theme: ${checked.code}`);
+          sendText(
+            response,
+            400,
+            checked.issues[0]?.message ?? "That document is not a theme.",
+          );
           return;
         }
 
-        const revision = published.publish(id, checked.value);
+        // A save refuses a document whose own id disagrees with the folder it is
+        // written to (`store.ts:408-412`). Publishing bypasses `write`, so the same
+        // invariant has to be kept here or a display is served `living-room`
+        // carrying a document that says it is something else.
+        if (checked.envelope.id !== id) {
+          sendText(
+            response,
+            400,
+            `That document is "${checked.envelope.id}", not "${id}".`,
+          );
+          return;
+        }
+
+        const revision = published.publish(id, checked.envelope);
         sendJson(response, 200, { ok: true, id, revision });
         return;
       }
@@ -2775,9 +2889,13 @@ it (`const published = options.published ?? createPublishedStore();`), and add t
     }
 ```
 
-Check `validateFabricThemeEnvelope`'s actual return shape in `renderer-core` before
-writing those three lines — it is an existing contract, and this is the one place in the
-task where the exact field names must be read rather than assumed.
+**`validateFabricThemeEnvelope`'s return shape is settled here rather than left to be
+discovered**: `renderer-core/src/theme/fabric-envelope-validate.ts:31-34` answers
+`{ ok: true; envelope }` or `{ ok: false; issues: readonly ValidationIssue[] }` — not `value`
+and not `code` — and `store.ts:403-407` is the call to copy, including
+`issues[0]?.message ?? …` as the text a caller sees. It takes an optional second argument
+(`{ requireTrioRoles }`) which the store does not pass on this path, so neither does the
+overlay.
 
 - [ ] **Step 4: Run the tests to verify they pass**
 
@@ -2786,8 +2904,13 @@ Expected: PASS.
 
 - [ ] **Step 5: Prove the tests can fail**
 
-Delete the `validateFabricThemeEnvelope` guard. Re-run Step 4. Expected: FAIL on the
-"cannot validate" case with 200. Restore it.
+Skip the check rather than deleting the lines — publish `decoded.content.envelope` and drop the
+`!checked.ok` branch, so the route stores whatever it was handed. Re-run Step 4. Expected:
+**FAIL on the "cannot validate" case**, which now answers 200 instead of 400. Restore it.
+
+The break is worth doing this way because the guard is the only thing standing between a
+display and an unvalidated document: `decodeThemeSave` checks that the envelope *is an object*
+and nothing else, so with the guard gone a `schemaVersion: 99` document reaches a phone.
 
 - [ ] **Step 6: Commit**
 
