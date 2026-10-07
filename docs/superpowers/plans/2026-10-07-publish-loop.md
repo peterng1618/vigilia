@@ -2786,7 +2786,7 @@ stored theme; the editor pushes on change and stops when asked.
 - Test: `src/web/packages/host/src/server.test.ts`
 
 **Interfaces:**
-- Consumes: `decodeThemeSave` (`themes/wire.ts:47`) — the editor already speaks this wire
+- Consumes: `decodeThemeSave` (`themes/wire.ts`) — the editor already speaks this wire
   for a save, and publishing is the same document; `validateFabricThemeEnvelope`
   (`@vigilia/renderer-core`).
 - Produces:
@@ -2817,10 +2817,14 @@ stored theme; the editor pushes on change and stops when asked.
 **Constraints.** **The document is validated before it is held**, with the same validator
 the store uses — the overlay bypasses `themeStore.write`, so nothing else would check it,
 and a display serves what it is given. **The id must already exist in the library**: a
-published document's assets are served from `/api/themes/:id/assets/...`
-(`server.ts:752-789`), so a document that was never saved has no assets to serve and the
-display would render a theme with holes. A publish for an unknown id is a **409**, not an
-overlay with a broken asset path.
+published document's assets are served from the theme-asset route in `server.ts`
+(`/api/themes/:id/assets/...`), so a document that was never saved has no assets to serve and the
+display would render a theme with holes. A publish for an unknown id is a **404**, not an
+overlay with a broken asset path. **It was 409 here until the route was read against its
+neighbour**: `/api/themes/:id` already answers 404 "No such theme." for exactly this fact, and
+the only 409 in this file means *the host's own state refuses this* ("This host cannot move its
+binding."). An id that names nothing is not a conflict, and giving one fact two answers
+depending on which route asked is how a caller learns to distrust both.
 
 - [ ] **Step 1: Write the failing tests**
 
@@ -2893,7 +2897,7 @@ it("publishes a theme this library has, and says no to everything else", async (
       "/api/publish?id=kitchen",
       body,
     );
-    expect(unknown.status).toBe(409);
+    expect(unknown.status).toBe(404);
 
     // A document whose own id disagrees with the id it would be served under is
     // refused, exactly as a save refuses it — publishing bypasses `write`, so
@@ -3062,7 +3066,8 @@ it (`const published = options.published ?? createPublishedStore();`), and add t
         // document with no folder would render with holes. Refusing is honest;
         // publishing it anyway is not.
         if ((await themeStore?.read(id)) === undefined) {
-          sendText(response, 409, `No theme "${id}" in this library to publish.`);
+          // 404, the same answer `/api/themes/:id` gives for the same fact.
+          sendText(response, 404, `No theme "${id}" in this library to publish.`);
           return;
         }
 
