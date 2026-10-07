@@ -405,8 +405,11 @@ action registry, and `?` opens a reference rendered from the same `PRODUCT_SHORT
 
 **The problem is not that Base UI is limited. It is that there are two of everything.**
 
-Measured across the editor and player: Base UI is used in **five imports** — `menu` three
-times, `tabs` once, `context-menu` once. Meanwhile `@radix-ui/react-popover` is **already a
+Measured across the editor and player: Base UI is used in **five imports** — `menu` **four**
+times (`display-switch`, `insert-popover`, `palette-menu`, `shell-layout`) and `context-menu`
+once. **There is no `Tabs` import anywhere in the workspace.** The original breakdown said
+`menu` three times and `tabs` once; the total of five matched by coincidence. Verified against
+the source on 2026-10-07. Meanwhile `@radix-ui/react-popover` is **already a
 direct dependency**, and `components/ui/popover.tsx` is *shadcn's Popover on Radix*, hand-
 owned, whose own comment records that the colour picker's ecosystem already put a second
 headless library in the tree. So the app has two primitive libraries and **two popover
@@ -424,12 +427,18 @@ What the redesign actually needs, and where it is today:
 | Need | Have |
 |---|---|
 | menu | Base UI ✓ |
-| tabs | Base UI ✓ |
+| tabs | **none** — no `Tabs` import exists |
 | context menu | Base UI ✓ |
 | popover | **both** — the incoherence |
 | colour picker | ours, on Radix popover |
-| dialog (the `?` reference) | **neither** |
-| collapsible (inspector sections) | **neither** |
+| dialog (the `?` reference) | a Radix Dialog: **neither** library; 5 native `<dialog>` call sites already exist in 3 modules |
+| collapsible (inspector sections) | **a native `<details>`** — `editor-shell/controls/property-section.ts` |
+
+**Corrected 2026-10-07 against the source, by plan 9's authoring pass.** Three of those cells
+were wrong: `menu` is four imports and `tabs` is none, so the five was a coincidence;
+`collapsible` is not missing but already discharged by a native `<details>` DOM factory; and
+`dialog` has five native call sites, not none. **The ruling below is unaffected** — it turns
+on there being two primitive libraries at once, and that is true.
 
 **Ruling: standardise on Radix as the single primitive library, and migrate the five Base
 UI imports.** It is already a direct dependency, it carries `Dialog`, `Collapsible`,
