@@ -163,6 +163,66 @@ describe("EditorSession", () => {
     extensions.destroy();
   });
 
+  it("publishes a stored document under its own id, and an unsaved one not at all", () => {
+    const build = (base?: string) =>
+      new EditorSession({
+        assetManager: new AssetManager(),
+        shell: {
+          editor: {
+            canvas: {
+              on: vi.fn(),
+              off: vi.fn(),
+              getActiveObject: () => undefined,
+              getObjects: () => [],
+              requestRenderAll: vi.fn(),
+            },
+            clipboardManager: {
+              setImageImporter: vi.fn(),
+              setBindings: vi.fn(),
+            },
+            textManager: {
+              addText: vi.fn(),
+              setAuthoringView: vi.fn(),
+              setRepaint: vi.fn(),
+            },
+            cropManager: idleCrop(),
+          },
+          scene: {},
+          snapshot: vi.fn(() => envelope),
+          setBackgroundMedia: vi.fn(),
+        } as never,
+        source: {} as never,
+        envelope,
+        panelHosts: {
+          add: document.body,
+          assets: document.body,
+          document: document.body,
+          selection: document.body,
+        },
+        ...(base === undefined ? {} : { libraryBase: base }),
+        onNew: vi.fn(),
+        onNewFromStarter: vi.fn(),
+        onSaved: vi.fn(),
+      });
+
+    // A published document's assets are served from the theme's own folder, so
+    // a document with no folder in the library has nothing to publish.
+    const unsaved = build();
+    expect(unsaved.actionFacade().publishableDocument()).toBeUndefined();
+    unsaved.destroy();
+
+    // And the id it goes out under is the document's own, never the base a save
+    // is based on: that is a content hash of the stored document
+    // (`host/src/themes/store.ts`), which names no folder, and the publish route
+    // answers 404 for an id the library does not hold.
+    const stored = build("base-as-stored");
+    expect(stored.actionFacade().publishableDocument()).toEqual({
+      id: "theme",
+      envelope,
+    });
+    stored.destroy();
+  });
+
   it("New creates at the size the chooser answered, and a dismissal creates nothing", async () => {
     const onNew = vi.fn(async () => undefined);
     const extensions = new EditorSession({
