@@ -361,8 +361,10 @@ it is a statement about which questions apply, not about which objects may exist
 
 `+` opens a chooser carrying **both**:
 
-- **Units** — the card library, built on `instantiateWidget`, so a copy arrives with fresh
-  ids, remapped bindings preserving semantic keys, and recorded provenance.
+- **Units** — the card library, built on `instantiateCard`, so a copy arrives with fresh
+  ids, remapped bindings preserving semantic keys, and recorded provenance; it borrows only
+  the id rule, `createWidgetIdAllocator`, from `instantiateWidget`, so the copy stays Fabric
+  JSON rather than a second scene tree.
 - **Primitives** — text, shape, chart, image, video, exactly as today.
 
 Neither is the fallback for the other. The unit is the fast path for the common case; the
