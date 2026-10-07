@@ -179,6 +179,14 @@ task's requirements implicitly include this section.
   touched by narrowing it (raise the per-test timeout, or run the View-menu test by name),
   and report the condition with its row id. **Do not fix `vg-135`** and do not edit its
   backlog entry — it is not this plan's.
+- **A prescribed break that does not break is a plan defect, not a passing test.** Two of this
+  plan's own break-proof steps were measured **inert**: Task 1.2's inversion break leaves all
+  three tests green because `jsqr` attempts inversion, and Task 2.1's `lan`-only break leaves
+  all five green because the sibling guards reject the same body. If the break you were told to
+  make leaves the suite green, **do not conclude the test is fine and do not edit the tests to
+  make them fail.** Find a break that does fail, observe the failure, restore, and say in your
+  report what the prescribed break actually did. A green run after a break proves only that the
+  break was in the wrong place.
 
 ---
 
@@ -1053,9 +1061,14 @@ Expected: PASS, five tests.
 
 - [ ] **Step 5: Prove the tests can fail**
 
-Change `readHosting`'s guard from `typeof body["lan"] !== "boolean"` to `false`. Re-run
-Step 4. Expected: FAIL on the "cannot read" case — it returns an object built from a
-string. Restore it.
+**The break this step used to prescribe was measured inert.** Flipping only the `lan` guard to
+`false` leaves all five tests green: the "cannot read" case's `{ lan: "yes" }` body is rejected
+by the `address` and `port` guards too, so removing one of the three changes nothing.
+
+Break the shape check as a whole instead — delete all three `return undefined` guards in
+`readHosting`, so a body the editor cannot read is returned as though it were good. Re-run
+Step 4. Expected: **FAIL** on the "cannot read" case, `AssertionError: expected { Object (lan,
+address, …) } to be undefined`. Restore all three and re-run to green.
 
 - [ ] **Step 6: Commit**
 
@@ -1064,6 +1077,16 @@ git add src/web/packages/editor/src/hosting-client.ts \
         src/web/packages/editor/src/hosting-client.test.ts
 git commit -m "feat(editor): read this host's address, and mint a display credential"
 ```
+
+**As executed — `5b6335dc`.** The break-proof correction above was made here, and the wire
+shapes were read from `server.ts` rather than assumed: `GET /api/hosting` answers
+`{ lan, address, port, sessions[] }`, and `POST /api/pairing/sessions?label=display` answers
+`201 { session: { token, expiresAt } }`. The client reaches both over HTTP and imports nothing
+from `@vigilia/host` — the editor package must not gain that edge.
+
+Note that `HostingAnswer` deliberately drops the `sessions` array the route returns. If no
+surface ends up reading it, the field is dead weight on a route whose whole reason for
+existing is the address — worth settling when Task 2.3 renders the header.
 
 ---
 
