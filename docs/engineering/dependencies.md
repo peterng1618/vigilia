@@ -18,6 +18,8 @@ Provenance behind `THIRD-PARTY-NOTICES.md`. Re-audit the installed graph before 
 | `jsdom` | 26.1.0 | MIT | DOM tests |
 | `canvas` | 3.2.3 | MIT | native raster test dependency |
 | `@types/node` | 22.10.2 | MIT | types |
+| `qr` | 0.7.2 | MIT OR Apache-2.0 | QR symbol for the display link |
+| `jsqr` | 1.4.0 | Apache-2.0 | devDependency: decodes the QR round-trip |
 
 Fabric 7.4.0 metadata/LICENSE confirms MIT and no runtime dependencies. Use
 `fabric/es`; player and editor both use it directly, with no adopted

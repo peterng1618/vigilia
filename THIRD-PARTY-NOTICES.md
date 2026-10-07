@@ -16,6 +16,7 @@ inventory, not a release-grade transitive audit. Provenance:
 | @base-ui/react 1.8.0 | MIT | editor shell primitives |
 | lucide-react 1.48.0 | ISC AND MIT (Feather-derived subset) | editor action-bar icons |
 | systeminformation 5.33.13 | MIT | host hardware metrics (no dependencies of its own) |
+| qr 0.7.2 | MIT OR Apache-2.0 | QR symbol for the display link (no dependencies of its own) |
 
 Preserve applicable Apache-2.0 and MIT licence/NOTICE obligations.
 
@@ -53,8 +54,8 @@ TypeScript 7.0.2 (Apache-2.0), Vite 8.3.0 (MIT), Vitest 5.0.0 (MIT),
 @playwright/test 1.63.0 (Apache-2.0), jsdom 26.1.0 (MIT), canvas 3.2.3 (MIT),
 @types/node 22.10.2 (MIT), @types/react 19.3.x (MIT), @types/react-dom
 19.3.x (MIT), tailwindcss 4.3.3 (MIT, editor dev styling), @tailwindcss/vite
-4.3.3 (MIT, editor dev). Native `canvas` may carry linked-library
-obligations.
+4.3.3 (MIT, editor dev), jsqr 1.4.0 (Apache-2.0). Native `canvas` may carry
+linked-library obligations.
 
 ## Vendored source
 
