@@ -35,7 +35,7 @@ The loop, in order:
 
 ## Active work
 
-- **Plan 6, the publish loop, is the active plan and its plan file is being authored.** Plan 5 closed and archived ([its plan file](docs/superpowers/plans/archive/2026-10-07-units-alongside-primitives.md)), its landmark from the spec's table at `:475` met — the `+` offers **units and primitives, neither greyed, neither described as a fallback** (acceptance `:537`).
+- **Plan 6, the publish loop, is the active plan; its plan file is written and Task 1.1 is dispatched.** [The plan](docs/superpowers/plans/2026-10-07-publish-loop.md) is 15 tasks in 4 phases against spec §6; plan 5 closed and archived with the `+` landmark met (spec `:475`, acceptance `:537`).
 - **The `+` was inert and now opens a chooser.** `shell-layout.tsx:431` was `const openInsertPopover = (): void => undefined;` under a `ponytail:` marker naming a Task 3 that never landed; the chooser is a **fourth rendering** of `insertGroups()`, never a fourth list, and Task 2 left `insertItem` with exactly one definition.
 - **Plan 4's hand-forward landed in Task 5.** The starter's cards carried no `provenance`, so every card row on the reference composition read the bare `Group` arm; `cardGroup(id, unit, …)` now stamps the root alone, and Task 6 corrected `layer-tree.ts:280-291`, whose docstring had documented the absence as deliberate.
 - **Seven plan claims were wrong, and each is corrected in the plan where its task is read.** The mapping compared unequal to a correct popover; Task 2 could not watch its own test fail; the browser spec's `[role=group]` matches nothing in the Add pane; the pane is shut at `goto`; `cardGroup` has seven call sites, not eight; Task 4's ownership premise named two map rows that do not exist; and Task 6's row assertion compared against paint order while the walk reverses.
@@ -44,15 +44,15 @@ The loop, in order:
 
 ## Last completed change
 
-- **Plan 5's whole-plan review ran here, over `5230778c..194f9e5a`** — the step plan 4 skipped, run before plan 6 opens rather than after the fact.
-- **It re-measured the landmark and the stamp independently.** `insert-popover.tsx:94-105` maps `insertGroups()` with no second list; `cardGroup` stamps the root alone across seven call sites; the archived capture's role column reads `RAM`, `GPU`, `CPU` and `Clock`; typecheck, `status:check` and `backlog-check` all exit 0.
-- **Four findings are filed, none of them fixed here.** `vg-167`: a stamp on a nested group is unchecked, because `card-library.test.ts:186` skips every group. `vg-168`: the builders-vs-library agreement pin is a tautology, both sides reading one `uiCopy` object. `vg-169`: the `+` cannot dismiss the chooser it opened while announcing `aria-expanded`. `vg-170`: a browser spec hard-codes a copy id its sibling spec states is the allocator's.
-- **`vg-161` gains the measurement it was missing** — the unlanded plan's Task 3 is now actively false, not merely unqueued: it would create a file plan 5 created with a different contract, and delete three tests plan 5 keeps.
-- **Nothing else was claimed and undelivered.** Every Review Focus line has a collected test, and the spec's §5, `:477` and `:539` all read true after the plan's changes.
+- **Plan 6, the publish loop, is written** — 15 tasks in 4 phases, against spec §6 (`:374-395`) and the acceptance bullet at `:546`, with a break-proof step and a commit step in every task.
+- **Its author found the switch is not where the spec says it is.** §6's "(plan 1, task 4)" cites `canvas-view-controls.tsx`, which does not exist; the switch still lives in the View menu (corrected here: it is at `shell-layout.tsx:316-327`), so plan 6 renames the copy where the switch actually is and files the move against `vg-161`.
+- **The QR decision is [`docs/decisions/0032`](docs/decisions/0032-a-qr-symbol-is-encoded-by-a-dependency.md)** — depend on `qr` (paulmillr), encode-only, zero dependencies, and render the matrix here; hand-writing was rejected because every wrong encoder renders perfectly and the only instrument that catches it is a camera CI does not have.
+- **Three claims in the plan were wrong, and the controller corrected them before dispatch.** `jsqr` is Apache-2.0, not MIT — the plan's own stop-and-file instruction would have halted Task 1.2 on a false alarm; `qr`'s `ecc` is `'medium'` and its `border` is measured in modules and **defaults to 2, not the standard's 4**, so passing it is load-bearing rather than decorative; and the notices row must record the declared expression `MIT OR Apache-2.0`.
+- **Verified rather than taken on report:** both licences from the registry, the five cited landmarks, the new route names against the host's existing guard chain, and one break-proof step per task.
 
 ## Next
 
-1. **Plan 6's plan file is being written now** by a dispatched author working from spec §6; its own self-review and the controller's read of it gate the first task.
+1. **Plan 6 runs phase by phase, Task 1.1 first.** Phase 1 is the switch's words, the QR encoder with its decode round-trip, and the host's `GET /api/hosting`; each phase's browser proof is a task of its own.
 2. **Two decisions are the user's, not an agent's.** Whether the right column should empty on deselect, which the spec ruled it must and the product does not (`vg-157`); and which side of `vg-151` is wrong — the zoom-coupled floor, or the blur path it measures.
 3. **Rows the user raised on 2026-10-07, none of them plan 4's:** `vg-153` (dissolve the Document pane, give the theme globals their own surface), `vg-154` (drop the asset panel), `vg-155` (an import silently does one of two things), `vg-156` (JPEGs placed but only some listed — cause not established).
 4. **Resume the font catalogue plan when someone picks it up** — Task 6 landed and its review failed; its `progress.md` is the resume point. Not plan 5's.
