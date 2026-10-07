@@ -1673,10 +1673,12 @@ without a restart, and the preference survives one.
 
 **Constraints.** File `hosting.json`, in the settings directory, **never** in a theme
 folder (ADR-0017). §145: LAN is off unless someone asked for it, so a missing file, an
-unreadable file and a malformed file all answer `{ lan: false }`. A non-boolean `lan` is
-refused with a thrown message rather than coerced — the reading would otherwise silently
-fall back and a consumer would be left with a setting that appears to do nothing
-(`normalizeDisplaySettings`'s own rule).
+unreadable file, a malformed file and one that states no choice all answer `{ lan: false }`.
+A **present but non-boolean** `lan` is refused with a thrown message rather than coerced —
+the reading would otherwise silently fall back and a consumer would be left with a setting
+that appears to do nothing (`normalizeDisplaySettings`'s own rule, which also draws the line
+here: an absent field is the absence of a choice, and only an unresolvable *value* throws).
+An absent `lan` is therefore the default, not an error, on the read path and on the write.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -1687,10 +1689,7 @@ import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import {
-  createHostingSettingsStore,
-  DEFAULT_HOSTING_SETTINGS,
-} from "./hosting.js";
+import { createHostingSettingsStore } from "./hosting.js";
 
 let directory: string;
 
@@ -1703,10 +1702,12 @@ afterEach(async () => {
 });
 
 describe("hosting settings", () => {
+  // Every default below is the literal `{ lan: false }` rather than
+  // DEFAULT_HOSTING_SETTINGS. A default asserted against the constant it is
+  // meant to pin passes whatever that constant says, so it could not fail and
+  // Step 5's break would break nothing.
   it("serves loopback until somebody asks otherwise (§145)", async () => {
-    expect(await createHostingSettingsStore(directory).read()).toEqual(
-      DEFAULT_HOSTING_SETTINGS,
-    );
+    expect(await createHostingSettingsStore(directory).read()).toEqual({ lan: false });
   });
 
   it("remembers the choice across a restart", async () => {
@@ -1717,14 +1718,21 @@ describe("hosting settings", () => {
   it("refuses a value it cannot obey rather than coercing it", async () => {
     const store = createHostingSettingsStore(directory);
     await expect(store.write({ lan: "yes" })).rejects.toThrow(/lan/i);
-    await expect(store.write({})).rejects.toThrow(/lan/i);
+    // No `lan` stated is the *absence* of a choice rather than an invalid one,
+    // which is the rule `normalizeDisplaySettings` already follows: an emptied
+    // field is the consumer going back to the default, not a third value. For
+    // this setting that default is off, which is the safe direction (§145).
+    expect(await store.write({})).toEqual({ lan: false });
   });
 
   it("answers loopback for a file it cannot read", async () => {
     await writeFile(path.join(directory, "hosting.json"), "{ not json", "utf8");
-    expect(await createHostingSettingsStore(directory).read()).toEqual(
-      DEFAULT_HOSTING_SETTINGS,
-    );
+    expect(await createHostingSettingsStore(directory).read()).toEqual({ lan: false });
+  });
+
+  it("answers loopback for a file that states no choice", async () => {
+    await writeFile(path.join(directory, "hosting.json"), "{}\n", "utf8");
+    expect(await createHostingSettingsStore(directory).read()).toEqual({ lan: false });
   });
 });
 ```
@@ -1747,10 +1755,10 @@ import path from "node:path";
  * Whether this PC serves the LAN (§145). A fact about this machine, so it sits
  * with the other settings and never in a theme folder.
  *
- * LAN serving is explicit opt-in, and that is what the default is for: an
- * unreadable file, a missing file and a malformed one all answer "loopback
- * only", because the failure that matters is serving a home network because
- * something could not be read.
+ * LAN serving is explicit opt-in, and that is what the default is for: a
+ * missing file, an unreadable file, a malformed one and one that states no
+ * choice all answer "loopback only", because the failure that matters is
+ * serving a home network because something could not be read.
  */
 
 export interface HostingSettings {
@@ -1772,6 +1780,9 @@ export function normalizeHostingSettings(input: unknown): HostingSettings {
   }
 
   const lan = (input as Record<string, unknown>)["lan"];
+  // Absent is no choice, which is off; present and not a boolean is a value
+  // this runtime cannot obey, which is the case `normalizeDisplaySettings`
+  // throws for rather than storing.
   if (lan === undefined) return DEFAULT_HOSTING_SETTINGS;
   if (typeof lan !== "boolean") {
     throw new Error("Hosting's `lan` is on or off, and nothing else.");
@@ -1810,12 +1821,18 @@ export function createHostingSettingsStore(
 - [ ] **Step 4: Run the tests to verify they pass**
 
 Run: `npx vitest run packages/host/src/settings/hosting.test.ts`
-Expected: PASS, four tests.
+Expected: PASS, five tests.
 
 - [ ] **Step 5: Prove the tests can fail**
 
-Change `DEFAULT_HOSTING_SETTINGS` to `{ lan: true }`. Re-run Step 4. Expected: FAIL on the
-first and last tests. Restore it.
+Change `DEFAULT_HOSTING_SETTINGS` to `{ lan: true }`. Re-run Step 4. Expected: **FAIL on the
+first, third, fourth and fifth tests** — the three that read the default off a missing,
+unreadable or choice-less file, and the `write({})` assertion, all of which name the literal
+`false`. The second test passes, and that is the point of it: it states `{ lan: true }` itself,
+so it is pinning persistence rather than the default. Restore the constant.
+
+**If Step 5 fails nothing, the tests are the defect, not the break** — a default compared
+against its own constant cannot fail, and this step exists to catch exactly that.
 
 - [ ] **Step 6: Commit**
 
