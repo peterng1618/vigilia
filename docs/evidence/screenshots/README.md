@@ -58,6 +58,8 @@ result, not merely a mounted editor.
 | Document | Save, reopen and take a New document | `editor-reference-new` / `a new document is the reference composition` |
 | Document | Insert, style, glass and bind, then save, close and reopen | `editor-reference-journey` / `insert, style, glass, bind and text survive save` |
 | Capture | The picture the thumbnail path produces, at 2x on the library's ground | `editor-reference-capture` / `the capture path shows the glass and the packaged assets` |
+| Keyboard | Hover a dock action and read the chord its tooltip names | `keyboard-tooltip` / `every canvas action's tooltip names the chord that runs it` |
+| Keyboard | Open the reference sheet over a selected part and close it without changing the document | `keyboard-reference` / `? opens the sheet, and the document behind it does not change` |
 | Feedback | Error, notice, disabled action or compatibility message | add when changed |
 
 ## Settings page (`/settings`, real host)
