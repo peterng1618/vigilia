@@ -48,8 +48,7 @@ The loop, in order:
 - **`hosting-client.ts` gains `setLan`**, a PUT to `/api/hosting` that returns the host's own 409 body as the reason rather than composing one in the editor — the host is the only thing that knows why a socket refused.
 - **A refused toggle re-reads the host rather than assuming where it landed**, because Task 3.2 restores the old binding on refusal and the button's prior state is not evidence of the host's; turning the LAN off clears the address and the session, so no stale URL stays on screen.
 - **The plan's obsolete test was replaced, not kept** — `renders nothing when this host is not on the LAN` is deleted, because the off state now carries the warning and the offer and a header that renders nothing there is a feature nobody can find.
-- **The break-proof was not inert.** Replacing `(await response.text()).trim()` with a fixed string failed the `EADDRINUSE` assertion in "shows the host's own reason when it refuses the interface" at 1042 ms; restored and green at 4 tests.
-- **`e5081276` closed an accessibility gap the tests could not see**: the button's name offers to publish and says nothing about the cost, and §145's warning sat beside it associated with nothing — `aria-describedby` binds them, and the test asserts the attribute before using it as a selector, so dropping it fails as "expected null to be truthy" rather than as a selector syntax error.
+- **The break-proof was not inert, and `e5081276` closed an accessibility gap the tests could not see.** Replacing `(await response.text()).trim()` with a fixed string failed the `EADDRINUSE` assertion at 1042 ms; separately, the button's name offers to publish while §145's warning sat associated with nothing, so `aria-describedby` now binds them, and the test asserts the attribute before using it as a selector.
 
 ## Next
 
