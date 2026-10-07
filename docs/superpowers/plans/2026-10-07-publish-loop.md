@@ -3949,6 +3949,11 @@ test("closing the editor puts the display back on the stored theme", async ({ pa
   const display = await context.newPage();
   await display.setViewportSize({ width: 390, height: 844 });
   await display.goto(`${HOST}/`);
+  // The same reload marker as the first test, and it is what makes this test
+  // about the display rather than about the host.
+  await display.evaluate(() => {
+    (window as unknown as { __beforeStop?: boolean }).__beforeStop = true;
+  });
   const published = await display.evaluate(async () =>
     (await (await fetch("/api/published")).json()) as { id: string | null },
   );
@@ -3972,6 +3977,22 @@ test("closing the editor puts the display back on the stored theme", async ({ pa
       )).id,
     { timeout: 10_000 })
     .toBeNull();
+
+  // **The host clearing the overlay is not the claim; the display seeing it is.**
+  // Without this poll the test passes with the follower switched off, because
+  // the assertion above reads the host through the display's browser and says
+  // nothing about what the display is showing. `clear()` moves the revision
+  // exactly as `publish()` does (`serve/published.ts:41`), so the follower
+  // reloads and only a reload clears this mark.
+  await expect
+    .poll(
+      async () =>
+        display.evaluate(
+          () => (window as unknown as { __beforeStop?: boolean }).__beforeStop ?? false,
+        ),
+      { timeout: 15_000 },
+    )
+    .toBe(false);
 });
 ```
 
