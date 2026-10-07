@@ -57,11 +57,9 @@ const SHORTCUT_LABELS = {
   // It never reaches the sheet: `shortcutReferenceGroups()` iterates
   // `productShortcutIds()`, which is a projection of the table and so excludes it.
   "view.exit-group": uiCopy.panels.leave,
-  // **No `help.shortcuts` entry yet.** It is not a `ProductShortcutId` until
-  // Task 3.3 mints it, and `satisfies` below rejects a key the union does not
-  // have — so writing it here would fail to compile now and hide the real work
-  // of Task 3.3. The entry arrives with the action, and `satisfies` is what
-  // makes forgetting it a compile error rather than a shorter sheet.
+  // The sheet's own name, which is `uiCopy.shortcuts.reference` — the same word
+  // the sheet's `DialogTitle` prints, so the row and the surface cannot disagree.
+  "help.shortcuts": uiCopy.shortcuts.reference,
 } as const satisfies Record<ProductShortcutId, string>;
 
 /** The group an id belongs to: the part of its name before its first dot. */

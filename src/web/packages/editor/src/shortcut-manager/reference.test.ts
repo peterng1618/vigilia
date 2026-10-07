@@ -37,14 +37,14 @@ describe("shortcutReferenceGroups", () => {
   });
 
   it("heads the groups by the prefix of the id, in the table's order", () => {
-    // Three groups, because the table binds no `help.*` action yet. **Task 3.3
-    // appends `"Help"` here** in the commit that mints `help.shortcuts`: a group
-    // appears when an action lands in it, so the sheet never draws an empty
-    // heading over nothing.
+    // Four groups, because Task 3.3 minted `help.shortcuts` and its `?` binding:
+    // a group appears when an action lands in it, so the sheet never draws an
+    // empty heading over nothing.
     expect(shortcutReferenceGroups().map((group) => group.label)).toEqual([
       "File",
       "Edit",
       "Canvas",
+      "Help",
     ]);
   });
 });

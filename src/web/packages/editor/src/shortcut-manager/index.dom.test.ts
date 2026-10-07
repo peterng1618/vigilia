@@ -390,3 +390,82 @@ describe("ShortcutManager context bindings", () => {
     manager.destroy();
   });
 });
+
+describe("ShortcutManager and a modal", () => {
+  it("fires the reference binding on the question mark", () => {
+    const manager = new ShortcutManager();
+    const open = vi.fn();
+    manager.register("help.shortcuts", open);
+
+    window.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "?", cancelable: true }),
+    );
+
+    expect(open).toHaveBeenCalledOnce();
+    manager.destroy();
+  });
+
+  it("lets a text field have its own question mark", () => {
+    const manager = new ShortcutManager();
+    const open = vi.fn();
+    manager.register("help.shortcuts", open);
+    const input = document.createElement("input");
+    document.body.append(input);
+
+    input.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "?", bubbles: true }),
+    );
+
+    expect(open).not.toHaveBeenCalled();
+    input.remove();
+    manager.destroy();
+  });
+
+  it("refuses every binding while a dialog is open, and answers again once it closes", () => {
+    // Both shapes, because the editor has both: the three native modals and the
+    // Radix one this plan adds. A predicate that knew only one of them would let
+    // an author edit the document they are reading about.
+    const manager = new ShortcutManager();
+    const remove = vi.fn();
+    manager.register("edit.delete", remove);
+
+    const native = document.createElement("dialog");
+    document.body.append(native);
+    native.setAttribute("open", "");
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "Delete" }));
+    expect(remove).not.toHaveBeenCalled();
+    native.remove();
+
+    // Radix 1.2.0's real output: `role="dialog"` and **no `aria-modal`** — it
+    // hides the content's siblings with `aria-hidden` instead. Built to match
+    // that, not to match an assumption, because a predicate keyed on
+    // `aria-modal` passes this test against a shape Radix never renders and
+    // then defers nothing in the product.
+    const radix = document.createElement("div");
+    radix.setAttribute("role", "dialog");
+    document.body.append(radix);
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "Delete" }));
+    expect(remove).not.toHaveBeenCalled();
+    radix.remove();
+
+    window.dispatchEvent(new KeyboardEvent("keydown", { key: "Delete" }));
+    expect(remove).toHaveBeenCalledOnce();
+    manager.destroy();
+  });
+
+  it("leaves Escape to the group-exit action when no dialog is open", () => {
+    // Escape is the one binding a dialog also answers to, so a guard that
+    // swallowed it unconditionally would take the author out of their group
+    // *and* close the sheet on one press.
+    const manager = new ShortcutManager();
+    const exit = vi.fn();
+    manager.register("view.exit-group", exit);
+
+    window.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Escape", cancelable: true }),
+    );
+
+    expect(exit).toHaveBeenCalledOnce();
+    manager.destroy();
+  });
+});

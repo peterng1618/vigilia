@@ -18,7 +18,8 @@ export type ProductShortcutId =
   | "canvas.select-all"
   | "canvas.front"
   | "canvas.back"
-  | "view.exit-group";
+  | "view.exit-group"
+  | "help.shortcuts";
 
 export interface ShortcutBinding {
   readonly key: string;
@@ -62,6 +63,12 @@ export const PRODUCT_SHORTCUTS: readonly ShortcutBinding[] = [
   { key: "arrowright", modifier: false, action: "canvas.nudge-right" },
   { key: "arrowup", modifier: false, action: "canvas.nudge-up" },
   { key: "arrowdown", modifier: false, action: "canvas.nudge-down" },
+  // Last, because it is the only action about the sheet itself. Unmodified, so
+  // it already defers to a focused text field: a `?` typed into a rename field
+  // is the field's character and not a keypress. `ponytail:` a layout that does
+  // not report `?` for Shift+/ opens nothing, and the upgrade path is a
+  // layout-aware match behind `bindingFor`.
+  { key: "?", modifier: false, action: "help.shortcuts" },
 ];
 
 /** Context-only bindings: dispatched here but never displayed by a menu or
@@ -89,6 +96,32 @@ function bindingFor(event: KeyboardEvent): ShortcutBinding | undefined {
 const MODIFIED_KEY_DEFERRED_ACTION_IDS: ReadonlySet<ProductShortcutId> =
   new Set(["file.new", "edit.undo", "edit.redo", "canvas.select-all"]);
 
+/** True while a modal dialog is on screen.
+ *
+ * A modal makes the page behind it inert to the pointer and to focus, and it
+ * does not touch a `window`-level listener — which is what this manager is. So
+ * `Ctrl+Z`, `Delete` and the arrow nudge would all still edit the document the
+ * author is reading about, and `Escape` would close the dialog *and* leave the
+ * group in the same keypress.
+ *
+ * Both shapes, because the editor has both: the three native modals
+ * (`new-document-chooser.ts`, `persistence-manager`, `theme-library-dialog`)
+ * and the Radix `Dialog` from decision `0033`.
+ *
+ * **`[role='dialog']` alone, with no `aria-modal` clause.** Task 3.1 established
+ * that `@radix-ui/react-dialog` 1.2.0 never sets `aria-modal` — the string
+ * survives only in its source maps, in a comment calling its aria-hiding of the
+ * content's siblings "the better supported equivalent to setting aria-modal".
+ * A selector requiring `aria-modal='true'` therefore matches no Radix dialog
+ * this app can render: the guard would not defer while the sheet is open, and
+ * `Ctrl+Z` would edit the document the author is reading about. `dialog[open]`
+ * and `[role='dialog']` between them cover every modal in the tree — this editor
+ * draws no non-modal `role="dialog"`.
+ */
+function isModalOpen(): boolean {
+  return document.querySelector("dialog[open], [role='dialog']") !== null;
+}
+
 /** The sole window-level dispatcher for Vigilia product actions above the canvas's own key handling. */
 export class ShortcutManager {
   readonly #handlers = new Map<ProductShortcutId, ShortcutHandler>();
@@ -103,7 +136,7 @@ export class ShortcutManager {
         MODIFIED_KEY_DEFERRED_ACTION_IDS.has(binding.action)) &&
       isTextEntryTarget(event.target);
 
-    if (handler === undefined || deferred) {
+    if (handler === undefined || deferred || isModalOpen()) {
       return;
     }
 

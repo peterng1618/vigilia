@@ -304,6 +304,7 @@ export const uiCopy = {
       edit: "Edit",
       canvas: "Canvas",
       view: "View",
+      help: "Help",
     } satisfies Record<ShortcutPrefix, string>,
   },
   file: {
