@@ -35,7 +35,7 @@ The loop, in order:
 
 ## Active work
 
-- **Plan 6, the publish loop, is the active plan; Phase 1 has landed and Phase 2 is under way (Task 2.2 landed).** [The plan](docs/superpowers/plans/2026-10-07-publish-loop.md) is 15 tasks in 4 phases against spec §6; plan 5 is closed and archived with the `+` landmark met (spec `:475`, acceptance `:537`).
+- **Plan 6, the publish loop, is the active plan; Phases 1 and 2 have landed, and Task 2.3 closes Phase 2.** [The plan](docs/superpowers/plans/2026-10-07-publish-loop.md) is 15 tasks in 4 phases against spec §6; plan 5 is closed and archived with the `+` landmark met (spec `:475`, acceptance `:537`).
 - **§6's own parenthetical cites work that does not exist.** It says the switch "stays in canvas controls where the canvas is (plan 1, task 4)"; `canvas-view-controls.tsx` was never created and the switch is in the header's View menu (`shell-layout.tsx:316-327`), so plan 6 renames the copy where the switch actually is and leaves the move to `vg-161`, which already queues it.
 - **Two plan claims were checked against the packages, not assumed, and both were corrected.** `jsqr` is Apache-2.0, not MIT — the plan's own stop-and-file step would have halted Task 1.2 on a false alarm; and `qr`'s `border` is in modules and defaults to **2**, not the standard's 4, so passing it explicitly is load-bearing.
 - **`shell-layout.dom.test.tsx` is slow for a filed reason.** `vg-135`: jsdom stops firing rAF after the View-menu test, so later tests in that file await a frame that never comes — its single View-menu test takes 190 s alone. Tasks 1.1 and 2.3 both run it; a hang there is the row, not the task.
@@ -44,15 +44,15 @@ The loop, in order:
 
 ## Last completed change
 
-- **Plan 6's Task 2.2 landed: the QR renderer draws the matrix as one SVG `path`** in `src/web/packages/editor/src/editor-shell/qr-symbol.tsx`, with `aria-label` the URL it carries so a code a sighted reader can scan is one a voice user can hear.
-- **The ink and paper are fixed literals, not tokens:** `INK = "#101418"` on `PAPER = "#ffffff"`, pinned by `qr-symbol.dom.test.tsx`, which asserts the rendered `fill` values are those hexes and never a `--vigilia-*` var — the six shell palettes cannot invert it.
-- **The renderer is `qr-symbol.tsx`, not the plan's `qr-code.tsx`.** A `.tsx` sibling of the encoder `qr-code.ts` is unreachable: `./qr-code.js` resolves to the `.ts` under both `moduleResolution: bundler` and Vite, so the test rendered `undefined` until the file was renamed; the encoder was not touched.
-- **The plan's Step 1 harness does not exist here** — `@testing-library/react` is in no manifest or the lockfile, so the test uses the repo's own `createRoot`/`act` idiom and keeps the plan's assertions unchanged.
-- **The prescribed break was not inert; gates green.** `INK = "var(--vigilia-text, #101418)"` failed `expected 'var(--vigilia-text, #101418)' to be '#101418'` then restored; `npm run typecheck` exit 0, `biome lint ..` exit 0, `npm run format:check` exit 0, and `qr-symbol.dom.test.tsx` + `qr-code.test.ts` + `ui-copy.test.ts` 11/11.
+- **Plan 6's Task 2.3 landed: the header carries the phone's address and a QR code for it** — `publish-control.tsx`, rendered between the palette menu and Save in `shell-layout.tsx`.
+- **The address is the host's answer from `GET /api/hosting`, never composed from `location`** — pinned by `publish-control.dom.test.tsx`, whose prescribed break failed all three cases by rendering `http://localhost:3000`.
+- **It was read in a real browser through the host's own `/editor/` mount**, the only arrangement where `/api/hosting` is same-origin: `http://192.168.2.56:4227` and a 135 px code (`test-results/publish/header-desktop.png`).
+- **`main.ts` now supplies `HostServerOptions.hosting` from `--host`**, which Task 1.3's Files block left out — without it no LAN-bound host reported the LAN and the browser proof was impossible; Phase 3's binding owner replaces it.
+- **Gates green.** `npm run typecheck` 0, `biome lint ..` 0, `npm run format:check` 0, `publish-control.dom.test.tsx` 3/3, `shell-layout.dom.test.tsx` 20/20, and the browser spec passed from the JSON report.
 
 ## Next
 
-1. **Plan 6 runs phase by phase; Task 2.2 has landed, so Task 2.3 is next** — the header's publish surface (`publish-control.tsx`) wires the host's address and the QR into the header, rendering nothing on a loopback-only host; it must import `QrCode` from `./qr-symbol.js`, not the plan's `./qr-code.js`.
+1. **Plan 6 runs phase by phase; Task 2.3 has landed, so Phase 3 opens with Task 3.1** — the hosting preference store (`settings/hosting.ts`), then Task 3.2 moves the LAN binding at runtime and replaces the `--host`-only `hosting` closure `main.ts` now supplies.
 2. **Two decisions are the user's, not an agent's.** Whether the right column should empty on deselect, which the spec ruled it must and the product does not (`vg-157`); and which side of `vg-151` is wrong — the zoom-coupled floor, or the blur path it measures.
 3. **Rows the user raised on 2026-10-07, none of them plan 4's:** `vg-153` (dissolve the Document pane, give the theme globals their own surface), `vg-154` (drop the asset panel), `vg-155` (an import silently does one of two things), `vg-156` (JPEGs placed but only some listed — cause not established).
 4. **Resume the font catalogue plan when someone picks it up** — Task 6 landed and its review failed; its `progress.md` is the resume point. Not plan 5's.

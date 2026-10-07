@@ -325,6 +325,12 @@ export const uiCopy = {
    *  words that turn it on have to say what it is. */
   publish: {
     qrName: (url: string): string => `QR code: ${url}`,
+    address: "Phone address",
+    warning:
+      "Plain HTTP on your own network — trusted networks only, never the internet.",
+    copy: "Copy link",
+    copied: "Copied",
+    expires: (at: string): string => `Pairing expires ${at}`,
   },
   /** The View menu. Each setting names itself and its current value; the values
    *  are listed here rather than composed from a number and a unit, so the menu

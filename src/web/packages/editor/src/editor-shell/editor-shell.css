@@ -289,6 +289,48 @@ body,
 .editor-shell-tagline {
   color: var(--shell-muted);
 }
+/* The phone's address and its code, sat with the Save button. Sized by its own
+   content: the code is 135 px of it, the address is a line of text, and the
+   whole surface is absent whenever this host is loopback-only. */
+.editor-shell-publish {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 6px 10px;
+  border-radius: 10px;
+}
+.editor-shell-publish-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+.editor-shell-publish-label {
+  color: var(--shell-muted);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+}
+.editor-shell-publish-url {
+  color: var(--shell-text);
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 12px;
+}
+.editor-shell-publish-warning,
+.editor-shell-publish-expiry {
+  color: var(--shell-muted);
+  font-size: 11px;
+  /* A sentence, not a paragraph: it reads on a couple of lines rather than
+     stretching the header across the window. */
+  max-width: 30ch;
+}
+/* Only the box is themed. The symbols keep the fixed ink and paper Task 2.2
+   gives them, because a code drawn in the shell's own foreground inverts under
+   the dark palettes and stops scanning. */
+.editor-shell-publish svg {
+  flex: none;
+  border-radius: 4px;
+}
 .editor-shell-menubar {
   display: flex;
   gap: 2px;

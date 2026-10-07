@@ -17,6 +17,8 @@ blob-report/
 # The display proof's host store: the package the editor's own Save control
 # produced, written where a real host serves it.
 .e2e-display-app/
+# The publish-header proof's host store: its own theme library, on its own port.
+.e2e-publish-app/
 # Downloaded e2e font bytes; the licence is declared in the fixture envelope.
 .e2e-font-cache/
 # Staged third-party release binaries (LibreHardwareMonitor). Provenance is

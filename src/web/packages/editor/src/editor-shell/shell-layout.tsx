@@ -15,6 +15,7 @@ import { insertItem, InsertPopover } from "./insert-popover.js";
 import { LayerPanel } from "./layer-panel.js";
 import { PaneBar, type RailPane } from "./pane-bar.js";
 import { PaletteMenu } from "./palette-menu.js";
+import { PublishControl } from "./publish-control.js";
 import { SaveState } from "./save-state.js";
 import { DisplaySwitch } from "./display-switch.js";
 import { applyShellPalette, DEFAULT_SHELL_PALETTE, readShellPalette } from "./palette.js";
@@ -467,6 +468,7 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
             palette={palette}
             onChange={setPalette}
           />
+          <PublishControl />
           <button
             className="editor-shell-primary"
             type="button"

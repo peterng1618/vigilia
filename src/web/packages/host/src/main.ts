@@ -102,6 +102,8 @@ export async function run(argv: readonly string[]): Promise<number> {
   const here = path.dirname(fileURLToPath(import.meta.url));
   const packagesDir = path.resolve(here, "..", "..");
   const servingLan = !isLoopbackHost(host);
+  // Read by the `/api/hosting` answer above, set once the socket is bound.
+  let boundPort: number | null = null;
 
   // Sessions exist only when the server is LAN-reachable; a loopback-only host
   // refuses non-loopback reads outright rather than trusting them.
@@ -120,6 +122,15 @@ export async function run(argv: readonly string[]): Promise<number> {
 
   const hosted = createHostServer({
     registry,
+    // Where a phone should point, and whether one can reach this host at all.
+    // The binding decision is already made by `--host`; the port is only known
+    // once the socket is bound, so the answer is a closure over it. Phase 3's
+    // binding owner replaces this with the thing that actually rebinds.
+    hosting: () => ({
+      lan: servingLan,
+      address: servingLan ? (lanAddress() ?? null) : null,
+      port: boundPort,
+    }),
     bundles: {
       player: path.join(packagesDir, "player", "dist"),
       editor: path.join(packagesDir, "editor", "dist"),
@@ -198,6 +209,8 @@ export async function run(argv: readonly string[]): Promise<number> {
     console.error(error instanceof Error ? error.message : String(error));
     return 1;
   }
+
+  boundPort = bound;
 
   const reachable = await waitUntilReachable(bound, host);
 

@@ -28,6 +28,14 @@ import { HOST_APP_DIR, HOST_PORT } from "./tests/e2e/host-theme.js";
 const HOST_SPECS = /host-(player|settings|media|bleed).spec.ts/;
 
 /**
+ * The publish-header proof starts its own host on its own port and drives the
+ * editor through that host's `/editor/` mount, because `/api/hosting` is only
+ * same-origin there. Like the host specs it therefore cannot run under the
+ * preview projects, and it cannot share their port.
+ */
+const PUBLISH_SPEC = /publish-header\.spec\.ts/;
+
+/**
  * The rebuild drives its own preview on its own port, under
  * `playwright.rebuild.config.ts`, for the reason that config states: two agents
  * on one preview is how a proof ends up screenshotting somebody else's theme.
@@ -103,7 +111,7 @@ export default defineConfig({
         viewport: { width: 1280, height: 720 },
       },
       testIgnore: new RegExp(
-        `${HOST_SPECS.source}|${REBUILD_SPEC.source}|${DISPLAY_SPEC.source}`,
+        `${HOST_SPECS.source}|${REBUILD_SPEC.source}|${DISPLAY_SPEC.source}|${PUBLISH_SPEC.source}`,
       ),
     },
     {
@@ -111,7 +119,7 @@ export default defineConfig({
       name: "phone-chromium",
       use: { ...devices["Pixel 7"] },
       testIgnore: new RegExp(
-        `${HOST_SPECS.source}|${REBUILD_SPEC.source}|${DISPLAY_SPEC.source}`,
+        `${HOST_SPECS.source}|${REBUILD_SPEC.source}|${DISPLAY_SPEC.source}|${PUBLISH_SPEC.source}`,
       ),
     },
     {
@@ -128,6 +136,17 @@ export default defineConfig({
       name: "phone-host",
       use: { ...devices["Pixel 7"] },
       testMatch: /host-player\.spec\.ts/,
+      workers: 1,
+    },
+    {
+      // Its own host on its own port, so it is serial by construction for the
+      // same reason the host projects are.
+      name: "publish",
+      use: {
+        ...devices["Desktop Chrome"],
+        viewport: { width: 1680, height: 1000 },
+      },
+      testMatch: PUBLISH_SPEC,
       workers: 1,
     },
   ],
