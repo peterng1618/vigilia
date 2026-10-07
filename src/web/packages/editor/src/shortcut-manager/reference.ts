@@ -58,7 +58,8 @@ const SHORTCUT_LABELS = {
   // `productShortcutIds()`, which is a projection of the table and so excludes it.
   "view.exit-group": uiCopy.panels.leave,
   // The sheet's own name, which is `uiCopy.shortcuts.reference` — the same word
-  // the sheet's `DialogTitle` prints, so the row and the surface cannot disagree.
+  // the sheet's heading prints and the `aria-label` on its Dialog carries, so the
+  // row and the surface cannot disagree.
   "help.shortcuts": uiCopy.shortcuts.reference,
 } as const satisfies Record<ProductShortcutId, string>;
 
