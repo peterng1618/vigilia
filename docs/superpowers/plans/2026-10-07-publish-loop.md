@@ -138,12 +138,23 @@ task's requirements implicitly include this section.
   update `THIRD-PARTY-NOTICES.md` and `docs/engineering/dependencies.md`. No hand-edits to
   `package-lock.json`; change the manifest and run `npm install`.
 - **No `.md` report files.** Findings are returned as text and filed as backlog rows.
-- **Every task's commit updates `STATUS.md`.** Replace its "Last completed change" with a 1–5
-  bullet summary of that commit — one item per line, never wrapped, and never appended to —
-  then run `npm run status:check` from `src/web/` and judge it by exit code. The file's own
-  bullet limits are the limit. This is a Global Constraint rather than a line in fifteen Files
-  blocks because a task that forgets it leaves the handoff stale, which is exactly what plan 5
-  did for six tasks.
+- **The controller updates `STATUS.md`; a dispatched task's commit does not.** Replace its
+  "Last completed change" with a 1–5 bullet summary of that commit — one item per line, never
+  wrapped, and never appended to — then run `npm run status:check` from `src/web/` and judge it
+  by exit code. The file's own bullet limits are the limit. This is a Global Constraint rather
+  than a line in fifteen Files blocks because a task that forgets it leaves the handoff stale,
+  which is exactly what plan 5 did for six tasks.
+
+  **Phases 1–3 put this on the executing agent, and Phase 4 moved it to the controller.** The
+  agent is right that a subagent can replace one section, but `STATUS.md` is 6/5/5/5 bullets
+  across *Active work*, *Last completed change*, *Next* and *Blockers*, and three of those four
+  are whole-plan judgements that a task-scoped agent cannot make: it cannot know what is next,
+  which rows are its own regressions, or what a later task now depends on. Two writers sharing
+  one bullet budget is how a handoff goes stale in a new way, and the effect the constraint
+  exists for — a fresh session continuing from `STATUS.md` alone — is kept by the controller
+  updating it at every task commit. Dispatch briefs therefore list `STATUS.md` as
+  do-not-touch, and an executor that finds this contradiction should follow its brief and say
+  so, which is what Task 4.3 did.
 
 ### Verification rules that cannot be guessed
 
