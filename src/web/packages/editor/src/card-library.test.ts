@@ -140,7 +140,9 @@ function copies(canvas: Canvas): FabricObject[] {
 
 describe("the card library", () => {
   it("offers one unit per card the starter itself draws", () => {
-    const scene = createNewFabricTheme().scene["objects"] as readonly ObjectJson[];
+    const scene = createNewFabricTheme().scene[
+      "objects"
+    ] as readonly ObjectJson[];
     const cards = scene.filter((object) => object["type"] === "Group");
     const objects: ObjectJson[] = [];
     const walk = (list: readonly ObjectJson[]): void => {
