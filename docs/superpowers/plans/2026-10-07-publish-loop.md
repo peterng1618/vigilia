@@ -171,6 +171,14 @@ task's requirements implicitly include this section.
   deliberate break.
 - **A new regression test must fail when the fix is disabled before it is trusted.** Every
   task that adds one says, in its own steps, how it was disabled and what failed.
+- **`createTestServer({ … })` in the host tasks is shorthand, not a helper.** There is no such
+  function and no task may add one: the block's *options* are what is prescribed, and the host
+  is built the way `server.test.ts` already builds one — a local wrapper around
+  `createHostServer` over a `mkdtemp` directory, closed and removed in a `finally`. Task 1.3
+  carries the fuller note; every host task is covered by this line. **A host with no seeded
+  theme has an empty library**, which matters wherever a test needs the library to contain
+  something — seed it through `PUT /api/themes/:id` with `themeBody(createValidPackage())`
+  rather than assuming a fixture.
 - **There is no `@testing-library/react` in this workspace, and no task may add one.** A DOM
   test mounts with `createRoot` + `act` from `react-dom/client` and queries the container
   directly, waiting with `vi.waitFor`; `publish-control.dom.test.tsx` is the working example to
@@ -2631,11 +2639,11 @@ describe("the published document", () => {
 });
 ```
 
-Add to `server.test.ts`, **in the file's own idiom** — there is no `createTestServer`, and no
-task may invent one. A host is `createHostServer({ registry: new ProviderRegistry([]), bundles:
-{ player: dir, editor: dir }, themeStore: createThemeStore(dir) })` over a `mkdtemp` directory,
-and a theme is seeded by publishing it through `PUT /api/themes/:id` with `themeBody(...)`.
-`createValidPackage()` already builds a valid envelope whose id is `living-room`. Each test
+Add to `server.test.ts`, **in the file's own idiom** (see Global Constraints — the host is
+built the way this file already builds one, and a `mkdtemp` host starts with an empty theme
+library). These two are written out in full rather than left as shorthand because the seeding
+is the part that matters: `createValidPackage()` builds a valid envelope whose id is
+`living-room`, and a theme only exists once `PUT /api/themes/:id` has written it. Each test
 closes the host and removes the directory in a `finally`.
 
 ```ts
