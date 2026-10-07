@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <!--
-      §151: mobile fullscreen and keeping the screen awake are browser-dependent.
+      Mobile fullscreen and keeping the screen awake are browser-dependent.
       viewport-fit=cover keeps the artboard edge-to-edge on notched phones; the
       fit/fill transform is applied by the renderer, never by CSS reflow (§57).
     -->
@@ -23,16 +23,31 @@
         background: #000;
         overflow: hidden;
       }
+      /* The display is one column: the chrome's two bands, and the artboard
+         between them. A strip in a band is in flow, so a diagnostic takes its
+         room *from* the artboard rather than over it. An empty band is zero
+         tall, so a display with nothing to say is a display unchanged. */
+      body {
+        display: flex;
+        flex-direction: column;
+      }
+      [data-vigilia-chrome] {
+        flex: 0 0 auto;
+      }
       /* Artboard host. The renderer applies one uniform transform to all
-         content (§51); this element must not impose its own layout. */
+         content (§51); this element must not impose its own layout, and it is
+         what is left of the column. */
       #artboard {
-        position: absolute;
-        inset: 0;
+        flex: 1 1 auto;
+        min-height: 0;
+        position: relative;
       }
     </style>
   </head>
   <body>
+    <div id="vigilia-chrome-top" data-vigilia-chrome="top"></div>
     <div id="artboard"></div>
+    <div id="vigilia-chrome-bottom" data-vigilia-chrome="bottom"></div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>
