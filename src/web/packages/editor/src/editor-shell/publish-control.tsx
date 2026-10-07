@@ -21,11 +21,16 @@ import { QrCode } from "./qr-symbol.js";
  * reach — and it would look right.
  *
  * This is the only place in the product that turns the LAN on, so it is the
- * place §145's warning has to be a sentence rather than a tooltip: the words
- * that open the network are shown before the button that opens it. A refusal
- * is shown in the host's own words for the same reason — the host is the only
- * thing that knows why a socket refused.
+ * place §145's warning has to be a sentence rather than a tooltip: it is on the
+ * surface whenever the choice is, and `aria-describedby` binds it to the button,
+ * because the button's own name offers to publish and a screen reader otherwise
+ * reaches the action having been told nothing about the cost. A refusal is shown
+ * in the host's own words for the same reason — the host is the only thing that
+ * knows why a socket refused.
  */
+/** The one control on this surface, so a fixed id is the whole address. */
+const WARNING_ID = "vigilia-publish-warning";
+
 export function PublishControl(): React.JSX.Element | null {
   const [hosting, setHosting] = useState<HostingAnswer | undefined>(undefined);
   const [session, setSession] = useState<HostingAnswer["session"]>(undefined);
@@ -110,6 +115,7 @@ export function PublishControl(): React.JSX.Element | null {
           type="button"
           className="editor-shell-publish-toggle"
           aria-pressed={open}
+          aria-describedby={WARNING_ID}
           disabled={pending !== undefined}
           onClick={() => {
             void toggle();
@@ -117,7 +123,7 @@ export function PublishControl(): React.JSX.Element | null {
         >
           {label}
         </button>
-        <span className="editor-shell-publish-warning">
+        <span id={WARNING_ID} className="editor-shell-publish-warning">
           {uiCopy.publish.warning}
         </span>
         {reason === undefined ? null : (

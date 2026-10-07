@@ -70,6 +70,16 @@ it("offers to serve the LAN, and says what that costs before it does", async () 
   const button = container.querySelector("button");
   expect(button?.textContent).toBe(uiCopy.publish.start);
   expect(button?.getAttribute("aria-pressed")).toBe("false");
+
+  // The button *offers* to publish, which says nothing about what that costs.
+  // Without this the warning is on the surface for a sighted reader only. The
+  // attribute is asserted before it is used as a selector, so dropping it fails
+  // here rather than as `'' is not a valid selector` from the query below.
+  const describedBy = button?.getAttribute("aria-describedby");
+  expect(describedBy).toBeTruthy();
+  expect(container.querySelector(`#${describedBy}`)?.textContent).toBe(
+    uiCopy.publish.warning,
+  );
 });
 
 it("shows the host's own reason when it refuses the interface", async () => {
