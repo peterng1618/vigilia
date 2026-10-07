@@ -1093,11 +1093,13 @@ existing is the address — worth settling when Task 2.3 renders the header.
 ### Task 2.2: The QR renderer, in the header's own ink
 
 **Files:**
-- Create: `src/web/packages/editor/src/editor-shell/qr-code.tsx`
-- Test: `src/web/packages/editor/src/editor-shell/qr-code.dom.test.tsx`
+- Create: `src/web/packages/editor/src/editor-shell/qr-symbol.tsx`
+- Test: `src/web/packages/editor/src/editor-shell/qr-symbol.dom.test.tsx`
+- Modify: `src/web/packages/editor/src/ui-copy.ts` — `publish.qrName`
 
 **Interfaces:**
-- Consumes: `qrMatrix` and `QUIET_ZONE_MODULES` from `./qr-code.js` (Task 1.2).
+- Consumes: `qrMatrix` and `QUIET_ZONE_MODULES` from `./qr-code.js` (Task 1.2) — that import
+  is the encoder and resolves correctly; it is the *renderer's own* basename that must differ.
 - Produces:
   ```tsx
   export function QrCode({ text, modulePitch }: {
@@ -1114,20 +1116,51 @@ dark ones, which many scanners refuse — and the editor that produced it looks 
 and paper are fixed: `#101418` on `#ffffff`. The accessible name is the URL, because a
 code a sighted reader can scan is a code a voice user must still be able to hear.
 
+**This file is `qr-symbol`, not `qr-code`, and the name is load-bearing.** Task 1.2's encoder
+already owns `qr-code.ts`; under `moduleResolution: bundler` — and in Vite — an import of
+`./qr-code.js` resolves to that `.ts`, so a `.tsx` sibling of the same basename is
+**unreachable**. It fails as a silent wrong-module resolution, not as an error, which is the
+worst way for it to fail. There are **zero** same-basename `.ts`/`.tsx` pairs anywhere under
+`packages/`; do not create the first one here.
+
 - [ ] **Step 1: Write the failing test**
 
-Create `src/web/packages/editor/src/editor-shell/qr-code.dom.test.tsx`:
+Create `src/web/packages/editor/src/editor-shell/qr-symbol.dom.test.tsx` — **`qr-symbol`, not
+`qr-code`**, for the reason in the Constraints below:
 
 ```tsx
 // @vitest-environment jsdom
-import { render } from "@testing-library/react";
-import { expect, it } from "vitest";
-import { QrCode } from "./qr-code.js";
+import { act } from "react";
+import { createRoot, type Root } from "react-dom/client";
+import { afterEach, expect, it } from "vitest";
+import { QrCode } from "./qr-symbol.js";
 
 const URL = `http://192.168.1.42:5227/?session=${"a".repeat(43)}`;
 
+let root: Root | undefined;
+let host: HTMLDivElement | undefined;
+
+afterEach(() => {
+  root?.unmount();
+  root = undefined;
+  host?.remove();
+  host = undefined;
+});
+
+/** The element the symbol is drawn into. `createRoot` rather than
+ *  `@testing-library/react`, which this workspace does not depend on. */
+function mount(text: string): HTMLDivElement {
+  const mounted = document.createElement("div");
+  host = mounted;
+  document.body.append(mounted);
+  const created = createRoot(mounted);
+  root = created;
+  act(() => created.render(<QrCode text={text} />));
+  return mounted;
+}
+
 it("draws the ink on the paper, whatever palette the shell is in", () => {
-  const { container } = render(<QrCode text={URL} />);
+  const container = mount(URL);
   const svg = container.querySelector("svg");
   expect(svg).not.toBeNull();
 
@@ -1141,19 +1174,22 @@ it("draws the ink on the paper, whatever palette the shell is in", () => {
 });
 
 it("names the URL it carries, so the code is not only a picture", () => {
-  const { container } = render(<QrCode text={URL} />);
+  const container = mount(URL);
   expect(container.querySelector("svg")?.getAttribute("aria-label")).toBe(`QR code: ${URL}`);
 });
 ```
 
+`@testing-library/react` is in **no** manifest and not in the lockfile, so do not reach for it —
+`createRoot` and `act` are what this repo's `.dom.test.tsx` files already use.
+
 - [ ] **Step 2: Run it to verify it fails**
 
-Run: `npx vitest run packages/editor/src/editor-shell/qr-code.dom.test.tsx`
-Expected: FAIL — `Failed to resolve import "./qr-code.js"`.
+Run: `npx vitest run packages/editor/src/editor-shell/qr-symbol.dom.test.tsx`
+Expected: FAIL — `Cannot find module './qr-symbol.js'`, the renderer not existing yet.
 
 - [ ] **Step 3: Write the minimal implementation**
 
-Create `src/web/packages/editor/src/editor-shell/qr-code.tsx`:
+Create `src/web/packages/editor/src/editor-shell/qr-symbol.tsx`:
 
 ```tsx
 import type { CSSProperties } from "react";
@@ -1235,22 +1271,37 @@ Add to `ui-copy.ts`'s top level (beside `saveState` at `:323`):
 
 - [ ] **Step 4: Run the tests to verify they pass**
 
-Run: `npx vitest run packages/editor/src/editor-shell/qr-code.dom.test.tsx`
+Run: `npx vitest run packages/editor/src/editor-shell/qr-symbol.dom.test.tsx`
 Expected: PASS, two tests.
 
 - [ ] **Step 5: Prove the tests can fail**
 
-Change `INK` to `"var(--vigilia-text, #101418)"`. Re-run Step 4. Expected: FAIL on the
-`not.toContain("var(--vigilia")` assertion. Restore it.
+Change `INK` to `"var(--vigilia-text, #101418)"`. Re-run Step 4. Expected: FAIL on the `toBe`
+that pins the fill — `expected 'var(--vigilia-text, #101418)' to be '#101418'`. The
+`not.toContain` line would fail too, but it is asserted second and never reached. Restore
+`#101418` and re-run to green.
 
 - [ ] **Step 6: Commit**
 
 ```bash
-git add src/web/packages/editor/src/editor-shell/qr-code.tsx \
-        src/web/packages/editor/src/editor-shell/qr-code.dom.test.tsx \
-        src/web/packages/editor/src/ui-copy.ts
+git add src/web/packages/editor/src/editor-shell/qr-symbol.tsx \
+        src/web/packages/editor/src/editor-shell/qr-symbol.dom.test.tsx \
+        src/web/packages/editor/src/ui-copy.ts STATUS.md
 git commit -m "feat(editor): draw the QR from the matrix, in ink the palettes cannot invert"
 ```
+
+**As executed — `7727493f`.** Four corrections, one of them blocking:
+
+- **The plan's filename was unusable.** `qr-code.tsx` cannot sit beside Task 1.2's `qr-code.ts`:
+  `./qr-code.js` resolves to the `.ts`, and the component import came back `undefined` rather
+  than erroring. The file landed as **`qr-symbol.tsx`** and its test as
+  `qr-symbol.dom.test.tsx`. **Any later task importing `QrCode` must use `./qr-symbol.js`.**
+  The repo has zero same-basename `.ts`/`.tsx` pairs; this would have been the first.
+- **`@testing-library/react` is in no manifest and not in the lockfile.** The test was rewritten
+  with the repo's own `createRoot`/`act` idiom, assertions unchanged.
+- **Step 2's expected message was stale** — `./qr-code.js` *does* resolve, so the failure was
+  the undefined component, not an unresolved import.
+- **Step 5 named the wrong assertion order**, as corrected above.
 
 ---
 
@@ -1279,9 +1330,17 @@ surface says §145's warning in words: *trusted networks only, never the interne
 
 Create `src/web/packages/editor/src/editor-shell/publish-control.dom.test.tsx`:
 
+**The harness is Task 2.2's, not `@testing-library/react`.** That package is in no manifest and
+not in the lockfile — Task 2.2 hit this and rewrote its test. Copy the `mount` helper from
+`src/web/packages/editor/src/editor-shell/qr-symbol.dom.test.tsx` (it uses `createRoot` from
+`react-dom/client` and `act` from `react`, with an `afterEach` that unmounts), and use
+**`vi.waitFor`** for the async assertions below, since `waitFor` came from the absent package.
+The imports that follow are the ones to end up with:
+
 ```tsx
 // @vitest-environment jsdom
-import { render, waitFor } from "@testing-library/react";
+import { act } from "react";
+import { createRoot, type Root } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
 import { uiCopy } from "../ui-copy.js";
 import { PublishControl } from "./publish-control.js";
@@ -1356,7 +1415,10 @@ Create `src/web/packages/editor/src/editor-shell/publish-control.tsx`:
 import { useEffect, useRef, useState } from "react";
 import { displayUrl, mintSession, readHosting } from "../hosting-client.js";
 import { uiCopy } from "../ui-copy.js";
-import { QrCode } from "./qr-code.js";
+// `qr-symbol`, not `qr-code`: `./qr-code.js` is Task 1.2's encoder, and a
+// same-basename `.tsx` beside it is unreachable under `moduleResolution:
+// bundler` — it resolves to the `.ts` and yields `undefined`, not an error.
+import { QrCode } from "./qr-symbol.js";
 
 /**
  * Where the phone should go, in the header, because that is where §6 puts it:
