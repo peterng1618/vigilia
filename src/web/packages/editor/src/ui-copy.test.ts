@@ -340,3 +340,16 @@ function copy(): string[] {
   walk(uiCopy);
   return out;
 }
+
+/**
+ * §6: the two readings answer different questions, and neither is the fallback
+ * for the other. The words have to say which question each one answers — an
+ * author building a theme for somebody else's machine reads this menu before
+ * they discover the theme names a sensor their PC does not have.
+ */
+it("names each reading for the question it answers", () => {
+  expect(uiCopy.view.preview).toBe("The theme's sensors");
+  expect(uiCopy.view.live).toBe("This machine");
+  expect(uiCopy.view.dataSource).toBe("Readings from");
+  expect(uiCopy.view.previewDetail).toBe("every sensor this theme names");
+});

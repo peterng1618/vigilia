@@ -30,6 +30,7 @@ import { DEFAULT_RUN_DISPLAY_MODE } from "./run-placeholder.js";
 import { loadStarterBackdrop } from "./starter-backdrop.js";
 import { createThemeLibraryClient } from "./theme-library-client.js";
 import { captureCanvas } from "./thumbnail-capture.js";
+import { uiCopy } from "./ui-copy.js";
 
 type EditorSource = ReturnType<typeof createEditorSource>;
 type ActiveEditor = {
@@ -108,7 +109,9 @@ async function start(): Promise<void> {
       mode,
       keys: semanticKeys(envelope),
       onStatus: (sourceStatus, detail) => {
-        status.textContent = `${mode === "preview" ? "Preview" : "Live"}: ${detail ?? sourceStatus}`;
+        const label =
+          mode === "preview" ? uiCopy.view.preview : uiCopy.view.live;
+        status.textContent = `${label}: ${detail ?? sourceStatus}`;
       },
     });
 

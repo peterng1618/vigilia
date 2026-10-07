@@ -5,6 +5,7 @@ import {
   type SampleSource,
 } from "@vigilia/renderer-core";
 import { createPreviewSource } from "./preview-source.js";
+import { uiCopy } from "./ui-copy.js";
 
 export function createEditorSource(options: {
   readonly mode: "preview" | "live";
@@ -12,7 +13,7 @@ export function createEditorSource(options: {
   readonly onStatus: (status: LiveSourceStatus, detail?: string) => void;
 }): { readonly source: SampleSource; close(): void } {
   if (options.mode === "preview") {
-    options.onStatus("live", "Preview data");
+    options.onStatus("live", uiCopy.view.previewDetail);
     return {
       ...createPreviewSource({ keys: options.keys, now: () => Date.now() }),
       close: () => {},

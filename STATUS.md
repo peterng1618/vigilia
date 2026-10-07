@@ -44,11 +44,11 @@ The loop, in order:
 
 ## Last completed change
 
-- **Plan 6, the publish loop, is written** — 15 tasks in 4 phases, against spec §6 (`:374-395`) and the acceptance bullet at `:546`, with a break-proof step and a commit step in every task.
-- **Its author found the switch is not where the spec says it is.** §6's "(plan 1, task 4)" cites `canvas-view-controls.tsx`, which does not exist; the switch still lives in the View menu (corrected here: it is at `shell-layout.tsx:316-327`), so plan 6 renames the copy where the switch actually is and files the move against `vg-161`.
-- **The QR decision is [`docs/decisions/0032`](docs/decisions/0032-a-qr-symbol-is-encoded-by-a-dependency.md)** — depend on `qr` (paulmillr), encode-only, zero dependencies, and render the matrix here; hand-writing was rejected because every wrong encoder renders perfectly and the only instrument that catches it is a camera CI does not have.
-- **Three claims in the plan were wrong, and the controller corrected them before dispatch.** `jsqr` is Apache-2.0, not MIT — the plan's own stop-and-file instruction would have halted Task 1.2 on a false alarm; `qr`'s `ecc` is `'medium'` and its `border` is measured in modules and **defaults to 2, not the standard's 4**, so passing it is load-bearing rather than decorative; and the notices row must record the declared expression `MIT OR Apache-2.0`.
-- **Verified rather than taken on report:** both licences from the registry, the five cited landmarks, the new route names against the host's existing guard chain, and one break-proof step per task.
+- **Plan 6's Task 1.1 landed: each reading is named for the question it answers.** `uiCopy.view.preview` is `The theme's sensors`, `live` is `This machine`, and `dataSource` is `Readings from` (`ui-copy.ts:327-341`).
+- **The two hardcoded words moved into the copy table, which owns every visible word.** `live-source.ts:15` carried the literal `"Preview data"` and `editor-main.ts:112` composed `Preview`/`Live` by hand; they now read `uiCopy.view.previewDetail` and `uiCopy.view.preview`/`live`.
+- **The new regression test was proved able to fail** — `previewDetail` put back to `"Preview data"` turned it red on that assertion, then restored; `ui-copy.test.ts` passes 6/6.
+- **Rendered proof, not a unit count:** the built editor's View menu reads `Readings from: The theme's sensors` in a real browser, and the status line reads `The theme's sensors: every sensor this theme names` once that reading is chosen (screenshot at `test-results/task-1-1/view-menu.png`).
+- **`shell-layout.dom.test.tsx`'s View-menu assertion needed no edit** — it compares against `uiCopy.view.*` symbolically, and moved with the strings; its 190 s single-test runtime is `vg-135`, pre-existing.
 
 ## Next
 

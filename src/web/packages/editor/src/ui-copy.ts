@@ -323,12 +323,17 @@ export const uiCopy = {
   saveState: { unsaved: "Unsaved changes" },
   /** The View menu. Each setting names itself and its current value; the values
    *  are listed here rather than composed from a number and a unit, so the menu
-   *  cannot say `1` and leave the reader to guess FPS from the neighbour. */
+   *  cannot say `1` and leave the reader to guess FPS from the neighbour.
+   *
+   *  The two readings answer different questions (§6): one answers for every
+   *  sensor the theme names, the other for what this machine reports. Neither is
+   *  the fallback for the other, so neither is called a preview of the other. */
   view: {
-    dataSource: "Data source",
+    dataSource: "Readings from",
     chartRefresh: "Chart refresh",
-    preview: "Preview",
-    live: "Live",
+    preview: "The theme's sensors",
+    live: "This machine",
+    previewDetail: "every sensor this theme names",
     valueRuns: "Value runs",
     tokens: "tokens",
     values: "values",
