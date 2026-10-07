@@ -1,7 +1,16 @@
 // @vitest-environment jsdom
 
+import type { FabricSceneHandle } from "@vigilia/scene-fabric";
 import { beforeEach, describe, expect, it } from "vitest";
-import { chromeBand, putStrip, removeStrip } from "./chrome.js";
+import {
+  chromeBand,
+  putStrip,
+  removeStrip,
+  showConnectionState,
+  showCropNotice,
+  showScaffoldBanner,
+} from "./chrome.js";
+import { uiCopy } from "./ui-copy.js";
 
 /**
  * The document `index.html` ships: the chrome's two bands around the artboard
@@ -125,5 +134,48 @@ describe("the display's chrome", () => {
 
     expect(stripsIn("bottom")).toHaveLength(0);
     expect(document.getElementById("vigilia-connection")).toBeNull();
+  });
+});
+
+describe("the strips the display is told by", () => {
+  beforeEach(skeleton);
+
+  it("marks every strip with one attribute, in the band for what it is", () => {
+    showConnectionState("reconnecting", 3);
+    showScaffoldBanner(18, "Edge cases");
+
+    expect(stripsIn("bottom").map((strip) => strip.id)).toEqual([
+      "vigilia-connection",
+      "vigilia-scaffold",
+    ]);
+    expect(document.querySelector("#vigilia-scaffold")?.textContent).toBe(
+      uiCopy.syntheticData("Edge cases", 18),
+    );
+  });
+
+  it("keeps the scaffold banner addressable, which it was not", () => {
+    showScaffoldBanner(18, "Edge cases");
+
+    expect(document.querySelector("[data-vigilia-scaffold]")).not.toBeNull();
+  });
+
+  it("clears the transport strip when the connection is live", () => {
+    showConnectionState("reconnecting", 3);
+    showConnectionState("live", 3);
+
+    expect(stripsIn("bottom")).toHaveLength(0);
+  });
+
+  it("says nothing at all when there is nothing to say", () => {
+    // The quiet display: a connection that is live raises no strip, and a theme
+    // whose objects are inside its artboard raises no crop strip.
+    showConnectionState("live", 3);
+    showCropNotice(
+      { canvas: { getObjects: () => [] } } as unknown as FabricSceneHandle,
+      { width: 1024, height: 768 },
+    );
+
+    expect(stripsIn("top")).toHaveLength(0);
+    expect(stripsIn("bottom")).toHaveLength(0);
   });
 });

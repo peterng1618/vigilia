@@ -1,3 +1,9 @@
+import type { LiveSourceStatus, SampleSource } from "@vigilia/renderer-core";
+import { type FabricSceneHandle, sceneBoxesOf } from "@vigilia/scene-fabric";
+import { type ArtboardSize, cropNoticeText } from "./artboard-crop.js";
+import { availabilityNoticeText } from "./availability-notice.js";
+import { uiCopy } from "./ui-copy.js";
+
 /**
  * The display's own chrome: what a reader is told, and the room it takes.
  *
@@ -68,6 +74,107 @@ export function putStrip(input: {
 
 export function removeStrip(id: string): void {
   document.getElementById(id)?.remove();
+}
+
+/**
+ * Names the sensors this display cannot read, and why. Section 97 requires an
+ * unavailable sensor to explain itself; without this the consumer sees empty
+ * charts and no reason for them.
+ *
+ * The leading `removeStrip` is what clears a stale notice when the reading
+ * comes back: the write below is skipped when there is nothing to say, so the
+ * removal cannot move inside it. The wording is `availabilityNoticeText`'s,
+ * which groups by cause so a reason shared by several sensors is said once.
+ */
+export function showAvailabilityNotice(
+  source: SampleSource,
+  semanticKeys: readonly string[],
+): void {
+  removeStrip("vigilia-availability");
+
+  const text = availabilityNoticeText(
+    semanticKeys.map((key) => source.latest(key)),
+  );
+  if (text === undefined) return;
+
+  const strip = putStrip({
+    side: "top",
+    id: "vigilia-availability",
+    text,
+    background: "#3a2a00",
+    color: "#ffce6a",
+  });
+  strip.dataset["vigiliaAvailability"] = "";
+}
+
+/**
+ * Says what this artboard does not contain, and that it is not being shown.
+ *
+ * The other strips here all describe the *transport* — a sensor with no
+ * reading, a host that went away. This one describes the *composition*, and it
+ * is told once and left: no reading arriving will bring a cropped panel back,
+ * and a strip that came and went would read as a fault the display recovered
+ * from. Only a re-saved theme can change it. Slate rather than the availability
+ * strip's amber, because §97 requires the two gaps not to read as the same kind
+ * of gap.
+ */
+export function showCropNotice(
+  handle: FabricSceneHandle,
+  artboard: ArtboardSize,
+): void {
+  removeStrip("vigilia-crop");
+
+  const text = cropNoticeText(
+    sceneBoxesOf(handle.canvas.getObjects()),
+    artboard,
+  );
+  if (text === undefined) return;
+
+  const strip = putStrip({
+    side: "top",
+    id: "vigilia-crop",
+    text,
+    background: "#1d2230",
+    color: "#c3cde3",
+  });
+  strip.dataset["vigiliaCrop"] = "";
+}
+
+/** Persistent disclosure that displayed values are synthetic. */
+export function showScaffoldBanner(keyCount: number, themeName: string): void {
+  const strip = putStrip({
+    side: "bottom",
+    id: "vigilia-scaffold",
+    text: uiCopy.syntheticData(themeName, keyCount),
+    background: "#4a2c00",
+    color: "#ffc14d",
+  });
+  strip.dataset["vigiliaScaffold"] = "";
+}
+
+/** Shows non-live connection states; a healthy live display needs no badge. */
+export function showConnectionState(
+  status: LiveSourceStatus,
+  keyCount: number,
+  detail?: string,
+): void {
+  if (status === "live") {
+    removeStrip("vigilia-connection");
+    return;
+  }
+
+  const refused = status === "refused";
+  putStrip({
+    side: "bottom",
+    id: "vigilia-connection",
+    text: refused
+      ? uiCopy.connection.refused(detail)
+      : status === "connecting"
+        ? uiCopy.connection.connecting(keyCount)
+        : uiCopy.connection.reconnecting,
+    background: refused ? "#4a0000" : "#003a4a",
+    color: refused ? "#ff9a9a" : "#7fdce9",
+  });
 }
 
 /**

@@ -9,7 +9,6 @@ import {
   type FabricPalette,
   type FabricThemeEnvelope,
   type LiveSourceHandle,
-  type LiveSourceStatus,
   type MeasurementSystem,
   missingFontFamilies,
   type PlanIssue,
@@ -23,19 +22,21 @@ import {
 } from "@vigilia/renderer-core";
 import {
   applyAuthoredText,
-  type FabricSceneHandle,
   loadFontAssets,
   mountFabricScene,
   refreshBoundText,
   reviveThemeEnvelope,
-  sceneBoxesOf,
   startChartRefresh,
   VigiliaChart,
 } from "@vigilia/scene-fabric";
 import { Group } from "fabric/es";
-import { type ArtboardSize, cropNoticeText } from "./artboard-crop.js";
-import { availabilityNoticeText } from "./availability-notice.js";
 import { boundSemanticKeys } from "./bound-keys.js";
+import {
+  showAvailabilityNotice,
+  showConnectionState,
+  showCropNotice,
+  showScaffoldBanner,
+} from "./chrome.js";
 import { envelopePlan } from "./hosted-plan.js";
 import { showLoadFailure } from "./load-failure.js";
 import { followPublished } from "./publish-follower.js";
@@ -46,7 +47,6 @@ import {
   loadHostedTheme,
   ThemeLoadError,
 } from "./theme-loader.js";
-import { uiCopy } from "./ui-copy.js";
 
 /** Display-only runtime. The phone renders; hardware acquisition stays on the host. */
 
@@ -485,105 +485,6 @@ function reportMissingFonts(plan: ScenePlan): void {
 }
 
 /**
- * Names the sensors this display cannot read, and why. Section 97 requires an
- * unavailable sensor to explain itself; without this the consumer sees empty
- * charts and no reason for them.
- *
- * Renders nothing when every key has a reading. The wording is
- * `availabilityNoticeText`'s, which groups by cause so a reason shared by
- * several sensors is said once rather than repeated in a row.
- */
-function showAvailabilityNotice(
-  source: SampleSource,
-  semanticKeys: readonly string[],
-): void {
-  const id = "vigilia-availability";
-  document.getElementById(id)?.remove();
-
-  const text = availabilityNoticeText(
-    semanticKeys.map((key) => source.latest(key)),
-  );
-
-  if (text === undefined) {
-    return;
-  }
-
-  const notice = document.createElement("div");
-  notice.id = id;
-  notice.dataset["vigiliaAvailability"] = "";
-  notice.textContent = text;
-  notice.style.cssText =
-    "padding:6px 12px;text-align:center;" +
-    "background:#3a2a00;color:#ffce6a;font:12px/1.4 ui-monospace,monospace;letter-spacing:0.02em";
-  topNotices().append(notice);
-}
-
-/**
- * The full-width strips along the display's top edge, stacked.
- *
- * A column rather than a `position: fixed` strip per notice: a theme can be
- * both short of a reading and holding objects the artboard does not contain,
- * and two fixed strips at `top: 0` would draw over one another. Section 97
- * wants those two gaps to look different, not to hide one another.
- */
-function topNotices(): HTMLElement {
-  const id = "vigilia-notices";
-  const existing = document.getElementById(id);
-  if (existing !== null) return existing;
-
-  const column = document.createElement("div");
-  column.id = id;
-  column.style.cssText =
-    "position:fixed;left:0;right:0;top:0;z-index:9;display:flex;flex-direction:column";
-  document.body.append(column);
-  return column;
-}
-
-/**
- * Says what this artboard does not contain, and that it is not being shown.
- *
- * The other notices here all describe the *transport* — a sensor with no
- * reading, a host that went away. This one describes the *composition*, and it
- * is told once and left: no reading arriving will bring a cropped panel back,
- * and a strip that came and went would read as a fault the display recovered
- * from. Only a re-saved theme can change it.
- */
-function showCropNotice(
-  handle: FabricSceneHandle,
-  artboard: ArtboardSize,
-): void {
-  document.getElementById("vigilia-crop")?.remove();
-
-  const text = cropNoticeText(
-    sceneBoxesOf(handle.canvas.getObjects()),
-    artboard,
-  );
-  if (text === undefined) return;
-
-  const notice = document.createElement("div");
-  notice.id = "vigilia-crop";
-  notice.dataset["vigiliaCrop"] = "";
-  notice.textContent = text;
-  // Slate rather than the amber of `showAvailabilityNotice`: a missing reading
-  // is this instant's news and a crop is a standing property of the theme, and
-  // §97 requires the two gaps not to read as the same kind of gap.
-  notice.style.cssText =
-    "padding:6px 12px;text-align:center;" +
-    "background:#1d2230;color:#c3cde3;font:12px/1.4 ui-monospace,monospace;letter-spacing:0.02em";
-  topNotices().append(notice);
-}
-
-/** Persistent disclosure that displayed values are synthetic. */
-function showScaffoldBanner(keyCount: number, themeName: string): void {
-  const banner = document.createElement("div");
-  banner.textContent = uiCopy.syntheticData(themeName, keyCount);
-  banner.style.cssText =
-    "position:fixed;left:0;right:0;bottom:0;z-index:9;padding:6px 12px;text-align:center;" +
-    "background:#4a2c00;color:#ffc14d;font:12px/1.4 ui-monospace,monospace;letter-spacing:0.04em";
-  document.body.append(banner);
-}
-
-/**
  * Declares the theme's language on the page that shows it.
  *
  * The author's Language setting says what the text on this display is written
@@ -609,41 +510,6 @@ function declareDocumentLanguage(themeLanguage: string | undefined): void {
   } catch {
     // A tag this runtime cannot parse leaves the page as it was, which is the
     // same place a document with no declared language starts.
-  }
-}
-
-/** Shows non-live connection states; a healthy live display needs no badge. */
-function showConnectionState(
-  status: LiveSourceStatus,
-  keyCount: number,
-  detail?: string,
-): void {
-  const id = "vigilia-connection";
-  const existing = document.getElementById(id);
-
-  if (status === "live") {
-    existing?.remove();
-    return;
-  }
-
-  const banner = existing ?? document.createElement("div");
-
-  banner.id = id;
-  banner.textContent =
-    status === "refused"
-      ? uiCopy.connection.refused(detail)
-      : status === "connecting"
-        ? uiCopy.connection.connecting(keyCount)
-        : uiCopy.connection.reconnecting;
-  banner.style.cssText =
-    "position:fixed;left:0;right:0;bottom:0;z-index:9;padding:6px 12px;text-align:center;" +
-    "font:12px/1.4 ui-monospace,monospace;letter-spacing:0.04em;" +
-    (status === "refused"
-      ? "background:#4a0000;color:#ff9a9a"
-      : "background:#003a4a;color:#7fdce9");
-
-  if (existing === null) {
-    document.body.append(banner);
   }
 }
 
