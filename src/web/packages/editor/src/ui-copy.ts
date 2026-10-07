@@ -437,12 +437,13 @@ export const uiCopy = {
     error: "Error",
     warning: "Warning",
   },
-  dock: { label: "Selected object actions" },
+  /** The one contextual toolbar on the canvas: the object actions the
+   *  selection can run and the arrange actions it is too small to enable. One
+   *  word for one surface; the buttons carry the action labels. */
+  canvasToolbar: { label: "Actions for the selection" },
   /** The canvas context menu's accessible name. Its entries reuse the action
    * registry's labels and `chartFamilies`, so no entry copy lives here. */
   canvasMenu: { label: "Canvas actions" },
-  /** The stage toolbar's accessible name; the eight buttons carry the labels. */
-  arrangeToolbar: { label: "Arrange the selection" },
   /** The stage camera's control: the display the stage looks through, and the
    *  two framings that are not a display. `label` names what the control is;
    *  the trigger appends the readout it shows, because an accessible name that

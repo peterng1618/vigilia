@@ -43,9 +43,7 @@ async function mount(bridge: EditorShellBridge | undefined): Promise<HTMLDivElem
   const created = createRoot(mounted);
   root = created;
   await act(async () =>
-    created.render(
-      <CanvasDock bridge={bridge} onVisibility={() => undefined} />,
-    ),
+    created.render(<CanvasDock bridge={bridge} />),
   );
   return mounted;
 }

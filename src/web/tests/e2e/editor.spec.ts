@@ -1422,7 +1422,7 @@ test.describe("Fabric editor route", () => {
     await expect(popup).toBeHidden();
     await page.emulateMedia({ reducedMotion: "no-preference" });
     await selectStarterChart(page);
-    const dock = page.locator('[aria-label="Selected object actions"]');
+    const dock = page.locator("[data-vigilia-canvas-toolbar]");
     await dock.getByRole("button", { name: "Duplicate" }).hover();
     const tooltip = page.locator(".editor-shell-tooltip");
     await expect(tooltip).toBeVisible();
@@ -3834,7 +3834,7 @@ test.describe("Fabric editor route", () => {
     // bottom and shows only the actions this selection can run.
     const centre = await sceneToClient(page, STARTER_WIDTH, 200, 545);
     await page.mouse.click(centre.x, centre.y);
-    const dock = page.locator('[aria-label="Selected object actions"]');
+    const dock = page.locator("[data-vigilia-canvas-toolbar]");
     await expect(dock).toHaveAttribute("data-visible", "true");
     await expect(dock.getByRole("button", { name: "Duplicate" })).toBeVisible();
     // **A group can be ungrouped**, and a click on a card selects the card. The
@@ -3847,7 +3847,7 @@ test.describe("Fabric editor route", () => {
 
     // The toolbar is the arrange surface: it stays visible for one object, so
     // the capture shows the discoverable-but-greyed state.
-    const toolbar = page.locator("[data-vigilia-arrange-toolbar]");
+    const toolbar = page.locator("[data-vigilia-canvas-toolbar]");
     await expect(toolbar).toBeVisible();
     await expect(
       toolbar.getByRole("button", { name: "Align left" }),
@@ -3866,11 +3866,16 @@ test.describe("Fabric editor route", () => {
     await expect(canvas).toBeVisible();
     await selectStarterChart(page);
 
-    // The dock is the other surface that filters the same registry, so its
-    // buttons are the expected entry set without restating the registry here.
+    // The one canvas toolbar is the other surface that renders the same
+    // registry, so its object-action buttons are the expected entry set without
+    // restating the registry here. Arrange shares the toolbar but the menu never
+    // offers it, so the merge's eight buttons are excluded by their own marker —
+    // `:not(...)` is what keeps this comparison about object actions alone.
     const dockNames = (
       await page
-        .locator('[aria-label="Selected object actions"] button')
+        .locator(
+          "[data-vigilia-canvas-toolbar] button:not([data-vigilia-arrange-action])",
+        )
         .evaluateAll((buttons) =>
           buttons.map((button) => button.getAttribute("aria-label") ?? ""),
         )
@@ -4189,10 +4194,14 @@ test.describe("Fabric editor route", () => {
     // An earlier revision of this step claimed "about 240px of pasteboard below
     // the artboard and 350px to its right"; there is no pasteboard to its right,
     // and a pick point that assumed one would land off-canvas and pass vacuously.
-    // So the press is placed by Y only, at the horizontal centre; X inside the
-    // canvas is free because every X is pasteboard in that band.
+    //
+    // The press is placed by Y in the pasteboard band, and by X **off the
+    // centre**: the canvas toolbar is bottom-centred and draws as soon as a
+    // document is open (its arrange half greys before a selection), so a press at
+    // the horizontal centre lands on the toolbar and the drag never reaches the
+    // canvas. Left of the toolbar's width the band is clear at every X.
     const [sx, sy] = [
-      canvasBox.x + canvasBox.width / 2,
+      canvasBox.x + 40,
       canvasBox.y + canvasBox.height - 16,
     ];
     // Both sides in client space: `rect` is canvas-relative, so its client

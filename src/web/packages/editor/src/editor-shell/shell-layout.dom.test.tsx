@@ -141,7 +141,7 @@ it("mounts the editorial palette, menus, pane bar, inspector and dock hosts", ()
   expect(root.querySelector("#stage")).not.toBeNull();
   expect(root.querySelector("#status")).not.toBeNull();
   expect(root.querySelector("#canvas-host")).not.toBeNull();
-  expect(root.querySelector(".editor-shell-dock")?.parentElement).toBe(
+  expect(root.querySelector(".editor-shell-dock")?.closest("#stage")).toBe(
     root.querySelector("#stage"),
   );
   // Four segments and the `+`. The rail's fourth entry went with the Settings
@@ -651,7 +651,11 @@ it("shows one pane at a time and routes the dock through the bridge", async () =
   // Ineligible actions must not be advertised: a single object cannot group,
   // and `canArrange` refuses one too.
   expect(dock.querySelector('[aria-label="Group"]')).toBeNull();
-  expect(dock.querySelector('[aria-label="Align left"]')).toBeNull();
+  // Arrange shares the one surface but greys rather than filters: a single
+  // object cannot align, so the control is drawn disabled rather than dropped.
+  expect(
+    dock.querySelector<HTMLButtonElement>('[aria-label="Align left"]')?.disabled,
+  ).toBe(true);
 
   duplicate?.click();
   expect(run).toHaveBeenCalledWith("duplicate");
@@ -659,18 +663,21 @@ it("shows one pane at a time and routes the dock through the bridge", async () =
   layout.destroy();
 });
 
-it("puts arrange on the canvas toolbar, disabled without a multi-selection", () => {
+it("draws one toolbar holding every canvas action the registry owns", () => {
   const root = document.createElement("div");
   const layout = createShellLayout(root);
-  const toolbar = root.querySelector("[data-vigilia-arrange-toolbar]");
+  const toolbar = root.querySelector("[data-vigilia-canvas-toolbar]");
   expect(toolbar).not.toBeNull();
-  // Derived, not a literal: `ARRANGE_ICONS` holds eight today, and a ninth
-  // added to the registry must fail here rather than be silently dropped by
-  // the toolbar. Same rule as Task 9's context menu.
-  expect(toolbar?.querySelectorAll("button")).toHaveLength(arrangeActions().length);
-  for (const button of toolbar?.querySelectorAll("button") ?? [])
-    expect(button.disabled).toBe(true);
-
+  // The other surface is gone, not hidden: a `null` here is the assertion that
+  // the second toolbar was deleted rather than left drawing somewhere.
+  expect(root.querySelector("[data-vigilia-arrange-toolbar]")).toBeNull();
+  // Derived, not a literal — a ninth arrange action added to `ARRANGE_ICONS`
+  // must fail here rather than be silently dropped.
+  for (const action of arrangeActions())
+    expect(
+      toolbar?.querySelector<HTMLButtonElement>(`[aria-label="${action.label}"]`)
+        ?.disabled,
+    ).toBe(true);
   layout.destroy();
 });
 
@@ -693,39 +700,12 @@ it("enables only the arrange actions a two-object selection can run", async () =
   layout.setBridge(bridge, undefined);
   await Promise.resolve();
 
-  const toolbar = root.querySelector("[data-vigilia-arrange-toolbar]");
+  const toolbar = root.querySelector("[data-vigilia-canvas-toolbar]");
   const button = (label: string) =>
     toolbar?.querySelector<HTMLButtonElement>(`[aria-label="${label}"]`);
   expect(button("Align left")?.disabled).toBe(false);
   expect(button("Distribute horizontally")?.disabled).toBe(true);
   expect(button("Distribute vertically")?.disabled).toBe(true);
-
-  layout.destroy();
-});
-
-it("keeps arrange off the dock even when a multi-selection is eligible", async () => {
-  const root = document.createElement("div");
-  const layout = createShellLayout(root);
-  // Arrange is the top toolbar's job; a two-object selection that `canArrange`
-  // would happily accept must still not put arrange buttons in the dock.
-  const bridge = bridgeStub({
-    snapshot: () => ({ selectedCount: 2, locked: false, activeKind: "group" }),
-    target: () => ({
-      kind: "group",
-      locked: false,
-      memberCount: 2,
-      isGroup: false,
-    }),
-    canArrange: () => true,
-  });
-
-  layout.setBridge(bridge, undefined);
-  await Promise.resolve();
-
-  const dock = layout.dock;
-  expect(dock.querySelector('[aria-label="Group"]')).not.toBeNull();
-  expect(dock.querySelector('[aria-label="Align left"]')).toBeNull();
-  expect(dock.querySelector('[aria-label="Distribute horizontally"]')).toBeNull();
 
   layout.destroy();
 });

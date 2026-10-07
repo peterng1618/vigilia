@@ -548,9 +548,7 @@ test("layer-panel object actions match canvas dock", async ({
   await expectActiveTarget(page);
   const panel = page.locator('[data-vigilia-panel="layers"]');
   const footer = panel.locator("[data-vigilia-layer-actions]");
-  const dock = page.getByRole("navigation", {
-    name: "Selected object actions",
-  });
+  const dock = page.locator("[data-vigilia-canvas-toolbar]");
   await expect(panel).toBeVisible();
   await expect(footer).toBeVisible();
   await expect(dock).toBeVisible();
@@ -576,8 +574,12 @@ test("layer-panel object actions match canvas dock", async ({
     buttons.map((button) => button.getAttribute("aria-label") ?? "").sort();
   const footerEntries = await footer.getByRole("button").evaluateAll(entries);
   expect(footerEntries).not.toEqual([]);
+  // The layer footer offers only object actions, so the merged toolbar's
+  // arrange half — which the footer never carries — is excluded by its marker.
   expect(footerEntries).toEqual(
-    await dock.getByRole("button").evaluateAll(entries),
+    await dock
+      .locator("button:not([data-vigilia-arrange-action])")
+      .evaluateAll(entries),
   );
 });
 

@@ -405,7 +405,7 @@ test.describe("authoring frosted glass through the inspector", () => {
     // History restores drop Fabric's selection, so the panel is clicked again
     // before the dock is asked to act — which is what an author does too.
     await selectAuthoringPanel(page);
-    const dock = page.locator('[aria-label="Selected object actions"]');
+    const dock = page.locator("[data-vigilia-canvas-toolbar]");
     await dock.getByRole("button", { name: "Duplicate" }).click();
     const after = (await saveEnvelope(page)) as {
       scene: { objects: ReadonlyArray<Record<string, unknown>> };
@@ -450,7 +450,7 @@ test.describe("authoring frosted glass through the inspector", () => {
     await page.keyboard.down("Shift");
     await page.mouse.click(neighbour.x, neighbour.y);
     await page.keyboard.up("Shift");
-    const dock = page.locator('[aria-label="Selected object actions"]');
+    const dock = page.locator("[data-vigilia-canvas-toolbar]");
     await dock.getByRole("button", { name: "Group", exact: true }).click();
 
     // The grouping itself is asserted, because "the blur still reads" would

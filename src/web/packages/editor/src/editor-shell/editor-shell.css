@@ -562,8 +562,7 @@ body,
 }
 .editor-shell-pane-bar button,
 .editor-shell-inspector button,
-.editor-shell-dock button,
-.editor-shell-arrange button {
+.editor-shell-dock button {
   color: var(--shell-text);
   border: 0;
   background: transparent;
@@ -601,8 +600,7 @@ body,
   font-weight: 600;
 }
 .editor-shell-pane-bar button:hover,
-.editor-shell-dock button:hover,
-.editor-shell-arrange button:hover {
+.editor-shell-dock button:hover {
   background: color-mix(in srgb, var(--shell-text) 10%, transparent);
 }
 .editor-shell-panel h2,
@@ -1235,6 +1233,10 @@ body,
   width: 100%;
   height: 100%;
 }
+/* One contextual toolbar, bottom-centre: the object actions the selection can
+   run, then the arrange actions it is too small to enable. It draws once a
+   document is open — the arrange half greys before a selection so it stays
+   discoverable, and the object half appears as it becomes eligible. */
 .editor-shell-dock {
   position: absolute;
   z-index: 3;
@@ -1252,36 +1254,15 @@ body,
 .editor-shell-dock button {
   width: 32px;
   height: 30px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 .editor-shell-dock button:disabled {
   opacity: 0.35;
   cursor: default;
 }
-/* Top-centre: the dock owns the bottom-centre and the zoom readout the
-   bottom-right, so this is the only unclaimed edge of the stage. */
-.editor-shell-arrange {
-  position: absolute;
-  z-index: 3;
-  top: 12px;
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  gap: 3px;
-  padding: 4px;
-  border-radius: 10px;
-}
-.editor-shell-arrange button {
-  width: 30px;
-  height: 28px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-}
-.editor-shell-arrange button:disabled {
-  opacity: 0.35;
-  cursor: default;
-}
-.editor-shell-arrange button:disabled:hover {
+.editor-shell-dock button:disabled:hover {
   background: transparent;
 }
 .editor-shell-zoom {

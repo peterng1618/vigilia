@@ -6,7 +6,6 @@ import { createRoot, type Root } from "react-dom/client";
 import { useSyncExternalStore } from "react";
 import { uiCopy } from "../ui-copy.js";
 import { insertGroups } from "../new-object-panel.js";
-import { arrangeActions, arrangeEligible } from "../object-actions.js";
 import type { ActiveKind, EditorShellBridge, EditorShellSnapshot } from "./bridge.js";
 import { CanvasContextMenu } from "./canvas-context-menu.js";
 import { CanvasDock } from "./canvas-dock.js";
@@ -124,40 +123,6 @@ class SelectionStore {
 
 function useSelection(store: SelectionStore): EditorShellSnapshot {
   return useSyncExternalStore(store.subscribe, store.get, store.get);
-}
-
-/** Arrange sits above the canvas because it needs a multi-selection, not one
- * object. It stays visible and greyed rather than being filtered out like the
- * dock's actions, so the controls are discoverable before a selection exists. */
-function ArrangeToolbar({
-  store,
-}: {
-  readonly store: SelectionStore;
-}): React.JSX.Element {
-  const selection = useSelection(store);
-  return (
-    <div
-      className="editor-shell-arrange editor-glass"
-      role="toolbar"
-      aria-label={uiCopy.arrangeToolbar.label}
-      data-vigilia-arrange-toolbar=""
-    >
-      {arrangeActions().map(({ id, icon: Icon, label }) => (
-        <button
-          key={id}
-          type="button"
-          aria-label={label}
-          title={label}
-          // Per action: distribute needs three objects where align needs two,
-          // and a button that is enabled but refused is a silent no-op.
-          disabled={!arrangeEligible(selection.selectedCount, selection.locked, id)}
-          onClick={() => store.bridge?.run(id)}
-        >
-          <Icon aria-hidden size={15} strokeWidth={1.75} />
-        </button>
-      ))}
-    </div>
-  );
 }
 
 function readStorage(): Storage | undefined {
@@ -372,7 +337,7 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
     document: element("vigiliaPanelHostDocument"),
     selection: element("vigiliaPanelHostSelection"),
     status: document.createElement("span"),
-    dock: document.createElement("nav"),
+    dock: document.createElement("div"),
   };
   hosts.canvas.id = "canvas-host";
 
@@ -516,17 +481,9 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
           </aside>
           <main id="stage" className="editor-shell-stage" aria-label="Editor canvas">
             <Host node={hosts.canvas} />
-            <ArrangeToolbar store={store} />
-            <nav
-              className="editor-shell-dock editor-glass"
-              aria-label={uiCopy.dock.label}
-              data-visible={false}
-              ref={(node) => {
-                if (node !== null && node.firstChild !== hosts.dock) {
-                  node.replaceChildren(hosts.dock);
-                }
-              }}
-            />
+            {/* The dock owns its own element and derives its own visibility;
+                this is only the slot that puts its mount point in the stage. */}
+            <Host node={hosts.dock} />
             {/* The store, not a local: a late-set bridge must reach the readout
                 the same way it reaches the inspector and menus. */}
             {store.bridge === undefined ? null : (
@@ -571,19 +528,22 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
   });
 
   const stage = root.querySelector<HTMLElement>("#stage");
-  const dock = root.querySelector<HTMLElement>(".editor-shell-dock");
-  if (stage === null || dock === null) {
+  if (stage === null) {
     throw new Error("Editor shell did not mount required hosts.");
   }
 
-  // The dock is a separate React root so canvas remounts never disturb it.
+  // The dock is a separate React root so canvas remounts never disturb it. It
+  // owns its own element now and derives `data-visible` from the bridge it is
+  // given, so nothing outside it writes that attribute; the render is flushed
+  // so the element exists before the caller reads `dock`.
   const dockRoot = createRoot(hosts.dock);
-  const setDockVisible = (visible: boolean): void => {
-    dock.dataset["visible"] = String(visible);
-  };
-  dockRoot.render(
-    <CanvasDock bridge={undefined} onVisibility={setDockVisible} />,
-  );
+  flushSync(() => {
+    dockRoot.render(<CanvasDock bridge={undefined} />);
+  });
+  const dock = root.querySelector<HTMLElement>(".editor-shell-dock");
+  if (dock === null) {
+    throw new Error("Editor shell did not mount the canvas toolbar.");
+  }
 
   return {
     hosts,
@@ -597,9 +557,7 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
       publish = nextPublish;
       store.set(nextBridge);
       flushSync(() => {
-        dockRoot.render(
-          <CanvasDock bridge={nextBridge} onVisibility={setDockVisible} />,
-        );
+        dockRoot.render(<CanvasDock bridge={nextBridge} />);
       });
     },
     destroy() {
