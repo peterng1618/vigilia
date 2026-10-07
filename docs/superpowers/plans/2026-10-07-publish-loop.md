@@ -3860,22 +3860,32 @@ test("an edit reaches the display while the editor has it open", async ({ page, 
   await display.goto(`${HOST}/`);
   await expect(display.locator("#artboard")).toBeVisible();
 
-  // The edit the display must follow: the artboard is a document fact, so it
-  // is read back from the document the display actually loaded, not from a colour.
-  await page.evaluate(() => {
-    const bridge = (window as unknown as { __vigilia?: { editor: { artboard: { set(w: number, h: number): void } } } }).__vigilia;
-    bridge?.editor.artboard.set(320, 240);
-  });
-  await expect(page.locator("[data-vigilia-publish]")).toContainText(/publishing|live/i);
-
-  // Mark the display's own window *after* the edit and wait for the mark to
-  // vanish: only a reload can clear it. A screenshot-length comparison was the
-  // obvious oracle and is not one — PNG length moves for fonts settling and a
-  // chart repaint, so it can go green with the follower switched off, which is
-  // the one thing this test exists to detect.
+  // Mark the display's own window *before* anything can reload it, and wait for
+  // the mark to vanish: only a reload can clear it. Marking after the edit is
+  // the same test with a race in it — the reload would land on the marked page
+  // and the poll would wait for a mark nothing is left to clear.
+  //
+  // A screenshot-length comparison was the obvious oracle and is not one: PNG
+  // length moves for fonts settling and a chart repaint, so it can go green with
+  // the follower switched off, which is the one thing this test exists to detect.
   await display.evaluate(() => {
     (window as unknown as { __beforePublish?: boolean }).__beforePublish = true;
   });
+
+  // The edit the display must follow, made the way an author makes it: typed
+  // into the artboard panel's width and height boxes. `rebuild-driver.ts:11-13`
+  // states the rule this test would otherwise break — every helper is a pointer
+  // or a keystroke against a delivered control, and the scene is read through
+  // the editor handle and never written. There is no `artboard.set` to call:
+  // `bridge.editor.artboard` is a getter (`display-switch.tsx:52`), so a
+  // `page.evaluate` here would be the finding rather than the technique.
+  //
+  // Both boxes commit on `change` (`controls/number-field.ts:161`), which is the
+  // event `fill` fires — no Enter, and no blur.
+  await page.locator("[data-vigilia-artboard-width]").fill("320");
+  await page.locator("[data-vigilia-artboard-height]").fill("240");
+  await expect(page.locator("[data-vigilia-publish]")).toContainText(/publishing|live/i);
+
   await expect
     .poll(
       async () =>
@@ -3904,20 +3914,29 @@ test("an edit reaches the display while the editor has it open", async ({ page, 
 });
 ```
 
-**Every handle in that snippet is written from memory and must be replaced with what the
-source actually exposes** — `window.__vigilia`, the `artboard.set` door, `#artboard`,
-`[data-vigilia-publish]` and `[data-vigilia-qr]`. `tests/e2e/rebuild-driver.ts` already
-reaches the editor's bridge, so it is where the real global is read from; the display's
-mount point and the header's controls are in `packages/player/src/main.ts` and
-`packages/editor/src/editor-shell/`. A selector that does not exist fails as a 30 s
-`toBeVisible` timeout, which reads like a product defect and is not one.
+**The handles in that snippet were read out of the source rather than remembered, and every
+one of them is real at `ffd62db6`** — `[data-vigilia-publish]` (`publish-control.tsx:117`),
+`[data-vigilia-qr]` (`qr-symbol.tsx:48`), `#artboard` (`player/index.html:35`),
+`[data-vigilia-artboard-width]` and `[data-vigilia-artboard-height]`
+(`artboard-panel.ts:155,160`). `tests/e2e/publish-header.spec.ts` already drives the first
+two, so copy its arrangement rather than inventing one.
 
-**Establish that an artboard change reaches the publisher before you trust the poll.** The
-editor has one document-change signal (`subscribeDocumentChange`, `session-facade.ts:36`)
-and the artboard is not obviously wired to it. If moving the artboard does not raise it,
-Task 4.4 never offers the document and this test times out for a reason that has nothing to
-do with the follower — report that as a finding, do not paper over it by publishing some
-other way.
+**What was not real, and is why this paragraph exists:** `window.__vigilia` is not a global
+this repo has, and the editor's diagnostic handle is `vigilia-fabric-editor-<N>` — N per
+instance, so a cached name reads as a live document after that document is gone.
+`rebuild-driver.ts:45-51` finds it by duck-typing `canvas` and `historyManager`, and reads
+through it only.
+
+**An artboard change does reach the publisher** — the earlier draft asked the executor to
+establish this. `display-switch.tsx:47` records that `setArtboard` refits and a refit
+notifies, so it is a document fact on the one signal the editor has
+(`subscribeDocumentChange`, `session-facade.ts:36`). It does not need proving again.
+
+**The pair commits one size and carries the other's last accepted value, which starts at
+zero** (`artboard-panel.ts:146-172`, with `min: 1`). Filling width first therefore submits
+`(320, 0)` before the height box is touched. Assert the **final** artboard, as this test
+does, and check where that intermediate write went — if it reaches the host as a real
+artboard, that is a finding to report, not a race to hide behind a longer timeout.
 
 Add a second test in the same file, which is Review Focus 5's pin — **the author leaving is
 a change the display sees**:
