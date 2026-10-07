@@ -1,3 +1,4 @@
+import type { WidgetProvenance } from "@vigilia/renderer-core";
 import {
   charSpacingPx,
   frost,
@@ -92,9 +93,16 @@ export function frostedCard(
  * The panel's box is the group's box: the frosted rectangle *is* the card, and
  * reading it from there is what keeps the two from being stated twice and
  * drifting apart.
+ *
+ * The card's own identity is stamped on the group and nowhere else: the unit's
+ * word arrives as a parameter so its one owner stays `uiCopy.cardLibrary`, and
+ * `provenance` is the document's own authored key for it — the same pair a copy
+ * carries (`card-library.ts` `instantiateCard`), written where the card's other
+ * authored state is written.
  */
 export function cardGroup(
   id: string,
+  unit: string,
   panel: ObjectJson,
   parts: readonly ObjectJson[],
 ): ObjectJson {
@@ -103,10 +111,12 @@ export function cardGroup(
   const width = authored(panel, "width");
   const height = authored(panel, "height");
   const centre = { x: left + width / 2, y: top + height / 2 };
+  const provenance: WidgetProvenance = { widgetId: id, widgetName: unit };
   return {
     type: "Group",
     id,
     name: id,
+    provenance,
     left,
     top,
     width,

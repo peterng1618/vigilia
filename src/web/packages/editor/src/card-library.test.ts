@@ -140,10 +140,16 @@ function copies(canvas: Canvas): FabricObject[] {
 
 describe("the card library", () => {
   it("offers one unit per card the starter itself draws", () => {
-    const groups = createNewFabricTheme().scene["objects"] as readonly {
-      type: string;
-      id: string;
-    }[];
+    const scene = createNewFabricTheme().scene["objects"] as readonly ObjectJson[];
+    const cards = scene.filter((object) => object["type"] === "Group");
+    const objects: ObjectJson[] = [];
+    const walk = (list: readonly ObjectJson[]): void => {
+      for (const object of list) {
+        objects.push(object);
+        walk(partsOf(object));
+      }
+    };
+    walk(scene);
 
     expect(CARD_LIBRARY.map((entry) => entry.id)).toEqual([
       "group-time-card",
@@ -157,11 +163,29 @@ describe("the card library", () => {
     ]);
     for (const entry of CARD_LIBRARY) {
       expect(
-        groups.some(
-          (object) => object.type === "Group" && object.id === entry.id,
-        ),
+        cards.some((object) => object["id"] === entry.id),
         `${entry.id} is a card in the starter`,
       ).toBe(true);
+    }
+
+    // The pair the library offers is the pair the starter's own card carries: the
+    // row on the reference composition and the row a copy makes are the same fact.
+    for (const card of cards) {
+      const id = String(card["id"]);
+      const unit = CARD_LIBRARY.find((entry) => entry.id === id);
+      expect(card["provenance"], `${id} carries no stamp`).toEqual({
+        widgetId: unit?.id,
+        widgetName: unit?.label,
+      });
+    }
+    // And nothing else in the starter claims to be a unit — a loose label, a part
+    // inside a card, and the rest of the composition all read as themselves.
+    for (const object of objects) {
+      if (object["type"] === "Group") continue;
+      expect(
+        object["provenance"],
+        `${String(object["id"])} is not a unit`,
+      ).toBeUndefined();
     }
   });
 
