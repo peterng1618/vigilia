@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import { expect, type Page, test } from "@playwright/test";
 import { writeThemePackage } from "@vigilia/theme-package";
+import { captureVisualReview } from "./editor-canvas.js";
 import { openPane } from "./editor-pane-bar.js";
 
 /**
@@ -34,6 +35,17 @@ import { openPane } from "./editor-pane-bar.js";
  * boxes, the way an author does; `rebuild-driver.ts:10-14` states the rule, and
  * a `page.evaluate` writing the scene would be a finding about the surface
  * rather than a technique for this test.
+ *
+ * **The picture this writes is the proof, and it is only a proof because the
+ * artboard is painted.** The published frame is 320x240 against a stored
+ * 640x360, so a 4:3 light band on the dark page is the one thing in the file
+ * that shows the display followed the editor. `vg-176` made that band absent:
+ * the hosted display's `envelopePlan` (`player/src/main.ts:396-408`) passes the
+ * artboard paint through unresolved, so a palette reference paints nothing and
+ * the page reads black. A capture taken before that row was fixed is a black
+ * rectangle proving nothing either way — which is what this task first
+ * delivered, and why the capture is registered rather than written to
+ * `test-results/`, which is gitignored and persists nothing.
  */
 
 /** A port no other agent and no Playwright runner owns. */
@@ -239,7 +251,7 @@ test.describe("the publish loop", () => {
   test("an edit reaches the display while the editor has it open", async ({
     page,
     context,
-  }) => {
+  }, testInfo) => {
     test.setTimeout(180_000);
 
     await page.goto(`${HOST}/editor/`);
@@ -304,7 +316,7 @@ test.describe("the publish loop", () => {
       .poll(() => readPublishedArtboard(display), { timeout: 15_000 })
       .toMatchObject({ width: 320, height: 240 });
 
-    await display.screenshot({ path: "test-results/publish/display-390.png" });
+    await captureVisualReview(display, testInfo, "publish-loop-live");
     await display.close();
   });
 

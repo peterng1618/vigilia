@@ -15,7 +15,8 @@ controlled clock. After push, prefer the **Visual evidence** Actions artifact.
 
 Pick the project the capture's spec lives in: `desktop-chromium` for the
 preview-server captures (editor and player), `desktop-host` for the ones that
-drive the real host (the settings page).
+drive the real host (the settings page), and `publish` for the ones that start
+their own host on their own port to prove the publish loop.
 
 ## Editor visual-action checklist
 
@@ -66,6 +67,7 @@ result, not merely a mounted editor.
 | Settings scope | Choose a theme whose bindings need a device | `settings-theme-question` / `captures the question a theme raises` |
 | Theme library | Save the starter to the library and read the picture the host stored | `host-theme-thumbnail` / `stores the picture the editor captured` |
 | Player | Play the saved reference composition at the reference's own size | `player-reference` / `plays the reference composition on the real host` |
+| Player | The phone showing the theme the editor has open, after an edit reaches it | `publish-loop-live` / `an edit reaches the display` |
 
 The capture is the whole page, so the Devices and Display sections (including
 the units choice) are evidence from the same file.
@@ -74,4 +76,5 @@ Mechanics ported from the retired editor fork need captures only when Vigilia
 changes their rendered outcome. Keep this table aligned with the specs that
 carry the captures: `src/web/tests/e2e/editor.spec.ts`,
 `reference-theme.spec.ts`, `glass-authoring.spec.ts`,
-`inspector-sections.spec.ts` and `composition-panel.spec.ts`.
+`inspector-sections.spec.ts`, `composition-panel.spec.ts` and
+`publish-loop.spec.ts`.
