@@ -502,7 +502,9 @@ describe("qrMatrix", () => {
 - [ ] **Step 2: Run it to verify it fails**
 
 Run: `npx vitest run packages/editor/src/editor-shell/qr-code.test.ts`
-Expected: FAIL — `Failed to resolve import "./qr-code.js"`.
+Expected: FAIL with **`Cannot find package 'jsqr'`** — the test's first import is `jsqr`, and
+`qr-code.js` does not exist yet either, so which one Vite reports first depends on the
+resolver. Either message is the dependency being absent, which is the point of this step.
 
 - [ ] **Step 3: Add the dependencies**
 
@@ -585,9 +587,23 @@ this module returns always carries the quiet zone it promises — and say so in 
 
 - [ ] **Step 6: Prove the test can fail**
 
-Break the encoder deliberately — in the `rasterise` helper's `dark` test, replace `=== true`
-with `=== false` (inverting the paper and the ink). Re-run Step 5.
-Expected: FAIL on the decode test with `null`, not a wrong string. Restore it.
+In the `rasterise` helper, replace the `dark` computation with a constant so every module is
+drawn as paper:
+
+```ts
+const dark = false;
+```
+
+Re-run Step 5. Expected: **FAIL** on the decode test — `AssertionError: expected undefined to
+be 'http://…'`, because `jsQR` returned `null` and `?.data` is undefined. Restore the line and
+re-run to green.
+
+**Do not use the inversion break, and do not "fix" the tests when it passes.** Replacing
+`=== true` with `=== false` — inverting ink and paper — was measured to leave **all three tests
+passing**, because `jsqr` 1.4.0 defaults to `inversionAttempts: "attemptBoth"` and decodes an
+inverted symbol perfectly well. A break that cannot fail proves nothing about the test, and
+inverting the rasteriser is the obvious thing to reach for; `As executed` at the end of this
+task records the measurement.
 
 - [ ] **Step 7: Update the licence records**
 
@@ -614,6 +630,24 @@ git add src/web/packages/editor/src/editor-shell/qr-code.ts \
         src/web/package-lock.json THIRD-PARTY-NOTICES.md docs/engineering/dependencies.md
 git commit -m "feat(editor): encode a QR symbol from a dependency, and prove it decodes"
 ```
+
+**As executed — `31eb2ff7`.** Four things worth carrying forward:
+
+- **Step 6's break was wrong, and the replacement was measured twice** — once by the task and
+  once independently by the controller. `=== true` → `=== false` leaves **3 passed**, because
+  `jsqr` defaults to `inversionAttempts: "attemptBoth"`; `const dark = false` fails with
+  `AssertionError: expected undefined`. The step above now prescribes the second.
+- **Step 2's expected message is `Cannot find package 'jsqr'`**, not the `./qr-code.js` import —
+  the test's first import is the dependency, so that is what the resolver reports first.
+- **Step 8's `git add` list omits `STATUS.md`**, which the Global Constraints require in every
+  task's commit. The executed commit carries it.
+- **`npm install` rewrites the `—` escapes in `src/web/package.json`'s `//devDependencies`
+  comment.** This task restored them so the diff stayed the single `jsqr` line. Any later task
+  that installs should do the same, or its commit carries unrelated churn.
+
+Licences were read off the installed metadata rather than taken from this plan:
+`qr 0.7.2 (MIT OR Apache-2.0) {}` and `jsqr 1.4.0 Apache-2.0 {}` — both zero-dependency, both
+as written above.
 
 ---
 
