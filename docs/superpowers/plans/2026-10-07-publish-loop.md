@@ -672,9 +672,14 @@ as written above.
     readonly port: number | null;
   }
   ```
+  ```ts
+  /** A paired phone as the header may see it: `DisplaySession` **minus its
+   *  credential**. `list()` returns whole sessions, so the route maps. */
+  export type HostingPeer = Omit<DisplaySession, "token">;
+  ```
   `HostServerOptions.hosting?: () => HostingState`, defaulting to
   `{ lan: false, address: null, port: null }`; and the route
-  `GET /api/hosting` → `HostingState & { readonly sessions: readonly DisplaySession[] }`.
+  `GET /api/hosting` → `HostingState & { readonly sessions: readonly HostingPeer[] }`.
 
 **Constraints.** The server **does not introspect its own binding**: `server.address()` is
 `null` for a server that is not listening, which is every unit test in `server.test.ts`, so
@@ -682,6 +687,11 @@ the state is supplied by the owner that does the binding (`main.ts` today, the b
 owner in Phase 3). Loopback-only, like every other admin route — the editor is the only
 caller and the editor is loopback-only too. Session tokens are **never** in the response:
 the header mints its own (Task 2.1).
+**This needs a map, not a forward.** `SessionStore.list()` returns `DisplaySession[]`, and
+`DisplaySession` carries `token` (`session/pairing.ts:6-11`) — so returning `list()` unchanged
+puts a live credential in the body. Strip it: `HostingPeer` above is `DisplaySession` without
+`token`, and the step's test mints a session so the two implementations are distinguishable.
+An assertion over an empty list passes for both.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -689,9 +699,10 @@ Add to `src/web/packages/host/src/server.test.ts`, beside the other route tests:
 
 ```ts
 it("answers where a phone should go, and nothing else", async () => {
+  const store = createSessionStore({ randomToken: () => "t".repeat(43) });
   const host = createTestServer({
     hosting: () => ({ lan: true, address: "192.168.1.42", port: 5227 }),
-    sessions: createSessionStore({ randomToken: () => "t".repeat(43) }),
+    sessions: store,
   });
 
   const answered = await request(host.server, "GET", "/api/hosting");
@@ -703,11 +714,18 @@ it("answers where a phone should go, and nothing else", async () => {
     sessions: [],
   });
 
-  // A token is a credential. It is in this response only once one is minted,
-  // and it is minted by a POST that this route does not make.
-  (host.server as unknown as { __mint?: () => void }).__mint?.();
+  // A token is a credential, and `DisplaySession` carries one — so a route that
+  // forwards `list()` unchanged hands it back. An assertion over an empty list
+  // passes for that implementation and for a redacting one alike, which is why
+  // this mints: without a session present, the test cannot tell them apart.
+  store.create("Kitchen phone");
   const withOne = await request(host.server, "GET", "/api/hosting");
-  expect((withOne.json() as { sessions: unknown[] }).sessions).toEqual([]);
+  const peers = (
+    withOne.json() as { sessions: readonly Record<string, unknown>[] }
+  ).sessions;
+  expect(peers).toHaveLength(1);
+  expect(peers[0]).not.toHaveProperty("token");
+  expect(JSON.stringify(peers)).not.toContain("t".repeat(43));
 });
 
 it("keeps hosting settings on this PC", async () => {
