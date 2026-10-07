@@ -2961,8 +2961,17 @@ git commit -m "feat(host): hold the document an author is publishing"
 ### Task 4.2: A display prefers it to the stored theme
 
 **Files:**
-- Modify: `src/web/packages/host/src/server.ts` — `/api/themes/:id/document`, `/` routing, the revision route
+- Modify: `src/web/packages/host/src/server.ts` — **add** `/api/themes/:id/document`, change
+  `/` routing, add the revision route
 - Test: `src/web/packages/host/src/server.test.ts`
+
+**`/api/themes/:id/document` does not exist today** — this task creates it. The per-theme
+routes are regex matches rather than a router (`server.ts:893`, `:938`), so the new one is
+`/^\/api\/themes\/([^/]+)\/document$/` with `decodeURIComponent(match[1] ?? "")` and the same
+`isValidThemeId` guard the two beside it use; it goes next to them, not in a new block. The
+player already builds its asset base from the theme id — `/api/themes/${theme.id}/`
+(`packages/player/src/main.ts:297`) — which is what makes an overlay keyed on that id reach
+the right folder.
 
 **Interfaces:**
 - Consumes: `PublishedStore` (Task 4.1).
