@@ -409,6 +409,18 @@ npx vitest run packages/editor/src/editor-shell/shell-layout.dom.test.tsx packag
 
 - [ ] **Step 5: Commit.** `refactor(editor): one insert mapping, four surfaces`
 
+**As executed** (`b0e2eb73`, verified by the controller: 25/25 on the two files; breaking the
+popover's group list with `.slice(0, 2)` reddens the parity line and two others; typecheck and
+biome exit 0). One correction, and it changes what this task can claim:
+
+- **Step 2's red cannot happen, and its prediction was wrong.** The extended parity assertion
+  passes *before* Step 3, because Task 1's popover already reads `insertGroups()`. This task's
+  refactor is behaviour-preserving, so no runtime assertion is red for it. **The consequence is
+  that the test cannot pin the single-mapping claim.** Its discriminating power is against a
+  *surface that drifts* — the break above proves that — and not against duplication: reverting to
+  two equivalent mappings would still pass it. What pins one mapping is the source, where
+  `insertItem` has exactly one definition; a reader looking for the guarantee should look there.
+
 ### Task 3: The chooser in a real browser, on the rebuilt bundle
 
 **Files:**
