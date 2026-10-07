@@ -812,6 +812,10 @@ body,
   left: 50%;
   z-index: 71;
   transform: translate(-50%, -50%);
+  /* The scroll cap §7's sheet rides on: sized so the whole table clears a 720px
+     viewport without scrolling — the nineteenth row Task 3.3 adds lands inside
+     it rather than moving it — and scrolls rather than running off a shorter
+     one. */
   max-height: min(80vh, 720px);
   overflow-y: auto;
   min-width: 340px;
@@ -822,6 +826,64 @@ body,
   background: var(--shell-surface);
   color: var(--shell-text);
   box-shadow: 0 18px 44px #0006;
+}
+
+/* The sheet's own type, on the shell's text tokens so it recolours with the
+   palette rather than with any authored theme. The lead names the surface the
+   same way the panel headings do; each group is a heading over a two-column
+   table, the action on the left and its chord pushed to the right edge as the
+   menu rows already read. */
+.editor-shell-dialog-lead {
+  margin: 0 0 12px;
+  font-family: var(--shell-display);
+  font-size: 13px;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: var(--shell-text);
+}
+.editor-shell-dialog section + section {
+  margin-top: 14px;
+}
+.editor-shell-dialog h3 {
+  margin: 0 0 4px;
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--shell-muted);
+}
+.editor-shell-dialog dl {
+  margin: 0;
+}
+.editor-shell-dialog dl > div {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 3px 0;
+}
+.editor-shell-dialog dt {
+  color: var(--shell-text);
+}
+.editor-shell-dialog dd {
+  margin: 0;
+}
+.editor-shell-dialog kbd {
+  font-family: ui-monospace, monospace;
+  font-size: 11px;
+  color: var(--shell-muted);
+}
+.editor-shell-dialog > button {
+  margin-top: 18px;
+  padding: 6px 12px;
+  border: 1px solid var(--shell-edge);
+  border-radius: 6px;
+  background: var(--vigilia-control-bg);
+  color: var(--shell-text);
+  cursor: pointer;
+}
+.editor-shell-dialog > button:hover {
+  border-color: var(--shell-accent);
+  color: var(--shell-accent);
 }
 
 /* Opt-in density primitives: a panel chooses a dense row rather than the shell
