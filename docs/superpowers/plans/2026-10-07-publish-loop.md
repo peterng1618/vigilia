@@ -138,6 +138,12 @@ task's requirements implicitly include this section.
   update `THIRD-PARTY-NOTICES.md` and `docs/engineering/dependencies.md`. No hand-edits to
   `package-lock.json`; change the manifest and run `npm install`.
 - **No `.md` report files.** Findings are returned as text and filed as backlog rows.
+- **Every task's commit updates `STATUS.md`.** Replace its "Last completed change" with a 1–5
+  bullet summary of that commit — one item per line, never wrapped, and never appended to —
+  then run `npm run status:check` from `src/web/` and judge it by exit code. The file's own
+  bullet limits are the limit. This is a Global Constraint rather than a line in fifteen Files
+  blocks because a task that forgets it leaves the handoff stale, which is exactly what plan 5
+  did for six tasks.
 
 ### Verification rules that cannot be guessed
 
