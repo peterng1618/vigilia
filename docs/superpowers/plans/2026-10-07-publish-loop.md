@@ -752,9 +752,11 @@ it("answers loopback with nothing hosted when it was told nothing", async () => 
 });
 ```
 
-`createTestServer` is this file's existing helper — reuse it; if its options type does not
-yet carry `hosting`, pass it through in the same shape the helper already forwards
-`sessions` and `devices` (read the helper at the top of the file before editing it).
+**There is no `createTestServer` helper in `server.test.ts`.** The file builds each server
+with its own local wrapper around `createHostServer` and a temporary bundle and theme
+directory per test. Read the top of the file and follow that idiom — do not introduce a
+shared helper for this one task. The call shape above shows the options it must forward;
+nothing else about it is prescribed.
 
 - [ ] **Step 2: Run it to verify it fails**
 
@@ -811,7 +813,11 @@ And add the route immediately after the `/api/health` block (`:627-637`):
 
       sendJson(response, 200, {
         ...hosting(),
-        sessions: sessions?.list() ?? [],
+        // `DisplaySession` carries `token`, so `list()` is never forwarded:
+        // the header learns that a phone is paired, never the credential.
+        sessions: (sessions?.list() ?? []).map(
+          ({ token: _credential, ...peer }) => peer,
+        ),
       });
       return;
     }
@@ -844,11 +850,11 @@ Delete the `isLoopbackRemote` guard and re-run Step 4. Expected: FAIL on the
 physical adapter and a virtual one, so a laptop with a Hyper-V switch, a WSL adapter or a
 VPN can be handed an address no phone can reach, and nothing on the machine shows it. The
 fix needs a decision this task does not own (which interface wins, and what to do when
-there are three plausible ones), so it is **filed, not fixed**: put
-`Discovered, not fixed: vg-<id> — lanAddress() returns the first non-internal IPv4 with no
-preference for a physical adapter` in the step-7 commit message and materialise the row
-from the trailer, with `detail` naming `src/web/packages/host/src/cli/net.ts:90-100` and
-the reproduction (a machine with a virtual adapter).
+there are three plausible ones), so it is **filed, not fixed** — already done, as **`vg-171`**,
+which Task 1.3 left as a `Discovered, not fixed:` trailer because its dispatch forbade
+writing the register, and the controller materialised from that trailer. The row's `detail`
+names `src/web/packages/host/src/cli/net.ts:90-100` and the reproduction (a machine with a
+virtual adapter). Nothing further is required here.
 
 - [ ] **Step 7: Commit**
 
@@ -1952,7 +1958,15 @@ from Task 1.3:
       }
 
       await saved(body.lan);
-      sendJson(response, 200, { ...hosting(), sessions: sessions?.list() ?? [] });
+      // The same redaction Task 1.3's GET makes, for the same reason: a
+      // `DisplaySession` carries `token`, and this route answers about hosting,
+      // not about credentials.
+      sendJson(response, 200, {
+        ...hosting(),
+        sessions: (sessions?.list() ?? []).map(
+          ({ token: _credential, ...peer }) => peer,
+        ),
+      });
       return;
     }
 ```
