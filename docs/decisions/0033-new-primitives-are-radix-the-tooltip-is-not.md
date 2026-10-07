@@ -214,3 +214,13 @@ Three reasons, and the third is the one that decided it:
 3. **Option B makes plan 7 a plan about two subjects.** §8 already sequenced the migration
    into its own phase, and the sequencing table's ordering principle is what becomes
    *visible*. A primitive swap is invisible, so it is the phase whose subject is chrome.
+
+**Rung 7 — build, recorded here rather than under its own heading, because the decision
+above *is* its result.** The rung exists to test building it in-house: the repo already
+hand-rolls three native `<dialog>`s via `showModal()`, so a fourth would add no dependency
+and cost nothing structurally new. It is rejected for item 1's reason — §8's table (`:431`)
+names this surface as one Radix serves, and a fourth native dialog added now is one plan 9
+has to migrate later, which is the migration-done-twice cost §8 warns about. What building
+in-house would have had to supply and this does not: a controlled-open React API over
+`showModal()`'s focus containment, top layer, `::backdrop` and Escape — Rung 3's finding,
+and the whole of the gap between the native element and what §7's `?` sheet needs.
