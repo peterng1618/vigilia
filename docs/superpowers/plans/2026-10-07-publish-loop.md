@@ -2724,16 +2724,23 @@ address, the code and the expiry.
 
 In `main.ts`, hand `createHostServer` a binding whose `setLan` answers success without moving
 the socket — `async () => ({ ok: true })` — so `PUT` answers 200 while `state()` stays where it
-was. Rebuild the host, re-run Step 2. Expected: **FAIL on the `code` assertion after the
-click**, because the host says it moved and keeps reporting `lan: false`. Restore and rebuild.
+was. Rebuild the host, re-run Step 2. Expected: **FAIL, first on
+`toHaveAttribute("aria-pressed", "true")` after the click**, which receives `"false"` and
+retries until it gives up, and **then** on the `code` locator finding nothing in the second
+case. Restore and rebuild.
 
-**What the break does not do, and the plan said it would.** It does not fail on
-`aria-pressed`, and no honest break makes it. `publish-control.tsx` reads that attribute from
-the re-read, so with a *working* PUT the attribute flips to `true` while the address stays
-absent — which is `vg-173`'s signature, and was measured on the real path rather than
-predicted. An assertion that is expected to catch the wrong failure is worse than no
-expectation: it is the sentence a later reader trusts when the suite goes red for another
-reason.
+**This expectation has now been wrong twice, in opposite directions, and both mistakes are
+worth keeping.** It first said `aria-pressed` fails because the toggle never flips — which is
+what the run above shows, and it was correct. It was then "corrected" on the strength of
+`vg-173`'s *real-path* signature, where the attribute flips to `true` while the address stays
+absent; that was a different path mistaken for this one. **The two are not the same
+observation.** `vg-173`'s signature came from a `PUT` that never answered at all, so the
+control took its *failure* branch and re-read a host that had already moved. A no-op `setLan`
+answers `200`, so the control takes its *success* branch, re-reads, and honestly reports
+`lan: false` — and the button reverts to `Publish to a phone` rather than claiming a state the
+host denies. The break exercises the success path; the defect exercised the failure path.
+
+Do not write this expectation a third time from reasoning about what "should" happen. Run it.
 
 Do not break it by *removing* the `setLan` option instead: the route calls it, so an absent
 one is a 500 rather than an honest success, and the failure you would be reading is a crash
