@@ -2492,7 +2492,6 @@ git commit -m "feat(editor): publish is a control, not a command-line flag"
     readonly lan: boolean;
     readonly address: string | null;
     readonly port: number | null;
-    readonly sessions: readonly string[];
     /** The last move the new interface refused, in the host's words. Cleared by
      *  the next move that lands. What the 409 body used to carry. */
     readonly refusal: string | null;
@@ -2510,6 +2509,9 @@ git commit -m "feat(editor): publish is a control, not a command-line flag"
   ```
 - `HostServerOptions.hosting` becomes `HostBinding | undefined` rather than
   `HostingState | (() => HostingState)`: the server needs to *start* a move, not only read one.
+- **`sessions` does not move.** An earlier draft of this task listed it on `HostingState`; it
+  never lived there. The `/api/hosting` route composes it from the session store on the way
+  out, and that is where it stays — this task adds `refusal` and nothing else.
 
 **Constraints.** **This is `vg-173`'s fix, and the sequencing is the whole task.** A single
 `http.Server` cannot rebind while answering the request that asked it to. `server.close()`
@@ -2604,8 +2606,20 @@ the host's words rather than the state it asked for.**
 
 - [ ] **Step 5: Prove the fix can fail**
 
-Put `closeAllConnections()` back where `closeIdleConnections()` is. Re-run Step 1. Expected:
-**FAIL on the rejected `fetch`**, which is the same failure the row was filed from. Restore.
+**The break this step first named does not work, and the executor found that by running it.**
+Putting `closeAllConnections()` back where `closeIdleConnections()` is **passes**, because
+with the sequencing corrected the move starts on `finish` — the answer is already with the
+OS, so destroying the sockets costs nothing visible. `closeAllConnections()` was only ever
+the bug *in combination with* tearing down before answering; on its own it is inert here.
+
+**The break that fails is the original defect itself:** await the move *before* answering —
+call `setLan` and await it ahead of `sendJson`, with `finish` gone. Re-run Step 1. Expected:
+**FAIL on the rejected `fetch`** (`TypeError: fetch failed` at the PUT), which is the failure
+`vg-173` was filed from and the one Step 1 saw before the change. Restore, and confirm
+`closeIdleConnections()` and `response.once("finish")` are both back on disk before committing.
+
+A break that does not break is worse than no break: it certifies a regression test that
+would not have caught the defect it exists for.
 
 - [ ] **Step 6: Run the focused gates, then commit**
 
