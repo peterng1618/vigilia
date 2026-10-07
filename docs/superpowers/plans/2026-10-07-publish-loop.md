@@ -3376,6 +3376,15 @@ told rather than shown a still image forever. **The reload is deliberate**: the 
 a phone showing a dashboard, and the smallest correct way to show a new document is to come
 back with it. Marked with `ponytail:` rather than pretending it is a diff.
 
+**Two defects were read out of this task against the source before it was dispatched, and
+both are corrected in place.** Step 3's loop reloaded *and returned* without moving `last`,
+so Step 1's `toHaveBeenCalledTimes(1)` could not pass against the implementation printed
+directly beneath it — in production the reload navigates and hides it, which is exactly why
+reasoning about it does not find it. And Step 4 discarded the stop function the Interfaces
+block promises, in a function whose `pagehide` tears down everything else. What checks out
+and must not be "fixed": `session.fetch` matches `DisplaySessionToken.fetch` exactly, and
+`showConnectionState("refused", 0, reason)` matches `player/src/main.ts:616`.
+
 - [ ] **Step 1: Write the failing test**
 
 Create `src/web/packages/player/src/publish-follower.test.ts`:
@@ -3505,11 +3514,16 @@ export function followPublished(
       if (response.ok) {
         const body = (await response.json()) as { revision?: unknown };
         if (typeof body.revision === "number") {
-          if (last !== undefined && body.revision !== last) {
+          // `last` moves even on the reload path. Reloading and returning with
+          // `last` still stale re-fires on every tick, which is invisible in
+          // production (a real reload navigates away) and a reload storm the
+          // moment the reload does not — a test double, or a blocked reload.
+          const moved = last !== undefined && body.revision !== last;
+          last = body.revision;
+          if (moved) {
             reload();
             return;
           }
-          last = body.revision;
         }
       }
     } catch {
@@ -3536,10 +3550,15 @@ After the scene is mounted and the live source is running, start the follower an
 ```ts
   // Only a host-served display follows a publish: a fixture theme is not
   // something an author is editing.
-  followPublished(session, () => window.location.reload(), {
+  const stopFollowing = followPublished(session, () => window.location.reload(), {
     onRefused: (reason) => showConnectionState("refused", 0, reason),
   });
 ```
+
+**Hold the stop function and call it in the `pagehide` teardown** beside `liveHandle.close()`
+and `handle.dispose()`. The interface block promises a stop function and `pagehide` is
+`{ once: true }`, so a discarded handle leaves the poll running for every display parked in
+the back/forward cache — the one teardown gap this file does not already have.
 
 - [ ] **Step 5: Run the tests to verify they pass**
 
@@ -3617,13 +3636,18 @@ it("sends the latest document once, not every edit", async () => {
 
   const publisher = createPublisher({ debounceMs: 5 });
   publisher.offer(document);
-  publisher.offer(document);
-  publisher.offer(document);
+  publisher.offer({ ...document, id: "kitchen" });
+  publisher.offer({ ...document, id: "study" });
 
   await new Promise((resolve) => setTimeout(resolve, 30));
   await publisher.stop();
 
-  expect(fetch.mock.calls.filter(([url]) => String(url).startsWith("/api/publish?"))).toHaveLength(1);
+  const published = fetch.mock.calls.filter(([url]) => String(url).startsWith("/api/publish?"));
+  expect(published).toHaveLength(1);
+  // The latest offer wins: a burst sends what the author is looking at now, not
+  // what they were looking at when the burst started. Three offers of the same
+  // document cannot tell those two apart.
+  expect(String(published[0]?.[0])).toContain("id=study");
 });
 
 it("stops by telling the host, so the display goes back to the stored theme", async () => {
@@ -3732,15 +3756,18 @@ implement it from `#snapshot` and the id the session already tracks for its base
 
 ```ts
     publishableDocument: () => {
-      const id = this.#storedId;
+      const id = this.#libraryBase?.id;
       return id === undefined
         ? undefined
         : { id, envelope: this.#snapshot(options.shell) };
     },
 ```
 
-Use whatever field already holds the saved document's id — read `#saveLibrary` and the
-`base` handling before naming it, and **do not invent a second id**.
+`#libraryBase` is the field, and its `id` is the one a save already sends as
+`base: base.id` — **there is no second id to add.** It is cleared wherever the document is
+replaced by something else, which is precisely the never-saved case the `undefined` return
+is for, so the id and the "is this published document the library's" question cannot drift
+apart. Verify it is still that field before you write the line; it was at `ffd62db6`.
 
 In `editor-main.ts`, hold one publisher for the session's lifetime: subscribe to
 `active.bridge.session.subscribeDocumentChange`, and on each change call
@@ -3765,8 +3792,24 @@ Expected: PASS.
 
 - [ ] **Step 5: Prove the tests can fail**
 
-Remove the `if (timer !== undefined) clearTimeout(timer)` line in `offer`. Re-run Step 4.
-Expected: FAIL on the first test — three publishes instead of one. Restore it.
+**The obvious break is inert, and this plan carried it that way.** Removing the
+`clearTimeout` from `offer` still publishes exactly once, because `send()` consumes
+`pending` before its first `await`: the second and third timers find nothing to send and
+return. "Three publishes instead of one" from that break is reasoning about the timer in
+isolation, and **both halves are load-bearing** — the timer collapses the burst, `pending`
+decides what the burst sends.
+
+The break that does fail: make `offer` skip the timer.
+
+```ts
+    offer(document) {
+      pending = document;
+      void send();
+    },
+```
+
+Re-run Step 4. Expected: FAIL on the first test — three publishes instead of one. Restore
+it, and confirm `publish-client.ts` is byte-identical to the commit before you go on.
 
 - [ ] **Step 6: Commit**
 
@@ -3816,35 +3859,65 @@ test("an edit reaches the display while the editor has it open", async ({ page, 
   await display.setViewportSize({ width: 390, height: 844 });
   await display.goto(`${HOST}/`);
   await expect(display.locator("#artboard")).toBeVisible();
-  const before = await display.locator("#artboard").screenshot();
 
   // The edit the display must follow: the artboard is a document fact, so it
-  // is read back from the file the display actually loaded, not from a colour.
+  // is read back from the document the display actually loaded, not from a colour.
   await page.evaluate(() => {
     const bridge = (window as unknown as { __vigilia?: { editor: { artboard: { set(w: number, h: number): void } } } }).__vigilia;
     bridge?.editor.artboard.set(320, 240);
   });
   await expect(page.locator("[data-vigilia-publish]")).toContainText(/publishing|live/i);
 
-  // The display comes back with the published document, on its own.
+  // Mark the display's own window *after* the edit and wait for the mark to
+  // vanish: only a reload can clear it. A screenshot-length comparison was the
+  // obvious oracle and is not one — PNG length moves for fonts settling and a
+  // chart repaint, so it can go green with the follower switched off, which is
+  // the one thing this test exists to detect.
+  await display.evaluate(() => {
+    (window as unknown as { __beforePublish?: boolean }).__beforePublish = true;
+  });
   await expect
-    .poll(async () => (await display.locator("#artboard").screenshot()).length, { timeout: 15_000 })
-    .not.toBe(before.length);
+    .poll(
+      async () =>
+        display.evaluate(
+          () => (window as unknown as { __beforePublish?: boolean }).__beforePublish ?? false,
+        ),
+      { timeout: 15_000 },
+    )
+    .toBe(false);
 
-  const shown = await display.evaluate(async () =>
-    (await (await fetch("/api/themes/" + new URL(location.href).searchParams.get("theme") + "/document")).json()) as {
+  // Read the published id first: the display page is mounted with no `theme`
+  // query parameter, so composing a document URL out of `location.search` asks
+  // for `/api/themes/null/document` and gets a 404 body that is not JSON.
+  const shown = await display.evaluate(async () => {
+    const published = (await (await fetch("/api/published")).json()) as { id: string | null };
+    const document = (await (await fetch(`/api/themes/${published.id}/document`)).json()) as {
       artboard: { width: number; height: number };
-    },
-  );
-  expect(shown.artboard).toEqual({ width: 320, height: 240 });
+    };
+    return document.artboard;
+  });
+  // This asserts the route prefers the published document — Task 4.2's claim.
+  // That the *display* follows is the poll above, and neither implies the other.
+  expect(shown).toEqual({ width: 320, height: 240 });
 
   await display.screenshot({ path: "test-results/publish/display-390.png" });
 });
 ```
 
-Read the editor's own bridge handle out of the source before using it — `window.__vigilia`
-is named here from memory and must be replaced with the real global the editor exposes (see
-`tests/e2e/rebuild-driver.ts`, which already reaches the editor's bridge).
+**Every handle in that snippet is written from memory and must be replaced with what the
+source actually exposes** — `window.__vigilia`, the `artboard.set` door, `#artboard`,
+`[data-vigilia-publish]` and `[data-vigilia-qr]`. `tests/e2e/rebuild-driver.ts` already
+reaches the editor's bridge, so it is where the real global is read from; the display's
+mount point and the header's controls are in `packages/player/src/main.ts` and
+`packages/editor/src/editor-shell/`. A selector that does not exist fails as a 30 s
+`toBeVisible` timeout, which reads like a product defect and is not one.
+
+**Establish that an artboard change reaches the publisher before you trust the poll.** The
+editor has one document-change signal (`subscribeDocumentChange`, `session-facade.ts:36`)
+and the artboard is not obviously wired to it. If moving the artboard does not raise it,
+Task 4.4 never offers the document and this test times out for a reason that has nothing to
+do with the follower — report that as a finding, do not paper over it by publishing some
+other way.
 
 Add a second test in the same file, which is Review Focus 5's pin — **the author leaving is
 a change the display sees**:
@@ -3862,9 +3935,15 @@ test("closing the editor puts the display back on the stored theme", async ({ pa
   );
   expect(published.id).not.toBeNull();
 
-  // `pagehide` is what a closed tab fires, and it is the only hook this has: a
-  // crash or a killed browser leaves the overlay in the host's memory, which is
-  // the ceiling Task 4.4's `ponytail:` names rather than hides.
+  // `pagehide` is the only hook this has: a crash or a killed browser leaves the
+  // overlay in the host's memory, which is the ceiling Task 4.4's `ponytail:`
+  // names rather than hides.
+  //
+  // **Whether `page.close()` fires `pagehide` is reasoned here, not established**
+  // — Playwright's `close()` does not run beforeunload handlers by default, and
+  // whether that also suppresses `pagehide` is the question. Step 3 breaks this
+  // deliberately; if the break does not redden this test, this test is not
+  // evidence of Review Focus 5 and must be fixed rather than restored.
   await page.close();
 
   await expect
@@ -3889,11 +3968,25 @@ PLAYWRIGHT_JSON_OUTPUT_NAME=test-results/task-4-5.json \
 Read the JSON report and **look at `test-results/publish/display-390.png`**. The display
 must show the 320 × 240 document, not the stored one.
 
-- [ ] **Step 3: Prove the browser test can fail**
+- [ ] **Step 3: Prove both browser tests can fail — separately, one break each**
 
-Turn off the follower in `main.ts` (comment out the `followPublished` call), rebuild the
-player, re-run Step 2. Expected: FAIL at the poll — the display never comes back. Restore,
-rebuild.
+**Break 1, for the first test.** Comment out the `followPublished` call in the player's
+`main.ts`, rebuild the player (`npx vite build packages/player`), re-run Step 2. Expected:
+FAIL at the marker poll — the display never comes back. Restore and rebuild.
+
+**Break 2, for the second test, and it is the one that matters.** Remove the `pagehide`
+listener from `editor-main.ts`, rebuild the editor, re-run Step 2. Expected: FAIL — the
+host's published id never goes back to `null`.
+
+**If the second test still passes with the listener gone, stop and report it rather than
+restoring the line.** A pass there means `page.close()` did not fire `pagehide`, so the
+assertion was already satisfied before the close and proves nothing about Review Focus 5.
+The remedy is to make the editor leave the way a person leaves — navigate that page to
+`about:blank` and let the real `pagehide` fire — and to say in the spec's header comment
+which exit was proved and which was not.
+
+Neither break needs the full gate; run this spec alone, and confirm `git diff` is empty
+before moving on.
 
 - [ ] **Step 4: Run the whole gate**
 
@@ -3908,6 +4001,19 @@ PLAYWRIGHT_JSON_OUTPUT_NAME=test-results/phase-4.json \
   npx playwright test --workers=1 --reporter=json
 npm run gates:self-test
 ```
+
+**This is Phase 4's boundary gate, and four of its reds are filed rows rather than
+regressions.** `vg-135` reddens the unit suite with three `shell-layout.dom.test.tsx`
+insert tests timing out at 20 s; `vg-175` times `themes/store.test.ts` out under the same
+load; `vg-143` and `vg-151` are the two browser failures Phase 3's gate already carried.
+Report the counts and name the files — do not fix them here, and do not read them as
+Task 4.5's.
+
+**Give the browser run a budget longer than 30 minutes and read the JSON report, not
+stdout.** It takes about 32 minutes on a quiet machine, and a run killed at the limit
+leaves a report full of `0xC0000142` worker-spawn crashes that look like 28 failures and
+are one dead process — that report was discarded once already. A hook compresses terminal
+output, so the JSON file is the only trustworthy reading.
 
 - [ ] **Step 5: Commit**
 
