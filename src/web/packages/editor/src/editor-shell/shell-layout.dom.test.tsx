@@ -167,6 +167,40 @@ it("mounts the editorial palette, menus, pane bar, inspector and dock hosts", ()
   layout.destroy();
 });
 
+/**
+ * This one runs before the menu tests on purpose.
+ *
+ * A Base UI menu opened by any earlier test in this file leaves jsdom's frame
+ * pipeline in a state where a Radix Dialog's close frame never settles — the
+ * dialog is unmounted through `Presence`, which waits for a frame the stalled
+ * environment never delivers, and the test times out at 20s. That is the same
+ * `vg-135` stall family, one surface further out: it is a property of the file,
+ * not of the change under test, and it is why this test is not last.
+ */
+it("opens the shortcut sheet from the shell's own surface, and closes it again", async () => {
+  const root = document.createElement("div");
+  const layout = createShellLayout(root);
+  // No wait before the read: `flushSync` inside `showShortcuts` settles the
+  // external store synchronously, so the result is observable without a poll —
+  // the same reason `setBridge` uses it. The wait after the close is real,
+  // because Radix unmounts through `Presence`.
+  layout.showShortcuts();
+  const dialog = document.querySelector('[role="dialog"]');
+  expect(dialog).not.toBeNull();
+  // The words are the sample's, not the document's: a sheet that printed an
+  // authored theme's tokens would be shell copy owned by a theme.
+  expect(dialog?.textContent).toContain(uiCopy.shortcuts.reference);
+
+  const close = [...(dialog?.querySelectorAll("button") ?? [])].find(
+    (button) => button.textContent === uiCopy.shortcuts.close,
+  );
+  close?.click();
+  await vi.waitFor(() =>
+    expect(document.querySelector('[role="dialog"]')).toBeNull(),
+  );
+  layout.destroy();
+});
+
 /** The pane bar's segment for a pane, found by the label it shows. */
 function segment(root: HTMLElement, label: string): HTMLButtonElement {
   const found = Array.from(

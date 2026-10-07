@@ -255,6 +255,7 @@ async function start(): Promise<void> {
         status.textContent = "New theme from the starter";
       },
       onOpenPackage: () => picker.click(),
+      onShowShortcuts: () => layout.showShortcuts(),
       onOpenTheme: async (
         envelope: FabricThemeEnvelope,
         assets: Readonly<Record<string, Uint8Array>>,

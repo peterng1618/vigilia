@@ -161,6 +161,12 @@ export interface EditorSessionOptions {
   readonly onNewFromStarter: () => Promise<void>;
   readonly onOpen?: () => void;
   readonly onOpenPackage?: () => void;
+  /** §7's `?` reference. The sheet is chrome and belongs to `createShellLayout`,
+   *  and the dispatcher belongs to this session, so the gesture crosses back
+   *  through the same door every other modal prompt uses. Optional, so the four
+   *  existing construction sites — and every test that builds a session — keep
+   *  compiling and simply do nothing. */
+  readonly onShowShortcuts?: () => void;
   readonly onOpenTheme?: (
     envelope: FabricThemeEnvelope,
     assets: Readonly<Record<string, Uint8Array>>,
@@ -499,6 +505,11 @@ export class EditorSession {
     // no menu or tooltip displays "Escape".
     this.#shortcuts.register("view.exit-group", () => {
       options.shell.editor.groupingManager.exitGroup();
+    });
+    // §7's `?` reference. The manager dispatches; the sheet is chrome and lives
+    // in the shell, so the gesture leaves through the session's own callback.
+    this.#shortcuts.register("help.shortcuts", () => {
+      options.onShowShortcuts?.();
     });
     this.#shortcuts.register("canvas.front", () => {
       options.shell.editor.layerManager.bringToFront();

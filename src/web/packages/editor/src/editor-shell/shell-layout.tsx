@@ -20,6 +20,7 @@ import { PublishControl } from "./publish-control.js";
 import type { PublishSwitch } from "../publish-client.js";
 import { SaveState } from "./save-state.js";
 import { DisplaySwitch } from "./display-switch.js";
+import { ShortcutReference } from "./shortcut-reference.js";
 import { applyShellPalette, DEFAULT_SHELL_PALETTE, readShellPalette } from "./palette.js";
 import {
   DEFAULT_RUN_DISPLAY_MODE,
@@ -56,6 +57,9 @@ export interface ShellLayout {
      *  surface decides whether publishing is on and never holds a document. */
     publish?: PublishSwitch,
   ): void;
+  /** Opens §7's reference sheet. The session owns the `?` dispatcher and never
+   *  sees React, so `editor-main` routes the gesture here. */
+  showShortcuts(): void;
   destroy(): void;
 }
 
@@ -124,6 +128,31 @@ class SelectionStore {
 }
 
 function useSelection(store: SelectionStore): EditorShellSnapshot {
+  return useSyncExternalStore(store.subscribe, store.get, store.get);
+}
+
+/** Whether the `?` sheet is open, as external state.
+ *
+ * The dispatcher lives in `EditorSession`, which never sees React, so the
+ * gesture has to reach the chrome through a subscription rather than a prop —
+ * the same shape `SelectionStore` has, for the same reason.
+ */
+class SheetStore {
+  #open = false;
+  readonly #listeners = new Set<() => void>();
+  readonly subscribe = (listener: () => void): (() => void) => {
+    this.#listeners.add(listener);
+    return () => this.#listeners.delete(listener);
+  };
+  readonly get = (): boolean => this.#open;
+  set(open: boolean): void {
+    if (this.#open === open) return;
+    this.#open = open;
+    for (const listener of this.#listeners) listener();
+  }
+}
+
+function useSheet(store: SheetStore): boolean {
   return useSyncExternalStore(store.subscribe, store.get, store.get);
 }
 
@@ -386,6 +415,7 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
   let publish: PublishSwitch | undefined;
   let reactRoot: Root | undefined;
   const store = new SelectionStore();
+  const sheet = new SheetStore();
   const getView = (): EditorViewControls | undefined => view;
 
   function Shell(): React.JSX.Element {
@@ -402,6 +432,7 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
     const [insertOpen, setInsertOpen] = useState(false);
     const addRef = useRef<HTMLButtonElement | null>(null);
     const kind = useSelection(store).activeKind;
+    const sheetOpen = useSheet(sheet);
     /** Re-frame on the panel toggle, once the viewport has the new width.
      *
      * A resize does not need this any more: the viewport derives whether the
@@ -536,6 +567,14 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
             {/* Renders no DOM of its own: it only binds the canvas's own
                 `contextmenu` listener, so it sits with the stage it listens to. */}
             <CanvasContextMenu bridge={store.bridge} />
+            {/* §7's reference, driven by the session's `?` dispatcher through
+                this external store. Rendering it in the shell rather than a
+                local `useEffect` listener keeps the manager the sole
+                window-level dispatcher. */}
+            <ShortcutReference
+              open={sheetOpen}
+              onOpenChange={(next) => sheet.set(next)}
+            />
           </main>
           <aside className="editor-shell-inspector editor-glass">
             {/* One panel, so no tab strip: a strip with one tab is a control
@@ -600,6 +639,11 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
       flushSync(() => {
         dockRoot.render(<CanvasDock bridge={nextBridge} />);
       });
+    },
+    showShortcuts() {
+      // The gesture arrives from outside React, so the store writes and the
+      // subscription re-renders; `flushSync` settles it before this returns.
+      flushSync(() => sheet.set(true));
     },
     destroy() {
       store.bridge?.destroy();
