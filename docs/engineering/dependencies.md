@@ -9,6 +9,8 @@ Provenance behind `THIRD-PARTY-NOTICES.md`. Re-audit the installed graph before 
 | `echarts` | 6.1.0 | Apache-2.0 | charts |
 | `fabric` | 7.4.0 | MIT | scene graph |
 | `lucide-react` | 1.48.0 | ISC, plus MIT for Feather-derived icons used | editor action-bar icons |
+| `@radix-ui/react-popover` | 1.1.23 | MIT | editor colour-picker popover |
+| `@radix-ui/react-dialog` | 1.2.0 | MIT | editor keyboard-shortcut reference dialog |
 | `fflate` | 0.8.3 | MIT | theme ZIP codec |
 | `@biomejs/biome` | 2.5.14 | MIT OR Apache-2.0 | format/lint |
 | `vite` | 8.3.0 | MIT | build/dev |
