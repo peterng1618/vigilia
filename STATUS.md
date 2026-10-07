@@ -44,11 +44,11 @@ The loop, in order:
 
 ## Last completed change
 
-- **Plan 5's first five tasks landed**, in five commits: `577c44e5` the `+` opens a chooser, `b0e2eb73` one insert mapping, `3fba25c3` the browser spec, `31956d2c` decision note 0031, `936f0a54` the starter's cards carry their unit.
-- **Every task was verified by the controller re-running its proof, not on the agent's report.** The `+`'s wiring disabled reddens the whole browser spec; the stamp removed reddens both named tests; the parity line reddens on a dropped group.
-- **The reuse gate now answers `exit=0` for `layer-tree.ts`**, which `docs/decisions/0031` claims — it answered `exit=2` before, so Task 6 was blocked on that note and no longer is.
-- **`vg-161` and `vg-162` are filed, not fixed** — an unlanded plan would remove the menubar's Insert and View menus and nothing queues it; and `CARD_LIBRARY` owns the card-unit vocabulary while `ownership.md` never names it.
-- **Plan 5's file scope omitted `STATUS.md`**, deferring it to Task 7, against AGENTS.md's per-task rule; this commit is that repair, and the plan now carries `STATUS.md` in Task 6.
+- **Plan 5's Task 6 landed, and it changes no behaviour**: a row's `unit` already came from the document, and Task 5 made the document say it — this commit is the projection's own words plus the pins that say so.
+- **Three docstrings corrected**, each made false by Task 5: `layer-tree.ts`'s group arm and its `groupRole`, and `WidgetProvenance`'s, which now reads *"the unit a card was authored as, on the starter and on a copy"*.
+- **`layer-tree.test.ts` pins the row**: every card row on the starter names its unit, neither loose label nor any part borrows one, two copies of a unit report the same unit with two ids, and the projection names no `card-library`.
+- **Both browser cases were proved load-bearing**, not merely green: with the stamp removed and the bundle rebuilt, `composition-panel.spec.ts`'s two new cases go red (2 unexpected), and the projection test reddens naming all eight units.
+- **`layer-tree.ts` is 478 lines before and after** — the two corrections are prose-neutral, and the file stays 22 from the 500-line signal.
 
 ## Next
 

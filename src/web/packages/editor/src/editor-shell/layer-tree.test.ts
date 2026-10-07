@@ -12,6 +12,7 @@ import {
   type FabricObject,
   StaticCanvas,
   Textbox,
+  util,
 } from "fabric/es";
 import { describe, expect, it } from "vitest";
 import {
@@ -24,6 +25,7 @@ import {
   VIGILIA_TEXT_PROPERTY,
   VigiliaChart,
 } from "@vigilia/scene-fabric";
+import { CARD_LIBRARY, instantiateCard } from "../card-library.js";
 import { createNewFabricTheme } from "../new-fabric-theme.js";
 import { uiCopy } from "../ui-copy.js";
 import {
@@ -649,6 +651,24 @@ describe("nested groups", () => {
   });
 });
 
+/** Every id one card's own JSON declares, groups descended — the list a second
+ * copy has to avoid so two copies of a unit get two sets of ids. */
+function idsOf(card: object): readonly string[] {
+  const ids: string[] = [];
+  const walk = (value: unknown): void => {
+    if (Array.isArray(value)) {
+      for (const entry of value) walk(entry);
+      return;
+    }
+    if (typeof value !== "object" || value === null) return;
+    const record = value as { readonly [key: string]: unknown };
+    if (typeof record["id"] === "string") ids.push(record["id"]);
+    for (const entry of Object.values(record)) walk(entry);
+  };
+  walk(card);
+  return ids;
+}
+
 describe("the starter theme", () => {
   /** The starter is what this plan changed, so it is measured rather than
    * assumed: `new-fabric-theme.test.ts` states these parts so a card that
@@ -771,6 +791,86 @@ describe("the starter theme", () => {
     // And the wordmark, which is a loose label rather than a card — the case
     // that keeps a card being a fact about the starter.
     expect(mark("wordmark")).toMatchObject({ text: "VIGILIA" });
+  });
+
+  it("names the unit on every card row, and nothing else anywhere", async () => {
+    const roots = await starter();
+    // Every card opened, so a part is a row too: the claim below includes that
+    // no part carries a stamp of its own, and a part behind a shut group is not
+    // a row the panel ever renders.
+    const rows = projectLayers({
+      ...base,
+      expanded: new Set(
+        roots
+          .filter((object) => object instanceof Group)
+          .map((group) => String(group.get("id"))),
+      ),
+      root: roots,
+    });
+
+    // THE row this plan exists for: on the composition every author meets
+    // first, a card says which card it is rather than the bare group arm. Keyed
+    // by id rather than by position, because the projection walks the root array
+    // reversed and a list comparison would pin paint order instead of identity.
+    const named = Object.fromEntries(
+      rows
+        .filter((row) => row.role.kind === "group")
+        .map((row) => [
+          row.id,
+          row.role.kind === "group" ? row.role.unit : undefined,
+        ]),
+    );
+    expect(named).toEqual(
+      Object.fromEntries(CARD_LIBRARY.map((unit) => [unit.id, unit.label])),
+    );
+
+    // The two loose labels are not units and must not borrow one: their rows are
+    // the text arm, and the parts beside them are shapes and charts.
+    expect(
+      rows
+        .filter((row) => row.role.kind !== "group")
+        .map((row) => row.role.kind),
+    ).toEqual(expect.arrayContaining(["text", "shape", "chart"]));
+    // And no group under a card carries a stamp the root alone should hold.
+    expect(
+      rows.filter((row) => row.kind === "group" && row.depth > 0),
+    ).toHaveLength(0);
+  });
+
+  it("tells two copies of one unit apart, and neither loses its stamp", async () => {
+    // Review Focus 4. Both cards come off the real copy path, so the pair they
+    // share is the one a second insertion of the same unit actually writes.
+    const built = CARD_LIBRARY.find((unit) => unit.id === "group-cpu-card");
+    if (built === undefined) throw new Error("the library has no CPU unit");
+    const globals = createNewFabricTheme().globals;
+    const first = instantiateCard({
+      unit: built,
+      globals,
+      existingIds: [],
+      origin: { left: 0, top: 0 },
+    });
+    const second = instantiateCard({
+      unit: built,
+      globals,
+      existingIds: idsOf(first.card),
+      origin: { left: 400, top: 0 },
+    });
+
+    const roots = await util.enlivenObjects<FabricObject>([
+      first.card,
+      second.card,
+    ]);
+    const copies = projectLayers({ ...base, root: roots }).filter(
+      (row) => row.role.kind === "group",
+    );
+    // The same unit on both rows — the fact a copy is a copy of — and an id of
+    // its own, so neither arrival erased the other.
+    expect(
+      copies.map((row) =>
+        row.role.kind === "group" ? row.role.unit : undefined,
+      ),
+    ).toEqual([built.label, built.label]);
+    expect(new Set(copies.map((row) => row.id)).size).toBe(2);
   });
 });
 
@@ -911,8 +1011,11 @@ describe("the row's role, in the document's own terms", () => {
     });
     const at = (id: string): LayerRole | undefined =>
       rows.find((row) => row.id === id)?.role;
-    // The starter's cards carry no stamp, so `bare-card` is the common case
-    // rather than the edge: the correct answer is the bare group arm.
+    // Review Focus 2, and load-bearing since the starter gained stamps of its
+    // own: `cpu-card` names a unit no `CARD_LIBRARY` entry has, and the row
+    // still says CPU. Resolving a name through the library would make a document
+    // another version wrote read as one this build recognises. The unstamped
+    // case is every group the author makes, which `Ctrl+G` writes with no stamp.
     expect(at("cpu-card")).toEqual({ kind: "group", unit: "CPU" });
     expect(at("bare-card")).toEqual({ kind: "group", unit: undefined });
     expect(at("id-only-card")).toEqual({ kind: "group", unit: undefined });
@@ -970,5 +1073,16 @@ describe("the row's role, in the document's own terms", () => {
       group: "Group",
       image: "Image",
     });
+  });
+
+  it("owns no unit vocabulary of its own", () => {
+    const source = readFileSync(
+      resolve(dirname(fileURLToPath(import.meta.url)), "layer-tree.ts"),
+      "utf8",
+    );
+    // The projection reports what the document holds. Resolving a name through
+    // the library would be a second owner of the unit's words, and it would make
+    // a document written by another version read as one this build recognises.
+    expect(source).not.toMatch(/card-library/);
   });
 });

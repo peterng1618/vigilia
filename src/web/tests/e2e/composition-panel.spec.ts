@@ -32,6 +32,9 @@ import { isDesktopSurface } from "./surface.js";
  *   states, and the two-hundred-row re-measurement — one document, one viewport,
  *   one machine, which is what the case says of its own numbers. Three of these
  *   cases carry the captures registered in `docs/evidence/screenshots/README.md`.
+ * - **Plan 5's Task 6** owns the two cases at the end of this file: the role
+ *   column saying what the document says a card is, on the starter and on a copy
+ *   inserted beside it.
  *
  * The editor is a separate preview server on its own port, so `use.baseURL` —
  * 4173, the player — is never the right address here.
@@ -988,4 +991,73 @@ test("a group entered inside a large document", async ({ page }, testInfo) => {
   ] as const) {
     testInfo.annotations.push({ type, description: String(value) });
   }
+});
+
+// ---------------------------------------------------------------------------
+// Plan 5, Task 6: the role column says what the document says the card is
+// ---------------------------------------------------------------------------
+
+/**
+ * The ids of the rows whose role column reads `label`, read from the DOM — a
+ * copy's id is the allocator's to choose, so a literal here would be a second
+ * statement of what the product decides.
+ */
+async function rowsNamed(
+  page: Page,
+  label: string,
+): Promise<readonly string[]> {
+  return page
+    .locator("[data-vigilia-layer]")
+    .evaluateAll(
+      (rows, wanted) =>
+        rows
+          .filter(
+            (row) =>
+              row.querySelector(".vigilia-layer-role")?.textContent?.trim() ===
+              wanted,
+          )
+          .map((row) => row.getAttribute("data-vigilia-layer") ?? ""),
+      label,
+    );
+}
+
+test("the starter's own card rows name the unit the document says they are", async ({
+  page,
+}, testInfo) => {
+  test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+
+  await openStarterEditor(page);
+
+  // THE row this plan exists for: the reference composition's own card says
+  // which card it is, rather than the bare `Group` arm every unstamped group
+  // reads. The name column beside it still says the id, which is the starter's
+  // names-equals-ids convention and not this change's.
+  await expect(
+    page.locator('[data-vigilia-layer="group-cpu-card"] .vigilia-layer-role'),
+  ).toHaveText("CPU");
+  await expect(
+    page.locator('[data-vigilia-layer="group-cpu-card"] .vigilia-layer-name'),
+  ).toHaveText("group-cpu-card");
+});
+
+test("a copy inserted beside the starter names its unit without costing the starter its own", async ({
+  page,
+}, testInfo) => {
+  test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+
+  await openStarterEditor(page);
+
+  await page.locator(".editor-shell-pane-bar-add").click();
+  await page
+    .locator(".editor-shell-menu-popup[data-open]")
+    .getByRole("menuitem", { name: "Clock", exact: true })
+    .click();
+
+  // Two rows name the unit — the copy's own and the starter's time card, which
+  // has not lost its stamp — and the two ids differ, so neither arrival erased
+  // the other's row.
+  const clocks = await rowsNamed(page, "Clock");
+  expect(clocks).toHaveLength(2);
+  expect(new Set(clocks).size).toBe(2);
+  expect(clocks).toContain("group-time-card");
 });

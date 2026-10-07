@@ -225,7 +225,8 @@ export interface VideoContent {
   readonly muted?: boolean;
 }
 
-/** Origin metadata for an inserted widget copy; not a live library link. */
+/** The unit a card was authored as, on the starter and on a copy; not a live
+ * library link. */
 export interface WidgetProvenance {
   readonly widgetId: string;
   readonly widgetName?: string;

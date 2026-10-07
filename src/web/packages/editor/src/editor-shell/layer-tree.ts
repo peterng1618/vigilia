@@ -62,9 +62,9 @@ export type LayerRole =
        * printed beside it. */
       readonly series: number;
     }
-  /** The unit a stamped card was inserted as, where the document says one. The
-   * starter's own builders write no stamp, so on it every card row is the bare
-   * arm — which is what that document says, not a missing value. */
+  /** The unit the document says the card is, where it names one. A card is
+   * stamped where it is assembled, so the starter's own cards say it as readily
+   * as a copy does, and a group that names none reads the bare arm. */
   | { readonly kind: "group"; readonly unit: string | undefined }
   | { readonly kind: "text" }
   | { readonly kind: "shape" }
@@ -280,10 +280,10 @@ function chartRole(object: FabricObject, own: readonly Binding[]): LayerRole {
 /**
  * A group's role: the unit it was stamped with, where the document says one.
  *
- * The library stamps `{ widgetId, widgetName }` on an inserted root; the
- * starter's own builders do not, so on the starter every card row is the bare
- * arm. Reading a neighbouring card's stamp, or a stage or a default, would be
- * the role claiming something the document does not.
+ * A card carries `{ widgetId, widgetName }` on its root, stamped where the card
+ * is assembled, so the starter's own cards and a copy both say it. A group that
+ * names no unit reads the bare arm, and reading a neighbour's stamp — or a
+ * stage's, or a default — claims what the document does not.
  *
  * A stamp that names the unit with a blank says nothing, the same as an absent
  * one, and is reported the same way — the guard `nameOf` already applies to an
