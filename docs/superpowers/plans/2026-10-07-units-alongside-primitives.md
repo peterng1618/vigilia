@@ -682,14 +682,25 @@ symbol name into a requirement.
   stamped as `provenance: { widgetId: id, widgetName: unit }` on the group it returns, typed
   `WidgetProvenance` from `renderer-core` so the document's own type is the authority for the
   key's shape.
-- Consumes: `uiCopy.cardLibrary` (its one owner) in each builder — `clockCard()` calls
-  `cardGroup("group-time-card", uiCopy.cardLibrary.time, …)`, and so on for the other seven.
+- Consumes: `uiCopy.cardLibrary` (its one owner) — `clockCard()` calls
+  `cardGroup("group-time-card", uiCopy.cardLibrary.time, …)`.
+
+  **There are seven `cardGroup` call sites, not eight, and the difference is `memoryCard`.**
+  Measured at `31956d2c`: `clockCard` (`:98`), `cpuCard` (`:151`), `gpuCard` (`:210`),
+  `memoryCard` (`:283`), `trendsCard` (`:418`), `storageCard` (`:457`) and `networkCard`
+  (`:525`) call it; `ramCard` (`:374`) and `vramCard` (`:388`) both delegate to the shared
+  `memoryCard(options)` instead. So **`memoryCard` must take the unit label as a new `options`
+  member**, and `ramCard`/`vramCard` pass `uiCopy.cardLibrary.ram` / `…vram` through it — the two
+  cards differ only in that option, and hardcoding either word inside `memoryCard` would be the
+  second owner this task exists to avoid. Eight **cards**, seven **call sites**: a stamp applied
+  once per call site is right, and a plan read as "eight builders each pass a literal" produces a
+  shared builder that cannot name either of its two cards.
 
 **Constraints:** the stamp goes on the **root alone**, which is `instantiateCard`'s own rule
 (`card-library.ts:152-157`) and the reason a deep card does not triple in size to say one
 thing. `cardGroup` is the card's assembler — "the card, and the only place that says a panel
 is made of glass" — so it is where the card's remaining authored fact belongs; it is not a
-generic group helper, and its eight call sites are all in `new-fabric-theme-cards.ts`. The
+generic group helper, and its seven call sites are all in `new-fabric-theme-cards.ts`. The
 unit's *word* stays owned by `uiCopy.cardLibrary`, and the *membership* by `CARD_LIBRARY`;
 this task adds a **pin** that the two agree rather than a third statement nobody checks — the
 agreement `card-library.test.ts:142-166` already asserts for ids. Do not change the starter's
@@ -698,12 +709,20 @@ agreement `card-library.test.ts:142-166` already asserts for ids. Do not change 
 **Ownership ruling, decided here and not left to the executor.** This change needs **no new
 row** in `docs/architecture/ownership.md`, and displaces none. The vocabulary — which units
 exist, and what each is called — stays owned by `CARD_LIBRARY` (membership) and
-`uiCopy.cardLibrary` (words), the two rows that already answer for it; `cardGroup` gains a
+`uiCopy.cardLibrary` (words); `cardGroup` gains a
 *parameter*, not a decision. `new-object-panel.ts`'s "The Add panel's construction actions"
 row is untouched, and `new-object-defaults.ts`'s "New-object defaults … and the shape list"
 row is the precedent for the split rather than a second owner of it. If a reviewer concludes
 that a module which assembles the starter's cards ought to be on the map at all, that is a
 **separate** finding about the map's gaps — file it, do not widen this task.
+
+  **That gap is not hypothetical, and this task's earlier premise for the ruling was wrong.**
+  Measured at `31956d2c`: `docs/architecture/ownership.md` names neither `CARD_LIBRARY` nor
+  `uiCopy.cardLibrary`. Its only mention of the module is `:114`, and that row is about
+  `createWidgetIdAllocator` — `card-library.ts` appears there as a **user** of the id rule, not
+  as an owner of the unit vocabulary. So "the two rows that already answer for it" was false.
+  **The ruling stands on its second half, not its first**: no row is added here, and the gap is
+  filed as `vg-162` for the controller rather than widened into this task.
 
 **Failure modes to design against:** a stamp on every descendant; a stamp whose `widgetId` is
 not the group id, which is what `CARD_LIBRARY`'s entry shares with the copy a later insertion
