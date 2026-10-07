@@ -171,6 +171,14 @@ task's requirements implicitly include this section.
   assertions. A green unit test is not a proof that a header shows an address.
 - **`npm run gates:self-test`** from `src/web/` after touching anything under `scripts/` or
   a gate's subject.
+- **`shell-layout.dom.test.tsx` is slow for a filed reason, not a new one.** `vg-135`: jsdom
+  stops firing `requestAnimationFrame` after the View-menu test, so any later test in that
+  file that awaits a frame times out — measured, a bare `setTimeout(0)` cost 2 ms before the
+  View-menu click and 58 592 ms after. Tasks 1.1 and 2.3 both run this file, and a run that
+  hangs or takes minutes is **that row, not your change**. Prove the assertion you actually
+  touched by narrowing it (raise the per-test timeout, or run the View-menu test by name),
+  and report the condition with its row id. **Do not fix `vg-135`** and do not edit its
+  backlog entry — it is not this plan's.
 
 ---
 
