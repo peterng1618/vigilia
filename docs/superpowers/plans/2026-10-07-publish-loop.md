@@ -664,6 +664,8 @@ as written above.
 **Files:**
 - Modify: `src/web/packages/host/src/server.ts` — `HostServerOptions`, the route table
 - Modify: `src/web/packages/host/src/index.ts` — export the new type
+- Modify: `src/web/packages/host/src/main.ts` — **supply `hosting` from `--host`** (added
+  after Task 2.3 found this task had not; see the note below the commit step)
 - Test: `src/web/packages/host/src/server.test.ts`
 
 **Interfaces:**
@@ -863,6 +865,30 @@ which Task 1.3 left as a `Discovered, not fixed:` trailer because its dispatch f
 writing the register, and the controller materialised from that trailer. The row's `detail`
 names `src/web/packages/host/src/cli/net.ts:90-100` and the reproduction (a machine with a
 virtual adapter). Nothing further is required here.
+
+**Added after Task 2.3 — this task's Files block originally stopped at `server.ts`, and the
+route was therefore never wired to a real host.** `HostServerOptions.hosting` defaulted to
+`{ lan: false, address: null, port: null }` on every host, so a host launched with
+`--host 0.0.0.0` still answered `lan: false` and Task 2.3's browser proof was impossible to
+pass. The tests above did not catch it because they inject `hosting` themselves — a route
+test proves the route, never the wiring. `main.ts` must supply it:
+
+```ts
+// Read by the `/api/hosting` answer, set once the socket is bound.
+let boundPort: number | null = null;
+
+// ...in createHostServer's options:
+hosting: () => ({
+  lan: servingLan,
+  address: servingLan ? (lanAddress() ?? null) : null,
+  port: boundPort,
+}),
+
+// ...after listenWithFallback resolves:
+boundPort = bound;
+```
+
+Phase 3's binding owner replaces this closure with the thing that actually rebinds.
 
 - [ ] **Step 7: Commit**
 
@@ -1586,6 +1612,34 @@ git add src/web/packages/editor/src/editor-shell/publish-control.tsx \
         src/web/tests/e2e/publish-header.spec.ts
 git commit -m "feat(editor): the header carries the phone's address and a QR code for it"
 ```
+
+**As executed — `79f9a0b0`.** Phase 2 closes here. Five things the plan got wrong or left
+unfinished:
+
+- **Task 1.3 never wired the route to a host.** `HostServerOptions.hosting` was supplied by
+  nothing, so every host answered `lan: false` and this task's browser proof was impossible.
+  `main.ts` now supplies it from `--host`; Task 1.3 carries the fix.
+- **Step 1's third test used `rerender`, which re-runs no `[]` effect** and so could not pass
+  against the plan's own mount-once implementation. It remounts the control instead — which is
+  what a reloaded header does — and still pins "a new answer replaces the rendered address".
+- **The spec's host flags were wrong.** It spawns with `--themes-dir … --settings-dir …`; the
+  real flag is `--app-dir`. The fixture envelope must also carry the immutable `palette.none`
+  token or `writeThemePackage` refuses it.
+- **The CSS tokens are `--shell-*`, not `--vigilia-*`.** `editor-shell.css` has never used the
+  latter; §35's separation is between the *shell* palette and the authored theme globals, and
+  the shell's own tokens are the right ones for chrome.
+- **`ui-copy.publish.copy` ("Copy link") and `.copied` are rendered by nothing**, here or in
+  any later task. They are dead entries in the table that owns every visible word. Task 4.4,
+  where publishing becomes continuous, is the first place a copy affordance would earn its
+  place — render them there or drop them.
+
+**Not verified, and it cannot be by this plan:** that a real phone camera, at arm's length, in
+real light, scans this code off a real screen. The decode round-trip (Task 1.2) proves the
+matrix is a QR symbol for the URL; it does not prove a camera reads a photograph of it. Stated
+in Phase 3, Phase 4 and the closing report.
+
+**Found and not fixed:** the header overflows horizontally at 390 px and the publish surface
+goes off-screen — filed as `vg-172` from this task's commit trailer.
 
 ---
 
