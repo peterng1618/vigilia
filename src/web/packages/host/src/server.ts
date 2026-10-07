@@ -627,6 +627,26 @@ export function createHostServer(options: HostServerOptions): HostServer {
       return;
     }
 
+    // One number, so a display can tell whether what it is showing is still
+    // what the author is publishing. A display read, so it is behind the same
+    // guard: what this PC is holding is not something the network enumerates.
+    if (url.pathname === "/api/published") {
+      if (
+        !isLoopbackRemote(request.socket.remoteAddress) &&
+        !allowed(request, url)
+      ) {
+        sendText(response, 403, "This display is not paired with the host.");
+        return;
+      }
+
+      const live = published.read();
+      sendJson(response, 200, {
+        id: live?.id ?? null,
+        revision: published.revision(),
+      });
+      return;
+    }
+
     // Which curated trios this author reaches for. Author state about this PC,
     // beside the display preferences and out of every theme package; the same
     // asymmetry as `/api/display`, so a paired display may read what this PC
@@ -1069,6 +1089,17 @@ export function createHostServer(options: HostServerOptions): HostServer {
         sendText(response, 400, "Invalid theme id.");
         return;
       }
+
+      // A display showing the theme an author is editing shows the document as
+      // it stands, not as it was last saved. The folder it came from is
+      // unchanged: this is the display's view, and it lasts as long as the
+      // publish does.
+      const live = published.read();
+      if (live !== undefined && live.id === rawId) {
+        sendJson(response, 200, live.envelope);
+        return;
+      }
+
       const record = await themeStore.read(rawId);
       if (record === undefined) {
         sendText(response, 404, "Theme not found.");
@@ -1361,9 +1392,10 @@ export function createHostServer(options: HostServerOptions): HostServer {
 
     // Host-served player uses a stored theme and live data; standalone preview stays deterministic.
     if (url.pathname === "/" && !url.searchParams.has("data")) {
-      // Resolution order, in the consumer's terms: an explicit link wins, then
-      // the theme they chose, then the only theme if there is exactly one.
-      // Several themes and no choice means the library is the right next step.
+      // Resolution order, in the consumer's terms: what the author is
+      // publishing now, then an explicit link, then the theme they chose, then
+      // the only theme if there is exactly one. Several themes and no choice
+      // means the library is the right next step.
       const available = await themeStore.list();
       const requested = url.searchParams.get("theme");
       const stored =
@@ -1373,6 +1405,7 @@ export function createHostServer(options: HostServerOptions): HostServer {
             )
           : undefined;
       const theme =
+        published.read()?.id ??
         requested ??
         stored ??
         (available.length === 1 ? available[0]?.id : undefined);

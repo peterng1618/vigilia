@@ -2261,3 +2261,142 @@ describe("The publish route", () => {
     }
   });
 });
+
+describe("The published overlay", () => {
+  it("serves the published document to a display that asks for that theme", async () => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "vigilia-published-"));
+    const hosted = createHostServer({
+      registry: new ProviderRegistry([]),
+      bundles: { player: dir, editor: dir },
+      themeStore: createThemeStore(dir),
+    });
+
+    try {
+      // **The library starts empty**, so a document to publish *over* has to
+      // exist first: without this the read below is a 404 and the assertion
+      // after it compares `undefined` to an artboard.
+      await request(
+        hosted.server,
+        "PUT",
+        "/api/themes/living-room",
+        themeBody(createValidPackage()),
+      );
+
+      const stored = await request(
+        hosted.server,
+        "GET",
+        "/api/themes/living-room/document",
+      );
+      expect(stored.status).toBe(200);
+
+      const publishedBody = JSON.stringify({
+        envelope: {
+          ...(stored.json() as object),
+          artboard: { width: 320, height: 240 },
+        },
+        assets: {},
+      });
+
+      const published = await request(
+        hosted.server,
+        "PUT",
+        "/api/publish?id=living-room",
+        publishedBody,
+      );
+      expect(published.status).toBe(200);
+
+      const shown = await request(
+        hosted.server,
+        "GET",
+        "/api/themes/living-room/document",
+      );
+      expect((shown.json() as { artboard: unknown }).artboard).toEqual({
+        width: 320,
+        height: 240,
+      });
+
+      // The stored document is untouched: publishing is not saving.
+      await request(hosted.server, "DELETE", "/api/publish");
+      const again = await request(
+        hosted.server,
+        "GET",
+        "/api/themes/living-room/document",
+      );
+      expect((again.json() as { artboard: unknown }).artboard).not.toEqual({
+        width: 320,
+        height: 240,
+      });
+    } finally {
+      await hosted.close();
+      await fs.rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("hides the revision from an unpaired display", async () => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "vigilia-published-"));
+    const hosted = createHostServer({
+      registry: new ProviderRegistry([]),
+      bundles: { player: dir, editor: dir },
+      themeStore: createThemeStore(dir),
+      sessions: createSessionStore(),
+    });
+
+    try {
+      const refused = await request(
+        hosted.server,
+        "GET",
+        "/api/published",
+        undefined,
+        { remoteAddress: "192.168.1.50" },
+      );
+      expect(refused.status).toBe(403);
+
+      // Loopback reads the same route, so the 403 above is the guard rather
+      // than a route that refuses everybody. Nothing is published on a fresh
+      // host, and the revision is still a number a display can poll.
+      const here = await request(hosted.server, "GET", "/api/published");
+      expect(here.status).toBe(200);
+      expect(here.json()).toEqual({ id: null, revision: 0 });
+    } finally {
+      await hosted.close();
+      await fs.rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("resolves the root through the published theme first, then the stored choice", async () => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "vigilia-published-"));
+    const store = createThemeStore(dir);
+    const activeTheme = createActiveThemeStore(dir);
+    const hosted = createHostServer({
+      registry: new ProviderRegistry([]),
+      bundles: { player: dir, editor: dir },
+      themeStore: store,
+      activeTheme,
+    });
+
+    try {
+      await store.write("living-room", createValidPackage());
+      await store.write("studio", createValidPackage("studio", "Studio"));
+      // The consumer chose `studio`, so a `/` with nothing else to go on shows
+      // that — and the published document taking precedence over the choice is
+      // the whole point of the overlay.
+      await activeTheme.write("studio");
+
+      const before = await request(hosted.server, "GET", "/");
+      expect(before.headers.location).toBe("/?theme=studio&data=live");
+
+      await request(
+        hosted.server,
+        "PUT",
+        "/api/publish?id=living-room",
+        themeBody(createValidPackage()),
+      );
+
+      const after = await request(hosted.server, "GET", "/");
+      expect(after.headers.location).toBe("/?theme=living-room&data=live");
+    } finally {
+      await hosted.close();
+      await fs.rm(dir, { recursive: true, force: true });
+    }
+  });
+});
