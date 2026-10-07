@@ -904,10 +904,40 @@ PLAYWRIGHT_JSON_OUTPUT_NAME=test-results/composition-panel.json npx playwright t
 
 - [ ] **Step 6: Commit.** `docs(editor): the projection's words match the document it reads`
 
+**As executed** (`e5d1ad38`, verified by the controller: 52/52 on `layer-tree.test.ts`; the
+stamp removed reddens the row test naming all eight units; `layer-tree.ts` is 478 lines before
+and after; typecheck and biome exit 0). Two more corrections, and one leftover this task
+deliberately did not chase:
+
+- **Step 1's assertion cannot pass as written, and it is the plan's seventh wrong claim.** It
+  compares the card rows to `CARD_LIBRARY.map((unit) => unit.label)` in order, but `projectLayers`
+  walks `[...objects].reverse()` (`layer-tree.ts:378`, `:431`, `:466`) while the starter authors
+  its cards in `CARD_LIBRARY` order — so the rows come back Network→Clock and the comparison is
+  against paint order, not library order. The test keys rows by id instead, which is the stronger
+  assertion anyway: it pins *which* id got *which* unit rather than that some sequence matches.
+- **Step 1's comment did not describe what its code measured.** Under `{ ...base }` nothing is
+  expanded, so parts are not rows at all and the "no part inside a card carries a stamp" filter is
+  vacuously empty. The test now expands every card first, and the non-group assertion requires
+  `shape` and `chart` as well as `text`.
+- **Left alone, deliberately, for Task 7:** the same sentence lives in **two** more places the
+  plan never named — `scene-fabric/src/persist.ts:71` and, verbatim,
+  `scene-fabric/src/persist.dom.test.ts:1292-1294`, both *"Which unit an inserted card was copied
+  from (§77)"*. Neither is false, both are now incomplete, and neither is in this task's File
+  block.
+
 ### Task 7: Close out
 
 **Files:**
-- Modify: `STATUS.md`
+- Modify: `STATUS.md` — its "Last completed change" **and** its Active work, which Task 6 left
+  saying "Task 6 still owns correcting `layer-tree.ts:280-291`" after Task 6 had done it
+- Modify: `src/web/packages/scene-fabric/src/persist.ts` (`:71`) and
+  `src/web/packages/scene-fabric/src/persist.dom.test.ts` (`:1292-1294`) — **added after Task 6**,
+  which found the sentence in both places and left them alone because they were outside its File
+  block. Both say *"Which unit an inserted card was copied from (§77)"*; Task 5 made that
+  incomplete, and the plan's own wording is what replaces it: **the unit a card was authored as,
+  on the starter and on a copy**. Amend both to that and invent no second meaning. `persist.ts` is
+  claimed by decisions 0003, 0026 and 0027 — check the gate before writing and report a refusal
+  rather than working around it.
 - Read: `docs/evidence/screenshots/README.md` (the registered capture, reused rather than added)
 
 **Interfaces:** none. This task produces evidence, not code.
