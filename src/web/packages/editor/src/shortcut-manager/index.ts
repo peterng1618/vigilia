@@ -20,7 +20,7 @@ export type ProductShortcutId =
   | "canvas.back"
   | "view.exit-group";
 
-interface ShortcutBinding {
+export interface ShortcutBinding {
   readonly key: string;
   /** A binding with no modifier always defers to a focused text field. */
   readonly modifier: boolean;
@@ -28,7 +28,7 @@ interface ShortcutBinding {
   readonly action: ProductShortcutId;
 }
 
-const PRODUCT_SHORTCUTS: readonly ShortcutBinding[] = [
+export const PRODUCT_SHORTCUTS: readonly ShortcutBinding[] = [
   { key: "n", modifier: true, action: "file.new" },
   { key: "o", modifier: true, action: "file.open" },
   { key: "s", modifier: true, action: "file.save" },
@@ -148,4 +148,19 @@ export function isTextEntryTarget(target: EventTarget | null): boolean {
       "submit",
     ]).has(target.type.toLowerCase())
   );
+}
+
+/**
+ * The distinct actions the table binds, in the table's own order.
+ *
+ * §7's reference is a list of *actions*, so the four actions bound twice
+ * (`edit.redo`, `edit.delete`, `canvas.front`, `canvas.back`) appear once — the
+ * second chord is a property of the action, not a second row. The order is the
+ * table's rather than sorted, because the table is grouped by where the action
+ * lives and that grouping is what the sheet's headings follow.
+ */
+export function productShortcutIds(): readonly ProductShortcutId[] {
+  const seen = new Set<ProductShortcutId>();
+  for (const binding of PRODUCT_SHORTCUTS) seen.add(binding.action);
+  return [...seen];
 }
