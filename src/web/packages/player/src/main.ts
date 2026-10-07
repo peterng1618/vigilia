@@ -37,6 +37,7 @@ import { type ArtboardSize, cropNoticeText } from "./artboard-crop.js";
 import { availabilityNoticeText } from "./availability-notice.js";
 import { boundSemanticKeys } from "./bound-keys.js";
 import { showLoadFailure } from "./load-failure.js";
+import { followPublished } from "./publish-follower.js";
 import { type DisplaySessionToken, displaySession } from "./session.js";
 import {
   loadDisplayPreferences,
@@ -359,6 +360,15 @@ async function startHostedTheme(
   // the canvas are the saved ones, not the ones the display will draw.
   showCropNotice(handle, theme.artboard);
   showConnectionState("connecting", keys.length);
+  // Only a host-served display follows a publish: a fixture theme is not
+  // something an author is editing.
+  const stopFollowing = followPublished(
+    session,
+    () => window.location.reload(),
+    {
+      onRefused: (reason) => showConnectionState("refused", 0, reason),
+    },
+  );
   const chartRefresh = startChartRefresh(refresh, 30, undefined, {
     onError: reportRepaintError,
   });
@@ -370,6 +380,9 @@ async function startHostedTheme(
       releaseFonts();
       chartRefresh.dispose();
       observer.disconnect();
+      // `pagehide` is `{ once: true }`, so a discarded handle would leave the
+      // poll running for every display parked in the back/forward cache.
+      stopFollowing();
       liveHandle.close();
       // The scene owns the glass handle, the media layer and any video frame
       // callback, and none of them is released by the teardown above.
