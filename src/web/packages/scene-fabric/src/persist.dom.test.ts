@@ -1289,9 +1289,9 @@ describe("there is exactly one owner of scene serialisation", () => {
       VIGILIA_ASSET_PROPERTY,
       VIGILIA_GLASS_PROPERTY,
       VIGILIA_BLEEDS_PROPERTY,
-      // Which unit an inserted card was copied from (§77). Named literally
-      // rather than through a constant, because there is no Fabric-side
-      // constant for it and one would have a single reader.
+      // The unit a card was authored as, on the starter and on a copy (§77).
+      // Named literally rather than through a constant, because there is no
+      // Fabric-side constant for it and one would have a single reader.
       "provenance",
       "selectable",
       "evented",

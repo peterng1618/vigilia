@@ -68,9 +68,9 @@ export const SCENE_PERSISTED_PROPERTIES = [
   // the editor — which never re-reads its own file — perfectly happy and every
   // other machine warning about a deliberate composition.
   VIGILIA_BLEEDS_PROPERTY,
-  // Which unit an inserted card was copied from (§77). A fact about the
-  // document's history, so it has to survive the save like every other
-  // authored key — a copy whose origin is remembered only until the first
+  // The unit a card was authored as, on the starter and on a copy (§77). An
+  // authored fact about the document, so it has to survive the save like every
+  // other authored key — a copy whose origin is remembered only until the first
   // save is a copy whose origin nobody can state. The key is `WidgetProvenance`'s
   // own field name on a `ThemeNode`; there is no Fabric-side constant for it,
   // and one would have a single reader.
