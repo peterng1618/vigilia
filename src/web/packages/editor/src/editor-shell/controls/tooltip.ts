@@ -44,6 +44,10 @@ let open: Tooltip | undefined;
 export interface TooltipOptions {
   readonly trigger: HTMLElement;
   readonly text: string;
+  /** The chord this control's action answers to, when it has one. Omitted —
+   *  not `undefined` — by every caller with no chord, because
+   *  `exactOptionalPropertyTypes` is on. */
+  readonly shortcut?: string;
 }
 
 export interface Tooltip {
@@ -51,7 +55,7 @@ export interface Tooltip {
   destroy(): void;
 }
 
-export function tooltip({ trigger, text }: TooltipOptions): Tooltip {
+export function tooltip({ trigger, text, shortcut }: TooltipOptions): Tooltip {
   let popup: HTMLElement | undefined;
   let timer: ReturnType<typeof setTimeout> | undefined;
 
@@ -71,7 +75,19 @@ export function tooltip({ trigger, text }: TooltipOptions): Tooltip {
     const element = document.createElement("div");
     element.className = "editor-shell-tooltip";
     element.setAttribute("role", "tooltip");
-    element.textContent = text;
+    const label = document.createElement("span");
+    label.textContent = text;
+    element.append(label);
+    // One owner for what a popup contains: the words, and the key that runs the
+    // same thing. The chip is a `kbd` so a stylesheet can mark it without a
+    // class of its own, and so its text is what a reader selecting the popup
+    // copies — a chord is typed, not read.
+    if (shortcut !== undefined) {
+      const chip = document.createElement("kbd");
+      chip.className = "editor-shell-tooltip-key";
+      chip.textContent = shortcut;
+      element.append(chip);
+    }
     element.id = `vigilia-tooltip-${++seq}`;
     element.style.width = WIDTH;
     element.style.maxWidth = `${MAX_WIDTH}px`;

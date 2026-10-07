@@ -134,6 +134,25 @@ describe("the editor's shared tooltip", () => {
     expect(open()).toBeNull();
   });
 
+  it("carries a chord inside the popup, not in a popup of its own", () => {
+    // A second `.editor-shell-tooltip` would make every locator that names the
+    // class ambiguous — the same reason `:85` asserts at most one is open.
+    const trigger = document.createElement("button");
+    document.body.append(trigger);
+    const handle = tooltip({ trigger, text: "Duplicate", shortcut: "Ctrl+D" });
+
+    trigger.dispatchEvent(new Event("focus"));
+
+    const popups = document.querySelectorAll(POPUP);
+    expect(popups).toHaveLength(1);
+    const chip = popups[0]?.querySelector("kbd");
+    expect(chip?.textContent).toBe("Ctrl+D");
+    // The words are still the whole description for a screen reader; the chip is
+    // a visual affordance and contributes its text once, not twice.
+    expect(popups[0]?.textContent).toContain("Duplicate");
+    expect(handle).toBeDefined();
+  });
+
   it("detaches every listener on destroy, so a removed control leaks nothing", () => {
     const trigger = document.createElement("button");
     document.body.append(trigger);

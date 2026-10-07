@@ -1327,6 +1327,17 @@ body,
   background: var(--shell-surface);
   color: var(--shell-text);
   font-size: 12px;
+  /* The chord sits after the words on the same line, so a two-chord label wraps
+     rather than widening the popup past its 280px cap. */
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: baseline;
+}
+.editor-shell-tooltip-key {
+  font-family: ui-monospace, monospace;
+  font-size: 11px;
+  opacity: 0.75;
 }
 .editor-shell-status {
   margin: 0 8px 8px;
