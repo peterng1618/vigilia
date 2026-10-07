@@ -549,6 +549,35 @@ PLAYWRIGHT_JSON_OUTPUT_NAME=test-results/insert-popover.json npx playwright test
 
 - [ ] **Step 5: Commit.** `test(editor): the + and its chooser, measured in a browser`
 
+**As executed** (`3fba25c3`, verified by the controller: the spec is green on the controller's own
+run, 2 expected / 0 unexpected, and **both cases go red on a rebuilt bundle with the `+`'s wiring
+disabled** — so it is a real regression test and not a decorative one). Four corrections, all of
+them the spec's code block having been written before Tasks 1–2 landed:
+
+- **Step 1's `groupsOf` could never pass, and its selector is the reason.** It reads
+  `[role=group]`, which matches **nothing** in the Add pane: `new-object-panel.ts:263-267` builds
+  each group as a bare `<fieldset>` + `<legend>` with no `role` attribute, so the implicit role is
+  invisible to a CSS selector, while Base UI's `Menu.Group` does set `role="group"` with
+  `aria-labelledby`. The spec now reads each surface by its own shape — `legend`/`button` for the
+  pane, `aria-labelledby`/`menuitem` for the menu — the same shape the two readers in
+  `shell-layout.dom.test.tsx:188-250` keep.
+- **The pane is shut at `goto`.** `shell-layout.tsx:381` opens on `"layers"`, so Step 1's first
+  assertion failed before the chooser was involved. The spec opens the Insert pane first, and that
+  also fixes the order: `openPane` with the menu already up would dismiss it on the outside press,
+  so the block's `openChooser` → `openPane` sequence is unworkable even without the visibility
+  line.
+- **Step 2's predicted red is not reproducible, and its diagnostic points the wrong way.** This
+  task writes no product code, so on a fresh bundle the *second* case passes — an inserted copy is
+  stamped by `instantiateCard` (`card-library.ts:250`). Step 2 says "if that case passes here and
+  the first fails, the reader is telling you the build is stale" — but that is exactly what a
+  **correct, fresh** build produces here. The red this task actually got came from the block's own
+  selectors, not from the product. **Read Step 2's diagnostic as inverted**, and take the break
+  proof above as what pins the spec.
+- **Two additions the block omits**, both required by its neighbours: the `isDesktopSurface` guard
+  every other pane-bar spec carries (`editor-pane-bar.spec.ts`, `panel-labels.spec.ts`), and a
+  `popupOf` locator. `pane.getByRole("group", { name: heading })` did work as written — Playwright
+  maps `fieldset` to `group` named by its `legend`.
+
 ---
 
 ## Phase 2 — A starter card is the unit it is
