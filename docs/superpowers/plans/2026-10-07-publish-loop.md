@@ -171,18 +171,22 @@ task's requirements implicitly include this section.
   assertions. A green unit test is not a proof that a header shows an address.
 - **`npm run gates:self-test`** from `src/web/` after touching anything under `scripts/` or
   a gate's subject.
-- **`shell-layout.dom.test.tsx` is slow for a filed reason, not a new one.** `vg-135`: jsdom
-  stops firing `requestAnimationFrame` after the View-menu test, so any later test in that
-  file that awaits a frame times out — measured, a bare `setTimeout(0)` cost 2 ms before the
-  View-menu click and 58 592 ms after. Tasks 1.1 and 2.3 both run this file, and a run that
-  hangs or takes minutes is **that row, not your change**. Prove the assertion you actually
-  touched by narrowing it (raise the per-test timeout, or run the View-menu test by name),
-  and report the condition with its row id. **Do not fix `vg-135`** and do not edit its
-  backlog entry — it is not this plan's.
-- **A prescribed break that does not break is a plan defect, not a passing test.** Two of this
+- **`shell-layout.dom.test.tsx` is slow for a filed reason, not a new one.** `vg-135`: one
+  Base UI menu-trigger click blocks synchronously for 50–90 s under jsdom, so its View-menu
+  test takes 190 s alone and three insert tests time out — measured, a bare `setTimeout(0)`
+  cost 2 ms before the View-menu click and 58 592 ms after. **It is a stall, not dead rAF**;
+  an earlier title said otherwise and the row's own detail refutes it. The row now reddens the
+  full unit suite, which is stated at each task's broad gate. Tasks 1.1 and 2.3 ran this file,
+  and a run that hangs or takes minutes is **that row, not your change**. Prove the assertion
+  you actually touched by narrowing it (raise the per-test timeout, or run the View-menu test
+  by name), and report the condition with its row id. **Do not fix `vg-135`** and do not edit
+  its backlog entry — it is not this plan's.
+- **A prescribed break that does not break is a plan defect, not a passing test.** Three of this
   plan's own break-proof steps were measured **inert**: Task 1.2's inversion break leaves all
-  three tests green because `jsqr` attempts inversion, and Task 2.1's `lan`-only break leaves
-  all five green because the sibling guards reject the same body. If the break you were told to
+  three tests green because `jsqr` attempts inversion, Task 2.1's `lan`-only break leaves
+  all five green because the sibling guards reject the same body, and Task 3.1's default break
+  broke nothing until its three default assertions were rewritten to name the literal rather
+  than the constant they were meant to pin. If the break you were told to
   make leaves the suite green, **do not conclude the test is fine and do not edit the tests to
   make them fail.** Find a break that does fail, observe the failure, restore, and say in your
   report what the prescribed break actually did. A green run after a break proves only that the
