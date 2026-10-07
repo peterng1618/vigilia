@@ -456,12 +456,6 @@ runtime-switched palette so one `data-shell-palette` attribute recolours everyth
 including every portalled popup. The editor follows the OS appearance, with the palette
 picker as an explicit override. Six palettes, six distinguishable things.
 
-The editor is warm cream glass; the dashboards it makes are dark and neon. Tailwind v4's
-`@theme` carries the spacing, radius, type and elevation scales; `@theme inline` carries
-the runtime-switched palette so one `data-shell-palette` attribute recolours everything,
-including every portalled popup. The editor follows the OS appearance, with the palette
-picker as an explicit override. Six palettes, six distinguishable things.
-
 ## Sequencing
 
 Ordered by **what becomes visible**, not by what is easy to specify. The previous plan had
