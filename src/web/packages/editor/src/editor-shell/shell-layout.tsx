@@ -16,6 +16,7 @@ import { LayerPanel } from "./layer-panel.js";
 import { PaneBar, type RailPane } from "./pane-bar.js";
 import { PaletteMenu } from "./palette-menu.js";
 import { PublishControl } from "./publish-control.js";
+import type { PublishSwitch } from "../publish-client.js";
 import { SaveState } from "./save-state.js";
 import { DisplaySwitch } from "./display-switch.js";
 import { applyShellPalette, DEFAULT_SHELL_PALETTE, readShellPalette } from "./palette.js";
@@ -50,6 +51,9 @@ export interface ShellLayout {
   setBridge(
     bridge: EditorShellBridge | undefined,
     view: EditorViewControls | undefined,
+    /** What the publish surface's switch drives. Owned by `editor-main`, so the
+     *  surface decides whether publishing is on and never holds a document. */
+    publish?: PublishSwitch,
   ): void;
   destroy(): void;
 }
@@ -373,6 +377,7 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
   hosts.canvas.id = "canvas-host";
 
   let view: EditorViewControls | undefined;
+  let publish: PublishSwitch | undefined;
   let reactRoot: Root | undefined;
   const store = new SelectionStore();
   const getView = (): EditorViewControls | undefined => view;
@@ -468,7 +473,7 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
             palette={palette}
             onChange={setPalette}
           />
-          <PublishControl />
+          <PublishControl session={store.bridge?.session} publish={publish} />
           <button
             className="editor-shell-primary"
             type="button"
@@ -584,11 +589,12 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
     hosts,
     stage,
     dock,
-    setBridge(nextBridge, nextView) {
+    setBridge(nextBridge, nextView, nextPublish) {
       // The store notifies subscribers, so React re-renders the inspector and
       // menus without a manual root re-render — and it keeps working when the
       // bridge is replaced by a later document mount.
       view = nextView;
+      publish = nextPublish;
       store.set(nextBridge);
       flushSync(() => {
         dockRoot.render(

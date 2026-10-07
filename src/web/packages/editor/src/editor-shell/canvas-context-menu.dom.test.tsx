@@ -61,6 +61,7 @@ function facadeStub(): EditorActionFacade {
     group: vi.fn(),
     ungroup: vi.fn(),
     isDirty: vi.fn(() => false),
+    publishableDocument: vi.fn(() => undefined),
     subscribeDocumentChange: vi.fn(() => () => undefined),
   };
 }

@@ -26,6 +26,7 @@ import {
   createNewFabricTheme,
 } from "./new-fabric-theme.js";
 import { parseThemePackage } from "./persist.js";
+import { createPublisher, type PublishSwitch } from "./publish-client.js";
 import { DEFAULT_RUN_DISPLAY_MODE } from "./run-placeholder.js";
 import { loadStarterBackdrop } from "./starter-backdrop.js";
 import { createThemeLibraryClient } from "./theme-library-client.js";
@@ -114,6 +115,43 @@ async function start(): Promise<void> {
         status.textContent = `${label}: ${detail ?? sourceStatus}`;
       },
     });
+
+  /** One publisher for the whole editor: the transport is a fact about this
+   *  page, not about which document happens to be open. */
+  const publisher = createPublisher({
+    onError: (message) => {
+      status.textContent = message;
+    },
+  });
+  /** Whether the author has publishing switched on. The publish surface owns
+   *  the switch; this owns what the switch does, so a press and a document
+   *  change do not have to know about each other. */
+  let publishing = false;
+  /** Offers whatever is open, or stops. A document the library does not hold
+   *  has no folder for a display to fetch its assets from, so the stored theme
+   *  stays up rather than one that renders with holes. */
+  const offerOpenDocument = (): void => {
+    if (!publishing) return;
+    const session = active?.bridge.session;
+    if (session === undefined) return;
+
+    const document = session.publishableDocument();
+    if (document === undefined) {
+      void publisher.stop();
+      return;
+    }
+    publisher.offer(document);
+  };
+  const publish: PublishSwitch = {
+    start: () => {
+      publishing = true;
+      offerOpenDocument();
+    },
+    stop: async () => {
+      publishing = false;
+      await publisher.stop();
+    },
+  };
 
   const replaceSource = (): void => {
     if (active === undefined) return;
@@ -262,7 +300,11 @@ async function start(): Promise<void> {
     /** e2e drives a rename through the same bridge the layer panel calls, so the
      * global is published only after the previous document's is torn down. */
     (window as unknown as Record<string, unknown>).vigiliaEditorBridge = bridge;
-    layout.setBridge(bridge, viewControls);
+    // The document this mount built is what a display follows now; the
+    // previous session's listeners were cleared with it.
+    bridge.session.subscribeDocumentChange(offerOpenDocument);
+    offerOpenDocument();
+    layout.setBridge(bridge, viewControls, publish);
     // Bound per document, because the canvas is torn down and rebuilt with it.
     const canvas = shell.editor.canvas;
     canvas.on(
@@ -308,6 +350,12 @@ async function start(): Promise<void> {
 
   window.addEventListener("pagehide", () => chartRefresh.dispose(), {
     once: true,
+  });
+  // Publishing stops when the author does. The host holds the document in its
+  // own memory, so an editor that goes away without saying so leaves a phone
+  // showing something nobody is editing any more.
+  window.addEventListener("pagehide", () => {
+    void publisher.stop();
   });
   // The browser owns this dialog's wording and leaves no room to say what would
   // be lost, so it can only ask. It asks the session's own comparison rather

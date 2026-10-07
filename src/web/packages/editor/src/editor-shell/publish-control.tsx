@@ -6,7 +6,9 @@ import {
   readHosting,
   setLan,
 } from "../hosting-client.js";
+import type { PublishSwitch } from "../publish-client.js";
 import { uiCopy } from "../ui-copy.js";
+import type { EditorActionFacade } from "./session-facade.js";
 // `qr-symbol`, not `qr-code`: `./qr-code.js` is the encoder, and a
 // same-basename `.tsx` beside it is unreachable under `moduleResolution:
 // bundler` — it resolves to the `.ts` and yields `undefined`, not an error.
@@ -31,12 +33,55 @@ import { QrCode } from "./qr-symbol.js";
 /** The one control on this surface, so a fixed id is the whole address. */
 const WARNING_ID = "vigilia-publish-warning";
 
-export function PublishControl(): React.JSX.Element | null {
+export function PublishControl({
+  session,
+  publish,
+}: {
+  /** The open document, asked what a display would be shown. */
+  readonly session?: EditorActionFacade | undefined;
+  /** The transport, owned by `editor-main`. The switch turns it on and off; it
+   *  never has to hand over a document to do either. */
+  readonly publish?: PublishSwitch | undefined;
+}): React.JSX.Element | null {
   const [hosting, setHosting] = useState<HostingAnswer | undefined>(undefined);
-  const [session, setSession] = useState<HostingAnswer["session"]>(undefined);
+  /** The credential a phone pairs with, which is not the editor session. */
+  const [pairing, setPairing] = useState<HostingAnswer["session"]>(undefined);
   const [reason, setReason] = useState<string | undefined>(undefined);
   /** The state a toggle is asking for, while the host is deciding. */
   const [pending, setPending] = useState<boolean | undefined>(undefined);
+  /** What a display is showing: the document that goes out, or nothing when the
+   *  library does not hold this one. */
+  const [showing, setShowing] = useState<{ readonly name: string } | undefined>(
+    undefined,
+  );
+  // Publishing follows the LAN, because that is the whole of §145's opt-in: a
+  // host serving loopback has nothing to publish to, and turning the LAN off
+  // takes the document back.
+  const open = hosting?.lan === true;
+
+  useEffect(() => {
+    if (session === undefined) return;
+
+    const read = (): void => {
+      const document = session.publishableDocument();
+      setShowing(
+        document === undefined
+          ? undefined
+          : { name: document.envelope.metadata?.name ?? document.id },
+      );
+    };
+    read();
+    return session.subscribeDocumentChange(read);
+  }, [session]);
+
+  useEffect(() => {
+    if (!open || publish === undefined) return;
+
+    publish.start();
+    return () => {
+      void publish.stop();
+    };
+  }, [open, publish]);
 
   useEffect(() => {
     let live = true;
@@ -49,7 +94,7 @@ export function PublishControl(): React.JSX.Element | null {
 
       const minted = await mintSession();
       if (!live || minted === undefined) return;
-      setSession(minted);
+      setPairing(minted);
     })();
 
     return () => {
@@ -74,7 +119,7 @@ export function PublishControl(): React.JSX.Element | null {
       const now = await readHosting();
       if (now === undefined) return;
       setHosting(now);
-      if (!now.lan) setSession(undefined);
+      if (!now.lan) setPairing(undefined);
       return;
     }
 
@@ -85,26 +130,28 @@ export function PublishControl(): React.JSX.Element | null {
     if (outcome.answer.refusal !== null) setReason(outcome.answer.refusal);
 
     if (!outcome.answer.lan) {
-      setSession(undefined);
+      setPairing(undefined);
       return;
     }
 
-    setSession(await mintSession());
+    setPairing(await mintSession());
   }
 
   // No host behind the editor: there is nothing to offer, so nothing is drawn.
   if (hosting === undefined) return null;
 
-  const open = hosting.lan;
-  // The address and the session exist only while the LAN is on, so turning it
+  // The address and the pairing exist only while the LAN is on, so turning it
   // off takes the URL off the screen rather than leaving a stale one behind.
   const shown =
-    open && hosting.address !== null && hosting.port !== null && session !== undefined
+    open &&
+    hosting.address !== null &&
+    hosting.port !== null &&
+    pairing !== undefined
       ? {
           address: hosting.address,
           port: hosting.port,
-          token: session.token,
-          expiresAt: session.expiresAt,
+          token: pairing.token,
+          expiresAt: pairing.expiresAt,
         }
       : undefined;
   const label = open
@@ -134,6 +181,15 @@ export function PublishControl(): React.JSX.Element | null {
         {reason === undefined ? null : (
           <span className="editor-shell-publish-reason" role="alert">
             {reason}
+          </span>
+        )}
+        {/* Only once the shell has a document to read: a control drawn without
+            one would say "save this theme" about no theme. */}
+        {session === undefined || !open ? null : (
+          <span className="editor-shell-publish-live">
+            {showing === undefined
+              ? uiCopy.publish.unsaved
+              : uiCopy.publish.live(showing.name)}
           </span>
         )}
         {shown === undefined ? null : (

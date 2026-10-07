@@ -582,6 +582,16 @@ export class EditorSession {
       group: () => editor.groupingManager.group(),
       ungroup: () => editor.groupingManager.ungroup(),
       isDirty: () => this.isDirty(),
+      publishableDocument: () => {
+        // A document with no stored base has no folder, and a published
+        // document's assets are served from the theme's own folder — so a
+        // display given one would render a theme with holes. The base's own
+        // `id` is a content hash of the stored document, not the folder it
+        // lives in, so the id published under is the document's.
+        if (this.#libraryBase === undefined) return undefined;
+        const envelope = this.#snapshot(this.#shell);
+        return { id: envelope.id, envelope };
+      },
       subscribeDocumentChange: (listener) =>
         this.subscribeDocumentChange(listener),
     };

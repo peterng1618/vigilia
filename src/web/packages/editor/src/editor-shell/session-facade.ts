@@ -1,4 +1,7 @@
-import type { ChartFamily } from "@vigilia/renderer-core";
+import type {
+  ChartFamily,
+  FabricThemeEnvelopeInput,
+} from "@vigilia/renderer-core";
 import type { ArrangeAction } from "../arrange.js";
 import type { ShapeKind } from "../new-object-defaults.js";
 import type { RunDisplayMode } from "../run-placeholder.js";
@@ -31,6 +34,12 @@ export interface EditorActionFacade {
   duplicate(): void;
   group(): void;
   ungroup(): void;
+  /** The document as it stands, and the id a display must fetch its assets
+   *  from. `undefined` when this document has never been saved: a published
+   *  document's assets come from the theme's folder, so there would be none. */
+  publishableDocument():
+    | { readonly id: string; readonly envelope: FabricThemeEnvelopeInput }
+    | undefined;
   /** Whether the document differs from what was last saved. Pulled, so the
    *  subscription carries no value: it says the document may have moved. */
   isDirty(): boolean;
