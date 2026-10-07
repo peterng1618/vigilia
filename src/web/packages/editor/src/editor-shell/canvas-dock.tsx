@@ -4,6 +4,7 @@ import {
   type ObjectActionId,
   OBJECT_ACTIONS,
 } from "../object-actions.js";
+import { shortcutLabel } from "../shortcut-manager/display.js";
 import type { EditorShellBridge } from "./bridge.js";
 import { tooltip } from "./controls/tooltip.js";
 
@@ -22,19 +23,29 @@ function Action({
   bridge,
   id,
   label,
+  shortcut,
   children,
 }: {
   readonly bridge: EditorShellBridge | undefined;
   readonly id: ObjectActionId;
   readonly label: string;
+  readonly shortcut: string | undefined;
   readonly children: React.ReactNode;
 }): React.JSX.Element {
   const ref = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     const button = ref.current;
     if (button === null) return;
-    return tooltip({ trigger: button, text: label }).destroy;
-  }, [label]);
+    // Two calls rather than one with a conditional field: `exactOptionalPropertyTypes`
+    // forbids passing `undefined`, and a caller with no chord must omit it.
+    return (
+      shortcut === undefined
+        ? tooltip({ trigger: button, text: label })
+        : tooltip({ trigger: button, text: label, shortcut })
+    ).destroy;
+    // Changing the selection changes which chords are mounted, so a popup must
+    // be rebuilt when the chord changes — otherwise it shows the previous one.
+  }, [label, shortcut]);
   return (
     <button
       ref={ref}
@@ -74,8 +85,14 @@ export function CanvasDock({
 
   return (
     <>
-      {actions.map(({ id, icon: Icon, label }) => (
-        <Action key={id} bridge={bridge} id={id} label={label}>
+      {actions.map(({ id, icon: Icon, label, shortcut }) => (
+        <Action
+          key={id}
+          bridge={bridge}
+          id={id}
+          label={label}
+          shortcut={shortcut === undefined ? undefined : shortcutLabel(shortcut)}
+        >
           <Icon aria-hidden size={15} strokeWidth={1.75} />
         </Action>
       ))}

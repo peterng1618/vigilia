@@ -23,6 +23,7 @@ import {
 } from "lucide-react";
 import { type ArrangeAction, applyArrange, arrangeMinimum } from "./arrange.js";
 import type { EditorInteraction } from "./editor-interaction.js";
+import type { ProductShortcutId } from "./shortcut-manager/index.js";
 import { uiCopy } from "./ui-copy.js";
 
 /** What a surface may render an action against. Serializable, Fabric-free. */
@@ -53,6 +54,13 @@ export interface ObjectAction {
   readonly id: ObjectActionId;
   readonly label: string;
   readonly icon: LucideIcon;
+  /** The product binding this action answers to, when there is one. A
+   *  *reference*, never a chord: `shortcut-manager/display.ts` decides how a
+   *  chord reads, so a `"Ctrl+D"` written here would be a second owner of the
+   *  chord and would not follow the platform. Omitted rather than `undefined`,
+   *  per `exactOptionalPropertyTypes`; the absence is the fact that the product
+   *  binds nothing. */
+  readonly shortcut?: ProductShortcutId;
   readonly eligible: (target: ObjectTarget) => boolean;
   readonly run: (editor: EditorInteraction) => void;
 }
@@ -84,6 +92,7 @@ export const OBJECT_ACTIONS: readonly ObjectAction[] = [
     id: "duplicate",
     label: uiCopy.actions.duplicate,
     icon: CopyPlus,
+    shortcut: "edit.duplicate",
     // ClipboardManager.duplicate refuses a locked object; eligibility has to agree.
     eligible: (t) => hasSelection(t) && !t.locked,
     run: (e) => void e.clipboardManager.duplicate(),
@@ -92,6 +101,7 @@ export const OBJECT_ACTIONS: readonly ObjectAction[] = [
     id: "copy",
     label: uiCopy.actions.copy,
     icon: Copy,
+    shortcut: "edit.copy",
     // ClipboardManager.copy refuses a locked object; eligibility has to agree.
     eligible: (t) => hasSelection(t) && !t.locked,
     run: (e) => void e.clipboardManager.copy(),
@@ -100,6 +110,7 @@ export const OBJECT_ACTIONS: readonly ObjectAction[] = [
     id: "cut",
     label: uiCopy.actions.cut,
     icon: Scissors,
+    shortcut: "edit.cut",
     // Cut refuses through copy(), which refuses a locked object.
     eligible: (t) => hasSelection(t) && !t.locked,
     run: (e) => void e.clipboardManager.cut(),
@@ -110,9 +121,12 @@ export const OBJECT_ACTIONS: readonly ObjectAction[] = [
     id: "front",
     label: uiCopy.actions.front,
     icon: ArrowUpToLine,
+    shortcut: "canvas.front",
     eligible: hasSelection,
     run: (e) => e.layerManager.bringToFront(),
   },
+  // `bring-forward`, `send-backward`, `lock` and `unlock` carry no `shortcut`:
+  // the product binds no chord for them, and the field's absence is that fact.
   {
     id: "bring-forward",
     label: uiCopy.actions.bringForward,
@@ -131,6 +145,7 @@ export const OBJECT_ACTIONS: readonly ObjectAction[] = [
     id: "back",
     label: uiCopy.actions.back,
     icon: ArrowDownToLine,
+    shortcut: "canvas.back",
     eligible: hasSelection,
     run: (e) => e.layerManager.sendToBack(),
   },
@@ -153,6 +168,7 @@ export const OBJECT_ACTIONS: readonly ObjectAction[] = [
     id: "group",
     label: uiCopy.actions.group,
     icon: Group,
+    shortcut: "edit.group",
     eligible: (t) => t.kind === "group" && t.memberCount > 1 && !t.isGroup,
     run: (e) => e.groupingManager.group(),
   },
@@ -160,6 +176,7 @@ export const OBJECT_ACTIONS: readonly ObjectAction[] = [
     id: "ungroup",
     label: uiCopy.actions.ungroup,
     icon: Ungroup,
+    shortcut: "edit.ungroup",
     eligible: (t) => t.isGroup,
     run: (e) => e.groupingManager.ungroup(),
   },
@@ -167,6 +184,7 @@ export const OBJECT_ACTIONS: readonly ObjectAction[] = [
     id: "delete",
     label: uiCopy.actions.delete,
     icon: Trash2,
+    shortcut: "edit.delete",
     // DeletionManager refuses locked objects; eligibility has to agree.
     eligible: (t) => hasSelection(t) && !t.locked,
     run: (e) => e.deletionManager.deleteActive(),

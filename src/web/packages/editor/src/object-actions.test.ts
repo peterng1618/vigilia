@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
+  arrangeActions,
   OBJECT_ACTIONS,
   type ObjectTarget,
   objectAction,
 } from "./object-actions.js";
+import { productShortcutIds } from "./shortcut-manager/index.js";
 
 function target(overrides: Partial<ObjectTarget> = {}): ObjectTarget {
   return {
@@ -60,5 +62,37 @@ describe("object action registry", () => {
     expect(align.eligible(target({ memberCount: 2, locked: true }))).toBe(
       false,
     );
+  });
+});
+
+describe("object actions and the shortcut table", () => {
+  it("references chords the table actually binds", () => {
+    const bound = new Set(productShortcutIds());
+    for (const action of [...OBJECT_ACTIONS, ...arrangeActions()]) {
+      if (action.shortcut === undefined) continue;
+      // A shortcut id the table does not bind renders the empty string, so the
+      // tooltip would silently say nothing. This is the assertion that stops it.
+      expect(bound.has(action.shortcut)).toBe(true);
+    }
+  });
+
+  it("names the eight chords the canvas offers", () => {
+    const named = OBJECT_ACTIONS.filter(
+      (action) => action.shortcut !== undefined,
+    )
+      .map((action) => action.id)
+      .sort();
+    // Written out rather than counted: eight today, and `arrangeActions()` is
+    // deliberately absent from this list because the product binds none of them.
+    expect(named).toEqual([
+      "back",
+      "copy",
+      "cut",
+      "delete",
+      "duplicate",
+      "front",
+      "group",
+      "ungroup",
+    ]);
   });
 });
