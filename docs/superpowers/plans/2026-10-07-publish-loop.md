@@ -3929,12 +3929,20 @@ test("an edit reaches the display while the editor has it open", async ({ page, 
   // `page.evaluate` here would be the finding rather than the technique.
   //
   // Both boxes commit on `change` (`controls/number-field.ts:161-163`), and
-  // **`fill` does not dispatch `change`** — it dispatches `input`, and `change`
-  // arrives when the field loses focus, which is what an author does by leaving
-  // the box. An earlier revision of this task said "no Enter, and no blur" and
-  // that is wrong: with no blur neither edit is ever published, `/api/publish`
-  // sees no request at all, and the test times out on a poll nothing can clear.
-  // That is measured, not reasoned — see the comment in the spec itself.
+  // **`fill` does not dispatch `change` for these boxes** — so the blur is
+  // load-bearing, not decoration. An earlier revision said "no Enter, and no
+  // blur" and that is wrong: with no blur neither edit is ever published,
+  // `/api/publish` sees no request at all, and the test times out on a poll
+  // nothing can clear. That was measured by the run that wrote the spec.
+  //
+  // **Do not "fix" this back after reading Playwright's source.** `fill` really
+  // does dispatch a `change` event — but only on its *set-value* path, whose
+  // types are `["color","date","time","datetime-local","month","range","week"]`.
+  // `number` is in the *type-into* set instead (`["","email","number",
+  // "password","search","tel","text","url"]`), and that path types characters
+  // and fires `input` alone. `controls/number-field.ts:92` sets
+  // `input.type = "number"`, so these two boxes take the type-into path and the
+  // blur is the only thing that produces the `change` they listen for.
   await page.locator("[data-vigilia-artboard-width]").fill("320");
   await page.locator("[data-vigilia-artboard-width]").blur();
   await page.locator("[data-vigilia-artboard-height]").fill("240");
