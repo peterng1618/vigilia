@@ -28,12 +28,13 @@ import { HOST_APP_DIR, HOST_PORT } from "./tests/e2e/host-theme.js";
 const HOST_SPECS = /host-(player|settings|media|bleed).spec.ts/;
 
 /**
- * The publish-header proof starts its own host on its own port and drives the
- * editor through that host's `/editor/` mount, because `/api/hosting` is only
- * same-origin there. Like the host specs it therefore cannot run under the
- * preview projects, and it cannot share their port.
+ * The publish proofs each start their own host on their own port and drive the
+ * editor through that host's `/editor/` mount, because `/api/hosting`,
+ * `/api/publish` and `/api/published` are only same-origin there. Like the host
+ * specs they therefore cannot run under the preview projects, and they cannot
+ * share their port — `publish-header` owns 4227 and `publish-loop` owns 4229.
  */
-const PUBLISH_SPEC = /publish-header\.spec\.ts/;
+const PUBLISH_SPEC = /publish-(header|loop)\.spec\.ts/;
 
 /**
  * The rebuild drives its own preview on its own port, under
