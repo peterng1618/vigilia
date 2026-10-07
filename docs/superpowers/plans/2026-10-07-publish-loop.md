@@ -286,6 +286,17 @@ task that owns the code** — the task is named in brackets.
 - **§8's Radix migration, Dialogs, Collapsibles and the `?` reference.** Plan 7 (Keyboard)
   and plan 9 (Chrome) have no plan files. This plan adds no UI library and uses Base UI
   `Menu`, the primitive every existing header surface already uses.
+
+  **Plan 7 inherits a decision it must not re-open, and the sequencing table hides it.**
+  §8 rules that Radix is the single primitive library, and plan 7 is the first plan that
+  *adds* primitives the repo does not have — a tooltip for the shortcut hints, and a Dialog
+  for the `?` reference, which §8 records as belonging to neither library today. Read the
+  table alone and 7 comes before 9, so a plan 7 author would reach for Base UI, the library
+  the header already uses, and plan 9 would then migrate the very components plan 7 just
+  wrote. The ruling applies from the moment it is made: **new primitives are Radix**, and
+  plan 9's job is migrating the five existing Base UI imports, not the new ones. Plan 7 also
+  crosses §8's mechanism boundary, so it owes the `docs/decisions/` note and the seven
+  reuse-gate rungs before its first write — the hook refuses the path until a note claims it.
 - **The pinned-backlog work:** `vg-153`, `vg-154`, `vg-155`, `vg-156`, `vg-119`, `vg-151`,
   `vg-157`–`vg-160`, and plan 5's review findings `vg-161`–`vg-170`. The font catalogue
   plan stays on hold.
