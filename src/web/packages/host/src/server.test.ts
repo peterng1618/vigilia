@@ -13,7 +13,7 @@ import { writeThemePackage } from "@vigilia/theme-package";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { DeviceAssignment } from "./providers/lhm-mapping.js";
 import { ProviderRegistry } from "./providers/registry.js";
-import { createHostServer } from "./server.js";
+import { createHostServer, type HostServerOptions } from "./server.js";
 import { createSessionStore } from "./session/pairing.js";
 import { createActiveThemeStore } from "./settings/active-theme.js";
 import { createDeviceSettingsStore } from "./settings/devices.js";
@@ -1752,5 +1752,91 @@ describe("a pairing guard protects dashboard content, not the bundle", () => {
       await fs.rm(bundle, { recursive: true, force: true });
       await fs.rm(themes, { recursive: true, force: true });
     }
+  });
+});
+
+describe("The hosting route answers where a phone should point (§145)", () => {
+  let hostingDir: string;
+  let hosted: ReturnType<typeof createHostServer>;
+
+  beforeEach(async () => {
+    hostingDir = await fs.mkdtemp(
+      path.join(os.tmpdir(), "vigilia-host-hosting-test-"),
+    );
+  });
+
+  /** `/api/hosting` reads no theme, so the bundles are only a temp directory. */
+  function build(
+    options: Omit<HostServerOptions, "registry" | "bundles" | "themeStore">,
+  ): void {
+    hosted = createHostServer({
+      registry: new ProviderRegistry([]),
+      bundles: { player: hostingDir, editor: hostingDir },
+      themeStore: createThemeStore(hostingDir),
+      ...options,
+    });
+  }
+
+  afterEach(async () => {
+    await hosted.close();
+    await fs.rm(hostingDir, { recursive: true, force: true });
+  });
+
+  it("answers where a phone should go, and nothing else", async () => {
+    const store = createSessionStore({ randomToken: () => "t".repeat(43) });
+    build({
+      hosting: () => ({ lan: true, address: "192.168.1.42", port: 5227 }),
+      sessions: store,
+    });
+
+    const answered = await request(hosted.server, "GET", "/api/hosting");
+    expect(answered.status).toBe(200);
+    expect(answered.json()).toEqual({
+      lan: true,
+      address: "192.168.1.42",
+      port: 5227,
+      sessions: [],
+    });
+
+    // A token is a credential, and `DisplaySession` carries one — so a route
+    // that forwards `list()` unchanged hands it back. An assertion over an
+    // empty list passes for that implementation and for a redacting one alike,
+    // which is why this mints: without a session present, the test cannot tell
+    // them apart.
+    store.create("Kitchen phone");
+    const withOne = await request(hosted.server, "GET", "/api/hosting");
+    const peers = (
+      withOne.json() as { sessions: readonly Record<string, unknown>[] }
+    ).sessions;
+    expect(peers).toHaveLength(1);
+    expect(peers[0]).not.toHaveProperty("token");
+    expect(JSON.stringify(peers)).not.toContain("t".repeat(43));
+  });
+
+  it("keeps hosting settings on this PC", async () => {
+    build({
+      hosting: () => ({ lan: true, address: "192.168.1.42", port: 5227 }),
+    });
+
+    const answered = await request(
+      hosted.server,
+      "GET",
+      "/api/hosting",
+      undefined,
+      { remoteAddress: "192.168.1.50" },
+    );
+    expect(answered.status).toBe(403);
+  });
+
+  it("answers loopback with nothing hosted when it was told nothing", async () => {
+    build({});
+
+    const answered = await request(hosted.server, "GET", "/api/hosting");
+    expect(answered.json()).toEqual({
+      lan: false,
+      address: null,
+      port: null,
+      sessions: [],
+    });
   });
 });

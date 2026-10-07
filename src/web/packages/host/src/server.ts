@@ -14,7 +14,7 @@ import {
   needsTrailingSlash,
   resolveStaticPath,
 } from "./serve/static-path.js";
-import type { SessionStore } from "./session/pairing.js";
+import type { DisplaySession, SessionStore } from "./session/pairing.js";
 import type { ActiveThemeStore } from "./settings/active-theme.js";
 import {
   type DeviceSettingsStore,
@@ -88,7 +88,27 @@ export interface HostServerOptions {
     readonly gpus: readonly { readonly id: string; readonly name: string }[];
     readonly disks: readonly { readonly id: string; readonly name: string }[];
   }>;
+  /** Where a phone should point, and whether it can reach this host at all.
+   *  Supplied rather than introspected: `server.address()` is null for a server
+   *  that is not listening, which is every test, and the thing that binds the
+   *  socket is the thing that knows. */
+  readonly hosting?: () => HostingState;
 }
+
+export interface HostingState {
+  /** True when this host is reachable beyond loopback right now. */
+  readonly lan: boolean;
+  /** The address a phone should use, or null when there is none. */
+  readonly address: string | null;
+  /** The port this host is bound to, or null when it is not bound. */
+  readonly port: number | null;
+}
+
+/** A paired phone as the header may see it: `DisplaySession` **minus its
+ *  credential**. `list()` returns whole sessions, so the route maps. */
+export type HostingPeer = Omit<DisplaySession, "token">;
+
+const NO_HOSTING: HostingState = { lan: false, address: null, port: null };
 
 export interface HostServer {
   readonly server: http.Server;
@@ -296,6 +316,7 @@ export function createHostServer(options: HostServerOptions): HostServer {
   /** Keys no provider answered in the last poll; surfaced through `/api/health`. */
   let lastUnmapped: readonly string[] = [];
   const sessions = options.sessions;
+  const hosting = options.hosting ?? (() => NO_HOSTING);
   const devices = options.devices;
   const display = options.display;
   const fontFavorites = options.fontFavorites;
@@ -632,6 +653,34 @@ export function createHostServer(options: HostServerOptions): HostServer {
         ),
         unmapped: lastUnmapped,
         pairing: sessions !== undefined,
+      });
+      return;
+    }
+
+    // Where the phone should go, and the sessions this PC has minted, so the
+    // editor header can show the address and a code for it. Admin, like the
+    // other settings: it names this machine's address and who is paired.
+    // The tokens themselves never leave — the header mints its own.
+    if (url.pathname === "/api/hosting") {
+      if (!isLoopbackRemote(request.socket.remoteAddress)) {
+        sendText(
+          response,
+          403,
+          "Hosting settings are available on this PC only.",
+        );
+        return;
+      }
+
+      if (request.method !== "GET") {
+        sendText(response, 405, "Only GET and PUT are supported.");
+        return;
+      }
+
+      sendJson(response, 200, {
+        ...hosting(),
+        sessions: (sessions?.list() ?? []).map(
+          ({ token: _credential, ...peer }) => peer,
+        ),
       });
       return;
     }

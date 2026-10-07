@@ -58,7 +58,13 @@ export type {
 } from "./providers/registry.js";
 export { ProviderRegistry, unionOfKeys } from "./providers/registry.js";
 export { contentTypeFor, resolveStaticPath } from "./serve/static-path.js";
-export type { BundleRoots, HostServer, HostServerOptions } from "./server.js";
+export type {
+  BundleRoots,
+  HostingPeer,
+  HostingState,
+  HostServer,
+  HostServerOptions,
+} from "./server.js";
 export { createHostServer, DEFAULT_SAMPLE_INTERVAL_MS } from "./server.js";
 export { KeepLatestSlot } from "./transport/keep-latest.js";
 export { SseConnection } from "./transport/sse.js";

@@ -35,7 +35,7 @@ The loop, in order:
 
 ## Active work
 
-- **Plan 6, the publish loop, is the active plan; Tasks 1.1 and 1.2 have landed and Task 1.3 is next.** [The plan](docs/superpowers/plans/2026-10-07-publish-loop.md) is 15 tasks in 4 phases against spec §6; plan 5 is closed and archived with the `+` landmark met (spec `:475`, acceptance `:537`).
+- **Plan 6, the publish loop, is the active plan; Phase 1 has landed and Phase 2 is next.** [The plan](docs/superpowers/plans/2026-10-07-publish-loop.md) is 15 tasks in 4 phases against spec §6; plan 5 is closed and archived with the `+` landmark met (spec `:475`, acceptance `:537`).
 - **§6's own parenthetical cites work that does not exist.** It says the switch "stays in canvas controls where the canvas is (plan 1, task 4)"; `canvas-view-controls.tsx` was never created and the switch is in the header's View menu (`shell-layout.tsx:316-327`), so plan 6 renames the copy where the switch actually is and leaves the move to `vg-161`, which already queues it.
 - **Two plan claims were checked against the packages, not assumed, and both were corrected.** `jsqr` is Apache-2.0, not MIT — the plan's own stop-and-file step would have halted Task 1.2 on a false alarm; and `qr`'s `border` is in modules and defaults to **2**, not the standard's 4, so passing it explicitly is load-bearing.
 - **`shell-layout.dom.test.tsx` is slow for a filed reason.** `vg-135`: jsdom stops firing rAF after the View-menu test, so later tests in that file await a frame that never comes — its single View-menu test takes 190 s alone. Tasks 1.1 and 2.3 both run it; a hang there is the row, not the task.
@@ -44,15 +44,15 @@ The loop, in order:
 
 ## Last completed change
 
-- **Plan 6's Task 1.2 landed: `qr-code.ts` encodes a URL to a boolean module matrix** through `qr` 0.7.2 with `ecc: "medium"` and `border: QUIET_ZONE_MODULES` (4) passed explicitly, since the library's default is 2.
-- **`qr-code.test.ts` proves the round-trip through a second library:** a 77-char URL rasterised by hand decodes back through `jsqr` 1.4.0, the outer frame is light for the 4 modules the standard requires, and the symbol is 45×45 for that payload.
-- **The plan's Step 6 break was wrong, and the correction is recorded here.** Inverting ink and paper in `rasterise` does **not** fail: `jsqr` defaults to `inversionAttempts: "attemptBoth"` and reads an inverted symbol. The decode assertion was proved able to fail another way — an all-light raster returned `null` (assertion `expected undefined to be …`), then restored.
-- **Licences read from the installed metadata, not assumed:** `qr` 0.7.2 is `(MIT OR Apache-2.0)` with no dependencies, `jsqr` 1.4.0 is `Apache-2.0` with no dependencies — both recorded in `THIRD-PARTY-NOTICES.md` and `docs/engineering/dependencies.md`.
-- **Gates green on the commit:** `npm run typecheck` exit 0, `biome lint ..` exit 0, `npm run format:check` exit 0 (it was red first — the plan's test line needed wrapping).
+- **Plan 6's Task 1.3 landed: `GET /api/hosting` answers where a phone should point** — `HostingState` (`lan`, `address`, `port`) supplied by `HostServerOptions.hosting` and defaulting to `{lan:false,address:null,port:null}`, so the server never introspects a socket it did not bind.
+- **The route strips the credential.** `SessionStore.list()` returns whole `DisplaySession`s, so the route maps each to `HostingPeer = Omit<DisplaySession,"token">`; the test mints a session and asserts `token` is absent and the raw token never appears in the body.
+- **Loopback-only, as §145 keeps administration local:** a request from `192.168.1.50` answers **403**, so this machine's address and its paired phones are never served beyond this PC.
+- **Both break-proofs run and restored.** Deleting the loopback guard failed the 403 case (`expected 200 to be 403`); forwarding `list()` unchanged leaked `tttt…` past the token assertion. Both reverted before the commit.
+- **Gates green:** `npm run typecheck` exit 0, `biome lint ..` exit 0, `npm run format:check` exit 0 (red first — the 403 `sendText` line needed wrapping), `server.test.ts` 57/57 passed.
 
 ## Next
 
-1. **Plan 6 runs phase by phase; Task 1.3 is next.** Phase 1 is the switch's words and the QR encoder (both landed), then the host's `GET /api/hosting`; each phase's browser proof is a task of its own.
+1. **Plan 6 runs phase by phase; Task 1.3 was Phase 1's last, so Phase 2 is next** — the header carries the host's address and a QR code for it, read from `GET /api/hosting` (Task 2.1).
 2. **Two decisions are the user's, not an agent's.** Whether the right column should empty on deselect, which the spec ruled it must and the product does not (`vg-157`); and which side of `vg-151` is wrong — the zoom-coupled floor, or the blur path it measures.
 3. **Rows the user raised on 2026-10-07, none of them plan 4's:** `vg-153` (dissolve the Document pane, give the theme globals their own surface), `vg-154` (drop the asset panel), `vg-155` (an import silently does one of two things), `vg-156` (JPEGs placed but only some listed — cause not established).
 4. **Resume the font catalogue plan when someone picks it up** — Task 6 landed and its review failed; its `progress.md` is the resume point. Not plan 5's.
