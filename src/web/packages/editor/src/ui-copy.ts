@@ -3,6 +3,7 @@
 
 import type { ChartFamily } from "@vigilia/renderer-core";
 import type { DisplayLensId } from "./display-lens.js";
+import type { ShortcutPrefix } from "./shortcut-manager/display.js";
 
 /**
  * The one name per chart family, hoisted so the layer role vocabulary can
@@ -263,6 +264,47 @@ export const uiCopy = {
     edit: "Edit",
     insert: "Insert",
     view: "View",
+  },
+  /**
+   * How a chord reads. The caps are the platform's, not the product's: `⌘` is
+   * the Mac's own mark and `Ctrl` is the word every other keyboard prints on
+   * the key, so the two sets are one field each rather than one set with a
+   * substitution.
+   *
+   * `alternativeSeparator` is between two chords one action answers to, and is
+   * the layer panel's `boundSeparator` idiom one surface over — punctuation,
+   * because a word would read as part of a key name.
+   *
+   * The group names are keyed by the prefix of an action id, which is what
+   * makes a new prefix a compile error rather than a heading nobody wrote — and
+   * a group word for a prefix no action carries a compile error too, so a
+   * heading cannot outlive the actions under it. `help` therefore arrives with
+   * the first `help.*` action rather than ahead of it.
+   */
+  shortcuts: {
+    reference: "Keyboard shortcuts",
+    close: "Close",
+    alternativeSeparator: " · ",
+    mac: { modifier: "⌘", shift: "⇧", alt: "⌥" },
+    other: { modifier: "Ctrl", shift: "Shift", alt: "Alt" },
+    /** Keys whose name is a word or a mark rather than the character a reader
+     *  would recognise from the cap. `event.key` is lowercased before lookup,
+     *  which is the form the table stores. */
+    named: {
+      arrowleft: "←",
+      arrowright: "→",
+      arrowup: "↑",
+      arrowdown: "↓",
+      delete: "Delete",
+      backspace: "Backspace",
+      escape: "Esc",
+    } as const,
+    groups: {
+      file: "File",
+      edit: "Edit",
+      canvas: "Canvas",
+      view: "View",
+    } satisfies Record<ShortcutPrefix, string>,
   },
   file: {
     newDocument: "New theme",
