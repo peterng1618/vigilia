@@ -4136,6 +4136,38 @@ git add src/web/tests/e2e/publish-loop.spec.ts src/web/playwright.config.ts
 git commit -m "test(publish): the whole loop — edit, publish, display follows"
 ```
 
+**As executed — `f0c7ff50`.** Both tests landed and both break-proofs behaved as Step 3
+demanded: removing `followPublished` reddens both, and removing the `pagehide` listener
+reddens **only** the second, which is what establishes that `page.close()` fires `pagehide`
+here. **The screenshot this task requires was not delivered, for two independent reasons,
+and the task is not complete until it is.**
+
+- **It was written to a gitignored path.** `test-results/` is ignored
+  (`.gitignore:11`), so `test-results/publish/display-390.png` persisted nothing. This
+  repo's evidence path is `captureVisualReview` (`tests/e2e/editor-canvas.ts:297`), which
+  writes `docs/evidence/screenshots/<name>-<project>.png` and attaches it to the test info,
+  under `VIGILIA_CAPTURE=1` — and it admits only captures whose action is listed in
+  `docs/evidence/screenshots/README.md`. Task 1.1 hit the same wall and recorded it; here it
+  is not a gap to note but the delivery of §6's acceptance item, *the phone shows the theme
+  while the editor has it open*.
+- **What it captured is a black frame with only the connection banner**, not the published
+  document. That is `vg-176`: the hosted display's `envelopePlan` (`player/src/main.ts:396-408`)
+  passes the artboard paint through unresolved, so a theme whose background is a palette
+  reference paints nothing on the phone. **The screenshot cannot show the published document
+  until `vg-176` is fixed**, and it is the row's own evidence.
+
+**The executing report described that file as "4:3 light band on dark page — visibly the
+published 320×240, not the stored 16:9", and the file does not show that.** Read by the
+controller at mtime `22:06:28`, unchanged from when it was written. Recorded because a
+report that misdescribes its own artifact is the whole reason a controller opens the
+artifact rather than the report.
+
+**The remedy, once `vg-176` lands:** add a capture row to the README's Player section, call
+`captureVisualReview` from the spec with that title, re-run under `VIGILIA_CAPTURE=1` and
+`--workers=1`, and read the PNG. The published frame is 320×240 against a stored 640×360, so
+the 4:3 light band against the page is the one thing in the picture that proves the display
+followed the editor.
+
 ---
 
 ## Closing report — what to say and what not to
