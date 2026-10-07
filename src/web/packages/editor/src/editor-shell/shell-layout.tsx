@@ -6,6 +6,8 @@ import { createRoot, type Root } from "react-dom/client";
 import { useSyncExternalStore } from "react";
 import { uiCopy } from "../ui-copy.js";
 import { insertGroups } from "../new-object-panel.js";
+import { shortcutLabel } from "../shortcut-manager/display.js";
+import type { ProductShortcutId } from "../shortcut-manager/index.js";
 import type { ActiveKind, EditorShellBridge, EditorShellSnapshot } from "./bridge.js";
 import { CanvasContextMenu } from "./canvas-context-menu.js";
 import { CanvasDock } from "./canvas-dock.js";
@@ -230,9 +232,20 @@ function ShellMenuBar({
     setRunDisplay(getView()?.runDisplay() ?? DEFAULT_RUN_DISPLAY_MODE);
   }, [getView, selection.selectedCount]);
 
-  const item = (label: string, run: () => void, disabled = false) => (
+  const item = (
+    label: string,
+    run: () => void,
+    disabled = false,
+    shortcut?: ProductShortcutId,
+  ) => (
     <Menu.Item key={label} disabled={disabled} onClick={run}>
       {label}
+      {/* Inline and right-aligned rather than a tooltip: that is the reading a
+          menu row has had in every application the author has used, and a popup
+          over the row it describes would cover the menu. */}
+      {shortcut === undefined ? null : (
+        <kbd className="editor-shell-menu-key">{shortcutLabel(shortcut)}</kbd>
+      )}
     </Menu.Item>
   );
 
@@ -248,19 +261,46 @@ function ShellMenuBar({
         {item(uiCopy.file.saveLibrary, () => void session?.saveLibrary())}
       </MenuGroup>
       <MenuGroup label={uiCopy.menus.edit}>
-        {item(uiCopy.actions.undo, () => session?.undo(), kind === "none")}
-        {item(uiCopy.actions.redo, () => session?.redo(), kind === "none")}
-        {item(uiCopy.actions.copy, () => session?.copy(), kind === "none")}
-        {item(uiCopy.actions.cut, () => session?.cut(), kind === "none")}
+        {/* A row names an id only when that binding reaches the same manager the
+            row calls through the session — `edit.undo` and this row both end at
+            `historyManager.undo()`, and so on for the six. The File rows carry
+            none: `session.savePackage()` is not `file.save`, and pairing them by
+            eye would teach a key that runs something else. */}
+        {item(
+          uiCopy.actions.undo,
+          () => session?.undo(),
+          kind === "none",
+          "edit.undo",
+        )}
+        {item(
+          uiCopy.actions.redo,
+          () => session?.redo(),
+          kind === "none",
+          "edit.redo",
+        )}
+        {item(
+          uiCopy.actions.copy,
+          () => session?.copy(),
+          kind === "none",
+          "edit.copy",
+        )}
+        {item(
+          uiCopy.actions.cut,
+          () => session?.cut(),
+          kind === "none",
+          "edit.cut",
+        )}
         {item(
           uiCopy.actions.duplicate,
           () => session?.duplicate(),
           kind === "none",
+          "edit.duplicate",
         )}
         {item(
           uiCopy.actions.delete,
           () => session?.deleteActive(),
           kind === "none",
+          "edit.delete",
         )}
       </MenuGroup>
       <MenuGroup label={uiCopy.menus.insert}>

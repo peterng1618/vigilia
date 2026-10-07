@@ -376,7 +376,11 @@ body,
 }
 .editor-shell-menu-popup [role="menuitem"],
 .editor-shell-menu-popup [role="menuitemradio"] {
-  display: block;
+  /* A flex line, so a trailing chord can be pushed to the right edge with
+     `margin-left: auto` and the label and key share one baseline instead of
+     block-stacking. */
+  display: flex;
+  align-items: center;
   width: 100%;
   text-align: left;
   border: 0;
@@ -421,6 +425,15 @@ body,
   letter-spacing: 0.14em;
   text-transform: uppercase;
   color: var(--shell-muted);
+}
+/* The chord a menu row answers to, pushed to the menu's right edge so every
+   row's key lines up — the reading a menu has had in every application. */
+.editor-shell-menu-key {
+  margin-left: auto;
+  padding-left: 16px;
+  font-family: ui-monospace, monospace;
+  font-size: 11px;
+  opacity: 0.7;
 }
 /* The shell palette control. It is a trigger, not a `<select>`, so it needs
    the same surface the other header controls draw on — the old label-and-select

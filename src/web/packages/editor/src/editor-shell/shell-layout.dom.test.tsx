@@ -9,6 +9,7 @@ import {
   insertGroups,
 } from "../new-object-panel.js";
 import { arrangeActions } from "../object-actions.js";
+import { shortcutLabel } from "../shortcut-manager/display.js";
 import { uiCopy } from "../ui-copy.js";
 import type { ViewportManager } from "../viewport-manager/index.js";
 import type { EditorShellBridge } from "./bridge.js";
@@ -953,5 +954,24 @@ it("refuses the chooser rather than offering rows that could insert nothing", as
   await Promise.resolve();
   expect(document.querySelector(".editor-shell-menu-popup[data-open]")).toBeNull();
 
+  layout.destroy();
+});
+
+it("prints the chord on the menu rows the shortcut table binds", async () => {
+  const root = document.createElement("div");
+  const layout = createShellLayout(root);
+  // Opening a Base UI menu is the click that costs 50-90s under jsdom
+  // (`vg-135`). Open it, assert, and close it — do not add a second one. Read
+  // straight after the gesture, as the View and Insert tests do: awaiting a
+  // `vi.waitFor` poll lets the 20s budget fire while the click still blocks.
+  menubarEntry(root, uiCopy.menus.edit).click();
+  await Promise.resolve();
+  // `openPopup()` reads the open menu rather than the bare class: the display
+  // switch's popup is kept mounted and closed, so the class alone is not
+  // necessarily the menu an author has open.
+  const popup = openPopup();
+  // The first `kbd` is Undo's, and the assertion is against `shortcutLabel`
+  // rather than a literal so it reads the same chord the row does.
+  expect(popup.querySelector("kbd")?.textContent).toBe(shortcutLabel("edit.undo"));
   layout.destroy();
 });
