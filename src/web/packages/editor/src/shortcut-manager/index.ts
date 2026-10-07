@@ -125,6 +125,12 @@ function isModalOpen(): boolean {
 /** The sole window-level dispatcher for Vigilia product actions above the canvas's own key handling. */
 export class ShortcutManager {
   readonly #handlers = new Map<ProductShortcutId, ShortcutHandler>();
+  /** Whether a modal was open when the current key event *started*, sampled by
+   * `#sampleModalState` in the window capture phase. */
+  #modalOpenAtDispatchStart = false;
+  readonly #sampleModalState = (): void => {
+    this.#modalOpenAtDispatchStart = isModalOpen();
+  };
   readonly #onKeyDown = (event: KeyboardEvent): void => {
     const binding = bindingFor(event);
     const handler =
@@ -136,7 +142,7 @@ export class ShortcutManager {
         MODIFIED_KEY_DEFERRED_ACTION_IDS.has(binding.action)) &&
       isTextEntryTarget(event.target);
 
-    if (handler === undefined || deferred || isModalOpen()) {
+    if (handler === undefined || deferred || this.#modalOpenAtDispatchStart) {
       return;
     }
 
@@ -145,6 +151,21 @@ export class ShortcutManager {
   };
 
   constructor() {
+    // Two listeners on one owner, split by phase: the modal state is *sampled*
+    // at `window` capture and *consulted* at `window` bubble. It cannot be asked
+    // at dispatch time. Radix's dismissable layer binds `keydown` on `document`
+    // with `{ capture: true }`, calls `preventDefault()` then `onDismiss()`, and
+    // `Presence` unmounts from a layout effect when
+    // `getComputedStyle(node).animationName === "none"` — synchronously, and all
+    // before a window bubble listener runs. Window capture precedes document
+    // capture, so the sample is the state at the start of the dispatch.
+    //
+    // The dispatch itself stays in the bubble phase: the layer panel defers
+    // arrow keys with `stopPropagation()` in a React handler, so an earlier
+    // manager would nudge the selection and navigate the list in one press.
+    window.addEventListener("keydown", this.#sampleModalState, {
+      capture: true,
+    });
     window.addEventListener("keydown", this.#onKeyDown);
   }
 
@@ -153,6 +174,9 @@ export class ShortcutManager {
   }
 
   destroy(): void {
+    window.removeEventListener("keydown", this.#sampleModalState, {
+      capture: true,
+    });
     window.removeEventListener("keydown", this.#onKeyDown);
     this.#handlers.clear();
   }

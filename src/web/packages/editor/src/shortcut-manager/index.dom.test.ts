@@ -468,4 +468,41 @@ describe("ShortcutManager and a modal", () => {
     expect(exit).toHaveBeenCalledOnce();
     manager.destroy();
   });
+
+  it("asks about the dialog before the same dispatch that tears it down", () => {
+    // The browser ordering jsdom does not reproduce on its own. Radix's
+    // dismissable layer binds `keydown` on `document` with `{ capture: true }`
+    // and runs before this manager's `window` bubble listener; its handler
+    // calls `preventDefault()` then `onDismiss()` synchronously, and `Presence`
+    // unmounts from a layout effect the moment
+    // `getComputedStyle(node).animationName === "none"`. So by the time the
+    // guard runs, the dialog is already out of the document and Escape leaks —
+    // the sheet closes *and* `view.exit-group` runs on one press. The guard has
+    // to answer as of the start of the dispatch, not when it happens to run.
+    const manager = new ShortcutManager();
+    const exit = vi.fn();
+    manager.register("view.exit-group", exit);
+    const dialog = document.createElement("div");
+    dialog.setAttribute("role", "dialog");
+    document.body.append(dialog);
+
+    // Radix's ordering, reproduced: a document-capture listener removes the
+    // dialog synchronously, inside the one dispatch, before the window bubble
+    // listener runs. Mounted and unmounted inside the test.
+    const teardown = (): void => dialog.remove();
+    document.addEventListener("keydown", teardown, { capture: true });
+
+    document.body.dispatchEvent(
+      new KeyboardEvent("keydown", {
+        key: "Escape",
+        bubbles: true,
+        cancelable: true,
+      }),
+    );
+
+    expect(exit).not.toHaveBeenCalled();
+    document.removeEventListener("keydown", teardown, { capture: true });
+    dialog.remove();
+    manager.destroy();
+  });
 });
