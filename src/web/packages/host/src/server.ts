@@ -5,11 +5,16 @@ import {
   createBatch,
   knownTimeZones,
   SAMPLE_STREAM_PATH,
+  validateFabricThemeEnvelope,
 } from "@vigilia/renderer-core";
 import { DEFAULT_THEMES_DIR } from "./cli/args.js";
 import type { HostBinding } from "./cli/hosting.js";
 import type { DeviceAssignment } from "./providers/lhm-mapping.js";
 import { ProviderRegistry, unionOfKeys } from "./providers/registry.js";
+import {
+  createPublishedStore,
+  type PublishedStore,
+} from "./serve/published.js";
 import {
   contentTypeFor,
   needsTrailingSlash,
@@ -102,6 +107,9 @@ export interface HostServerOptions {
   /** Persist the choice so the next run obeys it. Omitted when the host
    *  remembers nothing; the binding still moves for this run. */
   readonly rememberLan?: (on: boolean) => Promise<void>;
+  /** The document an author is publishing, held in memory. Omitted when the
+   *  host keeps none; every display then shows the stored theme. */
+  readonly published?: PublishedStore;
 }
 
 export interface HostingState {
@@ -341,6 +349,7 @@ export function createHostServer(options: HostServerOptions): HostServer {
   const activeTheme = options.activeTheme;
   const thumbnails = options.thumbnails;
   const themeSettings = options.themeSettings;
+  const published = options.published ?? createPublishedStore();
 
   /**
    * Hands the providers the assignment every current input resolves to. Three
@@ -1183,6 +1192,105 @@ export function createHostServer(options: HostServerOptions): HostServer {
             error instanceof Error ? error.message : String(error),
           );
         }
+        return;
+      }
+
+      sendText(response, 405, "Only GET, PUT and DELETE are supported.");
+      return;
+    }
+
+    // Publishing is admin, like a save: it decides what every display shows, and
+    // it holds a copy of the author's document in memory. The id rides in the
+    // query because the save wire is the editor's existing document and carries
+    // none of its own.
+    if (url.pathname === "/api/publish") {
+      if (!isLoopbackRemote(request.socket.remoteAddress)) {
+        sendText(response, 403, "Publishing is available on this PC only.");
+        return;
+      }
+
+      if (request.method === "PUT") {
+        let decoded: DecodedThemeSave;
+        try {
+          decoded = decodeThemeSave(
+            await readBody(request, MAX_THEME_UPLOAD_BYTES),
+          );
+        } catch (error) {
+          sendText(
+            response,
+            400,
+            error instanceof Error ? error.message : String(error),
+          );
+          return;
+        }
+
+        const id = url.searchParams.get("id") ?? "";
+        // A malformed id and an unknown one are different answers, and the save
+        // route already draws this line: the first is the caller's mistake, the
+        // second is a fact about this library.
+        if (!isValidThemeId(id)) {
+          sendText(response, 400, "Invalid theme id.");
+          return;
+        }
+
+        // The assets a display fetches come from the theme's own folder, so a
+        // document with no folder would render with holes. Refusing is honest;
+        // publishing it anyway is not.
+        if ((await themeStore.read(id)) === undefined) {
+          // 404, the same answer `/api/themes/:id` gives for the same fact.
+          sendText(
+            response,
+            404,
+            `No theme "${id}" in this library to publish.`,
+          );
+          return;
+        }
+
+        // A publish bypasses `themeStore.write`, so nothing else checks the
+        // document, and a display serves whatever it is given.
+        const checked = validateFabricThemeEnvelope(decoded.content.envelope);
+        if (!checked.ok) {
+          sendText(
+            response,
+            400,
+            checked.issues[0]?.message ?? "That document is not a theme.",
+          );
+          return;
+        }
+
+        // A save refuses a document whose own id disagrees with the folder it
+        // is written to. Publishing bypasses that too, so the invariant has to
+        // be kept here or a display is served an id carrying a document that
+        // says it is something else.
+        if (checked.envelope.id !== id) {
+          sendText(
+            response,
+            400,
+            `That document is "${checked.envelope.id}", not "${id}".`,
+          );
+          return;
+        }
+
+        const revision = published.publish(id, checked.envelope);
+        sendJson(response, 200, { ok: true, id, revision });
+        return;
+      }
+
+      if (request.method === "DELETE") {
+        sendJson(response, 200, {
+          ok: true,
+          id: null,
+          revision: published.clear(),
+        });
+        return;
+      }
+
+      if (request.method === "GET") {
+        const current = published.read();
+        sendJson(response, 200, {
+          id: current?.id ?? null,
+          revision: published.revision(),
+        });
         return;
       }
 

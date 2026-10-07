@@ -2098,3 +2098,110 @@ describe("A LAN move answers before the socket it moves (vg-173)", () => {
     expect(after).toMatchObject({ lan: true, refusal: null });
   });
 });
+
+describe("The publish route", () => {
+  it("publishes a theme this library has, and says no to everything else", async () => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "vigilia-publish-"));
+    const hosted = createHostServer({
+      registry: new ProviderRegistry([]),
+      bundles: { player: dir, editor: dir },
+      themeStore: createThemeStore(dir),
+    });
+
+    try {
+      // The assets a display fetches come from the theme's own folder, so there
+      // has to be a folder before anything can be published against it.
+      await request(
+        hosted.server,
+        "PUT",
+        "/api/themes/living-room",
+        themeBody(createValidPackage()),
+      );
+      const body = themeBody(createValidPackage());
+
+      // No id at all is the caller's mistake, and it says so.
+      const missing = await request(hosted.server, "PUT", "/api/publish", body);
+      expect(missing.status).toBe(400);
+
+      // A well-formed id this library does not have is a different answer.
+      const unknown = await request(
+        hosted.server,
+        "PUT",
+        "/api/publish?id=kitchen",
+        body,
+      );
+      expect(unknown.status).toBe(404);
+
+      // A document whose own id disagrees with the id it would be served under
+      // is refused, exactly as a save refuses it — publishing bypasses `write`,
+      // so this is the only place that check can live.
+      const mismatched = await request(
+        hosted.server,
+        "PUT",
+        "/api/publish?id=living-room",
+        themeBody(createValidPackage("kitchen")),
+      );
+      expect(mismatched.status).toBe(400);
+
+      const published = await request(
+        hosted.server,
+        "PUT",
+        "/api/publish?id=living-room",
+        body,
+      );
+      expect(published.status).toBe(200);
+      expect(published.json()).toMatchObject({ ok: true, id: "living-room" });
+
+      // The LAN is refused the whole surface, not just the body.
+      const fromTheLan = await request(
+        hosted.server,
+        "PUT",
+        "/api/publish?id=living-room",
+        body,
+        { remoteAddress: "10.0.0.2" },
+      );
+      expect(fromTheLan.status).toBe(403);
+
+      const stop = await request(hosted.server, "DELETE", "/api/publish");
+      expect(stop.json()).toMatchObject({ ok: true, id: null });
+      expect(
+        (await request(hosted.server, "GET", "/api/publish")).json(),
+      ).toMatchObject({ id: null });
+    } finally {
+      await hosted.close();
+      await fs.rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("refuses a document it cannot validate", async () => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "vigilia-publish-"));
+    const hosted = createHostServer({
+      registry: new ProviderRegistry([]),
+      bundles: { player: dir, editor: dir },
+      themeStore: createThemeStore(dir),
+    });
+
+    try {
+      await request(
+        hosted.server,
+        "PUT",
+        "/api/themes/living-room",
+        themeBody(createValidPackage()),
+      );
+
+      // `decodeThemeSave` accepts this — it checks that the envelope is an
+      // object and nothing more — so it is the overlay's own validator that
+      // must refuse it. That is the point of the case.
+      const bad = await request(
+        hosted.server,
+        "PUT",
+        "/api/publish?id=living-room",
+        JSON.stringify({ envelope: { schemaVersion: 99 }, assets: {} }),
+      );
+      expect(bad.status).toBe(400);
+    } finally {
+      await hosted.close();
+      await fs.rm(dir, { recursive: true, force: true });
+    }
+  });
+});
