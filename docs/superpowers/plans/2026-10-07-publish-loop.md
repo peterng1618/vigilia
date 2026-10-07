@@ -2976,7 +2976,13 @@ it("refuses a document it cannot validate", async () => {
 - [ ] **Step 2: Run them to verify they fail**
 
 Run: `npx vitest run packages/host/src/serve/published.test.ts packages/host/src/server.test.ts -t publish`
-Expected: FAIL — the module does not exist and the route 404s.
+Expected: FAIL twice over, and the second failure is **not** the one first written here.
+`published.test.ts` fails with `Cannot find module './published.js'`. The route tests fail with
+**`AssertionError: expected 405 to be 400`** — a 405, not a 404, because the theme-route chain
+ends with a `request.method !== "GET"` guard that answers `Only GET is supported.` before any
+`/api/publish` match is reached. A 404 would mean the block was written and never reached; a
+405 means it is not there yet and something else is answering. Read the status, do not assume
+which of the two it is.
 
 - [ ] **Step 3: Write the minimal implementation**
 
@@ -3133,13 +3139,28 @@ Expected: PASS.
 
 - [ ] **Step 5: Prove the tests can fail**
 
-Skip the check rather than deleting the lines — publish `decoded.content.envelope` and drop the
-`!checked.ok` branch, so the route stores whatever it was handed. Re-run Step 4. Expected:
-**FAIL on the "cannot validate" case**, which now answers 200 instead of 400. Restore it.
+Skip the check rather than deleting the lines: **replace the validator call with a passthrough
+that always reports ok** — `const checked = { ok: true as const, envelope: decoded.content.envelope }`
+— leaving the id-agreement check on the next line intact. Re-run Step 4. Expected: **FAIL on the
+"cannot validate" case** with `AssertionError: expected 200 to be 400`. Restore, and confirm
+`server.ts` is byte-identical to the commit (`git diff` empty) before Step 6.
 
-The break is worth doing this way because the guard is the only thing standing between a
-display and an unvalidated document: `decodeThemeSave` checks that the envelope *is an object*
-and nothing else, so with the guard gone a `schemaVersion: 99` document reaches a phone.
+The guard is the only thing standing between a display and an unvalidated document:
+`decodeThemeSave` checks that the envelope *is an object* and nothing else, so with the guard
+gone a `schemaVersion: 99` document reaches a phone.
+
+**Two ways to do this break wrong, and the first one is how this step was originally
+written.** Dropping the `!checked.ok` branch and publishing `decoded.content.envelope` is
+**inert**: the "cannot validate" case's body carried `{ schemaVersion: 99 }` with **no id**, so
+the id-agreement check refuses it whether or not the validator ever ran. The step certified a
+test that could not see the thing it existed to see. That case now keeps the id it publishes
+under, which is what makes the validator the only guard able to refuse it — if you change it
+back to an id-less envelope, this break goes quiet again.
+
+The second way is subtler: do not make `!checked.ok` false *in place*. `validateFabricThemeEnvelope`
+returns a union, and `envelope` exists only on the ok side, so the id check on the next line
+reads `undefined.id` and throws. The request then never answers and the test fails by **20 s
+timeout**, which reads like a flake rather than like a guard that is gone.
 
 - [ ] **Step 6: Commit**
 

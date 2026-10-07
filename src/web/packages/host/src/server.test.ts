@@ -2192,13 +2192,69 @@ describe("The publish route", () => {
       // `decodeThemeSave` accepts this — it checks that the envelope is an
       // object and nothing more — so it is the overlay's own validator that
       // must refuse it. That is the point of the case.
+      //
+      // **The envelope keeps the id it is published under, and that is
+      // load-bearing.** The body here used to be `{ schemaVersion: 99 }`, with
+      // no id at all, and that is refused by the id-agreement check a few lines
+      // above — so the case proved the *id* guard worked and said nothing about
+      // the validator. Deleting the validator branch outright still left it
+      // green. Matching ids leave the validator as the only thing that can
+      // refuse this, and the message is asserted for the same reason: the two
+      // guards answer 400 with different words.
+      const wire = JSON.parse(themeBody(createValidPackage())) as {
+        envelope: Record<string, unknown>;
+        assets: unknown;
+      };
+      wire.envelope["schemaVersion"] = 99;
+
       const bad = await request(
         hosted.server,
         "PUT",
         "/api/publish?id=living-room",
-        JSON.stringify({ envelope: { schemaVersion: 99 }, assets: {} }),
+        JSON.stringify(wire),
       );
       expect(bad.status).toBe(400);
+      expect(bad.text()).toContain("schema 99");
+    } finally {
+      await hosted.close();
+      await fs.rm(dir, { recursive: true, force: true });
+    }
+  });
+
+  it("refuses a paired display, so a phone cannot cause a publish", async () => {
+    const dir = await fs.mkdtemp(path.join(os.tmpdir(), "vigilia-publish-"));
+    const sessions = createSessionStore();
+    const hosted = createHostServer({
+      registry: new ProviderRegistry([]),
+      bundles: { player: dir, editor: dir },
+      themeStore: createThemeStore(dir),
+      sessions,
+    });
+
+    try {
+      // A paired display is the caller that matters here: it is the one the
+      // display guard *lets through*, so this route's own loopback check is the
+      // only thing left between a phone and the publish surface. An unpaired
+      // LAN request never reaches it — that one is refused a few hundred lines
+      // earlier by `This display is not paired with the host.`, which is why a
+      // test using a bare remoteAddress cannot tell the two guards apart.
+      //
+      // No theme is seeded on purpose: the refusal comes before the body is
+      // decoded, so a 404 here would mean the guard had been passed.
+      const issued = sessions.create("phone");
+      const fromThePhone = await request(
+        hosted.server,
+        "PUT",
+        "/api/publish?id=living-room",
+        themeBody(createValidPackage()),
+        {
+          remoteAddress: "192.168.1.50",
+          headers: { "x-vigilia-session": issued.token },
+        },
+      );
+
+      expect(fromThePhone.status).toBe(403);
+      expect(fromThePhone.text()).toContain("this PC only");
     } finally {
       await hosted.close();
       await fs.rm(dir, { recursive: true, force: true });
