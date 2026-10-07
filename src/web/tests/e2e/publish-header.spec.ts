@@ -15,10 +15,20 @@ import { writeThemePackage } from "@vigilia/theme-package";
  * which is where Playwright already is, so it is the only arrangement in which
  * `/api/hosting` is genuinely the same origin as the page.
  *
- * One real host, on its own port, over its own app folder, bound to the LAN with
- * `--host 0.0.0.0` — the flag Phase 2 still uses. The address it reports is
- * whatever `lanAddress()` answered on this machine, which is the point: the
- * header must render the *host's* answer and never compose one of its own.
+ * One real host, on its own port, over its own app folder, started **loopback-only
+ * and without `--host`** — §145's default and Phase 3's whole claim: nothing but
+ * this PC can reach the socket until somebody uses the control. The address it
+ * reports once the control has been used is whatever `lanAddress()` answered on
+ * this machine, which is the point: the header must render the *host's* answer
+ * and never compose one of its own.
+ *
+ * **What this file does not prove.** That a camera on a particular phone, at a
+ * particular distance, in a particular light, reads a code off a glossy screen.
+ * That needs a phone and a person. Three things stand in its place and none of
+ * them is that: `cli/hosting.test.ts` measures a real socket rebind on the same
+ * port, `server.test.ts` refuses a non-loopback request until a session is
+ * presented, and `qr-code.test.ts` decodes the symbol through a second library.
+ * The gap is named rather than implied away by a green suite.
  */
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -69,6 +79,8 @@ function seedLibrary(): void {
   writeFileSync(path.join(folder, "theme.json"), JSON.stringify(envelope));
 }
 
+/** Loopback only, with no `--host`: the app directory is empty, so there is no
+ *  `hosting.json` either and the host takes §145's default. */
 async function startHost(): Promise<ChildProcess> {
   const child = spawn(
     "node",
@@ -77,8 +89,6 @@ async function startHost(): Promise<ChildProcess> {
       "--no-browser",
       "--port",
       String(PORT),
-      "--host",
-      "0.0.0.0",
       "--app-dir",
       APP_DIR,
     ],
@@ -112,6 +122,32 @@ test.describe("the header's publish surface", () => {
     host?.kill();
   });
 
+  test("the LAN is turned on from the editor, and the port does not move", async ({
+    page,
+  }) => {
+    test.setTimeout(180_000);
+
+    await page.goto(`${HOST}/editor/`);
+
+    const publish = page.locator("[data-vigilia-publish]");
+    const toggle = publish.getByRole("button");
+    await expect(toggle).toBeVisible({ timeout: 30_000 });
+    await expect(toggle).toHaveAttribute("aria-pressed", "false");
+    await expect(publish.locator("code")).toHaveCount(0);
+
+    await toggle.click();
+
+    await expect(toggle).toHaveAttribute("aria-pressed", "true");
+    await expect(publish.locator("code")).toHaveText(new RegExp(`:${PORT}$`));
+    await expect(publish.locator("[data-vigilia-qr]")).toBeVisible();
+
+    // Still the same origin, which is the claim `createHostBinding` makes.
+    expect(page.url()).toContain(`127.0.0.1:${PORT}/editor/`);
+
+    await toggle.click();
+    await expect(publish.locator("code")).toHaveCount(0);
+  });
+
   test("the header carries the address and a code for it", async ({ page }) => {
     test.setTimeout(180_000);
 
@@ -119,6 +155,11 @@ test.describe("the header's publish surface", () => {
 
     const publish = page.locator("[data-vigilia-publish]");
     await expect(publish).toBeVisible({ timeout: 30_000 });
+
+    // The host starts loopback-only, so the address exists only once the
+    // control has been used — there is no `--host` flag left to arrange it with.
+    await publish.getByRole("button").click();
+    await expect(publish.locator("code")).toBeVisible({ timeout: 30_000 });
 
     const shown = await publish.locator("code").textContent();
     expect(shown).toMatch(/^http:\/\/\d+\.\d+\.\d+\.\d+:\d+$/);
@@ -131,14 +172,41 @@ test.describe("the header's publish surface", () => {
       (await qr.getAttribute("aria-label"))?.startsWith("QR code: http://"),
     ).toBe(true);
 
+    // 1680 px, which is the `publish` project's own viewport.
     await page.screenshot({
       path: "test-results/publish/header-desktop.png",
       fullPage: false,
     });
+
+    // The same header at a phone's width, and *read* rather than only
+    // photographed. Whether the surface is still inside that viewport is
+    // `vg-172`'s question, not this assertion's: it says the control is still
+    // rendered, which is all a DOM read can say about it.
     await page.setViewportSize({ width: 390, height: 844 });
+    await expect(publish.locator("code")).toBeVisible();
+    await expect(qr).toBeVisible();
     await page.screenshot({
       path: "test-results/publish/header-390.png",
       fullPage: false,
     });
+
+    // Leave the host off, because the first test reads the off state.
+    await publish.getByRole("button").click();
+    await expect(publish.locator("code")).toHaveCount(0);
+  });
+
+  test("a forwarded-for header does not move the guard off the socket", async ({
+    request,
+  }) => {
+    const answered = await request.put(`${HOST}/api/hosting`, {
+      data: { lan: true },
+      headers: { "x-forwarded-for": "192.168.1.50" },
+    });
+    // A *header* claiming another origin changes nothing, because the guard reads
+    // `request.socket.remoteAddress` — which is why this is 200 from loopback and
+    // why the refusal itself is `server.test.ts`'s to prove, not this file's. The
+    // test is here to pin the direction: a proxy header must never be what decides
+    // whether this PC is exposed.
+    expect(answered.status()).toBe(200);
   });
 });

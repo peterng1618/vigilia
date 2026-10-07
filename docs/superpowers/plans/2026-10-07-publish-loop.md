@@ -1665,7 +1665,7 @@ goes off-screen — filed as `vg-172` from this task's commit trailer.
 
 ---
 
-## Phase 3 — LAN is a control, not a flag (4 tasks)
+## Phase 3 — LAN is a control, not a flag (5 tasks)
 
 Delivers: §145's "explicit opt-in" is a control in the editor. The flag becomes the
 *initial* value only. A host bound to loopback can start serving the LAN and stop again
@@ -1898,9 +1898,18 @@ git commit -m "feat(host): remember whether this PC serves the LAN"
 `EADDRINUSE`, which is right at startup and wrong here: a rebind that landed on 5228
 would move the editor's own origin out from under the page that asked for it. So the
 rebind uses a plain `server.listen(port, host)` and, on failure, re-binds the previous
-host and answers `{ ok: false, reason }` — the control shows the reason. Live SSE
-connections are closed on the way through (`closeAllConnections()`), because they belong to
-displays that must reconnect to the new binding anyway.
+host and answers `{ ok: false, reason }` — the control shows the reason.
+
+**The teardown must not destroy the connection the answer is owed on, and this task got
+that wrong.** It first prescribed `closeAllConnections()` "on the way through". That call
+destroys *every* connection, including the one the PUT response has not been written on
+yet — so the socket moved and the answer was thrown away, and the editor's control became
+unusable in both directions (`vg-173`, reproduced against a real host at `7e9f1869`). The
+sequencing that replaces it is **Task 3.4**, which owns the correction; Task 3.2's
+`setLan` contract is re-cut there and its tests move with it. What survives of the original
+intent: SSE connections still go, because they belong to displays that must reconnect to
+the new binding anyway — but the *host* closes them, since it is the thing that tracks
+them, and `closeIdleConnections()` is not enough for a stream that is still open.
 
 **The binding does not own the server's lifecycle, so it has no `close()`.** `hosted.close()`
 (`server.ts:1303-1321`) clears the sample-interval timer *and* closes the SSE connections
@@ -2464,7 +2473,161 @@ git commit -m "feat(editor): publish is a control, not a command-line flag"
 
 ---
 
-### Task 3.4: Proving the LAN without a phone
+### Task 3.4: The answer survives the move
+
+**Files:**
+- Modify: `src/web/packages/host/src/cli/hosting.ts` and `hosting.test.ts`
+- Modify: `src/web/packages/host/src/server.ts` — the `/api/hosting` GET and PUT branches
+- Modify: `src/web/packages/host/src/main.ts` — hand the server the binding, not a state reader
+- Test: `src/web/packages/host/src/server.test.ts` — the regression test for `vg-173`
+- Modify: `src/web/packages/editor/src/hosting-client.ts`, `editor-shell/publish-control.tsx`
+- Test: `src/web/packages/editor/src/editor-shell/publish-control.dom.test.tsx`
+
+**Interfaces:**
+- Consumes: `createHostBinding` (Task 3.2), `HostingState` (Task 1.3), `setLan` on the
+  editor client (Task 2.1).
+- Produces:
+  ```ts
+  interface HostingState {
+    readonly lan: boolean;
+    readonly address: string | null;
+    readonly port: number | null;
+    readonly sessions: readonly string[];
+    /** The last move the new interface refused, in the host's words. Cleared by
+     *  the next move that lands. What the 409 body used to carry. */
+    readonly refusal: string | null;
+  }
+  interface HostBinding {
+    readonly state: () => HostingState;
+    /** Moves the binding, and resolves when it has settled. **Call it only
+     *  after the answer that asked for the move is on the wire** — see the
+     *  sequencing constraint below. */
+    setLan(on: boolean): Promise<{ ok: true } | { ok: false; reason: string }>;
+    /** Resolves when no move is in flight, so a reader that follows a move sees
+     *  where it landed rather than where it started. */
+    idle(): Promise<void>;
+  }
+  ```
+- `HostServerOptions.hosting` becomes `HostBinding | undefined` rather than
+  `HostingState | (() => HostingState)`: the server needs to *start* a move, not only read one.
+
+**Constraints.** **This is `vg-173`'s fix, and the sequencing is the whole task.** A single
+`http.Server` cannot rebind while answering the request that asked it to. `server.close()`
+waits for every connection to end, and the connection carrying the PUT response will not end
+until that response is written — so the outcome of a move can never be in the answer that
+triggered it, and any code that tries deadlocks or destroys the answer. Measured on this
+machine: `closeIdleConnections()` then `server.close()` completes **1 ms** after a full
+keep-alive response, and the rebind on the same port lands at **4 ms**.
+
+So the exchange becomes three steps and each one owns one of them:
+
+1. **The route answers first**, with the state it has *now*. The body is not the outcome and
+   the client must not read it as one.
+2. **On `response.once("finish")`** — meaning the bytes are with the OS, not merely queued —
+   the host closes its display streams and calls `setLan`. `finish`, not `setImmediate`:
+   closing a socket whose response has not been flushed is the same defect wearing a
+   different hat. The host closes the streams because the host is what tracks them;
+   `closeIdleConnections()` will not take a stream that is still open.
+3. **`GET /api/hosting` awaits `binding.idle()`** before it answers, so a reader that follows
+   a move sees where it landed rather than where it started.
+
+**The client re-read must tolerate the socket being closed.** Between the close and the
+rebind the port is briefly not listening, and a request that lands in that window is refused
+by the OS rather than answered by the host. The editor's re-read after a PUT therefore
+retries — bounded, and it says so in a comment, because a retry with no ceiling is a hang.
+The address, the code and the expiry are still read from the host and never composed in the
+editor.
+
+**A refused move is reported through the GET, not through the PUT.** The host restores the
+old binding and records the reason in `HostingState.refusal`; the editor shows it the way it
+already shows a refusal, so `publish-control.tsx`'s existing reason path survives and the
+"only the host knows why a socket refused" rule is kept. Turning the LAN off must clear the
+address *and* the session, as it does today.
+
+**What this task must not do.** Do not make the host bind `0.0.0.0` for its whole life and
+refuse non-loopback peers instead of moving: that is a change to §145's posture — LAN
+exposure would become the default and the firewall prompt would move to startup — and it is
+the user's decision, not this plan's. It is recorded as the rejected alternative in `vg-173`.
+
+- [ ] **Step 1: Write the regression test, and watch it fail**
+
+In `server.test.ts`, over a **real** `http.Server` and a real `createHostBinding` (the defect
+needs a real socket; nothing about it reproduces against a stub):
+
+```ts
+it("answers a PUT that moves the binding", async () => {
+  // The response is owed on the connection the move destroys, so a host that
+  // tears down first answers nothing at all: `fetch` rejects with an empty
+  // reply rather than returning a status. This is vg-173.
+  const answered = await fetch(`http://127.0.0.1:${port}/api/hosting`, {
+    method: "PUT",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ lan: true }),
+  });
+
+  expect(answered.status).toBe(200);
+  await expect(answered.json()).resolves.toMatchObject({ lan: expect.any(Boolean) });
+
+  // And the move itself still happened, read back through the route that waits
+  // for it: a 200 that moved nothing would pass the assertion above.
+  const after = await (await fetch(`http://127.0.0.1:${port}/api/hosting`)).json();
+  expect(after).toMatchObject({ lan: true, refusal: null });
+});
+```
+
+Run it and read the JSON report: **FAIL**, on `fetch` rejecting or on the status, and not on
+a missing route. If it passes before any change, the test is not testing the defect and the
+defect has been misdiagnosed — stop and say so rather than proceeding.
+
+- [ ] **Step 2: Re-cut `setLan`, and give the binding `idle()`**
+
+In `cli/hosting.ts`: `closeAllConnections()` goes, `closeIdleConnections()` takes its place,
+and the binding gains `idle()` backed by the in-flight move promise, set **synchronously** so
+a reader that arrives in the same tick still waits. `setLan` keeps resolving
+`{ ok: false, reason }`: it is the *route* that no longer awaits it, not the binding that
+stops reporting.
+
+- [ ] **Step 3: Move the sequencing into the route**
+
+`server.ts`'s `/api/hosting` block: the PUT branch writes its answer, then on `finish` closes
+the host's display streams and starts the move; the GET branch awaits `idle()` before
+answering. `main.ts` passes the binding itself. `state()` carries `refusal`.
+
+- [ ] **Step 4: Carry the refusal and the retry to the editor**
+
+`hosting-client.ts`: `HostingAnswer` gains `refusal`; the re-read after a PUT is retried a
+bounded number of times, because the port is legitimately closed for a few milliseconds
+during the move. `publish-control.tsx` shows `refusal` through the reason path it already
+has. Extend `publish-control.dom.test.tsx` with the case that matters: **a PUT that answers
+200, a re-read that reports `lan: false` with a refusal, and a button that ends up showing
+the host's words rather than the state it asked for.**
+
+- [ ] **Step 5: Prove the fix can fail**
+
+Put `closeAllConnections()` back where `closeIdleConnections()` is. Re-run Step 1. Expected:
+**FAIL on the rejected `fetch`**, which is the same failure the row was filed from. Restore.
+
+- [ ] **Step 6: Run the focused gates, then commit**
+
+```bash
+cd src/web
+npm run typecheck           # judged by exit code
+./node_modules/.bin/biome lint ..
+npx vitest run packages/host packages/editor
+```
+
+```bash
+git add src/web/packages/host/src/cli/hosting.ts src/web/packages/host/src/cli/hosting.test.ts \
+  src/web/packages/host/src/server.ts src/web/packages/host/src/server.test.ts \
+  src/web/packages/host/src/main.ts src/web/packages/editor/src/hosting-client.ts \
+  src/web/packages/editor/src/editor-shell/publish-control.tsx \
+  src/web/packages/editor/src/editor-shell/publish-control.dom.test.tsx
+git commit -m "fix(host): the answer to a LAN move outlives the socket it moves"
+```
+
+---
+
+### Task 3.5: Proving the LAN without a phone
 
 **Files:**
 - Modify: `src/web/tests/e2e/publish-header.spec.ts`
@@ -2545,12 +2708,18 @@ address, the code and the expiry.
 
 - [ ] **Step 3: Prove the browser test can fail**
 
-In `main.ts`, hand `createHostServer` a `setLan` that answers success without moving the
-socket — `async () => ({ ok: true })` — so `PUT` answers 200 while `hostingState` stays where
-it was. Rebuild the host, re-run Step 2. Expected: **FAIL on the first `aria-pressed`
-assertion**, because the route reports success and then returns the state it actually has,
-which is still `lan: false`; the toggle never flips and the address never appears. Restore and
-rebuild.
+In `main.ts`, hand `createHostServer` a binding whose `setLan` answers success without moving
+the socket — `async () => ({ ok: true })` — so `PUT` answers 200 while `state()` stays where it
+was. Rebuild the host, re-run Step 2. Expected: **FAIL on the `code` assertion after the
+click**, because the host says it moved and keeps reporting `lan: false`. Restore and rebuild.
+
+**What the break does not do, and the plan said it would.** It does not fail on
+`aria-pressed`, and no honest break makes it. `publish-control.tsx` reads that attribute from
+the re-read, so with a *working* PUT the attribute flips to `true` while the address stays
+absent — which is `vg-173`'s signature, and was measured on the real path rather than
+predicted. An assertion that is expected to catch the wrong failure is worse than no
+expectation: it is the sentence a later reader trusts when the suite goes red for another
+reason.
 
 Do not break it by *removing* the `setLan` option instead: the route calls it, so an absent
 one is a 500 rather than an honest success, and the failure you would be reading is a crash
