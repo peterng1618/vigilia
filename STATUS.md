@@ -35,10 +35,10 @@ The loop, in order:
 
 ## Active work
 
-- **Plan 6, the publish loop, is the active plan; its plan file is written and Task 1.1 is dispatched.** [The plan](docs/superpowers/plans/2026-10-07-publish-loop.md) is 15 tasks in 4 phases against spec §6; plan 5 closed and archived with the `+` landmark met (spec `:475`, acceptance `:537`).
-- **The `+` was inert and now opens a chooser.** `shell-layout.tsx:431` was `const openInsertPopover = (): void => undefined;` under a `ponytail:` marker naming a Task 3 that never landed; the chooser is a **fourth rendering** of `insertGroups()`, never a fourth list, and Task 2 left `insertItem` with exactly one definition.
-- **Plan 4's hand-forward landed in Task 5.** The starter's cards carried no `provenance`, so every card row on the reference composition read the bare `Group` arm; `cardGroup(id, unit, …)` now stamps the root alone, and Task 6 corrected `layer-tree.ts:280-291`, whose docstring had documented the absence as deliberate.
-- **Seven plan claims were wrong, and each is corrected in the plan where its task is read.** The mapping compared unequal to a correct popover; Task 2 could not watch its own test fail; the browser spec's `[role=group]` matches nothing in the Add pane; the pane is shut at `goto`; `cardGroup` has seven call sites, not eight; Task 4's ownership premise named two map rows that do not exist; and Task 6's row assertion compared against paint order while the walk reverses.
+- **Plan 6, the publish loop, is the active plan; Task 1.1 has landed and Task 1.2 is next.** [The plan](docs/superpowers/plans/2026-10-07-publish-loop.md) is 15 tasks in 4 phases against spec §6; plan 5 is closed and archived with the `+` landmark met (spec `:475`, acceptance `:537`).
+- **§6's own parenthetical cites work that does not exist.** It says the switch "stays in canvas controls where the canvas is (plan 1, task 4)"; `canvas-view-controls.tsx` was never created and the switch is in the header's View menu (`shell-layout.tsx:316-327`), so plan 6 renames the copy where the switch actually is and leaves the move to `vg-161`, which already queues it.
+- **Two plan claims were checked against the packages, not assumed, and both were corrected.** `jsqr` is Apache-2.0, not MIT — the plan's own stop-and-file step would have halted Task 1.2 on a false alarm; and `qr`'s `border` is in modules and defaults to **2**, not the standard's 4, so passing it explicitly is load-bearing.
+- **`shell-layout.dom.test.tsx` is slow for a filed reason.** `vg-135`: jsdom stops firing rAF after the View-menu test, so later tests in that file await a frame that never comes — its single View-menu test takes 190 s alone. Tasks 1.1 and 2.3 both run it; a hang there is the row, not the task.
 - **The position, and the rule that tests it.** Vigilia is an editor for a phone display that happens to use Fabric. Every decision is judged by one question: *does this remove a step, or does it remove a freedom?* **A card is a fact about the starter, not a rule about themes. The device is a lens, not the document** — the artboard keeps whatever dimensions the author chooses.
 - **Convenience is ordering and grouping, not a smaller surface.** Every authorable setting present, ordered by likelihood, grouped by what it is about, every field with a hint, the obscure ones at the end in a collapsed section. Nothing locked to a default, nothing hidden, and the completeness check is a *test* — a settings key with no descriptor fails to compile.
 
@@ -52,7 +52,7 @@ The loop, in order:
 
 ## Next
 
-1. **Plan 6 runs phase by phase, Task 1.1 first.** Phase 1 is the switch's words, the QR encoder with its decode round-trip, and the host's `GET /api/hosting`; each phase's browser proof is a task of its own.
+1. **Plan 6 runs phase by phase; Task 1.2 is next.** Phase 1 is the switch's words (landed), the QR encoder with its decode round-trip, and the host's `GET /api/hosting`; each phase's browser proof is a task of its own.
 2. **Two decisions are the user's, not an agent's.** Whether the right column should empty on deselect, which the spec ruled it must and the product does not (`vg-157`); and which side of `vg-151` is wrong — the zoom-coupled floor, or the blur path it measures.
 3. **Rows the user raised on 2026-10-07, none of them plan 4's:** `vg-153` (dissolve the Document pane, give the theme globals their own surface), `vg-154` (drop the asset panel), `vg-155` (an import silently does one of two things), `vg-156` (JPEGs placed but only some listed — cause not established).
 4. **Resume the font catalogue plan when someone picks it up** — Task 6 landed and its review failed; its `progress.md` is the resume point. Not plan 5's.

@@ -387,6 +387,20 @@ git add src/web/packages/editor/src/ui-copy.ts \
 git commit -m "feat(editor): the two readings are named for the question each answers"
 ```
 
+**As executed — `00f370f0`.** Two claims above were wrong and one list was short:
+
+- **Step 6's status-line reading is false at rest.** `editor-main.ts` writes `Fabric editor
+  ready` after mount, which overwrites the source's status, so the new words reach the status
+  line only once a reading is *chosen*. The menu label is correct the moment the menu opens.
+  Both were read in a browser; assert the status line after a choice, not at `goto`.
+- **"Screenshot it" had no registered action to attach to.** `docs/evidence/screenshots/README.md`
+  admits captures only for the actions it lists, and none covers the View menu, so the check ran
+  from a temporary spec under `tests/e2e/` which was then deleted. The image is at
+  `test-results/task-1-1/view-menu.png` (gitignored). **`editor.spec.ts` does not cover the View
+  menu at all**, so these labels are pinned by `ui-copy.test.ts` and by nothing in a browser.
+- **Step 7's `git add` list omitted `STATUS.md`**, which the Global Constraints require in every
+  task's commit. The executed commit carries it.
+
 ---
 
 ### Task 1.2: The QR encoder, and the round-trip that proves it
