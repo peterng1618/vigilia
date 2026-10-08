@@ -1276,20 +1276,39 @@ PLAYWRIGHT_JSON_OUTPUT_NAME=test-results/player-chrome.json \
   npx playwright test tests/e2e/player-chrome.spec.ts --project=phone-chromium --workers=1 --reporter=json
 ```
 
-Expected: FAIL on the **host** overlap at both viewports today (the host is the whole viewport,
-so a strip inside it shares area with it), and on the **artboard** overlap at landscape. At
-390×844 the artboard overlap alone passes — say so in the report rather than claiming the whole
-test was red.
+> **Corrected 2026-10-08 by Task 2.1's executor: this step's premise is stale, its Step 3 names
+> the wrong elements, and Step 4's count is wrong.** The step expects a red first run "today"
+> because "the host is the whole viewport" — but that describes the **pre-Phase-1** layout, and
+> Phase 1 is committed. This task adds a test and no fix, so there is nothing for a first run to
+> fail against; it was **green on arrival** (`expected: 4, unexpected: 0`). The proof this task
+> actually rests on is **Step 3's break**, which failed exactly as intended — recorded there.
+> A step whose stated expectation cannot occur is worse than a missing one, because a green run
+> reads as a passed gate rather than as a step that measured nothing.
+>
+> Step 3 says the guard lists "both strips as intruders". It lists the two **bands**
+> (`vigilia-chrome-top`, `vigilia-chrome-bottom`): the guard inspects `document.body`'s children,
+> the bands are those children, and the strips are inside them. The guard fails correctly; only
+> the described shape was off. And Step 4's "6 tests" is **8** — four tests × two projects.
+
+Expected: **GREEN on arrival, and that is the correct outcome for a task that adds only a test.**
+The plan originally said this run should be red; it was written before Phase 1 landed and the
+premise no longer holds. The red run this task needs is Step 3's break. Record the actual counts
+from the JSON report either way.
 
 - [ ] **Step 3: The deliberate break, and what it must do**
 
 Revert **only** Task 1.1's `#artboard` rule in `index.html` to `position: absolute; inset: 0`
 (keeping `flex: 1 1 auto` out), rebuild the player, and re-run the same command. Expected: the
 two viewport tests fail on the **host** assertion and on the **artboard** assertion, and
-`nothing else the display adds covers the artboard` fails with both strips listed as intruders.
+`nothing else the display adds covers the artboard` fails with the two **bands** listed as
+intruders — the guard reads `document.body`'s children, so it sees `vigilia-chrome-top` and
+`vigilia-chrome-bottom`, not the strips inside them.
 **A break that does not fail is a finding about the test, not a passing test** — if the
 prescribed break leaves the suite green, find a break that does fail, observe it, and report
 what the prescribed one actually did. Restore the rule and rebuild before Step 4.
+**Observed at `c73c8394`:** the break produced `expected: 1, unexpected: 3`, with the crop strip's
+host overlap reading exactly `390 × 45.59375` at portrait and `844 × 28.796875` at landscape —
+the strip's whole area, which is what "the host is the whole viewport" means arithmetically.
 
 - [ ] **Step 4: Run it to verify it passes**
 
@@ -1300,8 +1319,10 @@ PLAYWRIGHT_JSON_OUTPUT_NAME=test-results/player-chrome.json \
   npx playwright test tests/e2e/player-chrome.spec.ts --workers=1 --reporter=json
 ```
 
-Expected: PASS — 6 tests (two viewports × the geometry test, the guard, and the failure page),
-each project. Read the result from `test-results/player-chrome.json`, never from stdout.
+Expected: PASS — **8** tests, which is four (two viewport geometries, the body-children guard,
+the failure page) × **two projects**. The plan said 6 and the arithmetic was wrong; observed at
+`c73c8394` as `expected: 8, unexpected: 0`, exit 0. Read the result from
+`test-results/player-chrome.json`, never from stdout.
 
 - [ ] **Step 5: Take the capture, and register it**
 
