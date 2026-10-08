@@ -1,23 +1,23 @@
-import { writeThemePackage } from "@vigilia/theme-package";
-import { expect, test } from "@playwright/test";
 import type { Page, TestInfo } from "@playwright/test";
+import { expect, test } from "@playwright/test";
+import { writeThemePackage } from "@vigilia/theme-package";
 import {
+  type ArtboardRect,
   answerDialogIfShown,
-  enterLayer,
   captureVisualReview,
   clientOfScene,
+  enterLayer,
   readSceneObject,
-  type ArtboardRect,
 } from "./editor-canvas.js";
-import { openPane } from "./editor-pane-bar.js";
+import { openPane } from "./editor-rail.js";
 import { selectLayer } from "./rebuild-driver.js";
 import { isDesktopSurface } from "./surface.js";
 
 /**
  * The composition panel's browser contract, against the real editor.
  *
- * This file is the composition panel's, not the pane bar's: `editor-pane-bar
- * .spec.ts` owns the shared `openPane` helper, and every case here addresses the
+ * This file is the composition panel's, not the rail's: `editor-rail.spec.ts`
+ * owns the shared `openPane` helper, and every case here addresses the
  * panel's own markers — `data-vigilia-layer`, `data-vigilia-layer-mark`,
  * `data-vigilia-layer-role` and `.vigilia-layer-name`.
  *
@@ -185,7 +185,10 @@ test("the width the panel ships is the one that clips the fewest names", async (
   await instrument(
     page,
     "recorded",
-    `.editor-shell-body { grid-template-columns: ${RECORDED_WIDTH}px minmax(0, 1fr) 280px; }`,
+    // The rail's 46px column, then the recorded panel width: the body's areas
+    // are rail/panel/stage/inspector, so the override carries the rail column
+    // too or the four areas and three tracks do not match.
+    `.editor-shell-body { grid-template-columns: 46px ${RECORDED_WIDTH}px minmax(0, 1fr) 280px; }`,
   );
   const recorded = await clippedNames(page);
   await instrument(page, "recorded", "");
@@ -1054,10 +1057,12 @@ test("a copy inserted beside the starter names its unit without costing the star
 
   await openStarterEditor(page);
 
-  await page.locator(".editor-shell-pane-bar-add").click();
+  await openPane(page, "Add");
+  // The Add pane is the insert surface now: the `+` chooser left with the pane
+  // bar, and the pane renders the same `insertGroups()` list it drew.
   await page
-    .locator(".editor-shell-menu-popup[data-open]")
-    .getByRole("menuitem", { name: "Clock", exact: true })
+    .locator('[data-vigilia-panel="add"]')
+    .getByRole("button", { name: "Clock", exact: true })
     .click();
 
   // Two rows name the unit — the copy's own and the starter's time card, which

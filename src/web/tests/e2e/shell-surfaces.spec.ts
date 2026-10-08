@@ -38,8 +38,8 @@ test("the dialogs and the inspector's sections paint every palette", async ({
   // group, because the starter's cards are nested inside these and a collapsed
   // row is not a clickable one.
   //
-  // The column needs no pane opened: unlike Layers and Assets it is not a
-  // segment of the pane bar, it is the right column and is always mounted.
+  // The column needs no pane opened: unlike Composition and Add it is not a
+  // slot of the rail, it is the right column and is always mounted.
   await selectLayer(page, "group-cpu-card");
   const section = page.locator(".vigilia-section-details").first();
   await expect(section).toBeVisible();

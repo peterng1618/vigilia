@@ -1,7 +1,7 @@
 import { expect, type Page, test } from "@playwright/test";
 import { canvasProp, sceneBounds, sceneProperty } from "./canvas-probe.js";
 import { captureVisualReview } from "./editor-canvas.js";
-import { openPane } from "./editor-pane-bar.js";
+import { openPane } from "./editor-rail.js";
 import {
   BADGE_INK,
   CLOCK_NODE_ID,
@@ -332,7 +332,7 @@ test.describe("hosted player over the real host", () => {
       page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
     ).toBeVisible();
 
-    await openPane(page, "Insert");
+    await openPane(page, "Add");
     await page
       .locator('[data-vigilia-panel="add"]')
       .getByRole("button", { name: "Text" })
@@ -481,7 +481,7 @@ test.describe("hosted player over the real host", () => {
     await expect(
       page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
     ).toBeVisible();
-    await openPane(page, "Insert");
+    await openPane(page, "Add");
     await page
       .locator('[data-vigilia-panel="add"]')
       .getByRole("button", { name: "Rectangle", exact: true })

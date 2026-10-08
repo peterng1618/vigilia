@@ -1,11 +1,11 @@
 import { expect, type Page, test } from "@playwright/test";
 import { captureVisualReview } from "./editor-canvas.js";
-import { openPane } from "./editor-pane-bar.js";
+import { openPane } from "./editor-rail.js";
 import {
   choosePalette,
   openShell,
-  PALETTES,
   PALETTE_POPUP,
+  PALETTES,
 } from "./shell-palette.js";
 import { isDesktopSurface } from "./surface.js";
 
@@ -32,9 +32,9 @@ import { isDesktopSurface } from "./surface.js";
  *  The palettes, the menu and the way an author chooses one live in
  *  `shell-palette.ts`, because a second spec needs the same four things and a
  *  copied six-entry list is a list that drifts. The pane is this spec's own
- *  need: the document panels — the artboard's and the palette's — are the
- *  chrome's form controls and they live there, so its width and ratio controls
- *  have no box until it shows. */
+ *  need: the document panels — the artboard's, and the palette's in Tokens —
+ *  are the chrome's form controls and they live in the left column, so its
+ *  width and ratio controls have no box until a pane shows. */
 async function openEditor(page: Page): Promise<void> {
   await openShell(page);
   await openPane(page, "Document");

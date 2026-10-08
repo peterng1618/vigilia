@@ -1,10 +1,10 @@
 import path from "node:path";
 import { expect, type Page } from "@playwright/test";
-// `openPane` has one owner and one guard (`editor-pane-bar.js`); the driver
+// `openPane` has one owner and one guard (`editor-rail.js`); the driver
 // imports it from there and does not re-export it, so this reaches the same
 // place. It is imported from the driver rather than the owner in the import
 // list below only because that list is the driver's.
-import { openPane } from "./editor-pane-bar.js";
+import { openPane } from "./editor-rail.js";
 import {
   addCard,
   addChart,
@@ -131,7 +131,7 @@ async function reading(
 export async function openBlankComposition(page: Page): Promise<void> {
   await openBlank(page);
   for (const [name, hex] of DEVICE_COLOURS) await addColour(page, name, hex);
-  await openPane(page, "Insert");
+  await openPane(page, "Add");
 }
 
 /** Wordmark, strapline and the clock card. */
@@ -710,7 +710,7 @@ export async function buildComposition(page: Page): Promise<void> {
  * asset by is minted by the editor.
  */
 export async function importBackdrop(page: Page, file: string): Promise<void> {
-  await openPane(page, "Assets");
+  await openPane(page, "Add");
   const chooser = page.waitForEvent("filechooser");
   await page.locator("[data-vigilia-asset-import]").click();
   await (await chooser).setFiles(file);

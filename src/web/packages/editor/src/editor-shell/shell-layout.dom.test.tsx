@@ -13,7 +13,7 @@ import { shortcutLabel } from "../shortcut-manager/display.js";
 import { uiCopy } from "../ui-copy.js";
 import type { ViewportManager } from "../viewport-manager/index.js";
 import type { EditorShellBridge } from "./bridge.js";
-import { createShellLayout } from "./shell-layout.js";
+import { createShellLayout, type RailSlot } from "./shell-layout.js";
 import type {
   EditorActionFacade,
   EditorViewControls,
@@ -137,7 +137,7 @@ function bridgeStub(
   };
 }
 
-it("mounts the editorial palette, menus, pane bar, inspector and dock hosts", () => {
+it("mounts the editorial palette, menus, rail, inspector and dock hosts", () => {
   const root = document.createElement("div");
   const layout = createShellLayout(root);
 
@@ -150,15 +150,14 @@ it("mounts the editorial palette, menus, pane bar, inspector and dock hosts", ()
   expect(root.querySelector(".editor-shell-dock")?.closest("#stage")).toBe(
     root.querySelector("#stage"),
   );
-  // Four segments and the `+`. The rail's fourth entry went with the Settings
-  // pane it held, and a segment with nothing in it is the defect this plan
-  // exists to fix — so the count is a claim about the left column, not a
-  // snapshot of how many icons happen to be there. The Document segment is the
-  // fifth button because the `+` is a `button` too and is not a pane.
-  expect(root.querySelectorAll(".editor-shell-pane-bar button")).toHaveLength(
-    5,
-  );
-  expect(root.querySelector(".editor-shell-rail")).toBeNull();
+  // Four slots, and no `+`: the insert chooser went with the pane bar, and the
+  // Insert menu still reaches everything the `+` did until Task 3 removes it.
+  // A slot with nothing behind it is the defect this plan exists to fix, so
+  // the count is a claim about the left column, not a snapshot of how many
+  // icons happen to be there.
+  expect(root.querySelectorAll(".editor-shell-rail button")).toHaveLength(4);
+  // The horizontal bar is gone, not merely hidden.
+  expect(root.querySelector(".editor-shell-pane-bar")).toBeNull();
   expect(root.textContent).toContain("File");
   // The Arrange menu is gone: the arrange toolbar above the canvas already
   // carries all eight actions, and the menu offered two of them with nothing
@@ -213,12 +212,13 @@ it("opens the shortcut sheet from the shell's own surface, and closes it again",
   layout.destroy();
 });
 
-/** The pane bar's segment for a pane, found by the label it shows. */
-function segment(root: HTMLElement, label: string): HTMLButtonElement {
-  const found = Array.from(
-    root.querySelectorAll<HTMLButtonElement>(".editor-shell-pane-bar button"),
-  ).find((button) => button.textContent?.trim() === label);
-  if (found === undefined) throw new Error(`No "${label}" pane.`);
+/** The rail's slot for a pane, found by the id it carries rather than by text:
+ *  a slot draws a glyph and has no label a reader could match on. */
+function segment(root: HTMLElement, id: RailSlot): HTMLButtonElement {
+  const found = root.querySelector<HTMLButtonElement>(
+    `.editor-shell-rail button[data-rail-slot="${id}"]`,
+  );
+  if (found === null) throw new Error(`No "${id}" slot.`);
   return found;
 }
 
@@ -265,19 +265,6 @@ function insertMenuGroups(): readonly (readonly [
   string | null,
   readonly string[],
 ])[] {
-  return menuGroupsIn(openPopup());
-}
-
-/** The `+`'s chooser, read the same way. The `+` says it is expanded for exactly
-    as long as the popup showing is the one it opened, which is what keeps this
-    reader from reading whichever other menu happens to be up. */
-function popoverGroups(
-  root: HTMLElement,
-): readonly (readonly [string | null, readonly string[]])[] {
-  const plus = root.querySelector<HTMLElement>(".editor-shell-pane-bar-add");
-  if (plus?.getAttribute("aria-expanded") !== "true") {
-    throw new Error("The plus did not open a chooser.");
-  }
   return menuGroupsIn(openPopup());
 }
 
@@ -360,28 +347,31 @@ it("collapses the panel when the segment for the visible pane is clicked again",
   const layout = createShellLayout(root);
   const panel = root.querySelector<HTMLElement>(".editor-shell-panel")!;
   const body = root.querySelector<HTMLElement>(".editor-shell-body")!;
-  const layers = segment(root, uiCopy.rail.layers);
+  const rail = root.querySelector<HTMLElement>(".editor-shell-rail")!;
+  const layers = segment(root, "composition");
 
   expect(panel.hidden).toBe(false);
   expect(layers.getAttribute("aria-pressed")).toBe("true");
-  expect(layers.getAttribute("aria-expanded")).toBe("true");
+  expect(rail.dataset["collapsed"]).toBe("false");
 
   await act(async () => layers.click());
 
   // Both halves matter: a hidden panel takes no pixels, and a collapsed one
   // leaves the accessibility tree, because a pane an author cannot reach is
-  // worse than one that is merely narrow. The bar keeps saying which pane it
-  // is, and `aria-expanded` is how the closed state is announced.
+  // worse than one that is merely narrow. The rail keeps saying which pane is
+  // chosen — `aria-pressed` outlives the collapse, so reopening restores it —
+  // and the column's own state is stated once, on the rail, rather than
+  // repeated on all four slots.
   expect(panel.hidden).toBe(true);
   expect(body.dataset["collapsed"]).toBe("true");
-  expect(layers.getAttribute("aria-expanded")).toBe("false");
+  expect(rail.dataset["collapsed"]).toBe("true");
   expect(layers.getAttribute("aria-pressed")).toBe("true");
 
   await act(async () => layers.click());
 
   expect(panel.hidden).toBe(false);
   expect(body.dataset["collapsed"]).toBe("false");
-  expect(layers.getAttribute("aria-expanded")).toBe("true");
+  expect(rail.dataset["collapsed"]).toBe("false");
 
   layout.destroy();
 });
@@ -391,15 +381,17 @@ it("brings the collapsed panel back on whichever pane is asked for", async () =>
   const layout = createShellLayout(root);
   const panel = root.querySelector<HTMLElement>(".editor-shell-panel")!;
 
-  await act(async () => segment(root, uiCopy.rail.layers).click());
+  await act(async () => segment(root, "composition").click());
   expect(panel.hidden).toBe(true);
 
-  await act(async () => segment(root, uiCopy.rail.assets).click());
+  await act(async () => segment(root, "add").click());
 
   // Reopening brings the pane that was asked for, not the one it closed on.
+  // The Add pane now carries two hosts — the insert list and the asset library
+  // — so both are shown with it.
   expect(panel.hidden).toBe(false);
+  expect(layout.hosts.add.parentElement?.hidden).toBe(false);
   expect(layout.hosts.assets.parentElement?.hidden).toBe(false);
-  expect(layout.hosts.add.parentElement?.hidden).toBe(true);
 
   layout.destroy();
 });
@@ -409,13 +401,11 @@ it("switches panes without closing when the panel is already open", async () => 
   const layout = createShellLayout(root);
   const panel = root.querySelector<HTMLElement>(".editor-shell-panel")!;
 
-  await act(async () => segment(root, uiCopy.rail.insert).click());
+  await act(async () => segment(root, "add").click());
 
   expect(panel.hidden).toBe(false);
   expect(layout.hosts.add.parentElement?.hidden).toBe(false);
-  expect(segment(root, uiCopy.rail.insert).getAttribute("aria-pressed")).toBe(
-    "true",
-  );
+  expect(segment(root, "add").getAttribute("aria-pressed")).toBe("true");
 
   layout.destroy();
 });
@@ -441,29 +431,27 @@ it("shows the theme's own panels in the left column, and toggles them like a pan
   // Closed to begin with: Layers is the pane the shell starts on.
   expect(slot?.hidden).toBe(true);
 
-  await act(async () => segment(root, uiCopy.rail.document).click());
+  await act(async () => segment(root, "document").click());
 
   // Reachable: the panel under the segment is the visible one and holds the
   // document's own controls, with nothing above them `hidden`.
   expect(panel.hidden).toBe(false);
   expect(slot?.hidden).toBe(false);
   expect(slot?.closest("[hidden]")).toBeNull();
-  expect(segment(root, uiCopy.rail.document).getAttribute("aria-pressed")).toBe(
-    "true",
-  );
+  expect(segment(root, "document").getAttribute("aria-pressed")).toBe("true");
 
   // Swapping to another pane must not close the panel, and coming back must
   // not have torn the document panels' slot down.
-  await act(async () => segment(root, uiCopy.rail.assets).click());
+  await act(async () => segment(root, "add").click());
   expect(panel.hidden).toBe(false);
   expect(slot?.hidden).toBe(true);
-  await act(async () => segment(root, uiCopy.rail.document).click());
+  await act(async () => segment(root, "document").click());
   expect(panel.hidden).toBe(false);
   expect(slot?.hidden).toBe(false);
 
   // Pressed again, closed: the pane toggle rule is the shell's, not a branch
   // added for Document.
-  await act(async () => segment(root, uiCopy.rail.document).click());
+  await act(async () => segment(root, "document").click());
   expect(panel.hidden).toBe(true);
 
   layout.destroy();
@@ -499,7 +487,7 @@ it("re-frames on the panel toggle even for a camera the author has moved", async
   // handing the canvas 288px on purpose — the 280px column and the 8px gap the
   // panel no longer separates. Delete this and the camera stays where the
   // author left it while 288px of workspace goes unused.
-  await act(async () => segment(root, uiCopy.rail.layers).click());
+  await act(async () => segment(root, "composition").click());
   expect(
     zoomToFit,
     "the toggle waits for the viewport, not the frame",
@@ -542,7 +530,7 @@ it("leaves the camera alone after a swap between two open panes", async () => {
   layout.setBridge(bridge, undefined);
   await Promise.resolve();
 
-  await act(async () => segment(root, uiCopy.rail.insert).click());
+  await act(async () => segment(root, "add").click());
 
   // A swap changes which pane is showing, not how wide the panel is, so the host
   // does not resize and the viewport never notifies. Anything armed here sits
@@ -594,14 +582,14 @@ it("re-frames when a collapsed panel is reopened by asking for a pane", async ()
     await Promise.resolve();
   };
 
-  await act(async () => segment(root, uiCopy.rail.layers).click());
+  await act(async () => segment(root, "composition").click());
   await resized();
   expect(zoomToFit, "the collapse re-framed").toHaveBeenCalledTimes(1);
 
   // The other half of the guard in the test above: this reopen *does* take the
   // canvas 288px back, so the refit is the point and skipping it would strand
   // the theme at the collapsed zoom.
-  await act(async () => segment(root, uiCopy.rail.layers).click());
+  await act(async () => segment(root, "composition").click());
   await resized();
 
   expect(zoomToFit, "and so does the reopen").toHaveBeenCalledTimes(2);
@@ -947,20 +935,12 @@ it("inserts the same objects from the Insert menu as the Add pane offers", async
   insertMenuEntry(uiCopy.panels.cards, uiCopy.cardLibrary.cpu)?.click();
   expect(session.insertCard).toHaveBeenCalledWith("group-cpu-card");
 
-  // Three surfaces, one owner: the pane, the menubar's Insert menu and the `+`.
-  // The `+`'s chooser is compared to the pane *and* to `insertGroups()` itself,
-  // because two renderings that agree on a list neither read from the owner
-  // would pass the first comparison and fail the second — which is the whole
-  // reason the owner is in the assertion at all.
-  document.dispatchEvent(
-    new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
-  );
-  await Promise.resolve();
-  root.querySelector<HTMLButtonElement>(".editor-shell-pane-bar-add")?.click();
-  await Promise.resolve();
-
-  expect(popoverGroups(root)).toEqual(paneGroups(pane.root));
-  expect(popoverGroups(root)).toEqual(groupsOf(insertGroups()));
+  // The pane is one rendering of `insertGroups()`, and the menu is another.
+  // Comparing the pane to the owner as well as to the menu is what keeps two
+  // renderings from agreeing with each other while disagreeing with the list —
+  // the whole reason the owner is in the assertion at all. The `+`'s chooser
+  // was the third rendering; it left with the pane bar.
+  expect(paneGroups(pane.root)).toEqual(groupsOf(insertGroups()));
 
   layout.destroy();
 });
@@ -986,57 +966,6 @@ function groupsOf(
       ]),
   ];
 }
-
-it("opens the insert chooser from the plus, offering the pane's own list", async () => {
-  const root = document.createElement("div");
-  const layout = createShellLayout(root);
-  const session = facade();
-  layout.setBridge(bridgeStub({ session }), undefined);
-  await Promise.resolve();
-
-  const plus = root.querySelector<HTMLButtonElement>(
-    ".editor-shell-pane-bar-add",
-  );
-  expect(plus?.getAttribute("aria-label")).toBe(uiCopy.rail.insertObject);
-  expect(plus?.disabled).toBe(false);
-
-  plus?.click();
-  await Promise.resolve();
-
-  // Both halves, read from the popover's own DOM and compared to the owner.
-  expect(insertMenuGroups()).toEqual(groupsOf(insertGroups()));
-
-  // The card arm, which no stub façade can fail for us.
-  insertMenuEntry(uiCopy.panels.cards, uiCopy.cardLibrary.cpu)?.click();
-  expect(session.insertCard).toHaveBeenCalledWith("group-cpu-card");
-  // …and a primitive from the same menu, so "both" is one assertion, not two runs.
-  insertMenuEntry(uiCopy.panels.shapes, uiCopy.shapeKinds.rect)?.click();
-  expect(session.addShape).toHaveBeenCalledWith("rect");
-
-  layout.destroy();
-});
-
-it("refuses the chooser rather than offering rows that could insert nothing", async () => {
-  const root = document.createElement("div");
-  const layout = createShellLayout(root);
-  await Promise.resolve();
-
-  // No document yet, so no façade for an item to reach. A `+` that opened
-  // twenty-one rows that each dispatched into `undefined` is the failure a
-  // reader cannot diagnose: the gesture lands and nothing happens.
-  const plus = root.querySelector<HTMLButtonElement>(
-    ".editor-shell-pane-bar-add",
-  );
-  expect(plus?.disabled).toBe(true);
-
-  plus?.click();
-  await Promise.resolve();
-  expect(
-    document.querySelector(".editor-shell-menu-popup[data-open]"),
-  ).toBeNull();
-
-  layout.destroy();
-});
 
 it("prints the chord on the menu rows the shortcut table binds", async () => {
   const root = document.createElement("div");

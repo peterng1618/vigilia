@@ -4,15 +4,15 @@ import {
   chooseAssetFile,
   enterLayer,
 } from "./editor-canvas.js";
-import { openPane } from "./editor-pane-bar.js";
+import { openPane } from "./editor-rail.js";
 import {
   addChart,
   insert,
   openBlank,
   openPosition,
   readScene,
-  selectLayer,
   type SceneObject,
+  selectLayer,
 } from "./rebuild-driver.js";
 import { isDesktopSurface } from "./surface.js";
 
@@ -513,7 +513,7 @@ test.describe("the per-kind inspector column", () => {
     await expect(page.locator("[data-vigilia-panel-fill]")).toHaveCount(0);
 
     // An image: the one kind that can crop, and not a panel either.
-    await openPane(page, "Assets");
+    await openPane(page, "Add");
     await chooseAssetFile(page, "import", {
       name: "logo.png",
       mimeType: "image/png",

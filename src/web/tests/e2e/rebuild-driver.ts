@@ -1,9 +1,9 @@
 import { expect, type Locator, type Page } from "@playwright/test";
-// The pane bar's toggle rule has one owner and one guard: this file grew a
+// The rail's toggle rule has one owner and one guard: this file grew a
 // second copy of it while the rebuild was being written, which is F1.28's
 // class again.
 import { answerDialogIfShown } from "./editor-canvas.js";
-import { openPane } from "./editor-pane-bar.js";
+import { openPane } from "./editor-rail.js";
 
 /**
  * Driving the editor the way an author does.
@@ -145,7 +145,7 @@ export async function insert(page: Page, label: string): Promise<void> {
   // The bar shows one pane, and selecting a layer switches it to Layers — so
   // an author comes back to Insert the same way this does. The selection's own
   // fields are in the right column, which no pane affects.
-  await openPane(page, "Insert");
+  await openPane(page, "Add");
   const before = (await readScene(page)).length;
   const button = addButton(page, label);
   // "Line" is a shape and a chart, and the legend above each is what tells them
@@ -171,7 +171,7 @@ export async function insert(page: Page, label: string): Promise<void> {
  * so matching the row's own text is matching all of those too.
  */
 export async function selectLayer(page: Page, name: string): Promise<void> {
-  await openPane(page, "Layers");
+  await openPane(page, "Composition");
   await page
     .locator(".vigilia-layer-name")
     // Anchored, because `hasText` is a substring match and `cpu-card` would
@@ -292,9 +292,9 @@ export async function addColour(
   name: string,
   hex: string,
 ): Promise<void> {
-  // The palette panel is a document panel, so it lives in the Document pane
-  // and is hidden until the pane is asked for.
-  await openPane(page, "Document");
+  // The palette panel is the Tokens pane's, so it lives in the Tokens pane
+  // and is hidden until the slot is asked for.
+  await openPane(page, "Tokens");
   await page.getByRole("button", { name: "Add colour", exact: true }).click();
   await fill(page, "[data-vigilia-palette-name]", name);
   await fill(page, "[data-vigilia-palette-color]", hex);

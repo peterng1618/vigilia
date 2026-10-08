@@ -5,7 +5,7 @@ import path from "node:path";
 import { expect, type Page, test } from "@playwright/test";
 import { writeThemePackage } from "@vigilia/theme-package";
 import { captureVisualReview } from "./editor-canvas.js";
-import { openPane } from "./editor-pane-bar.js";
+import { openPane } from "./editor-rail.js";
 
 /**
  * The whole publish loop, proved on a real host: an author edits a document in

@@ -1,6 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { expect, type Page, test } from "@playwright/test";
-import { openPane } from "./editor-pane-bar.js";
+import { openPane } from "./editor-rail.js";
 import {
   addCard,
   addChart,
@@ -69,7 +69,7 @@ test.describe("the reference composition, built from blank", () => {
 
     expect(await readScene(page)).toEqual([]);
 
-    await openPane(page, "Insert");
+    await openPane(page, "Add");
     const pane = page.locator('[data-vigilia-panel="add"]');
     // **What the pane offers, not how many buttons that is.** The count was 13
     // written at a moment when the pane held 13 buttons, and every insertion
@@ -114,7 +114,7 @@ test.describe("the reference composition, built from blank", () => {
     ])
       await addColour(page, name, hex);
 
-    await openPane(page, "Insert");
+    await openPane(page, "Add");
 
     // V I G I L I A — tracked, light, top-left.
     await addText(page, {
@@ -250,7 +250,7 @@ test.describe("the reference composition, built from blank", () => {
       ["VRAM magenta", "#d24bf0"],
     ])
       await addColour(page, name, hex);
-    await openPane(page, "Insert");
+    await openPane(page, "Add");
 
     await addCard(page, {
       name: "cpu-card",
@@ -428,7 +428,7 @@ test.describe("the rest of the composition", () => {
     await page.waitForSelector("#canvas-host canvas");
     await openBlank(page);
     for (const [name, hex] of DEVICE_COLOURS) await addColour(page, name, hex);
-    await openPane(page, "Insert");
+    await openPane(page, "Add");
   });
 
   test("the GPU card", async ({ page }) => {
@@ -888,7 +888,7 @@ test("what the rebuild authored survives the save", async ({
   await page.waitForSelector("#canvas-host canvas");
   await openBlank(page);
   for (const [name, hex] of DEVICE_COLOURS) await addColour(page, name, hex);
-  await openPane(page, "Insert");
+  await openPane(page, "Add");
 
   // The CPU card: the richest region. A frosted panel, a stroked path, a
   // two-run reading and a bound sparkline — every kind of authored state the

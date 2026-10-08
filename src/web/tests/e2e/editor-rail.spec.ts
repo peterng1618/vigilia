@@ -1,11 +1,12 @@
 import { expect, test } from "@playwright/test";
-import { openPane } from "./editor-pane-bar.js";
+import { openPane } from "./editor-rail.js";
+import { selectLayer } from "./rebuild-driver.js";
 import { isDesktopSurface } from "./surface.js";
 
 /**
  * The contract of the shared `openPane` helper, against the real editor.
  *
- * The pane bar is a toggle, so the helper this suite hands to 28 call sites is
+ * The rail is a toggle, so the helper this suite hands to its call sites is
  * only correct if it reads the state first. When it did not, every call site
  * that asked for the pane already showing closed it instead, and the failure
  * landed as a timeout in an unrelated assertion rather than as anything naming
@@ -25,13 +26,13 @@ test("asking for the pane already showing leaves it showing", async ({
     page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
   ).toBeVisible();
 
-  await openPane(page, "Insert");
+  await openPane(page, "Add");
   await expect(page.locator('[data-vigilia-panel="add"]')).toBeVisible();
 
   // The second ask is the whole test. An unconditional click closes the pane
   // the first one opened, and the caller is left waiting for a control that has
   // left the accessibility tree.
-  await openPane(page, "Insert");
+  await openPane(page, "Add");
 
   await expect(page.locator('[data-vigilia-panel="add"]')).toBeVisible();
   await expect(page.locator(".editor-shell-panel")).toBeVisible();
@@ -47,20 +48,20 @@ test("asking for a shut pane opens it, and asking again does not close it", asyn
     page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
   ).toBeVisible();
 
-  // Shut first, by the product's own route: clicking the segment for the pane
+  // Shut first, by the product's own route: clicking the slot for the pane
   // showing. A helper that skipped its click when the pane was open must still
   // click when it is shut, or "open" would be a no-op that happened to pass.
   await page
-    .locator(".editor-shell-pane-bar")
-    .getByRole("button", { name: "Layers", exact: true })
+    .locator(".editor-shell-rail")
+    .getByRole("button", { name: "Composition", exact: true })
     .click();
   await expect(page.locator('[data-vigilia-panel="layers"]')).toBeHidden();
 
-  await openPane(page, "Insert");
+  await openPane(page, "Add");
   await expect(page.locator('[data-vigilia-panel="add"]')).toBeVisible();
   await expect(page.locator(".editor-shell-panel")).toBeVisible();
 
-  await openPane(page, "Insert");
+  await openPane(page, "Add");
   await expect(page.locator('[data-vigilia-panel="add"]')).toBeVisible();
   await expect(page.locator(".editor-shell-panel")).toBeVisible();
 });
@@ -75,15 +76,17 @@ test("shows the theme's own panel in the left column, and swaps away from it", a
     page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
   ).toBeVisible();
 
-  // The artboard panel's width field stands for the document host: three panels
-  // append into that one node, so a control of any of them being reachable is
-  // the host having moved into the pane rather than into the inspector's tab.
+  // The artboard panel's width field stands for the document host: the artboard
+  // and the document-references panels append into that one node, so a control
+  // of either being reachable is the host having moved into the pane rather
+  // than into the inspector's tab.
   await openPane(page, "Document");
   await expect(page.locator("[data-vigilia-artboard-width]")).toBeVisible();
 
-  // Swapping the pane hides the whole host rather than unmounting it, and coming
-  // back must not have left it behind — the slot is the bar's, not the tab's.
-  await openPane(page, "Assets");
+  // Swapping the slot hides the whole host rather than unmounting it, and
+  // coming back must not have left it behind — the pane is the slot's, not a
+  // tab's.
+  await openPane(page, "Add");
   await expect(page.locator("[data-vigilia-artboard-width]")).toBeHidden();
 
   await openPane(page, "Document");
@@ -127,17 +130,98 @@ test("a collapse between two swaps does not lose the list's scroll", async ({
   });
   expect(offset, "the layer list is long enough to scroll").toBeGreaterThan(0);
 
-  // Close the panel the product's own way, then look at Assets and come back.
+  // Close the pane the product's own way, then look at Add and come back.
   await page
-    .locator(".editor-shell-pane-bar")
-    .getByRole("button", { name: "Layers", exact: true })
+    .locator(".editor-shell-rail")
+    .getByRole("button", { name: "Composition", exact: true })
     .click();
   await expect(list).toBeHidden();
 
-  await openPane(page, "Assets");
+  await openPane(page, "Add");
   await expect(page.locator("[data-vigilia-asset-import]")).toBeVisible();
-  await openPane(page, "Layers");
+  await openPane(page, "Composition");
   await expect(page.locator('[data-vigilia-panel="layers"]')).toBeVisible();
 
   await expect.poll(() => list.evaluate((node) => node.scrollTop)).toBe(offset);
+});
+
+/** §7.7's desktop-density proof, for the one cluster the rail's column can
+ *  starve. **Reachability, not visibility.**
+ *
+ *  The dock is a fixed 639px row of every object and arrange action, centred on
+ *  the stage. The rail's 46px column is taken off the stage's width, so the row
+ *  no longer fitted: `.editor-shell-stage`'s `overflow: hidden` clipped its ends
+ *  and `elementFromPoint` at `Duplicate`'s centre answered the layer panel next
+ *  door. Playwright reported that as a 30-second hover timeout three specs away
+ *  from the cause, which is why the assertion here is the hit test rather than
+ *  a bounding box: a control drawn outside its stage is `visible` to Playwright
+ *  and unclickable to an author.
+ *
+ *  The three configurations are §7.7's own. The third is a viewport rather than
+ *  a root `zoom`, because 200% browser zoom halves the CSS viewport — that is
+ *  what the shell's media queries answer, and a `zoom` on the root leaves the
+ *  layout viewport at 1280 while the fixed 46/360/280 columns stop adapting. */
+test("every dock control stays reachable with the rail's column in place", async ({
+  page,
+}, testInfo) => {
+  test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+  test.setTimeout(120_000);
+
+  for (const view of [
+    { name: "1280×720", width: 1280, height: 720 },
+    { name: "1440×900", width: 1440, height: 900 },
+    { name: "640×360, the CSS viewport 200% zoom gives", width: 640, height: 360 },
+  ]) {
+    await page.setViewportSize({ width: view.width, height: view.height });
+    await page.goto(EDITOR);
+    await expect(
+      page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+    ).toBeVisible();
+
+    // A group rather than a card: the object half of the dock is a filtered
+    // registry, and a group carries the most actions, so this is the widest the
+    // row gets.
+    await selectLayer(page, "group-cpu-card");
+    const dock = page.locator("[data-vigilia-canvas-toolbar]");
+    await expect(dock).toBeVisible();
+
+    const unreachable = await dock.evaluate((node) =>
+      [...node.querySelectorAll("button")].flatMap((button) => {
+        const box = button.getBoundingClientRect();
+        const hit = document.elementFromPoint(
+          box.x + box.width / 2,
+          box.y + box.height / 2,
+        );
+        // Containment, not equality: the point lands on the button's own glyph,
+        // and a `<path>` inside the control is still the control.
+        if (hit !== null && (button === hit || button.contains(hit))) return [];
+        return [
+          `${button.getAttribute("aria-label")} is under ${hit?.tagName ?? "nothing"}`,
+        ];
+      }),
+    );
+    expect(
+      unreachable,
+      `${view.name}: a dock control is drawn where nothing can click it`,
+    ).toEqual([]);
+
+    // And the cluster sits inside the stage at all: §7.5's 14px is the least a
+    // cluster clears its stage's edges by, and the overrun this pinned is what
+    // put the row outside them.
+    const insets = await page.evaluate(() => {
+      const stage = document.querySelector(".editor-shell-stage");
+      const box = document.querySelector(".editor-shell-dock");
+      if (stage === null || box === null) throw new Error("no dock");
+      const outer = stage.getBoundingClientRect();
+      const inner = box.getBoundingClientRect();
+      return {
+        left: Math.round(inner.left - outer.left),
+        right: Math.round(outer.right - inner.right),
+      };
+    });
+    expect(
+      Math.min(insets.left, insets.right),
+      `${view.name}: the dock overruns its stage`,
+    ).toBeGreaterThanOrEqual(14);
+  }
 });

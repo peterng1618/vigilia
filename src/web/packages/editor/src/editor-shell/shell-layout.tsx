@@ -15,9 +15,9 @@ import type { EditorShellBridge, EditorShellSnapshot } from "./bridge.js";
 import { CanvasContextMenu } from "./canvas-context-menu.js";
 import { CanvasDock } from "./canvas-dock.js";
 import { DiagnosticMessage } from "./diagnostic-message.js";
-import { insertItem, InsertPopover } from "./insert-popover.js";
+import { insertItem } from "./insert-popover.js";
 import { LayerPanel } from "./layer-panel.js";
-import { PaneBar, type RailPane } from "./pane-bar.js";
+import { Rail, type RailSlot } from "./rail.js";
 import { PaletteMenu } from "./palette-menu.js";
 import { PublishControl } from "./publish-control.js";
 import type { PublishSwitch } from "../publish-client.js";
@@ -38,15 +38,21 @@ import {
 } from "../run-placeholder.js";
 import type { EditorViewControls } from "./session-facade.js";
 
-export type { RailPane } from "./pane-bar.js";
+export type { RailSlot } from "./rail.js";
 
 /** Persistent DOM owners the imperative panels mount into. React positions
- * these; it never renders panel content. The Layers pane has no node here: the
- * tree is React-owned and renders inside `Shell` from the bridge directly. */
+ * these; it never renders panel content. The Composition pane has no node
+ * here: the tree is React-owned and renders inside `Shell` from the bridge
+ * directly. */
 export interface ShellHosts {
   readonly canvas: HTMLElement;
+  /** The Add pane's body: the insert list and, beside it, the asset library
+      (`§5.2` absorbs the Assets pane into Add). */
   readonly add: HTMLElement;
   readonly assets: HTMLElement;
+  /** The Tokens pane: the theme's paints and type presets. */
+  readonly tokens: HTMLElement;
+  /** The Document pane: the artboard and the references it resolves. */
   readonly document: HTMLElement;
   /** Properties of the selected object. A chart's family settings and bindings
       are part of that column, not a panel of their own. */
@@ -426,6 +432,7 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
     canvas: element(),
     add: element("vigiliaPanelHostAdd"),
     assets: element("vigiliaPanelHostAssets"),
+    tokens: element("vigiliaPanelHostTokens"),
     document: element("vigiliaPanelHostDocument"),
     selection: element("vigiliaPanelHostSelection"),
     status: document.createElement("span"),
@@ -442,17 +449,8 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
 
   function Shell(): React.JSX.Element {
     const [palette, setPalette] = useState(initial);
-    const [pane, setPane] = useState<RailPane>("layers");
+    const [slot, setSlot] = useState<RailSlot>("composition");
     const [collapsed, setCollapsed] = useState(false);
-    /** The `+` opens the insert chooser, and the shell owns whether it is
-     *  showing: the button belongs to the pane bar, so the bar hands the press
-     *  up and the popover anchors back to the element that press landed on.
-     *
-     *  Before a document is open there is no session for a row to dispatch to,
-     *  and a menu of twenty-one rows that silently do nothing is the one failure
-     *  an author cannot diagnose — so the `+` is refused instead. */
-    const [insertOpen, setInsertOpen] = useState(false);
-    const addRef = useRef<HTMLButtonElement | null>(null);
     const kind = useSelection(store).activeKind;
     const sheetOpen = useSheet(sheet);
     /** Re-frame on the panel toggle, once the viewport has the new width.
@@ -477,12 +475,12 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
 
     /** Each pane's scroll offset, kept across the swap.
      *
-     * The bar is single-panel, so opening Assets really does tear the layer
+     * The rail is single-pane, so opening Add really does tear the composition
      * list down and build it again — the selection, the inspector's geometry
      * and the canvas handles all survive, and only the scroll was lost. With
      * the Starter's 52 rows and more in a theme an author has built, finding
      * your place again after a glance at the assets is the whole cost of it. */
-    const scrollOf = useRef(new Map<RailPane, number>());
+    const scrollOf = useRef(new Map<RailSlot, number>());
     const paneBody = useRef<HTMLElement | null>(null);
 
     /** The OS gets a vote only while the author has not cast one.
@@ -505,27 +503,27 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
       [],
     );
 
-    /** The segment already showing closes the panel; any other segment — and
-     *  the closed one itself — shows it. The canvas is what an author works
-     *  in, so the chrome around it is allowed to get out of the way. */
-    const choosePane = (id: RailPane): void => {
+    /** The slot already showing closes the pane; any other slot — and the
+     *  closed one itself — shows it. The canvas is what an author works in, so
+     *  the chrome around it is allowed to get out of the way. */
+    const choosePane = (id: RailSlot): void => {
       // Read the offset off the DOM rather than off an event: the panel is torn
       // down by the swap, so anything held in state is already gone by the time
-      // this runs for the next pane. Taken before any branch, because every
+      // this runs for the next slot. Taken before any branch, because every
       // branch but the collapse hides the panel and a `display: none` box has
       // no scroll offset to read — the getter answers 0, so a save taken after
       // the collapse writes the author's place back as the top of the list.
       if (!collapsed && paneBody.current !== null) {
-        scrollOf.current.set(pane, paneBody.current.scrollTop);
+        scrollOf.current.set(slot, paneBody.current.scrollTop);
       }
-      if (!collapsed && pane === id) {
+      if (!collapsed && slot === id) {
         setCollapsed(true);
         // Collapsing hands the canvas 288px, and the refit runs here too rather
         // than only on a pane swap.
         refitOnViewportChange();
         return;
       }
-      setPane(id);
+      setSlot(id);
       setCollapsed(false);
       const restore = scrollOf.current.get(id) ?? 0;
       // After the pane's own content is laid out, or the offset lands on
@@ -563,35 +561,25 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
           </button>
         </header>
         <div className="editor-shell-body" data-collapsed={collapsed}>
-          {/* The bar heads the left column rather than standing beside it, so
-              the canvas gets the rail's 52px back and the segments read as the
-              column's own header rather than a second place to navigate. */}
-          <PaneBar
-            pane={pane}
-            collapsed={collapsed}
-            onChoose={choosePane}
-            onInsert={() => setInsertOpen(true)}
-            addRef={addRef}
-            addExpanded={insertOpen}
-            addDisabled={store.bridge === undefined}
-          />
-          <InsertPopover
-            session={store.bridge?.session}
-            open={insertOpen}
-            onOpenChange={setInsertOpen}
-            anchor={addRef}
-          />
+          {/* The rail is the left edge's own column, ahead of the pane's, so
+              the canvas gets the pane's width back and the slots read as one
+              vertical choice rather than a second navigation bar. */}
+          <Rail slot={slot} collapsed={collapsed} onChoose={choosePane} />
           <aside
             className="editor-shell-panel editor-glass"
             hidden={collapsed}
             ref={paneBody}
           >
-            <div hidden={pane !== "layers"}>
+            <div hidden={slot !== "composition"}>
               <LayerPanel bridge={store.bridge} />
             </div>
-            <Host node={hosts.add} hidden={pane !== "insert"} />
-            <Host node={hosts.assets} hidden={pane !== "assets"} />
-            <Host node={hosts.document} hidden={pane !== "document"} />
+            {/* The assets host renders inside the Add pane's body, with the
+                insert host: `§5.2` puts the asset path in Add, and a fourth
+                slot for it would be a slot the bible does not name. */}
+            <Host node={hosts.add} hidden={slot !== "add"} />
+            <Host node={hosts.assets} hidden={slot !== "add"} />
+            <Host node={hosts.tokens} hidden={slot !== "tokens"} />
+            <Host node={hosts.document} hidden={slot !== "document"} />
           </aside>
           <main
             id="stage"

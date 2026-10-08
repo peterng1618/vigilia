@@ -2,16 +2,18 @@
 
 import { act } from "react";
 import { describe, expect, it } from "vitest";
-import { uiCopy } from "../ui-copy.js";
-import { createShellLayout, type ShellLayout } from "./shell-layout.js";
+import {
+  createShellLayout,
+  type RailSlot,
+  type ShellLayout,
+} from "./shell-layout.js";
 
-/** The bar's segments, by the label they show rather than by the icon they
- *  used to draw: the rail's entries were named by `title`, and a labelled
- *  segment has no tooltip to address. */
-function segment(root: HTMLElement, label: string): HTMLButtonElement {
-  return Array.from(
-    root.querySelectorAll<HTMLButtonElement>(".editor-shell-pane-bar button"),
-  ).find((button) => button.textContent?.trim() === label)!;
+/** A rail slot, found by the id it carries: a slot draws a glyph, so there is
+ *  no label a reader could match on. */
+function segment(root: HTMLElement, id: RailSlot): HTMLButtonElement {
+  return root.querySelector<HTMLButtonElement>(
+    `.editor-shell-rail button[data-rail-slot="${id}"]`,
+  )!;
 }
 
 function panel(root: HTMLElement): HTMLElement {
@@ -31,7 +33,7 @@ async function frame(): Promise<void> {
  *  answers 0 whatever was last written. An assertion over jsdom's own
  *  behaviour therefore passes whether or not the offset survives a collapse,
  *  which is the defect under test; this is the one pin in this file that can
- *  fail. `editor-pane-bar.spec.ts` pins the same thing against a real browser,
+ *  fail. `editor-rail.spec.ts` pins the same thing against a real browser,
  *  where the model below is not needed to make it bite. */
 function modelHiddenScrollTop(node: HTMLElement): void {
   let offset = 0;
@@ -59,22 +61,22 @@ function mount(): { readonly layout: ShellLayout; readonly root: HTMLElement } {
 }
 
 /**
- * The pane bar is single-panel, so opening Assets really does take the layer
+ * The rail is single-pane, so opening Add really does take the composition
  * list down and build it again. The selection, the inspector's geometry and
  * the canvas handles all survive that swap; only the scroll did not, and with
  * the Starter's 52 rows — more in a theme an author has built — finding your
  * place again is the whole cost of glancing at the assets.
  */
-describe("the pane bar keeps each pane where you left it", () => {
+describe("the rail keeps each pane where you left it", () => {
   it("returns the layer list to the offset it was scrolled to", async () => {
     const { layout, root } = mount();
     panel(root).scrollTop = 499;
 
-    segment(root, uiCopy.rail.assets).click();
+    segment(root, "add").click();
     await frame();
     expect(panel(root).scrollTop).toBe(0);
 
-    segment(root, uiCopy.rail.layers).click();
+    segment(root, "composition").click();
     await frame();
     expect(panel(root).scrollTop).toBe(499);
 
@@ -91,14 +93,14 @@ describe("the pane bar keeps each pane where you left it", () => {
     // none`, so the offset is only readable before this, and the swap that
     // follows must not save over what was read here with the 0 a hidden box
     // answers with.
-    await act(async () => segment(root, uiCopy.rail.layers).click());
+    await act(async () => segment(root, "composition").click());
     expect(panel(root).hidden).toBe(true);
 
-    await act(async () => segment(root, uiCopy.rail.assets).click());
+    await act(async () => segment(root, "add").click());
     await frame();
     expect(panel(root).scrollTop).toBe(0);
 
-    await act(async () => segment(root, uiCopy.rail.layers).click());
+    await act(async () => segment(root, "composition").click());
     await frame();
     expect(panel(root).scrollTop).toBe(499);
 

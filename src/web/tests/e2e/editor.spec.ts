@@ -22,7 +22,7 @@ import {
   worldLeftOf,
   worldRightOf,
 } from "./editor-canvas.js";
-import { openPane } from "./editor-pane-bar.js";
+import { openPane } from "./editor-rail.js";
 import { isDesktopSurface } from "./surface.js";
 
 /** Clicks one primitive in the Add pane's shape group. */
@@ -691,9 +691,9 @@ test.describe("Fabric editor route", () => {
 
     await page.goto(EDITOR);
     await expect(page.locator("#status")).toHaveText("Fabric editor ready");
-    // "Add colour" is the palette panel's control, and the palette is a
-    // document panel in the left column's Document pane.
-    await openPane(page, "Document");
+    // "Add colour" is the palette panel's control, and the palette is the
+    // Tokens pane's.
+    await openPane(page, "Tokens");
     await page.getByRole("button", { name: "Add colour" }).click();
     const field = page.locator("[data-vigilia-palette-color]");
 
@@ -784,7 +784,7 @@ test.describe("Fabric editor route", () => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     await page.goto(EDITOR);
-    await openPane(page, "Insert");
+    await openPane(page, "Add");
     await page
       .locator('[data-vigilia-panel="add"]')
       .getByRole("button", { name: "Text" })
@@ -833,7 +833,7 @@ test.describe("Fabric editor route", () => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     await page.goto(EDITOR);
-    await openPane(page, "Insert");
+    await openPane(page, "Add");
     await page
       .locator('[data-vigilia-panel="add"]')
       .getByRole("button", { name: "Gauge" })
@@ -876,7 +876,7 @@ test.describe("Fabric editor route", () => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     await page.goto(EDITOR);
-    await openPane(page, "Insert");
+    await openPane(page, "Add");
     // The Add pane's shapes are a group: "Line" is both a chart family and a
     // primitive, so the legend is what tells the two apart.
     await insertShape(page, "Rectangle");
@@ -990,7 +990,7 @@ test.describe("Fabric editor route", () => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     await page.goto(EDITOR);
-    await openPane(page, "Insert");
+    await openPane(page, "Add");
 
     // Eight, which is `SHAPE_KINDS` — rect, ellipse, polygon, polyline, line,
     // path, arc, wedge — spelled out here rather than imported, because the
@@ -1047,7 +1047,7 @@ test.describe("Fabric editor route", () => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     await page.goto(EDITOR);
-    await openPane(page, "Insert");
+    await openPane(page, "Add");
     // The Add pane's shapes are a group: "Line" is both a chart family and a
     // primitive, so the legend is what tells the two apart.
     await insertShape(page, "Rectangle");
@@ -1060,8 +1060,8 @@ test.describe("Fabric editor route", () => {
       .selectOption("palette.text");
 
     // `text` is the token the new panel's border and shadow now point at. The
-    // palette panel is a document panel, so it is in the Document pane.
-    await openPane(page, "Document");
+    // palette panel is the Tokens pane's, so it is in the Tokens pane.
+    await openPane(page, "Tokens");
     await page.locator("[data-vigilia-palette-token]").selectOption("text");
     await page
       .locator("[data-vigilia-palette-replacement]")
@@ -1241,12 +1241,12 @@ test.describe("Fabric editor route", () => {
       page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
     ).toBeVisible();
 
-    await openPane(page, "Insert");
+    await openPane(page, "Add");
     await page
       .locator('[data-vigilia-panel="add"]')
       .getByRole("button", { name: "Arc", exact: true })
       .click();
-    await openPane(page, "Insert");
+    await openPane(page, "Add");
     await page
       .locator('[data-vigilia-panel="add"]')
       .getByRole("button", { name: "Wedge", exact: true })
@@ -1724,8 +1724,8 @@ test.describe("Fabric editor route", () => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     await page.goto(EDITOR);
-    // The palette panel is a document panel, so it is in the Document pane.
-    await openPane(page, "Document");
+    // The palette panel is the Tokens pane's, so it is in the Tokens pane.
+    await openPane(page, "Tokens");
     await page
       .locator("[data-vigilia-palette-token]")
       .selectOption("background");
@@ -1751,8 +1751,8 @@ test.describe("Fabric editor route", () => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     await page.goto(EDITOR);
-    // The palette panel is a document panel, so it is in the Document pane.
-    await openPane(page, "Document");
+    // The palette panel is the Tokens pane's, so it is in the Tokens pane.
+    await openPane(page, "Tokens");
     // The token deleted has to be one the **artboard** references, or the
     // reassignment has nothing to reassign and the test passes for the wrong
     // reason. `bars` is the artboard's `barColor`; its own paint is `none`
@@ -1782,8 +1782,8 @@ test.describe("Fabric editor route", () => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     await page.goto(EDITOR);
-    // The palette panel is a document panel, so it is in the Document pane.
-    await openPane(page, "Document");
+    // The palette panel is the Tokens pane's, so it is in the Tokens pane.
+    await openPane(page, "Tokens");
     await page
       .locator("[data-vigilia-palette-token]")
       .selectOption("chartTrack");
@@ -1820,8 +1820,8 @@ test.describe("Fabric editor route", () => {
     await page.route("https://cdn.jsdelivr.net/fontsource/fonts/**", (route) =>
       route.fulfill({ body: Buffer.from([0, 1, 2]) }),
     );
-    // The type-preset panel is a document panel, so it is in the Document pane.
-    await openPane(page, "Document");
+    // The type-preset panel is the Tokens pane's, so it is in the Tokens pane.
+    await openPane(page, "Tokens");
     await page.locator("[data-vigilia-type-preset]").selectOption("36-500");
     // Read the option the panel offers rather than typing an id: the picker's
     // rows come from the generated catalogue, so a literal here pins one
@@ -1850,7 +1850,7 @@ test.describe("Fabric editor route", () => {
       "Opened type-preset.vigilia-theme",
     );
     // Reopening a package remounts the shell, so the pane is shut again.
-    await openPane(page, "Document");
+    await openPane(page, "Tokens");
     await page.locator("[data-vigilia-type-preset]").selectOption("36-500");
     const reopened = (await saveEnvelope(page)) as {
       globals: {
@@ -1891,8 +1891,8 @@ test.describe("Fabric editor route", () => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     await page.goto(EDITOR);
-    // The type-preset panel is a document panel, so it is in the Document pane.
-    await openPane(page, "Document");
+    // The type-preset panel is the Tokens pane's, so it is in the Tokens pane.
+    await openPane(page, "Tokens");
     await page.locator("[data-vigilia-type-preset]").selectOption("36-500");
     const tracking = page.locator("[data-vigilia-type-letter-spacing]");
 
@@ -1917,8 +1917,8 @@ test.describe("Fabric editor route", () => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     await page.goto(EDITOR);
-    // The type-preset panel is a document panel, so it is in the Document pane.
-    await openPane(page, "Document");
+    // The type-preset panel is the Tokens pane's, so it is in the Tokens pane.
+    await openPane(page, "Tokens");
     await page.locator("[data-vigilia-type-preset]").selectOption("36-500");
     const face = page.locator("[data-vigilia-font-face]");
     await face.scrollIntoViewIfNeeded();
@@ -1935,8 +1935,8 @@ test.describe("Fabric editor route", () => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     await page.goto(EDITOR);
-    // The type-preset panel is a document panel, so it is in the Document pane.
-    await openPane(page, "Document");
+    // The type-preset panel is the Tokens pane's, so it is in the Tokens pane.
+    await openPane(page, "Tokens");
     await page.locator("[data-vigilia-type-preset]").selectOption("20-400");
     await page
       .locator("[data-vigilia-type-replacement]")
@@ -2166,7 +2166,7 @@ test.describe("Fabric editor route", () => {
     // row: the canvas origin is not a stable coordinate to click, because the
     // stage letterboxes the artboard inside its host. The tree lives in the
     // Layers pane, so the row is only clickable once that pane is showing.
-    await openPane(page, "Layers");
+    await openPane(page, "Composition");
     await page.locator('[data-vigilia-layer="cpu-label"]').click();
     const spends = page.locator('[data-vigilia-section="spends"]');
     await expect(spends).toContainText("Ink");
@@ -2209,7 +2209,7 @@ test.describe("Fabric editor route", () => {
     // not something the picker can render. Measured before the fix: this
     // selector list went from `[stroke, palette.0]` to `[]`.
     await page.goto(EDITOR);
-    await openPane(page, "Insert");
+    await openPane(page, "Add");
     // "Line" is both a chart family and a primitive, so the Chart group is what
     // tells the two apart. A gauge's paints are not per-series, which is why the
     // family has to be the one whose `palette` field repeats with the series.
@@ -2658,7 +2658,7 @@ test.describe("Fabric editor route", () => {
     // behind a closed pane is not one a person can press. Driving the hidden
     // input directly is the route this finding is about: it stays green while
     // the feature is unreachable, so it proves nothing.
-    await openPane(page, "Assets");
+    await openPane(page, "Add");
     await expect(page.locator("[data-vigilia-asset-import]")).toBeVisible();
     await expect(page.locator("[data-vigilia-asset-replace]")).toBeVisible();
     await chooseAssetFile(page, "import", {
@@ -2835,7 +2835,7 @@ test.describe("Fabric editor route", () => {
       controls: { tl: true, tr: true, bl: true, br: true },
       hasSelectionGeometry: true,
     });
-    await openPane(page, "Assets");
+    await openPane(page, "Add");
     await page
       .getByRole("heading", { name: "Assets" })
       .scrollIntoViewIfNeeded();
@@ -2875,7 +2875,7 @@ test.describe("Fabric editor route", () => {
   }, testInfo) => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
     await page.goto(EDITOR);
-    await openPane(page, "Assets");
+    await openPane(page, "Add");
     await chooseAssetFile(page, "import", {
       name: "hero.png",
       mimeType: "image/png",

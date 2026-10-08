@@ -667,15 +667,13 @@ body,
   cursor: pointer;
   font-weight: 600;
 }
-/* The pane bar heads the left column rather than standing beside it, so the
-   stage gets the rail's 52px back. The bar is above the panel rather than
-   beside it, which is why the areas are named: collapsing has to move the bar
-   across to keep it pressable without the canvas losing the column's width, and
-   per-element `grid-column` would have to be restated for every child to say
-   that. */
+/* The rail is the left edge's own column, ahead of the pane's: the rail stays
+   put and the pane's track is what opens and closes beside it. One row rather
+   than the pane bar's two areas, because the rail is a column beside the pane,
+   not a header over it. */
 .editor-shell-body {
   display: grid;
-  grid-template-areas: "bar stage inspector" "panel stage inspector";
+  grid-template-areas: "rail panel stage inspector";
   /* The layer panel is 360px because a row now carries four things it did not:
      a 40px kind specimen, the name, and two columns naming it — what it *is*
      (`.vigilia-layer-role`) and the key it reads (`.vigilia-layer-bound`).
@@ -695,31 +693,64 @@ body,
      editor exists to author a phone display. That is why the 20px was measured
      and taken knowingly, and why the alternative — shortening the role's words
      — was measured too, at `.vigilia-layer-role`. */
-  grid-template-columns: 360px minmax(0, 1fr) 280px;
-  grid-template-rows: auto minmax(0, 1fr);
+  grid-template-columns: 46px 360px minmax(0, 1fr) 280px;
+  grid-template-rows: minmax(0, 1fr);
   gap: 8px;
   min-height: 0;
   flex: 1;
   padding: 8px;
 }
-/* Collapsing drops the panel rather than narrowing it. The aside is `hidden`,
-   so it is no longer a grid item, and the bar — the only route back to it —
-   widens across the top rather than holding the column open on its own. The
-   panel's width and one gap both go back to the canvas. */
+/* Collapsing drops the pane rather than narrowing it. The aside is `hidden`,
+   so it is no longer a grid item, and the rail — the only route back to it —
+   keeps its column rather than widening. The pane's width and one gap both go
+   back to the canvas. */
 .editor-shell-body[data-collapsed="true"] {
-  grid-template-areas: "bar bar bar" "stage stage inspector";
+  grid-template-areas: "rail stage inspector";
+  grid-template-columns: 46px minmax(0, 1fr) 280px;
 }
-/* A horizontal segmented header: one segment per pane, the `+` at the end. A
-   row rather than the rail's column, and labelled rather than icon-only, so
-   nothing here needs a hover to say what it opens. */
-.editor-shell-pane-bar {
-  grid-area: bar;
+/* The rail: a 46px column of glyph slots, one per pane (bible §7.2). It draws
+   no pane content and decides nothing — the shell turns a press into open,
+   swap or collapse. */
+.editor-shell-rail {
+  grid-area: rail;
   display: flex;
-  align-items: stretch;
-  gap: 4px;
-  padding: 5px;
+  flex-direction: column;
+  align-items: center;
+  gap: 3px;
+  padding: 8px 0;
   border-radius: 12px;
-  overflow: visible;
+}
+.editor-shell-rail button {
+  position: relative;
+  display: flex;
+  width: 34px;
+  height: 34px;
+  align-items: center;
+  justify-content: center;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  /* Closed slots are `--faint`; the selected one lifts to `--accent` with a
+     wash and a 2px bar on the rail's inner edge (bible §7.2). */
+  color: var(--faint);
+  cursor: pointer;
+}
+.editor-shell-rail button:hover {
+  background: color-mix(in srgb, var(--text) 10%, transparent);
+}
+.editor-shell-rail button[aria-pressed="true"] {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
+}
+.editor-shell-rail button[aria-pressed="true"]::before {
+  content: "";
+  position: absolute;
+  top: 6px;
+  bottom: 6px;
+  left: -8px;
+  width: 2px;
+  border-radius: 2px;
+  background: var(--accent);
 }
 .editor-shell-panel {
   grid-area: panel;
@@ -738,7 +769,6 @@ body,
   overflow: auto;
   border-radius: 12px;
 }
-.editor-shell-pane-bar button,
 .editor-shell-inspector button,
 .editor-shell-dock button {
   color: var(--shell-text);
@@ -747,37 +777,6 @@ body,
   border-radius: 7px;
   cursor: pointer;
 }
-.editor-shell-pane-bar button {
-  /* Sized to its own label, not an equal share of the row. With `flex: 1`
-     (basis 0) four labels share 302px — 75.5px each — and "Document" measures
-     75.86px unselected and ~79px pressed, so the longest word ellipsized in a
-     bar with 73px of slack in it. Measured at the shipped 360px column, both
-     states: content basis gives Document 94px and every other label its own
-     word plus an equal share of what is left. */
-  flex: 1 1 auto;
-  min-height: 32px;
-  padding: 0 8px;
-  font: inherit;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-/* The `+` is one fixed mark beside the pane's words, so it takes its own width
-   rather than a share of the bar's. The button selector above is the more
-   specific pair, so this names the element too. */
-.editor-shell-pane-bar button.editor-shell-pane-bar-add {
-  flex: none;
-  width: 32px;
-  padding: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.editor-shell-pane-bar button[aria-pressed="true"] {
-  background: color-mix(in srgb, var(--shell-text) 14%, transparent);
-  font-weight: 600;
-}
-.editor-shell-pane-bar button:hover,
 .editor-shell-dock button:hover {
   background: color-mix(in srgb, var(--shell-text) 10%, transparent);
 }
@@ -1511,6 +1510,28 @@ body,
   bottom: 16px;
   left: 50%;
   transform: translateX(-50%);
+  /* §7.5: a cluster sits 14–16px in from the stage's edges, so the dock is
+     `stage − 32px` at most. `max-content` rather than `100%` because the dock
+     is a bottom-centre corner, not a bar: with three actions it is a pill, and
+     it only grows to the inset when the actions need the room. Without the
+     cap the row measured 639px inside a 554px stage and `.editor-shell-stage`'s
+     `overflow: hidden` clipped it, which put `Duplicate` 20px outside the
+     stage where nothing could click it. */
+  width: max-content;
+  /* The 100px is the dock's own 32px of insets (16 each side, §7.5) plus the
+     view cluster's 68px footprint (its 56px minimum and its 12px inset) while
+     it holds the stage's bottom-right corner. §7.5's table puts that cluster
+     top-right, which Task 6 lands; until then a 639px row centred in a 714px
+     stage reaches into it and §7.7 forbids the collision. When Task 6 moves the
+     cluster, this reservation can go back to `100% - 32px`. */
+  max-width: calc(100% - 100px);
+  /* §7.7, "clusters cannot collide" and "keep every control reachable through
+     scrolling or compact composition". The full row is wider than the stage at
+     1280, so it wraps rather than overrunning: a scroller would hide an action
+     behind a scroll in the one cluster whose whole purpose is that its actions
+     are at hand, and §7.7 forbids a second scrollbar owner. */
+  flex-wrap: wrap;
+  justify-content: center;
   display: none;
   gap: 3px;
   padding: 5px;
@@ -1570,6 +1591,11 @@ body,
 }
 .editor-shell-tooltip {
   z-index: 50;
+  /* A tooltip is a reading, not a control: it must never take a pointer event
+     from the thing it describes. On the rail's vertical stack a slot's popup
+     lands over its neighbour, and capturing there made the neighbour
+     unclickable. */
+  pointer-events: none;
   padding: 4px 8px;
   border-radius: 6px;
   border: 1px solid var(--shell-edge);
@@ -1628,14 +1654,14 @@ body,
 }
 @media (max-width: 980px) {
   .editor-shell-body {
-    grid-template-areas: "bar stage" "panel stage";
+    grid-template-areas: "rail panel stage";
     /* 280px rather than the wide layout's 360px, because the stage is sharing
-       a narrow window with it. The bound column is what gives way first, which
-       is the same order the row's own flex uses. */
-    grid-template-columns: 280px minmax(0, 1fr);
+       a narrow window with it. The bound column is what gives way first. */
+    grid-template-columns: 46px 280px minmax(0, 1fr);
   }
   .editor-shell-body[data-collapsed="true"] {
-    grid-template-areas: "bar bar" "stage stage";
+    grid-template-areas: "rail stage";
+    grid-template-columns: 46px minmax(0, 1fr);
   }
   .editor-shell-inspector {
     display: none;

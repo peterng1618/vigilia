@@ -86,24 +86,23 @@ const glassRefusals: Readonly<Record<string, string>> = {
 export const uiCopy = {
   brand: "Vigilia",
   editor: "Editor",
-  /** The pane bar's segments, and the two names the bar itself carries.
-   *  A segment's label is its content, so it is also its accessible name; the
-   *  `+` beside them is icon-only and takes its name from `insertObject`
-   *  instead — a glyph stored as a translatable string is announced as a word
-   *  of its own and cannot inherit a shell colour. */
+  /** The rail's four slots. A slot's word is both its tooltip and its
+   *  accessible name: the slot is icon-only, so it has no text of its own, and
+   *  a glyph stored as a translatable string would be announced as a word and
+   *  could not inherit a shell colour. One word per slot, from the one owner
+   *  of which slots exist (`rail.tsx`). */
   rail: {
-    /** The bar's own name, so a screen reader is told what the group of
-     *  segments chooses between before it reads each one. */
+    /** The rail's own name, so a screen reader is told what the group of
+     *  slots chooses between before it reads each one. */
     label: "Editor panes",
-    layers: "Layers",
-    insert: "Insert",
-    assets: "Assets",
-    /** The artboard, palette, type-preset and document-references panels — one
-     *  pane, because they are one host, and the word names what they are the
-     *  settings of. */
-    document: "Document",
-    /** The `+`, named as what it opens rather than as the mark it draws. */
-    insertObject: "Insert an object",
+    slots: {
+      composition: "Composition",
+      add: "Add",
+      tokens: "Tokens",
+      /** The artboard, background, metadata and reference panels — one pane,
+       *  because they are the document's own settings. */
+      document: "Document",
+    },
   },
   /** Selection inspector field labels. */
   inspectorFields: {

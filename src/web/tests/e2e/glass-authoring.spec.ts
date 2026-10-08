@@ -1,7 +1,7 @@
 import { expect, type Locator, type Page, test } from "@playwright/test";
 import { readThemePackage, writeThemePackage } from "@vigilia/theme-package";
 import { captureVisualReview, clientOfScene } from "./editor-canvas.js";
-import { openPane } from "./editor-pane-bar.js";
+import { openPane } from "./editor-rail.js";
 import {
   AUTHORING_PANEL_ID,
   GLASS_ARTBOARD,
@@ -381,8 +381,8 @@ test.describe("authoring frosted glass through the inspector", () => {
     // an opaque colour would legitimately hide the glass and the blur would
     // then have nothing to show. Changing the outline is a palette edit the
     // treatment has to survive, with the backdrop still visible behind it. The
-    // palette panel is a document panel, so it is in the Document pane.
-    await openPane(page, "Document");
+    // palette panel is the Tokens pane's, so it is in the Tokens pane.
+    await openPane(page, "Tokens");
     await page.locator("[data-vigilia-palette-token]").selectOption("edge");
     const colour = page.locator("[data-vigilia-palette-color]");
     await colour.fill("rgb(200 220 255)");

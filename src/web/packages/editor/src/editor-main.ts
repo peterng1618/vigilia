@@ -224,6 +224,7 @@ async function start(): Promise<void> {
       panelHosts: {
         add: layout.hosts.add,
         assets: layout.hosts.assets,
+        tokens: layout.hosts.tokens,
         document: layout.hosts.document,
         selection: layout.hosts.selection,
       },

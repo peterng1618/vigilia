@@ -122,10 +122,11 @@ export interface EditorPanelHosts {
   readonly add: HTMLElement;
   /** Imported asset list and controls. */
   readonly assets: HTMLElement;
-  /** The document's own panels, in the Document pane: the artboard, palette
-      and type presets it edits, and the references they resolve to. Shown by
-      the pane, not by an empty selection — a theme setting must stay reachable
-      while something is selected. */
+  /** The theme's own paints and type presets, in the Tokens pane. */
+  readonly tokens: HTMLElement;
+  /** The document's own panels, in the Document pane: the artboard and the
+      references it resolves. Shown by the pane, not by an empty selection — a
+      theme setting must stay reachable while something is selected. */
   readonly document: HTMLElement;
   /** Properties of the selected object, in the right column. */
   readonly selection: HTMLElement;
@@ -321,7 +322,7 @@ export class EditorSession {
     );
     this.#artboard.render(this.#envelope.artboard, this.#envelope.metadata);
     this.#palette = createPalettePanel(
-      options.panelHosts.document,
+      options.panelHosts.tokens,
       (palette) => this.#setPalette(options.shell, palette),
       (id, replacement) => this.#deletePalette(options.shell, id, replacement),
       {
@@ -336,7 +337,7 @@ export class EditorSession {
     );
     this.#palette.render(this.#envelope.globals?.palette);
     this.#types = createTypePresetPanel(
-      options.panelHosts.document,
+      options.panelHosts.tokens,
       (presets) => this.#setTypes(options.shell, presets),
       (id, replacement) => this.#deleteType(options.shell, id, replacement),
       {

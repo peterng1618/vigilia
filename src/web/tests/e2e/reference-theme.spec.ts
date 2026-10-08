@@ -15,7 +15,7 @@ import {
   clientOfScene,
   enterLayer,
 } from "./editor-canvas.js";
-import { openPane } from "./editor-pane-bar.js";
+import { openPane } from "./editor-rail.js";
 import { GLASS_ENVELOPE, glassStripesPng } from "./glass-fixture.js";
 import { isDesktopSurface } from "./surface.js";
 
@@ -425,7 +425,7 @@ test.describe("the reference composition, authored", () => {
     ).toBeGreaterThan(0);
 
     // **The author's work.** A panel inserted and styled through the product.
-    await openPane(page, "Insert");
+    await openPane(page, "Add");
     // The shape that replaced the old "Panel" button. Only "Line" needs the
     // "Shape" group to tell it from the "Line" chart, so a plain name is
     // unambiguous here and stays readable.
@@ -540,7 +540,7 @@ test.describe("the reference composition, authored", () => {
     await openEditor(page);
 
     // **Insert** — a text object and a chart, from the Add pane.
-    await openPane(page, "Insert");
+    await openPane(page, "Add");
     await page
       .locator('[data-vigilia-panel="add"]')
       .getByRole("button", { name: "Text", exact: true })
@@ -566,7 +566,7 @@ test.describe("the reference composition, authored", () => {
     // **Bind** — the new chart pointed at a real semantic key, through the
     // binding select the chart panel owns. The select is named
     // `<nodeId>.<bindingId>`, so the node is read back rather than guessed.
-    await openPane(page, "Insert");
+    await openPane(page, "Add");
     // The "Line" *chart*, not the "Line" shape that now shares the word. The
     // chart families are their own group, so scoping to it is what tells the
     // two apart — a structural fact, not a DOM position that can move.
@@ -583,7 +583,7 @@ test.describe("the reference composition, authored", () => {
 
     // **Bind** — the starter's own sparkline, pointed at another real key
     // through the select the chart panel owns.
-    await openPane(page, "Layers");
+    await openPane(page, "Composition");
     // **A part is selectable only while its owning group is entered.**
     // `bridge.selectLayer` takes `owner ?? target`, which is right for a layer
     // tree: with the card merely *open* a click on the row hands back the card,
@@ -693,7 +693,7 @@ test.describe("the reference composition, authored", () => {
     desktop(testInfo);
     await openEditor(page);
 
-    await openPane(page, "Insert");
+    await openPane(page, "Add");
     await page
       .locator('[data-vigilia-panel="add"]')
       .getByRole("button", { name: "Rectangle", exact: true })
@@ -923,7 +923,7 @@ test.describe("the reference composition, authored", () => {
     );
     await waitForBridge(page);
 
-    await openPane(page, "Layers");
+    await openPane(page, "Composition");
     await page.locator('[data-vigilia-layer="orphan"]').click();
     await expect.poll(() => activeId(page)).toBe("orphan");
     // The run editor states the problem rather than leaving a silent gap, and
@@ -2449,7 +2449,7 @@ test.describe("background media", () => {
     // suffixes a repeated filename, so the old declaration cannot be reused.
     await openEditor(page);
 
-    await openPane(page, "Assets");
+    await openPane(page, "Add");
     await chooseAssetFile(page, "import", {
       name: "hero.png",
       mimeType: "image/png",
@@ -2471,7 +2471,7 @@ test.describe("background media", () => {
 
     // **A second image under the same name.** A repeated filename is suffixed,
     // so it lands beside the first rather than on top of it.
-    await openPane(page, "Assets");
+    await openPane(page, "Add");
     await chooseAssetFile(page, "import", {
       name: "hero.png",
       mimeType: "image/png",
@@ -2517,7 +2517,7 @@ test.describe("background media", () => {
     // reaches the media layer as a `<video>`. Fabric cannot see a DOM sibling,
     // so a decoded frame is the media owner's business, not this file's.
     await openEditor(page);
-    await openPane(page, "Assets");
+    await openPane(page, "Add");
     await chooseAssetFile(page, "import", {
       name: "loop.mp4",
       mimeType: "video/mp4",
@@ -2642,7 +2642,7 @@ test.describe("known gaps, pinned", () => {
       "a Fabric Image's blob: src is serialised into the package",
     );
     await openEditor(page);
-    await openPane(page, "Assets");
+    await openPane(page, "Add");
     await chooseAssetFile(page, "import", {
       name: "logo.png",
       mimeType: "image/png",
