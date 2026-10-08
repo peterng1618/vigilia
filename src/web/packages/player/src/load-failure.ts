@@ -22,8 +22,14 @@ export function showLoadFailure(error: unknown): void {
   // The display's own page, not the artboard's. The artboard host is the middle
   // row of the display's column, so a page mounted in it would be a panel
   // between two bands — and this is the one failure that replaces the whole
-  // screen, not a part of it. Nothing is drawn behind it: every cause that
-  // reaches here arrives before a scene is mounted.
+  // screen, not a part of it.
+  //
+  // The second caller is a `catch` around the display's whole lifetime
+  // (`main.ts:103`, with the scene mounted at `:301`), so a rejection arriving
+  // **after** the scene mounted reaches here too and takes that with it. That is
+  // what the page is for — a half-drawn display is not something to leave on a
+  // wall — but the status of a late failure is `vg-190`'s question rather than
+  // something this comment settles.
   document.body.replaceChildren(
     loadFailureView(loadFailureReason(error), () => window.location.reload()),
   );
