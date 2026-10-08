@@ -155,21 +155,64 @@ The vocabulary is closed. A control is one of these, or it is not a control.
 
 **Rules that make it readable:**
 
-1. **A border means editable.** A row with no well is read-only, and it says so
-   in its section header — never in a tooltip, never inferable only from
-   absence. `Spends` is the standing example.
+1. **A value inside a well means editable.** Structural borders on panels and
+   disclosures do not mean editable. A value row with no well is read-only, and
+   it says so in its section header — never in a tooltip, never inferable only
+   from absence. `Spends` is the standing example.
 2. **Read-only rows are label + mono value, baseline-aligned, right-aligned.**
    They share the grid with controls so a section does not jump between shapes.
-3. **A disabled control renders, greyed, with its reason available.** A field
-   that cannot apply to this kind keeps its row and is refused in words. It is
-   never removed: absence and refusal look identical to an author, and only one
-   of them is true.
-4. **Focus is an accent ring** — `box-shadow: 0 0 0 3px <accent at 18%>` plus an
-   accent border. The browser's default outline is invisible on these surfaces
-   and is never relied on.
+3. **A refused capability renders with its reason.** A property the kind does
+   not have is omitted (§7.4); an existing capability this selection cannot use
+   keeps its row. The reason is visible and connected with `aria-describedby`.
+   `aria-disabled` alone blocks nothing: pointer, keyboard, scrub and commit
+   paths must all refuse mutation. A natively disabled control is acceptable
+   only when its reason remains readable without focusing it. The dock's
+   registry-filtered object actions remain the explicit exception (§7.5).
+4. **Keyboard focus is an accent boundary, not only a translucent halo.** Keep
+   the 3px accent-at-18% halo as decoration; the solid focus boundary must have
+   at least 3:1 contrast against adjacent colours in all six palettes. Never
+   remove the browser outline without a visible replacement. In forced-colours
+   mode use a system-colour outline; a box shadow may disappear. Focus cannot
+   be clipped by a scroller or covered by a floating cluster.
 5. **Every control has a label, a programmatic name, and an id.** A control with
    neither `aria-label` nor a `<label for>` is a defect, not a style choice.
 6. **Hover raises `--edge` to `--muted`.** Nothing moves, nothing scales.
+
+### Editing and recovery
+
+- **Draft is not authored state.** Text and number fields retain the draft
+  while typing, including an empty string, a minus sign and an incomplete
+  decimal. Enter or blur commits one valid changed value; Enter followed by
+  blur cannot commit twice. Escape restores the last authored value without
+  history. IME composition is not an Enter commit.
+- **Validation belongs to the field's owner.** Finite numbers and the owner's
+  bounds are required; invalid input is never coerced to zero or silently
+  clamped. Show the reason beside the field, mark `aria-invalid`, and preserve
+  the rejected draft until corrected or cancelled. Optional numeric fields
+  distinguish clearing the authored key from writing zero.
+- **Gestures have one undo boundary.** Sliders and scrubs may preview through
+  the existing imperative write funnel. Release commits one changed value;
+  cancellation restores the start value and adds no history. A selected object
+  disappearing or changing mid-gesture cancels; it never edits its successor.
+- **Stable identity keeps work in place.** A telemetry update cannot replace a
+  focused input, reset its draft or caret, reopen a section, or move its scroll
+  position. A genuine target change may end editing, with no stale commit.
+
+### Keyboard and target size
+
+- Tab order follows visible reading order. Composite controls use their
+  installed primitive's keyboard model, not one Tab stop per decorative child.
+  Section headers are buttons exposing `aria-expanded`; toggles expose their
+  checked state; every icon-only action works without hover.
+- Escape closes the innermost active layer or cancels the active edit, once.
+  Closing a popup returns focus to its trigger. If that trigger was removed,
+  focus returns to the nearest surviving control in its owning region.
+- Dense chrome targets have at least a 24×24 CSS-pixel hit area. A small glyph
+  may sit inside a larger target; adjacent targets must not overlap. No
+  drag-only route to an action already reachable through commands is accepted.
+- Required labels, refusals and selected-state text meet 4.5:1 contrast for
+  normal text; essential control boundaries meet 3:1. `--faint` is decorative
+  or genuinely inactive, never the sole carrier of required information.
 
 ## 6. Icons
 
@@ -240,8 +283,12 @@ settings gear pinned to the foot. **Four slots:**
 | Tokens | palette | The theme's paints and type presets — created and edited here |
 | Document | page | Artboard, background, metadata, references |
 
-**Exactly one slot is open at a time; the open pane expands in place** rather
-than pushing the stage. The selected slot carries the accent glyph, an accent
+**At most one slot is open at a time.** Asking for the open slot closes it;
+asking for another replaces it. The pane occupies its own layout track beside
+the rail. Opening it may resize the available stage, but never translates
+objects or writes authored coordinates; the viewport owner handles fitting.
+The existing open/close layout behaviour survives the rewrite, rather than
+introducing an overlay that hides artwork or controls. The selected slot carries the accent glyph, an accent
 wash, and a 2px accent bar on the rail's inner edge.
 
 The rail replaces the horizontal pane bar. A second horizontal bar under the
@@ -288,8 +335,14 @@ thing actually raises**, and describes what the thing *is*:
 
 ### 7.5 The stage
 
-The artboard sits centred on the stage and **is never drawn inside a device
-frame**. The stage is the author's whole surface.
+The artboard sits centred on the `--stage` ground and **is never drawn inside
+a device frame**. The stage is the author's whole surface. Preserve the
+reference's artwork-led composition, fine chrome and restrained depth. Subtle
+palette-derived stage texture is permitted when it stays behind the artwork
+and does not obscure controls; neither texture nor a flat ground is mandatory.
+The warm gradient is illustrative authored artwork, not a shell background to
+hard-code into every document. A lens changes the view rectangle, never
+authored artboard dimensions.
 
 **Three corners, one question each:**
 
@@ -314,9 +367,49 @@ Floating clusters are `--radius-xl`, `--panel` at ~95% with backdrop blur, 1px
 
 ### 7.6 The status bar
 
-26px, mono, `--faint`, numbers only: object and selection counts on the left,
+26px, mono, `--faint`, readouts only: object and selection counts on the left,
 save state and the live indicator on the right. **No tools, no buttons, no
 menus.** Anything actionable belongs to a region that owns it.
+
+### 7.7 Overflow, scrolling and motion
+
+- **Content survives density.** Names may ellipsize in lists, but their full
+  value remains in the accessible name and is available on focus as well as
+  hover. Refusals, validation messages, units and numeric edits never
+  ellipsize. Read-only references may wrap with `overflow-wrap: anywhere`.
+  A long name cannot widen a pane or hide its row actions.
+- **Chrome stays still.** Pane title and footer stay outside the scrolling body;
+  inspector sections share one vertical scroller. Preserve per-pane offsets and
+  disclosure state across routine updates. Use native scrollbars and reserve
+  their gutter where necessary; no custom scrollbar or scroll-jacking owner.
+- **Clusters cannot collide.** Identity may truncate its name; view controls
+  may wrap or use the existing labelled lens chooser. Never omit a lens, zoom
+  command or focused target to fit a screenshot. Pointer events belong to the
+  controls, not an invisible full-stage overlay.
+- **Desktop density has a proof, not a guessed minimum.** Check the full shell
+  at 1280×720 and 1440×900 CSS pixels, then at 200% browser zoom. Keep every
+  control reachable through scrolling or compact composition. The phone
+  layout remains a separately recorded limitation (`vg-172`), not a claim
+  that this desktop pass fixes it.
+- **Motion explains change, never delays it.** No animated pane width, artboard
+  travel, hover scaling or automatic smooth scrolling during editing. Optional
+  opacity transitions are short and disappear under `prefers-reduced-motion`.
+  Saving, validation and focus changes remain immediate.
+
+### 7.8 Preserve the reference's character
+
+The original visual direction is a constraint, not disposable presentation.
+Keep artwork dominant, controls compact, glyph tiles quick to scan, dividers
+fine, and floating clusters restrained. Palette choices retain visual swatches.
+Accessibility strengthens that treatment; it does not authorize replacing it
+with large generic buttons, text-only tiles or a blank placeholder artboard.
+
+Four-column insert grids remain the reference. Measure labels, hit areas and
+contrast at the real pane width before changing column count; reduce columns
+only for an observed overflow or readability failure. Preserve glyph-led shape
+and chart tiles, with full accessible names and focus/hover descriptions. Lens
+chips remain compact where they fit; overflow composition preserves the full
+choice set without dictating a permanently larger chooser.
 
 ## 8. Density and disclosure
 
@@ -349,7 +442,7 @@ menus.** Anything actionable belongs to a region that owns it.
 - A tool in the status bar; a global command in a pane footer.
 - A per-card inspector column, or a glyph that claims to depict an arbitrary group.
 - A device frame or notch around the artboard.
-- Hiding a control because its kind does not have it, instead of refusing it in words.
+- Hiding an existing capability because this selection cannot use it, instead of refusing it in words; inventing a property its kind does not have is equally wrong.
 - Removing a frequently used control to a settings surface.
 - Inventing a control not in §5, or an icon not in §6, without amending this file
   in the same commit.

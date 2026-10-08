@@ -26,6 +26,32 @@ Open them in a browser. Each is self-contained — one file, no build, no server
 - **Their copy is illustrative.** Names like `System dashboard` and `CPU card` are
   the starter's; the copy rules are bible §9.
 
+## Reviewed reference contract — 2026-10-08
+
+- **Preserve the original visual direction.** Warm illustrative artwork,
+  compact diagram tiles, subtle stage texture, fine dividers, floating dock,
+  lens chips and palette swatch cards remain. A contract correction is not a
+  licence to flatten or replace the composition (bible §7.8).
+- `editor-shell.html` retains the original shell and side-by-side Settings
+  specimens. Corrections remove stale Document-menu/Canvas-tab proposals,
+  ornamental search and empty-inspector statistics. Four slots and 246px pane
+  remain normative. Lens chips are illustrative, not the entire choice list;
+  the dock is a separately labelled selected-state specimen.
+- `inspector-controls.html` selects a **gauge chart child**, not a card group,
+  retaining its wells, slider, swatch, focus/refusal examples and typography.
+  Position is second; Spends is read-only. The exact chart inventory belongs
+  to descriptors, not this vocabulary illustration.
+- `inspector-language.html` retains a labelled historical group comparison
+  beside the light chart-child treatment. It does not claim the two selections
+  are equivalent. Editable values now have wells; read-only Spends says so.
+- These pages are **drawn specimens, not functional product prototypes**.
+  No save, import, publish, validation or live telemetry is implemented here.
+  All values and timing claims are illustrative. Keyboard models, focus
+  trapping and mutation safety require the real host, never a screenshot.
+- Specimen palette values are illustrative, not proof that the shipped six
+  palettes meet contrast. Capture the product and measure its resolved
+  required text and focus boundaries.
+
 ## How a gate uses them
 
 A plan whose phase changes a visible surface ends with a **parity capture**: the

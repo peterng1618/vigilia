@@ -17,6 +17,8 @@
   h3 { font-size: 15px; margin: 22px 0 4px; }
   .subtitle { color: #8a97ab; max-width: 1150px; margin: 0 0 20px; }
   .split { display: flex; gap: 22px; flex-wrap: wrap; align-items: flex-start; }
+  .split > .mockup:first-child { flex: 0 1 360px; max-width: 100%; }
+  .split > .mockup:nth-child(2) { flex: 1 1 560px; min-width: 0; }
   .mockup { border: 1px solid #242b34; border-radius: 10px; overflow: hidden; }
   .mockup-header {
     background: #12161c; border-bottom: 1px solid #242b34;
@@ -39,7 +41,7 @@
 </head>
 <body>
 <h2>The column in the reference palette — with the edit affordance put back</h2>
-<p class="subtitle">You were right: my last screen showed the values as <i>output</i>. Every row you can change is now a real control — a labelled well with a chevron, a scrub number, a slider, a swatch. Spends is the only thing here that is genuinely read-only, and it now looks like it.</p>
+<p class="subtitle">Original control treatment preserved: labelled wells, a slider, a swatch and quiet read-only rows. This specimen selects the <b>CPU gauge chart inside the card</b>, not the card group. Values and fields illustrate the vocabulary; the product's chart descriptors own the exact field inventory.</p>
 
 <div class="split">
 
@@ -50,7 +52,7 @@
       <div style="font:12px/1.45 system-ui,-apple-system,'Segoe UI',sans-serif;color:#e8ecf3">
 
         <div style="padding:13px 14px 11px;border-bottom:1px solid #242b34;background:#12161c">
-          <div style="font:600 13.5px/1.2 system-ui;letter-spacing:-.005em">CPU card</div>
+          <div style="font:600 13.5px/1.2 system-ui;letter-spacing:-.005em">CPU gauge</div>
           <div style="font:400 11px/1.4 system-ui;color:#8a97ab;margin-top:3px">
             Gauge · bound to <span style="font-family:ui-monospace,Menlo,monospace;color:#72e0c0">cpu.load</span>
           </div>
@@ -92,6 +94,12 @@
               <span style="color:#5a6675;font-size:9px">▼</span>
             </span>
           </div>
+        </div>
+
+        <!-- POSITION: collapsed in section order, not moved to the foot -->
+        <div style="padding:14px 14px 2px;color:#8a97ab;font-size:11px">
+          ▸ <b style="font:600 10px/1 system-ui;letter-spacing:.11em;text-transform:uppercase">Position</b>
+          <span style="display:block;margin:6px 0 0 10px;font:400 10px ui-monospace,Menlo,monospace;color:#5a6675">X 1019 · Y 187 · W 299 · H 307 · bleed</span>
         </div>
 
         <!-- LAYER -->
@@ -162,10 +170,6 @@
           </div>
         </div>
 
-        <div style="padding:10px 14px 14px;border-top:1px solid #242b34;color:#5a6675;font-size:11px">
-          <span style="color:#8a97ab">▸</span> <b style="color:#8a97ab;font-weight:600">Geometry</b>
-          <span style="font-family:ui-monospace,Menlo,monospace">X 1019 · Y 187 · W 299 · H 307</span>
-        </div>
       </div>
     </div>
   </div>
@@ -212,26 +216,20 @@
                        box-shadow:0 0 0 3px #72e0c02e">
             <span style="flex:1;font:400 12px system-ui">CPU load</span><span style="color:#5a6675;font-size:9px">▼</span>
           </span>
-          <span><b style="color:#e8ecf3">Focus is an accent ring, not a browser outline.</b> On a dark panel
-          the default ring is invisible, so the accent marks the one focused control.</span>
+          <span><b style="color:#e8ecf3">Focus is an accent boundary and a quiet halo.</b> Measure the solid boundary's contrast in every palette; retain a visible system outline in forced-colours mode.</span>
         </div>
 
         <div style="display:flex;gap:12px;align-items:flex-start;margin-bottom:6px">
           <span style="width:150px;flex:0 0 auto;display:flex;align-items:center;gap:6px;background:#171c23;
                        border:1px solid #242b34;border-radius:5px;padding:5px 8px;opacity:.5">
-            <span style="flex:1;font:400 12px system-ui">—</span><span style="color:#5a6675;font-size:9px">▼</span>
+            <span style="flex:1;font:400 12px system-ui">Glass</span><span style="color:#5a6675;font-size:9px">▼</span>
           </span>
-          <span><b style="color:#e8ecf3">A control with nothing to offer still renders, greyed.</b> The spec's
-          rule: don't hide the field because this kind lacks it — hide nothing, disable what cannot apply.</span>
+          <span><b style="color:#e8ecf3">A refused capability keeps its row.</b> “Not offered for a group” stays visible and described to assistive technology. A property the kind does not have is omitted; disabled styling alone must never permit an edit.</span>
         </div>
 
         <div style="margin-top:16px;padding:10px 12px;background:#10161d;border-left:2px solid #ffb36b;
                     border-radius:0 6px 6px 0;color:#8a97ab;font-size:11.5px;line-height:1.55">
-          <b style="color:#e8ecf3">One constraint worth knowing before this is designed further:</b>
-          the panels are imperative DOM, not React — 23 native <span style="font-family:ui-monospace,Menlo,monospace">&lt;select&gt;</span>s
-          and native <span style="font-family:ui-monospace,Menlo,monospace">input type=range</span> today. The language
-          above has to be achievable by styling those, or it means Reactifying the panel layer first. That is a
-          real fork and I will bring it back as its own question.
+          <b style="color:#e8ecf3">The rendering boundary is decided:</b> editor surfaces become React on one control set; Fabric stays imperative. This reference draws the treatment, not a second implementation. A card group gets name, Position including bleed, rotation/opacity, glass refusal and descendant Spends; its chart child owns the sensor question.
         </div>
       </div>
     </div>

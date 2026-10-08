@@ -39,13 +39,13 @@
 </head>
 <body>
 <h2>The right column — what "design language" means here</h2>
-<p class="subtitle">Same selection (the CPU card). Same five sections. <b>Both sides use today's light palette</b>, so nothing below is a colour change — it is type, rhythm, hierarchy and treatment. Colour comes separately.</p>
+<p class="subtitle"><b>Light palette, original typographic treatment.</b> Left: historical card-group column, labelled as historical rather than today's product. Right: the CPU gauge child, illustrating editable chart controls and read-only Spends. Different selections are named explicitly; this is not a same-selection behaviour comparison.</p>
 
 <div class="split">
 
   <!-- ─────────── LEFT: today ─────────── -->
   <div class="mockup">
-    <div class="mockup-header">Today — the structure is right, the language is the 2023 form</div>
+    <div class="mockup-header">Historical group column · not the current target</div>
     <div class="mockup-body" style="background:#fffdf7;padding:0">
       <div style="font:12px/1.4 system-ui,sans-serif;color:#14120e">
 
@@ -110,9 +110,9 @@
 
         <!-- the subject, not a chrome label -->
         <div style="padding:13px 14px 11px;border-bottom:1px solid #e4ddcb">
-          <div style="font:600 13.5px/1.2 system-ui;letter-spacing:-.005em">CPU card</div>
+          <div style="font:600 13.5px/1.2 system-ui;letter-spacing:-.005em">CPU gauge</div>
           <div style="font:400 11px/1.4 system-ui;color:#8a8272;margin-top:3px">
-            A gauge. Answers <i>which sensor</i> before <i>how wide</i>.
+            Chart · Gauge · bound to <span style="font-family:ui-monospace,Menlo,monospace">cpu.load</span>
           </div>
         </div>
 
@@ -120,31 +120,27 @@
           <div style="font:600 10px/1 system-ui;letter-spacing:.11em;text-transform:uppercase;color:#8a8272">Content</div>
         </div>
 
-        <!-- read-first rows: value is a value, mono, right-aligned -->
+        <!-- editable chart values: same compact grid, with the well restored -->
         <div style="padding:0 14px">
-          <div style="display:flex;align-items:baseline;gap:10px;padding:6px 0;border-bottom:1px dashed #e4ddcb">
+          <div style="display:flex;align-items:center;gap:10px;padding:4px 0">
             <span style="width:74px;flex:0 0 auto;color:#5a5449;font-size:11.5px">Shows</span>
-            <span style="flex:1;text-align:right;font:500 12px ui-monospace,Menlo,monospace">cpu.load</span>
+            <span style="flex:1;background:#f5f1e8;border:1px solid #b8af9d;border-radius:6px;padding:5px 8px;font:400 12px system-ui">CPU load <span style="float:right;color:#5a5449">▾</span></span>
           </div>
-          <div style="display:flex;align-items:baseline;gap:10px;padding:6px 0;border-bottom:1px dashed #e4ddcb">
+          <div style="display:flex;align-items:center;gap:10px;padding:4px 0">
             <span style="width:74px;flex:0 0 auto;color:#5a5449;font-size:11.5px">Range</span>
-            <span style="flex:1;text-align:right;font:500 12px ui-monospace,Menlo,monospace">0 – 100 %</span>
+            <span style="flex:1;background:#f5f1e8;border:1px solid #b8af9d;border-radius:6px;padding:5px 8px;text-align:right;font:400 12px ui-monospace,Menlo,monospace">0</span>
+            <span style="flex:1;background:#f5f1e8;border:1px solid #b8af9d;border-radius:6px;padding:5px 8px;text-align:right;font:400 12px ui-monospace,Menlo,monospace">100</span><span style="color:#5a5449">%</span>
           </div>
-          <div style="display:flex;align-items:baseline;gap:10px;padding:6px 0;border-bottom:1px dashed #e4ddcb">
+          <div style="display:flex;align-items:center;gap:10px;padding:4px 0">
             <span style="width:74px;flex:0 0 auto;color:#5a5449;font-size:11.5px">Format</span>
-            <span style="flex:1;text-align:right;font:500 12px ui-monospace,Menlo,monospace">Percent · 0 dp</span>
-          </div>
-          <div style="display:flex;align-items:baseline;gap:10px;padding:6px 0;border-bottom:1px dashed #e4ddcb">
-            <span style="width:74px;flex:0 0 auto;color:#5a5449;font-size:11.5px">Type</span>
-            <span style="flex:1;text-align:right;font:500 12px ui-monospace,Menlo,monospace">Playfair / Inter</span>
-          </div>
-          <div style="display:flex;align-items:baseline;gap:10px;padding:6px 0">
-            <span style="width:74px;flex:0 0 auto;color:#5a5449;font-size:11.5px">Colour</span>
-            <span style="flex:1;text-align:right;font:500 12px ui-monospace,Menlo,monospace">
-              <i style="display:inline-block;width:10px;height:10px;border-radius:3px;
-                        background:#4da3ff;border:1px solid #0002;vertical-align:-1px;margin-right:6px"></i>accent.cool</span>
+            <span style="flex:1;background:#f5f1e8;border:1px solid #b8af9d;border-radius:6px;padding:5px 8px;font:400 12px system-ui">Percent · 0 dp <span style="float:right;color:#5a5449">▾</span></span>
           </div>
         </div>
+        <div style="padding:14px 14px 4px;color:#5a5449;font-size:11px">▸ <b style="font:600 10px/1 system-ui;letter-spacing:.11em;text-transform:uppercase">Position</b><span style="display:block;margin:6px 0 0 10px;font:400 10px ui-monospace,Menlo,monospace">X 1019 · Y 187 · W 299 · H 307 · bleed</span></div>
+        <div style="padding:14px 14px 4px;font:600 10px/1 system-ui;letter-spacing:.11em;text-transform:uppercase;color:#5a5449">Layer</div>
+        <div style="padding:0 14px"><div style="display:flex;align-items:center;gap:10px;padding:4px 0"><span style="width:74px;color:#5a5449">Rotation</span><span style="flex:1;background:#f5f1e8;border:1px solid #b8af9d;border-radius:6px;padding:5px 8px;text-align:right;font:400 12px ui-monospace,Menlo,monospace">0°</span></div><div style="display:flex;align-items:center;gap:10px;padding:4px 0"><span style="width:74px;color:#5a5449">Opacity</span><span style="flex:1;height:3px;background:#0d7a6a;position:relative"><i style="position:absolute;right:0;top:-4px;width:10px;height:10px;border-radius:50%;background:#fffdf7;border:1px solid #0d7a6a"></i></span><span style="background:#f5f1e8;border:1px solid #b8af9d;border-radius:6px;padding:4px 6px;font:400 11px ui-monospace,Menlo,monospace">100</span></div></div>
+        <div style="padding:14px 14px 4px;font:600 10px/1 system-ui;letter-spacing:.11em;text-transform:uppercase;color:#5a5449">Paint</div>
+        <div style="padding:0 14px"><div style="display:flex;align-items:center;gap:10px;padding:4px 0"><span style="width:74px;color:#5a5449">Ink</span><span style="flex:1;background:#f5f1e8;border:1px solid #b8af9d;border-radius:6px;padding:5px 8px"><i style="display:inline-block;width:11px;height:11px;border-radius:4px;background:#4da3ff;margin-right:6px"></i>accent.cool <span style="float:right">▾</span></span></div></div>
 
         <!-- a sensor with no reading is a gap, stated once, quietly -->
         <div style="margin:11px 14px 0;padding:8px 10px;background:#f5f1e8;border-left:2px solid #8a5a2b;
@@ -153,7 +149,7 @@
         </div>
 
         <div style="padding:14px 14px 4px">
-          <div style="font:600 10px/1 system-ui;letter-spacing:.11em;text-transform:uppercase;color:#8a8272">Spends</div>
+          <div style="font:600 10px/1 system-ui;letter-spacing:.11em;text-transform:uppercase;color:#5a5449">Spends <span style="float:right;font-weight:400;letter-spacing:0;text-transform:none">read-only</span></div>
         </div>
         <div style="padding:0 14px 12px">
           <div style="display:flex;align-items:baseline;gap:10px;padding:5px 0;border-bottom:1px solid #f0ead9">
@@ -174,10 +170,6 @@
           </div>
         </div>
 
-        <!-- geometry is closed, and says so in one line -->
-        <div style="padding:10px 14px 14px;border-top:1px solid #e4ddcb;color:#8a8272;font-size:11px">
-          ▸ <b style="color:#5a5449;font-weight:600">Geometry</b> — X 1019 · Y 187 · W 299 · H 307
-        </div>
       </div>
     </div>
   </div>
@@ -191,7 +183,7 @@
       <h4>The four changes, none of them colour</h4>
       <ul>
         <li><b>The subject leads.</b> A titled block naming the thing and what kind of thing it is — today the column opens with a chrome label, <span style="font-family:ui-monospace">SELECTION</span>.</li>
-        <li><b>Values read; controls are for changing.</b> Mono, right-aligned, baseline-aligned to their label. Today every field is an identical bordered box, which is why it reads as a form.</li>
+        <li><b>Editable values stay wells.</b> Numbers are mono and right-aligned; selectors carry a chevron. Only resolved Spends rows use the unbordered read-only treatment.</li>
         <li><b>Spends becomes scannable.</b> Token → value rows. Today it dumps sentences, including the type presets as paragraphs.</li>
         <li><b>One quiet rule instead of shouting.</b> The gap-not-zero rule is stated once in a note. Today it is trailing prose after the token dump.</li>
       </ul>
@@ -201,8 +193,8 @@
       <ul>
         <li><b>Colour and palette.</b> Held constant on purpose so you judge language alone.</li>
         <li><b>The shell.</b> Header, pane bar, column widths and the stage come next — they are the same language at a larger scale.</li>
-        <li><b>Density of the sections.</b> Whether Content/Position/Layer are open or closed by default is a separate call.</li>
-        <li><b>The controls themselves</b> — sliders, selects, the colour field — are the next question, not this one.</li>
+        <li><b>Per-kind inventory.</b> This chart vocabulary illustration does not add sensor controls to a card group; the owners and tests define exact fields.</li>
+        <li><b>Production interaction.</b> These are drawn controls, not functional widgets; focus, validation, undo and keyboard access need real-host evidence.</li>
       </ul>
     </div>
   </div>
