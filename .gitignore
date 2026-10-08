@@ -73,3 +73,7 @@ Thumbs.db
 
 # Agents leave scratch in the tree; it is never a deliverable.
 src/web/.agent-scratch/
+# Brainstorm mockup screens. The ledger beside it (`sdd/`) IS tracked; these are
+# throwaway screens the visual companion serves, and only the one that becomes a
+# spec's reference is worth keeping.
+.superpowers/brainstorm/

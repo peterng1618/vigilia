@@ -262,6 +262,14 @@ prove something else, that evidence is re-captured, not preserved.
 
 ### 2. The device is a lens on the canvas
 
+> **Amended 2026-10-08** — [design language spec](2026-10-08-editor-design-language-design.md) §4.
+> **The stage draws no device.** The user reversed this mid-specification: there is no
+> frame and no notch, and the lens survives as the zoom control in the stage's top-right
+> cluster. The prose below still says "through a device" in places, including the
+> *Phone landscape · Phone portrait · Wall panel* starting choice; read those as the
+> artboard's **shape**, which the lens sets, not as a drawn frame. Lines 31–32 and the
+> paragraph at *"So the first question is what this is for"* carry the same stale wording.
+
 Today a 1672×941 artboard is letterboxed into a desktop window at 55%: a preview of
 nothing, on the surface where all the work happens.
 
@@ -327,6 +335,13 @@ A CPU card is not a rectangle. The first question about one is *which sensor*, n
 many pixels wide*. The sections are the questions, kept separate — **Content** is what it
 shows, **Position** is where it sits, **Layer** is how it presents, **Paint** is what ink.
 Conflating position with presentation is why the current panel reads as a form.
+
+> **Amended 2026-10-08** — [design language spec](2026-10-08-editor-design-language-design.md) §6.
+> *"The first question about one is which sensor"* reads as promising a **card-level
+> column**, and there is none. `SELECTION_KINDS` has no `card` entry and a card **is** a
+> `Group`; the sensor question is asked on the element that carries the binding, one Enter
+> deeper. The section's content — the five questions, and every kind getting a column that
+> fits it — stands unchanged, and the code already does it.
 
 | Section | The question |
 |---|---|
@@ -402,6 +417,16 @@ action shows its shortcut in its tooltip, one contextual toolbar renders from th
 action registry, and `?` opens a reference rendered from the same `PRODUCT_SHORTCUTS` map.
 
 ### 8. A chrome that belongs to its own product, on one primitive library
+
+> **Amended 2026-10-08** — [design language spec](2026-10-08-editor-design-language-design.md) §1, §2.
+> The primitive-library ruling below stands and was settled at
+> [0038](../../decisions/0038-base-ui-is-the-editors-one-primitive-library-on-the-users-ruling.md).
+> What this section did **not** do is specify the chrome's *appearance*: it named a library
+> and a direction, and the look went unimplemented. The appearance is now normative in
+> [`docs/design/design-language.md`](../../design/design-language.md), and the surfaces it
+> applies to become React end to end (decision
+> [0039](../../decisions/0039-the-editor-ui-is-react-and-only-the-canvas-is-imperative.md)),
+> because a control vocabulary cannot be built once across two rendering models.
 
 **The problem is not that Base UI is limited. It is that there are two of everything.**
 
@@ -492,7 +517,28 @@ runtime-switched palette so one `data-shell-palette` attribute recolours everyth
 including every portalled popup. The editor follows the OS appearance, with the palette
 picker as an explicit override. Six palettes, six distinguishable things.
 
+> **Amended 2026-10-08 — the claim in this section was true as declared and false as
+> delivered.** Measured: `--text-*`, `--radius-*`, `--spacing-*` and `--shadow-*` are
+> declared in `editor-shell.css`'s `@theme` block and **consumed zero times** anywhere in
+> the workspace — editor, player, host and `renderer-core` alike — while that file holds
+> **73 unique hex values and 294 px literals** across 58 selectors. Colour is the one part
+> that landed (`var(--shell-*)`, 106 uses; six working palettes). So *"carries the scales"*
+> was a statement about declarations, and the scales did not reach a single surface.
+> The corrected requirement, with a counted acceptance, is §9 of the
+> [design language spec](2026-10-08-editor-design-language-design.md), and the scales
+> themselves are normative in [`docs/design/design-language.md`](../../design/design-language.md) §2–§3.
+> The palette picker also moves out of the header into Settings; the mechanism is unchanged.
+
 ## Sequencing
+
+> **Replaced 2026-10-08** — [design language spec](2026-10-08-editor-design-language-design.md) §12.
+> This table assumed a **styling pass**, and the work turned out to be a rewrite of the
+> panel layer onto React (decision
+> [0039](../../decisions/0039-the-editor-ui-is-react-and-only-the-canvas-is-imperative.md)).
+> Its first two plans — *Groups in the starter* and *The device lens* — **landed**; the
+> register's `vg-152` records the bookkeeping error that reported otherwise. The rest is
+> re-cut in §12 of the new spec. The table is kept as the design record of the ordering
+> argument, not as a work queue.
 
 Ordered by **what becomes visible**, not by what is easy to specify. The previous plan had
 the display work fifth behind three furniture tasks; that ordering is the mistake being

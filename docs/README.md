@@ -11,6 +11,7 @@ artifacts and from Git history.
 | Product goals, constraints and stable requirements | [`product/requirements.md`](product/requirements.md) |
 | Current system shape and boundaries | [`architecture/README.md`](architecture/README.md) |
 | Who owns each concept | [`architecture/ownership.md`](architecture/ownership.md) |
+| The editor's visual language, **normative** | [`design/design-language.md`](design/design-language.md) — scales, colour roles, the control and icon vocabulary, layout and copy rules |
 | Why major architecture choices were made | [`adr/`](adr/) |
 | Active feature design/spec | [`superpowers/specs/`](superpowers/specs/) |
 | Superpowers implementation plans | [`superpowers/plans/`](superpowers/plans/) |
