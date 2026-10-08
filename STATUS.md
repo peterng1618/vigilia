@@ -5,17 +5,23 @@ Branch: `develop`
 
 ## Current objective
 
-**Be the human author. Use the product, find what is wrong, write it down, and
-have it fixed. Repeat.**
+**Rebuild the editor's GUI in the design language — the whole editor, every
+frontend surface except the canvas.**
 
-A standing instruction, not a phase. A fresh session should not be asking "what is
-the next task" — it should open the editor and the host, drive them as an author
-would, and find the next thing that is broken. Definition of done is a floor, not
-a ceiling: the pass ends when nothing is left that using the product can find.
+The look is specified and the rewrite under it is decided; nothing is built. The
+target is [`docs/design/design-language.md`](docs/design/design-language.md), the
+contract is
+[`2026-10-08-editor-design-language-design.md`](docs/superpowers/specs/2026-10-08-editor-design-language-design.md),
+and the boundary that makes it affordable is
+[0039](docs/decisions/0039-the-editor-ui-is-react-and-only-the-canvas-is-imperative.md).
 
-**Currently the work is not that loop.** A design language and the rewrite under
-it were specified on 2026-10-08, and nothing in them is implemented. Until plan 1
-lands, the loop resumes only if the user redirects.
+The measure of done is the spec's Acceptance section, which is counted rather
+than reviewed: no hex colour and no off-scale spacing in a surface, no native
+`<select>`, and every panel's existing behaviour surviving its rewrite.
+
+**The standing author-loop objective is suspended, not withdrawn.** Driving the
+product to find what is broken resumes when this objective closes, and the
+backlog it produced stays live in the register.
 
 ## Active work
 
