@@ -378,6 +378,49 @@ lens* — are **already landed** and are not re-run; the register's `vg-152`
 records the bookkeeping error that said otherwise. Their visible outcomes (8 rows
 in the starter; the lens as the zoom control) are assumed by this spec.
 
+**Every plan above ends with a mockup-parity gate (§13).** That is not a
+suggestion attached to the table; it is a completion condition of each plan, and
+a plan that cannot show its parity capture is not finished.
+
+## 13. The reference is checked, not remembered
+
+The mockups are saved at [`docs/design/mockups/`](../../design/mockups/README.md)
+as standalone pages, and they are the **target**: the whole shell, the control
+vocabulary, and the language in both palettes.
+
+**Why this section exists.** The previous pass closed with "the redesign is done"
+against an editor that looked nearly unchanged. Nothing in that pass compared
+what was built to what was designed — the design lived in a conversation and in
+stale mockups, and the gap between them was invisible until a person opened the
+product. A reference nobody checks decays into a memory, and a memory cannot be
+wrong out loud.
+
+**The gate, for every plan whose phase changes a visible surface:**
+
+1. The plan's final task builds the bundles and **captures the surfaces it
+   changed**, using the existing mechanism and its rules
+   (`VIGILIA_CAPTURE=1`, `--workers=1`, previewing built bundles, capturing only
+   actions registered in `docs/evidence/screenshots/README.md`).
+2. The capture is placed **beside the matching mockup** and the differences are
+   listed in the completion report. Side by side, in the report — not a claim
+   that they match.
+3. Every difference is either **fixed**, or **recorded in the commit as
+   deliberate**, with the reason. A third state — unnoticed — is what this gate
+   removes.
+4. **A gate that produces no comparison has not run.** An empty diff is a
+   finding and must be stated as one, exactly as an empty output file proves
+   nothing about a subagent.
+
+**Not pixel equality.** Platform font metrics, scrollbar widths, device pixel
+ratios and antialiasing differ; a difference in those is not drift. The
+comparison is of **language**: scale, spacing, alignment, hierarchy, colour
+roles, control treatment, icon weight. `docs/evidence/screenshots/` states the
+same rule for the same reason — screenshots are evidence, not golden files.
+
+**The mockups are kept current or they are deleted.** When a ruling changes the
+design, the bible, the mockup and this spec move in one commit. A mockup that no
+longer matches the bible is worse than no mockup, because it is believed.
+
 ## Invariants
 
 Untouched by this design, and restated so the rewrite cannot quietly break them.
@@ -440,6 +483,12 @@ Rendered observation in a real browser, on a rebuilt bundle.
   and dock respectively.
 - **Six palettes are distinguishable by surface**, by screenshot rather than by
   computed value (§9 of the superseded spec, carried).
+- **Every plan's parity capture exists and its differences are accounted for**
+  (§13): each plan's completion report carries its capture beside the matching
+  mockup in `docs/design/mockups/`, with each difference fixed or recorded as
+  deliberate. **A plan that reports parity without the two images side by side
+  has not met this item**, and an empty difference list is stated as a finding
+  rather than assumed.
 
 ## Ruled during review
 
