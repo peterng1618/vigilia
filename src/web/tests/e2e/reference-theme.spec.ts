@@ -1445,11 +1445,18 @@ test.describe("the reference composition, captured", () => {
     // widths differ per family in this Chromium), and the text below is a
     // 40px run that occupies real columns.
     //
-    // The measure is **the glyph alone**. The frame with the text minus the
-    // frame without it cancels the blurred backdrop, so what is left is the
-    // glyph's own coverage — and its sharpness does not depend on how dark the
-    // panel behind it happens to be. The control is the same text in the same
-    // place over the same media with the blur set to zero.
+    // The measure is **the width of the glyph's own edge**, in device pixels.
+    // The control is the same text in the same place over the same media with
+    // the blur set to zero.
+    //
+    // **It is a width and not a magnitude because the subtraction does not
+    // cancel the backdrop**, which this file claimed it did until `vg-151` was
+    // chased down. The text is composited *over* the panel, so the difference
+    // between the two frames retains a term in the panel's own pixels — measured
+    // directly: across a glyph edge the difference row *rises* in step with the
+    // backdrop darkening under it. An amplitude therefore reads the panel as
+    // much as the glyph, and a width does not: a hard edge crosses 10%-to-90% in
+    // about a pixel whatever the backdrop is doing behind it.
     const reading = await page.evaluate(() => {
       type Obj = {
         get(n: string): unknown;
@@ -1497,7 +1504,18 @@ test.describe("the reference composition, captured", () => {
       const height = Math.max(1, Math.round(rect.height * vp[0] * retina));
       const context = element.getContext("2d")!;
 
-      const glyphSharpness = (): number => {
+      // **How wide the glyph's own edge is, in device pixels**, taken as the
+      // median over the rows the glyph occupies of that row's sharpest 10%-to-90%
+      // transition. It replaces a `max adjacent step / row range` score, which
+      // was a single-pixel extremum: one anomalous pixel moved it 20%, and
+      // `vg-151` spent two months reading that as the panel softening the text.
+      //
+      // Device pixels are the right unit and a scene unit would not be. An
+      // antialiased edge occupies about one device pixel whatever the zoom, so
+      // "the edge is ~1 pixel wide" is a camera-independent claim about the
+      // render, while the same statement in scene units would move with the fit
+      // zoom — which is the class `vg-136` named.
+      const glyphEdgeWidth = (): number => {
         const grab = (): Uint8ClampedArray =>
           context.getImageData(left, top, width, height).data.slice();
         canvas.renderAll();
@@ -1510,27 +1528,42 @@ test.describe("the reference composition, captured", () => {
         canvas.renderAll();
         const luma = (d: Uint8ClampedArray, i: number): number =>
           0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2];
-        let best = 0;
+        const widths: number[] = [];
         for (let y = 0; y < height; y += 1) {
           const diff = new Array<number>(width);
           for (let x = 0; x < width; x += 1) {
             const i = (y * width + x) * 4;
             diff[x] = luma(withText, i) - luma(without, i);
           }
-          const range = Math.max(...diff) - Math.min(...diff);
+          const min = Math.min(...diff);
+          const range = Math.max(...diff) - min;
+          // A row the glyph does not cross has no edge to measure.
           if (range < 40) continue;
-          let step = 0;
-          for (let x = 1; x < width; x += 1)
-            step = Math.max(step, Math.abs(diff[x]! - diff[x - 1]!));
-          best = Math.max(best, step / range);
+          const n = diff.map((value) => (value - min) / range);
+          let low = -1;
+          let shortest = Number.POSITIVE_INFINITY;
+          for (let x = 0; x < width; x += 1) {
+            const value = n[x]!;
+            // Track the last pixel at or below 10%, then measure to the first at
+            // or above 90%. A hard edge crosses both in one step; a blurred one
+            // walks there over as many pixels as the radius.
+            if (value <= 0.1) low = x;
+            else if (value >= 0.9 && low >= 0) {
+              shortest = Math.min(shortest, x - low);
+              low = -1;
+            }
+          }
+          if (shortest !== Number.POSITIVE_INFINITY) widths.push(shortest);
         }
-        return Math.round(best * 1000) / 1000;
+        if (widths.length === 0) return Number.POSITIVE_INFINITY;
+        widths.sort((a, b) => a - b);
+        return widths[Math.floor(widths.length / 2)]!;
       };
 
       glass.set("vigiliaGlass", { blurRadius: 16 });
-      const blurred = glyphSharpness();
+      const blurred = glyphEdgeWidth();
       glass.set("vigiliaGlass", { blurRadius: 0 });
-      const control = glyphSharpness();
+      const control = glyphEdgeWidth();
       glass.set("vigiliaGlass", { blurRadius: 16 });
       const occupied = context
         .getImageData(left, top, width, height)
@@ -1565,12 +1598,25 @@ test.describe("the reference composition, captured", () => {
       Math.abs(reading.height - reading.sceneHeight * reading.scale),
     ).toBeLessThanOrEqual(1);
     expect(reading.occupied).toBe(true);
-    // A one-pixel transition scores near 1 whatever the contrast; a transition
-    // spread over a 16px blur scores near 1/16.
+    // **Measured, not chosen.** Over the blurred panel the edge is 2 device
+    // pixels wide and over the sharp one it is also 2, at this fixture's 0.71
+    // scale — the glyph is untouched by the panel's blur. 3 is a ceiling on
+    // "about a pixel", not a tuned tolerance.
+    //
+    // **And the instrument is not blind**, which is the only thing that makes
+    // reading 2 mean anything: giving `over-glass` a `ctx.filter` blur of its
+    // own takes this same measure to 30 at `blur(1px)` and past the row floor
+    // above that, so a genuinely diffused glyph fails here by a factor of ten.
+    // Probed by hand when this metric landed rather than left in the test —
+    // a permanent sabotage would be a second copy of the fixture's own job.
     expect(
       reading.blurred,
-      "glyph edges above a 16px-blurred panel are one-pixel transitions",
-    ).toBeGreaterThan(0.6);
+      "the glyph's own edge is a pixel-scale transition, not a diffused one",
+    ).toBeLessThanOrEqual(3);
+    expect(
+      reading.control,
+      "the control's edge is measured the same way",
+    ).toBeLessThanOrEqual(3);
     // And the panel's own blur is real in the same frame, so the blurred side
     // is not vacuously sharp because nothing was blurred.
     const band = await bandStats(page, "glass", {
@@ -1582,10 +1628,14 @@ test.describe("the reference composition, captured", () => {
     expect(band.peak, "the backdrop under the panel is softened").toBeLessThan(
       40,
     );
+    // The claim the test is named for, and the one `vg-151` was filed against:
+    // the panel's blur does not widen the glyph's edge. One device pixel of
+    // slack, because the transition is quantised to whole pixels and a
+    // half-pixel of antialiasing either way is not a softness.
     expect(
-      reading.blurred,
+      Math.abs(reading.blurred - reading.control),
       "text over the blurred panel is as sharp as text over the sharp one",
-    ).toBeGreaterThan(reading.control * 0.85);
+    ).toBeLessThanOrEqual(1);
   });
   test("the starter's frosted card reads a real backdrop, and the canvas is untainted", async ({
     page,
