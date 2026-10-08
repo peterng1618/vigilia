@@ -131,7 +131,7 @@ pinned by a test in the task named beside it.
 ## What is already true — do not rebuild
 
 Verified against the source at **`9d8fa507`** (2026-10-07), the commit this plan was written from,
-plus the plan 7 file `docs/superpowers/plans/2026-10-07-keyboard.md`. **A task that rebuilds any of
+plus the plan 7 file `docs/superpowers/plans/archive/2026-10-07-keyboard.md`. **A task that rebuilds any of
 this is wrong.**
 
 - **The scales are already in `@theme static`** (`editor-shell.css:170-208`), with the reasoning —
