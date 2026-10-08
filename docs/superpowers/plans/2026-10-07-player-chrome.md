@@ -1542,6 +1542,16 @@ git commit -m "test(player): the artboard keeps its pixels where there is no let
   why. Importing from a spec file is unusual here; the two numeric constants `PHONE` and the
   `chromeGeometry` reader are what is shared. Prefer moving both into a small helper module
   beside `canvas-probe.ts` if the copy would be the third one.
+  **Corrected 2026-10-08, before this task was dispatched: importing is not merely "unusual" and
+  the count is not the discriminator.** Playwright's loader registers `test()` against the file it
+  is loading, so importing `player-chrome.spec.ts` executes its seven top-level `test()` calls
+  while `host-chrome.spec.ts` is loading — a second registration of tests that already have one.
+  Nothing in this repo does that today, and a duplicated-title error is the likely shape of
+  finding out. It would also require exporting `PHONE`, `chromeGeometry`, `overlap` and the two
+  interfaces from a **verified** file. **Copy them instead**, which is the plan's second option
+  and what its own Step 1 block implies; `player-chrome.spec.ts` is then left byte-identical. The
+  third copy is the one that earns the extraction, and it does not exist yet. Choose differently
+  only with a reason that answers the registration problem.
 - Produces: `host-chrome.spec.ts`, and a `HOST_SPECS` regex that claims it:
   `/host-(player|settings|media|bleed|chrome)\.spec\.ts/`.
 
@@ -1555,12 +1565,21 @@ runs on `desktop-host` (1280×720) and each test sets its own viewport** — do 
 (`host-player.spec.ts:1190`) and the comment beside it (`:1180-1189`) records what does *not*
 work (`context.setOffline` does not tear down an open stream in this Chromium).
 
-- [ ] **Step 1: Write the failing tests**
+- [ ] **Step 1: Write the tests**
+
+> **Not "the failing tests".** Three of this task's four predecessors in this plan prescribed a red
+> run that the fixed code could not produce, and one of them was read as a passed gate. These three
+> are expected green on arrival; the failure this task owes is Step 3's break.
 
 ```ts
 import { expect, test } from "@playwright/test";
 import { HOST_MISSING_THEME_ID, HOST_PORT, HOST_THEME_ID } from "./host-theme.js";
-import { chromeGeometry, overlap, PHONE } from "./player-chrome.js"; // see Interfaces
+// Copied from `player-chrome.spec.ts` rather than imported — see Interfaces.
+const PHONE = {
+  portrait: { width: 390, height: 844 },
+  landscape: { width: 844, height: 390 },
+} as const;
+// ...and `Box`, `ChromeGeometry`, `chromeGeometry()` and `overlap()` verbatim.
 
 const HOST = `http://127.0.0.1:${HOST_PORT}`;
 
@@ -1569,8 +1588,19 @@ test("a strip that arrives after the fit takes its room then", async ({ page }) 
   // (`main.ts:220-222`), so on a real display the first fit happens with no
   // chrome. This is that display: its only binding is a key no provider on this
   // PC reports.
+  //
+  // **`&data=live` is load-bearing and the test is unreachable without it.**
+  // Corrected 2026-10-08, before dispatch: `main.ts:145-146` feeds the display
+  // from `createDemoSource` unless the parameter says otherwise, and the demo
+  // source fabricates a reading for every key it is asked for — the opposite of
+  // a gap. The availability notice is raised on the **live** path only:
+  // `main.ts:221` sits inside `if (fake === undefined)`, and `main.ts:356` is
+  // inside the live block. A fake-fed display raises `#vigilia-scaffold` at
+  // mount instead (`main.ts:206`), which is a strip that arrives *with* the fit
+  // rather than after it — so the locator below would poll for 30 s and then
+  // fail on a display that is working correctly.
   await page.setViewportSize(PHONE.landscape);
-  await page.goto(`${HOST}/?theme=${HOST_MISSING_THEME_ID}`);
+  await page.goto(`${HOST}/?theme=${HOST_MISSING_THEME_ID}&data=live`);
   await expect(page.locator("#artboard canvas.lower-canvas")).toBeVisible();
 
   await expect(page.locator("[data-vigilia-availability]")).toBeVisible({
@@ -1591,9 +1621,16 @@ test("a strip that arrives after the fit takes its room then", async ({ page }) 
 });
 
 test("two strips at once leave the artboard more than half the phone", async ({ page }) => {
-  // §97 wants a data gap and a composition gap legible as different things,
-  // which is why they can be on screen together. At 390px that is a 3-line
-  // sentence and a 2-line one; the display must still be a display.
+  // Two strips on one display, which is what makes this the ceiling's case
+  // rather than one notice's. **Corrected 2026-10-08: this pair is a data gap
+  // and a *transport* gap, not a composition gap.** `e2e-missing-sensor`'s one
+  // object sits at `40,140` inside its 640×360 artboard, so it raises no crop
+  // strip — the second strip below is the connection one, drawn because the
+  // aborted socket is refused. A genuine data-gap-beside-composition-gap pair
+  // would need a bleeding theme (the `e2e-bleed` fixtures) and is not what this
+  // test measures.
+  // At 390px that is a 3-line sentence and a 2-line one; the display must still
+  // be a display.
   await page.route("**/ws", (route) => route.abort());
   await page.setViewportSize(PHONE.portrait);
   await page.goto(`${HOST}/?theme=${HOST_MISSING_THEME_ID}&data=live`);
@@ -1650,7 +1687,7 @@ test("a display with nothing to say is a display unchanged", async ({ page }) =>
 });
 ```
 
-- [ ] **Step 2: Run them to verify they fail**
+- [ ] **Step 2: Run them, and record where they stand**
 
 ```bash
 cd src/web
@@ -1668,19 +1705,39 @@ PLAYWRIGHT_JSON_OUTPUT_NAME=test-results/host-chrome.json \
 > is Step 3's break.** Report the actual counts either way, and report which of the three were
 > green.
 
-Expected: **tests 1 and 3 green on arrival; test 2 fails on its own arithmetic.** Test 2's
-`painted.h > portrait.height / 2` was unreachable — `e2e-missing-sensor` is 640×360, so at
-390×844 `contain` paints ~219px, well under half, and the letterbox rather than the chrome is what
-takes the rest. **That assertion has since been corrected in this plan to the host's share**, so
-by the time you run it, test 2 should be green too; if it is not, the failure is a finding about
-the host surface rather than about the chrome, and the assertion should be reported rather than
-quietly loosened.
+Expected: **all three green on arrival.** Two of this task's own defects were corrected above
+before dispatch — test 1 was missing `&data=live`, without which its availability strip could
+never be raised, and test 2's `painted.h > portrait.height / 2` was unreachable because
+`e2e-missing-sensor` is 640×360, so at 390×844 `contain` paints ~219px and the letterbox rather
+than the chrome takes the rest — **that assertion has since been corrected to the host's share**.
+
+So a green run here is the *baseline*, not the proof: this task's red run is Step 3's break, and
+the honest answer to "which failed first" is "none". **If a test does fail, it is a finding about
+the host surface rather than about the chrome** — report the failure with its numbers rather than
+loosening the assertion, and do not read a timeout as a layout defect before checking whether the
+host delivered at all (`vg-143` lives in this project).
 
 - [ ] **Step 3: The deliberate break**
 
 Re-add `position: fixed; left: 0; right: 0; top: 0; z-index: 9` to the availability strip in
-`chrome.ts`, rebuild, re-run. Expected: tests 1 and 2 fail on `over the artboard`. Restore,
-rebuild, and record what the break did.
+`chrome.ts`, rebuild, re-run. **Expected, corrected 2026-10-08: test 1 fails on
+`over the artboard` — and test 1 alone.** Restore, rebuild, and record what the break did.
+
+> **Why test 2 cannot fail on this break, worked out before dispatch rather than discovered in the
+> run.** `computeArtboardTransform` centres (`renderer-core/src/artboard.ts:83-84`,
+> `offsetY = (viewportHeight - scaledHeight) / 2`). At 390×844 with a 640×360 artboard, `contain`
+> binds on width, so the painted box is ~219px tall and sits at y ≈ 312 — reached by neither a
+> `top: 0` nor a `bottom: 0` fixed strip. The portrait letterbox absorbs the break exactly the way
+> it absorbed the original defect, which is the whole reason Task 2.1's discriminating case was
+> the landscape one. Test 2's remaining assertions (`strips.length`, `host.h > half`) are all
+> *satisfied* by a fixed strip, because a collapsed band makes the host the full viewport.
+>
+> **If test 2's ceiling assertion is to be proven rather than assumed, the break for it is a band
+> given a height** — `min-height: 70vh` on `#vigilia-chrome-top` in `index.html` drops `host.h` to
+> ~254 and fails `host.h > 422` while leaving `chrome` (the sum of *strip* heights) small. Perform
+> it if you want that assertion live, and **say which breaks you performed and what each one
+> actually failed** — a break whose description does not match its result is the defect this plan
+> has now hit four times.
 
 > **Corrected 2026-10-08 from Task 2.2's measured breaks, before this task was dispatched: two of
 > the three descriptions below do not match what the breaks actually do, and a third break is
@@ -1688,9 +1745,10 @@ rebuild, and record what the break did.
 >
 > - **The crop-strip break reaches only the tests whose theme raises a crop strip.** `portrait-cover`
 >   raises none (only `vigilia-scaffold`), so a break inside `showCropNotice` cannot fail a cover
->   test. The equivalent here is that an availability-strip break reaches test 1 and test 2 only if
->   both themes actually raise the availability strip — check that in the run rather than assuming,
->   and if one of them does not, the break that proves it is a **scaffold** break.
+>   test. The equivalent here is narrower than it looks: both themes do raise the availability
+>   strip, because both now carry `&data=live` — but only test 1's assertion is reached by it, for
+>   the centring reason given above. **Which tests a break reaches is a measurement, not a
+>   deduction: report the failures you saw.**
 > - **Deleting `flex: 1 1 auto` from `#artboard` does not produce "the host assertions fail".**
 >   Measured: `#artboard` collapses to zero height, the canvas is never visible, and every test that
 >   waits for ink dies in a 30 s timeout. A real break with the wrong description — the description
@@ -1708,7 +1766,8 @@ PLAYWRIGHT_JSON_OUTPUT_NAME=test-results/host-chrome.json \
   npx playwright test tests/e2e/host-chrome.spec.ts --project=desktop-host --workers=1 --reporter=json
 ```
 
-Expected: PASS, 3 tests. **`vg-143` lives in this project** (`host-player.spec.ts`'s units spec
+Expected: PASS, 3 tests — **and the count is not to be taken from this line, which has been wrong
+three times in this plan; report the number the run gave.** **`vg-143` lives in this project** (`host-player.spec.ts`'s units spec
 timing out on the real host, which times out in isolation too) — it is not this plan's, and this
 file must not be made flaky alongside it: if a test here times out, check whether the host
 delivered at all before blaming the layout.
