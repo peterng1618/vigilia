@@ -1,4 +1,16 @@
 {
   "biblePx": [3, 11, 14, 26, 30, 32, 36, 46, 246, 276, 999, 1.6, 1.7, 1.8],
-  "gated": []
+  "gated": [
+    "src/web/packages/editor/src/components/ui/control-well.tsx",
+    "src/web/packages/editor/src/components/ui/control-text.tsx",
+    "src/web/packages/editor/src/components/ui/control-swatch.tsx",
+    "src/web/packages/editor/src/components/ui/control-select.tsx",
+    "src/web/packages/editor/src/components/ui/control-number.tsx",
+    "src/web/packages/editor/src/components/ui/control-slider.tsx",
+    "src/web/packages/editor/src/components/ui/control-toggle.tsx",
+    "src/web/packages/editor/src/components/ui/control-segmented.tsx",
+    "src/web/packages/editor/src/components/ui/control-icon-button.tsx",
+    "src/web/packages/editor/src/components/ui/inspector-section.tsx",
+    "src/web/packages/editor/src/components/ui/control.dom.test.tsx"
+  ]
 }

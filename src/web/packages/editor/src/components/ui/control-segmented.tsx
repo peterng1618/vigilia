@@ -1,0 +1,63 @@
+import { Toggle } from "@base-ui/react/toggle";
+import { ToggleGroup } from "@base-ui/react/toggle-group";
+import type * as React from "react";
+import {
+  ControlRow,
+  type ControlProps,
+  isBlocked,
+  useControlIds,
+} from "./control-well.js";
+
+/**
+ * A 2–4 way exclusive choice where every option has to stay readable: a
+ * `--panel-2` well holding the labels, the active one lifted to `--panel`
+ * (bible §5).
+ *
+ * The arrow keys are the primitive's roving focus rather than one Tab stop per
+ * label, and the group carries the row's label as its accessible name — the
+ * labels inside are the options, so naming the group is what makes "Align:
+ * Center" mean anything. A refusal leaves the group browsable and refuses the
+ * press, so the reason stays readable where a disabled group would take it out
+ * of the tab order.
+ */
+export function ControlSegmented<T extends string>(
+  props: ControlProps & {
+    readonly value: T;
+    readonly options: readonly { readonly id: T; readonly name: string }[];
+    readonly onChange: (id: T) => void;
+  },
+): React.JSX.Element {
+  const { label, id, disabled, refused, data, value, options, onChange } =
+    props;
+  const ids = useControlIds(id);
+  const blocked = isBlocked({ disabled, refused });
+
+  return (
+    <ControlRow ids={ids} label={label} refused={refused}>
+      <ToggleGroup
+        {...data}
+        id={ids.control}
+        value={[value]}
+        aria-labelledby={ids.label}
+        aria-disabled={refused === undefined ? undefined : true}
+        aria-describedby={refused === undefined ? undefined : ids.reason}
+        onValueChange={(next) => {
+          const chosen = next[0];
+          if (blocked || chosen === undefined) return;
+          onChange(chosen as T);
+        }}
+        className="flex gap-[var(--space-4)] rounded-md border border-edge bg-panel-2 p-[var(--space-4)]"
+      >
+        {options.map((option) => (
+          <Toggle
+            key={option.id}
+            value={option.id}
+            className="rounded-sm px-[var(--space-8)] py-[var(--space-4)] text-xs text-muted data-[pressed]:bg-panel data-[pressed]:text-text focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+          >
+            {option.name}
+          </Toggle>
+        ))}
+      </ToggleGroup>
+    </ControlRow>
+  );
+}
