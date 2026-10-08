@@ -60,6 +60,13 @@ dies when that spec closes. A rule that lives in its own normative file is read
 by the next change instead of being re-derived, and a change that needs something
 absent from it must amend it in the same commit.
 
+**Preserve the original visual direction** (bible §7.8): artwork-led stage,
+compact diagram tiles, fine dividers, restrained floating clusters and visual
+palette previews. Correct contract mistakes within that composition. Do not
+replace it wholesale with a blank artboard, text-heavy grids or enlarged generic
+controls to satisfy an unmeasured readability assumption. Stage texture and
+column-count changes require rendered evidence, not blanket bans.
+
 **Acceptance of this section is therefore about the bible's existence and use,**
 not about its prose: every plan that follows cites it, and no surface ships a
 value that is not in it.
@@ -90,10 +97,21 @@ two sources of truth for the scene appear.
 | `type-preset-manager/` | 327 | Rewritten into the Tokens pane (§5.3) |
 | `editor-shell/controls/` | — | Rewritten as the one control set of bible §5 |
 | `editor-shell/`, `font-picker/`, `components/ui/` | — | Already React; restyled, not rewritten |
+| `chart-manager/panel.ts` and settings-field rendering | — | Plan 3 rewrites the UI; chart descriptors, mutations and lifecycle remain chart-owned |
+| `artboard-panel.ts` and document-reference rendering | — | Plan 4 rewrites the UI into Document |
+| `new-document-chooser.ts`, `theme-library-dialog.ts`, persistence dialogs | — | Plan 5 completes dialog rendering on the same control set; existing I/O and validation stay owned where they are |
 
-The 23 native `<select>`s and every native `input type=range` inside a panel are
-replaced by the control set. This is the concrete test of whether the language
-was applied or merely declared.
+Line and control counts above are pre-redesign observations, not future gate
+thresholds; executors remeasure at their branch point. Every hand-authored native
+`<select>` and native `input type=range` inside editor surfaces is replaced by
+the control set, including the font picker and dialogs. A primitive's hidden
+form-integration element is not a second visible control. This is the concrete
+test of whether the language was applied or merely declared.
+
+**Scope closure is mandatory.** Plan 6's census may find a missed surface, but
+cannot waive it as a deliberate difference and declare §2 complete. Hold
+completion and assign the missing rendering to its existing family owner.
+There is no seventh implicit rewrite hidden inside an icon-and-copy sweep.
 
 ### 2.3 Behaviour does not drift
 
@@ -153,8 +171,10 @@ A 46px vertical glyph strip with the settings gear pinned to the foot, holding
 
 - **The horizontal pane bar is deleted.** Two stacked horizontal navigation bars
   make the first read as chrome rather than as a choice.
-- **Exactly one slot is open at a time**, expanding in place rather than pushing
-  the stage.
+- **At most one slot is open at a time**; choosing it again closes it. The pane
+  occupies the layout track beside the rail. The existing refit-on-toggle
+  behaviour stays: available stage space may change, authored coordinates do
+  not. No new overlay may obscure artwork or stage controls.
 - **The gear is the fifth thing on the rail but is not a slot:** it opens a
   modal settings surface (§7), not a pane, because it is not part of the
   document.
@@ -168,7 +188,7 @@ as the dock does.
 
 ### 3.4 The status bar
 
-26px, mono, numbers only: counts, save state, live indicator. **No tools** — the
+26px, mono, readouts only: counts, save state, live indicator. **No tools** — the
 toolbar is on the canvas (§4.3) and the dock is on the canvas. Anything
 actionable belongs to a region that owns it.
 
@@ -190,8 +210,8 @@ The display lens chips and the zoom cluster (−, value, +, fit).
 **These are view state and they were in the wrong place.** They sat in the
 editing dock until this design; the dock acts on the selection, so a view control
 inside it teaches an author that the view is a property of the selection. The
-lens sets the artboard's *shape* and zoom scales the *view*; they share one
-cluster because both answer the same question, and they are one cluster rather
+lens chooses a display-view rectangle, never the authored artboard size;
+zoom scales the *view*. They share one cluster because both answer the same question, and they are one cluster rather
 than two by convenience, which is stated so a later change can separate them
 without re-arguing placement.
 
@@ -238,11 +258,18 @@ a fixed set of eight, so depicting a unit is honest. A group on the canvas is
 arbitrary, so depicting it is not. The distinction is the rule, not an
 inconsistency.
 
-**This pane absorbs the Assets pane** (`vg-154`): an asset is not a document
-object with its own identity to browse — it becomes a layer when placed. Insert
-belongs here; replace lands on the selection. The import path and the
-`assetReferencedBy` reference-count question must survive the move, or a file the
-theme still uses becomes removable.
+**This pane absorbs the Assets pane** (`vg-154`). Placed images and SVGs become
+layers, but declared fonts, videos and unplaced files still need a library. Keep
+that declared-asset list, previews, byte replacement and reference-safe removal
+inside Add. The import path, `assetReferencedBy` and document-level references
+must survive the move, or a file the theme still uses becomes removable.
+
+**Byte replacement is not selection replacement.** Swapping a declared asset's
+bytes changes every use of that asset; re-pointing one selected image changes
+one use. This rewrite preserves the former. The latter remains `vg-154`'s
+explicit unmet capability, not a shipped claim or a reason to close the row.
+The footer says "Import a file" where fonts/videos are accepted; placeable
+images/SVGs may additionally be placed through the manager's existing path.
 
 ### 5.3 Tokens
 
@@ -283,14 +310,14 @@ prose rather than to the code.
 | Section | A group |
 |---|---|
 | Content | its name |
-| Position | left, top, width, height, angle |
-| Layer | rotation, opacity |
+| Position | left, top, width, height, **and the bleed mark** (offered for every selection; it renders for a group) |
+| Layer | rotation — the `angle` field — and opacity |
 | Paint | no material fields (`supportsPanelFields()` lists ten shape classes and no `Group`); glass present but **refused with its reason** (`!(object instanceof Group)`, `glass.ts:85`) |
 | Spends | read-only: its descendants' effective paint and type presets |
 
-That is name, transform, opacity, and what the children resolve to — which is
-exactly the per-building-block model, and it is already implemented. The user's
-ruling confirms it; it does not change it.
+That is name, transform, the bleed mark, opacity, and what the children resolve
+to — which is exactly the per-building-block model, and it is already
+implemented. The user's ruling confirms it; it does not change it.
 
 **The trade, stated because it is the whole cost:** answering *"which sensor"*
 for a card costs one Enter, because the question is asked on the child that
@@ -421,6 +448,33 @@ same rule for the same reason — screenshots are evidence, not golden files.
 design, the bible, the mockup and this spec move in one commit. A mockup that no
 longer matches the bible is worse than no mockup, because it is believed.
 
+### 13.1 Evidence states and interaction proof
+
+Each requirement closes as **met**, **not met**, or **blocked**, with a named
+check and the rebuilt commit. A deliberate visual difference may explain a
+platform glyph or an illustrative name; it cannot waive a required capability,
+a missing React surface, keyboard access, contrast or safe editing.
+
+A screenshot proves one rendered state, not the behaviour behind it. Every
+surface owner also proves its applicable states: empty, populated, selected,
+focused, refused, invalid, and pending/failed where I/O exists. No new synthetic
+loading state is required for synchronous controls. Pending work prevents
+repeat submission; failure preserves authored data and offers an existing retry
+route. Success copy follows acknowledged success, not the start of a request.
+
+**Keyboard-only walkthrough:** create/open a document, choose a rail pane,
+select through Composition, edit and cancel a field, enter/exit a group, open
+and close a popup, choose a palette, cancel shortcut capture, and return to the
+original document without unintended history. Each region has a reachable
+focus target; Escape affects one innermost owner. Plans 1–5 prove their parts;
+plan 6 assembles the real-host walkthrough, not another test framework.
+
+**Visual stress set:** all six palettes for text/focus contrast, graphite and
+editorial for captured states, 1280×720 and 1440×900, 200% browser zoom, a long
+Unicode name, a long unresolved reference, and the two-hundred-row Composition
+fixture. Reduced-motion and forced-colours checks belong to the same browser
+gate. The phone limitation remains named, never mistaken for desktop proof.
+
 ## Invariants
 
 Untouched by this design, and restated so the rewrite cannot quietly break them.
@@ -439,6 +493,47 @@ Untouched by this design, and restated so the rewrite cannot quietly break them.
 - **Editor-shell theming stays separate from authored theme globals** — the shell
   palette colours the editor, never the theme.
 
+### Review handoff — 2026-10-08
+
+This review edits contracts and references, not product delivery. Existing
+plan-1 Tasks 1–2 remain complete; Tasks 3–4 remain active. Plans 2–6 remain
+queued. No new active plan, implementation dispatch or verified backlog row is
+created by a documentation correction.
+
+| Review risk | Contract and owner | Failure proof required at execution |
+|---|---|---|
+| Controls look editable but have no edit API | Plan 1 Task 3: Text, Swatch, Well composition, data hooks, disabled action semantics | Type/name/commit checks on mounted controls; an unwired callback fails |
+| A stale blur edits the next selection | Plan 3 Task 1: expected target revision and current eligibility | A draft from A cannot mutate B, including history/crop replacement |
+| React wrapper hides imperative chart UI | Plan 3 Task 3a: both chart field-port contracts and rendering | All visible descriptors reach controls; nested writes survive reopen |
+| Dialog/font UI falls between plans | Plan 5 Task 4a: chooser, library, persistence dialogs, font picker | Real journeys preserve validation, I/O failure and focus return |
+| Keyboard capture conflicts or dismisses two layers | Plan 5 Task 3: effective match semantics and Dialog dismissal coordination | Alias/Shift conflicts, malformed storage, capture Escape then modal Escape |
+| Palette override lies when storage fails | Plan 5 Task 2: live session preference separate from persisted preference | Both toggle directions, denied storage, OS changes, portalled surfaces |
+| Asset move loses declarations or changes the wrong scope | Plan 4 Task 4: declared library and byte-replace semantics | Font/video/unplaced file survives; referenced removal refuses; failed replacement preserves bytes |
+| Library browsing masquerades as selected-run state | Plan 4 Task 7: separate library item from selection reference | No preset, unresolved, multiple runs, explicit browsing and undo |
+| Pretty capture waives a missing capability | §13.1 and plan 6 Task 8: met/not met/blocked evidence | Whole-editor inventory and real-host keyboard walkthrough; no closure while required items fail |
+
+**Plans are contracts.** Their example `it(..., () => {})` blocks are named
+cases, not runnable proof; an executor must supply real setup, actions and
+assertions in the owning suite. Existing passing behaviour is preserved
+baseline, not an invented first-run failure. Before dispatch, resolve any
+proposed type against its owning source, name the task's file ownership and
+confirm no overlap. Do not copy old line numbers, test counts or deleted paths
+as current facts.
+
+**Verification commands are illustrative where they contain placeholders.**
+Replace title regexes with actual registered titles, inspect collection and
+failure counts in runner JSON, and use scratch paths outside the repository.
+Do not interpret a malformed-config error as proof of the empty-list rule, a
+nonempty screenshot as proof of wiring, or a lexical guard as proof of contrast.
+Rollback of deliberate breaks must restore only the change made for the proof,
+never discard unrelated work. A Windows executor uses valid local paths and
+shell syntax, not an assumed `/tmp` directory.
+
+**Closeout remains conditional.** Every plan updates its evidence and hands off
+to the next in order. The six-plan redesign closes only when Acceptance is met;
+finishing plan 6's glyph/copy tasks is not enough. Registered but unrelated
+findings remain in the product register, not duplicated in this handoff.
+
 ## Non-goals
 
 - **No behaviour change.** No new field, no removed capability, no changed
@@ -454,7 +549,22 @@ Untouched by this design, and restated so the rewrite cannot quietly break them.
 
 ## Acceptance
 
-Rendered observation in a real browser, on a rebuilt bundle.
+Rendered observation in a real browser, on a rebuilt bundle. Counts are
+necessary, never sufficient; §13.1's interaction and stress proof also applies.
+
+- **Every editor surface is React**, including chart fields, file dialogs,
+  the new-document chooser, theme library and font picker; no imperative UI
+  island survives under a React wrapper. Fabric and its interaction loop stay
+  imperative.
+- **Edits are safe transactions.** Enter and blur cannot double-save; Escape
+  cancels; invalid/empty drafts never become zero; optional clearing removes
+  the key; stale events cannot edit a new selection; one completed slider or
+  scrub gesture creates one history entry. IME input and caret position survive
+  normal publications.
+- **Keyboard and contrast are observed.** §13.1's walkthrough runs on the real
+  host. Normal required text meets 4.5:1 and essential boundaries/focus meet
+  3:1 in all six palettes; forced-colours focus stays visible. Long names,
+  unresolved references and 200% zoom leave controls and reasons reachable.
 
 - **The scales are consumed.** A grep over the editor's sources finds a surface
   using a spacing value not in the bible's steps, or a hex colour outside the
