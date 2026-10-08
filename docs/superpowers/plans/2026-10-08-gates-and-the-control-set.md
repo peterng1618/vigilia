@@ -210,10 +210,29 @@ git commit
 
 ---
 
+### Delivered-state reconciliation — Tasks 1–2 are complete
+
+Do not re-execute Tasks 1–2. Their landed contract supersedes historical steps
+above: `design-tokens.gated.json` is `{ biblePx, gated }`, the proof is
+`node ../../scripts/design-tokens.mjs --self-test` from `src/web/`, and no
+separate `design-tokens.self-test.mjs` exists. The guard is importable and its
+CLI runs only at entry. CSS spacing is checked against spacing steps; other px
+dimensions use `biblePx`; definition blocks are exempt. `[]` remains supported
+for the negative empty-list probe, but production updates use `gated`.
+
+Tokens being present is not proof of use. The source guard does not enforce
+variable references for an on-scale literal, cannot see numeric React style
+props, and skips rem/calc. Report those limits honestly; rendered/browser
+checks cover treatment, and review covers use of named tokens. Do not claim
+this lexical guard alone proves all design decisions. `--stage`, `--hdr` and
+`--edge-2` arrive with their first consumers.
+
 ### Task 3: The control set
 
 **Files:**
 - Create: `packages/editor/src/components/ui/control-well.tsx`
+- Create: `packages/editor/src/components/ui/control-text.tsx`
+- Create: `packages/editor/src/components/ui/control-swatch.tsx`
 - Create: `packages/editor/src/components/ui/control-select.tsx`
 - Create: `packages/editor/src/components/ui/control-number.tsx`
 - Create: `packages/editor/src/components/ui/control-slider.tsx`
@@ -229,20 +248,38 @@ git commit
 - Produces, for later plans to compose surfaces from:
 
 ```ts
-type ControlProps = { readonly label: string; readonly id?: string; readonly disabled?: boolean;
-                      readonly refused?: string };   // the reason, rendered, never a tooltip-only
+export type ControlProps = {
+  readonly label: string;
+  readonly id?: string;
+  readonly disabled?: boolean;
+  readonly refused?: string;
+  readonly data?: Readonly<Record<`data-${string}`, string>>;
+};
 
-export function ControlWell(props: ControlProps & { readonly value: React.ReactNode }): React.JSX.Element;
+// Styling container, not a fake editable value. Child owns focus and its id.
+export function ControlWell(props: { readonly children: React.ReactNode }): React.JSX.Element;
+export function ControlText(props: ControlProps & { readonly value: string;
+                               readonly onCommit: (value: string) => void }): React.JSX.Element;
+// Swatch is an adornment of ControlSelect, not a second selection mechanism.
+export function ControlSwatch(props: ControlProps & { readonly value: string;
+                               readonly options: readonly {id: string; name: string}[];
+                               readonly swatch: React.ReactNode;
+                               readonly onChange: (id: string) => void }): React.JSX.Element;
 export function ControlSelect(props: ControlProps & { readonly value: string; readonly options: readonly {id: string; name: string}[];
                                readonly onChange: (id: string) => void }): React.JSX.Element;
-export function ControlNumber(props: ControlProps & { readonly value: number; readonly unit?: string;
-                               readonly onCommit: (value: number) => void }): React.JSX.Element;   // refuses NaN, never coerces to 0
+export function ControlNumber(props: ControlProps & { readonly value: number | undefined; readonly unit?: string;
+                               readonly min?: number; readonly max?: number;
+                               readonly onCommit: (value: number) => void;
+                               readonly onClear?: () => void }): React.JSX.Element;
 export function ControlSlider(props: ControlProps & { readonly value: number; readonly min: number; readonly max: number;
+                               readonly onPreview?: (value: number) => void;
+                               readonly onCancel?: () => void;
                                readonly onCommit: (value: number) => void }): React.JSX.Element;
 export function ControlToggle(props: ControlProps & { readonly checked: boolean; readonly onChange: (v: boolean) => void }): React.JSX.Element;
 export function ControlSegmented<T extends string>(props: ControlProps & { readonly value: T; readonly options: readonly {id: T; name: string}[];
                                readonly onChange: (id: T) => void }): React.JSX.Element;
-export function ControlIconButton(props: { readonly label: string; readonly destructive?: boolean;
+export function ControlIconButton(props: ControlProps & { readonly destructive?: boolean;
+                               readonly shortcut?: { readonly printed: string; readonly spoken: string };
                                readonly onClick: () => void; readonly children: React.ReactNode }): React.JSX.Element;
 export function InspectorSection(props: { readonly id: string; readonly title: string; readonly readOnly?: boolean;
                                readonly defaultOpen?: boolean; readonly children: React.ReactNode }): React.JSX.Element;
@@ -283,7 +320,11 @@ Each component:
 - Takes its text from a `label` prop and pairs it with the input by a generated id (`useId`) — bible §5.5. A control whose label and input are not programmatically associated fails Step 1.
 - Uses **only** the token names from Task 2 for spacing, radius, type and elevation, and **only** colour roles (`var(--panel-2)`, `var(--edge)`, `var(--text)`, `var(--muted)`, `var(--faint)`, `var(--accent)`). No hex, no off-scale px — Task 2's guard enforces this in Step 5.
 - Renders `refused` as **visible text in the row**, with the control still present and `aria-disabled` rather than `disabled` (bible §5.3: a disabled control leaves the tab order, so the reason reaches nobody not holding a mouse).
-- Uses Base UI only where a primitive is genuinely needed (the select's listbox). Everything else is styled elements — `0038` rules Base UI the primitive library, not a component for every box.
+- Uses installed Base UI primitives for Select, Slider and exclusive-choice keyboard semantics where needed. No new component library, hand-rolled listbox or hidden native visible fallback. `ControlWell` supplies styling only; `ControlText` owns editable text; `ControlSwatch` composes Select. Data attributes, labels, ids and refusal descriptions reach the actual focus target, not a wrapper.
+- Implements bible §5's Editing and recovery draft/commit/cancel contract. Numeric domains and optional clearing remain the consuming field owner's rules, not one global minimum. Slider preview/release/cancel delegates to the existing imperative write funnel; the `onPreview`/`onCancel` contract above keeps preview separate from history. A consuming field supplies both callbacks together where preview exists. For numbers, `onClear` permits optional-key removal; an absent callback means blank is invalid, not zero. Carry these exact signatures into plan 3 before dispatch.
+- `ControlIconButton` owns its name and tooltip from `label` immediately, including teardown and shortcut annotation. Plans 2–5 must not hand-wire a second pair and wait for plan 6 to repair it.
+
+**Required checks within this task:** refused controls cannot mutate via pointer, Space, Enter or arrow keys; each field has a unique id and `aria-describedby` reason; empty/invalid numeric drafts do not commit; Enter then blur commits once; Escape and IME composition do not commit; a slider gesture commits once and cancellation commits none. A mounted browser fixture proves keyboard access, 24px hit areas, all-six-palette focus contrast and forced-colours focus. Plain name tests alone are not acceptance.
 
 - [ ] **Step 3: Run the test to green**
 
@@ -356,7 +397,11 @@ Expected: **FAIL** — the fixture does not exist.
 
 - [ ] **Step 2: Build the fixture and make it pass**
 
-The fixture is a page carrying the built stylesheet and one instance of every control from Task 3, including a **refused** control and a **focused** control, because those are the two states bible §5.3 and §5.4 specify and they are the ones a later surface forgets.
+The fixture mounts the **built React controls**, not HTML strings that imitate them, and loads the built editor stylesheet. Reuse the existing preview/test entry mechanism; register its exact route before using it. The fixture includes every control plus focused, refused and invalid states. `page.setContent` alone does not load CSS or mount React, and `fixtureHtml` is not an implementation.
+
+Computed styles prove resolved geometry and contrast, not token provenance: a hard-coded colour equal to a palette role passes a computed equality check. `design:check` owns source provenance; the browser owns rendered treatment. Scope the spacing assertion to authored layout properties, not browser defaults, glyph bounds, percentages or values after rem conversion. Convert lengths consistently at the tested root font size. Negative proof: plant a literal matching a role and require the source guard to fail; plant off-scale spacing in a mounted control and require the browser assertion to fail.
+
+Only registered screenshot actions with `VIGILIA_CAPTURE=1` write committed evidence; ordinary assertions run without capture. Report collected tests from runner output/JSON, never infer collection from exit 0. Do not assume a no-match Playwright run succeeds on every version.
 
 - [ ] **Step 3: Prove the spec is not vacuous — Review Focus 5**
 
