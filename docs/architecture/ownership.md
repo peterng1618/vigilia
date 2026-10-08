@@ -190,6 +190,7 @@ tree, and `editor-shell/layer-panel.tsx` renders those rows.
 | Locale-spelled month, weekday and day-period names | `renderer-core/src/scene/datetime/names.ts` |
 | Measurement conversion for display, and which families convert | `renderer-core/src/scene/measurement.ts` |
 | The preference a display reads at load | `player/src/theme-loader.ts` (`loadDisplayPreferences`) |
+| The display's own chrome — the strips it is told by, and the room they take from the artboard | `player/src/chrome.ts` |
 | Consumer device-selection page | `host/public/settings.html` |
 | The theme chooser the dashboard falls back to | `host/public/library.html` |
 | A saved theme as one row in a list, and the host pages' chrome | `host/public/theme-list.js`, `host/public/vigilia-page.css` |
