@@ -350,6 +350,24 @@ verbatim>. Licence rows added from each package's own package.json.
 Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 ```
 
+> **Run 2026-10-08, and Step 4's stop condition fired: `Anchor` is not exported.** Measured, not
+> remembered — `"Anchor" in DropdownMenu === false` and `"Anchor" in ContextMenu === false` at
+> `@radix-ui/react-dropdown-menu@2.1.25` and `@radix-ui/react-context-menu@2.3.8`, and the string
+> `Anchor` appears in **no file** of either package's `.d.ts`. `@radix-ui/react-popper@1.3.7` and
+> `@radix-ui/react-menu@2.1.25` each export one, so the capability this plan's Interfaces block
+> reasoned about is real but sits one layer below what Step 1 installs, and is not reachable from
+> it. **Phase 1 stops here, per this task's own text**, and the finding is `vg-193` rather than a
+> third mechanism. The other three answers are in `vg-193` and in `428784a4`'s message: `data-state`
+> values, the `aria-labelledby`/`aria-label` pair, and
+> `--radix-dropdown-menu-content-available-height` as the replacement for Base UI's
+> `--available-height` (`editor-shell.css:368`). **Task 1.3 is the one this was written for**, and
+> it is now a decision note rather than a migration.
+>
+> **The probe was wrong once and that is recorded rather than tidied away**: its first version
+> mounted each tree without unmounting the last, so a later read returned an earlier tree's
+> content — visible as a ContextMenu content carrying `--radix-dropdown-menu-*` variables. Radix
+> portals to `document.body`. Every answer above is from the run after the fix.
+
 ---
 
 ### Task 1.2: The three trigger-anchored menus move to Radix
