@@ -25,28 +25,26 @@ backlog it produced stays live in the register.
 
 ## Active work
 
-- **Plan 1 — [`2026-10-08-gates-and-the-control-set.md`](docs/superpowers/plans/2026-10-08-gates-and-the-control-set.md) — is written and not started.** No plan is active; nothing is dispatched; it awaits the user's review and choice of execution method.
+- **Plan 1 — [`2026-10-08-gates-and-the-control-set.md`](docs/superpowers/plans/2026-10-08-gates-and-the-control-set.md) — is executing: task 1 is done, tasks 2–4 remain.** The scales with their ratchet guard, the React control set, then the parity harness.
 - **The spec is `draft` and unimplemented** — its acceptance sections are plans of measurement, not results.
 - **Reactify ([0039](docs/decisions/0039-the-editor-ui-is-react-and-only-the-canvas-is-imperative.md)) is the frame, not a phase** — every editor surface becomes React, only the canvas stays imperative, and no Fabric object is ever mirrored into React state.
-- **`vg-149` is the first task, not a quirk** — Biome lints and formats no `.tsx`, so the rewrite would put the whole editor outside both gates.
 - **The mockups are the checked reference** ([`docs/design/mockups/`](docs/design/mockups/)), not files read once and remembered; spec §13 makes a capture beside them a gate item.
 - **Seven user rulings from the design pass are recorded** in the spec's *Ruled during review*, including four rail slots, `View` staying in the menubar, and the stage drawing no device.
 
 ## Last completed change
 
-- **The reference is saved, the gate checks it, and plan 1 is written** (`8440d37c`).
-- **`docs/design/mockups/` holds three standalone reference pages plus a README** stating what they are (the target, checked at every gate) and what they are not (not golden files, not behaviour, not copy).
-- **Spec §13 makes parity a gate item:** each plan places its capture beside the matching mockup and lists the differences, each fixed or recorded as deliberate — "a gate that produces no comparison has not run".
-- **Plan 1 sequences `vg-149` first**, then the bible §5 control set as React components, then the parity-capture harness; every task carries a red proof that its own gate can fail.
-- **Plan 1 uses a ratchet guard, not a whole-tree rule** — `scripts/design-tokens.mjs` scans a declared file list each plan grows, and fails on an empty list so it cannot pass by looking at nothing.
+- **Biome now lints and formats `.tsx`** (`1262a670`) — `files.includes` named no `.tsx` glob, and in Biome 2.x that list *replaces* the defaults, so 33 tracked `.tsx` files sat outside both gates.
+- **The gate is proven rather than assumed** — a planted `const unusedProbe = 1;` in `canvas-dock.tsx` makes `biome lint ..` exit 1 and name the file, where the same probe under the old `.ts`-only glob exits 0 over 527 files against 560 now.
+- **Six hidden findings fixed** — an unused `CPU` constant, two unused `errors` bindings, an unused `InsertableObject` import, unused `ActiveKind` and `EditorActionFacade` imports, and one `biome-ignore` directive whose rule is not enabled.
+- **The formatting landed alone** (`838c1102`) — 24 `.tsx` files reformatted, no `.ts`, `.json` or `.css` touched, so a reader can skip that commit.
+- **`vg-149` is closed** in the register with its check and the artefact sha.
 
 ## Next
 
-1. **The user reviews plan 1 and the spec, then picks the execution method** — subagent-driven or native.
-2. **Plan 1 executes** — `vg-149`, the scales with their ratchet guard, the control set, the parity harness.
-3. **Plan 2 — the shell and the rail**, which is the first visible change and what the shell mockup specifies.
-4. **Then the inspector, the panes, settings, then iconography and copy.**
-5. **Unpushed:** `develop` is far ahead of `origin/develop`; no push is authorised.
+1. **Plan 1 tasks 2–4 follow** — the scales with their ratchet guard, the React control set, the parity harness.
+2. **Plan 2 — the shell and the rail**, which is the first visible change and what the shell mockup specifies.
+3. **Then the inspector, the panes, settings, then iconography and copy.**
+4. **Unpushed:** `develop` is far ahead of `origin/develop`; no push is authorised.
 
 ## Blockers / unverified
 
