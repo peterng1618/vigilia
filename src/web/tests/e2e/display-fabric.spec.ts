@@ -253,12 +253,17 @@ test.describe("the scene reaches the canvas", () => {
     expect(skewY).toBe(0);
     expect(scaleX).toBeGreaterThan(0);
 
-    // And the canvas itself is viewport-sized rather than artboard-sized: the
-    // scale is in the matrix, so the element must not also be scaled.
-    const size = page.viewportSize() ?? { width: 1280, height: 720 };
+    // And the canvas is *host*-sized rather than artboard-sized: the scale is in
+    // the matrix, so the element must not also be scaled. The host is the
+    // column's middle row, so it is the viewport *less* the chrome's bands —
+    // measured, a 662-tall canvas in a 720-tall viewport. That difference is the
+    // requirement rather than drift from it, so the box to compare against is
+    // `#artboard`'s, not the viewport's. Before Phase 1 the host was pinned to
+    // `inset: 0`, which is why this read the viewport until now.
+    const host = (await page.locator("#artboard").boundingBox())!;
 
-    expect(scene.canvasSize.width).toBe(size.width);
-    expect(scene.canvasSize.height).toBe(size.height);
+    expect(scene.canvasSize.width).toBe(Math.round(host.width));
+    expect(scene.canvasSize.height).toBe(Math.round(host.height));
   });
 
   test("letterboxes a 16:9 design on a taller phone (§53)", async ({
@@ -307,7 +312,13 @@ test.describe("the scene reaches the canvas", () => {
       .toBeCloseTo(900 / 1024, 5);
 
     const scene = await probe(page);
-    expect(scene.canvasSize).toEqual({ width: 900, height: 900 });
+    const host = (await page.locator("#artboard").boundingBox())!;
+    // The width is the viewport's; the height is the host's, which is the
+    // viewport less the chrome — measured 842 of 900. Same reasoning as the
+    // transform test above: the host is the column's middle row, so the canvas
+    // is sized to what the bands left rather than to the screen.
+    expect(scene.canvasSize.width).toBe(900);
+    expect(scene.canvasSize.height).toBe(Math.round(host.height));
   });
 
   test("cover mode fills and crops the viewport (§53)", async ({ page }) => {

@@ -1505,13 +1505,24 @@ test.describe("a display fed by the real host", () => {
 const STARTER = { width: 1672, height: 941 } as const;
 
 /** `contain` fit of the starter into a viewport, to the pixel. */
+/**
+ * `host` is the box the renderer fits — `#artboard`'s, which is the viewport
+ * *less* the chrome's bands, not the viewport.
+ *
+ * Read from the page rather than passed as a literal since Phase 1 of plan 8:
+ * `index.html` pinned the host to `inset: 0` before that, so the two boxes were
+ * the same one and this could take a viewport. Where `contain` binds on width
+ * the distinction is invisible, which is why only the 1600x760 read — the one
+ * that binds on height — caught it: measured, the scale was 0.7768 against a
+ * viewport-derived 0.8077, exactly the 29px of chrome over 941.
+ */
 function expectContainFit(
   actual: { scale: number; offsetX: number; offsetY: number },
-  viewport: { width: number; height: number },
+  host: { width: number; height: number },
 ): void {
   const scale = Math.min(
-    viewport.width / STARTER.width,
-    viewport.height / STARTER.height,
+    host.width / STARTER.width,
+    host.height / STARTER.height,
   );
   expect(actual.scale, "the artboard is fitted, not drawn at 1:1").toBeCloseTo(
     scale,
@@ -2119,7 +2130,12 @@ test.describe("the real player at the sizes and shapes it is read at", () => {
     // **A fitted viewport**, letterboxed on the horizontal axis, and not 1:1.
     await page.setViewportSize({ width: 1600, height: 760 });
     const fitted = await readTheDisplay("1600x760 @1x");
-    expectContainFit(fitted.surface, { width: 1600, height: 760 });
+    // The host, not the 1600x760 viewport: the chrome's bands are already out
+    // of it, and this read is the one that binds on height.
+    expectContainFit(
+      fitted.surface,
+      (await page.locator("#artboard").boundingBox())!,
+    );
     expect(fitted.surface.dpr, "the first read is at one device pixel").toBe(1);
     for (const [id, share] of Object.entries(fitted.arcs))
       expect(share, `${id} draws its arc at a fitted viewport`).toBeGreaterThan(
@@ -2148,7 +2164,10 @@ test.describe("the real player at the sizes and shapes it is read at", () => {
       mobile: false,
     });
     const retina = await readTheDisplay("1180x820 @2x");
-    expectContainFit(retina.surface, { width: 1180, height: 820 });
+    expectContainFit(
+      retina.surface,
+      (await page.locator("#artboard").boundingBox())!,
+    );
     expect(
       retina.surface.dpr,
       "the browser really is at two device pixels",
