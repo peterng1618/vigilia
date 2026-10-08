@@ -4587,8 +4587,12 @@ async function savePackage(page: Page): Promise<{
   readonly bytes: Buffer;
 }> {
   const download = page.waitForEvent("download");
-  // The File menu owns Save; the old panel section is gone.
-  await page.locator("[data-vigilia-save-package]").click();
+  // The File menu owns Save; the header's own button is gone, so the row is the
+  // one route an author takes.
+  await page.getByRole("button", { name: "File", exact: true }).click();
+  await page
+    .getByRole("menuitem", { name: "Save package", exact: true })
+    .click();
   // **Contained, not exact.** The status line also carries whatever diagnostic
   // is on screen, and a diagnostic is retired by the next *committed* edit — so
   // a save immediately after a refusal reads as both. The claim here is that

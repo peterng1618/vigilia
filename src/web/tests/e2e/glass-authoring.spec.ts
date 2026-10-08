@@ -183,7 +183,10 @@ async function typeInto(
 
 async function saveEnvelope(page: Page): Promise<unknown> {
   const download = page.waitForEvent("download");
-  await page.locator("[data-vigilia-save-package]").click();
+  await page.getByRole("button", { name: "File", exact: true }).click();
+  await page
+    .getByRole("menuitem", { name: "Save package", exact: true })
+    .click();
   // **Contains**, not equals. The footer is a status line *and* a diagnostic
   // surface (F1.15): a test whose own action raised a refusal — the radius case
   // below types a value the product correctly refuses — leaves the refusal on

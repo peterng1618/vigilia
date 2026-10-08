@@ -2,6 +2,17 @@ import { expect, type Locator, type Page, test } from "@playwright/test";
 import { openPane } from "./editor-rail.js";
 import { isDesktopSurface } from "./surface.js";
 
+/**
+ * The Add pane, now the one surface the insertable list is reached from.
+ *
+ * These two journeys were `insert-popover.spec.ts`'s, carried over when the
+ * header's Insert menu and the pane bar's `+` were deleted (§7.1: Insert lives
+ * in the Add pane). Neither lost anything by the move — both already drove the
+ * pane — and what the deleted file proved is kept: the pane offers the whole
+ * `insertGroups()` list, and a card inserted from it arrives as a unit the tree
+ * can name.
+ */
+
 const EDITOR = "http://127.0.0.1:4174/";
 
 /** The words neither half may be described by (spec `:537`). */
@@ -19,9 +30,9 @@ test("the Add pane offers units and primitives, neither greyed, neither a fallba
 
   await page.goto(EDITOR);
 
-  // The `+` chooser left with the pane bar, so the pane is now the one surface
-  // the insert list is reached from (the Insert menu goes in Task 3). Its own
-  // copy is unchanged: units and primitives, neither greyed.
+  // The `+` chooser and the Insert menu both left, so the pane is now the one
+  // surface the insert list is reached from. Its own copy is unchanged: units
+  // and primitives, neither greyed.
   await openPane(page, "Add");
   const pane = addPane(page);
   await expect(pane).toBeVisible();

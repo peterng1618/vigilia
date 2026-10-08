@@ -129,42 +129,45 @@ test.describe("the header's publish surface", () => {
 
     await page.goto(`${HOST}/editor/`);
 
+    // The one control *is* the toggle (§7.1), and the facts are its popover's:
+    // the bar itself never carries an address.
     const publish = page.locator("[data-vigilia-publish]");
-    const toggle = publish.getByRole("button");
-    await expect(toggle).toBeVisible({ timeout: 30_000 });
-    await expect(toggle).toHaveAttribute("aria-pressed", "false");
-    await expect(publish.locator("code")).toHaveCount(0);
+    const facts = page.locator(".editor-shell-publish-popup");
+    await expect(publish).toBeVisible({ timeout: 30_000 });
+    await expect(publish).toHaveAttribute("aria-pressed", "false");
+    await expect(facts.locator("code")).toHaveCount(0);
 
-    await toggle.click();
+    await publish.click();
 
-    await expect(toggle).toHaveAttribute("aria-pressed", "true");
-    await expect(publish.locator("code")).toHaveText(new RegExp(`:${PORT}$`));
-    await expect(publish.locator("[data-vigilia-qr]")).toBeVisible();
+    await expect(publish).toHaveAttribute("aria-pressed", "true");
+    await expect(facts.locator("code")).toHaveText(new RegExp(`:${PORT}$`));
+    await expect(facts.locator("[data-vigilia-qr]")).toBeVisible();
 
     // Still the same origin, which is the claim `createHostBinding` makes.
     expect(page.url()).toContain(`127.0.0.1:${PORT}/editor/`);
 
-    await toggle.click();
-    await expect(publish.locator("code")).toHaveCount(0);
+    await publish.click();
+    await expect(facts.locator("code")).toHaveCount(0);
   });
 
-  test("the header carries the address and a code for it", async ({ page }) => {
+  test("the control carries the address and a code for it", async ({ page }) => {
     test.setTimeout(180_000);
 
     await page.goto(`${HOST}/editor/`);
 
     const publish = page.locator("[data-vigilia-publish]");
+    const facts = page.locator(".editor-shell-publish-popup");
     await expect(publish).toBeVisible({ timeout: 30_000 });
 
     // The host starts loopback-only, so the address exists only once the
     // control has been used — there is no `--host` flag left to arrange it with.
-    await publish.getByRole("button").click();
-    await expect(publish.locator("code")).toBeVisible({ timeout: 30_000 });
+    await publish.click();
+    await expect(facts.locator("code")).toBeVisible({ timeout: 30_000 });
 
-    const shown = await publish.locator("code").textContent();
+    const shown = await facts.locator("code").textContent();
     expect(shown).toMatch(/^http:\/\/\d+\.\d+\.\d+\.\d+:\d+$/);
 
-    const qr = publish.locator("[data-vigilia-qr]");
+    const qr = facts.locator("[data-vigilia-qr]");
     const box = await qr.boundingBox();
     // A camera needs modules, not a thumbnail: 45 modules at 3 px.
     expect(box?.width).toBeGreaterThanOrEqual(120);
@@ -178,12 +181,12 @@ test.describe("the header's publish surface", () => {
       fullPage: false,
     });
 
-    // The same header at a phone's width, and *read* rather than only
+    // The same control at a phone's width, and *read* rather than only
     // photographed. Whether the surface is still inside that viewport is
     // `vg-172`'s question, not this assertion's: it says the control is still
     // rendered, which is all a DOM read can say about it.
     await page.setViewportSize({ width: 390, height: 844 });
-    await expect(publish.locator("code")).toBeVisible();
+    await expect(facts.locator("code")).toBeVisible();
     await expect(qr).toBeVisible();
     await page.screenshot({
       path: "test-results/publish/header-390.png",
@@ -191,8 +194,8 @@ test.describe("the header's publish surface", () => {
     });
 
     // Leave the host off, because the first test reads the off state.
-    await publish.getByRole("button").click();
-    await expect(publish.locator("code")).toHaveCount(0);
+    await publish.click();
+    await expect(facts.locator("code")).toHaveCount(0);
   });
 
   test("a forwarded-for header does not move the guard off the socket", async ({

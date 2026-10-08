@@ -22,8 +22,8 @@ import type {
 
 // Base UI's popup needs two browser APIs jsdom has none of: floating-ui observes
 // its anchor, and the popup waits for its own open transition before reporting
-// itself open. Without them the Insert menu never mounts, which is the one
-// surface this file's last test reads.
+// itself open. Without them a menu never mounts, which is what the View and Edit
+// tests below read.
 globalThis.ResizeObserver ??= class {
   observe(): void {}
   unobserve(): void {}
@@ -152,10 +152,10 @@ it("mounts the editorial palette, menus, rail, inspector and dock hosts", () => 
     root.querySelector("#stage"),
   );
   // Four slots, and no `+`: the insert chooser went with the pane bar, and the
-  // Insert menu still reaches everything the `+` did until Task 3 removes it.
-  // A slot with nothing behind it is the defect this plan exists to fix, so
-  // the count is a claim about the left column, not a snapshot of how many
-  // icons happen to be there.
+  // Add pane is the one surface the insertable list is reached from now that
+  // the Insert menu has gone with it. A slot with nothing behind it is the
+  // defect this plan exists to fix, so the count is a claim about the left
+  // column, not a snapshot of how many icons happen to be there.
   expect(root.querySelectorAll(".editor-shell-rail button")).toHaveLength(4);
   // The horizontal bar is gone, not merely hidden.
   expect(root.querySelector(".editor-shell-pane-bar")).toBeNull();
@@ -267,43 +267,6 @@ function menubarEntry(root: HTMLElement, label: string): HTMLButtonElement {
   return entry;
 }
 
-/** One popup's own groups, as the headings and labels an author reads. Shared
-    by both menu readers so the shape they return cannot drift from each other. */
-function menuGroupsIn(
-  popup: HTMLElement,
-): readonly (readonly [string | null, readonly string[]])[] {
-  const items = Array.from(
-    popup.querySelectorAll<HTMLElement>("[role=menuitem]"),
-  );
-  return [
-    [
-      null,
-      items
-        .filter((item) => item.closest("[role=group]") === null)
-        .map((item) => item.textContent ?? ""),
-    ],
-    ...Array.from(popup.querySelectorAll<HTMLElement>("[role=group]")).map(
-      (group): readonly [string | null, readonly string[]] => [
-        document.getElementById(group.getAttribute("aria-labelledby") ?? "")
-          ?.textContent ?? null,
-        items
-          .filter((item) => item.closest("[role=group]") === group)
-          .map((item) => item.textContent ?? ""),
-      ],
-    ),
-  ];
-}
-
-/** The open menu's own groups, as the headings and labels an author reads.
-    `data-open` rather than the class: the zoom readout's popup is kept mounted
-    and closed, so the class alone is not the menu an author has open. */
-function insertMenuGroups(): readonly (readonly [
-  string | null,
-  readonly string[],
-])[] {
-  return menuGroupsIn(openPopup());
-}
-
 /** The Add pane's own groups, read the same way: the lone button, then each
     fieldset with its legend. */
 function paneGroups(
@@ -362,20 +325,6 @@ function openRadioItems(
     (item.textContent ?? "").trim(),
     item.getAttribute("aria-checked"),
   ]);
-}
-
-/** The item's label inside a named group. */
-function insertMenuEntry(
-  group: string,
-  label: string,
-): HTMLElement | undefined {
-  return menuItems().find(
-    (item) =>
-      item.textContent === label &&
-      document.getElementById(
-        item.closest("[role=group]")?.getAttribute("aria-labelledby") ?? "",
-      )?.textContent === group,
-  );
 }
 
 it("collapses the panel when the segment for the visible pane is clicked again", async () => {
@@ -860,7 +809,7 @@ it("opens every View setting's choices instead of toggling on a bare click", asy
   layout.setBridge(bridgeStub(), view);
   await Promise.resolve();
 
-  // `act` is not used, for the Insert menu's reason: Base UI's popup store
+  // `act` is not used, for the menus' reason: Base UI's popup store
   // never settles under jsdom's await, and every read here is straight after
   // the gesture that caused it.
   menubarEntry(root, uiCopy.menus.view).click();
@@ -912,11 +861,10 @@ it("opens every View setting's choices instead of toggling on a bare click", asy
   layout.destroy();
 });
 
-it("inserts the same objects from the Insert menu as the Add pane offers", async () => {
+it("has no Insert menu, and every insertable group is still reachable from the Add pane", async () => {
   const root = document.createElement("div");
   const layout = createShellLayout(root);
-  const session = facade();
-  layout.setBridge(bridgeStub({ session }), undefined);
+  layout.setBridge(bridgeStub({ session: facade() }), undefined);
   const pane = createNewObjectPanel(
     layout.hosts.add,
     {
@@ -933,49 +881,20 @@ it("inserts the same objects from the Insert menu as the Add pane offers", async
   );
   await Promise.resolve();
 
-  // `act` is not used around the menu: Base UI's popup store keeps re-rendering
-  // itself in jsdom, and awaiting its effects never settles. The click is the
-  // same one an author makes, and the popup is read straight after.
-  menubarEntry(root, uiCopy.menus.insert).click();
-  await Promise.resolve();
+  // §7.1: Insert lives in the Add pane, so the header has no Insert menu. The
+  // three that remain are the three the bible names — a fourth coming back is
+  // the second rendering this plan exists to prevent.
   expect(
-    document.querySelector(".editor-shell-menu-popup[data-open]"),
-  ).not.toBeNull();
+    [...root.querySelectorAll(".editor-shell-menubar button")].map(
+      (button) => button.textContent,
+    ),
+  ).toEqual([uiCopy.menus.file, uiCopy.menus.edit, uiCopy.menus.view]);
 
-  // Read from both surfaces' own DOM: two lists that must agree and did not is
-  // what left a panel — the object this composition is mostly made of — out of
-  // the menu entirely.
-  expect(insertMenuGroups()).toEqual(paneGroups(pane.root));
-
-  // "Line" is both a primitive and a chart family. The group is what tells them
-  // apart, in the menu as it already did in the pane.
-  const shape = insertMenuEntry(uiCopy.panels.shapes, uiCopy.shapeKinds.line);
-  const chart = insertMenuEntry(
-    uiCopy.panels.charts,
-    uiCopy.chartFamilies.line,
-  );
-  expect(shape).not.toBeUndefined();
-  expect(chart).not.toBeUndefined();
-  expect(shape?.closest("[role=group]")).not.toBe(
-    chart?.closest("[role=group]"),
-  );
-
-  // And the menu runs the same construction rather than a second one.
-  insertMenuEntry(uiCopy.panels.shapes, uiCopy.shapeKinds.rect)?.click();
-  expect(session.addShape).toHaveBeenCalledWith("rect");
-
-  // The card arm, which the suite did not exercise at all: removing
-  // `case "card"` from `insertItem` left 216 tests passing, because every
-  // façade here stubs `insertCard`. The unit is one click, so a menu that
-  // quietly dropped it would offer six shapes, four charts and no card.
-  insertMenuEntry(uiCopy.panels.cards, uiCopy.cardLibrary.cpu)?.click();
-  expect(session.insertCard).toHaveBeenCalledWith("group-cpu-card");
-
-  // The pane is one rendering of `insertGroups()`, and the menu is another.
-  // Comparing the pane to the owner as well as to the menu is what keeps two
-  // renderings from agreeing with each other while disagreeing with the list —
-  // the whole reason the owner is in the assertion at all. The `+`'s chooser
-  // was the third rendering; it left with the pane bar.
+  // And the menu's removal cost no capability: walking `insertGroups()` — the
+  // one owner of what an author can insert — must find every label in the
+  // pane. A group the pane dropped, or a label renamed on one side, fails here
+  // rather than three tasks later; the pane is the only rendering left, so
+  // comparing it to the owner is the whole assertion.
   expect(paneGroups(pane.root)).toEqual(groupsOf(insertGroups()));
 
   layout.destroy();

@@ -275,7 +275,10 @@ async function savePackage(page: Page): Promise<{
   readonly envelope: Record<string, unknown>;
 }> {
   const download = page.waitForEvent("download");
-  await page.locator("[data-vigilia-save-package]").click();
+  await page.getByRole("button", { name: "File", exact: true }).click();
+  await page
+    .getByRole("menuitem", { name: "Save package", exact: true })
+    .click();
   await expect(page.locator("#status")).toHaveText("Theme package saved");
   const stream = await (await download).createReadStream();
   const chunks: Buffer[] = [];

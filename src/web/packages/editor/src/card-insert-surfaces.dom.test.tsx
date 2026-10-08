@@ -1,25 +1,26 @@
 // @vitest-environment jsdom
 
 /**
- * A card the theme cannot express, through each of the three surfaces that
- * offer one.
+ * A card the theme cannot express, through each surface that offers one.
  *
  * **Reachable, not theoretical.** On a blank theme (`File > New`) the palette
  * carries ten tokens and the cards name `palette.cpu`, `palette.gpu`,
  * `palette.ram`, `palette.vram`, `palette.down`, `palette.sparkArea` and
- * `palette.storageFill` — so only Clock survives. The author does `Insert >
- * Card > CPU`, and before this was fixed **nothing happened, nothing was
- * said**, and an unhandled rejection went to the console.
+ * `palette.storageFill` — so only Clock survives. The author inserts a `CPU`
+ * card, and before this was fixed **nothing happened, nothing was said**, and an
+ * unhandled rejection went to the console.
  *
- * The cause was a per-surface one, which is why this drives all three rather
+ * The cause was a per-surface one, which is why this drives every surface rather
  * than one: the Add pane wrapped the promise in `constructing`, which reported
- * it, and the Insert menu and the canvas context menu both dispatched through a
- * façade typed `insertCard(cardId): void`, which **discarded** the rejecting
- * promise. Two of three surfaces swallowed the same refusal.
+ * it, and the canvas context menu dispatched through a façade typed
+ * `insertCard(cardId): void`, which **discarded** the rejecting promise. One of
+ * two surfaces swallowed the refusal. That surface list was three until the
+ * header's Insert menu was deleted (§7.1: Insert lives in the Add pane), which
+ * removed one swallowed refusal rather than one case.
  *
- * Every surface here is the real one — the real panel, the real menu, the real
- * context menu — against a real `EditorSession` on a blank theme, so this fails
- * if any surface stops reaching the owner or the owner stops reporting.
+ * Every surface here is the real one — the real panel, the real context menu —
+ * against a real `EditorSession` on a blank theme, so this fails if any surface
+ * stops reaching the owner or the owner stops reporting.
  */
 import { Canvas } from "fabric/es";
 import { createRoot, type Root } from "react-dom/client";
@@ -29,7 +30,6 @@ import { createBlankFabricTheme } from "./new-fabric-theme.js";
 import { uiCopy } from "./ui-copy.js";
 import { CanvasContextMenu } from "./editor-shell/canvas-context-menu.js";
 import type { EditorShellBridge } from "./editor-shell/bridge.js";
-import { createShellLayout } from "./editor-shell/shell-layout.jsx";
 import { EditorSession } from "./editor-session.js";
 import { createErrorManager } from "./error-manager/index.js";
 import { createNewObjectPanel } from "./new-object-panel.js";
@@ -40,7 +40,7 @@ import { artboardSize } from "./artboard-presets.js";
 
 // Base UI's popup needs two browser APIs jsdom has none of: floating-ui observes
 // its anchor, and the popup waits for its own open transition before reporting
-// itself open. Without them the Insert menu never mounts.
+// itself open. Without them the canvas context menu never mounts.
 globalThis.ResizeObserver ??= class {
   observe(): void {}
   unobserve(): void {}
@@ -208,32 +208,6 @@ describe("a card a theme with its own vocabulary cannot name", () => {
     session.destroy();
   });
 
-  it("is inserted and mapped, and the author is told, from the Insert menu", async () => {
-    const { session, canvas } = wiredSession();
-    const host = document.createElement("div");
-    const layout = createShellLayout(host);
-    // Attached first: the menubar renders eagerly, and `setBridge` is a
-    // re-render of it rather than its mount.
-    layout.setBridge(bridgeOf(session.actionFacade(), canvas), undefined);
-    await Promise.resolve();
-
-    // `act` is deliberately not used around the menu: Base UI's popup store
-    // keeps re-rendering itself in jsdom and awaiting its effects never
-    // settles. The click is the same one an author makes, and the popup is read
-    // straight after.
-    menubar(host, uiCopy.menus.insert).click();
-    await Promise.resolve();
-    const entry = menuItem(uiCopy.panels.cards, uiCopy.cardLibrary.cpu);
-    expect(entry).toBeDefined();
-    entry?.click();
-    await flush();
-
-    expect(canvas.getObjects()).toHaveLength(1);
-    expect(told.join(" ")).toContain("palette.cpu");
-    layout.destroy();
-    session.destroy();
-  });
-
   it("is inserted and mapped, and the author is told, from the canvas context menu", async () => {
     const { session, canvas } = wiredSession();
     const host = document.createElement("div");
@@ -327,19 +301,11 @@ function bridgeOf(
   } as unknown as EditorShellBridge;
 }
 
-function menubar(root: HTMLElement, label: string): HTMLElement {
-  const found = [
-    ...root.querySelectorAll<HTMLElement>(".editor-shell-menubar button"),
-  ].find((button) => button.textContent === label);
-  if (found === undefined) throw new Error(`No "${label}" menu.`);
-  return found;
-}
-
 /**
  * The entry under a named group, which is what tells the two "Line"s apart.
  *
- * Read by whichever the surface carries: the Insert menu names an item by its
- * text, the canvas context menu sets `aria-label` to the same string.
+ * Read by whichever the surface carries: the canvas context menu names an item
+ * with `aria-label`, the Add pane with its own text.
  */
 function menuItem(group: string, label: string): HTMLElement | undefined {
   const heading = [

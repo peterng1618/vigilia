@@ -61,10 +61,10 @@ export interface InsertGroup {
 
 /**
  * Everything an author can insert, grouped as the Add pane shows it. **The one
- * owner of that list:** the pane's fieldsets and the shell's Insert menu both
+ * owner of that list:** the pane's fieldsets and the canvas context menu both
  * render this, because two lists that must agree and do not is how a panel —
- * the object this composition is mostly made of — came to be missing from the
- * menu while the pane had it.
+ * the object this composition is mostly made of — came to be missing from one
+ * surface while the other had it.
  *
  * **Units and primitives are both here, and neither is a fallback for the
  * other.** The card library is the fast path for the common case and the
@@ -146,8 +146,8 @@ export function insertNewText(
 
 /**
  * A shape, added through the canvas as one history entry and left selected.
- * Shared with the Insert menu so the two surfaces cannot insert different
- * objects under the same name.
+ * Shared with the canvas context menu so the two surfaces cannot insert
+ * different objects under the same name.
  */
 export function insertNewShape(
   editor: EditorInteraction,

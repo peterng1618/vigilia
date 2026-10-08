@@ -5,7 +5,12 @@ import { flushSync } from "react-dom";
 import { createRoot, type Root } from "react-dom/client";
 import { useSyncExternalStore } from "react";
 import { uiCopy } from "../ui-copy.js";
-import { insertGroups } from "../new-object-panel.js";
+import {
+  type HostingAnswer,
+  mintSession,
+  readHosting,
+  setLan,
+} from "../hosting-client.js";
 import {
   shortcutLabel,
   shortcutSpokenLabel,
@@ -15,7 +20,6 @@ import type { EditorShellBridge, EditorShellSnapshot } from "./bridge.js";
 import { CanvasContextMenu } from "./canvas-context-menu.js";
 import { CanvasDock } from "./canvas-dock.js";
 import { DiagnosticMessage } from "./diagnostic-message.js";
-import { insertItem } from "./insert-popover.js";
 import { LayerActions, LayerPanel } from "./layer-panel.js";
 import { Pane } from "./pane.js";
 import { Rail, RAIL_GLYPHS, type RailSlot } from "./rail.js";
@@ -168,6 +172,113 @@ class SheetStore {
 
 function useSheet(store: SheetStore): boolean {
   return useSyncExternalStore(store.subscribe, store.get, store.get);
+}
+
+/** What the shell knows about the host behind it, and the one place that answers
+ *  "is this editor publishing".
+ *
+ *  `unknown` is the initial state and a real one: until the host has answered,
+ *  the editor has nothing to say about publishing, and a reader that treated it
+ *  as "not live" would be inventing a fact. `absent` is a build with no host at
+ *  all — the same silence, for a different reason. */
+export type HostingSnapshot =
+  | { readonly kind: "unknown" }
+  | { readonly kind: "absent" }
+  | {
+      readonly kind: "known";
+      readonly answer: HostingAnswer;
+      /** The credential a phone pairs with, which is not the editor session. */
+      readonly pairing: HostingAnswer["session"] | undefined;
+      /** A refusal, in the host's own words. */
+      readonly reason: string | undefined;
+      /** The state a toggle is asking for, while the host is deciding. */
+      readonly pending: boolean | undefined;
+    };
+
+/** The host's answer, owned outside React: the header's control and Task 4's
+ *  status bar read one subscription rather than each asking the host. Unknown
+ *  until the host answers, and it renders no claim until then. */
+export class HostingStore {
+  #snapshot: HostingSnapshot = { kind: "unknown" };
+  readonly #listeners = new Set<() => void>();
+
+  /** The host is asked once, here, so every reader — the header's control and
+   *  Task 4's status bar — shares one answer rather than each asking. */
+  constructor() {
+    void this.read();
+  }
+
+  readonly subscribe = (listener: () => void): (() => void) => {
+    this.#listeners.add(listener);
+    return () => this.#listeners.delete(listener);
+  };
+
+  readonly get = (): HostingSnapshot => this.#snapshot;
+
+  #emit(next: HostingSnapshot): void {
+    this.#snapshot = next;
+    for (const listener of this.#listeners) listener();
+  }
+
+  /** The host's first answer. An unread host is `absent`, not "not live". A
+   *  build with no `fetch` at all reaches the same place, which is why this
+   *  catches rather than letting the constructor's promise reject unhandled. */
+  async read(): Promise<void> {
+    try {
+      const answer = await readHosting();
+      if (answer === undefined) {
+        this.#emit({ kind: "absent" });
+        return;
+      }
+      this.#emit({
+        kind: "known",
+        answer,
+        pairing: answer.lan ? await mintSession() : undefined,
+        reason: undefined,
+        pending: undefined,
+      });
+    } catch {
+      this.#emit({ kind: "absent" });
+    }
+  }
+
+  /** Turns the LAN on or off, and reads where the host landed.
+   *
+   *  A `200` means the host accepted the request, not that it moved: it answers
+   *  first and rebinds afterwards, so the state it asked for — and a refusal, if
+   *  it made one — is on the read that follows rather than in the PUT's body. */
+  async toggle(): Promise<void> {
+    const current = this.#snapshot;
+    if (current.kind !== "known") return;
+    const wanted = !current.answer.lan;
+    this.#emit({ ...current, pending: wanted, reason: undefined });
+
+    const outcome = await setLan(wanted);
+    if (!outcome.ok) {
+      // The host is the only thing that knows where its binding ended up: a
+      // refusal restores the old one, which is not necessarily where the button
+      // was pointing.
+      const now = await readHosting();
+      const answer = now ?? current.answer;
+      this.#emit({
+        kind: "known",
+        answer,
+        pairing: answer.lan ? current.pairing : undefined,
+        reason: outcome.reason,
+        pending: undefined,
+      });
+      return;
+    }
+
+    const { answer } = outcome;
+    this.#emit({
+      kind: "known",
+      answer,
+      pairing: answer.lan ? await mintSession() : undefined,
+      reason: answer.refusal ?? undefined,
+      pending: undefined,
+    });
+  }
 }
 
 function readStorage(): Storage | undefined {
@@ -358,25 +469,6 @@ function ShellMenuBar({
           "edit.delete",
         )}
       </MenuGroup>
-      <MenuGroup label={uiCopy.menus.insert}>
-        {/* The Add pane's own list, not a second copy of it: this menu had
-            drifted to five flat entries with no panel and no shape in it, and
-            "Line" meant whichever of the two things the reader happened to see
-            first. The groups are the pane's, so the word is as unambiguous
-            here as it is there. */}
-        {insertGroups().map((group) =>
-          group.label === undefined ? (
-            group.objects.map((object) => insertItem(object, session))
-          ) : (
-            <Menu.Group key={group.label}>
-              <Menu.GroupLabel className="editor-shell-menu-label">
-                {group.label}
-              </Menu.GroupLabel>
-              {group.objects.map((object) => insertItem(object, session))}
-            </Menu.Group>
-          ),
-        )}
-      </MenuGroup>
       <MenuGroup label={uiCopy.menus.view}>
         <ViewSetting
           label={uiCopy.view.dataSource}
@@ -444,6 +536,7 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
   let reactRoot: Root | undefined;
   const store = new SelectionStore();
   const sheet = new SheetStore();
+  const hosting = new HostingStore();
   const getView = (): EditorViewControls | undefined => view;
 
   function Shell(): React.JSX.Element {
@@ -540,24 +633,25 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
 
     return (
       <div className="editor-shell">
-        <header className="editor-shell-header editor-glass">
+        {/* A full-width strip, not a floating card: the header is the window's
+            top edge, and §7.1 gives it document- and editor-level actions only.
+            The brand, the three menus and the palette sit left; the publish
+            control is the editor's one filled accent button, on the right. No
+            tagline and no document readout — a per-document fact belongs on the
+            canvas (§7.5), and the readout only grew with the LAN. */}
+        <header className="editor-shell-header">
           <strong>{uiCopy.brand}</strong>
-          <span className="editor-shell-tagline">{uiCopy.editor}</span>
           <ShellMenuBar store={store} getView={getView} />
           <PaletteMenu
             storage={storage}
             palette={palette}
             onChange={setPalette}
           />
-          <PublishControl session={store.bridge?.session} publish={publish} />
-          <button
-            className="editor-shell-primary"
-            type="button"
-            data-vigilia-save-package=""
-            onClick={() => void store.bridge?.session.savePackage()}
-          >
-            {uiCopy.file.savePackage}
-          </button>
+          <PublishControl
+            session={store.bridge?.session}
+            publish={publish}
+            hosting={hosting}
+          />
         </header>
         <div className="editor-shell-body" data-collapsed={collapsed}>
           {/* The rail is the left edge's own column, ahead of the pane's, so

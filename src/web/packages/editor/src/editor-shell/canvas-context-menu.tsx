@@ -29,13 +29,13 @@ interface MenuGroup {
 /**
  * Empty-canvas entries, in the Add pane's own groups and order.
  *
- * **The third surface, folded into the first.** This used to read
+ * **The canvas's own copy, folded into the pane's.** This used to read
  * `CHART_FAMILIES` itself — so it could not drift on charts, which is why it
  * was never F1.7's defect — but it was still a third place that knew what can
- * be inserted, and the one that most needed the other two's rule. It offered
+ * be inserted, and the one that most needed the pane's rule. It offered
  * five of the things the product inserts, with no shape in it, so a
- * right-click on empty canvas was a strictly poorer version of the Insert menu
- * one gesture away. Now it is that menu's list: `insertGroups()` is the owner
+ * right-click on empty canvas was a strictly poorer version of the pane
+ * one gesture away. Now it is that list: `insertGroups()` is the owner
  * it already declared itself to be, and the group headings are what keep
  * "Line" from meaning whichever of the two things the reader saw first.
  *
@@ -47,8 +47,8 @@ function creationGroups(session: EditorActionFacade): readonly MenuGroup[] {
     label: group.label,
     entries: group.objects.map((object) => ({
       // A key only has to be unique inside its own group, and each of the
-      // pane's groups spells its objects once — the same reasoning the Insert
-      // menu and the Add pane already rest on.
+      // pane's groups spells its objects once — the same reasoning the pane
+      // already rests on.
       id: object.label,
       label: object.label,
       run: () => {

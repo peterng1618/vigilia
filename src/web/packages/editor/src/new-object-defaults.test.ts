@@ -601,15 +601,15 @@ describe("a swept angle through the persisted envelope", () => {
   ];
 
   it("puts both kinds in the one list every surface reads", () => {
-    // The single list is the guard against drift: the Add pane, the Insert menu
-    // and the inspector all read `SHAPE_KINDS`, so a kind absent from it cannot
+    // The single list is the guard against drift: the Add pane and the
+    // inspector all read `SHAPE_KINDS`, so a kind absent from it cannot
     // be inserted anywhere and a kind present in two lists can disagree.
     for (const kind of SWEPT) {
       expect(SHAPE_KINDS, kind).toContain(kind);
     }
   });
 
-  it("offers both kinds in the groups the Add pane and the Insert menu share", () => {
+  it("offers both kinds in the groups the Add pane and the canvas context menu share", () => {
     // The list is only half the claim; what an author can actually insert is
     // `insertGroups`, which is what both surfaces render. Asserting against the
     // list alone would pass with a group builder that filtered the new kinds

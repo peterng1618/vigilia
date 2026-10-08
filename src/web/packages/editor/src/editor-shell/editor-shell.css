@@ -426,14 +426,18 @@ body,
 /* Bible §3: the chrome sits at elevation 0 — no shadow, no blur. The glass
    treatment (gradient, inner light, drop shadow, backdrop blur) belongs to the
    floating clusters over the canvas, so the rail, the pane column and the
-   inspector keep a flat surface under every palette. The `:root:not(...)`
-   glass rules reach specificity (0,3,0), so this override names both the shell
-   root and the element to tie with them and win on source order. The header's
-   own strip is Task 3's, and its glass assertion in `shell-appearance.spec.ts`
-   still holds until then. */
-.editor-shell .editor-shell-rail.editor-glass,
-.editor-shell .editor-shell-panel.editor-glass,
-.editor-shell .editor-shell-inspector.editor-glass {
+   inspector keep a flat surface under every palette.
+
+   The `:root:not(...)` glass rules reach specificity (0,3,0). Naming the shell
+   root and the element ties them at (0,3,0), which left the flat treatment
+   winning on source order alone — a later equal-specificity rule would have
+   re-glassed the chrome with every gate green (`vg-207`). Naming the body
+   between them carries one class more, so this is (0,4,0) and strictly beats
+   the glass rule whether it is written before or after it. The header's own
+   strip is Task 3's and is not glass at all, so it is not named here. */
+.editor-shell .editor-shell-body .editor-shell-rail.editor-glass,
+.editor-shell .editor-shell-body .editor-shell-panel.editor-glass,
+.editor-shell .editor-shell-body .editor-shell-inspector.editor-glass {
   box-shadow: none;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
@@ -452,7 +456,19 @@ body,
     13px / 1.4 system-ui,
     sans-serif;
 }
-.editor-shell-header,
+/* §7.1: the header is the window's top edge. A full-width 42px strip at
+   elevation 0 with a hairline along its foot, rather than the floating glass
+   card it was: the chrome's surfaces start flat, and the header is chrome. */
+.editor-shell-header {
+  flex: none;
+  height: 42px;
+  padding: 0 14px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid var(--shell-edge);
+  background: var(--shell-surface);
+}
 .editor-shell-status {
   flex: none;
   margin: 8px 8px 0;
@@ -467,24 +483,21 @@ body,
   letter-spacing: 0.18em;
   color: var(--shell-accent);
 }
-.editor-shell-tagline {
-  color: var(--shell-muted);
-}
-/* The phone's address and its code, sat with the Save button. Sized by its own
-   content: the code is 135 px of it, the address is a line of text, and the
-   whole surface is absent whenever this host is loopback-only. */
-.editor-shell-publish {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 6px 10px;
-  border-radius: 10px;
-}
-.editor-shell-publish-text {
+/* The publish facts, in the popover the one button opens. A column, because it
+   stacks a sentence, a line of code and a code symbol — and what keeps the
+   header itself one row that never grows with the LAN. `--shadow-raised` is the
+   menu popup's own lift, so the two portalled surfaces float the same way. */
+.editor-shell-publish-popup {
   display: flex;
   flex-direction: column;
-  gap: 2px;
-  min-width: 0;
+  gap: 8px;
+  max-width: 34ch;
+  padding: 12px;
+  border-radius: 10px;
+  border: 1px solid var(--shell-edge);
+  background: var(--shell-surface);
+  color: var(--shell-text);
+  box-shadow: var(--shadow-raised);
 }
 .editor-shell-publish-label {
   color: var(--shell-muted);
@@ -501,14 +514,11 @@ body,
 .editor-shell-publish-expiry {
   color: var(--shell-muted);
   font-size: 11px;
-  /* A sentence, not a paragraph: it reads on a couple of lines rather than
-     stretching the header across the window. */
-  max-width: 30ch;
 }
 /* Only the box is themed. The symbols keep the fixed ink and paper Task 2.2
    gives them, because a code drawn in the shell's own foreground inverts under
    the dark palettes and stops scanning. */
-.editor-shell-publish svg {
+.editor-shell-publish-popup svg {
   flex: none;
   border-radius: 4px;
 }

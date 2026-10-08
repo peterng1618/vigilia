@@ -143,18 +143,22 @@ async function startHost(): Promise<ChildProcess> {
  *
  * **Only if it is off.** The hosting preference is a fact about this PC and
  * survives a restart (Task 3.1), so the second test's host boots already
- * serving the LAN and its button already says `Stop publishing` — clicking it
- * unconditionally would turn the LAN *off* and the QR would never appear.
+ * serving the LAN and its control already says `Stop publishing` — clicking it
+ * unconditionally would turn the LAN *off*.
+ *
+ * The control's own pressed state is the readout (§7.1 puts the address and the
+ * code behind the press rather than on the bar), so this waits on that and not
+ * on a code element: pressing again to reach the surface would stop the LAN
+ * this suite's loop needs.
  */
 async function startPublishing(page: Page): Promise<void> {
   const publish = page.locator("[data-vigilia-publish]");
-  const toggle = publish.getByRole("button");
-  await expect(toggle).toBeVisible({ timeout: 30_000 });
+  await expect(publish).toBeVisible({ timeout: 30_000 });
 
-  if ((await toggle.getAttribute("aria-pressed")) === "false")
-    await toggle.click();
+  if ((await publish.getAttribute("aria-pressed")) === "false")
+    await publish.click();
 
-  await expect(publish.locator("[data-vigilia-qr]")).toBeVisible({
+  await expect(publish).toHaveAttribute("aria-pressed", "true", {
     timeout: 30_000,
   });
 }

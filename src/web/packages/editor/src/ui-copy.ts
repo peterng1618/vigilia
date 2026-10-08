@@ -7,8 +7,9 @@ import type { ShortcutPrefix } from "./shortcut-manager/display.js";
 
 /**
  * The one name per chart family, hoisted so the layer role vocabulary can
- * compose a row's string from the same words the Add pane and the Insert menu
- * offer. A second spelling of `Gauge` would be a second owner of the same fact.
+ * compose a row's string from the same words the Add pane and the canvas
+ * context menu offer. A second spelling of `Gauge` would be a second owner of
+ * the same fact.
  */
 const chartFamilyLabels = {
   gauge: "Gauge",
@@ -85,7 +86,6 @@ const glassRefusals: Readonly<Record<string, string>> = {
  * telemetry values and developer errors stay outside this module. */
 export const uiCopy = {
   brand: "Vigilia",
-  editor: "Editor",
   /** The rail's four slots. A slot's word is both its tooltip and its
    *  accessible name: the slot is icon-only, so it has no text of its own, and
    *  a glyph stored as a translatable string would be announced as a word and
@@ -261,7 +261,6 @@ export const uiCopy = {
   menus: {
     file: "File",
     edit: "Edit",
-    insert: "Insert",
     view: "View",
   },
   /**
@@ -359,6 +358,9 @@ export const uiCopy = {
     start: "Publish to a phone",
     stop: "Stop publishing",
     starting: "Opening the LAN…",
+    /** The popover's own name, so a screen reader reaching the facts knows what
+     *  surface it is on before it reads them. */
+    surface: "Publishing",
     address: "Phone address",
     warning:
       "Plain HTTP on your own network — trusted networks only, never the internet.",
@@ -460,8 +462,8 @@ export const uiCopy = {
     } satisfies Record<DisplayLensId, string>,
   },
   palette: "Shell palette",
-  /** Chart family labels, shared by the Add panel, the Insert menu and the
-   *  layer row's role. */
+  /** Chart family labels, shared by the Add pane, the canvas context menu and
+   *  the layer row's role. */
   chartFamilies: chartFamilyLabels,
   /**
    * One label per primitive shape. The Add pane's shape list, the defaults that

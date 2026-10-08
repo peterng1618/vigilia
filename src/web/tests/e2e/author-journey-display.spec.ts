@@ -191,10 +191,13 @@ test.describe("the rebuilt composition, on a display", () => {
     await buildComposition(page);
     await importBackdrop(page, BACKDROP);
 
-    /** The header's own control, written where the host can serve it. */
+    /** The File menu's own Save row, written where the host can serve it. */
     const saveToHost = async (): Promise<void> => {
       const download = page.waitForEvent("download");
-      await page.locator("[data-vigilia-save-package]").click();
+      await page.getByRole("button", { name: "File", exact: true }).click();
+      await page
+        .getByRole("menuitem", { name: "Save package", exact: true })
+        .click();
       const file = await (await download).path();
       expect(file, "Save package should write a package").not.toBeNull();
       copyFileSync(file!, EXPORTED);

@@ -196,7 +196,7 @@ it("offers the Add pane's own list on empty canvas, and no object actions", asyn
   expect(opened.labels).toEqual(expected.map((object) => object.label));
 
   // And in the pane's groups, so "Line" — a chart and a shape — is told apart
-  // by the heading above it here as it is in the pane and the Insert menu.
+  // by the heading above it here as it is in the pane.
   expect(opened.groupLabels).toEqual(
     insertGroups()
       .map((group) => group.label)

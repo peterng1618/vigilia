@@ -339,17 +339,23 @@ test.describe("shell palettes", () => {
    *  recorded the change, so a later edit could have put it back unnoticed.
    *  `box-shadow` is the discriminator rather than `backdrop-filter`: this
    *  browser computes `backdrop-filter` to `none` under every palette, so it
-   *  would assert nothing at all. */
+   *  would assert nothing at all.
+   *
+   *  Measured on the zoom readout, a floating cluster over the canvas, because
+   *  the chrome is at elevation 0 now: the header's strip was the last chrome
+   *  element carrying the glass, and Task 3 took it flat with the rail, the pane
+   *  column and the inspector. `editor-shell.css`'s own comment names that set.
+   */
   test("editorial is flat and the other five are glass", async ({
     page,
   }, testInfo) => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     await openEditor(page);
-    const header = page.locator(".editor-shell-header");
+    const glass = page.locator(".editor-shell-zoom");
 
     await choosePalette(page, "editorial");
-    const flat = await header.evaluate((node) => {
+    const flat = await glass.evaluate((node) => {
       const style = getComputedStyle(node);
       return { shadow: style.boxShadow, image: style.backgroundImage };
     });
@@ -358,17 +364,17 @@ test.describe("shell palettes", () => {
 
     for (const palette of PALETTES.filter((p) => p !== "editorial")) {
       await choosePalette(page, palette);
-      const glass = await header.evaluate((node) => {
+      const lifted = await glass.evaluate((node) => {
         const style = getComputedStyle(node);
         return { shadow: style.boxShadow, image: style.backgroundImage };
       });
       expect(
-        glass.shadow,
-        `the ${palette} header has no glass shadow`,
+        lifted.shadow,
+        `the ${palette} cluster has no glass shadow`,
       ).not.toBe("none");
       expect(
-        glass.image,
-        `the ${palette} header has no glass gradient`,
+        lifted.image,
+        `the ${palette} cluster has no glass gradient`,
       ).not.toBe("none");
     }
   });

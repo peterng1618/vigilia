@@ -1119,13 +1119,13 @@ export class EditorSession {
   /** One card, as a unit. The copy's readings are envelope state, so they land
    * through the one writer above rather than beside it.
    *
-   * **The refusal is reported here rather than thrown at a caller.** Three
-   * surfaces dispatch this — the Add pane, the Insert menu and the canvas
-   * context menu — and two of them hold a `void`, so a thrown refusal reached
-   * nobody on those: the author clicked a card, nothing happened, nothing was
-   * said, and an unhandled rejection went to the console. Reporting at the one
-   * owner is what makes it told once on every surface, and the Add pane's
-   * `constructing` does not double-report because nothing rejects.
+   * **The refusal is reported here rather than thrown at a caller.** Two
+   * surfaces dispatch this — the Add pane and the canvas context menu — and the
+   * menu's entry holds a `void`, so a thrown refusal reached nobody there: the
+   * author clicked a card, nothing happened, nothing was said, and an unhandled
+   * rejection went to the console. Reporting at the one owner is what makes it
+   * told once on every surface, and the Add pane's `constructing` does not
+   * double-report because nothing rejects.
    */
   #insertCard(cardId: string): void {
     void insertCard(this.#options.shell.editor, cardId, {
