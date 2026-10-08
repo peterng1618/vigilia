@@ -23,7 +23,8 @@ export function ControlText(
     readonly onCommit: (value: string) => void;
   },
 ): React.JSX.Element {
-  const { label, id, disabled, refused, data, value, onCommit } = props;
+  const { label, id, disabled, refused, density, data, value, onCommit } =
+    props;
   const ids = useControlIds(id);
   const blocked = isBlocked({ disabled, refused });
   // `null` is not editing: the authored value is shown, and a publication moves
@@ -45,8 +46,9 @@ export function ControlText(
       label={label}
       labelFor={ids.control}
       refused={refused}
+      density={density}
     >
-      <ControlWell>
+      <ControlWell density={density}>
         <input
           {...data}
           id={ids.control}

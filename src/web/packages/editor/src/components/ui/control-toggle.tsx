@@ -21,7 +21,8 @@ export function ControlToggle(
     readonly onChange: (value: boolean) => void;
   },
 ): React.JSX.Element {
-  const { label, id, disabled, refused, data, checked, onChange } = props;
+  const { label, id, disabled, refused, density, data, checked, onChange } =
+    props;
   const ids = useControlIds(id);
   const blocked = isBlocked({ disabled, refused });
 
@@ -31,6 +32,7 @@ export function ControlToggle(
       label={label}
       labelFor={ids.control}
       refused={refused}
+      density={density}
     >
       <Switch.Root
         {...data}

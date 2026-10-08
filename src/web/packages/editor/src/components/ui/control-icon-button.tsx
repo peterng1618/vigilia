@@ -40,18 +40,27 @@ export function ControlIconButton(
   const ids = useControlIds(id);
   const blocked = isBlocked({ disabled, refused });
   const ref = useRef<HTMLButtonElement>(null);
+  const printed = shortcut?.printed;
+  const spoken = shortcut?.spoken;
 
   useEffect(() => {
     const button = ref.current;
     if (button === null) return;
     // Two calls rather than one with a conditional field: with
     // `exactOptionalPropertyTypes` on, a caller with no chord must omit it.
+    // The dependencies are the primitive strings, not the `shortcut` object: a
+    // caller building it inline hands a fresh object every render, which would
+    // tear down and rebuild the tooltip on each one.
     return (
-      shortcut === undefined
+      printed === undefined || spoken === undefined
         ? tooltip({ trigger: button, text: label })
-        : tooltip({ trigger: button, text: label, shortcut })
+        : tooltip({
+            trigger: button,
+            text: label,
+            shortcut: { printed, spoken },
+          })
     ).destroy;
-  }, [label, shortcut]);
+  }, [label, printed, spoken]);
 
   const tone = blocked
     ? "text-faint"

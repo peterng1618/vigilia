@@ -16,7 +16,29 @@ export type ControlProps = {
   readonly id?: string;
   readonly disabled?: boolean;
   readonly refused?: string;
+  readonly density?: ControlDensity;
   readonly data?: Readonly<Record<`data-${string}`, string>>;
+};
+
+/**
+ * Bible §3's row rhythm, as a typed choice rather than a number: a panel row is
+ * 26px, a dialog row 30, a settings row 32. A named value rather than a free
+ * `28` keeps the rhythm a design decision and the caller unable to go around it.
+ * The literal classes are spelled out because Tailwind scans source text — a
+ * template-built `h-[${n}px]` would never be compiled.
+ */
+export type ControlDensity = "panel" | "dialog" | "settings";
+
+const WELL_HEIGHT: Readonly<Record<ControlDensity, string>> = {
+  panel: "h-[26px]",
+  dialog: "h-[30px]",
+  settings: "h-[32px]",
+};
+
+const ROW_MIN_HEIGHT: Readonly<Record<ControlDensity, string>> = {
+  panel: "min-h-[26px]",
+  dialog: "min-h-[30px]",
+  settings: "min-h-[32px]",
 };
 
 /**
@@ -28,13 +50,15 @@ export type ControlProps = {
  * The outline is a real `outline`, not only a ring: forced-colours mode
  * overrides author outline colours for you, and a box shadow disappears there.
  */
-export const wellClasses =
-  "flex h-[26px] items-center rounded-md border border-edge bg-panel-2 px-[var(--space-6)] focus-within:outline focus-within:outline-2 focus-within:outline-accent focus-within:ring-3 focus-within:ring-accent/20";
+export function wellClasses(density: ControlDensity = "panel"): string {
+  return `flex ${WELL_HEIGHT[density]} items-center rounded-md border border-edge bg-panel-2 px-[var(--space-6)] focus-within:outline focus-within:outline-2 focus-within:outline-accent focus-within:ring-3 focus-within:ring-accent/20`;
+}
 
 export function ControlWell(props: {
+  readonly density?: ControlDensity | undefined;
   readonly children: React.ReactNode;
 }): React.JSX.Element {
-  return <div className={wellClasses}>{props.children}</div>;
+  return <div className={wellClasses(props.density)}>{props.children}</div>;
 }
 
 /** The three ids one control needs. */
@@ -80,12 +104,15 @@ export function ControlRow(props: {
   readonly label: string;
   readonly labelFor?: string | undefined;
   readonly refused?: string | undefined;
+  readonly density?: ControlDensity | undefined;
   readonly children: React.ReactNode;
 }): React.JSX.Element {
-  const { ids, label, labelFor, refused, children } = props;
+  const { ids, label, labelFor, refused, density = "panel", children } = props;
   const labelClasses = "text-xs text-muted";
   return (
-    <div className="flex min-h-[26px] flex-wrap items-center gap-x-[var(--space-8)] gap-y-[var(--space-4)]">
+    <div
+      className={`flex ${ROW_MIN_HEIGHT[density]} flex-wrap items-center gap-x-[var(--space-8)] gap-y-[var(--space-4)]`}
+    >
       {labelFor === undefined ? (
         <span id={ids.label} className={labelClasses}>
           {label}

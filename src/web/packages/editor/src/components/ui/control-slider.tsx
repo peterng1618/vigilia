@@ -1,6 +1,6 @@
 import { Slider } from "@base-ui/react/slider";
 import type * as React from "react";
-import { useRef } from "react";
+import { useEffect, useRef } from "react";
 import {
   ControlRow,
   type ControlProps,
@@ -37,6 +37,7 @@ export function ControlSlider(
     id,
     disabled,
     refused,
+    density,
     data,
     value,
     min,
@@ -53,9 +54,19 @@ export function ControlSlider(
   // clears it, which is what stops a stale cancel from eating a later commit.
   const pressing = useRef(false);
   const cancelled = useRef(false);
+  // Base UI's slider is not the accessible element: the nested `input[type=range]`
+  // is, and most aria props land on the thumb `div` beside it. So the refusal
+  // state is written onto the input directly, or a screen reader never hears it.
+  const input = useRef<HTMLInputElement>(null);
+  useEffect(() => {
+    const node = input.current;
+    if (node === null) return;
+    if (refused === undefined) node.removeAttribute("aria-disabled");
+    else node.setAttribute("aria-disabled", "true");
+  }, [refused]);
 
   return (
-    <ControlRow ids={ids} label={label} refused={refused}>
+    <ControlRow ids={ids} label={label} refused={refused} density={density}>
       <Slider.Root
         {...data}
         value={value}
@@ -93,6 +104,7 @@ export function ControlSlider(
             cancelled.current = false;
             return;
           }
+          if (blocked) return;
           onCommit(next);
         }}
         className="flex w-full items-center gap-[var(--space-6)]"
@@ -102,13 +114,14 @@ export function ControlSlider(
             <Slider.Indicator className="rounded-sm bg-accent" />
           </Slider.Track>
           <Slider.Thumb
+            inputRef={input}
             aria-labelledby={ids.label}
             aria-describedby={refused === undefined ? undefined : ids.reason}
             className="size-[10px] rounded-sm bg-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
           />
         </Slider.Control>
         <span
-          className={`${wellClasses} w-[36px] flex-none justify-end font-mono text-sm text-text`}
+          className={`${wellClasses(density)} w-[36px] flex-none justify-end font-mono text-sm text-text`}
         >
           {value}
         </span>

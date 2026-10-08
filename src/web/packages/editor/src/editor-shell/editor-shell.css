@@ -47,11 +47,18 @@ body,
      an alias is substituted where it is declared, so a root-only declaration
      would pin a subtree that re-declares `--shell-*` — the swatch chip — to
      the live palette. Nothing is renamed and no `--shell-*` is removed; this
-     block's ten lines are repeated in each palette below for that reason.
-     `--bg` is a `background` value and not a `color`: graphite and light make
-     it a gradient, the other four a flat colour.
-     `--faint` is derived rather than hand-tuned six times, because
-     "tertiary" is a relationship to `--muted` and not a sixth colour. */
+     block's thirteen lines are repeated in each palette below for that reason.
+     All thirteen of §4's roles are declared though three of them have no
+     consumer yet, on the user's instruction: a bible-named token the code
+     lacks gets declared rather than worked around, which reverses the earlier
+     "nothing declared for nothing" ruling recorded here.
+     `--bg` and `--stage` are `background` values and not `color`s: graphite
+     and light make them gradients, the other four a flat colour. A surface
+     paints either with the `background` shorthand, never with a `bg-*`
+     utility, which sets a *colour* and fails silent on a gradient.
+     `--faint` and `--edge-2` are derived rather than hand-tuned six times,
+     because "tertiary" is a relationship to `--muted` and a fainter boundary
+     one to `--edge`, not seventh and eighth colours. */
   --bg: var(--shell-backdrop);
   --panel: var(--shell-surface);
   --panel-2: var(--shell-surface-strong);
@@ -62,6 +69,9 @@ body,
   --accent: var(--shell-accent);
   --warn: var(--shell-warm);
   --hot: var(--shell-danger);
+  --stage: var(--shell-backdrop);
+  --hdr: var(--shell-surface);
+  --edge-2: color-mix(in srgb, var(--edge) 55%, transparent);
 }
 
 /* Editor-wide control tokens, so the existing panel controls inherit the
@@ -138,6 +148,9 @@ body,
   --accent: var(--shell-accent);
   --warn: var(--shell-warm);
   --hot: var(--shell-danger);
+  --stage: var(--shell-backdrop);
+  --hdr: var(--shell-surface);
+  --edge-2: color-mix(in srgb, var(--edge) 55%, transparent);
 }
 /* `ember`, `moss` and `plum` used to declare an accent and nothing else, so
    their surface, edge and text were editorial's byte for byte — a picker
@@ -171,6 +184,9 @@ body,
   --accent: var(--shell-accent);
   --warn: var(--shell-warm);
   --hot: var(--shell-danger);
+  --stage: var(--shell-backdrop);
+  --hdr: var(--shell-surface);
+  --edge-2: color-mix(in srgb, var(--edge) 55%, transparent);
 }
 [data-shell-palette="moss"] {
   --shell-backdrop: #cfe0bb;
@@ -192,6 +208,9 @@ body,
   --accent: var(--shell-accent);
   --warn: var(--shell-warm);
   --hot: var(--shell-danger);
+  --stage: var(--shell-backdrop);
+  --hdr: var(--shell-surface);
+  --edge-2: color-mix(in srgb, var(--edge) 55%, transparent);
 }
 [data-shell-palette="plum"] {
   --shell-backdrop: #dccdef;
@@ -213,6 +232,9 @@ body,
   --accent: var(--shell-accent);
   --warn: var(--shell-warm);
   --hot: var(--shell-danger);
+  --stage: var(--shell-backdrop);
+  --hdr: var(--shell-surface);
+  --edge-2: color-mix(in srgb, var(--edge) 55%, transparent);
 }
 [data-shell-palette="light"] {
   --shell-surface: #eff9f2bf;
@@ -234,6 +256,9 @@ body,
   --accent: var(--shell-accent);
   --warn: var(--shell-warm);
   --hot: var(--shell-danger);
+  --stage: var(--shell-backdrop);
+  --hdr: var(--shell-surface);
+  --edge-2: color-mix(in srgb, var(--edge) 55%, transparent);
 }
 
 /* The scale, name for name from `docs/design/design-language.md` §2–§4, which
@@ -316,7 +341,13 @@ body,
   /* Bible §4's roles, so a React surface writes `bg-panel-2`, `text-muted` or
      `border-edge` and the utility carries the palette in force. No `--color-bg`
      on purpose: a colour utility from it would set a *colour* to the gradient
-     stack `--bg` holds, which is an invalid declaration that fails silent. */
+     stack `--bg` holds, which is an invalid declaration that fails silent.
+     `--color-stage` is the one exception, and it is the same hazard: §4's
+     `--stage` is `--shell-backdrop`, so the utility is a *colour* in four
+     palettes and resolves a gradient in graphite and light. It exists because
+     §4 names the role and the role is declared here; a surface that paints it
+     uses the `background` shorthand (see `ControlSegmented`), and `bg-stage`
+     is the silent failure the line above warns about. */
   --color-panel: var(--panel);
   --color-panel-2: var(--panel-2);
   --color-edge: var(--edge);
@@ -326,6 +357,9 @@ body,
   --color-accent: var(--accent);
   --color-warn: var(--warn);
   --color-hot: var(--hot);
+  --color-stage: var(--stage);
+  --color-hdr: var(--hdr);
+  --color-edge-2: var(--edge-2);
 }
 
 /* The one shell utility no component writes yet, generated on purpose.

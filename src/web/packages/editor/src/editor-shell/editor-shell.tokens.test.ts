@@ -258,18 +258,24 @@ describe("shell token stylesheet", () => {
    *  `--shell-*` layer exists. An alias is substituted where it is declared, so
    *  a role declared once at `:root` would resolve the root's palette and pin a
    *  subtree that re-declares `--shell-*` — the swatch chip — to it. Every
-   *  palette therefore declares all ten, and each gets a utility name so a
+   *  palette therefore declares all thirteen, and each gets a utility name so a
    *  React surface writes `bg-panel-2` rather than an arbitrary value.
    *
-   *  `--stage`, `--hdr` and `--edge-2` are deliberately absent: their first
-   *  consumers arrive in later plans, and a colour declared for nothing is the
-   *  defect this plan exists to remove. */
+   *  `--stage`, `--hdr` and `--edge-2` were declared ahead of their consumers
+   *  on the user's instruction, reversing the earlier "nothing declared for
+   *  nothing" ruling recorded here: §4 names all thirteen roles, and the gap
+   *  was the detail pass every later plan composes from. A colour declared for
+   *  nothing is still the defect this plan exists to remove — the reversal is
+   *  the user's, and the three now have a named consumer path. */
   it("declares every §4 colour role in every palette block", () => {
     const roles = [
       "--bg",
+      "--stage",
+      "--hdr",
       "--panel",
       "--panel-2",
       "--edge",
+      "--edge-2",
       "--text",
       "--muted",
       "--faint",
@@ -302,6 +308,9 @@ describe("shell token stylesheet", () => {
       /^[ \t]*@theme[ \t]+inline[ \t]*\{([^}]*)\}/m.exec(css)?.[1] ?? "";
     // `--bg` is the one role with no utility: it holds a gradient stack, and a
     // colour utility from it would set a colour to that and fail silently.
+    // `--stage` holds the same stack under graphite and light but *does* get a
+    // utility, because §4 names the role; surfaces paint it with the
+    // `background` shorthand rather than `bg-stage`.
     for (const role of roles.filter((role) => role !== "--bg")) {
       expect(
         inline,

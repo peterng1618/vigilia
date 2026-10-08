@@ -50,6 +50,7 @@ export function ControlNumber(
     disabled,
     refused,
     data,
+    density,
     value,
     unit,
     min,
@@ -105,8 +106,9 @@ export function ControlNumber(
       label={label}
       labelFor={ids.control}
       refused={refused}
+      density={density}
     >
-      <ControlWell>
+      <ControlWell density={density}>
         <input
           {...data}
           id={ids.control}

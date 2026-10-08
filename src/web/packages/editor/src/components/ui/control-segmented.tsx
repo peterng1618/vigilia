@@ -10,7 +10,7 @@ import {
 
 /**
  * A 2–4 way exclusive choice where every option has to stay readable: a
- * `--panel-2` well holding the labels, the active one lifted to `--panel`
+ * `--panel-2` well holding the labels, the active one lifted to `--stage`
  * (bible §5).
  *
  * The arrow keys are the primitive's roving focus rather than one Tab stop per
@@ -27,19 +27,29 @@ export function ControlSegmented<T extends string>(
     readonly onChange: (id: T) => void;
   },
 ): React.JSX.Element {
-  const { label, id, disabled, refused, data, value, options, onChange } =
-    props;
+  const {
+    label,
+    id,
+    disabled,
+    refused,
+    density,
+    data,
+    value,
+    options,
+    onChange,
+  } = props;
   const ids = useControlIds(id);
   const blocked = isBlocked({ disabled, refused });
+  const refusedState = refused === undefined ? undefined : true;
 
   return (
-    <ControlRow ids={ids} label={label} refused={refused}>
+    <ControlRow ids={ids} label={label} refused={refused} density={density}>
       <ToggleGroup
         {...data}
         id={ids.control}
         value={[value]}
         aria-labelledby={ids.label}
-        aria-disabled={refused === undefined ? undefined : true}
+        aria-disabled={refusedState}
         aria-describedby={refused === undefined ? undefined : ids.reason}
         onValueChange={(next) => {
           const chosen = next[0];
@@ -52,7 +62,8 @@ export function ControlSegmented<T extends string>(
           <Toggle
             key={option.id}
             value={option.id}
-            className="rounded-sm px-[var(--space-8)] py-[var(--space-4)] text-xs text-muted data-[pressed]:bg-panel data-[pressed]:text-text focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+            aria-disabled={refusedState}
+            className="rounded-sm px-[var(--space-8)] py-[var(--space-4)] text-xs text-muted data-[pressed]:text-text data-[pressed]:[background:var(--stage)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
           >
             {option.name}
           </Toggle>

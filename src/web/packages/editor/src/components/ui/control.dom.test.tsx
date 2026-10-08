@@ -358,8 +358,25 @@ it("a refused select cannot be changed by pointer or keyboard", async () => {
   const trigger = labelled("Shows");
   await click(trigger);
   await flush();
-  const refusedOption = document.querySelector<HTMLElement>('[role="option"]');
-  if (refusedOption !== null) await click(refusedOption);
+  // The popup must actually open, or the refusal below proves nothing: a bare
+  // `if (option !== null)` would pass on an implementation that renders no list
+  // at all. `readOnly` locks the value but not the browsing, so the options are
+  // there and the press is what must be refused.
+  const refusedOptions = Array.from(
+    document.querySelectorAll<HTMLElement>('[role="option"]'),
+  );
+  expect(
+    refusedOptions.length,
+    "the popup did not open, so the refusal below proves nothing",
+  ).toBeGreaterThan(1);
+  const refusedSecond = refusedOptions.find((option) =>
+    (option.textContent ?? "").includes("Memory used"),
+  );
+  expect(refusedSecond).toBeTruthy();
+  if (refusedSecond !== undefined) {
+    await pointerDown(refusedSecond);
+    await click(refusedSecond, 1);
+  }
   await press(trigger, "ArrowDown");
   await press(trigger, "Enter");
   await flush();
@@ -408,9 +425,14 @@ it("a refused segmented choice cannot be changed by pointer or arrow keys", asyn
   );
   const group = labelled("Align");
   await press(group, "ArrowRight");
-  for (const option of document.querySelectorAll<HTMLElement>(
-    "[role='group'] button",
-  )) {
+  const refusedSegments = Array.from(
+    document.querySelectorAll<HTMLElement>("[role='group'] button"),
+  );
+  // Each segment is its own focus target, so each carries the refusal state.
+  for (const segment of refusedSegments) {
+    expect(segment.getAttribute("aria-disabled")).toBe("true");
+  }
+  for (const option of refusedSegments) {
     await click(option);
   }
   expect(refused).not.toHaveBeenCalled();
@@ -448,6 +470,9 @@ it("a refused slider cannot be moved by arrow keys or by pointer", async () => {
     'input[type="range"]',
   );
   expect(refuser, "the slider renders no focus target").toBeTruthy();
+  // The nested `input[type=range]` is the element a screen reader reaches, so
+  // the refusal state has to reach it and not only the root beside it.
+  expect(refuser?.getAttribute("aria-disabled")).toBe("true");
   if (refuser !== null) {
     refuser.focus();
     await press(refuser, "ArrowRight");

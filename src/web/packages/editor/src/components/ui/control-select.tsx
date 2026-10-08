@@ -49,6 +49,7 @@ export function SelectControl(
     id,
     disabled,
     refused,
+    density,
     data,
     value,
     options,
@@ -64,6 +65,7 @@ export function SelectControl(
       label={label}
       labelFor={ids.control}
       refused={refused}
+      density={density}
     >
       <Select.Root
         items={options.map((option) => ({
@@ -83,7 +85,7 @@ export function SelectControl(
           disabled={disabled}
           aria-disabled={refused === undefined ? undefined : true}
           aria-describedby={refused === undefined ? undefined : ids.reason}
-          className={`${wellClasses} w-full justify-between gap-[var(--space-6)] text-sm text-text`}
+          className={`${wellClasses(density)} w-full justify-between gap-[var(--space-6)] text-sm text-text`}
         >
           {adornment === undefined ? null : (
             <span aria-hidden className="flex flex-none items-center">
