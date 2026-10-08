@@ -81,6 +81,30 @@ describe("the player's load-failure page", () => {
     ).toContain(":focus-visible");
   });
 
+  it("takes the whole display, not the row the artboard lives in", async () => {
+    // The artboard host is the middle row of the display's column, so a page
+    // mounted *in* it would be a panel between two bands with black above and
+    // below it — on the one screen whose entire message is that there is nothing
+    // to show. `showLoadFailure` is the caller that decides where.
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    document.body.replaceChildren();
+    const chrome = document.createElement("div");
+    chrome.dataset["vigiliaChrome"] = "top";
+    const host = document.createElement("div");
+    host.id = "artboard";
+    document.body.append(chrome, host);
+
+    const { showLoadFailure } = await import("./load-failure.js");
+    showLoadFailure(new Error("boom"));
+
+    const view = document.querySelector<HTMLElement>(
+      "[data-vigilia-load-failure]",
+    );
+    expect(view?.parentElement).toBe(document.body);
+    expect(document.getElementById("artboard")).toBeNull();
+    expect(document.querySelector("[data-vigilia-chrome]")).toBeNull();
+  });
+
   it("carries its own stylesheet once, however many times it is built", () => {
     mount();
     mount();

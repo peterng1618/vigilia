@@ -30,16 +30,16 @@ async function reasonShownFor(
   fetcher: typeof fetch,
   id = "does-not-exist",
 ): Promise<string> {
-  const host = document.createElement("div");
-  document.body.replaceChildren(host);
+  document.body.replaceChildren();
   try {
     await loadHostedTheme(id, fetcher);
   } catch (error) {
-    showLoadFailure(host, error);
+    showLoadFailure(error);
   }
   return (
-    host.querySelector<HTMLElement>("[data-vigilia-load-failure-reason]")
-      ?.textContent ?? ""
+    document.body.querySelector<HTMLElement>(
+      "[data-vigilia-load-failure-reason]",
+    )?.textContent ?? ""
   );
 }
 
@@ -72,13 +72,12 @@ describe("the reason a display shows when the host does not answer with a theme"
 
   it("keeps the page around it, so the fix is one line and not a redesign", async () => {
     // F1.14's page is right and stays right: the reader still has both ways on.
-    const host = document.createElement("div");
-    document.body.replaceChildren(host);
+    const host = document.body;
 
     try {
       await loadHostedTheme("does-not-exist", async () => HOST_NOT_RUNNING());
     } catch (error) {
-      showLoadFailure(host, error);
+      showLoadFailure(error);
     }
 
     expect(host.querySelector("h1")?.textContent).toBe(
@@ -101,9 +100,8 @@ describe("the reason a display shows when the host does not answer with a theme"
       thrown = error;
     }
 
-    const host = document.createElement("div");
-    document.body.replaceChildren(host);
-    showLoadFailure(host, thrown);
+    const host = document.body;
+    showLoadFailure(thrown);
 
     // The person fixing this is not looking at a phone, which is why the
     // detail was kept in the first place. It reaches them through the console
@@ -124,9 +122,8 @@ describe("every other cause the loader can reach", () => {
   it("still says what it always said when the id is missing entirely", () => {
     // `main.ts` reaches this before any fetch. The sentence was already right;
     // moving it into the copy owner must not change a word of it.
-    const host = document.createElement("div");
-    document.body.replaceChildren(host);
-    showLoadFailure(host, new ThemeLoadError("missing-id", "No ?theme=."));
+    const host = document.body;
+    showLoadFailure(new ThemeLoadError("missing-id", "No ?theme=."));
 
     expect(host.textContent).toContain("A theme id is required.");
   });
@@ -174,11 +171,10 @@ describe("every other cause the loader can reach", () => {
   });
 
   it("says a sentence for a cause it does not recognise", async () => {
-    const host = document.createElement("div");
-    document.body.replaceChildren(host);
+    const host = document.body;
     const cause = new TypeError("Cannot read properties of null (reading 'x')");
 
-    showLoadFailure(host, cause);
+    showLoadFailure(cause);
 
     // Not silence, and not `String(error)`: a display that says nothing
     // actionable has failed at its job, and one that says "Cannot read
@@ -189,10 +185,9 @@ describe("every other cause the loader can reach", () => {
   });
 
   it("says a sentence for a thrown non-Error too", async () => {
-    const host = document.createElement("div");
-    document.body.replaceChildren(host);
+    const host = document.body;
 
-    showLoadFailure(host, "just a string");
+    showLoadFailure("just a string");
 
     expect(host.textContent).toContain("could not start");
     expect(host.textContent).not.toContain("just a string");

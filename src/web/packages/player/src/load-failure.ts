@@ -14,12 +14,17 @@ import { loadFailureReason, uiCopy } from "./ui-copy.js";
  * the player already goes (`reportRepaintError`, `reportGlassError`). A phone
  * on the wall is reachable over a USB cable.
  */
-export function showLoadFailure(host: HTMLElement, error: unknown): void {
+export function showLoadFailure(error: unknown): void {
   // The error object, not a string of it: the stack is the part a developer
   // needs and the part `String(error)` throws away.
   console.warn("Vigilia: theme did not load.", error);
   document.title = uiCopy.loadFailure.documentTitle;
-  host.replaceChildren(
+  // The display's own page, not the artboard's. The artboard host is the middle
+  // row of the display's column, so a page mounted in it would be a panel
+  // between two bands — and this is the one failure that replaces the whole
+  // screen, not a part of it. Nothing is drawn behind it: every cause that
+  // reaches here arrives before a scene is mounted.
+  document.body.replaceChildren(
     loadFailureView(loadFailureReason(error), () => window.location.reload()),
   );
 }

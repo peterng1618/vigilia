@@ -86,7 +86,7 @@ async function start(host: HTMLElement): Promise<void> {
   }
 
   if (requested === null) {
-    showLoadFailure(host, new ThemeLoadError("missing-id", "No ?theme=."));
+    showLoadFailure(new ThemeLoadError("missing-id", "No ?theme=."));
     return;
   }
 
@@ -101,7 +101,7 @@ async function start(host: HTMLElement): Promise<void> {
       session,
     );
   } catch (error) {
-    showLoadFailure(host, error);
+    showLoadFailure(error);
     return;
   }
 }
