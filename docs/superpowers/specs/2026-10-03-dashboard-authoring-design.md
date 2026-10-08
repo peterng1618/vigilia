@@ -446,6 +446,23 @@ UI imports.** It is already a direct dependency, it carries `Dialog`, `Collapsib
 — and the repo already owns components in shadcn's idiom, so this matches how it works
 rather than imposing something new.
 
+> **Reversed 2026-10-08 by [decision 0036](../../decisions/0036-base-ui-is-the-editors-single-primitive-library.md),
+> and the reversal is a measurement rather than a preference.** The ruling above assumes Radix can
+> carry all five surfaces. It cannot: `@radix-ui/react-dropdown-menu` and
+> `@radix-ui/react-context-menu` export **no `Anchor`** — the string appears in no file of either
+> package's `.d.ts` — because Radix positions menu content to its Trigger, and two of the five are
+> anchored to a pointer instead (the Insert `+` chooser and the canvas context menu). Plan 9's Phase
+> 1 stopped at its own Step 4 on exactly this.
+>
+> The ruling also had the ledger backwards. Measured across `packages/*/src`: **no menu surface is
+> Radix and no Radix file is a menu.** The editor has five Base UI imports and three Radix files —
+> `components/ui/dialog.tsx`, `popover.tsx`, `colour-picker.tsx`, **297 lines between them, with two
+> consumers**. The diagnosis in the table above stands and its remedy is superseded: **the three
+> Radix files move to Base UI**, the five menu surfaces do not move, and the two Radix menu packages
+> installed for the stopped phase come back out. Base UI is also the more actively maintained of the
+> two — v1.0 stable in December 2025 against a Radix release gap from August 2025 to June 2026, with
+> the original Radix authors now working on Base UI. See rung 4 of the note.
+
 **This is a mechanism-boundary change and the reuse gate says so.** A primitive library is
 exactly "an owner where a wrong decision is expensive and invisible" — nothing fails, it
 just renders or behaves wrongly. So it gets a `docs/decisions/` note and the seven rungs
@@ -454,8 +471,8 @@ layout work**, because migrating the menus touches the same tests that assert th
 behaviour — including the `ResizeObserver` and `getAnimations` stubs those files carry
 specifically because Base UI's popups need them.
 
-Cost if wrong: five files and their tests revert. Cost of *not* deciding it: the redesign
-adds a Dialog and a Collapsible from a third source, and the incoherence compounds.
+Cost if wrong: **three files and their two consumers** revert — the five migrated surfaces the
+original ruling priced are no longer the thing at risk, because they do not move.
 
 ### 9. Appearance
 

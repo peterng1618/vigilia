@@ -16,8 +16,6 @@ inventory, not a release-grade transitive audit. Provenance:
 | @base-ui/react 1.8.0 | MIT | editor shell primitives |
 | @radix-ui/react-popover 1.1.23 | MIT | editor colour-picker popover |
 | @radix-ui/react-dialog 1.2.0 | MIT | editor keyboard-shortcut reference dialog |
-| @radix-ui/react-dropdown-menu 2.1.25 | MIT | editor menus |
-| @radix-ui/react-context-menu 2.3.8 | MIT | editor canvas context menu |
 | lucide-react 1.48.0 | ISC AND MIT (Feather-derived subset) | editor action-bar icons |
 | systeminformation 5.33.13 | MIT | host hardware metrics (no dependencies of its own) |
 | qr 0.7.2 | MIT OR Apache-2.0 | QR symbol for the display link (no dependencies of its own) |
