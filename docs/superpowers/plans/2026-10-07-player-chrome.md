@@ -285,7 +285,14 @@ one is pinned by a test in the task that owns the code** — the task is named i
    screen together; at 390px one sentence is 3 lines and the pair is ~108px of an 844px phone.
    A person expects the dashboard to still be the thing they are looking at. [Task 2.3 — pinned
    by a test that raises the availability strip and the connection banner together and asserts
-   the artboard keeps more than half the viewport and is not degenerate.]
+   the **host** keeps more than half the viewport, the chrome takes less than half, and the
+   artboard is refitted to what is left. **Corrected 2026-10-08: the pin originally said the
+   *artboard* keeps more than half, which is unreachable and has nothing to do with the chrome.**
+   `e2e-missing-sensor` is 640×360, so at 390×844 `contain` gives a painted height of ~219px —
+   **26% of the phone with no chrome at all** — and even the starter's 4:3 artboard reaches only
+   292.5px, 34.7%. The letterbox, not the chrome, is what takes the rest. What the requirement
+   can be held to is the share the chrome itself costs, and the host's height is that share's
+   complement.]
 3. **A theme whose artboard is the shape of the viewport.** The starter's artboard is 4:3, so
    *some* phone orientation always has bars — but a 1040×780 display, or any desktop preview,
    has `bars: {x: 0, y: 0}` (measured, 3.7% covered today) and the chrome has no bar to hide in.
@@ -293,11 +300,19 @@ one is pinned by a test in the task that owns the code** — the task is named i
    by a test at 1040×780, the artboard's own aspect.]
 4. **A `cover` artboard, where the painted box is *larger* than its viewport.** `portrait-cover`
    at 844×390 draws 1964px of artboard into an 844px viewport and crops 376 units off the top
-   and bottom (measured). An assertion that the artboard fits inside the host is false here by
-   design, so the chrome's no-overlap claim has to be made against the *painted* box rather than
-   the host. A person expects a deliberate cover crop to be the only thing cropping their
-   composition. [Task 2.2 — pinned by a test on `?theme=portrait-cover` at 844×390 with the
+   and bottom (measured). A person expects a deliberate cover crop to be the only thing cropping
+   their composition. [Task 2.2 — pinned by a test on `?theme=portrait-cover` at 844×390 with the
    scaffold strip up.]
+   **Corrected 2026-10-08 from Task 2.2's measurement: two separate claims were run together, and
+   the second was answered by the wrong box.** (a) "The artboard fits inside its host" is false
+   here by design — that half was right. (b) "No strip covers the artboard" is **not** answered by
+   the painted box: the painted box is *unclipped*, so at 844×390 it reads 844 × 1833.78 and runs
+   the full height of the viewport, under the band a strip sits in, giving a permanent false
+   positive of **24304.5625** that no fix could ever remove. Fabric clips to the host, so the
+   pixels a reader can actually lose are `host ∩ painted`, and `overlap(strip, host) === 0`
+   implies `overlap(strip, host ∩ painted) === 0`. **The host is the discriminating box.** The
+   plan's own figure was wrong besides: `portrait-cover`'s painted box is 844 wide, not 1964 —
+   1964.2 is `1024 × 1.9181818`, which is `stress`'s width copied into this entry.
 5. **The load-failure page, which is the one surface with no artboard to take room from.** It is
    mounted *inside* the artboard host today (`load-failure.ts:22`), so the moment that host
    becomes the middle row of a column, the page becomes a panel between two bands with black
@@ -1367,6 +1382,30 @@ git commit -m "test(player): no diagnostic strip covers the phone's artboard, at
 `openCanvasPlayer`'s `&static=1` does not suppress any strip — `showScaffoldBanner` and
 `showCropNotice` are both independent of the animation flag (measured).
 
+> **Corrected 2026-10-08 from Task 2.2's own run at `bf05b11e`: three of Step 1's assertions
+> pinned the pre-fix geometry the fix removes, and a fourth was unreachable.**
+>
+> - **`painted.w ≈ 1040` is false after the fix, by construction.** 1040×780 is the artboard's own
+>   aspect only against the *full* viewport; once the bands take 57.6px the host is 1040×722.4 and
+>   `contain` fits by height, giving `painted.w` = **962.667**. The assertion pinned the geometry
+>   the chrome had just removed. What replaces it is stronger and true either way:
+>   `painted.h < viewport.height` — the artboard is *shorter* than the viewport by the chrome's
+>   height, which is the proof the room was taken rather than the strip moved onto the artboard.
+> - **The cover test's `overlap(strip, painted) === 0` cannot hold.** Corrected in Review Focus 4
+>   above; the discriminating box is the host.
+> - **`host.h ≈ 390` is unreachable on the preview bundle.** `main.ts:206` raises
+>   `showScaffoldBanner` for **every** fixture theme, so no preview URL is "a display with nothing
+>   to say"; 390 − 28.797 = **361.203**. The true form is `host.h + strip.h ≈ viewport.height`, and
+>   the empty case belongs to Task 2.3's real host.
+> - **Q3 is not this task's.** Review Focus 2 names Task 2.3, and this task's third case is the
+>   `assets` compatibility pin. The executor kept the plan's subject and corrected its claim, which
+>   is the right call; the "artboard keeps more than half the viewport" assertion moved to Task 2.3
+>   where it belongs, corrected there.
+>
+> **All three landed failing, for three different reasons** — the plan predicted that they might be
+> green on arrival, and that prediction was wrong too. Recorded because the difference matters: a
+> test that fails on a stale assertion is not evidence of a defect in the product.
+
 - [ ] **Step 1: Write the failing tests**
 
 ```ts
@@ -1473,7 +1512,10 @@ PLAYWRIGHT_JSON_OUTPUT_NAME=test-results/player-chrome-shapes.json \
   npx playwright test tests/e2e/player-chrome.spec.ts --workers=1 --reporter=json
 ```
 
-Expected: PASS — 9 tests per project. Read `test-results/player-chrome-shapes.json`.
+Expected: PASS — **7 tests per project, 14 in total**, which is Task 2.1's four plus this task's
+three, each project. The plan said 9 and was wrong; observed at `bf05b11e` as
+`expected: 14, unexpected: 0`, exit 0, the count read from the JSON report. Read
+`test-results/player-chrome-shapes.json`.
 
 - [ ] **Step 5: Commit**
 
@@ -1564,7 +1606,20 @@ test("two strips at once leave the artboard more than half the phone", async ({ 
 
   expect(geometry.strips.length).toBe(2);
   expect(geometry.degenerate).toBe(false);
-  expect(geometry.painted.h).toBeGreaterThan(PHONE.portrait.height / 2);
+  // **The host keeps more than half the phone, not the artboard.** A 16:9 or 4:3
+  // artboard on a 390x844 portrait display is letterboxed down to ~219px or
+  // ~292px *before any chrome exists*, so `painted.h > height / 2` is unreachable
+  // here for a reason that has nothing to do with this plan. What the chrome is
+  // being asked not to do is eat the display, and that is the host's share.
+  expect(geometry.host.h).toBeGreaterThan(PHONE.portrait.height / 2);
+  // And the artboard was refitted to what is left, not merely drawn smaller:
+  // `contain` fills the host on one axis, and for a 640x360 artboard on this
+  // display that axis is the width, so this is an either/or and not a height.
+  expect(
+    Math.abs(geometry.painted.w - geometry.host.w) < 0.5 ||
+      Math.abs(geometry.painted.h - geometry.host.h) < 0.5,
+    "the artboard was not refitted to the box the chrome left it",
+  ).toBe(true);
   // The ceiling's own number, said once: past half the screen the conversation
   // is about the design, not about this test (Q3 in the plan).
   expect(chrome).toBeLessThan(PHONE.portrait.height / 2);
@@ -1608,23 +1663,41 @@ PLAYWRIGHT_JSON_OUTPUT_NAME=test-results/host-chrome.json \
 > pre-Phase-1 layout and none of them can happen.** Phase 1 is committed (`8cb99931`, `bd6e1e29`,
 > `66ee3414`), so the availability strip no longer covers the top of the artboard, and
 > `document.body` has **three** children — `vigilia-chrome-top`, `#artboard`,
-> `vigilia-chrome-bottom` — not one. **All three tests are expected to be green on arrival**, and
-> that is the correct outcome for a task that adds only tests. This is the same defect Task 2.1's
-> Step 2 carried, where a step asking for an impossible red run was read as a passed gate.
-> **The red run this task needs is Step 3's break.** Report the actual counts either way, and
-> report which of the three were green.
+> `vigilia-chrome-bottom` — not one. **This is the same defect Task 2.1's Step 2 carried**, where a
+> step asking for an impossible red run was read as a passed gate. **The red run this task needs
+> is Step 3's break.** Report the actual counts either way, and report which of the three were
+> green.
 
-Expected: **green on arrival**, per the correction above — the plan's original expectation was
-written before Phase 1 landed. The claim each test makes is still worth keeping on its own terms:
-a green-on-arrival test is what stops a later change reverting the fix. **The host's own geometry
-is the thing being measured**, so if any test does fail, that is a finding about the host
-surface rather than about the chrome — say so rather than adjusting the test.
+Expected: **tests 1 and 3 green on arrival; test 2 fails on its own arithmetic.** Test 2's
+`painted.h > portrait.height / 2` was unreachable — `e2e-missing-sensor` is 640×360, so at
+390×844 `contain` paints ~219px, well under half, and the letterbox rather than the chrome is what
+takes the rest. **That assertion has since been corrected in this plan to the host's share**, so
+by the time you run it, test 2 should be green too; if it is not, the failure is a finding about
+the host surface rather than about the chrome, and the assertion should be reported rather than
+quietly loosened.
 
 - [ ] **Step 3: The deliberate break**
 
 Re-add `position: fixed; left: 0; right: 0; top: 0; z-index: 9` to the availability strip in
 `chrome.ts`, rebuild, re-run. Expected: tests 1 and 2 fail on `over the artboard`. Restore,
 rebuild, and record what the break did.
+
+> **Corrected 2026-10-08 from Task 2.2's measured breaks, before this task was dispatched: two of
+> the three descriptions below do not match what the breaks actually do, and a third break is
+> needed.** Task 2.2 performed the equivalent breaks on the preview spec and observed:
+>
+> - **The crop-strip break reaches only the tests whose theme raises a crop strip.** `portrait-cover`
+>   raises none (only `vigilia-scaffold`), so a break inside `showCropNotice` cannot fail a cover
+>   test. The equivalent here is that an availability-strip break reaches test 1 and test 2 only if
+>   both themes actually raise the availability strip — check that in the run rather than assuming,
+>   and if one of them does not, the break that proves it is a **scaffold** break.
+> - **Deleting `flex: 1 1 auto` from `#artboard` does not produce "the host assertions fail".**
+>   Measured: `#artboard` collapses to zero height, the canvas is never visible, and every test that
+>   waits for ink dies in a 30 s timeout. A real break with the wrong description — the description
+>   is corrected here so a timeout is not read as a new class of failure.
+> - **The break that actually proves a cover/strip test can fail is a `position: fixed` scaffold
+>   banner**, which failed two tests in Task 2.2. If the prescribed breaks leave the discriminating
+>   assertion unproven, find the break that does fail it, observe it, and say which one worked.
 
 - [ ] **Step 4: Run them to verify they pass**
 
