@@ -1894,6 +1894,18 @@ an absolutely-positioned overlay into a row. Names to expect in the failures and
 here: `vg-140` (`display-fabric.spec.ts`'s intermittent fit-mode ink read), `vg-143`, and the
 Playwright 1.63.0 trace-teardown `ENOENT`.
 
+> **Walked 2026-10-08, and the failures were none of those three.** Both suites were red on
+> arrival with a defect this plan caused and this task's own text did not anticipate: `#artboard`
+> was `position:absolute; inset:0` before Phase 1, so every assertion deriving an expected box
+> from `page.viewportSize()` was correct then and wrong now. Three failures in
+> `display-fabric.spec.ts` (`662` against `720`, `748` against `839`, `842` against `900`) and one
+> in `host-player.spec.ts` (`expectContainFit`, scale `0.7768` against a viewport-derived
+> `0.8077` — the 29px of chrome over 941; it reaches only the read where `contain` binds on
+> height). **Fixed on the fly at `c145598a`, not filed**, because the cause is named with a line,
+> the fix is in one owner per file, and the correct behaviour is this plan's own requirement.
+> **The lesson is the one this plan keeps re-learning: a step that predicts which tests will fail
+> is a step that has not run them.**
+
 - [ ] **Step 2: Look at the captures the change affects**
 
 ```bash
@@ -1931,6 +1943,21 @@ Your report says, in its own words and with the numbers you read:
 This task changes no file. If it changes one — a corrected number in a doc, a comment — commit
 it explicitly with `docs(player): <what was wrong>` and say in the message which claim it
 corrects.
+
+> **Walked 2026-10-08, and it changed files after all — the Step 1 correction above is why.**
+> Suites after the fix: `display-fabric` + `host-bleed` = **53 expected / 0 unexpected / 0
+> flaky**, `host-player` + `host-media` (`desktop-host`) = **28 / 0 / 0**, both from JSON
+> reports, with the two skips being the by-design project guards; the fixes landed as
+> `c145598a`. Both registered captures were **re-taken rather than merely inspected**, because
+> the copies on disk predated Phase 1 and a stale capture is not evidence of anything:
+> `player-reference` now shows the amber availability strip in its own band above an artboard
+> whose top edge — the `VIGILIA` wordmark — is no longer under it, and `publish-loop-live` shows
+> the connection strip in the bottom band with the artboard clear of it. Both PNGs were opened
+> and read, not judged by size.
+>
+> **The plan's own warning held: the four open questions Q1–Q4 are unowned and go to the
+> controller**, and `vg-191` and `vg-192` are the two rows this plan's last phase filed rather
+> than settled.
 
 ---
 
