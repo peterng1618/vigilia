@@ -225,7 +225,8 @@ variable references for an on-scale literal, cannot see numeric React style
 props, and skips rem/calc. Report those limits honestly; rendered/browser
 checks cover treatment, and review covers use of named tokens. Do not claim
 this lexical guard alone proves all design decisions. `--stage`, `--hdr` and
-`--edge-2` arrive with their first consumers.
+`--edge-2` are **declared** — Task 3's control set is their first consumer — so
+all thirteen §4 roles ship in all six palettes, as ADR 0040 now says.
 
 ### Task 3: The control set
 
@@ -429,6 +430,45 @@ Each difference is either fixed or recorded in the commit as deliberate. **If th
 git add src/web/tests/e2e/design-language.spec.ts docs/evidence/screenshots/README.md docs/evidence/screenshots/
 git commit
 ```
+
+---
+
+### Delivered-state reconciliation — Tasks 3–4 are complete
+
+Do not re-execute Tasks 3–4. Their landed contract supersedes the historical
+steps above.
+
+**Task 3 — the control set.** Ten controls plus `InspectorSection` in
+`packages/editor/src/components/ui/`, one file each, on Base UI (`0038`).
+`ControlProps` is `{ label, id?, disabled?, refused?, density?, data? }`;
+`ControlDensity` is `panel | dialog | settings`, mapping to §3's 26/30/32px row
+rhythm. `refused` is a reason, not a flag: it keeps the row, names the reason
+through `aria-describedby`, and refuses at `readOnly` rather than going natively
+disabled, so refusal reaches a keyboard user. `data` belongs to the focus target,
+never a wrapper. `InspectorSection` renders `data-vigilia-section` from its own
+`id` — the hook plan 3's locators read. `wellClasses` carries the hover raise, and
+a blocked well does not.
+
+**Task 4 — the parity gate.** `control-fixture.html` is a **second build**
+(`npm run build:fixture`, `vite.config.fixture.ts`, `emptyOutDir: false`) into the
+editor's `dist`. Both workflows run it after the editor build and it is
+deliberately **not** chained into `npm run build`, so production output stays free
+of it. `tests/e2e/design-language.spec.ts` asserts §3's steps, §4's roles, §5's
+24×24 targets, 4.5:1 text and 3:1 boundaries across six palettes, forced colours,
+two viewports plus 200% zoom, reduced motion, and the hover raise — that last
+**in graphite alone**, because it is a rule about roles, whose two ends were
+measured distinct in all six. Three layers, three jobs: the source guard proves
+tokens in source, the fixture proves rendered treatment, jsdom proves the contract
+a component builds.
+
+**Known limits, not defects.** The source guard reads CSS spacing properties and
+Tailwind spacing utilities in `.tsx`, negatives included; it does not read
+`h-`/`size-`/`translate-`, numeric React style props, or rem/calc. §5's ratios
+hold with two pinned floors under the gate — vg-200 (the resting `--edge`) and
+vg-201 (`--warn` text) — and vg-202 (well padding) and vg-203 (the duplicated
+draft/commit keyboard logic in `control-text`/`control-number`, owner plan 3) are
+filed. The `@theme static` header cites §2–§4 while §4's roles live in
+`@theme inline`; deferred, not wrong.
 
 ---
 
