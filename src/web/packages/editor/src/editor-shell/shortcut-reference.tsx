@@ -11,8 +11,9 @@ import { uiCopy } from "../ui-copy.js";
  * `object-actions.ts` owns which actions exist and the dock only draws them.
  *
  * It is React rather than one of the editor's three native `<dialog>`s for the
- * one reason decision `0033` gives: §8 rules the Dialog comes from Radix, and
- * the fourth hand-rolled modal is the outcome that ruling exists to prevent.
+ * one reason decision `0033` gives: the Dialog comes from the editor's one
+ * primitive library — Base UI, per decision `0038` — and a fourth hand-rolled
+ * modal is the outcome that argument exists to prevent.
  */
 export function ShortcutReference({
   open,

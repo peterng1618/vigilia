@@ -423,8 +423,9 @@ describe("ShortcutManager and a modal", () => {
 
   it("refuses every binding while a dialog is open, and answers again once it closes", () => {
     // Both shapes, because the editor has both: the three native modals and the
-    // Radix one this plan adds. A predicate that knew only one of them would let
-    // an author edit the document they are reading about.
+    // library one, which decision `0038` puts on Base UI. A predicate that knew
+    // only one of them would let an author edit the document they are reading
+    // about.
     const manager = new ShortcutManager();
     const remove = vi.fn();
     manager.register("edit.delete", remove);
@@ -436,17 +437,20 @@ describe("ShortcutManager and a modal", () => {
     expect(remove).not.toHaveBeenCalled();
     native.remove();
 
-    // Radix 1.2.0's real output: `role="dialog"` and **no `aria-modal`** — it
-    // hides the content's siblings with `aria-hidden` instead. Built to match
-    // that, not to match an assumption, because a predicate keyed on
-    // `aria-modal` passes this test against a shape Radix never renders and
-    // then defers nothing in the product.
-    const radix = document.createElement("div");
-    radix.setAttribute("role", "dialog");
-    document.body.append(radix);
+    // The library's real output: `role="dialog"` and **no `aria-modal`** — it
+    // hides the content's siblings with `aria-hidden` instead. Measured on
+    // `@radix-ui/react-dialog` 1.2.0, and **re-measured on `@base-ui/react`
+    // 1.8.0 after the move**, which sets `role: 'dialog'` on its popup and
+    // carries no `aria-modal` anywhere in the package. Built to match that, not
+    // to match an assumption, because a predicate keyed on `aria-modal` passes
+    // this test against a shape neither library renders and then defers nothing
+    // in the product.
+    const library = document.createElement("div");
+    library.setAttribute("role", "dialog");
+    document.body.append(library);
     window.dispatchEvent(new KeyboardEvent("keydown", { key: "Delete" }));
     expect(remove).not.toHaveBeenCalled();
-    radix.remove();
+    library.remove();
 
     window.dispatchEvent(new KeyboardEvent("keydown", { key: "Delete" }));
     expect(remove).toHaveBeenCalledOnce();
@@ -470,15 +474,17 @@ describe("ShortcutManager and a modal", () => {
   });
 
   it("asks about the dialog before the same dispatch that tears it down", () => {
-    // The browser ordering jsdom does not reproduce on its own. Radix's
-    // dismissable layer binds `keydown` on `document` with `{ capture: true }`
-    // and runs before this manager's `window` bubble listener; its handler
-    // calls `preventDefault()` then `onDismiss()` synchronously, and `Presence`
-    // unmounts from a layout effect the moment
-    // `getComputedStyle(node).animationName === "none"`. So by the time the
-    // guard runs, the dialog is already out of the document and Escape leaks —
-    // the sheet closes *and* `view.exit-group` runs on one press. The guard has
-    // to answer as of the start of the dispatch, not when it happens to run.
+    // The worst-case ordering, reproduced because jsdom does not produce it on
+    // its own. Both libraries bind `keydown` on `document` with
+    // `{ capture: true }`, which runs before this manager's `window` bubble
+    // listener. Radix then unmounted its dialog synchronously — its
+    // `Presence` read `getComputedStyle(node).animationName`, found `"none"` and
+    // tore down from a layout effect inside the same dispatch, which is
+    // `vg-187`: the sheet closed *and* `view.exit-group` ran on one press. Base
+    // UI keeps the popup mounted behind `hidden` until the close settles, so it
+    // may not be reachable now. **This case is kept either way**: it pins the
+    // guard's contract, which is to answer as of the start of the dispatch and
+    // not when it happens to run, independently of which library is underneath.
     const manager = new ShortcutManager();
     const exit = vi.fn();
     manager.register("view.exit-group", exit);
@@ -486,9 +492,9 @@ describe("ShortcutManager and a modal", () => {
     dialog.setAttribute("role", "dialog");
     document.body.append(dialog);
 
-    // Radix's ordering, reproduced: a document-capture listener removes the
-    // dialog synchronously, inside the one dispatch, before the window bubble
-    // listener runs. Mounted and unmounted inside the test.
+    // That ordering, reproduced: a document-capture listener removes the dialog
+    // synchronously, inside the one dispatch, before the window bubble listener
+    // runs. Mounted and unmounted inside the test.
     const teardown = (): void => dialog.remove();
     document.addEventListener("keydown", teardown, { capture: true });
 

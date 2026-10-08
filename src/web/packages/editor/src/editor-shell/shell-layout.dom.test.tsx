@@ -171,19 +171,24 @@ it("mounts the editorial palette, menus, pane bar, inspector and dock hosts", ()
  * This one runs before the menu tests on purpose.
  *
  * A Base UI menu opened by any earlier test in this file leaves jsdom's frame
- * pipeline in a state where a Radix Dialog's close frame never settles — the
- * dialog is unmounted through `Presence`, which waits for a frame the stalled
- * environment never delivers, and the test times out at 20s. That is the same
- * `vg-135` stall family, one surface further out: it is a property of the file,
- * not of the change under test, and it is why this test is not last.
+ * pipeline in a state where this test stalls. That is the same `vg-135` stall
+ * family, one surface further out: it is a property of the file, not of the
+ * change under test, and it is why this test is not last.
+ *
+ * **Re-measured after the dialog moved from Radix to Base UI** (decision
+ * `0038`, Task 1.1): it still stalls, and it now *passes slowly* rather than
+ * timing out — 20 656 ms at the end of the file against 126 ms here, same
+ * commit, same command. So `vg-186`'s premise survives the migration even
+ * though the library under the sheet changed; only its symptom softened.
  */
 it("opens the shortcut sheet from the shell's own surface, and closes it again", async () => {
   const root = document.createElement("div");
   const layout = createShellLayout(root);
   // No wait before the read: `flushSync` inside `showShortcuts` settles the
   // external store synchronously, so the result is observable without a poll —
-  // the same reason `setBridge` uses it. The wait after the close is real,
-  // because Radix unmounts through `Presence`.
+  // the same reason `setBridge` uses it. The wait after the close is real:
+  // neither library takes a popup out of the document synchronously, and Base
+  // UI holds it behind `hidden` until the close settles.
   layout.showShortcuts();
   const dialog = document.querySelector('[role="dialog"]');
   expect(dialog).not.toBeNull();

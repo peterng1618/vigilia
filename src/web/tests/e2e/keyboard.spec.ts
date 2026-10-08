@@ -73,7 +73,15 @@ test("? opens the sheet, and the document behind it does not change", async ({
   await expect(selected).toBeVisible();
 
   await page.keyboard.press("?");
-  const sheet = page.locator('[role="dialog"]');
+  // **By role *and* name.** The wrapper renders no `Dialog.Title`, so the sheet's
+  // accessible name is its `aria-label`; a migration to a library that wires its
+  // own labelling would leave the *attribute* reading back while the name a
+  // screen reader announces changed. Asking by name is the assertion that sees
+  // the difference (Review Focus 2), and `role` is what the shortcut manager's
+  // own modal guard matches on (`shortcut-manager/index.ts:121-123`).
+  const sheet = page.getByRole("dialog", {
+    name: uiCopy.shortcuts.reference,
+  });
   await expect(sheet).toBeVisible();
   // Every action is listed, which is the sheet's whole promise: §7's figure for
   // the table is eighteen, Task 3.3's `?` row makes it nineteen, and the row

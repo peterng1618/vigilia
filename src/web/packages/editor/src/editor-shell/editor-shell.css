@@ -827,7 +827,7 @@ body,
   font-variant-numeric: tabular-nums;
 }
 
-/* The `?` reference is a Radix dialog, portalled to `body` like the menu popup
+/* The `?` reference is a Base UI dialog, portalled to `body` like the menu popup
    and the tooltip, so its classes are named here rather than reached by a
    descendant selector. The scrim sits above the tooltip's `z-index: 50` and the
    Base UI positioner's `60`, both of which are `body` siblings. */

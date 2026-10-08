@@ -106,13 +106,15 @@ const MODIFIED_KEY_DEFERRED_ACTION_IDS: ReadonlySet<ProductShortcutId> =
  *
  * Both shapes, because the editor has both: the three native modals
  * (`new-document-chooser.ts`, `persistence-manager`, `theme-library-dialog`)
- * and the Radix `Dialog` from decision `0033`.
+ * and the library `Dialog` decision `0038` puts on Base UI.
  *
  * **`[role='dialog']` alone, with no `aria-modal` clause.** Task 3.1 established
  * that `@radix-ui/react-dialog` 1.2.0 never sets `aria-modal` — the string
  * survives only in its source maps, in a comment calling its aria-hiding of the
- * content's siblings "the better supported equivalent to setting aria-modal".
- * A selector requiring `aria-modal='true'` therefore matches no Radix dialog
+ * content's siblings "the better supported equivalent to setting aria-modal" —
+ * and **that is unchanged by the move to Base UI**: `@base-ui/react` 1.8.0's
+ * dialog sets `role: 'dialog'` on the popup and no `aria-modal` anywhere in the
+ * package. A selector requiring `aria-modal='true'` therefore matches no dialog
  * this app can render: the guard would not defer while the sheet is open, and
  * `Ctrl+Z` would edit the document the author is reading about. `dialog[open]`
  * and `[role='dialog']` between them cover every modal in the tree — this editor
@@ -152,13 +154,18 @@ export class ShortcutManager {
 
   constructor() {
     // Two listeners on one owner, split by phase: the modal state is *sampled*
-    // at `window` capture and *consulted* at `window` bubble. It cannot be asked
-    // at dispatch time. Radix's dismissable layer binds `keydown` on `document`
-    // with `{ capture: true }`, calls `preventDefault()` then `onDismiss()`, and
-    // `Presence` unmounts from a layout effect when
-    // `getComputedStyle(node).animationName === "none"` — synchronously, and all
-    // before a window bubble listener runs. Window capture precedes document
-    // capture, so the sample is the state at the start of the dispatch.
+    // at `window` capture and *consulted* at `window` bubble. **The split is
+    // what makes the guard independent of *when* the library unmounts**, which
+    // is a library's business and has already changed once. Radix's dismissable
+    // layer bound `keydown` on `document` with `{ capture: true }` and its
+    // `Presence` unmounted from a layout effect the moment
+    // `getComputedStyle(node).animationName === "none"` — synchronously, inside
+    // the same dispatch, which is `vg-187`. Base UI binds the same document
+    // capture (`floating-ui-react/hooks/useDismiss`) but keeps its popup in the
+    // DOM behind a `hidden` attribute until the close settles, so the hazard is
+    // not necessarily reachable now. **Window capture precedes document capture,
+    // so the sample is the state at the start of the dispatch either way**, and
+    // the browser proof `tests/e2e/keyboard.spec.ts` asserts covers both.
     //
     // The dispatch itself stays in the bubble phase: the layer panel defers
     // arrow keys with `stopPropagation()` in a React handler, so an earlier
