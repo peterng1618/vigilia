@@ -229,3 +229,46 @@ test("every dock control stays reachable with the rail's column in place", async
     ).toBeGreaterThanOrEqual(14);
   }
 });
+
+/**
+ * The panes' chrome starts at one offset, whichever slot is showing.
+ *
+ * `editor-shell.css` drops a 12px `margin-top` on the sections inside a pane,
+ * and a pane is excluded from that rule. When the exclusion was keyed on the
+ * *absence* of `data-vigilia-panel` and the attribute was written conditionally,
+ * three of the four panes were not excluded: their title bar, body and footer
+ * sat 12px lower than the Composition pane's. No gate can see it — jsdom has no
+ * layout, so the defect exists only in a rendered box — which is why this is a
+ * browser case and why it measures a position rather than counting elements.
+ *
+ * The panes are measured one at a time because only the chosen slot's pane is
+ * laid out; the others are `hidden`.
+ */
+test("every pane's title bar sits at the same top offset", async ({
+  page,
+}, testInfo) => {
+  test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+
+  await page.goto(EDITOR);
+  await expect(
+    page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+  ).toBeVisible();
+
+  const tops: [string, number][] = [];
+  for (const slot of ["Composition", "Add", "Tokens", "Document"]) {
+    await openPane(page, slot);
+    const title = page.locator(
+      ".editor-shell-pane:not([hidden]) > .editor-shell-pane-title",
+    );
+    await expect(title, `${slot} is the pane showing`).toHaveCount(1);
+    const box = await title.boundingBox();
+    expect(box, `${slot} draws a title bar`).not.toBeNull();
+    tops.push([slot, Math.round(box?.y ?? Number.NaN)]);
+  }
+
+  const baseline = tops[0]?.[1];
+  expect(
+    tops.map(([, y]) => y),
+    `title-bar tops: ${tops.map(([slot, y]) => `${slot} ${y}`).join(", ")}`,
+  ).toEqual(tops.map(() => baseline));
+});

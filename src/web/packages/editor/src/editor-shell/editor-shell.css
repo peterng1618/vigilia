@@ -811,7 +811,7 @@ body,
   padding-bottom: 6px;
 }
 .editor-shell-panel label,
-.editor-shell-panel section:not([data-vigilia-panel]),
+.editor-shell-panel section:not(.editor-shell-pane),
 .editor-shell-inspector label,
 .editor-shell-inspector section {
   display: block;
@@ -1298,6 +1298,11 @@ body,
   font-weight: 600;
   letter-spacing: normal;
   text-transform: none;
+  /* The hairline its own comment says a pane name does not wear. The editorial
+     rule above adds it to every panel h2, and this rule out-ranks it, so the
+     two resets have to be spelled here rather than assumed dropped. */
+  border-bottom: 0;
+  padding-bottom: 0;
 }
 .editor-shell-pane-title {
   display: flex;

@@ -93,6 +93,22 @@ describe("object action registry", () => {
       "delete",
     ]);
     expect(ids.some((id) => id.startsWith("arrange:"))).toBe(false);
+
+    // A locked object, so the expectation is not only about the two ends of the
+    // boundary: a filter that answered "is anything selected" would pass both
+    // cases above and fail this one. `unlock` replaces `lock`, and the five
+    // actions whose managers refuse a locked object are gone from the middle.
+    const locked: ActionGate = {
+      target: () => target({ locked: true }),
+      canArrange: () => false,
+    };
+    expect(objectActionsFor(locked).map((action) => action.id)).toEqual([
+      "front",
+      "bring-forward",
+      "send-backward",
+      "back",
+      "unlock",
+    ]);
   });
 });
 

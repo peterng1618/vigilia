@@ -178,13 +178,16 @@ it("gives every pane the bible's chrome, named by the section the specs browse",
   const root = document.createElement("div");
   const layout = createShellLayout(root);
 
-  // One pane per rail slot, each wearing a title bar and hidden unless its slot
-  // is chosen. The Composition pane keeps the `layers` name the browser specs
-  // browse by, so the chrome moved around the contract rather than the contract
-  // moving; the other panes are named by the panels inside them, so they carry
-  // no `data-vigilia-panel` of their own (two would be a strict-mode failure).
+  // One pane per rail slot, each wearing a title bar, its own `data-vigilia-panel`
+  // name and `hidden` unless its slot is chosen. The Composition pane's name is
+  // the `layers` the browser specs and the panel CSS already browse by, so the
+  // chrome moved around the contract rather than the contract moving; the other
+  // three are named for their slot. The pane is the only writer of that name.
   const panes = root.querySelectorAll(".editor-shell-pane");
   expect(panes).toHaveLength(4);
+  expect(
+    [...panes].map((pane) => pane.getAttribute("data-vigilia-panel")).sort(),
+  ).toEqual(["add", "document", "layers", "tokens"]);
   for (const pane of panes) {
     expect(pane.querySelector(".editor-shell-pane-title")).not.toBeNull();
   }

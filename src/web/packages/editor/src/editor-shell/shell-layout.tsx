@@ -573,10 +573,10 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
                 footer toolbar — and each is `hidden` rather than unmounted,
                 because the persistent hosts below live inside them and React
                 re-parents those nodes; a pane taken off the tree would take its
-                host's content with it. Only the Composition pane carries a
-                `data-vigilia-panel` name, because only its is a browsable
-                contract: the Add and Document panes are named by the panels
-                inside them. */}
+                host's content with it. The pane is the one owner of the
+                `data-vigilia-panel` name, so the Composition pane's is
+                `layers` — the name the specs and the panel CSS already browse
+                by — and the other three are named for their rail slot. */}
             <Pane
               id="layers"
               title={uiCopy.panels.layers}
@@ -590,6 +590,7 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
                 insert host: `§5.2` puts the asset path in Add, and a fourth
                 slot for it would be a slot the bible does not name. */}
             <Pane
+              id="add"
               title={uiCopy.rail.slots.add}
               icon={RAIL_GLYPHS.add}
               hidden={slot !== "add"}
@@ -598,6 +599,7 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
               <Host node={hosts.assets} hidden={slot !== "add"} />
             </Pane>
             <Pane
+              id="tokens"
               title={uiCopy.rail.slots.tokens}
               icon={RAIL_GLYPHS.tokens}
               hidden={slot !== "tokens"}
@@ -605,6 +607,7 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
               <Host node={hosts.tokens} hidden={slot !== "tokens"} />
             </Pane>
             <Pane
+              id="document"
               title={uiCopy.rail.slots.document}
               icon={RAIL_GLYPHS.document}
               hidden={slot !== "document"}

@@ -179,7 +179,9 @@ export function createNewObjectPanel(
 ): NewObjectPanel {
   let currentGlobals = globals;
   const root = document.createElement("section");
-  root.dataset["vigiliaPanel"] = "add";
+  // No `data-vigilia-panel` here: the pane that mounts this panel owns that
+  // name now, and a second element under `[data-vigilia-panel="add"]` is a
+  // strict-mode failure for every spec that browses by it.
   const heading = document.createElement("h2");
   heading.textContent = uiCopy.panels.add;
   /**

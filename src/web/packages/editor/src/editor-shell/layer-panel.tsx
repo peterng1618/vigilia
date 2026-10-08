@@ -806,8 +806,11 @@ export function LayerPanel({
 /**
  * The Composition pane's footer toolbar: the object actions the registry says
  * this selection can run, and nothing else (§7.3, "a pane footer is bounded by
- * its pane"). It is a Pane footer rather than a row of the tree, so the
- * toolbar stays put while the list scrolls beneath it.
+ * its pane"). It is a Pane footer rather than a row of the tree, so it belongs
+ * to the pane and not to the list. The pane still scrolls as one — the scroll
+ * box is `aside.editor-shell-panel`, which holds header, body and this footer —
+ * so it does not stay pinned while the list moves under it. That gap against
+ * §7.7 is filed as `vg-208`; the aside is deliberately the single scroller.
  *
  * Eligibility is the registry's alone — `objectActionsFor` is the dock's own
  * filter, so the two surfaces agree until an action is added to the registry,
