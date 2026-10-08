@@ -10,10 +10,12 @@ import { isDesktopSurface } from "./surface.js";
  * element's resolved spacing is on bible §3's scale, that no gated element
  * paints a colour that is not one of bible §4's roles, that every target has
  * bible §5's 24×24 hit area without overlapping its neighbour, that required
- * text and the focus boundary clear §5's ratios in all six palettes, that focus
- * survives forced colours, that layout holds at 1280×720, 1440×900 and 200%
- * zoom, and that reduced motion leaves nothing animating. It is the *model*
- * every later plan's parity capture follows.
+ * text and the focus boundary clear §5's ratios in all six palettes, that hover
+ * raises a control's resting `--edge` to `--muted` (and a blocked well and the
+ * checked toggle do not move), that focus survives forced colours, that layout
+ * holds at 1280×720, 1440×900 and 200% zoom, and that reduced motion leaves
+ * nothing animating. It is the *model* every later plan's parity capture
+ * follows.
  *
  * **What this file does not prove, and must not be read as proving.**
  *
@@ -26,7 +28,8 @@ import { isDesktopSurface } from "./surface.js";
  * - **Not behaviour.** A screenshot is one rendered state. Keyboard models,
  *   refusal paths, draft semantics and mutation safety are proven in jsdom by
  *   `components/ui/control.dom.test.tsx`; the states here are *rendered*, not
- *   driven, except the two this file drives (the invalid draft and the focus).
+ *   driven, except the states this file drives (the invalid draft, the focus,
+ *   and the hover).
  * - **Not the editor.** The fixture shows the control set in isolation on a
  *   panel, not inside a pane; plan 2 onward captures real surfaces.
  *
@@ -785,6 +788,72 @@ test("the control set renders in the design language", async ({
       }
     }
   }
+
+  // ── 4d. Hover raises a control's resting edge to `--muted` ────────────────
+  //
+  // Bible §5 rule 6 is a rendered outcome, so it is read from the rendered
+  // border, not from the class a jsdom test pins: a Tailwind compile miss, a
+  // specificity loss to the resting `border-edge`, or a palette where `--muted`
+  // and `--edge` read alike would all pass a class check and fail the eye. A
+  // raised edge is a *changed* border colour on hover; a **blocked** well and
+  // the **checked** toggle must not change.
+  await setPalette(page, "graphite");
+  const borderOf = (selector: string, useParent = false): Promise<string> =>
+    page.$eval(
+      selector,
+      (el, parent: boolean) => {
+        const node = parent ? el.parentElement : el;
+        return node === null ? "" : getComputedStyle(node).borderTopColor;
+      },
+      useParent,
+    );
+  const hoverChanges = async (
+    selector: string,
+    useParent: boolean,
+  ): Promise<readonly [string, string]> => {
+    await page.mouse.move(0, 0);
+    const rest = await borderOf(selector, useParent);
+    await page.hover(selector);
+    const on = await borderOf(selector, useParent);
+    await page.mouse.move(0, 0);
+    return [rest, on];
+  };
+
+  const [wellRest, wellHover] = await hoverChanges(
+    "[data-fixture='number'] input",
+    true,
+  );
+  expect(
+    wellHover,
+    `the well's edge did not rise on hover (${wellRest} -> ${wellHover})`,
+  ).not.toBe(wellRest);
+
+  const [blockedRest, blockedHover] = await hoverChanges(
+    "[data-fixture='refused-number'] input",
+    true,
+  );
+  expect(
+    blockedHover,
+    `a blocked well raised its edge on hover (${blockedRest} -> ${blockedHover})`,
+  ).toBe(blockedRest);
+
+  const [uncheckedRest, uncheckedHover] = await hoverChanges(
+    "[data-fixture='toggle'] button",
+    false,
+  );
+  expect(
+    uncheckedHover,
+    `the unchecked toggle's edge did not rise on hover (${uncheckedRest} -> ${uncheckedHover})`,
+  ).not.toBe(uncheckedRest);
+
+  const [checkedRest, checkedHover] = await hoverChanges(
+    "[data-fixture='toggle-on'] button",
+    false,
+  );
+  expect(
+    checkedHover,
+    `the checked toggle's accent border was overridden on hover (${checkedRest} -> ${checkedHover})`,
+  ).toBe(checkedRest);
 
   for (const line of ratios) {
     // The table is the evidence a reader needs to check a ratio without a

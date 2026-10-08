@@ -85,7 +85,7 @@ export function SelectControl(
           disabled={disabled}
           aria-disabled={refused === undefined ? undefined : true}
           aria-describedby={refused === undefined ? undefined : ids.reason}
-          className={`${wellClasses(density)} w-full justify-between gap-[var(--space-6)] text-sm text-text`}
+          className={`${wellClasses(density, blocked)} w-full justify-between gap-[var(--space-6)] text-sm text-text`}
         >
           {adornment === undefined ? null : (
             <span aria-hidden className="flex flex-none items-center">

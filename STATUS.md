@@ -33,11 +33,11 @@ backlog it produced stays live in the register.
 
 ## Last completed change
 
-- **The final review's fix dispatch landed** (base `e3bd9871`): nine contract corrections — ADR 0040's shipped thirteen roles, bible §10's dock exception, the mockup's well rule, §5 rule 6's hover text, and the spec's ratchet, spacing, contrast and handoff wording — plus the code findings B1–B7.
-- **B1 — the parity gate is no longer red on a clean checkout**: both workflows run `npm run build:fixture -w @vigilia/editor` after the editor build, so `control-fixture.html` reaches `dist`; verified that a production build emits it not, and that the CI sequence emits both.
-- **B4 — the source guard's §3 rule now covers Tailwind spacing utilities in `.tsx`**, so `p-[26px]` no longer slips through `biblePx`; scoped so `h-[26px]` and `size-[24px]` stay tier 2, and `design:check` is green over 12 files.
-- **B2 and B5 landed**: `InspectorSection` renders `data-vigilia-section` from its id, and the slider's and segmented's `data` moved onto the focus target; B7 (duplicated draft/commit logic) is parked as `vg-203` under plan 3.
-- **Bible §5 rule 6 is now implemented**: the well and the unchecked toggle raise `--edge` to `--muted` on hover, and a blocked control suppresses the raise.
+- **Fix round 2 on plan 1's final review** (base `7f7ae410`): the scoped re-review's three residuals plus A4's partial, R1–R4.
+- **R1 — a refused select or swatch no longer raises its well's edge**: the blocked state reaches `control-select.tsx` (swatch inherits), pinned by a DOM case that fails when reverted.
+- **R2 — the Tailwind tier no longer evades negative utilities**: `-mt-[26px]` is held to §3 like `p-[26px]`; `design:check` stays green over 12 files and `biblePx` is unwidened.
+- **R4 — §5 rule 6 is now asserted rendered**: the parity gate hovers a well and an unchecked toggle and reads a changed `borderTopColor`, and asserts a checked toggle and a blocked well do not move; red-proved three ways (drop the hover class, drop the blocked suppression, outrank the checked border).
+- **R3 — the `biblePx` comment reads as a set, not a full enumeration**, and spec §13.1 now names the hover assertion.
 
 ## Next
 

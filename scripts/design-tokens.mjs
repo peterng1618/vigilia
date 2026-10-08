@@ -43,15 +43,16 @@ const SPACING_PROPERTY =
 
 /**
  * Tailwind's spacing utilities with an arbitrary length — `p-[26px]`,
- * `gap-x-[7px]`, `md:mt-[30px]`. In a `.tsx` there is no declaration property
- * to read, so the utility name is the signal that the px is a spacing
- * decision; these are held to §3's steps the way a CSS spacing property is.
- * Scoped to these names on purpose: `h-[26px]`, `size-[24px]`,
- * `translate-x-[10px]` and `min-w-[10rem]` are not spacing properties and stay
- * in tier 2. Longest name first so `px-`/`gap-x-` win over `p-`/`gap-`.
+ * `gap-x-[7px]`, `md:mt-[30px]`, and their negatives `-mt-[26px]`. In a `.tsx`
+ * there is no declaration property to read, so the utility name is the signal
+ * that the px is a spacing decision; these are held to §3's steps the way a
+ * CSS spacing property is. Scoped to these names on purpose: `h-[26px]`,
+ * `size-[24px]`, `translate-x-[10px]` and `min-w-[10rem]` are not spacing
+ * properties and stay in tier 2. Longest name first so `px-`/`gap-x-` win over
+ * `p-`/`gap-`, and the optional leading `-` covers a negative margin or inset.
  */
 const TW_SPACING =
-  /(?<![\w-])(?:px|py|pt|pb|pl|pr|p|mx|my|mt|mb|ml|mr|m|gap-x|gap-y|gap|space-x|space-y)-\[(\d+(?:\.\d+)?)px\](?![\w-])/g;
+  /(?<![\w-])-?(?:px|py|pt|pb|pl|pr|p|mx|my|mt|mb|ml|mr|m|gap-x|gap-y|gap|space-x|space-y)-\[(\d+(?:\.\d+)?)px\](?![\w-])/g;
 
 /**
  * A block whose whole selector list is one of these *defines* tokens, so its
@@ -161,14 +162,15 @@ function position(text, index) {
 }
 
 /**
- * Violations in one file's source. `biblePx` is the tier-2 allowlist: the px
- * lengths the bible fixes outside §3's spacing table — §3's row rhythms (26,
- * 30, 32), the rail/pane widths (46, 246, 276), the 999px pill, the 11px
- * swatch and §6's 1.6–1.8px stroke widths. It does NOT cover everything the
- * bible prints: §2's type sizes 13/15/19 are deliberately absent, because a
- * value here is allowed *anywhere*, so adding them would license
- * `padding: 13px`. The steps and `0`/`1` are allowed without it, so an empty
- * allowlist narrows the rule rather than disabling it.
+ * Violations in one file's source. `biblePx` is the tier-2 allowlist: px
+ * lengths the bible fixes outside §3's spacing table, whatever the property —
+ * the row rhythms, the rail and pane widths, the pill and toggle heights, the
+ * slider's track and value well, the swatch, and §6's stroke widths among
+ * them. It is the set of values that actually appear, not an enumeration of
+ * every number the bible prints. What it deliberately does NOT cover is §2's
+ * type sizes 13/15/19, because a value here is allowed *anywhere*, so adding
+ * them would license `padding: 13px`. The steps and `0`/`1` are allowed
+ * without it, so an empty allowlist narrows the rule rather than disabling it.
  */
 export function check(relPath, source, biblePx = []) {
   const path = String(relPath ?? "");
@@ -290,6 +292,16 @@ function selfTest() {
     ],
     ["a tsx gap utility with an off-scale value is a violation", "a.tsx", 'const c = "gap-[7px]";', 1],
     ["a tsx spacing utility on a step is not", "a.tsx", 'const c = "px-[12px]";', 0],
+    // A leading `-` is a negative margin/inset, not an exemption: it is held to
+    // §3 the same way, so this case fails if negative support is removed.
+    [
+      "a negative tsx spacing utility is held to §3",
+      "a.tsx",
+      'const c = "-mt-[26px]";',
+      1,
+      { biblePx: [26] },
+    ],
+    ["a negative tsx spacing utility on a step is not", "a.tsx", 'const c = "-mt-[12px]";', 0],
     // Scoping: a non-spacing utility keeps the tier-2 allowlist.
     ["a tsx non-spacing utility keeps the bible allowlist", "a.tsx", 'const c = "h-[26px]";', 0, { biblePx: [26] }],
     ["a tsx comment is not", "a.tsx", "// 7px was the bug\nconst s = {};", 0],

@@ -819,3 +819,42 @@ it("puts a control's data on the node that takes focus", async () => {
   segment?.focus();
   expect(document.activeElement?.getAttribute("data-testid")).toBe("align");
 });
+
+it("a refused select or swatch does not raise its well's edge on hover", async () => {
+  // The select's well is its trigger, which carries `wellClasses`. A refusal is
+  // `readOnly`, not `disabled`, so the blocked state has to reach `wellClasses`
+  // or the well still raises `--edge` -> `--muted` on hover.
+  await mount(
+    <ControlSelect
+      label="Shows"
+      value="cpu.load"
+      options={SHOWS}
+      onChange={() => {}}
+      refused="not offered for a group"
+    />,
+  );
+  expect(labelled("Shows").className).not.toContain("hover:border-muted");
+
+  await mount(
+    <ControlSwatch
+      label="Fill"
+      value="ink"
+      options={PAINTS}
+      swatch={<span data-swatch="" />}
+      onChange={() => {}}
+      refused="not offered for a group"
+    />,
+  );
+  expect(labelled("Fill").className).not.toContain("hover:border-muted");
+
+  // The positive control: the same controls without a refusal do carry the raise.
+  await mount(
+    <ControlSelect
+      label="Shows"
+      value="cpu.load"
+      options={SHOWS}
+      onChange={() => {}}
+    />,
+  );
+  expect(labelled("Shows").className).toContain("hover:border-muted");
+});

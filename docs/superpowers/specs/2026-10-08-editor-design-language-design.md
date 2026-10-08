@@ -495,6 +495,8 @@ get worse; the slider's thumb is measured against both halves of its own track
 and must beat each with its interior or its ring — the thumb is two parts
 because no flat colour can, which left the unfilled half at 1.81:1 in graphite
 and 1.35:1 in light;
+hover raises a control's resting `--edge` to `--muted` — read from the rendered
+border, not the class — and a blocked well and the checked toggle do not move;
 focus survives forced colours; layout holds at both viewport sizes and at 200%
 zoom with the long Unicode name; and reduced motion leaves nothing animating,
 after motion is first *allowed* to prove the probe can see motion at all — **a
