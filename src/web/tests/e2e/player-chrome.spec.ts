@@ -165,8 +165,15 @@ test("nothing else the display adds covers the artboard", async ({ page }) => {
     const host = document.querySelector<HTMLElement>("#artboard");
     if (host === null) throw new Error("no host");
     const hostBox = box(host);
-    return [...document.body.children]
-      .filter((element) => element !== host)
+    // **Every element the display adds, not just `body`'s direct children.** A
+    // strip that re-fixes itself *inside* a band is out of flow, so the band
+    // collapses to zero height and a direct-children check passes while the
+    // strip covers the artboard — measured: with the crop strip restored to
+    // `position: fixed`, this guard stayed green while all three geometry tests
+    // failed. The host's own subtree is excluded, because everything the
+    // renderer draws legitimately lives inside it.
+    return [...document.body.querySelectorAll<HTMLElement>("*")]
+      .filter((element) => element !== host && !host.contains(element))
       .map((element) => ({ id: element.id, box: box(element) }))
       .filter(({ box: candidate }) => {
         const w =
