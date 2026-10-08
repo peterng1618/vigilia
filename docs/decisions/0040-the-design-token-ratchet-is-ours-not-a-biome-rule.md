@@ -14,9 +14,10 @@ whole-repo linter cannot go green on the day it is added and a gate that starts
 red and stays red is turned off.
 
 The shape that is non-obvious: the rule must hold for `.css` **and** `.tsx`
-(the control set is React), must exempt the one place hex values are the correct
-answer (the six palette blocks), and must report success only when it actually
-looked at files.
+(the control set is React), must exempt the places where a literal *is* the
+correct answer (any block that defines tokens, palettes included), must not call
+every value the bible prints outside §3's spacing table a violation, and must
+report success only when it actually looked at files.
 
 ## Rung 1 — Vigilia
 
@@ -71,7 +72,7 @@ literal. None solves this shape.
 | Biome `noHexColors` called from our script | Same coverage as above | subprocess per run | Same 84 hits and still CSS-only | Rejected |
 | `stylelint` + `stylelint-declaration-strict-value` | Mature property→variable enforcement | New dependency (a plan failure here) and a second linter config | CSS-only while the ratchet's next files are `.tsx` | Rejected |
 | jsdom CSSOM walk | Uses an already-installed package | Parse per file | Incomplete for `@theme`/nesting; no stylesheet to walk in `.tsx` | Rejected |
-| Our own scanner (chosen) | One text rule set for `.css` and `.tsx`, a per-file ratchet, and a real palette-block exemption | ~130 lines in `scripts/` | False positives are possible — the exempt px set is a visible constant precisely so a reviewer can widen it in one line | **Chosen** |
+| Our own scanner (chosen) | One text rule set for `.css` and `.tsx`, a per-file ratchet, and a definition-block exemption | ~250 lines in `scripts/` | False positives are possible — the values allowed outside a spacing property are `biblePx` in the gated JSON, precisely so a reviewer can widen them in one line | **Chosen** |
 
 ## Rung 6 — probe
 
@@ -81,17 +82,61 @@ Every diagnostic sampled is a `--shell-*` palette declaration — the values the
 design language says are the one legitimate home for a hex. The rule is
 factually right and unusable here.
 
-`node --version` → v24; `import.meta.dirname` is available and is what the
-script resolves the ratchet and its entries against, so the guard behaves the
-same from the repo root and from `src/web/`.
+`node --version` → v24. Measured on `editor-shell.css` as the same input each
+time: 106 violations against the first version of the scan, 87 once the
+exemption stopped at definition blocks, 74 with the shipped `biblePx` allowlist.
+The first number is the one that mattered: **106** included five hexes in the
+`:root:not([data-shell-palette="editorial"]) .editor-glass` treatment rule, which
+only a substring test on the attribute could have thought was a palette.
+
+`import.meta.dirname` is what the script resolves the ratchet and its entries
+against, so the guard behaves the same from the repo root and from `src/web/`.
 
 ## Decision
 
-A plain Node script, `scripts/design-tokens.mjs`, exporting
-`check(relPath, source)` and walking `scripts/design-tokens.gated.json` when run
-directly. It is chosen over Biome's rule for the reason the probe gives: the
-palette exemption is the load-bearing half, and Biome can only express it as a
-whole-file silence. Its own test lives behind `--self-test` in the same file and
-is wired into `gates:self-test`, so the guard's proof cannot drift out of the
-aggregate gate. An **empty ratchet is a failure**, because a guard over zero
-files reporting success is the defect this decision exists to remove.
+A plain Node script, `scripts/design-tokens.mjs`, walking
+`scripts/design-tokens.gated.json` when run, and exporting
+`check(relPath, source, biblePx)` for a caller. It is chosen over Biome's rule
+for the reason the probe gives: the exemption is the load-bearing half, and
+Biome can only express it as a whole-file silence.
+
+What shipped:
+
+- **A definition-block exemption, not a palette one.** A block is a definition
+  when every comma-separated selector in its prelude is `:root`, the
+  attribute-only `[data-shell-palette="…"]` or `.editor-shell-palette-swatch`,
+  or when it is an `@theme` block. A prelude carrying `:not(` or a descendant
+  combinator is a treatment rule and is checked. This is what lets
+  `editor-shell.css` — the file that *defines* the language — join the ratchet
+  at all.
+- **Two px tiers.** In a spacing property (`padding*`, `margin*`, `inset*`,
+  `translate*`, `top`, `right`, `bottom`, `left`, `gap`, `row-gap`,
+  `column-gap`) only bible §3's steps are allowed; anywhere else the values the
+  bible prints are allowed as well, listed as `biblePx` in the gated JSON.
+  `0`, `1` and the steps hold without it, so an empty allowlist narrows tier 2
+  instead of disabling it. This text guard is the cheap ratchet — Task 4's
+  browser assertion on computed spacing is the real enforcement.
+- **A CLI that runs only as the entry point**, compared as `realpathSync`ed
+  paths (case-insensitively on Windows), so an importer gets the export and no
+  side effects — including from a symlinked invocation, which otherwise exits 0
+  having checked nothing. The self-test is inside that gate too.
+- **A JSON that is either the bare array of gated files or an object holding
+  `gated` and `biblePx`.** An empty gated list is still a failure: a guard over
+  zero files reporting success is the defect this decision exists to remove.
+- **Bible §4's colour roles, declared per palette**, because the spec and every
+  later plan write that vocabulary and only `--shell-*` existed. An alias is
+  substituted where it is declared, so a single `:root` declaration would
+  resolve the root's palette and pin the swatch chip; all six palette blocks
+  therefore repeat the ten aliases, and `--faint` is derived from each palette's
+  `--muted` with `color-mix` rather than hand-tuned six times. They are exposed
+  as `--color-*` utilities through the existing `@theme inline` block, which is
+  what makes a utility carry the palette in force. `--color-bg` is deliberately
+  absent and pinned absent by a test: `--bg` aliases `--shell-backdrop`, a
+  gradient stack in graphite and light, and a colour utility from it would set a
+  colour to a gradient and be dropped in silence. `--stage`, `--hdr` and
+  `--edge-2` are **not** declared — their first consumers arrive in later plans,
+  and a colour declared for nothing is the defect this plan exists to remove.
+  Nothing is renamed and no `--shell-*` is deleted.
+
+The guard's own test lives behind `--self-test` in the same file and is wired
+into `gates:self-test`, so its proof cannot drift out of the aggregate gate.

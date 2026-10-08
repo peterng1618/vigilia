@@ -48,8 +48,9 @@ body,
      would pin a subtree that re-declares `--shell-*` — the swatch chip — to
      the live palette. Nothing is renamed and no `--shell-*` is removed; this
      block's ten lines are repeated in each palette below for that reason.
-     `--bg` is a `background` value and not a `color`: five palettes make it a
-     gradient. `--faint` is derived rather than hand-tuned six times, because
+     `--bg` is a `background` value and not a `color`: graphite and light make
+     it a gradient, the other four a flat colour.
+     `--faint` is derived rather than hand-tuned six times, because
      "tertiary" is a relationship to `--muted` and not a sixth colour. */
   --bg: var(--shell-backdrop);
   --panel: var(--shell-surface);

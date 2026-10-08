@@ -24,6 +24,7 @@
  */
 
 import { readFile } from "node:fs/promises";
+import { realpathSync } from "node:fs";
 import { resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
@@ -186,9 +187,12 @@ export function check(relPath, source, biblePx = []) {
   return found.sort((a, b) => a.line - b.line || a.column - b.column);
 }
 
-const SELF_TEST = process.argv.includes("--self-test");
-
-if (SELF_TEST) {
+/**
+ * Proves every rule still fires. Called only from the entry-point gate: an
+ * importer in a process whose argv happens to mention `--self-test` must not
+ * run it and exit mid-import.
+ */
+function selfTest() {
   const cases = [
     // A literal is a violation; a role reference is not.
     ["a hex colour is a violation", "a.css", ".x { color: #ff0000; }", 1],
@@ -268,20 +272,33 @@ if (SELF_TEST) {
   }
 
   // The brief writes its test as `check(...)` calls from an importer. Importing
-  // must hand back the function and nothing else — no CLI, no exit.
-  const probe = spawnSync(
-    process.execPath,
-    [
-      "--input-type=module",
-      "-e",
-      `const m = await import(${JSON.stringify(pathToFileURL(import.meta.filename).href)}); console.log(typeof m.check);`,
-    ],
-    { encoding: "utf8" },
-  );
+  // must hand back the function and nothing else — no CLI, no exit, and not the
+  // self-test either, whatever the importing process's argv happens to hold.
+  const moduleUrl = pathToFileURL(import.meta.filename).href;
+  const importer = (extra) =>
+    spawnSync(
+      process.execPath,
+      [
+        "--input-type=module",
+        "-e",
+        `const m = await import(${JSON.stringify(moduleUrl)}); console.log("imported", typeof m.check);`,
+        ...extra,
+      ],
+      { encoding: "utf8" },
+    );
+
+  const probe = importer([]);
   report(
     "the export is callable without running the CLI",
-    probe.status === 0 && probe.stdout.trim() === "function",
+    probe.status === 0 && probe.stdout.trim() === "imported function",
     `exit ${probe.status}, stdout ${JSON.stringify(probe.stdout.trim())}, stderr ${JSON.stringify(probe.stderr.trim().slice(0, 120))}`,
+  );
+
+  const flagged = importer(["--", "--self-test"]);
+  report(
+    "an importer's argv cannot trigger the self-test",
+    flagged.status === 0 && flagged.stdout.trim() === "imported function",
+    `exit ${flagged.status}, stdout ${JSON.stringify(flagged.stdout.trim().slice(0, 120))}`,
   );
 
   if (failed > 0) {
@@ -304,20 +321,32 @@ function flagValue(name) {
 }
 
 /**
- * The CLI runs only when this file is the entry point, so an importer gets
- * `check` and no side effects. Windows compares case-insensitively: a
- * drive-letter case difference here would silently skip the whole CLI.
+ * The CLI — self-test included — runs only when this file is the entry point,
+ * so an importer gets `check` and no side effects at all. Both sides are
+ * resolved through `realpathSync` so a symlinked invocation still matches
+ * rather than silently running nothing; Windows compares case-insensitively,
+ * because a drive-letter case difference would do the same.
  */
 const isEntryPoint = (() => {
   const entry = process.argv[1];
   if (entry === undefined) return false;
-  const self = import.meta.filename;
+  const real = (path) => {
+    try {
+      return realpathSync(path);
+    } catch {
+      return path;
+    }
+  };
+  const invoked = real(resolve(entry));
+  const self = real(import.meta.filename);
   return process.platform === "win32"
-    ? resolve(entry).toLowerCase() === self.toLowerCase()
-    : resolve(entry) === self;
+    ? invoked.toLowerCase() === self.toLowerCase()
+    : invoked === self;
 })();
 
 if (isEntryPoint) {
+  if (process.argv.includes("--self-test")) selfTest();
+
   const gatedArg = flagValue("--gated");
   const gatedPath = gatedArg === null ? resolve(ROOT, DEFAULT_GATED) : resolve(gatedArg);
 

@@ -33,11 +33,11 @@ backlog it produced stays live in the register.
 
 ## Last completed change
 
-- **The scales are real and a ratchet guards them** (`ebf1b4c8`) — `@theme static` carries bible §2–§3 name for name: ten `--space-*` steps, four radii, six sizes with their line-heights, `--elev-1..3`.
+- **The scales are real** (`ebf1b4c8`) — `@theme static` carries bible §2–§3 name for name: ten `--space-*` steps, four radii, six sizes with their line-heights, and `--elev-1..3`.
 - **Values the bible names were corrected in place** — `--radius-md` 8→6px, `--radius-lg` 12→8px, three line-heights 1.25→1.2/1.3/1.4; the two tests that pinned the old values moved in the same commit.
-- **`scripts/design-tokens.mjs` refuses a hex or off-scale `px` literal** in the files `design-tokens.gated.json` lists; definition blocks and the `biblePx` values the bible prints outside §3 are exempt, the export is importable, and the CLI is entry-point-gated.
+- **`scripts/design-tokens.mjs` refuses a hex or off-scale `px` literal** (`a0503c94`) in the files `design-tokens.gated.json` lists; definition blocks and the `biblePx` values are exempt, the export is importable, and the CLI — self-test included — runs only as the entry point.
 - **`npm run design:check` is red on purpose** — the ratchet starts empty and an empty list is a failure, not a pass; task 3 turns it green by converting its first files.
-- **Bible §4's roles are declared** (`--bg` … `--hot`, `--faint` from `color-mix`) in every palette block and named as `--color-*` utilities; `--stage`, `--hdr` and `--edge-2` wait for their first consumers.
+- **Bible §4's roles are declared** (`a0503c94`) — `--bg` … `--hot`, `--faint` derived from `--muted` — in every palette block and named as `--color-*` utilities, with `--stage`, `--hdr` and `--edge-2` withheld until their first consumers.
 
 ## Next
 
