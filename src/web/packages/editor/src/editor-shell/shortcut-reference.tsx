@@ -37,7 +37,7 @@ export function ShortcutReference({
               <div key={`${group.label}:${row.label}`}>
                 <dt>{row.label}</dt>
                 <dd>
-                  <kbd>{row.chord}</kbd>
+                  <kbd aria-label={row.spoken}>{row.chord}</kbd>
                 </dd>
               </div>
             ))}

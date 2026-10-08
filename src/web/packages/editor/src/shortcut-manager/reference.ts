@@ -6,12 +6,20 @@
  * exist — `index.ts` owns that — and nothing here owns a chord.
  */
 import { uiCopy } from "../ui-copy.js";
-import { shortcutLabel, type ShortcutPrefix } from "./display.js";
+import {
+  shortcutLabel,
+  shortcutSpokenLabel,
+  type ShortcutPrefix,
+} from "./display.js";
 import { type ProductShortcutId, productShortcutIds } from "./index.js";
 
 export interface ShortcutReferenceRow {
   readonly label: string;
+  /** The platform's own mark, as the sheet prints it (`⌘Z`). */
   readonly chord: string;
+  /** What that mark is called (`Command Z`), which is the chip's `aria-label`:
+   *  a screen reader reads `⌘` as "place of interest sign". */
+  readonly spoken: string;
 }
 
 export interface ShortcutReferenceGroup {
@@ -78,7 +86,11 @@ export function shortcutReferenceGroups(): readonly ShortcutReferenceGroup[] {
   for (const action of productShortcutIds()) {
     const prefix = prefixOf(action);
     const rows = groups.get(prefix) ?? [];
-    rows.push({ label: SHORTCUT_LABELS[action], chord: shortcutLabel(action) });
+    rows.push({
+      label: SHORTCUT_LABELS[action],
+      chord: shortcutLabel(action),
+      spoken: shortcutSpokenLabel(action),
+    });
     groups.set(prefix, rows);
   }
   return [...groups].map(([prefix, rows]) => ({

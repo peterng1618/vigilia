@@ -1,5 +1,9 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { shortcutLabel, usesCommandKey } from "./display.js";
+import {
+  shortcutLabel,
+  shortcutSpokenLabel,
+  usesCommandKey,
+} from "./display.js";
 
 /** `navigator.userAgent` is the only platform signal every browser here has. */
 function onPlatform(userAgent: string): void {
@@ -56,5 +60,38 @@ describe("shortcutLabel", () => {
     // renderer never guesses a default, which is the same rule the repo applies
     // to a refused numeric field.
     expect(shortcutLabel("view.exit-group")).toBe("");
+  });
+});
+
+describe("shortcutSpokenLabel", () => {
+  it("calls the marks by name, on the platform whose keyboard carries them", () => {
+    // The whole reason this exists: `⌘` is announced by a screen reader as
+    // "place of interest sign" and `⇧` as "upwards white arrow", so a `<kbd>`
+    // labelled with the printed chord reads as the name of a picture.
+    onPlatform(MACINTOSH);
+    expect(shortcutSpokenLabel("edit.undo")).toBe("Command Z");
+    expect(shortcutSpokenLabel("edit.redo")).toBe(
+      "Command Shift Z or Command Y",
+    );
+  });
+
+  it("speaks the same modifier the printed chord prints", () => {
+    onPlatform(WINDOWS);
+    expect(shortcutSpokenLabel("edit.undo")).toBe("Control Z");
+    expect(shortcutLabel("edit.undo")).toBe("Ctrl+Z");
+  });
+
+  it("names the arrows and spells `Esc` whole, which print as marks and a clipped word", () => {
+    onPlatform(WINDOWS);
+    expect(shortcutLabel("canvas.nudge-left")).toBe("←");
+    expect(shortcutSpokenLabel("canvas.nudge-left")).toBe("Left arrow");
+    expect(shortcutLabel("view.exit-group")).toBe("");
+  });
+
+  it("joins two chords with a word, because the printed separator is punctuation", () => {
+    onPlatform(WINDOWS);
+    // ` · ` is read as a pause or not at all; "or" says what the two chords are.
+    expect(shortcutLabel("edit.delete")).toBe("Delete · Backspace");
+    expect(shortcutSpokenLabel("edit.delete")).toBe("Delete or Backspace");
   });
 });

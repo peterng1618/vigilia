@@ -5,7 +5,10 @@ import {
   type ObjectActionId,
   OBJECT_ACTIONS,
 } from "../object-actions.js";
-import { shortcutLabel } from "../shortcut-manager/display.js";
+import {
+  shortcutLabel,
+  shortcutSpokenLabel,
+} from "../shortcut-manager/display.js";
 import { uiCopy } from "../ui-copy.js";
 import type { EditorShellBridge } from "./bridge.js";
 import { tooltip } from "./controls/tooltip.js";
@@ -25,7 +28,9 @@ function Action({
   readonly bridge: EditorShellBridge | undefined;
   readonly id: ObjectActionId;
   readonly label: string;
-  readonly shortcut: string | undefined;
+  readonly shortcut:
+    | { readonly printed: string; readonly spoken: string }
+    | undefined;
   readonly children: React.ReactNode;
 }): React.JSX.Element {
   const ref = useRef<HTMLButtonElement>(null);
@@ -137,7 +142,12 @@ export function CanvasDock({
                 id={id}
                 label={label}
                 shortcut={
-                  shortcut === undefined ? undefined : shortcutLabel(shortcut)
+                  shortcut === undefined
+                    ? undefined
+                    : {
+                        printed: shortcutLabel(shortcut),
+                        spoken: shortcutSpokenLabel(shortcut),
+                      }
                 }
               >
                 <Icon aria-hidden size={15} strokeWidth={1.75} />

@@ -6,7 +6,10 @@ import { createRoot, type Root } from "react-dom/client";
 import { useSyncExternalStore } from "react";
 import { uiCopy } from "../ui-copy.js";
 import { insertGroups } from "../new-object-panel.js";
-import { shortcutLabel } from "../shortcut-manager/display.js";
+import {
+  shortcutLabel,
+  shortcutSpokenLabel,
+} from "../shortcut-manager/display.js";
 import type { ProductShortcutId } from "../shortcut-manager/index.js";
 import type { ActiveKind, EditorShellBridge, EditorShellSnapshot } from "./bridge.js";
 import { CanvasContextMenu } from "./canvas-context-menu.js";
@@ -280,7 +283,12 @@ function ShellMenuBar({
           menu row has had in every application the author has used, and a popup
           over the row it describes would cover the menu. */}
       {shortcut === undefined ? null : (
-        <kbd className="editor-shell-menu-key">{shortcutLabel(shortcut)}</kbd>
+        <kbd
+          className="editor-shell-menu-key"
+          aria-label={shortcutSpokenLabel(shortcut)}
+        >
+          {shortcutLabel(shortcut)}
+        </kbd>
       )}
     </Menu.Item>
   );

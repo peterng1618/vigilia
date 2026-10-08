@@ -26,6 +26,20 @@ const CAPS = {
   other: { modifier: "Ctrl", shift: "Shift" },
 } as const;
 
+/**
+ * The same caps, in words, for the one reader who cannot see them.
+ *
+ * The printed cap is a glyph a sighted reader recognises from the key, and a
+ * screen reader announces `⌘` as "place of interest sign" and `⇧` as "upwards
+ * white arrow" — names of pictures, not of keys. `aria-label` carries these
+ * instead, so the visible chip keeps the platform's own mark while what is
+ * spoken is what the key does. `Esc` prints short and is spoken whole.
+ */
+const SPOKEN_CAPS = {
+  mac: { modifier: "Command", shift: "Shift" },
+  other: { modifier: "Control", shift: "Shift" },
+} as const;
+
 /** Keys whose name is a word or a mark rather than the character a reader would
  *  recognise from the cap. `event.key` is lowercased before lookup, which is
  *  the form this table stores.
@@ -44,6 +58,16 @@ const NAMED_KEYS: Readonly<Record<string, string>> = {
   delete: "Delete",
   backspace: "Backspace",
   escape: "Esc",
+};
+
+/** What the four arrows and the shortened `Esc` are called out loud. Every other
+ *  entry above is already a word and is spoken as printed. */
+const SPOKEN_NAMED_KEYS: Readonly<Record<string, string>> = {
+  arrowleft: "Left arrow",
+  arrowright: "Right arrow",
+  arrowup: "Up arrow",
+  arrowdown: "Down arrow",
+  escape: "Escape",
 };
 
 /** The part of an action id before its first dot: the group an action lives in.
@@ -84,23 +108,48 @@ function caps(): { readonly modifier: string; readonly shift: string } {
  * entry and no character on it returns `undefined` rather than its own name —
  * the caller drops the action instead of printing `ctrl+f13`.
  */
-function keyCap(key: string): string | undefined {
-  const named = NAMED_KEYS[key];
+function keyCap(key: string, spoken: boolean): string | undefined {
+  const named =
+    (spoken ? SPOKEN_NAMED_KEYS : NAMED_KEYS)[key] ?? NAMED_KEYS[key];
   if (named !== undefined) return named;
   if (key.length !== 1) return undefined;
   return /[a-z]/i.test(key) ? key.toUpperCase() : key;
 }
 
-function chord(binding: ShortcutBinding): string | undefined {
-  const key = keyCap(binding.key);
+function chord(binding: ShortcutBinding, spoken: boolean): string | undefined {
+  const key = keyCap(binding.key, spoken);
   if (key === undefined) return undefined;
-  const { modifier, shift } = caps();
+  const { modifier, shift } = spoken
+    ? usesCommandKey()
+      ? SPOKEN_CAPS.mac
+      : SPOKEN_CAPS.other
+    : caps();
   const parts: string[] = [];
   if (binding.modifier) parts.push(modifier);
   // A shifted *character* carries its own shift; a shifted *letter* does not.
   if (binding.shift === true && /[a-z]/i.test(binding.key)) parts.push(shift);
   parts.push(key);
+  // The Mac prints its caps cheek by jowl (`⌘⇧Z`) because a glyph needs no
+  // separator; every other keyboard prints `Ctrl+Shift+Z`. Spoken, every cap is
+  // a word, so both become spaces.
+  if (spoken) return parts.join(" ");
   return parts.join(usesCommandKey() ? "" : "+");
+}
+
+/** The same chords as `shortcutLabel`, in words: what the caps are *called*.
+ *
+ * `aria-label` on the `kbd` chips takes this, so a screen reader says "Command
+ * Shift Z" where the visible mark is `⌘⇧Z`. Two chords are joined by "or"
+ * rather than by the printed separator, which is punctuation and is read as a
+ * pause or not at all.
+ */
+export function shortcutSpokenLabel(action: ProductShortcutId): string {
+  const rendered = PRODUCT_SHORTCUTS.filter(
+    (binding) => binding.action === action,
+  )
+    .map((binding) => chord(binding, true))
+    .filter((value): value is string => value !== undefined);
+  return rendered.join(" or ");
 }
 
 /**
@@ -111,7 +160,7 @@ export function shortcutLabel(action: ProductShortcutId): string {
   const rendered = PRODUCT_SHORTCUTS.filter(
     (binding) => binding.action === action,
   )
-    .map(chord)
+    .map((binding) => chord(binding, false))
     .filter((value): value is string => value !== undefined);
   return rendered.join(uiCopy.shortcuts.alternativeSeparator);
 }

@@ -46,8 +46,14 @@ export interface TooltipOptions {
   readonly text: string;
   /** The chord this control's action answers to, when it has one. Omitted —
    *  not `undefined` — by every caller with no chord, because
-   *  `exactOptionalPropertyTypes` is on. */
-  readonly shortcut?: string;
+   *  `exactOptionalPropertyTypes` is on.
+   *
+   *  Two forms of one chord, because the chip is a picture of a key and a
+   *  screen reader reads the picture: `printed` is the platform's own mark
+   *  (`⌘Z`) and shows, `spoken` is what it is called (`Command Z`) and is the
+   *  chip's `aria-label`. A single string would have to be one or the other,
+   *  and a tooltip that shows "Command Z" is not the tooltip §7 asked for. */
+  readonly shortcut?: { readonly printed: string; readonly spoken: string };
 }
 
 export interface Tooltip {
@@ -85,7 +91,10 @@ export function tooltip({ trigger, text, shortcut }: TooltipOptions): Tooltip {
     if (shortcut !== undefined) {
       const chip = document.createElement("kbd");
       chip.className = "editor-shell-tooltip-key";
-      chip.textContent = shortcut;
+      chip.textContent = shortcut.printed;
+      // The mark is what is shown and the word is what is announced. Without
+      // this a screen reader says "place of interest sign Z" for `⌘Z`.
+      chip.setAttribute("aria-label", shortcut.spoken);
       element.append(chip);
     }
     element.id = `vigilia-tooltip-${++seq}`;
