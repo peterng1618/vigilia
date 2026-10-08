@@ -33,15 +33,15 @@ backlog it produced stays live in the register.
 
 ## Last completed change
 
+- **Task 2 — the scales and their ratchet guard — is complete** (`ebf1b4c8`..`02c0aa4e`); the task review closed clean after two fix rounds.
 - **The scales are real** (`ebf1b4c8`) — `@theme static` carries bible §2–§3 name for name: ten `--space-*` steps, four radii, six sizes with their line-heights, and `--elev-1..3`.
 - **Values the bible names were corrected in place** — `--radius-md` 8→6px, `--radius-lg` 12→8px, three line-heights 1.25→1.2/1.3/1.4; the two tests that pinned the old values moved in the same commit.
-- **`scripts/design-tokens.mjs` refuses a hex or off-scale `px` literal** (`a0503c94`) in the files `design-tokens.gated.json` lists; definition blocks and the `biblePx` values are exempt, the export is importable, and the CLI — self-test included — runs only as the entry point.
-- **`npm run design:check` is red on purpose** — the ratchet starts empty and an empty list is a failure, not a pass; task 3 turns it green by converting its first files.
+- **`scripts/design-tokens.mjs` refuses a hex or off-scale `px` literal** (`a0503c94`) where `design-tokens.gated.json` lists the file, exempting declaration spans and the 14 `biblePx` values; the CLI, self-test included, runs only as the entry point (`02c0aa4e`).
 - **Bible §4's roles are declared** (`a0503c94`) — `--bg` … `--hot`, `--faint` derived from `--muted` — in every palette block and named as `--color-*` utilities, with `--stage`, `--hdr` and `--edge-2` withheld until their first consumers.
 
 ## Next
 
-1. **Plan 1 tasks 3–4 follow** — the React control set on the token names now declared, then the parity harness.
+1. **Plan 1 tasks 3–4 follow** — the React control set on the token names now declared, then the parity harness; `design:check` stays red until task 3 converts the first files into the gated list, because an empty list is a failure, not a pass.
 2. **Plan 2 — the shell and the rail**, which is the first visible change and what the shell mockup specifies.
 3. **Then the inspector, the panes, settings, then iconography and copy.**
 4. **Unpushed:** `develop` is far ahead of `origin/develop`; no push is authorised.
