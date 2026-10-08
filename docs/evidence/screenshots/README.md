@@ -60,6 +60,7 @@ result, not merely a mounted editor.
 | Capture | The picture the thumbnail path produces, at 2x on the library's ground | `editor-reference-capture` / `the capture path shows the glass and the packaged assets` |
 | Keyboard | Hover a dock action and read the chord its tooltip names | `keyboard-tooltip` / `every canvas action's tooltip names the chord that runs it` |
 | Keyboard | Read the reference sheet, opened with `?` over an entered group | `keyboard-reference` / `? opens the sheet, and the document behind it does not change` |
+| Shell appearance | Choose each of the six palettes and read the surface | `shell-palette-` / `captures each palette's own surface` |
 | Feedback | Error, notice, disabled action or compatibility message | add when changed |
 
 ## Settings page (`/settings`, real host)

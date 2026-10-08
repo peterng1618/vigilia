@@ -1,4 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
+import { captureVisualReview } from "./editor-canvas.js";
 import { openPane } from "./editor-pane-bar.js";
 import { isDesktopSurface } from "./surface.js";
 
@@ -469,5 +470,25 @@ test.describe("shell palettes", () => {
       "data-shell-palette",
       "plum",
     );
+  });
+
+  /** The six palettes, as six pictures.
+   *
+   *  The computed comparison above is necessary and not sufficient: it can tell
+   *  two surfaces apart but cannot say whether either is a surface an author
+   *  would recognise, and §9's acceptance item asks for the eye. Deliberately
+   *  NOT a golden file — a screenshot here is read by a person once, beside the
+   *  change that made it. `choosePalette` closes the popup and asserts the
+   *  attribute, so each frame is the editor in one palette rather than the menu
+   *  that selected it. */
+  test("captures each palette's own surface", async ({ page }, testInfo) => {
+    test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+    test.setTimeout(120_000);
+
+    await openEditor(page);
+    for (const palette of PALETTES) {
+      await choosePalette(page, palette);
+      await captureVisualReview(page, testInfo, `shell-palette-${palette}`);
+    }
   });
 });
