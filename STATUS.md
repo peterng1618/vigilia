@@ -33,11 +33,11 @@ backlog it produced stays live in the register.
 
 ## Last completed change
 
-- **Task 4 — the parity gate — is complete** (`1f991845`); the gate is green at 1 collected, 1 passed, 0 unexpected, and it fails on a planted `7px` padding before the revert.
-- **`control-fixture.html` is a build entry** mounting the built control set over the built stylesheet, and `tests/e2e/design-language.spec.ts` asserts §3's spacing steps, §4's roles, §5's 24×24 targets, 4.5:1 and 3:1 contrast in all six palettes, forced colours, both desktop sizes, 200% zoom and reduced motion.
-- **Five things jsdom could not see were fixed** — the toggle, a segmented label and a section header take §5's target through a centred 24×24 `::before`, the fields take theirs from the 26px well, and the slider's track was 0px wide because a `flex-1` child resolved inside a shrink-to-fit slot.
-- **Two captures are registered** beside `docs/design/mockups/inspector-controls.html` — graphite, the ground the mockup is drawn on, and editorial — with ten differences listed in the task report, each fixed or recorded as deliberate.
-- **Three rows are filed rather than fixed**, each because the repair is a design ruling: vg-200 the `--edge` boundary at 2.15:1 and 1.42:1, vg-201 `--warn` text at 1.4–2.0:1 in three palettes, vg-202 the well padding.
+- **Task 4's fix round 1 is complete** (`51f8899a`): the reduced-motion assertion could not fail — the injected freeze covered the scope the section read, so every duration was `0s` and every run passed — and it now lifts the freeze, opens with a positive control, and lists 30 still-animating elements when the media query is renamed to `reduce-sabotaged`; the gate is green at 1 collected, 1 passed, 0 unexpected.
+- **The slider's thumb is two parts** — a `--text` interior in a 1px `--panel` ring — because no flat colour clears 3:1 against both halves of the track in graphite (1.81:1) and light (1.35:1); the gate measures each half and names the part that beat it.
+- **The fixture is out of the production build** — its own `build:fixture` invocation, so a production build emits one chunk, no `control-fixture.html` and no shared `editor-shell-*.js`.
+- **The bible won three values the mockup was stale on** — the well radius 6px, the swatch radius 4px and the slider's value well 36px — and §13.1's three overstated claims are corrected rather than left standing.
+- **`control.dom.test.tsx` is 18 cases** (27 was the `components/ui` folder total across four files), and vg-200 records six passing control states, not five.
 
 ## Next
 
