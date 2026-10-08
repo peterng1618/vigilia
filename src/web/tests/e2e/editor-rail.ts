@@ -26,8 +26,9 @@ export async function openPane(page: Page, name: string): Promise<void> {
   const slot = railSlot(page, name);
   const showing =
     (await slot.getAttribute("aria-pressed")) === "true" &&
-    (await page.locator(".editor-shell-rail").getAttribute("data-collapsed")) ===
-      "false";
+    (await page
+      .locator(".editor-shell-rail")
+      .getAttribute("data-collapsed")) === "false";
   if (showing) return;
   await slot.click();
 }

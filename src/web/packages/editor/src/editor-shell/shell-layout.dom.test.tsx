@@ -13,7 +13,8 @@ import { shortcutLabel } from "../shortcut-manager/display.js";
 import { uiCopy } from "../ui-copy.js";
 import type { ViewportManager } from "../viewport-manager/index.js";
 import type { EditorShellBridge } from "./bridge.js";
-import { createShellLayout, type RailSlot } from "./shell-layout.js";
+import type { RailSlot } from "./rail.js";
+import { createShellLayout } from "./shell-layout.js";
 import type {
   EditorActionFacade,
   EditorViewControls,
@@ -601,8 +602,8 @@ it("keeps panel hosts mounted outside React's control", () => {
   const root = document.createElement("div");
   const layout = createShellLayout(root);
 
-  // Panel owners hold these nodes; React only positions them. The Layers pane
-  // is the exception: React renders that tree, so it owns no host node.
+  // Panel owners hold these nodes; React only positions them. The Composition
+  // pane is the exception: React renders that tree, so it owns no host node.
   expect(layout.hosts.add).toBeInstanceOf(HTMLElement);
   expect(layout.hosts.assets).toBeInstanceOf(HTMLElement);
   expect(layout.hosts.document.parentElement).not.toBeNull();

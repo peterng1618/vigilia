@@ -38,8 +38,6 @@ import {
 } from "../run-placeholder.js";
 import type { EditorViewControls } from "./session-facade.js";
 
-export type { RailSlot } from "./rail.js";
-
 /** Persistent DOM owners the imperative panels mount into. React positions
  * these; it never renders panel content. The Composition pane has no node
  * here: the tree is React-owned and renders inside `Shell` from the bridge

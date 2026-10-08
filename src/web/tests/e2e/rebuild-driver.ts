@@ -142,9 +142,9 @@ export function addButton(page: Page, label: string): Locator {
 
 /** Inserts an object from the Add pane, by the word on the control. */
 export async function insert(page: Page, label: string): Promise<void> {
-  // The bar shows one pane, and selecting a layer switches it to Layers — so
-  // an author comes back to Insert the same way this does. The selection's own
-  // fields are in the right column, which no pane affects.
+  // The rail shows one pane, and selecting a layer switches it to Composition
+  // — so an author comes back to Add the same way this does. The selection's
+  // own fields are in the right column, which no pane affects.
   await openPane(page, "Add");
   const before = (await readScene(page)).length;
   const button = addButton(page, label);

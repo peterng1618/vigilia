@@ -2165,7 +2165,7 @@ test.describe("Fabric editor route", () => {
     // the document panel, which cannot see a selection. Select through the layer
     // row: the canvas origin is not a stable coordinate to click, because the
     // stage letterboxes the artboard inside its host. The tree lives in the
-    // Layers pane, so the row is only clickable once that pane is showing.
+    // Composition pane, so the row is only clickable once that pane is showing.
     await openPane(page, "Composition");
     await page.locator('[data-vigilia-layer="cpu-label"]').click();
     const spends = page.locator('[data-vigilia-section="spends"]');

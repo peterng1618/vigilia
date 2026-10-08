@@ -2,11 +2,8 @@
 
 import { act } from "react";
 import { describe, expect, it } from "vitest";
-import {
-  createShellLayout,
-  type RailSlot,
-  type ShellLayout,
-} from "./shell-layout.js";
+import type { RailSlot } from "./rail.js";
+import { createShellLayout, type ShellLayout } from "./shell-layout.js";
 
 /** A rail slot, found by the id it carries: a slot draws a glyph, so there is
  *  no label a reader could match on. */

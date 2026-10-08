@@ -170,7 +170,11 @@ test("every dock control stays reachable with the rail's column in place", async
   for (const view of [
     { name: "1280×720", width: 1280, height: 720 },
     { name: "1440×900", width: 1440, height: 900 },
-    { name: "640×360, the CSS viewport 200% zoom gives", width: 640, height: 360 },
+    {
+      name: "640×360, the CSS viewport 200% zoom gives",
+      width: 640,
+      height: 360,
+    },
   ]) {
     await page.setViewportSize({ width: view.width, height: view.height });
     await page.goto(EDITOR);
