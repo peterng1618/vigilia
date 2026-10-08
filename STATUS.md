@@ -25,7 +25,7 @@ backlog it produced stays live in the register.
 
 ## Active work
 
-- **Plan 1 — [`2026-10-08-gates-and-the-control-set.md`](docs/superpowers/plans/2026-10-08-gates-and-the-control-set.md) — is executing: tasks 1–2 are done, tasks 3–4 remain.** The scales with their ratchet guard, the React control set, then the parity harness.
+- **Plan 1 — [`2026-10-08-gates-and-the-control-set.md`](docs/superpowers/plans/2026-10-08-gates-and-the-control-set.md) — is executing: tasks 1–3 are done, task 4 remains.** The scales with their ratchet guard and the React control set have landed; the parity gate is next.
 - **The spec is `draft` and unimplemented** — its acceptance sections are plans of measurement, not results.
 - **Reactify ([0039](docs/decisions/0039-the-editor-ui-is-react-and-only-the-canvas-is-imperative.md)) is the frame, not a phase** — every editor surface becomes React, only the canvas stays imperative, and no Fabric object is ever mirrored into React state.
 - **The mockups are the checked reference** ([`docs/design/mockups/`](docs/design/mockups/)), not files read once and remembered; spec §13 makes a capture beside them a gate item.
@@ -33,15 +33,15 @@ backlog it produced stays live in the register.
 
 ## Last completed change
 
-- **Task 2 — the scales and their ratchet guard — is complete** (`ebf1b4c8`..`02c0aa4e`); the task review closed clean after two fix rounds.
-- **The scales are real** (`ebf1b4c8`) — `@theme static` carries bible §2–§3 name for name: ten `--space-*` steps, four radii, six sizes with their line-heights, and `--elev-1..3`.
-- **Values the bible names were corrected in place** — `--radius-md` 8→6px, `--radius-lg` 12→8px, three line-heights 1.25→1.2/1.3/1.4; the two tests that pinned the old values moved in the same commit.
-- **`scripts/design-tokens.mjs` refuses a hex or off-scale `px` literal** (`a0503c94`) where `design-tokens.gated.json` lists the file, exempting declaration spans and the 14 `biblePx` values; the CLI, self-test included, runs only as the entry point (`02c0aa4e`).
-- **Bible §4's roles are declared** (`a0503c94`) — `--bg` … `--hot`, `--faint` derived from `--muted` — in every palette block and named as `--color-*` utilities, with `--stage`, `--hdr` and `--edge-2` withheld until their first consumers.
+- **Task 3 — the control set — is complete** (`e3b19da4`..`0ec0db11`); the task review passed after two fix rounds, the second correcting a ruling of mine.
+- **Ten controls plus `InspectorSection`** live in `components/ui/` — Well, Text, Swatch, Select, Number, Slider, Toggle, Segmented, IconButton — each with a programmatic name and a refusal that renders in words with `aria-disabled` over `disabled`.
+- **Bible §4's three missing roles are declared** (`9d462a19`) in all six palettes: `--stage`, `--hdr`, `--edge-2`; `--stage` carries no colour utility, because it holds a gradient stack under graphite and light.
+- **`ControlProps.density`** carries bible §3's three row rhythms — 26 panel, 30 dialog, 32 settings — so plan 5 does not fork the set to reach the other two.
+- **The ratchet is green** — 11 gated files clean, 27 tests pass, and the empty gated list still exits 1, so the guard is proven not to pass over nothing.
 
 ## Next
 
-1. **Plan 1 tasks 3–4 follow** — the React control set on the token names now declared, then the parity harness; `design:check` stays red until task 3 converts the first files into the gated list, because an empty list is a failure, not a pass.
+1. **Plan 1 task 4 follows** — the parity gate: a browser fixture mounting the built controls over the built stylesheet, plus the mockup capture; it also owes bible §5's 24×24 hit area and spec §13.1's stress set, which task 3 could not prove in jsdom.
 2. **Plan 2 — the shell and the rail**, which is the first visible change and what the shell mockup specifies.
 3. **Then the inspector, the panes, settings, then iconography and copy.**
 4. **Unpushed:** `develop` is far ahead of `origin/develop`; no push is authorised.
