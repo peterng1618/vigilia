@@ -1507,6 +1507,29 @@ test("the dialogs and the inspector's sections paint every palette", async ({
 });
 ```
 
+> **Corrected 2026-10-08, at execution — three defects, and the file moved.** The test landed in
+> **`tests/e2e/shell-surfaces.spec.ts`**, not in `shell-appearance.spec.ts`: that file was already
+> 494 lines and this step's test passes the 500-line signal the repo uses for a source file, which
+> is the second half of the Files line above. The four things both specs need — `PALETTES`, the popup
+> selector, `openShell` and `choosePalette` — moved to a new **`tests/e2e/shell-palette.ts`** rather
+> than being copied, so the six-entry list does not become a third copy of `palette.ts`'s.
+>
+> - **`openPane(page, "Selection")` cannot work: `Selection` is not a pane.** The pane bar's segments
+>   are Layers, Insert, Assets, Document and the `+`; the right column is not one of them and is
+>   always mounted. Locate `.vigilia-section-details` directly.
+> - **`selectLayer(page, "cpu-card")` cannot work either: the starter's cards are nested.** The
+>   top-level rows are `group-cpu-card`, `group-storage-card`, `group-trends-card` and so on, and a
+>   collapsed row is not clickable. The step above never selected anything, and the selection is what
+>   the column renders sections for — with nothing selected it correctly says where to choose from,
+>   which is `vg-157`'s assertion rather than this one.
+> - The dialog selector landed as `dialog[open]` matched on `"Choose an artboard size"`, which is
+>   `new-document-chooser`'s own lead copy, rather than a bare `.vigilia-dialog`: three dialog
+>   owners share that class, and only one of them was on screen.
+>
+> **Measured after the correction:** passes first run in 14.1 s; with `.vigilia-dialog`'s background
+> moved to `--shell-backdrop` it fails on the first palette (dialog `rgb(245,241,232)` against header
+> `rgb(255,253,247)`); reverted and rebuilt, green.
+
 - [ ] **Step 2: Run it to verify it fails**
 
 ```bash

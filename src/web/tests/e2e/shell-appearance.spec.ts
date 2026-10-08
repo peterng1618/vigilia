@@ -1,6 +1,12 @@
 import { expect, type Page, test } from "@playwright/test";
 import { captureVisualReview } from "./editor-canvas.js";
 import { openPane } from "./editor-pane-bar.js";
+import {
+  choosePalette,
+  openShell,
+  PALETTES,
+  PALETTE_POPUP,
+} from "./shell-palette.js";
 import { isDesktopSurface } from "./surface.js";
 
 /**
@@ -21,62 +27,17 @@ import { isDesktopSurface } from "./surface.js";
  * palette and make a failure ambiguous between the two.
  */
 
-const EDITOR = "http://127.0.0.1:4174/";
-
-/** The palette popup, named rather than class-matched: the View menu carries
- *  the same class and stays mounted-but-closed beside it, so the class alone is
- *  a strict-mode violation the moment two of them exist. */
-const PALETTE_POPUP = '.editor-shell-menu-popup[aria-label="Shell palette"]';
-
-/** Read from the same list the editor uses, so a palette added there cannot
- *  escape this sweep. Kept as a literal because the spec file cannot import the
- *  editor package; `shellPalettes` in `palette.ts` is the owner. */
-const PALETTES = [
-  "editorial",
-  "graphite",
-  "ember",
-  "moss",
-  "plum",
-  "light",
-] as const;
-
-type Palette = (typeof PALETTES)[number];
-
-/** The editor, loaded once. Palettes are switched through the menu after this,
- *  which is the route an author takes and costs no reload — the editor boots a
- *  whole Fabric session per load, and six of those is past the test budget. */
-async function openEditor(page: Page): Promise<void> {
-  await page.goto(EDITOR);
-  await expect(
-    page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
-  ).toBeVisible();
-  // The document panels — the artboard's and the palette's — are the chrome's
-  // form controls, and they live in the left column's Document pane. Its width
-  // and ratio controls are what `shellColours` reads, so the pane has to be
-  // showing for them to have a box.
-  await openPane(page, "Document");
-}
-
-/** Choose a palette the way an author does: open the menu, click the entry.
+/** The editor, with the Document pane open.
  *
- *  The menu is closed with Escape rather than left to the selection: Base UI
- *  keeps a radio menu open so several entries can be compared before dismissing
- *  it, so selecting is not what closes it. Asserts the attribute rather than
- *  trusting the click, so a menu that failed to apply the choice fails here
- *  rather than six assertions later against whatever was in force. */
-async function choosePalette(page: Page, palette: Palette): Promise<void> {
-  await page.locator("[data-vigilia-palette]").click();
-  const popup = page.locator(PALETTE_POPUP);
-  await expect(popup).toBeVisible();
-  await popup
-    .getByRole("menuitemradio", { name: palette, exact: true })
-    .click();
-  await expect(page.locator("html")).toHaveAttribute(
-    "data-shell-palette",
-    palette,
-  );
-  await page.keyboard.press("Escape");
-  await expect(popup).toBeHidden();
+ *  The palettes, the menu and the way an author chooses one live in
+ *  `shell-palette.ts`, because a second spec needs the same four things and a
+ *  copied six-entry list is a list that drifts. The pane is this spec's own
+ *  need: the document panels — the artboard's and the palette's — are the
+ *  chrome's form controls and they live there, so its width and ratio controls
+ *  have no box until it shows. */
+async function openEditor(page: Page): Promise<void> {
+  await openShell(page);
+  await openPane(page, "Document");
 }
 
 /** The computed colours of the surfaces a `--vigilia-*` token paints. */
