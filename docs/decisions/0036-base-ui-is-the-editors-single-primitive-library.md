@@ -1,7 +1,8 @@
 # 0036 — Base UI is the editor's one primitive library, and §8's Radix ruling is reversed
 
 - **Date:** 2026-10-08
-- **Status:** superseded by [0037](0037-react-aria-is-the-editors-one-primitive-library.md)
+- **Status:** superseded by [0038](0038-base-ui-is-the-editors-one-primitive-library-on-the-users-ruling.md),
+  which reinstates this note's ruling — Base UI — with the premise below corrected
 - **Paths:** `src/web/packages/editor/src/components/ui/`
   (`dialog.tsx`, `popover.tsx`, `colour-picker.tsx`),
   `src/web/packages/editor/src/editor-shell/shell-layout.tsx`

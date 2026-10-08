@@ -1,7 +1,9 @@
 # 0037 — React Aria Components is the editor's one primitive library
 
 - **Date:** 2026-10-08
-- **Status:** accepted
+- **Status:** superseded by [0038](0038-base-ui-is-the-editors-one-primitive-library-on-the-users-ruling.md)
+  — **its rungs 4 and 6 remain the survey and are still the evidence of record; only its decision is
+  superseded**
 - **Paths:** `src/web/packages/editor/src/components/ui/` (`dialog.tsx`,
   `popover.tsx`, `colour-picker.tsx`),
   `src/web/packages/editor/src/editor-shell/shell-layout.tsx`

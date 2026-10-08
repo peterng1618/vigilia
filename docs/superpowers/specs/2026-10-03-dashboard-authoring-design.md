@@ -446,7 +446,7 @@ UI imports.** It is already a direct dependency, it carries `Dialog`, `Collapsib
 — and the repo already owns components in shadcn's idiom, so this matches how it works
 rather than imposing something new.
 
-> **Reversed 2026-10-08 by [decision 0037](../../decisions/0037-react-aria-is-the-editors-one-primitive-library.md),
+> **Reversed 2026-10-08 by [decision 0038](../../decisions/0038-base-ui-is-the-editors-one-primitive-library-on-the-users-ruling.md),
 > and the reversal is a measurement rather than a preference.** The ruling above assumes Radix can
 > carry all five surfaces. It cannot: `@radix-ui/react-dropdown-menu` and
 > `@radix-ui/react-context-menu` export **no `Anchor`** — the string appears in no file of either
@@ -457,18 +457,21 @@ rather than imposing something new.
 > The ruling also had the ledger backwards. Measured across `packages/*/src`: **no menu surface is
 > Radix and no Radix file is a menu.** The editor has five Base UI imports and three Radix files —
 > `components/ui/dialog.tsx`, `popover.tsx`, `colour-picker.tsx`, **297 lines between them, with two
-> consumers**. The diagnosis in the table above stands and its remedy is superseded.
+> consumers**. The diagnosis in the table above stands; its remedy is superseded, and the direction
+> is the opposite of the one written here: **Base UI is the one primitive library and the three Radix
+> files move to it.**
 >
-> **An intermediate answer — [decision 0036](../../decisions/0036-base-ui-is-the-editors-single-primitive-library.md),
-> naming Base UI — was itself superseded the same day, on the user's instruction that the field be
-> widened beyond the two incumbents.** 0036 held that Base UI was *"the only one of the two that can
-> express every surface"*; the widened survey falsified that, because four libraries can anchor to a
-> pointer and it eliminates Radix alone. **React Aria Components is the editor's one primitive
-> library**: it carries all six surfaces, it ships the colour primitive the editor hand-rolls — and
-> got wrong, per `vg-194` — and it is Adobe-funded under Apache-2.0 with the field's only published
-> screen-reader test matrix. 0036's further claim that *"the original Radix authors now work on Base
-> UI"* is struck: the publish metadata shows MUI staff and Floating UI's author, with a Radix
-> maintainer still on the Radix side. See rung 4 of 0037 for the searches and the eliminations.
+> **Two intermediate answers were tried and withdrawn the same day.** [0036](../../decisions/0036-base-ui-is-the-editors-single-primitive-library.md)
+> named Base UI first but on a premise that did not survive checking — that it was *"the only one of
+> the two that can express every surface"*, when four libraries anchor to a pointer and the
+> capability eliminates Radix alone. [0037](../../decisions/0037-react-aria-is-the-editors-one-primitive-library.md)
+> named React Aria Components after the field was widened beyond the two incumbents; **the user
+> declined it and ruled for Base UI.** 0037's rungs 4 and 6 remain the survey of record — the six
+> libraries, the pointer-anchor mechanisms verified per package, the maintenance measurements and the
+> eliminations of Ariakit (bus factor one, still `0.4.x`) and Ark UI (a slipped v6 breaking
+> migration) — and only its decision is superseded. The accepted cost is recorded in 0038: **Base UI
+> ships no colour primitive**, so the editor's picker stays hand-rolled and `vg-194` — a focusable
+> `role="slider"` no key can operate — stays the editor's own work rather than a library's.
 
 **This is a mechanism-boundary change and the reuse gate says so.** A primitive library is
 exactly "an owner where a wrong decision is expensive and invisible" — nothing fails, it

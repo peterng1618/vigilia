@@ -2,29 +2,29 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** One primitive library and one palette owner. **All eight primitive sites become React Aria
-Components**, and `@base-ui/react`, `@radix-ui/react-dialog` and `@radix-ui/react-popover` all leave
-the tree; the shell's palette joins `@theme inline` so it resolves at the element rather than at
-`:root`; the operating system becomes its fallback; and the six palettes are proved distinguishable
-by screenshot, which is the redesign's last unmet acceptance item.
+**Goal:** One primitive library and one palette owner. **The three Radix wrapper files move to Base
+UI**, and `@radix-ui/react-dialog` and `@radix-ui/react-popover` leave the tree; the shell's palette
+joins `@theme inline` so it resolves at the element rather than at `:root`; the operating system
+becomes its fallback; and the six palettes are proved distinguishable by screenshot, which is the
+redesign's last unmet acceptance item.
 
 **Architecture:** Three changes, only one of which is visible. **One** — the chrome's primitives.
-The editor runs two libraries at once today, in five Base UI menu surfaces and three Radix wrapper
-files, and
-[`0037`](../../decisions/0037-react-aria-is-the-editors-one-primitive-library.md) ends that in the
-direction the widened survey measured. **The migration is larger than §8 or 0036 proposed** — both
-of those moved one library onto the other, and this moves both onto a third — which is the cost the
-user accepted when setting the criterion. **Two** — the
+The editor runs two libraries at once today: five Base UI menu surfaces and three Radix wrapper
+files. [`0038`](../../decisions/0038-base-ui-is-the-editors-one-primitive-library-on-the-users-ruling.md)
+ends that in the direction the user ruled, and **the migration is small, because the larger half is
+the half that stays**: the five menu surfaces are already Base UI and do not move, so three files
+are re-implemented and two packages leave. §8 read the ledger the other way round and 0037 proposed
+moving all eight; both are superseded. **Two** — the
 appearance pipeline. `editor-shell/palette.ts` is already the one owner of which palette is in
 force and already writes one attribute on `document.documentElement`; it gains the OS read and the
 precedence rule, and `editor-shell.css` gains a `@theme inline` block that gives each `--shell-*`
 token a utility name which resolves *at the element*. **Three** — the evidence. Nothing in §8 or
 §9 is left to a computed-value assertion at the end.
 
-**Tech Stack:** TypeScript, React 19, `react-aria-components` (Apache-2.0 — the one new direct
-dependency, standing in for three removed ones), Tailwind v4.3.3 (`@theme static`, `@theme inline`),
-Vitest + jsdom for the chrome, Playwright against built bundles for everything a cascade or a pixel
-decides.
+**Tech Stack:** TypeScript, React 19, `@base-ui/react` (MIT — **already installed and already
+carrying five surfaces; this plan adds no dependency and removes two**), Tailwind v4.3.3
+(`@theme static`, `@theme inline`), Vitest + jsdom for the chrome, Playwright against built bundles
+for everything a cascade or a pixel decides.
 
 **Spec:** [`../specs/2026-10-03-dashboard-authoring-design.md`](../specs/2026-10-03-dashboard-authoring-design.md)
 — plan 9 of 9. Read §9 (`:451-457`), then §8 to its end (`:404-449`) because this plan discharges
@@ -34,12 +34,13 @@ sentence every task is judged by is §9's: one `data-shell-palette` attribute re
 including every portalled popup.**
 
 **Decision this plan executes:**
-[`0037`](../../decisions/0037-react-aria-is-the-editors-one-primitive-library.md), which supersedes
-[`0036`](../../decisions/0036-base-ui-is-the-editors-single-primitive-library.md) and reverses §8's
-Radix ruling. Both earlier directions are dead: §8's assumed Radix could carry all five surfaces
-and it cannot, and 0036 answered that by naming Base UI on a premise the widened survey falsified —
-**pointer anchoring eliminates Radix and nothing else**, and Base UI ships no colour primitive.
-`0033`, which named Radix the single library, is superseded by 0037 and is not inherited here.
+[`0038`](../../decisions/0038-base-ui-is-the-editors-one-primitive-library-on-the-users-ruling.md),
+**the user's ruling, made with the widened survey in front of it**: Base UI is the editor's one
+primitive library. §8's Radix ruling failed on capability; 0036 reached the right answer on a wrong
+premise, and 0037 reached a different one that the user declined. **The survey's measurements live
+in 0037's rungs 4 and 6 and are still the evidence** — only its decision is superseded, and a task
+that needs the reasoning should read those rungs rather than re-derive them. `0033`'s naming of
+Radix as the single library is superseded; **its tooltip ruling is not** and is still cited below.
 Separately this plan lands the palette ruling of
 [`0035`](../../decisions/0035-the-shells-palette-resolves-at-the-element-and-the-os-is-its-fallback.md),
 whose rungs are quoted where a task depends on them.
@@ -77,42 +78,45 @@ Copied from the spec and `AGENTS.md`; every task's requirements implicitly inclu
 - **Captures are a task, and they are performed by the executor of that task**, not by this plan's
   author. `VIGILIA_CAPTURE=1` and `--workers=1`; register the capture in
   `docs/evidence/screenshots/README.md` in the same commit.
-- **No compatibility glue: none of the three libraries coexists with React Aria at the end of
-  Phase 1**, and no `data-*` selector is written for both an old and a new attribute. Removing the
-  packages is Task 1.4, not a later cleanup — a phase that migrates eight sites and leaves the old
-  libraries installed has not finished the job §8 was written for.
-- **`0036` is superseded by `0037` outright and is not a source of truth here.** `0033` is
-  superseded **only in its naming of Radix as the single primitive library** — 0037 replaces that
-  ruling, and **0033's other ruling stands untouched**: the tooltip stays hand-owned, because a React
-  primitive cannot be the shared mechanism for code that builds elements with `document.createElement`.
-  That argument is why the native `<dialog>`s and the inspector's `<details>` are deliberately not
-  migrated, and it is cited below where it applies. A task citing 0036 as authority is reading a
-  superseded note — say so rather than following it.
+- **No compatibility glue: Radix and Base UI do not coexist at the end of Phase 1**, and no `data-*`
+  selector is written for both an old and a new attribute. Removing the two packages is Task 1.3,
+  not a later cleanup — a phase that migrates three files and leaves the old library installed has
+  not finished the job §8 was written for.
+- **`0036` and `0037` are both superseded by `0038` and neither is a source of truth here.** 0036
+  reached the right answer on a false premise; 0037 reached a different answer the user declined.
+  **`0037`'s rungs 4 and 6 are still the survey** and are the place to read the measurements.
+  `0033` is superseded **only in its naming of Radix as the single primitive library** — **its tooltip
+  ruling stands untouched**: a React primitive cannot be the shared mechanism for code that builds
+  elements with `document.createElement`. That argument is why the native `<dialog>`s and the
+  inspector's `<details>` are deliberately not migrated, and it is cited below where it applies.
 
 ## Review Focus
 
 Five input classes the spec implies but no single task's tests would catch on their own. Each is
 pinned by a test in the task named beside it.
 
-1. **A popup opened while the palette in force is not `editorial`.** React Aria portals to `body`,
-   leaving `#app` behind, exactly as Base UI did; if the palette attribute or the popup's class
-   contract moved, the popup paints the bare `:root` defaults while the chrome beside it is correct
-   — the defect `tests/e2e/shell-appearance.spec.ts:138-178` was written for, generalised to every
-   migrated surface. **The migration changes the portal *owner*, which is the thing that decides
-   this**, so it is re-proved rather than assumed. *(Task 1.4.)*
-2. **The popup's accessible name after the migration.** React Aria labels a dialog through a
-   `Heading slot="title"` and wires `aria-labelledby` itself, which can shadow a caller's
-   `aria-label` — the *attribute* still reads back, so a `getAttribute` assertion passes while the
-   name a screen reader announces changes. Pinned by reaching each popup **by role and name**, not
-   by attribute. *(Tasks 1.2 and 1.4.)*
-3. **A short window over a long menu.** The canvas context menu carries the Add pane's whole list
-   and does not fit a 420px window. Base UI's `--available-height` goes with it, and React Aria
-   sizes a popover through `maxHeight` plus its own positioning rather than through a variable the
-   markup can read. The last entry must still be reachable, **by arrow key as well as by pointer** —
-   a fixed height with no scroll strands the entries an author inserting a chart needs. *Already
-   pinned, in full, by `tests/e2e/editor-context-menu.spec.ts` — "the last entry is reachable in a
-   window too short to hold the menu", including the `End` key and an `Enter` that inserts. Task
-   1.1's job is to keep it green, not to write it.*
+1. **A popup opened while the palette in force is not `editorial`.** Every portalled popup leaves
+   `#app` for `body`; if the palette attribute or the popup's class contract moved, the popup paints
+   the bare `:root` defaults while the chrome beside it is correct — the defect
+   `tests/e2e/shell-appearance.spec.ts:138-178` was written for, generalised to every migrated
+   surface. **A migration that changes the portal's *owner* is exactly the change that can break
+   this**, so the migrated popovers are re-proved rather than assumed. *(Task 1.3.)*
+2. **The popup's accessible name after the migration.** Base UI wires its own labelling on a dialog
+   popup, which can shadow a caller's `aria-label` — the *attribute* still reads back, so a
+   `getAttribute` assertion passes while the name a screen reader announces changes. The dialog
+   labels itself by `aria-label` today (`dialog.tsx:28`) and must go on doing so. Pinned by reaching
+   each popup **by role and name**, not by attribute. *(Tasks 1.1 and 1.3.)*
+3. **The picker's tracks, which this ruling leaves to us.** Base UI ships no colour primitive, so
+   `Track` keeps its hand-built pointer handling — and its `role="slider"` currently promises a
+   keyboard it does not have (`vg-194`). **This is the one surface where the migration is not a
+   straight port**: it gains `onKeyDown` and the `aria-valuemin`/`aria-valuemax` the role requires,
+   and the new test must be shown to **fail before** the path is added. *(Task 1.2.)*
+4. **A short window over a long menu.** The canvas context menu carries the Add pane's whole list
+   and does not fit a 420px window; Base UI's `--available-height` is what keeps the last entry
+   reachable. **This phase does not migrate that surface**, so the risk is a *shared* style or
+   token changing under it rather than the menu moving — already pinned, in full, by
+   `tests/e2e/editor-context-menu.spec.ts`, including the `End` key and an `Enter` that inserts.
+   Task 1.3's job is to keep it green, not to write it.*
 4. **Escape, and where focus returns.** Both libraries dismiss on Escape and both return focus to
    the trigger; a migration can lose the return without losing the dismissal, and the DOM tests
    already rely on Escape to clean up between cases. *(Task 1.2.)*
@@ -146,9 +150,9 @@ this is wrong.**
 - **`@radix-ui/react-popover` is already a direct dependency**, and
   `components/ui/popover.tsx` is shadcn's, hand-owned. Radix's closure is therefore already
   installed — **22 `@radix-ui/*` packages for two components**, measured 2026-10-08, each of the two
-  declaring 15 direct dependencies. That is one of the numbers 0037 weighed; it is recorded here so
-  a later reader does not re-derive it. `react-aria-components` is the only addition this phase
-  makes, and three packages leave in Task 1.4.
+  declaring 15 direct dependencies. That is one of the numbers the survey weighed; it is recorded
+  here so a later reader does not re-derive it. **This phase adds no dependency at all** — Base UI is
+  already installed and already carries five surfaces — and removes two.
 - **The editor's tooltip stays ours** (`editor-shell/controls/tooltip.ts`), and **the inspector's
   sections stay a native `<details>`** (`editor-shell/controls/property-section.ts`, used at
   `selection-inspector/per-kind-column.ts:663`). Both are DOM factories with no React in them, and
@@ -166,14 +170,13 @@ this is wrong.**
   and `@radix-ui/react-dialog` is installed with its licence recorded — including the
   `@radix-ui/react-popover` row that was missing from `THIRD-PARTY-NOTICES.md`. **If plan 7 has not
   landed, stop and report; do not author its work here.**
-- **`vg-135` is open, and this plan may close it rather than run through it.** `git log` and
-  `STATUS.md` both carry it: in `shell-layout.dom.test.tsx`, one click on a **Base UI menu trigger**
-  stalls **50–90 s synchronously** under jsdom, and three of that file's tests time out at 91/96/118 s
-  against a 20 s limit. **The suspect is the library being removed**, so Task 1.2 times that file
-  before and after and records both numbers. If it goes green, `vg-135` closes here with the
-  measurement; if it does not, the cause was never Base UI and the row stays open with the new
-  evidence. Either way: **a hang there is not a regression to chase during the migration.** `vg-175`
-  is the same class one level out — a test that passes alone and times out in the full run.
+- **`vg-135` is open, and this phase does not close it.** `git log` and `STATUS.md` both carry it: in
+  `shell-layout.dom.test.tsx`, one click on a **Base UI menu trigger** stalls **50–90 s
+  synchronously** under jsdom, and three of that file's tests time out at 91/96/118 s against a 20 s
+  limit. The one hypothesis that would have let this phase settle it was that the removal of Base UI
+  was the cause — **0038 keeps Base UI, so the suspect is gone and the row stays open on its existing
+  evidence.** A hang there is still not a regression to chase during the migration. `vg-175` is the
+  same class one level out — a test that passes alone and times out in the full run.
 
 ---
 
@@ -187,15 +190,16 @@ this is wrong.**
 
 **Modified — chrome**
 
-- `packages/editor/src/editor-shell/palette-menu.tsx`, `display-switch.tsx`, `insert-popover.tsx`,
-  `canvas-context-menu.tsx`, `shell-layout.tsx` — the five Base UI imports (Tasks 1.1 and 1.2).
 - `packages/editor/src/components/ui/dialog.tsx`, `popover.tsx`, `colour-picker.tsx` — the three
-  Radix wrapper files (Task 1.3). **These were not in scope under §8 or 0036**; they are here because
-  0037 moves both libraries onto a third rather than one onto the other.
+  Radix wrapper files (Tasks 1.1 and 1.2). **This is the whole of Phase 1's editing.** §8 and 0037
+  both had these five menu files above in scope; under 0038 they do not move.
+- `packages/editor/src/editor-shell/palette-menu.tsx`, `display-switch.tsx`, `insert-popover.tsx`,
+  `canvas-context-menu.tsx`, `shell-layout.tsx` — **listed to say they are NOT touched.** They run
+  on Base UI already, and Phases 2 and 3 touch them only for the palette and for evidence.
 - `packages/editor/src/editor-shell/editor-shell.css` — the state hooks, the positioner, the
   `@theme inline` block, the first frame.
-- `packages/editor/package.json` — one added (`react-aria-components`), three removed
-  (`@base-ui/react`, `@radix-ui/react-dialog`, `@radix-ui/react-popover`).
+- `packages/editor/package.json` — **two removed** (`@radix-ui/react-dialog`,
+  `@radix-ui/react-popover`), none added. `@base-ui/react` stays.
 - `THIRD-PARTY-NOTICES.md`, `docs/engineering/dependencies.md` — the licence inventory.
 
 **Modified — appearance**
@@ -219,162 +223,115 @@ this is wrong.**
 
 ## Phase 1 — One primitive library
 
-**Eight sites move to React Aria Components**: the five `@base-ui/react` menu surfaces and the three
-Radix wrapper files. At the end, `@base-ui/react`, `@radix-ui/react-dialog` and
-`@radix-ui/react-popover` are absent from the manifest and imported by no source file.
+**Three files move to Base UI, and two packages leave.** `components/ui/dialog.tsx`,
+`popover.tsx` and `colour-picker.tsx` are re-implemented on Base UI's `Dialog` and `Popover`; the
+five menu surfaces that already run on Base UI do not move at all; and `@radix-ui/react-dialog` and
+`@radix-ui/react-popover` come out of the manifest, taking the 22 `@radix-ui/*` packages those two
+components pull in with them.
 
-**Direction, stated once because it has reversed twice.** §8 moved the five Base UI surfaces onto
-Radix. Decision 0036 moved the three Radix files onto Base UI. **This moves all eight onto React
-Aria.** Wherever a task below says "the migration" without qualification, it means that, and a task
-that reads as though one library is being absorbed into the other is stale — say so rather than
-following it.
-
-**Almost no visible change is intended**, and where there is one it is named: Task 1.3's colour
-picker is rebuilt on the library's own colour components, so its tracks will look and behave
-differently. Everything else is proved by the tests that already assert these surfaces' behaviour —
-**not** by a new test written beside the change, which can only prove the change is self-consistent.
+**Direction, stated once because it has reversed three times.** §8 moved the five Base UI surfaces
+onto Radix; 0036 moved the three Radix files onto Base UI; 0037 moved all eight onto React Aria.
+**0038 — the user's ruling — restores 0036's direction and is the one that binds.** A task that
+reads as though Base UI is being removed is stale; say so rather than following it.
 
 ---
 
-### Task 1.1: The canvas context menu — the go/no-go
+### Task 1.1: The dialog moves to Base UI
 
 **Files:**
-- Modify: `packages/editor/package.json` (add `react-aria-components`; install from `src/web/`)
-- Modify: `packages/editor/src/editor-shell/canvas-context-menu.tsx`
-- Modify: `THIRD-PARTY-NOTICES.md`, `docs/engineering/dependencies.md`
+- Modify: `packages/editor/src/components/ui/dialog.tsx` (34 lines)
+- Modify: `packages/editor/src/components/ui/dialog.dom.test.tsx` if it stubs Radix internals
 
-**Outcome.** The canvas context menu opens **at the pointer**, through
-`MenuTrigger trigger="contextMenu"`, and the browser spec that already asserts its behaviour passes
-with the source migrated.
+**Outcome.** `shortcut-reference.tsx`'s sheet opens, dismisses and returns focus exactly as it does
+today, on Base UI's `Dialog`.
 
-**Owning symbols.** `canvas-context-menu.tsx`: the `ContextMenu.Root/Portal/Positioner/Popup` tree,
-the `anchor` memo at `:146-157`, and the `contextmenu` listener at `:140`. The memo is what goes —
-`trigger="contextMenu"` computes the point itself.
+**Owning symbols.** `dialog.tsx`'s `Dialog` — its Radix `Root`/`Portal`/`Overlay`/`Content` become
+Base UI's `Root`/`Portal`/`Backdrop`/`Popup`. The two class names are load-bearing and must not
+move: `editor-shell-dialog-overlay` and `editor-shell-dialog` are what `editor-shell.css` styles,
+and the shell's palette reaches a portalled surface through `data-shell-palette` on
+`documentElement`, not through the DOM tree.
 
 **Constraints.**
-- **This surface stopped Phase 1 once already, at Task 1.1's own Step 4.** It runs first, alone, and
-  its result is the go/no-go for everything after it.
-- React Aria portals to `document.body`, and the editor's canvas sits inside stacking and transform
-  contexts. **Position and hit-testing are what this task is testing** — not the item list, which is
-  the part already covered by jsdom.
-- Record the version and the licence string from the installed `package.json`, not from memory.
+- `dialog.dom.test.tsx` exists and is 54 lines. **If it stubs Radix internals rather than the
+  behaviour, the stub goes with the library** — deleting it and watching what fails is how to tell.
+- The sheet's copy, chords and behaviour are plan 7's and must not change. This is a re-implementation
+  of the same component on a different library, not a redesign.
+- Do not add `Dialog.Title`/`Description` wiring the sheet does not already have: it labels by
+  `aria-label` today, and silently switching to `aria-labelledby` changes the announced name.
 
-**Acceptance.** The existing context-menu assertions pass, against a **rebuilt bundle** — Playwright
-previews built bundles, so a run against a stale one proves nothing.
-
-**Failure mode — stop, do not start Task 1.2.** If `trigger="contextMenu"` cannot position correctly
-inside this host, record what was measured and stop. 0037 was chosen over Base UI on **capability
-coverage**; a library that cannot carry this surface is in the position Radix was in, and the whole
-migration would be buying nothing. Before declaring failure, try the second mechanism the survey
-measured: `getTargetRect` on `Popover`, documented as *"positioning relative to a specific point such
-as the mouse cursor (e.g. context menus)"*. Both are in 0037's rung 6.
-
-**Verification.** The context-menu browser spec at `--workers=1`. Put the command and its result in
-the commit body.
+**Verification.** The dialog's jsdom test, and the `?`-sheet browser spec, against a rebuilt bundle.
 
 ---
 
-### Task 1.2: The four trigger-anchored menus move
+### Task 1.2: The popover and the colour picker move — and the picker gets its keyboard
 
 **Files:**
-- Modify: `packages/editor/src/editor-shell/palette-menu.tsx`
-- Modify: `packages/editor/src/editor-shell/display-switch.tsx`
-- Modify: `packages/editor/src/editor-shell/insert-popover.tsx`
-- Modify: `packages/editor/src/editor-shell/shell-layout.tsx` (the View menu)
+- Modify: `packages/editor/src/components/ui/popover.tsx` (42 lines)
+- Modify: `packages/editor/src/components/ui/colour-picker.tsx` (221 lines)
+- Modify: `packages/editor/src/components/ui/gradient-editor.tsx` only if `ColourPicker`'s props change
 
-**Outcome.** The palette picker, the display lens, the Insert `+` chooser and the header's View menu
-all open, navigate, and commit through React Aria's `Menu`.
+**Outcome.** The palette panel's picker opens, drags, types and commits on Base UI's `Popover`; and
+its four tracks are operable from the keyboard.
 
-**Replacement set — closed.** The Base UI API the editor imports is exactly: `Root`, `Trigger`,
-`Portal`, `Positioner`, `Popup`, `Item`, `Group`, `GroupLabel`, `RadioGroup`, `RadioItem`,
-`RadioItemIndicator`, `SubmenuRoot`, `SubmenuTrigger`. Everything the migration needs is in that
-list; a surface reaching for a Base UI symbol outside it is a discovery worth recording.
-
-**Constraints.**
-- The Insert `+` chooser is the **second anchored surface**, but it anchors to a *trigger* — the `+`
-  in the pane bar — so it belongs here, not in 1.1.
-- `shell-layout.tsx` is 685 lines and on the reuse gate's watchlist; 0037 claims that path.
-- **`vg-135` is a hypothesis this task can settle.** `shell-layout.dom.test.tsx` is slow for a filed
-  reason: one Base UI menu-trigger click blocks 50–90 s under jsdom, which is why the View-menu test
-  takes ~190 s alone. **If that stall disappears once Base UI is gone, `vg-135` is closed by this
-  task** and the measurement belongs in the commit body. If it persists, it was never Base UI's, and
-  that is equally worth recording.
-- **`vg-169` may also close here.** Escape with the `+` chooser open leaves it open through a
-  subsequent right-click. If the migration fixes it, close the row; if not, leave it open.
-
-**Verification.** Each surface's existing jsdom test plus its browser spec, and a before/after timing
-for `shell-layout.dom.test.tsx` recorded in the commit body.
-
----
-
-### Task 1.3: The three wrapper files move, and the colour picker stops being hand-rolled
-
-**Files:**
-- Modify: `packages/editor/src/components/ui/dialog.tsx`
-- Modify: `packages/editor/src/components/ui/popover.tsx`
-- Modify: `packages/editor/src/components/ui/colour-picker.tsx`
-
-**Outcome.** `shortcut-reference.tsx`'s dialog and `palette-manager/panel.ts`'s picker run on React
-Aria, and the picker's tracks are the library's colour components rather than hand-built `div`s.
-
-**Owning symbols.** `dialog.tsx`'s `Dialog` (React Aria:
-`DialogTrigger`/`ModalOverlay`/`Modal`/`Dialog`); `popover.tsx`'s `Popover`/`PopoverTrigger`/
-`PopoverContent` (React Aria's `Popover` with `placement`, `offset`, `crossOffset`); and
-`colour-picker.tsx`'s module-private `Track`, replaced by `ColorArea` (saturation × brightness,
-`colorSpace="hsb"`), `ColorSlider channel="hue"`, `ColorSlider channel="alpha"` and `ColorField` for
-the hex input.
+**Owning symbols.** `popover.tsx`'s `Popover`/`PopoverTrigger`/`PopoverContent` — Radix's `Content`
+carries `align` and `sideOffset`, which are Base UI `Positioner`'s `align` and `sideOffset`. And
+`colour-picker.tsx`'s module-private `Track`, whose trigger is Radix's `asChild` (`:133`); **Base UI
+has no `asChild`** — it takes a `render` prop, and the replacement must not leave a wrapper element
+behind that changes the trigger's layout.
 
 **Constraints.**
-- **`vg-194` is the reason this is not cosmetic.** `Track` renders `role="slider"`, `tabIndex={0}`
-  and `aria-valuenow` and binds only pointer handlers — the file contains no `onKeyDown` — so each
-  track takes a tab stop, announces "slider, 42 percent" to assistive technology, and does nothing
-  for any key. **Adopting the library's colour components is what closes it.** Writing an
-  `onKeyDown` by hand would paper over it and leave the ARIA wrong, so do not add one.
-- The picker's values are 8-digit hex carrying alpha, which is why `<input type="color">` was
-  rejected at `:84-88`; the theme envelope round-trip must survive the rebuild unchanged.
-- The trigger uses `asChild` today (`:133`). React Aria has no `asChild` — use its `render` prop and
-  leave no wrapper element behind that changes layout.
-- `gradient-editor.tsx` imports `ColourPicker` and nothing else from this file, so it is untouched
-  **provided the exported `ColourPicker` props do not change**. If they must, it moves with them.
-- The picker **will** look different. That is the one intended visible change in this phase; capture
-  it as evidence rather than treating the diff as a regression.
+- **`vg-194` is fixed here, by hand, because this ruling leaves it to us.** `Track` renders
+  `role="slider"`, `tabIndex={0}` and `aria-valuenow` and binds only pointer handlers, so it takes a
+  tab stop, announces a value, and does nothing for any key. **Base UI ships no colour primitive**,
+  which is the cost the ruling accepted — so the track gains an `onKeyDown` (arrow keys step the
+  ratio, `Home`/`End` go to the ends) **and** the `aria-valuemin`/`aria-valuemax` that `role="slider"`
+  requires and the markup omits today. Add both or neither: a keyboard path over a role whose range
+  is undeclared is still wrong.
+- The picker's values are 8-digit hex carrying alpha — why `<input type="color">` was rejected at
+  `:84-88` — and the envelope round-trip must survive unchanged.
+- Base UI's `Popover` needs its `Positioner` between `Portal` and `Popup`; a `Popup` placed directly
+  in the portal renders unpositioned.
 
 **Verification.** The palette panel's browser spec, **plus one new regression test that an arrow key
-changes a track's value** — the test for `vg-194`, which must be shown to fail with the library's
-keyboard handling removed before it is trusted.
+changes a track's value** — the test for `vg-194`, which must be shown to fail before the keyboard
+path is added and to pass after. A test written afterwards proves only that the code agrees with
+itself.
 
 ---
 
-### Task 1.4: The three libraries leave the manifest, and the chrome behaves the same in a browser
+### Task 1.3: Radix leaves the manifest, and the chrome behaves the same in a browser
 
 **Files:**
-- Modify: `packages/editor/package.json` (remove `@base-ui/react`, `@radix-ui/react-dialog`,
+- Modify: `packages/editor/package.json` (remove `@radix-ui/react-dialog`,
   `@radix-ui/react-popover`)
 - Modify: `THIRD-PARTY-NOTICES.md`, `docs/engineering/dependencies.md`
 - Modify: any test still stubbing a removed library's internals
 
-**Outcome.** No source file imports any of the three, and the chrome's behaviour in a browser is
-unchanged apart from Task 1.3's picker.
+**Outcome.** No source file imports either package, and the chrome's behaviour in a browser is
+unchanged apart from the picker's new keyboard path.
 
 **Constraints.**
-- `grep -rn "@base-ui\|@radix-ui" packages/*/src` returns nothing outside `dist/`.
-- Removing the packages surfaces tests that stub a *library's internals* rather than the behaviour
-  under test — the `:modal` / `:popover-open` `matches` patch at `palette-menu.dom.test.tsx:25-34` is
-  one, and it exists for floating-ui. **A stub whose reason has gone goes with it; one that still
-  encodes a real behaviour stays**, and the difference is decided by deleting it and watching what
-  breaks.
-- Licence rows are removed **with** the dependencies, in the same commit. No compatibility shim and
-  no re-export wrapper: pre-release internal architecture may break cleanly.
+- `grep -rn "@radix-ui" packages/*/src` returns nothing outside `dist/`.
+- **Removing them should take 22 packages out of `node_modules` for two components.** Measure the
+  before and after and put both numbers in the commit body — it is the concrete half of what this
+  ruling bought, and it was a number in the survey's ledger.
+- Licence rows are removed **with** the dependencies, in the same commit. Note that
+  `@radix-ui/react-popover`'s row was already missing from `THIRD-PARTY-NOTICES.md` before this plan;
+  correcting the inventory and then removing the entry are one edit, not two.
+- No compatibility shim and no re-export wrapper. Pre-release internal architecture may break
+  cleanly, and a phase that migrates three files and leaves the old libraries installed has not
+  finished the job §8 was written for.
 
 **Verification.** Every migrated surface's focused suite, then the broad gate at the phase boundary.
-Rebuild before any Playwright run, and again after reverting a deliberate break.
+Playwright previews built bundles: rebuild before any run, and again after reverting a deliberate
+break.
 
 ---
 
-**Phase 1 exit.** `@base-ui/react`, `@radix-ui/react-dialog` and `@radix-ui/react-popover` are gone
-from the manifest and unimported; every migrated surface's existing tests pass unchanged; `vg-194` is
-closed by the colour components; `vg-135` and `vg-169` are either closed with a measurement or
-recorded as not-Base-UI's; and the browser runs are recorded in the commit bodies.
+**Phase 1 exit.** `@radix-ui/react-dialog` and `@radix-ui/react-popover` are gone from the manifest
+and unimported, with the package count recorded; the dialog, the popover and the picker behave as
+they did and their existing tests pass unchanged; **`vg-194` is closed by a keyboard path with the
+ARIA the role requires**; and the browser runs are recorded in the commit bodies.
 
 
 ## Phase 2 — The appearance pipeline
@@ -899,8 +856,8 @@ for the tooltip applies to both, and the reasoning is recorded in this plan's *W
   `theme-library-dialog.ts:63|134|345`), styled by `.vigilia-dialog` (`editor-shell.css:761-788`);
 - the inspector's sections (`editor-shell/controls/property-section.ts`) — a native `<details>`, not
   a library Collapsible, and §8's table row for `collapsible` is discharged by that owner. **Phase 1
-  does not change this**: React Aria ships a `Disclosure` that could replace it, and 0037 leaves the
-  native element in place because the argument above still holds.
+  does not change this**: Base UI ships `Collapsible` and `Accordion` that could replace it, and
+  0038 leaves the native element in place because the argument above still holds.
 
 **They are also the surfaces a palette change is most likely to break**, because each paints from
 the shell's tokens through a class rather than through the attribute, and none of them is a
@@ -1101,21 +1058,21 @@ Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 
 Named so they are not re-raised as gaps in this plan:
 
-- **Plan 7's `?` reference sheet is plan 7's** (§7, `:398-402`). **Its `Dialog` is not** — `0037`
-  moves `components/ui/dialog.tsx` to React Aria, which is Task 1.3. Plan 7 authored that file; this
+- **Plan 7's `?` reference sheet is plan 7's** (§7, `:398-402`). **Its `Dialog` is not** — `0038`
+  moves `components/ui/dialog.tsx` to Base UI, which is Task 1.1. Plan 7 authored that file; this
   plan re-implements it on a different library, and the sheet's copy, chords and behaviour are what
   must not change.
 - **Plan 8 (Player chrome), §8's second half.** Diagnostics on the phone are not the editor's
   chrome. **The player is not migrated by this phase** — it uses `scene-fabric` and no primitive
-  library, so 0037 touches the editor only.
+  library, so 0038 touches the editor only.
 - **§8's `tabs` row.** The repo has no `Tabs` import in any package, so there is nothing to migrate.
   The table's "three times" for `menu` is **four** in the source and its Base UI count is five
   imports across five files; both are recorded rather than silently reconciled.
 - **`components/ui/colour-picker.tsx` reaching past its own wrapper to the primitive.** §8's
-  incoherence was one library versus two. Phase 1 ends that, and **Task 1.3 rebuilds the picker on
-  React Aria's colour components rather than on the wrapper** — which is the opposite call from
-  routing it through `popover.tsx` first, made because the library's colour family is what closes
-  `vg-194`. The wrapper stays hand-owned and thin; it is not the picker's foundation.
+  incoherence was one library versus two. Phase 1 ends that, and **the picker stays hand-rolled** —
+  Base UI ships no colour primitive, which is the cost 0038's ruling accepted. Task 1.2 moves the
+  picker's popover onto Base UI and gives its tracks the keyboard `vg-194` records as missing; it
+  does not hand the colour maths to a library. The wrapper stays hand-owned and thin.
 - **§8's `Select` and `Tooltip` rows.** Radix carries both and the editor needs neither: the tooltip
   is ours (0033), and the shell's one dropdown is a native `<select>` inside the panel controls.
 - **`@theme custom-variant dark` and Tailwind's `dark:` utilities.** That is the *class-toggle*
@@ -1126,11 +1083,11 @@ Named so they are not re-raised as gaps in this plan:
 - **`vg-157`** — "with nothing selected the right column is empty and names where to choose from" is
   the other unmet acceptance item, it is the user's decision, and it is not this plan's.
 - **`vg-135` and `vg-175`.** Both are load-sensitive jsdom failures that make a full run unreadable.
-  Task 1.2 may incidentally fix the first by replacing the primitive that stalls; **that is a
-  by-product to be measured and reported, not a task**, and neither row is closed from here without
-  evidence.
-- **`vg-161`** — an unlanded plan would remove the menubar's Insert and View menus. If that plan
-  lands before this one, Task 1.2's `shell-layout.tsx` migration has less to migrate; the file is
-  read at the start of the task rather than assumed from this plan's description.
+  Neither is this phase's to close: Base UI stays, so Task 1.2 replaces no primitive that could
+  incidentally settle one. If a run happens to move either, **that is a by-product to be measured and
+  reported, not a task**.
+- **`vg-161`** — an unlanded plan would remove the menubar's Insert and View menus. Phase 1 touches
+  `shell-layout.tsx` nowhere under 0038's direction, so that plan's landing changes nothing here;
+  it is named because it would have, under the reversed ruling.
 - **`vg-172`** — the editor header overflows at 390px. The editor is a desktop surface (Non-goals,
   `:498-504`), so no task here is gated to a phone width.
