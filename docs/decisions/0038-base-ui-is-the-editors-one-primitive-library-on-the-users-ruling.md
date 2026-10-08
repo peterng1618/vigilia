@@ -65,8 +65,12 @@ that Base UI ships no colour primitive, and that `vg-194` therefore remains the 
 What follows for the code:
 
 - **The five menu surfaces do not move.** They already run on Base UI and need no migration at all.
-- **The three Radix files do move** — `components/ui/dialog.tsx`, `popover.tsx` and
-  `colour-picker.tsx` are re-implemented on Base UI's `Dialog` and `Popover`.
+- **Two of the three Radix files move** — `components/ui/dialog.tsx` and `colour-picker.tsx` are
+  re-implemented on Base UI's `Dialog` and `Popover`. **The third, `components/ui/popover.tsx`, was
+  deleted instead**, which Task 1.2 established and this note's "three files" count did not know:
+  nothing imports it. The picker reached `@radix-ui/react-popover` directly, which is precisely the
+  "reaching past its own wrapper" §8 complains about, and the wrapper has been dead since the commit
+  that added it. The line count that matters — 297 across three files — is 255 across two.
 - **`@radix-ui/react-dialog` and `@radix-ui/react-popover` leave the manifest**, and with them the
   22 `@radix-ui/*` packages two components currently pull in. `@base-ui/react` stays.
 - **The native `<dialog>`s and the inspector's `<details>` stay native.** They are the platform, not

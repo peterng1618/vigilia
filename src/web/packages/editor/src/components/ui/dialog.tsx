@@ -1,7 +1,7 @@
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
 import type * as React from "react";
 
-/** shadcn's Dialog, hand-owned — the same trade `popover.tsx` records.
+/** shadcn's Dialog, hand-owned and reduced to what the one sheet needs.
  *
  * Decision `0038` rules Base UI the editor's one primitive library, and
  * decision `0033` is why this plan has a Dialog and not a Tooltip. The scrim

@@ -1,6 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { uiCopy } from "../../packages/editor/src/ui-copy.js";
 import { captureVisualReview, enterLayer } from "./editor-canvas.js";
+import { openPane } from "./editor-pane-bar.js";
 import { isDesktopSurface } from "./surface.js";
 
 /** The editor URL, declared here rather than imported: every spec in this
@@ -117,4 +118,61 @@ test("? opens the sheet, and the document behind it does not change", async ({
   // does not exist in a browser. These two lines are the regression proof.
   await expect(selected).toBeVisible();
   await expect(selected).toHaveCount(1);
+});
+
+test("the palette picker lands beside its trigger, and its tracks answer the arrow keys", async ({
+  page,
+}, testInfo) => {
+  test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+
+  await page.goto(EDITOR);
+  await expect(
+    page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+  ).toBeVisible();
+  // The palette panel is a document panel, so it is in the Document pane, and
+  // the picker belongs to a **solid** token — a gradient's editor is a different
+  // surface, which is why the token is named rather than left at the default.
+  await openPane(page, "Document");
+  await page.locator("[data-vigilia-palette-token]").selectOption("background");
+
+  const trigger = page.getByTestId("picker-trigger");
+  await expect(trigger).toBeVisible();
+  await trigger.click();
+  const popover = page.getByTestId("colour-picker");
+  await expect(popover).toBeVisible();
+
+  // **Where it landed, which is what the migration could have broken.** The
+  // popup moved from Radix's `Content`, which positions itself, to Base UI's
+  // `Positioner`; a `Popup` placed straight in the portal renders unpositioned,
+  // and the same class of mistake put this control's popover in the top-left
+  // corner of the window once before (`panel.dom.test.ts:187-192`). Anchored to
+  // a 28px swatch with a 6px offset, so the popup's top is just under it.
+  const [swatch, popup] = await Promise.all([
+    trigger.boundingBox(),
+    popover.boundingBox(),
+  ]);
+  expect(swatch).not.toBeNull();
+  expect(popup).not.toBeNull();
+  expect(
+    Math.abs(popup!.y - (swatch!.y + swatch!.height + 6)),
+    "the popup is anchored to the swatch, not to the window",
+  ).toBeLessThanOrEqual(12);
+
+  // `vg-194` in a browser rather than in jsdom: the role promises a range and a
+  // keyboard, so both are asked for. **The alpha track, not the hue one** — the
+  // token this panel opens on is a near-black with no saturation, so a hue step
+  // changes nothing an author could see and only alpha moves the hex.
+  const alpha = page.getByTestId("picker-alpha");
+  await expect(alpha).toHaveAttribute("aria-valuemin", "0");
+  await expect(alpha).toHaveAttribute("aria-valuemax", "100");
+  const before = Number(await alpha.getAttribute("aria-valuenow"));
+  const readout = popover.locator("p");
+  const said = await readout.textContent();
+
+  await alpha.focus();
+  await page.keyboard.press("ArrowLeft");
+
+  await expect(alpha).toHaveAttribute("aria-valuenow", String(before - 1));
+  // The same key reaches the value the author reads, not just the attribute.
+  await expect(readout).not.toHaveText(said ?? "");
 });

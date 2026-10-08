@@ -149,8 +149,9 @@ this is wrong.**
 - **The swatch is already scoped to the palette it names** (`editor-shell.css:30-32`, plus
   `palette-menu.tsx:17-25` and its comment). This is the subtree decision 0035 turns on — do not
   "simplify" it away.
-- **`@radix-ui/react-popover` is already a direct dependency**, and
-  `components/ui/popover.tsx` is shadcn's, hand-owned. Radix's closure is therefore already
+- **`@radix-ui/react-popover` is already a direct dependency**, reached by
+  `components/ui/colour-picker.tsx` directly; the `components/ui/popover.tsx` beside it is shadcn's
+  and **imported by nobody**. Radix's closure is therefore already
   installed — **22 `@radix-ui/*` packages for two components**, measured 2026-10-08, each of the two
   declaring 15 direct dependencies. That is one of the numbers the survey weighed; it is recorded
   here so a later reader does not re-derive it. **This phase adds no dependency at all** — Base UI is
@@ -192,9 +193,12 @@ this is wrong.**
 
 **Modified — chrome**
 
-- `packages/editor/src/components/ui/dialog.tsx`, `popover.tsx`, `colour-picker.tsx` — the three
-  Radix wrapper files (Tasks 1.1 and 1.2). **This is the whole of Phase 1's editing.** §8 and 0037
-  both had these five menu files above in scope; under 0038 they do not move.
+- `packages/editor/src/components/ui/dialog.tsx`, `colour-picker.tsx` — the two Radix wrapper files
+  that are used (Tasks 1.1 and 1.2). **This is the whole of Phase 1's editing.** A third,
+  `components/ui/popover.tsx`, is **deleted rather than migrated**: nothing imports it — the picker
+  reaches `@radix-ui/react-popover` directly, which is the "reaching past its own wrapper" §8 names —
+  and it has been dead since the commit that added it. §8 and 0037 both had these five menu files
+  above in scope; under 0038 they do not move.
 - `packages/editor/src/editor-shell/palette-menu.tsx`, `display-switch.tsx`, `insert-popover.tsx`,
   `canvas-context-menu.tsx`, `shell-layout.tsx` — **listed to say they are NOT touched.** They run
   on Base UI already, and Phases 2 and 3 touch them only for the palette and for evidence.
@@ -225,11 +229,11 @@ this is wrong.**
 
 ## Phase 1 — One primitive library
 
-**Three files move to Base UI, and two packages leave.** `components/ui/dialog.tsx`,
-`popover.tsx` and `colour-picker.tsx` are re-implemented on Base UI's `Dialog` and `Popover`; the
-five menu surfaces that already run on Base UI do not move at all; and `@radix-ui/react-dialog` and
-`@radix-ui/react-popover` come out of the manifest, taking the 22 `@radix-ui/*` packages those two
-components pull in with them.
+**Two files move to Base UI, one dead one is deleted, and two packages leave.**
+`components/ui/dialog.tsx` and `colour-picker.tsx` are re-implemented on Base UI's `Dialog` and
+`Popover`; `components/ui/popover.tsx` has no importer and goes; the five menu surfaces that already
+run on Base UI do not move at all; and `@radix-ui/react-dialog` and `@radix-ui/react-popover` come
+out of the manifest, taking the 22 `@radix-ui/*` packages those two components pull in with them.
 
 **Direction, stated once because it has reversed three times.** §8 moved the five Base UI surfaces
 onto Radix; 0036 moved the three Radix files onto Base UI; 0037 moved all eight onto React Aria.
@@ -265,21 +269,24 @@ and the shell's palette reaches a portalled surface through `data-shell-palette`
 
 ---
 
-### Task 1.2: The popover and the colour picker move — and the picker gets its keyboard
+### Task 1.2: The colour picker moves — and its tracks get their keyboard
 
 **Files:**
-- Modify: `packages/editor/src/components/ui/popover.tsx` (42 lines)
+- Delete: `packages/editor/src/components/ui/popover.tsx` (42 lines, **imported by nobody** — the
+  picker reaches `@radix-ui/react-popover` directly, so there is nothing to migrate and a wrapper
+  with no consumer is the code never written)
 - Modify: `packages/editor/src/components/ui/colour-picker.tsx` (221 lines)
 - Modify: `packages/editor/src/components/ui/gradient-editor.tsx` only if `ColourPicker`'s props change
+- Create: `packages/editor/src/components/ui/colour-picker.dom.test.tsx` — the `vg-194` regression
 
-**Outcome.** The palette panel's picker opens, drags, types and commits on Base UI's `Popover`; and
-its four tracks are operable from the keyboard.
+**Outcome.** The palette panel's picker opens, drags, types and commits on Base UI's `Popover`, and
+lands beside the swatch that opened it; and its four tracks are operable from the keyboard.
 
-**Owning symbols.** `popover.tsx`'s `Popover`/`PopoverTrigger`/`PopoverContent` — Radix's `Content`
-carries `align` and `sideOffset`, which are Base UI `Positioner`'s `align` and `sideOffset`. And
-`colour-picker.tsx`'s module-private `Track`, whose trigger is Radix's `asChild` (`:133`); **Base UI
-has no `asChild`** — it takes a `render` prop, and the replacement must not leave a wrapper element
-behind that changes the trigger's layout.
+**Owning symbols.** `colour-picker.tsx`'s `Popover.Root`/`Trigger`/`Portal`/`Positioner`/`Popup` —
+Radix's `Content` carried `align` and `sideOffset`, which are Base UI `Positioner`'s, and **a `Popup`
+placed straight in the portal renders unpositioned**. And its module-private `Track`, plus the
+trigger, which Radix reached with `asChild` (`:133`); **Base UI has no `asChild`** — its `Trigger`
+renders the `<button>` itself, so no wrapper element is left behind to change the trigger's layout.
 
 **Constraints.**
 - **`vg-194` is fixed here, by hand, because this ruling leaves it to us.** `Track` renders

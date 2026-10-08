@@ -5,15 +5,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { shortcutReferenceGroups } from "../shortcut-manager/reference.js";
 import { ShortcutReference } from "./shortcut-reference.js";
 
-/**
- * `@radix-ui/react-focus-scope` schedules an unmount `setTimeout` that reads
- * realm globals at fire time, so under Vitest it can run after this file's jsdom
- * environment is gone and throw `parameter 1 is not of type 'Event'`
- * (`radix-ui/primitives#4148`). Draining one macrotask *before* teardown is the
- * whole fix, and this workspace has no shared setup file to put it in.
- */
-afterEach(async () => {
-  await new Promise((resolve) => setTimeout(resolve, 0));
+afterEach(() => {
   vi.restoreAllMocks();
 });
 
