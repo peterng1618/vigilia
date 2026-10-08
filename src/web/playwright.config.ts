@@ -25,7 +25,7 @@ import { HOST_APP_DIR, HOST_PORT } from "./tests/e2e/host-theme.js";
  * with `isDesktopSurface`, so widening that project's `testMatch` later cannot
  * silently turn a desktop pixel read into a phone one.
  */
-const HOST_SPECS = /host-(player|settings|media|bleed).spec.ts/;
+const HOST_SPECS = /host-(player|settings|media|bleed|chrome).spec.ts/;
 
 /**
  * The publish proofs each start their own host on their own port and drive the
