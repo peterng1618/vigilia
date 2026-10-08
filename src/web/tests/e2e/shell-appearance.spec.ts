@@ -314,17 +314,17 @@ test.describe("shell palettes", () => {
     });
 
     expect(probe.utilities).toEqual({
-      "text-xs": { "font-size": "11px", "line-height": "13.75px" },
-      "text-sm": { "font-size": "12px", "line-height": "15px" },
+      "text-xs": { "font-size": "11px", "line-height": "14.3px" },
+      "text-sm": { "font-size": "12px", "line-height": "16.8px" },
       "rounded-sm": { "border-radius": "4px" },
-      "rounded-md": { "border-radius": "8px" },
+      "rounded-md": { "border-radius": "6px" },
     });
     expect(probe.theme).toEqual({
       // `.25rem`, not `0.25rem`: the bundle is minified, and this reads what
       // the browser resolved rather than what the source says.
       "--spacing": ".25rem",
       "--text-md": "13px",
-      "--radius-lg": "12px",
+      "--radius-lg": "8px",
       "--shadow-raised": "0 12px 28px #0000003d",
       "--shadow-overlay": "0 18px 44px #0006",
     });

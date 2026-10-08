@@ -151,19 +151,21 @@ describe("shell token stylesheet", () => {
 
   /** The values themselves, asserted rather than merely present.
    *
-   *  These are the editor's existing density — 11/12/13px and an 8px radius
-   *  are what the shell's own stylesheet uses throughout — and aligning
-   *  Tailwind's utilities with the chrome is the point. Asserting only that a
-   *  token exists would let a change to `text-sm` land as a silent shift;
-   *  asserting the value makes it an edit somebody has to make here too. The
-   *  resolved result is measured in a real browser by
-   *  `tests/e2e/shell-appearance.spec.ts`; jsdom resolves nothing. */
-  it("pins the scale to the editor's density", () => {
+   *  `docs/design/design-language.md` §2–§3 is normative for these, and these
+   *  are the values it names. Asserting only that a token exists would let a
+   *  change to `text-sm` land as a silent shift — which is how `--radius-md` sat
+   *  at 8px against the bible's 6px with nothing to catch it; asserting the
+   *  value makes it an edit somebody has to make here too. The resolved result
+   *  is measured in a real browser by `tests/e2e/shell-appearance.spec.ts`;
+   *  jsdom resolves nothing. */
+  it("pins the scale to the design language", () => {
     const theme = themeBody();
     expect(theme, "no `@theme static` block declares the scale").not.toBe("");
 
+    // Digits are part of the name: `--text-2xs--line-height` was read as
+    // `--line-height` by a `[a-z-]+` pattern, so its value was never seen.
     const values = new Map(
-      [...theme.matchAll(/(--[a-z-]+)\s*:\s*([^;]+);/g)].flatMap((match) =>
+      [...theme.matchAll(/(--[a-z0-9-]+)\s*:\s*([^;]+);/g)].flatMap((match) =>
         match[1] === undefined || match[2] === undefined
           ? []
           : [[match[1], match[2].trim()]],
@@ -172,14 +174,11 @@ describe("shell token stylesheet", () => {
     expect(Object.fromEntries(values)).toMatchObject({
       "--spacing": "0.25rem",
       "--radius-sm": "4px",
-      "--radius-md": "8px",
-      "--radius-lg": "12px",
+      "--radius-md": "6px",
+      "--radius-lg": "8px",
       "--text-xs": "11px",
       "--text-sm": "12px",
       "--text-md": "13px",
-      "--text-xs--line-height": "1.25",
-      "--text-sm--line-height": "1.25",
-      "--text-md--line-height": "1.25",
       "--shadow-raised": "0 12px 28px #0000003d",
       "--shadow-overlay": "0 18px 44px #0006",
     });
@@ -187,13 +186,20 @@ describe("shell token stylesheet", () => {
     // Tailwind writes each `--text-*` companion for its own size — `--text-sm`
     // ships `calc(1.25 / .875)`, computed for 14px — so a size changed without
     // its companion inherits a ratio belonging to a size the token no longer
-    // has. 1.25 is this chrome's density; every size states it.
-    for (const size of ["xs", "sm", "md"]) {
+    // has. These are bible §2's ratios; every size states its own.
+    for (const [size, lineHeight] of [
+      ["2xs", "1.2"],
+      ["xs", "1.3"],
+      ["sm", "1.4"],
+      ["md", "1.3"],
+      ["lg", "1.3"],
+      ["xl", "1.2"],
+    ]) {
       expect(
         values.get(`--text-${size}--line-height`),
         `--text-${size} has no line-height of its own, so it inherits a ratio ` +
           "computed for a size it no longer is",
-      ).toBe("1.25");
+      ).toBe(lineHeight);
     }
   });
 
