@@ -1573,7 +1573,12 @@ work (`context.setOffline` does not tear down an open stream in this Chromium).
 
 ```ts
 import { expect, test } from "@playwright/test";
-import { HOST_MISSING_THEME_ID, HOST_PORT, HOST_THEME_ID } from "./host-theme.js";
+import {
+  HOST_BLEED_THEME_ID,
+  HOST_MISSING_THEME_ID,
+  HOST_PORT,
+  HOST_THEME_ID,
+} from "./host-theme.js";
 // Copied from `player-chrome.spec.ts` rather than imported — see Interfaces.
 const PHONE = {
   portrait: { width: 390, height: 844 },
@@ -1622,20 +1627,32 @@ test("a strip that arrives after the fit takes its room then", async ({ page }) 
 
 test("two strips at once leave the artboard more than half the phone", async ({ page }) => {
   // Two strips on one display, which is what makes this the ceiling's case
-  // rather than one notice's. **Corrected 2026-10-08: this pair is a data gap
-  // and a *transport* gap, not a composition gap.** `e2e-missing-sensor`'s one
-  // object sits at `40,140` inside its 640×360 artboard, so it raises no crop
-  // strip — the second strip below is the connection one, drawn because the
-  // aborted socket is refused. A genuine data-gap-beside-composition-gap pair
-  // would need a bleeding theme (the `e2e-bleed` fixtures) and is not what this
-  // test measures.
+  // rather than one notice's.
+  //
+  // **Rewritten 2026-10-08 after the prescribed version was measured
+  // unreachable, and the finding is worth more than the test.** It aborted
+  // `**/ws` and waited for `[data-vigilia-availability]`, but a gap needs a
+  // *sample* to be named: `availabilityNoticeText` returns `undefined` while
+  // every reading is `undefined` (`availability-notice.ts:38-40` — "what keeps
+  // the strip quiet before the first batch"), and a refused socket never
+  // delivers one. So on the real host the data-gap strip and the transport
+  // strip are **mutually exclusive**: measured, the prescribed version times out
+  // at 32.6 s on the first `toBeVisible`. The gap that needs no sample is a
+  // *composition* one, so this takes its second strip from `e2e-bleed`'s
+  // unmarked overhang, which is raised at mount by the crop notice.
+  //
+  // The pair is therefore a composition gap and a transport gap. The pair §97
+  // describes — a data gap beside a composition gap — needs a fixture that both
+  // bleeds and binds an unreportable key, which no seeded theme is; that is
+  // `vg-191`.
+  //
   // At 390px that is a 3-line sentence and a 2-line one; the display must still
-  // be a display.
-  await page.route("**/ws", (route) => route.abort());
+  // be a display. (Measured: crop 46px, connection 46px, host 753px of 844.)
+  await page.route(/\/ws(\?|$)/, (route) => route.abort());
   await page.setViewportSize(PHONE.portrait);
-  await page.goto(`${HOST}/?theme=${HOST_MISSING_THEME_ID}&data=live`);
+  await page.goto(`${HOST}/?theme=${HOST_BLEED_THEME_ID}&data=live`);
 
-  await expect(page.locator("[data-vigilia-availability]")).toBeVisible({ timeout: 30_000 });
+  await expect(page.locator("[data-vigilia-crop]")).toBeVisible({ timeout: 30_000 });
   await expect(page.locator("#vigilia-connection")).toBeVisible({ timeout: 30_000 });
 
   const geometry = await chromeGeometry(page, { width: 640, height: 360 });
@@ -1723,6 +1740,19 @@ Re-add `position: fixed; left: 0; right: 0; top: 0; z-index: 9` to the availabil
 `chrome.ts`, rebuild, re-run. **Expected, corrected 2026-10-08: test 1 fails on
 `over the artboard` — and test 1 alone.** Restore, rebuild, and record what the break did.
 
+> **Both breaks were then performed and measured, 2026-10-08, and both matched the prediction —
+> the first time in this plan that a prescribed break has.** Recorded here so Task 3.2 reports a
+> measurement rather than a claim:
+>
+> - `position: fixed` on the availability strip: **test 1 fails alone**, `vigilia-availability over
+>   the artboard`, overlap **31611.67 px²** (844 × ~37.5). Tests 2 and 3 green.
+> - `min-height: 70vh` on `#vigilia-chrome-top`: **test 2 fails** on `host.h > 422`, received
+>   **207.61** — the band, 590.8 at 844 tall, plus the connection strip — and **test 3 goes with
+>   it** on `toEqual([390, 844, 0])`. Test 1 stays green, because it asserts only that the painted
+>   box is shorter than the viewport and that no strip overlaps it.
+> - Green re-run after both restores: **3 expected / 0 unexpected / 0 flaky**, with
+>   `git diff --stat src/web/packages/player` empty.
+
 > **Why test 2 cannot fail on this break, worked out before dispatch rather than discovered in the
 > run.** `computeArtboardTransform` centres (`renderer-core/src/artboard.ts:83-84`,
 > `offsetY = (viewportHeight - scaledHeight) / 2`). At 390×844 with a 640×360 artboard, `contain`
@@ -1767,7 +1797,9 @@ PLAYWRIGHT_JSON_OUTPUT_NAME=test-results/host-chrome.json \
 ```
 
 Expected: PASS, 3 tests — **and the count is not to be taken from this line, which has been wrong
-three times in this plan; report the number the run gave.** **`vg-143` lives in this project** (`host-player.spec.ts`'s units spec
+three times in this plan; report the number the run gave.** **Landed 2026-10-08 as `1e52b8da`:
+`expected: 3, unexpected: 0, flaky: 0, skipped: 0`, read from
+`test-results/host-chrome.json`.** **`vg-143` lives in this project** (`host-player.spec.ts`'s units spec
 timing out on the real host, which times out in isolation too) — it is not this plan's, and this
 file must not be made flaky alongside it: if a test here times out, check whether the host
 delivered at all before blaming the layout.
@@ -1855,7 +1887,8 @@ PLAYWRIGHT_JSON_OUTPUT_NAME=test-results/player-chrome-host-close.json \
 Why these four and no more: `display-fabric.spec.ts` owns the player's visible behaviour
 including the fit modes and the load-failure page (`:663-687`);
 `host-bleed.spec.ts` is the existing reader of `[data-vigilia-crop]`; `host-player.spec.ts` is
-the existing reader of `#vigilia-connection` in nine places; and `host-media.spec.ts:408`
+the existing reader of `#vigilia-connection` in **eleven** places (`grep -c`, corrected 2026-10-08
+from a remembered nine); and `host-media.spec.ts:408`
 screenshots `#artboard` itself, so it is the one spec that could notice the host changing from
 an absolutely-positioned overlay into a row. Names to expect in the failures and not to fix
 here: `vg-140` (`display-fabric.spec.ts`'s intermittent fit-mode ink read), `vg-143`, and the
@@ -1884,9 +1917,13 @@ Your report says, in its own words and with the numbers you read:
 - every prescribed break: what it was, what it did, and whether it failed;
 - which of the tests in Tasks 2.2 and 2.3 were **green on arrival** (a test that never failed is
   still worth keeping, and it is not evidence that the defect existed);
-- the two handles this plan found stale: `§151`, cited in `packages/player/index.html` and
-  defined nowhere in `docs/product/requirements.md`; and the scaffold banner's missing `id`,
-  which Task 1.2 gives it;
+- **the two handles this plan found stale — and both are already closed, so report them as
+  closed rather than as outstanding** (corrected 2026-10-08): `§151` was cited at
+  `packages/player/index.html` and defined nowhere in `docs/product/requirements.md`, and Task
+  1.1's Constraints block ordered the marker dropped, which `8cb99931`'s diff is — the sentence
+  keeps its substance and the marker that remains, `§57`, resolves at `requirements.md:89`; the
+  scaffold banner's missing `id` was given one by Task 1.2. The register row for the first,
+  `vg-180`, is closed as verified with a check and that sha;
 - anything in *What is already true* that a measurement contradicted.
 
 - [ ] **Step 4: No commit**
@@ -1923,7 +1960,9 @@ same in Task 1.1's interfaces, its code, its tests and Tasks 1.2-1.3. The four w
 signatures they have today, so `main.ts`'s call sites do not move except for `showLoadFailure`,
 whose parameter list changes once and is named in Task 1.3 along with both call sites.
 `chromeGeometry`, `overlap` and `PHONE` are defined in Task 2.1 and consumed in 2.2 (same file)
-and 2.3 (imported, with the executor told to decide how and say why).
+and 2.3 (**copied**, corrected 2026-10-08: importing a spec file would re-register its own
+`test()` calls a second time, because Playwright binds them to the file being loaded, so the
+second copy is the right answer until a third one exists).
 
 **4. Review Focus.** Five lines, five owning tasks, each pinned by a named test: the late strip
 (Task 2.3, test 1), several at once (2.3, test 2), the 4:3 viewport (2.2, test 1), the cover
