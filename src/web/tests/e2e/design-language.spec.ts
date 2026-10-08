@@ -37,8 +37,11 @@ import { isDesktopSurface } from "./surface.js";
 
 const FIXTURE = "http://127.0.0.1:4174/control-fixture.html";
 
-/** Bible §3's named steps. The same list `scripts/design-tokens.mjs` enforces in
- *  source, so the two guards cannot disagree about what "on scale" means. */
+/** Bible §3's named steps. The bible is the source; this list and the steps in
+ *  `scripts/design-tokens.mjs` are two independent transcriptions of it, so a §3
+ *  change updates both in the same commit. There is deliberately no import
+ *  between them: `tests/e2e/` belongs to no tsconfig (vg-192), so a cross-package
+ *  import would arrive untyped and buy coupling, not safety. */
 const SPACING_STEPS = [4, 6, 8, 10, 12, 14, 16, 20, 24, 32];
 
 /** Bible §4's thirteen roles. `--bg` and `--stage` are here too: they carry no
@@ -61,6 +64,8 @@ const ROLES = [
   "hot",
 ] as const;
 
+/** The six palettes bible §4 declares a role set for, transcribed from the
+ *  bible like `SPACING_STEPS` above; the same update-both rule applies. */
 const PALETTES = [
   "editorial",
   "graphite",
@@ -349,7 +354,7 @@ async function probes(page: Page): Promise<Probe[]> {
 
     // The selected state of a segmented choice: the active label on `--stage`.
     const selected = document.querySelector(
-      "[data-fixture-segmented] [data-pressed]",
+      "[data-fixture-segmented][data-pressed]",
     );
     add("selected", selected, centre(selected));
 

@@ -42,6 +42,18 @@ const SPACING_PROPERTY =
   /^(?:padding|margin|inset|translate)(?:-|$)|^(?:gap|row-gap|column-gap|top|right|bottom|left)$/;
 
 /**
+ * Tailwind's spacing utilities with an arbitrary length — `p-[26px]`,
+ * `gap-x-[7px]`, `md:mt-[30px]`. In a `.tsx` there is no declaration property
+ * to read, so the utility name is the signal that the px is a spacing
+ * decision; these are held to §3's steps the way a CSS spacing property is.
+ * Scoped to these names on purpose: `h-[26px]`, `size-[24px]`,
+ * `translate-x-[10px]` and `min-w-[10rem]` are not spacing properties and stay
+ * in tier 2. Longest name first so `px-`/`gap-x-` win over `p-`/`gap-`.
+ */
+const TW_SPACING =
+  /(?<![\w-])(?:px|py|pt|pb|pl|pr|p|mx|my|mt|mb|ml|mr|m|gap-x|gap-y|gap|space-x|space-y)-\[(\d+(?:\.\d+)?)px\](?![\w-])/g;
+
+/**
  * A block whose whole selector list is one of these *defines* tokens, so its
  * literals are the values rather than a surface going around them. A rule that
  * merely mentions the attribute — `[data-shell-palette="x"] .chip`,
@@ -149,9 +161,14 @@ function position(text, index) {
 }
 
 /**
- * Violations in one file's source. `biblePx` are the values the bible prints
- * outside §3's spacing table; the steps and `0`/`1` are allowed without them,
- * so an empty allowlist narrows the rule rather than disabling it.
+ * Violations in one file's source. `biblePx` is the tier-2 allowlist: the px
+ * lengths the bible fixes outside §3's spacing table — §3's row rhythms (26,
+ * 30, 32), the rail/pane widths (46, 246, 276), the 999px pill, the 11px
+ * swatch and §6's 1.6–1.8px stroke widths. It does NOT cover everything the
+ * bible prints: §2's type sizes 13/15/19 are deliberately absent, because a
+ * value here is allowed *anywhere*, so adding them would license
+ * `padding: 13px`. The steps and `0`/`1` are allowed without it, so an empty
+ * allowlist narrows the rule rather than disabling it.
  */
 export function check(relPath, source, biblePx = []) {
   const path = String(relPath ?? "");
@@ -161,6 +178,21 @@ export function check(relPath, source, biblePx = []) {
   const inDefinition = (index) => definitions.some(([from, to]) => index >= from && index < to);
   const isCss = /\.css$/.test(path);
   const found = [];
+
+  // In a `.tsx` there is no declaration property to read, so a Tailwind
+  // spacing utility carrying an arbitrary value is what marks the px as a
+  // spacing decision. Computed once, lazily, only for a non-CSS file.
+  let twSpans;
+  const isTwSpacing = (index) => {
+    if (isCss) return false;
+    if (twSpans === undefined) {
+      twSpans = [...text.matchAll(TW_SPACING)].map((match) => {
+        const from = match.index + match[0].indexOf(match[1]);
+        return [from, from + match[1].length];
+      });
+    }
+    return twSpans.some(([from, to]) => index >= from && index < to);
+  };
 
   for (const match of text.matchAll(HEX)) {
     if (inDefinition(match.index)) continue;
@@ -172,7 +204,10 @@ export function check(relPath, source, biblePx = []) {
     const value = Number(match[1]);
     if (ALWAYS_PX.has(value)) continue;
     const property = isCss ? declarationProperty(text, match.index) : null;
-    const spacing = property !== null && SPACING_PROPERTY.test(property);
+    const spacing =
+      property !== null
+        ? SPACING_PROPERTY.test(property)
+        : isTwSpacing(match.index);
     if (spacing && !SPACING_STEPS.has(value)) {
       found.push({
         rule: "spacing-px",
@@ -243,6 +278,20 @@ function selfTest() {
     ["an eight-digit hex is one violation, not two", "a.css", ".x { color: #00000059; }", 1],
     ["an id selector is not a hex colour", "a.css", "#app { height: 100%; }", 0],
     ["a tsx literal is checked", "a.tsx", 'const s = { padding: "7px" };', 1],
+    // A Tailwind spacing utility in a `.tsx` is tier 1, even where the value is
+    // a bible value tier 2 would admit — `26` is allowed here only with the
+    // allowlist, so this case fails if the utility rule is removed.
+    [
+      "a tsx spacing utility is held to §3 even for a bible value",
+      "a.tsx",
+      'const c = "p-[26px]";',
+      1,
+      { biblePx: [26] },
+    ],
+    ["a tsx gap utility with an off-scale value is a violation", "a.tsx", 'const c = "gap-[7px]";', 1],
+    ["a tsx spacing utility on a step is not", "a.tsx", 'const c = "px-[12px]";', 0],
+    // Scoping: a non-spacing utility keeps the tier-2 allowlist.
+    ["a tsx non-spacing utility keeps the bible allowlist", "a.tsx", 'const c = "h-[26px]";', 0, { biblePx: [26] }],
     ["a tsx comment is not", "a.tsx", "// 7px was the bug\nconst s = {};", 0],
     ["a url in a tsx file is not a comment", "a.tsx", 'const u = "https://x"; const s = "7px";', 1],
     // A masked comment must not move the line it reports: it did, and a

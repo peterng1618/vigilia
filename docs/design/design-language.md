@@ -176,7 +176,7 @@ The vocabulary is closed. A control is one of these, or it is not a control.
    be clipped by a scroller or covered by a floating cluster.
 5. **Every control has a label, a programmatic name, and an id.** A control with
    neither `aria-label` nor a `<label for>` is a defect, not a style choice.
-6. **Hover raises `--edge` to `--muted`.** Nothing moves, nothing scales.
+6. **Hover raises `--edge` to `--muted`.** On a control that carries a resting `--edge` — the well, the toggle — the border brightens. On a glyph-only control with no resting border — the icon button — it is the border it acquires on hover. Nothing moves, nothing scales.
 
 ### Editing and recovery
 
@@ -442,7 +442,7 @@ choice set without dictating a permanently larger chooser.
 - A tool in the status bar; a global command in a pane footer.
 - A per-card inspector column, or a glyph that claims to depict an arbitrary group.
 - A device frame or notch around the artboard.
-- Hiding an existing capability because this selection cannot use it, instead of refusing it in words; inventing a property its kind does not have is equally wrong.
+- Hiding an existing capability because this selection cannot use it, instead of refusing it in words; inventing a property its kind does not have is equally wrong. **The dock's registry-filtered object actions are the one exception** (§5 rule 3, §7.5): an action this selection cannot run is *filtered* — absent from the dock — rather than refused in words.
 - Removing a frequently used control to a settings surface.
 - Inventing a control not in §5, or an icon not in §6, without amending this file
   in the same commit.

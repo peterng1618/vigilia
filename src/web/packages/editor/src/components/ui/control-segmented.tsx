@@ -24,6 +24,10 @@ import {
  * Each label is a target in its own right, so each carries §5's 24×24 hit area
  * through `hitTargetClasses`; the label's own box is 22px tall, and the rows'
  * 4px gap keeps the two expanded targets from meeting.
+ *
+ * The caller's `data` rides every segment, not the group: a `Toggle` is the
+ * focus target and the `ToggleGroup` is a wrapper (control-well.tsx), so the
+ * attribute has to be on whichever segment the person is on.
  */
 export function ControlSegmented<T extends string>(
   props: ControlProps & {
@@ -50,7 +54,6 @@ export function ControlSegmented<T extends string>(
   return (
     <ControlRow ids={ids} label={label} refused={refused} density={density}>
       <ToggleGroup
-        {...data}
         id={ids.control}
         value={[value]}
         aria-labelledby={ids.label}
@@ -65,6 +68,7 @@ export function ControlSegmented<T extends string>(
       >
         {options.map((option) => (
           <Toggle
+            {...data}
             key={option.id}
             value={option.id}
             aria-disabled={refusedState}

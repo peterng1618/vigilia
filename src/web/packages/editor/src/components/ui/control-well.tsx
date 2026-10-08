@@ -49,9 +49,18 @@ const ROW_MIN_HEIGHT: Readonly<Record<ControlDensity, string>> = {
  *
  * The outline is a real `outline`, not only a ring: forced-colours mode
  * overrides author outline colours for you, and a box shadow disappears there.
+ *
+ * Hover raises the resting `--edge` to `--muted` (bible §5 rule 6). The well
+ * cannot know whether the control inside it is blocked, so the caller says so:
+ * a refused row must not advertise a change it will not make, and `blocked`
+ * drops the hover rather than leaving it to a `:has()` the caller cannot see.
  */
-export function wellClasses(density: ControlDensity = "panel"): string {
-  return `flex ${WELL_HEIGHT[density]} items-center rounded-md border border-edge bg-panel-2 px-[var(--space-6)] focus-within:outline focus-within:outline-2 focus-within:outline-accent focus-within:ring-3 focus-within:ring-accent/20`;
+export function wellClasses(
+  density: ControlDensity = "panel",
+  blocked = false,
+): string {
+  const hover = blocked ? "" : "hover:border-muted ";
+  return `flex ${WELL_HEIGHT[density]} items-center rounded-md border border-edge bg-panel-2 px-[var(--space-6)] ${hover}focus-within:outline focus-within:outline-2 focus-within:outline-accent focus-within:ring-3 focus-within:ring-accent/18`;
 }
 
 /**
@@ -72,9 +81,14 @@ export const hitTargetClasses =
 
 export function ControlWell(props: {
   readonly density?: ControlDensity | undefined;
+  readonly blocked?: boolean | undefined;
   readonly children: React.ReactNode;
 }): React.JSX.Element {
-  return <div className={wellClasses(props.density)}>{props.children}</div>;
+  return (
+    <div className={wellClasses(props.density, props.blocked ?? false)}>
+      {props.children}
+    </div>
+  );
 }
 
 /** The three ids one control needs. */

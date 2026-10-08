@@ -108,7 +108,7 @@ export function ControlNumber(
       refused={refused}
       density={density}
     >
-      <ControlWell density={density}>
+      <ControlWell density={density} blocked={blocked}>
         <input
           {...data}
           id={ids.control}

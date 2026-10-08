@@ -10,6 +10,7 @@ import { ControlSlider } from "./control-slider.js";
 import { ControlSwatch } from "./control-swatch.js";
 import { ControlText } from "./control-text.js";
 import { ControlToggle } from "./control-toggle.js";
+import { wellClasses } from "./control-well.js";
 import { InspectorSection } from "./inspector-section.js";
 
 /**
@@ -744,4 +745,77 @@ it("toggles an inspector section whose header says whether it is read-only", asy
   expect(document.querySelector("#spends-header")?.textContent).toContain(
     "Read-only",
   );
+});
+
+it("names a section with data-vigilia-section from its own id", async () => {
+  await mount(
+    <InspectorSection id="content" title="Content">
+      <span>Position</span>
+    </InspectorSection>,
+  );
+  // Plan 3's locators read `[data-vigilia-section="…"]`; the attribute has to
+  // be on the section element itself, not only on the header and the panel.
+  const section = document.querySelector('[data-vigilia-section="content"]');
+  expect(
+    section,
+    "the data-vigilia-section hook the later plans read did not render",
+  ).toBeTruthy();
+  expect(section?.tagName).toBe("SECTION");
+});
+
+it("raises the well's edge on hover, except when the control is blocked", () => {
+  // Bible §5 rule 6: hover raises the resting `--edge` to `--muted`. jsdom
+  // resolves no custom property, so the pin is the class the cascade is built
+  // from — it fails if the hover rule is removed.
+  expect(wellClasses("panel")).toContain("hover:border-muted");
+  // A blocked control (disabled or refused) must not advertise a change it
+  // will not make, so the caller suppresses the raise.
+  expect(wellClasses("panel", true)).not.toContain("hover:border-muted");
+});
+
+it("raises the toggle's edge on hover only while it is unchecked", async () => {
+  await mount(
+    <ControlToggle label="Glass" checked={false} onChange={() => {}} />,
+  );
+  const pill = labelled("Glass");
+  expect(pill.className).toContain("hover:data-[unchecked]:border-muted");
+  // The checked pill carries the boolean as an accent border; hover must not
+  // override the state, which the `data-[unchecked]` guard is what prevents.
+  expect(pill.className).toContain("data-[checked]:border-accent");
+});
+
+it("puts a control's data on the node that takes focus", async () => {
+  await mount(
+    <ControlSlider
+      label="Opacity"
+      value={5}
+      min={0}
+      max={10}
+      onCommit={() => {}}
+      data={{ "data-testid": "opacity" }}
+    />,
+  );
+  const slider = document.querySelector<HTMLInputElement>(
+    '[data-testid="opacity"]',
+  );
+  expect(slider?.tagName, "the data is not on the range input").toBe("INPUT");
+  slider?.focus();
+  expect(document.activeElement).toBe(slider);
+  expect(document.activeElement?.getAttribute("data-testid")).toBe("opacity");
+
+  await mount(
+    <ControlSegmented
+      label="Align"
+      value="left"
+      options={ALIGN}
+      onChange={() => {}}
+      data={{ "data-testid": "align" }}
+    />,
+  );
+  const segment = document.querySelector<HTMLElement>('[data-testid="align"]');
+  expect(segment?.tagName, "the data is not on a segment button").toBe(
+    "BUTTON",
+  );
+  segment?.focus();
+  expect(document.activeElement?.getAttribute("data-testid")).toBe("align");
 });

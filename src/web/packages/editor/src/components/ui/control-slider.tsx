@@ -65,10 +65,23 @@ export function ControlSlider(
     else node.setAttribute("aria-disabled", "true");
   }, [refused]);
 
+  // `data` belongs to the focus target (control-well.tsx), and the focus target
+  // is the nested `input[type=range]` — not `Slider.Root`, which is a wrapper.
+  // Base UI exposes no prop that reaches the input, so the attributes are
+  // mirrored onto it here.
+  useEffect(() => {
+    const node = input.current;
+    if (node === null) return;
+    const entries = Object.entries(data ?? {});
+    for (const [key, value] of entries) node.setAttribute(key, value);
+    return () => {
+      for (const [key] of entries) node.removeAttribute(key);
+    };
+  }, [data]);
+
   return (
     <ControlRow ids={ids} label={label} refused={refused} density={density}>
       <Slider.Root
-        {...data}
         value={value}
         min={min}
         max={max}
@@ -126,7 +139,7 @@ export function ControlSlider(
           />
         </Slider.Control>
         <span
-          className={`${wellClasses(density)} w-[36px] flex-none justify-end font-mono text-sm text-text`}
+          className={`${wellClasses(density, blocked)} w-[36px] flex-none justify-end font-mono text-sm text-text`}
         >
           {value}
         </span>

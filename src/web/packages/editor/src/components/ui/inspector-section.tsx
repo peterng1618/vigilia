@@ -31,7 +31,10 @@ export function InspectorSection(props: {
   const [open, setOpen] = useState(defaultOpen);
 
   return (
-    <section className="border-t border-edge py-[var(--space-12)]">
+    <section
+      data-vigilia-section={id}
+      className="border-t border-edge py-[var(--space-12)]"
+    >
       <h2 className="m-0">
         <button
           type="button"

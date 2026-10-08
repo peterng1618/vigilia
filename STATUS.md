@@ -33,11 +33,11 @@ backlog it produced stays live in the register.
 
 ## Last completed change
 
-- **Task 4 — the parity gate — is complete** (`1f991845`, fix round `51f8899a`, review clean): the reduced-motion assertion could not fail — the injected freeze covered the scope the section read, so every duration was `0s` and every run passed — and it now lifts the freeze, opens with a positive control, and lists 30 still-animating elements when the media query is renamed to `reduce-sabotaged`; the gate is green at 1 collected, 1 passed, 0 unexpected.
-- **The slider's thumb is two parts** — a `--text` interior in a 1px `--panel` ring — because no flat colour clears 3:1 against both halves of the track in graphite (1.81:1) and light (1.35:1); the gate measures each half and names the part that beat it.
-- **The fixture is out of the production build** — its own `build:fixture` invocation, so a production build emits one chunk, no `control-fixture.html` and no shared `editor-shell-*.js`.
-- **The bible won three values the mockup was stale on** — the well radius 6px, the swatch radius 4px and the slider's value well 36px — and §13.1's three overstated claims are corrected rather than left standing.
-- **`control.dom.test.tsx` is 18 cases** (27 was the `components/ui` folder total across four files), and vg-200 records six passing control states, not five.
+- **The final review's fix dispatch landed** (base `e3bd9871`): nine contract corrections — ADR 0040's shipped thirteen roles, bible §10's dock exception, the mockup's well rule, §5 rule 6's hover text, and the spec's ratchet, spacing, contrast and handoff wording — plus the code findings B1–B7.
+- **B1 — the parity gate is no longer red on a clean checkout**: both workflows run `npm run build:fixture -w @vigilia/editor` after the editor build, so `control-fixture.html` reaches `dist`; verified that a production build emits it not, and that the CI sequence emits both.
+- **B4 — the source guard's §3 rule now covers Tailwind spacing utilities in `.tsx`**, so `p-[26px]` no longer slips through `biblePx`; scoped so `h-[26px]` and `size-[24px]` stay tier 2, and `design:check` is green over 12 files.
+- **B2 and B5 landed**: `InspectorSection` renders `data-vigilia-section` from its id, and the slider's and segmented's `data` moved onto the focus target; B7 (duplicated draft/commit logic) is parked as `vg-203` under plan 3.
+- **Bible §5 rule 6 is now implemented**: the well and the unchecked toggle raise `--edge` to `--muted` on hover, and a blocked control suppresses the raise.
 
 ## Next
 

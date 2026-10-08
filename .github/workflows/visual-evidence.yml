@@ -43,6 +43,7 @@ jobs:
       - run: npm ci
       - run: npx vite build packages/player
       - run: npx vite build packages/editor
+      - run: npm run build:fixture -w @vigilia/editor
       - run: npx playwright install --with-deps chromium
       - name: Capture selected visual evidence
         run: npx playwright test --project="$VIGILIA_PROJECT" --grep "$VIGILIA_GREP"

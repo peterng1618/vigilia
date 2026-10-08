@@ -481,7 +481,8 @@ gate. The phone limitation remains named, never mistaken for desktop proof.
 `index.html` keeps the chunk graph it had before the fixture existed — mounts the
 built control set over the built stylesheet at `/control-fixture.html` on the
 editor preview, and `tests/e2e/design-language.spec.ts` asserts against it in a
-real browser: every authored spacing value is a bible §3 step; no element the
+real browser: every padding, margin and gap the check reads is a bible §3 step;
+no element the
 check reads paints a colour outside the set §4's roles resolve to, which is
 `color`, `background-color`, border and outline colour on elements at least 2px
 on a side — **a gradient set through the `background` shorthand passes it**, and
@@ -523,7 +524,7 @@ Untouched by this design, and restated so the rewrite cannot quietly break them.
 - **Editor-shell theming stays separate from authored theme globals** — the shell
   palette colours the editor, never the theme.
 
-### Review handoff — 2026-10-08
+## Review handoff — 2026-10-08
 
 This review edits contracts and references, not product delivery. Existing
 plan-1 Tasks 1–2 remain complete; Tasks 3–4 remain active. Plans 2–6 remain
@@ -593,13 +594,17 @@ necessary, never sufficient; §13.1's interaction and stress proof also applies.
   normal publications.
 - **Keyboard and contrast are observed.** §13.1's walkthrough runs on the real
   host. Normal required text meets 4.5:1 and essential boundaries/focus meet
-  3:1 in all six palettes; forced-colours focus stays visible. Long names,
+  3:1 in all six palettes **with a named debt** (five cells are pinned below
+  those ratios today as measured floors that fail if they get worse, §13.1);
+  forced-colours focus stays visible. Long names,
   unresolved references and 200% zoom leave controls and reasons reachable.
 
-- **The scales are consumed.** A grep over the editor's sources finds a surface
-  using a spacing value not in the bible's steps, or a hex colour outside the
-  palette roles, **fails**. An automated check, not a review note — §9's whole
-  point is that the last one was a review note.
+- **The scales are consumed.** A ratchet over the twelve files listed in
+  `scripts/design-tokens.gated.json` — `npm run design:check`, not a grep over
+  all sources; a file outside the list is not covered — finds a surface using a
+  spacing value not in the bible's steps, or a hex colour outside the palette
+  roles, **fails**. An automated check, not a review note — §9's whole point is
+  that the last one was a review note.
 - **No native `<select>` and no native `input type=range` remains in an editor
   surface.** Counted, before and after.
 - **Every panel's existing behaviour survives its rewrite**, shown by that

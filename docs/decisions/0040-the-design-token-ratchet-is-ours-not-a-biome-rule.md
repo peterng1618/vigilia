@@ -127,16 +127,21 @@ What shipped:
   later plan write that vocabulary and only `--shell-*` existed. An alias is
   substituted where it is declared, so a single `:root` declaration would
   resolve the root's palette and pin the swatch chip; all six palette blocks
-  therefore repeat the ten aliases, and `--faint` is derived from each palette's
-  `--muted` with `color-mix` rather than hand-tuned six times. They are exposed
-  as `--color-*` utilities through the existing `@theme inline` block, which is
-  what makes a utility carry the palette in force. `--color-bg` is deliberately
-  absent and pinned absent by a test: `--bg` aliases `--shell-backdrop`, a
-  gradient stack in graphite and light, and a colour utility from it would set a
-  colour to a gradient and be dropped in silence. `--stage`, `--hdr` and
-  `--edge-2` are **not** declared — their first consumers arrive in later plans,
-  and a colour declared for nothing is the defect this plan exists to remove.
-  Nothing is renamed and no `--shell-*` is deleted.
+  therefore repeat all **thirteen** §4 roles, and `--faint` is derived from each
+  palette's `--muted` with `color-mix` rather than hand-tuned six times. Eleven
+  are exposed as `--color-*` utilities through the existing `@theme inline`
+  block — the nine original roles plus `--color-hdr` and `--color-edge-2` —
+  which is what makes a utility carry the palette in force. `--color-bg` and
+  `--color-stage` are deliberately absent and pinned absent by a test: both
+  `--bg` and `--stage` alias `--shell-backdrop`, a gradient stack in graphite
+  and light, and a colour utility from either would set a colour to a gradient
+  and be dropped in silence. `--bg` and `--stage` themselves are declared in all
+  six palettes, because the roles are right and only the utility names would be
+  wrong; a surface that paints `--stage` uses the `background` shorthand. The
+  three roles whose first consumers arrive in later plans — `--stage`, `--hdr`
+  and `--edge-2` — are declared ahead of those consumers on the user's
+  instruction, a reversal of Task 2's "declared for nothing" rationale recorded
+  in the plan's ledger. Nothing is renamed and no `--shell-*` is deleted.
 
 The guard's own test lives behind `--self-test` in the same file and is wired
 into `gates:self-test`, so its proof cannot drift out of the aggregate gate.

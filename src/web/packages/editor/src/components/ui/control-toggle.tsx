@@ -19,6 +19,10 @@ import {
  * The 26×14 pill is the *paint*; the target is the 24×24 `hitTargetClasses`
  * carries, because §5's dense-chrome rule is about what can be hit, not what
  * is drawn.
+ *
+ * Hover raises the resting `--edge` to `--muted` (bible §5 rule 6), but only
+ * while unchecked: the checked pill's border is `--accent`, and hover must not
+ * override the state that carries the boolean.
  */
 export function ControlToggle(
   props: ControlProps & {
@@ -53,7 +57,7 @@ export function ControlToggle(
           if (blocked) return;
           onChange(next);
         }}
-        className={`${hitTargetClasses} flex h-[14px] w-[26px] flex-none items-center rounded-full border border-edge bg-panel-2 p-0 data-[checked]:border-accent data-[checked]:bg-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2`}
+        className={`${hitTargetClasses} flex h-[14px] w-[26px] flex-none items-center rounded-full border border-edge bg-panel-2 p-0 hover:data-[unchecked]:border-muted data-[checked]:border-accent data-[checked]:bg-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2`}
       >
         <Switch.Thumb className="block size-[10px] translate-x-[4px] rounded-full bg-muted transition-transform data-[checked]:translate-x-[10px] data-[checked]:bg-panel" />
       </Switch.Root>
