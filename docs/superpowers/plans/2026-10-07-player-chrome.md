@@ -34,6 +34,10 @@ prose is `:176-182`, about the crop notice staying honest, and that work has lan
 
 ## What is already true — measured, not read
 
+> **Corrected 2026-10-08 after Task 1.2: the four strip writers this section cites inside `main.ts` now live in `chrome.ts`.** Task 1.2 moved them and retired `topNotices()` (`bd6e1e29`), so `main.ts` is **524** lines rather than 658 and every citation below in the range `main.ts:496-656` names a line that no longer exists. **The measurements stand — the code they were taken against moved**, and the writers' new home is `chrome.ts`.
+>
+> **Everything under `main.ts:400` is unaffected**, because the deleted region was contiguous and at the end: `showLoadFailure`'s two call sites are still `:89`/`:104`, `FIXTURE_THEME_IDS` is still `:59`, the availability cadence is still `:220-222`/`:356`, the artboard-host contract is still `:55-57`, and both `ResizeObserver`s still `observe(host)` at `:253`/`:377` — each re-derivable and each checked. The one exception above that line is the diagnostics handle, corrected in place below: `exposeForDiagnostics` is now `main.ts:517`.
+
 Verified on 2026-10-07 by driving the built player in Chromium from this repo (below, *How the
 numbers were taken*), against the preview bundle on `packages/player/dist` (built 22:37, newer
 than `main.ts` at 22:25) and against the real host on its own port. **A task that rebuilds any
@@ -142,7 +146,8 @@ The `e2e-*` themes in `.e2e-host-app` are seeded by `tests/e2e/global-setup.ts`
 (`seedHostTheme()` in `host-theme.ts:706`); `e2e-missing-sensor` binds one key no provider on
 this PC reports, which is what raises the availability strip, and `e2e-hosted` binds a clock,
 which raises nothing. **`window.vigilia.handle.transform()` is a diagnostics handle
-(`main.ts:651-656`) and is legitimate to read in a test** — `host-player.spec.ts` reads the same
+(`main.ts:517`, `exposeForDiagnostics`; the method itself is `scene-fabric/src/scene.ts:166`) and
+is legitimate to read in a test** — `host-player.spec.ts` reads the same
 object for `batchCount`.
 
 ---
@@ -618,9 +623,20 @@ in this task writes into them.
 > `format:check`-clean, so this step fails on the file Step 1 supplied.** Every
 > `putStrip({…})` call in that block exceeds the formatter's line width. The block is
 > otherwise right and was written as given, then formatted in place; the landed file is
-> `8cb99931`. Read this as a warning for Steps 1 and 6 of Tasks 1.2 and 1.3 too — a block
-> pasted verbatim from this plan is a starting point, and `npm run format:check` is the
-> gate that decides, not the block's own line breaks.
+> `8cb99931`. **Task 1.2 then hit the same thing one step earlier and in production code**:
+> its Step 3 `chrome.ts` body carries the over-width line
+> `const text = cropNoticeText(sceneBoxesOf(handle.canvas.getObjects()), artboard);`, which is
+> where `format:check` actually failed there. Read this as a warning for **Steps 1, 3 and 6**
+> of Tasks 1.2 and 1.3 too — a block pasted verbatim from this plan is a starting point, and
+> `npm run format:check` is the gate that decides, not the block's own line breaks.
+>
+> **Task 1.2 also prescribes no deliberate break, and it is the first task here to add
+> regression tests.** The Global Constraints require every such task to say, in its own steps,
+> how the fix was disabled and what failed; Task 1.2's Steps 1-7 contain no such step, so its
+> executor supplied two of its own (dropping `putStrip`'s `removeStrip`, and dropping the
+> scaffold banner's `data-vigilia-scaffold`) and observed `1 failed | 9 passed` for each. The
+> gap is in the plan, not the code. **Tasks 1.3, 2.1-2.3 and 3.x are checked for this when they
+> are dispatched**; none of them inherits the omission silently.
 
 ```bash
 cd src/web
@@ -1036,7 +1052,7 @@ claims runs under `desktop-chromium` and `phone-chromium` (the `projects` list a
 starts (`:82-89`). Each test sets its own viewport with `page.setViewportSize`, the idiom
 `display-fabric.spec.ts:303` and `host-player.spec.ts:1241` already use, so the project's device
 does not decide the measurement.
-**Read the transform through `window.vigilia.handle.transform()`** (`main.ts:651-656`), typed the
+**Read the transform through `window.vigilia.handle.transform()`** (`main.ts:517`), typed the
 way `host-player.spec.ts` types it — it is the same diagnostics handle that file reads for
 `batchCount`, and there is no other way to read where the renderer put the artboard.
 
