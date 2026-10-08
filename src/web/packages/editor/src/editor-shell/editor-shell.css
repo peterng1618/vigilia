@@ -43,6 +43,24 @@ body,
   --shell-primary-text: #f5f1e8;
   --shell-display: ui-serif, Georgia, "Times New Roman", serif;
   --shell-flat: 1;
+  /* Bible §4's role vocabulary, aliased per palette and never once at `:root`:
+     an alias is substituted where it is declared, so a root-only declaration
+     would pin a subtree that re-declares `--shell-*` — the swatch chip — to
+     the live palette. Nothing is renamed and no `--shell-*` is removed; this
+     block's ten lines are repeated in each palette below for that reason.
+     `--bg` is a `background` value and not a `color`: five palettes make it a
+     gradient. `--faint` is derived rather than hand-tuned six times, because
+     "tertiary" is a relationship to `--muted` and not a sixth colour. */
+  --bg: var(--shell-backdrop);
+  --panel: var(--shell-surface);
+  --panel-2: var(--shell-surface-strong);
+  --edge: var(--shell-edge);
+  --text: var(--shell-text);
+  --muted: var(--shell-muted);
+  --faint: color-mix(in srgb, var(--muted) 68%, transparent);
+  --accent: var(--shell-accent);
+  --warn: var(--shell-warm);
+  --hot: var(--shell-danger);
 }
 
 /* Editor-wide control tokens, so the existing panel controls inherit the
@@ -109,6 +127,16 @@ body,
      control is unreadable on graphite's dark chrome, and the backdrop cannot
      be aliased here because it is a gradient. */
   --vigilia-control-bg: #0a1116c9;
+  --bg: var(--shell-backdrop);
+  --panel: var(--shell-surface);
+  --panel-2: var(--shell-surface-strong);
+  --edge: var(--shell-edge);
+  --text: var(--shell-text);
+  --muted: var(--shell-muted);
+  --faint: color-mix(in srgb, var(--muted) 68%, transparent);
+  --accent: var(--shell-accent);
+  --warn: var(--shell-warm);
+  --hot: var(--shell-danger);
 }
 /* `ember`, `moss` and `plum` used to declare an accent and nothing else, so
    their surface, edge and text were editorial's byte for byte — a picker
@@ -132,6 +160,16 @@ body,
   --shell-accent: #8f4208;
   --shell-warm: #ff7e6e;
   --vigilia-control-bg: #f0d3bc;
+  --bg: var(--shell-backdrop);
+  --panel: var(--shell-surface);
+  --panel-2: var(--shell-surface-strong);
+  --edge: var(--shell-edge);
+  --text: var(--shell-text);
+  --muted: var(--shell-muted);
+  --faint: color-mix(in srgb, var(--muted) 68%, transparent);
+  --accent: var(--shell-accent);
+  --warn: var(--shell-warm);
+  --hot: var(--shell-danger);
 }
 [data-shell-palette="moss"] {
   --shell-backdrop: #cfe0bb;
@@ -143,6 +181,16 @@ body,
   --shell-accent: #38601a;
   --shell-warm: #e8c56a;
   --vigilia-control-bg: #d8e8c8;
+  --bg: var(--shell-backdrop);
+  --panel: var(--shell-surface);
+  --panel-2: var(--shell-surface-strong);
+  --edge: var(--shell-edge);
+  --text: var(--shell-text);
+  --muted: var(--shell-muted);
+  --faint: color-mix(in srgb, var(--muted) 68%, transparent);
+  --accent: var(--shell-accent);
+  --warn: var(--shell-warm);
+  --hot: var(--shell-danger);
 }
 [data-shell-palette="plum"] {
   --shell-backdrop: #dccdef;
@@ -154,6 +202,16 @@ body,
   --shell-accent: #543484;
   --shell-warm: #ffb2a1;
   --vigilia-control-bg: #ded1ef;
+  --bg: var(--shell-backdrop);
+  --panel: var(--shell-surface);
+  --panel-2: var(--shell-surface-strong);
+  --edge: var(--shell-edge);
+  --text: var(--shell-text);
+  --muted: var(--shell-muted);
+  --faint: color-mix(in srgb, var(--muted) 68%, transparent);
+  --accent: var(--shell-accent);
+  --warn: var(--shell-warm);
+  --hot: var(--shell-danger);
 }
 [data-shell-palette="light"] {
   --shell-surface: #eff9f2bf;
@@ -165,6 +223,16 @@ body,
   /* The one palette that never declared an accent and inherited editorial's
      ink, which on mint read as a gap rather than as a choice. */
   --shell-accent: #1c6b4f;
+  --bg: var(--shell-backdrop);
+  --panel: var(--shell-surface);
+  --panel-2: var(--shell-surface-strong);
+  --edge: var(--shell-edge);
+  --text: var(--shell-text);
+  --muted: var(--shell-muted);
+  --faint: color-mix(in srgb, var(--muted) 68%, transparent);
+  --accent: var(--shell-accent);
+  --warn: var(--shell-warm);
+  --hot: var(--shell-danger);
 }
 
 /* The scale, name for name from `docs/design/design-language.md` §2–§4, which
@@ -244,6 +312,19 @@ body,
   --color-shell-danger: var(--shell-danger);
   --color-shell-primary-bg: var(--shell-primary-bg);
   --color-shell-primary-text: var(--shell-primary-text);
+  /* Bible §4's roles, so a React surface writes `bg-panel-2`, `text-muted` or
+     `border-edge` and the utility carries the palette in force. No `--color-bg`
+     on purpose: a colour utility from it would set a *colour* to the gradient
+     stack `--bg` holds, which is an invalid declaration that fails silent. */
+  --color-panel: var(--panel);
+  --color-panel-2: var(--panel-2);
+  --color-edge: var(--edge);
+  --color-text: var(--text);
+  --color-muted: var(--muted);
+  --color-faint: var(--faint);
+  --color-accent: var(--accent);
+  --color-warn: var(--warn);
+  --color-hot: var(--hot);
 }
 
 /* The one shell utility no component writes yet, generated on purpose.

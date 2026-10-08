@@ -253,4 +253,64 @@ describe("shell token stylesheet", () => {
       );
     }
   });
+
+  /** Bible §4's role vocabulary is what a *surface* writes, and today only the
+   *  `--shell-*` layer exists. An alias is substituted where it is declared, so
+   *  a role declared once at `:root` would resolve the root's palette and pin a
+   *  subtree that re-declares `--shell-*` — the swatch chip — to it. Every
+   *  palette therefore declares all ten, and each gets a utility name so a
+   *  React surface writes `bg-panel-2` rather than an arbitrary value.
+   *
+   *  `--stage`, `--hdr` and `--edge-2` are deliberately absent: their first
+   *  consumers arrive in later plans, and a colour declared for nothing is the
+   *  defect this plan exists to remove. */
+  it("declares every §4 colour role in every palette block", () => {
+    const roles = [
+      "--bg",
+      "--panel",
+      "--panel-2",
+      "--edge",
+      "--text",
+      "--muted",
+      "--faint",
+      "--accent",
+      "--warn",
+      "--hot",
+    ];
+    const declarationBlock = (palette: string): string => {
+      const at = css.indexOf(`[data-shell-palette="${palette}"] {`);
+      // Editorial has no block of its own: it is the shared baseline, which the
+      // swatch chip joins so a chip can render a palette it is not under.
+      const from =
+        at === -1 ? css.indexOf(".editor-shell-palette-swatch {") : at;
+      return from === -1 ? "" : css.slice(from, css.indexOf("}", from));
+    };
+
+    for (const palette of shellPalettes) {
+      const body = declarationBlock(palette);
+      expect(body, `no declaration block found for ${palette}`).not.toBe("");
+      for (const role of roles) {
+        expect(
+          body,
+          `${palette} does not declare ${role}, so it resolves to whatever ` +
+            "the root happened to hold where the alias was written",
+        ).toContain(`${role}:`);
+      }
+    }
+
+    const inline =
+      /^[ \t]*@theme[ \t]+inline[ \t]*\{([^}]*)\}/m.exec(css)?.[1] ?? "";
+    // `--bg` is the one role with no utility: it holds a gradient stack, and a
+    // colour utility from it would set a colour to that and fail silently.
+    for (const role of roles.filter((role) => role !== "--bg")) {
+      expect(
+        inline,
+        `${role} has no utility name, so a surface cannot write it as a class`,
+      ).toContain(`--color-${role.slice(2)}: var(${role})`);
+    }
+    expect(
+      inline,
+      "a colour utility from --bg would set a colour to a gradient stack",
+    ).not.toContain("--color-bg:");
+  });
 });
