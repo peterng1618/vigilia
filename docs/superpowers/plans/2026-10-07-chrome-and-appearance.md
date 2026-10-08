@@ -1626,6 +1626,35 @@ Spec :550-551. Walked against the host's /editor mount, not the preview server.
 Co-Authored-By: Claude Fable 5 <noreply@anthropic.com>"
 ```
 
+> **Walked 2026-10-08. Seventeen capability checks, all present; nothing missing, so no backlog row
+> and no spec edit.** Against the host's own `/editor` mount at `http://127.0.0.1:5227/editor`, with
+> the host built by `npm run build` and started by `packages/host/bin/vigilia.js --no-browser` —
+> **not** the preview server, because the relative base and the `/editor` mount are things this
+> redesign touched.
+>
+> Present and exercised: canvas mount, artboard paint and viewport fit; the stage zoom readout; the
+> pane bar (Layers / Insert / Assets / Document / `+`); the menubar (File / Edit / Insert / View); the
+> File menu's seven rows; the Edit menu's undo, redo, copy, cut, duplicate and delete with their
+> chords; the display lens — eight aspect entries grouped by orientation, reached from the Document
+> pane's Ratio control; the layer panel, its row controls and a working selection; the round trip
+> from a layer row to the right column's five sections (`content, position, layer, paint, spends`);
+> the canvas dock's seventeen eligible actions; the Document pane's theme settings, size, ratio,
+> orientation, resolution, background media and type-preset controls; the Add panel's 22 insertions
+> across CARD / SHAPE / CHART; the Assets pane's import, replace and remove; the palette picker's six
+> entries; and the `?` reference's nineteen chords.
+>
+> **What this walk did not exercise, named rather than implied.** Image import and the crop session,
+> chart binding edits, the glass control, type-preset and palette-token authoring, the save/open
+> round trip, thumbnail capture, snapping and smart guides, and the clipboard's OS-level paths. Each
+> is covered by an existing browser spec (`author-journey-rebuild`, `glass-authoring`,
+> `editor-chart-binding`, `reference-theme`) which this task did not re-run, so the walk's claim is
+> that these capabilities were not *deleted by the redesign* — not that they were re-proved here.
+>
+> **One already-filed row was re-confirmed in the host mount.** Pressing Escape with the `+` chooser
+> open left it open through a subsequent right-click on the canvas: `vg-169`, "the `+` cannot dismiss
+> its own chooser, though it announces that it can". Not filed again, and not fixed here — AGENTS.md's
+> bug rule applies, and this task's whole value is not spending its attention on a fix.
+
 ---
 
 ## Out of scope
