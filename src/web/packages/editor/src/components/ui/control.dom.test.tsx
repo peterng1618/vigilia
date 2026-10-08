@@ -659,6 +659,41 @@ it("cancels a slider gesture with Escape and commits nothing for it", async () =
   expect(onCommit).not.toHaveBeenCalled();
 });
 
+it("gives an icon button its name and its tooltip from one label", async () => {
+  await mount(
+    <ControlIconButton
+      label="Delete layer"
+      shortcut={{ printed: "Ctrl+Z", spoken: "Control Z" }}
+      onClick={() => {}}
+    >
+      <span />
+    </ControlIconButton>,
+  );
+  const button = labelled("Delete layer");
+  expect(button.getAttribute("aria-label")).toBe("Delete layer");
+
+  // Focus opens it without the hover delay, and the popup is the same one the
+  // selection inspector shows — the control wires the one tooltip owner rather
+  // than growing a React second.
+  await act(async () => button.focus());
+  const popup = document.querySelector(".editor-shell-tooltip");
+  expect(popup, "focus did not open the tooltip").toBeTruthy();
+  expect(popup?.textContent).toContain("Delete layer");
+  expect(popup?.querySelector("kbd")?.textContent).toBe("Ctrl+Z");
+  expect(popup?.querySelector("kbd")?.getAttribute("aria-label")).toBe(
+    "Control Z",
+  );
+  expect(description(button)).toContain("Delete layer");
+
+  await act(async () => button.blur());
+  expect(document.querySelector(".editor-shell-tooltip")).toBeNull();
+
+  // Teardown: unmounting the control takes the popup and its listeners with it.
+  await act(async () => button.focus());
+  await mount(<span>gone</span>);
+  expect(document.querySelector(".editor-shell-tooltip")).toBeNull();
+});
+
 it("toggles an inspector section whose header says whether it is read-only", async () => {
   await mount(
     <InspectorSection id="content" title="Content">
