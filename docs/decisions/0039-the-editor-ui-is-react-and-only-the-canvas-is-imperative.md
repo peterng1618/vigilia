@@ -30,11 +30,12 @@ Searched: `find . -name "*.tsx"` across `packages/editor/src`, and a line count
 over the imperative panel families; `shell-layout.tsx`'s menubar; `panelHosts`
 mounting in `editor-session.ts:292-388`; `editor-shell/bridge.ts`.
 
-Found: **17 React surfaces already exist** — `shell-layout`, `layer-panel`,
-`canvas-dock`, `canvas-context-menu`, `insert-popover`, `palette-menu`,
-`pane-bar`, `publish-control`, `qr-symbol`, `save-state`, `shortcut-reference`,
+Found: **15 React surfaces already exist** — `shell-layout`, `layer-panel`,
+`canvas-dock`, `canvas-context-menu`, `palette-menu`,
+`publish-control`, `qr-symbol`, `save-state`, `shortcut-reference`,
 `diagnostic-message`, `display-switch`, `font-picker`, and the three
-`components/ui/` primitives. The imperative half is the four panel families
+`components/ui/` primitives. (Reconciled: this counted 17 when written;
+`pane-bar` left in plan 2 Task 1 and `insert-popover` in Task 3, so it is 15.) The imperative half is the four panel families
 above. **The split already cost us once:** `vg-149` records that Biome lints and
 formats no `.tsx` file at all, so the React surfaces were outside both gates
 while the imperative ones were inside them — a difference nobody chose.

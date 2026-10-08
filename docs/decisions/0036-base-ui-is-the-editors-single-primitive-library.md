@@ -35,10 +35,10 @@ Found: **the editor's two libraries are not two menu libraries.** Measured 2026-
 
 | Library | Imports | Where |
 |---|---|---|
-| Base UI | **5** | `shell-layout.tsx`, `palette-menu.tsx`, `insert-popover.tsx`, `display-switch.tsx` (`menu`), `canvas-context-menu.tsx` (`context-menu`) |
+| Base UI | **4** | `shell-layout.tsx`, `palette-menu.tsx`, `display-switch.tsx` (`menu`), `canvas-context-menu.tsx` (`context-menu`) |
 | Radix | **3** | `components/ui/popover.tsx`, `components/ui/dialog.tsx`, `components/ui/colour-picker.tsx` |
 
-**No menu surface is Radix, and no Radix file is a menu.** The incoherence §8 describes is
+**No menu surface is Radix, and no Radix file is a menu.** (Reconciled: the fifth import counted here, `insert-popover.tsx`, was deleted in plan 2 Task 3, so the count is 4; the conclusion is unchanged.) The incoherence §8 describes is
 `Menu` for the palette versus `Popover` for the colour picker, and the ruler that makes it visible is
 that the editor has **two of them at 297 lines**: 34 (dialog) + 42 (popover) + 221 (colour picker).
 Two consumers: `editor-shell/shortcut-reference.tsx` takes `Dialog`, `palette-manager/panel.ts` takes
