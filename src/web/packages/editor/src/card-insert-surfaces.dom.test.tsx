@@ -63,8 +63,6 @@ beforeAll(() => {
   );
 });
 
-const CPU = "group-cpu-card";
-
 /**
  * What the author was told. `createErrorManager` fires `editor:warning` on the
  * canvas, and that is the event the shell's diagnostic surface renders — so
@@ -200,7 +198,7 @@ describe("a card a theme with its own vocabulary cannot name", () => {
   });
 
   it("is inserted and mapped, and the author is told, from the Insert menu", async () => {
-    const { session, errors, canvas } = wiredSession();
+    const { session, canvas } = wiredSession();
     const host = document.createElement("div");
     const layout = createShellLayout(host);
     // Attached first: the menubar renders eagerly, and `setBridge` is a
@@ -226,7 +224,7 @@ describe("a card a theme with its own vocabulary cannot name", () => {
   });
 
   it("is inserted and mapped, and the author is told, from the canvas context menu", async () => {
-    const { session, errors, canvas } = wiredSession();
+    const { session, canvas } = wiredSession();
     const host = document.createElement("div");
     document.body.append(host);
     canvas.upperCanvasEl.className = "upper-canvas";

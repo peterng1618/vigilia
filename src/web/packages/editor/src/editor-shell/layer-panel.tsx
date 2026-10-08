@@ -626,7 +626,7 @@ export function LayerPanel({
               <KindMark mark={row.mark} />
               {editing === row.id ? (
                 <input
-                  // biome-ignore lint/a11y/noAutofocus: the field only exists because the author double-clicked the row.
+                  // Intended autofocus: the field only exists because the author double-clicked the row.
                   autoFocus
                   className="vigilia-layer-rename"
                   aria-label={`${uiCopy.panels.rename} ${row.name}`}

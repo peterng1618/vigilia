@@ -11,7 +11,7 @@ import {
   shortcutSpokenLabel,
 } from "../shortcut-manager/display.js";
 import type { ProductShortcutId } from "../shortcut-manager/index.js";
-import type { ActiveKind, EditorShellBridge, EditorShellSnapshot } from "./bridge.js";
+import type { EditorShellBridge, EditorShellSnapshot } from "./bridge.js";
 import { CanvasContextMenu } from "./canvas-context-menu.js";
 import { CanvasDock } from "./canvas-dock.js";
 import { DiagnosticMessage } from "./diagnostic-message.js";
@@ -37,7 +37,6 @@ import {
   type RunDisplayMode,
 } from "../run-placeholder.js";
 import type { EditorViewControls } from "./session-facade.js";
-import type { EditorActionFacade } from "./session-facade.js";
 
 export type { RailPane } from "./pane-bar.js";
 
