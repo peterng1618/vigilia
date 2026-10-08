@@ -207,6 +207,37 @@ body,
   --shadow-overlay: 0 18px 44px #0006;
 }
 
+/* A name per shell colour, so a utility carries the palette in force.
+   `inline` and not `@theme`: with `@theme` the utility compiles to
+   `var(--color-shell-surface)` and the browser resolves that at `:root`, which
+   loses every subtree that declares `--shell-*` for itself. One does:
+   `.editor-shell-palette-swatch` above, a chip naming a palette it is not
+   rendering under, which `tests/e2e/shell-appearance.spec.ts` holds.
+   Decision: docs/decisions/0035. */
+@theme inline {
+  --color-shell-backdrop: var(--shell-backdrop);
+  --color-shell-surface: var(--shell-surface);
+  --color-shell-surface-strong: var(--shell-surface-strong);
+  --color-shell-edge: var(--shell-edge);
+  --color-shell-text: var(--shell-text);
+  --color-shell-muted: var(--shell-muted);
+  --color-shell-accent: var(--shell-accent);
+  --color-shell-warm: var(--shell-warm);
+  --color-shell-danger: var(--shell-danger);
+  --color-shell-primary-bg: var(--shell-primary-bg);
+  --color-shell-primary-text: var(--shell-primary-text);
+}
+
+/* The one shell utility no component writes yet, generated on purpose.
+   Tailwind emits a rule only for a class it finds in a scanned source file, and
+   the probe that proves the block above resolves per-subtree is injected at
+   runtime — so the class has to be asked for, or it is not there to inject.
+   Measured: without this line the rule exists only because a *comment* in
+   `editor-shell.tokens.test.ts` happens to contain the string, and rewording
+   that comment drops the utility and reddens a browser test with a message
+   blaming the cascade. */
+@source inline("bg-shell-surface");
+
 /* Glass treatment belongs to the glass palettes only; editorial is flat. */
 .editor-glass {
   background: var(--shell-surface);

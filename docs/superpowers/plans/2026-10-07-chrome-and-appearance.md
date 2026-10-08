@@ -954,8 +954,8 @@ The palette gains a name a utility can use, and an operating system to fall back
 - Test: `tests/e2e/shell-appearance.spec.ts`
 
 **Interfaces:**
-- Produces: `--color-shell-*`, one per `--shell-*` token, so any shell element may be written with a
-  Tailwind colour utility.
+- Produces: `--color-shell-*`, one per `--shell-*` **colour** token, so any shell element may be
+  written with a Tailwind colour utility. **Eleven, not thirteen** — see the correction in Step 1.
 - Consumes: the existing `:root` and `[data-shell-palette="…"]` blocks, **unchanged**.
 
 **Constraints.** The `--shell-*` declarations do not move. `@theme inline` is added **beside** them,
@@ -980,13 +980,24 @@ Append to `editor-shell.tokens.test.ts`. It is the jsdom-side half; the cascade 
  *  to `var(--shell-surface)` and the lookup happens where the utility is
  *  written. jsdom resolves no custom properties, so this half can only check
  *  that the block is the right KIND; the resolution is measured in a browser. */
-it("gives every --shell-* token a name in @theme inline", () => {
+it("gives every shell colour token a name in @theme inline", () => {
   const inline = /^[ \t]*@theme[ \t]+inline[ \t]*\{([^}]*)\}/m.exec(css)?.[1] ?? "";
   expect(inline, "the palette is not in an @theme inline block").not.toBe("");
 
-  const declared = [...css.matchAll(/^\s*(--shell-[a-z-]+)\s*:/gm)].map((m) => m[1]);
-  expect(declared.length).toBeGreaterThan(0);
-  for (const token of new Set(declared)) {
+  // **Two tokens are not colours, and a `--color-*` name for either would
+  // compile a broken utility** — Tailwind's namespaces are per type, so a
+  // font stack belongs in `--font-*` and a bare number belongs in none.
+  // Measured: the file declares thirteen `--shell-*` tokens and eleven of
+  // them are colours, which the count below pins so this exclusion cannot
+  // quietly grow to swallow one.
+  const NOT_A_COLOUR = new Set(["--shell-display", "--shell-flat"]);
+  const declared = [...css.matchAll(/^\s*(--shell-[a-z-]+)\s*:/gm)].map(
+    (match) => match[1] ?? "",
+  );
+  const colours = [...new Set(declared)].filter((token) => !NOT_A_COLOUR.has(token));
+  expect(colours, "the exclusion set is hiding a colour").toHaveLength(11);
+
+  for (const token of colours) {
     expect(
       inline,
       `${token} has no utility name, so nothing can read it as a Tailwind colour`,
@@ -994,6 +1005,14 @@ it("gives every --shell-* token a name in @theme inline", () => {
   }
 });
 ```
+
+> **Corrected 2026-10-08, at execution.** This step first asserted a name for *every* `--shell-*`
+> token, which the file cannot satisfy: it declares **thirteen** and Step 3's block deliberately
+> names **eleven**, because `--shell-display` is a font stack (`ui-serif, Georgia, …`, used as
+> `font-family` at `editor-shell.css:285,623,838,980`) and `--shell-flat` is a bare `1`/`0`
+> toggle. A `--color-*` name for either compiles a utility that sets a colour to a font stack,
+> which is invalid at computed-value time. The count of eleven is asserted so the exclusion cannot
+> quietly grow to swallow a real colour. Step 3's block is unchanged and was correct.
 
 - [ ] **Step 2: Run it to verify it fails**
 
@@ -1032,6 +1051,19 @@ written down rather than inferred.
   --color-shell-primary-bg: var(--shell-primary-bg);
   --color-shell-primary-text: var(--shell-primary-text);
 }
+```
+
+**And one line below it, which this step owed and did not have.** Step 4's probe is injected at
+runtime, so the class it carries is in no scanned source file — and Tailwind emits a rule only for a
+class it *finds* in one. Measured at execution: without this line `.bg-shell-surface` still appeared
+in the bundle, but **only because a comment in `editor-shell.tokens.test.ts` happens to contain the
+string**, so rewording that comment would drop the utility and redden a browser test with a message
+blaming the cascade. `@source inline` is Tailwind's own directive for generating a class no source
+writes; verified against the installed `tailwindcss@4.3.3` by removing the comment mention,
+rebuilding, and finding the rule still emitted.
+
+```css
+@source inline("bg-shell-surface");
 ```
 
 - [ ] **Step 4: Measure the resolution in a browser, and break it on purpose**

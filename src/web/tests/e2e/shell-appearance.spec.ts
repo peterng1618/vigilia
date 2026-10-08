@@ -236,6 +236,58 @@ test.describe("shell palettes", () => {
     await page.keyboard.press("Escape");
   });
 
+  /** A utility resolves the palette of the SUBTREE it is written in.
+   *
+   *  Injected rather than written into a component: the shell has no
+   *  `bg-shell-surface` yet, and this is the property that decides whether the
+   *  first one is safe to write. The probe goes inside the ember chip while
+   *  graphite is in force, which is the exact case a non-inline `@theme` loses
+   *  — it compiles to `var(--color-shell-surface)`, resolved at `:root`, so the
+   *  chip's own declaration is never consulted. */
+  test("a shell colour utility resolves the palette of its own subtree", async ({
+    page,
+  }, testInfo) => {
+    test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+
+    await openEditor(page);
+    await choosePalette(page, "graphite");
+    await page.locator("[data-vigilia-palette]").click();
+    const popup = page.locator(PALETTE_POPUP);
+    await expect(popup).toBeVisible();
+
+    const [inside, chip, live] = await popup.evaluate((node) => {
+      const ember = node.querySelector<HTMLElement>(
+        '[data-shell-palette="ember"]',
+      );
+      // A missing chip would leave the probe detached, where
+      // `getComputedStyle` answers "" for everything and the comparison below
+      // passes vacuously. Fail loudly instead.
+      if (ember === null) {
+        throw new Error("no ember chip in the palette popup");
+      }
+      const probe = document.createElement("span");
+      probe.className = "bg-shell-surface";
+      ember.appendChild(probe);
+      const header = document.querySelector(".editor-shell-header");
+      return [
+        getComputedStyle(probe).backgroundColor,
+        getComputedStyle(ember).backgroundColor,
+        header === null ? "" : getComputedStyle(header).backgroundColor,
+      ];
+    });
+
+    expect(inside, "the utility did not resolve the chip's own palette").toBe(
+      chip,
+    );
+    expect(inside, "and it must not be the live palette").not.toBe(live);
+    expect(
+      inside,
+      "the live palette was not measured, so nothing was proved",
+    ).not.toBe("");
+
+    await page.keyboard.press("Escape");
+  });
+
   /** The scale, as the built bundle actually resolves it.
    *
    *  `--text-sm`, `--text-xs` and `--radius-md` were declared on an unlayered

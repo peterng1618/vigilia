@@ -207,4 +207,44 @@ describe("shell token stylesheet", () => {
   it("keeps the unreferenced scale tokens in the bundle", () => {
     expect(css).toMatch(/^[ \t]*@theme[ \t]+static[ \t]*\{/m);
   });
+
+  /** A utility compiled from the palette must resolve at the ELEMENT.
+   *
+   *  `@theme` compiles `.bg-shell-surface` to `var(--color-shell-surface)`,
+   *  which the browser looks up from `:root` — losing the one subtree that
+   *  re-declares the token, the swatch that names a palette it is not rendering
+   *  under, which `shell-appearance.spec.ts` already holds as a contract.
+   *  `inline` compiles it to `var(--shell-surface)` and the lookup happens where
+   *  the utility is written. jsdom resolves no custom properties, so this half
+   *  can only check that the block is the right KIND; the resolution is
+   *  measured in a browser, by `shell-appearance.spec.ts`. */
+  it("gives every shell colour token a name in @theme inline", () => {
+    const inline =
+      /^[ \t]*@theme[ \t]+inline[ \t]*\{([^}]*)\}/m.exec(css)?.[1] ?? "";
+    expect(inline, "the palette is not in an @theme inline block").not.toBe("");
+
+    // **Two tokens are not colours, and a `--color-*` name for either would
+    // compile a broken utility** — Tailwind's namespaces are per type, so a
+    // font stack belongs in `--font-*` and a bare number belongs in none.
+    // Measured: the file declares thirteen `--shell-*` tokens and eleven of
+    // them are colours, which the count below pins so this exclusion cannot
+    // quietly grow to swallow one.
+    const NOT_A_COLOUR = new Set(["--shell-display", "--shell-flat"]);
+    const declared = [...css.matchAll(/^\s*(--shell-[a-z-]+)\s*:/gm)].map(
+      (match) => match[1] ?? "",
+    );
+    const colours = [...new Set(declared)].filter(
+      (token) => !NOT_A_COLOUR.has(token),
+    );
+    expect(colours, "the exclusion set is hiding a colour").toHaveLength(11);
+
+    for (const token of colours) {
+      expect(
+        inline,
+        `${token} has no utility name, so nothing can read it as a Tailwind colour`,
+      ).toContain(
+        `${token.replace("--shell-", "--color-shell-")}: var(${token})`,
+      );
+    }
+  });
 });
