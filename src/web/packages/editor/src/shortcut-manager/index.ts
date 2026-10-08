@@ -108,13 +108,11 @@ const MODIFIED_KEY_DEFERRED_ACTION_IDS: ReadonlySet<ProductShortcutId> =
  * (`new-document-chooser.ts`, `persistence-manager`, `theme-library-dialog`)
  * and the library `Dialog` decision `0038` puts on Base UI.
  *
- * **`[role='dialog']` alone, with no `aria-modal` clause.** Task 3.1 established
- * that `@radix-ui/react-dialog` 1.2.0 never sets `aria-modal` — the string
- * survives only in its source maps, in a comment calling its aria-hiding of the
- * content's siblings "the better supported equivalent to setting aria-modal" —
- * and **that is unchanged by the move to Base UI**: `@base-ui/react` 1.8.0's
- * dialog sets `role: 'dialog'` on the popup and no `aria-modal` anywhere in the
- * package. A selector requiring `aria-modal='true'` therefore matches no dialog
+ * **`[role='dialog']` alone, with no `aria-modal` clause.** `@base-ui/react`
+ * 1.8.0's dialog sets `role: 'dialog'` on the popup and hides the content's
+ * siblings instead, so `aria-modal` appears nowhere in the package — the
+ * mechanism decision `0038` records as the reason the library `Dialog` is Base
+ * UI's. A selector requiring `aria-modal='true'` therefore matches no dialog
  * this app can render: the guard would not defer while the sheet is open, and
  * `Ctrl+Z` would edit the document the author is reading about. `dialog[open]`
  * and `[role='dialog']` between them cover every modal in the tree — this editor

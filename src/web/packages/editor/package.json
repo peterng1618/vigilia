@@ -13,8 +13,6 @@
   },
   "dependencies": {
     "@base-ui/react": "^1.8.0",
-    "@radix-ui/react-dialog": "^1.2.0",
-    "@radix-ui/react-popover": "^1.1.23",
     "@tailwindcss/vite": "^4.3.3",
     "@vigilia/renderer-core": "*",
     "@vigilia/scene-fabric": "*",

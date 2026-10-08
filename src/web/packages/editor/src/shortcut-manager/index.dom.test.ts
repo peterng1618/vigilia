@@ -439,12 +439,11 @@ describe("ShortcutManager and a modal", () => {
 
     // The library's real output: `role="dialog"` and **no `aria-modal`** — it
     // hides the content's siblings with `aria-hidden` instead. Measured on
-    // `@radix-ui/react-dialog` 1.2.0, and **re-measured on `@base-ui/react`
-    // 1.8.0 after the move**, which sets `role: 'dialog'` on its popup and
+    // `@base-ui/react` 1.8.0, which sets `role: 'dialog'` on its popup and
     // carries no `aria-modal` anywhere in the package. Built to match that, not
     // to match an assumption, because a predicate keyed on `aria-modal` passes
-    // this test against a shape neither library renders and then defers nothing
-    // in the product.
+    // this test against a shape the library does not render and then defers
+    // nothing in the product.
     const library = document.createElement("div");
     library.setAttribute("role", "dialog");
     document.body.append(library);
