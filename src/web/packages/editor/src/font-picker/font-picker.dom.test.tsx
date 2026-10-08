@@ -8,7 +8,10 @@ import {
   fontTrios,
 } from "../font-catalog.js";
 import { queryFaces } from "../font-catalog-query.js";
-import { createSpecimenCache, type SpecimenCache } from "../font-specimen-cache.js";
+import {
+  createSpecimenCache,
+  type SpecimenCache,
+} from "../font-specimen-cache.js";
 import { uiCopy } from "../ui-copy.js";
 import { FontPicker } from "./font-picker.js";
 
@@ -18,7 +21,9 @@ import { FontPicker } from "./font-picker.js";
  *  other two rejecting, which is a fixture artefact masquerading as behaviour. */
 function arrivingCache(): SpecimenCache {
   return createSpecimenCache({
-    fetch: vi.fn(async () => new Response(new Uint8Array([0, 1, 2]), { status: 200 })),
+    fetch: vi.fn(
+      async () => new Response(new Uint8Array([0, 1, 2]), { status: 200 }),
+    ),
     createFontFace: vi.fn(() => ({ load: vi.fn(async () => undefined) })),
     fonts: { add: vi.fn(), delete: vi.fn() },
   });
@@ -120,8 +125,10 @@ it("narrows the rows to the faces the search term reaches", async () => {
 
   const search = host.querySelector<HTMLInputElement>('input[type="search"]')!;
   await act(async () => {
-    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")
-      ?.set?.call(search, "yellowtail");
+    Object.getOwnPropertyDescriptor(
+      HTMLInputElement.prototype,
+      "value",
+    )?.set?.call(search, "yellowtail");
     search.dispatchEvent(new Event("input", { bubbles: true }));
   });
 
@@ -142,8 +149,10 @@ it("says so when a search matches no face", async () => {
   const { host, unmount } = await setup();
   const search = host.querySelector<HTMLInputElement>('input[type="search"]')!;
   await act(async () => {
-    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")
-      ?.set?.call(search, "zzzzz");
+    Object.getOwnPropertyDescriptor(
+      HTMLInputElement.prototype,
+      "value",
+    )?.set?.call(search, "zzzzz");
     search.dispatchEvent(new Event("input", { bubbles: true }));
   });
   expect(rows(host)).toHaveLength(0);
@@ -501,7 +510,8 @@ it("renders no dead chip for a favourite the catalogue dropped", async () => {
 it("moves the window when the list is scrolled", async () => {
   const { host, props, unmount } = await setup();
   const scroll = host.querySelector<HTMLDivElement>(
-    "[data-vigilia-font-face-row]")!.parentElement!.parentElement!;
+    "[data-vigilia-font-face-row]",
+  )!.parentElement!.parentElement!;
   const every = queryFaces(
     { search: "", facet: undefined, favoritesFirst: false, sort: "name" },
     [],
@@ -580,8 +590,8 @@ it("holds no pictograph in the controls it authors", async () => {
     // is a control, and the facet/sort labels are copy.
   ].map((element) =>
     element.hasAttribute("aria-label")
-      ? element.getAttribute("aria-label") ?? ""
-      : element.textContent ?? "",
+      ? (element.getAttribute("aria-label") ?? "")
+      : (element.textContent ?? ""),
   );
   expect(authored.filter((text) => /\p{S}/u.test(text))).toEqual([]);
   // The controls' own text, which is what a `★` button would be named by.
@@ -647,9 +657,10 @@ it("offers no style control, because no curated face is italic", async () => {
   expect(new Set(catalogFaces().map((face) => face.style))).toEqual(
     new Set(["normal"]),
   );
-  expect(host.querySelector('[data-vigilia-font-style]')).toBeNull();
-  const styles = [...host.querySelectorAll("select")]
-    .flatMap((select) => [...select.options].map((option) => option.value));
+  expect(host.querySelector("[data-vigilia-font-style]")).toBeNull();
+  const styles = [...host.querySelectorAll("select")].flatMap((select) =>
+    [...select.options].map((option) => option.value),
+  );
   expect(styles).not.toContain("italic");
   unmount();
 });
@@ -658,8 +669,8 @@ it("offers no style control, because no curated face is italic", async () => {
 it("sorts the trio list by what the sort control says", async () => {
   const { host, unmount } = await setup();
   const names = (): (string | null)[] =>
-    [...host.querySelectorAll("[data-vigilia-font-trio-row]")].map((row) =>
-      row.textContent,
+    [...host.querySelectorAll("[data-vigilia-font-trio-row]")].map(
+      (row) => row.textContent,
     );
   const byName = names();
   expect(byName.length).toBeGreaterThan(1);
@@ -674,9 +685,7 @@ it("sorts the trio list by what the sort control says", async () => {
   const byFamily = names();
   expect(byFamily).not.toEqual(byName);
   expect(byFamily).toHaveLength(byName.length);
-  expect(
-    byFamily.every((name) => byName.includes(name)),
-  ).toBe(true);
+  expect(byFamily.every((name) => byName.includes(name))).toBe(true);
   unmount();
 });
 
@@ -723,8 +732,10 @@ it("keys a row by face id so a re-query does not rebuild it", async () => {
   const { host, unmount } = await setup();
   const search = host.querySelector<HTMLInputElement>('input[type="search"]')!;
   await act(async () => {
-    Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")
-      ?.set?.call(search, "yellowtail");
+    Object.getOwnPropertyDescriptor(
+      HTMLInputElement.prototype,
+      "value",
+    )?.set?.call(search, "yellowtail");
     search.dispatchEvent(new Event("input", { bubbles: true }));
   });
   const ids = rows(host).map(
@@ -768,8 +779,10 @@ it("does not re-ask for a face it already asked about", async () => {
   const search = host.querySelector<HTMLInputElement>('input[type="search"]')!;
   const type = async (value: string): Promise<void> => {
     await act(async () => {
-      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")
-        ?.set?.call(search, value);
+      Object.getOwnPropertyDescriptor(
+        HTMLInputElement.prototype,
+        "value",
+      )?.set?.call(search, value);
       search.dispatchEvent(new Event("input", { bubbles: true }));
     });
     await flush();
@@ -795,7 +808,9 @@ it("does not re-ask for a face it already asked about", async () => {
 it("names the two lists it renders", async () => {
   const { host, unmount } = await setup();
   expect(
-    host.querySelector("[data-vigilia-font-trio-list]")!.getAttribute("aria-label"),
+    host
+      .querySelector("[data-vigilia-font-trio-list]")!
+      .getAttribute("aria-label"),
   ).toBe(uiCopy.panels.fontTrios);
   unmount();
 });

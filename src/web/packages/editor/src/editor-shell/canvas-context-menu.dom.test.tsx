@@ -14,13 +14,13 @@ import type { EditorActionFacade } from "./session-facade.js";
 // parsing, which turns one menu open into ~35s. Real browsers answer both.
 beforeAll(() => {
   const matches = Element.prototype.matches;
-  Element.prototype.matches = Object.assign(
-    function (this: Element, selector: string): boolean {
-      if (selector === ":modal" || selector === ":popover-open") return false;
-      return matches.call(this, selector);
-    },
-    matches,
-  );
+  Element.prototype.matches = Object.assign(function (
+    this: Element,
+    selector: string,
+  ): boolean {
+    if (selector === ":modal" || selector === ":popover-open") return false;
+    return matches.call(this, selector);
+  }, matches);
 });
 
 const CHART_TARGET: ObjectTarget = {
@@ -220,8 +220,9 @@ it("routes every creation entry through the façade the way its kind says", asyn
       document.body.querySelectorAll<HTMLElement>(".editor-shell-menu-label"),
     ).find((element) => element.textContent === group);
     return Array.from(
-      heading?.parentElement?.querySelectorAll<HTMLElement>('[role="menuitem"]') ??
-        [],
+      heading?.parentElement?.querySelectorAll<HTMLElement>(
+        '[role="menuitem"]',
+      ) ?? [],
     ).find((item) => item.getAttribute("aria-label") === label);
   };
 

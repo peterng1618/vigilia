@@ -13,10 +13,7 @@ function segments(host: HTMLElement): readonly HTMLButtonElement[] {
   );
 }
 
-function segment(
-  host: HTMLElement,
-  label: string,
-): HTMLButtonElement {
+function segment(host: HTMLElement, label: string): HTMLButtonElement {
   const found = segments(host).find(
     (button) => button.textContent?.trim() === label,
   );
@@ -66,14 +63,16 @@ it("names one segment per pane and presses the chosen one", () => {
   // `+` is the last button and is not a pane, so it is dropped rather than
   // sliced off at a number: a prefix of three kept covering three and let the
   // fourth arrive silently, which is the claim this line now makes true.
-  expect(segments(host).slice(0, -1).map((button) => button.textContent)).toEqual(
-    [
-      uiCopy.rail.layers,
-      uiCopy.rail.insert,
-      uiCopy.rail.assets,
-      uiCopy.rail.document,
-    ],
-  );
+  expect(
+    segments(host)
+      .slice(0, -1)
+      .map((button) => button.textContent),
+  ).toEqual([
+    uiCopy.rail.layers,
+    uiCopy.rail.insert,
+    uiCopy.rail.assets,
+    uiCopy.rail.document,
+  ]);
   expect(segment(host, uiCopy.rail.assets).getAttribute("aria-pressed")).toBe(
     "true",
   );

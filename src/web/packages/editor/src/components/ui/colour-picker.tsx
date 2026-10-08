@@ -61,9 +61,7 @@ function Track({
     (event: React.PointerEvent<HTMLDivElement>) => {
       const box = ref.current?.getBoundingClientRect();
       if (box === undefined || box.width === 0 || box.height === 0) return;
-      onPick(
-        Math.min(1, Math.max(0, (event.clientX - box.left) / box.width)),
-      );
+      onPick(Math.min(1, Math.max(0, (event.clientX - box.left) / box.width)));
     },
     [onPick],
   );

@@ -5,7 +5,11 @@ import {
   type ArtboardOrientation,
   type ArtboardSize,
 } from "../artboard-presets.js";
-import { type DisplayLens, type DisplayLensId, displayLensGroups } from "../display-lens.js";
+import {
+  type DisplayLens,
+  type DisplayLensId,
+  displayLensGroups,
+} from "../display-lens.js";
 import { uiCopy } from "../ui-copy.js";
 import type { ViewportManager } from "../viewport-manager/index.js";
 
@@ -55,9 +59,7 @@ function useArtboardOrientation(
     (listener: () => void) => viewport.onChange(listener),
     [viewport],
   );
-  return useSyncExternalStore(subscribe, () =>
-    artboardOrientation(artboard()),
-  );
+  return useSyncExternalStore(subscribe, () => artboardOrientation(artboard()));
 }
 
 /** The radio value standing for Fit — the whole stage, with no display in it. */
@@ -187,10 +189,7 @@ function lensItem(lens: DisplayLens): React.JSX.Element {
       closeOnClick
       aria-label={uiCopy.display.displays[lens.id]}
     >
-      <Menu.RadioItemIndicator
-        className="editor-shell-menu-tick"
-        keepMounted
-      >
+      <Menu.RadioItemIndicator className="editor-shell-menu-tick" keepMounted>
         {"•"}
       </Menu.RadioItemIndicator>
       {uiCopy.display.displays[lens.id]}

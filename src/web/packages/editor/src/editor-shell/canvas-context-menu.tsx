@@ -159,13 +159,13 @@ export function CanvasContextMenu({
   const objectEntries: readonly MenuEntry[] =
     menu === undefined || bridge === undefined || !menu.onObject
       ? []
-      : OBJECT_ACTIONS.filter((action) =>
-          actionEnabled(bridge, action.id),
-        ).map((action) => ({
-          id: action.id,
-          label: action.label,
-          run: () => bridge.run(action.id),
-        }));
+      : OBJECT_ACTIONS.filter((action) => actionEnabled(bridge, action.id)).map(
+          (action) => ({
+            id: action.id,
+            label: action.label,
+            run: () => bridge.run(action.id),
+          }),
+        );
 
   const creation =
     menu !== undefined && bridge !== undefined && !menu.onObject

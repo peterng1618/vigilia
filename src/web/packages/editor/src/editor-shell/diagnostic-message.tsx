@@ -37,7 +37,8 @@ export function DiagnosticMessage({
   useEffect(() => {
     if (canvas === undefined) return;
     const receive =
-      (severity: DiagnosticSeverity) => (diagnostic: EditorDiagnostic): void =>
+      (severity: DiagnosticSeverity) =>
+      (diagnostic: EditorDiagnostic): void =>
         setShown({ canvas, severity, diagnostic });
     const onError = receive("error");
     const onWarning = receive("warning");
@@ -61,7 +62,8 @@ export function DiagnosticMessage({
     shown !== undefined && canvas !== undefined && shown.canvas === canvas
       ? shown
       : undefined;
-  const Icon = current === undefined ? undefined : SEVERITY_ICONS[current.severity];
+  const Icon =
+    current === undefined ? undefined : SEVERITY_ICONS[current.severity];
   const text =
     current === undefined
       ? ""

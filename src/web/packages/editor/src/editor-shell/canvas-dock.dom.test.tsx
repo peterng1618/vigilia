@@ -36,15 +36,15 @@ afterEach(() => {
 
 /** The control as the shell mounts it (`createRoot`, not `@testing-library/react`,
  *  which this workspace does not depend on). */
-async function mount(bridge: EditorShellBridge | undefined): Promise<HTMLDivElement> {
+async function mount(
+  bridge: EditorShellBridge | undefined,
+): Promise<HTMLDivElement> {
   const mounted = document.createElement("div");
   host = mounted;
   document.body.append(mounted);
   const created = createRoot(mounted);
   root = created;
-  await act(async () =>
-    created.render(<CanvasDock bridge={bridge} />),
-  );
+  await act(async () => created.render(<CanvasDock bridge={bridge} />));
   return mounted;
 }
 

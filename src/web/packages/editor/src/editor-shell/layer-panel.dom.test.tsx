@@ -89,7 +89,12 @@ function bridge(rows: readonly LayerRow[], overrides = {}): EditorShellBridge {
     snapshot: () => ({ selectedCount: 1, locked: false, activeKind: "object" }),
     capture: () => undefined,
     can: () => true,
-    target: () => ({ kind: "object", locked: false, memberCount: 1, isGroup: false }),
+    target: () => ({
+      kind: "object",
+      locked: false,
+      memberCount: 1,
+      isGroup: false,
+    }),
     canArrange: () => false,
     // Completed here rather than in twenty fixtures: `layerRow` fills only what
     // a fixture left out, so a row that names its own treatment still has it.
@@ -118,22 +123,44 @@ it("titles a row with what it says rather than the key behind it", async () => {
   // and the name is what every other surface shows for this object.
   const host = document.createElement("div");
   const root = createRoot(host);
-  await act(async () => root.render(<LayerPanel bridge={bridge([
-    { ...textRow, name: "Brand mark" },
-  ])} />));
+  await act(async () =>
+    root.render(
+      <LayerPanel bridge={bridge([{ ...textRow, name: "Brand mark" }])} />,
+    ),
+  );
 
-  const row = host.querySelector<HTMLElement>('[data-vigilia-layer="wordmark"]');
+  const row = host.querySelector<HTMLElement>(
+    '[data-vigilia-layer="wordmark"]',
+  );
   expect(row?.title).toBe("Brand mark");
 });
 
 it("indents a group child and carries both state icons once it is selected", async () => {
   const host = document.createElement("div");
   const root = createRoot(host);
-  await act(async () => root.render(<LayerPanel bridge={bridge([
-    layerRow({ id: "group", name: "Group", kind: "group", hasChildren: true }),
-    layerRow({ id: "child", name: "Child", kind: "text", depth: 1,
-      parentId: "group", locked: true, selected: true }),
-  ])} />));
+  await act(async () =>
+    root.render(
+      <LayerPanel
+        bridge={bridge([
+          layerRow({
+            id: "group",
+            name: "Group",
+            kind: "group",
+            hasChildren: true,
+          }),
+          layerRow({
+            id: "child",
+            name: "Child",
+            kind: "text",
+            depth: 1,
+            parentId: "group",
+            locked: true,
+            selected: true,
+          }),
+        ])}
+      />,
+    ),
+  );
 
   const rows = host.querySelectorAll<HTMLElement>("[data-vigilia-layer]");
   expect(rows).toHaveLength(2);
@@ -147,10 +174,10 @@ it("indents a group child and carries both state icons once it is selected", asy
  * DOM node, so assigning `.value` directly is swallowed. Go through the
  * prototype setter and fire the event React listens for. */
 function typeInto(input: HTMLInputElement, value: string): void {
-  Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value")?.set?.call(
-    input,
-    value,
-  );
+  Object.getOwnPropertyDescriptor(
+    HTMLInputElement.prototype,
+    "value",
+  )?.set?.call(input, value);
   input.dispatchEvent(new Event("input", { bubbles: true }));
 }
 
@@ -170,7 +197,9 @@ async function renderPanel(
 }
 
 function renameField(host: HTMLElement): HTMLInputElement {
-  return host.querySelector<HTMLInputElement>('[aria-label="Rename wordmark"]')!;
+  return host.querySelector<HTMLInputElement>(
+    '[aria-label="Rename wordmark"]',
+  )!;
 }
 
 it("commits a rename typed into the field on Enter", async () => {
@@ -236,9 +265,13 @@ it("does not commit when the cancelled field unmounts and blurs", async () => {
 
 it("opens the rename field from the keyboard and keeps the row's role", async () => {
   const host = await renderPanel([textRow]);
-  const row = host.querySelector<HTMLElement>('[data-vigilia-layer="wordmark"]')!;
+  const row = host.querySelector<HTMLElement>(
+    '[data-vigilia-layer="wordmark"]',
+  )!;
   await act(async () => {
-    row.dispatchEvent(new KeyboardEvent("keydown", { key: "F2", bubbles: true }));
+    row.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "F2", bubbles: true }),
+    );
   });
   expect(renameField(host).closest('[role="treeitem"]')).toBe(row);
 });
@@ -246,13 +279,27 @@ it("opens the rename field from the keyboard and keeps the row's role", async ()
 it("collapses and expands a group from its twisty", async () => {
   const setCollapsed = vi.fn();
   const rows = [
-    layerRow({ id: "group", name: "Group", kind: "group", depth: 0, parentId: undefined, hasChildren: true, visible: true, locked: false, selected: false }),
+    layerRow({
+      id: "group",
+      name: "Group",
+      kind: "group",
+      depth: 0,
+      parentId: undefined,
+      hasChildren: true,
+      visible: true,
+      locked: false,
+      selected: false,
+    }),
   ];
   const host = document.createElement("div");
   const root = createRoot(host);
-  await act(async () => root.render(<LayerPanel bridge={bridge(rows, { setCollapsed })} />));
   await act(async () =>
-    host.querySelector<HTMLButtonElement>('[aria-label="Collapse Group"]')?.click(),
+    root.render(<LayerPanel bridge={bridge(rows, { setCollapsed })} />),
+  );
+  await act(async () =>
+    host
+      .querySelector<HTMLButtonElement>('[aria-label="Collapse Group"]')
+      ?.click(),
   );
   expect(setCollapsed).toHaveBeenCalledWith("group", true);
 });
@@ -264,35 +311,105 @@ it("draws the twisty as an icon, in both states", async () => {
   // does. A Lucide icon carries the state in its own shape, so the two states
   // must be distinguishable here and not only by the name.
   const host = await renderPanel([
-    layerRow({ id: "open", name: "Open", kind: "group", hasChildren: true, collapsed: false }),
-    layerRow({ id: "shut", name: "Shut", kind: "group", hasChildren: true, collapsed: true }),
+    layerRow({
+      id: "open",
+      name: "Open",
+      kind: "group",
+      hasChildren: true,
+      collapsed: false,
+    }),
+    layerRow({
+      id: "shut",
+      name: "Shut",
+      kind: "group",
+      hasChildren: true,
+      collapsed: true,
+    }),
   ]);
   const twisty = (name: string): SVGSVGElement | null =>
     host.querySelector(`[aria-label$=" ${name}"] svg`);
-  expect(twisty("Open")?.getAttribute("class")).toContain("lucide-chevron-down");
-  expect(twisty("Shut")?.getAttribute("class")).toContain("lucide-chevron-right");
+  expect(twisty("Open")?.getAttribute("class")).toContain(
+    "lucide-chevron-down",
+  );
+  expect(twisty("Shut")?.getAttribute("class")).toContain(
+    "lucide-chevron-right",
+  );
   // The state the glyph used to draw is still said out loud, not only shown.
   expect(
-    host.querySelector('[aria-label="Collapse Open"]')?.getAttribute("aria-expanded"),
+    host
+      .querySelector('[aria-label="Collapse Open"]')
+      ?.getAttribute("aria-expanded"),
   ).toBe("true");
   expect(
-    host.querySelector('[aria-label="Expand Shut"]')?.getAttribute("aria-expanded"),
+    host
+      .querySelector('[aria-label="Expand Shut"]')
+      ?.getAttribute("aria-expanded"),
   ).toBe("false");
   expect(host.textContent).not.toMatch(/[▸▾]/u);
 });
 
 const rows = [
-  layerRow({ id: "group", name: "Group", kind: "group", depth: 0, parentId: undefined, hasChildren: true, visible: true, locked: false, selected: false }),
-  layerRow({ id: "child", name: "Child", kind: "text", depth: 1, parentId: "group", hasChildren: false, visible: true, locked: true, selected: true }),
+  layerRow({
+    id: "group",
+    name: "Group",
+    kind: "group",
+    depth: 0,
+    parentId: undefined,
+    hasChildren: true,
+    visible: true,
+    locked: false,
+    selected: false,
+  }),
+  layerRow({
+    id: "child",
+    name: "Child",
+    kind: "text",
+    depth: 1,
+    parentId: "group",
+    hasChildren: false,
+    visible: true,
+    locked: true,
+    selected: true,
+  }),
 ];
 
 /** Two groups, so the negative half of the assertion has a row to read. The
  * non-current group is what makes this a test of "dims the rest" rather than
  * of "sets an attribute somewhere". */
 const contextRows = [
-  layerRow({ id: "group", name: "Group", kind: "group", depth: 0, parentId: undefined, hasChildren: true, visible: true, locked: false, selected: false }),
-  layerRow({ id: "child", name: "Child", kind: "text", depth: 1, parentId: "group", hasChildren: false, visible: true, locked: false, selected: true }),
-  layerRow({ id: "other", name: "Other", kind: "group", depth: 0, parentId: undefined, hasChildren: true, visible: true, locked: false, selected: false }),
+  layerRow({
+    id: "group",
+    name: "Group",
+    kind: "group",
+    depth: 0,
+    parentId: undefined,
+    hasChildren: true,
+    visible: true,
+    locked: false,
+    selected: false,
+  }),
+  layerRow({
+    id: "child",
+    name: "Child",
+    kind: "text",
+    depth: 1,
+    parentId: "group",
+    hasChildren: false,
+    visible: true,
+    locked: false,
+    selected: true,
+  }),
+  layerRow({
+    id: "other",
+    name: "Other",
+    kind: "group",
+    depth: 0,
+    parentId: undefined,
+    hasChildren: true,
+    visible: true,
+    locked: false,
+    selected: false,
+  }),
 ];
 
 it("shows a shut group as one row offering to open, and no children", async () => {
@@ -302,10 +419,38 @@ it("shows a shut group as one row offering to open, and no children", async () =
   // than as an open group whose children are missing.
   const host = document.createElement("div");
   const root = createRoot(host);
-  await act(async () => root.render(<LayerPanel bridge={bridge([
-    layerRow({ id: "group", name: "CPU card", kind: "group", depth: 0, parentId: undefined, hasChildren: true, collapsed: true, visible: true, locked: false, selected: false }),
-    layerRow({ id: "loose", name: "Wordmark", kind: "text", depth: 0, parentId: undefined, hasChildren: false, collapsed: false, visible: true, locked: false, selected: false }),
-  ])} />));
+  await act(async () =>
+    root.render(
+      <LayerPanel
+        bridge={bridge([
+          layerRow({
+            id: "group",
+            name: "CPU card",
+            kind: "group",
+            depth: 0,
+            parentId: undefined,
+            hasChildren: true,
+            collapsed: true,
+            visible: true,
+            locked: false,
+            selected: false,
+          }),
+          layerRow({
+            id: "loose",
+            name: "Wordmark",
+            kind: "text",
+            depth: 0,
+            parentId: undefined,
+            hasChildren: false,
+            collapsed: false,
+            visible: true,
+            locked: false,
+            selected: false,
+          }),
+        ])}
+      />,
+    ),
+  );
 
   const rows = host.querySelectorAll("[data-vigilia-layer]");
   expect(rows).toHaveLength(2);
@@ -327,22 +472,35 @@ it("opens a shut group from its twisty and closes it again", async () => {
   // The panel holds no state of its own — it re-reads the projection — so the
   // row is re-rendered from the bridge rather than mutated here.
   const setCollapsed = vi.fn();
-  const row = layerRow({ id: "group", name: "Group", kind: "group", hasChildren: true });
+  const row = layerRow({
+    id: "group",
+    name: "Group",
+    kind: "group",
+    hasChildren: true,
+  });
   const host = document.createElement("div");
   const root = createRoot(host);
   const draw = async (collapsed: boolean) => {
-    await act(async () => root.render(
-      <LayerPanel bridge={bridge([{ ...row, collapsed }], { setCollapsed })} />,
-    ));
+    await act(async () =>
+      root.render(
+        <LayerPanel
+          bridge={bridge([{ ...row, collapsed }], { setCollapsed })}
+        />,
+      ),
+    );
   };
   await draw(true);
   await act(async () =>
-    host.querySelector<HTMLButtonElement>('[aria-label="Expand Group"]')?.click(),
+    host
+      .querySelector<HTMLButtonElement>('[aria-label="Expand Group"]')
+      ?.click(),
   );
   expect(setCollapsed).toHaveBeenLastCalledWith("group", false);
   await draw(false);
   await act(async () =>
-    host.querySelector<HTMLButtonElement>('[aria-label="Collapse Group"]')?.click(),
+    host
+      .querySelector<HTMLButtonElement>('[aria-label="Collapse Group"]')
+      ?.click(),
   );
   expect(setCollapsed).toHaveBeenLastCalledWith("group", true);
 });
@@ -350,14 +508,30 @@ it("opens a shut group from its twisty and closes it again", async () => {
 it("marks the group whose children are current and dims the rest", async () => {
   const host = document.createElement("div");
   const root = createRoot(host);
-  await act(async () => root.render(
-    <LayerPanel bridge={bridge(contextRows, { groupContext: () => ["group"] })} />,
-  ));
-  expect(host.querySelector('[data-vigilia-layer="group"]')?.getAttribute("data-context")).toBe("true");
-  expect(host.querySelector('[data-vigilia-layer="other"]')?.getAttribute("data-context")).toBe("false");
+  await act(async () =>
+    root.render(
+      <LayerPanel
+        bridge={bridge(contextRows, { groupContext: () => ["group"] })}
+      />,
+    ),
+  );
+  expect(
+    host
+      .querySelector('[data-vigilia-layer="group"]')
+      ?.getAttribute("data-context"),
+  ).toBe("true");
+  expect(
+    host
+      .querySelector('[data-vigilia-layer="other"]')
+      ?.getAttribute("data-context"),
+  ).toBe("false");
   // The child inside the current context is selectable in its own right — the
   // half of the branch that Step 3 adds, and the reason the context is marked.
-  expect(host.querySelector('[data-vigilia-layer="child"]')?.getAttribute("data-context")).toBe("true");
+  expect(
+    host
+      .querySelector('[data-vigilia-layer="child"]')
+      ?.getAttribute("data-context"),
+  ).toBe("true");
 });
 
 it("dims nothing when no group is entered", async () => {
@@ -371,9 +545,11 @@ it("dims nothing when no group is entered", async () => {
   // state that rule turns into a fully dimmed tree.
   const host = document.createElement("div");
   const root = createRoot(host);
-  await act(async () => root.render(
-    <LayerPanel bridge={bridge(contextRows, { groupContext: () => [] })} />,
-  ));
+  await act(async () =>
+    root.render(
+      <LayerPanel bridge={bridge(contextRows, { groupContext: () => [] })} />,
+    ),
+  );
   for (const row of host.querySelectorAll(".vigilia-layer-row"))
     expect(row.getAttribute("data-context")).toBeNull();
 });
@@ -396,17 +572,26 @@ it("renders object actions in a bottom row, not on the selected row", async () =
   await act(async () => root.render(<LayerPanel bridge={bridge(rows)} />));
   const row = host.querySelector('[data-vigilia-layer="child"]');
   expect(row?.querySelector('[aria-label="Duplicate"]')).toBeNull();
-  expect(host.querySelector('[data-vigilia-layer-actions] [aria-label="Duplicate"]')).not.toBeNull();
+  expect(
+    host.querySelector('[data-vigilia-layer-actions] [aria-label="Duplicate"]'),
+  ).not.toBeNull();
 });
 
 it("renders the bottom row from the registry, so eligibility matches the dock", async () => {
   // Eligibility is expressed through `target()`: `actionEnabled` reads the
   // ActionGate, and the bridge has no `can` in that path. Overriding `can` here
   // would change nothing and the test would silently assert the unfiltered row.
-  const none = () => ({ kind: "none", locked: false, memberCount: 0, isGroup: false });
+  const none = () => ({
+    kind: "none",
+    locked: false,
+    memberCount: 0,
+    isGroup: false,
+  });
   const host = document.createElement("div");
   const root = createRoot(host);
-  await act(async () => root.render(<LayerPanel bridge={bridge(rows, { target: none })} />));
+  await act(async () =>
+    root.render(<LayerPanel bridge={bridge(rows, { target: none })} />),
+  );
   const empty = host.querySelector("[data-vigilia-layer-actions]");
   expect(empty?.querySelectorAll("button")).toHaveLength(0);
 
@@ -417,11 +602,14 @@ it("renders the bottom row from the registry, so eligibility matches the dock", 
   const root2 = createRoot(host2);
   await act(async () => root2.render(<LayerPanel bridge={bridge(rows)} />));
   const gate = bridge(rows);
-  const expected = OBJECT_ACTIONS
-    .filter((action) => actionEnabled(gate, action.id))
-    .map((action) => action.label);
-  const rendered = [...(host2.querySelector("[data-vigilia-layer-actions]")
-    ?.querySelectorAll("button") ?? [])].map((button) => button.getAttribute("aria-label"));
+  const expected = OBJECT_ACTIONS.filter((action) =>
+    actionEnabled(gate, action.id),
+  ).map((action) => action.label);
+  const rendered = [
+    ...(host2
+      .querySelector("[data-vigilia-layer-actions]")
+      ?.querySelectorAll("button") ?? []),
+  ].map((button) => button.getAttribute("aria-label"));
   expect(rendered.sort()).toEqual([...expected].sort());
   expect(expected.length).toBeGreaterThan(1);
 });
@@ -436,12 +624,53 @@ it("only marks a drop slot that would actually land", async () => {
   // same gesture across the boundary must stay unmarked — including a drop on
   // the group's own row, since a child is not the group's sibling.
   const tree = [
-    layerRow({ id: "group", name: "Group", kind: "group", depth: 0, parentId: undefined, hasChildren: true, visible: true, locked: false, selected: false }),
-    layerRow({ id: "child", name: "Child", kind: "text", depth: 1, parentId: "group", hasChildren: false, visible: true, locked: false, selected: false }),
-    layerRow({ id: "peer", name: "Peer", kind: "shape", depth: 1, parentId: "group", hasChildren: false, visible: true, locked: false, selected: false }),
-    layerRow({ id: "sibling", name: "Sibling", kind: "shape", depth: 0, parentId: undefined, hasChildren: false, visible: true, locked: false, selected: false }),
+    layerRow({
+      id: "group",
+      name: "Group",
+      kind: "group",
+      depth: 0,
+      parentId: undefined,
+      hasChildren: true,
+      visible: true,
+      locked: false,
+      selected: false,
+    }),
+    layerRow({
+      id: "child",
+      name: "Child",
+      kind: "text",
+      depth: 1,
+      parentId: "group",
+      hasChildren: false,
+      visible: true,
+      locked: false,
+      selected: false,
+    }),
+    layerRow({
+      id: "peer",
+      name: "Peer",
+      kind: "shape",
+      depth: 1,
+      parentId: "group",
+      hasChildren: false,
+      visible: true,
+      locked: false,
+      selected: false,
+    }),
+    layerRow({
+      id: "sibling",
+      name: "Sibling",
+      kind: "shape",
+      depth: 0,
+      parentId: undefined,
+      hasChildren: false,
+      visible: true,
+      locked: false,
+      selected: false,
+    }),
   ];
-  const owned = (id: string): string => (id === "child" || id === "peer" ? "group" : "");
+  const owned = (id: string): string =>
+    id === "child" || id === "peer" ? "group" : "";
   const host = await renderPanel(tree, {
     reorderLayer,
     selectLayer,
@@ -501,15 +730,29 @@ it("draws locked as a filled lock and unlocked as an outline one", async () => {
   // measured on a row that draws the button, or it would pass on an absent
   // icon — which is exactly the vacuous assertion this treatment removed.
   const host = await renderPanel([
-    layerRow({ id: "shut", name: "Shut", kind: "shape", locked: true, selected: true }),
-    layerRow({ id: "open", name: "Open", kind: "shape", locked: false, selected: true }),
+    layerRow({
+      id: "shut",
+      name: "Shut",
+      kind: "shape",
+      locked: true,
+      selected: true,
+    }),
+    layerRow({
+      id: "open",
+      name: "Open",
+      kind: "shape",
+      locked: false,
+      selected: true,
+    }),
   ]);
   // Both state buttons carry `aria-pressed`, so the lock one is named rather
   // than positional: the visibility icon would satisfy a bare attribute match.
   const lock = (id: string): SVGSVGElement | null =>
-    host.querySelector(
-      `[data-vigilia-layer="${id}"] button[aria-label="Lock"], [data-vigilia-layer="${id}"] button[aria-label="Unlock"]`,
-    )?.querySelector("svg") ?? null;
+    host
+      .querySelector(
+        `[data-vigilia-layer="${id}"] button[aria-label="Lock"], [data-vigilia-layer="${id}"] button[aria-label="Unlock"]`,
+      )
+      ?.querySelector("svg") ?? null;
 
   // Both rows must actually be drawing the button, or the two halves below say
   // nothing about the glyphs.
@@ -525,7 +768,6 @@ it("draws locked as a filled lock and unlocked as an outline one", async () => {
   expect(lock("shut")?.getAttribute("class")).toContain("lucide-lock");
   expect(lock("open")?.getAttribute("class")).toContain("lucide-lock-open");
 });
-
 
 it("answers the keys a tree is defined by, and does not nudge", async () => {
   // The rows declare `role="treeitem"`, and a treeitem whose arrow keys do
@@ -570,7 +812,6 @@ it("answers the keys a tree is defined by, and does not nudge", async () => {
   host.remove();
 });
 
-
 it("marks a hidden row so the list says what the canvas is doing", async () => {
   // Hiding a layer hides it on the canvas, and the row changed in exactly one
   // measurable way: the eye button's title. One property flip on a control the
@@ -592,7 +833,6 @@ it("marks a hidden row so the list says what the canvas is doing", async () => {
   expect(hidden.getAttribute("data-hidden")).toBe("true");
   host.remove();
 });
-
 
 it("selects the focused row with Space, so the list can be driven without a mouse", async () => {
   // vg-067 gave the list navigation and vg-074 is its residual: a treeitem you
@@ -644,19 +884,61 @@ function dragEvent(type: string): Event {
 it("tells a refused drop target from one that would land, mid-gesture", async () => {
   const reorderLayer = vi.fn(() => false);
   const tree = [
-    layerRow({ id: "group", name: "Group", kind: "group", depth: 0, parentId: undefined, hasChildren: true, visible: true, locked: false, selected: false }),
-    layerRow({ id: "child", name: "Child", kind: "text", depth: 1, parentId: "group", hasChildren: false, visible: true, locked: false, selected: false }),
-    layerRow({ id: "peer", name: "Peer", kind: "shape", depth: 1, parentId: "group", hasChildren: false, visible: true, locked: false, selected: false }),
-    layerRow({ id: "sibling", name: "Sibling", kind: "shape", depth: 0, parentId: undefined, hasChildren: false, visible: true, locked: false, selected: false }),
+    layerRow({
+      id: "group",
+      name: "Group",
+      kind: "group",
+      depth: 0,
+      parentId: undefined,
+      hasChildren: true,
+      visible: true,
+      locked: false,
+      selected: false,
+    }),
+    layerRow({
+      id: "child",
+      name: "Child",
+      kind: "text",
+      depth: 1,
+      parentId: "group",
+      hasChildren: false,
+      visible: true,
+      locked: false,
+      selected: false,
+    }),
+    layerRow({
+      id: "peer",
+      name: "Peer",
+      kind: "shape",
+      depth: 1,
+      parentId: "group",
+      hasChildren: false,
+      visible: true,
+      locked: false,
+      selected: false,
+    }),
+    layerRow({
+      id: "sibling",
+      name: "Sibling",
+      kind: "shape",
+      depth: 0,
+      parentId: undefined,
+      hasChildren: false,
+      visible: true,
+      locked: false,
+      selected: false,
+    }),
   ];
-  const owned = (id: string): string => (id === "child" || id === "peer" ? "group" : "");
+  const owned = (id: string): string =>
+    id === "child" || id === "peer" ? "group" : "";
   const host = await renderPanel(tree, {
     reorderLayer,
     sameLayerParent: (a: string, b: string) => owned(a) === owned(b),
   });
   const row = (id: string): HTMLElement =>
     host.querySelector<HTMLElement>(`[data-vigilia-layer="${id}"]`)!;
-  const tree_ = (): HTMLElement => host.querySelector<HTMLElement>('[role="tree"]')!;
+  const tree_ = (): HTMLElement =>
+    host.querySelector<HTMLElement>('[role="tree"]')!;
 
   // Before any gesture nothing is marked, so an ordinary hover is untouched.
   expect(row("peer").getAttribute("data-drop")).toBeNull();
@@ -699,12 +981,53 @@ it("takes the drop line away when the row under the pointer refuses it", async (
   // shown over a sibling is still lit while the pointer has moved a row further
   // to a refusal — offering the very drop that row has just said no to.
   const tree = [
-    layerRow({ id: "group", name: "Group", kind: "group", depth: 0, parentId: undefined, hasChildren: true, visible: true, locked: false, selected: false }),
-    layerRow({ id: "child", name: "Child", kind: "text", depth: 1, parentId: "group", hasChildren: false, visible: true, locked: false, selected: false }),
-    layerRow({ id: "peer", name: "Peer", kind: "shape", depth: 1, parentId: "group", hasChildren: false, visible: true, locked: false, selected: false }),
-    layerRow({ id: "sibling", name: "Sibling", kind: "shape", depth: 0, parentId: undefined, hasChildren: false, visible: true, locked: false, selected: false }),
+    layerRow({
+      id: "group",
+      name: "Group",
+      kind: "group",
+      depth: 0,
+      parentId: undefined,
+      hasChildren: true,
+      visible: true,
+      locked: false,
+      selected: false,
+    }),
+    layerRow({
+      id: "child",
+      name: "Child",
+      kind: "text",
+      depth: 1,
+      parentId: "group",
+      hasChildren: false,
+      visible: true,
+      locked: false,
+      selected: false,
+    }),
+    layerRow({
+      id: "peer",
+      name: "Peer",
+      kind: "shape",
+      depth: 1,
+      parentId: "group",
+      hasChildren: false,
+      visible: true,
+      locked: false,
+      selected: false,
+    }),
+    layerRow({
+      id: "sibling",
+      name: "Sibling",
+      kind: "shape",
+      depth: 0,
+      parentId: undefined,
+      hasChildren: false,
+      visible: true,
+      locked: false,
+      selected: false,
+    }),
   ];
-  const owned = (id: string): string => (id === "child" || id === "peer" ? "group" : "");
+  const owned = (id: string): string =>
+    id === "child" || id === "peer" ? "group" : "";
   const host = await renderPanel(tree, {
     sameLayerParent: (a: string, b: string) => owned(a) === owned(b),
   });
@@ -736,7 +1059,8 @@ it("still restacks on a drop the panel marked, and refuses the one it did not", 
     { ...textRow, id: "peer", name: "Peer", depth: 1, parentId: "group" },
     { ...textRow, id: "sibling", name: "Sibling", depth: 0 },
   ];
-  const owned = (id: string): string => (id === "child" || id === "peer" ? "group" : "");
+  const owned = (id: string): string =>
+    id === "child" || id === "peer" ? "group" : "";
   const host = await renderPanel(tree, {
     reorderLayer,
     sameLayerParent: (a: string, b: string) => owned(a) === owned(b),
@@ -754,7 +1078,9 @@ it("still restacks on a drop the panel marked, and refuses the one it did not", 
   await act(async () => row("peer").dispatchEvent(dragEvent("drop")));
   expect(reorderLayer).toHaveBeenCalledWith("child", "peer");
   expect(row("peer").getAttribute("data-drop")).toBeNull();
-  expect(host.querySelector('[role="tree"]')?.getAttribute("data-dragging")).toBeNull();
+  expect(
+    host.querySelector('[role="tree"]')?.getAttribute("data-dragging"),
+  ).toBeNull();
 });
 
 it("states the reorder rule in the panel's own words, for a reader and not only a pointer", async () => {
@@ -859,7 +1185,9 @@ it("draws a text row as its own words, in its own face", async () => {
     }),
   ]);
 
-  const sample = host.querySelector<HTMLElement>('[data-vigilia-layer-mark="text"]')!;
+  const sample = host.querySelector<HTMLElement>(
+    '[data-vigilia-layer-mark="text"]',
+  )!;
   expect(sample.textContent).toBe("VIGILIA");
   expect(sample.style.fontFamily).toBe("Inter, sans-serif");
   expect(sample.style.fontWeight).toBe("600");
@@ -877,15 +1205,33 @@ it("gives each kind a mark that says which kind it is", async () => {
   // happens to get right. So every kind is asked, including the two that draw
   // no mark at all.
   const host = await renderPanel([
-    layerRow({ id: "gauge", kind: "chart", mark: { kind: "chart", family: "gauge" } }),
-    layerRow({ id: "spark", kind: "chart", mark: { kind: "chart", family: "line" } }),
-    layerRow({ id: "panel", kind: "shape", mark: { kind: "shape", paint: "#2ee6a8" } }),
-    layerRow({ id: "logo", kind: "image", mark: { kind: "image", src: "blob:pic" } }),
+    layerRow({
+      id: "gauge",
+      kind: "chart",
+      mark: { kind: "chart", family: "gauge" },
+    }),
+    layerRow({
+      id: "spark",
+      kind: "chart",
+      mark: { kind: "chart", family: "line" },
+    }),
+    layerRow({
+      id: "panel",
+      kind: "shape",
+      mark: { kind: "shape", paint: "#2ee6a8" },
+    }),
+    layerRow({
+      id: "logo",
+      kind: "image",
+      mark: { kind: "image", src: "blob:pic" },
+    }),
     layerRow({ id: "card", kind: "group", mark: { kind: "group" } }),
   ]);
 
   const mark = (id: string): SVGSVGElement | null =>
-    host.querySelector(`[data-vigilia-layer="${id}"] [data-vigilia-layer-mark] svg`) ?? null;
+    host.querySelector(
+      `[data-vigilia-layer="${id}"] [data-vigilia-layer-mark] svg`,
+    ) ?? null;
 
   // A chart's *family*, which is what the eight cards of a starter differ by.
   expect(mark("gauge")?.getAttribute("class")).toContain("lucide-gauge");
@@ -897,9 +1243,11 @@ it("gives each kind a mark that says which kind it is", async () => {
   expect(swatch.style.background).toBe("rgb(46, 230, 168)");
   // An image is its own picture.
   expect(
-    host.querySelector<HTMLImageElement>(
-      '[data-vigilia-layer="logo"] [data-vigilia-layer-mark="image"]',
-    )?.getAttribute("src"),
+    host
+      .querySelector<HTMLImageElement>(
+        '[data-vigilia-layer="logo"] [data-vigilia-layer-mark="image"]',
+      )
+      ?.getAttribute("src"),
   ).toBe("blob:pic");
   // A group draws no mark: its twisty is the mark, and a third symbol saying
   // "group" beside a bold name would be a second word for the same word.
@@ -908,7 +1256,9 @@ it("gives each kind a mark that says which kind it is", async () => {
   ).toBeNull();
   // …and it is marked as a group for the stylesheet, which bolds the name.
   expect(
-    host.querySelector('[data-vigilia-layer="card"]')?.getAttribute("data-kind"),
+    host
+      .querySelector('[data-vigilia-layer="card"]')
+      ?.getAttribute("data-kind"),
   ).toBe("group");
 });
 
@@ -926,7 +1276,9 @@ it("prints the bound key the projection reported, and nothing where there is non
     layerRow({ id: "panel", name: "Panel", bound: [] }),
   ]);
   const bound = (id: string): HTMLElement | null =>
-    host.querySelector<HTMLElement>(`[data-vigilia-layer="${id}"] .vigilia-layer-bound`);
+    host.querySelector<HTMLElement>(
+      `[data-vigilia-layer="${id}"] .vigilia-layer-bound`,
+    );
 
   expect(bound("gauge")?.textContent).toBe("ram.used.percent");
   // Three keys, so the separator earns its place; the title keeps the full
@@ -945,9 +1297,13 @@ it("carries no state icon at all on a default row", async () => {
   // Every row said "visible, unlocked" before, and the noise grew with the row
   // count — which is precisely the case a card-heavy panel would hide. Two
   // flags that are both the default carry no information, so both are absent.
-  const host = await renderPanel([layerRow({ id: "wordmark", name: "wordmark" })]);
+  const host = await renderPanel([
+    layerRow({ id: "wordmark", name: "wordmark" }),
+  ]);
 
-  const row = host.querySelector<HTMLElement>('[data-vigilia-layer="wordmark"]')!;
+  const row = host.querySelector<HTMLElement>(
+    '[data-vigilia-layer="wordmark"]',
+  )!;
   expect(row.querySelectorAll("button")).toHaveLength(0);
   expect(row.querySelector('[aria-label="Hide"]')).toBeNull();
   expect(row.querySelector('[aria-label="Lock"]')).toBeNull();
@@ -957,9 +1313,13 @@ it("shows the state icons on hover, on focus and on selection", async () => {
   // Three ways of saying "this is the row you are about to act on", and the
   // pointer is only one of them: a keyboard author has to reach the same
   // controls a pointer reaches.
-  const host = await renderPanel([layerRow({ id: "wordmark", name: "wordmark" })]);
+  const host = await renderPanel([
+    layerRow({ id: "wordmark", name: "wordmark" }),
+  ]);
   document.body.append(host);
-  const row = host.querySelector<HTMLElement>('[data-vigilia-layer="wordmark"]')!;
+  const row = host.querySelector<HTMLElement>(
+    '[data-vigilia-layer="wordmark"]',
+  )!;
   const icons = (): number => row.querySelectorAll("button").length;
   expect(icons()).toBe(0);
 
@@ -1004,7 +1364,9 @@ it("keeps the icons on a row whose own state is not the default", async () => {
   // row's lock icon would be noise even here.
   expect(row("hidden-one").querySelector('[aria-label="Show"]')).not.toBeNull();
   expect(row("hidden-one").querySelector('[aria-label="Lock"]')).toBeNull();
-  expect(row("locked-one").querySelector('[aria-label="Unlock"]')).not.toBeNull();
+  expect(
+    row("locked-one").querySelector('[aria-label="Unlock"]'),
+  ).not.toBeNull();
   expect(row("locked-one").querySelector('[aria-label="Hide"]')).toBeNull();
 });
 
@@ -1013,10 +1375,13 @@ it("still hides and locks the row whose icons the author pressed", async () => {
   // is what brings the buttons back, so the press has to reach the bridge.
   const setLayerVisible = vi.fn();
   const setLayerLocked = vi.fn();
-  const host = await renderPanel([layerRow({ id: "wordmark", selected: true })], {
-    setLayerVisible,
-    setLayerLocked,
-  });
+  const host = await renderPanel(
+    [layerRow({ id: "wordmark", selected: true })],
+    {
+      setLayerVisible,
+      setLayerLocked,
+    },
+  );
   const press = async (label: string): Promise<void> => {
     await act(async () =>
       host.querySelector<HTMLButtonElement>(`[aria-label="${label}"]`)?.click(),
@@ -1121,7 +1486,11 @@ it("draws a role on every row, in the vocabulary's own words", async () => {
       role: { kind: "chart", family: undefined, series: 1 },
       says: "Chart",
     },
-    { id: "seven", role: { kind: "chart", family: "line", series: 1 }, says: "Line" },
+    {
+      id: "seven",
+      role: { kind: "chart", family: "line", series: 1 },
+      says: "Line",
+    },
     {
       id: "eight",
       role: { kind: "chart", family: "line", series: 3 },
@@ -1196,7 +1565,9 @@ it("says a row's role once, outside the mark and outside a title", async () => {
   const row = host.querySelector<HTMLElement>('[data-vigilia-layer="trends"]')!;
 
   expect(row.querySelectorAll(".vigilia-layer-role")).toHaveLength(1);
-  expect(row.querySelector(".vigilia-layer-mark .vigilia-layer-role")).toBeNull();
+  expect(
+    row.querySelector(".vigilia-layer-mark .vigilia-layer-role"),
+  ).toBeNull();
   const span = row.querySelector<HTMLElement>(".vigilia-layer-role")!;
   expect(span.getAttribute("title")).toBeNull();
   expect(span.getAttribute("aria-hidden")).toBeNull();
@@ -1246,13 +1617,17 @@ it("carries a role on every one of two hundred rows", async () => {
   );
   const host = await renderPanel(rows);
 
-  const rendered = [...host.querySelectorAll<HTMLElement>("[data-vigilia-layer]")];
+  const rendered = [
+    ...host.querySelectorAll<HTMLElement>("[data-vigilia-layer]"),
+  ];
   expect(rendered).toHaveLength(200);
   expect(host.querySelectorAll("[data-vigilia-layer-role]")).toHaveLength(200);
   for (const row of rendered) {
     // Never the empty string, on any arm: a name that begins with a gap is a row
     // identified by nothing.
-    expect(row.querySelector(".vigilia-layer-role")?.textContent?.trim()).not.toBe("");
+    expect(
+      row.querySelector(".vigilia-layer-role")?.textContent?.trim(),
+    ).not.toBe("");
   }
   expect(roleSpan(host, "loose-0")?.textContent).toBe("Shape");
   expect(roleSpan(host, "card-19")?.textContent).toBe("Group");
@@ -1302,8 +1677,7 @@ it("draws no enter control on a group row the author is not on", async () => {
 
   expect(entryButton(host, "card")).toBeNull();
   expect(
-    host
-      .querySelectorAll<HTMLElement>('[data-vigilia-layer="card"] button'),
+    host.querySelectorAll<HTMLElement>('[data-vigilia-layer="card"] button'),
   ).toHaveLength(1);
 });
 
@@ -1312,7 +1686,12 @@ it("offers no entry on a row that is not a group or holds nothing", async () => 
   // gate rather than the attention rule — a row that drew nothing because it
   // was quiet would satisfy a weaker version of this.
   const host = await renderPanel([
-    layerRow({ id: "wordmark", name: "Wordmark", kind: "text", selected: true }),
+    layerRow({
+      id: "wordmark",
+      name: "Wordmark",
+      kind: "text",
+      selected: true,
+    }),
     layerRow({
       id: "empty",
       name: "Empty",
@@ -1387,7 +1766,9 @@ it("keeps expansion and entry as two acts on two controls", async () => {
   const host = await renderPanel([card], { setCollapsed, enterGroup });
 
   await act(async () =>
-    host.querySelector<HTMLButtonElement>('[aria-label="Collapse CPU card"]')?.click(),
+    host
+      .querySelector<HTMLButtonElement>('[aria-label="Collapse CPU card"]')
+      ?.click(),
   );
   expect(setCollapsed.mock.calls).toEqual([["card", true]]);
   expect(enterGroup).not.toHaveBeenCalled();
@@ -1420,7 +1801,9 @@ it("makes a group's parts reachable once its control has entered it", async () =
 
   const host = document.createElement("div");
   await act(async () =>
-    (await Promise.resolve(createRoot(host))).render(<LayerPanel bridge={real} />),
+    (await Promise.resolve(createRoot(host))).render(
+      <LayerPanel bridge={real} />,
+    ),
   );
   const row = (id: string): HTMLElement =>
     host.querySelector<HTMLElement>(`[data-vigilia-layer="${id}"]`)!;

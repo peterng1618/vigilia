@@ -9,13 +9,13 @@ import { ColourPicker } from "./colour-picker.js";
 // parsing, which turns one popover open into ~35s. Real browsers answer both.
 beforeAll(() => {
   const matches = Element.prototype.matches;
-  Element.prototype.matches = Object.assign(
-    function (this: Element, selector: string): boolean {
-      if (selector === ":modal" || selector === ":popover-open") return false;
-      return matches.call(this, selector);
-    },
-    matches,
-  );
+  Element.prototype.matches = Object.assign(function (
+    this: Element,
+    selector: string,
+  ): boolean {
+    if (selector === ":modal" || selector === ":popover-open") return false;
+    return matches.call(this, selector);
+  }, matches);
 });
 
 /** The picker with its popover open, and the tracks it rendered. */
@@ -93,7 +93,11 @@ it("moves a track's value from the keyboard, which vg-194 recorded as missing", 
   // The role is a promise about a range, so the range has to be declared. A
   // keyboard path over `role="slider"` with no `aria-valuemin`/`aria-valuemax`
   // announces an undefined range, which is the second half of the same defect.
-  expect(picker.read("picker-saturation")).toEqual({ now: 0, min: 0, max: 100 });
+  expect(picker.read("picker-saturation")).toEqual({
+    now: 0,
+    min: 0,
+    max: 100,
+  });
 
   await press(picker.track("picker-saturation"), "ArrowRight");
 
@@ -116,7 +120,9 @@ it("steps downward, and clamps at both ends rather than wrapping", async () => {
   expect(picker.read("picker-hue").now, "the low end clamps").toBe(0);
 
   await press(hue, "End");
-  expect(picker.read("picker-hue").now, "End is the top of the range").toBe(100);
+  expect(picker.read("picker-hue").now, "End is the top of the range").toBe(
+    100,
+  );
   await press(hue, "ArrowRight");
   expect(picker.read("picker-hue").now, "the high end clamps").toBe(100);
 

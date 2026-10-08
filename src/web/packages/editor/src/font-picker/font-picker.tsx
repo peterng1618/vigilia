@@ -1,11 +1,5 @@
 import { Star } from "lucide-react";
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { CuratedFontFace, FontTrio } from "../font-catalog.js";
 import {
   catalogFacets,
@@ -160,10 +154,13 @@ export function FontPicker({
     const ahead = visibleFaces.slice(first, first + WINDOW + LOAD_AHEAD);
     const fresh = ahead.filter((face) => !asked.current.has(face.id));
     if (fresh.length === 0) return;
-    asked.current = new Set([...asked.current, ...fresh.map((face) => face.id)]);
+    asked.current = new Set([
+      ...asked.current,
+      ...fresh.map((face) => face.id),
+    ]);
     void Promise.all(fresh.map((face) => cache.ensure(face))).then(() => {
-      setSettled((current) =>
-        new Set([...current, ...fresh.map((face) => face.id)]),
+      setSettled(
+        (current) => new Set([...current, ...fresh.map((face) => face.id)]),
       );
     });
   }, [visibleFaces, first, cache]);
@@ -256,7 +253,9 @@ export function FontPicker({
           </select>
         ))}
       </div>
-      <p className="m-0 text-[11px] opacity-70">{uiCopy.panels.fontFacetRule}</p>
+      <p className="m-0 text-[11px] opacity-70">
+        {uiCopy.panels.fontFacetRule}
+      </p>
       <div className="flex items-center gap-1.5">
         <select
           data-vigilia-font-sort=""

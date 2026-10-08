@@ -71,7 +71,9 @@ function setup(
     reset,
     render: () =>
       act(async () =>
-        root.render(<DisplaySwitch viewport={viewport} artboard={() => artboard} />),
+        root.render(
+          <DisplaySwitch viewport={viewport} artboard={() => artboard} />,
+        ),
       ),
     setZoom(value: number): Promise<void> {
       return act(async () => {
@@ -205,7 +207,9 @@ it("ticks nothing when the camera is neither a display nor a fit", async () => {
   await setFitted(true);
   expect(checked("Fit"), "a fitted camera ticks Fit").toBe(true);
   await setFitted(false);
-  expect(checked("Fit"), "and a camera zoomed off the fit does not").toBe(false);
+  expect(checked("Fit"), "and a camera zoomed off the fit does not").toBe(
+    false,
+  );
 
   // A display still ticks under a lens even once the camera has moved within
   // it: the window is still the window, which is the fact this menu holds.
@@ -279,13 +283,14 @@ function leadingLensPerGroup(): string[] {
   return [...document.querySelectorAll<HTMLElement>('[role="group"]')]
     .filter(
       (group) =>
-        group.firstElementChild?.classList.contains("editor-shell-menu-label") ??
-        false,
+        group.firstElementChild?.classList.contains(
+          "editor-shell-menu-label",
+        ) ?? false,
     )
     .map(
       (group) =>
-        group.querySelector('[role="menuitemradio"]')?.getAttribute(
-          "aria-label",
-        ) ?? "",
+        group
+          .querySelector('[role="menuitemradio"]')
+          ?.getAttribute("aria-label") ?? "",
     );
 }

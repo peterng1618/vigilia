@@ -185,7 +185,9 @@ function MenuGroup({
       <Menu.Trigger>{label}</Menu.Trigger>
       <Menu.Portal>
         <Menu.Positioner className="editor-shell-positioner">
-          <Menu.Popup className="editor-shell-menu-popup">{children}</Menu.Popup>
+          <Menu.Popup className="editor-shell-menu-popup">
+            {children}
+          </Menu.Popup>
         </Menu.Positioner>
       </Menu.Portal>
     </Menu.Root>
@@ -195,7 +197,9 @@ function MenuGroup({
 /** The tick a checked radio choice carries, reserving its width whether or not
  *  it is showing so the labels either side of it do not shift as the setting
  *  changes. */
-const checkSlot = (state: { readonly checked: boolean }): React.CSSProperties => ({
+const checkSlot = (state: {
+  readonly checked: boolean;
+}): React.CSSProperties => ({
   display: "inline-block",
   width: 13,
   visibility: state.checked ? "visible" : "hidden",
@@ -262,7 +266,9 @@ function ShellMenuBar({
   const session = store.bridge?.session;
   const [source, setSource] = useState<"preview" | "live">("preview");
   const [rate, setRate] = useState<1 | 30>(30);
-  const [runDisplay, setRunDisplay] = useState<RunDisplayMode>(DEFAULT_RUN_DISPLAY_MODE);
+  const [runDisplay, setRunDisplay] = useState<RunDisplayMode>(
+    DEFAULT_RUN_DISPLAY_MODE,
+  );
 
   useEffect(() => {
     setSource(getView()?.sourceMode() ?? "preview");
@@ -587,7 +593,11 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
             <Host node={hosts.assets} hidden={pane !== "assets"} />
             <Host node={hosts.document} hidden={pane !== "document"} />
           </aside>
-          <main id="stage" className="editor-shell-stage" aria-label="Editor canvas">
+          <main
+            id="stage"
+            className="editor-shell-stage"
+            aria-label="Editor canvas"
+          >
             <Host node={hosts.canvas} />
             {/* The dock owns its own element and derives its own visibility;
                 this is only the slot that puts its mount point in the stage. */}

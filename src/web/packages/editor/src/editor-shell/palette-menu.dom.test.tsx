@@ -24,13 +24,13 @@ Element.prototype.getAnimations ??= (): never[] => [];
 // browsers answer both.
 beforeAll(() => {
   const matches = Element.prototype.matches;
-  Element.prototype.matches = Object.assign(
-    function (this: Element, selector: string): boolean {
-      if (selector === ":modal" || selector === ":popover-open") return false;
-      return matches.call(this, selector);
-    },
-    matches,
-  );
+  Element.prototype.matches = Object.assign(function (
+    this: Element,
+    selector: string,
+  ): boolean {
+    if (selector === ":modal" || selector === ":popover-open") return false;
+    return matches.call(this, selector);
+  }, matches);
 });
 
 let root: Root | undefined;
@@ -120,7 +120,9 @@ it("shows a swatch of the current palette beside its name", async () => {
 
   // The chip paints from the palette's own `--shell-*` tokens through
   // `data-shell-palette`, so it cannot read once at mount and go stale.
-  expect(trigger?.querySelector("[data-shell-palette='graphite']")).not.toBeNull();
+  expect(
+    trigger?.querySelector("[data-shell-palette='graphite']"),
+  ).not.toBeNull();
   expect(trigger?.textContent?.trim()).toBe("graphite");
   // And the trigger names itself. The value beside the chip is a state, not a
   // label: left to its own content the button announces "graphite, button",

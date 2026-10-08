@@ -14,7 +14,11 @@ import {
  *  `--shell-*` in JS at mount is what would leave it stale after a change.
  *
  *  `aria-hidden` because the name beside it is the accessible name. */
-function Swatch({ palette }: { readonly palette: ShellPalette }): React.JSX.Element {
+function Swatch({
+  palette,
+}: {
+  readonly palette: ShellPalette;
+}): React.JSX.Element {
   return (
     <span
       className="editor-shell-palette-swatch"
@@ -69,7 +73,10 @@ export function PaletteMenu({
       </Menu.Trigger>
       <Menu.Portal>
         <Menu.Positioner className="editor-shell-positioner">
-          <Menu.Popup className="editor-shell-menu-popup" aria-label={uiCopy.palette}>
+          <Menu.Popup
+            className="editor-shell-menu-popup"
+            aria-label={uiCopy.palette}
+          >
             <Menu.RadioGroup value={palette} onValueChange={choose}>
               {shellPalettes.map((entry) => (
                 <Menu.RadioItem

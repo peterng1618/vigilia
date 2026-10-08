@@ -49,7 +49,10 @@ const TWISTY_ICONS: Readonly<Record<"collapsed" | "expanded", LucideIcon>> = {
  * only by a gap in the shackle. `fill` is part of `LucideProps` and overrides
  * Lucide's own `fill="none"`, so the weight changes without a second glyph. */
 const LOCK_STATES: Readonly<
-  Record<"locked" | "unlocked", { readonly icon: LucideIcon; readonly fill?: string }>
+  Record<
+    "locked" | "unlocked",
+    { readonly icon: LucideIcon; readonly fill?: string }
+  >
 > = {
   locked: { icon: Lock, fill: "currentColor" },
   unlocked: { icon: Unlock },
@@ -57,7 +60,11 @@ const LOCK_STATES: Readonly<
 
 /** `exactOptionalPropertyTypes` is on, so the absent fill is spread in rather
  * than passed as `undefined` — that would type-check but defeat the default. */
-function LockStateIcon({ locked }: { readonly locked: boolean }): React.JSX.Element {
+function LockStateIcon({
+  locked,
+}: {
+  readonly locked: boolean;
+}): React.JSX.Element {
   const state = LOCK_STATES[locked ? "locked" : "unlocked"];
   const Icon = state.icon;
   return (
@@ -90,11 +97,7 @@ function LockStateIcon({ locked }: { readonly locked: boolean }): React.JSX.Elem
  * the treatment rather than infer it from the icon's class.
  */
 function KindMark({ mark }: { readonly mark: LayerMark }): React.JSX.Element {
-  return (
-    <span className="vigilia-layer-mark">
-      {treatment(mark)}
-    </span>
-  );
+  return <span className="vigilia-layer-mark">{treatment(mark)}</span>;
 }
 
 function treatment(mark: LayerMark): React.JSX.Element | null {
@@ -257,9 +260,9 @@ function moveFocus(
   bridge: EditorShellBridge | undefined,
 ): boolean {
   const rows = [
-    ...(event.currentTarget.closest("[role=\"tree\"]")?.querySelectorAll<HTMLElement>(
-      "[role=\"treeitem\"]",
-    ) ?? []),
+    ...(event.currentTarget
+      .closest('[role="tree"]')
+      ?.querySelectorAll<HTMLElement>('[role="treeitem"]') ?? []),
   ];
   const at = rows.indexOf(event.currentTarget);
   if (at < 0) return false;
@@ -345,12 +348,13 @@ export function LayerPanel({
   // re-render, so a drop that follows within the same frame cannot see the
   // stale value a state update would leave behind.
   const drag = useRef<
-    {
-      from: string;
-      before: string | undefined;
-      marked: HTMLElement | undefined;
-      source: HTMLElement | undefined;
-    } | undefined
+    | {
+        from: string;
+        before: string | undefined;
+        marked: HTMLElement | undefined;
+        source: HTMLElement | undefined;
+      }
+    | undefined
   >(undefined);
   // One line for the whole tree: the browser applies it to whatever element is
   // under the cursor, which is exactly the slot that would take the drop.
@@ -397,8 +401,8 @@ export function LayerPanel({
     <section data-vigilia-panel="layers">
       <h2>{uiCopy.panels.layers}</h2>
       {/* The rule, stated where the author reads the panel rather than only in
-        * a cursor they may never look at. `aria-describedby` is the same string
-        * reached without a pointer, so it is not two copies of the rule. */}
+       * a cursor they may never look at. `aria-describedby` is the same string
+       * reached without a pointer, so it is not two copies of the rule. */}
       <p id={ruleId} data-vigilia-layer-rule className="vigilia-layer-rule">
         {uiCopy.panels.reorderRule}
       </p>
@@ -410,7 +414,9 @@ export function LayerPanel({
       >
         {rows.map((row, index) => {
           const Twisty = TWISTY_ICONS[row.collapsed ? "collapsed" : "expanded"];
-          const twisty = row.collapsed ? uiCopy.panels.expand : uiCopy.panels.collapse;
+          const twisty = row.collapsed
+            ? uiCopy.panels.expand
+            : uiCopy.panels.collapse;
           // The two state icons appear only where they say something: a pointer
           // or the keyboard is on the row, the row is selected, or the state
           // itself is not the default. 104 icons reading "visible, unlocked"
@@ -426,7 +432,8 @@ export function LayerPanel({
           // Entry is not a toggle: the entered group carries the way *out*, so
           // the row the author is inside draws this one without being attended.
           const isEntered = entered.includes(row.id);
-          const showEnter = expandable && (attended || row.selected || isEntered);
+          const showEnter =
+            expandable && (attended || row.selected || isEntered);
           const entry = isEntered ? uiCopy.panels.leave : uiCopy.panels.enter;
           return (
             <div
@@ -476,7 +483,11 @@ export function LayerPanel({
               onBlur={(event) => {
                 // Moving focus to one of the row's own controls is not leaving
                 // it; only focus that leaves the row entirely stands down.
-                if (event.currentTarget.contains(event.relatedTarget as Node | null))
+                if (
+                  event.currentTarget.contains(
+                    event.relatedTarget as Node | null,
+                  )
+                )
                   return;
                 setFocused(undefined);
               }}
@@ -486,7 +497,10 @@ export function LayerPanel({
               onDragStart={(event) => {
                 // Chrome will not start a drag without payload, and one of our
                 // own rows is the only thing that may start one.
-                event.dataTransfer.setData("application/x-vigilia-layer", row.id);
+                event.dataTransfer.setData(
+                  "application/x-vigilia-layer",
+                  row.id,
+                );
                 drag.current = {
                   from: row.id,
                   before: undefined,
@@ -513,7 +527,8 @@ export function LayerPanel({
                 // Nothing marked outside one parent — the bridge would refuse
                 // it, and a marker there would promise a drop that cannot land.
                 const lands =
-                  moved && bridge?.sameLayerParent(active.from, row.id) === true;
+                  moved &&
+                  bridge?.sameLayerParent(active.from, row.id) === true;
                 active.before = lands ? row.id : undefined;
 
                 if (lands) {
@@ -615,7 +630,9 @@ export function LayerPanel({
                   aria-expanded={!row.collapsed}
                   onClick={(event) => {
                     event.stopPropagation();
-                    store.mutate(() => bridge?.setCollapsed(row.id, !row.collapsed));
+                    store.mutate(() =>
+                      bridge?.setCollapsed(row.id, !row.collapsed),
+                    );
                   }}
                 >
                   <Twisty aria-hidden size={13} strokeWidth={1.75} />
@@ -640,7 +657,8 @@ export function LayerPanel({
                     commit(row.id, event.currentTarget.value);
                   }}
                   onKeyDown={(event) => {
-                    if (event.key === "Enter") commit(row.id, event.currentTarget.value);
+                    if (event.key === "Enter")
+                      commit(row.id, event.currentTarget.value);
                     else if (event.key === "Escape") {
                       cancelled.current = true;
                       setEditing(undefined);
@@ -730,11 +748,15 @@ export function LayerPanel({
                 {showVisibility ? (
                   <button
                     type="button"
-                    aria-label={row.visible ? uiCopy.panels.hide : uiCopy.panels.show}
+                    aria-label={
+                      row.visible ? uiCopy.panels.hide : uiCopy.panels.show
+                    }
                     aria-pressed={row.visible}
                     onClick={(event) => {
                       event.stopPropagation();
-                      store.mutate(() => bridge?.setLayerVisible(row.id, !row.visible));
+                      store.mutate(() =>
+                        bridge?.setLayerVisible(row.id, !row.visible),
+                      );
                     }}
                   >
                     {row.visible ? (
@@ -747,11 +769,15 @@ export function LayerPanel({
                 {showLock ? (
                   <button
                     type="button"
-                    aria-label={row.locked ? uiCopy.actions.unlock : uiCopy.actions.lock}
+                    aria-label={
+                      row.locked ? uiCopy.actions.unlock : uiCopy.actions.lock
+                    }
                     aria-pressed={row.locked}
                     onClick={(event) => {
                       event.stopPropagation();
-                      store.mutate(() => bridge?.setLayerLocked(row.id, !row.locked));
+                      store.mutate(() =>
+                        bridge?.setLayerLocked(row.id, !row.locked),
+                      );
                     }}
                   >
                     <LockStateIcon locked={row.locked} />

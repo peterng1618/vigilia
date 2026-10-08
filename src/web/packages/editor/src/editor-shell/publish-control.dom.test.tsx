@@ -67,9 +67,7 @@ async function mount(session?: EditorActionFacade): Promise<HTMLDivElement> {
   document.body.append(mounted);
   const created = createRoot(mounted);
   root = created;
-  await act(async () =>
-    created.render(<PublishControl session={session} />),
-  );
+  await act(async () => created.render(<PublishControl session={session} />));
   return mounted;
 }
 
@@ -111,7 +109,8 @@ it("shows the host's own reason when it refuses the interface", async () => {
   vi.stubGlobal(
     "fetch",
     vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-      if (String(input) !== "/api/hosting") return new Response("", { status: 404 });
+      if (String(input) !== "/api/hosting")
+        return new Response("", { status: 404 });
       if (init?.method === "PUT") {
         return new Response("Port 5227 is not free on 0.0.0.0: EADDRINUSE", {
           status: 409,
@@ -168,9 +167,7 @@ it("shows the host's refusal when the move it accepted did not happen", async ()
           address: null,
           port: null,
           refusal:
-            reads === 1
-              ? null
-              : "Port 5227 is not free on 0.0.0.0: EADDRINUSE",
+            reads === 1 ? null : "Port 5227 is not free on 0.0.0.0: EADDRINUSE",
           sessions: [],
         }),
       );

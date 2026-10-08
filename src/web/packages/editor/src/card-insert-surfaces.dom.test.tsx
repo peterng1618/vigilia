@@ -54,13 +54,13 @@ Element.prototype.getAnimations ??= (): never[] => [];
 // answer both.
 beforeAll(() => {
   const matches = Element.prototype.matches;
-  Element.prototype.matches = Object.assign(
-    function (this: Element, selector: string): boolean {
-      if (selector === ":modal" || selector === ":popover-open") return false;
-      return matches.call(this, selector);
-    },
-    matches,
-  );
+  Element.prototype.matches = Object.assign(function (
+    this: Element,
+    selector: string,
+  ): boolean {
+    if (selector === ":modal" || selector === ":popover-open") return false;
+    return matches.call(this, selector);
+  }, matches);
 });
 
 /**
@@ -71,7 +71,9 @@ beforeAll(() => {
 const told: string[] = [];
 
 /** The palette of `File > New`: ten tokens, none of them a device's colour. */
-const BLANK = createBlankFabricTheme(artboardSize("16:9", "1080p", "landscape"));
+const BLANK = createBlankFabricTheme(
+  artboardSize("16:9", "1080p", "landscape"),
+);
 
 /** React schedules outside `act`, and floating-ui's measurement never settles
  * inside one, so a popup is flushed with macrotasks instead. */
@@ -97,9 +99,12 @@ function wiredSession(): Wired {
   const errors = createErrorManager(canvas);
   // The editor's own diagnostics, read as the shell's diagnostic surface reads
   // them: `createErrorManager` fires `editor:warning` on the canvas.
-  canvas.on("editor:warning" as never, ((event: { message: string }) => {
-    told.push(event.message);
-  }) as never);
+  canvas.on(
+    "editor:warning" as never,
+    ((event: { message: string }) => {
+      told.push(event.message);
+    }) as never,
+  );
   const save = vi.fn();
 
   const session = new EditorSession({
@@ -173,13 +178,18 @@ beforeEach(() => {
 describe("a card a theme with its own vocabulary cannot name", () => {
   it("is inserted and mapped, and the author is told, from the Add pane", async () => {
     const { session, errors, canvas } = wiredSession();
-    const panel = createNewObjectPanel(document.body, editorOf(canvas, errors), {
-      palette: BLANK.globals?.palette ?? {},
-      typePresets: BLANK.globals?.typePresets ?? {},
-    }, {
-      addChart: vi.fn(),
-      insertCard: (cardId) => session.actionFacade().insertCard(cardId),
-    });
+    const panel = createNewObjectPanel(
+      document.body,
+      editorOf(canvas, errors),
+      {
+        palette: BLANK.globals?.palette ?? {},
+        typePresets: BLANK.globals?.typePresets ?? {},
+      },
+      {
+        addChart: vi.fn(),
+        insertCard: (cardId) => session.actionFacade().insertCard(cardId),
+      },
+    );
 
     const cpu = [...panel.root.querySelectorAll("button")].find(
       (button) => button.textContent === uiCopy.cardLibrary.cpu,
@@ -278,7 +288,12 @@ function bridgeOf(
 ): EditorShellBridge {
   return {
     snapshot: () => ({ selectedCount: 0, locked: false, activeKind: "none" }),
-    target: () => ({ kind: "none", locked: false, memberCount: 0, isGroup: false }),
+    target: () => ({
+      kind: "none",
+      locked: false,
+      memberCount: 0,
+      isGroup: false,
+    }),
     can: () => false,
     canArrange: () => false,
     layers: () => [],
@@ -335,7 +350,6 @@ function menuItem(group: string, label: string): HTMLElement | undefined {
     ) ?? []),
   ].find(
     (item) =>
-      item.getAttribute("aria-label") === label ||
-      item.textContent === label,
+      item.getAttribute("aria-label") === label || item.textContent === label,
   );
 }

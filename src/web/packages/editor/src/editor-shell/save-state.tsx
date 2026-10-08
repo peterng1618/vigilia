@@ -18,7 +18,8 @@ export function SaveState({
   readonly session: EditorActionFacade | undefined;
 }): React.JSX.Element {
   const subscribe = useCallback(
-    (listener: () => void) => session?.subscribeDocumentChange(listener) ?? (() => {}),
+    (listener: () => void) =>
+      session?.subscribeDocumentChange(listener) ?? (() => {}),
     [session],
   );
   const dirty = useSyncExternalStore(

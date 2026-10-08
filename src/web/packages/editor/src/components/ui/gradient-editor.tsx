@@ -27,10 +27,7 @@ export function GradientEditor({
 }: {
   readonly stops: readonly GradientStop[];
   readonly angle: number;
-  readonly onChange: (next: {
-    stops: GradientStop[];
-    angle: number;
-  }) => void;
+  readonly onChange: (next: { stops: GradientStop[]; angle: number }) => void;
   readonly label: string;
 }): React.JSX.Element {
   const ordered = [...stops].sort((a, b) => a.offset - b.offset);
@@ -76,16 +73,22 @@ export function GradientEditor({
               aria-label={`${label} stop ${index + 1}`}
               aria-valuenow={Math.round(stop.offset * 100)}
               className="absolute top-1/2 size-4 -translate-x-1/2 -translate-y-1/2 cursor-ew-resize rounded-full border-2 border-white"
-              style={{ left, background: stop.color, boxShadow: "0 0 0 1px #000" }}
+              style={{
+                left,
+                background: stop.color,
+                boxShadow: "0 0 0 1px #000",
+              }}
               onPointerDown={(event) => {
-                const track = event.currentTarget.parentElement?.getBoundingClientRect();
+                const track =
+                  event.currentTarget.parentElement?.getBoundingClientRect();
                 if (track === undefined || track.width === 0) return;
                 event.currentTarget.setPointerCapture(event.pointerId);
                 move(index, (event.clientX - track.left) / track.width);
               }}
               onPointerMove={(event) => {
                 if (event.buttons === 0) return;
-                const track = event.currentTarget.parentElement?.getBoundingClientRect();
+                const track =
+                  event.currentTarget.parentElement?.getBoundingClientRect();
                 if (track === undefined || track.width === 0) return;
                 move(index, (event.clientX - track.left) / track.width);
               }}

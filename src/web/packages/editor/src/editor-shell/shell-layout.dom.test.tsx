@@ -14,7 +14,10 @@ import { uiCopy } from "../ui-copy.js";
 import type { ViewportManager } from "../viewport-manager/index.js";
 import type { EditorShellBridge } from "./bridge.js";
 import { createShellLayout } from "./shell-layout.js";
-import type { EditorActionFacade, EditorViewControls } from "./session-facade.js";
+import type {
+  EditorActionFacade,
+  EditorViewControls,
+} from "./session-facade.js";
 
 // Base UI's popup needs two browser APIs jsdom has none of: floating-ui observes
 // its anchor, and the popup waits for its own open transition before reporting
@@ -67,7 +70,9 @@ afterEach(() => {
 
 /** The View menu's controls. The shell only reads and writes these three, so a
  *  stub with every member is the whole of what the menu can reach. */
-function viewStub(overrides: Partial<EditorViewControls> = {}): EditorViewControls {
+function viewStub(
+  overrides: Partial<EditorViewControls> = {},
+): EditorViewControls {
   return {
     sourceMode: () => "preview",
     setSourceMode: vi.fn(),
@@ -150,7 +155,9 @@ it("mounts the editorial palette, menus, pane bar, inspector and dock hosts", ()
   // exists to fix — so the count is a claim about the left column, not a
   // snapshot of how many icons happen to be there. The Document segment is the
   // fifth button because the `+` is a `button` too and is not a pane.
-  expect(root.querySelectorAll(".editor-shell-pane-bar button")).toHaveLength(5);
+  expect(root.querySelectorAll(".editor-shell-pane-bar button")).toHaveLength(
+    5,
+  );
   expect(root.querySelector(".editor-shell-rail")).toBeNull();
   expect(root.textContent).toContain("File");
   // The Arrange menu is gone: the arrange toolbar above the canvas already
@@ -229,7 +236,9 @@ function menubarEntry(root: HTMLElement, label: string): HTMLButtonElement {
 function menuGroupsIn(
   popup: HTMLElement,
 ): readonly (readonly [string | null, readonly string[]])[] {
-  const items = Array.from(popup.querySelectorAll<HTMLElement>("[role=menuitem]"));
+  const items = Array.from(
+    popup.querySelectorAll<HTMLElement>("[role=menuitem]"),
+  );
   return [
     [
       null,
@@ -252,7 +261,10 @@ function menuGroupsIn(
 /** The open menu's own groups, as the headings and labels an author reads.
     `data-open` rather than the class: the zoom readout's popup is kept mounted
     and closed, so the class alone is not the menu an author has open. */
-function insertMenuGroups(): readonly (readonly [string | null, readonly string[]])[] {
+function insertMenuGroups(): readonly (readonly [
+  string | null,
+  readonly string[],
+])[] {
   return menuGroupsIn(openPopup());
 }
 
@@ -271,7 +283,9 @@ function popoverGroups(
 
 /** The Add pane's own groups, read the same way: the lone button, then each
     fieldset with its legend. */
-function paneGroups(pane: HTMLElement): readonly (readonly [string | null, readonly string[]])[] {
+function paneGroups(
+  pane: HTMLElement,
+): readonly (readonly [string | null, readonly string[]])[] {
   return [
     [
       null,
@@ -299,14 +313,18 @@ function openPopup(): HTMLElement {
 }
 
 function menuItems(): readonly HTMLElement[] {
-  return Array.from(openPopup().querySelectorAll<HTMLElement>("[role=menuitem]"));
+  return Array.from(
+    openPopup().querySelectorAll<HTMLElement>("[role=menuitem]"),
+  );
 }
 
 /** Every popup an author currently has open. A submenu is a second one, so the
  *  View menu's own items are the first — its submenu opens after it. */
 function openPopups(): readonly HTMLElement[] {
   return Array.from(
-    document.querySelectorAll<HTMLElement>(".editor-shell-menu-popup[data-open]"),
+    document.querySelectorAll<HTMLElement>(
+      ".editor-shell-menu-popup[data-open]",
+    ),
   );
 }
 
@@ -482,12 +500,17 @@ it("re-frames on the panel toggle even for a camera the author has moved", async
   // panel no longer separates. Delete this and the camera stays where the
   // author left it while 288px of workspace goes unused.
   await act(async () => segment(root, uiCopy.rail.layers).click());
-  expect(zoomToFit, "the toggle waits for the viewport, not the frame").not
-    .toHaveBeenCalled();
+  expect(
+    zoomToFit,
+    "the toggle waits for the viewport, not the frame",
+  ).not.toHaveBeenCalled();
 
   for (const listener of listeners) listener();
 
-  expect(zoomToFit, "the viewport has resized, so the theme is re-framed").toHaveBeenCalledTimes(1);
+  expect(
+    zoomToFit,
+    "the viewport has resized, so the theme is re-framed",
+  ).toHaveBeenCalledTimes(1);
   // And it unsubscribes, so a later pan does not drag the view back to fit.
   for (const listener of listeners) listener();
   expect(zoomToFit).toHaveBeenCalledTimes(1);
@@ -527,8 +550,10 @@ it("leaves the camera alone after a swap between two open panes", async () => {
   // snapping the view back to fit. Measured on canvas: one ctrl-wheel notch
   // after a swap left the badge on 57%.
   for (const listener of listeners) listener();
-  expect(zoomToFit, "no refit was waiting on a camera that will not move")
-    .not.toHaveBeenCalled();
+  expect(
+    zoomToFit,
+    "no refit was waiting on a camera that will not move",
+  ).not.toHaveBeenCalled();
 
   layout.destroy();
 });
@@ -561,7 +586,9 @@ it("re-frames when a collapsed panel is reopened by asking for a pane", async ()
   // before the notify is faked, or the test reads an arm that has not happened.
   const resized = async (): Promise<void> => {
     await act(async () => {
-      await new Promise((resolve) => requestAnimationFrame(() => resolve(null)));
+      await new Promise((resolve) =>
+        requestAnimationFrame(() => resolve(null)),
+      );
     });
     for (const listener of listeners) listener();
     await Promise.resolve();
@@ -694,7 +721,8 @@ it("shows one pane at a time and routes the dock through the bridge", async () =
   // Arrange shares the one surface but greys rather than filters: a single
   // object cannot align, so the control is drawn disabled rather than dropped.
   expect(
-    dock.querySelector<HTMLButtonElement>('[aria-label="Align left"]')?.disabled,
+    dock.querySelector<HTMLButtonElement>('[aria-label="Align left"]')
+      ?.disabled,
   ).toBe(true);
 
   duplicate?.click();
@@ -715,8 +743,9 @@ it("draws one toolbar holding every canvas action the registry owns", () => {
   // must fail here rather than be silently dropped.
   for (const action of arrangeActions())
     expect(
-      toolbar?.querySelector<HTMLButtonElement>(`[aria-label="${action.label}"]`)
-        ?.disabled,
+      toolbar?.querySelector<HTMLButtonElement>(
+        `[aria-label="${action.label}"]`,
+      )?.disabled,
     ).toBe(true);
   layout.destroy();
 });
@@ -778,9 +807,7 @@ it("keeps a chart's fields in the Design column, with no Data tab to reach for",
       ?.contains(layout.hosts.document),
   ).toBe(false);
   expect(
-    root
-      .querySelector(".editor-shell-panel")
-      ?.contains(layout.hosts.document),
+    root.querySelector(".editor-shell-panel")?.contains(layout.hosts.document),
   ).toBe(true);
   // No tab: a chart's own fields are in the selection's column, so a Data tab
   // would be a second door to one room, and the column itself is the only door.
@@ -840,8 +867,8 @@ it("opens every View setting's choices instead of toggling on a bare click", asy
   if (refresh === undefined) throw new Error("No chart refresh setting.");
   refresh.click();
   await Promise.resolve();
-  const submenu = openPopups().find((popup) =>
-    popup.querySelector("[role=menuitemradio]") !== null,
+  const submenu = openPopups().find(
+    (popup) => popup.querySelector("[role=menuitemradio]") !== null,
   );
   expect(submenu).not.toBeUndefined();
   expect(openRadioItems(submenu!)).toEqual([
@@ -869,7 +896,11 @@ it("inserts the same objects from the Insert menu as the Add pane offers", async
   const pane = createNewObjectPanel(
     layout.hosts.add,
     {
-      canvas: { add: vi.fn(), setActiveObject: vi.fn(), requestRenderAll: vi.fn() },
+      canvas: {
+        add: vi.fn(),
+        setActiveObject: vi.fn(),
+        requestRenderAll: vi.fn(),
+      },
       textManager: { addText: vi.fn() },
       historyManager: { saveState: vi.fn() },
       errorManager: { warn: vi.fn(), error: vi.fn() },
@@ -883,7 +914,9 @@ it("inserts the same objects from the Insert menu as the Add pane offers", async
   // same one an author makes, and the popup is read straight after.
   menubarEntry(root, uiCopy.menus.insert).click();
   await Promise.resolve();
-  expect(document.querySelector(".editor-shell-menu-popup[data-open]")).not.toBeNull();
+  expect(
+    document.querySelector(".editor-shell-menu-popup[data-open]"),
+  ).not.toBeNull();
 
   // Read from both surfaces' own DOM: two lists that must agree and did not is
   // what left a panel — the object this composition is mostly made of — out of
@@ -893,10 +926,15 @@ it("inserts the same objects from the Insert menu as the Add pane offers", async
   // "Line" is both a primitive and a chart family. The group is what tells them
   // apart, in the menu as it already did in the pane.
   const shape = insertMenuEntry(uiCopy.panels.shapes, uiCopy.shapeKinds.line);
-  const chart = insertMenuEntry(uiCopy.panels.charts, uiCopy.chartFamilies.line);
+  const chart = insertMenuEntry(
+    uiCopy.panels.charts,
+    uiCopy.chartFamilies.line,
+  );
   expect(shape).not.toBeUndefined();
   expect(chart).not.toBeUndefined();
-  expect(shape?.closest("[role=group]")).not.toBe(chart?.closest("[role=group]"));
+  expect(shape?.closest("[role=group]")).not.toBe(
+    chart?.closest("[role=group]"),
+  );
 
   // And the menu runs the same construction rather than a second one.
   insertMenuEntry(uiCopy.panels.shapes, uiCopy.shapeKinds.rect)?.click();
@@ -942,12 +980,10 @@ function groupsOf(
     ],
     ...groups
       .filter((group) => group.label !== undefined)
-      .map(
-        (group): readonly [string | null, readonly string[]] => [
-          group.label ?? null,
-          group.objects.map((object) => object.label),
-        ],
-      ),
+      .map((group): readonly [string | null, readonly string[]] => [
+        group.label ?? null,
+        group.objects.map((object) => object.label),
+      ]),
   ];
 }
 
@@ -958,7 +994,9 @@ it("opens the insert chooser from the plus, offering the pane's own list", async
   layout.setBridge(bridgeStub({ session }), undefined);
   await Promise.resolve();
 
-  const plus = root.querySelector<HTMLButtonElement>(".editor-shell-pane-bar-add");
+  const plus = root.querySelector<HTMLButtonElement>(
+    ".editor-shell-pane-bar-add",
+  );
   expect(plus?.getAttribute("aria-label")).toBe(uiCopy.rail.insertObject);
   expect(plus?.disabled).toBe(false);
 
@@ -986,12 +1024,16 @@ it("refuses the chooser rather than offering rows that could insert nothing", as
   // No document yet, so no façade for an item to reach. A `+` that opened
   // twenty-one rows that each dispatched into `undefined` is the failure a
   // reader cannot diagnose: the gesture lands and nothing happens.
-  const plus = root.querySelector<HTMLButtonElement>(".editor-shell-pane-bar-add");
+  const plus = root.querySelector<HTMLButtonElement>(
+    ".editor-shell-pane-bar-add",
+  );
   expect(plus?.disabled).toBe(true);
 
   plus?.click();
   await Promise.resolve();
-  expect(document.querySelector(".editor-shell-menu-popup[data-open]")).toBeNull();
+  expect(
+    document.querySelector(".editor-shell-menu-popup[data-open]"),
+  ).toBeNull();
 
   layout.destroy();
 });
@@ -1011,6 +1053,8 @@ it("prints the chord on the menu rows the shortcut table binds", async () => {
   const popup = openPopup();
   // The first `kbd` is Undo's, and the assertion is against `shortcutLabel`
   // rather than a literal so it reads the same chord the row does.
-  expect(popup.querySelector("kbd")?.textContent).toBe(shortcutLabel("edit.undo"));
+  expect(popup.querySelector("kbd")?.textContent).toBe(
+    shortcutLabel("edit.undo"),
+  );
   layout.destroy();
 });
