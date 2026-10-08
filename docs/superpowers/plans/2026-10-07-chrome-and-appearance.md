@@ -45,8 +45,10 @@ Separately this plan lands the palette ruling of
 [`0035`](../../decisions/0035-the-shells-palette-resolves-at-the-element-and-the-os-is-its-fallback.md),
 whose rungs are quoted where a task depends on them.
 
-**Status: queued, not active.** `STATUS.md` names plan 7 (Keyboard) as the active plan. This plan
-runs after it, and it assumes plan 7 has landed — see *What is already true*.
+**Status: active, and the last phase not yet executed.** Plans 7 (Keyboard) and 8 (Player chrome)
+have landed; Phases 2 and 3 of this plan have landed; **Phase 1 has not started**, and the note it
+executes was rewritten three times before the user's ruling settled it. **None of Phase 1's three
+tasks is executed.**
 
 ---
 
@@ -92,7 +94,7 @@ Copied from the spec and `AGENTS.md`; every task's requirements implicitly inclu
 
 ## Review Focus
 
-Five input classes the spec implies but no single task's tests would catch on their own. Each is
+Six input classes the spec implies but no single task's tests would catch on their own. Each is
 pinned by a test in the task named beside it.
 
 1. **A popup opened while the palette in force is not `editorial`.** Every portalled popup leaves
@@ -100,12 +102,12 @@ pinned by a test in the task named beside it.
    the bare `:root` defaults while the chrome beside it is correct — the defect
    `tests/e2e/shell-appearance.spec.ts:138-178` was written for, generalised to every migrated
    surface. **A migration that changes the portal's *owner* is exactly the change that can break
-   this**, so the migrated popovers are re-proved rather than assumed. *(Task 1.3.)*
+   this**, so the migrated popovers are re-proved rather than assumed. *(Task 1.2.)*
 2. **The popup's accessible name after the migration.** Base UI wires its own labelling on a dialog
    popup, which can shadow a caller's `aria-label` — the *attribute* still reads back, so a
    `getAttribute` assertion passes while the name a screen reader announces changes. The dialog
    labels itself by `aria-label` today (`dialog.tsx:28`) and must go on doing so. Pinned by reaching
-   each popup **by role and name**, not by attribute. *(Tasks 1.1 and 1.3.)*
+   each popup **by role and name**, not by attribute. *(Tasks 1.1 and 1.2.)*
 3. **The picker's tracks, which this ruling leaves to us.** Base UI ships no colour primitive, so
    `Track` keeps its hand-built pointer handling — and its `role="slider"` currently promises a
    keyboard it does not have (`vg-194`). **This is the one surface where the migration is not a
@@ -117,10 +119,10 @@ pinned by a test in the task named beside it.
    token changing under it rather than the menu moving — already pinned, in full, by
    `tests/e2e/editor-context-menu.spec.ts`, including the `End` key and an `Enter` that inserts.
    Task 1.3's job is to keep it green, not to write it.*
-4. **Escape, and where focus returns.** Both libraries dismiss on Escape and both return focus to
+5. **Escape, and where focus returns.** Both libraries dismiss on Escape and both return focus to
    the trigger; a migration can lose the return without losing the dismissal, and the DOM tests
-   already rely on Escape to clean up between cases. *(Task 1.2.)*
-5. **The OS changing while the shell is open, after the author has and has not chosen.** The
+   already rely on Escape to clean up between cases. *(Tasks 1.1 and 1.2.)*
+6. **The OS changing while the shell is open, after the author has and has not chosen.** The
    precedence rule is invisible when only one condition is tested: a build that lets the OS
    override an explicit choice passes every "dark OS shows a dark palette" assertion. *(Task 2.2.)*
 
