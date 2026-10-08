@@ -138,28 +138,42 @@ async function startHost(): Promise<ChildProcess> {
 }
 
 /**
- * Leaves the LAN on from the header's own control, which is also what starts
- * publishing the open document.
+ * Opens the publish surface and leaves the LAN on.
+ *
+ * **The press is free of side effects.** The header's button opens the facts
+ * and does nothing else, so this presses it, turns the host on with the
+ * surface's own switch if it is off, and then waits for the **pairing facts**,
+ * which render only once a phone can actually pair. That wait is the assertion:
+ * it is the only one in this file that says the address and the code appeared.
  *
  * **Only if it is off.** The hosting preference is a fact about this PC and
  * survives a restart (Task 3.1), so the second test's host boots already
- * serving the LAN and its control already says `Stop publishing` — clicking it
+ * serving the LAN and its switch already says `Stop publishing` — clicking it
  * unconditionally would turn the LAN *off*.
  *
- * The control's own pressed state is the readout (§7.1 puts the address and the
- * code behind the press rather than on the bar), so this waits on that and not
- * on a code element: pressing again to reach the surface would stop the LAN
- * this suite's loop needs.
+ * The surface is shut again afterwards, because everything that follows drives
+ * the canvas rather than this popover.
  */
 async function startPublishing(page: Page): Promise<void> {
   const publish = page.locator("[data-vigilia-publish]");
+  const facts = page.locator(".editor-shell-publish-popup");
+  const host = facts.locator("[data-vigilia-host-switch]");
   await expect(publish).toBeVisible({ timeout: 30_000 });
 
-  if ((await publish.getAttribute("aria-pressed")) === "false")
-    await publish.click();
+  await publish.click();
+  await expect(host).toBeVisible({ timeout: 30_000 });
+  if ((await host.getAttribute("aria-pressed")) === "false") await host.click();
 
-  await expect(publish).toHaveAttribute("aria-pressed", "true", {
+  await expect(host).toHaveAttribute("aria-pressed", "true", {
     timeout: 30_000,
+  });
+  await expect(facts.locator("[data-vigilia-qr]")).toBeVisible({
+    timeout: 30_000,
+  });
+
+  await publish.click();
+  await expect(facts.locator("[data-vigilia-qr]")).toBeHidden({
+    timeout: 10_000,
   });
 }
 
@@ -298,9 +312,17 @@ test.describe("the publish loop", () => {
     await page.locator("[data-vigilia-artboard-width]").blur();
     await page.locator("[data-vigilia-artboard-height]").fill("240");
     await page.locator("[data-vigilia-artboard-height]").blur();
-    await expect(page.locator("[data-vigilia-publish]")).toContainText(
-      /publishing|live/i,
-    );
+    // **The surface's own readout of what a display is showing**, which is the
+    // claim that the *document* goes out rather than merely that a host is
+    // serving. It is read where it lives — behind the press: the bar's control
+    // says `Publish to a phone` whatever the host is doing, so an assertion on
+    // its label would pass for a reason that has nothing to do with this.
+    const facts = page.locator(".editor-shell-publish-popup");
+    await page.locator("[data-vigilia-publish]").click();
+    await expect(facts).toContainText(/Showing E2E publish loop/, {
+      timeout: 15_000,
+    });
+    await page.locator("[data-vigilia-publish]").click();
 
     await expect
       .poll(() => markStillSet(display, "__beforePublish"), { timeout: 15_000 })

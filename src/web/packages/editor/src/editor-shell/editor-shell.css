@@ -505,6 +505,30 @@ body,
   letter-spacing: 0.1em;
   text-transform: uppercase;
 }
+/* The host switch, inside the surface it belongs to: the header's button opens
+   this, and a press that only meant "show me the address" must not stop a
+   session. A secondary button, because the header already owns the one filled
+   accent control (§7.1). */
+.editor-shell-publish-toggle {
+  border: 1px solid var(--shell-edge);
+  background: var(--shell-surface-strong);
+  color: var(--shell-text);
+  border-radius: 8px;
+  padding: 7px 12px;
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+}
+/* What the host is doing, said on the control that changes it rather than on
+   the bar, which cannot tell a read from a stop. */
+.editor-shell-publish-toggle[aria-pressed="true"] {
+  border-color: var(--shell-primary-bg);
+  color: var(--shell-primary-bg);
+}
+.editor-shell-publish-toggle:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
 .editor-shell-publish-url {
   color: var(--shell-text);
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;

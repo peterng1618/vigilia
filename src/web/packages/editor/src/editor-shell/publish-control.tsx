@@ -4,32 +4,27 @@ import { displayUrl } from "../hosting-client.js";
 import type { PublishSwitch } from "../publish-client.js";
 import { uiCopy } from "../ui-copy.js";
 import { QrCode } from "./qr-symbol.js";
-import type { HostingStore } from "./shell-layout.js";
 import type { EditorActionFacade } from "./session-facade.js";
+import type { HostingStore } from "./shell-layout.js";
 
 /**
  * The editor's one filled accent button, and behind it everything publishing
  * has to say.
  *
- * §7.1 gives the header a single primary control, so the control *is* the
- * toggle: pressing it asks the host to serve the LAN and opens the facts in one
- * gesture. The address, the code, the expiry and the §145 warning are the
- * popover's, not the bar's — the bar stops growing with the LAN, and the facts
- * are one press away rather than on screen for the whole session.
+ * **The button opens the surface; it is not the host switch.** §7.1 gives the
+ * header one primary control and the facts live behind a press — but a control
+ * that turned the LAN off when an author pressed it to read the phone address
+ * would lose the fact the address exists to carry, mid-presentation. So the
+ * press is free of side effects, and turning the host on and off is its own
+ * control inside the popover, where the §145 warning is on screen beside it.
  *
  * Everything is read from the host. In the browser the editor's own URL is
  * `127.0.0.1`, so an address composed here would be an address no phone can
  * reach — and it would look right. The `HostingStore` owns the answer and this
  * control only reads it, so a second reader (Task 4's status bar) sees the same
  * one.
- *
- * The warning is bound to the button with `aria-describedby` and the popover is
- * kept mounted, because the button's own name offers to publish and a screen
- * reader otherwise reaches the action having been told nothing about the cost.
- * A refusal is shown in the host's own words for the same reason — the host is
- * the only thing that knows why a socket refused.
  */
-/** The one control on this surface, so a fixed id is the whole address. */
+/** The one control that carries the warning, so a fixed id is the whole address. */
 const WARNING_ID = "vigilia-publish-warning";
 
 export function PublishControl({
@@ -95,7 +90,10 @@ export function PublishControl({
   // The address and the pairing exist only while the LAN is on, so turning it
   // off takes the URL off the screen rather than leaving a stale one behind.
   const shown =
-    open && answer.address !== null && answer.port !== null && pairing !== undefined
+    open &&
+    answer.address !== null &&
+    answer.port !== null &&
+    pairing !== undefined
       ? {
           address: answer.address,
           port: answer.port,
@@ -111,23 +109,17 @@ export function PublishControl({
 
   return (
     <Popover.Root>
+      {/* One name, whatever the host is doing: the control opens a surface, and
+          a bar that said `Stop publishing` would be promising to stop rather
+          than to show. What the host is doing is the surface's own reading. */}
       <Popover.Trigger
         type="button"
         className="editor-shell-primary"
         data-vigilia-publish=""
-        aria-pressed={open}
-        aria-describedby={WARNING_ID}
-        disabled={pending !== undefined}
-        onClick={() => {
-          void hosting.toggle();
-        }}
       >
-        {label}
+        {uiCopy.publish.start}
       </Popover.Trigger>
-      {/* `keepMounted`, so the warning the button is described by is in the DOM
-          whether or not the popover is showing: a description that only exists
-          once the choice has been made describes nothing on the way there. */}
-      <Popover.Portal keepMounted>
+      <Popover.Portal>
         <Popover.Positioner
           sideOffset={6}
           align="end"
@@ -137,6 +129,21 @@ export function PublishControl({
             className="editor-shell-publish-popup"
             aria-label={uiCopy.publish.surface}
           >
+            {/* The choice the warning is about, so the warning is bound to the
+                control that makes it rather than to the one that opens this. */}
+            <button
+              type="button"
+              className="editor-shell-publish-toggle"
+              data-vigilia-host-switch=""
+              aria-pressed={open}
+              aria-describedby={WARNING_ID}
+              disabled={pending !== undefined}
+              onClick={() => {
+                void hosting.toggle();
+              }}
+            >
+              {label}
+            </button>
             <span id={WARNING_ID} className="editor-shell-publish-warning">
               {uiCopy.publish.warning}
             </span>

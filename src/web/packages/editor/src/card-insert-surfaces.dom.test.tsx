@@ -174,7 +174,7 @@ beforeEach(() => {
  * So a blank theme now *inserts*, and says what it mapped. The refusal survives
  * for the theme that genuinely cannot express a card at all, which is a
  * document with no palette to build from — the Add pane's own rule, and pinned
- * below through the same three surfaces an author can reach.
+ * below through the same two surfaces an author can reach.
  */
 describe("a card a theme with its own vocabulary cannot name", () => {
   it("is inserted and mapped, and the author is told, from the Add pane", async () => {
@@ -242,6 +242,40 @@ describe("a card a theme with its own vocabulary cannot name", () => {
   });
 });
 
+/* ---- what the pane does with a construction it cannot reach ---- */
+
+describe("an insert the Add pane cannot reach its owner for", () => {
+  it("says so, whichever kind it is, rather than swallowing the click", async () => {
+    const { canvas, errors } = wiredSession();
+    // The pane with no actions at all: the state a shell that forgot to wire
+    // the session would leave an author in. This is the refusal the header's
+    // Insert menu used to be gated on — before a document is open the surface
+    // refuses rather than offering rows that insert nothing — and with the menu
+    // gone the Add pane is what carries it.
+    const panel = createNewObjectPanel(
+      document.body,
+      editorOf(canvas, errors),
+      undefined,
+    );
+
+    // Scoped to this panel: `wiredSession()` builds the session's own Add pane
+    // into `document.body` as well, and that one is wired.
+    buttonUnder(panel.root, uiCopy.panels.cards)?.click();
+    await flush();
+    buttonUnder(panel.root, uiCopy.panels.charts)?.click();
+    await flush();
+
+    // Both, because they used to differ: the card path refused by name and the
+    // chart path dispatched through `actions?.addChart` and said nothing. A
+    // control that quietly does nothing is the one failure an author cannot
+    // diagnose, so the two now behave the same way — and this is the assertion
+    // that keeps them that way.
+    expect(told.join(" ")).toContain("card library");
+    expect(told.join(" ")).toContain("chart families");
+    expect(canvas.getObjects()).toHaveLength(0);
+  });
+});
+
 /* ---- the surfaces' own wiring, stated once each ---- */
 
 function editorOf(
@@ -299,6 +333,21 @@ function bridgeOf(
     } as never,
     destroy: vi.fn(),
   } as unknown as EditorShellBridge;
+}
+
+/**
+ * The first button under a named group's legend, which is how the pane offers
+ * a kind: `uiCopy.panels.charts` heads the chart family buttons. Scoped to one
+ * pane, because a session builds its own Add pane beside this one.
+ */
+function buttonUnder(
+  root: HTMLElement,
+  label: string,
+): HTMLButtonElement | undefined {
+  const legend = [...root.querySelectorAll("legend")].find(
+    (element) => element.textContent === label,
+  );
+  return legend?.parentElement?.querySelector("button") ?? undefined;
 }
 
 /**

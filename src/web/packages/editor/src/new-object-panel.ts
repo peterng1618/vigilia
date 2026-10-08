@@ -248,8 +248,19 @@ export function createNewObjectPanel(
             }
             return insert(object.card);
           }
-          case "chart":
-            actions?.addChart(object.family);
+          case "chart": {
+            const chart = actions?.addChart;
+            // The same refusal the card path makes, for the same reason: with
+            // `actions?.addChart(…)` this was the one button in the pane that
+            // could swallow its own dispatch — a chart button that quietly did
+            // nothing is the failure an author cannot diagnose.
+            if (chart === undefined) {
+              throw new Error(
+                "The chart families need the editor session that owns the document's charts.",
+              );
+            }
+            return chart(object.family);
+          }
         }
       }),
     );

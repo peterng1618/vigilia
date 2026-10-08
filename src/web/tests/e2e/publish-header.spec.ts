@@ -129,39 +129,51 @@ test.describe("the header's publish surface", () => {
 
     await page.goto(`${HOST}/editor/`);
 
-    // The one control *is* the toggle (§7.1), and the facts are its popover's:
-    // the bar itself never carries an address.
+    // The bar's control opens the surface; the host switch is inside it (§7.1
+    // puts the facts behind the press, and F1 puts the switch with them: a
+    // press that only meant "where is the address" must not stop a session).
     const publish = page.locator("[data-vigilia-publish]");
     const facts = page.locator(".editor-shell-publish-popup");
+    const host = facts.locator("[data-vigilia-host-switch]");
     await expect(publish).toBeVisible({ timeout: 30_000 });
-    await expect(publish).toHaveAttribute("aria-pressed", "false");
-    await expect(facts.locator("code")).toHaveCount(0);
+    // The bar itself never carries an address.
+    await expect(page.locator(".editor-shell-header code")).toHaveCount(0);
 
     await publish.click();
+    await expect(host).toBeVisible();
+    await expect(host).toHaveAttribute("aria-pressed", "false");
+    await expect(facts.locator("code")).toHaveCount(0);
 
-    await expect(publish).toHaveAttribute("aria-pressed", "true");
+    await host.click();
+
+    await expect(host).toHaveAttribute("aria-pressed", "true");
     await expect(facts.locator("code")).toHaveText(new RegExp(`:${PORT}$`));
     await expect(facts.locator("[data-vigilia-qr]")).toBeVisible();
 
     // Still the same origin, which is the claim `createHostBinding` makes.
     expect(page.url()).toContain(`127.0.0.1:${PORT}/editor/`);
 
-    await publish.click();
+    await host.click();
     await expect(facts.locator("code")).toHaveCount(0);
   });
 
-  test("the control carries the address and a code for it", async ({ page }) => {
+  test("the control carries the address and a code for it", async ({
+    page,
+  }) => {
     test.setTimeout(180_000);
 
     await page.goto(`${HOST}/editor/`);
 
     const publish = page.locator("[data-vigilia-publish]");
     const facts = page.locator(".editor-shell-publish-popup");
+    const host = facts.locator("[data-vigilia-host-switch]");
     await expect(publish).toBeVisible({ timeout: 30_000 });
 
-    // The host starts loopback-only, so the address exists only once the
-    // control has been used — there is no `--host` flag left to arrange it with.
+    // The host starts loopback-only, so the address exists only once the switch
+    // inside the surface has been used — there is no `--host` flag left to
+    // arrange it with, and opening the surface is not turning the LAN on.
     await publish.click();
+    await host.click();
     await expect(facts.locator("code")).toBeVisible({ timeout: 30_000 });
 
     const shown = await facts.locator("code").textContent();
@@ -193,9 +205,17 @@ test.describe("the header's publish surface", () => {
       fullPage: false,
     });
 
-    // Leave the host off, because the first test reads the off state.
-    await publish.click();
+    // Leave the host off, because the first test reads the off state. The
+    // surface stays open, so this also proves closing it is not required to
+    // put the display back.
+    await host.click();
     await expect(facts.locator("code")).toHaveCount(0);
+
+    // And the surface shuts on a second press, leaving the bar with nothing but
+    // the one control.
+    await publish.click();
+    await expect(facts).toBeHidden();
+    await expect(page.locator(".editor-shell-header code")).toHaveCount(0);
   });
 
   test("a forwarded-for header does not move the guard off the socket", async ({

@@ -1,34 +1,37 @@
 import { Menu } from "@base-ui/react/menu";
 import { Check } from "lucide-react";
-import { type ReactNode, useEffect, useRef, useState } from "react";
+import {
+  type ReactNode,
+  useEffect,
+  useRef,
+  useState,
+  useSyncExternalStore,
+} from "react";
 import { flushSync } from "react-dom";
 import { createRoot, type Root } from "react-dom/client";
-import { useSyncExternalStore } from "react";
-import { uiCopy } from "../ui-copy.js";
 import {
   type HostingAnswer,
   mintSession,
   readHosting,
   setLan,
 } from "../hosting-client.js";
+import type { PublishSwitch } from "../publish-client.js";
+import {
+  DEFAULT_RUN_DISPLAY_MODE,
+  type RunDisplayMode,
+} from "../run-placeholder.js";
 import {
   shortcutLabel,
   shortcutSpokenLabel,
 } from "../shortcut-manager/display.js";
 import type { ProductShortcutId } from "../shortcut-manager/index.js";
+import { uiCopy } from "../ui-copy.js";
 import type { EditorShellBridge, EditorShellSnapshot } from "./bridge.js";
 import { CanvasContextMenu } from "./canvas-context-menu.js";
 import { CanvasDock } from "./canvas-dock.js";
 import { DiagnosticMessage } from "./diagnostic-message.js";
-import { LayerActions, LayerPanel } from "./layer-panel.js";
-import { Pane } from "./pane.js";
-import { Rail, RAIL_GLYPHS, type RailSlot } from "./rail.js";
-import { PaletteMenu } from "./palette-menu.js";
-import { PublishControl } from "./publish-control.js";
-import type { PublishSwitch } from "../publish-client.js";
-import { SaveState } from "./save-state.js";
 import { DisplaySwitch } from "./display-switch.js";
-import { ShortcutReference } from "./shortcut-reference.js";
+import { LayerActions, LayerPanel } from "./layer-panel.js";
 import {
   applyShellPalette,
   prefersDarkAppearance,
@@ -37,11 +40,13 @@ import {
   systemShellPalette,
   watchSystemAppearance,
 } from "./palette.js";
-import {
-  DEFAULT_RUN_DISPLAY_MODE,
-  type RunDisplayMode,
-} from "../run-placeholder.js";
+import { PaletteMenu } from "./palette-menu.js";
+import { Pane } from "./pane.js";
+import { PublishControl } from "./publish-control.js";
+import { Rail, RAIL_GLYPHS, type RailSlot } from "./rail.js";
+import { SaveState } from "./save-state.js";
 import type { EditorViewControls } from "./session-facade.js";
+import { ShortcutReference } from "./shortcut-reference.js";
 
 /** Persistent DOM owners the imperative panels mount into. React positions
  * these; it never renders panel content. The Composition pane has no node
