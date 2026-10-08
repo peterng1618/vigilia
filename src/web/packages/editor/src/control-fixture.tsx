@@ -65,7 +65,11 @@ function Fixture(): React.JSX.Element {
               <ControlText label="Name" value="CPU gauge" onCommit={noop} />
             </div>
             <div data-fixture="long">
-              <ControlText label={LONG_NAME} value={LONG_NAME} onCommit={noop} />
+              <ControlText
+                label={LONG_NAME}
+                value={LONG_NAME}
+                onCommit={noop}
+              />
             </div>
             <div data-fixture="select">
               <ControlSelect
@@ -82,7 +86,10 @@ function Fixture(): React.JSX.Element {
                 options={PAINTS}
                 onChange={noop}
                 swatch={
-                  <span aria-hidden className="size-[11px] rounded-sm bg-accent" />
+                  <span
+                    aria-hidden
+                    className="size-[11px] rounded-sm bg-accent"
+                  />
                 }
               />
             </div>
@@ -166,7 +173,11 @@ function Fixture(): React.JSX.Element {
               />
             </div>
             <div data-fixture="icon">
-              <ControlIconButton label="Delete layer" destructive onClick={noop}>
+              <ControlIconButton
+                label="Delete layer"
+                destructive
+                onClick={noop}
+              >
                 <span aria-hidden>✕</span>
               </ControlIconButton>
             </div>
@@ -187,5 +198,6 @@ function Fixture(): React.JSX.Element {
 }
 
 const host = document.querySelector("#control-fixture");
-if (host === null) throw new Error("the control fixture has no #control-fixture");
+if (host === null)
+  throw new Error("the control fixture has no #control-fixture");
 createRoot(host).render(<Fixture />);

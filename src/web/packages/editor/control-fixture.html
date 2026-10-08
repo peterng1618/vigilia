@@ -9,10 +9,11 @@
          `tests/e2e/design-language.spec.ts` can mount the *built* control set
          over the *built* stylesheet and assert the language in a real browser —
          hit areas, contrast, forced colours and layout at 200% zoom, none of
-         which jsdom can carry. It is a build entry of its own (see
-         `vite.config.ts`) rather than a branch inside `editor-main.ts`, so the
-         shipped editor carries no test-only path. Its route is
-         `/control-fixture.html` on the editor preview. -->
+         which jsdom can carry. It is built by its own invocation
+         (`vite.config.fixture.ts`, `npm run build:fixture`) rather than by
+         `npm run build`, so the shipped editor emits neither this page nor its
+         bundle and `index.html` keeps the chunk graph it had before the fixture
+         existed. Its route is `/control-fixture.html` on the editor preview. -->
     <style>
       /* The page shape `index.html` gives the real editor, and for the same
          reason: `.editor-shell` sets `min-height: 100%`, and an unlayered rule

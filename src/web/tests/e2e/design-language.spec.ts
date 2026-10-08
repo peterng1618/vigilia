@@ -103,12 +103,11 @@ const BOUNDARY_MIN = 3;
  * deleted — the minimum restored — when its row is fixed. The numbers are the
  * measurement, so a regression still fails.
  */
-const PINNED_FLOOR: Readonly<
-  Record<string, Partial<Record<Palette, number>>>
-> = {
-  boundary: { graphite: 2, light: 1.2 },
-  invalid: { ember: 1.9, moss: 1.35, plum: 1.35 },
-};
+const PINNED_FLOOR: Readonly<Record<string, Partial<Record<Palette, number>>>> =
+  {
+    boundary: { graphite: 2, light: 1.2 },
+    invalid: { ember: 1.9, moss: 1.35, plum: 1.35 },
+  };
 
 /** Bible §5's minimum for a probe: a boundary that identifies a control or its
  *  focus is measured against 3:1, and everything that carries words against
@@ -119,6 +118,17 @@ function minimumFor(name: string): number {
 
 const FREEZE = "design-language-freeze";
 const HIDE_TEXT = "design-language-hide-text";
+
+/** Transitions and animations frozen, for reading a settled frame and for
+ *  capturing one that is not mid-fade.
+ *
+ *  **It must not be applied while motion is being measured.** `transition: none`
+ *  makes every duration `0s` on exactly the scope the reduced-motion check
+ *  reads, so a run with the freeze on reports nothing animating whatever the
+ *  stylesheet does — the check passed for a whole round because of it. The
+ *  positive control in that section is what keeps this honest. */
+const FREEZE_CSS =
+  "[data-fixture-root],[data-fixture-root] *{transition:none !important;animation:none !important}";
 
 /** Every style the fixture is measured under, in one place: transitions are
  *  frozen so a palette change is not read mid-fade, and text is hidden as well
@@ -144,14 +154,33 @@ async function clearStyle(page: Page, id: string): Promise<void> {
   await page.evaluate((id) => document.getElementById(id)?.remove(), id);
 }
 
+async function freeze(page: Page): Promise<void> {
+  await setStyle(page, FREEZE, FREEZE_CSS);
+}
+
+/** Every element under the fixture that still carries a transition or an
+ *  animation with a non-zero duration, named so a failure says which. */
+async function movingElements(page: Page): Promise<string[]> {
+  return page.evaluate(() =>
+    [...document.querySelectorAll("[data-fixture-root] *")]
+      .filter((element) => {
+        const style = getComputedStyle(element);
+        return [
+          ...style.transitionDuration.split(","),
+          ...style.animationDuration.split(","),
+        ].some((part) => Number.parseFloat(part) > 0);
+      })
+      .map(
+        (element) =>
+          `${element.tagName.toLowerCase()}.${String(element.className).slice(0, 30)}`,
+      ),
+  );
+}
+
 async function openFixture(page: Page): Promise<void> {
   await page.goto(FIXTURE);
   await expect(page.locator("[data-fixture-root]")).toBeVisible();
-  await setStyle(
-    page,
-    FREEZE,
-    "[data-fixture-root],[data-fixture-root] *{transition:none !important;animation:none !important}",
-  );
+  await freeze(page);
 }
 
 async function setPalette(page: Page, palette: Palette): Promise<void> {
@@ -168,7 +197,10 @@ function parseColour(value: string): Rgba | null {
   const text = value.trim();
   const rgb = /^rgba?\(([^)]+)\)$/.exec(text);
   if (rgb !== null) {
-    const parts = (rgb[1] ?? "").split(/[\s,/]+/).filter(Boolean).map(Number);
+    const parts = (rgb[1] ?? "")
+      .split(/[\s,/]+/)
+      .filter(Boolean)
+      .map(Number);
     const [r, g, b, a] = parts;
     if (r === undefined || g === undefined || b === undefined) return null;
     if ([r, g, b].some((n) => !Number.isFinite(n))) return null;
@@ -239,10 +271,7 @@ type Point = { readonly x: number; readonly y: number };
  *  alpha over a gradient backdrop is not a colour the cascade resolves. So the
  *  pixels are the evidence and the computed colours are the foreground, and the
  *  ratio is composited from both. */
-async function pixelsAt(
-  page: Page,
-  points: readonly Point[],
-): Promise<Rgba[]> {
+async function pixelsAt(page: Page, points: readonly Point[]): Promise<Rgba[]> {
   await setStyle(
     page,
     HIDE_TEXT,
@@ -544,13 +573,15 @@ test("the control set renders in the design language", async ({
         rect.left < window.innerWidth &&
         rect.top < window.innerHeight;
       if (!visible) continue;
-      if (target instanceof HTMLInputElement && target.type === "range") continue;
+      if (target instanceof HTMLInputElement && target.type === "range")
+        continue;
       const cx = rect.x + rect.width / 2;
       const cy = rect.y + rect.height / 2;
       for (const dx of offsets) {
         for (const dy of offsets) {
           const hit = document.elementFromPoint(cx + dx, cy + dy);
-          if (hit !== null && (hit === target || target.contains(hit))) continue;
+          if (hit !== null && (hit === target || target.contains(hit)))
+            continue;
           failures.push(
             `${target.tagName.toLowerCase()}.${String(target.className).slice(0, 20)} @${Math.round(rect.x)},${Math.round(rect.y)} ${Math.round(rect.width)}x${Math.round(rect.height)} misses at ${dx},${dy} -> ${hit === null ? "nothing" : `${hit.tagName.toLowerCase()}.${String(hit.className).slice(0, 30)}`}`,
           );
@@ -572,7 +603,9 @@ test("the control set renders in the design language", async ({
     }
     const control = range?.parentElement?.parentElement ?? null;
     if (control === null) {
-      failures.push(`the slider has no target to measure: ${chain.join(" < ")}`);
+      failures.push(
+        `the slider has no target to measure: ${chain.join(" < ")}`,
+      );
     } else {
       const rect = control.getBoundingClientRect();
       if (rect.width < 24 || rect.height < 24) {
@@ -583,9 +616,10 @@ test("the control set renders in the design language", async ({
     }
     return failures;
   });
-  expect(hitArea, "a target is smaller than 24×24, or overlaps a neighbour").toEqual(
-    [],
-  );
+  expect(
+    hitArea,
+    "a target is smaller than 24×24, or overlaps a neighbour",
+  ).toEqual([]);
 
   // ── 4. Contrast, in all six palettes ──────────────────────────────────────
   //
@@ -660,6 +694,93 @@ test("the control set renders in the design language", async ({
       );
     }
   }
+  // ── 4c. The slider's thumb, against both halves of its track ──────────────
+  //
+  // §5 colours neither the thumb nor the track's rest state, and §1 is plain
+  // that a colour which does not distinguish one thing from another is not
+  // there: the thumb was `--accent` on an `--accent` fill, which is 1:1 — the
+  // control's own drag handle was invisible over half the track it moves along.
+  //
+  // The thumb is now two parts — a `--text` interior inside a 1px `--panel`
+  // ring — and that is not decoration. The two halves of the track are the
+  // accent and `--edge`, and in graphite and light they sit far enough apart
+  // that no flat colour clears 3:1 against both (measured: the best single
+  // colour left graphite at 1.81:1 and light at 1.35:1 against the rest half).
+  // So each half is asked whether *either* part of the thumb beats it: the
+  // filled half is answered by the interior, the unfilled half by the ring.
+  // A thumb with one part still has to satisfy both halves with that part.
+  //
+  // The interior is read as a rendered pixel, because it is drawn *over* the
+  // track and the composite is what the eye gets; the ring is a computed colour
+  // composited over the same rendered pixel, so a fractional thumb edge cannot
+  // hand a half-covered border pixel to the ratio. The two track samples are
+  // 5px either side of the thumb, so they are the filled and the unfilled
+  // halves wherever the value sits.
+  for (const palette of PALETTES) {
+    await setPalette(page, palette);
+    const geometry = await page.evaluate(() => {
+      const range = document.querySelector<HTMLInputElement>(
+        "[data-fixture='slider'] input[type=range]",
+      );
+      // The nested `input[type=range]`'s parent is the thumb element itself —
+      // a structural locator, not a class name.
+      const thumb = range?.parentElement;
+      if (thumb == null) return null;
+      const rect = thumb.getBoundingClientRect();
+      const middle = rect.y + rect.height / 2;
+      const style = getComputedStyle(thumb);
+      return {
+        thumb: { x: rect.x + rect.width / 2, y: middle },
+        filled: { x: rect.left - 5, y: middle },
+        unfilled: { x: rect.right + 5, y: middle },
+        interior: style.backgroundColor,
+        ring: style.borderTopColor,
+        ringWidth: Number.parseFloat(style.borderTopWidth),
+      };
+    });
+    expect(geometry, "the slider's thumb is not mounted").not.toBeNull();
+    if (geometry === null) continue;
+    const [interior, filled, unfilled] = await pixelsAt(page, [
+      geometry.thumb,
+      geometry.filled,
+      geometry.unfilled,
+    ]);
+    // Each half is beaten by the stronger of the thumb's two parts. Both
+    // readings are ratios against an already-rendered pixel, so the interior is
+    // one comparison and the ring is composited the way the browser composited
+    // it.
+    const against = (pixel: Rgba | undefined): readonly [number, number] => {
+      if (pixel === undefined || interior === undefined) return [0, 0];
+      return [
+        round(contrast(interior, pixel)),
+        round(ratioAgainstPixel(geometry.ring, pixel)),
+      ];
+    };
+    const [fillInterior, fillRing] = against(filled);
+    const [restInterior, restRing] = against(unfilled);
+    const onFill = Math.max(fillInterior, fillRing);
+    const onRest = Math.max(restInterior, restRing);
+    ratios.push(
+      `${palette} thumb ${onFill}:1 over the fill (interior ${fillInterior}, ring ${fillRing}), ` +
+        `${onRest}:1 over the rest (interior ${restInterior}, ring ${restRing})`,
+    );
+    if (geometry.ringWidth < 1) {
+      failures.push(
+        `${palette}: the slider's thumb has no ring to measure (${geometry.ringWidth}px), so its interior is the whole thumb`,
+      );
+    }
+    for (const [where, value] of [
+      ["the filled half", onFill],
+      ["the unfilled half", onRest],
+    ] as const) {
+      if (value < BOUNDARY_MIN) {
+        failures.push(
+          `${palette}: the slider's thumb is ${value}:1 against ${where} of its own track, below ${BOUNDARY_MIN}:1`,
+        );
+      }
+    }
+  }
+
   for (const line of ratios) {
     // The table is the evidence a reader needs to check a ratio without a
     // trace, so it is printed as well as attached.
@@ -679,7 +800,8 @@ test("the control set renders in the design language", async ({
     const element = document.querySelector<HTMLElement>(
       "[data-fixture='icon-focus'] button",
     );
-    if (element === null) return { active, visible: false, detail: "no focus target" };
+    if (element === null)
+      return { active, visible: false, detail: "no focus target" };
     const style = getComputedStyle(element);
     const width = Number.parseFloat(style.outlineWidth);
     const colour = style.outlineColor;
@@ -687,7 +809,10 @@ test("the control set renders in the design language", async ({
     return {
       active,
       visible:
-        style.outlineStyle !== "none" && width >= 1 && opaque && element.matches(":focus-visible"),
+        style.outlineStyle !== "none" &&
+        width >= 1 &&
+        opaque &&
+        element.matches(":focus-visible"),
       detail: `${style.outlineStyle} ${width}px ${colour}`,
     };
   });
@@ -712,7 +837,9 @@ test("the control set renders in the design language", async ({
       if (root === null) return null;
       const box = root.getBoundingClientRect();
       const escaped: string[] = [];
-      for (const element of document.querySelectorAll("[data-fixture-root] *")) {
+      for (const element of document.querySelectorAll(
+        "[data-fixture-root] *",
+      )) {
         const rect = element.getBoundingClientRect();
         if (rect.width === 0) continue;
         if (rect.right > box.right + 1 || rect.left < box.left - 1) {
@@ -774,20 +901,31 @@ test("the control set renders in the design language", async ({
   });
 
   // ── 7. Reduced motion leaves nothing animating ────────────────────────────
+  //
+  // The freeze comes off first, and that is load-bearing: it sets
+  // `transition: none !important` on the same scope this section reads, so while
+  // it is applied every duration is `0s` and the assertion below holds whatever
+  // the stylesheet does. It was applied here for a whole round and the check was
+  // therefore vacuous.
+  //
+  // The positive control is what stops that recurring: with motion *allowed*,
+  // something in the fixture must be animating — the shell transitions its
+  // colours and the toggle's thumb its transform — or this section is reading a
+  // page that cannot move and proves nothing by finding no movement. Then the
+  // same probe under `reduce` must come back empty.
+  await clearStyle(page, FREEZE);
+  await page.emulateMedia({ reducedMotion: "no-preference" });
+  const allowed = await movingElements(page);
+  expect(
+    allowed,
+    "nothing animates with motion allowed, so this check cannot observe motion at all",
+  ).not.toEqual([]);
+
   await page.emulateMedia({ reducedMotion: "reduce" });
-  const moving = await page.evaluate(() =>
-    [...document.querySelectorAll("[data-fixture-root] *")]
-      .filter((element) => {
-        const style = getComputedStyle(element);
-        return [...style.transitionDuration.split(","), ...style.animationDuration.split(",")].some(
-          (part) => Number.parseFloat(part) > 0,
-        );
-      })
-      .map((element) => element.tagName.toLowerCase()),
-  );
+  const moving = await movingElements(page);
   expect(
     moving,
-    "an element still animates under prefers-reduced-motion",
+    `an element still animates under prefers-reduced-motion: ${moving.join(", ")}`,
   ).toEqual([]);
   await page.emulateMedia({ reducedMotion: null });
 
@@ -801,6 +939,7 @@ test("the control set renders in the design language", async ({
   // wells, `#72e0c0` accent) and so the two pictures are comparable, and
   // editorial is the light ground the same vocabulary has to hold on.
   await page.evaluate(() => (document.activeElement as HTMLElement)?.blur());
+  await freeze(page);
   await setPalette(page, "graphite");
   await captureVisualReview(page, testInfo, "control-set");
   await setPalette(page, "editorial");
@@ -814,5 +953,8 @@ test("the control set renders in the design language", async ({
 
   // The measurements are the report's evidence and are printed so a run can be
   // read without opening a trace.
-  testInfo.annotations.push({ type: "contrast", description: ratios.join(" | ") });
+  testInfo.annotations.push({
+    type: "contrast",
+    description: ratios.join(" | "),
+  });
 });

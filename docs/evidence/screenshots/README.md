@@ -5,6 +5,7 @@ Visual evidence from built bundles; **not** cross-platform pixel baselines.
 ```bash
 cd src/web
 npm run build
+npm run build:fixture -w @vigilia/editor
 VIGILIA_CAPTURE=1 npx playwright test --project=desktop-chromium --grep "<selected capture title>" --workers=1
 ```
 
@@ -12,6 +13,14 @@ Build player and editor first: Playwright previews both built outputs. Use one
 worker to avoid capture collisions. Select only captures affected by the current
 change and inspect only their generated images. Captures use `?static=1` and a
 controlled clock. After push, prefer the **Visual evidence** Actions artifact.
+
+`build:fixture` is the design-language parity fixture
+(`packages/editor/control-fixture.html`). It is a separate invocation on purpose:
+building it inside `npm run build` would ship test scaffolding in the editor's
+production output and move `index.html` onto a shared chunk it does not otherwise
+need. Run it before any capture or browser run that names
+`design-language.spec.ts`; without it that one spec 404s and the rest are
+unaffected.
 
 Pick the project the capture's spec lives in: `desktop-chromium` for the
 preview-server captures (editor and player), `desktop-host` for the ones that

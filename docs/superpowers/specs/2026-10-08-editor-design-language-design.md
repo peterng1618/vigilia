@@ -476,24 +476,34 @@ fixture. Reduced-motion and forced-colours checks belong to the same browser
 gate. The phone limitation remains named, never mistaken for desktop proof.
 
 **The gate is mechanical, and plan 1 builds the model for the rest.**
-`packages/editor/control-fixture.html` (a build entry, not a branch in the
-shipped editor) mounts the built control set over the built stylesheet at
-`/control-fixture.html` on the editor preview, and
-`tests/e2e/design-language.spec.ts` asserts the language against it in a real
-browser: every authored spacing value is a bible §3 step, no painted colour
-falls outside §4's roles, every target has §5's 24×24 hit area without
-overlapping a neighbour, required text meets 4.5:1 and focus and state
-boundaries meet 3:1 in all six palettes, focus survives forced colours, layout
-holds at both viewport sizes and 200% zoom with the long Unicode name, and
-reduced motion leaves nothing animating. Computed styles are read for geometry
-and the rendered pixel for anything the cascade cannot answer, so the gate
-proves *rendered treatment*; token provenance stays the source ratchet's
+`packages/editor/control-fixture.html` — built by its own invocation,
+`npm run build:fixture`, so it is absent from the editor's production output and
+`index.html` keeps the chunk graph it had before the fixture existed — mounts the
+built control set over the built stylesheet at `/control-fixture.html` on the
+editor preview, and `tests/e2e/design-language.spec.ts` asserts against it in a
+real browser: every authored spacing value is a bible §3 step; no element the
+check reads paints a colour outside the set §4's roles resolve to, which is
+`color`, `background-color`, border and outline colour on elements at least 2px
+on a side — **a gradient set through the `background` shorthand passes it**, and
+`background-image`, `box-shadow` and SVG `fill`/`stroke` are not read at all;
+every target has §5's 24×24 hit area without overlapping a neighbour; required
+text meets 4.5:1 and focus and state boundaries meet 3:1 in all six palettes
+**with a named debt**, because five cells are pinned below that today (vg-200's
+resting boundary, vg-201's `--warn` text) as measured floors that fail if they
+get worse; the slider's thumb is measured against both halves of its own track
+and must beat each with its interior or its ring — the thumb is two parts
+because no flat colour can, which left the unfilled half at 1.81:1 in graphite
+and 1.35:1 in light;
+focus survives forced colours; layout holds at both viewport sizes and at 200%
+zoom with the long Unicode name; and reduced motion leaves nothing animating,
+after motion is first *allowed* to prove the probe can see motion at all — **a
+check that cannot fail is not a check**, which is how the first version of this
+one passed while proving nothing. Computed styles are read for geometry and the
+rendered pixel for anything the cascade cannot answer, so the gate proves
+*rendered treatment*; token provenance stays the source ratchet's
 (`scripts/design-tokens.mjs`, `npm run design:check`), which is why the fixture
-is a gated file too. **A
-measured palette defect is pinned in that spec as a named floor with a register
-row, never waived**, so the gate still fails if it gets worse and the floor is
-deleted when the row is ruled on. Plans 2–6 reuse the fixture and add their own
-surface captures beside it.
+is a gated file too. A pinned floor is deleted when its row is ruled on. Plans
+2–6 reuse the fixture and add their own surface captures beside it.
 
 ## Invariants
 

@@ -113,11 +113,16 @@ export function ControlSlider(
           <Slider.Track className="h-[3px] w-full rounded-sm bg-edge">
             <Slider.Indicator className="rounded-sm bg-accent" />
           </Slider.Track>
+          {/* Two parts, because one cannot do it: the fill half is the accent
+              and the rest half is `--edge`, and in graphite and light those sit
+              far enough apart that no single colour clears §5's 3:1 against
+              both. The interior answers to the fill, the ring to the rest, and
+              the parity gate measures each against the half it has to beat. */}
           <Slider.Thumb
             inputRef={input}
             aria-labelledby={ids.label}
             aria-describedby={refused === undefined ? undefined : ids.reason}
-            className="size-[10px] rounded-sm bg-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+            className="size-[10px] rounded-sm border border-panel bg-text focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
           />
         </Slider.Control>
         <span
