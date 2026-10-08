@@ -33,7 +33,7 @@ backlog it produced stays live in the register.
 
 ## Last completed change
 
-- **Task 4's fix round 1 is complete** (`51f8899a`): the reduced-motion assertion could not fail — the injected freeze covered the scope the section read, so every duration was `0s` and every run passed — and it now lifts the freeze, opens with a positive control, and lists 30 still-animating elements when the media query is renamed to `reduce-sabotaged`; the gate is green at 1 collected, 1 passed, 0 unexpected.
+- **Task 4 — the parity gate — is complete** (`1f991845`, fix round `51f8899a`, review clean): the reduced-motion assertion could not fail — the injected freeze covered the scope the section read, so every duration was `0s` and every run passed — and it now lifts the freeze, opens with a positive control, and lists 30 still-animating elements when the media query is renamed to `reduce-sabotaged`; the gate is green at 1 collected, 1 passed, 0 unexpected.
 - **The slider's thumb is two parts** — a `--text` interior in a 1px `--panel` ring — because no flat colour clears 3:1 against both halves of the track in graphite (1.81:1) and light (1.35:1); the gate measures each half and names the part that beat it.
 - **The fixture is out of the production build** — its own `build:fixture` invocation, so a production build emits one chunk, no `control-fixture.html` and no shared `editor-shell-*.js`.
 - **The bible won three values the mockup was stale on** — the well radius 6px, the swatch radius 4px and the slider's value well 36px — and §13.1's three overstated claims are corrected rather than left standing.
