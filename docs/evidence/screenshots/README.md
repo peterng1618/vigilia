@@ -70,6 +70,7 @@ result, not merely a mounted editor.
 | Theme library | Save the starter to the library and read the picture the host stored | `host-theme-thumbnail` / `stores the picture the editor captured` |
 | Player | Play the saved reference composition at the reference's own size | `player-reference` / `plays the reference composition on the real host` |
 | Player | The phone showing the theme the editor has open, after an edit reaches it | `publish-loop-live` / `an edit reaches the display` |
+| Player | The phone's chrome taking its room from the artboard rather than covering it | `player-chrome-phone-chromium` / `no strip covers the artboard at landscape` |
 
 The capture is the whole page, so the Devices and Display sections (including
 the units choice) are evidence from the same file.
