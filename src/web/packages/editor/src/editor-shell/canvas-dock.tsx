@@ -3,7 +3,7 @@ import {
   actionEnabled,
   arrangeActions,
   type ObjectActionId,
-  OBJECT_ACTIONS,
+  objectActionsFor,
 } from "../object-actions.js";
 import {
   shortcutLabel,
@@ -134,26 +134,26 @@ export function CanvasDock({
     >
       {bridge === undefined
         ? null
-        : OBJECT_ACTIONS.filter((action) =>
-            actionEnabled(bridge, action.id),
-          ).map(({ id, icon: Icon, label, shortcut }) => (
-            <Action
-              key={id}
-              bridge={bridge}
-              id={id}
-              label={label}
-              shortcut={
-                shortcut === undefined
-                  ? undefined
-                  : {
-                      printed: shortcutLabel(shortcut),
-                      spoken: shortcutSpokenLabel(shortcut),
-                    }
-              }
-            >
-              <Icon aria-hidden size={15} strokeWidth={1.75} />
-            </Action>
-          ))}
+        : objectActionsFor(bridge).map(
+            ({ id, icon: Icon, label, shortcut }) => (
+              <Action
+                key={id}
+                bridge={bridge}
+                id={id}
+                label={label}
+                shortcut={
+                  shortcut === undefined
+                    ? undefined
+                    : {
+                        printed: shortcutLabel(shortcut),
+                        spoken: shortcutSpokenLabel(shortcut),
+                      }
+                }
+              >
+                <Icon aria-hidden size={15} strokeWidth={1.75} />
+              </Action>
+            ),
+          )}
       {arrangeActions().map(({ id, icon: Icon, label }) => (
         <ArrangeAction
           key={id}

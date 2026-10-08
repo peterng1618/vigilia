@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import {
+  type ActionGate,
   arrangeActions,
   OBJECT_ACTIONS,
   type ObjectTarget,
   objectAction,
+  objectActionsFor,
 } from "./object-actions.js";
 import { productShortcutIds } from "./shortcut-manager/index.js";
 
@@ -62,6 +64,35 @@ describe("object action registry", () => {
     expect(align.eligible(target({ memberCount: 2, locked: true }))).toBe(
       false,
     );
+  });
+
+  it("filters to exactly the actions a gate can run, so a surface cannot re-decide", () => {
+    // The gate the dock, the context menu, the pane footer and the layer panel
+    // all read. A surface that filtered with its own predicate would agree
+    // until the next action joined the registry, so this is the one filter.
+    const none: ActionGate = {
+      target: () => target({ kind: "none" }),
+      canArrange: () => false,
+    };
+    expect(objectActionsFor(none)).toEqual([]);
+
+    // A single unlocked object: the object actions that apply to it, in
+    // registry order, and never an arrange action — those grey rather than
+    // disappear, so they are `arrangeActions()`, not this.
+    const one: ActionGate = { target: () => target(), canArrange: () => true };
+    const ids = objectActionsFor(one).map((action) => action.id);
+    expect(ids).toEqual([
+      "duplicate",
+      "copy",
+      "cut",
+      "front",
+      "bring-forward",
+      "send-backward",
+      "back",
+      "lock",
+      "delete",
+    ]);
+    expect(ids.some((id) => id.startsWith("arrange:"))).toBe(false);
   });
 });
 

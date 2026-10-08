@@ -16,8 +16,9 @@ import { CanvasContextMenu } from "./canvas-context-menu.js";
 import { CanvasDock } from "./canvas-dock.js";
 import { DiagnosticMessage } from "./diagnostic-message.js";
 import { insertItem } from "./insert-popover.js";
-import { LayerPanel } from "./layer-panel.js";
-import { Rail, type RailSlot } from "./rail.js";
+import { LayerActions, LayerPanel } from "./layer-panel.js";
+import { Pane } from "./pane.js";
+import { Rail, RAIL_GLYPHS, type RailSlot } from "./rail.js";
 import { PaletteMenu } from "./palette-menu.js";
 import { PublishControl } from "./publish-control.js";
 import type { PublishSwitch } from "../publish-client.js";
@@ -568,16 +569,48 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
             hidden={collapsed}
             ref={paneBody}
           >
-            <div hidden={slot !== "composition"}>
+            {/* Every pane wears the same chrome — a title bar, a body and a
+                footer toolbar — and each is `hidden` rather than unmounted,
+                because the persistent hosts below live inside them and React
+                re-parents those nodes; a pane taken off the tree would take its
+                host's content with it. Only the Composition pane carries a
+                `data-vigilia-panel` name, because only its is a browsable
+                contract: the Add and Document panes are named by the panels
+                inside them. */}
+            <Pane
+              id="layers"
+              title={uiCopy.panels.layers}
+              icon={RAIL_GLYPHS.composition}
+              hidden={slot !== "composition"}
+              footer={<LayerActions bridge={store.bridge} />}
+            >
               <LayerPanel bridge={store.bridge} />
-            </div>
+            </Pane>
             {/* The assets host renders inside the Add pane's body, with the
                 insert host: `§5.2` puts the asset path in Add, and a fourth
                 slot for it would be a slot the bible does not name. */}
-            <Host node={hosts.add} hidden={slot !== "add"} />
-            <Host node={hosts.assets} hidden={slot !== "add"} />
-            <Host node={hosts.tokens} hidden={slot !== "tokens"} />
-            <Host node={hosts.document} hidden={slot !== "document"} />
+            <Pane
+              title={uiCopy.rail.slots.add}
+              icon={RAIL_GLYPHS.add}
+              hidden={slot !== "add"}
+            >
+              <Host node={hosts.add} hidden={slot !== "add"} />
+              <Host node={hosts.assets} hidden={slot !== "add"} />
+            </Pane>
+            <Pane
+              title={uiCopy.rail.slots.tokens}
+              icon={RAIL_GLYPHS.tokens}
+              hidden={slot !== "tokens"}
+            >
+              <Host node={hosts.tokens} hidden={slot !== "tokens"} />
+            </Pane>
+            <Pane
+              title={uiCopy.rail.slots.document}
+              icon={RAIL_GLYPHS.document}
+              hidden={slot !== "document"}
+            >
+              <Host node={hosts.document} hidden={slot !== "document"} />
+            </Pane>
           </aside>
           <main
             id="stage"

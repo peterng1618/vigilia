@@ -86,6 +86,17 @@ export function actionEnabled(gate: ActionGate, id: ObjectActionId): boolean {
   );
 }
 
+/**
+ * Every object action this gate can run, in registry order — the dock, the
+ * context menu, the layer panel's toolbar and the pane footer all render this
+ * rather than re-filtering, so a surface cannot advertise an action its
+ * selection refuses. The eight arrange actions are *not* here: they grey rather
+ * than disappear, so they come from `arrangeActions()`, not this filter.
+ */
+export function objectActionsFor(gate: ActionGate): readonly ObjectAction[] {
+  return OBJECT_ACTIONS.filter((action) => actionEnabled(gate, action.id));
+}
+
 /** One owner for object actions: what each is, when it applies, how it runs. */
 export const OBJECT_ACTIONS: readonly ObjectAction[] = [
   {

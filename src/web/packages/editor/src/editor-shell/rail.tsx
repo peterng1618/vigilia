@@ -20,8 +20,10 @@ export const RAIL_SLOTS: readonly RailSlot[] = [
 /** Each slot's glyph, from bible §7.2's table: the scene tree's stack, the add
  *  plus, the tokens palette, the document page. The kind glyph set is closed
  *  by plan 6; these are the marks that table names, drawn from the one icon
- *  family already installed. */
-const GLYPHS: Readonly<Record<RailSlot, LucideIcon>> = {
+ *  family already installed. Exported because the pane each slot opens carries
+ *  the same glyph in its title bar — two owners of "which glyph names this
+ *  pane" would be two places for them to disagree. */
+export const RAIL_GLYPHS: Readonly<Record<RailSlot, LucideIcon>> = {
   composition: Layers,
   add: Plus,
   tokens: Palette,
@@ -58,7 +60,7 @@ function RailSlotButton({
   readonly disabled: boolean;
   readonly onChoose: (slot: RailSlot) => void;
 }): React.JSX.Element {
-  const Glyph = GLYPHS[slot];
+  const Glyph = RAIL_GLYPHS[slot];
   const ref = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     const button = ref.current;

@@ -174,6 +174,38 @@ it("mounts the editorial palette, menus, rail, inspector and dock hosts", () => 
   layout.destroy();
 });
 
+it("gives every pane the bible's chrome, named by the section the specs browse", () => {
+  const root = document.createElement("div");
+  const layout = createShellLayout(root);
+
+  // One pane per rail slot, each wearing a title bar and hidden unless its slot
+  // is chosen. The Composition pane keeps the `layers` name the browser specs
+  // browse by, so the chrome moved around the contract rather than the contract
+  // moving; the other panes are named by the panels inside them, so they carry
+  // no `data-vigilia-panel` of their own (two would be a strict-mode failure).
+  const panes = root.querySelectorAll(".editor-shell-pane");
+  expect(panes).toHaveLength(4);
+  for (const pane of panes) {
+    expect(pane.querySelector(".editor-shell-pane-title")).not.toBeNull();
+  }
+  const layers = root.querySelector('[data-vigilia-panel="layers"]');
+  expect(layers).not.toBeNull();
+  expect(layers?.classList.contains("editor-shell-pane")).toBe(true);
+  expect(layers?.querySelector(".editor-shell-pane-name")?.textContent).toBe(
+    uiCopy.panels.layers,
+  );
+  // The object actions are the pane's footer toolbar — a Pane footer, so it is
+  // not a row of the tree — and there is exactly one of them.
+  expect(layers?.querySelector("[data-vigilia-layer-actions]")).not.toBeNull();
+  expect(
+    root.querySelectorAll(
+      '[data-vigilia-panel="layers"] [data-vigilia-layer-actions]',
+    ),
+  ).toHaveLength(1);
+
+  layout.destroy();
+});
+
 /**
  * This one runs before the menu tests on purpose.
  *
@@ -485,9 +517,9 @@ it("re-frames on the panel toggle even for a camera the author has moved", async
   // The viewport refits a fitted camera on a resize by itself, so this looks
   // like the leftover it was once assumed to be. It is not: `resize()` holds a
   // camera the author has zoomed or panned, and a panel collapse is the author
-  // handing the canvas 288px on purpose — the 280px column and the 8px gap the
+  // handing the canvas 288px on purpose — the 276px column and the 8px gap the
   // panel no longer separates. Delete this and the camera stays where the
-  // author left it while 288px of workspace goes unused.
+  // author left it while 284px of workspace goes unused.
   await act(async () => segment(root, "composition").click());
   expect(
     zoomToFit,

@@ -15,8 +15,9 @@ import {
 } from "lucide-react";
 import { type CSSProperties, useEffect, useId, useRef, useState } from "react";
 import { useSyncExternalStore } from "react";
-import { actionEnabled, OBJECT_ACTIONS } from "../object-actions.js";
+import { objectActionsFor } from "../object-actions.js";
 import { uiCopy } from "../ui-copy.js";
+import { ControlIconButton } from "../components/ui/control-icon-button.js";
 import type { EditorShellBridge } from "./bridge.js";
 import type { LayerMark, LayerRole, LayerRow } from "./layer-tree.js";
 
@@ -398,8 +399,11 @@ export function LayerPanel({
   };
 
   return (
-    <section data-vigilia-panel="layers">
-      <h2>{uiCopy.panels.layers}</h2>
+    <>
+      {/* The pane's own chrome — its title bar, its section frame and its
+       * footer toolbar — belongs to `Pane`, which names the section
+       * `[data-vigilia-panel="layers"]`. What is left here is the tree and the
+       * rule that reads above it. */}
       {/* The rule, stated where the author reads the panel rather than only in
        * a cursor they may never look at. `aria-describedby` is the same string
        * reached without a pointer, so it is not two copies of the rule. */}
@@ -795,20 +799,40 @@ export function LayerPanel({
           className="vigilia-layer-dropline"
         />
       </div>
-      <footer data-vigilia-layer-actions>
-        {OBJECT_ACTIONS.filter(
-          (action) => bridge !== undefined && actionEnabled(bridge, action.id),
-        ).map(({ id, icon: Icon, label }) => (
-          <button
+    </>
+  );
+}
+
+/**
+ * The Composition pane's footer toolbar: the object actions the registry says
+ * this selection can run, and nothing else (§7.3, "a pane footer is bounded by
+ * its pane"). It is a Pane footer rather than a row of the tree, so the
+ * toolbar stays put while the list scrolls beneath it.
+ *
+ * Eligibility is the registry's alone — `objectActionsFor` is the dock's own
+ * filter, so the two surfaces agree until an action is added to the registry,
+ * and neither re-decides it here. An action the selection cannot run is absent,
+ * not greyed; the arrange actions are the ones that grey, and they live on the
+ * dock.
+ */
+export function LayerActions({
+  bridge,
+}: {
+  readonly bridge: EditorShellBridge | undefined;
+}): React.JSX.Element {
+  return (
+    <footer className="editor-shell-pane-actions" data-vigilia-layer-actions="">
+      {(bridge === undefined ? [] : objectActionsFor(bridge)).map(
+        ({ id, icon: Icon, label }) => (
+          <ControlIconButton
             key={id}
-            type="button"
-            aria-label={label}
+            label={label}
             onClick={() => bridge?.run(id)}
           >
             <Icon aria-hidden size={15} strokeWidth={1.75} />
-          </button>
-        ))}
-      </footer>
-    </section>
+          </ControlIconButton>
+        ),
+      )}
+    </footer>
   );
 }

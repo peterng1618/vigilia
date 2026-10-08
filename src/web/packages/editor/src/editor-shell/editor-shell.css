@@ -423,6 +423,22 @@ body,
   }
 }
 
+/* Bible §3: the chrome sits at elevation 0 — no shadow, no blur. The glass
+   treatment (gradient, inner light, drop shadow, backdrop blur) belongs to the
+   floating clusters over the canvas, so the rail, the pane column and the
+   inspector keep a flat surface under every palette. The `:root:not(...)`
+   glass rules reach specificity (0,3,0), so this override names both the shell
+   root and the element to tie with them and win on source order. The header's
+   own strip is Task 3's, and its glass assertion in `shell-appearance.spec.ts`
+   still holds until then. */
+.editor-shell .editor-shell-rail.editor-glass,
+.editor-shell .editor-shell-panel.editor-glass,
+.editor-shell .editor-shell-inspector.editor-glass {
+  box-shadow: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+}
+
 .editor-shell {
   position: relative;
   z-index: 1;
@@ -693,7 +709,7 @@ body,
      editor exists to author a phone display. That is why the 20px was measured
      and taken knowingly, and why the alternative — shortening the role's words
      — was measured too, at `.vigilia-layer-role`. */
-  grid-template-columns: 46px 360px minmax(0, 1fr) 280px;
+  grid-template-columns: 46px 360px minmax(0, 1fr) 276px;
   grid-template-rows: minmax(0, 1fr);
   gap: 8px;
   min-height: 0;
@@ -706,7 +722,7 @@ body,
    back to the canvas. */
 .editor-shell-body[data-collapsed="true"] {
   grid-template-areas: "rail stage inspector";
-  grid-template-columns: 46px minmax(0, 1fr) 280px;
+  grid-template-columns: 46px minmax(0, 1fr) 276px;
 }
 /* The rail: a 46px column of glyph slots, one per pane (bible §7.2). It draws
    no pane content and decides nothing — the shell turns a press into open,
@@ -795,11 +811,19 @@ body,
   padding-bottom: 6px;
 }
 .editor-shell-panel label,
-.editor-shell-panel section,
+.editor-shell-panel section:not([data-vigilia-panel]),
 .editor-shell-inspector label,
 .editor-shell-inspector section {
   display: block;
   margin-top: 12px;
+}
+/* A pane is a section too, but it is the column's own frame rather than a
+   section *inside* one, so it is excluded from the rule above and sits flush at
+   the top. Its `hidden` is made explicit: nothing else in this file sets a
+   display on a pane, so the UA rule would do — this keeps it true if one ever
+   does. */
+.editor-shell-pane[hidden] {
+  display: none;
 }
 /* The Add pane's two construction lists are groups, because "Line" is both a
    chart family and a shape and a flat chip list would put the same word on two
@@ -1257,22 +1281,52 @@ body,
   background: var(--shell-accent);
   pointer-events: none;
 }
-[data-vigilia-layer-actions] {
+/* Every pane's chrome (bible §7.3): a title bar, a body and an optional footer
+   toolbar. The section is the pane itself, so `data-vigilia-panel` names it.
+
+   The pane's own name overrides the panel-wide `h2` rule above it. That rule is
+   for a *section* heading inside a pane — uppercase, display serif, a hairline
+   under it — and a pane's name is neither: bible §2 reserves uppercase for
+   section eyebrows and gives a panel title `--text-md` in the UI sans. The
+   selector is long because it has to out-rank
+   `[data-shell-palette="editorial"] .editor-shell-panel h2`. */
+.editor-shell-pane .editor-shell-pane-title .editor-shell-pane-name {
+  margin: 0;
+  color: var(--text);
+  font-family: inherit;
+  font-size: var(--text-md);
+  font-weight: 600;
+  letter-spacing: normal;
+  text-transform: none;
+}
+.editor-shell-pane-title {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  color: var(--shell-muted);
+}
+.editor-shell-pane-count {
+  margin-left: auto;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: var(--text-2xs);
+  color: var(--faint);
+}
+/* The footer toolbar: `ControlIconButton`s at §5's 26px, flat, over §3's
+   hairline. The panel-wide `button` rules are neutralised here rather than by a
+   per-button class — a pane footer is a toolbar, not a form row, and the button
+   sizes come from the control set. */
+.editor-shell-pane-actions {
   display: flex;
   flex-wrap: wrap;
-  gap: 2px;
-  margin-top: 8px;
-  padding-top: 6px;
-  border-top: 1px solid color-mix(in srgb, var(--shell-text) 16%, transparent);
+  gap: var(--space-4);
+  margin-top: var(--space-12);
+  padding-top: var(--space-8);
+  border-top: 1px solid var(--edge);
 }
-[data-vigilia-layer-actions] button {
-  min-height: 22px;
-  width: 22px;
+.editor-shell-pane-actions button {
+  min-height: 0;
   margin: 0;
   padding: 0;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
   border: 0;
   background: transparent;
 }

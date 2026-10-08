@@ -15,9 +15,7 @@ import type {
   LayerRole,
   LayerRow,
 } from "./layer-tree.js";
-import { actionEnabled, OBJECT_ACTIONS } from "../object-actions.js";
 import { uiCopy } from "../ui-copy.js";
-
 /** The mark a fixture gets unless it names its own: the kind's own data, with
  * nothing a test would mistake for a real document's reading. */
 function markFor(kind: LayerKind): LayerMark {
@@ -566,52 +564,16 @@ it("selects the row that was clicked, not the group it sits under", async () => 
   expect(selectLayer.mock.calls).toEqual([["child"]]);
 });
 
-it("renders object actions in a bottom row, not on the selected row", async () => {
+it("draws no action footer of its own, so the pane's toolbar is the only one", async () => {
+  // The object actions are the Composition pane's footer toolbar now — a Pane
+  // footer, so it stays put while the tree scrolls beneath it — and they are
+  // asserted in `pane.dom.test.tsx`. The tree must not also render one: a
+  // second row of the same actions is the defect the move removes.
   const host = document.createElement("div");
   const root = createRoot(host);
   await act(async () => root.render(<LayerPanel bridge={bridge(rows)} />));
-  const row = host.querySelector('[data-vigilia-layer="child"]');
-  expect(row?.querySelector('[aria-label="Duplicate"]')).toBeNull();
-  expect(
-    host.querySelector('[data-vigilia-layer-actions] [aria-label="Duplicate"]'),
-  ).not.toBeNull();
-});
-
-it("renders the bottom row from the registry, so eligibility matches the dock", async () => {
-  // Eligibility is expressed through `target()`: `actionEnabled` reads the
-  // ActionGate, and the bridge has no `can` in that path. Overriding `can` here
-  // would change nothing and the test would silently assert the unfiltered row.
-  const none = () => ({
-    kind: "none",
-    locked: false,
-    memberCount: 0,
-    isGroup: false,
-  });
-  const host = document.createElement("div");
-  const root = createRoot(host);
-  await act(async () =>
-    root.render(<LayerPanel bridge={bridge(rows, { target: none })} />),
-  );
-  const empty = host.querySelector("[data-vigilia-layer-actions]");
-  expect(empty?.querySelectorAll("button")).toHaveLength(0);
-
-  // With the helper's default single unlocked object the row is the registry's
-  // own answer, derived rather than hand-written — a literal count here would
-  // only pass if the row re-derived eligibility, which Step 3 forbids.
-  const host2 = document.createElement("div");
-  const root2 = createRoot(host2);
-  await act(async () => root2.render(<LayerPanel bridge={bridge(rows)} />));
-  const gate = bridge(rows);
-  const expected = OBJECT_ACTIONS.filter((action) =>
-    actionEnabled(gate, action.id),
-  ).map((action) => action.label);
-  const rendered = [
-    ...(host2
-      .querySelector("[data-vigilia-layer-actions]")
-      ?.querySelectorAll("button") ?? []),
-  ].map((button) => button.getAttribute("aria-label"));
-  expect(rendered.sort()).toEqual([...expected].sort());
-  expect(expected.length).toBeGreaterThan(1);
+  expect(host.querySelector("[data-vigilia-layer-actions]")).toBeNull();
+  expect(host.querySelector('[data-vigilia-layer="child"]')).not.toBeNull();
 });
 
 it("only marks a drop slot that would actually land", async () => {

@@ -1,6 +1,6 @@
 import { ContextMenu } from "@base-ui/react/context-menu";
 import { useEffect, useMemo, useState } from "react";
-import { actionEnabled, OBJECT_ACTIONS } from "../object-actions.js";
+import { objectActionsFor } from "../object-actions.js";
 import { insertGroups } from "../new-object-panel.js";
 import { uiCopy } from "../ui-copy.js";
 import type { EditorShellBridge } from "./bridge.js";
@@ -159,13 +159,11 @@ export function CanvasContextMenu({
   const objectEntries: readonly MenuEntry[] =
     menu === undefined || bridge === undefined || !menu.onObject
       ? []
-      : OBJECT_ACTIONS.filter((action) => actionEnabled(bridge, action.id)).map(
-          (action) => ({
-            id: action.id,
-            label: action.label,
-            run: () => bridge.run(action.id),
-          }),
-        );
+      : objectActionsFor(bridge).map((action) => ({
+          id: action.id,
+          label: action.label,
+          run: () => bridge.run(action.id),
+        }));
 
   const creation =
     menu !== undefined && bridge !== undefined && !menu.onObject
