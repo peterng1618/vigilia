@@ -266,10 +266,13 @@ export const uiCopy = {
     view: "View",
   },
   /**
-   * How a chord reads. The caps are the platform's, not the product's: `⌘` is
-   * the Mac's own mark and `Ctrl` is the word every other keyboard prints on
-   * the key, so the two sets are one field each rather than one set with a
-   * substitution.
+   * How a chord reads. What a key *prints* is deliberately not here: the caps
+   * and the marks for unnamed keys are the platform's own and change with
+   * neither language nor product, so they live beside the formatter that spells
+   * them (`shortcut-manager/display.ts`) rather than in a table of words a
+   * translator would change. The rule above is what keeps that honest — `⌘` is
+   * a `\p{S}` pictograph, and a copy table that admits one has stopped being
+   * one.
    *
    * `alternativeSeparator` is between two chords one action answers to, and is
    * the layer panel's `boundSeparator` idiom one surface over — punctuation,
@@ -285,20 +288,6 @@ export const uiCopy = {
     reference: "Keyboard shortcuts",
     close: "Close",
     alternativeSeparator: " · ",
-    mac: { modifier: "⌘", shift: "⇧", alt: "⌥" },
-    other: { modifier: "Ctrl", shift: "Shift", alt: "Alt" },
-    /** Keys whose name is a word or a mark rather than the character a reader
-     *  would recognise from the cap. `event.key` is lowercased before lookup,
-     *  which is the form the table stores. */
-    named: {
-      arrowleft: "←",
-      arrowright: "→",
-      arrowup: "↑",
-      arrowdown: "↓",
-      delete: "Delete",
-      backspace: "Backspace",
-      escape: "Esc",
-    } as const,
     groups: {
       file: "File",
       edit: "Edit",

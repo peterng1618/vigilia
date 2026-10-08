@@ -13,6 +13,39 @@ import {
   type ShortcutBinding,
 } from "./index.js";
 
+/**
+ * What a key prints, which is the platform's vocabulary and not the product's:
+ * `⌘` is the Mac's own mark and `Ctrl` is the word every other keyboard prints
+ * on the key, so the two sets are one field each rather than one set with a
+ * substitution. Neither is translated, which is why they are here and not in
+ * `ui-copy.ts` — a copy table holds the words a translator would change, and
+ * every one of these is a glyph or a word that stays put in every language.
+ */
+const CAPS = {
+  mac: { modifier: "⌘", shift: "⇧" },
+  other: { modifier: "Ctrl", shift: "Shift" },
+} as const;
+
+/** Keys whose name is a word or a mark rather than the character a reader would
+ *  recognise from the cap. `event.key` is lowercased before lookup, which is
+ *  the form this table stores.
+ *
+ *  The four arrows are `\p{S}` pictographs, which is the whole reason this
+ *  table is not in `ui-copy.ts`: `ui-copy.test.ts` forbids one there, and it is
+ *  right to — a glyph in the copy table is announced as a word of its own, it
+ *  cannot inherit a shell colour, and it does not render like the icons beside
+ *  it. A key cap escapes all three by being styled by its own `<kbd>` rule, but
+ *  it does not escape the rule, so it moves rather than earning an exemption. */
+const NAMED_KEYS: Readonly<Record<string, string>> = {
+  arrowleft: "←",
+  arrowright: "→",
+  arrowup: "↑",
+  arrowdown: "↓",
+  delete: "Delete",
+  backspace: "Backspace",
+  escape: "Esc",
+};
+
 /** The part of an action id before its first dot: the group an action lives in.
  *
  * A *reading* of `ProductShortcutId` rather than a second copy of it, so the id
@@ -38,7 +71,7 @@ export function usesCommandKey(): boolean {
 }
 
 function caps(): { readonly modifier: string; readonly shift: string } {
-  return usesCommandKey() ? uiCopy.shortcuts.mac : uiCopy.shortcuts.other;
+  return usesCommandKey() ? CAPS.mac : CAPS.other;
 }
 
 /** The cap a binding's key prints.
@@ -47,12 +80,12 @@ function caps(): { readonly modifier: string; readonly shift: string } {
  * other single character is printed as the browser reports it and the Shift cap
  * is **omitted**: `index.ts:49-54` binds `{` and `}` because Shift is what makes
  * the browser report the shifted character, so `Ctrl+Shift+}` would name a key
- * that does not exist. Named keys come from `uiCopy.shortcuts.named`, and a key
- * with no entry and no character on it returns `undefined` rather than its own
- * name — the caller drops the action instead of printing `ctrl+f13`.
+ * that does not exist. Named keys come from `NAMED_KEYS`, and a key with no
+ * entry and no character on it returns `undefined` rather than its own name —
+ * the caller drops the action instead of printing `ctrl+f13`.
  */
 function keyCap(key: string): string | undefined {
-  const named = (uiCopy.shortcuts.named as Record<string, string>)[key];
+  const named = NAMED_KEYS[key];
   if (named !== undefined) return named;
   if (key.length !== 1) return undefined;
   return /[a-z]/i.test(key) ? key.toUpperCase() : key;
