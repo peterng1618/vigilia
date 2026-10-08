@@ -114,7 +114,7 @@ export function ControlNumber(
           id={ids.control}
           type="text"
           inputMode="decimal"
-          className="w-full bg-transparent text-right font-mono text-sm text-text outline-none"
+          className="h-full w-full bg-transparent text-right font-mono text-sm text-text outline-none"
           value={shown}
           readOnly={refused !== undefined}
           disabled={disabled}

@@ -475,6 +475,26 @@ Unicode name, a long unresolved reference, and the two-hundred-row Composition
 fixture. Reduced-motion and forced-colours checks belong to the same browser
 gate. The phone limitation remains named, never mistaken for desktop proof.
 
+**The gate is mechanical, and plan 1 builds the model for the rest.**
+`packages/editor/control-fixture.html` (a build entry, not a branch in the
+shipped editor) mounts the built control set over the built stylesheet at
+`/control-fixture.html` on the editor preview, and
+`tests/e2e/design-language.spec.ts` asserts the language against it in a real
+browser: every authored spacing value is a bible §3 step, no painted colour
+falls outside §4's roles, every target has §5's 24×24 hit area without
+overlapping a neighbour, required text meets 4.5:1 and focus and state
+boundaries meet 3:1 in all six palettes, focus survives forced colours, layout
+holds at both viewport sizes and 200% zoom with the long Unicode name, and
+reduced motion leaves nothing animating. Computed styles are read for geometry
+and the rendered pixel for anything the cascade cannot answer, so the gate
+proves *rendered treatment*; token provenance stays the source ratchet's
+(`scripts/design-tokens.mjs`, `npm run design:check`), which is why the fixture
+is a gated file too. **A
+measured palette defect is pinned in that spec as a named floor with a register
+row, never waived**, so the gate still fails if it gets worse and the floor is
+deleted when the row is ruled on. Plans 2–6 reuse the fixture and add their own
+surface captures beside it.
+
 ## Invariants
 
 Untouched by this design, and restated so the rewrite cannot quietly break them.

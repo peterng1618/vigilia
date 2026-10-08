@@ -4,6 +4,7 @@ import type * as React from "react";
 import {
   ControlRow,
   type ControlProps,
+  hitTargetClasses,
   isBlocked,
   useControlIds,
 } from "./control-well.js";
@@ -19,6 +20,10 @@ import {
  * Center" mean anything. A refusal leaves the group browsable and refuses the
  * press, so the reason stays readable where a disabled group would take it out
  * of the tab order.
+ *
+ * Each label is a target in its own right, so each carries §5's 24×24 hit area
+ * through `hitTargetClasses`; the label's own box is 22px tall, and the rows'
+ * 4px gap keeps the two expanded targets from meeting.
  */
 export function ControlSegmented<T extends string>(
   props: ControlProps & {
@@ -63,7 +68,7 @@ export function ControlSegmented<T extends string>(
             key={option.id}
             value={option.id}
             aria-disabled={refusedState}
-            className="rounded-sm px-[var(--space-8)] py-[var(--space-4)] text-xs text-muted data-[pressed]:text-text data-[pressed]:[background:var(--stage)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+            className={`${hitTargetClasses} rounded-sm px-[var(--space-8)] py-[var(--space-4)] text-xs text-muted data-[pressed]:text-text data-[pressed]:[background:var(--stage)] focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent`}
           >
             {option.name}
           </Toggle>

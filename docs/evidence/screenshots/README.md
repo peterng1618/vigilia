@@ -61,6 +61,7 @@ result, not merely a mounted editor.
 | Keyboard | Hover a dock action and read the chord its tooltip names | `keyboard-tooltip` / `every canvas action's tooltip names the chord that runs it` |
 | Keyboard | Read the reference sheet, opened with `?` over an entered group | `keyboard-reference` / `? opens the sheet, and the document behind it does not change` |
 | Shell appearance | Choose each of the six palettes and read the surface | `shell-palette-` / `captures each palette's own surface` |
+| Design language | Mount the control set over the built stylesheet and read it in a panel | `control-set` / `the control set renders in the design language` — two files, `-desktop-chromium` (graphite, the ground the mockup is drawn on) and `-editorial-desktop-chromium` |
 | Feedback | Error, notice, disabled action or compatibility message | add when changed |
 
 ## Settings page (`/settings`, real host)
@@ -80,5 +81,5 @@ Mechanics ported from the retired editor fork need captures only when Vigilia
 changes their rendered outcome. Keep this table aligned with the specs that
 carry the captures: `src/web/tests/e2e/editor.spec.ts`,
 `reference-theme.spec.ts`, `glass-authoring.spec.ts`,
-`inspector-sections.spec.ts`, `composition-panel.spec.ts` and
-`publish-loop.spec.ts`.
+`inspector-sections.spec.ts`, `composition-panel.spec.ts`,
+`design-language.spec.ts` and `publish-loop.spec.ts`.

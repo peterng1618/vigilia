@@ -1,5 +1,6 @@
 import type * as React from "react";
 import { useState } from "react";
+import { hitTargetClasses } from "./control-well.js";
 
 /**
  * One region of a panel: a disclosure whose header is a button, and a body of
@@ -15,6 +16,9 @@ import { useState } from "react";
  * A read-only section says so in its header, in words: §5 rule 1 makes
  * "this cannot be edited" a property of the section rather than something a
  * reader infers from the absence of a well.
+ *
+ * The header is a target, so it carries §5's 24×24 through `hitTargetClasses`:
+ * a 10px eyebrow on a 12px line is 18px of button.
  */
 export function InspectorSection(props: {
   readonly id: string;
@@ -35,7 +39,7 @@ export function InspectorSection(props: {
           aria-expanded={open}
           aria-controls={`${id}-panel`}
           onClick={() => setOpen((current) => !current)}
-          className="flex w-full items-center gap-[var(--space-6)] border-0 bg-transparent text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+          className={`${hitTargetClasses} flex w-full items-center gap-[var(--space-6)] border-0 bg-transparent text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent`}
         >
           <span className="text-2xs font-semibold tracking-[0.11em] text-muted uppercase">
             {title}

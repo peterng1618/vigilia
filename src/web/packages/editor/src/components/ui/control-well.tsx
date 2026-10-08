@@ -54,6 +54,22 @@ export function wellClasses(density: ControlDensity = "panel"): string {
   return `flex ${WELL_HEIGHT[density]} items-center rounded-md border border-edge bg-panel-2 px-[var(--space-6)] focus-within:outline focus-within:outline-2 focus-within:outline-accent focus-within:ring-3 focus-within:ring-accent/20`;
 }
 
+/**
+ * Bible §5's target size, as a hit area that does not move the paint.
+ *
+ * A dense control's own box can be smaller than the 24×24 a target needs — the
+ * toggle's pill is 26×14 and a segmented label is 22px tall — so the extra area
+ * is carried by a centred `::before` rather than by the visible box, which
+ * stays exactly what §5 draws. One rule and not a per-control guess, because
+ * the requirement is one rule.
+ *
+ * **Buttons only.** A replaced element has no `::before`: an `<input>` cannot
+ * be widened this way at all, so the fields take their target from the well
+ * they fill (`h-full` inside a 26px well is 24px of input).
+ */
+export const hitTargetClasses =
+  "relative before:absolute before:top-1/2 before:left-1/2 before:size-[24px] before:-translate-x-1/2 before:-translate-y-1/2 before:content-['']";
+
 export function ControlWell(props: {
   readonly density?: ControlDensity | undefined;
   readonly children: React.ReactNode;
@@ -98,6 +114,14 @@ export function isBlocked(props: {
  * are named by their own text and whose group is named with `aria-labelledby`.
  * The refusal is rendered as words in the row rather than as a tooltip (§5.3),
  * and its `id` is what the control's `aria-describedby` points at.
+ *
+ * The control slot **takes the row's remaining width** and right-aligns what it
+ * holds, rather than shrinking to its content. A content-sized slot is what a
+ * `flex-1` child inside it resolves against: the slider's Root is `w-full` and
+ * its track is the flexible child, so inside a shrink-to-fit slot the track
+ * measured 0px wide and only the 36px well and the 10px thumb were drawn. Every
+ * other control is content-sized and right-aligned either way, which is why the
+ * row keeps its shape.
  */
 export function ControlRow(props: {
   readonly ids: ControlIds;
@@ -122,7 +146,7 @@ export function ControlRow(props: {
           {label}
         </label>
       )}
-      <div className="ml-auto flex items-center gap-[var(--space-6)]">
+      <div className="ml-auto flex flex-1 items-center justify-end gap-[var(--space-6)]">
         {children}
       </div>
       {refused === undefined ? null : (

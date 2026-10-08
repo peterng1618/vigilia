@@ -3,6 +3,7 @@ import type * as React from "react";
 import {
   ControlRow,
   type ControlProps,
+  hitTargetClasses,
   isBlocked,
   useControlIds,
 } from "./control-well.js";
@@ -14,6 +15,10 @@ import {
  * tab order, its reason stays readable, and the flip is refused at the source
  * rather than hidden behind a disabled attribute. `nativeButton` keeps the id
  * on the focus target, which is what the row's `<label for>` names.
+ *
+ * The 26×14 pill is the *paint*; the target is the 24×24 `hitTargetClasses`
+ * carries, because §5's dense-chrome rule is about what can be hit, not what
+ * is drawn.
  */
 export function ControlToggle(
   props: ControlProps & {
@@ -48,7 +53,7 @@ export function ControlToggle(
           if (blocked) return;
           onChange(next);
         }}
-        className="flex h-[14px] w-[26px] flex-none items-center rounded-full border border-edge bg-panel-2 p-0 data-[checked]:border-accent data-[checked]:bg-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2"
+        className={`${hitTargetClasses} flex h-[14px] w-[26px] flex-none items-center rounded-full border border-edge bg-panel-2 p-0 data-[checked]:border-accent data-[checked]:bg-accent focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2`}
       >
         <Switch.Thumb className="block size-[10px] translate-x-[4px] rounded-full bg-muted transition-transform data-[checked]:translate-x-[10px] data-[checked]:bg-panel" />
       </Switch.Root>

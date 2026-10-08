@@ -11,6 +11,7 @@
     "src/web/packages/editor/src/components/ui/control-segmented.tsx",
     "src/web/packages/editor/src/components/ui/control-icon-button.tsx",
     "src/web/packages/editor/src/components/ui/inspector-section.tsx",
-    "src/web/packages/editor/src/components/ui/control.dom.test.tsx"
+    "src/web/packages/editor/src/components/ui/control.dom.test.tsx",
+    "src/web/packages/editor/src/control-fixture.tsx"
   ]
 }
