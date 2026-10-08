@@ -258,8 +258,10 @@ describe("shell token stylesheet", () => {
    *  `--shell-*` layer exists. An alias is substituted where it is declared, so
    *  a role declared once at `:root` would resolve the root's palette and pin a
    *  subtree that re-declares `--shell-*` — the swatch chip — to it. Every
-   *  palette therefore declares all thirteen, and each gets a utility name so a
-   *  React surface writes `bg-panel-2` rather than an arbitrary value.
+   *  palette therefore declares all thirteen, and each colour role that can hold
+   *  a plain colour gets a utility name so a React surface writes `bg-panel-2`
+   *  rather than an arbitrary value; `--bg` and `--stage` cannot, and say why
+   *  below.
    *
    *  `--stage`, `--hdr` and `--edge-2` were declared ahead of their consumers
    *  on the user's instruction, reversing the earlier "nothing declared for
@@ -306,20 +308,24 @@ describe("shell token stylesheet", () => {
 
     const inline =
       /^[ \t]*@theme[ \t]+inline[ \t]*\{([^}]*)\}/m.exec(css)?.[1] ?? "";
-    // `--bg` is the one role with no utility: it holds a gradient stack, and a
-    // colour utility from it would set a colour to that and fail silently.
-    // `--stage` holds the same stack under graphite and light but *does* get a
-    // utility, because §4 names the role; surfaces paint it with the
-    // `background` shorthand rather than `bg-stage`.
-    for (const role of roles.filter((role) => role !== "--bg")) {
+    // `--bg` and `--stage` are the two roles with no utility: both alias
+    // `--shell-backdrop`, which is a gradient stack in graphite and light, and a
+    // colour utility from either would set a colour to that and fail silently.
+    // Both roles are still declared and asserted above; only the utility name
+    // would be wrong. `--hdr` aliases `--shell-surface`, a plain colour (alpha
+    // at most) in all six palettes, so its utility is safe.
+    const noUtility = new Set(["--bg", "--stage"]);
+    for (const role of roles.filter((role) => !noUtility.has(role))) {
       expect(
         inline,
         `${role} has no utility name, so a surface cannot write it as a class`,
       ).toContain(`--color-${role.slice(2)}: var(${role})`);
     }
-    expect(
-      inline,
-      "a colour utility from --bg would set a colour to a gradient stack",
-    ).not.toContain("--color-bg:");
+    for (const role of noUtility) {
+      expect(
+        inline,
+        `a colour utility from ${role} would set a colour to a gradient stack`,
+      ).not.toContain(`--color-${role.slice(2)}:`);
+    }
   });
 });
