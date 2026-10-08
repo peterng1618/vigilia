@@ -1604,11 +1604,21 @@ PLAYWRIGHT_JSON_OUTPUT_NAME=test-results/host-chrome.json \
   npx playwright test tests/e2e/host-chrome.spec.ts --project=desktop-host --workers=1 --reporter=json
 ```
 
-Expected: the first test fails on the artboard overlap (measured today: the availability strip
-covers the top 45.6px of a 390px artboard); the second fails the same way; the third fails
-because the host is the whole viewport today and there is no strip element to count. **If the
-last one does not fail, it is measuring nothing** — the body children were the point
-(`document.body` has exactly one child today, measured).
+> **Corrected 2026-10-08, before this task was dispatched: the expectations below describe the
+> pre-Phase-1 layout and none of them can happen.** Phase 1 is committed (`8cb99931`, `bd6e1e29`,
+> `66ee3414`), so the availability strip no longer covers the top of the artboard, and
+> `document.body` has **three** children — `vigilia-chrome-top`, `#artboard`,
+> `vigilia-chrome-bottom` — not one. **All three tests are expected to be green on arrival**, and
+> that is the correct outcome for a task that adds only tests. This is the same defect Task 2.1's
+> Step 2 carried, where a step asking for an impossible red run was read as a passed gate.
+> **The red run this task needs is Step 3's break.** Report the actual counts either way, and
+> report which of the three were green.
+
+Expected: **green on arrival**, per the correction above — the plan's original expectation was
+written before Phase 1 landed. The claim each test makes is still worth keeping on its own terms:
+a green-on-arrival test is what stops a later change reverting the fix. **The host's own geometry
+is the thing being measured**, so if any test does fail, that is a finding about the host
+surface rather than about the chrome — say so rather than adjusting the test.
 
 - [ ] **Step 3: The deliberate break**
 
