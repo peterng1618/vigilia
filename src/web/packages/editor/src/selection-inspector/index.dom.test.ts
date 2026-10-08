@@ -50,11 +50,27 @@ function chartOf(
   return chart;
 }
 
-/** A canvas stub that answers selection and history like the editor's. */
-function canvasWith(active: unknown) {
+/** A canvas stub that answers selection and history like the editor's.
+ *
+ *  `active` may be a value or a getter. A getter is how a test deselects: the
+ *  selection has to be able to change *after* the inspector is built, or the
+ *  branch that reads it cannot be reached. `objects` decouples the document
+ *  from the selection — after a history restore the scene holds the object
+ *  while nothing is selected, and a stub that ties the two together cannot
+ *  express the case the restore branch exists for. */
+function canvasWith(
+  active: unknown | (() => unknown),
+  objects?: () => readonly unknown[],
+) {
+  const read =
+    typeof active === "function" ? (active as () => unknown) : () => active;
   return {
-    getActiveObject: () => active,
-    getObjects: () => (active === undefined ? [] : [active]),
+    getActiveObject: () => read(),
+    getObjects: () => {
+      if (objects !== undefined) return objects();
+      const current = read();
+      return current === undefined ? [] : [current];
+    },
     requestRenderAll: vi.fn(),
     fire: vi.fn(),
     on: vi.fn(),
@@ -63,19 +79,20 @@ function canvasWith(active: unknown) {
 }
 
 function setup(
-  active: unknown,
+  active: unknown | (() => unknown),
   options: {
     readonly nodeBindings?: (nodeId: string) => readonly Binding[];
     readonly onNodeBindingsChange?: (
       nodeId: string,
       bindings: readonly Binding[],
     ) => void;
+    readonly objects?: () => readonly unknown[];
   } = {},
 ) {
   const history = { saveState: vi.fn() };
   const host = document.createElement("div");
   const editor = {
-    canvas: canvasWith(active),
+    canvas: canvasWith(active, options.objects),
     historyManager: history,
     errorManager: { warn: vi.fn(), error: vi.fn() },
     cropManager: idleCrop(),
@@ -508,17 +525,51 @@ describe("the selection inspector", () => {
     }
   });
 
-  it("keeps describing the same object after history drops the selection", () => {
-    const { inspector, host } = setup(rect);
-    rect.set({ id: "keep-me" });
+  /** The two ways a selection can go away, which the column must treat
+   *  differently — spec §541 and §552's "the right column empties on deselect".
+   *
+   *  The previous version of this test never dropped the selection, so it
+   *  passed whichever branch `target()` took; these two fail if the branch is
+   *  swapped back. */
+  it("empties on a deselect, and re-binds across a history restore", () => {
+    const rect = new Rect({ left: 0, top: 0, width: 40, height: 20 });
+    rect.set({ id: "cpu-card" });
+    let active: FabricObject | undefined = rect;
+    // The scene keeps the object across the restore even though the selection
+    // does not — that is what makes re-binding possible at all.
+    const { host, editor } = setup(() => active, { objects: () => [rect] });
 
-    // History restores the scene and Fabric loses its selection, but the
-    // author must not lose the panel they were working in.
-    inspector.render();
+    const handlerFor = (name: string): (() => void) => {
+      const call = editor.canvas.on.mock.calls.find(
+        ([registered]) => registered === name,
+      );
+      expect(call, `nothing is subscribed to ${name}`).toBeDefined();
+      return call?.[1] as () => void;
+    };
 
+    expect(host.querySelector("[data-vigilia-name]")).not.toBeNull();
+
+    // A pointer deselect: Fabric clears the selection and no history is
+    // involved. The column names where to choose from and holds no field.
+    active = undefined;
+    handlerFor("selection:cleared")();
     expect(
-      host.querySelector('[data-vigilia-geometry="width"]'),
+      host.querySelector("[data-vigilia-nothing-selected]"),
+      "a deselect must empty the column",
     ).not.toBeNull();
+    expect(host.querySelector("[data-vigilia-name]")).toBeNull();
+
+    // A history restore drops the selection too, and must NOT empty it: the id
+    // survives the rebuild, so the author keeps the panel they were working in.
+    active = rect;
+    handlerFor("selection:created")();
+    active = undefined;
+    handlerFor("editor:history-state-loaded")();
+    expect(
+      host.querySelector("[data-vigilia-name]"),
+      "a history restore must keep the panel the author was working in",
+    ).not.toBeNull();
+    expect(host.querySelector("[data-vigilia-nothing-selected]")).toBeNull();
   });
 
   it("refuses a stale opacity event rather than mutating the old selection", () => {

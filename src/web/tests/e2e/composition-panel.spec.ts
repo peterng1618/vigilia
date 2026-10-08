@@ -648,7 +648,7 @@ test("carries the document's binding, and selecting a card and entering it are s
   expect(await activeKind(page), "the sparkline is a chart").toBe("chart");
 });
 
-test("the right column names where to choose from, and keeps the object it was describing", async ({
+test("the right column names where to choose from, and empties when nothing is selected", async ({
   page,
 }, testInfo) => {
   test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
@@ -674,26 +674,33 @@ test("the right column names where to choose from, and keeps the object it was d
   await expect(page.locator("[data-vigilia-panel-fill]")).toBeVisible();
   await expect(emptyLine).toHaveCount(0);
 
-  // **Clearing the selection does NOT empty the column, and that is the
-  // product's own rule rather than a late finding.** `selection-inspector`'s
-  // `target()` is documented as *"the live selection, else the last one still
-  // present"*, so a stray click leaves the fields describing the object the
-  // author was working in — which is what keeps a history restore from throwing
-  // the column away. The canvas really is empty, and that half is read from the
-  // canvas rather than inferred from the column, so the two statements have
-  // their own owners.
+  // **Clearing the selection empties the column.** A stray click leaves the
+  // author with nothing selected, and the column says so rather than going on
+  // describing an object no other surface has marked. The canvas really is
+  // empty, and that half is read from the canvas rather than inferred from the
+  // column, so the two statements have their own owners.
+  //
+  // The one case that does *not* empty is a history restore, which drops
+  // Fabric's selection as a side effect of rebuilding the scene; the fields
+  // re-bind by Vigilia id so an undo does not throw away the panel the author
+  // was working in. That path is pinned in `index.dom.test.ts` — Undo is only
+  // offered while something is selected, so it cannot be reached from here.
   await deselect(page);
   expect(await activeId(page), "the canvas holds no selection").toBeUndefined();
   await expect(
-    nameField,
-    "the column still describes the object it was describing",
+    emptyLine,
+    "a deselect must leave the column naming where to choose from",
   ).toBeVisible();
-  await expect(emptyLine).toHaveCount(0);
+  await expect(
+    nameField,
+    "and the column must not go on describing the dropped object",
+  ).toHaveCount(0);
 
-  // It empties when the object it describes is gone, which is the state that
-  // last branch exists for. A **top-level** object, so the removal is the
-  // canvas's own `object:removed` rather than a group's; and the column's own
-  // footer carries the verb, which it only offers while something is selected.
+  // Deleting the object empties it too, by a different route — the canvas's
+  // own `object:removed` rather than the selection event. A **top-level**
+  // object, so the removal is the canvas's own rather than a group's; and the
+  // column's own footer carries the verb, which it only offers while something
+  // is selected.
   await selectLayer(page, "wordmark");
   await expect.poll(() => activeId(page)).toBe("wordmark");
   await page

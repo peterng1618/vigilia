@@ -284,12 +284,21 @@ export function createSelectionInspector(
     editor.canvas.getActiveObject() ?? undefined;
 
   /**
-   * The object the fields currently describe. Restoring history rebuilds the
-   * scene and drops Fabric's selection, so an author who undoes an edit would
-   * otherwise lose the panel they were working in. The object's Vigilia id
-   * survives the restore, so the fields re-bind to the same object.
+   * The last object the fields described, kept only so a history restore can
+   * re-bind. Restoring rebuilds the scene and drops Fabric's selection, so an
+   * author who undoes an edit would otherwise lose the panel they were working
+   * in; the object's Vigilia id survives the restore, so the fields find it
+   * again.
+   *
+   * **Deliberately not cleared when the selection goes away.** A restore fires
+   * Fabric's own `selection:cleared` too, and clearing here would empty this
+   * before `restoring` was ever consulted — the memory has to outlive the
+   * deselect it must not be used for.
    */
   let bound: FabricObject | undefined;
+
+  /** True only for the render a history load triggers. */
+  let restoring = false;
 
   const objectById = (id: unknown): FabricObject | undefined => {
     if (typeof id !== "string") {
@@ -322,7 +331,11 @@ export function createSelectionInspector(
   };
 
   /**
-   * The object to describe: the live selection, else the last one still present.
+   * The object to describe: the live selection, or the re-bound one across a
+   * history restore. **A deselect is neither**, and the column empties for it —
+   * `2026-10-03-dashboard-authoring-design.md:558`, "with nothing selected the
+   * right column is empty and names where to choose from", and its `:574` ruling
+   * that the column empties on deselect.
    *
    * A crop session is the exception: it makes its own frame the active object,
    * so following the selection would describe that frame rather than the image
@@ -343,12 +356,12 @@ export function createSelectionInspector(
       return active;
     }
 
-    if (bound !== undefined && objectById(bound.get("id")) !== undefined) {
-      bound = objectById(bound.get("id"));
-      return bound;
+    if (restoring && bound !== undefined) {
+      const again = objectById(bound.get("id"));
+      bound = again;
+      return again;
     }
 
-    bound = undefined;
     return undefined;
   };
 
@@ -497,8 +510,18 @@ export function createSelectionInspector(
   editor.canvas.on("object:removed", render);
   editor.canvas.on("object:added", render);
   // Restoring history rebuilds the scene and drops the selection; the fields
-  // must re-bind to the same object rather than vanishing.
-  editor.canvas.on("editor:history-state-loaded" as never, render);
+  // must re-bind to the same object rather than vanishing. Scoped to this one
+  // render, because every *other* loss of selection is the author deselecting
+  // and the column must empty for that — `try`/`finally` so a throw inside
+  // `render` cannot leave the flag armed for the next deselect.
+  editor.canvas.on("editor:history-state-loaded" as never, () => {
+    restoring = true;
+    try {
+      render();
+    } finally {
+      restoring = false;
+    }
+  });
 
   render();
 
