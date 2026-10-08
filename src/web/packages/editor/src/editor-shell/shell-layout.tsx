@@ -21,7 +21,14 @@ import type { PublishSwitch } from "../publish-client.js";
 import { SaveState } from "./save-state.js";
 import { DisplaySwitch } from "./display-switch.js";
 import { ShortcutReference } from "./shortcut-reference.js";
-import { applyShellPalette, DEFAULT_SHELL_PALETTE, readShellPalette } from "./palette.js";
+import {
+  applyShellPalette,
+  prefersDarkAppearance,
+  readShellChoice,
+  resolveShellPalette,
+  systemShellPalette,
+  watchSystemAppearance,
+} from "./palette.js";
 import {
   DEFAULT_RUN_DISPLAY_MODE,
   type RunDisplayMode,
@@ -396,8 +403,10 @@ function ShellMenuBar({
 
 export function createShellLayout(root: HTMLElement): ShellLayout {
   const storage = readStorage();
-  const initial =
-    storage === undefined ? DEFAULT_SHELL_PALETTE : readShellPalette(storage);
+  const initial = resolveShellPalette(
+    storage === undefined ? undefined : readShellChoice(storage),
+    prefersDarkAppearance(),
+  );
   applyShellPalette(initial);
 
   const hosts: ShellHosts = {
@@ -462,6 +471,26 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
      * your place again after a glance at the assets is the whole cost of it. */
     const scrollOf = useRef(new Map<RailPane, number>());
     const paneBody = useRef<HTMLElement | null>(null);
+
+    /** The OS gets a vote only while the author has not cast one.
+     *
+     *  The predicate is re-read here rather than the listener being detached on
+     *  choose: the two are the same condition, and an effect that depended on
+     *  the choice would either re-subscribe on every palette or close over a
+     *  stale one. `readShellChoice` asks storage, which is where "has the author
+     *  chosen" actually lives — the picker writes there before it calls back. */
+    useEffect(
+      () =>
+        watchSystemAppearance((prefersDark) => {
+          if (storage !== undefined && readShellChoice(storage) !== undefined) {
+            return;
+          }
+          const next = systemShellPalette(prefersDark);
+          applyShellPalette(next);
+          setPalette(next);
+        }),
+      [],
+    );
 
     /** The segment already showing closes the panel; any other segment — and
      *  the closed one itself — shows it. The canvas is what an author works

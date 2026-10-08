@@ -21,6 +21,14 @@
         font: 13px/1.5 system-ui, sans-serif;
         overflow: hidden;
       }
+      /* A dark-OS author's first frame, before React has resolved the palette.
+         A *stored* palette still flashes editorial here: this block reads no
+         storage, and decision 0035 rejected a second owner of the mapping. The
+         cost of that is one frame; the cost of the alternative was the mapping
+         existing in two places and drifting. */
+      @media (prefers-color-scheme: dark) {
+        html, body, #app { background: #0b1419; color: #eef9f4; }
+      }
     </style>
   </head>
   <body>

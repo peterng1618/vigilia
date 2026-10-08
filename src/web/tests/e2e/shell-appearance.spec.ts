@@ -433,4 +433,41 @@ test.describe("shell palettes", () => {
     const colours = await shellColours(page);
     expect(colours.paletteTrigger).not.toBe("rgba(0, 0, 0, 0)");
   });
+
+  /** The OS is a fallback, and a choice outranks it.
+   *
+   *  `emulateMedia` is the only way to move the OS under the shell's feet, and
+   *  it is why this is a browser test: jsdom has no `matchMedia`, so the pure
+   *  half in `palette.test.ts` can only check the resolve, never that a live
+   *  `change` event reaches it. Each test gets its own storage, so this one
+   *  arrives with nothing stored — which is the state the OS is allowed to
+   *  speak in. */
+  test("the OS is the fallback and the author's choice outlasts it", async ({
+    page,
+  }, testInfo) => {
+    test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+
+    await page.emulateMedia({ colorScheme: "dark" });
+    await openEditor(page);
+    await expect(page.locator("html")).toHaveAttribute(
+      "data-shell-palette",
+      "graphite",
+    );
+
+    // Nothing is stored, so the shell follows the OS when it changes.
+    await page.emulateMedia({ colorScheme: "light" });
+    await expect(page.locator("html")).toHaveAttribute(
+      "data-shell-palette",
+      "editorial",
+    );
+
+    // The author chooses, and from here the OS has no vote — including when it
+    // changes back to the value it held first.
+    await choosePalette(page, "plum");
+    await page.emulateMedia({ colorScheme: "dark" });
+    await expect(page.locator("html")).toHaveAttribute(
+      "data-shell-palette",
+      "plum",
+    );
+  });
 });

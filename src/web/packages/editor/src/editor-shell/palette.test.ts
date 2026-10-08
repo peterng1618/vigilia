@@ -3,9 +3,11 @@ import { beforeEach, describe, expect, it } from "vitest";
 import {
   applyShellPalette,
   DEFAULT_SHELL_PALETTE,
-  readShellPalette,
+  readShellChoice,
+  resolveShellPalette,
   shellPalettes,
-  writeShellPalette,
+  systemShellPalette,
+  writeShellChoice,
 } from "./palette.js";
 
 describe("shell palette", () => {
@@ -13,21 +15,42 @@ describe("shell palette", () => {
     localStorage.clear();
   });
 
-  it("defaults to the editorial palette when nothing is stored", () => {
-    expect(DEFAULT_SHELL_PALETTE).toBe("editorial");
-    expect(readShellPalette(localStorage)).toBe("editorial");
+  /** The OS is a fallback, and the two conditions are separate cases: a
+   *  resolver that lets the OS win passes a light-only check and fails here. */
+  it("follows the OS while the author has not chosen", () => {
+    expect(resolveShellPalette(undefined, true)).toBe("graphite");
+    expect(resolveShellPalette(undefined, false)).toBe("editorial");
   });
 
-  it("restores a supported stored palette", () => {
-    localStorage.setItem("vigilia.editor.shell-palette", "ember");
-
-    expect(readShellPalette(localStorage)).toBe("ember");
+  it("lets the author's choice outlast the OS", () => {
+    for (const choice of shellPalettes) {
+      expect(resolveShellPalette(choice, true)).toBe(choice);
+      expect(resolveShellPalette(choice, false)).toBe(choice);
+    }
   });
 
-  it("ignores an invalid stored palette", () => {
+  /** `undefined` and the default are different states — only the first of them
+   *  leaves the OS with a vote — so the reader must not collapse them. */
+  it("has no choice stored until the picker is used", () => {
+    expect(readShellChoice(localStorage)).toBeUndefined();
+    writeShellChoice(localStorage, "moss");
+    expect(readShellChoice(localStorage)).toBe("moss");
+  });
+
+  it("ignores a stored value that is not a palette", () => {
     localStorage.setItem("vigilia.editor.shell-palette", "invalid");
+    expect(readShellChoice(localStorage)).toBeUndefined();
+  });
 
-    expect(readShellPalette(localStorage)).toBe("editorial");
+  it("maps the OS onto the palettes that already exist", () => {
+    expect(systemShellPalette(true)).toBe("graphite");
+    expect(systemShellPalette(false)).toBe(DEFAULT_SHELL_PALETTE);
+    for (const palette of [
+      systemShellPalette(true),
+      systemShellPalette(false),
+    ]) {
+      expect(shellPalettes).toContain(palette);
+    }
   });
 
   it("offers editorial first without dropping the base palettes", () => {
@@ -44,7 +67,7 @@ describe("shell palette", () => {
   });
 
   it("writes only the shell palette and marks the document element", () => {
-    writeShellPalette(localStorage, "moss");
+    writeShellChoice(localStorage, "moss");
     applyShellPalette("moss");
 
     expect(localStorage.getItem("vigilia.editor.shell-palette")).toBe("moss");

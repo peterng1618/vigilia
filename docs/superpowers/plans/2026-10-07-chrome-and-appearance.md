@@ -1265,6 +1265,15 @@ apply it. Then, inside `Shell()`, subscribe while `choice === undefined` and re-
 records. `PaletteMenu.choose` (`:46-50`) writes through `writeShellChoice` and calls `onChange`; the
 shell's state holds the choice, so a later OS change no longer moves it.
 
+> **Corrected 2026-10-08, at execution.** "Attached only while nothing is stored" is the invariant,
+> but detaching the listener on choose is not how it lands: an effect that depended on the choice
+> would either re-subscribe on every palette or close over a stale one. The subscription is
+> attached once and the **same predicate** is re-read inside the handler —
+> `readShellChoice(storage) !== undefined` bails — which is one condition rather than two states,
+> and storage is where "has the author chosen" actually lives, because the picker writes there
+> before it calls back. Measured: with the subscription removed entirely, the live-change step of
+> Step 6's test fails (`Expected "editorial", Received "graphite"`).
+
 - [ ] **Step 5: Handle the first frame**
 
 `packages/editor/index.html`'s pre-paint block currently paints two literals (`:19-20`) and does not

@@ -5,7 +5,7 @@ import {
   applyShellPalette,
   type ShellPalette,
   shellPalettes,
-  writeShellPalette,
+  writeShellChoice,
 } from "./palette.js";
 
 /** A chip painted from the palette's own tokens rather than from a colour
@@ -44,7 +44,10 @@ export function PaletteMenu({
   readonly onChange: (next: ShellPalette) => void;
 }): React.JSX.Element {
   const choose = (next: ShellPalette): void => {
-    if (storage !== undefined) writeShellPalette(storage, next);
+    // A choice is what stops the OS having a vote, so the write is the point of
+    // the click rather than a side effect of it — and where the browser refuses
+    // storage the shell holds the palette for the session instead.
+    if (storage !== undefined) writeShellChoice(storage, next);
     applyShellPalette(next);
     onChange(next);
   };

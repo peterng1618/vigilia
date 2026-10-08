@@ -3,7 +3,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeAll, beforeEach, expect, it, vi } from "vitest";
 import { PaletteMenu } from "./palette-menu.js";
 import {
-  readShellPalette,
+  readShellChoice,
   type ShellPalette,
   shellPalettes,
 } from "./palette.js";
@@ -141,7 +141,7 @@ it("writes the choice through both owners", async () => {
   // The two owners are unchanged from the select this replaces: the browser's
   // own store for the next session, and the document element's attribute for
   // the repaint that follows it.
-  expect(readShellPalette(localStorage)).toBe("ember");
+  expect(readShellChoice(localStorage)).toBe("ember");
   expect(document.documentElement.dataset["shellPalette"]).toBe("ember");
   expect(onChange).toHaveBeenCalledWith("ember");
 });
