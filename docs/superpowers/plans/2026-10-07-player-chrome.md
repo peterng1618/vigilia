@@ -911,24 +911,44 @@ git commit -m "refactor(player): the four diagnostic strips move into the chrome
 
 ### Task 1.3: The failure page is the display, not a row of it
 
+> **Corrected 2026-10-08 by Task 1.3's executor: this task has a third caller the Files list
+> above omits, and one of its two premises is false.** The third caller is
+> `load-failure-reason.test.ts` — eleven cases that read the page out of an element they handed to
+> `showLoadFailure` and now read `document.body`. Omitting it from the Files list, the ownership
+> brief and Step 6's `git add` made a necessary edit look like drift; it landed as `66ee3414`, and
+> the ownership list is the thing that was wrong, not the edit. **The `showLoadFailure` signature
+> change is a source change with three callers, and a Files list is a claim about how many there
+> are.**
+>
+> **The "no canvas to lose" sentence below is false for the second call site**, and was carried
+> into the landed comment before anyone checked it. `main.ts:89` runs before anything; `main.ts:104`
+> is a `catch` around all of `await startHostedTheme(...)`, which mounts the scene at `:301` and
+> keeps running. A rejection arriving after that mount reaches `showLoadFailure` with a canvas on
+> the page. **This is not a regression** — the old code replaced the *artboard host's* children,
+> and the canvas lives inside that host, so the canvas went either way; what changed is that the
+> bands go with it. Whether a late failure *should* blank a display that was working is `vg-190`'s
+> question, and the landed comment now states the behaviour without claiming an intent for it.
+
 **Files:**
 - Modify: `src/web/packages/player/src/load-failure.ts:17-25` — `showLoadFailure`
 - Modify: `src/web/packages/player/src/main.ts:89`, `:104` — the two call sites
 - Modify: `src/web/packages/player/src/load-failure.dom.test.ts` — one new test
+- Modify: `src/web/packages/player/src/load-failure-reason.test.ts` — **the third caller**, eleven
+  cases that now read the page from `document.body`
 
 **Interfaces:**
 - Consumes: nothing from Tasks 1.1-1.2 directly; it exists because of the layout they create.
-- Produces: `showLoadFailure(error: unknown): void` — **the first parameter is gone**, so both
-  call sites must change. `loadFailureView(reason, retry): HTMLElement` and every data attribute
-  it carries (`data-vigilia-load-failure`, `-reason`, `-retry`, `-host`) are unchanged, and so is
-  its stylesheet.
+- Produces: `showLoadFailure(error: unknown): void` — **the first parameter is gone**, so all
+  **three** call sites must change. `loadFailureView(reason, retry): HTMLElement` and every data
+  attribute it carries (`data-vigilia-load-failure`, `-reason`, `-retry`, `-host`) are unchanged,
+  and so is its stylesheet.
 
 **Constraints.** The page's own style is `position:absolute; inset:0` (`load-failure.ts:104-108`),
 which fills whatever contains it; putting it in `document.body` is what makes it the viewport
 again, with **no CSS change at all**. `document.body.replaceChildren(view)` is the strongest
 form of "this is the whole display": it takes the bands and the artboard host with it, which is
-correct — nothing else is being said, and nothing else will be. This runs before any scene is
-mounted, so there is no canvas to lose.
+correct — nothing else is being said, and nothing else will be. **One of the two callers arrives
+before any scene is mounted and one does not**; see the correction above.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -978,8 +998,14 @@ export function showLoadFailure(error: unknown): void {
   // The display's own page, not the artboard's. The artboard host is the middle
   // row of the display's column, so a page mounted in it would be a panel
   // between two bands — and this is the one failure that replaces the whole
-  // screen, not a part of it. Nothing is drawn behind it: every cause that
-  // reaches here arrives before a scene is mounted.
+  // screen, not a part of it.
+  //
+  // The second caller is a `catch` around the display's whole lifetime
+  // (`main.ts:103`, with the scene mounted at `:301`), so a rejection arriving
+  // **after** the scene mounted reaches here too and takes that with it. That is
+  // what the page is for — a half-drawn display is not something to leave on a
+  // wall — but the status of a late failure is `vg-190`'s question rather than
+  // something this comment settles.
   document.body.replaceChildren(
     loadFailureView(loadFailureReason(error), () => window.location.reload()),
   );
@@ -989,13 +1015,16 @@ export function showLoadFailure(error: unknown): void {
 and the two call sites, `main.ts:89` and `main.ts:104`, lose their `host` argument
 (`showLoadFailure(host, new ThemeLoadError("missing-id", "No ?theme=."))` →
 `showLoadFailure(new ThemeLoadError("missing-id", "No ?theme=."))`). The `host` parameter of
-`start` itself stays — it is the artboard host.
+`start` itself stays — it is the artboard host. **A third caller is in
+`load-failure-reason.test.ts` and is corrected above; nothing else calls it.**
 
 - [ ] **Step 4: Run test to verify it passes**
 
 Run: `npx vitest run packages/player/src/`
-Expected: PASS, including the five existing load-failure tests, which mount on `document.body`
-themselves (`load-failure.dom.test.ts:11`) and therefore already assert the new parent.
+Expected: PASS, including the **six** existing load-failure tests in
+`load-failure.dom.test.ts` — the plan said five and the file has six, so take the count from the
+run rather than from here — which mount on `document.body` themselves (`load-failure.dom.test.ts:11`)
+and therefore already assert the new parent.
 
 - [ ] **Step 5: Build, typecheck, lint, format**
 
