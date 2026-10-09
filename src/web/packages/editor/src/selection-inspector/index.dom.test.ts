@@ -1492,6 +1492,25 @@ describe("the column a kind gets", () => {
    * `shape`'s reference is the `Wedge`, so the corner radius is absent on
    * purpose and asserted separately: `rx` is a `Rect`'s property and no other
    * shape reads it.
+   *
+   * **This table is the *shared* names — the ones every kind's column answers
+   * with — and it is not the whole parity inventory.** A kind's own fields are
+   * owned, and tested, by the domain that renders them; the union of the
+   * instruments carrying this plan's claim is:
+   *
+   * - this file — the common hooks, per kind and for a locked object;
+   * - `crop.dom.test.ts`, `runs.dom.test.ts`, `panel.dom.test.ts`,
+   *   `glass.dom.test.ts`, `artboard-panel.dom.test.ts` — the per-domain fields
+   *   (crop handles, run rows, the paint and radius wells, the glass toggle and
+   *   blur, the resolution and reveal controls), each asserted where its owner
+   *   lives;
+   * - `tests/e2e/*.spec.ts` — the same hooks again against a built bundle, which
+   *   is what proves the surface renders them, not only that jsdom's tree does.
+   *
+   * So the count here (about twenty names, of the pre-plan surface's ~48) is
+   * deliberately the shared floor, not the ceiling: reading it as the inventory
+   * would understate the coverage by the twenty-five names the domain tests
+   * carry.
    */
   const EVERY_OBJECT: readonly string[] = [
     "[data-vigilia-name]",

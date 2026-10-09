@@ -1,5 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { expect, type Page, test } from "@playwright/test";
+import { chooseIn } from "./control-set.js";
 import { openPane } from "./editor-rail.js";
 import {
   addCard,
@@ -167,20 +168,14 @@ test.describe("the reference composition, built from blank", () => {
       colour: "palette.text",
     });
     await selectLayer(page, "time");
-    await page
-      .locator('[data-vigilia-run-source="0"]')
-      .selectOption("time.now");
+    await chooseIn(page, '[data-vigilia-run-source="0"]', "time.now");
     await page.locator('[data-vigilia-run-format="0"]').fill("HH:mm");
     await page.locator('[data-vigilia-run-format="0"]').blur();
     // PM beside it, as its own run — the reason F2.1 was blocking.
     await page.locator("[data-vigilia-run-add]").click();
     await fill(page, '[data-vigilia-run-text="1"]', "PM");
-    await page
-      .locator('[data-vigilia-run-preset="1"]')
-      .selectOption("typePresets.24-400");
-    await page
-      .locator('[data-vigilia-run-colour="1"]')
-      .selectOption("palette.dim");
+    await chooseIn(page, '[data-vigilia-run-preset="1"]', "typePresets.24-400");
+    await chooseIn(page, '[data-vigilia-run-colour="1"]', "palette.dim");
 
     // The rule under it. A `Path` takes its data as SVG commands, which is the
     // only way a hairline is drawn at all.
@@ -206,9 +201,7 @@ test.describe("the reference composition, built from blank", () => {
       colour: "palette.dim",
     });
     await selectLayer(page, "date");
-    await page
-      .locator('[data-vigilia-run-source="0"]')
-      .selectOption("date.today");
+    await chooseIn(page, '[data-vigilia-run-source="0"]', "date.today");
     await page
       .locator('[data-vigilia-run-format="0"]')
       .fill("ddd, MMM D, YYYY");
@@ -288,23 +281,13 @@ test.describe("the reference composition, built from blank", () => {
     await setName(page, "cpu-card-value");
     await place(page, { x: 448, y: 262, w: 220, h: 60 });
     await fill(page, '[data-vigilia-run-text="0"]', "32");
-    await page
-      .locator('[data-vigilia-run-preset="0"]')
-      .selectOption("typePresets.60-600");
-    await page
-      .locator('[data-vigilia-run-colour="0"]')
-      .selectOption("palette.text");
-    await page
-      .locator('[data-vigilia-run-source="0"]')
-      .selectOption("cpu.load");
+    await chooseIn(page, '[data-vigilia-run-preset="0"]', "typePresets.60-600");
+    await chooseIn(page, '[data-vigilia-run-colour="0"]', "palette.text");
+    await chooseIn(page, '[data-vigilia-run-source="0"]', "cpu.load");
     await page.locator("[data-vigilia-run-add]").click();
     await fill(page, '[data-vigilia-run-text="1"]', "%");
-    await page
-      .locator('[data-vigilia-run-preset="1"]')
-      .selectOption("typePresets.32-400");
-    await page
-      .locator('[data-vigilia-run-colour="1"]')
-      .selectOption("palette.dim");
+    await chooseIn(page, '[data-vigilia-run-preset="1"]', "typePresets.32-400");
+    await chooseIn(page, '[data-vigilia-run-colour="1"]', "palette.dim");
     await page.waitForTimeout(200);
 
     // A reading and a unit on one object, and the reading bound to a key.
@@ -410,15 +393,11 @@ async function reading(
   await selectLayer(page, name);
   // The run editor lives in the selection's own column, which no pane choice
   // affects, so reaching it needs no click at all.
-  await page.locator('[data-vigilia-run-source="0"]').selectOption(key);
+  await chooseIn(page, '[data-vigilia-run-source="0"]', key);
   await page.locator("[data-vigilia-run-add]").click();
   await fill(page, '[data-vigilia-run-text="1"]', "%");
-  await page
-    .locator('[data-vigilia-run-preset="1"]')
-    .selectOption("typePresets.32-400");
-  await page
-    .locator('[data-vigilia-run-colour="1"]')
-    .selectOption("palette.dim");
+  await chooseIn(page, '[data-vigilia-run-preset="1"]', "typePresets.32-400");
+  await chooseIn(page, '[data-vigilia-run-colour="1"]', "palette.dim");
 }
 
 test.describe("the rest of the composition", () => {
@@ -721,9 +700,16 @@ test.describe("the rest of the composition", () => {
     await page.locator('[data-vigilia-chart-setting="showAxes"]').uncheck();
     await page.screenshot({ path: SHOT("06-trends") });
 
+    // The committed key, read off the `data-vigilia-value` hook rather than
+    // `.value`: the binding control is plan 1's select now — a `button`
+    // carrying the hook — and `HTMLButtonElement.value` is always `""`, so the
+    // old read answered three empty strings instead of the three series.
     const series = await page.evaluate(() =>
       Array.from(document.querySelectorAll("[data-vigilia-binding]")).map(
-        (select) => (select as HTMLSelectElement).value,
+        (binding) =>
+          binding
+            .querySelector("[data-vigilia-value]")
+            ?.getAttribute("data-vigilia-value"),
       ),
     );
     expect(series).toEqual(["cpu.load", "gpu.load", "ram.used.percent"]);
@@ -770,12 +756,8 @@ test.describe("the rest of the composition", () => {
     await selectLayer(page, "storage-card-value");
     await page.locator("[data-vigilia-run-add]").click();
     await fill(page, '[data-vigilia-run-text="1"]', "%");
-    await page
-      .locator('[data-vigilia-run-preset="1"]')
-      .selectOption("typePresets.24-400");
-    await page
-      .locator('[data-vigilia-run-colour="1"]')
-      .selectOption("palette.dim");
+    await chooseIn(page, '[data-vigilia-run-preset="1"]', "typePresets.24-400");
+    await chooseIn(page, '[data-vigilia-run-colour="1"]', "palette.dim");
     await addChart(page, {
       family: "Bar",
       name: "storage-bar",
@@ -921,15 +903,11 @@ test("what the rebuild authored survives the save", async ({
     colour: "palette.text",
   });
   await selectLayer(page, "cpu-card-value");
-  await page.locator('[data-vigilia-run-source="0"]').selectOption("cpu.load");
+  await chooseIn(page, '[data-vigilia-run-source="0"]', "cpu.load");
   await page.locator("[data-vigilia-run-add]").click();
   await fill(page, '[data-vigilia-run-text="1"]', "%");
-  await page
-    .locator('[data-vigilia-run-preset="1"]')
-    .selectOption("typePresets.32-400");
-  await page
-    .locator('[data-vigilia-run-colour="1"]')
-    .selectOption("palette.dim");
+  await chooseIn(page, '[data-vigilia-run-preset="1"]', "typePresets.32-400");
+  await chooseIn(page, '[data-vigilia-run-colour="1"]', "palette.dim");
   await addChart(page, {
     family: "Line",
     name: "cpu-card-sparkline",

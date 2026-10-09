@@ -1,5 +1,5 @@
 import { expect, type Locator, type Page } from "@playwright/test";
-import { chooseIn, openSection } from "./control-set.js";
+import { chooseIn, chooseLabelIn, openSection } from "./control-set.js";
 // The rail's toggle rule has one owner and one guard: this file grew a
 // second copy of it while the rebuild was being written, which is F1.28's
 // class again.
@@ -328,15 +328,14 @@ export async function chooseToken(
   }
   await control.scrollIntoViewIfNeeded();
   // The panel's pickers are plan 1's select now: the tokens are `Select.Item`s
-  // in a popup, so the label is what a person — and a locator — reads, and the
-  // `data-vigilia-option` beside it carries the reference the control commits.
+  // in a popup, so the label is what a person reads, and `chooseLabelIn` opens
+  // the right list before it looks for one. It deliberately does **not** reach
+  // for `page.getByRole("option")` here: this file is the one that learned why —
+  // a closed popup lingers through its exit animation, so an unscoped lookup
+  // resolves to two rows, `.first()` clicks the stale hidden one, and the case
+  // spends its budget waiting for an edit that never committed.
   if ((await control.evaluate((node) => node.tagName)) !== "SELECT") {
-    await control.click();
-    const option = page.getByRole("option", { name: label, exact: true });
-    if ((await option.count()) === 0) {
-      throw new Error(`no token named "${label}" in ${selector}`);
-    }
-    await option.first().click();
+    await chooseLabelIn(page, control, label);
     return;
   }
   const value = await control

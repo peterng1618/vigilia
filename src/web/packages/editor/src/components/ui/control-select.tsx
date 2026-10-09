@@ -108,7 +108,15 @@ export function SelectControl(
               {adornment}
             </span>
           )}
-          <Select.Value className="flex-1 truncate text-left font-mono" />
+          <Select.Value
+            className="flex-1 truncate text-left font-mono"
+            // The chosen id, on the element that prints the label. A driver
+            // reads the value it must not guess at, and reads it by a hook
+            // rather than by the `font-mono` beside it — a presentation class
+            // is the design language's to rename, and an assertion keyed on one
+            // would be a timeout naming nothing.
+            data-vigilia-value={value}
+          />
           <Select.Icon aria-hidden className="flex-none text-2xs text-faint">
             ▼
           </Select.Icon>
