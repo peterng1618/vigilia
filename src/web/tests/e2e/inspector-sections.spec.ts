@@ -6,6 +6,7 @@ import {
   enterLayer,
 } from "./editor-canvas.js";
 import { openPane } from "./editor-rail.js";
+import { choosePalette } from "./shell-palette.js";
 import {
   addChart,
   insert,
@@ -53,13 +54,41 @@ async function isOpen(page: Page, id: string): Promise<boolean> {
   return sectionExpanded(page, id);
 }
 
-/** Every control inside a section, across the whole column. */
-async function controlCount(page: Page): Promise<number> {
+/** Every field control inside a section — the whole column by default, or one
+ *  section when a scope is named. The section's own disclosure header is a
+ *  button in its `h2`, not a field, so it is excluded: a read-only section such
+ *  as `spends` has rows but no control, and this count has to say 0 for it. */
+async function controlCount(
+  page: Page,
+  scope = "[data-vigilia-section]",
+): Promise<number> {
   return page
-    .locator(
-      "[data-vigilia-section] input, [data-vigilia-section] select, [data-vigilia-section] button",
-    )
-    .count();
+    .locator(`${scope} input, ${scope} select, ${scope} button`)
+    .evaluateAll(
+      (nodes) => nodes.filter((node) => node.closest("h2") === null).length,
+    );
+}
+
+/**
+ * Whether the subject leads the column.
+ *
+ * The column's host mounts the subject in its first child and the sections in
+ * the sibling after it (bible §7.4: "The column opens with the subject … not a
+ * chrome label"), so "the subject leads" is a document-order fact rather than a
+ * presentation class: the subject's host carries copy and the first section
+ * follows it. A projection that rendered the sections first, or no subject at
+ * all, fails here instead of photographing a column that opens with a field.
+ */
+async function subjectLeadsColumn(page: Page): Promise<boolean> {
+  return page.evaluate(() => {
+    const panel = document.querySelector('[data-vigilia-panel="selection"]');
+    const subject = panel?.firstElementChild ?? null;
+    const section = panel?.querySelector("[data-vigilia-section]") ?? null;
+    if (subject === null || section === null) return false;
+    const hasCopy = (subject.textContent ?? "").trim().length > 0;
+    // DOCUMENT_POSITION_FOLLOWING (4): `section` follows `subject`.
+    return hasCopy && (subject.compareDocumentPosition(section) & 4) !== 0;
+  });
 }
 
 /** The four Position fields as the author reads them. */
@@ -653,9 +682,36 @@ test.describe("the per-kind inspector column", () => {
   }, testInfo) => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
     await page.goto(EDITOR);
+    await page.waitForFunction(() => "vigiliaEditorBridge" in window);
     await page.locator('[data-vigilia-layer="group-cpu-card"]').click();
-    await openPosition(page);
-    await expect(page.locator("[data-vigilia-geometry]").first()).toBeVisible();
+
+    // The picture is the rebuilt column, so the column is asserted first. The
+    // subject leads, the five questions render with Position closed (bible
+    // §7.4: geometry is collapsed by default), and Spends is read-only — its
+    // rows carry a value and nothing to type into. A projection that returned
+    // no sections would otherwise photograph an empty column and pass.
+    expect(await subjectLeadsColumn(page)).toBe(true);
+    expect(await sectionIds(page)).toEqual([
+      "content",
+      "position",
+      "layer",
+      "paint",
+      "spends",
+    ]);
+    expect(await isOpen(page, "position")).toBe(false);
+    for (const id of ["content", "layer", "paint", "spends"]) {
+      expect(await isOpen(page, id), id).toBe(true);
+    }
+    await expect(
+      page
+        .locator('[data-vigilia-section="spends"] [data-vigilia-resolution]')
+        .first(),
+    ).toBeVisible();
+    expect(
+      await controlCount(page, '[data-vigilia-section="spends"]'),
+      "a read-only Spends row carries no editable control",
+    ).toBe(0);
+
     await captureVisualReview(page, testInfo, "editor-inspector-card");
   });
 
@@ -664,21 +720,56 @@ test.describe("the per-kind inspector column", () => {
   }, testInfo) => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
     await page.goto(EDITOR);
+    await page.waitForFunction(() => "vigiliaEditorBridge" in window);
     await openBlank(page);
     await insert(page, "Rectangle");
     await expect(
       page.locator("[data-vigilia-panel-fill]").first(),
     ).toBeVisible();
+
+    // The same preconditions, to the degree they apply: the subject leads and
+    // the questions render, with Position closed as §7.4 puts it.
+    expect(await subjectLeadsColumn(page)).toBe(true);
+    expect(await sectionIds(page)).not.toHaveLength(0);
+    expect(await isOpen(page, "position")).toBe(false);
+
     await captureVisualReview(page, testInfo, "editor-inspector-shape");
   });
 
   test("captures the chart's column", async ({ page }, testInfo) => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
     await page.goto(EDITOR);
+    await page.waitForFunction(() => "vigiliaEditorBridge" in window);
     await selectStarterGauge(page);
     await expect(
       page.locator('[data-vigilia-chart-setting="thickness"]'),
     ).toBeVisible();
+
+    expect(await subjectLeadsColumn(page)).toBe(true);
+    expect(await sectionIds(page)).not.toHaveLength(0);
+    expect(await isOpen(page, "position")).toBe(false);
+
     await captureVisualReview(page, testInfo, "editor-inspector-chart");
+  });
+
+  test("captures the chart's column in the reference palette", async ({
+    page,
+  }, testInfo) => {
+    test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+    await page.goto(EDITOR);
+    await page.waitForFunction(() => "vigiliaEditorBridge" in window);
+    // The dark half of the comparison: `inspector-controls.html` is drawn on
+    // graphite, and a capture of one palette cannot show a hard-coded hex. The
+    // same real selection — the starter's gauge child — is read in both.
+    await choosePalette(page, "graphite");
+    await selectStarterGauge(page);
+    await expect(
+      page.locator('[data-vigilia-chart-setting="thickness"]'),
+    ).toBeVisible();
+
+    expect(await subjectLeadsColumn(page)).toBe(true);
+    expect(await isOpen(page, "position")).toBe(false);
+
+    await captureVisualReview(page, testInfo, "editor-inspector-chart-graphite");
   });
 });

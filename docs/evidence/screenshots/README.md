@@ -50,6 +50,7 @@ result, not merely a mounted editor.
 | Right column | Select a card and open its Position section | `editor-inspector-card` / `captures the sectioned column a card gets` |
 | Right column | Select a free shape and read its own column | `editor-inspector-shape` / `captures the sectioned column a shape gets` |
 | Right column | Select the starter's gauge and read the chart's column | `editor-inspector-chart` / `captures the chart's column` |
+| Right column | Read the same gauge column in the reference palette | `editor-inspector-chart-graphite` / `captures the chart's column in the reference palette` |
 | Panel authoring | Insert a panel and set its fill, border, radius and shadow | `editor-panel-authoring` / `authors a panel from the Add panel` |
 | Glass authoring | Turn frosted glass on for a panel over a real backdrop and set its blur radius | `editor-glass-authoring` / `gives an ordinary panel a real, measured backdrop blur` |
 | Starter composition | Select the starter's frosted CPU card and read its live value | `editor-starter-cpu-card` / `ships the starter's frosted CPU card` |
