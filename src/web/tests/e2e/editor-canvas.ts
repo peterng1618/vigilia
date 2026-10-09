@@ -1,4 +1,9 @@
-import { expect, type Page, type TestInfo } from "@playwright/test";
+import {
+  expect,
+  type Locator,
+  type Page,
+  type TestInfo,
+} from "@playwright/test";
 
 export type ArtboardRect = {
   left: number;
@@ -294,18 +299,31 @@ export async function clearSceneX(
   );
 }
 
+/**
+ * A visual-review capture, written only under `VIGILIA_CAPTURE=1`.
+ *
+ * **An optional `scope` photographs one element rather than the viewport.** The
+ * inspector column is taller than a 1280×720 fold and its own scroller clips the
+ * rest, so a viewport shot of it stops at whatever fits — the read-only `Spends`
+ * section, bible §5 rule 1's standing example, never reaches the frame. Passing
+ * the column element captures the whole column. With no scope the output is the
+ * viewport shot every existing caller already produced.
+ */
 export async function captureVisualReview(
   page: Page,
   testInfo: TestInfo,
   name: string,
+  scope?: Locator,
 ): Promise<void> {
   if (process.env["VIGILIA_CAPTURE"] === undefined) return;
   const directory =
     process.env["VIGILIA_CAPTURE_DIR"] ?? "../../docs/evidence/screenshots";
   const filename = `${name}-${testInfo.project.name}.png`;
-  const screenshot = await page.screenshot({
-    path: `${directory}/${filename}`,
-  });
+  const path = `${directory}/${filename}`;
+  const screenshot =
+    scope === undefined
+      ? await page.screenshot({ path })
+      : await scope.screenshot({ path });
   await testInfo.attach(filename, {
     body: screenshot,
     contentType: "image/png",

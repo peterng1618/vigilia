@@ -274,22 +274,24 @@ export function createTypePresetReveal(onReveal: () => void): HTMLElement {
 /**
  * Opacity, shown as a percentage and stored as Fabric's 0–1.
  *
- * A value now, not an element: React renders it through the control set and
- * `index.ts` owns the write. The percentage conversion is the projection's, so
- * the number an author reads is the number the row commits.
- *
- * An emptied field is refused with a reason, not read as a zero: the handler
- * this replaced did `Number("")`, which is `0`, so clearing the box used to
- * make the object transparent and push a history entry. `writeOpacity` still
- * refuses a value outside 0–100 before it writes, with the message the old
- * field used.
+ * A bounded number — Fabric's own 0–1, projected here as 0–100 — so it is a
+ * slider: bible §5's vocabulary says a bounded number gets a track, and
+ * `inspector-controls.html` names opacity as its example. The glass blur drew
+ * the same conclusion one directory away. The percentage conversion is the
+ * projection's, so the number an author reads is the number the row commits,
+ * and `writeOpacity` still refuses a value outside 0–100 before it writes — the
+ * control's bounds stop the gesture, and the writer is the guard for a
+ * bypassed commit.
  */
 export function opacityField(object: FabricObject): FieldView {
   return {
     id: "opacity",
-    control: "number",
+    control: "slider",
     label: uiCopy.inspectorFields.opacity,
     value: Math.round(object.opacity * 100),
+    min: 0,
+    max: 100,
+    integer: true,
     data: { "data-vigilia-opacity": "" },
   };
 }

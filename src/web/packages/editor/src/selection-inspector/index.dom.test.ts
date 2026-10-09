@@ -46,6 +46,7 @@ import {
   type SelectionKind,
   selectionKindOf,
 } from "./per-kind-column.js";
+import { slide } from "./runs.test-stage.js";
 
 // The column's sections keep their open state in React now, and React only
 // flushes a click's update inside `act` — so the one test that clicks a header
@@ -337,34 +338,52 @@ describe("the selection inspector", () => {
     expect(history.saveState).toHaveBeenCalledTimes(1);
   });
 
-  it("shows opacity as a percentage and stores Fabric's 0-1", async () => {
+  it("offers opacity as a slider, as a percentage of Fabric's 0-1", () => {
+    rect.set({ opacity: 0.5 });
+    const { host } = setup(rect);
+    const opacity = host.querySelector<HTMLInputElement>(
+      "[data-vigilia-opacity]",
+    )!;
+
+    // A bounded number is the bible's slider (§5) — Fabric's own 0–1, projected
+    // here as 0–100 — so the control is a track and the well reads the
+    // percentage. `inspector-controls.html` names opacity as its example, and
+    // the glass blur drew the same conclusion one directory away.
+    expect(opacity.type).toBe("range");
+    expect(opacity.getAttribute("min")).toBe("0");
+    expect(opacity.getAttribute("max")).toBe("100");
+    expect(opacity.value).toBe("50");
+  });
+
+  it("commits a percentage from the opacity slider", async () => {
     rect.set({ opacity: 0.5 });
     const { host, history } = setup(rect);
     const opacity = host.querySelector<HTMLInputElement>(
       "[data-vigilia-opacity]",
     )!;
 
-    expect(opacity.value).toBe("50");
+    // One keyboard step, the gesture jsdom can resolve (see `slide`): 50% → 51%,
+    // stored as Fabric's 0–1, one history entry.
+    await slide(opacity, "ArrowRight");
 
-    await edit(opacity, "25");
-
-    expect(rect.opacity).toBe(0.25);
+    expect(rect.opacity).toBeCloseTo(0.51, 6);
     expect(history.saveState).toHaveBeenCalledTimes(1);
   });
 
-  it("refuses opacity outside the range rather than clamping it", async () => {
+  it("stops the opacity slider at full rather than exceeding it", async () => {
     rect.set({ opacity: 0.5 });
-    const { host, history, editor } = setup(rect);
+    const { host } = setup(rect);
     const opacity = host.querySelector<HTMLInputElement>(
       "[data-vigilia-opacity]",
     )!;
 
-    await edit(opacity, "150");
+    // The ceiling is the control's own bound, so the sweep stops at Fabric's 1
+    // and the well reads it back. `writeOpacity`'s refusal of a value outside
+    // 0–100 remains the guard for a bypassed commit.
+    await slide(opacity, "End");
 
-    expect(rect.opacity).toBe(0.5);
-    expect(opacity.value).toBe("50");
-    expect(history.saveState).not.toHaveBeenCalled();
-    expect(editor.errorManager.warn).toHaveBeenCalled();
+    expect(rect.opacity).toBe(1);
+    expect(opacity.value).toBe("100");
   });
 
   it("shows the object's display name and writes an edit back to it", async () => {

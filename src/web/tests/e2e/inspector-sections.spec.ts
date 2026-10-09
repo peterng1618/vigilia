@@ -1,4 +1,4 @@
-import { expect, type Page, test } from "@playwright/test";
+import { expect, type Page, test, type TestInfo } from "@playwright/test";
 import { choiceOf, chooseIn, sectionExpanded } from "./control-set.js";
 import {
   captureVisualReview,
@@ -29,6 +29,46 @@ import { isDesktopSurface } from "./surface.js";
  */
 
 const EDITOR = "http://127.0.0.1:4174/";
+
+/**
+ * The column element a capture photographs.
+ *
+ * The viewport shot truncates the column at the fold — its own scroller hides
+ * everything past what fits — so the read-only `Spends` section (§5 rule 1's
+ * standing example) never reached the image. Capturing the inspector column
+ * puts the whole column in the frame.
+ */
+const COLUMN = ".editor-shell-inspector";
+
+/**
+ * The column, photographed in full.
+ *
+ * The shell clips the inspector at the fold, so a 1280×720 frame stops at
+ * `--bg`'s paint and the read-only `Spends` section never reaches the image.
+ * Grow the frame until the scroller has nothing left to hide, then capture the
+ * column element itself. Scoped to this spec only: every other caller of
+ * `captureVisualReview` still writes a viewport shot.
+ */
+async function captureColumn(
+  page: Page,
+  testInfo: TestInfo,
+  name: string,
+): Promise<void> {
+  const viewport = page.viewportSize();
+  const needed = await page.evaluate(() => {
+    const scroller = document.querySelector(".editor-shell-inspector");
+    const content = document.querySelector('[data-vigilia-panel="selection"]');
+    const chrome =
+      window.innerHeight - (scroller?.clientHeight ?? window.innerHeight);
+    // A little slack: the panel's box is measured before the resize reflows,
+    // and a row that wraps differently would otherwise lose its last line.
+    return Math.ceil((content?.getBoundingClientRect().height ?? 0) + chrome + 32);
+  });
+  if (viewport !== null && needed > viewport.height) {
+    await page.setViewportSize({ width: viewport.width, height: needed });
+  }
+  await captureVisualReview(page, testInfo, name, page.locator(COLUMN));
+}
 
 /** The remainder slice's own ink: the blank document's `palette.chartTrack`,
  * which is what a new pie's `remainderFill` resolves through. */
@@ -712,7 +752,7 @@ test.describe("the per-kind inspector column", () => {
       "a read-only Spends row carries no editable control",
     ).toBe(0);
 
-    await captureVisualReview(page, testInfo, "editor-inspector-card");
+    await captureColumn(page, testInfo, "editor-inspector-card");
   });
 
   test("captures the sectioned column a shape gets", async ({
@@ -733,7 +773,7 @@ test.describe("the per-kind inspector column", () => {
     expect(await sectionIds(page)).not.toHaveLength(0);
     expect(await isOpen(page, "position")).toBe(false);
 
-    await captureVisualReview(page, testInfo, "editor-inspector-shape");
+    await captureColumn(page, testInfo, "editor-inspector-shape");
   });
 
   test("captures the chart's column", async ({ page }, testInfo) => {
@@ -749,7 +789,7 @@ test.describe("the per-kind inspector column", () => {
     expect(await sectionIds(page)).not.toHaveLength(0);
     expect(await isOpen(page, "position")).toBe(false);
 
-    await captureVisualReview(page, testInfo, "editor-inspector-chart");
+    await captureColumn(page, testInfo, "editor-inspector-chart");
   });
 
   test("captures the chart's column in the reference palette", async ({
@@ -770,6 +810,6 @@ test.describe("the per-kind inspector column", () => {
     expect(await subjectLeadsColumn(page)).toBe(true);
     expect(await isOpen(page, "position")).toBe(false);
 
-    await captureVisualReview(page, testInfo, "editor-inspector-chart-graphite");
+    await captureColumn(page, testInfo, "editor-inspector-chart-graphite");
   });
 });
