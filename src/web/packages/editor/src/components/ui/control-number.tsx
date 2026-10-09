@@ -51,6 +51,7 @@ export function ControlNumber(
     id,
     disabled,
     refused,
+    hint,
     data,
     density,
     value,
@@ -113,6 +114,7 @@ export function ControlNumber(
       label={label}
       labelFor={ids.control}
       refused={refused}
+      hint={hint}
       density={density}
     >
       <ControlWell density={density} blocked={blocked}>
@@ -128,6 +130,7 @@ export function ControlNumber(
           aria-disabled={refused === undefined ? undefined : true}
           aria-invalid={invalid === undefined ? undefined : true}
           aria-describedby={describedBy(
+            hint === undefined ? undefined : ids.hint,
             refused === undefined ? undefined : ids.reason,
             invalid === undefined ? undefined : invalidId,
           )}

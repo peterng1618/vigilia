@@ -4,6 +4,7 @@ import type * as React from "react";
 import {
   ControlRow,
   type ControlProps,
+  describedBy,
   hitTargetClasses,
   isBlocked,
   useControlIds,
@@ -41,6 +42,7 @@ export function ControlSegmented<T extends string>(
     id,
     disabled,
     refused,
+    hint,
     density,
     data,
     value,
@@ -52,13 +54,22 @@ export function ControlSegmented<T extends string>(
   const refusedState = refused === undefined ? undefined : true;
 
   return (
-    <ControlRow ids={ids} label={label} refused={refused} density={density}>
+    <ControlRow
+      ids={ids}
+      label={label}
+      refused={refused}
+      hint={hint}
+      density={density}
+    >
       <ToggleGroup
         id={ids.control}
         value={[value]}
         aria-labelledby={ids.label}
         aria-disabled={refusedState}
-        aria-describedby={refused === undefined ? undefined : ids.reason}
+        aria-describedby={describedBy(
+          hint === undefined ? undefined : ids.hint,
+          refused === undefined ? undefined : ids.reason,
+        )}
         onValueChange={(next) => {
           const chosen = next[0];
           if (blocked || chosen === undefined) return;

@@ -3,6 +3,7 @@ import type * as React from "react";
 import {
   ControlRow,
   type ControlProps,
+  describedBy,
   hitTargetClasses,
   isBlocked,
   useControlIds,
@@ -30,7 +31,7 @@ export function ControlToggle(
     readonly onChange: (value: boolean) => void;
   },
 ): React.JSX.Element {
-  const { label, id, disabled, refused, density, data, checked, onChange } =
+  const { label, id, disabled, refused, hint, density, data, checked, onChange } =
     props;
   const ids = useControlIds(id);
   const blocked = isBlocked({ disabled, refused });
@@ -41,6 +42,7 @@ export function ControlToggle(
       label={label}
       labelFor={ids.control}
       refused={refused}
+      hint={hint}
       density={density}
     >
       <Switch.Root
@@ -52,7 +54,10 @@ export function ControlToggle(
         readOnly={blocked}
         disabled={disabled}
         aria-disabled={refused === undefined ? undefined : true}
-        aria-describedby={refused === undefined ? undefined : ids.reason}
+        aria-describedby={describedBy(
+          hint === undefined ? undefined : ids.hint,
+          refused === undefined ? undefined : ids.reason,
+        )}
         onCheckedChange={(next) => {
           if (blocked) return;
           onChange(next);

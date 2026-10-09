@@ -37,6 +37,9 @@ export type ChartSettingView =
       /** The descriptor's own `property`, which is the `data-*` hook's value. */
       readonly key: string;
       readonly label: string;
+      /** What the setting does, in the author's language — the row's tooltip
+       *  and the note the control describes itself by. Never its label again. */
+      readonly hint: string;
       /** Where inside the settings object this row writes. */
       readonly path: readonly string[];
       readonly control: "number";
@@ -50,6 +53,7 @@ export type ChartSettingView =
       readonly id: string;
       readonly key: string;
       readonly label: string;
+      readonly hint: string;
       readonly path: readonly string[];
       readonly control: "toggle";
       readonly value: boolean;
@@ -58,6 +62,7 @@ export type ChartSettingView =
       readonly id: string;
       readonly key: string;
       readonly label: string;
+      readonly hint: string;
       readonly path: readonly string[];
       readonly control: "select";
       readonly value: string;
@@ -308,6 +313,7 @@ function ChartSettingRow(props: {
       return (
         <ControlNumber
           label={row.label}
+          hint={row.hint}
           id={row.id}
           data={data}
           value={row.value}
@@ -323,6 +329,7 @@ function ChartSettingRow(props: {
       return (
         <ControlToggle
           label={row.label}
+          hint={row.hint}
           id={row.id}
           data={data}
           checked={row.value}
@@ -333,6 +340,7 @@ function ChartSettingRow(props: {
       return (
         <ControlSelect
           label={row.label}
+          hint={row.hint}
           id={row.id}
           data={data}
           value={row.value}

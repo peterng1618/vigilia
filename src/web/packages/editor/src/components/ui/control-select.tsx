@@ -3,6 +3,7 @@ import type * as React from "react";
 import {
   ControlRow,
   type ControlProps,
+  describedBy,
   isBlocked,
   useControlIds,
   wellClasses,
@@ -49,6 +50,7 @@ export function SelectControl(
     id,
     disabled,
     refused,
+    hint,
     density,
     data,
     value,
@@ -65,6 +67,7 @@ export function SelectControl(
       label={label}
       labelFor={ids.control}
       refused={refused}
+      hint={hint}
       density={density}
     >
       <Select.Root
@@ -84,7 +87,10 @@ export function SelectControl(
           id={ids.control}
           disabled={disabled}
           aria-disabled={refused === undefined ? undefined : true}
-          aria-describedby={refused === undefined ? undefined : ids.reason}
+          aria-describedby={describedBy(
+            hint === undefined ? undefined : ids.hint,
+            refused === undefined ? undefined : ids.reason,
+          )}
           className={`${wellClasses(density, blocked)} w-full justify-between gap-[var(--space-6)] text-sm text-text`}
         >
           {adornment === undefined ? null : (

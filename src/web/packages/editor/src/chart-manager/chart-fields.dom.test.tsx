@@ -259,6 +259,61 @@ describe("every chart family's controls", () => {
       ).id,
     ).toBe("vigilia-chart-binding-cpu-unit-display");
   });
+
+  it("carries each descriptor's hint where a screen reader finds it", () => {
+    // A descriptor's `hint` is required and says what the setting does. The
+    // pre-plan control put it in the row's `aria-describedby`; the control set
+    // mints that id itself, so the reading is asserted here rather than left to
+    // a caller that could only attach one with an imperative DOM write.
+    for (const target of FAMILIES) {
+      const { stage } = over(target);
+      const visible = settingsFieldsFor(target.content.family).filter((field) =>
+        isSettingVisible(field, target.content.settings),
+      );
+
+      for (const field of visible) {
+        const control = pick(
+          stage.host,
+          `data-vigilia-chart-setting="${field.property}"`,
+        );
+        const described = (
+          control.getAttribute("aria-describedby") ?? ""
+        ).split(/\s+/);
+        expect(
+          described,
+          `${target.id}: ${field.property} describes itself by its hint`,
+        ).toContain(`${control.id}-hint`);
+        expect(
+          document.getElementById(`${control.id}-hint`)?.textContent,
+          `${target.id}: ${field.property} hint text`,
+        ).toBe(field.hint);
+      }
+    }
+  });
+
+  it("shows the hint again as the row's tooltip, where a pointer reads it", async () => {
+    const { stage } = over(gauge);
+    await flush();
+    const descriptor = settingsFieldsFor("gauge").find(
+      (field) => field.property === "thickness",
+    );
+    expect(descriptor, "the gauge has a thickness descriptor").toBeDefined();
+    const control = pick(stage.host, 'data-vigilia-chart-setting="thickness"');
+    // The row is the tooltip's trigger, as it was before the conversion; it is
+    // the one element the control set wraps every control in.
+    const row = control.closest(".flex-wrap");
+    expect(row, "the control sits in a row").not.toBeNull();
+
+    // `focus` opens the tooltip immediately, where hover waits out the pointer
+    // delay this file cannot spend. Nothing React renders moves, so no `act`.
+    row?.dispatchEvent(new Event("focus"));
+
+    expect(
+      document.querySelector(".editor-shell-tooltip")?.textContent,
+      "the row's tooltip carries the hint",
+    ).toBe(descriptor?.hint);
+    row?.dispatchEvent(new Event("blur"));
+  });
 });
 
 describe("a setting one level down", () => {

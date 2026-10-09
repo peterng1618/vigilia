@@ -163,6 +163,7 @@ function settingRows(content: ChartContent): readonly ChartSettingView[] {
         id,
         key: field.property,
         label: field.label,
+        hint: field.hint,
         path,
         control: "number",
         // Absent is an empty box, never a zero: "empty lets the data choose it"
@@ -183,6 +184,7 @@ function settingRows(content: ChartContent): readonly ChartSettingView[] {
         id,
         key: field.property,
         label: field.label,
+        hint: field.hint,
         path,
         control: "toggle",
         value: value === true,
@@ -194,6 +196,7 @@ function settingRows(content: ChartContent): readonly ChartSettingView[] {
       id,
       key: field.property,
       label: field.label,
+      hint: field.hint,
       path,
       control: "select",
       value: typeof value === "string" ? value : "",

@@ -35,11 +35,10 @@ backlog it produced stays live in the register.
 
 ## Last completed change
 
-- **Plan 3 Task 3a landed** — a chart's Content and Paint are serializable views rendered by chart-owned React (`chart-fields.tsx`); `chart-manager/panel.ts` is now a projection, and no chart field returns an `HTMLElement` into the inspector any more.
-- **The port carries values, not elements** — `ChartFieldsPort` hands over `ChartContentFieldsView`/`ChartPaintFieldsView` and `ChartEdits` is the write half, keyed by chart id, so a control whose draft outlived its selection lands on the chart it was rendered for; the session builds the manager before the inspector that reads it.
-- **Both bodies render plan 1's controls** — nested paths (`animation.durationMs`, `total.value`) commit through `settings-path`, series add/remove and the gauge's one-reading ceiling stay the manager's, and a disabled value cannot invoke a command.
-- **Two break-proofs, observed failure text recorded** — hiding one descriptor reds `panel.dom.test.ts` (`…expected 9 descriptors`) and `chart-fields.dom.test.tsx` (`no control carries data-vigilia-chart-setting="roundCap"`); flattening the nested commit reds the animation block, the pie total and the save/reopen case.
-- **The e2e red set was measured by file, fixed none** — `editor.spec.ts` 8 red / 57 pass, `inspector-sections.spec.ts` 5 red / 5 pass, `author-journey-rebuild.spec.ts` 8 red / 1 pass, `reference-theme.spec.ts` 2 red / 13 pass; every chart-owned red is `selectOption` on a control that is now a `<button role="combobox">`, and `editor-inspector-chart` was re-captured.
+- **Task 3a fix round 1 (chart half)** — a chart setting's required `hint` reaches the author again: `ControlRow` renders it as an `sr-only` note each control adds to its own `aria-describedby`, and arms the row's tooltip with it (a refusal reason winning), matching `settings-field.ts`'s pre-plan behaviour.
+- **The port carries it** — `ChartSettingView` and all three of its arms carry `hint`, `panel.ts` reads it off the descriptor and `ChartSettingRow` passes it through; the hint lives in the control set because the id `aria-describedby` points at is minted inside the control, so a caller could only attach one with an imperative DOM write (ADR-0039).
+- **The DOM-free guard now walks the chart arms** — `view.test.ts`'s fixture projects a real chart, so `assertPlainValue` reaches `chartContent`/`chartPaint`, and a Fabric object planted in one is caught rather than skipped.
+- **Evidence** — `vitest run packages/editor` 127 files / 1662 tests pass; dropping the hint at the port reds both new hint tests; lint, typecheck, design:check (27 gated) and ownership clean; `settings-field.ts` left for plan 4.
 
 ## Next
 

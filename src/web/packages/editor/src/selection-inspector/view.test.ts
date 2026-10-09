@@ -3,10 +3,17 @@ import type { FabricGlobals } from "@vigilia/renderer-core";
 import { MAX_OBJECT_NAME_LENGTH } from "@vigilia/renderer-core";
 import { Rect } from "fabric/es";
 import { describe, expect, it } from "vitest";
+import {
+  type ChartFieldTarget,
+  chartContentView,
+  chartPaintView,
+} from "../chart-manager/panel.js";
 import { projectLayers } from "../editor-shell/layer-tree.js";
 import { uiCopy } from "../ui-copy.js";
+import type { ColumnSection } from "./per-kind-column.js";
 import {
   editRefusal,
+  type ExtraView,
   measuredEdgeOf,
   type ProjectionPorts,
   projectSelection,
@@ -78,6 +85,44 @@ function namedRect(name: string): Rect {
   return rect;
 }
 
+/** A chart the projection can be asked about, and the two arms it crosses as. */
+const CHART: ChartFieldTarget = {
+  id: "cpu-gauge",
+  content: {
+    family: "gauge",
+    settings: {
+      startAngle: 90,
+      endAngle: -270,
+      min: 0,
+      max: 100,
+      thickness: 10,
+      track: { ref: "palette.ink" },
+      progress: { ref: "palette.ink" },
+      roundCap: true,
+    },
+  },
+  bindings: [{ id: "b1", semanticKey: "cpu.load" }],
+};
+
+const CHART_EXTRAS: readonly ExtraView[] = [
+  { kind: "chartContent", content: chartContentView(CHART) },
+  { kind: "chartPaint", paint: chartPaintView(CHART, undefined) },
+];
+
+/** A section holding the given extras, as the column hands one to the view. */
+function chartSection(extras: readonly ExtraView[]): ColumnSection {
+  return {
+    id: "content",
+    title: "Content",
+    readOnly: false,
+    defaultOpen: true,
+    count: extras.length,
+    fields: [],
+    extras,
+    body: [],
+  };
+}
+
 describe("projectSelection", () => {
   it("carries no Fabric object, DOM node, function or non-finite number", () => {
     const rect = new Rect({
@@ -120,8 +165,29 @@ describe("projectSelection", () => {
     assertPlainValue(view, "view");
   });
 
-  it("is empty when nothing is selected", () => {
-    const view = projectSelection(undefined, 0, ports());
+  it("walks a chart's own field arms, and rejects a Fabric object planted in one", () => {
+    // A chart crosses as `chartContent`/`chartPaint` payloads — the arms this
+    // suite gave values to. Walking a view whose `extras` is empty proves
+    // nothing about them, so the fixture projects a real chart and the walk
+    // reaches inside both arms.
+    const rect = new Rect({ id: "shape", width: 10, height: 10 });
+    const view = projectSelection(rect, 1, ports(), [chartSection(CHART_EXTRAS)]);
+
+    assertPlainValue(view, "view");
+
+    // And the walk is not vacuous on those arms: a Fabric object smuggled into
+    // one is what the guard exists to catch (ADR-0039), so it must throw.
+    const planted = chartSection([
+      {
+        kind: "chartContent",
+        content: { ...chartContentView(CHART), content: new Rect({ id: "leak" }) },
+      } as unknown as ExtraView,
+    ]);
+    const dirty = projectSelection(rect, 1, ports(), [planted]);
+    expect(() => assertPlainValue(dirty, "view")).toThrow(/plain object/);
+  });
+
+  it("is empty when nothing is selected", () => {    const view = projectSelection(undefined, 0, ports());
 
     expect(view.subject).toBeUndefined();
     expect(view.sections).toHaveLength(0);

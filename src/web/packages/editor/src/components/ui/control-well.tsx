@@ -1,5 +1,6 @@
 import type * as React from "react";
-import { useId } from "react";
+import { useEffect, useId, useRef } from "react";
+import { tooltip } from "../../editor-shell/controls/tooltip.js";
 
 /**
  * What every control in the one control set carries.
@@ -10,12 +11,22 @@ import { useId } from "react";
  * would reach nobody not holding a mouse. `data` belongs to the *focus target*,
  * never a wrapper, so a later plan can locate the control a person actually
  * operates.
+ *
+ * `hint` is what the setting does, in the author's language. It is **not** a
+ * refusal and not visible: the row's tooltip is the pointer's copy and the note
+ * the control describes itself by is the screen reader's (§4's icon-only rule
+ * makes a tooltip first-class; §5.3's never-in-a-tooltip rule is about a
+ * refusal, which is words in the row instead). It renders here rather than at
+ * the caller, because the id `aria-describedby` points at is minted inside the
+ * control — a caller-side description would be an imperative DOM write, the
+ * ADR-0039 violation this set exists to remove.
  */
 export type ControlProps = {
   readonly label: string;
   readonly id?: string;
   readonly disabled?: boolean;
   readonly refused?: string;
+  readonly hint?: string;
   readonly density?: ControlDensity;
   readonly data?: Readonly<Record<`data-${string}`, string>>;
 };
@@ -91,11 +102,12 @@ export function ControlWell(props: {
   );
 }
 
-/** The three ids one control needs. */
+/** The ids one control needs. */
 export type ControlIds = {
   readonly control: string;
   readonly label: string;
   readonly reason: string;
+  readonly hint: string;
 };
 
 /** Generated once from `useId` when the caller has not named the control
@@ -108,6 +120,7 @@ export function useControlIds(id: string | undefined): ControlIds {
     control,
     label: `${control}-label`,
     reason: `${control}-reason`,
+    hint: `${control}-hint`,
   };
 }
 
@@ -121,13 +134,20 @@ export function isBlocked(props: {
 }
 
 /**
- * One control's row: its label, its control, and its refusal.
+ * One control's row: its label, its control, its refusal, and its hint.
  *
  * The label is a `<label for>` where the control is a labelable element (an
  * input or a button) and a plain span where it is not — a composite whose parts
  * are named by their own text and whose group is named with `aria-labelledby`.
  * The refusal is rendered as words in the row rather than as a tooltip (§5.3),
  * and its `id` is what the control's `aria-describedby` points at.
+ *
+ * The hint reaches the author two ways, neither of them a line of text under
+ * every field: a note the control describes itself by, hidden from the eye, and
+ * the row's tooltip — the pointer's copy of the same words (§4). The tooltip is
+ * `tooltip()`'s, the one owner of what a tooltip is, armed and torn down with
+ * the row exactly as `ControlIconButton` arms its own. It carries the refusal
+ * when there is one, so a row that both refuses and explains says why first.
  *
  * The control slot **takes the row's remaining width** and right-aligns what it
  * holds, rather than shrinking to its content. A content-sized slot is what a
@@ -142,13 +162,32 @@ export function ControlRow(props: {
   readonly label: string;
   readonly labelFor?: string | undefined;
   readonly refused?: string | undefined;
+  readonly hint?: string | undefined;
   readonly density?: ControlDensity | undefined;
   readonly children: React.ReactNode;
 }): React.JSX.Element {
-  const { ids, label, labelFor, refused, density = "panel", children } = props;
+  const {
+    ids,
+    label,
+    labelFor,
+    refused,
+    hint,
+    density = "panel",
+    children,
+  } = props;
   const labelClasses = "text-xs text-muted";
+  const row = useRef<HTMLDivElement>(null);
+  const tip = hint === undefined ? undefined : (refused ?? hint);
+
+  useEffect(() => {
+    const element = row.current;
+    if (element === null || tip === undefined) return;
+    return tooltip({ trigger: element, text: tip }).destroy;
+  }, [tip]);
+
   return (
     <div
+      ref={row}
       className={`flex ${ROW_MIN_HEIGHT[density]} flex-wrap items-center gap-x-[var(--space-8)] gap-y-[var(--space-4)]`}
     >
       {labelFor === undefined ? (
@@ -163,6 +202,11 @@ export function ControlRow(props: {
       <div className="ml-auto flex flex-1 items-center justify-end gap-[var(--space-6)]">
         {children}
       </div>
+      {hint === undefined ? null : (
+        <p id={ids.hint} className="sr-only">
+          {hint}
+        </p>
+      )}
       {refused === undefined ? null : (
         <p id={ids.reason} className="w-full text-xs text-muted">
           {refused}
