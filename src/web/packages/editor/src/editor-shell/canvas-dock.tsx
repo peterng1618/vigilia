@@ -14,6 +14,12 @@ import type { EditorShellBridge } from "./bridge.js";
 import { tooltip } from "./controls/tooltip.js";
 
 /**
+ * Bible §4: `--hot` marks destructive affordances, and delete is the only object
+ * action that is one. The registry owns the id; the dock owns how it draws it.
+ */
+const DESTRUCTIVE_ACTIONS: ReadonlySet<ObjectActionId> = new Set(["delete"]);
+
+/**
  * One dock button. The tooltip is a DOM control, so React owns the button and
  * the effect owns the popup — a React tooltip here would be a second owner for
  * something the selection inspector, which never sees React, also has to use.
@@ -52,6 +58,9 @@ function Action({
       ref={ref}
       type="button"
       aria-label={label}
+      // A `data-*` hook is the mark, not an ARIA state: nothing about a
+      // destructive action is a toggle or a pressed state to announce.
+      data-vigilia-destructive={DESTRUCTIVE_ACTIONS.has(id) ? "" : undefined}
       onClick={() => bridge?.run(id)}
     >
       {children}
