@@ -247,11 +247,18 @@ describe("a card a theme with its own vocabulary cannot name", () => {
 describe("an insert the Add pane cannot reach its owner for", () => {
   it("says so, whichever kind it is, rather than swallowing the click", async () => {
     const { canvas, errors } = wiredSession();
-    // The pane with no actions at all: the state a shell that forgot to wire
-    // the session would leave an author in. This is the refusal the header's
-    // Insert menu used to be gated on — before a document is open the surface
-    // refuses rather than offering rows that insert nothing — and with the menu
-    // gone the Add pane is what carries it.
+    // **A mis-wired pane, not an empty one.** `actions` is absent: the state a
+    // shell would leave an author in by constructing this pane without the
+    // session it inserts through. Both buttons are still on screen and still
+    // offered, which is why the failure they have to avoid is a silent no-op
+    // rather than a dead row. `NewObjectActions` makes both members required and
+    // `editor-session.ts` always passes both, so nothing in the product reaches
+    // this state today — the case is here because the two paths used to answer
+    // it differently.
+    //
+    // The state the header's Insert menu was gated on is a different one: before
+    // a document is open, this pane's host element is empty, so there is no row
+    // to offer at all.
     const panel = createNewObjectPanel(
       document.body,
       editorOf(canvas, errors),

@@ -43,7 +43,7 @@ import {
 import { PaletteMenu } from "./palette-menu.js";
 import { Pane } from "./pane.js";
 import { PublishControl } from "./publish-control.js";
-import { Rail, RAIL_GLYPHS, type RailSlot } from "./rail.js";
+import { RAIL_GLYPHS, Rail, type RailSlot } from "./rail.js";
 import { SaveState } from "./save-state.js";
 import type { EditorViewControls } from "./session-facade.js";
 import { ShortcutReference } from "./shortcut-reference.js";
