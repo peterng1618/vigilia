@@ -26,7 +26,7 @@ backlog it produced stays live in the register.
 
 ## Active work
 
-- **Plan 2 — [`the shell and the rail`](docs/superpowers/plans/2026-10-08-the-shell-and-the-rail.md) — is active.** Tasks 1–8 are complete and reviewed; Task 9 is next and two tasks remain.
+- **Plan 2 — [`the shell and the rail`](docs/superpowers/plans/2026-10-08-the-shell-and-the-rail.md) — is active.** Tasks 1–9 are complete and reviewed; Task 10 is next and one task remains.
 - **Plan 1 — gates and the control set — is complete**, with a delivered-state reconciliation for Tasks 1–4 in the plan file in place of its retired ledger.
 - **The spec is `draft` and unimplemented** — its acceptance sections are plans of measurement, not results.
 - **Reactify ([0039](docs/decisions/0039-the-editor-ui-is-react-and-only-the-canvas-is-imperative.md)) is the frame, not a phase** — every editor surface becomes React, only the canvas stays imperative, and no Fabric object is ever mirrored into React state.
@@ -35,17 +35,18 @@ backlog it produced stays live in the register.
 
 ## Last completed change
 
-- **Task 8 of plan 2 — the ratchet — is complete and reviewed**, opening phase 3 through `64b481b0`: one review and one fix round, with every number reproduced independently by the reviewer.
-- **The gated list is 23 files**: plan 1's 12 plus the 11 styling surfaces this plan converted, and `design:check` exits 0 over them with `gates:self-test` chaining the guard's own `--self-test`.
-- **The measurement caught its own instruments lying twice** — the brief's BRE hex grep returns 0 on a file carrying 88 hex tokens, and the controller's `/tmp` pre-flight was overstated because MSYS translates a POSIX path passed as an argument, not one built inside Node; the report records the correction rather than the claim.
-- **The one ruling the round turned on held under review**: `layer-panel.tsx` is in the list because Task 2 genuinely converted its footer to `ControlIconButton` and `LayerActions`, while `save-state.tsx` is out on two comment lines — the reviewer confirmed those are not the same case.
-- **`editor-shell.css` is recorded as a before-state, not a target** — 73 guard violations over 88 hex tokens for plan 3 — and `vg-228` lands with this close: the list's dom-test membership is two of fifteen, decided by whichever task happened to add one.
+- **Task 9 of plan 2 — the parity capture — is complete and reviewed**, closing phase 3 through `84abb569`: one review, no fix round, and every claim in the report reproduced by the reviewer or by me.
+- **The shell's own state is now evidence**: `editor-shell-add-desktop-chromium.png` shows the Add slot open and nothing selected — the state the mockup draws — beside the two refreshed captures, and all three were re-run rather than re-drawn.
+- **The capture fails if the shell is not the new one**: §7.2's four rail slots and exactly one pane in the rail's column are asserted before the picture is written, proved by emptying `RAIL_SLOTS` and watching the committed test fail `Expected: 4, Received: 0`.
+- **Every run was reported by its test count, not its exit code** — 1, then 2, then 3 — and the implementer flagged the brief's `?static=1`/controlled-clock line as inapplicable to the editor instead of inventing a static mode (`vg-229`).
+- **`[data-vigilia-panel]` names six panes, not four** — the rail's four plus the inspector's `style` and `selection` — so "exactly one is showing" is scoped to `.editor-shell-panel`, which is the rail's column.
 
 ## Next
 
-1. **Task 9 — the parity capture** — `VIGILIA_CAPTURE=1`, one worker, built bundles, the action registered in `docs/evidence/screenshots/README.md` and the images landing there (that path is tracked, 76 files already). Its own trap is named in its brief: a `--grep` matching nothing exits 0 with **zero** tests, so the summary must read that one test ran.
-2. **Then Task 10 — the difference list**, whose completion report is a section in this plan file rather than the ledger (which is deleted at plan close), and which names each difference as fixed or deliberate with its owning plan. It closes **no** register row, and it must not overwrite the mockup's settled targets with the product's interim ones — the mockup is the target, and a later plan owns each remaining gap.
-3. **Unpushed:** `develop` is far ahead of `origin/develop`; no push is authorised.
+1. **Task 10 — the difference list** — compare Task 9's three captures beside `docs/design/mockups/editor-shell.html` as language rather than pixels, adjudicate each difference against the bible, and account for every one as fixed or deliberate.
+2. **Its completion report is a section in this plan file**, not the ledger (deleted at plan close), and it closes **no** register row. It must not overwrite the mockup's settled targets with the product's interim ones: the mockup is the target, and a later plan owns each remaining gap.
+3. **Then plan 2's close** — the whole-branch review on the most capable model, one fix dispatch and one scoped re-review, then the plan workspace is deleted; anything that must outlive it needs a register row first.
+4. **Unpushed:** `develop` is far ahead of `origin/develop`; no push is authorised.
 
 ## Blockers / unverified
 
