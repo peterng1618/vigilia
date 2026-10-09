@@ -2,8 +2,8 @@
 import { Canvas, Rect, Textbox } from "fabric/es";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createArtboardPanel } from "./artboard-panel.js";
-import { createAssetPanel } from "./asset-manager/panel.js";
 import { newDocumentChooser } from "./new-document-chooser.js";
+import { createNewObjectPanel } from "./new-object-panel.js";
 import { createPalettePanel } from "./palette-manager/panel.js";
 import { createSelectionInspector } from "./selection-inspector/index.js";
 import { createTypePresetPanel } from "./type-preset-manager/panel.js";
@@ -41,7 +41,7 @@ const FIELDS = "input,select,textarea";
  *
  * `[hidden]` is `display: none`, and a browser puts no such element in the
  * accessibility tree — it cannot be focused, and it is not announced. Measured
- * in Chromium over the Assets pane: the tree holds `combobox "Asset"`,
+ * in Chromium over the Add pane's file section: the tree holds `combobox "Asset"`,
  * `button "Import asset"`, `button "Replace asset"`, `button "Remove asset"` and
  * the alert, and **neither** `<input type="file">` is in it, though the markup
  * has both. They are the two file pickers the Import and Replace buttons drive,
@@ -213,8 +213,8 @@ describe("editor panels", () => {
       "INPUT[type=][aria-hidden]", // Stroke
       "INPUT[type=][aria-hidden]", // Shadow
       "INPUT[type=checkbox][aria-hidden]", // Frosted glass, shape
-      // The asset pane's two file pickers, `[hidden]` and driven by the Import
-      // and Replace buttons rendered beside them.
+      // The Add pane's file section: two file pickers, `[hidden]` and driven by
+      // the Import and Replace buttons rendered beside them.
       "INPUT[type=file]", // Import
       "INPUT[type=file]", // Replace
     ]);
@@ -251,7 +251,7 @@ describe("editor panels", () => {
 /**
  * The panels this file audits, mounted at once: the artboard panel, the palette
  * panel, the type preset panel, the selection inspector on two disjoint field
- * sets, the asset pane and the new-theme chooser.
+ * sets, the Add pane and the new-theme chooser.
  *
  * Each in a state that shows every field it can render: a gradient with stops,
  * a font picker, a delete control, and a text object with a run bound to a
@@ -325,22 +325,46 @@ function mountPanels(): { root: HTMLElement } {
 
   mountSelectionInspector(root);
 
-  createAssetPanel(
+  // The Add pane, whole: the insert tiles and, at their foot, the file section
+  // the Assets pane used to be. Mounted as one pane because that is one pane —
+  // the file pickers, their buttons and the declared-asset select are what this
+  // audit stopped seeing when the two lived in separate hosts.
+  createNewObjectPanel(
     root,
     {
-      declarations: [
-        { id: "hero", kind: "image", path: "assets/hero.png" },
-        { id: "clip", kind: "video", path: "assets/clip.mp4" },
-      ],
-      previewUrl: () => "blob:hero",
-      placeImage: vi.fn(async () => undefined),
-      remove: vi.fn(() => false),
-      import: vi.fn(async () => ({ id: "new", kind: "image", path: "a.png" })),
-      replace: vi.fn(async () => undefined),
-      hydrate: vi.fn(async () => undefined),
+      canvas: {
+        add: vi.fn(),
+        setActiveObject: vi.fn(),
+        requestRenderAll: vi.fn(),
+        getObjects: () => [],
+      },
+      artboard: () => ({ width: 1280, height: 720 }),
+      historyManager: { saveState: vi.fn() },
+      textManager: { addText: vi.fn() },
+      errorManager: { warn: vi.fn(), error: vi.fn() },
     } as never,
-    { canvas: { getObjects: () => [] } } as never,
-    vi.fn(),
+    undefined,
+    undefined,
+    {
+      manager: {
+        declarations: [
+          { id: "hero", kind: "image", path: "assets/hero.png" },
+          { id: "clip", kind: "video", path: "assets/clip.mp4" },
+        ],
+        previewUrl: () => "blob:hero",
+        placeImage: vi.fn(async () => undefined),
+        remove: vi.fn(() => false),
+        import: vi.fn(async () => ({
+          id: "new",
+          kind: "image",
+          path: "a.png",
+        })),
+        replace: vi.fn(async () => undefined),
+        hydrate: vi.fn(async () => undefined),
+      } as never,
+      changed: () => undefined,
+      isReferenced: () => false,
+    },
   );
 
   root.append(newDocumentChooser({ width: 1280, height: 720 }));

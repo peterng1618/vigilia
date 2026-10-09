@@ -703,11 +703,11 @@ export async function buildComposition(page: Page): Promise<void> {
 /**
  * The backdrop, through the controls an author has.
  *
- * Two of them, in the order an author would: **Import asset** in the Assets
- * pane (F0.4's control, the visible button that opens the file chooser), then
- * **Background media** in the artboard panel. The file is a test input, not a
- * fixture — nothing here writes a declaration, and the id the package keys the
- * asset by is minted by the editor.
+ * Two of them, in the order an author would: **Import a file** at the foot of
+ * the Add pane's file section (F0.4's control, the visible button that opens
+ * the file chooser), then **Background media** in the artboard panel. The file
+ * is a test input, not a fixture — nothing here writes a declaration, and the
+ * id the package keys the asset by is minted by the editor.
  */
 export async function importBackdrop(page: Page, file: string): Promise<void> {
   await openPane(page, "Add");
@@ -730,8 +730,8 @@ export async function importBackdrop(page: Page, file: string): Promise<void> {
     .getAttribute("value");
 
   // The artboard panel is a *document* panel, so it lives in the left column's
-  // Document pane and is hidden until the pane is asked for. The Assets pane
-  // was the last one shown, so this is a real swap, not a no-op.
+  // Document pane and is hidden until the pane is asked for. The Add pane was
+  // the last one shown, so this is a real swap, not a no-op.
   await openPane(page, "Document");
   const media = page.locator("[data-vigilia-background-asset]");
   await media.scrollIntoViewIfNeeded();

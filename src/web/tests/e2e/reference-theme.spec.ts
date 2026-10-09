@@ -2445,13 +2445,14 @@ test.describe("background media", () => {
     page,
   }, testInfo) => {
     desktop(testInfo);
-    // **What the product actually offers, named.** The Assets panel's *Replace*
-    // acts on the selected canvas object, not on the asset the artboard names,
-    // so there is no control that swaps a background's bytes in place. What an
-    // author does instead is import the new image and repoint the artboard at
-    // it, and that is the path proved here. Finding for the report: no
-    // replace-bytes control for a background asset; the id allocator also
-    // suffixes a repeated filename, so the old declaration cannot be reused.
+    // **What the product actually offers, named.** The Add pane's file section
+    // *Replace* acts on the chosen declaration, not necessarily the asset the
+    // artboard names, so there is no control that swaps a background's bytes in
+    // place without first choosing that declaration. What an author does
+    // instead is import the new image and repoint the artboard at it, and that
+    // is the path proved here. Finding for the report: no replace-bytes control
+    // aimed at a background asset; the id allocator also suffixes a repeated
+    // filename, so the old declaration cannot be reused.
     await openEditor(page);
 
     await openPane(page, "Add");
@@ -2461,7 +2462,7 @@ test.describe("background media", () => {
       buffer: PIXEL_PNG,
     });
     // The artboard's own panel is a document panel, so it is in the Document
-    // pane; the Assets pane was showing, so this is a real swap.
+    // pane; the Add pane was showing, so this is a real swap.
     await openPane(page, "Document");
     await page.locator("[data-vigilia-background-asset]").selectOption("hero");
     await expect(page.locator("[data-vigilia-background-asset]")).toHaveValue(
@@ -2627,7 +2628,7 @@ test.describe("known gaps, pinned", () => {
     page,
   }, testInfo) => {
     desktop(testInfo);
-    // **Measured.** Importing an image through the Assets panel inserts a
+    // **Measured.** Importing an image through the Add pane's file section inserts a
     // Fabric `Image` whose `src` is the `blob:` URL the editor minted for it.
     // `serialiseScene` sets `includeDefaultValues = false` and passes
     // `SCENE_PERSISTED_PROPERTIES`, but `src` is a set property rather than a

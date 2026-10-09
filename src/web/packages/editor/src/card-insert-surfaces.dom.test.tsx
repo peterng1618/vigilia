@@ -143,7 +143,6 @@ function wiredSession(): Wired {
     envelope: BLANK,
     panelHosts: {
       add: document.body,
-      assets: document.body,
       tokens: document.body,
       document: document.body,
       selection: document.body,

@@ -57,10 +57,9 @@ import { ShortcutReference } from "./shortcut-reference.js";
  * directly. */
 export interface ShellHosts {
   readonly canvas: HTMLElement;
-  /** The Add pane's body: the insert list and, beside it, the asset library
-      (`§5.2` absorbs the Assets pane into Add). */
+  /** The Add pane's body: the insert list and, at its foot, the declared-asset
+      library (`§5.2` absorbs the Assets pane into Add). */
   readonly add: HTMLElement;
-  readonly assets: HTMLElement;
   /** The Tokens pane: the theme's paints and type presets. */
   readonly tokens: HTMLElement;
   /** The Document pane: the artboard and the references it resolves. */
@@ -537,7 +536,6 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
   const hosts: ShellHosts = {
     canvas: element(),
     add: element("vigiliaPanelHostAdd"),
-    assets: element("vigiliaPanelHostAssets"),
     tokens: element("vigiliaPanelHostTokens"),
     document: element("vigiliaPanelHostDocument"),
     selection: element("vigiliaPanelHostSelection"),
@@ -697,9 +695,10 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
             >
               <CompositionPane bridge={store.bridge} />
             </Pane>
-            {/* The assets host renders inside the Add pane's body, with the
-                insert host: `§5.2` puts the asset path in Add, and a fourth
-                slot for it would be a slot the bible does not name. */}
+            {/* The Add pane's body — the insert list and, at its foot, the
+                declared-asset library — is one host and one React tree. `§5.2`
+                puts the file path in Add, and a fourth slot for it would be a
+                slot the bible does not name. */}
             <Pane
               id="add"
               title={uiCopy.rail.slots.add}
@@ -707,7 +706,6 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
               hidden={slot !== "add"}
             >
               <Host node={hosts.add} hidden={slot !== "add"} />
-              <Host node={hosts.assets} hidden={slot !== "add"} />
             </Pane>
             <Pane
               id="tokens"

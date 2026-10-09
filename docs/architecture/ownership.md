@@ -85,7 +85,7 @@ two apart is the judgement the map cannot make for itself.
 | Frosted-glass control (enable, blur radius) | `editor/src/selection-inspector/glass.ts` |
 | Glass lifecycle re-resolve, asked for by that control | `editor/src/editor-shell.ts` (`EditorShell.refreshGlass`) |
 | Type-preset authoring and reference reassignment | `editor/src/type-preset-manager/` |
-| Open-package asset bytes and controls | `editor/src/asset-manager/` (`index.ts` bytes, `panel.ts` the pane) |
+| Open-package asset bytes and controls | `editor/src/asset-manager/` (`index.ts` bytes), `editor/src/panes/add/file-section.tsx` (the pane) |
 | Editor runtime binding refresh | `editor/src/live-runtime.ts` |
 | v2 parsing/file boundary | `editor/src/persist.ts` |
 | Structured editor diagnostics | `editor/src/error-manager/` |

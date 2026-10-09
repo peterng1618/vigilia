@@ -12,7 +12,6 @@ import { ActiveSelection, type FabricObject } from "fabric/es";
 import { applyArrange, canArrange } from "./arrange.js";
 import { type ArtboardPanel, createArtboardPanel } from "./artboard-panel.js";
 import { AssetManager } from "./asset-manager/index.js";
-import { createAssetPanel } from "./asset-manager/panel.js";
 import {
   type CanvasNudge,
   createCanvasNudge,
@@ -118,10 +117,8 @@ function libraryBase(
 }
 
 export interface EditorPanelHosts {
-  /** Text and chart creation. */
+  /** Text and chart creation, and the declared-asset library at its foot. */
   readonly add: HTMLElement;
-  /** Imported asset list and controls. */
-  readonly assets: HTMLElement;
   /** The theme's own paints and type presets, in the Tokens pane. */
   readonly tokens: HTMLElement;
   /** The document's own panels, in the Document pane: the artboard and the
@@ -195,7 +192,6 @@ export class EditorSession {
   readonly #indicators: IndicatorManager;
   readonly #persistence: PersistenceManager;
   readonly #assets: AssetManager;
-  readonly #assetPanel: HTMLElement;
   readonly #shortcuts = new ShortcutManager();
   readonly #nudge: CanvasNudge;
   readonly #panelHosts: EditorPanelHosts;
@@ -424,6 +420,17 @@ export class EditorSession {
         addChart: (family) => this.charts.addChart(family),
         insertCard: (cardId) => this.#insertCard(cardId),
       },
+      // The file path travels in the Add pane rather than beside it (`§5.2`),
+      // so the manager, the reference check and the re-resolve are handed to
+      // the panel that already owns the pane's body.
+      {
+        manager: this.#assets,
+        changed: () => {
+          this.#artboard.setAssets(this.#assets.declarations);
+          this.#refreshBackgroundMedia(options.shell);
+        },
+        isReferenced: (assetId) => this.#holdsAsset(assetId),
+      },
     );
     this.#source = options.source;
     this.#runtime = new LiveRuntime({
@@ -456,16 +463,6 @@ export class EditorSession {
       read: () => this.#envelope.bindings ?? {},
       write: (bindings) => this.#addBindings(bindings),
     });
-    this.#assetPanel = createAssetPanel(
-      options.panelHosts.assets,
-      this.#assets,
-      options.shell.editor,
-      () => {
-        this.#artboard.setAssets(this.#assets.declarations);
-        this.#refreshBackgroundMedia(options.shell);
-      },
-      (assetId) => this.#holdsAsset(assetId),
-    );
     this.#refreshBackgroundMedia(options.shell);
     this.#persistence = new PersistenceManager(
       this.#snapshot(options.shell),
@@ -706,7 +703,6 @@ export class EditorSession {
     this.#persistence.destroy();
     this.#assets.destroy();
     releaseFontPreview();
-    this.#assetPanel.remove();
     this.charts.destroy();
     this.#selection.root.remove();
     this.#documentReferences.destroy();

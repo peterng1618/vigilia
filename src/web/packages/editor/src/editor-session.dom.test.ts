@@ -133,7 +133,6 @@ describe("EditorSession", () => {
       envelope,
       panelHosts: {
         add: document.body,
-        assets: document.body,
         document: document.body,
         tokens: document.body,
         selection: document.body,
@@ -196,7 +195,6 @@ describe("EditorSession", () => {
         envelope,
         panelHosts: {
           add: document.body,
-          assets: document.body,
           document: document.body,
           tokens: document.body,
           selection: document.body,
@@ -254,7 +252,6 @@ describe("EditorSession", () => {
       envelope,
       panelHosts: {
         add: document.body,
-        assets: document.body,
         document: document.body,
         tokens: document.body,
         selection: document.body,
@@ -311,7 +308,6 @@ describe("EditorSession", () => {
       envelope,
       panelHosts: {
         add: document.body,
-        assets: document.body,
         document: document.body,
         tokens: document.body,
         selection: document.body,
@@ -368,7 +364,6 @@ describe("EditorSession", () => {
       },
       panelHosts: {
         add: document.body,
-        assets: document.body,
         document: document.body,
         tokens: document.body,
         selection: document.body,
@@ -459,7 +454,6 @@ describe("EditorSession", () => {
       },
       panelHosts: {
         add: document.body,
-        assets: document.body,
         document: document.body,
         tokens: document.body,
         selection: document.body,
@@ -551,7 +545,6 @@ describe("EditorSession", () => {
       },
       panelHosts: {
         add: document.body,
-        assets: document.body,
         document: document.body,
         tokens: document.body,
         selection: document.body,
@@ -632,7 +625,6 @@ describe("EditorSession", () => {
       envelope,
       panelHosts: {
         add: document.body,
-        assets: document.body,
         document: document.body,
         tokens: document.body,
         selection: document.body,
@@ -715,7 +707,6 @@ describe("EditorSession", () => {
       },
       panelHosts: {
         add: document.body,
-        assets: document.body,
         document: document.body,
         tokens: document.body,
         selection: document.body,
@@ -772,7 +763,6 @@ describe("EditorSession", () => {
       envelope,
       panelHosts: {
         add: document.body,
-        assets: document.body,
         document: document.body,
         tokens: document.body,
         selection: document.body,
@@ -832,7 +822,6 @@ describe("opening a theme over a document that has unsaved changes", () => {
       envelope,
       panelHosts: {
         add: document.body,
-        assets: document.body,
         document: document.body,
         tokens: document.body,
         selection: document.body,
@@ -942,7 +931,6 @@ describe("a save the host refused", () => {
 
   const panelHosts = {
     add: document.body,
-    assets: document.body,
     document: document.body,
     tokens: document.body,
     selection: document.body,
@@ -1245,7 +1233,6 @@ describe("a save that carries only what changed", () => {
 
   const panelHosts = {
     add: document.body,
-    assets: document.body,
     document: document.body,
     tokens: document.body,
     selection: document.body,

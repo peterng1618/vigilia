@@ -2848,9 +2848,9 @@ test.describe("Fabric editor route", () => {
       hasSelectionGeometry: true,
     });
     await openPane(page, "Add");
-    await page
-      .getByRole("heading", { name: "Assets" })
-      .scrollIntoViewIfNeeded();
+    // The declared-asset library is the Add pane's foot now, not a pane of its
+    // own, so what is scrolled to is the section's own import control.
+    await page.locator("[data-vigilia-asset-import]").scrollIntoViewIfNeeded();
     await captureVisualReview(page, testInfo, "editor-assets");
     const saved = await savePackage(page);
     expect(saved.parsed.ok).toBe(true);

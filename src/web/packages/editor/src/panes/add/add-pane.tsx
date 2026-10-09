@@ -6,7 +6,8 @@ import { chartFamilyGlyph } from "../composition/kind-mark.js";
 import { CARD_DIAGRAMS } from "./card-diagrams.js";
 
 /**
- * The Add pane's insert surface: `insertGroups()`, drawn as tiles.
+ * The Add pane's body: `insertGroups()`, drawn as tiles, and the file path the
+ * caller hands in at the foot.
  *
  * **The list is not re-derived here.** The pane renders the groups it is given,
  * in the order it is given them, and the shape of the drawing follows from that
@@ -30,9 +31,12 @@ import { CARD_DIAGRAMS } from "./card-diagrams.js";
 export function AddPane({
   groups,
   onInsert,
+  children,
 }: {
   readonly groups: readonly InsertGroup[];
   readonly onInsert: (object: InsertableObject) => void;
+  /** What sits below the insert grid. The pane places it; it does not own it. */
+  readonly children?: React.ReactNode;
 }): React.JSX.Element {
   return (
     <>
@@ -63,6 +67,7 @@ export function AddPane({
           </fieldset>
         );
       })}
+      {children}
     </>
   );
 }

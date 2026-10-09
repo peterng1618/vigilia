@@ -6,11 +6,11 @@ import type { CropView } from "./view.js";
 /**
  * The control over a selected image's crop.
  *
- * It lives in the selection inspector rather than beside the Assets pane
- * because it acts on the *selection*, not on the asset library: an author crops
- * the image they have already placed, and #23 asks that assets stop having a
- * panel of their own. The inspector is where a control over a selected object
- * already lives.
+ * It lives in the selection inspector rather than in the Add pane's file
+ * section because it acts on the *selection*, not on the asset library: an
+ * author crops the image they have already placed, and the file section lists
+ * and replaces what the package declares. The inspector is where a control over
+ * a selected object already lives.
  *
  * The session is `crop-manager`'s. This starts one, locks a ratio, and applies
  * or abandons it; it owns none of the drag, because the drag is Fabric's own

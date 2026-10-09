@@ -28,6 +28,8 @@
     "src/web/packages/editor/src/panes/add/add-pane.tsx",
     "src/web/packages/editor/src/panes/add/card-diagrams.tsx",
     "src/web/packages/editor/src/panes/add/add-pane.dom.test.tsx",
+    "src/web/packages/editor/src/panes/add/file-section.tsx",
+    "src/web/packages/editor/src/panes/add/file-section.dom.test.tsx",
     "src/web/packages/editor/src/new-object-panel.ts",
     "src/web/packages/editor/src/card-library.ts",
     "src/web/packages/editor/src/react-root-disposal.dom.test.ts",

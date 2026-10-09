@@ -998,6 +998,16 @@ body,
 .editor-shell-panel .vigilia-add-text .vigilia-add-label {
   font-size: var(--text-sm);
 }
+/* §5.2's file path at the pane's foot. The preview is bounded rather than
+   sized: an asset's intrinsic dimensions are the author's, so the picture is
+   contained inside a fixed height and never stretches the pane to its own
+   aspect. */
+.editor-shell-panel .vigilia-asset-preview {
+  display: block;
+  max-width: 100%;
+  max-height: 120px;
+  object-fit: contain;
+}
 .editor-shell-panel button,
 .editor-shell-panel input,
 .editor-shell-panel select,

@@ -381,11 +381,10 @@ it("brings the collapsed panel back on whichever pane is asked for", async () =>
   await act(async () => segment(root, "add").click());
 
   // Reopening brings the pane that was asked for, not the one it closed on.
-  // The Add pane now carries two hosts — the insert list and the asset library
-  // — so both are shown with it.
+  // The Add pane is one host now — the insert list and, at its foot, the
+  // declared-asset library render in one React tree.
   expect(panel.hidden).toBe(false);
   expect(layout.hosts.add.parentElement?.hidden).toBe(false);
-  expect(layout.hosts.assets.parentElement?.hidden).toBe(false);
 
   layout.destroy();
 });
@@ -598,7 +597,6 @@ it("keeps panel hosts mounted outside React's control", () => {
   // Panel owners hold these nodes; React only positions them. The Composition
   // pane is the exception: React renders that tree, so it owns no host node.
   expect(layout.hosts.add).toBeInstanceOf(HTMLElement);
-  expect(layout.hosts.assets).toBeInstanceOf(HTMLElement);
   expect(layout.hosts.document.parentElement).not.toBeNull();
   expect(layout.hosts.status.parentElement).not.toBeNull();
   // The selection column holds a panel, not a sentence: its appearance section

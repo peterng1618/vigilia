@@ -612,11 +612,13 @@ export const uiCopy = {
     cards: "Card",
     shapes: "Shape",
     charts: "Chart",
-    assets: "Assets",
-    /** The Assets pane's controls. `import` and `replace` are the two actions
-        the pane can take on a local file, so they are named as actions; the
-        select is labelled by what it lists rather than by the pane. */
-    importAsset: "Import asset",
+    /** The Add pane's file path: the declared-asset library the Assets pane
+        used to be. `import` and `replace` are the two actions the section can
+        take on a local file, so they are named as actions; the select is
+        labelled by what it lists rather than by the pane. An author imports a
+        *file* — the extension is what decides whether it becomes a layer or is
+        only declared — and replaces or removes the *asset* it became. */
+    importFile: "Import a file",
     replaceAsset: "Replace asset",
     assetList: "Asset",
     /** Shown when a chosen file is not a readable image, video or font the
