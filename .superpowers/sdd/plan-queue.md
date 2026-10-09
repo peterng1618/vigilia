@@ -330,3 +330,21 @@ overrides only render, sizes, offsets and cursor.
 The second deferred minor is closed too: the promoted entry now names §64 (where
 resize snapping is recorded present) and cites §175 as the constraint, matching the
 shape of its two siblings.
+
+## Queued 2026-10-10: `2026-10-10-design-md-replaces-the-bible.md`
+
+**Order: last, behind plan 4 and plans 5–6.** The user asked for it by name while plan 4
+(`the panes`) was active, so it is queued rather than started — `STATUS.md` names one active plan.
+
+Execution method chosen by the user 2026-10-10: **subagent-driven**, because Task 1 moves the
+bible's 448 lines into a new file by hand and a dropped `§N` marker silently orphans citations;
+the marker set needs an independent read before it is trusted.
+
+Why it is sequenced last rather than run in parallel: its Task 4 re-points every plan's
+"Normative companion" line, which means editing plan 4's file while plan 4's Tasks 4–12 are still
+in flight. The spec records the sequencing as hygiene rather than necessity — no citation's number
+changes — but the edit collision is real.
+
+Its spec is `docs/superpowers/specs/2026-10-10-design-md-replaces-the-bible-design.md`; the plan is
+six tasks and ends by deleting `docs/design/design-language.md`. **`vg-261`** (the elevation ladder
+declared twice) was filed while designing it and is deliberately not answered there.
