@@ -26,7 +26,7 @@ backlog it produced stays live in the register.
 
 ## Active work
 
-- **Plan 3 — [`the inspector`](docs/superpowers/plans/2026-10-08-the-inspector.md) — is the active plan**: Tasks 1–7 are complete through `73fea76e` after three fix rounds and two clean scoped re-reviews; Task 8, the control ratchet and no native control left in the column, is next.
+- **Plan 3 — [`the inspector`](docs/superpowers/plans/2026-10-08-the-inspector.md) — is the active plan**: Tasks 1–8 are complete through `59a678fe`, each reviewed, after three fix rounds and two clean scoped re-reviews; Task 9, the parity capture beside the mockup, is next.
 - **Plans 1 and 2 are complete and closed** — the gates and the control set, then the shell and the rail through `cea69cac`; exactly one plan is active at a time, and this is it.
 - **The spec is `draft` and unimplemented** — its acceptance sections are plans of measurement, not results.
 - **Reactify ([0039](docs/decisions/0039-the-editor-ui-is-react-and-only-the-canvas-is-imperative.md)) is the frame, not a phase** — every editor surface becomes React, only the canvas stays imperative, and no Fabric object is ever mirrored into React state.
@@ -35,15 +35,15 @@ backlog it produced stays live in the register.
 
 ## Last completed change
 
-- **The parity ledger names its whole instrument set** — `PRE_PLAN` in `index.dom.test.ts` says its 19 names are the *shared* floor and names the union that carries the claim; the census is recorded with its command at its own sha (**979 / 976 / 965**), `vigilia-field` is **0** in the inspector and 0 in `tests/e2e` (44 remain in plan 4's panes).
-- **Every re-pointed locator is driven by hook, and the driver obeys its own scoping rule** — 17 `selectOption` calls on `[data-vigilia-run-*]` become `chooseIn`, `chooseToken` delegates to a scoped `chooseLabelIn`, and `typeIntoControl` reads the slider's IDL `.min`/`.max` rather than `getAttribute` (`Number(null) === 0` pinned every value to the floor).
-- **The flake was a defect, not the loaded box** — `openList` fell back to a page-wide `[role="option"]` lookup whenever Base UI had not yet committed `open`, landing on a stale hidden option and timing out on a different case each run; it now waits for `aria-controls` and throws loudly instead.
-- **A read by presentation class becomes a hook** — `Select.Value` carries `data-vigilia-value` and `choiceOf` reads it; `sectionExpanded` throws for a missing section rather than answering `false`.
-- **Gates green** — vitest 36 files / 574; `author-journey-rebuild.spec.ts` **9/9 three times** by path at `--workers=1` after 7/2 and 8/1 on identical behaviour; `composition-panel:897` pre-existing and `vg-119` open, both unrelated.
+- **Task 8 read the ratchet rather than extending it, and that is the finding** — `design:check` exits **0** over **28** gated files, and an emptied list exits **1** naming the list, proved through one `os.tmpdir()` path because a `/tmp` literal resolves differently for Git Bash and Node and would have failed as "no such file" — a non-zero exit that looks like the proof while proving nothing.
+- **The guard was red-proved, not assumed** — planting `#ff00aa` and `7px` in a gated surface turned it red, so a green run is a measurement rather than an absence of one.
+- **No CSS was deleted, because the deletion set is empty** — `.vigilia-field*` still has live emitters in plan 4's panes and `.vigilia-resolution` is still emitted at `appearance.ts:233`; deleting them would break rendering now and fail the step's own grep, so the brief's conditional "Modify" line resolved to nothing.
+- **Ruling AE is applied** — the `PRE_PLAN` docblock reads **46** names with a remainder of **27**, the over-count caveat travelling beside the instrument rather than being dropped.
+- **The plan's own figures re-measured, one corrected** — `editor-shell.css` is 88 hex occurrences on **83** lines and the editor source 358 across 51 files; the controller's earlier **53** was a shared-`/g` `lastIndex` artefact, caught by the agent and reproduced by the reviewer.
 
 ## Next
 
-1. **Task 8 is next in plan 3** — the control ratchet and no native control left in the column; Task 9's parity capture and Task 10's register and close follow it. Its Step 1 census must carry two corrections: **Ruling AC** (the brief's command returns 4 — one comment and three slider queries in the control set's own test — so it must scope to non-test source, where the true count is 0) and **Ruling AE** (the docblock's 47 names is 46, and the remainder 27, because a comment at `190dc1a4` quotes the hook prefix).
+1. **Task 9 is next in plan 3** — the parity capture beside the mockup, with three pre-flight corrections: the three captures and their README rows **already exist**, so Step 1 is giving the existing ones the preconditions they lack (subject block leads, five sections with Position closed, a read-only Spends row with no editable control), and **two of the three images are stale** — card and shape were last written 2026-10-06 at `8b4274b7`, 328 commits back, before this plan rebuilt the column; `captureVisualReview` returns early and silently when `VIGILIA_CAPTURE` is unset, so "1 test ran" is not proof an image was written; and the dark-palette capture the brief requires is registered nowhere. Task 10's register and close follows.
 2. **The display proof is blocked on `vg-119`** — `author-journey-display.spec.ts` fails at `rebuild-composition.ts:148`'s stale `colour: "text"` (the document declares `palette.text`), an open row with its own owner; `vg-253` is the same file's 16 remaining `selectOption` sites, filed separately because fixing the colour leaves those failing.
 3. **Unpushed:** `develop` is far ahead of `origin/develop`; no push is authorised.
 
