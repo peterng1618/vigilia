@@ -272,3 +272,81 @@ test("every pane's title bar sits at the same top offset", async ({
     `title-bar tops: ${tops.map(([slot, y]) => `${slot} ${y}`).join(", ")}`,
   ).toEqual(tops.map(() => baseline));
 });
+
+/**
+ * The status bar's box, which no other gate in this plan can see.
+ *
+ * The strip **is** the deliverable, and its geometry is a rendered fact: a
+ * full-width bar flush to the window's right and bottom edges. jsdom has no
+ * layout, so `shell-layout.dom.test.tsx` can prove the footer's children and
+ * nothing can prove its box — the same blindness that failed Task 2 with a
+ * rendered offset.
+ *
+ * The last two assertions are F2's invariant. `min-height`, not `height`, is
+ * what §7.7 requires — a refusal may not be ellipsized, so a long diagnostic
+ * wraps and the strip grows a line rather than cutting the message or spilling
+ * over the stage. **No refusal reachable at this width is long enough to wrap**:
+ * the editor's own refusals are short fixed strings, and the one long message,
+ * `ARC_FILL_REFUSED` (~200 characters), needs a hand-authored theme carrying a
+ * filled arc — a filled arc the editor cannot make (its arcs are stroked). So
+ * the wrapping state is left to the declaration, and the guard asserted here is
+ * the invariant at rest: the content never exceeds the box it defines.
+ */
+test("the status bar is the window's full-width bottom edge", async ({
+  page,
+}, testInfo) => {
+  test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+
+  await page.goto(EDITOR);
+  await expect(
+    page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+  ).toBeVisible();
+
+  const box = await page.locator("#status").evaluate((node) => {
+    const rect = node.getBoundingClientRect();
+    // The window's own box, scrollbar excluded: `rect.right` against
+    // `innerWidth` would pass or fail on whether a scrollbar happens to be drawn.
+    const window_ = document.documentElement;
+    return {
+      width: Math.round(rect.width),
+      right: Math.round(rect.right),
+      bottom: Math.round(rect.bottom),
+      height: Math.round(rect.height),
+      windowWidth: window_.clientWidth,
+      windowHeight: window_.clientHeight,
+      scrollWidth: node.scrollWidth,
+      clientWidth: node.clientWidth,
+      scrollHeight: node.scrollHeight,
+      clientHeight: node.clientHeight,
+      hasDiagnostic:
+        node.querySelector(".editor-shell-diagnostic svg") !== null,
+    };
+  });
+
+  // The measurement is the report's evidence, so it is printed as well as
+  // asserted — the fixture-read pattern `design-language.spec.ts` uses.
+  const measured = JSON.stringify(box);
+  console.log(`status-bar ${measured}`);
+  testInfo.annotations.push({ type: "status-bar", description: measured });
+
+  expect(box.right, "the strip is flush with the window's right edge").toBe(
+    box.windowWidth,
+  );
+  expect(box.bottom, "the strip is flush with the window's bottom edge").toBe(
+    box.windowHeight,
+  );
+  expect(box.width, "the strip is the window's full width").toBe(
+    box.windowWidth,
+  );
+  // Nothing has refused yet, so the strip sits at its resting height.
+  expect(box.hasDiagnostic, "no diagnostic is showing at rest").toBe(false);
+  expect(box.height, "the strip's resting height is 26px").toBe(26);
+  expect(
+    box.scrollHeight,
+    "the strip's content overflows its own box",
+  ).toBeLessThanOrEqual(box.clientHeight);
+  expect(
+    box.scrollWidth,
+    "the strip's content overruns its width",
+  ).toBeLessThanOrEqual(box.clientWidth);
+});

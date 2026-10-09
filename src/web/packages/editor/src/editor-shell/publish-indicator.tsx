@@ -22,8 +22,11 @@ export function PublishIndicator({
   const state = useSyncExternalStore(store.subscribe, store.get, store.get);
   if (state.kind !== "known" || !state.answer.lan) return null;
 
+  // No live-region role: the mark mounts with its content, and a region inserted
+  // already carrying its text is not announced (`save-state.tsx` states the
+  // rule). The footer's always-mounted regions are the ones that speak.
   return (
-    <p className="editor-shell-live" role="status">
+    <p className="editor-shell-live">
       <Check aria-hidden size={12} strokeWidth={2.5} />
       {uiCopy.statusBar.live}
     </p>

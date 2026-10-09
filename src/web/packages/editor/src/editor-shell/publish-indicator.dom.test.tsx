@@ -27,6 +27,15 @@ const live: HostingSnapshot = {
   pending: undefined,
 };
 
+/** The host's answer with the LAN off: a *reported* state, and not live. */
+const off: HostingSnapshot = {
+  kind: "known",
+  answer: { lan: false, address: null, port: null, refusal: null },
+  pairing: undefined,
+  reason: undefined,
+  pending: undefined,
+};
+
 describe("the live mark", () => {
   let host: HTMLDivElement | undefined;
 
@@ -50,10 +59,21 @@ describe("the live mark", () => {
     expect(mounted.querySelector(".editor-shell-live")).toBeNull();
   });
 
+  it("shows no live mark when the host reports the LAN off", () => {
+    // "Off" is a *reported* state, not an unread one, so it takes its own case:
+    // a guard weakened to `state.kind !== "known"` would draw "live" for a host
+    // that answered off, and only this case catches it.
+    const mounted = mount(stubStore(off));
+    expect(mounted.querySelector(".editor-shell-live")).toBeNull();
+  });
+
   it("shows the live mark when the host reports the LAN on", () => {
     const mounted = mount(stubStore(live));
     const mark = mounted.querySelector(".editor-shell-live");
     expect(mark).not.toBeNull();
-    expect(mark?.textContent).toBe(uiCopy.statusBar.live);
+    // The literal the brief fixes, pinned so a different word cannot pass by
+    // changing `uiCopy` with it, and the constant read from the one owner.
+    expect(mark?.textContent).toBe("live");
+    expect(uiCopy.statusBar.live).toBe("live");
   });
 });

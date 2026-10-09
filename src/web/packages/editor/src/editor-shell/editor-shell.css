@@ -469,13 +469,17 @@ body,
   border-bottom: 1px solid var(--shell-edge);
   background: var(--shell-surface);
 }
-/* §7.6: the status bar is the window's bottom edge — a full-width 26px strip at
+/* §7.6: the status bar is the window's bottom edge — a full-width strip at
    elevation 0 with a hairline along its head, the twin of the header above the
    stage. It carries readings only: the counts the status host is handed, the
-   last diagnostic, save state and the live mark. No tools, no commands. */
+   last diagnostic, save state and the live mark. No tools, no commands.
+
+   `min-height`, not `height`: §7.7 forbids ellipsizing a refusal, so a long
+   diagnostic wraps and the strip grows a line rather than cutting the message or
+   spilling over the stage. The 26px is the resting height. */
 .editor-shell-status {
   flex: none;
-  height: 26px;
+  min-height: 26px;
   margin: 0;
   padding: 0 var(--space-14);
   display: flex;
@@ -1717,7 +1721,7 @@ body,
   opacity: 0.75;
 }
 /* The live mark: the host is serving this document on the LAN. Accent, because
-   it is the one fact in the footer that is a state rather than a message, and
+   it reads the host's own state rather than a message about the last edit, and
    `PublishIndicator` draws it only when the host reports the LAN on — an
    unknown host renders no claim (§9). */
 .editor-shell-live {
