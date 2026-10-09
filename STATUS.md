@@ -25,8 +25,8 @@ backlog it produced stays live in the register.
 
 ## Active work
 
-- **Plan 4 — [`the panes`](docs/superpowers/plans/2026-10-08-the-panes.md) — is the active plan, and it is 5 of its 13 tasks in**; plans 1–3 are closed and archived, and exactly one plan is active at a time.
-- **Tasks 1–4 and 13 landed** — the Composition pane's row, its attended-row affordances, the Add pane's insert surface and its absorbed file path, and every React root released on its own disposal path — and **Task 5, the paint list, opens the Tokens phase next**.
+- **Plan 4 — [`the panes`](docs/superpowers/plans/2026-10-08-the-panes.md) — is the active plan, and it is 6 of its 13 tasks in**; plans 1–3 are closed and archived, and exactly one plan is active at a time.
+- **Tasks 1–5 and 13 landed** — the Composition pane's row, its attended-row affordances, the Add pane's insert surface and its absorbed file path, every React root released on its own disposal path, and the Tokens pane's paint list — and **Task 6, the preset library beside the paint list, opens next**.
 - **Plan 4's ledger is `.superpowers/sdd/2026-10-08-the-panes/progress.md`** (git-ignored but on disk): it holds the predecessor reconciliation and rulings R1–R35, and a fresh session continues from it rather than from this file.
 - **Three plans remain after this one** — `2026-10-08-settings-and-appearance.md`, `2026-10-08-iconography-and-copy.md`, then [`2026-10-10-design-md-replaces-the-bible.md`](docs/superpowers/plans/2026-10-10-design-md-replaces-the-bible.md), queued and unstarted, subagent-driven when it runs; every plan ends with its §13 parity capture.
 - **Reactify ([0039](docs/decisions/0039-the-editor-ui-is-react-and-only-the-canvas-is-imperative.md)) is the frame, not a phase** — every editor surface becomes React, only the canvas stays imperative, and no Fabric object is ever mirrored into React state.
@@ -34,15 +34,15 @@ backlog it produced stays live in the register.
 
 ## Last completed change
 
-- **Assets stops existing** — `asset-manager/panel.ts` and its 369-line spec are deleted, `panes/add/file-section.tsx` carries the file path inside the Add pane, and `ShellHosts` loses its `assets` node so one node does what two did (R24 amended).
-- **The chooser's accept list follows the manager** — `ASSET_FILE_EXTENSIONS` is exported from `asset-manager/index.ts` and the accept string is derived from it, so adding a format can no longer make it silently unpickable (R33).
-- **An import keeps the author's selection** — parity with the deleted panel's own rule, verified against `git show c8dc0b1a~1` rather than against the claim (R34).
-- **One behaviour change is named, not silent** — the in-flight import guard is new, so a second pick inside the window is dropped with nothing said; the comment said the deleted panel did this, which was false, and R35 corrected it and pinned the drop with a case.
-- **Parity was verified line by line, not sampled** — all seven `data-vigilia-asset-*` hooks and the `role="alert"` refusal survive, and all ten deleted cases are present in the new spec.
+- **Paints are a list of swatch wells** — `panes/tokens/paint-list.tsx` and `tokens-pane.tsx` are new, and `palette-manager/panel.ts`'s factory now mounts one `createRoot` over them and returns `destroy()`.
+- **Identity replaces the imperative `built`/`shape` rebuild** — the field set is keyed by token *and* paint kind, so a colour change re-renders in place and a kind switch remounts; both directions are pinned, because only one was the measured defect.
+- **The pane's two nested roots die** — the picker and the gradient editor are React children now, so `react-root-disposal.dom.test.ts` declares `palette-manager/panel.ts` as **1**, down from 2 (R32).
+- **`panel.ts` is de-hexed and gated** — the four `#ffffff` literals Task 13 left are gone; the two that remain as authored data live in `newTokenPaint`, and the file joins `scripts/design-tokens.gated.json` (42 files gated, 20 violations before it joined).
+- **R19 landed** — `ui-copy.test.ts` chooses `[data-vigilia-palette-token-row="glow"]` instead of driving a native `<select>`, and the paint kinds are read from the Base UI popup that owns them.
 
 ## Next
 
-1. **Plan 4 Task 5 — the paint list** — opens the Tokens phase: `palette-manager/panel.ts`'s rendering leaves become React, its two nested `createRoot`s die, and it owns the `ui-copy.test.ts` re-point (R19) and the `destroy()` R29's guard needs.
+1. **Plan 4 Task 6 — the preset list** — `tokens-pane.tsx` is written so the preset library mounts beside the paint list from the same pane host, and `vg-094`'s binding is the task after it.
 2. **Tasks 6–12 follow:** the preset list and `vg-094`'s binding, the Document pane with its read-only References (R22), then the ratchet, the capture and the register.
 3. **The plan's rulings live in the ledger, not here** — R1–R27, including the preflight scan of Tasks 4–12 and its ten rulings, each verified against source before it was made.
 4. **The display proof stays blocked on `vg-119`** — `author-journey-display.spec.ts` fails at `rebuild-composition.ts:148`'s stale `colour: "text"`, an open row with its own owner; `vg-253` is the same file's 16 remaining `selectOption` sites.

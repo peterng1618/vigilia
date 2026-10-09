@@ -1,5 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { uiCopy } from "../../packages/editor/src/ui-copy.js";
+import { chooseIn } from "./control-set.js";
 import { captureVisualReview, enterLayer } from "./editor-canvas.js";
 import { openPane } from "./editor-rail.js";
 import { isDesktopSurface } from "./surface.js";
@@ -133,7 +134,7 @@ test("the palette picker lands beside its trigger, and its tracks answer the arr
   // the picker belongs to a **solid** token — a gradient's editor is a different
   // surface, which is why the token is named rather than left at the default.
   await openPane(page, "Tokens");
-  await page.locator("[data-vigilia-palette-token]").selectOption("background");
+  await chooseIn(page, "[data-vigilia-palette-token]", "background");
 
   const trigger = page.getByTestId("picker-trigger");
   await expect(trigger).toBeVisible();

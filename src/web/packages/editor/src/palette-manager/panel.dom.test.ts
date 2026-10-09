@@ -1,36 +1,104 @@
 // @vitest-environment jsdom
+
+/**
+ * The palette panel's factory: what `editor-session` constructs and calls.
+ *
+ * The field rules — a colour edit, a paint-kind switch, the picker's identity,
+ * the reassignment-on-delete — are the Tokens pane's now and are asserted in
+ * `panes/tokens/paint-list.dom.test.tsx`, against the component that owns them.
+ * What is left here is the contract the session holds: `render` paints
+ * synchronously, a commit travels out through the callbacks it was built with,
+ * and `destroy` releases what it created.
+ */
+import type { FabricPalette } from "@vigilia/renderer-core";
 import { act } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createPalettePanel } from "./panel.js";
 
+const palette = {
+  none: {
+    name: "None",
+    value: { kind: "solid" as const, color: "transparent" },
+  },
+  background: {
+    name: "Background",
+    value: { kind: "solid" as const, color: "#102030" },
+  },
+  accent: {
+    name: "Accent",
+    value: { kind: "solid" as const, color: "#00b8d9" },
+  },
+};
+
+// The three browser APIs Base UI's popups need and jsdom has none of — the same
+// three `control.dom.test.tsx` supplies, for the same reason.
+globalThis.ResizeObserver ??= class {
+  observe(): void {}
+  unobserve(): void {}
+  disconnect(): void {}
+} as never;
+Element.prototype.getAnimations ??= (): never[] => [];
+window.PointerEvent ??= MouseEvent as never;
+// jsdom ships no `CSS`; the colour guard asks the platform by name.
+(globalThis as { CSS?: unknown }).CSS = {
+  supports: (_property: string, value: string): boolean =>
+    /^(#[0-9a-f]{3,8}|rgb|hsl|transparent|white|black)/i.test(value),
+};
+
+(
+  globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
+).IS_REACT_ACT_ENVIRONMENT = true;
+
+afterEach(() => {
+  document.body.replaceChildren();
+  vi.restoreAllMocks();
+});
+
+/** Types into a field the way an author does, and commits it by leaving. */
+async function commitField(control: string, value: string): Promise<void> {
+  const input = document.querySelector<HTMLInputElement>(control);
+  if (input === null) throw new Error(`no field matches ${control}`);
+  await act(async () => {
+    input.focus();
+    const setter = Object.getOwnPropertyDescriptor(
+      Object.getPrototypeOf(input) as HTMLInputElement,
+      "value",
+    )?.set;
+    if (setter === undefined) input.value = value;
+    else setter.call(input, value);
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await act(async () => {
+    input.blur();
+  });
+}
+
 describe("palette panel", () => {
-  const palette = {
-    none: {
-      name: "None",
-      value: { kind: "solid" as const, color: "transparent" },
-    },
-    background: {
-      name: "Background",
-      value: { kind: "solid" as const, color: "#102030" },
-    },
-  };
+  it("paints the tokens on render without waiting for a frame", () => {
+    const panel = createPalettePanel(document.body, vi.fn());
+    expect(
+      document.querySelectorAll("[data-vigilia-palette-token-row]"),
+    ).toHaveLength(0);
 
-  afterEach(() => document.body.replaceChildren());
+    panel.render(palette);
 
-  it("edits a Fabric-compatible solid colour without changing its stable id", () => {
+    // Read straight after the call, with no `act` in between: the session
+    // renders this on every envelope change, and a surface that landed later
+    // would be a frame behind the document it describes.
+    expect(
+      Array.from(
+        document.querySelectorAll("[data-vigilia-palette-token-row]"),
+        (row) => row.getAttribute("data-vigilia-palette-token-row"),
+      ),
+    ).toEqual(["background", "accent"]);
+  });
+
+  it("commits an edit under the token's stable id, through the callback it was built with", async () => {
     const change = vi.fn();
     const panel = createPalettePanel(document.body, change);
     panel.render(palette);
-    const token = document.querySelector<HTMLSelectElement>(
-      "[data-vigilia-palette-token]",
-    )!;
-    token.value = "background";
-    token.dispatchEvent(new Event("change"));
-    const color = document.querySelector<HTMLInputElement>(
-      "[data-vigilia-palette-color]",
-    )!;
-    color.value = "rgb(16 32 48)";
-    color.dispatchEvent(new Event("change"));
+
+    await commitField("[data-vigilia-palette-color]", "rgb(16 32 48)");
 
     expect(change).toHaveBeenLastCalledWith({
       ...palette,
@@ -41,255 +109,91 @@ describe("palette panel", () => {
     });
   });
 
-  it("creates gradients with editable validated stops", () => {
-    const change = vi.fn();
-    const panel = createPalettePanel(document.body, change);
-    panel.render(palette);
-    const token = document.querySelector<HTMLSelectElement>(
-      "[data-vigilia-palette-token]",
-    )!;
-    token.value = "background";
-    token.dispatchEvent(new Event("change"));
-    const kind = document.querySelector<HTMLSelectElement>(
-      "[data-vigilia-palette-kind]",
-    )!;
-    kind.value = "gradient";
-    kind.dispatchEvent(new Event("change"));
-
-    expect(change).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        background: {
-          name: "Background",
-          // Both stops are the colour being replaced, `#102030`, alpha and all
-          // — see `seedPaint`. White and black is what it used to invent.
-          value: {
-            kind: "gradient",
-            angle: 0,
-            stops: [
-              { offset: 0, color: "#102030" },
-              { offset: 1, color: "#102030" },
-            ],
-          },
-        },
-      }),
-    );
-
-    const angle = document.querySelector<HTMLInputElement>(
-      "[data-vigilia-palette-angle]",
-    )!;
-    angle.value = "45";
-    angle.dispatchEvent(new Event("change"));
-    expect(change).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        background: expect.objectContaining({
-          value: expect.objectContaining({
-            angle: 45,
-            stops: [
-              { offset: 0, color: "#102030" },
-              { offset: 1, color: "#102030" },
-            ],
-          }),
-        }),
-      }),
-    );
-
-    document
-      .querySelector<HTMLButtonElement>("[data-vigilia-palette-add-stop]")!
-      .click();
-    expect(change).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        background: expect.objectContaining({
-          value: expect.objectContaining({
-            stops: expect.arrayContaining([{ offset: 1, color: "#102030" }]),
-          }),
-        }),
-      }),
-    );
-  });
-
-  it("carries the colour across a paint-kind switch in both directions", () => {
-    // The row's measurement: choosing Linear gradient over a 30% alpha panel
-    // replaced it, in one dropdown choice, with an opaque white-to-black sweep
-    // and undo was the way back. A translucent token must stay translucent, and
-    // going back to a solid must not pick a colour the author never had.
-    const change = vi.fn();
-    const panel = createPalettePanel(document.body, change);
-    panel.render({
-      frost: {
-        name: "Frosted panel",
-        value: { kind: "solid", color: "#0815234d" },
-      },
-    });
-    const kind = (): HTMLSelectElement =>
-      document.querySelector<HTMLSelectElement>("[data-vigilia-palette-kind]")!;
-    act(() =>
-      panel.render({
-        frost: {
-          name: "Frosted panel",
-          value: { kind: "solid", color: "#0815234d" },
-        },
-      }),
-    );
-
-    act(() => {
-      kind().value = "gradient";
-      kind().dispatchEvent(new Event("change"));
-    });
-    expect(change).toHaveBeenLastCalledWith({
-      frost: {
-        name: "Frosted panel",
-        value: {
-          kind: "gradient",
-          angle: 0,
-          stops: [
-            { offset: 0, color: "#0815234d" },
-            { offset: 1, color: "#0815234d" },
-          ],
-        },
-      },
-    });
-
-    // Now the gradient has a first stop the author moved, and going back to a
-    // solid should take that rather than white.
-    const firstStop = document.querySelector<HTMLInputElement>(
-      "[data-vigilia-palette-stop-color]",
-    )!;
-    act(() => {
-      firstStop.value = "#0a16234d";
-      firstStop.dispatchEvent(new Event("change"));
-    });
-    act(() => {
-      kind().value = "solid";
-      kind().dispatchEvent(new Event("change"));
-    });
-    expect(change).toHaveBeenLastCalledWith({
-      frost: {
-        name: "Frosted panel",
-        value: { kind: "solid", color: "#0a16234d" },
-      },
-    });
-  });
-
-  it("keeps the reserved transparent token immutable", () => {
-    const change = vi.fn();
-    const panel = createPalettePanel(document.body, change);
-    panel.render(palette);
-
-    expect(
-      document.querySelector<HTMLInputElement>("[data-vigilia-palette-name]")!
-        .disabled,
-    ).toBe(true);
-    expect(document.querySelector("[data-vigilia-palette-kind]")).toBeNull();
-    expect(change).not.toHaveBeenCalled();
-  });
-
-  it("leaves the picker's own trigger standing through a colour commit", () => {
-    // The picker is a popover anchored to its trigger, and the trigger lives in
-    // the field set. When a commit rebuilt that set the anchor was detached and
-    // the open popover measured a zero rect — one click on the saturation
-    // square threw it to the top-left corner of the window, 1300px from the
-    // control that owns it.
-    const change = vi.fn();
-    const panel = createPalettePanel(document.body, change);
-    const token = (): HTMLSelectElement =>
-      document.querySelector<HTMLSelectElement>(
-        "[data-vigilia-palette-token]",
-      )!;
-    // The picker is a React root of its own, so the fields only exist once
-    // React has flushed — without this the assertion below reads nothing.
-    act(() => panel.render(palette));
-    act(() => {
-      token().value = "background";
-      token().dispatchEvent(new Event("change"));
-    });
-
-    const trigger = document.querySelector(
-      "[data-vigilia-palette-picker] button",
-    );
-    expect(trigger).not.toBeNull();
-
-    const color = document.querySelector<HTMLInputElement>(
-      "[data-vigilia-palette-color]",
-    )!;
-    act(() => {
-      color.value = "rgb(1 2 3)";
-      color.dispatchEvent(new Event("change"));
-    });
-
-    // The same node, still in the document — not an equal one that replaced it.
-    expect(document.querySelector("[data-vigilia-palette-picker] button")).toBe(
-      trigger,
-    );
-    expect(trigger?.isConnected).toBe(true);
-    expect(change).toHaveBeenCalledOnce();
-  });
-
-  it("keeps the second gradient edit from reverting the first", () => {
-    // Both edits come from fields built once, so a listener closing over the
-    // entry it was built with would write the second stop list over the first.
-    const change = vi.fn();
-    const panel = createPalettePanel(document.body, change);
-    panel.render(palette);
-    const token = document.querySelector<HTMLSelectElement>(
-      "[data-vigilia-palette-token]",
-    )!;
-    token.value = "background";
-    token.dispatchEvent(new Event("change"));
-    const kind = document.querySelector<HTMLSelectElement>(
-      "[data-vigilia-palette-kind]",
-    )!;
-    kind.value = "gradient";
-    kind.dispatchEvent(new Event("change"));
-
-    const angle = document.querySelector<HTMLInputElement>(
-      "[data-vigilia-palette-angle]",
-    )!;
-    angle.value = "45";
-    angle.dispatchEvent(new Event("change"));
-
-    const firstColour = document.querySelectorAll<HTMLInputElement>(
-      "[data-vigilia-palette-stop-color]",
-    )[0];
-    expect(firstColour).toBeDefined();
-    firstColour!.value = "#ff0000";
-    firstColour!.dispatchEvent(new Event("change"));
-
-    expect(change).toHaveBeenLastCalledWith(
-      expect.objectContaining({
-        background: expect.objectContaining({
-          value: expect.objectContaining({
-            angle: 45,
-            stops: [
-              { offset: 0, color: "#ff0000" },
-              { offset: 1, color: "#102030" },
-            ],
-          }),
-        }),
-      }),
-    );
-  });
-
-  it("requires a replacement before deleting a token", () => {
+  it("carries the reassignment-on-delete out through its own callback", async () => {
     const remove = vi.fn();
     const panel = createPalettePanel(document.body, vi.fn(), remove);
-    panel.render({
-      ...palette,
-      accent: { name: "Accent", value: { kind: "solid", color: "#00b8d9" } },
+    panel.render(palette);
+
+    await act(async () => {
+      panel.root
+        .querySelector<HTMLButtonElement>("[data-vigilia-palette-delete]")!
+        .dispatchEvent(new MouseEvent("click", { bubbles: true }));
     });
-    const token = document.querySelector<HTMLSelectElement>(
-      "[data-vigilia-palette-token]",
-    )!;
-    token.value = "background";
-    token.dispatchEvent(new Event("change"));
 
-    const replacement = document.querySelector<HTMLSelectElement>(
-      "[data-vigilia-palette-replacement]",
-    )!;
-    replacement.value = "accent";
-    document
-      .querySelector<HTMLButtonElement>("[data-vigilia-palette-delete]")!
-      .click();
+    // The default target is the first token the chooser does not exclude —
+    // `none` included, as the imperative panel allowed: reassigning to the
+    // reserved transparent token is how an author says "stop painting this".
+    expect(remove).toHaveBeenCalledWith("background", "none");
+  });
 
-    expect(remove).toHaveBeenCalledWith("background", "accent");
+  it("re-reads the scene on every render, and states an absent reading", () => {
+    // The figure is derived, so it needs the walk re-read per draw; without one
+    // the pane prints a number that only refreshes when the palette changes.
+    let uses: Readonly<
+      Record<string, readonly { objectId: string; name: string }[]>
+    > = {
+      background: [{ objectId: "a", name: "Card title" }],
+      accent: [],
+    };
+    const panel = createPalettePanel(document.body, vi.fn(), undefined, {
+      usage: () => uses,
+    });
+    panel.render(palette);
+    // Scoped to the panel's own root: this test stands two of them at once, and
+    // a document-wide query would read whichever was mounted first.
+    const figure = (): string =>
+      panel.root
+        .querySelector(
+          '[data-vigilia-palette-token-row="background"] [data-vigilia-palette-usage]',
+        )
+        ?.textContent?.trim() ?? "";
+    expect(figure()).toBe("1");
+
+    uses = { background: [], accent: [] };
+    panel.render(palette);
+    expect(figure()).toBe("0");
+
+    const bare = createPalettePanel(document.body, vi.fn());
+    bare.render(palette);
+    const stated =
+      bare.root
+        .querySelector(
+          '[data-vigilia-palette-token-row="background"] [data-vigilia-palette-usage]',
+        )
+        ?.textContent?.trim() ?? "";
+    // §97: a panel with no scene to read says so rather than defaulting to 0.
+    expect(stated).not.toBe("0");
+    expect(stated).not.toBe("");
+  });
+
+  it("removes its own section on destroy", () => {
+    const panel = createPalettePanel(document.body, vi.fn());
+    panel.render(palette);
+    expect(panel.root.isConnected).toBe(true);
+
+    panel.destroy();
+
+    expect(panel.root.isConnected).toBe(false);
+    expect(
+      document.querySelectorAll("[data-vigilia-palette-token-row]"),
+    ).toHaveLength(0);
+  });
+
+  it("holds no fabricated state between two palettes", () => {
+    const panel = createPalettePanel(document.body, vi.fn());
+    panel.render(palette);
+    const next: FabricPalette = {
+      accent: palette.accent,
+      accent2: { name: "Accent 2", value: { kind: "solid", color: "#ff0000" } },
+    };
+
+    panel.render(next);
+
+    expect(
+      Array.from(
+        document.querySelectorAll("[data-vigilia-palette-token-row]"),
+        (row) => row.getAttribute("data-vigilia-palette-token-row"),
+      ),
+    ).toEqual(["accent", "accent2"]);
   });
 });

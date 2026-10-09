@@ -1,107 +1,130 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from "vitest";
-import { createPalettePanel } from "./panel.js";
 
 /**
- * What a token is linked to, in the panel.
+ * What a token is linked to, in the pane.
  *
- * The count and the delete guard have to come from one walk: a panel saying
+ * The count and the delete guard have to come from one walk: a pane saying
  * "3 uses" while the delete decides from a different traversal is how a token
  * is removed from under a live object. `usage` is injected rather than
- * recomputed here, so this file asserts the panel reports what it is given and
+ * recomputed here, so this file asserts the pane reports what it is given and
  * names the objects — the traversal itself is proven in scene-fabric.
+ *
+ * The figure rides each row and the users list names the chosen token's objects,
+ * so a dead token is visible without being selected first and the list is the
+ * confirmation.
  */
+import { act } from "react";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { uiCopy } from "../ui-copy.js";
+import { createPalettePanel } from "./panel.js";
+
+const palette = {
+  accent: {
+    name: "Accent",
+    value: { kind: "solid" as const, color: "#00b8d9" },
+  },
+  unused: {
+    name: "Unused",
+    value: { kind: "solid" as const, color: "#334455" },
+  },
+};
+
+// Base UI's popups need the browser APIs jsdom has none of.
+globalThis.ResizeObserver ??= class {
+  observe(): void {}
+  unobserve(): void {}
+  disconnect(): void {}
+} as never;
+Element.prototype.getAnimations ??= (): never[] => [];
+window.PointerEvent ??= MouseEvent as never;
+
+(
+  globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
+).IS_REACT_ACT_ENVIRONMENT = true;
+
+afterEach(() => {
+  document.body.replaceChildren();
+  vi.restoreAllMocks();
+});
+
+const usage = (): Readonly<
+  Record<string, readonly { objectId: string; name: string }[]>
+> => ({
+  accent: [
+    { objectId: "card", name: "Card title" },
+    { objectId: "header", name: "Header" },
+    { objectId: "gauge", name: "RAM gauge" },
+  ],
+  unused: [],
+});
+
+function render(withScene = true): HTMLElement {
+  const panel = createPalettePanel(
+    document.body,
+    vi.fn(),
+    undefined,
+    withScene ? { usage } : {},
+  );
+  panel.render(palette);
+  return document.body;
+}
+
+/** The figure the row for a token prints. */
+const figure = (id: string): string =>
+  document
+    .querySelector(`[data-vigilia-palette-token-row="${id}"]`)
+    ?.querySelector("[data-vigilia-palette-usage]")?.textContent ?? "";
+
+/** The whole row, which carries the token's own name beside the figure. */
+const row = (id: string): HTMLElement =>
+  document.querySelector<HTMLElement>(
+    `[data-vigilia-palette-token-row="${id}"]`,
+  )!;
+
+const users = (): HTMLElement | null =>
+  document.querySelector("[data-vigilia-palette-users]");
+
 describe("palette token usage", () => {
-  const palette = {
-    accent: {
-      name: "Accent",
-      value: { kind: "solid" as const, color: "#00b8d9" },
-    },
-    unused: {
-      name: "Unused",
-      value: { kind: "solid" as const, color: "#334455" },
-    },
-  };
-
-  afterEach(() => document.body.replaceChildren());
-
-  const usage = (): Readonly<
-    Record<string, readonly { objectId: string; name: string }[]>
-  > => ({
-    accent: [
-      { objectId: "card", name: "Card title" },
-      { objectId: "header", name: "Header" },
-      { objectId: "gauge", name: "RAM gauge" },
-    ],
-    unused: [],
-  });
-
-  const render = (): HTMLElement => {
-    const panel = createPalettePanel(document.body, vi.fn(), undefined, {
-      usage,
-    });
-    panel.render(palette);
-    return document.body;
-  };
-
-  const count = (id: string): string => {
-    const option = document.querySelector<HTMLOptionElement>(
-      `[data-vigilia-palette-token] option[value="${id}"]`,
-    )!;
-    return option.textContent ?? "";
-  };
-
   it("names how many objects a token is linked to, per token", () => {
     render();
 
-    expect(count("accent")).toContain("3");
-    expect(count("unused")).toContain("0");
+    expect(figure("accent")).toContain("3");
+    expect(figure("unused")).toContain("0");
   });
 
   it("still shows the token's own name beside the count", () => {
     render();
 
-    expect(count("accent")).toContain("Accent");
+    expect(row("accent").textContent).toContain("Accent");
   });
 
   it("names the objects a token is used by", () => {
     render();
 
-    const listed = document.querySelector("[data-vigilia-palette-users]")!;
-    expect(listed.textContent).toContain("Card title");
-    expect(listed.textContent).toContain("Header");
-    expect(listed.textContent).toContain("RAM gauge");
+    expect(users()?.textContent).toContain("Card title");
+    expect(users()?.textContent).toContain("Header");
+    expect(users()?.textContent).toContain("RAM gauge");
   });
 
-  it("says so plainly when nothing uses the token, so dead tokens show", () => {
-    const panel = createPalettePanel(document.body, vi.fn(), undefined, {
-      usage,
-    });
-    panel.render(palette);
-    const token = document.querySelector<HTMLSelectElement>(
-      "[data-vigilia-palette-token]",
-    )!;
-    token.value = "unused";
-    token.dispatchEvent(new Event("change"));
-
-    // The count is on the option, so a dead token is visible without selecting
+  it("says so plainly when nothing uses the token, so dead tokens show", async () => {
+    render();
+    // The figure is on the row, so a dead token is visible without selecting
     // it; the list is the confirmation.
-    expect(count("unused")).toContain("0");
-    expect(
-      document.querySelector("[data-vigilia-palette-users]")!.textContent,
-    ).not.toContain("Card title");
+    expect(figure("unused")).toContain("0");
+
+    await act(async () => {
+      row("unused").dispatchEvent(new MouseEvent("click", { bubbles: true }));
+    });
+    expect(users()?.textContent).not.toContain("Card title");
   });
 
-  it("omits the count entirely when the panel is given no scene to read", () => {
+  it("states an absent reading when the panel is given no scene to read", () => {
     // Without a usage source the panel has no scene. Printing 0 there would be
     // fabricating a measurement — the same rule as a gap in telemetry (§97).
-    const panel = createPalettePanel(document.body, vi.fn());
-    panel.render(palette);
+    render(false);
 
-    const option = document.querySelector<HTMLOptionElement>(
-      `[data-vigilia-palette-token] option[value="accent"]`,
-    )!;
-    expect(option.textContent).toBe("Accent");
-    expect(document.querySelector("[data-vigilia-palette-users]")).toBeNull();
+    expect(figure("accent")).toBe(uiCopy.panels.notSet);
+    expect(figure("accent")).not.toBe("0");
+    expect(users()).toBeNull();
   });
 });

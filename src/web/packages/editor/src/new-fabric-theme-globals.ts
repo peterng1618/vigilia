@@ -46,6 +46,15 @@ export const panel = "#081523d9";
  */
 export const frost = "#0815234d";
 
+/**
+ * The paint a token added from the Tokens pane is seeded with.
+ *
+ * Authored data rather than a design decision — the author's next edit replaces
+ * it — so it sits with the theme's other default paints and not in a surface
+ * that is gated against colour literals (`scripts/design-tokens.gated.json`).
+ */
+export const newTokenPaint = "#ffffff";
+
 export const starterPalette = {
   none: { name: "None", value: { kind: "solid", color: "transparent" } },
   // Not the artboard's paint any more — that is `none`, because the backdrop is

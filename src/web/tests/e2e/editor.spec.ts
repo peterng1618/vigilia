@@ -681,27 +681,34 @@ test.describe("Fabric editor route", () => {
     await openPane(page, "Tokens");
     await page.getByRole("button", { name: "Add colour" }).click();
     const field = page.locator("[data-vigilia-palette-color]");
+    // The reason is the Tokens pane's own line beside the field now. The
+    // imperative panel put it in the platform's validation bubble
+    // (`setCustomValidity` + `reportValidity`), which a React field cannot keep:
+    // `ControlText` owns its draft and hands the committed value up, so the
+    // refusal is the parent's to state.
+    const refusal = page.locator("[data-vigilia-palette-error]");
 
     // jsdom has no `CSS` object, so this refusal can only be proven where the
     // predicate actually lives: the browser that will paint the value.
     await field.fill("#123456");
     await field.press("Tab");
-    await expect(field).toHaveJSProperty("validity.valid", true);
+    await expect(field).toHaveValue("#123456");
+    await expect(refusal).toHaveCount(0);
 
     // A value the engine rejects is refused with a message that names it, and
     // `ctx.fillStyle` would have kept the PREVIOUS colour — so accepting it
-    // writes a document the renderer cannot honour.
+    // writes a document the renderer cannot honour. The field falls back to the
+    // colour the document still holds; the reason sits beside it.
     await field.fill("not-a-colour");
     await field.press("Tab");
-    await expect(field).toHaveJSProperty("validity.valid", false);
-    expect(
-      await field.evaluate((node: HTMLInputElement) => node.validationMessage),
-    ).toContain("not-a-colour");
+    await expect(refusal).toHaveText(/not-a-colour/);
+    await expect(field).toHaveValue("#123456");
 
     // The refusal is not sticky: a value the engine can paint clears it.
     await field.fill("rgb(1, 2, 3)");
     await field.press("Tab");
-    await expect(field).toHaveJSProperty("validity.valid", true);
+    await expect(field).toHaveValue("rgb(1, 2, 3)");
+    await expect(refusal).toHaveCount(0);
   });
 
   test("mounts the adopted editor shell on the editor stage", async ({
@@ -1069,10 +1076,10 @@ test.describe("Fabric editor route", () => {
     // `text` is the token the new panel's border and shadow now point at. The
     // palette panel is the Tokens pane's, so it is in the Tokens pane.
     await openPane(page, "Tokens");
-    await page.locator("[data-vigilia-palette-token]").selectOption("text");
-    await page
-      .locator("[data-vigilia-palette-replacement]")
-      .selectOption("dim");
+    // The Tokens pane's choosers are Base UI selects now, so a choice is a
+    // click into an opened listbox rather than a native `selectOption`.
+    await chooseIn(page, "[data-vigilia-palette-token]", "text");
+    await chooseIn(page, "[data-vigilia-palette-replacement]", "dim");
     await page.locator("[data-vigilia-palette-delete]").click();
 
     const envelope = (await saveEnvelope(page)) as {
@@ -1736,9 +1743,7 @@ test.describe("Fabric editor route", () => {
     await page.goto(EDITOR);
     // The palette panel is the Tokens pane's, so it is in the Tokens pane.
     await openPane(page, "Tokens");
-    await page
-      .locator("[data-vigilia-palette-token]")
-      .selectOption("background");
+    await chooseIn(page, "[data-vigilia-palette-token]", "background");
     const color = page.locator("[data-vigilia-palette-color]");
     await color.fill("rgb(16 32 48)");
     await color.press("Tab");
@@ -1768,14 +1773,15 @@ test.describe("Fabric editor route", () => {
     // reason. `bars` is the artboard's `barColor`; its own paint is `none`
     // since the backdrop became packaged media, so `background` — the token
     // this used to delete — is no longer referenced by it.
-    await page.locator("[data-vigilia-palette-token]").selectOption("bars");
-    await page
-      .locator("[data-vigilia-palette-replacement]")
-      .selectOption("panel");
+    await chooseIn(page, "[data-vigilia-palette-token]", "bars");
+    await chooseIn(page, "[data-vigilia-palette-replacement]", "panel");
     await captureVisualReview(page, testInfo, "editor-palette-reassignment");
     await page.locator("[data-vigilia-palette-delete]").click();
+    // The row is the token's own well in the list, so a deletion takes the
+    // whole row with it — the same fact `option[value="bars"]` stated about
+    // the native chooser it used to be.
     await expect(
-      page.locator('[data-vigilia-palette-token] option[value="bars"]'),
+      page.locator('[data-vigilia-palette-token-row="bars"]'),
     ).toHaveCount(0);
 
     const envelope = (await saveEnvelope(page)) as {
@@ -1794,12 +1800,8 @@ test.describe("Fabric editor route", () => {
     await page.goto(EDITOR);
     // The palette panel is the Tokens pane's, so it is in the Tokens pane.
     await openPane(page, "Tokens");
-    await page
-      .locator("[data-vigilia-palette-token]")
-      .selectOption("chartTrack");
-    await page
-      .locator("[data-vigilia-palette-replacement]")
-      .selectOption("bars");
+    await chooseIn(page, "[data-vigilia-palette-token]", "chartTrack");
+    await chooseIn(page, "[data-vigilia-palette-replacement]", "bars");
     await page.locator("[data-vigilia-palette-delete]").click();
 
     const envelope = (await saveEnvelope(page)) as {

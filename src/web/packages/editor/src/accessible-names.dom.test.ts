@@ -66,10 +66,11 @@ const FIELDS = "input,select,textarea";
  *
  * A carrier is hidden by `clip-path`, not by `[hidden]`, so it is in the markup
  * and in no accessibility tree: unfocusable and unannounced, exactly what the
- * file pickers are. The run editor's five — its four selects and its swatch,
- * which is `SelectControl` with an adornment — the inspector's three paint
- * selects and its four toggles are what this exclusion is for; naming them would
- * create the `<label for>` pointing at nothing this comment already refuses.
+ * file pickers are. The Tokens pane's three selects, the run editor's five — its
+ * four selects and its swatch, which is `SelectControl` with an adornment — the
+ * inspector's three paint selects and its four toggles are what this exclusion is
+ * for; naming them would create the `<label for>` pointing at nothing this
+ * comment already refuses.
  *
  * Neither exclusion is a hole, and the sibling test is why: every element this
  * predicate skips is enumerated in "names every skipped element", so a control
@@ -195,6 +196,13 @@ describe("editor panels", () => {
           }`,
       );
     expect(skipped).toEqual([
+      // The Tokens pane's three: the token chooser, the paint-kind chooser and
+      // the reassignment chooser, each a `ControlSelect`'s value carrier. They
+      // lead the list because the pane is the first thing in `root` that renders
+      // one — the imperative panel's natives were not skipped at all.
+      "INPUT[type=][aria-hidden]", // Colour token
+      "INPUT[type=][aria-hidden]", // Paint kind
+      "INPUT[type=][aria-hidden]", // Reassign
       // The run editor's five: four `ControlSelect`s and one `ControlSwatch`,
       // which is `SelectControl` with an adornment — each a Base UI select's
       // value carrier.
@@ -466,10 +474,13 @@ function identity(element: HTMLElement): string {
     : `[data-${data[0]}]`;
 }
 
+/** Chooses a token the way an author does. The chooser stopped being a native
+ *  `<select>` when the Tokens pane became React, so the drive is the row: a
+ *  discrete event, which React commits before the next line. */
 function selectPaletteToken(root: HTMLElement, id: string): void {
-  const token = root.querySelector<HTMLSelectElement>(
-    "[data-vigilia-palette-token]",
-  )!;
-  token.value = id;
-  token.dispatchEvent(new Event("change"));
+  const token = root.querySelector<HTMLElement>(
+    `[data-vigilia-palette-token-row="${id}"]`,
+  );
+  if (token === null) throw new Error(`no token row for "${id}"`);
+  token.click();
 }

@@ -1,6 +1,6 @@
 import { expect, type Page, test } from "@playwright/test";
 import { readThemePackage, writeThemePackage } from "@vigilia/theme-package";
-import { typeIntoControl } from "./control-set.js";
+import { chooseIn, typeIntoControl } from "./control-set.js";
 import { captureVisualReview, clientOfScene } from "./editor-canvas.js";
 import { openPane } from "./editor-rail.js";
 import {
@@ -387,7 +387,7 @@ test.describe("authoring frosted glass through the inspector", () => {
     // treatment has to survive, with the backdrop still visible behind it. The
     // palette panel is the Tokens pane's, so it is in the Tokens pane.
     await openPane(page, "Tokens");
-    await page.locator("[data-vigilia-palette-token]").selectOption("edge");
+    await chooseIn(page, "[data-vigilia-palette-token]", "edge");
     const colour = page.locator("[data-vigilia-palette-color]");
     await colour.fill("rgb(200 220 255)");
     await colour.press("Tab");

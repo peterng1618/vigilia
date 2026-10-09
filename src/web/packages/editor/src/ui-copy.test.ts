@@ -105,7 +105,7 @@ function pictographs(value: unknown, path = "uiCopy"): string[] {
  * an asset's, a preset's — and is deliberately not covered; the paint kinds
  * are copy and are listed by name.
  */
-it("leaves the three panels with no copy of their own", () => {
+it("leaves the three panels with no copy of their own", async () => {
   const root = document.createElement("div");
   document.body.append(root);
 
@@ -121,33 +121,39 @@ it("leaves the three panels with no copy of their own", () => {
     { width: 1280, height: 720 },
     { name: "Living Room", themeLanguage: "en" },
   );
-  createPalettePanel(
+  const palettePanel = createPalettePanel(
     root,
     () => undefined,
     () => undefined,
-  ).render({
-    background: { name: "Background", value: { kind: "solid", color: "#000" } },
-    glow: {
-      name: "Glow",
-      value: {
-        kind: "gradient",
-        angle: 45,
-        stops: [
-          { offset: 0, color: "#ffffff" },
-          { offset: 1, color: "#000000" },
-        ],
+  );
+  await act(async () => {
+    palettePanel.render({
+      background: {
+        name: "Background",
+        value: { kind: "solid", color: "#000" },
       },
-    },
-    accent: { name: "Accent", value: { kind: "solid", color: "#0ff" } },
+      glow: {
+        name: "Glow",
+        value: {
+          kind: "gradient",
+          angle: 45,
+          stops: [
+            { offset: 0, color: "#ffffff" },
+            { offset: 1, color: "#000000" },
+          ],
+        },
+      },
+      accent: { name: "Accent", value: { kind: "solid", color: "#0ff" } },
+    });
+    // The gradient and delete branches, because a solid token renders neither.
+    // The token list is React now, so the branch is opened by choosing the row
+    // rather than by setting a native `<select>`'s value.
+    const glow = root.querySelector<HTMLElement>(
+      '[data-vigilia-palette-token-row="glow"]',
+    );
+    if (glow === null) throw new Error("the Tokens pane listed no glow token");
+    glow.click();
   });
-  // The gradient and delete branches, because a solid token renders neither.
-  for (const [host, id] of [
-    ["[data-vigilia-palette-token]", "glow"],
-  ] as const) {
-    const select = root.querySelector<HTMLSelectElement>(host)!;
-    select.value = id;
-    select.dispatchEvent(new Event("change"));
-  }
   createTypePresetPanel(
     root,
     () => undefined,
@@ -162,19 +168,31 @@ it("leaves the three panels with no copy of their own", () => {
     caption: { name: "Caption", value: { family: "Inter", size: 12 } },
   });
 
+  // The palette's paint kinds, which are copy. They live in a Base UI popup that
+  // exists only while it is open, so they are read the way an author reads them.
+  // The other option lists in these panels are data — a token's name, a locale's,
+  // an asset's, a preset's — and are deliberately not covered.
+  const paintKinds = await openUnitDisplayOptions(
+    root,
+    "[data-vigilia-palette-kind]",
+  );
   const owned = new Set(copy());
   const spoken = [
     ...Array.from(root.querySelectorAll("label"), (label) => label.textContent),
-    ...Array.from(
-      root.querySelectorAll("button"),
-      (button) => button.textContent,
-    ),
-    // The palette's paint kinds, which are copy; the other option lists in
-    // these panels are data — a token's name, a locale's, an asset's, a preset's.
-    ...Array.from(
-      root.querySelectorAll("[data-vigilia-palette-kind] option"),
-      (option) => option.textContent,
-    ),
+    // Two kinds of button are excluded, both because their text is data. A token
+    // well prints the document's own token name and usage figure; a select's
+    // trigger prints the chosen value, which on every panel here is a token's
+    // name, a preset's, a unit's or a locale's — the chevron beside it is
+    // decoration. The words a select *offers* are copy and are read from its
+    // open list below, so excluding the closed control loses nothing.
+    ...Array.from(root.querySelectorAll("button"))
+      .filter(
+        (button) =>
+          button.getAttribute("data-vigilia-palette-token-row") === null &&
+          button.querySelector("[data-vigilia-value]") === null,
+      )
+      .map((button) => button.textContent),
+    ...paintKinds,
   ]
     .map((text) => text?.trim() ?? "")
     // The release version's and the language sample's values are readings, not
@@ -182,6 +200,12 @@ it("leaves the three panels with no copy of their own", () => {
     // of a date in the chosen language.
     .filter((text) => text !== "" && !/^[\d.v-]+$/.test(text));
   expect(spoken.filter((text) => !owned.has(text))).toEqual([]);
+
+  // This test mounts three panels that nothing unmounts, and the paint-kind list
+  // it opened portals into `document.body`. Left standing, that popup is the next
+  // test's `[role="option"]` set — read as four extra unit-display words.
+  await act(async () => palettePanel.destroy());
+  document.body.replaceChildren();
 });
 
 /**

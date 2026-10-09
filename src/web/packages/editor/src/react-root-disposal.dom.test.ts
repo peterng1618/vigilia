@@ -7,9 +7,11 @@
  * the tree it rendered, and neither `element.remove()` nor dropping the last
  * reference does it. The Add pane was the first shipped root disposed by DOM
  * removal alone; the palette panel was the second, and it was worse — its picker
- * and gradient roots are re-created every time the field set rebuilds (the
- * `built`/`shape` rule), so it leaked per token switch as well as per session
- * teardown.
+ * and gradient roots were nested `createRoot`s re-created every time the field
+ * set rebuilt (the `built`/`shape` rule), so it leaked per token switch as well
+ * as per session teardown. Task 5 replaced that file's rendering leaves: the
+ * picker and the gradient editor are children of the Tokens pane's tree now, so
+ * the file declares one root and the cases below pin that it stays one.
  *
  * Three instruments, because the defect has three faces and only one of them is
  * a document listener:
@@ -107,7 +109,7 @@ const paletteWithOneSolidToken: FabricPalette = {
 };
 
 /** The same token as a gradient, which is a *different shape*, so `render`
- *  rebuilds the field set and re-creates the nested root. */
+ *  rebuilds the field set — in the same tree, since Task 5. */
 const paletteWithOneGradientToken: FabricPalette = {
   panel: {
     name: "Panel",
@@ -194,21 +196,22 @@ describe("a palette panel's React roots", () => {
     );
   });
 
-  it("unmounts the root it is replacing when the field set is rebuilt", () => {
+  it("keeps one root across a rebuild of the field set", () => {
     const panel = createPalettePanel(mountHost(), () => {}, undefined, {});
     panel.render(paletteWithOneSolidToken);
     const firstFieldSet = createdRoots.length;
     expect(firstFieldSet).toBeGreaterThan(0);
 
+    // The same token as a gradient is a *different shape*, so the field set
+    // rebuilds. It used to be rebuilt as a second root — the picker's, holding
+    // the discarded token in its closures — and it is the same tree now, which
+    // is why this asserts a count that does not move rather than one that does.
     panel.render(paletteWithOneGradientToken);
 
-    // The picker's root was created for the solid field set and re-created for
-    // the gradient, so the one it replaced must be gone — otherwise every token
-    // switch strands a root holding the discarded token in its closures.
-    expect(
-      createdRoots.slice(0, firstFieldSet).map((root) => root.unmounted),
-    ).toEqual(Array.from({ length: firstFieldSet }, () => true));
-    expect(createdRoots.length).toBeGreaterThan(firstFieldSet);
+    expect(createdRoots.length).toBe(firstFieldSet);
+    expect(createdRoots.map((root) => root.unmounted)).toEqual(
+      createdRoots.map(() => false),
+    );
   });
 
   it("releases the document listeners its open popover registered", async () => {
@@ -288,8 +291,11 @@ const SHIPPED_ROOTS: readonly (readonly [string, number])[] = [
   ["editor-shell/shell-layout.tsx", 2],
   // the Add pane, one root (Task 3).
   ["new-object-panel.ts", 1],
-  // the colour picker and the gradient editor, released by `releaseRoots()`.
-  ["palette-manager/panel.ts", 2],
+  // the palette panel's own tree, released by `destroy()`. It was **2** until
+  // Task 5: the picker and the gradient editor were nested `createRoot`s, one
+  // per field-set rebuild. They are React children of the Tokens pane now, so
+  // the file creates one root and this declaration follows the code.
+  ["palette-manager/panel.ts", 1],
   ["selection-inspector/column.tsx", 1],
   ["selection-inspector/inspector.tsx", 1],
 ];
