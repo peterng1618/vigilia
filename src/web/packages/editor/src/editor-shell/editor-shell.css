@@ -1630,6 +1630,13 @@ body,
    cluster off the stage. */
 .editor-shell-identity {
   min-width: 0;
+  /* `min-width: 0` lets the chip shrink below the floor its non-shrinkable
+     children — the dot the name — set, so at a squeezed width the trailing
+     "Unsaved changes" used to paint past the chip's own edge and into the view
+     cluster. Clipping makes the chip's box the whole of what it draws, which is
+     §7.7's non-collision as a layout fact rather than a reserved number. The
+     name still ellipsises first: it is the only child that can shrink. */
+  overflow: hidden;
   margin: 0;
   display: flex;
   align-items: center;
@@ -1767,6 +1774,30 @@ body,
   font-variant-numeric: tabular-nums;
   font-size: var(--text-sm);
   text-align: center;
+}
+/* The cluster's three camera controls: −, + and fit. Square at the bible's 26px
+   icon button, transparent inside the cluster's own glass, and marked the way
+   the rail marks its slots — a wash on hover, and `--accent` while fit's
+   `aria-pressed` says the camera is fitted. */
+.editor-shell-view-step {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  padding: 0;
+  border: 0;
+  border-radius: var(--radius-md);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+}
+.editor-shell-view-step:hover {
+  background: color-mix(in srgb, var(--text) 10%, transparent);
+}
+.editor-shell-view-step[aria-pressed="true"] {
+  color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 14%, transparent);
 }
 /* The display the stage looks through: its screen, drawn where the camera
    frames through it. Positioned in canvas coordinates by `editor-shell.ts`

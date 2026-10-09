@@ -447,10 +447,18 @@ export const uiCopy = {
    *  the stage and by the menu's tick. */
   display: {
     label: "Display and zoom",
-    /** The whole stage, with no display in it. */
+    /** The whole stage, with no display in it — a choice from the display menu,
+     *  not a camera command. `zoomToFit` below is the camera command, and the
+     *  two are worded apart so a reader can tell which question they answer. */
     fit: "Fit",
     toSelection: "Zoom to selection",
     actualSize: "100 %",
+    /** The cluster's three camera controls, beside the readout. `−`/`+` step by
+     *  the camera keys' own amount (`ZOOM_STEP`), and `zoomToFit` frames the
+     *  whole stage, named to match `Zoom to selection` one line up. */
+    zoomOut: "Zoom out",
+    zoomIn: "Zoom in",
+    zoomToFit: "Zoom to fit",
     /** One name per lens, keyed by `DisplayLensId` so a lens cannot be added
      *  to the vocabulary without a label to offer it by. Each name is the
      *  aspect it frames — the same word the id is, so a screen nobody has

@@ -1,5 +1,12 @@
 import { Menu } from "@base-ui/react/menu";
-import { useCallback, useSyncExternalStore } from "react";
+import { Minus, Plus, Scan } from "lucide-react";
+import {
+  type ReactNode,
+  useCallback,
+  useEffect,
+  useRef,
+  useSyncExternalStore,
+} from "react";
 import {
   artboardOrientation,
   type ArtboardOrientation,
@@ -12,6 +19,8 @@ import {
 } from "../display-lens.js";
 import { uiCopy } from "../ui-copy.js";
 import type { ViewportManager } from "../viewport-manager/index.js";
+import { ZOOM_STEP } from "../viewport-manager/navigation.js";
+import { tooltip } from "./controls/tooltip.js";
 
 /**
  * One subscription for both camera facts, read as **primitives** so an
@@ -93,6 +102,16 @@ export function DisplaySwitch({
     // surface the author sees. The chooser stays a portal, so the cluster holds
     // only what is drawn until it is opened.
     <div className="editor-shell-zoom editor-glass">
+      {/* §7.5's camera commands, in the bible's order — − / value / +, and fit —
+          as siblings of the readout rather than replacements for it: the
+          readout is still the display chooser's trigger, and the three act on
+          the camera the way the `+/−/Shift+1` keys already do. */}
+      <ViewButton
+        label={uiCopy.display.zoomOut}
+        onClick={() => viewport.zoomBy(1 / ZOOM_STEP)}
+      >
+        <Minus aria-hidden size={15} strokeWidth={1.75} />
+      </ViewButton>
       <Menu.Root>
         <Menu.Trigger
           className="editor-shell-view-readout"
@@ -182,7 +201,63 @@ export function DisplaySwitch({
           </Menu.Positioner>
         </Menu.Portal>
       </Menu.Root>
+      <ViewButton
+        label={uiCopy.display.zoomIn}
+        onClick={() => viewport.zoomBy(ZOOM_STEP)}
+      >
+        <Plus aria-hidden size={15} strokeWidth={1.75} />
+      </ViewButton>
+      {/* The state is the camera's own `isFitted()`, the same fact the display
+          menu's Fit tick reads: one fact, two readings, so a lens chosen and
+          then moved off the fit cannot be marked as fitted here and unmarked
+          there. */}
+      <ViewButton
+        label={uiCopy.display.zoomToFit}
+        pressed={isFitted}
+        onClick={() => viewport.zoomToFit()}
+      >
+        <Scan aria-hidden size={15} strokeWidth={1.75} />
+      </ViewButton>
     </div>
+  );
+}
+
+/** One of the cluster's icon controls. The tooltip is a DOM control
+ *  (`controls/tooltip.ts`), so React owns the button and the effect owns the
+ *  popup — the split `canvas-dock.tsx` uses, for the same reason: the selection
+ *  inspector builds the same popup without ever seeing React.
+ *
+ *  `pressed` is omitted rather than `false` on the two stepping commands: they
+ *  are momentary, and a toggle button is a claim about a state they do not
+ *  hold. */
+function ViewButton({
+  label,
+  pressed,
+  onClick,
+  children,
+}: {
+  readonly label: string;
+  readonly pressed?: boolean;
+  readonly onClick: () => void;
+  readonly children: ReactNode;
+}): React.JSX.Element {
+  const ref = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    const button = ref.current;
+    if (button === null) return;
+    return tooltip({ trigger: button, text: label }).destroy;
+  }, [label]);
+  return (
+    <button
+      ref={ref}
+      type="button"
+      className="editor-shell-view-step"
+      aria-label={label}
+      aria-pressed={pressed}
+      onClick={onClick}
+    >
+      {children}
+    </button>
   );
 }
 

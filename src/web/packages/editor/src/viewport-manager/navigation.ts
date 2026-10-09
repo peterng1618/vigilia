@@ -2,8 +2,11 @@ import type { Canvas } from "fabric/es";
 import { isTextEntryTarget } from "../shortcut-manager/index.js";
 import type { ViewportManager } from "./index.js";
 
-/** One camera-key press; ~10% per press reads as a step without feeling slow. */
-const ZOOM_STEP = 1.1;
+/** One camera-key press; ~10% per press reads as a step without feeling slow.
+ *  Exported for the view cluster's `−`/`+` buttons, so a mouse press and a key
+ *  press step by the same amount: a second literal in the shell would be a
+ *  second answer to "what is one step", and the two would drift. */
+export const ZOOM_STEP = 1.1;
 
 /** Wheel pixels per e-fold of zoom, so the same gesture feels the same on a
  * notched mouse and a trackpad, whose deltas differ by an order of magnitude. */

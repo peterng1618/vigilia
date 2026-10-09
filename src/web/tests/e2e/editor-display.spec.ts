@@ -595,4 +595,101 @@ test.describe("the stage looks through a display", () => {
     });
     expect(await scene(), "a real edit does change it").not.toBe(before);
   });
+
+  /** §7.7's "clusters cannot collide" and "desktop density has a proof, not a
+   *  guessed minimum", asserted rather than measured once by hand. This is the
+   *  change that made collision possible: before it the stage had one corner
+   *  cluster and the view control sat at the bottom-right, so nothing could
+   *  meet.
+   *
+   *  The long name goes in through the document's own field, so the chip is as
+   *  wide as the product lets it get and a collision would have the room to
+   *  happen. The point between the corners is read as well as the two boxes:
+   *  two clusters that do not overlap can still be spanned by a transparent
+   *  wrapper that eats the stage's own pan, which is the other half of §7.7. */
+  test("the display cluster and the identity chip cannot collide on the stage", async ({
+    page,
+  }) => {
+    await page
+      .locator('.editor-shell-rail button[aria-label="Document"]')
+      .click();
+    const field = page.locator("[data-vigilia-theme-name]");
+    await expect(field).toBeVisible();
+    await field.fill(
+      "System dashboard — living-room wall panel, bedside and hallway",
+    );
+    await field.blur();
+    await expect(page.locator(".editor-shell-identity-name")).toHaveText(
+      /living-room wall panel/,
+    );
+
+    const measureCorners = () =>
+      page.evaluate(() => {
+        const box = (selector: string) => {
+          const node = document.querySelector(selector);
+          if (node === null) throw new Error(`no ${selector}`);
+          const r = node.getBoundingClientRect();
+          return { left: r.left, right: r.right, top: r.top, bottom: r.bottom };
+        };
+        const chip = box(".editor-shell-identity");
+        const cluster = box(".editor-shell-zoom");
+        const stage = box(".editor-shell-stage");
+        const hit = document.elementFromPoint(
+          (chip.right + cluster.left) / 2,
+          (chip.top + chip.bottom) / 2,
+        );
+        return {
+          chip,
+          cluster,
+          stage,
+          betweenTag: hit === null ? "nothing" : hit.tagName,
+          betweenClass:
+            hit !== null && typeof hit.className === "string"
+              ? hit.className
+              : "",
+        };
+      });
+
+    const assertNoCollision = (
+      measured: Awaited<ReturnType<typeof measureCorners>>,
+    ) => {
+      expect(
+        measured.chip.right,
+        "the identity chip stops before the view cluster",
+      ).toBeLessThan(measured.cluster.left);
+      expect(
+        measured.stage.right - measured.cluster.right,
+        "and the cluster clears the stage's edge by §7.5's inset",
+      ).toBeGreaterThanOrEqual(14);
+      expect(
+        measured.betweenClass,
+        "the band between the corners is not a wrapper's",
+      ).not.toContain("editor-shell-stage-top");
+      expect(
+        measured.betweenTag,
+        "it is the canvas that is there, so a drag in the band still pans",
+      ).toBe("CANVAS");
+    };
+
+    assertNoCollision(await measureCorners());
+
+    // The same contract at 200% browser zoom, which is a 640×360 CSS viewport
+    // and the width at which the chip has least room: `min-width: 0` lets the
+    // chip shrink below its own non-shrinkable children, so "Unsaved changes"
+    // used to paint 18px past the chip's edge and into the cluster. The stage
+    // also drops its inspector here, which is why the chip is measured again
+    // rather than scaled from the reading above.
+    await page.setViewportSize({ width: 640, height: 360 });
+    await expect
+      .poll(async () =>
+        page.evaluate(
+          () =>
+            document
+              .querySelector(".editor-shell-stage")
+              ?.getBoundingClientRect().width ?? 0,
+        ),
+      )
+      .toBeLessThan(400);
+    assertNoCollision(await measureCorners());
+  });
 });

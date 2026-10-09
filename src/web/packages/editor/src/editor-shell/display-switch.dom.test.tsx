@@ -4,7 +4,9 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
 import type { ArtboardSize } from "../artboard-presets.js";
 import type { DisplayLensId } from "../display-lens.js";
+import { uiCopy } from "../ui-copy.js";
 import type { ViewportManager } from "../viewport-manager/index.js";
+import { ZOOM_STEP } from "../viewport-manager/navigation.js";
 import { DisplaySwitch } from "./display-switch.js";
 
 /**
@@ -28,6 +30,8 @@ function setup(
   artboard: ArtboardSize = { width: 2340, height: 1080 },
 ) {
   const showDisplay = vi.fn();
+  const zoomBy = vi.fn();
+  const zoomToFit = vi.fn();
   const zoomToSelection = vi.fn();
   const reset = vi.fn();
   const listeners = new Set<() => void>();
@@ -41,8 +45,8 @@ function setup(
   const viewport = {
     zoom: () => zoom,
     zoomToPoint: vi.fn(),
-    zoomBy: vi.fn(),
-    zoomToFit: vi.fn(),
+    zoomBy,
+    zoomToFit,
     zoomToSelection,
     reset,
     panBy: vi.fn(),
@@ -67,6 +71,8 @@ function setup(
     host,
     viewport,
     showDisplay,
+    zoomBy,
+    zoomToFit,
     zoomToSelection,
     reset,
     render: () =>
@@ -161,6 +167,64 @@ it("keeps every choice the old control offered reachable, inside one view cluste
   expect(zoomToSelection).toHaveBeenCalled();
   await choose("100 %");
   expect(reset).toHaveBeenCalled();
+});
+
+/** The camera commands §7.5's top-right row names, beside the readout and not
+ *  instead of it. `−` and `+` step by the keys' own `ZOOM_STEP` — read from its
+ *  one owner rather than restated, because two literals would be two answers to
+ *  "what is one step" and the mouse and the keyboard would drift apart. */
+it("offers the camera's −, + and fit beside the readout, stepping by the keys' amount", async () => {
+  const { host, render, zoomBy, zoomToFit } = setup();
+  await render();
+
+  const click = (label: string): Promise<void> =>
+    act(async () => {
+      host.querySelector<HTMLButtonElement>(`[aria-label="${label}"]`)?.click();
+    });
+
+  await click(uiCopy.display.zoomOut);
+  expect(zoomBy).toHaveBeenLastCalledWith(1 / ZOOM_STEP);
+  await click(uiCopy.display.zoomIn);
+  expect(zoomBy).toHaveBeenLastCalledWith(ZOOM_STEP);
+  await click(uiCopy.display.zoomToFit);
+  expect(zoomToFit).toHaveBeenCalled();
+
+  // Siblings of the readout, which keeps the display chooser and the scale: the
+  // cluster is one row of controls, not a control that replaced the readout.
+  const cluster = host.querySelector(".editor-shell-zoom");
+  for (const label of [
+    uiCopy.display.zoomOut,
+    uiCopy.display.zoomIn,
+    uiCopy.display.zoomToFit,
+  ]) {
+    expect(
+      cluster?.querySelector(`[aria-label="${label}"]`),
+      `${label} is in the cluster`,
+    ).not.toBeNull();
+  }
+  expect(
+    cluster?.querySelector("[data-vigilia-zoom]"),
+    "and the readout is still there",
+  ).not.toBeNull();
+});
+
+/** Fit says whether the camera is fitted, off the same `isFitted()` the menu's
+ *  tick reads. A lens chosen and then moved off the fit is the state this
+ *  separates: the lens is still chosen, and the camera is not where a fit would
+ *  put it. */
+it("marks fit from the camera, so a lens that is not fitted is not marked", async () => {
+  const { host, render, setFitted } = setup("16:9");
+  await render();
+
+  const pressed = (): string | null | undefined =>
+    host
+      .querySelector(`[aria-label="${uiCopy.display.zoomToFit}"]`)
+      ?.getAttribute("aria-pressed");
+
+  await setFitted(true);
+  expect(pressed(), "a fitted camera marks fit").toBe("true");
+  await setFitted(false);
+  expect(pressed(), "and a camera moved off it does not").toBe("false");
 });
 
 it("keeps reading the camera's zoom, because that readout is not this task's to remove", async () => {
