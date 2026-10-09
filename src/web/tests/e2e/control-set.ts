@@ -47,13 +47,23 @@ export async function choiceOf(control: Locator): Promise<string> {
 /**
  * A select's own opened listbox, and the options inside it.
  *
- * **Scoped by the `aria-controls` the trigger already carries.** Base UI leaves
- * a closed popup in the document while it animates out, so a bare
- * `[role=option]` lookup finds two `palette.text` rows when one picker is
- * opened straight after another — which is exactly what an author does. The
- * unscoped form does not fail loudly: it resolves to two, a `.first().click()`
- * lands on the stale hidden row, and the case spends its whole budget waiting
- * for an edit that never committed.
+ * **Scoped by the `aria-controls` the trigger already carries** — and that
+ * attribute is present *if and only if the popup is open*: Base UI renders it
+ * straight from its `open` state, so a read taken before React commits the open
+ * comes back `undefined`. Base UI also leaves a closed popup in the document
+ * while it animates out, so a bare `[role=option]` lookup finds two
+ * `palette.text` rows when one picker is opened straight after another — which
+ * is exactly what an author does. The unscoped form does not fail loudly: it
+ * resolves to two, a `.first().click()` lands on the stale hidden row, and the
+ * case spends its whole budget waiting for an edit that never committed.
+ *
+ * Both facts are why the wait below is here and why there is **no fallback**.
+ * Reading the attribute eagerly and scoping to the whole page when it is
+ * missing re-opens the same hazard on the one path nobody watches: the first
+ * option on the page is the stale hidden one from the picker that ran before,
+ * `toBeVisible()` can then never succeed, and which case reddens depends on
+ * which picker went first. A click that did not open a listbox is a fact worth
+ * reporting, not a reason to widen the search.
  */
 async function openList(
   page: Page,
@@ -66,8 +76,13 @@ async function openList(
   }
   await trigger.scrollIntoViewIfNeeded();
   await trigger.click();
+  const notOpened = `clicking ${String(control)} did not open a listbox (the trigger carries no aria-controls)`;
+  await expect(trigger, notOpened).toHaveAttribute("aria-controls", /.+/, {
+    timeout: 10_000,
+  });
   const list = await trigger.getAttribute("aria-controls");
-  const container = list === null ? page : page.locator(`#${list}`).first();
+  if (list === null) throw new Error(notOpened);
+  const container = page.locator(`#${list}`).first();
   const options = container.locator('[role="option"]');
   await expect(options.first()).toBeVisible();
   return { options, container };
