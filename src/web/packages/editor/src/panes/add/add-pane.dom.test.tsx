@@ -46,12 +46,13 @@ function editorStub() {
 function mount(actions?: Parameters<typeof createNewObjectPanel>[3]): {
   readonly pane: HTMLElement;
   readonly editor: ReturnType<typeof editorStub>;
+  readonly panel: ReturnType<typeof createNewObjectPanel>;
 } {
   const editor = editorStub();
   const host = document.createElement("div");
   document.body.append(host);
   const panel = createNewObjectPanel(host, editor as never, undefined, actions);
-  return { pane: panel.root, editor };
+  return { pane: panel.root, editor, panel };
 }
 
 /** The headings the pane drew, in the order it drew them. */
@@ -125,5 +126,43 @@ describe("the Add pane's insert surface", () => {
     expect(editor.errorManager.warn.mock.calls).toEqual([
       ["controls", expect.stringMatching(/session|document/i)],
     ]);
+  });
+
+  it("releases the document listeners its tiles registered, on the panel's own disposal path", () => {
+    const added: Record<string, number> = {};
+    const removed: Record<string, number> = {};
+    const tally =
+      (into: Record<string, number>) =>
+      (type: string): void => {
+        into[type] = (into[type] ?? 0) + 1;
+      };
+    const addSpy = vi
+      .spyOn(document, "addEventListener")
+      .mockImplementation(
+        tally(added) as unknown as typeof document.addEventListener,
+      );
+    const removeSpy = vi
+      .spyOn(document, "removeEventListener")
+      .mockImplementation(
+        tally(removed) as unknown as typeof document.removeEventListener,
+      );
+
+    try {
+      const { panel } = mount();
+      panel.destroy();
+
+      // Every shape and chart tile carries a tooltip, and the tooltip's
+      // press-elsewhere dismissal is a `document`-level `pointerdown`
+      // (`editor-shell/controls/tooltip.ts:134`) removed only by its `destroy`.
+      // 8 shapes + 4 charts = 12, asserted as added *and* removed: a count of 0
+      // removed would pass vacuously against a pane that registered none, and a
+      // panel that removed its host node without unmounting the tree left all
+      // twelve behind, once per session teardown.
+      expect(added["pointerdown"]).toBe(12);
+      expect(removed["pointerdown"]).toBe(12);
+    } finally {
+      addSpy.mockRestore();
+      removeSpy.mockRestore();
+    }
   });
 });

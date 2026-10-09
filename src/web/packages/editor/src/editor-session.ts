@@ -713,7 +713,7 @@ export class EditorSession {
     this.#artboard.destroy();
     this.#palette.root.remove();
     this.#types.root.remove();
-    this.#newObjects.root.remove();
+    this.#newObjects.destroy();
     this.#snapping.destroy();
     this.#indicators.destroy();
   }
