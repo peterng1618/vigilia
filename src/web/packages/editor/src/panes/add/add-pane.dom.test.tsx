@@ -19,6 +19,9 @@ import { uiCopy } from "../../ui-copy.js";
 /** The CPU unit, whose label is the one the hard-coded-label red proof moves. */
 const CPU_CARD = "group-cpu-card";
 
+/** The unit whose label is the one that clips in the 246px pane. */
+const TRENDS_CARD = "group-trends-card";
+
 /** The construction surface a tile writes through, with its diagnostics
  *  reachable — a refusal is reported there rather than thrown at the author. */
 function editorStub() {
@@ -114,6 +117,63 @@ describe("the Add pane's insert surface", () => {
     ).toBeNull();
   });
 
+  it("draws a glyph on every tile that is not the Text row, so none is blank", () => {
+    const { pane } = mount();
+
+    // §6: shapes and charts stay glyph-led rather than becoming text-only button
+    // grids. The case above proves a shape does not wear a *card's* diagram;
+    // this one proves every one of them wears something, which an assertion of
+    // absence cannot — a tile drawing nothing at all passed it.
+    const drawn = [
+      ...pane.querySelectorAll<HTMLButtonElement>("button"),
+    ].filter((tile) => !tile.classList.contains("vigilia-add-text"));
+
+    // Derived from the owner, so a primitive or family added there is required to
+    // be drawn here rather than being skipped by a count nobody moved.
+    expect(drawn.map((tile) => tile.getAttribute("aria-label"))).toEqual(
+      insertGroups()
+        .flatMap((group) => group.objects)
+        .filter((object) => object.kind !== "text")
+        .map((object) => object.label),
+    );
+    for (const tile of drawn) {
+      expect(tile.querySelector("svg")).not.toBeNull();
+    }
+  });
+
+  it("discloses a grid tile's whole label on focus and on hover, where that label may clip", () => {
+    const { pane } = mount();
+    const tile = cardTile(pane, TRENDS_CARD);
+
+    // "Performance trends" is the one label that truncates at 246px — 86px of
+    // text in a 41px box — so it is the one tile that must be able to say its
+    // whole name even though it also draws it. `aria-label` covers the
+    // programmatic half; focus and hover cover the other two, and all three read
+    // one string.
+    expect(tile.getAttribute("aria-label")).toBe(uiCopy.cardLibrary.trends);
+
+    tile.focus();
+    expect(document.querySelector(".editor-shell-tooltip")?.textContent).toBe(
+      uiCopy.cardLibrary.trends,
+    );
+    tile.blur();
+    expect(document.querySelector(".editor-shell-tooltip")).toBeNull();
+
+    // The hover arm of the same registration. Hover waits 600ms by design, so
+    // the clock is controlled rather than waited on.
+    vi.useFakeTimers();
+    try {
+      tile.dispatchEvent(new Event("pointerenter"));
+      vi.advanceTimersByTime(600);
+      expect(document.querySelector(".editor-shell-tooltip")?.textContent).toBe(
+        uiCopy.cardLibrary.trends,
+      );
+    } finally {
+      vi.useRealTimers();
+      tile.dispatchEvent(new Event("pointerleave"));
+    }
+  });
+
   it("refuses, in words, before a document is open, rather than offering tiles that insert nothing", async () => {
     const { pane, editor } = mount();
 
@@ -151,15 +211,16 @@ describe("the Add pane's insert surface", () => {
       const { panel } = mount();
       panel.destroy();
 
-      // Every shape and chart tile carries a tooltip, and the tooltip's
-      // press-elsewhere dismissal is a `document`-level `pointerdown`
+      // Every grid tile carries a tooltip, and the tooltip's press-elsewhere
+      // dismissal is a `document`-level `pointerdown`
       // (`editor-shell/controls/tooltip.ts:134`) removed only by its `destroy`.
-      // 8 shapes + 4 charts = 12, asserted as added *and* removed: a count of 0
-      // removed would pass vacuously against a pane that registered none, and a
-      // panel that removed its host node without unmounting the tree left all
-      // twelve behind, once per session teardown.
-      expect(added["pointerdown"]).toBe(12);
-      expect(removed["pointerdown"]).toBe(12);
+      // 8 units + 8 primitives + 4 families = 20, the Text row exempt. Asserted
+      // as added *and* removed: a count of 0 removed would pass vacuously
+      // against a pane that registered none, and a panel that removed its host
+      // node without unmounting the tree left all twenty behind, once per
+      // session teardown.
+      expect(added["pointerdown"]).toBe(20);
+      expect(removed["pointerdown"]).toBe(20);
     } finally {
       addSpy.mockRestore();
       removeSpy.mockRestore();

@@ -593,7 +593,6 @@ export const uiCopy = {
      * unreliable — the same gesture works one row over, so the author has no
      * other evidence that a rule is what stopped it. */
     reorderRule: "Drag a row to reorder it within its group.",
-    add: "Add",
     text: "Text",
     panel: "Panel",
     /** A pasted image and a fresh group arrive without an authored name, so

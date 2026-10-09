@@ -46,9 +46,15 @@ export function AddPane({
         ));
         // An object that stands on its own keeps its place in the owner's order
         // and carries no heading: it is not a group of one, and an eyebrow over
-        // a single row would say a region exists where there is one thing.
+        // a single row would say a region exists where there is one thing. Its
+        // key is derived from the owner's own objects, so two standalone groups
+        // could not collide with one another whatever the owner emits.
         if (group.label === undefined) {
-          return <Fragment key="standalone">{tiles}</Fragment>;
+          return (
+            <Fragment key={group.objects.map(tileKey).join(" ")}>
+              {tiles}
+            </Fragment>
+          );
         }
         return (
           <fieldset key={group.label} className="vigilia-add-group">
@@ -72,15 +78,19 @@ function InsertTile({
 }): React.JSX.Element {
   const ref = useRef<HTMLButtonElement>(null);
   // A card's and Text's names are on the tile; a shape's and a chart family's
-  // are not, so those two carry their whole name in a tooltip as well as in the
-  // accessible name — one string, one owner (§6). A tooltip repeating a visible
-  // word would be noise, so the two that show their name do not get one.
+  // are not. The *disclosure* follows the surface rather than the label's
+  // presence, because a grid tile's label can clip — "Performance trends" is
+  // 86px of text in a 41px box — and the tile that truncates is exactly the one
+  // that must still be able to say its whole name (§6). The Text row is exempt:
+  // it is full width, so its name never clips and a tooltip would repeat a word
+  // already on screen.
   const named = object.kind === "card" || object.kind === "text";
+  const disclosed = object.kind !== "text";
   useEffect(() => {
     const button = ref.current;
-    if (button === null || named) return;
+    if (button === null || !disclosed) return;
     return tooltip({ trigger: button, text: object.label }).destroy;
-  }, [named, object.label]);
+  }, [disclosed, object.label]);
 
   return (
     <button
