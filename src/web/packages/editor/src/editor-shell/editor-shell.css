@@ -1631,11 +1631,13 @@ body,
 .editor-shell-identity {
   min-width: 0;
   /* `min-width: 0` lets the chip shrink below the floor its non-shrinkable
-     children — the dot the name — set, so at a squeezed width the trailing
-     "Unsaved changes" used to paint past the chip's own edge and into the view
-     cluster. Clipping makes the chip's box the whole of what it draws, which is
-     §7.7's non-collision as a layout fact rather than a reserved number. The
-     name still ellipsises first: it is the only child that can shrink. */
+     children — the dot, the edited marker — set, so at a squeezed width the
+     trailing "Unsaved changes" used to paint past the chip's own edge and into
+     the view cluster. Clipping makes the chip's box the whole of what it draws,
+     which is §7.7's non-collision as a layout fact rather than a reserved
+     number. The name still ellipsises first: it is the only child that can
+     shrink. Past that the name is zero and the fixed marker still overflows, so
+     the clip cuts it mid-word; that state is filed, not solved here (`vg-223`). */
   overflow: hidden;
   margin: 0;
   display: flex;
