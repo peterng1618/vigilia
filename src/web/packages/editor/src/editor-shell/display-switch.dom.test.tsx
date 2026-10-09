@@ -106,6 +106,63 @@ async function choose(label: string): Promise<void> {
   );
 }
 
+/** The recut, measured where it is observable: the stage now shows one view
+ *  cluster, and the percentage readout sits **inside** it rather than **being**
+ *  it. That is not cosmetic — `shell-appearance.spec.ts` reads the cluster's
+ *  `boxShadow` and `backgroundImage` per palette, and jsdom has no cascade, so
+ *  the class has to land on the element that carries the treatment.
+ *
+ *  Step 1's enumeration is the checklist, one assertion per reachable choice:
+ *  Fit, the six lenses in their two orientation groups, the camera that is
+ *  neither (a state, asserted where the tick is), zoom-to-selection, actual
+ *  size, and the percentage readout. All of them stay one gesture away through
+ *  the labelled chooser this readout opens. */
+it("keeps every choice the old control offered reachable, inside one view cluster", async () => {
+  const { host, render, showDisplay, zoomToSelection, reset } = setup();
+  await render();
+
+  expect(
+    host.querySelectorAll(".editor-shell-zoom").length,
+    "one view cluster, not a bare readout",
+  ).toBe(1);
+  expect(
+    host
+      .querySelector(".editor-shell-zoom")
+      ?.querySelector("[data-vigilia-zoom]"),
+    "and the readout sits inside it",
+  ).not.toBeNull();
+
+  for (const label of [
+    "Fit",
+    "16:9",
+    "19.5:9",
+    "4:3",
+    "9:16",
+    "9:19.5",
+    "3:4",
+    "Zoom to selection",
+    "100 %",
+  ]) {
+    expect(
+      document.querySelector(`[aria-label="${label}"]`),
+      `${label} is offered`,
+    ).not.toBeNull();
+  }
+  expect(
+    host.querySelector("[data-vigilia-zoom]")?.textContent,
+    "and the percentage readout, the last choice in the list",
+  ).toMatch(/^\d+%$/);
+
+  await choose("9:19.5");
+  expect(showDisplay).toHaveBeenLastCalledWith("9:19.5");
+  await choose("Fit");
+  expect(showDisplay).toHaveBeenLastCalledWith(undefined);
+  await choose("Zoom to selection");
+  expect(zoomToSelection).toHaveBeenCalled();
+  await choose("100 %");
+  expect(reset).toHaveBeenCalled();
+});
+
 it("keeps reading the camera's zoom, because that readout is not this task's to remove", async () => {
   const { host, render, setZoom, setDisplay } = setup("19.5:9");
   await render();

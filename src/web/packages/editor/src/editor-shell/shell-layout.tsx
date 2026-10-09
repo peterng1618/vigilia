@@ -729,21 +729,28 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
             aria-label="Editor canvas"
           >
             <Host node={hosts.canvas} />
-            {/* What the author is editing, in the corner §7.5 gives identity.
-                It reads the store rather than a prop, so a bridge set after the
-                shell mounted — and a rename after that — reaches it too. */}
-            <DocumentIdentity store={store} />
+            {/* §7.5's two top corners in one row, which is what keeps §7.7's
+                "clusters cannot collide" true without either knowing the
+                other's width. The row is `pointer-events: none`; the two
+                clusters take it back, so the band between them is still the
+                canvas's. */}
+            <div className="editor-shell-stage-top">
+              {/* What the author is editing, in the corner §7.5 gives identity.
+                  It reads the store rather than a prop, so a bridge set after
+                  the shell mounted — and a rename after that — reaches it too. */}
+              <DocumentIdentity store={store} />
+              {/* The store, not a local: a late-set bridge must reach the
+                  readout the same way it reaches the inspector and menus. */}
+              {store.bridge === undefined ? null : (
+                <DisplaySwitch
+                  viewport={store.bridge.editor.viewport}
+                  artboard={store.bridge.editor.artboard}
+                />
+              )}
+            </div>
             {/* The dock owns its own element and derives its own visibility;
                 this is only the slot that puts its mount point in the stage. */}
             <Host node={hosts.dock} />
-            {/* The store, not a local: a late-set bridge must reach the readout
-                the same way it reaches the inspector and menus. */}
-            {store.bridge === undefined ? null : (
-              <DisplaySwitch
-                viewport={store.bridge.editor.viewport}
-                artboard={store.bridge.editor.artboard}
-              />
-            )}
             {/* Renders no DOM of its own: it only binds the canvas's own
                 `contextmenu` listener, so it sits with the stage it listens to. */}
             <CanvasContextMenu bridge={store.bridge} />

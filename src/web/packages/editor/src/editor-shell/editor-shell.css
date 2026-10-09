@@ -1598,17 +1598,38 @@ body,
   border: 1px solid var(--shell-edge);
   background: var(--vigilia-canvas-bg);
 }
-/* §7.5's top-left corner: the document's identity. A floating cluster at
-   §7's `--radius-xl`, `--panel` at 95%, backdrop-blurred, hairline `--edge`
-   and elevation 1, 14px in from the stage's own edges. */
-.editor-shell-identity {
+/* §7.5's two top corners in one row, so §7.7's "clusters cannot collide" is a
+   layout fact rather than a number reserved against the other cluster's width:
+   the identity chip gives up width and ellipsises, the view cluster keeps its
+   own, and neither has to know how wide the other is.
+
+   `pointer-events: none` on the row and `auto` on the two clusters, because the
+   band the row spans between them is still the canvas: a transparent wrapper
+   that took a pointer there would take the author's pan away in the top of the
+   stage. */
+.editor-shell-stage-top {
   position: absolute;
   z-index: 3;
   top: var(--space-14);
   left: var(--space-14);
-  /* The stage's own 14px inset at each side, so a long theme name ellipsises
-     inside the corner rather than growing past the stage's edge. */
-  max-width: calc(100% - 28px);
+  right: var(--space-14);
+  display: flex;
+  align-items: flex-start;
+  gap: var(--space-8);
+  pointer-events: none;
+}
+.editor-shell-stage-top > * {
+  pointer-events: auto;
+}
+/* §7.5's top-left corner: the document's identity. A floating cluster at
+   §7's `--radius-xl`, `--panel` at 95%, backdrop-blurred, hairline `--edge`
+   and elevation 1, 14px in from the stage's own edges — the inset the row above
+   gives it.
+   `min-width: 0` is the chip's half of "clusters cannot collide": it can shrink
+   below its content, and the name ellipsises, rather than pushing the view
+   cluster off the stage. */
+.editor-shell-identity {
+  min-width: 0;
   margin: 0;
   display: flex;
   align-items: center;
@@ -1676,13 +1697,11 @@ body,
      `overflow: hidden` clipped it, which put `Duplicate` 20px outside the
      stage where nothing could click it. */
   width: max-content;
-  /* The 100px is the dock's own 32px of insets (16 each side, §7.5) plus the
-     view cluster's 68px footprint (its 56px minimum and its 12px inset) while
-     it holds the stage's bottom-right corner. §7.5's table puts that cluster
-     top-right, which Task 6 lands; until then a 639px row centred in a 714px
-     stage reaches into it and §7.7 forbids the collision. When Task 6 moves the
-     cluster, this reservation can go back to `100% - 32px`. */
-  max-width: calc(100% - 100px);
+  /* The dock's own 32px of insets (16 each side, §7.5) and nothing more: the
+     view cluster that used to hold the stage's bottom-right now holds the
+     top-right (Task 6), so the 68px reservation made against it is gone and the
+     row is only bounded by §7.5's inset. */
+  max-width: calc(100% - 32px);
   /* §7.7, "clusters cannot collide" and "keep every control reachable through
      scrolling or compact composition". The full row is wider than the stage at
      1280, so it wraps rather than overrunning: a scroller would hide an action
@@ -1712,19 +1731,41 @@ body,
 .editor-shell-dock button:disabled:hover {
   background: transparent;
 }
+/* §7.5's top-right corner: how the stage is shown. One floating cluster holding
+   the display chooser and its zoom readout, at the identity chip's treatment —
+   `--radius-xl`, a hairline `--edge`, 14px in from the stage's own edges — so
+   the two corners read as one treatment. The glass itself is `.editor-glass`,
+   which is the surface a cluster over the canvas carries under every palette
+   and which `shell-appearance.spec.ts` reads off this element.
+   `flex: none` and `margin-left: auto` are the cluster's half of "clusters
+   cannot collide": it keeps its own width and stays at the row's right edge
+   even when the chip is absent (no document open). */
 .editor-shell-zoom {
-  position: absolute;
-  z-index: 3;
-  right: 12px;
-  bottom: 12px;
-  /* Wide enough for the widest readout the camera can reach (`6400 %` at
-     MAX_ZOOM), so zooming does not resize the trigger under the pointer that
-     is zooming. The trigger shows a percentage and never a display name. */
+  flex: none;
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  padding: var(--space-4);
+  border-radius: var(--radius-xl);
+}
+/* The cluster's control, and the display chooser's trigger: clicking it opens
+   the labelled chooser that holds Fit, the six lenses in their two orientation
+   groups, zoom-to-selection and actual size. That is how the whole choice set
+   stays reachable in a corner too small to print six chips, so the readout is
+   both what the author reads the scale from and the way to every other framing.
+   Wide enough for the widest readout the camera can reach (`6400 %` at
+   MAX_ZOOM), so zooming does not resize it under the pointer that is zooming.
+   The trigger shows a percentage and never a display name. */
+.editor-shell-view-readout {
   min-width: 56px;
-  padding: 5px 9px;
-  border-radius: 8px;
+  padding: var(--space-6) var(--space-10);
+  border: 0;
+  border-radius: var(--radius-lg);
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
   font-variant-numeric: tabular-nums;
-  font-size: 12px;
+  font-size: var(--text-sm);
   text-align: center;
 }
 /* The display the stage looks through: its screen, drawn where the camera
