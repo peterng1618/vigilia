@@ -4,8 +4,8 @@ import { uiCopy } from "../ui-copy.js";
 import type { EditorActionFacade } from "./session-facade.js";
 
 /**
- * Whether the document is saved, as the one thing the footer says that is not a
- * message.
+ * Whether the document is saved, as a reading of the document's own state rather
+ * than a message about the last edit.
  *
  * The status line beside it holds whatever happened last, so an unsaved
  * document needs a mark of its own: sharing that line means the mark is gone the

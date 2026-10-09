@@ -22,9 +22,10 @@ export function PublishIndicator({
   const state = useSyncExternalStore(store.subscribe, store.get, store.get);
   if (state.kind !== "known" || !state.answer.lan) return null;
 
-  // No live-region role: the mark mounts with its content, and a region inserted
-  // already carrying its text is not announced (`save-state.tsx` states the
-  // rule). The footer's always-mounted regions are the ones that speak.
+  // No live-region role: the mark mounts with its content, and a live region has
+  // to be present before its text changes for a screen reader to speak it — one
+  // inserted already carrying its text is not announced. The footer's
+  // always-mounted regions are the ones that speak.
   return (
     <p className="editor-shell-live">
       <Check aria-hidden size={12} strokeWidth={2.5} />
