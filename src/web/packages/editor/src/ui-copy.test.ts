@@ -3,12 +3,17 @@ import { Canvas, Textbox } from "fabric/es";
 import { act, createElement } from "react";
 import { flushSync } from "react-dom";
 import { createRoot } from "react-dom/client";
-import { expect, it, vi } from "vitest";
+import { expect, it } from "vitest";
 import { createArtboardPanel } from "./artboard-panel.js";
 import {
-  type ChartFieldHandlers,
-  chartContentFields,
-  chartPaintFields,
+  ChartContentFields,
+  type ChartEdits,
+  ChartPaintFields,
+} from "./chart-manager/chart-fields.js";
+import {
+  type ChartFieldTarget,
+  chartContentView,
+  chartPaintView,
 } from "./chart-manager/panel.js";
 import { catalogFaces, fontTrios } from "./font-catalog.js";
 import { FontPicker } from "./font-picker/font-picker.js";
@@ -274,15 +279,11 @@ it("names both states of the favourite toggle", () => {
 it("gives the unit display options one owner, in both panels that offer them", async () => {
   const root = document.createElement("div");
   document.body.append(root);
-  mountUnitDisplayPanels(root);
-
+  // One control at a time: both are selects whose list lives in a portal, and a
+  // read has to see its own four rather than the previous control's four beside
+  // them. The chart's own host is unmounted before the run panel is mounted.
   const offered = [
-    ...Array.from(
-      root.querySelectorAll(
-        "[data-vigilia-binding-field$='.unitDisplay'] option",
-      ),
-      (option) => option.textContent ?? "",
-    ),
+    ...(await chartUnitDisplayOptions(root)),
     ...(await runUnitDisplayOptions(root)),
   ];
   const owned = new Set(copy());
@@ -291,17 +292,17 @@ it("gives the unit display options one owner, in both panels that offer them", a
 });
 
 /**
- * The run editor's four words, read from the list its trigger opens.
+ * The four words a control offers, read from the list its trigger opens.
  *
- * The control is a Base UI select now, so its options exist in the DOM only
- * while the popup is open — where the chart panel's four are a native select's
- * and are always there. Reading them any other way would read the table the
+ * Both controls are Base UI selects now, so their options exist in the DOM only
+ * while the popup is open. Reading them any other way would read the table the
  * list is built from and agree with itself.
  */
-async function runUnitDisplayOptions(root: HTMLElement): Promise<string[]> {
-  const trigger = root.querySelector<HTMLElement>(
-    "[data-vigilia-run-unit-display]",
-  );
+async function openUnitDisplayOptions(
+  host: HTMLElement,
+  selector: string,
+): Promise<string[]> {
+  const trigger = host.querySelector<HTMLElement>(selector);
   if (trigger === null) return [];
   await act(async () => {
     trigger.dispatchEvent(
@@ -318,47 +319,70 @@ async function runUnitDisplayOptions(root: HTMLElement): Promise<string[]> {
   );
 }
 
-/**
- * The two panels that offer the unit display options, so the four words have
- * somewhere to be caught when they are written as literals again.
- *
- * Both carry the same four, which is the point: the chart panel had the control
- * and the run panel was written to mirror it, so the words were written twice
- * with nothing joining them.
- *
- * A value run on a reading is the only state that renders the run panel's
- * control; a literal run has no reading to take a unit off.
- */
-function mountUnitDisplayPanels(root: HTMLElement): void {
-  const gauge = {
+/** The chart panel's four, read from a chart the owner projects and a stage that
+    is unmounted again so the run panel's list is the only one open. */
+async function chartUnitDisplayOptions(root: HTMLElement): Promise<string[]> {
+  const gauge: ChartFieldTarget = {
     id: "gauge",
     content: {
-      family: "gauge" as const,
+      family: "gauge",
       settings: {
         startAngle: 90,
         endAngle: -270,
         min: 0,
         max: 100,
         thickness: 10,
-        track: { kind: "solid" as const, color: "#000" },
-        progress: { kind: "solid" as const, color: "#fff" },
+        track: { kind: "solid", color: "#000" },
+        progress: { kind: "solid", color: "#fff" },
         roundCap: true,
       },
     },
     bindings: [{ id: "g", semanticKey: "ram.used.percent" }],
   };
-  const handlers: ChartFieldHandlers = {
-    onSettings: vi.fn(),
-    onBinding: vi.fn(),
-    onAspect: vi.fn(),
-    onAddBinding: vi.fn(),
-    onRemoveBinding: vi.fn(),
+  // The words are what this file reads; the writes go nowhere.
+  const edits: ChartEdits = {
+    onSettings: () => {},
+    onBinding: () => {},
+    onAspect: () => {},
+    onAddBinding: () => {},
+    onRemoveBinding: () => {},
   };
-  root.append(
-    ...chartContentFields(gauge, undefined, handlers),
-    ...chartPaintFields(gauge, undefined, handlers),
-  );
+  const host = document.createElement("div");
+  root.append(host);
+  const chartRoot = createRoot(host);
+  flushSync(() => {
+    chartRoot.render([
+      createElement(ChartContentFields, {
+        key: "content",
+        view: chartContentView(gauge),
+        edits,
+      }),
+      createElement(ChartPaintFields, {
+        key: "paint",
+        view: chartPaintView(gauge, undefined),
+        edits,
+      }),
+    ]);
+  });
 
+  const offered = await openUnitDisplayOptions(
+    host,
+    "[data-vigilia-binding-field$='.unitDisplay']",
+  );
+  await act(async () => {
+    chartRoot.unmount();
+  });
+  host.remove();
+  return offered;
+}
+
+/**
+ * The run panel's four, from the one state that renders its control.
+ *
+ * A value run on a reading is the only state that renders it; a literal run has
+ * no reading to take a unit off.
+ */
+async function runUnitDisplayOptions(root: HTMLElement): Promise<string[]> {
   const canvas = new Canvas(document.createElement("canvas"));
   const object = new Textbox("", { id: "clock-label" });
   object.set("vigiliaText", {
@@ -385,6 +409,7 @@ function mountUnitDisplayPanels(root: HTMLElement): void {
       runRoot.render(createElement(RunEditor, { runs, edits: runEdits() })),
     );
   }
+  return openUnitDisplayOptions(host, "[data-vigilia-run-unit-display]");
 }
 
 /**

@@ -29,6 +29,11 @@ import {
 import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createObjectLockManager } from "../object-lock-manager/index.js";
+import {
+  type ChartFieldTarget,
+  chartContentView,
+  chartPaintView,
+} from "../chart-manager/panel.js";
 import { uiCopy } from "../ui-copy.js";
 import { idleCrop } from "./idle-crop.test-stage.js";
 import { createSelectionInspector } from "./index.js";
@@ -36,6 +41,7 @@ import {
   type ChartFieldsPort,
   KIND_QUESTIONS,
   perKindColumn,
+  rendersExtra,
   SELECTION_KINDS,
   type SelectionKind,
   selectionKindOf,
@@ -1105,19 +1111,21 @@ describe("the column's sections", () => {
 
   it("mounts a chart's own fields in the chart's own column", () => {
     // The seam the Data tab used to be. A chart's settings and bindings are
-    // written by the chart manager and mounted here, in the Content and Paint
-    // sections of the selection's column — so the question "where is this
-    // chart's data?" is answered where the author already is, and the count
-    // over each section includes the fields the owner handed over.
+    // written by the chart manager, which hands the column the values to render
+    // — in the Content and Paint sections, where the author already is.
     const chart = chartOf("gauge", defaultGaugeSettings);
-    const field = (marker: string): HTMLElement => {
-      const element = document.createElement("div");
-      element.dataset["marker"] = marker;
-      return element;
+    const target: ChartFieldTarget = {
+      id: "cpu-gauge",
+      content: { family: "gauge", settings: defaultGaugeSettings },
+      bindings: [{ id: "b1", semanticKey: "cpu.load" }],
     };
+    // Real values from the owner's own projection, so an extra that arrived
+    // emptied would fail here rather than passing a shape check.
+    const content = chartContentView(target);
+    const paint = chartPaintView(target, undefined);
     const chartFields: ChartFieldsPort = {
-      content: () => [field("content")],
-      paint: () => [field("paint")],
+      content: () => content,
+      paint: () => paint,
     };
     const sections = perKindColumn(chart, {
       editor: {
@@ -1143,22 +1151,32 @@ describe("the column's sections", () => {
       sampleSource: undefined,
       chartFields,
     });
-    const inSection = (name: string, marker: string): HTMLElement | null =>
-      sections
-        .find((section) => section.id === name)
-        ?.body.find(
-          (element) =>
-            element.matches(`[data-marker="${marker}"]`) ||
-            element.querySelector(`[data-marker="${marker}"]`) !== null,
-        ) ?? null;
+    const section = (name: string) => {
+      const found = sections.find((candidate) => candidate.id === name);
+      if (found === undefined) throw new Error(`no ${name} section`);
+      return found;
+    };
+    const kinds = (name: string): string[] =>
+      section(name)
+        .extras.filter(rendersExtra)
+        .map((extra) => extra.kind);
 
-    expect(inSection("content", "content")).not.toBeNull();
-    expect(inSection("paint", "paint")).not.toBeNull();
+    expect(kinds("content")).toEqual(["chartContent"]);
+    expect(kinds("paint")).toEqual(["chartPaint"]);
+    // The payload is the owner's own reading, not a reconstruction of it.
+    expect(section("content").extras[0]).toEqual({
+      kind: "chartContent",
+      content,
+    });
+    expect(section("paint").extras[0]).toEqual({ kind: "chartPaint", paint });
     // Nowhere else: a chart's paint is not a content field, and the count over
-    // each section is what tells the two apart when both are mounted.
-    expect(inSection("paint", "content")).toBeNull();
-    expect(inSection("content", "paint")).toBeNull();
-    expect(sections.find((s) => s.id === "content")?.count).toBe(2);
+    // each section is what tells the two apart when both are mounted. The
+    // chart's own body counts once, however many controls it carries.
+    for (const name of ["content", "paint"]) {
+      expect(section(name).count, name).toBe(
+        section(name).fields.length + 1 + section(name).body.length,
+      );
+    }
   });
 });
 

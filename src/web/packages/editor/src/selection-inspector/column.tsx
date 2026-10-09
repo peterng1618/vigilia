@@ -2,6 +2,11 @@ import type * as React from "react";
 import { Fragment, useId } from "react";
 import { flushSync } from "react-dom";
 import { createRoot, type Root } from "react-dom/client";
+import type { ChartEdits } from "../chart-manager/chart-fields.js";
+import {
+  ChartContentFields,
+  ChartPaintFields,
+} from "../chart-manager/chart-fields.js";
 import { ControlNumber } from "../components/ui/control-number.js";
 import { ControlSegmented } from "../components/ui/control-segmented.js";
 import { ControlSelect } from "../components/ui/control-select.js";
@@ -159,10 +164,11 @@ function Section(props: {
   readonly section: ColumnSectionView;
   readonly edits: SelectionEdits;
   readonly runs: RunEdits;
+  readonly chart: ChartEdits;
   readonly revision: number;
   readonly idPrefix: string;
 }): React.JSX.Element {
-  const { section, edits, runs, revision, idPrefix } = props;
+  const { section, edits, runs, chart, revision, idPrefix } = props;
 
   return (
     <InspectorSection
@@ -180,15 +186,40 @@ function Section(props: {
       ))}
       {section.extras
         .filter(rendersExtra)
-        .map((extra, index) =>
-          extra.kind === "runs" ? (
-            <RunEditor
-              key={`${revision}:${extra.kind}-${index}`}
-              runs={extra.runs}
-              edits={runs}
-            />
-          ) : null,
-        )}
+        .map((extra) => {
+          switch (extra.kind) {
+            case "runs":
+              return (
+                <RunEditor
+                  key={`${revision}:runs`}
+                  runs={extra.runs}
+                  edits={runs}
+                />
+              );
+            case "chartContent":
+              // A chart's own questions, rendered by the owner that answers
+              // them. The writes go through `ChartEdits`, not `SelectionEdits`:
+              // a chart's commit rules are the chart's.
+              return (
+                <ChartContentFields
+                  key={`${revision}:chartContent`}
+                  view={extra.content}
+                  edits={chart}
+                />
+              );
+            case "chartPaint":
+              return (
+                <ChartPaintFields
+                  key={`${revision}:chartPaint`}
+                  view={extra.paint}
+                  edits={chart}
+                />
+              );
+            default:
+              // `crop` — Task 4's, and `rendersExtra` does not admit it yet.
+              return null;
+          }
+        })}
       <div data-vigilia-section-body="" />
     </InspectorSection>
   );
@@ -198,8 +229,9 @@ export function SelectionColumn(props: {
   readonly view: SelectionView;
   readonly edits: SelectionEdits;
   readonly runs: RunEdits;
+  readonly chart: ChartEdits;
 }): React.JSX.Element {
-  const { view, edits, runs } = props;
+  const { view, edits, runs, chart } = props;
   // A column is one selection's, and two columns can be mounted at once (the
   // accessibility audit mounts two). `${id}-header` is document-global, so the
   // aria pair is scoped to this instance or the second column's `aria-controls`
@@ -214,6 +246,7 @@ export function SelectionColumn(props: {
           section={section}
           edits={edits}
           runs={runs}
+          chart={chart}
           revision={view.targetRevision}
           idPrefix={idPrefix}
         />
@@ -234,15 +267,23 @@ export function createSelectionColumnRoot(host: HTMLElement): {
     view: SelectionView,
     edits: SelectionEdits,
     runs: RunEdits,
+    chart: ChartEdits,
   ) => void;
   readonly destroy: () => void;
 } {
   const root: Root = createRoot(host);
 
   return {
-    publish(view, edits, runs) {
+    publish(view, edits, runs, chart) {
       flushSync(() => {
-        root.render(<SelectionColumn view={view} edits={edits} runs={runs} />);
+        root.render(
+          <SelectionColumn
+            view={view}
+            edits={edits}
+            runs={runs}
+            chart={chart}
+          />,
+        );
       });
     },
     destroy() {

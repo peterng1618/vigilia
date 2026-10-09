@@ -357,6 +357,21 @@ export class EditorSession {
     this.#types.render(
       this.#envelope.globals?.typePresets as TypePresets | undefined,
     );
+    // The chart owner, built before the inspector that renders its fields: the
+    // inspector is published with both halves of the port at construction, so
+    // the owner has to exist by then.
+    this.charts = new ChartManager({
+      editor: options.shell.editor,
+      scene: options.shell.scene,
+      source: options.source,
+      ...(options.envelope.bindings === undefined
+        ? {}
+        : { bindings: options.envelope.bindings }),
+      ...(options.envelope.globals === undefined
+        ? {}
+        : { globals: options.envelope.globals }),
+      onBindingsChange: (id, bindings) => this.#setBindings(id, bindings),
+    });
     this.#selection = createSelectionInspector(options.panelHosts.selection, {
       editor: options.shell.editor,
       ...(options.envelope.globals === undefined
@@ -377,9 +392,12 @@ export class EditorSession {
       // The shell owns the glass handle; the inspector writes the property and
       // asks it to re-resolve.
       refreshGlass: () => options.shell.refreshGlass(),
-      // A chart's own fields. A getter, because the chart manager is built
-      // below — and because a chart selection is the only thing that asks.
+      // A chart's own fields and the writes they make, both pulled from the one
+      // owner — so a chart's commit rules stay its own rather than being
+      // restated in the inspector's generic dispatcher. The owner is built
+      // above, before the inspector that reads it.
       chartFields: () => this.charts.fields,
+      chartEdits: () => this.charts.edits,
     });
     this.#selection.setLocale(options.envelope.metadata?.themeLanguage);
     // Entering inline editing asks the runtime for the authoring view: the
@@ -398,18 +416,6 @@ export class EditorSession {
       // this cannot show a copy of globals that a theme edit has since changed.
       { globals: () => this.#envelope.globals },
     );
-    this.charts = new ChartManager({
-      editor: options.shell.editor,
-      scene: options.shell.scene,
-      source: options.source,
-      ...(options.envelope.bindings === undefined
-        ? {}
-        : { bindings: options.envelope.bindings }),
-      ...(options.envelope.globals === undefined
-        ? {}
-        : { globals: options.envelope.globals }),
-      onBindingsChange: (id, bindings) => this.#setBindings(id, bindings),
-    });
     this.#newObjects = createNewObjectPanel(
       options.panelHosts.add,
       options.shell.editor,

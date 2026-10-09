@@ -18,11 +18,12 @@ import {
 } from "../new-object-defaults.js";
 import type { ChartFieldsPort } from "../selection-inspector/per-kind-column.js";
 import {
-  type ChartFieldHandlers,
+  ASPECT_RATIOS,
   type ChartFieldTarget,
-  chartContentFields,
-  chartPaintFields,
+  chartContentView,
+  chartPaintView,
 } from "./panel.js";
+import type { ChartEdits } from "./chart-fields.js";
 
 /**
  * The family's per-series paint, with one entry per series.
@@ -193,9 +194,6 @@ function newChart(
   }
 }
 
-/** The ratios the line-chart control group offers, widest last. */
-const ASPECT_RATIOS: readonly number[] = [2, 3, 4];
-
 /**
  * The offered ratio a chart is at, or nothing when it is at none of them.
  *
@@ -230,29 +228,30 @@ export class ChartManager {
     | undefined;
 
   /**
-   * The chart's own fields, for the selection inspector's column to mount.
+   * The chart's own fields, for the selection inspector's column to render.
    *
    * The mount point moved out of a Data tab and into the chart's own column;
-   * the owner did not. Every write these controls make lands on the methods
-   * below, so the envelope, the canvas and the panel cannot disagree about what
-   * a chart reads.
+   * the owner did not. The values are projected per question and the React
+   * column renders them through plan 1's control set, so this hands over a
+   * serializable body rather than the elements it used to build.
    */
   readonly fields: ChartFieldsPort = {
     content: (chart) => {
       const target = this.#targetFor(chart);
-      return target === undefined
-        ? []
-        : chartContentFields(target, this.#globals?.palette, this.#handlers);
+      return target === undefined ? undefined : chartContentView(target);
     },
     paint: (chart) => {
       const target = this.#targetFor(chart);
       return target === undefined
-        ? []
-        : chartPaintFields(target, this.#globals?.palette, this.#handlers);
+        ? undefined
+        : chartPaintView(target, this.#globals?.palette);
     },
   };
 
-  readonly #handlers: ChartFieldHandlers = {
+  /** The writes those controls make. Public because the column calls them; the
+      chart they land on is resolved by id at call time, so a control whose
+      draft outlived its selection writes nothing. */
+  readonly edits: ChartEdits = {
     onSettings: (id, settings) => this.#updateSettings(id, settings),
     onBinding: (id, binding) =>
       this.#updateBinding(id, binding, this.#onBindingsChange),

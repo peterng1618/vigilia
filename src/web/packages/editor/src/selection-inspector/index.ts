@@ -5,6 +5,7 @@ import type {
 } from "@vigilia/renderer-core";
 import { applyAuthoredText } from "@vigilia/scene-fabric";
 import type { FabricObject } from "fabric/es";
+import type { ChartEdits } from "../chart-manager/chart-fields.js";
 import type { EditorInteraction } from "../editor-interaction.js";
 import { OBJECT_LOCK_CHANGED_EVENT } from "../object-lock-manager/index.js";
 import { uiCopy } from "../ui-copy.js";
@@ -152,6 +153,16 @@ export interface SelectionInspectorOptions {
    * gets.
    */
   readonly chartFields?: () => ChartFieldsPort | undefined;
+  /**
+   * The writes those chart fields make, from the same owner.
+   *
+   * A second getter rather than a member of the port, for the reason
+   * `nodeBindings` and `onNodeBindingsChange` are two: the read half projects
+   * into a value the column holds, and the write half is never carried into one.
+   * A chart's commit resolves the chart by its own id, so `SelectionEdits`'
+   * revision guard has nothing to compare and is not the rule here.
+   */
+  readonly chartEdits?: () => ChartEdits | undefined;
 }
 
 /** The input types that hold a caret. A checkbox has focus and nothing to type. */
@@ -587,6 +598,23 @@ export function createSelectionInspector(
   };
 
   /**
+   * The chart owner's writes, or a port that does nothing.
+   *
+   * A no-op rather than `undefined`: the column's charts are rendered only when
+   * `chartFields` answered, so a chart control can only exist when an owner is
+   * mounted — and a `SelectionColumn` that had to guard every row's callbacks
+   * would be a second copy of that same condition.
+   */
+  const chartEdits = (): ChartEdits =>
+    options.chartEdits?.() ?? {
+      onSettings: () => {},
+      onBinding: () => {},
+      onAspect: () => {},
+      onAddBinding: () => {},
+      onRemoveBinding: () => {},
+    };
+
+  /**
    * Mounts each section's imperative body into the container React rendered for
    * it.
    *
@@ -637,7 +665,7 @@ export function createSelectionInspector(
     // the empty state, the section root renders the chrome. Each is flushed
     // synchronously, so the bodies mount into containers that already exist.
     column.publish(view, edits);
-    sectionColumn.publish(view, edits, runEdits);
+    sectionColumn.publish(view, edits, runEdits, chartEdits());
     mountBodies(sections);
 
     restoreFocus(sectionsHost, focused);

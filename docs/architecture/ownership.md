@@ -72,7 +72,7 @@ two apart is the judgement the map cannot make for itself.
 | Editor session composition and disposal | `editor/src/editor-session.ts` |
 | Product shortcuts | `editor/src/shortcut-manager/` |
 | Theme download | `editor/src/persistence-manager/` |
-| Chart selection/settings/bindings | `editor/src/chart-manager/` |
+| Chart selection/settings/bindings — projected by `panel.ts`, rendered by `chart-fields.tsx`, written by `index.ts` | `editor/src/chart-manager/` |
 | **The artboard-to-viewport transform** — contain/cover scale, letterbox bars, cover crop | `renderer-core/src/artboard.ts` |
 | Theme metadata, artboard size/preview fit/paint/media — **the authoring controls** | `editor/src/artboard-panel.ts` |
 | Semantic layer projection | `editor/src/editor-shell/layer-tree.ts` |

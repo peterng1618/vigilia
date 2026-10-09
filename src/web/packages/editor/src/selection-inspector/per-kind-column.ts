@@ -13,6 +13,10 @@ import {
   Group,
 } from "fabric/es";
 import type { EditorInteraction } from "../editor-interaction.js";
+import type {
+  ChartContentFieldsView,
+  ChartPaintFieldsView,
+} from "../chart-manager/chart-fields.js";
 import { linkedPair } from "../editor-shell/controls/linked-pair.js";
 import { uiCopy } from "../ui-copy.js";
 import {
@@ -89,14 +93,18 @@ interface SectionParts {
 /**
  * Whether the column renders this extra today.
  *
- * `runs` is the one wired; `crop` is Task 4's and the two chart kinds are Task
- * 3a's. The section's count and the column's rows are the same decision made
- * once, so emitting an extra whose renderer has not landed cannot make a header
- * claim a row that is not there. Wiring one is a change to this predicate and to
- * the column's row together, which is the point.
+ * `runs`, `chartContent` and `chartPaint` are wired; `crop` is Task 4's. The
+ * section's count and the column's rows are the same decision made once, so
+ * emitting an extra whose renderer has not landed cannot make a header claim a
+ * row that is not there. Wiring one is a change to this predicate and to the
+ * column's row together, which is the point.
  */
 export function rendersExtra(extra: ExtraView): boolean {
-  return extra.kind === "runs";
+  return (
+    extra.kind === "runs" ||
+    extra.kind === "chartContent" ||
+    extra.kind === "chartPaint"
+  );
 }
 
 /**
@@ -207,16 +215,18 @@ export interface GeometryPort {
  *
  * Declared here for the reason `GeometryPort` is: the column names the
  * questions and its owner answers them, so nothing in this module knows how a
- * chart's settings, bindings or ratio are written. `chart-manager` is that
- * owner — a chart's bindings and family settings render here without this
- * column becoming a second writer of either.
+ * chart's settings, bindings or ratio are written — or how they are rendered.
+ * `chart-manager` is that owner; the views below cross as values and the
+ * controls that render them live with the owner too.
  *
  * Two bodies, because a chart answers Content (what it shows) and Paint (what
- * ink) with different questions.
+ * ink) with different questions. `undefined` is an owner that has nothing to
+ * say for that question — a chart it cannot resolve — and is not an empty body:
+ * the extra is what the section's count counts, so an absent answer emits none.
  */
 export interface ChartFieldsPort {
-  content(chart: VigiliaChart): readonly HTMLElement[];
-  paint(chart: VigiliaChart): readonly HTMLElement[];
+  content(chart: VigiliaChart): ChartContentFieldsView | undefined;
+  paint(chart: VigiliaChart): ChartPaintFieldsView | undefined;
 }
 
 export interface ColumnContext {
@@ -411,14 +421,14 @@ function contentBody(
   // A chart's own questions: the readings it draws and how its family is set.
   // The owner answers them through the port; asking here is what puts them in
   // the column they answer rather than behind a second tab. Withheld on a
-  // locked chart like every other writing field. Still elements until Task 3a
-  // gives the chart owner the value-returning port it converts with.
+  // locked chart like every other writing field.
   if (
     !locked &&
     target instanceof VigiliaChart &&
     context.chartFields !== undefined
   ) {
-    body.push(...context.chartFields.content(target));
+    const chart = context.chartFields.content(target);
+    if (chart !== undefined) extras.push({ kind: "chartContent", content: chart });
   }
 
   return { fields, extras, body };
@@ -487,6 +497,7 @@ function paintBody(
 ): SectionParts {
   if (locked) return { body: [] };
   const body: HTMLElement[] = [];
+  const extras: ExtraView[] = [];
 
   const material = createPanelMaterialFields(appearanceOf(context), target, {
     stillTarget: () => context.stillTarget(target),
@@ -506,12 +517,14 @@ function paintBody(
     }),
   );
 
-  // What a chart paints its data with, from the owner that writes it.
+  // What a chart paints its data with, from the owner that writes it. A chart's
+  // paint is its own question, asked of the same owner that answered Content.
   if (target instanceof VigiliaChart && context.chartFields !== undefined) {
-    body.push(...context.chartFields.paint(target));
+    const chart = context.chartFields.paint(target);
+    if (chart !== undefined) extras.push({ kind: "chartPaint", paint: chart });
   }
 
-  return { body };
+  return { body, extras };
 }
 
 /** Every object under this one, at any depth, in document order. A kind with no

@@ -1,6 +1,10 @@
 import type { Binding } from "@vigilia/renderer-core";
 import { isObjectName } from "@vigilia/renderer-core";
 import type { FabricObject } from "fabric/es";
+import type {
+  ChartContentFieldsView,
+  ChartPaintFieldsView,
+} from "../chart-manager/chart-fields.js";
 import { rowNameOf } from "../editor-shell/layer-tree.js";
 import { uiCopy } from "../ui-copy.js";
 import {
@@ -37,11 +41,14 @@ export interface ColumnSectionView {
   readonly readOnly: boolean;
   readonly defaultOpen: boolean;
   /**
-   * How many controls the section holds, carried from the rendered section's own
-   * body length. It lives in the value because the header prints it: collapsing
-   * a section is ordering, not removal, so a closed Position still says how much
-   * it holds — and React could not count it here, because `fields` is empty by
-   * construction until Tasks 3–6 fill it.
+   * How many rows the section holds: its fields, its extras and the body it
+   * does not render itself yet. An extra counts once however many controls it
+   * carries — it is one row in this count's vocabulary, the same way a run
+   * editor is — and it counts only while `rendersExtra` says the column renders
+   * it, so the header can never claim a row that is not there.
+   *
+   * It lives in the value because the header prints it: collapsing a section is
+   * ordering, not removal, so a closed Position still says how much it holds.
    */
   readonly count: number;
   /** Flat, one control each. */
@@ -183,12 +190,18 @@ export interface RunsView {
 }
 
 /** The four sub-surfaces that are not one control. Each names one React
-    component in this family; no other kind is added without amending this. */
+    component in this family; no other kind is added without amending this.
+    The two chart bodies carry their owner's own field views, which cross as
+    values exactly as a run's do: a DOM island here would be the boundary this
+    type exists to hold. */
 export type ExtraView =
   | { readonly kind: "runs"; readonly nodeId: string; readonly runs: RunsView }
   | { readonly kind: "crop" }
-  | { readonly kind: "chartContent" }
-  | { readonly kind: "chartPaint" };
+  | {
+      readonly kind: "chartContent";
+      readonly content: ChartContentFieldsView;
+    }
+  | { readonly kind: "chartPaint"; readonly paint: ChartPaintFieldsView };
 
 /**
  * The run editor's one way to write, beside `SelectionEdits`.

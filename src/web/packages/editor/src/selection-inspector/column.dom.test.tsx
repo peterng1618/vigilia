@@ -4,6 +4,7 @@ import { type FabricObject, Rect } from "fabric/es";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import type { ChartEdits } from "../chart-manager/chart-fields.js";
 import { SelectionColumn } from "./column.js";
 import { idleCrop } from "./idle-crop.test-stage.js";
 import { type ColumnContext, perKindColumn } from "./per-kind-column.js";
@@ -46,6 +47,15 @@ const runs: RunEdits = {
   writeLayout: () => false,
   addRun: () => false,
   removeRun: () => false,
+};
+
+/** A chart port that records nothing, for the same reason. */
+const chart: ChartEdits = {
+  onSettings: () => {},
+  onBinding: () => {},
+  onAspect: () => {},
+  onAddBinding: () => {},
+  onRemoveBinding: () => {},
 };
 
 function ports(): ProjectionPorts {
@@ -112,7 +122,9 @@ afterEach(() => {
 /** Renders a view and returns the section elements in document order. */
 function renderedSections(view: SelectionView): HTMLElement[] {
   act(() => {
-    root.render(<SelectionColumn view={view} edits={edits} runs={runs} />);
+    root.render(
+      <SelectionColumn view={view} edits={edits} runs={runs} chart={chart} />,
+    );
   });
   return [...host.querySelectorAll<HTMLElement>("[data-vigilia-section]")];
 }

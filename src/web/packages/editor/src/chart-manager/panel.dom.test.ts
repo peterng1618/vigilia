@@ -1,181 +1,157 @@
 // @vitest-environment jsdom
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it } from "vitest";
 import {
-  buildPieOption,
-  type ChartContent,
-  computeComposition,
-  defaultLineSettings,
   defaultPieSettings,
   type FabricPalette,
-  type LineSettings,
   type PieSettings,
+  settingsFieldsFor,
 } from "@vigilia/renderer-core";
+import { isSettingVisible } from "../editor-shell/controls/settings-field.js";
 import {
-  type ChartFieldHandlers,
+  ASPECT_RATIOS,
   type ChartFieldTarget,
-  chartContentFields,
-  chartPaintFields,
+  chartContentView,
+  chartPaintView,
 } from "./panel.js";
 
 /**
- * The chart's fields gathered into one body, the way the inspector's column
- * mounts them by question. The panel's own `root` used to be that body; the
- * controls, their ids and their labels are what these assertions are about, and
- * those are still the builders above.
+ * What the chart owner hands the column, as data.
+ *
+ * The controls themselves are `chart-fields.tsx`, and the file that renders
+ * them is `chart-fields.dom.test.tsx`. This one is about the reading: which
+ * descriptors become rows, where each row writes, which are clearable, which
+ * series may be removed, and which paint references are worth a control. A row
+ * that is here and cannot be rendered is a defect this file cannot see — which
+ * is exactly why the rendering has its own file.
  */
-function chartPanelOf(
-  host: HTMLElement,
-  onChange: ChartFieldHandlers["onSettings"],
-  onBindingChange: ChartFieldHandlers["onBinding"],
-  onAspect: ChartFieldHandlers["onAspect"],
-  onAddBinding: ChartFieldHandlers["onAddBinding"],
-  onRemoveBinding: ChartFieldHandlers["onRemoveBinding"],
-): {
-  readonly root: HTMLElement;
-  render(chart: ChartFieldTarget | undefined, palette?: FabricPalette): void;
-} {
-  const root = document.createElement("div");
-  host.append(root);
-  const handlers: ChartFieldHandlers = {
-    onSettings: onChange,
-    onBinding: onBindingChange,
-    onAspect,
-    onAddBinding,
-    onRemoveBinding,
-  };
-  return {
-    root,
-    render(chart, palette) {
-      root.replaceChildren();
-      if (chart === undefined) return;
-      root.append(
-        ...chartContentFields(chart, palette, handlers),
-        ...chartPaintFields(chart, palette, handlers),
-      );
+
+const palette: FabricPalette = {
+  cpu: { name: "CPU", value: { kind: "solid", color: "#00b8d9" } },
+  gpu: { name: "GPU", value: { kind: "solid", color: "#a78bfa" } },
+  ram: { name: "RAM", value: { kind: "solid", color: "#2dd4bf" } },
+};
+
+const charts: readonly ChartFieldTarget[] = [
+  {
+    id: "gauge",
+    content: {
+      family: "gauge",
+      settings: {
+        startAngle: 90,
+        endAngle: -270,
+        min: 0,
+        max: 100,
+        thickness: 10,
+        track: { kind: "solid", color: "#000" },
+        progress: { kind: "solid", color: "#fff" },
+        roundCap: true,
+      },
     },
-  };
+    bindings: [{ id: "g", semanticKey: "ram.used.percent" }],
+  },
+  {
+    id: "trend",
+    content: {
+      family: "line",
+      settings: {
+        lineWidth: 2,
+        interpolation: "smooth",
+        stroke: { kind: "solid", color: "#00b8d9" },
+        showMarkers: false,
+        markerSize: 4,
+        windowSeconds: 60,
+        maxPoints: 600,
+        showAxes: false,
+        // Three slices of paint: ids must stay unique across a `multiple` row,
+        // not just across one family's settings.
+        palette: [
+          { ref: "palette.cpu" },
+          { ref: "palette.gpu" },
+          { ref: "palette.ram" },
+        ],
+      },
+    },
+    bindings: [
+      { id: "cpu", semanticKey: "cpu.load" },
+      { id: "gpu", semanticKey: "gpu.load" },
+    ],
+  },
+  {
+    id: "storage",
+    content: {
+      family: "bar",
+      settings: {
+        orientation: "horizontal",
+        min: 0,
+        max: 100,
+        barWidth: 20,
+        categoryGapPercent: 40,
+        cornerRadius: 10,
+        trackCornerRadius: 10,
+        fill: { ref: "palette.cpu" },
+        track: { ref: "palette.gpu" },
+        showAxes: false,
+        showCategoryLabels: false,
+      },
+    },
+    bindings: [{ id: "disk", semanticKey: "disk.used" }],
+  },
+  {
+    id: "pie",
+    content: {
+      family: "pie",
+      settings: {
+        innerRadiusPercent: 0,
+        outerRadiusPercent: 80,
+        startAngle: 0,
+        endAngle: 360,
+        padAngle: 0,
+        cornerRadius: 4,
+        showLabels: false,
+        palette: [{ ref: "palette.cpu" }],
+        remainderFill: { ref: "palette.gpu" },
+        total: { kind: "sum" },
+      },
+    },
+    bindings: [{ id: "slice", semanticKey: "disk.used" }],
+  },
+];
+
+/** Every id a chart's two bodies render, in one list. */
+function idsOf(target: ChartFieldTarget): readonly string[] {
+  const content = chartContentView(target);
+  const paint = chartPaintView(target, palette);
+  return [
+    ...content.rows.map((row) => row.id),
+    ...paint.rows.map((row) => row.id),
+    content.series.id,
+  ];
 }
 
-describe("every control the panel offers", () => {
-  // The panel was the one place in the shell where a control had no id and its
-  // label no `htmlFor`, so an assistive technology announced an unlabelled
-  // field and a test could not reach the corner-radius control by name at all —
-  // `querySelector('label[for=...]')` had nothing to match. Asserting on
-  // position instead of association is what let it survive.
-  const charts = [
-    {
-      id: "gauge",
-      content: {
-        family: "gauge" as const,
-        settings: {
-          startAngle: 90,
-          endAngle: -270,
-          min: 0,
-          max: 100,
-          thickness: 10,
-          track: { kind: "solid" as const, color: "#000" },
-          progress: { kind: "solid" as const, color: "#fff" },
-          roundCap: true,
-        },
-      },
-      bindings: [{ id: "g", semanticKey: "ram.used.percent" }],
-    },
-    {
-      id: "trend",
-      content: {
-        family: "line" as const,
-        settings: {
-          lineWidth: 2,
-          interpolation: "smooth" as const,
-          stroke: { kind: "solid" as const, color: "#00b8d9" },
-          showMarkers: false,
-          markerSize: 4,
-          windowSeconds: 60,
-          maxPoints: 600,
-          showAxes: false,
-          // Two slices of paint: ids must stay unique across a `multiple` row,
-          // not just across one family's settings.
-          palette: [
-            { ref: "palette.cpu" },
-            { ref: "palette.gpu" },
-            { ref: "palette.ram" },
-          ],
-        },
-      },
-      bindings: [
-        { id: "cpu", semanticKey: "cpu.load" },
-        { id: "gpu", semanticKey: "gpu.load" },
-      ],
-    },
-    {
-      id: "storage",
-      content: {
-        family: "bar" as const,
-        settings: {
-          orientation: "horizontal" as const,
-          min: 0,
-          max: 100,
-          barWidth: 20,
-          categoryGapPercent: 40,
-          cornerRadius: 10,
-          trackCornerRadius: 10,
-          fill: { ref: "palette.storageFill" },
-          track: { ref: "palette.chartTrack" },
-          showAxes: false,
-          showCategoryLabels: false,
-        },
-      },
-      bindings: [{ id: "disk", semanticKey: "disk.used" }],
-    },
-    {
-      id: "pie",
-      content: {
-        family: "pie" as const,
-        settings: {
-          innerRadiusPercent: 0,
-          outerRadiusPercent: 80,
-          startAngle: 0,
-          endAngle: 360,
-          padAngle: 0,
-          cornerRadius: 4,
-          showLabels: false,
-          palette: [{ ref: "palette.storageFill" }],
-          remainderFill: { ref: "palette.chartTrack" },
-        },
-      },
-      bindings: [{ id: "slice", semanticKey: "disk.used" }],
-    },
-  ];
+describe("the chart fields, as the owner hands them over", () => {
+  it("renders one named row for every descriptor the author can see", () => {
+    // The projection's half of the completeness record: a descriptor the
+    // renderer would show and this list omits is a control nobody gets, and a
+    // row here with no descriptor behind it is a control with nothing to write.
+    for (const target of charts) {
+      const rows = chartContentView(target).rows;
+      const visible = settingsFieldsFor(target.content.family).filter((field) =>
+        isSettingVisible(field, target.content.settings),
+      );
 
-  it("reaches every control by its label rather than by position", () => {
-    const panel = chartPanelOf(
-      document.body,
-      vi.fn(),
-      vi.fn(),
-      vi.fn(),
-      vi.fn(),
-      vi.fn(),
-    );
+      expect(
+        rows.map((row) => row.key),
+        `${target.id} descriptors`,
+      ).toEqual(visible.map((field) => field.property));
 
-    for (const chart of charts) {
-      panel.render(chart as ChartFieldTarget);
-      const controls = [
-        ...panel.root.querySelectorAll<HTMLInputElement | HTMLSelectElement>(
-          "input, select, textarea",
-        ),
-      ];
-      expect(controls.length).toBeGreaterThan(0);
-
-      for (const control of controls) {
-        const named = control.id !== "";
-        expect(named, `${chart.id}: a control with no id`).toBe(true);
-
-        const labels = [...(control.labels ?? [])];
-        const text = labels.map((l) => l.textContent?.trim() ?? "");
+      for (const row of rows) {
+        expect(row.id, `${target.id}: "${row.key}" has no id`).not.toBe("");
         expect(
-          text.some((t) => t.length > 0),
-          `${chart.id}: "${control.id}" has no label with words on it`,
-        ).toBe(true);
+          row.label.trim(),
+          `${target.id}: "${row.key}" has no label with words on it`,
+        ).not.toBe("");
+        expect(row.path.length, `${target.id}: "${row.key}" writes nowhere`)
+          .toBeGreaterThan(0);
       }
     }
   });
@@ -184,528 +160,253 @@ describe("every control the panel offers", () => {
     // Two bindings render the same fields twice and a `multiple` paint row
     // renders one control per slice, so a positional id would collide and the
     // second control's label would name the first.
-    const panel = chartPanelOf(
-      document.body,
-      vi.fn(),
-      vi.fn(),
-      vi.fn(),
-      vi.fn(),
-      vi.fn(),
-    );
-    panel.render(charts[1] as ChartFieldTarget);
-
-    const ids = [...panel.root.querySelectorAll<HTMLElement>("[id]")].map(
-      (element) => element.id,
-    );
-    expect(ids).toHaveLength(new Set(ids).size);
+    for (const target of charts) {
+      const ids = idsOf(target);
+      expect(new Set(ids).size, `${target.id} ids`).toBe(ids.length);
+    }
   });
 
-  it("reaches the corner-radius control by its label", () => {
+  it("names the corner-radius control the same way the panel did", () => {
     // The exact lookup that returned nothing twice: name the control, not find
     // it by walking the section.
-    const panel = chartPanelOf(
-      document.body,
-      vi.fn(),
-      vi.fn(),
-      vi.fn(),
-      vi.fn(),
-      vi.fn(),
+    const rows = chartContentView(
+      charts[2] as ChartFieldTarget,
+    ).rows;
+    const byLabel = rows.find((row) => row.label === "Corner radius");
+    expect(byLabel?.key).toBe("cornerRadius");
+    expect(rows.find((row) => row.label === "Track corner radius")?.key).toBe(
+      "trackCornerRadius",
     );
-    panel.render(charts[2] as ChartFieldTarget);
-
-    const byLabel = [...panel.root.querySelectorAll("label")].find(
-      (l) => l.textContent?.trim() === "Corner radius",
-    );
-    expect(byLabel).toBeDefined();
-    const control = document.getElementById(byLabel!.htmlFor);
-    expect(control?.getAttribute("data-vigilia-chart-setting")).toBe(
-      "cornerRadius",
-    );
-
-    const trackByLabel = [...panel.root.querySelectorAll("label")].find(
-      (l) => l.textContent?.trim() === "Track corner radius",
-    );
-    expect(trackByLabel).toBeDefined();
-    expect(
-      document
-        .getElementById(trackByLabel!.htmlFor)
-        ?.getAttribute("data-vigilia-chart-setting"),
-    ).toBe("trackCornerRadius");
   });
 });
 
-describe("chart property panel", () => {
-  it("names the series it removes, and removes only that one", () => {
-    // The reconciliation that keeps each series its own colour lives in the
-    // manager; this is the control that reaches it, and it names the reading so
-    // an author can tell three "Remove" buttons apart.
-    const onRemoveBinding = vi.fn();
-    const panel = chartPanelOf(
-      document.body,
-      vi.fn(),
-      vi.fn(),
-      vi.fn(),
-      vi.fn(),
-      onRemoveBinding,
-    );
-    const bindings = [
-      { id: "b1", semanticKey: "cpu.load" },
-      { id: "b2", semanticKey: "gpu.load" },
-      { id: "b3", semanticKey: "ram.used.percent" },
-    ];
-    panel.render(
-      {
-        id: "trend",
-        content: {
-          family: "line",
-          settings: {
-            lineWidth: 2,
-            interpolation: "smooth",
-            stroke: { kind: "solid", color: "#00b8d9" },
-            showMarkers: false,
-            markerSize: 4,
-            windowSeconds: 60,
-            maxPoints: 600,
-            showAxes: false,
-            palette: [
-              { ref: "palette.cpu" },
-              { ref: "palette.gpu" },
-              { ref: "palette.ram" },
-            ],
-          },
-        },
-        bindings,
-      },
-      undefined,
-    );
+describe("the fixed-total question", () => {
+  const pie = (settings: PieSettings): ChartFieldTarget => ({
+    id: "ram",
+    content: { family: "pie", settings },
+    bindings: [],
+  });
 
-    const buttons = [
-      ...panel.root.querySelectorAll<HTMLButtonElement>(
-        "[data-vigilia-chart-binding-remove]",
-      ),
-    ];
-    expect(buttons.map((b) => b.textContent)).toEqual([
-      "Remove the series reading cpu.load",
-      "Remove the series reading gpu.load",
-      "Remove the series reading ram.used.percent",
+  it("asks only while the total is fixed", () => {
+    const rowOf = (settings: PieSettings): string | undefined =>
+      chartContentView(pie(settings)).rows.find(
+        (row) => row.key === "total.value",
+      )?.key;
+
+    expect(rowOf(defaultPieSettings)).toBeUndefined();
+    expect(
+      rowOf({ ...defaultPieSettings, total: { kind: "fixed", value: 0 } }),
+    ).toBe("total.value");
+  });
+
+  it("writes the fixed value at the path the renderer reads it from", () => {
+    // Committing `{...settings, [property]: value}` writes a key the validator
+    // accepts and the renderer never reads, so the author's choice survives the
+    // click and dies on reopen. The path is what stops that, and it is the
+    // renderer's own path — the same one `computeComposition` reads.
+    const rows = chartContentView(
+      pie({ ...defaultPieSettings, total: { kind: "fixed", value: 64 } }),
+    ).rows;
+    expect(rows.find((row) => row.key === "total.value")?.path).toEqual([
+      "total",
+      "value",
     ]);
-    buttons[1]?.click();
-    expect(onRemoveBinding).toHaveBeenCalledWith("trend", "b2");
+    expect(rows.find((row) => row.key === "animation.durationMs")?.path).toEqual(
+      ["animation", "durationMs"],
+    );
   });
 
-  it("offers line aspect presets and visible history", () => {
-    const resize = vi.fn();
-    const panel = chartPanelOf(
-      document.body,
-      vi.fn(),
-      vi.fn(),
-      resize,
-      vi.fn(),
-      vi.fn(),
-    );
-    panel.render({
-      id: "trend",
-      content: {
-        family: "line",
-        settings: {
-          lineWidth: 2,
-          interpolation: "smooth",
-          stroke: { kind: "solid", color: "#00b8d9" },
-          showMarkers: false,
-          markerSize: 4,
-          windowSeconds: 60,
-          maxPoints: 600,
-          showAxes: false,
-        },
-      },
-      bindings: [],
-    });
-
-    expect(
-      panel.root.querySelector('[data-vigilia-chart-setting="windowSeconds"]')
-        ?.previousSibling?.textContent,
-    ).toBe("Visible history (s)");
-    expect(
-      panel.root.querySelector('[data-vigilia-chart-aspect="2"]'),
-    ).not.toBeNull();
-    expect(
-      panel.root.querySelector('[data-vigilia-chart-aspect="3"]'),
-    ).not.toBeNull();
-    expect(
-      panel.root.querySelector('[data-vigilia-chart-aspect="4"]'),
-    ).not.toBeNull();
-    panel.root
-      .querySelector<HTMLButtonElement>('[data-vigilia-chart-aspect="2"]')!
-      .click();
-    expect(resize).toHaveBeenCalledWith("trend", 2);
-  });
-
-  it("derives controls from the shared field descriptors and returns authored settings", () => {
-    const change = vi.fn();
-    const bindingChange = vi.fn();
-    const panel = chartPanelOf(
-      document.body,
-      change,
-      bindingChange,
-      vi.fn(),
-      vi.fn(),
-      vi.fn(),
-    );
-    const content = {
-      family: "gauge" as const,
-      settings: {
-        startAngle: 90,
-        endAngle: -270,
-        min: 0,
-        max: 100,
-        thickness: 10,
-        track: { kind: "solid" as const, color: "#000000" },
-        progress: { kind: "solid" as const, color: "#ffffff" },
-        roundCap: true,
-      },
+  it("tells the renderer to remove a key the author cleared", () => {
+    // Absent is an authorable state for exactly the descriptors that say so,
+    // and an empty box is how the author gets back to it.
+    const rows = chartContentView(
+      pie({ ...defaultPieSettings, endAngle: 200 }),
+    ).rows;
+    const clearable = (key: string): boolean | undefined => {
+      const row = rows.find((candidate) => candidate.key === key);
+      return row?.control === "number" || row?.control === "select"
+        ? row.clearable
+        : undefined;
     };
 
-    panel.render({
-      id: "cpu-gauge",
-      content,
-      bindings: [{ id: "cpu", semanticKey: "cpu.load" }],
-    });
-
-    const thickness = panel.root.querySelector<HTMLInputElement>(
-      '[data-vigilia-chart-setting="thickness"]',
-    )!;
-    expect(thickness.value).toBe("10");
-    thickness.value = "20";
-    thickness.dispatchEvent(new Event("change"));
-
-    expect(change).toHaveBeenCalledWith(
-      "cpu-gauge",
-      expect.objectContaining({ thickness: 20 }),
-    );
-    expect(
-      panel.root.querySelector('[data-vigilia-chart-setting="track"]'),
-    ).toBeNull();
-
-    const binding = panel.root.querySelector<HTMLSelectElement>(
-      '[data-vigilia-binding="cpu"]',
-    )!;
-    binding.value = "ram.used";
-    binding.dispatchEvent(new Event("change"));
-    expect(bindingChange).toHaveBeenCalledWith("cpu-gauge", {
-      id: "cpu",
-      semanticKey: "ram.used",
-    });
-
-    const precision = panel.root.querySelector<HTMLInputElement>(
-      '[data-vigilia-binding-field="cpu.precision"]',
-    )!;
-    precision.value = "2";
-    precision.dispatchEvent(new Event("change"));
-    expect(bindingChange).toHaveBeenLastCalledWith("cpu-gauge", {
-      id: "cpu",
-      semanticKey: "cpu.load",
-      precision: 2,
-    });
-
-    const unitDisplay = panel.root.querySelector<HTMLSelectElement>(
-      '[data-vigilia-binding-field="cpu.unitDisplay"]',
-    )!;
-    unitDisplay.value = "long";
-    unitDisplay.dispatchEvent(new Event("change"));
-    expect(bindingChange).toHaveBeenLastCalledWith("cpu-gauge", {
-      id: "cpu",
-      semanticKey: "cpu.load",
-      unitDisplay: "long",
-    });
-
-    const scale = panel.root.querySelector<HTMLInputElement>(
-      '[data-vigilia-binding-field="cpu.scale"]',
-    )!;
-    scale.value = "1.5";
-    scale.dispatchEvent(new Event("change"));
-    expect(bindingChange).toHaveBeenLastCalledWith("cpu-gauge", {
-      id: "cpu",
-      semanticKey: "cpu.load",
-      scale: 1.5,
-    });
-
-    const offset = panel.root.querySelector<HTMLInputElement>(
-      '[data-vigilia-binding-field="cpu.offset"]',
-    )!;
-    offset.value = "-4";
-    offset.dispatchEvent(new Event("change"));
-    expect(bindingChange).toHaveBeenLastCalledWith("cpu-gauge", {
-      id: "cpu",
-      semanticKey: "cpu.load",
-      offset: -4,
-    });
+    expect(clearable("endAngle")).toBe(true);
+    // A required field's empty box is a mistake, not a removal.
+    expect(clearable("innerRadiusPercent")).toBe(false);
   });
 });
 
-describe("the series a chart reads", () => {
-  const trend = (
-    bindings: readonly { id: string; semanticKey: string }[],
-  ): ChartFieldTarget => ({
-    id: "trends",
-    content: {
-      family: "line",
-      settings: {
-        lineWidth: 2,
-        interpolation: "smooth",
-        stroke: { kind: "solid", color: "#0af" },
-        showMarkers: false,
-        markerSize: 4,
-        windowSeconds: 60,
-        maxPoints: 600,
-        showAxes: false,
-      },
-    },
-    bindings,
-  });
-
-  it("declares the first series, which is what a chart arrives without", () => {
+describe("a chart's series, as a value", () => {
+  it("declares the first series, and offers every reading it may name", () => {
     // The panel could only ever edit a binding the document already declared,
     // and a chart inserted through the Add pane declares none — so the whole
     // family was unauthorable from the surface.
-    const add = vi.fn();
-    const panel = chartPanelOf(
-      document.body,
-      vi.fn(),
-      vi.fn(),
-      vi.fn(),
-      add,
-      vi.fn(),
-    );
-    panel.render(trend([]));
+    const series = chartContentView({
+      id: "trends",
+      content: charts[1]!.content,
+      bindings: [],
+    }).series;
 
-    const chooser = panel.root.querySelector<HTMLSelectElement>(
-      "[data-vigilia-chart-binding-add]",
-    )!;
-    chooser.value = "cpu.load";
-    chooser.dispatchEvent(new Event("change"));
-
-    expect(add).toHaveBeenCalledWith("trends", "cpu.load");
-    // The choice is consumed rather than held, so re-rendering the panel cannot
-    // create the same series a second time.
-    expect(chooser.value).toBe("");
+    // Not an edit: a binding cannot exist without the key it names, so the
+    // chooser declares both at once.
+    expect(series.label).toBe("Add a series");
+    expect(series.options[0]).toEqual({ id: "", name: "Add a series" });
+    expect(series.options.map((option) => option.id)).toContain("cpu.load");
+    expect(series.refused).toBe(false);
+    expect(series.full).toBeUndefined();
+    expect(series.rows).toEqual([]);
   });
 
-  it("removes a series, but never the last one", () => {
-    const remove = vi.fn();
-    const panel = chartPanelOf(
-      document.body,
-      vi.fn(),
-      vi.fn(),
-      vi.fn(),
-      vi.fn(),
-      remove,
+  it("offers a series' own key even when no descriptor declares it", () => {
+    // A document can name a key the table no longer has; a picker that dropped
+    // it would show the series as reading nothing at all.
+    const [row] = chartContentView({
+      id: "trends",
+      content: charts[1]!.content,
+      bindings: [{ id: "a", semanticKey: "retired.key" }],
+    }).series.rows;
+
+    const options = row?.keyOptions ?? [];
+    expect(options[0]).toEqual({ id: "retired.key", name: "retired.key" });
+    // ...and the declared table is still offered beside it, once each.
+    expect(options.map((option) => option.id)).toContain("cpu.load");
+    expect(new Set(options.map((option) => option.id)).size).toBe(
+      options.length,
     );
+  });
 
-    panel.render(trend([{ id: "a", semanticKey: "cpu.load" }]));
-    expect(
-      panel.root.querySelector("[data-vigilia-chart-binding-remove]"),
-    ).toBeNull();
+  it("withholds the removal from the last series", () => {
+    // A chart with nothing bound draws its frame and no data, so a control that
+    // reaches that state is a control that can empty a card.
+    const withOne = chartContentView({
+      id: "trends",
+      content: charts[1]!.content,
+      bindings: [{ id: "a", semanticKey: "cpu.load" }],
+    }).series;
+    expect(withOne.rows.map((row) => row.removable)).toEqual([false]);
 
-    panel.render(
-      trend([
+    const withTwo = chartContentView({
+      id: "trends",
+      content: charts[1]!.content,
+      bindings: [
         { id: "a", semanticKey: "cpu.load" },
         { id: "b", semanticKey: "gpu.load" },
-      ]),
-    );
-    panel.root
-      .querySelector<HTMLButtonElement>(
-        '[data-vigilia-chart-binding-remove="b"]',
-      )!
-      .click();
-    expect(remove).toHaveBeenCalledWith("trends", "b");
+      ],
+    }).series;
+    expect(withTwo.rows.map((row) => row.removable)).toEqual([true, true]);
+    // The binding crosses whole: it is the object the manager writes back, and
+    // a reconstruction here would be a second spelling of its shape.
+    expect(withTwo.rows[1]?.binding).toEqual({
+      id: "b",
+      semanticKey: "gpu.load",
+    });
   });
 
   it("says a gauge takes one reading rather than accepting a second", () => {
     // `buildChartPlan` reads `bindings[0]` for a gauge and ignores the rest, so
     // a second one would be a control that accepts an edit and applies none.
-    const add = vi.fn();
-    const panel = chartPanelOf(
-      document.body,
-      vi.fn(),
-      vi.fn(),
-      vi.fn(),
-      add,
-      vi.fn(),
-    );
-    panel.render({
-      id: "ram-gauge",
-      content: {
-        family: "gauge",
-        settings: {
-          startAngle: 90,
-          endAngle: -270,
-          min: 0,
-          max: 100,
-          thickness: 10,
-          track: { kind: "solid", color: "#000" },
-          progress: { kind: "solid", color: "#fff" },
-          roundCap: true,
-        },
-      },
-      bindings: [{ id: "a", semanticKey: "ram.used.percent" }],
-    });
-
-    const chooser = panel.root.querySelector<HTMLSelectElement>(
-      "[data-vigilia-chart-binding-add]",
-    )!;
-    expect(chooser.disabled).toBe(true);
-    expect(
-      panel.root.querySelector("[data-vigilia-chart-binding-full]")!
-        .textContent,
-    ).toContain("gauge");
+    const series = chartContentView(charts[0] as ChartFieldTarget).series;
+    expect(series.refused).toBe(true);
+    expect(series.full).toContain("gauge");
   });
 });
 
-/** A reading the composition can actually measure. */
-function sample(sensorId: string, value: number) {
-  return {
-    sensorId,
-    timestamp: "2026-01-01T00:00:00Z",
-    status: "ok" as const,
-    value,
-    unit: "GB",
-  };
-}
+describe("the line chart's aspect group", () => {
+  it("offers the ratios, and states the one the chart is already at", () => {
+    const view = chartContentView({
+      ...(charts[1] as ChartFieldTarget),
+      aspect: 3,
+    });
+    expect(view.aspect?.options).toEqual(
+      ASPECT_RATIOS.map((ratio) => ({ id: String(ratio), name: `${ratio}:1` })),
+    );
+    expect(view.aspect?.value).toBe("3");
+  });
 
-function panelOf(
-  change: (id: string, settings: ChartContent["settings"]) => void,
-) {
-  return chartPanelOf(
-    document.body,
-    change,
-    vi.fn(),
-    vi.fn(),
-    vi.fn(),
-    vi.fn(),
-  );
-}
+  it("presses nothing when the chart is at none of them", () => {
+    // Read off the object rather than remembered from the last click: rounding
+    // a 2.004:1 chart to the nearest would light up a ratio nobody applied.
+    expect(
+      chartContentView(charts[1] as ChartFieldTarget).aspect?.value,
+    ).toBe("");
+  });
 
-const pieOf = (settings: PieSettings) => ({
-  id: "ram",
-  content: { family: "pie" as const, settings },
-  bindings: [],
+  it("is not a question the other families are asked", () => {
+    for (const target of [charts[0]!, charts[2]!, charts[3]!]) {
+      expect(chartContentView(target).aspect, target.id).toBeUndefined();
+    }
+  });
 });
 
-/** The last settings the panel committed. */
-function committed<T>(change: ReturnType<typeof vi.fn>): T {
-  return change.mock.calls.at(-1)?.[1] as T;
-}
-
-describe("a setting one level down", () => {
-  it("commits the fixed total where the renderer reads it, not as a flat key", () => {
-    // The live regression this replaces: the panel committed
-    // `{...settings, [property]: value}`, so picking "A fixed total" wrote
-    // `total: "fixed"` — a string where the union belongs — and the number
-    // behind it wrote a literal `"total.value"` key the renderer never reads.
-    const change = vi.fn();
-    const panel = panelOf(change);
-    panel.render(pieOf(defaultPieSettings));
-
-    const total = panel.root.querySelector<HTMLSelectElement>(
-      '[data-vigilia-chart-setting="total"]',
-    )!;
-    total.value = "fixed";
-    total.dispatchEvent(new Event("change"));
-
-    const fixed = committed<PieSettings>(change);
-    expect(fixed.total).toEqual({ kind: "fixed" });
-    expect("total.value" in fixed).toBe(false);
-
-    panel.render(pieOf(fixed));
-    const value = panel.root.querySelector<HTMLInputElement>(
-      '[data-vigilia-chart-setting="total.value"]',
-    )!;
-    value.value = "64";
-    value.dispatchEvent(new Event("change"));
-
-    const authored = committed<PieSettings>(change);
-    expect("total.value" in authored).toBe(false);
-    expect(authored.total).toEqual({ kind: "fixed", value: 64 });
-
-    // Measured through the renderer that draws it rather than restated from the
-    // settings object: the remainder exists only because the path the descriptor
-    // declares is the path `computeComposition` reads.
-    const composition = computeComposition(authored, [
-      { sensorId: "ram.used", sample: sample("ram.used", 20) },
-      { sensorId: "ram.cached", sample: sample("ram.cached", 12) },
+describe("what a chart paints its data with", () => {
+  it("offers one control per reference, named for its own family's field", () => {
+    const bar = chartPaintView(charts[2] as ChartFieldTarget, palette);
+    expect(bar.rows.map((row) => row.key)).toEqual(["fill", "track"]);
+    expect(bar.rows.map((row) => row.label)).toEqual([
+      "Fill paint",
+      "Track paint",
     ]);
-    expect(composition.remainder).toBe(64 - 32);
+    expect(bar.rows.map((row) => row.ref)).toEqual([
+      "palette.cpu",
+      "palette.gpu",
+    ]);
+    // The tokens are the palette's own, named as their author named them.
+    expect(bar.rows[0]?.options.map((option) => option.id)).toEqual([
+      "palette.cpu",
+      "palette.gpu",
+      "palette.ram",
+    ]);
   });
 
-  it("writes an animation field into the block, not under a dotted key", () => {
-    const change = vi.fn();
-    const panel = panelOf(change);
-    panel.render({
-      id: "trend",
-      content: { family: "line", settings: { ...defaultLineSettings } },
-      bindings: [],
-    });
-
-    const duration = panel.root.querySelector<HTMLInputElement>(
-      '[data-vigilia-chart-setting="animation.durationMs"]',
-    )!;
-    duration.value = "2400";
-    duration.dispatchEvent(new Event("change"));
-
-    const authored = committed<LineSettings>(change);
-    expect("animation.durationMs" in authored).toBe(false);
-    // The author's one field plus the other three from the block's own owner.
-    expect(authored.animation).toEqual({
-      durationMs: 2400,
-      easing: "linear",
-      appearMs: 650,
-      appearEasing: "cubicOut",
-    });
+  it("gives a repeated paint one control per slice, and one id per slice", () => {
+    const line = chartPaintView(charts[1] as ChartFieldTarget, palette);
+    const series = line.rows.filter((row) => row.property === "palette");
+    expect(series.map((row) => row.key)).toEqual([
+      "palette.0",
+      "palette.1",
+      "palette.2",
+    ]);
+    expect(series.map((row) => row.label)).toEqual([
+      "Series paint 1",
+      "Series paint 2",
+      "Series paint 3",
+    ]);
+    expect(series.map((row) => row.index)).toEqual([0, 1, 2]);
   });
 
-  it("asks the fixed-total question only while the total is fixed", () => {
-    const panel = panelOf(vi.fn());
+  it("refuses a paint it cannot change rather than offering a token nobody chose", () => {
+    // A reference that is not a palette token has no valid choice to change it
+    // to, and neither has a palette that offers none.
+    const solidInk = chartPaintView(charts[0] as ChartFieldTarget, undefined);
+    expect(solidInk.rows.map((row) => row.ref)).toEqual(["", ""]);
+    expect(solidInk.rows.map((row) => row.refused)).toEqual([true, true]);
 
-    panel.render(pieOf(defaultPieSettings));
-    // Not a disabled control: a question that does not apply here is not asked.
-    expect(
-      panel.root.querySelector('[data-vigilia-chart-setting="total.value"]'),
-    ).toBeNull();
-
-    panel.render(
-      pieOf({ ...defaultPieSettings, total: { kind: "fixed", value: 64 } }),
+    const tokenBacked = chartPaintView(
+      {
+        id: "gauge",
+        content: {
+          family: "gauge",
+          settings: {
+            startAngle: 90,
+            endAngle: -270,
+            min: 0,
+            max: 100,
+            thickness: 10,
+            track: { ref: "palette.cpu" },
+            progress: { ref: "palette.gpu" },
+            roundCap: true,
+          },
+        },
+        bindings: [],
+      },
+      palette,
     );
-    expect(
-      panel.root.querySelector('[data-vigilia-chart-setting="total.value"]'),
-    ).not.toBeNull();
+    expect(tokenBacked.rows.map((row) => row.refused)).toEqual([false, false]);
   });
 
-  it("clears an optional setting back to the renderer's own choice", () => {
-    const change = vi.fn();
-    const panel = panelOf(change);
-    panel.render(pieOf({ ...defaultPieSettings, endAngle: 200 }));
-
-    const end = panel.root.querySelector<HTMLInputElement>(
-      '[data-vigilia-chart-setting="endAngle"]',
-    )!;
-    expect(end.value).toBe("200");
-    end.value = "";
-    end.dispatchEvent(new Event("change"));
-
-    const cleared = committed<PieSettings>(change);
-    expect("endAngle" in cleared).toBe(false);
-
-    // Through the option builder, not the settings object: absent means the
-    // builder leaves `endAngle` off and the engine closes the ring.
-    const ring = (settings: PieSettings) =>
-      (
-        buildPieOption(settings, []) as unknown as {
-          readonly series: readonly Record<string, unknown>[];
-        }
-      ).series[0];
-    expect(ring({ ...defaultPieSettings, endAngle: 200 })?.["endAngle"]).toBe(
-      200,
-    );
-    expect(ring(cleared)?.["endAngle"]).toBeUndefined();
+  it("asks nothing about a paint field the chart does not have", () => {
+    // A gauge has no per-series palette, so a repeated row that is absent from
+    // its settings is not a control with an empty choice — it is not a row.
+    const gauge = chartPaintView(charts[0] as ChartFieldTarget, palette);
+    expect(gauge.rows.map((row) => row.property)).toEqual(["track", "progress"]);
   });
 });
