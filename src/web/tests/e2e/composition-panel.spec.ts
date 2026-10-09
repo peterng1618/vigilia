@@ -959,9 +959,7 @@ test("a group entered inside a large document", async ({ page }, testInfo) => {
   // **The row that draws the whole state slot**, which nothing before Task 2
   // ever put on a row: the entry control, rename, the eye and the lock — four
   // controls at §5's 26px square. The stylesheet asks for the room they need out
-  // of the *bound* column, one `:has` arm per control count, so the count is
-  // measured here and the reservation is read back off the computed style rather
-  // than assumed to match the count.
+  // of the *bound* column, one `:has` arm per control count.
   await selectLayer(page, "group-large");
   await expect.poll(() => activeId(page)).toBe("group-large");
   const groupRow = page.locator('[data-vigilia-layer="group-large"]');
@@ -970,26 +968,31 @@ test("a group entered inside a large document", async ({ page }, testInfo) => {
     "entry, rename, visibility and lock, all four on one row",
   ).toHaveCount(4);
   const slot = await groupRow.evaluate((row) => {
+    const state = row.querySelector(".vigilia-layer-state") as HTMLElement;
     const bound = row.querySelector(".vigilia-layer-bound") as HTMLElement;
     const name = row.querySelector(".vigilia-layer-name") as HTMLElement;
-    const style = getComputedStyle(bound);
     return {
-      // The reservation is the count's, not a constant someone typed: four
-      // controls are 6px of padding plus four 26px squares and three 4px gaps,
-      // and the stylesheet's fourth `:has` arm is what puts that figure here.
-      marginRight: style.marginRight,
-      maxWidth: style.maxWidth,
+      // **The two halves of the reservation, bound to each other.** One half is
+      // what the slot's own rendered box needs — 6px of padding plus four 26px
+      // squares and three 4px gaps — and the other is what the stylesheet's
+      // fourth `:has` arm promises the *bound* column it must give up. A button
+      // box that drifts out of the arithmetic, or an arm dropped while the
+      // buttons still need it, desyncs the two and fails below; the raw
+      // computed `margin-right` never could, because it restates the promise.
+      slotWidth: Math.round(state.getBoundingClientRect().width),
+      reservedPx: Number.parseFloat(getComputedStyle(bound).marginRight),
       // The bound column is the one that gives way — a key yields before a
       // layer's name does — so it can never end up the wider of the two.
       boundWidth: Math.round(bound.getBoundingClientRect().width),
       nameWidth: Math.round(name.getBoundingClientRect().width),
       // **Recorded, not asserted.** At the bible's 246px a row drawing four
       // 26px controls is over budget: 122px of reservation on a 205px row, so
-      // the key column gives way and the name is clipped with it. The figures
-      // pushed out below are the only instrument the row's cost has (`vg-260`
-      // owns the pane's width, Task 10 the ratchet). Asserting that either
-      // stayed whole would be asserting something this pane cannot deliver,
-      // which is a finding rather than a spec.
+      // the bound's own box overflows the line and the key column is clipped,
+      // the name with it. These four figures are the only instrument the row's
+      // cost has (`vg-260` carries the measurement; Task 10's ratchet and
+      // Task 12's register own the decision). Asserting that the room stayed
+      // whole would assert a defect as a pass condition, which is a red proof
+      // against its own fix.
       rowWidth: Math.round(row.getBoundingClientRect().width),
       roomKept: Math.round(
         row.getBoundingClientRect().right - bound.getBoundingClientRect().right,
@@ -999,13 +1002,13 @@ test("a group entered inside a large document", async ({ page }, testInfo) => {
     };
   });
   expect(
-    slot.marginRight,
-    "the room asked for is the four controls' own, counted from the slot",
-  ).toBe("122px");
+    slot.slotWidth,
+    "the slot's rendered box is the 122px the fourth `:has` arm promises",
+  ).toBe(122);
   expect(
-    slot.maxWidth,
-    "and the key's column is the one it is taken from",
-  ).toBe("calc(100% - 122px)");
+    slot.reservedPx,
+    "and the room the arm asks the key column for is the room the slot needs",
+  ).toBe(slot.slotWidth);
   expect(
     slot.boundWidth,
     "the key gives way before the layer's name does",
@@ -1017,6 +1020,8 @@ test("a group entered inside a large document", async ({ page }, testInfo) => {
     ["rows-after-entry", "205"],
     ["enter-ms", String(enterMs)],
     ["select-inside-ms", String(selectMs)],
+    ["four-control-slot-width-px", String(slot.slotWidth)],
+    ["four-control-reserved-px", String(slot.reservedPx)],
     ["four-control-row-width-px", String(slot.rowWidth)],
     ["four-control-room-kept-px", String(slot.roomKept)],
     ["four-control-key-clipped", String(slot.keyClipped)],

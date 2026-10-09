@@ -168,6 +168,9 @@ it("reaches rename, visibility and lock from the keyboard, with a name each", as
   document.body.append(host);
 
   const line = host.querySelector<HTMLElement>('[data-vigilia-layer="loose-0"]')!;
+  // The row the keyboard can land on at all: `focusin` alone would fire on a row
+  // nothing can focus, so the tab stop is asserted rather than assumed.
+  expect(line.tabIndex, "the row is in the tab order").toBe(0);
   // `focusin`, not `focus`: React's onFocus is the bubbling one, so this is the
   // event a keyboard author's Tab actually raises on the row.
   await act(async () =>
@@ -188,6 +191,38 @@ it("reaches rename, visibility and lock from the keyboard, with a name each", as
       "",
     );
   }
+
+  // The load-bearing half of the gate, and the one a synthetic `focusin` cannot
+  // see: Tab from the row goes *to* one of these controls, which raises a
+  // `focusout` on the row whose `relatedTarget` is still inside it. That is not
+  // leaving the row, so the controls stay mounted and the author can reach the
+  // next one; stand them down here and the row is a pointer-only gate again.
+  const inside = controls[0]!;
+  await act(async () =>
+    line.dispatchEvent(
+      new FocusEvent("focusout", { bubbles: true, relatedTarget: inside }),
+    ),
+  );
+  expect(
+    affordanceLabels(host),
+    "focus that stays inside the row does not stand the controls down",
+  ).toEqual([uiCopy.panels.rename, uiCopy.panels.hide, uiCopy.actions.lock]);
+
+  // The other half, so the case above is not vacuous: focus that leaves the row
+  // entirely does stand them down.
+  await act(async () =>
+    line.dispatchEvent(
+      new FocusEvent("focusout", { bubbles: true, relatedTarget: document.body }),
+    ),
+  );
+  expect(
+    affordanceLabels(host),
+    "focus leaving the row entirely stands them down",
+  ).toEqual([]);
+  // And back onto the row for the presses below.
+  await act(async () =>
+    line.dispatchEvent(new FocusEvent("focusin", { bubbles: true })),
+  );
 
   const press = async (label: string): Promise<void> => {
     await act(async () =>
