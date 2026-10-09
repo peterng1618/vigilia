@@ -51,17 +51,13 @@ Where a piece this plan consumes has not landed, say so in the first commit and 
 
 The spec implies these and no task's tests exercise them. Each is pinned to the task that owns its code.
 
-1. **A gear that opens nothing, a fifth slot, or a pane.** §3.2 is a single sentence with three ways to get it wrong, and only one of them looks wrong in a diff. → Task 1.
-2. **A modal the document behind it can still hear, or one a touch reader cannot leave.** `ShortcutManager`'s guard matches `[role='dialog']` and Base UI sets it, so `Ctrl+Z` and `Delete` should not reach the document — but the guard samples *at the start of the dispatch* and the settings surface adds one more window-level `keydown` consumer (the capture control). And Base UI's own contract says a modal dialog must render `Dialog.Close` inside the popup *so touch screen readers can escape it*; `dialog.tsx` renders none today. → Task 1.
-3. **A palette choice that stops persisting, or an OS override the move quietly loses.** `resolveShellPalette`, `readShellChoice` and `writeShellChoice` are one mechanism; a Settings-local `useState` that skips `applyShellPalette` leaves every portalled popup painting the old palette — the defect `0035` exists to prevent. And there is **no `clearShellChoice`** today, so "follow the system" cannot yet be turned back on. → Task 2.
-4. **A chip left in the header, or a capability removed with the readout.** Spec §7 accepts *one* cost — no at-a-glance readout — and no other. Two owners of "which palette is in force" is not that cost, and the Acceptance item ("six palettes distinguishable by surface") still has to hold. → Task 2.
-5. **A rebinding that reaches the dispatcher but not what prints the chord.** Four surfaces render `shortcutLabel`: the menubar's `kbd`, the dock's tooltips, the reference sheet, and (new) the header's publish chord. Rebinding one and not the others prints a mark that runs something else — bible §9's whole rule. → Task 3.
-6. **A capture control that binds the chord the shell also runs.** While "press a chord…" is armed, the keystroke must be the capture's and nothing else's — and the *new* chord must not be one the editor cannot honour (it defers to a focused text field, or it is a browser chord). A rebind that makes a working key stop working is a §2.3 behaviour change. → Task 3.
-7. **A `⌘⇧P` bound to a second publish path.** The act is the header's control's; a chord that re-implements "flip the LAN" beside the control's own toggle gives the editor two publish paths that agree until one changes. → Task 3.
-8. **An About tab that invents a version.** There is no product-version string the editor bundle can read (see Task 4 Step 1). A tab that prints one from a hand-typed literal is the fabrication bible §9 forbids, in the one place nobody would check. → Task 4.
-9. **A ratchet seeded to pass, or a re-pointed locator that passes with its behaviour disabled.** A gated list naming files that still violate, or a run over an empty list reporting success, is the guard's own defect (`vg-149`'s shape). → Task 5.
-10. **A parity capture of a different screen.** The mockup draws the Appearance tab; a capture of Keyboard compares two different screens and every difference it lists is spurious. A `--grep` matching nothing exits 0. → Task 6.
-11. **A mockup left stale in the one place this plan touched.** Its `Canvas` tab contradicts §3.1/§7, and its left nav has four items where the spec names three. A mockup that disagrees with the bible is believed and is worse than none. → Task 6.
+**Five, and only five.** What this list drops, each already carries a step of its own in the task that owns the code: the gear's three wrong shapes (Task 1 Step 5), a chip left in the header or a capability removed with the readout (Task 2 Step 5), a `⌘⇧P` bound to a second publish path (Task 3), a ratchet seeded to pass or a locator that passes with its behaviour disabled (Task 5 Step 3), a capture of a different screen and a mockup left stale (Task 6).
+
+1. **An About tab that invents a version.** There is no product-version string the editor bundle can read (see Task 4 Step 1). A tab that prints one from a hand-typed literal is the fabrication bible §9 forbids, in the one place nobody would check. → Task 4.
+2. **A palette choice that stops persisting, or an OS override the move quietly loses.** `resolveShellPalette`, `readShellChoice` and `writeShellChoice` are one mechanism; a Settings-local `useState` that skips `applyShellPalette` leaves every portalled popup painting the old palette — the defect `0035` exists to prevent. And there is **no `clearShellChoice`** today, so "follow the system" cannot yet be turned back on. → Task 2.
+3. **A rebinding that reaches the dispatcher but not what prints the chord.** Four surfaces render `shortcutLabel`: the menubar's `kbd`, the dock's tooltips, the reference sheet, and (new) the header's publish chord. Rebinding one and not the others prints a mark that runs something else — bible §9's whole rule. → Task 3.
+4. **A capture control that binds the chord the shell also runs.** While "press a chord…" is armed, the keystroke must be the capture's and nothing else's — and the *new* chord must not be one the editor cannot honour (it defers to a focused text field, or it is a browser chord). A rebind that makes a working key stop working is a §2.3 behaviour change. → Task 3.
+5. **A modal the document behind it can still hear, or one a touch reader cannot leave.** `ShortcutManager`'s guard matches `[role='dialog']` and Base UI sets it, so `Ctrl+Z` and `Delete` should not reach the document — but the guard samples *at the start of the dispatch* and the settings surface adds one more window-level `keydown` consumer (the capture control). And Base UI's own contract says a modal dialog must render `Dialog.Close` inside the popup *so touch screen readers can escape it*; `dialog.tsx` renders none today. → Task 1.
 
 ---
 
@@ -110,9 +106,27 @@ grep -rn "editor-shell-dialog" packages tests | wc -l
 `settings.dom.test.tsx`:
 
 ```tsx
-it("opens the settings modal from the gear, and offers exactly the three tabs the spec names", () => {});
-it("returns focus to the gear when it closes, and Escape is one press with one effect", () => {});
-it("renders a labelled close control a touch screen reader can reach", () => {});
+it("opens the settings modal from the gear, and offers exactly the three tabs the spec names", async () => {
+  await press(gear(host));
+  expect(role(host, "dialog")).not.toBeNull();
+  expect(tabLabels(host)).toEqual([uiCopy.settings.appearance, uiCopy.settings.keyboard, uiCopy.settings.about]);
+  // A pane, or a fifth rail slot, fails here and only here: the rail still
+  // holds the four the bible names.
+  expect(railSlotIds(host)).toEqual(RAIL_SLOTS.map((slot) => slot.id));
+});
+
+it("returns focus to the gear when it closes, and Escape is one press with one effect", async () => {
+  await press(gear(host));
+  await pressEscape(host);
+  expect(role(host, "dialog")).toBeNull();
+  expect(document.activeElement).toBe(gear(host));
+});
+
+it("renders a labelled close control a touch screen reader can reach", () => {
+  // Base UI's own contract: a modal dialog renders `Dialog.Close` inside the
+  // popup so a touch screen reader can leave it.
+  expect(closeControl(host).getAttribute("aria-label")?.trim()).not.toBe("");
+});
 ```
   Run: `npx vitest run packages/editor/src/editor-shell/settings.dom.test.tsx`
   Expected: **FAIL** — the module does not exist.
@@ -129,7 +143,7 @@ it("renders a labelled close control a touch screen reader can reach", () => {})
 
 - [ ] **Step 5: Red proof — the three ways to get the gear wrong**
 
-Add `"settings"` to `RailSlot` and render a pane for it; expected: **the three-tabs case fails**, because the modal is not the gear's outcome. Restore. Remove the `Dialog.Close` and confirm **the labelled-close case fails**. Restore. Remove the trigger link and confirm **the focus-return case fails**. Restore. Then the modal-leak proof, which is Review Focus 2: with the modal open press `Ctrl+Z` and `Delete`, and assert the document behind it is unchanged — if it does change, the `ShortcutManager` guard is not holding for this modal and the fix is in `settings.tsx`, not in the guard.
+Add `"settings"` to `RailSlot` and render a pane for it; expected: **the three-tabs case fails**, because the modal is not the gear's outcome. Restore. Remove the `Dialog.Close` and confirm **the labelled-close case fails**. Restore. Remove the trigger link and confirm **the focus-return case fails**. Restore. Then the modal-leak proof, which is Review Focus 5: with the modal open press `Ctrl+Z` and `Delete`, and assert the document behind it is unchanged — if it does change, the `ShortcutManager` guard is not holding for this modal and the fix is in `settings.tsx`, not in the guard.
 
 - [ ] **Step 6: Turn the ratchet green for this task's files, verify, commit**
 
@@ -174,9 +188,26 @@ npx playwright test --project=desktop-chromium --grep "editor-rail|the panes are
 `settings.dom.test.tsx` and `palette.test.ts`:
 
 ```tsx
-it("applies the palette where the chip applied it — the attribute, and the storage", () => {});
-it("returns to following the OS when follow-the-system is turned back on", () => {});
-it("the header has no palette control", () => {});
+it("applies the palette where the chip applied it — the attribute, and the storage", async () => {
+  // The defect `0035` exists to prevent is a palette applied to React state
+  // alone, which leaves every portalled popup painting the old one.
+  await choosePaletteInTab(host, "editorial");
+  expect(storage.getItem(PALETTE_KEY)).toBe("editorial");
+  expect(document.documentElement.getAttribute("data-shell-palette")).toBe("editorial");
+});
+
+it("returns to following the OS when follow-the-system is turned back on", async () => {
+  await choosePaletteInTab(host, "editorial");
+  await pressFollowSystem(host);
+  expect(readShellChoice(storage), "removing the key is what means no choice").toBeUndefined();
+  expect(document.documentElement.getAttribute("data-shell-palette")).toBe(
+    resolveShellPalette(undefined, systemAppearance()),
+  );
+});
+
+it("the header has no palette control", () => {
+  expect(header(host).querySelector("[data-vigilia-palette]")).toBeNull();
+});
 ```
   Run: `npx vitest run packages/editor/src/editor-shell/settings.dom.test.tsx packages/editor/src/editor-shell/palette.test.ts`
   Expected: **FAIL** on the third, and on the second because `clearShellChoice` does not exist.
@@ -259,22 +290,61 @@ export function subscribeShortcuts(listener: () => void): () => void;
 cd src/web
 grep -rn "shortcutLabel\|shortcutSpokenLabel\|shortcutReferenceGroups" packages tests --include=*.ts --include=*.tsx | grep -v "\.test\."
 ```
-  Expected: `canvas-dock.tsx` (the dock's tooltips), `shell-layout.tsx` (the menu rows and their `aria-label`), `shortcut-reference.tsx` (the sheet), and the three projection modules. Write the list into the commit message — it is the checklist Review Focus 5 is judged against, and the header's publish chord is the fourth surface to be added.
+  Expected: `canvas-dock.tsx` (the dock's tooltips), `shell-layout.tsx` (the menu rows and their `aria-label`), `shortcut-reference.tsx` (the sheet), and the three projection modules. Write the list into the commit message — it is the checklist Review Focus 3 is judged against, and the header's publish chord is the fourth surface to be added.
 
 - [ ] **Step 2: Write the failing test for the two rules that are defects, not style**
 
 `bindings.test.ts` and `settings-keyboard.dom.test.tsx`:
 
 ```ts
-it("resolves the defaults when nothing is stored, and the override when one is", () => {});
-it("stores one action's chord without disturbing any other action's", () => {});
-it("returning an action to its default leaves no entry behind", () => {});
+it("resolves the defaults when nothing is stored, and the override when one is", () => {
+  expect(activeShortcuts(emptyStorage)).toEqual(PRODUCT_SHORTCUTS);
+  expect(activeShortcuts(overriding("publish.open", publishChord))["publish.open"]).toEqual(publishChord);
+});
+
+it("stores one action's chord without disturbing any other action's", () => {
+  const next = overriding("publish.open", publishChord);
+  for (const id of productShortcutIds()) {
+    expect(activeShortcuts(next)[id], id).toEqual(
+      id === "publish.open" ? publishChord : PRODUCT_SHORTCUTS[id],
+    );
+  }
+});
+
+it("returning an action to its default leaves no entry behind", () => {
+  const back = resetBinding(overriding("publish.open", publishChord), "publish.open");
+  expect(readOverrides(back)).not.toHaveProperty("publish.open");
+  expect(activeShortcuts(back)["publish.open"]).toEqual(PRODUCT_SHORTCUTS["publish.open"]);
+});
 ```
 
 ```tsx
-it("prints the effective chord, not the default, in the list and in the sheet", () => {});
-it("captures a chord, refuses one already bound to another action, in words", () => {});
-it("Escape cancels the capture and binds nothing", () => {});
+it("prints the effective chord, not the default, in the list and in the sheet", () => {
+  // Review Focus 3: the four surfaces that print a chord, asserted together,
+  // because rebinding one and not the others prints a mark that runs something
+  // else — bible §9's whole rule.
+  expect(sheetKbd(host, "publish.open")).toBe(effective.printed);
+  expect(menubarKbd(host, "publish.open")).toBe(effective.printed);
+  expect(dockTooltip(host, publishShortcutId)).toContain(effective.printed);
+  expect(text(publishChord(host))).toBe(effective.printed);
+});
+
+it("captures a chord, refuses one already bound to another action, in words", async () => {
+  // Review Focus 4: while the capture is armed the keystroke is the capture's
+  // and nothing else's, and a refused chord leaves the binding untouched.
+  await armCapture(host, "publish.open");
+  await pressKeys(host, conflictingChord);
+  expect(readOverrides(storage)).not.toHaveProperty("publish.open");
+  expect(reason(host).textContent?.trim(), "the refusal is in words").not.toBe("");
+  expect(runFor(conflictingChord), "the shell still runs the chord it already had").toHaveBeenCalled();
+});
+
+it("Escape cancels the capture and binds nothing", async () => {
+  await armCapture(host, "publish.open");
+  await pressEscape(host);
+  expect(armed(host)).toBe(false);
+  expect(readOverrides(storage)).not.toHaveProperty("publish.open");
+});
 ```
   Run: `npx vitest run packages/editor/src/shortcut-manager/bindings.test.ts packages/editor/src/editor-shell/settings-keyboard.dom.test.tsx`
   Expected: **FAIL** — the modules do not exist.
@@ -310,11 +380,11 @@ Capture rules, stated so the implementer does not have to invent them:
 
 - [ ] **Step 5: Bind `⌘⇧P`, and print it — in this commit, and only now**
 
-Add `publish.toggle` through the whole `satisfies` chain (`ProductShortcutId` → `PRODUCT_SHORTCUTS` → `SHORTCUT_LABELS` → `uiCopy.shortcuts.groups`), register its handler in `editor-session.ts` on the `onShowShortcuts` precedent, and wire it through `editor-main.ts` to **the same act the header's publish control runs**. Extract that act to one owner if it is currently inside `PublishControl`'s body — the constraint is one publish path, not two that agree today (Review Focus 7). Then, and in the same commit, `publish-control.tsx` prints the chord from `shortcutLabel("publish.toggle")` with its spoken name from `shortcutSpokenLabel` — plan 2 deliberately left it unprinted because there was nothing to run.
+Add `publish.toggle` through the whole `satisfies` chain (`ProductShortcutId` → `PRODUCT_SHORTCUTS` → `SHORTCUT_LABELS` → `uiCopy.shortcuts.groups`), register its handler in `editor-session.ts` on the `onShowShortcuts` precedent, and wire it through `editor-main.ts` to **the same act the header's publish control runs**. Extract that act to one owner if it is currently inside `PublishControl`'s body — the constraint is one publish path, not two that agree today. Then, and in the same commit, `publish-control.tsx` prints the chord from `shortcutLabel("publish.toggle")` with its spoken name from `shortcutSpokenLabel` — plan 2 deliberately left it unprinted because there was nothing to run.
 
 - [ ] **Step 6: Red proofs**
 
-Make `shortcutLabel` read `PRODUCT_SHORTCUTS` instead of `activeShortcuts()` and confirm **the prints-the-effective-chord case fails** — that is Review Focus 5, and it is the failure that would ship a mark running a different key. Restore. Let the capture bind a chord already held by another action and confirm **the refusal case fails**. Restore. Let `Escape` bind instead of cancelling and confirm **the cancel case fails**. Restore. Remove the capture's `stopPropagation` and confirm the case that presses a chord the editor already handles fails (the new binding must not also fire the editor's action while being recorded). Restore. Finally, remove the `publish.toggle` registration and confirm the header prints a chord that runs nothing — the state plan 2 refused to ship.
+Make `shortcutLabel` read `PRODUCT_SHORTCUTS` instead of `activeShortcuts()` and confirm **the prints-the-effective-chord case fails** — that is Review Focus 3, and it is the failure that would ship a mark running a different key. Restore. Let the capture bind a chord already held by another action and confirm **the refusal case fails**. Restore. Let `Escape` bind instead of cancelling and confirm **the cancel case fails**. Restore. Remove the capture's `stopPropagation` and confirm the case that presses a chord the editor already handles fails (the new binding must not also fire the editor's action while being recorded). Restore. Finally, remove the `publish.toggle` registration and confirm the header prints a chord that runs nothing — the state plan 2 refused to ship.
 
 - [ ] **Step 7: Ratchet, verify, commit**
 
@@ -357,10 +427,19 @@ grep -rn "VERSION\|SUPPORTED_SCHEMA_VERSION" packages/host/src/main.ts packages/
 
 ```tsx
 it("shows the version facts the build owns, and invents none", () => {
-  /* every rendered string is traceable to an owner: the schema version this
-     build writes, and the open document's own release version where it has one */
+  // Review Focus 1, first: there is no product-version source the editor bundle
+  // can read (Step 1), so a rendered `0.1.0` would be a hand-typed literal in
+  // the one place nobody would check. Every string is traceable to an owner.
+  expect(versionFacts(host)).toEqual([
+    { id: "schema-version", value: SUPPORTED_SCHEMA_VERSION },
+    { id: "release-version", value: openDocument.releaseVersion },
+  ]);
 });
-it("renders nothing rather than a placeholder where a fact is absent", () => {});
+
+it("renders nothing rather than a placeholder where a fact is absent", () => {
+  expect(aboutField(hostWithNoDocument, "release-version")).toBeNull();
+  expect(aboutText(hostWithNoDocument)).not.toContain(uiCopy.panels.notSet);
+});
 ```
   Run: `npx vitest run packages/editor/src/editor-shell/settings.dom.test.tsx -t About`
   Expected: **FAIL**.
@@ -375,7 +454,7 @@ The product's own version string has no owner the editor can read. Fixing it mea
 
 - [ ] **Step 5: Red proof**
 
-Render a version string from a literal in `settings.tsx` and confirm **the invents-none case fails** — that is Review Focus 8, and it is the only way this tab can lie. Restore. Remove the absent-fact guard and confirm **the placeholder case fails**. Restore.
+Render a version string from a literal in `settings.tsx` and confirm **the invents-none case fails** — that is Review Focus 1, and it is the only way this tab can lie. Restore. Remove the absent-fact guard and confirm **the placeholder case fails**. Restore.
 
 - [ ] **Step 6: Ratchet, verify, commit**
 
@@ -501,7 +580,7 @@ cd src/web
 npm run build
 VIGILIA_CAPTURE=1 npx playwright test --project=desktop-chromium --grep "<the registered title>" --workers=1
 ```
-  Read the summary and confirm **1 test ran**, not 0. A `--grep` matching nothing exits 0 with zero tests, which is how a parity gate silently stops checking (Review Focus 10).
+  Read the summary and confirm **1 test ran**, not 0. A `--grep` matching nothing exits 0 with zero tests, which is how a parity gate silently stops checking.
 
 - [ ] **Step 3: Adjudicate against the bible, and reconcile the mockup where it is stale**
 
@@ -549,8 +628,9 @@ Named so a later plan owns them rather than this one growing.
 ## Self-review
 
 - **Spec coverage.** §3.2's gear is Task 1; §7's Appearance tab is Task 2; §7's Keyboard tab is Task 3; §7's About tab is Task 4; §10's "the readout changes, not the mechanism" is Task 2 with the mechanism untouched; §2.3 is Tasks 2 and 5, with each re-pointed locator proven red; §9's count is Task 5; §13 is Task 6; §12's row 5 is this document. §3.1's ruling that `View` stays is a Global Constraint and Task 6's mockup correction, not a task, because the work is *not moving something*. §1's normative bible is consumed by every task, each citing it rather than restating it, and amended exactly once (Task 2, §5's choice row).
-- **Placeholder scan.** No `TBD`, no "add error handling", no "similar to Task N". Every step names a file, a symbol, a command or an expected output.
+- **Step scan.** No `TBD`, no "add error handling", no "similar to Task N". Every step names a file, a symbol, a command or an expected output, and no step asks for more than one thing to be written — the test steps carry their assertions.
 - **Type consistency.** `SettingsTab` is the modal's vocabulary and matches §7's three tabs; `ShortcutOverrides` is keyed by `ProductShortcutId`; `activeShortcuts()` is the one live table and `PRODUCT_SHORTCUTS` remains the defaults' owner; `ControlChoiceRow` is the one control this plan adds and the bible names it in the same commit; `clearShellChoice` mirrors `clearShortcutOverrides` — removing the key is "no choice" in both.
-- **Review Focus.** Each of the eleven is pinned above to a task, and each is a failure no existing test would catch.
+- **Review Focus.** Five, pinned above to Tasks 1, 2, 3 and 4; each is a failure no existing test would catch. The six that were dropped are each a step's own red proof in the task that owns the code.
+- **Proportion.** 636 lines against the spec's 661, with 151 of them code — test cases and type signatures rather than bodies.
 - **Red proofs.** Every task states the break that must fail its own gate, Task 5 re-proves every re-pointed locator with its behaviour disabled, and Task 6 states an empty difference list as a finding rather than a pass.
 - **The register.** No row closes here; Task 4 files one finding from its commit trailer; `vg-172`, `vg-185`, `vg-187` and `vg-192` stay open.

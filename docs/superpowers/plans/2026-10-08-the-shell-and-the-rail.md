@@ -47,16 +47,13 @@ Where plan 1 has not landed a piece this plan consumes, say so in the first comm
 
 The spec implies these and no task's tests exercise them. Each is pinned to the task that owns its code.
 
+**Five, and only five.** The failures this list drops — the footer that decides eligibility for itself (Task 2), the two halves of the dock drifting from the registry (Task 7), a ratchet seeded to pass (Task 8), a capture of a different screen (Task 9), a difference list empty because nothing was compared (Task 10) — each already has a step of its own in the task that owns the code, so they are pinned there rather than listed here.
+
 1. **A locator re-pointed by rename rather than by name.** 73 `openPane` call sites across 15 files move to new slot words, in files no type checker sees (`vg-192`). A name that is wrong for a *correct* pane passes silently and fails much later in an unrelated assertion. → Task 1.
-2. **A pane footer that decides eligibility for itself.** `actionEnabled` is the one gate; a footer that filters with its own predicate agrees with the dock until the next action is added to the registry. → Task 2.
-3. **A header trimmed by deletion.** The publish surface carries the address, the port, the pairing token, the expiry and the §145 warning; the mockup's chord has no binding. Trimming the header by removing what is awkward loses a fact, and the header is `vg-172`'s subject. → Task 3.
-4. **"Numbers only" read as licence to delete the diagnostic.** `DiagnosticMessage` is in the footer and ~40 assertions read `#status` for its text; a refusal with nowhere to land is a capability `§2.3` forbids removing. → Task 4.
+2. **A header trimmed by deletion.** The publish surface carries the address, the port, the pairing token, the expiry and the §145 warning; the mockup's chord has no binding. Trimming the header by removing what is awkward loses a fact, and the header is `vg-172`'s subject. → Task 3.
+3. **"Numbers only" read as licence to delete the diagnostic.** `DiagnosticMessage` is in the footer and ~40 assertions read `#status` for its text; a refusal with nowhere to land is a capability `§2.3` forbids removing. → Task 4.
+4. **A view cluster that swallows a choice the old control offered.** Fit, six lenses, zoom-to-selection and actual size are all reachable today; a chip row that drops one looks finished. → Task 6.
 5. **An identity chip that invents a name, or two save states that disagree.** The chip must read the same fact `SaveState` reads, and must render nothing rather than a placeholder when no document is open. → Task 5.
-6. **A view cluster that swallows a choice the old control offered.** Fit, six lenses, zoom-to-selection and actual size are all reachable today; a chip row that drops one looks finished. → Task 6.
-7. **Two halves of the dock drifting from the registry.** Filtered-versus-greyed is a decision the product made; a test that never selects two objects cannot tell the two treatments apart. → Task 7.
-8. **A ratchet seeded to pass.** A gated list holding files that violate, or a run over an empty list reporting success, is the guard's own defect (`vg-149`'s shape). → Task 8.
-9. **A parity capture of a different screen.** The mockup draws the Add slot open with nothing selected; a capture of the default Composition pane compares two different screens and every difference it lists is spurious. A `--grep` matching nothing exits 0. → Task 9.
-10. **A difference list that is empty because nothing was compared.** An empty list is a finding, not a pass. → Task 10.
 
 ---
 
@@ -109,9 +106,28 @@ Expected: 73 call sites (Document 30, Insert 26, Assets 11, Layers 6) across 15 
 `rail.dom.test.tsx` asserts the three contracts `§7.2` states, before the component exists:
 
 ```tsx
-it("offers exactly the four slots the bible names", () => { /* one button per RAIL_SLOTS entry */ });
-it("marks the open slot with the accent and the closed ones with --faint", () => { /* aria-current or aria-pressed, read off the rendered element */ });
-it("asks for the slot it was given, and only asks", () => { /* onChoose receives the id; nothing local decides */ });
+it("offers exactly the four slots the bible names", () => {
+  // One button per RAIL_SLOTS entry, in the bible's order and with the bible's
+  // word, so a slot added or dropped in the list is a failure here.
+  expect(railLabels(host)).toEqual(
+    RAIL_SLOTS.map((slot) => uiCopy.rail[slot.id]),
+  );
+});
+
+it("marks the open slot with the accent and the closed ones with --faint", () => {
+  // `aria-current`, read off the rendered element, is the mark a spec can see.
+  expect(mark(host, openSlotId)).toBe("current");
+  for (const slot of RAIL_SLOTS) {
+    if (slot.id !== openSlotId) expect(mark(host, slot.id)).not.toBe("current");
+  }
+});
+
+it("asks for the slot it was given, and only asks", async () => {
+  await press(railButton(host, "tokens"));
+  expect(onChoose.mock.calls).toEqual([["tokens"]]);
+  // Nothing local decides: the rail owns no pane, so the press alone opens none.
+  expect(host.querySelector('[data-vigilia-panel="tokens"]')).toBeNull();
+});
 ```
 
 Run: `npx vitest run packages/editor/src/editor-shell/rail.dom.test.tsx`
@@ -178,7 +194,7 @@ git commit
 - Modify: `packages/editor/src/editor-shell/shell-layout.tsx`, `packages/editor/src/editor-shell/editor-shell.css`, `packages/editor/src/editor-shell/shell-layout.dom.test.tsx`
 
 **Interfaces:**
-- Consumes: plan 1's `ControlIconButton`, `InspectorSection`; `OBJECT_ACTIONS` and `actionEnabled` from `object-actions.js`.
+- Consumes: plan 1's `ControlIconButton`, `InspectorSection`; `objectActionsFor` from `object-actions.js` (`object-actions.ts:96` — the registry's own accessor, which the footer calls rather than re-spelling its filter).
 - Produces:
 
 ```ts
@@ -196,8 +212,22 @@ export function Pane(props: {
 - [ ] **Step 1: Write the failing test for the footer's gate**
 
 ```tsx
-it("offers only the object actions this selection can run", () => { /* absent, not greyed */ });
-it("asks the registry for eligibility and decides nothing itself", () => { /* spy on actionEnabled, or render an action the selection cannot run and assert absence */ });
+it("offers only the object actions this selection can run", () => {
+  // Absent, not greyed: the expected column is `objectActionsFor`'s own answer
+  // for this selection, so a locked object shows neither Delete nor the lock
+  // toggle rather than showing them disabled.
+  expect(actionLabels(host)).toEqual(
+    objectActionsFor(bridge).map((action) => action.label),
+  );
+});
+
+it("asks the registry for eligibility and decides nothing itself", () => {
+  // The pane renders the slot; the caller owns the filter. A press carries the
+  // registry's own id, so a list that merely matched its labels still fails.
+  expect(actionLabels(host)).not.toContain(uiCopy.actions.delete);
+  await pressFirst(host);
+  expect(run.mock.calls).toEqual([[objectActionsFor(bridge)[0].id]]);
+});
 ```
 
 Run: `npx vitest run packages/editor/src/editor-shell/pane.dom.test.tsx`
@@ -209,7 +239,7 @@ Title bar: glyph, title at `--text-md`, then the count or one pane-level action.
 
 - [ ] **Step 3: Wire the Composition footer and the inspector's chrome**
 
-The Composition pane's footer renders `OBJECT_ACTIONS.filter((action) => actionEnabled(bridge, action.id))` — the dock's own expression, not a second predicate — with each button's `aria-label` and tooltip carrying the same string. The inspector column becomes 276px, flat, and keeps its `aside` role; its contents are plan 3's.
+The Composition pane's footer renders `objectActionsFor(bridge)` (`object-actions.ts:96`) — the accessor the dock already calls, so eligibility keeps one owner and no second predicate exists — with each button's `aria-label` and tooltip carrying the same string. The inspector column becomes 276px, flat, and keeps its `aside` role; its contents are plan 3's.
 
 - [ ] **Step 4: Red proof — the footer's gate is real**
 
@@ -239,8 +269,24 @@ Add the converted files to `scripts/design-tokens.gated.json`, run `npm run desi
 - [ ] **Step 1: Write the failing test for the two rules that matter**
 
 ```tsx
-it("has no Insert menu, and every insertable group is still reachable from the Add pane", () => { /* walk insertGroups() and find each label in the pane */ });
-it("closes the pairing surface behind one control rather than repeating it in the bar", () => { /* the address and the code are absent until the control is pressed */ });
+it("has no Insert menu, and every insertable group is still reachable from the Add pane", () => {
+  expect(header(host).querySelector("[data-vigilia-menu='insert']")).toBeNull();
+  // Walk the registry, not a copy of it: the menu's removal is only safe while
+  // every object it offered still has a tile in the pane.
+  const pane = openAddPane(host);
+  for (const object of insertGroups().flatMap((group) => group.objects)) {
+    expect(pane.textContent, object.label).toContain(object.label);
+  }
+});
+
+it("closes the pairing surface behind one control rather than repeating it in the bar", () => {
+  // The address, the port, the pairing code and the expiry are one press away,
+  // and absent from the header until it is made.
+  expect(header(host).textContent).not.toContain(pairingAddress);
+  expect(header(host).textContent).not.toContain(pairingCode);
+  expect(pairingControls(host)).toHaveLength(1);
+  expect(copy(pairingControls(host)[0]), "the header prints the chord it runs").toMatch(/\S/);
+});
 ```
 
 Run: `npx vitest run packages/editor/src/editor-shell/shell-layout.dom.test.tsx`
@@ -297,9 +343,21 @@ Commit with a message naming which half of `vg-161` this answers and stating tha
 - [ ] **Step 1: Write the failing test**
 
 ```tsx
-it("shows no live mark when the host's state is unknown", () => {});
-it("shows the live mark when the host reports the LAN on", () => {});
-it("keeps the diagnostic surface in the footer, and it still reports a refusal", () => {});
+it("shows no live mark when the host's state is unknown", () => {
+  // An unknown host is not an absent one: the store's initial state renders no
+  // claim at all rather than a fabricated "live" (§9).
+  expect(liveMark(hostWithUnknownHost)).toBeNull();
+});
+
+it("shows the live mark when the host reports the LAN on", () => {
+  expect(text(liveMark(hostWithLanOn))).toBe(uiCopy.status.live);
+});
+
+it("keeps the diagnostic surface in the footer, and it still reports a refusal", () => {
+  // Review Focus 3, and the ~40 assertions that read `#status` for its text.
+  expect(footer(host).querySelector("#status")).not.toBeNull();
+  expect(text(host.querySelector("#status"))).toBe(refusalMessage);
+});
 ```
 
 Run: `npx vitest run packages/editor/src/editor-shell/publish-indicator.dom.test.tsx packages/editor/src/editor-shell/shell-layout.dom.test.tsx`
@@ -341,9 +399,22 @@ The stage keeps its camera, its media layer and its lens; what changes is what f
 - [ ] **Step 1: Write the failing test, including the late-bridge case**
 
 ```tsx
-it("renders nothing rather than a placeholder when no document is open", () => {});
-it("follows a bridge set after the shell mounted", () => {});   // the store's own idiom
-it("reads the edited state from the same fact the status bar reads", () => {});
+it("renders nothing rather than a placeholder when no document is open", () => {
+  expect(chip(hostWithNoDocument)).toBeNull();
+});
+
+it("follows a bridge set after the shell mounted", () => {
+  // The store's own idiom — the bridge arrives late and the chip is already
+  // mounted — so a chip that captured the first bridge renders nothing forever.
+  setBridge(host, lateBridge);
+  expect(text(chip(host))).toBe(lateBridge.documentName());
+});
+
+it("reads the edited state from the same fact the status bar reads", () => {
+  // One fact, two surfaces: assert they agree rather than that each is right,
+  // because two sources that agree today are the failure this guards.
+  expect(editedMark(chip(host))).toBe(editedMark(footer(host)));
+});
 ```
 
 Run: `npx vitest run packages/editor/src/editor-shell/document-identity.dom.test.tsx`
@@ -385,9 +456,23 @@ List every reachable choice: Fit, the six lenses grouped by the artboard's orien
 - [ ] **Step 2: Write the failing test**
 
 ```tsx
-it("keeps every choice the old control offered reachable", () => { /* one assertion per item from Step 1 */ });
-it("shows the zoom as a readout and never as the display's name", () => {});
-it("still marks the state where a lens is chosen but the camera is not fitted", () => {});
+it("keeps every choice the old control offered reachable", () => {
+  // One assertion per item Step 1 listed — Fit, the six lenses, the one that is
+  // neither, zoom-to-selection, actual size. A chip row that drops one looks
+  // finished, so the list, not the row, is the expectation.
+  for (const choice of enumeratedChoices) {
+    expect(choiceControl(host, choice), choice).not.toBeNull();
+  }
+});
+
+it("shows the zoom as a readout and never as the display's name", () => {
+  expect(text(zoomReadout(host))).toBe(`${zoom}%`);
+  expect(text(zoomReadout(host))).not.toBe(activeLensName);
+});
+
+it("still marks the state where a lens is chosen but the camera is not fitted", () => {
+  expect(mark(host, "lens-unfitted")).not.toBeNull();
+});
 ```
 
 Run: `npx vitest run packages/editor/src/editor-shell/display-switch.dom.test.tsx`
@@ -428,8 +513,16 @@ Gated list, `npm run design:check`, `npm run build`, then `npx playwright test -
 - [ ] **Step 1: Write the failing test for the asymmetry**
 
 ```tsx
-it("shows no object action and a greyed arrange half with nothing selected", () => {});
-it("enables the arrange half only from two objects", () => {});
+it("shows no object action and a greyed arrange half with nothing selected", () => {
+  // The product's own asymmetry: one half is absent, the other is greyed.
+  expect(actionLabels(hostWithNothingSelected)).toEqual([]);
+  expect(arrangeControls(hostWithNothingSelected).every(isGreyed)).toBe(true);
+});
+
+it("enables the arrange half only from two objects", () => {
+  expect(arrangeControls(hostWithOneObject).some(isGreyed)).toBe(true);
+  expect(arrangeControls(hostWithTwoObjects).every(isGreyed)).toBe(false);
+});
 ```
 
 Run: `npx vitest run packages/editor/src/editor-shell/canvas-dock.dom.test.tsx`
@@ -591,9 +684,10 @@ Named so a later plan owns them rather than this one growing.
 ## Self-review
 
 - **Spec coverage.** §3.1 is Task 3, §3.2 is Task 1, §3.3 is Task 2, §3.4 is Task 4; §4.1, §4.2 and §4.3 are Tasks 5, 6 and 7; §9's count is Task 8; §13 is Tasks 9 and 10. §1's normative bible is consumed by every task, each citing it rather than restating it. §12's row 2 is this document.
-- **Placeholder scan.** No `TBD`, no "add error handling", no "similar to Task N". Every step names a file, a command or an expected output.
-- **Type consistency.** `RailSlot` is the rail's vocabulary and `RailPane` no longer exists; `HostingStore` is one owner read by two surfaces; `documentName` is a field on `EditorShellSnapshot`, `undefined` when no document is open, never `""`.
-- **Review Focus.** Each of the ten is pinned above to a task, and each is a failure no existing test would catch.
+- **Step scan.** No `TBD`, no "add error handling", no "similar to Task N". Every step names a file, a command or an expected output, and no step asks for more than one thing to be written — the test steps carry their assertions.
+- **Type consistency.** `RailSlot` is the rail's vocabulary and `RailPane` no longer exists; `HostingStore` is one owner read by two surfaces; `documentName` is a field on `EditorShellSnapshot`, `undefined` when no document is open, never `""`. The footer calls `objectActionsFor` (`object-actions.ts:96`) rather than re-spelling its filter, in this plan and in plan 4's Task 2, which rebuilds the same footer.
+- **Review Focus.** Five, pinned above to Tasks 1, 3, 4, 5 and 6; each is a failure no existing test would catch. The other five candidates are pinned in their own task's red proof instead.
+- **Proportion.** 807 lines against the spec's 661, with 149 of them code — test cases and type signatures rather than bodies. The completion report below is most of the rest, and it is evidence rather than instruction.
 - **Red proofs.** Every task states the break that must fail its own gate, and Task 8 re-proves the guard's empty-list refusal with this plan's list in place.
 
 ## Completion report — the captures beside the mockup

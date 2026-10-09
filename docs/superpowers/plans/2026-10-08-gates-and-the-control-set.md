@@ -484,6 +484,7 @@ Named so a later plan owns them rather than this one growing.
 ## Self-review
 
 - **Spec coverage.** §2.4 and §9 and §13 are Tasks 1, 2 and 4. §2.2's control set is Task 3. §1's normative bible is consumed by every task, since each cites it rather than restating it. §12's plan 1 is this document.
-- **Placeholder scan.** No `TBD`, no "add error handling", no "similar to Task N". Every code step shows code or a command with its expected output.
+- **Step scan.** No `TBD`, no "add error handling", no "similar to Task N". Every step names a file, a symbol, a command or an expected output, and no step asks for more than one thing to be written — the test steps carry their assertions.
 - **Type consistency.** `onCommit` (not `onChange`) is the name for a control that writes a value and may refuse it, used identically in `ControlNumber` and `ControlSlider`; `onChange` is for controls that always apply. `refused` is a string on every control that can be refused, never a boolean.
-- **Review Focus.** Each of the five is pinned above to a task, and each has a red proof that the guard can fail.
+- **Review Focus.** Five, pinned above to Tasks 1, 2, 3 and 4, and each has a red proof that the guard can fail.
+- **Proportion.** 489 lines against the spec's 661, with 109 of them code — test cases, type signatures and commands rather than bodies.

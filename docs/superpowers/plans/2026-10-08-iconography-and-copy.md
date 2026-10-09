@@ -46,15 +46,13 @@ Where a plan has not landed a piece this plan consumes, say so in the first comm
 
 The spec implies these and no task's tests exercise them. Each is pinned to the task that owns its code.
 
-1. **A census that measures the plans' intentions rather than the code.** The whole point of doing this last is that the earlier plans' descriptions of their own glyphs are not evidence of what shipped. A census that reads the earlier plan files instead of the landed source produces a work list of fixes to code that does not exist and misses the drift that does. → Task 1.
-2. **"One weight" read as licence to delete a weight that was carrying meaning.** The menu tick is drawn at 2.5 and the severity glyph at 2 because at 12–13px the lighter stroke reads faintly. Bible §6's own escape for that is **a filled glyph where a stroke would be illegible at that size** — not a second stroke weight, and not a heavier `--faint`. Reaching for the escape is a bible amendment in the same commit; reaching for a second weight is the drift this task removes. → Task 2.
-3. **A kind glyph set closed against a second spelling of the kind list.** "Every kind has a glyph" passes trivially if the test enumerates the glyph map's own keys. The list must come from the kind vocabulary, and there are two places a kind has to reach — the type and the copy table's `layerKindLabels`. → Task 3.
-4. **A single-owner claim that leaves the hand-wired pairs in place.** The most-finished-looking surfaces are the ones wired by hand: `canvas-dock.tsx` passes `label` to both `aria-label` and `tooltip({ text: label })` with nothing joining them, and a test of `ControlIconButton` alone says nothing about it. → Task 4.
-5. **A copy test that passes because it rendered nothing.** The no-literal-copy walk collects the labels a surface actually rendered; a surface that failed to mount contributes an empty list and the assertion holds. The failure is silent, and it is the shape `vg-114` already recorded once. → Task 5.
-6. **Fixing a copy string by deleting the control it describes.** A string that over-claims is repaired by making the code able to do what the string says, or by withdrawing the claim — never by removing the control. Bible §9's "never assert a capability the code does not have" is not "say less". → Task 6.
-7. **A missing reading repaired into a zero.** Bible §9's last rule and the product's "never fabricate a reading" invariant meet here, and the tempting repair for an unarrived sample is `0`. A statement of the gap that reads as data is the same defect in other words. → Task 6.
-8. **An acceptance item reported met without the observation.** §13 exists because the previous pass closed against an editor that looked unchanged. An item whose evidence is a plan's own claim, or a command whose output nobody read, is not evidence. → Tasks 8 and 9.
-9. **A parity capture of a screen the plan did not change, or an empty difference list.** This plan changes no surface's *layout*, so the temptation is to re-capture plan 2's image and call it parity. What changed is the glyph weight and the strings inside those surfaces, and that is what the comparison is of. A `--grep` matching nothing exits 0. → Task 9.
+**Five, and only five.** The four this list drops — a single-owner claim that leaves the hand-wired pairs in place (Task 4's own walk), a copy string repaired by deleting the control it describes (Task 6's stated rule), an acceptance item reported met without the observation (Task 8's ledger), a parity capture of a screen the plan did not change (Task 9's non-vacuity check) — are each already the subject of a step in the task that owns the code.
+
+1. **A missing reading repaired into a zero.** Bible §9's last rule and the product's "never fabricate a reading" invariant meet here, and the tempting repair for an unarrived sample is `0`. A statement of the gap that reads as data is the same defect in other words. → Task 6.
+2. **A kind glyph set closed against a second spelling of the kind list.** "Every kind has a glyph" passes trivially if the test enumerates the glyph map's own keys. The list must come from the kind vocabulary, and there are two places a kind has to reach — the type and the copy table's `layerKindLabels`. → Task 3.
+3. **A copy test that passes because it rendered nothing.** The no-literal-copy walk collects the labels a surface actually rendered; a surface that failed to mount contributes an empty list and the assertion holds. The failure is silent, and it is the shape `vg-114` already recorded once. → Task 5.
+4. **"One weight" read as licence to delete a weight that was carrying meaning.** The menu tick is drawn at 2.5 and the severity glyph at 2 because at 12–13px the lighter stroke reads faintly. Bible §6's own escape for that is **a filled glyph where a stroke would be illegible at that size** — not a second stroke weight, and not a heavier `--faint`. Reaching for the escape is a bible amendment in the same commit; reaching for a second weight is the drift this task removes. → Task 2.
+5. **A census that measures the plans' intentions rather than the code.** The whole point of doing this last is that the earlier plans' descriptions of their own glyphs are not evidence of what shipped. A census that reads the earlier plan files instead of the landed source produces a work list of fixes to code that does not exist and misses the drift that does. → Task 1.
 
 ---
 
@@ -273,7 +271,7 @@ Also assert the insertable side: every kind `insertGroups()` offers resolves to 
 
 - [ ] **Step 3: Give the row and the tiles one owner**
 
-If plan 4 shipped a kind→component map, its membership moves here and the row reads `KIND_GLYPHS`. Plan 4 as written already made the two decisions this task must not re-open: **the group arm is a constant stack glyph** introduced precisely so the mark cannot be derived from the group's children, and **the other four arms stay treatments** (a text sample in the object's own face, a chart family icon, a paint swatch, a thumbnail) because "a swatch and a thumbnail each carry a fact a glyph cannot". So this task closes the *vocabulary* over `LayerKind` and records which arms are glyphs and which are depictions; it does not convert a treatment to a glyph. The one thing it may not leave standing is a mark that claims to depict an arbitrary group or a card (bible §10, `§5.1`) — plan 4's Review Focus 2 exists for the same reason, and the two tasks' red proofs are the same failure seen from either end.
+If plan 4 shipped a kind→component map, its membership moves here and the row reads `KIND_GLYPHS`. Plan 4 as written already made the two decisions this task must not re-open: **the group arm is a constant stack glyph** introduced precisely so the mark cannot be derived from the group's children, and **the other four arms stay treatments** (a text sample in the object's own face, a chart family icon, a paint swatch, a thumbnail) because "a swatch and a thumbnail each carry a fact a glyph cannot". So this task closes the *vocabulary* over `LayerKind` and records which arms are glyphs and which are depictions; it does not convert a treatment to a glyph. The one thing it may not leave standing is a mark that claims to depict an arbitrary group or a card (bible §10, `§5.1`) — plan 4's Task 1 carries the red proof for the same reason — plant a mark derived from the group's children and the case must fail — and the two tasks' red proofs are the same failure seen from either end.
 
 - [ ] **Step 4: Red proof — the set opens when a kind is added**
 
@@ -379,7 +377,7 @@ Read the summary and confirm the tests you named ran — a `--grep` matching not
 
 - [ ] **Step 1: Write the failing walk, and make it impossible to pass by rendering nothing**
 
-Extend the `spoken` collection with the React surfaces. The failure mode is that a surface which fails to mount contributes `[]` and the assertion holds (Review Focus 5), so the walk asserts per surface that it rendered something:
+Extend the `spoken` collection with the React surfaces. The failure mode is that a surface which fails to mount contributes `[]` and the assertion holds (Review Focus 3), so the walk asserts per surface that it rendered something:
 
 ```tsx
 it("leaves the React surfaces with no copy of their own", () => {
@@ -459,7 +457,7 @@ A reading repaired into `0` is the product's "never fabricate a reading" invaria
 
 - [ ] **Step 3: Repair the over-claims, by capability or by withdrawal**
 
-For each string the census listed as naming a capability, either the control can do it (and a test proves the control), or the claim is withdrawn in words. **The control is never deleted to make the string true** (Review Focus 6). The `⌘⇧P` chord is the known case: plan 2 drew the button alone and recorded the missing chord as a deliberate difference, and plan 5 binds it — verify which, and if it is still unbound, the difference is re-recorded here with the plan that owns it.
+For each string the census listed as naming a capability, either the control can do it (and a test proves the control), or the claim is withdrawn in words. **The control is never deleted to make the string true.** The `⌘⇧P` chord is the known case: plan 2 drew the button alone and recorded the missing chord as a deliberate difference, and plan 5 binds it — verify which, and if it is still unbound, the difference is re-recorded here with the plan that owns it.
 
 - [ ] **Step 4: Red proof — the gap and the over-claim**
 
@@ -606,7 +604,7 @@ npm run build
 VIGILIA_CAPTURE=1 npx playwright test --project=desktop-chromium --grep "<the registered title>" --workers=1
 ```
 
-Read the summary and confirm **1 test ran**, not 0. A `--grep` matching nothing exits 0 with zero tests, which is how a parity gate silently stops checking (Review Focus 9).
+Read the summary and confirm **1 test ran**, not 0. A `--grep` matching nothing exits 0 with zero tests, which is how a parity gate silently stops checking.
 
 - [ ] **Step 3: Capture the changed surfaces**
 
@@ -646,8 +644,9 @@ Named so a later change owns them rather than this plan growing.
 ## Self-review
 
 - **Spec coverage.** §8's four requirements are Tasks 2 (one family, one weight), 4 (one string, one owner), 3 (the kind set closed with the kind list) and Tasks 4–5 (text is not the interface, with §6 rule 1 as the bar against removing a meaningful label); §9's copy rules are Tasks 5 and 6; §6's refusal in words is read where the census finds it; §12 row 6 is this document; §13 is Task 9 and Task 8's item-by-item ledger; the Acceptance section is Task 8 with the four no-single-owner items observed there and the comparison image produced in Task 9.
-- **Placeholder scan.** No `TBD`, no "add error handling", no "similar to Task N". The one number left open — Task 4 Step 1's `noTooltip` count — is deliberately settled by that task's own adjudication rather than predicted here, because a count predicted before the code exists is not evidence (`AGENTS.md`).
+- **Step scan.** No `TBD`, no "add error handling", no "similar to Task N". The one number left open — Task 4 Step 1's `noTooltip` count — is deliberately settled by that task's own adjudication rather than predicted here, because a count predicted before the code exists is not evidence (`AGENTS.md`).
 - **Type consistency.** `Glyph` is the one chrome glyph component and `GLYPH_STROKE_WIDTH` the one weight; `KIND_GLYPHS` is the closed kind vocabulary, declared `satisfies Record<LayerKind, LucideIcon>`; `ControlIconButton` takes one `label` and owns both strings; `absentReadingSurfaces()` and `placeholderReadings` are Task 6's two named sets, and a missing reading is a stated gap rather than a value.
-- **Review Focus.** Each of the nine is pinned above to a task, and each is a failure no existing test would catch.
+- **Review Focus.** Five, pinned above to Tasks 1, 2, 3, 5 and 6; each is a failure no existing test would catch. The four that were dropped are each a step's own red proof in the task that owns the code.
+- **Proportion.** 653 lines against the spec's 661, with 101 of them code — test cases and type signatures rather than bodies.
 - **Red proofs.** Every task states the break that must fail its own gate; Task 7 re-proves the guard's empty-list refusal and names which closure is a scan's and which is a DOM assertion's; Task 9's capture is proven non-vacuous with one test run, not zero.
 - **Owners.** No new dependency, no second tooltip component, no second icon family, no second kind list, no new net beside the two that exist, and the one new module's `ownership.md` row lands with it.
