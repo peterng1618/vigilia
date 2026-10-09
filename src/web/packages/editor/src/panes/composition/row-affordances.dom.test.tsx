@@ -108,21 +108,13 @@ it("shows the row's own controls on the attended row and on a row whose state is
       what: "the attended row",
       row: row(),
       attended: true,
-      shows: [
-        uiCopy.panels.rename,
-        uiCopy.panels.hide,
-        uiCopy.actions.lock,
-      ],
+      shows: [uiCopy.panels.rename, uiCopy.panels.hide, uiCopy.actions.lock],
     },
     {
       what: "a selected row",
       row: row({ selected: true }),
       attended: false,
-      shows: [
-        uiCopy.panels.rename,
-        uiCopy.panels.hide,
-        uiCopy.actions.lock,
-      ],
+      shows: [uiCopy.panels.rename, uiCopy.panels.hide, uiCopy.actions.lock],
     },
     {
       what: "a hidden row",
@@ -167,7 +159,9 @@ it("reaches rename, visibility and lock from the keyboard, with a name each", as
   });
   document.body.append(host);
 
-  const line = host.querySelector<HTMLElement>('[data-vigilia-layer="loose-0"]')!;
+  const line = host.querySelector<HTMLElement>(
+    '[data-vigilia-layer="loose-0"]',
+  )!;
   // The row the keyboard can land on at all: `focusin` alone would fire on a row
   // nothing can focus, so the tab stop is asserted rather than assumed.
   expect(line.tabIndex, "the row is in the tab order").toBe(0);
@@ -184,9 +178,10 @@ it("reaches rename, visibility and lock from the keyboard, with a name each", as
     [uiCopy.panels.rename, uiCopy.panels.hide, uiCopy.actions.lock],
   );
   for (const control of controls) {
-    expect(control.tagName, "a control the keyboard can reach is a button").toBe(
-      "BUTTON",
-    );
+    expect(
+      control.tagName,
+      "a control the keyboard can reach is a button",
+    ).toBe("BUTTON");
     expect(control.getAttribute("aria-label")?.trim(), "a name each").not.toBe(
       "",
     );
@@ -212,7 +207,10 @@ it("reaches rename, visibility and lock from the keyboard, with a name each", as
   // entirely does stand them down.
   await act(async () =>
     line.dispatchEvent(
-      new FocusEvent("focusout", { bubbles: true, relatedTarget: document.body }),
+      new FocusEvent("focusout", {
+        bubbles: true,
+        relatedTarget: document.body,
+      }),
     ),
   );
   expect(
@@ -259,26 +257,28 @@ it("offers only the object actions this selection can run, and asks the registry
   // its rule. A surface that re-spelled the filter would agree with it on one
   // selection and diverge on another — which is why three selections are asked,
   // one of them a locked object, where the delete half of the registry refuses.
-  const cases: readonly { readonly what: string; readonly target: ObjectTarget }[] =
-    [
-      {
-        what: "nothing selected",
-        target: { kind: "none", locked: false, memberCount: 0, isGroup: false },
+  const cases: readonly {
+    readonly what: string;
+    readonly target: ObjectTarget;
+  }[] = [
+    {
+      what: "nothing selected",
+      target: { kind: "none", locked: false, memberCount: 0, isGroup: false },
+    },
+    {
+      what: "a locked object",
+      target: { kind: "object", locked: true, memberCount: 1, isGroup: false },
+    },
+    {
+      what: "an unlocked object",
+      target: {
+        kind: "object",
+        locked: false,
+        memberCount: 1,
+        isGroup: false,
       },
-      {
-        what: "a locked object",
-        target: { kind: "object", locked: true, memberCount: 1, isGroup: false },
-      },
-      {
-        what: "an unlocked object",
-        target: {
-          kind: "object",
-          locked: false,
-          memberCount: 1,
-          isGroup: false,
-        },
-      },
-    ];
+    },
+  ];
 
   const renderFooter = async (
     target: ObjectTarget,

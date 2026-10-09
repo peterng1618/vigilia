@@ -144,7 +144,10 @@ function RowControl({
  *  overrides Lucide's own `fill="none"`, so the weight changes without a
  *  second glyph. */
 const LOCK_STATES: Readonly<
-  Record<"locked" | "unlocked", { readonly icon: LucideIcon; readonly fill?: string }>
+  Record<
+    "locked" | "unlocked",
+    { readonly icon: LucideIcon; readonly fill?: string }
+  >
 > = {
   locked: { icon: Lock, fill: "currentColor" },
   unlocked: { icon: Unlock },
