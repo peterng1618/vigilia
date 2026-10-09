@@ -50,10 +50,26 @@ const FIELDS = "input,select,textarea";
  * So naming them would mean a `<label for>` pointing at something nobody can
  * reach — a control that passes this audit by being absent from the product.
  * Hiding a control to escape it removes it from the author's reach as surely;
- * that is what `[hidden]` means, and it is the one escape worth naming rather
- * than pretending the audit is absolute.
+ * that is what `[hidden]` means, and it is one escape worth naming rather than
+ * pretending the audit is absolute.
+ *
+ * `aria-hidden="true"` is the **second spelling of that same fact**, and it is
+ * how Base UI renders the input a select submits its value through: `tabIndex:
+ * -1` and `aria-hidden: true` by construction
+ * (`@base-ui/react/combobox/root/AriaCombobox.mjs`). It is hidden by
+ * `clip-path`, not by `[hidden]`, so it is in the markup and in no
+ * accessibility tree: unfocusable and unannounced, exactly what the file
+ * pickers are. The five the run editor reaches — one per converted select —
+ * are what this exclusion is for; naming them would create the `<label for>`
+ * pointing at nothing this comment already refuses.
+ *
+ * Neither exclusion is a hole, and the sibling test is why: every element this
+ * predicate skips is enumerated in "names every skipped element", so a control
+ * that looks away is a line somebody has to read and agree with, rather than a
+ * gap the audit passes over in silence.
  */
-const reached = (element: HTMLElement): boolean => !element.hidden;
+const reached = (element: HTMLElement): boolean =>
+  !element.hidden && element.getAttribute("aria-hidden") !== "true";
 
 /** The elements a `<label for>` may name. `output` is one of them. */
 const LABELABLE = "button,input,meter,output,progress,select,textarea";
@@ -143,20 +159,48 @@ describe("editor panels", () => {
     expect(anonymous).toEqual([]);
   });
 
-  it("skips only hidden file pickers, so the audit's blind spot stays named", () => {
+  it("names every skipped element, so the audit's blind spot stays named", () => {
     // `reached` is the one place this file looks away, and a carve-out nobody
-    // can see is how an audit rots. Naming the shape keeps it honest in both
-    // directions: a third hidden control is a decision someone has to take, and
-    // an empty list means a panel stopped being mounted — the exact failure vg-114
-    // recorded, where the asset pane and the chooser had never been here at all.
+    // can see is how an audit rots. Enumerating them keeps it honest in both
+    // directions: one more skipped control is a decision someone has to take,
+    // and an empty list means a panel stopped being mounted — the exact failure
+    // vg-114 recorded, where the asset pane and the chooser had never been here
+    // at all.
+    //
+    // Both shapes are in here, and the run editor's five are the reason the
+    // list is longer than it was: `INPUT[type=file]` is `[hidden]`, and an
+    // `aria-hidden` input is Base UI's value carrier for one select.
     const { root } = mountPanels();
     const skipped = Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE))
       .filter((element) => !reached(element))
       .map(
         (element) =>
-          `${element.tagName}[type=${element.getAttribute("type") ?? ""}]`,
+          `${element.tagName}[type=${element.getAttribute("type") ?? ""}]${
+            element.getAttribute("aria-hidden") === "true"
+              ? "[aria-hidden]"
+              : ""
+          }`,
       );
-    expect(skipped).toEqual(["INPUT[type=file]", "INPUT[type=file]"]);
+    expect(skipped).toEqual([
+      "INPUT[type=][aria-hidden]",
+      "INPUT[type=][aria-hidden]",
+      "INPUT[type=][aria-hidden]",
+      "INPUT[type=][aria-hidden]",
+      "INPUT[type=][aria-hidden]",
+      "INPUT[type=file]",
+      "INPUT[type=file]",
+    ]);
+
+    // And the `aria-hidden` exclusion is earned rather than assumed. The
+    // attribute alone is not the fact that puts something out of reach —
+    // `tabIndex: -1` is, and Base UI sets both. A component of ours that put
+    // `aria-hidden` on something an author can still focus would be a control
+    // this audit stopped looking at, so that is asserted here rather than
+    // read off the source and hoped for.
+    const focusable = Array.from(
+      root.querySelectorAll<HTMLElement>('[aria-hidden="true"]'),
+    ).filter((element) => element.tabIndex >= 0);
+    expect(focusable).toEqual([]);
   });
 
   it("names the release version, which no form control owns", () => {
