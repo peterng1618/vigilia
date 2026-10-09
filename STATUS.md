@@ -26,7 +26,7 @@ backlog it produced stays live in the register.
 
 ## Active work
 
-- **Plan 2 — [`the shell and the rail`](docs/superpowers/plans/2026-10-08-the-shell-and-the-rail.md) — is active.** Tasks 1–9 are complete and reviewed; Task 10 is next and one task remains.
+- **Plan 2 — [`the shell and the rail`](docs/superpowers/plans/2026-10-08-the-shell-and-the-rail.md) — is active.** All ten tasks are complete and reviewed; its final whole-branch review is next, and the plan closes when that passes.
 - **Plan 1 — gates and the control set — is complete**, with a delivered-state reconciliation for Tasks 1–4 in the plan file in place of its retired ledger.
 - **The spec is `draft` and unimplemented** — its acceptance sections are plans of measurement, not results.
 - **Reactify ([0039](docs/decisions/0039-the-editor-ui-is-react-and-only-the-canvas-is-imperative.md)) is the frame, not a phase** — every editor surface becomes React, only the canvas stays imperative, and no Fabric object is ever mirrored into React state.
@@ -35,17 +35,17 @@ backlog it produced stays live in the register.
 
 ## Last completed change
 
-- **Task 9 of plan 2 — the parity capture — is complete and reviewed**, closing phase 3 through `84abb569`: one review, no fix round, and every claim in the report reproduced by the reviewer or by me.
-- **The shell's own state is now evidence**: `editor-shell-add-desktop-chromium.png` shows the Add slot open and nothing selected — the state the mockup draws — beside the two refreshed captures, and all three were re-run rather than re-drawn.
-- **The capture fails if the shell is not the new one**: §7.2's four rail slots and exactly one pane in the rail's column are asserted before the picture is written, proved by emptying `RAIL_SLOTS` and watching the committed test fail `Expected: 4, Received: 0`.
-- **Every run was reported by its test count, not its exit code** — 1, then 2, then 3 — and the implementer flagged the brief's `?static=1`/controlled-clock line as inapplicable to the editor instead of inventing a static mode (`vg-229`).
-- **`[data-vigilia-panel]` names six panes, not four** — the rail's four plus the inspector's `style` and `selection` — so "exactly one is showing" is scoped to `.editor-shell-panel`, which is the rail's column.
+- **Task 10 of plan 2 — the difference list — is complete and reviewed** through `4701ac65`: one review, one fix round, one scoped re-review, all in the plan file.
+- **25 differences, none unowned**: 6 deliberate in this plan, 12 owned by a later plan (7 plan 4, 3 plan 5, 2 plan 3), 7 owned by a register row — and the partition names whole rows so it sums to the table.
+- **The review's one Important finding was its arithmetic**, which contradicted the table on the deliberate count and counted `#22` twice; the fix re-states 6 + 12 + 7 = 25 in both places and retires "reported as unowned" as a category.
+- **Two differences became rows rather than prose** — `vg-230` (the status bar renders no counts, though §7.6, spec §3.4 and Task 4's own outcome require them) and `vg-231` (the body's four regions inset 8px at an off-scale 12px radius in a deliberately ungated file), both verified against the code before filing.
+- **The third was ruled not a gap** — the mockup's brand chevron is its illustration of §7.1's "brand mark", which the wordmark already is.
 
 ## Next
 
-1. **Task 10 — the difference list** — compare Task 9's three captures beside `docs/design/mockups/editor-shell.html` as language rather than pixels, adjudicate each difference against the bible, and account for every one as fixed or deliberate.
-2. **Its completion report is a section in this plan file**, not the ledger (deleted at plan close), and it closes **no** register row. It must not overwrite the mockup's settled targets with the product's interim ones: the mockup is the target, and a later plan owns each remaining gap.
-3. **Then plan 2's close** — the whole-branch review on the most capable model, one fix dispatch and one scoped re-review, then the plan workspace is deleted; anything that must outlive it needs a register row first.
+1. **Plan 2's whole-branch review**, on the most capable model over `2c0081b1..HEAD` — 36 commits, 74 files, +3788/−1895 — with the plan's `Review Focus` list as its spine, since each of its ten entries is a failure no existing test catches.
+2. **Then one fix dispatch, one scoped re-review, adjudicate residuals, and delete the plan workspace** — before deleting it, anything that must outlive the plan needs a register row, because the ledger dies with the directory; Task 10's difference list already lives in the plan file for that reason.
+3. **Then plan 3, the inspector**, is the next of the five plans the sequencing table names.
 4. **Unpushed:** `develop` is far ahead of `origin/develop`; no push is authorised.
 
 ## Blockers / unverified
