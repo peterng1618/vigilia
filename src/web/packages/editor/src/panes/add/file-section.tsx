@@ -73,10 +73,9 @@ export function FileSection({
   /**
    * Runs one submission, and refuses to start a second while it is in flight.
    *
-   * The ceiling: a *different* file picked inside that window is dropped with no
-   * message. The pickers are cleared after every use, so the guard exists to
-   * stop the same file importing twice; one submission at a time is the
-   * behaviour the deleted panel had, and parity is this task's contract.
+   * Serialising is *new in this surface*: the panel this replaces had no guard
+   * and let two imports interleave in one manager. The cost is named rather than
+   * hidden — a second pick inside the window is dropped with nothing said.
    */
   const submit = async (task: () => Promise<void>): Promise<void> => {
     if (busy.current) return;

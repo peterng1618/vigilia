@@ -189,22 +189,27 @@ async function drain(): Promise<void> {
 }
 
 /**
- * Answers a file picker the way a browser does once a control opens it: the
- * files are set on the hidden input and its `change` fires, and the submission
- * it starts is waited out inside `act`.
+ * Fires a picker's `change` with the given file, the way a browser does once a
+ * control opens it, without waiting for the submission it starts. Must be called
+ * inside `act`.
  */
-async function choose(
-  host: HTMLElement,
-  selector: string,
-  chosen: File,
-): Promise<void> {
+function pick(host: HTMLElement, selector: string, chosen: File): void {
   const input = host.querySelector<HTMLInputElement>(selector)!;
   Object.defineProperty(input, "files", {
     value: [chosen],
     configurable: true,
   });
+  input.dispatchEvent(new Event("change", { bubbles: true }));
+}
+
+/** Fires a picker's `change` and waits out the submission it starts. */
+async function choose(
+  host: HTMLElement,
+  selector: string,
+  chosen: File,
+): Promise<void> {
   await act(async () => {
-    input.dispatchEvent(new Event("change", { bubbles: true }));
+    pick(host, selector, chosen);
     await drain();
   });
 }
@@ -329,6 +334,25 @@ describe("the Add pane's file section", () => {
     // Parity with the panel this replaces: adding a file never moved the list
     // off the asset the author was pointing at.
     expect(selectControl(host).value).toBe("logo");
+  });
+
+  it("drops a second pick while one import is in flight, and commits the first once", async () => {
+    const { host, manager, saveState } = await mount();
+
+    await act(async () => {
+      // Both picks land before the first import has finished, which is the
+      // window `submit`'s guard closes: a second import into the same manager
+      // would interleave declarations and hashes.
+      pick(host, "[data-vigilia-asset-import-input]", IMAGE_FILE);
+      pick(host, "[data-vigilia-asset-import-input]", FONT_FILE);
+      await drain();
+    });
+
+    // The drop is silent by design — the ceiling named at `submit` — so the
+    // evidence is that the second file never reached the manager.
+    expect(manager.declarations.map((asset) => asset.id)).toEqual(["logo"]);
+    expect(listedNames(host)).toEqual(["logo.png"]);
+    expect(saveState).toHaveBeenCalledTimes(1);
   });
 
   it("keeps replace as the chosen asset's own byte swap, which is what it always meant", async () => {
