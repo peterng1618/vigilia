@@ -27,7 +27,7 @@ import {
   Textbox,
 } from "fabric/es";
 import { act } from "react";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createObjectLockManager } from "../object-lock-manager/index.js";
 import { uiCopy } from "../ui-copy.js";
 import { idleCrop } from "./idle-crop.test-stage.js";
@@ -47,6 +47,13 @@ import {
 (
   globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
 ).IS_REACT_ACT_ENVIRONMENT = true;
+
+// Every `setup` attaches its host so a field can hold focus; the body is
+// emptied between cases so the hosts (and the popups a control portals into it)
+// do not pile up.
+afterEach(() => {
+  document.body.replaceChildren();
+});
 
 /** A chart with settings but no live ECharts behind it: what the inspector
     reads is the object, not the engine that paints it. */
@@ -100,7 +107,11 @@ function setup(
   } = {},
 ) {
   const history = { saveState: vi.fn() };
+  // Attached: nothing is focusable while it is detached, and a plan-1 control
+  // commits on blur — which jsdom fires only for an element that can hold
+  // focus. `afterEach` empties the body so the hosts do not pile up.
   const host = document.createElement("div");
+  document.body.append(host);
   const editor = {
     canvas: canvasWith(active, options.objects),
     historyManager: history,
@@ -138,6 +149,38 @@ function weekdayWord(instant: string, locale: string): string {
     weekday: "long",
     timeZone: "UTC",
   }).format(new Date(`${instant.slice(0, 10)}T00:00:00Z`));
+}
+
+/**
+ * A draft in a plan-1 text field, as React sees one: through the prototype's
+ * setter, because React replaces `value` on the node with a tracker that would
+ * suppress a plain assignment.
+ */
+async function draft(input: HTMLInputElement, value: string): Promise<void> {
+  await act(async () => {
+    const setter = Object.getOwnPropertyDescriptor(
+      Object.getPrototypeOf(input) as HTMLInputElement,
+      "value",
+    )?.set;
+    if (setter === undefined) input.value = value;
+    else setter.call(input, value);
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+}
+
+/** Off the field, which is what the control commits. Its own turn, because a
+ *  blur in the same turn as the draft would read it before React applied it. */
+async function leave(input: HTMLInputElement): Promise<void> {
+  await act(async () => {
+    input.focus();
+    input.blur();
+  });
+}
+
+/** A committed edit on one of the plan-1 controls. */
+async function edit(input: HTMLInputElement, value: string): Promise<void> {
+  await draft(input, value);
+  await leave(input);
 }
 
 describe("the selection inspector", () => {
@@ -198,8 +241,12 @@ describe("the selection inspector", () => {
     expect(rowOf("left")).toBe(rowOf("top"));
     expect(rowOf("width")).toBe(rowOf("height"));
     expect(rowOf("left")).not.toBe(rowOf("width"));
-    // Rotation stands alone, in the single-field row the shell already has.
-    expect(input("angle").closest(".vigilia-field")).not.toBeNull();
+    // Rotation stands alone: Layer renders it as its own row, never as one
+    // half of the pairs Position builds.
+    expect(input("angle").closest(".vigilia-field-row")).toBeNull();
+    expect(input("angle").closest('[data-vigilia-section="layer"]')).not.toBe(
+      null,
+    );
     expect(rowOf("angle")).toBeNull();
   });
 
@@ -254,7 +301,7 @@ describe("the selection inspector", () => {
     expect(history.saveState).toHaveBeenCalledTimes(1);
   });
 
-  it("shows opacity as a percentage and stores Fabric's 0-1", () => {
+  it("shows opacity as a percentage and stores Fabric's 0-1", async () => {
     rect.set({ opacity: 0.5 });
     const { host, history } = setup(rect);
     const opacity = host.querySelector<HTMLInputElement>(
@@ -263,22 +310,20 @@ describe("the selection inspector", () => {
 
     expect(opacity.value).toBe("50");
 
-    opacity.value = "25";
-    opacity.dispatchEvent(new Event("change"));
+    await edit(opacity, "25");
 
     expect(rect.opacity).toBe(0.25);
     expect(history.saveState).toHaveBeenCalledTimes(1);
   });
 
-  it("refuses opacity outside the range rather than clamping it", () => {
+  it("refuses opacity outside the range rather than clamping it", async () => {
     rect.set({ opacity: 0.5 });
     const { host, history, editor } = setup(rect);
     const opacity = host.querySelector<HTMLInputElement>(
       "[data-vigilia-opacity]",
     )!;
 
-    opacity.value = "150";
-    opacity.dispatchEvent(new Event("change"));
+    await edit(opacity, "150");
 
     expect(rect.opacity).toBe(0.5);
     expect(opacity.value).toBe("50");
@@ -286,15 +331,14 @@ describe("the selection inspector", () => {
     expect(editor.errorManager.warn).toHaveBeenCalled();
   });
 
-  it("shows the object's display name and writes an edit back to it", () => {
+  it("shows the object's display name and writes an edit back to it", async () => {
     rect.set("name", "Header panel");
     const { host, history } = setup(rect);
     const name = host.querySelector<HTMLInputElement>("[data-vigilia-name]")!;
 
     expect(name.value).toBe("Header panel");
 
-    name.value = "Header rule";
-    name.dispatchEvent(new Event("change"));
+    await edit(name, "Header rule");
 
     expect(rect.get("name")).toBe("Header rule");
     // One committed edit, one history entry (§67).
@@ -310,13 +354,12 @@ describe("the selection inspector", () => {
     expect(name.value).toBe("");
   });
 
-  it("clears the name when the author empties the field", () => {
+  it("clears the name when the author empties the field", async () => {
     rect.set("name", "Header panel");
     const { host, history } = setup(rect);
     const name = host.querySelector<HTMLInputElement>("[data-vigilia-name]")!;
 
-    name.value = "   ";
-    name.dispatchEvent(new Event("change"));
+    await edit(name, "   ");
 
     // The key goes rather than holding a blank label, so the layer list falls
     // back to the id exactly as it does for a scene that never had a name.
@@ -324,16 +367,15 @@ describe("the selection inspector", () => {
     expect(history.saveState).toHaveBeenCalledTimes(1);
   });
 
-  it("refuses a name past the published bound rather than storing it", () => {
+  it("refuses a name past the published bound rather than storing it", async () => {
     rect.set("name", "Header panel");
     const { host, history, editor } = setup(rect);
     const name = host.querySelector<HTMLInputElement>("[data-vigilia-name]")!;
 
-    name.value = "x".repeat(MAX_OBJECT_NAME_LENGTH + 1);
-    name.dispatchEvent(new Event("change"));
+    await edit(name, "x".repeat(MAX_OBJECT_NAME_LENGTH + 1));
 
     // The envelope would refuse this on import, so a save would throw; the field
-    // rejects the edit and restores what the object actually carries.
+    // rejects the edit and shows what the object actually carries.
     expect(rect.get("name")).toBe("Header panel");
     expect(name.value).toBe("Header panel");
     expect(history.saveState).not.toHaveBeenCalled();
@@ -359,7 +401,7 @@ describe("the selection inspector", () => {
     expect(host.querySelector("[data-vigilia-name]")).toBeNull();
   });
 
-  it("announces the edit so the layer list republishes the row", () => {
+  it("announces the edit so the layer list republishes the row", async () => {
     // The layer row prints this name, and the panel caches its projection, so
     // a rename that only wrote the object would leave the two surfaces
     // disagreeing until something else happened to republish.
@@ -367,8 +409,7 @@ describe("the selection inspector", () => {
     const { host, editor } = setup(rect);
     const name = host.querySelector<HTMLInputElement>("[data-vigilia-name]")!;
 
-    name.value = "Header rule";
-    name.dispatchEvent(new Event("change"));
+    await edit(name, "Header rule");
 
     expect(editor.canvas.fire).toHaveBeenCalledWith(
       "object:modified",
@@ -376,13 +417,12 @@ describe("the selection inspector", () => {
     );
   });
 
-  it("announces nothing when a name is refused", () => {
+  it("announces nothing when a name is refused", async () => {
     rect.set("name", "Header panel");
     const { host, editor } = setup(rect);
     const name = host.querySelector<HTMLInputElement>("[data-vigilia-name]")!;
 
-    name.value = "x".repeat(MAX_OBJECT_NAME_LENGTH + 1);
-    name.dispatchEvent(new Event("change"));
+    await edit(name, "x".repeat(MAX_OBJECT_NAME_LENGTH + 1));
 
     expect(editor.canvas.fire).not.toHaveBeenCalled();
   });
@@ -787,28 +827,24 @@ describe("the column's sections", () => {
     expect(isOpen(host, "paint")).toBe(false);
   });
 
-  it("puts the caret back in the field being typed into", () => {
+  it("keeps the caret in the field being typed into", () => {
     const { host, inspector } = setup(rect);
-    // Attached, because nothing is focusable while it is detached and jsdom
-    // would report `body` as the active element whatever this does.
-    document.body.append(host);
     const name = host.querySelector<HTMLInputElement>("[data-vigilia-name]")!;
     name.focus();
     expect(document.activeElement).toBe(name);
 
     inspector.render();
 
-    // The re-render replaces the field, so the caret has to be put back in the
-    // new element — the two share only the data hook that names them.
+    // The field is React's now, so a re-publish updates it in place rather than
+    // rebuilding it: the caret is kept by the element surviving, where the
+    // imperative body had to put it back into a fresh element.
     const after = host.querySelector<HTMLInputElement>("[data-vigilia-name]")!;
-    expect(after).not.toBe(name);
+    expect(after).toBe(name);
     expect(document.activeElement).toBe(after);
-    host.remove();
   });
 
   it("does not put focus back on a control that only toggles", () => {
     const { host, inspector } = setup(rect);
-    document.body.append(host);
     const glass = host.querySelector<HTMLInputElement>(
       "[data-vigilia-glass-enabled]",
     )!;
@@ -823,7 +859,131 @@ describe("the column's sections", () => {
     expect(document.activeElement).not.toBe(
       host.querySelector("[data-vigilia-glass-enabled]"),
     );
-    host.remove();
+  });
+
+  /**
+   * A draft belongs to the object it was typed into.
+   *
+   * The imperative editor's queued blur was the reported defect: the author
+   * typed a name, selected something else, and the blur that followed wrote the
+   * abandoned draft where it no longer belonged. React's row identity is what
+   * answers it now — a row keyed by field id alone would be reconciled onto the
+   * next object still holding the previous one's draft — so each of the four
+   * ways the described object can change gets its own case.
+   */
+  describe("a draft and the object it describes", () => {
+    /** Two named rects and a selection a test can move between them. */
+    function twoObjects(): {
+      readonly a: Rect;
+      readonly b: Rect;
+      readonly select: (object: FabricObject | undefined) => void;
+      readonly inspector: ReturnType<typeof setup>["inspector"];
+      readonly host: HTMLElement;
+      readonly history: ReturnType<typeof setup>["history"];
+    } {
+      const a = new Rect({ left: 0, top: 0, width: 40, height: 20 });
+      a.set({ id: "obj-1", name: "Panel A" });
+      const b = new Rect({ left: 60, top: 0, width: 40, height: 20 });
+      b.set({ id: "obj-2", name: "Panel B" });
+      let active: FabricObject | undefined = a;
+      const built = setup(() => active);
+      return {
+        a,
+        b,
+        select: (object) => {
+          active = object;
+        },
+        inspector: built.inspector,
+        host: built.host,
+        history: built.history,
+      };
+    }
+
+    /** The draft in the name field, left uncommitted. */
+    async function typedName(host: HTMLElement): Promise<HTMLInputElement> {
+      const field = host.querySelector<HTMLInputElement>(
+        "[data-vigilia-name]",
+      )!;
+      await draft(field, "Typed A");
+      return field;
+    }
+
+    it("writes nothing when the selection moves to another object", async () => {
+      const { a, b, select, inspector, host, history } = twoObjects();
+      const field = await typedName(host);
+
+      select(b);
+      inspector.render();
+      expect(
+        host.querySelector<HTMLInputElement>("[data-vigilia-name]")?.value,
+      ).toBe("Panel B");
+
+      // The blur A's field was queued for now lands on an element that has left
+      // the tree. Neither object took the draft.
+      await act(async () => {
+        field.blur();
+      });
+      expect(a.get("name")).toBe("Panel A");
+      expect(b.get("name")).toBe("Panel B");
+      expect(history.saveState).not.toHaveBeenCalled();
+    });
+
+    it("writes nothing when the selection is gone", async () => {
+      // Deselected and deleted are one path here: the canvas reports no active
+      // object either way, so the row leaves the tree the same way. What the
+      // draft must not do is reach an object the panel no longer describes.
+      const { a, select, inspector, host, history } = twoObjects();
+      const field = await typedName(host);
+
+      select(undefined);
+      inspector.render();
+      expect(host.querySelector("[data-vigilia-name]")).toBeNull();
+
+      await act(async () => {
+        field.blur();
+      });
+      expect(a.get("name")).toBe("Panel A");
+      expect(history.saveState).not.toHaveBeenCalled();
+    });
+
+    it("writes nothing into the object an undo rebuilt under the same id", async () => {
+      const { a, select, inspector, host, history } = twoObjects();
+      const field = await typedName(host);
+
+      // An undo hands back a *new* object carrying the same id, so an identity
+      // taken from the id would reconcile the old row onto it.
+      const rebuilt = new Rect({ left: 0, top: 0, width: 40, height: 20 });
+      rebuilt.set({ id: a.get("id"), name: "Panel A" });
+      select(rebuilt);
+      inspector.render();
+      expect(
+        host.querySelector<HTMLInputElement>("[data-vigilia-name]")?.value,
+      ).toBe("Panel A");
+
+      await act(async () => {
+        field.blur();
+      });
+      expect(rebuilt.get("name")).toBe("Panel A");
+      expect(history.saveState).not.toHaveBeenCalled();
+    });
+
+    it("writes nothing when the object is locked between the draft and the blur", async () => {
+      const { a, select, inspector, host, history } = twoObjects();
+      const field = await typedName(host);
+
+      // A locked object is offered no writing field at all, so the row is gone
+      // by the time the blur would have committed.
+      a.set("locked", true);
+      select(a);
+      inspector.render();
+      expect(host.querySelector("[data-vigilia-name]")).toBeNull();
+
+      await act(async () => {
+        field.blur();
+      });
+      expect(a.get("name")).toBe("Panel A");
+      expect(history.saveState).not.toHaveBeenCalled();
+    });
   });
 
   it("renders no header at all for a section with nothing in it", () => {
@@ -904,9 +1064,11 @@ describe("the column's sections", () => {
         .map((section) => section.id),
     ).toEqual(["content", "layer", "paint", "spends"]);
     for (const section of sections) {
-      // The count is the body's own length: the section renders the body React
-      // does not yet, and the header's count has to agree with it.
-      expect(section.count, section.id).toBe(section.body.length);
+      // The count is every row the section renders — the fields and extras React
+      // owns plus the body it does not — and the header's count has to agree.
+      expect(section.count, section.id).toBe(
+        section.fields.length + section.extras.length + section.body.length,
+      );
     }
   });
 

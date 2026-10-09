@@ -1,3 +1,5 @@
+import type { Binding } from "@vigilia/renderer-core";
+import { isObjectName } from "@vigilia/renderer-core";
 import type { FabricObject } from "fabric/es";
 import { rowNameOf } from "../editor-shell/layer-tree.js";
 import { uiCopy } from "../ui-copy.js";
@@ -48,77 +50,165 @@ export interface ColumnSectionView {
   readonly extras: readonly ExtraView[];
 }
 
+/**
+ * The `data-*` hooks a row's own focus target carries.
+ *
+ * The hook is not the field identity: `data-vigilia-geometry` names five values,
+ * so a suite reads `[data-vigilia-geometry="width"]` and then reads `.value` off
+ * the element the hook is on. Fields carry the attribute names, and the renderer
+ * spreads them onto the control itself, never a wrapper — a hook on a wrapper is
+ * a broken locator wearing a passing test.
+ */
+export type FieldHooks = Readonly<Record<`data-${string}`, string>>;
+
+interface FieldBase {
+  readonly id: string;
+  readonly label: string;
+  readonly data: FieldHooks;
+  readonly refused?: string;
+}
+
 export type FieldView =
-  | {
-      readonly id: string;
-      readonly control: "text";
-      readonly label: string;
-      readonly value: string;
-      readonly refused?: string;
-    }
-  | {
-      readonly id: string;
+  | (FieldBase & { readonly control: "text"; readonly value: string })
+  | (FieldBase & {
       readonly control: "number";
-      readonly label: string;
       readonly value: number;
       readonly unit?: string;
-      readonly refused?: string;
-    }
-  | {
-      readonly id: string;
-      readonly control: "toggle";
-      readonly label: string;
-      readonly checked: boolean;
-      readonly refused?: string;
-    }
-  | {
-      readonly id: string;
+      readonly min?: number;
+      readonly max?: number;
+    })
+  | (FieldBase & { readonly control: "toggle"; readonly checked: boolean })
+  | (FieldBase & {
       readonly control: "select";
-      readonly label: string;
       readonly value: string;
       readonly options: readonly {
         readonly id: string;
         readonly name: string;
       }[];
-    }
-  | {
-      readonly id: string;
+    })
+  | (FieldBase & {
       readonly control: "slider";
-      readonly label: string;
       readonly value: number;
       readonly min: number;
       readonly max: number;
-    }
-  | {
-      readonly id: string;
+    })
+  | (FieldBase & {
       readonly control: "segmented";
-      readonly label: string;
       readonly value: string;
       readonly options: readonly {
         readonly id: string;
         readonly name: string;
       }[];
-    }
-  | {
-      readonly id: string;
-      readonly control: "swatch";
-      readonly label: string;
-      readonly value: string;
-    }
-  | {
-      readonly id: string;
-      readonly control: "readOnly";
-      readonly label: string;
-      readonly value: string;
-    };
+    })
+  | (FieldBase & { readonly control: "swatch"; readonly value: string })
+  | (FieldBase & { readonly control: "readOnly"; readonly value: string });
+
+/** One entry in a run editor's dropdowns: the stored reference, and its name. */
+export interface RunOptionView {
+  readonly id: string;
+  readonly name: string;
+}
+
+/**
+ * One run of a text object, as the run editor renders it.
+ *
+ * The run editor is the one sub-surface the row union cannot express, so it
+ * crosses the boundary as this value plus the imperative `RunEdits` port below
+ * — never as the Fabric object, whose `runs` are what it reads.
+ */
+export interface RunRowView {
+  readonly index: number;
+  readonly kind: "literal" | "value";
+  /** What the row is called: a reading's key, or the prose it says. */
+  readonly label: string;
+  readonly text: string;
+  readonly typePreset: string;
+  readonly colour: string;
+  /** The semantic key a value run reads, or `""` for prose. */
+  readonly sourceKey: string;
+  readonly unitDisplay: string;
+  /** The note under a value run, and the problem it carries when one is. */
+  readonly bindingNote?: string;
+  readonly bindingProblem?: "undeclared" | "unmapped";
+  /** Present on a value run whose binding is declared and pinned to an instant. */
+  readonly format?: string;
+  readonly formatDefault?: string;
+  readonly zone?: string;
+}
+
+/** Everything the run editor renders, projected from the object it describes. */
+export interface RunsView {
+  readonly nodeId: string;
+  readonly runs: readonly RunRowView[];
+  readonly layout: {
+    readonly align: string;
+    readonly verticalAlign: string;
+    readonly wrap: string;
+    readonly overflow: string;
+  };
+  readonly presets: readonly RunOptionView[];
+  readonly palettes: readonly RunOptionView[];
+  /**
+   * What each palette reference the editor offers currently resolves to, so a
+   * swatch is a picture of the value rather than a second resolver. Keyed by
+   * reference; a reference that no longer resolves is absent.
+   */
+  readonly swatchValues: Readonly<Record<string, string>>;
+  readonly unitOptions: readonly RunOptionView[];
+  /** What a value run may read; the prose option is the row's own first entry. */
+  readonly sources: readonly RunOptionView[];
+  readonly zones: readonly string[];
+  /** True when the node declares bindings at all — it has an id to hang them on. */
+  readonly bindable: boolean;
+  /** A last run is not removable: a text object with no runs paints nothing. */
+  readonly removable: boolean;
+  readonly locale: string | undefined;
+  readonly notes: readonly string[];
+}
 
 /** The four sub-surfaces that are not one control. Each names one React
     component in this family; no other kind is added without amending this. */
 export type ExtraView =
-  | { readonly kind: "runs"; readonly nodeId: string }
+  | { readonly kind: "runs"; readonly nodeId: string; readonly runs: RunsView }
   | { readonly kind: "crop" }
   | { readonly kind: "chartContent" }
   | { readonly kind: "chartPaint" };
+
+/**
+ * The run editor's one way to write, beside `SelectionEdits`.
+ *
+ * A run is an authored value — a whole `TextRun`, or the layout map it shares
+ * with its siblings — and React holds only the projected `RunsView`, never the
+ * run it describes. So the port is expressed as intent keyed by run index, and
+ * `index.ts` resolves it against the live object it owns: it reads the run, keeps
+ * the fields the edit does not name, and records one history entry.
+ */
+export interface RunEdits {
+  readonly setRunText: (index: number, text: string) => boolean;
+  readonly setRunPreset: (index: number, ref: string) => boolean;
+  readonly setRunColour: (index: number, ref: string) => boolean;
+  readonly setUnitDisplay: (index: number, value: string) => boolean;
+  readonly setSource: (index: number, semanticKey: string) => boolean;
+  readonly setFormat: (index: number, format: string) => boolean;
+  readonly setZone: (index: number, zone: string) => boolean;
+  readonly writeLayout: (patch: TextLayoutPatch) => boolean;
+  readonly addRun: () => boolean;
+  readonly removeRun: (index: number) => boolean;
+}
+
+/** The text layout keys the run editor writes, whichever are present. */
+export interface TextLayoutPatch {
+  readonly align?: string;
+  readonly verticalAlign?: string;
+  readonly wrap?: boolean;
+  readonly overflow?: string;
+}
+
+/** The bindings a node declares, read and written through the session. */
+export interface RunBindingPort {
+  readonly bindings: () => readonly Binding[];
+  readonly setBindings: (bindings: readonly Binding[]) => void;
+}
 
 /**
  * The read-only context the projection needs: the same shapes the column already
@@ -149,16 +239,23 @@ export interface SelectionEdits {
 }
 
 /**
- * The field ids the dispatcher can write today: the value each
- * `data-vigilia-geometry` hook carries. Every other field's writer arrives with
- * the surface that renders it.
+ * The field ids the dispatcher can write, and what a value of each must be.
+ *
+ * The geometry keys were the first five; a Text column's name and a Layer
+ * column's opacity joined them when their sections moved to React. Membership is
+ * the eligibility rule: a field id absent here reaches no writer, so a control
+ * that renders a hook the dispatcher does not know is refused rather than
+ * silently accepted.
  */
-const WRITABLE_FIELD_IDS: ReadonlySet<string> = new Set<GeometryKey>([
-  "left",
-  "top",
-  "width",
-  "height",
-  "angle",
+type WritableKind = "number" | "name";
+const WRITABLE_FIELD_IDS: ReadonlyMap<string, WritableKind> = new Map([
+  ["left", "number"],
+  ["top", "number"],
+  ["width", "number"],
+  ["height", "number"],
+  ["angle", "number"],
+  ["opacity", "number"],
+  ["name", "name"],
 ]);
 
 /** Why an edit was refused; `undefined` means it may reach the write funnel. */
@@ -175,6 +272,9 @@ export type EditRefusal = "stale" | "locked" | "unknown" | "invalid";
  * eligibility are re-checked here too: a control cannot be trusted to have
  * checked them, and a field that writes the object directly is withheld from a
  * locked one.
+ *
+ * The value rule is per field: a number must be finite, and a name must be one
+ * the document envelope would accept — refused rather than coerced or truncated.
  */
 export function editRefusal(
   edit: {
@@ -186,7 +286,13 @@ export function editRefusal(
 ): EditRefusal | undefined {
   if (edit.expectedRevision !== live.targetRevision) return "stale";
   if (live.locked) return "locked";
-  if (!WRITABLE_FIELD_IDS.has(edit.fieldId)) return "unknown";
+  const kind = WRITABLE_FIELD_IDS.get(edit.fieldId);
+  if (kind === undefined) return "unknown";
+  if (kind === "name") {
+    if (typeof edit.value !== "string") return "invalid";
+    const trimmed = edit.value.trim();
+    return trimmed === "" || isObjectName(trimmed) ? undefined : "invalid";
+  }
   // Refuse rather than coerce: a non-finite number is not a dimension.
   return typeof edit.value === "number" && Number.isFinite(edit.value)
     ? undefined

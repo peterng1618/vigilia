@@ -25,6 +25,7 @@
     "src/web/packages/editor/src/editor-shell/publish-indicator.tsx",
     "src/web/packages/editor/src/editor-shell/shell-layout.tsx",
     "src/web/packages/editor/src/selection-inspector/inspector.tsx",
-    "src/web/packages/editor/src/selection-inspector/column.tsx"
+    "src/web/packages/editor/src/selection-inspector/column.tsx",
+    "src/web/packages/editor/src/selection-inspector/runs.tsx"
   ]
 }

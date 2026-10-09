@@ -1,9 +1,23 @@
 import type * as React from "react";
-import { useId } from "react";
+import { Fragment, useId } from "react";
 import { flushSync } from "react-dom";
 import { createRoot, type Root } from "react-dom/client";
+import { ControlNumber } from "../components/ui/control-number.js";
+import { ControlSegmented } from "../components/ui/control-segmented.js";
+import { ControlSelect } from "../components/ui/control-select.js";
+import { ControlSlider } from "../components/ui/control-slider.js";
+import { ControlText } from "../components/ui/control-text.js";
+import { ControlToggle } from "../components/ui/control-toggle.js";
 import { InspectorSection } from "../components/ui/inspector-section.js";
-import type { SelectionEdits, SelectionView } from "./view.js";
+import { RunEditor } from "./runs.js";
+import type {
+  ColumnSectionView,
+  ExtraView,
+  FieldView,
+  RunEdits,
+  SelectionEdits,
+  SelectionView,
+} from "./view.js";
 
 /**
  * The column's sections, as React.
@@ -12,19 +26,187 @@ import type { SelectionEdits, SelectionView } from "./view.js";
  * this component sorts nothing, groups nothing and decides nothing about
  * emptiness. `perKindColumn` owns which questions a selection is asked and
  * `SETTINGS_SECTIONS` decides their order, so a column that re-ordered here
- * would be a second owner of Review Focus 2's rule — and this is the surface
- * that failure would show up in.
+ * would be a second owner of Review Focus 2's rule.
  *
- * The body is not rendered here yet. `data-vigilia-section-body` is the container
- * `index.ts` mounts each section's still-imperative fields into, and it empties
- * as Tasks 3–6 convert them. React renders the container empty and leaves what
- * `index.ts` puts inside it alone — React only moves the nodes it made.
+ * A section renders its own `fields` and `extras` — the rows that have moved to
+ * React — and leaves `data-vigilia-section-body` for `index.ts` to mount the
+ * still-imperative bodies into. That container empties as Tasks 4–6 convert the
+ * remaining sections; React renders it empty and never touches the nodes
+ * `index.ts` puts inside it, because React only moves the children it made.
+ *
+ * Every row is a plan-1 control carrying the field's own `data-*` hooks on its
+ * focus target, so the locator a suite reads and the control a person operates
+ * are the same element. Each edit goes through `SelectionEdits` with the
+ * revision the view was projected from, so a control whose draft outlived its
+ * selection is refused rather than writing an old value into a new object.
+ *
+ * The revision is also part of every row's key, and that is what discards a
+ * draft when the selection moves: a row keyed by field id alone would be
+ * reconciled onto the *next* object with the previous object's draft still in
+ * its state, and the blur that followed a selection change would write it
+ * there. The revision only moves when the described object changes, so a
+ * re-publish of the same object keeps the row — and the caret — in place.
  */
+
+/** The revision guard makes every write carry the view it was projected from. */
+function fieldControl(
+  field: FieldView,
+  edits: SelectionEdits,
+  revision: number,
+): React.JSX.Element {
+  const commit = (value: string | number | boolean): void => {
+    edits.commit(revision, field.id, value);
+  };
+  const refused = field.refused === undefined ? {} : { refused: field.refused };
+
+  switch (field.control) {
+    case "text":
+      return (
+        <ControlText
+          label={field.label}
+          data={field.data}
+          value={field.value}
+          onCommit={(value) => commit(value)}
+          {...refused}
+        />
+      );
+    case "number":
+      return (
+        <ControlNumber
+          label={field.label}
+          data={field.data}
+          value={field.value}
+          onCommit={(value) => commit(value)}
+          {...(field.min === undefined ? {} : { min: field.min })}
+          {...(field.max === undefined ? {} : { max: field.max })}
+          {...(field.unit === undefined ? {} : { unit: field.unit })}
+          {...refused}
+        />
+      );
+    case "toggle":
+      return (
+        <ControlToggle
+          label={field.label}
+          data={field.data}
+          checked={field.checked}
+          onChange={(value) => commit(value)}
+          {...refused}
+        />
+      );
+    case "select":
+      return (
+        <ControlSelect
+          label={field.label}
+          data={field.data}
+          value={field.value}
+          options={field.options}
+          onChange={(value) => commit(value)}
+          {...refused}
+        />
+      );
+    case "segmented":
+      return (
+        <ControlSegmented
+          label={field.label}
+          data={field.data}
+          value={field.value}
+          options={field.options}
+          onChange={(value) => commit(value)}
+          {...refused}
+        />
+      );
+    case "swatch":
+      // The swatch's picture arrives with Task 5's paint fields, which carry the
+      // resolved colour; the selection itself is the select's.
+      return (
+        <ControlSelect
+          label={field.label}
+          data={field.data}
+          value={field.value}
+          options={[]}
+          onChange={(value) => commit(value)}
+          {...refused}
+        />
+      );
+    case "slider":
+      return (
+        <ControlSlider
+          label={field.label}
+          data={field.data}
+          value={field.value}
+          min={field.min}
+          max={field.max}
+          onCommit={(value) => commit(value)}
+          {...refused}
+        />
+      );
+    case "readOnly":
+      // A read-only row is not a control: no well, no border, because a border
+      // means editable (bible §5.1). Task 6 owns the Spends treatment.
+      return (
+        <div className="flex items-center gap-[var(--space-8)]" {...field.data}>
+          <span className="text-xs text-muted">{field.label}</span>
+          <span className="ml-auto font-mono text-sm text-text">
+            {field.value}
+          </span>
+        </div>
+      );
+  }
+}
+
+/** One section's extras — the sub-surfaces that are not one control. */
+function extraView(extra: ExtraView, runs: RunEdits): React.JSX.Element | null {
+  switch (extra.kind) {
+    case "runs":
+      return <RunEditor runs={extra.runs} edits={runs} />;
+    default:
+      // `crop` is Task 4's, and the two chart kinds are Task 3a's — it supplies
+      // their renderers, and until then a chart's fields still mount into the
+      // section body. Wiring the dispatch here is what lets each land without
+      // this file changing again.
+      return null;
+  }
+}
+
+function Section(props: {
+  readonly section: ColumnSectionView;
+  readonly edits: SelectionEdits;
+  readonly runs: RunEdits;
+  readonly revision: number;
+  readonly idPrefix: string;
+}): React.JSX.Element {
+  const { section, edits, runs, revision, idPrefix } = props;
+
+  return (
+    <InspectorSection
+      id={section.id}
+      idPrefix={idPrefix}
+      title={section.title}
+      readOnly={section.readOnly}
+      defaultOpen={section.defaultOpen}
+      count={section.count}
+    >
+      {section.fields.map((field) => (
+        <Fragment key={`${revision}:${field.id}`}>
+          {fieldControl(field, edits, revision)}
+        </Fragment>
+      ))}
+      {section.extras.map((extra, index) => (
+        <Fragment key={`${revision}:${extra.kind}-${index}`}>
+          {extraView(extra, runs)}
+        </Fragment>
+      ))}
+      <div data-vigilia-section-body="" />
+    </InspectorSection>
+  );
+}
+
 export function SelectionColumn(props: {
   readonly view: SelectionView;
   readonly edits: SelectionEdits;
+  readonly runs: RunEdits;
 }): React.JSX.Element {
-  const { view } = props;
+  const { view, edits, runs } = props;
   // A column is one selection's, and two columns can be mounted at once (the
   // accessibility audit mounts two). `${id}-header` is document-global, so the
   // aria pair is scoped to this instance or the second column's `aria-controls`
@@ -34,17 +216,14 @@ export function SelectionColumn(props: {
   return (
     <>
       {view.sections.map((section) => (
-        <InspectorSection
+        <Section
           key={section.id}
-          id={section.id}
+          section={section}
+          edits={edits}
+          runs={runs}
+          revision={view.targetRevision}
           idPrefix={idPrefix}
-          title={section.title}
-          readOnly={section.readOnly}
-          defaultOpen={section.defaultOpen}
-          count={section.count}
-        >
-          <div data-vigilia-section-body="" />
-        </InspectorSection>
+        />
       ))}
     </>
   );
@@ -58,15 +237,19 @@ export function SelectionColumn(props: {
  * a caller that reads the column straight after a selection change sees it.
  */
 export function createSelectionColumnRoot(host: HTMLElement): {
-  readonly publish: (view: SelectionView, edits: SelectionEdits) => void;
+  readonly publish: (
+    view: SelectionView,
+    edits: SelectionEdits,
+    runs: RunEdits,
+  ) => void;
   readonly destroy: () => void;
 } {
   const root: Root = createRoot(host);
 
   return {
-    publish(view, edits) {
+    publish(view, edits, runs) {
       flushSync(() => {
-        root.render(<SelectionColumn view={view} edits={edits} />);
+        root.render(<SelectionColumn view={view} edits={edits} runs={runs} />);
       });
     },
     destroy() {

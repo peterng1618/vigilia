@@ -7,6 +7,7 @@ import { applyAuthoredText } from "@vigilia/scene-fabric";
 import type { FabricObject } from "fabric/es";
 import type { EditorInteraction } from "../editor-interaction.js";
 import { OBJECT_LOCK_CHANGED_EVENT } from "../object-lock-manager/index.js";
+import { uiCopy } from "../ui-copy.js";
 import { createSelectionColumnRoot } from "./column.js";
 import { createInspectorRoot } from "./inspector.js";
 import {
@@ -17,11 +18,25 @@ import {
   perKindColumn,
 } from "./per-kind-column.js";
 import {
+  appendRun,
+  dropRun,
+  type RunTarget,
+  writeBindingFormat,
+  writeBindingZone,
+  writeRunColour,
+  writeRunPreset,
+  writeRunSource,
+  writeRunText,
+  writeTextLayout,
+  writeUnitDisplay,
+} from "./run-edits.js";
+import {
   editRefusal,
   isTextObject,
   measuredEdgeOf,
   type ProjectionPorts,
   projectSelection,
+  type RunEdits,
   readField,
   type SelectionEdits,
 } from "./view.js";
@@ -151,12 +166,19 @@ const TEXT_ENTRY: ReadonlySet<string> = new Set([
 ]);
 
 /**
- * The field the author is typing into, named by the data hook it carries.
+ * The field the author is typing into **in an imperative body**, named by the
+ * data hook it carries.
  *
- * A re-render replaces a section's body, and a field that was focused is one of
+ * A re-render rebuilds a section's body, and a field that was focused is one of
  * the elements it replaces — so the caret would land on nothing. The hook is
  * what survives the rebuild: the same field keeps the same `data-vigilia-*`
- * value, so focus can be put back in it.
+ * value, so focus can be put back in it. Position, Paint and Spends keep their
+ * imperative bodies until Tasks 4–6, and this is the rule for them.
+ *
+ * A converted field does not need it and must not be reached by it: the React
+ * column keys its rows on a stable identity, so a publish updates the focused
+ * input rather than replacing it, and React itself is the one owner of that
+ * caret. `restoreFocus` is scoped to the bodies for that reason.
  *
  * **Only a caret-bearing field is put back.** Restoring every focused element
  * gave focus its own consequences back: `focus` is what opens the glass
@@ -186,7 +208,15 @@ function restoreFocus(
     /[A-Z]/g,
     (letter) => `-${letter.toLowerCase()}`,
   )}`;
-  root.querySelector<HTMLElement>(`[${attribute}="${focused.value}"]`)?.focus();
+  // Scoped to the imperative bodies, not the whole host: a converted field is
+  // inside the React column now, and React keeps its own focus across a publish
+  // because the row's identity is stable. Reaching it here would be a second
+  // owner of the caret rule — the one thing the conversion must not leave two of.
+  root
+    .querySelector<HTMLElement>(
+      `[data-vigilia-section-body] [${attribute}="${focused.value}"]`,
+    )
+    ?.focus();
 }
 
 export function createSelectionInspector(
@@ -373,6 +403,43 @@ export function createSelectionInspector(
   };
 
   /**
+   * Writes the object's display name. Removing the key, not storing blank: the
+   * id is what the projection falls back to, so an emptied field leaves the
+   * object exactly as an unnamed one is.
+   *
+   * The canvas fires the same signal a drag reports, because the layer row
+   * prints this name and its panel caches the projection: a rename that only
+   * wrote the object would leave the two surfaces disagreeing until something
+   * else republished.
+   */
+  const writeName = (
+    object: FabricObject,
+    value: string | number | boolean,
+  ): void => {
+    const trimmed = (typeof value === "string" ? value : String(value)).trim();
+    object.set("name", trimmed === "" ? undefined : trimmed);
+    object.setCoords();
+    editor.canvas.requestRenderAll();
+    editor.canvas.fire("object:modified" as never, { target: object } as never);
+  };
+
+  /** Writes opacity from a percentage, refusing a value outside Fabric's 0–1. */
+  const writeOpacity = (
+    object: FabricObject,
+    value: string | number | boolean,
+  ): boolean => {
+    const percent = typeof value === "number" ? value : Number(value);
+    if (!Number.isFinite(percent) || percent < 0 || percent > 100) {
+      editor.errorManager.warn("controls", uiCopy.inspectorFields.invalidValue);
+      return false;
+    }
+
+    object.set({ opacity: percent / 100 });
+    object.setCoords();
+    return true;
+  };
+
+  /**
    * The column's one way to write, from the React surface.
    *
    * The revision, lock and field rules are `view.ts`'s `editRefusal`, read here
@@ -380,7 +447,7 @@ export function createSelectionInspector(
    * selection is refused before the write funnel is reached, because the funnel
    * would otherwise resolve the *current* target and write an old draft into a
    * newly selected object. A refusal publishes the current view and writes
-   * nothing.
+   * nothing; an invalid value is reported in the row's own words.
    */
   const edits: SelectionEdits = {
     commit(expectedRevision, fieldId, value) {
@@ -395,15 +462,105 @@ export function createSelectionInspector(
         { targetRevision, locked: object.get("locked") === true },
       );
       if (refusal !== undefined) {
+        if (refusal === "invalid") {
+          editor.errorManager.warn(
+            "controls",
+            fieldId === "name"
+              ? uiCopy.inspectorFields.invalidName
+              : uiCopy.inspectorFields.invalidValue,
+          );
+        }
         render();
         return false;
       }
 
-      write(object, fieldId as GeometryKey, value as number);
+      let applied = true;
+      if (fieldId === "name") {
+        writeName(object, value);
+      } else if (fieldId === "opacity") {
+        applied = writeOpacity(object, value);
+      } else {
+        write(object, fieldId as GeometryKey, value as number);
+      }
+
+      if (!applied) {
+        render();
+        return false;
+      }
+
       commit();
       render();
       return true;
     },
+  };
+
+  /**
+   * Applies one run edit to the described object and records one history entry.
+   *
+   * Not lock-gated: a locked object still takes its bindings and its authored
+   * text, which is what the run editor writes — hiding it would refuse work the
+   * editor performs.
+   */
+  const applyRunEdit = (change: (object: FabricObject) => boolean): boolean => {
+    const object = described;
+    if (object === undefined) {
+      render();
+      return false;
+    }
+    if (!stillTarget(object)) return false;
+    if (!change(object)) {
+      render();
+      return false;
+    }
+    applyAuthoredText(editor.canvas, globals);
+    commit();
+    render();
+    return true;
+  };
+
+  /** The node id a run editor hangs its bindings on, when the object has one. */
+  const nodeIdOf = (object: FabricObject): string => {
+    const id = object.get("id");
+    return typeof id === "string" && id.length > 0 ? id : "";
+  };
+
+  /** The live bindings a node declares; the session owns the list. */
+  const bindingsOf = (nodeId: string): readonly Binding[] =>
+    nodeId === "" ? [] : (options.nodeBindings?.(nodeId) ?? []);
+
+  const setBindings = (nodeId: string, next: readonly Binding[]): void => {
+    if (nodeId !== "") options.onNodeBindingsChange?.(nodeId, next);
+  };
+
+  /**
+   * Runs one write against the described object's run target. The write rules
+   * themselves live beside the run editor, so a test drives the same functions
+   * this port does; this only resolves the target and records the entry.
+   */
+  const runEdit = (change: (target: RunTarget) => boolean): boolean =>
+    applyRunEdit((object) => {
+      const nodeId = nodeIdOf(object);
+      return change({
+        object,
+        nodeId,
+        bindings: () => bindingsOf(nodeId),
+        setBindings: (next) => setBindings(nodeId, next),
+      });
+    });
+
+  const runEdits: RunEdits = {
+    setRunText: (index, text) => runEdit((t) => writeRunText(t, index, text)),
+    setRunPreset: (index, ref) => runEdit((t) => writeRunPreset(t, index, ref)),
+    setRunColour: (index, ref) => runEdit((t) => writeRunColour(t, index, ref)),
+    setUnitDisplay: (index, value) =>
+      runEdit((t) => writeUnitDisplay(t, index, value)),
+    setSource: (index, key) => runEdit((t) => writeRunSource(t, index, key)),
+    setFormat: (index, format) =>
+      runEdit((t) => writeBindingFormat(t, index, format)),
+    setZone: (index, zone) => runEdit((t) => writeBindingZone(t, index, zone)),
+    writeLayout: (patch) => runEdit((t) => writeTextLayout(t, patch)),
+    addRun: () => runEdit(appendRun),
+    removeRun: (index) => runEdit((t) => dropRun(t, index)),
   };
 
   const columnContext = (): ColumnContext => {
@@ -480,7 +637,7 @@ export function createSelectionInspector(
     // the empty state, the section root renders the chrome. Each is flushed
     // synchronously, so the bodies mount into containers that already exist.
     column.publish(view, edits);
-    sectionColumn.publish(view, edits);
+    sectionColumn.publish(view, edits, runEdits);
     mountBodies(sections);
 
     restoreFocus(sectionsHost, focused);

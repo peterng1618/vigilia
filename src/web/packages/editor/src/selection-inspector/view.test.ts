@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import type { FabricGlobals } from "@vigilia/renderer-core";
+import { MAX_OBJECT_NAME_LENGTH } from "@vigilia/renderer-core";
 import { Rect } from "fabric/es";
 import { describe, expect, it } from "vitest";
 import { projectLayers } from "../editor-shell/layer-tree.js";
@@ -214,7 +215,31 @@ describe("editRefusal", () => {
   });
 
   it("refuses a field the dispatcher cannot write", () => {
-    expect(editRefusal(edit({ fieldId: "name" }), live)).toBe("unknown");
+    expect(editRefusal(edit({ fieldId: "chart-fill" }), live)).toBe("unknown");
+  });
+
+  it("refuses a name past the published bound, and takes one that is not", () => {
+    // The name is writable, so it is a value rule rather than an unknown field:
+    // a blank one clears the key, and one the envelope would refuse on import
+    // is refused here rather than stored.
+    expect(editRefusal(edit({ fieldId: "name", value: "Header" }), live)).toBe(
+      undefined,
+    );
+    expect(editRefusal(edit({ fieldId: "name", value: "   " }), live)).toBe(
+      undefined,
+    );
+    expect(
+      editRefusal(
+        edit({
+          fieldId: "name",
+          value: "x".repeat(MAX_OBJECT_NAME_LENGTH + 1),
+        }),
+        live,
+      ),
+    ).toBe("invalid");
+    expect(editRefusal(edit({ fieldId: "name", value: 12 }), live)).toBe(
+      "invalid",
+    );
   });
 
   it("refuses a value that is not a finite number rather than coercing it", () => {

@@ -11,6 +11,7 @@ import {
   measuredEdgeOf,
   type ProjectionPorts,
   projectSelection,
+  type RunEdits,
   readField,
   type SelectionEdits,
   type SelectionView,
@@ -32,6 +33,20 @@ import {
 ).IS_REACT_ACT_ENVIRONMENT = true;
 
 const edits: SelectionEdits = { commit: () => false };
+
+/** A run-editor port that records nothing: this file reads the chrome, not writes. */
+const runs: RunEdits = {
+  setRunText: () => false,
+  setRunPreset: () => false,
+  setRunColour: () => false,
+  setUnitDisplay: () => false,
+  setSource: () => false,
+  setFormat: () => false,
+  setZone: () => false,
+  writeLayout: () => false,
+  addRun: () => false,
+  removeRun: () => false,
+};
 
 function ports(): ProjectionPorts {
   return {
@@ -97,7 +112,7 @@ afterEach(() => {
 /** Renders a view and returns the section elements in document order. */
 function renderedSections(view: SelectionView): HTMLElement[] {
   act(() => {
-    root.render(<SelectionColumn view={view} edits={edits} />);
+    root.render(<SelectionColumn view={view} edits={edits} runs={runs} />);
   });
   return [...host.querySelectorAll<HTMLElement>("[data-vigilia-section]")];
 }

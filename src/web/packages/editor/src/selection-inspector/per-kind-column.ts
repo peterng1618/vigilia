@@ -8,21 +8,20 @@ import { SETTINGS_SECTIONS } from "@vigilia/renderer-core";
 import { VigiliaChart } from "@vigilia/scene-fabric";
 import {
   ActiveSelection,
-  type FabricObject,
   FabricImage,
+  type FabricObject,
   Group,
 } from "fabric/es";
 import type { EditorInteraction } from "../editor-interaction.js";
 import { linkedPair } from "../editor-shell/controls/linked-pair.js";
-import { numberField } from "../editor-shell/controls/number-field.js";
 import { uiCopy } from "../ui-copy.js";
 import {
   type AppearanceContext,
-  createNameField,
-  createOpacityField,
   createResolutionLine,
   createTypePresetReveal,
+  nameField,
   nameOfRef,
+  opacityField,
   paintReferencesOf,
   resolveToken,
   resolveTypePreset,
@@ -35,8 +34,8 @@ import {
   createPanelMaterialFields,
   createShapeGeometryFields,
 } from "./panel.js";
-import { createRunEditor, type RunBindingPort } from "./runs.js";
-import type { ColumnSectionView } from "./view.js";
+import { projectRuns } from "./runs.js";
+import type { ColumnSectionView, ExtraView, FieldView } from "./view.js";
 
 /**
  * The column the inspector renders, as **data**: one entry per section, in the
@@ -78,6 +77,13 @@ export type ColumnSectionId = SettingsSection | "advanced";
  */
 export interface ColumnSection extends ColumnSectionView {
   readonly body: readonly HTMLElement[];
+}
+
+/** What one section holds: the rows React renders, and the body it does not yet. */
+interface SectionParts {
+  readonly fields?: readonly FieldView[];
+  readonly extras?: readonly ExtraView[];
+  readonly body?: readonly HTMLElement[];
 }
 
 /**
@@ -314,19 +320,19 @@ function writeGeometry(
   context.commit();
 }
 
+/** Rotation, the one angle a Layer column asks for. It is whole units, and it
+    writes through the same geometry port the Position pair does. */
 function rotationField(
   context: ColumnContext,
   object: FabricObject,
-): HTMLElement {
-  return numberField({
+): FieldView {
+  return {
+    id: "angle",
+    control: "number",
     label: GEOMETRY_LABELS.angle,
     value: Math.round(context.geometry.read(object, "angle")),
-    data: "vigiliaGeometry",
-    dataValue: "angle",
-    invalidMessage: uiCopy.inspectorFields.invalidValue,
-    onReject: refused(context),
-    onCommit: (value) => writeGeometry(context, object, "angle", value),
-  }).row;
+    data: { "data-vigilia-geometry": "angle" },
+  };
 }
 
 /**
@@ -356,44 +362,41 @@ function contentBody(
   target: FabricObject,
   context: ColumnContext,
   locked: boolean,
-): readonly HTMLElement[] {
+): SectionParts {
+  const fields: FieldView[] = [];
+  const extras: ExtraView[] = [];
   const body: HTMLElement[] = [];
-  // The name is a field that writes, so a locked object is not offered one.
-  if (!locked) {
-    body.push(
-      createNameField(appearanceOf(context), target, context.stillTarget),
-    );
-  }
 
+  // The name is a field that writes, so a locked object is not offered one.
+  if (!locked) fields.push(nameField(target));
+
+  // The run editor is the one sub-surface the row union cannot express, so it
+  // crosses as an extra carrying its projected value. `projectRuns` returns
+  // undefined for an object with no authored text: an empty box is not a
+  // control, and counting one would make the section's own count lie.
   const id = target.get("id");
-  const port: RunBindingPort | undefined =
-    typeof id !== "string" || id.length === 0
-      ? undefined
-      : {
-          bindings: () => context.nodeBindings?.(id) ?? [],
-          setBindings: (next) => context.onNodeBindingsChange?.(id, next),
-        };
-  const runs = createRunEditor(
-    context.editor,
-    context.globals,
+  const nodeId = typeof id === "string" && id.length > 0 ? id : "";
+  const runs = projectRuns(
     target as unknown as {
-      get(n: string): unknown;
-      set(n: string, v: unknown): void;
+      get(name: string): unknown;
+      set(name: string, value: unknown): void;
     },
-    context.rerender,
-    port,
-    context.locale,
-    context.sampleSource,
-  ).root;
-  // A run editor with nothing in it is an empty box, not a control: it is only
-  // a question for an object that carries authored text. Counting it would make
-  // the section's own count say two over one field.
-  if (runs.childElementCount > 0) body.push(runs);
+    nodeId,
+    {
+      globals: context.globals,
+      locale: context.locale,
+      nodeBindings: context.nodeBindings,
+      sampleSource: context.sampleSource,
+      swatchValue: (ref) => resolveToken(context.globals, ref),
+    },
+  );
+  if (runs !== undefined) extras.push({ kind: "runs", nodeId, runs });
 
   // A chart's own questions: the readings it draws and how its family is set.
   // The owner answers them through the port; asking here is what puts them in
   // the column they answer rather than behind a second tab. Withheld on a
-  // locked chart like every other writing field.
+  // locked chart like every other writing field. Still elements until Task 3a
+  // gives the chart owner the value-returning port it converts with.
   if (
     !locked &&
     target instanceof VigiliaChart &&
@@ -402,17 +405,17 @@ function contentBody(
     body.push(...context.chartFields.content(target));
   }
 
-  return body;
+  return { fields, extras, body };
 }
 
 /** Where it sits and how big: the two pairs, crop, bleed, and this shape's own
-    geometry. */
+    geometry. Still imperative until Task 4. */
 function positionBody(
   target: FabricObject,
   context: ColumnContext,
   locked: boolean,
-): readonly HTMLElement[] {
-  if (locked) return [];
+): SectionParts {
+  if (locked) return { body: [] };
   const body: HTMLElement[] = [];
 
   body.push(
@@ -444,7 +447,7 @@ function positionBody(
     }),
   );
 
-  return body;
+  return { body };
 }
 
 /** How it presents: rotation, and opacity. */
@@ -452,21 +455,21 @@ function layerBody(
   target: FabricObject,
   context: ColumnContext,
   locked: boolean,
-): readonly HTMLElement[] {
-  if (locked) return [];
-  return [
-    rotationField(context, target),
-    createOpacityField(appearanceOf(context), target, context.stillTarget),
-  ];
+): SectionParts {
+  if (locked) return { fields: [] };
+  return {
+    fields: [rotationField(context, target), opacityField(target)],
+  };
 }
 
-/** What ink: the panel's material, and the frosted-glass treatment. */
+/** What ink: the panel's material, and the frosted-glass treatment. Still
+    imperative until Task 5. */
 function paintBody(
   target: FabricObject,
   context: ColumnContext,
   locked: boolean,
-): readonly HTMLElement[] {
-  if (locked) return [];
+): SectionParts {
+  if (locked) return { body: [] };
   const body: HTMLElement[] = [];
 
   const material = createPanelMaterialFields(appearanceOf(context), target, {
@@ -492,7 +495,7 @@ function paintBody(
     body.push(...context.chartFields.paint(target));
   }
 
-  return body;
+  return { body };
 }
 
 /** Every object under this one, at any depth, in document order. A kind with no
@@ -555,24 +558,26 @@ function spendsBody(
   target: FabricObject,
   context: ColumnContext,
   questions: KindQuestions,
-): readonly HTMLElement[] {
+): SectionParts {
   if (questions.childrenAppearance) {
     const { paints, presets } = childrenResolution(target, context);
     // A container whose children resolve to nothing still answers the paint
     // question — with "none" — exactly as a single unpainted object does, so the
     // section keeps the line it had before it learned to read the children.
-    return [
-      ...(paints.length === 0
-        ? [
-            createResolutionLine(
-              uiCopy.inspectorFields.paint,
-              undefined,
-              undefined,
-            ),
-          ]
-        : paints),
-      ...presets,
-    ];
+    return {
+      body: [
+        ...(paints.length === 0
+          ? [
+              createResolutionLine(
+                uiCopy.inspectorFields.paint,
+                undefined,
+                undefined,
+              ),
+            ]
+          : paints),
+        ...presets,
+      ],
+    };
   }
 
   const body: HTMLElement[] = [];
@@ -613,7 +618,7 @@ function spendsBody(
     }
   }
 
-  return body;
+  return { body };
 }
 
 /**
@@ -637,10 +642,7 @@ export function perKindColumn(
 
   // Built in question order already; sorted anyway so the order is a statement
   // this module makes rather than one it inherits from the lines above.
-  const bodies: readonly (readonly [
-    ColumnSectionId,
-    readonly HTMLElement[],
-  ])[] = [
+  const bodies: readonly (readonly [ColumnSectionId, SectionParts])[] = [
     ["content", contentBody(target, context, locked)],
     ["position", positionBody(target, context, locked)],
     ["layer", layerBody(target, context, locked)],
@@ -648,20 +650,26 @@ export function perKindColumn(
     ["spends", spendsBody(target, context, questions)],
   ];
 
+  const sizeOf = (parts: SectionParts): number =>
+    (parts.fields?.length ?? 0) +
+    (parts.extras?.length ?? 0) +
+    (parts.body?.length ?? 0);
+
   return bodies
-    .filter(([, body]) => body.length > 0)
+    .filter(([, parts]) => sizeOf(parts) > 0)
     .sort(([left], [right]) => sectionOrder(left) - sectionOrder(right))
-    .map(([id, body]) => ({
+    .map(([id, parts]) => ({
       id,
       title: titleOf(id),
       // Spends is the read-only section in a later task; today no section
       // declares itself uneditable, so no header says it is.
       readOnly: false,
       defaultOpen: defaultOpenOf(id),
-      count: body.length,
-      // Empty until Tasks 3–6 return the fields as values rather than elements.
-      fields: [],
-      extras: [],
-      body,
+      // One number over one section: the rows React renders and the body it does
+      // not yet, counted from the same parts the section is built from.
+      count: sizeOf(parts),
+      fields: parts.fields ?? [],
+      extras: parts.extras ?? [],
+      body: parts.body ?? [],
     }));
 }

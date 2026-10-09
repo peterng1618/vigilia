@@ -1,21 +1,60 @@
 // @vitest-environment jsdom
 import { Canvas, Textbox } from "fabric/es";
-import { createElement } from "react";
-import { act } from "react";
+import { act, createElement } from "react";
+import { flushSync } from "react-dom";
 import { createRoot } from "react-dom/client";
 import { expect, it, vi } from "vitest";
 import { createArtboardPanel } from "./artboard-panel.js";
 import {
+  type ChartFieldHandlers,
   chartContentFields,
   chartPaintFields,
-  type ChartFieldHandlers,
 } from "./chart-manager/panel.js";
 import { catalogFaces, fontTrios } from "./font-catalog.js";
 import { FontPicker } from "./font-picker/font-picker.js";
 import { createPalettePanel } from "./palette-manager/panel.js";
-import { createRunEditor } from "./selection-inspector/runs.js";
+import { projectRuns, RunEditor } from "./selection-inspector/runs.js";
+import type { RunEdits } from "./selection-inspector/view.js";
 import { createTypePresetPanel } from "./type-preset-manager/panel.js";
 import { uiCopy } from "./ui-copy.js";
+
+// The run editor's unit list is a Base UI select, so opening it needs the three
+// browser APIs jsdom has none of — the same three `control.dom.test.tsx` and
+// `runs.test-stage.tsx` supply, for the same reason.
+globalThis.ResizeObserver ??= class {
+  observe(): void {}
+  unobserve(): void {}
+  disconnect(): void {}
+} as never;
+Element.prototype.getAnimations ??= (): never[] => [];
+window.PointerEvent ??= MouseEvent as never;
+const nativeMatches = Element.prototype.matches;
+Element.prototype.matches = Object.assign(function (
+  this: Element,
+  selector: string,
+): boolean {
+  if (selector === ":modal" || selector === ":popover-open") return false;
+  return nativeMatches.call(this, selector);
+}, nativeMatches);
+(
+  globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
+).IS_REACT_ACT_ENVIRONMENT = true;
+
+/** A run-editor write port that records nothing: this file reads copy, not writes. */
+function runEdits(): RunEdits {
+  return {
+    setRunText: () => true,
+    setRunPreset: () => true,
+    setRunColour: () => true,
+    setUnitDisplay: () => true,
+    setSource: () => true,
+    setFormat: () => true,
+    setZone: () => true,
+    writeLayout: () => true,
+    addRun: () => true,
+    removeRun: () => true,
+  };
+}
 
 /**
  * No pictograph is copy. §35 keeps visible copy in this table, and a glyph is
@@ -232,21 +271,52 @@ it("names both states of the favourite toggle", () => {
  * The number is load-bearing too: eight is four options in two panels, so a
  * control that stopped rendering takes this red rather than emptying the set.
  */
-it("gives the unit display options one owner, in both panels that offer them", () => {
+it("gives the unit display options one owner, in both panels that offer them", async () => {
   const root = document.createElement("div");
   document.body.append(root);
   mountUnitDisplayPanels(root);
 
-  const offered = Array.from(
-    root.querySelectorAll(
-      "[data-vigilia-binding-field$='.unitDisplay'] option, [data-vigilia-run-unit-display] option",
+  const offered = [
+    ...Array.from(
+      root.querySelectorAll(
+        "[data-vigilia-binding-field$='.unitDisplay'] option",
+      ),
+      (option) => option.textContent ?? "",
     ),
-    (option) => option.textContent ?? "",
-  );
+    ...(await runUnitDisplayOptions(root)),
+  ];
   const owned = new Set(copy());
   expect(offered).toHaveLength(8);
   expect(offered.filter((text) => !owned.has(text))).toEqual([]);
 });
+
+/**
+ * The run editor's four words, read from the list its trigger opens.
+ *
+ * The control is a Base UI select now, so its options exist in the DOM only
+ * while the popup is open — where the chart panel's four are a native select's
+ * and are always there. Reading them any other way would read the table the
+ * list is built from and agree with itself.
+ */
+async function runUnitDisplayOptions(root: HTMLElement): Promise<string[]> {
+  const trigger = root.querySelector<HTMLElement>(
+    "[data-vigilia-run-unit-display]",
+  );
+  if (trigger === null) return [];
+  await act(async () => {
+    trigger.dispatchEvent(
+      new MouseEvent("click", { bubbles: true, cancelable: true }),
+    );
+  });
+  await act(async () => {
+    for (let round = 0; round < 3; round += 1) {
+      await new Promise((resolve) => setTimeout(resolve, 0));
+    }
+  });
+  return [...document.querySelectorAll<HTMLElement>('[role="option"]')].map(
+    (option) => option.textContent ?? "",
+  );
+}
 
 /**
  * The two panels that offer the unit display options, so the four words have
@@ -300,22 +370,21 @@ function mountUnitDisplayPanels(root: HTMLElement): void {
   let bindings: readonly { id: string; semanticKey: string }[] = [
     { id: "clock-time", semanticKey: "date.today" },
   ];
-  root.append(
-    createRunEditor(
-      { canvas, historyManager: { saveState: vi.fn() } } as never,
-      undefined,
-      object as never,
-      vi.fn(),
-      {
-        bindings: () => bindings,
-        setBindings: (next) => {
-          bindings = next;
-        },
-      },
-      undefined,
-      () => ({ latest: () => undefined, history: () => [] }),
-    ).root,
-  );
+  const host = document.createElement("div");
+  root.append(host);
+  const runRoot = createRoot(host);
+  const runs = projectRuns(object as never, "clock-label", {
+    globals: undefined,
+    locale: undefined,
+    nodeBindings: () => bindings,
+    sampleSource: () => ({ latest: () => undefined, history: () => [] }),
+    swatchValue: () => undefined,
+  });
+  if (runs !== undefined) {
+    flushSync(() =>
+      runRoot.render(createElement(RunEditor, { runs, edits: runEdits() })),
+    );
+  }
 }
 
 /**

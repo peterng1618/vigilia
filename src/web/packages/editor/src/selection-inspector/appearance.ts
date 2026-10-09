@@ -2,7 +2,6 @@ import {
   chartPaintFieldsFor,
   type FabricGlobals,
   type FabricPalette,
-  isObjectName,
   objectName,
   type TypePreset,
 } from "@vigilia/renderer-core";
@@ -10,7 +9,8 @@ import { VigiliaChart } from "@vigilia/scene-fabric";
 import type { FabricObject } from "fabric/es";
 import type { EditorInteraction } from "../editor-interaction.js";
 import { uiCopy } from "../ui-copy.js";
-import { textRunsOf } from "./runs.js";
+import { textRunsOf } from "./authored-text.js";
+import type { FieldView } from "./view.js";
 
 /**
  * Appearance of the selected object: its opacity and what its paint and type
@@ -240,61 +240,21 @@ export function createTypePresetReveal(onReveal: () => void): HTMLElement {
 }
 
 /**
- * Opacity, shown as a percentage and stored as Fabric's 0–1, saving history once
- * per committed edit.
+ * Opacity, shown as a percentage and stored as Fabric's 0–1.
  *
- * `stillTarget` is asked before the write: a field that held focus across a
- * selection change belongs to the object it was built for, not to the one now
- * selected.
+ * A value now, not an element: React renders it through the control set and
+ * `index.ts` owns the write. The percentage conversion is the projection's, so
+ * the number an author reads is the number the row commits.
  */
-export function createOpacityField(
-  context: AppearanceContext,
-  object: FabricObject,
-  stillTarget: (object: FabricObject) => boolean,
-): HTMLElement {
-  const input = document.createElement("input");
-  input.type = "number";
-  input.min = "0";
-  input.max = "100";
-  input.step = "1";
-  input.dataset["vigiliaOpacity"] = "";
-  input.value = String(Math.round(object.opacity * 100));
-
-  // An explicit association, not just containment. vg-103 fixed the chart
-  // settings section and the run editor's controls were written afterwards with
-  // no `id` at all, so the audit it left behind could not see them: a label
-  // wrapping its own control is legitimate, but it is the association that
-  // breaks first when anything else is put inside the label.
-  const label = document.createElement("label");
-  label.textContent = uiCopy.inspectorFields.opacity;
-  label.htmlFor = input.id = `vigilia-opacity-${++opacitySeq}`;
-
-  input.addEventListener("change", () => {
-    const percent = Number(input.value);
-
-    if (!Number.isFinite(percent) || percent < 0 || percent > 100) {
-      // Refuse rather than clamp: the author must see their input rejected.
-      input.value = String(Math.round(object.opacity * 100));
-      context.editor.errorManager.warn(
-        "controls",
-        uiCopy.inspectorFields.invalidValue,
-      );
-      return;
-    }
-
-    if (!stillTarget(object)) return;
-    object.set({ opacity: percent / 100 });
-    object.setCoords();
-    context.editor.canvas.requestRenderAll();
-    context.editor.historyManager.saveState();
-  });
-
-  label.append(input);
-  return label;
+export function opacityField(object: FabricObject): FieldView {
+  return {
+    id: "opacity",
+    control: "number",
+    label: uiCopy.inspectorFields.opacity,
+    value: Math.round(object.opacity * 100),
+    data: { "data-vigilia-opacity": "" },
+  };
 }
-
-let nameSeq = 0;
-let opacitySeq = 0;
 
 /**
  * The object's display name — the one control that says what a layer is called,
@@ -302,62 +262,12 @@ let opacitySeq = 0;
  * than storing a blank label, so the layer list falls back to the id exactly as
  * it does for a scene authored before the field existed.
  */
-export function createNameField(
-  context: AppearanceContext,
-  object: FabricObject,
-  stillTarget: (object: FabricObject) => boolean,
-): HTMLElement {
-  const authored = objectName(object);
-  const label = document.createElement("label");
-  label.textContent = uiCopy.inspectorFields.name;
-  const input = document.createElement("input");
-  input.type = "text";
-  input.dataset["vigiliaName"] = "";
-  input.value = authored ?? "";
-  label.htmlFor = input.id = `vigilia-name-${++nameSeq}`;
-
-  const refuse = (): void => {
-    input.value = authored ?? "";
-    context.editor.errorManager.warn(
-      "controls",
-      uiCopy.inspectorFields.invalidName,
-    );
+export function nameField(object: FabricObject): FieldView {
+  return {
+    id: "name",
+    control: "text",
+    label: uiCopy.inspectorFields.name,
+    value: objectName(object) ?? "",
+    data: { "data-vigilia-name": "" },
   };
-
-  // `change`, not per keystroke: a half-typed name is not an edit, and this
-  // writes history.
-  input.addEventListener("change", () => {
-    const trimmed = input.value.trim();
-    if (trimmed !== "" && !isObjectName(trimmed)) {
-      refuse();
-      return;
-    }
-    if (!stillTarget(object)) return;
-    // Removing the key, not storing blank: the id is what the projection falls
-    // back to, so an emptied field must leave the object exactly as an
-    // unnamed one is.
-    object.set("name", trimmed === "" ? undefined : trimmed);
-    object.setCoords();
-    context.editor.canvas.requestRenderAll();
-    // The layer row prints this name, so the layer panel has to be told. It
-    // subscribes to the same signal a drag reports, which is why this fires it
-    // rather than holding a second path to the projection.
-    context.editor.canvas.fire(
-      "object:modified" as never,
-      {
-        target: object,
-      } as never,
-    );
-    context.editor.historyManager.saveState();
-  });
-
-  return row(label, input);
-}
-
-/** The inspector's own field row: a label and its control on one line. */
-function row(label: HTMLLabelElement, input: HTMLInputElement): HTMLElement {
-  const host = document.createElement("div");
-  host.className = "vigilia-field";
-  host.append(label, input);
-  return host;
 }
