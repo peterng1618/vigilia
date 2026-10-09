@@ -1,189 +1,83 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { fontTrio } from "../font-catalog.js";
+import { uiCopy } from "../ui-copy.js";
 import { createTypePresetPanel } from "./panel.js";
 
-// The panel appends to the host it is given, and several of these tests read
-// through `document` rather than through the panel's own root, so one test's
-// markup would otherwise be the next test's first match.
+// The panel appends to the host it is given, and one case reads through
+// `document` rather than through the panel's own root, so one test's markup
+// would otherwise be the next test's first match.
 afterEach(() => document.body.replaceChildren());
 
-describe("type preset panel", () => {
-  it("puts every field's label in the shell's own label column", () => {
-    // With a delete action and a second preset, so the reassign row — one of
-    // the nine — is on screen rather than absent.
-    const panel = createTypePresetPanel(document.body, vi.fn(), vi.fn(), {
-      preview: vi.fn(async () => {}),
-      applyFace: vi.fn(async () => {}),
-      applyTrio: vi.fn(async () => {}),
-    });
-    panel.render({
-      body: { name: "Body", value: { family: "Inter", size: 16 } },
-      caption: { name: "Caption", value: { family: "Inter", size: 12 } },
-    });
+const presets = {
+  body: { name: "Body", value: { family: "Inter", size: 16 } },
+  caption: { name: "Caption", value: { family: "Inter", size: 12 } },
+};
 
-    // The defect this replaces: each control was wrapped in a `<label>`, so
-    // the shell's `label { display: block }` rule printed "Name" and then the
-    // box it names on the same line, pressed against it. Every other panel
-    // lays the pair out as a `.vigilia-field` grid row with a 72px label
-    // column; a wrapped label can never take a column, because a grid item
-    // that wraps its own control is one box, not two.
-    const fields = [
+describe("type preset panel", () => {
+  it("builds its own section, whose heading names the panel", () => {
+    const panel = createTypePresetPanel(document.body, vi.fn());
+    panel.render(presets);
+
+    // `panel-labels.spec.ts` reads every `section h2` and matches the panel's
+    // name against its text, so the heading is a plain `<h2>` carrying exactly
+    // the table's word and no disclosure chrome beside it.
+    expect(panel.root.tagName).toBe("SECTION");
+    expect(panel.root.querySelector("h2")?.textContent).toBe(
+      uiCopy.panels.typePresets,
+    );
+  });
+
+  it("renders the chooser and a resolution line for each preset", () => {
+    const panel = createTypePresetPanel(document.body, vi.fn());
+    panel.render(presets);
+
+    expect(
+      panel.root.querySelector("[data-vigilia-type-preset]"),
+    ).not.toBeNull();
+    expect(
+      panel.root.querySelector('[data-vigilia-type-preset-row="body"]')
+        ?.textContent,
+    ).toContain("Inter 16px");
+    expect(
+      panel.root.querySelector('[data-vigilia-type-preset-row="caption"]'),
+    ).not.toBeNull();
+  });
+
+  it("renders the chosen preset's own fields", () => {
+    // A delete port, so the reassignment row — one of the fields — is on
+    // screen rather than absent.
+    const panel = createTypePresetPanel(document.body, vi.fn(), vi.fn());
+    panel.render(presets);
+
+    // The factory's draw is synchronous (`flushSync`), so the fields exist the
+    // moment `render` returns — the contract the imperative panel had, and what
+    // `editor-session` reads straight after a refresh.
+    for (const hook of [
       "type-name",
       "type-family",
       "type-size",
       "type-weight",
       "type-line-height",
       "type-letter-spacing",
-      "font-face",
-      "font-trio",
       "type-replacement",
-    ];
-    for (const key of fields) {
-      const control = panel.root.querySelector<HTMLElement>(
-        `[data-vigilia-${key}]`,
-      )!;
-      const row = control.closest(".vigilia-field");
-      if (row === null) throw new Error(`${key} has no field row`);
-      // The label is a sibling, not an ancestor: that is what puts it in the
-      // column beside the control rather than above it.
-      const label = row.querySelector<HTMLLabelElement>(":scope > label");
-      if (label === null) throw new Error(`${key} has no own label`);
-      expect(label.htmlFor, key).toBe(control.id);
-      expect(label.textContent, key).not.toBe("");
-      // And the control is the row's own second child, so nothing sits between
-      // the label and the input it names.
-      expect([...row.children].indexOf(control), key).toBe(1);
+      "type-delete",
+    ]) {
+      expect(
+        panel.root.querySelector(`[data-vigilia-${hook}]`),
+        hook,
+      ).not.toBeNull();
     }
   });
 
-  it("edits a global type token", () => {
-    const onChange = vi.fn();
-    const panel = createTypePresetPanel(document.body, onChange);
-    panel.render({
-      body: { name: "Body", value: { family: "Inter", size: 16 } },
-    });
-    const size = panel.root.querySelector<HTMLInputElement>(
-      "[data-vigilia-type-size]",
-    )!;
-    size.value = "18";
-    size.dispatchEvent(new Event("change"));
-    expect(onChange).toHaveBeenLastCalledWith({
-      body: { name: "Body", value: { family: "Inter", size: 18 } },
-    });
-  });
+  it("unmounts its React tree and removes the section on disposal", () => {
+    const panel = createTypePresetPanel(document.body, vi.fn());
+    panel.render(presets);
 
-  it("preserves packaged face metadata when editing size", () => {
-    const onChange = vi.fn();
-    const panel = createTypePresetPanel(document.body, onChange);
-    panel.render({
-      body: {
-        name: "Body",
-        value: {
-          family: "Inter",
-          size: 16,
-          weight: 600,
-          letterSpacing: 0.2,
-          lineHeight: 1.4,
-          face: { assetId: "inter-600" },
-          trioRole: "body",
-        },
-      },
-    });
+    panel.destroy();
 
-    const size = panel.root.querySelector<HTMLInputElement>(
-      "[data-vigilia-type-size]",
-    )!;
-    size.value = "18";
-    size.dispatchEvent(new Event("change"));
-
-    expect(onChange).toHaveBeenLastCalledWith({
-      body: {
-        name: "Body",
-        value: {
-          family: "Inter",
-          size: 18,
-          weight: 600,
-          letterSpacing: 0.2,
-          lineHeight: 1.4,
-          face: { assetId: "inter-600" },
-          trioRole: "body",
-        },
-      },
-    });
-  });
-
-  it("emits numeric letter spacing", () => {
-    const onChange = vi.fn();
-    const panel = createTypePresetPanel(document.body, onChange);
-    panel.render({
-      body: { name: "Body", value: { family: "Inter", size: 16 } },
-    });
-
-    const letterSpacing = panel.root.querySelector<HTMLInputElement>(
-      "[data-vigilia-type-letter-spacing]",
-    )!;
-    letterSpacing.value = "0.25";
-    letterSpacing.dispatchEvent(new Event("change"));
-
-    expect(onChange).toHaveBeenLastCalledWith({
-      body: {
-        name: "Body",
-        value: { family: "Inter", size: 16, letterSpacing: 0.25 },
-      },
-    });
-  });
-
-  it("requires a replacement before deleting a type token", () => {
-    const remove = vi.fn();
-    const panel = createTypePresetPanel(document.body, vi.fn(), remove);
-    panel.render({
-      body: { name: "Body", value: { family: "Inter", size: 16 } },
-      caption: { name: "Caption", value: { family: "Inter", size: 12 } },
-    });
-    const preset = document.querySelector<HTMLSelectElement>(
-      "[data-vigilia-type-preset]",
-    )!;
-    preset.value = "body";
-    preset.dispatchEvent(new Event("change"));
-
-    const replacement = document.querySelector<HTMLSelectElement>(
-      "[data-vigilia-type-replacement]",
-    )!;
-    replacement.value = "caption";
-    document
-      .querySelector<HTMLButtonElement>("[data-vigilia-type-delete]")!
-      .click();
-
-    expect(remove).toHaveBeenCalledWith("body", "caption");
-  });
-
-  it("offers a shared curated face picker for the selected preset", async () => {
-    const applyFace = vi.fn(async () => {});
-    const panel = createTypePresetPanel(document.body, vi.fn(), undefined, {
-      applyFace,
-      applyTrio: vi.fn(async () => {}),
-      preview: vi.fn(async () => {}),
-    });
-    panel.render({
-      body: {
-        name: "Body",
-        value: { family: "Inter", size: 16, trioRole: "body" },
-      },
-    });
-
-    const face = document.querySelector<HTMLSelectElement>(
-      "[data-vigilia-font-face]",
-    )!;
-    face.value = fontTrio("minimal")!.faces[0]!.id;
-    document
-      .querySelector<HTMLButtonElement>("[data-vigilia-font-apply]")!
-      .click();
-    await Promise.resolve();
-
-    expect(applyFace).toHaveBeenCalledWith(
-      "body",
-      fontTrio("minimal")!.faces[0],
-    );
+    expect(panel.root.isConnected).toBe(false);
+    // The tree really went with it: a container that React still owned would
+    // hand back the markup it rendered.
+    expect(panel.root.querySelector("[data-vigilia-type-preset]")).toBeNull();
   });
 });

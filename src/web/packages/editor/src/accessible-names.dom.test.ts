@@ -66,7 +66,9 @@ const FIELDS = "input,select,textarea";
  *
  * A carrier is hidden by `clip-path`, not by `[hidden]`, so it is in the markup
  * and in no accessibility tree: unfocusable and unannounced, exactly what the
- * file pickers are. The Tokens pane's three selects, the run editor's five — its
+ * file pickers are. The Tokens pane's seven selects — the palette's three, and
+ * the preset library's chooser, curated face, trio and reassignment — the run
+ * editor's five — its
  * four selects and its swatch, which is `SelectControl` with an adornment — the
  * inspector's three paint selects and its four toggles are what this exclusion is
  * for; naming them would create the `<label for>` pointing at nothing this
@@ -202,11 +204,18 @@ describe("editor panels", () => {
       // one — the imperative panel's natives were not skipped at all.
       "INPUT[type=][aria-hidden]", // Colour token
       "INPUT[type=][aria-hidden]", // Paint kind
-      "INPUT[type=][aria-hidden]", // Reassign
+      "INPUT[type=][aria-hidden]", // Reassign (palette)
+      // The Tokens pane's preset library, four by the same primitive: the preset
+      // chooser, the curated face, the trio and the reassignment chooser. The
+      // panel was imperative until Task 6, so it contributed none before.
+      "INPUT[type=][aria-hidden]", // Type preset (chooser)
+      "INPUT[type=][aria-hidden]", // Font face
+      "INPUT[type=][aria-hidden]", // Font trio
+      "INPUT[type=][aria-hidden]", // Reassign (preset)
       // The run editor's five: four `ControlSelect`s and one `ControlSwatch`,
       // which is `SelectControl` with an adornment — each a Base UI select's
       // value carrier.
-      "INPUT[type=][aria-hidden]", // Type preset
+      "INPUT[type=][aria-hidden]", // Type preset (run)
       "INPUT[type=][aria-hidden]", // Colour (ControlSwatch)
       "INPUT[type=][aria-hidden]", // Reads
       "INPUT[type=][aria-hidden]", // Unit display

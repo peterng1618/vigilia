@@ -716,7 +716,12 @@ export const uiCopy = {
     weight: "Weight",
     lineHeight: "Line height",
     letterSpacing: "Letter spacing",
-    font: "Font",
+    /** The curated face a preset adopts, and the trio whose faces are written
+        across the presets. Named "Font face"/"Font trio" so the two adoption
+        controls are told apart from the Font picker's own trio chooser
+        (`trio`), which is a different control on a different surface. */
+    fontFace: "Font face",
+    fontTrioAdopt: "Font trio",
     trio: "Trio",
     /** The picker's own search and filter row. */
     fontSearch: "Search fonts",

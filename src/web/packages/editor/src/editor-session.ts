@@ -708,7 +708,7 @@ export class EditorSession {
     this.#documentReferences.destroy();
     this.#artboard.destroy();
     this.#palette.destroy();
-    this.#types.root.remove();
+    this.#types.destroy();
     this.#newObjects.destroy();
     this.#snapping.destroy();
     this.#indicators.destroy();

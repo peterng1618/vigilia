@@ -1834,15 +1834,12 @@ test.describe("Fabric editor route", () => {
     );
     // The type-preset panel is the Tokens pane's, so it is in the Tokens pane.
     await openPane(page, "Tokens");
-    await page.locator("[data-vigilia-type-preset]").selectOption("36-500");
+    await chooseIn(page, "[data-vigilia-type-preset]", "36-500");
     // Read the option the panel offers rather than typing an id: the picker's
     // rows come from the generated catalogue, so a literal here pins one
     // revision of it.
-    const faceId = await page
-      .locator("[data-vigilia-font-face] option")
-      .first()
-      .getAttribute("value");
-    await page.locator("[data-vigilia-font-face]").selectOption(faceId!);
+    const [faceId] = await optionsOf(page, "[data-vigilia-font-face]");
+    await chooseIn(page, "[data-vigilia-font-face]", faceId!);
     await page.locator("[data-vigilia-font-apply]").click();
     const size = page.locator("[data-vigilia-type-size]");
     await size.fill("34");
@@ -1863,7 +1860,7 @@ test.describe("Fabric editor route", () => {
     );
     // Reopening a package remounts the shell, so the pane is shut again.
     await openPane(page, "Tokens");
-    await page.locator("[data-vigilia-type-preset]").selectOption("36-500");
+    await chooseIn(page, "[data-vigilia-type-preset]", "36-500");
     const reopened = (await saveEnvelope(page)) as {
       globals: {
         typePresets: {
@@ -1905,7 +1902,7 @@ test.describe("Fabric editor route", () => {
     await page.goto(EDITOR);
     // The type-preset panel is the Tokens pane's, so it is in the Tokens pane.
     await openPane(page, "Tokens");
-    await page.locator("[data-vigilia-type-preset]").selectOption("36-500");
+    await chooseIn(page, "[data-vigilia-type-preset]", "36-500");
     const tracking = page.locator("[data-vigilia-type-letter-spacing]");
 
     await tracking.fill("0");
@@ -1931,7 +1928,7 @@ test.describe("Fabric editor route", () => {
     await page.goto(EDITOR);
     // The type-preset panel is the Tokens pane's, so it is in the Tokens pane.
     await openPane(page, "Tokens");
-    await page.locator("[data-vigilia-type-preset]").selectOption("36-500");
+    await chooseIn(page, "[data-vigilia-type-preset]", "36-500");
     const face = page.locator("[data-vigilia-font-face]");
     await face.scrollIntoViewIfNeeded();
     await expect(face).toBeVisible();
@@ -1949,15 +1946,16 @@ test.describe("Fabric editor route", () => {
     await page.goto(EDITOR);
     // The type-preset panel is the Tokens pane's, so it is in the Tokens pane.
     await openPane(page, "Tokens");
-    await page.locator("[data-vigilia-type-preset]").selectOption("20-400");
-    await page
-      .locator("[data-vigilia-type-replacement]")
-      .selectOption("24-400");
+    await chooseIn(page, "[data-vigilia-type-preset]", "20-400");
+    await chooseIn(page, "[data-vigilia-type-replacement]", "24-400");
     await page.locator("[data-vigilia-type-delete]").scrollIntoViewIfNeeded();
     await captureVisualReview(page, testInfo, "editor-type-reassignment");
     await page.locator("[data-vigilia-type-delete]").click();
+    // The row is the preset's own resolution line in the list, so a deletion
+    // takes the whole row with it — the same fact `option[value="20-400"]`
+    // stated about the native chooser it used to be.
     await expect(
-      page.locator('[data-vigilia-type-preset] option[value="20-400"]'),
+      page.locator('[data-vigilia-type-preset-row="20-400"]'),
     ).toHaveCount(0);
 
     const envelope = (await saveEnvelope(page)) as {

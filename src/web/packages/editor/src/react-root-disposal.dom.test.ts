@@ -298,6 +298,10 @@ const SHIPPED_ROOTS: readonly (readonly [string, number])[] = [
   ["palette-manager/panel.ts", 1],
   ["selection-inspector/column.tsx", 1],
   ["selection-inspector/inspector.tsx", 1],
+  // the type-preset panel's own tree, released by `destroy()` (Task 6). It was
+  // imperative field builders until then, so it created no root; the preset
+  // library is a React tree now and the file declares the one it makes.
+  ["type-preset-manager/panel.ts", 1],
 ];
 
 describe("every shipped React root", () => {

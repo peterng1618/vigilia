@@ -1,4 +1,4 @@
-import type { FabricPalette } from "@vigilia/renderer-core";
+import type { FabricPalette, TypePreset } from "@vigilia/renderer-core";
 
 /**
  * The starter theme's palette, type presets and the two lookups the scene
@@ -54,6 +54,18 @@ export const frost = "#0815234d";
  * that is gated against colour literals (`scripts/design-tokens.gated.json`).
  */
 export const newTokenPaint = "#ffffff";
+
+/**
+ * The type a preset added from the Tokens pane is seeded with.
+ *
+ * Authored data rather than a design decision — the author's next edit replaces
+ * it — so it sits with the starter presets' own family, and the surface that
+ * seeds it carries no authored value of its own.
+ */
+export const newPresetType: TypePreset = {
+  family: "Segoe UI, sans-serif",
+  size: 16,
+};
 
 export const starterPalette = {
   none: { name: "None", value: { kind: "solid", color: "transparent" } },

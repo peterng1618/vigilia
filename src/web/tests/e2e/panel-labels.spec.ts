@@ -109,7 +109,9 @@ test.describe("the settings panels name every control", () => {
     // so the audit has to open the same branches an author opens. A token with
     // other tokens to reassign to is what puts the delete row on screen.
     await chooseIn(page, "[data-vigilia-palette-token]", "cpu");
-    await page.locator("[data-vigilia-type-preset]").selectOption("20-500");
+    // The preset chooser is a plan-1 select too, so it is opened and chosen the
+    // way the palette's is rather than by `selectOption`.
+    await chooseIn(page, "[data-vigilia-type-preset]", "20-500");
   });
 
   test("no control is unnamed", async ({ page }) => {

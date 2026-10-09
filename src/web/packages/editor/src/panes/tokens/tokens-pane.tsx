@@ -13,7 +13,10 @@ import { PaintList, type PaintListProps } from "./paint-list.js";
  * reads every `section h2` and matches the panel's name against it, and the
  * disclosure chrome's `▾` would arrive in that text beside the title.
  *
- * Task 6 mounts the preset library beside this one from the same pane host.
+ * Task 6's preset library is **not** a child of this tree. It is a sibling
+ * section under the same pane host, built and owned by
+ * `type-preset-manager/panel.ts` (R36); rendering it here would make this pane
+ * reach into a section the palette panel owns — one concept with two owners.
  */
 export function TokensPane(props: PaintListProps): React.JSX.Element {
   return (
