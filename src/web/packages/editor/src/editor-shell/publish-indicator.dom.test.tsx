@@ -1,0 +1,59 @@
+// @vitest-environment jsdom
+
+import { act } from "react";
+import { createRoot } from "react-dom/client";
+import { afterEach, describe, expect, it } from "vitest";
+
+import { uiCopy } from "../ui-copy.js";
+import { PublishIndicator } from "./publish-indicator.js";
+import type { HostingSnapshot, HostingStore } from "./shell-layout.js";
+
+/** A store fixed at one snapshot. The real `HostingStore` reads the host on
+ *  construction, which a unit test has no host for, so only the two members the
+ *  indicator reads are here — a fuller stub would be a second implementation. */
+function stubStore(snapshot: HostingSnapshot): HostingStore {
+  return {
+    subscribe: () => () => {},
+    get: () => snapshot,
+  } as unknown as HostingStore;
+}
+
+/** The host's answer with the LAN on, which is the one fact the mark reads. */
+const live: HostingSnapshot = {
+  kind: "known",
+  answer: { lan: true, address: "192.168.1.5", port: 4174, refusal: null },
+  pairing: undefined,
+  reason: undefined,
+  pending: undefined,
+};
+
+describe("the live mark", () => {
+  let host: HTMLDivElement | undefined;
+
+  afterEach(() => {
+    host?.remove();
+    host = undefined;
+  });
+
+  function mount(store: HostingStore): HTMLDivElement {
+    host = document.createElement("div");
+    document.body.append(host);
+    const root = createRoot(host);
+    act(() => root.render(<PublishIndicator store={store} />));
+    return host;
+  }
+
+  it("shows no live mark when the host's state is unknown", () => {
+    // The failure bible §9's last line forbids: an unread host rendered as a
+    // claim. Red if the mark is drawn without asking the store first.
+    const mounted = mount(stubStore({ kind: "unknown" }));
+    expect(mounted.querySelector(".editor-shell-live")).toBeNull();
+  });
+
+  it("shows the live mark when the host reports the LAN on", () => {
+    const mounted = mount(stubStore(live));
+    const mark = mounted.querySelector(".editor-shell-live");
+    expect(mark).not.toBeNull();
+    expect(mark?.textContent).toBe(uiCopy.statusBar.live);
+  });
+});

@@ -469,14 +469,23 @@ body,
   border-bottom: 1px solid var(--shell-edge);
   background: var(--shell-surface);
 }
+/* §7.6: the status bar is the window's bottom edge — a full-width 26px strip at
+   elevation 0 with a hairline along its head, the twin of the header above the
+   stage. It carries readings only: the counts the status host is handed, the
+   last diagnostic, save state and the live mark. No tools, no commands. */
 .editor-shell-status {
   flex: none;
-  margin: 8px 8px 0;
-  border-radius: 12px;
-  padding: 10px 14px;
+  height: 26px;
+  margin: 0;
+  padding: 0 var(--space-14);
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: var(--space-12);
+  border-top: 1px solid var(--edge);
+  background: var(--panel);
+  font-family: ui-monospace, monospace;
+  font-size: var(--text-xs);
+  color: var(--faint);
 }
 .editor-shell-header strong {
   font-family: var(--shell-display);
@@ -1707,11 +1716,21 @@ body,
   font-size: 11px;
   opacity: 0.75;
 }
-.editor-shell-status {
-  margin: 0 8px 8px;
-  font-family: ui-monospace, monospace;
-  font-size: 12px;
-  color: var(--shell-muted);
+/* The live mark: the host is serving this document on the LAN. Accent, because
+   it is the one fact in the footer that is a state rather than a message, and
+   `PublishIndicator` draws it only when the host reports the LAN on — an
+   unknown host renders no claim (§9). */
+.editor-shell-live {
+  flex: none;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+  color: var(--accent);
+  white-space: nowrap;
+}
+.editor-shell-live svg {
+  flex: none;
 }
 /* A refusal is a claim about what the editor just did, so it takes the room it
    needs and the mark that says how seriously; the icon and the word carry it,

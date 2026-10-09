@@ -351,6 +351,9 @@ export const uiCopy = {
     cancel: "Cancel",
   },
   saveState: { unsaved: "Unsaved changes" },
+  /** The status bar's own readings. `live` is the one word on the host mark the
+   *  strip draws when the LAN is serving this document. */
+  statusBar: { live: "live" },
   /** The publish surface. §145: plain LAN HTTP has no confidentiality, so the
    *  words that turn it on have to say what it is. */
   publish: {

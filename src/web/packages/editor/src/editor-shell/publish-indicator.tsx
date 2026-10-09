@@ -1,0 +1,31 @@
+import { Check } from "lucide-react";
+import { useSyncExternalStore } from "react";
+import { uiCopy } from "../ui-copy.js";
+import type { HostingStore } from "./shell-layout.js";
+
+/**
+ * The status bar's one mark of its own: the host is serving this editor on the
+ * LAN.
+ *
+ * The answer is `HostingStore`'s — the same one the header's publish control
+ * reads — and the mark is drawn **only** when the host reports the LAN on. An
+ * unknown or absent host renders nothing rather than "not live": until the host
+ * has answered the editor has nothing to say, and a mark invented for it would
+ * be a fact the product does not have (bible §9). Nothing here polls the host;
+ * a state changed outside the editor is stale until reload (`vg-214`).
+ */
+export function PublishIndicator({
+  store,
+}: {
+  readonly store: HostingStore;
+}): React.JSX.Element | null {
+  const state = useSyncExternalStore(store.subscribe, store.get, store.get);
+  if (state.kind !== "known" || !state.answer.lan) return null;
+
+  return (
+    <p className="editor-shell-live" role="status">
+      <Check aria-hidden size={12} strokeWidth={2.5} />
+      {uiCopy.statusBar.live}
+    </p>
+  );
+}

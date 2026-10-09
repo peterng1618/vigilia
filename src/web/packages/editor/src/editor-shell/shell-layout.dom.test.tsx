@@ -608,7 +608,7 @@ it("keeps panel hosts mounted outside React's control", () => {
   layout.destroy();
 });
 
-it("puts a diagnostic surface in the status line, and it reports a refusal", async () => {
+it("keeps the diagnostic surface in the footer, and it still reports a refusal", async () => {
   const root = document.createElement("div");
   const layout = createShellLayout(root);
   const canvas = new Canvas(document.createElement("canvas"));
@@ -630,6 +630,13 @@ it("puts a diagnostic surface in the status line, and it reports a refusal", asy
   layout.setBridge(bridge, undefined);
   await Promise.resolve();
   const line = root.querySelector("#status");
+  // The footer keeps its three readings — the counts span the status host is
+  // handed, the diagnostic and the save state — and the live mark joins them
+  // only when the host reports the LAN on. No host is behind this shell, so no
+  // mark is drawn rather than "not live" (§9).
+  expect(line?.contains(layout.hosts.status)).toBe(true);
+  expect(line?.querySelector(".editor-shell-save-state")).not.toBeNull();
+  expect(line?.querySelector(".editor-shell-live")).toBeNull();
   // The footer already carries the free-running status text, so the refusal has
   // to be its own element — the same node would be overwritten by either writer.
   expect(line?.querySelector('[aria-label="Editor message"]')).not.toBeNull();

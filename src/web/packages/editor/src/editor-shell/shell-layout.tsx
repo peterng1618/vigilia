@@ -43,6 +43,7 @@ import {
 import { PaletteMenu } from "./palette-menu.js";
 import { Pane } from "./pane.js";
 import { PublishControl } from "./publish-control.js";
+import { PublishIndicator } from "./publish-indicator.js";
 import { RAIL_GLYPHS, Rail, type RailSlot } from "./rail.js";
 import { SaveState } from "./save-state.js";
 import type { EditorViewControls } from "./session-facade.js";
@@ -764,6 +765,9 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
           <Host node={hosts.status} />
           <DiagnosticMessage canvas={store.bridge?.editor.canvas} />
           <SaveState session={store.bridge?.session} />
+          {/* The host's own fact, beside the save state: an unknown host renders
+              no mark rather than "not live". */}
+          <PublishIndicator store={hosting} />
         </footer>
       </div>
     );
