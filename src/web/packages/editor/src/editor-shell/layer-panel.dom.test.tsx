@@ -1431,7 +1431,7 @@ it("names a chart row's family and a shape row's kind for a screen reader", asyn
 
 it("says a row's role once, outside the mark and outside a title", async () => {
   // The three ways this could be said twice or said where nobody reads it:
-  // inside the mark, which `flex-basis`es a 40px slot and would clip it; in a
+  // inside the mark, which `flex-basis`es a 28px slot and would clip it; in a
   // `title`, which a pointer hears and a keyboard author does not; and hidden,
   // which is text no screen reader reads at all.
   const host = await renderPanel([
