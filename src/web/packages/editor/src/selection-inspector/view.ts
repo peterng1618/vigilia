@@ -75,8 +75,30 @@ interface FieldBase {
   readonly refused?: string;
 }
 
+/**
+ * One half of a paired row: two numbers sharing a line, each committing its
+ * own. A pair is not one control — each half has its own id, its own hook and
+ * its own commit — but they share a row and a set of bounds, which is what the
+ * geometry lines (`X`/`Y`, `W`/`H`, a line's two ends) are.
+ */
+export interface PairHalfView {
+  /** The field id the half commits through, not the DOM hook. */
+  readonly id: string;
+  readonly label: string;
+  readonly value: number;
+  readonly data: FieldHooks;
+  readonly integer?: boolean;
+}
+
 export type FieldView =
-  | (FieldBase & { readonly control: "text"; readonly value: string })
+  | (FieldBase & {
+      readonly control: "text";
+      readonly value: string;
+      /** A multi-line field: a polyline's points and a path's data are
+          documents, not one-line answers. */
+      readonly multiline?: boolean;
+      readonly rows?: number;
+    })
   | (FieldBase & {
       readonly control: "number";
       readonly value: number;
@@ -91,6 +113,20 @@ export type FieldView =
        */
       readonly integer?: boolean;
     })
+  | (FieldBase & {
+      readonly control: "pair";
+      readonly halves: readonly PairHalfView[];
+    })
+  /**
+   * A line of prose, not a control: bible §5.1's "a border means editable", so a
+   * note carries no well. The size-disagreement line is the one it exists for.
+   */
+  | {
+      readonly id: string;
+      readonly control: "note";
+      readonly value: string;
+      readonly data: FieldHooks;
+    }
   | (FieldBase & { readonly control: "toggle"; readonly checked: boolean })
   | (FieldBase & {
       readonly control: "select";
@@ -197,14 +233,33 @@ export interface RunsView {
   readonly notes: readonly string[];
 }
 
-/** The four sub-surfaces that are not one control. Each names one React
-    component in this family; no other kind is added without amending this.
-    The two chart bodies carry their owner's own field views, which cross as
-    values exactly as a run's do: a DOM island here would be the boundary this
-    type exists to hold. */
+/**
+ * The crop row, as a value: whether a session is open, and whether this
+ * selection can start one. The ratios it offers are `crop.ts`'s own list, read
+ * by the component rather than copied into every published view.
+ */
+export interface CropView {
+  /** A session is open, so the row shows its own controls and ignores the selection. */
+  readonly active: boolean;
+  /** This selection can hold a crop, so the row offers to start one. */
+  readonly canStart: boolean;
+}
+
+/** The crop row's one way to write, beside `SelectionEdits`. */
+export interface CropEdits {
+  readonly begin: () => boolean;
+  readonly setAspect: (ratio: number) => void;
+  readonly apply: () => void;
+  readonly cancel: () => void;
+}
+
+/**
+ * The four sub-surfaces that are not one control. Each names one React
+ * component in this family; no other kind is added without amending this.
+ */
 export type ExtraView =
   | { readonly kind: "runs"; readonly nodeId: string; readonly runs: RunsView }
-  | { readonly kind: "crop" }
+  | { readonly kind: "crop"; readonly crop: CropView }
   | {
       readonly kind: "chartContent";
       readonly content: ChartContentFieldsView;
@@ -289,15 +344,29 @@ export interface SelectionEdits {
  * The control is a convenience; this table is what must hold, so a fraction
  * that a wrongly-built control let through is still refused here.
  */
-type WritableKind = "number" | "integer" | "name";
+type WritableKind = "number" | "integer" | "name" | "boolean" | "text";
 const WRITABLE_FIELD_IDS: ReadonlyMap<string, WritableKind> = new Map([
-  ["left", "number"],
-  ["top", "number"],
-  ["width", "number"],
-  ["height", "number"],
+  ["left", "integer"],
+  ["top", "integer"],
+  ["width", "integer"],
+  ["height", "integer"],
   ["angle", "integer"],
   ["opacity", "number"],
   ["name", "name"],
+  // The bleed mark, and a shape's own geometry. The pre-plan surface refused a
+  // typed fraction on every one of these (`numberField`'s unconditional
+  // `Number.isInteger`), so the boundary copies that rule rather than trusting
+  // the control to have kept it.
+  ["bleeds", "boolean"],
+  ["shape-sides", "integer"],
+  ["shape-line-x1", "integer"],
+  ["shape-line-y1", "integer"],
+  ["shape-line-x2", "integer"],
+  ["shape-line-y2", "integer"],
+  ["shape-angle-startAngle", "integer"],
+  ["shape-angle-endAngle", "integer"],
+  ["shape-points", "text"],
+  ["shape-path", "text"],
 ]);
 
 /** Why an edit was refused; `undefined` means it may reach the write funnel. */
@@ -335,6 +404,14 @@ export function editRefusal(
     if (typeof edit.value !== "string") return "invalid";
     const trimmed = edit.value.trim();
     return trimmed === "" || isObjectName(trimmed) ? undefined : "invalid";
+  }
+  if (kind === "boolean") {
+    return typeof edit.value === "boolean" ? undefined : "invalid";
+  }
+  if (kind === "text") {
+    // A multi-line draft (a polyline's points, a path's data) is parsed by the
+    // writer; the boundary only insists it is a string, never `Number("")`'s zero.
+    return typeof edit.value === "string" ? undefined : "invalid";
   }
   if (typeof edit.value !== "number" || !Number.isFinite(edit.value)) {
     // Refuse rather than coerce: a non-finite number is not a dimension.

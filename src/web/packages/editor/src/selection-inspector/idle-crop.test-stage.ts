@@ -1,4 +1,5 @@
 import type { CropManager } from "../crop-manager/index.js";
+import type { CropEdits } from "./view.js";
 
 /**
  * A crop session that is not running, for a test about something else.
@@ -12,6 +13,16 @@ export function idleCrop(): CropManager {
   return {
     active: false,
     target: undefined,
+    begin: () => false,
+    setAspect: () => {},
+    apply: () => {},
+    cancel: () => {},
+  };
+}
+
+/** A crop port that records nothing, for a test about something else. */
+export function idleCropEdits(): CropEdits {
+  return {
     begin: () => false,
     setAspect: () => {},
     apply: () => {},

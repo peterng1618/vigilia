@@ -8,16 +8,20 @@ import {
   ChartPaintFields,
 } from "../chart-manager/chart-fields.js";
 import { ControlNumber } from "../components/ui/control-number.js";
+import { ControlPair } from "../components/ui/control-pair.js";
 import { ControlSegmented } from "../components/ui/control-segmented.js";
 import { ControlSelect } from "../components/ui/control-select.js";
 import { ControlSlider } from "../components/ui/control-slider.js";
 import { ControlText } from "../components/ui/control-text.js";
 import { ControlToggle } from "../components/ui/control-toggle.js";
 import { InspectorSection } from "../components/ui/inspector-section.js";
+import { uiCopy } from "../ui-copy.js";
+import { CROP_ASPECTS } from "./crop.js";
 import { rendersExtra } from "./per-kind-column.js";
 import { RunEditor } from "./runs.js";
 import type {
   ColumnSectionView,
+  CropEdits,
   FieldView,
   RunEdits,
   SelectionEdits,
@@ -62,7 +66,12 @@ function fieldControl(
   const commit = (value: string | number | boolean): void => {
     edits.commit(revision, field.id, value);
   };
-  const refused = field.refused === undefined ? {} : { refused: field.refused };
+  // A `note` carries no refusal; a guard rather than a cast keeps the union
+  // honest as arms are added.
+  const refused =
+    field.control !== "note" && field.refused !== undefined
+      ? { refused: field.refused }
+      : {};
 
   switch (field.control) {
     case "text":
@@ -72,8 +81,33 @@ function fieldControl(
           data={field.data}
           value={field.value}
           onCommit={(value) => commit(value)}
+          {...(field.multiline === undefined
+            ? {}
+            : { multiline: field.multiline })}
+          {...(field.rows === undefined ? {} : { rows: field.rows })}
           {...refused}
         />
+      );
+    case "pair":
+      return (
+        <ControlPair
+          label={field.label}
+          halves={field.halves.map((half) => ({
+            label: half.label,
+            value: half.value,
+            data: half.data,
+            ...(half.integer === undefined ? {} : { integer: half.integer }),
+            onCommit: (value: number) => edits.commit(revision, half.id, value),
+          }))}
+        />
+      );
+    case "note":
+      // A line of prose, not a control: no well, because a border means
+      // editable (bible §5.1). The hook is on the value element itself.
+      return (
+        <p className="text-xs text-muted" {...field.data}>
+          {field.value}
+        </p>
       );
     case "number":
       return (
@@ -160,15 +194,78 @@ function fieldControl(
   }
 }
 
+/**
+ * The crop row: start a session, or — while one is open — lock a ratio and
+ * apply or abandon it. The session is `crop-manager`'s and React holds only its
+ * state, so the buttons drive `CropEdits` and the drag stays Fabric's.
+ *
+ * The buttons carry the same `data-vigilia-crop*` hooks the imperative row did,
+ * because the suites read them by hook rather than by their visible word.
+ */
+function CropRow(props: {
+  readonly view: { readonly active: boolean; readonly canStart: boolean };
+  readonly edits: CropEdits;
+}): React.JSX.Element | null {
+  const { view, edits } = props;
+  if (view.active) {
+    return (
+      <div className="flex flex-wrap items-center gap-[var(--space-6)]">
+        {CROP_ASPECTS.map(([label, ratio]) => (
+          <button
+            key={label}
+            type="button"
+            data-vigilia-crop-aspect={label}
+            className="rounded-md border border-edge bg-panel-2 px-[var(--space-6)] text-xs text-text"
+            onClick={() => edits.setAspect(ratio)}
+          >
+            {label}
+          </button>
+        ))}
+        <button
+          type="button"
+          data-vigilia-crop-apply=""
+          className="rounded-md border border-edge bg-panel-2 px-[var(--space-6)] text-xs text-text"
+          onClick={() => edits.apply()}
+        >
+          {uiCopy.inspectorFields.cropApply}
+        </button>
+        <button
+          type="button"
+          data-vigilia-crop-cancel=""
+          className="rounded-md border border-edge bg-panel-2 px-[var(--space-6)] text-xs text-text"
+          onClick={() => edits.cancel()}
+        >
+          {uiCopy.inspectorFields.cropCancel}
+        </button>
+      </div>
+    );
+  }
+
+  if (!view.canStart) return null;
+  return (
+    <div className="flex items-center gap-[var(--space-6)]">
+      <button
+        type="button"
+        data-vigilia-crop=""
+        className="rounded-md border border-edge bg-panel-2 px-[var(--space-6)] text-xs text-text"
+        onClick={() => edits.begin()}
+      >
+        {uiCopy.inspectorFields.crop}
+      </button>
+    </div>
+  );
+}
+
 function Section(props: {
   readonly section: ColumnSectionView;
   readonly edits: SelectionEdits;
   readonly runs: RunEdits;
   readonly chart: ChartEdits;
+  readonly crop: CropEdits;
   readonly revision: number;
   readonly idPrefix: string;
 }): React.JSX.Element {
-  const { section, edits, runs, chart, revision, idPrefix } = props;
+  const { section, edits, runs, chart, crop, revision, idPrefix } = props;
 
   return (
     <InspectorSection
@@ -213,8 +310,15 @@ function Section(props: {
                 edits={chart}
               />
             );
+          case "crop":
+            return (
+              <CropRow
+                key={`${revision}:crop`}
+                view={extra.crop}
+                edits={crop}
+              />
+            );
           default:
-            // `crop` — Task 4's, and `rendersExtra` does not admit it yet.
             return null;
         }
       })}
@@ -228,8 +332,9 @@ export function SelectionColumn(props: {
   readonly edits: SelectionEdits;
   readonly runs: RunEdits;
   readonly chart: ChartEdits;
+  readonly crop: CropEdits;
 }): React.JSX.Element {
-  const { view, edits, runs, chart } = props;
+  const { view, edits, runs, chart, crop } = props;
   // A column is one selection's, and two columns can be mounted at once (the
   // accessibility audit mounts two). `${id}-header` is document-global, so the
   // aria pair is scoped to this instance or the second column's `aria-controls`
@@ -245,6 +350,7 @@ export function SelectionColumn(props: {
           edits={edits}
           runs={runs}
           chart={chart}
+          crop={crop}
           revision={view.targetRevision}
           idPrefix={idPrefix}
         />
@@ -266,13 +372,14 @@ export function createSelectionColumnRoot(host: HTMLElement): {
     edits: SelectionEdits,
     runs: RunEdits,
     chart: ChartEdits,
+    crop: CropEdits,
   ) => void;
   readonly destroy: () => void;
 } {
   const root: Root = createRoot(host);
 
   return {
-    publish(view, edits, runs, chart) {
+    publish(view, edits, runs, chart, crop) {
       flushSync(() => {
         root.render(
           <SelectionColumn
@@ -280,6 +387,7 @@ export function createSelectionColumnRoot(host: HTMLElement): {
             edits={edits}
             runs={runs}
             chart={chart}
+            crop={crop}
           />,
         );
       });

@@ -5,7 +5,7 @@ import {
 } from "@vigilia/renderer-core";
 import type { FabricObject } from "fabric/es";
 import { uiCopy } from "../ui-copy.js";
-import type { AppearanceContext } from "./appearance.js";
+import type { FieldView } from "./view.js";
 
 /**
  * The one control that says a crop is deliberate.
@@ -16,21 +16,13 @@ import type { AppearanceContext } from "./appearance.js";
  * of it. A control that wrote `false` instead of removing the key would leave
  * a document carrying the mark on every object in it, which is the shape the
  * flag's narrowness exists to prevent.
+ *
+ * The row is a value and the write is the funnel's: `writeMark` is the rule, and
+ * `index.ts` calls it after its own revision and lock checks.
  */
 
-let bleedSeq = 0;
-
-export interface BleedHooks {
-  /** False once the field describes a different object; the edit is refused. */
-  readonly stillTarget: () => boolean;
-  /** One history entry per committed edit. */
-  readonly commit: () => void;
-  /** Re-reads the object, so the field shows what was just written. */
-  readonly onChange: () => void;
-}
-
 /** Removes the property outright: an ordinary object carries no mark at all. */
-function clearMark(object: FabricObject): void {
+export function clearMark(object: FabricObject): void {
   delete (object as unknown as Record<string, unknown>)[
     VIGILIA_BLEEDS_PROPERTY
   ];
@@ -40,7 +32,7 @@ function clearMark(object: FabricObject): void {
  * Writes the mark and asks `renderer-core`'s own guard whether it is one.
  * `false` means the object was left exactly as it was.
  */
-function writeMark(object: FabricObject, next: boolean): boolean {
+export function writeMark(object: FabricObject, next: boolean): boolean {
   if (!next) {
     clearMark(object);
     return true;
@@ -59,47 +51,12 @@ function writeMark(object: FabricObject, next: boolean): boolean {
  * because what it alters is the crop notice both surfaces print, not how the
  * object paints.
  */
-export function createBleedField(
-  context: AppearanceContext,
-  object: FabricObject,
-  hooks: BleedHooks,
-): HTMLElement {
-  const row = document.createElement("div");
-  row.className = "vigilia-field";
-  const label = document.createElement("label");
-  label.htmlFor = `vigilia-bleeds-${++bleedSeq}`;
-  label.textContent = uiCopy.inspectorFields.bleeds;
-  const input = document.createElement("input");
-  input.type = "checkbox";
-  input.id = label.htmlFor;
-  input.dataset["vigiliaBleeds"] = "";
-  input.checked = objectBleeds(object);
-
-  input.addEventListener("change", () => {
-    if (!hooks.stillTarget()) return;
-    // The refusal restores the box rather than only reporting it, so the field
-    // never shows a mark the object does not carry.
-    if (!writeMark(object, input.checked)) {
-      input.checked = objectBleeds(object);
-      context.editor.errorManager.warn(
-        "controls",
-        uiCopy.inspectorFields.invalidValue,
-      );
-      return;
-    }
-    // The count both surfaces print is derived from the scene, so the artboard
-    // panel has to be told the scene moved — it reads the figure on render and
-    // would otherwise keep showing the number from before the mark.
-    context.editor.canvas.fire(
-      "object:modified" as never,
-      {
-        target: object,
-      } as never,
-    );
-    hooks.commit();
-    hooks.onChange();
-  });
-
-  row.append(label, input);
-  return row;
+export function bleedField(object: FabricObject): FieldView {
+  return {
+    id: "bleeds",
+    control: "toggle",
+    label: uiCopy.inspectorFields.bleeds,
+    checked: objectBleeds(object),
+    data: { "data-vigilia-bleeds": "" },
+  };
 }

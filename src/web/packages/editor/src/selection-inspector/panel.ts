@@ -19,11 +19,11 @@ import {
   Shadow,
   Triangle,
 } from "fabric/es";
-import { linkedPair } from "../editor-shell/controls/linked-pair.js";
 import { numberField } from "../editor-shell/controls/number-field.js";
 import { cornersForSides } from "../new-object-defaults.js";
 import { uiCopy } from "../ui-copy.js";
 import { type AppearanceContext, resolveToken } from "./appearance.js";
+import type { FieldView } from "./view.js";
 
 /**
  * A shape's authored material: which tokens paint its fill, border and shadow,
@@ -408,19 +408,15 @@ export function createPanelMaterialFields(
  * The geometry that belongs to this one kind of shape — a polygon's sides, a
  * polyline's points, a line's endpoints, a sweep's angles, a path's data — or
  * nothing when every number the shape has is already the general W/H pair.
+ *
+ * Values, not controls: React renders them and `index.ts` writes them through
+ * the one funnel, which calls {@link writeShapeGeometryField} for the objects
+ * this module owns.
  */
 export function createShapeGeometryFields(
-  context: AppearanceContext,
   object: FabricObject,
-  hooks: PanelFieldHooks,
-): readonly HTMLElement[] {
-  /** A refused edit restores the field itself; this only reports it. */
-  const refused = (): void =>
-    context.editor.errorManager.warn(
-      "controls",
-      uiCopy.inspectorFields.invalidValue,
-    );
-  return createShapeFields(object, hooks, refused);
+): readonly FieldView[] {
+  return createShapeFields(object);
 }
 
 /** The fewest sides a closed shape can have, and the most an author can ask
@@ -441,8 +437,6 @@ const MIN_POLYLINE_POINTS = 2;
 const MIN_SWEEP_DEGREES = 0;
 const MAX_SWEEP_DEGREES = 360;
 
-let shapeFieldSeq = 0;
-
 /**
  * Adopts geometry the author just typed, and drops the scale that belonged to
  * the geometry it replaced.
@@ -459,7 +453,7 @@ let shapeFieldSeq = 0;
  * mean on every other shape. This is the rule the polygon branch above already
  * keeps — *"the points remain the only persisted truth"* — completed.
  */
-function adoptGeometry(object: FabricObject): void {
+export function adoptGeometry(object: FabricObject): void {
   // Every caller is a `Polygon`, a `Polyline` or a `Path`; all three re-measure
   // from their own geometry through this one method.
   (object as FabricObject & { setDimensions(): void }).setDimensions();
@@ -467,75 +461,35 @@ function adoptGeometry(object: FabricObject): void {
 }
 
 /**
- * The geometry that belongs to this one kind of shape.
+ * The geometry that belongs to this one kind of shape, as values.
  *
  * A circle, an ellipse and a triangle own none: each is fully described by the
  * width and height the general fields already carry, and a field that derived
  * one of those would be a second way to say the same number.
  */
-function createShapeFields(
-  object: FabricObject,
-  hooks: PanelFieldHooks,
-  refused: () => void,
-): readonly HTMLElement[] {
-  /** One committed edit. `setCoords` because every field here moves a corner,
-      a handle or an endpoint, and a stale control box outlives the render. */
-  const commit = (write: () => void): void => {
-    if (!hooks.stillTarget()) return;
-    write();
-    object.setCoords();
-    hooks.commit();
-    hooks.onChange();
-  };
-  const rows: HTMLElement[] = [];
+function createShapeFields(object: FabricObject): readonly FieldView[] {
+  const fields: FieldView[] = [];
 
   // A polygon before a polyline: Fabric's `Polygon` is a closed `Polyline`, so
   // the narrower test has to come first or a polygon would be given both.
   if (object instanceof Polygon) {
-    const sides = numberField({
+    fields.push({
+      id: "shape-sides",
+      control: "number",
       label: uiCopy.inspectorFields.shapeSides,
       value: object.points.length,
-      min: MIN_POLYGON_SIDES,
-      max: MAX_POLYGON_SIDES,
-      data: "vigiliaShapeSides",
-      invalidMessage: uiCopy.inspectorFields.invalidValue,
-      onReject: refused,
-      onCommit: (value) =>
-        commit(() => {
-          const { minX, minY, width, height } = boundsOf(object.points);
-          object.set(
-            "points",
-            cornersForSides(value, width, height).map((corner) => ({
-              x: corner.x + minX,
-              y: corner.y + minY,
-            })),
-          );
-          // Fabric does not re-measure a points change on its own, so the
-          // object would keep the old box until something else asked for it.
-          adoptGeometry(object);
-        }),
+      integer: true,
+      data: { "data-vigilia-shape-sides": "" },
     });
-    rows.push(sides.row);
   } else if (object instanceof Polyline) {
-    const points = textArea({
+    fields.push({
+      id: "shape-points",
+      control: "text",
       label: uiCopy.inspectorFields.shapePoints,
       value: pointsOf(object),
-      data: "vigiliaShapePoints",
-      invalidMessage: uiCopy.inspectorFields.invalidValue,
-      onCommit: (value) => {
-        const parsed = parsedPoints(value);
-        if (parsed === undefined) {
-          refused();
-          return false;
-        }
-        commit(() => {
-          object.set("points", parsed);
-          adoptGeometry(object);
-        });
-        return true;
-      },
+      multiline: true,
+      data: { "data-vigilia-shape-points": "" },
     });
-    rows.push(points.row);
   }
 
   if (object instanceof Line) {
@@ -543,28 +497,30 @@ function createShapeFields(
       rowLabel: string,
       x: "x1" | "x2",
       y: "y1" | "y2",
-    ): HTMLElement =>
-      linkedPair({
-        rowLabel,
-        first: {
+    ): FieldView => ({
+      id: `shape-line-${x}-${y}`,
+      control: "pair",
+      label: rowLabel,
+      data: {},
+      halves: [
+        {
+          id: `shape-line-${x}`,
           label: uiCopy.inspectorFields.x,
           value: Math.round(object.get(x) as number),
-          data: "vigiliaShapeLine",
-          dataValue: x,
+          integer: true,
+          data: { "data-vigilia-shape-line": x },
         },
-        second: {
+        {
+          id: `shape-line-${y}`,
           label: uiCopy.inspectorFields.y,
           value: Math.round(object.get(y) as number),
-          data: "vigiliaShapeLine",
-          dataValue: y,
+          integer: true,
+          data: { "data-vigilia-shape-line": y },
         },
-        invalidMessage: uiCopy.inspectorFields.invalidValue,
-        onReject: refused,
-        onCommitFirst: (value) => commit(() => object.set(x, value)),
-        onCommitSecond: (value) => commit(() => object.set(y, value)),
-      }).row;
+      ],
+    });
 
-    rows.push(
+    fields.push(
       ends(uiCopy.inspectorFields.shapeStart, "x1", "y1"),
       ends(uiCopy.inspectorFields.shapeEnd, "x2", "y2"),
     );
@@ -574,57 +530,115 @@ function createShapeFields(
     // Bounded at both ends, and deliberately *not* cross-checked against each
     // other: a start past its end is a legal full turn expressed the other way
     // round, and Fabric draws it. Refusing it would mean a second rule about
-    // what a sweep means, held here as well as in the geometry. What is refused
-    // is a value outside 0–360, by the field's own bound.
-    rows.push(
-      ...(["startAngle", "endAngle"] as const).map(
-        (key) =>
-          numberField({
-            label:
-              key === "startAngle"
-                ? uiCopy.inspectorFields.shapeStartAngle
-                : uiCopy.inspectorFields.shapeEndAngle,
-            value: object.get(key) as number,
-            min: MIN_SWEEP_DEGREES,
-            max: MAX_SWEEP_DEGREES,
-            data: "vigiliaShapeAngle",
-            dataValue: key,
-            invalidMessage: uiCopy.inspectorFields.invalidValue,
-            onReject: refused,
-            // Both angles are the object's own Fabric properties, so the write is
-            // the same one a save makes and a reopen reads — there is no second
-            // copy of the sweep for this panel to disagree with.
-            onCommit: (value) => commit(() => object.set(key, value)),
-          }).row,
-      ),
-    );
+    // what a sweep means, held here as well as in the geometry. What is bounded
+    // is a value outside 0–360, by the write funnel's own range.
+    for (const key of ["startAngle", "endAngle"] as const) {
+      fields.push({
+        id: `shape-angle-${key}`,
+        control: "number",
+        label:
+          key === "startAngle"
+            ? uiCopy.inspectorFields.shapeStartAngle
+            : uiCopy.inspectorFields.shapeEndAngle,
+        value: object.get(key) as number,
+        integer: true,
+        data: { "data-vigilia-shape-angle": key },
+      });
+    }
   }
 
   if (object instanceof Path) {
-    rows.push(
-      textArea({
-        label: uiCopy.inspectorFields.shapePath,
-        value: pathDataOf(object),
-        data: "vigiliaShapePath",
-        rows: 3,
-        invalidMessage: uiCopy.inspectorFields.invalidValue,
-        onCommit: (value) => {
-          const parsed = parsedPath(value);
-          if (parsed === undefined) {
-            refused();
-            return false;
-          }
-          commit(() => {
-            object.set("path", parsed);
-            adoptGeometry(object);
-          });
-          return true;
-        },
-      }).row,
-    );
+    fields.push({
+      id: "shape-path",
+      control: "text",
+      label: uiCopy.inspectorFields.shapePath,
+      value: pathDataOf(object),
+      multiline: true,
+      rows: 3,
+      data: { "data-vigilia-shape-path": "" },
+    });
   }
 
-  return rows;
+  return fields;
+}
+
+/** The whole-number bounds a value is landed on, never crossed. The pre-plan
+    `numberField` put an out-of-range value on the bound it crossed rather than
+    refusing it — "landing on the bound teaches it" — and that is the rule the
+    imported field carried, so the funnel keeps it here. */
+function bound(value: number, min: number, max: number): number {
+  return Math.min(Math.max(value, min), max);
+}
+
+/**
+ * Writes one of a shape's own geometry fields, and hands back whether the edit
+ * applied. The rules that parse, bound and adopt geometry live here with the
+ * fields that describe them; `index.ts` is the funnel that asks for them.
+ *
+ * `false` means the object was left exactly as it was — a polyline's points or a
+ * path's data that Fabric cannot read would otherwise replace a real shape with
+ * one nothing can select or see.
+ */
+export function writeShapeGeometryField(
+  object: FabricObject,
+  fieldId: string,
+  value: string | number,
+): boolean {
+  if (fieldId === "shape-sides" && object instanceof Polygon) {
+    const sides = bound(Number(value), MIN_POLYGON_SIDES, MAX_POLYGON_SIDES);
+    const { minX, minY, width, height } = boundsOf(object.points);
+    object.set(
+      "points",
+      cornersForSides(sides, width, height).map((corner) => ({
+        x: corner.x + minX,
+        y: corner.y + minY,
+      })),
+    );
+    // Fabric does not re-measure a points change on its own, so the object would
+    // keep the old box until something else asked for it.
+    adoptGeometry(object);
+    return true;
+  }
+
+  if (fieldId === "shape-points" && object instanceof Polyline) {
+    const parsed = parsedPoints(String(value));
+    if (parsed === undefined) return false;
+    object.set("points", parsed);
+    adoptGeometry(object);
+    return true;
+  }
+
+  if (fieldId === "shape-path" && object instanceof Path) {
+    const parsed = parsedPath(String(value));
+    if (parsed === undefined) return false;
+    object.set("path", parsed);
+    adoptGeometry(object);
+    return true;
+  }
+
+  if (object instanceof Line && fieldId.startsWith("shape-line-")) {
+    const key = fieldId.slice("shape-line-".length);
+    if (key === "x1" || key === "y1" || key === "x2" || key === "y2") {
+      object.set(key, Number(value));
+      return true;
+    }
+  }
+
+  if (hasSweep(object) && fieldId.startsWith("shape-angle-")) {
+    const key = fieldId.slice("shape-angle-".length);
+    if (key === "startAngle" || key === "endAngle") {
+      // Both angles are the object's own Fabric properties, so the write is the
+      // same one a save makes and a reopen reads — there is no second copy of
+      // the sweep for this panel to disagree with.
+      object.set(
+        key,
+        bound(Number(value), MIN_SWEEP_DEGREES, MAX_SWEEP_DEGREES),
+      );
+      return true;
+    }
+  }
+
+  return false;
 }
 
 /** The box a set of points occupies, in the object's own untransformed space —
@@ -706,74 +720,4 @@ function parsedPath(text: string): unknown[] | undefined {
   if (!Array.isArray(path) || path.length === 0) return undefined;
   if (parsed.width === 0 && parsed.height === 0) return undefined;
   return path;
-}
-
-interface TextAreaOptions {
-  readonly label: string;
-  readonly value: string;
-  readonly data: string;
-  readonly rows?: number;
-  readonly invalidMessage?: string;
-  readonly onReject?: () => void;
-  /** False refuses the edit, so the field is put back to what it held. */
-  readonly onCommit: (value: string) => boolean;
-}
-
-interface TextArea {
-  readonly row: HTMLElement;
-  readonly input: HTMLTextAreaElement;
-  setValue(value: string): void;
-  refuse(restoreTo?: string): void;
-}
-
-/**
- * A labelled multi-line field that owns its rejected-edit rollback, as
- * `numberInput` does. A text field is needed twice on this panel — a polyline's
- * points and a path's data are both documents, not numbers — and neither is
- * worth a primitive of its own.
- */
-function textArea(options: TextAreaOptions): TextArea {
-  let last = options.value;
-  const row = document.createElement("div");
-  row.className = "vigilia-field";
-  const label = document.createElement("label");
-  label.htmlFor = `vigilia-shape-${++shapeFieldSeq}`;
-  label.textContent = options.label;
-  const input = document.createElement("textarea");
-  input.id = label.htmlFor;
-  input.rows = options.rows ?? 5;
-  input.dataset[options.data] = "";
-  input.value = last;
-  const alert = document.createElement("p");
-  alert.setAttribute("role", "alert");
-  alert.textContent =
-    options.invalidMessage ?? uiCopy.inspectorFields.invalidValue;
-
-  const refuse = (restoreTo = last): void => {
-    last = restoreTo;
-    input.value = restoreTo;
-    if (alert.parentElement === null) row.append(alert);
-    options.onReject?.();
-  };
-
-  // `change`, never per keystroke: half-typed data is not an edit.
-  input.addEventListener("change", () => {
-    if (!options.onCommit(input.value)) {
-      refuse();
-      return;
-    }
-    last = input.value;
-    alert.remove();
-  });
-
-  row.append(label, input);
-  return {
-    row,
-    input,
-    setValue: (value) => {
-      last = value;
-      input.value = value;
-    },
-    refuse,
-  };
 }

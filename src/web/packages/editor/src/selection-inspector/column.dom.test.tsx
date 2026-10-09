@@ -6,7 +6,7 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import type { ChartEdits } from "../chart-manager/chart-fields.js";
 import { SelectionColumn } from "./column.js";
-import { idleCrop } from "./idle-crop.test-stage.js";
+import { idleCrop, idleCropEdits } from "./idle-crop.test-stage.js";
 import { type ColumnContext, perKindColumn } from "./per-kind-column.js";
 import {
   measuredEdgeOf,
@@ -57,6 +57,9 @@ const chart: ChartEdits = {
   onAddBinding: () => {},
   onRemoveBinding: () => {},
 };
+
+/** A crop port that records nothing: this file reads the chrome, not writes. */
+const crop = idleCropEdits();
 
 function ports(): ProjectionPorts {
   return {
@@ -123,7 +126,13 @@ afterEach(() => {
 function renderedSections(view: SelectionView): HTMLElement[] {
   act(() => {
     root.render(
-      <SelectionColumn view={view} edits={edits} runs={runs} chart={chart} />,
+      <SelectionColumn
+        view={view}
+        edits={edits}
+        runs={runs}
+        chart={chart}
+        crop={crop}
+      />,
     );
   });
   return [...host.querySelectorAll<HTMLElement>("[data-vigilia-section]")];

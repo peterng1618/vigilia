@@ -6,6 +6,7 @@
     "src/web/packages/editor/src/components/ui/control-swatch.tsx",
     "src/web/packages/editor/src/components/ui/control-select.tsx",
     "src/web/packages/editor/src/components/ui/control-number.tsx",
+    "src/web/packages/editor/src/components/ui/control-pair.tsx",
     "src/web/packages/editor/src/components/ui/control-slider.tsx",
     "src/web/packages/editor/src/components/ui/control-toggle.tsx",
     "src/web/packages/editor/src/components/ui/control-segmented.tsx",

@@ -17,7 +17,6 @@ import type {
   ChartContentFieldsView,
   ChartPaintFieldsView,
 } from "../chart-manager/chart-fields.js";
-import { linkedPair } from "../editor-shell/controls/linked-pair.js";
 import { uiCopy } from "../ui-copy.js";
 import {
   type AppearanceContext,
@@ -31,15 +30,20 @@ import {
   resolveTypePreset,
   typePresetOf,
 } from "./appearance.js";
-import { createBleedField } from "./bleed.js";
-import { createCropRow } from "./crop.js";
+import { bleedField } from "./bleed.js";
+import { cropView } from "./crop.js";
 import { createGlassFields } from "./glass.js";
 import {
   createPanelMaterialFields,
   createShapeGeometryFields,
 } from "./panel.js";
 import { projectRuns } from "./runs.js";
-import type { ColumnSectionView, ExtraView, FieldView } from "./view.js";
+import type {
+  ColumnSectionView,
+  ExtraView,
+  FieldView,
+  PairHalfView,
+} from "./view.js";
 
 /**
  * The column the inspector renders, as **data**: one entry per section, in the
@@ -93,15 +97,17 @@ interface SectionParts {
 /**
  * Whether the column renders this extra today.
  *
- * `runs`, `chartContent` and `chartPaint` are wired; `crop` is Task 4's. The
- * section's count and the column's rows are the same decision made once, so
- * emitting an extra whose renderer has not landed cannot make a header claim a
- * row that is not there. Wiring one is a change to this predicate and to the
- * column's row together, which is the point.
+ * All four are wired: `runs`, `chartContent` and `chartPaint` when their
+ * sections moved to React, and `crop` with Position. The section's count and
+ * the column's rows are the same decision made once, so emitting an extra whose
+ * renderer has not landed cannot make a header claim a row that is not there.
+ * Wiring one is a change to this predicate and to the column's row together,
+ * which is the point.
  */
 export function rendersExtra(extra: ExtraView): boolean {
   return (
     extra.kind === "runs" ||
+    extra.kind === "crop" ||
     extra.kind === "chartContent" ||
     extra.kind === "chartPaint"
   );
@@ -278,15 +284,6 @@ function appearanceOf(context: ColumnContext): AppearanceContext {
   return { editor: context.editor, globals: context.globals };
 }
 
-/** A refused edit restores the field itself; the column only reports it. */
-function refused(context: ColumnContext): () => void {
-  return () =>
-    context.editor.errorManager.warn(
-      "controls",
-      uiCopy.inspectorFields.invalidValue,
-    );
-}
-
 /** The labels the geometry fields carry. The Size pair marks its boxes W and H
     because the full words wrap the second input onto its own line. */
 const GEOMETRY_LABELS: Readonly<Record<GeometryKey, string>> = {
@@ -298,49 +295,41 @@ const GEOMETRY_LABELS: Readonly<Record<GeometryKey, string>> = {
 };
 
 /** The fewest whole units a dimension can be: zero would make the object
-    vanish from the canvas and from its own selection box. */
-const MIN_DIMENSION = 1;
+    vanish from the canvas and from its own selection box. The write funnel
+    applies it — the pre-plan `numberField` landed an out-of-range value on the
+    bound it crossed rather than refusing it, and that is the rule kept. */
+export const MIN_DIMENSION = 1;
 
-function pair(
+/**
+ * One geometry pair, as a value: `X`/`Y` and `W`/`H` each share a row, and each
+ * half commits only its own key.
+ *
+ * Every half is a whole number. The pre-plan `numberField` refused a typed
+ * fraction on **every** one of these fields, so `integer` is declared here and
+ * re-checked at the write boundary — a control is a convenience, the boundary is
+ * what must hold.
+ */
+function geometryPair(
   context: ColumnContext,
   object: FabricObject,
   rowLabel: string,
   first: GeometryKey,
   second: GeometryKey,
-): HTMLElement {
-  const side = (key: GeometryKey) => ({
+): FieldView {
+  const half = (key: GeometryKey): PairHalfView => ({
+    id: key,
     label: GEOMETRY_LABELS[key],
     value: Math.round(context.geometry.read(object, key)),
-    data: "vigiliaGeometry",
-    dataValue: key,
+    integer: true,
+    data: { "data-vigilia-geometry": key },
   });
-  const min =
-    first === "width" || first === "height" ? MIN_DIMENSION : undefined;
-
-  return linkedPair({
-    rowLabel,
-    first: side(first),
-    second: side(second),
-    ...(min === undefined ? {} : { min }),
-    invalidMessage: uiCopy.inspectorFields.invalidValue,
-    onReject: refused(context),
-    // Each half writes only its own key: X/Y and W/H are independent, and
-    // writing the sibling would quantise a fractional dimension the author
-    // never touched.
-    onCommitFirst: (value) => writeGeometry(context, object, first, value),
-    onCommitSecond: (value) => writeGeometry(context, object, second, value),
-  }).row;
-}
-
-function writeGeometry(
-  context: ColumnContext,
-  object: FabricObject,
-  key: GeometryKey,
-  value: number,
-): void {
-  if (!context.stillTarget(object)) return;
-  context.geometry.write(object, key, value);
-  context.commit();
+  return {
+    id: `${first}-${second}`,
+    control: "pair",
+    label: rowLabel,
+    halves: [half(first), half(second)],
+    data: {},
+  };
 }
 
 /** Rotation, the one angle a Layer column asks for. It is whole units, and it
@@ -365,22 +354,26 @@ function rotationField(
  * The Size pair reads the authored box, which is what it writes. Where the
  * object's own edge is a different number, the author is told which is which
  * rather than left to compare a panel against a canvas.
+ *
+ * A note, not a control: it carries no well, because bible §5.1's border means
+ * editable and this line is not.
  */
 function sizeDisagreement(
   context: ColumnContext,
   object: FabricObject,
   edge: { readonly width: number; readonly height: number },
-): HTMLElement {
-  const line = document.createElement("p");
-  line.className = "vigilia-resolution";
-  line.dataset["vigiliaResolution"] = uiCopy.inspectorFields.size;
-  line.textContent = uiCopy.inspectorFields.sizeDisagrees(
-    `${Math.round(context.geometry.read(object, "width"))} × ${Math.round(
-      context.geometry.read(object, "height"),
-    )}`,
-    `${edge.width} × ${edge.height}`,
-  );
-  return line;
+): FieldView {
+  return {
+    id: "size-disagreement",
+    control: "note",
+    value: uiCopy.inspectorFields.sizeDisagrees(
+      `${Math.round(context.geometry.read(object, "width"))} × ${Math.round(
+        context.geometry.read(object, "height"),
+      )}`,
+      `${edge.width} × ${edge.height}`,
+    ),
+    data: { "data-vigilia-resolution": uiCopy.inspectorFields.size },
+  };
 }
 
 /** What it shows: the name, and a text object's runs and layout. */
@@ -436,45 +429,49 @@ function contentBody(
 }
 
 /** Where it sits and how big: the two pairs, crop, bleed, and this shape's own
-    geometry. Still imperative until Task 4. */
+    geometry. Every row is a value; the writes reach the object through the one
+    funnel in `index.ts`, so the rules that scale a shape, write a text box or
+    adopt new geometry stay in one place. */
 function positionBody(
   target: FabricObject,
   context: ColumnContext,
   locked: boolean,
 ): SectionParts {
-  if (locked) return { body: [] };
-  const body: HTMLElement[] = [];
+  if (locked) return { fields: [] };
 
-  body.push(
-    pair(context, target, uiCopy.inspectorFields.position, "left", "top"),
-    pair(context, target, uiCopy.inspectorFields.size, "width", "height"),
-  );
+  const fields: FieldView[] = [
+    geometryPair(
+      context,
+      target,
+      uiCopy.inspectorFields.position,
+      "left",
+      "top",
+    ),
+    geometryPair(
+      context,
+      target,
+      uiCopy.inspectorFields.size,
+      "width",
+      "height",
+    ),
+  ];
 
   const edge = context.geometry.measuredEdge(target);
-  if (edge !== undefined) body.push(sizeDisagreement(context, target, edge));
-
-  // Crop sits with the geometry it changes, and only for a selection that can
-  // hold one — an image, which is the only kind `canCrop` admits.
-  const crop = createCropRow(context.editor, target, context.stillTarget);
-  if (crop !== undefined) body.push(crop);
+  if (edge !== undefined) fields.push(sizeDisagreement(context, target, edge));
 
   // The mark that says this object's overhang is deliberate. It is beside crop
   // rather than under appearance because what it changes is the crop notice
   // both surfaces print, not how the object paints.
-  body.push(
-    createBleedField(appearanceOf(context), target, {
-      stillTarget: () => context.stillTarget(target),
-      commit: context.commit,
-      onChange: context.rerender,
-    }),
-    ...createShapeGeometryFields(appearanceOf(context), target, {
-      stillTarget: () => context.stillTarget(target),
-      commit: context.commit,
-      onChange: context.rerender,
-    }),
-  );
+  fields.push(bleedField(target), ...createShapeGeometryFields(target));
 
-  return { body };
+  // Crop sits with the geometry it changes, and only for a selection that can
+  // hold one — an image, which is the only kind `canCrop` admits. A session
+  // that is open replaces the row with its own controls.
+  const extras: ExtraView[] = [];
+  const crop = cropView(context.editor, target);
+  if (crop !== undefined) extras.push({ kind: "crop", crop });
+
+  return { fields, extras };
 }
 
 /** How it presents: rotation, and opacity. */

@@ -1,7 +1,7 @@
 import type { FabricObject } from "fabric/es";
 import { canCrop } from "../crop-manager/index.js";
 import type { EditorInteraction } from "../editor-interaction.js";
-import { uiCopy } from "../ui-copy.js";
+import type { CropView } from "./view.js";
 
 /**
  * The control over a selected image's crop.
@@ -15,10 +15,16 @@ import { uiCopy } from "../ui-copy.js";
  * The session is `crop-manager`'s. This starts one, locks a ratio, and applies
  * or abandons it; it owns none of the drag, because the drag is Fabric's own
  * handles on the frame the session installs.
+ *
+ * The row is a value: `cropView` projects the session's state and `index.ts`
+ * owns the four commands, so React holds no session and no Fabric object.
  */
 
 /** The ratios an author is offered, as width over height. */
-const ASPECTS: readonly (readonly [label: string, ratio: number])[] = [
+export const CROP_ASPECTS: readonly (readonly [
+  label: string,
+  ratio: number,
+])[] = [
   ["1:1", 1],
   ["4:3", 4 / 3],
   ["16:9", 16 / 9],
@@ -31,63 +37,14 @@ const ASPECTS: readonly (readonly [label: string, ratio: number])[] = [
  * the selection: the session has made its frame the active object, so the
  * selection is the frame rather than the image the author is cropping.
  *
- * `stillTarget` is asked before the session starts, for the reason every other
- * field asks it — a button that held focus across a selection change would
- * otherwise crop whatever is selected now.
+ * `canStart` is asked on the image, and `canCrop` withholds a rotated one the
+ * session itself would refuse — the predicate is the owner's, not a copy.
  */
-export function createCropRow(
+export function cropView(
   editor: EditorInteraction,
   object: FabricObject | undefined,
-  stillTarget: (object: FabricObject) => boolean,
-): HTMLElement | undefined {
-  const session = editor.cropManager;
-  const row = document.createElement("div");
-  row.className = "vigilia-field-row";
-
-  if (session.active) {
-    for (const [label, ratio] of ASPECTS) {
-      const aspect = button(label, "vigiliaCropAspect", label);
-      aspect.addEventListener("click", () => {
-        session.setAspect(ratio);
-      });
-      row.append(aspect);
-    }
-    const apply = button(uiCopy.inspectorFields.cropApply, "vigiliaCropApply");
-    apply.addEventListener("click", () => {
-      session.apply();
-    });
-    const cancel = button(
-      uiCopy.inspectorFields.cropCancel,
-      "vigiliaCropCancel",
-    );
-    cancel.addEventListener("click", () => {
-      session.cancel();
-    });
-    row.append(apply, cancel);
-    return row;
-  }
-
+): CropView | undefined {
+  if (editor.cropManager.active) return { active: true, canStart: false };
   if (object === undefined || !canCrop(object)) return undefined;
-  const target = object;
-  const start = button(uiCopy.inspectorFields.crop, "vigiliaCrop");
-  start.addEventListener("click", () => {
-    if (!stillTarget(target)) return;
-    session.begin(target);
-  });
-  row.append(start);
-  return row;
-}
-
-/** A test handle and a class the shell's panel button styling already covers.
-    A dataset value lets one test name the button among several of a kind. */
-function button(
-  text: string,
-  dataset: string,
-  value?: string,
-): HTMLButtonElement {
-  const element = document.createElement("button");
-  element.type = "button";
-  element.textContent = text;
-  element.dataset[dataset] = value ?? "";
-  return element;
+  return { active: false, canStart: true };
 }

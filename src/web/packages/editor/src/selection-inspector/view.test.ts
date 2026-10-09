@@ -319,21 +319,29 @@ describe("editRefusal", () => {
     expect(editRefusal(edit({ value: "12" }), live)).toBe("invalid");
   });
 
-  it("refuses a fractional angle at the boundary, whatever the control let through", () => {
-    // Rotation was whole units under its own `numberField`, and the control's
-    // own refusal is a convenience: this is the copy that must hold.
+  it("refuses a fractional geometry value at the boundary, whatever the control let through", () => {
+    // Every geometry field the Position section converts refused a fraction
+    // pre-plan — the old `numberField` demanded `Number.isInteger` — and the
+    // control's own refusal is a convenience: this is the copy that must hold.
+    // A fraction is refused, not rounded: authoring a fraction is a different
+    // act from *displaying* a dimension a drag left fractional.
     expect(editRefusal(edit({ fieldId: "angle", value: 45.5 }), live)).toBe(
       "invalid",
     );
     expect(editRefusal(edit({ fieldId: "angle", value: 45 }), live)).toBe(
       undefined,
     );
-    // Every other number field is unchanged: opacity and the geometry pair
-    // take a fraction.
+    for (const fieldId of ["left", "top", "width", "height"]) {
+      expect(editRefusal(edit({ fieldId, value: 45.5 }), live), fieldId).toBe(
+        "invalid",
+      );
+      expect(editRefusal(edit({ fieldId, value: 45 }), live), fieldId).toBe(
+        undefined,
+      );
+    }
+    // Opacity is the one field that is not geometry: a fraction is its normal
+    // value, so it is unchanged.
     expect(editRefusal(edit({ fieldId: "opacity", value: 45.5 }), live)).toBe(
-      undefined,
-    );
-    expect(editRefusal(edit({ fieldId: "width", value: 45.5 }), live)).toBe(
       undefined,
     );
   });

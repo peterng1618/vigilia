@@ -242,15 +242,15 @@ const GEOMETRY = {
  * input, which is a hidden control and not a failing one.
  */
 export async function openPosition(page: Page): Promise<void> {
-  const summary = page
-    .locator('[data-vigilia-section="position"] summary')
+  const header = page
+    .locator('[data-vigilia-section="position"] > h2 > button[aria-expanded]')
     .first();
-  if ((await summary.count()) === 0) return;
-  const open = await summary.evaluate(
-    (node) =>
-      (node.closest("details") as HTMLDetailsElement | null)?.open === true,
-  );
-  if (!open) await summary.click();
+  if ((await header.count()) === 0) return;
+  // The section is a disclosure whose header is the button (bible §5), not a
+  // `<details>`: `aria-expanded` is the state a reader sees, and clicking the
+  // header is what flips it.
+  if ((await header.getAttribute("aria-expanded")) === "true") return;
+  await header.click();
 }
 
 /** Places and sizes the selection, in whole artboard units. */

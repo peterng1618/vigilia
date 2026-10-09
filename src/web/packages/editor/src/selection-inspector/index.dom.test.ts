@@ -251,14 +251,13 @@ describe("the selection inspector", () => {
     expect(history.saveState).toHaveBeenCalledTimes(1);
   });
 
-  it("moves the object and records exactly one history entry", () => {
+  it("moves the object and records exactly one history entry", async () => {
     const { host, history } = setup(rect);
     const left = host.querySelector<HTMLInputElement>(
       '[data-vigilia-geometry="left"]',
     )!;
 
-    left.value = "120";
-    left.dispatchEvent(new Event("change"));
+    await edit(left, "120");
 
     expect(rect.left).toBe(120);
     expect(history.saveState).toHaveBeenCalledTimes(1);
@@ -268,7 +267,8 @@ describe("the selection inspector", () => {
     const { host } = setup(rect);
     const input = (key: string) =>
       host.querySelector<HTMLInputElement>(`[data-vigilia-geometry="${key}"]`)!;
-    const rowOf = (key: string) => input(key).closest(".vigilia-field-row");
+    // A pair is a layout, and `[data-vigilia-pair]` is the row it lays out.
+    const rowOf = (key: string) => input(key).closest("[data-vigilia-pair]");
 
     // Non-vacuous: a pairing assertion on two absent rows would compare null
     // to null and pass for the stacked layout this replaced.
@@ -280,21 +280,19 @@ describe("the selection inspector", () => {
     expect(rowOf("left")).not.toBe(rowOf("width"));
     // Rotation stands alone: Layer renders it as its own row, never as one
     // half of the pairs Position builds.
-    expect(input("angle").closest(".vigilia-field-row")).toBeNull();
+    expect(input("angle").closest("[data-vigilia-pair]")).toBeNull();
     expect(input("angle").closest('[data-vigilia-section="layer"]')).not.toBe(
       null,
     );
-    expect(rowOf("angle")).toBeNull();
   });
 
-  it("commits a paired edit as one history entry", () => {
+  it("commits a paired edit as one history entry", async () => {
     const { host, history } = setup(rect);
     const width = host.querySelector<HTMLInputElement>(
       '[data-vigilia-geometry="width"]',
     )!;
 
-    width.value = "80";
-    width.dispatchEvent(new Event("change"));
+    await edit(width, "80");
 
     // The sibling's unchanged value is written back too, but that is a no-op
     // for geometry: one committed edit, one entry.
@@ -302,10 +300,10 @@ describe("the selection inspector", () => {
     expect(history.saveState).toHaveBeenCalledTimes(1);
   });
 
-  it("commits only the edited half, leaving a fractional sibling alone", () => {
+  it("commits only the edited half, leaving a fractional sibling alone", async () => {
     // A drag leaves fractional scale, and the field shows the rounded read of
-    // it. Committing that unchanged display value must not quantise the
-    // dimension the author never touched.
+    // it. Editing one half must not write the sibling, or the round-trip
+    // through the field would quantise the dimension the author never touched.
     rect.set({ width: 520, height: 36.32, scaleX: 1.0009, scaleY: 1.00444 });
     const { host, history } = setup(rect);
     const width = host.querySelector<HTMLInputElement>(
@@ -313,23 +311,24 @@ describe("the selection inspector", () => {
     )!;
     expect(width.value).toBe("520");
 
-    width.value = "520";
-    width.dispatchEvent(new Event("change"));
+    await edit(width, "1040");
 
-    expect(rect.scaleX).toBeCloseTo(1, 5);
+    expect(rect.scaleX).toBeCloseTo(2, 5);
+    // The half the author did not edit keeps its fractional scale: a commit
+    // that wrote the sibling would land it on `Math.round(36.48)` and quantise
+    // it to about 0.991.
     expect(rect.scaleY).toBeCloseTo(1.00444, 5);
     expect(rect.height * rect.scaleY).toBeCloseTo(36.48, 2);
     expect(history.saveState).toHaveBeenCalledTimes(1);
   });
 
-  it("refuses a value that would make the object invalid", () => {
+  it("refuses a value that would make the object invalid", async () => {
     const { host, history } = setup(rect);
     const width = host.querySelector<HTMLInputElement>(
       '[data-vigilia-geometry="width"]',
     )!;
 
-    width.value = "-5";
-    width.dispatchEvent(new Event("change"));
+    await edit(width, "-5");
 
     // Was restored to 40 with nothing recorded. The floor is 1, so -5 now
     // lands on 1: reverting is what made the bound undiscoverable.
@@ -835,14 +834,18 @@ describe("the column's sections", () => {
       '[data-vigilia-section="position"]',
     )!;
 
-    // The count is the body's own length: a header that could claim more than
+    // The count is every row the section renders — the fields React owns now
+    // plus the body it does not yet — and a header that could claim more than
     // the section holds is the defect the section control exists to prevent.
     const count = Number(
       section.querySelector("[data-vigilia-section-count]")?.textContent,
     );
+    // Each field and extra renders exactly one row element inside the panel;
+    // the still-imperative body container is the one child that is not a row.
     const body = section.querySelector("[data-vigilia-section-body]")!;
-    expect(count).toBe(body.childElementCount);
-    expect(body.childElementCount).toBeGreaterThan(0);
+    const rows = body.parentElement!.childElementCount - 1;
+    expect(count).toBe(rows);
+    expect(rows).toBeGreaterThan(0);
   });
 
   it("keeps the sections the author opened across a re-publish", () => {
@@ -1211,20 +1214,18 @@ describe("the size of a text object", () => {
     return text;
   }
 
-  it("writes the authored box, and leaves the type at its preset's size", () => {
+  it("writes the authored box, and leaves the type at its preset's size", async () => {
     const text = caption();
     const { host, history } = setup(text);
 
     const width = host.querySelector<HTMLInputElement>(
       '[data-vigilia-geometry="width"]',
     )!;
-    width.value = "220";
-    width.dispatchEvent(new Event("change"));
+    await edit(width, "220");
     const height = host.querySelector<HTMLInputElement>(
       '[data-vigilia-geometry="height"]',
     )!;
-    height.value = "40";
-    height.dispatchEvent(new Event("change"));
+    await edit(height, "40");
 
     const authored = text.get("vigiliaText") as {
       box: { width: number; height: number };
@@ -1237,7 +1238,7 @@ describe("the size of a text object", () => {
     expect(history.saveState).toHaveBeenCalledTimes(2);
   });
 
-  it("gives a whole box when only one Size field is filled in", () => {
+  it("gives a whole box when only one Size field is filled in", async () => {
     // An inserted caption has no box yet: its width is Fabric's measurement
     // until an author types one. Writing the height alone used to produce
     // `{ height }` with no width, and the next text change multiplied an
@@ -1250,8 +1251,7 @@ describe("the size of a text object", () => {
     const height = host.querySelector<HTMLInputElement>(
       '[data-vigilia-geometry="height"]',
     )!;
-    height.value = "40";
-    height.dispatchEvent(new Event("change"));
+    await edit(height, "40");
 
     const authored = text.get("vigiliaText") as {
       box: { width: number; height: number };
@@ -1286,7 +1286,7 @@ describe("the size of a text object", () => {
     ).toBe("90");
   });
 
-  it("still scales a shape, whose width is a size rather than a box", () => {
+  it("still scales a shape, whose width is a size rather than a box", async () => {
     // The same field, the other kind of object: a `Rect`'s width is a natural
     // size, and scaling is how it changes.
     const panel = new Rect({ left: 0, top: 0, width: 360, height: 200 });
@@ -1295,8 +1295,7 @@ describe("the size of a text object", () => {
     const width = host.querySelector<HTMLInputElement>(
       '[data-vigilia-geometry="width"]',
     )!;
-    width.value = "180";
-    width.dispatchEvent(new Event("change"));
+    await edit(width, "180");
 
     expect(panel.scaleX).toBeCloseTo(0.5, 6);
     expect(panel.get("vigiliaText")).toBeUndefined();
@@ -1627,6 +1626,20 @@ describe("the column a kind gets", () => {
         ]) {
           expect(host.querySelector(absent), absent).toBeNull();
         }
+      },
+    );
+
+    it.each(CONTAINERS)(
+      "offers a %s no crop, and carries the bleed mark in its Position",
+      (_kind, make) => {
+        const { host } = setup(make());
+
+        // A container is a selection like any other for the bleed mark: the
+        // question is about an object's overhang, not about what it is made of.
+        expect(host.querySelector("[data-vigilia-bleeds]")).not.toBeNull();
+        // A crop is about an image's own frame, and a container has none — a
+        // row that offered one would write a clip nothing there can hold.
+        expect(host.querySelector("[data-vigilia-crop]")).toBeNull();
       },
     );
 

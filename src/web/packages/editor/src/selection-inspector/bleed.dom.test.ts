@@ -3,9 +3,17 @@ import { objectBleeds, VIGILIA_BLEEDS_PROPERTY } from "@vigilia/renderer-core";
 import { outsideCount, sceneBoxesOf } from "@vigilia/scene-fabric";
 import { Circle, Rect } from "fabric/es";
 import { describe, expect, it, vi } from "vitest";
+import { act } from "react";
 import { createArtboardPanel } from "../artboard-panel.js";
 import { idleCrop } from "./idle-crop.test-stage.js";
 import { createSelectionInspector } from "./index.js";
+
+// The switch re-dispatches its click through a `PointerEvent` to carry modifier
+// state, and jsdom has never had one.
+window.PointerEvent ??= MouseEvent as never;
+(
+  globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
+).IS_REACT_ACT_ENVIRONMENT = true;
 
 /**
  * The control that marks a crop as deliberate.
@@ -50,9 +58,20 @@ function setup(active: unknown) {
   return { host, history, fire, editor, field };
 }
 
-function tick(field: HTMLInputElement, checked: boolean): void {
-  field.checked = checked;
-  field.dispatchEvent(new Event("change"));
+/**
+ * The bleeds control is a plan-1 `ControlToggle`: a `<button role="switch">`
+ * whose state is `aria-checked`, flipped by a click. `tick` sets it to `checked`
+ * rather than blindly clicking, so a test that asks for the state it is already
+ * in records no history.
+ */
+function tick(field: HTMLElement, checked: boolean): void {
+  const on = field.getAttribute("aria-checked") === "true";
+  if (on === checked) return;
+  act(() => {
+    field.dispatchEvent(
+      new MouseEvent("click", { bubbles: true, cancelable: true }),
+    );
+  });
 }
 
 /**
@@ -141,7 +160,7 @@ describe("marking a deliberate bleed in the inspector", () => {
 
     expect(outsideCount([box], ARTBOARD).outside).toBe(1);
 
-    tick(field<HTMLInputElement>("[data-vigilia-bleeds]"), true);
+    tick(field<HTMLElement>("[data-vigilia-bleeds]"), true);
 
     expect(objectBleeds(object)).toBe(true);
     expect(history.saveState).toHaveBeenCalled();
@@ -159,7 +178,7 @@ describe("marking a deliberate bleed in the inspector", () => {
     object.set(VIGILIA_BLEEDS_PROPERTY, true);
     const { host, field } = setup(object);
 
-    tick(field<HTMLInputElement>("[data-vigilia-bleeds]"), false);
+    tick(field<HTMLElement>("[data-vigilia-bleeds]"), false);
 
     expect(object.get(VIGILIA_BLEEDS_PROPERTY)).toBeUndefined();
     expect(objectBleeds(object)).toBe(false);
@@ -173,16 +192,18 @@ describe("marking a deliberate bleed in the inspector", () => {
     object.set(VIGILIA_BLEEDS_PROPERTY, true);
     const { host, field } = setup(object);
 
-    expect(field<HTMLInputElement>("[data-vigilia-bleeds]").checked).toBe(true);
+    expect(
+      field<HTMLElement>("[data-vigilia-bleeds]").getAttribute("aria-checked"),
+    ).toBe("true");
     host.remove();
   });
 
   it("leaves an unmarked object unchecked", () => {
     const { host, field } = setup(straddling());
 
-    expect(field<HTMLInputElement>("[data-vigilia-bleeds]").checked).toBe(
-      false,
-    );
+    expect(
+      field<HTMLElement>("[data-vigilia-bleeds]").getAttribute("aria-checked"),
+    ).toBe("false");
     host.remove();
   });
 
@@ -225,7 +246,7 @@ describe("marking a deliberate bleed in the inspector", () => {
       "1 of 1 objects are now outside",
     );
 
-    tick(host.querySelector<HTMLInputElement>("[data-vigilia-bleeds]")!, true);
+    tick(host.querySelector<HTMLElement>("[data-vigilia-bleeds]")!, true);
 
     expect(objectBleeds(object)).toBe(true);
     expect(
@@ -234,7 +255,7 @@ describe("marking a deliberate bleed in the inspector", () => {
     ).not.toContain("are now outside");
 
     // And back, so the checkbox is shown to be a control rather than a latch.
-    tick(host.querySelector<HTMLInputElement>("[data-vigilia-bleeds]")!, false);
+    tick(host.querySelector<HTMLElement>("[data-vigilia-bleeds]")!, false);
 
     expect(note()).toContain("1 of 1 objects are now outside");
     panel.destroy();
@@ -244,7 +265,7 @@ describe("marking a deliberate bleed in the inspector", () => {
   it("records one history entry per committed edit", () => {
     const object = straddling();
     const { host, history, field } = setup(object);
-    const mark = field<HTMLInputElement>("[data-vigilia-bleeds]");
+    const mark = field<HTMLElement>("[data-vigilia-bleeds]");
 
     tick(mark, true);
     tick(mark, false);

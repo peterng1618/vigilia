@@ -9,13 +9,16 @@ import type { ChartEdits } from "../chart-manager/chart-fields.js";
 import type { EditorInteraction } from "../editor-interaction.js";
 import { OBJECT_LOCK_CHANGED_EVENT } from "../object-lock-manager/index.js";
 import { uiCopy } from "../ui-copy.js";
+import { writeMark } from "./bleed.js";
 import { createSelectionColumnRoot } from "./column.js";
 import { createInspectorRoot } from "./inspector.js";
+import { writeShapeGeometryField } from "./panel.js";
 import {
   type ChartFieldsPort,
   type ColumnContext,
   type ColumnSection,
   type GeometryKey,
+  MIN_DIMENSION,
   perKindColumn,
 } from "./per-kind-column.js";
 import {
@@ -32,6 +35,7 @@ import {
   writeUnitDisplay,
 } from "./run-edits.js";
 import {
+  type CropEdits,
   editRefusal,
   isTextObject,
   measuredEdgeOf,
@@ -164,6 +168,16 @@ export interface SelectionInspectorOptions {
    */
   readonly chartEdits?: () => ChartEdits | undefined;
 }
+
+/** The geometry keys the funnel writes directly; every other id is a shape's
+    own geometry and is parsed by its owner in `panel.ts`. */
+const GEOMETRY_KEYS: ReadonlySet<string> = new Set([
+  "left",
+  "top",
+  "width",
+  "height",
+  "angle",
+]);
 
 /** The input types that hold a caret. A checkbox has focus and nothing to type. */
 const TEXT_ENTRY: ReadonlySet<string> = new Set([
@@ -354,6 +368,11 @@ export function createSelectionInspector(
     key: GeometryKey,
     value: number,
   ): void => {
+    // A dimension below one unit would make the object vanish from the canvas
+    // and from its own selection box. The pre-plan Size pair carried this floor
+    // as a field bound that landed the value on it rather than refusing; it is
+    // the funnel's now, once, for both dimensions.
+    const dimension = Math.max(value, MIN_DIMENSION);
     switch (key) {
       case "left":
         object.set({ left: value });
@@ -368,22 +387,22 @@ export function createSelectionInspector(
         // H field squashed the same type to 0.44 of its height. The authored box
         // is the owner, and the renderer re-asserts it.
         if (isTextObject(object)) {
-          writeAuthoredBox(object, "width", value);
+          writeAuthoredBox(object, "width", dimension);
           applyAuthoredText(editor.canvas, globals);
           break;
         }
         // Scale rather than resize: a chart's own width is its raster size.
-        const next = value / (object.width <= 0 ? 1 : object.width);
+        const next = dimension / (object.width <= 0 ? 1 : object.width);
         object.set({ scaleX: next });
         break;
       }
       case "height": {
         if (isTextObject(object)) {
-          writeAuthoredBox(object, "height", value);
+          writeAuthoredBox(object, "height", dimension);
           applyAuthoredText(editor.canvas, globals);
           break;
         }
-        const next = value / (object.height <= 0 ? 1 : object.height);
+        const next = dimension / (object.height <= 0 ? 1 : object.height);
         object.set({ scaleY: next });
         break;
       }
@@ -434,7 +453,18 @@ export function createSelectionInspector(
     editor.canvas.fire("object:modified" as never, { target: object } as never);
   };
 
-  /** Writes opacity from a percentage, refusing a value outside Fabric's 0–1. */
+  /** Writes the deliberate-bleed mark, and tells the surfaces that count it.
+      The figure the artboard panel prints is derived from the scene, so it has
+      to be told the scene moved or it keeps showing the number from before. */
+  const writeBleed = (object: FabricObject, next: boolean): boolean => {
+    if (!writeMark(object, next)) return false;
+    editor.canvas.fire("object:modified" as never, { target: object } as never);
+    return true;
+  };
+
+  /**
+   * Writes opacity from a percentage, refusing a value outside Fabric's 0–1.
+   */
   const writeOpacity = (
     object: FabricObject,
     value: string | number | boolean,
@@ -490,8 +520,28 @@ export function createSelectionInspector(
         writeName(object, value);
       } else if (fieldId === "opacity") {
         applied = writeOpacity(object, value);
-      } else {
+      } else if (fieldId === "bleeds") {
+        applied = writeBleed(object, value === true);
+      } else if (GEOMETRY_KEYS.has(fieldId)) {
         write(object, fieldId as GeometryKey, value as number);
+      } else {
+        // A shape's own geometry: the parse, the bound and the scale it adopts
+        // are its owner's, and this is the funnel that asks for the write.
+        applied = writeShapeGeometryField(
+          object,
+          fieldId,
+          value as string | number,
+        );
+        if (!applied) {
+          editor.errorManager.warn(
+            "controls",
+            uiCopy.inspectorFields.invalidValue,
+          );
+        } else {
+          // Every field here moves a corner, a handle or an endpoint, and a
+          // stale control box outlives the render.
+          object.setCoords();
+        }
       }
 
       if (!applied) {
@@ -572,6 +622,29 @@ export function createSelectionInspector(
     writeLayout: (patch) => runEdit((t) => writeTextLayout(t, patch)),
     addRun: () => runEdit(appendRun),
     removeRun: (index) => runEdit((t) => dropRun(t, index)),
+  };
+
+  /**
+   * The crop row's four commands, on the session the editor owns.
+   *
+   * `begin` resolves the target and refuses a stale one first, for the reason
+   * every other field does — a button that held focus across a selection change
+   * would otherwise start cropping whatever is selected now. The other three act
+   * on the open session, which names its own image.
+   */
+  const cropEdits: CropEdits = {
+    begin: () => {
+      const object = described;
+      if (object === undefined) {
+        render();
+        return false;
+      }
+      if (!stillTarget(object)) return false;
+      return editor.cropManager.begin(object);
+    },
+    setAspect: (ratio) => editor.cropManager.setAspect(ratio),
+    apply: () => editor.cropManager.apply(),
+    cancel: () => editor.cropManager.cancel(),
   };
 
   const columnContext = (): ColumnContext => {
@@ -665,7 +738,7 @@ export function createSelectionInspector(
     // the empty state, the section root renders the chrome. Each is flushed
     // synchronously, so the bodies mount into containers that already exist.
     column.publish(view, edits);
-    sectionColumn.publish(view, edits, runEdits, chartEdits());
+    sectionColumn.publish(view, edits, runEdits, chartEdits(), cropEdits);
     mountBodies(sections);
 
     restoreFocus(sectionsHost, focused);

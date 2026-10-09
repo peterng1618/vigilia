@@ -12,10 +12,26 @@ import {
   Textbox,
   Triangle,
 } from "fabric/es";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { act } from "react";
 import { createNewShape } from "../new-object-defaults.js";
 import { createSelectionInspector } from "./index.js";
 import { idleCrop } from "./idle-crop.test-stage.js";
+
+/**
+ * React only flushes work scheduled inside `act` when it has been told it is in
+ * a test; without this, the draft a plan-1 control holds lands after the blur
+ * that should have committed it.
+ */
+(
+  globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
+).IS_REACT_ACT_ENVIRONMENT = true;
+
+// Every `setup` attaches its host so a control can hold focus; the body is
+// emptied between cases so the hosts do not pile up.
+afterEach(() => {
+  document.body.replaceChildren();
+});
 
 /** A palette with a solid surface, a solid content token and a gradient, so a
  * control that must refuse a gradient is offered one to refuse. */
@@ -50,6 +66,9 @@ const globals = {
  *  inspector edit is silent. */
 function setup(active: unknown, others: readonly unknown[] = []) {
   const host = document.createElement("div");
+  // Attached: a plan-1 control commits on blur, and jsdom fires a blur only for
+  // an element that can hold focus — nothing is focusable while it is detached.
+  document.body.append(host);
   const history = { saveState: vi.fn() };
   const editor = {
     canvas: {
@@ -88,9 +107,33 @@ function type(field: HTMLInputElement, value: string): void {
   field.dispatchEvent(new Event("change"));
 }
 
-function typeArea(field: HTMLTextAreaElement, value: string): void {
-  field.value = value;
-  field.dispatchEvent(new Event("change"));
+/**
+ * A draft in a plan-1 control, as React sees one. `type` above is for the
+ * fields still mounted imperatively, which read the node on `change`; a control
+ * from the plan-1 set holds its own draft and commits on blur, so it has to be
+ * driven the way a person does — through the prototype's setter, because React
+ * installs a value tracker that suppresses a plain assignment, then off the
+ * field.
+ */
+async function edit(
+  field: HTMLInputElement | HTMLTextAreaElement,
+  value: string,
+): Promise<void> {
+  await act(async () => {
+    const setter = Object.getOwnPropertyDescriptor(
+      Object.getPrototypeOf(field) as HTMLInputElement,
+      "value",
+    )?.set;
+    if (setter === undefined) field.value = value;
+    else setter.call(field, value);
+    field.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  // Its own turn: a blur in the same turn as the draft reads it before React
+  // has applied it.
+  await act(async () => {
+    field.focus();
+    field.blur();
+  });
 }
 
 /** Authored placement, as a value rather than a fresh literal: Fabric infers
@@ -562,13 +605,13 @@ describe("shape material and a shape's own fields", () => {
     expect(history.saveState).toHaveBeenCalledTimes(1);
   });
 
-  it("shows a polygon's own side count, and clamps a two-sided one onto three", () => {
+  it("shows a polygon's own side count, and clamps a two-sided one onto three", async () => {
     const polygon = new Polygon([...CORNERS], PLACED);
     const { history, field } = setup(polygon);
     const sides = field<HTMLInputElement>("[data-vigilia-shape-sides]");
     expect(sides.value).toBe("3");
 
-    type(sides, "2");
+    await edit(sides, "2");
 
     // A two-sided polygon is not a repaired three-sided one by refusal: the
     // author typed 2 to find where the bound is, and landing on 3 says it.
@@ -578,7 +621,7 @@ describe("shape material and a shape's own fields", () => {
     expect(history.saveState).toHaveBeenCalledTimes(1);
   });
 
-  it("redraws a polygon with the side count the author asked for", () => {
+  it("redraws a polygon with the side count the author asked for", async () => {
     const polygon = new Polygon([...CORNERS], {
       ...PLACED,
       left: 20,
@@ -586,7 +629,7 @@ describe("shape material and a shape's own fields", () => {
     });
     const { history, field } = setup(polygon);
 
-    type(field<HTMLInputElement>("[data-vigilia-shape-sides]"), "6");
+    await edit(field<HTMLInputElement>("[data-vigilia-shape-sides]"), "6");
 
     expect(polygon.points).toHaveLength(6);
     // The box the author placed is theirs; only the corners move.
@@ -597,14 +640,14 @@ describe("shape material and a shape's own fields", () => {
     expect(history.saveState).toHaveBeenCalledTimes(1);
   });
 
-  it("shows a polyline's own points and writes back the ones typed", () => {
+  it("shows a polyline's own points and writes back the ones typed", async () => {
     const polyline = new Polyline([...CORNERS], PLACED);
     const { history, field } = setup(polyline);
     const points = field<HTMLTextAreaElement>("[data-vigilia-shape-points]");
 
     expect(points.value).toBe("0, 0\n100, 0\n50, 100");
 
-    typeArea(points, "1, 2\n3, 4");
+    await edit(points, "1, 2\n3, 4");
 
     expect(polyline.points).toEqual([
       { x: 1, y: 2 },
@@ -615,12 +658,12 @@ describe("shape material and a shape's own fields", () => {
 
   it.each(["a, b", "1, 2, 3", "1, 2\nnot a point", "1, 2\n"])(
     "refuses %o as a polyline's points rather than reading it as zero",
-    (typed) => {
+    async (typed) => {
       const polyline = new Polyline([...CORNERS], PLACED);
       const before = polyline.points;
       const { history, editor, field } = setup(polyline);
 
-      typeArea(
+      await edit(
         field<HTMLTextAreaElement>("[data-vigilia-shape-points]"),
         typed,
       );
@@ -631,11 +674,14 @@ describe("shape material and a shape's own fields", () => {
     },
   );
 
-  it("moves a line from its own two endpoints", () => {
+  it("moves a line from its own two endpoints", async () => {
     const line = new Line([0, 0, 100, 50], PLACED);
     const { history, field } = setup(line);
 
-    type(field<HTMLInputElement>('[data-vigilia-shape-line="x2"]'), "200");
+    await edit(
+      field<HTMLInputElement>('[data-vigilia-shape-line="x2"]'),
+      "200",
+    );
 
     expect(line.x2).toBe(200);
     expect(line.x1).toBe(0);
@@ -643,14 +689,14 @@ describe("shape material and a shape's own fields", () => {
     expect(history.saveState).toHaveBeenCalledTimes(1);
   });
 
-  it("shows a path's own data as editable path data", () => {
+  it("shows a path's own data as editable path data", async () => {
     const path = new Path("M 0 0 L 100 0 L 0 50 Z", PLACED);
     const { history, field } = setup(path);
     const data = field<HTMLTextAreaElement>("[data-vigilia-shape-path]");
 
     expect(data.value).toBe("M 0 0 L 100 0 L 0 50 Z");
 
-    typeArea(data, "M 0 0 L 10 10");
+    await edit(data, "M 0 0 L 10 10");
 
     // Fabric's own parser is the one that reads it, and its normalised
     // commands are what the scene persists.
@@ -663,13 +709,13 @@ describe("shape material and a shape's own fields", () => {
 
   it.each(["not a path", "   ", "M 0 0"])(
     "refuses %o as a path rather than emptying the shape",
-    (typed) => {
+    async (typed) => {
       const path = new Path("M 0 0 L 100 0 L 0 50 Z", PLACED);
       const before = path.path;
       const { history, editor, field } = setup(path);
       const data = field<HTMLTextAreaElement>("[data-vigilia-shape-path]");
 
-      typeArea(data, typed);
+      await edit(data, typed);
 
       // A path Fabric cannot parse comes back empty, and a lone moveto has no
       // extent at all: either would replace a real shape with one nothing can
@@ -691,7 +737,7 @@ describe("a shape whose geometry the author retypes", () => {
    * insert-then-size-then-draw is the order every icon in a dashboard is built
    * in.
    */
-  it("drops the scale the previous geometry left behind", () => {
+  it("drops the scale the previous geometry left behind", async () => {
     const path = new Path("M 0 0 L 360 0 L 360 150 L 0 150 Z", {
       id: "icon",
       left: 100,
@@ -703,8 +749,7 @@ describe("a shape whose geometry the author retypes", () => {
     const data = host.querySelector<HTMLTextAreaElement>(
       "[data-vigilia-shape-path]",
     )!;
-    data.value = "M 7 7 L 21 7 L 21 21 L 7 21 Z";
-    data.dispatchEvent(new Event("change"));
+    await edit(data, "M 7 7 L 21 7 L 21 21 L 7 21 Z");
 
     expect(path.scaleX).toBe(1);
     expect(path.scaleY).toBe(1);
@@ -713,7 +758,7 @@ describe("a shape whose geometry the author retypes", () => {
     expect(path.width * path.scaleX).toBeCloseTo(14, 1);
   });
 
-  it("does the same for a polyline's points", () => {
+  it("does the same for a polyline's points", async () => {
     const line = new Polyline(
       [
         { x: 0, y: 200 },
@@ -727,8 +772,7 @@ describe("a shape whose geometry the author retypes", () => {
     const points = host.querySelector<HTMLTextAreaElement>(
       "[data-vigilia-shape-points]",
     )!;
-    points.value = "10, 20\n30, 40";
-    points.dispatchEvent(new Event("change"));
+    await edit(points, "10, 20\n30, 40");
 
     expect(line.scaleX).toBe(1);
     expect(line.scaleY).toBe(1);
@@ -770,11 +814,11 @@ describe("the angles of a swept shape", () => {
     expect(host.querySelector(ANGLE.end), kind).not.toBeNull();
   });
 
-  it.each(SWEPT)("writes a typed %s angle onto the object", (kind) => {
+  it.each(SWEPT)("writes a typed %s angle onto the object", async (kind) => {
     const shape = swept(kind);
     const { field, history } = setup(shape);
 
-    type(field<HTMLInputElement>(ANGLE.end), "270");
+    await edit(field<HTMLInputElement>(ANGLE.end), "270");
 
     expect(shape.endAngle).toBe(270);
     expect(history.saveState).toHaveBeenCalled();
@@ -804,7 +848,7 @@ describe("the angles of a swept shape", () => {
     expect(host.querySelector(ANGLE.end)).toBeNull();
   });
 
-  it("lands an angle past 360 on the bound rather than coercing it", () => {
+  it("lands an angle past 360 on the bound rather than coercing it", async () => {
     // The bound teaches itself: `numberField` puts an out-of-range value on the
     // bound it crossed. What must never happen is a wrap — an angle of 450
     // drawn as 90 is a shape the author did not ask for and cannot see the
@@ -812,17 +856,17 @@ describe("the angles of a swept shape", () => {
     const shape = swept("wedge");
     const { field } = setup(shape);
 
-    type(field<HTMLInputElement>(ANGLE.end), "450");
+    await edit(field<HTMLInputElement>(ANGLE.end), "450");
 
     expect(shape.endAngle).toBe(360);
   });
 
-  it("refuses an emptied angle box rather than reading it as zero", () => {
+  it("refuses an emptied angle box rather than reading it as zero", async () => {
     const shape = swept("arc");
     shape.set("startAngle", 45);
     const { field, history } = setup(shape);
 
-    type(field<HTMLInputElement>(ANGLE.start), "");
+    await edit(field<HTMLInputElement>(ANGLE.start), "");
 
     // `Number("")` is 0, so an emptied box must leave the object alone rather
     // than snapping the sweep back to the top of the circle.

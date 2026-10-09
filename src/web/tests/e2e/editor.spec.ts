@@ -23,6 +23,7 @@ import {
   worldRightOf,
 } from "./editor-canvas.js";
 import { openPane } from "./editor-rail.js";
+import { openPosition } from "./rebuild-driver.js";
 import { isDesktopSurface } from "./surface.js";
 
 /** Clicks one primitive in the Add pane's shape group. */
@@ -457,27 +458,6 @@ async function dragToLine(
   return { left, raw: startLeft + travelled };
 }
 
-/**
- * Opens the Position section.
- *
- * Geometry is the one section the inspector closes by default — an author
- * adjusts it once and chooses the binding constantly — so the geometry controls
- * are behind a disclosure. A helper that measured or typed into one without
- * opening it first would be driving a hidden input, which is a hidden control
- * rather than a failing one.
- */
-async function openPosition(page: Page): Promise<void> {
-  const summary = page
-    .locator('[data-vigilia-section="position"] summary')
-    .first();
-  if ((await summary.count()) === 0) return;
-  const open = await summary.evaluate(
-    (node) =>
-      (node.closest("details") as HTMLDetailsElement | null)?.open === true,
-  );
-  if (!open) await summary.click();
-}
-
 /** The inspector's two geometry pairs, measured from the built bundle. jsdom
  * cannot lay out, so a wrapped pair and a same-line pair return the identical
  * row element there; only a browser can tell the two apart.
@@ -502,8 +482,8 @@ async function geometryPairBoxes(page: Page): Promise<{
       return field;
     };
     const rowOf = (element: Element): HTMLElement => {
-      const row = element.closest(".vigilia-field-row");
-      if (row === null) throw new Error("a geometry input has no field row");
+      const row = element.closest("[data-vigilia-pair]");
+      if (row === null) throw new Error("a geometry input has no paired row");
       return row as HTMLElement;
     };
     const width = input("width");

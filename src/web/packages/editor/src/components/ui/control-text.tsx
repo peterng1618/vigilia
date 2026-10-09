@@ -24,11 +24,28 @@ import {
 export function ControlText(
   props: ControlProps & {
     readonly value: string;
+    /**
+     * A multi-line field (a polyline's points, a path's data). The draft and
+     * commit rules are the same; only the box differs — a document does not fit
+     * one line, and §5's 26px well is for one-line answers.
+     */
+    readonly multiline?: boolean;
+    readonly rows?: number;
     readonly onCommit: (value: string) => void;
   },
 ): React.JSX.Element {
-  const { label, id, disabled, refused, density, data, value, onCommit } =
-    props;
+  const {
+    label,
+    id,
+    disabled,
+    refused,
+    density,
+    data,
+    value,
+    multiline,
+    rows,
+    onCommit,
+  } = props;
   const ids = useControlIds(id);
   const blocked = isBlocked({ disabled, refused });
   // `null` is not editing: the authored value is shown, and a publication moves
@@ -44,6 +61,40 @@ export function ControlText(
     onCommit(next);
   };
 
+  const shared = {
+    ...data,
+    id: ids.control,
+    value: shown,
+    readOnly: refused !== undefined,
+    disabled,
+    "aria-disabled": refused === undefined ? undefined : true,
+    "aria-describedby": refused === undefined ? undefined : ids.reason,
+    onChange: (event: { target: { value: string } }) =>
+      setDraft(event.target.value),
+    onCompositionStart: () => {
+      composing.current = true;
+    },
+    onCompositionEnd: () => {
+      composing.current = false;
+    },
+    onKeyDown: (event: React.KeyboardEvent) => {
+      if (event.key === "Enter" && multiline !== true) {
+        if (composing.current || event.nativeEvent.isComposing) return;
+        event.preventDefault();
+        commit();
+        return;
+      }
+      if (event.key === "Escape") {
+        // An edit that is not open has no draft to cancel, so Escape
+        // belongs to the innermost layer that does have one.
+        if (draft === null) return;
+        event.preventDefault();
+        setDraft(null);
+      }
+    },
+    onBlur: commit,
+  };
+
   return (
     <ControlRow
       ids={ids}
@@ -52,42 +103,23 @@ export function ControlText(
       refused={refused}
       density={density}
     >
-      <ControlWell density={density} blocked={blocked}>
-        <input
-          {...data}
-          id={ids.control}
-          type="text"
-          className="h-full w-full bg-transparent text-sm text-text outline-none"
-          value={shown}
-          readOnly={refused !== undefined}
-          disabled={disabled}
-          aria-disabled={refused === undefined ? undefined : true}
-          aria-describedby={refused === undefined ? undefined : ids.reason}
-          onChange={(event) => setDraft(event.target.value)}
-          onCompositionStart={() => {
-            composing.current = true;
-          }}
-          onCompositionEnd={() => {
-            composing.current = false;
-          }}
-          onKeyDown={(event) => {
-            if (event.key === "Enter") {
-              if (composing.current || event.nativeEvent.isComposing) return;
-              event.preventDefault();
-              commit();
-              return;
-            }
-            if (event.key === "Escape") {
-              // An edit that is not open has no draft to cancel, so Escape
-              // belongs to the innermost layer that does have one.
-              if (draft === null) return;
-              event.preventDefault();
-              setDraft(null);
-            }
-          }}
-          onBlur={commit}
-        />
-      </ControlWell>
+      {multiline === true ? (
+        <div className="w-full rounded-md border border-edge bg-panel-2 px-[var(--space-6)] py-[var(--space-4)] focus-within:outline focus-within:outline-2 focus-within:outline-accent">
+          <textarea
+            {...shared}
+            rows={rows ?? 5}
+            className="w-full resize-y bg-transparent font-mono text-sm text-text outline-none"
+          />
+        </div>
+      ) : (
+        <ControlWell density={density} blocked={blocked}>
+          <input
+            {...shared}
+            type="text"
+            className="h-full w-full bg-transparent text-sm text-text outline-none"
+          />
+        </ControlWell>
+      )}
     </ControlRow>
   );
 }

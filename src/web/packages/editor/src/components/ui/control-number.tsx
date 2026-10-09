@@ -42,6 +42,12 @@ export function ControlNumber(
     readonly max?: number;
     /** The owner asked for whole numbers; a fraction is refused like out-of-bounds. */
     readonly integer?: boolean;
+    /**
+     * A half of a paired row: the label and the well without a row of their own,
+     * so two of these can share one line. `ControlPair` is the only caller — a
+     * lone number field wants its own row.
+     */
+    readonly inline?: boolean;
     readonly onCommit: (value: number) => void;
     readonly onClear?: () => void;
   },
@@ -59,6 +65,7 @@ export function ControlNumber(
     min,
     max,
     integer,
+    inline,
     onCommit,
     onClear,
   } = props;
@@ -108,15 +115,8 @@ export function ControlNumber(
     if (parsed !== value) onCommit(parsed);
   };
 
-  return (
-    <ControlRow
-      ids={ids}
-      label={label}
-      labelFor={ids.control}
-      refused={refused}
-      hint={hint}
-      density={density}
-    >
+  const body = (
+    <>
       <ControlWell density={density} blocked={blocked}>
         <input
           {...data}
@@ -169,6 +169,34 @@ export function ControlNumber(
           {invalid}
         </p>
       )}
+    </>
+  );
+
+  if (inline === true) {
+    return (
+      <>
+        <label
+          id={ids.label}
+          htmlFor={ids.control}
+          className="text-xs text-muted"
+        >
+          {label}
+        </label>
+        {body}
+      </>
+    );
+  }
+
+  return (
+    <ControlRow
+      ids={ids}
+      label={label}
+      labelFor={ids.control}
+      refused={refused}
+      hint={hint}
+      density={density}
+    >
+      {body}
     </ControlRow>
   );
 }
