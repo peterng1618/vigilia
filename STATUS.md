@@ -26,7 +26,7 @@ backlog it produced stays live in the register.
 
 ## Active work
 
-- **Plan 2 — [`the shell and the rail`](docs/superpowers/plans/2026-10-08-the-shell-and-the-rail.md) — is active.** Tasks 1 and 2 are complete and reviewed; Task 3 is in flight and seven tasks remain.
+- **Plan 2 — [`the shell and the rail`](docs/superpowers/plans/2026-10-08-the-shell-and-the-rail.md) — is active.** Tasks 1–3 are complete and reviewed; Task 4 is next and six tasks remain.
 - **Plan 1 — gates and the control set — is complete**, with a delivered-state reconciliation for Tasks 1–4 in the plan file in place of its retired ledger.
 - **The spec is `draft` and unimplemented** — its acceptance sections are plans of measurement, not results.
 - **Reactify ([0039](docs/decisions/0039-the-editor-ui-is-react-and-only-the-canvas-is-imperative.md)) is the frame, not a phase** — every editor surface becomes React, only the canvas stays imperative, and no Fabric object is ever mirrored into React state.
@@ -35,16 +35,16 @@ backlog it produced stays live in the register.
 
 ## Last completed change
 
-- **Task 2 of plan 2 — the panes' chrome — is complete and reviewed** through `04646669`: the review failed it once on a real defect, and the fix round plus a scoped re-review closed it with no new findings.
-- **That defect was one every gate is blind to** — `pane.tsx` applied `data-vigilia-panel` only when `id` was defined, so three panes of four matched `:not([data-vigilia-panel])` and took `margin-top: 12px`, measured as `Composition 85, Add 97, Tokens 97, Document 97` before and all `85` after.
-- **Eligibility has one owner now**: `objectActionsFor(gate)` replaces the expression the dock, the context menu and the layer panel each spelled for themselves, so no surface can advertise an action its selection refuses.
-- **`new-object-panel.ts:182`'s duplicate attribute is deleted and `Pane.id` is required again**, so pane naming has one owner rather than being split between the pane and the panel inside it — which closes `vg-205`.
-- **Four browser failures were separated rather than assumed**: two 8-worker runs gave *different* failing sets, and the one deterministic case was verified against base and filed as `vg-210`.
+- **Task 3 of plan 2 — the header trimmed — is complete and reviewed** through `1143fc32`: a review failed it, two fix rounds closed it, and a scoped re-review passed it with no new findings.
+- **The publish control opens the surface instead of toggling the host** — the host switch lives inside the popover, so reading a presenting host's phone address no longer stops it, which is what Step 4's "no fact is lost" requires.
+- **The Insert menu and its `+` popover are deleted**; the Add pane carries the group list, and the chart button's silent no-op was closed to match the card button's refusal by name.
+- **`Save package` left the header for the File menu's own row**, with the six specs that clicked `[data-vigilia-save-package]` re-pointed and one left unexercised under the base-red `vg-119`.
+- **F1's red proof was reproduced by the reviewer rather than trusted**, and F4's new throw was shown unreachable in production, so the Global Constraint "No behaviour changes" holds.
 
 ## Next
 
-1. **Task 3 — the header trimmed** — loses the document readout and the Insert menu, and lands the palette block that should absorb the source-order elevation override filed as `vg-207`.
-2. **Then Tasks 4–7** — the status bar, document identity, the stage's view cluster, and the dock re-layered; Task 6 relaxes the dock's interim `100% - 100px` cap to `100% - 32px`.
+1. **Task 4 — the status bar** — a 26px mono strip carrying counts, the last diagnostic and save state with a `live` indicator, and no tools; it consumes Task 3's `HostingStore` and produces `PublishIndicator`.
+2. **Then Tasks 5–7** — document identity, the stage's view cluster, and the dock re-layered; Task 6 relaxes the dock's interim `100% - 100px` cap to `100% - 32px`.
 3. **Then plan 2's phase 3** — Task 8's ratchet (which owns `editor-shell.css`'s 79 violations and the rail slot's 34px), Task 9's parity capture, and Task 10's difference list.
 4. **Unpushed:** `develop` is far ahead of `origin/develop`; no push is authorised.
 
