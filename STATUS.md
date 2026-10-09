@@ -37,7 +37,7 @@ backlog it produced stays live in the register.
 
 - **`vg-148` is `verified` and archived** — locking through the layer row used to leave the column offering its writing fields; the row now carries `check` = `src/web/tests/e2e/inspector-sections.spec.ts:648` (its own route, `[aria-label="Lock"]`, asserting `[data-vigilia-locked]`) and `artefacts` = `f1a35b82`, plan 3's Task 1, where `OBJECT_LOCK_CHANGED_EVENT` and the inspector's subscription landed.
 - **The archive was grepped on the `id` field, never the bare string** — `grep -c '"id":"vg-148"' docs/product/backlog-archive.jsonl` returned `0` before the move, because the bare string matches a cross-reference in `vg-157`'s prose; the close therefore neither suppressed nor double-filed the row, and `npm run backlog:check` reads `127 items, all valid` after it.
-- **The rows that stay open say so** — `vg-094` and `vg-153` are the Tokens pane's (plan 4's), `vg-158`'s cause is still not established, and `vg-160`, `vg-185`, `vg-192`, `vg-203` and `vg-254` are untouched; no new row was added.
+- **The rows that stay open say so** — `vg-094` and `vg-153` are the Tokens pane's (plan 4's), `vg-158`'s cause is still not established, and `vg-160`, `vg-185`, `vg-192` and `vg-254` are untouched; no new row was added, and `vg-203`'s record is corrected rather than left: plan 3 *did* reach the duplicated text/number pair without converging it, so its line citations are refreshed and it needs a new owner.
 - **Plan 3's plan is archived and plan 4 named next** — `git mv` to `docs/superpowers/plans/archive/`, STATUS re-pointed at the new path, and plan 4 — the panes — is next with its landmarks.
 
 ## Next
