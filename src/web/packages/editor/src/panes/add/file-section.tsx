@@ -1,5 +1,6 @@
 import { useId, useReducer, useRef, useState } from "react";
 import {
+  ASSET_FILE_EXTENSIONS,
   type AssetManager,
   assetReferencedBy,
   type LocalAssetReference,
@@ -69,7 +70,14 @@ export function FileSection({
   const previewUrl =
     chosen === undefined ? undefined : manager.previewUrl(chosen.id);
 
-  /** Runs one submission, and refuses to start a second while it is in flight. */
+  /**
+   * Runs one submission, and refuses to start a second while it is in flight.
+   *
+   * The ceiling: a *different* file picked inside that window is dropped with no
+   * message. The pickers are cleared after every use, so the guard exists to
+   * stop the same file importing twice; one submission at a time is the
+   * behaviour the deleted panel had, and parity is this task's contract.
+   */
   const submit = async (task: () => Promise<void>): Promise<void> => {
     if (busy.current) return;
     busy.current = true;
@@ -112,7 +120,10 @@ export function FileSection({
       }
     }
     setMessage("");
-    setChosenId(asset.id);
+    // The selection is left where it was, as the deleted panel left it: an
+    // author pointing at one asset must not find the list pointing at another
+    // because they added a file. Only an empty list moves it, via `chosen`'s
+    // fallback to the first declaration.
     changed();
   };
 
@@ -236,14 +247,14 @@ export function FileSection({
 }
 
 /**
- * The file types the two pickers offer, which is the set `AssetManager.TYPES`
- * can read. It lives here rather than in the manager because it is the
- * chooser's filter, not a validation rule: the manager refuses a file whose
- * bytes or MIME do not match whatever the author managed to pick, and this is
- * what keeps a person from picking the wrong one at all.
+ * The file types the two pickers offer, derived from the manager's own
+ * `TYPES` so the chooser cannot drift from what the manager can read. The
+ * manager still refuses a file whose bytes or MIME do not match; this only
+ * keeps a person from picking the wrong one at all.
  */
-const ASSET_FILE_ACCEPT =
-  ".png,.jpg,.jpeg,.webp,.svg,.mp4,.webm,.woff2,.woff,.ttf,.otf";
+const ASSET_FILE_ACCEPT = ASSET_FILE_EXTENSIONS.map((ext) => `.${ext}`).join(
+  ",",
+);
 
 /** The kinds a canvas image can be bound to; a video or a font is declared
  *  without ever becoming an object. */

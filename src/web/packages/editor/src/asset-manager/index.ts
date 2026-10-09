@@ -32,6 +32,18 @@ const TYPES = {
 } as const;
 
 type AssetExtension = keyof typeof TYPES;
+
+/**
+ * The extensions `TYPES` can read, in declaration order.
+ *
+ * Exported so a file chooser can filter on the *same* list the manager
+ * validates: a second copy drifts silently in the widening direction, where the
+ * manager would accept a file the chooser never offers.
+ */
+export const ASSET_FILE_EXTENSIONS = Object.keys(
+  TYPES,
+) as readonly AssetExtension[];
+
 type AssetKind = (typeof TYPES)[AssetExtension]["kind"];
 export type LocalAssetReference =
   | (AssetReference & { readonly kind: AssetKind })

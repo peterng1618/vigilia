@@ -21,7 +21,10 @@ import { FabricImage, Group } from "fabric/es";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, describe, expect, it, type Mock, vi } from "vitest";
-import { AssetManager } from "../../asset-manager/index.js";
+import {
+  ASSET_FILE_EXTENSIONS,
+  AssetManager,
+} from "../../asset-manager/index.js";
 import type { EditorInteraction } from "../../editor-interaction.js";
 import { uiCopy } from "../../ui-copy.js";
 import { FileSection } from "./file-section.js";
@@ -82,11 +85,21 @@ async function mount(
 ): Promise<Harness> {
   const host = document.createElement("div");
   document.body.append(host);
+  inflight = [];
   const manager = new AssetManager();
   const placeImage = vi
     .spyOn(manager, "placeImage")
     .mockResolvedValue(undefined);
-  const replace = vi.spyOn(manager, "replace");
+  const realImport = manager.import.bind(manager);
+  vi.spyOn(manager, "import").mockImplementation((chosen) =>
+    track(realImport(chosen)),
+  );
+  const realReplace = manager.replace.bind(manager);
+  const replace = vi
+    .spyOn(manager, "replace")
+    .mockImplementation((assetId, chosen) =>
+      track(realReplace(assetId, chosen)),
+    );
   const hydrate = vi.spyOn(manager, "hydrate").mockResolvedValue(undefined);
   const remove = vi.spyOn(manager, "remove");
   const saveState = vi.fn();
@@ -148,10 +161,37 @@ async function selectAsset(host: HTMLElement, assetId: string): Promise<void> {
 }
 
 /**
+ * The promises the manager handed back since the last `mount`, so a case can
+ * wait for the real async work — `import` and `replace` hash the bytes with
+ * `crypto.subtle`, which takes more than one turn under a loaded worker —
+ * rather than guessing a turn count and flaking when it is wrong.
+ */
+let inflight: Promise<unknown>[] = [];
+
+function track<T>(promise: Promise<T>): Promise<T> {
+  inflight.push(promise);
+  return promise;
+}
+
+/**
+ * Waits for every tracked submission to land, then one turn for the render.
+ *
+ * A refusal is a rejection, and the component already turns it into a message;
+ * this only waits, so it settles rather than rejects.
+ */
+async function drain(): Promise<void> {
+  while (inflight.length > 0) {
+    const batch = inflight;
+    inflight = [];
+    await Promise.allSettled(batch);
+  }
+  await new Promise((resolve) => setTimeout(resolve, 0));
+}
+
+/**
  * Answers a file picker the way a browser does once a control opens it: the
- * files are set on the hidden input and its `change` fires. The import or
- * replace it starts is real async work, so a macrotask turn is given inside
- * `act` for it — and the render that follows — to land.
+ * files are set on the hidden input and its `change` fires, and the submission
+ * it starts is waited out inside `act`.
  */
 async function choose(
   host: HTMLElement,
@@ -165,7 +205,7 @@ async function choose(
   });
   await act(async () => {
     input.dispatchEvent(new Event("change", { bubbles: true }));
-    await new Promise((resolve) => setTimeout(resolve, 0));
+    await drain();
   });
 }
 
@@ -275,6 +315,20 @@ describe("the Add pane's file section", () => {
     expect(listedNames(host)).toEqual([]);
     expect(alert(host).textContent).toBe("");
     expect(changed).toHaveBeenCalled();
+  });
+
+  it("leaves the author's selection alone when a second file is imported", async () => {
+    const { host } = await mount();
+
+    // Nothing was selected and the list was empty, so the first import is the
+    // one the list falls back to.
+    await importFile(host, IMAGE_FILE);
+    expect(selectControl(host).value).toBe("logo");
+
+    await importFile(host, FONT_FILE);
+    // Parity with the panel this replaces: adding a file never moved the list
+    // off the asset the author was pointing at.
+    expect(selectControl(host).value).toBe("logo");
   });
 
   it("keeps replace as the chosen asset's own byte swap, which is what it always meant", async () => {
@@ -402,9 +456,11 @@ describe("the Add pane's file section", () => {
     expect(importButton.textContent).toBe(uiCopy.panels.importFile);
     expect(replaceButton.textContent).toBe(uiCopy.panels.replaceAsset);
 
-    // **The accept rule, moved with the panel.** Both pickers carry the same
-    // list of extensions the manager can read: without it the chooser offers
-    // every file and the author is refused after the fact.
+    // **The accept rule, derived rather than restated.** Both pickers carry the
+    // manager's own extension list, so adding an extension to `TYPES` moves the
+    // string and this case with it; a hand-kept second list could widen only by
+    // drifting silently.
+    expect(ACCEPT).not.toBe("");
     expect(importInput.accept).toBe(ACCEPT);
     expect(replaceInput.accept).toBe(ACCEPT);
 
@@ -422,6 +478,7 @@ describe("the Add pane's file section", () => {
   });
 });
 
-/** The file types both pickers offer — the same list `AssetManager.TYPES`
- *  reads, restated here so a control that silently widened its filter is red. */
-const ACCEPT = ".png,.jpg,.jpeg,.webp,.svg,.mp4,.webm,.woff2,.woff,.ttf,.otf";
+/** The file types both pickers offer — derived from the manager's own exported
+ *  list, so an extension added to `TYPES` and not offered here, or offered here
+ *  and not readable there, is red. */
+const ACCEPT = ASSET_FILE_EXTENSIONS.map((ext) => `.${ext}`).join(",");
