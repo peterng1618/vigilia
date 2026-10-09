@@ -203,7 +203,20 @@ export function projectRuns(
   const pinnedZones: string[] = [];
   // A run has no id of its own, so the row's identity is what the run *is*, and
   // an index would only be stable while rows were appended or removed last.
-  // Two runs that are the same run still get distinct rows, hence the counter.
+  //
+  // **The run's text is deliberately not part of it.** A text run is the one
+  // field a person types into continuously, and `ControlText` commits on Enter
+  // as well as blur — identity that moved with the text would remount the row
+  // under the caret on every Enter, which is the common path, and React's own
+  // focus does not survive a remount. Where it does move (a preset or source
+  // change remounts that row) the cost is one lost caret on a discrete act.
+  //
+  // The residual, named rather than hidden: a truly edit-stable key needs a run
+  // id, and the persisted run model has none — adding one is a schema change
+  // this task does not own. So two literal runs sharing a type preset are the
+  // same identity, and a middle removal can still shift them (the counter below
+  // is what keeps their *rows* distinct, and it is positional). That is
+  // narrower than index keys, which shift on every removal.
   const seen = new Map<string, number>();
   const rows = runs.map((run, index) => {
     const bound =
@@ -217,7 +230,7 @@ export function projectRuns(
     const identity =
       run.kind === "value"
         ? `value:${run.bindingId}`
-        : `literal:${run.typePreset ?? ""}\u0000${run.text}`;
+        : `literal:${run.typePreset ?? ""}`;
     const repeat = seen.get(identity) ?? 0;
     seen.set(identity, repeat + 1);
 

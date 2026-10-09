@@ -126,9 +126,11 @@ export interface RunOptionView {
 export interface RunRowView {
   /**
    * What the row *is*, for React's key: a run carries no id, so the projection
-   * derives one from the run itself and disambiguates a genuine repeat. Keying
-   * by `index` instead reconciles a draft onto the wrong run the moment a run
-   * that is not the last is removed.
+   * derives one from the run's identity fields and disambiguates a repeat.
+   * Keying by `index` instead reconciles a draft onto the wrong run the moment
+   * a run that is not the last is removed; keying by the text remounts the row
+   * under the caret, because `ControlText` commits on Enter. `projectRuns`
+   * carries the rule and its residual.
    */
   readonly id: string;
   readonly index: number;

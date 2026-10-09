@@ -6,6 +6,7 @@ import {
   blur,
   clickHook,
   mountRunEditor,
+  press,
   typeInto,
 } from "./runs.test-stage.js";
 
@@ -13,17 +14,19 @@ import {
  * The run-editor cases that need the editor's *own* state, rather than what a
  * control writes.
  *
- * All three are about the same mechanism, which is why they are one file:
- * React's row identity is what keeps a draft alive across a re-publish, what
- * discards it when the described object changes, and what keeps it with its own
- * run when an earlier row is removed. The case for a selection that moves under
- * a draft lives with the column in `index.dom.test.ts`, because that is where a
+ * All four are about the same mechanism, which is why they are one file:
+ * React's row identity is what keeps a draft and the caret alive across a
+ * commit, a re-publish and a removal, and what discards the draft when the
+ * described object changes. The case for a selection that moves under a draft
+ * lives with the column in `index.dom.test.ts`, because that is where a
  * selection can move.
  */
 
 const globals = {
   typePresets: {
     plain: { name: "Plain", value: { family: "Inter", size: 16 } },
+    caption: { name: "Caption", value: { family: "Inter", size: 12 } },
+    title: { name: "Title", value: { family: "Inter", size: 24 } },
   },
   palette: {
     text: { name: "Text", value: { kind: "solid", color: "#fff" } },
@@ -60,6 +63,26 @@ describe("the run editor's own state", () => {
     return box.dispose();
   });
 
+  it("keeps the caret when Enter commits a literal's text", async () => {
+    const box = mountRunEditor({ runs: twoRuns, globals });
+    const field = box.pick<HTMLInputElement>('[data-vigilia-run-text="0"]');
+    field.focus();
+
+    await typeInto(field, "GPU ");
+    // Enter, not blur: it is the primary commit gesture, and it commits while
+    // the field still holds focus. A row key carrying the run's text would
+    // remount the input here and drop focus to the document body — the caret
+    // rule in `index.ts` cannot recover it, because the row's identity is the
+    // very thing that changed.
+    await press(field, "Enter");
+
+    expect(box.runs()[0]).toMatchObject({ kind: "literal", text: "GPU " });
+    expect(document.activeElement).toBe(field);
+    expect(field.isConnected).toBe(true);
+    expect(field.value).toBe("GPU ");
+    return box.dispose();
+  });
+
   it("adds and removes a run without the editor losing its own state", async () => {
     const box = mountRunEditor({ runs: twoRuns, globals });
     const field = box.pick<HTMLInputElement>('[data-vigilia-run-text="0"]');
@@ -85,11 +108,16 @@ describe("the run editor's own state", () => {
   });
 
   it("keeps a draft on its own run when an earlier one is removed", async () => {
+    // The three runs carry distinct presets on purpose. The row identity is the
+    // run's preset (and never its text, so an Enter cannot remount the row
+    // under the caret), which means this case is covered for runs the identity
+    // tells apart. Two literals sharing a preset are the residual `projectRuns`
+    // names: their keys are positional among themselves and can still shift.
     const box = mountRunEditor({
       runs: [
         { kind: "literal", text: "A", typePreset: "typePresets.plain" },
-        { kind: "literal", text: "B", typePreset: "typePresets.plain" },
-        { kind: "literal", text: "C", typePreset: "typePresets.plain" },
+        { kind: "literal", text: "B", typePreset: "typePresets.caption" },
+        { kind: "literal", text: "C", typePreset: "typePresets.title" },
       ],
       globals,
     });
