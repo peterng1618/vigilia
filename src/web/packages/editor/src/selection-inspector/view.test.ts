@@ -10,10 +10,10 @@ import {
 } from "../chart-manager/panel.js";
 import { projectLayers } from "../editor-shell/layer-tree.js";
 import { uiCopy } from "../ui-copy.js";
-import type { ColumnSection } from "./per-kind-column.js";
 import {
   editRefusal,
   type ExtraView,
+  type ColumnSectionView,
   measuredEdgeOf,
   type ProjectionPorts,
   projectSelection,
@@ -110,7 +110,7 @@ const CHART_EXTRAS: readonly ExtraView[] = [
 ];
 
 /** A section holding the given extras, as the column hands one to the view. */
-function chartSection(extras: readonly ExtraView[]): ColumnSection {
+function chartSection(extras: readonly ExtraView[]): ColumnSectionView {
   return {
     id: "content",
     title: "Content",
@@ -119,7 +119,7 @@ function chartSection(extras: readonly ExtraView[]): ColumnSection {
     count: extras.length,
     fields: [],
     extras,
-    body: [],
+    revealLabel: undefined,
   };
 }
 
@@ -140,29 +140,33 @@ describe("projectSelection", () => {
     expect(JSON.parse(JSON.stringify(view))).toEqual(view);
   });
 
-  it("strips a section's live body out of the view it renders", () => {
-    // The sections are handed in as rendered — view plus the elements React
-    // does not render yet — and projected to values. A `body` that survived
-    // into the view is a DOM node inside `SelectionView`, which is exactly what
-    // Review Focus 1's walk below rejects.
+  it("carries a section as a value, and rejects the element the old body slot held", () => {
+    // No section is handed in as an element any more, so the walk is proved
+    // non-vacuous on the sections arm by planting one: a DOM node inside a
+    // `ColumnSectionView` is what Review Focus 1's walk rejects, and that is the
+    // failure the deleted `body` slot used to be able to produce.
     const rect = new Rect({ id: "shape", width: 10, height: 10 });
-    const view = projectSelection(rect, 1, ports(), [
-      {
-        id: "content",
-        title: "Content",
-        readOnly: false,
-        defaultOpen: true,
-        count: 1,
-        fields: [],
-        extras: [],
-        body: [document.createElement("div")],
-      },
-    ]);
+    const section: ColumnSectionView = {
+      id: "content",
+      title: "Content",
+      readOnly: false,
+      defaultOpen: true,
+      count: 1,
+      fields: [],
+      extras: [],
+      revealLabel: undefined,
+    };
+    const view = projectSelection(rect, 1, ports(), [section]);
 
     expect(view.sections).toHaveLength(1);
     expect(view.sections[0]?.count).toBe(1);
-    expect(view.sections[0]).not.toHaveProperty("body");
     assertPlainValue(view, "view");
+
+    const planted = {
+      ...view,
+      sections: [{ ...section, body: [document.createElement("div")] }],
+    };
+    expect(() => assertPlainValue(planted, "view")).toThrow(/DOM node/);
   });
 
   it("walks a chart's own field arms, and rejects a Fabric object planted in one", () => {

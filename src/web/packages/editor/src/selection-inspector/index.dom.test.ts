@@ -886,16 +886,17 @@ describe("the column's sections", () => {
       '[data-vigilia-section="position"]',
     )!;
 
-    // The count is every row the section renders — the fields React owns now
-    // plus the body it does not yet — and a header that could claim more than
-    // the section holds is the defect the section control exists to prevent.
+    // The count is every row the section renders, and a header that could claim
+    // more than the section holds is the defect the section control exists to
+    // prevent.
     const count = Number(
       section.querySelector("[data-vigilia-section-count]")?.textContent,
     );
-    // Each field and extra renders exactly one row element inside the panel;
-    // the still-imperative body container is the one child that is not a row.
-    const body = section.querySelector("[data-vigilia-section-body]")!;
-    const rows = body.parentElement!.childElementCount - 1;
+    // Each field, extra and reveal renders exactly one row element inside the
+    // panel, and the panel holds nothing else — there is no separate body
+    // container for a row to hide in now.
+    const panel = section.querySelector<HTMLElement>(":scope > div")!;
+    const rows = panel.childElementCount;
     expect(count).toBe(rows);
     expect(rows).toBeGreaterThan(0);
   });
@@ -1183,10 +1184,12 @@ describe("the column's sections", () => {
         .map((section) => section.id),
     ).toEqual(["content", "layer", "paint", "spends"]);
     for (const section of sections) {
-      // The count is every row the section renders — the fields and extras React
-      // owns plus the body it does not — and the header's count has to agree.
+      // The count is every row the section renders — its fields, its extras and
+      // its reveal — and the header's count has to agree.
       expect(section.count, section.id).toBe(
-        section.fields.length + section.extras.length + section.body.length,
+        section.fields.length +
+          section.extras.length +
+          (section.revealLabel === undefined ? 0 : 1),
       );
     }
   });
@@ -1253,10 +1256,12 @@ describe("the column's sections", () => {
     expect(section("paint").extras[0]).toEqual({ kind: "chartPaint", paint });
     // Nowhere else: a chart's paint is not a content field, and the count over
     // each section is what tells the two apart when both are mounted. The
-    // chart's own body counts once, however many controls it carries.
+    // chart's own extra counts once, however many controls it carries.
     for (const name of ["content", "paint"]) {
       expect(section(name).count, name).toBe(
-        section(name).fields.length + 1 + section(name).body.length,
+        section(name).fields.length +
+          1 +
+          (section(name).revealLabel === undefined ? 0 : 1),
       );
     }
   });

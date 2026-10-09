@@ -259,19 +259,6 @@ export function resolutionField(
 }
 
 /**
- * Reveals the type-preset panel. The panel already owns a preset's fields, so
- * the inspector links to it rather than growing a second set that could drift.
- */
-export function createTypePresetReveal(onReveal: () => void): HTMLElement {
-  const button = document.createElement("button");
-  button.type = "button";
-  button.dataset["vigiliaRevealTypePresets"] = "";
-  button.textContent = uiCopy.inspectorFields.editTypePresets;
-  button.addEventListener("click", onReveal);
-  return button;
-}
-
-/**
  * Opacity, shown as a percentage and stored as Fabric's 0–1.
  *
  * A bounded number — Fabric's own 0–1, projected here as 0–100 — so it is a

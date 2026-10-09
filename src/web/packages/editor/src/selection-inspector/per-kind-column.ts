@@ -20,7 +20,6 @@ import type {
 import { uiCopy } from "../ui-copy.js";
 import {
   type AppearanceContext,
-  createTypePresetReveal,
   nameField,
   nameOfRef,
   opacityField,
@@ -68,27 +67,11 @@ import type {
  */
 export type ColumnSectionId = SettingsSection | "advanced";
 
-/**
- * One section as the column renders it: the DOM-free `ColumnSectionView` React
- * reads, plus the live body elements React does not render yet.
- *
- * React owns the section's chrome — its header, its count and its open state —
- * while the field builders still return `HTMLElement`s, so `index.ts` mounts
- * `body` into the container the section renders. The bodies are handed *beside*
- * the view and never inside it: `projectSelection` drops this member, because a
- * `SelectionView` carrying an element fails Review Focus 1's value guard.
- * Tasks 3–6 convert the bodies one section at a time, and this member goes with
- * the last of them.
- */
-export interface ColumnSection extends ColumnSectionView {
-  readonly body: readonly HTMLElement[];
-}
-
-/** What one section holds: the rows React renders, and the body it does not yet. */
+/** What one section holds, as values: its rows, and the label of its reveal. */
 interface SectionParts {
   readonly fields?: readonly FieldView[];
   readonly extras?: readonly ExtraView[];
-  readonly body?: readonly HTMLElement[];
+  readonly revealLabel?: string;
 }
 
 /**
@@ -381,7 +364,6 @@ function contentBody(
 ): SectionParts {
   const fields: FieldView[] = [];
   const extras: ExtraView[] = [];
-  const body: HTMLElement[] = [];
 
   // The name is a field that writes, so a locked object is not offered one.
   if (!locked) fields.push(nameField(target));
@@ -422,7 +404,7 @@ function contentBody(
       extras.push({ kind: "chartContent", content: chart });
   }
 
-  return { fields, extras, body };
+  return { fields, extras };
 }
 
 /** Where it sits and how big: the two pairs, crop, bleed, and this shape's own
@@ -581,9 +563,7 @@ function spendsBody(
   questions: KindQuestions,
 ): SectionParts {
   const fields: FieldView[] = [];
-  // The reveal is a button, which the row union has no arm for: it stays the
-  // element the section mounts, exactly as it was before the rows moved here.
-  const body: HTMLElement[] = [];
+  let revealLabel: string | undefined;
 
   if (questions.childrenAppearance) {
     const { paints, presets } = childrenResolution(target, context);
@@ -603,7 +583,7 @@ function spendsBody(
       fields.push(...paints);
     }
     fields.push(...presets);
-    return { fields, body };
+    return { fields };
   }
 
   const references = paintReferencesOf(target);
@@ -645,12 +625,16 @@ function spendsBody(
         resolveTypePreset(context.globals, preset),
       ),
     );
-    if (context.revealTypePresets !== undefined) {
-      body.push(createTypePresetReveal(context.revealTypePresets));
-    }
+    // The link into the panel that owns the preset's fields is offered only when
+    // a host handed the column the way to reach it; the label is the whole of
+    // what the section says about it, and the button is the column's to render.
+    revealLabel =
+      context.revealTypePresets === undefined
+        ? undefined
+        : uiCopy.inspectorFields.editTypePresets;
   }
 
-  return { fields, body };
+  return revealLabel === undefined ? { fields } : { fields, revealLabel };
 }
 
 /**
@@ -665,7 +649,7 @@ function spendsBody(
 export function perKindColumn(
   target: FabricObject,
   context: ColumnContext,
-): readonly ColumnSection[] {
+): readonly ColumnSectionView[] {
   const locked = target.get("locked") === true;
   // The selection's kind is asked once, and its answers are read by name — so a
   // kind that reaches here without a rule cannot have been added to
@@ -685,7 +669,7 @@ export function perKindColumn(
   const sizeOf = (parts: SectionParts): number =>
     (parts.fields?.length ?? 0) +
     (parts.extras?.filter(rendersExtra).length ?? 0) +
-    (parts.body?.length ?? 0);
+    (parts.revealLabel === undefined ? 0 : 1);
 
   return bodies
     .filter(([, parts]) => sizeOf(parts) > 0)
@@ -698,11 +682,11 @@ export function perKindColumn(
       // the one that says so before the section is opened (bible §5 rule 1).
       readOnly: id === "spends",
       defaultOpen: defaultOpenOf(id),
-      // One number over one section: the rows React renders and the body it does
-      // not yet, counted from the same parts the section is built from.
+      // One number over one section, counted from the same parts the section is
+      // built from — a reveal is one of those rows.
       count: sizeOf(parts),
       fields: parts.fields ?? [],
       extras: parts.extras ?? [],
-      body: parts.body ?? [],
+      revealLabel: parts.revealLabel,
     }));
 }

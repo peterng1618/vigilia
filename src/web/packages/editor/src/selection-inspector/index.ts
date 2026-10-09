@@ -17,7 +17,6 @@ import { writePanelField, writeShapeGeometryField } from "./panel.js";
 import {
   type ChartFieldsPort,
   type ColumnContext,
-  type ColumnSection,
   type GeometryKey,
   MIN_DIMENSION,
   perKindColumn,
@@ -180,71 +179,6 @@ const GEOMETRY_KEYS: ReadonlySet<string> = new Set([
   "angle",
 ]);
 
-/** The input types that hold a caret. A checkbox has focus and nothing to type. */
-const TEXT_ENTRY: ReadonlySet<string> = new Set([
-  "text",
-  "number",
-  "search",
-  "url",
-  "tel",
-  "email",
-  "password",
-]);
-
-/**
- * The field the author is typing into **in an imperative body**, named by the
- * data hook it carries.
- *
- * A re-render rebuilds a section's body, and a field that was focused is one of
- * the elements it replaces — so the caret would land on nothing. The hook is
- * what survives the rebuild: the same field keeps the same `data-vigilia-*`
- * value, so focus can be put back in it. Position, Paint and Spends keep their
- * imperative bodies until Tasks 4–6, and this is the rule for them.
- *
- * A converted field does not need it and must not be reached by it: the React
- * column keys its rows on a stable identity, so a publish updates the focused
- * input rather than replacing it, and React itself is the one owner of that
- * caret. `restoreFocus` is scoped to the bodies for that reason.
- *
- * **Only a caret-bearing field is put back.** Restoring every focused element
- * gave focus its own consequences back: `focus` is what opens the glass
- * control's reason popup, so a re-render while that checkbox was focused
- * re-opened a popup the author had just dismissed with Escape. The requirement
- * is the caret, and a checkbox has none to move.
- */
-function focusedControl():
-  | { readonly hook: string; readonly value: string }
-  | undefined {
-  const active = document.activeElement;
-  const typing =
-    (active instanceof HTMLInputElement && TEXT_ENTRY.has(active.type)) ||
-    active instanceof HTMLTextAreaElement;
-  if (!typing) return undefined;
-  const [hook, value] =
-    Object.entries((active as HTMLElement).dataset)[0] ?? [];
-  return hook === undefined ? undefined : { hook, value: value ?? "" };
-}
-
-function restoreFocus(
-  root: HTMLElement,
-  focused: { readonly hook: string; readonly value: string } | undefined,
-): void {
-  if (focused === undefined) return;
-  const attribute = `data-${focused.hook.replace(
-    /[A-Z]/g,
-    (letter) => `-${letter.toLowerCase()}`,
-  )}`;
-  // Scoped to the imperative bodies, not the whole host: a converted field is
-  // inside the React column now, and React keeps its own focus across a publish
-  // because the row's identity is stable. Reaching it here would be a second
-  // owner of the caret rule — the one thing the conversion must not leave two of.
-  root
-    .querySelector<HTMLElement>(
-      `[data-vigilia-section-body] [${attribute}="${focused.value}"]`,
-    )
-    ?.focus();
-}
-
 export function createSelectionInspector(
   host: HTMLElement,
   options: SelectionInspectorOptions,
@@ -257,11 +191,10 @@ export function createSelectionInspector(
   root.dataset["vigiliaPanel"] = "selection";
   host.append(root);
 
-  // Two React roots share the column until the last field body moves. The first
-  // renders the subject and the empty state; the second renders the sections'
-  // chrome — header, count and open state — in `sectionsHost` under it, so the
-  // visual order the imperative column had is preserved. `index.ts` mounts each
-  // section's still-imperative body into the container the section rendered.
+  // Two React roots share the column. The first renders the subject and the
+  // empty state; the second renders the sections — header, count, open state and
+  // every row under them — in `sectionsHost`, so the visual order the imperative
+  // column had is preserved.
   const reactHost = document.createElement("div");
   const sectionsHost = document.createElement("div");
   root.append(reactHost, sectionsHost);
@@ -719,35 +652,11 @@ export function createSelectionInspector(
     };
 
   /**
-   * Mounts each section's imperative body into the container React rendered for
-   * it.
-   *
-   * The bodies are `ColumnSection.body` — the fields the per-kind builders still
-   * return as elements — and this is the narrow seam Ruling A names: React owns
-   * the chrome, `index.ts` owns what is inside the panel until Tasks 3–6 empty
-   * the bodies. The container is found by its own hook rather than by a handle,
-   * because the element is React's to create and this is the only place that
-   * fills it. A section React no longer rendered keeps no container, and its
-   * body goes with it.
-   */
-  const mountBodies = (sections: readonly ColumnSection[]): void => {
-    for (const section of sections) {
-      sectionsHost
-        .querySelector<HTMLElement>(
-          `[data-vigilia-section="${section.id}"] [data-vigilia-section-body]`,
-        )
-        ?.replaceChildren(...section.body);
-    }
-  };
-
-  /**
-   * Projects the described object, publishes the chrome to React and mounts the
-   * bodies under it — in that order, because the containers the bodies go into
-   * are the ones this very render created.
+   * Projects the described object and publishes it to React. Every row, and the
+   * reveal a section may carry, is the column's to render — there is nothing
+   * left for this module to mount into a rendered container.
    */
   const render = (): void => {
-    const focused = focusedControl();
-
     const object = target();
     if (object !== described) {
       described = object;
@@ -766,13 +675,18 @@ export function createSelectionInspector(
 
     const view = projectSelection(object, targetRevision, ports, sections);
     // Both roots read the same view: the subject root renders the subject and
-    // the empty state, the section root renders the chrome. Each is flushed
-    // synchronously, so the bodies mount into containers that already exist.
+    // the empty state, the section root renders the sections and every row in
+    // them. `revealTypePresets` reaches the column as a port, the same way the
+    // three edit ports do — the view carries the label, never the callback.
     column.publish(view, edits);
-    sectionColumn.publish(view, edits, runEdits, chartEdits(), cropEdits);
-    mountBodies(sections);
-
-    restoreFocus(sectionsHost, focused);
+    sectionColumn.publish(
+      view,
+      edits,
+      runEdits,
+      chartEdits(),
+      cropEdits,
+      options.revealTypePresets,
+    );
   };
 
   // Fabric reports a finished drag/resize/rotate as `object:modified`; the fields

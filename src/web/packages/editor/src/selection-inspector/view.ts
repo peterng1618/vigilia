@@ -9,7 +9,6 @@ import { rowNameOf } from "../editor-shell/layer-tree.js";
 import { uiCopy } from "../ui-copy.js";
 import {
   type ColumnContext,
-  type ColumnSection,
   type ColumnSectionId,
   type GeometryKey,
   type GeometryPort,
@@ -41,11 +40,11 @@ export interface ColumnSectionView {
   readonly readOnly: boolean;
   readonly defaultOpen: boolean;
   /**
-   * How many rows the section holds: its fields, its extras and the body it
-   * does not render itself yet. An extra counts once however many controls it
-   * carries — it is one row in this count's vocabulary, the same way a run
-   * editor is — and it counts only while `rendersExtra` says the column renders
-   * it, so the header can never claim a row that is not there.
+   * How many rows the section holds: its fields, its extras and its reveal. An
+   * extra counts once however many controls it carries — it is one row in this
+   * count's vocabulary, the same way a run editor is — and it counts only while
+   * `rendersExtra` says the column renders it, so the header can never claim a
+   * row that is not there.
    *
    * It lives in the value because the header prints it: collapsing a section is
    * ordering, not removal, so a closed Position still says how much it holds.
@@ -55,6 +54,17 @@ export interface ColumnSectionView {
   readonly fields: readonly FieldView[];
   /** The sub-surfaces that are not one control. */
   readonly extras: readonly ExtraView[];
+  /**
+   * The label of the one link out of this section, when it has one — Spends
+   * offers a way into the panel that owns a type preset rather than a second
+   * copy of its fields.
+   *
+   * A **label**, not the button and not its callback: the column renders the
+   * control from the view's own vocabulary the way it renders every row, so
+   * nothing imperative crosses into a `SelectionView`. The callback is a write
+   * port and reaches the column as a prop, beside `edits`, `runs` and `chart`.
+   */
+  readonly revealLabel: string | undefined;
 }
 
 /**
@@ -594,40 +604,19 @@ function bindingKeyOf(
 }
 
 /**
- * The value half of a rendered section: what the column says about it, without
- * the DOM it still holds.
- *
- * `ColumnSection.body` is the imperative half of the React conversion — the
- * field builders return `HTMLElement`s until Tasks 3–6 convert them — and it
- * must not cross into a view: Review Focus 1 walks a `SelectionView` for a DOM
- * node, so an element in a `ColumnSectionView` fails the plan's own guard. The
- * strip is here rather than at the call site so that guard has one place to
- * watch.
- */
-function sectionViewOf(section: ColumnSection): ColumnSectionView {
-  return {
-    id: section.id,
-    title: section.title,
-    readOnly: section.readOnly,
-    defaultOpen: section.defaultOpen,
-    count: section.count,
-    fields: section.fields,
-    extras: section.extras,
-  };
-}
-
-/**
  * The projection. Reads only, through the owners — it resolves no target of its
  * own (`index.ts`'s `target()` decides which object is described and hands it
- * here) and it holds no writer and no DOM. The rendered sections are handed in
- * and reduced to their values, so the view the column renders is the one list of
- * sections and not a second copy of it.
+ * here) and it holds no writer and no DOM.
+ *
+ * The sections arrive already as values: the per-kind builders return
+ * `ColumnSectionView`s and nothing imperative survives beside them, so there is
+ * no element to strip and no DOM node a `SelectionView` could carry.
  */
 export function projectSelection(
   target: FabricObject | undefined,
   targetRevision: number,
   ports: ProjectionPorts,
-  sections: readonly ColumnSection[] = [],
+  sections: readonly ColumnSectionView[] = [],
 ): SelectionView {
   if (target === undefined) {
     return { targetRevision, subject: undefined, locked: false, sections: [] };
@@ -643,6 +632,6 @@ export function projectSelection(
       ),
     },
     locked: target.get("locked") === true,
-    sections: sections.map(sectionViewOf),
+    sections,
   };
 }

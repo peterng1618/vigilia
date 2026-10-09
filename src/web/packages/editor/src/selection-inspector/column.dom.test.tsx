@@ -132,6 +132,7 @@ function renderedSections(view: SelectionView): HTMLElement[] {
         runs={runs}
         chart={chart}
         crop={crop}
+        revealTypePresets={undefined}
       />,
     );
   });

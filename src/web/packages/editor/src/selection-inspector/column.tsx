@@ -38,11 +38,9 @@ import type {
  * `SETTINGS_SECTIONS` decides their order, so a column that re-ordered here
  * would be a second owner of Review Focus 2's rule.
  *
- * A section renders its own `fields` and `extras` — the rows that have moved to
- * React — and leaves `data-vigilia-section-body` for `index.ts` to mount the
- * still-imperative bodies into. That container empties as Tasks 4–6 convert the
- * remaining sections; React renders it empty and never touches the nodes
- * `index.ts` puts inside it, because React only moves the children it made.
+ * A section renders the whole of what it holds: its `fields`, its `extras` and
+ * its reveal, if the view gives it one. There is nothing imperative left to
+ * mount into it, so the column is the only writer of the section's panel.
  *
  * Every row is a plan-1 control carrying the field's own `data-*` hooks on its
  * focus target, so the locator a suite reads and the control a person operates
@@ -273,10 +271,20 @@ function Section(props: {
   readonly runs: RunEdits;
   readonly chart: ChartEdits;
   readonly crop: CropEdits;
+  readonly revealTypePresets: (() => void) | undefined;
   readonly revision: number;
   readonly idPrefix: string;
 }): React.JSX.Element {
-  const { section, edits, runs, chart, crop, revision, idPrefix } = props;
+  const {
+    section,
+    edits,
+    runs,
+    chart,
+    crop,
+    revealTypePresets,
+    revision,
+    idPrefix,
+  } = props;
 
   return (
     <InspectorSection
@@ -333,7 +341,19 @@ function Section(props: {
             return null;
         }
       })}
-      <div data-vigilia-section-body="" />
+      {section.revealLabel === undefined ? null : (
+        // The one way out of a section: it opens the panel that owns the type
+        // preset's fields rather than growing a second set here. The hook is the
+        // one the imperative button carried, so the locators that read it still
+        // find the control.
+        <button
+          type="button"
+          data-vigilia-reveal-type-presets=""
+          onClick={() => revealTypePresets?.()}
+        >
+          {section.revealLabel}
+        </button>
+      )}
     </InspectorSection>
   );
 }
@@ -344,8 +364,13 @@ export function SelectionColumn(props: {
   readonly runs: RunEdits;
   readonly chart: ChartEdits;
   readonly crop: CropEdits;
+  /** The write port a section's reveal reaches, beside the three above.
+      `undefined` when no host offered one; the projection only writes a
+      section's reveal label for a host that answered, so a view naming a reveal
+      and this port cannot disagree. */
+  readonly revealTypePresets: (() => void) | undefined;
 }): React.JSX.Element {
-  const { view, edits, runs, chart, crop } = props;
+  const { view, edits, runs, chart, crop, revealTypePresets } = props;
   // A column is one selection's, and two columns can be mounted at once (the
   // accessibility audit mounts two). `${id}-header` is document-global, so the
   // aria pair is scoped to this instance or the second column's `aria-controls`
@@ -362,6 +387,7 @@ export function SelectionColumn(props: {
           runs={runs}
           chart={chart}
           crop={crop}
+          revealTypePresets={revealTypePresets}
           revision={view.targetRevision}
           idPrefix={idPrefix}
         />
@@ -371,8 +397,8 @@ export function SelectionColumn(props: {
 }
 
 /**
- * The column's React root. `index.ts` publishes the projected view here and
- * mounts the imperative bodies into the containers this rendered, in that order.
+ * The column's React root. `index.ts` publishes the projected view here, with
+ * the write ports a section's reveal reaches.
  *
  * A publish is flushed synchronously, the same contract the subject's root keeps:
  * a caller that reads the column straight after a selection change sees it.
@@ -384,13 +410,14 @@ export function createSelectionColumnRoot(host: HTMLElement): {
     runs: RunEdits,
     chart: ChartEdits,
     crop: CropEdits,
+    revealTypePresets: (() => void) | undefined,
   ) => void;
   readonly destroy: () => void;
 } {
   const root: Root = createRoot(host);
 
   return {
-    publish(view, edits, runs, chart, crop) {
+    publish(view, edits, runs, chart, crop, revealTypePresets) {
       flushSync(() => {
         root.render(
           <SelectionColumn
@@ -399,6 +426,7 @@ export function createSelectionColumnRoot(host: HTMLElement): {
             runs={runs}
             chart={chart}
             crop={crop}
+            revealTypePresets={revealTypePresets}
           />,
         );
       });
