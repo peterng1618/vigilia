@@ -49,9 +49,14 @@ export function DocumentIdentity({
       <span className="editor-shell-identity-name" title={documentName}>
         {documentName}
       </span>
-      <span className="editor-shell-identity-edited">
-        {dirty ? uiCopy.saveState.unsaved : ""}
-      </span>
+      {/* Only while it says something: an always-present span is a flex item
+          that contributes the row's gap and nothing else, so the clean chip
+          carried a phantom 8px after the name. */}
+      {dirty ? (
+        <span className="editor-shell-identity-edited">
+          {uiCopy.saveState.unsaved}
+        </span>
+      ) : null}
     </p>
   );
 }

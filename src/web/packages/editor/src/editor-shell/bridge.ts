@@ -29,9 +29,12 @@ export interface EditorShellSnapshot {
   readonly selectedCount: number;
   readonly locked: boolean;
   readonly activeKind: ActiveKind;
-  /** The document's identity, as the session reports it (§7.5). `undefined`
-   *  only while no document is open — never `""`, because a chip that named
-   *  nothing is a claim the product does not have. */
+  /** The document's identity, as the session reports it (§7.5): the theme's own
+   *  name, or its id where the theme carries no name. `undefined` only while no
+   *  document is open — never `""`, because a chip that named nothing is a
+   *  claim the product does not have. The schema lets `metadata.name` be empty
+   *  (`maxLength` with no `minLength`), so the fallback is taken on `""` too,
+   *  and `stableId` requires 1–64 characters, so the id can never be empty. */
   readonly documentName: string | undefined;
 }
 
@@ -103,10 +106,12 @@ export function createEditorShellBridge(input: {
    * as no bindings — a bridge with no document behind it says so rather than
    * refusing to project. */
   readonly bindings?: () => Readonly<Record<string, readonly Binding[]>>;
-  /** The open document's name, pulled the way `bindings` is: the session owns
-   *  it, so the snapshot projects it rather than holding a copy. Absent reads
-   *  as no document open. */
-  readonly documentName?: () => string | undefined;
+  /** The open document's identity, pulled the way `bindings` is: the session
+   *  owns both facts. Absent reads as no document open. */
+  readonly documentIdentity?: () => {
+    readonly name: string | undefined;
+    readonly id: string;
+  };
   /** The product's own library capture; see `EditorShellBridge.capture`. */
   readonly capture: () => string | undefined;
 }): EditorShellBridge {
@@ -149,6 +154,7 @@ export function createEditorShellBridge(input: {
       | undefined;
   const snapshot = (): EditorShellSnapshot => {
     const active = activeObject();
+    const identity = input.documentIdentity?.();
     return {
       selectedCount:
         active instanceof ActiveSelection
@@ -158,7 +164,10 @@ export function createEditorShellBridge(input: {
             : 1,
       locked: active?.get("locked") === true,
       activeKind: activeKindOf(active),
-      documentName: input.documentName?.(),
+      // `||`, not `??`: an empty stored name is a name the document does not
+      // have, and the id behind it is what the schema guarantees is there.
+      documentName:
+        identity === undefined ? undefined : identity.name || identity.id,
     };
   };
   const target = (): ObjectTarget => {
