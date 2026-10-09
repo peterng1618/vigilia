@@ -1776,26 +1776,35 @@ body,
   text-align: center;
 }
 /* The cluster's three camera controls: −, + and fit. Square at the bible's 26px
-   icon button, transparent inside the cluster's own glass, and marked the way
-   the rail marks its slots — a wash on hover, and `--accent` while fit's
-   `aria-pressed` says the camera is fitted. */
+   icon button, transparent inside the cluster's own glass, and §5 rule 6's
+   glyph-only hover — a resting 1px transparent border raised to `--muted`, so
+   the control acquires its edge on hover and "nothing moves" holds (the
+   transparent resting border is what keeps the box the same size; with
+   `box-sizing: border-box` the 26px is the border box either way).
+
+   Fit's fitted state is marked through `data-fitted`, a hook that carries no
+   ARIA meaning: "Fit" is a one-way command that cannot be pressed off, so
+   `aria-pressed` would announce a toggle the author cannot undo. The state
+   itself is already said by the display menu's Fit radio tick, read from the
+   same `isFitted()`; this is only the button's own echo of it. */
 .editor-shell-view-step {
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  box-sizing: border-box;
   width: 26px;
   height: 26px;
   padding: 0;
-  border: 0;
+  border: 1px solid transparent;
   border-radius: var(--radius-md);
   background: transparent;
   color: inherit;
   cursor: pointer;
 }
 .editor-shell-view-step:hover {
-  background: color-mix(in srgb, var(--text) 10%, transparent);
+  border-color: var(--muted);
 }
-.editor-shell-view-step[aria-pressed="true"] {
+.editor-shell-view-step[data-fitted="true"] {
   color: var(--accent);
   background: color-mix(in srgb, var(--accent) 14%, transparent);
 }

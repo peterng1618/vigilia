@@ -210,10 +210,13 @@ export function DisplaySwitch({
       {/* The state is the camera's own `isFitted()`, the same fact the display
           menu's Fit tick reads: one fact, two readings, so a lens chosen and
           then moved off the fit cannot be marked as fitted here and unmarked
-          there. */}
+          there. It is carried by `data-fitted` rather than `aria-pressed`
+          because Fit is one-way — pressing it fits, and no second press un-fits
+          — so the toggle pattern would announce a state the control cannot
+          change. */}
       <ViewButton
         label={uiCopy.display.zoomToFit}
-        pressed={isFitted}
+        fitted={isFitted}
         onClick={() => viewport.zoomToFit()}
       >
         <Scan aria-hidden size={15} strokeWidth={1.75} />
@@ -227,17 +230,16 @@ export function DisplaySwitch({
  *  popup — the split `canvas-dock.tsx` uses, for the same reason: the selection
  *  inspector builds the same popup without ever seeing React.
  *
- *  `pressed` is omitted rather than `false` on the two stepping commands: they
- *  are momentary, and a toggle button is a claim about a state they do not
- *  hold. */
+ *  `fitted` is omitted rather than `false` on the two stepping commands: it is
+ *  the fitted camera's mark, and they hold no such state. */
 function ViewButton({
   label,
-  pressed,
+  fitted,
   onClick,
   children,
 }: {
   readonly label: string;
-  readonly pressed?: boolean;
+  readonly fitted?: boolean;
   readonly onClick: () => void;
   readonly children: ReactNode;
 }): React.JSX.Element {
@@ -253,7 +255,7 @@ function ViewButton({
       type="button"
       className="editor-shell-view-step"
       aria-label={label}
-      aria-pressed={pressed}
+      data-fitted={fitted}
       onClick={onClick}
     >
       {children}

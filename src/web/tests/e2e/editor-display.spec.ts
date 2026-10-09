@@ -692,4 +692,39 @@ test.describe("the stage looks through a display", () => {
       .toBeLessThan(400);
     assertNoCollision(await measureCorners());
   });
+
+  /** §5 rule 6, on the one glyph-only control this task adds: hover *acquires*
+   *  the border rather than washing the background, and acquires it without
+   *  moving anything.
+   *
+   *  The two colours are compared to each other, not to a palette value, so all
+   *  six palettes are the same measurement — the claim is the *relationship*
+   *  ("nothing at rest, an edge on hover"), which is what a page cannot state
+   *  for itself and jsdom cannot see at all. The rested border is asserted
+   *  transparent rather than merely different, because a resting border of any
+   *  colour would be a different control. */
+  test("a camera step acquires its edge on hover, and nothing moves", async ({
+    page,
+  }) => {
+    const step = page.locator('.editor-shell-view-step[aria-label="Zoom in"]');
+    await expect(step).toBeVisible();
+
+    const borderOf = () =>
+      step.evaluate((node) => getComputedStyle(node).borderTopColor);
+
+    const resting = await borderOf();
+    const restedBox = await step.boundingBox();
+    expect(
+      resting,
+      "the glyph-only control rests with no border of its own",
+    ).toMatch(/^(rgba\(0, 0, 0, 0\)|transparent)$/);
+
+    await step.hover();
+    const hovered = await borderOf();
+    expect(hovered, "and hover is what gives it one").not.toBe(resting);
+    expect(
+      await step.boundingBox(),
+      "the border changes no box, so nothing moves",
+    ).toEqual(restedBox);
+  });
 });

@@ -211,20 +211,32 @@ it("offers the camera's −, + and fit beside the readout, stepping by the keys'
 /** Fit says whether the camera is fitted, off the same `isFitted()` the menu's
  *  tick reads. A lens chosen and then moved off the fit is the state this
  *  separates: the lens is still chosen, and the camera is not where a fit would
- *  put it. */
+ *  put it.
+ *
+ *  The mark is `data-fitted` and not `aria-pressed`: Fit cannot be pressed off,
+ *  so the toggle pattern would announce a state the control does not hold. The
+ *  attribute is asserted both ways because a screen reader is not being told
+ *  anything here — the menu's tick carries the state — so nothing but the mark
+ *  was lost. */
 it("marks fit from the camera, so a lens that is not fitted is not marked", async () => {
   const { host, render, setFitted } = setup("16:9");
   await render();
 
-  const pressed = (): string | null | undefined =>
+  const mark = (): string | null | undefined =>
     host
       .querySelector(`[aria-label="${uiCopy.display.zoomToFit}"]`)
-      ?.getAttribute("aria-pressed");
+      ?.getAttribute("data-fitted");
 
   await setFitted(true);
-  expect(pressed(), "a fitted camera marks fit").toBe("true");
+  expect(mark(), "a fitted camera marks fit").toBe("true");
   await setFitted(false);
-  expect(pressed(), "and a camera moved off it does not").toBe("false");
+  expect(mark(), "and a camera moved off it does not").toBe("false");
+  expect(
+    host
+      .querySelector(`[aria-label="${uiCopy.display.zoomToFit}"]`)
+      ?.getAttribute("aria-pressed"),
+    "and no aria-pressed is announced, because Fit is not a toggle",
+  ).toBeNull();
 });
 
 it("keeps reading the camera's zoom, because that readout is not this task's to remove", async () => {
