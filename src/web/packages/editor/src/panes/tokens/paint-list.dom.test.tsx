@@ -12,9 +12,19 @@
  * imperative panel rebuilt its field set on every commit, which destroyed the
  * colour picker's trigger, and the open popover then measured a detached node —
  * one click on the saturation square threw the picker to (0, 6). The React form
- * of the rule is the key on the field set: a colour change re-renders in place,
- * a paint-kind switch remounts. Both directions are asserted, because only one
- * of them was the defect.
+ * of the rule is the key on the field set — **both** its terms, token and paint
+ * kind: a colour change re-renders in place, a paint-kind switch remounts, and a
+ * token switch remounts too. The token term is load-bearing for the same reason
+ * the kind term is: `ColourPicker` seeds its HSV and its draft from `value` at
+ * mount and only resyncs in a passive effect, so a token switch that did not
+ * remount would render the previous token's state for a frame. All three are
+ * asserted, because only the first two are what the measured defect named.
+ *
+ * **This file is deliberately not in `scripts/design-tokens.gated.json`** (R37).
+ * Its colour literals are document fixtures — the values a case asserts an author
+ * typed — not styling, and the ratchet exists to catch a surface that paints a
+ * colour instead of naming one. It was added and removed: gating it reports 20
+ * hex-literal violations. The omission is a decision, not an oversight.
  *
  * `Harness` is the session's half of that contract: a commit comes back as a new
  * palette prop, exactly as `editor-session`'s `render()` hands one back.
@@ -312,6 +322,28 @@ it("remounts the field set when the paint kind changes", async () => {
   // fields, so the set is rebuilt — which is what the imperative panel did and
   // what must not happen on a mere colour change.
   expect(fieldsHost(host), "a kind switch rebuilds the field set").not.toBe(
+    before,
+  );
+});
+
+it("rebuilds the field set when the token changes, so the picker cannot show the last token's colour", async () => {
+  // The key's **token** term, which nothing else holds. Both tokens here are
+  // solid, so the kind is unchanged and only `selected` moves the key — a key
+  // trimmed to the paint kind keeps the whole file green, which is exactly what
+  // this case is for.
+  //
+  // Identity is the measurement because it is the only thing a jsdom test can
+  // see in time: the stale frame `ColourPicker`'s passive resync would show is
+  // flushed by `act` before any assertion runs, so the value read here would
+  // agree with the correct implementation either way. A node that survived the
+  // switch is the same defect stated where it can be caught.
+  const { host } = await mount(palette, { usage: undefined });
+  const before = pickerHost(host);
+  expect(before).not.toBeNull();
+
+  await click(host.querySelector('[data-vigilia-palette-token-row="accent"]')!);
+
+  expect(pickerHost(host), "a token switch rebuilds the field set").not.toBe(
     before,
   );
 });

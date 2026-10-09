@@ -176,6 +176,12 @@ it("leaves the three panels with no copy of their own", async () => {
     root,
     "[data-vigilia-palette-kind]",
   );
+  // Non-vacuous, and said with a number. `openUnitDisplayOptions` returns an
+  // empty list when its selector matches nothing, so without this the read above
+  // could cover nothing at all — and because a select's trigger is excluded from
+  // the button net, a hard-coded kind word would then go uncovered too. Two is
+  // what the pane offers (`solid`, `gradient`), read off the opened list.
+  expect(paintKinds).toHaveLength(2);
   const owned = new Set(copy());
   const spoken = [
     ...Array.from(root.querySelectorAll("label"), (label) => label.textContent),
@@ -184,7 +190,7 @@ it("leaves the three panels with no copy of their own", async () => {
     // trigger prints the chosen value, which on every panel here is a token's
     // name, a preset's, a unit's or a locale's — the chevron beside it is
     // decoration. The words a select *offers* are copy and are read from its
-    // open list below, so excluding the closed control loses nothing.
+    // open list, so excluding the closed control loses nothing.
     ...Array.from(root.querySelectorAll("button"))
       .filter(
         (button) =>
