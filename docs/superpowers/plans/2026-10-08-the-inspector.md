@@ -328,7 +328,7 @@ Content, Position, Layer and Paint stop building DOM and start returning `FieldV
 
 ### Task 3: Content and Layer — the subject's own fields, and a text object's runs
 
-**Outcome:** Content renders the name field, a text object's run editor and a chart's own content fields; Layer renders rotation and opacity. Every row is a plan-1 control carrying its existing `data-vigilia-*` hook on its own focusable element.
+**Outcome:** Content renders the name field and a text object's run editor; Layer renders rotation and opacity. Every row is a plan-1 control carrying its existing `data-vigilia-*` hook on its own focusable element. **Controller correction (ruling H, in the ledger):** a chart's own content fields are **Task 3a's**, not this task's — this Outcome claimed them while 3a's own preamble says 3a exists because the chart fields are the ones the React boundary could not reach from here. The boundary is the **directory**: `chart-manager/**` and `settings-field.ts`'s chart consumers are 3a's, `selection-inspector/**` is this task's. Task 3 wires the dispatch of the `chartContent` and `chartPaint` extra kinds; 3a supplies the renderer, and 3a proves "every descriptor visible pre-plan has a rendered, named control" for the chart families.
 
 **Owning symbols/landmarks:** `appearance.ts` (`createNameField`, `createOpacityField`, `createResolutionLine`, `createTypePresetReveal`), `runs.ts` (817 lines — `createRunEditor`, `RunBindingPort`), `per-kind-column.ts` (`contentBody`, `layerBody`, `rotationField`), `index.ts`'s `focusedControl`/`restoreFocus`, `chart-manager`'s `ChartFieldsPort.content`.
 
@@ -353,6 +353,8 @@ it("adds and removes a run without the editor losing its own state", () => {});
 
 Run: `npx vitest run packages/editor/src/selection-inspector/runs.dom.test.tsx`
 Expected: **FAIL** — the module does not exist.
+
+**Controller correction (ruling I, in the ledger):** these four are not all run-editor cases, so they do not all belong in the file the `Run:` line names. Write each case **where the behaviour lives** — the two run-specific ones ("keeps the caret …", "adds and removes a run …") in `runs.dom.test.tsx`; the name-bound case with the name field; the toggle case wherever the restore rule is exercised for a toggle, which may mean adding a file to this task's list rather than inventing one. A name-field rule asserted from the run editor's file passes today and misleads whoever moves either one later.
 
 - [ ] **Step 2: Rewrite the run editor as React, and make it shrink**
 
