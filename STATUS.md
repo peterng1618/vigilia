@@ -28,7 +28,7 @@ backlog it produced stays live in the register.
 - **Plan 4 — [`the panes`](docs/superpowers/plans/2026-10-08-the-panes.md) — is the active plan, and it is 2 of its 12 tasks in**; plans 1–3 are closed and archived, and exactly one plan is active at a time.
 - **Tasks 1–2 landed** — the Composition pane's row is React, with its rename, eye and lock on the attended row — and **Task 3, the Add pane's insert surface, is the next work**.
 - **Plan 4's ledger is `.superpowers/sdd/2026-10-08-the-panes/progress.md`** (git-ignored but on disk): it holds the predecessor reconciliation and rulings R1–R15, and a fresh session continues from it rather than from this file.
-- **Two plans remain after this one** — `2026-10-08-settings-and-appearance.md`, then `2026-10-08-iconography-and-copy.md`; the spec's Acceptance list is walked against the built product once they close, and every plan ends with its §13 parity capture.
+- **Three plans remain after this one** — `2026-10-08-settings-and-appearance.md`, `2026-10-08-iconography-and-copy.md`, then [`2026-10-10-design-md-replaces-the-bible.md`](docs/superpowers/plans/2026-10-10-design-md-replaces-the-bible.md), queued and unstarted, subagent-driven when it runs; every plan ends with its §13 parity capture.
 - **Reactify ([0039](docs/decisions/0039-the-editor-ui-is-react-and-only-the-canvas-is-imperative.md)) is the frame, not a phase** — every editor surface becomes React, only the canvas stays imperative, and no Fabric object is ever mirrored into React state.
 - **The mockups are the checked reference** ([`docs/design/mockups/`](docs/design/mockups/)), not files read once and remembered; spec §13 makes a capture beside them a gate item.
 
