@@ -107,6 +107,11 @@ export const uiCopy = {
   /** Selection inspector field labels. */
   inspectorFields: {
     selection: "Selection",
+    /** The subject's second line: what kind of thing the column describes, and —
+        where a binding carries one — the key it reads. One string, so the kind
+        word and the key are separated the same way everywhere they meet. */
+    subjectKind: (kind: string, key?: string): string =>
+      key === undefined ? kind : `${kind} · ${key}`,
     /** What the selected object is called in the layer list, as against the id. */
     name: "Name",
     /** Shown when a name is rejected rather than truncated to the published bound. */

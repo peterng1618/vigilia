@@ -1,5 +1,10 @@
 import { ActiveSelection, type Canvas, type FabricObject } from "fabric/es";
 
+/** Fired when a lock is applied. `apply` writes the Fabric flags and fires no
+    other event, so a surface that only re-reads on selection and history events
+    — the selection inspector — would go on describing the object as editable. */
+export const OBJECT_LOCK_CHANGED_EVENT = "editor:object-lock-changed";
+
 export interface ObjectLockManager {
   lockObject(input?: { readonly object?: FabricObject }): void;
   unlockObject(input?: { readonly object?: FabricObject }): void;
@@ -78,6 +83,10 @@ export function createObjectLockManager(
     // not on the next selection: `hasControls` is only read while drawing.
     object.setCoords();
     canvas.requestRenderAll();
+    canvas.fire(
+      OBJECT_LOCK_CHANGED_EVENT as never,
+      { target: object } as never,
+    );
   };
 
   // Undo rebuilds the scene, so a revived locked object is a new instance back

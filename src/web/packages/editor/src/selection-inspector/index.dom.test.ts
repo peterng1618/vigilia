@@ -13,8 +13,9 @@ import {
 import { VigiliaChart, Wedge } from "@vigilia/scene-fabric";
 import {
   ActiveSelection,
-  type FabricObject,
+  Canvas,
   FabricImage,
+  type FabricObject,
   Group,
   IText,
   Line,
@@ -26,6 +27,7 @@ import {
   Textbox,
 } from "fabric/es";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { createObjectLockManager } from "../object-lock-manager/index.js";
 import { uiCopy } from "../ui-copy.js";
 import { idleCrop } from "./idle-crop.test-stage.js";
 import { createSelectionInspector } from "./index.js";
@@ -607,6 +609,39 @@ describe("the selection inspector", () => {
     expect(host.textContent).toContain("locked");
     // Read-only: the author still needs to see what the object resolves to.
     expect(host.querySelector("[data-vigilia-resolution]")).not.toBeNull();
+  });
+
+  it("republishes when the object is locked from the layer row (vg-148)", () => {
+    // vg-148: locking through the layer row sets the flags and fires no
+    // selection event, so the column went on offering writing fields the object
+    // would refuse until something else happened to re-render it. This drives
+    // the real manager over a real canvas — an event the manager never fires
+    // cannot reach the column through a stub that does not route one.
+    const canvas = new Canvas(document.createElement("canvas"));
+    const object = new Rect({ left: 0, top: 0, width: 40, height: 20 });
+    object.set("id", "cpu-card");
+    canvas.add(object);
+    canvas.setActiveObject(object);
+
+    const host = document.createElement("div");
+    createSelectionInspector(host, {
+      editor: {
+        canvas,
+        historyManager: { saveState: vi.fn() },
+        errorManager: { warn: vi.fn(), error: vi.fn() },
+        cropManager: idleCrop(),
+      } as never,
+      refreshGlass: vi.fn(),
+    });
+
+    expect(host.querySelector("[data-vigilia-name]")).not.toBeNull();
+    expect(host.textContent).not.toContain(uiCopy.inspectorFields.locked);
+
+    createObjectLockManager(canvas, vi.fn()).lockObject();
+
+    expect(host.textContent).toContain(uiCopy.inspectorFields.locked);
+    expect(host.querySelector("[data-vigilia-name]")).toBeNull();
+    expect(host.querySelector('[data-vigilia-geometry="width"]')).toBeNull();
   });
 
   it("keeps the run editor on a locked object, because nothing refuses it", () => {

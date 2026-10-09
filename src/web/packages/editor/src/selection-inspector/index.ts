@@ -7,7 +7,8 @@ import { applyAuthoredText } from "@vigilia/scene-fabric";
 import type { FabricObject } from "fabric/es";
 import type { EditorInteraction } from "../editor-interaction.js";
 import type { PropertySection } from "../editor-shell/controls/property-section.js";
-import { uiCopy } from "../ui-copy.js";
+import { OBJECT_LOCK_CHANGED_EVENT } from "../object-lock-manager/index.js";
+import { createInspectorRoot } from "./inspector.js";
 import {
   type ChartFieldsPort,
   type ColumnContext,
@@ -15,6 +16,14 @@ import {
   type GeometryKey,
   perKindColumn,
 } from "./per-kind-column.js";
+import {
+  isTextObject,
+  measuredEdgeOf,
+  type ProjectionPorts,
+  projectSelection,
+  readField,
+  type SelectionEdits,
+} from "./view.js";
 
 /**
  * Properties of the selected object. An author's most common action is "select a
@@ -26,6 +35,11 @@ import {
  * the object: which one is described (`target`), how a field writes it, and the
  * commit path. Reads the live Fabric object and writes through the canvas,
  * saving history once per committed edit (§67). Whole artboard units (§57).
+ *
+ * The column renders through React now ([ADR-0039]): `render` projects a
+ * serializable `SelectionView` from Fabric and publishes it to the React root.
+ * React holds that value and never the object it describes, which is what keeps
+ * Fabric out of React and one writer of the scene.
  */
 
 export interface SelectionInspector {
@@ -40,77 +54,6 @@ export interface SelectionInspector {
 
 /** The two dimensions a text object's authored box carries. */
 type BoxKey = "width" | "height";
-
-/**
- * The box a text object was authored with, when it has one.
- *
- * `vigiliaText.box` is the owner (ADR 0003): a `Textbox` cannot hold a box,
- * because `width` re-enters `initDimensions` and widens the object to its
- * longest run. So the Size fields write this rather than a scale, and read it
- * back, and the type stays the size its preset says it is.
- */
-function authoredBoxOf(
-  object: FabricObject,
-  key: GeometryKey,
-): number | undefined {
-  if (key !== "width" && key !== "height") return undefined;
-  const authored = object.get("vigiliaText") as
-    | { readonly box?: { readonly width?: number; readonly height?: number } }
-    | undefined;
-  const value = authored?.box?.[key];
-  return typeof value === "number" && Number.isFinite(value)
-    ? value
-    : undefined;
-}
-
-/** Whether the object is a text object, whose size is a box and not a scale. */
-function isTextObject(object: FabricObject): boolean {
-  const authored = object.get("vigiliaText");
-  return typeof authored === "object" && authored !== null;
-}
-
-/**
- * The object's own drawn edge, when it is not the number the Size fields show.
- *
- * `vigiliaText.box` is stored **unscaled** — `assertBoxHeight` puts the object
- * back at `box.height / scaleY` precisely so the scale can be reapplied by
- * `boxFrom` — so a text object carrying a scale draws a box larger than the
- * number in the field. Measured on the running editor: a 140 × 27 box at
- * `scaleX/scaleY 2` read 140 and **27** in the Size pair and drew an edge of
- * 280 × 54.
- *
- * The field cannot show the drawn edge instead. `write` puts the number the
- * author types into `vigiliaText.box`, so a Size field reading the edge would
- * name a number it is about to overwrite — and it would be wrong on the next
- * render, which is exactly the kind of quiet disagreement this reports instead.
- *
- * Only a text object with a box can disagree: for anything else `readField`
- * already returns the scaled edge, and a box-less text object's height *is*
- * Fabric's measurement. A difference under one whole unit is the field's own
- * rounding, not a disagreement.
- */
-function measuredEdgeOf(
-  object: FabricObject,
-): { readonly width: number; readonly height: number } | undefined {
-  if (!isTextObject(object)) return undefined;
-  const authoredWidth = authoredBoxOf(object, "width");
-  const authoredHeight = authoredBoxOf(object, "height");
-  if (authoredWidth === undefined && authoredHeight === undefined) {
-    return undefined;
-  }
-
-  const drawn = {
-    width: Math.round(object.width * object.scaleX),
-    height: Math.round(object.height * object.scaleY),
-  };
-  const shown = {
-    width: Math.round(authoredWidth ?? drawn.width),
-    height: Math.round(authoredHeight ?? drawn.height),
-  };
-  return drawn.width === shown.width && drawn.height === shown.height
-    ? undefined
-    : drawn;
-}
 
 /**
  * Writes one dimension of the authored box, keeping the other.
@@ -148,22 +91,6 @@ function writeAuthoredBox(
       [key]: value,
     },
   });
-}
-
-/**
- * Fabric reports geometry in the object's own origin; these read whole artboard
- * units (§57). Position is the object's own `left`/`top` — its placement in the
- * artboard — not the drawn box, which also includes any stroke and the group
- * context, so the numbers an author types match what they placed.
- */
-function readField(object: FabricObject, key: GeometryKey): number {
-  const box = authoredBoxOf(object, key);
-  if (box !== undefined) return box;
-  if (key === "width") return object.width * object.scaleX;
-  if (key === "height") return object.height * object.scaleY;
-  if (key === "left") return object.left;
-  if (key === "top") return object.top;
-  return object.angle;
 }
 
 export interface SelectionInspectorOptions {
@@ -261,6 +188,17 @@ function restoreFocus(
   root.querySelector<HTMLElement>(`[${attribute}="${focused.value}"]`)?.focus();
 }
 
+/** The geometry field ids the dispatcher can write: the value each
+    `data-vigilia-geometry` hook carries. Every other field's writer arrives with
+    the surface that renders it. */
+const GEOMETRY_FIELD_IDS: ReadonlySet<string> = new Set<GeometryKey>([
+  "left",
+  "top",
+  "width",
+  "height",
+  "angle",
+]);
+
 export function createSelectionInspector(
   host: HTMLElement,
   options: SelectionInspectorOptions,
@@ -272,6 +210,15 @@ export function createSelectionInspector(
   const root = document.createElement("section");
   root.dataset["vigiliaPanel"] = "selection";
   host.append(root);
+
+  // React owns the subject and the empty state. The sections still render
+  // imperatively into their own host beside it: their fields are still DOM until
+  // the per-kind builders become values, so the two surfaces share the column
+  // until the last of them moves.
+  const reactHost = document.createElement("div");
+  const sectionsHost = document.createElement("div");
+  root.append(reactHost, sectionsHost);
+  const column = createInspectorRoot(reactHost);
 
   /**
    * The sections this inspector has built, kept for its whole life. Rebuilding
@@ -299,6 +246,15 @@ export function createSelectionInspector(
 
   /** True only for the render a history load triggers. */
   let restoring = false;
+
+  /**
+   * The identity token for the object a published view describes. Bumped
+   * whenever the described target is replaced, cleared, removed, rehydrated by
+   * history or changed by crop context — a document id cannot identify an
+   * `ActiveSelection`, so the object's own identity is the token.
+   */
+  let targetRevision = 0;
+  let described: FabricObject | undefined;
 
   const objectById = (id: unknown): FabricObject | undefined => {
     if (typeof id !== "string") {
@@ -431,45 +387,45 @@ export function createSelectionInspector(
     return false;
   };
 
-  const render = (): void => {
-    const focused = focusedControl();
-    root.replaceChildren();
-    const object = target();
+  /**
+   * The column's one way to write, from the React surface.
+   *
+   * The view carries the revision it was projected from; the dispatcher
+   * compares it with the live target **at call time**, so a control whose draft
+   * outlived its selection is refused before the write funnel is reached — the
+   * funnel would otherwise resolve the *current* target and write an old draft
+   * into a new object. A mismatch publishes the new view and writes nothing.
+   */
+  const edits: SelectionEdits = {
+    commit(expectedRevision, fieldId, value) {
+      if (expectedRevision !== targetRevision || described === undefined) {
+        render();
+        return false;
+      }
+      // A locked object is refused where the editor refuses it; a field that
+      // writes it directly is withheld, and this is the second gate on the same
+      // rule.
+      if (described.get("locked") === true) {
+        render();
+        return false;
+      }
+      if (!GEOMETRY_FIELD_IDS.has(fieldId)) return false;
+      // Refuse rather than coerce: a non-finite number is not a dimension.
+      if (typeof value !== "number" || !Number.isFinite(value)) {
+        render();
+        return false;
+      }
 
-    if (object === undefined) {
-      // One line naming where to choose from, rather than an empty column: the
-      // panel is the only thing on this tab that explains its own emptiness.
-      const line = document.createElement("p");
-      line.className = "vigilia-resolution";
-      line.dataset["vigiliaNothingSelected"] = "";
-      line.textContent = uiCopy.inspectorFields.nothingSelected;
-      root.append(line);
-      return;
-    }
+      write(described, fieldId as GeometryKey, value);
+      commit();
+      render();
+      return true;
+    },
+  };
 
-    const heading = document.createElement("h2");
-    heading.textContent = uiCopy.inspectorFields.selection;
-    root.append(heading);
-
-    // A locked object is refused where the editor refuses it, and only there.
-    // Refused today: delete, duplicate, copy, cut and lock
-    // (`object-actions.ts` gates them on `!locked`), nudging (`canvas-nudge`
-    // filters it out) and arrange (`canArrange` refuses a locked member). Not
-    // refused anywhere: the four ordering actions, and group/ungroup, whose
-    // `eligible` predicates read the selection's kind and membership but never
-    // its lock; and run bindings, which `#setBindings` writes without reading
-    // one. Gating those here would advertise a refusal that never happens, so
-    // only the fields that write the object directly are withheld — and the
-    // read-only sections still render, because the author can still read them.
-    if (object.get("locked") === true) {
-      const note = document.createElement("p");
-      note.className = "vigilia-resolution";
-      note.textContent = uiCopy.inspectorFields.locked;
-      root.append(note);
-    }
-
+  const columnContext = (): ColumnContext => {
     const chartFields = options.chartFields?.();
-    const context: ColumnContext = {
+    return {
       editor,
       globals,
       locale,
@@ -489,12 +445,39 @@ export function createSelectionInspector(
       ...(chartFields === undefined ? {} : { chartFields }),
       sections,
     };
+  };
 
-    for (const section of perKindColumn(object, context)) {
-      root.append(section.root);
+  /** Projects the described object and publishes it to React. */
+  const publish = (): void => {
+    const object = target();
+    if (object !== described) {
+      described = object;
+      targetRevision += 1;
     }
 
-    restoreFocus(root, focused);
+    const ports: ProjectionPorts = {
+      globals,
+      locale,
+      nodeBindings: options.nodeBindings,
+      sampleSource: options.sampleSource,
+      geometry: { read: readField, measuredEdge: measuredEdgeOf },
+    };
+    column.publish(projectSelection(object, targetRevision, ports), edits);
+  };
+
+  const render = (): void => {
+    const focused = focusedControl();
+    publish();
+
+    const object = described;
+    sectionsHost.replaceChildren();
+    if (object !== undefined) {
+      for (const section of perKindColumn(object, columnContext())) {
+        sectionsHost.append(section.root);
+      }
+    }
+
+    restoreFocus(sectionsHost, focused);
   };
 
   // Fabric reports a finished drag/resize/rotate as `object:modified`; the fields
@@ -509,6 +492,10 @@ export function createSelectionInspector(
   // about what the document contained.
   editor.canvas.on("object:removed", render);
   editor.canvas.on("object:added", render);
+  // A lock change writes the object and fires no other event (vg-148), so the
+  // lock manager notifies and the column follows it rather than offering the
+  // writing fields it will refuse.
+  editor.canvas.on(OBJECT_LOCK_CHANGED_EVENT as never, render);
   // Restoring history rebuilds the scene and drops the selection; the fields
   // must re-bind to the same object rather than vanishing. Scoped to this one
   // render, because every *other* loss of selection is the author deselecting
