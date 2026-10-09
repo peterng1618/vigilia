@@ -1,13 +1,9 @@
 import {
   ChevronDown,
   ChevronRight,
-  Eye,
-  EyeOff,
-  Lock,
   LogIn,
   LogOut,
   type LucideIcon,
-  Unlock,
 } from "lucide-react";
 import {
   type CSSProperties,
@@ -21,6 +17,7 @@ import type { EditorShellBridge } from "../../editor-shell/bridge.js";
 import type { LayerRole, LayerRow } from "../../editor-shell/layer-tree.js";
 import { uiCopy } from "../../ui-copy.js";
 import { KindMark } from "./kind-mark.js";
+import { RowAffordances } from "./row-affordances.js";
 
 /** The twisty is a control like any other, so it is an icon and not a glyph:
  * `▸`/`▾` were announced as words of their own and could not inherit a shell
@@ -30,38 +27,6 @@ const TWISTY_ICONS: Readonly<Record<"collapsed" | "expanded", LucideIcon>> = {
   collapsed: ChevronRight,
   expanded: ChevronDown,
 };
-
-/** Locked is a filled lock, unlocked an outline one: at 13px the outlines differ
- * only by a gap in the shackle. `fill` is part of `LucideProps` and overrides
- * Lucide's own `fill="none"`, so the weight changes without a second glyph. */
-const LOCK_STATES: Readonly<
-  Record<
-    "locked" | "unlocked",
-    { readonly icon: LucideIcon; readonly fill?: string }
-  >
-> = {
-  locked: { icon: Lock, fill: "currentColor" },
-  unlocked: { icon: Unlock },
-};
-
-/** `exactOptionalPropertyTypes` is on, so the absent fill is spread in rather
- * than passed as `undefined` — that would type-check but defeat the default. */
-function LockStateIcon({
-  locked,
-}: {
-  readonly locked: boolean;
-}): React.JSX.Element {
-  const state = LOCK_STATES[locked ? "locked" : "unlocked"];
-  const Icon = state.icon;
-  return (
-    <Icon
-      aria-hidden
-      size={13}
-      strokeWidth={1.75}
-      {...(state.fill === undefined ? {} : { fill: state.fill })}
-    />
-  );
-}
 
 /**
  * The row's role in words, from the facts the projection reports.
@@ -131,8 +96,11 @@ class LayerStore {
   }
 }
 
-/** Paired with `.vigilia-layer-row`'s height in `editor-shell.css`. */
-const ROW_HEIGHT = 24;
+/** Paired with `.vigilia-layer-row`'s height in `editor-shell.css`: the row is
+ * the control set's 26px panel rhythm (§3) because the row's own controls are
+ * 26px squares (§5), and a 26px control in a shorter row is a control the row
+ * clips. */
+const ROW_HEIGHT = 26;
 
 /** The entered group and everything under it. The projection emits a parent
  * before its children, so one forward pass reaches any depth — and a row whose
@@ -333,8 +301,6 @@ export function CompositionPane({
           // card-heavy panel hides. Two flags that are both true carry no
           // information, so a default row carries neither.
           const attended = hovered === row.id || focused === row.id;
-          const showLock = attended || row.selected || row.locked;
-          const showVisibility = attended || row.selected || !row.visible;
           // The twisty's own gate, read once so the control below cannot ask a
           // second, slightly different question about the same fact.
           const expandable = row.hasChildren;
@@ -626,11 +592,13 @@ export function CompositionPane({
                   that actually draw them, because holding it open everywhere
                   cost the *name* 50px on all sixty rows.
 
-                  Entry is the third control and the one that is not a state
-                  toggle: it appears on a group the author can go into, under
-                  the attention rule the two beside it keep — and the row the
+                  Entry is the control that is not a state toggle and not the
+                  row's own: it appears on a group the author can go into, under
+                  the attention rule the three beside it keep — and the row the
                   author is *inside* draws it unattended, so the way out is
-                  never the one thing a quiet row withholds. */}
+                  never the one thing a quiet row withholds. Rename, the eye and
+                  the lock are `RowAffordances`' own, and the pane hands it the
+                  attention it computed rather than letting it ask again. */}
               <span className="vigilia-layer-state">
                 {showEnter ? (
                   <button
@@ -655,44 +623,26 @@ export function CompositionPane({
                     )}
                   </button>
                 ) : null}
-                {showVisibility ? (
-                  <button
-                    type="button"
-                    aria-label={
-                      row.visible ? uiCopy.panels.hide : uiCopy.panels.show
-                    }
-                    aria-pressed={row.visible}
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      store.mutate(() =>
-                        bridge?.setLayerVisible(row.id, !row.visible),
-                      );
-                    }}
-                  >
-                    {row.visible ? (
-                      <Eye aria-hidden size={13} strokeWidth={1.75} />
-                    ) : (
-                      <EyeOff aria-hidden size={13} strokeWidth={1.75} />
-                    )}
-                  </button>
-                ) : null}
-                {showLock ? (
-                  <button
-                    type="button"
-                    aria-label={
-                      row.locked ? uiCopy.actions.unlock : uiCopy.actions.lock
-                    }
-                    aria-pressed={row.locked}
-                    onClick={(event) => {
-                      event.stopPropagation();
-                      store.mutate(() =>
-                        bridge?.setLayerLocked(row.id, !row.locked),
-                      );
-                    }}
-                  >
-                    <LockStateIcon locked={row.locked} />
-                  </button>
-                ) : null}
+                <RowAffordances
+                  row={row}
+                  attended={attended}
+                  // The same field the double-click and F2 open, so the control
+                  // is a second route to one behaviour rather than a second one.
+                  onRename={() => {
+                    cancelled.current = false;
+                    setEditing(row.id);
+                  }}
+                  onToggleVisible={() =>
+                    store.mutate(() =>
+                      bridge?.setLayerVisible(row.id, !row.visible),
+                    )
+                  }
+                  onToggleLocked={() =>
+                    store.mutate(() =>
+                      bridge?.setLayerLocked(row.id, !row.locked),
+                    )
+                  }
+                />
               </span>
             </div>
           );

@@ -169,10 +169,10 @@ export async function objectHandleScenePoint(
  * out its whole budget on a locator that never matches, and reports a broken
  * click rather than a shut tree.
  *
- * `button[aria-expanded]` rather than a label prefix: a group row carries four
- * buttons — the twisty, Hide, Lock and the entry control — so
- * `button[aria-label]` is a strict-mode violation, and only the twisty declares
- * expansion at all.
+ * `button[aria-expanded]` rather than a label prefix: an attended group row
+ * carries five buttons — the twisty, rename, Hide, Lock and the entry control —
+ * so `button[aria-label]` is a strict-mode violation, and only the twisty
+ * declares expansion at all.
  */
 export async function expandLayer(page: Page, groupId: string): Promise<void> {
   const twisty = page.locator(
@@ -212,6 +212,15 @@ export async function enterLayer(page: Page, groupId: string): Promise<void> {
     );
   if ((await entered()).includes(groupId)) return;
   const row = page.locator(`[data-vigilia-layer="${groupId}"]`);
+  // **Leave before arriving.** A hover to the point the pointer already rests
+  // on is a no-op: Chromium fires no `mouseover` when the hit target does not
+  // change, so the row never becomes the attended one and the entry control is
+  // never rendered. A preceding action leaves the pointer wherever its own last
+  // click put it — a menu item near the tree's first row, in this file's own
+  // specs — and `hover()` then lands on the row the pointer is already over,
+  // which is why this is not a cosmetic wait. Moving off the tree first makes
+  // the arrival a real transition, which is what a pointer does.
+  await page.mouse.move(0, 0);
   await row.hover();
   await row.locator("[data-vigilia-layer-entry]").click();
   await expect.poll(entered).toContain(groupId);

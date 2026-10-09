@@ -153,13 +153,14 @@ test("every row carries a role and a mark, and the role adds no height", async (
     );
   expect(overflowing, "roles pushed out of their own row").toEqual([]);
 
-  // One line per row, the height the row has always been: the role added a
-  // column and not a second line.
+  // One line per row: the role added a column and not a second line, and the
+  // row is the control set's 26px panel rhythm (§3) because the controls it
+  // draws on hover are 26px squares.
   const heights = await rows.evaluateAll((elements) =>
     elements.map((row) => Math.round(row.getBoundingClientRect().height)),
   );
   expect(new Set(heights).size, "every row is the same height").toBe(1);
-  expect(heights[0], "the row's height, unchanged by the role").toBe(24);
+  expect(heights[0], "the row's height, unchanged by the role").toBe(26);
 });
 
 test("the shipped column is the bible's, and its clipping is measured against the one it supersedes", async ({
@@ -914,8 +915,9 @@ test("a group entered inside a large document", async ({ page }, testInfo) => {
     packageBytes(
       "two-hundred-with-a-group",
       [...looseGrid(199), partGroup("group-large", 700, 560)],
-      // One binding, so the group's row carries a key as well as three state
-      // controls — both halves of the `:has` rule the last block below checks.
+      // One binding, so the group's row carries a key as well as the entry
+      // control and the three affordances — both halves of the `:has` rule the
+      // last block below checks.
       { "group-large": [{ id: "large-load", semanticKey: "cpu.load" }] },
     ),
   );
@@ -954,46 +956,60 @@ test("a group entered inside a large document", async ({ page }, testInfo) => {
   await expect.poll(() => activeId(page)).toBe("inside-2");
   const selectMs = msSince(selectStarted);
 
-  // **The row that draws three state controls**, which this plan's own note says
-  // nothing before Task 10 ever put on a row. The stylesheet takes the 74px the
-  // third control needs out of the *bound* column — `:has(.vigilia-layer-state
-  // button:nth-child(3))`, `max-width: calc(100% - 74px); margin-right: 74px` —
-  // rather than out of the name, and the claim that it does is measured here
-  // rather than left as a comment. The entered-and-selected group is that row,
-  // and it carries a key, so both halves of the rule are exercised.
+  // **The row that draws the whole state slot**, which nothing before Task 2
+  // ever put on a row: the entry control, rename, the eye and the lock — four
+  // controls at §5's 26px square. The stylesheet asks for the room they need out
+  // of the *bound* column, one `:has` arm per control count, so the count is
+  // measured here and the reservation is read back off the computed style rather
+  // than assumed to match the count.
   await selectLayer(page, "group-large");
   await expect.poll(() => activeId(page)).toBe("group-large");
   const groupRow = page.locator('[data-vigilia-layer="group-large"]');
   await expect(
     groupRow.locator(".vigilia-layer-state button"),
-    "entry, visibility and lock, all three on one row",
-  ).toHaveCount(3);
-  const squeeze = await groupRow.evaluate((row) => {
-    const bound = row.querySelector(".vigilia-layer-bound");
-    const name = row.querySelector(".vigilia-layer-name");
+    "entry, rename, visibility and lock, all four on one row",
+  ).toHaveCount(4);
+  const slot = await groupRow.evaluate((row) => {
+    const bound = row.querySelector(".vigilia-layer-bound") as HTMLElement;
+    const name = row.querySelector(".vigilia-layer-name") as HTMLElement;
+    const style = getComputedStyle(bound);
     return {
-      // The row's own right edge less the bound's: the 74px margin lives in
-      // this gap, and a key that grew into it would be under the controls.
-      roomKept:
-        bound === null
-          ? 0
-          : Math.round(
-              row.getBoundingClientRect().right -
-                bound.getBoundingClientRect().right,
-            ),
-      boundClipped: bound === null || bound.scrollWidth > bound.clientWidth,
-      nameClipped: name === null || name.scrollWidth > name.clientWidth,
+      // The reservation is the count's, not a constant someone typed: four
+      // controls are 6px of padding plus four 26px squares and three 4px gaps,
+      // and the stylesheet's fourth `:has` arm is what puts that figure here.
+      marginRight: style.marginRight,
+      maxWidth: style.maxWidth,
+      // The bound column is the one that gives way — a key yields before a
+      // layer's name does — so it can never end up the wider of the two.
+      boundWidth: Math.round(bound.getBoundingClientRect().width),
+      nameWidth: Math.round(name.getBoundingClientRect().width),
+      // **Recorded, not asserted.** At the bible's 246px a row drawing four
+      // 26px controls is over budget: 122px of reservation on a 205px row, so
+      // the key column gives way and the name is clipped with it. The figures
+      // pushed out below are the only instrument the row's cost has (`vg-260`
+      // owns the pane's width, Task 10 the ratchet). Asserting that either
+      // stayed whole would be asserting something this pane cannot deliver,
+      // which is a finding rather than a spec.
+      rowWidth: Math.round(row.getBoundingClientRect().width),
+      roomKept: Math.round(
+        row.getBoundingClientRect().right - bound.getBoundingClientRect().right,
+      ),
+      keyClipped: bound.scrollWidth > bound.clientWidth,
+      nameClipped: name.scrollWidth > name.clientWidth,
     };
   });
   expect(
-    squeeze.roomKept,
-    "the room the three controls need is held open beside the key",
-  ).toBeGreaterThanOrEqual(74);
-  expect(squeeze.boundClipped, "the key is not ellipsised away").toBe(false);
+    slot.marginRight,
+    "the room asked for is the four controls' own, counted from the slot",
+  ).toBe("122px");
   expect(
-    squeeze.nameClipped,
-    "the third control costs the key's room, not the name's",
-  ).toBe(false);
+    slot.maxWidth,
+    "and the key's column is the one it is taken from",
+  ).toBe("calc(100% - 122px)");
+  expect(
+    slot.boundWidth,
+    "the key gives way before the layer's name does",
+  ).toBeLessThanOrEqual(slot.nameWidth);
 
   for (const [type, value] of [
     ["viewport", viewportOf(testInfo)],
@@ -1001,7 +1017,10 @@ test("a group entered inside a large document", async ({ page }, testInfo) => {
     ["rows-after-entry", "205"],
     ["enter-ms", String(enterMs)],
     ["select-inside-ms", String(selectMs)],
-    ["three-control-room-kept-px", String(squeeze.roomKept)],
+    ["four-control-row-width-px", String(slot.rowWidth)],
+    ["four-control-room-kept-px", String(slot.roomKept)],
+    ["four-control-key-clipped", String(slot.keyClipped)],
+    ["four-control-name-clipped", String(slot.nameClipped)],
   ] as const) {
     testInfo.annotations.push({ type, description: String(value) });
   }

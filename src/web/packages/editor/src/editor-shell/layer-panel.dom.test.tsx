@@ -139,7 +139,7 @@ it("titles a row with what it says rather than the key behind it", async () => {
   expect(row?.title).toBe("Brand mark");
 });
 
-it("indents a group child and carries both state icons once it is selected", async () => {
+it("indents a group child and carries the row's controls once it is selected", async () => {
   const host = document.createElement("div");
   const root = createRoot(host);
   await act(async () =>
@@ -168,9 +168,10 @@ it("indents a group child and carries both state icons once it is selected", asy
 
   const rows = host.querySelectorAll<HTMLElement>("[data-vigilia-layer]");
   expect(rows).toHaveLength(2);
-  // One dense line, plus lock and visibility indicators — not six text buttons.
+  // One dense line, plus rename, lock and visibility indicators — not six text
+  // buttons.
   expect(rows[1]?.style.getPropertyValue("--layer-depth")).toBe("1");
-  expect(rows[1]?.querySelectorAll("button")).toHaveLength(2);
+  expect(rows[1]?.querySelectorAll("button")).toHaveLength(3);
   expect(rows[1]?.querySelector('[aria-label="Unlock"]')).not.toBeNull();
   // The group row is marked as a group for the stylesheet, which bolds its name,
   // and it carries the generic stack glyph the kind arm draws (§5.1).
@@ -683,10 +684,12 @@ it("only marks a drop slot that would actually land", async () => {
   // Landing: the child moves above its peer, inside their shared group. The
   // line is placed at the slot the drop would take.
   expect(line().hidden).toBe(false);
-  // The units are the assertion, not the numbers: `top: 48` is an invalid
+  // The units are the assertion, not the numbers: `top: 52` is an invalid
   // length, so the declaration is dropped, `top` falls back to `auto` and the
-  // line sizes to zero. Measured on canvas — the line had never drawn.
-  expect(line().style.getPropertyValue("--layer-dropline-top")).toBe("48px");
+  // line sizes to zero. Measured on canvas — the line had never drawn. The
+  // figure is the row's own height times the slot's index (2 × 26px), so it
+  // moves with `ROW_HEIGHT` and the stylesheet's `.vigilia-layer-row`.
+  expect(line().style.getPropertyValue("--layer-dropline-top")).toBe("52px");
   expect(line().style.getPropertyValue("--layer-dropline-left")).toBe("19px");
 
   await act(async () => row("peer").dispatchEvent(drag("drop")));
@@ -696,10 +699,10 @@ it("only marks a drop slot that would actually land", async () => {
 });
 
 it("draws locked as a filled lock and unlocked as an outline one", async () => {
-  // vg-024: at 13px the two outline locks differ only by a gap in the shackle,
-  // which the author could not tell apart. Filled versus outline is a
-  // difference in weight the row can be read by at that size, and it comes from
-  // the icon's own `fill` rather than from hand-picking a second glyph.
+  // vg-024: at the row's icon size the two outline locks differ only by a gap
+  // in the shackle, which the author could not tell apart. Filled versus outline
+  // is a difference in weight the row can be read by at that size, and it comes
+  // from the icon's own `fill` rather than from hand-picking a second glyph.
   //
   // Both rows are *selected*, because a default row now carries no lock at all
   // (see "keeps a default row quiet"). The negative half still has to be
@@ -1210,7 +1213,8 @@ it("shows the state icons on hover, on focus and on selection", async () => {
   await act(async () =>
     row.dispatchEvent(new MouseEvent("mouseover", { bubbles: true })),
   );
-  expect(icons()).toBe(2);
+  // Rename, the eye and the lock: the whole of what a row at rest withholds.
+  expect(icons()).toBe(3);
 
   await act(async () =>
     row.dispatchEvent(new MouseEvent("mouseout", { bubbles: true })),
@@ -1222,7 +1226,7 @@ it("shows the state icons on hover, on focus and on selection", async () => {
   await act(async () =>
     row.dispatchEvent(new FocusEvent("focusin", { bubbles: true })),
   );
-  expect(icons()).toBe(2);
+  expect(icons()).toBe(3);
 
   await act(async () =>
     row.dispatchEvent(new FocusEvent("focusout", { bubbles: true })),
@@ -1532,10 +1536,10 @@ const trends = layerRow({
   hasChildren: true,
 });
 
-/** A row's entry control, by its own attribute rather than by a label: a group
- *  row carries three buttons, so `button[aria-label]` inside it matches three
- *  elements and a locator that resolved to the first would be measuring the
- *  twisty. */
+/** A row's entry control, by its own attribute rather than by a label: an
+ *  attended group row draws the twisty, the entry control and the three
+ *  affordances, so `button[aria-label]` inside it matches several elements and
+ *  a locator that resolved to the first would be measuring the twisty. */
 function entryButton(host: HTMLElement, id: string): HTMLButtonElement | null {
   return host.querySelector<HTMLButtonElement>(
     `[data-vigilia-layer="${id}"] [data-vigilia-layer-entry]`,

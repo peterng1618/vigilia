@@ -1220,7 +1220,11 @@ body,
   gap: 4px;
   padding-left: calc(6px + var(--layer-depth, 0) * 13px);
   padding-right: 4px;
-  height: 24px;
+  /* The control set's panel rhythm (§3), and the half of `ROW_HEIGHT` in
+     `composition-pane.tsx` that CSS owns: the drop-line's `top` is
+     `index * ROW_HEIGHT`, so a row that is a different height than that
+     constant puts the line half a row off the slot it promises. */
+  height: 26px;
   overflow: hidden;
   border-radius: 5px;
   /* The state controls are laid over this edge, so the row is their containing
@@ -1487,28 +1491,27 @@ body,
   color: var(--shell-muted);
   font-size: 11px;
 }
-/* The two state icons, laid over the row's right edge rather than held open
-   beside it.
+/* The row's own controls — rename, the eye and the lock, plus the entry control
+   on a group — laid over the row's right edge rather than held open beside it.
 
-   Both were measured. Reserving 48px of the row's width cost the *name* 48px
-   on every row, permanently, on every theme — so the room the controls need is
-   held open only on the rows that draw them, which is the `:has` rule under
-   `.vigilia-layer-bound`. Overlaying is what makes that rule affordable: the
-   two controls only exist on the row under the pointer, where the author is
-   looking at them rather than reading the key they cover.
+   All of it was measured. Reserving the strip's width on the row cost the
+   *name* that width on every row, permanently, on every theme — so the room the
+   controls need is held open only on the rows that draw them, which is the
+   `:has` rule under `.vigilia-layer-bound`. Overlaying is what makes that rule
+   affordable: the controls only exist on the row the author is on, where they
+   are looking at them rather than reading the key they cover.
 
    The shift this takes is not nothing, and it is worth naming: the attended
-   row's name narrows by whatever its key does not take — measured at 15.83px
-   on `network-chart` — while every other row holds still. That is the whole
-   cost, charged to the one row the pointer is on, and it is deliberate: the
-   alternative was paying it on all sixty. The bound column is what gives way,
-   and it is the right thing to give way, because it is on the row as a fact
-   and a key is one hover away. */
+   row's name narrows by whatever its key does not take while every other row
+   holds still. That is the whole cost, charged to the one row the pointer is
+   on, and it is deliberate: the alternative was paying it on all sixty. The
+   bound column is what gives way, and it is the right thing to give way,
+   because it is on the row as a fact and a key is one hover away. */
 .vigilia-layer-state {
   position: absolute;
   right: 2px;
   top: 0;
-  height: 24px;
+  height: 26px;
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -1517,6 +1520,18 @@ body,
   background: var(--shell-surface);
   border-radius: 4px;
   padding-left: 6px;
+}
+/* §5 makes an icon control a 26px square, and the row is 26px so the two agree.
+   Every button in the slot, the entry control included: the `:has` count below
+   is `6 + 26n + 4(n - 1)`, so a 20px entry button would make every four-control
+   row's reservation wrong. The entry's glyph and its `data-vigilia-layer-entry`
+   contract are unchanged — only the box it sits in is the slot's.
+
+   Scoped to this slot because the twisty beside it keeps the 20px column the
+   row's own `button` rule gives every row button. */
+.vigilia-layer-row .vigilia-layer-state button {
+  width: 26px;
+  min-height: 26px;
 }
 
 /* What the row reads. Muted so a name still leads the row, and flexible so a
@@ -1531,40 +1546,52 @@ body,
   color: var(--shell-muted);
   font-size: 11px;
 }
-/* Room for the two state controls, and only on a row that draws them.
+/* Room for the state controls, and only the room the row's own controls need.
 
-   `:has` asks the controls themselves, so this holds the space open exactly
-   where something would cover the key — hovered, focused, selected, locked or
-   hidden — and nowhere else. At rest, with nothing selected, zero of the
-   starter's sixty rows draw a control and zero reserve anything. Held open on
-   every row instead, it cost the *name* 50px permanently, on all sixty.
+   `:has` asks the controls themselves, so a row that draws none reserves
+   nothing, and the room is held open exactly where something would cover the
+   key — hovered, focused, selected, locked or hidden — and nowhere else. At
+   rest, with nothing selected, zero of the starter's sixty rows draw a control
+   and zero reserve anything. Held open on every row instead, it cost the
+   *name* permanently, on all sixty.
 
-   What scoping bought is width independence, not width: the room is held open
-   on the rows that draw a control and nowhere else, which is why the column's
-   own width is decided at `.editor-shell-body` rather than here.
+   One rule per count rather than one for the strip, because the count is the
+   row's own answer and a row drawing two controls must not pay for four: the
+   strip is 6px of padding plus a 26px button and a 4px gap each, so n controls
+   need `6 + 26n + 4(n - 1)`. The buttons are direct children of the slot — a
+   wrapper would make every one of them its parent's first child and answer the
+   question for one control on a row that draws four — and each rule below
+   overrides the one above it.
 
    The cost falls on the attended row, where the name narrows by whatever the
-   key does not take: measured at 15.83px on `network-chart`, with every other
-   row holding still. That is the price of not taking it from every row in
-   every theme, and it is charged to the one row the author is looking at.
+   key does not take, with every other row holding still. That is the price of
+   not taking it from every row in every theme, and it is charged to the one row
+   the author is looking at.
 
    `margin-right` rather than `padding-right`, and on the bound rather than on
    the row: padding a flex item whose width is already its content's pads a box
-   that does not move, and measured on canvas that left the icons covering 48px
-   of the end of the key. `calc` rather than a fixed number because the row is
-   319px wide inside the panel's 360px column here and 239px in the narrow
-   layout below, and the controls are a fixed size in both. */
+   that does not move, and measured on canvas that left the icons covering the
+   end of the key. `calc` rather than a fixed number because the row is
+   narrower in the small layout below and the controls are a fixed size in
+   both. */
 .vigilia-layer-row:has(.vigilia-layer-state button) .vigilia-layer-bound {
-  max-width: calc(100% - 50px);
-  margin-right: 50px;
+  max-width: calc(100% - 32px);
+  margin-right: 32px;
 }
-/* A group row can draw three: the same 6px of padding and one 20px button and
-   4px gap more. Scoped to the rows that do, so the room a two-control row holds
-   open is still 50px and the name of every ordinary row is untouched. */
+.vigilia-layer-row:has(.vigilia-layer-state button:nth-child(2))
+  .vigilia-layer-bound {
+  max-width: calc(100% - 62px);
+  margin-right: 62px;
+}
 .vigilia-layer-row:has(.vigilia-layer-state button:nth-child(3))
-.vigilia-layer-bound {
-  max-width: calc(100% - 74px);
-  margin-right: 74px;
+  .vigilia-layer-bound {
+  max-width: calc(100% - 92px);
+  margin-right: 92px;
+}
+.vigilia-layer-row:has(.vigilia-layer-state button:nth-child(4))
+  .vigilia-layer-bound {
+  max-width: calc(100% - 122px);
+  margin-right: 122px;
 }
 .vigilia-layer-rename {
   flex: 1;
