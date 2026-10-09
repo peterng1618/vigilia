@@ -26,8 +26,8 @@ backlog it produced stays live in the register.
 
 ## Active work
 
-- **Plan 3 — [`the inspector`](docs/superpowers/plans/2026-10-08-the-inspector.md) — is the active plan**: Tasks 1–9 are complete through `1ab06ad2`, each reviewed; Task 10, the register and the close, is next and is the last task in the plan.
-- **Plans 1 and 2 are complete and closed** — the gates and the control set, then the shell and the rail through `cea69cac`; exactly one plan is active at a time, and this is it.
+- **Plan 3 — [`the inspector`](docs/superpowers/plans/archive/2026-10-08-the-inspector.md) — is complete**: all ten tasks are done and reviewed, this close commit being the last, and its plan now lives in `archive/`, with only the final whole-branch review outstanding.
+- **Plan 4 — [`the panes`](docs/superpowers/plans/2026-10-08-the-panes.md) — is the active plan and the next to run**; plans 1 and 2 are complete and closed through `cea69cac`, and exactly one plan is active at a time.
 - **The spec is `draft` and unimplemented** — its acceptance sections are plans of measurement, not results.
 - **Reactify ([0039](docs/decisions/0039-the-editor-ui-is-react-and-only-the-canvas-is-imperative.md)) is the frame, not a phase** — every editor surface becomes React, only the canvas stays imperative, and no Fabric object is ever mirrored into React state.
 - **The mockups are the checked reference** ([`docs/design/mockups/`](docs/design/mockups/)), not files read once and remembered; spec §13 makes a capture beside them a gate item.
@@ -35,15 +35,14 @@ backlog it produced stays live in the register.
 
 ## Last completed change
 
-- **The parity captures are now the real column, and two of them had been pictures of the old one** — card and shape were last written at `8b4274b7` on 2026-10-06, 328 commits back; all four are regenerated, shoot the 276px column instead of a 1280×720 viewport, and came back byte-identical when the reviewer re-ran them into a scratch directory.
-- **Ruling AF: Opacity was a §5 defect, not a deliberate simplification** — bible §5's closed control table, the mockup's own caption at `inspector-controls.html:201` and this plan's `glass.ts:180-184` precedent all call a bounded number a slider, so it is one now; Rotation stays a number because angles wrap and nothing bounds them.
-- **Ruling AG: the capture shot the viewport, so `Spends` had never been photographed** — the clip is `.editor-shell-inspector`'s `overflow: auto`, and a plain element capture still showed a blank band; `captureVisualReview` gained an optional scope, leaving every existing caller's output unchanged.
-- **A fourth capture for the dark half, which was genuinely uncovered** — the existing captures are the editorial palette and `shell-palette-graphite` photographs an empty column, so `editor-inspector-chart-graphite` is the only capture that could catch a hard-coded hex; it did not, because the accent is palette-driven.
-- **Two claims corrected rather than carried** — the report's "mockup panels draw no count" is false (the historical panel draws the product's exact `Content 1` / `Position 3` / `Spends 8`, so that item is a parity match), and `vg-254` is filed for the slider's missing drag preview, measured in the built editor and traced to `column.tsx:183-192` passing no `onPreview`.
+- **`vg-148` is `verified` and archived** — locking through the layer row used to leave the column offering its writing fields; the row now carries `check` = `src/web/tests/e2e/inspector-sections.spec.ts:648` (its own route, `[aria-label="Lock"]`, asserting `[data-vigilia-locked]`) and `artefacts` = `f1a35b82`, plan 3's Task 1, where `OBJECT_LOCK_CHANGED_EVENT` and the inspector's subscription landed.
+- **The archive was grepped on the `id` field, never the bare string** — `grep -c '"id":"vg-148"' docs/product/backlog-archive.jsonl` returned `0` before the move, because the bare string matches a cross-reference in `vg-157`'s prose; the close therefore neither suppressed nor double-filed the row, and `npm run backlog:check` reads `127 items, all valid` after it.
+- **The rows that stay open say so** — `vg-094` and `vg-153` are the Tokens pane's (plan 4's), `vg-158`'s cause is still not established, and `vg-160`, `vg-185`, `vg-192`, `vg-203` and `vg-254` are untouched; no new row was added.
+- **Plan 3's plan is archived and plan 4 named next** — `git mv` to `docs/superpowers/plans/archive/`, STATUS re-pointed at the new path, and plan 4 — the panes — is next with its landmarks.
 
 ## Next
 
-1. **Task 10 is next, and it is the plan's last task** — the register and the close, **pre-verified**: `vg-148` is live at `backlog.jsonl:36` and is fixed by plan 3, with `check` = `selection-inspector/index.dom.test.ts:731` (run at `7a56d174`: **1 passed | 88 skipped**) and `artefacts` = `f1a35b82`, which `git merge-base --is-ancestor` confirms is on the mainline; all six rows it leaves open (`vg-094`, `vg-153`, `vg-158`, `vg-160`, `vg-185`, `vg-192`) are live and `open`, and the archive must be grepped on the **`id` field**, because the bare string `vg-148` matches a cross-reference in `vg-157`'s prose.
+1. **Plan 4 — [`the panes`](docs/superpowers/plans/2026-10-08-the-panes.md) — is the next work**, filling the four rail slots over plan 3's `selection-inspector/view.ts` and `inspector.tsx`: the Composition pane's kind-glyph rows, the Add pane rebuilt with `insertGroups()` units and the asset path absorbed (deleting the Assets slot), the Tokens pane's paint and preset lists discharging `vg-153` and `vg-094`, and the Document pane's four scopes — with every converted file added to `scripts/design-tokens.gated.json`'s `gated` list as it lands.
 2. **The display proof is blocked on `vg-119`** — `author-journey-display.spec.ts` fails at `rebuild-composition.ts:148`'s stale `colour: "text"` (the document declares `palette.text`), an open row with its own owner; `vg-253` is the same file's 16 remaining `selectOption` sites, filed separately because fixing the colour leaves those failing.
 3. **Unpushed:** `develop` is far ahead of `origin/develop`; no push is authorised.
 
