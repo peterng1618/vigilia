@@ -26,7 +26,7 @@ backlog it produced stays live in the register.
 
 ## Active work
 
-- **Plan 2 — [`the shell and the rail`](docs/superpowers/plans/2026-10-08-the-shell-and-the-rail.md) — is active.** Tasks 1–7 are complete and reviewed and phase 2 is closed; Task 8 opens phase 3 and three tasks remain.
+- **Plan 2 — [`the shell and the rail`](docs/superpowers/plans/2026-10-08-the-shell-and-the-rail.md) — is active.** Tasks 1–8 are complete and reviewed; Task 9 is next and two tasks remain.
 - **Plan 1 — gates and the control set — is complete**, with a delivered-state reconciliation for Tasks 1–4 in the plan file in place of its retired ledger.
 - **The spec is `draft` and unimplemented** — its acceptance sections are plans of measurement, not results.
 - **Reactify ([0039](docs/decisions/0039-the-editor-ui-is-react-and-only-the-canvas-is-imperative.md)) is the frame, not a phase** — every editor surface becomes React, only the canvas stays imperative, and no Fabric object is ever mirrored into React state.
@@ -35,16 +35,16 @@ backlog it produced stays live in the register.
 
 ## Last completed change
 
-- **Task 7 of plan 2 — the dock, re-layered — is complete and reviewed**, closing phase 2 through `8b860246`: one review and no fix round.
-- **The dock sits at the stage's bottom-centre** at the bible's radii and control sizes, still rendering both registry halves — the object half filtered, the arrange half greyed with its marker kept — and acquires a `--muted` border on hover per §5 rule 6.
-- **The two specs that could have broken invisibly held**: `editor.spec.ts:3877` and `snapping.spec.ts:581` compare the toolbar's non-arrange button labels for **equality**, and the review verified from source that no new unmarked button entered the toolbar rather than inferring it from a green run.
-- **The review's own mutation bit**: rendering the arrange half absent instead of greyed reddened both asymmetry cases — the red proof the brief asked for, and the reason those two cases are guards rather than decoration.
-- **It also refuted the implementer's stated gap**: `editor-rail.spec.ts:164` already loops all three of §7.7's density configurations with reachability and inset assertions, so no separate measurement was owed; `vg-226` and `vg-227` land with this close and `vg-224` is corrected from four instances to three.
+- **Task 8 of plan 2 — the ratchet — is complete and reviewed**, opening phase 3 through `64b481b0`: one review and one fix round, with every number reproduced independently by the reviewer.
+- **The gated list is 23 files**: plan 1's 12 plus the 11 styling surfaces this plan converted, and `design:check` exits 0 over them with `gates:self-test` chaining the guard's own `--self-test`.
+- **The measurement caught its own instruments lying twice** — the brief's BRE hex grep returns 0 on a file carrying 88 hex tokens, and the controller's `/tmp` pre-flight was overstated because MSYS translates a POSIX path passed as an argument, not one built inside Node; the report records the correction rather than the claim.
+- **The one ruling the round turned on held under review**: `layer-panel.tsx` is in the list because Task 2 genuinely converted its footer to `ControlIconButton` and `LayerActions`, while `save-state.tsx` is out on two comment lines — the reviewer confirmed those are not the same case.
+- **`editor-shell.css` is recorded as a before-state, not a target** — 73 guard violations over 88 hex tokens for plan 3 — and `vg-228` lands with this close: the list's dom-test membership is two of fifteen, decided by whichever task happened to add one.
 
 ## Next
 
-1. **Task 8 — the ratchet says so** — the gated list as the union of what this plan converted (22 files), plus `editor-shell.css`'s hex count recorded as a **before-state for plan 3**, not driven to zero: that file is deliberately ungated, and its palettes are legitimately hex. Its vacuity proof needs care — the guard exits **1** both for an empty list and for a path it cannot read, so a literal `/tmp` path proves nothing and the report must quote the `is empty; the guard would check nothing` wording.
-2. **Then Task 9's parity capture and Task 10's difference list**, which inherits `vg-217`, `vg-219`, `vg-222`, `vg-223`, `vg-225` and `vg-226`.
+1. **Task 9 — the parity capture** — `VIGILIA_CAPTURE=1`, one worker, built bundles, the action registered in `docs/evidence/screenshots/README.md` and the images landing there (that path is tracked, 76 files already). Its own trap is named in its brief: a `--grep` matching nothing exits 0 with **zero** tests, so the summary must read that one test ran.
+2. **Then Task 10 — the difference list**, whose completion report is a section in this plan file rather than the ledger (which is deleted at plan close), and which names each difference as fixed or deliberate with its owning plan. It closes **no** register row, and it must not overwrite the mockup's settled targets with the product's interim ones — the mockup is the target, and a later plan owns each remaining gap.
 3. **Unpushed:** `develop` is far ahead of `origin/develop`; no push is authorised.
 
 ## Blockers / unverified
