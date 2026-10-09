@@ -289,8 +289,9 @@ async function start(): Promise<void> {
       bindings: () => extensions.envelope.bindings ?? {},
       // The theme's name is the document's identity; a theme the author has not
       // named — including one whose stored name is empty, which the schema
-      // permits — is identified by its own id, the same reading the status line
-      // writes when a theme is opened, so the two cannot disagree.
+      // permits — is identified by its own id. The status line still reads the
+      // name with `??`, so it writes a blank one where this falls back; the two
+      // disagree until that reader is changed (vg-218).
       documentIdentity: () => ({
         name: extensions.envelope.metadata?.name,
         id: extensions.envelope.id,
