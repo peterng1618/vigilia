@@ -1207,35 +1207,6 @@ body,
   font-variant-numeric: tabular-nums;
 }
 
-/* An inspector section is a native disclosure. The panel's caps and display
-   face make the summary read as a heading without becoming one, and the count
-   stays inside the summary so a collapsed section still says how much it
-   holds — collapsing is ordering, not removal. */
-.vigilia-section {
-  /* The gap separates questions, not controls: five groups rather than one
-     list. The fields inside already carry their own 12px. */
-  margin-top: 18px;
-}
-.vigilia-section-details > summary {
-  cursor: pointer;
-  color: var(--shell-muted);
-  font-family: var(--shell-display);
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.12em;
-}
-.vigilia-section-count {
-  margin-left: 6px;
-  color: var(--shell-muted);
-  font-variant-numeric: tabular-nums;
-  letter-spacing: normal;
-}
-/* The first field under a summary is the body's own edge, so it does not need
-   the gap that separates it from the field above. */
-.vigilia-section-body > :first-child {
-  margin-top: 8px;
-}
-
 /* The layer tree: one dense line per layer, indentation carrying the depth. */
 [data-vigilia-panel="layers"] [role="tree"] {
   position: relative;

@@ -1,4 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
+import { choiceOf, chooseIn, sectionExpanded } from "./control-set.js";
 import {
   captureVisualReview,
   chooseAssetFile,
@@ -47,10 +48,9 @@ async function sectionIds(page: Page): Promise<string[]> {
 }
 
 async function isOpen(page: Page, id: string): Promise<boolean> {
-  return page
-    .locator(`[data-vigilia-section="${id}"] details`)
-    .first()
-    .evaluate((node) => (node as HTMLDetailsElement).open);
+  // The section is a disclosure whose header is a button carrying
+  // `aria-expanded` (bible §5), not a native `<details>` with an `.open`.
+  return sectionExpanded(page, id);
 }
 
 /** Every control inside a section, across the whole column. */
@@ -383,9 +383,7 @@ test.describe("the per-kind inspector column", () => {
     expect((await data()).map((entry) => entry.name)).toEqual(["cpu.load"]);
     expect(await colourInsideObject(page, "pie", REMAINDER_INK)).toBe(0);
 
-    const total = page.locator('[data-vigilia-chart-setting="total"]');
-    await total.scrollIntoViewIfNeeded();
-    await total.selectOption("fixed");
+    await chooseIn(page, '[data-vigilia-chart-setting="total"]', "fixed");
     const value = page.locator('[data-vigilia-chart-setting="total.value"]');
     await value.fill("400");
     await value.blur();
@@ -407,7 +405,7 @@ test.describe("the per-kind inspector column", () => {
     expect(drawn).toBeGreaterThan(1000);
 
     // Unset again: the remainder goes, and so does its ink.
-    await total.selectOption("sum");
+    await chooseIn(page, '[data-vigilia-chart-setting="total"]', "sum");
     await expect.poll(async () => (await data()).length).toBe(1);
     expect(await colourInsideObject(page, "pie", REMAINDER_INK)).toBe(0);
   });
@@ -441,13 +439,17 @@ test.describe("the per-kind inspector column", () => {
     // both fields read empty until the author writes one — and the write
     // materialises the whole block from its owner.
     await expect(duration).toHaveValue("");
-    await expect(easing).toHaveValue("");
+    await expect(await choiceOf(easing)).toBe("");
 
     await duration.fill("2500");
     await duration.blur();
     await expect(duration).toHaveValue("2500");
-    await easing.selectOption("cubicInOut");
-    await expect(easing).toHaveValue("cubicInOut");
+    await chooseIn(
+      page,
+      '[data-vigilia-chart-setting="animation.easing"]',
+      "cubicInOut",
+    );
+    await expect(await choiceOf(easing)).toBe("Cubic in-out");
     expect(await chartSettings(page, "line")).toMatchObject({
       animation: {
         durationMs: 2500,
@@ -482,9 +484,13 @@ test.describe("the per-kind inspector column", () => {
     await expect(
       page.locator('[data-vigilia-chart-setting="animation.durationMs"]'),
     ).toHaveValue("2500");
+    // The control shows the easing's label, not its id: the id behind a choice
+    // is Base UI's state and never reaches the DOM.
     await expect(
-      page.locator('[data-vigilia-chart-setting="animation.easing"]'),
-    ).toHaveValue("cubicInOut");
+      await choiceOf(
+        page.locator('[data-vigilia-chart-setting="animation.easing"]'),
+      ),
+    ).toBe("Cubic in-out");
     expect(await chartSettings(page, "line")).toMatchObject({
       animation: { durationMs: 2500, easing: "cubicInOut" },
     });
@@ -595,10 +601,12 @@ test.describe("the per-kind inspector column", () => {
     await expect(page.locator("[data-vigilia-geometry]")).toHaveCount(0);
     await expect(page.locator("[data-vigilia-panel-fill]")).toHaveCount(0);
 
-    // Read-only, so the author still sees what the object resolves to.
+    // Read-only, so the author still sees what the object resolves to. The hook
+    // is the contract; `.vigilia-resolution` was the imperative body's class and
+    // died with it (`index.dom.test.ts` reads the hook the same way).
     await expect(
       page
-        .locator('[data-vigilia-section="spends"] .vigilia-resolution')
+        .locator('[data-vigilia-section="spends"] [data-vigilia-resolution]')
         .first(),
     ).toBeVisible();
   });

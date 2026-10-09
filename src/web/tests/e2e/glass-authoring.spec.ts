@@ -1,5 +1,6 @@
-import { expect, type Locator, type Page, test } from "@playwright/test";
+import { expect, type Page, test } from "@playwright/test";
 import { readThemePackage, writeThemePackage } from "@vigilia/theme-package";
+import { typeIntoControl } from "./control-set.js";
 import { captureVisualReview, clientOfScene } from "./editor-canvas.js";
 import { openPane } from "./editor-rail.js";
 import {
@@ -169,18 +170,6 @@ async function clearOfHandles(
   };
 }
 
-/** Replaces a numeric field's value from the keyboard alone. */
-async function typeInto(
-  page: Page,
-  field: Locator,
-  value: string,
-): Promise<void> {
-  await field.click();
-  await page.keyboard.press("Control+a");
-  await page.keyboard.type(value);
-  await page.keyboard.press("Tab");
-}
-
 async function saveEnvelope(page: Page): Promise<unknown> {
   const download = page.waitForEvent("download");
   await page.getByRole("button", { name: "File", exact: true }).click();
@@ -242,7 +231,7 @@ test.describe("authoring frosted glass through the inspector", () => {
     expect(onEnable).toBeGreaterThan(0);
 
     // Keyboard: the radius, committed with Tab.
-    await typeInto(page, blur, "24");
+    await typeIntoControl(page, blur, "24");
     await expect(blur).toHaveValue("24");
 
     // The pixels, which is the only thing the unit suite cannot reach.
@@ -278,31 +267,42 @@ test.describe("authoring frosted glass through the inspector", () => {
     await enabled.focus();
     await page.keyboard.press("Space");
     const blur = page.locator("[data-vigilia-glass-blur]");
-    const range = page
-      .locator("[data-vigilia-glass-blur]")
-      .locator("xpath=following-sibling::input[@type='range']");
 
     // The slider only exists when the field is bounded at both ends, so its
     // presence is what proves the ceiling reached the field rather than the
-    // capability existing somewhere else.
-    await expect(range).toHaveAttribute("max", "48");
-    await expect(range).toHaveAttribute("min", "0");
+    // capability existing somewhere else. **The hook rides the range input
+    // itself** (`control-slider.tsx:72-80` mirrors `data` onto the focus
+    // target, which is the nested `input[type=range]`), so the field *is* the
+    // slider — the sibling lookup this used to do resolved to nothing.
+    await expect(blur).toHaveAttribute("type", "range");
+    await expect(blur).toHaveAttribute("max", "48");
+    await expect(blur).toHaveAttribute("min", "0");
 
-    await typeInto(page, blur, "60");
+    await typeIntoControl(page, blur, "60");
 
     // The finding was "took me a while to figure out blur only accepts 48
     // maximum": a box reverted to its old value teaches nothing about where the
-    // maximum is, and the radius the author typed is the one they meant.
+    // maximum is, and the radius the author typed is the one they meant. The
+    // slider's own `max` is where a past-the-ceiling value lands.
     await expect(blur).toHaveValue("48");
     expect(await treatmentOf(page, AUTHORING_PANEL_ID)).toEqual({
       blurRadius: 48,
     });
-    await expect(page.locator(".vigilia-field [role='alert']")).toHaveCount(0);
   });
 
-  test("refuses an emptied radius rather than reading it as no blur", async ({
+  test("offers no empty radius to read, so no draft can coerce to no blur", async ({
     page,
   }, testInfo) => {
+    /**
+     * **Replaced, not re-pointed.** This case was "refuses an emptied radius
+     * rather than reading it as no blur", and a slider has no empty state to
+     * reach: its edit route is the track and its well is a `<span>` readout
+     * (`control-slider.tsx:22-23` and `:141`), so `Number("")` — the coercion
+     * the old case guarded — has no input to arise in. Re-pointing the case
+     * would have asserted nothing; what survives is the rule it protected, and
+     * that rule is now structural: **there is no draft**, and the radius the
+     * document ends up with is one the slider wrote.
+     */
     desktop(testInfo.project.name);
     await openFixture(page);
     await selectAuthoringPanel(page);
@@ -311,26 +311,23 @@ test.describe("authoring frosted glass through the inspector", () => {
     await enabled.focus();
     await page.keyboard.press("Space");
     const blur = page.locator("[data-vigilia-glass-blur]");
-    const onEnable = Number(await blur.inputValue());
+    await expect(blur).toHaveAttribute("type", "range");
 
-    await blur.click();
-    await page.keyboard.press("Control+a");
-    // Delete, not `typeInto(page, blur, "")`: typing an empty string types
-    // nothing, so the box would still hold its old value and this would assert
-    // nothing at all.
-    await page.keyboard.press("Delete");
-    await expect(blur).toHaveValue("");
-    await page.keyboard.press("Tab");
+    // The well beside the track: the one place a value is shown, and the one
+    // place a draft could have lived.
+    const well = blur.locator(
+      "xpath=ancestor::div[contains(@class, 'ml-auto')][1]//span[contains(@class, 'font-mono')]",
+    );
+    await expect(well).toHaveText(await blur.inputValue());
+    await expect(well.locator("input, textarea")).toHaveCount(0);
 
-    // `Number("")` is 0, and 0 is a real radius — a treatment with no blur — so
-    // coercing an empty box would silently mean "no blur" while looking refused.
-    await expect(blur).toHaveValue(String(onEnable));
+    // And a value written through the slider is a real radius in the document,
+    // never a coercion of something absent.
+    await typeIntoControl(page, blur, "24");
+    await expect(well).toHaveText("24");
     expect(await treatmentOf(page, AUTHORING_PANEL_ID)).toEqual({
-      blurRadius: onEnable,
+      blurRadius: 24,
     });
-    // And it is refused through its own line, the same one any invalid value
-    // raises: the bound does not swallow the case that is not a number.
-    await expect(page.locator(".vigilia-field [role='alert']")).toHaveCount(1);
   });
 
   test("carries the treatment through redo, duplicate and a token change", async ({
@@ -341,7 +338,11 @@ test.describe("authoring frosted glass through the inspector", () => {
     await selectAuthoringPanel(page);
     await page.locator("[data-vigilia-glass-enabled]").focus();
     await page.keyboard.press("Space");
-    await typeInto(page, page.locator("[data-vigilia-glass-blur]"), "24");
+    await typeIntoControl(
+      page,
+      page.locator("[data-vigilia-glass-blur]"),
+      "24",
+    );
 
     // **Redo.** An edit an author can undo and get back is an edit the document
     // actually holds; a control whose history is one-way is a different promise.
@@ -442,7 +443,11 @@ test.describe("authoring frosted glass through the inspector", () => {
     const enabled = page.locator("[data-vigilia-glass-enabled]");
     await enabled.focus();
     await page.keyboard.press("Space");
-    await typeInto(page, page.locator("[data-vigilia-glass-blur]"), "24");
+    await typeIntoControl(
+      page,
+      page.locator("[data-vigilia-glass-blur]"),
+      "24",
+    );
     assertBlur(
       await readGlass(page, { id: AUTHORING_PANEL_ID, band: BAND }),
       "editor, before grouping",

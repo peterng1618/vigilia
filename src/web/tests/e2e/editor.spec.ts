@@ -9,6 +9,13 @@ import { readThemePackage, writeThemePackage } from "@vigilia/theme-package";
 import { strToU8, zipSync } from "fflate";
 import { installFixedClock } from "./clock.js";
 import {
+  choiceOf,
+  chooseIn,
+  optionsOf,
+  sectionExpanded,
+  typeIntoControl,
+} from "./control-set.js";
+import {
   type ArtboardRect,
   captureVisualReview,
   chooseAssetFile,
@@ -81,18 +88,16 @@ async function activeId(page: Page): Promise<string | undefined> {
   });
 }
 
-/** Replaces a numeric field's value from the keyboard alone: focus, select the
- * contents, type, then Tab to commit. Clicking alone would append to whatever
- * the field already showed. */
+/** Replaces a field's value: focus, select the contents, type, then Tab to
+ *  commit — or, for a slider, a `fill` against its own bound. Clicking alone
+ *  would append to whatever the field already showed, and a slider's nested
+ *  `input[type=range]` cannot be clicked at all. */
 async function typeInto(
   page: Page,
   field: Locator,
   value: string,
 ): Promise<void> {
-  await field.click();
-  await page.keyboard.press("Control+a");
-  await page.keyboard.type(value);
-  await page.keyboard.press("Tab");
+  await typeIntoControl(page, field, value);
 }
 
 /** The active object's scene geometry through the bridge. `members` counts an
@@ -527,14 +532,11 @@ test.describe("Fabric editor route", () => {
     await page.goto(EDITOR);
     await page.locator('[data-vigilia-layer="wordmark"]').click();
 
-    const isOpen = (id: string): Promise<boolean> =>
-      page
-        .locator(`[data-vigilia-section="${id}"] details`)
-        .evaluate((node) => (node as HTMLDetailsElement).open);
+    const isOpen = (id: string): Promise<boolean> => sectionExpanded(page, id);
 
     // Geometry is adjusted once and the binding is chosen constantly, so the
     // one question an author does not return to is the one put away — and it
-    // is put away rather than hidden: the summary carries the count.
+    // is put away rather than hidden: the header carries the count.
     await expect(
       page.locator('[data-vigilia-section="position"]'),
     ).toBeVisible();
@@ -543,12 +545,15 @@ test.describe("Fabric editor route", () => {
       expect(await isOpen(id), id).toBe(true);
     }
     await expect(
-      page.locator('[data-vigilia-section="position"] .vigilia-section-count'),
+      page.locator(
+        '[data-vigilia-section="position"] [data-vigilia-section-count]',
+      ),
     ).not.toHaveText("0");
 
     // The section opens, and the geometry it was always made of is inside it.
+    // The disclosure's header is the button (bible §5), not a `<summary>`.
     await page
-      .locator('[data-vigilia-section="position"] summary')
+      .locator('[data-vigilia-section="position"] button[aria-expanded]')
       .first()
       .click();
     await expect(page.locator('[data-vigilia-geometry="left"]')).toBeVisible();
@@ -884,17 +889,30 @@ test.describe("Fabric editor route", () => {
     const inserted = await clientOfScene(page, panelId, STARTER_WIDTH);
     await page.mouse.click(inserted.x, inserted.y);
     await expect.poll(() => activeId(page)).toBe(panelId);
-    await expect(fill).toHaveValue("palette.panel");
+    // The picker prints the token's name, not its reference: `palette.panel`
+    // is the starter token called `Panel`.
+    expect(await choiceOf(fill)).toBe("Panel");
 
     // Keyboard: one arrow step on the fill token. The inserted panel starts on
-    // the card token, so a step is a real change the envelope can show.
+    // the card token, so a step is a real change the envelope can show. The
+    // control shows the label behind the choice, so that is what is compared.
+    //
+    // **Three keystrokes where the native `<select>` needed one**, and that is
+    // the control's shape rather than a defect: a plan-1 select opens on
+    // `ArrowDown`, moves the highlight on the next, and commits on `Enter`.
+    // Asserting the open state between them keeps the step honest — without it
+    // a control that ignored the key entirely would still fail, but a control
+    // that closed again between the two would pass this by luck.
     await fill.focus();
-    const fillBefore = await fill.inputValue();
+    const fillBefore = await choiceOf(fill);
     await page.keyboard.press("ArrowDown");
-    await expect(fill).not.toHaveValue(fillBefore);
+    await expect(fill).toHaveAttribute("aria-expanded", "true");
+    await page.keyboard.press("ArrowDown");
+    await page.keyboard.press("Enter");
+    await expect.poll(() => choiceOf(fill)).not.toBe(fillBefore);
 
     // Pointer: the border token.
-    await stroke.selectOption("palette.panelStroke");
+    await chooseIn(page, "[data-vigilia-panel-stroke]", "palette.panelStroke");
 
     // Keyboard: type a radius, committing with Tab.
     await typeInto(page, radius, "24");
@@ -903,18 +921,25 @@ test.describe("Fabric editor route", () => {
     // starter's `sparkArea` token is one. (It used to be `scene`, which the
     // starter no longer carries — its backdrop is packaged media — so naming
     // that one would have made this assertion vacuous rather than true.)
-    const shadowValues = await shadow
-      .locator("option")
-      .evaluateAll((options) => options.map((option) => option.value));
+    const shadowValues = await optionsOf(page, shadow);
     expect(shadowValues).toContain("palette.panelStroke");
     expect(shadowValues).not.toContain("palette.sparkArea");
-    await shadow.selectOption("palette.panelStroke");
+    await chooseIn(page, "[data-vigilia-panel-shadow]", "palette.panelStroke");
     await expect(
       page.locator("[data-vigilia-panel-shadow-blur]"),
     ).toBeVisible();
 
     // Keyboard: the last edit, so the undo below is that edit and not the panel.
     await typeInto(page, border, "3");
+    // `edit.undo` **defers to a focused text entry target**, and a range counts
+    // as one (`isTextEntryTarget`), so a chord pressed with a control still
+    // focused edits nothing and the assertion below would read as a failing
+    // undo rather than a deferred one. Blurring the focused element is what an
+    // author does before an undo that is about the document.
+    await page.evaluate(() => {
+      const active = document.activeElement;
+      if (active instanceof HTMLElement) active.blur();
+    });
 
     await captureVisualReview(page, testInfo, "editor-panel-authoring");
 
@@ -1032,13 +1057,15 @@ test.describe("Fabric editor route", () => {
     // primitive, so the legend is what tells the two apart.
     await insertShape(page, "Rectangle");
     const panelId = (await activeId(page)) ?? "";
-    await page
-      .locator("[data-vigilia-panel-stroke]")
-      .selectOption("palette.text");
-    await page
-      .locator("[data-vigilia-panel-shadow]")
-      .selectOption("palette.text");
-
+    const stroke = page.locator("[data-vigilia-panel-stroke]");
+    const shadow = page.locator("[data-vigilia-panel-shadow]");
+    await chooseIn(page, stroke, "palette.text");
+    await chooseIn(page, shadow, "palette.text");
+    // The picker prints the token's name, so the choice is readable before the
+    // save is: without this the case would only fail at the envelope, several
+    // steps after the click that went wrong.
+    expect(await choiceOf(stroke)).toBe("Text");
+    expect(await choiceOf(shadow)).toBe("Text");
     // `text` is the token the new panel's border and shadow now point at. The
     // palette panel is the Tokens pane's, so it is in the Tokens pane.
     await openPane(page, "Tokens");
@@ -1411,26 +1438,26 @@ test.describe("Fabric editor route", () => {
     await expect.poll(() => injectedTransition(tooltip)).toBe("0s");
   });
 
-  test("a refused glass control says why to a pointer and to a keyboard alike", async ({
+  test("a refused glass control says why in its row, to a pointer and to a keyboard alike", async ({
     page,
   }, testInfo) => {
     /**
-     * The browser half of a fix jsdom cannot see.
+     * **Re-pointed, because the channel changed by design.** The reason used to
+     * reach the row through `tooltip()`, and the browser half of the fix this
+     * case proved was placement: an out-of-flow popup measured before it was
+     * pinned landed on top of its own trigger, so hover never settled and only
+     * focus showed it. Bible §5.3 moved refusals out of tooltips and into the
+     * row — `control-well.tsx`'s `ControlRow` renders the reason as words — so
+     * there is no popup left to place, and the flicker it caused cannot recur.
      *
-     * The reason reached the keyboard and not the mouse: `pointerenter` fired
-     * and no popup appeared, while the dock's one-word labels hovered fine. The
-     * cause was placement, not listeners. `place()` measured the popup before it
-     * was pinned, and an out-of-flow popup sizes against the space from its
-     * static position to the viewport edge until `left` and `top` are assigned —
-     * so a three-line reason measured one line, the computed height was short by
-     * two, and the popup landed **on top of its own trigger**. That fires
-     * `pointerleave` on the trigger, which dismisses the popup and restarts the
-     * hover timer, forever. jsdom has no layout, so nothing there could see it:
-     * the same event sequence passes in jsdom and flickers in a browser.
+     * What is asserted instead is the same claim on the surface that exists: a
+     * refused control **renders** and says why, the words are visible to a
+     * pointer, they are what the control describes itself by for a keyboard, and
+     * the control is not natively disabled — a disabled control leaves the tab
+     * order, so the reason would reach nobody not holding a mouse.
      *
      * A `Path` is one of the kinds the treatment cannot reach, and the reason
-     * named for it is a full sentence — the shape of the text is what made the
-     * stale measurement wrong, so a short label would pass here and still ship.
+     * named for it is a full sentence.
      */
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
@@ -1450,37 +1477,34 @@ test.describe("Fabric editor route", () => {
 
     const control = page.locator("[data-vigilia-glass-enabled]");
     await expect(control).toHaveAttribute("aria-disabled", "true");
-    const tooltip = page.locator(".editor-shell-tooltip");
+    // Refused, not disabled. Playwright reads `aria-disabled="true"` as disabled,
+    // which would erase the very distinction this case is about, so the DOM is
+    // asked directly instead: no `disabled` attribute, and the `focus()` at the
+    // end still lands. A natively disabled button cannot take focus at all,
+    // which is what makes that keystroke part of this proof rather than a
+    // separate step.
+    expect(await control.getAttribute("disabled")).toBeNull();
 
-    // **Hover**, asserted on its own: focusing first would make this pass on
-    // the behaviour that already worked.
-    await control.hover();
-    await expect(tooltip).toBeVisible();
-    await expect(tooltip).toContainText("Path");
-    // Settled, not flickering: the popup has to survive a moment rather than
-    // appear and be dismissed by the pointerleave its own placement provoked.
-    await page.waitForTimeout(1200);
-    await expect(tooltip).toBeVisible();
-    await expect(tooltip).toHaveCount(1);
-    // And it is not sitting on the control that opened it.
-    const [triggerBox, tooltipBox] = await Promise.all([
-      control.boundingBox(),
-      tooltip.boundingBox(),
-    ]);
-    expect(
-      tooltipBox!.y + tooltipBox!.height,
-      "the popup overlaps its own trigger",
-    ).toBeLessThanOrEqual(triggerBox!.y);
+    // The pointer's channel: words in the row, visible without an interaction.
+    //
+    // **Read off the control's own `aria-describedby`, not a spelled id.** The
+    // claim is that the control *names* the element holding its reason, and that
+    // the named element is on screen with the reason in it; both hold whatever
+    // the id is minted as. `control-well.tsx` mints `-reason` from the control's
+    // own id, so a hard-coded `#glass-enabled-reason` would be asserting the id
+    // scheme — a second copy of a rule this file does not own — rather than the
+    // channel that reaches a pointer and a screen reader alike.
+    const describedBy = await control.getAttribute("aria-describedby");
+    expect(describedBy, "the refused control describes itself").not.toBeNull();
+    const reason = page.locator(`#${describedBy}`);
+    await expect(reason).toBeVisible();
+    await expect(reason).toContainText("Path");
 
-    await page.mouse.move(0, 0);
-    await expect(tooltip).toHaveCount(0);
-
-    // **Focus**, asserted separately, so neither can pass on the other.
+    // The keyboard's channel is the same element: the control is described by
+    // the reason, so a screen reader reads it when the control takes focus.
     await control.focus();
-    await expect(tooltip).toBeVisible();
-    await expect(tooltip).toContainText("Path");
-    await page.keyboard.press("Escape");
-    await expect(tooltip).toHaveCount(0);
+    await expect(control).toBeFocused();
+    await expect(reason).toBeVisible();
   });
 
   test("captures selected chart binding controls for visual review", async ({
@@ -1490,9 +1514,11 @@ test.describe("Fabric editor route", () => {
 
     await page.goto(EDITOR);
     await selectStarterChart(page);
-    await page
-      .locator('[data-vigilia-binding="ram-gauge-percent"]')
-      .selectOption("ram.used");
+    await chooseIn(
+      page,
+      '[data-vigilia-binding="ram-gauge-percent"]',
+      "ram.used",
+    );
     const precision = page.locator(
       '[data-vigilia-binding-field="ram-gauge-percent.precision"]',
     );
@@ -1521,7 +1547,9 @@ test.describe("Fabric editor route", () => {
     await page.locator('[data-vigilia-layer="time"]').click();
     const source = page.locator('[data-vigilia-run-source="0"]');
     await expect(source).toBeVisible();
-    await expect(source).toHaveValue("time.now");
+    // The run's pickers are plan 1's selects now, so what they show is the label
+    // of the choice rather than the value behind it: `time.now` reads `Time`.
+    expect(await choiceOf(source)).toBe("Time");
     const format = page.locator('[data-vigilia-run-format="0"]');
     await expect(format).toBeVisible();
     // The starter clock's own tokens, so the reading below is one this test can
@@ -1530,11 +1558,12 @@ test.describe("Fabric editor route", () => {
 
     // A clock pinned to another city is the point of a world clock, so the zone
     // has to change the reading rather than only the envelope: the control is
-    // rebuilt from what was written, and the preview follows it.
+    // rebuilt from what was written, and the preview follows it. A zone names
+    // itself, so its value and its label are the same string.
     const zone = page.locator('[data-vigilia-run-zone="0"]');
-    await expect(zone).toHaveValue("");
-    await zone.selectOption("Asia/Tokyo");
-    await expect(zone).toHaveValue("Asia/Tokyo");
+    expect(await choiceOf(zone)).toBe("Follow the display");
+    await chooseIn(page, '[data-vigilia-run-zone="0"]', "Asia/Tokyo");
+    expect(await choiceOf(zone)).toBe("Asia/Tokyo");
     await expect
       .poll(
         async () => {
@@ -2158,9 +2187,11 @@ test.describe("Fabric editor route", () => {
 
     await page.goto(EDITOR);
     await selectStarterChart(page);
-    await page
-      .locator('[data-vigilia-binding="ram-gauge-percent"]')
-      .selectOption("ram.used");
+    await chooseIn(
+      page,
+      '[data-vigilia-binding="ram-gauge-percent"]',
+      "ram.used",
+    );
     const precision = page.locator(
       '[data-vigilia-binding-field="ram-gauge-percent.precision"]',
     );
@@ -2211,9 +2242,7 @@ test.describe("Fabric editor route", () => {
 
     // And the gesture that emptied it: binding the first series must leave the
     // control in place rather than take it away.
-    await page
-      .locator("[data-vigilia-chart-binding-add]")
-      .selectOption("cpu.load");
+    await chooseIn(page, "[data-vigilia-chart-binding-add]", "cpu.load");
     // The paint first, because that is the reported symptom and the binding row
     // is downstream of it: with the bug in place the whole panel content goes,
     // so asserting the row first would report the crash rather than the loss.
@@ -2232,9 +2261,11 @@ test.describe("Fabric editor route", () => {
 
     await page.goto(EDITOR);
     await selectStarterChart(page);
-    await page
-      .locator('[data-vigilia-chart-paint="progress"]')
-      .selectOption("palette.chartTrack");
+    await chooseIn(
+      page,
+      '[data-vigilia-chart-paint="progress"]',
+      "palette.chartTrack",
+    );
 
     const envelope = (await saveEnvelope(page)) as {
       scene: {

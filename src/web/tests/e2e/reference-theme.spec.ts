@@ -1,10 +1,4 @@
-import {
-  expect,
-  type Locator,
-  type Page,
-  type TestInfo,
-  test,
-} from "@playwright/test";
+import { expect, type Page, type TestInfo, test } from "@playwright/test";
 import { readThemePackage, writeThemePackage } from "@vigilia/theme-package";
 import { strToU8, zipSync } from "fflate";
 import {
@@ -15,6 +9,7 @@ import {
   clientOfScene,
   enterLayer,
 } from "./editor-canvas.js";
+import { chooseIn, optionsOf, typeIntoControl } from "./control-set.js";
 import { openPane } from "./editor-rail.js";
 import { GLASS_ENVELOPE, glassStripesPng } from "./glass-fixture.js";
 import { isDesktopSurface } from "./surface.js";
@@ -259,17 +254,6 @@ async function waitForMedia(page: Page): Promise<void> {
   });
 }
 
-async function typeInto(
-  page: Page,
-  field: Locator,
-  value: string,
-): Promise<void> {
-  await field.click();
-  await page.keyboard.press("Control+a");
-  await page.keyboard.type(value);
-  await page.keyboard.press("Tab");
-}
-
 async function savePackage(page: Page): Promise<{
   readonly bytes: Buffer;
   readonly envelope: Record<string, unknown>;
@@ -438,7 +422,11 @@ test.describe("the reference composition, authored", () => {
       .click();
     const authored = (await activeId(page)) ?? "";
     expect(authored).not.toBe("");
-    await typeInto(page, page.locator("[data-vigilia-panel-radius]"), "18");
+    await typeIntoControl(
+      page,
+      page.locator("[data-vigilia-panel-radius]"),
+      "18",
+    );
     const radius = page.locator("[data-vigilia-panel-radius]");
     await expect(radius).toHaveValue("18");
     const beforeSave = await sceneFacts(page);
@@ -559,12 +547,20 @@ test.describe("the reference composition, authored", () => {
 
     // **Style**, by keyboard: a radius, then a glass radius through the
     // checkbox's own Space key.
-    await typeInto(page, page.locator("[data-vigilia-panel-radius]"), "22");
+    await typeIntoControl(
+      page,
+      page.locator("[data-vigilia-panel-radius]"),
+      "22",
+    );
     const glassToggle = page.locator("[data-vigilia-glass-enabled]");
     await glassToggle.focus();
     await page.keyboard.press("Space");
     await expect(glassToggle).toBeChecked();
-    await typeInto(page, page.locator("[data-vigilia-glass-blur]"), "14");
+    await typeIntoControl(
+      page,
+      page.locator("[data-vigilia-glass-blur]"),
+      "14",
+    );
 
     // **Bind** — the new chart pointed at a real semantic key, through the
     // binding select the chart panel owns. The select is named
@@ -603,14 +599,12 @@ test.describe("the reference composition, authored", () => {
     // where the binding select lives.
     const bindingSelect = page.locator("[data-vigilia-binding]").first();
     await expect(bindingSelect).toBeVisible();
-    const keys = await bindingSelect
-      .locator("option")
-      .evaluateAll((options) =>
-        options.map((option) => (option as HTMLOptionElement).value),
-      );
+    // Plan 1's select renders no option until it is opened, and each option
+    // carries the key it commits as `data-vigilia-option`.
+    const keys = await optionsOf(page, bindingSelect);
     const key = keys.find((candidate) => candidate.startsWith("gpu."));
     expect(key, "the document offers a real key to bind").toBeDefined();
-    await bindingSelect.selectOption(key!);
+    await chooseIn(page, bindingSelect, key!);
     const bound = "cpu-card-sparkline";
 
     const beforeSave = await sceneFacts(page);
@@ -738,7 +732,11 @@ test.describe("the reference composition, authored", () => {
     // property "errors preserve recoverable work" actually means.
     const after = (await sceneFacts(page)).find((f) => f.id === panelId);
     expect(after?.rect).toEqual(before?.rect);
-    await typeInto(page, page.locator("[data-vigilia-panel-radius]"), "9");
+    await typeIntoControl(
+      page,
+      page.locator("[data-vigilia-panel-radius]"),
+      "9",
+    );
     await expect(page.locator("[data-vigilia-panel-radius]")).toHaveValue("9");
     const saved = await savePackage(page);
     expect(objectsOf(saved.envelope)).toContainEqual(
@@ -2375,7 +2373,11 @@ test.describe("the reference composition, at the sizes it is read at", () => {
     await toggle.focus();
     await page.keyboard.press("Space");
     await expect(toggle).toBeChecked();
-    await typeInto(page, page.locator("[data-vigilia-glass-blur]"), "12");
+    await typeIntoControl(
+      page,
+      page.locator("[data-vigilia-glass-blur]"),
+      "12",
+    );
 
     const treated = (await sceneFacts(page))
       .filter((fact) => fact.glass !== null)

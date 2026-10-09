@@ -6,12 +6,17 @@ import { isDesktopSurface } from "./surface.js";
 /**
  * The hand-owned surfaces the palette has to reach anyway.
  *
- * **Neither family here is a React primitive and neither is migrated.** The
- * three native `<dialog>`s (`new-document-chooser.ts`, `persistence-manager/`,
- * `theme-library-dialog.ts`) are DOM factories styled by `.vigilia-dialog`, and
- * the inspector's sections are a native `<details>` (`controls/property-section.ts`).
- * 0033's argument for the tooltip applies unchanged to both, and §8's table row
- * for `collapsible` is discharged by that owner rather than by a Radix one.
+ * **The dialogs are not a React primitive and are not migrated.** The three
+ * native `<dialog>`s (`new-document-chooser.ts`, `persistence-manager/`,
+ * `theme-library-dialog.ts`) are DOM factories styled by `.vigilia-dialog`.
+ * 0033's argument for the tooltip applies unchanged to them, and §8's table row
+ * for `collapsible` is discharged by the inspector's own React section rather
+ * than by a Radix one.
+ *
+ * The inspector's sections **are** React now (`components/ui/inspector-section.tsx`),
+ * and this file still reads them — a palette has to reach a section header
+ * whether it is painted by a class or by a token, and this is the one place
+ * that is checked in a browser.
  *
  * They are also the surfaces a palette change is most likely to break, because
  * each paints from the shell's tokens through a class rather than through the
@@ -41,7 +46,10 @@ test("the dialogs and the inspector's sections paint every palette", async ({
   // The column needs no pane opened: unlike Composition and Add it is not a
   // slot of the rail, it is the right column and is always mounted.
   await selectLayer(page, "group-cpu-card");
-  const section = page.locator(".vigilia-section-details").first();
+  // The section is plan 1's `InspectorSection`: a `<section>` carrying
+  // `data-vigilia-section`, whose header — the thing painted from the shell's
+  // tokens — is a button.
+  const section = page.locator("[data-vigilia-section]").first();
   await expect(section).toBeVisible();
 
   for (const palette of PALETTES) {
@@ -73,10 +81,11 @@ test("the dialogs and the inspector's sections paint every palette", async ({
     await page.keyboard.press("Escape");
     await expect(dialog).toBeHidden();
 
-    // The inspector's own disclosure, a native `<details>` whose summary is
-    // painted by the shell's tokens rather than by a primitive library.
+    // The inspector's own section header, painted by the shell's tokens rather
+    // than by a primitive library: the eyebrow is the element that carries the
+    // ink, where the button around it is transparent.
     const summaryInk = await section
-      .locator("summary")
+      .locator("button[aria-expanded] > span")
       .first()
       .evaluate((node) => getComputedStyle(node).color);
     expect(

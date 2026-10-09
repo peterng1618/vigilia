@@ -594,11 +594,11 @@ describe("shape material and a shape's own fields", () => {
       const { host } = setup(shape);
 
       // The converted surface carries each hook on the control a person
-      // operates and emits no `.vigilia-field` at all, so the pre-conversion
-      // selector matched nothing and this case stayed green on its `> 0` guard —
-      // which cannot tell "every field" from "one field". Selecting by the
-      // surface's own hooks is the re-point; naming every expected hook is the
-      // guard the count never was.
+      // operates and emits none of the pre-conversion classes at all, so the
+      // old selector matched nothing and this case stayed green on its `> 0`
+      // guard — which cannot tell "every field" from "one field". Selecting by
+      // the surface's own hooks is the re-point; naming every expected hook is
+      // the guard the count never was.
       //
       // Every shape owns these. `stroke` is absent on an arc — its one paint
       // field already writes the stroke and is labelled `Ink` — and the corner

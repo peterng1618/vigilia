@@ -1,4 +1,5 @@
 import { expect, type Locator, type Page } from "@playwright/test";
+import { chooseIn, openSection } from "./control-set.js";
 // The rail's toggle rule has one owner and one guard: this file grew a
 // second copy of it while the rebuild was being written, which is F1.28's
 // class again.
@@ -201,29 +202,37 @@ export async function choose(
   value: string,
 ): Promise<void> {
   const control = page.locator(selector).first();
+  if ((await control.count()) === 0) {
+    throw new Error(`no control matches ${selector} on this selection`);
+  }
   // **A token dropdown is only as good as its tokens.** The run-colour and
   // run-preset selects list what the *document* declares, so a value the
-  // document does not carry cannot be chosen — and `selectOption` retries that
-  // until the test's whole budget is gone. That is what made every one of these
-  // nine red on a document nobody had broken: the first error was a 30-second
-  // timeout naming a suite rather than a defect.
+  // document does not carry cannot be chosen — and a picker that cannot be
+  // chosen from retries that until the test's whole budget is gone. That is what
+  // made every one of these nine red on a document nobody had broken: the first
+  // error was a 30-second timeout naming a suite rather than a defect.
   //
-  // So a missing option is named, with the options that were offered. It is the
-  // difference between "these are your options" and "waited".
-  const offered = await control
-    .locator("option")
-    .evaluateAll((options) =>
-      options.map((option) => option.getAttribute("value")),
-    );
-  if (!offered.includes(value)) {
-    throw new Error(
-      `${selector} has no option "${value}". It offers: ${
-        offered.map((entry) => JSON.stringify(entry)).join(", ") || "(none)"
-      }`,
-    );
+  // The run editor's pickers are plan 1's select now, not a native `<select>`
+  // (`runs.tsx:497-570`), so the two paths are the two controls: the native one
+  // is checked against its own `<option>`s and the new one is opened by value.
+  if ((await control.evaluate((node) => node.tagName)) === "SELECT") {
+    const offered = await control
+      .locator("option")
+      .evaluateAll((options) =>
+        options.map((option) => option.getAttribute("value")),
+      );
+    if (!offered.includes(value)) {
+      throw new Error(
+        `${selector} has no option "${value}". It offers: ${
+          offered.map((entry) => JSON.stringify(entry)).join(", ") || "(none)"
+        }`,
+      );
+    }
+    await control.scrollIntoViewIfNeeded();
+    await control.selectOption(value);
+    return;
   }
-  await control.scrollIntoViewIfNeeded();
-  await control.selectOption(value);
+  await chooseIn(page, selector, value);
 }
 
 const GEOMETRY = {
@@ -240,17 +249,12 @@ const GEOMETRY = {
  * chooses the binding constantly — so every geometry control is behind a
  * disclosure. A helper that filled one without opening it would wait on a hidden
  * input, which is a hidden control and not a failing one.
+ *
+ * The disclosure is plan 1's (`InspectorSection`), so the rule lives with the
+ * control it is about rather than here.
  */
 export async function openPosition(page: Page): Promise<void> {
-  const header = page
-    .locator('[data-vigilia-section="position"] > h2 > button[aria-expanded]')
-    .first();
-  if ((await header.count()) === 0) return;
-  // The section is a disclosure whose header is the button (bible §5), not a
-  // `<details>`: `aria-expanded` is the state a reader sees, and clicking the
-  // header is what flips it.
-  if ((await header.getAttribute("aria-expanded")) === "true") return;
-  await header.click();
+  await openSection(page, "position");
 }
 
 /** Places and sizes the selection, in whole artboard units. */
@@ -323,13 +327,26 @@ export async function chooseToken(
     throw new Error(`no control matches ${selector} on this selection`);
   }
   await control.scrollIntoViewIfNeeded();
+  // The panel's pickers are plan 1's select now: the tokens are `Select.Item`s
+  // in a popup, so the label is what a person — and a locator — reads, and the
+  // `data-vigilia-option` beside it carries the reference the control commits.
+  if ((await control.evaluate((node) => node.tagName)) !== "SELECT") {
+    await control.click();
+    const option = page.getByRole("option", { name: label, exact: true });
+    if ((await option.count()) === 0) {
+      throw new Error(`no token named "${label}" in ${selector}`);
+    }
+    await option.first().click();
+    return;
+  }
   const value = await control
     .locator("option")
     .filter({ hasText: label })
     .first()
     .getAttribute("value");
-  if (value === null || value === "")
+  if (value === null || value === "") {
     throw new Error(`no token named "${label}" in ${selector}`);
+  }
   await control.selectOption(value);
 }
 
@@ -412,8 +429,10 @@ export async function addChart(
         "the chart panel has no series chooser, so no series can be bound",
       );
     }
-    await chooser.scrollIntoViewIfNeeded();
-    await chooser.selectOption(key);
+    // The chooser is plan 1's select. Its options are the document's own
+    // semantic keys, and each carries its key as `data-vigilia-option`, so the series is
+    // named the way the object stores it rather than by a label copied here.
+    await chooseIn(page, "[data-vigilia-chart-binding-add]", key);
   }
   for (const [index, token] of (chart.paint ?? []).entries()) {
     if (token === undefined) continue;

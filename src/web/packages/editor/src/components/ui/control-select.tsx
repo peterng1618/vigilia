@@ -77,8 +77,18 @@ export function SelectControl(
         }))}
         value={value}
         readOnly={blocked}
-        onValueChange={(next) => {
-          if (blocked || next === null) return;
+        onValueChange={(next, details) => {
+          // **Only an author's choice is a change.** Base UI reports
+          // `reason: "none"` for the updates it makes itself, and one of those
+          // is destructive: when the option list loses the item it had selected
+          // — a palette token deleted under a paint picker — the primitive
+          // clears its value and reports `""`, which this control would write
+          // as "not set". The document has already re-pointed that reference by
+          // then (`reassignPaletteToken`), so committing the empty value undoes
+          // the reassignment and leaves the object unpainted. Measured: the
+          // author's own choices arrive as `item-press`, the spurious one as
+          // `none`.
+          if (blocked || next === null || details.reason === "none") return;
           onChange(next);
         }}
       >
@@ -110,6 +120,14 @@ export function SelectControl(
                 <Select.Item
                   key={option.id}
                   value={option.id}
+                  // The value behind the choice, on the element a driver clicks.
+                  // Base UI keeps the id in its store and renders only the label,
+                  // so without this an option whose label is *document data* — a
+                  // type preset's `Card title`, a token's `Muted text` — can only
+                  // be named by copying the document's glossary into the suite.
+                  // Namespaced like every other hook, so the string a locator
+                  // names and the string the control commits are one string.
+                  data-vigilia-option={option.id}
                   className="cursor-default rounded-sm px-[var(--space-8)] py-[var(--space-4)] data-[highlighted]:bg-panel-2"
                 >
                   <Select.ItemText>{option.name}</Select.ItemText>

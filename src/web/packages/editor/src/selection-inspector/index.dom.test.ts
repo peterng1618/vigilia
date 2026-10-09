@@ -1477,9 +1477,17 @@ describe("the column a kind gets", () => {
   };
 
   /**
-   * Everything each kind rendered **before** the column learned its kinds, read
-   * off the pre-change DOM rather than off the column — otherwise the test would
-   * only restate whatever the column now does, and would agree with a bug.
+   * Everything each kind rendered **before** this plan, read off the pre-change
+   * source at the plan-3 base — `git show 190dc1a4:` of
+   * `selection-inspector/per-kind-column.ts` and the builders it calls
+   * (`appearance.ts`, `panel.ts`, `glass.ts`, `crop.ts`, `bleed.ts`) — rather
+   * than off the column, which would only restate whatever the column now does
+   * and would agree with a bug.
+   *
+   * The gates are `perKindColumn`'s own: a locked object loses Content's name
+   * and all of Position, Layer and Paint while Spends, being read-only, stays;
+   * the glass control is offered for **every** unlocked selection, because its
+   * refusal is why it is never absent.
    *
    * `shape`'s reference is the `Wedge`, so the corner radius is absent on
    * purpose and asserted separately: `rx` is a `Rect`'s property and no other
