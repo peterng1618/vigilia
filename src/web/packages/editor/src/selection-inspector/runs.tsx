@@ -593,10 +593,10 @@ function colourValueOf(view: RunsView, ref: string): string {
 /**
  * The run editor: the layout controls, one row per run, and the add button.
  *
- * The caret rule the imperative editor needed `focusedControl`/`restoreFocus`
- * for is React's own here: the rows key on their index and the values are props,
- * so a re-publish updates the focused input rather than replacing it, and a
- * checkbox never regains focus it was not holding. See `index.ts`.
+ * The caret rule the imperative editor needed a focus-restoring pair for is
+ * React's own here: the rows key on their index and the values are props, so a
+ * re-publish updates the focused input rather than replacing it, and a checkbox
+ * never regains focus it was not holding. See `index.ts`.
  */
 export function RunEditor(props: {
   readonly runs: RunsView;

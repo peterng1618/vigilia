@@ -62,7 +62,9 @@ async function captureColumn(
       window.innerHeight - (scroller?.clientHeight ?? window.innerHeight);
     // A little slack: the panel's box is measured before the resize reflows,
     // and a row that wraps differently would otherwise lose its last line.
-    return Math.ceil((content?.getBoundingClientRect().height ?? 0) + chrome + 32);
+    return Math.ceil(
+      (content?.getBoundingClientRect().height ?? 0) + chrome + 32,
+    );
   });
   if (viewport !== null && needed > viewport.height) {
     await page.setViewportSize({ width: viewport.width, height: needed });
