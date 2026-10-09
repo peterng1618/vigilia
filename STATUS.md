@@ -9,7 +9,7 @@ Branch: `develop`
 frontend surface except the canvas.**
 
 The look is specified and the rewrite under it is decided; the gates, the control
-set and the shell's first four surfaces are built. The target is
+set, the shell's chrome and the stage's three corners are built. The target is
 [`docs/design/design-language.md`](docs/design/design-language.md), the contract
 is
 [`2026-10-08-editor-design-language-design.md`](docs/superpowers/specs/2026-10-08-editor-design-language-design.md),
@@ -26,7 +26,7 @@ backlog it produced stays live in the register.
 
 ## Active work
 
-- **Plan 2 — [`the shell and the rail`](docs/superpowers/plans/2026-10-08-the-shell-and-the-rail.md) — is active.** Tasks 1–6 are complete and reviewed; Task 7 closes phase 2 and three tasks remain.
+- **Plan 2 — [`the shell and the rail`](docs/superpowers/plans/2026-10-08-the-shell-and-the-rail.md) — is active.** Tasks 1–7 are complete and reviewed and phase 2 is closed; Task 8 opens phase 3 and three tasks remain.
 - **Plan 1 — gates and the control set — is complete**, with a delivered-state reconciliation for Tasks 1–4 in the plan file in place of its retired ledger.
 - **The spec is `draft` and unimplemented** — its acceptance sections are plans of measurement, not results.
 - **Reactify ([0039](docs/decisions/0039-the-editor-ui-is-react-and-only-the-canvas-is-imperative.md)) is the frame, not a phase** — every editor surface becomes React, only the canvas stays imperative, and no Fabric object is ever mirrored into React state.
@@ -35,17 +35,17 @@ backlog it produced stays live in the register.
 
 ## Last completed change
 
-- **Task 6 of plan 2 — how the stage is shown — is complete and reviewed**, through `c8aff3d1`: one review and one fix round, each with its own scoped verdict.
-- **The stage's top-right carries the view cluster now** — the display chooser with its percentage readout as the trigger, and the camera's `−`, readout, `+` and fit, with every choice the old control offered still one gesture away.
-- **The task's own Outcome was the first finding**: the initial landing had no zoom controls, because the brief's Interfaces line omitted `zoomBy`/`zoomToFit` while the Outcome and §7.5 both named them — ruled that the spec binds and the plan argues, so the cluster was completed rather than the Outcome renegotiated.
-- **The review found an `aria-pressed` on a one-way command** — announcing a capability the author does not have — and a hover treatment where §5 rule 6 requires an acquired border; both fixed, with the same round's new assertion shown red before it was trusted.
-- **R2's collision assertion paid for itself on the first run**, finding a 10.6px overlap at 640×360 that no comparison of the chip's own box could see; four rows land with this close, of which `vg-222` — the §3/§7.5/`.editor-glass` contradiction — is the one worth reading.
+- **Task 7 of plan 2 — the dock, re-layered — is complete and reviewed**, closing phase 2 through `8b860246`: one review and no fix round.
+- **The dock sits at the stage's bottom-centre** at the bible's radii and control sizes, still rendering both registry halves — the object half filtered, the arrange half greyed with its marker kept — and acquires a `--muted` border on hover per §5 rule 6.
+- **The two specs that could have broken invisibly held**: `editor.spec.ts:3877` and `snapping.spec.ts:581` compare the toolbar's non-arrange button labels for **equality**, and the review verified from source that no new unmarked button entered the toolbar rather than inferring it from a green run.
+- **The review's own mutation bit**: rendering the arrange half absent instead of greyed reddened both asymmetry cases — the red proof the brief asked for, and the reason those two cases are guards rather than decoration.
+- **It also refuted the implementer's stated gap**: `editor-rail.spec.ts:164` already loops all three of §7.7's density configurations with reachability and inset assertions, so no separate measurement was owed; `vg-226` and `vg-227` land with this close and `vg-224` is corrected from four instances to three.
 
 ## Next
 
-1. **Task 7 — the dock, re-layered** — bottom-centre at elevation 1 with the bible's radii and control sizes, still rendering both registry halves. Its element contract is tighter than its brief says: `editor.spec.ts:3877` and `snapping.spec.ts:581` both compare `button:not([data-vigilia-arrange-action])` label lists for **equality**, so no new unmarked button may enter the toolbar.
-2. **Then plan 2's phase 3** — Task 8's ratchet (which owns `editor-shell.css`'s 79 violations, the rail slot's 34px, and `:1611`'s untokenised `calc(100% - 28px)` — but **not** `vg-224`'s hover sweep, which its mechanism cannot see), Task 9's parity capture, and Task 10's difference list, which inherits `vg-217`, `vg-219`, `vg-222`, `vg-223` and `vg-225`.
-4. **Unpushed:** `develop` is far ahead of `origin/develop`; no push is authorised.
+1. **Task 8 — the ratchet says so** — the gated list as the union of what this plan converted (22 files), plus `editor-shell.css`'s hex count recorded as a **before-state for plan 3**, not driven to zero: that file is deliberately ungated, and its palettes are legitimately hex. Its vacuity proof needs care — the guard exits **1** both for an empty list and for a path it cannot read, so a literal `/tmp` path proves nothing and the report must quote the `is empty; the guard would check nothing` wording.
+2. **Then Task 9's parity capture and Task 10's difference list**, which inherits `vg-217`, `vg-219`, `vg-222`, `vg-223`, `vg-225` and `vg-226`.
+3. **Unpushed:** `develop` is far ahead of `origin/develop`; no push is authorised.
 
 ## Blockers / unverified
 
