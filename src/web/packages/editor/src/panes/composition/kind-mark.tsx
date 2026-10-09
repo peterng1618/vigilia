@@ -23,6 +23,21 @@ const CHART_ICONS: Readonly<Record<string, LucideIcon>> = {
 };
 const CHART_FALLBACK: LucideIcon = ChartColumn;
 
+/**
+ * The glyph a chart family wears, wherever one is drawn.
+ *
+ * One owner, because two surfaces draw these four: the layer row's mark and the
+ * Add pane's tile. A family that wore a gauge in the row and a column on the
+ * tile would be two answers to one question, and the author would have to learn
+ * both. A family this build does not know draws the fallback, so a mark still
+ * says what it is rather than what it is not.
+ */
+export function chartFamilyGlyph(family: string | undefined): LucideIcon {
+  return family === undefined
+    ? CHART_FALLBACK
+    : (CHART_ICONS[family] ?? CHART_FALLBACK);
+}
+
 /** The generic glyph a group draws (bible §6, §5.1). A card on the canvas is an
  *  arbitrary group of elements, so its row cannot depict it; the stack is the
  *  one word the rail already uses for the scene tree, drawn from the mockup's
@@ -78,10 +93,7 @@ function treatment(mark: LayerMark): React.JSX.Element | null {
         </span>
       );
     case "chart": {
-      const Icon =
-        mark.family === undefined
-          ? CHART_FALLBACK
-          : (CHART_ICONS[mark.family] ?? CHART_FALLBACK);
+      const Icon = chartFamilyGlyph(mark.family);
       return (
         <span data-vigilia-layer-mark="chart" className="vigilia-layer-icon">
           <Icon aria-hidden size={13} strokeWidth={1.75} />

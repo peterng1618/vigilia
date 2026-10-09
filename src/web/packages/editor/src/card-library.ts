@@ -59,36 +59,84 @@ import { uiCopy } from "./ui-copy.js";
  * lookup.
  */
 
+/**
+ * The name of the diagram a card unit's tile draws.
+ *
+ * A closed union, so the **library** owns the name and a ninth card cannot be
+ * added without one; the pane owns the drawing, because it is a React surface
+ * and this module is not. Named for the reading the card shows rather than for
+ * the card's title, so it is the unit that is identified (bible §6).
+ */
+export type CardDiagram =
+  | "time"
+  | "cpu"
+  | "gpu"
+  | "ram"
+  | "vram"
+  | "trends"
+  | "storage"
+  | "network";
+
 /** One card an author can insert, named as the control that inserts it. */
 export interface CardUnit {
   /** §77's `widgetId`: the group id, and what two copies of one card share. */
   readonly id: string;
   /** What the chooser's button says, and what a copy is named in the tree. */
   readonly label: string;
+  /** Which diagram the Add pane's tile draws for this unit. */
+  readonly diagram: CardDiagram;
   /** The card as the starter authored it — one group over its parts. */
   readonly build: () => ObjectJson;
 }
 
 /** The starter's cards, in the order the reference composition reads. */
 export const CARD_LIBRARY: readonly CardUnit[] = [
-  { id: "group-time-card", label: uiCopy.cardLibrary.time, build: clockCard },
-  { id: "group-cpu-card", label: uiCopy.cardLibrary.cpu, build: cpuCard },
-  { id: "group-gpu-card", label: uiCopy.cardLibrary.gpu, build: gpuCard },
-  { id: "group-ram-card", label: uiCopy.cardLibrary.ram, build: ramCard },
-  { id: "group-vram-card", label: uiCopy.cardLibrary.vram, build: vramCard },
+  {
+    id: "group-time-card",
+    label: uiCopy.cardLibrary.time,
+    diagram: "time",
+    build: clockCard,
+  },
+  {
+    id: "group-cpu-card",
+    label: uiCopy.cardLibrary.cpu,
+    diagram: "cpu",
+    build: cpuCard,
+  },
+  {
+    id: "group-gpu-card",
+    label: uiCopy.cardLibrary.gpu,
+    diagram: "gpu",
+    build: gpuCard,
+  },
+  {
+    id: "group-ram-card",
+    label: uiCopy.cardLibrary.ram,
+    diagram: "ram",
+    build: ramCard,
+  },
+  {
+    id: "group-vram-card",
+    label: uiCopy.cardLibrary.vram,
+    diagram: "vram",
+    build: vramCard,
+  },
   {
     id: "group-trends-card",
     label: uiCopy.cardLibrary.trends,
+    diagram: "trends",
     build: trendsCard,
   },
   {
     id: "group-storage-card",
     label: uiCopy.cardLibrary.storage,
+    diagram: "storage",
     build: storageCard,
   },
   {
     id: "group-network-card",
     label: uiCopy.cardLibrary.network,
+    diagram: "network",
     build: networkCard,
   },
 ];

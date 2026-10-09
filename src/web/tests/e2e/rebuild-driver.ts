@@ -134,11 +134,17 @@ export async function openBlank(
   await expect.poll(async () => (await readScene(page)).length).toBe(0);
 }
 
-/** The button in the Add pane that makes an object, by the word on it. */
+/** The button in the Add pane that makes an object, by the name it answers to.
+ *
+ *  Read as the accessible name rather than as the text inside the button: the
+ *  pane's shape and chart tiles are glyph-led (bible §6), so a `Path` or a
+ *  `Gauge` tile draws a glyph and carries its word in its name, not on it. The
+ *  cards and Text show their word, and a name is what a reader is told for
+ *  either. */
 export function addButton(page: Page, label: string): Locator {
   return page
-    .locator('[data-vigilia-panel="add"] button')
-    .filter({ hasText: new RegExp(`^${label}$`) });
+    .locator('[data-vigilia-panel="add"]')
+    .getByRole("button", { name: label, exact: true });
 }
 
 /** Inserts an object from the Add pane, by the word on the control. */

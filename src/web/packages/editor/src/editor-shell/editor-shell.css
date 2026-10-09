@@ -901,6 +901,103 @@ body,
   text-transform: uppercase;
   letter-spacing: 0.12em;
 }
+/* The Add pane's insert surface (bible §5.2). The group is an eyebrow over a
+   grid, not a box: the panel-wide `fieldset` above draws a border and a legend
+   padding, and both are taken back here rather than left to be out-specified
+   per tile. The `fieldset` stays, because a group is what tells the shape Line
+   from the chart Line — for a screen reader (`role="group"`, named by the
+   legend) as much as for an eye. */
+.editor-shell-panel .vigilia-add-group {
+  margin: 0 0 var(--space-16);
+  padding: 0;
+  border: 0;
+  min-inline-size: 0;
+}
+/* §2's eyebrow, exactly: `--text-2xs`, 600, .11em, muted, uppercase, and it
+   labels a region rather than a control. */
+.editor-shell-panel .vigilia-add-eyebrow {
+  display: block;
+  width: 100%;
+  margin: 0 0 var(--space-8);
+  padding: 0;
+  color: var(--muted);
+  font-size: var(--text-2xs);
+  font-weight: 600;
+  letter-spacing: 0.11em;
+  text-transform: uppercase;
+}
+/* §5.2's four-column diagram grid: `--radius-lg` wells, `--panel-2` inside a
+   1px `--edge`, at the reference's 4-up density. Four columns is the baseline
+   the tiles were measured at in the 246px pane, and density is not itself a
+   defect — the card labels are what would overflow, and they ellipsise. */
+.vigilia-add-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: var(--space-6);
+}
+/* §5's tile. The panel-wide `button` rule is neutralised by name rather than
+   left to lose: a tile is not a form row, and its `padding`, `margin`,
+   `min-height` and `border-radius` are all the control set's, not the form's. */
+.editor-shell-panel .vigilia-add-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-4);
+  aspect-ratio: 1;
+  min-height: 0;
+  margin: 0;
+  padding: var(--space-4);
+  border: 1px solid var(--edge);
+  border-radius: var(--radius-lg);
+  background: var(--panel-2);
+  color: var(--muted);
+  cursor: pointer;
+}
+/* §5 rule 6: hover raises the resting `--edge` to `--muted`. The chart tiles'
+   lucide glyphs carry `currentColor`, so the tile's colour change reaches them;
+   nothing moves and nothing scales. */
+.editor-shell-panel .vigilia-add-tile:hover,
+.editor-shell-panel .vigilia-add-tile:focus-visible,
+.editor-shell-panel .vigilia-add-text:hover,
+.editor-shell-panel .vigilia-add-text:focus-visible {
+  border-color: var(--muted);
+  color: var(--text);
+}
+/* A unit's name, under its diagram. It ellipsises rather than shrinking the
+   tile: the diagram is what is recognised at a glance, and the tile's accessible
+   name is the whole word either way. Measured at the 246px pane, one of the
+   eight — "Performance trends" — truncates; the other seven fit. */
+.vigilia-add-label {
+  max-width: 100%;
+  overflow: hidden;
+  font-size: var(--text-2xs);
+  line-height: 1.2;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* Text stands alone, in `insertGroups()`'s own order between the units and the
+   primitives, and as the one full-width row rather than a grid tile: a lone
+   square beside a card grid reads as a ninth card. */
+.editor-shell-panel .vigilia-add-text {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  width: 100%;
+  min-height: 0;
+  margin: 0 0 var(--space-16);
+  padding: var(--space-10);
+  border: 1px solid var(--edge);
+  border-radius: var(--radius-lg);
+  background: var(--panel-2);
+  color: var(--text);
+  font-size: var(--text-sm);
+  text-align: left;
+  cursor: pointer;
+}
+.editor-shell-panel .vigilia-add-text .vigilia-add-label {
+  font-size: var(--text-sm);
+}
 .editor-shell-panel button,
 .editor-shell-panel input,
 .editor-shell-panel select,

@@ -191,6 +191,26 @@ describe("the card library", () => {
     }
   });
 
+  it("names one diagram per unit, so a tile depicts the unit it inserts", () => {
+    // The pane maps this name to a glyph and fails to compile on one it does
+    // not know, so the library's half is what is pinned here: one diagram per
+    // unit, in the library's order — a ninth card cannot arrive undrawn, and
+    // **no two units share a picture**, which is what makes the diagram an
+    // identification rather than decoration (§5.2).
+    const diagrams = CARD_LIBRARY.map((entry) => entry.diagram);
+    expect(diagrams).toEqual([
+      "time",
+      "cpu",
+      "gpu",
+      "ram",
+      "vram",
+      "trends",
+      "storage",
+      "network",
+    ]);
+    expect(new Set(diagrams).size).toBe(CARD_LIBRARY.length);
+  });
+
   // THE property. A copy that reused an id would be a twin the second save
   // refuses; a copy that minted a semantic key would be bound to a sensor
   // nobody publishes, and would arrive showing nothing (§93).
@@ -597,6 +617,7 @@ describe("a card that declares one id twice", () => {
   const DUPLICATE_CARD: CardUnit = {
     id: "group-duplicate-card",
     label: "Duplicate",
+    diagram: "cpu",
     build: () => {
       const card = cpuCard();
       const parts = card["objects"] as readonly ObjectJson[];
@@ -703,6 +724,7 @@ describe("a card whose repeat mints the suffix a genuine part already holds", ()
   const SUFFIX_CARD: CardUnit = {
     id: "group-suffix-card",
     label: "Suffix",
+    diagram: "cpu",
     build: () => {
       const card = cpuCard();
       const parts = card["objects"] as readonly ObjectJson[];
@@ -793,6 +815,7 @@ describe("a card whose repeat mints the suffix a genuine part already holds", ()
       unit: {
         id: "group-repeat-card",
         label: "Repeat",
+        diagram: "cpu",
         build: () => {
           const card = cpuCard();
           const parts = card["objects"] as readonly ObjectJson[];

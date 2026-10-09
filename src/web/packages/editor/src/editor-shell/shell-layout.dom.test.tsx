@@ -14,11 +14,11 @@ import { uiCopy } from "../ui-copy.js";
 import type { ViewportManager } from "../viewport-manager/index.js";
 import type { EditorShellBridge } from "./bridge.js";
 import type { RailSlot } from "./rail.js";
-import { createShellLayout } from "./shell-layout.js";
 import type {
   EditorActionFacade,
   EditorViewControls,
 } from "./session-facade.js";
+import { createShellLayout } from "./shell-layout.js";
 
 // Base UI's popup needs two browser APIs jsdom has none of: floating-ui observes
 // its anchor, and the popup waits for its own open transition before reporting
@@ -274,22 +274,26 @@ function menubarEntry(root: HTMLElement, label: string): HTMLButtonElement {
 
 /** The Add pane's own groups, read the same way: the lone button, then each
     fieldset with its legend. */
+/** What the pane drew, read the way a reader is told it: the entries that stand
+ *  alone, then each named group. A tile's name is its accessible one, because
+ *  the shapes and the chart families are glyph-led — their own text is empty —
+ *  and the accessible name is what a screen reader announces either way. */
 function paneGroups(
   pane: HTMLElement,
 ): readonly (readonly [string | null, readonly string[]])[] {
+  const name = (control: HTMLElement): string =>
+    control.getAttribute("aria-label") ?? control.textContent ?? "";
   return [
     [
       null,
       Array.from(pane.children)
         .filter((child) => child.tagName === "BUTTON")
-        .map((button) => button.textContent ?? ""),
+        .map((button) => name(button as HTMLElement)),
     ],
     ...Array.from(pane.querySelectorAll<HTMLElement>("fieldset")).map(
       (group): readonly [string | null, readonly string[]] => [
         group.querySelector("legend")?.textContent ?? null,
-        Array.from(group.querySelectorAll("button")).map(
-          (button) => button.textContent ?? "",
-        ),
+        Array.from(group.querySelectorAll<HTMLElement>("button")).map(name),
       ],
     ),
   ];

@@ -3,7 +3,10 @@ import {
   type ChartFamily,
   type FabricGlobals,
 } from "@vigilia/renderer-core";
-import { CARD_LIBRARY } from "./card-library.js";
+import { createElement } from "react";
+import { flushSync } from "react-dom";
+import { createRoot, type Root } from "react-dom/client";
+import { CARD_LIBRARY, type CardDiagram } from "./card-library.js";
 import type { EditorInteraction } from "./editor-interaction.js";
 import {
   createNewShape,
@@ -12,6 +15,7 @@ import {
   SHAPE_KINDS,
   type ShapeKind,
 } from "./new-object-defaults.js";
+import { AddPane } from "./panes/add/add-pane.js";
 import { uiCopy } from "./ui-copy.js";
 
 export interface NewObjectPanel {
@@ -50,6 +54,8 @@ export type InsertableObject =
       readonly kind: "card";
       readonly label: string;
       readonly card: string;
+      /** Which diagram the Add pane's tile draws, read from the unit. */
+      readonly diagram: CardDiagram;
     };
 
 /** One heading's worth of them. A heading is what makes "Line" unambiguous. */
@@ -78,6 +84,7 @@ export function insertGroups(): readonly InsertGroup[] {
       kind: "card" as const,
       label: unit.label,
       card: unit.id,
+      diagram: unit.diagram,
     })),
     { kind: "text", label: uiCopy.panels.text },
     ...SHAPE_KINDS.map((shape) => ({
@@ -170,6 +177,86 @@ export function insertNewShape(
   editor.canvas.requestRenderAll();
 }
 
+/**
+ * Runs a construction that refuses when the theme has no reference to give it —
+ * a palette without a usable token or type presets without a body. Reported
+ * through the editor's own diagnostics, because a throw out of a click handler
+ * leaves the author with a button that silently does nothing.
+ *
+ * Every construction in the pane goes through it, charts included:
+ * `ChartManager.addChart` calls `newChart` into `createNewChartDefaults` with no
+ * handler of its own, so an unwrapped chart tile would be the only one here that
+ * fails silently. A card's own refusal is reported by the session, which owns
+ * it, so there is nothing here for this to report twice.
+ */
+function constructing(
+  editor: EditorInteraction,
+  build: () => void | Promise<void>,
+): void {
+  const report = (error: unknown): void => {
+    editor.errorManager.warn(
+      "controls",
+      error instanceof Error ? error.message : String(error),
+    );
+  };
+  try {
+    void Promise.resolve(build()).catch(report);
+  } catch (error) {
+    report(error);
+  }
+}
+
+/**
+ * One object, constructed. The pane routes every tile here rather than holding
+ * its own switch, so the eligibility gates, the refusals and the wrapper above
+ * stay in the module that owns the list.
+ *
+ * One construction each — the card library owns what a card is, the defaults
+ * module owns what a new shape is, and the canvas and history the editor
+ * already exposes own where it lands and how it is recorded.
+ */
+export function insertObject(
+  editor: EditorInteraction,
+  globals: FabricGlobals | undefined,
+  actions: NewObjectActions | undefined,
+  object: InsertableObject,
+): void {
+  constructing(editor, () => {
+    switch (object.kind) {
+      case "text":
+        insertNewText(editor, globals);
+        return;
+      case "shape":
+        insertNewShape(editor, globals, object.shape);
+        return;
+      case "card": {
+        const insert = actions?.insertCard;
+        // Refused rather than ignored: a library tile that quietly does nothing
+        // is the one failure an author cannot diagnose.
+        if (insert === undefined) {
+          throw new Error(
+            "The card library needs the editor session that owns the document's bindings.",
+          );
+        }
+        return insert(object.card);
+      }
+      case "chart": {
+        const chart = actions?.addChart;
+        // The same refusal the card path makes, for the same reason: with
+        // `actions?.addChart(…)` this was the one tile in the pane that could
+        // swallow its own dispatch — a chart tile that quietly did nothing is
+        // the failure an author cannot diagnose.
+        if (chart === undefined) {
+          throw new Error(
+            "The chart families need the editor session that owns the document's charts.",
+          );
+        }
+        return chart(object.family);
+      }
+    }
+  });
+}
+
 /** Vigilia creates semantic text while the editor retains generic construction and history. */
 export function createNewObjectPanel(
   host: HTMLElement,
@@ -177,114 +264,34 @@ export function createNewObjectPanel(
   globals: FabricGlobals | undefined,
   actions?: NewObjectActions,
 ): NewObjectPanel {
-  let currentGlobals = globals;
+  // Read at construction time rather than captured by the render, so a theme
+  // edit that arrives through `setGlobals` reaches the next insertion — the
+  // contract the imperative panel had, and the reason this is a box rather than
+  // a prop React would have to re-render for.
+  const current: { globals: FabricGlobals | undefined } = { globals };
   const root = document.createElement("section");
-  // No `data-vigilia-panel` here: the pane that mounts this panel owns that
-  // name now, and a second element under `[data-vigilia-panel="add"]` is a
-  // strict-mode failure for every spec that browses by it.
-  const heading = document.createElement("h2");
-  heading.textContent = uiCopy.panels.add;
-  /**
-   * Runs a construction that refuses when the theme has no reference to give
-   * it — a palette without a usable token or type presets without a body.
-   * Reported through the editor's own diagnostics, because a throw out of a
-   * click handler leaves the author with a button that silently does nothing.
-   *
-   * Every construction in this panel goes through it, charts included:
-   * `ChartManager.addChart` calls `newChart` into `createNewChartDefaults`
-   * with no handler of its own, so an unwrapped chart button would be the only
-   * one here that fails silently. A card's own refusal is reported by the
-   * session, which owns it, so there is nothing here for this to report twice.
-   */
-  const constructing = (build: () => void | Promise<void>): void => {
-    const report = (error: unknown): void => {
-      editor.errorManager.warn(
-        "controls",
-        error instanceof Error ? error.message : String(error),
-      );
-    };
-    try {
-      void Promise.resolve(build()).catch(report);
-    } catch (error) {
-      report(error);
-    }
-  };
+  // No `data-vigilia-panel` and no heading here: the pane that mounts this panel
+  // owns the name and the title bar, and a second element under either is a
+  // strict-mode failure for every locator that browses by it.
+  host.append(root);
 
-  /**
-   * The units, the primitives and the chart families, each in a labelled group
-   * rather than twenty more chips: "Line" is both a chart and a shape, and a
-   * flat list would put the same word on two buttons. One construction each —
-   * the card library owns what a card is, the defaults module owns what a new
-   * shape is, and the canvas and history the editor already exposes own where
-   * it lands and how it is recorded.
-   */
-  const button = (object: InsertableObject): HTMLButtonElement => {
-    const control = document.createElement("button");
-    control.type = "button";
-    control.textContent = object.label;
-    if (object.kind === "shape") {
-      control.dataset["vigiliaPanelAdd"] = object.shape;
-    }
-    if (object.kind === "card") {
-      control.dataset["vigiliaPanelCard"] = object.card;
-    }
-    control.addEventListener("click", () =>
-      constructing(() => {
-        switch (object.kind) {
-          case "text":
-            insertNewText(editor, currentGlobals);
-            return;
-          case "shape":
-            insertNewShape(editor, currentGlobals, object.shape);
-            return;
-          case "card": {
-            const insert = actions?.insertCard;
-            // Refused rather than ignored: a library button that quietly does
-            // nothing is the one failure an author cannot diagnose.
-            if (insert === undefined) {
-              throw new Error(
-                "The card library needs the editor session that owns the document's bindings.",
-              );
-            }
-            return insert(object.card);
-          }
-          case "chart": {
-            const chart = actions?.addChart;
-            // The same refusal the card path makes, for the same reason: with
-            // `actions?.addChart(…)` this was the one button in the pane that
-            // could swallow its own dispatch — a chart button that quietly did
-            // nothing is the failure an author cannot diagnose.
-            if (chart === undefined) {
-              throw new Error(
-                "The chart families need the editor session that owns the document's charts.",
-              );
-            }
-            return chart(object.family);
-          }
-        }
+  const reactRoot: Root = createRoot(root);
+  // Flushed, so a caller that reads the pane straight after building it sees
+  // the tiles rather than the empty frame before React's first commit.
+  flushSync(() => {
+    reactRoot.render(
+      createElement(AddPane, {
+        groups: insertGroups(),
+        onInsert: (object) =>
+          insertObject(editor, current.globals, actions, object),
       }),
     );
-    return control;
-  };
+  });
 
-  for (const group of insertGroups()) {
-    if (group.label === undefined) {
-      root.append(...group.objects.map(button));
-      continue;
-    }
-
-    const fieldset = document.createElement("fieldset");
-    const legend = document.createElement("legend");
-    legend.textContent = group.label;
-    fieldset.append(legend, ...group.objects.map(button));
-    root.append(fieldset);
-  }
-
-  host.append(root);
   return {
     root,
     setGlobals(nextGlobals) {
-      currentGlobals = nextGlobals;
+      current.globals = nextGlobals;
     },
   };
 }

@@ -60,10 +60,17 @@ function editorStub() {
 function chartButton(root: HTMLElement, label: string): HTMLButtonElement {
   return [...root.querySelectorAll("button")].find(
     (button) =>
-      button.textContent === label &&
+      accessibleName(button) === label &&
       button.closest("fieldset")?.querySelector("legend")?.textContent ===
         uiCopy.panels.charts,
   )!;
+}
+
+/** What a reader is told a control is. The pane's shape and chart tiles are
+ *  glyph-led — their own text is empty — so the name is read the way a screen
+ *  reader reads it, from `aria-label` where there is one. */
+function accessibleName(control: HTMLElement): string {
+  return control.getAttribute("aria-label") ?? control.textContent ?? "";
 }
 
 const palette = {
@@ -164,7 +171,7 @@ describe("new object panel", () => {
     )!;
 
     expect(button.type).toBe("button");
-    expect(button.textContent?.trim().length).toBeGreaterThan(0);
+    expect(accessibleName(button).trim().length).toBeGreaterThan(0);
   });
 
   it("reports a construction the theme cannot supply a reference for", () => {
@@ -284,9 +291,12 @@ describe("new object panel", () => {
         .querySelector('[data-vigilia-panel-add="line"]')
         ?.closest("fieldset"),
     );
-    expect(
-      root.querySelector('[data-vigilia-panel-add="line"]')?.textContent,
-    ).toBe(uiCopy.shapeKinds.line);
+    const shape = root.querySelector<HTMLElement>(
+      '[data-vigilia-panel-add="line"]',
+    );
+    expect(shape === null ? "" : accessibleName(shape)).toBe(
+      uiCopy.shapeKinds.line,
+    );
   });
 
   it("groups the chart families as their own list rather than strays under Shape", () => {
@@ -328,7 +338,7 @@ describe("new object panel", () => {
     // Neither button's own name changes — the group is the difference, and it
     // is what an author navigating by group hears before the name.
     const lines = [...root.querySelectorAll("button")].filter(
-      (button) => button.textContent === uiCopy.shapeKinds.line,
+      (button) => accessibleName(button) === uiCopy.shapeKinds.line,
     );
     expect(lines).toHaveLength(2);
     const groups = new Set(
@@ -413,7 +423,9 @@ describe("new object panel", () => {
       )!;
 
       expect(button.type).toBe("button");
-      expect(button.textContent?.trim()).toBe(uiCopy.shapeKinds[kind]);
+      // The tile is glyph-led, so the name is the accessible one: the same
+      // string a tooltip shows and a screen reader announces.
+      expect(accessibleName(button).trim()).toBe(uiCopy.shapeKinds[kind]);
     },
   );
 
