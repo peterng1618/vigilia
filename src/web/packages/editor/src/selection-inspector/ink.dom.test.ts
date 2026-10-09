@@ -17,11 +17,14 @@
  */
 
 import { Path, StaticCanvas } from "fabric/es";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { starterIcons } from "../new-fabric-theme-icons.js";
 import { createNewShape } from "../new-object-defaults.js";
 import { idleCrop } from "./idle-crop.test-stage.js";
 import { createSelectionInspector } from "./index.js";
+// The panel fill is a plan-1 `ControlSwatch` now, not a native `<select>`: a raw
+// `change` event on the element no longer commits it.
+import { choose } from "./runs.test-stage.js";
 
 const INK = "#ecf5ff";
 const globals = {
@@ -63,6 +66,9 @@ function stageWith(object: Path, size = 80) {
   canvas.add(object);
 
   const host = document.createElement("div");
+  // Attached: a plan-1 select portals its list and commits only a real
+  // interaction, and none of that reaches an element outside the document.
+  document.body.append(host);
   createSelectionInspector(host, {
     editor: {
       canvas: {
@@ -93,10 +99,11 @@ function alphaAt(canvas: StaticCanvas, x: number, y: number): number {
   return canvas.getContext().getImageData(x, y, 1, 1).data[3] ?? 0;
 }
 
-function pick(field: HTMLSelectElement, value: string): void {
-  field.value = value;
-  field.dispatchEvent(new Event("change"));
-}
+// Each `stageWith` attaches its host so a converted control can open its list;
+// the body is emptied between cases so the hosts do not pile up.
+afterEach(() => {
+  document.body.replaceChildren();
+});
 
 /** Inside the drive body, above the divider: the counter that flooded. */
 const COUNTER: readonly [number, number] = [13, 7];
@@ -104,11 +111,11 @@ const COUNTER: readonly [number, number] = [13, 7];
 const INK_LINE: readonly [number, number] = [13, 13];
 
 describe("an icon's counters survive a paint chosen from the panel", () => {
-  it("leaves the space inside the drive body unpainted", () => {
+  it("leaves the space inside the drive body unpainted", async () => {
     const icon = storageIcon(null);
-    const { canvas, field } = stageWith(icon);
+    const { canvas, host } = stageWith(icon);
 
-    pick(field<HTMLSelectElement>("[data-vigilia-panel-fill]"), "palette.text");
+    await choose(host, "data-vigilia-panel-fill", "Text");
     canvas.renderAll();
 
     expect(alphaAt(canvas, ...COUNTER)).toBe(0);
@@ -121,7 +128,7 @@ describe("an icon's counters survive a paint chosen from the panel", () => {
 
   it("names the control for what it paints on a stroked path", () => {
     const { host, field } = stageWith(storageIcon(null));
-    const control = field<HTMLSelectElement>("[data-vigilia-panel-fill]");
+    const control = field<HTMLElement>("[data-vigilia-panel-fill]");
     const label =
       host.querySelector<HTMLLabelElement>(`label[for="${control.id}"]`)
         ?.textContent ?? control.closest("label")?.textContent;
@@ -132,7 +139,7 @@ describe("an icon's counters survive a paint chosen from the panel", () => {
     expect(host.querySelector("[data-vigilia-panel-stroke]")).toBeNull();
   });
 
-  it("still floods a path that declares the region it encloses", () => {
+  it("still floods a path that declares the region it encloses", async () => {
     // The product's own "insert a path" default, which arrives filled.
     const arrow = createNewShape("shape", globals, "path", {
       left: 0,
@@ -140,13 +147,15 @@ describe("an icon's counters survive a paint chosen from the panel", () => {
     }) as Path;
     expect(arrow.fill).not.toBe("");
 
-    const { canvas, host, field } = stageWith(arrow, 400);
-    const control = field<HTMLSelectElement>("[data-vigilia-panel-fill]");
+    const { canvas, host } = stageWith(arrow, 400);
+    const control = host.querySelector<HTMLElement>(
+      "[data-vigilia-panel-fill]",
+    );
     const label =
-      host.querySelector<HTMLLabelElement>(`label[for="${control.id}"]`)
-        ?.textContent ?? control.closest("label")?.textContent;
+      host.querySelector<HTMLLabelElement>(`label[for="${control?.id}"]`)
+        ?.textContent ?? control?.closest("label")?.textContent;
 
-    pick(control, "palette.text");
+    await choose(host, "data-vigilia-panel-fill", "Text");
     canvas.renderAll();
 
     expect(label).toBe("Fill");

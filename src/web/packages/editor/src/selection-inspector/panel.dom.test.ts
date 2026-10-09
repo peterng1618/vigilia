@@ -15,8 +15,13 @@ import {
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { act } from "react";
 import { createNewShape } from "../new-object-defaults.js";
+import { uiCopy } from "../ui-copy.js";
 import { createSelectionInspector } from "./index.js";
 import { idleCrop } from "./idle-crop.test-stage.js";
+// The shared React drivers: a converted field is a plan-1 control, so a raw
+// `change` event no longer commits it — the picker is opened and an entry
+// clicked, and a number is typed through React's own value tracker.
+import { choose, flush, optionsOf } from "./runs.test-stage.js";
 
 /**
  * React only flushes work scheduled inside `act` when it has been told it is in
@@ -27,9 +32,12 @@ import { idleCrop } from "./idle-crop.test-stage.js";
   globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
 ).IS_REACT_ACT_ENVIRONMENT = true;
 
-// Every `setup` attaches its host so a control can hold focus; the body is
-// emptied between cases so the hosts do not pile up.
-afterEach(() => {
+// Every `setup` attaches its host so a control can hold focus. The body is
+// settled and then emptied between cases: `flush` lets a plan-1 select close
+// its portal through React before the wipe detaches it, and emptying stops a
+// stale popup's options from being found by the next case's global query.
+afterEach(async () => {
+  await flush();
   document.body.replaceChildren();
 });
 
@@ -83,35 +91,24 @@ function setup(active: unknown, others: readonly unknown[] = []) {
     errorManager: { warn: vi.fn(), error: vi.fn() },
     cropManager: idleCrop(),
   };
-  createSelectionInspector(host, {
+  const inspector = createSelectionInspector(host, {
     editor: editor as never,
     globals,
     refreshGlass: vi.fn(),
   });
   const field = <T extends HTMLElement>(selector: string): T =>
     host.querySelector<T>(selector)!;
-  return { host, history, editor, field };
+  return { host, history, editor, inspector, field };
 }
 
 function panel(): Rect {
   return new Rect({ id: "panel", left: 0, top: 0, width: 360, height: 200 });
 }
 
-function pick(field: HTMLSelectElement, value: string): void {
-  field.value = value;
-  field.dispatchEvent(new Event("change"));
-}
-
-function type(field: HTMLInputElement, value: string): void {
-  field.value = value;
-  field.dispatchEvent(new Event("change"));
-}
-
 /**
- * A draft in a plan-1 control, as React sees one. `type` above is for the
- * fields still mounted imperatively, which read the node on `change`; a control
- * from the plan-1 set holds its own draft and commits on blur, so it has to be
- * driven the way a person does — through the prototype's setter, because React
+ * A draft in a plan-1 control, as React sees one. A converted field is a plan-1
+ * control that holds its own draft and commits on blur, so it has to be driven
+ * the way a person does — through the prototype's setter, because React
  * installs a value tracker that suppresses a plain assignment, then off the
  * field.
  */
@@ -174,18 +171,22 @@ const SHAPES = [
 describe("panel fields in the selection inspector", () => {
   it("offers fill, stroke, border width and corner radius for a panel", () => {
     const rect = panel();
-    const { host, field } = setup(rect);
+    const { host } = setup(rect);
     // Non-vacuous: the selection must actually be a rectangle, or a gate that
     // refuses everything would satisfy the field assertions below.
     expect(rect).toBeInstanceOf(Rect);
     expect(host.querySelector("[data-vigilia-panel-fill]")).not.toBeNull();
     expect(host.querySelector("[data-vigilia-panel-stroke]")).not.toBeNull();
-    expect(field<HTMLInputElement>("[data-vigilia-panel-border]").type).toBe(
-      "number",
-    );
-    expect(field<HTMLInputElement>("[data-vigilia-panel-radius]").type).toBe(
-      "number",
-    );
+    // A number field is a plan-1 `ControlNumber`: a text input that takes a
+    // decimal, not a native `<input type=number>`.
+    expect(
+      host.querySelector<HTMLInputElement>("[data-vigilia-panel-border]")
+        ?.inputMode,
+    ).toBe("decimal");
+    expect(
+      host.querySelector<HTMLInputElement>("[data-vigilia-panel-radius]")
+        ?.inputMode,
+    ).toBe("decimal");
   });
 
   it("names every panel control", () => {
@@ -209,11 +210,11 @@ describe("panel fields in the selection inspector", () => {
     }
   });
 
-  it("writes a chosen fill token onto the object and its palette reference", () => {
+  it("writes a chosen fill token onto the object and its palette reference", async () => {
     const rect = panel();
-    const { history, field } = setup(rect);
+    const { host, history } = setup(rect);
 
-    pick(field<HTMLSelectElement>("[data-vigilia-panel-fill]"), "palette.text");
+    await choose(host, "data-vigilia-panel-fill", "Text");
 
     // The resolved paint and the authored reference both move, so the panel
     // still follows the token after the next palette edit.
@@ -222,7 +223,7 @@ describe("panel fields in the selection inspector", () => {
     expect(history.saveState).toHaveBeenCalledTimes(1);
   });
 
-  it("says so when an inspector edit refuses an arc elsewhere in the scene", () => {
+  it("says so when an inspector edit refuses an arc elsewhere in the scene", async () => {
     // The pass this control runs is **whole-canvas**: it walks every object, so
     // editing a panel's fill re-refuses an arc on the far side of the scene.
     // It used to pass no reporter at all, so an author watching a figure
@@ -231,13 +232,13 @@ describe("panel fields in the selection inspector", () => {
     arc.set({ fill: "#ecf5ff" });
     arc.set(VIGILIA_PAINT_PROPERTY, { fill: "palette.text" });
     const rect = panel();
-    const { editor, field } = setup(rect, [arc]);
+    const { host, editor } = setup(rect, [arc]);
 
     // Non-vacuous: the arc is one that refuses, so a reporter wired to nothing
     // could not satisfy this.
     expect(arc.fill, "the arc starts filled").toBe("#ecf5ff");
 
-    pick(field<HTMLSelectElement>("[data-vigilia-panel-fill]"), "palette.text");
+    await choose(host, "data-vigilia-panel-fill", "Text");
 
     expect(arc.fill, "the arc's fill is withheld").toBe("");
     expect(
@@ -246,7 +247,7 @@ describe("panel fields in the selection inspector", () => {
     ).toHaveBeenCalledWith("paint", expect.stringMatching(/arc/i));
   });
 
-  it("keeps the other references when one paint changes", () => {
+  it("keeps the other references when one paint changes", async () => {
     const rect = panel();
     rect.set({
       [VIGILIA_PAINT_PROPERTY]: {
@@ -256,9 +257,9 @@ describe("panel fields in the selection inspector", () => {
       },
       shadow: new Shadow({ color: "#ecf5ff", blur: 8 }),
     });
-    const { field } = setup(rect);
+    const { host } = setup(rect);
 
-    pick(field<HTMLSelectElement>("[data-vigilia-panel-fill]"), "palette.text");
+    await choose(host, "data-vigilia-panel-fill", "Text");
 
     // Palette identity is per property: choosing a fill must not silently
     // re-point the border or the shadow an author already set.
@@ -269,37 +270,41 @@ describe("panel fields in the selection inspector", () => {
     });
   });
 
-  it("clears the fill and its reference when the author picks none", () => {
+  it("clears the fill and its reference when the author picks none", async () => {
     const rect = panel();
     rect.set({
       fill: "#0c0e13",
       [VIGILIA_PAINT_PROPERTY]: { fill: "palette.background" },
     });
-    const { field } = setup(rect);
+    const { host } = setup(rect);
 
-    pick(field<HTMLSelectElement>("[data-vigilia-panel-fill]"), "");
+    await choose(
+      host,
+      "data-vigilia-panel-fill",
+      uiCopy.inspectorFields.notSet,
+    );
 
     expect(rect.fill).toBe("");
     expect(rect.get(VIGILIA_PAINT_PROPERTY)).toEqual({});
   });
 
-  it("sets the corner radius on both axes in one committed edit", () => {
+  it("sets the corner radius on both axes in one committed edit", async () => {
     const rect = panel();
     const { history, field } = setup(rect);
 
-    type(field<HTMLInputElement>("[data-vigilia-panel-radius]"), "24");
+    await edit(field<HTMLInputElement>("[data-vigilia-panel-radius]"), "24");
 
     expect(rect.get("rx")).toBe(24);
     expect(rect.get("ry")).toBe(24);
     expect(history.saveState).toHaveBeenCalledTimes(1);
   });
 
-  it("clamps a negative border width onto zero, because the bound is where it lands", () => {
+  it("clamps a negative border width onto zero, because the bound is where it lands", async () => {
     const rect = panel();
     const { history, field } = setup(rect);
     const width = field<HTMLInputElement>("[data-vigilia-panel-border]");
 
-    type(width, "-4");
+    await edit(width, "-4");
 
     // Was a refusal, and the reasoning was that a clamp to zero "would look
     // identical on screen but lose the authored border". That is the finding
@@ -310,39 +315,69 @@ describe("panel fields in the selection inspector", () => {
     expect(history.saveState).toHaveBeenCalledTimes(1);
   });
 
-  it("refuses an emptied numeric field instead of reading it as zero", () => {
+  it("refuses a fractional paint number rather than rounding it", async () => {
+    const rect = panel();
+    rect.set({ strokeWidth: 4, rx: 6, ry: 6 });
+    rect.set("shadow", new Shadow({ color: "#ecf5ff", blur: 8 }));
+    const { host, history } = setup(rect);
+
+    // Every paint number the panel offers refused a fraction before its field
+    // was converted — the old `numberField` demanded `Number.isInteger` — and
+    // the converted control restates that as `integer`. The visible line is the
+    // refusal; the write funnel re-checks the same rule, so a bypassed control
+    // stores nothing either. Rounding would be a different act from displaying a
+    // value a gesture left fractional.
+    for (const selector of [
+      "[data-vigilia-panel-border]",
+      "[data-vigilia-panel-radius]",
+      "[data-vigilia-panel-shadow-blur]",
+    ]) {
+      const box = host.querySelector<HTMLInputElement>(selector)!;
+      await edit(box, "4.5");
+      expect(
+        host.querySelector(`[id="${box.id}-invalid"]`)?.textContent?.trim(),
+        selector,
+      ).toBeTruthy();
+      // The draft is kept with its reason rather than restored to the old value:
+      // plan-1's number holds a rejected draft, where the pre-plan field put the
+      // old value back. Either way nothing fractional is stored.
+      expect(box.value, selector).toBe("4.5");
+    }
+
+    expect(rect.get("strokeWidth")).toBe(4);
+    expect(rect.get("rx")).toBe(6);
+    expect((rect.get("shadow") as Shadow).blur).toBe(8);
+    expect(history.saveState).not.toHaveBeenCalled();
+  });
+
+  it("refuses an emptied numeric field instead of reading it as zero", async () => {
     const rect = panel();
     rect.set({ rx: 18, ry: 18 });
     const { history, field } = setup(rect);
     const radius = field<HTMLInputElement>("[data-vigilia-panel-radius]");
 
-    type(radius, "");
+    await edit(radius, "");
 
     // `Number("")` is 0, so an empty box must not become a zero radius.
     expect(rect.get("rx")).toBe(18);
     expect(history.saveState).not.toHaveBeenCalled();
   });
 
-  it("offers only solid tokens for a shadow colour", () => {
-    const { field } = setup(panel());
-    const values = [
-      ...field<HTMLSelectElement>("[data-vigilia-panel-shadow]").options,
-    ].map((option) => option.value);
+  it("offers only solid tokens for a shadow colour", async () => {
+    const { host } = setup(panel());
+    const names = await optionsOf(host, "data-vigilia-panel-shadow");
 
-    expect(values).toContain("palette.text");
+    expect(names).toContain("Text");
     // Fabric's Shadow colour is a string; the envelope refuses a gradient
     // reference rather than drawing one, so it must never be offered here.
-    expect(values).not.toContain("palette.scene");
+    expect(names).not.toContain("Scene");
   });
 
-  it("gives a chosen shadow token a real, offset, tunable shadow", () => {
+  it("gives a chosen shadow token a real, offset, tunable shadow", async () => {
     const rect = panel();
-    const { history, field } = setup(rect);
+    const { host, history } = setup(rect);
 
-    pick(
-      field<HTMLSelectElement>("[data-vigilia-panel-shadow]"),
-      "palette.text",
-    );
+    await choose(host, "data-vigilia-panel-shadow", "Text");
     history.saveState.mockClear();
 
     const shadow = rect.get("shadow");
@@ -354,14 +389,16 @@ describe("panel fields in the selection inspector", () => {
     expect((shadow as Shadow).color).toBe("#ecf5ff");
     expect((shadow as Shadow).offsetY).toBeGreaterThan(0);
 
-    const blur = field<HTMLInputElement>("[data-vigilia-panel-shadow-blur]");
-    type(blur, "24");
+    await edit(
+      host.querySelector<HTMLInputElement>("[data-vigilia-panel-shadow-blur]")!,
+      "24",
+    );
 
     expect((rect.get("shadow") as Shadow).blur).toBe(24);
     expect(history.saveState).toHaveBeenCalledTimes(1);
   });
 
-  it("moves the shadow down without touching its blur", () => {
+  it("moves the shadow down without touching its blur", async () => {
     const rect = panel();
     rect.set({
       [VIGILIA_PAINT_PROPERTY]: { shadowColor: "palette.text" },
@@ -369,14 +406,17 @@ describe("panel fields in the selection inspector", () => {
     });
     const { field } = setup(rect);
 
-    type(field<HTMLInputElement>("[data-vigilia-panel-shadow-offset]"), "12");
+    await edit(
+      field<HTMLInputElement>("[data-vigilia-panel-shadow-offset]"),
+      "12",
+    );
 
     const shadow = rect.get("shadow") as Shadow;
     expect(shadow.offsetY).toBe(12);
     expect(shadow.blur).toBe(18);
   });
 
-  it("accepts a negative offset, which an imported shadow may already carry", () => {
+  it("accepts a negative offset, which an imported shadow may already carry", async () => {
     const rect = panel();
     rect.set({
       [VIGILIA_PAINT_PROPERTY]: { shadowColor: "palette.text" },
@@ -388,7 +428,7 @@ describe("panel fields in the selection inspector", () => {
     );
     expect(offset.value).toBe("-6");
 
-    type(offset, "-3");
+    await edit(offset, "-3");
 
     // A floor of zero would show the imported value and then refuse the same
     // value back, which is a control that contradicts itself.
@@ -404,7 +444,7 @@ describe("panel fields in the selection inspector", () => {
     expect(host.querySelector("[data-vigilia-panel-shadow-offset]")).toBeNull();
   });
 
-  it("removes the shadow and its reference when the token is cleared", () => {
+  it("removes the shadow and its reference when the token is cleared", async () => {
     const rect = panel();
     rect.set({
       [VIGILIA_PAINT_PROPERTY]: {
@@ -413,9 +453,13 @@ describe("panel fields in the selection inspector", () => {
       },
       shadow: new Shadow({ color: "#ecf5ff", blur: 8 }),
     });
-    const { host, field } = setup(rect);
+    const { host } = setup(rect);
 
-    pick(field<HTMLSelectElement>("[data-vigilia-panel-shadow]"), "");
+    await choose(
+      host,
+      "data-vigilia-panel-shadow",
+      uiCopy.inspectorFields.notSet,
+    );
 
     expect(rect.get("shadow")).toBeNull();
     expect(rect.get(VIGILIA_PAINT_PROPERTY)).toEqual({
@@ -444,25 +488,28 @@ describe("panel fields in the selection inspector", () => {
     expect(host.querySelector("[data-vigilia-opacity]")).not.toBeNull();
   });
 
-  it("refuses a field event for an object the panel no longer describes", () => {
+  it("disconnects the panel's controls when the selection moves under them", () => {
     const first = panel();
-    const { host, history, editor } = setup(first);
-    const fill = host.querySelector<HTMLSelectElement>(
-      "[data-vigilia-panel-fill]",
-    )!;
+    const { host, history, editor, inspector } = setup(first);
+    const fill = host.querySelector<HTMLElement>("[data-vigilia-panel-fill]")!;
     const second = panel();
     second.set("id", "second");
     (editor.canvas as { getActiveObject: () => unknown }).getActiveObject =
       () => second;
 
-    pick(fill, "palette.text");
+    // The republish a real selection change fires. React keys each row by the
+    // revision it was projected from, so the control bound to `first` is
+    // unmounted — an edit from it cannot reach the object the panel now
+    // describes, and it cannot write to the one it has left.
+    inspector.render();
 
-    // The first panel is no longer selected, so its fill must not change and
-    // the edit must not be recorded against the current selection's history.
     expect(first.get(VIGILIA_PAINT_PROPERTY)).toBeUndefined();
     expect(history.saveState).not.toHaveBeenCalled();
-    // And the panel now describes the object that is actually selected.
     expect(fill.isConnected).toBe(false);
+    // And the column now describes the object that is actually selected.
+    expect(
+      host.querySelector<HTMLElement>("[data-vigilia-panel-fill]"),
+    ).not.toBe(fill);
   });
 
   it("records no history for a selection that only redraws the panel", () => {
@@ -537,8 +584,8 @@ describe("shape material and a shape's own fields", () => {
   );
 
   it.each(SHAPES)(
-    "gives every field on a %s an accessible name",
-    (_kind, build) => {
+    "gives every material field on a %s an accessible name",
+    (kind, build) => {
       const shape = build();
       shape.set(
         "shadow",
@@ -546,25 +593,47 @@ describe("shape material and a shape's own fields", () => {
       );
       const { host } = setup(shape);
 
-      const controls = host.querySelectorAll<HTMLElement>(
-        ".vigilia-field > input, .vigilia-field > select, .vigilia-field > textarea, .vigilia-field-row input",
-      );
-      expect(controls.length).toBeGreaterThan(0);
-      for (const control of controls) {
-        // Two ways a control here can be named, and both are real: a labelable
-        // input through `for`/wrapping, and the slider — which is not a
-        // labelable element, so it carries `aria-labelledby` instead. Checking
-        // only `for` would call a correctly-labelled slider unnamed.
-        const labelledBy = control.getAttribute("aria-labelledby");
+      // The converted surface carries each hook on the control a person
+      // operates and emits no `.vigilia-field` at all, so the pre-conversion
+      // selector matched nothing and this case stayed green on its `> 0` guard —
+      // which cannot tell "every field" from "one field". Selecting by the
+      // surface's own hooks is the re-point; naming every expected hook is the
+      // guard the count never was.
+      //
+      // Every shape owns these. `stroke` is absent on an arc — its one paint
+      // field already writes the stroke and is labelled `Ink` — and the corner
+      // radius is a `Rect`'s alone.
+      const expected = [
+        "[data-vigilia-panel-fill]",
+        "[data-vigilia-panel-border]",
+        "[data-vigilia-panel-shadow]",
+        "[data-vigilia-panel-shadow-blur]",
+        "[data-vigilia-panel-shadow-offset]",
+        "[data-vigilia-glass-enabled]",
+        ...(kind === "arc" ? [] : ["[data-vigilia-panel-stroke]"]),
+        ...(kind === "rect" ? ["[data-vigilia-panel-radius]"] : []),
+      ];
+      for (const hook of expected) {
+        expect(host.querySelector(hook), `${kind}: ${hook}`).not.toBeNull();
+      }
+      // And nothing this shape must not have: a radius on a `Wedge` would read
+      // back `NaN`.
+      if (kind !== "rect") {
+        expect(
+          host.querySelector("[data-vigilia-panel-radius]"),
+          kind,
+        ).toBeNull();
+      }
+
+      for (const hook of expected) {
+        const control = host.querySelector<HTMLElement>(hook)!;
         const name =
-          (labelledBy === null
-            ? undefined
-            : host.querySelector<HTMLElement>(`[id="${labelledBy}"]`)
-                ?.textContent) ??
-          host.querySelector<HTMLLabelElement>(`label[for="${control.id}"]`)
-            ?.textContent ??
-          control.closest("label")?.textContent;
-        expect(name, control.outerHTML).toBeTruthy();
+          host
+            .querySelector<HTMLLabelElement>(`label[for="${control.id}"]`)
+            ?.textContent?.trim() ??
+          control.getAttribute("aria-labelledby") ??
+          "";
+        expect(name, `${kind}: ${control.outerHTML}`).toBeTruthy();
       }
     },
   );
@@ -592,11 +661,11 @@ describe("shape material and a shape's own fields", () => {
     ).toBeNull();
   });
 
-  it("writes a chosen fill onto a shape that is not a rectangle", () => {
+  it("writes a chosen fill onto a shape that is not a rectangle", async () => {
     const triangle = new Triangle({ ...PLACED, width: 360, height: 200 });
-    const { history, field } = setup(triangle);
+    const { host, history } = setup(triangle);
 
-    pick(field<HTMLSelectElement>("[data-vigilia-panel-fill]"), "palette.text");
+    await choose(host, "data-vigilia-panel-fill", "Text");
 
     expect(triangle.fill).toBe("#ecf5ff");
     expect(triangle.get(VIGILIA_PAINT_PROPERTY)).toEqual({

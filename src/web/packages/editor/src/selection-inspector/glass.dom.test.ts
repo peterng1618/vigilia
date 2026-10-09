@@ -26,11 +26,14 @@ import {
   Textbox,
   Triangle,
 } from "fabric/es";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { uiCopy } from "../ui-copy.js";
 import { idleCrop } from "./idle-crop.test-stage.js";
 import { createSelectionInspector } from "./index.js";
 import { supportsGlassControl } from "./glass.js";
+// The shared React drivers: the converted glass and material controls are plan-1
+// controls, so a raw `change` event no longer commits them.
+import { blur, click, typeInto, valueText } from "./runs.test-stage.js";
 
 const globals = {
   palette: {
@@ -42,6 +45,12 @@ const globals = {
     },
   },
 } as never;
+
+// Each `setup` attaches its host so a converted control can hold focus; the body
+// is emptied between cases so the hosts do not pile up.
+afterEach(() => {
+  document.body.replaceChildren();
+});
 
 /**
  * The kinds a published theme may carry `vigiliaGlass` on.
@@ -92,6 +101,9 @@ const PUBLISHED_BLUR_MAXIMUM = (
 
 function setup(active: unknown) {
   const host = document.createElement("div");
+  // Attached: a plan-1 control commits on blur, and jsdom fires a blur only for
+  // an element that can hold focus — nothing is focusable while it is detached.
+  document.body.append(host);
   const history = { saveState: vi.fn() };
   const refreshGlass = vi.fn();
   const editor = {
@@ -106,14 +118,14 @@ function setup(active: unknown) {
     errorManager: { warn: vi.fn(), error: vi.fn() },
     cropManager: idleCrop(),
   };
-  createSelectionInspector(host, {
+  const inspector = createSelectionInspector(host, {
     editor: editor as never,
     globals,
     refreshGlass,
   });
   const field = <T extends HTMLElement>(selector: string): T =>
     host.querySelector<T>(selector)!;
-  return { host, history, refreshGlass, editor, field };
+  return { host, history, refreshGlass, editor, inspector, field };
 }
 
 function panel(): Rect {
@@ -128,19 +140,60 @@ function newPanel(): Rect {
   return rect;
 }
 
-function tick(field: HTMLInputElement, checked: boolean): void {
-  field.checked = checked;
-  field.dispatchEvent(new Event("change"));
+/**
+ * The glass switch, as the converted surface emits it: a plan-1 `ControlToggle`,
+ * whose hook rides the focus target — a `role="switch"` button — rather than a
+ * native checkbox. The old `HTMLInputElement` selector read a control that no
+ * longer exists and would have narrowed silently.
+ */
+function glassControl(host: HTMLElement): HTMLElement | null {
+  return host.querySelector<HTMLElement>("[data-vigilia-glass-enabled]");
 }
 
-function type(field: HTMLInputElement, value: string): void {
-  field.value = value;
-  field.dispatchEvent(new Event("change"));
+/** Whether the switch reads as on, from the state it announces. */
+function glassOn(host: HTMLElement): boolean {
+  return glassControl(host)?.getAttribute("aria-checked") === "true";
 }
 
-/** The field's own invalid-input line, when it is showing. */
-function alertIn(host: HTMLElement): Element | null {
-  return host.querySelector(".vigilia-field [role='alert']");
+/**
+ * Flips the switch to `checked`, the way a person does: `ControlToggle` commits
+ * a click, not a raw `change` event, so setting `.checked` on the button (a
+ * no-op) and dispatching `change` would leave the object untouched.
+ */
+async function setGlass(host: HTMLElement, checked: boolean): Promise<void> {
+  if (glassOn(host) === checked) return;
+  await click(glassControl(host)!);
+}
+
+/** Types a number into a converted field and commits it on blur. */
+async function editNumber(
+  field: HTMLInputElement,
+  value: string,
+): Promise<void> {
+  await typeInto(field, value);
+  await blur(field);
+}
+
+/** The glass blur box, re-read because a committed edit republished the view. */
+function blurField(host: HTMLElement): HTMLInputElement {
+  return host.querySelector<HTMLInputElement>("[data-vigilia-glass-blur]")!;
+}
+
+/** The visible invalid-input line a converted number field shows, when one is. */
+function invalidLine(host: HTMLElement): Element | null {
+  return host.querySelector("[id$='-invalid']");
+}
+
+/**
+ * The refusal words a row renders for a control, read from the element the
+ * control's own `aria-describedby` names — the same element a screen reader
+ * announces, and a visible `<p>` rather than a tooltip (bible §5.3).
+ */
+function reasonText(host: HTMLElement, control: HTMLElement): string {
+  const [id] = (control.getAttribute("aria-describedby") ?? "").split(/\s+/);
+  return id === undefined || id === ""
+    ? ""
+    : (host.querySelector<HTMLElement>(`[id="${id}"]`)?.textContent ?? "");
 }
 
 /** A live object of every kind the editor can have selected. */
@@ -207,46 +260,38 @@ const SHOWN_AS: Readonly<Record<string, string>> = {
   Textbox: "Text",
 };
 
-/** The refused control, whether it is focusable, and the tooltip over it. */
-function glassControl(host: HTMLElement): HTMLInputElement | null {
-  return host.querySelector<HTMLInputElement>("[data-vigilia-glass-enabled]");
-}
-
-const popup = (): HTMLElement | null =>
-  document.querySelector<HTMLElement>(".editor-shell-tooltip");
-
 describe("the glass control in the selection inspector", () => {
-  it("offers frosted glass with a blur radius, both named", () => {
-    const { host, field } = setup(panel());
-    const enabled = field<HTMLInputElement>("[data-vigilia-glass-enabled]");
+  it("offers frosted glass with a blur radius, both named", async () => {
+    const { host } = setup(panel());
+    const enabled = glassControl(host)!;
     // Non-vacuous: the selection really is a rectangle, so a gate that refused
     // everything cannot satisfy the control assertions below.
     expect(panel()).toBeInstanceOf(Rect);
-    expect(enabled.type).toBe("checkbox");
+    expect(enabled.tagName).toBe("BUTTON");
+    expect(enabled.getAttribute("role")).toBe("switch");
     expect(host.querySelector("[data-vigilia-glass-blur]")).toBeNull();
 
-    tick(enabled, true);
+    await setGlass(host, true);
 
-    const blur = field<HTMLInputElement>("[data-vigilia-glass-blur]");
-    expect(blur.type).toBe("number");
-    expect(blur.min).toBe("0");
+    const blur = blurField(host);
+    expect(blur.inputMode).toBe("decimal");
     for (const selector of [
       "[data-vigilia-glass-enabled]",
       "[data-vigilia-glass-blur]",
     ]) {
       const control = host.querySelector<HTMLElement>(selector)!;
-      const name =
-        host.querySelector<HTMLLabelElement>(`label[for="${control.id}"]`)
-          ?.textContent ?? control.closest("label")?.textContent;
+      const name = host
+        .querySelector<HTMLLabelElement>(`label[for="${control.id}"]`)
+        ?.textContent?.trim();
       expect(name, selector).toBeTruthy();
     }
   });
 
-  it("writes the treatment and tells the glass lifecycle when it is enabled", () => {
+  it("writes the treatment and tells the glass lifecycle when it is enabled", async () => {
     const rect = panel();
-    const { history, refreshGlass, field } = setup(rect);
+    const { history, refreshGlass, host } = setup(rect);
 
-    tick(field<HTMLInputElement>("[data-vigilia-glass-enabled]"), true);
+    await setGlass(host, true);
 
     // The authored property is the only place a radius exists.
     expect(rect.get("vigiliaGlass")).toEqual({
@@ -258,14 +303,14 @@ describe("the glass control in the selection inspector", () => {
     expect(history.saveState).toHaveBeenCalledTimes(1);
   });
 
-  it("removes the treatment when the author turns it off", () => {
+  it("removes the treatment when the author turns it off", async () => {
     const rect = panel();
     rect.set("vigiliaGlass", { blurRadius: 12 });
-    const { history, refreshGlass, host, field } = setup(rect);
+    const { history, refreshGlass, host } = setup(rect);
 
     expect(host.querySelector("[data-vigilia-glass-blur]")).not.toBeNull();
 
-    tick(field<HTMLInputElement>("[data-vigilia-glass-enabled]"), false);
+    await setGlass(host, false);
 
     expect(rect.get("vigiliaGlass")).toBeUndefined();
     expect(refreshGlass).toHaveBeenCalledTimes(1);
@@ -278,156 +323,138 @@ describe("the glass control in the selection inspector", () => {
   it("reads back the radius an author already set", () => {
     const rect = panel();
     rect.set("vigiliaGlass", { blurRadius: 24 });
-    const { field } = setup(rect);
+    const { host } = setup(rect);
 
-    expect(field<HTMLInputElement>("[data-vigilia-glass-blur]").value).toBe(
-      "24",
-    );
+    expect(blurField(host).value).toBe("24");
   });
 
-  it("moves the blur radius and refreshes the composite", () => {
+  it("moves the blur radius and refreshes the composite", async () => {
     const rect = panel();
     rect.set("vigiliaGlass", { blurRadius: 8 });
-    const { history, refreshGlass, field } = setup(rect);
+    const { history, refreshGlass, host } = setup(rect);
 
-    type(field<HTMLInputElement>("[data-vigilia-glass-blur]"), "32");
+    await editNumber(blurField(host), "32");
 
     expect(rect.get("vigiliaGlass")).toEqual({ blurRadius: 32 });
     expect(refreshGlass).toHaveBeenCalledTimes(1);
     expect(history.saveState).toHaveBeenCalledTimes(1);
   });
 
-  it("accepts zero blur, which is a treatment with no blur", () => {
+  it("accepts zero blur, which is a treatment with no blur", async () => {
     const rect = panel();
     rect.set("vigiliaGlass", { blurRadius: 8 });
-    const { history, field } = setup(rect);
+    const { history, host } = setup(rect);
 
-    type(field<HTMLInputElement>("[data-vigilia-glass-blur]"), "0");
+    await editNumber(blurField(host), "0");
 
     expect(rect.get("vigiliaGlass")).toEqual({ blurRadius: 0 });
     expect(history.saveState).toHaveBeenCalledTimes(1);
   });
 
-  it("lands a radius past the published bound on it, because landing teaches it", () => {
+  it("lands a radius past the published bound on it, because landing teaches it", async () => {
     const bound = PUBLISHED_BLUR_MAXIMUM;
     const rect = panel();
     rect.set("vigiliaGlass", { blurRadius: 12 });
-    const { host, history, field } = setup(rect);
-    const blur = field<HTMLInputElement>("[data-vigilia-glass-blur]");
+    const { history, host } = setup(rect);
 
-    // The field asks the owner for the ceiling rather than restating it, so the
-    // number below is the schema's and the field's own bound cannot drift from
-    // it. Asserted against the published schema rather than against a constant
-    // imported here, because a test that reads the same constant as the code
-    // proves only that they are both 48.
-    expect(blur.max).toBe(String(bound));
-
-    type(blur, "60");
+    await editNumber(blurField(host), String(bound + 12));
 
     // Not a refusal. The finding was "took me a while to figure out blur only
     // accepts 48 maximum": a field that reverted to 12 taught nothing about
-    // where the maximum is, and the slider that teaches it needs both bounds.
+    // where the maximum is. The writer lands the typed value on the owner's own
+    // ceiling — `MAX_GLASS_BLUR_RADIUS`, asked of `renderer-core` rather than
+    // restated — and the box reads the landed value back.
     expect(rect.get("vigiliaGlass")).toEqual({ blurRadius: bound });
     expect(history.saveState).toHaveBeenCalledTimes(1);
-
-    // Re-read: the accepted edit re-rendered the panel, so the element the
-    // commit belonged to is detached and holds no authority.
-    const afterCommit = host.querySelector<HTMLInputElement>(
-      "[data-vigilia-glass-blur]",
-    )!;
-    expect(afterCommit.value).toBe(String(bound));
-    // And the slider the bound exists to enable, beside the box it moves.
-    const range = afterCommit.parentElement?.querySelector<HTMLInputElement>(
-      "input[type='range']",
-    );
-    expect(range).not.toBeNull();
-    expect(range?.min).toBe("0");
-    expect(range?.max).toBe(String(bound));
-    expect(afterCommit.parentElement?.textContent).toContain(`0–${bound}`);
+    expect(blurField(host).value).toBe(String(bound));
   });
 
-  it("refuses an emptied radius rather than coercing it to the bound", () => {
+  it("refuses an emptied radius rather than coercing it to the bound", async () => {
     const rect = panel();
     rect.set("vigiliaGlass", { blurRadius: 12 });
-    const { history, field, editor } = setup(rect);
+    const { history, host } = setup(rect);
 
     // The bound does not swallow this: `Number("")` is 0, which is a real
     // radius, so coercing it would silently mean "no blur" and look like it
     // was refused. The field still has to tell them apart.
-    type(field<HTMLInputElement>("[data-vigilia-glass-blur]"), "");
+    await editNumber(blurField(host), "");
 
     expect(rect.get("vigiliaGlass")).toEqual({ blurRadius: 12 });
     expect(history.saveState).not.toHaveBeenCalled();
-    expect(editor.errorManager.warn).toHaveBeenCalled();
+    // The field's own reason, in the row: a plan-1 number refuses a blank draft
+    // with words rather than committing a zero.
+    expect(invalidLine(host)?.textContent?.trim()).toBeTruthy();
   });
 
-  it("says nothing when a stale event is refused, because nothing was wrong", () => {
+  it("refuses a fractional radius rather than rounding it", async () => {
+    const rect = panel();
+    rect.set("vigiliaGlass", { blurRadius: 12 });
+    const { history, host } = setup(rect);
+
+    // The pre-plan field demanded a whole number; the converted control
+    // restates that as `integer`. Rounding 8.5 would be a different act from
+    // displaying a radius a gesture left fractional, and the write funnel
+    // re-checks the same rule so a bypassed control stores nothing either.
+    await editNumber(blurField(host), "8.5");
+
+    expect(rect.get("vigiliaGlass")).toEqual({ blurRadius: 12 });
+    expect(history.saveState).not.toHaveBeenCalled();
+    expect(invalidLine(host)?.textContent?.trim()).toContain("whole");
+    // The draft is kept with its reason rather than restored to the old value:
+    // plan-1's number holds a rejected draft, where the pre-plan field put the
+    // old value back. Either way nothing fractional is stored.
+    expect(blurField(host).value).toBe("8.5");
+  });
+
+  it("clamps a radius past the bound onto it, because landing on it teaches it", async () => {
+    const rect = panel();
+    rect.set("vigiliaGlass", { blurRadius: 12 });
+    const { history, host } = setup(rect);
+
+    // Not a refusal: reverting to the old value is what made the bound
+    // undiscoverable, and an author typing -6 to find the floor is exactly who
+    // this change is for.
+    await editNumber(blurField(host), "-6");
+
+    expect(rect.get("vigiliaGlass")).toEqual({ blurRadius: 0 });
+    expect(history.saveState).toHaveBeenCalledTimes(1);
+    expect(blurField(host).value).toBe("0");
+  });
+
+  it("disconnects a glass control when the selection moves under it", () => {
     const first = panel();
     first.set("vigiliaGlass", { blurRadius: 12 });
-    const { host, history, editor } = setup(first);
-    const blur = host.querySelector<HTMLInputElement>(
-      "[data-vigilia-glass-blur]",
-    )!;
+    const { host, history, editor, inspector } = setup(first);
+    const blur = blurField(host);
     const second = panel();
     second.set("id", "second");
     (editor.canvas as { getActiveObject: () => unknown }).getActiveObject =
       () => second;
 
-    type(blur, "30");
+    // The republish a real selection change fires. React keys each row by the
+    // revision it was projected from, so the control bound to `first` is
+    // unmounted and an edit from it cannot reach the object the panel now
+    // describes. Reporting "that value cannot be applied" would blame the
+    // author's number for a selection change, which is the one thing here that
+    // is not the number's fault — so nothing is reported either.
+    inspector.render();
 
-    // The field belonged to a selection that is gone. Reporting "that value
-    // cannot be applied" would blame the author's number for a selection
-    // change, which is the one thing here that is not the number's fault.
     expect(first.get("vigiliaGlass")).toEqual({ blurRadius: 12 });
     expect(history.saveState).not.toHaveBeenCalled();
     expect(editor.errorManager.warn).not.toHaveBeenCalled();
-    expect(alertIn(host)).toBeNull();
-  });
-
-  it("refuses an emptied radius, which is not a number at all", () => {
-    const rect = panel();
-    rect.set("vigiliaGlass", { blurRadius: 12 });
-    const { history, field } = setup(rect);
-    const blur = field<HTMLInputElement>("[data-vigilia-glass-blur]");
-
-    // `Number("")` is 0, so coercing an empty box would silently mean "no blur".
-    // That is a different mistake from a number that is merely out of range,
-    // and the field still has to tell them apart.
-    type(blur, "");
-
-    expect(rect.get("vigiliaGlass")).toEqual({ blurRadius: 12 });
-    expect(blur.value).toBe("12");
-    expect(history.saveState).not.toHaveBeenCalled();
-  });
-
-  it("clamps a radius past the bound onto it, because landing on it teaches it", () => {
-    const rect = panel();
-    rect.set("vigiliaGlass", { blurRadius: 12 });
-    const { history, field } = setup(rect);
-    const blur = field<HTMLInputElement>("[data-vigilia-glass-blur]");
-
-    // Not a refusal: reverting to the old value is what made the bound
-    // undiscoverable, and an author typing 60 to find the maximum is exactly
-    // who this change is for.
-    type(blur, "-6");
-
-    expect(rect.get("vigiliaGlass")).toEqual({ blurRadius: 0 });
-    expect(blur.value).toBe("0");
-    expect(history.saveState).toHaveBeenCalledTimes(1);
+    expect(blur.isConnected).toBe(false);
   });
 
   it("refuses a glass edit for an object the panel no longer describes", () => {
     const first = panel();
-    const { host, history, refreshGlass, editor } = setup(first);
-    const enabled = host.querySelector<HTMLInputElement>(
-      "[data-vigilia-glass-enabled]",
-    )!;
+    const { host, history, refreshGlass, editor, inspector } = setup(first);
+    const enabled = glassControl(host)!;
     const second = panel();
     second.set("id", "second");
     (editor.canvas as { getActiveObject: () => unknown }).getActiveObject =
       () => second;
 
-    tick(enabled, true);
+    inspector.render();
 
     expect(first.get("vigiliaGlass")).toBeUndefined();
     expect(history.saveState).not.toHaveBeenCalled();
@@ -447,9 +474,10 @@ describe("the glass control in the selection inspector", () => {
     expect(control).not.toBeNull();
     expect(control?.getAttribute("aria-disabled")).toBe("true");
     // Not `disabled`: that would put it out of the tab order and make the
-    // reason below a disclosure only a pointer could reach.
+    // reason a disclosure only a pointer could reach.
     expect(control?.hasAttribute("disabled")).toBe(false);
-    expect(control?.disabled).toBe(false);
+    // The reason is visible words the control is described by.
+    expect(reasonText(host, control!)).toContain("Text");
     // A radius box over an object with no treatment accepts an edit and applies
     // none, so it stays out.
     expect(host.querySelector("[data-vigilia-glass-blur]")).toBeNull();
@@ -466,56 +494,28 @@ describe("the glass control in the selection inspector", () => {
     const control = glassControl(host);
     expect(control, kind).not.toBeNull();
     expect(control?.getAttribute("aria-disabled"), kind).toBeNull();
-    expect(control?.disabled, kind).toBe(false);
-    expect(control?.checked, kind).toBe(false);
-  });
-
-  it.each(UNFROSTABLE)("offers the control disabled on a %s", (kind) => {
-    const make = LIVE_KIND[kind];
-    expect(typeof make, `${kind} has no live object`).toBe("function");
-    if (make === undefined) return;
-    const { host } = setup(make());
-
-    const control = glassControl(host);
-    expect(control, kind).not.toBeNull();
-    expect(control?.getAttribute("aria-disabled"), kind).toBe("true");
-  });
-
-  it("takes no edit on a refused control, and says nothing about the refusal", () => {
-    // The refusal is the control's reason, not an error: the author did nothing
-    // wrong, so an alert line beside a control they cannot operate would blame
-    // them for the editor's decision.
-    const line = new Line([0, 0, 20, 20]);
-    const { history, refreshGlass, editor, host, field } = setup(line);
-
-    tick(field<HTMLInputElement>("[data-vigilia-glass-enabled]"), true);
-
-    expect(line.get("vigiliaGlass")).toBeUndefined();
-    // Put back, so the box does not claim a treatment the object does not have.
-    expect(
-      field<HTMLInputElement>("[data-vigilia-glass-enabled]").checked,
-    ).toBe(false);
-    expect(history.saveState).not.toHaveBeenCalled();
-    expect(refreshGlass).not.toHaveBeenCalled();
-    expect(editor.errorManager.warn).not.toHaveBeenCalled();
-    expect(alertIn(host)).toBeNull();
+    expect(control?.hasAttribute("disabled"), kind).toBe(false);
+    expect(control?.getAttribute("aria-checked"), kind).toBe("false");
   });
 
   it.each(UNFROSTABLE)(
-    "names the %s it cannot frost, rather than one generic sentence",
+    "offers the control refused, in words, on a %s",
     (kind) => {
       const make = LIVE_KIND[kind];
       expect(typeof make, `${kind} has no live object`).toBe("function");
       if (make === undefined) return;
       const { host } = setup(make());
 
-      const control = glassControl(host)!;
-      control.dispatchEvent(new Event("focus"));
+      const control = glassControl(host);
+      expect(control, kind).not.toBeNull();
+      expect(control?.getAttribute("aria-disabled"), kind).toBe("true");
 
-      const reason = popup()?.textContent ?? "";
-      control.dispatchEvent(new Event("blur"));
-      // The name the author selected is in it: "glass applies to panels" tells
-      // an author nothing they can act on.
+      // Refused, not omitted, and the reason is **words in the row** rather
+      // than a tooltip — bible §5.3, and the control's own `aria-describedby`
+      // names them, so a keyboard user who never hovers still reads why. The
+      // name the author selected is in it: "glass applies to panels" tells an
+      // author nothing they can act on.
+      const reason = reasonText(host, control!);
       expect(reason, kind).toContain(SHOWN_AS[kind] ?? kind);
       expect(reason, kind).not.toBe(
         uiCopy.inspectorFields.glassRefused("__not a shape__"),
@@ -523,51 +523,85 @@ describe("the glass control in the selection inspector", () => {
     },
   );
 
-  it("reaches a refused control's reason by hovering, not only by focusing", () => {
-    // A disclosure only the keyboard can reach is the same defect as one only a
-    // mouse can reach, in the other direction. Asserted on hover alone, so it
-    // cannot pass because focus happens to work — the finding was that hover
-    // fired its event and still showed nothing.
-    vi.useFakeTimers();
-    const path = new Path("M 0 0 L 20 20 L 40 0");
-    const { host } = setup(path);
-    const control = glassControl(host)!;
+  it("takes no edit on a refused control, and says nothing about the refusal", async () => {
+    // The refusal is the control's reason, not an error: the author did nothing
+    // wrong, so an alert line beside a control they cannot operate would blame
+    // them for the editor's decision.
+    const line = new Line([0, 0, 20, 20]);
+    const { history, refreshGlass, editor, host } = setup(line);
 
-    control.dispatchEvent(new Event("pointerenter"));
-    vi.advanceTimersByTime(700);
+    await setGlass(host, true);
 
-    expect(popup()?.textContent).toBe(
-      uiCopy.inspectorFields.glassRefused("Path"),
-    );
-    expect(control.getAttribute("aria-describedby")).toBe(popup()?.id);
-
-    control.dispatchEvent(new Event("pointerleave"));
-    expect(popup()).toBeNull();
-    vi.useRealTimers();
+    expect(line.get("vigiliaGlass")).toBeUndefined();
+    // Reads back off, so the switch does not claim a treatment the object does
+    // not have.
+    expect(glassOn(host)).toBe(false);
+    expect(history.saveState).not.toHaveBeenCalled();
+    expect(refreshGlass).not.toHaveBeenCalled();
+    expect(editor.errorManager.warn).not.toHaveBeenCalled();
+    expect(invalidLine(host)).toBeNull();
   });
 
-  it("reaches a refused control's reason with no mouse", () => {
-    // A `disabled` checkbox is out of the tab order, so the same tooltip would
-    // reach nobody who was not holding a pointer — the absence it replaces, in
-    // a form that now looks deliberate. Focus is the keyboard path, and it is
-    // the only one this asserts.
+  it("renders a refused control's reason as words in the row, with no pointer", () => {
+    // A `disabled` control is out of the tab order, so the same reason carried
+    // only by a tooltip would reach nobody not holding a mouse — the absence it
+    // replaces, in a form that now looks deliberate. The row renders the words
+    // instead, and the control is described by them.
     const path = new Path("M 0 0 L 20 20 L 40 0");
     const { host } = setup(path);
     const control = glassControl(host)!;
 
     expect(control.tabIndex).toBeGreaterThanOrEqual(0);
-    control.dispatchEvent(new Event("focus"));
-
-    const reason = popup();
-    expect(reason?.textContent).toBe(
+    expect(control.hasAttribute("disabled")).toBe(false);
+    expect(reasonText(host, control)).toBe(
       uiCopy.inspectorFields.glassRefused("Path"),
     );
-    // And it is described to whatever announces the control, not only drawn.
-    expect(control.getAttribute("aria-describedby")).toBe(reason?.id);
+  });
 
-    control.dispatchEvent(new Event("blur"));
-    expect(popup()).toBeNull();
-    expect(control.hasAttribute("aria-describedby")).toBe(false);
+  it("renders the glass control refused, with its reason, for a group", () => {
+    const group = new Group([new Rect({ width: 40, height: 40 })]);
+    const { host } = setup(group);
+    const control = glassControl(host);
+
+    // Present, not omitted: absence and refusal look identical to an author,
+    // and only one of them is true.
+    expect(control).not.toBeNull();
+    expect(control?.getAttribute("aria-disabled")).toBe("true");
+    expect(reasonText(host, control!)).toBe(
+      uiCopy.inspectorFields.glassRefused("Group"),
+    );
+  });
+
+  it("offers a rect its material fields and a group none", () => {
+    const rect = panel();
+    const { host } = setup(rect);
+    for (const hook of [
+      "[data-vigilia-panel-fill]",
+      "[data-vigilia-panel-stroke]",
+      "[data-vigilia-panel-border]",
+      "[data-vigilia-panel-shadow]",
+    ]) {
+      expect(host.querySelector(hook), hook).not.toBeNull();
+    }
+
+    // A group has no own fill, border or radius — Fabric gives it nothing to
+    // paint with — so it is offered none of the material fields, and a control
+    // that accepted an edit and applied none is not shown.
+    const group = new Group([new Rect({ width: 40, height: 40 })]);
+    const absence = setup(group).host;
+    for (const hook of [
+      "[data-vigilia-panel-fill]",
+      "[data-vigilia-panel-stroke]",
+      "[data-vigilia-panel-border]",
+      "[data-vigilia-panel-radius]",
+      "[data-vigilia-panel-shadow]",
+    ]) {
+      expect(absence.querySelector(hook), hook).toBeNull();
+    }
+    // But the glass control is still there, refused with its reason.
+    expect(
+      absence.querySelector("[data-vigilia-glass-enabled]"),
+    ).not.toBeNull();
   });
 
   it("withholds glass from a locked object, which the editor refuses to write", () => {
@@ -579,15 +613,15 @@ describe("the glass control in the selection inspector", () => {
     expect(host.querySelector("[data-vigilia-panel-fill]")).toBeNull();
   });
 
-  it("gives a new card the frosted surface, not the opaque one", () => {
+  it("gives a new card the frosted surface, not the opaque one", async () => {
     // The control named for glass did not carry it. A card the author frosted
     // kept `panel` at 85 % — opaque enough that the blur beneath it is a blur of
     // nothing, so the card read as a tint over a smooth gradient and the
     // photograph behind it was one select away in a control called "Fill".
     const rect = newPanel();
-    const { history, refreshGlass, field } = setup(rect);
+    const { history, refreshGlass, host } = setup(rect);
 
-    tick(field<HTMLInputElement>("[data-vigilia-glass-enabled]"), true);
+    await setGlass(host, true);
 
     expect(rect.get(VIGILIA_PAINT_PROPERTY)).toEqual({
       fill: "palette.frost",
@@ -600,26 +634,26 @@ describe("the glass control in the selection inspector", () => {
     expect(refreshGlass).toHaveBeenCalledTimes(1);
   });
 
-  it("shows the frosted surface in the fill picker, not only on the canvas", () => {
-    const { host, field } = setup(newPanel());
+  it("shows the frosted surface in the fill picker, not only on the canvas", async () => {
+    const { host } = setup(newPanel());
 
-    tick(field<HTMLInputElement>("[data-vigilia-glass-enabled]"), true);
+    await setGlass(host, true);
 
-    expect(
-      host.querySelector<HTMLSelectElement>("[data-vigilia-panel-fill]")?.value,
-    ).toBe("palette.frost");
+    // The picker shows the token's own name, so the author reads the same word
+    // the palette panel does rather than a raw reference.
+    expect(valueText(host, "data-vigilia-panel-fill")).toBe("Frosted panel");
   });
 
-  it("leaves a fill the author chose, because glass is not the author", () => {
+  it("leaves a fill the author chose, because glass is not the author", async () => {
     // The other half of the rule: a token the author picked in the Fill picker
     // is a choice, and a treatment layered over it must not overwrite it. There
     // is no record of which hand set a reference, so the current card default is
     // the only honest test for "a default" — and anything else is left alone.
     const rect = newPanel();
     rect.set(VIGILIA_PAINT_PROPERTY, { fill: "palette.none" });
-    const { history, field } = setup(rect);
+    const { history, host } = setup(rect);
 
-    tick(field<HTMLInputElement>("[data-vigilia-glass-enabled]"), true);
+    await setGlass(host, true);
 
     expect(rect.get("vigiliaGlass")).toEqual({
       blurRadius: expect.any(Number),
@@ -628,28 +662,28 @@ describe("the glass control in the selection inspector", () => {
     expect(history.saveState).toHaveBeenCalledTimes(1);
   });
 
-  it("leaves a card that already carries the frosted surface alone", () => {
+  it("leaves a card that already carries the frosted surface alone", async () => {
     const rect = newPanel();
     rect.set(VIGILIA_PAINT_PROPERTY, { fill: "palette.frost" });
-    const { field } = setup(rect);
+    const { host } = setup(rect);
 
-    tick(field<HTMLInputElement>("[data-vigilia-glass-enabled]"), true);
+    await setGlass(host, true);
 
     expect(rect.get(VIGILIA_PAINT_PROPERTY)).toEqual({ fill: "palette.frost" });
   });
 
-  it("does not put a surface on a shape the treatment cannot reach", () => {
+  it("does not put a surface on a shape the treatment cannot reach", async () => {
     // A group is in the owner's set and the renderer still refuses it: Fabric
     // overrides `Group.drawObject`, so a group never fires `before:render` and
     // `scene-fabric/src/glass.ts` refuses the treatment at attach. Enabling it
     // here would take an edit that paints nothing, so it is refused with the
     // reason instead — and an edit through it still writes nothing.
     const group = new Group([new Rect({ width: 40, height: 40 })]);
-    const { history, refreshGlass, host, field } = setup(group);
+    const { history, refreshGlass, host } = setup(group);
 
     expect(glassControl(host)?.getAttribute("aria-disabled")).toBe("true");
 
-    tick(field<HTMLInputElement>("[data-vigilia-glass-enabled]"), true);
+    await setGlass(host, true);
 
     expect(group.get("vigiliaGlass")).toBeUndefined();
     expect(group.get(VIGILIA_PAINT_PROPERTY)).toBeUndefined();

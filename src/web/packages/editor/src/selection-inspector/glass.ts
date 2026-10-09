@@ -7,12 +7,11 @@ import {
 } from "@vigilia/renderer-core";
 import { applyObjectPalettePaints } from "@vigilia/scene-fabric";
 import { type FabricObject, Group } from "fabric/es";
-import { numberField } from "../editor-shell/controls/number-field.js";
-import { tooltip, type Tooltip } from "../editor-shell/controls/tooltip.js";
 import { frostedShapeFill } from "../new-object-defaults.js";
 import { uiCopy } from "../ui-copy.js";
 import type { AppearanceContext } from "./appearance.js";
 import { paintRefs, writeRef } from "./panel.js";
+import type { FieldView } from "./view.js";
 
 /**
  * The authored frosted-glass treatment: an enable and a blur radius, both on
@@ -31,24 +30,6 @@ import { paintRefs, writeRef } from "./panel.js";
  * radius can be read back.
  */
 const DEFAULT_GLASS_BLUR_RADIUS = 16;
-
-let glassSeq = 0;
-
-export interface GlassFieldHooks {
-  /** False once the fields describe a different object; the edit is refused. */
-  readonly stillTarget: () => boolean;
-  /** Repaints and records: one history entry per committed edit. */
-  readonly commit: () => void;
-  /** Re-reads the object, so the fields show what was just written. */
-  readonly onChange: () => void;
-  /**
-   * Re-resolves the glass lifecycle. The handle re-resolves when the canvas
-   * gains or loses an object, and a property written on a panel that is already
-   * there is neither — so the control that changes it is what has to ask.
-   * Without this the blur appears only after an undo.
-   */
-  readonly refreshGlass: () => void;
-}
 
 /**
  * The kind name the treatment is written in. Fabric lowercases the instance's
@@ -97,19 +78,15 @@ function refusalOf(object: FabricObject): string | undefined {
 }
 
 /**
- * The reason, as the shell's one tooltip.
+ * The reason, and where it is carried.
  *
- * At most one handle is kept: the tooltip is a singleton by design, and the
- * inspector rebuilds its whole subtree on every render, so a handle left on a
- * detached trigger would keep a `document` listener alive with nothing to
- * dismiss.
+ * It is **not** a tooltip any more. Bible §5.3 has a refused control render in
+ * the row with its reason readable by everyone, and plan 1's `refused` prop is
+ * that: `aria-disabled` plus the reason as visible words, so a keyboard user who
+ * never sees a hover still reads it. `ControlRow` is the one owner of that
+ * treatment, and `tooltip.ts` the one owner of what a tooltip is — this module
+ * builds neither.
  */
-let glassReason: Tooltip | undefined;
-
-function attachReason(trigger: HTMLElement, text: string): void {
-  glassReason?.destroy();
-  glassReason = tooltip({ trigger, text });
-}
 
 /** The panel's authored treatment, or none. */
 function treatmentOf(object: FabricObject): GlassTreatment | undefined {
@@ -177,118 +154,82 @@ function frostTheSurface(
  * `Line` and found no frosted-glass control could only infer the rule from its
  * absence, and could not tell a deliberate rule from a shape the editor had not
  * caught up with. It is always here now, and says the shape's own reason.
+ *
+ * Values, not controls: React renders them through the control set and
+ * `index.ts` writes them through {@link writeGlassField}. The reason rides
+ * `FieldBase.refused`, so plan 1's `ControlRow` renders it as words in the row
+ * rather than a tooltip only a pointer could reach — the reason is a refusal and
+ * §5.3 keeps refusals out of tooltips.
  */
-export function createGlassFields(
-  context: AppearanceContext,
-  object: FabricObject,
-  hooks: GlassFieldHooks,
-): HTMLElement {
+export function glassFields(object: FabricObject): readonly FieldView[] {
   const refusal = refusalOf(object);
-  const root = document.createElement("div");
-
-  /** A refused edit restores the field itself; this only reports it. */
-  const refused = (): void =>
-    context.editor.errorManager.warn(
-      "controls",
-      uiCopy.inspectorFields.invalidValue,
-    );
-
-  /** One committed edit: refuse a stale one, then repaint and record once. */
-  const commit = (write: () => boolean): boolean => {
-    if (!hooks.stillTarget()) return false;
-    if (!write()) return false;
-    hooks.refreshGlass();
-    hooks.commit();
-    hooks.onChange();
-    return true;
-  };
-
-  const row = document.createElement("div");
-  row.className = "vigilia-field";
-  const label = document.createElement("label");
-  label.htmlFor = `vigilia-glass-${++glassSeq}`;
-  label.textContent = uiCopy.inspectorFields.glassEnabled;
-  const enabled = document.createElement("input");
-  enabled.type = "checkbox";
-  enabled.id = label.htmlFor;
-  enabled.dataset["vigiliaGlassEnabled"] = "";
-  enabled.checked = treatmentOf(object) !== undefined;
-  if (refusal !== undefined) {
-    // `aria-disabled`, not `disabled`. A disabled checkbox is out of the tab
-    // order, so the tooltip below would reach nobody who is not holding a
-    // mouse — the same disclosure-for-the-mouse-only defect as the absence this
-    // replaces, in a form that now looks deliberate. This stays focusable and
-    // keeps its place in the tab order; the click is refused in the change
-    // handler below instead, because a browser still toggles an
-    // `aria-disabled` checkbox.
-    enabled.setAttribute("aria-disabled", "true");
-    attachReason(enabled, refusal);
-  }
-  enabled.addEventListener("change", () => {
-    // The refused edit is the one thing this control must not take: it writes a
-    // property the validator would refuse at import, on a shape the renderer
-    // would never composite.
-    if (refusal !== undefined) {
-      enabled.checked = treatmentOf(object) !== undefined;
-      return;
-    }
-    commit(() => {
-      if (
-        !writeTreatment(
-          object,
-          enabled.checked ? DEFAULT_GLASS_BLUR_RADIUS : undefined,
-        )
-      )
-        return false;
-      // Turning glass **on** also puts the frosted surface on the card. The
-      // treatment and the surface are one decision — a blur under a fill this
-      // opaque is a blur of nothing, and the card reads as a tint rather than
-      // as glass — and a default follows the treatment while a fill the author
-      // chose is left alone. Turning it off restores nothing: what it would
-      // restore is the author's own default, and overwriting that is the same
-      // edit in reverse.
-      if (enabled.checked) frostTheSurface(context, object);
-      return true;
-    });
-  });
-  row.append(label, enabled);
-  root.append(row);
-
-  // Only offered when there is a treatment for it to change: a radius box over
-  // a panel with no glass accepts an edit and applies none.
-  const treatment = treatmentOf(object);
-  if (treatment === undefined) return root;
-
-  // The ceiling is asked of the owner, not restated here: `MAX_GLASS_BLUR_RADIUS`
-  // is the measured bound the validator enforces, and a 48 typed into this file
-  // would agree with it only until the sweep moved it. Naming it is also what
-  // gives the field its other two affordances — the range appears only when both
-  // bounds are present, and there is nothing to clamp onto with only a floor, so
-  // an author typing 60 was refused instead of landing on the maximum.
-  const blur = numberField({
-    label: uiCopy.inspectorFields.glassBlur,
-    value: treatment.blurRadius,
-    min: 0,
-    max: MAX_GLASS_BLUR_RADIUS,
-    data: "vigiliaGlassBlur",
-    invalidMessage: uiCopy.inspectorFields.invalidValue,
-    onReject: refused,
-    onCommit: (value) => {
-      if (!hooks.stillTarget()) return;
-      // `numberField` accepted the value and already moved `last`, so refusing
-      // through the field is what puts the box and the alert line back — the
-      // same path an empty or negative value takes, rather than a second kind
-      // of feedback the author has to learn separately.
-      if (!writeTreatment(object, value))
-        blur.refuse(treatmentOf(object)?.blurRadius ?? 0);
-      else {
-        hooks.refreshGlass();
-        hooks.commit();
-        hooks.onChange();
-      }
+  const fields: FieldView[] = [
+    {
+      id: "glass-enabled",
+      control: "toggle",
+      label: uiCopy.inspectorFields.glassEnabled,
+      checked: treatmentOf(object) !== undefined,
+      data: { "data-vigilia-glass-enabled": "" },
+      ...(refusal === undefined ? {} : { refused: refusal }),
     },
-  });
-  root.append(blur.row);
+  ];
 
-  return root;
+  // Only offered when there is a treatment for it to change: a blur box over a
+  // panel with no glass accepts an edit and applies none.
+  const treatment = treatmentOf(object);
+  if (treatment !== undefined) {
+    fields.push({
+      id: "glass-blur",
+      control: "number",
+      label: uiCopy.inspectorFields.glassBlur,
+      value: treatment.blurRadius,
+      // The pre-plan field refused a fraction unconditionally; the boundary
+      // re-checks it. See `panelMaterialFields`.
+      integer: true,
+      data: { "data-vigilia-glass-blur": "" },
+    });
+  }
+
+  return fields;
+}
+
+/**
+ * Writes one of the glass fields and hands back whether the edit applied.
+ *
+ * `supportsGlassControl` is re-checked here rather than trusted to the control:
+ * a bypassed toggle must not write a treatment the renderer would never
+ * composite, which is the same rule the predicate states.
+ *
+ * The blur lands on the ceiling rather than being refused: `MAX_GLASS_BLUR_RADIUS`
+ * is the validator's bound, asked of the owner, and the pre-plan field taught it
+ * by landing on it. Turning the treatment on also puts the frosted surface on
+ * the card; see {@link frostTheSurface}.
+ */
+export function writeGlassField(
+  object: FabricObject,
+  context: AppearanceContext,
+  fieldId: string,
+  value: string | number | boolean,
+): boolean {
+  if (fieldId === "glass-enabled") {
+    if (!supportsGlassControl(object)) return false;
+    if (value === true) {
+      if (!writeTreatment(object, DEFAULT_GLASS_BLUR_RADIUS)) return false;
+      frostTheSurface(context, object);
+      return true;
+    }
+    // Turning it off restores nothing: what it would restore is the author's own
+    // default, and overwriting that is the same edit in reverse.
+    clearTreatment(object);
+    return true;
+  }
+
+  if (fieldId === "glass-blur" && typeof value === "number") {
+    return writeTreatment(
+      object,
+      Math.min(Math.max(value, 0), MAX_GLASS_BLUR_RADIUS),
+    );
+  }
+
+  return false;
 }

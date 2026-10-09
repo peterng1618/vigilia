@@ -19,11 +19,10 @@ import {
   Shadow,
   Triangle,
 } from "fabric/es";
-import { numberField } from "../editor-shell/controls/number-field.js";
 import { cornersForSides } from "../new-object-defaults.js";
 import { uiCopy } from "../ui-copy.js";
 import { type AppearanceContext, resolveToken } from "./appearance.js";
-import type { FieldView } from "./view.js";
+import type { FieldHooks, FieldOption, FieldView } from "./view.js";
 
 /**
  * A shape's authored material: which tokens paint its fill, border and shadow,
@@ -53,15 +52,6 @@ const DEFAULT_PANEL_SHADOW_BLUR = 8;
  * the light panel token drawing a white glow around the panel until this moved.
  */
 const DEFAULT_PANEL_SHADOW_OFFSET = 4;
-
-export interface PanelFieldHooks {
-  /** False once the panel describes a different object; the edit is refused. */
-  readonly stillTarget: () => boolean;
-  /** Repaints and records: one history entry per committed edit. */
-  readonly commit: () => void;
-  /** Re-reads the object, so the fields show what was just written. */
-  readonly onChange: () => void;
-}
 
 /**
  * Whether these fields apply at all. Every primitive Fabric 7 ships owns a
@@ -147,261 +137,292 @@ export function writeRef(
   object.set(VIGILIA_PAINT_PROPERTY, next);
 }
 
-interface TokenFieldOptions {
-  readonly label: string;
-  readonly data: string;
-  readonly context: AppearanceContext;
-  readonly selected: `palette.${string}` | undefined;
-  /**
-   * Fabric's `Shadow.color` is a string, and the envelope refuses a gradient
-   * reference rather than dropping it at paint time, so a gradient is never
-   * offered where one cannot be applied.
-   */
-  readonly solidOnly?: boolean;
-  readonly onCommit: (ref: `palette.${string}` | undefined) => void;
-}
-
-/** A labelled palette-token picker, named by the token's own name. */
-function tokenField(options: TokenFieldOptions): HTMLDivElement {
-  const row = document.createElement("div");
-  row.className = "vigilia-field";
-  const label = document.createElement("label");
-  label.htmlFor = `vigilia-token-${options.data}`;
-  label.textContent = options.label;
-  const select = document.createElement("select");
-  select.id = label.htmlFor;
-  select.dataset[options.data] = "";
-  const none = document.createElement("option");
-  none.value = "";
-  none.textContent = uiCopy.inspectorFields.notSet;
-  select.append(none);
-  for (const token of tokenOptions(
-    options.context.globals,
-    options.solidOnly === true,
-  )) {
-    const option = document.createElement("option");
-    option.value = `palette.${token.id}`;
-    option.textContent = token.name;
-    select.append(option);
-  }
-  select.value = options.selected ?? "";
-  select.addEventListener("change", () => {
-    const value = select.value;
-    options.onCommit(value === "" ? undefined : (value as `palette.${string}`));
-  });
-  row.append(label, select);
-  return row;
-}
-
-/** The theme's tokens, each under the name its author gave it. */
-function tokenOptions(
+/** The theme's tokens, each under the name its author gave it, as the entries a
+    paint picker offers. The empty id is the "not set" row the picker needs to
+    clear a reference, which the imperative field carried as its first option. */
+function paintOptions(
   globals: FabricGlobals | undefined,
   solidOnly: boolean,
-): ReadonlyArray<{ readonly id: string; readonly name: string }> {
-  return Object.entries(globals?.palette ?? {})
-    .filter(
-      ([id, entry]) =>
-        id !== "none" && !(solidOnly && entry.value.kind !== "solid"),
-    )
-    .map(([id, entry]) => ({ id, name: entry.name }));
+): readonly FieldOption[] {
+  return [
+    { id: "", name: uiCopy.inspectorFields.notSet },
+    ...Object.entries(globals?.palette ?? {})
+      .filter(
+        ([id, entry]) =>
+          id !== "none" && !(solidOnly && entry.value.kind !== "solid"),
+      )
+      .map(([id, entry]) => ({ id: `palette.${id}`, name: entry.name })),
+  ];
 }
 
 /**
- * The panel's material fields — fill, stroke, border, radius, shadow — or
- * nothing when the selection is not a panel.
+ * The panel's material fields — fill (or ink), stroke, border width, corner
+ * radius, shadow, shadow blur and shadow offset — as values, or nothing when the
+ * selection is not a panel.
  *
- * Split from `createShapeGeometryFields` because the column answers two
- * different questions with them: material is Paint (what ink), while a
- * polygon's side count and a sweep's angles are Position (where and how big).
+ * Values, not controls: React renders them through the control set and
+ * `index.ts` writes them through {@link writePanelField}. The eligibility gate is
+ * `supportsPanelFields` and nothing else, and the corner radius is narrower still
+ * — a rectangle's alone, because `rx` is a `Rect` property and no other class
+ * reads it.
+ *
+ * Every number is `integer: true`. The pre-plan `numberField` refused a typed
+ * fraction unconditionally, and the flag is how the control set says so; the
+ * write boundary re-checks it, because a control is a convenience and the
+ * boundary is what must hold.
  */
-export function createPanelMaterialFields(
+export function panelMaterialFields(
   context: AppearanceContext,
   object: FabricObject,
-  hooks: PanelFieldHooks,
-): HTMLElement | undefined {
+): readonly FieldView[] | undefined {
   if (!supportsPanelFields(object)) return undefined;
 
-  const root = document.createElement("div");
   const refs = paintRefs(object);
-  /** An unfilled path is stroked; one of the controls below paints that ink. */
+  /** An unfilled path is stroked; one of the fields below paints that ink. */
   const paintProperty = paintPropertyFor(object);
+  const fields: FieldView[] = [];
 
-  /** A refused edit restores the field itself; this only reports it. */
-  const refused = (): void =>
-    context.editor.errorManager.warn(
-      "controls",
-      uiCopy.inspectorFields.invalidValue,
-    );
+  const swatch = (
+    id: string,
+    label: string,
+    selected: `palette.${string}` | undefined,
+    solidOnly: boolean,
+    data: FieldHooks,
+  ): FieldView => ({
+    id,
+    control: "swatch",
+    label,
+    value: selected ?? "",
+    options: paintOptions(context.globals, solidOnly),
+    colour: resolveToken(context.globals, selected) ?? "transparent",
+    data,
+  });
+  const number = (
+    id: string,
+    label: string,
+    value: number,
+    data: FieldHooks,
+  ): FieldView => ({
+    id,
+    control: "number",
+    label,
+    value,
+    integer: true,
+    data,
+  });
 
-  /** One committed edit: refuse a stale one, then repaint and record once. */
-  const commit = (write: () => void): void => {
-    if (!hooks.stillTarget()) return;
-    write();
-    hooks.commit();
-    hooks.onChange();
-  };
-  /** A reference change, resolved by the owner the palette editor also uses.
-   *
-   *  The channel is the shell's own, and it is here rather than only in
-   *  `applyArtboardPaint` because this pass is whole-canvas: it walks every
-   *  object, so an arc anywhere in the scene loses its fill on an inspector
-   *  edit that had nothing to do with it. Passing nothing here is what made
-   *  that silent. */
-  const commitRef = (write: () => void): void => {
-    commit(() => {
-      write();
-      applyObjectPalettePaints(context.editor.canvas, context.globals, {
-        onRefusedPaint: (message) =>
-          context.editor.errorManager.warn("paint", message),
-      });
-    });
-  };
-
-  root.append(
-    // One control, and which property it writes is the scene's own decision:
-    // an unfilled path is stroked, so its paint is ink. See `paintPropertyFor`.
-    tokenField({
-      label:
-        paintProperty === "stroke"
-          ? uiCopy.inspectorFields.panelInk
-          : uiCopy.inspectorFields.panelFill,
-      data: "vigiliaPanelFill",
-      context,
-      selected: refs[paintProperty],
-      onCommit: (ref) =>
-        commitRef(() => {
-          writeRef(object, paintProperty, ref);
-          // No reference means no resolver will clear it, so the live paint is
-          // cleared here rather than left at the last token's colour.
-          if (ref === undefined) object.set(paintProperty, "");
-        }),
-    }),
-    // Not offered twice: on an unfilled path the control above already writes
-    // the stroke, and two fields on one property is a coin toss for the author.
-    ...(paintProperty === "stroke"
-      ? []
-      : [
-          tokenField({
-            label: uiCopy.inspectorFields.panelStroke,
-            data: "vigiliaPanelStroke",
-            context,
-            selected: refs.stroke,
-            onCommit: (ref) =>
-              commitRef(() => {
-                writeRef(object, "stroke", ref);
-                if (ref === undefined) object.set("stroke", "");
-              }),
-          }),
-        ]),
-    numberField({
-      label: uiCopy.inspectorFields.panelBorder,
-      value: Math.round(object.get("strokeWidth") as number),
-      min: 0,
-      data: "vigiliaPanelBorder",
-      invalidMessage: uiCopy.inspectorFields.invalidValue,
-      onReject: refused,
-      onCommit: (value) => commit(() => object.set("strokeWidth", value)),
-    }).row,
-    // A rectangle's alone: `rx` belongs to `Rect`, and a radius box over any
-    // other shape would read back `NaN` and write a property nothing draws.
-    ...(object instanceof Rect
-      ? [
-          numberField({
-            label: uiCopy.inspectorFields.panelRadius,
-            value: Math.round(object.get("rx") as number),
-            min: 0,
-            data: "vigiliaPanelRadius",
-            invalidMessage: uiCopy.inspectorFields.invalidValue,
-            onReject: refused,
-            // Both axes, because Fabric derives `ry` from `rx` only while it is
-            // unset; persisting one and reading the other back would depend on
-            // that default.
-            onCommit: (value) =>
-              commit(() => object.set({ rx: value, ry: value })),
-          }).row,
-        ]
-      : []),
-    tokenField({
-      label: uiCopy.inspectorFields.panelShadow,
-      data: "vigiliaPanelShadow",
-      context,
-      selected: refs.shadowColor,
-      solidOnly: true,
-      onCommit: (ref) =>
-        commitRef(() => {
-          writeRef(object, "shadowColor", ref);
-          if (ref === undefined) {
-            object.set("shadow", null);
-            return;
-          }
-          // An existing shadow keeps its blur and offsets; only its colour is
-          // re-resolved, from the reference just written.
-          if (object.get("shadow") instanceof Shadow) return;
-          object.set(
-            "shadow",
-            new Shadow({
-              color: resolveToken(context.globals, ref) ?? "",
-              blur: DEFAULT_PANEL_SHADOW_BLUR,
-              offsetX: 0,
-              offsetY: DEFAULT_PANEL_SHADOW_OFFSET,
-            }),
-          );
-        }),
-    }),
+  // One field on the paint, and which property it writes is the scene's own
+  // decision: an unfilled path is stroked, so its paint is ink.
+  fields.push(
+    swatch(
+      "panel-fill",
+      paintProperty === "stroke"
+        ? uiCopy.inspectorFields.panelInk
+        : uiCopy.inspectorFields.panelFill,
+      refs[paintProperty],
+      false,
+      { "data-vigilia-panel-fill": "" },
+    ),
   );
 
-  // Only offered when there is a shadow for it to change: a blur box over a
+  // Not offered twice: on an unfilled path the field above already writes the
+  // stroke, and two fields on one property is a coin toss for the author.
+  if (paintProperty !== "stroke") {
+    fields.push(
+      swatch(
+        "panel-stroke",
+        uiCopy.inspectorFields.panelStroke,
+        refs.stroke,
+        false,
+        {
+          "data-vigilia-panel-stroke": "",
+        },
+      ),
+    );
+  }
+
+  fields.push(
+    number(
+      "panel-border",
+      uiCopy.inspectorFields.panelBorder,
+      Math.round(object.get("strokeWidth") as number),
+      { "data-vigilia-panel-border": "" },
+    ),
+  );
+
+  // A rectangle's alone: `rx` belongs to `Rect`, and a radius box over any
+  // other shape would read back `NaN` and write a property nothing draws.
+  if (object instanceof Rect) {
+    fields.push(
+      number(
+        "panel-radius",
+        uiCopy.inspectorFields.panelRadius,
+        Math.round(object.get("rx") as number),
+        { "data-vigilia-panel-radius": "" },
+      ),
+    );
+  }
+
+  fields.push(
+    swatch(
+      "panel-shadow",
+      uiCopy.inspectorFields.panelShadow,
+      refs.shadowColor,
+      true,
+      {
+        "data-vigilia-panel-shadow": "",
+      },
+    ),
+  );
+
+  // Only offered when there is a shadow for them to change: a blur box over a
   // panel with no shadow accepts an edit and applies none.
   const shadow = object.get("shadow");
   if (shadow instanceof Shadow) {
-    /** Writes one native shadow property, if the shadow is still there. */
-    const shadowNumber = (
-      label: string,
-      data: string,
-      min: number | undefined,
-      read: (live: Shadow) => number,
-      write: (live: Shadow, value: number) => void,
-    ): HTMLElement =>
-      numberField({
-        label,
-        value: Math.round(read(shadow)),
-        ...(min === undefined ? {} : { min }),
-        data,
-        invalidMessage: uiCopy.inspectorFields.invalidValue,
-        onReject: refused,
-        onCommit: (value) =>
-          commit(() => {
-            const live = object.get("shadow");
-            if (live instanceof Shadow) write(live, value);
-          }),
-      }).row;
-
-    root.append(
-      shadowNumber(
+    fields.push(
+      number(
+        "panel-shadow-blur",
         uiCopy.inspectorFields.panelShadowBlur,
-        "vigiliaPanelShadowBlur",
-        0,
-        (live) => live.blur,
-        (live, value) => {
-          live.blur = value;
-        },
+        Math.round(shadow.blur),
+        { "data-vigilia-panel-shadow-blur": "" },
       ),
       // Unbounded, because Fabric's own `offsetY` is: a shadow above a panel is
       // legitimate, and a floor of zero would display a value the field then
       // refused to accept on the author's next edit.
-      shadowNumber(
+      number(
+        "panel-shadow-offset",
         uiCopy.inspectorFields.panelShadowOffset,
-        "vigiliaPanelShadowOffset",
-        undefined,
-        (live) => live.offsetY,
-        (live, value) => {
-          live.offsetY = value;
-        },
+        Math.round(shadow.offsetY),
+        { "data-vigilia-panel-shadow-offset": "" },
       ),
     );
   }
 
-  return root;
+  return fields;
+}
+
+/**
+ * Writes one of the panel's material fields and hands back whether the edit
+ * applied. The rules that resolve a reference through the palette owner, clear
+ * the live paint a cleared reference leaves behind, and give a fresh shadow its
+ * blur and offset live here with the fields that describe them; `index.ts` is
+ * the funnel that asks for them and this module owns no second one.
+ *
+ * A number **lands on its bound** rather than being refused: the pre-plan
+ * `numberField` clamped an out-of-range value to the bound it crossed, and the
+ * author who types a negative border width to find the floor is taught by the
+ * zero that lands. The one whole-number rule — a fraction is refused — is the
+ * control's `integer` flag and the boundary's, not this writer's.
+ */
+export function writePanelField(
+  object: FabricObject,
+  context: AppearanceContext,
+  fieldId: string,
+  value: string | number,
+): boolean {
+  const typed = typeof value === "string" ? value : "";
+  const number = typeof value === "number" ? value : Number.NaN;
+
+  switch (fieldId) {
+    case "panel-fill":
+      return writePaint(object, context, paintPropertyFor(object), typed);
+    case "panel-stroke":
+      return writePaint(object, context, "stroke", typed);
+    case "panel-shadow":
+      return writeShadow(object, context, typed);
+    case "panel-border":
+      object.set("strokeWidth", Math.max(number, 0));
+      return true;
+    case "panel-radius": {
+      // Both axes, because Fabric derives `ry` from `rx` only while it is
+      // unset; persisting one and reading the other back would depend on that
+      // default.
+      const radius = Math.max(number, 0);
+      object.set({ rx: radius, ry: radius });
+      return true;
+    }
+    case "panel-shadow-blur":
+      writeIntoShadow(object, (live) => {
+        live.blur = Math.max(number, 0);
+      });
+      return true;
+    case "panel-shadow-offset":
+      writeIntoShadow(object, (live) => {
+        live.offsetY = number;
+      });
+      return true;
+    default:
+      return false;
+  }
+}
+
+/** Sets one paint property's reference and re-resolves the canvas, so a fill
+    written here and a fill written by a palette edit cannot disagree about what
+    the reference means. A cleared reference also clears the live paint: nothing
+    re-resolves it back, so it would otherwise keep the last token's colour. */
+function writePaint(
+  object: FabricObject,
+  context: AppearanceContext,
+  property: "fill" | "stroke",
+  raw: string,
+): boolean {
+  const ref = raw === "" ? undefined : (raw as `palette.${string}`);
+  writeRef(object, property, ref);
+  if (ref === undefined) object.set(property, "");
+  repaint(context);
+  return true;
+}
+
+/**
+ * Sets the shadow colour and gives a shadow that had none a real, visible one.
+ *
+ * A colour alone draws nothing, so the committed edit must leave something to
+ * see and tune — falling below the panel rather than glowing evenly around it.
+ * A shadow already there keeps its own blur and offsets; only its colour is
+ * re-resolved from the reference just written.
+ */
+function writeShadow(
+  object: FabricObject,
+  context: AppearanceContext,
+  raw: string,
+): boolean {
+  const ref = raw === "" ? undefined : (raw as `palette.${string}`);
+  writeRef(object, "shadowColor", ref);
+  if (ref === undefined) {
+    object.set("shadow", null);
+  } else if (!(object.get("shadow") instanceof Shadow)) {
+    object.set(
+      "shadow",
+      new Shadow({
+        color: resolveToken(context.globals, ref) ?? "",
+        blur: DEFAULT_PANEL_SHADOW_BLUR,
+        offsetX: 0,
+        offsetY: DEFAULT_PANEL_SHADOW_OFFSET,
+      }),
+    );
+  }
+  repaint(context);
+  return true;
+}
+
+/** Writes one native shadow property, if the shadow is still there. A no-op when
+    it is not: the field only exists while a shadow does. */
+function writeIntoShadow(
+  object: FabricObject,
+  write: (live: Shadow) => void,
+): void {
+  const live = object.get("shadow");
+  if (live instanceof Shadow) write(live);
+}
+
+/** The shell's own whole-canvas paint pass, with its reporter. This pass walks
+    every object, so an arc elsewhere in the scene is refused by it too and must
+    not do so in silence. */
+function repaint(context: AppearanceContext): void {
+  applyObjectPalettePaints(context.editor.canvas, context.globals, {
+    onRefusedPaint: (message) =>
+      context.editor.errorManager.warn("paint", message),
+  });
 }
 
 /**

@@ -346,6 +346,57 @@ describe("editRefusal", () => {
     );
   });
 
+  it("refuses a fractional Paint number at the boundary too", () => {
+    // The same rule the geometry fields carry. The panel's border, radius and
+    // both shadow numbers, and the glass blur, all refused a fraction before
+    // their fields were converted; `ControlNumber`'s `integer` flag restates it
+    // for the author, and this is the copy the write funnel depends on.
+    for (const fieldId of [
+      "panel-border",
+      "panel-radius",
+      "panel-shadow-blur",
+      "panel-shadow-offset",
+      "glass-blur",
+    ]) {
+      expect(editRefusal(edit({ fieldId, value: 4.5 }), live), fieldId).toBe(
+        "invalid",
+      );
+      expect(editRefusal(edit({ fieldId, value: 4 }), live), fieldId).toBe(
+        undefined,
+      );
+    }
+  });
+
+  it("takes a palette reference, or the empty a cleared picker writes, and nothing else", () => {
+    // Paint references: a token id, or the `""` a cleared picker writes. The
+    // writer resolves one through the palette owner; a value that is not one is
+    // refused here rather than handed to a resolver that would take it for
+    // nothing.
+    for (const fieldId of ["panel-fill", "panel-stroke", "panel-shadow"]) {
+      expect(
+        editRefusal(edit({ fieldId, value: "palette.text" }), live),
+        fieldId,
+      ).toBeUndefined();
+      expect(editRefusal(edit({ fieldId, value: "" }), live), fieldId).toBe(
+        undefined,
+      );
+      expect(
+        editRefusal(edit({ fieldId, value: "#ecf5ff" }), live),
+        fieldId,
+      ).toBe("invalid");
+      expect(editRefusal(edit({ fieldId, value: 12 }), live), fieldId).toBe(
+        "invalid",
+      );
+    }
+    // The glass switch is a boolean, not a reference.
+    expect(
+      editRefusal(edit({ fieldId: "glass-enabled", value: true }), live),
+    ).toBeUndefined();
+    expect(
+      editRefusal(edit({ fieldId: "glass-enabled", value: "yes" }), live),
+    ).toBe("invalid");
+  });
+
   it("reports a stale draft ahead of the lock it would also fail", () => {
     // Precedence is part of the contract: the newer selection is the reason the
     // draft is wrong, so that is what a caller is told.

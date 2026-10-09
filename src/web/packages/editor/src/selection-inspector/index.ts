@@ -12,7 +12,8 @@ import { uiCopy } from "../ui-copy.js";
 import { writeMark } from "./bleed.js";
 import { createSelectionColumnRoot } from "./column.js";
 import { createInspectorRoot } from "./inspector.js";
-import { writeShapeGeometryField } from "./panel.js";
+import { writeGlassField } from "./glass.js";
+import { writePanelField, writeShapeGeometryField } from "./panel.js";
 import {
   type ChartFieldsPort,
   type ColumnContext,
@@ -524,6 +525,36 @@ export function createSelectionInspector(
         applied = writeBleed(object, value === true);
       } else if (GEOMETRY_KEYS.has(fieldId)) {
         write(object, fieldId as GeometryKey, value as number);
+      } else if (fieldId.startsWith("panel-")) {
+        // The panel's material writes — resolve a reference, create a default
+        // shadow, move a live one — are `panel.ts`'s; this funnel only asks. The
+        // whole-canvas paint pass and its reporter ride with the write.
+        applied = writePanelField(
+          object,
+          { editor, globals },
+          fieldId,
+          value as string | number,
+        );
+        if (!applied) {
+          editor.errorManager.warn(
+            "controls",
+            uiCopy.inspectorFields.invalidValue,
+          );
+        }
+      } else if (fieldId.startsWith("glass-")) {
+        // The treatment writes are `glass.ts`'s. The lifecycle is re-resolved
+        // here because nothing else does it: a property written on a panel that
+        // is already there is neither a gain nor a loss of an object, so the
+        // control that changed it is what has to ask.
+        applied = writeGlassField(object, { editor, globals }, fieldId, value);
+        if (!applied) {
+          editor.errorManager.warn(
+            "controls",
+            uiCopy.inspectorFields.invalidValue,
+          );
+        } else {
+          options.refreshGlass();
+        }
       } else {
         // A shape's own geometry: the parse, the bound and the scale it adopts
         // are its owner's, and this is the funnel that asks for the write.

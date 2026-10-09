@@ -75,6 +75,12 @@ interface FieldBase {
   readonly refused?: string;
 }
 
+/** One entry in a list control: the stored value, and the name it shows. */
+export interface FieldOption {
+  readonly id: string;
+  readonly name: string;
+}
+
 /**
  * One half of a paired row: two numbers sharing a line, each committing its
  * own. A pair is not one control — each half has its own id, its own hook and
@@ -131,10 +137,7 @@ export type FieldView =
   | (FieldBase & {
       readonly control: "select";
       readonly value: string;
-      readonly options: readonly {
-        readonly id: string;
-        readonly name: string;
-      }[];
+      readonly options: readonly FieldOption[];
     })
   | (FieldBase & {
       readonly control: "slider";
@@ -145,12 +148,21 @@ export type FieldView =
   | (FieldBase & {
       readonly control: "segmented";
       readonly value: string;
-      readonly options: readonly {
-        readonly id: string;
-        readonly name: string;
-      }[];
+      readonly options: readonly FieldOption[];
     })
-  | (FieldBase & { readonly control: "swatch"; readonly value: string })
+  /**
+   * A paint reference, as bible §5's *swatch well*: the list is still the only
+   * way to change the value and the swatch is a picture of it, resolved by the
+   * caller so nothing here is a second resolver. `colour` is that picture — the
+   * selected token's colour, or `transparent` when the value is empty or no
+   * longer resolves.
+   */
+  | (FieldBase & {
+      readonly control: "swatch";
+      readonly value: string;
+      readonly options: readonly FieldOption[];
+      readonly colour: string;
+    })
   | (FieldBase & { readonly control: "readOnly"; readonly value: string });
 
 /** One entry in a run editor's dropdowns: the stored reference, and its name. */
@@ -344,7 +356,13 @@ export interface SelectionEdits {
  * The control is a convenience; this table is what must hold, so a fraction
  * that a wrongly-built control let through is still refused here.
  */
-type WritableKind = "number" | "integer" | "name" | "boolean" | "text";
+type WritableKind =
+  | "number"
+  | "integer"
+  | "name"
+  | "boolean"
+  | "text"
+  | "reference";
 const WRITABLE_FIELD_IDS: ReadonlyMap<string, WritableKind> = new Map([
   ["left", "integer"],
   ["top", "integer"],
@@ -367,6 +385,20 @@ const WRITABLE_FIELD_IDS: ReadonlyMap<string, WritableKind> = new Map([
   ["shape-angle-endAngle", "integer"],
   ["shape-points", "text"],
   ["shape-path", "text"],
+  // Paint. The four whole-number fields are `"integer"` for the same reason the
+  // geometry ids are: the pre-plan `numberField` refused a typed fraction on
+  // every one of them, and `ControlNumber`'s `integer` flag is a convenience the
+  // boundary must not depend on. A token field carries a `palette.` reference or
+  // `""` for none — the boundary checks the shape, not the token.
+  ["panel-fill", "reference"],
+  ["panel-stroke", "reference"],
+  ["panel-shadow", "reference"],
+  ["panel-border", "integer"],
+  ["panel-radius", "integer"],
+  ["panel-shadow-blur", "integer"],
+  ["panel-shadow-offset", "integer"],
+  ["glass-enabled", "boolean"],
+  ["glass-blur", "integer"],
 ]);
 
 /** Why an edit was refused; `undefined` means it may reach the write funnel. */
@@ -412,6 +444,15 @@ export function editRefusal(
     // A multi-line draft (a polyline's points, a path's data) is parsed by the
     // writer; the boundary only insists it is a string, never `Number("")`'s zero.
     return typeof edit.value === "string" ? undefined : "invalid";
+  }
+  if (kind === "reference") {
+    // A paint reference is a token id or the empty string a cleared picker
+    // writes. The writer resolves it through the palette owner; the boundary
+    // only refuses a value that is not one.
+    return typeof edit.value === "string" &&
+      (edit.value === "" || edit.value.startsWith("palette."))
+      ? undefined
+      : "invalid";
   }
   if (typeof edit.value !== "number" || !Number.isFinite(edit.value)) {
     // Refuse rather than coerce: a non-finite number is not a dimension.

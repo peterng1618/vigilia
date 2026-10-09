@@ -883,9 +883,9 @@ describe("the column's sections", () => {
     expect(document.activeElement).toBe(after);
   });
 
-  it("does not put focus back on a control that only toggles", () => {
+  it("keeps the focus on a control that only toggles", () => {
     const { host, inspector } = setup(rect);
-    const glass = host.querySelector<HTMLInputElement>(
+    const glass = host.querySelector<HTMLElement>(
       "[data-vigilia-glass-enabled]",
     )!;
     glass.focus();
@@ -893,12 +893,17 @@ describe("the column's sections", () => {
 
     inspector.render();
 
-    // `focus` is not free here: it is what opens the glass control's reason
-    // popup, so restoring it re-opened a reason the author had just dismissed
-    // with Escape. A checkbox has no caret to lose.
-    expect(document.activeElement).not.toBe(
-      host.querySelector("[data-vigilia-glass-enabled]"),
-    );
+    // The switch is React's now, so a re-publish updates it in place rather than
+    // rebuilding it: focus is kept by the element surviving, the same way the
+    // name field keeps its caret. The imperative body deliberately did not
+    // restore focus here, because doing so re-opened the glass control's reason
+    // popup — but the reason is words in the row now (bible §5.3), owned by plan
+    // 1's `ControlRow`, so there is no popup left to re-open.
+    const after = host.querySelector<HTMLElement>(
+      "[data-vigilia-glass-enabled]",
+    )!;
+    expect(after).toBe(glass);
+    expect(document.activeElement).toBe(after);
   });
 
   /**

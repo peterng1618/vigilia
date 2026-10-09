@@ -12,6 +12,7 @@ import { ControlPair } from "../components/ui/control-pair.js";
 import { ControlSegmented } from "../components/ui/control-segmented.js";
 import { ControlSelect } from "../components/ui/control-select.js";
 import { ControlSlider } from "../components/ui/control-slider.js";
+import { ControlSwatch } from "../components/ui/control-swatch.js";
 import { ControlText } from "../components/ui/control-text.js";
 import { ControlToggle } from "../components/ui/control-toggle.js";
 import { InspectorSection } from "../components/ui/inspector-section.js";
@@ -156,14 +157,22 @@ function fieldControl(
         />
       );
     case "swatch":
-      // The swatch's picture arrives with Task 5's paint fields, which carry the
-      // resolved colour; the selection itself is the select's.
+      // The swatch well: the list is the only way to change the value, and the
+      // picture is the resolved colour the projection handed over — never a
+      // second resolver here.
       return (
-        <ControlSelect
+        <ControlSwatch
           label={field.label}
           data={field.data}
           value={field.value}
-          options={[]}
+          options={field.options}
+          swatch={
+            <span
+              aria-hidden
+              className="block size-[10px] rounded-sm border border-edge"
+              style={{ background: field.colour }}
+            />
+          }
           onChange={(value) => commit(value)}
           {...refused}
         />

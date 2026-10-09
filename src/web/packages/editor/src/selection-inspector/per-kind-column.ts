@@ -32,11 +32,8 @@ import {
 } from "./appearance.js";
 import { bleedField } from "./bleed.js";
 import { cropView } from "./crop.js";
-import { createGlassFields } from "./glass.js";
-import {
-  createPanelMaterialFields,
-  createShapeGeometryFields,
-} from "./panel.js";
+import { glassFields } from "./glass.js";
+import { createShapeGeometryFields, panelMaterialFields } from "./panel.js";
 import { projectRuns } from "./runs.js";
 import type {
   ColumnSectionView,
@@ -486,34 +483,27 @@ function layerBody(
   };
 }
 
-/** What ink: the panel's material, and the frosted-glass treatment. Still
-    imperative until Task 5. */
+/** What ink: the panel's material, the frosted-glass treatment, and a chart's
+    own paint. Every row is a value now; the writes reach the object through the
+    one funnel in `index.ts`, so the rules that resolve a reference, create a
+    default shadow or move a live one stay with the fields that describe them. */
 function paintBody(
   target: FabricObject,
   context: ColumnContext,
   locked: boolean,
 ): SectionParts {
-  if (locked) return { body: [] };
-  const body: HTMLElement[] = [];
+  if (locked) return { fields: [] };
+  const fields: FieldView[] = [];
   const extras: ExtraView[] = [];
 
-  const material = createPanelMaterialFields(appearanceOf(context), target, {
-    stillTarget: () => context.stillTarget(target),
-    commit: context.commit,
-    onChange: context.rerender,
-  });
-  if (material !== undefined) body.push(material);
+  // Material applies only to the kinds `supportsPanelFields` admits; the gate is
+  // asked, never restated, and answers with no fields for a chart, an image, a
+  // text object or a group.
+  fields.push(...(panelMaterialFields(appearanceOf(context), target) ?? []));
 
-  // Offered for a selection whose backdrop can actually be sampled; a kind that
-  // cannot is told why rather than shown nothing.
-  body.push(
-    createGlassFields(appearanceOf(context), target, {
-      stillTarget: () => context.stillTarget(target),
-      commit: context.commit,
-      onChange: context.rerender,
-      refreshGlass: context.refreshGlass,
-    }),
-  );
+  // Always present: a kind that cannot carry the treatment is told why rather
+  // than shown nothing, so absence and refusal never look the same.
+  fields.push(...glassFields(target));
 
   // What a chart paints its data with, from the owner that writes it. A chart's
   // paint is its own question, asked of the same owner that answered Content.
@@ -522,7 +512,7 @@ function paintBody(
     if (chart !== undefined) extras.push({ kind: "chartPaint", paint: chart });
   }
 
-  return { body, extras };
+  return { fields, extras };
 }
 
 /** Every object under this one, at any depth, in document order. A kind with no
