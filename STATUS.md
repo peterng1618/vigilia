@@ -36,16 +36,16 @@ backlog it produced stays live in the register.
 ## Last completed change
 
 - **Spends renders as a read-only section** — `spendsBody` emits `control: "readOnly"` field views (`appearance.ts`'s `resolutionField`) for a single object's paint references and type preset, and for a container's distinct descendant tokens; the section declares `readOnly: true`, so its header carries the marker before it is opened.
+- **The read-only row follows the file's own contract** — the hook moved off the wrapper and onto the value element (`view.ts`: "never a wrapper", matching the `note` arm beside it), and the row is `items-baseline` per §5.2 rather than the inspector's habitual centre.
 - **The resolution sentence has one owner** — `appearance.ts`'s `resolutionValue` is shared by the selection's rows and the Document pane's `createResolutionLine`, so `notSet` and "no longer resolves" keep their length in both.
-- **The type-preset reveal is kept** — a button is not a row, so it stays the element the section mounts, `data-vigilia-reveal-type-presets` and all.
-- **Proved, and each proof can fail** — dropping the flag reddens the header case ('Spends1▾' has no 'Read-only'), answering per child instead of per token reddens the dedup case (1 row → 3), and a `ControlWell` round a row reddens the no-editable-control case; 290 selection-inspector tests pass and `editor.spec.ts:2067` (the Spends browser case) passes against the rebuilt bundle.
+- **Proved, and each proof can fail** — dropping the flag reddens the header case ('Spends1▾' has no 'Read-only'), answering per child instead of per token reddens the dedup case (1 row → 3), a `ControlWell` round a row reddens the no-editable-control case, moving the hook back to the wrapper reddens it too ('DIV' ≠ 'SPAN'), and `items-center` reddens the baseline case; 291 selection-inspector tests pass and `editor.spec.ts:2067` (the Spends browser case) passes against the rebuilt bundle.
 - **Carried to Task 7, not fixed here** — `inspector-sections.spec.ts:573` reads the removed `.vigilia-resolution` class inside Spends (`:601`) and is red; the file's other four reds are Task 5's (3 combobox-owned, 1 `<details>` reader).
 
 ## Next
 
 1. **Task 7 owns one removal commit** — eight e2e files' locators (the chart hooks `[data-vigilia-binding]`, `[data-vigilia-chart-binding-add]`, `[data-vigilia-chart-paint]`, and `inspector-sections.spec.ts:601`'s `.vigilia-resolution` read inside Spends), the dead `.vigilia-section*` CSS, and `property-section.ts` with its test cases; its red set is carried in the ledger as counts, not file names.
-3. **Manager-ownership cleanup is deferred, not dropped** — the survey's fifteen rows (`vg-232`…`vg-246`) are live in the register; the ordering is re-decided at plan 3's close, since a mid-plan pause leaves the column half-converted and the inspector's own modules are two of those rows.
-4. **Unpushed:** `develop` is far ahead of `origin/develop`; no push is authorised.
+2. **Manager-ownership cleanup is deferred, not dropped** — the survey's fifteen rows (`vg-232`…`vg-246`) are live in the register; the ordering is re-decided at plan 3's close, since a mid-plan pause leaves the column half-converted and the inspector's own modules are two of those rows.
+3. **Unpushed:** `develop` is far ahead of `origin/develop`; no push is authorised.
 
 ## Blockers / unverified
 

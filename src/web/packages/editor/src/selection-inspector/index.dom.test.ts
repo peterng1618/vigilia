@@ -478,16 +478,34 @@ describe("the selection inspector", () => {
   it("renders a resolution row with no editable control", () => {
     rect.set({ vigiliaPaint: { fill: "palette.ink" } });
     const { host } = setup(rect);
-    const row = host.querySelector<HTMLElement>(
+    const value = host.querySelector<HTMLElement>(
       '[data-vigilia-resolution="Paint"]',
     );
+    const row = value?.parentElement ?? null;
 
-    // A row, not a control: the value reads in mono beside the label, and the
-    // row carries no well — bible §5.1's border means editable, so a border
-    // here would advertise an edit the section cannot make.
-    expect(row?.querySelector(".font-mono")?.textContent).toContain("Ink");
-    expect(row?.querySelector("input, select, button, textarea")).toBeNull();
+    // A row, not a control. The hook rides the value element itself, so the
+    // element a suite reads is the element that carries the value — a hook on
+    // the row's wrapper would find the label instead.
+    expect(value?.tagName).toBe("SPAN");
+    expect(value?.className).toContain("font-mono");
+    expect(value?.textContent).toContain("Ink");
+    // The proof is scoped from the row, where a well would land: a border means
+    // editable (bible §5.1), and the row's own class list counts too.
+    expect(row?.classList.contains("border")).toBe(false);
     expect(row?.querySelector('[class~="border"]')).toBeNull();
+    expect(row?.querySelector("input, select, button, textarea")).toBeNull();
+  });
+
+  it("baseline-aligns a read-only row, the one alignment the bible names", () => {
+    const { host } = setup(rect);
+    const row =
+      host.querySelector('[data-vigilia-resolution="Paint"]')?.parentElement ??
+      null;
+
+    // §5.2: "Read-only rows are label + mono value, baseline-aligned,
+    // right-aligned." A centre line would drop the mono value below the label.
+    expect(row?.classList.contains("items-baseline")).toBe(true);
+    expect(row?.classList.contains("items-center")).toBe(false);
   });
 
   it("reports a reference that no longer resolves rather than blanking it", () => {
@@ -1095,13 +1113,15 @@ describe("the column's sections", () => {
     // opened, rather than leaving the author to infer it from absent controls.
     expect(header?.textContent).toContain("Read-only");
     // The marker is the section's, not another section's: no other question is
-    // read-only, so a header elsewhere must not carry it.
+    // read-only, so a header elsewhere must not carry it. The header is asserted
+    // present first — a selector that missed would leave `undefined`, which
+    // passes a negative assertion vacuously (vg-251).
     for (const id of ["content", "position", "layer", "paint"]) {
-      expect(
-        host.querySelector(`[data-vigilia-section="${id}"] > h2 > button`)
-          ?.textContent,
-        id,
-      ).not.toContain("Read-only");
+      const header = host.querySelector(
+        `[data-vigilia-section="${id}"] > h2 > button`,
+      );
+      expect(header, id).not.toBeNull();
+      expect(header?.textContent, id).not.toContain("Read-only");
     }
   });
 

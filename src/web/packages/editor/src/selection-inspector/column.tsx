@@ -191,11 +191,13 @@ function fieldControl(
       );
     case "readOnly":
       // A read-only row is not a control: no well, no border, because a border
-      // means editable (bible §5.1). Task 6 owns the Spends treatment.
+      // means editable (bible §5.1). The hook is on the value element itself —
+      // never a wrapper, or it is a broken locator wearing a passing test — and
+      // the row is baseline-aligned, the one alignment §5.2 names for it.
       return (
-        <div className="flex items-center gap-[var(--space-8)]" {...field.data}>
+        <div className="flex items-baseline gap-[var(--space-8)]">
           <span className="text-xs text-muted">{field.label}</span>
-          <span className="ml-auto font-mono text-sm text-text">
+          <span className="ml-auto font-mono text-sm text-text" {...field.data}>
             {field.value}
           </span>
         </div>
