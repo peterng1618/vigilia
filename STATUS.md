@@ -44,7 +44,7 @@ backlog it produced stays live in the register.
 
 1. **Plan 4 Task 6 — the preset list** — `tokens-pane.tsx` is written so the preset library mounts beside the paint list from the same pane host, and `vg-094`'s binding is the task after it.
 2. **Tasks 6–12 follow:** the preset list and `vg-094`'s binding, the Document pane with its read-only References (R22), then the ratchet, the capture and the register.
-3. **The plan's rulings live in the ledger, not here** — R1–R27, including the preflight scan of Tasks 4–12 and its ten rulings, each verified against source before it was made.
+3. **The plan's rulings live in the ledger, not here** — R1–R35, including the preflight scan of Tasks 4–12 and its ten rulings, each verified against source before it was made.
 4. **The display proof stays blocked on `vg-119`** — `author-journey-display.spec.ts` fails at `rebuild-composition.ts:148`'s stale `colour: "text"`, an open row with its own owner; `vg-253` is the same file's 16 remaining `selectOption` sites.
 5. **Unpushed:** `develop` is far ahead of `origin/develop`; no push is authorised.
 
