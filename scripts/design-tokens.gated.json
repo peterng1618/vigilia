@@ -20,6 +20,7 @@
     "src/web/packages/editor/src/editor-shell/rail.tsx",
     "src/web/packages/editor/src/editor-shell/pane.tsx",
     "src/web/packages/editor/src/editor-shell/pane.dom.test.tsx",
+    "src/web/packages/editor/src/editor-shell/layer-panel.tsx",
     "src/web/packages/editor/src/editor-shell/publish-control.tsx",
     "src/web/packages/editor/src/editor-shell/publish-indicator.tsx",
     "src/web/packages/editor/src/editor-shell/shell-layout.tsx"
