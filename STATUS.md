@@ -45,7 +45,8 @@ backlog it produced stays live in the register.
 
 1. **Task 3 — the Content and Layer sections** — dispatched with four binding constraints: `column.tsx` gains field and extras rendering, the deferred blur-race proof, `restoreFocus`'s host-scoped query, and the per-object lock notify burst.
 2. **Task 7 owns one removal commit** — the four red e2e specs' locators, the dead `.vigilia-section*` CSS, and `property-section.ts` with its test cases.
-3. **Unpushed:** `develop` is far ahead of `origin/develop`; no push is authorised.
+3. **Manager-ownership cleanup is deferred, not dropped** — the survey's fifteen rows (`vg-232`…`vg-246`) are live in the register; the ordering is re-decided at plan 3's close, since a mid-plan pause leaves the column half-converted and the inspector's own modules are two of those rows.
+4. **Unpushed:** `develop` is far ahead of `origin/develop`; no push is authorised.
 
 ## Blockers / unverified
 
