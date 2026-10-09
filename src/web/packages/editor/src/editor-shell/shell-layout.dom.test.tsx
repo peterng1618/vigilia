@@ -184,10 +184,10 @@ it("gives every pane the bible's chrome, named by the section the specs browse",
   const layout = createShellLayout(root);
 
   // One pane per rail slot, each wearing a title bar, its own `data-vigilia-panel`
-  // name and `hidden` unless its slot is chosen. The Composition pane's name is
-  // the `layers` the browser specs and the panel CSS already browse by, so the
-  // chrome moved around the contract rather than the contract moving; the other
-  // three are named for their slot. The pane is the only writer of that name.
+  // name and `hidden` unless its slot is chosen. The Composition pane's DOM name
+  // is the `layers` the browser specs and the panel CSS already browse by, so
+  // the chrome moved around the contract rather than the contract moving; its
+  // visible title, like the other three, is the slot's own word.
   const panes = root.querySelectorAll(".editor-shell-pane");
   expect(panes).toHaveLength(4);
   expect(
@@ -200,7 +200,7 @@ it("gives every pane the bible's chrome, named by the section the specs browse",
   expect(layers).not.toBeNull();
   expect(layers?.classList.contains("editor-shell-pane")).toBe(true);
   expect(layers?.querySelector(".editor-shell-pane-name")?.textContent).toBe(
-    uiCopy.panels.layers,
+    uiCopy.rail.slots.composition,
   );
   // The object actions are the pane's footer toolbar — a Pane footer, so it is
   // not a row of the tree — and there is exactly one of them.

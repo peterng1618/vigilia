@@ -805,12 +805,15 @@ body,
   color: var(--accent);
   background: color-mix(in srgb, var(--accent) 14%, transparent);
 }
+/* The bar hangs in the 6px gutter between the 34px slot and the 46px rail, so
+   its outer edge is flush with the rail's inner (right) edge — not the mirror
+   `right: -8px`, which lands 2px past that edge in the rail-to-pane gap. */
 .editor-shell-rail button[aria-pressed="true"]::before {
   content: "";
   position: absolute;
   top: 6px;
   bottom: 6px;
-  left: -8px;
+  right: -6px;
   width: 2px;
   border-radius: 2px;
   background: var(--accent);

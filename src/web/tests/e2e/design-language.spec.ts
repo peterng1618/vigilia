@@ -1080,5 +1080,18 @@ test("captures the shell with the Add pane open and nothing selected", async ({
     page.locator(".editor-shell-panel [data-vigilia-panel]:visible"),
   ).toHaveCount(1);
 
+  // Park the pointer over the stage before the shot. `openPane` clicked the Add
+  // slot, leaving the pointer hovering it: after 600ms the slot's tooltip
+  // bubble opens and paints over the rail/pane boundary — a difference the
+  // mockup does not draw, in the one image this plan calls the primary
+  // comparison.
+  const stage = await page.locator(".editor-shell-stage").boundingBox();
+  if (stage !== null) {
+    await page.mouse.move(
+      stage.x + stage.width / 2,
+      stage.y + stage.height / 2,
+    );
+  }
+
   await captureVisualReview(page, testInfo, "editor-shell-add");
 });

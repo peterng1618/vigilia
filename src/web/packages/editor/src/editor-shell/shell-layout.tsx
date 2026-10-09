@@ -684,10 +684,12 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
                 host's content with it. The pane is the one owner of the
                 `data-vigilia-panel` name, so the Composition pane's is
                 `layers` — the name the specs and the panel CSS already browse
-                by — and the other three are named for their rail slot. */}
+                by — and the other three are named for their rail slot. The
+                visible title is the slot's own word, as the other three are;
+                the `layers` name is only the DOM handle. */}
             <Pane
               id="layers"
-              title={uiCopy.panels.layers}
+              title={uiCopy.rail.slots.composition}
               icon={RAIL_GLYPHS.composition}
               hidden={slot !== "composition"}
               footer={<LayerActions bridge={store.bridge} />}

@@ -350,3 +350,72 @@ test("the status bar is the window's full-width bottom edge", async ({
     "the strip's content overruns its width",
   ).toBeLessThanOrEqual(box.clientWidth);
 });
+
+/**
+ * The selected slot's accent bar is on the rail's **inner** edge (bible §7.2),
+ * and only a rendered box can show which edge that is.
+ *
+ * jsdom has no layout and no cascade, so a `*.dom.test.tsx` case cannot see a
+ * rendered side — the bar lived at `left: -8px`, painting outside the rail's
+ * outer edge (the window's left edge), with a comment eight lines above it
+ * stating the rule it broke. The parity gate could not catch it either: the
+ * mockup drew the same bar in the same wrong place, so the two agreed. This is
+ * the assertion that can see it — the bar's own edges measured against the
+ * rail's — and the measurement is printed as the report's evidence.
+ *
+ * The rail is a 46px column and the slot a centred 34px button, so a 6px gutter
+ * sits on each side. The bar belongs to the rail, so its outer edge is flush
+ * with the rail's inner (right) edge, not past it: the mirror `right: -8px`
+ * lands 2px out in the rail-to-pane gap and fails `barRight` below.
+ */
+test("the selected slot's accent bar sits on the rail's inner edge", async ({
+  page,
+}, testInfo) => {
+  test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+
+  await page.goto(EDITOR);
+  await expect(
+    page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+  ).toBeVisible();
+
+  const measured = await page.evaluate(() => {
+    const rail = document.querySelector(".editor-shell-rail");
+    const slot = document.querySelector(
+      '.editor-shell-rail-slot[aria-pressed="true"]',
+    );
+    if (rail === null || slot === null) throw new Error("no selected slot");
+    const railBox = rail.getBoundingClientRect();
+    const slotBox = slot.getBoundingClientRect();
+    // The `::before` has no `getBoundingClientRect` of its own, so its box is
+    // composed from the slot's rect and the pseudo's resolved anchor.
+    const bar = getComputedStyle(slot, "::before");
+    const width = Number.parseFloat(bar.width);
+    const left =
+      bar.left !== "auto"
+        ? slotBox.left + Number.parseFloat(bar.left)
+        : slotBox.right - Number.parseFloat(bar.right) - width;
+    return {
+      railLeft: railBox.left,
+      railRight: railBox.right,
+      slotLeft: slotBox.left,
+      slotRight: slotBox.right,
+      barLeft: left,
+      barRight: left + width,
+      barWidth: width,
+      anchor: bar.left !== "auto" ? `left ${bar.left}` : `right ${bar.right}`,
+    };
+  });
+  const report = JSON.stringify(measured);
+  console.log(`accent-bar ${report}`);
+  testInfo.annotations.push({ type: "accent-bar", description: report });
+
+  expect(measured.barWidth, "the bar is the bible's 2px").toBe(2);
+  expect(
+    measured.barLeft,
+    "the bar starts inside the rail's outer edge",
+  ).toBeGreaterThanOrEqual(measured.railLeft);
+  expect(
+    measured.barRight,
+    "the bar's outer edge is the rail's inner edge",
+  ).toBeCloseTo(measured.railRight, 5);
+});
