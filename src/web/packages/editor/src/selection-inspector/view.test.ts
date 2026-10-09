@@ -94,6 +94,31 @@ describe("projectSelection", () => {
     expect(JSON.parse(JSON.stringify(view))).toEqual(view);
   });
 
+  it("strips a section's live body out of the view it renders", () => {
+    // The sections are handed in as rendered — view plus the elements React
+    // does not render yet — and projected to values. A `body` that survived
+    // into the view is a DOM node inside `SelectionView`, which is exactly what
+    // Review Focus 1's walk below rejects.
+    const rect = new Rect({ id: "shape", width: 10, height: 10 });
+    const view = projectSelection(rect, 1, ports(), [
+      {
+        id: "content",
+        title: "Content",
+        readOnly: false,
+        defaultOpen: true,
+        count: 1,
+        fields: [],
+        extras: [],
+        body: [document.createElement("div")],
+      },
+    ]);
+
+    expect(view.sections).toHaveLength(1);
+    expect(view.sections[0]?.count).toBe(1);
+    expect(view.sections[0]).not.toHaveProperty("body");
+    assertPlainValue(view, "view");
+  });
+
   it("is empty when nothing is selected", () => {
     const view = projectSelection(undefined, 0, ports());
 

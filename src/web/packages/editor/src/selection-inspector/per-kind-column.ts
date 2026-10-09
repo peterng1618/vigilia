@@ -15,10 +15,6 @@ import {
 import type { EditorInteraction } from "../editor-interaction.js";
 import { linkedPair } from "../editor-shell/controls/linked-pair.js";
 import { numberField } from "../editor-shell/controls/number-field.js";
-import {
-  propertySection,
-  type PropertySection,
-} from "../editor-shell/controls/property-section.js";
 import { uiCopy } from "../ui-copy.js";
 import {
   type AppearanceContext,
@@ -40,11 +36,12 @@ import {
   createShapeGeometryFields,
 } from "./panel.js";
 import { createRunEditor, type RunBindingPort } from "./runs.js";
+import type { ColumnSectionView } from "./view.js";
 
 /**
  * The column the inspector renders, as **data**: one entry per section, in the
  * order the questions are asked. A test enumerates this rather than reading the
- * DOM, and the inspector appends each `root` in turn.
+ * DOM, and the column renders exactly the sections it returns.
  *
  * The five questions are §4's — Content is what it shows, Position is where it
  * sits and how big, Layer is how it presents, Paint is what ink, Spends is what
@@ -58,16 +55,29 @@ import { createRunEditor, type RunBindingPort } from "./runs.js";
  * is not hidden: the summary carries the count.
  */
 
+/**
+ * The section vocabulary. `advanced` is **latent and stays**: a caller may mount
+ * a collapsed-and-counted treatment under it, but `perKindColumn` never emits
+ * one — the chart family's own advanced field is mounted by `chart-manager`, not
+ * here. Deleting the member to tidy it would be a behaviour change dressed as
+ * tidying.
+ */
 export type ColumnSectionId = SettingsSection | "advanced";
 
-export interface ColumnSection {
-  readonly section: ColumnSectionId;
-  /** The live section element. Reused across renders, so an open section stays
-      open rather than being rebuilt at its default. */
-  readonly root: HTMLElement;
-  readonly defaultOpen: boolean;
-  /** How many controls the section holds; the summary prints it. */
-  readonly count: number;
+/**
+ * One section as the column renders it: the DOM-free `ColumnSectionView` React
+ * reads, plus the live body elements React does not render yet.
+ *
+ * React owns the section's chrome — its header, its count and its open state —
+ * while the field builders still return `HTMLElement`s, so `index.ts` mounts
+ * `body` into the container the section renders. The bodies are handed *beside*
+ * the view and never inside it: `projectSelection` drops this member, because a
+ * `SelectionView` carrying an element fails Review Focus 1's value guard.
+ * Tasks 3–6 convert the bodies one section at a time, and this member goes with
+ * the last of them.
+ */
+export interface ColumnSection extends ColumnSectionView {
+  readonly body: readonly HTMLElement[];
 }
 
 /**
@@ -215,13 +225,6 @@ export interface ColumnContext {
    * a chart is not a kind this column invents questions for.
    */
   readonly chartFields?: ChartFieldsPort;
-  /**
-   * The section handles this column keeps, keyed by section. Handed in rather
-   * than held here so the state belongs to the inspector's lifetime: a
-   * re-render replaces a section's body and leaves the author's open sections
-   * exactly as they were.
-   */
-  readonly sections: Map<ColumnSectionId, PropertySection>;
 }
 
 /** Position is the one section closed by default; `advanced`, when a caller
@@ -617,9 +620,10 @@ function spendsBody(
  * The sections this selection gets, in the order the questions are asked.
  *
  * A section with nothing in it is not returned at all: the question does not
- * apply to this kind, so there is no header and no count of zero. Every section
- * that is returned keeps the handle it had, so a re-render replaces a body
- * without collapsing the section the author opened.
+ * apply to this kind, so there is no header and no count of zero. React renders
+ * exactly the sections it is handed, in the order it is handed them, so the
+ * empty-section rule and the order both stay here rather than becoming a second
+ * owner in the column.
  */
 export function perKindColumn(
   target: FabricObject,
@@ -647,31 +651,17 @@ export function perKindColumn(
   return bodies
     .filter(([, body]) => body.length > 0)
     .sort(([left], [right]) => sectionOrder(left) - sectionOrder(right))
-    .map(([id, body]) => {
-      const defaultOpen = defaultOpenOf(id);
-      const existing = context.sections.get(id);
-      if (existing !== undefined) {
-        existing.setBody(body);
-        return {
-          section: id,
-          root: existing.root,
-          defaultOpen,
-          count: body.length,
-        };
-      }
-
-      const created = propertySection({
-        id,
-        title: titleOf(id),
-        body,
-        defaultOpen,
-      });
-      context.sections.set(id, created);
-      return {
-        section: id,
-        root: created.root,
-        defaultOpen,
-        count: body.length,
-      };
-    });
+    .map(([id, body]) => ({
+      id,
+      title: titleOf(id),
+      // Spends is the read-only section in a later task; today no section
+      // declares itself uneditable, so no header says it is.
+      readOnly: false,
+      defaultOpen: defaultOpenOf(id),
+      count: body.length,
+      // Empty until Tasks 3–6 return the fields as values rather than elements.
+      fields: [],
+      extras: [],
+      body,
+    }));
 }

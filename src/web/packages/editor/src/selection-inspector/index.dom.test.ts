@@ -26,6 +26,7 @@ import {
   Rect,
   Textbox,
 } from "fabric/es";
+import { act } from "react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createObjectLockManager } from "../object-lock-manager/index.js";
 import { uiCopy } from "../ui-copy.js";
@@ -39,6 +40,13 @@ import {
   type SelectionKind,
   selectionKindOf,
 } from "./per-kind-column.js";
+
+// The column's sections keep their open state in React now, and React only
+// flushes a click's update inside `act` — so the one test that clicks a header
+// needs an act environment. Nothing else here drives React directly.
+(
+  globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
+).IS_REACT_ACT_ENVIRONMENT = true;
 
 /** A chart with settings but no live ECharts behind it: what the inspector
     reads is the object, not the engine that paints it. */
@@ -716,13 +724,15 @@ describe("the column's sections", () => {
       (section) => section.dataset["vigiliaSection"],
     );
 
-  const isOpen = (host: HTMLElement, id: string): boolean | undefined =>
-    host.querySelector<HTMLDetailsElement>(
-      `[data-vigilia-section="${id}"] details`,
-    )?.open;
+  const isOpen = (host: HTMLElement, id: string): boolean =>
+    host
+      .querySelector(`[data-vigilia-section="${id}"] > h2 > button`)
+      ?.getAttribute("aria-expanded") === "true";
 
   const summaryOf = (host: HTMLElement, id: string): HTMLElement =>
-    host.querySelector<HTMLElement>(`[data-vigilia-section="${id}"] summary`)!;
+    host.querySelector<HTMLElement>(
+      `[data-vigilia-section="${id}"] > h2 > button`,
+    )!;
 
   it("asks the five questions in order, and only Position starts closed", () => {
     const { host } = setup(rect);
@@ -751,24 +761,28 @@ describe("the column's sections", () => {
     // The count is the body's own length: a header that could claim more than
     // the section holds is the defect the section control exists to prevent.
     const count = Number(
-      section.querySelector(".vigilia-section-count")?.textContent,
+      section.querySelector("[data-vigilia-section-count]")?.textContent,
     );
-    const body = section.querySelector(".vigilia-section-body")!;
+    const body = section.querySelector("[data-vigilia-section-body]")!;
     expect(count).toBe(body.childElementCount);
     expect(body.childElementCount).toBeGreaterThan(0);
   });
 
-  it("keeps the sections the author opened across a re-render", () => {
+  it("keeps the sections the author opened across a re-publish", () => {
     const { host, inspector } = setup(rect);
-    summaryOf(host, "position").click();
-    summaryOf(host, "paint").click();
+    act(() => {
+      summaryOf(host, "position").click();
+      summaryOf(host, "paint").click();
+    });
     expect(isOpen(host, "position")).toBe(true);
     expect(isOpen(host, "paint")).toBe(false);
 
     inspector.render();
 
-    // The author's own arrangement, not a fresh default: rebuilding the column
-    // would collapse Position again and reopen Paint under their hands.
+    // The author's own arrangement, not a fresh default: a re-publish that
+    // rebuilt the sections would collapse Position again and reopen Paint under
+    // their hands. React keeps the open state; the projection only says what a
+    // fresh section starts as.
     expect(isOpen(host, "position")).toBe(true);
     expect(isOpen(host, "paint")).toBe(false);
   });
@@ -875,10 +889,9 @@ describe("the column's sections", () => {
       nodeBindings: undefined,
       onNodeBindingsChange: undefined,
       sampleSource: undefined,
-      sections: new Map(),
     });
 
-    expect(sections.map((section) => section.section)).toEqual([
+    expect(sections.map((section) => section.id)).toEqual([
       "content",
       "position",
       "layer",
@@ -888,12 +901,12 @@ describe("the column's sections", () => {
     expect(
       sections
         .filter((section) => section.defaultOpen)
-        .map((section) => section.section),
+        .map((section) => section.id),
     ).toEqual(["content", "layer", "paint", "spends"]);
     for (const section of sections) {
-      expect(section.count, section.section).toBe(
-        section.root.querySelectorAll(".vigilia-section-body > *").length,
-      );
+      // The count is the body's own length: the section renders the body React
+      // does not yet, and the header's count has to agree with it.
+      expect(section.count, section.id).toBe(section.body.length);
     }
   });
 
@@ -935,13 +948,16 @@ describe("the column's sections", () => {
       nodeBindings: undefined,
       onNodeBindingsChange: undefined,
       sampleSource: undefined,
-      sections: new Map(),
       chartFields,
     });
     const inSection = (name: string, marker: string): HTMLElement | null =>
       sections
-        .find((section) => section.section === name)
-        ?.root.querySelector<HTMLElement>(`[data-marker="${marker}"]`) ?? null;
+        .find((section) => section.id === name)
+        ?.body.find(
+          (element) =>
+            element.matches(`[data-marker="${marker}"]`) ||
+            element.querySelector(`[data-marker="${marker}"]`) !== null,
+        ) ?? null;
 
     expect(inSection("content", "content")).not.toBeNull();
     expect(inSection("paint", "paint")).not.toBeNull();
@@ -949,7 +965,7 @@ describe("the column's sections", () => {
     // each section is what tells the two apart when both are mounted.
     expect(inSection("paint", "content")).toBeNull();
     expect(inSection("content", "paint")).toBeNull();
-    expect(sections.find((s) => s.section === "content")?.count).toBe(2);
+    expect(sections.find((s) => s.id === "content")?.count).toBe(2);
   });
 });
 

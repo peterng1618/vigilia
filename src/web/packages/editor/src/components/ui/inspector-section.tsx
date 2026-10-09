@@ -19,15 +19,37 @@ import { hitTargetClasses } from "./control-well.js";
  *
  * The header is a target, so it carries §5's 24×24 through `hitTargetClasses`:
  * a 10px eyebrow on a 12px line is 18px of button.
+ *
+ * The count is optional and sits in the header rather than the body: a collapsed
+ * section that stopped saying how much it holds would be hiding, and §7.4's rule
+ * is that collapsing is ordering, not removal.
  */
 export function InspectorSection(props: {
   readonly id: string;
   readonly title: string;
   readonly readOnly?: boolean;
   readonly defaultOpen?: boolean;
+  readonly count?: number;
+  /**
+   * Scopes the header and panel ids so two sections with the same `id` in one
+   * document do not collide. `id` names the section and is the locator hook, but
+   * the aria pair has to be document-unique — two selection columns would
+   * otherwise both mint `content-header`, and the second `aria-controls` would
+   * resolve to the first column's panel. Empty by default, so a single surface
+   * keeps the plain `${id}-header` ids.
+   */
+  readonly idPrefix?: string;
   readonly children: React.ReactNode;
 }): React.JSX.Element {
-  const { id, title, readOnly, defaultOpen = true, children } = props;
+  const {
+    id,
+    title,
+    readOnly,
+    defaultOpen = true,
+    count,
+    idPrefix = "",
+    children,
+  } = props;
   const [open, setOpen] = useState(defaultOpen);
 
   return (
@@ -38,15 +60,23 @@ export function InspectorSection(props: {
       <h2 className="m-0">
         <button
           type="button"
-          id={`${id}-header`}
+          id={`${idPrefix}${id}-header`}
           aria-expanded={open}
-          aria-controls={`${id}-panel`}
+          aria-controls={`${idPrefix}${id}-panel`}
           onClick={() => setOpen((current) => !current)}
           className={`${hitTargetClasses} flex w-full items-center gap-[var(--space-6)] border-0 bg-transparent text-left focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent`}
         >
           <span className="text-2xs font-semibold tracking-[0.11em] text-muted uppercase">
             {title}
           </span>
+          {count === undefined ? null : (
+            <span
+              data-vigilia-section-count=""
+              className="text-2xs text-muted tabular-nums"
+            >
+              {count}
+            </span>
+          )}
           {readOnly === true ? (
             <span className="text-2xs text-muted">Read-only</span>
           ) : null}
@@ -56,7 +86,7 @@ export function InspectorSection(props: {
         </button>
       </h2>
       <div
-        id={`${id}-panel`}
+        id={`${idPrefix}${id}-panel`}
         hidden={!open}
         className="flex flex-col gap-[var(--space-6)] pt-[var(--space-8)]"
       >

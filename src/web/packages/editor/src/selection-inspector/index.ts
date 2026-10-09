@@ -6,13 +6,13 @@ import type {
 import { applyAuthoredText } from "@vigilia/scene-fabric";
 import type { FabricObject } from "fabric/es";
 import type { EditorInteraction } from "../editor-interaction.js";
-import type { PropertySection } from "../editor-shell/controls/property-section.js";
 import { OBJECT_LOCK_CHANGED_EVENT } from "../object-lock-manager/index.js";
+import { createSelectionColumnRoot } from "./column.js";
 import { createInspectorRoot } from "./inspector.js";
 import {
   type ChartFieldsPort,
   type ColumnContext,
-  type ColumnSectionId,
+  type ColumnSection,
   type GeometryKey,
   perKindColumn,
 } from "./per-kind-column.js";
@@ -201,21 +201,16 @@ export function createSelectionInspector(
   root.dataset["vigiliaPanel"] = "selection";
   host.append(root);
 
-  // React owns the subject and the empty state. The sections still render
-  // imperatively into their own host beside it: their fields are still DOM until
-  // the per-kind builders become values, so the two surfaces share the column
-  // until the last of them moves.
+  // Two React roots share the column until the last field body moves. The first
+  // renders the subject and the empty state; the second renders the sections'
+  // chrome — header, count and open state — in `sectionsHost` under it, so the
+  // visual order the imperative column had is preserved. `index.ts` mounts each
+  // section's still-imperative body into the container the section rendered.
   const reactHost = document.createElement("div");
   const sectionsHost = document.createElement("div");
   root.append(reactHost, sectionsHost);
   const column = createInspectorRoot(reactHost);
-
-  /**
-   * The sections this inspector has built, kept for its whole life. Rebuilding
-   * the column from this map is what keeps an open section open: a fresh
-   * `propertySection` would start at its default every render.
-   */
-  const sections = new Map<ColumnSectionId, PropertySection>();
+  const sectionColumn = createSelectionColumnRoot(sectionsHost);
 
   const selected = (): FabricObject | undefined =>
     editor.canvas.getActiveObject() ?? undefined;
@@ -431,12 +426,39 @@ export function createSelectionInspector(
       onNodeBindingsChange: options.onNodeBindingsChange,
       sampleSource: options.sampleSource,
       ...(chartFields === undefined ? {} : { chartFields }),
-      sections,
     };
   };
 
-  /** Projects the described object and publishes it to React. */
-  const publish = (): void => {
+  /**
+   * Mounts each section's imperative body into the container React rendered for
+   * it.
+   *
+   * The bodies are `ColumnSection.body` — the fields the per-kind builders still
+   * return as elements — and this is the narrow seam Ruling A names: React owns
+   * the chrome, `index.ts` owns what is inside the panel until Tasks 3–6 empty
+   * the bodies. The container is found by its own hook rather than by a handle,
+   * because the element is React's to create and this is the only place that
+   * fills it. A section React no longer rendered keeps no container, and its
+   * body goes with it.
+   */
+  const mountBodies = (sections: readonly ColumnSection[]): void => {
+    for (const section of sections) {
+      sectionsHost
+        .querySelector<HTMLElement>(
+          `[data-vigilia-section="${section.id}"] [data-vigilia-section-body]`,
+        )
+        ?.replaceChildren(...section.body);
+    }
+  };
+
+  /**
+   * Projects the described object, publishes the chrome to React and mounts the
+   * bodies under it — in that order, because the containers the bodies go into
+   * are the ones this very render created.
+   */
+  const render = (): void => {
+    const focused = focusedControl();
+
     const object = target();
     if (object !== described) {
       described = object;
@@ -450,20 +472,16 @@ export function createSelectionInspector(
       sampleSource: options.sampleSource,
       geometry: { read: readField, measuredEdge: measuredEdgeOf },
     };
-    column.publish(projectSelection(object, targetRevision, ports), edits);
-  };
+    const sections =
+      object === undefined ? [] : perKindColumn(object, columnContext());
 
-  const render = (): void => {
-    const focused = focusedControl();
-    publish();
-
-    const object = described;
-    sectionsHost.replaceChildren();
-    if (object !== undefined) {
-      for (const section of perKindColumn(object, columnContext())) {
-        sectionsHost.append(section.root);
-      }
-    }
+    const view = projectSelection(object, targetRevision, ports, sections);
+    // Both roots read the same view: the subject root renders the subject and
+    // the empty state, the section root renders the chrome. Each is flushed
+    // synchronously, so the bodies mount into containers that already exist.
+    column.publish(view, edits);
+    sectionColumn.publish(view, edits);
+    mountBodies(sections);
 
     restoreFocus(sectionsHost, focused);
   };
