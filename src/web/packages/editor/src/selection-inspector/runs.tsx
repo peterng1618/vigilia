@@ -242,6 +242,7 @@ export function projectRuns(
       text: string;
       typePreset: string;
       colour: string;
+      bindingId: string;
       sourceKey: string;
       unitDisplay: string;
       bindingNote?: string;
@@ -257,6 +258,10 @@ export function projectRuns(
       text: run.kind === "literal" ? run.text : "",
       typePreset: run.typePreset ?? presets[0]?.id ?? "",
       colour,
+      // The binding the run names, as the note's own hook carried it before the
+      // column was React (`run.bindingId`, not the row's ordinal): the ordinal
+      // is `index` and rides `data-vigilia-run`.
+      bindingId: run.kind === "value" ? run.bindingId : "",
       sourceKey: bound?.semanticKey ?? "",
       unitDisplay: run.kind === "value" ? (run.unitDisplay ?? "") : "",
     };
@@ -526,7 +531,7 @@ function RunRow(props: {
         <>
           <p
             className="vigilia-run-note text-xs text-muted"
-            data-vigilia-run-binding={row.index}
+            data-vigilia-run-binding={row.bindingId}
             {...(row.bindingProblem === undefined
               ? {}
               : { "data-vigilia-run-problem": row.bindingProblem })}

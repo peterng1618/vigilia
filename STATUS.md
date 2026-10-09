@@ -35,10 +35,10 @@ backlog it produced stays live in the register.
 
 ## Last completed change
 
-- **Task 3a fix round 1 (chart half)** — a chart setting's required `hint` reaches the author again: `ControlRow` renders it as an `sr-only` note each control adds to its own `aria-describedby`, and arms the row's tooltip with it (a refusal reason winning), matching `settings-field.ts`'s pre-plan behaviour.
-- **The port carries it** — `ChartSettingView` and all three of its arms carry `hint`, `panel.ts` reads it off the descriptor and `ChartSettingRow` passes it through; the hint lives in the control set because the id `aria-describedby` points at is minted inside the control, so a caller could only attach one with an imperative DOM write (ADR-0039).
-- **The DOM-free guard now walks the chart arms** — `view.test.ts`'s fixture projects a real chart, so `assertPlainValue` reaches `chartContent`/`chartPaint`, and a Fabric object planted in one is caught rather than skipped.
-- **Evidence** — `vitest run packages/editor` 127 files / 1662 tests pass; dropping the hint at the port reds both new hint tests; lint, typecheck, design:check (27 gated) and ownership clean; `settings-field.ts` left for plan 4.
+- **Task 3a fix round 1 — the chart hint is restored** — a chart setting's required `hint` reaches the author again: `ControlRow` renders it as an `sr-only` note each control adds to its own `aria-describedby`, and arms the row's tooltip with it (a refusal reason winning), matching `settings-field.ts`'s pre-plan behaviour; `ChartSettingView` and its arms carry `hint` through `panel.ts` and `ChartSettingRow`.
+- **The DOM-free guard now walks the chart arms** — `view.test.ts`'s fixture projects a real chart, so `assertPlainValue` reaches `chartContent`/`chartPaint`; a Fabric object planted in one is caught rather than skipped.
+- **`vg-250` fixed on the fly** — a run note's `data-vigilia-run-binding` carries the binding the run names (`run.bindingId`, as it did before the column was React), not the row ordinal, which stays on the row's own `data-vigilia-run`; `reference-theme.spec.ts:848` was correct as written and is green.
+- **Evidence** — `vitest run packages/editor` 127 files / 1662 tests pass; dropping the hint at the port reds both new hint tests, and reverting the attribute reds the new run-binding test (`expected '1' to be 'disk.free'`); lint, typecheck, design:check (27 gated) clean, and `reference-theme.spec.ts` measured by file (1 red — `:535`, the pre-existing combobox, Task 7's) with the fixture rebuilt.
 
 ## Next
 

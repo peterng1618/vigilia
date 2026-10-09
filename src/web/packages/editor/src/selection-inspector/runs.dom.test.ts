@@ -705,6 +705,27 @@ describe("which binding a value run carries", () => {
     expect(box.binding().problem).toBe("undeclared");
     return box.dispose();
   });
+
+  it("puts the binding on the note, and the row's ordinal on the row", async () => {
+    // The note's `data-vigilia-run-binding` is the binding the run names — the
+    // key `run.bindingId` carried before the column was React, and what
+    // `reference-theme.spec.ts` reads in its undeclared case. The ordinal is the
+    // row's own `data-vigilia-run`, so the two cannot be confused once a run
+    // that is not the first carries a binding.
+    const box = mountRunEditor({
+      runs: [
+        { kind: "literal", text: "Free space", typePreset: "typePresets.60-600" },
+        { kind: "value", bindingId: "disk.free" },
+      ],
+    });
+
+    const note = box.pick<HTMLElement>("[data-vigilia-run-binding]");
+    expect(note.getAttribute("data-vigilia-run-binding")).toBe("disk.free");
+    expect(
+      note.closest("[data-vigilia-run]")?.getAttribute("data-vigilia-run"),
+    ).toBe("1");
+    return box.dispose();
+  });
 });
 
 describe("which format tokens a clock can be given", () => {

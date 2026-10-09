@@ -147,6 +147,14 @@ export interface RunRowView {
   readonly text: string;
   readonly typePreset: string;
   readonly colour: string;
+  /**
+   * The binding this run names, for the note's `data-vigilia-run-binding` — the
+   * key `run.bindingId` carried before the column was React, and what a spec
+   * reads to learn *which* binding a value run failed to resolve. `""` for
+   * prose, which names no binding. It is not the row's ordinal: that is
+   * `index`, and it rides the row's own `data-vigilia-run` hook.
+   */
+  readonly bindingId: string;
   /** The semantic key a value run reads, or `""` for prose. */
   readonly sourceKey: string;
   readonly unitDisplay: string;
