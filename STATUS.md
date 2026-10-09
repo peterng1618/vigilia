@@ -9,7 +9,8 @@ Branch: `develop`
 frontend surface except the canvas.**
 
 The look is specified and the rewrite under it is decided; the gates, the control
-set, the shell's chrome and the stage's three corners are built. The target is
+set and the whole shell — rail, header, panes' chrome, status bar and the stage's
+three corners — are built and closed. The target is
 [`docs/design/design-language.md`](docs/design/design-language.md), the contract
 is
 [`2026-10-08-editor-design-language-design.md`](docs/superpowers/specs/2026-10-08-editor-design-language-design.md),
@@ -26,7 +27,7 @@ backlog it produced stays live in the register.
 
 ## Active work
 
-- **Plan 2 — [`the shell and the rail`](docs/superpowers/plans/2026-10-08-the-shell-and-the-rail.md) — is active.** All ten tasks are complete and reviewed; its final whole-branch review is next, and the plan closes when that passes.
+- **Plan 2 — [`the shell and the rail`](docs/superpowers/plans/2026-10-08-the-shell-and-the-rail.md) — is complete and closed** through `cea69cac`, and **plan 3, the inspector, is next**; no plan is active until it is dispatched from its own file, which stays in `plans/` because plans 3–6 depend on plan 2's difference list.
 - **Plan 1 — gates and the control set — is complete**, with a delivered-state reconciliation for Tasks 1–4 in the plan file in place of its retired ledger.
 - **The spec is `draft` and unimplemented** — its acceptance sections are plans of measurement, not results.
 - **Reactify ([0039](docs/decisions/0039-the-editor-ui-is-react-and-only-the-canvas-is-imperative.md)) is the frame, not a phase** — every editor surface becomes React, only the canvas stays imperative, and no Fabric object is ever mirrored into React state.
@@ -35,17 +36,17 @@ backlog it produced stays live in the register.
 
 ## Last completed change
 
-- **Task 10 of plan 2 — the difference list — is complete and reviewed** through `4701ac65`: one review, one fix round, one scoped re-review, all in the plan file.
-- **25 differences, none unowned**: 6 deliberate in this plan, 12 owned by a later plan (7 plan 4, 3 plan 5, 2 plan 3), 7 owned by a register row — and the partition names whole rows so it sums to the table.
-- **The review's one Important finding was its arithmetic**, which contradicted the table on the deliberate count and counted `#22` twice; the fix re-states 6 + 12 + 7 = 25 in both places and retires "reported as unowned" as a category.
-- **Two differences became rows rather than prose** — `vg-230` (the status bar renders no counts, though §7.6, spec §3.4 and Task 4's own outcome require them) and `vg-231` (the body's four regions inset 8px at an off-scale 12px radius in a deliberately ungated file), both verified against the code before filing.
-- **The third was ruled not a gap** — the mockup's brand chevron is its illustration of §7.1's "brand mark", which the wordmark already is.
+- **Plan 2 closed at `cea69cac`** after a final whole-branch review on opus: **no Critical**, all ten of the plan's `Review Focus` items absent, every invariant holding across the sequence, and the register confirmed honest.
+- **The one Important finding was the class the parity gate cannot catch** — the rail's accent bar painted on the window's outer edge where §7.2 requires the rail's inner edge, and the mockup drew it the same wrong way, so comparing product against mockup saw agreement.
+- **The fix round overruled the review by measuring**: `right: -6px` puts the bar flush at 52–54, where the suggested `-8px` mirror would have landed two pixels past the edge in the gutter, and a new browser case fails on both wrong values.
+- **`vg-230` and `vg-231` take the plan's last two gaps** — the status bar renders no counts the bible requires, and the body's regions sit at an off-scale 12px radius in a deliberately ungated file — with the review's two slips in my own rows corrected in `5e4ba9e0`.
+- **The mockup and the stylesheet moved together** (`e945e96d`), which is spec §13's rule applied to the file whose shared mistake had hidden the defect.
 
 ## Next
 
-1. **Plan 2's whole-branch review**, on the most capable model over `2c0081b1..HEAD` — 36 commits, 74 files, +3788/−1895 — with the plan's `Review Focus` list as its spine, since each of its ten entries is a failure no existing test catches.
-2. **Then one fix dispatch, one scoped re-review, adjudicate residuals, and delete the plan workspace** — before deleting it, anything that must outlive the plan needs a register row, because the ledger dies with the directory; Task 10's difference list already lives in the plan file for that reason.
-3. **Then plan 3, the inspector**, is the next of the five plans the sequencing table names.
+1. **Plan 3 — the inspector** — the next of the five plans the sequencing table names, read from [`2026-10-08-the-inspector.md`](docs/superpowers/plans/2026-10-08-the-inspector.md) and dispatched per-task exactly as plan 2 was.
+2. **It inherits plan 2's differences #20 and #21** (the empty state and the sectioned column) from the completion report, and the register rows this plan filed, above all `vg-226` (`--hot` marked destructive in the dock only).
+3. **Plan 2's SDD workspace is deleted**; its completion report lives in the plan file, which stays in `plans/` because plans 3–6 depend on it.
 4. **Unpushed:** `develop` is far ahead of `origin/develop`; no push is authorised.
 
 ## Blockers / unverified
