@@ -20,12 +20,12 @@ import type {
 import { uiCopy } from "../ui-copy.js";
 import {
   type AppearanceContext,
-  createResolutionLine,
   createTypePresetReveal,
   nameField,
   nameOfRef,
   opacityField,
   paintReferencesOf,
+  resolutionField,
   resolveToken,
   resolveTypePreset,
   typePresetOf,
@@ -537,8 +537,8 @@ function childrenResolution(
   target: FabricObject,
   context: ColumnContext,
 ): {
-  readonly paints: readonly HTMLElement[];
-  readonly presets: readonly HTMLElement[];
+  readonly paints: readonly FieldView[];
+  readonly presets: readonly FieldView[];
 } {
   const paints = new Map<string, string>();
   const presets = new Set<string>();
@@ -552,15 +552,19 @@ function childrenResolution(
   }
 
   return {
-    paints: [...paints].map(([ref, label]) =>
-      createResolutionLine(
+    // The ordinal is the row's id, not its hook: two distinct tokens can share
+    // one label, and the rows still have to be told apart by React.
+    paints: [...paints].map(([ref, label], index) =>
+      resolutionField(
+        `resolution-paint-${index}`,
         label,
         nameOfRef(context.globals, ref),
         resolveToken(context.globals, ref),
       ),
     ),
-    presets: [...presets].map((preset) =>
-      createResolutionLine(
+    presets: [...presets].map((preset, index) =>
+      resolutionField(
+        `resolution-preset-${index}`,
         uiCopy.inspectorFields.runPreset,
         nameOfRef(context.globals, preset),
         resolveTypePreset(context.globals, preset),
@@ -576,38 +580,48 @@ function spendsBody(
   context: ColumnContext,
   questions: KindQuestions,
 ): SectionParts {
+  const fields: FieldView[] = [];
+  // The reveal is a button, which the row union has no arm for: it stays the
+  // element the section mounts, exactly as it was before the rows moved here.
+  const body: HTMLElement[] = [];
+
   if (questions.childrenAppearance) {
     const { paints, presets } = childrenResolution(target, context);
     // A container whose children resolve to nothing still answers the paint
     // question — with "none" — exactly as a single unpainted object does, so the
     // section keeps the line it had before it learned to read the children.
-    return {
-      body: [
-        ...(paints.length === 0
-          ? [
-              createResolutionLine(
-                uiCopy.inspectorFields.paint,
-                undefined,
-                undefined,
-              ),
-            ]
-          : paints),
-        ...presets,
-      ],
-    };
+    if (paints.length === 0) {
+      fields.push(
+        resolutionField(
+          "resolution-paint",
+          uiCopy.inspectorFields.paint,
+          undefined,
+          undefined,
+        ),
+      );
+    } else {
+      fields.push(...paints);
+    }
+    fields.push(...presets);
+    return { fields, body };
   }
 
-  const body: HTMLElement[] = [];
   const references = paintReferencesOf(target);
 
   if (references.length === 0) {
-    body.push(
-      createResolutionLine(uiCopy.inspectorFields.paint, undefined, undefined),
+    fields.push(
+      resolutionField(
+        "resolution-paint",
+        uiCopy.inspectorFields.paint,
+        undefined,
+        undefined,
+      ),
     );
   } else {
-    for (const { label, ref } of references) {
-      body.push(
-        createResolutionLine(
+    for (const [index, { label, ref }] of references.entries()) {
+      fields.push(
+        resolutionField(
+          `resolution-paint-${index}`,
           label,
           nameOfRef(context.globals, ref),
           resolveToken(context.globals, ref),
@@ -623,8 +637,9 @@ function spendsBody(
     // panel beside it and both dropdowns printed `Card title`. That is what
     // made vg-089 read as a mis-bound dropdown: the screenshot had caught
     // this line, not the control it was blamed on.
-    body.push(
-      createResolutionLine(
+    fields.push(
+      resolutionField(
+        "resolution-preset",
         uiCopy.inspectorFields.runPreset,
         nameOfRef(context.globals, preset),
         resolveTypePreset(context.globals, preset),
@@ -635,7 +650,7 @@ function spendsBody(
     }
   }
 
-  return { body };
+  return { fields, body };
 }
 
 /**
@@ -678,9 +693,10 @@ export function perKindColumn(
     .map(([id, parts]) => ({
       id,
       title: titleOf(id),
-      // Spends is the read-only section in a later task; today no section
-      // declares itself uneditable, so no header says it is.
-      readOnly: false,
+      // Spends is the one question the author cannot answer by an edit — every
+      // value in it is edited where it is owned, not here — so its header is
+      // the one that says so before the section is opened (bible §5 rule 1).
+      readOnly: id === "spends",
       defaultOpen: defaultOpenOf(id),
       // One number over one section: the rows React renders and the body it does
       // not yet, counted from the same parts the section is built from.

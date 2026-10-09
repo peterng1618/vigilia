@@ -199,9 +199,30 @@ export function resolveTypePreset(
 }
 
 /**
- * A read-only line naming a reference and what it resolves to. `shown` is what
- * the author reads — the authored name where the document declares one, and the
- * stored reference where it does not. See `nameOfRef`.
+ * What a resolution line says after its label: `shown` is what the author reads
+ * — the authored name where the document declares one, and the stored reference
+ * where it does not (see `nameOfRef`) — or, absent, the `notSet` word.
+ *
+ * One owner for the sentence, because the selection's Spends rows and the
+ * Document pane's list are two renderings of it: the `notSet` and `unresolved`
+ * cases keep their full length in both, since "no longer resolves" is a fact
+ * the author needs rather than a word to shorten.
+ */
+function resolutionValue(
+  shown: string | undefined,
+  resolved: string | undefined,
+): string {
+  if (shown === undefined) return uiCopy.inspectorFields.notSet;
+  // An unresolvable reference is reported, never blanked: the author chose it,
+  // so they must be told it no longer answers.
+  return resolved === undefined
+    ? `${shown} (${uiCopy.inspectorFields.unresolved})`
+    : `${shown} → ${resolved}`;
+}
+
+/**
+ * A read-only line naming a reference and what it resolves to, as the Document
+ * pane mounts it. `label` is both the row's own name and its hook.
  */
 export function createResolutionLine(
   label: string,
@@ -211,19 +232,30 @@ export function createResolutionLine(
   const line = document.createElement("p");
   line.className = "vigilia-resolution";
   line.dataset["vigiliaResolution"] = label;
-
-  if (shown === undefined) {
-    line.textContent = `${label}: ${uiCopy.inspectorFields.notSet}`;
-    return line;
-  }
-
-  // An unresolvable reference is reported, never blanked: the author chose it,
-  // so they must be told it no longer answers.
-  line.textContent =
-    resolved === undefined
-      ? `${label}: ${shown} (${uiCopy.inspectorFields.unresolved})`
-      : `${label}: ${shown} → ${resolved}`;
+  line.textContent = `${label}: ${resolutionValue(shown, resolved)}`;
   return line;
+}
+
+/**
+ * The selection's own resolution line as a **value**: the read-only row React
+ * renders in Spends. A separate id from `label` because two rows can carry the
+ * same label — a group whose children use two different paint tokens answers
+ * with two `Paint` lines — and React keys, and the column's row identity, need
+ * something that tells them apart.
+ */
+export function resolutionField(
+  id: string,
+  label: string,
+  shown: string | undefined,
+  resolved: string | undefined,
+): FieldView {
+  return {
+    id,
+    control: "readOnly",
+    label,
+    value: resolutionValue(shown, resolved),
+    data: { "data-vigilia-resolution": label },
+  };
 }
 
 /**

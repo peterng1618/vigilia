@@ -475,6 +475,21 @@ describe("the selection inspector", () => {
     expect(line?.textContent).toContain("#e8ecf3");
   });
 
+  it("renders a resolution row with no editable control", () => {
+    rect.set({ vigiliaPaint: { fill: "palette.ink" } });
+    const { host } = setup(rect);
+    const row = host.querySelector<HTMLElement>(
+      '[data-vigilia-resolution="Paint"]',
+    );
+
+    // A row, not a control: the value reads in mono beside the label, and the
+    // row carries no well — bible §5.1's border means editable, so a border
+    // here would advertise an edit the section cannot make.
+    expect(row?.querySelector(".font-mono")?.textContent).toContain("Ink");
+    expect(row?.querySelector("input, select, button, textarea")).toBeNull();
+    expect(row?.querySelector('[class~="border"]')).toBeNull();
+  });
+
   it("reports a reference that no longer resolves rather than blanking it", () => {
     rect.set({ vigiliaPaint: { fill: "palette.gone" } });
     const { host } = setup(rect);
@@ -1068,6 +1083,26 @@ describe("the column's sections", () => {
     // resolves to is not how it is painted.
     expect(inSection("position", '[data-vigilia-geometry="angle"]')).toBeNull();
     expect(inSection("paint", "[data-vigilia-resolution]")).toBeNull();
+  });
+
+  it("renders Spends as a read-only section, and says so in its header", () => {
+    const { host } = setup(rect);
+    const header = host.querySelector(
+      '[data-vigilia-section="spends"] > h2 > button',
+    );
+
+    // §5 rule 1: the section says it cannot be edited **in words**, before it is
+    // opened, rather than leaving the author to infer it from absent controls.
+    expect(header?.textContent).toContain("Read-only");
+    // The marker is the section's, not another section's: no other question is
+    // read-only, so a header elsewhere must not carry it.
+    for (const id of ["content", "position", "layer", "paint"]) {
+      expect(
+        host.querySelector(`[data-vigilia-section="${id}"] > h2 > button`)
+          ?.textContent,
+        id,
+      ).not.toContain("Read-only");
+    }
   });
 
   it("is a plan a test can read as data, before anything renders", () => {
