@@ -26,7 +26,7 @@ backlog it produced stays live in the register.
 
 ## Active work
 
-- **Plan 3 — [`the inspector`](docs/superpowers/plans/2026-10-08-the-inspector.md) — is the active plan**: Tasks 1–8 are complete through `59a678fe`, each reviewed, after three fix rounds and two clean scoped re-reviews; Task 9, the parity capture beside the mockup, is next.
+- **Plan 3 — [`the inspector`](docs/superpowers/plans/2026-10-08-the-inspector.md) — is the active plan**: Tasks 1–9 are complete through `1ab06ad2`, each reviewed; Task 10, the register and the close, is next and is the last task in the plan.
 - **Plans 1 and 2 are complete and closed** — the gates and the control set, then the shell and the rail through `cea69cac`; exactly one plan is active at a time, and this is it.
 - **The spec is `draft` and unimplemented** — its acceptance sections are plans of measurement, not results.
 - **Reactify ([0039](docs/decisions/0039-the-editor-ui-is-react-and-only-the-canvas-is-imperative.md)) is the frame, not a phase** — every editor surface becomes React, only the canvas stays imperative, and no Fabric object is ever mirrored into React state.
@@ -35,15 +35,15 @@ backlog it produced stays live in the register.
 
 ## Last completed change
 
-- **Task 8 read the ratchet rather than extending it, and that is the finding** — `design:check` exits **0** over **28** gated files, and an emptied list exits **1** naming the list, proved through one `os.tmpdir()` path because a `/tmp` literal resolves differently for Git Bash and Node and would have failed as "no such file" — a non-zero exit that looks like the proof while proving nothing.
-- **The guard was red-proved, not assumed** — planting `#ff00aa` and `7px` in a gated surface turned it red, so a green run is a measurement rather than an absence of one.
-- **No CSS was deleted, because the deletion set is empty** — `.vigilia-field*` still has live emitters in plan 4's panes and `.vigilia-resolution` is still emitted at `appearance.ts:233`; deleting them would break rendering now and fail the step's own grep, so the brief's conditional "Modify" line resolved to nothing.
-- **Ruling AE is applied** — the `PRE_PLAN` docblock reads **46** names with a remainder of **27**, the over-count caveat travelling beside the instrument rather than being dropped.
-- **The plan's own figures re-measured, one corrected** — `editor-shell.css` is 88 hex occurrences on **83** lines and the editor source 358 across 51 files; the controller's earlier **53** was a shared-`/g` `lastIndex` artefact, caught by the agent and reproduced by the reviewer.
+- **The parity captures are now the real column, and two of them had been pictures of the old one** — card and shape were last written at `8b4274b7` on 2026-10-06, 328 commits back; all four are regenerated, shoot the 276px column instead of a 1280×720 viewport, and came back byte-identical when the reviewer re-ran them into a scratch directory.
+- **Ruling AF: Opacity was a §5 defect, not a deliberate simplification** — bible §5's closed control table, the mockup's own caption at `inspector-controls.html:201` and this plan's `glass.ts:180-184` precedent all call a bounded number a slider, so it is one now; Rotation stays a number because angles wrap and nothing bounds them.
+- **Ruling AG: the capture shot the viewport, so `Spends` had never been photographed** — the clip is `.editor-shell-inspector`'s `overflow: auto`, and a plain element capture still showed a blank band; `captureVisualReview` gained an optional scope, leaving every existing caller's output unchanged.
+- **A fourth capture for the dark half, which was genuinely uncovered** — the existing captures are the editorial palette and `shell-palette-graphite` photographs an empty column, so `editor-inspector-chart-graphite` is the only capture that could catch a hard-coded hex; it did not, because the accent is palette-driven.
+- **Two claims corrected rather than carried** — the report's "mockup panels draw no count" is false (the historical panel draws the product's exact `Content 1` / `Position 3` / `Spends 8`, so that item is a parity match), and `vg-254` is filed for the slider's missing drag preview, measured in the built editor and traced to `column.tsx:183-192` passing no `onPreview`.
 
 ## Next
 
-1. **Task 9 is next in plan 3** — the parity capture beside the mockup, with three pre-flight corrections: the three captures and their README rows **already exist**, so Step 1 is giving the existing ones the preconditions they lack (subject block leads, five sections with Position closed, a read-only Spends row with no editable control), and **two of the three images are stale** — card and shape were last written 2026-10-06 at `8b4274b7`, 328 commits back, before this plan rebuilt the column; `captureVisualReview` returns early and silently when `VIGILIA_CAPTURE` is unset, so "1 test ran" is not proof an image was written; and the dark-palette capture the brief requires is registered nowhere. Task 10's register and close follows.
+1. **Task 10 is next, and it is the plan's last task** — the register and the close, **pre-verified**: `vg-148` is live at `backlog.jsonl:36` and is fixed by plan 3, with `check` = `selection-inspector/index.dom.test.ts:731` (run at `7a56d174`: **1 passed | 88 skipped**) and `artefacts` = `f1a35b82`, which `git merge-base --is-ancestor` confirms is on the mainline; all six rows it leaves open (`vg-094`, `vg-153`, `vg-158`, `vg-160`, `vg-185`, `vg-192`) are live and `open`, and the archive must be grepped on the **`id` field**, because the bare string `vg-148` matches a cross-reference in `vg-157`'s prose.
 2. **The display proof is blocked on `vg-119`** — `author-journey-display.spec.ts` fails at `rebuild-composition.ts:148`'s stale `colour: "text"` (the document declares `palette.text`), an open row with its own owner; `vg-253` is the same file's 16 remaining `selectOption` sites, filed separately because fixing the colour leaves those failing.
 3. **Unpushed:** `develop` is far ahead of `origin/develop`; no push is authorised.
 
