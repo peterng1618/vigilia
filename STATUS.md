@@ -9,8 +9,7 @@ Branch: `develop`
 frontend surface except the canvas.**
 
 The look is specified and the rewrite under it is decided; the gates, the control
-set and the whole shell — rail, header, panes' chrome, status bar and the stage's
-three corners — are built and closed. The target is
+set, the whole shell and now the inspector's boundary are built. The target is
 [`docs/design/design-language.md`](docs/design/design-language.md), the contract
 is
 [`2026-10-08-editor-design-language-design.md`](docs/superpowers/specs/2026-10-08-editor-design-language-design.md),
@@ -27,8 +26,8 @@ backlog it produced stays live in the register.
 
 ## Active work
 
-- **Plan 2 — [`the shell and the rail`](docs/superpowers/plans/2026-10-08-the-shell-and-the-rail.md) — is complete and closed** through `cea69cac`, and **plan 3, the inspector, is next**; no plan is active until it is dispatched from its own file, which stays in `plans/` because plans 3–6 depend on plan 2's difference list.
-- **Plan 1 — gates and the control set — is complete**, with a delivered-state reconciliation for Tasks 1–4 in the plan file in place of its retired ledger.
+- **Plan 3 — [`the inspector`](docs/superpowers/plans/2026-10-08-the-inspector.md) — is the active plan**: Task 1, the projection and the React boundary, is complete at `61862c6c`, and Task 2, the five sections, is next.
+- **Plans 1 and 2 are complete and closed** — the gates and the control set, then the shell and the rail through `cea69cac`; exactly one plan is active at a time, and this is it.
 - **The spec is `draft` and unimplemented** — its acceptance sections are plans of measurement, not results.
 - **Reactify ([0039](docs/decisions/0039-the-editor-ui-is-react-and-only-the-canvas-is-imperative.md)) is the frame, not a phase** — every editor surface becomes React, only the canvas stays imperative, and no Fabric object is ever mirrored into React state.
 - **The mockups are the checked reference** ([`docs/design/mockups/`](docs/design/mockups/)), not files read once and remembered; spec §13 makes a capture beside them a gate item.
@@ -36,18 +35,17 @@ backlog it produced stays live in the register.
 
 ## Last completed change
 
-- **Plan 2 closed at `cea69cac`** after a final whole-branch review on opus: **no Critical**, all ten of the plan's `Review Focus` items absent, every invariant holding across the sequence, and the register confirmed honest.
-- **The one Important finding was the class the parity gate cannot catch** — the rail's accent bar painted on the window's outer edge where §7.2 requires the rail's inner edge, and the mockup drew it the same wrong way, so comparing product against mockup saw agreement.
-- **The fix round overruled the review by measuring**: `right: -6px` puts the bar flush at 52–54, where the suggested `-8px` mirror would have landed two pixels past the edge in the gutter, and a new browser case fails on both wrong values.
-- **`vg-230` and `vg-231` take the plan's last two gaps** — the status bar renders no counts the bible requires, and the body's regions sit at an off-scale 12px radius in a deliberately ungated file — with the review's two slips in my own rows corrected in `5e4ba9e0`.
-- **The mockup and the stylesheet moved together** (`e945e96d`), which is spec §13's rule applied to the file whose shared mistake had hidden the defect.
+- **Plan 3 Task 1 landed at `61862c6c`** — the column now renders from a serializable `SelectionView` published through a store React subscribes to, so no Fabric object is reachable from React.
+- **The guard the plan exists for held**: `assertPlainValue` walks prototypes and arrays and rejects functions, DOM nodes and non-finite numbers, so the JSON round-trip is a real check rather than a shape assertion.
+- **One fix round answered three Important findings** — a browser locator the commit had killed, a revision guard that shipped unreachable and untested, and a subject-name rule re-derived from the layer row's.
+- **The guard is now `view.ts`'s pure `editRefusal`**, consulted by the port at call time and driven directly by its test, with `layer-tree.ts`'s `rowNameOf` as the single owner of the name chain.
+- **`vg-148`'s lock notify is in** — the lock manager fires its own event rather than reusing `object:modified`, which would have written two history entries per lock.
 
 ## Next
 
-1. **Plan 3 — the inspector** — the next of the five plans the sequencing table names, read from [`2026-10-08-the-inspector.md`](docs/superpowers/plans/2026-10-08-the-inspector.md) and dispatched per-task exactly as plan 2 was.
-2. **It inherits plan 2's differences #20 and #21** (the empty state and the sectioned column) from the completion report, and the register rows this plan filed, above all `vg-226` (`--hot` marked destructive in the dock only).
-3. **Plan 2's SDD workspace is deleted**; its completion report lives in the plan file, which stays in `plans/` because plans 3–6 depend on it.
-4. **Unpushed:** `develop` is far ahead of `origin/develop`; no push is authorised.
+1. **Task 2 — the five sections** — dispatched from its brief, which carries three controller rulings the plan's own text contradicted.
+2. **Task 3 inherits three binding constraints** — the deferred blur-race proof, `restoreFocus`'s host-scoped focus query, and the per-object lock notify burst inside the history walk.
+3. **Unpushed:** `develop` is far ahead of `origin/develop`; no push is authorised.
 
 ## Blockers / unverified
 
