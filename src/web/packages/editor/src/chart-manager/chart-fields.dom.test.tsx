@@ -1,5 +1,9 @@
 // @vitest-environment jsdom
-import type { Binding, ChartContent, FabricPalette } from "@vigilia/renderer-core";
+import type {
+  Binding,
+  ChartContent,
+  FabricPalette,
+} from "@vigilia/renderer-core";
 import {
   computeComposition,
   defaultLineSettings,
@@ -150,7 +154,10 @@ function stageFor(target: ChartFieldTarget, tokens: FabricPalette | undefined) {
 
 const stages: ChartFieldsStage[] = [];
 
-function over(target: ChartFieldTarget, tokens: FabricPalette | undefined = palette) {
+function over(
+  target: ChartFieldTarget,
+  tokens: FabricPalette | undefined = palette,
+) {
   const box = stageFor(target, tokens);
   stages.push(box.stage);
   return box;
@@ -209,9 +216,10 @@ describe("every chart family's controls", () => {
           stage.host,
           `data-vigilia-chart-setting="${field.property}"`,
         );
-        expect(control.id, `${target.id}: ${field.property} has no id`).not.toBe(
-          "",
-        );
+        expect(
+          control.id,
+          `${target.id}: ${field.property} has no id`,
+        ).not.toBe("");
         expect(
           labelled(field.label),
           `${target.id}: "${field.property}" is not named "${field.label}"`,
@@ -243,7 +251,9 @@ describe("every chart family's controls", () => {
     expect(
       pick<HTMLButtonElement>(stage.host, 'data-vigilia-binding="cpu"').id,
     ).toBe("vigilia-chart-binding-cpu");
-    expect(valueText(stage.host, 'data-vigilia-binding="cpu"')).toBe("CPU load");
+    expect(valueText(stage.host, 'data-vigilia-binding="cpu"')).toBe(
+      "CPU load",
+    );
     for (const field of ["precision", "scale", "offset"]) {
       expect(
         pick<HTMLInputElement>(
@@ -347,7 +357,11 @@ describe("a setting one level down", () => {
     // behind it wrote a literal `"total.value"` key the renderer never reads.
     const { stage, calls, set } = over(pie);
 
-    await choose(stage.host, 'data-vigilia-chart-setting="total"', "A fixed total");
+    await choose(
+      stage.host,
+      'data-vigilia-chart-setting="total"',
+      "A fixed total",
+    );
     const fixed = lastSettings(calls) as typeof defaultPieSettings;
     expect(fixed.total).toEqual({ kind: "fixed" });
     expect("total.value" in fixed).toBe(false);
@@ -551,7 +565,9 @@ describe("what a chart paints its data with", () => {
   it("writes the token the author chose", async () => {
     const { stage, calls } = over(gauge);
     await choose(stage.host, 'data-vigilia-chart-paint="track"', "RAM");
-    expect(lastSettings(calls)).toMatchObject({ track: { ref: "palette.ram" } });
+    expect(lastSettings(calls)).toMatchObject({
+      track: { ref: "palette.ram" },
+    });
   });
 
   it("writes one entry of a repeated paint, leaving its neighbours alone", async () => {

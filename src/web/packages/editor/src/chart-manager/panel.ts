@@ -95,10 +95,7 @@ function aspectView(target: ChartFieldTarget): ChartAspectView {
   };
 }
 
-function seriesRow(
-  binding: Binding,
-  moreThanOne: boolean,
-): ChartSeriesRowView {
+function seriesRow(binding: Binding, moreThanOne: boolean): ChartSeriesRowView {
   // The series' own key is offered even when no descriptor declares it: a
   // document can name one the table no longer has, and a picker that dropped it
   // would show the series as reading nothing.
@@ -110,7 +107,8 @@ function seriesRow(
     binding,
     keyOptions: [...keys].map((key) => ({
       id: key,
-      name: SEMANTIC_KEYS.find((descriptor) => descriptor.key === key)?.label ??
+      name:
+        SEMANTIC_KEYS.find((descriptor) => descriptor.key === key)?.label ??
         key,
     })),
     removable: moreThanOne,
@@ -262,9 +260,9 @@ export function chartPaintView(
   palette: FabricPalette | undefined,
 ): ChartPaintFieldsView {
   const { content } = target;
-  const options: readonly ChartOptionView[] = Object.entries(
-    palette ?? {},
-  ).map(([tokenId, entry]) => ({ id: `palette.${tokenId}`, name: entry.name }));
+  const options: readonly ChartOptionView[] = Object.entries(palette ?? {}).map(
+    ([tokenId, entry]) => ({ id: `palette.${tokenId}`, name: entry.name }),
+  );
   const settings = content.settings as unknown as Record<string, unknown>;
   const rows: ChartPaintRowView[] = [];
 
@@ -272,9 +270,7 @@ export function chartPaintView(
     const value = settings[field.property];
     if (field.multiple === true && Array.isArray(value)) {
       value.forEach((paint, index) => {
-        rows.push(
-          paintRow(field.property, field.label, index, paint, options),
-        );
+        rows.push(paintRow(field.property, field.label, index, paint, options));
       });
       continue;
     }

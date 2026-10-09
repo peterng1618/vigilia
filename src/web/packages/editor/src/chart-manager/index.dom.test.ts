@@ -850,7 +850,11 @@ describe("a chart's series paint", () => {
       (objects[0]?.settings as unknown as Record<string, unknown>)["palette"];
     expect(Array.isArray(palette()) && (palette() as unknown[]).length).toBe(1);
 
-    for (const semanticKey of ["CPU load", "GPU load", "RAM used (share of total)"]) {
+    for (const semanticKey of [
+      "CPU load",
+      "GPU load",
+      "RAM used (share of total)",
+    ]) {
       await choose(stage.host, "data-vigilia-chart-binding-add", semanticKey);
       stage.render();
     }

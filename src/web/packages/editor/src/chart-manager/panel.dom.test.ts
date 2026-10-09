@@ -150,8 +150,10 @@ describe("the chart fields, as the owner hands them over", () => {
           row.label.trim(),
           `${target.id}: "${row.key}" has no label with words on it`,
         ).not.toBe("");
-        expect(row.path.length, `${target.id}: "${row.key}" writes nowhere`)
-          .toBeGreaterThan(0);
+        expect(
+          row.path.length,
+          `${target.id}: "${row.key}" writes nowhere`,
+        ).toBeGreaterThan(0);
       }
     }
   });
@@ -169,9 +171,7 @@ describe("the chart fields, as the owner hands them over", () => {
   it("names the corner-radius control the same way the panel did", () => {
     // The exact lookup that returned nothing twice: name the control, not find
     // it by walking the section.
-    const rows = chartContentView(
-      charts[2] as ChartFieldTarget,
-    ).rows;
+    const rows = chartContentView(charts[2] as ChartFieldTarget).rows;
     const byLabel = rows.find((row) => row.label === "Corner radius");
     expect(byLabel?.key).toBe("cornerRadius");
     expect(rows.find((row) => row.label === "Track corner radius")?.key).toBe(
@@ -211,9 +211,9 @@ describe("the fixed-total question", () => {
       "total",
       "value",
     ]);
-    expect(rows.find((row) => row.key === "animation.durationMs")?.path).toEqual(
-      ["animation", "durationMs"],
-    );
+    expect(
+      rows.find((row) => row.key === "animation.durationMs")?.path,
+    ).toEqual(["animation", "durationMs"]);
   });
 
   it("tells the renderer to remove a key the author cleared", () => {
@@ -325,9 +325,9 @@ describe("the line chart's aspect group", () => {
   it("presses nothing when the chart is at none of them", () => {
     // Read off the object rather than remembered from the last click: rounding
     // a 2.004:1 chart to the nearest would light up a ratio nobody applied.
-    expect(
-      chartContentView(charts[1] as ChartFieldTarget).aspect?.value,
-    ).toBe("");
+    expect(chartContentView(charts[1] as ChartFieldTarget).aspect?.value).toBe(
+      "",
+    );
   });
 
   it("is not a question the other families are asked", () => {
@@ -407,6 +407,9 @@ describe("what a chart paints its data with", () => {
     // A gauge has no per-series palette, so a repeated row that is absent from
     // its settings is not a control with an empty choice — it is not a row.
     const gauge = chartPaintView(charts[0] as ChartFieldTarget, palette);
-    expect(gauge.rows.map((row) => row.property)).toEqual(["track", "progress"]);
+    expect(gauge.rows.map((row) => row.property)).toEqual([
+      "track",
+      "progress",
+    ]);
   });
 });

@@ -428,7 +428,8 @@ function contentBody(
     context.chartFields !== undefined
   ) {
     const chart = context.chartFields.content(target);
-    if (chart !== undefined) extras.push({ kind: "chartContent", content: chart });
+    if (chart !== undefined)
+      extras.push({ kind: "chartContent", content: chart });
   }
 
   return { fields, extras, body };

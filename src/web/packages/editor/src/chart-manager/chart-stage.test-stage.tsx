@@ -169,7 +169,10 @@ export async function typeInto(
 }
 
 /** Enters a draft and commits it, the way a person leaves the field. */
-export async function edit(input: HTMLInputElement, value: string): Promise<void> {
+export async function edit(
+  input: HTMLInputElement,
+  value: string,
+): Promise<void> {
   await typeInto(input, value);
   await blur(input);
 }

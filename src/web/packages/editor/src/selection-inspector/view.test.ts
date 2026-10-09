@@ -171,7 +171,9 @@ describe("projectSelection", () => {
     // nothing about them, so the fixture projects a real chart and the walk
     // reaches inside both arms.
     const rect = new Rect({ id: "shape", width: 10, height: 10 });
-    const view = projectSelection(rect, 1, ports(), [chartSection(CHART_EXTRAS)]);
+    const view = projectSelection(rect, 1, ports(), [
+      chartSection(CHART_EXTRAS),
+    ]);
 
     assertPlainValue(view, "view");
 
@@ -180,14 +182,18 @@ describe("projectSelection", () => {
     const planted = chartSection([
       {
         kind: "chartContent",
-        content: { ...chartContentView(CHART), content: new Rect({ id: "leak" }) },
+        content: {
+          ...chartContentView(CHART),
+          content: new Rect({ id: "leak" }),
+        },
       } as unknown as ExtraView,
     ]);
     const dirty = projectSelection(rect, 1, ports(), [planted]);
     expect(() => assertPlainValue(dirty, "view")).toThrow(/plain object/);
   });
 
-  it("is empty when nothing is selected", () => {    const view = projectSelection(undefined, 0, ports());
+  it("is empty when nothing is selected", () => {
+    const view = projectSelection(undefined, 0, ports());
 
     expect(view.subject).toBeUndefined();
     expect(view.sections).toHaveLength(0);

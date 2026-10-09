@@ -184,42 +184,40 @@ function Section(props: {
           {fieldControl(field, edits, revision)}
         </Fragment>
       ))}
-      {section.extras
-        .filter(rendersExtra)
-        .map((extra) => {
-          switch (extra.kind) {
-            case "runs":
-              return (
-                <RunEditor
-                  key={`${revision}:runs`}
-                  runs={extra.runs}
-                  edits={runs}
-                />
-              );
-            case "chartContent":
-              // A chart's own questions, rendered by the owner that answers
-              // them. The writes go through `ChartEdits`, not `SelectionEdits`:
-              // a chart's commit rules are the chart's.
-              return (
-                <ChartContentFields
-                  key={`${revision}:chartContent`}
-                  view={extra.content}
-                  edits={chart}
-                />
-              );
-            case "chartPaint":
-              return (
-                <ChartPaintFields
-                  key={`${revision}:chartPaint`}
-                  view={extra.paint}
-                  edits={chart}
-                />
-              );
-            default:
-              // `crop` — Task 4's, and `rendersExtra` does not admit it yet.
-              return null;
-          }
-        })}
+      {section.extras.filter(rendersExtra).map((extra) => {
+        switch (extra.kind) {
+          case "runs":
+            return (
+              <RunEditor
+                key={`${revision}:runs`}
+                runs={extra.runs}
+                edits={runs}
+              />
+            );
+          case "chartContent":
+            // A chart's own questions, rendered by the owner that answers
+            // them. The writes go through `ChartEdits`, not `SelectionEdits`:
+            // a chart's commit rules are the chart's.
+            return (
+              <ChartContentFields
+                key={`${revision}:chartContent`}
+                view={extra.content}
+                edits={chart}
+              />
+            );
+          case "chartPaint":
+            return (
+              <ChartPaintFields
+                key={`${revision}:chartPaint`}
+                view={extra.paint}
+                edits={chart}
+              />
+            );
+          default:
+            // `crop` — Task 4's, and `rendersExtra` does not admit it yet.
+            return null;
+        }
+      })}
       <div data-vigilia-section-body="" />
     </InspectorSection>
   );

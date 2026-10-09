@@ -228,8 +228,7 @@ function ChartSeriesRow(props: {
     key: K,
     value: Binding[K] | undefined,
   ): void => edits.onBinding(chartId, bindingWith(binding, key, value));
-  const field = (property: string): string =>
-    `${binding.id}.${property}`;
+  const field = (property: string): string => `${binding.id}.${property}`;
 
   return (
     <div

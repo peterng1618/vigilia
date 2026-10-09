@@ -714,7 +714,11 @@ describe("which binding a value run carries", () => {
     // that is not the first carries a binding.
     const box = mountRunEditor({
       runs: [
-        { kind: "literal", text: "Free space", typePreset: "typePresets.60-600" },
+        {
+          kind: "literal",
+          text: "Free space",
+          typePreset: "typePresets.60-600",
+        },
         { kind: "value", bindingId: "disk.free" },
       ],
     });
