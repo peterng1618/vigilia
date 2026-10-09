@@ -30,6 +30,7 @@
     "src/web/packages/editor/src/panes/add/add-pane.dom.test.tsx",
     "src/web/packages/editor/src/new-object-panel.ts",
     "src/web/packages/editor/src/card-library.ts",
+    "src/web/packages/editor/src/react-root-disposal.dom.test.ts",
     "src/web/packages/editor/src/editor-shell/publish-control.tsx",
     "src/web/packages/editor/src/editor-shell/publish-indicator.tsx",
     "src/web/packages/editor/src/editor-shell/shell-layout.tsx",

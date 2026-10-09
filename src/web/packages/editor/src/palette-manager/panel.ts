@@ -4,7 +4,7 @@ import type {
   PalettePaint,
 } from "@vigilia/renderer-core";
 import * as React from "react";
-import { createRoot } from "react-dom/client";
+import { createRoot, type Root } from "react-dom/client";
 import { ColourPicker } from "../components/ui/colour-picker.js";
 import { GradientEditor } from "../components/ui/gradient-editor.js";
 import { uiCopy } from "../ui-copy.js";
@@ -33,6 +33,10 @@ export interface PalettePanelOptions {
 export interface PalettePanel {
   readonly root: HTMLElement;
   render(palette: FabricPalette | undefined): void;
+  /** Unmounts every React root the panel created, then removes its section. A
+   *  React root subscribes; removing its container unsubscribes nothing, so the
+   *  picker and gradient roots would outlive the pane for the page's lifetime. */
+  destroy(): void;
 }
 
 /** Product-owned palette authoring; tokens retain stable ids so references stay valid. */
@@ -76,6 +80,14 @@ export function createPalettePanel(
   let selected = "";
   /** What the field set currently on screen was built from; see `draw`. */
   let built = "";
+  /** The React roots the field set on screen created — the picker, and the
+   *  gradient editor. They belong to those fields, so they are unmounted when
+   *  the fields are rebuilt and when the panel is disposed. */
+  const reactRoots: Root[] = [];
+  const releaseRoots = (): void => {
+    for (const reactRoot of reactRoots) reactRoot.unmount();
+    reactRoots.length = 0;
+  };
   const draw = (): void => {
     // Read once per draw: the scene can change between two tokens, and a
     // figure that mixed two moments would be a measurement of nothing.
@@ -110,6 +122,10 @@ export function createPalettePanel(
           }`;
     if (shape !== built) {
       built = shape;
+      // Before their containers leave the document, not after: a root unmounted
+      // once its host is detached still holds the callbacks it was rendered
+      // with, and the picker's is a closure over the token being discarded.
+      releaseRoots();
       fields.replaceChildren();
       if (entry !== undefined) fields.append(...paletteFields(entry));
     }
@@ -195,8 +211,8 @@ export function createPalettePanel(
     label.htmlFor = kind.id = `vigilia-palette-${++fieldSeq}`;
     const controls =
       entry.value.kind === "solid"
-        ? solidFields(live, commit)
-        : gradientFields(live, entry.value, commit);
+        ? solidFields(live, commit, reactRoots)
+        : gradientFields(live, entry.value, commit, reactRoots);
     const deletion = deletionControls();
     return [name.label, name.input, label, kind, ...controls, ...deletion];
   };
@@ -246,12 +262,17 @@ export function createPalettePanel(
       palette = nextPalette ?? {};
       draw();
     },
+    destroy() {
+      releaseRoots();
+      root.remove();
+    },
   };
 }
 
 function solidFields(
   live: () => FabricPaletteEntry,
   commit: (entry: FabricPaletteEntry) => void,
+  reactRoots: Root[],
 ): HTMLElement[] {
   const entry = live();
   const color = field(
@@ -284,7 +305,7 @@ function solidFields(
   row.style.cssText = "display:flex;gap:6px;align-items:center";
   const host = document.createElement("div");
   row.append(host);
-  mountPicker(host, live, commit);
+  mountPicker(host, live, commit, reactRoots);
 
   return [color.label, color.input, row];
 }
@@ -300,8 +321,10 @@ function mountPicker(
   host: HTMLElement,
   live: () => FabricPaletteEntry,
   commit: (entry: FabricPaletteEntry) => void,
+  reactRoots: Root[],
 ): void {
   const root = createRoot(host);
+  reactRoots.push(root);
   const entry = live();
   root.render(
     React.createElement(ColourPicker, {
@@ -321,8 +344,10 @@ function mountGradient(
   value: Extract<PalettePaint, { readonly kind: "gradient" }>,
   commit: (entry: FabricPaletteEntry) => void,
   live: () => FabricPaletteEntry,
+  reactRoots: Root[],
 ): void {
   const root = createRoot(host);
+  reactRoots.push(root);
   root.render(
     React.createElement(GradientEditor, {
       stops: value.stops,
@@ -341,6 +366,7 @@ function gradientFields(
   live: () => FabricPaletteEntry,
   value: Extract<PalettePaint, { readonly kind: "gradient" }>,
   commit: (entry: FabricPaletteEntry) => void,
+  reactRoots: Root[],
 ): HTMLElement[] {
   /** The token as it stands, narrowed to the gradient these fields were built
    *  for. Switching paint kind rebuilds them, so it cannot be asked for the
@@ -377,7 +403,7 @@ function gradientFields(
   const host = document.createElement("div");
   host.dataset["vigiliaPaletteGradient"] = "";
   fields.push(host);
-  mountGradient(host, value, commit, live);
+  mountGradient(host, value, commit, live, reactRoots);
 
   for (const [index, stop] of value.stops.entries()) {
     const offset = field(
