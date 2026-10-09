@@ -1507,10 +1507,15 @@ describe("the column a kind gets", () => {
    * - `tests/e2e/*.spec.ts` — the same hooks again against a built bundle, which
    *   is what proves the surface renders them, not only that jsdom's tree does.
    *
-   * So the count here (about twenty names, of the pre-plan surface's ~48) is
-   * deliberately the shared floor, not the ceiling: reading it as the inventory
-   * would understate the coverage by the twenty-five names the domain tests
-   * carry.
+   * So the count here is deliberately the shared floor, not the ceiling — and
+   * the figures are exact so the parts sum to the whole. This table names **19**
+   * distinct hooks: six in `EVERY_OBJECT` (`geometry`'s five selectors are one
+   * name), five added by `shape`, seven by `text`, one by `image`. The pre-plan
+   * inspector at `190dc1a4` rendered **47** distinct `data-vigilia-*` names
+   * (`git grep -oh 'data-vigilia-[a-zA-Z-]*' 190dc1a4 --
+   * src/web/packages/editor/src/selection-inspector | sort -u | wc -l`), so the
+   * remaining **28** are carried by the per-domain tests and the e2e specs.
+   * Reading the 19 as the inventory would understate the coverage by 28.
    */
   const EVERY_OBJECT: readonly string[] = [
     "[data-vigilia-name]",

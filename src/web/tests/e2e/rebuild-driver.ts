@@ -334,6 +334,15 @@ export async function chooseToken(
   // a closed popup lingers through its exit animation, so an unscoped lookup
   // resolves to two rows, `.first()` clicks the stale hidden one, and the case
   // spends its budget waiting for an edit that never committed.
+  //
+  // The `SELECT` branch below is **unreachable today, and kept on purpose.**
+  // Every caller's hook rides a Base UI trigger — `panel.ts`'s swatch
+  // (`data-vigilia-panel-fill`/`-stroke`, :224/:238) and `chart-fields.tsx`'s
+  // `ControlSelect` (`data-vigilia-chart-paint`, :447) — so `tagName` is always
+  // `"BUTTON"` here and the branch never runs. Its sibling in `choose` *is* live,
+  // because `choose` is still called with native-select hooks. A driver that
+  // silently assumed Base UI would break without saying so the day a native
+  // picker returns.
   if ((await control.evaluate((node) => node.tagName)) !== "SELECT") {
     await chooseLabelIn(page, control, label);
     return;

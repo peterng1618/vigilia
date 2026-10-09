@@ -26,7 +26,7 @@ backlog it produced stays live in the register.
 
 ## Active work
 
-- **Plan 3 — [`the inspector`](docs/superpowers/plans/2026-10-08-the-inspector.md) — is the active plan**: Tasks 1–6 are complete; Task 7 landed at `9501542c` with fix round 1 on top, and Task 8, the control ratchet and no native control left in the column, follows.
+- **Plan 3 — [`the inspector`](docs/superpowers/plans/2026-10-08-the-inspector.md) — is the active plan**: Tasks 1–6 are complete; Task 7 landed at `9501542c`, its fix round 1 at `4bf29bf6`, and fix round 2 is in flight on three residuals — Task 8, the control ratchet and no native control left in the column, follows.
 - **Plans 1 and 2 are complete and closed** — the gates and the control set, then the shell and the rail through `cea69cac`; exactly one plan is active at a time, and this is it.
 - **The spec is `draft` and unimplemented** — its acceptance sections are plans of measurement, not results.
 - **Reactify ([0039](docs/decisions/0039-the-editor-ui-is-react-and-only-the-canvas-is-imperative.md)) is the frame, not a phase** — every editor surface becomes React, only the canvas stays imperative, and no Fabric object is ever mirrored into React state.
@@ -35,7 +35,7 @@ backlog it produced stays live in the register.
 
 ## Last completed change
 
-- **The parity ledger names its whole instrument set** — `PRE_PLAN` in `index.dom.test.ts` now says its ~20 names are the *shared* hooks and names the union (`crop/runs/panel/glass/artboard-panel.dom.test.ts`, the built-bundle e2e specs), so the table reads as the floor, and STATUS's census reads the measured 976.
+- **The parity ledger names its whole instrument set** — `PRE_PLAN` in `index.dom.test.ts` now says its ~20 names are the *shared* hooks and names the union (`crop/runs/panel/glass/artboard-panel.dom.test.ts`, the built-bundle e2e specs), so the table reads as the floor; `vigilia-field` is 0 in the inspector and 0 in `tests/e2e`, though 44 occurrences remain in plan 4's panes.
 - **The rebuild journey's stale locators are re-pointed** — 17 `selectOption` calls on `[data-vigilia-run-*]` (Base UI comboboxes now) become `chooseIn`, and the trends case reads its bindings off `data-vigilia-value`; `author-journey-rebuild.spec.ts` **9 passed**, two full samples.
 - **The driver obeys its own scoping rule** — `chooseToken` delegates to a scoped `chooseLabelIn`, and `typeIntoControl` reads the slider's IDL `.min`/`.max` (the `getAttribute` form landed every value on 0, because `Number(null) === 0`).
 - **A read by presentation class becomes a hook** — `Select.Value` carries `data-vigilia-value` and `choiceOf` reads it; `sectionExpanded` throws for a missing section rather than answering `false`.
