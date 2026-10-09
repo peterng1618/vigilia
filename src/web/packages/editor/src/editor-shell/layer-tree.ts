@@ -10,7 +10,7 @@ import {
   VIGILIA_TEXT_PROPERTY,
   VigiliaChart,
 } from "@vigilia/scene-fabric";
-import { type FabricObject, FabricImage, Group } from "fabric/es";
+import { FabricImage, type FabricObject, Group } from "fabric/es";
 import { runPlaceholder } from "../run-placeholder.js";
 import { uiCopy } from "../ui-copy.js";
 
@@ -141,18 +141,31 @@ function kindOf(object: FabricObject): LayerKind {
   return "shape";
 }
 
-/**
- * What a row prints: the object's authored name, else the id it falls back to.
- * The name lives on the object beside the id, so the projection reads it where
- * every other property is read and cannot drift from what a save writes.
- */
-function nameOf(object: FabricObject, id: string, kind: LayerKind): string {
+/** The name chain every row prints: authored, else the id, else the kind's own
+    word — "empty rows help nobody". One owner, so a second surface cannot grow a
+    copy that disagrees about a nameless object with a blank id. */
+function composeName(
+  object: FabricObject,
+  id: string,
+  kindWord: string,
+): string {
   const authored = objectName(object);
   if (authored !== undefined) return authored;
-  if (id.trim() !== "") return id;
-  // Empty rows help nobody, so a nameless row falls back to its kind — from
-  // the one owner of the kind words rather than a private table beside it.
-  return uiCopy.panels.layerKinds[kind];
+  return id.trim() !== "" ? id : kindWord;
+}
+
+function nameOf(object: FabricObject, id: string, kind: LayerKind): string {
+  return composeName(object, id, uiCopy.panels.layerKinds[kind]);
+}
+
+/**
+ * The name one object's own row carries, for a surface that describes a single
+ * object rather than walking a scene — the inspector's subject. The id-less
+ * fallback is the tree's first anonymous id and the kind's word is the last
+ * resort, so the two print the same thing for the same object.
+ */
+export function rowNameOf(object: FabricObject, kindWord: string): string {
+  return composeName(object, layerIds()(object), kindWord);
 }
 
 /**

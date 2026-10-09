@@ -17,6 +17,7 @@ import {
   perKindColumn,
 } from "./per-kind-column.js";
 import {
+  editRefusal,
   isTextObject,
   measuredEdgeOf,
   type ProjectionPorts,
@@ -187,17 +188,6 @@ function restoreFocus(
   )}`;
   root.querySelector<HTMLElement>(`[${attribute}="${focused.value}"]`)?.focus();
 }
-
-/** The geometry field ids the dispatcher can write: the value each
-    `data-vigilia-geometry` hook carries. Every other field's writer arrives with
-    the surface that renders it. */
-const GEOMETRY_FIELD_IDS: ReadonlySet<string> = new Set<GeometryKey>([
-  "left",
-  "top",
-  "width",
-  "height",
-  "angle",
-]);
 
 export function createSelectionInspector(
   host: HTMLElement,
@@ -390,33 +380,31 @@ export function createSelectionInspector(
   /**
    * The column's one way to write, from the React surface.
    *
-   * The view carries the revision it was projected from; the dispatcher
-   * compares it with the live target **at call time**, so a control whose draft
-   * outlived its selection is refused before the write funnel is reached — the
-   * funnel would otherwise resolve the *current* target and write an old draft
-   * into a new object. A mismatch publishes the new view and writes nothing.
+   * The revision, lock and field rules are `view.ts`'s `editRefusal`, read here
+   * against the live target **at call time**: a control whose draft outlived its
+   * selection is refused before the write funnel is reached, because the funnel
+   * would otherwise resolve the *current* target and write an old draft into a
+   * newly selected object. A refusal publishes the current view and writes
+   * nothing.
    */
   const edits: SelectionEdits = {
     commit(expectedRevision, fieldId, value) {
-      if (expectedRevision !== targetRevision || described === undefined) {
-        render();
-        return false;
-      }
-      // A locked object is refused where the editor refuses it; a field that
-      // writes it directly is withheld, and this is the second gate on the same
-      // rule.
-      if (described.get("locked") === true) {
-        render();
-        return false;
-      }
-      if (!GEOMETRY_FIELD_IDS.has(fieldId)) return false;
-      // Refuse rather than coerce: a non-finite number is not a dimension.
-      if (typeof value !== "number" || !Number.isFinite(value)) {
+      const object = described;
+      if (object === undefined) {
         render();
         return false;
       }
 
-      write(described, fieldId as GeometryKey, value);
+      const refusal = editRefusal(
+        { expectedRevision, fieldId, value },
+        { targetRevision, locked: object.get("locked") === true },
+      );
+      if (refusal !== undefined) {
+        render();
+        return false;
+      }
+
+      write(object, fieldId as GeometryKey, value as number);
       commit();
       render();
       return true;

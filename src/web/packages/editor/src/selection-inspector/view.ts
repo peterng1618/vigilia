@@ -1,5 +1,5 @@
-import { objectName } from "@vigilia/renderer-core";
 import type { FabricObject } from "fabric/es";
+import { rowNameOf } from "../editor-shell/layer-tree.js";
 import { uiCopy } from "../ui-copy.js";
 import {
   type ColumnContext,
@@ -140,6 +140,51 @@ export interface SelectionEdits {
 }
 
 /**
+ * The field ids the dispatcher can write today: the value each
+ * `data-vigilia-geometry` hook carries. Every other field's writer arrives with
+ * the surface that renders it.
+ */
+const WRITABLE_FIELD_IDS: ReadonlySet<string> = new Set<GeometryKey>([
+  "left",
+  "top",
+  "width",
+  "height",
+  "angle",
+]);
+
+/** Why an edit was refused; `undefined` means it may reach the write funnel. */
+export type EditRefusal = "stale" | "locked" | "unknown" | "invalid";
+
+/**
+ * The guard in front of the write funnel, as a pure decision so it can be
+ * driven without a React control.
+ *
+ * An edit carries the revision the view was projected from and the live object
+ * carries its own; a mismatch is a draft that outlived its selection, refused
+ * **before** the funnel, because the funnel would resolve the *current* target
+ * and write an old draft into a newly selected object. Lock and field
+ * eligibility are re-checked here too: a control cannot be trusted to have
+ * checked them, and a field that writes the object directly is withheld from a
+ * locked one.
+ */
+export function editRefusal(
+  edit: {
+    readonly expectedRevision: number;
+    readonly fieldId: string;
+    readonly value: string | number | boolean;
+  },
+  live: { readonly targetRevision: number; readonly locked: boolean },
+): EditRefusal | undefined {
+  if (edit.expectedRevision !== live.targetRevision) return "stale";
+  if (live.locked) return "locked";
+  if (!WRITABLE_FIELD_IDS.has(edit.fieldId)) return "unknown";
+  // Refuse rather than coerce: a non-finite number is not a dimension.
+  return typeof edit.value === "number" && Number.isFinite(edit.value)
+    ? undefined
+    : "invalid";
+}
+
+/**
  * The box a text object was authored with, when it has one.
  *
  * `vigiliaText.box` is the owner (ADR 0003): a `Textbox` cannot hold a box,
@@ -239,12 +284,13 @@ const KIND_WORD: Readonly<Record<SelectionKind, string>> = {
 };
 
 /**
- * What the column says the selection is. The name falls back to the id exactly
- * as the layer row does, so an unnamed object reads as the thing the rest of the
- * editor already calls it.
+ * What the column says the selection is called. The rule is `layer-tree`'s one
+ * owner, so the subject prints exactly what that object's own layer row prints —
+ * two copies of the fallback chain already disagreed about a nameless object
+ * with a blank id.
  */
 function subjectNameOf(object: FabricObject): string {
-  return objectName(object) ?? String(object.get("id") ?? "");
+  return rowNameOf(object, KIND_WORD[selectionKindOf(object)]);
 }
 
 /** The key a binding on this node carries, when one does. The subject's second

@@ -47,13 +47,28 @@ describe("createInspectorRoot", () => {
     root.destroy();
   });
 
-  it("prints the locked note", () => {
+  it("prints the locked note under the hook the browser suite reads it by", () => {
     const host = document.createElement("div");
     const root = createInspectorRoot(host);
 
     root.publish(view({ locked: true }), edits);
 
-    expect(host.textContent).toContain(uiCopy.inspectorFields.locked);
+    // The hook is the locator contract (vg-148): the e2e spec finds the note by
+    // `[data-vigilia-locked]`, so losing it would leave that spec passing on a
+    // stale locator while the column stopped saying anything.
+    expect(host.querySelector("[data-vigilia-locked]")?.textContent).toBe(
+      uiCopy.inspectorFields.locked,
+    );
+    root.destroy();
+  });
+
+  it("has no locked note on an unlocked subject", () => {
+    const host = document.createElement("div");
+    const root = createInspectorRoot(host);
+
+    root.publish(view(), edits);
+
+    expect(host.querySelector("[data-vigilia-locked]")).toBeNull();
     root.destroy();
   });
 

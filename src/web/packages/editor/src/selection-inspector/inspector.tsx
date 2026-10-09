@@ -72,7 +72,10 @@ function Inspector({
         <span className="text-xs text-muted">{view.subject.kindLine}</span>
       </div>
       {view.locked ? (
-        <p className="m-0 mt-[var(--space-12)] text-sm text-muted">
+        <p
+          className="m-0 mt-[var(--space-12)] text-sm text-muted"
+          data-vigilia-locked=""
+        >
           {uiCopy.inspectorFields.locked}
         </p>
       ) : null}

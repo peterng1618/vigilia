@@ -2,8 +2,10 @@
 import type { FabricGlobals } from "@vigilia/renderer-core";
 import { Rect } from "fabric/es";
 import { describe, expect, it } from "vitest";
+import { projectLayers } from "../editor-shell/layer-tree.js";
 import { uiCopy } from "../ui-copy.js";
 import {
+  editRefusal,
   measuredEdgeOf,
   type ProjectionPorts,
   projectSelection,
@@ -68,6 +70,13 @@ function assertPlainValue(value: unknown, path: string): void {
   }
 }
 
+/** A shape carrying an authored name — the first arm of the name chain. */
+function namedRect(name: string): Rect {
+  const rect = new Rect({ id: "shape", width: 10, height: 10 });
+  rect.set("name", name);
+  return rect;
+}
+
 describe("projectSelection", () => {
   it("carries no Fabric object, DOM node, function or non-finite number", () => {
     const rect = new Rect({
@@ -97,17 +106,32 @@ describe("projectSelection", () => {
     expect("subject" in JSON.parse(JSON.stringify(view))).toBe(false);
   });
 
-  it("names the subject as the layer list does, falling back to the id", () => {
-    const named = new Rect({ id: "shape", width: 10, height: 10 });
-    named.set("name", "Header panel");
-    expect(projectSelection(named, 1, ports()).subject?.name).toBe(
-      "Header panel",
-    );
-
-    const unnamed = new Rect({ id: "cpu-card", width: 10, height: 10 });
-    expect(projectSelection(unnamed, 1, ports()).subject?.name).toBe(
-      "cpu-card",
-    );
+  it("names the subject exactly as the layer row names the same object", () => {
+    // The agreement is the test, not a copy of the rule: whatever the tree
+    // prints for an object's own row is what the column must print for it, so a
+    // second copy of the fallback chain cannot drift back in. Every arm the
+    // chain has is covered, the blank-id one included — the case the two copies
+    // disagreed about before they shared an owner.
+    const cases: readonly [string, Rect][] = [
+      ["Header panel", namedRect("Header panel")],
+      ["cpu-card", new Rect({ id: "cpu-card", width: 10, height: 10 })],
+      [
+        uiCopy.panels.layerKinds.shape,
+        new Rect({ id: "   ", width: 10, height: 10 }),
+      ],
+      ["unidentified", new Rect({ width: 10, height: 10 })],
+    ];
+    for (const [expected, object] of cases) {
+      const row = projectLayers({
+        root: [object],
+        selected: [],
+        expanded: new Set(),
+      })[0];
+      expect(row?.name, `layer row names ${expected}`).toBe(expected);
+      expect(projectSelection(object, 1, ports()).subject?.name).toBe(
+        row?.name,
+      );
+    }
   });
 
   it("names the kind, and the key a binding carries", () => {
@@ -131,5 +155,53 @@ describe("projectSelection", () => {
 
     expect(projectSelection(rect, 3, ports()).locked).toBe(true);
     expect(projectSelection(rect, 3, ports()).targetRevision).toBe(3);
+  });
+});
+
+/**
+ * The guard in front of the write funnel. It is a pure decision so it can be
+ * driven without a React control: the dispatcher consults the same function at
+ * call time, and a control that outlived its selection is refused here rather
+ * than writing through a funnel that would resolve the *current* target.
+ */
+describe("editRefusal", () => {
+  const live = { targetRevision: 4, locked: false };
+  const edit = (
+    overrides: Partial<{
+      expectedRevision: number;
+      fieldId: string;
+      value: string | number | boolean;
+    }> = {},
+  ) => ({ expectedRevision: 4, fieldId: "left", value: 5, ...overrides });
+
+  it("lets a current, writable, finite edit through", () => {
+    expect(editRefusal(edit(), live)).toBeUndefined();
+  });
+
+  it("refuses an edit projected from another revision", () => {
+    // The failure this exists for: a field's draft outlives its selection, so
+    // its revision no longer matches the live target's.
+    expect(editRefusal(edit({ expectedRevision: 3 }), live)).toBe("stale");
+  });
+
+  it("refuses a write to a locked object", () => {
+    expect(editRefusal(edit(), { ...live, locked: true })).toBe("locked");
+  });
+
+  it("refuses a field the dispatcher cannot write", () => {
+    expect(editRefusal(edit({ fieldId: "name" }), live)).toBe("unknown");
+  });
+
+  it("refuses a value that is not a finite number rather than coercing it", () => {
+    expect(editRefusal(edit({ value: Number.NaN }), live)).toBe("invalid");
+    expect(editRefusal(edit({ value: "12" }), live)).toBe("invalid");
+  });
+
+  it("reports a stale draft ahead of the lock it would also fail", () => {
+    // Precedence is part of the contract: the newer selection is the reason the
+    // draft is wrong, so that is what a caller is told.
+    expect(
+      editRefusal(edit({ expectedRevision: 3 }), { ...live, locked: true }),
+    ).toBe("stale");
   });
 });

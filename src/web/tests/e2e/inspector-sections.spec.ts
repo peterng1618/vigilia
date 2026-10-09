@@ -577,23 +577,16 @@ test.describe("the per-kind inspector column", () => {
     await page.goto(EDITOR);
     await page.waitForFunction(() => "vigiliaEditorBridge" in window);
 
-    // **The re-selection is a workaround, not the claim.** Locking through the
-    // layer row's own control fires no event the column listens to, so it keeps
-    // offering the writing fields a locked object no longer accepts until the
-    // next selection event; measured, and filed as `vg-148`, because product
-    // source is outside this task's ownership.
+    // Locking through the layer row's own control notifies the column, which
+    // follows it with no further selection event — `vg-148`'s fix, asserted here
+    // rather than worked around by re-selecting, because a workaround would keep
+    // passing after the notify was removed.
     await page.locator('[data-vigilia-layer="group-cpu-card"]').click();
     await page
       .locator('[data-vigilia-layer="group-cpu-card"] [aria-label="Lock"]')
       .click();
-    await page.locator('[data-vigilia-layer="wordmark"]').click();
-    await page.locator('[data-vigilia-layer="group-cpu-card"]').click();
 
-    await expect(
-      page.locator(".vigilia-resolution").filter({
-        hasText: "This object is locked. Unlock it to edit it.",
-      }),
-    ).toBeVisible();
+    await expect(page.locator("[data-vigilia-locked]")).toBeVisible();
 
     // Everything that writes is gone, so a question with nothing under it does
     // not stand a header over nothing: Spends is the only one left.
