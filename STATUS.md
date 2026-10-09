@@ -9,7 +9,7 @@ Branch: `develop`
 frontend surface except the canvas.**
 
 The look is specified and the rewrite under it is decided; the gates, the control
-set and the shell's first two surfaces are built. The target is
+set and the shell's first three surfaces are built. The target is
 [`docs/design/design-language.md`](docs/design/design-language.md), the contract
 is
 [`2026-10-08-editor-design-language-design.md`](docs/superpowers/specs/2026-10-08-editor-design-language-design.md),
@@ -26,7 +26,7 @@ backlog it produced stays live in the register.
 
 ## Active work
 
-- **Plan 2 — [`the shell and the rail`](docs/superpowers/plans/2026-10-08-the-shell-and-the-rail.md) — is active.** Tasks 1–4 are complete and reviewed and phase 1 is closed; Task 5 is next and five tasks remain.
+- **Plan 2 — [`the shell and the rail`](docs/superpowers/plans/2026-10-08-the-shell-and-the-rail.md) — is active.** Tasks 1–5 are complete and reviewed and phase 1 is closed; Task 6 is next and four tasks remain.
 - **Plan 1 — gates and the control set — is complete**, with a delivered-state reconciliation for Tasks 1–4 in the plan file in place of its retired ledger.
 - **The spec is `draft` and unimplemented** — its acceptance sections are plans of measurement, not results.
 - **Reactify ([0039](docs/decisions/0039-the-editor-ui-is-react-and-only-the-canvas-is-imperative.md)) is the frame, not a phase** — every editor surface becomes React, only the canvas stays imperative, and no Fabric object is ever mirrored into React state.
@@ -35,17 +35,17 @@ backlog it produced stays live in the register.
 
 ## Last completed change
 
-- **Task 4 of plan 2 — the status bar — is complete and reviewed**, closing phase 1 through `030adcaf`: one review and two fix rounds, each with a scoped re-review.
-- **The footer is the window's bottom edge now** — a 26px mono `--faint` strip carrying the counts, the diagnostic and the save state, and no tools — with `PublishIndicator` drawing a `live` mark only when the host reports the LAN on.
-- **The review found a hole only a mutation exposed**: weakening the indicator's guard left the whole suite green, so a host reporting the LAN *off* would have rendered a false `live`; the new case fails under exactly that mutation, and the reviewer reproduced it.
-- **The strip's geometry gained a browser assertion**, after the reviewer showed no gate in this plan checks it and Task 2 of this plan had already failed on a rendered-offset defect jsdom cannot see.
-- **A fourth comment-accuracy finding was fixed rather than shipped**: `save-state.tsx`'s "the one thing the footer says that is not a message" became false the moment this task added a second non-message reading beside it.
+- **Task 5 of plan 2 — the document's identity — is complete and reviewed**, through `cb0ee058`: one review and two fix rounds, each with a scoped re-review.
+- **The stage's top-left carries a floating chip now** — the record dot, the theme's name and its edited state, hidden only while no document is open.
+- **The review found a guarantee the comment had made and the code had not**: `??` let an empty stored name through as `""` and rendered a nameless chip, the bible §9 failure the comment called impossible, so the fallback moved into `bridge.ts` where the "never `""`" contract is documented and testable, with its case shown red first.
+- **That fix then falsified the comment beside it, and the fix for that was a sentence**: the chip falls back where the status line still writes a blank `"Opened "`, so the claim of agreement became a statement of the divergence and its owner, filed as `vg-218` and ruled to stand.
+- **The four register rows this task filed (`vg-218`–`vg-221`) land with this close**, as Task 3's and Task 4's did, because the ledger that would carry them is deleted when plan 2 ends.
 
 ## Next
 
-1. **Task 5 — the document's identity** — a floating cluster at the stage's top-left carrying the record dot, the theme's name and its edited state, extending `EditorShellSnapshot` with `documentName` and widening its ownership row in the same commit.
-2. **Then Tasks 6–7** — the stage's view cluster and the dock re-layered; Task 6 relaxes the dock's interim `100% - 100px` cap to `100% - 32px`.
-3. **Then plan 2's phase 3** — Task 8's ratchet (which owns `editor-shell.css`'s 79 violations and the rail slot's 34px), Task 9's parity capture, and Task 10's difference list, which now inherits `vg-217`.
+1. **Task 6 — how the stage is shown** — one floating cluster at the stage's top-right holding the lens chips and the zoom cluster, with `[data-vigilia-zoom]` staying the element that both shows the percentage and opens the display chooser, and `.editor-shell-zoom` staying the element that carries the glass treatment.
+2. **Then Task 7** — the dock re-layered; it owns relaxing the dock's interim `100% - 100px` cap to `100% - 32px` (`editor-shell.css:1685`).
+3. **Then plan 2's phase 3** — Task 8's ratchet (which owns `editor-shell.css`'s 79 violations, the rail slot's 34px, and `:1611`'s untokenised `calc(100% - 28px)`), Task 9's parity capture, and Task 10's difference list, which inherits `vg-217` and `vg-219`.
 4. **Unpushed:** `develop` is far ahead of `origin/develop`; no push is authorised.
 
 ## Blockers / unverified
