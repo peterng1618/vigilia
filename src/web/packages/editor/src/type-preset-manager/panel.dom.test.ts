@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { resolveTypePreset } from "../selection-inspector/appearance.js";
 import { uiCopy } from "../ui-copy.js";
 import { createTypePresetPanel } from "./panel.js";
 
@@ -34,10 +35,14 @@ describe("type preset panel", () => {
     expect(
       panel.root.querySelector("[data-vigilia-type-preset]"),
     ).not.toBeNull();
+    // The value is `resolveTypePreset`'s own answer, read from the same record
+    // the panel is given — never a copy of the "family weight sizepx" rule.
     expect(
       panel.root.querySelector('[data-vigilia-type-preset-row="body"]')
         ?.textContent,
-    ).toContain("Inter 16px");
+    ).toContain(
+      resolveTypePreset({ typePresets: presets }, "typePresets.body"),
+    );
     expect(
       panel.root.querySelector('[data-vigilia-type-preset-row="caption"]'),
     ).not.toBeNull();

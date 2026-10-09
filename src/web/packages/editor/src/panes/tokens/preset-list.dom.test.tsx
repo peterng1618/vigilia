@@ -207,6 +207,15 @@ function resolutionLine(host: HTMLElement, id: string): HTMLElement {
   return value;
 }
 
+/** The words a control is announced under: the label its own row points at,
+ *  read the way a screen reader finds it, not the source string that built it. */
+function controlName(host: HTMLElement, control: string): string {
+  const target = host.querySelector<HTMLElement>(control);
+  const id = target?.id ?? "";
+  if (id === "") return "";
+  return host.querySelector(`label[for="${id}"]`)?.textContent ?? "";
+}
+
 /** The ports the panel adopts faces and trios through, all recording. */
 function ports() {
   return {
@@ -271,6 +280,33 @@ it("drops an optional number when the author clears it", async () => {
   const committed = change.mock.calls[0]?.[0] as TypePresets;
   expect(committed.body?.value).not.toHaveProperty("lineHeight");
   expect(committed.body?.value?.weight).toBe(600);
+});
+
+it("drops an optional letter spacing when the author clears it", async () => {
+  // The third clause of the same rule, and its own sibling block: a copy-paste
+  // slip is what a shared weight/lineHeight case cannot see.
+  const { change } = await mount({
+    body: {
+      name: "Body",
+      value: {
+        family: "Inter",
+        size: 16,
+        weight: 600,
+        lineHeight: 1.4,
+        letterSpacing: 0.2,
+      },
+    },
+  });
+
+  await commitField("[data-vigilia-type-letter-spacing]", "");
+
+  // The whole value, so a clear that committed nothing at all is red here too.
+  expect((change.mock.calls[0]?.[0] as TypePresets).body?.value).toEqual({
+    family: "Inter",
+    size: 16,
+    weight: 600,
+    lineHeight: 1.4,
+  });
 });
 
 it("refuses an empty name or family", async () => {
@@ -356,6 +392,18 @@ it("runs the face preview, the face adoption and the trio adoption through the p
   await chooseIn("[data-vigilia-font-trio]", trio.id);
   await click(host.querySelector("[data-vigilia-font-trio-apply]")!);
   expect(fontActions.applyTrio.mock.calls).toEqual([[trio.id]]);
+});
+
+it("names the two adoption controls Font face and Font trio", async () => {
+  // Amended R20. These were `Font`/`Trio` on the imperative panel; the words are
+  // pinned **on the controls** and not only in the table, so a rename in
+  // `ui-copy.ts` cannot drift the two names back with the whole suite green.
+  const { host } = await mount(withWeight, { fontActions: ports() });
+
+  expect(uiCopy.panels.fontFace).toBe("Font face");
+  expect(uiCopy.panels.fontTrioAdopt).toBe("Font trio");
+  expect(controlName(host, "[data-vigilia-font-face]")).toBe("Font face");
+  expect(controlName(host, "[data-vigilia-font-trio]")).toBe("Font trio");
 });
 
 it("preserves packaged face metadata when editing size", async () => {
