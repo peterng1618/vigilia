@@ -180,11 +180,15 @@ export function glassFields(object: FabricObject): readonly FieldView[] {
   if (treatment !== undefined) {
     fields.push({
       id: "glass-blur",
-      control: "number",
+      control: "slider",
       label: uiCopy.inspectorFields.glassBlur,
       value: treatment.blurRadius,
+      // It had both bounds pre-plan (`0 … MAX_GLASS_BLUR_RADIUS`) and so drew a
+      // slider; the bible's vocabulary says a bounded number is a slider (§5).
       // The pre-plan field refused a fraction unconditionally; the boundary
       // re-checks it. See `panelMaterialFields`.
+      min: 0,
+      max: MAX_GLASS_BLUR_RADIUS,
       integer: true,
       data: { "data-vigilia-glass-blur": "" },
     });

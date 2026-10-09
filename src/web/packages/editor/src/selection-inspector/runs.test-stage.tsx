@@ -256,6 +256,22 @@ export async function press(target: Element, key: string): Promise<void> {
   });
 }
 
+/**
+ * Steps a plan-1 slider the way a person does: focus its `input[type=range]`
+ * and press an arrow key, or `Home`/`End` to reach a bound. Base UI commits a
+ * keyboard step, which is the only gesture jsdom can resolve — it has no
+ * layout, so a pointer drag ends on no value at all (see `ControlSlider`).
+ */
+export async function slide(
+  element: HTMLInputElement,
+  key: "ArrowRight" | "ArrowLeft" | "Home" | "End",
+): Promise<void> {
+  await act(async () => {
+    element.focus();
+  });
+  await press(element, key);
+}
+
 /** A real edit, as React sees one: the value goes in through the prototype's
  *  setter, because React replaces `value` with a tracker that would suppress a
  *  plain assignment. The draft commits on blur or Enter. */

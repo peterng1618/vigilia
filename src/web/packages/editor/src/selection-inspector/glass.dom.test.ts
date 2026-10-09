@@ -33,7 +33,7 @@ import { createSelectionInspector } from "./index.js";
 import { supportsGlassControl } from "./glass.js";
 // The shared React drivers: the converted glass and material controls are plan-1
 // controls, so a raw `change` event no longer commits them.
-import { blur, click, typeInto, valueText } from "./runs.test-stage.js";
+import { click, slide, valueText } from "./runs.test-stage.js";
 
 const globals = {
   palette: {
@@ -165,16 +165,25 @@ async function setGlass(host: HTMLElement, checked: boolean): Promise<void> {
   await click(glassControl(host)!);
 }
 
-/** Types a number into a converted field and commits it on blur. */
-async function editNumber(
-  field: HTMLInputElement,
-  value: string,
-): Promise<void> {
-  await typeInto(field, value);
-  await blur(field);
+/**
+ * The accessible name a control announces: a `<label for>` where it has one, or
+ * the element its `aria-labelledby` names — a slider's thumb is labelled the
+ * second way (`ControlRow` renders a span, not a `for`-label, for a composite).
+ */
+function nameOf(host: HTMLElement, control: HTMLElement): string {
+  const byFor = host
+    .querySelector<HTMLLabelElement>(`label[for="${control.id}"]`)
+    ?.textContent?.trim();
+  if (byFor !== undefined && byFor !== "") return byFor;
+  const labelledby = control.getAttribute("aria-labelledby");
+  return labelledby === null
+    ? ""
+    : (host
+        .querySelector<HTMLElement>(`[id="${labelledby}"]`)
+        ?.textContent?.trim() ?? "");
 }
 
-/** The glass blur box, re-read because a committed edit republished the view. */
+/** The glass blur slider, re-read because a committed edit republished the view. */
 function blurField(host: HTMLElement): HTMLInputElement {
   return host.querySelector<HTMLInputElement>("[data-vigilia-glass-blur]")!;
 }
@@ -274,16 +283,15 @@ describe("the glass control in the selection inspector", () => {
     await setGlass(host, true);
 
     const blur = blurField(host);
-    expect(blur.inputMode).toBe("decimal");
+    // The blur is a bounded number, so it is a slider (bible §5) — the same
+    // affordance the pre-plan field drew.
+    expect(blur.type).toBe("range");
     for (const selector of [
       "[data-vigilia-glass-enabled]",
       "[data-vigilia-glass-blur]",
     ]) {
       const control = host.querySelector<HTMLElement>(selector)!;
-      const name = host
-        .querySelector<HTMLLabelElement>(`label[for="${control.id}"]`)
-        ?.textContent?.trim();
-      expect(name, selector).toBeTruthy();
+      expect(nameOf(host, control), selector).toBeTruthy();
     }
   });
 
@@ -328,96 +336,64 @@ describe("the glass control in the selection inspector", () => {
     expect(blurField(host).value).toBe("24");
   });
 
+  it("offers the blur as a slider bounded by the published maximum", () => {
+    const rect = panel();
+    rect.set("vigiliaGlass", { blurRadius: 24 });
+    const { host } = setup(rect);
+    const blur = blurField(host);
+
+    // A bounded number is the bible's slider (§5), and the pre-plan field drew
+    // one because both bounds were present. The maximum is the owner's constant,
+    // asked of `renderer-core` rather than restated, and the well reads the
+    // value back.
+    expect(blur.type).toBe("range");
+    expect(blur.getAttribute("min")).toBe("0");
+    expect(blur.getAttribute("max")).toBe(String(PUBLISHED_BLUR_MAXIMUM));
+    expect(blur.value).toBe("24");
+  });
+
   it("moves the blur radius and refreshes the composite", async () => {
     const rect = panel();
     rect.set("vigiliaGlass", { blurRadius: 8 });
     const { history, refreshGlass, host } = setup(rect);
 
-    await editNumber(blurField(host), "32");
+    // One keyboard step: jsdom has no layout, so a pointer drag ends on no
+    // value at all (see `slide`), and a step is the gesture that reaches a
+    // commit here.
+    await slide(blurField(host), "ArrowRight");
 
-    expect(rect.get("vigiliaGlass")).toEqual({ blurRadius: 32 });
+    expect(rect.get("vigiliaGlass")).toEqual({ blurRadius: 9 });
     expect(refreshGlass).toHaveBeenCalledTimes(1);
     expect(history.saveState).toHaveBeenCalledTimes(1);
   });
 
-  it("accepts zero blur, which is a treatment with no blur", async () => {
-    const rect = panel();
-    rect.set("vigiliaGlass", { blurRadius: 8 });
-    const { history, host } = setup(rect);
-
-    await editNumber(blurField(host), "0");
-
-    expect(rect.get("vigiliaGlass")).toEqual({ blurRadius: 0 });
-    expect(history.saveState).toHaveBeenCalledTimes(1);
-  });
-
-  it("lands a radius past the published bound on it, because landing teaches it", async () => {
+  it("lands on the published maximum when the author sweeps to the end", async () => {
     const bound = PUBLISHED_BLUR_MAXIMUM;
     const rect = panel();
     rect.set("vigiliaGlass", { blurRadius: 12 });
     const { history, host } = setup(rect);
 
-    await editNumber(blurField(host), String(bound + 12));
+    await slide(blurField(host), "End");
 
-    // Not a refusal. The finding was "took me a while to figure out blur only
-    // accepts 48 maximum": a field that reverted to 12 taught nothing about
-    // where the maximum is. The writer lands the typed value on the owner's own
-    // ceiling — `MAX_GLASS_BLUR_RADIUS`, asked of `renderer-core` rather than
-    // restated — and the box reads the landed value back.
+    // The finding was "took me a while to figure out blur only accepts 48
+    // maximum": the ceiling is the control's own bound, so the slider stops
+    // there and the well reads the landed value — a bound the author can reach
+    // is what teaches it. The writer lands the value on the owner's own
+    // `MAX_GLASS_BLUR_RADIUS` too, for a bypassed commit.
     expect(rect.get("vigiliaGlass")).toEqual({ blurRadius: bound });
-    expect(history.saveState).toHaveBeenCalledTimes(1);
+    expect(history.saveState).toHaveBeenCalled();
     expect(blurField(host).value).toBe(String(bound));
   });
 
-  it("refuses an emptied radius rather than coercing it to the bound", async () => {
+  it("lands on zero when the author sweeps to the start", async () => {
     const rect = panel();
     rect.set("vigiliaGlass", { blurRadius: 12 });
     const { history, host } = setup(rect);
 
-    // The bound does not swallow this: `Number("")` is 0, which is a real
-    // radius, so coercing it would silently mean "no blur" and look like it
-    // was refused. The field still has to tell them apart.
-    await editNumber(blurField(host), "");
-
-    expect(rect.get("vigiliaGlass")).toEqual({ blurRadius: 12 });
-    expect(history.saveState).not.toHaveBeenCalled();
-    // The field's own reason, in the row: a plan-1 number refuses a blank draft
-    // with words rather than committing a zero.
-    expect(invalidLine(host)?.textContent?.trim()).toBeTruthy();
-  });
-
-  it("refuses a fractional radius rather than rounding it", async () => {
-    const rect = panel();
-    rect.set("vigiliaGlass", { blurRadius: 12 });
-    const { history, host } = setup(rect);
-
-    // The pre-plan field demanded a whole number; the converted control
-    // restates that as `integer`. Rounding 8.5 would be a different act from
-    // displaying a radius a gesture left fractional, and the write funnel
-    // re-checks the same rule so a bypassed control stores nothing either.
-    await editNumber(blurField(host), "8.5");
-
-    expect(rect.get("vigiliaGlass")).toEqual({ blurRadius: 12 });
-    expect(history.saveState).not.toHaveBeenCalled();
-    expect(invalidLine(host)?.textContent?.trim()).toContain("whole");
-    // The draft is kept with its reason rather than restored to the old value:
-    // plan-1's number holds a rejected draft, where the pre-plan field put the
-    // old value back. Either way nothing fractional is stored.
-    expect(blurField(host).value).toBe("8.5");
-  });
-
-  it("clamps a radius past the bound onto it, because landing on it teaches it", async () => {
-    const rect = panel();
-    rect.set("vigiliaGlass", { blurRadius: 12 });
-    const { history, host } = setup(rect);
-
-    // Not a refusal: reverting to the old value is what made the bound
-    // undiscoverable, and an author typing -6 to find the floor is exactly who
-    // this change is for.
-    await editNumber(blurField(host), "-6");
+    await slide(blurField(host), "Home");
 
     expect(rect.get("vigiliaGlass")).toEqual({ blurRadius: 0 });
-    expect(history.saveState).toHaveBeenCalledTimes(1);
+    expect(history.saveState).toHaveBeenCalled();
     expect(blurField(host).value).toBe("0");
   });
 

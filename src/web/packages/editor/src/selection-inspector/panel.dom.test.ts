@@ -21,7 +21,7 @@ import { idleCrop } from "./idle-crop.test-stage.js";
 // The shared React drivers: a converted field is a plan-1 control, so a raw
 // `change` event no longer commits it — the picker is opened and an entry
 // clicked, and a number is typed through React's own value tracker.
-import { choose, flush, optionsOf } from "./runs.test-stage.js";
+import { choose, flush, optionsOf, slide } from "./runs.test-stage.js";
 
 /**
  * React only flushes work scheduled inside `act` when it has been told it is in
@@ -674,39 +674,43 @@ describe("shape material and a shape's own fields", () => {
     expect(history.saveState).toHaveBeenCalledTimes(1);
   });
 
-  it("shows a polygon's own side count, and clamps a two-sided one onto three", async () => {
+  it("offers a polygon's side count as a slider, bounded at both ends", () => {
     const polygon = new Polygon([...CORNERS], PLACED);
-    const { history, field } = setup(polygon);
+    const { field } = setup(polygon);
     const sides = field<HTMLInputElement>("[data-vigilia-shape-sides]");
-    expect(sides.value).toBe("3");
 
-    await edit(sides, "2");
-
-    // A two-sided polygon is not a repaired three-sided one by refusal: the
-    // author typed 2 to find where the bound is, and landing on 3 says it.
-    // Coercing silently was the complaint; reverting hid the same number.
-    expect(polygon.points).toHaveLength(3);
+    // A bounded number is the bible's slider (§5), and the pre-plan field drew
+    // one because both bounds were present. The bound is the control's now, so
+    // a two-sided polygon is unreachable rather than landed on.
+    expect(sides.type).toBe("range");
+    expect(sides.getAttribute("min")).toBe("3");
+    expect(sides.getAttribute("max")).toBe("32");
     expect(sides.value).toBe("3");
-    expect(history.saveState).toHaveBeenCalledTimes(1);
   });
 
-  it("redraws a polygon with the side count the author asked for", async () => {
+  it("redraws a polygon with the side count the author steps to", async () => {
     const polygon = new Polygon([...CORNERS], {
       ...PLACED,
       left: 20,
       top: 30,
     });
     const { history, field } = setup(polygon);
+    const sides = field<HTMLInputElement>("[data-vigilia-shape-sides]");
 
-    await edit(field<HTMLInputElement>("[data-vigilia-shape-sides]"), "6");
+    // Three one-step key presses are a three-to-six gesture; jsdom has no
+    // layout, so a pointer drag ends on no value at all (see `slide`).
+    await slide(sides, "ArrowRight");
+    await slide(sides, "ArrowRight");
+    await slide(sides, "ArrowRight");
 
     expect(polygon.points).toHaveLength(6);
-    // The box the author placed is theirs; only the corners move.
-    expect(polygon.width).toBe(100);
-    expect(polygon.height).toBe(100);
+    // The box the author placed is theirs. Its *size* is re-fitted from the
+    // corners on each step, so a three-step gesture is three edits, not one
+    // jump — the old number field could only make the single jump, and the
+    // placement is what the slider must not move.
     expect(polygon.left).toBe(20);
     expect(polygon.top).toBe(30);
-    expect(history.saveState).toHaveBeenCalledTimes(1);
+    expect(history.saveState).toHaveBeenCalled();
   });
 
   it("shows a polyline's own points and writes back the ones typed", async () => {
@@ -883,13 +887,26 @@ describe("the angles of a swept shape", () => {
     expect(host.querySelector(ANGLE.end), kind).not.toBeNull();
   });
 
-  it.each(SWEPT)("writes a typed %s angle onto the object", async (kind) => {
+  it.each(SWEPT)("bounds each %s angle as a slider", (kind) => {
+    const { field } = setup(swept(kind));
+    const end = field<HTMLInputElement>(ANGLE.end);
+
+    // Both bounds were present pre-plan, so the field drew a slider; the bible
+    // calls a bounded number a slider (§5), so the converted field is one too.
+    expect(end.type, kind).toBe("range");
+    expect(end.getAttribute("min"), kind).toBe("0");
+    expect(end.getAttribute("max"), kind).toBe("360");
+  });
+
+  it.each(SWEPT)("writes a stepped %s angle onto the object", async (kind) => {
     const shape = swept(kind);
     const { field, history } = setup(shape);
+    const start = field<HTMLInputElement>(ANGLE.start);
+    const before = Number(start.value);
 
-    await edit(field<HTMLInputElement>(ANGLE.end), "270");
+    await slide(start, "ArrowRight");
 
-    expect(shape.endAngle).toBe(270);
+    expect(shape.startAngle).toBe(before + 1);
     expect(history.saveState).toHaveBeenCalled();
   });
 
@@ -917,29 +934,16 @@ describe("the angles of a swept shape", () => {
     expect(host.querySelector(ANGLE.end)).toBeNull();
   });
 
-  it("lands an angle past 360 on the bound rather than coercing it", async () => {
-    // The bound teaches itself: `numberField` puts an out-of-range value on the
-    // bound it crossed. What must never happen is a wrap — an angle of 450
-    // drawn as 90 is a shape the author did not ask for and cannot see the
-    // difference in.
+  it("lands an angle on the bound the author sweeps to, never past it", async () => {
+    // The bound teaches itself: the slider stops at 0–360, so an angle of 450 is
+    // unreachable rather than wrapped. A wrap — 450 drawn as 90 — is a shape the
+    // author did not ask for and cannot see the difference in.
     const shape = swept("wedge");
+    shape.set("endAngle", 90);
     const { field } = setup(shape);
 
-    await edit(field<HTMLInputElement>(ANGLE.end), "450");
+    await slide(field<HTMLInputElement>(ANGLE.end), "End");
 
     expect(shape.endAngle).toBe(360);
-  });
-
-  it("refuses an emptied angle box rather than reading it as zero", async () => {
-    const shape = swept("arc");
-    shape.set("startAngle", 45);
-    const { field, history } = setup(shape);
-
-    await edit(field<HTMLInputElement>(ANGLE.start), "");
-
-    // `Number("")` is 0, so an emptied box must leave the object alone rather
-    // than snapping the sweep back to the top of the circle.
-    expect(shape.startAngle).toBe(45);
-    expect(history.saveState).not.toHaveBeenCalled();
   });
 });

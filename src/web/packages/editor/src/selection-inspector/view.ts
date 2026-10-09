@@ -144,6 +144,14 @@ export type FieldView =
       readonly value: number;
       readonly min: number;
       readonly max: number;
+      /**
+       * The owner says the value is whole. A slider steps by 1, so this is not
+       * the step — it is the same declaration the number arm carries, kept here
+       * because sides, a sweep and the glass blur refused a fraction as numbers
+       * and still must as sliders. The boundary (`WRITABLE_FIELD_IDS`) is the
+       * copy that enforces it.
+       */
+      readonly integer?: boolean;
     })
   | (FieldBase & {
       readonly control: "segmented";

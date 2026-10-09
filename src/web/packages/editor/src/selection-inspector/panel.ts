@@ -496,9 +496,11 @@ function createShapeFields(object: FabricObject): readonly FieldView[] {
   if (object instanceof Polygon) {
     fields.push({
       id: "shape-sides",
-      control: "number",
+      control: "slider",
       label: uiCopy.inspectorFields.shapeSides,
       value: object.points.length,
+      min: MIN_POLYGON_SIDES,
+      max: MAX_POLYGON_SIDES,
       integer: true,
       data: { "data-vigilia-shape-sides": "" },
     });
@@ -552,16 +554,21 @@ function createShapeFields(object: FabricObject): readonly FieldView[] {
     // other: a start past its end is a legal full turn expressed the other way
     // round, and Fabric draws it. Refusing it would mean a second rule about
     // what a sweep means, held here as well as in the geometry. What is bounded
-    // is a value outside 0–360, by the write funnel's own range.
+    // is a value outside 0–360, by the field's own bounds and the write funnel.
+    // A slider, not a plain number: the pre-plan field drew one because both
+    // bounds were present, and the bible's vocabulary says a bounded number is a
+    // slider (§5).
     for (const key of ["startAngle", "endAngle"] as const) {
       fields.push({
         id: `shape-angle-${key}`,
-        control: "number",
+        control: "slider",
         label:
           key === "startAngle"
             ? uiCopy.inspectorFields.shapeStartAngle
             : uiCopy.inspectorFields.shapeEndAngle,
         value: object.get(key) as number,
+        min: MIN_SWEEP_DEGREES,
+        max: MAX_SWEEP_DEGREES,
         integer: true,
         data: { "data-vigilia-shape-angle": key },
       });
