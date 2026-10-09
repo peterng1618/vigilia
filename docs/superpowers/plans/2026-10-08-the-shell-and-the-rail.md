@@ -609,15 +609,18 @@ installed Playwright Chromium at a 1280×720 viewport
 (`file:///D:/git-repos/vigilia/docs/design/mockups/editor-shell.html`), full page
 and as its shell element (1180×638px) — not judged from its source. Each capture
 is 1280×720 and was **Read** whole, then re-cropped at 3–6× (the PNG embedded as
-a data URL in a Playwright page, a clipped region screenshotted upscaled) to read
-control sizes, weights and edges. `editor-shell-add-desktop-chromium.png` is the
-primary comparison — it is the state the mockup draws (Add open, nothing
+a data URL in a Playwright page, a clipped region screenshotted upscaled) so the
+seven dimensions Step 1 names could be read — **scale, spacing, alignment,
+hierarchy, colour roles, control treatment and icon weight** — and nothing
+else: platform font metrics, scrollbar widths, device pixel ratios and
+antialiasing are not drift (`docs/evidence/screenshots/README.md`).
+`editor-shell-add-desktop-chromium.png` is the primary comparison — it is the state the mockup draws (Add open, nothing
 selected); `editor-desktop-chromium.png` and
 `editor-toolbar-desktop-chromium.png` are supporting.
 
-**This plan changed nothing in the product.** Every entry below is *deliberate*,
-*owned by a later plan or a register row*, or *reported to the controller* as
-unowned. A difference "fixed" here would reopen a surface whose task is closed
+**This plan changed nothing in the product.** Every entry below is *deliberate*
+in this plan or *owned by a later plan or a register row* — nothing is unowned. A
+difference "fixed" here would reopen a surface whose task is closed
 and reviewed (Task 10 brief, `Files`). The mockup was checked against the bible
 and left unchanged: nothing in it was both stale against the bible and fixable
 without either erasing a product difference or pre-judging `vg-227`.
@@ -630,7 +633,7 @@ without either erasing a product difference or pre-judging `vg-227`.
 | 2 | Header, right | nothing between the menus and Publish | an `editorial` swatch+name chip in the header | **Deliberate** — the palette chip's move to Settings is **plan 5**'s. |
 | 3 | Header, right | `⌘⇧P` printed beside Publish | no chord printed | **Deliberate, deferred** — no `publish.*` binding exists until **plan 5**; §9 forbids a mark that runs nothing. |
 | 4 | Header, right | a filled accent **Publish** button | nothing | **Deliberate** — `publish-control.tsx:87` returns `null` while the host is unknown, and the preview has no host; §9 forbids a fabricated claim. The control renders with a host. |
-| 5 | Header, left | a brand chevron glyph and a 1px divider before the menus | the wordmark alone, no divider | **Reported** — bible §7.1 says "brand mark"; the wordmark satisfies it, so the missing glyph may be a decision. Minor. |
+| 5 | Header, left | a brand chevron glyph and a 1px divider before the menus | the wordmark alone, no divider | **Deliberate** — §7.1 requires "brand mark, then `File`, `Edit`, `View`", and the wordmark `Vigilia` occupies exactly that position; the chevron-plus-hairline is the mockup's own illustration of one, which spec §13.1 allows a deliberate visual difference to explain. |
 | 6 | Rail, foot | the settings gear pinned to the foot | no gear | **Deliberate** — a gear that opens nothing asserts a capability the code lacks (§9); **plan 5** builds Settings. |
 | 7 | Rail slot size | 34×34px | 34×34px (both outside §5's 26–30px) | **Register row `vg-227`** owns the decision; the mockup is not edited while it is open. |
 | 8 | Pane title bar | `＋ Add   8 units` | `＋ Add` — no count | **Deliberate** — pane content; **plan 4**. Bible §7.3. |
@@ -644,10 +647,10 @@ without either erasing a product difference or pre-judging `vg-227`.
 | 16 | Stage top-left | dot · name · 1px divider · the word `edited` · weight 500 | dot · name only (no divider; the marker is `Unsaved changes` in the warn role, absent when clean) | **Register row `vg-219`** owns the three; the missing marker here is the **clean** state, not a difference. |
 | 17 | Stage top-right, treatment | cluster radius 9–10px, elevation 1 | `--radius-xl`/`--edge` here, but the glass palette rule off the ladder | **Register row `vg-222`** (two competing cluster treatments; editorial flat, five palettes overlay). |
 | 18 | View readout shape | a chip in the cluster | a bare percentage with no well and no chevron, opening a list | **Register row `vg-225`** — §5's closed vocabulary has no well+chevron entry; filed as a possible bible amendment. |
-| 19 | Whole body | rail, pane, stage and inspector **flush**, sharing 1px borders, square (bible §7's diagram) | inset 8px (`.editor-shell-body{gap:8px;padding:8px}`) with **12px** radii on rail/panel/stage/inspector — floating cards | **Reported** — no plan or row owns it; 12px is also off §3's radius scale (`lg` 8 / `xl` 10). |
+| 19 | Whole body | rail, pane, stage and inspector **flush**, sharing 1px borders, square (bible §7's diagram) | inset 8px (`.editor-shell-body{gap:8px;padding:8px}`, `editor-shell.css:757`) with **12px** radii at `:784`, `:833`, `:1016`, `:1064`, `:1601` — floating cards, off §3's radius scale (declared at `:301-302`, no 12px step) | **Register row `vg-231`** — filed by the controller; owner is first a design decision (add a 12px step, or move to `--xl` 10 / `--lg` 8; and whether the body insets at all). |
 | 20 | Inspector, empty | `Nothing selected` + `Pick something on the canvas` | one line: `Select an object to inspect it.` | **Deliberate** — the empty state; **plan 3**. §7.4. |
 | 21 | Inspector, selected | the mockup's shell draws only the empty state | a `SELECTION` heading, then CONTENT / POSITION / LAYER / PAINT / SPENDS | **Deliberate** — the five sections are **plan 3**'s; §7.4 says the column opens with the subject, not a chrome label — a §7.4 question plan 3 owns. |
-| 22 | Status bar, left | `52 objects   0 selected` | `Fabric editor ready` — the diagnostic, and **no counts anywhere** | **Deliberate** for the diagnostic (a reading kept, §2.3; Task 10 brief). The **absent counts** are **Reported**: §7.6 and spec §3.4 and Task 4's own outcome all put object/selection counts on the left, and no code renders one (`editor-main.ts:115–400` writes messages into `hosts.status`; `git log -S 'objects selected'` is empty). |
+| 22 | Status bar, left | `52 objects   0 selected` | `Fabric editor ready` — the diagnostic, and **no counts anywhere** | **One row, two adjudications.** The **diagnostic is deliberate** — a reading kept (§2.3; Task 10 brief). Its **absent counts are register row `vg-230`**: §7.6, spec §3.4 and Task 4's own outcome all put object/selection counts on the left, the thirteen writes into `hosts.status` (`editor-main.ts:115`–`:400`) are all messages, and `EditorShellSnapshot.selectedCount` (`bridge.ts:29`, `:159`) is consumed only by the dock's arrange eligibility (`bridge.ts:179`) and never rendered. Counted **once**, under deliberate. |
 | 23 | Status bar, right | `saved 4m ago` and `✓ live` | nothing | **Deliberate** — `SaveState` states only the unsaved state (`save-state.tsx:39`) and `PublishIndicator` renders no mark while the host is unknown (§9). State-dependent, not missing. |
 | 24 | Status strip tone | `#0e1217` (the rail's tone) | `var(--panel)` (the header's) | **Register row `vg-217`** — ruled defensible; the palette has no darker token. |
 | 25 | Dock | fixture tiles incl. a red trash | object half absent when nothing is selected (filtered, §7.5); over a selection the trash is `--hot` | **Aligned**; the red-only-in-the-dock fact is **register row `vg-226`** (registry owner). |
@@ -659,11 +662,13 @@ gated list's `dom.test` membership — never visual), `vg-229` (the
 documentation claim, and neither editor capture pins a clock). None is included
 above because none is a difference these three images show.
 
-**Owning plans at a glance:** **plan 4** — #1, #8–#13; **plan 5** — #2, #3, #6;
-**plan 3** — #20, #21; **plan 2 (this plan, deliberate)** — #4, #14, #15, #22
-(the diagnostic), #23; **register rows** — #7 `vg-227`, #16 `vg-219`, #17
-`vg-222`, #18 `vg-225`, #24 `vg-217`, #25 `vg-226`; **reported to the
-controller** — #5, #19, and #22's absent counts.
+**Owning plans at a glance, by whole row (6 + 12 + 7 = 25):** **plan 2, this
+plan, deliberate — 6** (#4, #5, #14, #15, #22 — counted once, #23); **a later
+plan — 12** (plan 4: #1, #8–#13; plan 5: #2, #3, #6; plan 3: #20, #21);
+**a register row — 7** (#7 `vg-227`, #16 `vg-219`, #17 `vg-222`, #18 `vg-225`,
+#19 `vg-231`, #24 `vg-217`, #25 `vg-226`). **Nothing is unowned.** `vg-230` and
+`vg-231` were filed by the controller from this list; this report is their
+origin.
 
 ### Step 2 — the previously divergent items, verified
 
@@ -687,11 +692,13 @@ controller** — #5, #19, and #22's absent counts.
 
 ### Step 4 — the empty-list case
 
-It does not apply: the comparison produced 25 differences — **4** this plan
-records as deliberate (#4, #14, #15, #23), **6** owned by a register row (#7,
-#16–#18, #24, #25), **12** owned by a later plan (#1, #8–#13 plan 4; #2, #3, #6
-plan 5; #20, #21 plan 3), and **3** reported as unowned (#5, #19, and #22's
-counts — #22's diagnostic half is one of the 4 deliberate). The captures that could have failed for producing no
-comparison are Task 9's three, each asserted before it wrote its image
-(`rail.dom.test.tsx`'s four-slot case; `design-language.spec.ts`'s slot-count and
-one-pane-visible assertions).
+It does not apply: the comparison produced 25 differences, partitioned by whole
+row so the two tallies below sum to it — **6 deliberate in this plan** (#4, #5,
+#14, #15, #22, #23), **12 owned by a later plan** (#1, #8–#13 plan 4; #2, #3, #6
+plan 5; #20, #21 plan 3), and **7 owned by a register row** (#7, #16–#19, #24,
+#25). **Nothing is unowned.** #22 is one row with two adjudications — its
+diagnostic is deliberate (§2.3) and its absent counts are `vg-230` — so it is
+counted **once**, under deliberate. The captures that could have failed for
+producing no comparison are Task 9's three, each asserted before it wrote its
+image (`rail.dom.test.tsx`'s four-slot case; `design-language.spec.ts`'s
+slot-count and one-pane-visible assertions).
