@@ -1511,11 +1511,13 @@ describe("the column a kind gets", () => {
    * the figures are exact so the parts sum to the whole. This table names **19**
    * distinct hooks: six in `EVERY_OBJECT` (`geometry`'s five selectors are one
    * name), five added by `shape`, seven by `text`, one by `image`. The pre-plan
-   * inspector at `190dc1a4` rendered **47** distinct `data-vigilia-*` names
-   * (`git grep -oh 'data-vigilia-[a-zA-Z-]*' 190dc1a4 --
-   * src/web/packages/editor/src/selection-inspector | sort -u | wc -l`), so the
-   * remaining **28** are carried by the per-domain tests and the e2e specs.
-   * Reading the 19 as the inventory would understate the coverage by 28.
+   * inspector at `190dc1a4` rendered **46** distinct `data-vigilia-*` names.
+   * The census (`git grep -oh 'data-vigilia-[a-zA-Z-]*' 190dc1a4 --
+   * src/web/packages/editor/src/selection-inspector | sort -u | wc -l`) prints
+   * 47 — one high: a docblock at `190dc1a4:selection-inspector/index.ts:230`
+   * quotes the bare prefix `data-vigilia-`, which the pattern counts as a name.
+   * So the remaining **27** are carried by the per-domain tests and the e2e
+   * specs. Reading the 19 as the inventory would understate the coverage by 27.
    */
   const EVERY_OBJECT: readonly string[] = [
     "[data-vigilia-name]",
