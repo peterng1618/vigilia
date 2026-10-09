@@ -160,7 +160,7 @@ test("a collapse between two swaps does not lose the list's scroll", async ({
  *  The three configurations are §7.7's own. The third is a viewport rather than
  *  a root `zoom`, because 200% browser zoom halves the CSS viewport — that is
  *  what the shell's media queries answer, and a `zoom` on the root leaves the
- *  layout viewport at 1280 while the fixed 46/360/280 columns stop adapting. */
+ *  layout viewport at 1280 while the fixed 46/246/280 columns stop adapting. */
 test("every dock control stays reachable with the rail's column in place", async ({
   page,
 }, testInfo) => {

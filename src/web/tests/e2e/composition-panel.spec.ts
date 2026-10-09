@@ -43,12 +43,13 @@ import { isDesktopSurface } from "./surface.js";
 const EDITOR = "http://127.0.0.1:4174/";
 
 /**
- * The column the stylesheet's own record was taken in, before the row carried a
- * role. It is a comparison point for this case, never an assertion about what
- * ships — the shipped width is whatever `editor-shell.css` says, and the case
- * reads it rather than restating it.
+ * The column this plan supersedes: plan 2 shipped a 360px pane, and the design
+ * language's §7.3 fixes the pane at 246px, so this is the width the shipped one
+ * is now compared against. It is a comparison point for this case, never an
+ * assertion about what ships — the shipped width is whatever `editor-shell.css`
+ * says, and the case reads it rather than restating it.
  */
-const RECORDED_WIDTH = 340;
+const SUPERSEDED_WIDTH = 360;
 
 // Playwright's headless default argument hides the scrollbars, which would
 // measure a panel whose list never pays for one — and the panel's own record was
@@ -161,7 +162,7 @@ test("every row carries a role and a mark, and the role adds no height", async (
   expect(heights[0], "the row's height, unchanged by the role").toBe(24);
 });
 
-test("the width the panel ships is the one that clips the fewest names", async ({
+test("the shipped column is the bible's, and its clipping is measured against the one it supersedes", async ({
   page,
 }, testInfo) => {
   test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
@@ -173,39 +174,42 @@ test("the width the panel ships is the one that clips the fewest names", async (
     await page.locator("[data-vigilia-layer]").count(),
   );
 
-  // The same width with the role taken out of the row: the number the
-  // stylesheet recorded before the role existed, re-taken on this machine and
-  // this font stack rather than restated.
+  // The same width with the role taken out of the row: the role is paid for out
+  // of the name, so this is the delta the case is really about, re-taken on this
+  // machine and this font stack rather than restated.
   await instrument(page, "no-role", ".vigilia-layer-role { display: none; }");
   const withoutRole = await clippedNames(page);
   await instrument(page, "no-role", "");
 
-  // And the column the record was taken in, so the count is a delta between two
-  // runs of this case rather than a promise about a comment.
+  // And the column this plan supersedes — plan 2's 360px — so the shipped
+  // column's cost is a delta between two runs of this case rather than a promise
+  // about a comment. The shipped 246px is the *narrower* one, so the direction
+  // is now the opposite of the one the superseded width recorded.
   await instrument(
     page,
-    "recorded",
-    // The rail's 46px column, then the recorded panel width: the body's areas
+    "superseded",
+    // The rail's 46px column, then the superseded panel width: the body's areas
     // are rail/panel/stage/inspector, so the override carries the rail column
-    // too or the four areas and three tracks do not match.
-    `.editor-shell-body { grid-template-columns: 46px ${RECORDED_WIDTH}px minmax(0, 1fr) 280px; }`,
+    // too or the four areas and three tracks do not match. The inspector is
+    // restated at its real 276px so the pane width is the only variable.
+    `.editor-shell-body { grid-template-columns: 46px ${SUPERSEDED_WIDTH}px minmax(0, 1fr) 276px; }`,
   );
-  const recorded = await clippedNames(page);
-  await instrument(page, "recorded", "");
+  const superseded = await clippedNames(page);
+  await instrument(page, "superseded", "");
 
   // The role is paid for out of the name, so taking it out can only unclip
-  // names; and the column the panel ships is the one measured wide enough for
-  // them, so it clips no more than the column the record was taken in. Both are
-  // directions, not pixel values: the exact count belongs to one font stack, and
-  // it lives in the stylesheet's comment and the commit that measured it.
+  // names; and the shipped column is the narrower one, so it clips at least as
+  // many as the column it supersedes. Both are directions, not pixel values: the
+  // exact count belongs to one font stack, and it lives in the stylesheet's
+  // comment and the commit that measured it.
   expect(shipped.clipped).toBeGreaterThanOrEqual(withoutRole.clipped);
-  expect(recorded.clipped).toBeGreaterThanOrEqual(shipped.clipped);
+  expect(shipped.clipped).toBeGreaterThanOrEqual(superseded.clipped);
 
   for (const [type, value] of [
     ["rows", shipped.total],
     ["clipped@shipped", shipped.clipped],
     ["clipped@shipped-without-role", withoutRole.clipped],
-    [`clipped@${RECORDED_WIDTH}`, recorded.clipped],
+    [`clipped@${SUPERSEDED_WIDTH}`, superseded.clipped],
   ] as const) {
     testInfo.annotations.push({ type, description: String(value) });
   }
@@ -847,7 +851,7 @@ test("two hundred loose shapes, re-measured", async ({ page }, testInfo) => {
   // hides the scrollbars and this file lifts that flag, so the number below is
   // the one taken with the scrollbar in place — the launch class plan 1's probe
   // used, which recorded 314 with the flag and 299 without. The column also
-  // ships 360px now where plan 1 measured 340px, so this is not plan 1's number
+  // ships 246px now where plan 1 measured 340px, so this is not plan 1's number
   // and is not offered as one.
   const rowWidth = await rows
     .first()

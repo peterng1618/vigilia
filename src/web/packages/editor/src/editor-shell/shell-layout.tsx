@@ -15,6 +15,7 @@ import {
   readHosting,
   setLan,
 } from "../hosting-client.js";
+import { CompositionPane } from "../panes/composition/composition-pane.js";
 import type { PublishSwitch } from "../publish-client.js";
 import {
   DEFAULT_RUN_DISPLAY_MODE,
@@ -32,7 +33,7 @@ import { CanvasDock } from "./canvas-dock.js";
 import { DiagnosticMessage } from "./diagnostic-message.js";
 import { DisplaySwitch } from "./display-switch.js";
 import { DocumentIdentity } from "./document-identity.js";
-import { LayerActions, LayerPanel } from "./layer-panel.js";
+import { LayerActions } from "./layer-panel.js";
 import {
   applyShellPalette,
   prefersDarkAppearance,
@@ -694,7 +695,7 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
               hidden={slot !== "composition"}
               footer={<LayerActions bridge={store.bridge} />}
             >
-              <LayerPanel bridge={store.bridge} />
+              <CompositionPane bridge={store.bridge} />
             </Pane>
             {/* The assets host renders inside the Add pane's body, with the
                 insert host: `§5.2` puts the asset path in Add, and a fourth

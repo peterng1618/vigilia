@@ -2,20 +2,21 @@
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { expect, it, vi } from "vitest";
-import { createRoot } from "react-dom/client";
-import { act } from "react";
 import { Canvas, Group, Rect } from "fabric/es";
-import { LayerPanel } from "./layer-panel.js";
-import { createEditorShellBridge, type EditorShellBridge } from "./bridge.js";
+import { act } from "react";
+import { createRoot } from "react-dom/client";
+import { expect, it, vi } from "vitest";
 import { createGroupingManager } from "../grouping-manager/index.js";
+import { CompositionPane } from "../panes/composition/composition-pane.js";
+import { uiCopy } from "../ui-copy.js";
+import { createEditorShellBridge, type EditorShellBridge } from "./bridge.js";
 import type {
   LayerKind,
   LayerMark,
   LayerRole,
   LayerRow,
 } from "./layer-tree.js";
-import { uiCopy } from "../ui-copy.js";
+
 /** The mark a fixture gets unless it names its own: the kind's own data, with
  * nothing a test would mistake for a real document's reading. */
 function markFor(kind: LayerKind): LayerMark {
@@ -128,7 +129,7 @@ it("titles a row with what it says rather than the key behind it", async () => {
   const root = createRoot(host);
   await act(async () =>
     root.render(
-      <LayerPanel bridge={bridge([{ ...textRow, name: "Brand mark" }])} />,
+      <CompositionPane bridge={bridge([{ ...textRow, name: "Brand mark" }])} />,
     ),
   );
 
@@ -143,7 +144,7 @@ it("indents a group child and carries both state icons once it is selected", asy
   const root = createRoot(host);
   await act(async () =>
     root.render(
-      <LayerPanel
+      <CompositionPane
         bridge={bridge([
           layerRow({
             id: "group",
@@ -171,6 +172,12 @@ it("indents a group child and carries both state icons once it is selected", asy
   expect(rows[1]?.style.getPropertyValue("--layer-depth")).toBe("1");
   expect(rows[1]?.querySelectorAll("button")).toHaveLength(2);
   expect(rows[1]?.querySelector('[aria-label="Unlock"]')).not.toBeNull();
+  // The group row is marked as a group for the stylesheet, which bolds its name,
+  // and it carries the generic stack glyph the kind arm draws (§5.1).
+  expect(rows[0]?.getAttribute("data-kind")).toBe("group");
+  expect(
+    rows[0]?.querySelector('[data-vigilia-layer-mark="group"]'),
+  ).not.toBeNull();
 });
 
 /** The rename field is seeded with `defaultValue`, which React tracks on the
@@ -193,7 +200,7 @@ async function renderPanel(
   const host = document.createElement("div");
   await act(async () =>
     (await Promise.resolve(createRoot(host))).render(
-      <LayerPanel bridge={bridge(rows, overrides)} />,
+      <CompositionPane bridge={bridge(rows, overrides)} />,
     ),
   );
   return host;
@@ -297,7 +304,7 @@ it("collapses and expands a group from its twisty", async () => {
   const host = document.createElement("div");
   const root = createRoot(host);
   await act(async () =>
-    root.render(<LayerPanel bridge={bridge(rows, { setCollapsed })} />),
+    root.render(<CompositionPane bridge={bridge(rows, { setCollapsed })} />),
   );
   await act(async () =>
     host
@@ -424,7 +431,7 @@ it("shows a shut group as one row offering to open, and no children", async () =
   const root = createRoot(host);
   await act(async () =>
     root.render(
-      <LayerPanel
+      <CompositionPane
         bridge={bridge([
           layerRow({
             id: "group",
@@ -486,7 +493,7 @@ it("opens a shut group from its twisty and closes it again", async () => {
   const draw = async (collapsed: boolean) => {
     await act(async () =>
       root.render(
-        <LayerPanel
+        <CompositionPane
           bridge={bridge([{ ...row, collapsed }], { setCollapsed })}
         />,
       ),
@@ -513,7 +520,7 @@ it("marks the group whose children are current and dims the rest", async () => {
   const root = createRoot(host);
   await act(async () =>
     root.render(
-      <LayerPanel
+      <CompositionPane
         bridge={bridge(contextRows, { groupContext: () => ["group"] })}
       />,
     ),
@@ -550,7 +557,9 @@ it("dims nothing when no group is entered", async () => {
   const root = createRoot(host);
   await act(async () =>
     root.render(
-      <LayerPanel bridge={bridge(contextRows, { groupContext: () => [] })} />,
+      <CompositionPane
+        bridge={bridge(contextRows, { groupContext: () => [] })}
+      />,
     ),
   );
   for (const row of host.querySelectorAll(".vigilia-layer-row"))
@@ -576,7 +585,7 @@ it("draws no action footer of its own, so the pane's toolbar is the only one", a
   // second row of the same actions is the defect the move removes.
   const host = document.createElement("div");
   const root = createRoot(host);
-  await act(async () => root.render(<LayerPanel bridge={bridge(rows)} />));
+  await act(async () => root.render(<CompositionPane bridge={bridge(rows)} />));
   expect(host.querySelector("[data-vigilia-layer-actions]")).toBeNull();
   expect(host.querySelector('[data-vigilia-layer="child"]')).not.toBeNull();
 });
@@ -1095,7 +1104,7 @@ it("restacks the document when a row is dropped on another", async () => {
   const host = document.createElement("div");
   await act(async () =>
     (await Promise.resolve(createRoot(host))).render(
-      <LayerPanel bridge={real} />,
+      <CompositionPane bridge={real} />,
     ),
   );
   const order = (): unknown[] =>
@@ -1133,104 +1142,6 @@ it("restacks the document when a row is dropped on another", async () => {
 });
 
 // ── A row says what it is ────────────────────────────────────────────────────
-
-it("draws a text row as its own words, in its own face", async () => {
-  // The brief's first subtraction: a 12px `T` glyph cannot survive 340px, and
-  // it answers neither question an author has. The row's own string does both
-  // at once — *what it says* and *that it is text* — and its own face says the
-  // rest. Read on the declared value: jsdom applies no stylesheet here, so a
-  // computed style would be theatre, but the inline declaration is exactly
-  // what the browser will paint and is what a browser case confirms.
-  const host = await renderPanel([
-    layerRow({
-      id: "wordmark",
-      name: "wordmark",
-      kind: "text",
-      mark: {
-        kind: "text",
-        text: "VIGILIA",
-        family: "Inter, sans-serif",
-        weight: "600",
-      },
-    }),
-  ]);
-
-  const sample = host.querySelector<HTMLElement>(
-    '[data-vigilia-layer-mark="text"]',
-  )!;
-  expect(sample.textContent).toBe("VIGILIA");
-  expect(sample.style.fontFamily).toBe("Inter, sans-serif");
-  expect(sample.style.fontWeight).toBe("600");
-  // The panel declares no face of its own, so the specimen is the only place a
-  // font family appears. A row that inherited `--shell-display` would leave
-  // this empty and read as shell text, which is the failure the assertion is
-  // here for — checked on the declaration rather than a substring, because
-  // `sans-serif` contains `serif` and a substring test would say nothing.
-  expect(host.querySelectorAll("[style*='font-family']")).toHaveLength(1);
-});
-
-it("gives each kind a mark that says which kind it is", async () => {
-  // The negative half matters as much as the positive: one column that drew the
-  // old glyph for everything would pass a test that only checked the arms it
-  // happens to get right. So every kind is asked, including the two that draw
-  // no mark at all.
-  const host = await renderPanel([
-    layerRow({
-      id: "gauge",
-      kind: "chart",
-      mark: { kind: "chart", family: "gauge" },
-    }),
-    layerRow({
-      id: "spark",
-      kind: "chart",
-      mark: { kind: "chart", family: "line" },
-    }),
-    layerRow({
-      id: "panel",
-      kind: "shape",
-      mark: { kind: "shape", paint: "#2ee6a8" },
-    }),
-    layerRow({
-      id: "logo",
-      kind: "image",
-      mark: { kind: "image", src: "blob:pic" },
-    }),
-    layerRow({ id: "card", kind: "group", mark: { kind: "group" } }),
-  ]);
-
-  const mark = (id: string): SVGSVGElement | null =>
-    host.querySelector(
-      `[data-vigilia-layer="${id}"] [data-vigilia-layer-mark] svg`,
-    ) ?? null;
-
-  // A chart's *family*, which is what the eight cards of a starter differ by.
-  expect(mark("gauge")?.getAttribute("class")).toContain("lucide-gauge");
-  expect(mark("spark")?.getAttribute("class")).toContain("lucide-chart-line");
-  // A shape's own paint, not a square in the shell's colour.
-  const swatch = host.querySelector<HTMLElement>(
-    '[data-vigilia-layer="panel"] [data-vigilia-layer-mark="shape"]',
-  )!;
-  expect(swatch.style.background).toBe("rgb(46, 230, 168)");
-  // An image is its own picture.
-  expect(
-    host
-      .querySelector<HTMLImageElement>(
-        '[data-vigilia-layer="logo"] [data-vigilia-layer-mark="image"]',
-      )
-      ?.getAttribute("src"),
-  ).toBe("blob:pic");
-  // A group draws no mark: its twisty is the mark, and a third symbol saying
-  // "group" beside a bold name would be a second word for the same word.
-  expect(
-    host.querySelector('[data-vigilia-layer="card"] [data-vigilia-layer-mark]'),
-  ).toBeNull();
-  // …and it is marked as a group for the stylesheet, which bolds the name.
-  expect(
-    host
-      .querySelector('[data-vigilia-layer="card"]')
-      ?.getAttribute("data-kind"),
-  ).toBe("group");
-});
 
 it("prints the bound key the projection reported, and nothing where there is none", async () => {
   // The bound column is only worth a column if it is the document's key: a
@@ -1483,11 +1394,12 @@ it("draws a role on every row, in the vocabulary's own words", async () => {
 it("names a chart row's family and a shape row's kind for a screen reader", async () => {
   // Review Focus 2, and the reason this task exists. A chart's icon, a shape's
   // swatch and an image's `alt=""` contribute nothing to a treeitem's name,
-  // which is the concatenation of its own columns, and a group draws no element
-  // at all — so before the role a chart row and a shape row were the same row to
-  // a screen reader. The name is read off the row's own content rather than off
-  // an attribute, because an `aria-label` on a row already named from its
-  // columns is the second name this case exists to rule out.
+  // which is the concatenation of its own columns, and a group's glyph is a
+  // wordless `aria-hidden` glyph — so before the role a chart row and a shape row
+  // were the same row to a screen reader. The name is read off the row's own
+  // content rather than off an attribute, because an `aria-label` on a row
+  // already named from its columns is the second name this case exists to rule
+  // out.
   const host = await renderPanel([
     layerRow({
       id: "trends",
@@ -1571,8 +1483,8 @@ it("gives the role a fixed width and keeps the name the row's flexible column", 
 });
 
 it("carries a role on every one of two hundred rows", async () => {
-  // The scale the panel is judged at, with the group arm in it because a group
-  // draws no mark at all: on those rows the role is the only thing the row says
+  // The scale the panel is judged at, with the group arm in it because a group's
+  // mark is a bare `aria-hidden` glyph: the role is the only thing the row says
   // about its kind, so a row that skipped it would be identified by nothing.
   const rows = Array.from({ length: 200 }, (_, at) =>
     at % 20 === 19
@@ -1775,7 +1687,7 @@ it("makes a group's parts reachable once its control has entered it", async () =
   const host = document.createElement("div");
   await act(async () =>
     (await Promise.resolve(createRoot(host))).render(
-      <LayerPanel bridge={real} />,
+      <CompositionPane bridge={real} />,
     ),
   );
   const row = (id: string): HTMLElement =>

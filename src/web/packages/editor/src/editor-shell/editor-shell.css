@@ -737,26 +737,29 @@ body,
 .editor-shell-body {
   display: grid;
   grid-template-areas: "rail panel stage inspector";
-  /* The layer panel is 360px because a row now carries four things it did not:
-     a 40px kind specimen, the name, and two columns naming it — what it *is*
-     (`.vigilia-layer-role`) and the key it reads (`.vigilia-layer-bound`).
+  /* The layer panel is the bible's 246px (§7.3, "width 246px by default"). The
+     360px this column carried before was plan 2's own measurement, taken when a
+     row carried four things it had not: a 40px kind specimen, the name, and two
+     columns naming it — what it *is* (`.vigilia-layer-role`) and the key it
+     reads (`.vigilia-layer-bound`). That 360px was a budget this pane chose, and
+     §7.3 supersedes it, so the pane is re-cut to 246px rather than re-argued.
 
-     The role is paid for out of the name, and the name is what the row's own
-     flex gives up last, so it was measured rather than assumed. On canvas at
-     1600×900, every group open, the panel's scrollbar in place, counting
-     `.vigilia-layer-name`'s `scrollWidth > clientWidth` per row: the starter's
-     60 names ellipsise 4 with the role in the row and 2 with it taken out —
-     the 2 this block recorded before the role existed, reproduced on the same
-     machine. Both come back at 350px, and nothing further is bought between
-     there and 376px, so 350px is the knee and 360px ships: 20px, the same
-     figure the panel refused to sell for one extra clipped name at 320px.
+     The cost was measured rather than assumed, the same way the 360px was: on
+     canvas at 1600×900, every group open, the scrollbar in place, counting
+     `.vigilia-layer-name`'s `scrollWidth > clientWidth` per row. The starter's
+     60 names ellipsise 31 with the role in the row and 22 with it taken out —
+     the role still costs names, which is the delta the case is about — against
+     2 in the superseded 360px column. At 246px the row also stopped holding its
+     four columns, and the give came from the kind column rather than the role:
+     `group-trends-card`'s role `Performance trends` ran 11px past the row's own
+     edge, and the mark slot went 40px → 28px to buy it back, since a specimen
+     is designed to clip and a role is not (`.vigilia-layer-mark`).
 
-     The canvas is `minmax(0, 1fr)`, so every pixel here comes off the stage,
-     which is the most valuable space in this app: the whole design is that the
-     editor exists to author a phone display. That is why the 20px was measured
-     and taken knowingly, and why the alternative — shortening the role's words
-     — was measured too, at `.vigilia-layer-role`. */
-  grid-template-columns: 46px 360px minmax(0, 1fr) 276px;
+     The canvas is `minmax(0, 1fr)`, so every pixel here comes off the stage —
+     which is why the 360px was measured at all. The narrower pane gives those
+     pixels back, and the row's cost is the 31 ellipsised names recorded above,
+     not a figure this file chose. */
+  grid-template-columns: 46px 246px minmax(0, 1fr) 276px;
   grid-template-rows: minmax(0, 1fr);
   gap: 8px;
   min-height: 0;
@@ -1394,18 +1397,20 @@ body,
    name starts on the same left edge — which is what makes a column of them
    scannable at all.
 
-   40px, chosen from the budget rather than from the ideal, and kept there after
-   measuring the narrower alternative. At 28px the clipped-specimen count goes
-   from 4 to 7, and the three it adds are the ones that should not be shortened:
-   `Storage`, `VRAM` and `VIGILIA`, which are titles rather than noise. At 40px
-   the four that clip are `Network` by 1px, a three-item legend by 60,
-   `Performance Trends` by 56 and `SYSTEM INSIGHTS` by 49 — a legend and a
-   strapline are meant to run long, and 40px still holds `CPU`, `RAM` and
-   `VIGILIA` whole, which is what this column is *for*. Four of the five arms
-   are narrower than 28px. A specimen that runs long ellipsises, and its `title`
-   carries the whole string. */
+   28px, re-cut for the bible's 246px pane (§7.3). The 40px this column carried
+   was the budget a 360px pane allowed, and it stopped fitting when the pane
+   narrowed: measured on canvas at 1600×900 with every group open, the row
+   `group-trends-card` ran its role `Performance trends` 11px past its own right
+   edge, and the row clips its overflow — so the role was cut mid-word. The role
+   is `flex: none` and must never be the column that gives way; this slot is the
+   one *designed* to clip ("a specimen is not read — it is recognised, so it
+   clips rather than shrinks"), so the 12px comes from here. The cost is the one
+   the old budget named: at 28px a specimen that overran 40px now overruns 28px
+   too, and `Storage`, `VRAM` and `VIGILIA` lose their last letters — but a
+   specimen that runs long ellipsises and its `title` carries the whole string,
+   where a clipped role said nothing at all. */
 .vigilia-layer-mark {
-  flex: 0 0 40px;
+  flex: 0 0 28px;
   min-width: 0;
   display: inline-flex;
   align-items: center;
