@@ -595,3 +595,103 @@ Named so a later plan owns them rather than this one growing.
 - **Type consistency.** `RailSlot` is the rail's vocabulary and `RailPane` no longer exists; `HostingStore` is one owner read by two surfaces; `documentName` is a field on `EditorShellSnapshot`, `undefined` when no document is open, never `""`.
 - **Review Focus.** Each of the ten is pinned above to a task, and each is a failure no existing test would catch.
 - **Red proofs.** Every task states the break that must fail its own gate, and Task 8 re-proves the guard's empty-list refusal with this plan's list in place.
+
+## Completion report — the captures beside the mockup
+
+**Task 10.** Task 9's three captures (`84abb569`) were placed beside
+[`docs/design/mockups/editor-shell.html`](../../design/mockups/editor-shell.html)
+and every difference adjudicated against
+[`docs/design/design-language.md`](../../design/design-language.md) (normative),
+never against the mockup alone.
+
+**How the two sides were looked at.** The mockup was **rendered** in the
+installed Playwright Chromium at a 1280×720 viewport
+(`file:///D:/git-repos/vigilia/docs/design/mockups/editor-shell.html`), full page
+and as its shell element (1180×638px) — not judged from its source. Each capture
+is 1280×720 and was **Read** whole, then re-cropped at 3–6× (the PNG embedded as
+a data URL in a Playwright page, a clipped region screenshotted upscaled) to read
+control sizes, weights and edges. `editor-shell-add-desktop-chromium.png` is the
+primary comparison — it is the state the mockup draws (Add open, nothing
+selected); `editor-desktop-chromium.png` and
+`editor-toolbar-desktop-chromium.png` are supporting.
+
+**This plan changed nothing in the product.** Every entry below is *deliberate*,
+*owned by a later plan or a register row*, or *reported to the controller* as
+unowned. A difference "fixed" here would reopen a surface whose task is closed
+and reviewed (Task 10 brief, `Files`). The mockup was checked against the bible
+and left unchanged: nothing in it was both stale against the bible and fixable
+without either erasing a product difference or pre-judging `vg-227`.
+
+### The differences
+
+| # | Surface | Mockup draws | The capture shows | Adjudication |
+|---|---|---|---|---|
+| 1 | Pane width | 246px (§7.3) | 360px | **Deliberate** — the measured requirement of the current layer row, which **plan 4** replaces. Bible §7.3; `Global Constraints`. |
+| 2 | Header, right | nothing between the menus and Publish | an `editorial` swatch+name chip in the header | **Deliberate** — the palette chip's move to Settings is **plan 5**'s. |
+| 3 | Header, right | `⌘⇧P` printed beside Publish | no chord printed | **Deliberate, deferred** — no `publish.*` binding exists until **plan 5**; §9 forbids a mark that runs nothing. |
+| 4 | Header, right | a filled accent **Publish** button | nothing | **Deliberate** — `publish-control.tsx:87` returns `null` while the host is unknown, and the preview has no host; §9 forbids a fabricated claim. The control renders with a host. |
+| 5 | Header, left | a brand chevron glyph and a 1px divider before the menus | the wordmark alone, no divider | **Reported** — bible §7.1 says "brand mark"; the wordmark satisfies it, so the missing glyph may be a decision. Minor. |
+| 6 | Rail, foot | the settings gear pinned to the foot | no gear | **Deliberate** — a gear that opens nothing asserts a capability the code lacks (§9); **plan 5** builds Settings. |
+| 7 | Rail slot size | 34×34px | 34×34px (both outside §5's 26–30px) | **Register row `vg-227`** owns the decision; the mockup is not edited while it is open. |
+| 8 | Pane title bar | `＋ Add   8 units` | `＋ Add` — no count | **Deliberate** — pane content; **plan 4**. Bible §7.3. |
+| 9 | Add group headings | `CARDS / SHAPES / CHARTS` | `CARD / SHAPE / CHART` (singular) | **Deliberate** — pane copy; **plan 4**. |
+| 10 | Card units | a 4-column grid of labelled diagram tiles | named pills in a bordered group | **Deliberate** — the Add pane rebuilt as React with card unit tiles; **plan 4** (`vg-154`). §7.8. |
+| 11 | Shapes / charts | 4-column glyph tiles | labelled pills (`Rectangle`, `Gauge`, …) | **Deliberate** — **plan 4**. §7.8. |
+| 12 | Text | a glyph well row | a labelled pill | **Deliberate** — **plan 4**. |
+| 13 | Assets | a dashed `Import a file  png · svg` row | an `ASSETS` section: select, preview, Import/Replace/Remove | **Deliberate** — the assets host re-parented into Add; **plan 4** absorbs Assets (`vg-154`). |
+| 14 | Stage ground | a restrained diagonal texture | a flat `--vigilia-canvas-bg` ground | **Deliberate** — §7.5 permits texture *or* a flat ground; §7.8 keeps the artwork dominant. |
+| 15 | Stage top-right | compact lens chips (`16:9`, `9:19.5`, `Fit`) + `36%` + expand, all inline | one readout (`−  33%  +  fit`) whose list holds every lens behind a labelled chooser | **Deliberate** — Task 6's crowding resolution; §7.7 permits the labelled chooser over forcing six lenses into chips. The product's `−`/`+` follow §7.5, which the mockup omits; the mockup is left illustrative. |
+| 16 | Stage top-left | dot · name · 1px divider · the word `edited` · weight 500 | dot · name only (no divider; the marker is `Unsaved changes` in the warn role, absent when clean) | **Register row `vg-219`** owns the three; the missing marker here is the **clean** state, not a difference. |
+| 17 | Stage top-right, treatment | cluster radius 9–10px, elevation 1 | `--radius-xl`/`--edge` here, but the glass palette rule off the ladder | **Register row `vg-222`** (two competing cluster treatments; editorial flat, five palettes overlay). |
+| 18 | View readout shape | a chip in the cluster | a bare percentage with no well and no chevron, opening a list | **Register row `vg-225`** — §5's closed vocabulary has no well+chevron entry; filed as a possible bible amendment. |
+| 19 | Whole body | rail, pane, stage and inspector **flush**, sharing 1px borders, square (bible §7's diagram) | inset 8px (`.editor-shell-body{gap:8px;padding:8px}`) with **12px** radii on rail/panel/stage/inspector — floating cards | **Reported** — no plan or row owns it; 12px is also off §3's radius scale (`lg` 8 / `xl` 10). |
+| 20 | Inspector, empty | `Nothing selected` + `Pick something on the canvas` | one line: `Select an object to inspect it.` | **Deliberate** — the empty state; **plan 3**. §7.4. |
+| 21 | Inspector, selected | the mockup's shell draws only the empty state | a `SELECTION` heading, then CONTENT / POSITION / LAYER / PAINT / SPENDS | **Deliberate** — the five sections are **plan 3**'s; §7.4 says the column opens with the subject, not a chrome label — a §7.4 question plan 3 owns. |
+| 22 | Status bar, left | `52 objects   0 selected` | `Fabric editor ready` — the diagnostic, and **no counts anywhere** | **Deliberate** for the diagnostic (a reading kept, §2.3; Task 10 brief). The **absent counts** are **Reported**: §7.6 and spec §3.4 and Task 4's own outcome all put object/selection counts on the left, and no code renders one (`editor-main.ts:115–400` writes messages into `hosts.status`; `git log -S 'objects selected'` is empty). |
+| 23 | Status bar, right | `saved 4m ago` and `✓ live` | nothing | **Deliberate** — `SaveState` states only the unsaved state (`save-state.tsx:39`) and `PublishIndicator` renders no mark while the host is unknown (§9). State-dependent, not missing. |
+| 24 | Status strip tone | `#0e1217` (the rail's tone) | `var(--panel)` (the header's) | **Register row `vg-217`** — ruled defensible; the palette has no darker token. |
+| 25 | Dock | fixture tiles incl. a red trash | object half absent when nothing is selected (filtered, §7.5); over a selection the trash is `--hot` | **Aligned**; the red-only-in-the-dock fact is **register row `vg-226`** (registry owner). |
+
+**Owned elsewhere, not a visible difference in these captures:** `vg-223` (the
+identity chip's clipped marker, only at 200% zoom, `640×360`), `vg-228` (the
+gated list's `dom.test` membership — never visual), `vg-229` (the
+`?static=1`/clock sentence in `docs/evidence/screenshots/README.md` — a
+documentation claim, and neither editor capture pins a clock). None is included
+above because none is a difference these three images show.
+
+**Owning plans at a glance:** **plan 4** — #1, #8–#13; **plan 5** — #2, #3, #6;
+**plan 3** — #20, #21; **plan 2 (this plan, deliberate)** — #4, #14, #15, #22
+(the diagnostic), #23; **register rows** — #7 `vg-227`, #16 `vg-219`, #17
+`vg-222`, #18 `vg-225`, #24 `vg-217`, #25 `vg-226`; **reported to the
+controller** — #5, #19, and #22's absent counts.
+
+### Step 2 — the previously divergent items, verified
+
+- **Four rail slots include Document** — holds. `RAIL_SLOTS` is exactly
+  `composition · add · tokens · document` (`rail.tsx:13`), the capture draws
+  four glyphs, and `choosePane` (`shell-layout.tsx:615`) closes the open slot
+  when it is asked again and replaces it when another is asked.
+- **No header size chip** — holds. The header carries the wordmark, File/Edit/View
+  and the palette chip; there is no per-document size readout (it is on the
+  canvas). No drift.
+- **`⌘⇧P` not printed** — holds, and it is **deferred**, not a parity failure;
+  plan 5 binds the chord.
+- **Gradient artwork, restrained texture, compact view chips** — the authored
+  artwork is present (the starter's own composition, illustrative in the mockup);
+  the ground is flat, which §7.5 permits; the compact chips are **not** the
+  product's — #15's Task 6 chooser is. The empty inspector carries **no
+  statistics**, and the composition was not traded for a blank placeholder.
+- **The shell reference is a final design** — the mockup's Settings specimen and
+  the panes'/inspector's content are labelled with their owning later plan
+  (#2, #3, #6 plan 5; #8–#13 plan 4; #20, #21 plan 3).
+
+### Step 4 — the empty-list case
+
+It does not apply: the comparison produced 25 differences — **4** this plan
+records as deliberate (#4, #14, #15, #23), **6** owned by a register row (#7,
+#16–#18, #24, #25), **12** owned by a later plan (#1, #8–#13 plan 4; #2, #3, #6
+plan 5; #20, #21 plan 3), and **3** reported as unowned (#5, #19, and #22's
+counts — #22's diagnostic half is one of the 4 deliberate). The captures that could have failed for producing no
+comparison are Task 9's three, each asserted before it wrote its image
+(`rail.dom.test.tsx`'s four-slot case; `design-language.spec.ts`'s slot-count and
+one-pane-visible assertions).
