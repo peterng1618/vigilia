@@ -76,6 +76,13 @@ export type FieldView =
       readonly unit?: string;
       readonly min?: number;
       readonly max?: number;
+      /**
+       * The field's owner says the value is a whole one. Rotation's legacy
+       * `numberField` refused a fraction, and the control set has no other way
+       * to say so — a per-field check would be dropped again by each section
+       * that converts its own geometry fields.
+       */
+      readonly integer?: boolean;
     })
   | (FieldBase & { readonly control: "toggle"; readonly checked: boolean })
   | (FieldBase & {
@@ -117,6 +124,13 @@ export interface RunOptionView {
  * — never as the Fabric object, whose `runs` are what it reads.
  */
 export interface RunRowView {
+  /**
+   * What the row *is*, for React's key: a run carries no id, so the projection
+   * derives one from the run itself and disambiguates a genuine repeat. Keying
+   * by `index` instead reconciles a draft onto the wrong run the moment a run
+   * that is not the last is removed.
+   */
+  readonly id: string;
   readonly index: number;
   readonly kind: "literal" | "value";
   /** What the row is called: a reading's key, or the prose it says. */
@@ -246,14 +260,19 @@ export interface SelectionEdits {
  * the eligibility rule: a field id absent here reaches no writer, so a control
  * that renders a hook the dispatcher does not know is refused rather than
  * silently accepted.
+ *
+ * The kind is the boundary's own copy of the rule its control carries, and for
+ * `angle` the two are `"integer"` here and `integer: true` on its `FieldView`.
+ * The control is a convenience; this table is what must hold, so a fraction
+ * that a wrongly-built control let through is still refused here.
  */
-type WritableKind = "number" | "name";
+type WritableKind = "number" | "integer" | "name";
 const WRITABLE_FIELD_IDS: ReadonlyMap<string, WritableKind> = new Map([
   ["left", "number"],
   ["top", "number"],
   ["width", "number"],
   ["height", "number"],
-  ["angle", "number"],
+  ["angle", "integer"],
   ["opacity", "number"],
   ["name", "name"],
 ]);
@@ -273,8 +292,9 @@ export type EditRefusal = "stale" | "locked" | "unknown" | "invalid";
  * checked them, and a field that writes the object directly is withheld from a
  * locked one.
  *
- * The value rule is per field: a number must be finite, and a name must be one
- * the document envelope would accept — refused rather than coerced or truncated.
+ * The value rule is per field: a number must be finite, a whole-number field
+ * must be whole, and a name must be one the document envelope would accept —
+ * refused rather than coerced or truncated.
  */
 export function editRefusal(
   edit: {
@@ -293,10 +313,14 @@ export function editRefusal(
     const trimmed = edit.value.trim();
     return trimmed === "" || isObjectName(trimmed) ? undefined : "invalid";
   }
-  // Refuse rather than coerce: a non-finite number is not a dimension.
-  return typeof edit.value === "number" && Number.isFinite(edit.value)
-    ? undefined
-    : "invalid";
+  if (typeof edit.value !== "number" || !Number.isFinite(edit.value)) {
+    // Refuse rather than coerce: a non-finite number is not a dimension.
+    return "invalid";
+  }
+  // `angle` was whole units before its field was converted, and a rotated
+  // object's own angle is the only thing the write would move.
+  if (kind === "integer" && !Number.isInteger(edit.value)) return "invalid";
+  return undefined;
 }
 
 /**

@@ -553,6 +553,37 @@ it("does not commit an empty numeric draft, and never writes zero for it", async
   expect(onCommit).not.toHaveBeenCalled();
 });
 
+it("refuses a fraction where the field owner asked for whole numbers", async () => {
+  const onCommit = vi.fn();
+  await mount(
+    <ControlNumber
+      label="Width"
+      value={299}
+      integer
+      min={0}
+      max={1000}
+      onCommit={onCommit}
+    />,
+  );
+  const field = labelled("Width") as HTMLInputElement;
+  field.focus();
+  await type(field, "45.5");
+  await press(field, "Enter");
+  expect(onCommit).not.toHaveBeenCalled();
+  expect(field.value, "the rejected draft survives to be corrected").toBe(
+    "45.5",
+  );
+  expect(description(field)).toContain("whole");
+
+  // The same field with no integrality prop takes it: the rule is the owner's.
+  await mount(<ControlNumber label="Width" value={299} onCommit={onCommit} />);
+  const free = labelled("Width") as HTMLInputElement;
+  free.focus();
+  await type(free, "45.5");
+  await press(free, "Enter");
+  expect(onCommit).toHaveBeenCalledWith(45.5);
+});
+
 it("does not commit a number outside the field owner's bounds", async () => {
   const onCommit = vi.fn();
   await mount(

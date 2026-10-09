@@ -1,15 +1,15 @@
 import type { TextRun } from "@vigilia/renderer-core";
+import { VIGILIA_TEXT_PROPERTY } from "@vigilia/scene-fabric";
 
 /**
  * The authored text a run lives in, as plain reads.
  *
  * The one property that owns a text object's runs, and the reads that pull them
  * out of it. Read here rather than in the editor because both the projection
- * and the write rules need them, and a second copy would be a second owner of
- * what `vigiliaText` means.
+ * and the write rules need them — through `VIGILIA_TEXT_PROPERTY`, which
+ * `scene-fabric` owns and the rest of the editor already imports, so this file
+ * is not a second spelling of the key.
  */
-
-export const TEXT_PROPERTY = "vigiliaText";
 
 /** The two property accesses a run read or write needs, so a test can drive the
  *  rules over a plain object rather than standing up a canvas. */
@@ -20,7 +20,7 @@ export interface ObjectWithText {
 
 /** The runs of a text object, or none when it is not a run-bearing object. */
 export function textRunsOf(object: ObjectWithText): readonly TextRun[] {
-  const content = object.get(TEXT_PROPERTY) as
+  const content = object.get(VIGILIA_TEXT_PROPERTY) as
     | { readonly runs?: readonly TextRun[] }
     | undefined;
   return content?.runs ?? [];
@@ -30,7 +30,7 @@ export function textRunsOf(object: ObjectWithText): readonly TextRun[] {
 export function authoredContentOf(
   object: ObjectWithText,
 ): Record<string, unknown> | undefined {
-  const content = object.get(TEXT_PROPERTY);
+  const content = object.get(VIGILIA_TEXT_PROPERTY);
   return typeof content === "object" && content !== null
     ? (content as Record<string, unknown>)
     : undefined;

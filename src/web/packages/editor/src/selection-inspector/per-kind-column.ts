@@ -87,6 +87,19 @@ interface SectionParts {
 }
 
 /**
+ * Whether the column renders this extra today.
+ *
+ * `runs` is the one wired; `crop` is Task 4's and the two chart kinds are Task
+ * 3a's. The section's count and the column's rows are the same decision made
+ * once, so emitting an extra whose renderer has not landed cannot make a header
+ * claim a row that is not there. Wiring one is a change to this predicate and to
+ * the column's row together, which is the point.
+ */
+export function rendersExtra(extra: ExtraView): boolean {
+  return extra.kind === "runs";
+}
+
+/**
  * The kinds of thing the editor can have selected. This is the partition the
  * column's questions fall on, not the roster of Fabric class names.
  *
@@ -331,6 +344,9 @@ function rotationField(
     control: "number",
     label: GEOMETRY_LABELS.angle,
     value: Math.round(context.geometry.read(object, "angle")),
+    // The control refuses a fraction inline; `editRefusal` refuses it again at
+    // the write boundary, which is the copy that must hold.
+    integer: true,
     data: { "data-vigilia-geometry": "angle" },
   };
 }
@@ -652,7 +668,7 @@ export function perKindColumn(
 
   const sizeOf = (parts: SectionParts): number =>
     (parts.fields?.length ?? 0) +
-    (parts.extras?.length ?? 0) +
+    (parts.extras?.filter(rendersExtra).length ?? 0) +
     (parts.body?.length ?? 0);
 
   return bodies

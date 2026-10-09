@@ -1,9 +1,9 @@
 import type * as React from "react";
 import { useRef, useState } from "react";
 import {
+  type ControlProps,
   ControlRow,
   ControlWell,
-  type ControlProps,
   describedBy,
   isBlocked,
   useControlIds,
@@ -12,8 +12,8 @@ import {
 /**
  * A finite number, or nothing at all — never a zero nobody typed.
  *
- * Bible §5's validation rule belongs to the field's owner: bounds and
- * optionality are props, not a global minimum, and a rejected draft is kept
+ * Bible §5's validation rule belongs to the field's owner: bounds, integrality
+ * and optionality are props, not a global minimum, and a rejected draft is kept
  * with its reason rather than coerced or silently clamped. Clearing an
  * authored key is a different act from writing zero, so it is a different
  * callback (`onClear`); with no callback to clear through, a blank field is
@@ -40,6 +40,8 @@ export function ControlNumber(
     readonly unit?: string;
     readonly min?: number;
     readonly max?: number;
+    /** The owner asked for whole numbers; a fraction is refused like out-of-bounds. */
+    readonly integer?: boolean;
     readonly onCommit: (value: number) => void;
     readonly onClear?: () => void;
   },
@@ -55,6 +57,7 @@ export function ControlNumber(
     unit,
     min,
     max,
+    integer,
     onCommit,
     onClear,
   } = props;
@@ -85,6 +88,10 @@ export function ControlNumber(
     const parsed = parse(text);
     if (parsed === undefined) {
       setInvalid("not a number");
+      return;
+    }
+    if (integer === true && !Number.isInteger(parsed)) {
+      setInvalid("a whole number");
       return;
     }
     if (min !== undefined && parsed < min) {

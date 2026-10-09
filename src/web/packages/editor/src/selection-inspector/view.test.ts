@@ -247,6 +247,25 @@ describe("editRefusal", () => {
     expect(editRefusal(edit({ value: "12" }), live)).toBe("invalid");
   });
 
+  it("refuses a fractional angle at the boundary, whatever the control let through", () => {
+    // Rotation was whole units under its own `numberField`, and the control's
+    // own refusal is a convenience: this is the copy that must hold.
+    expect(editRefusal(edit({ fieldId: "angle", value: 45.5 }), live)).toBe(
+      "invalid",
+    );
+    expect(editRefusal(edit({ fieldId: "angle", value: 45 }), live)).toBe(
+      undefined,
+    );
+    // Every other number field is unchanged: opacity and the geometry pair
+    // take a fraction.
+    expect(editRefusal(edit({ fieldId: "opacity", value: 45.5 }), live)).toBe(
+      undefined,
+    );
+    expect(editRefusal(edit({ fieldId: "width", value: 45.5 }), live)).toBe(
+      undefined,
+    );
+  });
+
   it("reports a stale draft ahead of the lock it would also fail", () => {
     // Precedence is part of the contract: the newer selection is the reason the
     // draft is wrong, so that is what a caller is told.

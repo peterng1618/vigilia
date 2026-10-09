@@ -214,6 +214,37 @@ describe("the selection inspector", () => {
     expect(value("angle")).toBe("0");
   });
 
+  it("refuses a fractional rotation rather than storing it", async () => {
+    const { host, history } = setup(rect);
+    const angle = host.querySelector<HTMLInputElement>(
+      '[data-vigilia-geometry="angle"]',
+    )!;
+    angle.focus();
+
+    await edit(angle, "45.5");
+
+    // The deleted `numberField` refused a non-integer rather than rounding it.
+    // Without that rule the fraction reaches `object.set({angle})` and lands a
+    // history entry behind it. The rejected draft stays in the box, with its
+    // reason, so the author can correct it.
+    expect(rect.angle).toBe(0);
+    expect(history.saveState).not.toHaveBeenCalled();
+    expect(angle.value).toBe("45.5");
+    expect(angle.getAttribute("aria-invalid")).toBe("true");
+  });
+
+  it("stores a whole rotation", async () => {
+    const { host, history } = setup(rect);
+    const angle = host.querySelector<HTMLInputElement>(
+      '[data-vigilia-geometry="angle"]',
+    )!;
+
+    await edit(angle, "45");
+
+    expect(rect.angle).toBe(45);
+    expect(history.saveState).toHaveBeenCalledTimes(1);
+  });
+
   it("moves the object and records exactly one history entry", () => {
     const { host, history } = setup(rect);
     const left = host.querySelector<HTMLInputElement>(

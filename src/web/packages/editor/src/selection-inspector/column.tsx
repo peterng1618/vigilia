@@ -9,10 +9,10 @@ import { ControlSlider } from "../components/ui/control-slider.js";
 import { ControlText } from "../components/ui/control-text.js";
 import { ControlToggle } from "../components/ui/control-toggle.js";
 import { InspectorSection } from "../components/ui/inspector-section.js";
+import { rendersExtra } from "./per-kind-column.js";
 import { RunEditor } from "./runs.js";
 import type {
   ColumnSectionView,
-  ExtraView,
   FieldView,
   RunEdits,
   SelectionEdits,
@@ -80,6 +80,7 @@ function fieldControl(
           {...(field.min === undefined ? {} : { min: field.min })}
           {...(field.max === undefined ? {} : { max: field.max })}
           {...(field.unit === undefined ? {} : { unit: field.unit })}
+          {...(field.integer === undefined ? {} : { integer: field.integer })}
           {...refused}
         />
       );
@@ -154,20 +155,6 @@ function fieldControl(
   }
 }
 
-/** One section's extras — the sub-surfaces that are not one control. */
-function extraView(extra: ExtraView, runs: RunEdits): React.JSX.Element | null {
-  switch (extra.kind) {
-    case "runs":
-      return <RunEditor runs={extra.runs} edits={runs} />;
-    default:
-      // `crop` is Task 4's, and the two chart kinds are Task 3a's — it supplies
-      // their renderers, and until then a chart's fields still mount into the
-      // section body. Wiring the dispatch here is what lets each land without
-      // this file changing again.
-      return null;
-  }
-}
-
 function Section(props: {
   readonly section: ColumnSectionView;
   readonly edits: SelectionEdits;
@@ -191,11 +178,17 @@ function Section(props: {
           {fieldControl(field, edits, revision)}
         </Fragment>
       ))}
-      {section.extras.map((extra, index) => (
-        <Fragment key={`${revision}:${extra.kind}-${index}`}>
-          {extraView(extra, runs)}
-        </Fragment>
-      ))}
+      {section.extras
+        .filter(rendersExtra)
+        .map((extra, index) =>
+          extra.kind === "runs" ? (
+            <RunEditor
+              key={`${revision}:${extra.kind}-${index}`}
+              runs={extra.runs}
+              edits={runs}
+            />
+          ) : null,
+        )}
       <div data-vigilia-section-body="" />
     </InspectorSection>
   );

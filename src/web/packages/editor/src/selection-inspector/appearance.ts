@@ -245,6 +245,12 @@ export function createTypePresetReveal(onReveal: () => void): HTMLElement {
  * A value now, not an element: React renders it through the control set and
  * `index.ts` owns the write. The percentage conversion is the projection's, so
  * the number an author reads is the number the row commits.
+ *
+ * An emptied field is refused with a reason, not read as a zero: the handler
+ * this replaced did `Number("")`, which is `0`, so clearing the box used to
+ * make the object transparent and push a history entry. `writeOpacity` still
+ * refuses a value outside 0–100 before it writes, with the message the old
+ * field used.
  */
 export function opacityField(object: FabricObject): FieldView {
   return {

@@ -25,8 +25,8 @@ import {
 } from "../components/ui/control-well.js";
 import { uiCopy } from "../ui-copy.js";
 import {
+  authoredContentOf,
   type ObjectWithText,
-  TEXT_PROPERTY,
   textRunsOf,
 } from "./authored-text.js";
 import type { RunEdits, RunOptionView, RunRowView, RunsView } from "./view.js";
@@ -191,9 +191,7 @@ export function projectRuns(
   nodeId: string,
   context: RunsProjection,
 ): RunsView | undefined {
-  const content = object.get(TEXT_PROPERTY) as
-    | Record<string, unknown>
-    | undefined;
+  const content = authoredContentOf(object);
   if (content === undefined) return undefined;
 
   const runs = textRunsOf(object);
@@ -203,6 +201,10 @@ export function projectRuns(
   const bindings = bindable ? (context.nodeBindings?.(nodeId) ?? []) : [];
 
   const pinnedZones: string[] = [];
+  // A run has no id of its own, so the row's identity is what the run *is*, and
+  // an index would only be stable while rows were appended or removed last.
+  // Two runs that are the same run still get distinct rows, hence the counter.
+  const seen = new Map<string, number>();
   const rows = runs.map((run, index) => {
     const bound =
       run.kind === "value"
@@ -212,8 +214,15 @@ export function projectRuns(
       (run.style?.["color"] as { readonly ref?: string } | undefined)?.ref ??
       palettes[0]?.ref ??
       "";
+    const identity =
+      run.kind === "value"
+        ? `value:${run.bindingId}`
+        : `literal:${run.typePreset ?? ""}\u0000${run.text}`;
+    const repeat = seen.get(identity) ?? 0;
+    seen.set(identity, repeat + 1);
 
     const row: {
+      id: string;
       index: number;
       kind: "literal" | "value";
       label: string;
@@ -228,6 +237,7 @@ export function projectRuns(
       formatDefault?: string;
       zone?: string;
     } = {
+      id: repeat === 0 ? identity : `${identity}#${repeat}`,
       index,
       kind: run.kind,
       label: describeRun(run),
@@ -616,7 +626,7 @@ export function RunEditor(props: {
       />
 
       {view.runs.map((row) => (
-        <RunRow key={row.index} row={row} view={view} edits={edits} />
+        <RunRow key={row.id} row={row} view={view} edits={edits} />
       ))}
 
       <button

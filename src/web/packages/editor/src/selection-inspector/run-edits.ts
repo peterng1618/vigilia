@@ -1,10 +1,10 @@
 import type { Binding, TextRun } from "@vigilia/renderer-core";
+import { VIGILIA_TEXT_PROPERTY } from "@vigilia/scene-fabric";
 import {
   authoredContentOf,
   authoredRunsOf,
   lookOfRun,
   type ObjectWithText,
-  TEXT_PROPERTY,
 } from "./authored-text.js";
 
 /**
@@ -61,7 +61,7 @@ export interface RunTarget {
 }
 
 function replaceRuns(target: RunTarget, runs: readonly TextRun[]): void {
-  target.object.set(TEXT_PROPERTY, {
+  target.object.set(VIGILIA_TEXT_PROPERTY, {
     ...authoredContentOf(target.object),
     runs,
   });
@@ -248,7 +248,7 @@ export function writeTextLayout(
     readonly overflow?: string;
   },
 ): boolean {
-  target.object.set(TEXT_PROPERTY, {
+  target.object.set(VIGILIA_TEXT_PROPERTY, {
     ...authoredContentOf(target.object),
     ...patch,
   });

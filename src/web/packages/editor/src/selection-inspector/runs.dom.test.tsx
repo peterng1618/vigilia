@@ -10,14 +10,15 @@ import {
 } from "./runs.test-stage.js";
 
 /**
- * The two run-editor cases that need the editor's *own* state, rather than what
- * a control writes.
+ * The run-editor cases that need the editor's *own* state, rather than what a
+ * control writes.
  *
- * Both are about the same mechanism, which is why they are one file: React's
- * row identity is what keeps a draft alive across a re-publish and what discards
- * it when the described object changes. The case for a selection that moves
- * under a draft lives with the column in `index.dom.test.ts`, because that is
- * where a selection can move.
+ * All three are about the same mechanism, which is why they are one file:
+ * React's row identity is what keeps a draft alive across a re-publish, what
+ * discards it when the described object changes, and what keeps it with its own
+ * run when an earlier row is removed. The case for a selection that moves under
+ * a draft lives with the column in `index.dom.test.ts`, because that is where a
+ * selection can move.
  */
 
 const globals = {
@@ -80,6 +81,37 @@ describe("the run editor's own state", () => {
     await blur(field);
     expect(box.runs()[0]).toMatchObject({ kind: "literal", text: "GPU " });
     expect(box.runs()[1]).toMatchObject({ kind: "literal", text: "%" });
+    return box.dispose();
+  });
+
+  it("keeps a draft on its own run when an earlier one is removed", async () => {
+    const box = mountRunEditor({
+      runs: [
+        { kind: "literal", text: "A", typePreset: "typePresets.plain" },
+        { kind: "literal", text: "B", typePreset: "typePresets.plain" },
+        { kind: "literal", text: "C", typePreset: "typePresets.plain" },
+      ],
+      globals,
+    });
+    const field = box.pick<HTMLInputElement>('[data-vigilia-run-text="1"]');
+    await typeInto(field, "GPU ");
+
+    // Removing a run that is not the last renumbers every row after it. Keyed
+    // by index, this draft would stay in its element and be re-pointed at C,
+    // while C's own row showed B's text: hence both halves of the assertion,
+    // the draft that followed its run and the row that moved up.
+    await clickHook(box.host, 'data-vigilia-run-remove="0"');
+    expect(box.runs()).toHaveLength(2);
+    expect(
+      box.pick<HTMLInputElement>('[data-vigilia-run-text="0"]').value,
+    ).toBe("GPU ");
+    expect(
+      box.pick<HTMLInputElement>('[data-vigilia-run-text="1"]').value,
+    ).toBe("C");
+
+    await blur(field);
+    expect(box.runs()[0]).toMatchObject({ kind: "literal", text: "GPU " });
+    expect(box.runs()[1]).toMatchObject({ kind: "literal", text: "C" });
     return box.dispose();
   });
 });
