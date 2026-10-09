@@ -313,9 +313,9 @@ function solidFields(
 /**
  * The picker, in its own React root.
  *
- * shadcn on Radix, per the ruling on this field's ecosystem: a native
- * `<input type="color">` has no alpha channel and the theme's paints carry it,
- * so it stays ruled out.
+ * A native `<input type="color">` is ruled out on the value, not on taste: it
+ * has no alpha channel and the theme's paints carry one, so a native field would
+ * be a way to lose the colour being edited.
  */
 function mountPicker(
   host: HTMLElement,

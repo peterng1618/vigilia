@@ -6,40 +6,42 @@
  * `createRoot` is a subscription: unmounting is the only thing that releases
  * the tree it rendered, and neither `element.remove()` nor dropping the last
  * reference does it. The Add pane was the first shipped root disposed by DOM
- * removal alone; the palette panel was the second, and it is worse — its picker
+ * removal alone; the palette panel was the second, and it was worse — its picker
  * and gradient roots are re-created every time the field set rebuilds (the
  * `built`/`shape` rule), so it leaked per token switch as well as per session
  * teardown.
  *
- * **Why this counts roots and not document listeners.** The instrument that
- * found the Add pane's leak — a tally of `document.addEventListener` against
- * `removeEventListener` — measures nothing here. Mounting this panel registers
- * exactly one document listener, and it is React DOM's own `selectionchange`
- * (`listenToAllSupportedEvents`), added once per document at `createRoot` and
- * never removed by `unmount`; a closed popover registers nothing else. So the
- * listener tally is `added: 1, removed: 0` with the fix and without it, and an
- * assertion that the two balance can never hold for any implementation. What
- * the leak actually strands is the root itself — its tree, its closures and its
- * detached host — so that is what is measured. The Add pane's listener case
- * stays where it is, because that pane's roots do own twelve `pointerdown`
- * listeners and the tally does move there.
- *
- * Two instruments, because the defect has two halves:
+ * Three instruments, because the defect has three faces and only one of them is
+ * a document listener:
  *
  * - the **root count** disposes the panel the way `editor-session` does and
  *   asserts every root it created was unmounted;
- * - the **source guard** refuses a shipped `createRoot` with no `unmount` on
- *   its disposal path, so a third site cannot land the way the second did.
+ * - the **listener balance** opens the popover and asserts every document
+ *   listener its mount registered was removed again;
+ * - the **source guard** refuses a shipped `createRoot` with no `unmount` on its
+ *   disposal path, and pins how many roots each shipped file creates.
  *
- * A zero on both sides is the vacuous pass both cases refuse: the created-root
- * count is asserted too, so a panel that mounted nothing could not pass by
- * having nothing to release.
+ * **What the root count is for.** The Add pane's instrument — a tally of
+ * `document.addEventListener` against `removeEventListener` — cannot balance
+ * against a panel whose popover is *closed*, which is the state a session
+ * teardown usually finds. A closed popover registers nothing of its own, and the
+ * only document listener left is React DOM's own `selectionchange`, added once
+ * per document at `createRoot` (`react-dom-client.development.js:20897-20913`)
+ * and never removed by `unmount`. So the closed-popover tally is `added: 1,
+ * removed: 0` with the fix and without it; what is actually stranded there is
+ * the root itself. The balance instrument below is the same idea where it does
+ * bite: with the popover **open**, Base UI registers twelve document listener
+ * types and unmounting removes exactly those.
+ *
+ * A zero on both sides is the vacuous pass every case refuses: each asserts its
+ * own added count too.
  */
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { FabricPalette } from "@vigilia/renderer-core";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { act } from "react";
+import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { createPalettePanel } from "./palette-manager/panel.js";
 
 const SRC = dirname(fileURLToPath(import.meta.url));
@@ -73,6 +75,21 @@ vi.mock("react-dom/client", async (importOriginal) => {
       return root;
     },
   };
+});
+
+beforeAll(() => {
+  // jsdom's selector engine cannot answer `:modal`/`:popover-open`, and
+  // floating-ui asks for both on every position; each unanswerable call costs
+  // ~0.5s of selector parsing, which turns one popover open into ~35s and would
+  // time the open case out.
+  const matches = Element.prototype.matches;
+  Element.prototype.matches = Object.assign(function (
+    this: Element,
+    selector: string,
+  ): boolean {
+    if (selector === ":modal" || selector === ":popover-open") return false;
+    return matches.call(this, selector);
+  }, matches);
 });
 
 beforeEach(() => {
@@ -111,6 +128,56 @@ function mountHost(): HTMLElement {
   return host;
 }
 
+/** The trigger the picker renders, which is what opens its popover. */
+function pickerTrigger(host: HTMLElement): HTMLElement {
+  const trigger = host.querySelector<HTMLElement>(
+    '[data-testid="picker-trigger"]',
+  );
+  if (trigger === null) throw new Error("The picker rendered no trigger.");
+  return trigger;
+}
+
+/**
+ * Document registration counted by event type.
+ *
+ * Both sides are mocked, so a tree that relies on a real document listener has
+ * none here — the open case below mounts the popover through React and never
+ * needs a listener to fire.
+ */
+function spyDocumentListeners(): {
+  readonly added: Map<string, number>;
+  readonly removed: Map<string, number>;
+} {
+  const added = new Map<string, number>();
+  const removed = new Map<string, number>();
+  const count =
+    (into: Map<string, number>) =>
+    (type: string): void => {
+      into.set(type, (into.get(type) ?? 0) + 1);
+    };
+  vi.spyOn(document, "addEventListener").mockImplementation(
+    count(added) as never,
+  );
+  vi.spyOn(document, "removeEventListener").mockImplementation(
+    count(removed) as never,
+  );
+  return { added, removed };
+}
+
+/**
+ * Document listeners this panel's roots do **not** own, so the balance below is
+ * about the panel and not about the harness:
+ *
+ * - `selectionchange` — React DOM's own, registered once per document at
+ *   `createRoot` and never removed by `unmount`
+ *   (`react-dom-client.development.js:20897-20913`);
+ * - `mouseover`/`mouseout` — jsdom's selector engine, `nwsapi`, which registers
+ *   the pair on the document the first time `Element.matches` is asked a
+ *   `:hover`-bearing selector (`node_modules/nwsapi/src/nwsapi.js:1961-1962`).
+ *   Nothing in the editor asked for them, and they survive every unmount here.
+ */
+const NOT_THE_PANELS = new Set(["selectionchange", "mouseover", "mouseout"]);
+
 describe("a palette panel's React roots", () => {
   it("are all unmounted when the panel is disposed", () => {
     const panel = createPalettePanel(mountHost(), () => {}, undefined, {});
@@ -143,6 +210,44 @@ describe("a palette panel's React roots", () => {
     ).toEqual(Array.from({ length: firstFieldSet }, () => true));
     expect(createdRoots.length).toBeGreaterThan(firstFieldSet);
   });
+
+  it("releases the document listeners its open popover registered", async () => {
+    const host = mountHost();
+    const listeners = spyDocumentListeners();
+    const panel = createPalettePanel(host, () => {}, undefined, {});
+    await act(async () => {
+      panel.render(paletteWithOneSolidToken);
+    });
+
+    // The popover has to be *open*: closed, Base UI registers nothing on the
+    // document and this case would measure the harness instead of the panel.
+    await act(async () => {
+      pickerTrigger(host).click();
+    });
+    expect(
+      document.querySelector('[data-testid="colour-picker"]'),
+    ).not.toBeNull();
+
+    await act(async () => {
+      panel.destroy();
+    });
+
+    const owned = [...listeners.added.keys()].filter(
+      (type) => !NOT_THE_PANELS.has(type),
+    );
+    // Non-vacuity: a popover that never mounted has nothing to leak, and a
+    // balance of zero against zero proves nothing.
+    expect(
+      owned.length,
+      "the open popover registered no document listener",
+    ).toBeGreaterThan(0);
+    for (const type of owned) {
+      expect(
+        listeners.removed.get(type) ?? 0,
+        `${type} was registered but not released`,
+      ).toBe(listeners.added.get(type));
+    }
+  });
 });
 
 /**
@@ -172,6 +277,23 @@ function shippedSourceFiles(dir = SRC): readonly string[] {
   });
 }
 
+/**
+ * The shipped roots, one entry per file that has any, with how many that file
+ * creates. The count is the point: a file that already unmounts one root passes
+ * a per-file `unmount` search with a *second*, stranded root beside it, so the
+ * arity is pinned here and a new root in a known file is red.
+ */
+const SHIPPED_ROOTS: readonly (readonly [string, number])[] = [
+  // the shell itself, and the canvas dock's separate root.
+  ["editor-shell/shell-layout.tsx", 2],
+  // the Add pane, one root (Task 3).
+  ["new-object-panel.ts", 1],
+  // the colour picker and the gradient editor, released by `releaseRoots()`.
+  ["palette-manager/panel.ts", 2],
+  ["selection-inspector/column.tsx", 1],
+  ["selection-inspector/inspector.tsx", 1],
+];
+
 describe("every shipped React root", () => {
   it("is unmounted on its own disposal path, and the scan reaches each known one", () => {
     const sites = shippedSourceFiles()
@@ -179,23 +301,24 @@ describe("every shipped React root", () => {
       .map((path) => relative(SRC, path).split("\\").join("/"))
       .sort();
 
-    // The five files this task enumerated. A file that quietly stopped being
-    // scanned — a rename, a new exclusion — fails here rather than leaving the
-    // loop below checking nothing and passing.
-    expect(sites).toEqual([
-      "editor-shell/shell-layout.tsx",
-      "new-object-panel.ts",
-      "palette-manager/panel.ts",
-      "selection-inspector/column.tsx",
-      "selection-inspector/inspector.tsx",
-    ]);
+    // The files this task enumerated, and no others: a file that quietly stopped
+    // being scanned — a rename, a new exclusion — fails here rather than leaving
+    // the loop below checking nothing and passing.
+    expect(sites).toEqual(SHIPPED_ROOTS.map(([file]) => file));
 
-    // `unmount` in the same file as the `createRoot`: a root built here and
-    // released nowhere is the defect, and it cannot be released from elsewhere.
-    for (const relPath of sites) {
+    for (const [file, roots] of SHIPPED_ROOTS) {
+      const source = readFileSync(resolve(SRC, file), "utf8");
+      const created = [...source.matchAll(/createRoot\s*\(/g)].length;
+      expect(created, `${file} creates a different number of React roots`).toBe(
+        roots,
+      );
+
+      // The arity the count is for: one release, per file, of the roots it
+      // creates. A file that builds a root and releases nothing fails here; a
+      // file that released one of two fails above.
       expect(
-        /\.unmount\s*\(/.test(readFileSync(resolve(SRC, relPath), "utf8")),
-        `${relPath} creates a React root and never unmounts one`,
+        /\.unmount\s*\(/.test(source),
+        `${file} creates a React root and never unmounts one`,
       ).toBe(true);
     }
   });
