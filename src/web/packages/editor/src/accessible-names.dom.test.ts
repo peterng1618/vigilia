@@ -54,14 +54,22 @@ const FIELDS = "input,select,textarea";
  * pretending the audit is absolute.
  *
  * `aria-hidden="true"` is the **second spelling of that same fact**, and it is
- * how Base UI renders the input a select submits its value through: `tabIndex:
- * -1` and `aria-hidden: true` by construction
- * (`@base-ui/react/combobox/root/AriaCombobox.mjs`). It is hidden by
- * `clip-path`, not by `[hidden]`, so it is in the markup and in no
- * accessibility tree: unfocusable and unannounced, exactly what the file
- * pickers are. The five the run editor reaches — one per converted select —
- * are what this exclusion is for; naming them would create the `<label for>`
- * pointing at nothing this comment already refuses.
+ * how Base UI renders the value carrier behind a control it paints itself:
+ * `tabIndex: -1` and `aria-hidden: true` by construction, one per primitive
+ * that keeps a real form value behind a styled surface — the input a select
+ * submits its value through (`@base-ui/react/select/root/SelectRoot.mjs`) and
+ * the checkbox a switch keeps its checked state in
+ * (`@base-ui/react/switch/root/SwitchRoot.mjs`). It is **not** a blanket "Base
+ * UI hides its inputs": Base UI's slider is the counter-example, and the
+ * `input[type=range]` it renders is the control a person operates, so it is
+ * named and audited here (`control-slider.tsx`).
+ *
+ * A carrier is hidden by `clip-path`, not by `[hidden]`, so it is in the markup
+ * and in no accessibility tree: unfocusable and unannounced, exactly what the
+ * file pickers are. The run editor's five — its four selects and its swatch,
+ * which is `SelectControl` with an adornment — the inspector's three paint
+ * selects and its four toggles are what this exclusion is for; naming them would
+ * create the `<label for>` pointing at nothing this comment already refuses.
  *
  * Neither exclusion is a hole, and the sibling test is why: every element this
  * predicate skips is enumerated in "names every skipped element", so a control
@@ -167,9 +175,14 @@ describe("editor panels", () => {
     // vg-114 recorded, where the asset pane and the chooser had never been here
     // at all.
     //
-    // Both shapes are in here, and the run editor's five are the reason the
-    // list is longer than it was: `INPUT[type=file]` is `[hidden]`, and an
-    // `aria-hidden` input is Base UI's value carrier for one select.
+    // Both shapes are in here, and the list is longer than it was for two
+    // reasons: the run editor's converted selects (its swatch included) and the
+    // inspector's own paint selects and toggles. `INPUT[type=file]` is
+    // `[hidden]`, and an `aria-hidden` input is a Base UI value carrier — a
+    // select's submitted value (`INPUT[type=][aria-hidden]`) or a switch's
+    // checked state (`INPUT[type=checkbox][aria-hidden]`) — never one a person
+    // can focus. The exact set is pinned below, one comment per control, so a
+    // primitive that starts hiding something new is a line to read.
     const { root } = mountPanels();
     const skipped = Array.from(root.querySelectorAll<HTMLElement>(FOCUSABLE))
       .filter((element) => !reached(element))
@@ -182,13 +195,28 @@ describe("editor panels", () => {
           }`,
       );
     expect(skipped).toEqual([
-      "INPUT[type=][aria-hidden]",
-      "INPUT[type=][aria-hidden]",
-      "INPUT[type=][aria-hidden]",
-      "INPUT[type=][aria-hidden]",
-      "INPUT[type=][aria-hidden]",
-      "INPUT[type=file]",
-      "INPUT[type=file]",
+      // The run editor's five: four `ControlSelect`s and one `ControlSwatch`,
+      // which is `SelectControl` with an adornment — each a Base UI select's
+      // value carrier.
+      "INPUT[type=][aria-hidden]", // Type preset
+      "INPUT[type=][aria-hidden]", // Colour (ControlSwatch)
+      "INPUT[type=][aria-hidden]", // Reads
+      "INPUT[type=][aria-hidden]", // Unit display
+      "INPUT[type=][aria-hidden]", // Zone
+      // The inspector's four toggles, two per mount, each a Base UI switch's
+      // hidden checkbox.
+      "INPUT[type=checkbox][aria-hidden]", // Deliberate bleed, text run
+      "INPUT[type=checkbox][aria-hidden]", // Frosted glass, text run
+      "INPUT[type=checkbox][aria-hidden]", // Deliberate bleed, shape
+      // The shape's three paint selects: `ControlSelect` again.
+      "INPUT[type=][aria-hidden]", // Fill
+      "INPUT[type=][aria-hidden]", // Stroke
+      "INPUT[type=][aria-hidden]", // Shadow
+      "INPUT[type=checkbox][aria-hidden]", // Frosted glass, shape
+      // The asset pane's two file pickers, `[hidden]` and driven by the Import
+      // and Replace buttons rendered beside them.
+      "INPUT[type=file]", // Import
+      "INPUT[type=file]", // Replace
     ]);
 
     // And the `aria-hidden` exclusion is earned rather than assumed. The
