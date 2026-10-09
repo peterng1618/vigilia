@@ -13,6 +13,7 @@
     "src/web/packages/editor/src/components/ui/inspector-section.tsx",
     "src/web/packages/editor/src/components/ui/control.dom.test.tsx",
     "src/web/packages/editor/src/control-fixture.tsx",
+    "src/web/packages/editor/src/editor-shell/document-identity.tsx",
     "src/web/packages/editor/src/editor-shell/rail.tsx",
     "src/web/packages/editor/src/editor-shell/pane.tsx",
     "src/web/packages/editor/src/editor-shell/pane.dom.test.tsx",

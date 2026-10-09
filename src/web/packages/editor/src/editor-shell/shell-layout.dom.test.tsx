@@ -89,7 +89,12 @@ function bridgeStub(
   overrides: Partial<EditorShellBridge> = {},
 ): EditorShellBridge {
   return {
-    snapshot: () => ({ selectedCount: 0, locked: false, activeKind: "none" }),
+    snapshot: () => ({
+      selectedCount: 0,
+      locked: false,
+      activeKind: "none",
+      documentName: undefined,
+    }),
     capture: () => undefined,
     target: () => ({
       kind: "none",
@@ -653,6 +658,50 @@ it("keeps the diagnostic surface in the footer, and it still reports a refusal",
   logged.mockRestore();
 });
 
+it("puts the document's identity in the stage's top-left corner", async () => {
+  const root = document.createElement("div");
+  const layout = createShellLayout(root);
+  let name = "System dashboard";
+  const listeners = new Set<() => void>();
+  const bridge = bridgeStub({
+    snapshot: () => ({
+      selectedCount: 0,
+      locked: false,
+      activeKind: "none",
+      documentName: name,
+    }),
+    subscribe: (listener) => {
+      listeners.add(listener);
+      return () => listeners.delete(listener);
+    },
+  });
+
+  // No document is open until `setBridge`, so the corner is empty rather than
+  // holding a chip for a theme nobody opened (§9).
+  expect(root.querySelector(".editor-shell-identity")).toBeNull();
+
+  layout.setBridge(bridge, undefined);
+  await Promise.resolve();
+  const stage = root.querySelector("#stage");
+  const chip = stage?.querySelector(".editor-shell-identity");
+  expect(chip?.querySelector(".editor-shell-identity-name")?.textContent).toBe(
+    "System dashboard",
+  );
+
+  // A rename moves no object, so the snapshot is re-read from the bridge's own
+  // notification; a chip holding the name it mounted with would show the old
+  // one until the next unrelated repaint.
+  name = "Kitchen";
+  await act(async () => {
+    for (const listener of listeners) listener();
+  });
+  expect(chip?.querySelector(".editor-shell-identity-name")?.textContent).toBe(
+    "Kitchen",
+  );
+
+  layout.destroy();
+});
+
 it("has no tab strip, and nothing in the copy names one", () => {
   const root = document.createElement("div");
   const layout = createShellLayout(root);
@@ -676,7 +725,12 @@ it("shows one pane at a time and routes the dock through the bridge", async () =
   const run = vi.fn();
   // The dock renders the registry's answer, so eligibility comes from `target`.
   const bridge = bridgeStub({
-    snapshot: () => ({ selectedCount: 1, locked: false, activeKind: "object" }),
+    snapshot: () => ({
+      selectedCount: 1,
+      locked: false,
+      activeKind: "object",
+      documentName: undefined,
+    }),
     target: () => ({
       kind: "object",
       locked: false,
@@ -736,7 +790,12 @@ it("enables only the arrange actions a two-object selection can run", async () =
   // `canArrange` refuses distribute below three objects, so the toolbar must
   // grey those two out rather than advertise a click that silently does nothing.
   const bridge = bridgeStub({
-    snapshot: () => ({ selectedCount: 2, locked: false, activeKind: "group" }),
+    snapshot: () => ({
+      selectedCount: 2,
+      locked: false,
+      activeKind: "group",
+      documentName: undefined,
+    }),
     target: () => ({
       kind: "group",
       locked: false,
@@ -769,6 +828,7 @@ it("keeps a chart's fields in the Design column, with no Data tab to reach for",
       selectedCount: kind === "none" ? 0 : 1,
       locked: false,
       activeKind: kind,
+      documentName: undefined,
     }),
     subscribe: (listener) => {
       listeners.add(listener);

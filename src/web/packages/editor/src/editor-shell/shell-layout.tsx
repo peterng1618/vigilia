@@ -31,6 +31,7 @@ import { CanvasContextMenu } from "./canvas-context-menu.js";
 import { CanvasDock } from "./canvas-dock.js";
 import { DiagnosticMessage } from "./diagnostic-message.js";
 import { DisplaySwitch } from "./display-switch.js";
+import { DocumentIdentity } from "./document-identity.js";
 import { LayerActions, LayerPanel } from "./layer-panel.js";
 import {
   applyShellPalette,
@@ -111,15 +112,17 @@ function Host({
   return <div ref={slot} hidden={hidden} />;
 }
 
-/** Selection is external mutable state (Fabric owns it); both the inspector and
- * the menus read one subscription so a late-set bridge still propagates. */
-class SelectionStore {
+/** The shell snapshot as external mutable state — the selection, which Fabric
+ * owns, and the document's identity, which the session does — so every reader
+ * shares one subscription and a late-set bridge still propagates. */
+export class SelectionStore {
   #bridge: EditorShellBridge | undefined;
   readonly #listeners = new Set<() => void>();
   #snapshot: EditorShellSnapshot = {
     selectedCount: 0,
     locked: false,
     activeKind: "none",
+    documentName: undefined,
   };
   #unsubscribe: (() => void) | undefined;
 
@@ -134,7 +137,12 @@ class SelectionStore {
         for (const listener of this.#listeners) listener();
       });
     } else {
-      this.#snapshot = { selectedCount: 0, locked: false, activeKind: "none" };
+      this.#snapshot = {
+        selectedCount: 0,
+        locked: false,
+        activeKind: "none",
+        documentName: undefined,
+      };
     }
     for (const listener of this.#listeners) listener();
   }
@@ -721,6 +729,10 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
             aria-label="Editor canvas"
           >
             <Host node={hosts.canvas} />
+            {/* What the author is editing, in the corner §7.5 gives identity.
+                It reads the store rather than a prop, so a bridge set after the
+                shell mounted — and a rename after that — reaches it too. */}
+            <DocumentIdentity store={store} />
             {/* The dock owns its own element and derives its own visibility;
                 this is only the slot that puts its mount point in the stage. */}
             <Host node={hosts.dock} />

@@ -303,7 +303,12 @@ function bridgeOf(
   canvas: Canvas,
 ): EditorShellBridge {
   return {
-    snapshot: () => ({ selectedCount: 0, locked: false, activeKind: "none" }),
+    snapshot: () => ({
+      selectedCount: 0,
+      locked: false,
+      activeKind: "none",
+      documentName: undefined,
+    }),
     target: () => ({
       kind: "none",
       locked: false,

@@ -29,6 +29,10 @@ export interface EditorShellSnapshot {
   readonly selectedCount: number;
   readonly locked: boolean;
   readonly activeKind: ActiveKind;
+  /** The document's identity, as the session reports it (§7.5). `undefined`
+   *  only while no document is open — never `""`, because a chip that named
+   *  nothing is a claim the product does not have. */
+  readonly documentName: string | undefined;
 }
 
 export interface EditorShellBridge {
@@ -99,6 +103,10 @@ export function createEditorShellBridge(input: {
    * as no bindings — a bridge with no document behind it says so rather than
    * refusing to project. */
   readonly bindings?: () => Readonly<Record<string, readonly Binding[]>>;
+  /** The open document's name, pulled the way `bindings` is: the session owns
+   *  it, so the snapshot projects it rather than holding a copy. Absent reads
+   *  as no document open. */
+  readonly documentName?: () => string | undefined;
   /** The product's own library capture; see `EditorShellBridge.capture`. */
   readonly capture: () => string | undefined;
 }): EditorShellBridge {
@@ -128,6 +136,11 @@ export function createEditorShellBridge(input: {
     GROUP_CONTEXT_EVENT,
   ] as const;
   for (const event of events) canvas.on(event as never, notify);
+  // A rename moves no object, so none of the canvas events above fire for it —
+  // the session's own document change is the only signal that the name it
+  // reports has moved. Without it a snapshot keeps the name the bridge was
+  // built with for as long as the document is open.
+  const offDocumentChange = input.session.subscribeDocumentChange(notify);
   const activeObject = ():
     | (FabricObject & { readonly locked?: boolean })
     | undefined =>
@@ -145,6 +158,7 @@ export function createEditorShellBridge(input: {
             : 1,
       locked: active?.get("locked") === true,
       activeKind: activeKindOf(active),
+      documentName: input.documentName?.(),
     };
   };
   const target = (): ObjectTarget => {
@@ -410,6 +424,7 @@ export function createEditorShellBridge(input: {
     },
     destroy() {
       for (const event of events) canvas.off(event as never, notify);
+      offDocumentChange();
       listeners.clear();
     },
   };

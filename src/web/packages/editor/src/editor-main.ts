@@ -287,6 +287,11 @@ async function start(): Promise<void> {
       // mount opened with — a binding edited afterwards would otherwise leave
       // the row naming a key the document no longer declares.
       bindings: () => extensions.envelope.bindings ?? {},
+      // The theme's name is the document's identity, and a theme the author
+      // has not named yet is identified by its own id — the same reading the
+      // status line writes when a theme is opened, so the two cannot disagree.
+      documentName: () =>
+        extensions.envelope.metadata?.name ?? extensions.envelope.id,
       capture: () =>
         captureCanvas(shell.editor.canvas, shell.backdrop())?.toDataURL(
           "image/png",

@@ -84,7 +84,12 @@ function layerRow(
 
 function bridge(rows: readonly LayerRow[], overrides = {}): EditorShellBridge {
   return {
-    snapshot: () => ({ selectedCount: 1, locked: false, activeKind: "object" }),
+    snapshot: () => ({
+      selectedCount: 1,
+      locked: false,
+      activeKind: "object",
+      documentName: undefined,
+    }),
     capture: () => undefined,
     can: () => true,
     target: () => ({
@@ -1080,7 +1085,10 @@ it("restacks the document when a row is dropped on another", async () => {
       groupingManager: { groupContext: () => [] },
       historyManager: { saveState: vi.fn() },
     },
-    session: {} as never,
+    // The bridge subscribes to the session's document change so a rename
+    // reaches the snapshot; this test drives neither, so the stub only has to
+    // answer the subscription it is given.
+    session: { subscribeDocumentChange: () => () => undefined } as never,
     capture: () => undefined,
   } as never);
 
@@ -1757,7 +1765,10 @@ it("makes a group's parts reachable once its control has entered it", async () =
       }),
       historyManager: { saveState: () => undefined },
     },
-    session: {} as never,
+    // The bridge subscribes to the session's document change so a rename
+    // reaches the snapshot; this test drives neither, so the stub only has to
+    // answer the subscription it is given.
+    session: { subscribeDocumentChange: () => () => undefined } as never,
     capture: () => undefined,
   } as never);
 

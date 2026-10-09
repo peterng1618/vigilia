@@ -58,6 +58,7 @@ function bridgeFor(
   extra: Record<string, unknown> = {},
   sessionExtra: Record<string, unknown> = {},
   canvasExtra: Record<string, unknown> = {},
+  bridgeExtra: Record<string, unknown> = {},
 ) {
   const listeners = new Map<string, () => void>();
   const objects = active === undefined ? [] : [active];
@@ -95,7 +96,11 @@ function bridgeFor(
   };
   const session = { ...facadeStub(), ...sessionExtra };
   return {
-    bridge: createEditorShellBridge({ editor, session } as never),
+    bridge: createEditorShellBridge({
+      editor,
+      session,
+      ...bridgeExtra,
+    } as never),
     canvas,
     session,
     editor,
@@ -124,6 +129,38 @@ it("republishes the layer rows when an object changes, not only on selection", (
   canvas.fire("object:modified", { target: rect });
 
   expect(listener).toHaveBeenCalled();
+});
+
+it("carries the document's name, and republishes it when the theme is renamed", () => {
+  // A rename moves no object, so no canvas event fires for it. Without the
+  // session's own document change the snapshot would keep the name the bridge
+  // was built with, and the stage's identity chip would show a stale one —
+  // which is what the `heard` assertion below is for: the snapshot pulls the
+  // name on demand, so only the notification proves the cluster was told.
+  let name = "System dashboard";
+  const documentListeners: (() => void)[] = [];
+  const { bridge } = bridgeFor(
+    undefined,
+    {},
+    {
+      subscribeDocumentChange: (listener: () => void) => {
+        documentListeners.push(listener);
+        return () => undefined;
+      },
+    },
+    {},
+    { documentName: () => name },
+  );
+  const heard = vi.fn();
+  bridge.subscribe(heard);
+
+  expect(bridge.snapshot().documentName).toBe("System dashboard");
+
+  name = "Kitchen";
+  for (const listener of documentListeners) listener();
+
+  expect(heard).toHaveBeenCalled();
+  expect(bridge.snapshot().documentName).toBe("Kitchen");
 });
 
 it("routes selection kind for menus, groups and charts", () => {

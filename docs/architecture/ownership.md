@@ -94,7 +94,7 @@ two apart is the judgement the map cannot make for itself.
 | OS clipboard copy/cut/paste/duplicate | `editor/src/clipboard-manager/` |
 | Group and ungroup | `editor/src/grouping-manager/` |
 | Canvas dock (former floating toolbar) | `editor/src/editor-shell/canvas-dock.tsx` |
-| Selection snapshot and dock eligibility | `editor/src/editor-shell/bridge.ts` |
+| Selection snapshot, the document's identity and dock eligibility | `editor/src/editor-shell/bridge.ts` |
 | Selection geometry, appearance, runs and text layout | `editor/src/selection-inspector/` |
 | The Document pane's own resolved references | `editor/src/selection-inspector/style.ts` |
 | Authoring-time value-run tokens | `editor/src/run-placeholder.ts` |

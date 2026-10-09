@@ -1598,6 +1598,58 @@ body,
   border: 1px solid var(--shell-edge);
   background: var(--vigilia-canvas-bg);
 }
+/* §7.5's top-left corner: the document's identity. A floating cluster at
+   §7's `--radius-xl`, `--panel` at 95%, backdrop-blurred, hairline `--edge`
+   and elevation 1, 14px in from the stage's own edges. */
+.editor-shell-identity {
+  position: absolute;
+  z-index: 3;
+  top: var(--space-14);
+  left: var(--space-14);
+  /* The stage's own 14px inset at each side, so a long theme name ellipsises
+     inside the corner rather than growing past the stage's edge. */
+  max-width: calc(100% - 28px);
+  margin: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  padding: var(--space-6) var(--space-10);
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--edge);
+  background: color-mix(in srgb, var(--panel) 95%, transparent);
+  backdrop-filter: blur(6px);
+  -webkit-backdrop-filter: blur(6px);
+  box-shadow: var(--elev-1);
+}
+/* The record dot (§6): filled, because a 7px stroke is not a stroke. Warn while
+   the document differs from what was saved, faint when it does not — the same
+   isDirty() the status bar's save state reads, never a second source (§7.5). */
+.editor-shell-identity-dot {
+  flex: none;
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--faint);
+}
+.editor-shell-identity[data-dirty="true"] .editor-shell-identity-dot {
+  background: var(--warn);
+}
+.editor-shell-identity-name {
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  color: var(--text);
+  font-size: var(--text-sm);
+}
+/* The word the status bar's `SaveState` also shows, and reads from the same
+   `isDirty()`; `nowrap` so a name ellipsises before this does. */
+.editor-shell-identity-edited {
+  flex: none;
+  white-space: nowrap;
+  color: var(--warn);
+  font-size: var(--text-xs);
+}
 .editor-shell-stage #canvas-host {
   position: absolute;
   inset: 0;
