@@ -1,5 +1,6 @@
 import { expect, type Page, test } from "@playwright/test";
 import { captureVisualReview } from "./editor-canvas.js";
+import { openPane } from "./editor-rail.js";
 import { isDesktopSurface } from "./surface.js";
 
 /**
@@ -39,6 +40,7 @@ import { isDesktopSurface } from "./surface.js";
  */
 
 const FIXTURE = "http://127.0.0.1:4174/control-fixture.html";
+const EDITOR = "http://127.0.0.1:4174/";
 
 /** Bible §3's named steps. The bible is the source; this list and the steps in
  *  `scripts/design-tokens.mjs` are two independent transcriptions of it, so a §3
@@ -1031,4 +1033,52 @@ test("the control set renders in the design language", async ({
     type: "contrast",
     description: ratios.join(" | "),
   });
+});
+
+/**
+ * The shell parity capture (bible §7.1–§7.3, mockup
+ * `docs/design/mockups/editor-shell.html`).
+ *
+ * Plan 1's mechanism, turned on the rebuilt shell: the built editor is opened
+ * in the state the mockup draws — the **Add** slot showing, nothing selected —
+ * and photographed for Task 10's side-by-side. The whole-editor and dock
+ * captures in `editor.spec.ts` are the other two of the comparison set.
+ *
+ * **It fails if the shell is not the new one**, which is the point: an old
+ * shell photographed happily is a comparison against the wrong thing. Two
+ * facts are asserted before the picture is written — the rail carries bible
+ * §7.2's four slots (the pre-rail shell had an Insert menu and no rail, so the
+ * count is 0) and exactly one of the rail's panes is showing (the shell keeps
+ * every pane mounted and hides the others, so a leftover second pane in the
+ * column shows as two).
+ *
+ * A `--grep` that matches nothing exits 0 with zero tests, so the run's own
+ * summary — "1 test", this file — is the proof it ran at all, not the exit code.
+ */
+test("captures the shell with the Add pane open and nothing selected", async ({
+  page,
+}, testInfo) => {
+  test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+
+  await page.goto(EDITOR);
+  await expect(
+    page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+  ).toBeVisible();
+
+  // §7.2's four slots, and only a shell that has the rail has them.
+  await expect(page.locator(".editor-shell-rail-slot")).toHaveCount(4);
+
+  await openPane(page, "Add");
+  await expect(page.locator('[data-vigilia-panel="add"]')).toBeVisible();
+  // Exactly one of the rail's four panes is out. Scoped to the rail's own
+  // column (`.editor-shell-panel`) because the inspector is built from the same
+  // `Pane` component and carries `style` and `selection` panels of its own — a
+  // bare `[data-vigilia-panel]` count of six panes is not "one pane showing".
+  // `:visible`, not a bare count: every pane stays mounted and the ones that
+  // are not showing carry `hidden` (`display: none`), which is not showing.
+  await expect(
+    page.locator(".editor-shell-panel [data-vigilia-panel]:visible"),
+  ).toHaveCount(1);
+
+  await captureVisualReview(page, testInfo, "editor-shell-add");
 });
