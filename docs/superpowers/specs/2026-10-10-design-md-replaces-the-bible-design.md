@@ -6,18 +6,19 @@ panes`); `STATUS.md` names the order.
 **The decision in one line:** `docs/design/design-language.md` — the bible — is
 retired and replaced by a root `DESIGN.md` in the
 [DESIGN.md format](https://github.com/google-labs-code/design.md/blob/main/docs/spec.md),
-validated by `@google/design.md`, with the `§N` marker system retired along with
-it and every citation re-pointed at a section name.
+validated by `@google/design.md`; the sections take the standard's canonical
+names, and each carries its old `§N` as a marker in the body, so every existing
+citation keeps resolving unchanged.
 
 ## Why this is not a formatting pass
 
-Three interfaces move at once, and each has an owner today:
+Three interfaces move, and each has an owner today:
 
 - **The `§N` markers are an interface.** 1487 `§` references across `docs/`,
-  `src/` and `scripts/` resolve by number into the bible's ten sections and their
-  sub-numbers; `AGENTS.md` states as a rule that they are stable and never
-  renumbered. Retiring the numbers retires the interface, so the rule is
-  replaced by a weaker one that is machine-checked instead of remembered.
+  `src/` and `scripts/` resolve by number into the bible's ten sections;
+  `AGENTS.md` states as a rule that they are stable and never renumbered. They
+  are the one thing this work must not break, and the shape below is chosen to
+  keep them.
 - **The values are an interface.** `scripts/design-tokens.mjs` derives the
   spacing steps it enforces and the `biblePx` allowlist from the bible's scale,
   and `editor-shell.tokens.test.ts` calls the bible's scales normative. The new
@@ -25,26 +26,30 @@ Three interfaces move at once, and each has an owner today:
 - **The file is named as normative by four other artifact families.** Each plan
   opens with a "Normative companion" line naming it, the mockups README calls
   itself its drawing, `docs/README.md` maps it as the one normative design
-  document, and ADRs cite it by section.
+  document, and ADRs cite it.
 
 ## What was measured before designing
 
 | Fact | Value |
 | --- | --- |
-| `§` references in `docs/`, `src/`, `scripts/` | **1487** (two families: the bible's `§1`–`§10`/`§7.5`, and the redesign spec's `§13`–`§172`) |
+| `§` references in `docs/`, `src/`, `scripts/` | **1487** — two families: the bible's `§1`–`§10`/`§7.1`–`§7.8`, and the redesign spec's own `§1`–`§172` |
 | "bible" mentions across those trees | **308**, in **57** files |
 | The bible | 448 lines, 10 numbered sections, `§7` subdivided 7.1–7.8 |
 | `@google/design.md` | 0.4.0, Apache-2.0, `lint` / `diff` / `export` / `spec` |
 | `lint` on the current bible | **0 errors, 1 warning** — only "No YAML content found" |
-| `lint` on a file with canonical sections out of order | `warning` (`section-order`), not an error |
-| `lint` with `## Iconography` present | **silent** — an unknown heading is preserved |
-| `lint` with no `colors` group | **silent**; a declared `omitted` entry reports an `info` |
+| `lint`, canonical sections out of order | `warning` (`section-order`) |
+| `lint`, `## Iconography` present | **silent** — an unknown heading is preserved |
+| `lint`, `## Colors` after `## Typography` | `section-order` warning — the plain name **is** recognised |
+| `lint`, `## 4. Colors` after `## Typography` | **no finding** — the number makes the heading unrecognised |
+| `lint`, `## Colour` / `## 4. Colour` | **no finding** — the British spelling is not an alias |
+| `lint`, no `colors` group | silent; a declared `omitted` entry reports an `info` |
 | `export css-tailwind` output | Tailwind's canonical names (`--color-primary`, `--spacing-sm`, `--text-body-md`) |
 
-The last row is why the front matter is **checked rather than generated**: the
-repo's CSS speaks `--space-6`, `--edge`, `--hot` and resolves colour per theme at
-runtime (ADR-0035), so generating the theme block would rename every token in the
-codebase *and* still could not express a palette that changes per theme.
+Two of those rows decide the design. **A number in the heading text is not an
+error — it costs recognition**, which is why the markers go in the body and the
+headings keep the names. And **the exporter's vocabulary is not this repo's**:
+the CSS speaks `--space-6`, `--edge`, `--hot`, and resolves colour per theme at
+runtime (ADR-0035), so the front matter is checked rather than generated.
 
 ## Decisions
 
@@ -52,41 +57,56 @@ codebase *and* still could not express a palette that changes per theme.
 tool that has to be told where the file is has not been conformed to, and the
 standard's consumers look for that name in that place.
 
-**D2 — the `§N` markers retire with the bible.** Citations become section names.
-The cost is stated in "What this costs" below and was accepted with it in view.
+**D2 — the sections take the standard's canonical names and keep their `§N` as a
+marker in the body.** Each section heading is followed by an HTML comment
+carrying its old number:
 
-**D3 — the front matter is authored and checked, never generated.** It carries
+```markdown
+## Layout
+
+<!-- §7 -->
+
+…the bible's Layout section, unchanged…
+```
+
+The heading is recognised by the linter; the marker keeps `§7`, `§7.3` and every
+citation that names them resolving exactly as they do today. This is the whole
+reason the plan is small: **no citation is re-pointed.** What changes in the
+prose is only the word "bible", which becomes "DESIGN.md".
+
+**D3 — the markers are declared in one place, and a check enforces them.** The
+bible's numbering is `§1`–`§10`, with sub-numbers only under `§7`
+(`§7.1`–`§7.8`); no other sub-numbered citation in this repo means the design
+language, and every other `§N` in the range belongs to the redesign spec. The
+check in D6 uses exactly that rule, so a section that is deleted, merged or
+renumbered fails CI instead of silently orphaning citations.
+
+**D4 — the front matter is authored and checked, never generated.** It carries
 the theme-independent scales; a check asserts they equal what
 `editor-shell.css`'s `@theme static` declares. No token is renamed, and no
 runtime value changes.
 
-**D4 — the two token groups the format cannot honestly hold are declared
-omitted, with reasons.** `colors` — the palette resolves per theme at runtime, so
-a single YAML value would be false. `components` — the control set is normative
-as prose and implemented in `packages/editor/src/components/ui/`; restating it as
-tokens would create the second owner this repo's ownership rule exists to
-prevent. `omitted` is the format's own mechanism for exactly this, and it turns
-each omission into a documented `info` rather than silence.
+**D5 — the two token groups the format cannot honestly hold are declared omitted,
+with reasons.** `colors` — the palette resolves per theme at runtime, so a single
+YAML value would be false. `components` — the control set is normative as prose
+and implemented in `packages/editor/src/components/ui/`; restating it as tokens
+would create the second owner this repo's ownership rule exists to prevent.
+`omitted` is the format's own mechanism for this, and it turns each omission into
+a documented `info` rather than silence.
 
-**D5 — conformance is a gate.** `@google/design.md@0.4.0` is a devDependency
-(Apache-2.0; `THIRD-PARTY-NOTICES.md` and `docs/engineering/dependencies.md` are
-updated in the same commit), and `design:check` runs the linter plus the two
-checks below, so a future edit that breaks conformance fails CI rather than
-drifting.
-
-**D6 — the "never renumber" rule is replaced by a check, not by trust.**
-`AGENTS.md` loses the `§N` sentence and gains: headings are the stable
-references; renaming a section or subheading is a sweep; and a script asserts
-that every `DESIGN.md → …` citation in the repo names a heading that exists.
+**D6 — conformance is a gate, and the citation rule is a check rather than a
+memory.** `@google/design.md@0.4.0` is a devDependency (Apache-2.0;
+`THIRD-PARTY-NOTICES.md` and `docs/engineering/dependencies.md` updated in the
+same commit), and `design:check` runs the linter plus the checks below.
 
 ## The file
 
 ### Front matter
 
 The values below are the ones `editor-shell.css`'s `@theme static` declares today
-(`:287–320`), which the bible's tables already agree with — so this is a
-transcription, not a decision. The plan copies them from the file rather than
-from this spec, and the sync check is what holds them together afterwards.
+(`:287–320`), which the bible's tables already agree with — a transcription, not
+a decision. The plan copies them from the file rather than from this spec, and
+the sync check holds them together afterwards.
 
 ```yaml
 ---
@@ -124,8 +144,7 @@ omitted:
 ---
 ```
 
-Three things the plan must settle by measurement, and each is a decision the
-sync check then holds:
+Three things the plan settles by measurement, each then held by the sync check:
 
 1. **`fontFamily`.** The format's `Typography` requires it and the bible names
    three families by job (UI sans, UI mono, theme fonts). The plan measures what
@@ -142,7 +161,7 @@ sync check then holds:
    stays in the stylesheet. A drift found while designing this — the ladder is
    declared twice, as `--elev-1..3` and as `--shadow-raised`/`--shadow-overlay`,
    with three of the five names consumed by nothing — is filed as **`vg-261`**
-   and is deliberately not answered here.
+   and deliberately not answered here.
 
 ### Section mapping
 
@@ -150,72 +169,87 @@ The standard's sections appear in its order; the bible's content moves into them
 without rewriting a rule. Two sections the standard does not know sit **after**
 Do's and Don'ts, where an unknown heading is preserved and costs no warning.
 
-| DESIGN.md section | Carries | From |
-| --- | --- | --- |
-| `## Overview` | the one rule; what the language is for | §1 |
-| `## Colors` | the palette tables, the roles, per-theme resolution | §4 |
-| `## Typography` | the type scale and its use | §2 |
-| `## Layout` | the spacing scale; the shell's layout: header, rail, panes, inspector, stage, status bar, overflow and motion, the reference's character | §3 (spacing), §7, §7.1–7.8 |
-| `## Elevation & Depth` | the elevation ladder and where depth is tonal | §3 (elevation) |
-| `## Shapes` | the radius scale, and what is square by rule | §3 (radius) |
-| `## Components` | the control set, states, sizes, the editing and recovery rules, the keyboard and target-size rules; the icon vocabulary | §5, §5's subsections, §6 |
-| `## Do's and Don'ts` | what is forbidden, and why | §10 |
-| `## Density and disclosure` | density rules | §8 |
-| `## Copy` | the copy rules | §9 |
+| DESIGN.md section | Marker | Carries | From |
+| --- | --- | --- | --- |
+| `## Overview` | `§1` | the one rule; what the language is for | §1 |
+| `## Colors` | `§4` | the palette tables, the roles, per-theme resolution | §4 |
+| `## Typography` | `§2` | the type scale and its use | §2 |
+| `## Layout` | `§7` | the shell's layout: header, rail, panes, inspector, stage, status bar, overflow and motion, the reference's character | §7, §7.1–7.8 |
+| `## Layout` → `### The scales` | `§3` | the spacing steps and the row rhythms | §3 (spacing) |
+| `## Elevation & Depth` | *no marker* | the elevation ladder — prose, because the format has no token group for it | §3 (elevation) |
+| `## Shapes` | *no marker* | the radius scale, and what is square by rule | §3 (radius) |
+| `## Components` | `§5`, `§6` | the control set, states, sizes, editing and recovery, keyboard and target size; the icon vocabulary | §5, §6 |
+| `## Do's and Don'ts` | `§10` | what is forbidden, and why | §10 |
+| `## Density and disclosure` | `§8` | density rules | §8 |
+| `## Copy` | `§9` | the copy rules | §9 |
+
+`§3` is the one number that splits across three headings, and it is the one place
+the marker rule needs care. Ruling: the `§3` marker sits under `### The scales`
+in Layout — the spacing steps, which is what the ratchet reads and what nearly
+every `§3` citation in the codebase means — and the radius and elevation halves
+carry named headings (`### Radius`, `### Elevation`) with no marker of their own.
+A `§3` citation still resolves; a citation that means the radius scale says
+`DESIGN.md → Shapes`, which is where a reader finds it.
 
 Sub-structure survives as **named `###` headings** — `### Pane widths` under
-Layout, `### The three state controls` under Components — so a citation still
-has something specific to name.
+Layout, `### The three state controls` under Components — so the marker keeps its
+precision and a reader keeps the bible's granularity.
 
 ### Citation convention
 
-One form, everywhere: **`DESIGN.md → <Section>`**, with a subheading appended
-when the precision is needed — `DESIGN.md → Layout → Pane widths`. Prose may read
-`DESIGN.md's Layout`. The check in D6 resolves the arrow form, so the convention
-is enforced rather than hoped for. `§` does not appear in a citation again.
+Unchanged from today: **`§N`**, with the sub-number where the bible has one
+(`§7.3`). Where a sentence needs to name the document, it says `DESIGN.md §5`.
+No citation is rewritten by this work beyond the word "bible" becoming
+`DESIGN.md`.
 
 ## The sweep
 
-- **1487 `§` references**: every one that resolves into the bible is re-pointed
-  by section name. References into the *redesign spec*'s `§13`–`§172` are a
-  different family and are **not** touched — that spec keeps its numbering.
-- **308 "bible" mentions** in 57 files become "DESIGN.md" or are rewritten.
+Small, and mostly mechanical:
+
+- **308 "bible" mentions** in 57 files become `DESIGN.md` or are rewritten; the
+  strongest form is a citation, so most become `DESIGN.md §5`.
 - **The readers**: `scripts/design-tokens.mjs` (`biblePx` → a name that says what
   it holds; its "Bible §3" comments), `editor-shell.tokens.test.ts`,
-  `docs/README.md`, `docs/design/mockups/README.md`, the ADRs that cite sections,
-  and the plans.
-- **Plans 5 and 6 are queued and unstarted**, so their citations and their
-  "Normative companion" lines move for free, including the two steps that
-  currently say "amend bible §5/§6 in the same commit" — those become amendments
-  to DESIGN.md.
-- **`AGENTS.md`** trades the `§N` sentence for D6's rule.
+  `docs/README.md`, `docs/design/mockups/README.md`, the ADRs that cite sections.
+- **Plans 5 and 6 are queued and unstarted**, so their "Normative companion"
+  lines and their two steps that say "amend bible §5/§6 in the same commit" move
+  for free; plan 4's remaining tasks cite `§N` and are untouched by all of this.
+- **The redesign spec's own numbering is not touched at all** (`§1`–`§172`).
+- **`AGENTS.md`** keeps "`§N` requirement markers are stable; never renumber them"
+  and gains the second half: the markers live in `DESIGN.md`, and a check asserts
+  every citation resolves.
 
 ## The checks
 
-1. **`design:md:lint`** — `@google/design.md lint DESIGN.md`; the gate is
-   **0 errors and 0 warnings**. Infos are allowed and their content is recorded
-   in the task that lands the file.
+1. **`design:md:lint`** — `@google/design.md lint DESIGN.md`; the gate is **0
+   errors and 0 warnings**. Infos are allowed and recorded in the task that lands
+   the file.
 2. **`design:md:sync`** — every `spacing`, `rounded` and `typography` value in
    the front matter equals what `editor-shell.css`'s `@theme static` declares.
    Direction of authority: the front matter is written from the CSS, and this
-   check is what keeps the two from parting.
-3. **`design:md:cite`** — every `DESIGN.md → …` citation in the repo resolves to
-   a heading in the file. A citation that names nothing fails.
+   check keeps the two from parting.
+3. **`design:md:cite`** — every `§N` citation in the repo whose number is in
+   DESIGN.md's declared range (`§1`–`§10`, and `§7.1`–`§7.8`) resolves to a
+   marker in the file; every marker is claimed by at least one citation, so a
+   section nothing cites is reported rather than forgotten. A number outside that
+   range is the redesign spec's and is ignored.
 4. All three run inside `design:check`, which the existing gate already runs.
 
-Each check is red-proofed before it is trusted: a wrong scale value, an unknown
-heading, and a renamed heading must each be shown to fail.
+Each check is red-proofed before it is trusted: a wrong scale value, a citation
+whose marker was deleted, and a marker no citation claims must each be shown to
+fail.
 
 ## What this costs
 
-- **Citations lose sub-number precision.** `§5.3` becomes `DESIGN.md →
-  Components → <the subheading>`. Longer, and a renamed subheading breaks
-  citations silently — which is why check 3 exists rather than a convention.
-- **One large mechanical commit series** across 57 files, most of it comment
-  text. It is deliberately sequenced after plan 4 so no running task's brief
-  changes under it.
-- **A new devDependency** and a new gate step, both of which this repo treats as
-  real decisions rather than conveniences.
+- **The number is no longer in the heading text**, so a rendered DESIGN.md shows
+  `## Colors` and the `§4` sits above it as an HTML comment. A reader who wants
+  the number has it, one line down.
+- **One mechanical commit series** across 57 files, entirely the word "bible" and
+  the file's own name — no citation's *number* changes, which is why this can run
+  without disturbing a plan mid-flight: it is sequenced after plan 4 regardless,
+  but the sequencing is hygiene rather than a necessity.
+- **A new devDependency** and three gate steps, which this repo treats as real
+  decisions rather than conveniences.
 
 ## Out of scope
 
@@ -223,11 +257,12 @@ heading, and a renamed heading must each be shown to fail.
   the front matter is written from the CSS, not the other way round.
 - **No token renames.** `--space-6` stays `--space-6`; the exporter's canonical
   vocabulary is not adopted.
-- **The redesign spec's numbering** (`§13`–`§172`) is untouched — that is a
-  requirement marker system for a different document, and `AGENTS.md`'s rule
-  about it stays in force.
-- **No new design rules.** This retires a file and a numbering system; it does
-  not amend the language.
+- **No citation re-pointing.** The marker shape exists so that the 1487 `§`
+  references keep meaning what they mean today.
+- **The redesign spec's numbering** is untouched, and `AGENTS.md`'s rule about it
+  stays in force.
+- **No new design rules.** This retires a file and adopts a format; it does not
+  amend the language.
 
 ## Acceptance
 
@@ -235,11 +270,12 @@ heading, and a renamed heading must each be shown to fail.
 2. `design:md:lint` reports 0 errors and 0 warnings on it.
 3. `design:md:sync` and `design:md:cite` pass, and each was shown to fail before
    its fix.
-4. `grep -rn "§" docs src scripts` returns only references into the redesign
-   spec's own numbering, and `grep -rin "bible" docs src scripts` returns
-   nothing that means this document.
-5. `AGENTS.md` carries D6's rule and no longer the never-renumber sentence.
-6. `docs/README.md`, the mockups README and every plan's "Normative companion"
+4. Every section in the mapping table carries its marker; `§1`–`§10` and
+   `§7.1`–`§7.8` all resolve.
+5. `grep -rin "bible" docs src scripts` returns nothing that means this document.
+6. `AGENTS.md` states where the markers live and that the citation check enforces
+   them.
+7. `docs/README.md`, the mockups README and every plan's "Normative companion"
    line name `DESIGN.md`.
-7. `THIRD-PARTY-NOTICES.md` and `docs/engineering/dependencies.md` list
+8. `THIRD-PARTY-NOTICES.md` and `docs/engineering/dependencies.md` list
    `@google/design.md` 0.4.0 with its Apache-2.0 licence.
