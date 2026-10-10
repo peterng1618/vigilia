@@ -1124,7 +1124,10 @@ body,
 /* The `?` reference is a Base UI dialog, portalled to `body` like the menu popup
    and the tooltip, so its classes are named here rather than reached by a
    descendant selector. The scrim sits above the tooltip's `z-index: 50` and the
-   Base UI positioner's `60`, both of which are `body` siblings. */
+   menu positioner's `60`, both of which are `body` siblings — and *below* the
+   select positioner's `80`, because a `ControlSelect` opened inside a dialog is
+   a sibling of this scrim rather than a descendant of the popup above it, and
+   faces the wrong way round the list is unclickable. */
 .editor-shell-dialog-overlay {
   position: fixed;
   inset: 0;

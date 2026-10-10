@@ -154,7 +154,15 @@ export function SelectControl(
           </Select.Icon>
         </Select.Trigger>
         <Select.Portal>
-          <Select.Positioner sideOffset={6} className="z-60">
+          {/* **Above the dialog pair, because a select can be inside a dialog.**
+              The shell's floating layers are ordered tooltip 50 / menu and
+              select 60 / dialog scrim 70 / dialog 71 (`editor-shell.css`), and a
+              popup portalled to `body` from inside a `Dialog` is a sibling of
+              that dialog's scrim rather than a descendant of its popup — at 60
+              the scrim covers the list and every option is unclickable, which is
+              what the new-theme chooser and the library chooser both did. 80
+              keeps one order for both places. */}
+          <Select.Positioner sideOffset={6} className="z-80">
             <Select.Popup className="min-w-[10rem] rounded-md border border-edge bg-panel p-[var(--space-6)] text-sm text-text shadow-[var(--elev-2)]">
               {optionRuns(options).map((run) => {
                 const items = run.options.map((option) => (
