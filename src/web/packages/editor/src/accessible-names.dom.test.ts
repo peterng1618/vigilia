@@ -42,7 +42,7 @@ const FIELDS = "input,select,textarea";
  * `[hidden]` is `display: none`, and a browser puts no such element in the
  * accessibility tree — it cannot be focused, and it is not announced. Measured
  * in Chromium over the Add pane's file section: the tree holds `combobox "Asset"`,
- * `button "Import asset"`, `button "Replace asset"`, `button "Remove asset"` and
+ * `button "Import a file"`, `button "Replace asset"`, `button "Remove asset"` and
  * the alert, and **neither** `<input type="file">` is in it, though the markup
  * has both. They are the two file pickers the Import and Replace buttons drive,
  * and the buttons are named and audited here.
@@ -241,8 +241,12 @@ describe("editor panels", () => {
       "INPUT[type=][aria-hidden]", // Stroke
       "INPUT[type=][aria-hidden]", // Shadow
       "INPUT[type=checkbox][aria-hidden]", // Frosted glass, shape
-      // The Add pane's file section: two file pickers, `[hidden]` and driven by
-      // the Import and Replace buttons rendered beside them.
+      // The Add pane's file section: its declared-asset chooser is a
+      // `ControlSelect` now that the list moved onto the control set, so a Base
+      // UI select renders one carrier ahead of the two file pickers.
+      "INPUT[type=][aria-hidden]", // Asset (the Add pane's declared-asset chooser)
+      // Two file pickers, `[hidden]` and driven by the Import and Replace
+      // buttons rendered beside them.
       "INPUT[type=file]", // Import
       "INPUT[type=file]", // Replace
     ]);
