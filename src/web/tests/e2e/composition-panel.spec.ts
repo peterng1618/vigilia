@@ -253,7 +253,7 @@ test("keeps the document's own controls reachable while a card is selected", asy
       0,
     );
   }
-  // Every entry a token, resolved to a value: `createResolutionLine` writes
+  // Every entry a token, resolved to a value: `resolutionValue` builds
   // `label: ref → value`, and an unresolvable one says `(unresolved)` instead.
   const resolving = resolutionTexts.filter((text) => text.includes("→"));
   expect(resolving.length, "tokens resolved to a value").toBeGreaterThan(0);
