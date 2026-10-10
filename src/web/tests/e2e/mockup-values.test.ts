@@ -9,6 +9,8 @@ import {
   PARITY,
   readMockup,
   SETTINGS_MOCKUP_PATH,
+  SHELL_ROLES,
+  SHELL_TOKEN_SELECTOR,
 } from "./mockup-values.js";
 
 /**
@@ -115,6 +117,40 @@ test("the two shapes the field row is not are read from the drawing that draws e
       "border-radius",
     ),
   ).toThrow(/does not settle which one it means/);
+});
+
+test("the drawing's own token table is read, and all eleven tokens with it", () => {
+  // The drawing declares its shell tokens on the outermost element rather than
+  // in a `:root` rule, so this is a reading of an inline `style` attribute —
+  // `docs/design/mockups/current/shell.html:17-18`.
+  expect(SHELL_ROLES).toHaveLength(11);
+  for (const role of SHELL_ROLES) {
+    expect(
+      mockupDeclared(drawing, SHELL_TOKEN_SELECTOR, role.drawingToken),
+      `${role.drawingToken} is not declared by the drawing's token table`,
+    ).toMatch(/^#[0-9a-f]{6}$/);
+  }
+  // The two the brief's list of ten omitted and the drawing's own spellings.
+  expect(mockupDeclared(drawing, SHELL_TOKEN_SELECTOR, "--hot")).toBe(
+    "#ff7e6e",
+  );
+  expect(mockupDeclared(drawing, SHELL_TOKEN_SELECTOR, "--panel2")).toBe(
+    "#171c23",
+  );
+  expect(mockupDeclared(drawing, SHELL_TOKEN_SELECTOR, "--edge2")).toBe(
+    "#1b212a",
+  );
+
+  // The check the three above cannot make: a reader answering a constant would
+  // pass them all. A token moved in the file must come back moved.
+  const changed = drawing.replace("--hot:#ff7e6e", "--hot:#012345");
+  expect(changed).not.toBe(drawing);
+  expect(mockupDeclared(changed, SHELL_TOKEN_SELECTOR, "--hot")).toBe("#012345");
+
+  // A token the table does not declare is a broken row, not a silence.
+  expect(() =>
+    mockupDeclared(drawing, SHELL_TOKEN_SELECTOR, "--nope"),
+  ).toThrow(/declares no `--nope`/);
 });
 
 test("the page rule is read out of the drawing's own stylesheet", () => {

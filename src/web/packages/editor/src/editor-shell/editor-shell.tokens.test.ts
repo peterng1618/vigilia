@@ -57,6 +57,42 @@ function graphiteBlockAt(): number {
   return css.indexOf('[data-shell-palette="graphite"] {');
 }
 
+/** The declaration block for one palette — its own rule, or the shared baseline
+ *  for `editorial`, which has none of its own.
+ *
+ *  Sliced from the selector to the block's own `}`. A palette with no block of
+ *  its own does not get the baseline's *whole* body: it gets what the baseline
+ *  declares, which is the same list — see `sourceTokens` below. */
+function declarationBlock(palette: string): string {
+  const at = css.indexOf(`[data-shell-palette="${palette}"] {`);
+  // Editorial has no block of its own: it is the shared baseline, which the
+  // swatch chip joins so a chip can render a palette it is not under.
+  const from = at === -1 ? css.indexOf(".editor-shell-palette-swatch {") : at;
+  return from === -1 ? "" : css.slice(from, css.indexOf("}", from));
+}
+
+/** The `--shell-*` tokens a palette block must declare: every *source* a
+ *  `--shell-*` role or its §4 alias can name. The eleven colours plus the
+ *  primary button's pair.
+ *
+ *  `--shell-display` and `--shell-flat` are deliberately absent: both are
+ *  declared once on the baseline and inherited, neither is a colour, and
+ *  requiring them per block would be a declaration for nothing — the state
+ *  `design-tokens.gated.json` exists to shrink. */
+const SOURCE_TOKENS = [
+  "--shell-backdrop",
+  "--shell-surface",
+  "--shell-surface-strong",
+  "--shell-edge",
+  "--shell-text",
+  "--shell-muted",
+  "--shell-accent",
+  "--shell-warm",
+  "--shell-danger",
+  "--shell-primary-bg",
+  "--shell-primary-text",
+] as const;
+
 describe("shell token stylesheet", () => {
   /** The defect this exists to prevent.
    *
@@ -285,15 +321,6 @@ describe("shell token stylesheet", () => {
       "--warn",
       "--hot",
     ];
-    const declarationBlock = (palette: string): string => {
-      const at = css.indexOf(`[data-shell-palette="${palette}"] {`);
-      // Editorial has no block of its own: it is the shared baseline, which the
-      // swatch chip joins so a chip can render a palette it is not under.
-      const from =
-        at === -1 ? css.indexOf(".editor-shell-palette-swatch {") : at;
-      return from === -1 ? "" : css.slice(from, css.indexOf("}", from));
-    };
-
     for (const palette of shellPalettes) {
       const body = declarationBlock(palette);
       expect(body, `no declaration block found for ${palette}`).not.toBe("");
@@ -326,6 +353,89 @@ describe("shell token stylesheet", () => {
         inline,
         `a colour utility from ${role} would set a colour to a gradient stack`,
       ).not.toContain(`--color-${role.slice(2)}:`);
+    }
+  });
+
+  /** The defect this test exists to prevent, and the reason the one above could
+   *  not see it (`vg-307`).
+   *
+   *  Each palette block writes §4's role *aliases* — `--hot: var(--shell-danger)`,
+   *  `--warn: var(--shell-warm)` — and the test above asserts those aliases are
+   *  present. An alias is substituted where it is declared, so an alias naming a
+   *  `--shell-*` the block does not declare resolves to whatever the baseline
+   *  `:root` block held — editorial's value under a palette that is not
+   *  editorial — or, where no block declares it, to nothing at all. Four of the
+   *  six blocks were missing the primary button's pair and its danger source,
+   *  and `light` was missing `--shell-warm` too. The assertion is therefore on
+   *  the **source**, not on the alias: a palette that is a member of a derived
+   *  system declares every role it can name. */
+  it("declares the source of every role alias in every palette block", () => {
+    for (const palette of shellPalettes) {
+      const body = declarationBlock(palette);
+      expect(body, `no declaration block found for ${palette}`).not.toBe("");
+      for (const token of SOURCE_TOKENS) {
+        expect(
+          body,
+          `${palette} does not declare ${token}, so an alias naming it ` +
+            "resolves to whatever the root happened to hold",
+        ).toContain(`${token}:`);
+      }
+    }
+  });
+
+  /** Ruling of 2026-10-10 (plan 7 Task 4): **every palette's primary button is
+   *  its own accent**, with a text colour that clears §5's 4.5:1 against it.
+   *  That is the derivation rule the five non-source palettes inherit rather
+   *  than six hand-picked pairs, and it is stated as `--shell-primary-bg:
+   *  var(--shell-accent)` so a palette that moves its accent moves the button
+   *  with it.
+   *
+   *  The ratio is read from the declared values rather than from the browser:
+   *  both sides are literals in the palette block, so the arithmetic is the
+   *  same arithmetic and it can run beside the stylesheet. The rendered result
+   *  is `tests/e2e/design-language.spec.ts`'s. */
+  it("holds the primary button's text above §5's ratio in every palette", () => {
+    /** A `#rgb`/`#rrggbb` literal, which is every value this pair declares. */
+    const rgb = (value: string): readonly [number, number, number] => {
+      const hex = /^#([0-9a-f]{6})$/i.exec(value.trim());
+      if (hex === null) return [Number.NaN, Number.NaN, Number.NaN];
+      const body = hex[1] ?? "";
+      const at = (i: number): number =>
+        Number.parseInt(body.slice(i * 2, i * 2 + 2), 16);
+      return [at(0), at(1), at(2)];
+    };
+    const luminance = (colour: readonly [number, number, number]): number => {
+      const channel = (v: number): number => {
+        const s = v / 255;
+        return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+      };
+      return (
+        0.2126 * channel(colour[0]) +
+        0.7152 * channel(colour[1]) +
+        0.0722 * channel(colour[2])
+      );
+    };
+    const contrast = (a: readonly [number, number, number], b: readonly [number, number, number]): number => {
+      const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
+      return ((hi ?? 0) + 0.05) / ((lo ?? 0) + 0.05);
+    };
+    const value = (body: string, token: string): string =>
+      new RegExp(`${token}\\s*:\\s*([^;]+);`).exec(body)?.[1]?.trim() ?? "";
+
+    for (const palette of shellPalettes) {
+      const body = declarationBlock(palette);
+      const background = value(body, "--shell-primary-bg");
+      const text = value(body, "--shell-primary-text");
+      // The fill is the accent, in every palette, by construction.
+      expect(
+        background,
+        `${palette}'s primary button does not take its accent`,
+      ).toBe("var(--shell-accent)");
+      const ratio = contrast(rgb(value(body, "--shell-accent")), rgb(text));
+      expect(
+        Number.isFinite(ratio) ? ratio : 0,
+        `${palette}'s primary text ${text} is ${ratio}:1 on ${value(body, "--shell-accent")}, below 4.5:1`,
+      ).toBeGreaterThanOrEqual(4.5);
     }
   });
 });

@@ -86,6 +86,45 @@ export const CONTROLS_LIGHT_MOCKUP_PATH = fileURLToPath(
   ),
 );
 
+/** The drawing's own token table — the block `current/shell.html:17-18` writes
+ *  on its outermost element, which is where every value graphite takes lives.
+ *
+ *  Addressed by the drawn window's `width:1180px`, a declaration no other
+ *  element in the file carries: anchoring on a *token* (say `--accent:#72e0c0`)
+ *  would break the row the moment the value moved, which is the drift this
+ *  reader exists to report rather than to hide. */
+export const SHELL_TOKEN_SELECTOR = '[style*="width:1180px"]';
+
+/** The drawing's tokens and the product variable each one owns.
+ *
+ *  **Eleven, not ten.** The brief that scoped this row listed the table's ten
+ *  original tokens; the current drawing's table carries an eleventh, `--hot`
+ *  (`current/shell.html:18`), added when the current set was built. Two drawing
+ *  names spell without the product's hyphen (`--panel2`/`--panel-2`,
+ *  `--edge2`/`--edge-2`), and two drawing tokens share one product variable —
+ *  `--hdr` and `--panel` are both `--shell-surface`, and the drawing gives them
+ *  the same value.
+ *
+ *  **A product role the drawing names no token for is absent, not invented**:
+ *  `--warn` (`--shell-warm`), `--shell-display`, `--shell-flat` and
+ *  `--vigilia-control-bg` have no drawing value to compare against. */
+export const SHELL_ROLES: readonly {
+  readonly drawingToken: string;
+  readonly productVariable: string;
+}[] = [
+  { drawingToken: "--bg", productVariable: "--shell-backdrop" },
+  { drawingToken: "--hdr", productVariable: "--shell-surface" },
+  { drawingToken: "--panel", productVariable: "--shell-surface" },
+  { drawingToken: "--panel2", productVariable: "--shell-surface-strong" },
+  { drawingToken: "--edge", productVariable: "--shell-edge" },
+  { drawingToken: "--edge2", productVariable: "--edge-2" },
+  { drawingToken: "--text", productVariable: "--shell-text" },
+  { drawingToken: "--muted", productVariable: "--shell-muted" },
+  { drawingToken: "--faint", productVariable: "--faint" },
+  { drawingToken: "--accent", productVariable: "--shell-accent" },
+  { drawingToken: "--hot", productVariable: "--shell-danger" },
+];
+
 export function readMockup(path: string = MOCKUP_PATH): string {
   return readFileSync(path, "utf8");
 }

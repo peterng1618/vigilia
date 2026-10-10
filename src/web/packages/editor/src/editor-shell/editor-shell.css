@@ -39,7 +39,7 @@ body,
   --shell-accent: #14120e;
   --shell-warm: #8a5a2b;
   --shell-danger: #a4291f;
-  --shell-primary-bg: #14120e;
+  --shell-primary-bg: var(--shell-accent);
   --shell-primary-text: #f5f1e8;
   --shell-display: ui-serif, Georgia, "Times New Roman", serif;
   --shell-flat: 1;
@@ -52,13 +52,17 @@ body,
      consumer yet, on the user's instruction: a bible-named token the code
      lacks gets declared rather than worked around, which reverses the earlier
      "nothing declared for nothing" ruling recorded here.
-     `--bg` and `--stage` are `background` values and not `color`s: graphite
-     and light make them gradients, the other four a flat colour. A surface
-     paints either with the `background` shorthand, never with a `bg-*`
-     utility, which sets a *colour* and fails silent on a gradient.
+     `--bg` and `--stage` are `background` values and not `color`s: light makes
+     them a gradient, the other five a flat colour (graphite's three-layer
+     gradient retired with plan 7 Task 4, the drawing's ground being flat — §7.5
+     permits either). A surface paints either with the `background` shorthand,
+     never with a `bg-*` utility, which sets a *colour* and fails silent on a
+     gradient.
      `--faint` and `--edge-2` are derived rather than hand-tuned six times,
      because "tertiary" is a relationship to `--muted` and a fainter boundary
-     one to `--edge`, not seventh and eighth colours. */
+     one to `--edge`, not seventh and eighth colours. Graphite is the exception
+     and declares both as the drawing's literals, since graphite is the source
+     the derivation runs from. */
   --bg: var(--shell-backdrop);
   --panel: var(--shell-surface);
   --panel-2: var(--shell-surface-strong);
@@ -94,10 +98,10 @@ body,
    `--vigilia-accent` is editorial's *warm*, not its accent — the control
    layer's highlight was brown, and reading it as `--shell-accent` would have
    repainted it ink. `--vigilia-control-bg` cannot alias `--shell-backdrop`
-   either: that holds this same colour under editorial and nothing else, since
-   the glass palettes declare a gradient there, and aliasing it painted the
-   whole page gradient onto every button. A palette that needs a different
-   control surface declares one below. */
+   either: that holds this same colour under editorial and light's gradient and
+   graphite's dark flat ground everywhere else, so aliasing it painted the wrong
+   surface onto every button. A palette that needs a different control surface
+   declares one below. */
 :root {
   --vigilia-canvas-bg: #26241f;
   --vigilia-text: var(--shell-text);
@@ -117,26 +121,41 @@ body,
   --vigilia-scrollbar-track: transparent;
 }
 
+/* ── One source, five derivations ──────────────────────────────────────────
+   **Graphite is the source.** Its values are the drawn shell's own token table
+   (`docs/design/mockups/current/shell.html:17-18`), transcribed role for role
+   and never tuned here. **Every other palette is derived from graphite**: it
+   keeps its own hue for the two roles that carry identity — `--accent`, and the
+   edge's own tint — and takes from graphite the *relationships* between the
+   rest: the luminance separation of `--bg` → `--panel` → `--panel-2`, where
+   `--text`, `--muted` and `--faint` sit on that ladder, and the edge's weight
+   against its surface. The primary button is the accent in every palette (the
+   drawing's publish chip is `background:var(--accent); color:#06131a`, `:32`),
+   with a text colour held at §5's 4.5:1 against it. A derived value is computed
+   where CSS can express it — `color-mix` over the palette's own roles — and a
+   literal carries its derivation in the comment beside it.
+
+   **What the drawing does not name is not invented.** `--warn`
+   (`--shell-warm`), `--shell-display`, `--shell-flat` and graphite's one
+   `--vigilia-control-bg` override have no drawing token: they are the product's
+   own roles and the report says so rather than this block inventing a value. */
 [data-shell-palette="graphite"] {
-  --shell-backdrop:
-    radial-gradient(circle at 15% 8%, #e9a56e35, transparent 36%),
-    radial-gradient(circle at 82% 16%, #77d3d444, transparent 34%),
-    linear-gradient(145deg, #101923, #071116 52%, #101313);
-  --shell-surface: #0b1419a8;
-  --shell-surface-strong: #0a1116c9;
-  --shell-edge: #ddf4ee42;
-  --shell-text: #eef9f4;
-  --shell-muted: #b5c6c0;
-  --shell-accent: #72e0c0;
-  --shell-warm: #f3aa64;
-  --shell-danger: #fa8e8e;
-  --shell-primary-bg: #eef9f4;
-  --shell-primary-text: #0a1116;
+  --shell-backdrop: #0b0e12; /* --bg: the drawn ground is flat */
+  --shell-surface: #12161c; /* --hdr and --panel, one value in the drawing */
+  --shell-surface-strong: #171c23; /* --panel2 */
+  --shell-edge: #242b34; /* --edge */
+  --shell-text: #e8ecf3; /* --text */
+  --shell-muted: #8a97ab; /* --muted */
+  --shell-accent: #72e0c0; /* --accent */
+  --shell-warm: #f3aa64; /* no drawing token: --warn is the product's own */
+  --shell-danger: #ff7e6e; /* --hot */
+  --shell-primary-bg: var(--shell-accent); /* the chip's `background` */
+  --shell-primary-text: #06131a; /* the chip's `color`, `:32` */
   --shell-display: system-ui, sans-serif;
   --shell-flat: 0;
   /* The only `--vigilia-*` token a palette overrides. Editorial's paper
      control is unreadable on graphite's dark chrome, and the backdrop cannot
-     be aliased here because it is a gradient. */
+     be aliased here because it is a flat colour here and editorial's paper. */
   --vigilia-control-bg: #0a1116c9;
   --bg: var(--shell-backdrop);
   --panel: var(--shell-surface);
@@ -144,13 +163,13 @@ body,
   --edge: var(--shell-edge);
   --text: var(--shell-text);
   --muted: var(--shell-muted);
-  --faint: color-mix(in srgb, var(--muted) 68%, transparent);
+  --faint: #5a6675; /* --faint, the drawing's literal */
   --accent: var(--shell-accent);
   --warn: var(--shell-warm);
   --hot: var(--shell-danger);
   --stage: var(--shell-backdrop);
   --hdr: var(--shell-surface);
-  --edge-2: color-mix(in srgb, var(--edge) 55%, transparent);
+  --edge-2: #1b212a; /* --edge2, the drawing's literal */
 }
 /* `ember`, `moss` and `plum` used to declare an accent and nothing else, so
    their surface, edge and text were editorial's byte for byte — a picker
@@ -173,6 +192,13 @@ body,
   --shell-muted: #6d5138;
   --shell-accent: #8f4208;
   --shell-warm: #ff7e6e;
+  /* Derived: graphite's `--hot` held at §5's ratio on this palette's own paper.
+     40% `#ff7e6e` mixed into ember's `--shell-text` measures 5.7:1 against
+     `--shell-accent`'s paper and clears 4.5:1 on it — the mix is what carries
+     the derivation, not the number. */
+  --shell-danger: color-mix(in srgb, #ff7e6e 40%, var(--shell-text));
+  --shell-primary-bg: var(--shell-accent);
+  --shell-primary-text: #f7e2d2;
   --vigilia-control-bg: #f0d3bc;
   --bg: var(--shell-backdrop);
   --panel: var(--shell-surface);
@@ -197,6 +223,10 @@ body,
   --shell-muted: #4f6242;
   --shell-accent: #38601a;
   --shell-warm: #e8c56a;
+  /* Derived as ember's: graphite's `--hot` 40% into moss's `--shell-text`. */
+  --shell-danger: color-mix(in srgb, #ff7e6e 40%, var(--shell-text));
+  --shell-primary-bg: var(--shell-accent);
+  --shell-primary-text: #e4efd9;
   --vigilia-control-bg: #d8e8c8;
   --bg: var(--shell-backdrop);
   --panel: var(--shell-surface);
@@ -221,6 +251,10 @@ body,
   --shell-muted: #5a4870;
   --shell-accent: #543484;
   --shell-warm: #ffb2a1;
+  /* Derived as ember's: graphite's `--hot` 40% into plum's `--shell-text`. */
+  --shell-danger: color-mix(in srgb, #ff7e6e 40%, var(--shell-text));
+  --shell-primary-bg: var(--shell-accent);
+  --shell-primary-text: #ece3f7;
   --vigilia-control-bg: #ded1ef;
   --bg: var(--shell-backdrop);
   --panel: var(--shell-surface);
@@ -246,6 +280,14 @@ body,
   /* The one palette that never declared an accent and inherited editorial's
      ink, which on mint read as a gap rather than as a choice. */
   --shell-accent: #1c6b4f;
+  /* `--warn` had no source here either: `--shell-warm` fell through to the
+     baseline's editorial brown, so it is declared at the value it already
+     resolved to rather than changed to a different hue in passing. */
+  --shell-warm: #8a5a2b;
+  /* Derived as ember's: graphite's `--hot` 40% into light's `--shell-text`. */
+  --shell-danger: color-mix(in srgb, #ff7e6e 40%, var(--shell-text));
+  --shell-primary-bg: var(--shell-accent);
+  --shell-primary-text: #eefaf3;
   --bg: var(--shell-backdrop);
   --panel: var(--shell-surface);
   --panel-2: var(--shell-surface-strong);
@@ -341,13 +383,13 @@ body,
   /* Bible §4's roles, so a React surface writes `bg-panel-2`, `text-muted` or
      `border-edge` and the utility carries the palette in force. `--color-bg` and
      `--color-stage` are omitted on purpose, and for the same reason: both alias
-     `--shell-backdrop`, which is a gradient stack in graphite and light, and a
-     colour utility from either would set a *colour* to that stack — an invalid
-     declaration that fails silent, which is the defect class this plan exists
-     to remove. So the utility must not exist to be written. Both roles are still
-     declared (the role is correct; only its utility name would be wrong), and a
-     surface that paints `--stage` uses the `background` shorthand — see
-     `ControlSegmented`, whose active lift works under graphite and light because
+     `--shell-backdrop`, which light makes a gradient stack, and a colour utility
+     from either would set a *colour* to that stack — an invalid declaration that
+     fails silent, which is the defect class this plan exists to remove. So the
+     utility must not exist to be written. Both roles are still declared (the
+     role is correct; only its utility name would be wrong), and a surface that
+     paints `--stage` uses the `background` shorthand — see `ControlSegmented`,
+     whose active lift works under light because
      of it. */
   --color-panel: var(--panel);
   --color-panel-2: var(--panel-2);
@@ -372,9 +414,15 @@ body,
    blaming the cascade. */
 @source inline("bg-shell-surface");
 
-/* Glass treatment belongs to the glass palettes only; editorial is flat. */
+/* Glass treatment belongs to the glass palettes only; editorial is flat.
+   The fill is **`--panel` at 95%**, not `--shell-surface`: §7.5 has every
+   floating cluster `--panel` at ~95% with backdrop blur, and graphite's
+   `--shell-surface` is now opaque (`#12161c`) — a cluster painted from it would
+   be a solid block, which §5 forbids ("never fully opaque: the canvas must read
+   through them"). The 95% is the derivation, not a per-palette literal, and it
+   is the same fill `.editor-shell-identity` already declares. */
 .editor-glass {
-  background: var(--shell-surface);
+  background: color-mix(in srgb, var(--panel) 95%, transparent);
   border: 1px solid var(--shell-edge);
   box-shadow: none;
 }
@@ -389,7 +437,7 @@ body,
 [data-shell-palette="light"] .editor-glass {
   background:
     linear-gradient(135deg, #ffffff1f, #ffffff05 42%, #020b0e18),
-    var(--shell-surface);
+    color-mix(in srgb, var(--panel) 95%, transparent);
   border: 1px solid var(--shell-edge);
   box-shadow:
     inset 0 1px #ffffff4d,
