@@ -45,16 +45,29 @@ async function openEditor(page: Page): Promise<void> {
  * The computed colours of the surfaces a `--vigilia-*` token paints.
  *
  * `documentSelect` is the **control set's** select — a `role="combobox"`
- * trigger, which `.editor-shell-panel button` paints from `--vigilia-control-bg`
- * where the native `<select>` term it replaced painted a `<select>`. Measured:
- * the match is `data-vigilia-asset-select`, the Add pane's asset-list trigger,
- * which is the surface the panel-`select` read resolved to before that pane
- * converted. It is named by the control set's own role rather than by that hook
- * because the panes are hidden rather than unmounted, so a pane-specific
- * selector would say "document" about whichever pane happens to mount first.
+ * trigger. Measured: the match is `data-vigilia-asset-select`, the Add pane's
+ * asset-list trigger, which is the surface the panel-`select` read resolved to
+ * before that pane converted. It is named by the control set's own role rather
+ * than by that hook because the panes are hidden rather than unmounted, so a
+ * pane-specific selector would say "document" about whichever pane happens to
+ * mount first. It reads a control-set well, so it resolves through `--panel-2`
+ * and not through `--vigilia-control-bg`: the legacy `.editor-shell-panel
+ * button` rule that used to paint it was removed by plan 7 Task 8, and the hook
+ * itself is targeted by no rule at all.
  *
- * `documentInput` resolves through the same legacy rule and is Base UI's hidden
- * value-carrier `input` behind a select root, not a surface an author types in.
+ * There is deliberately **no** entry for `.editor-shell-panel input`. The first
+ * match is Base UI's hidden value-carrier — measured at `f31b000b` as
+ * `id="base-ui-…-hidden-input"`, `aria-hidden="true"`, `tabindex="-1"`,
+ * `clip-path: inset(50%)` — which is not a surface at all, so requiring it to
+ * be opaque asserts nothing about the palette. It passed before Task 8 only
+ * because the legacy rule painted every input indiscriminately. A real
+ * control-set well would be a surface, but one painted by `--panel-2`, so it
+ * would not restore what this entry used to cover. The consequence is stated
+ * rather than hidden: `--vigilia-control-bg` now paints only conditional
+ * surfaces — the Add pane's asset buttons, the crop row, the modal's own
+ * buttons, the keyboard sheet's chips — so this sweep no longer verifies that
+ * token on a surface that is always mounted, and
+ * `editor-shell.tokens.test.ts` is what covers its declaration per palette.
  *
  * `header` is the shell chrome the palette paints, and it is named for the
  * surface rather than for the control that used to sit on it: the palette chip
@@ -69,7 +82,6 @@ async function shellColours(page: Page): Promise<Record<string, string>> {
     };
     return {
       header: read(".editor-shell-header"),
-      documentInput: read(".editor-shell-panel input"),
       documentSelect: read('.editor-shell-panel [role="combobox"]'),
       stage: read(".editor-shell-stage"),
     };
