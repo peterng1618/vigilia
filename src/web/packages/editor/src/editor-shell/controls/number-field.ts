@@ -81,8 +81,7 @@ function boundLine(
 /** Validated numeric input: it parses, lands an out-of-range value on the bound
     it crossed instead of reverting it, and owns the rollback for the values it
     refuses by restoring the last value it accepted. `numberField` wraps it in a
-    labelled row; `linkedPair` uses two of them on one line, so the caller passes
-    the row the error line belongs to. */
+    labelled row, and the caller passes the row the error line belongs to. */
 export function numberInput(options: NumberInputOptions): NumberInput {
   let last = options.value;
   const invalidMessage = options.invalidMessage ?? uiCopy.panels.invalidNumber;

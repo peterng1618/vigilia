@@ -1,7 +1,6 @@
 // @vitest-environment jsdom
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { defaultPieSettings, settingsFieldsFor } from "@vigilia/renderer-core";
-import { linkedPair } from "./linked-pair.js";
 import { numberField } from "./number-field.js";
 import { isSettingVisible, settingsField } from "./settings-field.js";
 
@@ -251,88 +250,6 @@ describe("number field", () => {
   });
 });
 
-describe("linked pair", () => {
-  it("commits each half to its own handler, never the sibling's", () => {
-    const first = vi.fn();
-    const second = vi.fn();
-    const pair = linkedPair({
-      rowLabel: "Size",
-      first: { label: "W", value: 100, data: "vigiliaArtboardWidth" },
-      second: { label: "H", value: 200, data: "vigiliaArtboardHeight" },
-      min: 1,
-      max: 4096,
-      onCommitFirst: first,
-      onCommitSecond: second,
-    });
-    document.body.append(pair.row);
-
-    type(pair.first, "10");
-    expect(first).toHaveBeenLastCalledWith(10);
-    // The sibling is not the editor of this edit, so it hears nothing.
-    expect(second).not.toHaveBeenCalled();
-
-    type(pair.second, "20");
-    expect(second).toHaveBeenLastCalledWith(20);
-    expect(first).toHaveBeenCalledTimes(1);
-  });
-
-  it("restores only the rejected field and leaves its sibling alone", () => {
-    const first = vi.fn();
-    const second = vi.fn();
-    const pair = linkedPair({
-      rowLabel: "Size",
-      first: { label: "W", value: 100, data: "vigiliaArtboardWidth" },
-      second: { label: "H", value: 200, data: "vigiliaArtboardHeight" },
-      min: 1,
-      max: 4096,
-      onCommitFirst: first,
-      onCommitSecond: second,
-    });
-    document.body.append(pair.row);
-
-    type(pair.first, "10");
-    type(pair.second, "abc");
-
-    expect(first).toHaveBeenLastCalledWith(10);
-    expect(second).not.toHaveBeenCalled();
-    expect(pair.first.value).toBe("10");
-    expect(pair.second.value).toBe("200");
-
-    // `setValues` is the panel's repaint writer and must not look like an edit
-    // — `setGlobals` calls it on every palette refresh.
-    pair.setValues(640, 480);
-    expect(pair.first.value).toBe("640");
-    expect(pair.second.value).toBe("480");
-    expect(first).toHaveBeenCalledTimes(1);
-    expect(second).not.toHaveBeenCalled();
-  });
-
-  it("keeps two fields and one alert host on the one line they share", () => {
-    const pair = linkedPair({
-      rowLabel: "Size",
-      first: { label: "W", value: 100, data: "vigiliaArtboardWidth" },
-      second: { label: "H", value: 200, data: "vigiliaArtboardHeight" },
-      min: 1,
-      max: 4096,
-      onCommitFirst: vi.fn(),
-      onCommitSecond: vi.fn(),
-    });
-    document.body.append(pair.row);
-
-    // A slider per half would put two controls on a 280px flex line that
-    // already carries a label and two boxes, so the pair asks for none.
-    expect(rangeOf(pair.row)).toBeNull();
-    expect(pair.row.querySelectorAll("input[type=number]")).toHaveLength(2);
-
-    // Both halves refuse into the one host, so the row never grows a second
-    // line of feedback the panel has no room for.
-    type(pair.first, "abc");
-    type(pair.second, "abc");
-    const alerts = pair.row.querySelectorAll("[role=alert]");
-    expect(alerts).toHaveLength(2);
-    for (const alert of alerts) expect(alert.parentElement).toBe(pair.row);
-  });
-});
 
 /** A scalar setting, the shape the descriptor table hands the control. */
 const setting = {
