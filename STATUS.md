@@ -9,7 +9,7 @@ Branch: `develop`
 frontend surface except the canvas.**
 
 The look is specified and the rewrite under it is decided; the gates, the control
-set, the shell, the inspector and the Tokens pane's two libraries are built. The target is
+set, the shell, the inspector and the whole Tokens pane are built. The target is
 [`docs/design/design-language.md`](docs/design/design-language.md), the contract is
 [`2026-10-08-editor-design-language-design.md`](docs/superpowers/specs/2026-10-08-editor-design-language-design.md),
 and the boundary that makes it affordable is
@@ -25,33 +25,33 @@ backlog it produced stays live in the register.
 
 ## Active work
 
-- **Plan 4 — [`the panes`](docs/superpowers/plans/2026-10-08-the-panes.md) — is the active plan, and it is 7 of its 13 tasks in**; plans 1–3 are closed and archived, and exactly one plan is active at a time.
-- **Tasks 1–6 and 13 landed** — the Composition pane's row, its attended-row affordances, the Add pane's insert surface and its absorbed file path, every React root released on its own disposal path, and the Tokens pane's paint list and preset library — and **Task 7, binding the preset chooser to the selection (`vg-094`), opens next**.
-- **Plan 4's ledger is `.superpowers/sdd/2026-10-08-the-panes/progress.md`** (git-ignored but on disk): it holds the predecessor reconciliation and rulings R1–R38 plus R20's amendment, and a fresh session continues from it rather than from this file.
+- **Plan 4 — [`the panes`](docs/superpowers/plans/2026-10-08-the-panes.md) — is the active plan, and it is 8 of its 13 tasks in**; plans 1–3 are closed and archived, and exactly one plan is active at a time.
+- **Tasks 1–7 and 13 landed** — the Composition pane's row, its attended-row affordances, the Add pane, every React root released on its own disposal path, and the whole Tokens pane including `vg-094` — and **Task 8, the Document pane, opens next**.
+- **Plan 4's ledger is `.superpowers/sdd/2026-10-08-the-panes/progress.md`** (git-ignored but on disk): it holds the predecessor reconciliation and rulings R1–R40, and a fresh session continues from it rather than from this file.
 - **Three plans remain after this one** — `2026-10-08-settings-and-appearance.md`, `2026-10-08-iconography-and-copy.md`, then [`2026-10-10-design-md-replaces-the-bible.md`](docs/superpowers/plans/2026-10-10-design-md-replaces-the-bible.md), queued and unstarted, subagent-driven when it runs; every plan ends with its §13 parity capture.
 - **Reactify ([0039](docs/decisions/0039-the-editor-ui-is-react-and-only-the-canvas-is-imperative.md)) is the frame, not a phase** — every editor surface becomes React, only the canvas stays imperative, and no Fabric object is ever mirrored into React state.
 - **The mockups are the checked reference** ([`docs/design/mockups/`](docs/design/mockups/)), not files read once and remembered; spec §13 makes a capture beside them a gate item.
 
 ## Last completed change
 
-- **The preset library is a React tree** — `panes/tokens/preset-list.tsx` is new (358 lines), `type-preset-manager/panel.ts` lost 310, and it keeps its signature and `root`/`render` while gaining `destroy()`; the preset list is a **sibling** section under `panelHosts.tokens`, never a child of the paint list (R36).
-- **The commit rule is held in all three clauses** — an emptied `weight`, `lineHeight` or `letterSpacing` removes its key, a non-finite size is refused, and an empty name or family is refused; `letterSpacing` was the clause no case held and `0beac6cf` adds it (red-proved: 12 tests, 11 passed, 1 failed).
-- **The four new accessibility skip-list entries were audited, not assumed** — all Base UI value carriers rather than person-operable controls, justified like the existing 17, which is the check a growing skip list must survive.
-- **`ui-copy.ts`'s face and trio words shipped as `Font face` / `Font trio`** and are now pinned by an assertion (R20 amended); the rename has no surviving consumer of the old key, verified by search because `tests/e2e/` is in no tsconfig (`vg-192`).
-- **A process lesson from this task is recorded** — a ruling that contradicts a plan line must be applied to the plan text, not only the ledger, or the next regenerated brief re-asserts the line the ruling overrode.
+- **`vg-094` is gone** — the pane's preset chooser opened on the first declared preset, so an author who set a run to `24-400` read `17-400`; it now opens on the selection, observed in a built bundle rather than argued (`24-400` after, `Nothing selected.` when cleared).
+- **Three answers read distinctly** — "the selection is set to X", "nothing selected", and a dangling reference as a **third**, unresolved answer; a group or multi-selection now states what the Inspector's own owner already states for it (`selectionChildrenTypes`), where it previously said the selection carried no preset.
+- **The reveal is two steps and the join is pinned** — the Inspector's control opens the Tokens slot and then scrolls to the row, through one `reveal(slot, target)` owner; a case that changes the `"tokens"` literal now fails, where before it stayed green everywhere.
+- **Two defects found by review rather than by a failing test** — `presetRevealTarget` was resolving to `undefined` under the session test, which mocks its barrel wholesale, so the reveal had been untestable through that seam; and the redundant re-export that caused it is deleted.
+- **R40's parked question came back answered** — collapsing `Binding`'s four props to three would be a **defect**, not a tidy-up: a zero-member `ActiveSelection` reports `activeKind === "group"` with `selectedCount 0`, so the derived boolean would read "nothing selected" as "carries no type preset".
 
 ## Next
 
-1. **Plan 4 Task 7 — `vg-094`, the preset chooser bound to the selection** — the defect landmark re-points to `preset-list.tsx`, never back into the emptied `type-preset-manager/panel.ts` (R21).
-2. **Then Tasks 8–12:** the Document pane with its read-only References (R22), then the ratchet, the capture and the register — every plan ends with its §13 parity capture.
-3. **The plan's rulings live in the ledger, not here** — R1–R38 plus R20's amendment, including the preflight scan of Tasks 4–12 and its ten rulings, each verified against source before it was made.
-4. **Tasks 7–12's briefs must be regenerated before dispatch** — they were written before the day's plan edits (Task 13's insertion, `destroy()` on Tasks 5/6/8, R24's amendment, the line numbers replaced by call sites) and are stale as they sit.
+1. **Plan 4 Task 8 — the Document pane** — artboard, background and metadata on the control set, with every field, branch and refusal it has today enumerated **before** the rewrite, that enumeration being the checklist the rewrite is measured against; `artboard-panel.ts` keeps its signature and `root`/`render` and gains `destroy()`.
+2. **Then Tasks 9–12:** the Document pane's References read-only (R22), then the ratchet, the capture and the register — every plan ends with its §13 parity capture.
+3. **The plan's rulings live in the ledger, not here** — R1–R40, including the preflight scan of Tasks 4–12 and its ten rulings, each verified against source before it was made.
+4. **Tasks 8–12's briefs must be regenerated before dispatch** — they were written before the day's plan edits (Task 13's insertion, `destroy()` on Tasks 5/6/8, R24's amendment, R36, R39 and R40) and are stale as they sit.
 5. **Unpushed:** `develop` is far ahead of `origin/develop`; no push is authorised.
 
 ## Blockers / unverified
 
 - **Every open row lives in [`docs/product/backlog.jsonl`](docs/product/backlog.jsonl)** — read it there; this file no longer mirrors the register, which is why it had grown into a diary.
+- **Parked and unverified observations live in the plan's ledger, one section per task, each with its ruling** — no longer enumerated here, for the reason above. The newest are Task 7's: the container wording is DOM-asserted but not observed in a browser; a dangling reference is pinned by a unit case only; `presetRevealTarget`'s `CSS.escape` branch is untested because jsdom has no `CSS`; and the 246px readout fit was measured by the implementer but not re-measured by review.
 - **Six pre-existing browser failures are red at this branch's head and were red before it** — `composition-panel.spec.ts:897` (`vg-210`), `keyboard.spec.ts:123` (`vg-204`), and three rows filed at plan 3's close; a single sample proves nothing about the three that were load, so re-run any alone before believing it. **The display proof waits on the same class:** `author-journey-display.spec.ts` fails at `rebuild-composition.ts:148`'s stale `colour: "text"` (`vg-119`), and `vg-253` is that file's 16 remaining `selectOption` sites.
-- **Eight things shipped unverified, parked, or changed unnamed** — Task 3's standalone fragment key cannot be red-proved while `insertGroups()` emits one ungrouped group; Task 13 parked three guard minors (a second `mouseover`/`mouseout` owner would slip past, the root list is unsorted, an `AbortSignal` switch would false-fail the popover case); Task 4 parked a sentence at `file-section.tsx:63-65` reading as "a duplicate is impossible"; Task 5's stale-frame symptom is a browser timing fact no jsdom case can hold, and `paint-list.dom.test.tsx:329-334`'s tense is stale; Task 6's `controlName()` models only the `label[for]` path, so a trigger named by `aria-label` later would keep the case green while the announced name changed.
 - **The 246px width is a design decision, not a patch** (`vg-260`, now including the Add pane's clipped card label) — and two palette defects stay pinned, `vg-200` (the resting `--edge` boundary, 2.15:1 graphite / 1.42:1 light) and `vg-201` (`--warn` text, 1.4–2.0:1 in ember, moss and plum), so §5's ratios do not hold there until they are ruled on.
 - **`vg-192` is repo-wide:** `tests/e2e/` belongs to no tsconfig, so a type error in a browser spec is caught by neither `typecheck` nor Playwright.
