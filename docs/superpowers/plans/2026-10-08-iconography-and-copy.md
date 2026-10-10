@@ -64,7 +64,7 @@ What landed is measured before anything is changed; the glyphs get one owner and
 
 **Outcome:** A written inventory, in the commit, of every chrome glyph site and its weight, every surface that owns copy, every icon-only control and whether its accessible name and tooltip are one string, and every string that names a capability — each marked as either **already closed by a plan** (a reconciliation item) or **open** (this plan's work list). The later tasks' file lists are corrected from it in the same commit.
 
-**Owning symbols/landmarks:** every module that imports `lucide-react` in `packages/editor/src` as it stands after plans 1–5 (`diagnostic-message.tsx`, `layer-panel.tsx`, `palette-menu.tsx`, `shell-layout.tsx`, `font-picker/font-picker.tsx`, `object-actions.ts`, and whatever plans 1–5 added); `object-actions.ts`'s `OBJECT_ACTIONS` / `ARRANGE_ICONS`; `layer-panel.tsx`'s `CHART_ICONS` / `TWISTY_ICONS` / `LOCK_STATES`; `ui-copy.ts`; `controls/tooltip.ts`; `ui-copy.test.ts`; `accessible-names.dom.test.ts`.
+**Owning symbols/landmarks:** every module that imports `lucide-react` in `packages/editor/src` as it stands after plans 1–5 (`diagnostic-message.tsx`, `layer-panel.tsx`, `shell-layout.tsx`, `publish-indicator.tsx`, `font-picker/font-picker.tsx`, `object-actions.ts`, and whatever plans 1–5 added); `object-actions.ts`'s `OBJECT_ACTIONS` / `ARRANGE_ICONS`; `layer-panel.tsx`'s `CHART_ICONS` / `TWISTY_ICONS` / `LOCK_STATES`; `ui-copy.ts`; `controls/tooltip.ts`; `ui-copy.test.ts`; `accessible-names.dom.test.ts`.
 
 **Files:**
 - Modify: this plan file, and only where the census disagrees with a later task's file list or expectation (the census wins; say in the commit which lists moved)
@@ -140,11 +140,11 @@ The commit body carries the four inventories, the counts, the reconciliation ite
 
 **Outcome:** One module owns the chrome glyph vocabulary and the one stroke weight; every chrome glyph in the editor renders from it at that weight; chrome components import glyphs through the two owners; authored scene-icon generation and declaration files remain explicitly outside that chrome restriction.
 
-**Owning symbols/landmarks:** the new `editor-shell/icons.ts`; `object-actions.ts`'s icons (read, not moved); `diagnostic-message.tsx`'s `SEVERITY_ICONS`; `palette-menu.tsx`'s and `shell-layout.tsx`'s `Check`; `font-picker.tsx`'s `Star`; `layer-panel.tsx`'s `CHART_ICONS` / `TWISTY_ICONS` / `LOCK_STATES`; the rail's and panes' glyphs from plan 2; `controls/tooltip.ts` (read).
+**Owning symbols/landmarks:** the new `editor-shell/icons.ts`; `object-actions.ts`'s icons (read, not moved); `diagnostic-message.tsx`'s `SEVERITY_ICONS`; `shell-layout.tsx`'s and `publish-indicator.tsx`'s `Check` (the palette menu that held the third was deleted by plan 5's Task 2, and the choice row marks its selection with colour and border rather than a glyph); `font-picker.tsx`'s `Star`; `layer-panel.tsx`'s `CHART_ICONS` / `TWISTY_ICONS` / `LOCK_STATES`; the rail's and panes' glyphs from plan 2; `controls/tooltip.ts` (read).
 
 **Files:**
 - Create: `packages/editor/src/editor-shell/icons.ts`, `packages/editor/src/editor-shell/icons.test.tsx`
-- Modify: `packages/editor/src/editor-shell/diagnostic-message.tsx`, `palette-menu.tsx`, `shell-layout.tsx`, `layer-panel.tsx`, `packages/editor/src/font-picker/font-picker.tsx`, the Add pane's card unit tile module (plan 4's, whose eight diagrams are hand-authored), and every file the census listed as carrying a chrome glyph
+- Modify: `packages/editor/src/editor-shell/diagnostic-message.tsx`, `shell-layout.tsx`, `layer-panel.tsx`, `packages/editor/src/font-picker/font-picker.tsx`, the Add pane's card unit tile module (plan 4's, whose eight diagrams are hand-authored), and every file the census listed as carrying a chrome glyph
 - Modify: `scripts/design-tokens.gated.json` (add every file above)
 - Modify: `docs/architecture/ownership.md` (one row: the chrome glyph vocabulary)
 - Modify: none of `object-actions.ts`, `new-fabric-theme-icons.ts` or `lucide-icon-node.d.ts`
