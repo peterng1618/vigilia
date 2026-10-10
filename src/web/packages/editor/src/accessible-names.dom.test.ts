@@ -1,12 +1,28 @@
 // @vitest-environment jsdom
 import { Canvas, Rect, Textbox } from "fabric/es";
+import { act, createElement } from "react";
+import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createArtboardPanel } from "./artboard-panel.js";
+import { DEFAULT_SHELL_PALETTE } from "./editor-shell/palette.js";
+import { Settings } from "./editor-shell/settings.js";
 import { newDocumentChooser } from "./new-document-chooser.js";
 import { createNewObjectPanel } from "./new-object-panel.js";
 import { createPalettePanel } from "./palette-manager/panel.js";
 import { createSelectionInspector } from "./selection-inspector/index.js";
 import { createTypePresetPanel } from "./type-preset-manager/panel.js";
+import { uiCopy } from "./ui-copy.js";
+
+// jsdom has never had a `PointerEvent`, and Base UI re-dispatches a click
+// through one to carry modifier state — the shim `control.dom.test.tsx` supplies
+// for the same reason.
+window.PointerEvent ??= MouseEvent as never;
+
+// React only flushes work scheduled inside `act` when it has been told it is in
+// a test; without this the modal's first render lands after the assertion.
+(
+  globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
+).IS_REACT_ACT_ENVIRONMENT = true;
 
 /**
  * Every control these panels render has a name a screen reader reads.
@@ -85,7 +101,12 @@ const reached = (element: HTMLElement): boolean =>
 /** The elements a `<label for>` may name. `output` is one of them. */
 const LABELABLE = "button,input,meter,output,progress,select,textarea";
 
-afterEach(() => document.body.replaceChildren());
+afterEach(() => {
+  act(() => settingsRoot?.unmount());
+  settingsRoot = undefined;
+  localStorage.clear();
+  document.body.replaceChildren();
+});
 
 describe("editor panels", () => {
   it("gives every control an accessible name", () => {
@@ -249,18 +270,38 @@ describe("editor panels", () => {
       // buttons rendered beside them.
       "INPUT[type=file]", // Import
       "INPUT[type=file]", // Replace
+      // The settings modal's focus-trap sentinels, and the only pair here that
+      // belongs to a library rather than to us: `FloatingFocusManager` renders
+      // one `span` before the popup and one after it, `tabindex="0"` on purpose
+      // — they are what catches a Tab trying to leave the popup — and
+      // `aria-hidden` so no reader announces them. Named rather than filtered
+      // silently, and asserted as a pair below.
+      "SPAN[type=][aria-hidden]", // The modal's leading focus guard
+      "SPAN[type=][aria-hidden]", // The modal's trailing focus guard
     ]);
 
     // And the `aria-hidden` exclusion is earned rather than assumed. The
     // attribute alone is not the fact that puts something out of reach —
-    // `tabIndex: -1` is, and Base UI sets both. A component of ours that put
-    // `aria-hidden` on something an author can still focus would be a control
-    // this audit stopped looking at, so that is asserted here rather than
-    // read off the source and hoped for.
-    const focusable = Array.from(
+    // `tabIndex: -1` is, and Base UI sets both on a value carrier. A component
+    // of ours that put `aria-hidden` on something an author can still focus
+    // would be a control this audit stopped looking at, so that is asserted
+    // here rather than read off the source and hoped for.
+    //
+    // The dialog's two focus guards are the one exception, and they are the
+    // library's: both are `tabindex="0"` and `aria-hidden="true"` by
+    // construction, which is the trap working rather than a control that has
+    // looked away. Asserted as exactly those two, so a third `aria-hidden`
+    // focusable — ours or the library's — fails here.
+    const hiddenFocusable = Array.from(
       root.querySelectorAll<HTMLElement>('[aria-hidden="true"]'),
     ).filter((element) => element.tabIndex >= 0);
-    expect(focusable).toEqual([]);
+    expect(
+      hiddenFocusable.map((element) =>
+        element.hasAttribute("data-base-ui-focus-guard")
+          ? `guard:${element.getAttribute("data-type")}`
+          : element.outerHTML.slice(0, 60),
+      ),
+    ).toEqual(["guard:inside", "guard:inside"]);
   });
 
   it("names the release version, which no form control owns", () => {
@@ -283,7 +324,7 @@ describe("editor panels", () => {
 /**
  * The panels this file audits, mounted at once: the artboard panel, the palette
  * panel, the type preset panel, the selection inspector on two disjoint field
- * sets, the Add pane and the new-theme chooser.
+ * sets, the Add pane, the new-theme chooser and §7's Settings modal.
  *
  * Each in a state that shows every field it can render: a gradient with stops,
  * a font picker, a delete control, and a text object with a run bound to a
@@ -295,6 +336,11 @@ describe("editor panels", () => {
  * is how two file inputs and three dropdowns went unaudited until vg-114 named
  * them. Mount a panel when it is written; do not read a green run here as
  * "the editor is clean".
+ *
+ * The returned root is `document.body` rather than the mounting, because the
+ * Settings modal is a `Dialog` and Base UI portals it to the body: the audit
+ * has to read where the modal is, or it audits the six panels and passes over
+ * the twenty rows of the reference the author actually edits.
  */
 function mountPanels(): { root: HTMLElement } {
   const root = document.createElement("div");
@@ -401,7 +447,54 @@ function mountPanels(): { root: HTMLElement } {
 
   root.append(newDocumentChooser({ width: 1280, height: 720 }));
 
-  return { root };
+  mountSettings();
+
+  return { root: document.body };
+}
+
+let settingsRoot: Root | undefined;
+
+/**
+ * §7's Settings modal, open on the Keyboard tab.
+ *
+ * The modal is a `Dialog`, so it is portalled to `body` and is audited through
+ * the body the caller returns. Base UI mounts only the *active* tab panel, so
+ * the Keyboard tab is clicked after mount: without that click the modal renders
+ * the six palette rows and the twenty action rows of the reference — every
+ * arm button, every per-row Reset and Reset all — are in no tree at all, which
+ * is exactly the audit gap vg-114's comment describes.
+ *
+ * The Appearance tab's six rows and its follow toggle are the same modal and
+ * are driven by `settings.dom.test.tsx`; this mount is the Keyboard tab because
+ * that is where the controls nothing else names live.
+ */
+function mountSettings(): void {
+  const host = document.createElement("div");
+  document.body.append(host);
+  const reactRoot = createRoot(host);
+  settingsRoot = reactRoot;
+  act(() => {
+    reactRoot.render(
+      createElement(Settings, {
+        open: true,
+        onOpenChange: () => undefined,
+        storage: localStorage,
+        palette: DEFAULT_SHELL_PALETTE,
+        following: true,
+        onPalette: () => undefined,
+        onFollowing: () => undefined,
+        overrides: {},
+        onOverrides: () => undefined,
+      }),
+    );
+  });
+  const keyboard = Array.from(
+    document.querySelectorAll<HTMLElement>('[role="tab"]'),
+  ).find((tab) => tab.textContent?.trim() === uiCopy.settings.keyboard);
+  if (keyboard === undefined) throw new Error("no Keyboard tab in the modal.");
+  act(() => {
+    keyboard.click();
+  });
 }
 
 /**

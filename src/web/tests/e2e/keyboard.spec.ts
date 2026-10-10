@@ -1,13 +1,195 @@
-import { expect, test } from "@playwright/test";
+import { expect, test, type Page } from "@playwright/test";
 import { uiCopy } from "../../packages/editor/src/ui-copy.js";
 import { chooseIn } from "./control-set.js";
 import { captureVisualReview, enterLayer } from "./editor-canvas.js";
 import { openPane } from "./editor-rail.js";
+import {
+  openShell,
+  PALETTES,
+  SETTINGS_DIALOG,
+  SETTINGS_GEAR,
+} from "./shell-palette.js";
 import { isDesktopSurface } from "./surface.js";
 
 /** The editor URL, declared here rather than imported: every spec in this
  *  directory declares its own and no spec exports one (`editor.spec.ts:37`). */
 const EDITOR = "http://127.0.0.1:4174/";
+
+test("the Keyboard tab arms a row into the modal's trap, on a ring that clears contrast on every palette", async ({
+  page,
+}, testInfo) => {
+  test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+
+  await openShell(page);
+  const dialog = page.getByRole("dialog", SETTINGS_DIALOG);
+  await page.locator(SETTINGS_GEAR).click();
+  await expect(dialog).toBeVisible();
+
+  const arm = dialog.locator('[data-vigilia-shortcut-arm="publish.toggle"]');
+  const row = dialog.locator('[data-vigilia-shortcut-row="publish.toggle"]');
+  const readings: string[] = [];
+  const failures: string[] = [];
+  let trapProved = false;
+
+  for (const palette of PALETTES) {
+    // The product's own route to a palette (`0035`): the Appearance tab's radio,
+    // so what is measured is a palette the editor can really be in, and the
+    // ring is measured where the author would see it.
+    await dialog.getByRole("tab", { name: uiCopy.settings.appearance }).click();
+    await dialog.getByRole("radio", { name: palette, exact: true }).click();
+    await expect(page.locator("html")).toHaveAttribute(
+      "data-shell-palette",
+      palette,
+    );
+    await dialog.getByRole("tab", { name: uiCopy.settings.keyboard }).click();
+
+    // Arming the row: the arm control is the button an author presses.
+    await arm.click();
+    await expect(row).toHaveAttribute("data-armed", "");
+    await expect(row).toBeFocused();
+
+    if (!trapProved) {
+      trapProved = true;
+      // **The trap, in a browser.** jsdom applies no stylesheet and does no real
+      // focus navigation, so this is the only place the armed row's focus inside
+      // the modal is proved — and a focus that never landed is a capture that
+      // would listen to nothing.
+      const focused = await page.evaluate(() => {
+        const active = document.activeElement;
+        return {
+          insideDialog: active?.closest('[role="dialog"]') !== null,
+          action: active?.getAttribute("data-vigilia-shortcut-row") ?? null,
+        };
+      });
+      expect(
+        focused.insideDialog,
+        "the armed row took focus inside the modal's trap",
+      ).toBe(true);
+      expect(focused.action).toBe("publish.toggle");
+    }
+
+    const probe = await row.evaluate((element) => {
+      const style = getComputedStyle(element);
+      const box = element.getBoundingClientRect();
+      return {
+        ownBackground: style.backgroundColor,
+        outlineStyle: style.outlineStyle,
+        outlineWidth: Number.parseFloat(style.outlineWidth),
+        outline: style.outlineColor,
+        // The ring is `outline-offset: -2px`, so it is the row's outermost two
+        // pixels; the surface it is drawn on is the pixel just outside the row.
+        // Both are read from one screenshot, so the ratio is the composite the
+        // browser really painted — `graphite`'s and `light`'s modal surface is
+        // translucent, and the pixel is the only honest reading of it.
+        ring: { x: box.x + 1, y: box.y + box.height / 2 },
+        surface: { x: box.x - 4, y: box.y + box.height / 2 },
+      };
+    });
+    expect(
+      probe.ownBackground,
+      "the row paints its own background, so the pixel beside it is not the surface the ring sits on",
+    ).toBe("rgba(0, 0, 0, 0)");
+    // §5.4's boundary is a solid ring, not the browser's `auto` one.
+    expect(probe.outlineStyle, palette).toBe("solid");
+    expect(probe.outlineWidth, palette).toBeGreaterThanOrEqual(2);
+
+    const [ring, surface] = await pixelsAt(page, [probe.ring, probe.surface]);
+    const measured = round(contrast(ring, surface));
+    readings.push(
+      `${palette} armed-ring ${measured}:1 (outline ${probe.outline} on the modal surface ${rgba(surface)})`,
+    );
+    if (measured < BOUNDARY_MIN) {
+      failures.push(
+        `${palette}: the armed row's ring is ${measured}:1 (${probe.outline} on ${rgba(surface)}), below ${BOUNDARY_MIN}:1`,
+      );
+    }
+  }
+
+  for (const line of readings) {
+    // Printed as well as attached: the table is the evidence a reader can check
+    // without a trace.
+    console.log(`contrast ${line}`);
+  }
+  expect(failures, "a required contrast minimum is not met").toEqual([]);
+
+  await captureVisualReview(page, testInfo, "keyboard-armed-row");
+});
+
+/** §5.4's boundary minimum, the same 3:1 `design-language.spec.ts` gates the
+ *  control set's own focus boundaries at. */
+const BOUNDARY_MIN = 3;
+
+type Rgba = readonly [number, number, number, number];
+
+function rgba(pixel: Rgba): string {
+  return `rgb(${pixel[0]}, ${pixel[1]}, ${pixel[2]})`;
+}
+
+function round(value: number): number {
+  return Math.round(value * 100) / 100;
+}
+
+/** WCAG 2.x relative luminance, over opaque pixels. */
+function luminance(pixel: Rgba): number {
+  const channel = (v: number): number => {
+    const s = v / 255;
+    return s <= 0.03928 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+  };
+  return (
+    0.2126 * channel(pixel[0]) +
+    0.7152 * channel(pixel[1]) +
+    0.0722 * channel(pixel[2])
+  );
+}
+
+function contrast(a: Rgba, b: Rgba): number {
+  const first = luminance(a);
+  const second = luminance(b);
+  const [hi, lo] = first > second ? [first, second] : [second, first];
+  return (hi + 0.05) / (lo + 0.05);
+}
+
+/** The rendered pixels at each point, from one viewport screenshot.
+ *
+ * The same shape `design-language.spec.ts` measures the control set's rings
+ * with: a computed colour cannot answer what a surface with alpha over a
+ * backdrop paints, so the pixel is the evidence and the arithmetic is over two
+ * of them. The points are viewport CSS pixels from `getBoundingClientRect`, and
+ * the screenshot is scaled by its own ratio to the viewport so a device pixel
+ * ratio other than 1 cannot silently read the wrong pixel. */
+async function pixelsAt(
+  page: Page,
+  points: readonly { readonly x: number; readonly y: number }[],
+): Promise<readonly Rgba[]> {
+  const shot = await page.screenshot();
+  const b64 = shot.toString("base64");
+  const read = await page.evaluate(
+    async ({ b64, points }) => {
+      const image = new Image();
+      image.src = `data:image/png;base64,${b64}`;
+      await image.decode();
+      const canvas = document.createElement("canvas");
+      canvas.width = image.width;
+      canvas.height = image.height;
+      const context = canvas.getContext("2d");
+      if (context === null) return null;
+      context.drawImage(image, 0, 0);
+      const scale = image.width / window.innerWidth;
+      return points.map((point) => {
+        const data = context.getImageData(
+          Math.round(point.x * scale),
+          Math.round(point.y * scale),
+          1,
+          1,
+        ).data;
+        return [data[0] ?? 0, data[1] ?? 0, data[2] ?? 0, data[3] ?? 0];
+      });
+    },
+    { b64, points: points as { x: number; y: number }[] },
+  );
+  if (read === null) throw new Error("the viewport could not be captured");
+  return read as readonly Rgba[];
+}
 
 test("every canvas action's tooltip names the chord that runs it", async ({
   page,

@@ -32,7 +32,7 @@ function refusalWords(
     case "taken":
       return uiCopy.settings.keyboardTaken(SHORTCUT_LABELS[refusal.action]);
     case "reserved":
-      return uiCopy.settings.keyboardReserved(refusal.key.toUpperCase());
+      return uiCopy.settings.keyboardReserved(refusal.chord);
     case "modifier-only":
       return uiCopy.settings.keyboardModifierOnly;
     case "cannot-defer":
@@ -44,7 +44,9 @@ function refusalWords(
 
 /** The chord a key event would become. `shift` is written exactly rather than
  *  left off, so a captured `Ctrl+P` never also answers to `Ctrl+Shift+P` — the
- *  defaults may be shift-agnostic, a recorded press may not. */
+ *  defaults may be shift-agnostic, a recorded press may not. Alt never reaches
+ *  here: the shape has no field for it, and the capture refuses an Alt-qualified
+ *  press rather than storing its bare key. */
 function chordFrom(
   event: KeyboardEvent<HTMLElement>,
 ): Pick<ShortcutBinding, "key" | "modifier" | "shift"> {
@@ -66,9 +68,10 @@ function chordFrom(
  *
  * The capture reads `keydown` **on the row while it is armed** and stops the
  * event there: the manager is a `window` listener, so a chord recorded here
- * would otherwise also run the action it was being recorded for. Escape cancels
- * and binds nothing — the one keystroke the modal underneath also answers to,
- * which is why `settings.tsx` declines the dialog's own dismissal for it.
+ * would otherwise also run the action it was being recorded for. Escape and Tab
+ * are let through instead — Escape is the modal's own dismissal and closes it,
+ * which is the one way out an armed row may never take away, and Tab moves
+ * focus on; neither binds anything.
  */
 export function SettingsKeyboard(props: {
   /** `undefined` where the browser refuses local storage; a new chord then
@@ -104,18 +107,30 @@ export function SettingsKeyboard(props: {
     (action: ProductShortcutId) =>
     (event: KeyboardEvent<HTMLDivElement>): void => {
       if (armed !== action) return;
-      // The capture's press and nothing else's: the manager listens on
-      // `window`, so the event must not travel past this row while a chord is
-      // being recorded.
-      event.preventDefault();
-      event.stopPropagation();
-      if (event.key === "Escape") {
+      // The two presses the capture must not consume. Tab moves focus on — an
+      // armed row that swallowed it would be a keyboard trap — and Escape is the
+      // modal's own dismissal (`settings.tsx` passes it straight through), so
+      // neither is a chord. Both disarm and travel on; every other key is the
+      // capture's and nothing else's, because the manager listens on `window`
+      // and would otherwise run the chord being recorded.
+      if (event.key === "Tab" || event.key === "Escape") {
         disarm();
         return;
       }
+      event.preventDefault();
+      event.stopPropagation();
       // Neither a key held down nor a keystroke inside an IME composition is a
       // chord the author pressed.
       if (event.repeat || event.nativeEvent.isComposing) return;
+      // Alt is a fourth modifier the binding table has no field for, and the
+      // press would fall through as its bare key — the author presses one chord
+      // and the row stores another. Refused in words rather than modelled:
+      // `ShortcutBinding.modifier` is Ctrl/Cmd, and a chord no product action
+      // needs Alt for would be a field nothing reads.
+      if (event.altKey) {
+        setReason(uiCopy.settings.keyboardAltQualified);
+        return;
+      }
 
       const binding: ShortcutBinding = { ...chordFrom(event), action };
       const refusal = bindingRefusal(action, binding, overrides);
@@ -142,7 +157,13 @@ export function SettingsKeyboard(props: {
                 data-armed={armed === row.action ? "" : undefined}
                 // Focusable, so the capture has somewhere to listen that is not
                 // the whole document: the modal's guard covers the page behind
-                // it, and this covers the press being recorded.
+                // it, and this covers the press being recorded. **Named**, and
+                // named by a role that can carry a name: the row takes focus
+                // when it arms, and a focused `div` with no role announces
+                // nothing — the author recording a chord would hear silence at
+                // exactly the moment the row is asking them to press one.
+                role="group"
+                aria-label={row.label}
                 tabIndex={-1}
                 ref={(element) => {
                   if (element === null) rows.current.delete(row.action);

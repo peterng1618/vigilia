@@ -74,6 +74,7 @@ result, not merely a mounted editor.
 | Capture | The picture the thumbnail path produces, at 2x on the library's ground | `editor-reference-capture` / `the capture path shows the glass and the packaged assets` |
 | Keyboard | Hover a dock action and read the chord its tooltip names | `keyboard-tooltip` / `every canvas action's tooltip names the chord that runs it` |
 | Keyboard | Read the reference sheet, opened with `?` over an entered group | `keyboard-reference` / `? opens the sheet, and the document behind it does not change` |
+| Keyboard | Arm a row in the settings modal's Keyboard tab and read its ring | `keyboard-armed-row` / `the Keyboard tab arms a row into the modal's trap, on a ring that clears contrast on every palette` |
 | Shell appearance | Choose each of the six palettes and read the surface | `shell-palette-` / `captures each palette's own surface` |
 | Shell | Mount the shell with the Add slot open and nothing selected | `editor-shell-add` / `captures the shell with the Add pane open` |
 | Panes | Show each of the four rail panes and read its own surface | `pane-composition`, `pane-add`, `pane-tokens` and `pane-document` / `captures each pane of the four-slot rail` — four files from one action |

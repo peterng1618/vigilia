@@ -242,13 +242,12 @@ describe("Settings", () => {
     expect(railSlotIds(host)).toEqual([...RAIL_SLOTS]);
   });
 
-  it("cancels the capture on Escape, and lets the next Escape close the modal", async () => {
-    // The one press two surfaces answer to. Base UI binds its dismissal on
-    // `document` in the capture phase — before anything the row can do — so the
-    // modal has to decline the dismissal it is sent, and the row has to cancel
-    // the capture in the same press. Either half alone is wrong: a capture that
-    // closed the modal would lose the row being edited, and a modal that closed
-    // on the cancel would take the whole tab with it.
+  it("closes on Escape while a capture is armed, and binds nothing", async () => {
+    // Escape is always a way out of the modal. An earlier cut declined Base
+    // UI's dismissal for every `false` while a row was armed, so a capture's
+    // Escape cancelled the row and the modal stayed — and if the armed row's
+    // `focus()` ever failed, nothing else cleared `armed`, so Escape could not
+    // close the modal at all. The intent of the press is the modal, not the row.
     const host = mount();
     await press(gear(host));
     await openTab(uiCopy.settings.keyboard);
@@ -266,13 +265,28 @@ describe("Settings", () => {
 
     await pressEscapeOn(row);
 
-    expect(
-      role("dialog"),
-      "the capture claimed the press, not the modal",
-    ).not.toBeNull();
-    expect(row.hasAttribute("data-armed")).toBe(false);
+    expect(role("dialog"), "Escape closes the modal").toBeNull();
+    expect(readShortcutOverrides(localStorage)).toEqual({});
+  });
+
+  it("closes on Escape while a row is armed even when the arm took no focus", async () => {
+    // The trap the branch closes: `armed` set with no row holding focus, so the
+    // row's own Escape handler never runs. Nothing in the modal may depend on
+    // that handler having run for the way out to work.
+    const host = mount();
+    await press(gear(host));
+    await openTab(uiCopy.settings.keyboard);
+
+    const arm = document.querySelector<HTMLButtonElement>(
+      '[data-vigilia-shortcut-arm="edit.undo"]',
+    );
+    if (arm === null) throw new Error("no arm control in the Keyboard tab.");
+    await press(arm);
+    // Focus moved off the row, as an author clicking a tab strip line would.
+    (document.activeElement as HTMLElement | null)?.blur();
 
     await pressEscape();
+
     expect(role("dialog")).toBeNull();
   });
 

@@ -155,8 +155,8 @@ function AppearanceTab({
  *  holds the `watchSystemAppearance` subscription the choice has to reach: the
  *  tab renders the choice and owns none of it. The bindings are the shell's for
  *  the same reason — the dispatcher and the effective table live outside
- *  React — and the one press two surfaces answer to (Escape) is coordinated
- *  here, where the dialog's own dismissal arrives. */
+ *  React — and which row is armed is the tab's state held here only so the
+ *  close clears it; Escape closes the modal whatever the row is doing. */
 export function Settings(props: {
   readonly open: boolean;
   readonly onOpenChange: (open: boolean) => void;
@@ -183,9 +183,9 @@ export function Settings(props: {
     overrides,
     onOverrides,
   } = props;
-  /** The row whose capture is listening. Held here rather than in the tab
-   *  because Escape is the one press two surfaces answer to, and this is where
-   *  the dialog's own dismissal arrives. */
+  /** The row whose capture is listening. Held here rather than in the tab so
+   *  closing the modal clears it from one place — the `open` effect below — and
+   *  no armed row can outlive the surface it belongs to. */
   const [armed, setArmed] = useState<ProductShortcutId | undefined>(undefined);
   // Whether the modal has been open at all, so closing the *initial* closed
   // state does not fire a focus restore on mount.
@@ -201,22 +201,22 @@ export function Settings(props: {
     document.getElementById(SETTINGS_TRIGGER_ID)?.focus();
   }, [open]);
 
-  /** While a capture is armed, Escape belongs to the capture.
+  /** Whether a capture is armed is the row's state, and it never stands between
+   *  the author and the way out.
    *
-   *  Base UI binds its own dismissal on `document` in the capture phase, which
-   *  no row can out-bubble, so this is where the two are reconciled: the
-   *  library still asks, and the ask is declined rather than fought with a
-   *  second document listener. The row's own handler has cancelled the capture
-   *  in the same press, so the next Escape closes the modal. */
-  const handleOpenChange = (next: boolean): void => {
-    if (!next && armed !== undefined) return;
-    onOpenChange(next);
-  };
-
+   *  An earlier cut declined Base UI's dismissal for every `false` while armed,
+   *  so a capture's Escape would cancel the row and leave the modal up. That
+   *  bought one nicety — the tab staying where it was — at the price of the
+   *  modal being unclosable whenever `armed` outlived its row: the arm's
+   *  `focus()` failing is enough, and a pointer dismissal was declined with the
+   *  Escape path because the library reports both as the same `false`. The
+   *  dismissal is passed straight through now: Escape closes the modal, the
+   *  `open` effect below clears `armed` with it, and the row's own Escape
+   *  handler disarms in the same press for the case where it still has focus. */
   return (
     <Dialog
       open={open}
-      onOpenChange={handleOpenChange}
+      onOpenChange={onOpenChange}
       label={uiCopy.settings.title}
       closeLabel={uiCopy.settings.close}
     >

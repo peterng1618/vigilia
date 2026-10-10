@@ -259,17 +259,69 @@ describe("the Keyboard tab", () => {
     expect(save).toHaveBeenCalledOnce();
   });
 
-  it("Escape cancels the capture and binds nothing", async () => {
+  it("Escape cancels the capture and binds nothing, and the key travels on", async () => {
     const mounting = mount(localStorage);
     await click(armControl(mounting, "publish.toggle"));
 
-    await press(row(mounting, "publish.toggle"), { key: "Escape" });
+    const escape = await press(row(mounting, "publish.toggle"), {
+      key: "Escape",
+    });
 
     expect(armed(mounting)).toBe(false);
     expect(readShortcutOverrides(localStorage)).not.toHaveProperty(
       "publish.toggle",
     );
     expect(reason(mounting)).toBe("");
+    // Not consumed: Escape is the modal's own dismissal, and an armed row that
+    // swallowed it would be the one state the author could not leave.
+    expect(escape.defaultPrevented, "Escape is not consumed").toBe(false);
+  });
+
+  it("lets Tab move focus on rather than refusing it", async () => {
+    // An armed row that ate Tab would trap the keyboard: focus could only leave
+    // by arming another row, and the control that does that is reachable only by
+    // Tab. The refusal is for keys that genuinely cannot be a chord.
+    const mounting = mount(localStorage);
+    await click(armControl(mounting, "publish.toggle"));
+
+    const tab = await press(row(mounting, "publish.toggle"), { key: "Tab" });
+
+    expect(tab.defaultPrevented, "Tab is not consumed").toBe(false);
+    expect(armed(mounting)).toBe(false);
+    expect(reason(mounting)).toBe("");
+    expect(readShortcutOverrides(localStorage)).toEqual({});
+  });
+
+  it("refuses an Alt-qualified press in words, and binds nothing", async () => {
+    // The chord the author pressed must be the chord that is stored, and
+    // `ShortcutBinding` has no `alt`: without the refusal, Alt+H is stored as
+    // the bare `h` — accepted, because the action defers to a text field — and
+    // it replaces the `?` alias, so `?` stops opening the sheet.
+    const mounting = mount(localStorage);
+    await click(armControl(mounting, "help.shortcuts"));
+
+    await press(row(mounting, "help.shortcuts"), { key: "h", altKey: true });
+
+    expect(reason(mounting)).toBe(uiCopy.settings.keyboardAltQualified);
+    expect(readShortcutOverrides(localStorage)).toEqual({});
+    // §5.3: refused, not vanished — the row is still armed and still says it is
+    // listening, so the author can press the chord they meant.
+    expect(armed(mounting)).toBe(true);
+    expect(printed(mounting, "help.shortcuts")).toBe(
+      uiCopy.settings.keyboardPrompt,
+    );
+  });
+
+  it("names the chord the browser keeps, not the bare key", async () => {
+    // Ctrl+R is what the browser keeps; `R` alone is a letter that types into
+    // every field, and the sentence has to be true of the press that was made.
+    const mounting = mount(localStorage);
+    await click(armControl(mounting, "publish.toggle"));
+
+    await press(row(mounting, "publish.toggle"), { key: "r", ctrlKey: true });
+
+    expect(reason(mounting)).toBe(uiCopy.settings.keyboardReserved("Ctrl+R"));
+    expect(reason(mounting)).not.toContain("This browser keeps R for itself");
   });
 
   it("refuses a chord the action cannot honour, in words", async () => {

@@ -13,7 +13,7 @@
  * every one of them and would still miss the dispatcher.
  */
 import { useSyncExternalStore } from "react";
-import { printableChord } from "./display.js";
+import { bindingLabel, printableChord } from "./display.js";
 import {
   bindingMatches,
   defersToTextEntry,
@@ -33,11 +33,13 @@ export type ShortcutOverrides = Readonly<
  *  Structured rather than worded: every word in the product is `uiCopy`'s, and
  *  a reason carrying its own sentence would be a second copy table — the one
  *  thing §9's refusal rule cannot survive. `taken` names the action so the
- *  sentence can say *whose* chord it is, which is the whole of what makes that
- *  refusal useful. */
+ *  sentence can say *whose* chord it is, and `reserved` carries the chord as
+ *  `display.ts` prints it — the whole chord, `Ctrl+R`, and not the bare key: it
+ *  is the chord the browser keeps, and naming `R` alone would say the browser
+ *  reserves a letter that types into every field on the page. */
 export type BindingRefusal =
   | { readonly kind: "taken"; readonly action: ProductShortcutId }
-  | { readonly kind: "reserved"; readonly key: string }
+  | { readonly kind: "reserved"; readonly chord: string }
   | { readonly kind: "modifier-only" }
   | { readonly kind: "cannot-defer" }
   | { readonly kind: "unprintable" };
@@ -184,6 +186,13 @@ export function resolveShortcuts(
  * collision with another action's binding is dropped, because a damaged
  * preference must not make the keyboard ambiguous. Anything refused is dropped
  * silently here and the defaults stand: half a table is worse than none.
+ *
+ * Entries are checked against the **effective** table the entries accepted so
+ * far resolve to, not against the defaults. The two differ whenever an override
+ * frees a chord a default held, and the refusal check reads the effective table
+ * (`bindingRefusal` resolves `overrides` the same way) — so reading against the
+ * defaults would drop a binding the capture accepted, silently, on the next
+ * reload, which is the asymmetry this reader exists to not have.
  */
 export function readShortcutOverrides(storage: Storage): ShortcutOverrides {
   const parsed = parseStored(storage);
@@ -192,7 +201,7 @@ export function readShortcutOverrides(storage: Storage): ShortcutOverrides {
     if (!productShortcutIds().includes(action as ProductShortcutId)) continue;
     const binding = storedBinding(value);
     if (binding === undefined || binding.action !== action) continue;
-    const others = [...PRODUCT_SHORTCUTS, ...Object.values(accepted)];
+    const others = resolveShortcuts(accepted);
     if (others.some((other) => conflicts(other, binding))) continue;
     accepted[action] = binding;
   }
@@ -258,7 +267,8 @@ export function bindingRefusal(
 ): BindingRefusal | undefined {
   if (MODIFIER_KEYS.has(binding.key)) return { kind: "modifier-only" };
   if (!printableChord(binding)) return { kind: "unprintable" };
-  if (reserved(binding)) return { kind: "reserved", key: binding.key };
+  if (reserved(binding))
+    return { kind: "reserved", chord: bindingLabel(binding) };
   if (!binding.modifier && !defersToTextEntry(action)) {
     return { kind: "cannot-defer" };
   }

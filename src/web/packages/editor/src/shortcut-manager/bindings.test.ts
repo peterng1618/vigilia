@@ -301,6 +301,72 @@ describe("stored overrides", () => {
       expect(readShortcutOverrides(storage), `shift=${shift}`).toEqual({});
     }
   });
+
+  it("keeps a later override the reader would have dropped against the defaults", () => {
+    // The reader and the refusal check have to agree about what a stored
+    // binding is. `edit.undo` moving to `Ctrl+U` *frees* `Ctrl+Z`, so a second
+    // capture onto the freed chord is accepted — and a reader that checked
+    // against `PRODUCT_SHORTCUTS` instead of the effective table would take the
+    // write, then drop it on the next reload, reverting `file.save` to `Ctrl+S`
+    // with nothing said. This case fails on that reader.
+    const storage = store();
+    const movedUndo: ShortcutBinding = {
+      key: "u",
+      modifier: true,
+      shift: false,
+      action: "edit.undo",
+    };
+    writeShortcutOverride(storage, "edit.undo", movedUndo);
+    const ontoFreed: ShortcutBinding = {
+      key: "z",
+      modifier: true,
+      shift: false,
+      action: "file.save",
+    };
+    expect(
+      bindingRefusal("file.save", ontoFreed, readShortcutOverrides(storage)),
+      "the capture accepts the chord the moved default freed",
+    ).toBeUndefined();
+
+    writeShortcutOverride(storage, "file.save", ontoFreed);
+
+    expect(readShortcutOverrides(storage)).toEqual({
+      "edit.undo": movedUndo,
+      "file.save": ontoFreed,
+    });
+  });
+
+  it("keeps a later override onto a default alias another action's rebind left free", () => {
+    // The mirror case, and the one the *alias* rule decides: `edit.delete`
+    // answers to Delete and Backspace, and moving it to `Ctrl+K` takes Backspace
+    // out of the effective table entirely. A bare Backspace is then a chord the
+    // capture accepts for `help.shortcuts`, and the reader has to accept it too.
+    const storage = store();
+    writeShortcutOverride(storage, "edit.delete", {
+      key: "k",
+      modifier: true,
+      shift: false,
+      action: "edit.delete",
+    });
+    const backspace: ShortcutBinding = {
+      key: "backspace",
+      modifier: false,
+      shift: false,
+      action: "help.shortcuts",
+    };
+    expect(
+      bindingRefusal(
+        "help.shortcuts",
+        backspace,
+        readShortcutOverrides(storage),
+      ),
+      "no default alias answers to Backspace once edit.delete has moved",
+    ).toBeUndefined();
+
+    writeShortcutOverride(storage, "help.shortcuts", backspace);
+
+    expect(readShortcutOverrides(storage)["help.shortcuts"]).toEqual(backspace);
+  });
 });
 
 describe("withoutShortcutOverride", () => {
@@ -349,14 +415,16 @@ describe("bindingRefusal", () => {
     ).toEqual({ kind: "unprintable" });
   });
 
-  it("refuses a chord the browser keeps for itself", () => {
+  it("refuses a chord the browser keeps for itself, naming the whole chord", () => {
+    // The chord, not the bare key: `Ctrl+R` is what the browser keeps, and a
+    // refusal reading `R` would name a letter that types into every field.
     expect(
       bindingRefusal(
         "publish.toggle",
         { key: "r", modifier: true, shift: false, action: "publish.toggle" },
         {},
       ),
-    ).toEqual({ kind: "reserved", key: "r" });
+    ).toEqual({ kind: "reserved", chord: "Ctrl+R" });
   });
 
   it("refuses a modifier-less letter for an action that does not defer to a text field", () => {

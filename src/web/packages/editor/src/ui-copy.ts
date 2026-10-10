@@ -141,8 +141,18 @@ export const uiCopy = {
      *  beside the binding it did not make — never a tooltip (§5.3). */
     keyboardTaken: (action: string): string =>
       `${action} already answers to that chord. Press another.`,
-    keyboardReserved: (key: string): string =>
-      `This browser keeps ${key} for itself, so nothing here can hear it. Press another.`,
+    /** Takes the **printed chord** (`Ctrl+R`, `F5`), not the bare key: the
+        browser keeps the chord, and `R` alone reads as a letter it reserves —
+        which is false, and mixed casing against a named key like `F5`. */
+    keyboardReserved: (chord: string): string =>
+      `This browser keeps ${chord} for itself, so nothing here can hear it. Press another.`,
+    /** Alt never reaches a stored binding: `ShortcutBinding` carries a
+        modifier that means Ctrl/Cmd, so an Alt-qualified press would be stored
+        as its bare key — the author presses one chord and the row takes
+        another. The refusal is the honest half of that; modelling `alt` is the
+        upgrade path if a chord ever needs it. */
+    keyboardAltQualified:
+      "Alt is not a modifier a chord here can carry, so that press would bind its bare key. Press another.",
     keyboardModifierOnly:
       "A chord needs a key: a modifier on its own cannot be bound.",
     keyboardCannotDefer: (action: string): string =>

@@ -156,6 +156,14 @@ export function printableChord(binding: ShortcutBinding): boolean {
   return chord(binding, false) !== undefined;
 }
 
+/** One binding's printed chord, without reading the table: a capture's press is
+ *  not in the table yet, so `shortcutLabel` — which projects the *action* — has
+ *  nothing to find. `""` for a chord with no mark, which is the shape
+ *  `printableChord` already refuses. */
+export function bindingLabel(binding: ShortcutBinding): string {
+  return chord(binding, false) ?? "";
+}
+
 /** Every chord this action answers to, in the live table's own order, joined by
  *  the product's own separator. An action the table does not bind returns `""`.
  *
