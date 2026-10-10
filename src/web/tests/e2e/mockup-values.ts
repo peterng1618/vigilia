@@ -11,18 +11,18 @@ import { fileURLToPath } from "node:url";
  * amendment of 2026-10-10 is about. So the drawing is parsed here, and a row
  * that names a value the drawing no longer declares fails instead of passing.
  *
- * **Two declaration sites, one reader.** `current/shell.html` and
- * `current/settings.html` each declare in a `<style>` block holding `:root`,
- * `*` and `body`, *and* in inline `style` attributes — every region any row
- * addresses (the header, the body row, the rail, the panes, the stage and its
- * ground, the inspector) is an anonymous inline-styled `div` with no selector to
+ * **Two declaration sites, one reader.** Every drawing here declares in a
+ * `<style>` block holding `:root`, `*` and `body`, *and* in inline `style`
+ * attributes — every region a row addresses (the header, the body row, the rail,
+ * the panes, the stage and its ground, the inspector, and the field rows the two
+ * control drawings carry) is an anonymous inline-styled `div` with no selector to
  * reach it by. A selector is therefore either:
  *
- * - a rule selector, matched against the drawing's `<style>` rules — `body` is
- *   the one a row uses;
+ * - a rule selector, matched against the drawing's `<style>` rules — no `PARITY`
+ *   row uses one, so the rule half of the reader is exercised by the reader's own
+ *   proofs, which read `body`;
  * - an attribute selector of the form `[style*="width:46px"]`, matched against
- *   an element's own `style` attribute, which is how every region above is
- *   addressed.
+ *   an element's own `style` attribute — how every row above is addressed.
  *
  * **Document order decides — between rules.** Where more than one `<style>` rule
  * carries the selector, the **last** declaration wins: the cascade's rule for

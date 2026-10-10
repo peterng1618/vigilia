@@ -32,11 +32,10 @@ satisfies every token in the bible and still does not look like the mockup.
 
 ## Last completed change
 
-- **Plan 7 Task 8: the field row is one geometry again — the drawing's 74px label column and one `flex:1` value cell, declared once in `ControlRow`** — the four per-kind widths that started a box at four different left edges (`vg-297`) are gone, and the assertion that fixes it failed first with the four edges it measured (`text/number/select/segmented` at 117/100.5/63.1/179.8) before passing on one.
-- **Task 8 Step 3: the legacy unlayered rules were the second owner under it (`vg-298`)** — the inspector's ancestor-wide input/button box rule and both `label { display:block; margin-top:12px }` arms came off the product's controls, re-scoped to the eight `data-vigilia-*` hooks the inspector's plain DOM buttons still carry, because unlayered they beat every utility.
-- **Task 8 Step 4: the fixture was greener than the product (`vg-299`)** — it mounts `.editor-shell-inspector` now, and reverting that mount turned the assertion green again, which is the proof the gate could not see the product's own ancestor; three separate reds were recorded on the way (a select's right edge at 272 against 276, labels 6px below their control, five inputs painting a box inside a well that already draws one).
-- **Both control drawings are read by a test now** — two `surface: "fixture"` `PARITY` rows compare the drawing's declared `74px` column with the rendered label, and the shell test skips rows it does not own rather than reporting them as rows that measured nothing.
-- **Whole editor unit suite green: 1791 tests over 138 files; the `mockup-values` reader 12/12** — the body-flush and radius rows of the shell parity test stay red by design until Tasks 2 and 3 land, and Task 8's report records them as not its own.
+- **Task 1 fix round 2, closed: the report no longer claims a check the controller ran** — the census's open-items list said 13 rows with another owner and named A20–A28 on **both** sides; the controller corrected `adjudication.md` after the scoped re-review, and the report now attributes that to them.
+- **The reader's header comment no longer says a `body` row exists** — no `PARITY` row uses a rule selector, so the `<style>` half of the reader is exercised by the reader's own proofs and the inline half by every drawing-side row, including Task 8's two control-drawing rows.
+- **Re-verified at `0e7b3405` rather than carried forward** — reader 12/12, the shell parity test still reddens 8 rows at `--workers=1` and the same 8 at `--workers=2`, the header's 42px passing as the control, no row unresolved.
+- **Task 8's two `surface: "fixture"` rows are untouched by this round** — the shell test skips them (`design-language.spec.ts:1839`), so they do not reach the `undefined` guard as unresolved rows, which was checked rather than assumed.
 
 ## Next
 
