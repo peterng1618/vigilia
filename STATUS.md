@@ -22,8 +22,8 @@ satisfies every token in the bible and still does not look like the mockup.
 
 ## Active work
 
-- **Plan 7 — [`shell-parity`](docs/superpowers/plans/2026-10-10-shell-parity.md) — is the active plan. Task 9 has landed; Task 8 is next, then 2 → 3 → 4 → 5 → 6 → 7.** The four **new** drawings are at `docs/design/mockups/current/` and the instrument now reads them: eight rows red on today's shell, no unresolved row, at both worker counts.
-- **Task 8 is the field-row alignment the user reported** — the shared control row's four widths and the legacy unlayered shell rules that re-box inputs; it must land before Task 7 puts the stylesheet under the ratchet.
+- **Plan 7 — [`shell-parity`](docs/superpowers/plans/2026-10-10-shell-parity.md) — is the active plan. Task 9 is complete; Task 8 is next, then 2 → 3 → 4 → 5 → 6 → 7.** The four **new** drawings are at `docs/design/mockups/current/` and the instrument reads them: eight rows red on today's shell, no unresolved row, at both worker counts. **Task 8 waits for Task 1's fix round** — one writer per file, since both edit `tests/e2e/mockup-values.ts` and `design-language.spec.ts`.
+- **The drawings' README no longer lets a divergence pass as "deliberate"** — a difference must now be **licensed by a rule that predates it** or fixed, which is the escape hatch that let a week of drift pass every check green.
 - **The user's rulings, 2026-10-10: the mockup is not replaced — "Do not replace the mockup."** — the built product is pulled to the drawing; and, told a refresh would overdraw them, "Keep the original mockup html files and label them as such. Build new html."
 - **The drawing is the acceptance instrument.** §13 now says it governs wherever the written rules are silent, with no self-licensing and no "deliberate" disposition, and Task 1 landed the reader that reddens on eight real rows of today's shell.
 - **Plan 8 — settings parity — is next and unwritten**: thirteen of the modal's nineteen measured regions drift, and it consumes plan 7's instrument and its radius and chrome decisions.
