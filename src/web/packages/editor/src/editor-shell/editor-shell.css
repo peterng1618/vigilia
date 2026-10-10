@@ -14,7 +14,7 @@ body,
 
 /* Shell chrome tokens. The editorial palette is the default and is defined on
    bare :root so a fresh profile renders it before any palette attribute is
-   applied. Glass palettes below override only what they change.
+   applied. The five palettes below override only what they change.
 
    `applyShellPalette` writes `data-shell-palette` onto the document element,
    so `:root` and the in-force palette selector are the same node and the
@@ -180,9 +180,10 @@ body,
    Their accents are deepened from the pastel that named them. A light accent
    on a light surface carries nothing: `--shell-accent` paints hover colour and
    the focus ring, so `#ffb36b` on a peach paper was a hover the author could
-   not see. Each is now the same hue at a value that holds 4.5:1 against both
-   its own surface and the glass overlay the non-editorial rules put over it,
-   and the ring still reads as ember, moss or plum. */
+   not see. Each is now the same hue at a value that holds 4.5:1 against its own
+   surface — the overlay the non-editorial rules used to put over that surface
+   retired with the glass chrome, plan 7 Task 5 — and the ring still reads as
+   ember, moss or plum. */
 [data-shell-palette="ember"] {
   --shell-backdrop: #e9cdb4;
   --shell-surface: #f7e2d2;
@@ -414,31 +415,45 @@ body,
    blaming the cascade. */
 @source inline("bg-shell-surface");
 
-/* Glass treatment belongs to the glass palettes only; editorial is flat.
-   The fill is **`--panel` at 95%**, not `--shell-surface`: §7.5 has every
-   floating cluster `--panel` at ~95% with backdrop blur, and graphite's
-   `--shell-surface` is now opaque (`#12161c`) — a cluster painted from it would
-   be a solid block, which §5 forbids ("never fully opaque: the canvas must read
-   through them"). The 95% is the derivation, not a per-palette literal, and it
-   is the same fill `.editor-shell-identity` already declares. */
+/* ── One treatment boundary: chrome is flat and opaque; a floating cluster
+   over the canvas is glass. ──────────────────────────────────────────────
+   §3's elevation table gives row 0 — no shadow, a 1px `--edge` hairline — to
+   the panels, the rail, the header and the inspector, and row 1 to the
+   "floating clusters over the canvas", which §3 also says blur their backdrop
+   and are *never fully opaque: the canvas must read through them*. So an
+   element is one of exactly two things, and this block is where the file says
+   which. **The split is per element, not per palette** — it used to be
+   `editorial` against the other five, and every palette now paints the same
+   two treatments.
+
+   - **chrome** — the rail, both panes, the inspector, and the header and status
+     strips that declare their own surface — paints the palette's own `--panel`,
+     with no gradient, no blur and no shadow. `--panel` is opaque in five
+     palettes (Task 4 made graphite's the drawing's `#12161c`); `light` declares
+     `--shell-surface: #eff9f2bf`, so its chrome is still 75% and still
+     composites against the mint ground. That is a derivation Task 4 did not
+     reach rather than a literal to invent here, and `vg-310` owns it.
+   - a **floating cluster over the canvas** — the dock and the view cluster —
+     paints `--panel` at 95% over the glass gradient, blurs it and takes the
+     elevation-1 shadow. The 95% is §7.5's derivation for a cluster's fill and
+     the same one `.editor-shell-identity` declares in its own rule: a cluster
+     painted from `--panel` alone would be a solid block, which §3 forbids.
+
+   `.editor-glass` is the **chrome** default — it is on the rail, the pane
+   column and the inspector, three of the five elements that carry it — and the
+   two clusters opt into the glass by name. The glass rule therefore cannot
+   reach a chrome region whatever the source order, which is what `vg-207`'s
+   (0,4,0) tie-break used to buy and this shape buys instead. */
 .editor-glass {
-  background: color-mix(in srgb, var(--panel) 95%, transparent);
+  background: var(--panel);
   border: 1px solid var(--shell-edge);
   box-shadow: none;
 }
-[data-shell-palette="editorial"] .editor-glass {
-  border-width: 1px;
-}
-:root:not([data-shell-palette="editorial"]) .editor-glass,
-[data-shell-palette="graphite"] .editor-glass,
-[data-shell-palette="ember"] .editor-glass,
-[data-shell-palette="moss"] .editor-glass,
-[data-shell-palette="plum"] .editor-glass,
-[data-shell-palette="light"] .editor-glass {
+.editor-shell-dock.editor-glass,
+.editor-shell-zoom.editor-glass {
   background:
     linear-gradient(135deg, #ffffff1f, #ffffff05 42%, #020b0e18),
     color-mix(in srgb, var(--panel) 95%, transparent);
-  border: 1px solid var(--shell-edge);
   box-shadow:
     inset 0 1px #ffffff4d,
     inset 0 -1px #ffffff12,
@@ -448,12 +463,8 @@ body,
 }
 
 @media (prefers-reduced-transparency: reduce) {
-  :root:not([data-shell-palette="editorial"]) .editor-glass,
-  [data-shell-palette="graphite"] .editor-glass,
-  [data-shell-palette="ember"] .editor-glass,
-  [data-shell-palette="moss"] .editor-glass,
-  [data-shell-palette="plum"] .editor-glass,
-  [data-shell-palette="light"] .editor-glass {
+  .editor-shell-dock.editor-glass,
+  .editor-shell-zoom.editor-glass {
     background: var(--shell-surface-strong);
     backdrop-filter: none;
     -webkit-backdrop-filter: none;
@@ -461,41 +472,27 @@ body,
 }
 
 @supports not (backdrop-filter: blur(1px)) {
-  :root:not([data-shell-palette="editorial"]) .editor-glass,
-  [data-shell-palette="graphite"] .editor-glass,
-  [data-shell-palette="ember"] .editor-glass,
-  [data-shell-palette="moss"] .editor-glass,
-  [data-shell-palette="plum"] .editor-glass,
-  [data-shell-palette="light"] .editor-glass {
+  .editor-shell-dock.editor-glass,
+  .editor-shell-zoom.editor-glass {
     background: var(--shell-surface-strong);
   }
 }
 
-/* Bible §3: the chrome sits at elevation 0 — no shadow, no blur, and a 1px
-   `--edge` hairline. The glass treatment (gradient, inner light, drop shadow,
-   backdrop blur) belongs to the floating clusters over the canvas, so the rail,
-   the pane column and the inspector keep a flat surface under every palette.
-
-   The `:root:not(...)` glass rules reach specificity (0,3,0). Naming the shell
-   root and the element ties them at (0,3,0), which left the flat treatment
-   winning on source order alone — a later equal-specificity rule would have
-   re-glassed the chrome with every gate green (`vg-207`). Naming the body
-   between them carries one class more, so this is (0,4,0) and strictly beats
-   the glass rule whether it is written before or after it. The header's own
-   strip is Task 3's and is not glass at all, so it is not named here.
+/* The chrome regions' own boundary resets. The flat surface itself is
+   `.editor-glass`'s base fill above and is not restated here — one owner per
+   property is the point of this block's shape.
 
    **Each interior boundary has one owner**, and this block is where the
-   ownership is written because it already reaches (0,4,0) and `editor-glass`
-   would otherwise put a 1px `--edge` on all four sides of each of the three —
-   which at the body's now-zero gap draws every interior boundary twice. The
-   rail owns the rail|pane hairline (`border-right`), the pane owns the
-   pane|stage one (`border-right`), the inspector owns the stage|inspector one
-   (`border-left`); the stage owns none (`.editor-shell-stage` carries no
-   border). The regions' outer edges carry none either: the drawn shell's outer
-   frame is the *window*, and the product **is** the window, so no product
-   element carries it (the census records it `no-counterpart`). The two
-   horizontal hairlines are the header's foot (§7.1) and the status bar's head
-   (§7.6), each its own.
+   ownership is written: `editor-glass` puts a 1px `--edge` hairline on all four
+   sides of each of the three, which at the body's zero gap (Task 2) would draw
+   every interior boundary twice. The rail owns the rail|pane hairline
+   (`border-right`), the pane owns the pane|stage one (`border-right`), the
+   inspector owns the stage|inspector one (`border-left`); the stage owns none
+   (`.editor-shell-stage` carries no border). The regions' outer edges carry
+   none either: the drawn shell's outer frame is the *window*, and the product
+   **is** the window, so no product element carries it (the census records it
+   `no-counterpart`). The two horizontal hairlines are the header's foot (§7.1)
+   and the status bar's head (§7.6), each its own.
 
    **Every region is square**, and that is a decision rather than an omission
    (plan 7 Task 3). §7's diagram abuts the four inside one boundary, and §3's
@@ -508,9 +505,6 @@ body,
 .editor-shell .editor-shell-body .editor-shell-rail.editor-glass,
 .editor-shell .editor-shell-body .editor-shell-panel.editor-glass,
 .editor-shell .editor-shell-body .editor-shell-inspector.editor-glass {
-  box-shadow: none;
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
   border: 0;
 }
 /* One group per side, because the hairline they put back is on different sides:

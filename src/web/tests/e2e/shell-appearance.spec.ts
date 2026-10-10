@@ -88,6 +88,41 @@ async function shellColours(page: Page): Promise<Record<string, string>> {
   });
 }
 
+/** The alpha of a computed `background-color`, in whichever of the three forms
+ *  this browser serialises: `rgb(r, g, b)` (opaque), `rgba(r, g, b, a)`, and
+ *  the `color(srgb r g b / a)` a `color-mix` resolves to. `null` for a form
+ *  this does not read, so a change of serialisation reds here rather than
+ *  passing as opaque. */
+function backgroundAlpha(colour: string): number | null {
+  const value = colour.trim();
+  const rgb = /^rgba?\(([^)]+)\)$/.exec(value);
+  if (rgb !== null) {
+    const parts = (rgb[1] ?? "").split(/[\s,/]+/).filter(Boolean);
+    return parts.length > 3 ? Number(parts[3]) : 1;
+  }
+  const srgb = /^color\(srgb\s+([^)]+)\)$/.exec(value);
+  if (srgb !== null) {
+    const alpha = (srgb[1] ?? "").split("/")[1];
+    return alpha === undefined ? 1 : Number(alpha.trim());
+  }
+  return null;
+}
+
+/** `light` is the one palette whose chrome is not yet opaque, and it is named
+ *  rather than skipped so the exception is visible in the reading it exempts.
+ *
+ *  `light` declares `--shell-surface: #eff9f2bf` — 75% alpha, the residue of
+ *  the glass chrome — and every other surface role it declares is alpha too, so
+ *  the derivation plan 7 Task 4 wrote produces no opaque value for it. A value
+ *  invented here would be a seventh palette tuned by hand, which is the move
+ *  the derivation exists to replace, so the fill stays where it is and `vg-310`
+ *  owns the gap. The case asserts the translucency it actually carries, so the
+ *  day Task 4 derives an opaque value this reds and the exemption has to be
+ *  deleted rather than left to excuse a regression. */
+const CHROME_NOT_YET_OPAQUE: ReadonlySet<(typeof PALETTES)[number]> = new Set([
+  "light",
+]);
+
 test.describe("shell palettes", () => {
   test.skip(
     ({ browserName }) => browserName !== "chromium",
@@ -358,53 +393,122 @@ test.describe("shell palettes", () => {
     });
   });
 
-  /** Editorial is flat; the glass treatment is the other five's.
+  /** The one treatment boundary: chrome is flat and opaque, and a floating
+   *  cluster over the canvas is glass.
    *
-   *  The three glass rules select `:root:not([data-shell-palette="editorial"])`,
-   *  which excluded editorial only once the palette attribute moved onto
-   *  `documentElement`. Editorial had been receiving the glass against the
-   *  comment above those rules — which say it is the flat one — and nothing
-   *  recorded the change, so a later edit could have put it back unnoticed.
-   *  `box-shadow` is the discriminator rather than `backdrop-filter`: this
-   *  browser computes `backdrop-filter` to `none` under every palette, so it
-   *  would assert nothing at all.
+   *  **This assertion changed shape, deliberately** (plan 7 Task 5), and the shape
+   *  it had is why it is named here rather than quietly rewritten. It read
+   *  "editorial is flat and the other five are glass" — three facts about
+   *  `editorial` written as one assertion, and a `flat` that described a whole
+   *  *palette* rather than an element. §3 draws the boundary between elements and
+   *  not between palettes: elevation 0 is the chrome (no shadow, a 1px `--edge`
+   *  hairline) and elevation 1 is "floating clusters over the canvas", which blur
+   *  their backdrop and are never fully opaque. Task 5 moved the gradient and the
+   *  blur onto the clusters by name and gave the chrome the palette's own
+   *  `--panel`, so the palette split this test used to assert is exactly what was
+   *  removed — `editorial`'s clusters are glass now, as every palette's are.
    *
-   *  Measured on the zoom readout, a floating cluster over the canvas, because
-   *  the chrome is at elevation 0 now: the header's strip was the last chrome
-   *  element carrying the glass, and Task 3 took it flat with the rail, the pane
-   *  column and the inspector. `editor-shell.css`'s own comment names that set.
-   */
-  test("editorial is flat and the other five are glass", async ({
+   *  Two cases, on the built bundle in all six palettes:
+   *
+   *  - **chrome** — the rail, the pane, the inspector and the header strip, which
+   *    §3's elevation-0 row names by hand and which does not carry
+   *    `editor-glass` — has no alpha, no gradient, no blur and no shadow;
+   *  - a **floating cluster** — the zoom readout — has all four.
+   *
+   *  The cluster's `backdrop-filter` cannot be one of them, and the reason is
+   *  measured rather than assumed: the built stylesheet carries only the prefixed
+   *  `-webkit-backdrop-filter`, this Chromium does not support that form, and so
+   *  every glass element computes `backdropFilter: none` under every palette —
+   *  which is what the assertion this replaced already recorded when it chose
+   *  `box-shadow` over `backdrop-filter` as its discriminator. The dead blur is
+   *  `vg-311`'s finding; asserting it here would pass for the wrong reason. */
+  test("chrome is flat and opaque, and the canvas clusters keep the glass", async ({
     page,
   }, testInfo) => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     await openEditor(page);
-    const glass = page.locator(".editor-shell-zoom");
 
-    await choosePalette(page, "editorial");
-    const flat = await glass.evaluate((node) => {
-      const style = getComputedStyle(node);
-      return { shadow: style.boxShadow, image: style.backgroundImage };
-    });
-    expect(flat.shadow, "editorial carries the glass shadow").toBe("none");
-    expect(flat.image, "editorial carries the glass gradient").toBe("none");
+    const CHROME = [
+      ".editor-shell-rail",
+      ".editor-shell-panel",
+      ".editor-shell-inspector",
+      ".editor-shell-header",
+    ];
+    const CLUSTER = ".editor-shell-zoom";
 
-    for (const palette of PALETTES.filter((p) => p !== "editorial")) {
-      await choosePalette(page, palette);
-      const lifted = await glass.evaluate((node) => {
+    const read = (selector: string) =>
+      page.evaluate((sel) => {
+        const node = document.querySelector(sel);
+        if (node === null) throw new Error(`no element matches \`${sel}\``);
         const style = getComputedStyle(node);
-        return { shadow: style.boxShadow, image: style.backgroundImage };
-      });
-      expect(
-        lifted.shadow,
-        `the ${palette} cluster has no glass shadow`,
-      ).not.toBe("none");
-      expect(
-        lifted.image,
-        `the ${palette} cluster has no glass gradient`,
-      ).not.toBe("none");
+        return {
+          background: style.backgroundColor,
+          image: style.backgroundImage,
+          blur: style.backdropFilter,
+          shadow: style.boxShadow,
+        };
+      }, selector);
+
+    const failures: string[] = [];
+    for (const palette of PALETTES) {
+      await choosePalette(page, palette);
+      const exempt = CHROME_NOT_YET_OPAQUE.has(palette);
+
+      for (const selector of CHROME) {
+        const chrome = await read(selector);
+        const alpha = backgroundAlpha(chrome.background);
+        if (alpha === null) {
+          failures.push(
+            `${palette} ${selector}: its background reads "${chrome.background}", which this assertion cannot read as opaque`,
+          );
+        } else if (exempt ? alpha >= 1 : alpha < 1) {
+          failures.push(
+            `${palette} ${selector}: its background is ${chrome.background}, and chrome is opaque (${
+              exempt
+                ? "this palette is exempt today, so a value that reaches alpha 1 must delete the exemption"
+                : "no alpha, because the canvas behind it must not read through"
+            })`,
+          );
+        }
+        if (chrome.image !== "none") {
+          failures.push(
+            `${palette} ${selector}: the chrome carries a gradient (${chrome.image}) — the sheen is the cluster's, per §3's elevation 1`,
+          );
+        }
+        if (chrome.blur !== "none") {
+          failures.push(
+            `${palette} ${selector}: the chrome blurs its backdrop (${chrome.blur})`,
+          );
+        }
+        if (chrome.shadow !== "none") {
+          failures.push(
+            `${palette} ${selector}: the chrome carries a shadow (${chrome.shadow}) — elevation 0 is flat`,
+          );
+        }
+      }
+
+      const cluster = await read(CLUSTER);
+      const clusterAlpha = backgroundAlpha(cluster.background);
+      if (clusterAlpha === null || clusterAlpha >= 1) {
+        failures.push(
+          `${palette}: the cluster's fill is ${cluster.background}, and §3 has a floating cluster never fully opaque`,
+        );
+      }
+      if (cluster.image === "none") {
+        failures.push(`${palette}: the cluster carries no glass gradient`);
+      }
+      if (cluster.shadow === "none") {
+        failures.push(
+          `${palette}: the cluster has no elevation shadow, so it does not read as lifted over the canvas`,
+        );
+      }
     }
+
+    expect(
+      failures,
+      "the treatment boundary — chrome flat and opaque, a floating cluster glass — does not hold",
+    ).toEqual([]);
   });
 
   test("a fresh profile with no stored palette renders editorial", async ({

@@ -1924,6 +1924,125 @@ test("graphite's roles are the drawing's, and the other five keep its ladder", a
   ).toEqual([]);
 });
 
+/** The chrome's own contrast, under all six palettes, against §5's floors.
+ *
+ *  **Making chrome opaque (plan 7 Task 5) is what this measures, and it is here
+ *  because nothing else reads the chrome's surface at all.** The fixture mounts
+ *  `bg-panel` — an opaque `--panel` — so every ratio in "the control set renders
+ *  in the design language" was already read against the surface the chrome has
+ *  now converged to, while the chrome itself (the rail, the panes, the
+ *  inspector) composited 95% of its panel over the palette's ground and was
+ *  measured by no test. A palette could sit below §5's floor on its own chrome
+ *  with every gate green, and `light`'s ground is a *gradient*, so the value it
+ *  composited against was not one a role comparison could see. Review Focus 2 of
+ *  the plan is this reading.
+ *
+ *  §4's roles are read from `:root` and composited over the chrome's **rendered**
+ *  pixel: a chrome that still carries alpha (`light`, `vg-310`) composites
+ *  against whatever is behind it, and the rendered pixel is what the eye gets.
+ *  The point is found by `elementFromPoint`, so it is a pixel of the chrome's
+ *  own surface rather than of a control painted on it — a chrome every pixel of
+ *  which is covered reds with its own message instead of measuring a button.
+ *
+ *  `boundary` keeps the floor `vg-200` pins. §3 draws a fine hairline and §5 asks
+ *  3:1, and those two rules disagree for graphite and light; that is that row's
+ *  ruling, and reading it here as a new finding would be the same defect filed
+ *  twice.
+ *
+ *  A `--grep` that matches nothing exits 0 with zero tests, so the run's own
+ *  summary is the proof this ran at all.
+ */
+test("the chrome's own contrast clears §5 under all six palettes", async ({
+  page,
+}, testInfo) => {
+  test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+  test.setTimeout(120_000);
+
+  await openShell(page);
+
+  /** The role, and the probe name whose floor and pin it is measured against. */
+  const ROLES: readonly (readonly [string, string])[] = [
+    ["--shell-text", "text"],
+    ["--shell-muted", "muted"],
+    ["--shell-edge", "boundary"],
+    ["--shell-accent", "accent"],
+  ];
+
+  const ratios: string[] = [];
+  const failures: string[] = [];
+
+  for (const palette of PALETTES) {
+    await setPalette(page, palette);
+    const reading = await page.evaluate(
+      (names) => {
+        const rail = document.querySelector(".editor-shell-rail");
+        if (rail === null) return null;
+        const rect = rail.getBoundingClientRect();
+        // The first pixel of the rail's own surface: `elementFromPoint` returns
+        // the rail only where no child paints over it.
+        let point: { x: number; y: number } | null = null;
+        for (
+          let y = Math.ceil(rect.top) + 2;
+          y < rect.bottom - 1 && point === null;
+          y += 3
+        ) {
+          for (let x = Math.ceil(rect.left) + 2; x < rect.right - 1; x += 3) {
+            if (document.elementFromPoint(x, y) === rail) {
+              point = { x, y };
+              break;
+            }
+          }
+        }
+        const root = getComputedStyle(document.documentElement);
+        const values: Record<string, string> = {};
+        for (const name of names) {
+          values[name] = root.getPropertyValue(name).trim();
+        }
+        return { point, values };
+      },
+      ROLES.map(([name]) => name),
+    );
+
+    expect(
+      reading,
+      `${palette}: the rail is not mounted, so no chrome was measured`,
+    ).not.toBeNull();
+    if (reading === null) continue;
+    expect(
+      reading.point,
+      `${palette}: every pixel of the rail is covered by a child, so no reading is the chrome's own surface`,
+    ).not.toBeNull();
+    if (reading.point === null) continue;
+
+    const pixel = (await pixelsAt(page, [reading.point]))[0] ?? [0, 0, 0, 0];
+    const on = `rgb(${pixel.slice(0, 3).join(",")})`;
+    for (const [name, probe] of ROLES) {
+      const declared = reading.values[name] ?? "";
+      const ratio = round(ratioAgainstPixel(declared, pixel));
+      ratios.push(
+        `${palette} chrome ${name} ${ratio}:1 (${declared} on ${on})`,
+      );
+      const minimum = PINNED_FLOOR[probe]?.[palette] ?? minimumFor(probe);
+      if (ratio < minimum) {
+        failures.push(
+          `${palette}: ${name} on the chrome is ${ratio}:1, below ${minimum}:1 — ${declared} on ${on}`,
+        );
+      }
+    }
+  }
+
+  for (const line of ratios) console.log(`chrome-contrast ${line}`);
+  testInfo.annotations.push({
+    type: "chrome-contrast",
+    description: ratios.join(" | "),
+  });
+
+  expect(
+    failures,
+    "a role does not clear its floor against the chrome's own surface",
+  ).toEqual([]);
+});
+
 /** A CSS length in px — the **first** one, if the value is a shorthand of
  *  several. `normal` is `gap`'s own word for no gap and reads as `0`; anything
  *  else is not a length this table compares, and fails with its own text. */
