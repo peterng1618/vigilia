@@ -59,6 +59,13 @@ const DISPLAY_SPEC = /author-journey-display\.spec\.ts/;
 
 export default defineConfig({
   testDir: "./tests/e2e",
+  // Every Playwright spec is a `.spec.ts`. The default (`spec` **or** `test`)
+  // would also collect a Vitest unit test that lives beside the harness —
+  // `tests/e2e/mockup-values.test.ts` is one, because the reader it proves is
+  // pure and belongs to no browser (see `vitest.config.ts`). Playwright collecting
+  // it would be an import of `vitest`'s `test` and a hard error for the whole
+  // suite, not one skipped file.
+  testMatch: "**/*.spec.ts",
   // Seeds the host fixture once; the config itself runs in every worker.
   globalSetup: "./tests/e2e/global-setup.ts",
   retries: 0,

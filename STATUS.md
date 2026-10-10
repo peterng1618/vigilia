@@ -31,11 +31,11 @@ satisfies every token in the bible and still does not look like the mockup.
 
 ## Last completed change
 
-- **Plan 5 (`settings-and-appearance`) closed complete on 2026-10-10** — Tasks 1–6 landed with `13984ab9`…`3fe3f22e`, its ledger carries the rulings, and its file is in [`docs/superpowers/plans/archive/`](docs/superpowers/plans/archive/).
-- **The final fix round is verified** (`3fe3f22e`, scoped re-review clean on all four fixes): the publish chord opens the surface and moves no host state (`publish.toggle` → `publish.surface`), the refusal renders in the armed row, §7.7 is proven at 640×360, and the CSS comment drops the ordinal instead of correcting it.
-- **The plan-boundary gates are green at the close**: `lint` clean over 620 files, `typecheck` clean across 7 workspaces, unit suite **791 files / 3392 tests / 0 failed**, `backlog:check` 160 items valid, `status:check` clean.
-- **`format:check` is green again** — the red was one extra blank line committed at `controls.dom.test.ts:253` by `7007d21f`, not the CRLF earlier claimed here; fixed on the fly and riding the close commit.
-- **§13's parity is NOT satisfied by plan 5's capture**, and the ledger says so: ten of eleven settings differences were recorded as deliberate while the drawing stayed as it was.
+- **Plan 7 Task 1 landed: the drawing is read, not restated** — `tests/e2e/mockup-values.ts` parses `docs/design/mockups/editor-shell.html`'s own declarations by selector, `PARITY` carries 10 rows, and `design-language.spec.ts` reddens on 8 of them against `d7d5baaa` at both `--workers=1` and `--workers=2`.
+- **The census is 49 rows — `fix` 35, `licensed` 1, `drawing-stale` 4, `match` 9** — at `.superpowers/sdd/2026-10-10-shell-parity/adjudication.md`, naming the 13 `fix` rows this plan does not own and the one licence it keeps.
+- **Four `drawing-stale` rows name repairs this plan may not make** — two `9px` cluster radii and three `#0007` shadows against §3, a bordered follow-the-system row against §1 — filed as `vg-296`, the mirror of `vg-291`.
+- **The reader is proved to read rather than restate** — mutating `border-radius: 10px` to `7px` in the drawing on disk reddens it, restored with `cp` and verified with `cmp`; the header's 42px row passes today and is the control against a reader that stopped reading.
+- **Two config one-liners, because neither runner could see the reader**: `vitest.config.ts` now includes `tests/e2e/**/*.test.ts` and `playwright.config.ts` matches `*.spec.ts` only, so the two stop collecting each other's files.
 
 ## Next
 

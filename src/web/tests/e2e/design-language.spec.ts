@@ -1,7 +1,13 @@
 import { expect, type Page, test } from "@playwright/test";
 import { captureVisualReview } from "./editor-canvas.js";
 import { openPane } from "./editor-rail.js";
-import { SETTINGS_DIALOG, SETTINGS_GEAR } from "./shell-palette.js";
+import {
+  mockupDeclaredOrNull,
+  PARITY,
+  type ParityRegion,
+  readMockup,
+} from "./mockup-values.js";
+import { openShell, SETTINGS_DIALOG, SETTINGS_GEAR } from "./shell-palette.js";
 import { isDesktopSurface } from "./surface.js";
 
 /**
@@ -1464,4 +1470,147 @@ test("captures the settings modal's three tabs in the design language", async ({
   for (const tab of ["Appearance", "Keyboard", "About"]) {
     await capture(tab, "-editorial");
   }
+});
+
+/** A CSS length in px — the **first** one, if the value is a shorthand of
+ *  several. `normal` is `gap`'s own word for no gap and reads as `0`; anything
+ *  else is not a length this table compares, and fails with its own text. */
+function lengthInPx(value: string): number | null {
+  const first = value.trim().split(/[\s/]+/)[0] ?? "";
+  if (first === "normal") return 0;
+  const match = /^(-?[\d.]+)px$/.exec(first);
+  if (match === null) return null;
+  const px = Number.parseFloat(match[1] ?? "NaN");
+  return Number.isFinite(px) ? px : null;
+}
+
+/**
+ * The shell's parity with the drawing (spec §13 as amended 2026-10-10, bible §3,
+ * §7, reference `docs/design/mockups/editor-shell.html`).
+ *
+ * **What this is.** The drawing is the acceptance instrument: its own inline
+ * stylesheet is parsed (`mockup-values.ts`) and each of `PARITY`'s rows asserts
+ * the product's computed value equals what the drawing declares. A value
+ * transcribed out of the drawing into this file — which is what the previous
+ * passes did, as prose — is a second owner of it, and a copy is what lets the
+ * two drift while every check stays green.
+ *
+ * **Silence is a reading.** The four body regions are the case: the drawing
+ * draws them **flush** and **square**, so it declares no `padding`, no `gap` and
+ * no `border-radius` for them, and *that* — not a missing check — is why the
+ * product's 8px inset and 12px radius fail below. Where the drawing declares
+ * nothing the row reads `0`, and `mockupDeclaredOrNull` still throws when a row's
+ * selector addresses nothing at all, so a stale selector cannot pass as a region
+ * the drawing draws flush.
+ *
+ * **A `licensed` row is recorded, not asserted.** `licensed` carries a
+ * *predating* rule — a bible §N, an ADR, a spec section — that positively
+ * requires the product's treatment. Its absence is what makes a difference a
+ * defect; today one row carries one (the stage ground, §7.5).
+ *
+ * **The header row is the control.** The drawing and the product already agree
+ * that the header is 42px, so it passes today. A run in which *nothing* fails is
+ * therefore a reader that stopped reading rather than a shell that came right,
+ * and that is why the row is in the table rather than left out as redundant.
+ *
+ * **These assertions fail on the shell shipped at `d7d5baaa`, by design.** Tasks
+ * 2 and 3 fix what they name; the plan is not done while any row here is red.
+ *
+ * A `--grep` that matches nothing exits 0 with zero tests, so the run's own
+ * summary — "1 test", this file — is the proof it ran at all.
+ */
+test("the shell is what the drawing draws", async ({ page }, testInfo) => {
+  test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+
+  await openShell(page);
+  // The dialog's frame is one rule (`editor-shell.css`), rendered by the
+  // settings modal and by the `?` sheet; the modal is the route an author takes.
+  // Task 3 asserts the sheet against the same row.
+  await page.locator(SETTINGS_GEAR).click();
+  await expect(page.getByRole("dialog", SETTINGS_DIALOG)).toBeVisible();
+
+  const drawing = readMockup();
+  expect(
+    PARITY.length,
+    "the parity table is empty, so this test can prove nothing",
+  ).toBeGreaterThan(0);
+
+  /** Two rows share a product selector (the body's inset and its gap), so the
+   *  reading is keyed by the pair and not by the element alone. */
+  const key = (row: ParityRegion): string =>
+    `${row.productSelector}|${row.mockupProperty}`;
+
+  const product: Record<string, string | null> = await page.evaluate(
+    (rows) => {
+      const out: Record<string, string | null> = {};
+      for (const row of rows) {
+        const element = document.querySelector(row.productSelector);
+        out[`${row.productSelector}|${row.mockupProperty}`] =
+          element === null
+            ? null
+            : getComputedStyle(element).getPropertyValue(row.mockupProperty);
+      }
+      return out;
+    },
+    PARITY.map((row) => ({
+      productSelector: row.productSelector,
+      mockupProperty: row.mockupProperty,
+    })),
+  );
+
+  const unresolved: string[] = [];
+  const failures: string[] = [];
+  const table: string[] = [];
+  for (const row of PARITY) {
+    const rendered = product[key(row)];
+    if (rendered === null) {
+      unresolved.push(
+        `${row.region}: no element matches \`${row.productSelector}\`, so the row measured nothing`,
+      );
+      continue;
+    }
+    if (row.licensed !== undefined) {
+      table.push(`${row.region}: recorded, licensed — ${row.licensed}`);
+      continue;
+    }
+    // Throws when the selector addresses nothing in the drawing: a row whose
+    // selector went stale must fail here rather than read as a flush region.
+    const declared = mockupDeclaredOrNull(
+      drawing,
+      row.mockupSelector,
+      row.mockupProperty,
+    );
+    const expected = declared === null ? 0 : lengthInPx(declared);
+    const actual = lengthInPx(rendered);
+    table.push(
+      `${row.region}: drawing \`${row.mockupSelector}\` ${row.mockupProperty}=${
+        declared ?? "not declared (drawn flush)"
+      } → ${expected}, product \`${row.productSelector}\` = ${rendered} → ${actual}`,
+    );
+    if (expected === null) {
+      failures.push(
+        `${row.region}: the drawing declares \`${declared}\`, which this table cannot read as a length (${row.mockupSelector} \`${row.mockupProperty}\`)`,
+      );
+      continue;
+    }
+    if (actual !== expected) {
+      failures.push(
+        `${row.region}: the drawing declares ${row.mockupProperty} ${
+          declared ?? "(nothing — drawn flush, so 0px)"
+        } for \`${row.mockupSelector}\`; the product renders "${rendered}" on \`${row.productSelector}\`.`,
+      );
+    }
+  }
+
+  for (const line of table) console.log(`parity ${line}`);
+  testInfo.annotations.push({ type: "parity", description: table.join(" | ") });
+
+  expect(
+    unresolved,
+    "a parity row measured no element, so its reading is not a reading",
+  ).toEqual([]);
+  expect(
+    failures,
+    "a shell region is not what the drawing declares for it",
+  ).toEqual([]);
 });
