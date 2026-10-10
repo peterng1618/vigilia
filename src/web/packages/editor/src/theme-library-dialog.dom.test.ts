@@ -217,6 +217,11 @@ describe("the library chooser", () => {
     });
 
     await chooseIn("theme", "mine");
+    // **Focused first, because a real click focuses a button and a dispatched
+    // one does not.** Base UI restores the element its trap started on, so
+    // without this the precondition the browser supplies is missing and the
+    // assertion below would be measuring the harness rather than the dialog.
+    deleteButton().focus();
     await pressButton("[data-vigilia-library-delete]");
     const confirm = topDialog();
 
@@ -235,6 +240,13 @@ describe("the library chooser", () => {
     expect(
       document.querySelector("[data-vigilia-library-delete-confirm]"),
     ).toBeNull();
+    // **Focus is back on the control that asked**, not on `body`: the
+    // confirmation is a second `Dialog.Root` and Base UI restores the element
+    // its own trap started on, so the author is one keystroke from the button
+    // they pressed rather than at the top of the shell. Asserted on the
+    // element, because a reading of `activeElement === body` is what an
+    // unhandled dismissal looks like.
+    expect(document.activeElement).toBe(deleteButton());
     // The chooser is still there, still holding the author's selection.
     await openControl("theme");
     expect(allOptionIds()).toContain("mine");
@@ -251,6 +263,16 @@ describe("the library chooser", () => {
         throw new Error("This PC has no trash command (gio, trash-put)");
       },
     } as unknown as ThemeLibraryClient);
+
+    // **Read as a live region, not as text.** The region is in the tree before
+    // it has anything to say and says it by becoming visible; `textContent` on
+    // the dialog cannot tell that from a node added along with its words,
+    // because hidden text still counts. So this asserts the three states in
+    // order — present, hidden and empty, then visible with the reason.
+    expect(libraryStatus().isConnected).toBe(true);
+    expect(libraryStatus().hidden).toBe(true);
+    expect(libraryStatus().textContent).toBe("");
+
     await chooseIn("theme", "mine");
     await pressButton("[data-vigilia-library-delete]");
     await pressButton("[data-vigilia-library-delete-confirm]");
@@ -260,7 +282,8 @@ describe("the library chooser", () => {
     // failure here would look exactly like a successful delete.
     await openControl("theme");
     expect(allOptionIds()).toContain("mine");
-    expect(topDialog().textContent).toContain("no trash command");
+    expect(libraryStatus().hidden).toBe(false);
+    expect(libraryStatus().textContent).toContain("no trash command");
 
     await pressButton("[data-vigilia-library-cancel]");
     await expect(pending).resolves.toBeUndefined();
@@ -446,4 +469,15 @@ function deleteButton(): HTMLButtonElement {
   );
   if (button === null) throw new Error("no delete control");
   return button;
+}
+
+/** The chooser's own status region. Absent is a failure rather than a `null`:
+ *  the finding it is here for is a region that is *only* mounted once it has
+ *  something to say. */
+function libraryStatus(): HTMLElement {
+  const node = document.querySelector<HTMLElement>(
+    "[data-vigilia-library-status]",
+  );
+  if (node === null) throw new Error("no library status region");
+  return node;
 }
