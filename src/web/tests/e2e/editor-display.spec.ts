@@ -1,4 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
+import { chooseIn } from "./control-set.js";
 
 /**
  * The stage looks through a display, and the display is a lens.
@@ -110,13 +111,13 @@ async function chooseDisplay(page: Page, name: string): Promise<void> {
   await page.getByRole("menuitemradio", { name }).click();
 }
 
-/** Picks a display through the new-theme chooser's own control: a `ControlSelect`
- *  now, so the list is a Base UI popup rather than a native `<select>` — open
- *  the well, then press the item the control commits. */
-async function pickInChooser(page: Page, id: string): Promise<void> {
-  await page.locator("[data-vigilia-new-document-display]").click();
-  await page.locator(`[data-vigilia-option="${id}"]`).click();
-}
+/** The chooser's display control, by the hook the control itself carries. It is
+ *  a `ControlSelect` now, so the list is a Base UI popup rather than a native
+ *  `<select>` — `chooseIn` scopes to the popup the trigger's own `aria-controls`
+ *  names. **Not a bare `[data-vigilia-option]` lookup**: the display list and
+ *  the ratio list are both keyed by aspect ratio, so an unscoped `9:19.5`
+ *  resolves to two rows once either has been opened. */
+const CHOOSER_DISPLAY = "[data-vigilia-new-document-display]";
 
 /** Where each menu label sits, in page px, measured on the live menu.
  *
@@ -235,9 +236,12 @@ test.describe("the stage looks through a display", () => {
     await page.keyboard.press("Control+n");
     const chooser = page.locator('[role="dialog"]');
     await expect(chooser).toBeVisible();
-    await pickInChooser(page, "9:19.5");
+    await chooseIn(page, CHOOSER_DISPLAY, "9:19.5");
     await chooser.locator("[data-vigilia-new-document-create]").click();
-    // New asks in two steps, chooser first: a dirty document prompts after.
+    // New asks in two steps, chooser first. **The second is answered only if it
+    // comes**: a `New` mounts a fresh session whose baseline is the document it
+    // just made, so a fresh editor is not dirty and nothing prompts. Measured on
+    // one: zero `[role="dialog"]` after Create.
     const prompt = page.locator('[role="dialog"]');
     await prompt
       .waitFor({ state: "visible", timeout: 3_000 })
@@ -421,7 +425,7 @@ test.describe("the stage looks through a display", () => {
     await page.keyboard.press("Control+n");
     const chooser = page.locator('[role="dialog"]');
     await expect(chooser).toBeVisible();
-    await pickInChooser(page, "9:19.5");
+    await chooseIn(page, CHOOSER_DISPLAY, "9:19.5");
     await chooser.locator("[data-vigilia-new-document-create]").click();
     const prompt = page.locator('[role="dialog"]');
     await prompt

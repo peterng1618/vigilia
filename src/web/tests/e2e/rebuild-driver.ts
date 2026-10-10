@@ -124,40 +124,20 @@ export async function openBlank(
     hasText: "Choose an artboard size",
   });
   await expect(chooser).toBeVisible();
-  await pickInChooser(page, "display", "");
-  await pickInChooser(page, "ratio", ratio);
-  await pickInChooser(page, "resolution", resolution);
+  await chooseIn(page, "[data-vigilia-new-document-display]", "");
+  await chooseIn(page, "[data-vigilia-new-document-ratio]", ratio);
+  await chooseIn(page, "[data-vigilia-new-document-resolution]", resolution);
   await page.locator("[data-vigilia-new-document-create]").click();
 
-  // The document just chosen is not the one the session last saved, so replacing
-  // it asks. Correct, and it is a second step. **Not** because the editor opens
-  // dirty: a fresh editor on the starter compares equal to its own baseline, and
-  // neither New nor Open library asks anything until an authoring act or this
-  // chooser has made the two differ.
+  // **This asks nothing on the path every caller takes, and is kept for the
+  // ones that do not.** A `PersistenceManager` is built with the document the
+  // session opened on, and `New` mounts a fresh session — so the new document
+  // *is* the new baseline, and `isDirty` is false. Measured, not reasoned, on a
+  // fresh editor: File → New theme → Create left zero `[role="dialog"]` on the
+  // page. A caller that reaches here on a document it has already edited is the
+  // one this answers for.
   await answerDialogIfShown(page, "Discard");
   await expect.poll(async () => (await readScene(page)).length).toBe(0);
-}
-
-/**
- * Picks one entry of one of the chooser's own `ControlSelect`s, by its id: press
- * the trigger, then press the item. An empty id is the display list's Custom,
- * which is the entry that reveals the ratio and resolution behind it.
- *
- * **`:visible`, because the same id is in two of the lists.** The display list is
- * keyed by aspect ratio — `16:9`, `19.5:9` — and so is the ratio list, and a list
- * that has been opened once stays mounted when it closes. Without the filter the
- * ratio press resolves to two elements; with it, a stale list that is somehow
- * still on screen fails loudly on the count instead of being clicked.
- */
-async function pickInChooser(
-  page: Page,
-  marker: string,
-  id: string,
-): Promise<void> {
-  await page.locator(`[data-vigilia-new-document-${marker}]`).click();
-  const item = page.locator(`[data-vigilia-option="${id}"]:visible`);
-  await expect(item).toHaveCount(1);
-  await item.click();
 }
 
 /** The button in the Add pane that makes an object, by the name it answers to.
