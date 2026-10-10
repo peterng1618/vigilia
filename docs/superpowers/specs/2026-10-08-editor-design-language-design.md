@@ -432,11 +432,41 @@ wrong out loud.
    listed in the completion report. Side by side, in the report — not a claim
    that they match.
 3. Every difference is either **fixed**, or **recorded in the commit as
-   deliberate**, with the reason. A third state — unnoticed — is what this gate
-   removes.
+   deliberate** — and a deliberate difference must **name the normative source
+   that requires it**, quoted, and that source can only be a bible `§N`, an ADR,
+   or this spec. A third state — unnoticed — is what this gate removes; a fourth
+   is what it closes: a difference kept because nothing forbade it.
 4. **A gate that produces no comparison has not run.** An empty diff is a
    finding and must be stated as one, exactly as an empty output file proves
    nothing about a subagent.
+
+**The mockup governs wherever the written rules are silent.** Silence is not
+permission — it is the drawing's jurisdiction. A surface that differs from the
+mockup is brought back to it unless a named rule positively requires the
+product's treatment, and "the bible does not say" is the argument *against* a
+divergence, never for one. This rule is written after it was missing: plans 1–5
+ran this gate exactly as steps 1–4 above specify, and closed. Plan 5's Task 6
+listed eleven differences and recorded ten as deliberate, each with a reason
+that cited a section's **silence** as the warrant — D1 kept a horizontal tab
+strip because "§7 fixes the three tabs and what each holds, not their axis";
+D2 kept two-column radio rows where the drawing has a 3×2 grid of cards; D3 kept
+the absence of the drawing's explanatory line; D9 kept the palette's glass where
+the drawing is opaque. Every one was locally reasonable and collectively they
+are a settings modal that does not look like the drawing, which the user said in
+those words on 2026-10-10 ("Even the setting panel you just built looks nothing
+like it"). The gate could not catch it because "with the reason" admitted any
+reason. **A parity report is now read for what its citations prove, not for
+whether it has one.**
+
+**A rule the plan itself wrote cannot license that plan's divergence.** Plan 5
+amended bible §5 to add the choice row, then cited §5's choice row as the warrant
+for drawing the palette choice as radio rows where the mockup draws cards — and
+that is the *only* one of the modal's measured differences backed by a bible
+section at all. Amending the written language is legitimate: §5 is a closed
+vocabulary and a plan that adds a control must name it. But a section added or
+changed in the same plan is evidence of what was decided, not a rule that
+required it, and it does not discharge this gate. Only a licence that predates
+the divergence counts.
 
 **Not pixel equality.** Platform font metrics, scrollbar widths, device pixel
 ratios and antialiasing differ; a difference in those is not drift. The
@@ -447,6 +477,19 @@ same rule for the same reason — screenshots are evidence, not golden files.
 **The mockups are kept current or they are deleted.** When a ruling changes the
 design, the bible, the mockup and this spec move in one commit. A mockup that no
 longer matches the bible is worse than no mockup, because it is believed.
+
+**Ruled by the user on 2026-10-10: the mockups are not replaced.** The drawing
+stays the target and the shipped surface is pulled to it. So replacing the file
+is **not** an available disposition for a difference this section records — the
+loop above has one exit, and it is the product. The mockup may still be edited to
+correct a drawing that is **stale or self-contradictory** (a sentence about
+behaviour the product has since ruled differently, a control the bible has
+renamed, a tab the spec has removed): that is repair. It may never be edited to
+**bless a divergence the product chose**, which is what plan 2's Task 10 and plan
+5's Task 6 did — twenty-two and ten differences respectively were recorded as
+deliberate while the drawing was left standing, and `vg-291` carries the result.
+A surface whose divergence is real is now corrected in the product, or the
+objective stays open.
 
 ### 13.1 Evidence states and interaction proof
 
@@ -632,12 +675,15 @@ necessary, never sufficient; §13.1's interaction and stress proof also applies.
   and dock respectively.
 - **Six palettes are distinguishable by surface**, by screenshot rather than by
   computed value (§9 of the superseded spec, carried).
-- **Every plan's parity capture exists and its differences are accounted for**
-  (§13): each plan's completion report carries its capture beside the matching
-  mockup in `docs/design/mockups/`, with each difference fixed or recorded as
-  deliberate. **A plan that reports parity without the two images side by side
-  has not met this item**, and an empty difference list is stated as a finding
-  rather than assumed.
+- **Every plan's parity capture exists, and every difference it lists is either
+  fixed or backed by a cited rule that requires it** (§13): each plan's
+  completion report carries its capture beside the matching mockup in
+  `docs/design/mockups/`, and a difference recorded as deliberate names the bible
+  `§N`, ADR or spec section that positively requires the product's treatment.
+  **A plan that reports parity without the two images side by side has not met
+  this item**; neither has one whose deliberate differences rest on a rule's
+  silence, and an empty difference list is stated as a finding rather than
+  assumed.
 
 ## Ruled during review
 
