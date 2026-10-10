@@ -289,12 +289,12 @@ describe("Settings", () => {
     await openTab(uiCopy.settings.keyboard);
 
     const arm = document.querySelector<HTMLButtonElement>(
-      '[data-vigilia-shortcut-arm="publish.toggle"]',
+      '[data-vigilia-shortcut-arm="publish.surface"]',
     );
     if (arm === null) throw new Error("no arm control in the Keyboard tab.");
     await press(arm);
     const row = document.querySelector<HTMLElement>(
-      '[data-vigilia-shortcut-row="publish.toggle"]',
+      '[data-vigilia-shortcut-row="publish.surface"]',
     );
     if (row === null) throw new Error("no row to record into.");
     expect(row.hasAttribute("data-armed")).toBe(true);

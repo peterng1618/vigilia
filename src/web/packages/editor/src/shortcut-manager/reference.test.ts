@@ -38,7 +38,7 @@ describe("shortcutReferenceGroups", () => {
 
   it("heads the groups by the prefix of the id, in the table's order", () => {
     // Five groups, because Task 3.3 minted `help.shortcuts` and plan 5's Task 3
-    // minted `publish.toggle`: a group appears when an action lands in it, so
+    // minted `publish.surface`: a group appears when an action lands in it, so
     // the sheet never draws an empty heading over nothing.
     expect(shortcutReferenceGroups().map((group) => group.label)).toEqual([
       "File",

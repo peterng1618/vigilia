@@ -75,15 +75,15 @@ describe("ShortcutReference", () => {
       key: "j",
       modifier: true,
       shift: false,
-      action: "publish.toggle",
+      action: "publish.surface",
     };
-    setActiveShortcuts(resolveShortcuts({ "publish.toggle": moved }));
+    setActiveShortcuts(resolveShortcuts({ "publish.surface": moved }));
     const dialog = await mountSheet();
 
-    expect(sheetRow(dialog, "publish.toggle").textContent).toBe(
-      shortcutLabel("publish.toggle"),
+    expect(sheetRow(dialog, "publish.surface").textContent).toBe(
+      shortcutLabel("publish.surface"),
     );
-    expect(sheetRow(dialog, "publish.toggle").textContent).toBe("Ctrl+J");
+    expect(sheetRow(dialog, "publish.surface").textContent).toBe("Ctrl+J");
     // Untouched rows keep the table's own chord, so a rebind is one row's.
     expect(sheetRow(dialog, "edit.undo").getAttribute("aria-label")).toBe(
       "Control Z",

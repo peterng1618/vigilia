@@ -148,7 +148,7 @@ async function press(
   return event;
 }
 
-/** The chord `publish.toggle` is being moved to: free in the table, and one
+/** The chord `publish.surface` is being moved to: free in the table, and one
  *  this browser does not keep. */
 const NEW_CHORD: KeyboardEventInit = { key: "j", ctrlKey: true };
 /** `file.save`'s chord, so a capture that took it would make one of the two
@@ -181,7 +181,7 @@ describe("the Keyboard tab", () => {
     // `PRODUCT_SHORTCUTS` must arrive here, and the sheet's row count is a
     // property of the projection.
     expect(rows).toHaveLength(productShortcutIds().length);
-    expect(printed(mounting, "publish.toggle")).not.toBe("");
+    expect(printed(mounting, "publish.surface")).not.toBe("");
     expect(armControl(mounting, "edit.undo").getAttribute("aria-label")).toBe(
       uiCopy.settings.keyboardRebind,
     );
@@ -189,34 +189,34 @@ describe("the Keyboard tab", () => {
 
   it("captures a chord for the row it was armed on, and stores it under one key", async () => {
     const mounting = mount(localStorage);
-    await click(armControl(mounting, "publish.toggle"));
+    await click(armControl(mounting, "publish.surface"));
     expect(armed(mounting)).toBe(true);
-    expect(printed(mounting, "publish.toggle")).toBe(
+    expect(printed(mounting, "publish.surface")).toBe(
       uiCopy.settings.keyboardPrompt,
     );
 
-    await press(row(mounting, "publish.toggle"), NEW_CHORD);
+    await press(row(mounting, "publish.surface"), NEW_CHORD);
 
     expect(armed(mounting)).toBe(false);
-    expect(printed(mounting, "publish.toggle")).toBe("Ctrl+J");
+    expect(printed(mounting, "publish.surface")).toBe("Ctrl+J");
     // The write is the palette's shape: one namespaced key, and nothing else.
     expect(localStorage.length, "a second store entry is a second owner").toBe(
       1,
     );
     expect(localStorage.key(0)).toBe(STORAGE_KEY);
     expect(readShortcutOverrides(localStorage)).toEqual({
-      "publish.toggle": {
+      "publish.surface": {
         key: "j",
         modifier: true,
         shift: false,
-        action: "publish.toggle",
+        action: "publish.surface",
       },
     });
     // And the dispatcher follows the same table, so the mark that is printed is
     // the mark that runs. A rebind that reached one and not the other is the
     // whole of Review Focus 3.
     const ran = vi.fn();
-    manager?.register("publish.toggle", ran);
+    manager?.register("publish.surface", ran);
     await act(async () => {
       window.dispatchEvent(new KeyboardEvent("keydown", NEW_CHORD));
     });
@@ -227,16 +227,26 @@ describe("the Keyboard tab", () => {
     const save = vi.fn();
     manager?.register("file.save", save);
     const mounting = mount(localStorage);
-    await click(armControl(mounting, "publish.toggle"));
+    await click(armControl(mounting, "publish.surface"));
 
-    await press(row(mounting, "publish.toggle"), TAKEN_CHORD);
+    await press(row(mounting, "publish.surface"), TAKEN_CHORD);
 
     expect(readShortcutOverrides(localStorage)).not.toHaveProperty(
-      "publish.toggle",
+      "publish.surface",
     );
     // §9: the refusal states its reason, and names the action it belongs to.
     expect(reason(mounting), "the refusal is in words").not.toBe("");
     expect(reason(mounting)).toContain(SHORTCUT_LABELS["file.save"]);
+    // **And it renders in the row that refused, not at the tab's foot.** The
+    // foot node sat up to twenty scrollable rows from the row the author is
+    // on — a refusal nobody can see is a refusal not stated (§9). Put it back
+    // at the foot and this line is the one that fails.
+    expect(
+      row(mounting, "publish.surface").querySelector(
+        "[data-vigilia-shortcut-reason]",
+      ),
+      "the refusal renders in the armed row",
+    ).not.toBeNull();
     // §5.3: the row is still there, carrying its old chord rather than gone,
     // and it is still the row the next press will be recorded into.
     expect(armed(mounting)).toBe(true);
@@ -249,9 +259,9 @@ describe("the Keyboard tab", () => {
     // And the same press does reach the manager once the capture is over, so
     // the assertion above is about the capture and not about a chord that could
     // never match.
-    await press(row(mounting, "publish.toggle"), { key: "Escape" });
-    expect(printed(mounting, "publish.toggle")).toBe(
-      shortcutLabel("publish.toggle"),
+    await press(row(mounting, "publish.surface"), { key: "Escape" });
+    expect(printed(mounting, "publish.surface")).toBe(
+      shortcutLabel("publish.surface"),
     );
     await act(async () => {
       window.dispatchEvent(new KeyboardEvent("keydown", TAKEN_CHORD));
@@ -261,15 +271,15 @@ describe("the Keyboard tab", () => {
 
   it("Escape cancels the capture and binds nothing, and the key travels on", async () => {
     const mounting = mount(localStorage);
-    await click(armControl(mounting, "publish.toggle"));
+    await click(armControl(mounting, "publish.surface"));
 
-    const escape = await press(row(mounting, "publish.toggle"), {
+    const escape = await press(row(mounting, "publish.surface"), {
       key: "Escape",
     });
 
     expect(armed(mounting)).toBe(false);
     expect(readShortcutOverrides(localStorage)).not.toHaveProperty(
-      "publish.toggle",
+      "publish.surface",
     );
     expect(reason(mounting)).toBe("");
     // Not consumed: Escape is the modal's own dismissal, and an armed row that
@@ -282,9 +292,9 @@ describe("the Keyboard tab", () => {
     // by arming another row, and the control that does that is reachable only by
     // Tab. The refusal is for keys that genuinely cannot be a chord.
     const mounting = mount(localStorage);
-    await click(armControl(mounting, "publish.toggle"));
+    await click(armControl(mounting, "publish.surface"));
 
-    const tab = await press(row(mounting, "publish.toggle"), { key: "Tab" });
+    const tab = await press(row(mounting, "publish.surface"), { key: "Tab" });
 
     expect(tab.defaultPrevented, "Tab is not consumed").toBe(false);
     expect(armed(mounting)).toBe(false);
@@ -316,9 +326,9 @@ describe("the Keyboard tab", () => {
     // Ctrl+R is what the browser keeps; `R` alone is a letter that types into
     // every field, and the sentence has to be true of the press that was made.
     const mounting = mount(localStorage);
-    await click(armControl(mounting, "publish.toggle"));
+    await click(armControl(mounting, "publish.surface"));
 
-    await press(row(mounting, "publish.toggle"), { key: "r", ctrlKey: true });
+    await press(row(mounting, "publish.surface"), { key: "r", ctrlKey: true });
 
     expect(reason(mounting)).toBe(uiCopy.settings.keyboardReserved("Ctrl+R"));
     expect(reason(mounting)).not.toContain("This browser keeps R for itself");
@@ -332,16 +342,16 @@ describe("the Keyboard tab", () => {
     // session showing and what the store hands back on a reload must be the same
     // chord; this fails when the capture can take one the reader rejects.
     const mounting = mount(localStorage);
-    await click(armControl(mounting, "publish.toggle"));
+    await click(armControl(mounting, "publish.surface"));
 
-    await press(row(mounting, "publish.toggle"), { key: ".", ctrlKey: true });
+    await press(row(mounting, "publish.surface"), { key: ".", ctrlKey: true });
 
-    const afterCapture = shortcutLabel("publish.toggle");
+    const afterCapture = shortcutLabel("publish.surface");
     // A reload: the live table is rebuilt from the store alone, exactly as the
     // shell does at mount.
     setActiveShortcuts(resolveShortcuts(readShortcutOverrides(localStorage)));
     expect(
-      shortcutLabel("publish.toggle"),
+      shortcutLabel("publish.surface"),
       "a chord the store cannot keep must not be accepted for the session",
     ).toBe(afterCapture);
     // And the refusal is rendered, not a silent no-op.
@@ -354,7 +364,7 @@ describe("the Keyboard tab", () => {
     // outlived its row would swallow the Escape meant to close the modal, so
     // losing focus must cancel it. Nothing else here asserts the blur handler.
     const mounting = mount(localStorage);
-    await click(armControl(mounting, "publish.toggle"));
+    await click(armControl(mounting, "publish.surface"));
     expect(armed(mounting)).toBe(true);
 
     // Focus moves off the row, as clicking outside the capture does.
@@ -364,8 +374,8 @@ describe("the Keyboard tab", () => {
 
     expect(armed(mounting)).toBe(false);
     expect(reason(mounting)).toBe("");
-    expect(printed(mounting, "publish.toggle")).toBe(
-      shortcutLabel("publish.toggle"),
+    expect(printed(mounting, "publish.surface")).toBe(
+      shortcutLabel("publish.surface"),
     );
     expect(readShortcutOverrides(localStorage)).toEqual({});
   });
@@ -386,31 +396,31 @@ describe("the Keyboard tab", () => {
 
   it("returns one action to its default without disturbing another's", async () => {
     const mounting = mount(localStorage);
-    await click(armControl(mounting, "publish.toggle"));
-    await press(row(mounting, "publish.toggle"), NEW_CHORD);
+    await click(armControl(mounting, "publish.surface"));
+    await press(row(mounting, "publish.surface"), NEW_CHORD);
     await click(armControl(mounting, "help.shortcuts"));
     await press(row(mounting, "help.shortcuts"), { key: "h", ctrlKey: true });
 
-    await click(perRowReset(mounting, "publish.toggle"));
+    await click(perRowReset(mounting, "publish.surface"));
 
     expect(readShortcutOverrides(localStorage)).not.toHaveProperty(
-      "publish.toggle",
+      "publish.surface",
     );
     expect(readShortcutOverrides(localStorage)).toHaveProperty(
       "help.shortcuts",
     );
-    expect(printed(mounting, "publish.toggle")).toBe("Ctrl+Shift+P");
+    expect(printed(mounting, "publish.surface")).toBe("Ctrl+Shift+P");
   });
 
   it("clears every override for Reset all, and restores the defaults", async () => {
     const mounting = mount(localStorage);
-    await click(armControl(mounting, "publish.toggle"));
-    await press(row(mounting, "publish.toggle"), NEW_CHORD);
+    await click(armControl(mounting, "publish.surface"));
+    await press(row(mounting, "publish.surface"), NEW_CHORD);
 
     await click(resetAll(mounting));
 
     expect(localStorage.getItem(STORAGE_KEY)).toBeNull();
-    expect(printed(mounting, "publish.toggle")).toBe("Ctrl+Shift+P");
+    expect(printed(mounting, "publish.surface")).toBe("Ctrl+Shift+P");
     expect(printed(mounting, "edit.undo")).toBe("Ctrl+Z");
   });
 
@@ -421,12 +431,12 @@ describe("the Keyboard tab", () => {
     const mounting = mount(undefined);
     expect(mounting.textContent).toContain(uiCopy.settings.keyboardSessionOnly);
 
-    await click(armControl(mounting, "publish.toggle"));
-    await press(row(mounting, "publish.toggle"), NEW_CHORD);
+    await click(armControl(mounting, "publish.surface"));
+    await press(row(mounting, "publish.surface"), NEW_CHORD);
 
-    expect(printed(mounting, "publish.toggle")).toBe("Ctrl+J");
+    expect(printed(mounting, "publish.surface")).toBe("Ctrl+J");
     const ran = vi.fn();
-    manager?.register("publish.toggle", ran);
+    manager?.register("publish.surface", ran);
     await act(async () => {
       window.dispatchEvent(new KeyboardEvent("keydown", NEW_CHORD));
     });

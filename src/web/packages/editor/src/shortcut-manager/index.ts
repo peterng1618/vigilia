@@ -21,10 +21,11 @@ export type ProductShortcutId =
   | "canvas.front"
   | "canvas.back"
   | "view.exit-group"
-  // `toggle`, not `open`: the chord runs the same act the header's publish
-  // control's switch runs — turning the LAN host on and off — and the control
-  // it is printed beside opens a surface rather than publishing anything.
-  | "publish.toggle"
+  // `surface`, not `toggle`: the chord opens the publish surface and nothing
+  // else, which is what the control it is printed beside does. A name that said
+  // `toggle` would promise to move the host, and the host's own switch is the
+  // only control allowed to do that.
+  | "publish.surface"
   | "help.shortcuts";
 
 export interface ShortcutBinding {
@@ -70,10 +71,10 @@ export const PRODUCT_SHORTCUTS: readonly ShortcutBinding[] = [
   { key: "arrowup", modifier: false, action: "canvas.nudge-up" },
   { key: "arrowdown", modifier: false, action: "canvas.nudge-down" },
   // Before `help.shortcuts`, because that one is last for being the only action
-  // about the sheet itself. `publish.toggle` is the header's own chord: the
-  // publish surface prints it, and pressing it runs what the surface's switch
-  // runs. Shift-qualified so it is not the browser's own Ctrl+P.
-  { key: "p", modifier: true, shift: true, action: "publish.toggle" },
+  // about the sheet itself. `publish.surface` is the header's own chord: the
+  // publish control prints it, and pressing it opens the surface that control
+  // opens. Shift-qualified so it is not the browser's own Ctrl+P.
+  { key: "p", modifier: true, shift: true, action: "publish.surface" },
   // Last, because it is the only action about the sheet itself. Unmodified, so
   // it already defers to a focused text field: a `?` typed into a rename field
   // is the field's character and not a keypress. `ponytail:` a layout that does

@@ -46,7 +46,7 @@ const PUBLISH_CHORD: ShortcutBinding = {
   key: "p",
   modifier: true,
   shift: true,
-  action: "publish.toggle",
+  action: "publish.surface",
 };
 
 /** Ctrl+S — bound to `file.save` by the defaults, so it is the chord that must
@@ -55,7 +55,7 @@ const CONFLICTING_CHORD: ShortcutBinding = {
   key: "s",
   modifier: true,
   shift: false,
-  action: "publish.toggle",
+  action: "publish.surface",
 };
 
 function bindingOf(
@@ -86,16 +86,16 @@ describe("resolveShortcuts", () => {
     expect(resolveShortcuts({})).toEqual(PRODUCT_SHORTCUTS);
     expect(
       bindingOf(
-        resolveShortcuts(overriding("publish.toggle", PUBLISH_CHORD)),
-        "publish.toggle",
+        resolveShortcuts(overriding("publish.surface", PUBLISH_CHORD)),
+        "publish.surface",
       ),
     ).toEqual(PUBLISH_CHORD);
   });
 
   it("stores one action's chord without disturbing any other action's", () => {
-    const next = resolveShortcuts(overriding("publish.toggle", PUBLISH_CHORD));
+    const next = resolveShortcuts(overriding("publish.surface", PUBLISH_CHORD));
     for (const id of productShortcutIds()) {
-      if (id === "publish.toggle") continue;
+      if (id === "publish.surface") continue;
       expect(bindingOf(next, id), id).toEqual(bindingOf(PRODUCT_SHORTCUTS, id));
     }
     // And the order is the table's own, so the sheet cannot be reordered by a
@@ -140,12 +140,12 @@ describe("the live table", () => {
       key: "j",
       modifier: true,
       shift: false,
-      action: "publish.toggle",
+      action: "publish.surface",
     };
-    setActiveShortcuts(resolveShortcuts(overriding("publish.toggle", moved)));
+    setActiveShortcuts(resolveShortcuts(overriding("publish.surface", moved)));
     expect(listener).toHaveBeenCalledTimes(1);
     expect(activeShortcuts()).not.toEqual(PRODUCT_SHORTCUTS);
-    expect(bindingOf(activeShortcuts(), "publish.toggle")).toEqual(moved);
+    expect(bindingOf(activeShortcuts(), "publish.surface")).toEqual(moved);
 
     off();
     setActiveShortcuts(PRODUCT_SHORTCUTS);
@@ -162,10 +162,10 @@ describe("the live table", () => {
 describe("stored overrides", () => {
   it("writes one action's chord without disturbing any other action's", () => {
     const storage = store();
-    writeShortcutOverride(storage, "publish.toggle", PUBLISH_CHORD);
+    writeShortcutOverride(storage, "publish.surface", PUBLISH_CHORD);
 
     expect(readShortcutOverrides(storage)).toEqual({
-      "publish.toggle": PUBLISH_CHORD,
+      "publish.surface": PUBLISH_CHORD,
     });
     // One namespaced key, exactly as the palette's choice is one.
     expect(storage.length).toBe(1);
@@ -174,7 +174,7 @@ describe("stored overrides", () => {
 
   it("keeps a second action's override when a third is written", () => {
     const storage = store();
-    writeShortcutOverride(storage, "publish.toggle", PUBLISH_CHORD);
+    writeShortcutOverride(storage, "publish.surface", PUBLISH_CHORD);
     writeShortcutOverride(storage, "help.shortcuts", {
       key: "h",
       modifier: true,
@@ -184,23 +184,25 @@ describe("stored overrides", () => {
 
     expect(Object.keys(readShortcutOverrides(storage)).sort()).toEqual([
       "help.shortcuts",
-      "publish.toggle",
+      "publish.surface",
     ]);
   });
 
   it("returning an action to its default leaves no entry behind", () => {
     const storage = store();
-    writeShortcutOverride(storage, "publish.toggle", PUBLISH_CHORD);
+    writeShortcutOverride(storage, "publish.surface", PUBLISH_CHORD);
 
-    clearShortcutOverride(storage, "publish.toggle");
+    clearShortcutOverride(storage, "publish.surface");
 
-    expect(readShortcutOverrides(storage)).not.toHaveProperty("publish.toggle");
+    expect(readShortcutOverrides(storage)).not.toHaveProperty(
+      "publish.surface",
+    );
     expect(
       bindingOf(
         resolveShortcuts(readShortcutOverrides(storage)),
-        "publish.toggle",
+        "publish.surface",
       ),
-    ).toEqual(bindingOf(PRODUCT_SHORTCUTS, "publish.toggle"));
+    ).toEqual(bindingOf(PRODUCT_SHORTCUTS, "publish.surface"));
     // The key goes with the last entry: its absence is what "no overrides"
     // means, and a stored `{}` would be a second spelling of the same state.
     expect(storage.getItem(KEY)).toBeNull();
@@ -208,7 +210,7 @@ describe("stored overrides", () => {
 
   it("clears every entry for Reset all", () => {
     const storage = store();
-    writeShortcutOverride(storage, "publish.toggle", PUBLISH_CHORD);
+    writeShortcutOverride(storage, "publish.surface", PUBLISH_CHORD);
 
     clearShortcutOverrides(storage);
 
@@ -225,14 +227,14 @@ describe("stored overrides", () => {
       "[]",
       "null",
       '"a string"',
-      JSON.stringify({ "publish.toggle": { key: "p", modifier: "yes" } }),
+      JSON.stringify({ "publish.surface": { key: "p", modifier: "yes" } }),
       // A key the dispatcher would never match: `bindingFor` lowercases
       // `event.key`, so a stored `P` is a binding that never fires.
       JSON.stringify({
-        "publish.toggle": {
+        "publish.surface": {
           key: "P",
           modifier: true,
-          action: "publish.toggle",
+          action: "publish.surface",
         },
       }),
       // An action the product does not have, and an action bound on `Escape`
@@ -249,7 +251,7 @@ describe("stored overrides", () => {
       }),
       // An entry whose own id disagrees with the key it is stored under.
       JSON.stringify({
-        "publish.toggle": { key: "p", modifier: true, action: "file.save" },
+        "publish.surface": { key: "p", modifier: true, action: "file.save" },
       }),
     ]) {
       const storage = store({ [KEY]: raw });
@@ -257,10 +259,10 @@ describe("stored overrides", () => {
       expect(
         bindingOf(
           resolveShortcuts(readShortcutOverrides(storage)),
-          "publish.toggle",
+          "publish.surface",
         ),
         raw,
-      ).toEqual(bindingOf(PRODUCT_SHORTCUTS, "publish.toggle"));
+      ).toEqual(bindingOf(PRODUCT_SHORTCUTS, "publish.surface"));
     }
   });
 
@@ -269,11 +271,11 @@ describe("stored overrides", () => {
     // ambiguous rather than merely wrong, so the later entry loses.
     const storage = store({
       [KEY]: JSON.stringify({
-        "publish.toggle": {
+        "publish.surface": {
           key: "s",
           modifier: true,
           shift: false,
-          action: "publish.toggle",
+          action: "publish.surface",
         },
       }),
     });
@@ -290,11 +292,11 @@ describe("stored overrides", () => {
     for (const shift of [true, false]) {
       const storage = store({
         [KEY]: JSON.stringify({
-          "publish.toggle": {
+          "publish.surface": {
             key: "z",
             modifier: true,
             shift,
-            action: "publish.toggle",
+            action: "publish.surface",
           },
         }),
       });
@@ -373,23 +375,25 @@ describe("withoutShortcutOverride", () => {
   it("takes one action out and leaves the rest", () => {
     const next = withoutShortcutOverride(
       {
-        ...overriding("publish.toggle", PUBLISH_CHORD),
+        ...overriding("publish.surface", PUBLISH_CHORD),
         "help.shortcuts": PUBLISH_CHORD,
       },
-      "publish.toggle",
+      "publish.surface",
     );
-    expect(next).not.toHaveProperty("publish.toggle");
+    expect(next).not.toHaveProperty("publish.surface");
     expect(next).toHaveProperty("help.shortcuts");
   });
 });
 
 describe("bindingRefusal", () => {
   it("accepts a free chord", () => {
-    expect(bindingRefusal("publish.toggle", PUBLISH_CHORD, {})).toBeUndefined();
+    expect(
+      bindingRefusal("publish.surface", PUBLISH_CHORD, {}),
+    ).toBeUndefined();
   });
 
   it("names the action a taken chord belongs to", () => {
-    expect(bindingRefusal("publish.toggle", CONFLICTING_CHORD, {})).toEqual({
+    expect(bindingRefusal("publish.surface", CONFLICTING_CHORD, {})).toEqual({
       kind: "taken",
       action: "file.save",
     });
@@ -398,8 +402,13 @@ describe("bindingRefusal", () => {
   it("refuses a modifier on its own, and a key the product cannot print", () => {
     expect(
       bindingRefusal(
-        "publish.toggle",
-        { key: "shift", modifier: true, shift: true, action: "publish.toggle" },
+        "publish.surface",
+        {
+          key: "shift",
+          modifier: true,
+          shift: true,
+          action: "publish.surface",
+        },
         {},
       ),
     ).toEqual({ kind: "modifier-only" });
@@ -408,8 +417,13 @@ describe("bindingRefusal", () => {
     // cannot show, not a chord.
     expect(
       bindingRefusal(
-        "publish.toggle",
-        { key: "home", modifier: true, shift: false, action: "publish.toggle" },
+        "publish.surface",
+        {
+          key: "home",
+          modifier: true,
+          shift: false,
+          action: "publish.surface",
+        },
         {},
       ),
     ).toEqual({ kind: "unprintable" });
@@ -420,8 +434,8 @@ describe("bindingRefusal", () => {
     // refusal reading `R` would name a letter that types into every field.
     expect(
       bindingRefusal(
-        "publish.toggle",
-        { key: "r", modifier: true, shift: false, action: "publish.toggle" },
+        "publish.surface",
+        { key: "r", modifier: true, shift: false, action: "publish.surface" },
         {},
       ),
     ).toEqual({ kind: "reserved", chord: "Ctrl+R" });
@@ -433,8 +447,8 @@ describe("bindingRefusal", () => {
     // a reason about a mark that plainly exists.
     expect(
       bindingRefusal(
-        "publish.toggle",
-        { key: "f5", modifier: false, shift: false, action: "publish.toggle" },
+        "publish.surface",
+        { key: "f5", modifier: false, shift: false, action: "publish.surface" },
         {},
       ),
     ).toEqual({ kind: "reserved", chord: "F5" });
@@ -448,8 +462,8 @@ describe("bindingRefusal", () => {
     for (const key of [".", "/", ",", "=", " "]) {
       expect(
         bindingRefusal(
-          "publish.toggle",
-          { key, modifier: true, shift: false, action: "publish.toggle" },
+          "publish.surface",
+          { key, modifier: true, shift: false, action: "publish.surface" },
           {},
         ),
         key,
@@ -491,8 +505,8 @@ describe("bindingRefusal", () => {
     });
     expect(
       bindingRefusal(
-        "publish.toggle",
-        { key: "j", modifier: true, shift: false, action: "publish.toggle" },
+        "publish.surface",
+        { key: "j", modifier: true, shift: false, action: "publish.surface" },
         overrides,
       ),
     ).toEqual({ kind: "taken", action: "help.shortcuts" });

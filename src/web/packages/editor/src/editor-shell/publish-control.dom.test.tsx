@@ -17,7 +17,7 @@ import {
 import { uiCopy } from "../ui-copy.js";
 import { PublishControl } from "./publish-control.js";
 import type { EditorActionFacade } from "./session-facade.js";
-import { HostingStore } from "./shell-layout.js";
+import { HostingStore, PublishSurfaceStore } from "./shell-layout.js";
 
 const token = "t".repeat(43);
 const EXPIRES = "2026-10-08T00:00:00.000Z";
@@ -138,6 +138,9 @@ function hostServing(options: {
 
 let root: Root | undefined;
 let host: HTMLDivElement | undefined;
+/** The open flag the header's chord writes. Held here so a case can drive the
+ *  popover the way `createShellLayout().showPublishing()` does. */
+let surface: PublishSurfaceStore | undefined;
 
 /** Base UI portals the popover to `body`, outside the mount point, so this is
  *  what removes the surface a test just read. */
@@ -168,8 +171,12 @@ async function mount(session?: EditorActionFacade): Promise<HTMLDivElement> {
   const created = createRoot(mounted);
   root = created;
   const hosting = new HostingStore();
+  const opened = new PublishSurfaceStore();
+  surface = opened;
   await act(async () =>
-    created.render(<PublishControl session={session} hosting={hosting} />),
+    created.render(
+      <PublishControl session={session} hosting={hosting} surface={opened} />,
+    ),
   );
   await vi.waitFor(() =>
     expect(mounted.querySelector("[data-vigilia-publish]")).not.toBeNull(),
@@ -220,17 +227,17 @@ function popupOpen(): boolean {
 it("prints the publish chord on the header control, from the live table", async () => {
   // §7.1's mark, and plan 2 left it off because there was nothing to run. It is
   // printed here and only here because this is the commit that binds
-  // `publish.toggle` to the act this control's switch runs — a printed chord
+  // `publish.surface` to the act the control itself performs — a printed chord
   // that runs nothing is the state that was deliberately not shipped.
   hostServing({ lan: true });
   const container = await mount();
 
   const chip = container.querySelector("[data-vigilia-publish-chord]");
-  expect(chip?.textContent).toBe(shortcutLabel("publish.toggle"));
+  expect(chip?.textContent).toBe(shortcutLabel("publish.surface"));
   // The mark is a picture of a key, so what a screen reader is told is what the
   // caps are *called*, not the glyphs they print.
   expect(chip?.getAttribute("aria-label")).toBe(
-    shortcutSpokenLabel("publish.toggle"),
+    shortcutSpokenLabel("publish.surface"),
   );
 
   // And a rebind reaches it: the header re-reads the live table rather than
@@ -239,10 +246,10 @@ it("prints the publish chord on the header control, from the live table", async 
     key: "j",
     modifier: true,
     shift: false,
-    action: "publish.toggle",
+    action: "publish.surface",
   };
   await act(async () => {
-    setActiveShortcuts(resolveShortcuts({ "publish.toggle": moved }));
+    setActiveShortcuts(resolveShortcuts({ "publish.surface": moved }));
   });
   expect(
     container.querySelector("[data-vigilia-publish-chord]")?.textContent,
@@ -271,6 +278,25 @@ it("opens the surface without moving the host, and keeps every fact behind the p
   expect(hostSwitch()?.getAttribute("aria-pressed")).toBe("true");
   expect(popupText()).toContain(`http://${ADDRESS}:${PORT}`);
   expect(popupText()).toContain(uiCopy.publish.expires(EXPIRES));
+});
+
+it("opens the surface from the header's chord, and moves no host state", async () => {
+  // The regression the branch review asked for. This store is the whole of what
+  // `createShellLayout().showPublishing()` touches, and that method is what the
+  // session's `publish.surface` handler calls. Revert it to `hosting.toggle()`
+  // and the flag is never written: the surface below never appears. Leave it as
+  // it is and write the host too — a second effect the PUT count catches.
+  const fake = hostServing({ lan: true });
+  await mount();
+  expect(popupOpen()).toBe(false);
+
+  await act(async () => surface?.set(true));
+
+  await vi.waitFor(() => expect(popupOpen()).toBe(true));
+  expect(fake.putCalls()).toBe(0);
+  // The switch inside says the host is still serving, so the chord showed a
+  // state rather than changing one.
+  expect(hostSwitch()?.getAttribute("aria-pressed")).toBe("true");
 });
 
 it("turns the host on from inside the surface, and shows what it is serving", async () => {

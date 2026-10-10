@@ -25,8 +25,8 @@ test("the Keyboard tab arms a row into the modal's trap, on a ring that clears c
   await page.locator(SETTINGS_GEAR).click();
   await expect(dialog).toBeVisible();
 
-  const arm = dialog.locator('[data-vigilia-shortcut-arm="publish.toggle"]');
-  const row = dialog.locator('[data-vigilia-shortcut-row="publish.toggle"]');
+  const arm = dialog.locator('[data-vigilia-shortcut-arm="publish.surface"]');
+  const row = dialog.locator('[data-vigilia-shortcut-row="publish.surface"]');
   const readings: string[] = [];
   const failures: string[] = [];
   let trapProved = false;
@@ -65,7 +65,7 @@ test("the Keyboard tab arms a row into the modal's trap, on a ring that clears c
         focused.insideDialog,
         "the armed row took focus inside the modal's trap",
       ).toBe(true);
-      expect(focused.action).toBe("publish.toggle");
+      expect(focused.action).toBe("publish.surface");
     }
 
     const probe = await row.evaluate((element) => {
@@ -269,7 +269,7 @@ test("? opens the sheet, and the document behind it does not change", async ({
   await expect(sheet).toBeVisible();
   // Every action is listed, which is the sheet's whole promise: §7's figure for
   // the table is eighteen, Task 3.3's `?` row makes it nineteen, Task 3.1's
-  // `publish.toggle` row makes it twenty, and the row count is a property of the
+  // `publish.surface` row makes it twenty, and the row count is a property of the
   // projection rather than of this test — one `kbd` per action, joined aliases
   // and all.
   await expect(sheet.locator("kbd")).toHaveCount(20);

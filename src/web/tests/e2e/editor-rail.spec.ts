@@ -518,4 +518,74 @@ test("Tab and Shift+Tab stay inside the settings modal, and Escape returns focus
   await page.keyboard.press("Escape");
   await expect(dialog).toBeHidden();
   await expect(gear).toBeFocused();
+
+  // ── §7.7's constrained proof, in this same procedure ───────────────────────
+  //
+  // The bible asks for "the full shell at 1280×720 and 1440×900 CSS pixels,
+  // then at 200% browser zoom", with every control reachable through scrolling
+  // or compact composition. The two sizes are `design-language.spec.ts`'s loop;
+  // what was never taken is the modal under the zoom.
+  //
+  // **200% zoom is modelled as the CSS-pixel viewport it produces** — 640×360,
+  // which is what a browser zoom does: it halves the layout viewport in CSS
+  // pixels, and `80vh` and every other length in §7's modal then resolve
+  // against the halved box, exactly as they do at a real 200%. CSS `zoom` on the
+  // root, which `design-language.spec.ts` uses for its own width assertions, is
+  // *not* faithful here and measurably so: it scales a `vh`-capped fixed dialog
+  // to twice its computed height while the window stays 720 device pixels, so
+  // the modal runs off the screen at a size a real browser zoom never gives it.
+  // What this still does not reproduce is the device scale factor, so text
+  // rasterisation is not what it proves; the four claims below are all layout
+  // and focus, which it does.
+  await page.setViewportSize({ width: 640, height: 360 });
+
+  await gear.click();
+  await expect(dialog).toBeVisible();
+
+  // (1) All three tabs are reachable, and each one mounts its panel.
+  for (const name of [
+    uiCopy.settings.appearance,
+    uiCopy.settings.keyboard,
+    uiCopy.settings.about,
+  ]) {
+    const tab = dialog.getByRole("tab", { name });
+    await tab.scrollIntoViewIfNeeded();
+    await tab.click();
+    await expect(tab).toHaveAttribute("data-active", "");
+  }
+
+  // (2) The panel scrolls rather than clipping. Read on the Keyboard tab, which
+  // holds the twenty-row table: this is the case §7.7's sentence is about, and
+  // it is the tab left selected for (3).
+  await dialog.getByRole("tab", { name: uiCopy.settings.keyboard }).click();
+  const scroller = await dialog.evaluate((element) => ({
+    overflowY: getComputedStyle(element).overflowY,
+    scrollHeight: element.scrollHeight,
+    clientHeight: element.clientHeight,
+  }));
+  expect(
+    scroller.overflowY,
+    `the modal is not the scroller at 200% zoom: ${JSON.stringify(scroller)}`,
+  ).toBe("auto");
+  expect(
+    scroller.scrollHeight,
+    `the Keyboard table is clipped rather than scrolled at 200% zoom: ${JSON.stringify(scroller)}`,
+  ).toBeGreaterThan(scroller.clientHeight);
+
+  // (3) The trap still holds at this size: Tab from the last control wraps to
+  // the first tabbable, which is the selected tab.
+  const close = dialog.locator(".editor-shell-dialog-close");
+  await close.scrollIntoViewIfNeeded();
+  await close.focus();
+  await expect(close).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(
+    dialog.getByRole("tab", { name: uiCopy.settings.keyboard }),
+  ).toBeFocused();
+
+  // (4) And Close is reachable — scrolled to, visible and operable — rather
+  // than merely present at the end of an overflow.
+  await expect(close).toBeVisible();
+  await close.click();
+  await expect(dialog).toBeHidden();
 });

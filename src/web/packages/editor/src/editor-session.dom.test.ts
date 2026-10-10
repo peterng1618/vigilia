@@ -164,15 +164,15 @@ describe("EditorSession", () => {
     extensions.destroy();
   });
 
-  it("binds the chord the header prints to the shell's own publish switch", () => {
+  it("binds the chord the header prints to the shell's own publish surface", () => {
     // §7.1. The header prints this chord beside the publish control, so the
-    // gesture runs what that control's switch runs — one publish path, not a
-    // second one. The manager is a stub here (the mock above), which is what
-    // lets this case read back the handler the session registered and press
-    // it; the table itself is `bindings.test.ts`'s to prove. Delete the
-    // registration and the header prints a chord that runs nothing, which is
-    // the state plan 2 refused to ship.
-    const onPublishToggle = vi.fn();
+    // gesture does what that control does — it opens the surface — and owns no
+    // publish path of its own. The manager is a stub here (the mock above),
+    // which is what lets this case read back the handler the session registered
+    // and press it; the table itself is `bindings.test.ts`'s to prove. Delete
+    // the registration and the header prints a chord that runs nothing, which
+    // is the state plan 2 refused to ship.
+    const onPublishSurface = vi.fn();
     const session = new EditorSession({
       assetManager: new AssetManager(),
       shell: {
@@ -207,11 +207,11 @@ describe("EditorSession", () => {
       onNew: vi.fn(),
       onNewFromStarter: vi.fn(),
       onSaved: vi.fn(),
-      onPublishToggle,
+      onPublishSurface,
     });
 
     const call = registerMock.mock.calls.find(
-      ([id]) => id === "publish.toggle",
+      ([id]) => id === "publish.surface",
     );
     expect(
       call,
@@ -219,7 +219,7 @@ describe("EditorSession", () => {
     ).toBeDefined();
     (call?.[1] as () => void)();
 
-    expect(onPublishToggle).toHaveBeenCalledTimes(1);
+    expect(onPublishSurface).toHaveBeenCalledTimes(1);
     session.destroy();
   });
 

@@ -1117,9 +1117,10 @@ body,
   z-index: 71;
   transform: translate(-50%, -50%);
   /* The scroll cap §7's sheet rides on: sized so the whole table clears a 720px
-     viewport without scrolling — the nineteenth row Task 3.3 adds lands inside
-     it rather than moving it — and scrolls rather than running off a shorter
-     one. */
+     viewport without scrolling — the reference's last row lands inside it
+     rather than moving it — and scrolls rather than running off a shorter one.
+     The row is named rather than counted: the count moved twice in this plan
+     alone (19, then 20), and an ordinal here is what goes stale. */
   max-height: min(80vh, 720px);
   overflow-y: auto;
   min-width: 340px;
@@ -1245,8 +1246,11 @@ body,
 }
 .editor-shell-keyboard [data-vigilia-shortcut-row] {
   /* Centred rather than the sheet's baseline: a row here carries a 26px
-     control, and baselining the label against it drops the label. */
+     control, and baselining the label against it drops the label. Wrapped,
+     because an armed row also carries §9's refusal and it belongs under the
+     binding rather than beside it. */
   align-items: center;
+  flex-wrap: wrap;
   padding: var(--space-4) var(--space-6);
   border-radius: var(--radius-sm);
 }
@@ -1274,11 +1278,14 @@ body,
   border-color: var(--shell-accent);
   color: var(--shell-accent);
 }
-/* §9's refusal, rendered in the row rather than spoken in a tooltip (§5.3).
-   The node is always present so a screen reader hears the alert when it fills,
-   and empty it takes no space. */
+/* §9's refusal, rendered in the armed row rather than spoken in a tooltip
+   (§5.3) or left at the tab's foot, which on a twenty-row table is where the
+   author is not looking. It takes its own line under the binding. The node is
+   present while the row is armed even when empty, so a screen reader hears the
+   alert when it fills, and empty it takes no space. */
 .editor-shell-keyboard-reason {
-  margin: var(--space-8) 0 0;
+  flex-basis: 100%;
+  margin: var(--space-4) 0 0;
   color: var(--shell-text);
   font-size: var(--text-xs);
 }

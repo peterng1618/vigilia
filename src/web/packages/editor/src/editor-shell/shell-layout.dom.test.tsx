@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { Canvas } from "fabric/es";
 import { act } from "react";
-import { afterEach, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, expect, it, vi } from "vitest";
 import { createErrorManager } from "../error-manager/index.js";
 import {
   createNewObjectPanel,
@@ -38,6 +38,22 @@ globalThis.ResizeObserver ??= class {
   disconnect(): void {}
 } as never;
 Element.prototype.getAnimations ??= (): never[] => [];
+
+// jsdom's selector engine cannot answer `:modal`/`:popover-open`, and
+// floating-ui asks for both on every position. Each unanswerable call costs
+// ~0.5s of selector parsing, which turns one open into tens of seconds — the
+// `vg-135` family this file already knows. Real browsers answer both. The
+// sibling `publish-control.dom.test.tsx` carries the same patch.
+beforeAll(() => {
+  const matches = Element.prototype.matches;
+  Element.prototype.matches = Object.assign(function (
+    this: Element,
+    selector: string,
+  ): boolean {
+    if (selector === ":modal" || selector === ":popover-open") return false;
+    return matches.call(this, selector);
+  }, matches);
+});
 
 function facade(): EditorActionFacade {
   return {
@@ -312,6 +328,77 @@ it("opens the shortcut sheet from the shell's own surface, and closes it again",
     expect(document.querySelector('[role="dialog"]')).toBeNull(),
   );
   layout.destroy();
+});
+
+/**
+ * The chord's shell door, driven directly.
+ *
+ * F1 on this branch: the header's `⌘⇧P` called `hosting.toggle()`, so a press
+ * beside a control that opens a surface silently started the LAN — the exact
+ * defect `publish-control.tsx`'s docstring exists to prevent, in the worse
+ * direction. This drives the door the session's `publish.surface` handler
+ * calls and reads both halves: the surface is up, and the host was asked
+ * nothing. Revert the door to moving the host and the popover never opens;
+ * leave the popover and write the host too, and `puts` catches it.
+ *
+ * Placed with the sheet test rather than with the menus: opening a Base UI
+ * popup after a menu stalls under jsdom (`vg-135`), which is why both popup
+ * tests sit ahead of the menu group.
+ */
+it("opens the publish surface from the shell's own door, and moves no host state", async () => {
+  const token = "t".repeat(43);
+  let puts = 0;
+  vi.stubGlobal(
+    "fetch",
+    vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      if (String(input).startsWith("/api/pairing/sessions")) {
+        return new Response(
+          JSON.stringify({
+            session: { token, expiresAt: "2026-10-08T00:00:00.000Z" },
+          }),
+          { status: 201 },
+        );
+      }
+      if (init?.method === "PUT") puts += 1;
+      return new Response(
+        JSON.stringify({
+          lan: true,
+          address: "192.168.1.42",
+          port: 5227,
+          refusal: null,
+          sessions: [],
+        }),
+        { status: 200 },
+      );
+    }),
+  );
+
+  const root = document.createElement("div");
+  const layout = createShellLayout(root);
+  // The host is asked once, when the store is built, and the control is drawn
+  // only once it has answered — so the wait is for the control, not for a frame.
+  await vi.waitFor(() =>
+    expect(root.querySelector("[data-vigilia-publish]")).not.toBeNull(),
+  );
+  const trigger = (): string | null =>
+    root
+      .querySelector("[data-vigilia-publish]")
+      ?.getAttribute("aria-expanded") ?? null;
+  expect(trigger()).toBe("false");
+
+  await act(async () => layout.showPublishing());
+
+  expect(trigger()).toBe("true");
+  // The surface itself, not merely the flag behind it: the popup is portalled
+  // to `body`, so the mount point holds none of it.
+  expect(document.querySelector(".editor-shell-publish-popup")).not.toBeNull();
+  expect(puts).toBe(0);
+
+  layout.destroy();
+  vi.unstubAllGlobals();
+  for (const stray of document.querySelectorAll(".editor-shell-positioner")) {
+    stray.remove();
+  }
 });
 
 /** The rail's slot for a pane, found by the id it carries rather than by text:

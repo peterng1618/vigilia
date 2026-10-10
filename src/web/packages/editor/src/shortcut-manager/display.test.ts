@@ -83,12 +83,12 @@ describe("the effective table", () => {
       key: "j",
       modifier: true,
       shift: false,
-      action: "publish.toggle",
+      action: "publish.surface",
     };
-    setActiveShortcuts(resolveShortcuts({ "publish.toggle": moved }));
+    setActiveShortcuts(resolveShortcuts({ "publish.surface": moved }));
 
-    expect(shortcutLabel("publish.toggle")).toBe("Ctrl+J");
-    expect(shortcutSpokenLabel("publish.toggle")).toBe("Control J");
+    expect(shortcutLabel("publish.surface")).toBe("Ctrl+J");
+    expect(shortcutSpokenLabel("publish.surface")).toBe("Control J");
     // Untouched actions keep the table's own chord, so a rebind is one row's.
     expect(shortcutLabel("edit.undo")).toBe("Ctrl+Z");
     expect(activeShortcuts()).not.toEqual(PRODUCT_SHORTCUTS);

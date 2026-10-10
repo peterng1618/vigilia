@@ -23,7 +23,7 @@ import { SettingsKeyboard } from "./settings-keyboard.js";
 /** §7's three tabs, in the order the spec's table names them. One owner of
  *  "which tabs there are": the strip and the panels both read it, so a fourth
  *  tab cannot appear with a body and no word, or the reverse. */
-export type SettingsTab = "appearance" | "keyboard" | "about";
+type SettingsTab = "appearance" | "keyboard" | "about";
 
 const SETTINGS_TABS: readonly SettingsTab[] = [
   "appearance",
@@ -36,7 +36,7 @@ const PALETTE_GROUP_ID = "vigilia-settings-palette";
 
 /** One fact the About tab renders, identified by the id it renders it under so
  *  a test reads the row by what it is rather than by its position. */
-export interface VersionFact {
+interface VersionFact {
   readonly id: "schema-version" | "release-version";
   /** The fact's own value: the schema version is a number
    *  (`SUPPORTED_SCHEMA_VERSION`), the release version a string. The tab

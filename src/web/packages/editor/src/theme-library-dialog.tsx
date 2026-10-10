@@ -31,6 +31,14 @@ export type ThemeLibraryChoice =
  */
 const DELETE_LEAD = "Move this theme to the recycle bin?";
 
+/** The confirmation's one sentence. The dialogue says it twice — as its
+ *  accessible name and as its visible lead — so it is written once here; two
+ *  literals were one edit away from a screen reader and a sighted reader being
+ *  told different things. */
+function confirmWords(id: string, name: string | undefined): string {
+  return `${DELETE_LEAD}\n\n${name ?? id} (${id}) will be moved to the recycle bin, where you can get it back.`;
+}
+
 /** The control's own word. Beside the dialog rather than in `ui-copy.ts`,
  *  because the copy table's owner is another surface's concern and this string
  *  exists only beside the button it names. */
@@ -226,10 +234,10 @@ export function ThemeLibraryChooser({
           onOpenChange={(next) => {
             if (!next) setConfirming(undefined);
           }}
-          label={`${DELETE_LEAD}\n\n${confirmEntry?.name ?? confirming} (${confirming}) will be moved to the recycle bin, where you can get it back.`}
+          label={confirmWords(confirming, confirmEntry?.name)}
         >
           <p className="editor-shell-dialog-lead">
-            {`${DELETE_LEAD}\n\n${confirmEntry?.name ?? confirming} (${confirming}) will be moved to the recycle bin, where you can get it back.`}
+            {confirmWords(confirming, confirmEntry?.name)}
           </p>
           <div className="vigilia-dialog-actions">
             <button

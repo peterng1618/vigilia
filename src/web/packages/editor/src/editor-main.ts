@@ -257,10 +257,10 @@ async function start(): Promise<void> {
       },
       onOpenPackage: () => picker.click(),
       onShowShortcuts: () => layout.showShortcuts(),
-      // The header's own chord, routed to the same act the publish surface's
-      // switch runs. The shell owns the host state, so the chord cannot start a
-      // second publish path beside it.
-      onPublishToggle: () => layout.togglePublishing(),
+      // The header's own chord, routed to the control it is printed beside:
+      // both open the surface, and the switch inside it is the one owner of
+      // whether the host is serving.
+      onPublishSurface: () => layout.showPublishing(),
       // The rail's slots and the pane's scroll live in `createShellLayout`; the
       // reveal is the inspector's gesture routed to that one owner.
       onRevealPane: (slot: RailSlot, target?: string) =>

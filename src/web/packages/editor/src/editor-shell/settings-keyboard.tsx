@@ -21,9 +21,9 @@ import {
 } from "../shortcut-manager/reference.js";
 import { uiCopy } from "../ui-copy.js";
 
-/** The refusal as §9 requires it: the reason, in words, rendered beside the
- *  binding it did not make. The words are `uiCopy`'s — this chooses which of
- *  them, and names the action a taken chord belongs to. */
+/** The refusal as §9 requires it: the reason, in words, rendered in the row of
+ *  the binding it did not make. The words are `uiCopy`'s — this chooses which
+ *  of them, and names the action a taken chord belongs to. */
 function refusalWords(
   refusal: BindingRefusal,
   action: ProductShortcutId,
@@ -222,18 +222,29 @@ export function SettingsKeyboard(props: {
                     {uiCopy.settings.keyboardReset}
                   </button>
                 </dd>
+                {/* §9's refusal, **in the armed row**. It used to be one node at
+                    the tab's foot, which on a table this long sits twenty
+                    scrollable rows away from the very row the author is on: a
+                    refusal they cannot see is a refusal not stated. The row is
+                    the one that armed, has focus and is on screen, so the
+                    sentence lands where §9 says it does. Only the armed row
+                    carries it — a refusal exists only while a row is listening
+                    — and the node is present while armed even when empty, so a
+                    screen reader hears the alert when it fills. */}
+                {armed === row.action ? (
+                  <p
+                    className="editor-shell-keyboard-reason"
+                    data-vigilia-shortcut-reason=""
+                    role="alert"
+                  >
+                    {reason}
+                  </p>
+                ) : null}
               </div>
             ))}
           </dl>
         </section>
       ))}
-      <p
-        className="editor-shell-keyboard-reason"
-        data-vigilia-shortcut-reason=""
-        role="alert"
-      >
-        {reason}
-      </p>
       <button
         type="button"
         className="editor-shell-keyboard-action"

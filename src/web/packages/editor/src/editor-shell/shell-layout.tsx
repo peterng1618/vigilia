@@ -103,10 +103,11 @@ export interface ShellLayout {
   /** Opens §7's reference sheet. The session owns the `?` dispatcher and never
    *  sees React, so `editor-main` routes the gesture here. */
   showShortcuts(): void;
-  /** Turns the LAN host on and off — the act the publish surface's own switch
-   *  runs. The session's `publish.toggle` chord routes through here rather than
-   *  through a second publish path, so the chord and the switch cannot drift. */
-  togglePublishing(): void;
+  /** Opens the publish surface — the act the header's own control performs on a
+   *  press. The session's `publish.surface` chord routes through here rather
+   *  than through a second publish path, and it moves no host state: the switch
+   *  inside the surface is the only control that does. */
+  showPublishing(): void;
   destroy(): void;
 }
 
@@ -210,6 +211,28 @@ class SheetStore {
 
 function useSheet(store: SheetStore): boolean {
   return useSyncExternalStore(store.subscribe, store.get, store.get);
+}
+
+/** Whether the publish surface is open, as external state.
+ *
+ * The header's chord is dispatched by `EditorSession`, which never sees React,
+ * so it reaches the popover the same way `?` reaches the sheet: a store the
+ * component subscribes to. It holds the popover's open flag, so the chord and
+ * the control's own press drive one surface rather than two.
+ */
+export class PublishSurfaceStore {
+  #open = false;
+  readonly #listeners = new Set<() => void>();
+  readonly subscribe = (listener: () => void): (() => void) => {
+    this.#listeners.add(listener);
+    return () => this.#listeners.delete(listener);
+  };
+  readonly get = (): boolean => this.#open;
+  set(open: boolean): void {
+    if (this.#open === open) return;
+    this.#open = open;
+    for (const listener of this.#listeners) listener();
+  }
 }
 
 /** What the shell knows about the host behind it, and the one place that answers
@@ -582,6 +605,7 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
   let reactRoot: Root | undefined;
   const store = new SelectionStore();
   const sheet = new SheetStore();
+  const publishSurface = new PublishSurfaceStore();
   const hosting = new HostingStore();
   /** `Shell`'s door for a caller outside React, filled by the component below
    *  because the slot, the scroll memory and the one `paneBody` element are all
@@ -746,6 +770,7 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
             session={store.bridge?.session}
             publish={publish}
             hosting={hosting}
+            surface={publishSurface}
           />
         </header>
         <div className="editor-shell-body" data-collapsed={collapsed}>
@@ -942,10 +967,11 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
       // subscription re-renders; `flushSync` settles it before this returns.
       flushSync(() => sheet.set(true));
     },
-    togglePublishing() {
-      // The switch on the publish surface and this chord call the same method:
-      // one owner for "is this editor publishing", so the two cannot disagree.
-      void hosting.toggle();
+    showPublishing() {
+      // The gesture arrives from outside React and lands on the popover's own
+      // open flag, exactly as a press on the header control does: the chord
+      // reveals the surface and touches nothing the host is doing.
+      flushSync(() => publishSurface.set(true));
     },
     destroy() {
       store.bridge?.destroy();

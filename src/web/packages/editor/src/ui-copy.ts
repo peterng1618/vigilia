@@ -440,6 +440,10 @@ export const uiCopy = {
    *  words that turn it on have to say what it is. */
   publish: {
     qrName: (url: string): string => `QR code: ${url}`,
+    /** The `?` sheet's row for the header's chord. The chord opens the surface
+     *  and moves nothing, so the row names the opening rather than the act the
+     *  switch inside the surface performs. */
+    open: "Open publishing",
     start: "Publish to a phone",
     stop: "Stop publishing",
     starting: "Opening the LAN…",

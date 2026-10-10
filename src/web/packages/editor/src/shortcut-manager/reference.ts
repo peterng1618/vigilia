@@ -60,10 +60,10 @@ export const SHORTCUT_LABELS = {
   "canvas.nudge-down": "Nudge down",
   "canvas.front": uiCopy.actions.front,
   "canvas.back": uiCopy.actions.back,
-  // The header's own chord. `uiCopy.publish.start` is the word the publish
-  // control prints on the surface the chord opens, so the reference row and the
-  // thing it names read the same.
-  "publish.toggle": uiCopy.publish.start,
+  // The header's own chord. It opens the publish surface; the host switch
+  // inside it is a different act, so the row names the opening rather than
+  // borrowing the switch's own words.
+  "publish.surface": uiCopy.publish.open,
   // `view.exit-group` is a `ProductShortcutId` with **no product binding** — it is
   // bound on `Escape` in `CONTEXT_SHORTCUTS` and the file's own comment says it is
   // never displayed. It needs a word all the same, because `satisfies` below is

@@ -405,15 +405,15 @@ describe("ShortcutManager and the author's own table", () => {
     // is the defect: a table nobody dispatches, or a mark that runs nothing.
     const manager = new ShortcutManager();
     const ran = vi.fn();
-    manager.register("publish.toggle", ran);
+    manager.register("publish.surface", ran);
 
     setActiveShortcuts(
       resolveShortcuts({
-        "publish.toggle": {
+        "publish.surface": {
           key: "j",
           modifier: true,
           shift: false,
-          action: "publish.toggle",
+          action: "publish.surface",
         },
       }),
     );
