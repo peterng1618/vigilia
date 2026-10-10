@@ -2,6 +2,7 @@ import { expect, type Page, test } from "@playwright/test";
 import { captureVisualReview } from "./editor-canvas.js";
 import { openPane } from "./editor-rail.js";
 import {
+  MOCKUP_PATH,
   mockupDeclared,
   mockupDeclaredOrNull,
   PARITY,
@@ -426,6 +427,159 @@ test("the control set renders in the design language", async ({
   // tooltip, the popup is placed above its trigger, and it would then cover the
   // neighbour — so the hit test below measures the controls with no overlay in
   // the way, and the focus state is taken at section 4b, where it is measured.
+
+  // ── 0. One geometry for a field row ───────────────────────────────────────
+  //
+  // A field row is **one track**: a fixed label column, and a value cell every
+  // control fills. That is what the control set's own drawing declares
+  // (`current/controls.html` and its light twin, `current/controls-light.html`:
+  // the label is `width:74px;flex:0 0 auto` and the value is `flex:1`), and the
+  // product declared neither — a number well was as wide as its `<input>`, a
+  // select filled the slot and a segmented group hugged its right edge, which is
+  // four left edges in one section (`vg-297`). Read here, first, because every
+  // section below measures a rendered state and a row that is not one track
+  // hands them the wrong box.
+  //
+  // Three readings, because the defect had three owners and an assertion that
+  // reads one of them would have passed twice: the boxes' shared edges (the
+  // control set's own geometry), the label against its control's centre and an
+  // input drawing a border inside its well (both `editor-shell.css`'s legacy
+  // unlayered rules, `vg-298`, which reach only the product's own ancestors —
+  // so the last two are what the fixture mounting `.editor-shell-inspector`
+  // buys, and they pass without it on a page the product does not render).
+  const geometry = await page.evaluate(() => {
+    /** A row's value cell — the `ControlRow`'s own div, reached as the label's
+     *  next sibling rather than by a class name the language could rename. */
+    const cellOf = (fixture: string): Element | null => {
+      const row = document.querySelector(`[data-fixture="${fixture}"] > div`);
+      return row?.firstElementChild?.nextElementSibling ?? null;
+    };
+    const boxOf = (fixture: string): Element | null =>
+      cellOf(fixture)?.firstElementChild ?? null;
+    const rectOf = (element: Element | null): DOMRect | null =>
+      element === null ? null : element.getBoundingClientRect();
+    const round = (value: number): number => Math.round(value * 10) / 10;
+
+    const edges: Record<string, { left: number; right: number } | null> = {};
+    const labelOffsets: Record<string, number | null> = {};
+    const kinds = ["text", "number", "select", "segmented"];
+    for (const fixture of kinds) {
+      const box = rectOf(boxOf(fixture));
+      const label = rectOf(cellOf(fixture)?.previousElementSibling ?? null);
+      edges[fixture] =
+        box === null
+          ? null
+          : { left: round(box.left), right: round(box.right) };
+      labelOffsets[fixture] =
+        box === null || label === null
+          ? null
+          : round(label.top + label.height / 2 - (box.top + box.height / 2));
+    }
+
+    // The slider is one row whose visible box is not the cell: its track starts
+    // at the cell's left edge and its 36px well ends at its right (§5).
+    const sliderRoot = cellOf("slider")?.firstElementChild ?? null;
+    const track = rectOf(
+      sliderRoot?.firstElementChild?.firstElementChild ?? null,
+    );
+    const well = rectOf(sliderRoot?.lastElementChild ?? null);
+
+    // An input inside a well must not draw a border of its own: the well **is**
+    // the box (§5). Only text fields are read — a select's trigger is its own
+    // well and legitimately paints one, and the range input is Base UI's
+    // pointer target rather than a field.
+    const doubled: string[] = [];
+    for (const input of document.querySelectorAll<HTMLInputElement>(
+      '[data-fixture-root] input[type="text"]',
+    )) {
+      const style = getComputedStyle(input);
+      const widths = [
+        style.borderTopWidth,
+        style.borderRightWidth,
+        style.borderBottomWidth,
+        style.borderLeftWidth,
+      ].map((width) => Number.parseFloat(width));
+      if (widths.some((width) => width > 0)) {
+        doubled.push(
+          `#${input.id || "?"} paints a ${widths.join("/")}px border of its own inside \`${String(input.parentElement?.className).slice(0, 30)}\``,
+        );
+      }
+    }
+    return {
+      edges,
+      labelOffsets,
+      trackLeft: track === null ? null : round(track.left),
+      wellRight: well === null ? null : round(well.right),
+      doubled,
+    };
+  });
+
+  const edgeOf = (fixture: string): { left: number; right: number } => {
+    const value = geometry.edges[fixture];
+    expect(
+      value,
+      `${fixture}: the row's value cell is not mounted, so this is not a reading`,
+    ).not.toBeNull();
+    return value ?? { left: Number.NaN, right: Number.NaN };
+  };
+  const text = edgeOf("text");
+  for (const fixture of ["number", "select", "segmented"]) {
+    expect(
+      edgeOf(fixture),
+      `${fixture}: its box does not share the text row's edges — measured ${JSON.stringify(geometry.edges)}`,
+    ).toEqual(text);
+  }
+  expect(
+    geometry.trackLeft,
+    `the slider's track does not start on the boxes' left edge (${text.left}); measured ${JSON.stringify(geometry.trackLeft)}`,
+  ).toBeCloseTo(text.left, 0);
+  expect(
+    geometry.wellRight,
+    `the slider's well does not end on the boxes' right edge (${text.right}); measured ${JSON.stringify(geometry.wellRight)}`,
+  ).toBeCloseTo(text.right, 0);
+  for (const [fixture, offset] of Object.entries(geometry.labelOffsets)) {
+    expect(offset, `${fixture}: the row is not mounted`).not.toBeNull();
+    expect(
+      Math.abs(offset ?? Number.NaN),
+      `${fixture}: the label sits ${offset}px off its control's centre, and the row centres it`,
+    ).toBeLessThanOrEqual(1);
+  }
+  expect(
+    geometry.doubled,
+    "a field draws a box of its own inside the well that already draws one",
+  ).toEqual([]);
+
+  // ── 0b. The two control drawings are read, and the column is theirs ───────
+  //
+  // The drawings are the source, not this file: the row's geometry above is a
+  // *relationship*, and the number a person reads is the label column the two
+  // files declare. Read through `PARITY`'s `fixture` rows so both drawings are
+  // read by something rather than by nothing, and so a drawing that moved under
+  // this task's own change reddens here rather than in a later plan's.
+  const drawings = PARITY.filter((row) => row.surface === "fixture");
+  expect(
+    drawings.length,
+    "no parity row names the control-set fixture, so the two control drawings are read by nothing",
+  ).toBeGreaterThanOrEqual(2);
+  for (const row of drawings) {
+    // `$eval` throws when the selector matches nothing, which is the reading
+    // this row must not skip over.
+    const rendered = await page.$eval(
+      row.productSelector,
+      (element, property) =>
+        getComputedStyle(element).getPropertyValue(property),
+      row.mockupProperty,
+    );
+    const declared = mockupDeclared(
+      readMockup(row.mockupPath ?? MOCKUP_PATH),
+      row.mockupSelector ?? "",
+      row.mockupProperty,
+    );
+    expect(
+      lengthInPx(rendered),
+      `${row.region}: the drawing requires ${declared}; the product renders "${rendered}" on \`${row.productSelector}\``,
+    ).toBe(lengthInPx(declared));
+  }
 
   // ── 1. Authored spacing is on bible §3's scale ────────────────────────────
   //
@@ -1661,10 +1815,28 @@ test("the shell is what the drawing draws", async ({ page }, testInfo) => {
     "the settings drawing's dialog frame is not drawn at the closed scale's panel radius",
   ).toBe(scale["--radius-lg"]);
 
+  // Rows on another surface are that surface's test to read: this one opens the
+  // shell, and a `[data-fixture="…"]` selector matches nothing here. Leaving
+  // them in would report "no element matches" for a row that is read — just not
+  // by this test. Only the fixture is foreign today, and saying so keeps a row
+  // whose surface is a typo from being skipped by both tests and read by neither.
+  const mismatchedSurfaces = PARITY.filter(
+    (row) =>
+      row.surface !== undefined &&
+      row.surface !== "settings" &&
+      row.surface !== "sheet" &&
+      row.surface !== "fixture",
+  );
+  expect(
+    mismatchedSurfaces.map((row) => `${row.region} on ${row.surface}`),
+    "a parity row names a surface neither this test nor the fixture test reads",
+  ).toEqual([]);
+
   const unresolved: string[] = [];
   const failures: string[] = [];
   const table: string[] = [];
   for (const row of PARITY) {
+    if (row.surface === "fixture") continue;
     const rendered = product[key(row)];
     // `undefined` is its own reading under `noUncheckedIndexedAccess`: the key
     // was never filled because the row was in no `readRows` call, which is the

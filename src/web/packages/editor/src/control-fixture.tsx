@@ -32,6 +32,16 @@ import "./editor-shell/editor-shell.css";
  * areas and contrast be read at the real pane width rather than at a comfortable
  * one.
  *
+ * **The columns are `.editor-shell-inspector`, because the product's are.** That
+ * ancestor is what `editor-shell.css`'s legacy rules key on — they are
+ * unlayered, so they beat the control set's own utilities and re-boxed an input
+ * inside a well that already draws one. Without it the fixture rendered a page
+ * the product does not, and it rendered it *greener*: every control assertion
+ * passed on a surface with one fewer stylesheet applied (`vg-299`). The
+ * `editor-glass` the product's aside also carries is deliberately not mounted —
+ * it is a backdrop treatment of the column, and the root already stands in for
+ * the surface the chrome is composited over.
+ *
  * Every class here is a role or a scale step. A literal would be the defect the
  * fixture exists to catch, so the fixture is held to the same ratchet
  * (`design-tokens.gated.json`) as the controls it mounts.
@@ -61,7 +71,7 @@ function Fixture(): React.JSX.Element {
   return (
     <div className="editor-shell" data-fixture-root>
       <div className="flex flex-wrap items-start gap-[var(--space-12)] p-[var(--space-12)]">
-        <div className="w-[276px] bg-panel p-[var(--space-12)]">
+        <aside className="editor-shell-inspector w-[276px] bg-panel p-[var(--space-12)]">
           <InspectorSection id="content" title="Content">
             <div data-fixture="text">
               <ControlText label="Name" value="CPU gauge" onCommit={noop} />
@@ -179,9 +189,9 @@ function Fixture(): React.JSX.Element {
               resolves to ink · 12/400
             </p>
           </InspectorSection>
-        </div>
+        </aside>
 
-        <div className="w-[276px] bg-panel p-[var(--space-12)]">
+        <aside className="editor-shell-inspector w-[276px] bg-panel p-[var(--space-12)]">
           <InspectorSection id="states" title="Refused and invalid">
             <div data-fixture="refused">
               <ControlToggle
@@ -230,7 +240,7 @@ function Fixture(): React.JSX.Element {
               </ControlIconButton>
             </div>
           </InspectorSection>
-        </div>
+        </aside>
       </div>
     </div>
   );

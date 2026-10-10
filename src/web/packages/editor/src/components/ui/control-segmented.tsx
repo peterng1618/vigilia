@@ -2,8 +2,8 @@ import { Toggle } from "@base-ui/react/toggle";
 import { ToggleGroup } from "@base-ui/react/toggle-group";
 import type * as React from "react";
 import {
-  ControlRow,
   type ControlProps,
+  ControlRow,
   describedBy,
   hitTargetClasses,
   isBlocked,
@@ -75,7 +75,7 @@ export function ControlSegmented<T extends string>(
           if (blocked || chosen === undefined) return;
           onChange(chosen as T);
         }}
-        className="flex gap-[var(--space-4)] rounded-md border border-edge bg-panel-2 p-[var(--space-4)]"
+        className="flex w-full gap-[var(--space-4)] rounded-md border border-edge bg-panel-2 p-[var(--space-4)]"
       >
         {options.map((option) => (
           <Toggle

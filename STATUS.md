@@ -1,6 +1,6 @@
 # Vigilia status
 
-Updated: 2026-10-10
+Updated: 2026-10-11
 Branch: `develop`
 
 ## Current objective
@@ -22,7 +22,7 @@ satisfies every token in the bible and still does not look like the mockup.
 
 ## Active work
 
-- **Plan 7 — [`shell-parity`](docs/superpowers/plans/2026-10-10-shell-parity.md) — is the active plan. Task 9 is complete; Task 8 is next, then 2 → 3 → 4 → 5 → 6 → 7.** The four **new** drawings are at `docs/design/mockups/current/` and the instrument reads them: eight rows red on today's shell, no unresolved row, at both worker counts. **Task 8 waits for Task 1's fix round** — one writer per file, since both edit `tests/e2e/mockup-values.ts` and `design-language.spec.ts`.
+- **Plan 7 — [`shell-parity`](docs/superpowers/plans/2026-10-10-shell-parity.md) — is the active plan. Tasks 9, 1 and 8 are complete; Task 2 is next, then 3 → 4 → 5 → 6 → 7.** The four **new** drawings are at `docs/design/mockups/current/` and the instrument reads them: the body-flush and radius rows are red on today's shell by design at both worker counts, and no row is unresolved. **Task 8 added the two `fixture` rows that read the control drawings**, so `current/controls.html` and `current/controls-light.html` are no longer drawings nothing reads.
 - **The drawings' README no longer lets a divergence pass as "deliberate"** — a difference must now be **licensed by a rule that predates it** or fixed, which is the escape hatch that let a week of drift pass every check green.
 - **The user's rulings, 2026-10-10: the mockup is not replaced — "Do not replace the mockup."** — the built product is pulled to the drawing; and, told a refresh would overdraw them, "Keep the original mockup html files and label them as such. Build new html."
 - **The drawing is the acceptance instrument.** §13 now says it governs wherever the written rules are silent, with no self-licensing and no "deliberate" disposition, and Task 1 landed the reader that reddens on eight real rows of today's shell.
@@ -32,16 +32,16 @@ satisfies every token in the bible and still does not look like the mockup.
 
 ## Last completed change
 
-- **Plan 7 Task 1, fix round 2: the census's arithmetic agrees with its own lists** — of the 34 `fix` rows, **18 are this plan's** (A3–A7, A9, A18, A19, A20–A28, B1) and **16 another owner's**, enumerated by id and owner in the census, the report and the commit; the 21 it replaced named nine rows.
-- **The reader refuses an ambiguous selector** — `[style*="…"]` matching two elements now throws naming the selector and the count instead of silently comparing whichever the document lists last, because a wrong element with a real value reads as a *pass*.
-- **A `licensed` row's citation is read, not trusted** — the stage ground's declared `background` must contain the gradient §7.5 licenses; proved red by pointing the row at another element, restored byte-identically with `cmp`, and the `undefined` read under `noUncheckedIndexedAccess` now takes the row's own "measured nothing" path.
-- **Two review-unverified items measured, both now facts** — `--radius-lg` reads `8px` from `:root` in the built bundle, so both dialog rows are red at 8 against the product's 12px and not for an unresolved token; and the closed modal **unmounts** (0 dialogs in the DOM after Escape, 1 with the sheet open), so the guard stays and its untrue comments were rewritten.
-- **Still 8 rows red at `--workers=1` and `--workers=2`, reader 11/11** — the four flush-region radius rows stand by ruling `e2e3c5a1`, and the reader's header comment now describes `current/shell.html` instead of the superseded drawing.
+- **Plan 7 Task 8: the field row is one geometry again — the drawing's 74px label column and one `flex:1` value cell, declared once in `ControlRow`** — the four per-kind widths that started a box at four different left edges (`vg-297`) are gone, and the assertion that fixes it failed first with the four edges it measured (`text/number/select/segmented` at 117/100.5/63.1/179.8) before passing on one.
+- **Task 8 Step 3: the legacy unlayered rules were the second owner under it (`vg-298`)** — the inspector's ancestor-wide input/button box rule and both `label { display:block; margin-top:12px }` arms came off the product's controls, re-scoped to the eight `data-vigilia-*` hooks the inspector's plain DOM buttons still carry, because unlayered they beat every utility.
+- **Task 8 Step 4: the fixture was greener than the product (`vg-299`)** — it mounts `.editor-shell-inspector` now, and reverting that mount turned the assertion green again, which is the proof the gate could not see the product's own ancestor; three separate reds were recorded on the way (a select's right edge at 272 against 276, labels 6px below their control, five inputs painting a box inside a well that already draws one).
+- **Both control drawings are read by a test now** — two `surface: "fixture"` `PARITY` rows compare the drawing's declared `74px` column with the rendered label, and the shell test skips rows it does not own rather than reporting them as rows that measured nothing.
+- **Whole editor unit suite green: 1791 tests over 138 files; the `mockup-values` reader 12/12** — the body-flush and radius rows of the shell parity test stay red by design until Tasks 2 and 3 land, and Task 8's report records them as not its own.
 
 ## Next
 
-1. **Execute plan 7 in its stated order** — Task 9 (dispatched), then Task 8, then 2 → 3 → 4 → 5 → 6 → 7 — with each task reviewed and adjudicated before the next is dispatched.
-2. **Adjudicate Task 1's fix round 2, reported now**, then Task 9's review — Task 8 stays held behind Task 1 by one-writer-per-file.
+1. **Execute plan 7 in its stated order** — Tasks 9, 1 and 8 are done, so Task 2 is next, then 3 → 4 → 5 → 6 → 7 — with each task reviewed and adjudicated before the next is dispatched.
+2. **Adjudicate Task 8's report** (`task-8-report.md`) with Task 1's fix round 2 and Task 9's review — Task 2 owns the body-flush rows Task 8 left red.
 3. **Then plan 8 (settings parity)** — 13 of the modal's 19 measured regions drift, and it consumes plan 7's instrument, radius scale and chrome decision.
 4. **Then plan 6 (`iconography-and-copy`), then `design-md-replaces-the-bible`** — each ending with its own §13 parity capture, which now means a comparison against the drawing.
 5. **Then the multi-device display objective** — detect connected displays and hold a theme per device; architectural, so brainstorm → spec → plan, and "device" already means the hardware behind a theme's sensor in `packages/host/src/settings/devices.ts`.

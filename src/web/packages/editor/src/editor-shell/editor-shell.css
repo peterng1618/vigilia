@@ -813,7 +813,17 @@ body,
   overflow: auto;
   border-radius: 12px;
 }
-.editor-shell-inspector button,
+/* `cursor: pointer` is the shell's standing convention for a control, and it is
+   the **only** thing this rule may say about an inspector button. The rest of
+   what it used to say — a transparent border and background, a 7px radius, a
+   `--shell-text` colour — is a *treatment* of a control, and since the React
+   vocabulary moved into this column the control set owns it (bible §5: the well
+   is `--panel-2` inside a 1px `--edge`). Unlayered, the old rule beat the
+   utilities and repainted a well in the shell's own colours, which is the second
+   owner `vg-298` records; the dock still needs its own. */
+.editor-shell-inspector button {
+  cursor: pointer;
+}
 .editor-shell-dock button {
   color: var(--shell-text);
   border: 0;
@@ -842,9 +852,14 @@ body,
   border-bottom: 1px solid var(--shell-edge);
   padding-bottom: 6px;
 }
-.editor-shell-panel label,
+/* A section is one region of a column and takes its own line above the one
+   before it. The `label` arm of this rule was removed with `vg-298`: every label
+   inside either ancestor belongs to a control row now, and a row centres its
+   label — this rule's 12px top margin against the row's `items-center` pushed
+   every label 6px below its control, and no utility could win against it because
+   it is unlayered. A label that is not a row's own belongs to `.vigilia-field`,
+   which already writes its own `margin-top: 0`. */
 .editor-shell-panel section:not(.editor-shell-pane),
-.editor-shell-inspector label,
 .editor-shell-inspector section {
   display: block;
   margin-top: 12px;
@@ -984,10 +999,7 @@ body,
   object-fit: contain;
 }
 .editor-shell-panel button,
-.editor-shell-panel input,
-.editor-shell-inspector button,
-.editor-shell-inspector input,
-.editor-shell-inspector select {
+.editor-shell-panel input {
   max-width: 100%;
   min-height: 30px;
   margin: 3px 4px 3px 0;
@@ -996,30 +1008,49 @@ body,
   background: var(--vigilia-control-bg);
   color: var(--shell-text);
 }
-.editor-shell-panel input,
-.editor-shell-inspector input,
-.editor-shell-inspector select,
-.editor-shell-inspector textarea {
+.editor-shell-panel input {
   padding: 4px 6px;
 }
-/* A polyline's points and a path's data are documents, so their field takes
-   the panel's own control surface rather than the browser's default one. */
-.editor-shell-inspector textarea {
+/* The inspector's half of the box above, **named by the control it still
+   styles**. As an ancestor-wide selector this rule was the product-only half of
+   `vg-298`: unlayered, it beat the control set's utilities and drew a second
+   border inside a well that already draws one, gave the input a 30px
+   `min-height` inside a 26px row and a 4px right margin that pulled a select's
+   well 4px off the column the drawing draws. The React column owns its own
+   treatment now (bible §5 — the well *is* the box), and what is left here is the
+   handful of buttons the inspector still renders as plain DOM: the runs'
+   add/remove, the chart's remove-series, the crop row and the type-preset
+   reveal. Add a hook here rather than widening the selector back to the
+   ancestor. */
+.editor-shell-inspector [data-vigilia-run-add],
+.editor-shell-inspector [data-vigilia-run-remove],
+.editor-shell-inspector [data-vigilia-chart-binding-remove],
+.editor-shell-inspector [data-vigilia-crop],
+.editor-shell-inspector [data-vigilia-crop-aspect],
+.editor-shell-inspector [data-vigilia-crop-apply],
+.editor-shell-inspector [data-vigilia-crop-cancel],
+.editor-shell-inspector [data-vigilia-reveal-type-presets] {
   max-width: 100%;
+  min-height: 30px;
   margin: 3px 4px 3px 0;
+  padding: 4px 7px;
   border: 1px solid var(--shell-edge);
   border-radius: 6px;
   background: var(--vigilia-control-bg);
   color: var(--shell-text);
-  font: inherit;
-  resize: vertical;
 }
-.editor-shell-panel button,
-.editor-shell-inspector button {
-  padding: 4px 7px;
+.editor-shell-inspector [data-vigilia-run-add]:hover,
+.editor-shell-inspector [data-vigilia-run-remove]:hover,
+.editor-shell-inspector [data-vigilia-chart-binding-remove]:hover,
+.editor-shell-inspector [data-vigilia-crop]:hover,
+.editor-shell-inspector [data-vigilia-crop-aspect]:hover,
+.editor-shell-inspector [data-vigilia-crop-apply]:hover,
+.editor-shell-inspector [data-vigilia-crop-cancel]:hover,
+.editor-shell-inspector [data-vigilia-reveal-type-presets]:hover {
+  border-color: var(--shell-accent);
+  color: var(--shell-accent);
 }
-.editor-shell-panel button:hover,
-.editor-shell-inspector button:hover {
+.editor-shell-panel button:hover {
   border-color: var(--shell-accent);
   color: var(--shell-accent);
 }

@@ -1,6 +1,8 @@
 import { existsSync } from "node:fs";
 import { expect, test } from "vitest";
 import {
+  CONTROLS_LIGHT_MOCKUP_PATH,
+  CONTROLS_MOCKUP_PATH,
   MOCKUP_PATH,
   mockupDeclared,
   mockupDeclaredOrNull,
@@ -30,6 +32,8 @@ const drawing = readMockup();
 test("the drawing is the checked-in file, read from disk", () => {
   expect(existsSync(MOCKUP_PATH)).toBe(true);
   expect(existsSync(SETTINGS_MOCKUP_PATH)).toBe(true);
+  expect(existsSync(CONTROLS_MOCKUP_PATH)).toBe(true);
+  expect(existsSync(CONTROLS_LIGHT_MOCKUP_PATH)).toBe(true);
   // Normalised, because a Windows path separates with `\` and this is the one
   // assertion that says the reader's target is the checked-in drawing.
   expect(MOCKUP_PATH.replace(/\\/g, "/")).toContain(
@@ -38,6 +42,45 @@ test("the drawing is the checked-in file, read from disk", () => {
   expect(SETTINGS_MOCKUP_PATH.replace(/\\/g, "/")).toContain(
     "docs/design/mockups/current/settings.html",
   );
+  expect(CONTROLS_MOCKUP_PATH.replace(/\\/g, "/")).toContain(
+    "docs/design/mockups/current/controls.html",
+  );
+  expect(CONTROLS_LIGHT_MOCKUP_PATH.replace(/\\/g, "/")).toContain(
+    "docs/design/mockups/current/controls-light.html",
+  );
+  // The frozen originals are provenance, and the target is never one of them:
+  // reading one to decide a value is the drift this plan exists to end.
+  for (const path of [CONTROLS_MOCKUP_PATH, CONTROLS_LIGHT_MOCKUP_PATH]) {
+    expect(path.replace(/\\/g, "/")).toContain("/current/");
+  }
+});
+
+test("the two control drawings declare the one field row a row reads", () => {
+  // The label column, addressed by the one label that settles which element is
+  // meant: the eleven short labels carry the same declaration and the twelfth —
+  // the long-copy label — carries it plus `padding-top:5px`, so every shorter
+  // substring matches twelve elements and the reader refuses to choose. The
+  // twelfth declares the same `width:74px;flex:0 0 auto`.
+  const LABELS =
+    '[style*="width:74px;flex:0 0 auto;color:var(--muted);font-size:11.5px;padding-top:5px"]';
+  // The other half of the same row: the value cell the drawing stretches. Two
+  // elements carry it and their `style` attributes are identical, which is one
+  // element form to this reader — the narrower prefix also matches the
+  // multi-line well and would address two different elements.
+  const CELL =
+    '[style*="flex:1;display:flex;align-items:center;gap:6px;background:var(--well)"]';
+  for (const path of [CONTROLS_MOCKUP_PATH, CONTROLS_LIGHT_MOCKUP_PATH]) {
+    const html = readMockup(path);
+    expect(html).not.toBe(drawing);
+    expect(mockupDeclared(html, LABELS, "width")).toBe("74px");
+    expect(mockupDeclared(html, LABELS, "flex")).toBe("0 0 auto");
+    expect(mockupDeclared(html, CELL, "flex")).toBe("1");
+    // Reading one file for the other would pass every assertion above, so the
+    // two are told apart by what each declares and the other does not.
+    expect(mockupDeclared(html, "body", "background")).toBe(
+      path === CONTROLS_MOCKUP_PATH ? "#0b0e12" : "#fffdf7",
+    );
+  }
 });
 
 test("the page rule is read out of the drawing's own stylesheet", () => {
@@ -176,6 +219,11 @@ test("every row names a comparator, and a drawing row declares a length", () => 
       ).toBeUndefined();
       continue;
     }
+    // The row's own drawing: the shell's unless the row names another, so a
+    // surface drawn on its own file is read from that file rather than from
+    // whichever one this loop happened to open first.
+    const source =
+      row.mockupPath === undefined ? drawing : readMockup(row.mockupPath);
     // A licensed row is recorded, not asserted, so its declared value need not
     // be a length this file could compare — the stage ground is a gradient. The
     // **value** is still read, though, and matched to the treatment the licence
@@ -183,7 +231,7 @@ test("every row names a comparator, and a drawing row declares a length", () => 
     // whatever is there now, including a region the drawing stopped drawing.
     if (row.licensed !== undefined) {
       const declared = mockupDeclaredOrNull(
-        drawing,
+        source,
         row.mockupSelector ?? "",
         row.mockupProperty,
       );
@@ -201,7 +249,7 @@ test("every row names a comparator, and a drawing row declares a length", () => 
     // loop is for: a row whose selector went stale must red here, not read as a
     // region the drawing draws flush.
     const declared = mockupDeclaredOrNull(
-      drawing,
+      source,
       row.mockupSelector ?? "",
       row.mockupProperty,
     );

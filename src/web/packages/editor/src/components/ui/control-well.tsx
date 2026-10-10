@@ -105,7 +105,9 @@ export function ControlWell(props: {
   readonly children: React.ReactNode;
 }): React.JSX.Element {
   return (
-    <div className={wellClasses(props.density, props.blocked ?? false)}>
+    <div
+      className={`${wellClasses(props.density, props.blocked ?? false)} w-full`}
+    >
       {props.children}
     </div>
   );
@@ -158,13 +160,19 @@ export function isBlocked(props: {
  * the row exactly as `ControlIconButton` arms its own. It carries the refusal
  * when there is one, so a row that both refuses and explains says why first.
  *
- * The control slot **takes the row's remaining width** and right-aligns what it
- * holds, rather than shrinking to its content. A content-sized slot is what a
- * `flex-1` child inside it resolves against: the slider's Root is `w-full` and
- * its track is the flexible child, so inside a shrink-to-fit slot the track
- * measured 0px wide and only the 36px well and the 10px thumb were drawn. Every
- * other control is content-sized and right-aligned either way, which is why the
- * row keeps its shape.
+ * The control slot is the row's **one value track**. It is a fixed-width label
+ * column and a flexible cell, which is what the drawing declares
+ * (`mockups/current/controls.html`): the label is `width:74px;flex:0 0 auto`,
+ * the value is `flex:1`. The cell is the geometry and each control fills it —
+ * `ControlWell` is `w-full`, the select's trigger and the slider's root already
+ * were, and a segmented group fills it too. Fixing the slot rather than giving
+ * each kind its own width is the difference between one track and four: with a
+ * content-sized slot a number well was as wide as its `<input>` while a select
+ * filled the slot, so the boxes in one section started at four different left
+ * edges (`vg-297`).
+ *
+ * The cell still right-aligns what does not fill it — a 26×14 toggle is a fixed
+ * pill by §5 and sits at the right edge, as the drawing draws it.
  */
 export function ControlRow(props: {
   readonly ids: ControlIds;
@@ -184,7 +192,9 @@ export function ControlRow(props: {
     density = "panel",
     children,
   } = props;
-  const labelClasses = "text-xs text-muted";
+  // The drawing's label column, and it breaks rather than widening: §7.7 lets a
+  // long name ellipsize or wrap, never widen a pane or cover its own control.
+  const labelClasses = "w-[74px] flex-none break-words text-xs text-muted";
   const row = useRef<HTMLDivElement>(null);
   const tip = hint === undefined ? undefined : (refused ?? hint);
 
@@ -208,7 +218,7 @@ export function ControlRow(props: {
           {label}
         </label>
       )}
-      <div className="ml-auto flex flex-1 items-center justify-end gap-[var(--space-6)]">
+      <div className="flex min-w-0 flex-1 items-center justify-end gap-[var(--space-6)]">
         {children}
       </div>
       {hint === undefined ? null : (

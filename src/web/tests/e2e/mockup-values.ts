@@ -61,6 +61,31 @@ export const SETTINGS_MOCKUP_PATH = fileURLToPath(
   ),
 );
 
+/** The inspector column as the shell draws it, and the same column on the light
+ *  ground. Together they are the control set's own drawing — the field row this
+ *  task fixes, the well's radius and the label column all live here.
+ *
+ *  They are read by `PARITY`'s two `fixture` rows rather than by a copy: a
+ *  drawing that nothing reads is a drawing that rots, and this task changes the
+ *  geometry they declare, which makes them the rows most able to catch a drift
+ *  in it. The frozen originals (`mockups/inspector-controls.html`,
+ *  `mockups/inspector-language.html`) are provenance and are never a target. */
+export const CONTROLS_MOCKUP_PATH = fileURLToPath(
+  new URL(
+    "../../../../docs/design/mockups/current/controls.html",
+    import.meta.url,
+  ),
+);
+
+/** The same column on the light ground — the token table swapped and nothing
+ *  else, so a row that reads both is reading one geometry twice. */
+export const CONTROLS_LIGHT_MOCKUP_PATH = fileURLToPath(
+  new URL(
+    "../../../../docs/design/mockups/current/controls-light.html",
+    import.meta.url,
+  ),
+);
+
 export function readMockup(path: string = MOCKUP_PATH): string {
   return readFileSync(path, "utf8");
 }
@@ -224,6 +249,10 @@ export type ParityRegion = {
   readonly mockupProperty: string;
   readonly productSelector: string;
   readonly bibleSection: string;
+  /** The drawing `mockupSelector` is read from, when it is not the plan's own
+   *  shell drawing. A surface drawn on its own file names that file, so one
+   *  table can address every drawing the plan measures. */
+  readonly mockupPath?: string;
   /** A closed-scale token the product's own declaration must resolve to, read
    *  from `:root` at run time so the expected value cannot drift from the
    *  token — `--radius-lg` is the file's, not this table's. Set only where the
@@ -232,8 +261,11 @@ export type ParityRegion = {
   readonly scaleToken?: string;
   /** Which surface must be open for `productSelector` to be the element meant.
    *  Both dialogs render `.editor-shell-dialog` from one rule, so the two are
-   *  told apart by the route that opened them, not by the DOM. */
-  readonly surface?: "settings" | "sheet";
+   *  told apart by the route that opened them, not by the DOM; `fixture` is the
+   *  control-set page, which is the only surface the control set renders on.
+   *  A row with a surface is asserted where that surface is open — the shell
+   *  test skips it. */
+  readonly surface?: "settings" | "sheet" | "fixture";
   readonly licensed?: string;
 };
 
@@ -349,5 +381,43 @@ export const PARITY: readonly ParityRegion[] = [
     bibleSection: "§7.5 (`:338`)",
     licensed:
       '§7.5 (`:338-344`): "Subtle palette-derived stage texture is permitted when it stays behind the artwork and does not obscure controls; neither texture nor a flat ground is mandatory."',
+  },
+  /* **The control set's own drawing, read on the fixture.** Both files are the
+     inspector column and both declare the same row: a label column of
+     `width:74px;flex:0 0 auto` and a value cell of `flex:1`. The product
+     declared neither, so a number well was as wide as its `<input>`, a select
+     filled the slot and a segmented group hugged its right edge — four widths
+     in one section where the drawing draws one (`vg-297`).
+
+     **The selector names the long-copy label, and that is not an accident.**
+     Eleven of the twelve labels carry `width:74px;flex:0 0 auto` with nothing
+     after it, and the twelfth — the one over the multi-line well — carries the
+     same declaration plus `padding-top:5px`. A `[style*="…"]` selector is a
+     substring match, so every prefix of the eleven also matches the twelfth and
+     the reader refuses to pick one; the twelfth is the *only* address that
+     settles which element is meant, and it declares the same column. Two rows
+     rather than one because the drawings are two files, and one of them having
+     drifted is exactly what a single row could not say. */
+  {
+    region: "field row — label column (controls drawing)",
+    mockupPath: CONTROLS_MOCKUP_PATH,
+    mockupSelector:
+      '[style*="width:74px;flex:0 0 auto;color:var(--muted);font-size:11.5px;padding-top:5px"]',
+    mockupProperty: "width",
+    productSelector: '[data-fixture="text"] label',
+    bibleSection:
+      "§5 (`:163-164`, the shared grid); the bible is silent on the column's width, so the drawing governs",
+    surface: "fixture",
+  },
+  {
+    region: "field row — label column (controls-light drawing)",
+    mockupPath: CONTROLS_LIGHT_MOCKUP_PATH,
+    mockupSelector:
+      '[style*="width:74px;flex:0 0 auto;color:var(--muted);font-size:11.5px;padding-top:5px"]',
+    mockupProperty: "width",
+    productSelector: '[data-fixture="text"] label',
+    bibleSection:
+      "§5 (`:163-164`, the shared grid); the bible is silent on the column's width, so the drawing governs",
+    surface: "fixture",
   },
 ];
