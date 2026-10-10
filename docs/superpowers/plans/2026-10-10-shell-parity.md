@@ -223,9 +223,9 @@ The drawing correction from Step 1 and the CSS from Steps 2–3 land together, a
 - Consumes: Task 1's reader, extended to read the drawing's token table (`--bg`, `--hdr`, `--panel`, `--panel2`, `--edge`, `--edge2`, `--text`, `--muted`, `--faint`, `--accent`).
 - Produces: graphite's values with the drawing as their single owner; a **derivation** the other five are computed from, stated as a rule a person can apply and a test can read, not as five sets of numbers someone chose.
 
-- [ ] **Step 1: Write the assertion first, and watch it fail on all nine roles**
+- [ ] **Step 1: Write the assertion first, and watch it fail on all ten roles**
 
-One case per role: the product's computed value for graphite equals the drawing's declared value. Today exactly one passes (`--accent` `#72e0c0`); the other nine must fail before any value is written, and the failure list goes in the report.
+One case per role: the product's computed value for graphite equals the drawing's declared value. The drawing's table is `current/shell.html:17` and holds **eleven** tokens — the ten the Interfaces block lists **plus `--hot`**, which Task 9's current set added and the frozen original does not carry. Today exactly one passes (`--accent` `#72e0c0`); the other **ten** must fail before any value is written, and the failure list goes in the report.
 
 - [ ] **Step 2: Take the drawing's values, role by role**
 
@@ -237,7 +237,7 @@ Transcribe rather than approximate, and name the drawing's line for each in the 
 
 - **Graphite is the source.** Its ten roles are the drawing's ten values, unmodified.
 - **Every other palette keeps its own hue** for the roles that carry identity — `--accent`, and the hue tint in `--edge` — and takes from graphite the **relationships** between roles: the luminance separation of `--bg` → `--panel` → `--panel-2`, where `--text`, `--muted` and `--faint` sit on that ladder, and the edge's weight against its surface.
-- **`light` inverts the direction, and this is stated rather than discovered.** It is a light-ground palette: it cannot take a dark palette's absolute luminance, so it mirrors the ladder — the same number of steps, the same contrast order, inverted — which is what makes "derived from graphite" mean something for a palette graphite does not resemble.
+- **`light` does not invert, and that was measured rather than assumed.** This bullet read "it mirrors the ladder — the same number of steps, the same contrast order, inverted" until Task 4 measured the shipped palette ascending exactly as graphite does (0.6980 / 0.9251 / 0.9844 against graphite's 0.0043 / 0.0079 / 0.0113): the same **ordering**, and the polarity difference is the ground's, not the ladder's. What a light palette cannot take from a dark one is its absolute luminance, and what it does take is the relationship — three rungs in one direction, each separating. Mirroring was one reading of that and not the only one, and **no palette is asserted to invert**: a mirror imposed by hand would be exactly the tuned value this step exists to replace.
 - **A derived value is computed, not picked.** Where a derivation is not expressible in CSS (`color-mix` over the source role is the preferred form; a literal is the fallback), the literal carries the derivation in its comment, so the next change to graphite has an obvious consequence for the five.
 
 - [ ] **Step 4: Re-measure contrast under all six before believing it**
@@ -246,7 +246,9 @@ Run the existing contrast assertions (`keyboard.spec.ts` measures the modal surf
 
 - [ ] **Step 5: Assert the derivation holds, not only the six outcomes**
 
-One case that fails if a palette's ladder stops matching graphite's: for each of the five, the luminance ordering of `--bg`/`--panel`/`--panel-2` matches graphite's (or its mirror, for `light`). Six transcribed value sets pass the per-role assertions and drift apart again the moment someone edits one; this is the assertion that keeps the ruling true.
+One case that fails if a palette's ladder stops matching graphite's: for each of the five, the luminance ordering of `--bg`/`--panel`/`--panel-2` matches graphite's, **and where graphite separates two rungs the derived palette separates them too** — strict `bg < panel < panel2` for the five, with editorial's `panel == panel2` (`#fffdf7` for both) as the one named licensed exception, because its control-inside-panel separation is carried by `--vigilia-control-bg` rather than by the rung. Six transcribed value sets pass the per-role assertions and drift apart again the moment someone edits one; this is the assertion that keeps the ruling true.
+
+**An order-only assertion is a ceiling, and `vg-308` records it.** A ladder collapsed to steps of 0.0001 keeps its order and passes, and no magnitude floor belongs here: "at least X luminance" has no rule behind it, and picking one is the move this plan has already had to undo. The separation rule above is what can be stated without inventing a number; the magnitude is `vg-308`'s to rule on.
 
 - [ ] **Step 6: Commit**
 
