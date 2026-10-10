@@ -31,6 +31,15 @@ preview-server captures (editor and player), `desktop-host` for the ones that
 drive the real host (the settings page), and `publish` for the ones that start
 their own host on their own port to prove the publish loop.
 
+**The parity capture lives beside its drawing.** Spec §13's gate asks for the
+surfaces a plan changed to be photographed and placed beside the matching mockup,
+so the shell-parity pair is kept in the drawings' own directory —
+`docs/design/mockups/current/shell-capture-add.png` (the shell with the Add pane
+open and nothing selected, the state `shell.html` draws) and
+`shell-capture-graphite.png` (the whole shell in the drawing's own palette) —
+and both are re-taken from the registered `editor-shell-add` and
+`shell-palette-graphite` actions above.
+
 ## Editor visual-action checklist
 
 Update/add a capture when a change affects a listed domain. Show the action's

@@ -2120,10 +2120,12 @@ async function renderedDialogs(page: Page): Promise<number> {
  * reading nothing. It is in the table, rather than left out as redundant, for
  * that reason.
  *
- * **Every row here passes as of plan 7 Task 3**, which closed the last six the
- * table named — the four region radii (`rail`, left pane, stage and inspector,
- * each drawn flush and square) and both dialog frames (`--radius-lg`). Tasks 2
- * and 3 between them fixed what the rows required, and none is red.
+ * **Every row here passes, re-run by plan 7 Task 7 against the shipped build** —
+ * Task 3 closed the last six the table named (the four region radii, drawn flush
+ * and square, and both dialog frames at `--radius-lg`), Tasks 2 and 3 fixed what
+ * they required, and the capture beside the drawing
+ * (`docs/design/mockups/current/shell-capture-*.png`) is that task's evidence
+ * that the build these rows pass on is the one that ships.
  *
  * A `--grep` that matches nothing exits 0 with zero tests, so the run's own
  * summary — "1 test", this file — is the proof it ran at all.
