@@ -1,12 +1,26 @@
-import { FileText, Layers, type LucideIcon, Palette, Plus } from "lucide-react";
+import {
+  FileText,
+  Layers,
+  type LucideIcon,
+  Palette,
+  Plus,
+  Settings as SettingsGlyph,
+} from "lucide-react";
 import { useEffect, useRef } from "react";
 import { uiCopy } from "../ui-copy.js";
 import { tooltip } from "./controls/tooltip.js";
 
 /** The rail's four slots (bible §7.2). Named here rather than in
  *  `shell-layout.tsx` because the rail is what enumerates them — two owners of
- *  "which slots there are" would drift. */
+ *  "which slots there are" would drift. The settings gear is deliberately not
+ *  one of them: it opens a modal, never a pane, so it is outside this set. */
 export type RailSlot = "composition" | "add" | "tokens" | "document";
+
+/** The gear's own id, so the modal it opens can return focus to it on close.
+ *  The gear is the one rail control with a surface outside the rail, so its id
+ *  is the handle the two halves share rather than a ref threaded through the
+ *  shell. */
+export const SETTINGS_TRIGGER_ID = "editor-shell-settings-trigger";
 
 /** The slots, in rail order. This is the one place that says how many there
  *  are; `shell-layout` and the tests read it rather than restating the set. */
@@ -85,17 +99,57 @@ function RailSlotButton({
   );
 }
 
-/** The left edge's vertical glyph strip: one slot per pane, and nothing else.
+/** The settings gear, pinned to the rail's foot (bible §7.2).
+ *
+ *  It draws its own button for the reason the slots do — the control set's icon
+ *  button is a 26px action and this is the rail's 34px rhythm — and it carries
+ *  no `aria-pressed`, because it chooses nothing: pressing it opens a modal and
+ *  nothing else. The name and the tooltip are one string, the rail's slot rule.
+ */
+function SettingsGear({
+  label,
+  onClick,
+}: {
+  readonly label: string;
+  readonly onClick: () => void;
+}): React.JSX.Element {
+  const ref = useRef<HTMLButtonElement>(null);
+  useEffect(() => {
+    const button = ref.current;
+    if (button === null) return;
+    return tooltip({ trigger: button, text: label }).destroy;
+  }, [label]);
+  return (
+    <button
+      ref={ref}
+      id={SETTINGS_TRIGGER_ID}
+      type="button"
+      className="editor-shell-rail-settings"
+      data-rail-settings=""
+      aria-label={label}
+      onClick={onClick}
+    >
+      <SettingsGlyph aria-hidden size={17} strokeWidth={1.7} />
+    </button>
+  );
+}
+
+/** The left edge's vertical glyph strip: one slot per pane, and the settings
+ *  gear at the foot.
  *
  *  It draws no pane content — React positions one persistent host per pane and
  *  hides the ones that are not showing — and it decides nothing: asking for
  *  the slot already open is a collapse, and the shell is what turns the
  *  gesture into a close (its `choosePane`), because the rail cannot tell a
- *  swap from a close. */
+ *  swap from a close. The gear is not a slot and opens no pane; it is the
+ *  fifth thing on the rail and the only one whose surface is a modal. */
 export function Rail(props: {
   readonly slot: RailSlot;
   readonly collapsed: boolean;
   readonly onChoose: (slot: RailSlot) => void;
+  /** Opens the settings modal. Required rather than optional: the gear is on
+   *  every rail, and a rail with a dead gear is the defect this exists to fix. */
+  readonly onOpenSettings: () => void;
   readonly disabled?: boolean;
 }): React.JSX.Element {
   return (
@@ -117,6 +171,10 @@ export function Rail(props: {
           onChoose={props.onChoose}
         />
       ))}
+      <SettingsGear
+        label={uiCopy.settings.title}
+        onClick={props.onOpenSettings}
+      />
     </nav>
   );
 }

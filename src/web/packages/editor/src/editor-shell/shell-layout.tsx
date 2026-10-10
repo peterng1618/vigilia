@@ -50,6 +50,7 @@ import { PublishIndicator } from "./publish-indicator.js";
 import { RAIL_GLYPHS, Rail, type RailSlot } from "./rail.js";
 import { SaveState } from "./save-state.js";
 import type { EditorViewControls } from "./session-facade.js";
+import { Settings } from "./settings.js";
 import { ShortcutReference } from "./shortcut-reference.js";
 
 /** Persistent DOM owners the imperative panels mount into. React positions
@@ -575,6 +576,10 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
     const [palette, setPalette] = useState(initial);
     const [slot, setSlot] = useState<RailSlot>("composition");
     const [collapsed, setCollapsed] = useState(false);
+    /** §7's settings modal, opened by the rail's gear. Local state, like the
+     *  palette above: it is a shell surface, not document state, and it is
+     *  never serialized. */
+    const [settingsOpen, setSettingsOpen] = useState(false);
     const kind = useSelection(store).activeKind;
     const sheetOpen = useSheet(sheet);
     /** Re-frame on the panel toggle, once the viewport has the new width.
@@ -713,7 +718,12 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
           {/* The rail is the left edge's own column, ahead of the pane's, so
               the canvas gets the pane's width back and the slots read as one
               vertical choice rather than a second navigation bar. */}
-          <Rail slot={slot} collapsed={collapsed} onChoose={choosePane} />
+          <Rail
+            slot={slot}
+            collapsed={collapsed}
+            onChoose={choosePane}
+            onOpenSettings={() => setSettingsOpen(true)}
+          />
           <aside
             className="editor-shell-panel editor-glass"
             hidden={collapsed}
@@ -805,6 +815,14 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
             <ShortcutReference
               open={sheetOpen}
               onOpenChange={(next) => sheet.set(next)}
+            />
+            {/* §7's settings modal. The gear's route is the rail's
+                `onOpenSettings`; the modal returns focus to the gear itself.
+                `storage` is the browser-local store the palette already uses. */}
+            <Settings
+              open={settingsOpen}
+              onOpenChange={setSettingsOpen}
+              storage={storage}
             />
           </main>
           <aside className="editor-shell-inspector editor-glass">

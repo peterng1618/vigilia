@@ -3,15 +3,27 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, expect, it, vi } from "vitest";
 import { uiCopy } from "../ui-copy.js";
-import { Rail, RAIL_SLOTS, type RailSlot } from "./rail.js";
+import { RAIL_SLOTS, Rail, type RailSlot } from "./rail.js";
 
 /** The rail's own slots, read from the DOM rather than from `RAIL_SLOTS`'s
  *  glyphs, which are private: the test is about what an author can see and
- *  press. */
+ *  press. Scoped to `[data-rail-slot]` because the rail's foot also carries the
+ *  settings gear, which is a button and deliberately not a slot. */
 function slots(host: HTMLElement): readonly HTMLButtonElement[] {
   return Array.from(
-    host.querySelectorAll<HTMLButtonElement>(".editor-shell-rail button"),
+    host.querySelectorAll<HTMLButtonElement>(
+      ".editor-shell-rail button[data-rail-slot]",
+    ),
   );
+}
+
+/** The settings gear: the rail's one button that is not a slot. */
+function gear(host: HTMLElement): HTMLButtonElement {
+  const found = host.querySelector<HTMLButtonElement>(
+    ".editor-shell-rail-settings",
+  );
+  if (found === null) throw new Error("No settings gear.");
+  return found;
 }
 
 function slot(host: HTMLElement, id: RailSlot): HTMLButtonElement {
@@ -29,6 +41,7 @@ function mount(props: {
   readonly slot: RailSlot;
   readonly collapsed?: boolean;
   readonly onChoose?: (slot: RailSlot) => void;
+  readonly onOpenSettings?: () => void;
 }): HTMLElement {
   const mount = document.createElement("div");
   document.body.append(mount);
@@ -41,6 +54,7 @@ function mount(props: {
         slot={props.slot}
         collapsed={props.collapsed ?? false}
         onChoose={props.onChoose ?? vi.fn()}
+        onOpenSettings={props.onOpenSettings ?? vi.fn()}
       />,
     ),
   );
@@ -65,6 +79,31 @@ it("offers exactly the four slots the bible names", () => {
     slots(host).map((button) => button.getAttribute("aria-label")),
   ).toEqual(RAIL_SLOTS.map((id) => uiCopy.rail.slots[id]));
   expect(slots(host)).toHaveLength(RAIL_SLOTS.length);
+});
+
+it("carries the settings gear at the foot, and it is not a slot", () => {
+  const host = mount({ slot: "composition" });
+
+  // The gear is the fifth thing on the rail and not one of the four: it has no
+  // `aria-pressed`, because it chooses nothing, and it carries no `data-rail-slot`,
+  // because the slot enumeration must not grow to include it (§3.2). It is named
+  // by the modal it opens, not by a slot word.
+  expect(gear(host).getAttribute("aria-label")).toBe(uiCopy.settings.title);
+  expect(gear(host).hasAttribute("aria-pressed")).toBe(false);
+  expect(gear(host).hasAttribute("data-rail-slot")).toBe(false);
+  expect(slots(host)).toHaveLength(RAIL_SLOTS.length);
+});
+
+it("asks for the settings modal, and opens no pane", () => {
+  const onChoose = vi.fn();
+  const onOpenSettings = vi.fn();
+  const host = mount({ slot: "composition", onChoose, onOpenSettings });
+
+  act(() => gear(host).click());
+  expect(onOpenSettings).toHaveBeenCalledTimes(1);
+  // The gear is not a slot: pressing it must not choose a pane, or the modal
+  // would arrive on top of a pane the author did not ask for.
+  expect(onChoose).not.toHaveBeenCalled();
 });
 
 it("marks the open slot with the accent and the closed ones with --faint", () => {

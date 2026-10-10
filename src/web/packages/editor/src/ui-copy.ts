@@ -104,6 +104,17 @@ export const uiCopy = {
       document: "Document",
     },
   },
+  /** The settings modal the rail's gear opens (§7). A modal is a surface, not
+   *  a pane, so its words live here rather than under `rail`: the three tabs
+   *  are §7's table, and `close` is the `Dialog.Close` the modal renders so a
+   *  touch screen reader — with no Escape key — can still leave it. */
+  settings: {
+    title: "Settings",
+    appearance: "Appearance",
+    keyboard: "Keyboard",
+    about: "About",
+    close: "Close",
+  },
   /** Selection inspector field labels. */
   inspectorFields: {
     selection: "Selection",

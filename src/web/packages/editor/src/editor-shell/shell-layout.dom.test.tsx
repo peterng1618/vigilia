@@ -161,8 +161,11 @@ it("mounts the editorial palette, menus, rail, inspector and dock hosts", () => 
   // Add pane is the one surface the insertable list is reached from now that
   // the Insert menu has gone with it. A slot with nothing behind it is the
   // defect this plan exists to fix, so the count is a claim about the left
-  // column, not a snapshot of how many icons happen to be there.
-  expect(root.querySelectorAll(".editor-shell-rail button")).toHaveLength(4);
+  // column, not a snapshot of how many icons happen to be there. Scoped to
+  // `[data-rail-slot]`: the foot's settings gear is a button on the rail too,
+  // and it is deliberately not a slot.
+  expect(root.querySelectorAll(".editor-shell-rail-slot")).toHaveLength(4);
+  expect(root.querySelector(".editor-shell-rail-settings")).not.toBeNull();
   // The horizontal bar is gone, not merely hidden.
   expect(root.querySelector(".editor-shell-pane-bar")).toBeNull();
   expect(root.textContent).toContain("File");

@@ -13,16 +13,23 @@ import type * as React from "react";
  * **No `Dialog.Title`.** The sheet labels itself by `aria-label`, and Base UI
  * leaves `aria-labelledby` off when no title is rendered, so the caller's label
  * stays the announced name; adding a title would silently replace it.
+ *
+ * **`closeLabel` renders the one way out that needs no Escape key.** Base UI's
+ * own contract for a modal is a `Dialog.Close` inside the popup so a touch
+ * screen reader can leave it; a caller that wants that control passes the word
+ * for it, and a caller that draws its own (the sheet below) omits it.
  */
 export function Dialog({
   open,
   onOpenChange,
   label,
+  closeLabel,
   children,
 }: {
   readonly open: boolean;
   readonly onOpenChange: (open: boolean) => void;
   readonly label: string;
+  readonly closeLabel?: string;
   readonly children: React.ReactNode;
 }): React.JSX.Element {
   return (
@@ -41,6 +48,14 @@ export function Dialog({
           aria-label={label}
         >
           {children}
+          {closeLabel === undefined ? null : (
+            <DialogPrimitive.Close
+              className="editor-shell-dialog-close"
+              aria-label={closeLabel}
+            >
+              {closeLabel}
+            </DialogPrimitive.Close>
+          )}
         </DialogPrimitive.Popup>
       </DialogPrimitive.Portal>
     </DialogPrimitive.Root>

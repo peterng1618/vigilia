@@ -19,6 +19,7 @@
     "src/web/packages/editor/src/editor-shell/display-switch.tsx",
     "src/web/packages/editor/src/editor-shell/display-switch.dom.test.tsx",
     "src/web/packages/editor/src/editor-shell/rail.tsx",
+    "src/web/packages/editor/src/editor-shell/settings.tsx",
     "src/web/packages/editor/src/editor-shell/pane.tsx",
     "src/web/packages/editor/src/editor-shell/pane.dom.test.tsx",
     "src/web/packages/editor/src/editor-shell/layer-panel.tsx",
