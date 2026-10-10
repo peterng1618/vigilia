@@ -22,12 +22,12 @@ satisfies every token in the bible and still does not look like the mockup.
 
 ## Active work
 
-- **No implementation plan is active.** Plan 5 closed on 2026-10-10; the next plan is a new **mockup-parity** plan, written once the measurement in flight names the drifts, and it outranks the two queued redesign plans.
-- **The user's ruling, 2026-10-10: the mockup is not replaced — "Do not replace the mockup. Even the setting panel you just built looks nothing like it."** — the product is pulled to the drawing, which reopens shell work plan 2 had closed.
-- **`vg-231` is a decided defect, not an open question**: the shell insets its four regions 8px apart at an off-scale `12px` radius where the drawing is flush; `vg-291` keeps only its process half (nothing signals that a mockup and the product have drifted).
-- **`vg-292` files the cause**: no gate compares a built surface to the mockup, so §13's parity capture emits images plus a prose difference list that nothing can fail — which is why five plans closed green on accumulating drift.
-- **A read-only measurement of the settings modal against the drawing's settings section is in flight** (`.superpowers/sdd/2026-10-08-settings-and-appearance/settings-vs-mockup-measurement.md`), with a companion shell measurement already on disk; the fix is scoped from those, not from impression.
-- **Queued behind it:** `2026-10-08-iconography-and-copy.md`, then [`2026-10-10-design-md-replaces-the-bible.md`](docs/superpowers/plans/2026-10-10-design-md-replaces-the-bible.md); the multi-device display objective comes after both.
+- **Plan 7 — [`shell-parity`](docs/superpowers/plans/2026-10-10-shell-parity.md) — is the active plan, and Task 1 is dispatched**: the drawing becomes a machine-read acceptance instrument, then the shell's composition, its radius scale, graphite's values and the chrome treatment follow, ending in a capture beside the drawing.
+- **The user's ruling, 2026-10-10: the mockup is not replaced — "Do not replace the mockup. Even the setting panel you just built looks nothing like it."** — the product is pulled to the drawing, and §13 now says the drawing governs wherever the written rules are silent, with no self-licensing.
+- **Plan 8 — settings parity — is next and unwritten**: thirteen of the modal's nineteen measured regions drift, and it consumes plan 7's instrument and its radius and chrome decisions.
+- **Plan 6 (`iconography-and-copy`) moved behind both** — its first task is a census of the surfaces as they landed, and a census of a shell about to move would be redone.
+- **The evidence is measured, not asserted**: `.superpowers/sdd/2026-10-08-settings-and-appearance/mockup-vs-shell-measurement.md` (flush vs 8px islands, four off-scale `12px` radii, one surviving colour role) and `settings-vs-mockup-measurement.md` (13 of 19 regions drift from the drawing's settings section).
+
 
 ## Last completed change
 
