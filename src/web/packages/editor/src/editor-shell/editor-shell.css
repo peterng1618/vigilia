@@ -447,7 +447,16 @@ body,
    frame is the *window*, and the product **is** the window, so no product
    element carries it (the census records it `no-counterpart`). The two
    horizontal hairlines are the header's foot (§7.1) and the status bar's head
-   (§7.6), each its own. */
+   (§7.6), each its own.
+
+   **Every region is square**, and that is a decision rather than an omission
+   (plan 7 Task 3). §7's diagram abuts the four inside one boundary, and §3's
+   radius scale answers only a surface that is rounded: a radius against a
+   neighbour shows the ground through its corners, which is the island the
+   drawing does not have. So a flush region of the shell consults no radius
+   entry, and the four `12px` regions here (`rail`, `panel`/`inspector`,
+   `stage`) lost theirs; the one surface that *floats* over the shell — the
+   dialog — keeps a scale entry (`--radius-lg`). */
 .editor-shell .editor-shell-body .editor-shell-rail.editor-glass,
 .editor-shell .editor-shell-body .editor-shell-panel.editor-glass,
 .editor-shell .editor-shell-body .editor-shell-inspector.editor-glass {
@@ -787,11 +796,13 @@ body,
    pixel short of that edge. The inset holds the slots where the centre puts
    them, so the hairline draws a boundary without moving the rail's contents.
 
-   The drawing is the one that is over: `shell.html`'s rail declares the same
-   46px `width` with no `box-sizing`, so it is a 47px border-box and its slots
-   reach 6…40 only because content-box adds the hairline on top of the 46. The
-   product's 46px is the bible's, and plan 7 Task 3 Step 1 corrects the drawing
-   rather than the reverse. */
+   The drawing is the one that was over, and plan 7 Task 3 Step 1 corrected it.
+   `shell.html`'s rail is a **46px border-box** — the drawing's own `*` rule sets
+   `box-sizing: border-box`, so the brief's "47px content-box" premise was wrong —
+   but with no left inset its 34px slots sat at 5.5…39.5 and its accent bar at
+   43.5…45.5, half a pixel short of the strip's inner edge. The drawing now
+   carries the same 1px left inset, so its slots reach 6…40 as §7.2's do. The
+   product's 46px is the bible's. */
 .editor-shell-rail {
   grid-area: rail;
   display: flex;
@@ -799,7 +810,6 @@ body,
   align-items: center;
   gap: 3px;
   padding: 8px 0 8px 1px;
-  border-radius: 12px;
 }
 .editor-shell-rail button {
   position: relative;
@@ -825,7 +835,11 @@ body,
 }
 /* The bar hangs in the 6px gutter between the 34px slot and the 46px rail, so
    its outer edge is flush with the rail's inner (right) edge — not the mirror
-   `right: -8px`, which lands 2px past that edge in the rail-to-pane gap. */
+   `right: -8px`, which lands 2px past that edge in the rail-to-pane gap.
+
+   The `2px` radius is a **degenerate mark**: its value *is* the bar's own
+   thickness (a 2px bar rounded to half its width), not a step on §3's closed
+   scale, so Task 6's ratchet must exempt it by name rather than by value. */
 .editor-shell-rail button[aria-pressed="true"]::before {
   content: "";
   position: absolute;
@@ -867,7 +881,6 @@ body,
 .editor-shell-inspector {
   min-height: 0;
   overflow: auto;
-  border-radius: 12px;
 }
 /* `cursor: pointer` is the shell's standing convention for a control, and it is
    the **only** thing this rule may say about an inspector button. The rest of
@@ -884,7 +897,7 @@ body,
   color: var(--shell-text);
   border: 0;
   background: transparent;
-  border-radius: 7px;
+  border-radius: var(--radius-md);
   cursor: pointer;
 }
 /* §5 rule 6: on a glyph-only control the border is what hover raises, not a
@@ -1239,7 +1252,7 @@ body,
   max-width: 560px;
   padding: 20px 24px;
   border: 1px solid var(--shell-edge);
-  border-radius: 12px;
+  border-radius: var(--radius-lg);
   background: var(--shell-surface);
   color: var(--shell-text);
   /* §3's overlay elevation, the token every floating surface rides on: the
@@ -1513,9 +1526,11 @@ body,
      `composition-pane.tsx` that CSS owns: the drop-line's `top` is
      `index * ROW_HEIGHT`, so a row that is a different height than that
      constant puts the line half a row off the slot it promises. */
+  /* §3: a row takes `--radius-md` — the scale's entry for menu rows and small
+     tiles — rather than the off-scale `5px` it carried (plan 7 Task 3). */
   height: 26px;
   overflow: hidden;
-  border-radius: 5px;
+  border-radius: var(--radius-md);
   /* The state controls are laid over this edge, so the row is their containing
      block. */
   position: relative;
@@ -1591,7 +1606,11 @@ body,
 }
 
 /* One line for the whole tree, positioned at the slot the drop would land on,
-   so a moved row can never leave a second marker behind. */
+   so a moved row can never leave a second marker behind.
+
+   The `1px` radius is a **degenerate mark**: the line is 2px and its radius is
+   half that, so the value *is* its own thickness rather than a step on §3's
+   closed scale. Task 6's ratchet exempts it by name. */
 .vigilia-layer-dropline {
   position: absolute;
   top: var(--layer-dropline-top, 0);
@@ -1727,7 +1746,7 @@ body,
   flex: 0 0 auto;
   width: 10px;
   height: 10px;
-  border-radius: 2px;
+  border-radius: var(--radius-sm);
   /* The outline is what a shape with no flat paint — a gradient, or ink alone —
      shows instead, so it is always drawn and the fill sits inside it. */
   border: 1px solid color-mix(in srgb, var(--shell-text) 35%, transparent);
@@ -1737,7 +1756,7 @@ body,
   flex: 0 0 auto;
   width: 18px;
   height: 12px;
-  border-radius: 2px;
+  border-radius: var(--radius-sm);
   object-fit: cover;
   /* A picture that has not decoded is a hole, not a picture, so the frame is
      drawn before it arrives rather than after. */
@@ -1891,10 +1910,11 @@ body,
   min-height: 0;
   position: relative;
   overflow: hidden;
-  border-radius: 12px;
   /* No border: the pane's `border-right` and the inspector's `border-left`
      already draw the two hairlines beside it (see the §3 elevation-0 block),
-     so a border here would be the same hairline drawn twice. */
+     so a border here would be the same hairline drawn twice. No radius either:
+     it is a flush region of the shell, square like the other three (plan 7
+     Task 3). */
   background: var(--vigilia-canvas-bg);
 }
 /* §7.5's two top corners in one row, so §7.7's "clusters cannot collide" is a

@@ -37,7 +37,7 @@
   <div style="display:flex;flex:1;min-height:0">
 
     <!-- rail: four slots, the gear at the foot -->
-    <div style="width:46px;flex:0 0 auto;background:#0e1217;border-right:1px solid var(--edge);display:flex;flex-direction:column;align-items:center;padding:8px 0;gap:3px">
+    <div style="width:46px;box-sizing:border-box;flex:0 0 auto;background:#0e1217;border-right:1px solid var(--edge);display:flex;flex-direction:column;align-items:center;padding:8px 0 8px 1px;gap:3px">
       <span style="width:34px;height:34px;border-radius:8px;display:flex;align-items:center;justify-content:center">
         <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--faint)" stroke-width="1.7"><path d="M12 3 3 8l9 5 9-5-9-5Z"/><path d="m3 13 9 5 9-5"/></svg></span>
       <span style="width:34px;height:34px;border-radius:8px;background:#182430;display:flex;align-items:center;justify-content:center;position:relative">
@@ -147,14 +147,14 @@
 
       <!-- top-left: what is open -->
       <div style="position:absolute;top:14px;left:14px;display:flex;align-items:center;gap:8px;background:#0d1116f2;
-                  border:1px solid var(--edge);border-radius:9px;padding:7px 11px;box-shadow:0 8px 20px #0007">
+                  border:1px solid var(--edge);border-radius:10px;padding:7px 11px;box-shadow:0 8px 20px #00000059">
         <span style="width:7px;height:7px;border-radius:50%;background:var(--faint)"></span>
         <span style="font:500 12px/1 system-ui">System dashboard</span>
       </div>
 
       <!-- top-right: the camera and the display it looks through -->
       <div style="position:absolute;top:14px;right:14px;display:flex;align-items:center;gap:2px;background:#0d1116f2;
-                  border:1px solid var(--edge);border-radius:9px;padding:4px;box-shadow:0 8px 20px #0007">
+                  border:1px solid var(--edge);border-radius:10px;padding:4px;box-shadow:0 8px 20px #00000059">
         <span style="width:22px;height:22px;border-radius:5px;display:flex;align-items:center;justify-content:center">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.8"><path d="M5 12h14"/></svg></span>
         <span style="font:400 11px ui-monospace,Menlo,monospace;padding:4px;min-width:34px;text-align:center">50%</span>
@@ -167,7 +167,7 @@
 
       <!-- bottom: the actions the selection can run, then the arrange actions -->
       <div style="position:absolute;left:50%;transform:translateX(-50%);bottom:16px;display:flex;align-items:center;gap:2px;
-                  background:#0d1116f2;border:1px solid var(--edge);border-radius:10px;padding:5px;box-shadow:0 10px 26px #0007">
+                  background:#0d1116f2;border:1px solid var(--edge);border-radius:10px;padding:5px;box-shadow:0 8px 20px #00000059">
         <span style="width:30px;height:30px;border-radius:7px;display:flex;align-items:center;justify-content:center">
           <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.7"><rect x="8" y="8" width="14" height="14" rx="2"/><path d="M4 16c-1.1 0-2-.9-2-2V4c0-1.1.9-2 2-2h10c1.1 0 2 .9 2 2"/><path d="M15 12v6M12 15h6"/></svg></span>
         <span style="width:30px;height:30px;border-radius:7px;display:flex;align-items:center;justify-content:center">

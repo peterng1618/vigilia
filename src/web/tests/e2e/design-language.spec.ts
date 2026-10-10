@@ -1741,10 +1741,11 @@ async function renderedDialogs(page: Page): Promise<number> {
  * **Silence is a reading.** The four body regions are the case: the drawing
  * draws them **flush** and **square**, so it declares no `padding`, no `gap` and
  * no `border-radius` for them, and *that* — not a missing check — is why the
- * product's 8px inset and 12px radius fail below. Where the drawing declares
- * nothing the row reads `0`, and `mockupDeclaredOrNull` still throws when a row's
- * selector addresses nothing at all, so a stale selector cannot pass as a region
- * the drawing draws flush.
+ * rows below require `0` of the product (the 8px inset and the 12px radius they
+ * read before Tasks 2 and 3 are gone). Where the drawing declares nothing the row
+ * reads `0`, and `mockupDeclaredOrNull` still throws when a row's selector
+ * addresses nothing at all, so a stale selector cannot pass as a region the
+ * drawing draws flush.
  *
  * **The drawing is not every row's source.** A region the drawing draws as part
  * of a *window* has no counterpart in a product that **is** the window, so the
@@ -1762,13 +1763,17 @@ async function renderedDialogs(page: Page): Promise<number> {
  * property and permits both variants — the narrow case, and never "the bible does
  * not forbid it").
  *
- * **The header row is the control.** The drawing and the product already agree
- * that the header is 42px, so it passes today. A run in which *nothing* fails is
- * therefore a reader that stopped reading rather than a shell that came right,
- * and that is why the row is in the table rather than left out as redundant.
+ * **The header row is the control.** The drawing and the product agree that the
+ * header is 42px, so it passed from the start and still does. Its job is to keep
+ * a reader that stopped reading visible: a row that measured nothing lands in
+ * `unresolved` and fails rather than reporting a shell that came right by
+ * reading nothing. It is in the table, rather than left out as redundant, for
+ * that reason.
  *
- * **These assertions fail on the shell shipped at `d7d5baaa`, by design.** Tasks
- * 2 and 3 fix what they name; the plan is not done while any row here is red.
+ * **Every row here passes as of plan 7 Task 3**, which closed the last six the
+ * table named — the four region radii (`rail`, left pane, stage and inspector,
+ * each drawn flush and square) and both dialog frames (`--radius-lg`). Tasks 2
+ * and 3 between them fixed what the rows required, and none is red.
  *
  * A `--grep` that matches nothing exits 0 with zero tests, so the run's own
  * summary — "1 test", this file — is the proof it ran at all.
@@ -1964,6 +1969,30 @@ test("the shell is what the drawing draws", async ({ page }, testInfo) => {
 
   for (const line of table) console.log(`parity ${line}`);
   testInfo.annotations.push({ type: "parity", description: table.join(" | ") });
+
+  // ── Task 3 Step 4: the two dialogs against each other, not only the scale ──
+  //
+  // Both dialogs render the one `.editor-shell-dialog` rule, and each row above
+  // compares its computed frame against `--radius-lg` on its own. That pair
+  // cannot see *relative* equality: a change scoped to one dialog (a rule the
+  // settings surface alone matched, say) would pass both rows only if its value
+  // also happened to equal `--radius-lg`. Reading the two frames side by side is
+  // what makes a change made for the settings modal and missed on the `?` sheet
+  // fail a row rather than pass quietly.
+  const dialogFrame = (surface: "settings" | "sheet"): string | null =>
+    product[`${surface}|.editor-shell-dialog|border-radius`] ?? null;
+  expect(
+    dialogFrame("settings"),
+    "the settings modal's frame was not read, so the two dialogs cannot be compared",
+  ).not.toBeNull();
+  expect(
+    dialogFrame("sheet"),
+    "the `?` sheet's frame was not read, so the two dialogs cannot be compared",
+  ).not.toBeNull();
+  expect(
+    dialogFrame("sheet"),
+    `the two dialogs' frames differ — settings ${dialogFrame("settings")}, \`?\` sheet ${dialogFrame("sheet")}`,
+  ).toBe(dialogFrame("settings"));
 
   expect(
     unresolved,
