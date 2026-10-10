@@ -2416,6 +2416,33 @@ test("every radius the shell drawing declares is on §3's scale", () => {
       "a circle — `full` reached the other way (the thumb, the knob, the dot)",
     ],
   ]);
+  /** A corner is square when it is **zero**, in either spelling CSS allows for
+   *  a radius (`0` and `0px`; `0%` is the same zero). Square is the degenerate
+   *  *absence* of rounding, and it arrives in a shorthand — `8px 8px 0 0` is an
+   *  ordinary value, not an off-scale one. Without this the row would reject a
+   *  legitimate square corner and cry wolf, which is how a gate gets turned
+   *  off. A **non-zero** corner is still held to the scale: the regex admits
+   *  only a number and an optional `px`/`%`, so `0.0` and `-0px` are zero and
+   *  `7px` is not. */
+  const isSquare = (corner: string): boolean => {
+    const parsed = /^(-?[\d.]+)(?:px|%)?$/.exec(corner);
+    return parsed !== null && Number.parseFloat(parsed[1] ?? "NaN") === 0;
+  };
+  const allowed = (corner: string): boolean =>
+    SCALE.has(corner) || DEGENERATE.has(corner) || isSquare(corner);
+
+  // The square-corner branch is unexercised by the drawing today — it draws no
+  // shorthand — so the two spellings it must accept and the corner it must
+  // still refuse are read here: a fix for a false positive that nothing
+  // exercises is a fix nobody can trust.
+  expect(
+    ["0", "0px"].filter((corner) => !allowed(corner)),
+    "a square corner is not accepted, so an ordinary shorthand would false-positive",
+  ).toEqual([]);
+  expect(
+    allowed("7px"),
+    "an off-scale corner is accepted, so the row no longer holds a shorthand's corners to the scale",
+  ).toBe(false);
 
   const offScale: string[] = [];
   for (const { value, line } of declared) {
@@ -2423,9 +2450,9 @@ test("every radius the shell drawing declares is on §3's scale", () => {
     // corner is held to the scale, so an off-scale corner cannot hide behind a
     // legal neighbour.
     for (const corner of value.split(/[\s/]+/).filter((part) => part !== "")) {
-      if (SCALE.has(corner) || DEGENERATE.has(corner)) continue;
+      if (allowed(corner)) continue;
       offScale.push(
-        `${SHELL_DRAWING}:${line} border-radius: ${value} — \`${corner}\` is not on §3's scale (4/6/8/10/999) and is no named degenerate mark (${[...DEGENERATE.keys()].join(", ")})`,
+        `${SHELL_DRAWING}:${line} border-radius: ${value} — \`${corner}\` is not on §3's scale (4/6/8/10/999), is no named degenerate mark (${[...DEGENERATE.keys()].join(", ")}), and is not square`,
       );
     }
   }
