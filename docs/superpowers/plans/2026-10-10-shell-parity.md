@@ -30,6 +30,16 @@
 
 Five failure modes this change implies and no single task's tests would catch. Each is pinned to the task that owns the code.
 
+**Mockup paths, from Task 9 onward.** Every task below Task 9 was written naming the files that existed when it was drafted. Task 9 replaces the *target* with new files and keeps the old ones as provenance, so in **every task after Task 9** a reference to "the drawing", or to one of the filenames on the left, means the file on the right — and a reference to a line number in an original is a stale landmark to re-locate in the current file, never a reason to read the original:
+
+| Named in this plan as | Means, from Task 8 and Task 2 onward |
+|---|---|
+| `docs/design/mockups/editor-shell.html` | `docs/design/mockups/current/shell.html` |
+| `docs/design/mockups/inspector-controls.html` | `docs/design/mockups/current/controls.html` |
+| `docs/design/mockups/inspector-language.html` | `docs/design/mockups/current/controls-light.html` |
+
+**The originals are never a target.** They are the record of what was designed first; the user's instruction of 2026-10-10 kept them and had new files built. Reading one to decide a value is the drift this plan exists to end — and Task 9's Step 5 proves they were not edited, so an original's values are *historical*, not normative.
+
 **Execution order.** The tasks are numbered in writing order, which is not execution order. **Task 9 runs first**: everything else reads the mockups, and the user asked on 2026-10-10 for new files showing today's surfaces without annotation, so the new drawings exist before the instrument is re-pointed at them. Then **Task 8**, which answers a defect the user reported and must land before Task 7 turns the ratchet on over the stylesheet it edits. After it, the order is 2 → 3 → 4 → 5 → 6 → 7.
 
 1. **A flush shell can detach a control from what it controls.** The 8px gap is what visually separates the rail, both panes and the stage today; removing it is a geometry change to a layout that also holds the pane toggles, the rail slots and the canvas clusters. A hairline boundary that runs through a control's own hit area, or a toggle that now abuts the region it acts on, is a usability defect no geometry assertion sees. **Task 2** carries the browser walkthrough: toggle each pane, drag the inspector, click the rail's four slots and the dock, with the capture read.
