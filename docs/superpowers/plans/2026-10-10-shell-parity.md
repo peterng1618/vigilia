@@ -145,17 +145,32 @@ Run the whole editor unit suite and record its counts in the body.
 
 **Outcome:** Every literal radius in `editor-shell.css` is on §3's closed scale, is a named degenerate mark, or is gone because the surface is a flush region of the shell and square. The three off-scale `12px` region radii (rail, panes/inspector, stage) are **removed**, and the fourth (`.editor-shell-dialog`) becomes `--radius-lg` — so the one surface here that floats keeps a scale entry and every surface that abuts loses one. The drawing's outer card is the **drawn window** and has no counterpart (Global Constraints), so nothing here rounds the product's root.
 
-**Owning symbols/landmarks:** `editor-shell.css` — the four `12px` rules (`.editor-shell-rail`, `.editor-shell-panel`/`.editor-shell-inspector`, `.editor-shell-dialog`, `.editor-shell-stage`), the `7px` icon-button rule, the layer rows' `5px`, and the swatch/thumb `2px` rules; the `--radius-*` declarations; `editor-shell.html:44-48` (the drawing's own frame rule) and its `border-radius` declarations as the evidence for which surfaces are rounded.
+**Owning symbols/landmarks:** `editor-shell.css` — the four `12px` rules (`.editor-shell-rail`, `.editor-shell-panel`/`.editor-shell-inspector`, `.editor-shell-dialog`, `.editor-shell-stage`), the `7px` icon-button rule, the layer rows' `5px`, and the swatch/thumb `2px` rules; the `--radius-*` declarations; `docs/design/mockups/current/shell.html` — its `border-radius` declarations are the evidence for which surfaces are rounded (line 150, 157 and 170 carry the three Step 1 corrects), and the drawn window's own frame rule is not a product surface at all.
 
 **Files:**
 - Modify: `src/web/packages/editor/src/editor-shell/editor-shell.css`
 - Modify: `src/web/tests/e2e/design-language.spec.ts`
+- Modify: `docs/design/mockups/current/shell.html` — the three off-bible declarations Step 1 corrects, and nothing else in it
 
 **Interfaces:**
 - Consumes: Task 1's radius rows; Task 2's flush body.
 - Produces: no behavioural interface; the invariant is that no `border-radius` literal off §3's scale survives in this file, which Task 6's gate enforces rather than this task's prose.
 
-- [ ] **Step 1: Decide each off-scale value against its owner, and record the decision**
+- [ ] **Step 1: Correct the drawings' own off-bible declarations, in the same task that reads their radius scale**
+
+**The current drawings are correctable and the originals are not** — the drawings' README now says the bible wins where the **current set** disagrees with it, and that the originals are frozen. Task 9 copied the originals' treatment faithfully, so the off-bible values came with it and now live in the target:
+
+| Where | Says | §3 requires |
+|---|---|---|
+| `current/shell.html:150` identity chip | `border-radius:9px`, `box-shadow:0 8px 20px #0007` | `--radius-xl` **10px** (`design-language.md:93`), elevation 1 `**0 8px 20px #00000059**` (`:103`) |
+| `current/shell.html:157` view cluster | `border-radius:9px`, `box-shadow:0 8px 20px #0007` | as above |
+| `current/shell.html:170` dock | `box-shadow:0 10px 26px #0007` | elevation 1 `**0 8px 20px #00000059**` (`:103`) — its `10px` radius already matches |
+
+Correct those to the §3 values, naming this step and `vg-296` in the commit. **The direction matters: the drawing is corrected to the bible, never the reverse** — do not read the product's value and write it into the drawing, which is the self-licensing this plan exists to end in either direction.
+
+The reason this is *this* task's: a radius row that reads its expected value from a drawing which itself contradicts the closed scale would fail the product for the drawing's error, and the whole point of Task 1's instrument is that its expected values are trustworthy. `vg-296`'s fourth case, the settings tab treatment that contradicts itself, is **not** here — it is in the modal, and the next plan owns it.
+
+- [ ] **Step 2: Decide each off-scale value against its owner, and record the decision**
 
 Five distinct off-scale values: `1`, `2`, `5`, `7`, `12`.
 
@@ -165,19 +180,21 @@ Five distinct off-scale values: `1`, `2`, `5`, `7`, `12`.
 
 The `7px` icon button is §5's `--radius-md`. The `2px` swatch is §3's `--radius-sm` for a swatch. `1px` and the dropline's `2px` are degenerate marks whose value is their thickness; the comment says so, so Task 6's gate can exempt them by name rather than by value.
 
-- [ ] **Step 2: Apply them, and make the dialog's frame one rule for both dialogs**
+- [ ] **Step 3: Apply them, and make the dialog's frame one rule for both dialogs**
 
 The shell's regions and the two dialogs are changed together, because `.editor-shell-dialog` is one rule rendered by `shortcut-reference.tsx` and `settings.tsx` (Review Focus 5).
 
-- [ ] **Step 3: Assert both dialogs against each other, not only against the scale**
+- [ ] **Step 4: Assert both dialogs against each other, not only against the scale**
 
 **Both dialogs are already in Task 1's table**, each comparing `--radius-lg` against its computed frame. This step adds the thing that assertion cannot see: that the two dialogs' frames are **equal to each other**, so a change made for the settings modal and missed on the `?` sheet fails a row rather than passing quietly. Run both.
 
-- [ ] **Step 4: Prove the assertions fail when the value is put back**
+- [ ] **Step 5: Prove the assertions fail when the value is put back**
 
 Restore one `12px`, rebuild, re-run, confirm the row fails, restore with `cp` and verify with `cmp`.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 6: Commit**
+
+The drawing correction from Step 1 and the CSS from Steps 2–3 land together, and the body names `vg-296` and the §3 values the drawing was corrected to.
 
 ---
 
