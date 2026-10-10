@@ -256,7 +256,9 @@ One case that fails if a palette's ladder stops matching graphite's: for each of
 
 ### Task 5: Chrome is opaque in all six palettes
 
-**Outcome:** A palette's chrome surfaces are flat and opaque as §3's elevation row 0 and the drawing both have them, and the `backdrop-filter`/gradient treatment is what §3 reserves for floating clusters over the canvas — for every palette, not only the drawn one.
+**Outcome:** A palette's chrome surfaces are **flat and unblurred** as §3's elevation row 0 and the drawing both have them, and the `backdrop-filter`/gradient treatment belongs to the floating clusters over the canvas — as an **element** boundary rather than a palette one, and in every palette rather than only the drawn one.
+
+**`opaque` was this task's word and the boundary is not that wide.** §3's row 0 asks for a flat surface with no shadow and a 1px edge; a palette whose own `--panel` carries alpha (light, `#eff9f2bf`, compositing over the set's only gradient ground) has **no opaque derivation to read**, and inventing one would be the picked value this plan exists to replace. So the task goes as far as the derivation reaches — five of six palettes opaque, `light` exempt by name in the assertion and by row in the register (`vg-310`) — and what the step is *for*, the gradient and the blur coming off chrome, holds in all six. Task 5 also lifted **`editorial`'s two clusters**, which the palette-wide flat rule had been flattening along with its chrome; that is a behaviour change, not a byte count.
 
 **Owning symbols/landmarks:** `editor-shell.css` — the `.editor-glass` block and its per-palette selectors, the flat override that already strips shadow and blur from rail/panes/inspector, the gradient declaration, the `@supports not (backdrop-filter)` fallback, and each palette's surface roles; `shell-appearance.spec.ts`'s "editorial is flat and the other five are glass".
 
@@ -271,7 +273,9 @@ One case that fails if a palette's ladder stops matching graphite's: for each of
 
 - [ ] **Step 1: Write the assertion for both halves of the boundary**
 
-Two cases: a chrome region's computed background has no alpha and no `backdrop-filter`, and a cluster's has both. Run them; today the chrome half fails under five of six palettes.
+Two cases: a chrome region's computed background has no alpha and no `backdrop-filter`, and a cluster's has both. **The boundary is per element, so the assertion reads the elements and not a sample of them** — every chrome region (the rail, both panes, the inspector, the header and the status strip) and every floating cluster (the dock, the zoom cluster and the identity chip, §7.5's three); Task 5's review found the shipped case reading four of five chrome surfaces and one of three clusters, which is how a boundary turns back into a sample.
+
+Measure before changing: this step's premise read "the chrome half fails under five of six palettes" and the measurement was different in two places — **opacity failed under six of six** (editorial included) and **the blur under none**, because the flat override had already stripped `backdrop-filter` from the rail, both panes and the inspector. Record which palettes fail which half — opacity, gradient, blur — rather than carrying this paragraph's numbers forward.
 
 - [ ] **Step 2: Change the treatment, and keep the one boundary**
 
