@@ -1,6 +1,55 @@
+// @vitest-environment jsdom
+
+/**
+ * The manager's key, and the prompt that asks before a document is replaced.
+ *
+ * **jsdom is here for the prompt, and jsdom is why this journey is new.** It
+ * implements neither `<dialog>`'s `showModal` nor its top layer, so the
+ * hand-built prompt could not be driven outside a browser at all — the reason
+ * `editor-session.dom.test.ts` mocks it. The React `Dialog` needs no browser API
+ * the shims below do not already supply, so the three answers, the dismissal and
+ * the focus return are assertable here.
+ */
+
 import { readThemePackage } from "@vigilia/theme-package";
-import { describe, expect, it } from "vitest";
-import { documentKey, PersistenceManager } from "./index.js";
+import { act } from "react";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import { uiCopy } from "../ui-copy.js";
+import {
+  confirmDocumentReplacement,
+  documentKey,
+  PersistenceManager,
+} from "./index.js";
+
+// Base UI's modal needs the three browser APIs jsdom has none of, the same three
+// `theme-library-dialog.dom.test.ts` supplies, for the same reason.
+globalThis.ResizeObserver ??= class {
+  observe(): void {}
+  unobserve(): void {}
+  disconnect(): void {}
+} as never;
+Element.prototype.getAnimations ??= (): never[] => [];
+window.PointerEvent ??= MouseEvent as never;
+
+(
+  globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
+).IS_REACT_ACT_ENVIRONMENT = true;
+
+beforeAll(() => {
+  const matches = Element.prototype.matches;
+  Element.prototype.matches = Object.assign(function (
+    this: Element,
+    selector: string,
+  ): boolean {
+    if (selector === ":modal" || selector === ":popover-open") return false;
+    return matches.call(this, selector);
+  }, matches);
+});
+
+afterEach(() => {
+  document.body.replaceChildren();
+  vi.restoreAllMocks();
+});
 
 const baseline = {
   schemaVersion: 2,
@@ -240,5 +289,108 @@ describe("PersistenceManager", () => {
       documentKey(document, { "assets/logo.png": big }).length -
         documentKey(document, { "assets/logo.png": logo }).length,
     ).toBeLessThan(64);
+  });
+});
+
+describe("confirmDocumentReplacement", () => {
+  /** Opens the prompt the way the session opens it. The first commit is
+   *  flushed, so the dialog is in the document when this returns. */
+  function open(): Promise<"save" | "discard" | "cancel"> {
+    let pending: Promise<"save" | "discard" | "cancel"> | undefined;
+    act(() => {
+      pending = confirmDocumentReplacement();
+    });
+    if (pending === undefined) throw new Error("no promise returned");
+    return pending;
+  }
+
+  function prompt(): HTMLElement {
+    const dialog = document.querySelector<HTMLElement>('[role="dialog"]');
+    if (dialog === null) throw new Error("no dialog opened");
+    return dialog;
+  }
+
+  function answers(): readonly HTMLButtonElement[] {
+    return [...prompt().querySelectorAll<HTMLButtonElement>("button")];
+  }
+
+  function answer(text: string): HTMLButtonElement {
+    const button = answers().find((entry) => entry.textContent === text);
+    if (button === undefined) throw new Error(`no ${text} answer`);
+    return button;
+  }
+
+  async function press(text: string): Promise<void> {
+    await act(async () => {
+      answer(text).click();
+    });
+  }
+
+  it("carries the question, and every answer's own word", () => {
+    const pending = open();
+    void pending.catch(() => {});
+    const dialog = prompt();
+
+    // Named, so a screen reader is on the question before it hears an answer.
+    expect(dialog.getAttribute("aria-label")).toBe(
+      uiCopy.replaceDocument.question,
+    );
+    expect(dialog.textContent).toContain(uiCopy.replaceDocument.question);
+    expect(answers().map((button) => button.textContent)).toEqual([
+      uiCopy.replaceDocument.save,
+      uiCopy.replaceDocument.cancel,
+      // Discard last, and Cancel beside it: the two destructive-adjacent acts
+      // are ordered so a slip toward the edge lands on the one that keeps the
+      // work, which the imperative dialog also did deliberately.
+      uiCopy.replaceDocument.discard,
+    ]);
+    for (const button of answers()) expect(button.type).toBe("button");
+  });
+
+  it.each([
+    ["save", "save"],
+    ["cancel", "cancel"],
+    ["discard", "discard"],
+  ] as const)(
+    "answers %s when the author presses it",
+    async (word, expected) => {
+      const pending = open();
+      await press(uiCopy.replaceDocument[word]);
+      await expect(pending).resolves.toBe(expected);
+      // The surface leaves with the answer, so a stray second press cannot
+      // re-answer a question the session has already acted on.
+      expect(document.querySelector('[role="dialog"]')).toBeNull();
+    },
+  );
+
+  it("answers Cancel when Escape dismisses it, and loses nothing", async () => {
+    const pending = open();
+    await act(async () => {
+      prompt().dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+      );
+    });
+
+    // Cancel is the only answer that costs no work: a dismissal must not be
+    // read as a Discard by the session that awaits this.
+    await expect(pending).resolves.toBe("cancel");
+    expect(document.querySelector('[role="dialog"]')).toBeNull();
+  });
+
+  it("returns focus to the control that asked", async () => {
+    const invoker = document.createElement("button");
+    invoker.textContent = "New theme";
+    document.body.append(invoker);
+    invoker.focus();
+    expect(document.activeElement).toBe(invoker);
+
+    const pending = open();
+    await press(uiCopy.replaceDocument.cancel);
+    await pending;
+
+    // The author is back where they pressed, not at the top of the document.
+    // Focus lands on the way out rather than through a later effect, so this
+    // reads it synchronously after the answer.
+    expect(document.activeElement).toBe(invoker);
   });
 });

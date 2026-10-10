@@ -1,6 +1,11 @@
 import type { FabricThemeEnvelope } from "@vigilia/renderer-core";
+import { createElement } from "react";
+import { openModal } from "../components/ui/modal-host.js";
 import { fileNameFor, serializeThemePackage } from "../persist.js";
-import { uiCopy } from "../ui-copy.js";
+import {
+  ReplaceDocumentPrompt,
+  type ReplacementAnswer,
+} from "./replace-document-prompt.js";
 
 export type Downloader = (name: string, bytes: Uint8Array) => void;
 
@@ -61,61 +66,18 @@ export class PersistenceManager {
 }
 
 /** Asks before a document is replaced. A prompt the author reads on the way to
- *  losing their work, so it is named, centred and keyboard-dismissable like the
- *  other two: an unclassed `<dialog>` picked up no margin from the preflight
- *  reset and landed over the very menu it was opened from, asking its question
- *  in the corner of the screen. */
-export async function confirmDocumentReplacement(): Promise<
-  "save" | "discard" | "cancel"
-> {
-  const dialog = document.createElement("dialog");
-  dialog.className = "vigilia-dialog";
-  dialog.setAttribute("aria-label", uiCopy.replaceDocument.question);
-
-  const form = document.createElement("div");
-  form.className = "vigilia-dialog-form";
-  const lead = document.createElement("p");
-  lead.className = "vigilia-dialog-lead";
-  lead.textContent = uiCopy.replaceDocument.question;
-  const actions = document.createElement("div");
-  actions.className = "vigilia-dialog-actions";
-
-  // Discard last among the answers, because it is the one that loses work and
-  // Cancel sits beside it, where a slip lands on Cancel and not on Discard.
-  for (const [value, text] of [
-    ["save", uiCopy.replaceDocument.save],
-    ["cancel", uiCopy.replaceDocument.cancel],
-    ["discard", uiCopy.replaceDocument.discard],
-  ] as const) {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.value = value;
-    button.textContent = text;
-    button.addEventListener("click", () => {
-      dialog.close(value);
-    });
-    actions.append(button);
-  }
-
-  form.append(lead, actions);
-  dialog.append(form);
-  document.body.append(dialog);
-
-  return new Promise((resolve) => {
-    dialog.addEventListener(
-      "close",
-      () => {
-        dialog.remove();
-        resolve(
-          dialog.returnValue === "save" || dialog.returnValue === "discard"
-            ? dialog.returnValue
-            : "cancel",
-        );
-      },
-      { once: true },
-    );
-    dialog.showModal();
-  });
+ *  losing their work, so it is a `Dialog` — named, centred, keyboard-dismissable
+ *  and portalled to the top layer, where an unclassed `<dialog>` once picked up
+ *  no margin from the preflight reset and landed over the very menu it was
+ *  opened from, asking its question in the corner of the screen.
+ *
+ *  A dismissal resolves `cancel`, which is what an empty `returnValue` already
+ *  meant: Escape must not be read as consent to lose the work. */
+export async function confirmDocumentReplacement(): Promise<ReplacementAnswer> {
+  const answer = await openModal<ReplacementAnswer>((settle) =>
+    createElement(ReplaceDocumentPrompt, { settle }),
+  );
+  return answer ?? "cancel";
 }
 
 /**
