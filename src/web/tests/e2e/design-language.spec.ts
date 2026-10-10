@@ -3,6 +3,7 @@ import { captureVisualReview } from "./editor-canvas.js";
 import { openPane } from "./editor-rail.js";
 import {
   currentDrawings,
+  lengthInPx,
   MOCKUP_PATH,
   mockupDeclarations,
   mockupDeclared,
@@ -2045,40 +2046,6 @@ test("the chrome's own contrast clears §5 under all six palettes", async ({
   ).toEqual([]);
 });
 
-/** A CSS length in px that **every** value of a shorthand agrees on.
- *
- *  `border-radius` is a shorthand of four corners and `getComputedStyle`
- *  serialises a non-uniform radius as `8px 8px 0px 0px`, so a comparator that
- *  read only the first token made a square-bottomed dialog pass a row requiring
- *  the panel radius: `border-radius: 8px 8px 0 0` on `.editor-shell-dialog`
- *  read as `8`, and the modal shipped with two square corners a person can see.
- *  Every token is therefore held: a value whose tokens disagree has no single
- *  length it means, so it is `null` and the row fails naming the whole rendered
- *  value rather than the first token of it.
- *
- *  `normal` is `gap`'s own word for no gap and reads as `0`; anything else is
- *  not a length this table compares, and fails with its own text. A
- *  **single-value** radius is unchanged: `8px` is one token and still means `8`,
- *  as does `8px 8px 8px 8px` — the same radius spelled out. */
-function lengthInPx(value: string): number | null {
-  const tokens = value
-    .trim()
-    .split(/[\s/]+/)
-    .filter((part) => part !== "");
-  if (tokens.length === 0) return null;
-  if (tokens[0] === "normal") return 0;
-  const lengths: number[] = [];
-  for (const token of tokens) {
-    const match = /^(-?[\d.]+)px$/.exec(token);
-    if (match === null) return null;
-    const px = Number.parseFloat(match[1] ?? "NaN");
-    if (!Number.isFinite(px)) return null;
-    lengths.push(px);
-  }
-  const first = lengths[0] ?? null;
-  return lengths.every((length) => length === first) ? first : null;
-}
-
 /** How many dialogs are **rendered** right now.
  *
  *  Both dialogs render `.editor-shell-dialog` from one rule, and **only one is
@@ -2158,20 +2125,11 @@ test("the shell is what the drawing draws", async ({ page }, testInfo) => {
 
   await openShell(page);
 
-  // The comparator holds every token of a value: a non-uniform radius has no
-  // single length it means and must not be reduced to its first corner, which
-  // is how `8px 8px 0 0` on `.editor-shell-dialog` passed both dialog rows.
-  // Asserted here, where the comparator is used, so a later edit that reverts
-  // to the first token reddens on the run rather than on a planted build.
-  expect(
-    lengthInPx("8px 8px 0 0"),
-    "the comparator reduced a shorthand to its first corner, so a square-bottomed dialog would pass",
-  ).toBeNull();
-  expect(
-    lengthInPx("8px"),
-    "a single-value radius no longer means its own length",
-  ).toBe(8);
-
+  // `lengthInPx` — the comparator the rows below run every rendered value
+  // through — is a pure decision and is proved in `mockup-values.test.ts`,
+  // where `vitest run` holds it. It was asserted here first, and this test is
+  // skipped off a desktop surface, so a revert to reading the first token of a
+  // shorthand left the fast suite green.
   const drawing = readMockup();
   expect(
     PARITY.length,

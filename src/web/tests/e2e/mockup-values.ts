@@ -355,6 +355,49 @@ function lookup(
   return value;
 }
 
+/** A CSS length in px that **every** value of a shorthand agrees on.
+ *
+ *  **A pure decision, so it is proved in `mockup-values.test.ts` rather than in a
+ *  browser run.** Its defect — reading only the first token — was invisible for
+ *  exactly the reason this file is unit-tested: `border-radius` is a shorthand of
+ *  four corners and `getComputedStyle` serialises a non-uniform radius as
+ *  `8px 8px 0px 0px`, so `border-radius: 8px 8px 0 0` on `.editor-shell-dialog`
+ *  read as `8` and the modal shipped with two square corners a person can see. A
+ *  comparator whose guard sits behind a desktop browser run is a comparator a
+ *  `vitest run` cannot hold, and that is the failure it already had once.
+ *
+ *  Every token is therefore held: a value whose tokens disagree has no single
+ *  length it means, so it is `null` and the row fails naming the whole rendered
+ *  value rather than the first token of it. `normal` is `gap`'s own word for no
+ *  gap and reads as `0`, and so is a bare `0` — the one length CSS lets a
+ *  drawing write without a unit, so a row whose drawing says `padding-top:0`
+ *  reads as flush rather than as a value this table cannot read. Anything else
+ *  without `px` is not a length, and fails with its own text. A **single-value**
+ *  radius is unchanged: `8px` is one token and still means `8`, as does
+ *  `8px 8px 8px 8px` — the same radius spelled out. */
+export function lengthInPx(value: string): number | null {
+  const tokens = value
+    .trim()
+    .split(/[\s/]+/)
+    .filter((part) => part !== "");
+  if (tokens.length === 0) return null;
+  if (tokens[0] === "normal") return 0;
+  const lengths: number[] = [];
+  for (const token of tokens) {
+    if (token === "0") {
+      lengths.push(0);
+      continue;
+    }
+    const match = /^(-?[\d.]+)px$/.exec(token);
+    if (match === null) return null;
+    const px = Number.parseFloat(match[1] ?? "NaN");
+    if (!Number.isFinite(px)) return null;
+    lengths.push(px);
+  }
+  const first = lengths[0] ?? null;
+  return lengths.every((length) => length === first) ? first : null;
+}
+
 /** Every property name the selector declares, each once and in document order.
  *
  *  The reading a *set* needs and a value cannot give: an assertion that each row

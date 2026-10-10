@@ -4,6 +4,7 @@ import {
   CONTROLS_LIGHT_MOCKUP_PATH,
   CONTROLS_MOCKUP_PATH,
   currentDrawings,
+  lengthInPx,
   MOCKUP_PATH,
   mockupDeclared,
   mockupDeclaredOrNull,
@@ -351,6 +352,34 @@ test("the last declaration in document order wins", () => {
   // equal specificity. Specificity is not weighed — this reader has no cascade.
   const twice = `${drawing}<style>body { border-radius: 3px; }</style>`;
   expect(mockupDeclared(twice, "body", "border-radius")).toBe("3px");
+});
+
+test("the comparator holds every token of a value, and reads one value as one length", () => {
+  // The regression this pins, in the comparator's own words: reading only the
+  // first token made `border-radius: 8px 8px 0 0` on `.editor-shell-dialog`
+  // read as `8`, so a square-bottomed modal passed both dialog rows. A
+  // non-uniform value has no single length it means, so it is `null` — a loud
+  // failure — and never the first corner.
+  expect(lengthInPx("8px 8px 0 0")).toBeNull();
+  expect(lengthInPx("8px 10px")).toBeNull();
+  expect(lengthInPx("6px/8px")).toBeNull();
+  // The spellings that must keep meaning their own length, or the fix would
+  // have traded a false pass for a false failure on every row it guards.
+  expect(lengthInPx("8px")).toBe(8);
+  expect(lengthInPx("8px 8px 8px 8px")).toBe(8);
+  // A bare `0` is the one length CSS lets a drawing write without a unit, so a
+  // flush row that says `padding-top: 0` reads as flush rather than as a value
+  // this table cannot read — the false failure the `px`-only read would give it.
+  expect(lengthInPx("0")).toBe(0);
+  expect(lengthInPx("0px")).toBe(0);
+  // A unitless non-zero is not a length, and must not be read as one.
+  expect(lengthInPx("5")).toBeNull();
+  expect(lengthInPx("1.5px")).toBe(1.5);
+  // `gap`'s own word for no gap, and the values this table cannot read at all.
+  expect(lengthInPx("normal")).toBe(0);
+  expect(lengthInPx("")).toBeNull();
+  expect(lengthInPx("50%")).toBeNull();
+  expect(lengthInPx("auto")).toBeNull();
 });
 
 test("every row names a comparator, and a drawing row declares a length", () => {
