@@ -76,7 +76,7 @@ result, not merely a mounted editor.
 | Keyboard | Read the reference sheet, opened with `?` over an entered group | `keyboard-reference` / `? opens the sheet, and the document behind it does not change` |
 | Shell appearance | Choose each of the six palettes and read the surface | `shell-palette-` / `captures each palette's own surface` |
 | Shell | Mount the shell with the Add slot open and nothing selected | `editor-shell-add` / `captures the shell with the Add pane open` |
-| Panes | Show each of the four rail panes and read its own surface | `pane-composition`, `pane-add`, `pane-tokens`, `pane-document` / `captures each pane of the four-slot rail` |
+| Panes | Show each of the four rail panes and read its own surface | `pane-composition`, `pane-add`, `pane-tokens` and `pane-document` / `captures each pane of the four-slot rail` — four files from one action |
 | Design language | Mount the control set over the built stylesheet and read it in a panel | `control-set` / `the control set renders in the design language` — two files, `-desktop-chromium` (graphite, the ground the mockup is drawn on) and `-editorial-desktop-chromium` |
 | Feedback | Error, notice, disabled action or compatibility message | add when changed |
 
