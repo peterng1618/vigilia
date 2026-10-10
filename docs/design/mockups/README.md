@@ -1,7 +1,9 @@
 # Design mockups
 
-**These are the target.** They are what the editor is being rebuilt towards, and
-they are **checked at every plan gate** — not read once and remembered.
+**`current/` is the target.** The editor is being rebuilt towards the original
+visual direction as those four files draw it, and they are **checked at every
+plan gate** — not read once and remembered. The three originals below them are
+the record of the first cut, not the target.
 
 ## The current set — `current/`
 
@@ -35,9 +37,10 @@ Open them in a browser. Each is self-contained — one file, no build, no server
 ## What they are, and what they are not
 
 - **They are the design language, drawn.** [`../design-language.md`](../design-language.md)
-  is the normative text; these are its worked example. Where a mockup and the
-  bible disagree, **the bible wins and the mockup is stale** — fix the mockup in
-  the same commit that corrects the bible.
+  is the normative text; these are its worked example. Where the **current set**
+  and the bible disagree, **the bible wins and the file is stale** — correct it
+  in the same commit that corrects the bible. The originals are never corrected,
+  by this rule or any other.
 - **They are not pixel baselines.** [`../../evidence/screenshots/`](../../evidence/screenshots/)
   holds rendered evidence from built bundles and is explicitly not cross-platform
   golden files; neither is this. Platform font metrics, scrollbar widths and
@@ -51,6 +54,11 @@ Open them in a browser. Each is self-contained — one file, no build, no server
   bible §9.
 
 ## Reviewed reference contract — 2026-10-08
+
+**This section describes the three originals as they stood at that review.** It
+is a historical record of what those files retain, not an instruction: the
+originals are frozen, and a live correction belongs to the file in `current/`.
+The current set carries the direction this contract asked for.
 
 - **Preserve the original visual direction.** Warm illustrative artwork,
   compact diagram tiles, subtle stage texture, fine dividers, floating dock,
@@ -80,8 +88,12 @@ Open them in a browser. Each is self-contained — one file, no build, no server
 
 A plan whose phase changes a visible surface ends with a **parity capture**: the
 built editor, photographed in the state the mockup shows, placed beside it, and
-the differences listed. Each difference is then either **fixed**, or **recorded
-in the commit as deliberate** with its reason.
+the differences listed. Each difference is then either **fixed**, or **licensed
+by a rule that predates it** — a bible §N, an ADR or a spec section that
+positively requires the product's treatment, named in the commit. Recording a
+difference **as deliberate is not a disposition**: it names no rule, and it is
+the escape hatch that let a week of drift pass every check green. Where the
+written rules are silent, the drawing governs and the product is the defect.
 
 Silence is not a pass. A gate that produces no comparison has not run — the
 failure this exists to prevent is exactly the one that produced the previous

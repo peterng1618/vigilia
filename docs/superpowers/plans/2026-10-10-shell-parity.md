@@ -340,14 +340,14 @@ Replace "Last completed change" with 1–5 bullets, one item per line, never wra
 
 **Outcome:** Every field row in every panel has **one** value-cell geometry — a number well, a text well, a select and a slider occupy the same track — the label sits on the row's centre rather than below it, and the product's input is boxed once rather than twice. The drawing's own row declares one width; the product ends with one.
 
-**Owning symbols/landmarks:** `src/web/packages/editor/src/components/ui/control-well.tsx` — the row's `justify-end`, the well with no declared width, the label with no declared width; `src/web/packages/editor/src/editor-shell/editor-shell.css` — the legacy input/button box rule and the `label { display: block; margin-top: 12px }` rule, both **unlayered** and therefore beating Tailwind's utilities; `src/web/packages/editor/src/control-fixture.tsx` — the fixture that does not mount the inspector ancestor; `docs/design/mockups/inspector-controls.html` — the drawing's declared row.
+**Owning symbols/landmarks:** `src/web/packages/editor/src/components/ui/control-well.tsx` — the row's `justify-end`, the well with no declared width, the label with no declared width; `src/web/packages/editor/src/editor-shell/editor-shell.css` — the legacy input/button box rule and the `label { display: block; margin-top: 12px }` rule, both **unlayered** and therefore beating Tailwind's utilities; `src/web/packages/editor/src/control-fixture.tsx` — the fixture that does not mount the inspector ancestor; `docs/design/mockups/current/controls.html` — the drawing's declared row (the original at `inspector-controls.html` is provenance; see the path mapping above).
 
 **Files:**
 - Modify: `src/web/packages/editor/src/components/ui/control-well.tsx`
 - Modify: `src/web/packages/editor/src/editor-shell/editor-shell.css`
 - Modify: `src/web/packages/editor/src/control-fixture.tsx`
 - Modify: `src/web/tests/e2e/design-language.spec.ts` (the row-geometry assertion, on the fixture)
-- Modify: `src/web/tests/e2e/mockup-values.ts` if the drawing's row is a second reader target
+- Modify: `src/web/tests/e2e/mockup-values.ts` — **the drawing's row becomes a second reader target.** A `PARITY` row reading `current/controls.html`, and its counterpart reading `current/controls-light.html`, so the two control drawings are read by something rather than by nothing. Task 9's review found both are currently read by no test, and recorded the reason that matters: the same commit added a read for the settings drawing on the grounds that "a drawing that nothing reads is a drawing that rots" — a standard the two control drawings did not meet. This task owns them because it is the task that changes the geometry they declare.
 
 **Interfaces:**
 - Consumes: Task 1's `mockupDeclared`; the measurement's instance list (11 under the shared row, 4 under the legacy rules).
@@ -356,6 +356,8 @@ Replace "Last completed change" with 1–5 bullets, one item per line, never wra
 - [ ] **Step 1: Assert one geometry on the fixture, and watch it fail**
 
 The measurement proved this is **shared**, not inspector-local: the same five different left edges appear in the parity fixture's own capture (`control-set-desktop-chromium.png` — Name, Shows, Fill, Width, Align each starting somewhere else). So the assertion belongs on the fixture: for a row holding a number, a text, a select and a slider, each value cell's left edge and right edge are equal, and equal across rows. Run it on today's build and record the distinct edges it measures — **a run that finds one edge means the assertion is not reading the cells**.
+
+**The expected edges come from the drawing, read by the reader, not restated in the assertion.** Add the two `controls`-drawing rows to `PARITY` in this step, so the numbers this task is judged against are the drawing's own declarations rather than a copy taken once and never re-read. A row that resolves to nothing must throw, which is the reader's behaviour and not a reason to drop the row.
 
 - [ ] **Step 2: Declare the value cell once, in the row**
 
