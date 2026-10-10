@@ -47,8 +47,9 @@ result, not merely a mounted editor.
 | Artboard | Change dimensions or preview fit | `editor-artboard` / `captures changed artboard controls` |
 | Artboard | Change gradient/literal artboard paint | `editor-artboard-gradient` / `renders palette gradients` |
 | Session | Show dirty New/Open confirmation | `editor-dirty-replacement` / `captures dirty document replacement confirmation` |
+| Session | Ask New's size before the replacement question | `editor-new-document-chooser` / `captures the new-document chooser's own surface` |
 | Open | Valid, invalid or incompatible file | add when changed |
-| Open library | Show the editor's theme-library chooser | none yet — the session lists the library before it opens the chooser, so the capture needs the real host rather than the preview server |
+| Open library | Show the editor's theme-library chooser, both groups open | `editor-library-chooser` / `captures the theme-library chooser over a stubbed library` — the spec answers `**/api/themes` with `page.route`, because `openLibrary` awaits `client.list()` before it opens anything |
 | History | Save changed document or undo visible drag | add when changed |
 | Editor mechanics | Transform/group/duplicate/delete/reorder | `editor-snap-guides` / `snaps a dragged object`; `editor-snap-resize` / `snaps a resized object`; `editor-snap-resize-ctrl` / `Ctrl-resizes near a neighbour without snapping or showing a guide`; `editor-rotation-indicator` / `rotation-angle indicator`; `editor-toolbar` / `captures the canvas dock over a selected object`; `editor-canvas-context-menu` / `captures the canvas context menu over a selected object` |
 | Object tools | Add/edit shape, text, image or SVG | `editor-arc-and-wedge` / `captures an arc and a wedge on the canvas` |

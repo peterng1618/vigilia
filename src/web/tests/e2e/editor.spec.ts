@@ -17,6 +17,7 @@ import {
   typeIntoControl,
 } from "./control-set.js";
 import {
+  answerDialogIfShown,
   type ArtboardRect,
   captureVisualReview,
   chooseAssetFile,
@@ -1984,26 +1985,94 @@ test.describe("Fabric editor route", () => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     await page.goto(EDITOR);
-    await page.evaluate(() => {
-      const editor = Object.entries(
-        window as unknown as Record<string, unknown>,
-      ).find(([key]) => key.startsWith("vigilia-fabric-editor-"))?.[1] as
-        | {
-            canvas: {
-              item(
-                index: number,
-              ): { set(key: string, value: number): void } | undefined;
-              requestRenderAll(): void;
-            };
-          }
-        | undefined;
-      editor?.canvas.item(1)?.set("left", 64);
-      editor?.canvas.requestRenderAll();
-    });
+    // **An authoring act, not a canvas write.** The guard asks
+    // `persistence.isDirty`, which compares the session's snapshot against what
+    // it last saved; setting a Fabric property through the global reaches the
+    // canvas and not the snapshot, so a `set("left", 64)` here left the document
+    // as saved as it started and New asked nothing. Inserting a shape is the
+    // session's own path and is what actually makes the document dirty.
+    await openPane(page, "Add");
+    await insertShape(page, "Rectangle");
+
     await page.keyboard.press("Control+n");
-    await expect(page.locator('[role="dialog"]')).toBeVisible();
+    // New asks the size first (`editor-session.ts:979`), then this.
+    await expect(
+      page.locator('[role="dialog"]', { hasText: "Choose an artboard size" }),
+    ).toBeVisible();
+    await page.locator("[data-vigilia-new-document-create]").click();
+    await expect(
+      page.locator('[role="dialog"]', {
+        hasText: "Save changes before opening another theme?",
+      }),
+    ).toBeVisible();
 
     await captureVisualReview(page, testInfo, "editor-dirty-replacement");
+  });
+
+  test("captures the new-document chooser's own surface for visual review", async ({
+    page,
+  }, testInfo) => {
+    test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+
+    await page.goto(EDITOR);
+    await page.keyboard.press("Control+n");
+    // The size chooser is the first of New's two questions, and the surface the
+    // conversion rewrote: it was a `<dialog>` of `<select>`s and is a Base UI
+    // `Dialog` of `ControlSelect`s now. **This capture is why the row above
+    // stayed as it was** — `editor-dirty-replacement` matched this same first
+    // dialog before the conversion too, so its image was always the chooser.
+    await expect(
+      page.locator('[role="dialog"]', { hasText: "Choose an artboard size" }),
+    ).toBeVisible();
+
+    await captureVisualReview(page, testInfo, "editor-new-document-chooser");
+  });
+
+  test("captures the theme-library chooser over a stubbed library for visual review", async ({
+    page,
+  }, testInfo) => {
+    test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+
+    // **A stubbed library, not the real host.** `openLibrary` awaits
+    // `client.list()` before it opens anything (`editor-session.ts:937`), so on
+    // the preview server the chooser never appears at all. The stub answers the
+    // one request the chooser makes, and the list, the two groups and the delete
+    // control that follows a selection are all the real component's.
+    await page.route("**/api/themes", (route) =>
+      route.fulfill({
+        json: {
+          themes: [
+            { id: "graphite-desk", name: "Graphite desk", updatedAt: "" },
+            { id: "editorial-wall", name: "Editorial wall", updatedAt: "" },
+          ],
+        },
+      }),
+    );
+    await page.goto(EDITOR);
+    // Dirty by an authoring act first, for the reason the replacement capture
+    // gives. An untouched starter is *not* dirty: File → Open library would ask
+    // nothing, and `answerDialogIfShown` would then find the chooser's own
+    // dialog and spend its budget waiting inside it for a Discard button.
+    await openPane(page, "Add");
+    await insertShape(page, "Rectangle");
+
+    await page.getByRole("button", { name: "File", exact: true }).click();
+    await page.getByRole("menuitem", { name: "Open library" }).click();
+    await answerDialogIfShown(page, "Discard");
+    const chooser = page.locator('[role="dialog"]', {
+      hasText: "Open a theme",
+    });
+    await expect(chooser).toBeVisible();
+
+    // The list is opened as well, because the two groups are the chooser's whole
+    // design point and the stub is only visible through them: the product's
+    // template under `Templates`, the author's own under `Your themes`.
+    await chooser.locator("[data-vigilia-library-theme]").click();
+    await expect(
+      page.locator('[role="option"][data-vigilia-option="graphite-desk"]'),
+    ).toBeVisible();
+
+    await captureVisualReview(page, testInfo, "editor-library-chooser");
   });
 
   test("selects a chart in the starter theme through the visible Fabric canvas", async ({
