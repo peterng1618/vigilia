@@ -62,9 +62,11 @@ const EDITOR = "http://127.0.0.1:4174/";
 const SPACING_STEPS = [4, 6, 8, 10, 12, 14, 16, 20, 24, 32];
 
 /** Bible §4's thirteen roles. `--bg` and `--stage` are here too: they carry no
- *  `--color-*` utility (both alias a gradient stack under graphite and light),
- *  and the segmented control paints `--stage` with the `background` shorthand,
- *  so the fixture resolves them the same way it resolves the other eleven. */
+ *  `--color-*` utility, because both alias `--shell-backdrop` — a gradient under
+ *  `light` and a flat colour in the other five, where a colour utility would set
+ *  a colour to the gradient and fail silently. Each is still resolved here: the
+ *  segmented control paints `--stage` with the `background` shorthand, so the
+ *  fixture reads them the same way it reads the other eleven. */
 const ROLES = [
   "bg",
   "stage",
@@ -108,11 +110,11 @@ const BOUNDARY_MIN = 3;
  * rather than a control the control set can fix:
  *
  * - `boundary` is the well's resting 1px `--edge` against the fill it bounds.
- *   `--shell-edge` is a 26%-alpha hairline in graphite
- *   (`editor-shell.css:127`) and a 20%-alpha one in light (`:242`), so the
- *   border composites to about 2.1:1 and 1.4:1. Whether §3's fine hairline
- *   yields to §5's 3:1, or the hairline is simply too faint, is a design call —
- *   `vg-200`.
+ *   Graphite's edge is the drawing's own opaque `--edge` (`#242b34`) and reads
+ *   1.20:1; light's is a 20%-alpha hairline and reads 1.42:1. §3 draws a fine
+ *   hairline and §5 wants 3:1, and **those two rules disagree here** — which one
+ *   yields is a design call rather than a measurement, so the floors are pinned
+ *   to the values that ship and the ruling is `vg-200`'s.
  * - `invalid` is a rejected draft's reason, painted `--warn`. `--shell-warm` is
  *   a pastel in ember, moss and plum (`#ff7e6e`, `#e8c56a`, `#ffb2a1`) while
  *   those palettes' paper is light, so the reason reads at 1.4–2.0:1. The
@@ -1172,9 +1174,9 @@ test("the control set renders in the design language", async ({
       if (active === null || chosen === null || plain === null) return null;
       const rect = active.getBoundingClientRect();
       // The *painted* fill, not just `background-color`: `--stage` is a flat
-      // colour under editorial/ember/moss/plum but a gradient stack under
-      // graphite and light (`design-language.spec.ts`'s ROLES note), where the
-      // colour resolves to transparent and the gradient is what the eye gets.
+      // colour in five palettes but a gradient stack under `light` (see the
+      // ROLES note above), where the colour resolves to transparent and the
+      // gradient is what the eye gets.
       const fill = (element: Element): string => {
         const style = getComputedStyle(element);
         return `${style.backgroundColor}|${style.backgroundImage}`;
@@ -1738,10 +1740,18 @@ function surfaceLuminance(value: string): number {
  * **The second half is what keeps the ruling true.** Six transcribed value sets
  * pass the per-role cases and drift apart the moment one is edited, so the
  * palette set is also read as a *system*: every palette's surfaces must keep
- * graphite's ladder — the ground lowest, the panel at or above it, a control's
- * surface at or above the panel. Non-decreasing rather than strictly increasing
- * because editorial's `--panel` and `--panel-2` are the same cream today: the
- * rung is missing, which is recorded in the report rather than invented here.
+ * graphite's ladder — the ground lowest, the panel above it, a control's surface
+ * above the panel. **Where graphite separates two rungs, a derived palette
+ * separates them too**, which is the rule and not a threshold: order alone is
+ * satisfied by a ladder collapsed to steps of `0.0001`, and a luminance step of
+ * "at least X" has no rule behind it, so none is invented here.
+ *
+ * **Editorial is the one licensed exception, and its own block says why.** It is
+ * `--panel == --panel-2` — the same cream on both rungs — because editorial
+ * separates a control from the panel it sits in with `--vigilia-control-bg`
+ * (`#f5f1e8` under the `#fffdf7` paper) rather than with a surface step, so its
+ * ladder has two rungs where graphite has three. That is a shape, not a drift,
+ * and it is named here rather than allowed for every palette.
  *
  * `light` is the palette the drawn shell does not resemble. The plan's Step 3
  * reads its ladder as an inversion of graphite's; measured, `light` **ascends**
@@ -1825,12 +1835,24 @@ test("graphite's roles are the drawing's, and the other five keep its ladder", a
       );
       continue;
     }
-    // Graphite's order is `--bg` < `--panel` < `--panel-2`. A palette that
-    // inverts it — or whose ground is no longer below its panel — is no longer
-    // derived from graphite.
-    if (!(bg < panel && panel <= panel2)) {
+    // Graphite's ladder is `--bg` < `--panel` < `--panel-2`, **strictly**, and
+    // a derived palette that collapses a rung has stopped deriving from it —
+    // order alone survives a ladder squeezed to `0.0001` steps.
+    //
+    // Editorial is the one named exception, for the reason its own block gives:
+    // its control-inside-panel separation is carried by `--vigilia-control-bg`,
+    // not by the rung, so `--panel` and `--panel-2` are deliberately one cream.
+    // Any *other* palette that fails to separate is a derivation bug to report,
+    // never an exception to widen.
+    const isEditorial = palette === "editorial";
+    const holds = isEditorial
+      ? bg < panel && panel === panel2
+      : bg < panel && panel < panel2;
+    if (!holds) {
       ladderFailures.push(
-        `${palette}: the ladder is ${bg.toFixed(4)} / ${panel.toFixed(4)} / ${panel2.toFixed(4)}, and graphite's is --bg < --panel <= --panel-2`,
+        `${palette}: the ladder is ${bg.toFixed(4)} / ${panel.toFixed(4)} / ${panel2.toFixed(4)}, and graphite's is --bg < --panel < --panel-2${
+          isEditorial ? " (editorial's licensed equal pair: see the comment)" : ""
+        }`,
       );
     }
   }

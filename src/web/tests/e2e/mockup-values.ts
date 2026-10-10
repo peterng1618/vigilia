@@ -187,38 +187,36 @@ function declarations(mockupHtml: string): Declaration[] {
   return found;
 }
 
-/** What a selector addresses: how many declarations carry it (a selector that
- *  addresses none is a broken row, not a silence), and the value the drawing
- *  last declares for `property` under it, or `null` when it declares none.
+/** Every declaration a selector addresses, in document order, with the two
+ *  guards a reading depends on: a selector that addresses none is a broken row
+ *  rather than a silence, and an **inline** selector addresses one element.
  *
- *  An inline selector addresses **one** element. `[style*="…"]` matches every
- *  element carrying the substring, so a second match is not a later rule for the
- *  same thing — it is a different thing, and the row cannot say which it meant.
- *  That throws, like a selector that addresses nothing, because the alternative
- *  is a row that compares whichever element the document lists last and can pass
- *  on it. Elements written with *identical* `style` attributes count once: they
- *  are indistinguishable here and declare the same value either way. */
-function lookup(
-  mockupHtml: string,
-  selector: string,
-  property: string,
-): { owners: number; value: string | null } {
+ *  `[style*="…"]` matches every element carrying the substring, so a second
+ *  match is not a later rule for the same thing — it is a different thing, and
+ *  the row cannot say which it meant. That throws, like a selector that
+ *  addresses nothing, because the alternative is a row that reads whichever
+ *  element the document lists last and can pass on it. Elements written with
+ *  *identical* `style` attributes count once: they are indistinguishable here
+ *  and declare the same value either way.
+ *
+ *  Both callers take it through this: one reading (`lookup`) and one whole-set
+ *  reading (`mockupDeclaredProperties`), so a set is addressed the strict way a
+ *  value is. */
+function addressed(mockupHtml: string, selector: string): Declaration[] {
   const inline = INLINE_SELECTOR.exec(selector);
   const wanted = (inline?.[1] ?? "").trim();
   const matched = new Set<string>();
-  let owners = 0;
-  let value: string | null = null;
+  const found: Declaration[] = [];
   for (const declaration of declarations(mockupHtml)) {
     const matches =
       inline === null
         ? !declaration.inline && declaration.owner === selector.trim()
         : declaration.inline && declaration.owner.includes(wanted);
     if (!matches) continue;
-    owners += 1;
+    found.push(declaration);
     matched.add(declaration.owner);
-    if (declaration.property === property) value = declaration.value;
   }
-  if (owners === 0) {
+  if (found.length === 0) {
     throw new Error(
       `the drawing addresses nothing with \`${selector}\`: this row names a selector the drawing does not declare`,
     );
@@ -228,7 +226,35 @@ function lookup(
       `the drawing addresses ${matched.size} elements with \`${selector}\`: this row names a selector that does not settle which one it means`,
     );
   }
-  return { owners, value };
+  return found;
+}
+
+/** The value the drawing last declares for `property` under `selector`, or
+ *  `null` when it declares none. */
+function lookup(
+  mockupHtml: string,
+  selector: string,
+  property: string,
+): string | null {
+  let value: string | null = null;
+  for (const declaration of addressed(mockupHtml, selector)) {
+    if (declaration.property === property) value = declaration.value;
+  }
+  return value;
+}
+
+/** Every property name the selector declares, each once and in document order.
+ *
+ *  The reading a *set* needs and a value cannot give: an assertion that each row
+ *  is present passes when the drawing has grown a row nobody mapped, which is how
+ *  the shell's eleventh token (`--hot`) arrived under a brief that listed ten. */
+export function mockupDeclaredProperties(
+  mockupHtml: string,
+  selector: string,
+): readonly string[] {
+  return [
+    ...new Set(addressed(mockupHtml, selector).map(({ property }) => property)),
+  ];
 }
 
 /** The value the drawing declares for `selector`'s `property`.
@@ -243,13 +269,13 @@ export function mockupDeclared(
   selector: string,
   property: string,
 ): string {
-  const found = lookup(mockupHtml, selector, property);
-  if (found.value === null) {
+  const value = lookup(mockupHtml, selector, property);
+  if (value === null) {
     throw new Error(
       `the drawing declares no \`${property}\` for \`${selector}\``,
     );
   }
-  return found.value;
+  return value;
 }
 
 /** The same reading, with the drawing's silence returned as `null`.
@@ -264,7 +290,7 @@ export function mockupDeclaredOrNull(
   selector: string,
   property: string,
 ): string | null {
-  return lookup(mockupHtml, selector, property).value;
+  return lookup(mockupHtml, selector, property);
 }
 
 /** One region's parity row: what the drawing declares, what the product

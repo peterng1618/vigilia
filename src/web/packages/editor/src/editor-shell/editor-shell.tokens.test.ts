@@ -336,8 +336,9 @@ describe("shell token stylesheet", () => {
     const inline =
       /^[ \t]*@theme[ \t]+inline[ \t]*\{([^}]*)\}/m.exec(css)?.[1] ?? "";
     // `--bg` and `--stage` are the two roles with no utility: both alias
-    // `--shell-backdrop`, which is a gradient stack in graphite and light, and a
-    // colour utility from either would set a colour to that and fail silently.
+    // `--shell-backdrop`, which `light` makes a gradient stack (graphite's
+    // retired with plan 7 Task 4), and a colour utility from either would set a
+    // colour to that and fail silently.
     // Both roles are still declared and asserted above; only the utility name
     // would be wrong. `--hdr` aliases `--shell-surface`, a plain colour (alpha
     // at most) in all six palettes, so its utility is safe.

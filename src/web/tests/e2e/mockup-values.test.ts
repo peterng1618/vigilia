@@ -6,6 +6,7 @@ import {
   MOCKUP_PATH,
   mockupDeclared,
   mockupDeclaredOrNull,
+  mockupDeclaredProperties,
   PARITY,
   readMockup,
   SETTINGS_MOCKUP_PATH,
@@ -151,6 +152,40 @@ test("the drawing's own token table is read, and all eleven tokens with it", () 
   expect(() =>
     mockupDeclared(drawing, SHELL_TOKEN_SELECTOR, "--nope"),
   ).toThrow(/declares no `--nope`/);
+});
+
+test("the drawing's token table declares the eleven mapped tokens and no twelfth", () => {
+  // Every assertion above reads the table **row by row**, and that is the shape
+  // `--hot` walked through: the brief scoped this task against a table of ten,
+  // the drawing had carried eleven, and nothing reddened, because a token nobody
+  // maps is a token nobody asks for. So the *set* is asserted too — a twelfth
+  // added to `current/shell.html:17-18` fails here and has to be given an owner
+  // deliberately.
+  //
+  // The element carries its layout declarations (`width`, `display`, …) as well
+  // as its tokens, so the reading is filtered to custom properties rather than
+  // the reader knowing what a token is.
+  const tokens = (html: string): string[] =>
+    mockupDeclaredProperties(html, SHELL_TOKEN_SELECTOR)
+      .filter((property) => property.startsWith("--"))
+      .sort();
+
+  expect(tokens(drawing)).toEqual(
+    [...new Set(SHELL_ROLES.map((role) => role.drawingToken))].sort(),
+  );
+
+  // The check the line above cannot make: a reader answering a constant set
+  // passes it. A twelfth token in the file must come back as one.
+  const twelfth = drawing.replace("--hot:#ff7e6e;", "--hot:#ff7e6e;--new:#123456;");
+  expect(twelfth).not.toBe(drawing);
+  expect(tokens(twelfth)).toHaveLength(SHELL_ROLES.length + 1);
+  expect(tokens(twelfth)).toContain("--new");
+
+  // And the eleven are named, not merely counted: a token renamed in the table
+  // with a row left behind is a different set, not the same size.
+  const renamed = drawing.replace("--panel2:#171c23;", "--panel-2:#171c23;");
+  expect(renamed).not.toBe(drawing);
+  expect(tokens(renamed)).not.toEqual(tokens(drawing));
 });
 
 test("the page rule is read out of the drawing's own stylesheet", () => {
