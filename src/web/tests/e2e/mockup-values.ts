@@ -398,6 +398,124 @@ export function lengthInPx(value: string): number | null {
   return lengths.every((length) => length === first) ? first : null;
 }
 
+/** How many tracks a `grid-template-columns` value declares or resolves to.
+ *
+ *  **A count is not a length.** `lengthInPx` returns `null` for the drawing's
+ *  `repeat(3,1fr)` and for the product's computed track list alike, so a length
+ *  row over the palette grid fails saying "not a length this table can compare"
+ *  whatever either side does. The count is read from the same property on both
+ *  sides: the drawing's declared `repeat(3,1fr)`, and the product's computed
+ *  list, which a browser serialises for a fixed grid as `"146px 146px 146px"`.
+ *
+ *  `null` is a value this comparator cannot read — `none`, `subgrid`, an empty
+ *  string, or a `repeat()` whose count is not a plain integer
+ *  (`repeat(auto-fill, …)` is a bound, not a count) — and a row reading `null`
+ *  fails naming the whole rendered value rather than passing as a zero.
+ *
+ *  `ponytail:` splitting a serialised track list at top-level whitespace is the
+ *  ceiling here; a real grid-resolution model would be a second layout engine
+ *  for a fixed column count.
+ */
+export function trackCount(value: string): number | null {
+  const text = value.trim();
+  if (text === "" || text === "none" || text === "subgrid") return null;
+  const repeated = /^repeat\(\s*(\d+)\s*,/.exec(text);
+  if (repeated !== null) {
+    const count = Number.parseInt(repeated[1] ?? "", 10);
+    return Number.isInteger(count) && count > 0 ? count : null;
+  }
+  // A `repeat()` this reader has no plain count for is `null` rather than one
+  // track: `repeat(auto-fill, …)` is a bound, and counting the whole function as
+  // a single token would answer `1` for a grid whose column count is not fixed.
+  if (text.startsWith("repeat(")) return null;
+  /** Top-level whitespace only: a `minmax(100px, 1fr)` track and a `[name]`
+   *  line both carry spaces of their own, and neither is two tracks. */
+  const tracks: string[] = [];
+  let depth = 0;
+  let track = "";
+  for (const char of text) {
+    if (char === "(") depth += 1;
+    else if (char === ")") depth -= 1;
+    if (depth === 0 && /\s/.test(char)) {
+      if (track !== "") tracks.push(track);
+      track = "";
+      continue;
+    }
+    track += char;
+  }
+  if (track !== "") tracks.push(track);
+  const counted = tracks.filter(
+    (one) => !(one.startsWith("[") && one.endsWith("]")),
+  );
+  return counted.length === 0 ? null : counted.length;
+}
+
+/** One channel of an `rgb()`/`rgba()` argument, as an 8-bit integer. */
+function channel(token: string): number | null {
+  const percent = token.endsWith("%");
+  const number = Number.parseFloat(token);
+  if (!Number.isFinite(number)) return null;
+  return Math.round(percent ? (number / 100) * 255 : number);
+}
+
+/** Alpha, as the same 8 bits — **not** through `channel`: alpha is written
+ *  fractional (`0.451`) or as a percentage (`45.1%`), never as 0–255, so the
+ *  first form has to be scaled rather than rounded. Reading `0.451` as a channel
+ *  turns a 45% scrim into a fully transparent one. */
+function alphaChannel(token: string): number | null {
+  if (token.endsWith("%")) return channel(token);
+  const number = Number.parseFloat(token);
+  if (!Number.isFinite(number)) return null;
+  return Math.round(number <= 1 ? number * 255 : number);
+}
+
+/** A colour as one canonical spelling, or `null` when the value is not one this
+ *  comparator can read.
+ *
+ *  **A colour is not a length, and two spellings of one colour are not equal as
+ *  strings.** The bible writes the modal's scrim `#00000073` and a browser
+ *  computes the same colour as `rgba(0, 0, 0, 0.451)`, so a string comparison
+ *  fails on a surface that is right — and `lengthInPx` fails on one that is read
+ *  at all. The value is therefore parsed into 8-bit channels and returned as a
+ *  single spelling, so two readings compare equal exactly when they are the same
+ *  colour.
+ *
+ *  Hex (`#rgb`, `#rgba`, `#rrggbb`, `#rrggbbaa`), `rgb()`/`rgba()` with commas or
+ *  spaces, integer or percentage channels, and `transparent` are read. Anything
+ *  else — a `color-mix(…)`, a gradient, a named colour — is `null`, which a row
+ *  fails on naming the whole value rather than comparing two unknowns. Alpha is
+ *  quantised to the same 8 bits the channels are, so `0.45` and `0.451` are one
+ *  colour: a finer distinction than an 8-bit channel can carry.
+ */
+export function colourValue(value: string): string | null {
+  const text = value.trim().toLowerCase();
+  if (text === "transparent") return "rgba(0, 0, 0, 0)";
+  const hex = /^#([0-9a-f]{3,8})$/.exec(text);
+  if (hex !== null) {
+    const digits = hex[1] ?? "";
+    const wide = digits.length === 6 || digits.length === 8;
+    if (!wide && digits.length !== 3 && digits.length !== 4) return null;
+    const step = wide ? 2 : 1;
+    const parts: number[] = [];
+    for (let at = 0; at < digits.length; at += step) {
+      const pair = digits.slice(at, at + step);
+      parts.push(Number.parseInt(wide ? pair : pair + pair, 16));
+    }
+    const [r, g, b, a] = parts;
+    return `rgba(${r ?? 0}, ${g ?? 0}, ${b ?? 0}, ${a ?? 255})`;
+  }
+  const fn = /^rgba?\(([^)]*)\)$/.exec(text);
+  if (fn === null) return null;
+  const parts = (fn[1] ?? "").split(/[\s,/]+/).filter((part) => part !== "");
+  if (parts.length !== 3 && parts.length !== 4) return null;
+  const channels = parts.slice(0, 3).map(channel);
+  if (channels.some((one) => one === null)) return null;
+  const alpha = parts.length === 4 ? alphaChannel(parts[3] ?? "") : 255;
+  if (alpha === null) return null;
+  const [r, g, b] = channels;
+  return `rgba(${r}, ${g}, ${b}, ${alpha})`;
+}
+
 /** Every property name the selector declares, each once and in document order.
  *
  *  The reading a *set* needs and a value cannot give: an assertion that each row
@@ -487,6 +605,14 @@ export type ParityRegion = {
    *  test skips it. */
   readonly surface?: "settings" | "sheet" | "fixture";
   readonly licensed?: string;
+  /** Which comparator reads this row's two values. **Absent means `length`**,
+   *  the px reading every row used before the modal's regions arrived; `count`
+   *  is a track list's number of tracks (`trackCount`) and `colour` is a colour
+   *  as a resolved value (`colourValue`). Both were added by plan 8 Task 1 for
+   *  the regions a single px cannot express — the palette grid's column count
+   *  and the modal's scrim — and a row whose value is not one the named
+   *  comparator reads fails naming the whole rendered value. */
+  readonly comparator?: "length" | "count" | "colour";
 };
 
 /**
@@ -510,7 +636,17 @@ export type ParityRegion = {
  * Two rows the census adjudicates are deliberately *not* here, and say so rather
  * than being implied: the graphite role values are Task 4's assertions (the
  * drawing declares them in its own token table, and the reader gains that target
- * then), and the settings modal's own regions are the next plan's.
+ * then), and every `fix` row whose owner is another plan or another backlog row
+ * is named in plan 8's census instead of asserted here.
+ *
+ * **The settings modal's regions are the tail of this table** (plan 8 Task 1,
+ * `.superpowers/sdd/2026-10-11-settings-parity/adjudication.md`): six rows
+ * against `current/settings.html` and the shipped modal, four of them reading a
+ * *drawing* selector now that the modal has its own file. They are red on the
+ * build this table landed on — that is the instrument's contract, and a row that
+ * cannot fail is the defect it exists to end (spec §13). Three rows before them
+ * (the boxed switch row, its gap, and the two control drawings' label column)
+ * already reach into `settings.html` through `mockupPath`.
  */
 export const PARITY: readonly ParityRegion[] = [
   {
@@ -722,5 +858,116 @@ export const PARITY: readonly ParityRegion[] = [
     bibleSection:
       "§5 (`:163-164`, the well the trigger is drawn as); the bible does not shape the pane's picker, so the drawing governs",
     surface: "fixture",
+  },
+  /* ── The settings modal, against `current/settings.html` (plan 8 Task 1) ────
+     The drawing is now the modal's comparator for the regions it draws, read on
+     the `settings` surface: the modal is opened by the gear, its Appearance panel
+     is the default tab, and every element below exists only while it is open
+     (plan 7's `surface` control set — no new machinery).
+
+     **These rows are red on the build they land on, on purpose.** Tasks 2, 3 and
+     5 pull the product to the drawing, and each row names its task in the census.
+     A row loosened, skipped or `test.fixme`d to reach green would be the defect
+     this table exists to end, so none is.
+
+     **Row 1 — the navigation's axis.** The drawing is a `150px` column with an
+     icon per row; the product is a horizontal word strip with no width of its
+     own. The *width* is the one property the axis has, and it is what this row
+     reads: a strip's width is its container's, a column's is its own. The axis's
+     *direction* — and the keyboard model it implies — is not a property and is a
+     named gap in the census, Task 2's browser walk being its evidence.
+
+     **Row 2 — the lead's role.** §2 gives a dialog exactly two type roles, and
+     the product's `<h2>` is neither: it is `--text-md` (13px) on `--shell-text`
+     where the drawing puts the surface's name on the nav as a `--text-2xs`
+     eyebrow. The `<h2>` is the modal's own title and the `?` sheet renders the
+     same rule, so its role is §2's dialog title, `--text-lg` — read from the
+     product's own `:root`, so this row cannot drift from the token.
+
+     **Row 3 — the scrim, and the first colour row.** `#0009` is 60% black where
+     §3's modal scrim is `#00000073`, 45%, and a hex literal where §10 forbids one
+     in a surface; both are vg-294. The expected value is the token Task 3
+     declares — `--elev-scrim` — read from `:root` at run time, so the row follows
+     the token rather than a copy of the bible's number. Until that token exists
+     the row reads "the product declares no `--elev-scrim`", which is the failure
+     it is for. A *colour* cannot ride `lengthInPx` (it returns `null` for a
+     colour) and the drawing draws no scrim at all, so this is the one row whose
+     comparator is a resolved colour.
+
+     **Rows 4–6 — the palette group.** The drawing is a `repeat(3,1fr)` grid of
+     `--radius-lg` cards, each carrying two 16px bars — the palette's ground and
+     its accent. The product is a `grid-cols-2` of `--radius-md` choice rows
+     (`:155`), each carrying one 14px chip. The count is read by `trackCount` (a
+     track list is neither side a single px), the card's radius by the px reading,
+     and the bar's height by the px reading against the one bar the reader can
+     settle: the other eleven carry the same prefix, so a shorter selector would
+     address twelve elements and `lookup` refuses rather than pick one. `§5`'s
+     choice row is the licence spec `:469-477` withdraws — plan 5 wrote it and
+     then cited it — so the drawing governs.
+
+     **The shape is the part of it no row can read.** One chip versus two bars is
+     a difference in how many elements the card carries and what each carries, not
+     a property of one element; the census names that gap rather than pretending
+     the bar's height is the whole finding. */
+  {
+    region: "settings nav — column width (the axis)",
+    mockupPath: SETTINGS_MOCKUP_PATH,
+    mockupSelector: '[style*="width:150px"]',
+    mockupProperty: "width",
+    productSelector: ".editor-shell-settings-tabs",
+    bibleSection:
+      "§5 (`:143`) closes the vocabulary and names no 'tab' control; §5 rule 7 (`:188`) permits any grid, so the drawing governs the axis",
+    surface: "settings",
+  },
+  {
+    region: "settings modal — lead type",
+    mockupProperty: "font-size",
+    productSelector: ".editor-shell-dialog-lead",
+    bibleSection: "§2 (`:51`) — a dialog title is `--text-lg` 15px (`vg-295`)",
+    scaleToken: "--text-lg",
+    surface: "settings",
+  },
+  {
+    region: "settings modal — scrim",
+    mockupProperty: "background-color",
+    productSelector: ".editor-shell-dialog-overlay",
+    bibleSection:
+      "§3 elevation 3 (`:105`) — the modal's scrim is `#00000073`; §10 (`:449`) forbids a hex literal in a surface (`vg-294`)",
+    scaleToken: "--elev-scrim",
+    comparator: "colour",
+    surface: "settings",
+  },
+  {
+    region: "palette grid — column count",
+    mockupPath: SETTINGS_MOCKUP_PATH,
+    mockupSelector: '[style*="display:grid"]',
+    mockupProperty: "grid-template-columns",
+    comparator: "count",
+    productSelector: '[aria-labelledby="vigilia-settings-palette"]',
+    bibleSection:
+      "§5 rule 7 (`:188`) leaves the grid to the drawing, which draws three columns; no section names a column count",
+    surface: "settings",
+  },
+  {
+    region: "palette card — radius",
+    mockupPath: SETTINGS_MOCKUP_PATH,
+    mockupSelector:
+      '[style*="border:1px solid var(--edge);border-radius:8px;padding:8px;background:var(--panel2)"]',
+    mockupProperty: "border-radius",
+    productSelector: "[data-vigilia-palette-choice]",
+    bibleSection:
+      "§3 radius table (`:92`) — a card in a grid is `--radius-lg`; §5's choice row (`:155`) is the licence spec `:469-477` withdraws",
+    surface: "settings",
+  },
+  {
+    region: "palette swatch — bar height",
+    mockupPath: SETTINGS_MOCKUP_PATH,
+    mockupSelector:
+      '[style*="flex:1;height:16px;border-radius:4px;background:#fffdf7"]',
+    mockupProperty: "height",
+    productSelector: ".editor-shell-palette-swatch",
+    bibleSection:
+      "§7.8 (`:412`) — 'Palette choices retain visual swatches'; the swatch's form is the drawing's, and §5 (`:155`) names a swatch, never one",
+    surface: "settings",
   },
 ];

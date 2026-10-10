@@ -2,6 +2,7 @@ import { expect, type Page, test } from "@playwright/test";
 import { captureVisualReview } from "./editor-canvas.js";
 import { openPane } from "./editor-rail.js";
 import {
+  colourValue,
   currentDrawings,
   lengthInPx,
   MOCKUP_PATH,
@@ -14,6 +15,7 @@ import {
   SETTINGS_MOCKUP_PATH,
   SHELL_ROLES,
   SHELL_TOKEN_SELECTOR,
+  trackCount,
 } from "./mockup-values.js";
 import { openShell, SETTINGS_DIALOG, SETTINGS_GEAR } from "./shell-palette.js";
 import { isDesktopSurface } from "./surface.js";
@@ -2067,6 +2069,50 @@ async function renderedDialogs(page: Page): Promise<number> {
 }
 
 /**
+ * A row's value, read through the comparator the row names, as one canonical
+ * string — `null` when the value is not one that comparator reads, which the
+ * row fails on naming the whole rendered value.
+ *
+ * **`length` is the default, and the other two are plan 8 Task 1's.** The modal's
+ * regions needed a *count* (the palette grid's number of tracks) and a *colour*
+ * (the scrim), and neither is a px: `lengthInPx` reads `null` for a track list
+ * and for any colour, so a length reading of either fails whatever the product
+ * renders — the "passes for the wrong reason" inversion in its second form. Both
+ * comparators are pure and are proved in `mockup-values.test.ts`, where
+ * `vitest run` holds them; this is only the dispatch.
+ */
+function comparatorReading(
+  comparator: ParityRegion["comparator"],
+  value: string,
+): string | null {
+  if (comparator === "count") {
+    const count = trackCount(value);
+    return count === null ? null : String(count);
+  }
+  if (comparator === "colour") return colourValue(value);
+  const px = lengthInPx(value);
+  return px === null ? null : String(px);
+}
+
+/** What a comparator's reading is counted in, for a failure's own words. */
+function comparatorUnit(comparator: ParityRegion["comparator"]): string {
+  if (comparator === "count") return " tracks";
+  if (comparator === "colour") return "";
+  return "px";
+}
+
+/** What a comparator reads, named for the failure that says a value is not one. */
+function comparatorName(comparator: ParityRegion["comparator"]): string {
+  if (comparator === "count") return "track count";
+  if (comparator === "colour") return "colour";
+  return "length";
+}
+
+/** The settings drawing's path as a failure has to name it — the checked-in file
+ *  a person opens, not the absolute path the row's `mockupPath` resolves to. */
+const SETTINGS_DRAWING = "docs/design/mockups/current/settings.html";
+
+/**
  * The shell's parity with the drawing (spec §13 as amended 2026-10-10, bible §3,
  * §7, reference `docs/design/mockups/current/shell.html`; the settings surface is
  * its own file, `current/settings.html`, and is read here too).
@@ -2110,26 +2156,36 @@ async function renderedDialogs(page: Page): Promise<number> {
  * reading nothing. It is in the table, rather than left out as redundant, for
  * that reason.
  *
- * **Every row here passes, re-run by plan 7 Task 7 against the shipped build** —
- * Task 3 closed the last six the table named (the four region radii, drawn flush
- * and square, and both dialog frames at `--radius-lg`), Tasks 2 and 3 fixed what
- * they required, and the capture beside the drawing
- * (`docs/design/mockups/current/shell-capture-*.png`) is that task's evidence
- * that the build these rows pass on is the one that ships.
+ * **The shell's rows pass; the settings modal's six do not, on purpose.** The
+ * shell's ten were re-run by plan 7 Task 7 against the shipped build — Task 3
+ * closed the last six the table named (the four region radii, drawn flush and
+ * square, and both dialog frames at `--radius-lg`) — and the capture beside the
+ * drawing (`docs/design/mockups/current/shell-capture-*.png`) is that task's
+ * evidence that the build they pass on is the one that ships. Plan 8 Task 1 then
+ * added six rows for the modal's regions, read against `current/settings.html`,
+ * and **each is red on the build it landed on**: the navigation's axis, the
+ * lead's type, the scrim and the palette group's count, card radius and swatch
+ * height. Tasks 2, 3 and 5 pull the product to the drawing and turn them green;
+ * the census (`.superpowers/sdd/2026-10-11-settings-parity/adjudication.md`)
+ * names each row's task. A row loosened or skipped to reach green would be the
+ * defect this whole instrument exists to end, so none is.
  *
  * A `--grep` that matches nothing exits 0 with zero tests, so the run's own
  * summary — "1 test", this file — is the proof it ran at all.
  */
-test("the shell is what the drawing draws", async ({ page }, testInfo) => {
+test("the shell and the settings modal are what the drawings draw", async ({
+  page,
+}, testInfo) => {
   test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
   await openShell(page);
 
-  // `lengthInPx` — the comparator the rows below run every rendered value
-  // through — is a pure decision and is proved in `mockup-values.test.ts`,
-  // where `vitest run` holds it. It was asserted here first, and this test is
-  // skipped off a desktop surface, so a revert to reading the first token of a
-  // shorthand left the fast suite green.
+  // The comparators the rows below run every rendered value through are pure
+  // decisions and are proved in `mockup-values.test.ts`, where `vitest run` holds
+  // them. `lengthInPx` was asserted here first, and this test is skipped off a
+  // desktop surface, so a revert to reading the first token of a shorthand left
+  // the fast suite green; the count and colour comparators plan 8 Task 1 added
+  // are held there from the start, for the same reason.
   const drawing = readMockup();
   expect(
     PARITY.length,
@@ -2219,11 +2275,11 @@ test("the shell is what the drawing draws", async ({ page }, testInfo) => {
     );
   }, tokens);
 
-  // The settings drawing is read, not merely shipped. Its rows are scale-owned
-  // today (both dialogs render one rule, so neither names a drawing selector),
-  // but the file a settings row will name must be one this run reaches: a
-  // drawing that nothing reads is a drawing that rots, and a selector that
-  // stopped resolving has to red here rather than go unnoticed.
+  // The settings drawing is read, not merely shipped. The modal's own rows name
+  // its selectors now (plan 8 Task 1), and this assertion is kept as the row that
+  // says the file is reached at all: a drawing that nothing reads is a drawing
+  // that rots, and a selector that stopped resolving has to red here rather than
+  // go unnoticed.
   expect(
     mockupDeclared(
       readMockup(SETTINGS_MOCKUP_PATH),
@@ -2253,6 +2309,22 @@ test("the shell is what the drawing draws", async ({ page }, testInfo) => {
   const unresolved: string[] = [];
   const failures: string[] = [];
   const table: string[] = [];
+  /** A row's own drawing, read once per path. The shell's unless the row names
+   *  another file, so a surface drawn on its own (`current/settings.html`) is
+   *  compared against the file it was drawn in rather than against whichever one
+   *  this test opened first — which is how plan 8 Task 1's settings rows read a
+   *  drawing the shell test had never opened. */
+  const drawings = new Map<string, string>([
+    [MOCKUP_PATH, drawing],
+    [SETTINGS_MOCKUP_PATH, readMockup(SETTINGS_MOCKUP_PATH)],
+  ]);
+  const sourceOf = (row: ParityRegion): string =>
+    drawings.get(row.mockupPath ?? MOCKUP_PATH) ?? drawing;
+  /** What a failure calls the row's drawing: a person has to be able to open it. */
+  const nameOf = (row: ParityRegion): string =>
+    row.mockupPath === undefined || row.mockupPath === MOCKUP_PATH
+      ? "the drawing's"
+      : `\`${SETTINGS_DRAWING}\`'s`;
   for (const row of PARITY) {
     if (row.surface === "fixture") continue;
     const rendered = product[key(row)];
@@ -2271,45 +2343,67 @@ test("the shell is what the drawing draws", async ({ page }, testInfo) => {
       continue;
     }
     /** The comparator, the product's value, and the words a failure uses. */
-    let expected: number | null;
-    let actual: number | null;
+    const comparator = row.comparator;
+    const unit = comparatorUnit(comparator);
+    const kind = comparatorName(comparator);
+    let expected: string | null;
+    let actual: string | null;
     let from: string;
     if (row.scaleToken !== undefined) {
       // The scale owns this row, not the drawing: see the row's own comment.
       const declared = scale[row.scaleToken];
-      if (declared === undefined) {
-        unresolved.push(
+      // `""` is what a custom property resolves to when nothing declares it, and
+      // `--elev-scrim` is a token Task 3 has not declared yet. Reported as the
+      // region's own failure rather than as `unresolved`, which means "measured no
+      // element" and is not what happened here: the overlay was measured, and the
+      // comparator it names is absent.
+      if (declared === undefined || declared === "") {
+        failures.push(
           `${row.region}: the product declares no \`${row.scaleToken}\`, so the row has no comparator`,
         );
         continue;
       }
-      expected = lengthInPx(declared);
-      actual = lengthInPx(rendered);
+      expected = comparatorReading(comparator, declared);
+      actual = comparatorReading(comparator, rendered);
       from = `\`${row.scaleToken}\` (${declared})`;
     } else {
       // Throws when the selector addresses nothing in the drawing: a row whose
       // selector went stale must fail here rather than read as a flush region.
       const declared = mockupDeclaredOrNull(
-        drawing,
+        sourceOf(row),
         row.mockupSelector ?? "",
         row.mockupProperty,
       );
-      expected = declared === null ? 0 : lengthInPx(declared);
-      actual = lengthInPx(rendered);
-      from = `the drawing's \`${row.mockupSelector}\` (${declared ?? "nothing — drawn flush, so 0px"})`;
+      // **Silence is a zero only for a length.** A drawing that draws a region
+      // flush declares no inset, and `0` is that reading; a drawing that draws no
+      // grid declares no track count, so a count row has no answer here rather
+      // than zero tracks. Coercing either non-px comparator to `0` is exactly the
+      // inversion plan 7 caught, one comparator over.
+      const silent = comparator === undefined || comparator === "length";
+      expected =
+        declared === null
+          ? silent
+            ? comparatorReading(comparator, "0")
+            : null
+          : comparatorReading(comparator, declared);
+      actual = comparatorReading(comparator, rendered);
+      from = `${nameOf(row)} \`${row.mockupSelector}\` (${
+        declared ??
+        (silent ? "nothing — drawn flush, so 0px" : "nothing declared")
+      })`;
     }
     table.push(
       `${row.region}: ${from} → ${expected}, product \`${row.productSelector}\` = ${rendered} → ${actual}`,
     );
     if (expected === null) {
       failures.push(
-        `${row.region}: ${from} is not a length this table can compare`,
+        `${row.region}: ${from} is not a ${kind} this table can compare`,
       );
       continue;
     }
     if (actual !== expected) {
       failures.push(
-        `${row.region}: ${from} requires ${expected}px; the product renders "${rendered}" on \`${row.productSelector}\`.`,
+        `${row.region}: ${from} requires ${expected}${unit}; the product renders "${rendered}" on \`${row.productSelector}\`.`,
       );
     }
   }
@@ -2347,7 +2441,7 @@ test("the shell is what the drawing draws", async ({ page }, testInfo) => {
   ).toEqual([]);
   expect(
     failures,
-    "a shell region is not what its comparator requires of it",
+    "a region is not what its comparator requires of it",
   ).toEqual([]);
 });
 

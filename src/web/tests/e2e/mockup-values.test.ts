@@ -3,6 +3,7 @@ import { expect, test } from "vitest";
 import {
   CONTROLS_LIGHT_MOCKUP_PATH,
   CONTROLS_MOCKUP_PATH,
+  colourValue,
   currentDrawings,
   lengthInPx,
   MOCKUP_PATH,
@@ -14,6 +15,7 @@ import {
   SETTINGS_MOCKUP_PATH,
   SHELL_ROLES,
   SHELL_TOKEN_SELECTOR,
+  trackCount,
 } from "./mockup-values.js";
 
 /**
@@ -34,6 +36,16 @@ import {
 
 const drawing = readMockup();
 const settings = readMockup(SETTINGS_MOCKUP_PATH);
+
+/** The modal's regions, as `current/settings.html` is addressed — the same
+ *  selectors `PARITY`'s settings rows name, so a row whose address moved fails
+ *  here as well as in the browser run. */
+const NAV = '[style*="width:150px"]';
+const GRID = '[style*="display:grid"]';
+const CARD =
+  '[style*="border:1px solid var(--edge);border-radius:8px;padding:8px;background:var(--panel2)"]';
+const SWATCH_BAR =
+  '[style*="flex:1;height:16px;border-radius:4px;background:#fffdf7"]';
 
 test("the drawing is the checked-in file, read from disk", () => {
   expect(existsSync(MOCKUP_PATH)).toBe(true);
@@ -120,6 +132,43 @@ test("the two shapes the field row is not are read from the drawing that draws e
       "border-radius",
     ),
   ).toThrow(/does not settle which one it means/);
+});
+
+test("the settings drawing declares the modal's regions, each read by the row that names it", () => {
+  // The four settings-surface rows that read this drawing rather than the scale:
+  // the nav column, the palette grid's tracks, the card and the swatch bar. Plan
+  // 7 left this file's rows scale-owned; plan 8 Task 1 gives it rows of its own,
+  // and these are their addresses.
+  expect(mockupDeclared(settings, NAV, "width")).toBe("150px");
+  expect(
+    trackCount(mockupDeclared(settings, GRID, "grid-template-columns")),
+  ).toBe(3);
+  expect(mockupDeclared(settings, CARD, "border-radius")).toBe("8px");
+  expect(mockupDeclared(settings, CARD, "padding")).toBe("8px");
+  expect(mockupDeclared(settings, SWATCH_BAR, "height")).toBe("16px");
+
+  // Five of the six cards carry this declaration byte for byte and the sixth is
+  // the chosen card, told apart by its accent border — so a selector naming the
+  // shared form addresses **one** element form to this reader rather than five
+  // elements, which is the rule that lets the row read it at all.
+  expect(mockupDeclared(settings, CARD, "background")).toBe("var(--panel2)");
+  expect(
+    mockupDeclared(
+      settings,
+      '[style*="border:1px solid var(--accent);border-radius:8px;padding:8px;background:var(--panel2)"]',
+      "background",
+    ),
+    "the chosen card is not drawn where the row's address would read it",
+  ).toBe("var(--panel2)");
+  // The negative half: the shorter address the row must **not** take, because
+  // twelve bars carry it and the reader refuses to pick one.
+  expect(() =>
+    mockupDeclared(
+      settings,
+      '[style*="flex:1;height:16px;border-radius:4px"]',
+      "height",
+    ),
+  ).toThrow(/addresses 12 elements/);
 });
 
 test("the drawing's own token table is read, and all eleven tokens with it", () => {
@@ -382,7 +431,7 @@ test("the comparator holds every token of a value, and reads one value as one le
   expect(lengthInPx("auto")).toBeNull();
 });
 
-test("every row names a comparator, and a drawing row declares a length", () => {
+test("every row names a comparator, and each row's drawing value is one it reads", () => {
   expect(PARITY.length).toBeGreaterThan(0);
   /** A length, or `normal` — `gap`'s word for no gap. */
   const isLength = (value: string): boolean => {
@@ -411,6 +460,8 @@ test("every row names a comparator, and a drawing row declares a length", () => 
     ).toBe(true);
     // A scale-owned row must not also carry a drawing selector: the selector it
     // would name is a window's wrapper, which is what withdrew the comparator.
+    // A **colour** row is the one kind whose scale token is read as a colour:
+    // `--elev-scrim` is `#00000073`, which no length reading has an answer for.
     if (row.scaleToken !== undefined) {
       expect(
         row.mockupSelector,
@@ -455,9 +506,82 @@ test("every row names a comparator, and a drawing row declares a length", () => 
     // `null` is a legitimate reading — the four body regions are exactly the
     // rows the drawing is silent about, and the spec reads that silence as `0`.
     if (declared === null) continue;
+    // **Read through the row's own comparator, not through `lengthInPx`.** The
+    // palette grid's declared value is `repeat(3,1fr)` and the drawing declares no
+    // colour any row reads, so a length-only check here would red on the count
+    // row's own drawing — and, worse, would let a count row be *given* a px value
+    // and pass.
+    const reads =
+      row.comparator === "count"
+        ? trackCount(declared) !== null
+        : row.comparator === "colour"
+          ? colourValue(declared) !== null
+          : isLength(declared);
     expect(
-      isLength(declared),
-      `${row.region}: the drawing declares \`${declared}\`, which is not a length the spec can compare`,
+      reads,
+      `${row.region}: the drawing declares \`${declared}\`, which is not a ${row.comparator ?? "length"} this table can compare`,
     ).toBe(true);
   }
+});
+
+test("a track count is read, and a value that is not one is null", () => {
+  // The count comparator, and the reason it is not `lengthInPx`: the drawing's
+  // declared value and the product's computed one are the *same property* in two
+  // forms, `repeat(3,1fr)` and a serialised track list, and a px reading answers
+  // `null` for both.
+  expect(trackCount("repeat(3,1fr)")).toBe(3);
+  expect(trackCount("repeat( 2 , 1fr )")).toBe(2);
+  expect(trackCount("146px 146px")).toBe(2);
+  expect(trackCount("146px 146.5px 146px")).toBe(3);
+  // A track that carries its own whitespace is one track, not two, and a line
+  // name is not a track at all.
+  expect(trackCount("minmax(0px, 1fr) 1fr 1fr")).toBe(3);
+  expect(trackCount("[full-start] 1fr [full-end]")).toBe(1);
+  expect(trackCount("[a] 1fr [b] 2fr [c]")).toBe(2);
+  // The values this comparator has no count for — and `repeat(auto-fill, …)` is
+  // the one that matters: it is a bound, not a count, so it must not be read as
+  // the drawing's number.
+  expect(trackCount("none")).toBeNull();
+  expect(trackCount("subgrid")).toBeNull();
+  expect(trackCount("")).toBeNull();
+  expect(trackCount("repeat(auto-fill, minmax(80px, 1fr))")).toBeNull();
+  // The check the assertions above cannot make: a comparator answering a
+  // constant passes them. A drawing moved to three columns must come back as
+  // three.
+  const three = settings.replace("repeat(3,1fr)", "repeat(4,1fr)");
+  expect(three).not.toBe(settings);
+  expect(trackCount(mockupDeclared(three, GRID, "grid-template-columns"))).toBe(
+    4,
+  );
+  expect(
+    trackCount(mockupDeclared(settings, GRID, "grid-template-columns")),
+  ).toBe(3);
+});
+
+test("a colour is read as a resolved value, so one colour's spellings are equal", () => {
+  // The colour comparator, and the reason it is not a string comparison: the
+  // bible writes the modal's scrim `#00000073` and a browser computes the same
+  // colour as `rgba(0, 0, 0, 0.451)`, so the two sides of a colour row are never
+  // the same text.
+  expect(colourValue("#00000073")).toBe("rgba(0, 0, 0, 115)");
+  expect(colourValue("rgba(0, 0, 0, 0.451)")).toBe(colourValue("#00000073"));
+  expect(colourValue("rgb(0 0 0 / 45.1%)")).toBe(colourValue("#00000073"));
+  expect(colourValue("#0009")).toBe("rgba(0, 0, 0, 153)");
+  expect(colourValue("rgba(0, 0, 0, 0.6)")).toBe(colourValue("#0009"));
+  expect(colourValue("#fff")).toBe("rgba(255, 255, 255, 255)");
+  expect(colourValue("#12161c")).toBe("rgba(18, 22, 28, 255)");
+  expect(colourValue("transparent")).toBe("rgba(0, 0, 0, 0)");
+  expect(colourValue("rgba(0,0,0,0)")).toBe(colourValue("transparent"));
+  // **The difference the row is for.** 60% black is not 45% black, and a
+  // comparator that answered `true` here would pass the product's `#0009` row.
+  expect(colourValue("#0009")).not.toBe(colourValue("#00000073"));
+  expect(colourValue("#0b1419a8")).not.toBe(colourValue("#12161c"));
+  // The values this comparator has no colour for. `color-mix(…)` is the one that
+  // matters: `--edge-2` and `--faint` are written that way, so a row that named
+  // one is `null` rather than a guess at the mix.
+  expect(colourValue("color-mix(in srgb, red, blue)")).toBeNull();
+  expect(colourValue("linear-gradient(145deg,#101923,#071116)")).toBeNull();
+  expect(colourValue("")).toBeNull();
+  expect(colourValue("rgba(0, 0)")).toBeNull();
+  expect(colourValue("#12345")).toBeNull();
 });
