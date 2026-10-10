@@ -204,11 +204,11 @@ export function resolveTypePreset(
  * where it does not (see `nameOfRef`) — or, absent, the `notSet` word.
  *
  * One owner for the sentence, because the selection's Spends rows and the
- * Document pane's list are two renderings of it: the `notSet` and `unresolved`
- * cases keep their full length in both, since "no longer resolves" is a fact
- * the author needs rather than a word to shorten.
+ * Document pane's References list are two renderings of it: the `notSet` and
+ * `unresolved` cases keep their full length in both, since "no longer resolves"
+ * is a fact the author needs rather than a word to shorten.
  */
-function resolutionValue(
+export function resolutionValue(
   shown: string | undefined,
   resolved: string | undefined,
 ): string {
@@ -218,22 +218,6 @@ function resolutionValue(
   return resolved === undefined
     ? `${shown} (${uiCopy.inspectorFields.unresolved})`
     : `${shown} → ${resolved}`;
-}
-
-/**
- * A read-only line naming a reference and what it resolves to, as the Document
- * pane mounts it. `label` is both the row's own name and its hook.
- */
-export function createResolutionLine(
-  label: string,
-  shown: string | undefined,
-  resolved: string | undefined,
-): HTMLElement {
-  const line = document.createElement("p");
-  line.className = "vigilia-resolution";
-  line.dataset["vigiliaResolution"] = label;
-  line.textContent = `${label}: ${resolutionValue(shown, resolved)}`;
-  return line;
 }
 
 /**

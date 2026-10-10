@@ -50,6 +50,10 @@ import {
   reassignPaletteToken,
 } from "./palette-manager/index.js";
 import {
+  createDocumentReferencesPanel,
+  type DocumentReferencesPanel,
+} from "./panes/document/references.js";
+import {
   type PresetSelection,
   presetRevealTarget,
 } from "./panes/tokens/preset-list.js";
@@ -63,10 +67,6 @@ import {
   createSelectionInspector,
   type SelectionInspector,
 } from "./selection-inspector/index.js";
-import {
-  createDocumentReferencesPanel,
-  type DocumentReferencesPanel,
-} from "./selection-inspector/style.js";
 import { ShortcutManager } from "./shortcut-manager/index.js";
 import { createSnapManager, type SnapManager } from "./snap-manager/index.js";
 import {
