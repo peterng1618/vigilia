@@ -1,96 +1,108 @@
 // @vitest-environment jsdom
 
-import { beforeEach, describe, expect, it } from "vitest";
+/**
+ * The library chooser, re-pointed from the imperative dialog to the React one.
+ *
+ * Every journey it had is still here — the two groups, the delete that is
+ * offered only for a theme, the confirmation that names what it will remove, and
+ * the failure that keeps the row and says why — driven through the plan-1
+ * controls rather than a native `<select>`.
+ */
+
+import { act } from "react";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
 import { STARTER_TEMPLATE } from "./new-fabric-theme.js";
 import type { ThemeLibraryClient } from "./theme-library-client.js";
 import {
   promptThemeConflict,
   promptThemeSelection,
 } from "./theme-library-dialog.js";
+import { uiCopy } from "./ui-copy.js";
 
-/** jsdom has no `<dialog>`, so this stands in for the two methods the code
-    calls. `close` is guarded so a real browser's close, which fires the event
-    the code also listens for, cannot re-enter. */
-function showModal(): void {
-  HTMLDialogElement.prototype.showModal ??= function showModal(this: {
-    open: boolean;
-    setAttribute(name: string, value: string): void;
-  }) {
-    this.open = true;
-    this.setAttribute("open", "");
-  };
-  HTMLDialogElement.prototype.close ??= function close(
-    this: { returnValue: string; dispatchEvent(event: Event): boolean },
-    returnValue = "",
-  ) {
-    if (this.returnValue === returnValue) return;
-    this.returnValue = returnValue;
-    this.dispatchEvent(new Event("close"));
-  };
+// Base UI's popups need three browser APIs jsdom has none of — the same three
+// `artboard-fields.dom.test.tsx` supplies, for the same reason.
+globalThis.ResizeObserver ??= class {
+  observe(): void {}
+  unobserve(): void {}
+  disconnect(): void {}
+} as never;
+Element.prototype.getAnimations ??= (): never[] => [];
+window.PointerEvent ??= MouseEvent as never;
+
+(
+  globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
+).IS_REACT_ACT_ENVIRONMENT = true;
+
+beforeAll(() => {
+  const matches = Element.prototype.matches;
+  Element.prototype.matches = Object.assign(function (
+    this: Element,
+    selector: string,
+  ): boolean {
+    if (selector === ":modal" || selector === ":popover-open") return false;
+    return matches.call(this, selector);
+  }, matches);
+});
+
+afterEach(() => {
+  document.body.replaceChildren();
+  vi.restoreAllMocks();
+});
+
+/** Opens the chooser the way the session opens it. */
+function open(
+  themes: readonly { id: string; name: string; updatedAt: string }[],
+  client?: ThemeLibraryClient,
+): Promise<unknown> {
+  let pending: Promise<unknown> | undefined;
+  act(() => {
+    pending = promptThemeSelection(
+      themes,
+      [STARTER_TEMPLATE],
+      client === undefined ? undefined : { client },
+    );
+  });
+  if (pending === undefined)
+    throw new Error("promptThemeSelection returned nothing");
+  return pending;
 }
 
-const options = (): string[] =>
-  [...document.querySelectorAll("dialog option")].map(
-    (option) => option.getAttribute("value") ?? "",
-  );
-
-/** Pick an option the way a person does. Assigning `select.value` alone fires
- *  no event, so a control that answers to `change` would never hear it. */
-const pick = (value: string): HTMLSelectElement => {
-  const select = document.querySelector<HTMLSelectElement>("dialog select");
-  if (select === null) throw new Error("the library dialog did not open");
-  select.value = value;
-  select.dispatchEvent(new Event("change", { bubbles: true }));
-  return select;
-};
-
-const choose = async (value: string): Promise<unknown> => {
-  const pending = promptThemeSelection([
-    { id: "mine", name: "My theme", updatedAt: "" },
-  ]);
-  const select = document.querySelector<HTMLSelectElement>("dialog select");
-  if (select === null) throw new Error("the library dialog did not open");
-  select.value = value;
-  document
-    .querySelector<HTMLButtonElement>("[data-vigilia-library-open]")
-    ?.click();
+/** Opens the chooser, picks an option and presses Open — one journey. */
+async function choose(
+  value: string,
+  themes: readonly { id: string; name: string; updatedAt: string }[] = [],
+): Promise<unknown> {
+  const pending = open(themes);
+  await chooseIn("theme", value);
+  await pressButton("[data-vigilia-library-open]");
   return pending;
-};
+}
+
+/** The confirmation, which is the topmost dialog once it opens. */
+function topDialog(): HTMLElement {
+  const dialogs = [
+    ...document.querySelectorAll<HTMLElement>('[role="dialog"]'),
+  ];
+  const dialog = dialogs.at(-1);
+  if (dialog === undefined) throw new Error("no dialog opened");
+  return dialog;
+}
 
 describe("the library chooser", () => {
-  beforeEach(() => {
-    showModal();
-    document.body.replaceChildren();
-  });
-
   it("lists the starter as a template and the author's themes as theirs", async () => {
-    const pending = promptThemeSelection([
-      { id: "mine", name: "My theme", updatedAt: "" },
-    ]);
-    const dialog = document.querySelector("dialog");
-    if (dialog === null) throw new Error("the library dialog did not open");
+    const pending = open([{ id: "mine", name: "My theme", updatedAt: "" }]);
+    await openControl("theme");
 
     // A template is something the product offers; a saved theme is something the
-    // author made. One undifferentiated list says neither, and the author cannot
-    // tell a starter apart from their own work.
-    const groups = [...dialog.querySelectorAll("optgroup")].map(
-      (group) => group.label,
-    );
-    expect(groups).toContain("Templates");
-    expect(groups).toContain("Your themes");
+    // author made. One undifferentiated list says neither.
+    expect(groups().map((group) => group.label)).toEqual([
+      uiCopy.library.templates,
+      uiCopy.library.yourThemes,
+    ]);
+    expect(idsIn(uiCopy.library.templates)).toEqual([STARTER_TEMPLATE.id]);
+    expect(idsIn(uiCopy.library.yourThemes)).toEqual(["mine"]);
 
-    const inGroup = (label: string): string[] =>
-      [
-        ...dialog.querySelectorAll<HTMLOptionElement>(
-          `optgroup[label="${label}"] option`,
-        ),
-      ].map((option) => option.value);
-    expect(inGroup("Templates")).toEqual([STARTER_TEMPLATE.id]);
-    expect(inGroup("Your themes")).toEqual(["mine"]);
-
-    document
-      .querySelector<HTMLButtonElement>("[data-vigilia-library-cancel]")
-      ?.click();
+    await pressButton("[data-vigilia-library-cancel]");
     await expect(pending).resolves.toBeUndefined();
   });
 
@@ -99,197 +111,133 @@ describe("the library chooser", () => {
       kind: "template",
       id: STARTER_TEMPLATE.id,
     });
-    await expect(choose("mine")).resolves.toEqual({
+    await expect(
+      choose("mine", [{ id: "mine", name: "My theme", updatedAt: "" }]),
+    ).resolves.toEqual({
       kind: "theme",
       id: "mine",
     });
   });
 
   it("offers the template even when the author has saved nothing", async () => {
-    const pending = promptThemeSelection([]);
-    expect(options()).toEqual([STARTER_TEMPLATE.id]);
-    document
-      .querySelector<HTMLButtonElement>("[data-vigilia-library-cancel]")
-      ?.click();
+    const pending = open([]);
+    await openControl("theme");
+    expect(allOptionIds()).toEqual([STARTER_TEMPLATE.id]);
+    await pressButton("[data-vigilia-library-cancel]");
     await expect(pending).resolves.toBeUndefined();
   });
 
   it("offers a delete only for a theme, and never for a template", async () => {
     const removed: string[] = [];
-    const pending = promptThemeSelection(
-      [{ id: "mine", name: "My theme", updatedAt: "" }],
-      [STARTER_TEMPLATE],
-      {
-        client: {
-          remove: async (id: string) => {
-            removed.push(id);
-          },
-        } as unknown as ThemeLibraryClient,
+    const pending = open([{ id: "mine", name: "My theme", updatedAt: "" }], {
+      remove: async (id: string) => {
+        removed.push(id);
       },
-    );
-    const dialog = document.querySelector("dialog");
-    if (dialog === null) throw new Error("the library dialog did not open");
-    const del = dialog.querySelector<HTMLButtonElement>(
-      "[data-vigilia-library-delete]",
-    );
-    if (del === null) throw new Error("no delete control");
+    } as unknown as ThemeLibraryClient);
+    const del = deleteButton();
 
     // A template is not a stored theme: the host has no folder for it, so a
     // delete beside one would offer to remove something that was never there.
-    pick(STARTER_TEMPLATE.id);
     expect(del.disabled).toBe(true);
 
-    pick("mine");
+    await chooseIn("theme", "mine");
     expect(del.disabled).toBe(false);
-    del.click();
 
-    document
-      .querySelector<HTMLButtonElement>("[data-vigilia-library-cancel]")
-      ?.click();
-    await expect(pending).resolves.toBeUndefined();
+    // Pressing it opens the confirmation and removes nothing yet.
+    await pressButton("[data-vigilia-library-delete]");
     expect(removed).toEqual([]);
+    await pressButtonIn(topDialog(), "[data-vigilia-library-cancel]");
+
+    await pressButton("[data-vigilia-library-cancel]");
+    await expect(pending).resolves.toBeUndefined();
   });
 
   it("confirms by name before removing, and the row goes afterwards", async () => {
     const removed: string[] = [];
-    const pending = promptThemeSelection(
-      [{ id: "mine", name: "My theme", updatedAt: "" }],
-      [STARTER_TEMPLATE],
-      {
-        client: {
-          remove: async (id: string) => {
-            removed.push(id);
-          },
-        } as unknown as ThemeLibraryClient,
+    const pending = open([{ id: "mine", name: "My theme", updatedAt: "" }], {
+      remove: async (id: string) => {
+        removed.push(id);
       },
-    );
-
-    const chooser = document.querySelector("dialog");
-    if (chooser === null) throw new Error("the library dialog did not open");
-    pick("mine");
-    chooser
-      .querySelector<HTMLButtonElement>("[data-vigilia-library-delete]")
-      ?.click();
+    } as unknown as ThemeLibraryClient);
+    await chooseIn("theme", "mine");
+    await pressButton("[data-vigilia-library-delete]");
 
     // The confirm names the theme, because a destructive act the author cannot
     // see the target of is the thing they have to be stopped from.
-    const confirm = [...document.querySelectorAll("dialog")].at(-1);
-    if (confirm === undefined) throw new Error("no confirmation appeared");
+    const confirm = topDialog();
     expect(confirm.textContent).toContain("My theme");
     // And says where it goes, which is the whole reason this is allowed.
     expect(confirm.textContent).toMatch(/recycle bin|trash/i);
 
-    confirm
-      .querySelector<HTMLButtonElement>("[data-vigilia-library-delete-confirm]")
-      ?.click();
-    await Promise.resolve();
-    await Promise.resolve();
+    await pressButton("[data-vigilia-library-delete-confirm]");
+    await flush();
 
     expect(removed).toEqual(["mine"]);
     // The row is gone, so the author cannot open what is no longer there.
-    expect(options()).toEqual([STARTER_TEMPLATE.id]);
+    await openControl("theme");
+    expect(allOptionIds()).toEqual([STARTER_TEMPLATE.id]);
 
     // The chooser itself is still open: the author carries on with what is
     // theirs rather than being dropped out of the library.
-    chooser
-      .querySelector<HTMLButtonElement>("[data-vigilia-library-cancel]")
-      ?.click();
+    await pressButton("[data-vigilia-library-cancel]");
     await expect(pending).resolves.toBeUndefined();
   });
 
   it("keeps the theme when the author backs out of the confirmation", async () => {
     const removed: string[] = [];
-    const pending = promptThemeSelection(
-      [{ id: "mine", name: "My theme", updatedAt: "" }],
-      [STARTER_TEMPLATE],
-      {
-        client: {
-          remove: async (id: string) => {
-            removed.push(id);
-          },
-        } as unknown as ThemeLibraryClient,
+    const pending = open([{ id: "mine", name: "My theme", updatedAt: "" }], {
+      remove: async (id: string) => {
+        removed.push(id);
       },
-    );
+    } as unknown as ThemeLibraryClient);
+    await chooseIn("theme", "mine");
+    await pressButton("[data-vigilia-library-delete]");
 
-    const chooser = document.querySelector("dialog");
-    if (chooser === null) throw new Error("the library dialog did not open");
-    pick("mine");
-    chooser
-      .querySelector<HTMLButtonElement>("[data-vigilia-library-delete]")
-      ?.click();
-
-    const confirm = [...document.querySelectorAll("dialog")].at(-1);
-    if (confirm === undefined) throw new Error("no confirmation appeared");
-    confirm
-      .querySelector<HTMLButtonElement>("[data-vigilia-library-cancel]")
-      ?.click();
+    const confirm = topDialog();
+    await pressButtonIn(confirm, "[data-vigilia-library-cancel]");
 
     expect(removed).toEqual([]);
-    expect(options()).toContain("mine");
+    await openControl("theme");
+    expect(allOptionIds()).toContain("mine");
 
-    chooser
-      .querySelector<HTMLButtonElement>("[data-vigilia-library-cancel]")
-      ?.click();
+    await pressButton("[data-vigilia-library-cancel]");
     await expect(pending).resolves.toBeUndefined();
   });
 
   it("says why a removal failed, and keeps the theme listed", async () => {
-    const pending = promptThemeSelection(
-      [{ id: "mine", name: "My theme", updatedAt: "" }],
-      [STARTER_TEMPLATE],
-      {
-        client: {
-          remove: async () => {
-            throw new Error("This PC has no trash command (gio, trash-put)");
-          },
-        } as unknown as ThemeLibraryClient,
+    const pending = open([{ id: "mine", name: "My theme", updatedAt: "" }], {
+      remove: async () => {
+        throw new Error("This PC has no trash command (gio, trash-put)");
       },
-    );
-
-    const chooser = document.querySelector("dialog");
-    if (chooser === null) throw new Error("the library dialog did not open");
-    pick("mine");
-    chooser
-      .querySelector<HTMLButtonElement>("[data-vigilia-library-delete]")
-      ?.click();
-    [...document.querySelectorAll("dialog")]
-      .at(-1)
-      ?.querySelector<HTMLButtonElement>(
-        "[data-vigilia-library-delete-confirm]",
-      )
-      ?.click();
-    for (let tick = 0; tick < 5; tick += 1) await Promise.resolve();
+    } as unknown as ThemeLibraryClient);
+    await chooseIn("theme", "mine");
+    await pressButton("[data-vigilia-library-delete]");
+    await pressButton("[data-vigilia-library-delete-confirm]");
+    await flush();
 
     // Nothing was lost, so the row stays and the reason is on screen: a silent
     // failure here would look exactly like a successful delete.
-    expect(options()).toContain("mine");
-    expect(chooser.textContent).toContain("no trash command");
+    await openControl("theme");
+    expect(allOptionIds()).toContain("mine");
+    expect(topDialog().textContent).toContain("no trash command");
 
-    chooser
-      .querySelector<HTMLButtonElement>("[data-vigilia-library-cancel]")
-      ?.click();
+    await pressButton("[data-vigilia-library-cancel]");
     await expect(pending).resolves.toBeUndefined();
   });
 
   it("names itself, and names its control", async () => {
-    const pending = promptThemeSelection([]);
-    const dialog = document.querySelector("dialog");
-    if (dialog === null) throw new Error("the library dialog did not open");
+    const pending = open([]);
+    const dialog = topDialog();
 
+    expect(dialog.getAttribute("aria-label")).toBeTruthy();
+    const trigger = dialog.querySelector("[data-vigilia-library-theme]");
+    if (trigger === null) throw new Error("no theme control");
     expect(
-      dialog.getAttribute("aria-label") ??
-        dialog.getAttribute("aria-labelledby"),
-    ).toBeTruthy();
-    const select = dialog.querySelector("select");
-    if (select === null) throw new Error("no select");
-    expect(
-      select.getAttribute("aria-label") !== null ||
-        dialog.querySelector(`label[for="${select.id}"]`) !== null,
+      trigger.getAttribute("aria-label") !== null ||
+        dialog.querySelector(`label[for="${trigger.id}"]`) !== null,
     ).toBe(true);
 
-    document
-      .querySelector<HTMLButtonElement>("[data-vigilia-library-cancel]")
-      ?.click();
+    await pressButton("[data-vigilia-library-cancel]");
     await expect(pending).resolves.toBeUndefined();
   });
 });
@@ -300,47 +248,161 @@ describe("the library chooser", () => {
  * last is what keeps the author's document theirs while they decide.
  */
 describe("promptThemeConflict", () => {
+  function openConflict(): Promise<unknown> {
+    let pending: Promise<unknown> | undefined;
+    act(() => {
+      pending = promptThemeConflict();
+    });
+    if (pending === undefined)
+      throw new Error("promptThemeConflict returned nothing");
+    return pending;
+  }
+
   it.each(["reload", "overwrite"] as const)(
     "answers %s when the author picks it",
     async (choice) => {
-      const pending = promptThemeConflict();
+      const pending = openConflict();
       const button = document.querySelector<HTMLButtonElement>(
         `[data-vigilia-library-${choice}]`,
       );
       if (button === null) throw new Error(`no ${choice} button`);
       expect(button.textContent).toBeTruthy();
 
-      button.click();
+      await pressButton(`[data-vigilia-library-${choice}]`);
       await expect(pending).resolves.toBe(choice);
     },
   );
 
   it("keeps both versions when the author says neither", async () => {
-    const pending = promptThemeConflict();
-    document
-      .querySelector<HTMLButtonElement>("[data-vigilia-library-cancel]")
-      ?.click();
+    const pending = openConflict();
+    await pressButton("[data-vigilia-library-cancel]");
     await expect(pending).resolves.toBeUndefined();
   });
 
   it("says the work is still there, and can be reached by keyboard", async () => {
-    const pending = promptThemeConflict();
-    const dialog = document.querySelector("dialog");
-    if (dialog === null) throw new Error("the conflict dialog did not open");
+    const pending = openConflict();
+    const dialog = topDialog();
 
-    // The refusal has to name what happened and what the author still holds —
-    // a message that only says "conflict" is the silent refusal.
+    // The refusal has to name what happened and what the author still holds.
     expect(dialog.textContent).toContain("still here");
-    expect(
-      dialog.getAttribute("aria-label") ??
-        dialog.getAttribute("aria-labelledby"),
-    ).toBeTruthy();
+    expect(dialog.getAttribute("aria-label")).toBeTruthy();
     for (const button of dialog.querySelectorAll("button")) {
       expect(button.type).toBe("button");
       expect(button.textContent).toBeTruthy();
     }
 
-    dialog.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+    await act(async () => {
+      dialog.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+      );
+    });
     await expect(pending).resolves.toBeUndefined();
   });
 });
+
+/** React and floating-ui schedule outside `act`, so a popup is flushed with
+ *  macrotasks rather than one. */
+async function flush(): Promise<void> {
+  for (let round = 0; round < 3; round += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  }
+}
+
+async function click(target: Element, detail = 0): Promise<void> {
+  await act(async () => {
+    target.dispatchEvent(
+      new MouseEvent("click", { bubbles: true, cancelable: true, detail }),
+    );
+  });
+}
+
+async function pointerDown(target: Element): Promise<void> {
+  await act(async () => {
+    target.dispatchEvent(
+      new PointerEvent("pointerdown", {
+        bubbles: true,
+        cancelable: true,
+        pointerType: "mouse",
+        button: 0,
+      }),
+    );
+  });
+}
+
+async function pressButton(selector: string): Promise<void> {
+  const button = document.querySelector<HTMLButtonElement>(selector);
+  if (button === null) throw new Error(`no button matches ${selector}`);
+  await click(button);
+  await flush();
+}
+
+async function pressButtonIn(
+  within: HTMLElement,
+  selector: string,
+): Promise<void> {
+  const button = within.querySelector<HTMLButtonElement>(selector);
+  if (button === null) throw new Error(`no button matches ${selector}`);
+  await click(button);
+  await flush();
+}
+
+/** A select's trigger, opened, and the options of its own popup. */
+async function openControl(marker: string): Promise<readonly Element[]> {
+  const trigger = document.querySelector<HTMLElement>(
+    `[data-vigilia-library-${marker}]`,
+  );
+  if (trigger === null) throw new Error(`no ${marker} control`);
+  await click(trigger);
+  await flush();
+  if (trigger.getAttribute("aria-controls") === null) {
+    await click(trigger);
+    await flush();
+  }
+  const owned = document.getElementById(
+    trigger.getAttribute("aria-controls") ?? "",
+  );
+  return Array.from((owned ?? document).querySelectorAll('[role="option"]'));
+}
+
+async function chooseIn(marker: string, id: string): Promise<void> {
+  const options = await openControl(marker);
+  const option = options.find(
+    (candidate) => candidate.getAttribute("data-vigilia-option") === id,
+  );
+  if (option === undefined) throw new Error(`no option ${id} in ${marker}`);
+  await pointerDown(option);
+  await click(option, 1);
+  await flush();
+}
+
+function allOptionIds(): string[] {
+  return [...document.querySelectorAll<HTMLElement>('[role="option"]')].map(
+    (option) => option.getAttribute("data-vigilia-option") ?? "",
+  );
+}
+
+/** The groups the open list is drawn in, each with the ids it holds. */
+function groups(): { readonly label: string; readonly ids: string[] }[] {
+  return [...document.querySelectorAll<HTMLElement>('[role="group"]')].map(
+    (group) => ({
+      label:
+        document.getElementById(group.getAttribute("aria-labelledby") ?? "")
+          ?.textContent ?? "",
+      ids: [...group.querySelectorAll<HTMLElement>('[role="option"]')].map(
+        (option) => option.getAttribute("data-vigilia-option") ?? "",
+      ),
+    }),
+  );
+}
+
+function idsIn(label: string): string[] {
+  return groups().find((group) => group.label === label)?.ids ?? [];
+}
+
+function deleteButton(): HTMLButtonElement {
+  const button = document.querySelector<HTMLButtonElement>(
+    "[data-vigilia-library-delete]",
+  );
+  if (button === null) throw new Error("no delete control");
+  return button;
+}
