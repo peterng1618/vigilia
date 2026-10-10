@@ -387,10 +387,17 @@ Name in the body that this answers the user's report, which of the three measure
 |---|---|
 | `current/shell.html` | The whole shell as it renders today: header and menubar, the four-slot rail with the gear at its foot, a pane open beside it, the stage and its three corners, the inspector with a selection, the status strip |
 | `current/settings.html` | The settings surface on its own — a modal cannot share a file with the shell without becoming a specimen — with its three tabs |
-| `current/controls.html` | The control vocabulary in the reference palette: wells, sliders, swatches, the read-only treatment, focus, refusal |
-| `current/controls-light.html` | The same vocabulary in the light palette, so a hard-coded colour cannot hide in it |
+| `current/controls.html` | The inspector column **as the product renders it**, at a size where its field rows are readable — the real sections, the real rows, the real wells and sliders — not a catalogue of every control the design language permits |
+| `current/controls-light.html` | The same surface in the light palette, so a hard-coded colour cannot hide in it |
 
-Both palettes are drawn for the surfaces that had a palette pair before, because one palette cannot show a hard-coded value — the same reason the captures take two. A fifth view (the inspector column alone, a pane alone) is a ruling to make later, not a default here.
+**The style is gold and the content is corrected — in that order, and they are different properties.** The user's clarification of 2026-10-10: *"the original mockup style is still the gold target. But the actual content might not accurately reflect the product capabilities we've built. This mockup update pass is to address that. So we can write an accurate gate check against it."* So:
+
+- **Treatment is measured against the original and never re-derived** (Step 4). A new file that looks different from the original in colour, spacing, radius, type or elevation has failed this task, whatever it renders.
+- **Content is measured against the product and is what this task repairs.** *Which* surfaces, panes, sections, rows, controls and readouts exist, and what they are called, comes from the code — including surfaces the original never drew, which are **added in the original's treatment** rather than left out. A capability the product has and the drawing omits is a hole in the gate, which is the whole reason for this pass.
+- **Therefore each new file renders a surface the product actually renders**, as the product renders it. Neither the vocabulary sheet's catalogue arrangement nor any specimen grouping survives: a drawing that arranges controls to be inspected is a drawing no gate can read a surface from.
+- **The gate this makes possible:** the drawing then states the treatment, and the product must meet it. Content accuracy is what stops that assertion from being *"the product matches a drawing of something else"*.
+
+Both palettes are drawn for the surfaces that had a palette pair before, because one palette cannot show a hard-coded value — the same reason the captures take two. A further view (a pane alone, the stage alone) is a ruling to make later, not a default here.
 
 **Owning symbols/landmarks:** `docs/design/mockups/current/*` (new); the three originals plus `docs/design/mockups/README.md` (its "Shows" column and its **Reviewed reference contract** section describe specimens that are about to sit beside a second, annotation-free set); and, as the sources of what today's surfaces *are*, `packages/editor/src/editor-shell/rail.tsx` + `uiCopy.rail`, the menubar's groups and the publish control, `packages/editor/src/selection-inspector/` (the five sections), the status strip's readouts in `shell-layout.tsx`, `settings.tsx` / `settings-keyboard.tsx`, and `ui-copy.ts` for every string.
 
@@ -406,7 +413,7 @@ Both palettes are drawn for the surfaces that had a palette pair before, because
 
 - [ ] **Step 1: Enumerate today's surfaces from the code, not from the original drawing**
 
-Write the list into the report: every surface the editor renders, each with the symbol it comes from. The original drawing is not the source — it predates plans 3–5 and draws at least one surface that no longer exists. Where the drawing and the product disagree about **which** surface exists (a pane, a tab, a rail slot, a menubar group), **the product is right**, because this task is about content. Where they disagree about how a surface is *arranged or styled*, **the drawing is right** (the user's ruling of 2026-10-10), and the product's version is this plan's defect to fix — so the new files draw the drawing's arrangement, not the product's.
+Write the list into the report: every surface the editor renders, each with the symbol it comes from. The original drawing is not the source — it predates plans 3–5 and draws at least one surface that no longer exists. Where the drawing and the product disagree about **which** surface exists — a pane, a tab, a rail slot, a menubar group, an inspector section, a readout, a control — **the product is right, and this includes what the drawing omits**: a capability the product has and the drawing does not is drawn into the new file, in the original's treatment, because the gate cannot check a surface the drawing never shows. Where they disagree about how a surface is *arranged or styled*, **the drawing is right** (the user's ruling of 2026-10-10), and the product's version is this plan's defect to fix — so the new files draw the drawing's arrangement, not the product's.
 
 - [ ] **Step 2: Take the real copy, string by string**
 
