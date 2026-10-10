@@ -39,6 +39,8 @@ function refusalWords(
       return uiCopy.settings.keyboardCannotDefer(SHORTCUT_LABELS[action]);
     case "unprintable":
       return uiCopy.settings.keyboardUnprintable;
+    case "unbindable":
+      return uiCopy.settings.keyboardUnbindable;
   }
 }
 

@@ -55,6 +55,13 @@ const NAMED_KEYS: Readonly<Record<string, string>> = {
   delete: "Delete",
   backspace: "Backspace",
   escape: "Esc",
+  // The three keys `bindings.ts`'s `RESERVED_KEYS` refuses as reserved rather
+  // than as unprintable: without a name here `keyCap` answers `undefined` and
+  // the refusal reads unprintable, so the reason would be about a missing mark
+  // on a key whose mark is `F5`.
+  f5: "F5",
+  f11: "F11",
+  f12: "F12",
 };
 
 /** What the four arrows and the shortened `Esc` are called out loud. Every other

@@ -427,6 +427,36 @@ describe("bindingRefusal", () => {
     ).toEqual({ kind: "reserved", chord: "Ctrl+R" });
   });
 
+  it("refuses a function key the browser keeps, naming the key it keeps", () => {
+    // `keyCap` names `f5`, so this refusal is reachable and says what it means:
+    // the browser keeps F5. Without the name the key reads unprintable, which is
+    // a reason about a mark that plainly exists.
+    expect(
+      bindingRefusal(
+        "publish.toggle",
+        { key: "f5", modifier: false, shift: false, action: "publish.toggle" },
+        {},
+      ),
+    ).toEqual({ kind: "reserved", chord: "F5" });
+  });
+
+  it("refuses a printable punctuation key the store cannot carry, so capture cannot outrun the reader", () => {
+    // `.` prints as `Ctrl+.` and is free, so nothing but the store's own shape
+    // rule stops it — and the reader (`storedBinding`/`KEY_SHAPE`) rejects it,
+    // which is the silent revert on reload this refusal exists to prevent. The
+    // two rules are the same predicate now, so this list is the reader's.
+    for (const key of [".", "/", ",", "=", " "]) {
+      expect(
+        bindingRefusal(
+          "publish.toggle",
+          { key, modifier: true, shift: false, action: "publish.toggle" },
+          {},
+        ),
+        key,
+      ).toEqual({ kind: "unbindable" });
+    }
+  });
+
   it("refuses a modifier-less letter for an action that does not defer to a text field", () => {
     // `file.save` deliberately fires while a text field has focus; binding it to
     // a bare letter would make it stop, which is the §2.3 behaviour change a

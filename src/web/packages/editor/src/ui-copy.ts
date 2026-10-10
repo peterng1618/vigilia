@@ -159,6 +159,13 @@ export const uiCopy = {
       `${action} works while a text field has focus, so its chord needs a modifier.`,
     keyboardUnprintable:
       "That key has no mark this editor can print, so the binding could not be shown here.",
+    /** The second half of the same rule, and the one a punctuation key meets:
+        `.` prints (`Ctrl+.`) but is not a key the stored table carries, so a
+        capture that took it would hold for the session and revert on the next
+        reload. The message names the vocabulary rather than the store, which is
+        the part the author can act on. */
+    keyboardUnbindable:
+      "Only letters, digits and named keys can hold a chord here. Press another.",
     /** The storage-less branch, worded like the appearance toggle's: a session
      *  preference is real, and it is honest about not outliving a reload. */
     keyboardSessionOnly:

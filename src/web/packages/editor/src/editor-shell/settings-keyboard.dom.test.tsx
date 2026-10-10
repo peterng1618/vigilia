@@ -324,6 +324,52 @@ describe("the Keyboard tab", () => {
     expect(reason(mounting)).not.toContain("This browser keeps R for itself");
   });
 
+  it("refuses a punctuation chord, and a reload of the same store agrees", async () => {
+    // Ctrl+. is printable and free, so `bindingRefusal` used to accept it and
+    // `writeShortcutOverride` stored `{ key: "." }` — for the session the row
+    // printed `Ctrl+.`, and the next `readShortcutOverrides` dropped it, so the
+    // binding silently reverted to its default. What the capture leaves the
+    // session showing and what the store hands back on a reload must be the same
+    // chord; this fails when the capture can take one the reader rejects.
+    const mounting = mount(localStorage);
+    await click(armControl(mounting, "publish.toggle"));
+
+    await press(row(mounting, "publish.toggle"), { key: ".", ctrlKey: true });
+
+    const afterCapture = shortcutLabel("publish.toggle");
+    // A reload: the live table is rebuilt from the store alone, exactly as the
+    // shell does at mount.
+    setActiveShortcuts(resolveShortcuts(readShortcutOverrides(localStorage)));
+    expect(
+      shortcutLabel("publish.toggle"),
+      "a chord the store cannot keep must not be accepted for the session",
+    ).toBe(afterCapture);
+    // And the refusal is rendered, not a silent no-op.
+    expect(reason(mounting)).toBe(uiCopy.settings.keyboardUnbindable);
+    expect(armed(mounting)).toBe(true);
+  });
+
+  it("disarms the row when focus leaves it, so a capture never outlives its row", async () => {
+    // The second exit the modal's Escape ruling relies on: a capture that
+    // outlived its row would swallow the Escape meant to close the modal, so
+    // losing focus must cancel it. Nothing else here asserts the blur handler.
+    const mounting = mount(localStorage);
+    await click(armControl(mounting, "publish.toggle"));
+    expect(armed(mounting)).toBe(true);
+
+    // Focus moves off the row, as clicking outside the capture does.
+    await act(async () => {
+      (document.activeElement as HTMLElement | null)?.blur();
+    });
+
+    expect(armed(mounting)).toBe(false);
+    expect(reason(mounting)).toBe("");
+    expect(printed(mounting, "publish.toggle")).toBe(
+      shortcutLabel("publish.toggle"),
+    );
+    expect(readShortcutOverrides(localStorage)).toEqual({});
+  });
+
   it("refuses a chord the action cannot honour, in words", async () => {
     const mounting = mount(localStorage);
     // `file.save` fires while a text field has focus by design, so a bare

@@ -42,7 +42,8 @@ export type BindingRefusal =
   | { readonly kind: "reserved"; readonly chord: string }
   | { readonly kind: "modifier-only" }
   | { readonly kind: "cannot-defer" }
-  | { readonly kind: "unprintable" };
+  | { readonly kind: "unprintable" }
+  | { readonly kind: "unbindable" };
 
 const storageKey = "vigilia.editor.shortcut-overrides";
 
@@ -87,6 +88,15 @@ const RESERVED_KEYS: ReadonlySet<string> = new Set(["f5", "f11", "f12"]);
  *  one of the named keys the product itself binds. */
 const KEY_SHAPE =
   /^(?:[a-z0-9?{}[\]-]|arrowleft|arrowright|arrowup|arrowdown|delete|backspace)$/;
+
+/** Whether a stored entry can carry this key at all — the one rule the reader
+ *  (`storedBinding`) and the capture (`bindingRefusal`) both ask, so a chord the
+ *  capture accepts is a chord the store keeps. `printableChord` is not this
+ *  test: it accepts any single character, so `.` prints and would be accepted
+ *  for the session, only to be dropped by the reader on the next reload. */
+function storableKey(key: string): boolean {
+  return KEY_SHAPE.test(key);
+}
 
 let active: readonly ShortcutBinding[] | undefined;
 const listeners = new Set<() => void>();
@@ -269,6 +279,10 @@ export function bindingRefusal(
   if (!printableChord(binding)) return { kind: "unprintable" };
   if (reserved(binding))
     return { kind: "reserved", chord: bindingLabel(binding) };
+  // After `reserved`, so a function key the browser keeps reads as reserved
+  // rather than as a key the store cannot carry. Every other key this rejects is
+  // one `printableChord` printed and `storedBinding` would drop.
+  if (!storableKey(binding.key)) return { kind: "unbindable" };
   if (!binding.modifier && !defersToTextEntry(action)) {
     return { kind: "cannot-defer" };
   }
@@ -322,7 +336,7 @@ function storedBinding(value: unknown): ShortcutBinding | undefined {
   if (typeof value !== "object" || value === null) return undefined;
   const entry = value as Record<string, unknown>;
   const { key, modifier, shift, action } = entry;
-  if (typeof key !== "string" || !KEY_SHAPE.test(key)) return undefined;
+  if (typeof key !== "string" || !storableKey(key)) return undefined;
   if (typeof modifier !== "boolean") return undefined;
   if (shift !== undefined && typeof shift !== "boolean") return undefined;
   if (typeof action !== "string") return undefined;
