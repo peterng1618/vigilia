@@ -40,8 +40,8 @@ satisfies every token in the bible and still does not look like the mockup.
 
 ## Next
 
-1. **Execute plan 7 in its stated order** — Tasks 9, 1 and 8 are done, so Task 2 is next, then 3 → 4 → 5 → 6 → 7 — with each task reviewed and adjudicated before the next is dispatched.
-2. **Adjudicate Task 8's report** (`task-8-report.md`) with Task 1's fix round 2 and Task 9's review — Task 2 owns the body-flush rows Task 8 left red.
+1. **Execute plan 7 in its stated order** — Tasks 9 and 1 are complete and Task 8 is in fix round 1, so Task 2 is next, then 3 → 4 → 5 → 6 → 7 — with each task reviewed and adjudicated before the next is dispatched.
+2. **Adjudicate Task 8 once its scoped re-review reports** — closing `vg-297`/`vg-298`/`vg-299`/`vg-302` is the controller's call on that evidence, not the report's; Task 2 owns the body-flush rows Task 8 left red.
 3. **Then plan 8 (settings parity)** — 13 of the modal's 19 measured regions drift, and it consumes plan 7's instrument, radius scale and chrome decision.
 4. **Then plan 6 (`iconography-and-copy`), then `design-md-replaces-the-bible`** — each ending with its own §13 parity capture, which now means a comparison against the drawing.
 5. **Then the multi-device display objective** — detect connected displays and hold a theme per device; architectural, so brainstorm → spec → plan, and "device" already means the hardware behind a theme's sensor in `packages/host/src/settings/devices.ts`.
