@@ -26,8 +26,8 @@ backlog it produced stays live in the register.
 
 ## Active work
 
-- **Plan 5 — [`settings-and-appearance`](docs/superpowers/plans/2026-10-08-settings-and-appearance.md) — is the active plan, and Tasks 1–2 are complete**: `13984ab9`/`3b4be19d` (the gear and the modal it opens), then `64fea389`/`eba81b2a` (the Appearance tab, and the header chip's departure); plans 1–4 are closed and exactly one plan is active at a time.
-- **Plan 5's next task is Task 3 — the Keyboard tab and the `publish.*` chord**; Task 2's pre-flight conflict rulings R1–R10 and both scan tables are in `.superpowers/sdd/2026-10-08-settings-and-appearance/`.
+- **Plan 5 — [`settings-and-appearance`](docs/superpowers/plans/2026-10-08-settings-and-appearance.md) — is the active plan, and Tasks 1–3 are complete**: `13984ab9`/`3b4be19d` (the gear and the modal it opens), `64fea389`/`eba81b2a` (the Appearance tab, and the header chip's departure), then `9b0af9d1` with fix rounds `6644abd1` and `12c31ec2` (the Keyboard tab); plans 1–4 are closed and exactly one plan is active at a time.
+- **Plan 5's next task is Task 4 — About, version and provenance from what the editor actually has**; the pre-flight conflict rulings R1–R10 and both scan tables are in `.superpowers/sdd/2026-10-08-settings-and-appearance/`.
 - **Plan 4 — [`the panes`](docs/superpowers/plans/archive/2026-10-08-the-panes.md) — closed complete on 2026-10-10**: all 13 tasks landed, its file is in `docs/superpowers/plans/archive/`, and its ledger (`.superpowers/sdd/2026-10-08-the-panes/progress.md`, git-ignored but on disk) holds R1–R78.
 - **Two plans remain after plan 5** — `2026-10-08-iconography-and-copy.md`, then [`2026-10-10-design-md-replaces-the-bible.md`](docs/superpowers/plans/2026-10-10-design-md-replaces-the-bible.md), queued and unstarted; every plan ends with its §13 parity capture.
 - **Reactify ([0039](docs/decisions/0039-the-editor-ui-is-react-and-only-the-canvas-is-imperative.md)) is the frame, not a phase** — every editor surface becomes React, only the canvas stays imperative, and no Fabric object is ever mirrored into React state.
@@ -35,16 +35,16 @@ backlog it produced stays live in the register.
 
 ## Last completed change
 
-- **Plan 5's Task 2 is complete — the Appearance tab carries the six shell palettes and follow-the-system, and the header chip is gone** (`64fea389`, fix round `eba81b2a`); the gear is the only route to the choice, and `clearShellChoice` is new because the key's absence is what makes "follow the system" reachable at all.
-- **Its review returned spec ❌ / quality needs fixes, and every finding was on the proof side** — the denied-storage mounting had been removed by a harness change, `follow(false)`'s pin was untested, "focus distinct from checked state" was undischarged, and the six-row audit measured one row through `.first()`.
-- **The fix round closed all five and measured the sixth claim instead of believing it** — the chosen row's fill differs from the unchecked row's on all six palettes (flat and darker on four, a gradient on two), so the treatment was left alone; the inference that it might be indistinguishable was wrong.
-- **Its re-review then corrected the fix round's own new finding** — `control-choice-row`'s focus classes are inert only inside the fixture's `.editor-shell`; the tab ships in a dialog portalled outside it, where they are the sole focus treatment, so deleting them would have stripped the product's ring while the fixture stayed green (`vg-278`).
-- **Evidence:** editor unit suite 136 files / 1733 tests pass; `editor-shell/` 23 files / 270 tests; `design:check` exit 0 over 53 gated files; the design-language and panel-labels sweeps 7/7; `backlog:check` reads 149 items, all valid.
+- **Plan 5's Task 3 is complete — every chord is rebindable through one effective table, the reference is generated from that same table, and the header's publish chord runs the host** (`9b0af9d1`, fix rounds `6644abd1` and `12c31ec2`).
+- **Its review found the new storage layer silently losing an author's override** — the reader validated a stored entry against the defaults while the capture validated against the effective table, so a binding accepted on screen reverted on the next reload with nothing reported.
+- **The fix that holds is one predicate, not one reproduction**: the first round closed the reported case, and the re-review found the same class one layer in — the refusal accepting punctuation the reader would drop — so `storableKey` is now the single rule the reader and the capture both call, with a capture→reload round trip committed.
+- **The evidence gap was closed by measurement rather than styling** — the armed row's ring was read as rendered pixels across all six palettes (editorial 18.39:1, graphite 11.65:1, ember 5.68:1, moss 6.18:1, plum 7.68:1, light 3.44:1) with `editor-shell.css` byte-identical, and `F5`/`F11`/`F12` now refuse as browser-reserved rather than unprintable, which is what the code should always have said.
+- **Evidence:** editor unit suite 138 files / 1781 tests pass; `shortcut-manager/` + `editor-shell/` 30 files / 368 tests; `design:check` exit 0 over 56 gated files; `backlog:check` reads 149 items, all valid.
 
 ## Next
 
-1. **Plan 5's Task 3 — Keyboard — runs next**: every chord becomes rebindable through one effective binding table, and `⌘⇧P` gets something to run before the header prints it.
-2. **Then plan 5's Tasks 4, 4a, 5 and 6** — About, the font picker and dialog rendering, the ratchet census, then the parity capture.
+1. **Plan 5's Task 4 — About — runs next**: version and provenance read from what the editor actually has rather than a build-time constant.
+2. **Then plan 5's Tasks 4a, 5 and 6** — the dialog and font-picker rendering, the ratchet census and every re-pointed locator, then the parity capture.
 3. **Then plan 6 (`iconography-and-copy`), then `design-md-replaces-the-bible`** — the sequence's last two, each ending with its own §13 parity capture.
 4. **The register's newest row is `vg-278`**, filed at plan 5's second task; read [`docs/product/backlog.jsonl`](docs/product/backlog.jsonl) for every open row rather than this file.
 5. **Unpushed:** `develop` is far ahead of `origin/develop`; no push is authorised, and the plan's "tell the user" step is deferred rather than satisfied (R62).

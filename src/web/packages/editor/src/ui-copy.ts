@@ -162,10 +162,13 @@ export const uiCopy = {
     /** The second half of the same rule, and the one a punctuation key meets:
         `.` prints (`Ctrl+.`) but is not a key the stored table carries, so a
         capture that took it would hold for the session and revert on the next
-        reload. The message names the vocabulary rather than the store, which is
-        the part the author can act on. */
+        reload. The message names that consequence rather than listing the
+        vocabulary: what the store keeps is `KEY_SHAPE`'s to state, and a list
+        here would be a second owner of it — one that is already wrong, since
+        `-`, `?`, `[`, `]`, `{` and `}` are storable while this copy claimed
+        punctuation was not. */
     keyboardUnbindable:
-      "Only letters, digits and named keys can hold a chord here. Press another.",
+      "This key cannot hold a chord here: the editor does not keep it in a stored binding, so it would work now and vanish on the next reload. Press another.",
     /** The storage-less branch, worded like the appearance toggle's: a session
      *  preference is real, and it is honest about not outliving a reload. */
     keyboardSessionOnly:
