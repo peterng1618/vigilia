@@ -26,7 +26,11 @@ import type {
   TypePresets,
 } from "../../type-preset-manager/panel.js";
 import { uiCopy } from "../../ui-copy.js";
-import { PresetList, type PresetListProps } from "./preset-list.js";
+import {
+  PresetList,
+  type PresetListProps,
+  presetRevealTarget,
+} from "./preset-list.js";
 
 // Base UI's popups need three browser APIs jsdom has none of — the same three
 // `paint-list.dom.test.tsx` supplies, for the same reason.
@@ -68,6 +72,7 @@ function Harness(props: {
   readonly initial: TypePresets;
   readonly onDelete: PresetListProps["onDelete"];
   readonly fontActions: PresetListProps["fontActions"];
+  readonly selection: PresetListProps["selection"];
   readonly change: (presets: TypePresets) => void;
 }): React.JSX.Element {
   const [presets, setPresets] = useState(props.initial);
@@ -76,6 +81,7 @@ function Harness(props: {
       presets={presets}
       onDelete={props.onDelete}
       fontActions={props.fontActions}
+      selection={props.selection}
       onChange={(next) => {
         props.change(next);
         setPresets(next);
@@ -84,11 +90,47 @@ function Harness(props: {
   );
 }
 
+/**
+ * A selection the test drives, shaped like the shell's `SelectionStore`: the
+ * snapshot is cached and returned as one object, because
+ * `useSyncExternalStore` compares snapshots by identity and a fresh object per
+ * read would loop.
+ */
+function stage(): {
+  readonly source: NonNullable<PresetListProps["selection"]>;
+  set(presetId: string | undefined, hasSelection: boolean): void;
+} {
+  let snapshot = {
+    selectedCount: 0,
+    selectionPresetId: undefined as string | undefined,
+  };
+  const listeners = new Set<() => void>();
+  return {
+    source: {
+      subscribe: (listener: () => void) => {
+        listeners.add(listener);
+        return () => {
+          listeners.delete(listener);
+        };
+      },
+      get: () => snapshot,
+    },
+    set(presetId, hasSelection) {
+      snapshot = {
+        selectedCount: hasSelection ? 1 : 0,
+        selectionPresetId: presetId,
+      };
+      for (const listener of listeners) listener();
+    },
+  };
+}
+
 async function mount(
   initial: TypePresets,
   options: {
     readonly onDelete?: PresetListProps["onDelete"];
     readonly fontActions?: PresetListProps["fontActions"];
+    readonly selection?: PresetListProps["selection"];
   } = {},
 ): Promise<{
   readonly host: HTMLElement;
@@ -108,6 +150,7 @@ async function mount(
         initial={initial}
         onDelete={options.onDelete}
         fontActions={options.fontActions}
+        selection={options.selection}
         change={change}
       />,
     );
@@ -233,6 +276,29 @@ const withWeight: TypePresets = {
   caption: { name: "Caption", value: { family: "Inter", size: 12 } },
 };
 
+/** A library whose *first declared* key is also the one the selection is set
+ *  in, so restoring the `Object.keys(presets)[0]` default cannot pass the
+ *  "nothing is selected" case by naming some other preset. */
+const withNumbers: TypePresets = {
+  "24-400": {
+    name: "Card title",
+    value: { family: "Inter", size: 24, weight: 400 },
+  },
+  body: { name: "Body", value: { family: "Inter", size: 16 } },
+};
+const firstDeclaredPresetId = Object.keys(withNumbers)[0]!;
+
+/** The readout the pane states its answer in, as against the chooser: the
+ *  chooser prints preset names too, so a case that read the whole pane could
+ *  not tell the two apart. */
+function binding(host: HTMLElement): HTMLElement {
+  const found = host.querySelector<HTMLElement>(
+    "[data-vigilia-type-preset-binding]",
+  );
+  if (found === null) throw new Error("the list states no binding");
+  return found;
+}
+
 it("shows each preset's resolved family, weight and size as a resolution, not as a field", async () => {
   // Bible §5.1–§5.3: a border means editable, and the two treatments sit inches
   // apart in this pane. The expected line is `resolveTypePreset`'s own answer,
@@ -254,6 +320,93 @@ it("shows each preset's resolved family, weight and size as a resolution, not as
   expect(row?.querySelector('[class~="border"]')).toBeNull();
   expect(row?.querySelector("input, select, button, textarea")).toBeNull();
   expect(row?.textContent).toContain("Body");
+});
+
+it("says nothing is selected rather than showing the first declared preset", async () => {
+  // The `vg-094` case, first, because it is the whole row: restoring the
+  // `Object.keys(presets)[0]` default must fail here and only here. The readout
+  // is the pane's *answer*, and a default that reads like one is the defect.
+  const selection = stage();
+  const { host } = await mount(withNumbers, { selection: selection.source });
+
+  await act(async () => selection.set(undefined, false));
+
+  const text = binding(host).textContent;
+  expect(text).not.toContain(withNumbers[firstDeclaredPresetId]!.name);
+  expect(text?.trim(), "an absent answer is stated, not left blank").not.toBe(
+    "",
+  );
+});
+
+it("names the preset the selected run is set in", async () => {
+  // The binding reads what the shell's projection reports — never a second walk
+  // of the scene — and prints the preset's own name.
+  const selection = stage();
+  const { host } = await mount(withNumbers, { selection: selection.source });
+
+  await act(async () => selection.set("24-400", true));
+
+  const text = binding(host).textContent;
+  expect(text).toContain(withNumbers["24-400"]!.name);
+  expect(text).not.toContain(uiCopy.panels.selectionEmpty);
+});
+
+it("says the selection carries no preset when it carries none", async () => {
+  // A default and an answer must not read the same: these two lines differ.
+  const selection = stage();
+  const { host } = await mount(withNumbers, { selection: selection.source });
+
+  await act(async () => selection.set(undefined, true));
+  const carriesNone = binding(host).textContent;
+  await act(async () => selection.set(undefined, false));
+  const nothing = binding(host).textContent;
+
+  expect(carriesNone).not.toBe(nothing);
+  expect(carriesNone).toContain(uiCopy.panels.selectionNoType);
+  expect(nothing).toContain(uiCopy.panels.selectionEmpty);
+});
+
+it("reads a dangling reference as unresolved, which is neither empty answer", async () => {
+  // A third answer: the author chose a preset the document no longer declares,
+  // so the pane must not fold it into "carries none" or into "nothing
+  // selected" — both would erase the fact that a reference is broken.
+  const selection = stage();
+  const { host } = await mount(withNumbers, { selection: selection.source });
+
+  await act(async () => selection.set("gone", true));
+
+  const text = binding(host).textContent;
+  expect(text).toContain("typePresets.gone");
+  expect(text).toContain(uiCopy.inspectorFields.unresolved);
+  expect(text).not.toContain(uiCopy.panels.selectionEmpty);
+  expect(text).not.toContain(uiCopy.panels.selectionNoType);
+});
+
+it("opens the chooser on the preset the selection is set in, and stays browseable", async () => {
+  // Library selection is not document selection: the chooser opens on what the
+  // selection is set in, the author may still pick any preset to edit, and the
+  // readout above keeps stating the selection's own reference either way.
+  const selection = stage();
+  const { host } = await mount(withNumbers, { selection: selection.source });
+
+  await act(async () => selection.set("24-400", true));
+  const chooser = (): string | null | undefined =>
+    host
+      .querySelector("[data-vigilia-type-preset] [data-vigilia-value]")
+      ?.getAttribute("data-vigilia-value");
+  expect(chooser()).toBe("24-400");
+
+  await chooseIn("[data-vigilia-type-preset]", "body");
+
+  expect(chooser()).toBe("body");
+  expect(binding(host).textContent).toContain(withNumbers["24-400"]!.name);
+});
+
+it("aims a reveal at the preset's own row, and at the list when none is named", () => {
+  expect(presetRevealTarget("24-400")).toBe(
+    '[data-vigilia-type-preset-row="24-400"]',
+  );
+  expect(presetRevealTarget(undefined)).toBe("[data-vigilia-type-presets]");
 });
 
 it("drops an optional field when the author empties it, rather than writing an empty string", async () => {

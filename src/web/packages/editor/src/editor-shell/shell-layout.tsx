@@ -3,6 +3,7 @@ import { Check } from "lucide-react";
 import {
   type ReactNode,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
   useSyncExternalStore,
@@ -75,6 +76,15 @@ export interface ShellLayout {
   readonly hosts: ShellHosts;
   readonly stage: HTMLElement;
   readonly dock: HTMLElement;
+  /** The shell's own projection of the selection, for the panes that read it —
+   *  the Tokens pane's preset chooser opens on the preset the selection is set
+   *  in rather than on the first declared one (`vg-094`). */
+  readonly selection: SelectionStore;
+  /** Brings a slot's pane into view and scrolls it to `target`, a CSS selector
+   *  inside the pane body. One owner opens a slot and scrolls a pane, because
+   *  a pane that is not showing has no scroll target to reach: the reveal is
+   *  two steps and this is the only place that knows both. */
+  reveal(slot: RailSlot, target?: string): void;
   setBridge(
     bridge: EditorShellBridge | undefined,
     view: EditorViewControls | undefined,
@@ -123,6 +133,7 @@ export class SelectionStore {
     locked: false,
     activeKind: "none",
     documentName: undefined,
+    selectionPresetId: undefined,
   };
   #unsubscribe: (() => void) | undefined;
 
@@ -142,6 +153,7 @@ export class SelectionStore {
         locked: false,
         activeKind: "none",
         documentName: undefined,
+        selectionPresetId: undefined,
       };
     }
     for (const listener of this.#listeners) listener();
@@ -550,6 +562,13 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
   const store = new SelectionStore();
   const sheet = new SheetStore();
   const hosting = new HostingStore();
+  /** `Shell`'s door for a caller outside React, filled by the component below
+   *  because the slot, the scroll memory and the one `paneBody` element are all
+   *  the component's. A plain cell rather than a ref, because
+   *  `createShellLayout` is not a component and `useRef` has no dispatcher
+   *  there. Opening a pane for a reveal and opening it from the rail stay the
+   *  same code path. */
+  let revealPane: ((slot: RailSlot, target?: string) => void) | undefined;
   const getView = (): EditorViewControls | undefined => view;
 
   function Shell(): React.JSX.Element {
@@ -643,6 +662,30 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
         if (collapsed) refitOnViewportChange();
       });
     };
+
+    // Reassigned every render, so the callback never closes over a stale slot
+    // or a stale collapse. A layout effect rather than the render body, because
+    // writing a ref while rendering is the one thing React forbids.
+    useLayoutEffect(() => {
+      revealPane = (id, target) => {
+        // The offset of the pane being left, read before the swap hides it —
+        // the same save `choosePane` makes, for the same reason.
+        if (!collapsed && paneBody.current !== null) {
+          scrollOf.current.set(slot, paneBody.current.scrollTop);
+        }
+        setSlot(id);
+        setCollapsed(false);
+        requestAnimationFrame(() => {
+          const body = paneBody.current;
+          if (body === null) return;
+          const row = target === undefined ? null : body.querySelector(target);
+          // A target the pane no longer holds falls back to the place the pane
+          // was left, which is still the honest answer.
+          if (row === null) body.scrollTop = scrollOf.current.get(id) ?? 0;
+          else row.scrollIntoView({ block: "start" });
+        });
+      };
+    });
 
     return (
       <div className="editor-shell">
@@ -820,6 +863,10 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
     hosts,
     stage,
     dock,
+    selection: store,
+    reveal(slot, target) {
+      revealPane?.(slot, target);
+    },
     setBridge(nextBridge, nextView, nextPublish) {
       // The store notifies subscribers, so React re-renders the inspector and
       // menus without a manual root re-render — and it keeps working when the

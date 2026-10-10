@@ -307,6 +307,7 @@ function bridgeOf(
       locked: false,
       activeKind: "none",
       documentName: undefined,
+      selectionPresetId: undefined,
     }),
     target: () => ({
       kind: "none",

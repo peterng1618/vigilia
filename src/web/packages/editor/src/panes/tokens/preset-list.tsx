@@ -1,5 +1,5 @@
 import type { FabricGlobals, TypePreset } from "@vigilia/renderer-core";
-import { useState } from "react";
+import { useCallback, useState, useSyncExternalStore } from "react";
 import { ControlNumber } from "../../components/ui/control-number.js";
 import { ControlSelect } from "../../components/ui/control-select.js";
 import { ControlText } from "../../components/ui/control-text.js";
@@ -32,16 +32,106 @@ export interface PresetListProps {
   readonly onChange: (presets: TypePresets) => void;
   readonly onDelete: ((id: string, replacement: string) => void) | undefined;
   readonly fontActions: TypePresetFontActions | undefined;
+  /** Where the selection's own preset is read from. Absent reads as nothing
+   *  selected — a list mounted with no shell behind it says so rather than
+   *  inventing a selection. */
+  readonly selection: PresetSelection | undefined;
+}
+
+/**
+ * The stage's answer to "what is the selection set in", as the pane reads it.
+ *
+ * The pane is a persistent React tree and the selection is Fabric's, so the id
+ * is pulled through a subscription rather than handed over once. The shape is
+ * the shell's own projection (`EditorShellSnapshot`), which is the one owner of
+ * what is selected — this file never walks the scene itself (R33).
+ */
+export interface PresetSelection {
+  subscribe(listener: () => void): () => void;
+  get(): {
+    readonly selectedCount: number;
+    readonly selectionPresetId: string | undefined;
+  };
+}
+
+/** No shell behind the list. A module constant, because
+ *  `useSyncExternalStore` compares snapshots by identity. */
+const NO_SELECTION: ReturnType<PresetSelection["get"]> = {
+  selectedCount: 0,
+  selectionPresetId: undefined,
+};
+
+function usePresetSelection(
+  source: PresetSelection | undefined,
+): ReturnType<PresetSelection["get"]> {
+  const subscribe = useCallback(
+    (listener: () => void) => source?.subscribe(listener) ?? (() => undefined),
+    [source],
+  );
+  const read = useCallback(() => source?.get() ?? NO_SELECTION, [source]);
+  return useSyncExternalStore(subscribe, read, read);
+}
+
+/**
+ * What the pane says the **selection** is set in, as against what the chooser
+ * below it is browsing.
+ *
+ * This is the distinction `vg-094` is about: a default and an answer must not
+ * read alike, so four cases read four ways. "The selection is set to …" when
+ * the selection carries a preset; a dangling reference reads as unresolved,
+ * which is a third answer and collapses into neither empty one; "carries no
+ * type preset" when the selection is set in none; and "nothing selected" when
+ * there is no selection at all — never the first declared preset, which is what
+ * `Object.keys(presets)[0]` used to masquerade as.
+ */
+export function Binding(props: {
+  readonly presetId: string | undefined;
+  readonly hasSelection: boolean;
+  readonly presets: TypePresets;
+}): React.JSX.Element | null {
+  const { presetId, hasSelection, presets } = props;
+  const sentence = ((): string => {
+    if (!hasSelection) return uiCopy.panels.selectionEmpty;
+    if (presetId === undefined) return uiCopy.panels.selectionNoType;
+    // The name, because every surface that offers a reference names what it
+    // offers; the ref is what is left when the document no longer declares it.
+    const name = presets[presetId]?.name;
+    return name === undefined
+      ? uiCopy.panels.selectionUnresolved(`typePresets.${presetId}`)
+      : uiCopy.panels.selectionSetTo(name);
+  })();
+  // A plain line, not a live region: the pane is rerendered on every selection,
+  // and an announcement per canvas click is noise rather than information.
+  return (
+    <p data-vigilia-type-preset-binding="" className="text-xs text-muted">
+      {sentence}
+    </p>
+  );
+}
+
+/**
+ * The selector a reveal is aimed at: the row of one preset, or the whole list
+ * when the selection names no preset. One owner for the row's hook, so the
+ * session that asks for the reveal does not spell it a second time.
+ */
+export function presetRevealTarget(presetId: string | undefined): string {
+  if (presetId === undefined) return "[data-vigilia-type-presets]";
+  const quoted = typeof CSS === "undefined" ? presetId : CSS.escape(presetId);
+  return `[data-vigilia-type-preset-row="${quoted}"]`;
 }
 
 export function PresetList(props: PresetListProps): React.JSX.Element {
-  const { presets, onChange, onDelete, fontActions } = props;
+  const { presets, onChange, onDelete, fontActions, selection } = props;
   const ids = Object.keys(presets);
-  const [picked, setPicked] = useState<string | undefined>(ids[0]);
-  // Derived, not stored: when the picked preset leaves the list the pane falls
-  // back to the first declared one, which is what `draw` did imperatively.
+  const [picked, setPicked] = useState<string | undefined>(undefined);
+  const stage = usePresetSelection(selection);
+  // Derived, not stored: an explicit pick wins, else the preset the selection
+  // is set in, else the first declared one — which is only a browse default now
+  // that the readout above states the selection's own answer.
   const selected =
-    picked !== undefined && presets[picked] !== undefined ? picked : ids[0];
+    [picked, stage.selectionPresetId].find(
+      (id) => id !== undefined && presets[id] !== undefined,
+    ) ?? ids[0];
   const entry = selected === undefined ? undefined : presets[selected];
   // The resolver reads a `FabricGlobals`, and this list's own record *is* the
   // `typePresets` of one — so the rule keeps its single owner with no copy.
@@ -65,10 +155,21 @@ export function PresetList(props: PresetListProps): React.JSX.Element {
   };
 
   return (
-    <div className="flex flex-col gap-[var(--space-8)]">
+    <div
+      data-vigilia-type-presets=""
+      className="flex flex-col gap-[var(--space-8)]"
+    >
       <h2 className="text-xs font-semibold tracking-[0.11em] text-muted uppercase">
         {uiCopy.panels.typePresets}
       </h2>
+      {/* What the selection is set in, above the control that browses the
+          library: the two are separate readouts, so choosing another preset to
+          edit below never claims to have applied it to the selection. */}
+      <Binding
+        presetId={stage.selectionPresetId}
+        hasSelection={stage.selectedCount > 0}
+        presets={presets}
+      />
       <ControlSelect
         label={uiCopy.panels.typePreset}
         data={{ "data-vigilia-type-preset": "" }}

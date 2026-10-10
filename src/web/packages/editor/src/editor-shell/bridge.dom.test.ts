@@ -7,6 +7,7 @@ import {
   Canvas,
   type FabricObject,
   Group,
+  IText,
   Rect,
 } from "fabric/es";
 import { beforeEach, expect, it, vi } from "vitest";
@@ -115,6 +116,43 @@ it("reports selection changes and removes its canvas listeners", () => {
 
   bridge.destroy();
   expect(canvas.off).toHaveBeenCalled();
+});
+
+it("carries the library key the selection's own first run is set in", () => {
+  // The Tokens pane's chooser opens on this rather than on
+  // `Object.keys(presets)[0]`, which is a default masquerading as an answer
+  // (`vg-094`). The reference is `typePresetOf`'s — the pane's keys are its
+  // tail — so the field is the key, not the `typePresets.` reference.
+  const text = new IText("Hi", { left: 0, top: 0 });
+  text.set({
+    vigiliaText: {
+      runs: [{ kind: "literal", text: "Hi", typePreset: "typePresets.24-400" }],
+    },
+  });
+  const { bridge } = bridgeFor(text);
+
+  expect(bridge.snapshot().selectionPresetId).toBe("24-400");
+});
+
+it("reports no preset for a selection that is set in none, and none for a group", () => {
+  // A shape carries no run to read, and a multi-selection is a group rather
+  // than the text inside it — both are "carries none", never the first declared
+  // preset the pane used to fall back to.
+  const shape = bridgeFor(new Rect());
+  expect(shape.bridge.snapshot().selectionPresetId).toBeUndefined();
+
+  const text = new IText("Hi", { left: 0, top: 0 });
+  text.set({
+    vigiliaText: { runs: [{ kind: "literal", text: "Hi" }] },
+  });
+  const bare = bridgeFor(text);
+  expect(bare.bridge.snapshot().selectionPresetId).toBeUndefined();
+
+  const { bridge: multi } = bridgeFor(
+    new ActiveSelection([new IText("a"), new IText("b")]),
+  );
+  expect(multi.snapshot().selectedCount).toBe(2);
+  expect(multi.snapshot().selectionPresetId).toBeUndefined();
 });
 
 it("republishes the layer rows when an object changes, not only on selection", () => {

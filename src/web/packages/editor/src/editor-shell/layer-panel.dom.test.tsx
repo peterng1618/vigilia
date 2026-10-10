@@ -90,6 +90,7 @@ function bridge(rows: readonly LayerRow[], overrides = {}): EditorShellBridge {
       locked: false,
       activeKind: "object",
       documentName: undefined,
+      selectionPresetId: undefined,
     }),
     capture: () => undefined,
     can: () => true,

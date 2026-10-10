@@ -19,6 +19,7 @@ import {
 } from "./canvas-nudge.js";
 import { insertCard } from "./card-library.js";
 import { ChartManager } from "./chart-manager/index.js";
+import type { RailSlot } from "./editor-shell/rail.js";
 import type { EditorActionFacade } from "./editor-shell/session-facade.js";
 import { type EditorShell } from "./editor-shell.js";
 import {
@@ -48,6 +49,7 @@ import {
   paletteTokenUsage,
   reassignPaletteToken,
 } from "./palette-manager/index.js";
+import type { PresetSelection } from "./panes/tokens/preset-list.js";
 import { serializeThemePackage } from "./persist.js";
 import {
   confirmDocumentReplacement,
@@ -76,6 +78,7 @@ import {
 import { captureThumbnail } from "./thumbnail-capture.js";
 import {
   createTypePresetPanel,
+  presetRevealTarget,
   reassignTypePresetToken,
   type TypePresetPanel,
   type TypePresets,
@@ -165,6 +168,16 @@ export interface EditorSessionOptions {
    *  existing construction sites — and every test that builds a session — keep
    *  compiling and simply do nothing. */
   readonly onShowShortcuts?: () => void;
+  /** Brings a pane into view, opening it first. §7.2's slots belong to
+   *  `createShellLayout`, and the inspector's reveal is what asks — a pane that
+   *  is not showing has no scroll target, so the two steps are one gesture.
+   *  Optional, so a session built without a shell's chrome simply has no
+   *  reveal. */
+  readonly onRevealPane?: (slot: RailSlot, target?: string) => void;
+  /** The shell's own projection of the selection, handed to the preset list so
+   *  its chooser opens on the preset the selection is set in rather than on the
+   *  first declared one (`vg-094`). Optional for the same reason as above. */
+  readonly selection?: PresetSelection;
   readonly onOpenTheme?: (
     envelope: FabricThemeEnvelope,
     assets: Readonly<Record<string, Uint8Array>>,
@@ -349,6 +362,10 @@ export class EditorSession {
           await this.#runFontAction(options, () => this.applyFontTrio(id));
         },
       },
+      // The shell's own selection projection, so the list's chooser opens on
+      // what the selection is set in. Pulled from the live snapshot rather than
+      // a copy held here, because the selection is Fabric's.
+      options.selection,
     );
     this.#types.render(
       this.#envelope.globals?.typePresets as TypePresets | undefined,
@@ -382,8 +399,14 @@ export class EditorSession {
       sampleSource: () => this.#source,
       // The panel already owns a preset's fields and sits in the same tab, so
       // revealing it is bringing the author to it, not drawing a second copy.
+      // Two steps through one owner: the pane is opened, then the row the
+      // selection is set in is scrolled to — a pane that is not showing has no
+      // scroll target to reach.
       revealTypePresets: () => {
-        this.#types.root.scrollIntoView({ block: "start" });
+        options.onRevealPane?.(
+          "tokens",
+          presetRevealTarget(options.selection?.get().selectionPresetId),
+        );
       },
       // The shell owns the glass handle; the inspector writes the property and
       // asks it to re-resolve.

@@ -660,6 +660,15 @@ export const uiCopy = {
      * it sits in — the section heading already says Palette or Type presets. */
     colourToken: "Colour token",
     typePreset: "Type preset",
+    /** What the Tokens pane says the *selection* is set in, as against what its
+     *  chooser is browsing. The four cases must read four ways: a default that
+     *  looks like an answer is `vg-094`, and a dangling reference is a third
+     *  answer that collapses into neither empty one. */
+    selectionSetTo: (name: string) => `The selection is set to ${name}.`,
+    selectionUnresolved: (ref: string) =>
+      `The selection is set to ${ref}, which no longer resolves.`,
+    selectionNoType: "The selection carries no type preset.",
+    selectionEmpty: "Nothing selected.",
     paint: "Paint",
     addColour: "Add colour",
     addStop: "Add stop",

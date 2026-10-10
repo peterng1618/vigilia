@@ -3,7 +3,10 @@ import { createElement } from "react";
 import { flushSync } from "react-dom";
 import { createRoot, type Root } from "react-dom/client";
 import type { CuratedFontFace } from "../font-catalog.js";
-import { PresetList } from "../panes/tokens/preset-list.js";
+import {
+  PresetList,
+  type PresetSelection,
+} from "../panes/tokens/preset-list.js";
 
 export type TypePresets = Readonly<
   Record<string, { readonly name: string; readonly value: TypePreset }>
@@ -38,12 +41,17 @@ export interface TypePresetFontActions {
  * the panel is a **sibling** section of the palette panel's under the same
  * Tokens-pane host (R36) — it builds its own section and never reaches into the
  * palette's tree.
+ *
+ * `selection` is the shell's own projection of the selection, handed in so the
+ * list can open on the preset the selection is set in and say so (`vg-094`); it
+ * is optional, and a panel built without one reads as nothing selected.
  */
 export function createTypePresetPanel(
   host: HTMLElement,
   onChange: (presets: TypePresets) => void,
   onDelete?: (id: string, replacement: string) => void,
   fontActions?: TypePresetFontActions,
+  selection?: PresetSelection,
 ): TypePresetPanel {
   const root = document.createElement("section");
   // No `data-vigilia-panel` and no title here: `Pane` owns the identity and the
@@ -63,6 +71,7 @@ export function createTypePresetPanel(
           onChange,
           onDelete,
           fontActions,
+          selection,
         }),
       );
     });

@@ -94,6 +94,7 @@ function bridgeStub(
       locked: false,
       activeKind: "none",
       documentName: undefined,
+      selectionPresetId: undefined,
     }),
     capture: () => undefined,
     target: () => ({
@@ -179,6 +180,47 @@ it("mounts the editorial palette, menus, rail, inspector and dock hosts", () => 
   layout.destroy();
 });
 
+it("opens the slot a reveal names before scrolling to the row inside it", async () => {
+  // A pane that is not showing has no scroll target, so the reveal is two steps
+  // and one owner: the slot opens, then the row is brought into view. Both are
+  // asserted because a reveal that only scrolled would land on a hidden box.
+  const root = document.createElement("div");
+  document.body.append(root);
+  const layout = createShellLayout(root);
+
+  // A row of the shape presets carry, standing in for the Tokens pane's list.
+  const row = document.createElement("div");
+  row.dataset["vigiliaTypePresetRow"] = "24-400";
+  layout.hosts.tokens.append(row);
+  const scrolled = vi.fn();
+  row.scrollIntoView = scrolled;
+
+  const pane = root.querySelector<HTMLElement>('[data-vigilia-panel="tokens"]');
+  expect(pane?.contains(row)).toBe(true);
+  expect(pane?.hidden).toBe(true);
+  expect(segment(root, "tokens").getAttribute("aria-pressed")).toBe("false");
+
+  await act(async () => {
+    layout.reveal("tokens", '[data-vigilia-type-preset-row="24-400"]');
+  });
+  await frame();
+
+  expect(segment(root, "tokens").getAttribute("aria-pressed")).toBe("true");
+  expect(pane?.hidden).toBe(false);
+  expect(scrolled).toHaveBeenCalledTimes(1);
+
+  // Asking again is not a close: the reveal brings an author to a pane, and it
+  // is not the rail's toggle.
+  await act(async () => {
+    layout.reveal("tokens", '[data-vigilia-type-preset-row="24-400"]');
+  });
+  await frame();
+  expect(pane?.hidden).toBe(false);
+
+  layout.destroy();
+  root.remove();
+});
+
 it("gives every pane the bible's chrome, named by the section the specs browse", () => {
   const root = document.createElement("div");
   const layout = createShellLayout(root);
@@ -261,6 +303,12 @@ function segment(root: HTMLElement, id: RailSlot): HTMLButtonElement {
   );
   if (found === null) throw new Error(`No "${id}" slot.`);
   return found;
+}
+
+/** One frame, which is when a reveal scrolls: the pane is laid out only after
+ *  the render that opens it. */
+async function frame(): Promise<void> {
+  await new Promise((resolve) => requestAnimationFrame(() => resolve(null)));
 }
 
 /** The menubar trigger for a menu, found by the text it carries. */
@@ -671,6 +719,7 @@ it("puts the document's identity in the stage's top-left corner", async () => {
       locked: false,
       activeKind: "none",
       documentName: name,
+      selectionPresetId: undefined,
     }),
     subscribe: (listener) => {
       listeners.add(listener);
@@ -732,6 +781,7 @@ it("shows one pane at a time and routes the dock through the bridge", async () =
       locked: false,
       activeKind: "object",
       documentName: undefined,
+      selectionPresetId: undefined,
     }),
     target: () => ({
       kind: "object",
@@ -797,6 +847,7 @@ it("enables only the arrange actions a two-object selection can run", async () =
       locked: false,
       activeKind: "group",
       documentName: undefined,
+      selectionPresetId: undefined,
     }),
     target: () => ({
       kind: "group",
@@ -831,6 +882,7 @@ it("keeps a chart's fields in the Design column, with no Data tab to reach for",
       locked: false,
       activeKind: kind,
       documentName: undefined,
+      selectionPresetId: undefined,
     }),
     subscribe: (listener) => {
       listeners.add(listener);

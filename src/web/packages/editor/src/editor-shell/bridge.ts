@@ -9,6 +9,7 @@ import {
   type ObjectActionId,
   type ObjectTarget,
 } from "../object-actions.js";
+import { typePresetOf } from "../selection-inspector/appearance.js";
 import {
   findById,
   type LayerRow,
@@ -36,6 +37,12 @@ export interface EditorShellSnapshot {
    *  (`maxLength` with no `minLength`), so the fallback is taken on `""` too,
    *  and `stableId` requires 1–64 characters, so the id can never be empty. */
   readonly documentName: string | undefined;
+  /** The library key the selection's own first run is set in, or nothing when
+   *  it carries no preset — a shape, a group, a run with no reference — which
+   *  is a different answer from `""` and from the first declared preset. The
+   *  Tokens pane reads this so its chooser opens on what the selection is
+   *  actually set in rather than on `Object.keys(presets)[0]` (`vg-094`). */
+  readonly selectionPresetId: string | undefined;
 }
 
 export interface EditorShellBridge {
@@ -155,6 +162,9 @@ export function createEditorShellBridge(input: {
   const snapshot = (): EditorShellSnapshot => {
     const active = activeObject();
     const identity = input.documentIdentity?.();
+    // The reference `typePresetOf` owns; the pane's keys are its tail, so the
+    // prefix is dropped once here rather than at every reader of the field.
+    const presetRef = active === undefined ? undefined : typePresetOf(active);
     return {
       selectedCount:
         active instanceof ActiveSelection
@@ -168,6 +178,7 @@ export function createEditorShellBridge(input: {
       // have, and the id behind it is what the schema guarantees is there.
       documentName:
         identity === undefined ? undefined : identity.name || identity.id,
+      selectionPresetId: presetRef?.slice("typePresets.".length),
     };
   };
   const target = (): ObjectTarget => {
