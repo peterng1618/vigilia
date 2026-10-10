@@ -1406,23 +1406,25 @@ test("captures the settings modal's three tabs in the design language", async ({
   };
 
   // The About tab's facts, read from the surface rather than assumed: the schema
-  // version is the build's own and is always there, the release version is the
-  // document's and is absent here.
+  // version is the build's own and is always there.
   await show("About");
   await expect(
     dialog.locator('[data-vigilia-about-fact="schema-version"]'),
   ).toHaveText(/\S/);
-  const releaseRow = dialog.locator(
-    '[data-vigilia-about-fact="release-version"]',
-  );
-  const release =
-    (await releaseRow.count()) === 0 ? null : await releaseRow.textContent();
+  // **The release row must be absent, and this assertion is what says so.** It
+  // renders only where the open document carries `metadata.version`
+  // (`settings.tsx`'s `versionFacts`), and no document this suite can load has
+  // one — so this frame is the absent case and the six pictures below are of
+  // *that* modal. `vg-288`: the day a loadable document carries a version, this
+  // reddens and the capture is re-taken, rather than a changed modal being
+  // photographed while a non-assertion records it.
+  await expect(
+    dialog.locator('[data-vigilia-about-fact="release-version"]'),
+  ).toHaveCount(0);
   testInfo.annotations.push({
     type: "about",
     description:
-      release === null
-        ? "release version row absent: no document this suite loads carries a metadata.version"
-        : `release version row present: ${release}`,
+      "release version row absent, asserted: no document this suite loads carries a metadata.version",
   });
 
   // Graphite first: the mockup is drawn on it, so the two pictures compare.

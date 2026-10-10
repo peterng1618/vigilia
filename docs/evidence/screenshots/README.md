@@ -78,7 +78,7 @@ result, not merely a mounted editor.
 | Keyboard | Read the reference sheet, opened with `?` over an entered group | `keyboard-reference` / `? opens the sheet, and the document behind it does not change` |
 | Keyboard | Arm a row in the settings modal's Keyboard tab and read its ring | `keyboard-armed-row` / `the Keyboard tab arms a row into the modal's trap, on a ring that clears contrast on every palette` |
 | Shell appearance | Choose each of the six palettes and read the surface | `shell-palette-` / `captures each palette's own surface` |
-| Settings | Open the gear's modal and read each tab, in both palettes | `settings-appearance`, `settings-keyboard`, `settings-about` / `captures the settings modal's three tabs` — six files from one action, each tab in graphite and `-editorial` |
+| Settings modal | Open the rail's gear and read each tab, in both palettes | `settings-appearance`, `settings-keyboard`, `settings-about` / `captures the settings modal's three tabs` — six files from one action, each tab in graphite and `-editorial` |
 | Shell | Mount the shell with the Add slot open and nothing selected | `editor-shell-add` / `captures the shell with the Add pane open` |
 | Panes | Show each of the four rail panes and read its own surface | `pane-composition`, `pane-add`, `pane-tokens` and `pane-document` / `captures each pane of the four-slot rail` — four files from one action |
 | Design language | Mount the control set over the built stylesheet and read it in a panel | `control-set` / `the control set renders in the design language` — two files, `-desktop-chromium` (graphite, the ground the mockup is drawn on) and `-editorial-desktop-chromium` |
