@@ -425,19 +425,40 @@ export const PARITY: readonly ParityRegion[] = [
      something else, and each is read from the drawing that draws it rather than
      from a value chosen here (`vg-302`).
 
+     **Two properties each, because the drawing declares two.** The box's
+     `border-radius` alone was the instrument claiming more coverage than it had:
+     the product's `gap` matched the drawing's by construction, and nothing
+     compared it. Reading one of a drawing's two declared values is `vg-292`'s
+     family, which is the family this task exists to leave.
+
      The settings modal's switch row: `settings.html:89-93` draws it as a
      `--panel-2` box at `--radius-lg`, the label at `flex:1` and the 26×14
      switch at the right — no label column. That box is why the row is a shape
      and not a width: applying the inspector's 74px column to it wrapped
      "Follow the system" onto a second line. The drawn box's vertical padding is
      `9px`, which §3's scale has no step for, so the product renders
-     `--space-8` and the row reads the radius the drawing does declare. */
+     `--space-8` and the row reads the radius the drawing does declare.
+
+     The drawing's `gap: 10px` is the row's own: label to switch. The pane
+     picker's `gap: 6px` is inside its trigger, name to chevron, which is the
+     element the row names. */
   {
     region: "field row — the settings switch row's box (settings drawing)",
     mockupPath: SETTINGS_MOCKUP_PATH,
     mockupSelector:
       '[style*="display:flex;align-items:center;gap:10px;padding:9px 10px;background:var(--panel2);border:1px solid var(--edge);border-radius:8px"]',
     mockupProperty: "border-radius",
+    productSelector: '[data-fixture="boxed"] > div',
+    bibleSection:
+      "§5 (`:163-164`, the well); the bible does not shape the modal's switch row, so the drawing governs",
+    surface: "fixture",
+  },
+  {
+    region: "field row — the settings switch row's box, label to switch",
+    mockupPath: SETTINGS_MOCKUP_PATH,
+    mockupSelector:
+      '[style*="display:flex;align-items:center;gap:10px;padding:9px 10px;background:var(--panel2);border:1px solid var(--edge);border-radius:8px"]',
+    mockupProperty: "gap",
     productSelector: '[data-fixture="boxed"] > div',
     bibleSection:
       "§5 (`:163-164`, the well); the bible does not shape the modal's switch row, so the drawing governs",
@@ -461,6 +482,17 @@ export const PARITY: readonly ParityRegion[] = [
     mockupSelector:
       '[style*="flex:1;display:flex;align-items:center;gap:6px;background:var(--panel2);border:1px solid var(--edge);border-radius:6px;padding:5px 8px"]',
     mockupProperty: "border-radius",
+    productSelector: '[data-fixture="headed"] [data-fixture-select]',
+    bibleSection:
+      "§5 (`:163-164`, the well the trigger is drawn as); the bible does not shape the pane's picker, so the drawing governs",
+    surface: "fixture",
+  },
+  {
+    region: "field row — the Add pane's asset trigger, name to chevron",
+    mockupPath: MOCKUP_PATH,
+    mockupSelector:
+      '[style*="flex:1;display:flex;align-items:center;gap:6px;background:var(--panel2);border:1px solid var(--edge);border-radius:6px;padding:5px 8px"]',
+    mockupProperty: "gap",
     productSelector: '[data-fixture="headed"] [data-fixture-select]',
     bibleSection:
       "§5 (`:163-164`, the well the trigger is drawn as); the bible does not shape the pane's picker, so the drawing governs",
