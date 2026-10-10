@@ -164,7 +164,7 @@ export function ThemeLibraryChooser({
         label={uiCopy.library.choose}
       >
         <p className="editor-shell-dialog-lead">{uiCopy.library.choose}</p>
-        <div className="vigilia-dialog-form flex flex-col gap-[var(--space-8)]">
+        <div className="flex flex-col gap-[var(--space-8)]">
           {/* Its own words, not the dialog's: the lead line already says "Open a
               theme", and a label repeating it printed twice over the control. */}
           <ControlSelect
@@ -206,15 +206,18 @@ export function ThemeLibraryChooser({
               {uiCopy.library.open}
             </button>
           </div>
-          {status === undefined ? null : (
-            <p
-              className="editor-shell-dialog-lead"
-              role="status"
-              data-vigilia-library-status=""
-            >
-              {status}
-            </p>
-          )}
+          {/* **Mounted whether or not it says anything.** A live region added
+              together with its own text is the less reliably announced pattern,
+              so the node is always here, empty and `hidden`, and only its text
+              moves — the shape the imperative dialog had. */}
+          <p
+            className="editor-shell-dialog-lead"
+            role="status"
+            data-vigilia-library-status=""
+            hidden={status === undefined}
+          >
+            {status}
+          </p>
         </div>
       </Dialog>
       {confirming === undefined ? null : (

@@ -166,7 +166,7 @@ export function NewDocumentChooser({
       <p className="editor-shell-dialog-lead">
         {uiCopy.newDocument.chooseSize}
       </p>
-      <div className="vigilia-dialog-form flex flex-col gap-[var(--space-8)]">
+      <div className="flex flex-col gap-[var(--space-8)]">
         <ControlSelect
           label={uiCopy.newDocument.display}
           data={{ "data-vigilia-new-document-display": "" }}
@@ -237,7 +237,11 @@ export function NewDocumentChooser({
           <label htmlFor={sizeId}>{uiCopy.panels.size}</label>
           <output
             id={sizeId}
-            className="vigilia-dialog-size"
+            // `tabular-nums` was `.vigilia-dialog .vigilia-dialog-size`'s only
+            // rule, and the popup is `.editor-shell-dialog` now, so the
+            // descendant match is gone: this number is the one that must not
+            // jitter as its digits change.
+            className="tabular-nums"
             data-vigilia-new-document-size=""
           >
             {`${chosen.width} × ${chosen.height}`}

@@ -204,6 +204,47 @@ describe("the library chooser", () => {
     await expect(pending).resolves.toBeUndefined();
   });
 
+  it("dismisses only the confirmation on Escape, and leaves the chooser's promise open", async () => {
+    const removed: string[] = [];
+    const pending = open([{ id: "mine", name: "My theme", updatedAt: "" }], {
+      remove: async (id: string) => {
+        removed.push(id);
+      },
+    } as unknown as ThemeLibraryClient);
+    let settled = false;
+    void pending.then(() => {
+      settled = true;
+    });
+
+    await chooseIn("theme", "mine");
+    await pressButton("[data-vigilia-library-delete]");
+    const confirm = topDialog();
+
+    // **The two roots are siblings** (`theme-library-dialog.tsx:159`, `:221`),
+    // not nested, so this is a real question rather than a formality: Escape has
+    // to take the confirmation and not the dialog underneath it. Losing the
+    // chooser here would drop the author out of the library mid-decision, and
+    // losing nothing would leave a confirmation on screen that answers nothing.
+    await act(async () => {
+      confirm.dispatchEvent(
+        new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+      );
+    });
+    await flush();
+
+    expect(
+      document.querySelector("[data-vigilia-library-delete-confirm]"),
+    ).toBeNull();
+    // The chooser is still there, still holding the author's selection.
+    await openControl("theme");
+    expect(allOptionIds()).toContain("mine");
+    expect(settled).toBe(false);
+    expect(removed).toEqual([]);
+
+    await pressButton("[data-vigilia-library-cancel]");
+    await expect(pending).resolves.toBeUndefined();
+  });
+
   it("says why a removal failed, and keeps the theme listed", async () => {
     const pending = open([{ id: "mine", name: "My theme", updatedAt: "" }], {
       remove: async () => {
