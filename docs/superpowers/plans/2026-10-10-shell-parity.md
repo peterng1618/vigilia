@@ -299,19 +299,21 @@ Run the whole editor unit suite and record its counts in the body.
 
 ---
 
-### Task 6: The ratchet covers the stylesheet this plan edits
+### Task 6: The values this plan corrected are under a gate, not an eye
 
-**Outcome:** `editor-shell.css` is in `scripts/design-tokens.gated.json`, so a hex literal or an off-scale spacing value in it fails a gate instead of waiting for a person to notice — and by the time this task runs, this plan has already fixed most of what the gate finds.
+**Outcome:** What this plan fixed by hand is checked rather than remembered. `editor-shell.css` is in `scripts/design-tokens.gated.json`, so a hex literal or an off-scale spacing value in it fails a gate instead of waiting for a person to notice; the drawing's own `border-radius` values are read against §3's scale, so the twenty-one off-scale literals Task 3 corrected cannot return one at a time (`vg-296`); and the drawing's declared token table is read from every element that declares it rather than the single element the width selector happens to match (`vg-309`). By the time this task runs, this plan has already fixed most of what the gate finds.
 
-**Owning symbols/landmarks:** `scripts/design-tokens.gated.json`; `scripts/design-tokens.mjs`; `docs/engineering/`'s description of the ratchet; `vg-274` (the measured before-state) and `vg-286` (which test files the ratchet covers).
+**Owning symbols/landmarks:** `scripts/design-tokens.gated.json`; `scripts/design-tokens.mjs`; `docs/engineering/`'s description of the ratchet; the parity reader and its row table in `tests/e2e/design-language.spec.ts`; `tests/e2e/mockup-values.ts`'s `SHELL_TOKEN_SELECTOR`, `mockupDeclared` and `mockupDeclaredProperties`; `vg-274` (the measured before-state), `vg-286` (which test files the ratchet covers), `vg-296`, `vg-308` and `vg-309`.
 
 **Files:**
 - Modify: `scripts/design-tokens.gated.json`
 - Modify: `src/web/packages/editor/src/editor-shell/editor-shell.css` (the violations the earlier tasks left)
+- Modify: `src/web/tests/e2e/design-language.spec.ts` (the drawing-side rows)
+- Modify: `src/web/tests/e2e/mockup-values.ts` (the token table's reader)
 
 **Interfaces:**
-- Consumes: Tasks 2–5.
-- Produces: the file under the gate. The `gated` list grows by one path and `design:check` prints the new count.
+- Consumes: Tasks 2–5, and Task 1's parity reader and row table.
+- Produces: a stylesheet and two drawing readers under a gate. The `gated` list grows by one path and `design:check` prints the new count.
 
 - [ ] **Step 1: Measure what the gate would find, before adding the path**
 
@@ -320,13 +322,25 @@ Run the whole editor unit suite and record its counts in the body.
 - [ ] **Step 2: Add the path, run the gate, and fix what it names**
 
 Run: `cd src/web && npm run design:check`
-Expected: it names `editor-shell.css` with a violation list. Fix every violation **as a role or a scale step**, never by widening the gate's allowlist — an exemption added to make a gate pass is the gate deleted with a comment.
+Expected: it names `editor-shell.css` with a violation list. Fix every violation **as a role or a scale step**, never by widening the gate's allowlist — an exemption added to make a gate pass is the gate deleted with a comment. **The allowlist is not a precedent (R25):** `74` sits in `biblePx` because §5 rule 2 names that grid in its own right, verified against the rule rather than by the entry being there, and every other entry has a bible literal behind it (46 is §7.2's rail, 246 is §7.3's pane, 276 is §7.4's inspector). A value with no rule behind it needs the rule first — if one turns up here, that is a spec edit to open, not an entry to add.
 
 - [ ] **Step 3: Prove the gate fails on a reintroduced literal**
 
 Add one hex literal to a surface rule, run `npm run design:check`, confirm it fails naming the file and line, and remove it.
 
-- [ ] **Step 4: Commit**
+- [ ] **Step 4: Read the drawing's radii against §3's scale (`vg-296`)**
+
+Nothing reads them today: Task 3 corrected twenty-one off-scale `border-radius` values in `current/shell.html`, and putting one `7px` back leaves `design-language.spec.ts` green — a sweep is a measurement of a file, not a gate on it. Add the row that reads every `border-radius` the drawing computes and asserts each is a §3 scale step (`--radius-sm`/`md`/`lg`/`xl`, `full`) or one of the named degenerate values the register records. Prove it red by reintroducing one `7px`, then restore with `cp` and confirm with `cmp`.
+
+- [ ] **Step 5: Read the token table from every element that declares it (`vg-309`)**
+
+`mockupDeclared` reads the single element `SHELL_TOKEN_SELECTOR` matches, so a token declared at `:root` or on a child is invisible to a row that claims to read the drawing's table as a set. Widen the reader to the union of declarations across the matching subtree — or to the declared-property set per element, whichever the drawing's structure makes exact — and prove it red by moving one declared token off the element the selector matches.
+
+- [ ] **Step 6: Rule on `vg-308`'s magnitude, or leave it open — do not invent a threshold**
+
+The ladder's row asserts order (`bg < panel < panel2`) and cannot see a ladder collapsed to steps of 0.0001. A magnitude floor with no rule behind it is the `biblePx` move (R25) this plan has already had to undo once. **Find the rule first:** if §3, §4 or the drawing states a minimum separation, cite it and implement against it; if none does, record that in the ledger, leave `vg-308` open, and add no constant.
+
+- [ ] **Step 7: Commit**
 
 ---
 
