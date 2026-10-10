@@ -176,13 +176,27 @@ export function mockupDeclaredOrNull(
  *  writes cannot license this plan's divergence. */
 export type ParityRegion = {
   readonly region: string;
-  /** A `<style>` rule selector, or `[style*="…"]` for an inline declaration. */
-  readonly mockupSelector: string;
+  /** A `<style>` rule selector, or `[style*="…"]` for an inline declaration.
+   *
+   *  **Absent** on a row the closed scale owns rather than the drawing — see
+   *  `scaleToken`. A row with neither is a row with no comparator, and the row
+   *  does not belong in this table. */
+  readonly mockupSelector?: string;
   /** The CSS property, named the same on both sides — `border-radius` is read
    *  from the drawing's rule and from the product's computed style alike. */
   readonly mockupProperty: string;
   readonly productSelector: string;
   readonly bibleSection: string;
+  /** A closed-scale token the product's own declaration must resolve to, read
+   *  from `:root` at run time so the expected value cannot drift from the
+   *  token — `--radius-lg` is the file's, not this table's. Set only where the
+   *  drawing is not the source: a region the drawing draws as part of a
+   *  *window* has no counterpart element in a product that **is** the window. */
+  readonly scaleToken?: string;
+  /** Which surface must be open for `productSelector` to be the element meant.
+   *  Both dialogs render `.editor-shell-dialog` from one rule, so the two are
+   *  told apart by the route that opened them, not by the DOM. */
+  readonly surface?: "settings" | "sheet";
   readonly licensed?: string;
 };
 
@@ -192,25 +206,25 @@ export type ParityRegion = {
  *
  * Every row here is one `design-language.spec.ts` asserts. The measured
  * differences are the four body regions the drawing draws **flush** and
- * **square**, the shell's own frame, and the dialog frame that shares the
- * drawing's one 10px rule. `height` on the header is the **positive control**:
- * the drawing and the product already agree on 42px, so a run that finds no
- * failures at all is caught as a reader that stopped reading rather than
- * reported as a shell that came right.
+ * **square**, and both dialogs' frames. `height` on the header is the **positive
+ * control**: the drawing and the product already agree on 42px, so a run that
+ * finds no failures at all is caught as a reader that stopped reading rather
+ * than reported as a shell that came right.
  *
- * Two rows the census adjudicates are deliberately *not* here, and say so
- * rather than being implied: the graphite role values are Task 4's assertions
- * (the drawing declares them in its own token table, and the reader gains that
- * target then), and the settings modal's own regions are the next plan's.
+ * **Two regions the drawing draws have no row here, because they have no
+ * counterpart element** (the census records both as `no-counterpart`): the shell
+ * frame at `editor-shell.html:44-48` is a `1180px` card bounding the app *inside
+ * a page*, and the product's editor **is** the window and fills it, so no product
+ * element carries that card's radius or its border — `.mockup`, which wraps only
+ * the settings specimens, is a wrapper too. Where the drawing is a window, its
+ * frame is not a comparator for anything.
+ *
+ * Two rows the census adjudicates are deliberately *not* here, and say so rather
+ * than being implied: the graphite role values are Task 4's assertions (the
+ * drawing declares them in its own token table, and the reader gains that target
+ * then), and the settings modal's own regions are the next plan's.
  */
 export const PARITY: readonly ParityRegion[] = [
-  {
-    region: "shell frame — radius",
-    mockupSelector: '[style*="width:1180px"]',
-    mockupProperty: "border-radius",
-    productSelector: ".editor-shell",
-    bibleSection: "§3 radius table (`design-language.md:86-94`)",
-  },
   {
     region: "header — height",
     mockupSelector: '[style*="height:42px"]',
@@ -260,12 +274,32 @@ export const PARITY: readonly ParityRegion[] = [
     productSelector: ".editor-shell-inspector",
     bibleSection: "§3 radius table (`:92`), §7's diagram (`:242-257`)",
   },
+  /* **A dialog's radius is not the drawing's to give.** The only 10px frame the
+     drawing has is the window's own — `.mockup` at `editor-shell.html:20` and the
+     shell card at `:44-48` — and both belong to a drawn window, which the product
+     does not have. Bible §3's radius table is closed (4/6/8/10) and gives 10 to
+     "Floating clusters (dock, view controls, identity chip)" only; a modal is not
+     a cluster, so both dialogs are panels and take `--radius-lg`. So this row's
+     comparator is the **scale**, read from the product's own `:root` declaration
+     (`scaleToken`) rather than written here, and it stays red until Task 3.
+     Two rows, because both dialogs render the one `.editor-shell-dialog` rule
+     (`shortcut-reference.tsx` and `settings.tsx`) and a change made for one is
+     exactly what a single row would miss. */
   {
-    region: "dialog frame — radius",
-    mockupSelector: ".mockup",
+    region: "settings modal — frame radius",
     mockupProperty: "border-radius",
     productSelector: ".editor-shell-dialog",
-    bibleSection: "§3 radius table (`:86-94`)",
+    bibleSection: "§3 radius table (`design-language.md:86-94`)",
+    scaleToken: "--radius-lg",
+    surface: "settings",
+  },
+  {
+    region: "`?` sheet — frame radius",
+    mockupProperty: "border-radius",
+    productSelector: ".editor-shell-dialog",
+    bibleSection: "§3 radius table (`design-language.md:86-94`)",
+    scaleToken: "--radius-lg",
+    surface: "sheet",
   },
   {
     /* The one composition difference a predating rule addresses: §7.5 admits

@@ -96,7 +96,7 @@ test("the last declaration in document order wins", () => {
   expect(mockupDeclared(twice, ".mockup", "border-radius")).toBe("3px");
 });
 
-test("every assertable row addresses the drawing and declares a length", () => {
+test("every row names a comparator, and a drawing row declares a length", () => {
   expect(PARITY.length).toBeGreaterThan(0);
   /** A length, or `normal` — `gap`'s word for no gap. */
   const isLength = (value: string): boolean => {
@@ -104,6 +104,34 @@ test("every assertable row addresses the drawing and declares a length", () => {
     return first === "normal" || /^-?[\d.]+px$/.test(first);
   };
   for (const row of PARITY) {
+    // Every row names at least one source, and a row that names none is a row
+    // with nothing to compare it against — the shape the shell's own frame had,
+    // and the reason it left the table (the census records it `no-counterpart`).
+    const owners = [
+      row.licensed !== undefined,
+      row.scaleToken !== undefined,
+      row.mockupSelector !== undefined,
+    ].filter(Boolean).length;
+    expect(
+      owners,
+      `${row.region}: the row names no licence, no scale token and no drawing selector, so nothing governs it`,
+    ).toBeGreaterThan(0);
+    // A licence and a scale token are two different answers to "what governs
+    // this", and a row cannot be owned by both. A `licensed` row *may* also name
+    // the drawing's selector — that is the declaration the licence is about.
+    expect(
+      row.licensed === undefined || row.scaleToken === undefined,
+      `${row.region}: a row names both a licence and a scale token`,
+    ).toBe(true);
+    // A scale-owned row must not also carry a drawing selector: the selector it
+    // would name is a window's wrapper, which is what withdrew the comparator.
+    if (row.scaleToken !== undefined) {
+      expect(
+        row.mockupSelector,
+        `${row.region}: a scale-owned row must not name a drawing selector`,
+      ).toBeUndefined();
+      continue;
+    }
     // A licensed row is recorded, not asserted, so its declared value need not
     // be a length this file could compare — the stage ground is a gradient.
     if (row.licensed !== undefined) continue;
@@ -112,7 +140,7 @@ test("every assertable row addresses the drawing and declares a length", () => {
     // region the drawing draws flush.
     const declared = mockupDeclaredOrNull(
       drawing,
-      row.mockupSelector,
+      row.mockupSelector ?? "",
       row.mockupProperty,
     );
     // `null` is a legitimate reading — the four body regions are exactly the

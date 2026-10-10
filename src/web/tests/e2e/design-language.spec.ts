@@ -1484,13 +1484,29 @@ function lengthInPx(value: string): number | null {
   return Number.isFinite(px) ? px : null;
 }
 
+/** How many dialogs are **rendered** right now.
+ *
+ *  Both dialogs render `.editor-shell-dialog` from one rule, and the closed one
+ *  stays in the DOM — so `document.querySelector` answers with whichever comes
+ *  first *in the document*, which is not the question a row about the sheet is
+ *  asking. Every dialog row asserts this is 1 before it is read, so a row cannot
+ *  measure the other dialog and report its number as its own. */
+async function renderedDialogs(page: Page): Promise<number> {
+  return page.evaluate(
+    () =>
+      [...document.querySelectorAll(".editor-shell-dialog")].filter(
+        (dialog) => dialog.getClientRects().length > 0,
+      ).length,
+  );
+}
+
 /**
  * The shell's parity with the drawing (spec §13 as amended 2026-10-10, bible §3,
  * §7, reference `docs/design/mockups/editor-shell.html`).
  *
  * **What this is.** The drawing is the acceptance instrument: its own inline
  * stylesheet is parsed (`mockup-values.ts`) and each of `PARITY`'s rows asserts
- * the product's computed value equals what the drawing declares. A value
+ * the product's computed value equals what the row's comparator declares. A value
  * transcribed out of the drawing into this file — which is what the previous
  * passes did, as prose — is a second owner of it, and a copy is what lets the
  * two drift while every check stays green.
@@ -1503,10 +1519,21 @@ function lengthInPx(value: string): number | null {
  * selector addresses nothing at all, so a stale selector cannot pass as a region
  * the drawing draws flush.
  *
+ * **The drawing is not every row's source.** A region the drawing draws as part
+ * of a *window* has no counterpart in a product that **is** the window, so the
+ * shell's own frame is not in this table at all (the census records it
+ * `no-counterpart`). The two dialogs' frames are here but `scaleToken` owns them,
+ * not a drawing selector: bible §3's radius table is closed and gives 10px to
+ * floating clusters over the canvas, which a modal is not. The expected value is
+ * read from the product's own `:root` declaration (`--radius-lg`), so this file
+ * cannot drift from the token.
+ *
  * **A `licensed` row is recorded, not asserted.** `licensed` carries a
  * *predating* rule — a bible §N, an ADR, a spec section — that positively
  * requires the product's treatment. Its absence is what makes a difference a
- * defect; today one row carries one (the stage ground, §7.5).
+ * defect; today one row carries one (the stage ground, §7.5, which names that
+ * property and permits both variants — the narrow case, and never "the bible does
+ * not forbid it").
  *
  * **The header row is the control.** The drawing and the product already agree
  * that the header is 42px, so it passes today. A run in which *nothing* fails is
@@ -1523,11 +1550,6 @@ test("the shell is what the drawing draws", async ({ page }, testInfo) => {
   test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
   await openShell(page);
-  // The dialog's frame is one rule (`editor-shell.css`), rendered by the
-  // settings modal and by the `?` sheet; the modal is the route an author takes.
-  // Task 3 asserts the sheet against the same row.
-  await page.locator(SETTINGS_GEAR).click();
-  await expect(page.getByRole("dialog", SETTINGS_DIALOG)).toBeVisible();
 
   const drawing = readMockup();
   expect(
@@ -1535,28 +1557,88 @@ test("the shell is what the drawing draws", async ({ page }, testInfo) => {
     "the parity table is empty, so this test can prove nothing",
   ).toBeGreaterThan(0);
 
-  /** Two rows share a product selector (the body's inset and its gap), so the
-   *  reading is keyed by the pair and not by the element alone. */
+  /** Rows are read with the surface they belong to open, because both dialogs
+   *  render the one `.editor-shell-dialog` rule and only the route tells them
+   *  apart — a value read with the wrong one open is a reading of the wrong
+   *  element. Two rows also share a selector without sharing a surface, so the
+   *  key carries both. */
   const key = (row: ParityRegion): string =>
-    `${row.productSelector}|${row.mockupProperty}`;
+    `${row.surface ?? "shell"}|${row.productSelector}|${row.mockupProperty}`;
 
-  const product: Record<string, string | null> = await page.evaluate(
-    (rows) => {
-      const out: Record<string, string | null> = {};
-      for (const row of rows) {
-        const element = document.querySelector(row.productSelector);
-        out[`${row.productSelector}|${row.mockupProperty}`] =
-          element === null
-            ? null
-            : getComputedStyle(element).getPropertyValue(row.mockupProperty);
-      }
-      return out;
-    },
-    PARITY.map((row) => ({
-      productSelector: row.productSelector,
-      mockupProperty: row.mockupProperty,
-    })),
+  const readRows = async (rows: readonly ParityRegion[]) =>
+    page.evaluate(
+      (wanted) => {
+        const out: Record<string, string | null> = {};
+        for (const row of wanted) {
+          // The **rendered** match, not the first in document order. Both
+          // dialogs render `.editor-shell-dialog` and the settings modal stays
+          // in the DOM while closed, so a first-match read of the sheet's row
+          // would measure the modal and report the same number twice — a reading
+          // that cannot fail for the reason the row exists.
+          const element =
+            [...document.querySelectorAll(row.productSelector)].find(
+              (candidate) => candidate.getClientRects().length > 0,
+            ) ?? null;
+          out[row.key] =
+            element === null
+              ? null
+              : getComputedStyle(element).getPropertyValue(row.mockupProperty);
+        }
+        return out;
+      },
+      rows.map((row) => ({
+        key: key(row),
+        productSelector: row.productSelector,
+        mockupProperty: row.mockupProperty,
+      })),
+    );
+
+  const product: Record<string, string | null> = await readRows(
+    PARITY.filter((row) => row.surface === undefined),
   );
+
+  await page.locator(SETTINGS_GEAR).click();
+  await expect(page.getByRole("dialog", SETTINGS_DIALOG)).toBeVisible();
+  await expect(
+    await renderedDialogs(page),
+    "the settings modal is not the only dialog rendered, so its row cannot say which dialog it measured",
+  ).toBe(1);
+  Object.assign(
+    product,
+    await readRows(PARITY.filter((row) => row.surface === "settings")),
+  );
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("dialog", SETTINGS_DIALOG)).toBeHidden();
+
+  // `?` is the session's own dispatcher, so this is the gesture an author makes
+  // rather than a click on a control the sheet does not have.
+  await page.keyboard.press("?");
+  const sheet = page.locator(".editor-shell-dialog");
+  await expect(sheet).toBeVisible();
+  await expect(
+    await renderedDialogs(page),
+    "the `?` sheet is not the only dialog rendered, so its row cannot say which dialog it measured",
+  ).toBe(1);
+  Object.assign(
+    product,
+    await readRows(PARITY.filter((row) => row.surface === "sheet")),
+  );
+
+  /** The closed scale the product declares for itself, read from `:root` so a
+   *  row expecting `--radius-lg` cannot drift from the token it names. */
+  const tokens = [
+    ...new Set(
+      PARITY.map((row) => row.scaleToken).filter(
+        (token): token is string => token !== undefined,
+      ),
+    ),
+  ];
+  const scale: Record<string, string> = await page.evaluate((names) => {
+    const root = getComputedStyle(document.documentElement);
+    return Object.fromEntries(
+      names.map((name) => [name, root.getPropertyValue(name).trim()]),
+    );
+  }, tokens);
 
   const unresolved: string[] = [];
   const failures: string[] = [];
@@ -1573,31 +1655,46 @@ test("the shell is what the drawing draws", async ({ page }, testInfo) => {
       table.push(`${row.region}: recorded, licensed — ${row.licensed}`);
       continue;
     }
-    // Throws when the selector addresses nothing in the drawing: a row whose
-    // selector went stale must fail here rather than read as a flush region.
-    const declared = mockupDeclaredOrNull(
-      drawing,
-      row.mockupSelector,
-      row.mockupProperty,
-    );
-    const expected = declared === null ? 0 : lengthInPx(declared);
-    const actual = lengthInPx(rendered);
+    /** The comparator, the product's value, and the words a failure uses. */
+    let expected: number | null;
+    let actual: number | null;
+    let from: string;
+    if (row.scaleToken !== undefined) {
+      // The scale owns this row, not the drawing: see the row's own comment.
+      const declared = scale[row.scaleToken];
+      if (declared === undefined) {
+        unresolved.push(
+          `${row.region}: the product declares no \`${row.scaleToken}\`, so the row has no comparator`,
+        );
+        continue;
+      }
+      expected = lengthInPx(declared);
+      actual = lengthInPx(rendered);
+      from = `\`${row.scaleToken}\` (${declared})`;
+    } else {
+      // Throws when the selector addresses nothing in the drawing: a row whose
+      // selector went stale must fail here rather than read as a flush region.
+      const declared = mockupDeclaredOrNull(
+        drawing,
+        row.mockupSelector ?? "",
+        row.mockupProperty,
+      );
+      expected = declared === null ? 0 : lengthInPx(declared);
+      actual = lengthInPx(rendered);
+      from = `the drawing's \`${row.mockupSelector}\` (${declared ?? "nothing — drawn flush, so 0px"})`;
+    }
     table.push(
-      `${row.region}: drawing \`${row.mockupSelector}\` ${row.mockupProperty}=${
-        declared ?? "not declared (drawn flush)"
-      } → ${expected}, product \`${row.productSelector}\` = ${rendered} → ${actual}`,
+      `${row.region}: ${from} → ${expected}, product \`${row.productSelector}\` = ${rendered} → ${actual}`,
     );
     if (expected === null) {
       failures.push(
-        `${row.region}: the drawing declares \`${declared}\`, which this table cannot read as a length (${row.mockupSelector} \`${row.mockupProperty}\`)`,
+        `${row.region}: ${from} is not a length this table can compare`,
       );
       continue;
     }
     if (actual !== expected) {
       failures.push(
-        `${row.region}: the drawing declares ${row.mockupProperty} ${
-          declared ?? "(nothing — drawn flush, so 0px)"
-        } for \`${row.mockupSelector}\`; the product renders "${rendered}" on \`${row.productSelector}\`.`,
+        `${row.region}: ${from} requires ${expected}px; the product renders "${rendered}" on \`${row.productSelector}\`.`,
       );
     }
   }
@@ -1611,6 +1708,6 @@ test("the shell is what the drawing draws", async ({ page }, testInfo) => {
   ).toEqual([]);
   expect(
     failures,
-    "a shell region is not what the drawing declares for it",
+    "a shell region is not what its comparator requires of it",
   ).toEqual([]);
 });

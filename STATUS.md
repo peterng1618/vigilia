@@ -31,11 +31,11 @@ satisfies every token in the bible and still does not look like the mockup.
 
 ## Last completed change
 
-- **Plan 7 Task 1 landed: the drawing is read, not restated** — `tests/e2e/mockup-values.ts` parses `docs/design/mockups/editor-shell.html`'s own declarations by selector, `PARITY` carries 10 rows, and `design-language.spec.ts` reddens on 8 of them against `d7d5baaa` at both `--workers=1` and `--workers=2`.
-- **The census is 49 rows — `fix` 35, `licensed` 1, `drawing-stale` 4, `match` 9** — at `.superpowers/sdd/2026-10-10-shell-parity/adjudication.md`, naming the 13 `fix` rows this plan does not own and the one licence it keeps.
+- **Plan 7 Task 1 landed: the drawing is read, not restated** — `mockup-values.ts` parses `docs/design/mockups/editor-shell.html`'s own declarations by selector, `PARITY` carries 10 rows, and `design-language.spec.ts` reddens on 8 of them at both `--workers=1` and `--workers=2`, the header's 42px passing as the control.
+- **The census is 49 rows — `fix` 34, `licensed` 1, `drawing-stale` 4, `match` 9, `no-counterpart` 1** — at `.superpowers/sdd/2026-10-10-shell-parity/adjudication.md`, naming the 13 `fix` rows this plan does not own and the one licence it keeps.
+- **Two comparators were withdrawn on the controller's ruling (fix round 1)** — the drawn `1180px` card has no counterpart in a product that *is* the window (`no-counterpart`), and `.mockup`'s `10px` no longer compares a dialog; both dialogs read `--radius-lg` from the scale and both are red.
 - **Four `drawing-stale` rows name repairs this plan may not make** — two `9px` cluster radii and three `#0007` shadows against §3, a bordered follow-the-system row against §1 — filed as `vg-296`, the mirror of `vg-291`.
-- **The reader is proved to read rather than restate** — mutating `border-radius: 10px` to `7px` in the drawing on disk reddens it, restored with `cp` and verified with `cmp`; the header's 42px row passes today and is the control against a reader that stopped reading.
-- **Two config one-liners, because neither runner could see the reader**: `vitest.config.ts` now includes `tests/e2e/**/*.test.ts` and `playwright.config.ts` matches `*.spec.ts` only, so the two stop collecting each other's files.
+- **Two config one-liners, because neither runner could see the reader** — `vitest.config.ts` includes `tests/e2e/**/*.test.ts` and `playwright.config.ts` matches `*.spec.ts` only, so the two stop collecting each other's files.
 
 ## Next
 
