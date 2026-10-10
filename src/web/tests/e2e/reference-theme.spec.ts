@@ -1,6 +1,7 @@
 import { expect, type Page, type TestInfo, test } from "@playwright/test";
 import { readThemePackage, writeThemePackage } from "@vigilia/theme-package";
 import { strToU8, zipSync } from "fflate";
+import { chooseIn, optionsOf, typeIntoControl } from "./control-set.js";
 import {
   type ArtboardRect,
   answerDialogIfShown,
@@ -9,7 +10,6 @@ import {
   clientOfScene,
   enterLayer,
 } from "./editor-canvas.js";
-import { chooseIn, optionsOf, typeIntoControl } from "./control-set.js";
 import { openPane } from "./editor-rail.js";
 import { GLASS_ENVELOPE, glassStripesPng } from "./glass-fixture.js";
 import { isDesktopSurface } from "./surface.js";
@@ -2464,10 +2464,10 @@ test.describe("background media", () => {
     // The artboard's own panel is a document panel, so it is in the Document
     // pane; the Add pane was showing, so this is a real swap.
     await openPane(page, "Document");
-    await page.locator("[data-vigilia-background-asset]").selectOption("hero");
-    await expect(page.locator("[data-vigilia-background-asset]")).toHaveValue(
-      "hero",
-    );
+    await chooseIn(page, "[data-vigilia-background-asset]", "hero");
+    await expect(
+      page.locator("[data-vigilia-background-asset] [data-vigilia-value]"),
+    ).toHaveAttribute("data-vigilia-value", "hero");
     await waitForMedia(page);
     const first = await mediaSrc(page);
     expect(
@@ -2483,20 +2483,15 @@ test.describe("background media", () => {
       mimeType: "image/png",
       buffer: PIXEL_PNG,
     });
-    const ids = await page
-      .locator("[data-vigilia-background-asset]")
-      .locator("option")
-      .evaluateAll((options) =>
-        options.map((option) => (option as HTMLOptionElement).value),
-      );
+    // The declared ids, read from the media control's own opened list: it is
+    // plan 1's select, so it has no `option` elements to evaluate.
+    const ids = await optionsOf(page, "[data-vigilia-background-asset]");
     expect(ids).toEqual(expect.arrayContaining(["hero", "hero-2"]));
     expect(ids.filter((id) => id.startsWith("hero"))).toHaveLength(2);
 
     // **Repoint.** The artboard names the new one, and the layer follows it.
     await openPane(page, "Document");
-    await page
-      .locator("[data-vigilia-background-asset]")
-      .selectOption("hero-2");
+    await chooseIn(page, "[data-vigilia-background-asset]", "hero-2");
     await waitForMedia(page);
     const second = await mediaSrc(page);
     expect(second).not.toBe(first);
@@ -2531,10 +2526,10 @@ test.describe("background media", () => {
     });
     // The artboard's own panel is a document panel, so it is in the Document pane.
     await openPane(page, "Document");
-    await page.locator("[data-vigilia-background-asset]").selectOption("loop");
-    await expect(page.locator("[data-vigilia-background-asset]")).toHaveValue(
-      "loop",
-    );
+    await chooseIn(page, "[data-vigilia-background-asset]", "loop");
+    await expect(
+      page.locator("[data-vigilia-background-asset] [data-vigilia-value]"),
+    ).toHaveAttribute("data-vigilia-value", "loop");
     await expect
       .poll(
         () =>

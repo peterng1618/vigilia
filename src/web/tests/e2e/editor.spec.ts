@@ -1638,15 +1638,15 @@ test.describe("Fabric editor route", () => {
     await openPane(page, "Document");
     await page.locator("[data-vigilia-artboard-width]").fill("1000");
     await page.locator("[data-vigilia-artboard-width]").press("Tab");
-    await page
-      .locator("[data-vigilia-artboard-background]")
-      .selectOption("palette.bars");
+    await chooseIn(page, "[data-vigilia-artboard-background]", "palette.bars");
     await expect(page.locator("[data-vigilia-artboard-width]")).toHaveValue(
       "1000",
     );
+    // The committed reference, read off the control's own hook: the paint
+    // chooser is plan 1's select now — a button, whose `.value` is always "".
     await expect(
-      page.locator("[data-vigilia-artboard-background]"),
-    ).toHaveValue("palette.bars");
+      page.locator("[data-vigilia-artboard-background] [data-vigilia-value]"),
+    ).toHaveAttribute("data-vigilia-value", "palette.bars");
 
     await captureVisualReview(page, testInfo, "editor-artboard");
   });
@@ -2034,14 +2034,10 @@ test.describe("Fabric editor route", () => {
     await page.goto(EDITOR);
     // The artboard panel is a document panel, so it is in the Document pane.
     await openPane(page, "Document");
-    await page
-      .locator("[data-vigilia-background-media-fit]")
-      .selectOption("contain");
+    await chooseIn(page, "[data-vigilia-background-media-fit]", "contain");
     await page.locator("[data-vigilia-artboard-width]").fill("1000");
     await page.locator("[data-vigilia-artboard-width]").press("Tab");
-    await page
-      .locator("[data-vigilia-artboard-background]")
-      .selectOption("palette.bars");
+    await chooseIn(page, "[data-vigilia-artboard-background]", "palette.bars");
 
     const envelope = (await saveEnvelope(page)) as {
       artboard: {
@@ -2087,11 +2083,14 @@ test.describe("Fabric editor route", () => {
     });
     const labels = await settingsPanel.locator("label").allTextContents();
     expect(labels).not.toContain("Preview fit");
-    // The control that does exist, still named and still choosing.
+    // The control that does exist, still named and still choosing. Its value is
+    // read off the hook the control commits through rather than `.value`: it is
+    // plan 1's select, and a button's `.value` is always "".
     expect(labels).toContain("Media fit");
-    await expect(mediaFit).toHaveValue("cover");
-    await mediaFit.selectOption("contain");
-    await expect(mediaFit).toHaveValue("contain");
+    const chosen = mediaFit.locator("[data-vigilia-value]");
+    await expect(chosen).toHaveAttribute("data-vigilia-value", "cover");
+    await chooseIn(page, "[data-vigilia-background-media-fit]", "contain");
+    await expect(chosen).toHaveAttribute("data-vigilia-value", "contain");
   });
 
   test("lists the document's references, and the selection's own in its Spends column", async ({
@@ -2898,13 +2897,13 @@ test.describe("Fabric editor route", () => {
     });
     // The artboard's own panel is a document panel, so it is in the Document pane.
     await openPane(page, "Document");
-    await page.locator("[data-vigilia-background-asset]").selectOption("hero");
-    await page
-      .locator("[data-vigilia-background-media-fit]")
-      .selectOption("contain");
-    await expect(page.locator("[data-vigilia-background-asset]")).toHaveValue(
-      "hero",
-    );
+    await chooseIn(page, "[data-vigilia-background-asset]", "hero");
+    await chooseIn(page, "[data-vigilia-background-media-fit]", "contain");
+    // The chosen asset, read off the hook the control commits through: it is a
+    // plan-1 select, so there is no `select` element to ask `.value`.
+    await expect(
+      page.locator("[data-vigilia-background-asset] [data-vigilia-value]"),
+    ).toHaveAttribute("data-vigilia-value", "hero");
     await page
       .locator("[data-vigilia-background-asset]")
       .scrollIntoViewIfNeeded();

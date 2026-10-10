@@ -1,16 +1,22 @@
 import { Select } from "@base-ui/react/select";
 import type * as React from "react";
 import {
-  ControlRow,
   type ControlProps,
+  ControlRow,
   describedBy,
   isBlocked,
   useControlIds,
   wellClasses,
 } from "./control-well.js";
 
-/** One entry in a well that opens a list. */
-export type ControlOption = { readonly id: string; readonly name: string };
+/** One entry in a well that opens a list. `disabled` states a reading rather
+ *  than a choice — the artboard's `Custom` — and keeps it out of the keyboard
+ *  model while the trigger still prints it as the current value. */
+export type ControlOption = {
+  readonly id: string;
+  readonly name: string;
+  readonly disabled?: boolean;
+};
 
 /**
  * A value from a closed list, in a well with a chevron.
@@ -51,6 +57,7 @@ export function SelectControl(
     disabled,
     refused,
     hint,
+    describedById,
     density,
     data,
     value,
@@ -98,6 +105,7 @@ export function SelectControl(
           disabled={disabled}
           aria-disabled={refused === undefined ? undefined : true}
           aria-describedby={describedBy(
+            describedById,
             hint === undefined ? undefined : ids.hint,
             refused === undefined ? undefined : ids.reason,
           )}
@@ -128,6 +136,7 @@ export function SelectControl(
                 <Select.Item
                   key={option.id}
                   value={option.id}
+                  disabled={option.disabled ?? false}
                   // The value behind the choice, on the element a driver clicks.
                   // Base UI keeps the id in its store and renders only the label,
                   // so without this an option whose label is *document data* — a

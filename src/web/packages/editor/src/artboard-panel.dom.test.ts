@@ -1,14 +1,52 @@
 // @vitest-environment jsdom
+/**
+ * The artboard panel's own contract: what each edit commits, what it refuses,
+ * and what the document survives.
+ *
+ * The panel renders plan 1's control set now, so every drive here is the one an
+ * author makes — a field is typed into and blurred, a select is opened and an
+ * option chosen — and every read is by a `data-vigilia-*` hook rather than by a
+ * native element that no longer exists. The enumeration of what the panel shows
+ * lives in `panes/document/artboard-fields.dom.test.tsx`, which is the list this
+ * rebuild was measured against.
+ */
 import {
   instantIn,
+  MAX_ARTBOARD_DIMENSION,
   parseInstant,
   validateFabricThemeEnvelope,
 } from "@vigilia/renderer-core";
 import type { SceneBox } from "@vigilia/scene-fabric";
-import { describe, expect, it, vi } from "vitest";
-import { createArtboardPanel } from "./artboard-panel.js";
+import { act } from "react";
+import { afterEach, beforeAll, describe, expect, it, vi } from "vitest";
+import { type ArtboardPanel, createArtboardPanel } from "./artboard-panel.js";
 import { createBlankFabricTheme } from "./new-fabric-theme.js";
 import { parseThemePackage, serializeThemePackage } from "./persist.js";
+
+// Base UI's popups need three browser APIs jsdom has none of, the same three
+// the Tokens pane's own dom tests supply.
+globalThis.ResizeObserver ??= class {
+  observe(): void {}
+  unobserve(): void {}
+  disconnect(): void {}
+} as never;
+Element.prototype.getAnimations ??= (): never[] => [];
+window.PointerEvent ??= MouseEvent as never;
+
+(
+  globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
+).IS_REACT_ACT_ENVIRONMENT = true;
+
+beforeAll(() => {
+  const matches = Element.prototype.matches;
+  Element.prototype.matches = Object.assign(function (
+    this: Element,
+    selector: string,
+  ): boolean {
+    if (selector === ":modal" || selector === ":popover-open") return false;
+    return matches.call(this, selector);
+  }, matches);
+});
 
 /** The platform's own spelling of a date's month and weekday, at UTC — the
     convention `names.ts` formats at, derived here without importing it, so a
@@ -19,37 +57,166 @@ function spelledAt(parts: NonNullable<ReturnType<typeof parseInstant>>) {
     new Intl.DateTimeFormat(locale, { ...options, timeZone: "UTC" }).format(at);
 }
 
+let panel: ArtboardPanel | undefined;
+
+afterEach(async () => {
+  if (panel !== undefined) await act(async () => panel?.destroy());
+  panel = undefined;
+  document.body.replaceChildren();
+  vi.restoreAllMocks();
+});
+
+interface Mounted {
+  readonly host: HTMLElement;
+  readonly change: ReturnType<typeof vi.fn>;
+  readonly metadataChange: ReturnType<typeof vi.fn>;
+}
+
+async function mount(
+  globals?: Parameters<typeof createArtboardPanel>[1],
+  options: Parameters<typeof createArtboardPanel>[3] = {},
+): Promise<Mounted> {
+  if (panel !== undefined) await act(async () => panel?.destroy());
+  panel = undefined;
+  document.body.replaceChildren();
+  const metadataChange = vi.fn();
+  const change = vi.fn();
+  await act(async () => {
+    panel = createArtboardPanel(document.body, globals, change, {
+      onMetadataChange: metadataChange,
+      ...options,
+    });
+  });
+  return { host: document.body, change, metadataChange };
+}
+
+/** One draw, which is what the session's `render` is. */
+async function draw(
+  artboard: Parameters<ArtboardPanel["render"]>[0],
+  metadata?: Parameters<ArtboardPanel["render"]>[1],
+): Promise<void> {
+  if (panel === undefined) throw new Error("no panel mounted");
+  await act(async () => panel?.render(artboard, metadata));
+}
+
+/** React and floating-ui schedule outside `act`, so a popup is flushed with
+ *  macrotasks rather than one. */
+async function flush(): Promise<void> {
+  for (let round = 0; round < 3; round += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  }
+}
+
+async function click(target: Element, detail = 0): Promise<void> {
+  await act(async () => {
+    target.dispatchEvent(
+      new MouseEvent("click", { bubbles: true, cancelable: true, detail }),
+    );
+  });
+}
+
+/** Base UI commits a list item only when the press that precedes the click
+ *  started on it, so the press is part of the interaction. */
+async function pointerDown(target: Element): Promise<void> {
+  await act(async () => {
+    target.dispatchEvent(
+      new PointerEvent("pointerdown", {
+        bubbles: true,
+        cancelable: true,
+        pointerType: "mouse",
+        button: 0,
+      }),
+    );
+  });
+}
+
+/** A real edit, as React sees one: the value goes through the prototype's
+ *  setter because React replaces `value` on the node with a tracker that records
+ *  every assignment, and `input` is the native event for a text field. The blur
+ *  is the commit, which is `ControlText`/`ControlNumber`'s rule. */
+async function type(control: Element, value: string): Promise<void> {
+  await act(async () => {
+    // Focused first: `blur()` on an element that never held focus is a no-op and
+    // fires no event, so the commit below would never arrive.
+    (control as HTMLElement).focus();
+    const setter = Object.getOwnPropertyDescriptor(
+      Object.getPrototypeOf(control) as HTMLInputElement,
+      "value",
+    )?.set;
+    if (setter === undefined) (control as HTMLInputElement).value = value;
+    else setter.call(control, value);
+    control.dispatchEvent(new Event("input", { bubbles: true }));
+  });
+  await act(async () => {
+    (control as HTMLElement).blur();
+  });
+}
+
+async function commitField(control: string, value: string): Promise<void> {
+  const input = document.querySelector<HTMLInputElement>(control);
+  if (input === null) throw new Error(`no field matches ${control}`);
+  await type(input, value);
+}
+
+/** A select's options, opened; Base UI renders none until it is open. */
+async function openControl(control: string): Promise<readonly Element[]> {
+  const trigger = document.querySelector<HTMLElement>(control);
+  if (trigger === null) throw new Error(`no control matches ${control}`);
+  await click(trigger);
+  await flush();
+  return Array.from(document.querySelectorAll('[role="option"]'));
+}
+
+/** Picks the option whose value is `id` — the id the control commits, never the
+ *  label it prints, because several of those labels are document data. */
+async function chooseIn(control: string, id: string): Promise<void> {
+  const options = await openControl(control);
+  const option = options.find(
+    (candidate) => candidate.getAttribute("data-vigilia-option") === id,
+  );
+  if (option === undefined) throw new Error(`no option ${id} in ${control}`);
+  await pointerDown(option);
+  await click(option, 1);
+  await flush();
+}
+
+/** What a control prints for what is chosen: the id it committed, read off the
+ *  element that carries both the words and the value. */
+function choiceOf(control: string): string {
+  return (
+    document
+      .querySelector(`${control} [data-vigilia-value]`)
+      ?.getAttribute("data-vigilia-value") ?? ""
+  );
+}
+
+function field<T extends Element>(selector: string): T {
+  const found = document.querySelector<T>(selector);
+  if (found === null) throw new Error(`no element matches ${selector}`);
+  return found;
+}
+
 describe("artboard panel", () => {
-  it("shows and returns valid artboard properties", () => {
-    const change = vi.fn();
-    const panel = createArtboardPanel(document.body, undefined, change);
+  it("shows and returns valid artboard properties", async () => {
+    const { change } = await mount();
+    await draw({ width: 1280, height: 720 });
 
-    panel.render({ width: 1280, height: 720 });
+    await commitField("[data-vigilia-artboard-width]", "1000");
 
-    const width = panel.root.querySelector<HTMLInputElement>(
-      "[data-vigilia-artboard-width]",
-    )!;
-    width.value = "1000";
-    width.dispatchEvent(new Event("change"));
     expect(change).toHaveBeenCalledWith({
       width: 1000,
       height: 720,
     });
   });
 
-  it("carries the document's content fit through an edit rather than resetting it", () => {
+  it("carries the document's content fit through an edit rather than resetting it", async () => {
     // The panel does not own this value, so it must not decide it: a size
     // change that rewrote it to contain would silently uncrop a cover theme
     // whose author set the value by hand.
-    const change = vi.fn();
-    const panel = createArtboardPanel(document.body, undefined, change);
-    panel.render({ width: 1280, height: 720, contentFit: "cover" });
+    const { change } = await mount();
+    await draw({ width: 1280, height: 720, contentFit: "cover" });
 
-    const width = panel.root.querySelector<HTMLInputElement>(
-      "[data-vigilia-artboard-width]",
-    )!;
-    width.value = "1000";
-    width.dispatchEvent(new Event("change"));
+    await commitField("[data-vigilia-artboard-width]", "1000");
 
     expect(change).toHaveBeenLastCalledWith({
       width: 1000,
@@ -58,79 +225,74 @@ describe("artboard panel", () => {
     });
   });
 
-  it("refuses an invalid dimension and restores the last valid value", () => {
-    const change = vi.fn();
-    const panel = createArtboardPanel(document.body, undefined, change);
-    panel.render({ width: 1280, height: 720 });
-    const width = panel.root.querySelector<HTMLInputElement>(
+  it("refuses a dimension the document cannot hold, and says why", async () => {
+    // Was a refusal restoring 1280, then a clamp onto the bound of 1. The
+    // control set's rule is the third answer and the one §5 states: a value the
+    // owner rejects is refused with its reason, never coerced into a number
+    // nobody typed — so a width of 0 commits nothing and the box says so.
+    const { change } = await mount();
+    await draw({ width: 1280, height: 720 });
+    const width = field<HTMLInputElement>("[data-vigilia-artboard-width]");
+
+    await commitField("[data-vigilia-artboard-width]", "0");
+    expect(change).not.toHaveBeenCalled();
+    expect(width.getAttribute("aria-invalid")).toBe("true");
+
+    await commitField("[data-vigilia-artboard-width]", "");
+    expect(change).not.toHaveBeenCalled();
+
+    await commitField("[data-vigilia-artboard-width]", "not a number");
+    expect(change).not.toHaveBeenCalled();
+
+    await commitField(
       "[data-vigilia-artboard-width]",
-    )!;
+      String(MAX_ARTBOARD_DIMENSION + 1),
+    );
+    expect(change).not.toHaveBeenCalled();
 
-    width.value = "0";
-    width.dispatchEvent(new Event("change"));
-
-    // Was a refusal restoring 1280. The bound is 1, so 0 now lands on 1 and
-    // says so; reverting hid the bound from the author who typed 0 to find it.
-    expect(change).toHaveBeenCalledTimes(1);
-    expect(width.value).toBe("1");
+    // And a size the document can hold still goes through, so the refusals
+    // above are not a field that stopped committing anything.
+    await commitField("[data-vigilia-artboard-width]", "1600");
+    expect(change).toHaveBeenLastCalledWith({ width: 1600, height: 720 });
   });
 
-  it("selects persisted palette tokens for artboard paint", () => {
-    const change = vi.fn();
-    const panel = createArtboardPanel(
-      document.body,
-      {
-        palette: {
-          background: { name: "Background", value: "#101216" },
-          bars: { name: "Bars", value: "#000000" },
-        },
+  it("selects persisted palette tokens for artboard paint", async () => {
+    const { change } = await mount({
+      palette: {
+        background: { name: "Background", value: "#101216" },
+        bars: { name: "Bars", value: "#000000" },
       },
-      change,
-    );
-    panel.render({
+    });
+    await draw({
       width: 1280,
       height: 720,
       background: { ref: "palette.background" },
       barColor: { ref: "palette.bars" },
     });
 
-    const background = panel.root.querySelector<HTMLSelectElement>(
-      "[data-vigilia-artboard-background]",
-    )!;
-    const bars = panel.root.querySelector<HTMLSelectElement>(
-      "[data-vigilia-artboard-bar-color]",
-    )!;
-    expect(background.value).toBe("palette.background");
-    expect(bars.value).toBe("palette.bars");
+    expect(choiceOf("[data-vigilia-artboard-background]")).toBe(
+      "palette.background",
+    );
+    expect(choiceOf("[data-vigilia-artboard-bar-color]")).toBe("palette.bars");
 
-    background.value = "palette.bars";
-    background.dispatchEvent(new Event("change"));
+    await chooseIn("[data-vigilia-artboard-background]", "palette.bars");
     expect(change).toHaveBeenLastCalledWith(
       expect.objectContaining({ background: { ref: "palette.bars" } }),
     );
   });
 
-  it("keeps an uneditable literal bar colour when another artboard field changes", () => {
-    const change = vi.fn();
-    const panel = createArtboardPanel(
-      document.body,
-      {
-        palette: { background: { name: "Background", value: "#101216" } },
-      },
-      change,
-    );
-    panel.render({
+  it("keeps an uneditable literal bar colour when another artboard field changes", async () => {
+    const { change } = await mount({
+      palette: { background: { name: "Background", value: "#101216" } },
+    });
+    await draw({
       width: 1280,
       height: 720,
       background: { ref: "palette.background" },
       barColor: { value: "#e20074" },
     });
 
-    const width = panel.root.querySelector<HTMLInputElement>(
-      "[data-vigilia-artboard-width]",
-    )!;
-    width.value = "1000";
-    width.dispatchEvent(new Event("change"));
+    await commitField("[data-vigilia-artboard-width]", "1000");
 
     expect(change).toHaveBeenLastCalledWith(
       expect.objectContaining({
@@ -140,93 +302,57 @@ describe("artboard panel", () => {
     );
   });
 
-  it("emits declared background media and theme metadata", () => {
-    const artboardChange = vi.fn();
-    const metadataChange = vi.fn();
-    const panel = createArtboardPanel(
-      document.body,
-      undefined,
-      artboardChange,
-      {
-        assets: [{ id: "clip", kind: "video", path: "assets/clip.mp4" }],
-        onMetadataChange: metadataChange,
-      },
-    );
-    panel.render({ width: 1280, height: 720 }, { name: "Before" });
+  it("emits declared background media and theme metadata", async () => {
+    const { change, metadataChange } = await mount(undefined, {
+      assets: [{ id: "clip", kind: "video", path: "assets/clip.mp4" }],
+    });
+    await draw({ width: 1280, height: 720 }, { name: "Before" });
 
-    const name = panel.root.querySelector<HTMLInputElement>(
-      "[data-vigilia-theme-name]",
-    )!;
-    name.value = "Living Room";
-    name.dispatchEvent(new Event("change"));
+    await commitField("[data-vigilia-theme-name]", "Living Room");
     expect(metadataChange).toHaveBeenLastCalledWith({
       name: "Living Room",
       themeLanguage: "en",
     });
 
-    const source = panel.root.querySelector<HTMLSelectElement>(
-      "[data-vigilia-background-asset]",
-    )!;
-    source.value = "clip";
-    source.dispatchEvent(new Event("change"));
-    expect(artboardChange).toHaveBeenLastCalledWith(
+    await chooseIn("[data-vigilia-background-asset]", "clip");
+    expect(change).toHaveBeenLastCalledWith(
       expect.objectContaining({
         backgroundMedia: { assetId: "clip", fit: "cover" },
       }),
     );
   });
 
-  it("preserves the displayed release version during metadata edits", () => {
-    const metadataChange = vi.fn();
-    const panel = createArtboardPanel(document.body, undefined, vi.fn(), {
-      onMetadataChange: metadataChange,
-    });
-    panel.render(
+  it("preserves the displayed release version during metadata edits", async () => {
+    const { metadataChange } = await mount();
+    await draw(
       { width: 1280, height: 720 },
       { name: "Before", version: "1.2.3" },
     );
 
-    const name = panel.root.querySelector<HTMLInputElement>(
-      "[data-vigilia-theme-name]",
-    )!;
-    const version = panel.root.querySelector<HTMLOutputElement>(
-      "[data-vigilia-theme-version]",
-    )!;
-    name.value = "After";
-    name.dispatchEvent(new Event("change"));
+    await commitField("[data-vigilia-theme-name]", "After");
 
     expect(metadataChange).toHaveBeenLastCalledWith({
       name: "After",
       version: "1.2.3",
       themeLanguage: "en",
     });
+    const version = field<HTMLOutputElement>("[data-vigilia-theme-version]");
     expect(version.tagName).toBe("OUTPUT");
-    expect(version.value).toBe("1.2.3");
+    expect(version.textContent).toBe("1.2.3");
   });
 
-  it("writes the chosen language into the theme's metadata", () => {
-    const metadataChange = vi.fn();
-    const panel = createArtboardPanel(document.body, undefined, vi.fn(), {
-      onMetadataChange: metadataChange,
-    });
-    panel.render(
+  it("writes the chosen language into the theme's metadata", async () => {
+    const { metadataChange } = await mount();
+    await draw(
       { width: 1280, height: 720 },
       { name: "Before", themeLanguage: "en" },
     );
 
-    const language = panel.root.querySelector<HTMLSelectElement>(
-      "[data-vigilia-theme-language]",
-    )!;
-    expect(language.value).toBe("en");
+    expect(choiceOf("[data-vigilia-theme-language]")).toBe("en");
 
-    const vietnamese = Array.from(language.options).find(
-      (option) => option.value === "vi",
-    );
-    // The list must actually offer it; a `select.value = "vi"` with no matching
-    // option silently reads back as "" and the test would pass vacuously.
-    expect(vietnamese).toBeDefined();
-    language.value = "vi";
-    language.dispatchEvent(new Event("change"));
+    // The list must actually offer it: `chooseIn` finds an option by the id it
+    // commits, so a missing Welsh option throws rather than passing vacuously.
+    await chooseIn("[data-vigilia-theme-language]", "vi");
 
     expect(metadataChange).toHaveBeenLastCalledWith({
       name: "Before",
@@ -234,43 +360,43 @@ describe("artboard panel", () => {
     });
 
     // The spec's "resolved names shown live": the author sees the words the
-    // language actually spells, not only its English label.
-    const sample = panel.root.querySelector<HTMLOutputElement>(
-      "[data-vigilia-theme-language-sample]",
-    )!.textContent!;
+    // language actually spells, not only its English label. Read after the
+    // choice, because the sample follows the control rather than the render.
+    const sample =
+      field<HTMLOutputElement>("[data-vigilia-theme-language-sample]")
+        .textContent ?? "";
     const spell = spelledAt(parseInstant(instantIn(Date.now()))!);
     expect(sample).toContain(spell("vi", { month: "long" }));
     expect(sample).toContain(spell("vi", { weekday: "long" }));
     expect(sample).not.toContain(spell("en", { month: "long" }));
   });
 
-  it("gives the description a multi-line field, so its prose can be read", () => {
-    const panel = createArtboardPanel(document.body, undefined, vi.fn());
+  it("gives the description a multi-line field, so its prose can be read", async () => {
+    await mount();
     // The starter's own sentence, at its real length. A single-line input in a
     // 161px box shows the first twenty characters of it and nothing else.
     const description =
       "The reference composition: a clock, two usage cards, two memory rings, a performance chart and stacked storage and network panels.";
-    panel.render({ width: 1672, height: 941 }, { name: "Before", description });
+    await draw({ width: 1672, height: 941 }, { name: "Before", description });
 
-    const field = panel.root.querySelector<HTMLTextAreaElement>(
+    const fieldElement = field<HTMLTextAreaElement>(
       "[data-vigilia-theme-description]",
-    )!;
-    expect(field.tagName).toBe("TEXTAREA");
-    expect(field.value).toBe(description);
+    );
+    expect(fieldElement.tagName).toBe("TEXTAREA");
+    expect(fieldElement.value).toBe(description);
     // The whole sentence on screen at once, rather than a box an author has to
     // scroll sideways through to read the end of.
-    expect(field.rows).toBeGreaterThan(1);
-    expect(field.style.gridColumn).toBe("1 / -1");
+    expect(fieldElement.rows).toBeGreaterThan(1);
     // F1.19's work: the visible label is still the name a screen reader reads.
-    const label = panel.root.querySelector<HTMLLabelElement>(
-      `label[for="${field.id}"]`,
+    const label = document.querySelector<HTMLLabelElement>(
+      `label[for="${fieldElement.id}"]`,
     );
     expect(label?.textContent).toBe("Description");
   });
 
-  it("offers the media's fit and no fit control of its own", () => {
-    const panel = createArtboardPanel(document.body, undefined, vi.fn());
-    panel.render({ width: 1280, height: 720, contentFit: "cover" });
+  it("offers the media's fit and no fit control of its own", async () => {
+    await mount();
+    await draw({ width: 1280, height: 720, contentFit: "cover" });
 
     // The artboard's own fit is the *content's*, it is always contain, and an
     // author cannot set it. Beside "Media fit" it was labelled "Preview fit",
@@ -278,19 +404,19 @@ describe("artboard panel", () => {
     // two different subjects — read as "how my picture looks in the preview",
     // which it never was.
     expect(
-      panel.root.querySelector("[data-vigilia-artboard-fit-mode]"),
+      document.querySelector("[data-vigilia-artboard-fit-mode]"),
     ).toBeNull();
-    const mediaFit = panel.root.querySelector<HTMLSelectElement>(
-      "[data-vigilia-background-media-fit]",
-    )!;
-    expect(
-      Array.from(mediaFit.options, (option) => option.textContent),
-    ).toEqual(["Cover", "Contain"]);
+
+    const options = await openControl("[data-vigilia-background-media-fit]");
+    expect(options.map((option) => option.textContent)).toEqual([
+      "Cover",
+      "Contain",
+    ]);
   });
 
-  it("says on screen that the date is a sample of the chosen language", () => {
-    const panel = createArtboardPanel(document.body, undefined, vi.fn());
-    panel.render(
+  it("says on screen that the date is a sample of the chosen language", async () => {
+    await mount();
+    await draw(
       { width: 1280, height: 720 },
       { name: "Before", themeLanguage: "vi" },
     );
@@ -299,10 +425,10 @@ describe("artboard panel", () => {
     // which is the whole of the problem: the panel printed "September Tuesday"
     // on a line of its own and told a sighted author nothing. A label the
     // author can see is what the F1.19 pairing already made the name.
-    const sample = panel.root.querySelector<HTMLOutputElement>(
+    const sample = field<HTMLOutputElement>(
       "[data-vigilia-theme-language-sample]",
-    )!;
-    const label = panel.root.querySelector<HTMLLabelElement>(
+    );
+    const label = document.querySelector<HTMLLabelElement>(
       `label[for="${sample.id}"]`,
     );
     expect(label?.textContent).toBe("Sample");
@@ -314,78 +440,54 @@ describe("artboard panel", () => {
     expect(sample.id).not.toBe("");
   });
 
-  it("keeps a declared language that is outside the list", () => {
-    const panel = createArtboardPanel(document.body, undefined, vi.fn());
-    panel.render(
+  it("keeps a declared language that is outside the list", async () => {
+    await mount();
+    await draw(
       { width: 1280, height: 720 },
       { name: "Hand-edited", themeLanguage: "cy" },
     );
 
-    const language = panel.root.querySelector<HTMLSelectElement>(
-      "[data-vigilia-theme-language]",
-    )!;
-
     // Welsh is not one of the fifteen, but a document declaring it must not be
     // silently rewritten to English by the panel that displays it.
-    expect(language.value).toBe("cy");
+    expect(choiceOf("[data-vigilia-theme-language]")).toBe("cy");
   });
 });
 
-/** The preset controls, read the way the panel itself reads them. */
-function presets(root: HTMLElement): {
-  ratio: HTMLSelectElement;
-  orientation: HTMLSelectElement;
-  resolution: HTMLSelectElement;
-} {
-  return {
-    ratio: root.querySelector<HTMLSelectElement>(
-      "[data-vigilia-artboard-ratio]",
-    )!,
-    orientation: root.querySelector<HTMLSelectElement>(
-      "[data-vigilia-artboard-orientation]",
-    )!,
-    resolution: root.querySelector<HTMLSelectElement>(
-      "[data-vigilia-artboard-resolution]",
-    )!,
-  };
-}
-
 describe("artboard presets in the panel", () => {
-  it("shows the preset the document's size came from", () => {
-    const panel = createArtboardPanel(document.body, undefined, vi.fn());
-    panel.render({ width: 1080, height: 2340, contentFit: "cover" });
+  it("shows the preset the document's size came from", async () => {
+    await mount();
+    await draw({ width: 1080, height: 2340, contentFit: "cover" });
 
-    expect(presets(panel.root)).toMatchObject({
-      ratio: expect.objectContaining({ value: "19.5:9" }),
-      orientation: expect.objectContaining({ value: "portrait" }),
-      resolution: expect.objectContaining({ value: "1080p" }),
+    expect({
+      ratio: choiceOf("[data-vigilia-artboard-ratio]"),
+      orientation: choiceOf("[data-vigilia-artboard-orientation]"),
+      resolution: choiceOf("[data-vigilia-artboard-resolution]"),
+    }).toEqual({
+      ratio: "19.5:9",
+      orientation: "portrait",
+      resolution: "1080p",
     });
   });
 
-  it("derives the artboard size from a change to any of the three", () => {
-    const change = vi.fn();
-    const panel = createArtboardPanel(document.body, undefined, change);
-    panel.render({ width: 1920, height: 1080, contentFit: "cover" });
-    const { ratio, orientation, resolution } = presets(panel.root);
+  it("derives the artboard size from a change to any of the three", async () => {
+    const { change } = await mount();
+    await draw({ width: 1920, height: 1080, contentFit: "cover" });
 
-    resolution.value = "4k";
-    resolution.dispatchEvent(new Event("change"));
+    await chooseIn("[data-vigilia-artboard-resolution]", "4k");
     expect(change).toHaveBeenLastCalledWith({
       width: 3840,
       height: 2160,
       contentFit: "cover",
     });
 
-    orientation.value = "portrait";
-    orientation.dispatchEvent(new Event("change"));
+    await chooseIn("[data-vigilia-artboard-orientation]", "portrait");
     expect(change).toHaveBeenLastCalledWith({
       width: 2160,
       height: 3840,
       contentFit: "cover",
     });
 
-    ratio.value = "4:3";
-    ratio.dispatchEvent(new Event("change"));
+    await chooseIn("[data-vigilia-artboard-ratio]", "4:3");
     // Still portrait from the step above, so the ratio's long edge is now the
     // short one: the three controls are read together, not one at a time.
     expect(change).toHaveBeenLastCalledWith({
@@ -395,24 +497,23 @@ describe("artboard presets in the panel", () => {
     });
   });
 
-  it("names a custom reading rather than a preset the document is not at", () => {
-    const panel = createArtboardPanel(document.body, undefined, vi.fn());
-    panel.render({ width: 1000, height: 700 });
+  it("names a custom reading rather than a preset the document is not at", async () => {
+    await mount();
+    await draw({ width: 1000, height: 700 });
 
-    for (const select of Object.values(presets(panel.root)))
-      expect(select.value).toBe("");
+    for (const hook of [
+      "artboard-ratio",
+      "artboard-orientation",
+      "artboard-resolution",
+    ])
+      expect(choiceOf(`[data-vigilia-${hook}]`), hook).toBe("");
   });
 
-  it("keeps the free size fields for a size no preset names", () => {
-    const change = vi.fn();
-    const panel = createArtboardPanel(document.body, undefined, change);
-    panel.render({ width: 1000, height: 700 });
+  it("keeps the free size fields for a size no preset names", async () => {
+    const { change } = await mount();
+    await draw({ width: 1000, height: 700 });
 
-    const width = panel.root.querySelector<HTMLInputElement>(
-      "[data-vigilia-artboard-width]",
-    )!;
-    width.value = "1600";
-    width.dispatchEvent(new Event("change"));
+    await commitField("[data-vigilia-artboard-width]", "1600");
 
     expect(change).toHaveBeenLastCalledWith({
       width: 1600,
@@ -420,16 +521,13 @@ describe("artboard presets in the panel", () => {
     });
   });
 
-  it("derives a whole preset from a custom size without leaving a control unset", () => {
-    const change = vi.fn();
-    const panel = createArtboardPanel(document.body, undefined, change);
-    panel.render({ width: 1000, height: 700, contentFit: "cover" });
-    const { ratio, orientation, resolution } = presets(panel.root);
+  it("derives a whole preset from a custom size without leaving a control unset", async () => {
+    const { change } = await mount();
+    await draw({ width: 1000, height: 700, contentFit: "cover" });
 
     // Choosing one of the three means choosing all three — the other two were
     // Custom, and leaving them so would show a size the controls deny.
-    ratio.value = "4:3";
-    ratio.dispatchEvent(new Event("change"));
+    await chooseIn("[data-vigilia-artboard-ratio]", "4:3");
 
     expect(change).toHaveBeenLastCalledWith({
       width: 1440,
@@ -437,9 +535,9 @@ describe("artboard presets in the panel", () => {
       contentFit: "cover",
     });
     expect({
-      ratio: ratio.value,
-      orientation: orientation.value,
-      resolution: resolution.value,
+      ratio: choiceOf("[data-vigilia-artboard-ratio]"),
+      orientation: choiceOf("[data-vigilia-artboard-orientation]"),
+      resolution: choiceOf("[data-vigilia-artboard-resolution]"),
     }).toEqual({
       ratio: "4:3",
       orientation: "landscape",
@@ -447,37 +545,56 @@ describe("artboard presets in the panel", () => {
     });
   });
 
-  it("leaves the custom reading unselectable", () => {
-    const panel = createArtboardPanel(document.body, undefined, vi.fn());
-    panel.render({ width: 1000, height: 700 });
+  it("leaves the custom reading unselectable", async () => {
+    const { change } = await mount();
+    await draw({ width: 1000, height: 700 });
 
     // A reading, not a choice: an author cannot ask for a size that is not a
     // preset, and cannot get stuck on one they chose by accident.
-    for (const select of Object.values(presets(panel.root))) {
-      const custom = Array.from(select.options).find(
-        (option) => option.value === "",
-      )!;
-      expect(custom.disabled).toBe(true);
+    for (const hook of [
+      "artboard-ratio",
+      "artboard-orientation",
+      "artboard-resolution",
+    ]) {
+      const options = await openControl(`[data-vigilia-${hook}]`);
+      const custom = options.find(
+        (option) => option.getAttribute("data-vigilia-option") === "",
+      );
+      expect(custom?.hasAttribute("data-disabled"), hook).toBe(true);
+      if (custom === undefined) continue;
+      await pointerDown(custom);
+      await click(custom, 1);
+      await flush();
     }
+
+    // The refusal is real, not a decoration: pressing the reading commits
+    // nothing and leaves the controls on the document's own size.
+    expect(change).not.toHaveBeenCalled();
+    for (const hook of [
+      "artboard-ratio",
+      "artboard-orientation",
+      "artboard-resolution",
+    ])
+      expect(choiceOf(`[data-vigilia-${hook}]`), hook).toBe("");
   });
 
-  it("states that a size change does not move content, beside the controls that change it", () => {
-    const panel = createArtboardPanel(document.body, undefined, vi.fn());
-    panel.render({ width: 1672, height: 941 });
+  it("states that a size change does not move content, beside the controls that change it", async () => {
+    await mount();
+    await draw({ width: 1672, height: 941 });
 
     // The one-click ratio change is the whole of F1.33: the author picks a
     // ratio and content silently falls outside the new frame. The panel owns
     // what a size means, so it says so where the control is — before the click,
-    // not after. It cannot count what is outside, because the scene is not its
-    // to read, so it states the rule and never a number it has not measured.
-    const note = panel.root.querySelector("[data-vigilia-artboard-note]");
-    expect(note?.textContent).toBe(
+    // not after. With no scene given it states the rule and never a number it
+    // has not measured.
+    const note = field("[data-vigilia-artboard-note]");
+    expect(note.textContent).toBe(
       "Objects are not moved or resized. Anything outside the artboard is not shown on a display.",
     );
-    expect(note?.getAttribute("role")).toBe("note");
+    expect(note.getAttribute("role")).toBe("note");
   });
 
-  it("counts the scene it is given, and leaves a marked object out of it", () => {
+  it("counts the scene it is given, and leaves a marked object out of it", async () => {
     // The panel's half of the defect. It reads `sceneBoxesOf`'s output, so the
     // mark has to arrive on the box rather than being re-derived here — a second
     // reader of the property would be a second chance for the editor's figure
@@ -493,30 +610,25 @@ describe("artboard presets in the panel", () => {
         depth: 0,
       },
     ];
-    const panel = createArtboardPanel(document.body, undefined, vi.fn(), {
-      sceneBoxes: () => boxes,
-    });
+    await mount(undefined, { sceneBoxes: () => boxes });
     const note = (): string =>
-      panel.root.querySelector("[data-vigilia-artboard-note]")?.textContent ??
-      "";
+      document.querySelector("[data-vigilia-artboard-note]")?.textContent ?? "";
 
-    panel.render({ width: 1000, height: 1000 });
+    await draw({ width: 1000, height: 1000 });
     expect(note()).toContain("1 of 1 objects are now outside");
 
     boxes[0] = { ...boxes[0]!, bleeds: true };
-    panel.render({ width: 1000, height: 1000 });
+    await draw({ width: 1000, height: 1000 });
 
     expect(note()).not.toContain("are now outside");
-    panel.destroy();
   });
 
-  it("stops reading the canvas once it is destroyed", () => {
+  it("releases the canvas subscription and the tree when it is destroyed", async () => {
     // The one line of lifecycle this panel's own contract promises. `destroy()`
     // releases a subscription on a canvas that outlives the panel — the session
-    // replaces the panel on every document — so a panel that only removed its
-    // element would go on recomputing a figure for a document it no longer
-    // describes. Nothing else in the suite exercises it, which is why
-    // replacing `off` with `root.remove()` leaves every other test green.
+    // replaces the panel on every document — so a panel that only forgot the
+    // handler would go on recomputing a figure for a document it no longer
+    // describes.
     const listeners = new Map<string, Set<() => void>>();
     const canvasEvents = {
       on: (event: string, handler: () => void): void => {
@@ -539,15 +651,11 @@ describe("artboard presets in the panel", () => {
         depth: 0,
       },
     ];
-    const panel = createArtboardPanel(document.body, undefined, vi.fn(), {
-      canvasEvents,
-      sceneBoxes: () => boxes,
-    });
+    await mount(undefined, { canvasEvents, sceneBoxes: () => boxes });
     const note = (): string =>
-      panel.root.querySelector("[data-vigilia-artboard-note]")?.textContent ??
-      "";
+      document.querySelector("[data-vigilia-artboard-note]")?.textContent ?? "";
 
-    panel.render({ width: 1000, height: 1000 });
+    await draw({ width: 1000, height: 1000 });
     const outside = note();
     expect(outside, "the figure is on screen to begin with").toContain(
       "are now outside",
@@ -558,28 +666,18 @@ describe("artboard presets in the panel", () => {
     // same scene twice changes nothing and would make the second half of this
     // test pass for the wrong reason.
     boxes[0] = { ...boxes[0]!, bleeds: true };
-    listeners.get("object:modified")?.forEach((handler) => handler());
+    for (const handler of listeners.get("object:modified") ?? []) handler();
     expect(note(), "a live panel follows the scene").not.toBe(outside);
 
-    panel.destroy();
-    const afterDestroy = note();
-    boxes[0] = { ...boxes[0]!, left: -400, top: -400, bleeds: false };
-    for (const handler of listeners.get("object:modified") ?? []) handler();
+    await act(async () => panel?.destroy());
+    const released = document.querySelector("[data-vigilia-artboard-note]");
     expect(
-      note(),
-      "a destroyed panel is not still recomputing a figure for the next document",
-    ).toBe(afterDestroy);
-  });
-
-  it("describes the width box with that note, so it reaches a screen reader too", () => {
-    const panel = createArtboardPanel(document.body, undefined, vi.fn());
-    panel.render({ width: 1672, height: 941 });
-
-    const width = panel.root.querySelector<HTMLInputElement>(
-      "[data-vigilia-artboard-width]",
-    )!;
-    const note = panel.root.querySelector("[data-vigilia-artboard-note]")!;
-    expect(width.getAttribute("aria-describedby")).toBe(note.id);
+      released,
+      "the tree is released with the subscription, not left behind",
+    ).toBeNull();
+    // The handler really left the canvas's set, so nothing masked a second
+    // listener still holding the pane's `draw`.
+    expect(listeners.get("object:modified")?.size).toBe(0);
   });
 });
 
@@ -597,7 +695,7 @@ describe.each([
   ["a 3:1 board", { width: 3000, height: 1000 }],
   ["a 4000 × 4000 theme", { width: 4000, height: 4000 }],
 ])("%s", (_label, size) => {
-  it("creates, loads, edits and saves without leaving its shape", () => {
+  it("creates, loads, edits and saves without leaving its shape", async () => {
     const created = createBlankFabricTheme(size);
     expect(validateFabricThemeEnvelope(created)).toEqual({
       ok: true,
@@ -606,21 +704,20 @@ describe.each([
 
     // Load: the panel reads a size no preset names as Custom on all three,
     // rather than claiming a preset the document is not at.
-    const change = vi.fn();
-    const panel = createArtboardPanel(document.body, undefined, change);
-    panel.render(created.artboard);
-    expect(presets(panel.root)).toMatchObject({
-      ratio: expect.objectContaining({ value: "" }),
-      orientation: expect.objectContaining({ value: "" }),
-      resolution: expect.objectContaining({ value: "" }),
-    });
+    const { change } = await mount();
+    await draw(created.artboard);
+    for (const hook of [
+      "artboard-ratio",
+      "artboard-orientation",
+      "artboard-resolution",
+    ])
+      expect(choiceOf(`[data-vigilia-${hook}]`), hook).toBe("");
 
     // Edit: the free fields carry the shape, so a change keeps the other edge.
-    const width = panel.root.querySelector<HTMLInputElement>(
+    await commitField(
       "[data-vigilia-artboard-width]",
-    )!;
-    width.value = String(size.width + 100);
-    width.dispatchEvent(new Event("change"));
+      String(size.width + 100),
+    );
     const edited = change.mock.lastCall?.[0] as typeof created.artboard;
     expect(edited).toMatchObject({
       width: size.width + 100,
@@ -646,15 +743,16 @@ describe.each([
       height: size.height,
     });
 
-    // And the reopened document still reads as Custom, so the cycle ends
-    // where it started rather than stranding the author on a size the three
-    // controls deny.
-    const reopened = createArtboardPanel(document.body, undefined, vi.fn());
-    reopened.render(parsed.envelope.artboard);
-    expect(presets(reopened.root)).toMatchObject({
-      ratio: expect.objectContaining({ value: "" }),
-      orientation: expect.objectContaining({ value: "" }),
-      resolution: expect.objectContaining({ value: "" }),
-    });
+    // And the reopened document still reads as Custom, so the cycle ends where
+    // it started rather than stranding the author on a size the three controls
+    // deny.
+    await mount();
+    await draw(parsed.envelope.artboard);
+    for (const hook of [
+      "artboard-ratio",
+      "artboard-orientation",
+      "artboard-resolution",
+    ])
+      expect(choiceOf(`[data-vigilia-${hook}]`), hook).toBe("");
   });
 });

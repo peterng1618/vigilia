@@ -628,6 +628,11 @@ export const uiCopy = {
     assetReferenced: "That asset is in use and cannot be removed.",
     removeAsset: "Remove asset",
     themeSettings: "Theme settings",
+    /** The Document pane's two sections. `themeSettings` names the pane's own
+     *  heading; these name the groups under it, and the artboard one holds the
+     *  size, the paint and the media the board is drawn on. */
+    themeMetadata: "Theme metadata",
+    artboard: "Artboard",
     language: "Theme language",
     /** The sample's own row label, one word because it shares the 72px label
      * column every other field on this panel uses. */

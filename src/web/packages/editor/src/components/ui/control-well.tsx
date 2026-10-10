@@ -27,6 +27,15 @@ export type ControlProps = {
   readonly disabled?: boolean;
   readonly refused?: string;
   readonly hint?: string;
+  /**
+   * An element outside this control that describes it — the pane's own standing
+   * note, whose id the control cannot mint. `hint` is the description the row
+   * already owns and is not visible, so a note the author reads on screen
+   * reaches a screen reader only through this: the artboard's size note says
+   * what a size change does, and the box that changes it has to be announced
+   * with it. Joins `describedBy`'s reading order ahead of the row's own.
+   */
+  readonly describedById?: string;
   readonly density?: ControlDensity;
   readonly data?: Readonly<Record<`data-${string}`, string>>;
 };

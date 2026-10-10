@@ -197,7 +197,7 @@ it("leaves the three panels with no copy of their own", async () => {
           button.getAttribute("data-vigilia-palette-token-row") === null &&
           button.querySelector("[data-vigilia-value]") === null,
       )
-      .map((button) => button.textContent),
+      .map((button) => spokenText(button)),
     ...paintKinds,
   ]
     .map((text) => text?.trim() ?? "")
@@ -448,6 +448,16 @@ async function runUnitDisplayOptions(root: HTMLElement): Promise<string[]> {
  * this panel renders, which yields a superset of what they show: extra entries
  * only loosen the net, they cannot break it.
  */
+/** A button's own words. A section's disclosure chrome is an `aria-hidden`
+ *  `▾`, which is decoration the way a select's chevron is — the words beside it
+ *  are what this table has to hold, not the glyph they are printed next to. */
+function spokenText(element: Element): string {
+  const words = element.cloneNode(true) as Element;
+  for (const hidden of words.querySelectorAll('[aria-hidden="true"]'))
+    hidden.remove();
+  return words.textContent ?? "";
+}
+
 function copy(): string[] {
   const out: string[] = [];
   const walk = (value: unknown): void => {

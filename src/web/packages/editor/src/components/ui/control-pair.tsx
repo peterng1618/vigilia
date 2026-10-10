@@ -1,8 +1,8 @@
 import type * as React from "react";
 import { ControlNumber } from "./control-number.js";
 import {
-  ControlRow,
   type ControlDensity,
+  ControlRow,
   useControlIds,
 } from "./control-well.js";
 
@@ -31,11 +31,18 @@ export function ControlPair(props: {
     readonly value: number;
     readonly data?: Readonly<Record<`data-${string}`, string>>;
     readonly integer?: boolean;
+    /** The pair's own bounds, on both halves: a width and a height the same
+     *  document holds are the same size. */
+    readonly min?: number;
+    readonly max?: number;
     readonly onCommit: (value: number) => void;
   }[];
   readonly density?: ControlDensity;
+  /** The row's own note, on both halves: a pair commits one size, so a note
+   *  about what that size means describes both boxes or neither. */
+  readonly describedById?: string;
 }): React.JSX.Element {
-  const { label, halves, density } = props;
+  const { label, halves, density, describedById } = props;
   const ids = useControlIds(undefined);
 
   return (
@@ -48,8 +55,11 @@ export function ControlPair(props: {
             label={half.label}
             value={half.value}
             {...(density === undefined ? {} : { density })}
+            {...(describedById === undefined ? {} : { describedById })}
             {...(half.data === undefined ? {} : { data: half.data })}
             {...(half.integer === undefined ? {} : { integer: half.integer })}
+            {...(half.min === undefined ? {} : { min: half.min })}
+            {...(half.max === undefined ? {} : { max: half.max })}
             onCommit={half.onCommit}
           />
         ))}

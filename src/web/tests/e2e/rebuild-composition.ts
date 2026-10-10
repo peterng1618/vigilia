@@ -1,5 +1,6 @@
 import path from "node:path";
 import { expect, type Page } from "@playwright/test";
+import { chooseIn } from "./control-set.js";
 // `openPane` has one owner and one guard (`editor-rail.js`); the driver
 // imports it from there and does not re-export it, so this reaches the same
 // place. It is imported from the driver rather than the owner in the import
@@ -733,10 +734,8 @@ export async function importBackdrop(page: Page, file: string): Promise<void> {
   // Document pane and is hidden until the pane is asked for. The Add pane was
   // the last one shown, so this is a real swap, not a no-op.
   await openPane(page, "Document");
-  const media = page.locator("[data-vigilia-background-asset]");
-  await media.scrollIntoViewIfNeeded();
-  await media.selectOption(assetId ?? "");
-  const fit = page.locator("[data-vigilia-background-media-fit]");
-  await fit.scrollIntoViewIfNeeded();
-  await fit.selectOption("cover");
+  // Both are plan 1's selects — a button opening a listbox, not a `select` — so
+  // they are driven the way an author drives them.
+  await chooseIn(page, "[data-vigilia-background-asset]", assetId ?? "");
+  await chooseIn(page, "[data-vigilia-background-media-fit]", "cover");
 }

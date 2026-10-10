@@ -1,4 +1,4 @@
-import { expect, type Page, test, type TestInfo } from "@playwright/test";
+import { expect, type Page, type TestInfo, test } from "@playwright/test";
 import { choiceOf, chooseIn, sectionExpanded } from "./control-set.js";
 import {
   captureVisualReview,
@@ -6,7 +6,6 @@ import {
   enterLayer,
 } from "./editor-canvas.js";
 import { openPane } from "./editor-rail.js";
-import { choosePalette } from "./shell-palette.js";
 import {
   addChart,
   insert,
@@ -16,6 +15,7 @@ import {
   type SceneObject,
   selectLayer,
 } from "./rebuild-driver.js";
+import { choosePalette } from "./shell-palette.js";
 import { isDesktopSurface } from "./surface.js";
 
 /**
@@ -429,9 +429,7 @@ test.describe("the per-kind inspector column", () => {
     // otherwise "no remainder" measures 6,610 pixels of somebody else's paint.
     // The artboard panel is a document panel, so it is in the Document pane.
     await openPane(page, "Document");
-    await page
-      .locator("[data-vigilia-artboard-background]")
-      .selectOption("palette.frost");
+    await chooseIn(page, "[data-vigilia-artboard-background]", "palette.frost");
     await addChart(page, {
       family: "Pie",
       name: "pie",

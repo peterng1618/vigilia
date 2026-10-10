@@ -58,6 +58,7 @@ export function ControlNumber(
     disabled,
     refused,
     hint,
+    describedById,
     data,
     density,
     value,
@@ -130,6 +131,7 @@ export function ControlNumber(
           aria-disabled={refused === undefined ? undefined : true}
           aria-invalid={invalid === undefined ? undefined : true}
           aria-describedby={describedBy(
+            describedById,
             hint === undefined ? undefined : ids.hint,
             refused === undefined ? undefined : ids.reason,
             invalid === undefined ? undefined : invalidId,

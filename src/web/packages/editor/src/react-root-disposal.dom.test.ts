@@ -287,6 +287,10 @@ function shippedSourceFiles(dir = SRC): readonly string[] {
  * arity is pinned here and a new root in a known file is red.
  */
 const SHIPPED_ROOTS: readonly (readonly [string, number])[] = [
+  // the artboard panel's own tree, released by `destroy()` (Task 8). It was
+  // imperative field builders until then, so it created no root; the Document
+  // pane is a React tree now and the file declares the one it makes.
+  ["artboard-panel.ts", 1],
   // the shell itself, and the canvas dock's separate root.
   ["editor-shell/shell-layout.tsx", 2],
   // the Add pane, one root (Task 3).
