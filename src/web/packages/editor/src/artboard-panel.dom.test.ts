@@ -678,17 +678,30 @@ describe("artboard presets in the panel", () => {
     // A canvas event during a half-typed edit is the one path where the
     // difference would be felt, and nothing else asserts it.
     const canvas = canvasStub();
+    // Counted, not just read: one reading per draw is what says the event
+    // reached the panel at all. A dead subscription leaves this where it was,
+    // and the two assertions below would still pass — a draft survives a redraw
+    // that never happened, which is the failure this case exists to catch.
+    const boxes = vi.fn((): readonly SceneBox[] => []);
     const { change } = await mount(undefined, {
       canvasEvents: canvas.events,
-      sceneBoxes: () => [],
+      sceneBoxes: boxes,
     });
     await draw({ width: 1280, height: 720 });
 
     const width = field<HTMLInputElement>("[data-vigilia-artboard-width]");
     // Typed, not committed: the blur that commits has not happened yet.
     await draft(width, "1000");
+    const drawn = boxes.mock.calls.length;
+    expect(drawn, "the pane read the scene when it first drew").toBeGreaterThan(
+      0,
+    );
     await act(async () => canvas.fire("object:modified"));
 
+    expect(
+      boxes.mock.calls.length,
+      "the canvas event reached the panel and redrew it",
+    ).toBe(drawn + 1);
     expect(width.value, "the draft the author is still typing").toBe("1000");
     expect(
       change,
