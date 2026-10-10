@@ -6,6 +6,7 @@ import {
   mockupDeclaredOrNull,
   PARITY,
   readMockup,
+  SETTINGS_MOCKUP_PATH,
 } from "./mockup-values.js";
 
 /**
@@ -28,29 +29,36 @@ const drawing = readMockup();
 
 test("the drawing is the checked-in file, read from disk", () => {
   expect(existsSync(MOCKUP_PATH)).toBe(true);
+  expect(existsSync(SETTINGS_MOCKUP_PATH)).toBe(true);
   // Normalised, because a Windows path separates with `\` and this is the one
   // assertion that says the reader's target is the checked-in drawing.
   expect(MOCKUP_PATH.replace(/\\/g, "/")).toContain(
-    "docs/design/mockups/editor-shell.html",
+    "docs/design/mockups/current/shell.html",
+  );
+  expect(SETTINGS_MOCKUP_PATH.replace(/\\/g, "/")).toContain(
+    "docs/design/mockups/current/settings.html",
   );
 });
 
-test("the frame rule's radius is read out of the drawing's own stylesheet", () => {
-  expect(mockupDeclared(drawing, ".mockup", "border-radius")).toBe("10px");
+test("the page rule is read out of the drawing's own stylesheet", () => {
+  // `current/shell.html` draws the editor as the window, so its `<style>` block
+  // is a page reset rather than a card: `body` is the rule the reader reaches.
+  expect(mockupDeclared(drawing, "body", "background")).toBe("#0b0e12");
 });
 
-test("the shell's inline frame is read too, by its own style attribute", () => {
-  // The shell the drawing draws is an anonymous inline-styled div — it has no
-  // class to name it by, which is why the reader addresses inline declarations
-  // as well as `<style>` rules.
-  expect(
-    mockupDeclared(drawing, '[style*="width:1180px"]', "border-radius"),
-  ).toBe("10px");
+test("the shell's inline regions are read too, by their style attributes", () => {
+  // The shell the drawing draws is built from anonymous inline-styled divs — no
+  // class to name them by, which is why the reader addresses inline declarations
+  // as well as `<style>` rules. `height:42px` is the header, and the row PARITY
+  // measures.
+  expect(mockupDeclared(drawing, '[style*="height:42px"]', "height")).toBe(
+    "42px",
+  );
 });
 
 test("a property the rule does not declare throws, naming both", () => {
-  expect(() => mockupDeclared(drawing, ".mockup", "padding")).toThrow(
-    /declares no `padding` for `\.mockup`/,
+  expect(() => mockupDeclared(drawing, "body", "padding")).toThrow(
+    /declares no `padding` for `body`/,
   );
 });
 
@@ -65,7 +73,11 @@ test("silence is null, and a broken selector still throws", () => {
   // drawing draws flush declares no padding, but a selector that matches no
   // declaration is a typo in a row, not a flush region.
   expect(
-    mockupDeclaredOrNull(drawing, '[style*="height:568px"]', "padding-top"),
+    mockupDeclaredOrNull(
+      drawing,
+      '[style*="flex:1;min-height:0"]',
+      "padding-top",
+    ),
   ).toBeNull();
   expect(() =>
     mockupDeclaredOrNull(drawing, ".does-not-exist", "border-radius"),
@@ -73,12 +85,16 @@ test("silence is null, and a broken selector still throws", () => {
 });
 
 test("the reader returns what the text says, not a constant", () => {
-  // The check the three above cannot make. A reader that answered "10px"
+  // The check the three above cannot make. A reader that answered "#0b0e12"
   // unconditionally passes every one of them; it cannot pass this.
-  const changed = drawing.replace("border-radius: 10px", "border-radius: 7px");
+  const changed = drawing.replace(
+    "background: #0b0e12",
+    "background: #101418",
+  );
   expect(changed).not.toBe(drawing);
-  expect(mockupDeclared(changed, ".mockup", "border-radius")).toBe("7px");
-  // And a different rule, so one lucky literal is not the whole mechanism.
+  expect(mockupDeclared(changed, "body", "background")).toBe("#101418");
+  // And a different declaration site, so one lucky literal is not the whole
+  // mechanism.
   const restyled = drawing.replace("width:46px", "width:52px");
   expect(mockupDeclared(restyled, '[style*="width:52px"]', "background")).toBe(
     "#0e1217",
@@ -88,12 +104,27 @@ test("the reader returns what the text says, not a constant", () => {
   ).toThrow(/addresses nothing/);
 });
 
+test("the reader reads the path it is given", () => {
+  // Two drawings, one reader. A `readMockup` that closed over `MOCKUP_PATH`
+  // would read the shell for the settings rows and pass anything; a selector
+  // that resolves in one file and addresses nothing in the other is what tells
+  // the two apart without printing either.
+  const settings = readMockup(SETTINGS_MOCKUP_PATH);
+  expect(settings).not.toBe(drawing);
+  expect(
+    mockupDeclared(settings, '[style*="width:150px"]', "background"),
+  ).toBe("#0e1217");
+  expect(() =>
+    mockupDeclared(drawing, '[style*="width:150px"]', "background"),
+  ).toThrow(/addresses nothing/);
+});
+
 test("the last declaration in document order wins", () => {
   // A later `<style>` block, or a later rule for the same selector, overrides:
   // the reading a person gets from opening the file, and the cascade's rule for
   // equal specificity. Specificity is not weighed — this reader has no cascade.
-  const twice = `${drawing}<style>.mockup { border-radius: 3px; }</style>`;
-  expect(mockupDeclared(twice, ".mockup", "border-radius")).toBe("3px");
+  const twice = `${drawing}<style>body { border-radius: 3px; }</style>`;
+  expect(mockupDeclared(twice, "body", "border-radius")).toBe("3px");
 });
 
 test("every row names a comparator, and a drawing row declares a length", () => {

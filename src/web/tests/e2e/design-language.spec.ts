@@ -3,9 +3,11 @@ import { captureVisualReview } from "./editor-canvas.js";
 import { openPane } from "./editor-rail.js";
 import {
   mockupDeclaredOrNull,
+  mockupDeclared,
   PARITY,
   type ParityRegion,
   readMockup,
+  SETTINGS_MOCKUP_PATH,
 } from "./mockup-values.js";
 import { openShell, SETTINGS_DIALOG, SETTINGS_GEAR } from "./shell-palette.js";
 import { isDesktopSurface } from "./surface.js";
@@ -1142,7 +1144,7 @@ test("the control set renders in the design language", async ({
   // left over its neighbour is an artefact of how the states were driven rather
   // than part of the control set. Two palettes, because the stress set asks for
   // graphite and editorial: graphite is the one the mockup is drawn on
-  // (`docs/design/mockups/inspector-controls.html`: `#0b0e12` paper, `#171c23`
+  // (`docs/design/mockups/current/controls.html`: `#0b0e12` paper, `#171c23`
   // wells, `#72e0c0` accent) and so the two pictures are comparable, and
   // editorial is the light ground the same vocabulary has to hold on.
   await page.evaluate(() => (document.activeElement as HTMLElement)?.blur());
@@ -1168,7 +1170,7 @@ test("the control set renders in the design language", async ({
 
 /**
  * The shell parity capture (bible §7.1–§7.3, mockup
- * `docs/design/mockups/editor-shell.html`).
+ * `docs/design/mockups/current/shell.html`).
  *
  * Plan 1's mechanism, turned on the rebuilt shell: the built editor is opened
  * in the state the mockup draws — the **Add** slot showing, nothing selected —
@@ -1233,7 +1235,7 @@ test("captures the shell with the Add pane open and nothing selected", async ({
 
 /**
  * The panes' parity capture (bible §7.3, mockup
- * `docs/design/mockups/editor-shell.html`).
+ * `docs/design/mockups/current/shell.html`).
  *
  * The same mechanism as the shell capture above, turned on the four rebuilt
  * panes: the built editor is opened with one rail pane showing at a time, and
@@ -1343,11 +1345,11 @@ test("captures each pane of the four-slot rail in the design language", async ({
 
 /**
  * The Settings surface's parity capture (spec §7, §13, mockup
- * `docs/design/mockups/editor-shell.html`'s settings section).
+ * `docs/design/mockups/current/settings.html`).
  *
  * Plan 1's mechanism, turned on the modal the rail's gear opens: the built
  * editor is opened, the gear pressed, and each of §7's three tabs photographed
- * beside the mockup's two specimens. Two palettes, because the mockup draws one
+ * beside the mockup's settings surface. Two palettes, because the mockup draws one
  * ground and a hard-coded hex is invisible in a single one — graphite is the
  * paper the mockup is drawn on, editorial the light ground the same vocabulary
  * has to hold on.
@@ -1502,7 +1504,8 @@ async function renderedDialogs(page: Page): Promise<number> {
 
 /**
  * The shell's parity with the drawing (spec §13 as amended 2026-10-10, bible §3,
- * §7, reference `docs/design/mockups/editor-shell.html`).
+ * §7, reference `docs/design/mockups/current/shell.html`; the settings surface is
+ * its own file, `current/settings.html`, and is read here too).
  *
  * **What this is.** The drawing is the acceptance instrument: its own inline
  * stylesheet is parsed (`mockup-values.ts`) and each of `PARITY`'s rows asserts
@@ -1639,6 +1642,20 @@ test("the shell is what the drawing draws", async ({ page }, testInfo) => {
       names.map((name) => [name, root.getPropertyValue(name).trim()]),
     );
   }, tokens);
+
+  // The settings drawing is read, not merely shipped. Its rows are scale-owned
+  // today (both dialogs render one rule, so neither names a drawing selector),
+  // but the file a settings row will name must be one this run reaches: a
+  // drawing that nothing reads is a drawing that rots, and a selector that
+  // stopped resolving has to red here rather than go unnoticed.
+  expect(
+    mockupDeclared(
+      readMockup(SETTINGS_MOCKUP_PATH),
+      '[style*="width:560px"]',
+      "border-radius",
+    ),
+    "the settings drawing's dialog frame is not drawn at the closed scale's panel radius",
+  ).toBe(scale["--radius-lg"]);
 
   const unresolved: string[] = [];
   const failures: string[] = [];

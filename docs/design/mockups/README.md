@@ -3,11 +3,32 @@
 **These are the target.** They are what the editor is being rebuilt towards, and
 they are **checked at every plan gate** — not read once and remembered.
 
+## The current set — `current/`
+
+The editor as it renders today, in the original visual direction, with nothing
+in any file addressed to the reader: no heading, no caption, no note about what
+is illustrative. One file per view, so no file needs a specimen.
+
 | File | Shows |
 |---|---|
-| [`editor-shell.html`](editor-shell.html) | The whole shell: header, four-slot rail, the Add pane, the stage's three corners, the inspector, the status bar, and the settings surface |
-| [`inspector-controls.html`](inspector-controls.html) | The control vocabulary in the reference palette — wells, sliders, swatches, the read-only treatment, focus, refusal |
-| [`inspector-language.html`](inspector-language.html) | The same column in the light palette, with the language held constant so it is judged apart from colour |
+| [`current/shell.html`](current/shell.html) | The whole shell: header and menubar, the four-slot rail, the Add pane, the stage and its floating clusters, the inspector, the status strip |
+| [`current/settings.html`](current/settings.html) | The settings surface on its own, with §7's three tabs and the six-palette grid |
+| [`current/controls.html`](current/controls.html) | The inspector column as it renders, in the reference palette: wells, a slider, segmented rows, the read-only treatment, a refusal |
+| [`current/controls-light.html`](current/controls-light.html) | The same column in the light palette — the same file with the token table swapped, so a hard-coded colour cannot hide in it |
+
+## The originals — the record
+
+The original visual direction, kept for provenance and **not the current
+target**. Each carries a one-line label at the top saying so, and **the
+originals are never edited again** — not to correct a value, not to remove a
+specimen, not to follow a ruling. What they hold is the first cut, and Git
+stores the rest.
+
+| File | Shows |
+|---|---|
+| [`editor-shell.html`](editor-shell.html) | The first shell, with the settings specimens below it |
+| [`inspector-controls.html`](inspector-controls.html) | The first control vocabulary, in the reference palette |
+| [`inspector-language.html`](inspector-language.html) | The first light-palette column, with a historical group comparison |
 
 Open them in a browser. Each is self-contained — one file, no build, no server.
 
@@ -23,8 +44,11 @@ Open them in a browser. Each is self-contained — one file, no build, no server
   device pixel ratios differ, and a difference in those is not drift.
 - **They are not a specification of behaviour.** They show one state of each
   surface. Behaviour lives in the spec and, finally, in the code.
-- **Their copy is illustrative.** Names like `System dashboard` and `CPU card` are
-  the starter's; the copy rules are bible §9.
+- **The current set's copy is the product's own**, taken string by string from
+  `ui-copy.ts` or the component that owns the words, so the drawing and the
+  editor cannot disagree about what a surface is called. The originals' copy is
+  illustrative — it predates the surfaces it draws — and the copy rules are
+  bible §9.
 
 ## Reviewed reference contract — 2026-10-08
 
@@ -70,7 +94,14 @@ one worker, previewing built bundles, capturing only actions registered in
 ## Keeping them current
 
 A mockup that no longer matches the bible is worse than no mockup, because it is
-believed. When a ruling changes the design, the same commit updates the bible,
-the mockup and the spec. If a surface is rebuilt differently on purpose, capture
-the new state and replace the mockup file — the reference is always the *current*
-target, never a historical one, and Git stores the history.
+believed.
+
+- **The current files are refreshed when the set of surfaces changes.** A pane,
+  a tab, a section or a rail slot that appears or disappears is drawn — in the
+  original's treatment, never in a treatment of the product's devising.
+- **The treatment is the target and is never redrawn from the product.** Colour,
+  spacing, radii, type, elevation, hairlines, flush regions and the palette,
+  navigation and dock treatments are copied from the original drawings. When the
+  product differs, the product is the defect.
+- **The originals are never edited again.** They are the record of the first cut;
+  Git stores the history.

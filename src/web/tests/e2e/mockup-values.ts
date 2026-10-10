@@ -5,7 +5,7 @@ import { fileURLToPath } from "node:url";
  * Reads a value the drawing *declares*, rather than a copy of one.
  *
  * The contradiction this removes: a value transcribed out of
- * `docs/design/mockups/editor-shell.html` into a test is a second owner of it.
+ * `docs/design/mockups/current/shell.html` into a test is a second owner of it.
  * The drawing can move and the test keeps asserting the transcription, so the
  * comparison passes while the two disagree — which is what spec §13's
  * amendment of 2026-10-10 is about. So the drawing is parsed here, and a row
@@ -36,11 +36,24 @@ import { fileURLToPath } from "node:url";
 /** The drawing this plan measures the shell against. `fileURLToPath`, because a
  *  `file:` URL does not survive a Windows path. */
 export const MOCKUP_PATH = fileURLToPath(
-  new URL("../../../../docs/design/mockups/editor-shell.html", import.meta.url),
+  new URL(
+    "../../../../docs/design/mockups/current/shell.html",
+    import.meta.url,
+  ),
 );
 
-export function readMockup(): string {
-  return readFileSync(MOCKUP_PATH, "utf8");
+/** The drawing the settings modal is measured against. A second path rather
+ *  than a second reader: `readMockup` takes one, so a surface drawn on its own
+ *  file is read by the same parser and neither drawing goes unread. */
+export const SETTINGS_MOCKUP_PATH = fileURLToPath(
+  new URL(
+    "../../../../docs/design/mockups/current/settings.html",
+    import.meta.url,
+  ),
+);
+
+export function readMockup(path: string = MOCKUP_PATH): string {
+  return readFileSync(path, "utf8");
 }
 
 /** One declaration the drawing writes, with the thing that owns it. */
@@ -211,13 +224,12 @@ export type ParityRegion = {
  * finds no failures at all is caught as a reader that stopped reading rather
  * than reported as a shell that came right.
  *
- * **Two regions the drawing draws have no row here, because they have no
- * counterpart element** (the census records both as `no-counterpart`): the shell
- * frame at `editor-shell.html:44-48` is a `1180px` card bounding the app *inside
- * a page*, and the product's editor **is** the window and fills it, so no product
- * element carries that card's radius or its border — `.mockup`, which wraps only
- * the settings specimens, is a wrapper too. Where the drawing is a window, its
- * frame is not a comparator for anything.
+ * **Two regions the superseded drawing drew have no row here, because they have
+ * no counterpart element** (the census records both as `no-counterpart`): the
+ * shell frame there was a `1180px` card bounding the app *inside a page*, and
+ * the product's editor **is** the window and fills it, so no product element
+ * carried that card's radius or its border. `current/shell.html` draws the shell
+ * as the window and has no card, so the frame is gone rather than measured.
  *
  * Two rows the census adjudicates are deliberately *not* here, and say so rather
  * than being implied: the graphite role values are Task 4's assertions (the
@@ -234,14 +246,14 @@ export const PARITY: readonly ParityRegion[] = [
   },
   {
     region: "body — inset",
-    mockupSelector: '[style*="height:568px"]',
+    mockupSelector: '[style*="flex:1;min-height:0"]',
     mockupProperty: "padding-top",
     productSelector: ".editor-shell-body",
     bibleSection: "§7's diagram (`:242-257`), §3 elevation 0 (`:102`)",
   },
   {
     region: "body — gap",
-    mockupSelector: '[style*="height:568px"]',
+    mockupSelector: '[style*="flex:1;min-height:0"]',
     mockupProperty: "column-gap",
     productSelector: ".editor-shell-body",
     bibleSection: "§7's diagram (`:242-257`), §3 elevation 0 (`:102`)",
@@ -275,9 +287,10 @@ export const PARITY: readonly ParityRegion[] = [
     bibleSection: "§3 radius table (`:92`), §7's diagram (`:242-257`)",
   },
   /* **A dialog's radius is not the drawing's to give.** The only 10px frame the
-     drawing has is the window's own — `.mockup` at `editor-shell.html:20` and the
-     shell card at `:44-48` — and both belong to a drawn window, which the product
-     does not have. Bible §3's radius table is closed (4/6/8/10) and gives 10 to
+     superseded drawing had was the window's own — `.mockup` and the shell card it
+     wrapped — and both belong to a drawn window, which the product does not have;
+     `current/settings.html` draws no window and so has no frame for a row to
+     name. Bible §3's radius table is closed (4/6/8/10) and gives 10 to
      "Floating clusters (dock, view controls, identity chip)" only; a modal is not
      a cluster, so both dialogs are panels and take `--radius-lg`. So this row's
      comparator is the **scale**, read from the product's own `:root` declaration
