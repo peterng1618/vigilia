@@ -291,6 +291,10 @@ const SHIPPED_ROOTS: readonly (readonly [string, number])[] = [
   // imperative field builders until then, so it created no root; the Document
   // pane is a React tree now and the file declares the one it makes.
   ["artboard-panel.ts", 1],
+  // the three converted dialogs' host (plan 5 Task 4a). It creates one root per
+  // open rather than one per session, and releases it in `finish()` — the root is
+  // the dialog's lifetime, so there is no `destroy()` to be on.
+  ["components/ui/modal-host.tsx", 1],
   // the shell itself, and the canvas dock's separate root.
   ["editor-shell/shell-layout.tsx", 2],
   // the Add pane, one root (Task 3).
