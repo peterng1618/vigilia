@@ -130,14 +130,16 @@ async function pointerDown(target: Element): Promise<void> {
   });
 }
 
-/** A real edit, as React sees one: the value goes through the prototype's
- *  setter because React replaces `value` on the node with a tracker that records
- *  every assignment, and `input` is the native event for a text field. The blur
- *  is the commit, which is `ControlText`/`ControlNumber`'s rule. */
-async function type(control: Element, value: string): Promise<void> {
+/** Typing, as React sees it: the value goes through the prototype's setter
+ *  because React replaces `value` on the node with a tracker that records every
+ *  assignment, and `input` is the native event for a text field. Focused first,
+ *  because `blur()` on an element that never held focus is a no-op and fires no
+ *  event, so the commit `type` goes on to make would never arrive.
+ *
+ *  This stops at the draft, which is the state a case about an interrupted edit
+ *  needs: nothing has been committed yet. */
+async function draft(control: Element, value: string): Promise<void> {
   await act(async () => {
-    // Focused first: `blur()` on an element that never held focus is a no-op and
-    // fires no event, so the commit below would never arrive.
     (control as HTMLElement).focus();
     const setter = Object.getOwnPropertyDescriptor(
       Object.getPrototypeOf(control) as HTMLInputElement,
@@ -147,6 +149,12 @@ async function type(control: Element, value: string): Promise<void> {
     else setter.call(control, value);
     control.dispatchEvent(new Event("input", { bubbles: true }));
   });
+}
+
+/** A real edit, committed: the blur is the commit, which is `ControlText`/
+ *  `ControlNumber`'s rule. */
+async function type(control: Element, value: string): Promise<void> {
+  await draft(control, value);
   await act(async () => {
     (control as HTMLElement).blur();
   });
@@ -196,6 +204,36 @@ function field<T extends Element>(selector: string): T {
   return found;
 }
 
+/** A canvas that records its subscriptions: `fire` is the scene saying it moved,
+ *  and `count` is what a `destroy()` case reads to see the handler really left.
+ *  The panel's own contract has two sides — it subscribes, and it lets go. */
+function canvasStub(): {
+  readonly events: {
+    readonly on: (event: string, handler: () => void) => void;
+    readonly off: (event: string, handler: () => void) => void;
+  };
+  readonly fire: (event: string) => void;
+  readonly count: (event: string) => number;
+} {
+  const listeners = new Map<string, Set<() => void>>();
+  return {
+    events: {
+      on: (event, handler) => {
+        const forEvent = listeners.get(event) ?? new Set<() => void>();
+        forEvent.add(handler);
+        listeners.set(event, forEvent);
+      },
+      off: (event, handler) => {
+        listeners.get(event)?.delete(handler);
+      },
+    },
+    fire: (event) => {
+      for (const handler of listeners.get(event) ?? []) handler();
+    },
+    count: (event) => listeners.get(event)?.size ?? 0,
+  };
+}
+
 describe("artboard panel", () => {
   it("shows and returns valid artboard properties", async () => {
     const { change } = await mount();
@@ -243,6 +281,15 @@ describe("artboard panel", () => {
 
     await commitField("[data-vigilia-artboard-width]", "not a number");
     expect(change).not.toHaveBeenCalled();
+
+    // A fraction, which is the one refusal the pane's own guard cannot report:
+    // `isDimension` would drop the value and say nothing, so the field has to be
+    // the one that says why. Without `integer` on the halves the box accepts
+    // 1.5, clears its draft and commits a size this document does not hold.
+    await commitField("[data-vigilia-artboard-width]", "1.5");
+    expect(change).not.toHaveBeenCalled();
+    expect(width.getAttribute("aria-invalid")).toBe("true");
+    expect(field(`#${width.id}-invalid`).textContent).toContain("whole number");
 
     await commitField(
       "[data-vigilia-artboard-width]",
@@ -623,23 +670,39 @@ describe("artboard presets in the panel", () => {
     expect(note()).not.toContain("are now outside");
   });
 
+  it("keeps a half-typed draft when the canvas redraws the pane", async () => {
+    // The old pane recomputed the note **alone** on `object:modified` so a full
+    // render could not rebuild the size and ratio inputs out from under an
+    // author typing in one of them. This pane redraws the whole tree instead,
+    // and what makes that safe is the field holding its draft in its own state.
+    // A canvas event during a half-typed edit is the one path where the
+    // difference would be felt, and nothing else asserts it.
+    const canvas = canvasStub();
+    const { change } = await mount(undefined, {
+      canvasEvents: canvas.events,
+      sceneBoxes: () => [],
+    });
+    await draw({ width: 1280, height: 720 });
+
+    const width = field<HTMLInputElement>("[data-vigilia-artboard-width]");
+    // Typed, not committed: the blur that commits has not happened yet.
+    await draft(width, "1000");
+    await act(async () => canvas.fire("object:modified"));
+
+    expect(width.value, "the draft the author is still typing").toBe("1000");
+    expect(
+      change,
+      "and the redraw committed nothing behind them",
+    ).not.toHaveBeenCalled();
+  });
+
   it("releases the canvas subscription and the tree when it is destroyed", async () => {
     // The one line of lifecycle this panel's own contract promises. `destroy()`
     // releases a subscription on a canvas that outlives the panel — the session
     // replaces the panel on every document — so a panel that only forgot the
     // handler would go on recomputing a figure for a document it no longer
     // describes.
-    const listeners = new Map<string, Set<() => void>>();
-    const canvasEvents = {
-      on: (event: string, handler: () => void): void => {
-        const forEvent = listeners.get(event) ?? new Set<() => void>();
-        forEvent.add(handler);
-        listeners.set(event, forEvent);
-      },
-      off: (event: string, handler: () => void): void => {
-        listeners.get(event)?.delete(handler);
-      },
-    };
+    const canvas = canvasStub();
     const boxes: SceneBox[] = [
       {
         visible: true,
@@ -651,7 +714,10 @@ describe("artboard presets in the panel", () => {
         depth: 0,
       },
     ];
-    await mount(undefined, { canvasEvents, sceneBoxes: () => boxes });
+    await mount(undefined, {
+      canvasEvents: canvas.events,
+      sceneBoxes: () => boxes,
+    });
     const note = (): string =>
       document.querySelector("[data-vigilia-artboard-note]")?.textContent ?? "";
 
@@ -666,7 +732,7 @@ describe("artboard presets in the panel", () => {
     // same scene twice changes nothing and would make the second half of this
     // test pass for the wrong reason.
     boxes[0] = { ...boxes[0]!, bleeds: true };
-    for (const handler of listeners.get("object:modified") ?? []) handler();
+    canvas.fire("object:modified");
     expect(note(), "a live panel follows the scene").not.toBe(outside);
 
     await act(async () => panel?.destroy());
@@ -677,7 +743,7 @@ describe("artboard presets in the panel", () => {
     ).toBeNull();
     // The handler really left the canvas's set, so nothing masked a second
     // listener still holding the pane's `draw`.
-    expect(listeners.get("object:modified")?.size).toBe(0);
+    expect(canvas.count("object:modified")).toBe(0);
   });
 });
 
