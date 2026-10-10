@@ -15,8 +15,10 @@
 
 - **The drawing governs wherever the written rules are silent** (spec §13, amended 2026-10-10). A difference is kept only against a **named rule that predates it** — a bible `§N`, an ADR or a spec section that *positively requires* the product's treatment. Silence, and a rule this plan writes itself, are not licences.
 - **Replacing the mockup is not an available disposition** (spec §13, the user's ruling of 2026-10-10). A mockup edit in this plan corrects a drawing that is stale or self-contradictory and must say which; it may never bless a divergence.
-- Bible §3's radius scale is closed: `--radius-sm` 4 / `--radius-md` 6 / `--radius-lg` 8 / `--radius-xl` 10 / full 999, and `--radius-xl` plus backdrop blur are reserved for **floating clusters over the canvas** (dock, view controls, identity chip). Spacing steps and type roles (§2) are equally closed.
+- **A drawn window is not a product element.** `docs/design/mockups/editor-shell.html` renders the app *inside a page*, so it bounds it with a card — `editor-shell.html:44-48`, `width:1180px; border:1px solid var(--edge); border-radius:10px; overflow:hidden`. The product's editor **is** the window and fills it, so no product element carries that radius or border, and the drawing's wrappers (`.mockup`, which wraps only the settings specimens) are never a product surface. A `PARITY` row needs a counterpart element; where there is none, the row is not a `fix` and does not belong in the table.
+- **A rule that settles a property is a licence; a silent section is not.** §7.5 names the stage ground and declares that "neither texture nor a flat ground is mandatory" — that is a predating rule speaking *to that property*, so the product's flat ground stands. The distinction is narrow: it applies only where a section names the same property and permits the variant, and it may never be stretched to "the bible does not forbid it".
 - **No hex literal in a surface** (§10). A colour is a role; a value belongs to a palette block.
+- **Bible §3's radius scale is closed**: `--radius-sm` 4 / `--radius-md` 6 / `--radius-lg` 8 / `--radius-xl` 10 / full 999, and `--radius-xl` plus backdrop blur are reserved for **floating clusters over the canvas** (dock, view controls, identity chip). Spacing steps and type roles (§2) are equally closed. A surface the table does not name — a dialog, the stage — takes the nearest entry it *is*, not the largest: a modal is not a cluster, so it is a panel at `--radius-lg`.
 - **One owner per concept**: read `docs/architecture/ownership.md` before adding or moving a token, and extend the existing owner rather than adding a second declaration of the same value.
 - No new dependency; no change to `packages/renderer-core`, the player, the host or the theme format; Fabric JSON stays the persisted scene.
 - `exactOptionalPropertyTypes` and `noUncheckedIndexedAccess` are on. Refuse an invalid numeric input rather than coercing it to zero.
@@ -79,7 +81,7 @@ The census's row count, its `fix` / `licensed` / `drawing-stale` tallies, and ev
 
 ```bash
 cd src/web
-npm run test -- tests/e2e/mockup-values.ts
+npm run test -- tests/e2e/mockup-values
 git add tests/e2e/mockup-values.ts tests/e2e/design-language.spec.ts
 git commit -m "test(e2e): the drawing is read, not restated, and parity fails on today's shell"
 ```
@@ -129,7 +131,7 @@ Run the whole editor unit suite and record its counts in the body.
 
 ### Task 3: The radius scale, and the two dialogs
 
-**Outcome:** Every literal radius in `editor-shell.css` is on §3's closed scale or is a named degenerate mark, the shell's four off-scale `12px` values are gone, and the shell frame the drawing draws at `10px` is the frame the product renders.
+**Outcome:** Every literal radius in `editor-shell.css` is on §3's closed scale or is a named degenerate mark, and the four off-scale `12px` values are gone. The drawing's outer card is the **drawn window** and has no counterpart (Global Constraints), so nothing here rounds the product's root; each surface the table does not name takes the nearest entry it *is*.
 
 **Owning symbols/landmarks:** `editor-shell.css` — the four `12px` rules (`.editor-shell-rail`, `.editor-shell-panel`/`.editor-shell-inspector`, `.editor-shell-dialog`, `.editor-shell-stage`), the `7px` icon-button rule, the layer rows' `5px`, and the swatch/thumb `2px` rules; the `--radius-*` declarations; `editor-shell.html:44-48` (the drawing's own frame rule).
 
@@ -143,7 +145,7 @@ Run the whole editor unit suite and record its counts in the body.
 
 - [ ] **Step 1: Decide each off-scale value against its owner, and record the decision**
 
-Five distinct off-scale values: `1`, `2`, `5`, `7`, `12`. The `12px` values are chrome and go to their §3 entry — the rail and both panes are "Panels, cards, tiles" (`--radius-lg`), and the stage and the dialog are **not in the radius table at all**, so the drawing is their only owner and its value governs. The `7px` icon button is §5's `--radius-md`. The `2px` swatch is §3's `--radius-sm` for a swatch. `1px` and the dropline's `2px` are degenerate marks whose value is their thickness; the comment says so, so Task 6's gate can exempt them by name rather than by value.
+Five distinct off-scale values: `1`, `2`, `5`, `7`, `12`. The `12px` values are chrome and go to their §3 entry — the rail and both panes are "Panels, cards, tiles" (`--radius-lg`); the stage and the two dialogs are **not in the radius table at all** and the drawing gives them no value, because its outer card and its `.mockup` wrapper are both drawn windows rather than product surfaces. Each therefore takes the nearest entry it *is*: the stage is the region holding the canvas and the dialogs are panels, both at `--radius-lg`, since §3 reserves `--radius-xl` for clusters over the canvas and neither is one. The `7px` icon button is §5's `--radius-md`. The `2px` swatch is §3's `--radius-sm` for a swatch. `1px` and the dropline's `2px` are degenerate marks whose value is their thickness; the comment says so, so Task 6's gate can exempt them by name rather than by value.
 
 - [ ] **Step 2: Apply them, and make the dialog's frame one rule for both dialogs**
 
