@@ -30,6 +30,8 @@
 
 Five failure modes this change implies and no single task's tests would catch. Each is pinned to the task that owns the code.
 
+**Execution order.** The tasks are numbered in writing order, which is not execution order. Task 8 runs **next**, before Task 2: it answers a defect the user reported on 2026-10-10, it is independent of the shell's composition, and it must land before Task 7 turns the ratchet on over the stylesheet it edits. After it, the order is 2 → 3 → 4 → 5 → 6 → 7.
+
 1. **A flush shell can detach a control from what it controls.** The 8px gap is what visually separates the rail, both panes and the stage today; removing it is a geometry change to a layout that also holds the pane toggles, the rail slots and the canvas clusters. A hairline boundary that runs through a control's own hit area, or a toggle that now abuts the region it acts on, is a usability defect no geometry assertion sees. **Task 2** carries the browser walkthrough: toggle each pane, drag the inspector, click the rail's four slots and the dock, with the capture read.
 2. **Making chrome opaque moves every measured contrast ratio.** `vg-200` (the resting `--edge` boundary) and `vg-201` (`--warn` text) already pin failures; the whole palette set is a validated system where alpha surfaces composite against a backdrop, and an opaque surface composites against nothing. A palette can pass a geometry check and ship a ratio below §5's floor. **Task 5** carries the six-palette contrast measurement, and the existing `shell-appearance.spec.ts` assertion is amended deliberately rather than deleted.
 3. **The stage's own frame is not only CSS.** The stage carries a `12px` radius and a `--shell-edge` border, and the canvas inside it is a Fabric surface whose artboard clip is scene-level (`vg-046`'s family). Flushing the stage can change whether the artboard reads as clipped, and a CSS-only change can leave the scene and the frame disagreeing. **Task 2** carries the check that the artboard's edge and the stage's boundary still coincide at both ends of the zoom range.
@@ -313,6 +315,51 @@ Name them one per line, `met` or `not met`, with evidence. The settings modal's 
 - [ ] **Step 5: Update `STATUS.md`, then commit and archive**
 
 Replace "Last completed change" with 1–5 bullets, one item per line, never wrapped; run `npm run status:check` from `src/web/`. Run the whole editor unit suite and record its counts in the commit body. Tell the user the images exist before staging them, and inspect them first. Commit the capture, the registration row and the plan's changes together; then move this plan to `docs/superpowers/plans/archive/` and write the next plan (the settings modal's parity) against the same instrument.
+
+---
+
+### Task 8: One geometry for a field row — the control set's value cell, and the legacy rules under it
+
+**Executes first among the tasks below Task 1** (see the execution-order note above the task list). The user reported on 2026-10-10 that "the input boxes in the inspection panel aren't even aligned"; the read-only measurement at `.superpowers/sdd/2026-10-10-shell-parity/inspector-alignment-measurement.md` found four widths in one section where the drawing declares one, in **two** owners, and found it visible in three already-committed captures.
+
+**Outcome:** Every field row in every panel has **one** value-cell geometry — a number well, a text well, a select and a slider occupy the same track — the label sits on the row's centre rather than below it, and the product's input is boxed once rather than twice. The drawing's own row declares one width; the product ends with one.
+
+**Owning symbols/landmarks:** `src/web/packages/editor/src/components/ui/control-well.tsx` — the row's `justify-end`, the well with no declared width, the label with no declared width; `src/web/packages/editor/src/editor-shell/editor-shell.css` — the legacy input/button box rule and the `label { display: block; margin-top: 12px }` rule, both **unlayered** and therefore beating Tailwind's utilities; `src/web/packages/editor/src/control-fixture.tsx` — the fixture that does not mount the inspector ancestor; `docs/design/mockups/inspector-controls.html` — the drawing's declared row.
+
+**Files:**
+- Modify: `src/web/packages/editor/src/components/ui/control-well.tsx`
+- Modify: `src/web/packages/editor/src/editor-shell/editor-shell.css`
+- Modify: `src/web/packages/editor/src/control-fixture.tsx`
+- Modify: `src/web/tests/e2e/design-language.spec.ts` (the row-geometry assertion, on the fixture)
+- Modify: `src/web/tests/e2e/mockup-values.ts` if the drawing's row is a second reader target
+
+**Interfaces:**
+- Consumes: Task 1's `mockupDeclared`; the measurement's instance list (11 under the shared row, 4 under the legacy rules).
+- Produces: the row's value cell as **one** track, declared once, which every control kind fills; and a fixture that mounts what the product mounts, so the product-only half of this defect is measurable by the gate that exists for it.
+
+- [ ] **Step 1: Assert one geometry on the fixture, and watch it fail**
+
+The measurement proved this is **shared**, not inspector-local: the same five different left edges appear in the parity fixture's own capture (`control-set-desktop-chromium.png` — Name, Shows, Fill, Width, Align each starting somewhere else). So the assertion belongs on the fixture: for a row holding a number, a text, a select and a slider, each value cell's left edge and right edge are equal, and equal across rows. Run it on today's build and record the distinct edges it measures — **a run that finds one edge means the assertion is not reading the cells**.
+
+- [ ] **Step 2: Declare the value cell once, in the row**
+
+One track for the value cell, sized by the row and not by its content, so a content-sized `<input>` and a filling `select` land on the same box. `justify-end` on a flexible slot is what makes each kind find its own width; the fix is the slot's geometry, not four per-kind widths. Where a control genuinely needs a different width (none of the four does, per the drawing), that is a finding for the report, not a fifth declaration.
+
+- [ ] **Step 3: Take the legacy rules off the product's inputs**
+
+`editor-shell.css`'s input/button box rule and its `label` rule are **unlayered**, so they beat Tailwind's utilities and re-box and re-pad an input inside a well that already draws one — which is why the product shows two border pairs (86/263, 93/252) where the fixture shows one (117/276). Delete them where the control set now owns the treatment; where one is still needed, scope it to the surface that needs it and say in the comment which. The `label` rule's `margin-top: 12px` is what pushes every label ~6px below its control against the row's `items-center` — that is the misalignment the user is most likely looking at, and it is one declaration.
+
+- [ ] **Step 4: Make the fixture mount what the product mounts**
+
+`control-fixture.tsx` does not mount `.editor-shell-inspector`, so the legacy rules do not reach it and the product-only half of this defect is invisible to the gate built for the control set. Mount the same ancestor the product does, then **revert the step and confirm the assertion goes green** — a gate that cannot see the product's own ancestor is the instrument claiming more than it measures (`vg-292`'s family), and this step is where that is proven rather than assumed.
+
+- [ ] **Step 5: Re-capture the inspector and read the image**
+
+Three committed captures already show this defect — `editor-inspector-shape-desktop-chromium.png`, `editor-inspector-card-desktop-chromium.png` and `control-set-desktop-chromium.png` — which is a finding in its own right: they were taken and not read. Re-capture under a rebuilt bundle, in **graphite** as well as light (the two inspector captures are light-palette only, while the drawing is graphite), and inspect the images before staging them. Report what the captures show now that the assertion passes.
+
+- [ ] **Step 6: Commit**
+
+Name in the body that this answers the user's report, which of the three measured defects it fixed, and that `vg-098`/`vg-108` are a different concept (text alignment, already verified). Run the whole editor unit suite and record its counts.
 
 ---
 
