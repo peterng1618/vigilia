@@ -2,6 +2,7 @@ import { expect, type Page, test } from "@playwright/test";
 import { captureVisualReview } from "./editor-canvas.js";
 import { openPane } from "./editor-rail.js";
 import {
+  currentDrawings,
   MOCKUP_PATH,
   mockupDeclarations,
   mockupDeclared,
@@ -2044,16 +2045,38 @@ test("the chrome's own contrast clears §5 under all six palettes", async ({
   ).toEqual([]);
 });
 
-/** A CSS length in px — the **first** one, if the value is a shorthand of
- *  several. `normal` is `gap`'s own word for no gap and reads as `0`; anything
- *  else is not a length this table compares, and fails with its own text. */
+/** A CSS length in px that **every** value of a shorthand agrees on.
+ *
+ *  `border-radius` is a shorthand of four corners and `getComputedStyle`
+ *  serialises a non-uniform radius as `8px 8px 0px 0px`, so a comparator that
+ *  read only the first token made a square-bottomed dialog pass a row requiring
+ *  the panel radius: `border-radius: 8px 8px 0 0` on `.editor-shell-dialog`
+ *  read as `8`, and the modal shipped with two square corners a person can see.
+ *  Every token is therefore held: a value whose tokens disagree has no single
+ *  length it means, so it is `null` and the row fails naming the whole rendered
+ *  value rather than the first token of it.
+ *
+ *  `normal` is `gap`'s own word for no gap and reads as `0`; anything else is
+ *  not a length this table compares, and fails with its own text. A
+ *  **single-value** radius is unchanged: `8px` is one token and still means `8`,
+ *  as does `8px 8px 8px 8px` — the same radius spelled out. */
 function lengthInPx(value: string): number | null {
-  const first = value.trim().split(/[\s/]+/)[0] ?? "";
-  if (first === "normal") return 0;
-  const match = /^(-?[\d.]+)px$/.exec(first);
-  if (match === null) return null;
-  const px = Number.parseFloat(match[1] ?? "NaN");
-  return Number.isFinite(px) ? px : null;
+  const tokens = value
+    .trim()
+    .split(/[\s/]+/)
+    .filter((part) => part !== "");
+  if (tokens.length === 0) return null;
+  if (tokens[0] === "normal") return 0;
+  const lengths: number[] = [];
+  for (const token of tokens) {
+    const match = /^(-?[\d.]+)px$/.exec(token);
+    if (match === null) return null;
+    const px = Number.parseFloat(match[1] ?? "NaN");
+    if (!Number.isFinite(px)) return null;
+    lengths.push(px);
+  }
+  const first = lengths[0] ?? null;
+  return lengths.every((length) => length === first) ? first : null;
 }
 
 /** How many dialogs are **rendered** right now.
@@ -2134,6 +2157,20 @@ test("the shell is what the drawing draws", async ({ page }, testInfo) => {
   test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
   await openShell(page);
+
+  // The comparator holds every token of a value: a non-uniform radius has no
+  // single length it means and must not be reduced to its first corner, which
+  // is how `8px 8px 0 0` on `.editor-shell-dialog` passed both dialog rows.
+  // Asserted here, where the comparator is used, so a later edit that reverts
+  // to the first token reddens on the run rather than on a planted build.
+  expect(
+    lengthInPx("8px 8px 0 0"),
+    "the comparator reduced a shorthand to its first corner, so a square-bottomed dialog would pass",
+  ).toBeNull();
+  expect(
+    lengthInPx("8px"),
+    "a single-value radius no longer means its own length",
+  ).toBe(8);
 
   const drawing = readMockup();
   expect(
@@ -2356,29 +2393,38 @@ test("the shell is what the drawing draws", async ({ page }, testInfo) => {
   ).toEqual([]);
 });
 
-/** The drawing's path as its messages name it — the checked-in file, not the
- *  absolute path `MOCKUP_PATH` resolves to, because a failure has to name the
- *  line in the file a person opens. */
+/** The shell drawing's path as its own rows name it — the checked-in file, not
+ *  the absolute path `MOCKUP_PATH` resolves to, because a failure has to name
+ *  the line in the file a person opens. The radii gate below names each drawing
+ *  from `currentDrawings` instead, so a widened set carries its own names. */
 const SHELL_DRAWING = "docs/design/mockups/current/shell.html";
 
 /**
- * Every `border-radius` the drawing declares, held to bible §3's closed scale
- * (`vg-296`).
+ * Every `border-radius` **every drawing in `docs/design/mockups/current/`**
+ * declares, held to bible §3's closed scale (`vg-296`).
  *
  * **Why this is a gate and not a sweep.** Task 3 (`be54cfc5`) corrected
- * twenty-one off-scale `border-radius` literals in the drawing — seventeen dock
+ * twenty-one off-scale `border-radius` literals in `shell.html` — seventeen dock
  * buttons, three view-cluster buttons and the follow-the-system track — and
  * nothing read them afterwards: putting one `7px` back left this whole suite
  * green (`vg-296`, measured). A file **measured once** is a measurement; a gate
  * is a test that reddens when the property moves, and this one reads the
- * drawing's own declarations every run so a radius that leaves §3's scale fails
+ * drawings' own declarations every run so a radius that leaves §3's scale fails
  * here naming its file and line.
+ *
+ * **Every drawing, not `MOCKUP_PATH` alone.** The first gate read the shell
+ * drawing only, and the class hid in the three it did not read: `settings.html`
+ * declared the `3px` swatch and the `7px` toggle track, and both control
+ * drawings the identical `7px` track — the same off-scale class corrected in
+ * `shell.html`, in files the row never opened. The set is a directory read
+ * (`currentDrawings`), so a fifth drawing is read the moment it lands, and each
+ * failure names the file it is in.
  *
  * **§3's radius table is closed** (`docs/design/design-language.md:86-94`):
  * `--radius-sm` 4 / `--radius-md` 6 / `--radius-lg` 8 / `--radius-xl` 10 /
  * full 999. Three values are exempt, each named with why it is not a scale
  * entry — an unnamed exemption set is the list-shaped escape this plan exists
- * to close, so a fourth value entering the file fails this row rather than
+ * to close, so a fourth value entering a file fails this row rather than
  * joining the set silently:
  *
  * - `1px` and `2px` are **marks whose value is their thickness**, not rounded
@@ -2396,15 +2442,13 @@ const SHELL_DRAWING = "docs/design/mockups/current/shell.html";
  * A `--grep` that matches nothing exits 0 with zero tests, so the run's own
  * summary is the proof this ran at all.
  */
-test("every radius the shell drawing declares is on §3's scale", () => {
-  const declared = mockupDeclarations(readMockup(MOCKUP_PATH)).filter(
-    (declaration) => declaration.property === "border-radius",
-  );
-  // The positive control: a reader that answered nothing at all would pass the
+test("every radius the checked drawings declare is on §3's scale", () => {
+  const drawings = currentDrawings();
+  // The positive control: a reader that found no drawing at all would pass the
   // assertion below, and `vg-296` is exactly a file nothing read.
   expect(
-    declared.length,
-    `${SHELL_DRAWING}: the drawing declares no border-radius, so this row read nothing`,
+    drawings.length,
+    "docs/design/mockups/current/ holds no drawing, so this row read nothing",
   ).toBeGreaterThan(0);
 
   /** §3's closed scale, transcribed from the table the comment cites. */
@@ -2433,8 +2477,8 @@ test("every radius the shell drawing declares is on §3's scale", () => {
   const allowed = (corner: string): boolean =>
     SCALE.has(corner) || DEGENERATE.has(corner) || isSquare(corner);
 
-  // The square-corner branch is unexercised by the drawing today — it draws no
-  // shorthand — so the two spellings it must accept and the corner it must
+  // The square-corner branch is unexercised by the drawings today — none draws
+  // a shorthand — so the two spellings it must accept and the corner it must
   // still refuse are read here: a fix for a false positive that nothing
   // exercises is a fix nobody can trust.
   expect(
@@ -2447,20 +2491,36 @@ test("every radius the shell drawing declares is on §3's scale", () => {
   ).toBe(false);
 
   const offScale: string[] = [];
-  for (const { value, line } of declared) {
-    // A shorthand (`8px 8px 0 0`) is one declaration and four radii; each
-    // corner is held to the scale, so an off-scale corner cannot hide behind a
-    // legal neighbour.
-    for (const corner of value.split(/[\s/]+/).filter((part) => part !== "")) {
-      if (allowed(corner)) continue;
-      offScale.push(
-        `${SHELL_DRAWING}:${line} border-radius: ${value} — \`${corner}\` is not on §3's scale (4/6/8/10/999), is no named degenerate mark (${[...DEGENERATE.keys()].join(", ")}), and is not square`,
-      );
+  const read: string[] = [];
+  for (const drawing of drawings) {
+    const declared = mockupDeclarations(readMockup(drawing.path)).filter(
+      (declaration) => declaration.property === "border-radius",
+    );
+    // The positive control per drawing: a file the reader opened but read
+    // nothing out of is the shape this gate exists to end, so it reddens here
+    // rather than passing as a file with no off-scale radius.
+    expect(
+      declared.length,
+      `${drawing.name}: the drawing declares no border-radius, so this row read nothing`,
+    ).toBeGreaterThan(0);
+    read.push(`${drawing.name} (${declared.length})`);
+    for (const { value, line } of declared) {
+      // A shorthand (`8px 8px 0 0`) is one declaration and four radii; each
+      // corner is held to the scale, so an off-scale corner cannot hide behind
+      // a legal neighbour.
+      for (const corner of value
+        .split(/[\s/]+/)
+        .filter((part) => part !== "")) {
+        if (allowed(corner)) continue;
+        offScale.push(
+          `${drawing.name}:${line} border-radius: ${value} — \`${corner}\` is not on §3's scale (4/6/8/10/999), is no named degenerate mark (${[...DEGENERATE.keys()].join(", ")}), and is not square`,
+        );
+      }
     }
   }
   expect(
     offScale,
-    `${SHELL_DRAWING} declares a radius §3's closed scale does not contain`,
+    `${drawings.length} drawing(s) declare a radius §3's closed scale does not contain (read: ${read.join(", ")})`,
   ).toEqual([]);
 });
 

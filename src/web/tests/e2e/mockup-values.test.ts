@@ -3,6 +3,7 @@ import { expect, test } from "vitest";
 import {
   CONTROLS_LIGHT_MOCKUP_PATH,
   CONTROLS_MOCKUP_PATH,
+  currentDrawings,
   MOCKUP_PATH,
   mockupDeclared,
   mockupDeclaredOrNull,
@@ -251,6 +252,65 @@ test("silence is null, and a broken selector still throws", () => {
   expect(() =>
     mockupDeclaredOrNull(drawing, ".does-not-exist", "border-radius"),
   ).toThrow(/addresses nothing/);
+});
+
+test("a shorthand for a property a row reads fails loudly rather than reading as silence", () => {
+  // The third reading, and the one that inverted a row: `lookup` matches
+  // property names exactly, so a shorthand is invisible to a row reading its
+  // longhand — and a body row reads the drawing's silence as `0`. The body
+  // element the row addresses declares no `padding`, and that silence is its
+  // value; `padding:8px` on it is a declaration the row cannot see, so the
+  // reader refuses rather than reporting the drawing as flush.
+  const BODY = '[style*="flex:1;min-height:0"]';
+  const BODY_STYLE = 'style="display:flex;flex:1;min-height:0"';
+  const padded = drawing.replace(
+    BODY_STYLE,
+    'style="display:flex;flex:1;min-height:0;padding:8px"',
+  );
+  expect(padded).not.toBe(drawing);
+  expect(() => mockupDeclaredOrNull(padded, BODY, "padding-top")).toThrow(
+    /shorthand that sets `padding-top`/,
+  );
+  // The other half of the same row: `gap` sets `column-gap`.
+  const gapped = drawing.replace(
+    BODY_STYLE,
+    'style="display:flex;flex:1;min-height:0;gap:8px"',
+  );
+  expect(gapped).not.toBe(drawing);
+  expect(() => mockupDeclaredOrNull(gapped, BODY, "column-gap")).toThrow(
+    /shorthand that sets `column-gap`/,
+  );
+  // The silence the map must not touch: the unmutated drawing still reads null,
+  // because it declares neither a shorthand nor the longhand.
+  expect(mockupDeclaredOrNull(drawing, BODY, "padding-top")).toBeNull();
+  expect(mockupDeclaredOrNull(drawing, BODY, "column-gap")).toBeNull();
+});
+
+test("the current set is enumerated by directory, and every drawing in it reads", () => {
+  // The radii gate reads every drawing in `docs/design/mockups/current/` from
+  // this enumeration, so a directory read that stopped seeing one of the four
+  // has dropped a drawing the suite claims to check.
+  const drawings = currentDrawings();
+  const names = drawings.map((drawing) => drawing.name);
+  for (const known of [
+    "docs/design/mockups/current/shell.html",
+    "docs/design/mockups/current/settings.html",
+    "docs/design/mockups/current/controls.html",
+    "docs/design/mockups/current/controls-light.html",
+  ]) {
+    expect(
+      names,
+      `${known} is not enumerated by the current-set reading`,
+    ).toContain(known);
+  }
+  // The negative half: a reader that returned four names and read nothing from
+  // disk passes the loop above, so each path is opened and read.
+  for (const drawing of drawings) {
+    expect(
+      readMockup(drawing.path),
+      `${drawing.name} did not read back as a drawing`,
+    ).toContain("<!doctype html>");
+  }
 });
 
 test("the reader returns what the text says, not a constant", () => {

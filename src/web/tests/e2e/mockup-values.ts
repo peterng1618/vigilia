@@ -1,4 +1,5 @@
-import { readFileSync } from "node:fs";
+import { readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 /**
@@ -85,6 +86,33 @@ export const CONTROLS_LIGHT_MOCKUP_PATH = fileURLToPath(
     import.meta.url,
   ),
 );
+
+/** The directory every checked drawing lives in. */
+const CURRENT_MOCKUPS_DIR = fileURLToPath(
+  new URL("../../../../docs/design/mockups/current/", import.meta.url),
+);
+
+/** Every drawing in `docs/design/mockups/current/`, in name order, each with
+ *  the checked-in path a failure names it by.
+ *
+ *  **A directory read, not a list of the four the plan built**, because the hole
+ *  this closes is a drawing the reader did not know about: three of those four
+ *  declared the same off-scale `7px` toggle track Task 3 corrected in
+ *  `shell.html`, and the only row that reads a drawing's radius scale read
+ *  `MOCKUP_PATH` alone. A fifth drawing added here is read the moment it lands
+ *  rather than joining the set silently (`vg-296`). */
+export function currentDrawings(): readonly {
+  readonly path: string;
+  readonly name: string;
+}[] {
+  return readdirSync(CURRENT_MOCKUPS_DIR)
+    .filter((entry) => entry.endsWith(".html"))
+    .sort()
+    .map((entry) => ({
+      path: join(CURRENT_MOCKUPS_DIR, entry),
+      name: `docs/design/mockups/current/${entry}`,
+    }));
+}
 
 /** The drawing's own token table — the block `current/shell.html:17-18` writes
  *  on its outermost element, which is where every value graphite takes lives.
@@ -279,16 +307,50 @@ function addressed(mockupHtml: string, selector: string): Declaration[] {
   return found;
 }
 
+/** The shorthands that would set each longhand a row reads: `padding` sets
+ *  `padding-top`, `gap` sets `column-gap`.
+ *
+ *  **Why a shorthand has to be loud.** `lookup` matches property names exactly,
+ *  so a shorthand the drawing writes is invisible to a row reading its longhand,
+ *  and the row reads the drawing's *silence* where the drawing drew an inset —
+ *  which `PARITY` reads as `0`. A body row is the shape: `padding:8px` on the
+ *  flush body div reads as no `padding-top` at all, and the row's expected value
+ *  inverts. Silence must keep meaning silence, so a shorthand for a property a
+ *  row reads **throws** rather than returning `null`: it is a declaration the
+ *  row cannot see, not a declaration the drawing omitted (`vg-296`'s family,
+ *  `vg-302`). A shorthand with no row reading its longhand — `flex`, `background`
+ *  — is unaffected, because no entry names it. */
+const SHORTHANDS_SETTING: Readonly<Record<string, readonly string[]>> = {
+  "padding-top": ["padding"],
+  "padding-right": ["padding"],
+  "padding-bottom": ["padding"],
+  "padding-left": ["padding"],
+  "margin-top": ["margin"],
+  "margin-right": ["margin"],
+  "margin-bottom": ["margin"],
+  "margin-left": ["margin"],
+  "row-gap": ["gap"],
+  "column-gap": ["gap"],
+};
+
 /** The value the drawing last declares for `property` under `selector`, or
- *  `null` when it declares none. */
+ *  `null` when it declares none. Throws when the drawing declares a shorthand
+ *  that sets `property` instead — a value the row cannot read, which must not
+ *  pass as the drawing's silence. */
 function lookup(
   mockupHtml: string,
   selector: string,
   property: string,
 ): string | null {
   let value: string | null = null;
+  const shorthands = SHORTHANDS_SETTING[property] ?? [];
   for (const declaration of addressed(mockupHtml, selector)) {
     if (declaration.property === property) value = declaration.value;
+    if (shorthands.includes(declaration.property)) {
+      throw new Error(
+        `\`${selector}\` declares \`${declaration.property}: ${declaration.value}\`, the shorthand that sets \`${property}\`: this row reads the longhand, so a shorthand is a value it cannot see and would read as the drawing's silence`,
+      );
+    }
   }
   return value;
 }
@@ -579,20 +641,25 @@ export const PARITY: readonly ParityRegion[] = [
       "§5 (`:163-164`, the well); the bible does not shape the modal's switch row, so the drawing governs",
     surface: "fixture",
   },
-  /* The Add pane's asset trigger: `shell.html:129` draws a picker spanning the
-     pane under an `Asset` eyebrow, the file name at `flex:1` and a chevron
-     after it.
+  /* The shell's select-trigger box — the well-with-chevron form the drawing
+     writes on the Add pane's picker and twice on the inspector's own triggers.
 
-     **The selector names the trigger's second form, and it has to.** The
-     drawing writes that declaration twice more, identically, on the
-     inspector's own select triggers (`shell.html:273` and `:310`), and the
-     picker's element at `:129` is exactly that declaration as a suffix of
-     theirs — so `[style*="…"]` can settle the shared form and can never settle
-     the picker alone. The declaration is one declaration either way, and it is
-     the picker's box. What the column's *absence* buys the picker is geometry,
-     and the fixture asserts that: the control starts where the row starts. */
+     **The row reads the inspector's instance, and the title names it rather than
+     claiming the picker.** `shell.html:129` (the picker) declares the trigger as
+     `display:flex;align-items:center;gap:6px;…;border-radius:6px;padding:5px
+     8px`; `:275` and `:312` (the inspector's triggers) declare exactly that plus
+     a leading `flex:1;`, so the picker's attribute is a **suffix** of theirs and
+     every substring that matches it matches them too. A `[style*="…"]` selector
+     therefore cannot settle the picker alone — a shorter one addresses three
+     elements and `lookup` refuses — and the declaration the row can read is the
+     inspector's. Its `border-radius` and `gap` are the picker's too, and the
+     product side of both rows is the picker (`control-fixture.tsx`'s `headed`
+     element, the fixture's copy of `shell.html:128-132` because the Add pane is
+     closed while Document is open). What the column's *absence* buys the picker
+     is geometry, and the fixture asserts that: the control starts where the row
+     starts. */
   {
-    region: "field row — the Add pane's asset trigger (shell drawing)",
+    region: "field row — the inspector select trigger box (shell drawing)",
     mockupPath: MOCKUP_PATH,
     mockupSelector:
       '[style*="flex:1;display:flex;align-items:center;gap:6px;background:var(--panel2);border:1px solid var(--edge);border-radius:6px;padding:5px 8px"]',
@@ -603,7 +670,7 @@ export const PARITY: readonly ParityRegion[] = [
     surface: "fixture",
   },
   {
-    region: "field row — the Add pane's asset trigger, name to chevron",
+    region: "field row — the inspector select trigger box, name to chevron",
     mockupPath: MOCKUP_PATH,
     mockupSelector:
       '[style*="flex:1;display:flex;align-items:center;gap:6px;background:var(--panel2);border:1px solid var(--edge);border-radius:6px;padding:5px 8px"]',

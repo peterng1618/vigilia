@@ -423,8 +423,10 @@ test.describe("shell palettes", () => {
    *  - **chrome** — every surface that declares its own fill: the rail, the pane,
    *    the inspector, and §3's two elevation-0 strips, the header and the status
    *    bar. Each paints the palette's own `--panel` and nothing on top of it, so
-   *    the alpha it renders equals the alpha that fill declares, and it carries
-   *    no gradient, no blur and no shadow.
+   *    the **whole colour** it renders equals the fill that token declares — not
+   *    only its alpha, because a hover-tint or a second surface under the same
+   *    alpha is what "paints `--panel`" is meant to rule out — and it carries no
+   *    gradient, no blur and no shadow.
    *  - a **floating cluster** — §7.5's three: the dock, the view cluster and the
    *    identity chip. Each is translucent and lifted. The two that carry
    *    `editor-glass` also carry the sheen; the chip declares its fill, blur,
@@ -469,11 +471,15 @@ test.describe("shell palettes", () => {
         };
       }, selector);
 
-    /** The alpha the palette's own chrome fill declares. `--panel` is what every
-     *  chrome surface paints, so this is what a rendered chrome alpha is held
-     *  against — through a probe element rather than the token's text, so a fill
-     *  in any form this browser serialises reads the same way. */
-    const declaredFillAlpha = async (): Promise<number | null> => {
+    /** The **whole rendered fill** the palette's own chrome declares. `--panel`
+     *  is what every chrome surface paints, so this is what a rendered chrome
+     *  background is held against — through a probe element rather than the
+     *  token's text, so a fill in any form this browser serialises reads the
+     *  same way. Read as the colour and not only its alpha: the boundary is that
+     *  the chrome paints `--panel` and **nothing over it**, and a surface
+     *  painting `var(--shell-backdrop)` — a different colour that can carry the
+     *  same alpha — kept an alpha-only reading green. */
+    const declaredFill = async (): Promise<string | null> => {
       const declared = await page.evaluate(() => {
         const probe = document.createElement("div");
         probe.style.backgroundColor = "var(--panel)";
@@ -482,14 +488,15 @@ test.describe("shell palettes", () => {
         probe.remove();
         return value;
       });
-      return backgroundAlpha(declared);
+      return declared.trim() === "" ? null : declared;
     };
 
     const failures: string[] = [];
     for (const palette of PALETTES) {
       await choosePalette(page, palette);
       const exempt = CHROME_NOT_YET_OPAQUE.has(palette);
-      const declared = await declaredFillAlpha();
+      const fill = await declaredFill();
+      const declared = fill === null ? null : backgroundAlpha(fill);
 
       // The exemption is a value, not a direction: a palette still listed whose
       // fill now declares opaque is a stale row, and one that declares less than
@@ -508,13 +515,13 @@ test.describe("shell palettes", () => {
       for (const selector of CHROME) {
         const chrome = await read(selector);
         const alpha = backgroundAlpha(chrome.background);
-        if (alpha === null || declared === null) {
+        if (alpha === null || fill === null) {
           failures.push(
             `${palette} ${selector}: its background reads "${chrome.background}", which this assertion cannot read against the palette's own fill`,
           );
-        } else if (Math.abs(alpha - declared) > 0.002) {
+        } else if (chrome.background !== fill) {
           failures.push(
-            `${palette} ${selector}: its background is ${chrome.background}, and the chrome paints the palette's own fill and nothing over it, which declares alpha ${declared}`,
+            `${palette} ${selector}: its background is ${chrome.background}, and the chrome paints the palette's own \`--panel\` (${fill}) and nothing over it`,
           );
         }
         if (chrome.image !== "none") {
