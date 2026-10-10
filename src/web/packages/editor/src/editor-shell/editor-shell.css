@@ -529,7 +529,7 @@ body,
   color: var(--shell-text);
   background: var(--shell-backdrop);
   font:
-    13px / 1.4 system-ui,
+    var(--text-md) / 1.4 system-ui,
     sans-serif;
 }
 /* §7.1: the header is the window's top edge. A full-width 42px strip at
@@ -680,7 +680,7 @@ body,
   border: 1px solid var(--shell-edge);
   background: var(--shell-surface);
   color: var(--shell-text);
-  box-shadow: 0 12px 28px #0000003d;
+  box-shadow: var(--shadow-raised);
 }
 .editor-shell-menu-popup [role="menuitem"],
 .editor-shell-menu-popup [role="menuitemradio"] {
@@ -954,7 +954,7 @@ body,
   margin: 0 0 12px;
   color: var(--shell-text);
   font-family: var(--shell-display);
-  font-size: 13px;
+  font-size: var(--text-md);
   text-transform: uppercase;
   letter-spacing: 0.14em;
 }
@@ -1219,7 +1219,7 @@ body,
   select,
   [tabindex]:not(:where([role="tabpanel"]))
 ):focus-visible {
-  outline: 2px solid var(--shell-accent, #7dd3fc);
+  outline: 2px solid var(--shell-accent);
   outline-offset: 1px;
 }
 /* Panel reveal: opacity 0→1 with a 4px rise, on mount only — no list stagger. */
@@ -1310,7 +1310,7 @@ body,
 .editor-shell-dialog-lead {
   margin: 0 0 12px;
   font-family: var(--shell-display);
-  font-size: 13px;
+  font-size: var(--text-md);
   text-transform: uppercase;
   letter-spacing: 0.14em;
   color: var(--shell-text);

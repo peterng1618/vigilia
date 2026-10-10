@@ -3,6 +3,7 @@ import { captureVisualReview } from "./editor-canvas.js";
 import { openPane } from "./editor-rail.js";
 import {
   MOCKUP_PATH,
+  mockupDeclarations,
   mockupDeclared,
   mockupDeclaredOrNull,
   PARITY,
@@ -2351,4 +2352,143 @@ test("the shell is what the drawing draws", async ({ page }, testInfo) => {
     failures,
     "a shell region is not what its comparator requires of it",
   ).toEqual([]);
+});
+
+/** The drawing's path as its messages name it — the checked-in file, not the
+ *  absolute path `MOCKUP_PATH` resolves to, because a failure has to name the
+ *  line in the file a person opens. */
+const SHELL_DRAWING = "docs/design/mockups/current/shell.html";
+
+/**
+ * Every `border-radius` the drawing declares, held to bible §3's closed scale
+ * (`vg-296`).
+ *
+ * **Why this is a gate and not a sweep.** Task 3 (`be54cfc5`) corrected
+ * twenty-one off-scale `border-radius` literals in the drawing — seventeen dock
+ * buttons, three view-cluster buttons and the follow-the-system track — and
+ * nothing read them afterwards: putting one `7px` back left this whole suite
+ * green (`vg-296`, measured). A file **measured once** is a measurement; a gate
+ * is a test that reddens when the property moves, and this one reads the
+ * drawing's own declarations every run so a radius that leaves §3's scale fails
+ * here naming its file and line.
+ *
+ * **§3's radius table is closed** (`docs/design/design-language.md:86-94`):
+ * `--radius-sm` 4 / `--radius-md` 6 / `--radius-lg` 8 / `--radius-xl` 10 /
+ * full 999. Three values are exempt, each named with why it is not a scale
+ * entry — an unnamed exemption set is the list-shaped escape this plan exists
+ * to close, so a fourth value entering the file fails this row rather than
+ * joining the set silently:
+ *
+ * - `1px` and `2px` are **marks whose value is their thickness**, not rounded
+ *   surfaces: §7.2's 2px accent bar on the rail's inner edge
+ *   (`design-language.md:301`), the slider track's ends, the layer dropline.
+ *   §3's scale answers a question only a surface that is *rounded* asks.
+ * - `50%` is **a circle — `full` reached the other way**: the identity dot, the
+ *   slider's thumb and the toggle's knob. It is not a second way to spell a
+ *   rounded rectangle, so it does not open the scale.
+ *
+ * The whole-file reading comes from `mockupDeclarations`, not from a selector:
+ * the property is bound wherever it is written, and `[style*="…"]` could only
+ * ever address the elements a row already knew about.
+ *
+ * A `--grep` that matches nothing exits 0 with zero tests, so the run's own
+ * summary is the proof this ran at all.
+ */
+test("every radius the shell drawing declares is on §3's scale", () => {
+  const declared = mockupDeclarations(readMockup(MOCKUP_PATH)).filter(
+    (declaration) => declaration.property === "border-radius",
+  );
+  // The positive control: a reader that answered nothing at all would pass the
+  // assertion below, and `vg-296` is exactly a file nothing read.
+  expect(
+    declared.length,
+    `${SHELL_DRAWING}: the drawing declares no border-radius, so this row read nothing`,
+  ).toBeGreaterThan(0);
+
+  /** §3's closed scale, transcribed from the table the comment cites. */
+  const SCALE = new Set(["4px", "6px", "8px", "10px", "999px"]);
+  /** The named degenerate marks, each with the reason it is exempt. */
+  const DEGENERATE = new Map([
+    ["1px", "a hairline mark, whose value is its thickness"],
+    ["2px", "a thickness mark (§7.2's rail accent bar, the slider track ends)"],
+    [
+      "50%",
+      "a circle — `full` reached the other way (the thumb, the knob, the dot)",
+    ],
+  ]);
+
+  const offScale: string[] = [];
+  for (const { value, line } of declared) {
+    // A shorthand (`8px 8px 0 0`) is one declaration and four radii; each
+    // corner is held to the scale, so an off-scale corner cannot hide behind a
+    // legal neighbour.
+    for (const corner of value.split(/[\s/]+/).filter((part) => part !== "")) {
+      if (SCALE.has(corner) || DEGENERATE.has(corner)) continue;
+      offScale.push(
+        `${SHELL_DRAWING}:${line} border-radius: ${value} — \`${corner}\` is not on §3's scale (4/6/8/10/999) and is no named degenerate mark (${[...DEGENERATE.keys()].join(", ")})`,
+      );
+    }
+  }
+  expect(
+    offScale,
+    `${SHELL_DRAWING} declares a radius §3's closed scale does not contain`,
+  ).toEqual([]);
+});
+
+/**
+ * The drawing's token table is **one declaration site**, and every site that
+ * carries a custom property is read (`vg-309`).
+ *
+ * **The hole this closes.** `mockupDeclaredProperties` reads the single element
+ * `SHELL_TOKEN_SELECTOR` matches (`[style*="width:1180px"]`), and the row that
+ * calls itself "the drawing's token table as a set" therefore reads *that
+ * element* — so a token declared at `:root`, or on a child of the drawn shell,
+ * was invisible to it. A palette role the drawing gained outside its own table
+ * would still have been missed, which is how `--hot` first arrived unnoticed
+ * under a brief that listed ten tokens.
+ *
+ * **Per site is the shape this drawing makes exact.** The drawing declares its
+ * tokens on the shell's outermost element, and nothing inside that subtree
+ * re-declares a `--*`; so "the declared-property set per element" and "the
+ * union across the matched element's subtree" are the same set *today*, and
+ * they differ exactly when something is wrong. A subtree union would keep the
+ * set at eleven when a token moved onto a child and pass; the reading below
+ * makes that a **second site** and fails. A token at `:root` is a rule site
+ * too, so both cases `vg-309` names are covered by the one reading.
+ *
+ * The set of eleven is compared to `SHELL_ROLES` rather than to a list written
+ * here, so a token the drawing drops and a token it gains both redden.
+ *
+ * A `--grep` that matches nothing exits 0 with zero tests, so the run's own
+ * summary is the proof this ran at all.
+ */
+test("the shell drawing declares its token table at one site", () => {
+  const sites = new Map<string, { line: number; tokens: string[] }>();
+  for (const declaration of mockupDeclarations(readMockup(MOCKUP_PATH))) {
+    if (!declaration.property.startsWith("--")) continue;
+    const key = `${declaration.inline ? "inline" : "rule"}\u0000${declaration.owner}`;
+    const site = sites.get(key) ?? { line: declaration.line, tokens: [] };
+    site.tokens.push(declaration.property);
+    sites.set(key, site);
+  }
+
+  const declared = [...sites.values()];
+  // The positive control: a reader that found no site read nothing, and this
+  // row's whole subject is a table nothing was reading.
+  expect(
+    declared.length,
+    `${SHELL_DRAWING}: no declaration site carries a custom property, so this row read nothing`,
+  ).toBeGreaterThan(0);
+  expect(
+    declared.map(
+      (site) =>
+        `${SHELL_DRAWING}:${site.line} declares ${site.tokens.join(", ")}`,
+    ),
+    `${SHELL_DRAWING} carries a custom property somewhere other than its one token table`,
+  ).toHaveLength(1);
+
+  expect(
+    [...new Set(declared[0]?.tokens ?? [])].sort(),
+    `${SHELL_DRAWING}'s token table is no longer the eleven roles the product maps`,
+  ).toEqual(SHELL_ROLES.map((role) => role.drawingToken).sort());
 });

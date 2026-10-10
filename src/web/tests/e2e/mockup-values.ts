@@ -129,6 +129,24 @@ export function readMockup(path: string = MOCKUP_PATH): string {
   return readFileSync(path, "utf8");
 }
 
+/** Every declaration the drawing writes, in document order — each `<style>`
+ *  block's rules, then each element's inline `style` attribute — each with the
+ *  line it is written on.
+ *
+ *  **The drawing-wide reading, beside the per-selector one.** `mockupDeclared`
+ *  answers "what does the element this selector names declare", which is the
+ *  wrong shape for a question about *every* declaration a file makes: §3's
+ *  radius scale binds each `border-radius` wherever it is written (`vg-296`),
+ *  and the token table is read from every site that carries a token rather than
+ *  from the one element the width selector happens to match (`vg-309`). A row
+ *  that used a per-selector reader for either would read one element and report
+ *  the file as checked. */
+export function mockupDeclarations(
+  mockupHtml: string,
+): readonly MockupDeclaration[] {
+  return declarations(mockupHtml);
+}
+
 /** One declaration the drawing writes, with the thing that owns it. */
 type Declaration = {
   /** A single selector from a `<style>` rule's list, or the element's whole
@@ -137,7 +155,17 @@ type Declaration = {
   readonly inline: boolean;
   readonly property: string;
   readonly value: string;
+  /** 1-based line in the drawing's text. For an inline declaration it is the
+   *  line the `style` attribute's value starts on; for a `<style>` rule it is
+   *  the rule's own line, which is also the line of the block's first rule. */
+  readonly line: number;
 };
+
+/** A declaration as a caller outside this module reads it — the same shape the
+ *  reader uses internally, exported because a *drawing-wide* question (`vg-296`'s
+ *  radii, `vg-309`'s token sites) is about every declaration the file writes
+ *  rather than about one selector's value. */
+export type MockupDeclaration = Declaration;
 
 /** `[style*="…"]` — the only selector form this reader gives a meaning to
  *  beyond "a rule in the `<style>` block". */
@@ -159,6 +187,15 @@ function pairs(body: string): { property: string; value: string }[] {
   return found;
 }
 
+/** The 1-based line `index` falls on. */
+function lineOf(mockupHtml: string, index: number): number {
+  let line = 1;
+  for (let at = 0; at < index; at += 1) {
+    if (mockupHtml[at] === "\n") line += 1;
+  }
+  return line;
+}
+
 /** The drawing's declarations in document order: every `<style>` block's rules,
  *  then every element's inline `style` attribute. */
 function declarations(mockupHtml: string): Declaration[] {
@@ -166,22 +203,35 @@ function declarations(mockupHtml: string): Declaration[] {
   for (const block of mockupHtml.matchAll(
     /<style\b[^>]*>([\s\S]*?)<\/style>/gi,
   )) {
-    const css = (block[1] ?? "").replace(/\/\*[\s\S]*?\*\//g, "");
-    for (const rule of css.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
+    const blockText = block[0];
+    const css = block[1] ?? "";
+    // Comments are blanked **in place** rather than removed: a rule's match
+    // index is an offset into this text, and dropping characters would shift
+    // every line number below the comment.
+    const blanked = css.replace(/\/\*[\s\S]*?\*\//g, (comment) =>
+      comment.replace(/[^\n]/g, " "),
+    );
+    const contentStart = (block.index ?? 0) + blockText.indexOf(css);
+    for (const rule of blanked.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
       const pairs_ = pairs(rule[2] ?? "");
+      const line = lineOf(mockupHtml, contentStart + (rule.index ?? 0));
       for (const selector of (rule[1] ?? "").split(",")) {
         const owner = selector.trim();
         if (owner === "") continue;
         for (const pair of pairs_) {
-          found.push({ owner, inline: false, ...pair });
+          found.push({ owner, inline: false, line, ...pair });
         }
       }
     }
   }
   for (const element of mockupHtml.matchAll(/<[a-z][^>]*\sstyle="([^"]*)"/gi)) {
     const owner = element[1] ?? "";
+    const line = lineOf(
+      mockupHtml,
+      (element.index ?? 0) + element[0].indexOf(owner),
+    );
     for (const pair of pairs(owner)) {
-      found.push({ owner, inline: true, ...pair });
+      found.push({ owner, inline: true, line, ...pair });
     }
   }
   return found;
