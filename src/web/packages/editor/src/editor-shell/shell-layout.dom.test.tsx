@@ -166,6 +166,10 @@ it("mounts the editorial palette, menus, rail, inspector and dock hosts", () => 
   // and it is deliberately not a slot.
   expect(root.querySelectorAll(".editor-shell-rail-slot")).toHaveLength(4);
   expect(root.querySelector(".editor-shell-rail-settings")).not.toBeNull();
+  // The rail's whole button count, not only its slots: five is the four slots
+  // plus the foot's gear, and a sixth control arriving on the rail where it
+  // should not fails here rather than hiding behind the slot count.
+  expect(root.querySelectorAll(".editor-shell-rail button")).toHaveLength(5);
   // The horizontal bar is gone, not merely hidden.
   expect(root.querySelector(".editor-shell-pane-bar")).toBeNull();
   expect(root.textContent).toContain("File");

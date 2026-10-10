@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { uiCopy } from "../../packages/editor/src/ui-copy.js";
 import { openPane } from "./editor-rail.js";
 import { selectLayer } from "./rebuild-driver.js";
 import { isDesktopSurface } from "./surface.js";
@@ -418,4 +419,103 @@ test("the selected slot's accent bar sits on the rail's inner edge", async ({
     measured.barRight,
     "the bar's outer edge is the rail's inner edge",
   ).toBeCloseTo(measured.railRight, 5);
+});
+
+/**
+ * The gear's ink, which the cascade decides and no unit test can see.
+ *
+ * `editor-shell.css` set the gear `--muted` on a bare class while
+ * `.editor-shell-rail button` set `--faint`; specificity (0,1,1) beat (0,1,0),
+ * so the gear painted `--faint` — 68 % of `--muted`, the closed-slot shade —
+ * and read as a slot that is merely unchosen, contradicting the decision
+ * written above the rule. jsdom applies no stylesheet to a computed style, so
+ * the resolved colour exists only in a browser; this compares the gear's ink to
+ * a closed slot's and fails while the two are the same.
+ */
+test("the settings gear paints a lighter ink than a closed slot", async ({
+  page,
+}, testInfo) => {
+  test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+
+  await page.goto(EDITOR);
+  await expect(
+    page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+  ).toBeVisible();
+
+  const ink = await page.evaluate(() => {
+    const gear = document.querySelector(".editor-shell-rail-settings");
+    // A slot that is not the chosen one: `--faint` is the closed slot's ink,
+    // and the gear must not match it.
+    const slot = document.querySelector(
+      '.editor-shell-rail-slot:not([aria-pressed="true"])',
+    );
+    if (gear === null || slot === null) throw new Error("no gear or slot");
+    return {
+      gear: getComputedStyle(gear).color,
+      slot: getComputedStyle(slot).color,
+    };
+  });
+  const measured = JSON.stringify(ink);
+  console.log(`gear-ink ${measured}`);
+  testInfo.annotations.push({ type: "gear-ink", description: measured });
+
+  expect(ink.gear, "the gear is invisible or paints no ink").not.toBe("");
+  expect(
+    ink.gear,
+    `the gear paints the closed slot's --faint, not its own --muted (${measured})`,
+  ).not.toBe(ink.slot);
+});
+
+/**
+ * The keyboard route through the gear's modal: open with the keyboard, Tab and
+ * Shift+Tab, Escape, and where focus ends.
+ *
+ * The brief demands the whole sequence and a browser is the only place it can
+ * be observed. jsdom performs **no** sequential focus navigation — a Tab
+ * keypress moves nothing — and Base UI's `FloatingFocusManager` deliberately
+ * does not handle Tab when tabbable content exists; it relies on the browser
+ * walking focus onto its focus-guard spans, whose `onFocus` redirects it to the
+ * first or last tabbable. So the trap is a rendered fact with nothing to press
+ * in jsdom, and this presses real keys: Tab from the last control wraps to the
+ * first, Shift+Tab from the first wraps back, and Escape returns focus to the
+ * gear it was opened from.
+ */
+test("Tab and Shift+Tab stay inside the settings modal, and Escape returns focus to the gear", async ({
+  page,
+}, testInfo) => {
+  test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+
+  await page.goto(EDITOR);
+  await expect(
+    page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+  ).toBeVisible();
+
+  // Open with the keyboard, not a click: the gear is reachable and Enter
+  // activates it.
+  const gear = page.locator(".editor-shell-rail-settings");
+  await gear.focus();
+  await expect(gear).toBeFocused();
+  await page.keyboard.press("Enter");
+
+  const dialog = page.getByRole("dialog", { name: uiCopy.settings.title });
+  await expect(dialog).toBeVisible();
+  // The two ends of the popup's tab order: the selected tab leads, the labelled
+  // close is last. The panels sit between them and are not named here.
+  const first = dialog.getByRole("tab", { name: uiCopy.settings.appearance });
+  const last = dialog.locator(".editor-shell-dialog-close");
+
+  // Tab from the last control wraps forward to the first.
+  await last.focus();
+  await expect(last).toBeFocused();
+  await page.keyboard.press("Tab");
+  await expect(first).toBeFocused();
+
+  // Shift+Tab from the first wraps back to the last.
+  await page.keyboard.press("Shift+Tab");
+  await expect(last).toBeFocused();
+
+  // Escape is one press, one effect, and it hands focus back to the gear.
+  await page.keyboard.press("Escape");
+  await expect(dialog).toBeHidden();
+  await expect(gear).toBeFocused();
 });

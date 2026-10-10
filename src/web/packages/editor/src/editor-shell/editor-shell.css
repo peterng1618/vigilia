@@ -825,8 +825,12 @@ body,
    whole of the pin: it takes the slack between the four slots and the gear, so
    the gear sits on the rail's bottom edge without a spacer element. It is
    `--muted` rather than a closed slot's `--faint`, because it is a real control
-   an author reaches on purpose, not a slot that is merely unchosen. */
-.editor-shell-rail-settings {
+   an author reaches on purpose, not a slot that is merely unchosen. The
+   selector carries `button` beside the class so it out-specifies the shared
+   `.editor-shell-rail button` rule above — a bare class is (0,1,0) against that
+   rule's (0,1,1), loses the cascade, and paints the gear `--faint` regardless
+   of source order. */
+.editor-shell-rail button.editor-shell-rail-settings {
   margin-top: auto;
   color: var(--muted);
 }
