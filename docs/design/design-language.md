@@ -152,6 +152,7 @@ The vocabulary is closed. A control is one of these, or it is not a control.
 | **Toggle** | A 26×14 pill, accent when on | A boolean that applies immediately |
 | **Segmented** | A `--panel-2` well holding 2–4 labels, the active one lifted to `--stage` | A small exclusive choice where both options must be readable |
 | **Icon button** | A 26–30px square at `--radius-md`, glyph only | An action whose glyph is unambiguous |
+| **Choice row** | A `--radius-md` row at `--panel-2` carrying a swatch and a name; the chosen row is lifted to `--stage` with the accent border | One member of a closed set where each member has its own colour |
 
 **Rules that make it readable:**
 
@@ -177,6 +178,7 @@ The vocabulary is closed. A control is one of these, or it is not a control.
 5. **Every control has a label, a programmatic name, and an id.** A control with
    neither `aria-label` nor a `<label for>` is a defect, not a style choice.
 6. **Hover raises `--edge` to `--muted`.** On a control that carries a resting `--edge` — the well, the toggle — the border brightens. On a glyph-only control with no resting border — the icon button — it is the border it acquires on hover. Nothing moves, nothing scales.
+7. **A set too large for `Segmented` is a list of choice rows, each a radio in one labelled `radiogroup`.** The row is the whole target, the group owns which one is chosen, and the group's own keyboard model walks the rows in reading order — a multi-column layout changes the grid and never the arrow keys.
 
 ### Editing and recovery
 

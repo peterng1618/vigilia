@@ -26,8 +26,8 @@ backlog it produced stays live in the register.
 
 ## Active work
 
-- **Plan 5 — [`settings-and-appearance`](docs/superpowers/plans/2026-10-08-settings-and-appearance.md) — is the active plan, and Task 1 has landed**: `13984ab9` (the gear and the modal it opens) plus its fix round `3b4be19d`; plans 1–4 are closed and exactly one plan is active at a time.
-- **Plan 5's next task is Task 2 — Appearance, the six palettes move in and the header chip leaves**; its pre-flight conflict rulings R1–R10 and both scan tables are in `.superpowers/sdd/2026-10-08-settings-and-appearance/`.
+- **Plan 5 — [`settings-and-appearance`](docs/superpowers/plans/2026-10-08-settings-and-appearance.md) — is the active plan, and Tasks 1–2 have landed**: `13984ab9` (the gear and the modal it opens) plus its fix round `3b4be19d`, then Task 2 (Appearance); plans 1–4 are closed and exactly one plan is active at a time.
+- **Plan 5's next task is Task 3 — the Keyboard tab and the `publish.*` chord**; Task 2's pre-flight conflict rulings R1–R10 and both scan tables are in `.superpowers/sdd/2026-10-08-settings-and-appearance/`.
 - **Plan 4 — [`the panes`](docs/superpowers/plans/archive/2026-10-08-the-panes.md) — closed complete on 2026-10-10**: all 13 tasks landed, its file is in `docs/superpowers/plans/archive/`, and its ledger (`.superpowers/sdd/2026-10-08-the-panes/progress.md`, git-ignored but on disk) holds R1–R78.
 - **Two plans remain after plan 5** — `2026-10-08-iconography-and-copy.md`, then [`2026-10-10-design-md-replaces-the-bible.md`](docs/superpowers/plans/2026-10-10-design-md-replaces-the-bible.md), queued and unstarted; every plan ends with its §13 parity capture.
 - **Reactify ([0039](docs/decisions/0039-the-editor-ui-is-react-and-only-the-canvas-is-imperative.md)) is the frame, not a phase** — every editor surface becomes React, only the canvas stays imperative, and no Fabric object is ever mirrored into React state.
@@ -35,16 +35,16 @@ backlog it produced stays live in the register.
 
 ## Last completed change
 
-- **Plan 5's Task 1 landed** — the rail's foot gains the settings gear (the fifth thing on the rail, not a slot) and it opens a Base UI modal carrying §7's three tabs; `13984ab9`, fix round `3b4be19d`, empty tab bodies for Tasks 2–4 to fill.
-- **Its review returned spec ✅ / quality needs fixes, and the one Important was real**: `.editor-shell-rail-settings`'s `color: var(--muted)` lost a specificity contest to `.editor-shell-rail button`'s `--faint`, so the gear painted 68 %-dimmed and indistinguishable from a closed slot — the "renders slightly wrong, nothing fails" class the ratchet exists to stop, and no test saw it.
-- **The fix round also committed what the brief demanded and the first pass had not** — the Tab/Shift+Tab trap proof, which went to `editor-rail.spec.ts` because jsdom performs no sequential focus navigation, with its red proof recorded rather than assumed.
-- **`vg-274` was materialised from the commit's own `Discovered, not fixed:` trailer and measured**: `editor-shell.css` is in no gate — the ratchet parses CSS, its `gated` list names no `.css` file, and 94 violations (23 spacing values, 11 hex literals, 60 off-scale px) sit behind that.
-- **Evidence:** editor unit suite 136 files / 1727 tests pass; `design:check` exit 0 over 51 gated files; `npm run backlog:check` reads 145 items, all valid.
+- **Plan 5's Task 2 landed — the Appearance tab carries the six shell palettes and follow-the-system, and the header chip is gone**: the gear is the only route to the choice, and the at-a-glance readout is the cost §7 accepted knowingly.
+- **The choice is a `Choice row`: the bible's §5 gained exactly one control** — `components/ui/control-choice-row.tsx` is a `Radio.Root` in one labelled `radiogroup`, so the group owns the checked bit and the arrow keys rather than each row holding its own.
+- **`clearShellChoice` is new, and it is what makes "follow the system" reachable at all**: the key's absence is what `readShellChoice` already read as "no choice", and until now nothing could produce it.
+- **The old menu is deleted with its test**, the header's palette assertion is inverted to prove nothing came back, and `panel-labels.spec.ts`'s header entry follows the control into the modal rather than being retired.
+- **Evidence:** editor unit suite 136 files / 1731 tests pass; `design:check` exit 0 over 53 gated files; the two e2e sweeps pass 13/13; removing `applyShellPalette` from the choose path reddens 7 of the 9 shell-appearance cases.
 
 ## Next
 
-1. **Plan 5's Task 2 — Appearance — runs next**: the six palettes move into the tab and the header chip leaves, landed on plan 1's control set with the ratchet's `gated` key.
-2. **Then plan 5's Tasks 3, 4, 4a, 5 and 6** — Keyboard and the `publish.*` chord, About, the font picker and dialog rendering, the ratchet census, then the parity capture.
+1. **Plan 5's Task 3 — Keyboard — runs next**: every chord becomes rebindable through one effective binding table, and `⌘⇧P` gets something to run before the header prints it.
+2. **Then plan 5's Tasks 4, 4a, 5 and 6** — About, the font picker and dialog rendering, the ratchet census, then the parity capture.
 3. **Then plan 6 (`iconography-and-copy`), then `design-md-replaces-the-bible`** — the sequence's last two, each ending with its own §13 parity capture.
 4. **The register's newest row is `vg-274`**, filed at plan 5's first task; read [`docs/product/backlog.jsonl`](docs/product/backlog.jsonl) for every open row rather than this file.
 5. **Unpushed:** `develop` is far ahead of `origin/develop`; no push is authorised, and the plan's "tell the user" step is deferred rather than satisfied (R62).

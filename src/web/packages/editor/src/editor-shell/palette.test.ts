@@ -2,6 +2,7 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import {
   applyShellPalette,
+  clearShellChoice,
   DEFAULT_SHELL_PALETTE,
   readShellChoice,
   resolveShellPalette,
@@ -35,6 +36,19 @@ describe("shell palette", () => {
     expect(readShellChoice(localStorage)).toBeUndefined();
     writeShellChoice(localStorage, "moss");
     expect(readShellChoice(localStorage)).toBe("moss");
+  });
+
+  /** "Follow the system" is a state, and it is reached by removing the key:
+   *  a writer that stored the OS's current palette instead would pin it, so the
+   *  shell would stop following the moment the OS changed. */
+  it("returns to following the OS when the choice is cleared", () => {
+    writeShellChoice(localStorage, "ember");
+    expect(readShellChoice(localStorage)).toBe("ember");
+
+    clearShellChoice(localStorage);
+
+    expect(readShellChoice(localStorage)).toBeUndefined();
+    expect(resolveShellPalette(undefined, true)).toBe("graphite");
   });
 
   it("ignores a stored value that is not a palette", () => {

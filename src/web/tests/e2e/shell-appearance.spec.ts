@@ -3,8 +3,8 @@ import { captureVisualReview } from "./editor-canvas.js";
 import { openPane } from "./editor-rail.js";
 import {
   choosePalette,
+  openAppearance,
   openShell,
-  PALETTE_POPUP,
   PALETTES,
 } from "./shell-palette.js";
 import { isDesktopSurface } from "./surface.js";
@@ -21,10 +21,11 @@ import { isDesktopSurface } from "./surface.js";
  * stylesheet (`editor-shell.tokens.test.ts`); the half that needs a real
  * cascade is here.
  *
- * The palettes are driven through `localStorage` and a reload rather than
- * through the menu. The menu is a Base UI popup whose items are portalled out of
- * `#app`, so driving six palettes through it would test the portal twice per
- * palette and make a failure ambiguous between the two.
+ * The palettes are driven through §7's settings modal, which is the only route
+ * an author has to them now. That modal is a Base UI popup portalled out of
+ * `#app`, so driving a palette through it tests the portal as well as the
+ * palette — which is why the portal has a case of its own rather than being
+ * asserted again inside every other one.
  */
 
 /** The editor, with the Document pane open.
@@ -54,6 +55,11 @@ async function openEditor(page: Page): Promise<void> {
  *
  * `documentInput` resolves through the same legacy rule and is Base UI's hidden
  * value-carrier `input` behind a select root, not a surface an author types in.
+ *
+ * `header` is the shell chrome the palette paints, and it is named for the
+ * surface rather than for the control that used to sit on it: the palette chip
+ * left the header for §7's Appearance tab, so the chip is no longer a surface
+ * that is on screen for a reader to measure.
  */
 async function shellColours(page: Page): Promise<Record<string, string>> {
   return page.evaluate(() => {
@@ -62,7 +68,7 @@ async function shellColours(page: Page): Promise<Record<string, string>> {
       return node === null ? "" : getComputedStyle(node).backgroundColor;
     };
     return {
-      paletteTrigger: read("[data-vigilia-palette]"),
+      header: read(".editor-shell-header"),
       documentInput: read(".editor-shell-panel input"),
       documentSelect: read('.editor-shell-panel [role="combobox"]'),
       stage: read(".editor-shell-stage"),
@@ -111,45 +117,43 @@ test.describe("shell palettes", () => {
     ).toEqual([]);
   });
 
-  test("a portalled popup carries the palette in force", async ({
+  test("a portalled surface carries the palette in force", async ({
     page,
   }, testInfo) => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
-    // Six palettes, each opening and dismissing a popup, is past the 30s
+    // Six palettes, each opening and dismissing the modal, is past the 30s
     // default here. The other sweeps stay inside it.
     test.setTimeout(90_000);
 
     await openEditor(page);
     for (const palette of PALETTES) {
       await choosePalette(page, palette);
-      await page.locator("[data-vigilia-palette]").click();
-      const popup = page.locator(PALETTE_POPUP);
-      await expect(popup).toBeVisible();
+      const dialog = await openAppearance(page);
 
-      // The popup is a sibling of `#app`, not a descendant — the reason this
+      // The modal is a sibling of `#app`, not a descendant — the reason this
       // failed under every non-editorial palette while the chrome beside it was
       // correct. Asserted rather than assumed, so the check keeps meaning what
       // it says if the portal target ever changes.
-      const portalled = await popup.evaluate(
+      const portalled = await dialog.evaluate(
         (node) => document.getElementById("app")?.contains(node) === false,
       );
-      expect(portalled, "the popup left #app, which is the whole case").toBe(
+      expect(portalled, "the modal left #app, which is the whole case").toBe(
         true,
       );
 
-      const [popupBackground, headerBackground] = await Promise.all([
-        popup.evaluate((node) => getComputedStyle(node).backgroundColor),
+      const [dialogBackground, headerBackground] = await Promise.all([
+        dialog.evaluate((node) => getComputedStyle(node).backgroundColor),
         page
           .locator(".editor-shell-header")
           .evaluate((node) => getComputedStyle(node).backgroundColor),
       ]);
       expect(
-        popupBackground,
-        `the ${palette} popup does not match its chrome`,
+        dialogBackground,
+        `the ${palette} modal does not match its chrome`,
       ).toBe(headerBackground);
 
       await page.keyboard.press("Escape");
-      await expect(popup).toBeHidden();
+      await expect(dialog).toBeHidden();
     }
   });
 
@@ -164,11 +168,11 @@ test.describe("shell palettes", () => {
     // behind a peach ring.
     await openEditor(page);
     await choosePalette(page, "graphite");
-    await page.locator("[data-vigilia-palette]").click();
-    const popup = page.locator(PALETTE_POPUP);
-    await expect(popup).toBeVisible();
+    const dialog = await openAppearance(page);
+    const group = dialog.getByRole("radiogroup");
+    await expect(group).toBeVisible();
 
-    const chips = await popup.evaluate((node) =>
+    const chips = await group.evaluate((node) =>
       [...node.querySelectorAll(".editor-shell-palette-swatch")].map(
         (chip) => ({
           palette: chip.getAttribute("data-shell-palette"),
@@ -227,11 +231,9 @@ test.describe("shell palettes", () => {
 
     await openEditor(page);
     await choosePalette(page, "graphite");
-    await page.locator("[data-vigilia-palette]").click();
-    const popup = page.locator(PALETTE_POPUP);
-    await expect(popup).toBeVisible();
+    const dialog = await openAppearance(page);
 
-    const [inside, chip, live] = await popup.evaluate((node) => {
+    const [inside, chip, live] = await dialog.evaluate((node) => {
       const ember = node.querySelector<HTMLElement>(
         '[data-shell-palette="ember"]',
       );
@@ -405,15 +407,20 @@ test.describe("shell palettes", () => {
     // arrives with nothing stored and only this one depends on that.
     await openEditor(page);
 
-    await expect(page.locator("[data-vigilia-palette]")).toHaveText(
-      "editorial",
-    );
     await expect(page.locator("html")).toHaveAttribute(
       "data-shell-palette",
       "editorial",
     );
+    // And the tab agrees with the attribute rather than holding a default of
+    // its own: the row that reads as chosen is the one the shell applied.
+    const dialog = await openAppearance(page);
+    await expect(
+      dialog.getByRole("radio", { name: "editorial", exact: true }),
+    ).toHaveAttribute("aria-checked", "true");
+    await page.keyboard.press("Escape");
+
     const colours = await shellColours(page);
-    expect(colours.paletteTrigger).not.toBe("rgba(0, 0, 0, 0)");
+    expect(colours.header).not.toBe("rgba(0, 0, 0, 0)");
   });
 
   /** The OS is a fallback, and a choice outranks it.

@@ -43,7 +43,6 @@ import {
   systemShellPalette,
   watchSystemAppearance,
 } from "./palette.js";
-import { PaletteMenu } from "./palette-menu.js";
 import { Pane } from "./pane.js";
 import { PublishControl } from "./publish-control.js";
 import { PublishIndicator } from "./publish-indicator.js";
@@ -574,6 +573,13 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
 
   function Shell(): React.JSX.Element {
     const [palette, setPalette] = useState(initial);
+    /** Whether the OS is still choosing. Initialized from storage — the same
+     *  question `createShellLayout` asked for `initial` — and moved from there
+     *  by the Appearance tab, which owns the choice and writes both this and
+     *  storage in one step. */
+    const [following, setFollowing] = useState(
+      storage === undefined || readShellChoice(storage) === undefined,
+    );
     const [slot, setSlot] = useState<RailSlot>("composition");
     const [collapsed, setCollapsed] = useState(false);
     /** §7's settings modal, opened by the rail's gear. Local state, like the
@@ -614,23 +620,20 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
 
     /** The OS gets a vote only while the author has not cast one.
      *
-     *  The predicate is re-read here rather than the listener being detached on
-     *  choose: the two are the same condition, and an effect that depended on
-     *  the choice would either re-subscribe on every palette or close over a
-     *  stale one. `readShellChoice` asks storage, which is where "has the author
-     *  chosen" actually lives — the picker writes there before it calls back. */
-    useEffect(
-      () =>
-        watchSystemAppearance((prefersDark) => {
-          if (storage !== undefined && readShellChoice(storage) !== undefined) {
-            return;
-          }
-          const next = systemShellPalette(prefersDark);
-          applyShellPalette(next);
-          setPalette(next);
-        }),
-      [],
-    );
+     *  `following` is the same condition `readShellChoice` answers, held as the
+     *  state the Appearance tab's toggle is: it is written where the choice is,
+     *  so the two cannot disagree, and it holds when the browser refused its
+     *  storage — where a storage read would call every session choice "no
+     *  choice" and let the OS overrule it. The subscription is armed only while
+     *  following, so a palette change re-renders nothing here. */
+    useEffect(() => {
+      if (!following) return;
+      return watchSystemAppearance((prefersDark) => {
+        const next = systemShellPalette(prefersDark);
+        applyShellPalette(next);
+        setPalette(next);
+      });
+    }, [following]);
 
     /** The slot already showing closes the pane; any other slot — and the
      *  closed one itself — shows it. The canvas is what an author works in, so
@@ -696,18 +699,15 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
       <div className="editor-shell">
         {/* A full-width strip, not a floating card: the header is the window's
             top edge, and §7.1 gives it document- and editor-level actions only.
-            The brand, the three menus and the palette sit left; the publish
-            control is the editor's one filled accent button, on the right. No
-            tagline and no document readout — a per-document fact belongs on the
-            canvas (§7.5), and the readout only grew with the LAN. */}
+            The brand and the three menus sit left; the publish control is the
+            editor's one filled accent button, on the right. No tagline and no
+            document readout — a per-document fact belongs on the canvas (§7.5),
+            and the readout only grew with the LAN. The shell palette is not
+            here either: §7 makes it a set-once choice and it lives in
+            Settings, at the accepted cost of no at-a-glance readout. */}
         <header className="editor-shell-header">
           <strong>{uiCopy.brand}</strong>
           <ShellMenuBar store={store} getView={getView} />
-          <PaletteMenu
-            storage={storage}
-            palette={palette}
-            onChange={setPalette}
-          />
           <PublishControl
             session={store.bridge?.session}
             publish={publish}
@@ -823,6 +823,10 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
               open={settingsOpen}
               onOpenChange={setSettingsOpen}
               storage={storage}
+              palette={palette}
+              following={following}
+              onPalette={setPalette}
+              onFollowing={setFollowing}
             />
           </main>
           <aside className="editor-shell-inspector editor-glass">

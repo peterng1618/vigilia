@@ -114,6 +114,22 @@ export const uiCopy = {
     keyboard: "Keyboard",
     about: "About",
     close: "Close",
+    /** §7's Appearance tab. `palette` is the name the header chip's trigger
+        already used for this same choice — the trigger said
+        `${palette}: ${value}` — so the surface reads the same after the move
+        rather than acquiring a second word for one thing. */
+    palette: "Shell palette",
+    followSystem: "Follow the system",
+    /** What following does, and what turning it off means. Not the refusal
+        path: nobody is blocked here, so this is the `hint` (invisible to the
+        eye, read by a screen reader and by the row's tooltip). */
+    followSystemHint:
+      "Use the palette the operating system asks for, and follow it when it changes. Choosing a palette above turns this off.",
+    /** The same fact where the browser refused its own storage: the choice is
+        real and it will not survive a reload, which is worth saying rather
+        than leaving to be discovered. */
+    followSystemSessionOnly:
+      "This browser is not keeping editor settings, so the choice lasts until the editor is reloaded.",
   },
   /** Selection inspector field labels. */
   inspectorFields: {
@@ -488,7 +504,6 @@ export const uiCopy = {
       "3:4": "3:4",
     } satisfies Record<DisplayLensId, string>,
   },
-  palette: "Shell palette",
   /** Chart family labels, shared by the Add pane, the canvas context menu and
    *  the layer row's role. */
   chartFamilies: chartFamilyLabels,

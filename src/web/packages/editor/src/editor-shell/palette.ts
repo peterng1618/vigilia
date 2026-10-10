@@ -56,6 +56,17 @@ export function writeShellChoice(
   storage.setItem(storageKey, palette);
 }
 
+/** Removes the author's choice, which is what hands the palette back to the OS.
+ *
+ *  `readShellChoice` already distinguishes "no choice" (`undefined`, the OS may
+ *  speak) from a stored value, and until now nothing could reach that state — a
+ *  choice was only ever replaced by another one. Deleting the key is the whole
+ *  of "follow the system again", and the state the reader needs no new spelling
+ *  for. */
+export function clearShellChoice(storage: Storage): void {
+  storage.removeItem(storageKey);
+}
+
 /** The OS preference, as a boolean. `matchMedia` is absent in jsdom and in any
  *  non-browser host, and an absent API is not a preference for dark. */
 export function prefersDarkAppearance(): boolean {

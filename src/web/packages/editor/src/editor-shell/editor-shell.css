@@ -663,27 +663,6 @@ body,
   font-size: 11px;
   opacity: 0.7;
 }
-/* The shell palette control. It is a trigger, not a `<select>`, so it needs
-   the same surface the other header controls draw on — the old label-and-select
-   in the Settings pane was styled by the pane's own control rules, which the
-   control no longer lives inside. */
-.editor-shell-palette {
-  display: flex;
-  align-items: center;
-  gap: 7px;
-  padding: 6px 10px;
-  border: 1px solid var(--shell-edge);
-  border-radius: 8px;
-  background: var(--vigilia-control-bg);
-  color: var(--shell-text);
-  cursor: pointer;
-  font: inherit;
-}
-.editor-shell-palette:hover,
-.editor-shell-palette[data-popup-open] {
-  border-color: var(--shell-accent);
-  color: var(--shell-accent);
-}
 /* The swatch is a chip of the palette it names, painted from that palette's
    own `--shell-*` tokens through `data-shell-palette` rather than from a colour
    table here: `palette.ts` is the owner of which palettes exist, and a chip that
@@ -702,23 +681,6 @@ body,
   border: 1px solid var(--shell-edge);
   background: var(--shell-surface);
   box-shadow: inset 0 0 0 3px var(--shell-accent);
-}
-/* The popup's rows are blocks by default, which would put the tick, the chip and
-   the name on separate lines; the palette row is the one with three parts. */
-.editor-shell-menu-popup [role="menuitemradio"].editor-shell-palette-item {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-.editor-shell-menu-check {
-  display: inline-block;
-  width: 13px;
-  /* The tick reserves its width whether or not it is showing, so the names do
-     not shift sideways as the palette changes. */
-  visibility: hidden;
-}
-.editor-shell-menu-check[data-checked] {
-  visibility: visible;
 }
 .editor-shell-primary {
   margin-left: auto;

@@ -1,7 +1,10 @@
 // @vitest-environment jsdom
+
+import { RadioGroup } from "@base-ui/react/radio-group";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeAll, expect, it, vi } from "vitest";
+import { ControlChoiceRow } from "./control-choice-row.js";
 import { ControlIconButton } from "./control-icon-button.js";
 import { ControlNumber } from "./control-number.js";
 import { ControlSegmented } from "./control-segmented.js";
@@ -24,13 +27,14 @@ import { InspectorSection } from "./inspector-section.js";
  * browser fixture, not to this file.
  */
 
-// Base UI's popups need three browser APIs jsdom has none of — the same three
-// `palette-menu.dom.test.tsx` supplies, for the same reason: floating-ui
+// Base UI's popups need three browser APIs jsdom has none of: floating-ui
 // observes its anchor, the popup waits for its own open transition, and it asks
 // the selector engine for `:modal`/`:popover-open`, which jsdom parses slowly
 // enough (about 0.5s a call) to dominate the file. The fourth is the switch's:
 // it re-dispatches a click through a `PointerEvent` to carry modifier state,
-// and jsdom has never had one.
+// and jsdom has never had one. Each test file that mounts a primitive supplies
+// its own — there is no shared harness for it here, so a file cannot inherit a
+// shim that was deleted under it.
 globalThis.ResizeObserver ??= class {
   observe(): void {}
   unobserve(): void {}
@@ -250,6 +254,15 @@ it("gives every control a programmatic name and an id", async () => {
       <ControlIconButton label="Delete layer" onClick={() => {}}>
         <span />
       </ControlIconButton>
+      {/* A choice row is a radio and needs its group, so it is mounted the way
+          the Appearance tab mounts it rather than standing alone. */}
+      <RadioGroup value="editorial" onValueChange={() => {}}>
+        <ControlChoiceRow
+          label="Editorial"
+          value="editorial"
+          swatch={<span />}
+        />
+      </RadioGroup>
     </>,
   );
 
@@ -262,6 +275,7 @@ it("gives every control a programmatic name and an id", async () => {
     "Align",
     "Opacity",
     "Delete layer",
+    "Editorial",
   ]) {
     expect(labelled(name).id, `${name} has no id to be named by`).not.toBe("");
   }
@@ -270,6 +284,7 @@ it("gives every control a programmatic name and an id", async () => {
   expect(labelled("Glass").tagName).toBe("BUTTON");
   expect(labelled("Delete layer").tagName).toBe("BUTTON");
   expect(labelled("Opacity").tagName).toBe("INPUT");
+  expect(labelled("Editorial").tagName).toBe("BUTTON");
 });
 
 it("gives two instances of one field distinct ids", async () => {

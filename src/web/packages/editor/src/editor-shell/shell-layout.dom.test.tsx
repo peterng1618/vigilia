@@ -178,11 +178,13 @@ it("mounts the editorial palette, menus, rail, inspector and dock hosts", () => 
   // saying the rest existed. Asserting its absence is the point — a test that
   // only checked the toolbar would not have noticed it return.
   expect(root.textContent).not.toContain("Arrange");
-  // The palette moved from the Settings pane to the header, and is a trigger
-  // rather than a select now; it is still reachable and still named.
+  // The palette chip left the header for Settings (§7), and the header is not
+  // allowed to grow a second route back to it: the gear is the only one. The
+  // attribute it used to write is still what paints the shell, asserted above.
   expect(
     root.querySelector(".editor-shell-header [data-vigilia-palette]"),
-  ).not.toBeNull();
+    "a palette control is back in the header",
+  ).toBeNull();
 
   layout.destroy();
 });

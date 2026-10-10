@@ -1,6 +1,7 @@
 import { expect, type Page, test } from "@playwright/test";
 import { chooseIn } from "./control-set.js";
 import { openPane } from "./editor-rail.js";
+import { openAppearance } from "./shell-palette.js";
 import { isDesktopSurface } from "./surface.js";
 
 /**
@@ -66,10 +67,21 @@ const DOCUMENT_CONTROLS = [
   "[data-vigilia-artboard-height]",
 ];
 
-/** The header's shell palette, which is not one of the three panels but lost
-    its name when the `<select aria-label="Shell palette">` became a menu: the
-    trigger announces its own content, and its content is the current value. */
-const HEADER_CONTROL = "[data-vigilia-palette]";
+/** §7's Appearance tab, which is not one of the three panels either.
+ *
+ *  This entry is the audit following a control rather than widening its
+ *  contract. It was the header's palette chip, which lost its name when the
+ *  `<select aria-label="Shell palette">` became a menu — the trigger announced
+ *  its own content, and its content was the current value. The chip has since
+ *  left the header for the modal, and the six choice rows are what replaced it:
+ *  the surface still exists and still has to be named, so the entry moves to it
+ *  rather than being retired over a control nobody can find any more. The
+ *  follow-the-system toggle came with it, because one surface moved and the
+ *  other arrived beside it; nothing else on the modal is added here. */
+const APPEARANCE_CONTROLS = [
+  "[data-vigilia-palette-choice]",
+  "[data-vigilia-follow-system]",
+];
 
 /** The name Chromium computes for a control, or "" when it computes none.
     `ariaSnapshot` renders Playwright's own accessible-name engine, whose
@@ -133,9 +145,14 @@ test.describe("the settings panels name every control", () => {
     // accessibility tree and measuring it there would report a name it does
     // not announce. Tokens is open from the setup.
     await audit(TOKENS_CONTROLS);
-    await audit([HEADER_CONTROL]);
     await openPane(page, "Document");
     await audit(DOCUMENT_CONTROLS);
+    // Last, because an open modal is modal: the controls behind it are inert
+    // and the panes' own audit above measures them as an author reaches them.
+    const dialog = await openAppearance(page);
+    await audit(APPEARANCE_CONTROLS);
+    await page.keyboard.press("Escape");
+    await expect(dialog).toBeHidden();
 
     // The gradient, the delete controls and every field really rendered: a
     // short list would mean the audit passed by not looking.

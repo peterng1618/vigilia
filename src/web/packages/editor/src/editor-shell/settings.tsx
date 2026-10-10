@@ -1,7 +1,19 @@
+import { RadioGroup } from "@base-ui/react/radio-group";
 import { Tabs } from "@base-ui/react/tabs";
 import { useEffect, useRef } from "react";
+import { ControlChoiceRow } from "../components/ui/control-choice-row.js";
+import { ControlToggle } from "../components/ui/control-toggle.js";
 import { Dialog } from "../components/ui/dialog.js";
 import { uiCopy } from "../ui-copy.js";
+import {
+  applyShellPalette,
+  clearShellChoice,
+  prefersDarkAppearance,
+  type ShellPalette,
+  shellPalettes,
+  systemShellPalette,
+  writeShellChoice,
+} from "./palette.js";
 import { SETTINGS_TRIGGER_ID } from "./rail.js";
 
 /** §7's three tabs, in the order the spec's table names them. One owner of
@@ -15,6 +27,116 @@ const SETTINGS_TABS: readonly SettingsTab[] = [
   "about",
 ];
 
+/** The id the palette group is named by, kept out of the shell's other ids. */
+const PALETTE_GROUP_ID = "vigilia-settings-palette";
+
+/** §7's Appearance tab: the six shell palettes, and follow-the-system.
+ *
+ *  The six are **choice rows in one radio group** rather than a `Segmented`,
+ *  which bible §5 sizes at 2–4 labels: six lifted segments is a control the
+ *  bible does not draw. A grid is layout, and the group's own keyboard model
+ *  still walks the rows in reading order, so a narrower dialog changes the
+ *  columns and not the arrow keys.
+ *
+ *  The swatch is the shell's, not the control set's: it carries the
+ *  `data-shell-palette` of the palette it NAMES, which is what makes a chip
+ *  repaint as its own palette rather than inherit the one in force (`0035`).
+ *  `ControlChoiceRow` takes it as a node for exactly that reason.
+ *
+ *  The write is here, in the tab, exactly where the header menu that this
+ *  replaces made it: `palette.ts` is the mechanism's owner and the shell owns
+ *  the OS subscription, but "this click is a choice" is the surface's, and a
+ *  shell that had to hold a second copy of it could drift from this one. */
+function AppearanceTab({
+  storage,
+  palette,
+  following,
+  onPalette,
+  onFollowing,
+}: {
+  /** `undefined` where the browser refuses local storage; the choice then holds
+   *  for the session rather than refusing to be made. */
+  readonly storage: Storage | undefined;
+  readonly palette: ShellPalette;
+  readonly following: boolean;
+  readonly onPalette: (next: ShellPalette) => void;
+  readonly onFollowing: (next: boolean) => void;
+}): React.JSX.Element {
+  /** The three steps the choice has always taken, in the order `0035` settled:
+   *  storage first (it is what stops the OS having a vote), then the attribute
+   *  every palette block and every portalled surface reads, then the shell's
+   *  live state. `applyShellPalette` is deliberately not optional — a palette
+   *  applied to React state alone leaves a portalled popup painting the old one,
+   *  which is the defect `0035` closed. */
+  const choose = (next: ShellPalette): void => {
+    if (storage !== undefined) writeShellChoice(storage, next);
+    applyShellPalette(next);
+    onPalette(next);
+    onFollowing(false);
+  };
+
+  /** Both directions. Turning following on deletes the stored choice — that
+   *  key's absence is what "no choice" means to `readShellChoice` — and
+   *  resolves the OS at once, so nothing waits for a media query to change.
+   *  Turning it off pins what is already resolved: the author keeps the palette
+   *  they were looking at rather than the shell jumping to the default. */
+  const follow = (next: boolean): void => {
+    onFollowing(next);
+    if (next) {
+      if (storage !== undefined) clearShellChoice(storage);
+      const resolved = systemShellPalette(prefersDarkAppearance());
+      applyShellPalette(resolved);
+      onPalette(resolved);
+      return;
+    }
+    if (storage !== undefined) writeShellChoice(storage, palette);
+  };
+
+  return (
+    <>
+      <h3 id={PALETTE_GROUP_ID}>{uiCopy.settings.palette}</h3>
+      {/* `value`/`onValueChange` rather than a `checked` per row: the group is
+          the one owner of which palette is in force, so the six rows cannot
+          disagree with each other or with the shell's own state. */}
+      <RadioGroup
+        value={palette}
+        onValueChange={choose}
+        aria-labelledby={PALETTE_GROUP_ID}
+        className="mt-[var(--space-8)] grid grid-cols-2 gap-[var(--space-6)]"
+      >
+        {shellPalettes.map((entry) => (
+          <ControlChoiceRow
+            key={entry}
+            label={entry}
+            value={entry}
+            data={{ "data-vigilia-palette-choice": entry }}
+            swatch={
+              <span
+                className="editor-shell-palette-swatch"
+                data-shell-palette={entry}
+                aria-hidden
+              />
+            }
+          />
+        ))}
+      </RadioGroup>
+      <div className="mt-[var(--space-14)]">
+        <ControlToggle
+          label={uiCopy.settings.followSystem}
+          checked={following}
+          hint={
+            storage === undefined
+              ? uiCopy.settings.followSystemSessionOnly
+              : uiCopy.settings.followSystemHint
+          }
+          data={{ "data-vigilia-follow-system": "" }}
+          onChange={follow}
+        />
+      </div>
+    </>
+  );
+}
+
 /** The settings modal the rail's gear opens.
  *
  *  Base UI's `Dialog` is modal by default, so focus is trapped and the page
@@ -25,17 +147,29 @@ const SETTINGS_TABS: readonly SettingsTab[] = [
  *  than a hand-rolled `role="tablist"`, because the arrow-key navigation and
  *  the `aria-selected`/`aria-controls` wiring are the primitive's job (0038).
  *
- *  The tab bodies are empty here: plan 5's later tasks fill Appearance,
- *  Keyboard and About. `storage` is the browser-local store those tabs write
- *  through — the same one the palette uses — threaded now so the modal's
- *  signature does not change under its callers when the bodies land. */
+ *  Appearance is filled here; Keyboard and About are plan 5's later tasks. The
+ *  palette is the shell's own state rather than the tab's, because the shell
+ *  holds the `watchSystemAppearance` subscription the choice has to reach: the
+ *  tab renders the choice and owns none of it. */
 export function Settings(props: {
   readonly open: boolean;
   readonly onOpenChange: (open: boolean) => void;
   /** Passed straight through to the tabs, which own nothing of their own. */
   readonly storage: Storage | undefined;
+  readonly palette: ShellPalette;
+  readonly following: boolean;
+  readonly onPalette: (next: ShellPalette) => void;
+  readonly onFollowing: (next: boolean) => void;
 }): React.JSX.Element {
-  const { open, onOpenChange } = props;
+  const {
+    open,
+    onOpenChange,
+    storage,
+    palette,
+    following,
+    onPalette,
+    onFollowing,
+  } = props;
   // Whether the modal has been open at all, so closing the *initial* closed
   // state does not fire a focus restore on mount.
   const wasOpen = useRef(false);
@@ -74,7 +208,17 @@ export function Settings(props: {
             key={tab}
             value={tab}
             className="editor-shell-settings-panel"
-          />
+          >
+            {tab === "appearance" ? (
+              <AppearanceTab
+                storage={storage}
+                palette={palette}
+                following={following}
+                onPalette={onPalette}
+                onFollowing={onFollowing}
+              />
+            ) : null}
+          </Tabs.Panel>
         ))}
       </Tabs.Root>
     </Dialog>

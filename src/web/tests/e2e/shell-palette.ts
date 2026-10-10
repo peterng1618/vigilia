@@ -1,13 +1,15 @@
-import { expect, type Page } from "@playwright/test";
+import { expect, type Locator, type Page } from "@playwright/test";
 
 /** The editor, served by the preview projects. */
 export const EDITOR = "http://127.0.0.1:4174/";
 
-/** The palette popup, named rather than class-matched: the View menu carries
- *  the same class and stays mounted-but-closed beside it, so the class alone is
- *  a strict-mode violation the moment two of them exist. */
-export const PALETTE_POPUP =
-  '.editor-shell-menu-popup[aria-label="Shell palette"]';
+/** The rail's gear: the only route to the shell palette since §7 moved it out of
+ *  the header. Named by the class only that control carries. */
+export const SETTINGS_GEAR = ".editor-shell-rail-settings";
+
+/** §7's modal, read by its own name rather than by class — the reference sheet
+ *  is a Base UI dialog too. */
+export const SETTINGS_DIALOG = { name: "Settings" } as const;
 
 /** Read from the same list the editor uses, so a palette added there cannot
  *  escape a sweep over it. Kept as a literal because a spec file cannot import
@@ -24,9 +26,10 @@ export const PALETTES = [
 
 export type Palette = (typeof PALETTES)[number];
 
-/** The editor, loaded once. A spec then switches palettes through the menu,
- *  which is the route an author takes and costs no reload — the editor boots a
- *  whole Fabric session per load, and six of those is past the test budget. */
+/** The editor, loaded once. A spec then switches palettes through the settings
+ *  modal, which is the route an author takes and costs no reload — the editor
+ *  boots a whole Fabric session per load, and six of those is past the test
+ *  budget. */
 export async function openShell(page: Page): Promise<void> {
   await page.goto(EDITOR);
   await expect(
@@ -34,27 +37,36 @@ export async function openShell(page: Page): Promise<void> {
   ).toBeVisible();
 }
 
-/** Choose a palette the way an author does: open the menu, click the entry.
+/** §7's Appearance tab, open, returning the modal it is in.
  *
- *  The menu is closed with Escape rather than left to the selection: Base UI
- *  keeps a radio menu open so several entries can be compared before dismissing
- *  it, so selecting is not what closes it. Asserts the attribute rather than
- *  trusting the click, so a menu that failed to apply the choice fails here
- *  rather than six assertions later against whatever was in force. */
+ *  Base UI tabs keep the inactive panels out of the DOM, so a caller that wants
+ *  the six swatches has to be on the tab as well as in the modal. Idempotent: a
+ *  caller that already opened the modal — or one that opened it for a different
+ *  tab — lands on the same surface. */
+export async function openAppearance(page: Page): Promise<Locator> {
+  const dialog = page.getByRole("dialog", SETTINGS_DIALOG);
+  if (!(await dialog.isVisible())) {
+    await page.locator(SETTINGS_GEAR).click();
+    await expect(dialog).toBeVisible();
+  }
+  await dialog.getByRole("tab", { name: "Appearance" }).click();
+  return dialog;
+}
+
+/** Choose a palette the way an author does: the gear, the Appearance tab, the
+ *  row. Asserts the attribute rather than trusting the click, so a modal that
+ *  failed to apply the choice fails here rather than six assertions later
+ *  against whatever was in force. */
 export async function choosePalette(
   page: Page,
   palette: Palette,
 ): Promise<void> {
-  await page.locator("[data-vigilia-palette]").click();
-  const popup = page.locator(PALETTE_POPUP);
-  await expect(popup).toBeVisible();
-  await popup
-    .getByRole("menuitemradio", { name: palette, exact: true })
-    .click();
+  const dialog = await openAppearance(page);
+  await dialog.getByRole("radio", { name: palette, exact: true }).click();
   await expect(page.locator("html")).toHaveAttribute(
     "data-shell-palette",
     palette,
   );
   await page.keyboard.press("Escape");
-  await expect(popup).toBeHidden();
+  await expect(dialog).toBeHidden();
 }
