@@ -25,9 +25,7 @@ export type ControlOption = {
 /** Runs of consecutive options sharing a group, in the order offered. A change
  *  of group starts a new run, so an ungrouped option after a grouped one is its
  *  own flat entry rather than joining the run above it. */
-function optionRuns(
-  options: readonly ControlOption[],
-): {
+function optionRuns(options: readonly ControlOption[]): {
   readonly group: string | undefined;
   readonly options: readonly ControlOption[];
 }[] {
