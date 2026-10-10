@@ -30,7 +30,7 @@
 
 Five failure modes this change implies and no single task's tests would catch. Each is pinned to the task that owns the code.
 
-**Execution order.** The tasks are numbered in writing order, which is not execution order. Task 8 runs **next**, before Task 2: it answers a defect the user reported on 2026-10-10, it is independent of the shell's composition, and it must land before Task 7 turns the ratchet on over the stylesheet it edits. After it, the order is 2 → 3 → 4 → 5 → 6 → 7.
+**Execution order.** The tasks are numbered in writing order, which is not execution order. **Task 9 runs first**: everything else reads the mockups, and the user asked on 2026-10-10 for them to show today's surfaces without annotation, so they are refreshed before the instrument is re-pointed. Then **Task 8**, which answers a defect the user reported and must land before Task 7 turns the ratchet on over the stylesheet it edits. After it, the order is 2 → 3 → 4 → 5 → 6 → 7.
 
 1. **A flush shell can detach a control from what it controls.** The 8px gap is what visually separates the rail, both panes and the stage today; removing it is a geometry change to a layout that also holds the pane toggles, the rail slots and the canvas clusters. A hairline boundary that runs through a control's own hit area, or a toggle that now abuts the region it acts on, is a usability defect no geometry assertion sees. **Task 2** carries the browser walkthrough: toggle each pane, drag the inspector, click the rail's four slots and the dock, with the capture read.
 2. **Making chrome opaque moves every measured contrast ratio.** `vg-200` (the resting `--edge` boundary) and `vg-201` (`--warn` text) already pin failures; the whole palette set is a validated system where alpha surfaces composite against a backdrop, and an opaque surface composites against nothing. A palette can pass a geometry check and ship a ratio below §5's floor. **Task 5** carries the six-palette contrast measurement, and the existing `shell-appearance.spec.ts` assertion is amended deliberately rather than deleted.
@@ -360,6 +360,57 @@ Three committed captures already show this defect — `editor-inspector-shape-de
 - [ ] **Step 6: Commit**
 
 Name in the body that this answers the user's report, which of the three measured defects it fixed, and that `vg-098`/`vg-108` are a different concept (text alignment, already verified). Run the whole editor unit suite and record its counts.
+
+---
+
+### Task 9: The drawings show the editor as it is, with nothing explaining it
+
+**Executes first — before Task 8 and before Task 2.** The user asked for it on 2026-10-10: *"Update the mockup with the product surfaces we have today, keeping it original style. Each mockup html shows exactly the editor as it would look in real life, no explanation texts, callouts, etc."* and, asked what wins where the product and the drawing differ in arrangement, ruled **the original drawing**. Everything else in this plan reads these files, so they are refreshed before the instrument is re-pointed at them.
+
+**Outcome:** each of the three mockups renders **one uninterrupted view of the editor** — the surfaces the product actually has today, under their real names and real copy — in the drawing's existing style, with **no** page headings, explanatory paragraphs, specimen captions, callouts, disclaimers or illustrative-placeholder notes anywhere in the file.
+
+**Owning symbols/landmarks:** `docs/design/mockups/editor-shell.html`, `inspector-controls.html`, `inspector-language.html`; `docs/design/mockups/README.md` (its "Shows" column and its **Reviewed reference contract** section both describe specimens that will no longer exist); and, as the sources of what today's surfaces *are*, `packages/editor/src/editor-shell/rail.tsx` + `uiCopy.rail`, the menubar's groups and the publish control, `packages/editor/src/selection-inspector/` (the five sections), the status strip's readouts in `shell-layout.tsx`, `settings.tsx` / `settings-keyboard.tsx`, and `ui-copy.ts` for every string.
+
+**Files:**
+- Modify: the three mockup files
+- Modify: `docs/design/mockups/README.md`
+- Modify: `src/web/tests/e2e/mockup-values.ts` and `src/web/tests/e2e/design-language.spec.ts` — **re-point `PARITY` at the refreshed drawing.** A row whose selector no longer exists is a reader that stopped reading, and the spec must fail rather than pass vacuously.
+
+**Interfaces:**
+- Consumes: the built product and its own copy as the source of content; the existing drawings as the source of style.
+- Produces: three files a person opens in a browser to see the target, and a `PARITY` table whose rows all resolve against them.
+
+- [ ] **Step 1: Enumerate today's surfaces from the code, not from the old drawing**
+
+Write the list into the report: every surface the editor renders, each with the symbol it comes from. The old drawing is not the source — it predates plans 3–5 and draws at least one surface that no longer exists. Where the drawing and the product disagree about **which** surface exists (a pane, a tab, a rail slot, a menubar group), **the product is right**, because this task is about content. Where they disagree about how a surface is *arranged or styled*, **the drawing is right** (the user's ruling), and the product's version is this plan's defect to fix.
+
+- [ ] **Step 2: Take the real copy, string by string**
+
+Every label, placeholder, section name, readout and chord comes from `ui-copy.ts` or the owning component. No `System dashboard`, no `CPU card`, no invented counts. Where a value must be shown and the product has none (a telemetry reading with no host), the drawing shows the state the product actually renders — a gap or an em dash, as `publish-control.tsx` does for an unknown host — rather than a plausible number.
+
+- [ ] **Step 3: Remove every word that explains the drawing**
+
+Delete the page title, the subtitle paragraph, the section headings, the `label` eyebrows that caption a specimen, the "specimens stay below the shell for comparison" note, and every parenthetical about what is illustrative. The editor fills the file: no page padding, no page background, no card around the app, no second specimen below it. **The test is whether any text in the file would be absent from a screenshot of the running editor.** Chord marks, tooltips' own words and a pane's own labels stay; anything addressed to the reader goes.
+
+- [ ] **Step 4: Keep the style exactly, and say in the report what you did not change**
+
+The token table at the top of `editor-shell.html`, the flat opaque values, the flush regions and their 1px hairlines, the radii, the type scale, the palette card grid, the settings specimens' vertical navigation and the dock's treatment are all the target and are **copied, not re-derived**. This task changes what is drawn, never how. If a surface cannot be drawn in that style without changing the style, that is a finding for the report, not a change to make.
+
+- [ ] **Step 5: Render all three and read them**
+
+Serve nothing and build nothing: open each file with Playwright at a fixed viewport, screenshot it to a path **outside the repo**, and read the image. Confirm each file shows one editor view, that no explanation is visible, and that nothing has been clipped, overlapped or left at a stray offset by removing the page frame. **Reading the source is not this step** — the drawings were already wrong once while reading correctly.
+
+- [ ] **Step 6: Re-point the instrument, and prove it still fails**
+
+Update `PARITY`'s selectors to the refreshed files, run the parity spec, and confirm it **still reports failures** on the shell as shipped today. A `mockupDeclared` throw on a selector that no longer exists is a failure to fix, not a row to delete: the invariant is that every row resolves *and* the product still disagrees where this plan has not yet fixed it.
+
+- [ ] **Step 7: Update the README, and narrow the clause that caused this**
+
+`README.md`'s "Shows" column and its **Reviewed reference contract** section describe the specimens being deleted. Rewrite them to say what the files now are: the target, drawn from the surfaces the product has, carrying no annotation. Then narrow **"Keeping them current"** — its current clause ("if a surface is rebuilt differently on purpose, capture the new state and replace the mockup file") is the escape hatch that let two plans record divergences and leave the drawing standing, and it now reads: **content is refreshed when the set of surfaces changes; the treatment is the target and is never redrawn from the product.**
+
+- [ ] **Step 8: Commit**
+
+The three files, the README, the re-pointed instrument and their tests together. Tell the user the files changed and that they should open them. Run the whole editor unit suite and record its counts.
 
 ---
 
