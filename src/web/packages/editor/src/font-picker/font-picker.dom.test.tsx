@@ -1,10 +1,10 @@
 // @vitest-environment jsdom
 import { act } from "react";
 import { createRoot } from "react-dom/client";
-import { expect, it, vi } from "vitest";
+import { beforeAll, expect, it, vi } from "vitest";
 import {
-  catalogFaces,
   type CuratedFontFace,
+  catalogFaces,
   fontTrios,
 } from "../font-catalog.js";
 import { queryFaces } from "../font-catalog-query.js";
@@ -14,6 +14,28 @@ import {
 } from "../font-specimen-cache.js";
 import { uiCopy } from "../ui-copy.js";
 import { FontPicker } from "./font-picker.js";
+
+// The picker's choosers are `ControlSelect` — Base UI's select — so opening one
+// needs the three browser APIs jsdom has none of, the same three
+// `preset-list.dom.test.tsx` supplies for the same reason.
+globalThis.ResizeObserver ??= class {
+  observe(): void {}
+  unobserve(): void {}
+  disconnect(): void {}
+} as never;
+Element.prototype.getAnimations ??= (): never[] => [];
+window.PointerEvent ??= MouseEvent as never;
+
+beforeAll(() => {
+  const matches = Element.prototype.matches;
+  Element.prototype.matches = Object.assign(function (
+    this: Element,
+    selector: string,
+  ): boolean {
+    if (selector === ":modal" || selector === ":popover-open") return false;
+    return matches.call(this, selector);
+  }, matches);
+});
 
 /** A cache whose faces all arrive, so a row's specimen is decided by the
  *  component rather than by the fixture. One `Response` per face: three faces
@@ -68,6 +90,110 @@ const rows = (host: HTMLElement): HTMLElement[] => [
 ];
 const families = (host: HTMLElement): string[] =>
   rows(host).map((row) => row.getAttribute("data-vigilia-font-family") ?? "");
+
+/** React and floating-ui schedule outside `act`, so an opened popup is flushed
+ *  with macrotasks rather than one. */
+async function flush(): Promise<void> {
+  for (let round = 0; round < 3; round += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  }
+}
+
+async function press(target: Element, detail = 0): Promise<void> {
+  await act(async () => {
+    target.dispatchEvent(
+      new MouseEvent("click", { bubbles: true, cancelable: true, detail }),
+    );
+  });
+}
+
+/** Base UI commits a list item only when the press that precedes the click
+ *  started on it, so the press is part of the interaction. */
+async function pointerDown(target: Element): Promise<void> {
+  await act(async () => {
+    target.dispatchEvent(
+      new PointerEvent("pointerdown", {
+        bubbles: true,
+        cancelable: true,
+        pointerType: "mouse",
+        button: 0,
+      }),
+    );
+  });
+}
+
+/** Picks the option whose value is `id` from a converted control's own popup —
+ *  by the value the control commits, never by the label, because a trio's label
+ *  and a facet's tag are the catalogue's words. */
+async function chooseIn(
+  host: HTMLElement,
+  control: string,
+  id: string,
+): Promise<void> {
+  // Scoped to this mount, not the document: a case that throws before its
+  // `unmount()` leaves its tree standing, and a document-wide lookup would then
+  // open the leaked picker's control and commit a choice this picker never saw.
+  const trigger = host.querySelector<HTMLElement>(control);
+  if (trigger === null) throw new Error(`no control matches ${control}`);
+  await press(trigger);
+  await flush();
+  const list = trigger.getAttribute("aria-controls");
+  const scope =
+    (list === null ? null : document.getElementById(list)) ?? document;
+  const option = Array.from(scope.querySelectorAll('[role="option"]')).find(
+    (candidate) => candidate.getAttribute("data-vigilia-option") === id,
+  );
+  if (option === undefined) throw new Error(`no option ${id} in ${control}`);
+  await pointerDown(option);
+  await press(option, 1);
+  await flush();
+}
+
+/** The entries a converted control *offers*, read from its opened popup and
+ *  closed again so the caller's next open is an open rather than a toggle.
+ *  Values and words both, because the facet's first entry is the one place the
+ *  id is empty and the word is load-bearing. */
+async function offeredOptions(
+  host: HTMLElement,
+  control: string,
+): Promise<{ readonly id: string; readonly label: string }[]> {
+  const trigger = host.querySelector<HTMLElement>(control);
+  if (trigger === null) throw new Error(`no control matches ${control}`);
+  await press(trigger);
+  await flush();
+  const list = trigger.getAttribute("aria-controls");
+  const scope =
+    (list === null ? null : document.getElementById(list)) ?? document;
+  const offered = Array.from(scope.querySelectorAll('[role="option"]')).map(
+    (option) => ({
+      id: option.getAttribute("data-vigilia-option") ?? "",
+      label: (option.textContent ?? "").trim(),
+    }),
+  );
+  if (offered.length === 0) throw new Error(`${control} opened no list`);
+  await press(trigger);
+  await flush();
+  return offered;
+}
+
+/** The id a converted control has committed, read off the value it prints —
+ *  the read a native `.value` used to give. */
+function chosenId(host: HTMLElement, control: string): string {
+  return (
+    host
+      .querySelector(`${control} [data-vigilia-value]`)
+      ?.getAttribute("data-vigilia-value") ?? ""
+  );
+}
+
+/** The words a control is named by: the label its own row points at, read the
+ *  way a screen reader finds it rather than as the source string. */
+function controlName(host: HTMLElement, trigger: HTMLElement): string {
+  const id = trigger.getAttribute("id");
+  const forLabel =
+    id === null ? null : host.querySelector(`label[for="${id}"]`);
+  return (forLabel?.textContent ?? "").trim();
+}
 
 /**
  * Every row is a specimen, so a row that is not resident is a row the author
@@ -170,17 +296,10 @@ it("says so when a search matches no face", async () => {
  */
 it("clears the other two facets when one is chosen, and says the rule", async () => {
   const { host, unmount } = await setup();
-  const mood = host.querySelector<HTMLSelectElement>(
-    '[data-vigilia-font-facet="mood"]',
-  )!;
-  const useCase = host.querySelector<HTMLSelectElement>(
-    '[data-vigilia-font-facet="useCase"]',
-  )!;
+  const mood = '[data-vigilia-font-facet="mood"]';
+  const useCase = '[data-vigilia-font-facet="useCase"]';
 
-  await act(async () => {
-    mood.value = "versatile";
-    mood.dispatchEvent(new Event("change", { bubbles: true }));
-  });
+  await chooseIn(host, mood, "versatile");
   expect(families(host)).toEqual(
     queryFaces(
       {
@@ -195,14 +314,12 @@ it("clears the other two facets when one is chosen, and says the rule", async ()
       .map((face) => face.family),
   );
 
-  await act(async () => {
-    useCase.value = "blog";
-    useCase.dispatchEvent(new Event("change", { bubbles: true }));
-  });
-  // The mood select is empty again — the click the author just made cleared
-  // it, and a UI that kept it would be lying about the state.
-  expect(mood.value).toBe("");
-  expect(useCase.value).toBe("blog");
+  await chooseIn(host, useCase, "blog");
+  // The mood control is back on "any" — the click the author just made cleared
+  // it, and a UI that kept it would be lying about the state. The "any" entry is
+  // the option that commits the empty id, not the control going blank.
+  expect(chosenId(host, mood)).toBe("");
+  expect(chosenId(host, useCase)).toBe("blog");
   // And the rows are the use-case set, not the 18 faces both sets share.
   expect(families(host)).toEqual([
     "Abril Fatface",
@@ -225,6 +342,40 @@ it("clears the other two facets when one is chosen, and says the rule", async ()
   unmount();
 });
 
+/** "Any" is a real option an author chooses, not a missing value.
+ *
+ *  The brief states it, and it is the one entry whose id is empty — the shape a
+ *  control reads as "nothing selected". It sits first and is named by the kind
+ *  it belongs to, and choosing it is what clears a filter: the list comes back
+ *  unfiltered rather than only the control saying so. */
+it("offers any as a real option on the facet it belongs to, and clears with it", async () => {
+  const { host, unmount } = await setup();
+  const mood = '[data-vigilia-font-facet="mood"]';
+  const offered = await offeredOptions(host, mood);
+  expect(offered[0]).toEqual({
+    id: "",
+    label: uiCopy.panels.fontFacetKinds.mood,
+  });
+  // Non-vacuous: the real tags follow it, so this is a list and not one entry.
+  expect(offered.length).toBeGreaterThan(1);
+
+  await chooseIn(host, mood, "versatile");
+  expect(chosenId(host, mood)).toBe("versatile");
+  await chooseIn(host, mood, "");
+  expect(chosenId(host, mood)).toBe("");
+  // Back to the unfiltered window, so "any" cleared the filter and did not
+  // merely relabel the control.
+  expect(families(host)).toEqual(
+    queryFaces(
+      { search: "", facet: undefined, favoritesFirst: false, sort: "name" },
+      [],
+    )
+      .slice(0, 15)
+      .map((face) => face.family),
+  );
+  unmount();
+});
+
 /** The facet selects are named by what they filter on, not by the field
  *  identifier `CatalogQuery` is keyed on — `useCase` is not a word.
  *
@@ -240,22 +391,23 @@ it("clears the other two facets when one is chosen, and says the rule", async ()
  *  assumed. The component's own map reads `uiCopy.panels.fontFacetKinds`
  *  directly rather than restating the three words, so there is no second copy
  *  for a rename to miss. */
-it("names each facet select after what it filters on", async () => {
+it("names each facet control after what it filters on", async () => {
   const { host, unmount } = await setup();
-  const selects = host.querySelectorAll<HTMLSelectElement>(
+  const triggers = host.querySelectorAll<HTMLElement>(
     "[data-vigilia-font-facet]",
   );
-  // One select per kind the query offers, so a kind added to `FACET_FIELDS`
+  // One control per kind the query offers, so a kind added to `FACET_FIELDS`
   // without a word for it is a red run here rather than an unnamed control.
-  expect(selects).toHaveLength(3);
-  for (const select of selects) {
-    const field = select.getAttribute(
+  expect(triggers).toHaveLength(3);
+  for (const trigger of triggers) {
+    const field = trigger.getAttribute(
       "data-vigilia-font-facet",
     ) as keyof typeof uiCopy.panels.fontFacetKinds;
     const name = uiCopy.panels.fontFacetKinds[field];
-    // Both spellings are the table's own value, read rather than restated.
-    expect(select.getAttribute("aria-label")).toBe(name);
-    expect(select.options[0]!.textContent).toBe(name);
+    // The label the row points at is the table's own value, read rather than
+    // restated; the "any" option is the same word, so the closed control and
+    // its first entry agree.
+    expect(controlName(host, trigger)).toBe(name);
     expect(name).not.toBe(field);
   }
   unmount();
@@ -350,13 +502,7 @@ it("reports a trio apply without applying it itself", async () => {
   const onApplyTrio = vi.fn();
   const { host, unmount } = await setup({ onApplyTrio });
   const target = fontTrios()[7]!;
-  const select = host.querySelector<HTMLSelectElement>(
-    "[data-vigilia-font-trio]",
-  )!;
-  await act(async () => {
-    select.value = target.id;
-    select.dispatchEvent(new Event("change", { bubbles: true }));
-  });
+  await chooseIn(host, "[data-vigilia-font-trio]", target.id);
   await act(async () => {
     host
       .querySelector<HTMLButtonElement>("[data-vigilia-font-trio-apply]")!
@@ -378,6 +524,8 @@ it("carries the three legacy selectors on the elements that do the work", async 
   expect(faceRow.tagName).toBe("BUTTON");
   // Each legacy selector resolves to exactly one element, so a test reaching
   // for it cannot land on an unrelated control.
+  // The chooser is a `ControlSelect` now, and the trigger is what carries the
+  // hook — one element, so a test reaching for it cannot land on a wrapper.
   expect(host.querySelectorAll("[data-vigilia-font-trio]")).toHaveLength(1);
   const apply = host.querySelector<HTMLButtonElement>(
     "[data-vigilia-font-trio-apply]",
@@ -393,7 +541,12 @@ it("carries the three legacy selectors on the elements that do the work", async 
  *
  *  A checkbox inside a `<label>` is named by that label, so the check has to
  *  follow the association in both directions — `<label for>` and a wrapping
- *  `<label>` — or it reports a named control as unnamed. */
+ *  `<label>` — or it reports a named control as unnamed.
+ *
+ *  A converted chooser renders a hidden value carrier — `clip-path`-hidden,
+ *  `tabIndex: -1` and `aria-hidden` by Base UI's construction — which no reader
+ *  announces and no author reaches, the same exclusion
+ *  `accessible-names.dom.test.ts` names. It is skipped here rather than named. */
 it("names every control it renders", async () => {
   const { host, unmount } = await setup();
   const labelText = (element: Element): string => {
@@ -409,9 +562,9 @@ it("names every control it renders", async () => {
     (element.textContent ?? "").trim() !== "" ||
     element.hasAttribute("aria-label") ||
     labelText(element) !== "";
-  const unnamed = [...host.querySelectorAll("button,input,select")].filter(
-    (element) => !named(element),
-  );
+  const unnamed = [...host.querySelectorAll("button,input,select")]
+    .filter((element) => element.getAttribute("aria-hidden") !== "true")
+    .filter((element) => !named(element));
   expect(unnamed.map((element) => element.outerHTML)).toEqual([]);
   // The net has teeth: the favourites checkbox is named by its wrapping label
   // and nothing else, so drop the label and the audit goes red.
@@ -594,11 +747,15 @@ it("holds no pictograph in the controls it authors", async () => {
       : (element.textContent ?? ""),
   );
   expect(authored.filter((text) => /\p{S}/u.test(text))).toEqual([]);
-  // The controls' own text, which is what a `★` button would be named by.
+  // The controls' own text, which is what a `★` button would be named by. A
+  // converted chooser's trigger is excluded: its text is the value it prints
+  // (catalogue data) and the `▼` beside it is the control set's own decoration,
+  // `aria-hidden` and not this component's copy.
   const buttons = [...host.querySelectorAll("button")].filter(
     (button) =>
       !button.hasAttribute("data-vigilia-font-trio-row") &&
-      !button.hasAttribute("data-vigilia-font-face-row"),
+      !button.hasAttribute("data-vigilia-font-face-row") &&
+      button.querySelector("[data-vigilia-value]") === null,
   );
   expect(
     buttons
@@ -658,10 +815,6 @@ it("offers no style control, because no curated face is italic", async () => {
     new Set(["normal"]),
   );
   expect(host.querySelector("[data-vigilia-font-style]")).toBeNull();
-  const styles = [...host.querySelectorAll("select")].flatMap((select) =>
-    [...select.options].map((option) => option.value),
-  );
-  expect(styles).not.toContain("italic");
   unmount();
 });
 
@@ -675,13 +828,7 @@ it("sorts the trio list by what the sort control says", async () => {
   const byName = names();
   expect(byName.length).toBeGreaterThan(1);
 
-  const sort = host.querySelector<HTMLSelectElement>(
-    "[data-vigilia-font-sort]",
-  )!;
-  await act(async () => {
-    sort.value = "family";
-    sort.dispatchEvent(new Event("change", { bubbles: true }));
-  });
+  await chooseIn(host, "[data-vigilia-font-sort]", "family");
   const byFamily = names();
   expect(byFamily).not.toEqual(byName);
   expect(byFamily).toHaveLength(byName.length);

@@ -1,9 +1,13 @@
 import { Star } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import {
+  type ControlOption,
+  ControlSelect,
+} from "../components/ui/control-select.js";
 import type { CuratedFontFace, FontTrio } from "../font-catalog.js";
 import {
-  catalogFacets,
   type CatalogQuery,
+  catalogFacets,
   type FacetField,
   type FontSort,
   queryFaces,
@@ -32,6 +36,21 @@ const LOAD_AHEAD = WINDOW;
  *  own the word, and a rename would leave the control behind. */
 const FACET_COPY: Readonly<Record<FacetField["field"], string>> =
   uiCopy.panels.fontFacetKinds;
+
+/** One facet's choices. The empty id is **"any" as a real option** rather than
+ *  a missing value: it is the first entry an author reads and the one the
+ *  control returns to when a second kind is chosen, which clears this one. The
+ *  count rides on the label the way the upstream tag does, so the author sees
+ *  how many trios a chip reaches before choosing it. */
+function facetOptions(field: FacetField): readonly ControlOption[] {
+  return [
+    { id: "", name: FACET_COPY[field.field] },
+    ...field.options.map((option) => ({
+      id: option.value,
+      name: `${option.value} (${option.count})`,
+    })),
+  ];
+}
 
 /** Favourited is a filled star and unfavourited an outline one, as the layer
  *  row's lock is: `fill` is part of `LucideProps` and overrides Lucide's own
@@ -68,8 +87,10 @@ export interface FontPickerProps {
  * state the host would have to reconcile.
  *
  * A face is applied by clicking its row, so the row is the control that
- * carries `data-vigilia-font-face`; the trio `<select>` and its apply button
- * keep the two selectors the panel's browser tests read.
+ * carries `data-vigilia-font-face`; the trio chooser and its apply button keep
+ * the two selectors the panel's browser tests read. Every chooser is
+ * `ControlSelect`, so each is a keyboard-operable combobox in a well rather
+ * than a hand-authored native control (§2.2).
  */
 export function FontPicker({
   trios,
@@ -228,80 +249,66 @@ export function FontPicker({
         value={search}
         onChange={(event) => setSearch(event.target.value)}
       />
-      <div className="flex gap-1.5">
-        {catalogFacets().map((field) => (
-          <select
-            key={field.field}
-            data-vigilia-font-facet={field.field}
-            aria-label={FACET_COPY[field.field]}
-            className="min-w-0 flex-1"
-            value={facet?.field === field.field ? facet.value : ""}
-            onChange={(event) =>
-              setFacet(
-                event.target.value === ""
-                  ? undefined
-                  : { field: field.field, value: event.target.value },
-              )
-            }
-          >
-            <option value="">{FACET_COPY[field.field]}</option>
-            {field.options.map((option) => (
-              <option key={option.value} value={option.value}>
-                {`${option.value} (${option.count})`}
-              </option>
-            ))}
-          </select>
-        ))}
-      </div>
+      {catalogFacets().map((field) => (
+        <ControlSelect
+          key={field.field}
+          id={`vigilia-font-facet-${field.field}`}
+          label={FACET_COPY[field.field]}
+          data={{ "data-vigilia-font-facet": field.field }}
+          value={facet?.field === field.field ? facet.value : ""}
+          options={facetOptions(field)}
+          // A second kind replaces the first, because the query holds one facet;
+          // the "any" entry is how the author clears the one that is holding.
+          onChange={(id) =>
+            setFacet(id === "" ? undefined : { field: field.field, value: id })
+          }
+        />
+      ))}
       <p className="m-0 text-[11px] opacity-70">
         {uiCopy.panels.fontFacetRule}
       </p>
-      <div className="flex items-center gap-1.5">
-        <select
-          data-vigilia-font-sort=""
-          aria-label={uiCopy.panels.fontSort}
-          value={sort}
-          onChange={(event) => setSort(event.target.value as FontSort)}
-        >
-          <option value="name">{uiCopy.panels.fontSortName}</option>
-          <option value="family">{uiCopy.panels.fontSortFamily}</option>
-        </select>
-        <label className="flex items-center gap-1.5 text-[11px]">
-          <input
-            type="checkbox"
-            checked={favoritesOnly}
-            onChange={(event) => setFavoritesOnly(event.target.checked)}
-          />
-          {uiCopy.panels.fontFavoritesOnly}
-        </label>
-      </div>
-      <div className="flex items-center gap-1.5">
-        <select
-          // `…-font-trio` is the archived plan's selector for the trio chooser,
-          // and the browser tests read it to pick a trio.
-          data-vigilia-font-trio=""
-          aria-label={uiCopy.panels.trio}
-          className="min-w-0 flex-1"
-          value={trioId}
-          onChange={(event) => setTrioId(event.target.value)}
-        >
-          {trios.map((trio) => (
-            <option key={trio.id} value={trio.id}>
-              {trio.name}
-            </option>
-          ))}
-        </select>
-        {/* Two names for one element: this is the trio apply button, and
-          `…-font-apply` is what the archived plan's tests reach for. */}
-        <button
-          type="button"
-          data-vigilia-font-trio-apply=""
-          data-vigilia-font-apply=""
-          onClick={() => onApplyTrio(trioId)}
-        >
-          {uiCopy.panels.applyTrio}
-        </button>
-      </div>
+      <ControlSelect
+        id="vigilia-font-sort"
+        label={uiCopy.panels.fontSort}
+        data={{ "data-vigilia-font-sort": "" }}
+        value={sort}
+        options={[
+          { id: "name", name: uiCopy.panels.fontSortName },
+          { id: "family", name: uiCopy.panels.fontSortFamily },
+        ]}
+        // Anything the control cannot commit as a sort is refused rather than
+        // coerced, so a widened option list cannot write a sort nothing reads.
+        onChange={(id) => setSort(id === "family" ? "family" : "name")}
+      />
+      <label className="flex items-center gap-1.5 text-[11px]">
+        <input
+          type="checkbox"
+          checked={favoritesOnly}
+          onChange={(event) => setFavoritesOnly(event.target.checked)}
+        />
+        {uiCopy.panels.fontFavoritesOnly}
+      </label>
+      <ControlSelect
+        // `…-font-trio` is the archived plan's selector for the trio chooser,
+        // and the browser tests read it to pick a trio.
+        id="vigilia-font-trio"
+        label={uiCopy.panels.trio}
+        data={{ "data-vigilia-font-trio": "" }}
+        value={trioId}
+        options={trios.map((trio) => ({ id: trio.id, name: trio.name }))}
+        onChange={setTrioId}
+      />
+      {/* Two names for one element: this is the trio apply button, and
+        `…-font-apply` is what the archived plan's tests reach for. */}
+      <button
+        type="button"
+        data-vigilia-font-trio-apply=""
+        data-vigilia-font-apply=""
+        className="self-start"
+        onClick={() => onApplyTrio(trioId)}
+      >
+        {uiCopy.panels.applyTrio}
+      </button>
       {favoritesOnly ? null : (
         <>
           <div

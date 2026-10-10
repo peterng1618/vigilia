@@ -257,22 +257,24 @@ it("leaves the font picker with no copy of its own", async () => {
   const spoken = [
     // Labels and their accessible names: the search field, the three facets,
     // the sort, the trio chooser, and the two states of the favourite toggle.
+    // A converted chooser's own words are here: the facet's "any" entry is the
+    // row's label, so the closed control prints the table's word and no second
+    // read is needed.
     ...Array.from(root.querySelectorAll("label"), (label) => label.textContent),
     ...Array.from(root.querySelectorAll("[aria-label]"), (element) =>
       element.getAttribute("aria-label"),
     ),
-    // The facet selects' own empty option — the word on the closed control.
-    ...Array.from(
-      root.querySelectorAll("[data-vigilia-font-facet] option:first-of-type"),
-      (option) => option.textContent,
-    ),
-    // The picker's own buttons, minus the rows whose text is a catalogue name.
-    ...Array.from(
-      root.querySelectorAll(
-        "button:not([data-vigilia-font-face-row]):not([data-vigilia-font-trio-row])",
-      ),
-      (button) => button.textContent,
-    ),
+    // The picker's own buttons, minus the rows whose text is a catalogue name
+    // and the choosers' triggers, whose text is the value they print — a face's
+    // family, a trio's name — plus the control set's own `▼`.
+    ...Array.from(root.querySelectorAll("button"))
+      .filter(
+        (button) =>
+          !button.hasAttribute("data-vigilia-font-face-row") &&
+          !button.hasAttribute("data-vigilia-font-trio-row") &&
+          button.querySelector("[data-vigilia-value]") === null,
+      )
+      .map((button) => button.textContent),
   ]
     .map((text) => text?.trim() ?? "")
     .filter((text) => text !== "" && !/^[\d.v-]+$/.test(text));
