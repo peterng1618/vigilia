@@ -11,8 +11,12 @@ VIGILIA_CAPTURE=1 npx playwright test --project=desktop-chromium --grep "<select
 
 Build player and editor first: Playwright previews both built outputs. Use one
 worker to avoid capture collisions. Select only captures affected by the current
-change and inspect only their generated images. Captures use `?static=1` and a
-controlled clock. After push, prefer the **Visual evidence** Actions artifact.
+change and inspect only their generated images. **Player** captures use
+`?static=1` and a controlled clock; editor captures use neither, and cannot —
+`?static=1` is read only by the player (`packages/player/src/main.ts:66`) and the
+editor installs a fixed clock only where a timing window is under test
+(`tests/e2e/editor.spec.ts`). After push, prefer the **Visual evidence** Actions
+artifact.
 
 `build:fixture` is the design-language parity fixture
 (`packages/editor/control-fixture.html`). It is a separate invocation on purpose:
