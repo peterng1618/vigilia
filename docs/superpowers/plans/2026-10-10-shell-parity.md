@@ -161,19 +161,20 @@ Restore one `12px`, rebuild, re-run, confirm the row fails, restore with `cp` an
 
 ---
 
-### Task 4: Graphite's values come from the drawing
+### Task 4: Graphite comes from the drawing, and the other five are derived from graphite
 
-**Outcome:** Graphite's role values are the drawing's, so the palette a person meets first is the palette the drawing draws.
+**Outcome:** Graphite's role values are the drawing's, verbatim, and the other five palettes are **derived from graphite** — each keeps its own identity hue and takes graphite's role *relationships* — so the six are one system with one source instead of six tunings.
 
-**Owning symbols/landmarks:** `editor-shell.css` — the `[data-shell-palette="graphite"]` block; `editor-shell.html:45-48` (the drawing's own token table) and its per-surface literals; `applyShellPalette` and `0035` (the resolution mechanism — **untouched**).
+**Owning symbols/landmarks:** `editor-shell.css` — the `[data-shell-palette="graphite"]` block and the five others (`ember`, `moss`, `plum`, `light`, `editorial`); `editor-shell.html:45-48` (the drawing's own token table) and its per-surface literals; `applyShellPalette`, `shellPalettes` (`palette.ts`) and `0035` (the resolution mechanism — **untouched**).
 
 **Files:**
 - Modify: `src/web/packages/editor/src/editor-shell/editor-shell.css`
 - Modify: `src/web/tests/e2e/mockup-values.ts` (the drawing's shell token table is a second reader target)
+- Modify: `src/web/tests/e2e/design-language.spec.ts` (the derived-palette assertions)
 
 **Interfaces:**
 - Consumes: Task 1's reader, extended to read the drawing's token table (`--bg`, `--hdr`, `--panel`, `--panel2`, `--edge`, `--edge2`, `--text`, `--muted`, `--faint`, `--accent`).
-- Produces: graphite's values, owned by the drawing. The reading is the same mechanism `0035` already gives every palette.
+- Produces: graphite's values with the drawing as their single owner; a **derivation** the other five are computed from, stated as a rule a person can apply and a test can read, not as five sets of numbers someone chose.
 
 - [ ] **Step 1: Write the assertion first, and watch it fail on all nine roles**
 
@@ -183,11 +184,24 @@ One case per role: the product's computed value for graphite equals the drawing'
 
 Transcribe rather than approximate, and name the drawing's line for each in the block's comment. Where the product has a role the drawing does not name, and the drawing has a value the product has no role for, say so in the report rather than inventing a mapping.
 
-- [ ] **Step 3: Re-measure contrast under graphite before believing it**
+- [ ] **Step 3: State the derivation, then apply it to the other five**
 
-Run the existing contrast assertions (`keyboard.spec.ts` measures the modal surface under every palette; `shell-appearance.spec.ts` measures the surfaces) and record every ratio that moved, with the floor it must clear. `vg-200` and `vg-201` are already pinned failures here, and this change is not allowed to add a third silently (Review Focus 2).
+**The user's ruling of 2026-10-10: "The graphite palette takes from the mockup directly. The other palettes derived from it."** So the derivation is a rule, written into the stylesheet's own comment (one paragraph, at the palette block) and asserted by a test:
 
-- [ ] **Step 4: Commit**
+- **Graphite is the source.** Its ten roles are the drawing's ten values, unmodified.
+- **Every other palette keeps its own hue** for the roles that carry identity — `--accent`, and the hue tint in `--edge` — and takes from graphite the **relationships** between roles: the luminance separation of `--bg` → `--panel` → `--panel-2`, where `--text`, `--muted` and `--faint` sit on that ladder, and the edge's weight against its surface.
+- **`light` inverts the direction, and this is stated rather than discovered.** It is a light-ground palette: it cannot take a dark palette's absolute luminance, so it mirrors the ladder — the same number of steps, the same contrast order, inverted — which is what makes "derived from graphite" mean something for a palette graphite does not resemble.
+- **A derived value is computed, not picked.** Where a derivation is not expressible in CSS (`color-mix` over the source role is the preferred form; a literal is the fallback), the literal carries the derivation in its comment, so the next change to graphite has an obvious consequence for the five.
+
+- [ ] **Step 4: Re-measure contrast under all six before believing it**
+
+Run the existing contrast assertions (`keyboard.spec.ts` measures the modal surface under every palette; `shell-appearance.spec.ts` measures the surfaces) and record every ratio that moved, with the floor it must clear. `vg-200` and `vg-201` are already pinned failures here, and this change is not allowed to add a third silently (Review Focus 2). A derived palette that drops below a floor is a derivation bug, not a palette to hand-tune.
+
+- [ ] **Step 5: Assert the derivation holds, not only the six outcomes**
+
+One case that fails if a palette's ladder stops matching graphite's: for each of the five, the luminance ordering of `--bg`/`--panel`/`--panel-2` matches graphite's (or its mirror, for `light`). Six transcribed value sets pass the per-role assertions and drift apart again the moment someone edits one; this is the assertion that keeps the ruling true.
+
+- [ ] **Step 6: Commit**
 
 ---
 
@@ -203,7 +217,7 @@ Run the existing contrast assertions (`keyboard.spec.ts` measures the modal surf
 - Modify: `src/web/tests/e2e/design-language.spec.ts`
 
 **Interfaces:**
-- Consumes: Task 4's graphite values; Task 1's rows for the shell's surfaces.
+- Consumes: Task 4's graphite values and the derivation the other five are computed from; Task 1's rows for the shell's surfaces.
 - Produces: one treatment boundary — chrome flat and opaque, clusters blurred and translucent — expressed once, so an element is one or the other and the file says which.
 
 - [ ] **Step 1: Write the assertion for both halves of the boundary**
@@ -212,7 +226,7 @@ Two cases: a chrome region's computed background has no alpha and no `backdrop-f
 
 - [ ] **Step 2: Change the treatment, and keep the one boundary**
 
-Move the gradient and the blur to the cluster selectors only; give each palette's chrome an opaque surface value. **The other five palettes have no drawing** — so their *structure* comes from the drawing's demonstration (flat, opaque, hairline edges) and their *hues* stay their own, which is a ruling this plan records and whose alternative (deriving five palettes' values from a drawing of one) it rejects as invention.
+Move the gradient and the blur to the cluster selectors only; give each palette's chrome an opaque surface value. **A palette's chrome value is Task 4's derivation, not a value chosen here** — this task moves the *treatment* (opaque, flat, hairline edges) off the glass and onto nothing, and the six opaque values come from graphite and its five derivations. If a palette's chrome has no derivation to read, that is a finding for Task 4, not a literal picked here.
 
 - [ ] **Step 3: Measure contrast under all six, and compare against the ratios before this task**
 
