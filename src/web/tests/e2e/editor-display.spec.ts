@@ -110,6 +110,14 @@ async function chooseDisplay(page: Page, name: string): Promise<void> {
   await page.getByRole("menuitemradio", { name }).click();
 }
 
+/** Picks a display through the new-theme chooser's own control: a `ControlSelect`
+ *  now, so the list is a Base UI popup rather than a native `<select>` — open
+ *  the well, then press the item the control commits. */
+async function pickInChooser(page: Page, id: string): Promise<void> {
+  await page.locator("[data-vigilia-new-document-display]").click();
+  await page.locator(`[data-vigilia-option="${id}"]`).click();
+}
+
 /** Where each menu label sits, in page px, measured on the live menu.
  *
  *  The label is a text node inside the item, so it is measured through a
@@ -225,14 +233,12 @@ test.describe("the stage looks through a display", () => {
     // Asserted on the **stage frame**, not on a call having been made. A spy
     // proves the mechanism ran; this proves the author sees what they chose.
     await page.keyboard.press("Control+n");
-    const chooser = page.locator("dialog");
+    const chooser = page.locator('[role="dialog"]');
     await expect(chooser).toBeVisible();
-    await chooser
-      .locator("[data-vigilia-new-document-display]")
-      .selectOption("9:19.5");
+    await pickInChooser(page, "9:19.5");
     await chooser.locator("[data-vigilia-new-document-create]").click();
     // New asks in two steps, chooser first: a dirty document prompts after.
-    const prompt = page.locator("dialog");
+    const prompt = page.locator('[role="dialog"]');
     await prompt
       .waitFor({ state: "visible", timeout: 3_000 })
       .then(() =>
@@ -413,13 +419,11 @@ test.describe("the stage looks through a display", () => {
     await page.keyboard.press("Escape");
 
     await page.keyboard.press("Control+n");
-    const chooser = page.locator("dialog");
+    const chooser = page.locator('[role="dialog"]');
     await expect(chooser).toBeVisible();
-    await chooser
-      .locator("[data-vigilia-new-document-display]")
-      .selectOption("9:19.5");
+    await pickInChooser(page, "9:19.5");
     await chooser.locator("[data-vigilia-new-document-create]").click();
-    const prompt = page.locator("dialog");
+    const prompt = page.locator('[role="dialog"]');
     await prompt
       .waitFor({ state: "visible", timeout: 3_000 })
       .then(() =>

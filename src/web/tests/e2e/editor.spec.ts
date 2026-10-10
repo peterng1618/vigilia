@@ -2001,7 +2001,7 @@ test.describe("Fabric editor route", () => {
       editor?.canvas.requestRenderAll();
     });
     await page.keyboard.press("Control+n");
-    await expect(page.locator("dialog")).toBeVisible();
+    await expect(page.locator('[role="dialog"]')).toBeVisible();
 
     await captureVisualReview(page, testInfo, "editor-dirty-replacement");
   });
@@ -3516,7 +3516,7 @@ test.describe("Fabric editor route", () => {
     });
     await page.keyboard.press("Control+o");
 
-    const dialog = page.locator("dialog");
+    const dialog = page.locator('[role="dialog"]');
     await expect(dialog).toBeVisible();
     await expect(dialog).toContainText(
       "Save changes before opening another theme?",
@@ -3552,7 +3552,7 @@ test.describe("Fabric editor route", () => {
     });
     await page.keyboard.press("Control+n");
 
-    const dialog = page.locator("dialog");
+    const dialog = page.locator('[role="dialog"]');
     await expect(dialog).toBeVisible();
     await dialog.getByRole("button", { name: "Cancel" }).click();
     await expect(dialog).toHaveCount(0);

@@ -384,16 +384,15 @@ export async function answerDialogIfShown(
   button: string,
   timeout = 3_000,
 ): Promise<boolean> {
-  const dialog = page.locator("dialog");
+  const dialog = page.locator('[role="dialog"]');
   const shown = await dialog
     .waitFor({ state: "visible", timeout })
     .then(() => true)
     .catch(() => false);
   if (!shown) return false;
   await dialog.getByRole("button", { name: button, exact: true }).click();
-  // Deliberately no "and wait for it to close". One flow reuses the element for
-  // its next prompt — New asks for a size, then asks about the changes — so a
-  // caller that waited for closure here would hang on the dialog it was about to
-  // answer. Calling this twice in a row handles both steps.
+  // Deliberately no "and wait for it to close". New asks in two steps — the
+  // chooser, then the replacement prompt — and each is a `Dialog` of its own, so
+  // calling this twice in a row answers both.
   return true;
 }

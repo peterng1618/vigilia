@@ -11,12 +11,38 @@ import {
 
 /** One entry in a well that opens a list. `disabled` states a reading rather
  *  than a choice — the artboard's `Custom` — and keeps it out of the keyboard
- *  model while the trigger still prints it as the current value. */
+ *  model while the trigger still prints it as the current value. `group` is the
+ *  heading the entry sits under, if any: consecutive entries carrying the same
+ *  group render together under one label, and an entry without one renders in
+ *  the flat list. The list's own layout, not a second control. */
 export type ControlOption = {
   readonly id: string;
   readonly name: string;
   readonly disabled?: boolean;
+  readonly group?: string;
 };
+
+/** Runs of consecutive options sharing a group, in the order offered. A change
+ *  of group starts a new run, so an ungrouped option after a grouped one is its
+ *  own flat entry rather than joining the run above it. */
+function optionRuns(
+  options: readonly ControlOption[],
+): {
+  readonly group: string | undefined;
+  readonly options: readonly ControlOption[];
+}[] {
+  const runs: {
+    group: string | undefined;
+    options: ControlOption[];
+  }[] = [];
+  for (const option of options) {
+    const last = runs.at(-1);
+    if (last !== undefined && last.group === option.group)
+      last.options.push(option);
+    else runs.push({ group: option.group, options: [option] });
+  }
+  return runs;
+}
 
 /**
  * A value from a closed list, in a well with a chevron.
@@ -132,24 +158,39 @@ export function SelectControl(
         <Select.Portal>
           <Select.Positioner sideOffset={6} className="z-60">
             <Select.Popup className="min-w-[10rem] rounded-md border border-edge bg-panel p-[var(--space-6)] text-sm text-text shadow-[var(--elev-2)]">
-              {options.map((option) => (
-                <Select.Item
-                  key={option.id}
-                  value={option.id}
-                  disabled={option.disabled ?? false}
-                  // The value behind the choice, on the element a driver clicks.
-                  // Base UI keeps the id in its store and renders only the label,
-                  // so without this an option whose label is *document data* — a
-                  // type preset's `Card title`, a token's `Muted text` — can only
-                  // be named by copying the document's glossary into the suite.
-                  // Namespaced like every other hook, so the string a locator
-                  // names and the string the control commits are one string.
-                  data-vigilia-option={option.id}
-                  className="cursor-default rounded-sm px-[var(--space-8)] py-[var(--space-4)] data-[highlighted]:bg-panel-2"
-                >
-                  <Select.ItemText>{option.name}</Select.ItemText>
-                </Select.Item>
-              ))}
+              {optionRuns(options).map((run) => {
+                const items = run.options.map((option) => (
+                  <Select.Item
+                    key={option.id}
+                    value={option.id}
+                    disabled={option.disabled ?? false}
+                    // The value behind the choice, on the element a driver clicks.
+                    // Base UI keeps the id in its store and renders only the label,
+                    // so without this an option whose label is *document data* — a
+                    // type preset's `Card title`, a token's `Muted text` — can only
+                    // be named by copying the document's glossary into the suite.
+                    // Namespaced like every other hook, so the string a locator
+                    // names and the string the control commits are one string.
+                    data-vigilia-option={option.id}
+                    className="cursor-default rounded-sm px-[var(--space-8)] py-[var(--space-4)] data-[highlighted]:bg-panel-2"
+                  >
+                    <Select.ItemText>{option.name}</Select.ItemText>
+                  </Select.Item>
+                ));
+                // A heading is the run's own label, drawn above its items rather
+                // than as a disabled option: a disabled option is still announced
+                // as a choice this control will not commit.
+                return run.group === undefined ? (
+                  items
+                ) : (
+                  <Select.Group key={run.group}>
+                    <Select.GroupLabel className="px-[var(--space-8)] pt-[var(--space-6)] pb-[var(--space-2)] text-2xs uppercase tracking-wide text-faint">
+                      {run.group}
+                    </Select.GroupLabel>
+                    {items}
+                  </Select.Group>
+                );
+              })}
             </Select.Popup>
           </Select.Positioner>
         </Select.Portal>

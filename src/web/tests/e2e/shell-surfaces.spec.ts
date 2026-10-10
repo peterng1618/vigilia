@@ -6,23 +6,22 @@ import { isDesktopSurface } from "./surface.js";
 /**
  * The hand-owned surfaces the palette has to reach anyway.
  *
- * **The dialogs are not a React primitive and are not migrated.** The three
- * native `<dialog>`s (`new-document-chooser.ts`, `persistence-manager/`,
- * `theme-library-dialog.ts`) are DOM factories styled by `.vigilia-dialog`.
- * 0033's argument for the tooltip applies unchanged to them, and §8's table row
- * for `collapsible` is discharged by the inspector's own React section rather
- * than by a Radix one.
+ * **The dialogs are React now.** The three `<dialog>` factories
+ * (`new-document-chooser`, `persistence-manager/`, `theme-library-dialog`) are
+ * Base UI `Dialog`s portalled to `body`, so each is a surface a shell token has
+ * to reach through the portal rather than through a `<dialog>` in the top layer
+ * — the reason this file still opens one and reads its paint.
  *
- * The inspector's sections **are** React now (`components/ui/inspector-section.tsx`),
+ * The inspector's sections **are** React too (`components/ui/inspector-section.tsx`),
  * and this file still reads them — a palette has to reach a section header
  * whether it is painted by a class or by a token, and this is the one place
  * that is checked in a browser.
  *
  * They are also the surfaces a palette change is most likely to break, because
  * each paints from the shell's tokens through a class rather than through the
- * attribute — and a `<dialog>` in the top layer is not a descendant of `#app`,
- * so it is the layer most likely to miss. This file exists to pin what the
- * palette pipeline reaches, in a browser, where the cascade is real.
+ * attribute — and a `Dialog` in the top layer is not a descendant of `#app`, so
+ * it is the layer most likely to miss. This file exists to pin what the palette
+ * pipeline reaches, in a browser, where the cascade is real.
  *
  * Split from `shell-appearance.spec.ts` rather than appended to it: that file
  * carries the pipeline, this one carries what the pipeline reaches, and together
@@ -56,13 +55,14 @@ test("the dialogs and the inspector's sections paint every palette", async ({
     await choosePalette(page, palette);
 
     // The New-theme chooser, opened the way an author opens it and closed with
-    // Escape. It is a `<dialog>` in the top layer, so it is the one place a
-    // shell token can be in force and still not reach the surface drawn from it.
+    // Escape. It is a Base UI `Dialog` portalled to the top layer, so it is the
+    // one place a shell token can be in force and still not reach the surface
+    // drawn from it.
     await page.getByRole("button", { name: "File", exact: true }).click();
     await page
       .getByRole("menuitem", { name: "New theme", exact: true })
       .click();
-    const dialog = page.locator("dialog[open]", {
+    const dialog = page.locator('[role="dialog"]', {
       hasText: "Choose an artboard size",
     });
     await expect(dialog).toBeVisible();

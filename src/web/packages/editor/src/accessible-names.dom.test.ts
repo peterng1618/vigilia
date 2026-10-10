@@ -6,7 +6,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { createArtboardPanel } from "./artboard-panel.js";
 import { DEFAULT_SHELL_PALETTE } from "./editor-shell/palette.js";
 import { Settings } from "./editor-shell/settings.js";
-import { newDocumentChooser } from "./new-document-chooser.js";
+import { chooseArtboardSize } from "./new-document-chooser.js";
 import { createNewObjectPanel } from "./new-object-panel.js";
 import { createPalettePanel } from "./palette-manager/panel.js";
 import { createSelectionInspector } from "./selection-inspector/index.js";
@@ -270,6 +270,16 @@ describe("editor panels", () => {
       // buttons rendered beside them.
       "INPUT[type=file]", // Import
       "INPUT[type=file]", // Replace
+      // The new-theme chooser, mounted as the session opens it: a `Dialog`, and
+      // four `ControlSelect`s between its two focus guards — the display, and
+      // the ratio, orientation and resolution behind Custom — each a Base UI
+      // value carrier.
+      "SPAN[type=][aria-hidden]", // The chooser's leading focus guard
+      "INPUT[type=][aria-hidden]", // Display
+      "INPUT[type=][aria-hidden]", // Ratio
+      "INPUT[type=][aria-hidden]", // Orientation
+      "INPUT[type=][aria-hidden]", // Resolution
+      "SPAN[type=][aria-hidden]", // The chooser's trailing focus guard
       // The settings modal's focus-trap sentinels, and the only pair here that
       // belongs to a library rather than to us: `FloatingFocusManager` renders
       // one `span` before the popup and one after it, `tabindex="0"` on purpose
@@ -287,11 +297,12 @@ describe("editor panels", () => {
     // would be a control this audit stopped looking at, so that is asserted
     // here rather than read off the source and hoped for.
     //
-    // The dialog's two focus guards are the one exception, and they are the
+    // The dialogs' focus guards are the one exception, and they are the
     // library's: both are `tabindex="0"` and `aria-hidden="true"` by
     // construction, which is the trap working rather than a control that has
-    // looked away. Asserted as exactly those two, so a third `aria-hidden`
-    // focusable — ours or the library's — fails here.
+    // looked away. Asserted as exactly those four — one pair per open `Dialog`,
+    // the chooser's and the modal's — so a third dialog, or a third
+    // `aria-hidden` focusable of ours, fails here.
     const hiddenFocusable = Array.from(
       root.querySelectorAll<HTMLElement>('[aria-hidden="true"]'),
     ).filter((element) => element.tabIndex >= 0);
@@ -301,7 +312,7 @@ describe("editor panels", () => {
           ? `guard:${element.getAttribute("data-type")}`
           : element.outerHTML.slice(0, 60),
       ),
-    ).toEqual(["guard:inside", "guard:inside"]);
+    ).toEqual(["guard:inside", "guard:inside", "guard:inside", "guard:inside"]);
   });
 
   it("names the release version, which no form control owns", () => {
@@ -445,7 +456,12 @@ function mountPanels(): { root: HTMLElement } {
     },
   );
 
-  root.append(newDocumentChooser({ width: 1280, height: 720 }));
+  // The new-theme chooser, opened as the session opens it: a `Dialog`, so it is
+  // portalled to `body` and audited through the body the caller returns, and
+  // every control on it is a `ControlSelect` or a `ControlPair` value carrier.
+  act(() => {
+    void chooseArtboardSize({ width: 1280, height: 720 });
+  });
 
   mountSettings();
 

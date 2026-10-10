@@ -56,6 +56,8 @@
     "src/web/packages/editor/src/selection-inspector/inspector.tsx",
     "src/web/packages/editor/src/selection-inspector/column.tsx",
     "src/web/packages/editor/src/selection-inspector/runs.tsx",
-    "src/web/packages/editor/src/chart-manager/chart-fields.tsx"
+    "src/web/packages/editor/src/chart-manager/chart-fields.tsx",
+    "src/web/packages/editor/src/components/ui/modal-host.tsx",
+    "src/web/packages/editor/src/new-document-chooser.tsx"
   ]
 }
