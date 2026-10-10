@@ -420,4 +420,50 @@ export const PARITY: readonly ParityRegion[] = [
       "§5 (`:163-164`, the shared grid); the bible is silent on the column's width, so the drawing governs",
     surface: "fixture",
   },
+  /* **The two shapes a row takes when a drawing shapes it differently.** The
+     field row above is the default; these two are the rows the drawings draw as
+     something else, and each is read from the drawing that draws it rather than
+     from a value chosen here (`vg-302`).
+
+     The settings modal's switch row: `settings.html:89-93` draws it as a
+     `--panel-2` box at `--radius-lg`, the label at `flex:1` and the 26×14
+     switch at the right — no label column. That box is why the row is a shape
+     and not a width: applying the inspector's 74px column to it wrapped
+     "Follow the system" onto a second line. The drawn box's vertical padding is
+     `9px`, which §3's scale has no step for, so the product renders
+     `--space-8` and the row reads the radius the drawing does declare. */
+  {
+    region: "field row — the settings switch row's box (settings drawing)",
+    mockupPath: SETTINGS_MOCKUP_PATH,
+    mockupSelector:
+      '[style*="display:flex;align-items:center;gap:10px;padding:9px 10px;background:var(--panel2);border:1px solid var(--edge);border-radius:8px"]',
+    mockupProperty: "border-radius",
+    productSelector: '[data-fixture="boxed"] > div',
+    bibleSection:
+      "§5 (`:163-164`, the well); the bible does not shape the modal's switch row, so the drawing governs",
+    surface: "fixture",
+  },
+  /* The Add pane's asset trigger: `shell.html:129` draws a picker spanning the
+     pane under an `Asset` eyebrow, the file name at `flex:1` and a chevron
+     after it.
+
+     **The selector names the trigger's second form, and it has to.** The
+     drawing writes that declaration twice more, identically, on the
+     inspector's own select triggers (`shell.html:273` and `:310`), and the
+     picker's element at `:129` is exactly that declaration as a suffix of
+     theirs — so `[style*="…"]` can settle the shared form and can never settle
+     the picker alone. The declaration is one declaration either way, and it is
+     the picker's box. What the column's *absence* buys the picker is geometry,
+     and the fixture asserts that: the control starts where the row starts. */
+  {
+    region: "field row — the Add pane's asset trigger (shell drawing)",
+    mockupPath: MOCKUP_PATH,
+    mockupSelector:
+      '[style*="flex:1;display:flex;align-items:center;gap:6px;background:var(--panel2);border:1px solid var(--edge);border-radius:6px;padding:5px 8px"]',
+    mockupProperty: "border-radius",
+    productSelector: '[data-fixture="headed"] [data-fixture-select]',
+    bibleSection:
+      "§5 (`:163-164`, the well the trigger is drawn as); the bible does not shape the pane's picker, so the drawing governs",
+    surface: "fixture",
+  },
 ];

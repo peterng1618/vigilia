@@ -450,10 +450,10 @@ test("the control set renders in the design language", async ({
   const geometry = await page.evaluate(() => {
     /** A row's value cell — the `ControlRow`'s own div, reached as the label's
      *  next sibling rather than by a class name the language could rename. */
-    const cellOf = (fixture: string): Element | null => {
-      const row = document.querySelector(`[data-fixture="${fixture}"] > div`);
-      return row?.firstElementChild?.nextElementSibling ?? null;
-    };
+    const rowOf = (fixture: string): Element | null =>
+      document.querySelector(`[data-fixture="${fixture}"] > div`);
+    const cellOf = (fixture: string): Element | null =>
+      rowOf(fixture)?.firstElementChild?.nextElementSibling ?? null;
     const boxOf = (fixture: string): Element | null =>
       cellOf(fixture)?.firstElementChild ?? null;
     const rectOf = (element: Element | null): DOMRect | null =>
@@ -505,12 +505,42 @@ test("the control set renders in the design language", async ({
         );
       }
     }
+    // ── The two shapes a drawing gives a row when it is not a labelled row ───
+    //
+    // `boxed` — the settings modal's switch: the label **fills** the row
+    // (`settings.html:89-93`), so its width is the row's rather than the 74px
+    // column the labelled row declares, and that is what keeps it on one line.
+    const boxedLabel = rectOf(rowOf("boxed")?.firstElementChild ?? null);
+    // `headed` — the Add pane's picker: the label is the row's own heading and
+    // the control spans the full width (`shell.html:128-132`), so the heading is
+    // above the control and the control starts where the row does. The column
+    // shape would put it at the cell's left edge, 74px and a gap in.
+    const headedRow = rectOf(rowOf("headed"));
+    const headedLabel = rectOf(rowOf("headed")?.firstElementChild ?? null);
+    const headedCell = rectOf(rowOf("headed")?.lastElementChild ?? null);
+    // A pair is two wells on one line, `flex:1` each in the drawing: equal by
+    // the layout rather than by the numbers they print, so the halves here hold
+    // `4` and `4000`.
+    const pairWells = [...(rowOf("pair")?.querySelectorAll("input") ?? [])].map(
+      (input) => rectOf(input.parentElement),
+    );
+
     return {
       edges,
       labelOffsets,
       trackLeft: track === null ? null : round(track.left),
       wellRight: well === null ? null : round(well.right),
       doubled,
+      boxedLabelWidth: boxedLabel === null ? null : round(boxedLabel.width),
+      headed: {
+        rowLeft: headedRow === null ? null : round(headedRow.left),
+        labelBottom: headedLabel === null ? null : round(headedLabel.bottom),
+        cellLeft: headedCell === null ? null : round(headedCell.left),
+        cellTop: headedCell === null ? null : round(headedCell.top),
+      },
+      pairWidths: pairWells.map((well) =>
+        well === null || well === undefined ? null : round(well.width),
+      ),
     };
   });
 
@@ -548,6 +578,42 @@ test("the control set renders in the design language", async ({
     geometry.doubled,
     "a field draws a box of its own inside the well that already draws one",
   ).toEqual([]);
+
+  // The column is a *shape*, and these are the two rows a drawing shapes
+  // differently. Read here rather than left to the capture, because a width and
+  // a position are what the two drawings declare and what a screenshot cannot
+  // assert: the boxed row's label fills its row, and the headed row's control
+  // starts where the row starts with the heading above it.
+  expect(
+    geometry.boxedLabelWidth,
+    `the boxed row's label is not mounted, so this is not a reading`,
+  ).not.toBeNull();
+  expect(
+    geometry.boxedLabelWidth ?? 0,
+    "the boxed row's label is still in the field row's 74px column, where the settings drawing fills the row with it",
+  ).toBeGreaterThan(74);
+  expect(
+    geometry.headed.rowLeft,
+    "the headed row is not mounted, so this is not a reading",
+  ).not.toBeNull();
+  expect(
+    geometry.headed.cellLeft,
+    `the headed row's control does not span the row: it starts at ${geometry.headed.cellLeft} and the row at ${geometry.headed.rowLeft}, so it is still inside the field row's column`,
+  ).toBe(geometry.headed.rowLeft);
+  expect(
+    geometry.headed.labelBottom !== null &&
+      geometry.headed.cellTop !== null &&
+      geometry.headed.labelBottom <= geometry.headed.cellTop,
+    `the headed row's label is not above its control: label bottom ${geometry.headed.labelBottom}, control top ${geometry.headed.cellTop}`,
+  ).toBe(true);
+  expect(
+    geometry.pairWidths.length,
+    "the pair row is not mounted with two wells, so this is not a reading",
+  ).toBe(2);
+  expect(
+    geometry.pairWidths[0],
+    `the pair's two wells are not equal: ${JSON.stringify(geometry.pairWidths)} — a pair is two flex:1 halves, and 4 against 4000 is what tells a shared width from a sized one`,
+  ).toBe(geometry.pairWidths[1]);
 
   // ── 0b. The two control drawings are read, and the column is theirs ───────
   //

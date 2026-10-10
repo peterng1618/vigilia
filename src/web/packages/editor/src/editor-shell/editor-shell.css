@@ -925,9 +925,10 @@ body,
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: var(--space-6);
 }
-/* §5's tile. The panel-wide `button` rule is neutralised by name rather than
-   left to lose: a tile is not a form row, and its `padding`, `margin`,
-   `min-height` and `border-radius` are all the control set's, not the form's. */
+/* §5's tile. A tile is not a form row: `padding`, `margin`, `min-height` and
+   `border-radius` are the control set's, declared here. The panel-wide `button`
+   box this used to have to outrank no longer exists (see `.editor-shell-panel`
+   below), so these are the tile's own values rather than a neutralisation. */
 .editor-shell-panel .vigilia-add-tile {
   display: flex;
   flex-direction: column;
@@ -998,18 +999,40 @@ body,
   max-height: 120px;
   object-fit: contain;
 }
-.editor-shell-panel button,
-.editor-shell-panel input {
+/* The panes' remaining plain-DOM controls, **named by the surface that needs
+   them**. As `.editor-shell-panel button, .editor-shell-panel input` this was the
+   half of `vg-298` one ancestor to the left of the inspector's: the panes render
+   the React control set now (`panes/document/metadata-fields.tsx` composes
+   `ControlText`), and an unlayered ancestor-wide rule beat the control set's own
+   utilities — a 30px bordered input inside a 26px bordered well, the same double
+   box the inspector had, and a 4px right margin pulling a well off the column
+   the drawing draws. What is left that still needs a box is one surface's own
+   DOM: the Add pane's three asset buttons, which no control in the set draws.
+   Add a hook rather than widening the selector back to the ancestor. */
+.editor-shell-panel [data-vigilia-asset-import],
+.editor-shell-panel [data-vigilia-asset-replace],
+.editor-shell-panel [data-vigilia-asset-remove] {
   max-width: 100%;
   min-height: 30px;
   margin: 3px 4px 3px 0;
+  padding: 4px 7px;
   border: 1px solid var(--shell-edge);
   border-radius: 6px;
   background: var(--vigilia-control-bg);
   color: var(--shell-text);
 }
-.editor-shell-panel input {
+/* The Composition pane's inline rename field: the other input the panes render
+   as plain DOM, and the one place the old rule's `padding: 4px 6px` was still
+   doing work. A field the control set draws takes its own box from its well. */
+.editor-shell-panel .vigilia-layer-rename {
+  max-width: 100%;
+  min-height: 30px;
+  margin: 3px 4px 3px 0;
   padding: 4px 6px;
+  border: 1px solid var(--shell-edge);
+  border-radius: 6px;
+  background: var(--vigilia-control-bg);
+  color: var(--shell-text);
 }
 /* The inspector's half of the box above, **named by the control it still
    styles**. As an ancestor-wide selector this rule was the product-only half of
@@ -1050,7 +1073,9 @@ body,
   border-color: var(--shell-accent);
   color: var(--shell-accent);
 }
-.editor-shell-panel button:hover {
+.editor-shell-panel [data-vigilia-asset-import]:hover,
+.editor-shell-panel [data-vigilia-asset-replace]:hover,
+.editor-shell-panel [data-vigilia-asset-remove]:hover {
   border-color: var(--shell-accent);
   color: var(--shell-accent);
 }
@@ -1557,9 +1582,11 @@ body,
   color: var(--faint);
 }
 /* The footer toolbar: `ControlIconButton`s at §5's 26px, flat, over §3's
-   hairline. The panel-wide `button` rules are neutralised here rather than by a
-   per-button class — a pane footer is a toolbar, not a form row, and the button
-   sizes come from the control set. */
+   hairline. The footer's own layout is here; the buttons' box is the control
+   set's, which draws its size, border and background itself. The one button
+   property still declared is the padding: the UA gives a `<button>` `1px 6px`,
+   which squeezes a 15px glyph inside the 26px square it does not — a rule
+   scoped to this footer, not to `.editor-shell-panel button`. */
 .editor-shell-pane-actions {
   display: flex;
   flex-wrap: wrap;
@@ -1569,11 +1596,7 @@ body,
   border-top: 1px solid var(--edge);
 }
 .editor-shell-pane-actions button {
-  min-height: 0;
-  margin: 0;
   padding: 0;
-  border: 0;
-  background: transparent;
 }
 .vigilia-layer-row[data-selected="true"] {
   background: color-mix(in srgb, var(--shell-text) 14%, transparent);

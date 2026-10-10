@@ -28,6 +28,7 @@ import {
  */
 
 const drawing = readMockup();
+const settings = readMockup(SETTINGS_MOCKUP_PATH);
 
 test("the drawing is the checked-in file, read from disk", () => {
   expect(existsSync(MOCKUP_PATH)).toBe(true);
@@ -81,6 +82,39 @@ test("the two control drawings declare the one field row a row reads", () => {
       path === CONTROLS_MOCKUP_PATH ? "#0b0e12" : "#fffdf7",
     );
   }
+});
+
+test("the two shapes the field row is not are read from the drawing that draws each", () => {
+  // The settings modal's switch row, addressed by the box it is: the label at
+  // `flex:1` inside a `--panel-2` panel at `--radius-lg`, with no label column.
+  // That absence is the reading — a row that took the field row's 74px column
+  // wrapped "Follow the system" onto a second line.
+  const BOXED_ROW =
+    '[style*="display:flex;align-items:center;gap:10px;padding:9px 10px;background:var(--panel2);border:1px solid var(--edge);border-radius:8px"]';
+  expect(mockupDeclared(settings, BOXED_ROW, "border-radius")).toBe("8px");
+  expect(mockupDeclared(settings, BOXED_ROW, "gap")).toBe("10px");
+
+  // The Add pane's asset trigger. The drawing writes the trigger declaration
+  // twice more, identically, on the inspector's own select triggers, and the
+  // picker's element is that declaration as a *suffix* of theirs — so the reader
+  // settles the shared form and cannot settle the picker alone. Asserted here
+  // rather than left implicit: the duplication is why this row's selector names
+  // the second form, and a reader that started guessing between them would make
+  // this row a comparison of whichever element the document lists last.
+  const ASSET_TRIGGER =
+    '[style*="flex:1;display:flex;align-items:center;gap:6px;background:var(--panel2);border:1px solid var(--edge);border-radius:6px;padding:5px 8px"]';
+  expect(mockupDeclared(drawing, ASSET_TRIGGER, "border-radius")).toBe("6px");
+  expect(mockupDeclared(drawing, ASSET_TRIGGER, "gap")).toBe("6px");
+  // The picker's own element addresses two forms, and that is the reason the
+  // row names the shared one rather than the picker's: a selector that matched
+  // both throws instead of picking whichever the document lists last.
+  expect(() =>
+    mockupDeclared(
+      drawing,
+      '[style*="display:flex;align-items:center;gap:6px;background:var(--panel2);border:1px solid var(--edge);border-radius:6px;padding:5px 8px"]',
+      "border-radius",
+    ),
+  ).toThrow(/does not settle which one it means/);
 });
 
 test("the page rule is read out of the drawing's own stylesheet", () => {

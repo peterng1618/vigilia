@@ -156,8 +156,13 @@ function AppearanceTab({
           />
         ))}
       </RadioGroup>
+      {/* The modal's own drawing makes this row a box rather than a labelled
+          field row: `settings.html:89-93` draws the label at `flex:1` inside a
+          `--panel-2` panel at `--radius-lg`, with no label column, so the
+          switch's label fills the row and stays on one line. */}
       <div className="mt-[var(--space-14)]">
         <ControlToggle
+          shape="boxed"
           label={uiCopy.settings.followSystem}
           checked={following}
           hint={

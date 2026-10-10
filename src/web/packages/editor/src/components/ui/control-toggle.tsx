@@ -1,8 +1,9 @@
 import { Switch } from "@base-ui/react/switch";
 import type * as React from "react";
 import {
-  ControlRow,
   type ControlProps,
+  ControlRow,
+  type ControlShape,
   describedBy,
   hitTargetClasses,
   isBlocked,
@@ -29,6 +30,10 @@ export function ControlToggle(
   props: ControlProps & {
     readonly checked: boolean;
     readonly onChange: (value: boolean) => void;
+    /** The row's shape, where the surface's drawing draws this switch as
+     *  something other than the inspector's labelled row — the settings modal
+     *  draws it `boxed` (`settings.html:89-93`). */
+    readonly shape?: ControlShape;
   },
 ): React.JSX.Element {
   const {
@@ -39,6 +44,7 @@ export function ControlToggle(
     hint,
     density,
     data,
+    shape,
     checked,
     onChange,
   } = props;
@@ -53,6 +59,7 @@ export function ControlToggle(
       refused={refused}
       hint={hint}
       density={density}
+      shape={shape}
     >
       <Switch.Root
         {...data}

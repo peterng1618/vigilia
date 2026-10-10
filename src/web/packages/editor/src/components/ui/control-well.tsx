@@ -145,6 +145,28 @@ export function isBlocked(props: {
 }
 
 /**
+ * The shapes a drawing gives a row. The labelled **field row** is the default,
+ * and the two the drawings draw differently take their own.
+ *
+ * - `column` — a fixed label column and one value cell: what
+ *   `mockups/current/controls.html` declares for every field row, and what
+ *   `mockups/current/shell.html:227` and its eleven siblings declare in the
+ *   panes and the inspector (`width:74px;flex:0 0 auto` beside `flex:1`).
+ * - `boxed` — the row *is* a panel box with the label filling it:
+ *   `mockups/current/settings.html:89-93` draws the follow-the-system switch as
+ *   `--panel-2` inside a 1px `--edge` at `--radius-lg`, the label at `flex:1`
+ *   and the switch at the right, with no label column at all. A surface whose
+ *   drawing draws that owns it — the settings modal — and the inspector's own
+ *   switch row (`shell.html:333`) is a `column` row, which is why this is a
+ *   choice of the caller rather than a property of the toggle.
+ * - `headed` — the label is the region's own heading, drawn above a control that
+ *   spans the row: `shell.html:128-132` draws the Add pane's asset picker under
+ *   an `Asset` eyebrow, the trigger spanning the pane with the file name at
+ *   `flex:1`. Not a labelled row, and the heading is what names the control.
+ */
+export type ControlShape = "column" | "boxed" | "headed";
+
+/**
  * One control's row: its label, its control, its refusal, and its hint.
  *
  * The label is a `<label for>` where the control is a labelable element (an
@@ -160,19 +182,24 @@ export function isBlocked(props: {
  * the row exactly as `ControlIconButton` arms its own. It carries the refusal
  * when there is one, so a row that both refuses and explains says why first.
  *
- * The control slot is the row's **one value track**. It is a fixed-width label
- * column and a flexible cell, which is what the drawing declares
- * (`mockups/current/controls.html`): the label is `width:74px;flex:0 0 auto`,
- * the value is `flex:1`. The cell is the geometry and each control fills it —
- * `ControlWell` is `w-full`, the select's trigger and the slider's root already
- * were, and a segmented group fills it too. Fixing the slot rather than giving
- * each kind its own width is the difference between one track and four: with a
- * content-sized slot a number well was as wide as its `<input>` while a select
- * filled the slot, so the boxes in one section started at four different left
- * edges (`vg-297`).
+ * With `shape` at its default, the control slot is the row's **one value
+ * track**. It is a fixed-width label column and a flexible cell, which is what
+ * the drawing declares (`mockups/current/controls.html`): the label is
+ * `width:74px;flex:0 0 auto`, the value is `flex:1`. The cell is the geometry
+ * and each control fills it — `ControlWell` is `w-full`, the select's trigger
+ * and the slider's root already were, and a segmented group fills it too.
+ * Fixing the slot rather than giving each kind its own width is the difference
+ * between one track and four: with a content-sized slot a number well was as
+ * wide as its `<input>` while a select filled the slot, so the boxes in one
+ * section started at four different left edges (`vg-297`).
  *
  * The cell still right-aligns what does not fill it — a 26×14 toggle is a fixed
  * pill by §5 and sits at the right edge, as the drawing draws it.
+ *
+ * The column is the **default shape, not the only one**. A drawing that shapes a
+ * row differently is drawn differently here (`ControlShape`), because applying
+ * one surface's column to another surface's row is what wrapped the settings
+ * modal's switch label and ellipsised the Add pane's file name (`vg-302`).
  */
 export function ControlRow(props: {
   readonly ids: ControlIds;
@@ -181,6 +208,7 @@ export function ControlRow(props: {
   readonly refused?: string | undefined;
   readonly hint?: string | undefined;
   readonly density?: ControlDensity | undefined;
+  readonly shape?: ControlShape | undefined;
   readonly children: React.ReactNode;
 }): React.JSX.Element {
   const {
@@ -190,11 +218,31 @@ export function ControlRow(props: {
     refused,
     hint,
     density = "panel",
+    shape = "column",
     children,
   } = props;
-  // The drawing's label column, and it breaks rather than widening: §7.7 lets a
-  // long name ellipsize or wrap, never widen a pane or cover its own control.
-  const labelClasses = "w-[74px] flex-none break-words text-xs text-muted";
+  // Every column breaks rather than widening: §7.7 lets a long name ellipsize or
+  // wrap, never widen a pane or cover its own control. The `boxed` label already
+  // fills its row, so its width is the row's rather than a declared 74px.
+  const labelClasses = {
+    column: "w-[74px] flex-none break-words text-xs text-muted",
+    boxed: "min-w-0 flex-1 break-words text-xs text-muted",
+    headed:
+      "mb-[var(--space-8)] block w-full text-2xs font-semibold tracking-[0.11em] text-muted uppercase",
+  }[shape];
+  const rowClasses = {
+    column: `flex ${ROW_MIN_HEIGHT[density]} flex-wrap items-center gap-x-[var(--space-8)] gap-y-[var(--space-4)]`,
+    // The box the drawing draws, and the row is it rather than a wrapper around
+    // it: `--panel-2` inside a 1px `--edge` at `--radius-lg`.
+    boxed:
+      "flex items-center gap-[var(--space-10)] rounded-lg border border-edge bg-panel-2 px-[var(--space-10)] py-[var(--space-8)]",
+    headed: "flex flex-col",
+  }[shape];
+  const cellClasses = {
+    column: "flex min-w-0 flex-1 items-center justify-end gap-[var(--space-6)]",
+    boxed: "flex flex-none items-center gap-[var(--space-6)]",
+    headed: "flex min-w-0 items-center gap-[var(--space-6)]",
+  }[shape];
   const row = useRef<HTMLDivElement>(null);
   const tip = hint === undefined ? undefined : (refused ?? hint);
 
@@ -205,10 +253,7 @@ export function ControlRow(props: {
   }, [tip]);
 
   return (
-    <div
-      ref={row}
-      className={`flex ${ROW_MIN_HEIGHT[density]} flex-wrap items-center gap-x-[var(--space-8)] gap-y-[var(--space-4)]`}
-    >
+    <div ref={row} className={rowClasses}>
       {labelFor === undefined ? (
         <span id={ids.label} className={labelClasses}>
           {label}
@@ -218,9 +263,7 @@ export function ControlRow(props: {
           {label}
         </label>
       )}
-      <div className="flex min-w-0 flex-1 items-center justify-end gap-[var(--space-6)]">
-        {children}
-      </div>
+      <div className={cellClasses}>{children}</div>
       {hint === undefined ? null : (
         <p id={ids.hint} className="sr-only">
           {hint}

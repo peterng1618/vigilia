@@ -22,7 +22,7 @@ satisfies every token in the bible and still does not look like the mockup.
 
 ## Active work
 
-- **Plan 7 — [`shell-parity`](docs/superpowers/plans/2026-10-10-shell-parity.md) — is the active plan. Tasks 9, 1 and 8 are complete; Task 2 is next, then 3 → 4 → 5 → 6 → 7.** The four **new** drawings are at `docs/design/mockups/current/` and the instrument reads them: the body-flush and radius rows are red on today's shell by design at both worker counts, and no row is unresolved. **Task 8 added the two `fixture` rows that read the control drawings**, so `current/controls.html` and `current/controls-light.html` are no longer drawings nothing reads.
+- **Plan 7 — [`shell-parity`](docs/superpowers/plans/2026-10-10-shell-parity.md) — is the active plan. Tasks 9 and 1 are complete, Task 8 is in fix round 1 and awaiting adjudication; Task 2 is next, then 3 → 4 → 5 → 6 → 7.** The four **new** drawings are at `docs/design/mockups/current/` and the instrument reads them: the body-flush and radius rows are red on today's shell by design at both worker counts, and no row is unresolved. **Task 8 added the two `fixture` rows that read the control drawings**, so `current/controls.html` and `current/controls-light.html` are no longer drawings nothing reads.
 - **The drawings' README no longer lets a divergence pass as "deliberate"** — a difference must now be **licensed by a rule that predates it** or fixed, which is the escape hatch that let a week of drift pass every check green.
 - **The user's rulings, 2026-10-10: the mockup is not replaced — "Do not replace the mockup."** — the built product is pulled to the drawing; and, told a refresh would overdraw them, "Keep the original mockup html files and label them as such. Build new html."
 - **The drawing is the acceptance instrument.** §13 now says it governs wherever the written rules are silent, with no self-licensing and no "deliberate" disposition, and Task 1 landed the reader that reddens on eight real rows of today's shell.
@@ -32,10 +32,11 @@ satisfies every token in the bible and still does not look like the mockup.
 
 ## Last completed change
 
-- **Task 1 fix round 2, closed: the report no longer claims a check the controller ran** — the census's open-items list said 13 rows with another owner and named A20–A28 on **both** sides; the controller corrected `adjudication.md` after the scoped re-review, and the report now attributes that to them.
-- **The reader's header comment no longer says a `body` row exists** — no `PARITY` row uses a rule selector, so the `<style>` half of the reader is exercised by the reader's own proofs and the inline half by every drawing-side row, including Task 8's two control-drawing rows.
-- **Re-verified at `0e7b3405` rather than carried forward** — reader 12/12, the shell parity test still reddens 8 rows at `--workers=1` and the same 8 at `--workers=2`, the header's 42px passing as the control, no row unresolved.
-- **Task 8's two `surface: "fixture"` rows are untouched by this round** — the shell test skips them (`design-language.spec.ts:1839`), so they do not reach the `undefined` guard as unresolved rows, which was checked rather than assumed.
+- **Task 8 fix round 1: the panel half of the ancestor-wide box rule is gone** — `.editor-shell-panel button/input` and its `:hover` are replaced by the three asset hooks and `.vigilia-layer-rename`, so a pane's `ControlText` no longer draws a 30px bordered input inside its own 26px well.
+- **A row's 74px column became a shape rather than every surface's default** — `ControlToggle`/`ControlSelect` take `shape`, and the modal's `boxed` row and the Add pane's `headed` trigger read their `border-radius`/`gap` from `settings.html:89-93` and `shell.html:128-132` under test.
+- **The fixture mounts both ancestors the product mounts** — a third `.editor-shell-panel` column; with the panel rule reverted to ancestor-wide the assertion reddens on three doubled inputs, and the CSS was restored `cmp`-identical.
+- **The capture set is the nine that show the fix** — `settings-about*` and `settings-keyboard` were left out, every staged image was read, and the two that differ from the previous set are live content only (the stage's numerals, the graphite modal's animated backdrop).
+- **`vg-298` and `vg-299` are extended, not closed** — the panel half and the widened fixture are the controller's ruling, and the eight shell-parity rows still redden on Tasks 2 and 3.
 
 ## Next
 

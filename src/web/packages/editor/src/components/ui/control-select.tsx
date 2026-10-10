@@ -3,6 +3,7 @@ import type * as React from "react";
 import {
   type ControlProps,
   ControlRow,
+  type ControlShape,
   describedBy,
   isBlocked,
   useControlIds,
@@ -57,6 +58,10 @@ export function ControlSelect(
     readonly value: string;
     readonly options: readonly ControlOption[];
     readonly onChange: (id: string) => void;
+    /** The row's shape, where the surface's drawing draws this picker as
+     *  something other than the labelled row — the Add pane's asset picker is
+     *  `headed` (`shell.html:128-132`). */
+    readonly shape?: ControlShape;
   },
 ): React.JSX.Element {
   return <SelectControl {...props} />;
@@ -73,6 +78,7 @@ export function SelectControl(
     readonly options: readonly ControlOption[];
     readonly onChange: (id: string) => void;
     readonly adornment?: React.ReactNode;
+    readonly shape?: ControlShape;
   },
 ): React.JSX.Element {
   const {
@@ -84,6 +90,7 @@ export function SelectControl(
     describedById,
     density,
     data,
+    shape,
     value,
     options,
     onChange,
@@ -100,6 +107,7 @@ export function SelectControl(
       refused={refused}
       hint={hint}
       density={density}
+      shape={shape}
     >
       <Select.Root
         items={options.map((option) => ({

@@ -4,6 +4,7 @@ import { createRoot } from "react-dom/client";
 import { ControlChoiceRow } from "./components/ui/control-choice-row.js";
 import { ControlIconButton } from "./components/ui/control-icon-button.js";
 import { ControlNumber } from "./components/ui/control-number.js";
+import { ControlPair } from "./components/ui/control-pair.js";
 import { ControlSegmented } from "./components/ui/control-segmented.js";
 import { ControlSelect } from "./components/ui/control-select.js";
 import { ControlSlider } from "./components/ui/control-slider.js";
@@ -32,15 +33,23 @@ import "./editor-shell/editor-shell.css";
  * areas and contrast be read at the real pane width rather than at a comfortable
  * one.
  *
- * **The columns are `.editor-shell-inspector`, because the product's are.** That
- * ancestor is what `editor-shell.css`'s legacy rules key on — they are
- * unlayered, so they beat the control set's own utilities and re-boxed an input
- * inside a well that already draws one. Without it the fixture rendered a page
- * the product does not, and it rendered it *greener*: every control assertion
- * passed on a surface with one fewer stylesheet applied (`vg-299`). The
- * `editor-glass` the product's aside also carries is deliberately not mounted —
- * it is a backdrop treatment of the column, and the root already stands in for
- * the surface the chrome is composited over.
+ * **The columns are the ancestors the product's are, and the product has two.**
+ * The inspector column is `.editor-shell-inspector` and the pane column is
+ * `.editor-shell-panel` (both are what `editor-shell.css`'s legacy rules keyed
+ * on), and a fixture that mounted only the first was *greener* than the product:
+ * every control assertion passed on a surface with one fewer stylesheet applied
+ * (`vg-299`), and the unlayered `.editor-shell-panel input` box survived one
+ * ancestor to the left of the fixed one for a whole round because the fixture
+ * could not see it. Two ancestors are the instrument, not decoration. The
+ * `editor-glass` both asides also carry is deliberately not mounted — it is a
+ * backdrop treatment of the column, and the root already stands in for the
+ * surface the chrome is composited over.
+ *
+ * The pane column also mounts the two row shapes the drawings give a row and the
+ * field row does not: the settings modal's `boxed` switch row
+ * (`settings.html:89-93`) and the Add pane's `headed` asset picker
+ * (`shell.html:128-132`). Both are drawn by a surface's own drawing rather than
+ * by the control set's default, so the fixture is where they are measured.
  *
  * Every class here is a role or a scale step. A literal would be the defect the
  * fixture exists to catch, so the fixture is held to the same ratchet
@@ -238,6 +247,56 @@ function Fixture(): React.JSX.Element {
               >
                 <span aria-hidden>⧉</span>
               </ControlIconButton>
+            </div>
+          </InspectorSection>
+        </aside>
+
+        {/* The pane column, and the product's second ancestor: `.editor-shell-panel`
+            is the box `panes/document/metadata-fields.tsx` composes `ControlText`
+            inside, so the panes' field rows are the same control set under a
+            different surface's stylesheet. It is the same 246px the rail gives a
+            pane (§7.8: a label reads at the real pane width, not a comfortable
+            one). */}
+        <aside className="editor-shell-panel w-[246px] bg-panel p-[var(--space-12)]">
+          <InspectorSection id="pane-fields" title="Pane fields">
+            <div data-fixture="pane-text">
+              <ControlText label="Author" value="Vigilia" onCommit={noop} />
+            </div>
+            {/* The two shapes a row takes when a drawing shapes it differently.
+                The boxed switch is the settings modal's (`settings.html:89-93`)
+                and the headed picker is the Add pane's (`shell.html:128-132`);
+                both are here because the fixture is where a shape is measured,
+                and neither is a labelled field row. */}
+            <div data-fixture="boxed">
+              <ControlToggle
+                label="Follow the system"
+                checked={false}
+                onChange={noop}
+                shape="boxed"
+              />
+            </div>
+            <div data-fixture="headed">
+              <ControlSelect
+                label="Asset"
+                value="cpu.load"
+                options={SHOWS}
+                onChange={noop}
+                shape="headed"
+                data={{ "data-fixture-select": "headed" }}
+              />
+            </div>
+            {/* Two wells of very different magnitudes, because equal halves that
+                are equal by accident look the same as equal halves that are
+                right: the pair's halves are `flex:1` in the drawing, not sized
+                by the number they print (`vg-302`'s neighbour). */}
+            <div data-fixture="pair">
+              <ControlPair
+                label="Size"
+                halves={[
+                  { label: "W", value: 4, onCommit: noop },
+                  { label: "H", value: 4000, onCommit: noop },
+                ]}
+              />
             </div>
           </InspectorSection>
         </aside>

@@ -168,7 +168,14 @@ export function FileSection({
 
   return (
     <section>
+      {/* The Add pane's drawing gives this picker its own shape rather than a
+          labelled field row: `shell.html:128-132` draws an `Asset` eyebrow over
+          a trigger spanning the pane, the file name at `flex:1`. The heading is
+          what names the control, and the name it prints is the whole file name
+          — in a 74px label column the trigger was 170px wide and ellipsised it
+          (`vg-302`). */}
       <ControlSelect
+        shape="headed"
         label={uiCopy.panels.assetList}
         data={{ "data-vigilia-asset-select": "" }}
         value={chosen?.id ?? ""}
