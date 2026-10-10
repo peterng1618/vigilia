@@ -1,6 +1,7 @@
 import { expect, type Page, test } from "@playwright/test";
 import { captureVisualReview } from "./editor-canvas.js";
 import { openPane } from "./editor-rail.js";
+import { SETTINGS_DIALOG, SETTINGS_GEAR } from "./shell-palette.js";
 import { isDesktopSurface } from "./surface.js";
 
 /**
@@ -1331,5 +1332,134 @@ test("captures each pane of the four-slot rail in the design language", async ({
       `pane-${slot.toLowerCase()}`,
       column,
     );
+  }
+});
+
+/**
+ * The Settings surface's parity capture (spec §7, §13, mockup
+ * `docs/design/mockups/editor-shell.html`'s settings section).
+ *
+ * Plan 1's mechanism, turned on the modal the rail's gear opens: the built
+ * editor is opened, the gear pressed, and each of §7's three tabs photographed
+ * beside the mockup's two specimens. Two palettes, because the mockup draws one
+ * ground and a hard-coded hex is invisible in a single one — graphite is the
+ * paper the mockup is drawn on, editorial the light ground the same vocabulary
+ * has to hold on.
+ *
+ * **It fails if the surface is not the new one**, which is the point: a picture
+ * written over the old shell is a comparison against the wrong thing. Four
+ * facts are asserted before any image is written — the header carries no
+ * palette control (§7 moved the chip into this modal), the gear is on the rail
+ * and is there, the modal holds §7's three tabs by name, and exactly one panel
+ * is showing (every panel stays mounted, so a leftover second one shows as two).
+ *
+ * The About tab's release row renders only where the open document carries a
+ * `metadata.version` (`settings.tsx`'s `versionFacts`). No document this suite
+ * can load has one — the starter and blank-theme builders write metadata
+ * without it (`new-fabric-theme.ts`), and no fixture or library stub supplies
+ * one — so the row is absent from this image and the run says so in its own
+ * annotation rather than inventing a version to sit in the picture.
+ *
+ * A `--grep` that matches nothing exits 0 with zero tests, so the run's own
+ * summary — "1 test", this file — is the proof it ran at all.
+ */
+test("captures the settings modal's three tabs in the design language", async ({
+  page,
+}, testInfo) => {
+  test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+  test.setTimeout(120_000);
+
+  await page.goto(EDITOR);
+  await expect(
+    page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+  ).toBeVisible();
+
+  // §7 moved the palette chip out of the header; a chip or a choice row still
+  // there means this is the old header and the frame would be of the wrong thing.
+  await expect(
+    page.locator(
+      ".editor-shell-header .editor-shell-palette-swatch, .editor-shell-header [data-vigilia-palette-choice]",
+    ),
+  ).toHaveCount(0);
+
+  const gear = page.locator(SETTINGS_GEAR);
+  await expect(gear).toHaveCount(1);
+  await gear.click();
+  const dialog = page.getByRole("dialog", SETTINGS_DIALOG);
+  await expect(dialog).toBeVisible();
+
+  // §7's three tabs, by the words the modal prints, and one panel out.
+  await expect(dialog.getByRole("tab")).toHaveCount(3);
+  for (const name of ["Appearance", "Keyboard", "About"]) {
+    await expect(dialog.getByRole("tab", { name })).toBeVisible();
+  }
+  await expect(dialog.locator('[role="tabpanel"]:visible')).toHaveCount(1);
+
+  /** One tab, shown. `data-active` is the hook the stylesheet paints the active
+   *  tab's accent border from, so a tab that did not take fails here rather than
+   *  being photographed under a picture named for it. */
+  const show = async (name: string): Promise<void> => {
+    const tab = dialog.getByRole("tab", { name });
+    await tab.click();
+    await expect(tab).toHaveAttribute("data-active", "");
+    await expect(dialog.locator('[role="tabpanel"]:visible')).toHaveCount(1);
+  };
+
+  // The About tab's facts, read from the surface rather than assumed: the schema
+  // version is the build's own and is always there, the release version is the
+  // document's and is absent here.
+  await show("About");
+  await expect(
+    dialog.locator('[data-vigilia-about-fact="schema-version"]'),
+  ).toHaveText(/\S/);
+  const releaseRow = dialog.locator(
+    '[data-vigilia-about-fact="release-version"]',
+  );
+  const release =
+    (await releaseRow.count()) === 0 ? null : await releaseRow.textContent();
+  testInfo.annotations.push({
+    type: "about",
+    description:
+      release === null
+        ? "release version row absent: no document this suite loads carries a metadata.version"
+        : `release version row present: ${release}`,
+  });
+
+  // Graphite first: the mockup is drawn on it, so the two pictures compare.
+  await show("Appearance");
+  await dialog.getByRole("radio", { name: "graphite", exact: true }).click();
+  await expect(page.locator("html")).toHaveAttribute(
+    "data-shell-palette",
+    "graphite",
+  );
+
+  /** One tab, shown and photographed. The pointer is parked on the dialog's own
+   *  top-left corner — the lead heading, no control — because the click left it
+   *  on a tab, and a hover state in the frame is an artefact of how the picture
+   *  was driven rather than part of the surface. */
+  const capture = async (tab: string, suffix: string): Promise<void> => {
+    await show(tab);
+    const box = await dialog.boundingBox();
+    if (box !== null) await page.mouse.move(box.x + 2, box.y + 2);
+    await captureVisualReview(
+      page,
+      testInfo,
+      `settings-${tab.toLowerCase()}${suffix}`,
+      dialog,
+    );
+  };
+
+  for (const tab of ["Appearance", "Keyboard", "About"]) {
+    await capture(tab, "");
+  }
+
+  await show("Appearance");
+  await dialog.getByRole("radio", { name: "editorial", exact: true }).click();
+  await expect(page.locator("html")).toHaveAttribute(
+    "data-shell-palette",
+    "editorial",
+  );
+  for (const tab of ["Appearance", "Keyboard", "About"]) {
+    await capture(tab, "-editorial");
   }
 });

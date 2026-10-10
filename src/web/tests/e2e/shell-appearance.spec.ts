@@ -476,6 +476,21 @@ test.describe("shell palettes", () => {
     await openEditor(page);
     for (const palette of PALETTES) {
       await choosePalette(page, palette);
+      // The modal hands focus back to the gear when it closes, so the gear's
+      // tooltip is open over the rail's foot — a popup left by how the frame was
+      // driven, and the same artefact `editor-shell-add` parks the pointer to
+      // avoid. The gear and the tooltip are the shell's; it is the palette the
+      // capture is of.
+      await page.evaluate(() =>
+        (document.activeElement as HTMLElement | null)?.blur(),
+      );
+      const stage = await page.locator(".editor-shell-stage").boundingBox();
+      if (stage !== null) {
+        await page.mouse.move(
+          stage.x + stage.width / 2,
+          stage.y + stage.height / 2,
+        );
+      }
       await captureVisualReview(page, testInfo, `shell-palette-${palette}`);
     }
   });
