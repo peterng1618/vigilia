@@ -116,9 +116,15 @@ function backgroundAlpha(colour: string): number | null {
  *  the derivation plan 7 Task 4 wrote produces no opaque value for it. A value
  *  invented here would be a seventh palette tuned by hand, which is the move
  *  the derivation exists to replace, so the fill stays where it is and `vg-310`
- *  owns the gap. The case asserts the translucency it actually carries, so the
- *  day Task 4 derives an opaque value this reds and the exemption has to be
- *  deleted rather than left to excuse a regression. */
+ *  owns the gap.
+ *
+ *  The waiver names a **value, not a direction** (review round 1): the case
+ *  asserts that a palette's rendered chrome alpha equals the alpha its own
+ *  `--panel` declares, and this set against what that declaration says. The
+ *  exemption therefore reds whichever way the fill moves — a value that lands
+ *  (declared opaque) makes the row stale, and any treatment added on top of
+ *  light's fill breaks the equality — instead of only in the opaque direction,
+ *  which is all an `alpha >= 1` reading of "exempt" could catch. */
 const CHROME_NOT_YET_OPAQUE: ReadonlySet<(typeof PALETTES)[number]> = new Set([
   "light",
 ]);
@@ -408,12 +414,23 @@ test.describe("shell palettes", () => {
    *  `--panel`, so the palette split this test used to assert is exactly what was
    *  removed — `editorial`'s clusters are glass now, as every palette's are.
    *
-   *  Two cases, on the built bundle in all six palettes:
+   *  Both halves are read as a **set, not a sample** (review round 1): a boundary
+   *  stated per element is not held by one element a side, and the two surfaces
+   *  that were missing from the first reading — the status bar and two of the
+   *  three clusters — are exactly where a regression could have hidden. On the
+   *  built bundle, in all six palettes:
    *
-   *  - **chrome** — the rail, the pane, the inspector and the header strip, which
-   *    §3's elevation-0 row names by hand and which does not carry
-   *    `editor-glass` — has no alpha, no gradient, no blur and no shadow;
-   *  - a **floating cluster** — the zoom readout — has all four.
+   *  - **chrome** — every surface that declares its own fill: the rail, the pane,
+   *    the inspector, and §3's two elevation-0 strips, the header and the status
+   *    bar. Each paints the palette's own `--panel` and nothing on top of it, so
+   *    the alpha it renders equals the alpha that fill declares, and it carries
+   *    no gradient, no blur and no shadow.
+   *  - a **floating cluster** — §7.5's three: the dock, the view cluster and the
+   *    identity chip. Each is translucent and lifted. The two that carry
+   *    `editor-glass` also carry the sheen; the chip declares its fill, blur,
+   *    hairline and `--elev-1` in its own rule and no gradient, so the gradient is
+   *    asserted on those two — §7.5's cluster contract is the `--radius-xl`, the
+   *    ~95% fill and the blur, and the sheen is the shared class's.
    *
    *  The cluster's `backdrop-filter` cannot be one of them, and the reason is
    *  measured rather than assumed: the built stylesheet carries only the prefixed
@@ -434,8 +451,10 @@ test.describe("shell palettes", () => {
       ".editor-shell-panel",
       ".editor-shell-inspector",
       ".editor-shell-header",
+      ".editor-shell-status",
     ];
-    const CLUSTER = ".editor-shell-zoom";
+    const GLASS_CLUSTERS = [".editor-shell-dock", ".editor-shell-zoom"];
+    const CLUSTERS = [...GLASS_CLUSTERS, ".editor-shell-identity"];
 
     const read = (selector: string) =>
       page.evaluate((sel) => {
@@ -450,25 +469,52 @@ test.describe("shell palettes", () => {
         };
       }, selector);
 
+    /** The alpha the palette's own chrome fill declares. `--panel` is what every
+     *  chrome surface paints, so this is what a rendered chrome alpha is held
+     *  against — through a probe element rather than the token's text, so a fill
+     *  in any form this browser serialises reads the same way. */
+    const declaredFillAlpha = async (): Promise<number | null> => {
+      const declared = await page.evaluate(() => {
+        const probe = document.createElement("div");
+        probe.style.backgroundColor = "var(--panel)";
+        document.body.append(probe);
+        const value = getComputedStyle(probe).backgroundColor;
+        probe.remove();
+        return value;
+      });
+      return backgroundAlpha(declared);
+    };
+
     const failures: string[] = [];
     for (const palette of PALETTES) {
       await choosePalette(page, palette);
       const exempt = CHROME_NOT_YET_OPAQUE.has(palette);
+      const declared = await declaredFillAlpha();
+
+      // The exemption is a value, not a direction: a palette still listed whose
+      // fill now declares opaque is a stale row, and one that declares less than
+      // opaque without being listed is a new gap. Either way the set and the
+      // declarations disagree.
+      if (declared === null || exempt !== declared < 1) {
+        failures.push(
+          `${palette}: its \`--panel\` declares alpha ${
+            declared ?? "a form this assertion cannot read"
+          }, and CHROME_NOT_YET_OPAQUE ${
+            exempt ? "lists it" : "does not list it"
+          } — the exemption and the declaration disagree (vg-310)`,
+        );
+      }
 
       for (const selector of CHROME) {
         const chrome = await read(selector);
         const alpha = backgroundAlpha(chrome.background);
-        if (alpha === null) {
+        if (alpha === null || declared === null) {
           failures.push(
-            `${palette} ${selector}: its background reads "${chrome.background}", which this assertion cannot read as opaque`,
+            `${palette} ${selector}: its background reads "${chrome.background}", which this assertion cannot read against the palette's own fill`,
           );
-        } else if (exempt ? alpha >= 1 : alpha < 1) {
+        } else if (Math.abs(alpha - declared) > 0.002) {
           failures.push(
-            `${palette} ${selector}: its background is ${chrome.background}, and chrome is opaque (${
-              exempt
-                ? "this palette is exempt today, so a value that reaches alpha 1 must delete the exemption"
-                : "no alpha, because the canvas behind it must not read through"
-            })`,
+            `${palette} ${selector}: its background is ${chrome.background}, and the chrome paints the palette's own fill and nothing over it, which declares alpha ${declared}`,
           );
         }
         if (chrome.image !== "none") {
@@ -488,20 +534,24 @@ test.describe("shell palettes", () => {
         }
       }
 
-      const cluster = await read(CLUSTER);
-      const clusterAlpha = backgroundAlpha(cluster.background);
-      if (clusterAlpha === null || clusterAlpha >= 1) {
-        failures.push(
-          `${palette}: the cluster's fill is ${cluster.background}, and §3 has a floating cluster never fully opaque`,
-        );
-      }
-      if (cluster.image === "none") {
-        failures.push(`${palette}: the cluster carries no glass gradient`);
-      }
-      if (cluster.shadow === "none") {
-        failures.push(
-          `${palette}: the cluster has no elevation shadow, so it does not read as lifted over the canvas`,
-        );
+      for (const selector of CLUSTERS) {
+        const cluster = await read(selector);
+        const clusterAlpha = backgroundAlpha(cluster.background);
+        if (clusterAlpha === null || clusterAlpha >= 1) {
+          failures.push(
+            `${palette} ${selector}: the cluster's fill is ${cluster.background}, and §3 has a floating cluster never fully opaque`,
+          );
+        }
+        if (cluster.image === "none" && GLASS_CLUSTERS.includes(selector)) {
+          failures.push(
+            `${palette} ${selector}: the cluster carries no glass gradient`,
+          );
+        }
+        if (cluster.shadow === "none") {
+          failures.push(
+            `${palette} ${selector}: the cluster has no elevation shadow, so it does not read as lifted over the canvas`,
+          );
+        }
       }
     }
 
