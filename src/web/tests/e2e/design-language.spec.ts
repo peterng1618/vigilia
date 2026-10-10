@@ -2,8 +2,8 @@ import { expect, type Page, test } from "@playwright/test";
 import { captureVisualReview } from "./editor-canvas.js";
 import { openPane } from "./editor-rail.js";
 import {
-  mockupDeclaredOrNull,
   mockupDeclared,
+  mockupDeclaredOrNull,
   PARITY,
   type ParityRegion,
   readMockup,
@@ -1488,11 +1488,15 @@ function lengthInPx(value: string): number | null {
 
 /** How many dialogs are **rendered** right now.
  *
- *  Both dialogs render `.editor-shell-dialog` from one rule, and the closed one
- *  stays in the DOM — so `document.querySelector` answers with whichever comes
- *  first *in the document*, which is not the question a row about the sheet is
- *  asking. Every dialog row asserts this is 1 before it is read, so a row cannot
- *  measure the other dialog and report its number as its own. */
+ *  Both dialogs render `.editor-shell-dialog` from one rule, and **only one is
+ *  ever in the document** — measured 2026-10-10: 0 after the modal is closed, 1
+ *  with the sheet open. `Dialog` (`components/ui/dialog.tsx`) passes no
+ *  `keepMounted` to `DialogPrimitive.Portal`, whose own default is `false`, so a
+ *  closed dialog unmounts rather than hiding. Both dialog rows assert this is 1
+ *  before they read, which is what makes that a contract instead of an accident
+ *  of the library's default: a `keepMounted` flip, or a second dialog on the
+ *  route, reds here with its own message rather than letting a row measure the
+ *  other dialog and report its number as its own. */
 async function renderedDialogs(page: Page): Promise<number> {
   return page.evaluate(
     () =>
@@ -1573,11 +1577,11 @@ test("the shell is what the drawing draws", async ({ page }, testInfo) => {
       (wanted) => {
         const out: Record<string, string | null> = {};
         for (const row of wanted) {
-          // The **rendered** match, not the first in document order. Both
-          // dialogs render `.editor-shell-dialog` and the settings modal stays
-          // in the DOM while closed, so a first-match read of the sheet's row
-          // would measure the modal and report the same number twice — a reading
-          // that cannot fail for the reason the row exists.
+          // The **rendered** match, not the first in document order: one dialog
+          // is in the DOM at a time today, so this picks the only one — and if
+          // a second ever appears (a `keepMounted` flip leaves the closed modal
+          // mounted), it reads the open dialog rather than whichever the
+          // document happens to list first.
           const element =
             [...document.querySelectorAll(row.productSelector)].find(
               (candidate) => candidate.getClientRects().length > 0,
@@ -1662,7 +1666,11 @@ test("the shell is what the drawing draws", async ({ page }, testInfo) => {
   const table: string[] = [];
   for (const row of PARITY) {
     const rendered = product[key(row)];
-    if (rendered === null) {
+    // `undefined` is its own reading under `noUncheckedIndexedAccess`: the key
+    // was never filled because the row was in no `readRows` call, which is the
+    // same verdict as "nothing matched" — the row measured nothing — and must
+    // not reach `lengthInPx` and throw there instead.
+    if (rendered === undefined || rendered === null) {
       unresolved.push(
         `${row.region}: no element matches \`${row.productSelector}\`, so the row measured nothing`,
       );

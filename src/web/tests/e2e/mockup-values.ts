@@ -11,22 +11,31 @@ import { fileURLToPath } from "node:url";
  * amendment of 2026-10-10 is about. So the drawing is parsed here, and a row
  * that names a value the drawing no longer declares fails instead of passing.
  *
- * **Two declaration sites, one reader.** The drawing declares in its `<style>`
- * block (`.mockup`) *and* in inline `style` attributes — the shell's regions,
- * its frame and its token table are all inline, with no selector to reach them
- * by. A selector is therefore either:
+ * **Two declaration sites, one reader.** `current/shell.html` and
+ * `current/settings.html` each declare in a `<style>` block holding `:root`,
+ * `*` and `body`, *and* in inline `style` attributes — every region any row
+ * addresses (the header, the body row, the rail, the panes, the stage and its
+ * ground, the inspector) is an anonymous inline-styled `div` with no selector to
+ * reach it by. A selector is therefore either:
  *
- * - a rule selector, matched against the drawing's `<style>` blocks (`.mockup`);
+ * - a rule selector, matched against the drawing's `<style>` rules — `body` is
+ *   the one a row uses;
  * - an attribute selector of the form `[style*="width:46px"]`, matched against
- *   an element's own `style` attribute — which is how the shell's frame, its
- *   body row, its rail, its panes, its stage and its status bar are addressed.
+ *   an element's own `style` attribute, which is how every region above is
+ *   addressed.
  *
- * **Document order decides.** Where the drawing has more than one `<style>`
- * block, or more than one declaration matches, the **last** declaration in
- * document order wins — the cascade's rule for equal specificity, and the
- * reading a person gets from opening the file. Unlike the cascade this reader
- * does not weigh specificity: a row named against a rule gets that rule's own
- * declaration, and a row named against an inline attribute gets that element's.
+ * **Document order decides — between rules.** Where more than one `<style>` rule
+ * carries the selector, the **last** declaration wins: the cascade's rule for
+ * equal specificity, and the reading a person gets from opening the file. Unlike
+ * the cascade this reader does not weigh specificity, so a row gets exactly the
+ * rule it names.
+ *
+ * **An inline selector must be unambiguous.** `[style*="…"]` in a browser
+ * matches *every* element carrying that substring, and the last in document
+ * order is a different element, not a later rule for the same one — so a second
+ * match is refused rather than resolved (`lookup`). Otherwise a row could quietly
+ * compare the wrong element, and a wrong element with a real value reads as a
+ * **pass** — the failure mode this file exists to end.
  *
  * `ponytail:` a regex over an inline stylesheet is the ceiling here — no at-rule
  * nesting, no shorthand expansion, no specificity. Upgrade to a real CSS parse
@@ -116,7 +125,15 @@ function declarations(mockupHtml: string): Declaration[] {
 
 /** What a selector addresses: how many declarations carry it (a selector that
  *  addresses none is a broken row, not a silence), and the value the drawing
- *  last declares for `property` under it, or `null` when it declares none. */
+ *  last declares for `property` under it, or `null` when it declares none.
+ *
+ *  An inline selector addresses **one** element. `[style*="…"]` matches every
+ *  element carrying the substring, so a second match is not a later rule for the
+ *  same thing — it is a different thing, and the row cannot say which it meant.
+ *  That throws, like a selector that addresses nothing, because the alternative
+ *  is a row that compares whichever element the document lists last and can pass
+ *  on it. Elements written with *identical* `style` attributes count once: they
+ *  are indistinguishable here and declare the same value either way. */
 function lookup(
   mockupHtml: string,
   selector: string,
@@ -124,6 +141,7 @@ function lookup(
 ): { owners: number; value: string | null } {
   const inline = INLINE_SELECTOR.exec(selector);
   const wanted = (inline?.[1] ?? "").trim();
+  const matched = new Set<string>();
   let owners = 0;
   let value: string | null = null;
   for (const declaration of declarations(mockupHtml)) {
@@ -133,11 +151,17 @@ function lookup(
         : declaration.inline && declaration.owner.includes(wanted);
     if (!matches) continue;
     owners += 1;
+    matched.add(declaration.owner);
     if (declaration.property === property) value = declaration.value;
   }
   if (owners === 0) {
     throw new Error(
       `the drawing addresses nothing with \`${selector}\`: this row names a selector the drawing does not declare`,
+    );
+  }
+  if (inline !== null && matched.size > 1) {
+    throw new Error(
+      `the drawing addresses ${matched.size} elements with \`${selector}\`: this row names a selector that does not settle which one it means`,
     );
   }
   return { owners, value };

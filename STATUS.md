@@ -32,16 +32,16 @@ satisfies every token in the bible and still does not look like the mockup.
 
 ## Last completed change
 
-- **Plan 7 Task 9 landed: the drawings show today's surfaces, and the originals are labelled** (`5773f652`) — four files under `docs/design/mockups/current/` (`shell`, `settings`, `controls`, `controls-light`), drawn in the originals' treatment with nothing addressed to the reader.
-- **The originals are kept, not redrawn** — one identical label line each, verified as the only change to each file, so the record of what was designed first survives.
-- **The instrument reads the new drawings and still fails on today's shell** — eight rows red at `--workers=1` and `--workers=2`, no unresolved row, the header's 42px passing as the control; reader 10/10 and the whole editor suite 792 files / 3402 tests / 0 failed.
-- **A flush region of the shell is square, by ruling** (`e2e3c5a1`) — the drawing declares a radius wherever it wants one and none on the rail, panes, stage, inspector, header or status; only `.editor-shell-dialog` takes `--radius-lg`.
-- **`vg-300` filed, not fixed** — the README's "How a gate uses them" still lets a divergence through as "recorded as deliberate", which is the clause class the user's complaint is about.
+- **Plan 7 Task 1, fix round 2: the census's arithmetic agrees with its own lists** — of the 34 `fix` rows, **18 are this plan's** (A3–A7, A9, A18, A19, A20–A28, B1) and **16 another owner's**, enumerated by id and owner in the census, the report and the commit; the 21 it replaced named nine rows.
+- **The reader refuses an ambiguous selector** — `[style*="…"]` matching two elements now throws naming the selector and the count instead of silently comparing whichever the document lists last, because a wrong element with a real value reads as a *pass*.
+- **A `licensed` row's citation is read, not trusted** — the stage ground's declared `background` must contain the gradient §7.5 licenses; proved red by pointing the row at another element, restored byte-identically with `cmp`, and the `undefined` read under `noUncheckedIndexedAccess` now takes the row's own "measured nothing" path.
+- **Two review-unverified items measured, both now facts** — `--radius-lg` reads `8px` from `:root` in the built bundle, so both dialog rows are red at 8 against the product's 12px and not for an unresolved token; and the closed modal **unmounts** (0 dialogs in the DOM after Escape, 1 with the sheet open), so the guard stays and its untrue comments were rewritten.
+- **Still 8 rows red at `--workers=1` and `--workers=2`, reader 11/11** — the four flush-region radius rows stand by ruling `e2e3c5a1`, and the reader's header comment now describes `current/shell.html` instead of the superseded drawing.
 
 ## Next
 
 1. **Execute plan 7 in its stated order** — Task 9 (dispatched), then Task 8, then 2 → 3 → 4 → 5 → 6 → 7 — with each task reviewed and adjudicated before the next is dispatched.
-2. **Adjudicate Task 1's task review, running now** over the frozen range `d7d5baaa..8d127f56`; Task 9's review follows it.
+2. **Adjudicate Task 1's fix round 2, reported now**, then Task 9's review — Task 8 stays held behind Task 1 by one-writer-per-file.
 3. **Then plan 8 (settings parity)** — 13 of the modal's 19 measured regions drift, and it consumes plan 7's instrument, radius scale and chrome decision.
 4. **Then plan 6 (`iconography-and-copy`), then `design-md-replaces-the-bible`** — each ending with its own §13 parity capture, which now means a comparison against the drawing.
 5. **Then the multi-device display objective** — detect connected displays and hold a theme per device; architectural, so brainstorm → spec → plan, and "device" already means the hardware behind a theme's sensor in `packages/host/src/settings/devices.ts`.

@@ -68,6 +68,22 @@ test("a selector the drawing addresses nothing with throws", () => {
   ).toThrow(/addresses nothing with `\.editor-shell-frame`/);
 });
 
+test("an inline selector that matches twice throws rather than picking one", () => {
+  // `[style*="…"]` matches every element carrying the substring, so a second
+  // match is a different element, not a later rule for the same one. Picking the
+  // last in document order would be silent, and — because a real value on the
+  // wrong element reads as `8px`, not `null` — it can read as a **pass**.
+  const twice = `${drawing}<div style="width:46px"></div>`;
+  expect(() =>
+    mockupDeclared(twice, '[style*="width:46px"]', "background"),
+  ).toThrow(/addresses 2 elements/);
+  // One match still reads: the guard is for ambiguity, not for attribute
+  // selectors as a form.
+  expect(mockupDeclared(drawing, '[style*="width:46px"]', "background")).toBe(
+    "#0e1217",
+  );
+});
+
 test("silence is null, and a broken selector still throws", () => {
   // The two are different readings and must stay different: the body row the
   // drawing draws flush declares no padding, but a selector that matches no
@@ -87,10 +103,7 @@ test("silence is null, and a broken selector still throws", () => {
 test("the reader returns what the text says, not a constant", () => {
   // The check the three above cannot make. A reader that answered "#0b0e12"
   // unconditionally passes every one of them; it cannot pass this.
-  const changed = drawing.replace(
-    "background: #0b0e12",
-    "background: #101418",
-  );
+  const changed = drawing.replace("background: #0b0e12", "background: #101418");
   expect(changed).not.toBe(drawing);
   expect(mockupDeclared(changed, "body", "background")).toBe("#101418");
   // And a different declaration site, so one lucky literal is not the whole
@@ -111,9 +124,9 @@ test("the reader reads the path it is given", () => {
   // the two apart without printing either.
   const settings = readMockup(SETTINGS_MOCKUP_PATH);
   expect(settings).not.toBe(drawing);
-  expect(
-    mockupDeclared(settings, '[style*="width:150px"]', "background"),
-  ).toBe("#0e1217");
+  expect(mockupDeclared(settings, '[style*="width:150px"]', "background")).toBe(
+    "#0e1217",
+  );
   expect(() =>
     mockupDeclared(drawing, '[style*="width:150px"]', "background"),
   ).toThrow(/addresses nothing/);
@@ -164,8 +177,26 @@ test("every row names a comparator, and a drawing row declares a length", () => 
       continue;
     }
     // A licensed row is recorded, not asserted, so its declared value need not
-    // be a length this file could compare — the stage ground is a gradient.
-    if (row.licensed !== undefined) continue;
+    // be a length this file could compare — the stage ground is a gradient. The
+    // **value** is still read, though, and matched to the treatment the licence
+    // names: a licence quotes a declaration, and one nobody reads licenses
+    // whatever is there now, including a region the drawing stopped drawing.
+    if (row.licensed !== undefined) {
+      const declared = mockupDeclaredOrNull(
+        drawing,
+        row.mockupSelector ?? "",
+        row.mockupProperty,
+      );
+      expect(
+        declared,
+        `${row.region}: the licensed row's selector reads nothing, so its licence quotes a region the drawing no longer draws`,
+      ).not.toBeNull();
+      expect(
+        declared,
+        `${row.region}: the licence is about the drawing's diagonal texture, and the declaration is not one`,
+      ).toContain("repeating-linear-gradient(45deg");
+      continue;
+    }
     // Throws when the selector addresses nothing, which is the failure this
     // loop is for: a row whose selector went stale must red here, not read as a
     // region the drawing draws flush.
