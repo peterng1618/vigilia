@@ -355,7 +355,8 @@ The ladder's row asserts order (`bg < panel < panel2`) and cannot see a ladder c
 **Files:**
 - Modify: `src/web/tests/e2e/design-language.spec.ts`
 - Modify: `docs/evidence/screenshots/README.md`
-- Add: the produced images under `docs/evidence/screenshots/`, both palettes
+- Modify: `docs/design/mockups/current/shell.html` — only if Step 3 finds a difference whose disposition is `drawing-stale`; the frozen originals under `docs/design/mockups/*.html` never move
+- Add: the produced images under `docs/evidence/screenshots/`, both palettes, and the pair the brief's Step 2 places beside the drawing at `docs/design/mockups/current/shell-capture-*.png`
 
 **Interfaces:**
 - Consumes: every earlier task; Task 1's `PARITY` table as the comparison's spine.
@@ -371,7 +372,9 @@ Every `fix` row should now pass. Record any that do not as an open finding with 
 
 - [ ] **Step 3: List every remaining difference with its citation, or state that there are none**
 
-Under §13 as amended, a difference is kept only against a quoted predating rule. Re-read Task 1's `licensed` and `drawing-stale` rows against the shipped build: a `licensed` row whose citation is not verbatim-verifiable is reclassified `fix`, and a `drawing-stale` row must name the mockup edit that repaired it.
+Under §13 as amended, a difference is kept only against a quoted predating rule — **quoted, and verified at the line it is quoted from**, because a licence cited to a range that does not contain it is a licence nobody has read. Re-read Task 1's `licensed` and `drawing-stale` rows against the shipped build: a `licensed` row whose citation is not verbatim-verifiable is reclassified `fix`, and a `drawing-stale` row must name the mockup edit that repaired it.
+
+**A difference that is a product capability the drawing does not draw is `drawing-stale`: repair the drawing, never the product.** §13.1 does not let a visual difference waive a required capability, and Task 9's own rule sends a capability the product has and the drawing lacks *into the drawing*, because a gate cannot check a surface the drawing never shows. Deleting the capability to make the row agree would be using the parity gate to remove a feature, which is the opposite of what the plan is for — and it is the failure this step is most likely to be read into. The frozen originals under `docs/design/mockups/*.html` stay as they are; the user's 2026-10-10 ruling is what permits the *new* file's content to be corrected to the product.
 
 - [ ] **Step 4: Say which Acceptance items are met and which are not**
 
