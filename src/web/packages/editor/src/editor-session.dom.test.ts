@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import type { FabricThemeEnvelope } from "@vigilia/renderer-core";
+import { IText } from "fabric/es";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const saveMock = vi.hoisted(() => vi.fn(async () => {}));
@@ -784,6 +785,76 @@ describe("EditorSession", () => {
 
     extensions.destroy();
     hydrate.mockRestore();
+  });
+
+  it("reveals the Tokens pane, at the row the selection's own preset sits in", () => {
+    // The join between the inspector's reveal and the shell's pane is one slot
+    // name and one selector, and a wrong one of either opens the wrong pane in
+    // silence. Both are asserted from the outside: the row is named by the key
+    // the selection actually carries, not by a spelling repeated here.
+    const text = new IText("Hi", { left: 0, top: 0 });
+    text.set({
+      vigiliaText: {
+        runs: [{ kind: "literal", text: "Hi", typePreset: "typePresets.body" }],
+      },
+    });
+    const onRevealPane = vi.fn();
+    const extensions = new EditorSession({
+      assetManager: new AssetManager(),
+      shell: {
+        editor: {
+          canvas: {
+            on: vi.fn(),
+            off: vi.fn(),
+            getActiveObject: () => text,
+            getObjects: () => [text],
+            requestRenderAll: vi.fn(),
+          },
+          clipboardManager: { setImageImporter: vi.fn(), setBindings: vi.fn() },
+          textManager: {
+            addText: vi.fn(),
+            setAuthoringView: vi.fn(),
+            setRepaint: vi.fn(),
+          },
+          cropManager: idleCrop(),
+        },
+        scene: {},
+        snapshot: vi.fn(() => envelope),
+        setBackgroundMedia: vi.fn(),
+      } as never,
+      source: {} as never,
+      envelope,
+      panelHosts: {
+        add: document.body,
+        document: document.body,
+        tokens: document.body,
+        selection: document.body,
+      },
+      onNew: vi.fn(),
+      onNewFromStarter: vi.fn(),
+      onSaved: vi.fn(),
+      onRevealPane,
+      selection: {
+        subscribe: vi.fn(() => () => {}),
+        get: () => ({
+          selectedCount: 1,
+          activeKind: "object" as const,
+          selectionPresetId: "body",
+        }),
+      },
+    });
+
+    // Activating the control is what makes the pane reachable; the reveal is
+    // the inspector's to ask for and the shell's to perform.
+    document.body
+      .querySelector<HTMLButtonElement>("[data-vigilia-reveal-type-presets]")
+      ?.click();
+
+    expect(onRevealPane).toHaveBeenCalledWith(
+      "tokens",
+      '[data-vigilia-type-preset-row="body"]',
+    );
+    extensions.destroy();
   });
 });
 

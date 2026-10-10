@@ -19,9 +19,6 @@ export function reassignTypePresetToken(
   return next;
 }
 
-/** The row a reveal is aimed at. Re-exported so the session that asks for one
- *  reads the selector from its owner rather than spelling the hook itself. */
-export { presetRevealTarget } from "../panes/tokens/preset-list.js";
 export {
   createTypePresetPanel,
   type TypePresetFontActions,

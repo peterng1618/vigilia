@@ -49,7 +49,10 @@ import {
   paletteTokenUsage,
   reassignPaletteToken,
 } from "./palette-manager/index.js";
-import type { PresetSelection } from "./panes/tokens/preset-list.js";
+import {
+  type PresetSelection,
+  presetRevealTarget,
+} from "./panes/tokens/preset-list.js";
 import { serializeThemePackage } from "./persist.js";
 import {
   confirmDocumentReplacement,
@@ -78,7 +81,6 @@ import {
 import { captureThumbnail } from "./thumbnail-capture.js";
 import {
   createTypePresetPanel,
-  presetRevealTarget,
   reassignTypePresetToken,
   type TypePresetPanel,
   type TypePresets,

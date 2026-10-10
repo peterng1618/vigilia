@@ -3,6 +3,7 @@ import { useCallback, useState, useSyncExternalStore } from "react";
 import { ControlNumber } from "../../components/ui/control-number.js";
 import { ControlSelect } from "../../components/ui/control-select.js";
 import { ControlText } from "../../components/ui/control-text.js";
+import type { ActiveKind } from "../../editor-shell/bridge.js";
 import { catalogFaces, fontTrios } from "../../font-catalog.js";
 import { newPresetType } from "../../new-fabric-theme-globals.js";
 import { resolveTypePreset } from "../../selection-inspector/appearance.js";
@@ -50,6 +51,11 @@ export interface PresetSelection {
   subscribe(listener: () => void): () => void;
   get(): {
     readonly selectedCount: number;
+    /** Routing for a selection that *contains* others — a group, or a
+     *  multi-selection. The shell already projects it, and the pane needs it
+     *  because a container's type presets belong to its children: the same
+     *  case `selection-inspector` reads through `childrenAppearance`. */
+    readonly activeKind: ActiveKind;
     readonly selectionPresetId: string | undefined;
   };
 }
@@ -58,6 +64,7 @@ export interface PresetSelection {
  *  `useSyncExternalStore` compares snapshots by identity. */
 const NO_SELECTION: ReturnType<PresetSelection["get"]> = {
   selectedCount: 0,
+  activeKind: "none",
   selectionPresetId: undefined,
 };
 
@@ -77,22 +84,33 @@ function usePresetSelection(
  * below it is browsing.
  *
  * This is the distinction `vg-094` is about: a default and an answer must not
- * read alike, so four cases read four ways. "The selection is set to …" when
+ * read alike, so five cases read five ways. "The selection is set to …" when
  * the selection carries a preset; a dangling reference reads as unresolved,
- * which is a third answer and collapses into neither empty one; "carries no
- * type preset" when the selection is set in none; and "nothing selected" when
+ * which is a third answer and collapses into neither empty one; a container —
+ * a group or a multi-selection — reads as its children's presets, which is what
+ * `selection-inspector`'s own `childrenAppearance` already tells the author, so
+ * the two surfaces cannot disagree about one selection; "carries no type
+ * preset" when the selection itself is set in none; and "nothing selected" when
  * there is no selection at all — never the first declared preset, which is what
  * `Object.keys(presets)[0]` used to masquerade as.
  */
 export function Binding(props: {
   readonly presetId: string | undefined;
   readonly hasSelection: boolean;
+  readonly activeKind: ActiveKind;
   readonly presets: TypePresets;
 }): React.JSX.Element | null {
-  const { presetId, hasSelection, presets } = props;
+  const { presetId, hasSelection, activeKind, presets } = props;
   const sentence = ((): string => {
     if (!hasSelection) return uiCopy.panels.selectionEmpty;
-    if (presetId === undefined) return uiCopy.panels.selectionNoType;
+    if (presetId === undefined) {
+      // A container is not a failed lookup: it has no preset of its own because
+      // its children carry them. Bounded to the case with no preset to name, so
+      // a real reference is never dropped in favour of the container answer.
+      return activeKind === "group"
+        ? uiCopy.panels.selectionChildrenTypes
+        : uiCopy.panels.selectionNoType;
+    }
     // The name, because every surface that offers a reference names what it
     // offers; the ref is what is left when the document no longer declares it.
     const name = presets[presetId]?.name;
@@ -168,6 +186,7 @@ export function PresetList(props: PresetListProps): React.JSX.Element {
       <Binding
         presetId={stage.selectionPresetId}
         hasSelection={stage.selectedCount > 0}
+        activeKind={stage.activeKind}
         presets={presets}
       />
       <ControlSelect

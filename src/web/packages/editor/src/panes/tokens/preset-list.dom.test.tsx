@@ -19,6 +19,7 @@
 import { act, useState } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeAll, expect, it, vi } from "vitest";
+import type { ActiveKind } from "../../editor-shell/bridge.js";
 import { catalogFaces, fontTrios } from "../../font-catalog.js";
 import { resolveTypePreset } from "../../selection-inspector/appearance.js";
 import type {
@@ -98,10 +99,17 @@ function Harness(props: {
  */
 function stage(): {
   readonly source: NonNullable<PresetListProps["selection"]>;
-  set(presetId: string | undefined, hasSelection: boolean): void;
+  set(
+    presetId: string | undefined,
+    hasSelection: boolean,
+    activeKind?: ActiveKind,
+  ): void;
 } {
+  // A plain object, not a one-object selection: `activeKind` is what tells the
+  // pane a container apart, and "object" is the case that has no children.
   let snapshot = {
     selectedCount: 0,
+    activeKind: "object" as ActiveKind,
     selectionPresetId: undefined as string | undefined,
   };
   const listeners = new Set<() => void>();
@@ -115,9 +123,10 @@ function stage(): {
       },
       get: () => snapshot,
     },
-    set(presetId, hasSelection) {
+    set(presetId, hasSelection, activeKind = hasSelection ? "object" : "none") {
       snapshot = {
         selectedCount: hasSelection ? 1 : 0,
+        activeKind,
         selectionPresetId: presetId,
       };
       for (const listener of listeners) listener();
@@ -364,6 +373,30 @@ it("says the selection carries no preset when it carries none", async () => {
   expect(carriesNone).not.toBe(nothing);
   expect(carriesNone).toContain(uiCopy.panels.selectionNoType);
   expect(nothing).toContain(uiCopy.panels.selectionEmpty);
+});
+
+it("reads a group or a multi-selection as its children's presets, not as none", async () => {
+  // Two surfaces, one selection. `selection-inspector` reads a container's
+  // children for exactly this case (`per-kind-column`'s `childrenAppearance`),
+  // so a pane that told the author its selection "carries no type preset" would
+  // contradict the column beside it. A container is not a failed lookup.
+  const selection = stage();
+  const { host } = await mount(withNumbers, { selection: selection.source });
+
+  await act(async () => selection.set(undefined, true, "group"));
+  const container = binding(host).textContent;
+
+  expect(container).toContain(uiCopy.panels.selectionChildrenTypes);
+  expect(container).not.toContain(uiCopy.panels.selectionNoType);
+  expect(container).not.toContain(uiCopy.panels.selectionEmpty);
+
+  // The branch is bounded to a container with no preset to name: an ordinary
+  // object set in none still says so, and a container that *does* carry a
+  // reference still names it rather than folding into the container answer.
+  await act(async () => selection.set(undefined, true, "object"));
+  expect(binding(host).textContent).toContain(uiCopy.panels.selectionNoType);
+  await act(async () => selection.set("24-400", true, "group"));
+  expect(binding(host).textContent).toContain(withNumbers["24-400"]!.name);
 });
 
 it("reads a dangling reference as unresolved, which is neither empty answer", async () => {

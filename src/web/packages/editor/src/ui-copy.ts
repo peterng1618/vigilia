@@ -661,12 +661,15 @@ export const uiCopy = {
     colourToken: "Colour token",
     typePreset: "Type preset",
     /** What the Tokens pane says the *selection* is set in, as against what its
-     *  chooser is browsing. The four cases must read four ways: a default that
-     *  looks like an answer is `vg-094`, and a dangling reference is a third
-     *  answer that collapses into neither empty one. */
+     *  chooser is browsing. The five cases must each read their own way: a
+     *  default that looks like an answer is `vg-094`, a dangling reference is a
+     *  third answer that collapses into neither empty one, and a group or
+     *  multi-selection is a fourth — one whose own presets are its children's,
+     *  which is what `selection-inspector` says for it too. */
     selectionSetTo: (name: string) => `The selection is set to ${name}.`,
     selectionUnresolved: (ref: string) =>
       `The selection is set to ${ref}, which no longer resolves.`,
+    selectionChildrenTypes: "The selection's type presets are its children's.",
     selectionNoType: "The selection carries no type preset.",
     selectionEmpty: "Nothing selected.",
     paint: "Paint",
