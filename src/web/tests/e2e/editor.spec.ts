@@ -33,6 +33,7 @@ import {
 } from "./editor-canvas.js";
 import { openPane } from "./editor-rail.js";
 import { openPosition } from "./rebuild-driver.js";
+import { choosePalette } from "./shell-palette.js";
 import { isDesktopSurface } from "./surface.js";
 
 /** Clicks one primitive in the Add pane's shape group. */
@@ -1938,6 +1939,16 @@ test.describe("Fabric editor route", () => {
       page.getByRole("button", { name: "Apply trio" }),
     ).toBeVisible();
     await captureVisualReview(page, testInfo, "editor-font-trio");
+    // Two palettes, for the reason the control set pairs them: these choosers
+    // are wells with an accent boundary and a popup, and editorial is the light
+    // ground the same vocabulary has to hold on as well as graphite.
+    await choosePalette(page, "editorial");
+    await face.scrollIntoViewIfNeeded();
+    await expect(face).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Apply trio" }),
+    ).toBeVisible();
+    await captureVisualReview(page, testInfo, "editor-font-trio-editorial");
   });
 
   test("reassigns text type presets before deleting one", async ({
