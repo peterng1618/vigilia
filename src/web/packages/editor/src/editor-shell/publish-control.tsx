@@ -2,6 +2,11 @@ import { Popover } from "@base-ui/react/popover";
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { displayUrl } from "../hosting-client.js";
 import type { PublishSwitch } from "../publish-client.js";
+import { useActiveShortcuts } from "../shortcut-manager/bindings.js";
+import {
+  shortcutLabel,
+  shortcutSpokenLabel,
+} from "../shortcut-manager/display.js";
 import { uiCopy } from "../ui-copy.js";
 import { QrCode } from "./qr-symbol.js";
 import type { EditorActionFacade } from "./session-facade.js";
@@ -45,6 +50,11 @@ export function PublishControl({
     hosting.get,
     hosting.get,
   );
+  // The chord is printed beside the control, and it is printed from the live
+  // binding table: the mark and the act the mark runs are one row of one table
+  // (`publish.toggle`), so a rebind reaches the header too.
+  useActiveShortcuts();
+  const chord = shortcutLabel("publish.toggle");
   /** What a display is showing: the document that goes out, or nothing when the
    *  library does not hold this one. */
   const [showing, setShowing] = useState<{ readonly name: string } | undefined>(
@@ -118,6 +128,19 @@ export function PublishControl({
         data-vigilia-publish=""
       >
         {uiCopy.publish.start}
+        {/* §7.1's mark, and plan 2 left it off because there was nothing to
+            run. It is the same action id the header's own switch answers to
+            through the chord, so the mark and the act cannot disagree — a
+            printed chord that ran nothing is the state this row exists to end. */}
+        {chord === "" ? null : (
+          <kbd
+            className="editor-shell-primary-key"
+            data-vigilia-publish-chord=""
+            aria-label={shortcutSpokenLabel("publish.toggle")}
+          >
+            {chord}
+          </kbd>
+        )}
       </Popover.Trigger>
       <Popover.Portal>
         <Popover.Positioner

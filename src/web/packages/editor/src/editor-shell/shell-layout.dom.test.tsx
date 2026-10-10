@@ -9,7 +9,15 @@ import {
   insertGroups,
 } from "../new-object-panel.js";
 import { arrangeActions } from "../object-actions.js";
+import {
+  resolveShortcuts,
+  setActiveShortcuts,
+} from "../shortcut-manager/bindings.js";
 import { shortcutLabel } from "../shortcut-manager/display.js";
+import {
+  PRODUCT_SHORTCUTS,
+  type ShortcutBinding,
+} from "../shortcut-manager/index.js";
 import { uiCopy } from "../ui-copy.js";
 import type { ViewportManager } from "../viewport-manager/index.js";
 import type { EditorShellBridge } from "./bridge.js";
@@ -62,11 +70,13 @@ function facade(): EditorActionFacade {
 
 /** Base UI portals a menu to `body` and unmounts it on the next frame, so an
  *  open menu from one test is still in the document for the next one and
- *  `openPopup()` would read it. Escape is the gesture that closes it. */
+ *  `openPopup()` would read it. Escape is the gesture that closes it. The live
+ *  binding table is module state too, so it is put back with the menus. */
 afterEach(() => {
   document.dispatchEvent(
     new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
   );
+  setActiveShortcuts(PRODUCT_SHORTCUTS);
 });
 
 /** The View menu's controls. The shell only reads and writes these three, so a
@@ -1070,5 +1080,23 @@ it("prints the chord on the menu rows the shortcut table binds", async () => {
   expect(popup.querySelector("kbd")?.textContent).toBe(
     shortcutLabel("edit.undo"),
   );
+
+  // **And it re-reads the live table.** Review Focus 3 on this surface: a menu
+  // row that held a render-time copy would keep printing the chord the author
+  // replaced, so the mark would name a key that runs something else. The rebind
+  // is written the way the shell writes it — resolve first, then publish — and
+  // asserted on the same open menu rather than by opening a second one, which
+  // costs 50-90s under jsdom.
+  const moved: ShortcutBinding = {
+    key: "j",
+    modifier: true,
+    shift: false,
+    action: "edit.undo",
+  };
+  act(() => {
+    setActiveShortcuts(resolveShortcuts({ "edit.undo": moved }));
+  });
+  expect(openPopup().querySelector("kbd")?.textContent).toBe("Ctrl+J");
+
   layout.destroy();
 });

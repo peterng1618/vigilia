@@ -23,6 +23,14 @@ import {
   type RunDisplayMode,
 } from "../run-placeholder.js";
 import {
+  activeShortcuts,
+  readShortcutOverrides,
+  resolveShortcuts,
+  type ShortcutOverrides,
+  setActiveShortcuts,
+  subscribeShortcuts,
+} from "../shortcut-manager/bindings.js";
+import {
   shortcutLabel,
   shortcutSpokenLabel,
 } from "../shortcut-manager/display.js";
@@ -95,6 +103,10 @@ export interface ShellLayout {
   /** Opens §7's reference sheet. The session owns the `?` dispatcher and never
    *  sees React, so `editor-main` routes the gesture here. */
   showShortcuts(): void;
+  /** Turns the LAN host on and off — the act the publish surface's own switch
+   *  runs. The session's `publish.toggle` chord routes through here rather than
+   *  through a second publish path, so the chord and the switch cannot drift. */
+  togglePublishing(): void;
   destroy(): void;
 }
 
@@ -404,6 +416,9 @@ function ShellMenuBar({
   readonly getView: () => EditorViewControls | undefined;
 }): React.JSX.Element {
   const selection = useSelection(store);
+  // Subscribed, so a rebind redraws every chord these rows print rather than
+  // leaving a mark that runs a different action.
+  useSyncExternalStore(subscribeShortcuts, activeShortcuts, activeShortcuts);
   const kind = selection.activeKind;
   const session = store.bridge?.session;
   const [source, setSource] = useState<"preview" | "live">("preview");
@@ -544,6 +559,12 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
     prefersDarkAppearance(),
   );
   applyShellPalette(initial);
+  // The effective binding table is written once, here, before anything can
+  // press a key: the dispatcher, the menubar, the dock's tooltips and the
+  // header's publish chord all read this one table.
+  const initialOverrides: ShortcutOverrides =
+    storage === undefined ? {} : readShortcutOverrides(storage);
+  setActiveShortcuts(resolveShortcuts(initialOverrides));
 
   const hosts: ShellHosts = {
     canvas: element(),
@@ -586,6 +607,15 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
      *  palette above: it is a shell surface, not document state, and it is
      *  never serialized. */
     const [settingsOpen, setSettingsOpen] = useState(false);
+    /** The author's bindings, held here because the effective table lives
+     *  outside React. Initialized from storage — the same read
+     *  `createShellLayout` made for the live table — and moved from there by
+     *  the Keyboard tab, which asks for a new set and writes storage itself. */
+    const [overrides, setOverrides] = useState(initialOverrides);
+    const applyOverrides = (next: ShortcutOverrides): void => {
+      setOverrides(next);
+      setActiveShortcuts(resolveShortcuts(next));
+    };
     const kind = useSelection(store).activeKind;
     const sheetOpen = useSheet(sheet);
     /** Re-frame on the panel toggle, once the viewport has the new width.
@@ -827,6 +857,8 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
               following={following}
               onPalette={setPalette}
               onFollowing={setFollowing}
+              overrides={overrides}
+              onOverrides={applyOverrides}
             />
           </main>
           <aside className="editor-shell-inspector editor-glass">
@@ -904,6 +936,11 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
       // The gesture arrives from outside React, so the store writes and the
       // subscription re-renders; `flushSync` settles it before this returns.
       flushSync(() => sheet.set(true));
+    },
+    togglePublishing() {
+      // The switch on the publish surface and this chord call the same method:
+      // one owner for "is this editor publishing", so the two cannot disagree.
+      void hosting.toggle();
     },
     destroy() {
       store.bridge?.destroy();

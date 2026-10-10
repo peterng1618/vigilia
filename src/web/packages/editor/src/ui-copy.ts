@@ -130,6 +130,29 @@ export const uiCopy = {
         than leaving to be discovered. */
     followSystemSessionOnly:
       "This browser is not keeping editor settings, so the choice lasts until the editor is reloaded.",
+    /** §7's Keyboard tab: the reference with editing. One word for one act —
+     *  the arm button's `aria-label` and its tooltip are this string (§6). */
+    keyboardRebind: "Change chord",
+    keyboardReset: "Reset",
+    keyboardResetAll: "Reset all",
+    /** What a row says instead of its chord while it is listening. */
+    keyboardPrompt: "Press a chord…",
+    /** §9: a refusal states its reason. Each is a whole sentence the row shows
+     *  beside the binding it did not make — never a tooltip (§5.3). */
+    keyboardTaken: (action: string): string =>
+      `${action} already answers to that chord. Press another.`,
+    keyboardReserved: (key: string): string =>
+      `This browser keeps ${key} for itself, so nothing here can hear it. Press another.`,
+    keyboardModifierOnly:
+      "A chord needs a key: a modifier on its own cannot be bound.",
+    keyboardCannotDefer: (action: string): string =>
+      `${action} works while a text field has focus, so its chord needs a modifier.`,
+    keyboardUnprintable:
+      "That key has no mark this editor can print, so the binding could not be shown here.",
+    /** The storage-less branch, worded like the appearance toggle's: a session
+     *  preference is real, and it is honest about not outliving a reload. */
+    keyboardSessionOnly:
+      "This browser is not keeping editor settings, so a new chord lasts until the editor is reloaded.",
   },
   /** Selection inspector field labels. */
   inspectorFields: {
@@ -322,6 +345,7 @@ export const uiCopy = {
       file: "File",
       edit: "Edit",
       canvas: "Canvas",
+      publish: "Publish",
       view: "View",
       help: "Help",
     } satisfies Record<ShortcutPrefix, string>,

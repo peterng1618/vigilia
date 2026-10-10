@@ -3,7 +3,15 @@ import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { arrangeActions, type ObjectTarget } from "../object-actions.js";
+import {
+  resolveShortcuts,
+  setActiveShortcuts,
+} from "../shortcut-manager/bindings.js";
 import { shortcutLabel } from "../shortcut-manager/display.js";
+import {
+  PRODUCT_SHORTCUTS,
+  type ShortcutBinding,
+} from "../shortcut-manager/index.js";
 import { uiCopy } from "../ui-copy.js";
 import type { EditorShellBridge } from "./bridge.js";
 import { CanvasDock } from "./canvas-dock.js";
@@ -32,6 +40,8 @@ afterEach(() => {
   root = undefined;
   host?.remove();
   host = undefined;
+  // The live binding table is module state, so a case that rebinds puts it back.
+  setActiveShortcuts(PRODUCT_SHORTCUTS);
 });
 
 /** The control as the shell mounts it (`createRoot`, not `@testing-library/react`,
@@ -76,6 +86,43 @@ describe("the canvas dock's tooltips", () => {
     // Bring-forward has no binding, so the popup is the words alone and the
     // registry's absent `shortcut` is what makes it so.
     expect(popup?.querySelector("kbd")).toBeNull();
+  });
+
+  it("re-reads the chord after a rebind rather than holding the one it rendered with", async () => {
+    // Review Focus 3 on this surface: the tooltip is the second of the four
+    // things that print a chord. `tooltip()` is rebuilt from the chord on every
+    // change, so what this proves is that the *component* re-rendered — a
+    // render-time copy would keep printing the old mark, and the dock would
+    // name a key that no longer runs the action beside it.
+    const container = await mount(bridgeOver("object"));
+    focusButton(container, uiCopy.actions.duplicate);
+    expect(
+      document.querySelector(".editor-shell-tooltip kbd")?.textContent,
+    ).toBe(shortcutLabel("edit.duplicate"));
+
+    const moved: ShortcutBinding = {
+      key: "j",
+      modifier: true,
+      shift: false,
+      action: "edit.duplicate",
+    };
+    await act(async () => {
+      setActiveShortcuts(resolveShortcuts({ "edit.duplicate": moved }));
+    });
+
+    // Focus again: the rebuilt popup is the rebuilt tooltip's, and `focus` is
+    // the gesture that opens one without waiting out the hover delay.
+    const button = container.querySelector<HTMLButtonElement>(
+      `[aria-label="${uiCopy.actions.duplicate}"]`,
+    );
+    await act(async () => {
+      button?.dispatchEvent(new Event("blur"));
+    });
+    focusButton(container, uiCopy.actions.duplicate);
+
+    expect(
+      document.querySelector(".editor-shell-tooltip kbd")?.textContent,
+    ).toBe("Ctrl+J");
   });
 });
 

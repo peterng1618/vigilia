@@ -5,6 +5,7 @@ import {
   type ObjectActionId,
   objectActionsFor,
 } from "../object-actions.js";
+import { useActiveShortcuts } from "../shortcut-manager/bindings.js";
 import {
   shortcutLabel,
   shortcutSpokenLabel,
@@ -125,6 +126,10 @@ export function CanvasDock({
   // on demand — so the notification only has to force a render, and the filtered
   // and greyed halves both follow the selection without holding a copy of it.
   const [, setRevision] = useState(0);
+  // And the chords the tooltips print follow the live binding table, for the
+  // same reason: `tooltip()` is rebuilt from the chord on every change, so a
+  // rebind has to re-render this surface rather than only reach the dispatcher.
+  useActiveShortcuts();
   useEffect(
     () => bridge?.subscribe(() => setRevision((revision) => revision + 1)),
     [bridge],

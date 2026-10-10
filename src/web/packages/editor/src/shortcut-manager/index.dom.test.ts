@@ -1,6 +1,13 @@
 // @vitest-environment jsdom
-import { describe, expect, it, vi } from "vitest";
-import { ShortcutManager } from "./index.js";
+import { afterEach, describe, expect, it, vi } from "vitest";
+import { resolveShortcuts, setActiveShortcuts } from "./bindings.js";
+import { PRODUCT_SHORTCUTS, ShortcutManager } from "./index.js";
+
+afterEach(() => {
+  // The live table is module state: a case that rebinds puts it back, or the
+  // next case in this file inherits a preference it never made.
+  setActiveShortcuts(PRODUCT_SHORTCUTS);
+});
 
 describe("ShortcutManager", () => {
   it("claims registered Vigilia actions and leaves all other canvas keys alone", () => {
@@ -387,6 +394,50 @@ describe("ShortcutManager context bindings", () => {
 
     expect(exit).not.toHaveBeenCalled();
     field.remove();
+    manager.destroy();
+  });
+});
+
+describe("ShortcutManager and the author's own table", () => {
+  it("runs the rebind and stops answering the default it replaced", () => {
+    // A rebinding has to change what the dispatcher *runs* and not only what the
+    // reference prints. Both halves are asserted here because either one alone
+    // is the defect: a table nobody dispatches, or a mark that runs nothing.
+    const manager = new ShortcutManager();
+    const ran = vi.fn();
+    manager.register("publish.toggle", ran);
+
+    setActiveShortcuts(
+      resolveShortcuts({
+        "publish.toggle": {
+          key: "j",
+          modifier: true,
+          shift: false,
+          action: "publish.toggle",
+        },
+      }),
+    );
+
+    window.dispatchEvent(
+      new KeyboardEvent("keydown", {
+        key: "j",
+        ctrlKey: true,
+        cancelable: true,
+      }),
+    );
+    expect(ran).toHaveBeenCalledOnce();
+
+    // The default chord is no longer this action's: the override *replaced*
+    // every alias it had rather than adding one beside them.
+    window.dispatchEvent(
+      new KeyboardEvent("keydown", {
+        key: "P",
+        ctrlKey: true,
+        shiftKey: true,
+        cancelable: true,
+      }),
+    );
+    expect(ran).toHaveBeenCalledOnce();
     manager.destroy();
   });
 });

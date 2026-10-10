@@ -1,9 +1,15 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  activeShortcuts,
+  resolveShortcuts,
+  setActiveShortcuts,
+} from "./bindings.js";
+import {
   shortcutLabel,
   shortcutSpokenLabel,
   usesCommandKey,
 } from "./display.js";
+import { PRODUCT_SHORTCUTS, type ShortcutBinding } from "./index.js";
 
 /** `navigator.userAgent` is the only platform signal every browser here has. */
 function onPlatform(userAgent: string): void {
@@ -15,6 +21,9 @@ const MACINTOSH = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)";
 
 afterEach(() => {
   vi.restoreAllMocks();
+  // The live table is module state, so a case that rebinds must put it back or
+  // the next file inherits its preference.
+  setActiveShortcuts(PRODUCT_SHORTCUTS);
 });
 
 describe("shortcutLabel", () => {
@@ -60,6 +69,29 @@ describe("shortcutLabel", () => {
     // renderer never guesses a default, which is the same rule the repo applies
     // to a refused numeric field.
     expect(shortcutLabel("view.exit-group")).toBe("");
+  });
+});
+
+describe("the effective table", () => {
+  it("prints the author's chord for the action they rebound, and the defaults for the rest", () => {
+    // Review Focus 3's unit half: this is what every surface prints a chord
+    // through, so a rebind that reached the dispatcher and not this function is
+    // a mark that runs something else. The break the brief names — pointing
+    // these two at `PRODUCT_SHORTCUTS` instead — reddens exactly this case.
+    onPlatform(WINDOWS);
+    const moved: ShortcutBinding = {
+      key: "j",
+      modifier: true,
+      shift: false,
+      action: "publish.toggle",
+    };
+    setActiveShortcuts(resolveShortcuts({ "publish.toggle": moved }));
+
+    expect(shortcutLabel("publish.toggle")).toBe("Ctrl+J");
+    expect(shortcutSpokenLabel("publish.toggle")).toBe("Control J");
+    // Untouched actions keep the table's own chord, so a rebind is one row's.
+    expect(shortcutLabel("edit.undo")).toBe("Ctrl+Z");
+    expect(activeShortcuts()).not.toEqual(PRODUCT_SHORTCUTS);
   });
 });
 

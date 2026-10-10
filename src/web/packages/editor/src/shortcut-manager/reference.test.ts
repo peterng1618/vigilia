@@ -37,14 +37,24 @@ describe("shortcutReferenceGroups", () => {
   });
 
   it("heads the groups by the prefix of the id, in the table's order", () => {
-    // Four groups, because Task 3.3 minted `help.shortcuts` and its `?` binding:
-    // a group appears when an action lands in it, so the sheet never draws an
-    // empty heading over nothing.
+    // Five groups, because Task 3.3 minted `help.shortcuts` and plan 5's Task 3
+    // minted `publish.toggle`: a group appears when an action lands in it, so
+    // the sheet never draws an empty heading over nothing.
     expect(shortcutReferenceGroups().map((group) => group.label)).toEqual([
       "File",
       "Edit",
       "Canvas",
+      "Publish",
       "Help",
     ]);
+  });
+
+  it("carries the action's own id on every row", () => {
+    // The Keyboard tab edits a binding, so a row that carried only its words
+    // would force that reader to match on a label.
+    const rows = shortcutReferenceGroups().flatMap((group) => group.rows);
+    expect(new Set(rows.map((row) => row.action))).toEqual(
+      new Set(productShortcutIds()),
+    );
   });
 });

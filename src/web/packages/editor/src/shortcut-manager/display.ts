@@ -7,11 +7,8 @@
  * second table would agree until someone added a binding to one of them.
  */
 import { uiCopy } from "../ui-copy.js";
-import {
-  PRODUCT_SHORTCUTS,
-  type ProductShortcutId,
-  type ShortcutBinding,
-} from "./index.js";
+import { activeShortcuts } from "./bindings.js";
+import { type ProductShortcutId, type ShortcutBinding } from "./index.js";
 
 /**
  * What a key prints, which is the platform's vocabulary and not the product's:
@@ -144,22 +141,30 @@ function chord(binding: ShortcutBinding, spoken: boolean): string | undefined {
  * pause or not at all.
  */
 export function shortcutSpokenLabel(action: ProductShortcutId): string {
-  const rendered = PRODUCT_SHORTCUTS.filter(
-    (binding) => binding.action === action,
-  )
+  const rendered = activeShortcuts()
+    .filter((binding) => binding.action === action)
     .map((binding) => chord(binding, true))
     .filter((value): value is string => value !== undefined);
   return rendered.join(" or ");
 }
 
-/**
- * Every chord this action answers to, in the table's own order, joined by the
- * product's own separator. An action the table does not bind returns `""`.
- */
+/** Whether this chord can be printed at all. A key with no cap and no entry in
+ *  `NAMED_KEYS` (`Home`, `F13`) prints as nothing, and a binding the reference
+ *  cannot show is one the author cannot check — so a capture refuses it rather
+ *  than binding an invisible chord. */
+export function printableChord(binding: ShortcutBinding): boolean {
+  return chord(binding, false) !== undefined;
+}
+
+/** Every chord this action answers to, in the live table's own order, joined by
+ *  the product's own separator. An action the table does not bind returns `""`.
+ *
+ *  The table is read on every call rather than held: a rebind has to reach what
+ *  prints the chord and not only what runs it, and the components that render
+ *  one subscribe to `bindings.ts` so the re-render follows the read. */
 export function shortcutLabel(action: ProductShortcutId): string {
-  const rendered = PRODUCT_SHORTCUTS.filter(
-    (binding) => binding.action === action,
-  )
+  const rendered = activeShortcuts()
+    .filter((binding) => binding.action === action)
     .map((binding) => chord(binding, false))
     .filter((value): value is string => value !== undefined);
   return rendered.join(uiCopy.shortcuts.alternativeSeparator);

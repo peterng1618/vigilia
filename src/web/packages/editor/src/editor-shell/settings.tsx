@@ -1,9 +1,11 @@
 import { RadioGroup } from "@base-ui/react/radio-group";
 import { Tabs } from "@base-ui/react/tabs";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { ControlChoiceRow } from "../components/ui/control-choice-row.js";
 import { ControlToggle } from "../components/ui/control-toggle.js";
 import { Dialog } from "../components/ui/dialog.js";
+import type { ShortcutOverrides } from "../shortcut-manager/bindings.js";
+import type { ProductShortcutId } from "../shortcut-manager/index.js";
 import { uiCopy } from "../ui-copy.js";
 import {
   applyShellPalette,
@@ -15,6 +17,7 @@ import {
   writeShellChoice,
 } from "./palette.js";
 import { SETTINGS_TRIGGER_ID } from "./rail.js";
+import { SettingsKeyboard } from "./settings-keyboard.js";
 
 /** §7's three tabs, in the order the spec's table names them. One owner of
  *  "which tabs there are": the strip and the panels both read it, so a fourth
@@ -147,10 +150,13 @@ function AppearanceTab({
  *  than a hand-rolled `role="tablist"`, because the arrow-key navigation and
  *  the `aria-selected`/`aria-controls` wiring are the primitive's job (0038).
  *
- *  Appearance is filled here; Keyboard and About are plan 5's later tasks. The
+ *  Appearance and Keyboard are filled here; About is plan 5's later task. The
  *  palette is the shell's own state rather than the tab's, because the shell
  *  holds the `watchSystemAppearance` subscription the choice has to reach: the
- *  tab renders the choice and owns none of it. */
+ *  tab renders the choice and owns none of it. The bindings are the shell's for
+ *  the same reason — the dispatcher and the effective table live outside
+ *  React — and the one press two surfaces answer to (Escape) is coordinated
+ *  here, where the dialog's own dismissal arrives. */
 export function Settings(props: {
   readonly open: boolean;
   readonly onOpenChange: (open: boolean) => void;
@@ -160,6 +166,11 @@ export function Settings(props: {
   readonly following: boolean;
   readonly onPalette: (next: ShellPalette) => void;
   readonly onFollowing: (next: boolean) => void;
+  /** The author's bindings, held by the shell because the effective table and
+   *  the dispatcher live outside React. The tab reads them and asks for a new
+   *  set; it writes storage itself, as the Appearance tab does. */
+  readonly overrides: ShortcutOverrides;
+  readonly onOverrides: (next: ShortcutOverrides) => void;
 }): React.JSX.Element {
   const {
     open,
@@ -169,7 +180,13 @@ export function Settings(props: {
     following,
     onPalette,
     onFollowing,
+    overrides,
+    onOverrides,
   } = props;
+  /** The row whose capture is listening. Held here rather than in the tab
+   *  because Escape is the one press two surfaces answer to, and this is where
+   *  the dialog's own dismissal arrives. */
+  const [armed, setArmed] = useState<ProductShortcutId | undefined>(undefined);
   // Whether the modal has been open at all, so closing the *initial* closed
   // state does not fire a focus restore on mount.
   const wasOpen = useRef(false);
@@ -178,15 +195,28 @@ export function Settings(props: {
       wasOpen.current = true;
       return;
     }
+    setArmed(undefined);
     if (!wasOpen.current) return;
     wasOpen.current = false;
     document.getElementById(SETTINGS_TRIGGER_ID)?.focus();
   }, [open]);
 
+  /** While a capture is armed, Escape belongs to the capture.
+   *
+   *  Base UI binds its own dismissal on `document` in the capture phase, which
+   *  no row can out-bubble, so this is where the two are reconciled: the
+   *  library still asks, and the ask is declined rather than fought with a
+   *  second document listener. The row's own handler has cancelled the capture
+   *  in the same press, so the next Escape closes the modal. */
+  const handleOpenChange = (next: boolean): void => {
+    if (!next && armed !== undefined) return;
+    onOpenChange(next);
+  };
+
   return (
     <Dialog
       open={open}
-      onOpenChange={onOpenChange}
+      onOpenChange={handleOpenChange}
       label={uiCopy.settings.title}
       closeLabel={uiCopy.settings.close}
     >
@@ -216,6 +246,15 @@ export function Settings(props: {
                 following={following}
                 onPalette={onPalette}
                 onFollowing={onFollowing}
+              />
+            ) : null}
+            {tab === "keyboard" ? (
+              <SettingsKeyboard
+                storage={storage}
+                overrides={overrides}
+                armed={armed}
+                onArmed={setArmed}
+                onOverrides={onOverrides}
               />
             ) : null}
           </Tabs.Panel>

@@ -1,5 +1,6 @@
 import type * as React from "react";
 import { Dialog } from "../components/ui/dialog.js";
+import { useActiveShortcuts } from "../shortcut-manager/bindings.js";
 import { shortcutReferenceGroups } from "../shortcut-manager/reference.js";
 import { uiCopy } from "../ui-copy.js";
 
@@ -22,6 +23,10 @@ export function ShortcutReference({
   readonly open: boolean;
   readonly onOpenChange: (open: boolean) => void;
 }): React.JSX.Element {
+  // The sheet prints the *effective* chord, so it re-reads the live table on
+  // every render and redraws when a rebind changes it — the same read the
+  // settings tab and the tooltips make.
+  useActiveShortcuts();
   return (
     <Dialog
       open={open}
@@ -34,7 +39,7 @@ export function ShortcutReference({
           <h3>{group.label}</h3>
           <dl>
             {group.rows.map((row) => (
-              <div key={`${group.label}:${row.label}`}>
+              <div key={row.action} data-vigilia-reference-row={row.action}>
                 <dt>{row.label}</dt>
                 <dd>
                   <kbd aria-label={row.spoken}>{row.chord}</kbd>

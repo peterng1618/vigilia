@@ -164,6 +164,65 @@ describe("EditorSession", () => {
     extensions.destroy();
   });
 
+  it("binds the chord the header prints to the shell's own publish switch", () => {
+    // §7.1. The header prints this chord beside the publish control, so the
+    // gesture runs what that control's switch runs — one publish path, not a
+    // second one. The manager is a stub here (the mock above), which is what
+    // lets this case read back the handler the session registered and press
+    // it; the table itself is `bindings.test.ts`'s to prove. Delete the
+    // registration and the header prints a chord that runs nothing, which is
+    // the state plan 2 refused to ship.
+    const onPublishToggle = vi.fn();
+    const session = new EditorSession({
+      assetManager: new AssetManager(),
+      shell: {
+        editor: {
+          canvas: {
+            on: vi.fn(),
+            off: vi.fn(),
+            getActiveObject: () => undefined,
+            getObjects: () => [],
+            requestRenderAll: vi.fn(),
+          },
+          clipboardManager: { setImageImporter: vi.fn(), setBindings: vi.fn() },
+          textManager: {
+            addText: vi.fn(),
+            setAuthoringView: vi.fn(),
+            setRepaint: vi.fn(),
+          },
+          cropManager: idleCrop(),
+        },
+        scene: {},
+        snapshot: vi.fn(() => envelope),
+        setBackgroundMedia: vi.fn(),
+      } as never,
+      source: {} as never,
+      envelope,
+      panelHosts: {
+        add: document.body,
+        document: document.body,
+        tokens: document.body,
+        selection: document.body,
+      },
+      onNew: vi.fn(),
+      onNewFromStarter: vi.fn(),
+      onSaved: vi.fn(),
+      onPublishToggle,
+    });
+
+    const call = registerMock.mock.calls.find(
+      ([id]) => id === "publish.toggle",
+    );
+    expect(
+      call,
+      "the session registers the chord the header prints",
+    ).toBeDefined();
+    (call?.[1] as () => void)();
+
+    expect(onPublishToggle).toHaveBeenCalledTimes(1);
+    session.destroy();
+  });
+
   it("publishes a stored document under its own id, and an unsaved one not at all", () => {
     const build = (base?: string) =>
       new EditorSession({

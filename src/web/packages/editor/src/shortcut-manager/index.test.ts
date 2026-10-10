@@ -12,11 +12,15 @@ describe("productShortcutIds", () => {
     // Four actions are bound twice — `edit.redo` to Ctrl+Shift+Z and Ctrl+Y,
     // `edit.delete` to Delete and Backspace, and front/back to a bare and a
     // shifted bracket each — so a list that repeated them would make the sheet
-    // say "Redo" twice. 19 distinct actions come out of the table's 23 bindings.
-    expect(ids).toHaveLength(19);
+    // say "Redo" twice. 20 distinct actions come out of the table's 24 bindings:
+    // Task 3.3's `help.shortcuts` made it 19 and plan 5's Task 3 added
+    // `publish.toggle`, which the header prints.
+    expect(ids).toHaveLength(20);
     expect(new Set(ids).size).toBe(ids.length);
     // First and last, so the order is the table's own and not sorted by accident.
-    // Task 3.3 appends `help.shortcuts`, which raised this to 19 and moved the last.
+    // Task 3.3 appends `help.shortcuts`, which raised this to 19 and moved the
+    // last; plan 5's Task 3 inserts `publish.toggle` ahead of it, so the last is
+    // unchanged and the publish chord lands in the table's own place.
     expect(ids[0]).toBe("file.new");
     expect(ids.at(-1)).toBe("help.shortcuts");
   });

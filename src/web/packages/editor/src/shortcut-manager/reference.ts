@@ -7,13 +7,17 @@
  */
 import { uiCopy } from "../ui-copy.js";
 import {
+  type ShortcutPrefix,
   shortcutLabel,
   shortcutSpokenLabel,
-  type ShortcutPrefix,
 } from "./display.js";
 import { type ProductShortcutId, productShortcutIds } from "./index.js";
 
 export interface ShortcutReferenceRow {
+  /** The action this row is about. A reader that edits a binding — the Keyboard
+   *  tab — needs the id to write back, and a row that carried only its label
+   *  would force that reader to match on words. */
+  readonly action: ProductShortcutId;
   readonly label: string;
   /** The platform's own mark, as the sheet prints it (`⌘Z`). */
   readonly chord: string;
@@ -34,7 +38,7 @@ export interface ShortcutReferenceGroup {
  * `ProductShortcutId` added to the table with no word fails to compile, which is
  * the only thing standing between a new binding and a silently shorter sheet.
  */
-const SHORTCUT_LABELS = {
+export const SHORTCUT_LABELS = {
   "file.new": uiCopy.file.newDocument,
   "file.open": uiCopy.file.openPackage,
   "file.save": uiCopy.file.savePackage,
@@ -56,6 +60,10 @@ const SHORTCUT_LABELS = {
   "canvas.nudge-down": "Nudge down",
   "canvas.front": uiCopy.actions.front,
   "canvas.back": uiCopy.actions.back,
+  // The header's own chord. `uiCopy.publish.start` is the word the publish
+  // control prints on the surface the chord opens, so the reference row and the
+  // thing it names read the same.
+  "publish.toggle": uiCopy.publish.start,
   // `view.exit-group` is a `ProductShortcutId` with **no product binding** — it is
   // bound on `Escape` in `CONTEXT_SHORTCUTS` and the file's own comment says it is
   // never displayed. It needs a word all the same, because `satisfies` below is
@@ -68,6 +76,9 @@ const SHORTCUT_LABELS = {
   // The sheet's own name, which is `uiCopy.shortcuts.reference` — the same word
   // the sheet's heading prints and the `aria-label` on its Dialog carries, so the
   // row and the surface cannot disagree.
+  // Exported for the one reader that has to name another action in a sentence:
+  // the Keyboard tab's refusal, when a captured chord belongs to somebody else.
+  // A second vocabulary for the same acts is what this table exists to prevent.
   "help.shortcuts": uiCopy.shortcuts.reference,
 } as const satisfies Record<ProductShortcutId, string>;
 
@@ -87,6 +98,7 @@ export function shortcutReferenceGroups(): readonly ShortcutReferenceGroup[] {
     const prefix = prefixOf(action);
     const rows = groups.get(prefix) ?? [];
     rows.push({
+      action,
       label: SHORTCUT_LABELS[action],
       chord: shortcutLabel(action),
       spoken: shortcutSpokenLabel(action),

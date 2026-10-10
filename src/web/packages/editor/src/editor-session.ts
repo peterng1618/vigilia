@@ -170,6 +170,12 @@ export interface EditorSessionOptions {
    *  existing construction sites — and every test that builds a session — keep
    *  compiling and simply do nothing. */
   readonly onShowShortcuts?: () => void;
+  /** §7.1's `⌘⇧P`. The publish surface's switch is the shell's, and turning the
+   *  host on and off is what the header's control does, so the chord leaves
+   *  through the same door rather than owning a second publish path. Optional,
+   *  like the one above, so a session built without a shell's chrome simply has
+   *  no publish chord. */
+  readonly onPublishToggle?: () => void;
   /** Brings a pane into view, opening it first. §7.2's slots belong to
    *  `createShellLayout`, and the inspector's reveal is what asks — a pane that
    *  is not showing has no scroll target, so the two steps are one gesture.
@@ -539,6 +545,11 @@ export class EditorSession {
     // in the shell, so the gesture leaves through the session's own callback.
     this.#shortcuts.register("help.shortcuts", () => {
       options.onShowShortcuts?.();
+    });
+    // The header prints this chord beside the publish control, so it runs what
+    // that control's switch runs and nothing of its own: one publish path.
+    this.#shortcuts.register("publish.toggle", () => {
+      options.onPublishToggle?.();
     });
     this.#shortcuts.register("canvas.front", () => {
       options.shell.editor.layerManager.bringToFront();

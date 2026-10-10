@@ -1,3 +1,5 @@
+import { activeShortcuts } from "./bindings.js";
+
 export type ShortcutHandler = (event: KeyboardEvent) => void;
 export type ProductShortcutId =
   | "file.new"
@@ -19,6 +21,10 @@ export type ProductShortcutId =
   | "canvas.front"
   | "canvas.back"
   | "view.exit-group"
+  // `toggle`, not `open`: the chord runs the same act the header's publish
+  // control's switch runs — turning the LAN host on and off — and the control
+  // it is printed beside opens a surface rather than publishing anything.
+  | "publish.toggle"
   | "help.shortcuts";
 
 export interface ShortcutBinding {
@@ -63,6 +69,11 @@ export const PRODUCT_SHORTCUTS: readonly ShortcutBinding[] = [
   { key: "arrowright", modifier: false, action: "canvas.nudge-right" },
   { key: "arrowup", modifier: false, action: "canvas.nudge-up" },
   { key: "arrowdown", modifier: false, action: "canvas.nudge-down" },
+  // Before `help.shortcuts`, because that one is last for being the only action
+  // about the sheet itself. `publish.toggle` is the header's own chord: the
+  // publish surface prints it, and pressing it runs what the surface's switch
+  // runs. Shift-qualified so it is not the browser's own Ctrl+P.
+  { key: "p", modifier: true, shift: true, action: "publish.toggle" },
   // Last, because it is the only action about the sheet itself. Unmodified, so
   // it already defers to a focused text field: a `?` typed into a rename field
   // is the field's character and not a keypress. `ponytail:` a layout that does
@@ -77,15 +88,33 @@ const CONTEXT_SHORTCUTS: readonly ShortcutBinding[] = [
   { key: "escape", modifier: false, action: "view.exit-group" },
 ];
 
-/** Shift-qualified bindings precede their plain form, so first match wins. */
-function bindingFor(event: KeyboardEvent): ShortcutBinding | undefined {
+/** The one comparison `bindingFor` matches by, exported because a capture's
+ *  conflict check has to mean the same thing the dispatcher means: a rebind
+ *  refused for a chord it would actually have matched is a refusal about
+ *  nothing, and one accepted for a chord the dispatcher resolves elsewhere is a
+ *  mark that runs a different action. */
+export function bindingMatches(
+  binding: ShortcutBinding,
+  key: string,
+  modifier: boolean,
+  shift: boolean,
+): boolean {
+  return (
+    binding.key === key &&
+    binding.modifier === modifier &&
+    (binding.shift === undefined || binding.shift === shift)
+  );
+}
+
+/** The effective table first, the context-only bindings after it, so a rebind
+ *  cannot lose to `Escape` and an author's chord cannot be shadowed by it
+ *  either. Shift-qualified bindings precede their plain form, so first match
+ *  wins. */
+export function bindingFor(event: KeyboardEvent): ShortcutBinding | undefined {
   const key = event.key.toLowerCase();
   const modifier = event.ctrlKey || event.metaKey;
-  return [...PRODUCT_SHORTCUTS, ...CONTEXT_SHORTCUTS].find(
-    (binding) =>
-      binding.key === key &&
-      binding.modifier === modifier &&
-      (binding.shift === undefined || binding.shift === event.shiftKey),
+  return [...activeShortcuts(), ...CONTEXT_SHORTCUTS].find((binding) =>
+    bindingMatches(binding, key, modifier, event.shiftKey),
   );
 }
 
@@ -95,6 +124,21 @@ function bindingFor(event: KeyboardEvent): ShortcutBinding | undefined {
  * rename field is the field's own select-all, not the canvas's. */
 const MODIFIED_KEY_DEFERRED_ACTION_IDS: ReadonlySet<ProductShortcutId> =
   new Set(["file.new", "edit.undo", "edit.redo", "canvas.select-all"]);
+
+/** Whether an action's bindings already defer to a focused text field: every
+ *  unmodified binding does (`bindingFor`'s deferral rule reads `!modifier`), and
+ *  the four above defer on their modified chords too.
+ *
+ *  A capture asks this, because a modifier-less letter bound to an action that
+ *  does *not* defer would make that action stop reaching the author while they
+ *  type — the opposite of what the action promises, and a §2.3 behaviour change
+ *  dressed as a preference. */
+export function defersToTextEntry(action: ProductShortcutId): boolean {
+  if (MODIFIED_KEY_DEFERRED_ACTION_IDS.has(action)) return true;
+  return PRODUCT_SHORTCUTS.some(
+    (binding) => binding.action === action && !binding.modifier,
+  );
+}
 
 /** True while a modal dialog is on screen.
  *

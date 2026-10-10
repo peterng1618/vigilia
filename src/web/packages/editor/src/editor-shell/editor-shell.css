@@ -1252,6 +1252,79 @@ body,
   outline-offset: 2px;
 }
 
+/* The settings modal's Keyboard tab (§7). The rows reuse the dialog's `dl`
+   rhythm — the tab renders the same reference the `?` sheet does — and add the
+   three things the sheet has no use for: the armed row's ring, the chip that
+   says it is listening, and the two return-to-default buttons.
+   The modal is portalled to `body`, so the shell's own `:focus-visible` rules
+   cannot be relied on here; the arm button carries its own focus ring from the
+   control set, and the ring below belongs to the row being recorded into. */
+.editor-shell-keyboard dd {
+  display: flex;
+  align-items: center;
+  gap: var(--space-6);
+}
+.editor-shell-keyboard [data-vigilia-shortcut-row] {
+  /* Centred rather than the sheet's baseline: a row here carries a 26px
+     control, and baselining the label against it drops the label. */
+  align-items: center;
+  padding: var(--space-4) var(--space-6);
+  border-radius: var(--radius-sm);
+}
+/* §5.4's boundary, as the row's own ring. The accent is the palette's own
+   token, the one the tab strip's focus ring already uses, so this clears the
+   contrast §5.4 asks for on every palette rather than only on `graphite`. */
+.editor-shell-keyboard [data-armed] {
+  outline: 2px solid var(--shell-accent);
+  outline-offset: -2px;
+}
+.editor-shell-keyboard [data-armed] kbd {
+  color: var(--shell-accent);
+}
+.editor-shell-keyboard-action {
+  padding: var(--space-4) var(--space-8);
+  border: 1px solid var(--shell-edge);
+  border-radius: var(--radius-sm);
+  background: var(--vigilia-control-bg);
+  color: var(--shell-muted);
+  font: inherit;
+  font-size: var(--text-xs);
+  cursor: pointer;
+}
+.editor-shell-keyboard-action:hover {
+  border-color: var(--shell-accent);
+  color: var(--shell-accent);
+}
+/* §9's refusal, rendered in the row rather than spoken in a tooltip (§5.3).
+   The node is always present so a screen reader hears the alert when it fills,
+   and empty it takes no space. */
+.editor-shell-keyboard-reason {
+  margin: var(--space-8) 0 0;
+  color: var(--shell-text);
+  font-size: var(--text-xs);
+}
+.editor-shell-keyboard-reason:empty {
+  display: none;
+}
+.editor-shell-keyboard-notice {
+  margin: var(--space-8) 0 0;
+  color: var(--shell-muted);
+  font-size: var(--text-xs);
+}
+/* §7.1's chord on the header's one filled control. It inherits that button's
+   own text colour rather than taking a shell role: the primary button's text is
+   the colour chosen against its accent fill, so the mark keeps the contrast the
+   word beside it has. */
+.editor-shell-primary-key {
+  margin-left: var(--space-8);
+  padding: 0 var(--space-4);
+  border: 1px solid color-mix(in srgb, currentColor 45%, transparent);
+  border-radius: var(--radius-sm);
+  font-family: ui-monospace, monospace;
+  font-size: var(--text-xs);
+  color: inherit;
+}
+
 /* Opt-in density primitives: a panel chooses a dense row rather than the shell
    forcing every control onto its own full-width line. */
 .vigilia-field {

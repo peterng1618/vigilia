@@ -2,7 +2,16 @@
 import { act, useState } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { ShortcutManager } from "../shortcut-manager/index.js";
+import {
+  readShortcutOverrides,
+  resolveShortcuts,
+  type ShortcutOverrides,
+  setActiveShortcuts,
+} from "../shortcut-manager/bindings.js";
+import {
+  PRODUCT_SHORTCUTS,
+  ShortcutManager,
+} from "../shortcut-manager/index.js";
 import { uiCopy } from "../ui-copy.js";
 import {
   DEFAULT_SHELL_PALETTE,
@@ -114,6 +123,17 @@ function Harness({
   const [slot, setSlot] = useState<RailSlot>("composition");
   const [palette, setPalette] = useState<ShellPalette>(DEFAULT_SHELL_PALETTE);
   const [following, setFollowing] = useState(true);
+  const [overrides, setOverrides] = useState<ShortcutOverrides>(() =>
+    storage === undefined ? {} : readShortcutOverrides(storage),
+  );
+  /** The shell's own wiring for a binding change: the live table first, then
+   *  the state the tab reads. A tab that wrote storage and not the table would
+   *  print a chord that runs something else, which is what the tab's own test
+   *  file covers. */
+  const applyOverrides = (next: ShortcutOverrides): void => {
+    setOverrides(next);
+    setActiveShortcuts(resolveShortcuts(next));
+  };
   return (
     <>
       <Rail
@@ -130,6 +150,8 @@ function Harness({
         following={following}
         onPalette={setPalette}
         onFollowing={setFollowing}
+        overrides={overrides}
+        onOverrides={applyOverrides}
       />
     </>
   );
@@ -167,6 +189,26 @@ async function pressEscape(): Promise<void> {
   });
 }
 
+/** Escape pressed on one element inside the modal, as the focused row receives
+ *  it: it bubbles, which is how both the Dialog's own dismissal and the row's
+ *  capture see the same press. */
+async function pressEscapeOn(target: Element): Promise<void> {
+  await act(async () => {
+    target.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+    );
+  });
+}
+
+/** A tab of the modal, by the word it prints. */
+async function openTab(label: string): Promise<void> {
+  const tab = Array.from(
+    document.querySelectorAll<HTMLElement>('[role="tab"]'),
+  ).find((element) => element.textContent?.trim() === label);
+  if (tab === undefined) throw new Error(`no ${label} tab.`);
+  await press(tab);
+}
+
 beforeEach(() => {
   localStorage.clear();
   document.documentElement.removeAttribute("data-shell-palette");
@@ -179,6 +221,9 @@ afterEach(() => {
   host = undefined;
   document.body.replaceChildren();
   document.documentElement.removeAttribute("data-shell-palette");
+  // The live binding table is module state, and the harness writes it on mount:
+  // put it back so no later case in this file inherits a table it did not set.
+  setActiveShortcuts(PRODUCT_SHORTCUTS);
 });
 
 describe("Settings", () => {
@@ -195,6 +240,40 @@ describe("Settings", () => {
     // A pane, or a fifth rail slot, fails here and only here: the rail still
     // holds the four the bible names, and the gear is not one of them.
     expect(railSlotIds(host)).toEqual([...RAIL_SLOTS]);
+  });
+
+  it("cancels the capture on Escape, and lets the next Escape close the modal", async () => {
+    // The one press two surfaces answer to. Base UI binds its dismissal on
+    // `document` in the capture phase — before anything the row can do — so the
+    // modal has to decline the dismissal it is sent, and the row has to cancel
+    // the capture in the same press. Either half alone is wrong: a capture that
+    // closed the modal would lose the row being edited, and a modal that closed
+    // on the cancel would take the whole tab with it.
+    const host = mount();
+    await press(gear(host));
+    await openTab(uiCopy.settings.keyboard);
+
+    const arm = document.querySelector<HTMLButtonElement>(
+      '[data-vigilia-shortcut-arm="publish.toggle"]',
+    );
+    if (arm === null) throw new Error("no arm control in the Keyboard tab.");
+    await press(arm);
+    const row = document.querySelector<HTMLElement>(
+      '[data-vigilia-shortcut-row="publish.toggle"]',
+    );
+    if (row === null) throw new Error("no row to record into.");
+    expect(row.hasAttribute("data-armed")).toBe(true);
+
+    await pressEscapeOn(row);
+
+    expect(
+      role("dialog"),
+      "the capture claimed the press, not the modal",
+    ).not.toBeNull();
+    expect(row.hasAttribute("data-armed")).toBe(false);
+
+    await pressEscape();
+    expect(role("dialog")).toBeNull();
   });
 
   it("returns focus to the gear when it closes, and Escape is one press with one effect", async () => {

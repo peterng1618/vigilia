@@ -2,6 +2,18 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeAll, expect, it, vi } from "vitest";
+import {
+  resolveShortcuts,
+  setActiveShortcuts,
+} from "../shortcut-manager/bindings.js";
+import {
+  shortcutLabel,
+  shortcutSpokenLabel,
+} from "../shortcut-manager/display.js";
+import {
+  PRODUCT_SHORTCUTS,
+  type ShortcutBinding,
+} from "../shortcut-manager/index.js";
 import { uiCopy } from "../ui-copy.js";
 import { PublishControl } from "./publish-control.js";
 import type { EditorActionFacade } from "./session-facade.js";
@@ -142,6 +154,8 @@ function teardown(): void {
 afterEach(() => {
   vi.unstubAllGlobals();
   teardown();
+  // The live binding table is module state: a case that rebinds puts it back.
+  setActiveShortcuts(PRODUCT_SHORTCUTS);
 });
 
 /** The control as the header mounts it. `createRoot` rather than
@@ -203,16 +217,49 @@ function popupOpen(): boolean {
   );
 }
 
+it("prints the publish chord on the header control, from the live table", async () => {
+  // §7.1's mark, and plan 2 left it off because there was nothing to run. It is
+  // printed here and only here because this is the commit that binds
+  // `publish.toggle` to the act this control's switch runs — a printed chord
+  // that runs nothing is the state that was deliberately not shipped.
+  hostServing({ lan: true });
+  const container = await mount();
+
+  const chip = container.querySelector("[data-vigilia-publish-chord]");
+  expect(chip?.textContent).toBe(shortcutLabel("publish.toggle"));
+  // The mark is a picture of a key, so what a screen reader is told is what the
+  // caps are *called*, not the glyphs they print.
+  expect(chip?.getAttribute("aria-label")).toBe(
+    shortcutSpokenLabel("publish.toggle"),
+  );
+
+  // And a rebind reaches it: the header re-reads the live table rather than
+  // holding the chord it rendered with, which is Review Focus 3 on this surface.
+  const moved: ShortcutBinding = {
+    key: "j",
+    modifier: true,
+    shift: false,
+    action: "publish.toggle",
+  };
+  await act(async () => {
+    setActiveShortcuts(resolveShortcuts({ "publish.toggle": moved }));
+  });
+  expect(
+    container.querySelector("[data-vigilia-publish-chord]")?.textContent,
+  ).toBe("Ctrl+J");
+});
+
 it("opens the surface without moving the host, and keeps every fact behind the press", async () => {
   const fake = hostServing({ lan: true });
   const container = await mount();
 
   // The bar is the control and nothing else: no code, no code symbol sat beside
-  // it, and nothing open. The whole surface is behind the press.
+  // it, and nothing open. The whole surface is behind the press. The word is
+  // the control's name and the chord chip rides beside it (plan 5's Task 3).
   expect(popupOpen()).toBe(false);
   expect(container.querySelector("code")).toBeNull();
   expect(container.querySelector("[data-vigilia-qr]")).toBeNull();
-  expect(headerControl(container)?.textContent).toBe(uiCopy.publish.start);
+  expect(headerControl(container)?.textContent).toContain(uiCopy.publish.start);
   expect(hostSwitch()).toBeNull();
 
   // **The press is free of side effects.** This is the whole of F1: an author
