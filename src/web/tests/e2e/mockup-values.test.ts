@@ -146,12 +146,14 @@ test("the drawing's own token table is read, and all eleven tokens with it", () 
   // pass them all. A token moved in the file must come back moved.
   const changed = drawing.replace("--hot:#ff7e6e", "--hot:#012345");
   expect(changed).not.toBe(drawing);
-  expect(mockupDeclared(changed, SHELL_TOKEN_SELECTOR, "--hot")).toBe("#012345");
+  expect(mockupDeclared(changed, SHELL_TOKEN_SELECTOR, "--hot")).toBe(
+    "#012345",
+  );
 
   // A token the table does not declare is a broken row, not a silence.
-  expect(() =>
-    mockupDeclared(drawing, SHELL_TOKEN_SELECTOR, "--nope"),
-  ).toThrow(/declares no `--nope`/);
+  expect(() => mockupDeclared(drawing, SHELL_TOKEN_SELECTOR, "--nope")).toThrow(
+    /declares no `--nope`/,
+  );
 });
 
 test("the drawing's token table declares the eleven mapped tokens and no twelfth", () => {
@@ -176,7 +178,10 @@ test("the drawing's token table declares the eleven mapped tokens and no twelfth
 
   // The check the line above cannot make: a reader answering a constant set
   // passes it. A twelfth token in the file must come back as one.
-  const twelfth = drawing.replace("--hot:#ff7e6e;", "--hot:#ff7e6e;--new:#123456;");
+  const twelfth = drawing.replace(
+    "--hot:#ff7e6e;",
+    "--hot:#ff7e6e;--new:#123456;",
+  );
   expect(twelfth).not.toBe(drawing);
   expect(tokens(twelfth)).toHaveLength(SHELL_ROLES.length + 1);
   expect(tokens(twelfth)).toContain("--new");

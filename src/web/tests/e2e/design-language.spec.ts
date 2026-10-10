@@ -1829,7 +1829,11 @@ test("graphite's roles are the drawing's, and the other five keep its ladder", a
     ladder.push(
       `${palette} bg=${bg.toFixed(4)} panel=${panel.toFixed(4)} panel-2=${panel2.toFixed(4)}`,
     );
-    if (!Number.isFinite(bg) || !Number.isFinite(panel) || !Number.isFinite(panel2)) {
+    if (
+      !Number.isFinite(bg) ||
+      !Number.isFinite(panel) ||
+      !Number.isFinite(panel2)
+    ) {
       ladderFailures.push(
         `${palette}: a surface did not resolve to a colour (bg "${values["--bg"]}", panel "${values["--panel"]}", panel-2 "${values["--panel-2"]}")`,
       );
@@ -1837,7 +1841,9 @@ test("graphite's roles are the drawing's, and the other five keep its ladder", a
     }
     // Graphite's ladder is `--bg` < `--panel` < `--panel-2`, **strictly**, and
     // a derived palette that collapses a rung has stopped deriving from it —
-    // order alone survives a ladder squeezed to `0.0001` steps.
+    // order alone survives a ladder squeezed to `0.0001` steps. **How far apart
+    // the rungs must sit is `vg-308`**, and it is a register row rather than a
+    // constant here because a magnitude floor has no rule in the bible yet.
     //
     // Editorial is the one named exception, for the reason its own block gives:
     // its control-inside-panel separation is carried by `--vigilia-control-bg`,
@@ -1851,7 +1857,9 @@ test("graphite's roles are the drawing's, and the other five keep its ladder", a
     if (!holds) {
       ladderFailures.push(
         `${palette}: the ladder is ${bg.toFixed(4)} / ${panel.toFixed(4)} / ${panel2.toFixed(4)}, and graphite's is --bg < --panel < --panel-2${
-          isEditorial ? " (editorial's licensed equal pair: see the comment)" : ""
+          isEditorial
+            ? " (editorial's licensed equal pair: see the comment)"
+            : ""
         }`,
       );
     }

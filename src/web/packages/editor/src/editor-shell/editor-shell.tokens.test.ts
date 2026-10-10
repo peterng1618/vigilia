@@ -416,7 +416,10 @@ describe("shell token stylesheet", () => {
         0.0722 * channel(colour[2])
       );
     };
-    const contrast = (a: readonly [number, number, number], b: readonly [number, number, number]): number => {
+    const contrast = (
+      a: readonly [number, number, number],
+      b: readonly [number, number, number],
+    ): number => {
       const [hi, lo] = [luminance(a), luminance(b)].sort((x, y) => y - x);
       return ((hi ?? 0) + 0.05) / ((lo ?? 0) + 0.05);
     };
