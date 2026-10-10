@@ -1364,14 +1364,11 @@ body,
   display: block;
   margin-top: 0;
 }
-/* A pair is one flex line, so its label takes the same 72px the grid would have
-   given the label column and the paired fields line up with single ones. */
+/* A pair is one flex line. The row wraps rather than squeezing its fields: the
+   Add pane's import/replace pair is the one left that is not `ControlPair`, and
+   two buttons in a 240px column do not share the width a control would. */
 .vigilia-field-row {
   flex-wrap: wrap;
-}
-.vigilia-field-row > .vigilia-pair-label {
-  flex: none;
-  width: 72px;
 }
 /* A numeric box is a fixed measure, never a column-wide one: the artboard pair
    puts two of them on the same row. */
