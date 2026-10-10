@@ -1076,8 +1076,12 @@ test("captures the shell with the Add pane open and nothing selected", async ({
   // bare `[data-vigilia-panel]` count of six panes is not "one pane showing".
   // `:visible`, not a bare count: every pane stays mounted and the ones that
   // are not showing carry `hidden` (`display: none`), which is not showing.
+  // **A direct child**, because a sub-panel names itself with the same
+  // attribute: the Document pane's References section writes
+  // `data-vigilia-panel="style"`, so the descendant form counts 2 the moment
+  // this capture is pointed at Document (the rail-pane capture measures it).
   await expect(
-    page.locator(".editor-shell-panel [data-vigilia-panel]:visible"),
+    page.locator(".editor-shell-panel > [data-vigilia-panel]:visible"),
   ).toHaveCount(1);
 
   // Park the pointer over the stage before the shot. `openPane` clicked the Add
@@ -1094,4 +1098,114 @@ test("captures the shell with the Add pane open and nothing selected", async ({
   }
 
   await captureVisualReview(page, testInfo, "editor-shell-add");
+});
+
+/**
+ * The panes' parity capture (bible §7.3, mockup
+ * `docs/design/mockups/editor-shell.html`).
+ *
+ * The same mechanism as the shell capture above, turned on the four rebuilt
+ * panes: the built editor is opened with one rail pane showing at a time, and
+ * each pane's own chrome and body is photographed for Task 12's comparison.
+ * The mockup draws a specimen of **Add** only, so the other three are compared
+ * against the bible and this plan's field inventories rather than a drawing —
+ * which is why the image is the pane itself and not the whole shell: the field
+ * inventory is what has to be readable in it.
+ *
+ * **Each capture fails if the pane is not the new one**, which is the point: an
+ * old pane photographed happily is a comparison against the wrong thing. Three
+ * facts are asserted before a picture is written, and the third is the failure
+ * this capture exists to catch:
+ *
+ * - the pane's own `[data-vigilia-panel]` handle is showing, and it is the only
+ *   pane the rail's column has out (the shell keeps every pane mounted and
+ *   hides the others, so a leftover second pane shows as two);
+ * - the handle is the **host's** — `editor-shell/pane.tsx` writes it, so it
+ *   names which pane is mounted rather than what the pane rendered;
+ * - the pane holds no native `<select>` and no `input[type=range]`. The four
+ *   panes are React on the control set (a well that opens a list is a
+ *   `ControlSelect`, a range is a `ControlSlider`), and a native control
+ *   reappearing is exactly what a screenshot would still show as "a pane".
+ *   The only hit left under `panes/` is the prose that says so
+ *   (`tokens/preset-list.tsx:29`).
+ *
+ * A `--grep` that matches nothing exits 0 with zero tests, so the run's own
+ * summary — "1 test", this file — is the proof it ran at all, not the exit code.
+ */
+test("captures each pane of the four-slot rail in the design language", async ({
+  page,
+}, testInfo) => {
+  test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+
+  await page.goto(EDITOR);
+  await expect(
+    page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+  ).toBeVisible();
+
+  // §7.2's four slots, one pane each.
+  await expect(page.locator(".editor-shell-rail-slot")).toHaveCount(4);
+
+  /** The rail's slot word, and the DOM handle that slot's pane is mounted
+   *  under. The two differ for Composition only: `layers` is the name the
+   *  panel CSS and the older specs already browse by, and the pane's visible
+   *  title is the slot's own word (`shell-layout.tsx` states the ruling). */
+  const panes = [
+    { slot: "Composition", panel: "layers" },
+    { slot: "Add", panel: "add" },
+    { slot: "Tokens", panel: "tokens" },
+    { slot: "Document", panel: "document" },
+  ] as const;
+
+  for (const { slot, panel } of panes) {
+    await openPane(page, slot);
+
+    // The pane's surface is the rail's own column, not the `section` inside it.
+    // The column is the scroll owner (§7.7) and is the box the author sees: it
+    // is 246×636 against a viewport of 1280×720, and a pane taller or wider
+    // than it is clipped there. Photographing the inner `section` instead
+    // captures the pane's whole *layout* box with that clip ignored — measured,
+    // the Tokens pane is 220×2166, so its image was 1800px of blank page and
+    // the status bar, none of which an author ever sees.
+    const column = page.locator(".editor-shell-panel");
+    const pane = page.locator(`[data-vigilia-panel="${panel}"]`);
+    await expect(pane, `${slot}: its pane is not showing`).toBeVisible();
+    // One pane out, read as a **direct child** of the rail's column. The
+    // descendant form counts a sub-panel as a pane: the Document pane's own
+    // References section names itself `data-vigilia-panel="style"`
+    // (`panes/document/references.tsx`), so with Document showing a descendant
+    // match is 2 — measured, `["document", "style"]` — and `"style"`'s parent
+    // carries no column class. A visible `pane` plus one visible direct child
+    // is what says it is the one the rail has out.
+    await expect(
+      page.locator(".editor-shell-panel > [data-vigilia-panel]:visible"),
+      `${slot} is not the pane the rail has out`,
+    ).toHaveCount(1);
+
+    await expect(
+      pane.locator("select"),
+      `${slot}: a native <select> is in the pane`,
+    ).toHaveCount(0);
+    await expect(
+      pane.locator('input[type="range"]'),
+      `${slot}: a native range input is in the pane`,
+    ).toHaveCount(0);
+
+    // Park the pointer over the stage before the shot, for the reason the
+    // shell capture gives: `openPane` left it hovering a rail slot, and that
+    // slot's tooltip opens over the rail/pane boundary after 600ms.
+    const stage = await page.locator(".editor-shell-stage").boundingBox();
+    if (stage !== null) {
+      await page.mouse.move(
+        stage.x + stage.width / 2,
+        stage.y + stage.height / 2,
+      );
+    }
+
+    await captureVisualReview(
+      page,
+      testInfo,
+      `pane-${slot.toLowerCase()}`,
+      column,
+    );
+  }
 });
