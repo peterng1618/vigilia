@@ -23,7 +23,7 @@ satisfies every token in the bible and still does not look like the mockup.
 ## Active work
 
 - **Plan 7 — [`shell-parity`](docs/superpowers/plans/archive/2026-10-10-shell-parity.md) — is complete and archived**: every task, a whole-branch review, one fix round and one residual, both re-reviewed CLEAN.
-- **Plan 8 — settings parity — is the active plan and is unwritten**: thirteen of the modal's nineteen measured regions drift, and it consumes plan 7's instrument, its radius scale and its chrome decision.
+- **Plan 8 — [`settings-parity`](docs/superpowers/plans/2026-10-11-settings-parity.md) — is the active plan**: ten tasks in three phases, and Task 1 is dispatched — it makes the settings drawing the modal's comparator and re-adjudicates the nineteen measured regions, so the browser suite is red on purpose until Phase B pulls the product to the drawing.
 - **The instrument now reads the drawings rather than one file**: the radii gate opens every drawing in `docs/design/mockups/current/` and names the file it fails in, the comparator holds every corner of a shorthand, and the chrome boundary compares the whole colour.
 - **Plan 6 (`iconography-and-copy`) follows plan 8** — its first task is a census *of the surfaces as they landed*, so it waits behind both parity plans rather than being redone against a shell that moves again.
 - **The user's rulings, 2026-10-10: the mockup is not replaced — "Do not replace the mockup."** — the built product is pulled to the drawing; and "Keep the original mockup html files and label them as such. Build new html."
