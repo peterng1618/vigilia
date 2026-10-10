@@ -250,7 +250,6 @@ describe("number field", () => {
   });
 });
 
-
 /** A scalar setting, the shape the descriptor table hands the control. */
 const setting = {
   property: "thickness",
