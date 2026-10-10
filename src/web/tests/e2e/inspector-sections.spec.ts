@@ -83,8 +83,13 @@ const EDITOR_PNG = Buffer.from(
 
 /** The section ids the column renders, in document order. */
 async function sectionIds(page: Page): Promise<string[]> {
+  // **Scoped to the column, because `[data-vigilia-section]` is not the
+  // column's.** The Document pane renders its own sections from the same
+  // component (plan 4 Task 8), they are always mounted, and they sit earlier in
+  // document order — so an unscoped read answered `theme, artboard, style`
+  // first and every case below compared the wrong list.
   return page
-    .locator("[data-vigilia-section]")
+    .locator(`${COLUMN} [data-vigilia-section]`)
     .evaluateAll((nodes) =>
       nodes.map((node) => node.getAttribute("data-vigilia-section") ?? ""),
     );
@@ -99,10 +104,11 @@ async function isOpen(page: Page, id: string): Promise<boolean> {
 /** Every field control inside a section — the whole column by default, or one
  *  section when a scope is named. The section's own disclosure header is a
  *  button in its `h2`, not a field, so it is excluded: a read-only section such
- *  as `spends` has rows but no control, and this count has to say 0 for it. */
+ *  as `spends` has rows but no control, and this count has to say 0 for it.
+ *  Scoped to the column for the reason `sectionIds` states. */
 async function controlCount(
   page: Page,
-  scope = "[data-vigilia-section]",
+  scope = `${COLUMN} [data-vigilia-section]`,
 ): Promise<number> {
   return page
     .locator(`${scope} input, ${scope} select, ${scope} button`)

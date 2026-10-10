@@ -105,6 +105,11 @@ export async function readObject(
  * The chooser asks for the display first and keeps the ratio and resolution
  * behind **Custom**, so asking for a particular preset means choosing Custom
  * first — which is also the path an author takes.
+ *
+ * **Every one of its lists is a `ControlSelect` now**, so each is a trigger to
+ * press and an item to click rather than a native `<select>` to set. Measured
+ * with this left on `dialog[open]` and `selectOption`: `inspector-sections.spec.ts`
+ * 5 failed / 6 passed / 11 skipped, plus the rebuild and display journeys.
  */
 export async function openBlank(
   page: Page,
@@ -115,23 +120,44 @@ export async function openBlank(
   // `role="menuitem"`, never `[role=menu] button`: a closed menu stays in the
   // DOM and that selector matches a stale menu's items.
   await page.getByRole("menuitem", { name: "New theme", exact: true }).click();
-  const chooser = page.locator("dialog[open]", {
+  const chooser = page.locator('[role="dialog"]', {
     hasText: "Choose an artboard size",
   });
   await expect(chooser).toBeVisible();
-  await chooser.locator("[data-vigilia-new-document-display]").selectOption("");
-  await chooser
-    .locator("[data-vigilia-new-document-ratio]")
-    .selectOption(ratio);
-  await chooser
-    .locator("[data-vigilia-new-document-resolution]")
-    .selectOption(resolution);
-  await chooser.locator("[data-vigilia-new-document-create]").click();
+  await pickInChooser(page, "display", "");
+  await pickInChooser(page, "ratio", ratio);
+  await pickInChooser(page, "resolution", resolution);
+  await page.locator("[data-vigilia-new-document-create]").click();
 
-  // A document the author has not touched is still dirty — the editor opens on
-  // the starter — so replacing it asks. Correct, and it is a second step.
+  // The document just chosen is not the one the session last saved, so replacing
+  // it asks. Correct, and it is a second step. **Not** because the editor opens
+  // dirty: a fresh editor on the starter compares equal to its own baseline, and
+  // neither New nor Open library asks anything until an authoring act or this
+  // chooser has made the two differ.
   await answerDialogIfShown(page, "Discard");
   await expect.poll(async () => (await readScene(page)).length).toBe(0);
+}
+
+/**
+ * Picks one entry of one of the chooser's own `ControlSelect`s, by its id: press
+ * the trigger, then press the item. An empty id is the display list's Custom,
+ * which is the entry that reveals the ratio and resolution behind it.
+ *
+ * **`:visible`, because the same id is in two of the lists.** The display list is
+ * keyed by aspect ratio — `16:9`, `19.5:9` — and so is the ratio list, and a list
+ * that has been opened once stays mounted when it closes. Without the filter the
+ * ratio press resolves to two elements; with it, a stale list that is somehow
+ * still on screen fails loudly on the count instead of being clicked.
+ */
+async function pickInChooser(
+  page: Page,
+  marker: string,
+  id: string,
+): Promise<void> {
+  await page.locator(`[data-vigilia-new-document-${marker}]`).click();
+  const item = page.locator(`[data-vigilia-option="${id}"]:visible`);
+  await expect(item).toHaveCount(1);
+  await item.click();
 }
 
 /** The button in the Add pane that makes an object, by the name it answers to.
@@ -187,7 +213,13 @@ export async function selectLayer(page: Page, name: string): Promise<void> {
       hasText: new RegExp(`^${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`),
     })
     .first()
-    .click();
+    // **The row's left end, not its centre.** The name is `flex: 1 1 auto`
+    // (`editor-shell.css:1658`), so it fills the row and its centre lands under
+    // the attended row's absolutely-positioned state slot (`:1707`, `right: 2px`,
+    // as wide as its controls) — a press there is intercepted, and five of
+    // `author-journey-rebuild.spec.ts`'s cases hung on it. The name's own text
+    // leads the row, which is where an author presses anyway.
+    .click({ position: { x: 6, y: 6 } });
 }
 
 /** Types into a control the way an author does, and commits it on blur. */
