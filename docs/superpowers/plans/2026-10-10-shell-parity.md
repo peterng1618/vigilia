@@ -18,7 +18,7 @@
 - **A drawn window is not a product element.** `docs/design/mockups/editor-shell.html` renders the app *inside a page*, so it bounds it with a card — `editor-shell.html:44-48`, `width:1180px; border:1px solid var(--edge); border-radius:10px; overflow:hidden`. The product's editor **is** the window and fills it, so no product element carries that radius or border, and the drawing's wrappers (`.mockup`, which wraps only the settings specimens) are never a product surface. A `PARITY` row needs a counterpart element; where there is none, the row is not a `fix` and does not belong in the table.
 - **A rule that settles a property is a licence; a silent section is not.** §7.5 names the stage ground and declares that "neither texture nor a flat ground is mandatory" — that is a predating rule speaking *to that property*, so the product's flat ground stands. The distinction is narrow: it applies only where a section names the same property and permits the variant, and it may never be stretched to "the bible does not forbid it".
 - **No hex literal in a surface** (§10). A colour is a role; a value belongs to a palette block.
-- **Bible §3's radius scale is closed**: `--radius-sm` 4 / `--radius-md` 6 / `--radius-lg` 8 / `--radius-xl` 10 / full 999, and `--radius-xl` plus backdrop blur are reserved for **floating clusters over the canvas** (dock, view controls, identity chip). Spacing steps and type roles (§2) are equally closed. A surface the table does not name — a dialog, the stage — takes the nearest entry it *is*, not the largest: a modal is not a cluster, so it is a panel at `--radius-lg`.
+- **Bible §3's radius scale is closed**: `--radius-sm` 4 / `--radius-md` 6 / `--radius-lg` 8 / `--radius-xl` 10 / full 999, and `--radius-xl` plus backdrop blur are reserved for **floating clusters over the canvas** (dock, view controls, identity chip). Spacing steps and type roles (§2) are equally closed. **But the scale answers a question only a surface that is rounded asks.** A **flush region** of the shell — the rail, a pane, the stage, the inspector, the header, the status strip — is **square**, because §7's diagram abuts those regions inside one boundary and a radius against a neighbour shows the ground through its corners; the drawing declares a radius on everything it wants rounded and none on any of them, so its omission there is a declaration, not silence. A **floating surface over the shell** takes the nearest entry it *is*: a dialog is a panel at `--radius-lg`, not a cluster.
 - **One owner per concept**: read `docs/architecture/ownership.md` before adding or moving a token, and extend the existing owner rather than adding a second declaration of the same value.
 - No new dependency; no change to `packages/renderer-core`, the player, the host or the theme format; Fabric JSON stays the persisted scene.
 - `exactOptionalPropertyTypes` and `noUncheckedIndexedAccess` are on. Refuse an invalid numeric input rather than coercing it to zero.
@@ -143,9 +143,9 @@ Run the whole editor unit suite and record its counts in the body.
 
 ### Task 3: The radius scale, and the two dialogs
 
-**Outcome:** Every literal radius in `editor-shell.css` is on §3's closed scale or is a named degenerate mark, and the four off-scale `12px` values are gone. The drawing's outer card is the **drawn window** and has no counterpart (Global Constraints), so nothing here rounds the product's root; each surface the table does not name takes the nearest entry it *is*.
+**Outcome:** Every literal radius in `editor-shell.css` is on §3's closed scale, is a named degenerate mark, or is gone because the surface is a flush region of the shell and square. The three off-scale `12px` region radii (rail, panes/inspector, stage) are **removed**, and the fourth (`.editor-shell-dialog`) becomes `--radius-lg` — so the one surface here that floats keeps a scale entry and every surface that abuts loses one. The drawing's outer card is the **drawn window** and has no counterpart (Global Constraints), so nothing here rounds the product's root.
 
-**Owning symbols/landmarks:** `editor-shell.css` — the four `12px` rules (`.editor-shell-rail`, `.editor-shell-panel`/`.editor-shell-inspector`, `.editor-shell-dialog`, `.editor-shell-stage`), the `7px` icon-button rule, the layer rows' `5px`, and the swatch/thumb `2px` rules; the `--radius-*` declarations; `editor-shell.html:44-48` (the drawing's own frame rule).
+**Owning symbols/landmarks:** `editor-shell.css` — the four `12px` rules (`.editor-shell-rail`, `.editor-shell-panel`/`.editor-shell-inspector`, `.editor-shell-dialog`, `.editor-shell-stage`), the `7px` icon-button rule, the layer rows' `5px`, and the swatch/thumb `2px` rules; the `--radius-*` declarations; `editor-shell.html:44-48` (the drawing's own frame rule) and its `border-radius` declarations as the evidence for which surfaces are rounded.
 
 **Files:**
 - Modify: `src/web/packages/editor/src/editor-shell/editor-shell.css`
@@ -157,15 +157,21 @@ Run the whole editor unit suite and record its counts in the body.
 
 - [ ] **Step 1: Decide each off-scale value against its owner, and record the decision**
 
-Five distinct off-scale values: `1`, `2`, `5`, `7`, `12`. The `12px` values are chrome and go to their §3 entry — the rail and both panes are "Panels, cards, tiles" (`--radius-lg`); the stage and the two dialogs are **not in the radius table at all** and the drawing gives them no value, because its outer card and its `.mockup` wrapper are both drawn windows rather than product surfaces. Each therefore takes the nearest entry it *is*: the stage is the region holding the canvas and the dialogs are panels, both at `--radius-lg`, since §3 reserves `--radius-xl` for clusters over the canvas and neither is one. The `7px` icon button is §5's `--radius-md`. The `2px` swatch is §3's `--radius-sm` for a swatch. `1px` and the dropline's `2px` are degenerate marks whose value is their thickness; the comment says so, so Task 6's gate can exempt them by name rather than by value.
+Five distinct off-scale values: `1`, `2`, `5`, `7`, `12`.
+
+**The shell's four `12px` regions go square, and that is the drawing's declaration rather than its silence.** The drawing rounds what it wants rounded and says so every time — the window and `.mockup` at `10px` (`editor-shell.html:20`, `:47`), rail slots and every card at `8px`, layer rows at `6px`, kbd chips at `5px`–`6px`, the dock, the view chip and the identity chip at `9px`/`10px` — and declares **no** radius on the rail, either pane, the stage, the inspector, the header or the status strip. §7 draws the same shape: the regions abut inside one outer boundary, and an abutting region with a radius shows the ground through its corners, which is the island the drawing does not have. So `.editor-shell-rail`, `.editor-shell-panel`/`.editor-shell-inspector` and `.editor-shell-stage` **lose** the declaration rather than take a scale entry, and **Task 2's flush body is what makes that coherent** — the two steps are one change.
+
+**The two dialogs are the exception, at `--radius-lg` (8).** They are not drawn in the shell, they float over it, and §3's table gives `8px` to panels; R6 already ruled this. The distinction the whole step turns on: a **flush region** of the shell is square, a **floating surface** over it takes its §3 entry.
+
+The `7px` icon button is §5's `--radius-md`. The `2px` swatch is §3's `--radius-sm` for a swatch. `1px` and the dropline's `2px` are degenerate marks whose value is their thickness; the comment says so, so Task 6's gate can exempt them by name rather than by value.
 
 - [ ] **Step 2: Apply them, and make the dialog's frame one rule for both dialogs**
 
 The shell's regions and the two dialogs are changed together, because `.editor-shell-dialog` is one rule rendered by `shortcut-reference.tsx` and `settings.tsx` (Review Focus 5).
 
-- [ ] **Step 3: Assert both dialogs, not only the modal**
+- [ ] **Step 3: Assert both dialogs against each other, not only against the scale**
 
-Extend Task 1's rows with one case per dialog: computed frame equal to the drawing's, for the settings modal **and** the `?` sheet. Run both; a change made for one and missed on the other is the defect this step exists to catch.
+**Both dialogs are already in Task 1's table**, each comparing `--radius-lg` against its computed frame. This step adds the thing that assertion cannot see: that the two dialogs' frames are **equal to each other**, so a change made for the settings modal and missed on the `?` sheet fails a row rather than passing quietly. Run both.
 
 - [ ] **Step 4: Prove the assertions fail when the value is put back**
 
