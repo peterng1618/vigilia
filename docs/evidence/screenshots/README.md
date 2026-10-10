@@ -37,8 +37,9 @@ so the shell-parity pair is kept in the drawings' own directory —
 `docs/design/mockups/current/shell-capture-add.png` (the shell with the Add pane
 open and nothing selected, the state `shell.html` draws) and
 `shell-capture-graphite.png` (the whole shell in the drawing's own palette) —
-and both are re-taken from the registered `editor-shell-add` and
-`shell-palette-graphite` actions above.
+and both are produced by the registered actions above: the first by
+`captures the shell with the Add pane open and nothing selected`, the second by
+`captures each palette's own surface` (the `shell-palette-graphite` file).
 
 ## Editor visual-action checklist
 

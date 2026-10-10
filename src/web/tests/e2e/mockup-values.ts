@@ -493,9 +493,9 @@ export const PARITY: readonly ParityRegion[] = [
     mockupSelector: '[style*="repeating-linear-gradient(45deg"]',
     mockupProperty: "background",
     productSelector: ".editor-shell-stage",
-    bibleSection: "§7.5 (`:338`)",
+    bibleSection: "§7.5 (`:349-351`)",
     licensed:
-      '§7.5 (`:338-344`): "Subtle palette-derived stage texture is permitted when it stays behind the artwork and does not obscure controls; neither texture nor a flat ground is mandatory."',
+      '§7.5 (`:349-351`): "Subtle palette-derived stage texture is permitted when it stays behind the artwork and does not obscure controls; neither texture nor a flat ground is mandatory."',
   },
   /* **The control set's own drawing, read on the fixture.** Both files are the
      inspector column and both declare the same row: a label column of
