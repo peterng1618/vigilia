@@ -1,4 +1,4 @@
-import { expect, type Page, test } from "@playwright/test";
+import { expect, type Locator, test } from "@playwright/test";
 import { chooseIn } from "./control-set.js";
 import { openPane } from "./editor-rail.js";
 import { openAppearance } from "./shell-palette.js";
@@ -77,7 +77,14 @@ const DOCUMENT_CONTROLS = [
  *  the surface still exists and still has to be named, so the entry moves to it
  *  rather than being retired over a control nobody can find any more. The
  *  follow-the-system toggle came with it, because one surface moved and the
- *  other arrived beside it; nothing else on the modal is added here. */
+ *  other arrived beside it; nothing else on the modal is added here.
+ *
+ *  A choice row's accessible name is carried by its text content as well as its
+ *  `aria-label` (`control-choice-row.tsx:43,56` — the label is both), so the
+ *  audit measures the name Chromium *computes* for each of the six rows rather
+ *  than the presence of one attribute: a check on `aria-label` alone would go
+ *  green on a row whose name had moved, and the row only loses its name when
+ *  both are gone, which is a row that announces nothing. */
 const APPEARANCE_CONTROLS = [
   "[data-vigilia-palette-choice]",
   "[data-vigilia-follow-system]",
@@ -86,8 +93,8 @@ const APPEARANCE_CONTROLS = [
 /** The name Chromium computes for a control, or "" when it computes none.
     `ariaSnapshot` renders Playwright's own accessible-name engine, whose
     output is `- <role> "<name>": <value>`. */
-async function accessibleName(page: Page, selector: string): Promise<string> {
-  const snapshot = (await page.locator(selector).first().ariaSnapshot()).trim();
+async function accessibleName(locator: Locator): Promise<string> {
+  const snapshot = (await locator.ariaSnapshot()).trim();
   return (
     /^-\s*[a-z]+\s*"([^"]*)"/i.exec(snapshot)?.[1] ??
     // A name containing ": " makes the YAML emitter quote the whole node, so
@@ -131,11 +138,19 @@ test.describe("the settings panels name every control", () => {
     const measured: string[] = [];
     const audit = async (selectors: readonly string[]): Promise<void> => {
       for (const selector of selectors) {
-        const locator = page.locator(selector).first();
-        if ((await locator.count()) === 0) continue;
-        measured.push(selector);
-        if ((await accessibleName(page, selector)) === "")
-          unnamed.push(selector);
+        const matches = page.locator(selector);
+        const count = await matches.count();
+        if (count === 0) continue;
+        // Every match, not just the first. A selector that names a *set* — the
+        // six palette choices are six controls — is six names that each have to
+        // be measured, and `.first()` audited one and called the set covered. A
+        // single-match selector is unaffected: its count is 1.
+        for (let index = 0; index < count; index += 1) {
+          const label = count === 1 ? selector : `${selector}[${index}]`;
+          measured.push(label);
+          if ((await accessibleName(matches.nth(index))) === "")
+            unnamed.push(label);
+        }
       }
     };
 
@@ -151,6 +166,11 @@ test.describe("the settings panels name every control", () => {
     // and the panes' own audit above measures them as an author reaches them.
     const dialog = await openAppearance(page);
     await audit(APPEARANCE_CONTROLS);
+    // The palette entry is a *set* of six rows, and the audit now reaches all
+    // six: this count is what fails if the set shrinks under the audit's feet,
+    // so "the six choice rows" stays true of what was measured and not only of
+    // the comment above it.
+    await expect(page.locator("[data-vigilia-palette-choice]")).toHaveCount(6);
     await page.keyboard.press("Escape");
     await expect(dialog).toBeHidden();
 
@@ -177,12 +197,12 @@ test.describe("the settings panels name every control", () => {
 
   test("each panel's chooser says what it lists", async ({ page }) => {
     // Both choosers are the Tokens pane's, open from the setup.
-    expect(await accessibleName(page, "[data-vigilia-palette-token]")).toBe(
-      "Colour token",
-    );
-    expect(await accessibleName(page, "[data-vigilia-type-preset]")).toBe(
-      "Type preset",
-    );
+    expect(
+      await accessibleName(page.locator("[data-vigilia-palette-token]")),
+    ).toBe("Colour token");
+    expect(
+      await accessibleName(page.locator("[data-vigilia-type-preset]")),
+    ).toBe("Type preset");
   });
 
   test("the three panels are the ones the audit claims to cover", async ({

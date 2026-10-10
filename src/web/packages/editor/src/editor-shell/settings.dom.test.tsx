@@ -99,8 +99,17 @@ let host: HTMLDivElement | undefined;
  *  modal reads, exactly as `Shell` holds `settingsOpen`, and the palette state
  *  the shell holds is held here. Nothing else is mirrored — the tab writes
  *  storage and the attribute itself, so what these cases exercise is the
- *  component and not a copy of it. */
-function Harness(): React.JSX.Element {
+ *  component and not a copy of it.
+ *
+ *  `storage` is the prop the shell passes through, and `undefined` is a state
+ *  the product reaches: `readStorage` answers `undefined` when the browser
+ *  refuses it (`shell-layout.tsx:310`), so a mounting with no store is the same
+ *  run a private window gets, not a harness fiction. */
+function Harness({
+  storage,
+}: {
+  readonly storage: Storage | undefined;
+}): React.JSX.Element {
   const [open, setOpen] = useState(false);
   const [slot, setSlot] = useState<RailSlot>("composition");
   const [palette, setPalette] = useState<ShellPalette>(DEFAULT_SHELL_PALETTE);
@@ -116,7 +125,7 @@ function Harness(): React.JSX.Element {
       <Settings
         open={open}
         onOpenChange={setOpen}
-        storage={localStorage}
+        storage={storage}
         palette={palette}
         following={following}
         onPalette={setPalette}
@@ -126,14 +135,22 @@ function Harness(): React.JSX.Element {
   );
 }
 
-function mount(): HTMLElement {
+/** The mounting, with the store the shell hands it. `localStorage` is the
+ *  working-browser default; a case calls `mountWith(undefined)` to model a
+ *  browser that refuses it — a plain default parameter would swallow that
+ *  `undefined`, which is why the two are separate functions. */
+function mountWith(storage: Storage | undefined): HTMLElement {
   const mount = document.createElement("div");
   document.body.append(mount);
   const reactRoot = createRoot(mount);
   root = reactRoot;
   host = mount;
-  act(() => reactRoot.render(<Harness />));
+  act(() => reactRoot.render(<Harness storage={storage} />));
   return mount;
+}
+
+function mount(): HTMLElement {
+  return mountWith(localStorage);
 }
 
 async function press(target: HTMLElement): Promise<void> {
@@ -328,5 +345,71 @@ describe("Settings", () => {
       resolveShellPalette(undefined, prefersDarkAppearance()),
     );
     expect(followToggle().getAttribute("aria-checked")).toBe("true");
+  });
+
+  it("pins the palette in force when follow-the-system is turned off", async () => {
+    // The other arrow of the toggle, and the brief names this direction too:
+    // turning following OFF writes the resolved palette to storage, so a reload
+    // keeps what the author was looking at rather than handing the choice back
+    // to the OS. Delete the write (`settings.tsx` `follow`'s last line) and
+    // nothing reddens without this case.
+    const host = mount();
+    await press(gear(host));
+
+    // Walk to the state the line is about: choosing stops following, turning it
+    // back on clears the key, and turning it off again is what has to pin.
+    await press(paletteChoice("moss"));
+    await press(followToggle());
+    expect(
+      readShellChoice(localStorage),
+      "following the OS leaves no stored choice",
+    ).toBeUndefined();
+
+    await press(followToggle());
+
+    const pinned = resolveShellPalette(undefined, prefersDarkAppearance());
+    expect(
+      readShellChoice(localStorage),
+      "turning following off writes the palette in force, so a reload keeps it",
+    ).toBe(pinned);
+    expect(
+      document.documentElement.getAttribute("data-shell-palette"),
+      "and the palette it pinned is the one that was in force",
+    ).toBe(pinned);
+  });
+
+  it("keeps the choice for the session, and says so, where the browser kept no store", async () => {
+    // No storage is a state the product reaches — `readStorage` answers
+    // `undefined` in a browser that refuses it — and the brief requires it
+    // tested. Both storage branches have to hold: a choice still applies for
+    // the session, and the tab says it will not outlive a reload rather than
+    // refusing to make it.
+    const host = mountWith(undefined);
+    await press(gear(host));
+
+    // The copy that carries the promise, on the storage-less branch only.
+    expect(document.body.textContent).toContain(
+      uiCopy.settings.followSystemSessionOnly,
+    );
+
+    const chosen: ShellPalette = "moss";
+    await press(paletteChoice(chosen));
+    // Still applied: the attribute reaches every portalled surface, store or no
+    // store. A `writeShellChoice(undefined, …)` here would throw and fail this
+    // case, which is the guard.
+    expect(document.documentElement.getAttribute("data-shell-palette")).toBe(
+      chosen,
+    );
+    expect(
+      localStorage.length,
+      "a session-only choice writes no store entry",
+    ).toBe(0);
+
+    // The toggle is the other storage branch: turning following back on must
+    // not throw with no store to clear, and still resolves the OS.
+    await press(followToggle());
+    expect(document.documentElement.getAttribute("data-shell-palette")).toBe(
+      resolveShellPalette(undefined, prefersDarkAppearance()),
+    );
   });
 });

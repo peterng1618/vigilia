@@ -857,6 +857,130 @@ test("the control set renders in the design language", async ({
     `the checked toggle's accent border was overridden on hover (${checkedRest} -> ${checkedHover})`,
   ).toBe(checkedRest);
 
+  // ── 4e. The choice row: focus and checked state are two visible things ────
+  //
+  // `ControlChoiceRow` carries focus (`:focus-visible` outline) and selection
+  // (`[data-checked]`) as separate states, and the brief requires the two be
+  // provably distinct: a keyboard author has to see which row is *focused* and
+  // which is *chosen* at the same time, on two different rows. The fixture
+  // mounts the control so its spacing and role gates see it too (sections 1–2);
+  // this section drives the one state a static fixture cannot — a focused row
+  // that is not the checked one — and reads the chosen row's fill against an
+  // unchecked neighbour's, which is the only thing that distinguishes "chosen"
+  // where no text does.
+  const choiceGroup = page.locator('[data-fixture="choice-rows"]');
+  await expect(choiceGroup).toBeVisible();
+  const choiceChecked = choiceGroup.locator('[role="radio"][data-checked]');
+  const choiceUnchecked = choiceGroup
+    .locator('[role="radio"]:not([data-checked])')
+    .first();
+  await expect(choiceChecked).toHaveCount(1);
+  await page.keyboard.press("Tab");
+  await choiceUnchecked.focus();
+  await expect(choiceUnchecked).toBeFocused();
+  const twofold = await page.evaluate(() => {
+    const active = document.activeElement as HTMLElement | null;
+    const checked = document.querySelector<HTMLElement>(
+      '[data-fixture="choice-rows"] [role="radio"][data-checked]',
+    );
+    if (active === null || checked === null) return null;
+    const outline = getComputedStyle(active);
+    return {
+      distinct: active !== checked,
+      activeChecked: active.getAttribute("aria-checked"),
+      activeFocusVisible: active.matches(":focus-visible"),
+      activeOutlineStyle: outline.outlineStyle,
+      activeOutlineWidth: Number.parseFloat(outline.outlineWidth),
+      checkedStillChecked: checked.getAttribute("aria-checked"),
+    };
+  });
+  expect(twofold, "the choice rows did not mount").not.toBeNull();
+  expect(
+    twofold?.distinct,
+    "the focused row is the checked row, so focus and checked state are not two states",
+  ).toBe(true);
+  expect(twofold?.activeChecked, "the focused row is the unchecked one").toBe(
+    "false",
+  );
+  expect(
+    twofold?.activeFocusVisible,
+    "the focused row does not match :focus-visible, so its focus is not rendered",
+  ).toBe(true);
+  // `solid`, not the browser's `auto` ring: the class carries the design
+  // language's outline, and a `focus-visible:outline-none` here would leave the
+  // UA ring passing a bare `!== "none"` check (§5.4's boundary is the solid one).
+  expect(
+    twofold?.activeOutlineStyle,
+    "the focused row paints the browser's auto ring, not §5's solid outline",
+  ).toBe("solid");
+  expect(
+    twofold?.activeOutlineWidth,
+    "the focused row's outline is not §5's 2px boundary",
+  ).toBeGreaterThanOrEqual(2);
+  expect(
+    twofold?.checkedStillChecked,
+    "the checked row stopped being checked while another row is focused",
+  ).toBe("true");
+
+  for (const palette of PALETTES) {
+    await setPalette(page, palette);
+    const row = await page.evaluate(() => {
+      const active = document.activeElement as HTMLElement | null;
+      const chosen = document.querySelector<HTMLElement>(
+        '[data-fixture="choice-rows"] [role="radio"][data-checked]',
+      );
+      const plain = document.querySelector<HTMLElement>(
+        '[data-fixture="choice-rows"] [role="radio"]:not([data-checked])',
+      );
+      if (active === null || chosen === null || plain === null) return null;
+      const rect = active.getBoundingClientRect();
+      // The *painted* fill, not just `background-color`: `--stage` is a flat
+      // colour under editorial/ember/moss/plum but a gradient stack under
+      // graphite and light (`design-language.spec.ts`'s ROLES note), where the
+      // colour resolves to transparent and the gradient is what the eye gets.
+      const fill = (element: Element): string => {
+        const style = getComputedStyle(element);
+        return `${style.backgroundColor}|${style.backgroundImage}`;
+      };
+      return {
+        outline: getComputedStyle(active).outlineColor,
+        chosenBg: fill(chosen),
+        plainBg: fill(plain),
+        point: { x: rect.x + 4, y: rect.y + rect.height / 2 },
+      };
+    });
+    expect(row, "the choice row is not mounted").not.toBeNull();
+    if (row === null) continue;
+    const [pixel] = await pixelsAt(page, [row.point]);
+    const ratio = round(ratioAgainstPixel(row.outline, pixel ?? [0, 0, 0, 0]));
+    ratios.push(`${palette} choice-focus ${ratio}:1 (${row.outline})`);
+    ratios.push(
+      `${palette} choice-fill chosen=${row.chosenBg} unchecked=${row.plainBg}`,
+    );
+    if (ratio < BOUNDARY_MIN) {
+      failures.push(
+        `${palette}: the choice row's focus boundary is ${ratio}:1, below ${BOUNDARY_MIN}:1 — ${row.outline} on the panel`,
+      );
+    }
+    // The chosen row's fill must differ from an unchecked neighbour's in every
+    // palette; where they were identical, "chosen" would be carried by the
+    // accent border alone and the fill would be decoration (§1).
+    if (row.chosenBg === row.plainBg) {
+      failures.push(
+        `${palette}: a chosen choice row paints the same fill as an unchecked one (${row.chosenBg})`,
+      );
+    }
+  }
+
+  // Hand the focus back where section 4b left it — on the icon button section 5
+  // reads for the forced-colours check — because this block moved it onto a
+  // choice row.
+  await page.keyboard.press("Tab");
+  await page.locator("[data-fixture='icon-focus'] button").focus();
+  await expect(
+    page.locator("[data-fixture='icon-focus'] button"),
+  ).toBeFocused();
+
   for (const line of ratios) {
     // The table is the evidence a reader needs to check a ratio without a
     // trace, so it is printed as well as attached.

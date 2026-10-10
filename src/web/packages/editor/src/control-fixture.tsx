@@ -1,5 +1,7 @@
+import { RadioGroup } from "@base-ui/react/radio-group";
 import type * as React from "react";
 import { createRoot } from "react-dom/client";
+import { ControlChoiceRow } from "./components/ui/control-choice-row.js";
 import { ControlIconButton } from "./components/ui/control-icon-button.js";
 import { ControlNumber } from "./components/ui/control-number.js";
 import { ControlSegmented } from "./components/ui/control-segmented.js";
@@ -132,6 +134,43 @@ function Fixture(): React.JSX.Element {
                 onChange={noop}
                 data={{ "data-fixture-segmented": "1" }}
               />
+            </div>
+          </InspectorSection>
+
+          {/* §5's Choice row, mounted so the spacing, role and focus gates all
+              see it. Two rows, one checked: the focus is driven onto the
+              unchecked one, which is what makes "focus distinct from checked
+              state" a rendered state and not a class. The checked row carries
+              `--stage` and an accent border; the unchecked one `--panel-2`. */}
+          <InspectorSection id="palette" title="Palette">
+            <div data-fixture="choice-rows">
+              <RadioGroup
+                value="editorial"
+                onValueChange={noop}
+                aria-label="Shell palette"
+                className="flex flex-col gap-[var(--space-6)]"
+              >
+                <ControlChoiceRow
+                  label="editorial"
+                  value="editorial"
+                  swatch={
+                    <span
+                      aria-hidden
+                      className="size-[11px] rounded-sm bg-accent"
+                    />
+                  }
+                />
+                <ControlChoiceRow
+                  label="graphite"
+                  value="graphite"
+                  swatch={
+                    <span
+                      aria-hidden
+                      className="size-[11px] rounded-sm bg-muted"
+                    />
+                  }
+                />
+              </RadioGroup>
             </div>
           </InspectorSection>
 
