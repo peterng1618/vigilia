@@ -26,8 +26,8 @@ backlog it produced stays live in the register.
 
 ## Active work
 
-- **Plan 5 — [`settings-and-appearance`](docs/superpowers/plans/2026-10-08-settings-and-appearance.md) — is the active plan, and Tasks 1–3 are complete**: `13984ab9`/`3b4be19d` (the gear and the modal it opens), `64fea389`/`eba81b2a` (the Appearance tab, and the header chip's departure), then `9b0af9d1` with fix rounds `6644abd1` and `12c31ec2` (the Keyboard tab); plans 1–4 are closed and exactly one plan is active at a time.
-- **Plan 5's next task is Task 4 — About, version and provenance from what the editor actually has**; the pre-flight conflict rulings R1–R10 and both scan tables are in `.superpowers/sdd/2026-10-08-settings-and-appearance/`.
+- **Plan 5 — [`settings-and-appearance`](docs/superpowers/plans/2026-10-08-settings-and-appearance.md) — is the active plan, and Tasks 1–4 are complete**: `13984ab9`/`3b4be19d` (the gear and the modal it opens), `64fea389`/`eba81b2a` (the Appearance tab, and the header chip's departure), `9b0af9d1` with fix rounds `6644abd1`/`12c31ec2` (the Keyboard tab), then `91c3fdac` (the About tab); plans 1–4 are closed and exactly one plan is active at a time.
+- **Plan 5's next task is Task 4a — the dialog and font-picker surfaces §2.2 still leaves imperative**; the pre-flight conflict rulings R1–R10 and both scan tables are in `.superpowers/sdd/2026-10-08-settings-and-appearance/`.
 - **Plan 4 — [`the panes`](docs/superpowers/plans/archive/2026-10-08-the-panes.md) — closed complete on 2026-10-10**: all 13 tasks landed, its file is in `docs/superpowers/plans/archive/`, and its ledger (`.superpowers/sdd/2026-10-08-the-panes/progress.md`, git-ignored but on disk) holds R1–R78.
 - **Two plans remain after plan 5** — `2026-10-08-iconography-and-copy.md`, then [`2026-10-10-design-md-replaces-the-bible.md`](docs/superpowers/plans/2026-10-10-design-md-replaces-the-bible.md), queued and unstarted; every plan ends with its §13 parity capture.
 - **Reactify ([0039](docs/decisions/0039-the-editor-ui-is-react-and-only-the-canvas-is-imperative.md)) is the frame, not a phase** — every editor surface becomes React, only the canvas stays imperative, and no Fabric object is ever mirrored into React state.
@@ -35,18 +35,18 @@ backlog it produced stays live in the register.
 
 ## Last completed change
 
-- **Plan 5's Task 3 is complete — every chord is rebindable through one effective table, the reference is generated from that same table, and the header's publish chord runs the host** (`9b0af9d1`, fix rounds `6644abd1` and `12c31ec2`).
-- **Its review found the new storage layer silently losing an author's override** — the reader validated a stored entry against the defaults while the capture validated against the effective table, so a binding accepted on screen reverted on the next reload with nothing reported.
-- **The fix that holds is one predicate, not one reproduction**: the first round closed the reported case, and the re-review found the same class one layer in — the refusal accepting punctuation the reader would drop — so `storableKey` is now the single rule the reader and the capture both call, with a capture→reload round trip committed.
-- **The evidence gap was closed by measurement rather than styling** — the armed row's ring was read as rendered pixels across all six palettes (editorial 18.39:1, graphite 11.65:1, ember 5.68:1, moss 6.18:1, plum 7.68:1, light 3.44:1) with `editor-shell.css` byte-identical, and `F5`/`F11`/`F12` now refuse as browser-reserved rather than unprintable, which is what the code should always have said.
-- **Evidence:** editor unit suite 138 files / 1781 tests pass; `shortcut-manager/` + `editor-shell/` 30 files / 368 tests; `design:check` exit 0 over 56 gated files; `backlog:check` reads 149 items, all valid.
+- **Plan 5's Task 4 is complete — the About tab renders the version facts this build can read and invents none** (`91c3fdac`): the schema version from `SUPPORTED_SCHEMA_VERSION`, the open document's release version from the same `ThemeMetadata.version` the Document pane reads, and nothing where a document carries none.
+- **Its Step 1 finding, filed as `vg-279`: there is no product-version source the editor bundle can read** — the host's `VERSION` is Node-side at `packages/host/src/main.ts:34`, `packages/editor/package.json` is `0.0.0`, and `vite.config.ts` injects no define, so the tab names no version for Vigilia itself rather than printing a literal nobody would check.
+- **The shell did not already hold that fact, contrary to my dispatch** — the value rides the one metadata pull it did have, `bridge.ts`'s `documentIdentity`, adding an optional `EditorShellSnapshot.releaseVersion` reused from the same `identity` const rather than a second read; the wider file list is a named divergence from the brief.
+- **`versionFacts` is the single point where the tab could lie** — an exported pure function, so the one rule the tab can break is broken there or not at all, proven red-then-green both as the function's value and as the rendered `<dd>` text.
+- **Evidence:** editor unit suite 138 files / 1784 tests pass; `editor-shell/` 24 files / 291 tests; `design:check` 56 gated files; `typecheck`, `build`, `biome` and `backlog:check` (150 valid) all pass; review approved with Minor findings only.
 
 ## Next
 
-1. **Plan 5's Task 4 — About — runs next**: version and provenance read from what the editor actually has rather than a build-time constant.
-2. **Then plan 5's Tasks 4a, 5 and 6** — the dialog and font-picker rendering, the ratchet census and every re-pointed locator, then the parity capture.
+1. **Plan 5's Task 4a — the dialog and font-picker surfaces — runs next**: no editor surface stays imperative merely because its file sits outside a pane directory.
+2. **Then plan 5's Tasks 5 and 6** — the ratchet census with every re-pointed locator proven, then the parity capture, which must also show the About tab under a document carrying a release version (Task 4's thread has no rendered proof until then).
 3. **Then plan 6 (`iconography-and-copy`), then `design-md-replaces-the-bible`** — the sequence's last two, each ending with its own §13 parity capture.
-4. **The register's newest row is `vg-278`**, filed at plan 5's second task; read [`docs/product/backlog.jsonl`](docs/product/backlog.jsonl) for every open row rather than this file.
+4. **The register's newest row is `vg-279`**, filed at plan 5's fourth task; read [`docs/product/backlog.jsonl`](docs/product/backlog.jsonl) for every open row rather than this file.
 5. **Unpushed:** `develop` is far ahead of `origin/develop`; no push is authorised, and the plan's "tell the user" step is deferred rather than satisfied (R62).
 
 ## Blockers / unverified
