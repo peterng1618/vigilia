@@ -26,8 +26,8 @@ backlog it produced stays live in the register.
 ## Active work
 
 - **Plan 5 — [`settings-and-appearance`](docs/superpowers/plans/2026-10-08-settings-and-appearance.md) — is the active plan, and it has not started**; plans 1–4 are closed and exactly one plan is active at a time.
-- **Plan 4 — [`the panes`](docs/superpowers/plans/2026-10-08-the-panes.md) — closed complete on 2026-10-10**: all 13 tasks landed, its four-pane parity comparison and its register moves are in this commit, and its ledger (`.superpowers/sdd/2026-10-08-the-panes/progress.md`, git-ignored but on disk) holds the predecessor reconciliation and rulings R1–R76.
-- **Plan 4's own plan file stays in `docs/superpowers/plans/`, not the archive** — two queued plans reference `2026-10-08-the-panes.md` (`settings-and-appearance.md:18`, `:619`; `iconography-and-copy.md:18`), and the archive rule is "once no active or queued plan depends on them".
+- **Plan 4 — [`the panes`](docs/superpowers/plans/archive/2026-10-08-the-panes.md) — closed complete on 2026-10-10**: all 13 tasks landed, its four-pane parity comparison and its register moves are in its closing commit, and its ledger (`.superpowers/sdd/2026-10-08-the-panes/progress.md`, git-ignored but on disk) holds the predecessor reconciliation and rulings R1–R78.
+- **Plan 4's plan file is in `docs/superpowers/plans/archive/`** — the two queued plans that name it (`settings-and-appearance.md:18`, `:619`; `iconography-and-copy.md:18`) spell the bare filename, never a path, and a sequence paragraph and a boundary clause are pointers rather than dependencies, which is how plan 3 was archived under the identical mentions; `vg-152` now owns the closed plans still live, redesign 1 and 2 among them.
 - **Two plans remain after plan 5** — `2026-10-08-iconography-and-copy.md`, then [`2026-10-10-design-md-replaces-the-bible.md`](docs/superpowers/plans/2026-10-10-design-md-replaces-the-bible.md), queued and unstarted, subagent-driven when it runs; every plan ends with its §13 parity capture.
 - **Reactify ([0039](docs/decisions/0039-the-editor-ui-is-react-and-only-the-canvas-is-imperative.md)) is the frame, not a phase** — every editor surface becomes React, only the canvas stays imperative, and no Fabric object is ever mirrored into React state.
 - **The mockups are the checked reference** ([`docs/design/mockups/`](docs/design/mockups/)), not files read once and remembered; spec §13 makes a capture beside them a gate item, and plan 4's four pane captures were read that way.
@@ -46,7 +46,7 @@ backlog it produced stays live in the register.
 2. **Then plan 6 (`iconography-and-copy`), then `design-md-replaces-the-bible`** — the sequence's last two, each ending with its own §13 parity capture.
 3. **The register's newest rows are the five this close filed** — `vg-266`–`vg-270`; read [`docs/product/backlog.jsonl`](docs/product/backlog.jsonl) for every open row rather than this file.
 4. **Unpushed:** `develop` is far ahead of `origin/develop`; no push is authorised, and the plan's "tell the user" step is deferred rather than satisfied (R62).
-5. **The plan's rulings live in the ledger, not here** — R1–R76, including the pre-flight scans of Tasks 4–12 and eight occurrences of the claim-from-purpose shape, each caught by running or measuring something rather than by reading it.
+5. **The plan's rulings live in the ledger, not here** — R1–R78, including the pre-flight scans of Tasks 4–12 and nine occurrences of the claim-from-purpose shape, each caught by running or measuring something rather than by reading it — the ninth being one a fix round introduced and a scoped re-review caught.
 
 ## Blockers / unverified
 
