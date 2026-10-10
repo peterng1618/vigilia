@@ -25,8 +25,8 @@ backlog it produced stays live in the register.
 
 ## Active work
 
-- **Plan 4 — [`the panes`](docs/superpowers/plans/2026-10-08-the-panes.md) — is the active plan, and it is 9 of its 13 tasks in**; plans 1–3 are closed and archived, and exactly one plan is active at a time.
-- **Tasks 1–8 and 13 landed** — the Composition pane's row, its attended-row affordances, the Add pane, every React root released on its own disposal path, the whole Tokens pane including `vg-094`, and the Document pane on the control set — and **Task 9, References, opens next**.
+- **Plan 4 — [`the panes`](docs/superpowers/plans/2026-10-08-the-panes.md) — is the active plan, and it is 10 of its 13 tasks in**; plans 1–3 are closed and archived, and exactly one plan is active at a time.
+- **Tasks 1–9 and 13 landed** — the Composition pane's row, its attended-row affordances, the Add pane, every React root released on its own disposal path, the whole Tokens pane including `vg-094`, the Document pane on the control set, and its References read-only — and **Task 10, the ratchet, opens next**.
 - **Plan 4's ledger is `.superpowers/sdd/2026-10-08-the-panes/progress.md`** (git-ignored but on disk): it holds the predecessor reconciliation and rulings R1–R40, and a fresh session continues from it rather than from this file.
 - **Three plans remain after this one** — `2026-10-08-settings-and-appearance.md`, `2026-10-08-iconography-and-copy.md`, then [`2026-10-10-design-md-replaces-the-bible.md`](docs/superpowers/plans/2026-10-10-design-md-replaces-the-bible.md), queued and unstarted, subagent-driven when it runs; every plan ends with its §13 parity capture.
 - **Reactify ([0039](docs/decisions/0039-the-editor-ui-is-react-and-only-the-canvas-is-imperative.md)) is the frame, not a phase** — every editor surface becomes React, only the canvas stays imperative, and no Fabric object is ever mirrored into React state.
@@ -34,18 +34,18 @@ backlog it produced stays live in the register.
 
 ## Last completed change
 
-- **The Document pane renders on the control set** — `artboard-panel.ts` fell from 594 lines to 145, all 16 `data-vigilia-*` hooks surviving on their focusable elements, with Step 1's enumeration of every field, branch and refusal written into the commit before a line of it moved.
-- **A silent refusal the red proofs could not see** — a fractional artboard dimension was accepted by the field, refused by the pane's own guard, and announced to nobody; found by review rather than by a failing test, then pinned with `integer: true` on both halves and a case that drives `1.5`.
-- **The first fix's own case was vacuous** — the mid-draft canvas case stayed green with the panel's `object:modified` subscription dead, because both its assertions were end-state, so the scoped re-review sent it back to observe the redraw.
-- **`vg-264` was filed on a premise the review measured false** — the pane never printed a size bound (`linkedPair` calls `numberInput`; `boundLine` is `numberField`'s, whose only caller is the settings path) — and was rewritten to what survives: the React control set prints its refusals as hardcoded English while `uiCopy.panels.invalidNumber` stays live.
-- **Three divergences ruled rather than filed** — the clamp-to-refuse change (`0` used to commit as `1`), the note's move out of the size pair, and the enumeration case's hook-only contract, each named in the fix commit and in the ledger.
+- **The Document pane's References render on the control set** — the section is `InspectorSection` with `readOnly` and `defaultOpen={false}`, so the marker is on the header *while the section is closed*; `style.ts` kept the walk and lost the element builder, and `createResolutionLine` went with it.
+- **`render()` is called from four places, not one** — `editor-session.ts:1183`, `:1209`, `:1223` and `:1261` all refresh the panel, so the factory re-pulls `globals()` every call, and the red proof that mattered held a copy instead: the "changed after mount" case fails, which is what stops a React component's natural closure over `globals` from silently freezing the pane.
+- **My instruction on the guard's sort order was wrong and the implementer measured it** — `palette-manager` precedes `panes` at the third character, so the entry goes after it; corrected in the plan text, not only the ledger, because a regenerated brief reads the plan.
+- **`data-vigilia-globals` wraps the section, not its rows** — forced by `composition-panel.spec.ts:238`, which needs the element visible while the section opens closed; `textContent` readers are unaffected, and a future reader asking whether a *row* is visible could be.
+- **Both verdicts clean, one should-fix** — a comment still naming the deleted `createResolutionLine`, the last mention of it anywhere, fixed in place rather than round-tripped through a fix dispatch.
 
 ## Next
 
-1. **Plan 4 Task 9 — References** — the document's resolved references read-only in the Document pane, with the marker on the header *before* the section is opened; `InspectorSection` hides a collapsed body rather than unmounting it, so "still closed" is the panel's `hidden` (R41).
-2. **Then Tasks 10–12:** the ratchet and the four panes' native-control count, the parity capture beside the mockup, then the register — every plan ends with its §13 parity capture.
-3. **The plan's rulings live in the ledger, not here** — R1–R56, including the pre-flight scans of Tasks 4–12 and of Tasks 9–12, each ruled before dispatch and then applied to the plan text rather than only recorded.
-4. **Tasks 9–12's briefs must be regenerated before dispatch** — they were written before the day's plan edits (Task 13's insertion, `destroy()` on Tasks 5/6/8, R24's amendment, R36, R39, R40, and R41–R49) and are stale as they sit.
+1. **Plan 4 Task 10 — the ratchet** — every file this plan converted in `design-tokens.gated.json` with `design:check` green *and still refusing an empty list*, the four panes' native-control count measured, and only what lost its last consumer deleted; `asset-manager/panel.ts` was already deleted in Task 4, so the drop is three files against this plan's base.
+2. **Then Tasks 11–12:** the parity capture beside the mockup, then the register — every plan ends with its §13 parity capture.
+3. **The plan's rulings live in the ledger, not here** — R1–R60, including the pre-flight scans of Tasks 4–12 and of Tasks 9–12, each ruled before dispatch and then applied to the plan text rather than only recorded.
+4. **Tasks 10–12's briefs must be regenerated before dispatch** — they were written before the day's plan edits (Task 13's insertion, `destroy()` on Tasks 5/6/8, R24's amendment, R36, R39, R40, R41–R49, and R59's sort-order correction) and are stale as they sit.
 5. **Unpushed:** `develop` is far ahead of `origin/develop`; no push is authorised.
 
 ## Blockers / unverified
