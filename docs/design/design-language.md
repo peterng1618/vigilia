@@ -162,6 +162,13 @@ The vocabulary is closed. A control is one of these, or it is not a control.
    from absence. `Spends` is the standing example.
 2. **Read-only rows are label + mono value, baseline-aligned, right-aligned.**
    They share the grid with controls so a section does not jump between shapes.
+   **The grid is a 74px label column and one value cell**, and the cell is one
+   track whatever fills it: a well, a select, a slider and a segmented group
+   occupy the same geometry, so a section's boxes share a left edge rather than
+   each starting where its own content ends. A row a surface's own drawing shapes
+   differently — a switch row whose label fills the row inside a panel box, a
+   control spanning the row under its own heading — is not a field row and keeps
+   the shape it is drawn with.
 3. **A refused capability renders with its reason.** A property the kind does
    not have is omitted (§7.4); an existing capability this selection cannot use
    keeps its row. The reason is visible and connected with `aria-describedby`.
