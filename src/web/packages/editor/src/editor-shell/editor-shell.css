@@ -423,10 +423,10 @@ body,
   }
 }
 
-/* Bible §3: the chrome sits at elevation 0 — no shadow, no blur. The glass
-   treatment (gradient, inner light, drop shadow, backdrop blur) belongs to the
-   floating clusters over the canvas, so the rail, the pane column and the
-   inspector keep a flat surface under every palette.
+/* Bible §3: the chrome sits at elevation 0 — no shadow, no blur, and a 1px
+   `--edge` hairline. The glass treatment (gradient, inner light, drop shadow,
+   backdrop blur) belongs to the floating clusters over the canvas, so the rail,
+   the pane column and the inspector keep a flat surface under every palette.
 
    The `:root:not(...)` glass rules reach specificity (0,3,0). Naming the shell
    root and the element ties them at (0,3,0), which left the flat treatment
@@ -434,13 +434,35 @@ body,
    re-glassed the chrome with every gate green (`vg-207`). Naming the body
    between them carries one class more, so this is (0,4,0) and strictly beats
    the glass rule whether it is written before or after it. The header's own
-   strip is Task 3's and is not glass at all, so it is not named here. */
+   strip is Task 3's and is not glass at all, so it is not named here.
+
+   **Each interior boundary has one owner**, and this block is where the
+   ownership is written because it already reaches (0,4,0) and `editor-glass`
+   would otherwise put a 1px `--edge` on all four sides of each of the three —
+   which at the body's now-zero gap draws every interior boundary twice. The
+   rail owns the rail|pane hairline (`border-right`), the pane owns the
+   pane|stage one (`border-right`), the inspector owns the stage|inspector one
+   (`border-left`); the stage owns none (`.editor-shell-stage` carries no
+   border). The regions' outer edges carry none either: the drawn shell's outer
+   frame is the *window*, and the product **is** the window, so no product
+   element carries it (the census records it `no-counterpart`). The two
+   horizontal hairlines are the header's foot (§7.1) and the status bar's head
+   (§7.6), each its own. */
 .editor-shell .editor-shell-body .editor-shell-rail.editor-glass,
 .editor-shell .editor-shell-body .editor-shell-panel.editor-glass,
 .editor-shell .editor-shell-body .editor-shell-inspector.editor-glass {
   box-shadow: none;
   backdrop-filter: none;
   -webkit-backdrop-filter: none;
+}
+.editor-shell .editor-shell-body .editor-shell-rail.editor-glass,
+.editor-shell .editor-shell-body .editor-shell-panel.editor-glass {
+  border: 0;
+  border-right: 1px solid var(--edge);
+}
+.editor-shell .editor-shell-body .editor-shell-inspector.editor-glass {
+  border: 0;
+  border-left: 1px solid var(--edge);
 }
 
 .editor-shell {
@@ -458,7 +480,9 @@ body,
 }
 /* §7.1: the header is the window's top edge. A full-width 42px strip at
    elevation 0 with a hairline along its foot, rather than the floating glass
-   card it was: the chrome's surfaces start flat, and the header is chrome. */
+   card it was: the chrome's surfaces start flat, and the header is chrome. It
+   owns that hairline: the body carries no top border, so the head of the body's
+   first row is drawn once, here. */
 .editor-shell-header {
   flex: none;
   height: 42px;
@@ -471,8 +495,10 @@ body,
 }
 /* §7.6: the status bar is the window's bottom edge — a full-width strip at
    elevation 0 with a hairline along its head, the twin of the header above the
-   stage. It carries readings only: the counts the status host is handed, the
-   last diagnostic, save state and the live mark. No tools, no commands.
+   stage and the other owner of a body boundary: the body carries no bottom
+   border, so the foot of its last row is drawn once, here. It carries readings
+   only: the counts the status host is handed, the last diagnostic, save state
+   and the live mark. No tools, no commands.
 
    `min-height`, not `height`: §7.7 forbids ellipsizing a refusal, so a long
    diagnostic wraps and the strip grows a line rather than cutting the message or
@@ -695,7 +721,17 @@ body,
 /* The rail is the left edge's own column, ahead of the pane's: the rail stays
    put and the pane's track is what opens and closes beside it. One row rather
    than the pane bar's two areas, because the rail is a column beside the pane,
-   not a header over it. */
+   not a header over it.
+
+   **No gap and no inset.** §7's diagram draws the four regions abutting inside
+   one outer boundary and the drawing draws them flush, so the body carries
+   neither `gap` nor `padding`: a hairline, not a gutter, is what separates
+   them. Each interior boundary is owned by exactly one region's own border —
+   the rail draws the rail|pane hairline, the pane draws the pane|stage one, the
+   inspector draws the stage|inspector one, and the stage draws none — declared
+   where the regions' treatment is (see the §3 elevation-0 block above). Two
+   regions each drawing a border against the other would draw one hairline
+   twice, which is the double line the drawing does not have. */
 .editor-shell-body {
   display: grid;
   grid-template-areas: "rail panel stage inspector";
@@ -723,29 +759,36 @@ body,
      not a figure this file chose. */
   grid-template-columns: 46px 246px minmax(0, 1fr) 276px;
   grid-template-rows: minmax(0, 1fr);
-  gap: 8px;
   min-height: 0;
   flex: 1;
-  padding: 8px;
 }
 /* Collapsing drops the pane rather than narrowing it. The aside is `hidden`,
    so it is no longer a grid item, and the rail — the only route back to it —
-   keeps its column rather than widening. The pane's width and one gap both go
-   back to the canvas. */
+   keeps its column rather than widening. The pane's width goes back to the
+   canvas. */
 .editor-shell-body[data-collapsed="true"] {
   grid-template-areas: "rail stage inspector";
   grid-template-columns: 46px minmax(0, 1fr) 276px;
 }
 /* The rail: a 46px column of glyph slots, one per pane (bible §7.2). It draws
    no pane content and decides nothing — the shell turns a press into open,
-   swap or collapse. */
+   swap or collapse. It owns the rail|pane hairline, carried by the §3
+   elevation-0 block that selects the three body regions.
+
+   The 1px `padding-left` answers that hairline on the opposite side. The
+   hairline is drawn *inside* the rail's 46px box, so a right border alone
+   narrows the content box by 1px and shifts the centred 34px slots half a pixel
+   left of the box's centre; the selected slot's accent bar hangs in that gutter
+   and measures itself against the rail's inner edge, so it lands half a pixel
+   short of it. The inset holds the slots where the box's centre puts them, so
+   the hairline draws a boundary without moving the rail's contents. */
 .editor-shell-rail {
   grid-area: rail;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 3px;
-  padding: 8px 0;
+  padding: 8px 0 8px 1px;
   border-radius: 12px;
 }
 .editor-shell-rail button {
@@ -796,6 +839,8 @@ body,
   margin-top: auto;
   color: var(--muted);
 }
+/* The pane's own column, and the owner of the pane|stage hairline (the §3
+   elevation-0 block above draws it). */
 .editor-shell-panel {
   grid-area: panel;
   padding: 12px;
@@ -804,6 +849,7 @@ body,
 .editor-shell-stage {
   grid-area: stage;
 }
+/* The inspector is the owner of the stage|inspector hairline. */
 .editor-shell-inspector {
   grid-area: inspector;
 }
@@ -1836,7 +1882,9 @@ body,
   position: relative;
   overflow: hidden;
   border-radius: 12px;
-  border: 1px solid var(--shell-edge);
+  /* No border: the pane's `border-right` and the inspector's `border-left`
+     already draw the two hairlines beside it (see the §3 elevation-0 block),
+     so a border here would be the same hairline drawn twice. */
   background: var(--vigilia-canvas-bg);
 }
 /* §7.5's two top corners in one row, so §7.7's "clusters cannot collide" is a
