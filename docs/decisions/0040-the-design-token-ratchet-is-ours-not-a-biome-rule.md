@@ -133,9 +133,10 @@ What shipped:
   block — the nine original roles plus `--color-hdr` and `--color-edge-2` —
   which is what makes a utility carry the palette in force. `--color-bg` and
   `--color-stage` are deliberately absent and pinned absent by a test: both
-  `--bg` and `--stage` alias `--shell-backdrop`, a gradient stack in graphite
-  and light, and a colour utility from either would set a colour to a gradient
-  and be dropped in silence. `--bg` and `--stage` themselves are declared in all
+  `--bg` and `--stage` alias `--shell-backdrop`, a gradient stack under `light`
+  (in graphite too when this was written; plan 7 Task 4 made graphite flat, and
+  `light` is what keeps the reason true), and a colour utility from either would
+  set a colour to a gradient and be dropped in silence. `--bg` and `--stage` themselves are declared in all
   six palettes, because the roles are right and only the utility names would be
   wrong; a surface that paints `--stage` uses the `background` shorthand. The
   three roles whose first consumers arrive in later plans — `--stage`, `--hdr`
