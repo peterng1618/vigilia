@@ -495,6 +495,12 @@ it. These rendering owners join this plan's ratchet and capture inventory.
   callback; its journey fails. Record zero remaining hand-authored native
   select/range here before Task 5. Delete obsolete UI builders only after their
   last consumers leave; preserve the primitive and manager owners.
+- [ ] Run the **whole editor unit suite** at this task's head and record its
+  counts. Converting a control can add a Base UI value-carrier `<input>` to a
+  mounted surface, and `packages/editor/src/accessible-names.dom.test.ts` pins
+  that set, one comment per control; a carrier that is not added to its list
+  leaves the suite red. Plan 4's Task 10 did exactly that, and nothing caught it
+  until the plan's whole-branch review.
 
 ### Task 5: The ratchet, the §2.3 census, and every re-pointed locator proven
 
@@ -607,7 +613,7 @@ Compare **language, not pixels**: scale, spacing, alignment, hierarchy, colour r
 
 - [ ] **Step 6: Commit**
 
-Commit the spec changes, the registration row(s), the mockup correction and the images together. **Tell the user the images exist before staging them, and inspect them first** (`AGENTS.md`: inspect selected visual evidence before staging). Close no register row; name in the message which half of which row the commit answers, and confirm §12 row 5 is discharged with §12 row 6 (iconography and copy) as the next plan.
+Commit the spec changes, the registration row(s), the mockup correction and the images together. **Tell the user the images exist before staging them, and inspect them first** (`AGENTS.md`: inspect selected visual evidence before staging). Close no register row; name in the message which half of which row the commit answers, and confirm §12 row 5 is discharged with §12 row 6 (iconography and copy) as the next plan. Run the **whole editor unit suite** at the closing commit and record its counts in the commit body: the per-task gates read only the files their own task names, so a cross-task red survives them — plan 4's close did, and its whole-branch review found it — and a plan that closes on a red branch has not closed.
 
 ---
 
