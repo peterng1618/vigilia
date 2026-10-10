@@ -104,6 +104,30 @@ export async function optionsOf(
 }
 
 /**
+ * The words a plan-1 select prints, with the id each commits.
+ *
+ * {@link optionsOf} reads the ids alone; a caller that has to match on the
+ * *label* needs both, because an imported asset is listed by the file the
+ * author chose and keyed by an id the editor minted — the pair F0.4's fix made
+ * readable. Same open-and-scope as every other read here, and the popup is
+ * closed again so the caller's next open is an open rather than a toggle.
+ */
+export async function optionPairs(
+  page: Page,
+  control: string | Locator,
+): Promise<{ readonly id: string; readonly label: string }[]> {
+  const { options } = await openList(page, control);
+  const pairs = await options.evaluateAll((nodes) =>
+    nodes.map((node) => ({
+      id: node.getAttribute("data-vigilia-option") ?? "",
+      label: (node.textContent ?? "").trim(),
+    })),
+  );
+  await page.keyboard.press("Escape");
+  return pairs;
+}
+
+/**
  * Picks the option whose value is `value` — the id the control commits, not the
  * label it prints.
  *

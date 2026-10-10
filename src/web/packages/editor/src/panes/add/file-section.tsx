@@ -1,4 +1,4 @@
-import { useId, useReducer, useRef, useState } from "react";
+import { useReducer, useRef, useState } from "react";
 import {
   ASSET_FILE_EXTENSIONS,
   type AssetManager,
@@ -6,6 +6,7 @@ import {
   type LocalAssetReference,
   type PlacedAssetReference,
 } from "../../asset-manager/index.js";
+import { ControlSelect } from "../../components/ui/control-select.js";
 import type { EditorInteraction } from "../../editor-interaction.js";
 import { uiCopy } from "../../ui-copy.js";
 
@@ -50,7 +51,6 @@ export function FileSection({
   changed,
   isReferenced,
 }: FileSectionProps): React.JSX.Element {
-  const selectId = useId();
   const importInput = useRef<HTMLInputElement>(null);
   const replaceInput = useRef<HTMLInputElement>(null);
   const [chosenId, setChosenId] = useState<string | undefined>(
@@ -168,21 +168,16 @@ export function FileSection({
 
   return (
     <section>
-      <div className="vigilia-field">
-        <label htmlFor={selectId}>{uiCopy.panels.assetList}</label>
-        <select
-          id={selectId}
-          data-vigilia-asset-select=""
-          value={chosen?.id ?? ""}
-          onChange={(event) => setChosenId(event.target.value)}
-        >
-          {declarations.map((asset) => (
-            <option key={asset.id} value={asset.id}>
-              {fileNameOf(asset)}
-            </option>
-          ))}
-        </select>
-      </div>
+      <ControlSelect
+        label={uiCopy.panels.assetList}
+        data={{ "data-vigilia-asset-select": "" }}
+        value={chosen?.id ?? ""}
+        options={declarations.map((asset) => ({
+          id: asset.id,
+          name: fileNameOf(asset),
+        }))}
+        onChange={setChosenId}
+      />
       {/* A video and a font have nothing to preview, and hiding the empty frame
           is what keeps the previous asset's picture from standing as if it were
           this one's. */}

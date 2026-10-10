@@ -19,8 +19,16 @@
 import { setObjectAssetReference } from "@vigilia/scene-fabric";
 import { FabricImage, Group } from "fabric/es";
 import { act } from "react";
-import { createRoot } from "react-dom/client";
-import { afterEach, describe, expect, it, type Mock, vi } from "vitest";
+import { createRoot, type Root } from "react-dom/client";
+import {
+  afterEach,
+  beforeAll,
+  describe,
+  expect,
+  it,
+  type Mock,
+  vi,
+} from "vitest";
 import {
   ASSET_FILE_EXTENSIONS,
   AssetManager,
@@ -29,13 +37,48 @@ import type { EditorInteraction } from "../../editor-interaction.js";
 import { uiCopy } from "../../ui-copy.js";
 import { FileSection } from "./file-section.js";
 
+// Base UI's select popup needs three browser APIs jsdom has none of — the same
+// three `paint-list.dom.test.tsx` supplies, for the same reason.
+globalThis.ResizeObserver ??= class {
+  observe(): void {}
+  unobserve(): void {}
+  disconnect(): void {}
+} as never;
+Element.prototype.getAnimations ??= (): never[] => [];
+window.PointerEvent ??= MouseEvent as never;
+
 // React only flushes work scheduled inside `act` when it has been told it is in
 // a test; without this, `act` warns and the update lands after the assertion.
 (
   globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
 ).IS_REACT_ACT_ENVIRONMENT = true;
 
-afterEach(() => document.body.replaceChildren());
+beforeAll(() => {
+  const matches = Element.prototype.matches;
+  Element.prototype.matches = Object.assign(function (
+    this: Element,
+    selector: string,
+  ): boolean {
+    if (selector === ":modal" || selector === ":popover-open") return false;
+    return matches.call(this, selector);
+  }, matches);
+});
+
+/**
+ * The root the current case mounted, so it is unmounted rather than only
+ * detached.
+ *
+ * The control set's popup is portalled to `body`, and a root left mounted can
+ * re-commit that portal into the next case's document — `paint-list.dom.test.tsx`
+ * unmounts for the same reason.
+ */
+let root: Root | undefined;
+
+afterEach(async () => {
+  if (root !== undefined) await act(async () => root?.unmount());
+  root = undefined;
+  document.body.replaceChildren();
+});
 
 /**
  * A local file the manager accepts: bytes, a name, and the MIME its extension
@@ -114,8 +157,10 @@ async function mount(
     errorManager: { error, warn: vi.fn() },
   } as unknown as EditorInteraction;
 
+  const mounted = createRoot(host);
+  root = mounted;
   await act(async () => {
-    createRoot(host).render(
+    mounted.render(
       <FileSection
         manager={manager}
         editor={editor}
@@ -138,26 +183,101 @@ async function mount(
   };
 }
 
-/** The options the declared list is drawing, in the order it draws them. */
-function listedNames(host: HTMLElement): readonly string[] {
-  return [...host.querySelectorAll("[data-vigilia-asset-select] option")].map(
-    (option) => option.textContent ?? "",
-  );
+/** The trigger the asset list's hook now names — the control set's own button,
+ *  not the native `<select>` it replaced. */
+const selectControl = (host: HTMLElement): HTMLElement =>
+  host.querySelector<HTMLElement>("[data-vigilia-asset-select]")!;
+
+/** The id the control is standing on, read from the hook `Select.Value` prints
+ *  it with: that element carries both the words and the committed id, so this
+ *  is the native `.value` read in the only place it still exists. */
+const chosenId = (host: HTMLElement): string | null =>
+  selectControl(host)
+    .querySelector("[data-vigilia-value]")
+    ?.getAttribute("data-vigilia-value") ?? null;
+
+/** React and floating-ui schedule outside `act`, so a popup is flushed with
+ *  macrotasks rather than one — `paint-list.dom.test.tsx`'s rule. */
+async function flush(): Promise<void> {
+  for (let round = 0; round < 3; round += 1) {
+    await new Promise((resolve) => setTimeout(resolve, 0));
+  }
 }
 
-const selectControl = (host: HTMLElement): HTMLSelectElement =>
-  host.querySelector<HTMLSelectElement>("[data-vigilia-asset-select]")!;
+async function click(target: Element, detail = 0): Promise<void> {
+  await act(async () => {
+    target.dispatchEvent(
+      new MouseEvent("click", { bubbles: true, cancelable: true, detail }),
+    );
+  });
+}
+
+/** Base UI commits a list item only when the press that precedes the click
+ *  started on it, so the press is part of the interaction. */
+async function pointerDown(target: Element): Promise<void> {
+  await act(async () => {
+    target.dispatchEvent(
+      new PointerEvent("pointerdown", {
+        bubbles: true,
+        cancelable: true,
+        pointerType: "mouse",
+        button: 0,
+      }),
+    );
+  });
+}
+
+/** Opens the popup, which is the only state in which its options exist. */
+async function openPopup(host: HTMLElement): Promise<void> {
+  await click(selectControl(host));
+  await flush();
+}
+
+/** Closes it again, so the next read opens rather than toggles. */
+async function closePopup(host: HTMLElement): Promise<void> {
+  await click(selectControl(host));
+  await flush();
+}
+
+/**
+ * The open popup's options, in the order it draws them.
+ *
+ * **Scoped by the `aria-controls` the trigger carries only while it is open.**
+ * A bare `[role="option"]` lookup is not the same question: a popup from an
+ * earlier case can still be in the document, and its rows would be counted here
+ * — the failure `control-set.ts`'s `openList` names, measured in jsdom.
+ */
+function popupOptions(host: HTMLElement): readonly HTMLElement[] {
+  const list = selectControl(host).getAttribute("aria-controls");
+  const container = list === null ? null : document.getElementById(list);
+  if (container === null) return [];
+  return [...container.querySelectorAll<HTMLElement>('[role="option"]')];
+}
+
+/** The words the declared list is drawing, read from the opened popup because a
+ *  plan-1 select renders none until it is. */
+async function listedNames(host: HTMLElement): Promise<readonly string[]> {
+  await openPopup(host);
+  const names = popupOptions(host).map((option) => option.textContent ?? "");
+  await closePopup(host);
+  return names;
+}
 
 const alert = (host: HTMLElement): HTMLElement =>
   host.querySelector<HTMLElement>('[role="alert"]')!;
 
-/** Points the list at one asset the way choosing it does. */
+/** Points the list at one asset the way choosing it from the popup does. */
 async function selectAsset(host: HTMLElement, assetId: string): Promise<void> {
-  const control = selectControl(host);
-  control.value = assetId;
-  await act(async () =>
-    control.dispatchEvent(new Event("change", { bubbles: true })),
+  await openPopup(host);
+  const option = popupOptions(host).find(
+    (candidate) => candidate.getAttribute("data-vigilia-option") === assetId,
   );
+  if (option === undefined) {
+    throw new Error(`no option ${assetId} in the asset list`);
+  }
+  await pointerDown(option);
+  await click(option, 1);
+  await flush();
 }
 
 /**
@@ -272,9 +392,9 @@ describe("the Add pane's file section", () => {
 
     // Review Focus 5: the list is the declarations, not the placed objects —
     // which is what keeps a font imported once removable.
-    expect(listedNames(host)).toEqual(["body.woff2"]);
+    expect(await listedNames(host)).toEqual(["body.woff2"]);
     expect(
-      listedNames(host),
+      await listedNames(host),
       "the file's name, never the id the package keys it by",
     ).not.toContain("body");
   });
@@ -295,7 +415,7 @@ describe("the Add pane's file section", () => {
     expect(remove).not.toHaveBeenCalled();
     expect(alert(host).textContent).toBe(uiCopy.panels.assetReferenced);
     // Nothing was removed, so the list is untouched.
-    expect(listedNames(host)).toEqual(["logo.png"]);
+    expect(await listedNames(host)).toEqual(["logo.png"]);
   });
 
   it("refuses a removal the document's own references ask for, which the canvas cannot see", async () => {
@@ -317,7 +437,7 @@ describe("the Add pane's file section", () => {
     await act(async () => removeControl(host).click());
 
     expect(manager.declarations).toEqual([]);
-    expect(listedNames(host)).toEqual([]);
+    expect(await listedNames(host)).toEqual([]);
     expect(alert(host).textContent).toBe("");
     expect(changed).toHaveBeenCalled();
   });
@@ -328,12 +448,12 @@ describe("the Add pane's file section", () => {
     // Nothing was selected and the list was empty, so the first import is the
     // one the list falls back to.
     await importFile(host, IMAGE_FILE);
-    expect(selectControl(host).value).toBe("logo");
+    expect(chosenId(host)).toBe("logo");
 
     await importFile(host, FONT_FILE);
     // Parity with the panel this replaces: adding a file never moved the list
     // off the asset the author was pointing at.
-    expect(selectControl(host).value).toBe("logo");
+    expect(chosenId(host)).toBe("logo");
   });
 
   it("drops a second pick while one import is in flight, and commits the first once", async () => {
@@ -351,7 +471,7 @@ describe("the Add pane's file section", () => {
     // The drop is silent by design — the ceiling named at `submit` — so the
     // evidence is that the second file never reached the manager.
     expect(manager.declarations.map((asset) => asset.id)).toEqual(["logo"]);
-    expect(listedNames(host)).toEqual(["logo.png"]);
+    expect(await listedNames(host)).toEqual(["logo.png"]);
     expect(saveState).toHaveBeenCalledTimes(1);
   });
 
@@ -440,12 +560,13 @@ describe("the Add pane's file section", () => {
     await importFile(host, IMAGE_FILE);
     await importFile(host, VIDEO_FILE);
 
-    const select = selectControl(host);
-    expect([...select.options].map((option) => option.textContent)).toEqual([
-      "logo.png",
-      "clip.mp4",
-    ]);
-    expect(host.querySelector("label")?.htmlFor).toBe(select.id);
+    expect(await listedNames(host)).toEqual(["logo.png", "clip.mp4"]);
+    // The trigger is named by the row's `<label for>`, as every other control in
+    // these panes is; the native element's own name left with it.
+    expect(host.querySelector("label")?.textContent).toBe(
+      uiCopy.panels.assetList,
+    );
+    expect(host.querySelector("label")?.htmlFor).toBe(selectControl(host).id);
 
     const preview = host.querySelector<HTMLImageElement>(
       "[data-vigilia-asset-preview]",

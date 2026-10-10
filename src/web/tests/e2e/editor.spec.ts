@@ -11,6 +11,7 @@ import { installFixedClock } from "./clock.js";
 import {
   choiceOf,
   chooseIn,
+  optionPairs,
   optionsOf,
   sectionExpanded,
   typeIntoControl,
@@ -2680,18 +2681,25 @@ test.describe("Fabric editor route", () => {
         "base64",
       ),
     });
+    // The list is a plan-1 select: it renders no option until its popup is
+    // open, and the import that adds the row is asynchronous, so a read of what
+    // it prints opens the popup each turn.
+    const listedAssets = (): ReturnType<typeof optionPairs> =>
+      optionPairs(page, "[data-vigilia-asset-select]");
+    const importedCount = async (fragment: string): Promise<number> =>
+      (await listedAssets()).filter((option) => option.label.includes(fragment))
+        .length;
     // The starter declares a packaged backdrop of its own, so the claim is that
     // this import produced exactly one option named for it — not a bare total,
     // which a starter change would silently move. An option carries the file the
     // author chose, so that is what it is matched on.
-    const imported = page.locator("[data-vigilia-asset-select] option");
-    await expect(imported.filter({ hasText: "logo" })).toHaveCount(1);
-    // **The asset to replace is named, not assumed.** The panel's select keeps
+    await expect.poll(() => importedCount("logo")).toBe(1);
+    // **The asset to replace is named, not assumed.** The select keeps
     // whatever was selected, and a fresh document's first declaration is now
     // the starter's own backdrop — so a bare "replace" here would rewrite that
     // one. Saying which asset is meant keeps the test independent of
     // declaration order.
-    await page.locator("[data-vigilia-asset-select]").selectOption("logo");
+    await chooseIn(page, "[data-vigilia-asset-select]", "logo");
     // **A different extension is refused, and this is now pinned as one.**
     // `replace` keeps the declared path and its bytes in step, so swapping a
     // `.png` for `.svg` would leave the package claiming `.png` over SVG bytes.
@@ -2708,7 +2716,7 @@ test.describe("Fabric editor route", () => {
     await expect(page.locator("#status")).toContainText(
       "could not be imported",
     );
-    await expect(imported.filter({ hasText: "logo" })).toHaveCount(1);
+    await expect.poll(() => importedCount("logo")).toBe(1);
     await expect(assetReferences(page)).resolves.toEqual([
       { assetId: "logo", kind: "image" },
     ]);
@@ -2717,7 +2725,7 @@ test.describe("Fabric editor route", () => {
     // bytes, everything bound to it re-pointed. **Reselected first**, because a
     // refused replace clears the selection and the geometry below reads the
     // active object.
-    await page.locator("[data-vigilia-asset-select]").selectOption("logo");
+    await chooseIn(page, "[data-vigilia-asset-select]", "logo");
     // **A PNG that actually decodes, and that is the whole fix.** The previous
     // fixture was 50 bytes of a truncated PNG — `libpng` rejects it outright —
     // so the *reopened* document had no image object and the tail of this test
@@ -2749,14 +2757,15 @@ test.describe("Fabric editor route", () => {
     // chosen one holding its old bytes is what it stopped doing, precisely so a
     // package does not grow by one file per press. The count is asserted so a
     // regression that went back to declaring would be caught here.
-    await expect(imported.filter({ hasText: "logo" })).toHaveCount(1);
+    await expect.poll(() => importedCount("logo")).toBe(1);
     // **What the select holds afterwards is asserted, because the panel now
     // guarantees it.** Re-rendering rebuilds the options and restores the
     // previous selection, so replacing must not move the author off the asset
-    // they were pointing at.
-    await expect(page.locator("[data-vigilia-asset-select]")).toHaveValue(
-      "logo",
-    );
+    // they were pointing at. The committed id is read off the hook `Select.Value`
+    // prints it with — the native element's `.value` in the only place it is.
+    await expect(
+      page.locator("[data-vigilia-asset-select] [data-vigilia-value]"),
+    ).toHaveAttribute("data-vigilia-value", "logo");
     // What the round trip owes is the one declaration, re-pointed at the new
     // file, and the object still bound to it.
     await expect(assetReferences(page)).resolves.toEqual([

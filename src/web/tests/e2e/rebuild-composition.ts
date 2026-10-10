@@ -1,6 +1,6 @@
 import path from "node:path";
 import { expect, type Page } from "@playwright/test";
-import { chooseIn } from "./control-set.js";
+import { chooseIn, optionPairs } from "./control-set.js";
 // `openPane` has one owner and one guard (`editor-rail.js`); the driver
 // imports it from there and does not re-export it, so this reaches the same
 // place. It is imported from the driver rather than the owner in the import
@@ -721,14 +721,17 @@ export async function importBackdrop(page: Page, file: string): Promise<void> {
   // file's own name, derived here rather than hardcoded — a helper that
   // guessed the name would pass on one photograph and fail on the next.
   const label = path.basename(file);
-  const select = page.locator("[data-vigilia-asset-select]");
+  // The list is a plan-1 select: it renders no option until its popup is open,
+  // and the import that adds the row is asynchronous — so the wait opens the
+  // popup each turn and reads the pair, the same shape `optionsOf` reads ids in.
+  let assetId: string | undefined;
   await expect
-    .poll(async () => select.locator("option").allInnerTexts())
-    .toContain(label);
-  const assetId = await select
-    .locator("option")
-    .filter({ hasText: label })
-    .getAttribute("value");
+    .poll(async () => {
+      const listed = await optionPairs(page, "[data-vigilia-asset-select]");
+      assetId = listed.find((option) => option.label === label)?.id;
+      return assetId;
+    })
+    .not.toBeUndefined();
 
   // The artboard panel is a *document* panel, so it lives in the left column's
   // Document pane and is hidden until the pane is asked for. The Add pane was
