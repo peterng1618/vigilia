@@ -616,7 +616,11 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
       setOverrides(next);
       setActiveShortcuts(resolveShortcuts(next));
     };
-    const kind = useSelection(store).activeKind;
+    /** The document's name and the release version both come through the
+     *  shell's one reading of `ThemeMetadata` — the bridge snapshot — so the
+     *  About tab's version is the same fact the Document pane's
+     *  `releaseVersion` row reads, never a second source. */
+    const { activeKind: kind, releaseVersion } = useSelection(store);
     const sheetOpen = useSheet(sheet);
     /** Re-frame on the panel toggle, once the viewport has the new width.
      *
@@ -859,6 +863,7 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
               onFollowing={setFollowing}
               overrides={overrides}
               onOverrides={applyOverrides}
+              releaseVersion={releaseVersion}
             />
           </main>
           <aside className="editor-shell-inspector editor-glass">

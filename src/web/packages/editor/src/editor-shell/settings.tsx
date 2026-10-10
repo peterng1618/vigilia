@@ -1,5 +1,6 @@
 import { RadioGroup } from "@base-ui/react/radio-group";
 import { Tabs } from "@base-ui/react/tabs";
+import { SUPPORTED_SCHEMA_VERSION } from "@vigilia/renderer-core";
 import { useEffect, useRef, useState } from "react";
 import { ControlChoiceRow } from "../components/ui/control-choice-row.js";
 import { ControlToggle } from "../components/ui/control-toggle.js";
@@ -32,6 +33,38 @@ const SETTINGS_TABS: readonly SettingsTab[] = [
 
 /** The id the palette group is named by, kept out of the shell's other ids. */
 const PALETTE_GROUP_ID = "vigilia-settings-palette";
+
+/** One fact the About tab renders, identified by the id it renders it under so
+ *  a test reads the row by what it is rather than by its position. */
+export interface VersionFact {
+  readonly id: "schema-version" | "release-version";
+  /** The fact's own value: the schema version is a number
+   *  (`SUPPORTED_SCHEMA_VERSION`), the release version a string. The tab
+   *  stringifies where it renders. */
+  readonly value: string | number;
+}
+
+/** The version facts this build can honestly read, in the order they render.
+ *
+ *  **Every value is traceable to an owner**, which is what keeps the tab from
+ *  inventing one: the schema version is `SUPPORTED_SCHEMA_VERSION`, the fact a
+ *  reader supporting an old package needs, and the release version is the open
+ *  document's own `metadata.version` — the same fact the Document pane's
+ *  `releaseVersion` row reads. A document that carries no release version (a new
+ *  or unsaved theme, or one whose stored version is empty) contributes no row:
+ *  Bible §9's missing reading is a gap stated by absence, never a placeholder
+ *  that could read as data. */
+export function versionFacts(
+  releaseVersion: string | undefined,
+): readonly VersionFact[] {
+  const facts: VersionFact[] = [
+    { id: "schema-version", value: SUPPORTED_SCHEMA_VERSION },
+  ];
+  if (releaseVersion !== undefined && releaseVersion !== "") {
+    facts.push({ id: "release-version", value: releaseVersion });
+  }
+  return facts;
+}
 
 /** §7's Appearance tab: the six shell palettes, and follow-the-system.
  *
@@ -140,6 +173,47 @@ function AppearanceTab({
   );
 }
 
+/** §7's About tab: what this editor is, and the version facts this build can
+ *  honestly read.
+ *
+ *  It renders `versionFacts` and nothing else, so the one rule it could break —
+ *  printing a version no owner has — is broken by `versionFacts` or not at all.
+ *  The release version arrives as a prop because the fact is the shell's
+ *  (`ThemeMetadata.version`), read once there and handed down: the tab reads no
+ *  document, no store and no panel. Where a fact is absent the row is absent
+ *  too — no `panels.notSet`, no dash that could read as a version (§9). */
+function AboutTab({
+  releaseVersion,
+}: {
+  readonly releaseVersion: string | undefined;
+}): React.JSX.Element {
+  return (
+    <div
+      className="editor-shell-about flex flex-col gap-[var(--space-8)]"
+      data-vigilia-about=""
+    >
+      <p className="text-sm text-muted">{uiCopy.settings.aboutProvenance}</p>
+      <dl>
+        {versionFacts(releaseVersion).map((fact) => (
+          <div key={fact.id}>
+            <dt>
+              {fact.id === "schema-version"
+                ? uiCopy.settings.aboutSchemaVersion
+                : uiCopy.panels.releaseVersion}
+            </dt>
+            <dd
+              className="font-mono text-text"
+              data-vigilia-about-fact={fact.id}
+            >
+              {String(fact.value)}
+            </dd>
+          </div>
+        ))}
+      </dl>
+    </div>
+  );
+}
+
 /** The settings modal the rail's gear opens.
  *
  *  Base UI's `Dialog` is modal by default, so focus is trapped and the page
@@ -150,7 +224,7 @@ function AppearanceTab({
  *  than a hand-rolled `role="tablist"`, because the arrow-key navigation and
  *  the `aria-selected`/`aria-controls` wiring are the primitive's job (0038).
  *
- *  Appearance and Keyboard are filled here; About is plan 5's later task. The
+ *  Appearance, Keyboard and About are each filled here. The
  *  palette is the shell's own state rather than the tab's, because the shell
  *  holds the `watchSystemAppearance` subscription the choice has to reach: the
  *  tab renders the choice and owns none of it. The bindings are the shell's for
@@ -171,6 +245,11 @@ export function Settings(props: {
    *  set; it writes storage itself, as the Appearance tab does. */
   readonly overrides: ShortcutOverrides;
   readonly onOverrides: (next: ShortcutOverrides) => void;
+  /** The open document's release version, read by the shell from the same
+   *  `ThemeMetadata.version` the Document pane's `releaseVersion` row reads, or
+   *  `undefined` where the document carries none. The About tab renders it and
+   *  invents nothing in its place. */
+  readonly releaseVersion: string | undefined;
 }): React.JSX.Element {
   const {
     open,
@@ -182,6 +261,7 @@ export function Settings(props: {
     onFollowing,
     overrides,
     onOverrides,
+    releaseVersion,
   } = props;
   /** The row whose capture is listening. Held here rather than in the tab so
    *  closing the modal clears it from one place — the `open` effect below — and
@@ -256,6 +336,9 @@ export function Settings(props: {
                 onArmed={setArmed}
                 onOverrides={onOverrides}
               />
+            ) : null}
+            {tab === "about" ? (
+              <AboutTab releaseVersion={releaseVersion} />
             ) : null}
           </Tabs.Panel>
         ))}

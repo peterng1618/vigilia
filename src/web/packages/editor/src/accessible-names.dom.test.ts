@@ -485,6 +485,10 @@ function mountSettings(): void {
         onFollowing: () => undefined,
         overrides: {},
         onOverrides: () => undefined,
+        // The About tab's fact is irrelevant to the accessible-name audit, and
+        // the Keyboard tab it does open carries no version; the document this
+        // mounts carries none.
+        releaseVersion: undefined,
       }),
     );
   });

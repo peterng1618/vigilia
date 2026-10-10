@@ -37,6 +37,13 @@ export interface EditorShellSnapshot {
    *  (`maxLength` with no `minLength`), so the fallback is taken on `""` too,
    *  and `stableId` requires 1–64 characters, so the id can never be empty. */
   readonly documentName: string | undefined;
+  /** The open document's release version (`ThemeMetadata.version`), or
+   *  `undefined` where it carries none. The same fact the Document pane's
+   *  `releaseVersion` row reads, pulled through this one projection so the
+   *  About tab and the pane cannot disagree. Optional because there is no
+   *  document and no version to read before a bridge is set, and the
+   *  no-document snapshot below states only the facts it has. */
+  readonly releaseVersion?: string | undefined;
   /** The library key the selection's own first run is set in, or nothing when
    *  it carries no preset — a shape, a group, a run with no reference — which
    *  is a different answer from `""` and from the first declared preset. The
@@ -114,10 +121,13 @@ export function createEditorShellBridge(input: {
    * refusing to project. */
   readonly bindings?: () => Readonly<Record<string, readonly Binding[]>>;
   /** The open document's identity, pulled the way `bindings` is: the session
-   *  owns both facts. Absent reads as no document open. */
+   *  owns both facts. Absent reads as no document open. `version` is the theme's
+   *  own `metadata.version`, the release fact the About tab shows; absent where
+   *  the document carries none. */
   readonly documentIdentity?: () => {
     readonly name: string | undefined;
     readonly id: string;
+    readonly version: string | undefined;
   };
   /** The product's own library capture; see `EditorShellBridge.capture`. */
   readonly capture: () => string | undefined;
@@ -178,6 +188,7 @@ export function createEditorShellBridge(input: {
       // have, and the id behind it is what the schema guarantees is there.
       documentName:
         identity === undefined ? undefined : identity.name || identity.id,
+      releaseVersion: identity?.version,
       selectionPresetId: presetRef?.slice("typePresets.".length),
     };
   };

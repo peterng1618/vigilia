@@ -1,4 +1,5 @@
 // @vitest-environment jsdom
+import { SUPPORTED_SCHEMA_VERSION } from "@vigilia/renderer-core";
 import { act, useState } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
@@ -22,7 +23,7 @@ import {
   shellPalettes,
 } from "./palette.js";
 import { RAIL_SLOTS, Rail, type RailSlot } from "./rail.js";
-import { Settings } from "./settings.js";
+import { Settings, versionFacts } from "./settings.js";
 
 // jsdom has never had a `PointerEvent`, and Base UI re-dispatches a click
 // through one to carry modifier state — the shim `control.dom.test.tsx` supplies
@@ -116,8 +117,14 @@ let host: HTMLDivElement | undefined;
  *  run a private window gets, not a harness fiction. */
 function Harness({
   storage,
+  releaseVersion,
 }: {
   readonly storage: Storage | undefined;
+  /** The open document's release version, as the shell reads it from the
+   *  bridge snapshot and hands it down. `undefined` models a document that
+   *  carries none — a new or unsaved theme — which is the About tab's absent
+   *  case. */
+  readonly releaseVersion: string | undefined;
 }): React.JSX.Element {
   const [open, setOpen] = useState(false);
   const [slot, setSlot] = useState<RailSlot>("composition");
@@ -152,6 +159,7 @@ function Harness({
         onFollowing={setFollowing}
         overrides={overrides}
         onOverrides={applyOverrides}
+        releaseVersion={releaseVersion}
       />
     </>
   );
@@ -161,18 +169,27 @@ function Harness({
  *  working-browser default; a case calls `mountWith(undefined)` to model a
  *  browser that refuses it — a plain default parameter would swallow that
  *  `undefined`, which is why the two are separate functions. */
-function mountWith(storage: Storage | undefined): HTMLElement {
+function mountWith(
+  storage: Storage | undefined,
+  releaseVersion: string | undefined = undefined,
+): HTMLElement {
   const mount = document.createElement("div");
   document.body.append(mount);
   const reactRoot = createRoot(mount);
   root = reactRoot;
   host = mount;
-  act(() => reactRoot.render(<Harness storage={storage} />));
+  act(() =>
+    reactRoot.render(
+      <Harness storage={storage} releaseVersion={releaseVersion} />,
+    ),
+  );
   return mount;
 }
 
-function mount(): HTMLElement {
-  return mountWith(localStorage);
+/** The mounting with a release version the document carries, for the About tab
+ *  cases: the version is a value the shell reads, not one the tab invents. */
+function mount(releaseVersion: string | undefined = undefined): HTMLElement {
+  return mountWith(localStorage, releaseVersion);
 }
 
 async function press(target: HTMLElement): Promise<void> {
@@ -207,6 +224,25 @@ async function openTab(label: string): Promise<void> {
   ).find((element) => element.textContent?.trim() === label);
   if (tab === undefined) throw new Error(`no ${label} tab.`);
   await press(tab);
+}
+
+/** One About fact's value, by the id the tab renders it under — the reading,
+ *  not its position, so a reordered or dropped row is a failed lookup rather
+ *  than a silently different fact. `null` where the fact is absent, which is
+ *  what the tab renders where the document carries no version. */
+function aboutField(id: string): HTMLElement | null {
+  return document.querySelector<HTMLElement>(
+    `[data-vigilia-about-fact="${id}"]`,
+  );
+}
+
+/** The About tab's whole text, as an author reads it. The dialog is portalled
+ *  to `body`, so the read is the document's, not the harness's. */
+function aboutText(): string {
+  return (
+    document.querySelector<HTMLElement>("[data-vigilia-about]")?.textContent ??
+    ""
+  );
 }
 
 beforeEach(() => {
@@ -504,5 +540,58 @@ describe("Settings", () => {
     expect(document.documentElement.getAttribute("data-shell-palette")).toBe(
       resolveShellPalette(undefined, prefersDarkAppearance()),
     );
+  });
+});
+
+/** §7's About tab. The rule that matters is that every string is traceable to
+ *  an owner — the schema version to `SUPPORTED_SCHEMA_VERSION`, the release
+ *  version to the open document — and the tab invents none. The harness drives
+ *  the prop the shell fills from its snapshot, so what is proven here is the
+ *  tab's rendering, not a copy of the bridge. */
+describe("About", () => {
+  it("shows the version facts the build owns, and invents none", async () => {
+    // A version a hand-typed literal would not produce, so a literal in the tab
+    // reddens this case rather than passing by coincidence.
+    const released = "2.5.1";
+    const host = mount(released);
+    await press(gear(host));
+    await openTab(uiCopy.settings.about);
+
+    expect(versionFacts(released)).toEqual([
+      { id: "schema-version", value: SUPPORTED_SCHEMA_VERSION },
+      { id: "release-version", value: released },
+    ]);
+    // And what the tab renders is those facts, each string on its own owner.
+    expect(aboutField("schema-version")?.textContent).toBe(
+      String(SUPPORTED_SCHEMA_VERSION),
+    );
+    expect(aboutField("release-version")?.textContent).toBe(released);
+  });
+
+  it("names what the editor is", async () => {
+    const host = mount("2.5.1");
+    await press(gear(host));
+    await openTab(uiCopy.settings.about);
+
+    expect(aboutText()).toContain(uiCopy.settings.aboutProvenance);
+  });
+
+  it("renders nothing rather than a placeholder where a fact is absent", async () => {
+    const host = mount(undefined);
+    await press(gear(host));
+    await openTab(uiCopy.settings.about);
+
+    // The schema version is this build's own fact and is always shown.
+    expect(aboutField("schema-version")?.textContent).toBe(
+      String(SUPPORTED_SCHEMA_VERSION),
+    );
+    // The release version is absent, and absence is a gap stated by rendering
+    // nothing — never `panels.notSet`, never a dash that could read as data.
+    expect(versionFacts(undefined)).toEqual([
+      { id: "schema-version", value: SUPPORTED_SCHEMA_VERSION },
+    ]);
+    expect(aboutField("release-version")).toBeNull();
+    expect(aboutText()).not.toContain(uiCopy.panels.notSet);
+    expect(aboutText()).not.toContain("undefined");
   });
 });

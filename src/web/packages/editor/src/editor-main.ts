@@ -306,6 +306,9 @@ async function start(): Promise<void> {
       documentIdentity: () => ({
         name: extensions.envelope.metadata?.name,
         id: extensions.envelope.id,
+        // The release version is the same metadata object the pane reads, so the
+        // About tab and the Document pane name one fact from one owner.
+        version: extensions.envelope.metadata?.version,
       }),
       capture: () =>
         captureCanvas(shell.editor.canvas, shell.backdrop())?.toDataURL(
