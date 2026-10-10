@@ -399,6 +399,14 @@ active at a time (`AGENTS.md`).
 | **4** | **The panes** | Composition, Add (absorbing Assets), Tokens (discharging `vg-153`/`vg-094`), Document. |
 | **5** | **Settings and appearance** | The settings surface, the palette moved into it, keyboard rebinding. |
 | **6** | **Iconography and copy** | The closed glyph set, the accessible-name/tooltip single owner, the copy rules. |
+| **7** | **Shell parity with the drawing** ([`2026-10-10-shell-parity.md`](../plans/2026-10-10-shell-parity.md)) | Added 2026-10-10, after the user ruled that the drawing is not replaced and the product is pulled to it. Plans 1–6 ran §13's gate and closed while the shell kept an 8px inset at an off-scale `12px` radius the drawing does not draw, and a graphite that is glass where the drawing is flat. Task 1 makes the drawing machine-read, so the gate has a failing state; the shell's composition, radius scale and chrome treatment follow. |
+| **8** | **Settings parity with the drawing** | Added 2026-10-10. Thirteen of the modal's nineteen measured regions drift from the drawing's settings section; it consumes plan 7's instrument and its radius and chrome decisions. |
+
+**Execution order since 2026-10-10: 7, 8, then 6.** The parity plans run first
+because plan 6's first task is a census *of the surfaces as they landed*, and a
+census of a shell whose composition and chrome are about to move would be redone
+against the moved shell. Nothing in plans 7 or 8 closes plan 6's items, and
+plan 6's glyph and copy work is unchanged by them.
 
 Plans 1 and 2 of the superseded table — *Groups in the starter* and *The device
 lens* — are **already landed** and are not re-run; the register's `vg-152`

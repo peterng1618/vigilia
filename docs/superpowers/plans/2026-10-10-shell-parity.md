@@ -1,0 +1,320 @@
+# Shell parity with the drawing — Implementation Plan
+
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
+
+**Goal:** Bring the editor shell — its composition, its radius scale and its six palettes' surfaces — to what `docs/design/mockups/editor-shell.html` draws, by making the drawing a machine-read acceptance instrument rather than a page a plan describes.
+
+**Architecture:** Two measured files already exist and are this plan's evidence, not its speculation: `.superpowers/sdd/2026-10-08-settings-and-appearance/mockup-vs-shell-measurement.md` (the shell) and `settings-vs-mockup-measurement.md` (the modal; its own plan follows this one). They agree on the shape of the failure: the drawing is **flush** where the product insets four regions 8px apart at an off-scale `12px` radius, and the drawing's graphite is **flat and opaque** where the product's is alpha glass over a gradient. Task 1 turns the drawing into something a test reads and fails against; Tasks 2–3 fix the composition; Tasks 4–5 fix the colour; Task 6 makes the ratchet cover the stylesheet those fixes live in; Task 7 captures the result beside the drawing.
+
+**Spec:** [`docs/superpowers/specs/2026-10-08-editor-design-language-design.md`](../specs/2026-10-08-editor-design-language-design.md) — §3, §4, §5, §7, §9, §12 (this plan adds its row), §13 as amended 2026-10-10, Acceptance
+**Normative companion:** [`docs/design/design-language.md`](../../design/design-language.md) — §3 (space/radius/elevation), §4 (colour roles), §7 (shell layout)
+**Reference:** [`docs/design/mockups/editor-shell.html`](../../design/mockups/editor-shell.html) and [`README.md`](../../design/mockups/README.md)
+**Decisions:** [`0035`](../../decisions/0035-the-shells-palette-resolves-at-the-element-not-the-root.md) (palette resolution — untouched), [`0039`](../../decisions/0039-the-editor-ui-is-react-and-only-the-canvas-is-imperative.md), [`0040`](../../decisions/0040-the-design-token-ratchet-is-ours-not-a-biome-rule.md)
+
+## Global Constraints
+
+- **The drawing governs wherever the written rules are silent** (spec §13, amended 2026-10-10). A difference is kept only against a **named rule that predates it** — a bible `§N`, an ADR or a spec section that *positively requires* the product's treatment. Silence, and a rule this plan writes itself, are not licences.
+- **Replacing the mockup is not an available disposition** (spec §13, the user's ruling of 2026-10-10). A mockup edit in this plan corrects a drawing that is stale or self-contradictory and must say which; it may never bless a divergence.
+- Bible §3's radius scale is closed: `--radius-sm` 4 / `--radius-md` 6 / `--radius-lg` 8 / `--radius-xl` 10 / full 999, and `--radius-xl` plus backdrop blur are reserved for **floating clusters over the canvas** (dock, view controls, identity chip). Spacing steps and type roles (§2) are equally closed.
+- **No hex literal in a surface** (§10). A colour is a role; a value belongs to a palette block.
+- **One owner per concept**: read `docs/architecture/ownership.md` before adding or moving a token, and extend the existing owner rather than adding a second declaration of the same value.
+- No new dependency; no change to `packages/renderer-core`, the player, the host or the theme format; Fabric JSON stays the persisted scene.
+- `exactOptionalPropertyTypes` and `noUncheckedIndexedAccess` are on. Refuse an invalid numeric input rather than coercing it to zero.
+- **Captures** follow `docs/evidence/screenshots/README.md`: built bundles, `VIGILIA_CAPTURE=1`, `--workers=1`, registered actions only. Rebuild the affected bundles after any source change **and** after reverting a deliberate break.
+- **A red browser run at the default worker count is not a measurement** (`vg-285`): re-run a failing spec alone at `--workers=2` before believing it.
+- Report anything not actually verified, in the report and in the commit.
+
+## Review Focus
+
+Five failure modes this change implies and no single task's tests would catch. Each is pinned to the task that owns the code.
+
+1. **A flush shell can detach a control from what it controls.** The 8px gap is what visually separates the rail, both panes and the stage today; removing it is a geometry change to a layout that also holds the pane toggles, the rail slots and the canvas clusters. A hairline boundary that runs through a control's own hit area, or a toggle that now abuts the region it acts on, is a usability defect no geometry assertion sees. **Task 2** carries the browser walkthrough: toggle each pane, drag the inspector, click the rail's four slots and the dock, with the capture read.
+2. **Making chrome opaque moves every measured contrast ratio.** `vg-200` (the resting `--edge` boundary) and `vg-201` (`--warn` text) already pin failures; the whole palette set is a validated system where alpha surfaces composite against a backdrop, and an opaque surface composites against nothing. A palette can pass a geometry check and ship a ratio below §5's floor. **Task 5** carries the six-palette contrast measurement, and the existing `shell-appearance.spec.ts` assertion is amended deliberately rather than deleted.
+3. **The stage's own frame is not only CSS.** The stage carries a `12px` radius and a `--shell-edge` border, and the canvas inside it is a Fabric surface whose artboard clip is scene-level (`vg-046`'s family). Flushing the stage can change whether the artboard reads as clipped, and a CSS-only change can leave the scene and the frame disagreeing. **Task 2** carries the check that the artboard's edge and the stage's boundary still coincide at both ends of the zoom range.
+4. **Focus rings across a shared hairline.** Regions that abut share one 1px `--edge` boundary; a ring drawn inside one region and a ring drawn inside its neighbour now touch, and a focus style that reads as two rings — or that loses its contrast against a neighbouring surface rather than against the page — is invisible to a computed-value assertion. **Task 2** carries the keyboard walk (Tab through the header, the rail, both panes and the stage controls) with the capture read, not only asserted.
+5. **The dialog frame is shared with the `?` sheet and the settings modal.** `.editor-shell-dialog` is one rule rendered by `shortcut-reference.tsx` and by `settings.tsx`; a frame, lead or `kbd` change made for the shell is a change to both, and neither this plan's capture nor the next plan's frames both. **Task 3** and **Task 6** carry the sheet: the sheet's own capture is re-taken, and Task 3 asserts the sheet's computed frame equals the modal's.
+
+---
+
+### Task 1: The drawing becomes an instrument — the census and the parity reader
+
+**Outcome:** A reader that extracts a declared value from `docs/design/mockups/editor-shell.html`'s own inline stylesheet by selector, a parity table naming — per region — the drawing's selector, the product's selector and the governing bible section, and a spec that **fails** on the state shipped today.
+
+**Owning symbols/landmarks:** `docs/design/mockups/editor-shell.html` (`.mockup` at its frame rule, `.mockup-header`, `.mockup-body`, the rail's rule, the pane rules, the stage rule, the status rule, the cluster rules); `src/web/packages/editor/src/editor-shell/editor-shell.css` (`.editor-shell` root, `.editor-shell-header`, `.editor-shell-body`, `.editor-shell-rail`, `.editor-shell-panel`, `.editor-shell-stage`, `.editor-shell-inspector`, `.editor-shell-status`); `src/web/tests/e2e/design-language.spec.ts` (plan 1's harness — add to it, do not add a second procedure).
+
+**Files:**
+- Add: `src/web/tests/e2e/mockup-values.ts` — the reader
+- Modify: `src/web/tests/e2e/design-language.spec.ts` — the parity assertions
+- Add: `.superpowers/sdd/2026-10-10-shell-parity/adjudication.md` — the census table
+
+**Interfaces:**
+- Consumes: the two measurement files named above; the mockup's inline stylesheet; plan 1's harness and its fixture.
+- Produces: `mockupDeclared(mockupHtml: string, selector: string, property: string): string` — the value the drawing declares, throwing with the selector and property when it declares none; and `PARITY: readonly ParityRegion[]`, where `ParityRegion = { region: string; mockupSelector: string; mockupProperty: string; productSelector: string; bibleSection: string; licensed?: string }`. `licensed` carries the text of the predating rule that keeps a difference, and its absence is what makes a difference a defect.
+
+- [ ] **Step 1: Write the reader, and prove it reads the drawing rather than a copy**
+
+`mockupDeclared` parses the drawing's inline `<style>` for the rule whose selector matches, and returns the declared value of the named property. Prove it three ways in `mockup-values.ts`'s own colocated test: the shell frame's radius reads `10px`; a property the rule does not declare throws naming both; an unknown selector throws. Then change the drawing's value on disk, re-run, and confirm the reader returns the new one — a reader that returns a constant would pass the first three checks.
+
+`ponytail:` a regex over an inline stylesheet is the ceiling here. Upgrade to a real CSS parse only if the drawing gains nested rules or shorthand the reader mis-reads.
+
+- [ ] **Step 2: Write the census as a table, one row per region, with the positive rule or none**
+
+`adjudication.md` carries every region from **both** measurements as rows: region, what the drawing declares (`meta.master`-style `file:line`), what the product computes, the bible section and what it says. The final column is the disposition and must be one of:
+
+- **fix** — no predating rule requires the product's treatment;
+- **licensed** — a predating rule is quoted, verbatim, and it positively requires it;
+- **drawing-stale** — the drawing contradicts the bible, with the bible section quoted and the mockup edit named.
+
+No row may read "deliberate". A row whose only support is a bible section this **plan** touches is `fix`.
+
+- [ ] **Step 3: Write the assertions so they fail on today's build**
+
+Add to `design-language.spec.ts` a case per `fix` row: open the editor, read the product's computed value for `productSelector`, and assert it equals `mockupDeclared(...)`. Run it and record the failures — the expected set is at least the four body regions' inset and radius, the shell frame's radius, and the dialog's frame. **A run with no failures means the reader is not reading what the assertion reads**, and the step is not done until the failures are named in the report.
+
+- [ ] **Step 4: State the count, and file what the census found that this plan does not fix**
+
+The census's row count, its `fix` / `licensed` / `drawing-stale` tallies, and every row this plan leaves open go in the report and in the commit body. A finding outside this plan's surface (the modal's regions are the next plan's; the clusters are `vg-222`'s) is a row in `docs/product/backlog.jsonl` from a `Discovered, not fixed:` trailer.
+
+- [ ] **Step 5: Commit**
+
+```bash
+cd src/web
+npm run test -- tests/e2e/mockup-values.ts
+git add tests/e2e/mockup-values.ts tests/e2e/design-language.spec.ts
+git commit -m "test(e2e): the drawing is read, not restated, and parity fails on today's shell"
+```
+
+---
+
+### Task 2: The body is flush
+
+**Outcome:** The rail, both panes, the stage and the inspector share 1px hairlines with no gap and no inset, as bible §7's diagram and §3's elevation row 0 draw them — and every control that lived in the gap still works.
+
+**Owning symbols/landmarks:** `editor-shell.css` — `.editor-shell-body` (its `grid-template-columns`, its `gap: 8px` and `padding: 8px`), `.editor-shell-rail`, `.editor-shell-panel`, `.editor-shell-inspector`, `.editor-shell-stage`, and the hairline comments above `.editor-shell-header` and `.editor-shell-status`; `shell-layout.tsx` (the region elements), `rail.tsx`, `display-switch.tsx`, `canvas-dock.tsx`.
+
+**Files:**
+- Modify: `src/web/packages/editor/src/editor-shell/editor-shell.css`
+- Modify: `src/web/tests/e2e/design-language.spec.ts` (Task 1's rows for the body's inset and gaps go green)
+
+**Interfaces:**
+- Consumes: Task 1's `PARITY` rows and `mockupDeclared`.
+- Produces: a body whose regions abut, with each interior boundary carried by exactly one region's own border — the owner named in a comment, because two regions each drawing a border against the other is two owners for one hairline.
+
+- [ ] **Step 1: Remove the inset and the gap, and give each interior boundary one owner**
+
+Delete the body's `gap` and `padding`; give the rail and the left pane `border-right`, the inspector `border-left`, and the stage none, so no boundary is drawn twice. The bible's §3 row 0 value for panels is `1px --edge` with no shadow — the comment above the region declares which side owns each hairline.
+
+- [ ] **Step 2: Run Task 1's assertions and confirm the body rows pass**
+
+Run: `cd src/web && npx playwright test design-language.spec.ts --project=desktop-chromium --workers=1`
+Expected: the body inset and gap rows now pass; the radius rows still fail (Task 3). Name the still-failing rows in the report.
+
+- [ ] **Step 3: Prove the geometry assertions can fail**
+
+Put the 8px gap and padding back, rebuild, re-run, and confirm the body rows fail. Restore with `cp` from a copy taken before the break, and confirm the restore with `cmp` — `git checkout` normalises line endings and cannot prove a byte-identical restore on this box.
+
+- [ ] **Step 4: Walk the controls that lived in the gap**
+
+Browser walkthrough on the rebuilt bundle: toggle each pane from the header, drag the inspector, click all four rail slots, click the dock's tools and the view cluster's zoom. Confirm each still hits, that no hairline crosses a control's hit area, and that Tab through the header, the rail, both panes and the stage's controls leaves every focus ring visible against its neighbour and legible as one ring rather than two (Review Focus 1 and 4). **The capture is produced here and read before the step is called done** — a geometry assertion is not this evidence.
+
+- [ ] **Step 5: Check the stage's frame against the artboard**
+
+Zoom to both ends of the range with a document loaded and confirm the artboard's edge and the stage's boundary still coincide — the stage's border and radius are being removed, and the canvas inside it is a Fabric surface whose artboard clip is scene-level (Review Focus 3). If the two disagree at either end, state it as a finding rather than adjusting the CSS until the picture looks right.
+
+- [ ] **Step 6: Commit**
+
+Run the whole editor unit suite and record its counts in the body.
+
+---
+
+### Task 3: The radius scale, and the two dialogs
+
+**Outcome:** Every literal radius in `editor-shell.css` is on §3's closed scale or is a named degenerate mark, the shell's four off-scale `12px` values are gone, and the shell frame the drawing draws at `10px` is the frame the product renders.
+
+**Owning symbols/landmarks:** `editor-shell.css` — the four `12px` rules (`.editor-shell-rail`, `.editor-shell-panel`/`.editor-shell-inspector`, `.editor-shell-dialog`, `.editor-shell-stage`), the `7px` icon-button rule, the layer rows' `5px`, and the swatch/thumb `2px` rules; the `--radius-*` declarations; `editor-shell.html:44-48` (the drawing's own frame rule).
+
+**Files:**
+- Modify: `src/web/packages/editor/src/editor-shell/editor-shell.css`
+- Modify: `src/web/tests/e2e/design-language.spec.ts`
+
+**Interfaces:**
+- Consumes: Task 1's radius rows; Task 2's flush body.
+- Produces: no behavioural interface; the invariant is that no `border-radius` literal off §3's scale survives in this file, which Task 6's gate enforces rather than this task's prose.
+
+- [ ] **Step 1: Decide each off-scale value against its owner, and record the decision**
+
+Five distinct off-scale values: `1`, `2`, `5`, `7`, `12`. The `12px` values are chrome and go to their §3 entry — the rail and both panes are "Panels, cards, tiles" (`--radius-lg`), and the stage and the dialog are **not in the radius table at all**, so the drawing is their only owner and its value governs. The `7px` icon button is §5's `--radius-md`. The `2px` swatch is §3's `--radius-sm` for a swatch. `1px` and the dropline's `2px` are degenerate marks whose value is their thickness; the comment says so, so Task 6's gate can exempt them by name rather than by value.
+
+- [ ] **Step 2: Apply them, and make the dialog's frame one rule for both dialogs**
+
+The shell's regions and the two dialogs are changed together, because `.editor-shell-dialog` is one rule rendered by `shortcut-reference.tsx` and `settings.tsx` (Review Focus 5).
+
+- [ ] **Step 3: Assert both dialogs, not only the modal**
+
+Extend Task 1's rows with one case per dialog: computed frame equal to the drawing's, for the settings modal **and** the `?` sheet. Run both; a change made for one and missed on the other is the defect this step exists to catch.
+
+- [ ] **Step 4: Prove the assertions fail when the value is put back**
+
+Restore one `12px`, rebuild, re-run, confirm the row fails, restore with `cp` and verify with `cmp`.
+
+- [ ] **Step 5: Commit**
+
+---
+
+### Task 4: Graphite's values come from the drawing
+
+**Outcome:** Graphite's role values are the drawing's, so the palette a person meets first is the palette the drawing draws.
+
+**Owning symbols/landmarks:** `editor-shell.css` — the `[data-shell-palette="graphite"]` block; `editor-shell.html:45-48` (the drawing's own token table) and its per-surface literals; `applyShellPalette` and `0035` (the resolution mechanism — **untouched**).
+
+**Files:**
+- Modify: `src/web/packages/editor/src/editor-shell/editor-shell.css`
+- Modify: `src/web/tests/e2e/mockup-values.ts` (the drawing's shell token table is a second reader target)
+
+**Interfaces:**
+- Consumes: Task 1's reader, extended to read the drawing's token table (`--bg`, `--hdr`, `--panel`, `--panel2`, `--edge`, `--edge2`, `--text`, `--muted`, `--faint`, `--accent`).
+- Produces: graphite's values, owned by the drawing. The reading is the same mechanism `0035` already gives every palette.
+
+- [ ] **Step 1: Write the assertion first, and watch it fail on all nine roles**
+
+One case per role: the product's computed value for graphite equals the drawing's declared value. Today exactly one passes (`--accent` `#72e0c0`); the other nine must fail before any value is written, and the failure list goes in the report.
+
+- [ ] **Step 2: Take the drawing's values, role by role**
+
+Transcribe rather than approximate, and name the drawing's line for each in the block's comment. Where the product has a role the drawing does not name, and the drawing has a value the product has no role for, say so in the report rather than inventing a mapping.
+
+- [ ] **Step 3: Re-measure contrast under graphite before believing it**
+
+Run the existing contrast assertions (`keyboard.spec.ts` measures the modal surface under every palette; `shell-appearance.spec.ts` measures the surfaces) and record every ratio that moved, with the floor it must clear. `vg-200` and `vg-201` are already pinned failures here, and this change is not allowed to add a third silently (Review Focus 2).
+
+- [ ] **Step 4: Commit**
+
+---
+
+### Task 5: Chrome is opaque in all six palettes
+
+**Outcome:** A palette's chrome surfaces are flat and opaque as §3's elevation row 0 and the drawing both have them, and the `backdrop-filter`/gradient treatment is what §3 reserves for floating clusters over the canvas — for every palette, not only the drawn one.
+
+**Owning symbols/landmarks:** `editor-shell.css` — the `.editor-glass` block and its per-palette selectors, the flat override that already strips shadow and blur from rail/panes/inspector, the gradient declaration, the `@supports not (backdrop-filter)` fallback, and each palette's surface roles; `shell-appearance.spec.ts`'s "editorial is flat and the other five are glass".
+
+**Files:**
+- Modify: `src/web/packages/editor/src/editor-shell/editor-shell.css`
+- Modify: `src/web/tests/e2e/shell-appearance.spec.ts` (the pinned assertion, changed deliberately and named in the commit)
+- Modify: `src/web/tests/e2e/design-language.spec.ts`
+
+**Interfaces:**
+- Consumes: Task 4's graphite values; Task 1's rows for the shell's surfaces.
+- Produces: one treatment boundary — chrome flat and opaque, clusters blurred and translucent — expressed once, so an element is one or the other and the file says which.
+
+- [ ] **Step 1: Write the assertion for both halves of the boundary**
+
+Two cases: a chrome region's computed background has no alpha and no `backdrop-filter`, and a cluster's has both. Run them; today the chrome half fails under five of six palettes.
+
+- [ ] **Step 2: Change the treatment, and keep the one boundary**
+
+Move the gradient and the blur to the cluster selectors only; give each palette's chrome an opaque surface value. **The other five palettes have no drawing** — so their *structure* comes from the drawing's demonstration (flat, opaque, hairline edges) and their *hues* stay their own, which is a ruling this plan records and whose alternative (deriving five palettes' values from a drawing of one) it rejects as invention.
+
+- [ ] **Step 3: Measure contrast under all six, and compare against the ratios before this task**
+
+Record each palette's ratios for text, muted text, the edge boundary and the accent, before and after, and state every one that moved and whether it is above or below any pinned floor. This is Review Focus 2's evidence and it is not dischargeable by the geometry assertions.
+
+- [ ] **Step 4: Amend the pinned assertion deliberately and name it in the commit**
+
+`shell-appearance.spec.ts`'s flat/glass split was three palettes' worth of behaviour expressed as one assertion; it now asserts the boundary this task defines. Say in the commit that the assertion changed and why — a test silently rewritten beside the code it guards is indistinguishable from a test deleted.
+
+- [ ] **Step 5: Prove both halves fail when the treatment is put back**
+
+Revert the chrome half alone, rebuild, confirm the chrome case fails and the cluster case still passes; restore with `cp`, verify with `cmp`.
+
+- [ ] **Step 6: Commit**
+
+Run the whole editor unit suite and record its counts in the body.
+
+---
+
+### Task 6: The ratchet covers the stylesheet this plan edits
+
+**Outcome:** `editor-shell.css` is in `scripts/design-tokens.gated.json`, so a hex literal or an off-scale spacing value in it fails a gate instead of waiting for a person to notice — and by the time this task runs, this plan has already fixed most of what the gate finds.
+
+**Owning symbols/landmarks:** `scripts/design-tokens.gated.json`; `scripts/design-tokens.mjs`; `docs/engineering/`'s description of the ratchet; `vg-274` (the measured before-state) and `vg-286` (which test files the ratchet covers).
+
+**Files:**
+- Modify: `scripts/design-tokens.gated.json`
+- Modify: `src/web/packages/editor/src/editor-shell/editor-shell.css` (the violations the earlier tasks left)
+
+**Interfaces:**
+- Consumes: Tasks 2–5.
+- Produces: the file under the gate. The `gated` list grows by one path and `design:check` prints the new count.
+
+- [ ] **Step 1: Measure what the gate would find, before adding the path**
+
+`vg-274` measured 85 hex literals across 80 of 2115 lines and 68 unchecked violations in this file. Re-measure now, after Tasks 2–5, and record the number: most of the change is that many fewer.
+
+- [ ] **Step 2: Add the path, run the gate, and fix what it names**
+
+Run: `cd src/web && npm run design:check`
+Expected: it names `editor-shell.css` with a violation list. Fix every violation **as a role or a scale step**, never by widening the gate's allowlist — an exemption added to make a gate pass is the gate deleted with a comment.
+
+- [ ] **Step 3: Prove the gate fails on a reintroduced literal**
+
+Add one hex literal to a surface rule, run `npm run design:check`, confirm it fails naming the file and line, and remove it.
+
+- [ ] **Step 4: Commit**
+
+---
+
+### Task 7: The parity capture, beside the drawing
+
+**Outcome:** Built bundles, the shell captured by a registered action, the captures placed **beside** `docs/design/mockups/editor-shell.html`, and every remaining difference either fixed or backed by a quoted predating rule — with the plan closed.
+
+**Owning symbols/landmarks:** `src/web/tests/e2e/design-language.spec.ts`; `docs/evidence/screenshots/README.md`; the registered shell actions (`shell-appearance`, `shell-palette-*`); `docs/design/mockups/editor-shell.html`.
+
+**Files:**
+- Modify: `src/web/tests/e2e/design-language.spec.ts`
+- Modify: `docs/evidence/screenshots/README.md`
+- Add: the produced images under `docs/evidence/screenshots/`, both palettes
+
+**Interfaces:**
+- Consumes: every earlier task; Task 1's `PARITY` table as the comparison's spine.
+- Produces: the capture that is this plan's completion condition (spec §13, Acceptance).
+
+- [ ] **Step 1: Re-capture every shell action this plan moved, in both palettes**
+
+A capture of one palette cannot show a hard-coded hex, so `graphite` and `editorial` are both taken. Re-run with `--workers=1` against rebuilt bundles, and confirm **1 test ran** per action — a `--grep` matching nothing exits 0 with zero tests.
+
+- [ ] **Step 2: Place the captures beside the drawing and re-run Task 1's table**
+
+Every `fix` row should now pass. Record any that do not as an open finding with its owner — not as a deliberate difference.
+
+- [ ] **Step 3: List every remaining difference with its citation, or state that there are none**
+
+Under §13 as amended, a difference is kept only against a quoted predating rule. Re-read Task 1's `licensed` and `drawing-stale` rows against the shipped build: a `licensed` row whose citation is not verbatim-verifiable is reclassified `fix`, and a `drawing-stale` row must name the mockup edit that repaired it.
+
+- [ ] **Step 4: Say which Acceptance items are met and which are not**
+
+Name them one per line, `met` or `not met`, with evidence. The settings modal's parity is **not met** until its own plan lands; the clusters are `vg-222`'s; the phone layout is `vg-172`'s. Never announce the redesign closed while an item remains.
+
+- [ ] **Step 5: Update `STATUS.md`, then commit and archive**
+
+Replace "Last completed change" with 1–5 bullets, one item per line, never wrapped; run `npm run status:check` from `src/web/`. Run the whole editor unit suite and record its counts in the commit body. Tell the user the images exist before staging them, and inspect them first. Commit the capture, the registration row and the plan's changes together; then move this plan to `docs/superpowers/plans/archive/` and write the next plan (the settings modal's parity) against the same instrument.
+
+---
+
+## Out of scope
+
+- **The settings modal's own regions.** Thirteen of its nineteen measured regions drift; that is the next plan, and it consumes this one's reader, its radius decisions and its chrome treatment. This plan touches the modal only where they share a rule (`.editor-shell-dialog`, `.editor-shell-dialog-lead`, `.editor-shell-dialog kbd`).
+- **The floating clusters' treatment** (`vg-222`, glass off the elevation ladder), the **status strip's tone** (`vg-217`), the **missing status counts** (`vg-230`) and the **rail's 34px slot** (`vg-227`) are existing rows with their own owners. This plan changes the clusters only where the chrome's treatment moves off them.
+- **The palette mechanism** — the six palettes, per-element resolution, the OS fallback and the attribute — is `0035`'s and is untouched. What changes is values and treatment, not resolution.
+- **The artboard, the canvas, the player, `renderer-core`, the host and the theme format.** No scene change; no second persistence mechanism.
+- **The bible itself.** This plan cites §3, §4 and §7 and amends none of them. If a task finds it must amend one, that is a ruling recorded in the ledger and the amendment is named in the commit — never a licence for the task's own divergence (spec §13).
+- **`vg-172` (phone layout), `vg-185`, `vg-187`, `vg-192`** stay open.
+- **Auto-parsing the drawing for every property.** Task 1's reader covers the properties the parity table names; a general mockup parser is not this plan.
+
+## Self-review
+
+- **Spec coverage.** §13 as amended 2026-10-10 is Task 1's whole point and Task 7's gate; §3's radius scale is Task 3 and its elevation rows are Tasks 2 and 5; §4's roles are Tasks 4 and 5; §7's layout diagram is Task 2; §10's no-hex rule is Task 6; §12 gains this plan's row; the Acceptance item on parity is read in Task 7 Step 4.
+- **Step scan.** Every step names a file, a symbol, a command or an expected output. No step asks for more than one thing to be written. No "handle edge cases", no "similar to Task N".
+- **Type consistency.** `mockupDeclared` and `ParityRegion` are defined once in Task 1 and used by Tasks 2–5 and 7 under those names; `licensed` is the field every later task reads.
+- **Review Focus.** Five, pinned: 1 and 4 to Task 2, 2 to Task 5, 3 to Task 2, 5 to Tasks 3 and 6.
+- **Red proofs.** Task 1 fails on today's build by construction; Tasks 2, 3 and 5 each revert their own change and confirm the row goes red; Task 6 reintroduces a hex literal. Every restore is `cp` + `cmp`, because `git checkout` normalises line endings on this box.
+- **The register.** `vg-231` is this plan's spine and is amended when it lands; `vg-274` is answered by Task 6; `vg-292` by Task 1's instrument; `vg-217`, `vg-222`, `vg-227`, `vg-230`, `vg-285`, `vg-286` stay open. Task 1 files whatever the census finds that this plan does not fix.
