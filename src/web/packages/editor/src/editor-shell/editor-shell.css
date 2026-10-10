@@ -1010,7 +1010,6 @@ body,
 }
 .editor-shell-panel button,
 .editor-shell-panel input,
-.editor-shell-panel select,
 .editor-shell-inspector button,
 .editor-shell-inspector input,
 .editor-shell-inspector select {
@@ -1023,7 +1022,6 @@ body,
   color: var(--shell-text);
 }
 .editor-shell-panel input,
-.editor-shell-panel select,
 .editor-shell-inspector input,
 .editor-shell-inspector select,
 .editor-shell-inspector textarea {

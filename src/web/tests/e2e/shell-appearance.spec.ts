@@ -40,7 +40,21 @@ async function openEditor(page: Page): Promise<void> {
   await openPane(page, "Document");
 }
 
-/** The computed colours of the surfaces a `--vigilia-*` token paints. */
+/**
+ * The computed colours of the surfaces a `--vigilia-*` token paints.
+ *
+ * `documentSelect` is the **control set's** select — a `role="combobox"`
+ * trigger, which `.editor-shell-panel button` paints from `--vigilia-control-bg`
+ * where the native `<select>` term it replaced painted a `<select>`. Measured:
+ * the match is `data-vigilia-asset-select`, the Add pane's asset-list trigger,
+ * which is the surface the panel-`select` read resolved to before that pane
+ * converted. It is named by the control set's own role rather than by that hook
+ * because the panes are hidden rather than unmounted, so a pane-specific
+ * selector would say "document" about whichever pane happens to mount first.
+ *
+ * `documentInput` resolves through the same legacy rule and is Base UI's hidden
+ * value-carrier `input` behind a select root, not a surface an author types in.
+ */
 async function shellColours(page: Page): Promise<Record<string, string>> {
   return page.evaluate(() => {
     const read = (selector: string): string => {
@@ -50,7 +64,7 @@ async function shellColours(page: Page): Promise<Record<string, string>> {
     return {
       paletteTrigger: read("[data-vigilia-palette]"),
       documentInput: read(".editor-shell-panel input"),
-      documentSelect: read(".editor-shell-panel select"),
+      documentSelect: read('.editor-shell-panel [role="combobox"]'),
       stage: read(".editor-shell-stage"),
     };
   });
