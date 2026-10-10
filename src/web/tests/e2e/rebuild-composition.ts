@@ -65,8 +65,11 @@ async function glyph(
   await insert(page, "Path");
   await setName(page, name);
   await place(page, box);
-  await choose(page, "[data-vigilia-panel-fill]", "");
+  // Stroke before fill: an unfilled `Path` keeps one paint field and it writes
+  // the stroke, so clearing the fill first leaves no `panel-stroke` to set
+  // (`panel.ts:230`). See the rule in `buildWordmarkAndClock`.
   await chooseToken(page, "[data-vigilia-panel-stroke]", token);
+  await choose(page, "[data-vigilia-panel-fill]", "");
   await fill(page, "[data-vigilia-panel-border]", 2);
   await fill(page, "[data-vigilia-shape-path]", data);
 }
@@ -109,20 +112,23 @@ async function reading(
     w: box.w,
     h: box.h,
     preset: "typePresets.60-600",
-    colour: "text",
+    colour: "palette.text",
   });
   await selectLayer(page, name);
   // The run editor lives in the selection's own column, which no pane choice
   // affects, so reaching it needs no click at all.
-  await page.locator('[data-vigilia-run-source="0"]').selectOption(key);
+  //
+  // **`choose`, not `selectOption`, for every run picker in this file.** They
+  // were native `<select>`s when this journey was written (`084f40cf`) and are
+  // plan 1's `ControlSelect` since `aa6f68e9` (`runs.tsx:497-570`), whose ids are
+  // the stored references — `palette.<key>`, `typePresets.<key>` — rather than a
+  // token's bare key. The journey was red from that commit until this one and
+  // nothing ran it, because no npm script drives the display config.
+  await choose(page, '[data-vigilia-run-source="0"]', key);
   await page.locator("[data-vigilia-run-add]").click();
   await fill(page, '[data-vigilia-run-text="1"]', "%");
-  await page
-    .locator('[data-vigilia-run-preset="1"]')
-    .selectOption("typePresets.32-400");
-  await page
-    .locator('[data-vigilia-run-colour="1"]')
-    .selectOption("palette.dim");
+  await choose(page, '[data-vigilia-run-preset="1"]', "typePresets.32-400");
+  await choose(page, '[data-vigilia-run-colour="1"]', "palette.dim");
 }
 
 /**
@@ -146,7 +152,7 @@ export async function buildWordmarkAndClock(page: Page): Promise<void> {
     w: 320,
     h: 46,
     preset: "typePresets.46-600",
-    colour: "text",
+    colour: "palette.text",
   });
 
   // S Y S T E M   I N S I G H T S — smaller, tracked wider still.
@@ -171,7 +177,7 @@ export async function buildWordmarkAndClock(page: Page): Promise<void> {
     w: 520,
     h: 20,
     preset: "typePresets.17-400",
-    colour: "text",
+    colour: "palette.text",
   });
 
   // The clock card: a frosted panel, outlined, with a generous radius.
@@ -205,31 +211,33 @@ export async function buildWordmarkAndClock(page: Page): Promise<void> {
     w: 300,
     h: 140,
     preset: "typePresets.108-300",
-    colour: "text",
+    colour: "palette.text",
   });
   await selectLayer(page, "time");
-  await page.locator('[data-vigilia-run-source="0"]').selectOption("time.now");
+  await choose(page, '[data-vigilia-run-source="0"]', "time.now");
   await page.locator('[data-vigilia-run-format="0"]').fill("HH:mm");
   await page.locator('[data-vigilia-run-format="0"]').blur();
   // PM beside it, as its own run — the reason F2.1 was blocking.
   await page.locator("[data-vigilia-run-add]").click();
   await fill(page, '[data-vigilia-run-text="1"]', "PM");
-  await page
-    .locator('[data-vigilia-run-preset="1"]')
-    .selectOption("typePresets.24-400");
-  await page
-    .locator('[data-vigilia-run-colour="1"]')
-    .selectOption("palette.dim");
+  await choose(page, '[data-vigilia-run-preset="1"]', "typePresets.24-400");
+  await choose(page, '[data-vigilia-run-colour="1"]', "palette.dim");
 
   // The rule under it. A `Path` takes its data as SVG commands, which is the
   // only way a hairline is drawn at all.
   await insert(page, "Path");
   await setName(page, "time-rule");
   await place(page, { x: 72, y: 352, w: 306, h: 2 });
-  // A rule is a stroke, not a shape: a path arrives filled, and the Fill
+  // A rule is a stroke, not a shape: a path arrives filled, and the paint
   // picker's own "not set" is the only way to say so.
-  await choose(page, "[data-vigilia-panel-fill]", "");
+  //
+  // **The stroke first, the fill second.** A `Path` with no fill has one paint
+  // field, and it writes the stroke (`panel.ts:230`, `paintPropertyFor`): clear
+  // the fill first and there is no `panel-stroke` left to set. The order is the
+  // product's rule, not a preference, and it changed under this harness in
+  // `5a563a1c` — the ordering below is the one that still authors the same rule.
   await chooseToken(page, "[data-vigilia-panel-stroke]", "Rule");
+  await choose(page, "[data-vigilia-panel-fill]", "");
   await fill(page, "[data-vigilia-panel-border]", 1);
 
   await addText(page, {
@@ -240,12 +248,10 @@ export async function buildWordmarkAndClock(page: Page): Promise<void> {
     w: 306,
     h: 34,
     preset: "typePresets.24-400",
-    colour: "dim",
+    colour: "palette.dim",
   });
   await selectLayer(page, "date");
-  await page
-    .locator('[data-vigilia-run-source="0"]')
-    .selectOption("date.today");
+  await choose(page, '[data-vigilia-run-source="0"]', "date.today");
   await page.locator('[data-vigilia-run-format="0"]').fill("ddd, MMM D, YYYY");
   await page.locator('[data-vigilia-run-format="0"]').blur();
 }
@@ -267,8 +273,9 @@ export async function buildCpuCard(page: Page): Promise<void> {
   await insert(page, "Path");
   await setName(page, "cpu-card-icon");
   await place(page, { x: 452, y: 218, w: 28, h: 28 });
-  await choose(page, "[data-vigilia-panel-fill]", "");
+  // Stroke before fill, for the reason the rule above gives.
   await chooseToken(page, "[data-vigilia-panel-stroke]", "CPU blue");
+  await choose(page, "[data-vigilia-panel-fill]", "");
   await fill(page, "[data-vigilia-panel-border]", 2);
 
   await addText(page, {
@@ -279,7 +286,7 @@ export async function buildCpuCard(page: Page): Promise<void> {
     w: 120,
     h: 22,
     preset: "typePresets.24-400",
-    colour: "dim",
+    colour: "palette.dim",
   });
 
   // **32** and **%** — a reading and a unit on one object. This is the step
@@ -288,21 +295,13 @@ export async function buildCpuCard(page: Page): Promise<void> {
   await setName(page, "cpu-card-value");
   await place(page, { x: 448, y: 262, w: 220, h: 60 });
   await fill(page, '[data-vigilia-run-text="0"]', "32");
-  await page
-    .locator('[data-vigilia-run-preset="0"]')
-    .selectOption("typePresets.60-600");
-  await page
-    .locator('[data-vigilia-run-colour="0"]')
-    .selectOption("palette.text");
-  await page.locator('[data-vigilia-run-source="0"]').selectOption("cpu.load");
+  await choose(page, '[data-vigilia-run-preset="0"]', "typePresets.60-600");
+  await choose(page, '[data-vigilia-run-colour="0"]', "palette.text");
+  await choose(page, '[data-vigilia-run-source="0"]', "cpu.load");
   await page.locator("[data-vigilia-run-add]").click();
   await fill(page, '[data-vigilia-run-text="1"]', "%");
-  await page
-    .locator('[data-vigilia-run-preset="1"]')
-    .selectOption("typePresets.32-400");
-  await page
-    .locator('[data-vigilia-run-colour="1"]')
-    .selectOption("palette.dim");
+  await choose(page, '[data-vigilia-run-preset="1"]', "typePresets.32-400");
+  await choose(page, '[data-vigilia-run-colour="1"]', "palette.dim");
   await page.waitForTimeout(200);
 
   // The sparkline, bound to the same key as the reading beside it — the
@@ -348,7 +347,7 @@ export async function buildGpuCard(page: Page): Promise<void> {
     w: 120,
     h: 22,
     preset: "typePresets.24-400",
-    colour: "dim",
+    colour: "palette.dim",
   });
   await reading(
     page,
@@ -369,7 +368,7 @@ export async function buildGpuCard(page: Page): Promise<void> {
     w: 240,
     h: 24,
     preset: "typePresets.20-400",
-    colour: "dim",
+    colour: "palette.dim",
   });
   await addChart(page, {
     family: "Line",
@@ -412,7 +411,7 @@ export async function buildMemoryRings(page: Page): Promise<void> {
     w: 120,
     h: 22,
     preset: "typePresets.24-400",
-    colour: "dim",
+    colour: "palette.dim",
   });
   await addChart(page, {
     family: "Gauge",
@@ -446,7 +445,7 @@ export async function buildMemoryRings(page: Page): Promise<void> {
     w: 220,
     h: 24,
     preset: "typePresets.20-400",
-    colour: "dim",
+    colour: "palette.dim",
   });
 
   // VRAM: the same card, a closed ring, a different colour.
@@ -475,7 +474,7 @@ export async function buildMemoryRings(page: Page): Promise<void> {
     w: 120,
     h: 22,
     preset: "typePresets.24-400",
-    colour: "dim",
+    colour: "palette.dim",
   });
   await addChart(page, {
     family: "Gauge",
@@ -506,7 +505,7 @@ export async function buildMemoryRings(page: Page): Promise<void> {
     w: 220,
     h: 24,
     preset: "typePresets.20-400",
-    colour: "dim",
+    colour: "palette.dim",
   });
 }
 
@@ -537,7 +536,7 @@ export async function buildTrends(page: Page): Promise<void> {
     w: 320,
     h: 26,
     preset: "typePresets.24-400",
-    colour: "text",
+    colour: "palette.text",
   });
   // Three series, three sensors, three tokens — the shape the chart panel
   // could not reach at all before F2.2.
@@ -581,7 +580,7 @@ export async function buildStorage(page: Page): Promise<void> {
     w: 180,
     h: 26,
     preset: "typePresets.24-400",
-    colour: "text",
+    colour: "palette.text",
   });
   await addText(page, {
     name: "storage-card-value",
@@ -591,17 +590,13 @@ export async function buildStorage(page: Page): Promise<void> {
     w: 120,
     h: 38,
     preset: "typePresets.36-500",
-    colour: "text",
+    colour: "palette.text",
   });
   await selectLayer(page, "storage-card-value");
   await page.locator("[data-vigilia-run-add]").click();
   await fill(page, '[data-vigilia-run-text="1"]', "%");
-  await page
-    .locator('[data-vigilia-run-preset="1"]')
-    .selectOption("typePresets.24-400");
-  await page
-    .locator('[data-vigilia-run-colour="1"]')
-    .selectOption("palette.dim");
+  await choose(page, '[data-vigilia-run-preset="1"]', "typePresets.24-400");
+  await choose(page, '[data-vigilia-run-colour="1"]', "palette.dim");
   await addChart(page, {
     family: "Bar",
     name: "storage-bar",
@@ -624,7 +619,7 @@ export async function buildStorage(page: Page): Promise<void> {
     w: 260,
     h: 24,
     preset: "typePresets.20-400",
-    colour: "dim",
+    colour: "palette.dim",
   });
 }
 
@@ -648,7 +643,7 @@ export async function buildNetwork(page: Page): Promise<void> {
     w: 180,
     h: 26,
     preset: "typePresets.24-400",
-    colour: "text",
+    colour: "palette.text",
   });
   await addText(page, {
     name: "network-down",
@@ -658,7 +653,7 @@ export async function buildNetwork(page: Page): Promise<void> {
     w: 160,
     h: 22,
     preset: "typePresets.20-400",
-    colour: "text",
+    colour: "palette.text",
   });
   await addText(page, {
     name: "network-up",
@@ -668,7 +663,7 @@ export async function buildNetwork(page: Page): Promise<void> {
     w: 160,
     h: 22,
     preset: "typePresets.20-400",
-    colour: "dim",
+    colour: "palette.dim",
   });
   await addChart(page, {
     family: "Line",
