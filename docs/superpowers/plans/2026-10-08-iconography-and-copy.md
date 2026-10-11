@@ -83,7 +83,7 @@ grep -rn "strokeWidth" packages/editor/src --include=*.tsx --include=*.ts | grep
 grep -rn "LucideIcon\b" packages/editor/src --include=*.ts --include=*.tsx | grep -v "\.test\."
 ```
 
-Expected as this plan is written — and **re-measured, because plans 1–5 have moved since**: nine files import lucide (of which `lucide-icon-node.d.ts`, `new-fabric-theme-icons.ts` and `object-actions.ts` are not chrome), and the chrome call sites carry **three** weights, `1.75` (canvas dock, layer panel, pane bar, font picker), `2` (the diagnostic severity glyph) and `2.5` (the two menu ticks). Record every file, every weight and every size. Any site whose weight is outside §6's band, and any site that is a hand-authored inline SVG rather than a lucide component, is an **open** item.
+**Task 1's census measured this at `762c740c` and the guess below was wrong.** Fifteen files import lucide — twelve chrome, plus `lucide-icon-node.d.ts` (declaration), `new-fabric-theme-icons.ts` (authored scene icons) and `pane.dom.test.tsx` (test). The chrome call sites carry **four** weights — `1.7` (8), `1.75` (17), `2` (1, the diagnostic severity glyph) and `2.5` (2, the menu tick and the live check) — and four hand-authored inline-SVG glyph sites exist: `kind-mark.tsx`'s group stack, `add-pane.tsx`'s shape and text glyphs, and `card-diagrams.tsx`'s eight unit diagrams (§6's sanctioned depiction). Record every file, every weight and every size. Any site whose weight is outside §6's band, and any site that is a hand-authored inline SVG rather than a lucide component, is an **open** item.
 
 - [ ] **Step 2: Inventory the copy-owning surfaces and the accessors**
 
@@ -140,11 +140,11 @@ The commit body carries the four inventories, the counts, the reconciliation ite
 
 **Outcome:** One module owns the chrome glyph vocabulary and the one stroke weight; every chrome glyph in the editor renders from it at that weight; chrome components import glyphs through the two owners; authored scene-icon generation and declaration files remain explicitly outside that chrome restriction.
 
-**Owning symbols/landmarks:** the new `editor-shell/icons.ts`; `object-actions.ts`'s icons (read, not moved); `diagnostic-message.tsx`'s `SEVERITY_ICONS`; `shell-layout.tsx`'s and `publish-indicator.tsx`'s `Check` (the palette menu that held the third was deleted by plan 5's Task 2, and the choice row marks its selection with colour and border rather than a glyph); `font-picker.tsx`'s `Star`; `layer-panel.tsx`'s `CHART_ICONS` / `TWISTY_ICONS` / `LOCK_STATES`; the rail's and panes' glyphs from plan 2; `controls/tooltip.ts` (read).
+**Owning symbols/landmarks:** the new `editor-shell/icons.ts`; `object-actions.ts`'s icons (read, not moved); `diagnostic-message.tsx`'s `SEVERITY_ICONS`; `shell-layout.tsx`'s and `publish-indicator.tsx`'s `Check` (the palette menu that held the third was deleted by plan 5's Task 2, and the choice row marks its selection with colour and border rather than a glyph); `font-picker.tsx`'s `Star`; `panes/composition/kind-mark.tsx`'s `CHART_ICONS` / `CHART_FALLBACK`, `panes/composition/composition-pane.tsx`'s `TWISTY_ICONS`, `panes/composition/row-affordances.tsx`'s `LOCK_STATES` (the maps the panes landed these in, not `layer-panel.tsx`); the rail's and panes' glyphs from plan 2; `controls/tooltip.ts` (read).
 
 **Files:**
 - Create: `packages/editor/src/editor-shell/icons.ts`, `packages/editor/src/editor-shell/icons.test.tsx`
-- Modify: `packages/editor/src/editor-shell/diagnostic-message.tsx`, `shell-layout.tsx`, `layer-panel.tsx`, `packages/editor/src/font-picker/font-picker.tsx`, the Add pane's card unit tile module (plan 4's, whose eight diagrams are hand-authored), and every file the census listed as carrying a chrome glyph
+- Modify: `packages/editor/src/editor-shell/diagnostic-message.tsx`, `shell-layout.tsx`, `layer-panel.tsx`, `display-switch.tsx`, `rail.tsx`, `settings.tsx`, `settings-keyboard.tsx`, `pane.tsx`, `packages/editor/src/font-picker/font-picker.tsx`, `packages/editor/src/panes/add/add-pane.tsx`, `packages/editor/src/panes/add/card-diagrams.tsx` (the eight hand-authored unit diagrams), `packages/editor/src/panes/composition/kind-mark.tsx`, `packages/editor/src/panes/composition/composition-pane.tsx`, `packages/editor/src/panes/composition/row-affordances.tsx`, and every other file the census listed as carrying a chrome glyph
 - Modify: `scripts/design-tokens.gated.json` (add every file above)
 - Modify: `docs/architecture/ownership.md` (one row: the chrome glyph vocabulary)
 - Modify: none of `object-actions.ts`, `new-fabric-theme-icons.ts` or `lucide-icon-node.d.ts`
@@ -227,12 +227,12 @@ Expected: exit 0, then green. Commit with the before/after weights from the cens
 
 **Outcome:** The object-kind glyphs are exactly the kinds the editor can hold, checked by a test that fails when a kind has no glyph; a group carries the generic stack glyph; a card *unit* tile may still be depicted, because the card library is a fixed set of eight.
 
-**Owning symbols/landmarks:** the kind vocabulary — `layer-tree.ts`'s `LayerKind` (`"text" | "shape" | "chart" | "group" | "image"`) and its `LayerMark`; `uiCopy.panels.layerKinds` (the one other table a kind must reach); `insertGroups()` in `new-object-panel.ts` (the insertable kinds: card units from `CARD_LIBRARY`, text, `SHAPE_KINDS`, `CHART_FAMILIES`); plan 4's Composition row and its Add-pane tiles, and `layer-panel.tsx`'s `kindOf` until plan 4 replaces it.
+**Owning symbols/landmarks:** the kind vocabulary — `layer-tree.ts`'s `LayerKind` (`"text" | "shape" | "chart" | "group" | "image"`) and its `LayerMark`; `uiCopy.panels.layerKinds` (the one other table a kind must reach); `insertGroups()` in `new-object-panel.ts` (the insertable kinds: card units from `CARD_LIBRARY`, text, `SHAPE_KINDS`, `CHART_FAMILIES`); plan 4's Composition row and its Add-pane tiles — the landed `panes/composition/kind-mark.tsx` (`KindMark` / `treatment` / `chartFamilyGlyph`, the replacement for the old `layer-panel.tsx` `kindOf`) and `panes/add/add-pane.tsx`.
 
 **Files:**
 - Modify: `packages/editor/src/editor-shell/icons.ts` (`KIND_GLYPHS`)
 - Modify: `packages/editor/src/editor-shell/icons.test.tsx`
-- Modify: plan 4's Composition row and Add-pane tile modules — **the census names them**; where plan 4 owns a kind→component map, delete the duplicate decision and read `KIND_GLYPHS` instead
+- Modify: `packages/editor/src/panes/composition/kind-mark.tsx`, `packages/editor/src/panes/composition/composition-pane.tsx` and `packages/editor/src/panes/add/add-pane.tsx` — **the census names them**; where one owns a kind→component map, delete the duplicate decision and read `KIND_GLYPHS` instead
 - Modify: `scripts/design-tokens.gated.json` (the row and tile files, if not already in it)
 
 **Interfaces:**
@@ -291,11 +291,11 @@ Every icon-only control's accessible name and tooltip become one string by const
 
 **Outcome:** Every icon-only control in the editor declares one `label`, from which plan 1's `ControlIconButton` produces both the `aria-label` and the tooltip through `controls/tooltip.ts`; no call site wires the two by hand; the controls that had no tooltip are adjudicated one by one against bible §6 rule 1.
 
-**Owning symbols/landmarks:** `components/ui/control-icon-button.tsx`; `controls/tooltip.ts` (read, not rewritten); `canvas-dock.tsx`'s `Action` and `ArrangeAction` (the census's standing hand-wired pair); `layer-panel.tsx`'s row affordances; plan 2's `rail.tsx` slots, `pane.tsx` footers, publish control and display switch; `accessible-names.dom.test.ts` and its `mountPanels` list.
+**Owning symbols/landmarks:** `components/ui/control-icon-button.tsx`; `controls/tooltip.ts` (read, not rewritten); `canvas-dock.tsx`'s `Action` and `ArrangeAction`, `display-switch.tsx`'s `ViewButton`, `rail.tsx`'s slot and gear buttons and `panes/composition/row-affordances.tsx`'s `RowControl` (the census found these four already one-string by construction); the census's icon-only **no-tooltip** list — `font-picker.tsx`'s favourite `Star`, `composition-pane.tsx`'s twisty and group-entry buttons, `components/ui/gradient-editor.tsx`'s stop dots; plan 2's `pane.tsx` footers and publish control; `accessible-names.dom.test.ts` and its `mountPanels` list.
 
 **Files:**
 - Modify: `packages/editor/src/components/ui/control-icon-button.tsx`, `packages/editor/src/components/ui/control-icon-button.dom.test.tsx`
-- Modify: `packages/editor/src/editor-shell/canvas-dock.tsx`, `layer-panel.tsx`, `rail.tsx`, `pane.tsx`, `publish-control.tsx`, `display-switch.tsx`, `canvas-context-menu.tsx` — whichever exist as landed, and every other file the census listed. Plan 4 explicitly leaves `canvas-context-menu.tsx` alone and names this plan for it; the layer row's own footer buttons are already plan-1 icon buttons in plan 4, so that half is a reconciliation item, not work.
+- Modify: `packages/editor/src/editor-shell/canvas-dock.tsx`, `layer-panel.tsx`, `rail.tsx`, `pane.tsx`, `publish-control.tsx`, `display-switch.tsx`, `canvas-context-menu.tsx`, `packages/editor/src/font-picker/font-picker.tsx`, `packages/editor/src/panes/composition/row-affordances.tsx`, `packages/editor/src/panes/composition/composition-pane.tsx`, `packages/editor/src/components/ui/gradient-editor.tsx` — whichever exist as landed, and every other file the census listed. Plan 4 explicitly leaves `canvas-context-menu.tsx` alone and names this plan for it; the layer row's own footer buttons are already plan-1 icon buttons, so that half is a reconciliation item, not work.
 - Modify: `packages/editor/src/accessible-names.dom.test.ts` (mount the React surfaces; its own contract says a panel not mounted here is not audited)
 - Modify: `scripts/design-tokens.gated.json` (the converted files)
 
