@@ -23,7 +23,7 @@ satisfies every token in `DESIGN.md` and still does not look like the mockup.
 
 ## Active work
 
-- **The active plan is [`2026-10-12-the-dead-code-sweep`](docs/superpowers/plans/2026-10-12-the-dead-code-sweep.md)**, reordered by the user on 2026-10-12 to **managers, then dead code, then the register**: Phase 1 redistributes the manager layer (Task 8 closed, Task 9 next), Phase 2 the reference picture (1–3), Phase 3 removal (4–6), Phase 4 the register (7); **task numbers are stable identifiers, not positions**, because a dozen references cite them.
+- **The active plan is [`2026-10-12-the-dead-code-sweep`](docs/superpowers/plans/2026-10-12-the-dead-code-sweep.md)**, reordered by the user on 2026-10-12 to **managers, then dead code, then the register**: Phase 1 redistributes the manager layer (Task 8 closed; Task 9's ranks 4, 5 and 9 done, rank 6 left), Phase 2 the reference picture (1–3), Phase 3 removal (4–6), Phase 4 the register (7); **task numbers are stable identifiers, not positions**, because a dozen references cite them.
 - **Phase 1's census is closed** — [`docs/architecture/manager-census.md`](docs/architecture/manager-census.md) landed at `a2fe5a89` and closed at `32265c25`: ten candidates ranked by shape, three fix rounds that moved no verdict, and a re-review that reproduced every count independently rather than reading the diff.
 - **Task 9 consumes those ranks in the census's order**: ranks 4, 5, 6 and 9 are clean extractions and go first, while 1, 2, 3 and 7 wait on decisions nobody has made — reach is the reason to be careful, not the reason to be first.
 - **`snap-manager` is the largest code problem and is not an extraction candidate at all** — one external production module reaches it, so its fix is a protocol re-shape needing a spec, and the plan no longer calls it the split's worked example.
@@ -32,16 +32,16 @@ satisfies every token in `DESIGN.md` and still does not look like the mockup.
 
 ## Last completed change
 
-- **Task 9's rank 5 landed and passed both verdicts** — `248ff08f` gives the library save protocol its own owner: `theme-library-manager/index.ts` takes 223 lines out of `editor-session.ts`, which drops from 1283 to 1077.
-- **Nothing changed behaviour and the whole unit suite says so** — 3287 tests in 246 files, plus the session suite at 25/25, with 184 of the 240 deleted lines appearing verbatim in the new owner and the remaining 56 accounted for line by line.
-- **The plan named the wrong harness, and the correction is in both places** — no manager test references the session, so `editor-session.dom.test.ts` was rank 5's real harness; the plan and this file no longer claim the 528 manager tests as the evidence for a move they never touch.
-- **The census's `~250 lines` measures 223 and survives as an approximation** — 223 and 240 bracket it, and the implementer quoted the harsher reading.
-- **Rank 5 surfaced three rows rather than three fixes** — `vg-372` (`biome check` red where the gate is green), `vg-373` (the save error still reported under `controls`), `vg-374` (`editor-session.ts` past the 800 stop, and the new owner the only manager with no test).
+- **Task 9's rank 9 landed and passed both verdicts** — `6309f899` turns six inline lock expressions in `object-actions.ts` into two named predicates, one per condition, with `ownership.md` correctly left alone because no owner moved.
+- **The implementer contradicted the census and was right** — `lockObject`/`unlockObject` guard only a null object and never read the lock state, so two of the six sites are affordances rather than re-encoded refusals, and migrating them would have widened eligibility the way `vg-370` did.
+- **No behaviour delta, and the reviewer proved it its own way rather than reading the enumeration** — a per-site pairing of all twelve registry entries base↔head, then a whole-domain check over 64 targets, zero diffs each.
+- **`vg-365` stays open, retitled, with its own two false claims recorded in it** — the dedup removed the hand-synchronisation inside the file, not the cross-module half where eligibility still states two managers' refusal.
+- **Two prose nits left unfixed because they are in a commit body** — "character for character" is false (the parameter is renamed `t` → `target`) and "the seven suites" over-counts by `icons.test.tsx`, which names the file rather than importing it.
 
 ## Next
 
-1. **Task 9's third candidate goes out next — rank 9, `object-actions`' eligibility agreement** — six sites in one file, and the file already holds the pattern at `:243-245`, where eligibility delegates to `arrangeEligible` rather than re-encoding the refusal.
-2. **Rank 6 goes last of the four, and its hedge is already surveyed** — `controls-manager`'s Line writes are Fabric `Control` action handlers, so the move either delegates to an existing geometry owner or the candidate dissolves; the census names no destination, and inventing one to give it somewhere to point is the failure mode.
+1. **Task 9's last candidate goes out next — rank 6, `controls-manager`'s document writes** — and its hedge is already surveyed: the writes are Fabric `Control` action handlers, so the move either delegates to an existing geometry owner or the candidate dissolves.
+2. **Rank 6 must not invent a destination to give the census somewhere to point** — the census calls it `Clean-ish` precisely because it names no owner for the Line scalars; a reported "the mutation is the mechanism" is a better outcome than a new module built to satisfy a label.
 3. **Phase 2's candidate report at HEAD, then per-candidate verification** — nothing is deleted until each candidate is checked against the string-resolved vocabulary: the `data-vigilia-*` attributes, the `--shell-*` custom properties, the `KIND_*` registries and the four gate scripts that read the source tree as data.
 4. **`vg-368` waits on a decision** — whether `src/web/.agent-scratch/` is deleted, relocated outside the tree, or excluded per tool; deleting is not obviously safe because it holds screenshots and a vitest report that may be the only copy.
 5. **The three failures the capture run surfaced** — `vg-359` (which also owns the one stale capture), `vg-360` and `vg-361`; nothing fixed on sight, because the first question for each is whether the surface moved or the locator did, and those want opposite fixes.
