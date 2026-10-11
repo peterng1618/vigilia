@@ -23,16 +23,18 @@ satisfies every token in the bible and still does not look like the mockup.
 
 ## Active work
 
-- **No plan is active.** Plan 6 is finished locally and moved to [`archive/`](docs/superpowers/plans/archive/2026-10-08-iconography-and-copy.md); the next plan starts at the queued rulings below.
+- **No plan is active.** Plan 6 is complete and moved to [`archive/`](docs/superpowers/plans/archive/2026-10-08-iconography-and-copy.md), its final whole-branch review clean; the next plan starts at the queued rulings below.
 - **Plan 6's nine tasks are complete**: the census, the one glyph vocabulary and weight rule, the closed kind set, the one-string pairing, the copy nets, the ratchet, the sixteen-item Acceptance ledger and Task 9's parity capture.
 - **Its Acceptance ledger reads fifteen met, one not met** — §13.1's real-host walkthrough, which plan 6 was forbidden to add and no other plan owns.
 - **Two changes are ruled and queued after plan 6** (`vg-330`, `vg-331`): Settings becomes a pane opened from the rail's gear with the four slots kept and the drawing redrawn as a panel, and the palettes gain a second highlight whose role is an attention or in-flight state, defined before any colour is chosen.
 
 ## Last completed change
 
-- **Plan 6's fix round 1**: the four citation sites that had rotted past the code under them now name the test rather than the line — the archive's Acceptance item 11 and its register paragraph, this file's known-red bullet, and `vg-204`'s detail — each title read against its test's body first; `keyboard.spec.ts:123` is `const BOUNDARY_MIN = 3;`, a constant and no test.
-- **Two rows filed, not fixed**: `vg-341`, the seven shell captures (the add pane plus six `shell-palette-`) last touched at `7efea17f`, before Task 2's weight collapse, so they depict superseded chrome weights and caveat acceptance item 15's evidence; and `vg-342`, `settingsField()` with zero production callers and a module doc naming a consumer that is not there, which is not a plan-6 finding.
-- **`backlog:check` reads 201 items**, the 199 the last round left plus this round's two rows.
+- **Plan 6 passed its final whole-branch review and closed**: nine tasks over `762c740c..f7078e93`, verdict *ship it* with zero Critical, and the reviewer reproduced the ledger's fifteen met / one not met against the code rather than reading it.
+- **Its two findings were both a cited line number that had rotted** — item 11's `:1510`/`:1616` shifted 259 lines under Task 9's inserted capture, and the `keyboard.spec.ts` pointer is a file-header constant and no test — so all four citations now carry the test's title instead, which cannot rot.
+- **Two rows filed, not fixed**: `vg-341`, the seven shell captures (the add pane plus six `shell-palette-`) last touched at `7efea17f`, before Task 2's weight collapse, so they depict superseded chrome weights and caveat acceptance item 15's evidence; and `vg-342`, `settingsField()` with zero production callers and a module doc naming a consumer that is not there.
+- **`vg-204`'s two remaining locators were corrected on the fly** (`7d128c51`): one pointed at a comment where the assertion is at `:460`, the other at a `panel.dom.test.ts` that four files share and none of which records the incident.
+- **`backlog:check` reads 201 items, and the plan's SDD workspace is kept rather than deleted** — plan 6 ran on `develop`, so there was no branch to finish and no push is authorised.
 
 ## Next
 
