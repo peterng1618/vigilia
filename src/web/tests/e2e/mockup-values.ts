@@ -1006,4 +1006,37 @@ export const PARITY: readonly ParityRegion[] = [
       "§7.8 (`:412`) — 'Palette choices retain visual swatches'; the swatch's form is the drawing's, and §5 (`:155`) names a swatch, never one",
     surface: "settings",
   },
+  {
+    /* **The frame's inset — the one settings region a predating rule keeps, and
+       the licence is §3's own spacing table.** The census records `#4` and `#7`
+       as one composition difference: the drawing's frame carries no padding of
+       its own and insets *from its children* (`current/settings.html:41`
+       `padding:14px 16px`, `:22` `padding:11px 7px`), while `.editor-shell-dialog`
+       carries `padding: 20px 24px` on the frame and none on the panel. The two
+       differ in **where** the inset sits, not in whether there is one — and §3
+       `:79` positively requires `20–24` for "dialog padding", which is the
+       product's value, so this is a difference kept by a rule that predates it,
+       not a defect.
+
+       **Task 2 Step 2 may move this value.** It rebuilds `.editor-shell-dialog`'s
+       padding as part of the nav (its `Produces`: "a `.editor-shell-dialog` whose
+       padding is the nav's geometry rather than a padded column around a strip"),
+       so this licence is re-examined when that lands rather than silently
+       inherited — the row names the value, so a change to it brings the reader
+       back here.
+
+       The selector reads the drawing's *own* inset declaration (`:41`), because
+       that is the half of the pair the drawing states as a value: the frame's
+       silence about padding is the other half, and it is silence this reader
+       would report as the drawing drawing nothing. */
+    region: "settings modal — the frame's inset (the dialog's padding)",
+    mockupPath: SETTINGS_MOCKUP_PATH,
+    mockupSelector: '[style*="flex:1;min-width:0;padding:14px 16px"]',
+    mockupProperty: "padding",
+    productSelector: ".editor-shell-dialog",
+    bibleSection: "§3 spacing (`design-language.md:79`)",
+    surface: "settings",
+    licensed:
+      '§3 (`design-language.md:79`): "| 20–24 | Between regions; dialog padding |" — the product renders `padding: 20px 24px` on `.editor-shell-dialog`, the value §3 requires for a dialog; the drawing draws no frame padding and insets its children (`current/settings.html:41` `padding:14px 16px`) instead.',
+  },
 ];

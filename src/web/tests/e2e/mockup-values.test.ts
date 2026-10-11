@@ -516,9 +516,14 @@ test("every row names a comparator, and each row's drawing value is one it reads
       row.mockupPath === undefined ? drawing : readMockup(row.mockupPath);
     // A licensed row is recorded, not asserted, so its declared value need not
     // be a length this file could compare — the stage ground is a gradient. The
-    // **value** is still read, though, and matched to the treatment the licence
-    // names: a licence quotes a declaration, and one nobody reads licenses
-    // whatever is there now, including a region the drawing stopped drawing.
+    // **value** is still read, though: a licence quotes a declaration, and one
+    // nobody reads licenses whatever is there now, including a region the drawing
+    // stopped drawing. `mockupDeclaredOrNull` throws when the selector addresses
+    // nothing, so reaching the assertion is itself the proof that the licence's
+    // region is still drawn; the value only has to be one the drawing still
+    // declares. (The stage ground's licence is additionally about its *texture* —
+    // that reading lives in the row's own licence text, not in a substring every
+    // full-time licensed row would have to share.)
     if (row.licensed !== undefined) {
       const declared = mockupDeclaredOrNull(
         source,
@@ -529,10 +534,6 @@ test("every row names a comparator, and each row's drawing value is one it reads
         declared,
         `${row.region}: the licensed row's selector reads nothing, so its licence quotes a region the drawing no longer draws`,
       ).not.toBeNull();
-      expect(
-        declared,
-        `${row.region}: the licence is about the drawing's diagonal texture, and the declaration is not one`,
-      ).toContain("repeating-linear-gradient(45deg");
       continue;
     }
     // Throws when the selector addresses nothing, which is the failure this

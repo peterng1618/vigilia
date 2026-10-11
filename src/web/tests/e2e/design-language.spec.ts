@@ -2151,9 +2151,11 @@ const SETTINGS_DRAWING = "docs/design/mockups/current/settings.html";
  * **A `licensed` row is recorded, not asserted.** `licensed` carries a
  * *predating* rule — a bible §N, an ADR, a spec section — that positively
  * requires the product's treatment. Its absence is what makes a difference a
- * defect; today one row carries one (the stage ground, §7.5, which names that
- * property and permits both variants — the narrow case, and never "the bible does
- * not forbid it").
+ * defect; two rows carry one today, each the narrow case and never "the bible
+ * does not forbid it": the stage ground (§7.5, which names that property and
+ * permits both variants) and the settings modal's frame inset (§3 `:79`, whose
+ * spacing table positively requires `20–24` for "dialog padding" — the value
+ * `.editor-shell-dialog` renders where the drawing insets its children).
  *
  * **The header row is the control.** The drawing and the product agree that the
  * header is 42px, so it passed from the start and still does. Its job is to keep
