@@ -32,19 +32,19 @@ satisfies every token in `DESIGN.md` and still does not look like the mockup.
 
 ## Last completed change
 
-- **The census fix round's re-review closed four findings and found three new ones** — F3, F6, F7 and F8 are reproduced from the code rather than read off the report: exactly seven id-creation sites, the `.agent-scratch` directory accounting for exactly the eight files in the old denominator, and two line conventions differing by the file count.
-- **All three new findings are a fix that introduced an error of the class it was closing** — §6 calls `snap-manager` "identifier 10" while the table's row 10 is the map's self-contradictions, and a count was changed from "7 modules" to "7 managers" while the nine files touch only five manager directories.
-- **`vg-234`'s verdict now rests on a rule the census states in one section and contradicts in another** — a directory row does not name a module (§5) versus §1.1's sixteen rows that name `*-manager/` directories; the distinction that resolves it is a module directory whose entry is `index.ts` against a container directory that names no module, and round 2 must draw it.
-- **I made the same word-swap one document downstream** — `vg-247` and the plan both said "9 files (7 managers)" because I copied the census's "7 modules" and changed the word myself, while correcting someone else's count; both now read 9 files, 7 modules, only 5 of them manager directories.
-- **Task 1's round-4 re-review returned "fix sound"** — it induced the defect's absence across a six-point throw matrix, and all five red-proofs fail the gate by name at md5 `be09fee1c4577e5244bf46a8966c8845`.
+- **The census settled the rule that decides `vg-234`, with a criterion better than the brief's** — a row names a module when the file holding the guard is fixed by the row, which a `*-manager/` directory does by pointing at its single `index.ts` entry and which `renderer-core/src/theme/` does not do for any of its eleven modules.
+- **It rejected the test I proposed, with a measured counterexample** — `selection-inspector/` *has* an `index.ts` and is still a shelf, so an entry point does not make a directory a module; the rule now lives in §1.1 with §5 pointing at it rather than being true in one section and false in another.
+- **It corrected the review rather than the code, and was right to** — the previous round's "sixteen" §1.1 manager-directory rows was one short, `asset-manager` being omitted, so it is seventeen, measured rather than accepted.
+- **`vg-234`'s reason is restated on that rule** — the row now says *why* the theme directory names no module instead of asserting that directories generally do not.
+- **Task 1's round 5 made the candidate marker failure-shaped and red-proofed its own risk** — the old intactness predicate passed 22/22 on the new marker, which is exactly the disarming the round existed to prevent — but its atomic write is conditional and falls back on this box, so that half is not delivered as a guarantee.
 
 ## Next
 
-1. **Two rounds are running**: Task 1's round 5 — the candidate report's crash marker still lets `!doc.candidates` read a crashed scan as a clean sweep, on the artefact Phase 2 reads — and the census's round 2 on R1, R2 and R3.
-2. **`vg-234` is not final until round 2 draws the module-versus-container distinction** — its verdict was fixed by the rule the census now states in §5 and contradicts in §1.1, so the row is only as sound as the rule's final form.
-3. **Task 9, the redistribution, once both close** — one manager per commit, the move relocates the *decision* rather than the code, it orders by the census's shape labels, and the map is updated in the same commit as the move.
-4. **Phase 2's candidate report at HEAD, then per-candidate verification** — nothing is deleted until each candidate is checked against the string-resolved vocabulary: the `data-vigilia-*` attributes, the `--shell-*` custom properties, the `KIND_*` registries and the four gate scripts that read the source tree as data.
-5. **`vg-368` waits on a decision** — whether `src/web/.agent-scratch/` is deleted, relocated outside the tree, or excluded per tool; deleting is not obviously safe because it holds screenshots and a vitest report that may be the only copy.
+1. **Two re-reviews are running**: round 5's, ruling on whether the atomic write's new "destination briefly absent" mode is a net improvement, neutral or a regression for the readers this report actually has, and the census's round 2, testing the new row-naming rule's consequences across every §1.1 row.
+2. **Task 9, the redistribution, once both close** — one manager per commit, the move relocates the *decision* rather than the code, it orders by the census's shape labels, and the map is updated in the same commit as the move.
+3. **Phase 2's candidate report at HEAD, then per-candidate verification** — nothing is deleted until each candidate is checked against the string-resolved vocabulary: the `data-vigilia-*` attributes, the `--shell-*` custom properties, the `KIND_*` registries and the four gate scripts that read the source tree as data.
+4. **`vg-368` waits on a decision** — whether `src/web/.agent-scratch/` is deleted, relocated outside the tree, or excluded per tool; deleting is not obviously safe because it holds screenshots and a vitest report that may be the only copy.
+5. **The three failures the capture run surfaced** — `vg-359` (which also owns the one stale capture), `vg-360` and `vg-361`; nothing fixed on sight, because the first question for each is whether the surface moved or the locator did, and those want opposite fixes.
 
 ## Blockers / unverified
 
