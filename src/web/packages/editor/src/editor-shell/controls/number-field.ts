@@ -1,6 +1,6 @@
 import { uiCopy } from "../../ui-copy.js";
 
-export interface NumberFieldOptions {
+interface NumberFieldOptions {
   readonly label: string;
   readonly value: number;
   readonly data: string;
@@ -16,7 +16,7 @@ export interface NumberFieldOptions {
   readonly onCommit: (value: number) => void;
 }
 
-export interface NumberField {
+interface NumberField {
   readonly row: HTMLElement;
   readonly input: HTMLInputElement;
   setValue(value: number): void;
@@ -82,7 +82,7 @@ function boundLine(
     it crossed instead of reverting it, and owns the rollback for the values it
     refuses by restoring the last value it accepted. `numberField` wraps it in a
     labelled row, and the caller passes the row the error line belongs to. */
-export function numberInput(options: NumberInputOptions): NumberInput {
+function numberInput(options: NumberInputOptions): NumberInput {
   let last = options.value;
   const invalidMessage = options.invalidMessage ?? uiCopy.panels.invalidNumber;
   const label = document.createElement("label");

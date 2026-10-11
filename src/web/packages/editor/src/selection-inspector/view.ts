@@ -318,7 +318,7 @@ export interface RunEdits {
 }
 
 /** The text layout keys the run editor writes, whichever are present. */
-export interface TextLayoutPatch {
+interface TextLayoutPatch {
   readonly align?: string;
   readonly verticalAlign?: string;
   readonly wrap?: boolean;
@@ -413,7 +413,7 @@ const WRITABLE_FIELD_IDS: ReadonlyMap<string, WritableKind> = new Map([
 ]);
 
 /** Why an edit was refused; `undefined` means it may reach the write funnel. */
-export type EditRefusal = "stale" | "locked" | "unknown" | "invalid";
+type EditRefusal = "stale" | "locked" | "unknown" | "invalid";
 
 /**
  * The guard in front of the write funnel, as a pure decision so it can be

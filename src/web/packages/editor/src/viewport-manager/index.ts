@@ -77,7 +77,7 @@ export interface ViewportManager {
   destroy(): void;
 }
 
-export interface ViewportManagerInput {
+interface ViewportManagerInput {
   readonly canvas: Canvas;
   readonly host: HTMLElement;
   readonly artboard: () => { readonly width: number; readonly height: number };

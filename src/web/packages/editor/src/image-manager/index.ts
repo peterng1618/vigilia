@@ -5,7 +5,7 @@ import { newObjectName } from "../new-object-defaults.js";
  * Decoded-pixel ceiling for imported and rehydrated images. Unrelated to
  * `MAX_ARTBOARD_DIMENSION`, which bounds document geometry, not pixels.
  */
-export const MAX_IMPORT_IMAGE_EDGE = 4096;
+const MAX_IMPORT_IMAGE_EDGE = 4096;
 
 export interface ImageManager {
   importImage(options: {

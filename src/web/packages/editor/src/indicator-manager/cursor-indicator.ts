@@ -36,7 +36,7 @@ const CURSOR_INDICATOR_OFFSET_X = 16;
 /** Vertical pointer offset in pixels. */
 const CURSOR_INDICATOR_OFFSET_Y = 16;
 
-export interface CursorIndicator {
+interface CursorIndicator {
   readonly el: HTMLDivElement;
   showAtPointer(input: {
     readonly text: string;

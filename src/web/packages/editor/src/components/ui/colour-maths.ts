@@ -7,7 +7,7 @@
  * stays ruled out for this field.
  */
 
-export interface Rgba {
+interface Rgba {
   readonly r: number;
   readonly g: number;
   readonly b: number;
@@ -112,7 +112,7 @@ export function hsvaToRgba({ h, s, v, a }: Hsva): Rgba {
 }
 
 /** `hsl()` / `hsla()`, which the theme's own tokens are written in. */
-export function hslaToHex(hsl: string): string | undefined {
+function hslaToHex(hsl: string): string | undefined {
   const match =
     /^hsla?\(\s*([\d.]+)(?:deg)?[,\s]+([\d.]+)%[,\s]+([\d.]+)%(?:[,\s/]+([\d.]+%?))?\s*\)$/i.exec(
       hsl.trim(),

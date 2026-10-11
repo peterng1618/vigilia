@@ -161,7 +161,7 @@ function contextRows(
  * here and stopping propagation is what lets the list be a list: navigation
  * while focus is inside it, nudging while it is not.
  */
-export function moveFocus(
+function moveFocus(
   event: React.KeyboardEvent<HTMLDivElement>,
   row: LayerRow,
   bridge: EditorShellBridge | undefined,

@@ -50,7 +50,7 @@ export type ObjectActionId =
   | "ungroup"
   | `arrange:${ArrangeAction}`;
 
-export interface ObjectAction {
+interface ObjectAction {
   readonly id: ObjectActionId;
   readonly label: string;
   readonly icon: LucideIcon;
@@ -226,7 +226,7 @@ const ARRANGE_ICONS: Readonly<Record<ArrangeAction, LucideIcon>> = {
  * which is undefined until a bridge is set. The threshold comes from
  * `canArrange`'s own owner, so a control cannot advertise an action it refuses.
  */
-export function arrangeEligible(
+function arrangeEligible(
   count: number,
   locked: boolean,
   id: ObjectActionId,

@@ -13,7 +13,7 @@ const SPACING_CHAIN_DISTANCE_TOLERANCE = 0.001;
 export const ACTIVE_MOVEMENT_SPACING_SOURCE_ID = "movement-active-target";
 
 /** An exact neighbour interval from the gesture-start snapshot. */
-export type MovementSpacingInterval = Readonly<{
+type MovementSpacingInterval = Readonly<{
   id: string;
   type: SpacingPattern["type"];
   axis: number;

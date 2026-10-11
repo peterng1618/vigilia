@@ -22,7 +22,7 @@ import type { FieldView } from "./view.js";
  */
 
 /** Removes the property outright: an ordinary object carries no mark at all. */
-export function clearMark(object: FabricObject): void {
+function clearMark(object: FabricObject): void {
   delete (object as unknown as Record<string, unknown>)[
     VIGILIA_BLEEDS_PROPERTY
   ];

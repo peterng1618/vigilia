@@ -7,7 +7,7 @@ import { resolutionValue } from "../../selection-inspector/appearance.js";
 import { documentReferences } from "../../selection-inspector/style.js";
 import { uiCopy } from "../../ui-copy.js";
 
-export interface DocumentReferencesOptions {
+interface DocumentReferencesOptions {
   /**
    * Read on demand rather than held: this panel is mounted for the whole
    * session and never writes, so pulling the current globals on each render
@@ -35,7 +35,7 @@ export interface DocumentReferencesPanel {
  * a section that opens **closed**, which is the whole point: the author is told
  * before they look.
  */
-export function DocumentReferences(props: {
+function DocumentReferences(props: {
   readonly globals: FabricGlobals | undefined;
 }): React.JSX.Element {
   return (

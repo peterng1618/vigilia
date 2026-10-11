@@ -5,7 +5,7 @@ import { ActiveSelection, type Canvas, type FabricObject } from "fabric/es";
     — the selection inspector — would go on describing the object as editable. */
 export const OBJECT_LOCK_CHANGED_EVENT = "editor:object-lock-changed";
 
-export interface ObjectLockManager {
+interface ObjectLockManager {
   lockObject(input?: { readonly object?: FabricObject }): void;
   unlockObject(input?: { readonly object?: FabricObject }): void;
   /** Releases the canvas listeners; the manager does not outlive its editor. */

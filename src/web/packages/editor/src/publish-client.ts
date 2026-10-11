@@ -11,7 +11,7 @@ import type { FabricThemeEnvelopeInput } from "@vigilia/renderer-core";
  */
 const DEFAULT_DEBOUNCE_MS = 400;
 
-export interface Publisher {
+interface Publisher {
   offer(document: {
     readonly id: string;
     readonly envelope: FabricThemeEnvelopeInput;

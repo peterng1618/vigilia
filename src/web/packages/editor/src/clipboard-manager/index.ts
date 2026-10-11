@@ -20,7 +20,7 @@ import type { ImageManager } from "../image-manager/index.js";
 const PASTE_OFFSET = 10;
 
 /** What places a pasted image. Returns whatever the importer returns. */
-export type ImageImporter = (file: File) => Promise<unknown>;
+type ImageImporter = (file: File) => Promise<unknown>;
 
 /**
  * What a pasted or duplicated object owes the document, written through the
@@ -47,7 +47,7 @@ export interface ClipboardManager {
   destroy(): void;
 }
 
-export interface ClipboardManagerOptions {
+interface ClipboardManagerOptions {
   readonly canvas: Canvas;
   readonly save: () => void;
   readonly errors: ErrorManager;

@@ -77,7 +77,7 @@ export interface SelectionInspector {
   setLocale(next: string | undefined): void;
 }
 
-export interface SelectionInspectorOptions {
+interface SelectionInspectorOptions {
   readonly editor: EditorInteraction;
   /** Theme globals, so a token's resolution can be shown. */
   readonly globals?: FabricGlobals;

@@ -14,7 +14,7 @@ import { resolveToken, resolveTypePreset } from "./appearance.js";
 
 /** One reference the document offers: the stored reference, the name the author
  *  reads, and what it answers with. */
-export interface DocumentReference {
+interface DocumentReference {
   /** The stored reference, e.g. `palette.ink`. */
   readonly ref: string;
   /** The authored name where the document declares one, else the reference. */

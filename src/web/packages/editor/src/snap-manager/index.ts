@@ -32,7 +32,7 @@ export interface SnapManager {
   destroy(): void;
 }
 
-export interface SnapManagerOptions {
+interface SnapManagerOptions {
   readonly canvas: Canvas;
   /** Artboard extent; replaces the fork's montage area. */
   readonly bounds: () => ObjectBounds;

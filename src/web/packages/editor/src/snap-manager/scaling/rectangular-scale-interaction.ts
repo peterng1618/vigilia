@@ -25,7 +25,7 @@ import type {
 } from "./scale-snapping-resolver.js";
 
 /** The source of one rectangular scale step's multipliers. */
-export type RectangularScaleIntentSource =
+type RectangularScaleIntentSource =
   | "fabric-preview"
   | "pointer-projection";
 
@@ -179,7 +179,7 @@ export function readFinalRectangularScaleGeometry({
 }
 
 /** Chooses how the handle resizes, given the handle and Fabric's settings. */
-export function resolveRectangularScaleGestureMode({
+function resolveRectangularScaleGestureMode({
   canvas,
   pointerEvent,
   projection,
@@ -257,7 +257,7 @@ function readRectangularScaleMultipliers({
 }
 
 /** Builds the canonical raw intent of the shared snapping calculation. */
-export function createRectangularScaleIntent({
+function createRectangularScaleIntent({
   mode,
   multipliers,
   pointerEvent,

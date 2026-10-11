@@ -29,7 +29,7 @@ export interface AppearanceContext {
 }
 
 /** A palette reference, and the name its own owner gives that paint. */
-export interface PaintReference {
+interface PaintReference {
   readonly label: string;
   readonly ref: `palette.${string}`;
 }

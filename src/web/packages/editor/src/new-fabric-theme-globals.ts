@@ -11,19 +11,6 @@ import type { FabricPalette, TypePreset } from "@vigilia/renderer-core";
  */
 
 /**
- * The palette is the single place a colour is named. `solidOf` below repeats
- * the solid ones because a scene object also carries Fabric's own resolved
- * colour beside its `vigiliaPaint` reference — one authored fact, two
- * representations, not two authored facts.
- *
- * The artboard's own paint is `none`, because the backdrop is a packaged media
- * layer mounted below the canvas and an opaque artboard paint would hide it; the
- * letterbox bars outside it are `bars`. `background` survives that change as
- * the **surface token new objects take** — see the note on its entry.
- */
-export const panel = "#081523d9";
-
-/**
  * The tint a *frosted* panel carries, which is not the tint an opaque one does.
  *
  * Measured from both ends, because it is a floor set by what is behind the glass
@@ -67,6 +54,17 @@ export const newPresetType: TypePreset = {
   size: 16,
 };
 
+/**
+ * The palette is the single place a colour is named. `solidOf` below repeats
+ * the solid ones because a scene object also carries Fabric's own resolved
+ * colour beside its `vigiliaPaint` reference — one authored fact, two
+ * representations, not two authored facts.
+ *
+ * The artboard's own paint is `none`, because the backdrop is a packaged media
+ * layer mounted below the canvas and an opaque artboard paint would hide it; the
+ * letterbox bars outside it are `bars`. `background` survives that change as
+ * the **surface token new objects take** — see the note on its entry.
+ */
 export const starterPalette = {
   none: { name: "None", value: { kind: "solid", color: "transparent" } },
   // Not the artboard's paint any more — that is `none`, because the backdrop is

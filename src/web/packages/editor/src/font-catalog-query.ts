@@ -19,7 +19,7 @@ export interface CatalogQuery {
   readonly sort: FontSort;
 }
 
-export interface FacetOption {
+interface FacetOption {
   readonly value: string;
   readonly count: number;
 }

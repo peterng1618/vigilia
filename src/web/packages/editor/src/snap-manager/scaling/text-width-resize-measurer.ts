@@ -9,7 +9,7 @@ import {
 } from "./text-width-resize-projection.js";
 
 /** The exact geometry of a Textbox at one candidate width. */
-export type TextWidthResizeMeasurement = Readonly<{
+type TextWidthResizeMeasurement = Readonly<{
   projection: ScaleStepProjectionInput;
   width: number;
 }>;

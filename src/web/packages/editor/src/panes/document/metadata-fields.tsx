@@ -21,7 +21,7 @@ import { uiCopy } from "../../ui-copy.js";
  * and `themeLanguage` always leaves with a value, because a v2 envelope requires
  * one and the control's blank reading is not a language.
  */
-export interface MetadataFieldsProps {
+interface MetadataFieldsProps {
   readonly metadata: ThemeMetadata | undefined;
   readonly onCommit: (next: ThemeMetadata) => void;
 }

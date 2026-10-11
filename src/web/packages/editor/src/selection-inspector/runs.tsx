@@ -44,7 +44,7 @@ import type { RunEdits, RunOptionView, RunRowView, RunsView } from "./view.js";
  */
 
 /** The read context `projectRuns` needs; the write half is `RunEdits`. */
-export interface RunsProjection {
+interface RunsProjection {
   readonly globals: FabricGlobals | undefined;
   readonly locale: string | undefined;
   readonly nodeBindings: ((nodeId: string) => readonly Binding[]) | undefined;
@@ -58,7 +58,7 @@ export interface RunsProjection {
 }
 
 /** A run's description for a list: what it is, and what it says. */
-export function describeRun(run: TextRun): string {
+function describeRun(run: TextRun): string {
   if (run.kind === "value") {
     return `${uiCopy.inspectorFields.valueRun} (${run.bindingId})`;
   }

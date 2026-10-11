@@ -18,7 +18,7 @@
 // rather than the editor. See docs/decisions/0024.
 import type { FontTrioRole } from "./font-catalog.js";
 
-export interface GeneratedFace {
+interface GeneratedFace {
   readonly id: string;
   readonly fontId: string;
   readonly family: string;
@@ -32,7 +32,7 @@ export interface GeneratedFace {
   readonly clamped: boolean;
 }
 
-export interface GeneratedTrio {
+interface GeneratedTrio {
   readonly id: string;
   readonly name: string;
   readonly description: string;

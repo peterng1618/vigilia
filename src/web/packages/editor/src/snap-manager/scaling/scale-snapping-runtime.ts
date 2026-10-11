@@ -17,20 +17,20 @@ import {
 } from "./scale-snapping-resolver.js";
 
 /** A single-use scale plan id. */
-export type ScalePlanToken = Readonly<{
+type ScalePlanToken = Readonly<{
   sessionId: number;
   step: number;
 }>;
 
 /** A fresh pointer step the object manager may apply exactly once. */
-export type PlannedScaleRuntimeStep = Readonly<{
+type PlannedScaleRuntimeStep = Readonly<{
   kind: "planned";
   token: ScalePlanToken;
   plan: ScaleSnapPlan;
 }>;
 
 /** A repeat of an already computed native pointer step. */
-export type DuplicateScaleRuntimeStep = Readonly<{
+type DuplicateScaleRuntimeStep = Readonly<{
   kind: "duplicate";
   phase: "pending" | "verified";
   token: ScalePlanToken;
@@ -39,12 +39,12 @@ export type DuplicateScaleRuntimeStep = Readonly<{
 }>;
 
 /** A fresh or repeated scale-runtime result. */
-export type ScaleRuntimeStep =
+type ScaleRuntimeStep =
   | PlannedScaleRuntimeStep
   | DuplicateScaleRuntimeStep;
 
 /** The idempotent result of ending a scale session. */
-export type ScaleRuntimeCleanup = Readonly<{
+type ScaleRuntimeCleanup = Readonly<{
   didCleanup: boolean;
   hiddenGuides: readonly VerifiedScaleGuide[];
 }>;

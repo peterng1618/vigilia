@@ -8,7 +8,7 @@ import type {
 } from "./scale-snapping-resolver.js";
 
 /** An object with exact bounds the resized object can snap to. */
-export type ScaleSnapCandidateSource = Readonly<{
+type ScaleSnapCandidateSource = Readonly<{
   id: string;
   bounds: ObjectBounds;
   edgeCategory?: Extract<

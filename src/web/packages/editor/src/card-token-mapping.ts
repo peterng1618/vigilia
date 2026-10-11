@@ -43,7 +43,7 @@ import { paletteTokenRole } from "./new-object-defaults.js";
  * the typography the card was authored with. Neither being set means this
  * document cannot express the reference at all, and the card is refused.
  */
-export interface TokenResolution {
+interface TokenResolution {
   readonly ref: string | undefined;
   readonly literal: boolean;
   /** What the author is told was swapped, or `undefined` if nothing was. */

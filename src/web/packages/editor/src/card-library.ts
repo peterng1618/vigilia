@@ -143,7 +143,7 @@ export const CARD_LIBRARY: readonly CardUnit[] = [
 const COPY_PREFIX = "card";
 
 /** What one card resolves to: a scene object and the readings it now carries. */
-export interface CardCopy {
+interface CardCopy {
   readonly card: ObjectJson;
   /** Keyed by the copy's own object ids, never the source's. */
   readonly bindings: Readonly<Record<string, readonly Binding[]>>;
@@ -156,7 +156,7 @@ export interface CardCopy {
   readonly substitutions: readonly TokenSubstitution[];
 }
 
-export interface InstantiateCardOptions {
+interface InstantiateCardOptions {
   readonly unit: CardUnit;
   readonly globals: FabricGlobals | undefined;
   /** Every id the destination already holds, groups descended. */

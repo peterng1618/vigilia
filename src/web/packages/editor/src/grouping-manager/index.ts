@@ -26,7 +26,7 @@ export interface GroupingManager {
   destroy(): void;
 }
 
-export interface GroupingManagerOptions {
+interface GroupingManagerOptions {
   readonly canvas: Canvas;
   readonly save: () => void;
   readonly suspend: () => () => void;

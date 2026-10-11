@@ -7,7 +7,7 @@ import {
 
 /** Generic canvas stacking order; semantic layer projection lives in
  * editor-shell/layer-tree.ts. Each method reports whether a move happened. */
-export interface LayerManager {
+interface LayerManager {
   bringToFront(object?: FabricObject): boolean;
   bringForward(object?: FabricObject): boolean;
   sendToBack(object?: FabricObject): boolean;

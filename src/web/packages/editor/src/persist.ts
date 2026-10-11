@@ -1,7 +1,7 @@
 import type { FabricThemeEnvelope } from "@vigilia/renderer-core";
 import { readThemePackage, writeThemePackage } from "@vigilia/theme-package";
 
-export type PackageParseResult =
+type PackageParseResult =
   | {
       readonly ok: true;
       readonly envelope: FabricThemeEnvelope;
@@ -11,7 +11,7 @@ export type PackageParseResult =
     }
   | { readonly ok: false; readonly message: string };
 
-export type PackageSerializeResult =
+type PackageSerializeResult =
   | { readonly ok: true; readonly bytes: Uint8Array }
   | { readonly ok: false; readonly message: string };
 

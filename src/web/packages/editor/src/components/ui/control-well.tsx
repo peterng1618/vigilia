@@ -114,7 +114,7 @@ export function ControlWell(props: {
 }
 
 /** The ids one control needs. */
-export type ControlIds = {
+type ControlIds = {
   readonly control: string;
   readonly label: string;
   readonly reason: string;

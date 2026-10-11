@@ -18,7 +18,7 @@ import type { Bounds, SpacingGuide } from "./types.js";
 export const MOVEMENT_CORRECTION_COMPARISON_EPSILON = 0.000000001;
 
 /** The exact correction and chain chosen for one equal-spacing constraint. */
-export type ResolvedMovementSpacingCorrection = Readonly<{
+type ResolvedMovementSpacingCorrection = Readonly<{
   chain: MovementSpacingChain | null;
   delta: number;
   selections: readonly ResolvedSpacingSelection[];

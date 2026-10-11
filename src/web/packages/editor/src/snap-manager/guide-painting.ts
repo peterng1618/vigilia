@@ -1,7 +1,7 @@
 /**
  * Builds a rounded-rectangle path.
  */
-export const drawRoundedRectPath = ({
+const drawRoundedRectPath = ({
   context,
   x,
   y,

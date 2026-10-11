@@ -9,11 +9,11 @@ interface PreviewFontSet {
   delete(face: PreviewFontFace): boolean;
 }
 
-export interface PreviewHandle {
+interface PreviewHandle {
   readonly release: () => void;
 }
 
-export interface FontPreviewOptions {
+interface FontPreviewOptions {
   readonly fetch?: typeof fetch;
   readonly createFontFace?: (
     family: string,

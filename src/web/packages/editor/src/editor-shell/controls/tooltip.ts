@@ -41,7 +41,7 @@ let seq = 0;
     locator that names the class. */
 let open: Tooltip | undefined;
 
-export interface TooltipOptions {
+interface TooltipOptions {
   readonly trigger: HTMLElement;
   readonly text: string;
   /** The chord this control's action answers to, when it has one. Omitted —
@@ -56,7 +56,7 @@ export interface TooltipOptions {
   readonly shortcut?: { readonly printed: string; readonly spoken: string };
 }
 
-export interface Tooltip {
+interface Tooltip {
   /** Removes the popup and every listener this call added. */
   destroy(): void;
 }

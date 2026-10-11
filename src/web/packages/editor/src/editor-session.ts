@@ -79,7 +79,7 @@ import {
   type TypePresets,
 } from "./type-preset-manager/index.js";
 
-export interface EditorPanelHosts {
+interface EditorPanelHosts {
   /** Text and chart creation, and the declared-asset library at its foot. */
   readonly add: HTMLElement;
   /** The theme's own paints and type presets, in the Tokens pane. */
@@ -92,7 +92,7 @@ export interface EditorPanelHosts {
   readonly selection: HTMLElement;
 }
 
-export interface EditorSessionOptions {
+interface EditorSessionOptions {
   readonly shell: EditorShell;
   readonly source: SampleSource;
   readonly envelope: FabricThemeEnvelopeInput;

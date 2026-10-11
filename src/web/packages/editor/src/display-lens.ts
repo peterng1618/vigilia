@@ -126,7 +126,7 @@ export const DISPLAY_LENSES: readonly DisplayLens[] =
   );
 
 /** One orientation's previews, under the label the pickers head them with. */
-export interface DisplayLensGroup {
+interface DisplayLensGroup {
   readonly orientation: ArtboardOrientation;
   readonly lenses: readonly DisplayLens[];
 }

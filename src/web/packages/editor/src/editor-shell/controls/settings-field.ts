@@ -21,7 +21,7 @@ import { tooltip } from "./tooltip.js";
  * `visibleWhen` out of this file.
  */
 
-export interface SettingsFieldOptions {
+interface SettingsFieldOptions {
   /** The value at the descriptor's path, or `undefined` when none is authored. */
   readonly value: unknown;
   /**

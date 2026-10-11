@@ -24,7 +24,7 @@ import type { EditorActionFacade } from "./session-facade.js";
 export type ActiveKind = "none" | "object" | "group" | "chart";
 
 /** The object actions the shell can run; the registry owns the ids. */
-export type ShellAction = ObjectActionId;
+type ShellAction = ObjectActionId;
 
 export interface EditorShellSnapshot {
   readonly selectedCount: number;

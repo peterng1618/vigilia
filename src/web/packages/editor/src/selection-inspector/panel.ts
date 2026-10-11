@@ -71,7 +71,7 @@ const DEFAULT_PANEL_SHADOW_OFFSET = 4;
  * owns no radius field of its own — the two swept kinds lose their material
  * without anything here saying so.
  */
-export function supportsPanelFields(object: FabricObject): boolean {
+function supportsPanelFields(object: FabricObject): boolean {
   return (
     object instanceof Rect ||
     object instanceof Circle ||
@@ -474,7 +474,7 @@ const MAX_SWEEP_DEGREES = 360;
  * mean on every other shape. This is the rule the polygon branch above already
  * keeps — *"the points remain the only persisted truth"* — completed.
  */
-export function adoptGeometry(object: FabricObject): void {
+function adoptGeometry(object: FabricObject): void {
   // Every caller is a `Polygon`, a `Polyline` or a `Path`; all three re-measure
   // from their own geometry through this one method.
   (object as FabricObject & { setDimensions(): void }).setDimensions();

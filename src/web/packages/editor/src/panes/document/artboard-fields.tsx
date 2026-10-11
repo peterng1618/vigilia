@@ -38,7 +38,7 @@ import { uiCopy } from "../../ui-copy.js";
  * every time it draws, and a fresh array is what makes the figure follow the
  * scene.
  */
-export interface ArtboardFieldsProps {
+interface ArtboardFieldsProps {
   readonly artboard: Artboard;
   readonly globals: Globals | undefined;
   readonly assets: readonly AssetReference[];

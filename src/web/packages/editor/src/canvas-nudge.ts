@@ -17,7 +17,7 @@ interface NudgeObject extends FabricObject {
   readonly locked?: boolean;
 }
 
-export interface CanvasNudgeOptions {
+interface CanvasNudgeOptions {
   readonly canvas: Canvas;
   /** Only the two history calls a burst needs, so a test can pass a double. */
   readonly history: {

@@ -19,7 +19,7 @@ export type ObjectJson = Readonly<Record<string, unknown>>;
 
 // Authored positions are artboard top-left coordinates, never Fabric's centred defaults.
 const positioned = { originX: "left", originY: "top" } as const;
-export function rect(
+function rect(
   id: string,
   left: number,
   top: number,
@@ -62,7 +62,7 @@ export function rect(
  * The authored radius is the one the theme's cards share, and it is inside both
  * the published bound of 48 and Task 1's measured-flat 0-64 px band.
  */
-export const FROST_RADIUS = 40;
+const FROST_RADIUS = 40;
 
 export function frostedCard(
   id: string,

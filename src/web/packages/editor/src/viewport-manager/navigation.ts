@@ -57,7 +57,7 @@ function activatesOnSpace(target: EventTarget | null): boolean {
   return SPACE_ACTIVATED_ROLES.has(target.getAttribute("role") ?? "");
 }
 
-export interface ViewportNavigationInput {
+interface ViewportNavigationInput {
   readonly canvas: Canvas;
   readonly viewport: ViewportManager;
 }

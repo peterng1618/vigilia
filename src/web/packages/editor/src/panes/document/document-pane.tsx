@@ -29,7 +29,7 @@ import { MetadataFields } from "./metadata-fields.js";
  * which are the once-in-a-while controls and are disclosed under their own
  * heading rather than removed.
  */
-export interface DocumentPaneProps {
+interface DocumentPaneProps {
   readonly artboard: Artboard;
   readonly metadata: ThemeMetadata | undefined;
   readonly globals: Globals | undefined;

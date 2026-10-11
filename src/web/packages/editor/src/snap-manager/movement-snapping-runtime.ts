@@ -12,20 +12,20 @@ import {
 } from "./movement-snapping-resolver.js";
 
 /** A single-use movement plan id. */
-export type MovementPlanToken = Readonly<{
+type MovementPlanToken = Readonly<{
   sessionId: number;
   step: number;
 }>;
 
 /** A fresh pointer step that may be applied exactly once. */
-export type PlannedMovementRuntimeStep = Readonly<{
+type PlannedMovementRuntimeStep = Readonly<{
   kind: "planned";
   token: MovementPlanToken;
   plan: MovementSnapPlan;
 }>;
 
 /** A repeat of an already computed native pointer step. */
-export type DuplicateMovementRuntimeStep = Readonly<{
+type DuplicateMovementRuntimeStep = Readonly<{
   kind: "duplicate";
   phase: "pending" | "verified";
   token: MovementPlanToken;
@@ -34,12 +34,12 @@ export type DuplicateMovementRuntimeStep = Readonly<{
 }>;
 
 /** A fresh or repeated movement-runtime result. */
-export type MovementRuntimeStep =
+type MovementRuntimeStep =
   | PlannedMovementRuntimeStep
   | DuplicateMovementRuntimeStep;
 
 /** The idempotent result of ending a movement session. */
-export type MovementRuntimeCleanup = Readonly<{
+type MovementRuntimeCleanup = Readonly<{
   didCleanup: boolean;
 }>;
 

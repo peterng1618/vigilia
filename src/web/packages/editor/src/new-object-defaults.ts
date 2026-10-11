@@ -29,12 +29,12 @@ import {
 import { uiCopy } from "./ui-copy.js";
 
 /** Semantic defaults for a new object; generic construction remains editor-owned. */
-export interface NewPaintDefaults {
+interface NewPaintDefaults {
   readonly fill: unknown;
   readonly [VIGILIA_PAINT_PROPERTY]: FabricPaintRefs;
 }
 
-export interface NewTextDefaults extends NewPaintDefaults {
+interface NewTextDefaults extends NewPaintDefaults {
   /** What the layer list shows until the author renames it; the id stays the key. */
   readonly name: string;
   /** Placement, so a new object does not straddle the artboard corner. */
@@ -109,10 +109,10 @@ export const NEW_PANEL_SIZE = { width: 360, height: 200 } as const;
  * chosen: its card border first appears 10px in from the top-left corner on
  * both axes.
  */
-export const NEW_PANEL_RADIUS = 10;
+const NEW_PANEL_RADIUS = 10;
 
 /** The artboard a new object has to stay inside, and nothing more. */
-export interface NewObjectArtboard {
+interface NewObjectArtboard {
   readonly width: number;
   readonly height: number;
 }
@@ -120,7 +120,7 @@ export interface NewObjectArtboard {
 /** The artboard as the editor sees it *now*. A getter rather than a value because
     the artboard is resizable: a placement computed against the frame the author
     has since replaced is a ladder that no longer ends inside the picture. */
-export type NewObjectArtboardSource = () => NewObjectArtboard;
+type NewObjectArtboardSource = () => NewObjectArtboard;
 
 /**
  * Where the n-th new object lands: the inset plus n steps, wrapping back to
@@ -200,7 +200,7 @@ export function nextNewObjectPlacement(editor: {
   );
 }
 
-export interface NewPanelDefaults extends NewPaintDefaults {
+interface NewPanelDefaults extends NewPaintDefaults {
   /** Narrowed from `NewPaintDefaults`, so a panel goes straight into Fabric's
       own `Rect` constructor without a cast at the call site. */
   readonly fill: string | Gradient<"linear">;
@@ -294,7 +294,7 @@ export type ShapeKind = (typeof SHAPE_KINDS)[number];
  * and it is also the shape a reader recognises as "this is the curved thing"
  * before they have touched a field.
  */
-export const NEW_SWEEP_DEGREES = 90;
+const NEW_SWEEP_DEGREES = 90;
 
 /**
  * A stroke wide enough to read at artboard scale, and the round caps and joins
@@ -349,7 +349,7 @@ function newShapeStroke(
  * A hexagon rather than a triangle: a triangle has its own entry, and three is
  * the one side count that cannot show what the side-count field does.
  */
-export const NEW_POLYGON_SIDES = 6;
+const NEW_POLYGON_SIDES = 6;
 
 /**
  * Evenly spaced corners around a box, scaled to fill it.

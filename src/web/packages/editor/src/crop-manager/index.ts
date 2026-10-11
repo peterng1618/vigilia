@@ -1,7 +1,7 @@
 import { type Canvas, FabricImage, type FabricObject, Rect } from "fabric/es";
 import type { ErrorManager } from "../error-manager/index.js";
 
-export interface CropRect {
+interface CropRect {
   readonly width: number;
   readonly height: number;
   readonly left: number;
@@ -37,7 +37,7 @@ export function canCrop(target: object | undefined): target is FabricImage {
   return target instanceof FabricImage && (target.angle ?? 0) === 0;
 }
 
-export interface CropManagerOptions {
+interface CropManagerOptions {
   readonly canvas: Canvas;
   readonly save: () => void;
   readonly suspend: () => () => void;

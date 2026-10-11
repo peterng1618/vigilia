@@ -94,7 +94,7 @@ function usePresetSelection(
  * there is no selection at all — never the first declared preset, which is what
  * `Object.keys(presets)[0]` used to masquerade as.
  */
-export function Binding(props: {
+function Binding(props: {
   readonly presetId: string | undefined;
   readonly hasSelection: boolean;
   readonly activeKind: ActiveKind;

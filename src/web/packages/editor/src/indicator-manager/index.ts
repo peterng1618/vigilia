@@ -32,7 +32,7 @@ export interface IndicatorManager {
   destroy(): void;
 }
 
-export interface IndicatorManagerOptions {
+interface IndicatorManagerOptions {
   readonly canvas: Canvas;
   readonly showRotationAngle?: boolean;
   readonly showObjectSizeOnScale?: boolean;

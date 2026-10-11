@@ -21,7 +21,7 @@ export interface SpecimenCache {
   release(): void;
 }
 
-export interface SpecimenCacheOptions {
+interface SpecimenCacheOptions {
   readonly fetch?: typeof fetch;
   readonly createFontFace?: (
     family: string,

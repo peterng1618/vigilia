@@ -2,7 +2,7 @@ import { ColourPicker } from "./colour-picker.js";
 import { parseColour } from "./colour-maths.js";
 
 /** One authored stop: where it sits along the gradient, and what colour it is. */
-export interface GradientStop {
+interface GradientStop {
   readonly offset: number;
   readonly color: string;
 }

@@ -16,7 +16,7 @@ export type ScaleProjectionVariable =
   | "text-width";
 
 /** Coefficients of one checked edge's position against the canonical size parameters. */
-export type ScaleProjectionEdgeInput = Readonly<{
+type ScaleProjectionEdgeInput = Readonly<{
   edge: ScaleSceneEdge;
   coefficients: readonly number[];
 }>;
@@ -31,7 +31,7 @@ export type ScaleProjectionInput = Readonly<{
 }>;
 
 /** Validated linear model of one participating edge. */
-export type ScaleProjectionEdge = Readonly<{
+type ScaleProjectionEdge = Readonly<{
   axis: ScaleSceneAxis;
   edge: ScaleSceneEdge;
   baselinePosition: number;

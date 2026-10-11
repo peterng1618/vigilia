@@ -27,16 +27,16 @@ export type RectangularScaleGestureMode =
   | "uniform";
 
 /** The variable through which scale moves the rectangle's edges. */
-export type RectangularScaleProjectionVariable =
+type RectangularScaleProjectionVariable =
   | "multiplier-x"
   | "multiplier-y"
   | "uniform-multiplier";
 
 /** An edge of the rectangle's outer bounds in canvas coordinates. */
-export type RectangularScaleSceneEdge = ScaleSceneEdge;
+type RectangularScaleSceneEdge = ScaleSceneEdge;
 
 /** An axis of the rectangle's outer bounds in canvas coordinates. */
-export type RectangularScaleSceneAxis = ScaleSceneAxis;
+type RectangularScaleSceneAxis = ScaleSceneAxis;
 
 /** A two-dimensional scale-gesture point. */
 export type RectangularScalePoint = Readonly<{
@@ -64,7 +64,7 @@ export type RectangularScaleGestureTransform = Readonly<{
 }>;
 
 /** One edge's dependence on the scale multipliers. */
-export type RectangularScaleEdgeProjection = Readonly<{
+type RectangularScaleEdgeProjection = Readonly<{
   axis: RectangularScaleSceneAxis;
   edge: RectangularScaleSceneEdge;
   baselinePosition: number;
@@ -72,7 +72,7 @@ export type RectangularScaleEdgeProjection = Readonly<{
 }>;
 
 /** The moving edges of one scale mode. */
-export type RectangularScaleModeProjection = Readonly<{
+type RectangularScaleModeProjection = Readonly<{
   mode: RectangularScaleGestureMode;
   variables: readonly RectangularScaleProjectionVariable[];
   baselineValues: readonly number[];

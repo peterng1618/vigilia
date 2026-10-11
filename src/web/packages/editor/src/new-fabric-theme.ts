@@ -34,7 +34,7 @@ export const STARTER_TEMPLATE = {
 
 /** The starter envelope's own id, which is the host library's name for the
     reference theme and is referenced by the e2e suite and the host fixtures. */
-export const STARTER_ENVELOPE_ID = "vigilia-demo-dashboard";
+const STARTER_ENVELOPE_ID = "vigilia-demo-dashboard";
 
 /**
  * The reference composition, kept whole so it can be reached as what it now is

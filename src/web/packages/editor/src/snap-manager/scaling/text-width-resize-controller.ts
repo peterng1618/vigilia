@@ -38,7 +38,7 @@ export type TextWidthResizeEvent = Readonly<{
   transform?: Transform | null;
 }>;
 
-export interface TextWidthResizeController {
+interface TextWidthResizeController {
   /** Captures the gesture at `mouse:down`, before Fabric changes the width. */
   startGesture(event: TextWidthResizeEvent | undefined): void;
   /** Handles one `object:resizing` step and returns the guides it verified. */

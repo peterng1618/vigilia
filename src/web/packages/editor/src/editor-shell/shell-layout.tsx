@@ -67,7 +67,7 @@ import { ShortcutReference } from "./shortcut-reference.js";
  * these; it never renders panel content. The Composition pane has no node
  * here: the tree is React-owned and renders inside `Shell` from the bridge
  * directly. */
-export interface ShellHosts {
+interface ShellHosts {
   readonly canvas: HTMLElement;
   /** The Add pane's body: the insert list and, at its foot, the declared-asset
       library (`§5.2` absorbs the Assets pane into Add). */

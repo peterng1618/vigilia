@@ -33,7 +33,7 @@ import { uiCopy } from "../../ui-copy.js";
  * in words. `data-vigilia-panel` is the pane's, written by `Pane`, and is
  * deliberately not written again here.
  */
-export interface FileSectionProps {
+interface FileSectionProps {
   readonly manager: AssetManager;
   readonly editor: EditorInteraction;
   /** Told the declarations moved, so the document's own panels re-resolve: the

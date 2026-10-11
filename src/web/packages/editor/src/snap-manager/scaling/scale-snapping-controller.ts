@@ -48,7 +48,7 @@ export type ScaleSnappingEvent = Readonly<{
   scenePoint?: RectangularScalePoint;
 }>;
 
-export interface ScaleSnappingController {
+interface ScaleSnappingController {
   /** Captures the gesture at `mouse:down`, before Fabric moves the object. */
   startGesture(event: ScaleSnappingEvent | undefined): void;
   /** Handles one `object:scaling` step and returns the guides it verified. */
@@ -57,7 +57,7 @@ export interface ScaleSnappingController {
   finishGesture(): void;
 }
 
-export interface ScaleSnappingControllerOptions {
+interface ScaleSnappingControllerOptions {
   readonly canvas: Canvas;
   readonly bounds: () => ObjectBounds;
 }

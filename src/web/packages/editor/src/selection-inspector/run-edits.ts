@@ -16,7 +16,7 @@ import {
  */
 
 /** A binding with `format` set, or without the field when nothing was written. */
-export function withBindingFormat(binding: Binding, format: string): Binding {
+function withBindingFormat(binding: Binding, format: string): Binding {
   const trimmed = format.trim();
 
   if (trimmed.length === 0) {
@@ -28,7 +28,7 @@ export function withBindingFormat(binding: Binding, format: string): Binding {
 }
 
 /** A binding with `timeZone` pinned, or without the field when none is. */
-export function withBindingZone(binding: Binding, timeZone: string): Binding {
+function withBindingZone(binding: Binding, timeZone: string): Binding {
   const trimmed = timeZone.trim();
 
   if (trimmed.length === 0) {
@@ -40,7 +40,7 @@ export function withBindingZone(binding: Binding, timeZone: string): Binding {
 }
 
 /** A binding for `key`, with the fields the previous key's reading needed dropped. */
-export function reboundBinding(binding: Binding, key: string): Binding {
+function reboundBinding(binding: Binding, key: string): Binding {
   // A format describes how one key's reading is written, so changing the key
   // must not leave the old reading's format behind.
   const { format: _format, timeZone: _timeZone, ...rest } = binding;

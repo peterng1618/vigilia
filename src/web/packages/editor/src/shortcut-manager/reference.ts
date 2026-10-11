@@ -13,7 +13,7 @@ import {
 } from "./display.js";
 import { type ProductShortcutId, productShortcutIds } from "./index.js";
 
-export interface ShortcutReferenceRow {
+interface ShortcutReferenceRow {
   /** The action this row is about. A reader that edits a binding — the Keyboard
    *  tab — needs the id to write back, and a row that carried only its label
    *  would force that reader to match on words. */
@@ -26,7 +26,7 @@ export interface ShortcutReferenceRow {
   readonly spoken: string;
 }
 
-export interface ShortcutReferenceGroup {
+interface ShortcutReferenceGroup {
   readonly label: string;
   readonly rows: readonly ShortcutReferenceRow[];
 }

@@ -10,10 +10,10 @@ import type {
 } from "./scale-snapping-resolver.js";
 
 /** The side handle Fabric resizes a Textbox's canonical width with. */
-export type TextWidthResizeControlKey = "ml" | "mr";
+type TextWidthResizeControlKey = "ml" | "mr";
 
 /** A point in scene coordinates, independent of Fabric Point. */
-export type TextWidthResizeScenePoint = Readonly<{
+type TextWidthResizeScenePoint = Readonly<{
   x: number;
   y: number;
 }>;

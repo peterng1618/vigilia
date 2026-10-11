@@ -7,7 +7,7 @@ import {
 import { type Canvas, IText, Textbox } from "fabric/es";
 import { uiCopy } from "../ui-copy.js";
 
-export interface TextManager {
+interface TextManager {
   /** A `Textbox`, so the run editor's Wrap and Overflow mean what they say. */
   addText(options?: Readonly<Record<string, unknown>>): Textbox;
   /**

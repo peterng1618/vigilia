@@ -20,7 +20,7 @@ import backdropUrl from "./starter-backdrop.jpg?url";
 /** Package-relative path. The bytes are keyed by this and by nothing else. */
 export const STARTER_BACKDROP_PATH = "assets/starter-backdrop.jpg";
 
-export const STARTER_BACKDROP_ID = "starter-backdrop";
+const STARTER_BACKDROP_ID = "starter-backdrop";
 
 /**
  * 2330x1311: 1.39x the 1672-unit artboard, centre-cropped to its 1.7768 aspect

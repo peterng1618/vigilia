@@ -16,7 +16,7 @@ import {
  * ownership of the checked bit and its roving focus are the same in both, and
  * only the geometry differs — exactly as `ControlRow`'s three shapes divide.
  */
-export type ChoiceShape = "row" | "card";
+type ChoiceShape = "row" | "card";
 
 /**
  * One member of a closed set where every member has its own colour: a

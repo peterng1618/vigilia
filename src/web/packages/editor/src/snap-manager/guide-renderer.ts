@@ -45,7 +45,7 @@ export function renderSnappingGuides({
 }
 
 /** Returns the current viewport as scene bounds for guide painting. */
-export function calculateSnappingViewportBounds({
+function calculateSnappingViewportBounds({
   canvas,
 }: {
   canvas: Canvas;
@@ -114,7 +114,7 @@ function drawSpacingGuides({
 /**
  * Paints the lines and badges for equal-spacing intervals.
  */
-export const drawSpacingGuide = ({
+const drawSpacingGuide = ({
   context,
   guide,
   zoom,

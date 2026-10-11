@@ -53,7 +53,7 @@ function libraryBase(
  * document is composed, only how to hand one to the host's library and take the
  * answer back.
  */
-export interface ThemeLibraryManagerOptions {
+interface ThemeLibraryManagerOptions {
   /** The document as the author last left it. */
   readonly snapshot: () => FabricThemeEnvelope;
   /** The document's own declared bytes, which is what a save sends. */

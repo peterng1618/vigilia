@@ -12,7 +12,7 @@ import type { Binding, PlanTextSegment, TextRun } from "@vigilia/renderer-core";
  */
 
 /** Marks a placeholder as structure rather than data. */
-export const PLACEHOLDER_PREFIX = "@";
+const PLACEHOLDER_PREFIX = "@";
 
 /** How a value run is presented while authoring. */
 export type RunDisplayMode = "tokens" | "values";
@@ -26,7 +26,7 @@ export type RunDisplayMode = "tokens" | "values";
 export const DEFAULT_RUN_DISPLAY_MODE: RunDisplayMode = "values";
 
 /** Why a run cannot name a token, if it cannot. */
-export type PlaceholderProblem = "undeclared" | "unmapped";
+type PlaceholderProblem = "undeclared" | "unmapped";
 
 /**
  * The authoring text for one value run.

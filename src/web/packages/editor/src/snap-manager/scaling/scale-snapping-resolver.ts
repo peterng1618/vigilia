@@ -40,7 +40,7 @@ export type ScaleProjectionModeInput = Readonly<{
 }>;
 
 /** The validated resize mode for one gesture. */
-export type ScaleProjectionMode = Readonly<{
+type ScaleProjectionMode = Readonly<{
   id: string;
   projection: ScaleProjection;
 }>;
@@ -55,7 +55,7 @@ export type ScaleSnapCandidateInput = Readonly<{
 }>;
 
 /** A candidate for one particular moving edge, captured for the gesture. */
-export type ScaleSnapCandidate = Readonly<{
+type ScaleSnapCandidate = Readonly<{
   id: string;
   axis: ScaleSceneAxis;
   edge: ScaleSceneEdge;
@@ -65,18 +65,18 @@ export type ScaleSnapCandidate = Readonly<{
 }>;
 
 /** Axis state without a held guide. */
-export type FreeScaleAxisHold = Readonly<{
+type FreeScaleAxisHold = Readonly<{
   kind: "free";
 }>;
 
 /** A held guide on one axis. */
-export type HeldScaleAxisHold = Readonly<{
+type HeldScaleAxisHold = Readonly<{
   kind: "held";
   candidate: ScaleSnapCandidate;
 }>;
 
 /** One axis free or held. */
-export type ScaleAxisHold = FreeScaleAxisHold | HeldScaleAxisHold;
+type ScaleAxisHold = FreeScaleAxisHold | HeldScaleAxisHold;
 
 /** The temporary, independent snapping state of both axes. */
 export type ScaleHoldState = Readonly<{
@@ -85,7 +85,7 @@ export type ScaleHoldState = Readonly<{
 }>;
 
 /** Snap thresholds in scene coordinates, with zoom applied. */
-export type ScaleSnapThresholds = Readonly<{
+type ScaleSnapThresholds = Readonly<{
   acquire: number;
   release: number;
   spacingRelease: number;
@@ -93,7 +93,7 @@ export type ScaleSnapThresholds = Readonly<{
 }>;
 
 /** The gesture's start geometry and the available resize modes. */
-export type ScaleGestureBaselineInput = Readonly<{
+type ScaleGestureBaselineInput = Readonly<{
   bounds: ObjectBounds;
   fixedAnchor: ScaleScenePoint;
   projectionModes: readonly ScaleProjectionModeInput[];
@@ -111,7 +111,7 @@ export type ScaleGestureBaseline = Readonly<{
 }>;
 
 /** Modifier-key state for one pointer event. */
-export type ScaleSnapModifiers = Readonly<{
+type ScaleSnapModifiers = Readonly<{
   ctrlKey: boolean;
   shiftKey: boolean;
 }>;
@@ -130,7 +130,7 @@ export type ScaleStepProjectionInput = Readonly<{
 }>;
 
 /** The constraints of both axes chosen for one scaling step. */
-export type ScaleSnapConstraints = Readonly<{
+type ScaleSnapConstraints = Readonly<{
   x: PlannedScaleConstraint | null;
   y: PlannedScaleConstraint | null;
 }>;
@@ -164,10 +164,10 @@ export type ScaleSnapPlanRefinement = Readonly<{
 }>;
 
 /** How the constraint was chosen at the current pointer step. */
-export type ScaleSnapTransition = "acquired" | "held";
+type ScaleSnapTransition = "acquired" | "held";
 
 /** A constraint on one particular edge, which the object manager must apply once. */
-export type PlannedScaleConstraint = Readonly<{
+type PlannedScaleConstraint = Readonly<{
   axis: ScaleSceneAxis;
   candidate: ScaleSnapCandidate;
   transition: ScaleSnapTransition;
@@ -191,10 +191,10 @@ export type ScaleSnapPlan = Readonly<{
 }>;
 
 /** The result of applying one axis's constraint, as reported by the object manager. */
-export type ScaleDomainAxisVerdict = "satisfied" | "blocked";
+type ScaleDomainAxisVerdict = "satisfied" | "blocked";
 
 /** The result of applying the constraints and checking the object's protected properties. */
-export type FinalScaleDomainVerdict = Readonly<{
+type FinalScaleDomainVerdict = Readonly<{
   x: ScaleDomainAxisVerdict;
   y: ScaleDomainAxisVerdict;
   protectedState: "preserved" | "changed";
@@ -240,7 +240,7 @@ type ResolvedScaleProposals = Readonly<{
 }>;
 
 /** Common tolerance for checking the guide and the fixed point in scene coordinates. */
-export const SCALE_SNAP_VERIFICATION_EPSILON = 0.1;
+const SCALE_SNAP_VERIFICATION_EPSILON = 0.1;
 
 /** Tolerance for checking centres derived from exact bounds. */
 const EXACT_BOUNDS_CENTER_EPSILON = 0.000000001;

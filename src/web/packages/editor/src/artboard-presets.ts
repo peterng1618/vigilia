@@ -57,7 +57,7 @@ export const DEFAULT_ARTBOARD_PRESET = {
   orientation: "landscape",
 } as const satisfies ArtboardPresetChoice;
 
-export interface ArtboardPresetChoice {
+interface ArtboardPresetChoice {
   readonly ratio: ArtboardRatioId;
   readonly resolution: ArtboardResolutionId;
   readonly orientation: ArtboardOrientation;

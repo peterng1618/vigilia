@@ -41,32 +41,32 @@ import type {
 } from "./types.js";
 
 /** The dragged object's Fabric origin position. */
-export type MovementTargetPosition = Readonly<{
+type MovementTargetPosition = Readonly<{
   left: number;
   top: number;
 }>;
 
 /** One axis with no held guide. */
-export type FreeMovementAxisHold = Readonly<{
+type FreeMovementAxisHold = Readonly<{
   kind: "free";
 }>;
 
 /** A held line and the dragged object's matching anchor. */
-export type HeldMovementLineAxisHold = Readonly<{
+type HeldMovementLineAxisHold = Readonly<{
   kind: "line";
   candidate: MovementSnapCandidate;
   activeAnchor: MovementBoundsAnchor;
 }>;
 
 /** A held equal-spacing interval. */
-export type HeldMovementSpacingAxisHold = Readonly<{
+type HeldMovementSpacingAxisHold = Readonly<{
   kind: "spacing";
   candidateId: string;
   context: Readonly<SpacingSelectionContext>;
 }>;
 
 /** A free or held axis state. */
-export type MovementAxisHold =
+type MovementAxisHold =
   | FreeMovementAxisHold
   | HeldMovementLineAxisHold
   | HeldMovementSpacingAxisHold;
@@ -78,7 +78,7 @@ export type MovementHoldState = Readonly<{
 }>;
 
 /** One gesture's thresholds in scene coordinates. */
-export type MovementSnapThresholds = Readonly<{
+type MovementSnapThresholds = Readonly<{
   acquire: number;
   release: number;
   spacingRelease: number;
@@ -100,7 +100,7 @@ export type MovementGestureBaseline = Readonly<{
 }>;
 
 /** Axes that may snap during the current movement step. */
-export type MovementSnapAxes = Readonly<{
+type MovementSnapAxes = Readonly<{
   x: boolean;
   y: boolean;
 }>;
@@ -116,10 +116,10 @@ export type MovementRawIntent = Readonly<{
 }>;
 
 /** How the current step selects its constraint. */
-export type MovementSnapTransition = "acquired" | "held";
+type MovementSnapTransition = "acquired" | "held";
 
 /** The chosen line and anchor on one axis. */
-export type PlannedMovementLineConstraint = Readonly<{
+type PlannedMovementLineConstraint = Readonly<{
   kind: "line";
   axis: MovementSceneAxis;
   activeAnchor: MovementBoundsAnchor;
@@ -140,7 +140,7 @@ export type PlannedMovementSpacingConstraint = Readonly<{
 }>;
 
 /** The single line or spacing constraint of one axis. */
-export type PlannedMovementConstraint =
+type PlannedMovementConstraint =
   | PlannedMovementLineConstraint
   | PlannedMovementSpacingConstraint;
 
@@ -163,7 +163,7 @@ export type FinalMovementGeometry = Readonly<{
 }>;
 
 /** A line guide verified against the actual geometry. */
-export type VerifiedMovementGuide = Readonly<{
+type VerifiedMovementGuide = Readonly<{
   axis: MovementSceneAxis;
   activeAnchor: MovementBoundsAnchor;
   position: number;
@@ -200,7 +200,7 @@ type MovementSpacingCalculation = {
 };
 
 /** Shared tolerance for verifying an applied movement plan. */
-export const MOVEMENT_SNAP_VERIFICATION_EPSILON = 0.1;
+const MOVEMENT_SNAP_VERIFICATION_EPSILON = 0.1;
 
 /** Tolerance for comparing centres inside exact bounds. */
 const EXACT_BOUNDS_CENTER_EPSILON = 0.000000001;

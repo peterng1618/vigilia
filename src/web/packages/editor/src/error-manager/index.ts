@@ -1,7 +1,7 @@
 import type { Canvas } from "fabric/es";
 
 /** Named for Vigilia's own managers, not the retired fork's subsystems. */
-export type EditorErrorCategory =
+type EditorErrorCategory =
   | "clipboard"
   | "deletion"
   | "grouping"
