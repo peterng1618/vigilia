@@ -31,16 +31,16 @@ satisfies every token in `DESIGN.md` and still does not look like the mockup.
 
 ## Last completed change
 
-- **The visual stress set ran, and every §13.1 item is met by a test that already existed** — six-palette text/focus contrast, 1280×720 and 1440×900, 200% zoom, reduced motion, forced colours, the long Unicode name and the two-hundred-row Composition fixture, with **no browser failure and no flakiness**.
-- **Its contrast loops assert ratios, not colour membership**: `ratioAgainstPixel` composites the computed foreground over the screenshot's rendered pixel against `TEXT_MIN`/`BOUNDARY_MIN`, which is the proof §13.1 exists to require — five of the seven palette loops are contrast checks and two are not contrast checks at all.
-- **§13.1's one unexercised item cannot be exercised in a browser**: a long unresolved reference is *rendered* by the inspector and its copy exists, but the state is unreachable — the envelope validator refuses an undeclared reference on load, and forcing one onto a live object throws in the scene snapshot and takes the column down.
-- **It is covered at the level it runs** (`selection-inspector/index.dom.test.ts`, red-proved by truncating the value), and the impossibility is filed as `vg-358` rather than papered over — so the item is discharged at DOM level, which is an amendment to §13.1 and is recorded as one.
-- **Registers 212 rows**, and `format:check` — red over one unwrapped `expect(...)` my design-md plan had shipped — is green again (`3a3f48c7`).
+- **Graphite's one capture regeneration ran on the frozen tree at `d310ac7b`**: a full `desktop-chromium` capture run (208 tests, 3 failed, 15.1 min) rewrote 61 PNGs, and **46 are committed** because their chrome moved from a light ground to graphite.
+- **Fifteen rewritten PNGs were restored**, because a second and a third run of the same specs put their whole delta in the artboard's live canvas rather than the shell: `shell-palette-*` (six), the six settings-modal frames, `editor-shell-glyphs` and `editor-inspector-chart-graphite`.
+- **`editor-font-trio-editorial` is the one `-editorial` frame committed** — 364k changed pixels against a ~16k run-to-run canvas noise floor, so the type-preset pane does render differently at HEAD; the fence excluded it, and the evidence is recorded for a ruling.
+- **`editor-starter-cpu-card` could not be regenerated at all**: its spec times out at `editor.spec.ts:1131` waiting on a `[data-vigilia-layer="cpu-card"]` row that never appears, so that frame still shows the October 5 bundle.
+- **Three specs fail deterministically at HEAD and none is in this file's red list** — `editor.spec.ts:1107`, `glass-authoring.spec.ts:293` and `reference-theme.spec.ts:2444` — each reproduced with and without `VIGILIA_CAPTURE`; reported here rather than fixed, since a source change would invalidate every capture.
 
 ## Next
 
 1. **The contrast and visual stress set** — six palettes, 1280×720 and 1440×900, 200% zoom, a long Unicode name, a long unresolved reference, the two-hundred-row Composition fixture, reduced motion and forced colours; `design-language.spec.ts` already covers much of it, so the first step is measuring the gaps, not building.
-2. **Graphite's Part C, the one capture regeneration** — runs last on a frozen tree, because a capture is evidence about one commit and any later source change makes it stale.
+2. **The three specs that fail at HEAD from the capture run** — `editor.spec.ts:1107`, `glass-authoring.spec.ts:293`, `reference-theme.spec.ts:2444`; the cause of the first is not established, so it is a filing decision, not a fix on sight.
 3. **The backlog drain, opened with a reproduction pass** — 211 open rows sorted at HEAD into closes-with-evidence, needs-a-decision and real work before anything is fixed.
 4. **§13.1's keyboard-only walkthrough gets its own plan** — the nine interactions plans 1–5 proved in isolation alone; `desktop-host` matches `host-(player|settings|media|bleed|chrome).spec.ts` and nothing else.
 
