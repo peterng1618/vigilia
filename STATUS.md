@@ -24,7 +24,7 @@ satisfies every token in `DESIGN.md` and still does not look like the mockup.
 ## Active work
 
 - **The active plan is [`2026-10-12-the-dead-code-sweep`](docs/superpowers/plans/2026-10-12-the-dead-code-sweep.md)**, reordered by the user on 2026-10-12 to **managers, then dead code, then the register**: Phase 1 redistributes the manager layer (Tasks 8–9), Phase 2 the reference picture (1–3), Phase 3 removal (4–6), Phase 4 the register (7); **task numbers are stable identifiers, not positions**, because a dozen references cite them.
-- **Phase 1's census is in its third fix round** — [`docs/architecture/manager-census.md`](docs/architecture/manager-census.md), landed at `a2fe5a89`, ranks ten candidates by shape and marks each clean extraction or cross-cutting; three rounds have corrected its stated evidence without moving a verdict, which is itself the finding about it.
+- **Phase 1's census landed its third fix round** — [`docs/architecture/manager-census.md`](docs/architecture/manager-census.md), landed at `a2fe5a89`, ranks ten candidates by shape; round 3 (`02d8ccfa`) corrected the rule's *stated evidence* and left the rule alone, so three rounds have moved no verdict, which is itself the finding about it.
 - **Task 9 consumes those ranks in the census's order**: ranks 4, 5, 6 and 9 are clean extractions and go first, while 1, 2, 3 and 7 wait on decisions nobody has made — reach is the reason to be careful, not the reason to be first.
 - **`snap-manager` is the largest code problem and is not an extraction candidate at all** — one external production module reaches it, so its fix is a protocol re-shape needing a spec, and the plan no longer calls it the split's worked example.
 - **The sweep's rule is detection before deletion**, and the user set its bias on 2026-10-12 — *"I want a clean codebase but be careful to not overdo it and break the app"*: a survivor costs a ticket, a live symbol deleted costs the product.
@@ -32,15 +32,14 @@ satisfies every token in `DESIGN.md` and still does not look like the mockup.
 
 ## Last completed change
 
-- **Task 1's fix loop closed at round 5 with no load-bearing finding** — five rounds, and the detection rules never moved: 311 candidates at 14 `dead-export` / 279 `redundant-export` are byte-identical across the last three, which is the property that matters when every round was about reporting.
-- **The rule about a crash reading as a pass is now enforced on both artefacts** — the candidate marker is failure-shaped with `candidates` a truthy object rather than `[]`, which would only have moved the false pass to `candidates.length === 0`.
-- **The re-review demonstrated the disarming rather than describing it** — the old intactness predicate, which tested for the presence of a key, returns **22/22 exit 0** on the new marker, and the tightened one returns 21/22 exit 1.
-- **I escalated the atomic write instead of accepting it, and the answer came from establishing the readers** — no code reads either artefact except the script's own in-process checks, so a truncated write and an absent file are the same "no document" to a correct reader, and the write path adds no false-clean-sweep the marker does not already cover.
-- **The census's round 2 closed R1 and R3 properly and was right about the count it corrected** — `asset-manager` is genuinely a §1.1 module-directory row, so sixteen was one short, and ranks 1–10 stay byte-identical to `a2fe5a89` because a plan and a register row cite them by number.
+- **The census's round 3 corrected the rule's stated evidence and touched no verdict** — `02d8ccfa`, one file, +31/−13: a false "zero rows" claim replaced by a row-text search, an overstated guard sentence replaced by the criterion that actually holds, and a shelf dropped that the rule's own rationale says is not one.
+- **The failure has been in an evidence sentence every round and never in a verdict** — round 1, round 2 and round 3 each introduced a false claim of the class it was closing, which is why the re-review re-runs every cited number instead of reading the diff.
+- **I verified the round's named facts myself before dispatching its reviewer** — `ownership.md:75` and `:89` are the only two rows naming a file inside a `*-manager/` directory, the snap guard is defined and imported where claimed, and neither remaining shelf holds an `index.ts`.
+- **The rule is narrower than its own rationale at one shape and that is now stated rather than settled** — `theme-package/src/` holds one source file declared as the package's entry, so Task 9 must read the definition exactly as written rather than as the rationale suggests.
 
 ## Next
 
-1. **The census's round 3 is running** — correcting the *evidence* it states for its rule, not the rule: one claim rests on a path-shaped search that could not see `ownership.md:75` naming `chart-manager`'s three files, and two others overstate what the rule tests.
+1. **The census's round-3 re-review is running** — read-only and path-scoped, hunting a new false evidence sentence rather than re-checking the four fixes, since that is the class three rounds have produced.
 2. **Task 9, the redistribution, when round 3 closes** — one manager per commit, the move relocates the *decision* rather than the code, it orders by the census's shape labels, and the map is updated in the same commit as the move.
 3. **Phase 2's candidate report at HEAD, then per-candidate verification** — nothing is deleted until each candidate is checked against the string-resolved vocabulary: the `data-vigilia-*` attributes, the `--shell-*` custom properties, the `KIND_*` registries and the four gate scripts that read the source tree as data.
 4. **`vg-368` waits on a decision** — whether `src/web/.agent-scratch/` is deleted, relocated outside the tree, or excluded per tool; deleting is not obviously safe because it holds screenshots and a vitest report that may be the only copy.
