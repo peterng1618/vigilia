@@ -753,9 +753,13 @@ body,
    `--shell-*` tokens through `data-shell-palette` rather than from a colour
    table here: `palette.ts` is the owner of which palettes exist, and a preview
    that read the tokens in JS at mount would still be showing the old palette
-   after the choice changed. Each bar carries the class (or its own rule) and is
-   in the token block's selector list above, so a bar resolves the palette it
-   names instead of inheriting the one in force.
+   after the choice changed. **Both bars carry `data-shell-palette` and that
+   attribute is what resolves each one** — it is not decoration to drop. The
+   ground bar is additionally a member of the token block's selector list above
+   (`.editor-shell-palette-swatch`, beside `:root`); the accent bar is *not*, so
+   removing its attribute would leave it inheriting the palette in force while
+   the ground bar beside it fell back to editorial — two bars of one preview
+   disagreeing, with no gate able to see it.
 
    **Two bars, the palette's ground and its accent** — the drawing
    (`current/settings.html:44-87`) draws both, and one bar cannot show a palette
