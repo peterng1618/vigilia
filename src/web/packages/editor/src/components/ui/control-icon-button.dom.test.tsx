@@ -96,11 +96,12 @@ function visibleText(control: Element): string {
  * §6's icon-only control: a focusable thing whose whole content is a glyph and
  * which shows no word of its own.
  *
- * The `svg` clause draws that line. Drop it and the population swallows every
- * `<input>`, `<select>` and `<textarea>` in the fleet — a field's value is not
- * `textContent` and its text content is empty — and every drag handle whose
- * whole content is a picture drawn in CSS rather than in markup. Those are the
- * controls the clause exists to exclude; a glyph is what makes a control
+ * The `svg` clause draws that line. Drop it and the population grows by the
+ * glyphless controls whose content carries no text at all — measured over the
+ * fleet below, two `<input>`s and four `<button>`s — because a field's *value*
+ * is not `textContent` and an empty field has none. A `<select>` or `<textarea>`
+ * is caught before the clause is reached: its own content is not empty. Those
+ * are the controls the clause exists to exclude; a glyph is what makes a control
  * icon-only, not the mere absence of a word.
  *
  * **Not every control with no text is one.** The gradient editor's stop dots
