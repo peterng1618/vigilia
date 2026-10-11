@@ -56,7 +56,9 @@ The five ways this sweep deletes something alive.
 - [ ] **Step 2: Emit five candidate kinds**, each recording the search that found it:
   - **`test-only-consumer`** — a module or export whose *only* importers are test files. **This is the class this repo actually produces**: several rounds of refactoring leave a surface mounted by no product code but kept alive by its own test. It is neither "no importer" nor "no production caller", so a scanner with only those two finds nothing here — and `font-picker.tsx` is the worked case.
   - **`no-importer-file`** — a module nothing imports, excluding every entry point and every file vitest/Playwright discovers by glob.
-  - **`no-importer-export`** — a top-level exported name no other file imports or re-exports.
+  - **`dead-export`** — exported, and the name appears nowhere else in the repo **including its own file**. The symbol is dead, and the action is to delete the declaration. Measured by the reviewer at **33** of 293.
+  - **`redundant-export`** — exported, but **every use is inside its own declaring file**. The symbol is alive and only the `export` keyword is unnecessary, so the action is to delete one word, not the code. Measured at **260** of 293 — **89% of what a single `no-importer-export` kind reported as dead code.**
+  - **These two are separate kinds because they have opposite remedies**, and the Tier-1 review that split them is the reason: a phase-2 agent budgeting against "293 dead exports" would break files or claim a reduction that never materialises, when the honest action for 89% of them is deleting a keyword. Each row's `evidence` states its tier.
   - **`barrel-only-export`** — a name whose only importer is its own package's `index.ts`.
   - **`unreachable-branch`** — a discriminant or error variant no input can produce (the `vg-344` shape), reported only where the graph or a closed union makes it mechanical to see.
 
