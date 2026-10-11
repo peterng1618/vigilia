@@ -23,24 +23,25 @@ satisfies every token in the bible and still does not look like the mockup.
 
 ## Active work
 
-- **No plan is active.** Plan 6 is complete and moved to [`archive/`](docs/superpowers/plans/archive/2026-10-08-iconography-and-copy.md), its final whole-branch review clean; the next plan starts at the queued rulings below.
+- **The active plan is [`design-md-replaces-the-bible`](docs/superpowers/plans/2026-10-10-design-md-replaces-the-bible.md)** — six tasks retiring the bible for a root `DESIGN.md`; Task 1 (the file) is running. Plan 6 is complete and moved to [`archive/`](docs/superpowers/plans/archive/2026-10-08-iconography-and-copy.md), its final whole-branch review clean.
 - **Plan 6's nine tasks are complete**: the census, the one glyph vocabulary and weight rule, the closed kind set, the one-string pairing, the copy nets, the ratchet, the sixteen-item Acceptance ledger and Task 9's parity capture.
 - **Its Acceptance ledger reads fifteen met, one not met** — §13.1's real-host walkthrough, which plan 6 was forbidden to add and no other plan owns.
 - **`vg-330` is parked by the user (2026-10-11)** — "Let's park the settings becomes a pane spec" — and `vg-331` still waits: the palettes gain a second highlight whose role is an attention or in-flight state, defined before any colour is chosen.
 
 ## Last completed change
 
-- **Review round 1 on the graphite default**: the medium was the brief's own error — the pin's safety was argued from the mount-time `resolveShellPalette`, not the runtime `following` listener, so a palette set as a bare attribute had no stated protection.
+- **Review round 1 on the graphite default**: the medium was the brief's own error — the pin's safety was argued from the mount-time `resolveShellPalette` rather than the runtime `following` gate, so the stated reason was wrong; the risk it described is unreachable on `control-fixture.html`, which mounts no shell layout.
 - **`captureVisualReview` now takes an optional `ground`** and asserts it after the emulation and *before* the shot, so a late re-render cannot leave a light PNG behind a green assertion.
 - **`control-set-editorial` is now asserted** — the one `-editorial` capture on the attribute-only route; `editor.spec.ts`'s duplicate editorial guard is dropped and its graphite guard moved into the helper.
 - **`settings.dom.test.tsx`'s harness comment corrected** — "the default palette" → "the palette in force"; the harness models an in-force palette, not a fresh light-OS profile.
 
 ## Next
 
-1. **The schema-v1 screenshots pass** — the captures whose generator this deletion removed are listed by filename in `.superpowers/sdd/2026-10-11-schema-v1-retirement/task-1-report.md`; the screenshot inventory (item 2) folds into it.
-2. **The screenshot inventory** — remove every capture whose generator no longer exists, and regenerate the ones that are valid but outdated (`vg-341`'s seven are one known family); nothing is deleted until the orphan list is evidence-backed, because a wrong call destroys evidence.
-3. **`vg-331`** (the attention-colour role, defined before any colour is chosen); **`vg-330` is PARKED by the user** (2026-10-11) and is not queued.
-4. **`design-md-replaces-the-bible`**, then the multi-device objective; **Acceptance item 3** still keeps the editor-redesign objective open.
+1. **Graphite's Part C, the one capture regeneration** — runs once, last, after the design-md plan's capture-free tasks; the deliberate `-editorial` and `-graphite` pairs stay.
+2. **`design-md-replaces-the-bible` Tasks 2–6** — the sync and citation checks, the pinned linter and its licence, the prose and code sweeps, and the close that deletes the bible.
+3. **`vg-351` needs a ruling**: the `:root` base still carries editorial, so a fresh profile's first frame is editorial while the settled default is graphite — repaint the base under `prefers-color-scheme`, or correct the comment.
+4. **`vg-331`** (the attention-colour role, defined before any colour is chosen); **`vg-330` is PARKED by the user** (2026-10-11) and is not queued.
+5. **The multi-device objective** after `DESIGN.md` lands; **Acceptance item 3** still keeps the editor-redesign objective open.
 
 ## Blockers / unverified
 
