@@ -6,6 +6,9 @@
   `editor-shell/layer-tree.ts`, `editor-shell/shell-layout.tsx`,
   `editor/src/editor-session.ts`, `editor/src/components/ui/`,
   `editor/src/selection-inspector/style.ts`
+- **Note (2026-10-12):** `palette-menu`, named among the React surfaces below, was
+  deleted on 2026-10-10 (`64fea389`); one of the fifteen surfaces that list names
+  no longer exists, and the ruling below is unchanged.
 
 ## The problem
 

@@ -6,6 +6,9 @@
 - **Paths:** `src/web/packages/editor/src/components/ui/`
   (`dialog.tsx`, `popover.tsx`, `colour-picker.tsx`),
   `src/web/packages/editor/src/editor-shell/shell-layout.tsx`
+- **Note (2026-10-12):** `palette-menu.tsx`, one of the four Base UI import sites
+  in the table below, was deleted on 2026-10-10 (`64fea389`). The other three
+  stand; that row's count is the measurement's date, not this one's.
 
 ## The problem
 

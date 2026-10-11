@@ -4,6 +4,12 @@
 - **Status:** accepted
 - **Paths:** `src/web/packages/editor/src/editor-shell/`
   (`palette.ts`, `editor-shell.css`), `src/web/packages/editor/index.html`
+- **Note (2026-10-12):** `PaletteMenu.choose` and its module `palette-menu.tsx`,
+  named in the body and in the writers table below, were deleted on 2026-10-10
+  (`64fea389`). Every write of the attribute now goes through
+  `applyShellPalette` (`editor-shell/palette.ts`), called from the Appearance tab
+  (`editor-shell/settings.tsx`) and from `createShellLayout`
+  (`editor-shell/shell-layout.tsx`). The ruling below is unchanged.
 
 ## The problem
 

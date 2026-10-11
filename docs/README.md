@@ -14,7 +14,7 @@ artifacts and from Git history.
 | Which stylesheet selectors the product still reaches | [`architecture/dead-selectors.md`](architecture/dead-selectors.md) — a reachability check of the two shipped CSS files |
 | Which exports and modules nothing reaches | [`architecture/dead-code-candidates.md`](architecture/dead-code-candidates.md) — the sweep scanner's candidates at `aa9d7b96`, with the coverage it does and does not have |
 | The editor's visual language, **normative** | [`../DESIGN.md`](../DESIGN.md) — scales, colour roles, the control and icon vocabulary, layout and copy rules |
-| Why major architecture choices were made | [`adr/`](adr/) |
+| Why major architecture choices were made | [`decisions/`](decisions/) — the live register, and the one `scripts/reuse-gate.mjs` enforces; the earlier set stopped at 0010 in [`adr/`](adr/) |
 | Active feature design/spec | [`superpowers/specs/`](superpowers/specs/) |
 | Superpowers implementation plans | [`superpowers/plans/`](superpowers/plans/) |
 | Non-obvious engineering traps | [`engineering/gotchas.md`](engineering/gotchas.md) |
