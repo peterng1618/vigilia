@@ -1,7 +1,14 @@
 #!/usr/bin/env node
 
 /**
- * The two checks that keep DESIGN.md honest.
+ * The three checks that keep DESIGN.md honest.
+ *
+ * `--lint` — `@google/design.md`'s own lint, run through this file rather than as
+ * one link of a shell chain. The linter's exit code is worthless — 0 for clean
+ * and 0 for warnings-only alike, and `npx … lint` returns 0 with no stdout at all
+ * — so a `&&` chain could never notice a warning. This spawns the *installed*
+ * binary, parses the JSON summary it prints, and fails on any error or warning.
+ * Infos are permitted and printed.
  *
  * `--sync` — the front matter's `spacing`, `rounded` and `typography` groups and
  * `editor-shell.css`'s `@theme static` block declare the same tokens with the
@@ -39,7 +46,7 @@
  */
 
 import { readFile } from "node:fs/promises";
-import { realpathSync } from "node:fs";
+import { existsSync, readFileSync, realpathSync } from "node:fs";
 import { execFileSync } from "node:child_process";
 import { resolve } from "node:path";
 
@@ -329,6 +336,12 @@ function trackedPaths() {
 }
 
 async function collectCitations(out) {
+  for (const relPath of CITE_EXCLUDE) {
+    if (!existsSync(resolve(ROOT, relPath))) {
+      console.error(`design-md: CITE_EXCLUDE names \`${relPath}\`, which does not exist; a rename has re-armed the fixtures this exclusion removes`);
+      process.exit(1);
+    }
+  }
   for (const relPath of trackedPaths()) {
     if (CITE_EXCLUDE.has(relPath) || !CITE_EXTENSIONS.test(relPath)) continue;
     const text = await readFile(resolve(ROOT, relPath), "utf8").catch(() => null);
@@ -396,6 +409,69 @@ function selfTest() {
   process.exit(0);
 }
 
+/**
+ * The installed linter's CLI, read from its own `bin` metadata rather than
+ * invoked through `npx`: `npx … lint` exits 0 with no stdout here, so neither
+ * its code nor its output can be trusted through that shim. Two candidates — the
+ * workspace's `node_modules` then the repo root's — so a hoist change does not
+ * silently break the gate.
+ */
+const LINTER_DIRS = [
+  "src/web/node_modules/@google/design.md",
+  "node_modules/@google/design.md",
+];
+
+function linterCli() {
+  for (const dir of LINTER_DIRS) {
+    const pkgPath = resolve(ROOT, dir, "package.json");
+    if (!existsSync(pkgPath)) continue;
+    const bin = JSON.parse(readFileSync(pkgPath, "utf8")).bin?.["design.md"];
+    if (typeof bin === "string") return resolve(ROOT, dir, bin);
+  }
+  console.error("design-md: @google/design.md is not installed; run `npm install` in src/web/");
+  process.exit(1);
+}
+
+/**
+ * `@google/design.md`'s own lint. Only the summary it prints decides: its exit
+ * code is 0 for clean and 0 for warnings-only alike, so a shell chain could pass
+ * on a warning. Infos are permitted and printed; an error or a warning fails. A
+ * crash or unparseable output fails too — a lint that examined nothing must not
+ * read as clean.
+ */
+function checkLint() {
+  let stdout;
+  try {
+    stdout = execFileSync(process.execPath, [linterCli(), "lint", DESIGN_REL], {
+      cwd: ROOT,
+      encoding: "utf8",
+    });
+  } catch (error) {
+    console.error(`design-md: the linter could not run (${error.message})`);
+    process.exit(1);
+  }
+  let report;
+  try {
+    report = JSON.parse(stdout);
+  } catch {
+    console.error("design-md: the linter printed no JSON to read; the check would find nothing");
+    process.exit(1);
+  }
+  for (const finding of report.findings ?? []) {
+    const line = `${finding.rule ?? "lint"}: ${finding.message}`;
+    if (finding.severity === "info") console.log(line);
+    else console.error(line);
+  }
+  const errors = report.summary?.errors ?? 0;
+  const warnings = report.summary?.warnings ?? 0;
+  if (errors > 0 || warnings > 0) {
+    console.error(`design-md: lint reports ${errors} error(s) and ${warnings} warning(s) in ${DESIGN_REL}`);
+    process.exit(1);
+  }
+  console.log(`design-md: lint clean in ${DESIGN_REL} (0 errors, 0 warnings)`);
+  process.exit(0);
+}
+
 function printFindings(findings, label) {
   for (const finding of findings) console.error(`${finding.what}: ${finding.why}`);
   if (findings.length > 0) {
@@ -433,6 +509,8 @@ const isEntryPoint = (() => {
 if (isEntryPoint) {
   if (process.argv.includes("--self-test")) selfTest();
 
+  if (process.argv.includes("--lint")) checkLint();
+
   if (process.argv.includes("--sync")) {
     const design = await readOrFail(resolve(ROOT, DESIGN_REL), DESIGN_REL);
     const css = await readOrFail(resolve(ROOT, CSS_REL), CSS_REL);
@@ -450,6 +528,6 @@ if (isEntryPoint) {
     process.exit(printFindings(checkCitations({ design, citations }), `${citations.length} citation source(s)`));
   }
 
-  console.error("design-md: pass --sync, --cite or --self-test");
+  console.error("design-md: pass --lint, --sync, --cite or --self-test");
   process.exit(1);
 }

@@ -54,7 +54,8 @@ TypeScript 7.0.2 (Apache-2.0), Vite 8.3.0 (MIT), Vitest 5.0.0 (MIT),
 @playwright/test 1.63.0 (Apache-2.0), jsdom 26.1.0 (MIT), canvas 3.2.3 (MIT),
 @types/node 22.10.2 (MIT), @types/react 19.3.x (MIT), @types/react-dom
 19.3.x (MIT), tailwindcss 4.3.3 (MIT, editor dev styling), @tailwindcss/vite
-4.3.3 (MIT, editor dev), jsqr 1.4.0 (Apache-2.0). Native `canvas` may carry
+4.3.3 (MIT, editor dev), jsqr 1.4.0 (Apache-2.0), @google/design.md 0.4.0
+(Apache-2.0, lints `DESIGN.md` in the design gate). Native `canvas` may carry
 linked-library obligations.
 
 ## Vendored source

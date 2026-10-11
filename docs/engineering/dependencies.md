@@ -20,6 +20,13 @@ Provenance behind `THIRD-PARTY-NOTICES.md`. Re-audit the installed graph before 
 | `@types/node` | 22.10.2 | MIT | types |
 | `qr` | 0.7.2 | MIT OR Apache-2.0 | QR symbol for the display link |
 | `jsqr` | 1.4.0 | Apache-2.0 | devDependency: decodes the QR round-trip |
+| `@google/design.md` | 0.4.0 | Apache-2.0 | devDependency: lints `DESIGN.md` in the design gate |
+
+`@google/design.md` 0.4.0 is Apache-2.0. Its installed `package.json` carries no
+`license` field (and the registry publishes none), so the licence was verified
+from the package's own `LICENSE` file, which is the Apache License, Version 2.0
+text. It ships a CLI (`bin.design.md` → `dist/index.js`) used by
+`scripts/design-md.mjs --lint`; `npm run design:check` runs it.
 
 Fabric 7.4.0 metadata/LICENSE confirms MIT and no runtime dependencies. Use
 `fabric/es`; player and editor both use it directly, with no adopted
