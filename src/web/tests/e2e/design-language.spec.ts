@@ -2447,7 +2447,7 @@ const DRAWING_NAMES = new Map(
  * requires the product's treatment. Its absence is what makes a difference a
  * defect; two rows carry one today, each the narrow case and never "DESIGN.md
  * does not forbid it": the stage ground (§7.5, which names that property and
- * permits both variants) and the settings modal's frame inset (§3 `:79`, whose
+ * permits both variants) and the settings modal's frame inset (§3, whose
  * spacing table positively requires `20–24` for "dialog padding" — the value
  * `.editor-shell-dialog` renders where the drawing insets its children).
  *
@@ -2805,7 +2805,7 @@ const SHELL_DRAWING = "docs/design/mockups/current/shell.html";
  * (`currentDrawings`), so a fifth drawing is read the moment it lands, and each
  * failure names the file it is in.
  *
- * **§3's radius table is closed** (`DESIGN.md:86-94`):
+ * **§3's radius table is closed**:
  * `--radius-sm` 4 / `--radius-md` 6 / `--radius-lg` 8 / `--radius-xl` 10 /
  * full 999. Three values are exempt, each named with why it is not a scale
  * entry — an unnamed exemption set is the list-shaped escape this plan exists
@@ -2813,8 +2813,8 @@ const SHELL_DRAWING = "docs/design/mockups/current/shell.html";
  * joining the set silently:
  *
  * - `1px` and `2px` are **marks whose value is their thickness**, not rounded
- *   surfaces: §7.2's 2px accent bar on the rail's inner edge
- *   (`DESIGN.md:314`), the slider track's ends, the layer dropline.
+ *   surfaces: §7.2's 2px accent bar on the rail's inner edge,
+ *   the slider track's ends, the layer dropline.
  *   §3's scale answers a question only a surface that is *rounded* asks.
  * - `50%` is **a circle — `full` reached the other way**: the identity dot, the
  *   slider's thumb and the toggle's knob. It is not a second way to spell a
@@ -2847,7 +2847,7 @@ const SHELL_DRAWING = "docs/design/mockups/current/shell.html";
  *   (`left:50%`, which centres the dock alongside its `translateX(-50%)`).
  *
  * **The type arm reads `font-size` and the `font` shorthand.** §2's scale is six
- * roles (`DESIGN.md:47-52`), and a shorthand writes its size before its
+ * roles, and a shorthand writes its size before its
  * line-height (`600 13.5px/1.2 system-ui`), which is the token read here. A
  * shorthand carrying no px length sets no size this row can read, so it is
  * returned whole and fails naming itself rather than passing as the drawing's
@@ -2959,7 +2959,7 @@ test("every literal the checked drawings declare is on §3's scale or §2's", ()
     );
   };
 
-  /** §2's six sizes (`DESIGN.md:47-52`). */
+  /** §2's six sizes. */
   const TYPE = new Set([10, 11, 12, 13, 15, 19]);
   /** The size a type declaration sets, or `null` where it sets none this row
    *  reads: `font-size`'s whole value, or the first px length a `font`

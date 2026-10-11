@@ -341,7 +341,7 @@ export function Settings(props: {
     >
       <h2 className="editor-shell-dialog-lead">{uiCopy.settings.title}</h2>
       {/* A **vertical** tablist: the drawing's navigation is a column beside the
-          panel, not a row of words above it. §5 (`DESIGN.md:143`)
+          panel, not a row of words above it. §5
           opens the control vocabulary — "The vocabulary is closed. A control is
           one of these, or it is not a control." — and no *tab* is in it, so
           DESIGN.md requires nothing about the axis; spec §13 (`:451-454`) then makes

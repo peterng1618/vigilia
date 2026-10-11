@@ -215,17 +215,17 @@ describe("shell token stylesheet", () => {
       "--text-xs": "11px",
       "--text-sm": "12px",
       "--text-md": "13px",
-      // §2's 10, 15 and 19 (`DESIGN.md:47`, `:51`, `:52`), pinned for
+      // §2's 10, 15 and 19, pinned for
       // the reason the scrim below gives: the `settings modal — lead type` parity
       // row's expected value *is* `--text-lg`, so that row is green for whatever
-      // the token holds — a dialog title at `16px` violates §2 `:51` with every
+      // the token holds — a dialog title at `16px` violates §2 with every
       // gate green. These are the assertions that such a change is deliberate.
       "--text-2xs": "10px",
       "--text-lg": "15px",
       "--text-xl": "19px",
       "--shadow-raised": "0 12px 28px #0000003d",
       "--shadow-overlay": "0 18px 44px #0006",
-      // §3's modal scrim (`:105`). Pinned here and not only read from `:root` by
+      // §3's modal scrim. Pinned here and not only read from `:root` by
       // `design-language.spec.ts`'s colour row: that row compares the token
       // against the overlay and is green for whatever value the token holds, so
       // this is the assertion that a changed scrim is a deliberate edit.

@@ -646,6 +646,7 @@ export type ParityRegion = {
    *  from the drawing's rule and from the product's computed style alike. */
   readonly mockupProperty: string;
   readonly productSelector: string;
+  /** Names a `§N` marker in `DESIGN.md` — never a line number; the section is the stable anchor. */
   readonly designLanguageSection: string;
   /** The drawing `mockupSelector` is read from, when it is not the plan's own
    *  shell drawing. A surface drawn on its own file names that file, so one
@@ -725,49 +726,49 @@ export const PARITY: readonly ParityRegion[] = [
     mockupSelector: '[style*="height:42px"]',
     mockupProperty: "height",
     productSelector: ".editor-shell-header",
-    designLanguageSection: "§7.1 (`:279`), §7's diagram (`:262-277`)",
+    designLanguageSection: "§7.1, §7's diagram",
   },
   {
     region: "body — inset",
     mockupSelector: '[style*="flex:1;min-height:0"]',
     mockupProperty: "padding-top",
     productSelector: ".editor-shell-body",
-    designLanguageSection: "§7's diagram (`:262-277`), §3 elevation 0 (`:102`)",
+    designLanguageSection: "§7's diagram, §3 elevation 0",
   },
   {
     region: "body — gap",
     mockupSelector: '[style*="flex:1;min-height:0"]',
     mockupProperty: "column-gap",
     productSelector: ".editor-shell-body",
-    designLanguageSection: "§7's diagram (`:262-277`), §3 elevation 0 (`:102`)",
+    designLanguageSection: "§7's diagram, §3 elevation 0",
   },
   {
     region: "rail — radius",
     mockupSelector: '[style*="width:46px"]',
     mockupProperty: "border-radius",
     productSelector: ".editor-shell-rail",
-    designLanguageSection: "§3 radius table (`:92`), §7's diagram (`:262-277`)",
+    designLanguageSection: "§3 radius table, §7's diagram",
   },
   {
     region: "left pane — radius",
     mockupSelector: '[style*="width:246px"]',
     mockupProperty: "border-radius",
     productSelector: ".editor-shell-panel",
-    designLanguageSection: "§3 radius table (`:92`), §7's diagram (`:262-277`)",
+    designLanguageSection: "§3 radius table, §7's diagram",
   },
   {
     region: "stage — radius",
     mockupSelector: '[style*="repeating-linear-gradient(45deg"]',
     mockupProperty: "border-radius",
     productSelector: ".editor-shell-stage",
-    designLanguageSection: "§3 radius table (`:86-94`), §7's diagram (`:262-277`)",
+    designLanguageSection: "§3 radius table, §7's diagram",
   },
   {
     region: "inspector — radius",
     mockupSelector: '[style*="width:276px"]',
     mockupProperty: "border-radius",
     productSelector: ".editor-shell-inspector",
-    designLanguageSection: "§3 radius table (`:92`), §7's diagram (`:262-277`)",
+    designLanguageSection: "§3 radius table, §7's diagram",
   },
   /* **A dialog's radius is not the drawing's to give.** The only 10px frame the
      superseded drawing had was the window's own — `.mockup` and the shell card it
@@ -785,7 +786,7 @@ export const PARITY: readonly ParityRegion[] = [
     region: "settings modal — frame radius",
     mockupProperty: "border-radius",
     productSelector: ".editor-shell-dialog",
-    designLanguageSection: "§3 radius table (`DESIGN.md:86-94`)",
+    designLanguageSection: "§3 radius table",
     scaleToken: "--radius-lg",
     surface: "settings",
   },
@@ -793,7 +794,7 @@ export const PARITY: readonly ParityRegion[] = [
     region: "`?` sheet — frame radius",
     mockupProperty: "border-radius",
     productSelector: ".editor-shell-dialog",
-    designLanguageSection: "§3 radius table (`DESIGN.md:86-94`)",
+    designLanguageSection: "§3 radius table",
     scaleToken: "--radius-lg",
     surface: "sheet",
   },
@@ -805,9 +806,9 @@ export const PARITY: readonly ParityRegion[] = [
     mockupSelector: '[style*="repeating-linear-gradient(45deg"]',
     mockupProperty: "background",
     productSelector: ".editor-shell-stage",
-    designLanguageSection: "§7.5 (`:362-364`)",
+    designLanguageSection: "§7.5",
     licensed:
-      '§7.5 (`:362-364`): "Subtle palette-derived stage texture is permitted when it stays behind the artwork and does not obscure controls; neither texture nor a flat ground is mandatory."',
+      '§7.5: "Subtle palette-derived stage texture is permitted when it stays behind the artwork and does not obscure controls; neither texture nor a flat ground is mandatory."',
   },
   /* **The control set's own drawing, read on the fixture.** Both files are the
      inspector column and both declare the same row: a label column of
@@ -833,7 +834,7 @@ export const PARITY: readonly ParityRegion[] = [
     mockupProperty: "width",
     productSelector: '[data-fixture="text"] label',
     designLanguageSection:
-      "§5 (`:163-164`, the shared grid); DESIGN.md is silent on the column's width, so the drawing governs",
+      "§5 (the shared grid); DESIGN.md is silent on the column's width, so the drawing governs",
     surface: "fixture",
   },
   {
@@ -844,7 +845,7 @@ export const PARITY: readonly ParityRegion[] = [
     mockupProperty: "width",
     productSelector: '[data-fixture="text"] label',
     designLanguageSection:
-      "§5 (`:163-164`, the shared grid); DESIGN.md is silent on the column's width, so the drawing governs",
+      "§5 (the shared grid); DESIGN.md is silent on the column's width, so the drawing governs",
     surface: "fixture",
   },
   /* **The two shapes a row takes when a drawing shapes it differently.** The
@@ -878,7 +879,7 @@ export const PARITY: readonly ParityRegion[] = [
     mockupProperty: "border-radius",
     productSelector: '[data-fixture="boxed"] > div',
     designLanguageSection:
-      "§5 (`:163-164`, the well); DESIGN.md does not shape the modal's switch row, so the drawing governs",
+      "§5 (the well); DESIGN.md does not shape the modal's switch row, so the drawing governs",
     surface: "fixture",
   },
   {
@@ -889,7 +890,7 @@ export const PARITY: readonly ParityRegion[] = [
     mockupProperty: "gap",
     productSelector: '[data-fixture="boxed"] > div',
     designLanguageSection:
-      "§5 (`:163-164`, the well); DESIGN.md does not shape the modal's switch row, so the drawing governs",
+      "§5 (the well); DESIGN.md does not shape the modal's switch row, so the drawing governs",
     surface: "fixture",
   },
   /* The shell's select-trigger box — the well-with-chevron form the drawing
@@ -917,7 +918,7 @@ export const PARITY: readonly ParityRegion[] = [
     mockupProperty: "border-radius",
     productSelector: '[data-fixture="headed"] [data-fixture-select]',
     designLanguageSection:
-      "§5 (`:163-164`, the well the trigger is drawn as); DESIGN.md does not shape the pane's picker, so the drawing governs",
+      "§5 (the well the trigger is drawn as); DESIGN.md does not shape the pane's picker, so the drawing governs",
     surface: "fixture",
   },
   {
@@ -928,7 +929,7 @@ export const PARITY: readonly ParityRegion[] = [
     mockupProperty: "gap",
     productSelector: '[data-fixture="headed"] [data-fixture-select]',
     designLanguageSection:
-      "§5 (`:163-164`, the well the trigger is drawn as); DESIGN.md does not shape the pane's picker, so the drawing governs",
+      "§5 (the well the trigger is drawn as); DESIGN.md does not shape the pane's picker, so the drawing governs",
     surface: "fixture",
   },
   /* ── The settings modal, against `current/settings.html` (plan 8 Task 1) ────
@@ -953,7 +954,7 @@ export const PARITY: readonly ParityRegion[] = [
      *direction* — and the keyboard model it implies — is not a property and is a
      named gap in the census, Task 2's browser walk being its evidence.
 
-     The rule that makes the drawing govern is **§5 (`:143`)** — "The vocabulary
+     The rule that makes the drawing govern is **§5** — "The vocabulary
      is closed. A control is one of these, or it is not a control", with no *tab*
      in it, so DESIGN.md requires nothing about the axis — and **spec §13**
      (`:451-454`), which names this very strip: "The mockup governs wherever the
@@ -966,7 +967,7 @@ export const PARITY: readonly ParityRegion[] = [
      The `<h2>` is the modal's own title and the `?` sheet renders the same rule,
      so its role is §2's dialog title, `--text-lg` — read from the product's own
      `:root`, so this row cannot drift from the token. **Task 2 removed the
-     eyebrow marks with the size**: §2 (`:57`) reserves uppercase for a section
+     eyebrow marks with the size**: §2 reserves uppercase for a section
      eyebrow ("Nothing else is uppercase"), and the rule covers the dialog's
      visible name at seven sites, five of them `<p>`s that render the same string
      the dialog passes as its `label`. The theme library's `role="status"` node
@@ -985,8 +986,8 @@ export const PARITY: readonly ParityRegion[] = [
 
      **Rows 4–6 — the palette group.** The drawing is a `repeat(3,1fr)` grid of
      `--radius-lg` cards, each carrying two 16px bars — the palette's ground and
-     its accent. The product is a `grid-cols-2` of `--radius-md` choice rows
-     (`:155`), each carrying one 14px chip. The count is read by `trackCount` (a
+     its accent. The product is a `grid-cols-2` of `--radius-md` choice rows,
+     each carrying one 14px chip. The count is read by `trackCount` (a
      track list is neither side a single px), the card's radius by the px reading,
      and the bar's height by the px reading against the one bar the reader can
      settle: the other eleven carry the same prefix, so a shorter selector would
@@ -1005,14 +1006,14 @@ export const PARITY: readonly ParityRegion[] = [
     mockupProperty: "width",
     productSelector: ".editor-shell-settings-tabs",
     designLanguageSection:
-      "§5 (`:143`) closes the vocabulary — no *tab* control is in it, so DESIGN.md requires nothing about the axis — and spec §13 (`:451-454`) makes the drawing its jurisdiction where the rules are silent, naming this strip at `:458-459`",
+      "§5 closes the vocabulary — no *tab* control is in it, so DESIGN.md requires nothing about the axis — and spec §13 (`:451-454`) makes the drawing its jurisdiction where the rules are silent, naming this strip at `:458-459`",
     surface: "settings",
   },
   {
     region: "settings modal — lead type",
     mockupProperty: "font-size",
     productSelector: ".editor-shell-dialog-lead",
-    designLanguageSection: "§2 (`:51`) — a dialog title is `--text-lg` 15px (`vg-295`)",
+    designLanguageSection: "§2 — a dialog title is `--text-lg` 15px (`vg-295`)",
     scaleToken: "--text-lg",
     surface: "settings",
   },
@@ -1021,7 +1022,7 @@ export const PARITY: readonly ParityRegion[] = [
     mockupProperty: "background-color",
     productSelector: ".editor-shell-dialog-overlay",
     designLanguageSection:
-      "§3 elevation 3 (`:105`) — the modal's scrim is `#00000073`; §10 (`:462`) forbids a hex literal in a surface (`vg-294`)",
+      "§3 elevation 3 — the modal's scrim is `#00000073`; §10 forbids a hex literal in a surface (`vg-294`)",
     scaleToken: "--elev-scrim",
     comparator: "colour",
     surface: "settings",
@@ -1034,7 +1035,7 @@ export const PARITY: readonly ParityRegion[] = [
     comparator: "count",
     productSelector: '[aria-labelledby="vigilia-settings-palette"]',
     designLanguageSection:
-      "§5 rule 7 (`:188`) leaves the grid to the drawing, which draws three columns; no section names a column count",
+      "§5 rule 7 leaves the grid to the drawing, which draws three columns; no section names a column count",
     surface: "settings",
   },
   {
@@ -1045,7 +1046,7 @@ export const PARITY: readonly ParityRegion[] = [
     mockupProperty: "border-radius",
     productSelector: "[data-vigilia-palette-choice]",
     designLanguageSection:
-      "§3 radius table (`:92`) — a card in a grid is `--radius-lg`; §5's choice row (`:155`) is the licence spec `:469-477` withdraws",
+      "§3 radius table — a card in a grid is `--radius-lg`; §5's choice row is the licence spec `:469-477` withdraws",
     surface: "settings",
   },
   {
@@ -1062,7 +1063,7 @@ export const PARITY: readonly ParityRegion[] = [
     mockupProperty: "height",
     productSelector: ".editor-shell-palette-swatch",
     designLanguageSection:
-      "§7.8 (`:425`) — 'Palette choices retain visual swatches'; the swatch's form is the drawing's, and §5 (`:155`) names a swatch, never one",
+      "§7.8 — 'Palette choices retain visual swatches'; the swatch's form is the drawing's, and §5 names a swatch, never one",
     surface: "settings",
   },
   /* ── The ground bar's COLOUR, one row per solid-ground palette (`vg-321`) ───
@@ -1093,7 +1094,7 @@ export const PARITY: readonly ParityRegion[] = [
     productSelector:
       '.editor-shell-palette-swatch[data-shell-palette="editorial"]',
     designLanguageSection:
-      "§4 (`:122`) — `--bg` is 'the window behind everything'; §7.8 (`:425`) names no role, so the drawing's bar is the palette's ground (`vg-321`)",
+      "§4 — `--bg` is 'the window behind everything'; §7.8 names no role, so the drawing's bar is the palette's ground (`vg-321`)",
     surface: "settings",
     comparator: "colour",
   },
@@ -1106,7 +1107,7 @@ export const PARITY: readonly ParityRegion[] = [
     productSelector:
       '.editor-shell-palette-swatch[data-shell-palette="graphite"]',
     designLanguageSection:
-      "§4 (`:122`) — `--bg` is 'the window behind everything'; §7.8 (`:425`) names no role, so the drawing's bar is the palette's ground (`vg-321`)",
+      "§4 — `--bg` is 'the window behind everything'; §7.8 names no role, so the drawing's bar is the palette's ground (`vg-321`)",
     surface: "settings",
     comparator: "colour",
   },
@@ -1118,7 +1119,7 @@ export const PARITY: readonly ParityRegion[] = [
     mockupProperty: "background-color",
     productSelector: '.editor-shell-palette-swatch[data-shell-palette="ember"]',
     designLanguageSection:
-      "§4 (`:122`) — `--bg` is 'the window behind everything'; §7.8 (`:425`) names no role, so the drawing's bar is the palette's ground (`vg-321`)",
+      "§4 — `--bg` is 'the window behind everything'; §7.8 names no role, so the drawing's bar is the palette's ground (`vg-321`)",
     surface: "settings",
     comparator: "colour",
   },
@@ -1130,7 +1131,7 @@ export const PARITY: readonly ParityRegion[] = [
     mockupProperty: "background-color",
     productSelector: '.editor-shell-palette-swatch[data-shell-palette="moss"]',
     designLanguageSection:
-      "§4 (`:122`) — `--bg` is 'the window behind everything'; §7.8 (`:425`) names no role, so the drawing's bar is the palette's ground (`vg-321`)",
+      "§4 — `--bg` is 'the window behind everything'; §7.8 names no role, so the drawing's bar is the palette's ground (`vg-321`)",
     surface: "settings",
     comparator: "colour",
   },
@@ -1142,7 +1143,7 @@ export const PARITY: readonly ParityRegion[] = [
     mockupProperty: "background-color",
     productSelector: '.editor-shell-palette-swatch[data-shell-palette="plum"]',
     designLanguageSection:
-      "§4 (`:122`) — `--bg` is 'the window behind everything'; §7.8 (`:425`) names no role, so the drawing's bar is the palette's ground (`vg-321`)",
+      "§4 — `--bg` is 'the window behind everything'; §7.8 names no role, so the drawing's bar is the palette's ground (`vg-321`)",
     surface: "settings",
     comparator: "colour",
   },
@@ -1154,7 +1155,7 @@ export const PARITY: readonly ParityRegion[] = [
        `padding:14px 16px`, `:22` `padding:10px 6px`), while `.editor-shell-dialog`
        carries `padding: 20px 24px` on the frame and none on the panel. The two
        differ in **where** the inset sits, not in whether there is one — and §3
-       `:79` positively requires `20–24` for "dialog padding", which is the
+       positively requires `20–24` for "dialog padding", which is the
        product's value, so this is a difference kept by a rule that predates it,
        not a defect.
 
@@ -1174,10 +1175,10 @@ export const PARITY: readonly ParityRegion[] = [
     mockupSelector: '[style*="flex:1;min-width:0;padding:14px 16px"]',
     mockupProperty: "padding",
     productSelector: ".editor-shell-dialog",
-    designLanguageSection: "§3 spacing (`DESIGN.md:79`)",
+    designLanguageSection: "§3 spacing",
     surface: "settings",
     licensed:
-      '§3 (`DESIGN.md:79`): "| 20–24 | Between regions; dialog padding |" — the product renders `padding: 20px 24px` on `.editor-shell-dialog`, the value §3 requires for a dialog; the drawing draws no frame padding and insets its children (`current/settings.html:41` `padding:14px 16px`) instead.',
+      '§3: "| 20–24 | Between regions; dialog padding |" — the product renders `padding: 20px 24px` on `.editor-shell-dialog`, the value §3 requires for a dialog; the drawing draws no frame padding and insets its children (`current/settings.html:41` `padding:14px 16px`) instead.',
   },
   /* ── The modal's two other panels (plan 8 Task 4) ───────────────────────────
      The census recorded six regions as `no-counterpart` because the current set
@@ -1224,7 +1225,7 @@ export const PARITY: readonly ParityRegion[] = [
     mockupProperty: "border-radius",
     productSelector: ".editor-shell-keyboard [data-vigilia-shortcut-row]",
     designLanguageSection:
-      "§3 radius table (`DESIGN.md:90-91`) — `--radius-md` 6px is 'Controls, menu rows, small tiles' and a binding row is a row; `--radius-sm` 4px is 'Swatches, inline chips, the slider thumb's container'",
+      "§3 radius table — `--radius-md` 6px is 'Controls, menu rows, small tiles' and a binding row is a row; `--radius-sm` 4px is 'Swatches, inline chips, the slider thumb's container'",
     surface: "settings-keyboard",
   },
   {
@@ -1235,7 +1236,7 @@ export const PARITY: readonly ParityRegion[] = [
     mockupProperty: "border-radius",
     productSelector: ".editor-shell-keyboard kbd",
     designLanguageSection:
-      "§2 (`:38`) — a chord mark is mono, so it is a value; §3 radius table (`:90`) — `--radius-sm` 4px is 'Swatches, inline chips'",
+      "§2 — a chord mark is mono, so it is a value; §3 radius table — `--radius-sm` 4px is 'Swatches, inline chips'",
     surface: "settings-keyboard",
   },
   {
@@ -1246,7 +1247,7 @@ export const PARITY: readonly ParityRegion[] = [
     mockupProperty: "padding",
     productSelector: ".editor-shell-keyboard kbd",
     designLanguageSection:
-      "§3 spacing (`:74`) — 4px is 'Inside a control (well padding, icon button)'",
+      "§3 spacing — 4px is 'Inside a control (well padding, icon button)'",
     surface: "settings-keyboard",
   },
   {
@@ -1257,7 +1258,7 @@ export const PARITY: readonly ParityRegion[] = [
     mockupProperty: "border-radius",
     productSelector: '[data-vigilia-shortcut-reset="file.new"]',
     designLanguageSection:
-      "§3 radius table (`:91`) — `--radius-md` 6px is 'Controls, menu rows, small tiles', and a button is a control; the dialog's own Close already takes it",
+      "§3 radius table — `--radius-md` 6px is 'Controls, menu rows, small tiles', and a button is a control; the dialog's own Close already takes it",
     surface: "settings-keyboard",
   },
   {
@@ -1268,7 +1269,7 @@ export const PARITY: readonly ParityRegion[] = [
     mockupProperty: "border-radius",
     productSelector: "[data-vigilia-shortcut-reset-all]",
     designLanguageSection:
-      "§3 radius table (`:91`) — `--radius-md` 6px is 'Controls'; the same value the per-row action takes, one act being one control",
+      "§3 radius table — `--radius-md` 6px is 'Controls'; the same value the per-row action takes, one act being one control",
     surface: "settings-keyboard",
   },
   {
@@ -1279,7 +1280,7 @@ export const PARITY: readonly ParityRegion[] = [
     mockupProperty: "border-radius",
     productSelector: '[data-vigilia-shortcut-arm="file.new"]',
     designLanguageSection:
-      "§5 (`:154`) — 'Icon button — A 26–30px square at `--radius-md`, glyph only'",
+      "§5 — 'Icon button — A 26–30px square at `--radius-md`, glyph only'",
     surface: "settings-keyboard",
   },
   {
@@ -1290,7 +1291,7 @@ export const PARITY: readonly ParityRegion[] = [
     mockupProperty: "gap",
     productSelector: "[data-vigilia-about] dl > div",
     designLanguageSection:
-      "§5 rule 2 (`:163-164`) — 'Read-only rows are label + mono value, baseline-aligned, right-aligned'",
+      "§5 rule 2 — 'Read-only rows are label + mono value, baseline-aligned, right-aligned'",
     surface: "settings-about",
   },
 ];

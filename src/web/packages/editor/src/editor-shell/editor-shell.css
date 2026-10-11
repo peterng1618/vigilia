@@ -361,10 +361,10 @@ body,
   --elev-1: 0 8px 20px #00000059;
   --elev-2: 0 18px 44px #00000099;
   --elev-3: 0 24px 60px #000000b3;
-  /* §3's elevation 3 carries a scrim as well as a shadow
-     (`DESIGN.md:105`), and this is it. A token rather than a §4 role
+  /* §3's elevation 3 carries a scrim as well as a shadow,
+     and this is it. A token rather than a §4 role
      because §4 names no scrim role, and a token rather than the literal the
-     overlay wrote because §10 (`:462`) forbids a hex value in a surface. */
+     overlay wrote because §10 forbids a hex value in a surface. */
   --elev-scrim: #00000073;
 }
 
@@ -1330,7 +1330,7 @@ body,
    table, the action on the left and its chord pushed to the right edge as the
    menu rows already read.
 
-   **The lead is the dialog's visible name, and §2 (`DESIGN.md:51`)
+   **The lead is the dialog's visible name, and §2
    gives that `--text-lg` (15px): "Dialog titles".** It is one rule for one role
    across seven sites: two `<h2>`s (`settings.tsx`, `shortcut-reference.tsx`) and
    five `<p>`s — the theme library's chooser lead and its conflict lead
@@ -1338,7 +1338,7 @@ body,
    replace-document prompt — and each of those five `<p>`s renders the **same
    string the dialog already passes as its `label`**, so Base UI's `aria-label`
    carries the name and the `<p>` is its visible half, not body copy. None is
-   uppercase now: §2 (`:57`) — "Nothing else is uppercase: a chord is printed as
+   uppercase now: §2 — "Nothing else is uppercase: a chord is printed as
    the platform prints it, and a menu row is sentence case" — and all seven sites
    were uppercase at 13px before, so the eyebrow treatment went with the size.
 
@@ -1352,7 +1352,7 @@ body,
   color: var(--shell-text);
 }
 /* A dialog's announced status, on §2's smallest reading step
-   (`DESIGN.md:48`: `--text-xs` 11px, "Panel rows, hints, status bar"),
+   (`--text-xs` 11px, "Panel rows, hints, status bar"),
    muted so it reads as an aside beside the dialog's name rather than as a
    second one. The node is present while empty so a screen reader hears it fill
    (the theme library mounts it whether or not it says anything). */
@@ -1389,8 +1389,8 @@ body,
 }
 .editor-shell-dialog kbd {
   font-family: ui-monospace, monospace;
-  /* §2 (`DESIGN.md:48`) — `--text-xs` 11px, the reading a hint or a
-     panel row has. A chord mark is mono by §2 (`:38`) and this size is the one
+  /* §2 — `--text-xs` 11px, the reading a hint or a
+     panel row has. A chord mark is mono by §2 and this size is the one
      every other chord mark in the shell already takes
      (`.editor-shell-menu-key`, `.editor-shell-primary-key`). */
   font-size: var(--text-xs);
@@ -1403,7 +1403,7 @@ body,
   border-radius: 6px;
   background: var(--vigilia-control-bg);
   color: var(--shell-text);
-  /* §2 (`:49`) — `--text-sm` 12px, "Control text": a dialog's own button is a
+  /* §2 — `--text-sm` 12px, "Control text": a dialog's own button is a
      control, and this rule reaches the two dialogs that draw one directly (the
      settings modal's Close and the `?` sheet's) rather than letting them inherit
      the portalled document's 13px. The three dialogs that wrap their buttons in
@@ -1423,7 +1423,7 @@ body,
    drawing does not draw.
 
    **The axis is the drawing's because DESIGN.md is silent about it, and §13
-   makes that the drawing's jurisdiction.** §5 `:143` opens the vocabulary with
+   makes that the drawing's jurisdiction.** §5 opens the vocabulary with
    "The vocabulary is closed. A control is one of these, or it is not a control."
    and no *tab* control is in it, so no rule requires the horizontal form; §7
    fixes the three tabs and what each holds, never their direction; and spec §13
@@ -1549,9 +1549,9 @@ body,
    **Scoped to this panel, not on the shared `.editor-shell-dialog kbd`.** The
    `?` sheet renders that rule too and no drawing in `current/` draws the sheet,
    so the sheet's bare mark keeps Task 3's reading rather than being moved by a
-   surface nothing governs. §2 (`DESIGN.md:38`) — "Values are mono …
+   surface nothing governs. §2 — "Values are mono …
    chord marks" — is the predating rule that a chord is a value; the chip is the
-   drawing's, and the class is §5 (`:154`)'s icon button beside it, not this.
+   drawing's, and the class is §5's icon button beside it, not this.
 
    **The inset is one value, not `4px 6px`.** The parity row reads the element's
    computed `padding` *shorthand*, and `lengthInPx` answers `null` for a mixed
@@ -1570,7 +1570,7 @@ body,
   align-items: center;
   flex-wrap: wrap;
   padding: var(--space-4) var(--space-6);
-  /* §3 radius table (`DESIGN.md:90-91`) — `--radius-sm` 4px is
+  /* §3 radius table — `--radius-sm` 4px is
      "Swatches, inline chips, the slider thumb's container" and `--radius-md` 6px
      is "Controls, menu rows, small tiles". **A binding row is a row**, so it
      takes `--radius-md`, the value the drawing gives it
@@ -1591,7 +1591,7 @@ body,
 .editor-shell-keyboard-action {
   padding: var(--space-4) var(--space-8);
   border: 1px solid var(--shell-edge);
-  /* §3 radius table (`DESIGN.md:91`) — `--radius-md` 6px is "Controls",
+  /* §3 radius table — `--radius-md` 6px is "Controls",
      and a button is a control; the drawing draws both return-to-default actions
      at 6px (`current/settings-keyboard.html`), one act being one control. */
   border-radius: var(--radius-md);
