@@ -20,16 +20,23 @@
  * `design-tokens.mjs`, `ownership-sweep.mjs` and `reuse-gate.mjs` read the
  * source tree as data, so a constant nothing imports can still redden a gate.
  *
- * Five candidate kinds, and each one records the search that found it:
+ * Six candidate kinds, and each one records the search that found it:
  *
  *   - `test-only-consumer` — a module every importer of which is a test file.
  *   - `no-importer-file`   — a module nothing imports, once entry points and
  *                            the files vitest/Playwright discover by glob are
  *                            set aside. Miss the glob and this reports the
  *                            entire 244-file suite as dead.
- *   - `no-importer-export` — a top-level export with no *production* importer.
- *                            A test import is not a consumer, which is exactly
- *                            what makes the name dead.
+ *   - `dead-export`        — a top-level export no production file imports *and*
+ *                            which its own module never uses either. The symbol
+ *                            is dead. A test import is not a consumer.
+ *   - `redundant-export`   — the same, except its own declaring file does use it.
+ *                            **The symbol is live and only the `export` keyword
+ *                            is unnecessary** — which is the opposite remedy to
+ *                            the kind above, and the reason they are two kinds
+ *                            rather than one. Reporting them together as "unused
+ *                            exports" invites a phase that deletes a symbol that
+ *                            is in use, or claims a reduction that never lands.
  *   - `barrel-only-export` — an export whose only importer is its own package's
  *                            `index.ts`, and which no one then takes from it.
  *   - `unreachable-branch` — a member of a closed string-literal union whose
@@ -39,6 +46,14 @@
  *                            false positive of this kind.
  *
  * Usage:  node scripts/dead-code-sweep.mjs [--json <path>] [--self-test]
+ *
+ *   --json <path>  the CANDIDATE report, written in every mode, `--self-test`
+ *                  included. The self-test result never goes to this path: its
+ *                  own destination is fixed at
+ *                  `src/web/test-results/dead-code-sweep-self-test.json`, so a
+ *                  run that asks for both cannot silently overwrite the counts
+ *                  a later phase is budgeting against.
+ *   --self-test    run the checks below and exit non-zero on any failure.
  */
 import { mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
@@ -294,6 +309,20 @@ const source = new Map(
   all.map((file) => [file, stripComments(readFileSync(join(ROOT, file), "utf8"))]),
 );
 
+/**
+ * A second view of each file, with quoted strings blanked, used only to decide
+ * whether a module *uses* one of its own exports. A name inside a string is
+ * vocabulary, not a call — `data-vigilia-*` and the `KIND_*` registries are
+ * exactly the trap this repository sets — so it must not count as a use.
+ */
+const stripStrings = (text) =>
+  text.replace(/"(?:[^"\\\n]|\\.)*"/g, '""').replace(/'(?:[^'\\\n]|\\.)*'/g, "''");
+
+const selfUse = new Map(all.map((file) => [file, stripStrings(source.get(file))]));
+const escapeRe = (name) => name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+const usesIn = (text, name) =>
+  (text.match(new RegExp(`\\b${escapeRe(name)}\\b`, "g")) ?? []).length;
+
 /** consumedBy[target] = [{ from, names }] where names === null is the whole module. */
 const consumedBy = new Map(all.map((file) => [file, []]));
 /** reExports[barrel] = [{ target, names }] — how a barrel forwards another file's names. */
@@ -468,27 +497,55 @@ for (const file of all) {
       continue;
     }
 
-    candidates.push({
-      kind: "no-importer-export",
-      file,
-      symbol: name,
-      evidence: `0 production importers; ${direct.length + through.length} importer(s), all tests: ${list(testConsumers)}. Search: ${IMPORTERS}, then for every file that imports this one the imported name list was read from the clause; a namespace import, a dynamic import(), a side-effect import or a vi.mock factory consumes every name and would have hidden this. Consumers reached through a re-exporting barrel are followed. String-resolved vocabulary is invisible to this search.`,
-    });
+    const importerSearch = `0 production importers; ${direct.length + through.length} importer(s), all tests: ${list(testConsumers)}. Search: ${IMPORTERS}, then for every file that imports this one the imported name list was read from the clause; a namespace import, a dynamic import(), a side-effect import or a vi.mock factory consumes every name and would have hidden this. Consumers reached through a re-exporting barrel are followed. String-resolved vocabulary is invisible to this search.`;
+
+    // The two tiers take opposite actions, so they are two kinds, not one.
+    const ownUses = name === "default" ? 0 : usesIn(selfUse.get(file), name);
+    if (ownUses > 1) {
+      candidates.push({
+        kind: "redundant-export",
+        file,
+        symbol: name,
+        evidence: `the symbol is LIVE: its own declaring file uses it (${ownUses} occurrences of the name outside quoted strings) and no other production file imports it. Only the "export" keyword is unnecessary — do not delete the symbol. ${importerSearch}`,
+      });
+    } else {
+      candidates.push({
+        kind: "dead-export",
+        file,
+        symbol: name,
+        evidence: `the symbol is dead: ${name === "default" ? "a default export carries no name to search for" : "its own declaring file never uses it outside quoted strings (1 occurrence — the declaration itself)"}, so nothing in its own module reaches it either. ${importerSearch}`,
+      });
+    }
   }
 }
 
 // Unreachable branches: the literal exists only inside its own union.
+const unreachableDeclarers = new Map(); // literal -> every file that declares it
+for (const union of unions) {
+  for (const member of new Set(union.members)) {
+    if (!unreachableDeclarers.has(member)) unreachableDeclarers.set(member, new Set());
+    unreachableDeclarers.get(member).add(union.file);
+  }
+}
+
 for (const union of unions) {
   if (isEntryPoint(union.file) || isAmbientTypes(union.file) || isTestFile(union.file)) continue;
   for (const member of new Set(union.members)) {
     const total = literalCounts.get(member) ?? 0;
     const inside = unionLiterals.get(member) ?? 0;
     if (total - inside > 0) continue;
+    const declarers = [...unreachableDeclarers.get(member)].sort();
+    // One literal can be declared in more than one file, so a row count is not a
+    // count of distinct dead branches — say which this is, both here and in the report.
+    const elsewhere =
+      declarers.length > 1
+        ? ` The SAME literal is declared in ${declarers.length} files (${declarers.join(", ")}), so this row is one of ${declarers.length} for a single distinct branch.`
+        : " This literal is declared in one file, so this row is one distinct branch.";
     candidates.push({
       kind: "unreachable-branch",
       file: union.file,
       symbol: member,
-      evidence: `the literal ${member} appears ${total} time(s) in the scanned tree (tests included) and every one is inside a closed union at ${union.file}; nothing else in the source names it, so nothing in the source produces it and nothing switches on it. Search: literal-text scan for ${member} minus its occurrences inside union runs, over declaration-shaped unions only (a type alias body or a property annotation; a Pick<T, ...> argument list is not read as a union). Expected false positives: a variant produced or read through a composed string, and a value that arrives from outside the source — a sensor type name or a persisted Fabric JSON property — which is a decision rather than a deletion.`,
+      evidence: `the literal ${member} appears ${total} time(s) in the scanned tree (tests included) and every one is inside a closed union at ${union.file}; nothing else in the source names it, so nothing in the source produces it and nothing switches on it.${elsewhere} Search: literal-text scan for ${member} minus its occurrences inside union runs, over declaration-shaped unions only (a type alias body or a property annotation; a Pick<T, ...> argument list is not read as a union). Expected false positives: a variant produced or read through a composed string, and a value that arrives from outside the source — a sensor type name or a persisted Fabric JSON property — which is a decision rather than a deletion.`,
     });
   }
 }
@@ -509,7 +566,8 @@ function bucketOf(file) {
 const KINDS = [
   "test-only-consumer",
   "no-importer-file",
-  "no-importer-export",
+  "dead-export",
+  "redundant-export",
   "barrel-only-export",
   "unreachable-branch",
 ];
@@ -531,6 +589,14 @@ const report = {
   candidates,
   countsByKind,
   countsByPackage,
+  /**
+   * `unreachable-branch` rows are per declaration site, and one literal can be
+   * declared in two files — so its row count is not its count of distinct dead
+   * branches. This is the number a reader should quote.
+   */
+  unreachableBranchDistinctLiterals: new Set(
+    candidates.filter((c) => c.kind === "unreachable-branch").map((c) => c.symbol),
+  ).size,
   unresolvedRelativeSpecifiers: unresolved,
   note:
     "Candidates, not verdicts, and nothing here is deleted. `data-vigilia-*` attributes, " +
@@ -549,7 +615,11 @@ function renderReport(report) {
   );
   lines.push("");
   for (const [kind, count] of Object.entries(report.countsByKind)) {
-    lines.push(`${kind} — ${count}`);
+    const distinct =
+      kind === "unreachable-branch" && report.unreachableBranchDistinctLiterals !== count
+        ? `  (${report.unreachableBranchDistinctLiterals} distinct literals — one literal declared in two files is two rows, one branch)`
+        : "";
+    lines.push(`${kind} — ${count}${distinct}`);
     const rows = report.candidates.filter((candidate) => candidate.kind === kind);
     for (const row of rows.slice(0, 25)) {
       lines.push(`  ${row.file}${row.symbol === undefined ? "" : ` :: ${row.symbol}`}`);
@@ -598,8 +668,15 @@ if (!argv.includes("--self-test")) process.stdout.write(renderReport(report));
  * wrong).
  *
  * The result lands in a file rather than only on stdout: a hook rewrites stdout
- * in this environment, so a count read from the terminal is not evidence.
+ * in this environment, so a count read from the terminal is not evidence. That
+ * file has its own fixed path and is never the `--json` path.
+ *
+ * What these checks do NOT establish: `barrel-only-export` has never produced a
+ * row in this tree, so the branch that emits one is unexercised. The barrel
+ * check below proves a route is *followed*, not that the kind can fire.
  */
+const SELFTEST_JSON = join(WEB, "test-results", "dead-code-sweep-self-test.json");
+
 if (argv.includes("--self-test")) {
   const at = (kind, file, symbol) =>
     candidates.some(
@@ -634,8 +711,21 @@ if (argv.includes("--self-test")) {
     ],
     ["no ambient .d.ts is a candidate", candidates.every((candidate) => !isAmbientTypes(candidate.file))],
     [
-      "no-importer-export lands on settingsField()",
-      at("no-importer-export", SETTINGS_FIELD, "settingsField"),
+      "dead-export lands on settingsField() (its own file never uses it)",
+      at("dead-export", SETTINGS_FIELD, "settingsField"),
+    ],
+    [
+      "redundant-export lands on instantiateCard (its own file calls it)",
+      at("redundant-export", "src/web/packages/editor/src/card-library.ts", "instantiateCard"),
+    ],
+    [
+      "the two export tiers are disjoint (opposite remedies, one row never both)",
+      candidates.every(
+        (candidate) =>
+          candidate.kind !== "dead-export" && candidate.kind !== "redundant-export"
+            ? true
+            : candidates.filter((other) => other.file === candidate.file && other.symbol === candidate.symbol).length === 1,
+      ),
     ],
     [
       "the negative case is absent from every kind",
@@ -668,6 +758,14 @@ if (argv.includes("--self-test")) {
       "a Pick<T, ...> argument list is not read as a union",
       unionRunsIn('function f(options: Pick<O, "flex" | "width"> = {}) {}').length === 0,
     ],
+    /**
+     * What this establishes and what it does not: it proves a barrel's re-export
+     * is *followed* as a route — so an export consumed through its own package
+     * barrel is not reported as unused — for the real case of `settingsFieldsFor`
+     * through `renderer-core/src/index.ts`. It does NOT exercise the branch that
+     * emits a `barrel-only-export` candidate, which has never produced a row in
+     * this tree; that branch is unproven by this file's only gate.
+     */
     [
       "a barrel's re-export is followed as a route (an import is not)",
       barrelRoutes("src/web/packages/renderer-core/src/charts/settings-fields.ts")
@@ -680,21 +778,53 @@ if (argv.includes("--self-test")) {
     ],
   ];
 
+  const outPath = resolve(SELFTEST_JSON);
   const result = {
-    checks: checks.map(([name, ok]) => ({ name, ok })),
-    passed: checks.filter(([, ok]) => ok).length,
-    failed: checks.filter(([, ok]) => !ok).map(([name]) => name),
-    total: checks.length,
+    checks: [],
+    passed: 0,
+    failed: [],
+    total: 0,
     selfTest: true,
     note: "A run with fewer than total passes is a failure; the file is written either way so the count can be read without the terminal.",
   };
-  const outPath = resolve(
-    jsonPath === null || jsonPath === undefined
-      ? join(WEB, "test-results", "dead-code-sweep-self-test.json")
-      : jsonPath,
-  );
-  mkdirSync(dirname(outPath), { recursive: true });
-  writeFileSync(outPath, `${JSON.stringify(result, null, 2)}\n`, "utf8");
+  const write = () => {
+    result.checks = checks.map(([name, ok]) => ({ name, ok }));
+    result.passed = checks.filter(([, ok]) => ok).length;
+    result.failed = checks.filter(([, ok]) => !ok).map(([name]) => name);
+    result.total = checks.length;
+    mkdirSync(dirname(outPath), { recursive: true });
+    writeFileSync(outPath, `${JSON.stringify(result, null, 2)}\n`, "utf8");
+  };
+  write();
+
+  /**
+   * The regression this guards: the self-test once wrote its result to the same
+   * path as `--json`, so `--self-test --json out.json` replaced the candidate
+   * report with the checks and exited 0.
+   *
+   * It has to run AFTER the first write, and that is the whole point: written
+   * into the list above, it read `--json` while the candidate report was still
+   * intact and passed while the bug was live — a check that cannot fail. Building
+   * it here is what makes the red-proof reproduce.
+   *
+   * Vacuous without `--json`, which is why the usage line names both flags.
+   */
+  let intact = jsonPath === null || jsonPath === undefined;
+  if (!intact) {
+    try {
+      intact = Object.hasOwn(JSON.parse(readFileSync(resolve(jsonPath), "utf8")), "candidates");
+    } catch {
+      intact = false;
+    }
+  }
+  // Pushed unconditionally so the total is a stable number: a check that
+  // appears only on some runs is a count nobody can quote.
+  checks.push([
+    "the report at --json still holds candidates after the self-test ran (vacuous unless --json was passed)",
+    intact,
+  ]);
+  write();
+
   for (const { name, ok } of result.checks) process.stdout.write(`${ok ? "  ok  " : "  FAIL"} ${name}\n`);
   process.stdout.write(`\ndead-code-sweep self-test: ${result.passed}/${result.total} passed -> ${outPath}\n`);
   if (result.failed.length > 0) process.exit(1);
