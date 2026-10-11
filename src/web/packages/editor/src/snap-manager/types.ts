@@ -2,11 +2,6 @@ import type { ObjectBounds } from "./bounds.js";
 
 export type Bounds = ObjectBounds;
 
-export type AnchorBuckets = {
-  vertical: number[];
-  horizontal: number[];
-};
-
 /** The exact gap between neighbouring objects. */
 export type SpacingPattern = {
   type: "vertical" | "horizontal";

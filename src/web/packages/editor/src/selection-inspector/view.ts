@@ -1,4 +1,3 @@
-import type { Binding } from "@vigilia/renderer-core";
 import { isObjectName } from "@vigilia/renderer-core";
 import type { FabricObject } from "fabric/es";
 import type {
@@ -324,12 +323,6 @@ export interface TextLayoutPatch {
   readonly verticalAlign?: string;
   readonly wrap?: boolean;
   readonly overflow?: string;
-}
-
-/** The bindings a node declares, read and written through the session. */
-export interface RunBindingPort {
-  readonly bindings: () => readonly Binding[];
-  readonly setBindings: (bindings: readonly Binding[]) => void;
 }
 
 /**

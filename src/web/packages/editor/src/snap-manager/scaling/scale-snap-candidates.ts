@@ -17,12 +17,6 @@ export type ScaleSnapCandidateSource = Readonly<{
   >;
 }>;
 
-/** Candidates and zoom captured at the start of one scale gesture. */
-export type ScaleSnapEnvironment = Readonly<{
-  candidates: readonly ScaleSnapCandidateInput[];
-  zoom: number;
-}>;
-
 /** A named line of the source object, before it is bound to a moving edge. */
 type ScaleSnapSourceLine = Readonly<{
   key: "left" | "center-x" | "right" | "top" | "center-y" | "bottom";
