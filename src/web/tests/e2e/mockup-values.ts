@@ -904,21 +904,38 @@ export const PARITY: readonly ParityRegion[] = [
      **These rows are red on the build they land on, on purpose.** Tasks 2, 3 and
      5 pull the product to the drawing, and each row names its task in the census.
      A row loosened, skipped or `test.fixme`d to reach green would be the defect
-     this table exists to end, so none is.
+     this table exists to end, so none is. Task 2 has since answered two of them —
+     row 1 and row 2 below read green — and the note each carries says how.
 
      **Row 1 — the navigation's axis.** The drawing is a `150px` column with an
-     icon per row; the product is a horizontal word strip with no width of its
-     own. The *width* is the one property the axis has, and it is what this row
-     reads: a strip's width is its container's, a column's is its own. The axis's
+     icon per row; the product *was* a horizontal word strip with no width of its
+     own, and is now the column the drawing draws (Task 2). The *width* is the
+     one property the axis has, and it is what this row reads: a strip's width is
+     its container's, a column's is its own — and the column's is on the element
+     this row names, with no padding or border on it, because a border-box width
+     would shorten the content box a `width` reading returns. The axis's
      *direction* — and the keyboard model it implies — is not a property and is a
      named gap in the census, Task 2's browser walk being its evidence.
 
+     The rule that makes the drawing govern is **§5 (`:143`)** — "The vocabulary
+     is closed. A control is one of these, or it is not a control", with no *tab*
+     in it, so the bible requires nothing about the axis — and **spec §13**
+     (`:451-454`), which names this very strip: "The mockup governs wherever the
+     written rules are silent. Silence is not permission — it is the drawing's
+     jurisdiction."
+
      **Row 2 — the lead's role.** §2 gives a dialog exactly two type roles, and
-     the product's `<h2>` is neither: it is `--text-md` (13px) on `--shell-text`
-     where the drawing puts the surface's name on the nav as a `--text-2xs`
-     eyebrow. The `<h2>` is the modal's own title and the `?` sheet renders the
-     same rule, so its role is §2's dialog title, `--text-lg` — read from the
-     product's own `:root`, so this row cannot drift from the token.
+     the product's `<h2>` was neither: `--text-md` (13px) on `--shell-text` where
+     the drawing puts the surface's name on the nav as a `--text-2xs` eyebrow.
+     The `<h2>` is the modal's own title and the `?` sheet renders the same rule,
+     so its role is §2's dialog title, `--text-lg` — read from the product's own
+     `:root`, so this row cannot drift from the token. **Task 2 removed the
+     eyebrow marks with the size**: §2 (`:57`) reserves uppercase for a section
+     eyebrow ("Nothing else is uppercase"), and the rule covers the dialog's
+     visible name at seven sites, four of them `<p>`s that render the same string
+     the dialog passes as its `label`. The theme library's `role="status"` node
+     no longer wears the rule — a status is not a name — and takes
+     `.editor-shell-dialog-status` instead.
 
      **Row 3 — the scrim, and the first colour row.** `#0009` is 60% black where
      §3's modal scrim is `#00000073`, 45%, and a hex literal where §10 forbids one
@@ -952,7 +969,7 @@ export const PARITY: readonly ParityRegion[] = [
     mockupProperty: "width",
     productSelector: ".editor-shell-settings-tabs",
     bibleSection:
-      "§5 (`:143`) closes the vocabulary and names no 'tab' control; §5 rule 7 (`:188`) permits any grid, so the drawing governs the axis",
+      "§5 (`:143`) closes the vocabulary — no *tab* control is in it, so the bible requires nothing about the axis — and spec §13 (`:451-454`) makes the drawing its jurisdiction where the rules are silent, naming this strip at `:458-459`",
     surface: "settings",
   },
   {

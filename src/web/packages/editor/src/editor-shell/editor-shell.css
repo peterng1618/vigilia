@@ -1308,17 +1308,35 @@ body,
    table, the action on the left and its chord pushed to the right edge as the
    menu rows already read.
 
-   **The lead is §2's dialog title, `--text-lg` (15px), and carries no eyebrow
-   marks.** §2 (`design-language.md:51`) gives that step to "Dialog titles" and
-   (`:56`) reserves uppercase and tracking for a section eyebrow, so the 13px
-   uppercase lead it used to be was neither of the two roles §2 has. Both
-   dialogs share the rule, so the `?` sheet's lead moves with it — one title,
-   one treatment. */
+   **The lead is the dialog's visible name, and §2 (`design-language.md:51`)
+   gives that `--text-lg` (15px): "Dialog titles".** It is one rule for one role
+   across seven sites: two `<h2>`s (`settings.tsx`, `shortcut-reference.tsx`) and
+   four `<p>`s in the theme library, the new-document chooser and the
+   replace-document prompt — and each of those four `<p>`s renders the **same
+   string the dialog already passes as its `label`**, so Base UI's `aria-label`
+   carries the name and the `<p>` is its visible half, not body copy. None is
+   uppercase now: §2 (`:57`) — "Nothing else is uppercase: a chord is printed as
+   the platform prints it, and a menu row is sentence case" — and all seven sites
+   were uppercase at 13px before, so the eyebrow treatment went with the size.
+
+   **A status is not a name and does not wear this rule.** The theme library's
+   live region (`theme-library-dialog.tsx`) adopted it, and read as a second
+   title; that node is `.editor-shell-dialog-status` below. */
 .editor-shell-dialog-lead {
   margin: 0 0 12px;
   font-family: var(--shell-display);
   font-size: var(--text-lg);
   color: var(--shell-text);
+}
+/* A dialog's announced status, on §2's smallest reading step
+   (`design-language.md:48`: `--text-xs` 11px, "Panel rows, hints, status bar"),
+   muted so it reads as an aside beside the dialog's name rather than as a
+   second one. The node is present while empty so a screen reader hears it fill
+   (the theme library mounts it whether or not it says anything). */
+.editor-shell-dialog-status {
+  margin: 0;
+  color: var(--shell-muted);
+  font-size: var(--text-xs);
 }
 .editor-shell-dialog section + section {
   margin-top: 14px;
@@ -1369,9 +1387,18 @@ body,
    (`current/settings.html:22-39`) draws a `150px` column of three glyph+label
    rows beside the panel, the active row lifted and marked with a 2px accent bar
    on its leading edge; the horizontal word strip this replaces is a control the
-   drawing does not draw and §5's vocabulary has no "tab" in it. The axis is the
-   drawing's to decide — §5 rule 7 (`design-language.md:188`) leaves a
-   multi-column layout to the surface — so the primitive stays Base UI's (`0038`)
+   drawing does not draw.
+
+   **The axis is the drawing's because the bible is silent about it, and §13
+   makes that the drawing's jurisdiction.** §5 `:143` opens the vocabulary with
+   "The vocabulary is closed. A control is one of these, or it is not a control."
+   and no *tab* control is in it, so no rule requires the horizontal form; §7
+   fixes the three tabs and what each holds, never their direction; and spec §13
+   (`docs/superpowers/specs/2026-10-08-editor-design-language-design.md:451-454`)
+   says "The mockup governs wherever the written rules are silent. Silence is not
+   permission — it is the drawing's jurisdiction", naming this very strip at
+   `:458-459` ("D1 kept a horizontal tab strip because '§7 fixes the three tabs
+   and what each holds, not their axis'"). The primitive stays Base UI's (`0038`)
    and only its orientation and treatment change: `data-active` is still the
    primitive's own selected marker, not a second class to keep in step.
 

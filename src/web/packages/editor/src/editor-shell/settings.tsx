@@ -320,10 +320,14 @@ export function Settings(props: {
     >
       <h2 className="editor-shell-dialog-lead">{uiCopy.settings.title}</h2>
       {/* A **vertical** tablist: the drawing's navigation is a column beside the
-          panel, not a row of words above it. §5's vocabulary has no "tab"
-          control and §5 rule 7 leaves the grid to the surface, so the axis is
-          the drawing's; the primitive stays Base UI's (`0038`) and only its
-          orientation and treatment change. `orientation` is what points the
+          panel, not a row of words above it. §5 (`design-language.md:143`)
+          opens the control vocabulary — "The vocabulary is closed. A control is
+          one of these, or it is not a control." — and no *tab* is in it, so the
+          bible requires nothing about the axis; spec §13 (`:451-454`) then makes
+          the drawing the authority: "The mockup governs wherever the written
+          rules are silent. Silence is not permission — it is the drawing's
+          jurisdiction." The primitive stays Base UI's (`0038`) and only its
+          orientation and treatment change; `orientation` is what points the
           arrow keys up and down the three rows rather than across. */}
       <Tabs.Root
         defaultValue="appearance"

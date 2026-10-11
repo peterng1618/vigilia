@@ -217,9 +217,13 @@ export function ThemeLibraryChooser({
           {/* **Mounted whether or not it says anything.** A live region added
               together with its own text is the less reliably announced pattern,
               so the node is always here, empty and `hidden`, and only its text
-              moves — the shape the imperative dialog had. */}
+              moves — the shape the imperative dialog had.
+
+              It carries the dialog's status rule, **not** the lead's: a status
+              is not the dialog's name, and on the lead rule it read as a second
+              title (a failed removal printed its message at the title's 15px). */}
           <p
-            className="editor-shell-dialog-lead"
+            className="editor-shell-dialog-status"
             role="status"
             data-vigilia-library-status=""
             hidden={status === undefined}
