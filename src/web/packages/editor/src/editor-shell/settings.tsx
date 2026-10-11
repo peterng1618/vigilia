@@ -81,15 +81,17 @@ export function versionFacts(
 
 /** §7's Appearance tab: the six shell palettes, and follow-the-system.
  *
- *  The six are **choice rows in one radio group** rather than a `Segmented`,
- *  which bible §5 sizes at 2–4 labels: six lifted segments is a control the
- *  bible does not draw. A grid is layout, and the group's own keyboard model
- *  still walks the rows in reading order, so a narrower dialog changes the
- *  columns and not the arrow keys.
+ *  The six are **cards in one radio group** rather than a `Segmented`, which
+ *  bible §5 sizes at 2–4 labels: six lifted segments is a control the bible
+ *  does not draw. The drawing gives the group §5 rule 7's grid
+ *  (`current/settings.html:44-87`, `repeat(3,1fr)` of `--radius-lg` cards), so
+ *  the columns are the drawing's; the group's own keyboard model still walks the
+ *  six in reading order, and a narrower dialog changing the columns would not
+ *  change the arrow keys.
  *
- *  The swatch is the shell's, not the control set's: it carries the
- *  `data-shell-palette` of the palette it NAMES, which is what makes a chip
- *  repaint as its own palette rather than inherit the one in force (`0035`).
+ *  The preview is the shell's, not the control set's: each bar carries the
+ *  `data-shell-palette` of the palette it NAMES, which is what makes a bar paint
+ *  its own palette rather than inherit the one in force (`0035`).
  *  `ControlChoiceRow` takes it as a node for exactly that reason.
  *
  *  The write is here, in the tab, exactly where the header menu that this
@@ -151,20 +153,33 @@ function AppearanceTab({
         value={palette}
         onValueChange={choose}
         aria-labelledby={PALETTE_GROUP_ID}
-        className="mt-[var(--space-8)] grid grid-cols-2 gap-[var(--space-6)]"
+        className="mt-[var(--space-8)] grid grid-cols-3 gap-[var(--space-8)]"
       >
         {shellPalettes.map((entry) => (
           <ControlChoiceRow
             key={entry}
+            shape="card"
             label={entry}
             value={entry}
             data={{ "data-vigilia-palette-choice": entry }}
             swatch={
-              <span
-                className="editor-shell-palette-swatch"
-                data-shell-palette={entry}
-                aria-hidden
-              />
+              // Two bars, each resolving a role **of the palette this card
+              // names** rather than of the one in force (`0035`): the ground
+              // (§4's `--bg`, "the window behind everything") and the accent.
+              // The attribute is on each bar and not on the wrapper — a bar
+              // that inherited it would be repainted by the baseline
+              // declaration `.editor-shell-palette-swatch` carries, which is
+              // the defect `shell-appearance.spec.ts` exists for.
+              <span className="flex gap-[var(--space-4)]" aria-hidden>
+                <span
+                  className="editor-shell-palette-swatch"
+                  data-shell-palette={entry}
+                />
+                <span
+                  className="editor-shell-palette-swatch-accent"
+                  data-shell-palette={entry}
+                />
+              </span>
             }
           />
         ))}

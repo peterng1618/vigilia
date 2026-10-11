@@ -210,61 +210,89 @@ test.describe("shell palettes", () => {
     }
   });
 
-  test("every chip shows the palette it names, not the one in force", async ({
+  test("every preview shows the palette it names, not the one in force", async ({
     page,
   }, testInfo) => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
-    // A chip names a palette it may not be rendering under. `ember`, `moss`
-    // and `plum` declared only an accent, so under graphite a chip naming one
-    // inherited the live palette's surface and painted graphite's dark glass
-    // behind a peach ring.
+    // A preview names a palette it may not be rendering under. `ember`, `moss`
+    // and `plum` declared only an accent, so under graphite a preview naming one
+    // inherited the live palette's surface and painted graphite's dark ground
+    // behind a peach accent.
     await openEditor(page);
     await choosePalette(page, "graphite");
     const dialog = await openAppearance(page);
     const group = dialog.getByRole("radiogroup");
     await expect(group).toBeVisible();
 
-    const chips = await group.evaluate((node) =>
-      [...node.querySelectorAll(".editor-shell-palette-swatch")].map(
-        (chip) => ({
-          palette: chip.getAttribute("data-shell-palette"),
-          background: getComputedStyle(chip).backgroundColor,
-          ring: getComputedStyle(chip).boxShadow,
-        }),
-      ),
+    /** **Both bars of every card**, because the preview is two of them (plan 8
+     *  Task 5, `docs/design/mockups/current/settings.html:44-87`): the ground
+     *  bar carries the class the parity table's height row addresses and the
+     *  accent bar is its next sibling, each with its own `data-shell-palette`.
+     *  Reading the ground alone would call two palettes identical where only
+     *  their accents differ, which is what the ring this replaces used to read.
+     *  The ground is read as `backgroundColor` **and** `backgroundImage`:
+     *  `light`'s ground is a gradient stack, so its colour resolves to
+     *  transparent and the image is what the eye gets. */
+    const previews = await group.evaluate((node) =>
+      [...node.querySelectorAll(".editor-shell-palette-swatch")].map((bar) => {
+        const ground = getComputedStyle(bar);
+        const accent = bar.nextElementSibling;
+        return {
+          palette: bar.getAttribute("data-shell-palette"),
+          background: ground.backgroundColor,
+          image: ground.backgroundImage,
+          accent:
+            accent === null ? "" : getComputedStyle(accent).backgroundColor,
+        };
+      }),
     );
 
-    expect(chips.map((chip) => chip.palette)).toEqual([...PALETTES]);
+    expect(previews.map((preview) => preview.palette)).toEqual([...PALETTES]);
+    expect(
+      previews
+        .filter((preview) => preview.accent === "")
+        .map((preview) => preview.palette),
+      "these previews have no accent bar, so the card is not the two-bar preview the drawing draws",
+    ).toEqual([]);
 
-    // No chip shows the *live* palette's surface or ring while naming a
+    // No preview shows the *live* palette's ground or accent while naming a
     // different one, which is the defect this test was written for.
-    const live = chips.find((chip) => chip.palette === "graphite");
-    const borrowed = chips.filter(
-      (chip) =>
-        chip.palette !== "graphite" &&
-        (chip.background === live?.background || chip.ring === live?.ring),
+    const live = previews.find((preview) => preview.palette === "graphite");
+    const ground = (preview: (typeof previews)[number]): string =>
+      `${preview.background}|${preview.image}`;
+    const borrowed = previews.filter(
+      (preview) =>
+        preview.palette !== "graphite" &&
+        live !== undefined &&
+        (ground(preview) === ground(live) || preview.accent === live.accent),
     );
     expect(
-      borrowed.map((chip) => chip.palette),
-      "these chips are showing graphite, the palette in force, not their own",
+      borrowed.map((preview) => preview.palette),
+      "these previews are showing graphite, the palette in force, not their own",
     ).toEqual([]);
 
     // And all six are surfaces of their own, which is what the picker is for.
     // `ember`, `moss` and `plum` declared only an accent, so four of the six
-    // chips were byte-identical cream — a computed-value assertion cannot see
-    // that as wrong, because editorial's value is a legitimate value; only the
-    // eye catches a picker offering four options that look alike. Hence this
-    // is the assertion *and* the six screenshots beside it.
-    const surfaces = chips.map((chip) => chip.background);
+    // were byte-identical cream — a computed-value assertion cannot see that as
+    // wrong, because editorial's value is a legitimate value; only the eye
+    // catches a picker offering four options that look alike. Hence this is the
+    // assertion *and* the six screenshots beside it.
+    const surfaces = previews.map(
+      (preview) => `${ground(preview)}|${preview.accent}`,
+    );
     expect(
       surfaces.filter((surface, i) => surfaces.indexOf(surface) !== i),
-      "two palettes render the same surface, so the picker offers a duplicate",
+      "two palettes render the same preview, so the picker offers a duplicate",
     ).toEqual([]);
+    // The accent bar is what the chip's own ring used to be for: `--accent` is
+    // the one colour each palette is named by, so two palettes sharing one is a
+    // picker offering a duplicate even where their grounds differ.
+    const accents = previews.map((preview) => preview.accent);
     expect(
-      new Set(chips.map((chip) => chip.ring)).size,
-      "two palettes render the same ring",
-    ).toBe(chips.length);
+      accents.filter((accent, i) => accents.indexOf(accent) !== i),
+      "two palettes render the same accent",
+    ).toEqual([]);
 
     await page.keyboard.press("Escape");
   });
@@ -273,10 +301,10 @@ test.describe("shell palettes", () => {
    *
    *  Injected rather than written into a component: the shell has no
    *  `bg-shell-surface` yet, and this is the property that decides whether the
-   *  first one is safe to write. The probe goes inside the ember chip while
-   *  graphite is in force, which is the exact case a non-inline `@theme` loses
-   *  — it compiles to `var(--color-shell-surface)`, resolved at `:root`, so the
-   *  chip's own declaration is never consulted. */
+   *  first one is safe to write. The probe goes inside the ember preview bar
+   *  while graphite is in force, which is the exact case a non-inline `@theme`
+   *  loses — it compiles to `var(--color-shell-surface)`, resolved at `:root`,
+   *  so the bar's own declaration is never consulted. */
   test("a shell colour utility resolves the palette of its own subtree", async ({
     page,
   }, testInfo) => {
@@ -286,30 +314,39 @@ test.describe("shell palettes", () => {
     await choosePalette(page, "graphite");
     const dialog = await openAppearance(page);
 
-    const [inside, chip, live] = await dialog.evaluate((node) => {
+    const [inside, declared, live] = await dialog.evaluate((node) => {
       const ember = node.querySelector<HTMLElement>(
         '[data-shell-palette="ember"]',
       );
-      // A missing chip would leave the probe detached, where
-      // `getComputedStyle` answers "" for everything and the comparison below
-      // passes vacuously. Fail loudly instead.
+      // A missing bar would leave the probe detached, where `getComputedStyle`
+      // answers "" for everything and the comparison below passes vacuously.
+      // Fail loudly instead.
       if (ember === null) {
-        throw new Error("no ember chip in the palette popup");
+        throw new Error("no ember preview bar in the palette popup");
       }
       const probe = document.createElement("span");
       probe.className = "bg-shell-surface";
       ember.appendChild(probe);
+      /** The reference is a second element in the same subtree painted from the
+       *  same token by a plain declaration. It used to be the bar's own
+       *  background, which stopped being the token this probe is about when the
+       *  bar took the palette's ground (plan 8 Task 5) — a comparison against
+       *  the bar would now hold the utility to the wrong role. */
+      const reference = document.createElement("span");
+      reference.style.background = "var(--shell-surface)";
+      ember.appendChild(reference);
       const header = document.querySelector(".editor-shell-header");
       return [
         getComputedStyle(probe).backgroundColor,
-        getComputedStyle(ember).backgroundColor,
+        getComputedStyle(reference).backgroundColor,
         header === null ? "" : getComputedStyle(header).backgroundColor,
       ];
     });
 
-    expect(inside, "the utility did not resolve the chip's own palette").toBe(
-      chip,
-    );
+    expect(
+      inside,
+      "the utility did not resolve the palette of its own subtree",
+    ).toBe(declared);
     expect(inside, "and it must not be the live palette").not.toBe(live);
     expect(
       inside,

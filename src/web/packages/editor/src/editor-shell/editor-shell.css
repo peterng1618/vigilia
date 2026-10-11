@@ -20,13 +20,14 @@ body,
    so `:root` and the in-force palette selector are the same node and the
    cascade picks the right one. Everything below resolves for all six.
 
-   The swatch joins this selector because a chip is a *self-contained scope*
-   rather than a window onto whatever is in force: it carries the attribute of
-   the palette it NAMES, and without a declaration here it would inherit the
-   live palette's tokens instead of resolving its own — an ember chip under
-   graphite painted graphite's dark glass behind an ember ring. Declaring the
-   baseline on the chip makes every token it paints its own, and the palette
-   blocks below override it by later source order at equal specificity. */
+   The swatch joins this selector because a preview bar is a *self-contained
+   scope* rather than a window onto whatever is in force: it carries the
+   attribute of the palette it NAMES, and without a declaration here it would
+   inherit the live palette's tokens instead of resolving its own — an ember bar
+   under graphite painted graphite's dark ground behind an ember accent.
+   Declaring the baseline on the bar makes every token it paints its own, and
+   the palette blocks below override it by later source order at equal
+   specificity. */
 :root,
 [data-shell-palette="editorial"],
 .editor-shell-palette-swatch {
@@ -371,8 +372,8 @@ body,
    `inline` and not `@theme`: with `@theme` the utility compiles to
    `var(--color-shell-surface)` and the browser resolves that at `:root`, which
    loses every subtree that declares `--shell-*` for itself. One does:
-   `.editor-shell-palette-swatch` above, a chip naming a palette it is not
-   rendering under, which `tests/e2e/shell-appearance.spec.ts` holds.
+   `.editor-shell-palette-swatch` above, a preview bar naming a palette it is
+   not rendering under, which `tests/e2e/shell-appearance.spec.ts` holds.
    Decision: docs/decisions/0035. */
 @theme inline {
   --color-shell-backdrop: var(--shell-backdrop);
@@ -748,24 +749,33 @@ body,
   font-size: 11px;
   opacity: 0.7;
 }
-/* The swatch is a chip of the palette it names, painted from that palette's
-   own `--shell-*` tokens through `data-shell-palette` rather than from a colour
-   table here: `palette.ts` is the owner of which palettes exist, and a chip that
-   read the tokens in JS at mount would still be showing the old palette after
-   the choice changed. The class is in the token block's selector list above, so
-   a chip resolves the palette it names instead of inheriting the one in force.
-   `inline-block` because a bare `<span>` is inline, and a width on an inline
-   box is not a width. */
+/* The palette preview is the palette it names, painted from that palette's own
+   `--shell-*` tokens through `data-shell-palette` rather than from a colour
+   table here: `palette.ts` is the owner of which palettes exist, and a preview
+   that read the tokens in JS at mount would still be showing the old palette
+   after the choice changed. Each bar carries the class (or its own rule) and is
+   in the token block's selector list above, so a bar resolves the palette it
+   names instead of inheriting the one in force.
+
+   **Two bars, the palette's ground and its accent** — the drawing
+   (`current/settings.html:44-87`) draws both, and one bar cannot show a palette
+   §4 gives two roles. The row that reads the preview's height
+   (`tests/e2e/mockup-values.ts`) addresses `.editor-shell-palette-swatch`, which
+   is the ground bar; the accent bar is its next sibling. */
+.editor-shell-palette-swatch,
+.editor-shell-palette-swatch-accent {
+  flex: 1;
+  height: 16px;
+  border-radius: var(--radius-sm);
+}
+/* §4's `--bg`, "the window behind everything", as the drawing draws it: the
+   ground has a 1px `--edge` and the accent beside it does not. */
 .editor-shell-palette-swatch {
-  flex: none;
-  display: inline-block;
-  vertical-align: -3px;
-  width: 14px;
-  height: 14px;
-  border-radius: 4px;
   border: 1px solid var(--shell-edge);
-  background: var(--shell-surface);
-  box-shadow: inset 0 0 0 3px var(--shell-accent);
+  background: var(--shell-backdrop);
+}
+.editor-shell-palette-swatch-accent {
+  background: var(--shell-accent);
 }
 .editor-shell-primary {
   margin-left: auto;

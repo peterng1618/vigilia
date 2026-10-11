@@ -7,9 +7,23 @@ import {
 } from "./control-well.js";
 
 /**
+ * The shapes a drawing gives a choice. `row` is §5's **choice row** and the
+ * default; `card` is the settings modal's palette tile, which
+ * `mockups/current/settings.html:44-87` draws as a `--radius-lg` card at
+ * `--panel-2` carrying the caller's swatch *above* the name, the chosen one
+ * marked by the accent border and its 3px glow rather than by a lift. A card is
+ * a shape of this control rather than a second control: the radio, the group's
+ * ownership of the checked bit and its roving focus are the same in both, and
+ * only the geometry differs — exactly as `ControlRow`'s three shapes divide.
+ */
+export type ChoiceShape = "row" | "card";
+
+/**
  * One member of a closed set where every member has its own colour: a
  * `--radius-md` row at `--panel-2` carrying an adornment and a name, the chosen
- * one lifted to `--stage` behind an accent border (bible §5).
+ * one lifted to `--stage` behind an accent border (bible §5) — or, where the
+ * surface's own drawing shapes the choice as a tile, a `--radius-lg` card with
+ * the adornment above the name (`ChoiceShape`).
  *
  * It is a **radio**, and the group owns which one is checked: `Radio.Root`
  * derives `aria-checked` from the enclosing `RadioGroup`'s value, so a `checked`
@@ -27,10 +41,21 @@ export function ControlChoiceRow(
   props: ControlProps & {
     readonly value: string;
     readonly swatch: React.ReactNode;
+    readonly shape?: ChoiceShape | undefined;
   },
 ): React.JSX.Element {
-  const { label, id, disabled, refused, hint, data, value, swatch } = props;
+  const { label, id, disabled, refused, hint, data, value, swatch, shape } =
+    props;
   const ids = useControlIds(id);
+  // The two shapes share everything but their geometry: the same 1px `--edge`
+  // at `--panel-2`, the same §5 rule 6 hover, the same §5.4 focus outline and
+  // the same accent boundary when chosen. What differs is the axis — the card
+  // stacks — and what *chosen* adds: the row lifts to `--stage`, the card keeps
+  // its `--panel-2` ground and takes the drawing's glow.
+  const shapeClasses = {
+    row: "flex min-h-[32px] w-full flex-row items-center gap-[var(--space-8)] rounded-md px-[var(--space-10)] py-[var(--space-6)] text-muted data-[checked]:text-text data-[checked]:[background:var(--stage)]",
+    card: "flex w-full flex-col gap-[var(--space-6)] rounded-lg p-[var(--space-8)] text-text data-[checked]:ring-3 data-[checked]:ring-accent/18",
+  }[shape ?? "row"];
 
   return (
     <>
@@ -51,7 +76,7 @@ export function ControlChoiceRow(
           hint === undefined ? undefined : ids.hint,
           refused === undefined ? undefined : ids.reason,
         )}
-        className="flex min-h-[32px] w-full items-center gap-[var(--space-8)] rounded-md border border-edge bg-panel-2 px-[var(--space-10)] py-[var(--space-6)] text-left text-xs text-muted hover:border-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2 data-[checked]:border-accent data-[checked]:text-text data-[checked]:[background:var(--stage)]"
+        className={`${shapeClasses} border border-edge bg-panel-2 text-left text-xs hover:border-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent focus-visible:outline-offset-2 data-[checked]:border-accent`}
       >
         {swatch}
         {label}
