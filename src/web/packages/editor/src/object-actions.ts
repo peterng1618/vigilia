@@ -67,6 +67,17 @@ export interface ObjectAction {
 
 const hasSelection = (target: ObjectTarget): boolean => target.kind !== "none";
 
+/** `ClipboardManager` (copy, cut, duplicate) and `DeletionManager` refuse a
+ *  locked object, so the refusal is stated once here; `lock` reads it because a
+ *  second lock is a no-op the control should not offer. */
+const hasUnlockedSelection = (target: ObjectTarget): boolean =>
+  hasSelection(target) && !target.locked;
+
+/** `unlock`'s mirror. No manager refuses an unlocked object — there is simply
+ *  nothing to unlock. */
+const hasLockedSelection = (target: ObjectTarget): boolean =>
+  hasSelection(target) && target.locked;
+
 /**
  * What an action surface needs to know about itself to gate a control.
  * Deliberately no per-id `can`: eligibility carries the whole rule, so a `can`
@@ -104,8 +115,7 @@ export const OBJECT_ACTIONS: readonly ObjectAction[] = [
     label: uiCopy.actions.duplicate,
     icon: CopyPlus,
     shortcut: "edit.duplicate",
-    // ClipboardManager.duplicate refuses a locked object; eligibility has to agree.
-    eligible: (t) => hasSelection(t) && !t.locked,
+    eligible: hasUnlockedSelection,
     run: (e) => void e.clipboardManager.duplicate(),
   },
   {
@@ -113,8 +123,7 @@ export const OBJECT_ACTIONS: readonly ObjectAction[] = [
     label: uiCopy.actions.copy,
     icon: Copy,
     shortcut: "edit.copy",
-    // ClipboardManager.copy refuses a locked object; eligibility has to agree.
-    eligible: (t) => hasSelection(t) && !t.locked,
+    eligible: hasUnlockedSelection,
     run: (e) => void e.clipboardManager.copy(),
   },
   {
@@ -122,8 +131,7 @@ export const OBJECT_ACTIONS: readonly ObjectAction[] = [
     label: uiCopy.actions.cut,
     icon: Scissors,
     shortcut: "edit.cut",
-    // Cut refuses through copy(), which refuses a locked object.
-    eligible: (t) => hasSelection(t) && !t.locked,
+    eligible: hasUnlockedSelection,
     run: (e) => void e.clipboardManager.cut(),
   },
   // No manager refuses on lock for the ordering actions, so they stay on bare
@@ -164,14 +172,14 @@ export const OBJECT_ACTIONS: readonly ObjectAction[] = [
     id: "lock",
     label: uiCopy.actions.lock,
     icon: Lock,
-    eligible: (t) => hasSelection(t) && !t.locked,
+    eligible: hasUnlockedSelection,
     run: (e) => e.objectLockManager.lockObject(),
   },
   {
     id: "unlock",
     label: uiCopy.actions.unlock,
     icon: Unlock,
-    eligible: (t) => hasSelection(t) && t.locked,
+    eligible: hasLockedSelection,
     run: (e) => e.objectLockManager.unlockObject(),
   },
   // GroupingManager reads no lock, so grouping stays on bare selection too.
@@ -196,8 +204,7 @@ export const OBJECT_ACTIONS: readonly ObjectAction[] = [
     label: uiCopy.actions.delete,
     icon: Trash2,
     shortcut: "edit.delete",
-    // DeletionManager refuses locked objects; eligibility has to agree.
-    eligible: (t) => hasSelection(t) && !t.locked,
+    eligible: hasUnlockedSelection,
     run: (e) => e.deletionManager.deleteActive(),
   },
 ];
