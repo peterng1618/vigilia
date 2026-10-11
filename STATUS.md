@@ -22,7 +22,7 @@ satisfies every token in the bible and still does not look like the mockup.
 
 ## Active work
 
-- **Plan 8 — [`settings-parity`](docs/superpowers/plans/2026-10-11-settings-parity.md) — is the active plan**, ten tasks in three phases: Phase A (1–4) makes the drawing the modal's comparator, Phase B (5–8) pulls the modal's regions to it, Phase C (9–10) counts the ratchet and takes the §13 capture; **Tasks 1–5 are complete and reviewed, so the instrument and the palette group are done — Task 6 owns the boxed follow-the-system row**.
+- **Plan 8 — [`settings-parity`](docs/superpowers/plans/2026-10-11-settings-parity.md) — is the active plan**, ten tasks in three phases: Phase A (1–4) makes the drawing the modal's comparator, Phase B (5–8) pulls the modal's regions to it, Phase C (9–10) counts the ratchet and takes the §13 capture; **Tasks 1–6 are complete and reviewed — the instrument, the palette group and the boxed switch row are done — and Task 7 owns the last four red rows, the Keyboard panel's**.
 - **Plan 7 — [`shell-parity`](docs/superpowers/plans/archive/2026-10-10-shell-parity.md) — is complete and archived**: every task, a whole-branch review, one fix round and one residual, both re-reviewed CLEAN.
 - **The instrument reads the drawings rather than one file**: the radii gate opens every drawing in `docs/design/mockups/current/` (six now) and names the file it fails in, the comparator holds every corner of a shorthand and every token of a value, and the settings modal has its own drawing plus a drawn Keyboard and About panel, with rows against all three.
 - **The red set is four rows, and it is exactly the Keyboard panel's** — the chord mark's radius and inset, the per-row return-to-default action's radius and the group's, all Task 7's; a row that cannot fail is the defect the instrument exists to end.
@@ -30,16 +30,16 @@ satisfies every token in the bible and still does not look like the mockup.
 
 ## Last completed change
 
-- **Plan 8 Task 5 — the palette group is the drawing's card grid** (`411dbe91`): the six palettes render on the drawing's `repeat(3,1fr)` grid of `--radius-lg` cards, each carrying two 16px bars with its own `data-shell-palette`, the name beneath, and the chosen card lifted by an accent border plus a 3px ring.
-- **The three palette rows went green as a consequence, not by edit** — `mockup-values.ts` and `design-language.spec.ts` are absent from the commit, and the review confirmed the rows still read Task 1's own text; the red set went seven → four, and the four are exactly Task 7's Keyboard rows.
-- **`ControlChoiceRow` grew `shape?: "row" | "card"`** where the brief asked whether the palettes stop using it; every other call site takes `row` unchanged, and the rows genuinely share the radio, the group-owned value, roving focus and the refusal path.
-- **The review's own strongest evidence was a two-palette read of all six cards** — six distinct grounds and six distinct accents under every palette in force, with each ground|accent pair byte-identical whichever palette is live, so no preview paints the palette in force.
-- **Two rows filed, and `vg-322` is the one with consequence**: the drawing's frame is a fixed `560px` while the modal is content-sized (405px on Appearance), so the cards render ~58px against the drawing's ~120px — the group satisfies its rows and still does not look like the drawing; `vg-321` is the drawing's six bars depicting a different token per palette.
+- **Plan 8 Task 6 — the boxed follow-the-system row keeps its box, and the drawing takes §3's step** (`f735c81b`): `settings.html:89` declares `padding:8px 10px` where it declared the off-scale `9px 10px`, the product already renders `--space-8` and did not move, and the box's licence is §5 rule 2's own sentence (`design-language.md:167-171`), which names this exact shape.
+- **The edit the brief understated was the one that would have failed the task** — the drawing's box has **two** parity rows and both embed the literal `padding:9px 10px` inside their `mockupSelector` strings, so the one-value drawing edit required rewriting both or both rows would have addressed no element.
+- **The implementer caught a third edit on its own initiative**: the table's own prose said the drawn inset "is `9px`, which §3's scale has no step for", which its change made false — the same class of defect this plan has now corrected four times.
+- **No inset row was added, by ruling and by measurement** — a `padding-top` row is impossible because the drawing writes the shorthand and `lookup` throws on a shorthand that sets a longhand a row reads; the review confirmed the guard is untouched and verified both rewritten selectors **by running the rows**, since a selector matching nothing is this task's whole risk.
+- **`vg-303` is `verified`** and the parity red set is unchanged at four rows, all Keyboard (Task 7's).
 
 ## Next
 
-1. **Task 6 — the boxed follow-the-system row**: it keeps the drawing's panel box under a rule that predates this plan, takes a §3 step for the inset the drawing draws off-scale (`vg-303`), and has every declared value read rather than one.
-2. **Then Tasks 7–8** — the Keyboard panel's four red rows, then the drawings gate widened past radius to §3's spacing and §2's type, which is also where `vg-320`'s class belongs.
+1. **Task 7 — the Keyboard panel's rows**: the panel matches what Task 4 drew — the reference's header and its return-to-default action, the chord mark, the per-row affordance — and the four states §13.1 requires are driven and captured, which is what turns the last four red rows green.
+2. **Then Task 8** — the drawings gate widened past radius to §3's spacing and §2's type, which is also where `vg-320`'s class (a drawing's on-scale divergence from the original) belongs, along with the drawing's `gap:3px`, `margin-bottom:7px` and `font-size:11.5px`.
 3. **Then Tasks 9–10** — `vg-274`'s counted ceiling, then the §13 capture; **Task 10 cannot close while `vg-321` and `vg-322` are only filed rows**, because its own condition is "every remaining difference either fixed or backed by a quoted predating rule".
 4. **`vg-296`, `vg-302` and `vg-308` stay open on purpose** — the drawing's cluster shadows and its bordered row still have no reader, and the ladder's magnitude has no rule to be held to.
 5. **Then `design-md-replaces-the-bible`**, then the multi-device display objective — architectural, so brainstorm → spec → plan.
