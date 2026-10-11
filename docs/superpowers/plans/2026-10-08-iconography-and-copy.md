@@ -546,7 +546,7 @@ Commit the gated list with the counts and the three red proofs, and state which 
 
 ### Task 8: The spec's Acceptance, item by item
 
-**Outcome:** A written ledger, in the commit, of every item in the spec's Acceptance section: met or not met, with the evidence for each — and the four items no single plan owns checked **by observation on a rebuilt bundle**, not by citing a plan.
+**Outcome:** A written ledger, in this plan file's `## Acceptance ledger` section, of every item in the spec's Acceptance section: met or not met, with the evidence for each — and the four items no single plan owns checked **by observation on a rebuilt bundle**, not by citing a plan.
 
 **Owning symbols/landmarks:** the spec's *Acceptance* section; the registered captures in `docs/evidence/screenshots/README.md`; the counts Task 7 recorded; plan 2's rail and `PublishIndicator`; plan 5's settings surface; `shell-appearance.spec.ts`'s `shell-palette-` capture; the display-lens outline `[data-vigilia-display-screen]`.
 
@@ -594,7 +594,7 @@ For plans 1–5, name the report and the image, and for each confirm the two wer
 
 - [ ] **Step 7: Commit**
 
-The ledger is the commit body: one item per line, `met` or `not met`, with its evidence. No register row is filed for an unmet item that already has one.
+The ledger lives in this plan file's `## Acceptance ledger` section: one item per line, `met` or `not met`, with its evidence. A ledger is **current truth**, and a commit body can only be corrected by rewriting history — which two fix rounds demonstrated. The commit body is a pointer at that section, not a second copy, because a duplicate is a second thing to keep true. No register row is filed for an unmet item that already has one.
 
 ---
 
@@ -651,6 +651,131 @@ Replace "Last completed change" with 1–5 bullets on this commit, one item per 
 
 ---
 
+## Acceptance ledger
+
+The spec's Acceptance section, item by item, `met` or `not met` with its evidence.
+Observed on a rebuilt bundle (`npm run build` + `build:fixture`, exit 0) at
+`9a97856e`; the raw commands, their counts and the runs' exit codes are in
+`.superpowers/sdd/2026-10-08-iconography-and-copy/task-8-report.md`. **Fourteen
+met; two not met** — item 3's real-host clause and item 16's plan-6 half.
+
+This is the ledger's home. A ledger is current truth, so it lives in a document
+rather than in a commit body that could only be corrected by rewriting history.
+
+1. **met (on ADR 0033's exemption)** — Every editor surface is React:
+   `chart-fields.tsx`, `file-section.tsx`, `new-document-chooser.tsx`,
+   `theme-library-dialog.tsx`, `font-picker.tsx` (`ControlSelect`); the panel
+   factories render React roots. The one imperative UI module left,
+   `editor-shell/controls/tooltip.ts`, **does** render — `createElement("div")`
+   at `:81`, `document.body.append` at `:103`, imported by
+   `components/ui/control-icon-button.tsx:3`, `components/ui/control-well.tsx:3`
+   and `panes/add/add-pane.tsx:2`. It is deliberately ours rather than a React
+   primitive: ADR 0033 rules the tooltip not a primitive and stays ours, because
+   the selection inspector builds elements with `createElement` and never sees
+   React, so a shared component is one its own caller cannot use.
+2. **met** — Edits are safe transactions: plan 1's `control.dom.test.tsx`
+   contract + plan 3's `inspector-sections.spec.ts` (commit/cancel, stale target,
+   one history, undo) → 13 passed with `add-pane.spec.ts`.
+3. **NOT MET — §13.1's real-host clause.** The item reads that §13.1's
+   walkthrough runs on the real host, and §13.1 assigns that walkthrough to this
+   plan (Task 8's Interaction closure). No existing spec runs it: the
+   `desktop-host` project boots the real host but matches
+   `host-(player|settings|media|bleed|chrome).spec.ts` only, and none of those
+   drives the editor's keyboard walkthrough (`host-player.spec.ts:323` saves from
+   the host-served editor without it). The contrast half **is** observed: the
+   control-set gate (4.5:1/3:1, forced colours, 200% zoom, long names) passed,
+   six-palette chrome and armed-ring contrast passed, `keyboard.spec.ts` → 5
+   passed — on the desktop-chromium **preview**, which is the closure's other
+   half. The clause is recorded, not waived; the fix rounds were forbidden to add
+   the check that would run it.
+4. **met** — The scales are consumed: `npm run design:check` → "71 gated file(s)
+   clean", `editor-shell.css holds 58 violation(s), at or below its ceiling of
+   58", exit 0; the gated union is 71 unique (node count). Stated for a subset:
+   the four hex-carrying files this plan left off
+   (`components/ui/colour-picker.tsx`, `ui-copy.test.ts`,
+   `accessible-names.dom.test.ts`, `panes/composition/kind-mark.dom.test.tsx`) and
+   the two coverage gaps already owned (`vg-274`, `vg-286`). Plan 1's browser
+   gate: `design-language.spec.ts` "the control set renders in the design
+   language" → 1 passed.
+5. **met (on the spec §2.2 carve-out)** — No native `<select>` and no native
+   `input type=range` in a rendered surface: the three commands read 1 / 12 / 6 —
+   the `<select` count is **12**, and all twelve are comments (none is a select).
+   The only real builders are the test-only
+   `editor-shell/controls/settings-field.ts:196` and `number-field.ts:191`, and
+   **`vg-266`** owns both (`vg-264` does not name `:191`). One native range input
+   **is** live: Base UI's slider passes `inputRef` to `Slider.Thumb`
+   (`components/ui/control-slider.tsx:135`), rendered at
+   `selection-inspector/column.tsx:180`; it is not in
+   `accessible-names.dom.test.ts`'s carrier list, because that list holds only the
+   `!reached` elements and this one is reached. The item survives on the spec's own
+   carve-out (`2026-10-08-editor-design-language-design.md:107-108`: a primitive's
+   hidden form-integration element is not a second visible control), and the
+   carrier list — **38** entries at `:230-300`, read and green (28 passed) — is
+   corroboration rather than the proof. `vg-271` owns the instrument's gap.
+6. **met** — Every panel's behaviour survives its rewrite: plans 3 (Task 7) and 4
+   (Tasks 10/12) prove every re-pointed locator red with the behaviour disabled.
+7. **met** — Nothing selected → the inspector names where to choose from:
+   `inspector-sections.spec.ts:635` passed.
+8. **met** — A card selects as a group, with no property a group lacks:
+   `inspector-sections.spec.ts:574` passed.
+9. **met** — A text run's binding is reached from its card and its value answers
+   "which sensor": `editor.spec.ts:1545` (`editor-text-reads`) — the run's source,
+   format and zone drive the computed reading.
+10. **met** — The dock shows only what the selection can run: `editor.spec.ts`
+    "captures the canvas dock over a selected object" — Duplicate/Ungroup present,
+    Group absent, arrange disabled for one.
+11. **met (today)** — The four rail slots each open, and only one is open at a
+    time, and the gear opens settings rather than a fifth pane:
+    `design-language.spec.ts:1510` (`.editor-shell-rail-slot` count 4; each opens
+    with exactly one visible pane) and `:1616` (the gear opens the modal with
+    three tabs) → 2 passed; `editor-rail.spec.ts` → 10 passed. **`vg-330`
+    supersedes the item** (Settings becomes a pane later); passed as written, not
+    fixed forward.
+12. **met** — The Add pane offers units and primitives, neither greyed, and its
+    tiles depict units while the Composition rows do not: `add-pane.spec.ts:26`
+    passed.
+13. **met** — The Tokens pane lists paints and presets and its preset panel is
+    bound to the selection (`vg-094`, closed by plan 4):
+    `preset-list.dom.test.tsx`'s vg-094 case + `editor.spec.ts` palette/preset
+    surface tests.
+14. **met** — The stage draws no device frame: `editor-display.spec.ts` → 10
+    passed, every case with a lens chosen (the case that could show a frame); Fit
+    is the explicit case at `:356` (`displayScreenRect()` is undefined). The one
+    outline is `[data-vigilia-display-screen]`, `border: 1px`
+    (`editor-shell.css:2357`), hidden when no screen is drawn
+    (`editor-shell.ts:549`); no bezel or notch exists in the source.
+15. **met** — Six palettes are distinguishable by surface: the registered
+    `shell-palette-` capture, **6 of 6** images read rather than their computed
+    values — graphite near-black, editorial cream, ember peach, moss sage, plum
+    lilac, light mint; `shell-appearance.spec.ts` → 9 passed.
+16. **NOT MET (plan 6's half)** — Every plan's parity capture exists: of the five
+    earlier plans, all five have their images, but the evidence is thinner for two
+    than for the other three: plans 2, 4 and 5 have nameable completion reports
+    (plan 2's is `2026-10-08-the-shell-and-the-rail.md:693`), while plans 1 and 3
+    have none on disk and none in their plan files — no
+    `.superpowers/sdd/gates-and-the-control-set/` or `the-inspector/` workspace
+    survives — so their surviving record is the commit bodies `1f991845` and
+    `9ee1fc21`. **Plan 1's ten differences no longer exist anywhere**: `1f991845`
+    defers them to a task report deleted with its workspace. Plan 3's survive in
+    `9ee1fc21`'s body beside each difference's owner. Plans 7 and 8 sit beside the
+    drawing in `docs/design/mockups/current/`. **Plan 6's own capture is Task 9's
+    and does not exist yet**, so the redesign is not announced closed while this
+    stands.
+
+**The interaction closure ran one half.** The preview half ran: `keyboard.spec.ts`
+→ 5 passed on the rebuilt desktop-chromium bundle, plus the control-set contrast
+gate. The real-host half did not run, for the reason item 3 states.
+
+**Register.** No new row was filed for any residue above; each is owned by an
+existing row — `vg-266` (the dead `editor-shell/controls/` builders), `vg-271`
+(the native-control instrument's gap), `vg-274` (`editor-shell.css` in no gate),
+`vg-286` (no rule for test files), `vg-330` (supersedes item 11 when Settings
+becomes a pane) — or by Task 9 within this plan (item 16). Two rows were updated
+rather than filed: `vg-268`'s "three native selects" clause corrected to
+`ControlSelect` (`font-picker.tsx:277,294,315`), and `vg-204` left **open** with
+`keyboard.spec.ts`'s 5/5 at `78a5575e` recorded and not treated as proof the defect
+is gone.
+
 ## Out of scope
 
 Named so a later change owns them rather than this plan growing.
@@ -670,6 +795,6 @@ Named so a later change owns them rather than this plan growing.
 - **Step scan.** No `TBD`, no "add error handling", no "similar to Task N". The one number left open — Task 4 Step 1's `noTooltip` count — is deliberately settled by that task's own adjudication rather than predicted here, because a count predicted before the code exists is not evidence (`AGENTS.md`).
 - **Type consistency.** `Glyph` is the one chrome glyph component and `glyphStrokeWidth` the one weight rule; `KIND_GLYPHS` is the closed kind vocabulary, declared `satisfies Record<LayerKind, LucideIcon>`; `ControlIconButton` takes one `label` and owns both strings; `absentReadingSurfaces()` and `placeholderReadings` are Task 6's two named sets, and a missing reading is a stated gap rather than a value.
 - **Review Focus.** Five, pinned above to Tasks 1, 2, 3, 5 and 6; each is a failure no existing test would catch. The four that were dropped are each a step's own red proof in the task that owns the code.
-- **Proportion.** 674 lines against the spec's 661, with 101 of them code — test cases and type signatures rather than bodies.
+- **Proportion.** 800 lines against the spec's 717, with 115 of them code — test cases and type signatures rather than bodies — and 125 of the 800 are the Acceptance ledger above, which is verdicts and evidence rather than steps. (Both figures were stale before the ledger moved here: later tasks had grown each file past the numbers this line was written with.)
 - **Red proofs.** Every task states the break that must fail its own gate; Task 7 re-proves the guard's empty-list refusal and names which closure is a scan's and which is a DOM assertion's; Task 9's capture is proven non-vacuous with one test run, not zero.
 - **Owners.** No new dependency, no second tooltip component, no second icon family, no second kind list, no new net beside the two that exist, and the one new module's `ownership.md` row lands with it.

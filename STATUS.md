@@ -31,11 +31,11 @@ satisfies every token in the bible and still does not look like the mockup.
 
 ## Last completed change
 
-- **Task 8, the Acceptance ledger — fix round 1**: the corrected ledger is this commit's body; item 3 is **not met** because §13.1's real-host walkthrough has no check and none was added (the closure ran its preview half only, `keyboard.spec.ts` 5/5), and item 16's plan-6 parity capture is still Task 9's — 14 met, 2 not met.
-- **Item 5's evidence corrected, verdict kept**: the `<select` command returns 12 hits and all twelve are comments, the carrier array is 38 entries, and the one live `input[type=range]` is Base UI's slider (`control-slider.tsx:135`, `selection-inspector/column.tsx:180`), which is not in the list — so the item rests on spec §2.2's carve-out, not on the list.
-- **Item 1's sentence corrected**: `editor-shell/controls/tooltip.ts` does render (`:81`, `:103`); it is exempt as ours on ADR 0033, not "nothing left".
-- **The parity evidence line corrected**: plans 1 and 3 have no report on disk, their surviving record is the commit bodies `1f991845` and `9ee1fc21`, and **plan 1's ten differences no longer exist anywhere** — the verdict stays `not met`.
-- **The trailer materialised by updating rows in place**: `vg-268`'s "three native selects" clause corrected to `ControlSelect`, and `vg-204` records that `keyboard.spec.ts` passed 5/5 at HEAD while the row **stays open**.
+- **Task 8, the Acceptance ledger — fix round 2**: the ledger moved out of the commit body into the plan file's `## Acceptance ledger` section ([`2026-10-08-iconography-and-copy.md`](docs/superpowers/plans/2026-10-08-iconography-and-copy.md), after Task 9), because a ledger is current truth and a commit body can only be corrected by rewriting history.
+- **The commit body is now a short pointer, not a second copy** of the sixteen items — a duplicate is a second thing to keep true, which is the defect this removes.
+- **The self-misstating sentence is fixed as it moved**: round 1's body said "two verdicts change" when only item 3's verdict changed and three evidence sentences were false or loose.
+- **No verdict re-adjudicated**: 14 met, 2 not met (item 3's real-host clause, item 16's plan-6 half); `vg-204` stays `open` and `vg-268`'s corrected clause stands.
+- **Self-review's proportion line corrected**: 800 lines against the spec's 717, 115 of them code and 125 the ledger — both figures had gone stale as later tasks grew the files.
 
 ## Next
 
