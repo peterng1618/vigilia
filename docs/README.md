@@ -12,6 +12,7 @@ artifacts and from Git history.
 | Current system shape and boundaries | [`architecture/README.md`](architecture/README.md) |
 | Who owns each concept | [`architecture/ownership.md`](architecture/ownership.md), and the review of it at [`architecture/manager-census.md`](architecture/manager-census.md) |
 | Which stylesheet selectors the product still reaches | [`architecture/dead-selectors.md`](architecture/dead-selectors.md) — a reachability check of the two shipped CSS files |
+| Which exports and modules nothing reaches | [`architecture/dead-code-candidates.md`](architecture/dead-code-candidates.md) — the sweep scanner's candidates at `aa9d7b96`, with the coverage it does and does not have |
 | The editor's visual language, **normative** | [`../DESIGN.md`](../DESIGN.md) — scales, colour roles, the control and icon vocabulary, layout and copy rules |
 | Why major architecture choices were made | [`adr/`](adr/) |
 | Active feature design/spec | [`superpowers/specs/`](superpowers/specs/) |
