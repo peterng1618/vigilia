@@ -31,11 +31,11 @@ satisfies every token in the bible and still does not look like the mockup.
 
 ## Last completed change
 
-- **Two copy-defect nets land in a new `copy-defects.test.ts`**: `ui-copy.test.ts` sits at 783, so the cases live beside the surfaces rather than crossing the 800-line stop.
-- **The missing-reading case** renders seven absence kinds — an unread host (two surfaces), a saved document, a sample not yet sent, an undeclared binding and two unset resolution lines — and requires the gap's own word or nothing, never `0`, `-`, `--` or `—`.
-- **The capability case** proves the `⌘⇧P` chip is the live binding the table owns and the header control that runs it is present and enabled; the view menu's three readings are proven in `shell-layout.dom.test.tsx`.
-- **Both cases red-proved**: `—` in the run row's unarrived note fails the gap case, and a disabled publish trigger fails the capability case while the string stays printed; both restored by `cp` and verified with `cmp`.
-- **The census's empty list is confirmed, not inherited**: no chrome surface renders `0`/`-`/`—`/`--` as an absent reading, and no capability string is over-claimed.
+- **Fix round 1 on Task 6's copy defects**: the capability case is retitled to the publish surface it proves, and both cases' doc comments now state their boundary — what they render, what is proven elsewhere with the test named, and what no test proves.
+- **The gap case reaches one more site**: an unauthored optional chart setting (`settings-field.ts:206`) must render the gap's own word — red-proved by rendering `—` there, restored by `cp` and verified with `cmp`.
+- **The two unreached absence sites are bounded, not hidden**: the chart clearable select needs a Base UI popup open (`vg-135`) and the artboard select's absence is a control *value* (`?? ""`), not its text.
+- **The rail's `add` slot id is clicked by no test** — only its generic slot→pane routing is; recorded in the case's comment rather than left silent.
+- **Report §1.1 corrected**: the gap case renders eight entries covering five bullets, not "each absence kind".
 
 ## Next
 

@@ -20,15 +20,16 @@ import { Canvas, Textbox } from "fabric/es";
 import { act, createElement, type ReactElement } from "react";
 import { createRoot } from "react-dom/client";
 import { expect, it } from "vitest";
+import { settingsField } from "./editor-shell/controls/settings-field.js";
 import { PublishControl } from "./editor-shell/publish-control.js";
 import { PublishIndicator } from "./editor-shell/publish-indicator.js";
 import { SaveState } from "./editor-shell/save-state.js";
+import type { EditorActionFacade } from "./editor-shell/session-facade.js";
 import type {
   HostingSnapshot,
   HostingStore,
   PublishSurfaceStore,
 } from "./editor-shell/shell-layout.js";
-import type { EditorActionFacade } from "./editor-shell/session-facade.js";
 import { resolutionValue } from "./selection-inspector/appearance.js";
 import { projectRuns, RunEditor } from "./selection-inspector/runs.js";
 import type { RunEdits } from "./selection-inspector/view.js";
@@ -121,16 +122,34 @@ async function runReadingNote(
   const host = document.createElement("div");
   document.body.append(host);
   const root = createRoot(host);
-  await act(async () =>
-    root.render(createElement(RunEditor, { runs, edits })),
-  );
+  await act(async () => root.render(createElement(RunEditor, { runs, edits })));
   const text =
-    host
-      .querySelector("[data-vigilia-run-binding]")
-      ?.textContent?.trim() ?? "";
+    host.querySelector("[data-vigilia-run-binding]")?.textContent?.trim() ?? "";
   await act(async () => root.unmount());
   host.remove();
   return text;
+}
+
+/** What an unauthored optional chart setting renders: the select's own first
+ *  option, which is the gap's word rather than a placeholder value. A DOM
+ *  factory with no React and no popup, so it is the one absence site this file
+ *  can render for free. */
+function unsetSettingWord(): string {
+  const field = settingsField(
+    {
+      property: "vigilia-test.optional",
+      label: "Optional setting",
+      kind: "select",
+      section: "content",
+      hint: "A descriptor that exists only to render the absent state.",
+      optional: true,
+      options: [{ value: "yes", label: "Yes" }],
+    },
+    { value: undefined, onChange: () => {} },
+  );
+  // The unset option is appended first (`settings-field.ts`), so this is the
+  // word an author reads before the field has a value.
+  return field.querySelector("option")?.textContent?.trim() ?? "";
 }
 
 /** What a placeholder reading looks like: the shapes an author would read as a
@@ -147,10 +166,31 @@ interface AbsentReading {
   readonly expect: "gap" | "nothing";
 }
 
-/** The absence kinds the census found (§4.2), each rendered by its own owner:
- *  an unread host, a sample that has not arrived, a reference that no longer
- *  resolves, and a field left unset. One entry per kind, so a kind dropped from
- *  this list — the way a net stops covering anything — is a count that falls. */
+/**
+ * The absence kinds this case **renders**, and the ones it does not.
+ *
+ * **Rendered here (eight):** an unread host on two surfaces (`PublishIndicator`
+ * and `PublishControl` draw nothing), a saved document (`SaveState` draws
+ * nothing), a sample that has not arrived and a binding this object does not
+ * declare (both stated in words by `runs.tsx`'s `bindingStateOf`), the two lines
+ * `resolutionValue` answers (`notSet`, and `"{shown} (no longer resolves)"`), and
+ * an unauthored optional chart setting, whose select renders the table's own gap
+ * word (`settings-field.ts:206`).
+ *
+ * **Not rendered here, proven elsewhere:** the About tab's absent version is a
+ * row left out rather than a dash, asserted by `settings.dom.test.tsx` (the About
+ * text holds neither `panels.notSet` nor a dash); an unauthored optional *number*
+ * field is an empty box, never a zero, asserted by `controls.dom.test.ts`. The
+ * unread host and the saved document are also rendered and asserted by their own
+ * files (`publish-indicator.dom.test.tsx`, `save-state.dom.test.tsx`).
+ *
+ * **Not rendered here, and no test renders it:** `chart-fields.tsx:351`, the
+ * React clearable select's gap option — reading it needs a Base UI select popup
+ * open, the 50–90s-per-open class (`vg-135`); and the artboard resolution select
+ * (`artboard-fields.tsx:159`), whose absence is the control's *value* (`?? ""`)
+ * rather than its text, so a rendered-text net would read its option list and the
+ * right net is a value assertion this file does not make.
+ */
 async function absentReadings(): Promise<AbsentReading[]> {
   return [
     {
@@ -201,6 +241,11 @@ async function absentReadings(): Promise<AbsentReading[]> {
       text: resolutionValue("Ink", undefined),
       expect: "gap",
     },
+    {
+      name: "an unauthored optional chart setting",
+      text: unsetSettingWord(),
+      expect: "gap",
+    },
   ];
 }
 
@@ -208,8 +253,8 @@ it("states a missing reading as a gap rather than a zero or a dash", async () =>
   const readings = await absentReadings();
   // The count is the number of absence kinds covered, not a prediction: a kind
   // dropped from the table is this red rather than a loop that checked less.
-  expect(readings).toHaveLength(7);
-  expect(readings.filter((reading) => reading.expect === "gap").length).toBe(4);
+  expect(readings).toHaveLength(8);
+  expect(readings.filter((reading) => reading.expect === "gap").length).toBe(5);
 
   for (const reading of readings) {
     const text = reading.text.trim();
@@ -227,15 +272,32 @@ it("states a missing reading as a gap rather than a zero or a dash", async () =>
 
 /**
  * The publish surface's capability strings, each against the control that runs
- * it. The `⌘⇧P` chord is the case the brief flags: plan 2 drew the button alone
- * and plan 5 bound `publish.surface`, so the printed chord now runs the action.
+ * it — **and the boundary of that claim, stated rather than implied.**
  *
- * The view menu's three readings are the same shape and are proven where the
- * menu is opened — `shell-layout.dom.test.tsx` picks `1 FPS` and asserts
- * `view.setChartRefreshRate(1)`, so each reading's radio reaches its owner.
- * Opening a menu here would cost the 50–90s the copy walk records against it.
+ * **Proven here:** `uiCopy.publish.start`, the header control's word, against
+ * the control that opens the surface (`[data-vigilia-publish]`, present and
+ * enabled); and the `⌘⇧P` chord, printed from the live table, against the
+ * `publish.surface` binding the table owns. The chord is the case the brief
+ * flags: plan 2 drew the button alone and plan 5 bound `publish.surface`, so the
+ * printed chord now runs the action.
+ *
+ * **Proven elsewhere, named.** The View menu's three readings
+ * (`dataSource`/`chartRefresh`/`valueRuns`): `shell-layout.dom.test.tsx` opens
+ * the refresh submenu, picks `1 FPS` and asserts `view.setChartRefreshRate(1)`,
+ * so each reading's radio reaches its owner — opening a menu here would cost the
+ * 50–90s per open the copy walk records against it (`vg-135`), and an existing
+ * test already does it. `saveState.unsaved` and `statusBar.live` are a state and
+ * a state, not actions: each is rendered and asserted by its surface's own test
+ * (`save-state.dom.test.tsx`, `publish-indicator.dom.test.tsx`). The diagnostics
+ * pair leads its message, asserted by `diagnostic-message.dom.test.tsx`.
+ *
+ * **Nothing to prove, and said so.** The rail's `add` slot claims no capability:
+ * it draws a glyph and is named by `uiCopy.rail.slots`, and its slot→pane routing
+ * is proven generically by `rail.dom.test.tsx` (a slot click chooses its pane) —
+ * though **no test clicks the `add` slot id itself**, which is recorded here
+ * rather than hidden.
  */
-it("maps every capability string to a control that can run it", async () => {
+it("maps the publish surface's capability strings to controls that can run them", async () => {
   const host = document.createElement("div");
   document.body.append(host);
   const root = createRoot(host);
@@ -244,7 +306,12 @@ it("maps every capability string to a control that can run it", async () => {
       createElement(PublishControl, {
         hosting: stubHosting({
           kind: "known",
-          answer: { lan: true, address: "192.168.1.5", port: 4174, refusal: null },
+          answer: {
+            lan: true,
+            address: "192.168.1.5",
+            port: 4174,
+            refusal: null,
+          },
           pairing: undefined,
           reason: undefined,
           pending: undefined,
