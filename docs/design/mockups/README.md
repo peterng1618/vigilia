@@ -1,7 +1,7 @@
 # Design mockups
 
 **`current/` is the target.** The editor is being rebuilt towards the original
-visual direction as those four files draw it, and they are **checked at every
+visual direction as those six files draw it, and they are **checked at every
 plan gate** — not read once and remembered. The three originals below them are
 the record of the first cut, not the target.
 
@@ -9,12 +9,18 @@ the record of the first cut, not the target.
 
 The editor as it renders today, in the original visual direction, with nothing
 in any file addressed to the reader: no heading, no caption, no note about what
-is illustrative. One file per view, so no file needs a specimen.
+is illustrative. One file per view, so no file needs a specimen — and the
+settings modal's three panels are three of those files, because each panel is
+drawn once, where a second copy of the frame in one file would make a
+`[style*="…"]` selector address more than one element and the reader refuses to
+guess between them.
 
 | File | Shows |
 |---|---|
 | [`current/shell.html`](current/shell.html) | The whole shell: header and menubar, the four-slot rail, the Add pane, the stage and its floating clusters, the inspector, the status strip |
 | [`current/settings.html`](current/settings.html) | The settings surface on its own, with §7's three tabs and the six-palette grid |
+| [`current/settings-keyboard.html`](current/settings-keyboard.html) | The same modal with §7's Keyboard panel showing: its header bar and return-to-default action, and the reference's own rows with their chord marks and per-row controls |
+| [`current/settings-about.html`](current/settings-about.html) | The same modal with §7's About panel showing: what the editor is, and the version facts this build can read |
 | [`current/controls.html`](current/controls.html) | The inspector column as it renders, in the reference palette: wells, a slider, segmented rows, the read-only treatment, a refusal |
 | [`current/controls-light.html`](current/controls-light.html) | The same column in the light palette — the same file with the token table swapped, so a hard-coded colour cannot hide in it |
 

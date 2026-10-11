@@ -2114,9 +2114,15 @@ function comparatorName(comparator: ParityRegion["comparator"]): string {
   return "length";
 }
 
-/** The settings drawing's path as a failure has to name it — the checked-in file
- *  a person opens, not the absolute path the row's `mockupPath` resolves to. */
-const SETTINGS_DRAWING = "docs/design/mockups/current/settings.html";
+/** Every drawing a `PARITY` row may name, keyed by the path it resolves to, with
+ *  the checked-in name a failure has to print: the file a person opens, not the
+ *  absolute path the row's `mockupPath` is a `file:` URL of. Read from
+ *  `currentDrawings` rather than listed here, so a drawing added to `current/`
+ *  names itself (`docs/design/mockups/current/settings.html` and its two sibling
+ *  panels, whose rows must not all be reported as the settings file). */
+const DRAWING_NAMES = new Map(
+  currentDrawings().map((drawing) => [drawing.path, drawing.name] as const),
+);
 
 /**
  * The shell's parity with the drawing (spec §13 as amended 2026-10-10, bible §3,
@@ -2249,6 +2255,22 @@ test("the shell and the settings modal are what the drawings draw", async ({
     product,
     await readRows(PARITY.filter((row) => row.surface === "settings")),
   );
+  /** The modal's other two panels, each read with its own tab showing. Base UI
+   *  keeps an inactive panel out of the DOM — `shell-palette.ts`'s
+   *  `openAppearance` says the same — so a Keyboard row read on the Appearance
+   *  tab would measure no element and report a region that is drawn and rendered
+   *  as one that measured nothing, which is not what happened. */
+  const modal = page.getByRole("dialog", SETTINGS_DIALOG);
+  for (const [surface, tab] of [
+    ["settings-keyboard", "Keyboard"],
+    ["settings-about", "About"],
+  ] as const) {
+    await modal.getByRole("tab", { name: tab }).click();
+    Object.assign(
+      product,
+      await readRows(PARITY.filter((row) => row.surface === surface)),
+    );
+  }
   await page.keyboard.press("Escape");
   await expect(page.getByRole("dialog", SETTINGS_DIALOG)).toBeHidden();
 
@@ -2300,11 +2322,14 @@ test("the shell and the settings modal are what the drawings draw", async ({
   // shell, and a `[data-fixture="…"]` selector matches nothing here. Leaving
   // them in would report "no element matches" for a row that is read — just not
   // by this test. Only the fixture is foreign today, and saying so keeps a row
-  // whose surface is a typo from being skipped by both tests and read by neither.
+  // whose surface is a typo from being skipped by both tests and read by
+  // neither.
   const mismatchedSurfaces = PARITY.filter(
     (row) =>
       row.surface !== undefined &&
       row.surface !== "settings" &&
+      row.surface !== "settings-keyboard" &&
+      row.surface !== "settings-about" &&
       row.surface !== "sheet" &&
       row.surface !== "fixture",
   );
@@ -2325,11 +2350,15 @@ test("the shell and the settings modal are what the drawings draw", async ({
   const drawings = drawingTexts();
   const sourceOf = (row: ParityRegion): string =>
     rowDrawing(row.mockupPath, drawings);
-  /** What a failure calls the row's drawing: a person has to be able to open it. */
+  /** What a failure calls the row's drawing: a person has to be able to open it.
+   *  Read from the enumeration rather than named here, because the settings
+   *  modal is three drawings now (plan 8 Task 4) and a failure that named
+   *  `settings.html` for a Keyboard row would send that person to the wrong
+   *  file. */
   const nameOf = (row: ParityRegion): string =>
     row.mockupPath === undefined || row.mockupPath === MOCKUP_PATH
       ? "the drawing's"
-      : `\`${SETTINGS_DRAWING}\`'s`;
+      : `\`${DRAWING_NAMES.get(row.mockupPath) ?? row.mockupPath}\`'s`;
   for (const row of PARITY) {
     if (row.surface === "fixture") continue;
     const rendered = product[key(row)];

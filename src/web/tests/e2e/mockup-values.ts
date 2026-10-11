@@ -62,6 +62,27 @@ export const SETTINGS_MOCKUP_PATH = fileURLToPath(
   ),
 );
 
+/** The settings modal's other two panels, each drawn on its own file for the
+ *  reason the current set's README gives: one drawn view per file. The reader's
+ *  inline selector `[style*="…"]` refuses to settle between two elements
+ *  carrying it, so a second copy of the modal's frame inside one file would
+ *  break every address the frame's own rows use — the navigation's `width:150px`
+ *  among them. Three files, one modal, and each panel's rows read from the file
+ *  that draws that panel. */
+export const SETTINGS_KEYBOARD_MOCKUP_PATH = fileURLToPath(
+  new URL(
+    "../../../../docs/design/mockups/current/settings-keyboard.html",
+    import.meta.url,
+  ),
+);
+
+export const SETTINGS_ABOUT_MOCKUP_PATH = fileURLToPath(
+  new URL(
+    "../../../../docs/design/mockups/current/settings-about.html",
+    import.meta.url,
+  ),
+);
+
 /** The inspector column as the shell draws it, and the same column on the light
  *  ground. Together they are the control set's own drawing — the field row this
  *  task fixes, the well's radius and the label column all live here.
@@ -638,8 +659,19 @@ export type ParityRegion = {
    *  told apart by the route that opened them, not by the DOM; `fixture` is the
    *  control-set page, which is the only surface the control set renders on.
    *  A row with a surface is asserted where that surface is open — the shell
-   *  test skips it. */
-  readonly surface?: "settings" | "sheet" | "fixture";
+   *  test skips it.
+   *
+   *  **The settings modal's three panels are three surfaces, not one.** Base UI
+   *  tabs keep the inactive panels out of the DOM, so a Keyboard row read with
+   *  the modal open would measure no element at all and report "the row
+   *  measured nothing" — a lie about a panel that is drawn and rendered. The
+   *  two panel surfaces are read with their tab showing (plan 8 Task 4). */
+  readonly surface?:
+    | "settings"
+    | "settings-keyboard"
+    | "settings-about"
+    | "sheet"
+    | "fixture";
   readonly licensed?: string;
   /** Which comparator reads this row's two values. **Absent means `length`**,
    *  the px reading every row used before the modal's regions arrived; `count`
@@ -1055,5 +1087,98 @@ export const PARITY: readonly ParityRegion[] = [
     surface: "settings",
     licensed:
       '§3 (`design-language.md:79`): "| 20–24 | Between regions; dialog padding |" — the product renders `padding: 20px 24px` on `.editor-shell-dialog`, the value §3 requires for a dialog; the drawing draws no frame padding and insets its children (`current/settings.html:41` `padding:14px 16px`) instead.',
+  },
+  /* ── The modal's two other panels (plan 8 Task 4) ───────────────────────────
+     The census recorded six regions as `no-counterpart` because the current set
+     drew the Appearance panel alone (`adjudication.md:96-101`, rows `#13`–`#18`).
+     The Keyboard and About panels are now drawn, each on its own file, and these
+     are the values those drawings declare for the regions the product renders.
+
+     **The drawing is the target and the rows are red on purpose.** They are
+     pulled green by Task 7, which owns the Keyboard panel; the About row passes,
+     because that panel is drawn as the product renders it (the census's
+     `drawing-stale` repair of a capability the drawing lacked) rather than
+     redrawn, and the release row it would carry is absent on both sides
+     (`vg-288`, still open).
+
+     **What is not a row, and why.** `#13`'s *placement* — the return-to-default
+     action moving into a panel header — and `#16`/`#17`'s armed row and its
+     refusal are not values of one element: the first is a shape the drawing now
+     draws and the second two are states, of which a drawing shows one
+     (`mockups/README.md`). They are Task 7's driven captures (§13.1), not
+     comparators, and the census's gap list is where a shape belongs.
+
+     **The chord mark's two declared values are read together**, the shape the
+     settings switch row's box already uses: the chip is a bordered mono mark in
+     the drawing and a bare `<kbd>` in the product, so its radius and its inset
+     are the two halves of one difference. Both rows address the same element —
+     twenty unchanged chips in the drawing, which is **one** element form to the
+     reader (`addressed` counts identical attributes once), so the selector
+     settles which is meant. */
+  {
+    region: "keyboard — the chord mark's radius",
+    mockupPath: SETTINGS_KEYBOARD_MOCKUP_PATH,
+    mockupSelector:
+      '[style*="border:1px solid var(--edge);border-radius:4px;padding:4px;font:400 11px/1.2 ui-monospace,Menlo,monospace;color:var(--muted)"]',
+    mockupProperty: "border-radius",
+    productSelector: ".editor-shell-keyboard kbd",
+    bibleSection:
+      "§2 (`:38`) — a chord mark is mono, so it is a value; §3 radius table (`:90`) — `--radius-sm` 4px is 'Swatches, inline chips'",
+    surface: "settings-keyboard",
+  },
+  {
+    region: "keyboard — the chord mark's inset",
+    mockupPath: SETTINGS_KEYBOARD_MOCKUP_PATH,
+    mockupSelector:
+      '[style*="border:1px solid var(--edge);border-radius:4px;padding:4px;font:400 11px/1.2 ui-monospace,Menlo,monospace;color:var(--muted)"]',
+    mockupProperty: "padding",
+    productSelector: ".editor-shell-keyboard kbd",
+    bibleSection:
+      "§3 spacing (`:74`) — 4px is 'Inside a control (well padding, icon button)'",
+    surface: "settings-keyboard",
+  },
+  {
+    region: "keyboard — the per-row return-to-default action's radius",
+    mockupPath: SETTINGS_KEYBOARD_MOCKUP_PATH,
+    mockupSelector:
+      '[style*="flex:0 0 auto;border:1px solid var(--edge);border-radius:6px"]',
+    mockupProperty: "border-radius",
+    productSelector: '[data-vigilia-shortcut-reset="file.new"]',
+    bibleSection:
+      "§3 radius table (`:91`) — `--radius-md` 6px is 'Controls, menu rows, small tiles', and a button is a control; the dialog's own Close already takes it",
+    surface: "settings-keyboard",
+  },
+  {
+    region: "keyboard — the return-to-default action's radius",
+    mockupPath: SETTINGS_KEYBOARD_MOCKUP_PATH,
+    mockupSelector:
+      '[style*="margin-left:auto;border:1px solid var(--edge);border-radius:6px"]',
+    mockupProperty: "border-radius",
+    productSelector: "[data-vigilia-shortcut-reset-all]",
+    bibleSection:
+      "§3 radius table (`:91`) — `--radius-md` 6px is 'Controls'; the same value the per-row action takes, one act being one control",
+    surface: "settings-keyboard",
+  },
+  {
+    region: "keyboard — the rebind control's radius",
+    mockupPath: SETTINGS_KEYBOARD_MOCKUP_PATH,
+    mockupSelector:
+      '[style*="display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px"]',
+    mockupProperty: "border-radius",
+    productSelector: '[data-vigilia-shortcut-arm="file.new"]',
+    bibleSection:
+      "§5 (`:154`) — 'Icon button — A 26–30px square at `--radius-md`, glyph only'",
+    surface: "settings-keyboard",
+  },
+  {
+    region: "about — the read-only row's label-to-value gap",
+    mockupPath: SETTINGS_ABOUT_MOCKUP_PATH,
+    mockupSelector:
+      '[style*="display:flex;align-items:baseline;justify-content:space-between;gap:16px;padding:4px 0"]',
+    mockupProperty: "gap",
+    productSelector: "[data-vigilia-about] dl > div",
+    bibleSection:
+      "§5 rule 2 (`:163-164`) — 'Read-only rows are label + mono value, baseline-aligned, right-aligned'",
+    surface: "settings-about",
   },
 ];
