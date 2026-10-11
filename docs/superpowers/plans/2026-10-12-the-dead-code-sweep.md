@@ -56,12 +56,13 @@ The five ways this sweep deletes something alive.
 
 - [ ] **Step 1: Build the importer graph.** Walk every `.ts`/`.tsx` under `src/web/packages/*/src`, `src/web/tests`, `src/web/scripts` and `scripts/`. For each file extract static `import`/`export … from` specifiers, **dynamic `import(...)`**, and test-module factories. Resolve each specifier to a path (`@vigilia/*` → the package's `src/index.ts` per the tsconfig paths; `./x.js` → `./x.ts`).
 
-- [ ] **Step 2: Emit five candidate kinds**, each recording the search that found it:
+- [ ] **Step 2: Emit six candidate kinds**, each recording the search that found it:
   - **`test-only-consumer`** — a module or export whose *only* importers are test files. **This is the class this repo actually produces**: several rounds of refactoring leave a surface mounted by no product code but kept alive by its own test. It is neither "no importer" nor "no production caller", so a scanner with only those two finds nothing here — and `font-picker.tsx` is the worked case.
   - **`no-importer-file`** — a module nothing imports, excluding every entry point and every file vitest/Playwright discovers by glob.
-  - **`dead-export`** — exported, and the name appears nowhere else in the repo **including its own file**. The symbol is dead, and the action is to delete the declaration. Measured by the reviewer at **33** of 293.
-  - **`redundant-export`** — exported, but **every use is inside its own declaring file**. The symbol is alive and only the `export` keyword is unnecessary, so the action is to delete one word, not the code. Measured at **260** of 293 — **89% of what a single `no-importer-export` kind reported as dead code.**
-  - **These two are separate kinds because they have opposite remedies**, and the Tier-1 review that split them is the reason: a phase-2 agent budgeting against "293 dead exports" would break files or claim a reduction that never materialises, when the honest action for 89% of them is deleting a keyword. Each row's `evidence` states its tier.
+  - **`dead-export`** — exported, and the name appears nowhere else **including its own file**. The symbol is dead, and the action is to delete the declaration.
+  - **`redundant-export`** — exported, but **every use is inside its own declaring file**. The symbol is alive and only the `export` keyword is unnecessary, so the action is to delete one word, not the code.
+  - **These two are separate kinds because they have opposite remedies**, and the Tier-1 review that split them is the reason: a phase-2 agent budgeting against a single "dead exports" count would break files or claim a reduction that never materialises, when the honest action for most of them is deleting a keyword. Each row's `evidence` states its tier, and the tier is the name counted in its own file **outside quoted strings** — a JSDoc mention does not keep a symbol alive, and a type named only in another export's signature in the same file does.
+  - **No count from this step is an invariant, and two measurements disagree.** The review measured 33 dead / 260 redundant by raw text; the scanner measures 14 / 279 by the rule above, the difference being type declarations named in a sibling export's signature and one JSDoc mention. **The disagreement is the point rather than a problem to paper over** — the anchors are the worked cases, which both agree on: `settingsField()` is `dead-export`, `instantiateCard` is `redundant-export`. A task that needs a number takes it from a fresh run, never from this plan.
   - **`barrel-only-export`** — a name whose only importer is its own package's `index.ts`.
   - **`unreachable-branch`** — a discriminant or error variant no input can produce (the `vg-344` shape), reported only where the graph or a closed union makes it mechanical to see.
 
@@ -69,7 +70,7 @@ The five ways this sweep deletes something alive.
 
 - [ ] **Step 4: Prove the scanner separates known cases, in both directions.** **A scanner that reports everything, or nothing, has told you nothing.** Assert it lands on:
   - **`test-only-consumer`** for `packages/editor/src/font-picker/font-picker.tsx`, whose only importers are tests (`vg-268`, `vg-283` — the same finding filed twice, which Task 7 merges). **The path is `font-picker/`, not `editor-shell/`** — this plan's first draft stated the wrong directory, and the implementer corrected it against the tree rather than following the brief.
-  - **`no-importer-export`** for `settingsField()` in `packages/editor/src/editor-shell/controls/settings-field.ts` (`vg-342`), which has zero production callers.
+  - **`dead-export`** for `settingsField()` in `packages/editor/src/editor-shell/controls/settings-field.ts` (`vg-342`), which has zero production callers.
   - **nothing at all** for a module on the live path — pick one the editor mounts at boot, and show it absent from every kind. A scanner with no negative case is untested.
 
 - [ ] **Step 5: Commit.** `feat(sweep): the reference scanner for unused modules and exports`.
