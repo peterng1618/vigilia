@@ -47,7 +47,7 @@ const GRID = '[style*="display:grid"]';
 const CARD =
   '[style*="border:1px solid var(--edge);border-radius:8px;padding:8px;background:var(--panel2)"]';
 const SWATCH_BAR =
-  '[style*="flex:1;height:16px;border-radius:4px;background:#fffdf7"]';
+  '[style*="flex:1;height:16px;border-radius:4px;background-color:#f5f1e8"]';
 
 test("the drawing is the checked-in file, read from disk", () => {
   expect(existsSync(MOCKUP_PATH)).toBe(true);

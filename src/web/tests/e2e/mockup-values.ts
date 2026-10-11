@@ -1051,13 +1051,100 @@ export const PARITY: readonly ParityRegion[] = [
   {
     region: "palette swatch — bar height",
     mockupPath: SETTINGS_MOCKUP_PATH,
+    // **Re-anchored on the value the drawing now paints.** The selector was
+    // `background:#fffdf7` — editorial's *surface* — and the user's ruling that
+    // the bar depicts the palette's **ground** (`vg-321`, 2026-10-11) repainted
+    // the drawing's bar to `#f5f1e8`, so the old substring matched nothing. The
+    // bar's own colour is the honest anchor: it is the value, it says what was
+    // drawn, and a bar repainted again moves the address rather than passing.
     mockupSelector:
-      '[style*="flex:1;height:16px;border-radius:4px;background:#fffdf7"]',
+      '[style*="flex:1;height:16px;border-radius:4px;background-color:#f5f1e8"]',
     mockupProperty: "height",
     productSelector: ".editor-shell-palette-swatch",
     bibleSection:
       "§7.8 (`:412`) — 'Palette choices retain visual swatches'; the swatch's form is the drawing's, and §5 (`:155`) names a swatch, never one",
     surface: "settings",
+  },
+  /* ── The ground bar's COLOUR, one row per solid-ground palette (`vg-321`) ───
+     The 2026-10-11 ruling makes the bar depict the palette's **ground** — §4's
+     `--bg`, `--shell-backdrop` — and names the drawing's six bars the stale
+     side. The height row above reads **only the first rendered bar**
+     (editorial's, `readRows`), so a bar's *colour* was compared against
+     nothing and every palette passed; each row below is therefore keyed to its
+     own palette with a compound `productSelector`, because the grid renders all
+     six bars at once and one `.editor-shell-palette-swatch` can only address the
+     first of them.
+
+     **Light is deliberately absent, and its bar's colour is therefore
+     unverified.** Its ground is a *gradient* (`editor-shell.css:281`, and the
+     drawing draws the same `linear-gradient(145deg,#d8ebe4,#afd4d1)`), so the
+     product's `background-color` resolves to `rgba(0, 0, 0, 0)` and a gradient
+     is exactly what `colourValue` answers `null` for — a colour row would fail
+     on a surface that is correct. No `scaleToken` can cover the six either:
+     scale tokens are read once from `:root`, which carries only editorial's
+     baseline. Five solid grounds are what this instrument can read honestly;
+     the light bar needs a gradient-aware comparator that does not exist. */
+  {
+    region: "palette swatch — editorial ground",
+    mockupPath: SETTINGS_MOCKUP_PATH,
+    mockupSelector:
+      '[style*="flex:1;height:16px;border-radius:4px;background-color:#f5f1e8"]',
+    mockupProperty: "background-color",
+    productSelector:
+      '.editor-shell-palette-swatch[data-shell-palette="editorial"]',
+    bibleSection:
+      "§4 (`:123`) — `--bg` is 'the window behind everything'; §7.8 (`:412`) names no role, so the drawing's bar is the palette's ground (`vg-321`)",
+    surface: "settings",
+    comparator: "colour",
+  },
+  {
+    region: "palette swatch — graphite ground",
+    mockupPath: SETTINGS_MOCKUP_PATH,
+    mockupSelector:
+      '[style*="flex:1;height:16px;border-radius:4px;background-color:#0b0e12"]',
+    mockupProperty: "background-color",
+    productSelector:
+      '.editor-shell-palette-swatch[data-shell-palette="graphite"]',
+    bibleSection:
+      "§4 (`:123`) — `--bg` is 'the window behind everything'; §7.8 (`:412`) names no role, so the drawing's bar is the palette's ground (`vg-321`)",
+    surface: "settings",
+    comparator: "colour",
+  },
+  {
+    region: "palette swatch — ember ground",
+    mockupPath: SETTINGS_MOCKUP_PATH,
+    mockupSelector:
+      '[style*="flex:1;height:16px;border-radius:4px;background-color:#e9cdb4"]',
+    mockupProperty: "background-color",
+    productSelector: '.editor-shell-palette-swatch[data-shell-palette="ember"]',
+    bibleSection:
+      "§4 (`:123`) — `--bg` is 'the window behind everything'; §7.8 (`:412`) names no role, so the drawing's bar is the palette's ground (`vg-321`)",
+    surface: "settings",
+    comparator: "colour",
+  },
+  {
+    region: "palette swatch — moss ground",
+    mockupPath: SETTINGS_MOCKUP_PATH,
+    mockupSelector:
+      '[style*="flex:1;height:16px;border-radius:4px;background-color:#cfe0bb"]',
+    mockupProperty: "background-color",
+    productSelector: '.editor-shell-palette-swatch[data-shell-palette="moss"]',
+    bibleSection:
+      "§4 (`:123`) — `--bg` is 'the window behind everything'; §7.8 (`:412`) names no role, so the drawing's bar is the palette's ground (`vg-321`)",
+    surface: "settings",
+    comparator: "colour",
+  },
+  {
+    region: "palette swatch — plum ground",
+    mockupPath: SETTINGS_MOCKUP_PATH,
+    mockupSelector:
+      '[style*="flex:1;height:16px;border-radius:4px;background-color:#dccdef"]',
+    mockupProperty: "background-color",
+    productSelector: '.editor-shell-palette-swatch[data-shell-palette="plum"]',
+    bibleSection:
+      "§4 (`:123`) — `--bg` is 'the window behind everything'; §7.8 (`:412`) names no role, so the drawing's bar is the palette's ground (`vg-321`)",
+    surface: "settings",
+    comparator: "colour",
   },
   {
     /* **The frame's inset — the one settings region a predating rule keeps, and

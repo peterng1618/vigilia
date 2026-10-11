@@ -541,10 +541,12 @@ check reads paints a colour outside the set §4's roles resolve to, which is
 on a side — **a gradient set through the `background` shorthand passes it**, and
 `background-image`, `box-shadow` and SVG `fill`/`stroke` are not read at all;
 every target has §5's 24×24 hit area without overlapping a neighbour; required
-text meets 4.5:1 and focus and state boundaries meet 3:1 in all six palettes
-**with a named debt**, because five cells are pinned below that today (vg-200's
-resting boundary, vg-201's `--warn` text) as measured floors that fail if they
-get worse; the slider's thumb is measured against both halves of its own track
+text meets 4.5:1 and the boundaries §5 binds — the focus boundary, a control's
+only separation, and a control's checked state — meet 3:1 in all six palettes;
+a **divider** carries no floor (§5's narrow reading, `vg-200`/`vg-318`) **with a
+named debt**, because three cells are pinned below 4.5:1 today (`vg-201`'s
+`--warn` text) as measured floors that fail if they get worse; the slider's thumb
+is measured against both halves of its own track
 and must beat each with its interior or its ring — the thumb is two parts
 because no flat colour can, which left the unfilled half at 1.81:1 in graphite
 and 1.35:1 in light;
@@ -650,9 +652,10 @@ necessary, never sufficient; §13.1's interaction and stress proof also applies.
   scrub gesture creates one history entry. IME input and caret position survive
   normal publications.
 - **Keyboard and contrast are observed.** §13.1's walkthrough runs on the real
-  host. Normal required text meets 4.5:1 and essential boundaries/focus meet
-  3:1 in all six palettes **with a named debt** (five cells are pinned below
-  those ratios today as measured floors that fail if they get worse, §13.1);
+  host. Normal required text meets 4.5:1 and the boundaries §5 binds — focus and
+  a control's only separation — meet 3:1 in all six palettes (a **divider**
+  carries none, `vg-200`/`vg-318`) **with a named debt** (three cells are pinned
+  below those ratios today as measured floors that fail if they get worse, §13.1);
   forced-colours focus stays visible. Long names,
   unresolved references and 200% zoom leave controls and reasons reachable.
 

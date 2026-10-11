@@ -110,19 +110,13 @@ const TEXT_MIN = 4.5;
 const BOUNDARY_MIN = 3;
 
 /**
- * The two measured palette defects this gate pins rather than blesses — a
+ * The one measured palette defect this gate pins rather than blesses — a
  * ratchet, not a waiver.
  *
  * Bible §5's minimum holds for every probe in every palette except the rows
- * named here, and both are **token** defects with a register row of their own
+ * named here, and this is a **token** defect with a register row of its own
  * rather than a control the control set can fix:
  *
- * - `boundary` is the well's resting 1px `--edge` against the fill it bounds.
- *   Graphite's edge is the drawing's own opaque `--edge` (`#242b34`) and reads
- *   1.20:1; light's is a 20%-alpha hairline and reads 1.42:1. §3 draws a fine
- *   hairline and §5 wants 3:1, and **those two rules disagree here** — which one
- *   yields is a design call rather than a measurement, so the floors are pinned
- *   to the values that ship and the ruling is `vg-200`'s.
  * - `invalid` is a rejected draft's reason, painted `--warn`. `--shell-warm` is
  *   a pastel in ember, moss and plum (`#ff7e6e`, `#e8c56a`, `#ffb2a1`) while
  *   those palettes' paper is light, so the reason reads at 1.4–2.0:1. The
@@ -131,27 +125,35 @@ const BOUNDARY_MIN = 3;
  *   role. Deepening the hue is what `--shell-accent` got in the same three
  *   palettes, and that is the ruling the row needs — `vg-201`.
  *
- * The four palettes that pass stay at the real minimum, and a pinned floor is
- * deleted — the minimum restored — when its row is fixed. The numbers are the
- * measurement, so a regression still fails.
+ * A pinned floor is deleted — the minimum restored — when its row is fixed.
+ * The numbers are the measurement, so a regression still fails.
+ *
+ * **The `boundary` pin is gone, and it is not a waiver.** The user ruled §5's
+ * 3:1 the **narrow** reading (2026-10-11, `vg-200`/`vg-318`): it binds the focus
+ * boundary and a boundary that is a control's ONLY separation, and the well's
+ * resting hairline is a divider — the well also carries a fill, a hover-raise
+ * and a label — so graphite's 1.20:1 and light's 1.42:1 are deliberate
+ * low-contrast style rather than a defect. The probe is still measured and
+ * printed; what changed is that `minimumFor` gives a divider no floor at all.
  */
 const PINNED_FLOOR: Readonly<Record<string, Partial<Record<Palette, number>>>> =
   {
-    // **Re-measured by plan 7 Task 4.** Graphite's `--shell-edge` became the
-    // drawing's own `--edge` (`current/shell.html:17`, `#242b34`) verbatim, and
-    // a dark opaque divider on a dark fill composites to **1.20:1** where the
-    // translucent hairline it replaced read 2.15:1. The pin holds the value
-    // that ships, which is what makes a regression fail; it is still far below
-    // §5's 3:1 and `vg-200` still owns the ruling. Light is unchanged.
-    boundary: { graphite: 1.2, light: 1.2 },
     invalid: { ember: 1.9, moss: 1.35, plum: 1.35 },
   };
 
-/** Bible §5's minimum for a probe: a boundary that identifies a control or its
- *  focus is measured against 3:1, and everything that carries words against
- *  4.5:1. */
-function minimumFor(name: string): number {
-  return name === "boundary" || name === "checked" ? BOUNDARY_MIN : TEXT_MIN;
+/** Bible §5's minimum for a probe, or `null` where §5 requires none.
+ *
+ *  §5.4 binds the focus boundary, and §5 requires 3:1 of a boundary that is a
+ *  control's **only** separation. A **divider** is neither: the well's resting
+ *  `--edge` and the chrome's `--shell-edge` each sit beside a fill, a
+ *  hover-raise and a label. The user's narrow reading of §5's 3:1 (2026-10-11,
+ *  `vg-200`/`vg-318`) therefore leaves a divider no floor — and it is `null`
+ *  rather than `0` on purpose: a zero minimum would pass every palette
+ *  silently, which is the failure these rows exist to end. Everything that
+ *  carries words meets 4.5:1; the `checked` state boundary meets 3:1. */
+function minimumFor(name: string): number | null {
+  if (name === "divider") return null;
+  return name === "checked" ? BOUNDARY_MIN : TEXT_MIN;
 }
 
 const FREEZE = "design-language-freeze";
@@ -409,11 +411,16 @@ async function probes(page: Page): Promise<Probe[]> {
     }
 
     // The resting well hairline, read against the fill it bounds rather than
-    // against some other surface: the border is what distinguishes the well.
+    // against some other surface. A **divider**, not a §5 boundary: the well
+    // also carries a fill, a hover-raise to `--muted` and a label, so this
+    // hairline is one mark among several and the user's narrow reading of §5's
+    // 3:1 (2026-10-11, vg-200/vg-318) leaves it no floor — `minimumFor` answers
+    // `null`. Kept rather than deleted, so the ratio and any regression stay
+    // visible; the loop below prints it and asserts nothing.
     const well = value?.parentElement ?? null;
     if (well !== null) {
       out.push({
-        name: "boundary",
+        name: "divider",
         fg: getComputedStyle(well).borderTopColor,
         point: centre(well),
       });
@@ -902,6 +909,10 @@ test("the control set renders in the design language", async ({
       ratios.push(`${palette} ${probe.name} ${ratio}:1 (${probe.fg} on ${on})`);
       const minimum =
         PINNED_FLOOR[probe.name]?.[palette] ?? minimumFor(probe.name);
+      // A divider carries no floor: measured and printed above, asserted of
+      // nothing. `null` rather than `0`, so a divider cannot pass every palette
+      // by having nothing asked of it (see `minimumFor`).
+      if (minimum === null) continue;
       if (ratio < minimum) {
         failures.push(
           `${palette}: ${probe.name} is ${ratio}:1, below ${minimum}:1 — ${probe.fg} on ${on}`,
@@ -2215,10 +2226,11 @@ test("graphite's roles are the drawing's, and the other five keep its ladder", a
  *  own surface rather than of a control painted on it — a chrome every pixel of
  *  which is covered reds with its own message instead of measuring a button.
  *
- *  `boundary` keeps the floor `vg-200` pins. §3 draws a fine hairline and §5 asks
- *  3:1, and those two rules disagree for graphite and light; that is that row's
- *  ruling, and reading it here as a new finding would be the same defect filed
- *  twice.
+ *  `--shell-edge` is a **divider** under §5's narrow reading (the user's ruling
+ *  of 2026-10-11, `vg-200`/`vg-318`): the rail also carries a fill and a label,
+ *  so this hairline is one mark among several and `minimumFor` gives it no
+ *  floor. It is still measured and printed; reading its 1.2:1 as a defect would
+ *  be the same shortfall filed twice.
  *
  *  A `--grep` that matches nothing exits 0 with zero tests, so the run's own
  *  summary is the proof this ran at all.
@@ -2235,7 +2247,7 @@ test("the chrome's own contrast clears §5 under all six palettes", async ({
   const ROLES: readonly (readonly [string, string])[] = [
     ["--shell-text", "text"],
     ["--shell-muted", "muted"],
-    ["--shell-edge", "boundary"],
+    ["--shell-edge", "divider"],
     ["--shell-accent", "accent"],
   ];
 
@@ -2294,6 +2306,9 @@ test("the chrome's own contrast clears §5 under all six palettes", async ({
         `${palette} chrome ${name} ${ratio}:1 (${declared} on ${on})`,
       );
       const minimum = PINNED_FLOOR[probe]?.[palette] ?? minimumFor(probe);
+      // A divider is measured and printed, never asserted — the same skip the
+      // control set's whitebox loop makes, for the same reason.
+      if (minimum === null) continue;
       if (ratio < minimum) {
         failures.push(
           `${palette}: ${name} on the chrome is ${ratio}:1, below ${minimum}:1 — ${declared} on ${on}`,

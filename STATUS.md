@@ -30,18 +30,16 @@ satisfies every token in the bible and still does not look like the mockup.
 
 ## Last completed change
 
-- **Nine one-off captures are deleted with their generators**: `editor-snap-guides` and `editor-rotation-indicator`, whose capture blocks leave `src/web/tests/e2e/editor.spec.ts`, and — once the v1 landing was confirmed against HEAD, not the tree — `player-chrome-phone-chromium` plus the six `assets-`/`portrait-cover-`/`stress-` fixture captures.
-- **The screenshot registry is reconciled**: the deleted captures' rows are gone from `docs/evidence/screenshots/README.md`, and `editor-chart-creation`, standing but unregistered, gains the row the file's own rule requires.
-- **`vg-346` and `vg-349` record what the deletions left unowned**: the deleted indicator block was the only test performing the editor's rotation canvas gesture — its angle readout is unit-tested, `indicator-manager/index.dom.test.ts` — and the deleted snap block was the only plain, unmodified single-object drag across a snap line.
-- **`vg-345` is settled by the same removal**: the registry row and the orphan `player-chrome-phone-chromium.png` are both gone, and its archived detail now says so rather than claiming the image is still on disk.
+- **§5's 3:1 is the narrow reading the user ruled**: `PINNED_FLOOR.boundary` is deleted from `design-language.spec.ts`, the well and chrome-edge probes are a `divider` that is still measured and printed but asserted of no floor, and `design-language.md` §5 now names the two boundaries it binds — the focus boundary and a control's only separation.
+- **The drawing's preview bars depict the palette's ground**: five solid bars in `docs/design/mockups/current/settings.html` are repainted to `--shell-backdrop`, the height row is re-anchored on the value the drawing now paints, and five new `PARITY` colour rows read a bar's colour — the light bar's gradient ground is read by no colour row and is reported as uncovered.
+- **`vg-200`, `vg-318` and `vg-321` close as `withdrawn`** into `backlog-archive.jsonl`, each `detail` carrying the user's ruling quoted verbatim from `12e75d42`, and the spec's two `3:1` / `five cells` restatements are corrected.
 
 ## Next
 
 1. **The schema-v1 screenshots pass** — the captures whose generator this deletion removed are listed by filename in `.superpowers/sdd/2026-10-11-schema-v1-retirement/task-1-report.md`; the screenshot inventory (item 2) folds into it.
 2. **The screenshot inventory** — remove every capture whose generator no longer exists, and regenerate the ones that are valid but outdated (`vg-341`'s seven are one known family); nothing is deleted until the orphan list is evidence-backed, because a wrong call destroys evidence.
-3. **The four rulings implemented**: `PINNED_FLOOR.boundary` deleted and §5's narrower rule written down, and the drawing's six preview bars repainted to the palette's ground with a `PARITY` row that reads a bar's colour — brief written at `.superpowers/sdd/2026-10-11-design-rulings/task-1-brief.md`, waiting behind the two surveys above.
-4. **`vg-331`** (the attention-colour role, defined before any colour is chosen); **`vg-330` is PARKED by the user** (2026-10-11) and is not queued.
-5. **`design-md-replaces-the-bible`**, then the multi-device objective; **Acceptance item 3** still keeps the editor-redesign objective open.
+3. **`vg-331`** (the attention-colour role, defined before any colour is chosen); **`vg-330` is PARKED by the user** (2026-10-11) and is not queued.
+4. **`design-md-replaces-the-bible`**, then the multi-device objective; **Acceptance item 3** still keeps the editor-redesign objective open.
 
 ## Blockers / unverified
 

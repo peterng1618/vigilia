@@ -220,8 +220,16 @@ The vocabulary is closed. A control is one of these, or it is not a control.
   may sit inside a larger target; adjacent targets must not overlap. No
   drag-only route to an action already reachable through commands is accepted.
 - Required labels, refusals and selected-state text meet 4.5:1 contrast for
-  normal text; essential control boundaries meet 3:1. `--faint` is decorative
-  or genuinely inactive, never the sole carrier of required information.
+  normal text. **3:1 binds two boundaries, and only these two:** the focus
+  boundary (rule 4), and a boundary that is a control's **only** separation —
+  the single mark that tells the control apart from what surrounds it. Anything
+  else is a **divider**, and a divider may be deliberate low-contrast style.
+  Classify one by asking what else marks the thing it bounds: a well's resting
+  `--edge` sits beside a fill, a hover-raise to `--muted` and a label, and a
+  dialog's frame beside a fill, a shadow and a radius, so in each case the
+  border is one mark among several rather than the control's only separation.
+  `--faint` is decorative or genuinely inactive, never the sole carrier of
+  required information.
 
 ## 6. Icons
 
