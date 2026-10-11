@@ -932,7 +932,7 @@ export const PARITY: readonly ParityRegion[] = [
      `:root`, so this row cannot drift from the token. **Task 2 removed the
      eyebrow marks with the size**: §2 (`:57`) reserves uppercase for a section
      eyebrow ("Nothing else is uppercase"), and the rule covers the dialog's
-     visible name at seven sites, four of them `<p>`s that render the same string
+     visible name at seven sites, five of them `<p>`s that render the same string
      the dialog passes as its `label`. The theme library's `role="status"` node
      no longer wears the rule — a status is not a name — and takes
      `.editor-shell-dialog-status` instead.

@@ -1311,8 +1311,9 @@ body,
    **The lead is the dialog's visible name, and §2 (`design-language.md:51`)
    gives that `--text-lg` (15px): "Dialog titles".** It is one rule for one role
    across seven sites: two `<h2>`s (`settings.tsx`, `shortcut-reference.tsx`) and
-   four `<p>`s in the theme library, the new-document chooser and the
-   replace-document prompt — and each of those four `<p>`s renders the **same
+   five `<p>`s — the theme library's chooser lead and its conflict lead
+   (`theme-library-dialog.tsx:174` and `:319`), the new-document chooser and the
+   replace-document prompt — and each of those five `<p>`s renders the **same
    string the dialog already passes as its `label`**, so Base UI's `aria-label`
    carries the name and the `<p>` is its visible half, not body copy. None is
    uppercase now: §2 (`:57`) — "Nothing else is uppercase: a chord is printed as
