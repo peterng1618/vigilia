@@ -104,8 +104,8 @@ shelf is unnamed, which is what §1.2 items 3, 4 and 16 are.
 
 **The map's own habit is the evidence for the grain:** 22 rows mention a
 `*-manager/` directory, and only two of them name a file inside one — `:75`, which
-names all three of `chart-manager/`'s (`panel.ts`, `chart-fields.tsx`, `index.ts`,
-each present in that directory), and `:89`, which names `asset-manager/`'s entry
+names all three of `chart-manager/`'s source files (`panel.ts`, `chart-fields.tsx`,
+`index.ts`, each present in that directory), and `:89`, which names `asset-manager/`'s entry
 (`index.ts` bytes). Every other manager row names the directory bare. `:75` is
 **right, not a finding**: naming a directory's member files does not turn it into
 a shelf, because the directory is a `*-manager/` directory whose entry is
