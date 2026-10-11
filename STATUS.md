@@ -26,7 +26,7 @@ satisfies every token in the bible and still does not look like the mockup.
 - **No plan is active.** Plan 6 is complete and moved to [`archive/`](docs/superpowers/plans/archive/2026-10-08-iconography-and-copy.md), its final whole-branch review clean; the next plan starts at the queued rulings below.
 - **Plan 6's nine tasks are complete**: the census, the one glyph vocabulary and weight rule, the closed kind set, the one-string pairing, the copy nets, the ratchet, the sixteen-item Acceptance ledger and Task 9's parity capture.
 - **Its Acceptance ledger reads fifteen met, one not met** — §13.1's real-host walkthrough, which plan 6 was forbidden to add and no other plan owns.
-- **Two changes are ruled and queued after plan 6** (`vg-330`, `vg-331`): Settings becomes a pane opened from the rail's gear with the four slots kept and the drawing redrawn as a panel, and the palettes gain a second highlight whose role is an attention or in-flight state, defined before any colour is chosen.
+- **`vg-330` is parked by the user (2026-10-11)** — "Let's park the settings becomes a pane spec" — and `vg-331` still waits: the palettes gain a second highlight whose role is an attention or in-flight state, defined before any colour is chosen.
 
 ## Last completed change
 
@@ -38,11 +38,11 @@ satisfies every token in the bible and still does not look like the mockup.
 
 ## Next
 
-1. **The four rulings implemented**: `PINNED_FLOOR.boundary` deleted and §5's narrower rule written down, and the drawing's six preview bars repainted to the palette's ground with a `PARITY` row that reads a bar's colour.
-2. **The Settings pane** (`vg-330`, architectural — brainstorm → spec → plan) — it rewrites Acceptance item 11 when it lands, so read it as written until then.
-3. **The attention-colour role** (`vg-331`), defined before any colour is chosen.
-4. **`design-md-replaces-the-bible`** before the multi-device display objective.
-5. **Acceptance item 3** — §13.1's real-host walkthrough: no Playwright project matches it, so a plan that adds the check is what closes the editor-redesign objective.
+1. **Deprecate schema v1** and everything that emits or reads it, the starter theme generator included — the user's instruction of 2026-10-11; being surveyed now, and the survey decides whether this is a task or a spec.
+2. **The screenshot inventory** — remove every capture whose generator no longer exists, and regenerate the ones that are valid but outdated (`vg-341`'s seven are one known family); two surveys are in flight and nothing is deleted until the orphan list is evidence-backed, because a wrong call destroys evidence.
+3. **The four rulings implemented**: `PINNED_FLOOR.boundary` deleted and §5's narrower rule written down, and the drawing's six preview bars repainted to the palette's ground with a `PARITY` row that reads a bar's colour — brief written at `.superpowers/sdd/2026-10-11-design-rulings/task-1-brief.md`, waiting behind the two surveys above.
+4. **`vg-331`** (the attention-colour role, defined before any colour is chosen); **`vg-330` is PARKED by the user** (2026-10-11) and is not queued.
+5. **`design-md-replaces-the-bible`**, then the multi-device objective; **Acceptance item 3** still keeps the editor-redesign objective open.
 
 ## Blockers / unverified
 
