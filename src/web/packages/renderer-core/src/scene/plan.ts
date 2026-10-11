@@ -161,11 +161,11 @@ export type ChartPlanContext = Pick<PlanInputs, "source" | "nowMs" | "animate">;
  * The artboard's geometry with its two paints resolved through `globals`, the way
  * a node's style is.
  *
- * **The one owner of artboard paint resolution.** Two things build a `ScenePlan`
- * — this module from a document, the player from a hosted envelope whose scene
- * Fabric revives — and the block written twice is how one builder came to pass a
- * palette reference through unresolved, which paints nothing at all. Keep both on
- * this.
+ * **The one owner of artboard paint resolution.** The player's
+ * `hosted-plan.ts` is the other builder of a `ScenePlan`, from a hosted
+ * envelope whose scene Fabric revives, and the block written twice is how one
+ * builder came to pass a palette reference through unresolved, which paints
+ * nothing at all. Keep both on this.
  *
  * `scene-fabric` accepts the resolved forms only: a CSS string or a
  * `{ kind: "solid" | "gradient" }` object, never a reference.

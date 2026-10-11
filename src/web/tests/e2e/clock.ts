@@ -39,11 +39,14 @@ import type { Page } from "@playwright/test";
  * "Any frame with a chart in it is not byte-reproducible" was measured on both
  * ECharts renderers and written into three places. It was measuring this bug:
  * each capture happened at a different instant, so the engine correctly drew a
- * different frame. Paused, a chart frame reproduces byte-for-byte —
- * `display-fabric.spec.ts`'s determinism test now asserts that, and is the
- * regression guard for this module. Committed pixel baselines are still out,
- * for the reason that actually blocks them: CI is Linux, development is
- * Windows, glyphs differ.
+ * different frame. Paused, a chart frame reproduces byte-for-byte.
+ *
+ * Nothing asserts that now. The check that did — two screenshots of one paused
+ * frame, compared byte for byte — was deleted with the fake-source fixture
+ * themes it captured, and no surviving spec compares two frames. The
+ * measurement stands; the guard is gone, filed as `vg-347`. Committed pixel
+ * baselines are still out, for the reason that actually blocks them: CI is
+ * Linux, development is Windows, glyphs differ.
  */
 
 /** Pinned so the fake source is frozen and every frame is identical. */

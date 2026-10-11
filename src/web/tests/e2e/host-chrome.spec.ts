@@ -9,19 +9,17 @@ import {
 /**
  * The display's own chrome, on the real host.
  *
- * `player-chrome.spec.ts` measures the same property against the preview
- * bundle. This file measures it against the surface a reader actually gets:
- * a theme package the host served, a real transport that can be broken, and
- * the mount path `vite preview` cannot exercise.
+ * This measures the strip against the surface a reader actually gets: a theme
+ * package the host served, a real transport that can be broken, and the mount
+ * path `vite preview` cannot exercise. The preview-bundle twin this file once
+ * paired with went with the player's `?theme=` fixture path; the strip's own
+ * behaviour is unit-tested in `packages/player/src/chrome.dom.test.ts`.
  *
- * The three tests are the shapes the preview spec cannot speak for — a strip
+ * The three tests are the shapes only that surface speaks for — a strip
  * raised *after* the first fit, two strips on one display at once, and a
  * healthy stream that should say nothing at all.
  */
 
-// Copied from `player-chrome.spec.ts` rather than imported — importing a spec
-// file registers its own `test()` calls a second time (see the plan's
-// Interfaces block), and this is only the second copy.
 const PHONE = {
   portrait: { width: 390, height: 844 },
   landscape: { width: 844, height: 390 },
