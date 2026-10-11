@@ -1,10 +1,17 @@
 // @vitest-environment jsdom
 import { Canvas, Rect, Textbox } from "fabric/es";
-import { act, createElement } from "react";
+import { act, createElement, Fragment } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
+import { accessibleName } from "./accessible-name.js";
 import { createArtboardPanel } from "./artboard-panel.js";
+import type { EditorShellBridge } from "./editor-shell/bridge.js";
+import { CanvasDock } from "./editor-shell/canvas-dock.js";
+import { STACK_GLYPH } from "./editor-shell/icons.js";
+import { LayerActions } from "./editor-shell/layer-panel.js";
 import { DEFAULT_SHELL_PALETTE } from "./editor-shell/palette.js";
+import { Pane } from "./editor-shell/pane.js";
+import { Rail } from "./editor-shell/rail.js";
 import { Settings } from "./editor-shell/settings.js";
 import { chooseArtboardSize } from "./new-document-chooser.js";
 import { createNewObjectPanel } from "./new-object-panel.js";
@@ -104,6 +111,8 @@ const LABELABLE = "button,input,meter,output,progress,select,textarea";
 afterEach(() => {
   act(() => settingsRoot?.unmount());
   settingsRoot = undefined;
+  act(() => chromeRoot?.unmount());
+  chromeRoot = undefined;
   localStorage.clear();
   document.body.replaceChildren();
 });
@@ -335,7 +344,10 @@ describe("editor panels", () => {
 /**
  * The panels this file audits, mounted at once: the artboard panel, the palette
  * panel, the type preset panel, the selection inspector on two disjoint field
- * sets, the Add pane, the new-theme chooser and §7's Settings modal.
+ * sets, the Add pane, the new-theme chooser and §7's Settings modal — and, since
+ * plan 6 Task 4, the shell's own React chrome: the rail, the pane's chrome with
+ * its action footer, and the canvas dock (`mountShellChrome`, which is also
+ * where the reason the Composition tree is *not* among them is written down).
  *
  * Each in a state that shows every field it can render: a gradient with stops,
  * a font picker, a delete control, and a text object with a run bound to a
@@ -463,10 +475,73 @@ function mountPanels(): { root: HTMLElement } {
     void chooseArtboardSize({ width: 1280, height: 720 });
   });
 
+  mountShellChrome(root);
+
   mountSettings();
 
   return { root: document.body };
 }
+
+/**
+ * The shell's own React chrome, which this audit had been reading past: the
+ * rail, the Composition pane's chrome with the action footer `shell-layout`
+ * gives it, and the canvas dock.
+ *
+ * They are mounted as themselves rather than through `shell-layout`, because
+ * the shell is assembled from imperative hosts and this file is where a control
+ * gets named — the three carry the shell's icon-only buttons (four rail slots
+ * and the gear, the pane footer's object actions, the dock's two halves), and
+ * each draws its own button rather than `ControlIconButton`, which is exactly
+ * the shape an audit that walked one panel would miss.
+ *
+ * The pane's body is a stand-in. What the tree *inside* it renders is
+ * `composition-pane.tsx`'s own surface, and its treeitems are named from their
+ * content, which is the one mechanism `accessibleName` reads for buttons alone;
+ * mounting the tree here would report it as unnamed for a reason that is about
+ * the reader rather than about the panel.
+ */
+function mountShellChrome(root: HTMLElement): void {
+  const bridge = {
+    snapshot: () => ({ selectedCount: 1, locked: false, activeKind: "object" }),
+    target: () => ({
+      kind: "object",
+      locked: false,
+      memberCount: 1,
+      isGroup: false,
+    }),
+    canArrange: () => false,
+    subscribe: () => () => undefined,
+    run: vi.fn(),
+  } as unknown as EditorShellBridge;
+  const host = document.createElement("div");
+  root.append(host);
+  const reactRoot = createRoot(host);
+  chromeRoot = reactRoot;
+  act(() => {
+    reactRoot.render(
+      createElement(
+        Fragment,
+        null,
+        createElement(Rail, {
+          slot: "composition",
+          collapsed: false,
+          onChoose: () => undefined,
+          onOpenSettings: () => undefined,
+        }),
+        createElement(Pane, {
+          id: "layers",
+          title: uiCopy.panels.layers,
+          icon: STACK_GLYPH,
+          footer: createElement(LayerActions, { bridge }),
+          children: createElement("div", null),
+        }),
+        createElement(CanvasDock, { bridge }),
+      ),
+    );
+  });
+}
+
+let chromeRoot: Root | undefined;
 
 let settingsRoot: Root | undefined;
 
@@ -566,39 +641,6 @@ function mountSelectionInspector(root: HTMLElement): void {
       refreshGlass: vi.fn(),
     });
   }
-}
-
-/**
- * The name a control is announced under, as far as jsdom can be asked: the same
- * four mechanisms the platform uses, in the platform's own order of precedence.
- * A browser measures the real thing — this is the regression net under it.
- */
-function accessibleName(element: Element): string {
-  const labelled = element.getAttribute("aria-label")?.trim();
-  if (labelled !== undefined && labelled !== "") return labelled;
-  const referenced = element.getAttribute("aria-labelledby");
-  if (referenced !== null && referenced !== "") {
-    const text = referenced
-      .split(/\s+/)
-      .map((id) => element.ownerDocument.getElementById(id)?.textContent ?? "")
-      .join(" ")
-      .trim();
-    if (text !== "") return text;
-  }
-  if (element.id !== "") {
-    const labels =
-      element.ownerDocument.querySelectorAll<HTMLLabelElement>("label[for]");
-    for (const label of labels) {
-      if (label.htmlFor === element.id) return label.textContent?.trim() ?? "";
-    }
-  }
-  const wrapping = element.closest("label")?.textContent?.trim() ?? "";
-  if (wrapping !== "") return wrapping;
-  // Name from content, which is how a button is named and how a select's option
-  // text is emphatically not: the option list is the control's value.
-  return element.tagName === "BUTTON"
-    ? (element.textContent?.trim() ?? "")
-    : "";
 }
 
 /** A stable handle for the failure message: the attribute the panel is found by. */

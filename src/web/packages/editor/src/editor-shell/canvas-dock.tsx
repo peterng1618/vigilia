@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import { useControlTooltip } from "../components/ui/control-icon-button.js";
 import {
   actionEnabled,
   arrangeActions,
@@ -12,7 +13,6 @@ import {
 } from "../shortcut-manager/display.js";
 import { uiCopy } from "../ui-copy.js";
 import type { EditorShellBridge } from "./bridge.js";
-import { tooltip } from "./controls/tooltip.js";
 import { Glyph } from "./icons.js";
 
 /**
@@ -23,8 +23,9 @@ const DESTRUCTIVE_ACTIONS: ReadonlySet<ObjectActionId> = new Set(["delete"]);
 
 /**
  * One dock button. The tooltip is a DOM control, so React owns the button and
- * the effect owns the popup — a React tooltip here would be a second owner for
- * something the selection inspector, which never sees React, also has to use.
+ * the control set's `useControlTooltip` owns the popup — a React tooltip here
+ * would be a second owner for something the selection inspector, which never
+ * sees React, also has to use.
  */
 function Action({
   bridge,
@@ -42,19 +43,9 @@ function Action({
   readonly children: React.ReactNode;
 }): React.JSX.Element {
   const ref = useRef<HTMLButtonElement>(null);
-  useEffect(() => {
-    const button = ref.current;
-    if (button === null) return;
-    // Two calls rather than one with a conditional field: `exactOptionalPropertyTypes`
-    // forbids passing `undefined`, and a caller with no chord must omit it.
-    return (
-      shortcut === undefined
-        ? tooltip({ trigger: button, text: label })
-        : tooltip({ trigger: button, text: label, shortcut })
-    ).destroy;
-    // Changing the selection changes which chords are mounted, so a popup must
-    // be rebuilt when the chord changes — otherwise it shows the previous one.
-  }, [label, shortcut]);
+  // The chord is part of the popup, so a rebind has to rebuild it — the control
+  // set's one tooltip owner re-runs on the chord rather than only on the label.
+  useControlTooltip(ref, label, shortcut);
   return (
     <button
       ref={ref}
@@ -91,11 +82,7 @@ function ArrangeAction({
   readonly children: React.ReactNode;
 }): React.JSX.Element {
   const ref = useRef<HTMLButtonElement>(null);
-  useEffect(() => {
-    const button = ref.current;
-    if (button === null) return;
-    return tooltip({ trigger: button, text: label }).destroy;
-  }, [label]);
+  useControlTooltip(ref, label);
   return (
     <button
       ref={ref}

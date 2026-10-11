@@ -1,6 +1,6 @@
-import { useEffect, useRef } from "react";
+import { useRef } from "react";
+import { useControlTooltip } from "../components/ui/control-icon-button.js";
 import { uiCopy } from "../ui-copy.js";
-import { tooltip } from "./controls/tooltip.js";
 import { Glyph, RAIL_GLYPHS, SETTINGS_GLYPH } from "./icons.js";
 
 /** The rail's four slots (bible §7.2). Named here rather than in
@@ -27,12 +27,13 @@ export const RAIL_SLOTS: readonly RailSlot[] = [
 /** One slot: a 34px icon-only control whose one word is both its tooltip and
  *  its accessible name, so the two cannot disagree.
  *
- *  The tooltip is the shell's one DOM control rather than a React popup: the
- *  selection inspector is not React and has to use the same one, and a second
- *  owner for "what a tooltip is" is the drift this avoids. The rail renders
- *  its own button rather than `ControlIconButton` because a slot carries
- *  `aria-pressed` — which one is chosen — and the control set's icon button,
- *  a plain 26px action, has no such state.
+ *  The tooltip is the control set's one owner of the pairing
+ *  (`useControlTooltip`), mounted on the same `label` the `aria-label` takes:
+ *  the selection inspector is not React and calls the same DOM control
+ *  underneath, and a second owner for "what a tooltip is" is the drift this
+ *  avoids. The rail renders its own button rather than `ControlIconButton`
+ *  because a slot carries `aria-pressed` — which one is chosen — and the
+ *  control set's icon button, a plain 26px action, has no such state.
  *
  *  **`aria-pressed` is the whole of a slot's own state, and there is no
  *  `aria-expanded` beside it.** Whether the pane column is out is a fact about
@@ -55,11 +56,7 @@ function RailSlotButton({
   readonly onChoose: (slot: RailSlot) => void;
 }): React.JSX.Element {
   const ref = useRef<HTMLButtonElement>(null);
-  useEffect(() => {
-    const button = ref.current;
-    if (button === null) return;
-    return tooltip({ trigger: button, text: label }).destroy;
-  }, [label]);
+  useControlTooltip(ref, label);
   return (
     <button
       ref={ref}
@@ -93,11 +90,7 @@ function SettingsGear({
   readonly onClick: () => void;
 }): React.JSX.Element {
   const ref = useRef<HTMLButtonElement>(null);
-  useEffect(() => {
-    const button = ref.current;
-    if (button === null) return;
-    return tooltip({ trigger: button, text: label }).destroy;
-  }, [label]);
+  useControlTooltip(ref, label);
   return (
     <button
       ref={ref}

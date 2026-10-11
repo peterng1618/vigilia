@@ -2,7 +2,6 @@ import { Menu } from "@base-ui/react/menu";
 import {
   type ReactNode,
   useCallback,
-  useEffect,
   useRef,
   useSyncExternalStore,
 } from "react";
@@ -11,6 +10,7 @@ import {
   type ArtboardSize,
   artboardOrientation,
 } from "../artboard-presets.js";
+import { useControlTooltip } from "../components/ui/control-icon-button.js";
 import {
   type DisplayLens,
   type DisplayLensId,
@@ -19,7 +19,6 @@ import {
 import { uiCopy } from "../ui-copy.js";
 import type { ViewportManager } from "../viewport-manager/index.js";
 import { ZOOM_STEP } from "../viewport-manager/navigation.js";
-import { tooltip } from "./controls/tooltip.js";
 import { FIT_GLYPH, Glyph, MINUS_GLYPH, PLUS_GLYPH } from "./icons.js";
 
 /**
@@ -225,9 +224,9 @@ export function DisplaySwitch({
   );
 }
 
-/** One of the cluster's icon controls. The tooltip is a DOM control
- *  (`controls/tooltip.ts`), so React owns the button and the effect owns the
- *  popup — the split `canvas-dock.tsx` uses, for the same reason: the selection
+/** One of the cluster's icon controls. The tooltip is a DOM control, so React
+ *  owns the button and the control set's `useControlTooltip` owns the popup —
+ *  the split `canvas-dock.tsx` uses, for the same reason: the selection
  *  inspector builds the same popup without ever seeing React.
  *
  *  `fitted` is omitted rather than `false` on the two stepping commands: it is
@@ -244,11 +243,7 @@ function ViewButton({
   readonly children: ReactNode;
 }): React.JSX.Element {
   const ref = useRef<HTMLButtonElement>(null);
-  useEffect(() => {
-    const button = ref.current;
-    if (button === null) return;
-    return tooltip({ trigger: button, text: label }).destroy;
-  }, [label]);
+  useControlTooltip(ref, label);
   return (
     <button
       ref={ref}

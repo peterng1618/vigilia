@@ -1,5 +1,5 @@
-import { useEffect, useRef } from "react";
-import { tooltip } from "../../editor-shell/controls/tooltip.js";
+import { useRef } from "react";
+import { useControlTooltip } from "../../components/ui/control-icon-button.js";
 import {
   Glyph,
   HIDDEN_GLYPH,
@@ -34,8 +34,9 @@ import { uiCopy } from "../../ui-copy.js";
  * `rail.tsx` gives for its slots and not for a second one: the pressed state is
  * the whole of a visibility or lock control's state, and the control set's icon
  * button is a plain action with no `aria-pressed` to carry it. They take the
- * control set's one tooltip owner instead, so their name and their tooltip are
- * one string (§6) exactly as an icon button's are.
+ * control set's one owner of the name/tooltip pairing instead
+ * (`useControlTooltip`), so their name and their tooltip are one string (§6)
+ * exactly as an icon button's are.
  *
  * They are also direct children of `.vigilia-layer-state`, never wrapped: the
  * stylesheet asks that slot's own buttons how much room beside the key they
@@ -96,8 +97,8 @@ export function RowAffordances({
 
 /**
  * One of the row's controls: a 26px square at the control set's box (§5), whose
- * one word is both its accessible name and its tooltip, armed from the shell's
- * one tooltip owner so the two cannot disagree.
+ * one word is both its accessible name and its tooltip, armed from the control
+ * set's one owner of the pairing so the two cannot disagree.
  *
  * `pressed` is omitted rather than passed `undefined` on the rename control —
  * `exactOptionalPropertyTypes` is on, and the absence of the attribute is the
@@ -115,11 +116,7 @@ function RowControl({
   readonly children: React.ReactNode;
 }): React.JSX.Element {
   const ref = useRef<HTMLButtonElement>(null);
-  useEffect(() => {
-    const button = ref.current;
-    if (button === null) return;
-    return tooltip({ trigger: button, text: label }).destroy;
-  }, [label]);
+  useControlTooltip(ref, label);
   return (
     <button
       ref={ref}

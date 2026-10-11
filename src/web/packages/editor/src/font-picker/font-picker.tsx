@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useControlTooltip } from "../components/ui/control-icon-button.js";
 import {
   type ControlOption,
   ControlSelect,
@@ -57,6 +58,38 @@ function facetOptions(field: FacetField): readonly ControlOption[] {
  *  and the icon keeps the shell's colour either way. */
 function FavoriteStateIcon({ favorite }: { readonly favorite: boolean }) {
   return <Glyph icon={STAR_GLYPH} size={13} filled={favorite} />;
+}
+
+/**
+ * A trio's favourite toggle. It declares one word per state, and that word is
+ * both the accessible name and the tooltip — mounted from the control set's one
+ * owner of the pairing (`useControlTooltip`, §6) so a reader hovering it and a
+ * reader listening to it are told the same thing.
+ */
+function TrioFavoriteButton({
+  favorite,
+  onToggle,
+}: {
+  readonly favorite: boolean;
+  readonly onToggle: () => void;
+}): React.JSX.Element {
+  const ref = useRef<HTMLButtonElement>(null);
+  const label = favorite
+    ? uiCopy.panels.fontUnfavorite
+    : uiCopy.panels.fontFavorite;
+  useControlTooltip(ref, label);
+  return (
+    <button
+      ref={ref}
+      type="button"
+      data-vigilia-font-favorite=""
+      aria-pressed={favorite}
+      aria-label={label}
+      onClick={onToggle}
+    >
+      <FavoriteStateIcon favorite={favorite} />
+    </button>
+  );
 }
 
 export interface FontPickerProps {
@@ -326,19 +359,10 @@ export function FontPicker({
       >
         {visibleTrios.map((trio) => (
           <li key={trio.id} className="flex items-center gap-1.5">
-            <button
-              type="button"
-              data-vigilia-font-favorite=""
-              aria-pressed={favorites.includes(trio.id)}
-              aria-label={
-                favorites.includes(trio.id)
-                  ? uiCopy.panels.fontUnfavorite
-                  : uiCopy.panels.fontFavorite
-              }
-              onClick={() => onToggleFavorite(trio.id)}
-            >
-              <FavoriteStateIcon favorite={favorites.includes(trio.id)} />
-            </button>
+            <TrioFavoriteButton
+              favorite={favorites.includes(trio.id)}
+              onToggle={() => onToggleFavorite(trio.id)}
+            />
             <button
               type="button"
               data-vigilia-font-trio-row=""

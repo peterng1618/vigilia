@@ -66,6 +66,8 @@
     "src/web/packages/editor/src/font-picker/font-picker.tsx",
     "src/web/packages/editor/src/editor-shell/icons.ts",
     "src/web/packages/editor/src/editor-shell/icons.test.tsx",
-    "src/web/packages/editor/src/editor-shell/diagnostic-message.tsx"
+    "src/web/packages/editor/src/editor-shell/diagnostic-message.tsx",
+    "src/web/packages/editor/src/accessible-name.ts",
+    "src/web/packages/editor/src/components/ui/control-icon-button.dom.test.tsx"
   ]
 }

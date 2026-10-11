@@ -6,6 +6,7 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
+import { useControlTooltip } from "../../components/ui/control-icon-button.js";
 import type { EditorShellBridge } from "../../editor-shell/bridge.js";
 import {
   ENTER_GLYPH,
@@ -37,6 +38,50 @@ function roleText(role: LayerRole): string {
     case "chart":
       return uiCopy.panels.layerRoles.chart(role.family, role.series);
   }
+}
+
+/**
+ * One of the row's own icon-only controls: the twisty that opens a group and
+ * the button that goes into one.
+ *
+ * Both carry the row's name beside the verb — three buttons reading "Expand"
+ * in one tree tell a reader nothing about which group each one opens — and that
+ * one string is both the accessible name and the tooltip, mounted from the
+ * control set's one owner of the pairing (`useControlTooltip`, §6), so the two
+ * cannot disagree.
+ *
+ * It renders a bare `<button>` and no wrapper on purpose: `.vigilia-layer-state`
+ * asks its own children how much room beside the key they need
+ * (`:has(... button:nth-child(n))`), and a wrapper would put every button at
+ * position one of its own parent.
+ */
+function RowIconButton({
+  label,
+  expanded,
+  data,
+  onClick,
+  children,
+}: {
+  readonly label: string;
+  readonly expanded?: boolean;
+  readonly data?: Readonly<Record<`data-${string}`, string>>;
+  readonly onClick: (event: React.MouseEvent<HTMLButtonElement>) => void;
+  readonly children: React.ReactNode;
+}): React.JSX.Element {
+  const ref = useRef<HTMLButtonElement>(null);
+  useControlTooltip(ref, label);
+  return (
+    <button
+      {...data}
+      ref={ref}
+      type="button"
+      aria-label={label}
+      aria-expanded={expanded}
+      onClick={onClick}
+    >
+      {children}
+    </button>
+  );
 }
 
 /** Selection is external mutable state and Fabric owns it, so the projection is
@@ -489,10 +534,9 @@ export function CompositionPane({
               }}
             >
               {expandable ? (
-                <button
-                  type="button"
-                  aria-label={`${twisty} ${row.name}`}
-                  aria-expanded={!row.collapsed}
+                <RowIconButton
+                  label={`${twisty} ${row.name}`}
+                  expanded={!row.collapsed}
                   onClick={(event) => {
                     event.stopPropagation();
                     store.mutate(() =>
@@ -501,7 +545,7 @@ export function CompositionPane({
                   }}
                 >
                   <Glyph icon={Twisty} size={13} />
-                </button>
+                </RowIconButton>
               ) : (
                 <span aria-hidden className="vigilia-layer-twisty" />
               )}
@@ -591,10 +635,11 @@ export function CompositionPane({
                   attention it computed rather than letting it ask again. */}
               <span className="vigilia-layer-state">
                 {showEnter ? (
-                  <button
-                    type="button"
-                    data-vigilia-layer-entry={isEntered ? "leave" : "enter"}
-                    aria-label={`${entry} ${row.name}`}
+                  <RowIconButton
+                    label={`${entry} ${row.name}`}
+                    data={{
+                      "data-vigilia-layer-entry": isEntered ? "leave" : "enter",
+                    }}
                     onClick={(event) => {
                       event.stopPropagation();
                       // Entering and expanding are two acts: this is the only
@@ -611,7 +656,7 @@ export function CompositionPane({
                     ) : (
                       <Glyph icon={ENTER_GLYPH} size={13} />
                     )}
-                  </button>
+                  </RowIconButton>
                 ) : null}
                 <RowAffordances
                   row={row}

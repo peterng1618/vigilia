@@ -26,24 +26,23 @@ satisfies every token in the bible and still does not look like the mockup.
 - **Task 1 is complete and reviewed clean** (`5f676da4`): the census of what landed, which refuted three of the plan's own hypotheses — 15 lucide importers against a guessed nine, **four** stroke weights against three, and both "hand-wired" pairings the brief named already one string by construction.
 - **Task 2 is complete and reviewed clean** (`ef81b183` + `93b2286f` + `08c71e28`): one chrome glyph vocabulary with one weight rule, the census's four weights collapsed, the three out-of-band sites adjudicated one at a time, and both hand-authored sources exempted with §6's reason recorded.
 - **Task 3 is complete and reviewed clean** (`9031ed7d`): the object-kind glyph set closed over `LayerKind` with a totality case enumerating the kind vocabulary rather than the map's own keys, and both closure halves red-proved — `satisfies` rejects a missing key and an excess one alike.
-- **Phase 1 is done, so Task 4 opens Phase 2**: the accessible-name/tooltip pairing, where each icon-only control's two strings become one by construction.
+- **Phase 1 is done**, so Phase 2 is open: the accessible-name/tooltip pairing, where each icon-only control's two strings become one by construction (Task 4, in review), then the copy (Tasks 5–6).
 - **Two changes are ruled and queued after plan 6** (`vg-330`, `vg-331`): Settings becomes a pane opened from the rail's gear with the four slots kept and the drawing redrawn as a panel, and the palettes gain a second highlight whose role is an attention or in-flight state, defined before any colour is chosen.
 
 ## Last completed change
 
-- **Task 3 closed** (`9031ed7d`): `KIND_GLYPHS` is one glyph per object kind, `group` is `STACK_GLYPH` and nothing else, and the closure is proved both ways — the compile-time `satisfies` rejects a missing key and an excess one, and the runtime case enumerates `uiCopy.panels.layerKinds` rather than the map's own keys, so it cannot pass over its own subject.
-- **No treatment was converted**, which was this task's trap: plan 4 left four of five Composition arms as treatments because a swatch and a thumbnail each carry a fact a glyph cannot, and the reviewer established from the diff that `kind-mark.tsx` gained a comment and no behaviour change.
-- **The drawing was measured and depicts no object kind at all** — `grep -c layer docs/design/mockups/current/*.html` is 0 in all six files — so no kind-glyph comparison was invented, and the five glyph choices are unverifiable against the acceptance instrument.
-- **Step 3's conditional was false and reported rather than manufactured around**: plan 4 shipped no kind→component map, so `composition-pane.tsx` and `add-pane.tsx` are untouched and the brief's Files list was an expectation rather than a contract.
-- **Nothing renders `KIND_GLYPHS` yet**, so its keys are proved and its values are validated by no rendering — kept, because the brief and §6 rule 3 mandate the closure, but recorded as a forward bet rather than implied.
+- **Task 4 closed** (this commit): `useControlTooltip` is the control set's one owner of the pairing, and every icon-only control in the editor — `ControlIconButton`, the dock's two halves, the rail's slots and gear, a layer row's controls, the font picker's star — now takes one `label` from it, so the `aria-label` and the tooltip cannot disagree.
+- **The four no-tooltip controls were adjudicated one at a time, not swept**: the star, the twisty and the group-entry button gained the tooltip that is their label (§6 rule 1's first clause, and its middle clause for the door glyph the tooltip is what makes unambiguous); the gradient editor's stop dots left the census instead (§6 governs glyphs, and a drag handle's tooltip would open in the middle of the drag it serves), so `noTooltip(root)` settles at **0**, from the census's 4.
+- **The closure is red-proved twice**: appending a space to the tooltip's own text (`text: \`${label} \``) fails the one-string case while the missing-tooltip case stays green — the two cases catch different defects — and removing one `aria-label` fails the audit's unnamed case.
+- **The audit's own gap was the other half of the work**: `accessible-names.dom.test.ts` now mounts the rail, the pane's chrome with its action footer and the canvas dock, and `accessibleName` moved to `accessible-name.ts` so the new `control-icon-button.dom.test.tsx` asks the same question rather than implementing a second answer.
+- **The Composition tree is deliberately not mounted in that audit** and the reason is written down there: a `treeitem` is named from its content, which is the one mechanism `accessibleName` reads for buttons alone, so mounting it would report it unnamed for a reason about the reader rather than about the panel.
 
 ## Next
 
-1. **Plan 6 Task 4 — the accessible-name/tooltip pairing** — the census's four icon-only controls with no tooltip (the font picker's star, the composition pane's twisty and group-entry, the gradient editor's stop dots), seeded at 4 and adjudicated per control.
-2. **Plan 6 Tasks 5–6 — the copy** — the nets that reach the React surfaces, then the copy defects the census found fixed as defects.
-3. **Plan 6 Tasks 7–9** — the gate, the Acceptance ledger and the parity capture; Task 9's browser assertion is the net the fixture-bound weight case cannot be, and it also carries the parity lines that the drawing draws its twisty at 10px where the product draws it at 13px and draws no kind mark at all.
-4. **The four rulings implemented**: `PINNED_FLOOR.boundary` deleted and §5's narrower rule written down, and the drawing's six preview bars repainted to the palette's ground with a `PARITY` row that reads a bar's colour.
-5. **Then, in order: the Settings pane** (`vg-330`, architectural — brainstorm → spec → plan), **the attention-colour role** (`vg-331`), and `design-md-replaces-the-bible` before the multi-device display objective.
+1. **Plan 6 Task 4's review**, then **Tasks 5–6 — the copy**: the nets that reach the React surfaces, then the copy defects the census found fixed as defects.
+2. **Plan 6 Tasks 7–9** — the gate, the Acceptance ledger and the parity capture; Task 9's browser assertion is the net the fixture-bound weight case cannot be, and it also carries the parity lines that the drawing draws its twisty at 10px where the product draws it at 13px and draws no kind mark at all.
+3. **The four rulings implemented**: `PINNED_FLOOR.boundary` deleted and §5's narrower rule written down, and the drawing's six preview bars repainted to the palette's ground with a `PARITY` row that reads a bar's colour.
+4. **Then, in order: the Settings pane** (`vg-330`, architectural — brainstorm → spec → plan), **the attention-colour role** (`vg-331`), and `design-md-replaces-the-bible` before the multi-device display objective.
 
 ## Blockers / unverified
 
