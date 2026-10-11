@@ -27,22 +27,23 @@ satisfies every token in `DESIGN.md` and still does not look like the mockup.
 - **Plan 6's nine tasks are complete**: the census, the one glyph vocabulary and weight rule, the closed kind set, the one-string pairing, the copy nets, the ratchet, the sixteen-item Acceptance ledger and Task 9's parity capture.
 - **Its Acceptance ledger reads fifteen met, one not met** — §13.1's real-host walkthrough, which plan 6 was forbidden to add and no other plan owns.
 - **`vg-330` is parked by the user (2026-10-11)** — "Let's park the settings becomes a pane spec" — and `vg-331` still waits: the palettes gain a second highlight whose role is an attention or in-flight state, defined before any colour is chosen.
+- **Four user rulings of 2026-10-11 scope the next stretch**: the "no rule reads X" rows are first-class work for the drain rather than deferred; acceptance item 3 splits into the stress set now and a keyboard-walkthrough plan later; `vg-351` is repainted under a media query; and the drain opens with a reproduction pass, not a fix pass.
 
 ## Last completed change
 
-- **The final review's fix round landed**: `design:md --cite` now asserts each `<!-- §N -->` marker sits under the heading the spec's section mapping names (F3), reading that mapping from the spec's `### Section mapping` table — a *moved* marker now fails naming `DESIGN.md` and its line, where before only a deleted or renamed one did.
-- **The register's `.jsonl` exclusion is a decision, not an accident** (F2): `.jsonl` stays out of the citation scan so the register's *historical* `§N` prose cannot satisfy a marker claim, with a comment giving the reason and a self-test that fails if the list is widened to admit it.
-- **Both gate changes red-proofed and restored byte-exact** (`cmp` against the committed blob): a `§9` marker moved under `## Overview` failed `--cite` with exit 1; admitting `.jsonl` failed the self-test.
-- **The completed plan archived** (F6): `2026-10-10-design-md-replaces-the-bible.md` moved to `docs/superpowers/plans/archive/`, and no tracked file referenced its old path.
-- **Two register rows filed** — `vg-354` (`fontFamily` is a value nothing owns; closing needs a decision, not a patch) and `vg-355` (`design:check`/`gates:self-test` are run by no CI job and no hook — searched and confirmed); both raw-line appends, `backlog:check` clean over 210 items.
+- **The scoped re-review's residuals closed** (`762fb4e3`): `--cite` now fails closed when a marker's number has no row in the spec's section mapping, so a *deleted* row can no longer silently exempt that marker from the check.
+- **A duplicated heading is a finding too** — the placement keys on heading text, so a repeat leaves the marker's real location ambiguous; both new guards red-proven and restored byte-exact with `cmp`.
+- **The `.jsonl` exclusion is asserted where CI collects it** — `src/web/tests/scripts/design-md.test.ts` — since the guard lived only in `--self-test`, which `vg-355` records that nothing runs.
+- **`vg-355`'s detail corrected** to describe its own command's real output (seven paths, not "two workflows"), and **`vg-356` filed** for the prefix-test drift left open, naming the legitimate case that forbids tightening it.
+- **The tightened checks do not false-positive**: `design:check` stays clean over the real `DESIGN.md` — 289 citation sources, 0 errors, 0 warnings.
 
 ## Next
 
-1. **Graphite's Part C, the one capture regeneration** — unblocked now the design-md plan is closed; runs once with the machine to itself, and the deliberate `-editorial`/`-graphite` pairs stay.
-2. **`vg-351` needs a ruling**: the `:root` base still carries editorial, so a fresh profile's first frame is editorial while the settled default is graphite — repaint the base under `prefers-color-scheme`, or correct the comment.
-3. **`vg-331`** (the attention-colour role, defined before any colour is chosen); **`vg-330` is PARKED by the user** (2026-10-11) and is not queued.
-4. **The multi-device objective** — `DESIGN.md` has landed, so it is next: detect the connected displays and hold a theme per device (a "device" is a hardware sensor device in the host, not a display).
-5. **Acceptance item 3 keeps the editor-redesign objective open** — §13.1's keyboard-only walkthrough on the real host has no check; see Blockers.
+1. **`vg-351`, ruled by the user**: repaint the bare `:root` base under `prefers-color-scheme` so a fresh profile's pre-JS first frame matches settled graphite — a source change, so it lands before any capture.
+2. **The contrast and visual stress set** — six palettes, 1280×720 and 1440×900, 200% zoom, a long Unicode name, a long unresolved reference, the two-hundred-row Composition fixture, reduced motion and forced colours; `design-language.spec.ts` already covers much of it, so the first step is measuring the gaps, not building.
+3. **Graphite's Part C, the one capture regeneration** — runs last on a frozen tree, because a capture is evidence about one commit and any later source change makes it stale.
+4. **The backlog drain, opened with a reproduction pass** — 211 open rows sorted at HEAD into closes-with-evidence, needs-a-decision and real work before anything is fixed.
+5. **§13.1's keyboard-only walkthrough gets its own plan** — the nine interactions plans 1–5 proved in isolation alone; `desktop-host` matches `host-(player|settings|media|bleed|chrome).spec.ts` and nothing else.
 
 ## Blockers / unverified
 
