@@ -1,0 +1,701 @@
+#!/usr/bin/env node
+/**
+ * Dead-code sweep: build the importer graph, and report what nothing reaches.
+ *
+ * Four rounds of refactoring across the editor, player and host leave surfaces
+ * that no product code mounts but that stay green because their own test file
+ * imports them. That class is invisible to both obvious questions — it is not
+ * "no importer" (a test imports it) and not "no file" (the file is right there)
+ * — and it is the class this repo actually produces: `font-picker.tsx` is kept
+ * alive by a 984-line test and no mount, filed twice as `vg-268` and `vg-283`.
+ *
+ * What this is NOT: a verdict. Every hit is a candidate, printed with the search
+ * that found it, and a human or an agent has to say whether the code is dead.
+ * The false-positive engine in this repo is *string-resolved vocabulary* —
+ * `data-vigilia-*` attributes, `--vigilia-*`/`--shell-*` custom properties,
+ * `KIND_*` registries, Fabric JSON keys and classes composed by template
+ * literal — all of which are live with no importer anywhere. None of it is
+ * visible to this graph, and a literal search that comes back empty is not
+ * proof of death. The same goes for a file's *content*: `design-md.mjs`,
+ * `design-tokens.mjs`, `ownership-sweep.mjs` and `reuse-gate.mjs` read the
+ * source tree as data, so a constant nothing imports can still redden a gate.
+ *
+ * Five candidate kinds, and each one records the search that found it:
+ *
+ *   - `test-only-consumer` — a module every importer of which is a test file.
+ *   - `no-importer-file`   — a module nothing imports, once entry points and
+ *                            the files vitest/Playwright discover by glob are
+ *                            set aside. Miss the glob and this reports the
+ *                            entire 244-file suite as dead.
+ *   - `no-importer-export` — a top-level export with no *production* importer.
+ *                            A test import is not a consumer, which is exactly
+ *                            what makes the name dead.
+ *   - `barrel-only-export` — an export whose only importer is its own package's
+ *                            `index.ts`, and which no one then takes from it.
+ *   - `unreachable-branch` — a member of a closed string-literal union whose
+ *                            literal appears nowhere else in production code.
+ *                            Literal-text only: a discriminant composed at
+ *                            runtime is invisible here, which is the known
+ *                            false positive of this kind.
+ *
+ * Usage:  node scripts/dead-code-sweep.mjs [--json <path>] [--self-test]
+ */
+import { mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
+import { dirname, join, relative, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+
+const ROOT = resolve(fileURLToPath(new URL("..", import.meta.url)));
+const WEB = join(ROOT, "src/web");
+
+/** Windows `relative()` yields backslashes; every path here is posix. */
+const posix = (p) => p.replaceAll("\\", "/");
+const key = (full) => posix(relative(ROOT, full));
+
+// ---------------------------------------------------------------------------
+// Walk
+// ---------------------------------------------------------------------------
+
+const SCANNED_EXT = /\.(ts|tsx|mjs)$/;
+
+function walk(dir, out = []) {
+  let entries;
+  try {
+    entries = readdirSync(dir);
+  } catch {
+    return out;
+  }
+  for (const entry of entries) {
+    if (entry === "node_modules" || entry === "dist" || entry.startsWith(".")) continue;
+    const full = join(dir, entry);
+    if (statSync(full).isDirectory()) walk(full, out);
+    else if (SCANNED_EXT.test(entry)) out.push(key(full));
+  }
+  return out;
+}
+
+function sourceFiles() {
+  const files = [];
+  const packages = join(WEB, "packages");
+  let names = [];
+  try {
+    names = readdirSync(packages);
+  } catch {
+    names = [];
+  }
+  for (const name of names) {
+    const src = join(packages, name, "src");
+    try {
+      if (statSync(src).isDirectory()) walk(src, files);
+    } catch {
+      // A package without `src` contributes nothing.
+    }
+  }
+  walk(join(WEB, "tests"), files);
+  walk(join(WEB, "scripts"), files);
+  walk(join(ROOT, "scripts"), files);
+  return [...new Set(files)].sort();
+}
+
+// ---------------------------------------------------------------------------
+// Classify: which files are tests, which are entry points
+// ---------------------------------------------------------------------------
+
+/**
+ * Every test file is an entry point. Vitest globs `*.test.ts(x)` under each
+ * package's `src` and under `tests/e2e` and `tests/scripts`; Playwright globs
+ * `*.spec.ts` under `tests/e2e`. Nothing imports a test, so a scanner that
+ * misses this edge reports the whole suite as dead.
+ */
+const isTestFile = (file) =>
+  /\.(test|spec)\.tsx?$/.test(file) || file.startsWith("src/web/tests/");
+
+/**
+ * Entry points are reached without an import: a package manifest's `main` /
+ * `types` / `exports`, an `index.html` `src=`, a config, or a runner's own
+ * file. They are excluded as *candidates*; their imports still count, so a
+ * module only the boot path reaches is still live.
+ *
+ * `exports: { ".": "./src/index.ts" }` is why every package barrel is an entry
+ * point and not "a module nothing imports".
+ */
+function entryPoints(files) {
+  const points = new Set([
+    "src/web/packages/player/src/main.ts",
+    "src/web/packages/host/src/main.ts",
+    "src/web/packages/host/bin/vigilia.js",
+  ]);
+  const packagesDir = join(WEB, "packages");
+  let names = [];
+  try {
+    names = readdirSync(packagesDir);
+  } catch {
+    names = [];
+  }
+  for (const name of names) {
+    const pkgDir = join(packagesDir, name);
+    try {
+      const manifest = JSON.parse(readFileSync(join(pkgDir, "package.json"), "utf8"));
+      for (const field of [manifest.main, manifest.module, manifest.types]) {
+        const path = typeof field === "string" ? `src/web/packages/${name}/${field.replace(/^\.\//, "")}` : null;
+        if (path !== null && files.has(path)) points.add(path);
+      }
+      for (const target of Object.values(manifest.exports ?? {})) {
+        const path = typeof target === "string" ? `src/web/packages/${name}/${target.replace(/^\.\//, "")}` : null;
+        if (path !== null && files.has(path)) points.add(path);
+      }
+    } catch {
+      // No manifest, or unreadable: the conventions below still apply.
+    }
+    for (const entry of readdirSync(pkgDir)) {
+      if (!entry.endsWith(".html")) continue;
+      const html = readFileSync(join(pkgDir, entry), "utf8");
+      for (const m of html.matchAll(/<script[^>]*\ssrc=["']([^"']+)["']/g)) {
+        const path = `src/web/packages/${name}${m[1].startsWith("/") ? m[1] : `/${m[1]}`}`;
+        if (files.has(path)) points.add(path);
+      }
+    }
+  }
+  return points;
+}
+
+const isScriptOrConfig = (file) =>
+  /^src\/web\/packages\/[^/]+\/(vite|playwright|vitest)\.config[^/]*\.ts$/.test(file) ||
+  /^src\/web\/(vite|playwright|vitest)\.config[^/]*\.ts$/.test(file) ||
+  /^scripts\/[^/]+\.mjs$/.test(file) ||
+  /^src\/web\/scripts\/[^/]+\.mjs$/.test(file) ||
+  /^src\/web\/packages\/[^/]+\/scripts\/[^/]+\.mjs$/.test(file);
+
+/**
+ * An ambient declaration file is reached by the compiler's `include`, not by an
+ * import, so "nothing imports it" is its normal state rather than a finding.
+ */
+const isAmbientTypes = (file) => file.endsWith(".d.ts");
+
+// ---------------------------------------------------------------------------
+// Parse: specifiers, imported names, exported names
+// ---------------------------------------------------------------------------
+
+const NAMES = /^[A-Za-z_$][\w$]*$/;
+
+/** `import { a as b, type C } from "x"` imports `a` and `C`, not `b`. */
+function namesFromList(list) {
+  return list
+    .split(",")
+    .map((cell) => cell.trim().replace(/^type\s+/, ""))
+    .map((cell) => cell.split(/\s+as\s+/)[0].trim())
+    .filter((name) => NAMES.test(name));
+}
+
+const IMPORT_BRACED = /import\s+(?:type\s+)?\{([^}]*)\}\s*from\s*["']([^"']+)["']/g;
+const IMPORT_NS = /import\s+\*\s+as\s+[\w$]+\s*from\s*["']([^"']+)["']/g;
+const IMPORT_DEFAULT =
+  /import\s+(?:type\s+)?([A-Za-z_$][\w$]*)\s*(?:,\s*\{[^}]*\}\s*)?from\s*["']([^"']+)["']/g;
+const IMPORT_SIDE_EFFECT = /import\s*["']([^"']+)["']/g;
+const IMPORT_DYNAMIC = /import\s*\(\s*["']([^"']+)["']\s*\)/g;
+const VI_MOCK = /\bvi\.(?:do)?mock\s*\(\s*["']([^"']+)["']/g;
+const EXPORT_FROM = /export\s+(?:type\s+)?\{([^}]*)\}\s*from\s*["']([^"']+)["']/g;
+const EXPORT_STAR = /export\s+\*\s*(?:as\s+[\w$]+\s*)?from\s*["']([^"']+)["']/g;
+
+const EXPORT_FN = /^export\s+(?:async\s+)?function\s*\*?\s*([A-Za-z_$][\w$]*)/gm;
+const EXPORT_CLASS = /^export\s+(?:abstract\s+)?class\s+([A-Za-z_$][\w$]*)/gm;
+const EXPORT_VAR = /^export\s+(?:const|let|var)\s+([A-Za-z_$][\w$]*)/gm;
+const EXPORT_TYPE = /^export\s+(?:interface|type|enum)\s+([A-Za-z_$][\w$]*)/gm;
+const EXPORT_DEFAULT = /^export\s+default\b/gm;
+const EXPORT_LIST = /^export\s*\{([^}]*)\}(\s*from\s*["'][^"']*["'])?/gm;
+
+/**
+ * Specifiers a file reads, with the names taken from each (null = whole module).
+ *
+ * `reExport` separates `export { x } from "./y"` from a plain `import`: only the
+ * first forwards `y`'s name to this file's own consumers, and treating an import
+ * as a forward makes a consumer's consumer look like a consumer of the name.
+ */
+function readSpecifiers(source) {
+  const edges = [];
+  const push = (spec, names, reExport = false) => edges.push({ spec, names, reExport });
+
+  for (const m of source.matchAll(IMPORT_BRACED)) push(m[2], namesFromList(m[1]));
+  for (const m of source.matchAll(IMPORT_NS)) push(m[1], null);
+  for (const m of source.matchAll(IMPORT_DEFAULT)) push(m[2], ["default"]);
+  for (const m of source.matchAll(IMPORT_SIDE_EFFECT)) push(m[1], null);
+  for (const m of source.matchAll(IMPORT_DYNAMIC)) push(m[1], null);
+  for (const m of source.matchAll(VI_MOCK)) push(m[1], null);
+  for (const m of source.matchAll(EXPORT_FROM)) push(m[2], namesFromList(m[1]), true);
+  for (const m of source.matchAll(EXPORT_STAR)) push(m[1], null, true);
+  return edges;
+}
+
+/** Top-level exported names declared by a file itself. */
+function declaredExports(source) {
+  const found = new Set();
+  for (const re of [EXPORT_FN, EXPORT_CLASS, EXPORT_VAR, EXPORT_TYPE]) {
+    for (const m of source.matchAll(re)) found.add(m[1]);
+  }
+  for (const m of source.matchAll(EXPORT_DEFAULT)) found.add("default");
+  for (const m of source.matchAll(EXPORT_LIST)) {
+    if (m[2] !== undefined) continue; // `export { x } from "./y"` re-exports y's name
+    for (const cell of m[1].split(",")) {
+      const name = cell.trim().replace(/^type\s+/, "").split(/\s+as\s+/).pop()?.trim();
+      if (name !== undefined && NAMES.test(name)) found.add(name);
+    }
+  }
+  return [...found].sort();
+}
+
+// ---------------------------------------------------------------------------
+// Resolve specifiers to scanned files
+// ---------------------------------------------------------------------------
+
+const EXTS = ["", ".ts", ".tsx", ".mjs", "/index.ts", "/index.tsx"];
+
+function resolveSpecifier(from, spec, files) {
+  let base;
+  if (spec.startsWith(".")) {
+    base = posix(join(dirname(from), spec));
+  } else {
+    const vigilia = /^@vigilia\/([^/]+)(\/.*)?$/.exec(spec);
+    if (vigilia !== null) {
+      base = `src/web/packages/${vigilia[1]}/src${vigilia[2] ?? ""}`;
+    } else if (spec.startsWith("@/")) {
+      base = `src/web/packages/editor/src/${spec.slice(2)}`;
+    } else {
+      return null; // a bare specifier: react, node:fs, vitest, systeminformation
+    }
+  }
+  for (const ext of EXTS) if (files.has(base + ext)) return base + ext;
+  if (/\.js$/.test(base)) {
+    const stem = base.replace(/\.js$/, "");
+    for (const ext of [".ts", ".tsx", "/index.ts", "/index.tsx"]) {
+      if (files.has(stem + ext)) return stem + ext;
+    }
+  }
+  return null;
+}
+
+// ---------------------------------------------------------------------------
+// The graph
+// ---------------------------------------------------------------------------
+
+const all = sourceFiles();
+const files = new Set(all);
+const ENTRY = entryPoints(files);
+const isEntryPoint = (file) => ENTRY.has(file) || isScriptOrConfig(file);
+
+/**
+ * A commented-out import is not an import, and a doc example must not become an
+ * edge — this repository documents modules inside comments, and a phantom
+ * importer *hides* a real candidate. A double slash counts as a comment only
+ * when whitespace precedes it, which spares `https://` and a path in a string.
+ */
+const stripComments = (text) =>
+  text.replace(/\/\*[\s\S]*?\*\//g, "").replace(/(^|\s)\/\/[^\n]*/g, "$1");
+
+const source = new Map(
+  all.map((file) => [file, stripComments(readFileSync(join(ROOT, file), "utf8"))]),
+);
+
+/** consumedBy[target] = [{ from, names }] where names === null is the whole module. */
+const consumedBy = new Map(all.map((file) => [file, []]));
+/** reExports[barrel] = [{ target, names }] — how a barrel forwards another file's names. */
+const reExports = new Map();
+const unresolved = [];
+
+for (const file of all) {
+  for (const edge of readSpecifiers(source.get(file))) {
+    const target = resolveSpecifier(file, edge.spec, files);
+    if (target === null) {
+      // Only a relative or aliased specifier was supposed to land on a file.
+      if (edge.spec.startsWith(".") || edge.spec.startsWith("@/")) {
+        unresolved.push({ from: file, spec: edge.spec });
+      }
+      continue;
+    }
+    consumedBy.get(target).push({ from: file, names: edge.names });
+    if (edge.reExport) {
+      if (!reExports.has(file)) reExports.set(file, []);
+      reExports.get(file).push({ target, names: edge.names });
+    }
+  }
+}
+
+/** Barrels a file's names can be reached through, transitively. */
+function barrelRoutes(target) {
+  const routes = new Map(); // barrel -> Set<name> | null (whole module)
+  const seen = new Set();
+  const queue = [target];
+  while (queue.length > 0) {
+    const current = queue.pop();
+    for (const [from, edges] of reExports) {
+      if (from === target || seen.has(from)) continue;
+      for (const edge of edges) {
+        if (edge.target !== current) continue;
+        const forwarded = edge.names === null ? null : edge.names;
+        if (forwarded === null) routes.set(from, null);
+        else routes.set(from, new Set([...(routes.get(from) ?? []), ...forwarded]));
+        seen.add(from);
+        queue.push(from);
+      }
+    }
+  }
+  return routes;
+}
+
+const packageOf = (file) => /^src\/web\/packages\/([^/]+)\//.exec(file)?.[1] ?? null;
+const ownBarrel = (file) => {
+  const pkg = packageOf(file);
+  return pkg === null ? null : `src/web/packages/${pkg}/src/index.ts`;
+};
+
+// ---------------------------------------------------------------------------
+// Closed string-literal unions — the `unreachable-branch` kind
+// ---------------------------------------------------------------------------
+
+const LITERAL = /"[^"\n]{0,60}"/g;
+/** Literals joined by `|`, at the head of a run: the body of a union. */
+const RUN_BODY = /^\s*\|?\s*"[^"\n]{0,60}"(?:\s*\|\s*"[^"\n]{0,60}")*/;
+
+/**
+ * Only a *declaration* is a closed union, and only two shapes are mechanical:
+ * a `type X = …` alias and a `name: …` property annotation. A `Pick<T, "a" | "b">`
+ * argument list, a ternary, or any other run of quoted literals is a selection
+ * the graph cannot judge — those are the false positives that made an earlier
+ * draft of this kind report 45 hits, and they are filtered out here rather than
+ * left for a human to wade through.
+ */
+const TYPE_ALIAS = /(?:^|\n)[ \t]*(?:export\s+)?(?:declare\s+)?type\s+([A-Za-z_$][\w$]*)\s*=/g;
+const PROPERTY_UNION =
+  /(?:^|\n)[ \t]*(?:readonly\s+)?([A-Za-z_$][\w$]*)\??\s*:\s*"[^"\n]{0,60}"(?:\s*\|\s*"[^"\n]{0,60}")+/g;
+
+/** Every declaration-shaped run of quoted literals in a file. */
+function unionRunsIn(text) {
+  const runs = [];
+  for (const m of text.matchAll(TYPE_ALIAS)) {
+    const run = RUN_BODY.exec(text.slice(m.index + m[0].length));
+    if (run !== null) runs.push([...run[0].matchAll(LITERAL)].map((x) => x[0]));
+  }
+  for (const m of text.matchAll(PROPERTY_UNION)) {
+    runs.push([...m[0].matchAll(LITERAL)].map((x) => x[0]));
+  }
+  return runs.filter((members) => members.length >= 2);
+}
+
+const unions = [];
+const unionLiterals = new Map(); // literal -> occurrences inside a union
+const literalCounts = new Map(); // literal -> occurrences anywhere in the scanned tree
+
+for (const file of all) {
+  const text = source.get(file);
+  for (const m of text.matchAll(LITERAL)) {
+    literalCounts.set(m[0], (literalCounts.get(m[0]) ?? 0) + 1);
+  }
+  for (const members of unionRunsIn(text)) {
+    unions.push({ file, members });
+    for (const member of members) {
+      unionLiterals.set(member, (unionLiterals.get(member) ?? 0) + 1);
+    }
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Classify
+// ---------------------------------------------------------------------------
+
+const IMPORTERS = "importer graph over every .ts/.tsx/.mjs under src/web/packages/*/src, src/web/tests, src/web/scripts and scripts/ (dist/ and node_modules/ excluded), resolving relative, @vigilia/* and @/* specifiers";
+
+const candidates = [];
+const list = (paths) => (paths.length === 0 ? "none" : paths.join(", "));
+
+function productionImporters(file) {
+  return consumedBy.get(file).filter((edge) => !isTestFile(edge.from));
+}
+
+function testImporters(file) {
+  return consumedBy.get(file).filter((edge) => isTestFile(edge.from)).map((e) => e.from);
+}
+
+for (const file of all) {
+  if (isEntryPoint(file)) continue;
+  if (isAmbientTypes(file)) continue; // reached by tsconfig `include`, not an import
+  if (isTestFile(file)) continue; // discovered by a glob, not by an import
+
+  const edges = consumedBy.get(file);
+  const prod = productionImporters(file);
+  const tests = testImporters(file);
+
+  if (edges.length === 0) {
+    candidates.push({
+      kind: "no-importer-file",
+      file,
+      evidence: `0 importers. Search: ${IMPORTERS}; this file is not an entry point (index.html src, build target, config, script) and no vitest/Playwright glob names it. A module kept live only by string-resolved vocabulary is invisible here.`,
+    });
+    continue;
+  }
+
+  if (prod.length === 0) {
+    candidates.push({
+      kind: "test-only-consumer",
+      file,
+      evidence: `every importer is a test file (${edges.length}): ${list(tests)}. Search: ${IMPORTERS}, then each importer classified test vs production by *.test.ts(x) / *.spec.ts and the tests/ tree. No production module in any package reaches this file; a name it exports may still be live as string-resolved vocabulary.`,
+    });
+    continue;
+  }
+
+  const barrel = ownBarrel(file);
+  const routes = barrelRoutes(file);
+  const exportsDeclared = declaredExports(source.get(file));
+
+  for (const name of exportsDeclared) {
+    const direct = consumedBy.get(file).filter((e) => e.names === null || e.names.includes(name));
+    const through = [];
+    for (const [barrelFile, names] of routes) {
+      for (const edge of consumedBy.get(barrelFile)) {
+        if (names !== null && !names.has(name)) continue;
+        if (edge.names === null || edge.names.includes(name)) through.push(edge.from);
+      }
+    }
+    const consumers = [...new Set([...direct.map((e) => e.from), ...through])];
+    const prodConsumers = consumers.filter((file_) => !isTestFile(file_));
+    if (prodConsumers.length > 0) continue;
+
+    const testConsumers = consumers.filter(isTestFile);
+    if (prodConsumers.length === 0 && consumers.includes(barrel)) {
+      candidates.push({
+        kind: "barrel-only-export",
+        file,
+        symbol: name,
+        evidence: `imported only by its own package barrel ${barrel}, and no file takes "${name}" from that barrel. Search: importer graph (${IMPORTERS}) plus named-import tracking through re-export chains. Test importers: ${list(testConsumers)}.`,
+      });
+      continue;
+    }
+
+    candidates.push({
+      kind: "no-importer-export",
+      file,
+      symbol: name,
+      evidence: `0 production importers; ${direct.length + through.length} importer(s), all tests: ${list(testConsumers)}. Search: ${IMPORTERS}, then for every file that imports this one the imported name list was read from the clause; a namespace import, a dynamic import(), a side-effect import or a vi.mock factory consumes every name and would have hidden this. Consumers reached through a re-exporting barrel are followed. String-resolved vocabulary is invisible to this search.`,
+    });
+  }
+}
+
+// Unreachable branches: the literal exists only inside its own union.
+for (const union of unions) {
+  if (isEntryPoint(union.file) || isAmbientTypes(union.file) || isTestFile(union.file)) continue;
+  for (const member of new Set(union.members)) {
+    const total = literalCounts.get(member) ?? 0;
+    const inside = unionLiterals.get(member) ?? 0;
+    if (total - inside > 0) continue;
+    candidates.push({
+      kind: "unreachable-branch",
+      file: union.file,
+      symbol: member,
+      evidence: `the literal ${member} appears ${total} time(s) in the scanned tree (tests included) and every one is inside a closed union at ${union.file}; nothing else in the source names it, so nothing in the source produces it and nothing switches on it. Search: literal-text scan for ${member} minus its occurrences inside union runs, over declaration-shaped unions only (a type alias body or a property annotation; a Pick<T, ...> argument list is not read as a union). Expected false positives: a variant produced or read through a composed string, and a value that arrives from outside the source — a sensor type name or a persisted Fabric JSON property — which is a decision rather than a deletion.`,
+    });
+  }
+}
+
+candidates.sort((a, b) => a.kind.localeCompare(b.kind) || a.file.localeCompare(b.file) || (a.symbol ?? "").localeCompare(b.symbol ?? ""));
+
+/** A candidate outside a package is still counted, under the tree that owns it. */
+function bucketOf(file) {
+  if (file.startsWith("src/web/tests/")) return "(tests)";
+  if (file.startsWith("scripts/") || file.startsWith("src/web/scripts/")) return "(scripts)";
+  return "(root)";
+}
+
+/**
+ * Every kind is printed even at zero: "this kind found nothing at HEAD" is an
+ * answer, and a kind that silently disappears reads as one that was never run.
+ */
+const KINDS = [
+  "test-only-consumer",
+  "no-importer-file",
+  "no-importer-export",
+  "barrel-only-export",
+  "unreachable-branch",
+];
+const countsByKind = Object.fromEntries(KINDS.map((kind) => [kind, 0]));
+const countsByPackage = {};
+for (const candidate of candidates) {
+  countsByKind[candidate.kind] = (countsByKind[candidate.kind] ?? 0) + 1;
+  const bucket = packageOf(candidate.file) ?? bucketOf(candidate.file);
+  countsByPackage[bucket] = (countsByPackage[bucket] ?? 0) + 1;
+}
+
+const report = {
+  scanned: {
+    files: all.length,
+    productionFiles: all.filter((f) => !isTestFile(f)).length,
+    testFiles: all.filter(isTestFile).length,
+    testOnlyModules: candidates.filter((candidate) => candidate.kind === "test-only-consumer").length,
+  },
+  candidates,
+  countsByKind,
+  countsByPackage,
+  unresolvedRelativeSpecifiers: unresolved,
+  note:
+    "Candidates, not verdicts, and nothing here is deleted. `data-vigilia-*` attributes, " +
+    "`--vigilia-*`/`--shell-*` custom properties, `KIND_*` registries, Fabric JSON keys, " +
+    "classes composed by template literal, and any file a gate reads as data are all live " +
+    "with no importer — none of that is visible to this graph, and a name with an empty " +
+    "search is not a name that is dead.",
+};
+
+function renderReport(report) {
+  const lines = [];
+  lines.push("Dead-code sweep — candidates, not verdicts. Nothing is deleted by this run.");
+  lines.push("");
+  lines.push(
+    `Scanned ${report.scanned.files} files (${report.scanned.productionFiles} production, ${report.scanned.testFiles} test).`,
+  );
+  lines.push("");
+  for (const [kind, count] of Object.entries(report.countsByKind)) {
+    lines.push(`${kind} — ${count}`);
+    const rows = report.candidates.filter((candidate) => candidate.kind === kind);
+    for (const row of rows.slice(0, 25)) {
+      lines.push(`  ${row.file}${row.symbol === undefined ? "" : ` :: ${row.symbol}`}`);
+    }
+    if (rows.length > 25) lines.push(`  … ${rows.length - 25} more (see --json)`);
+    lines.push("");
+  }
+  if (Object.keys(report.countsByKind).length === 0) lines.push("No candidates.");
+  lines.push("By package: " + JSON.stringify(report.countsByPackage));
+  lines.push("");
+  lines.push(report.note);
+  if (report.unresolvedRelativeSpecifiers.length > 0) {
+    lines.push("");
+    lines.push(`Unresolved relative specifiers (${report.unresolvedRelativeSpecifiers.length}) — each one hides a file's importer:`);
+    for (const row of report.unresolvedRelativeSpecifiers.slice(0, 20)) {
+      lines.push(`  ${row.from} -> ${row.spec}`);
+    }
+  }
+  return `${lines.join("\n")}\n`;
+}
+
+const argv = process.argv.slice(2);
+const jsonAt = argv.indexOf("--json");
+const jsonPath = jsonAt === -1 ? null : argv[jsonAt + 1];
+
+if (jsonPath !== null && jsonPath !== undefined) {
+  mkdirSync(dirname(resolve(jsonPath)), { recursive: true });
+  writeFileSync(resolve(jsonPath), `${JSON.stringify(report, null, 2)}\n`, "utf8");
+}
+
+if (!argv.includes("--self-test")) process.stdout.write(renderReport(report));
+
+// ---------------------------------------------------------------------------
+// Self-test
+// ---------------------------------------------------------------------------
+
+/**
+ * The self-test is the only gate this script has.
+ *
+ * Biome's `files.includes` covers `src/web/**\/*.{ts,tsx,json,css}` and no
+ * tsconfig includes `scripts/`, so nothing else in this repository can fail
+ * `.mjs` — not the linter, not the typechecker. A scanner that reports
+ * everything, or nothing, has told you nothing, so the checks below assert both
+ * directions against cases the register already names, and assert that the test
+ * suite itself is not reported (the single likeliest way for the graph to be
+ * wrong).
+ *
+ * The result lands in a file rather than only on stdout: a hook rewrites stdout
+ * in this environment, so a count read from the terminal is not evidence.
+ */
+if (argv.includes("--self-test")) {
+  const at = (kind, file, symbol) =>
+    candidates.some(
+      (candidate) =>
+        candidate.kind === kind &&
+        candidate.file === file &&
+        (symbol === undefined || candidate.symbol === symbol),
+    );
+  const inAnyKind = (file) => candidates.filter((candidate) => candidate.file === file);
+
+  const FONT_PICKER = "src/web/packages/editor/src/font-picker/font-picker.tsx";
+  const SETTINGS_FIELD = "src/web/packages/editor/src/editor-shell/controls/settings-field.ts";
+  const LIVE = "src/web/packages/editor/src/boot-theme.ts";
+
+  const checks = [
+    ["the walk found the tree", all.length > 400],
+    ["the walk found the test suite", all.filter(isTestFile).length > 200],
+    [
+      "test-only-consumer lands on font-picker.tsx",
+      at("test-only-consumer", FONT_PICKER),
+    ],
+    [
+      "no test file is ever a candidate (discovery is an edge)",
+      candidates.every((candidate) => !isTestFile(candidate.file)),
+    ],
+    [
+      "no package barrel is a no-importer-file (exports makes it an entry point)",
+      candidates.every(
+        (candidate) =>
+          candidate.kind !== "no-importer-file" || !/^src\/web\/packages\/[^/]+\/src\/index\.ts$/.test(candidate.file),
+      ),
+    ],
+    ["no ambient .d.ts is a candidate", candidates.every((candidate) => !isAmbientTypes(candidate.file))],
+    [
+      "no-importer-export lands on settingsField()",
+      at("no-importer-export", SETTINGS_FIELD, "settingsField"),
+    ],
+    [
+      "the negative case is absent from every kind",
+      inAnyKind(LIVE).length === 0,
+    ],
+    [
+      "every candidate carries kind, file and the search that found it",
+      candidates.every(
+        (candidate) =>
+          typeof candidate.kind === "string" &&
+          typeof candidate.file === "string" &&
+          typeof candidate.evidence === "string" &&
+          candidate.evidence.length > 40,
+      ),
+    ],
+    [
+      "the run produced candidates (a scanner that reports nothing proved nothing)",
+      candidates.length > 0,
+    ],
+    // The union filter, on fixtures: the repo's own contents change, the shape does not.
+    [
+      "a type-alias union is read as a closed union",
+      unionRunsIn('export type Kind = "none" | "object";')[0]?.length === 2,
+    ],
+    [
+      "a multi-line union is read as a closed union",
+      unionRunsIn('export type Key =\n  | "tl"\n  | "tr";')[0]?.length === 2,
+    ],
+    [
+      "a Pick<T, ...> argument list is not read as a union",
+      unionRunsIn('function f(options: Pick<O, "flex" | "width"> = {}) {}').length === 0,
+    ],
+    [
+      "a barrel's re-export is followed as a route (an import is not)",
+      barrelRoutes("src/web/packages/renderer-core/src/charts/settings-fields.ts")
+        .get("src/web/packages/renderer-core/src/index.ts")
+        ?.has("settingsFieldsFor") === true,
+    ],
+    [
+      "every kind is reported, including the ones that found nothing",
+      KINDS.every((kind) => typeof report.countsByKind[kind] === "number"),
+    ],
+  ];
+
+  const result = {
+    checks: checks.map(([name, ok]) => ({ name, ok })),
+    passed: checks.filter(([, ok]) => ok).length,
+    failed: checks.filter(([, ok]) => !ok).map(([name]) => name),
+    total: checks.length,
+    selfTest: true,
+    note: "A run with fewer than total passes is a failure; the file is written either way so the count can be read without the terminal.",
+  };
+  const outPath = resolve(
+    jsonPath === null || jsonPath === undefined
+      ? join(WEB, "test-results", "dead-code-sweep-self-test.json")
+      : jsonPath,
+  );
+  mkdirSync(dirname(outPath), { recursive: true });
+  writeFileSync(outPath, `${JSON.stringify(result, null, 2)}\n`, "utf8");
+  for (const { name, ok } of result.checks) process.stdout.write(`${ok ? "  ok  " : "  FAIL"} ${name}\n`);
+  process.stdout.write(`\ndead-code-sweep self-test: ${result.passed}/${result.total} passed -> ${outPath}\n`);
+  if (result.failed.length > 0) process.exit(1);
+}
