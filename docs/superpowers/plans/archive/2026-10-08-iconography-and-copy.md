@@ -733,11 +733,12 @@ rather than in a commit body that could only be corrected by rewriting history.
     Group absent, arrange disabled for one.
 11. **met (today)** — The four rail slots each open, and only one is open at a
     time, and the gear opens settings rather than a fifth pane:
-    `design-language.spec.ts:1510` (`.editor-shell-rail-slot` count 4; each opens
-    with exactly one visible pane) and `:1616` (the gear opens the modal with
-    three tabs) → 2 passed; `editor-rail.spec.ts` → 10 passed. **`vg-330`
-    supersedes the item** (Settings becomes a pane later); passed as written, not
-    fixed forward.
+    `design-language.spec.ts` "captures each pane of the four-slot rail in the
+    design language" (`.editor-shell-rail-slot` count 4; each opens with exactly
+    one visible pane) and "captures the settings modal's three tabs in the design
+    language" (the gear opens the modal with three tabs) → 2 passed;
+    `editor-rail.spec.ts` → 10 passed. **`vg-330` supersedes the item** (Settings
+    becomes a pane later); passed as written, not fixed forward.
 12. **met** — The Add pane offers units and primitives, neither greyed, and its
     tiles depict units while the Composition rows do not: `add-pane.spec.ts:26`
     passed.
@@ -788,8 +789,9 @@ becomes a pane). Task 9 filed no row either: item 16 was the one it owned, and
 it is met. Two rows were updated rather than filed: `vg-268`'s "three native
 selects" clause corrected to `ControlSelect`
 (`font-picker.tsx:277,294,315`), and `vg-204` left **open** with
-`keyboard.spec.ts:123`'s 5/5 at `78a5575e` recorded and not treated as proof the
-defect is gone.
+`keyboard.spec.ts`'s 5/5 at `78a5575e` — its palette-picker test "the palette
+picker lands beside its trigger, and its tracks answer the arrow keys" among
+them — recorded and not treated as proof the defect is gone.
 
 ## Out of scope
 
