@@ -1306,13 +1306,18 @@ body,
    palette rather than with any authored theme. The lead names the surface the
    same way the panel headings do; each group is a heading over a two-column
    table, the action on the left and its chord pushed to the right edge as the
-   menu rows already read. */
+   menu rows already read.
+
+   **The lead is §2's dialog title, `--text-lg` (15px), and carries no eyebrow
+   marks.** §2 (`design-language.md:51`) gives that step to "Dialog titles" and
+   (`:56`) reserves uppercase and tracking for a section eyebrow, so the 13px
+   uppercase lead it used to be was neither of the two roles §2 has. Both
+   dialogs share the rule, so the `?` sheet's lead moves with it — one title,
+   one treatment. */
 .editor-shell-dialog-lead {
   margin: 0 0 12px;
   font-family: var(--shell-display);
-  font-size: var(--text-md);
-  text-transform: uppercase;
-  letter-spacing: 0.14em;
+  font-size: var(--text-lg);
   color: var(--shell-text);
 }
 .editor-shell-dialog section + section {
@@ -1360,39 +1365,82 @@ body,
   color: var(--shell-accent);
 }
 
-/* The settings modal's own strip and body (§7). One row of words on the
-   dialog's surface — the active tab lifts to `--shell-text` over an accent
-   underline, the rest stay `--shell-muted` — above a body that carries no
-   elevation of its own. The tabs are Base UI's, so `data-active` is the
-   primitive's own selected marker and not a second class to keep in step. */
+/* The settings modal's own navigation and body (§7). The drawing
+   (`current/settings.html:22-39`) draws a `150px` column of three glyph+label
+   rows beside the panel, the active row lifted and marked with a 2px accent bar
+   on its leading edge; the horizontal word strip this replaces is a control the
+   drawing does not draw and §5's vocabulary has no "tab" in it. The axis is the
+   drawing's to decide — §5 rule 7 (`design-language.md:188`) leaves a
+   multi-column layout to the surface — so the primitive stays Base UI's (`0038`)
+   and only its orientation and treatment change: `data-active` is still the
+   primitive's own selected marker, not a second class to keep in step.
+
+   **The 150px is on this element and nothing else may be.** It is a border-box
+   width, so a padding or a border here would shorten the content box the parity
+   row reads (`settings nav — column width`); the nav's inset lives on its rows
+   and the hairline between it and the panel is the panel's own `border-left`.
+
+   **The drawing's column ground (`#0e1217`) is not painted.** It is the hex
+   `vg-217` already records: §10 forbids it in a surface and no palette token is
+   that tone — `--shell-backdrop` is a *gradient* under `light`, so it is a
+   ground rather than a column's fill, and every other surface role is lighter
+   than the panel, the wrong direction. The column therefore reads on the frame's
+   own surface, which is that ruling's `var(--panel)`, and is distinguished by
+   its hairline, its rows and the active row's accent bar. */
+.editor-shell-settings {
+  display: flex;
+  align-items: stretch;
+}
 .editor-shell-settings-tabs {
   display: flex;
+  flex-direction: column;
   gap: var(--space-4);
-  margin: 0 0 var(--space-14);
-  border-bottom: 1px solid var(--shell-edge);
+  flex: 0 0 auto;
+  width: 150px;
+  padding: 0;
+  border: 0;
 }
 .editor-shell-settings-tab {
   appearance: none;
-  margin-bottom: -1px;
-  padding: var(--space-6) var(--space-10);
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  padding: var(--space-6) var(--space-8);
   border: 0;
-  border-bottom: 2px solid transparent;
+  border-radius: var(--radius-md);
   background: transparent;
   color: var(--shell-muted);
   font: inherit;
   font-size: var(--text-sm);
+  text-align: left;
   cursor: pointer;
 }
 .editor-shell-settings-tab:hover {
   color: var(--shell-text);
 }
+/* The active row's marks are the drawing's: the leading accent bar, a lift, and
+   the glyph stroked in the accent while the word keeps the shell's text. The
+   lift is a wash of the shell's own text role rather than a hex, the same shape
+   the rail's hover uses, so it reads on all six palettes. */
 .editor-shell-settings-tab[data-active] {
-  border-bottom-color: var(--shell-accent);
+  background: color-mix(in srgb, var(--shell-text) 8%, transparent);
+  box-shadow: inset 2px 0 0 var(--shell-accent);
   color: var(--shell-text);
+}
+.editor-shell-settings-tab[data-active] svg {
+  color: var(--shell-accent);
 }
 .editor-shell-settings-tab:focus-visible {
   outline: 2px solid var(--shell-accent);
   outline-offset: -2px;
+}
+/* The body beside the column: one element owns the hairline and the gutter, so
+   the column keeps its exact width (see above). */
+.editor-shell-settings-panel {
+  flex: 1;
+  min-width: 0;
+  padding-left: var(--space-14);
+  border-left: 1px solid var(--shell-edge);
 }
 .editor-shell-settings-panel:focus-visible {
   outline: 2px solid var(--shell-accent);

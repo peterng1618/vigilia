@@ -2164,19 +2164,20 @@ const SETTINGS_DRAWING = "docs/design/mockups/current/settings.html";
  * reading nothing. It is in the table, rather than left out as redundant, for
  * that reason.
  *
- * **The shell's rows pass; the settings modal's six do not, on purpose.** The
- * shell's ten were re-run by plan 7 Task 7 against the shipped build — Task 3
- * closed the last six the table named (the four region radii, drawn flush and
- * square, and both dialog frames at `--radius-lg`) — and the capture beside the
- * drawing (`docs/design/mockups/current/shell-capture-*.png`) is that task's
- * evidence that the build they pass on is the one that ships. Plan 8 Task 1 then
- * added six rows for the modal's regions, read against `current/settings.html`,
- * and **each is red on the build it landed on**: the navigation's axis, the
- * lead's type, the scrim and the palette group's count, card radius and swatch
- * height. Tasks 2, 3 and 5 pull the product to the drawing and turn them green;
- * the census (`.superpowers/sdd/2026-10-11-settings-parity/adjudication.md`)
- * names each row's task. A row loosened or skipped to reach green would be the
- * defect this whole instrument exists to end, so none is.
+ * **The shell's rows pass; three of the settings modal's six do not, on
+ * purpose.** The shell's ten were re-run by plan 7 Task 7 against the shipped
+ * build — Task 3 closed the last six the table named (the four region radii,
+ * drawn flush and square, and both dialog frames at `--radius-lg`) — and the
+ * capture beside the drawing (`docs/design/mockups/current/shell-capture-*.png`)
+ * is that task's evidence that the build they pass on is the one that ships.
+ * Plan 8 Task 1 then added six rows for the modal's regions, read against
+ * `current/settings.html`, **each red on the build it landed on**; Task 2 turned
+ * the navigation's axis and the lead's type green (a `150px` vertical column and
+ * §2's `--text-lg` title), leaving the scrim (Task 3) and the palette group's
+ * count, card radius and swatch height (Task 5) red by design. The census
+ * (`.superpowers/sdd/2026-10-11-settings-parity/adjudication.md`) names each
+ * row's task. A row loosened or skipped to reach green would be the defect this
+ * whole instrument exists to end, so none is.
  *
  * A `--grep` that matches nothing exits 0 with zero tests, so the run's own
  * summary — "1 test", this file — is the proof it ran at all.

@@ -1,6 +1,7 @@
 import { RadioGroup } from "@base-ui/react/radio-group";
 import { Tabs } from "@base-ui/react/tabs";
 import { SUPPORTED_SCHEMA_VERSION } from "@vigilia/renderer-core";
+import { Info, Keyboard, type LucideIcon, Palette } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { ControlChoiceRow } from "../components/ui/control-choice-row.js";
 import { ControlToggle } from "../components/ui/control-toggle.js";
@@ -21,7 +22,7 @@ import { SETTINGS_TRIGGER_ID } from "./rail.js";
 import { SettingsKeyboard } from "./settings-keyboard.js";
 
 /** §7's three tabs, in the order the spec's table names them. One owner of
- *  "which tabs there are": the strip and the panels both read it, so a fourth
+ *  "which tabs there are": the column and the panels both read it, so a fourth
  *  tab cannot appear with a body and no word, or the reverse. */
 type SettingsTab = "appearance" | "keyboard" | "about";
 
@@ -30,6 +31,18 @@ const SETTINGS_TABS: readonly SettingsTab[] = [
   "keyboard",
   "about",
 ];
+
+/** Each tab's glyph, from the one icon family the shell already draws with
+ *  (bible §6: stroke-based, `currentColor`, on a 24px grid). The drawing's
+ *  navigation column carries a glyph per row (`current/settings.html:26-37`);
+ *  its three are a palette, a keyboard and an info mark, all of which the
+ *  installed set has, so no glyph is invented and §6 needs no addition. The
+ *  word stays beside the glyph, so the tab's accessible name is the label. */
+const SETTINGS_TAB_GLYPHS: Readonly<Record<SettingsTab, LucideIcon>> = {
+  appearance: Palette,
+  keyboard: Keyboard,
+  about: Info,
+};
 
 /** The id the palette group is named by, kept out of the shell's other ids. */
 const PALETTE_GROUP_ID = "vigilia-settings-palette";
@@ -306,17 +319,31 @@ export function Settings(props: {
       closeLabel={uiCopy.settings.close}
     >
       <h2 className="editor-shell-dialog-lead">{uiCopy.settings.title}</h2>
-      <Tabs.Root defaultValue="appearance" className="editor-shell-settings">
+      {/* A **vertical** tablist: the drawing's navigation is a column beside the
+          panel, not a row of words above it. §5's vocabulary has no "tab"
+          control and §5 rule 7 leaves the grid to the surface, so the axis is
+          the drawing's; the primitive stays Base UI's (`0038`) and only its
+          orientation and treatment change. `orientation` is what points the
+          arrow keys up and down the three rows rather than across. */}
+      <Tabs.Root
+        defaultValue="appearance"
+        orientation="vertical"
+        className="editor-shell-settings"
+      >
         <Tabs.List className="editor-shell-settings-tabs">
-          {SETTINGS_TABS.map((tab) => (
-            <Tabs.Tab
-              key={tab}
-              value={tab}
-              className="editor-shell-settings-tab"
-            >
-              {uiCopy.settings[tab]}
-            </Tabs.Tab>
-          ))}
+          {SETTINGS_TABS.map((tab) => {
+            const Glyph = SETTINGS_TAB_GLYPHS[tab];
+            return (
+              <Tabs.Tab
+                key={tab}
+                value={tab}
+                className="editor-shell-settings-tab"
+              >
+                <Glyph aria-hidden size={14} strokeWidth={1.7} />
+                {uiCopy.settings[tab]}
+              </Tabs.Tab>
+            );
+          })}
         </Tabs.List>
         {SETTINGS_TABS.map((tab) => (
           <Tabs.Panel
