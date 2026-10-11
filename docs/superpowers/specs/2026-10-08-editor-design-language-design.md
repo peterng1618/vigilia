@@ -344,8 +344,10 @@ knowingly: there is no longer an at-a-glance readout of which palette is active.
 
 Bible §6. The load-bearing requirements:
 
-- **Glyphs are stroke-based, 1.6–1.8px, `currentColor`, on a 24px grid**, one
-  family and one weight everywhere.
+- **Glyphs are stroke-based, `currentColor`, on a 24px grid, at one weight rule:
+  the stroke rises as the size falls**, so the rendered weight stays optically
+  even — 1.7px at 14px and above, 1.8px at 11–13px, 2px at 10px and below. One
+  family and one rule everywhere.
 - **An icon-only control carries the same string as its `aria-label` and its
   tooltip.** One owner; they cannot disagree.
 - **The kind glyph set is closed when the kind list is closed** — the object-kind
