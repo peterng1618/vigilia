@@ -28,9 +28,9 @@ import { isDesktopSurface } from "./surface.js";
  *
  * A browser fixture mounts the **built** control set over the **built**
  * stylesheet, and this file asserts the language mechanically: that every gated
- * element's resolved spacing is on bible §3's scale, that no gated element
- * paints a colour that is not one of bible §4's roles, that every target has
- * bible §5's 24×24 hit area without overlapping its neighbour, that required
+ * element's resolved spacing is on DESIGN.md §3's scale, that no gated element
+ * paints a colour that is not one of DESIGN.md §4's roles, that every target has
+ * DESIGN.md §5's 24×24 hit area without overlapping its neighbour, that required
  * text and the focus boundary clear §5's ratios in all six palettes, that hover
  * raises a control's resting `--edge` to `--muted` (and a blocked well and the
  * checked toggle do not move), that focus survives forced colours, that layout
@@ -62,14 +62,14 @@ import { isDesktopSurface } from "./surface.js";
 const FIXTURE = "http://127.0.0.1:4174/control-fixture.html";
 const EDITOR = "http://127.0.0.1:4174/";
 
-/** Bible §3's named steps. The bible is the source; this list and the steps in
+/** DESIGN.md §3's named steps. DESIGN.md is the source; this list and the steps in
  *  `scripts/design-tokens.mjs` are two independent transcriptions of it, so a §3
  *  change updates both in the same commit. There is deliberately no import
  *  between them: `tests/e2e/` belongs to no tsconfig (vg-192), so a cross-package
  *  import would arrive untyped and buy coupling, not safety. */
 const SPACING_STEPS = [4, 6, 8, 10, 12, 14, 16, 20, 24, 32];
 
-/** Bible §4's thirteen roles. `--bg` and `--stage` are here too: they carry no
+/** DESIGN.md §4's thirteen roles. `--bg` and `--stage` are here too: they carry no
  *  `--color-*` utility, because both alias `--shell-backdrop` — a gradient under
  *  `light` and a flat colour in the other five, where a colour utility would set
  *  a colour to the gradient and fail silently. Each is still resolved here: the
@@ -91,8 +91,8 @@ const ROLES = [
   "hot",
 ] as const;
 
-/** The six palettes bible §4 declares a role set for, transcribed from the
- *  bible like `SPACING_STEPS` above; the same update-both rule applies. */
+/** The six palettes DESIGN.md §4 declares a role set for, transcribed from
+ *  DESIGN.md like `SPACING_STEPS` above; the same update-both rule applies. */
 const PALETTES = [
   "editorial",
   "graphite",
@@ -113,7 +113,7 @@ const BOUNDARY_MIN = 3;
  * The one measured palette defect this gate pins rather than blesses — a
  * ratchet, not a waiver.
  *
- * Bible §5's minimum holds for every probe in every palette except the rows
+ * DESIGN.md §5's minimum holds for every probe in every palette except the rows
  * named here, and this is a **token** defect with a register row of its own
  * rather than a control the control set can fix:
  *
@@ -141,7 +141,7 @@ const PINNED_FLOOR: Readonly<Record<string, Partial<Record<Palette, number>>>> =
     invalid: { ember: 1.9, moss: 1.35, plum: 1.35 },
   };
 
-/** Bible §5's minimum for a probe, or `null` where §5 requires none.
+/** DESIGN.md §5's minimum for a probe, or `null` where §5 requires none.
  *
  *  §5.4 binds the focus boundary, and §5 requires 3:1 of a boundary that is a
  *  control's **only** separation. A **divider** is neither: the well's resting
@@ -679,7 +679,7 @@ test("the control set renders in the design language", async ({
     ).toBe(lengthInPx(declared));
   }
 
-  // ── 1. Authored spacing is on bible §3's scale ────────────────────────────
+  // ── 1. Authored spacing is on DESIGN.md §3's scale ────────────────────────────
   //
   // Scoped to the *authored* layout properties — padding, margin and gap — and
   // read through the typed OM, which is the only reading that keeps `auto` a
@@ -742,16 +742,16 @@ test("the control set renders in the design language", async ({
   }, SPACING_STEPS);
   expect(
     offScale,
-    "an authored spacing value is not on bible §3's scale",
+    "an authored spacing value is not on DESIGN.md §3's scale",
   ).toEqual([]);
 
-  // ── 2. No colour resolves outside bible §4's roles ────────────────────────
+  // ── 2. No colour resolves outside DESIGN.md §4's roles ────────────────────────
   //
   // Every role is resolved *the way a surface paints it* — a probe set to
   // `background: var(--role)` and read back — so `color-mix()` and alpha are
   // resolved by the browser rather than by this file. A gradient role resolves
   // to transparent here, which is what painting it as a colour really does.
-  // `box-shadow` is deliberately not read: bible §5.4 makes the halo decoration,
+  // `box-shadow` is deliberately not read: DESIGN.md §5.4 makes the halo decoration,
   // and a shadow colour is not a surface.
   const literals = await page.evaluate((roles) => {
     const allowed = new Set(["rgba(0, 0, 0, 0)"]);
@@ -808,16 +808,16 @@ test("the control set renders in the design language", async ({
   }, ROLES);
   expect(
     literals,
-    "a gated element paints a colour no bible §4 role resolves to",
+    "a gated element paints a colour no DESIGN.md §4 role resolves to",
   ).toEqual([]);
 
-  // ── 3. Every target has bible §5's 24×24 hit area, and none overlaps ──────
+  // ── 3. Every target has DESIGN.md §5's 24×24 hit area, and none overlaps ──────
   //
   // Hit-tested rather than measured, because a target's *box* is not its hit
   // area: the toggle's pill is 26×14 and its target is a centred 24×24 carried
   // by `hitTargetClasses` (`control-well.tsx`). A point over that pseudo-element
   // resolves to the control it expands, so hit-testing is the only reading that
-  // measures the rule the bible states. A point that lands on a neighbour is how
+  // measures the rule DESIGN.md states. A point that lands on a neighbour is how
   // "adjacent targets must not overlap" fails.
   //
   // The samples live in a 24×24 box one pixel inside its edge, so a rounded
@@ -934,7 +934,7 @@ test("the control set renders in the design language", async ({
   await focusTarget.focus();
   await expect(focusTarget).toBeFocused();
 
-  // Bible §5.4 is explicit that the 3px accent-at-18% halo does not discharge
+  // DESIGN.md §5.4 is explicit that the 3px accent-at-18% halo does not discharge
   // this: the reading is the solid `outline`, not the ring.
   for (const palette of PALETTES) {
     await setPalette(page, palette);
@@ -1058,7 +1058,7 @@ test("the control set renders in the design language", async ({
 
   // ── 4d. Hover raises a control's resting edge to `--muted` ────────────────
   //
-  // Bible §5 rule 6 is a rendered outcome, so it is read from the rendered
+  // DESIGN.md §5 rule 6 is a rendered outcome, so it is read from the rendered
   // border, not from the class a jsdom test pins: a Tailwind compile miss, a
   // specificity loss to the resting `border-edge`, or a palette where `--muted`
   // and `--edge` read alike would all pass a class check and fail the eye. A
@@ -1435,7 +1435,7 @@ test("the control set renders in the design language", async ({
 });
 
 /**
- * The shell parity capture (bible §7.1–§7.3, mockup
+ * The shell parity capture (DESIGN.md §7.1–§7.3, mockup
  * `docs/design/mockups/current/shell.html`).
  *
  * Plan 1's mechanism, turned on the rebuilt shell: the built editor is opened
@@ -1445,7 +1445,7 @@ test("the control set renders in the design language", async ({
  *
  * **It fails if the shell is not the new one**, which is the point: an old
  * shell photographed happily is a comparison against the wrong thing. Two
- * facts are asserted before the picture is written — the rail carries bible
+ * facts are asserted before the picture is written — the rail carries DESIGN.md
  * §7.2's four slots (the pre-rail shell had an Insert menu and no rail, so the
  * count is 0) and exactly one of the rail's panes is showing (the shell keeps
  * every pane mounted and hides the others, so a leftover second pane in the
@@ -1499,10 +1499,10 @@ test("captures the shell with the Add pane open and nothing selected", async ({
   await captureVisualReview(page, testInfo, "editor-shell-add");
 });
 
-/** Bible §6's weight rule, transcribed from `editor-shell/icons.ts`'s
+/** DESIGN.md §6's weight rule, transcribed from `editor-shell/icons.ts`'s
  *  `glyphStrokeWidth`. Transcribed rather than imported because `tests/e2e/`
  *  belongs to no tsconfig (vg-192), the same reason `SPACING_STEPS` above is a
- *  copy of bible §3 rather than an import: a cross-package import would arrive
+ *  copy of DESIGN.md §3 rather than an import: a cross-package import would arrive
  *  untyped and buy coupling, not safety. §6 is the source, so a §6 change
  *  updates both in the same commit. */
 function glyphWeight(size: number): number {
@@ -1511,11 +1511,11 @@ function glyphWeight(size: number): number {
   return 1.7;
 }
 
-/** Bible §6's three tiers, for the membership reading beside the rule. */
+/** DESIGN.md §6's three tiers, for the membership reading beside the rule. */
 const GLYPH_TIERS: readonly number[] = [2, 1.8, 1.7];
 
 /**
- * The glyph and word parity capture (bible §6 and §9, mockup
+ * The glyph and word parity capture (DESIGN.md §6 and §9, mockup
  * `docs/design/mockups/current/shell.html`).
  *
  * Plan 1's mechanism, turned on the surface this plan changed: the built
@@ -1759,14 +1759,14 @@ test("captures the shell glyphs and words with the Add pane open", async ({
 });
 
 /**
- * The panes' parity capture (bible §7.3, mockup
+ * The panes' parity capture (DESIGN.md §7.3, mockup
  * `docs/design/mockups/current/shell.html`).
  *
  * The same mechanism as the shell capture above, turned on the four rebuilt
  * panes: the built editor is opened with one rail pane showing at a time, and
  * each pane's own chrome and body is photographed for Task 12's comparison.
  * The mockup draws a specimen of **Add** only, so the other three are compared
- * against the bible and this plan's field inventories rather than a drawing —
+ * against DESIGN.md and this plan's field inventories rather than a drawing —
  * which is why the image is the pane itself and not the whole shell: the field
  * inventory is what has to be readable in it.
  *
@@ -2138,7 +2138,7 @@ test("graphite's roles are the drawing's, and the other five keep its ladder", a
     // a derived palette that collapses a rung has stopped deriving from it —
     // order alone survives a ladder squeezed to `0.0001` steps. **How far apart
     // the rungs must sit is `vg-308`**, and it is a register row rather than a
-    // constant here because a magnitude floor has no rule in the bible yet.
+    // constant here because a magnitude floor has no rule in DESIGN.md yet.
     //
     // Editorial is the one named exception, for the reason its own block gives:
     // its control-inside-panel separation is carried by `--vigilia-control-bg`,
@@ -2413,7 +2413,7 @@ const DRAWING_NAMES = new Map(
 );
 
 /**
- * The shell's parity with the drawing (spec §13 as amended 2026-10-10, bible §3,
+ * The shell's parity with the drawing (spec §13 as amended 2026-10-10, DESIGN.md §3,
  * §7, reference `docs/design/mockups/current/shell.html`; the settings surface is
  * its own file, `current/settings.html`, and is read here too).
  *
@@ -2437,15 +2437,15 @@ const DRAWING_NAMES = new Map(
  * of a *window* has no counterpart in a product that **is** the window, so the
  * shell's own frame is not in this table at all (the census records it
  * `no-counterpart`). The two dialogs' frames are here but `scaleToken` owns them,
- * not a drawing selector: bible §3's radius table is closed and gives 10px to
+ * not a drawing selector: DESIGN.md §3's radius table is closed and gives 10px to
  * floating clusters over the canvas, which a modal is not. The expected value is
  * read from the product's own `:root` declaration (`--radius-lg`), so this file
  * cannot drift from the token.
  *
  * **A `licensed` row is recorded, not asserted.** `licensed` carries a
- * *predating* rule — a bible §N, an ADR, a spec section — that positively
+ * *predating* rule — a DESIGN.md §N, an ADR, a spec section — that positively
  * requires the product's treatment. Its absence is what makes a difference a
- * defect; two rows carry one today, each the narrow case and never "the bible
+ * defect; two rows carry one today, each the narrow case and never "DESIGN.md
  * does not forbid it": the stage ground (§7.5, which names that property and
  * permits both variants) and the settings modal's frame inset (§3 `:79`, whose
  * spacing table positively requires `20–24` for "dialog padding" — the value
@@ -2805,7 +2805,7 @@ const SHELL_DRAWING = "docs/design/mockups/current/shell.html";
  * (`currentDrawings`), so a fifth drawing is read the moment it lands, and each
  * failure names the file it is in.
  *
- * **§3's radius table is closed** (`docs/design/design-language.md:86-94`):
+ * **§3's radius table is closed** (`DESIGN.md:86-94`):
  * `--radius-sm` 4 / `--radius-md` 6 / `--radius-lg` 8 / `--radius-xl` 10 /
  * full 999. Three values are exempt, each named with why it is not a scale
  * entry — an unnamed exemption set is the list-shaped escape this plan exists
@@ -2814,7 +2814,7 @@ const SHELL_DRAWING = "docs/design/mockups/current/shell.html";
  *
  * - `1px` and `2px` are **marks whose value is their thickness**, not rounded
  *   surfaces: §7.2's 2px accent bar on the rail's inner edge
- *   (`design-language.md:314`), the slider track's ends, the layer dropline.
+ *   (`DESIGN.md:314`), the slider track's ends, the layer dropline.
  *   §3's scale answers a question only a surface that is *rounded* asks.
  * - `50%` is **a circle — `full` reached the other way**: the identity dot, the
  *   slider's thumb and the toggle's knob. It is not a second way to spell a
@@ -2847,7 +2847,7 @@ const SHELL_DRAWING = "docs/design/mockups/current/shell.html";
  *   (`left:50%`, which centres the dock alongside its `translateX(-50%)`).
  *
  * **The type arm reads `font-size` and the `font` shorthand.** §2's scale is six
- * roles (`design-language.md:47-52`), and a shorthand writes its size before its
+ * roles (`DESIGN.md:47-52`), and a shorthand writes its size before its
  * line-height (`600 13.5px/1.2 system-ui`), which is the token read here. A
  * shorthand carrying no px length sets no size this row can read, so it is
  * returned whole and fails naming itself rather than passing as the drawing's
@@ -2959,7 +2959,7 @@ test("every literal the checked drawings declare is on §3's scale or §2's", ()
     );
   };
 
-  /** §2's six sizes (`design-language.md:47-52`). */
+  /** §2's six sizes (`DESIGN.md:47-52`). */
   const TYPE = new Set([10, 11, 12, 13, 15, 19]);
   /** The size a type declaration sets, or `null` where it sets none this row
    *  reads: `font-size`'s whole value, or the first px length a `font`

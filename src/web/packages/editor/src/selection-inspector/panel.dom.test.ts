@@ -679,7 +679,7 @@ describe("shape material and a shape's own fields", () => {
     const { field } = setup(polygon);
     const sides = field<HTMLInputElement>("[data-vigilia-shape-sides]");
 
-    // A bounded number is the bible's slider (§5), and the pre-plan field drew
+    // A bounded number is DESIGN.md's slider (§5), and the pre-plan field drew
     // one because both bounds were present. The bound is the control's now, so
     // a two-sided polygon is unreachable rather than landed on.
     expect(sides.type).toBe("range");
@@ -891,7 +891,7 @@ describe("the angles of a swept shape", () => {
     const { field } = setup(swept(kind));
     const end = field<HTMLInputElement>(ANGLE.end);
 
-    // Both bounds were present pre-plan, so the field drew a slider; the bible
+    // Both bounds were present pre-plan, so the field drew a slider; DESIGN.md
     // calls a bounded number a slider (§5), so the converted field is one too.
     expect(end.type, kind).toBe("range");
     expect(end.getAttribute("min"), kind).toBe("0");

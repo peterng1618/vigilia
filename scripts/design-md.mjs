@@ -33,8 +33,8 @@
  *
  * The canonical range lives HERE and is never read from DESIGN.md: if it were
  * read from the file, deleting a marker would shrink the range it is checked
- * against and the deletion would pass. `§1`–`§10` with `§7.1`–`§7.8` is the
- * bible's own numbering (D3); every other `§N` in the repo belongs to the
+ * against and the deletion would pass. `§1`–`§10` with `§7.1`–`§7.8` is
+ * DESIGN.md's own numbering (D3); every other `§N` in the repo belongs to the
  * redesign spec and is ignored.
  *
  * Both checks fail on their own findings, never on a proxy for them: the
@@ -71,7 +71,7 @@ const CITE_EXCLUDE = new Set([
 ]);
 
 /**
- * `docs/design/design-language.md`'s numbering: `§1`–`§10`, with sub-numbers
+ * `DESIGN.md`'s numbering: `§1`–`§10`, with sub-numbers
  * only under `§7`. The single source of truth for what a citation may resolve
  * against — never derived from DESIGN.md's markers (see the header).
  */

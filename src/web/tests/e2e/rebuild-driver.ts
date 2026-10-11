@@ -143,7 +143,7 @@ export async function openBlank(
 /** The button in the Add pane that makes an object, by the name it answers to.
  *
  *  Read as the accessible name rather than as the text inside the button: the
- *  pane's shape and chart tiles are glyph-led (bible §6), so a `Path` or a
+ *  pane's shape and chart tiles are glyph-led (DESIGN.md §6), so a `Path` or a
  *  `Gauge` tile draws a glyph and carries its word in its name, not on it. The
  *  cards and Text show their word, and a name is what a reader is told for
  *  either. */

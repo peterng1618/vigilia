@@ -353,7 +353,7 @@ test("the status bar is the window's full-width bottom edge", async ({
 });
 
 /**
- * The selected slot's accent bar is on the rail's **inner** edge (bible §7.2),
+ * The selected slot's accent bar is on the rail's **inner** edge (DESIGN.md §7.2),
  * and only a rendered box can show which edge that is.
  *
  * jsdom has no layout and no cascade, so a `*.dom.test.tsx` case cannot see a
@@ -410,7 +410,7 @@ test("the selected slot's accent bar sits on the rail's inner edge", async ({
   console.log(`accent-bar ${report}`);
   testInfo.annotations.push({ type: "accent-bar", description: report });
 
-  expect(measured.barWidth, "the bar is the bible's 2px").toBe(2);
+  expect(measured.barWidth, "the bar is DESIGN.md's 2px").toBe(2);
   expect(
     measured.barLeft,
     "the bar starts inside the rail's outer edge",
@@ -521,7 +521,7 @@ test("Tab and Shift+Tab stay inside the settings modal, and Escape returns focus
 
   // ── §7.7's constrained proof, in this same procedure ───────────────────────
   //
-  // The bible asks for "the full shell at 1280×720 and 1440×900 CSS pixels,
+  // DESIGN.md asks for "the full shell at 1280×720 and 1440×900 CSS pixels,
   // then at 200% browser zoom", with every control reachable through scrolling
   // or compact composition. The two sizes are `design-language.spec.ts`'s loop;
   // what was never taken is the modal under the zoom.

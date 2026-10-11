@@ -11,13 +11,13 @@ import {
 /**
  * A text field that commits on Enter or blur, and never on a keystroke.
  *
- * Bible §5's editing and recovery contract: the draft is not authored state, so
+ * DESIGN.md §5's editing and recovery contract: the draft is not authored state, so
  * a publication that lands mid-edit cannot replace what is being typed, Enter
  * followed by the blur it causes cannot commit twice, and Escape restores the
  * authored value without adding history. An IME's Enter ends a composition
  * rather than committing — the string it would commit is not finished yet.
  *
- * The input is `h-full` of the well's 26px box, so its target is bible §5's
+ * The input is `h-full` of the well's 26px box, so its target is DESIGN.md §5's
  * 24×24. A field cannot take the button route (`hitTargetClasses`): a replaced
  * element has no `::before` to carry the area.
  */

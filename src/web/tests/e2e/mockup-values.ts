@@ -497,7 +497,7 @@ function alphaChannel(token: string): number | null {
  *  comparator can read.
  *
  *  **A colour is not a length, and two spellings of one colour are not equal as
- *  strings.** The bible writes the modal's scrim `#00000073` and a browser
+ *  strings.** DESIGN.md writes the modal's scrim `#00000073` and a browser
  *  computes the same colour as `rgba(0, 0, 0, 0.451)`, so a string comparison
  *  fails on a surface that is right — and `lengthInPx` fails on one that is read
  *  at all. The value is therefore parsed into 8-bit channels and returned as a
@@ -629,7 +629,7 @@ export function mockupDeclaredOrNull(
 /** One region's parity row: what the drawing declares, what the product
  *  renders, and the rule that governs the difference.
  *
- *  `licensed` carries the text of a **predating** normative rule — a bible §N,
+ *  `licensed` carries the text of a **predating** normative rule — a DESIGN.md §N,
  *  an ADR or a spec section — that positively requires the product's treatment.
  *  Its absence is what makes a difference a defect (spec §13 as amended
  *  2026-10-10): the drawing's silence is not permission, and a rule this plan
@@ -646,7 +646,7 @@ export type ParityRegion = {
    *  from the drawing's rule and from the product's computed style alike. */
   readonly mockupProperty: string;
   readonly productSelector: string;
-  readonly bibleSection: string;
+  readonly designLanguageSection: string;
   /** The drawing `mockupSelector` is read from, when it is not the plan's own
    *  shell drawing. A surface drawn on its own file names that file, so one
    *  table can address every drawing the plan measures. */
@@ -725,55 +725,55 @@ export const PARITY: readonly ParityRegion[] = [
     mockupSelector: '[style*="height:42px"]',
     mockupProperty: "height",
     productSelector: ".editor-shell-header",
-    bibleSection: "§7.1 (`:279`), §7's diagram (`:262-277`)",
+    designLanguageSection: "§7.1 (`:279`), §7's diagram (`:262-277`)",
   },
   {
     region: "body — inset",
     mockupSelector: '[style*="flex:1;min-height:0"]',
     mockupProperty: "padding-top",
     productSelector: ".editor-shell-body",
-    bibleSection: "§7's diagram (`:262-277`), §3 elevation 0 (`:102`)",
+    designLanguageSection: "§7's diagram (`:262-277`), §3 elevation 0 (`:102`)",
   },
   {
     region: "body — gap",
     mockupSelector: '[style*="flex:1;min-height:0"]',
     mockupProperty: "column-gap",
     productSelector: ".editor-shell-body",
-    bibleSection: "§7's diagram (`:262-277`), §3 elevation 0 (`:102`)",
+    designLanguageSection: "§7's diagram (`:262-277`), §3 elevation 0 (`:102`)",
   },
   {
     region: "rail — radius",
     mockupSelector: '[style*="width:46px"]',
     mockupProperty: "border-radius",
     productSelector: ".editor-shell-rail",
-    bibleSection: "§3 radius table (`:92`), §7's diagram (`:262-277`)",
+    designLanguageSection: "§3 radius table (`:92`), §7's diagram (`:262-277`)",
   },
   {
     region: "left pane — radius",
     mockupSelector: '[style*="width:246px"]',
     mockupProperty: "border-radius",
     productSelector: ".editor-shell-panel",
-    bibleSection: "§3 radius table (`:92`), §7's diagram (`:262-277`)",
+    designLanguageSection: "§3 radius table (`:92`), §7's diagram (`:262-277`)",
   },
   {
     region: "stage — radius",
     mockupSelector: '[style*="repeating-linear-gradient(45deg"]',
     mockupProperty: "border-radius",
     productSelector: ".editor-shell-stage",
-    bibleSection: "§3 radius table (`:86-94`), §7's diagram (`:262-277`)",
+    designLanguageSection: "§3 radius table (`:86-94`), §7's diagram (`:262-277`)",
   },
   {
     region: "inspector — radius",
     mockupSelector: '[style*="width:276px"]',
     mockupProperty: "border-radius",
     productSelector: ".editor-shell-inspector",
-    bibleSection: "§3 radius table (`:92`), §7's diagram (`:262-277`)",
+    designLanguageSection: "§3 radius table (`:92`), §7's diagram (`:262-277`)",
   },
   /* **A dialog's radius is not the drawing's to give.** The only 10px frame the
      superseded drawing had was the window's own — `.mockup` and the shell card it
      wrapped — and both belong to a drawn window, which the product does not have;
      `current/settings.html` draws no window and so has no frame for a row to
-     name. Bible §3's radius table is closed (4/6/8/10) and gives 10 to
+     name. DESIGN.md §3's radius table is closed (4/6/8/10) and gives 10 to
      "Floating clusters (dock, view controls, identity chip)" only; a modal is not
      a cluster, so both dialogs are panels and take `--radius-lg`. So this row's
      comparator is the **scale**, read from the product's own `:root` declaration
@@ -785,7 +785,7 @@ export const PARITY: readonly ParityRegion[] = [
     region: "settings modal — frame radius",
     mockupProperty: "border-radius",
     productSelector: ".editor-shell-dialog",
-    bibleSection: "§3 radius table (`design-language.md:86-94`)",
+    designLanguageSection: "§3 radius table (`DESIGN.md:86-94`)",
     scaleToken: "--radius-lg",
     surface: "settings",
   },
@@ -793,7 +793,7 @@ export const PARITY: readonly ParityRegion[] = [
     region: "`?` sheet — frame radius",
     mockupProperty: "border-radius",
     productSelector: ".editor-shell-dialog",
-    bibleSection: "§3 radius table (`design-language.md:86-94`)",
+    designLanguageSection: "§3 radius table (`DESIGN.md:86-94`)",
     scaleToken: "--radius-lg",
     surface: "sheet",
   },
@@ -805,7 +805,7 @@ export const PARITY: readonly ParityRegion[] = [
     mockupSelector: '[style*="repeating-linear-gradient(45deg"]',
     mockupProperty: "background",
     productSelector: ".editor-shell-stage",
-    bibleSection: "§7.5 (`:362-364`)",
+    designLanguageSection: "§7.5 (`:362-364`)",
     licensed:
       '§7.5 (`:362-364`): "Subtle palette-derived stage texture is permitted when it stays behind the artwork and does not obscure controls; neither texture nor a flat ground is mandatory."',
   },
@@ -832,8 +832,8 @@ export const PARITY: readonly ParityRegion[] = [
       '[style*="width:74px;flex:0 0 auto;color:var(--muted);font-size:11px;padding-top:4px"]',
     mockupProperty: "width",
     productSelector: '[data-fixture="text"] label',
-    bibleSection:
-      "§5 (`:163-164`, the shared grid); the bible is silent on the column's width, so the drawing governs",
+    designLanguageSection:
+      "§5 (`:163-164`, the shared grid); DESIGN.md is silent on the column's width, so the drawing governs",
     surface: "fixture",
   },
   {
@@ -843,8 +843,8 @@ export const PARITY: readonly ParityRegion[] = [
       '[style*="width:74px;flex:0 0 auto;color:var(--muted);font-size:11px;padding-top:4px"]',
     mockupProperty: "width",
     productSelector: '[data-fixture="text"] label',
-    bibleSection:
-      "§5 (`:163-164`, the shared grid); the bible is silent on the column's width, so the drawing governs",
+    designLanguageSection:
+      "§5 (`:163-164`, the shared grid); DESIGN.md is silent on the column's width, so the drawing governs",
     surface: "fixture",
   },
   /* **The two shapes a row takes when a drawing shapes it differently.** The
@@ -877,8 +877,8 @@ export const PARITY: readonly ParityRegion[] = [
       '[style*="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--panel2);border:1px solid var(--edge);border-radius:8px"]',
     mockupProperty: "border-radius",
     productSelector: '[data-fixture="boxed"] > div',
-    bibleSection:
-      "§5 (`:163-164`, the well); the bible does not shape the modal's switch row, so the drawing governs",
+    designLanguageSection:
+      "§5 (`:163-164`, the well); DESIGN.md does not shape the modal's switch row, so the drawing governs",
     surface: "fixture",
   },
   {
@@ -888,8 +888,8 @@ export const PARITY: readonly ParityRegion[] = [
       '[style*="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--panel2);border:1px solid var(--edge);border-radius:8px"]',
     mockupProperty: "gap",
     productSelector: '[data-fixture="boxed"] > div',
-    bibleSection:
-      "§5 (`:163-164`, the well); the bible does not shape the modal's switch row, so the drawing governs",
+    designLanguageSection:
+      "§5 (`:163-164`, the well); DESIGN.md does not shape the modal's switch row, so the drawing governs",
     surface: "fixture",
   },
   /* The shell's select-trigger box — the well-with-chevron form the drawing
@@ -916,8 +916,8 @@ export const PARITY: readonly ParityRegion[] = [
       '[style*="flex:1;display:flex;align-items:center;gap:6px;background:var(--panel2);border:1px solid var(--edge);border-radius:6px;padding:4px 8px"]',
     mockupProperty: "border-radius",
     productSelector: '[data-fixture="headed"] [data-fixture-select]',
-    bibleSection:
-      "§5 (`:163-164`, the well the trigger is drawn as); the bible does not shape the pane's picker, so the drawing governs",
+    designLanguageSection:
+      "§5 (`:163-164`, the well the trigger is drawn as); DESIGN.md does not shape the pane's picker, so the drawing governs",
     surface: "fixture",
   },
   {
@@ -927,8 +927,8 @@ export const PARITY: readonly ParityRegion[] = [
       '[style*="flex:1;display:flex;align-items:center;gap:6px;background:var(--panel2);border:1px solid var(--edge);border-radius:6px;padding:4px 8px"]',
     mockupProperty: "gap",
     productSelector: '[data-fixture="headed"] [data-fixture-select]',
-    bibleSection:
-      "§5 (`:163-164`, the well the trigger is drawn as); the bible does not shape the pane's picker, so the drawing governs",
+    designLanguageSection:
+      "§5 (`:163-164`, the well the trigger is drawn as); DESIGN.md does not shape the pane's picker, so the drawing governs",
     surface: "fixture",
   },
   /* ── The settings modal, against `current/settings.html` (plan 8 Task 1) ────
@@ -955,7 +955,7 @@ export const PARITY: readonly ParityRegion[] = [
 
      The rule that makes the drawing govern is **§5 (`:143`)** — "The vocabulary
      is closed. A control is one of these, or it is not a control", with no *tab*
-     in it, so the bible requires nothing about the axis — and **spec §13**
+     in it, so DESIGN.md requires nothing about the axis — and **spec §13**
      (`:451-454`), which names this very strip: "The mockup governs wherever the
      written rules are silent. Silence is not permission — it is the drawing's
      jurisdiction."
@@ -977,7 +977,7 @@ export const PARITY: readonly ParityRegion[] = [
      §3's modal scrim is `#00000073`, 45%, and a hex literal where §10 forbids one
      in a surface; both are vg-294. The expected value is the token Task 3
      declares — `--elev-scrim` — read from `:root` at run time, so the row follows
-     the token rather than a copy of the bible's number. Until that token exists
+     the token rather than a copy of DESIGN.md's number. Until that token exists
      the row reads "the product declares no `--elev-scrim`", which is the failure
      it is for. A *colour* cannot ride `lengthInPx` (it returns `null` for a
      colour) and the drawing draws no scrim at all, so this is the one row whose
@@ -1004,15 +1004,15 @@ export const PARITY: readonly ParityRegion[] = [
     mockupSelector: '[style*="width:150px"]',
     mockupProperty: "width",
     productSelector: ".editor-shell-settings-tabs",
-    bibleSection:
-      "§5 (`:143`) closes the vocabulary — no *tab* control is in it, so the bible requires nothing about the axis — and spec §13 (`:451-454`) makes the drawing its jurisdiction where the rules are silent, naming this strip at `:458-459`",
+    designLanguageSection:
+      "§5 (`:143`) closes the vocabulary — no *tab* control is in it, so DESIGN.md requires nothing about the axis — and spec §13 (`:451-454`) makes the drawing its jurisdiction where the rules are silent, naming this strip at `:458-459`",
     surface: "settings",
   },
   {
     region: "settings modal — lead type",
     mockupProperty: "font-size",
     productSelector: ".editor-shell-dialog-lead",
-    bibleSection: "§2 (`:51`) — a dialog title is `--text-lg` 15px (`vg-295`)",
+    designLanguageSection: "§2 (`:51`) — a dialog title is `--text-lg` 15px (`vg-295`)",
     scaleToken: "--text-lg",
     surface: "settings",
   },
@@ -1020,7 +1020,7 @@ export const PARITY: readonly ParityRegion[] = [
     region: "settings modal — scrim",
     mockupProperty: "background-color",
     productSelector: ".editor-shell-dialog-overlay",
-    bibleSection:
+    designLanguageSection:
       "§3 elevation 3 (`:105`) — the modal's scrim is `#00000073`; §10 (`:462`) forbids a hex literal in a surface (`vg-294`)",
     scaleToken: "--elev-scrim",
     comparator: "colour",
@@ -1033,7 +1033,7 @@ export const PARITY: readonly ParityRegion[] = [
     mockupProperty: "grid-template-columns",
     comparator: "count",
     productSelector: '[aria-labelledby="vigilia-settings-palette"]',
-    bibleSection:
+    designLanguageSection:
       "§5 rule 7 (`:188`) leaves the grid to the drawing, which draws three columns; no section names a column count",
     surface: "settings",
   },
@@ -1044,7 +1044,7 @@ export const PARITY: readonly ParityRegion[] = [
       '[style*="border:1px solid var(--edge);border-radius:8px;padding:8px;background:var(--panel2)"]',
     mockupProperty: "border-radius",
     productSelector: "[data-vigilia-palette-choice]",
-    bibleSection:
+    designLanguageSection:
       "§3 radius table (`:92`) — a card in a grid is `--radius-lg`; §5's choice row (`:155`) is the licence spec `:469-477` withdraws",
     surface: "settings",
   },
@@ -1061,7 +1061,7 @@ export const PARITY: readonly ParityRegion[] = [
       '[style*="flex:1;height:16px;border-radius:4px;background-color:#f5f1e8"]',
     mockupProperty: "height",
     productSelector: ".editor-shell-palette-swatch",
-    bibleSection:
+    designLanguageSection:
       "§7.8 (`:425`) — 'Palette choices retain visual swatches'; the swatch's form is the drawing's, and §5 (`:155`) names a swatch, never one",
     surface: "settings",
   },
@@ -1092,7 +1092,7 @@ export const PARITY: readonly ParityRegion[] = [
     mockupProperty: "background-color",
     productSelector:
       '.editor-shell-palette-swatch[data-shell-palette="editorial"]',
-    bibleSection:
+    designLanguageSection:
       "§4 (`:122`) — `--bg` is 'the window behind everything'; §7.8 (`:425`) names no role, so the drawing's bar is the palette's ground (`vg-321`)",
     surface: "settings",
     comparator: "colour",
@@ -1105,7 +1105,7 @@ export const PARITY: readonly ParityRegion[] = [
     mockupProperty: "background-color",
     productSelector:
       '.editor-shell-palette-swatch[data-shell-palette="graphite"]',
-    bibleSection:
+    designLanguageSection:
       "§4 (`:122`) — `--bg` is 'the window behind everything'; §7.8 (`:425`) names no role, so the drawing's bar is the palette's ground (`vg-321`)",
     surface: "settings",
     comparator: "colour",
@@ -1117,7 +1117,7 @@ export const PARITY: readonly ParityRegion[] = [
       '[style*="flex:1;height:16px;border-radius:4px;background-color:#e9cdb4"]',
     mockupProperty: "background-color",
     productSelector: '.editor-shell-palette-swatch[data-shell-palette="ember"]',
-    bibleSection:
+    designLanguageSection:
       "§4 (`:122`) — `--bg` is 'the window behind everything'; §7.8 (`:425`) names no role, so the drawing's bar is the palette's ground (`vg-321`)",
     surface: "settings",
     comparator: "colour",
@@ -1129,7 +1129,7 @@ export const PARITY: readonly ParityRegion[] = [
       '[style*="flex:1;height:16px;border-radius:4px;background-color:#cfe0bb"]',
     mockupProperty: "background-color",
     productSelector: '.editor-shell-palette-swatch[data-shell-palette="moss"]',
-    bibleSection:
+    designLanguageSection:
       "§4 (`:122`) — `--bg` is 'the window behind everything'; §7.8 (`:425`) names no role, so the drawing's bar is the palette's ground (`vg-321`)",
     surface: "settings",
     comparator: "colour",
@@ -1141,7 +1141,7 @@ export const PARITY: readonly ParityRegion[] = [
       '[style*="flex:1;height:16px;border-radius:4px;background-color:#dccdef"]',
     mockupProperty: "background-color",
     productSelector: '.editor-shell-palette-swatch[data-shell-palette="plum"]',
-    bibleSection:
+    designLanguageSection:
       "§4 (`:122`) — `--bg` is 'the window behind everything'; §7.8 (`:425`) names no role, so the drawing's bar is the palette's ground (`vg-321`)",
     surface: "settings",
     comparator: "colour",
@@ -1174,10 +1174,10 @@ export const PARITY: readonly ParityRegion[] = [
     mockupSelector: '[style*="flex:1;min-width:0;padding:14px 16px"]',
     mockupProperty: "padding",
     productSelector: ".editor-shell-dialog",
-    bibleSection: "§3 spacing (`design-language.md:79`)",
+    designLanguageSection: "§3 spacing (`DESIGN.md:79`)",
     surface: "settings",
     licensed:
-      '§3 (`design-language.md:79`): "| 20–24 | Between regions; dialog padding |" — the product renders `padding: 20px 24px` on `.editor-shell-dialog`, the value §3 requires for a dialog; the drawing draws no frame padding and insets its children (`current/settings.html:41` `padding:14px 16px`) instead.',
+      '§3 (`DESIGN.md:79`): "| 20–24 | Between regions; dialog padding |" — the product renders `padding: 20px 24px` on `.editor-shell-dialog`, the value §3 requires for a dialog; the drawing draws no frame padding and insets its children (`current/settings.html:41` `padding:14px 16px`) instead.',
   },
   /* ── The modal's two other panels (plan 8 Task 4) ───────────────────────────
      The census recorded six regions as `no-counterpart` because the current set
@@ -1223,8 +1223,8 @@ export const PARITY: readonly ParityRegion[] = [
       '[style*="display:flex;align-items:center;gap:16px;padding:4px 6px;border-radius:6px"]',
     mockupProperty: "border-radius",
     productSelector: ".editor-shell-keyboard [data-vigilia-shortcut-row]",
-    bibleSection:
-      "§3 radius table (`design-language.md:90-91`) — `--radius-md` 6px is 'Controls, menu rows, small tiles' and a binding row is a row; `--radius-sm` 4px is 'Swatches, inline chips, the slider thumb's container'",
+    designLanguageSection:
+      "§3 radius table (`DESIGN.md:90-91`) — `--radius-md` 6px is 'Controls, menu rows, small tiles' and a binding row is a row; `--radius-sm` 4px is 'Swatches, inline chips, the slider thumb's container'",
     surface: "settings-keyboard",
   },
   {
@@ -1234,7 +1234,7 @@ export const PARITY: readonly ParityRegion[] = [
       '[style*="border:1px solid var(--edge);border-radius:4px;padding:4px;font:400 11px/1.2 ui-monospace,Menlo,monospace;color:var(--muted)"]',
     mockupProperty: "border-radius",
     productSelector: ".editor-shell-keyboard kbd",
-    bibleSection:
+    designLanguageSection:
       "§2 (`:38`) — a chord mark is mono, so it is a value; §3 radius table (`:90`) — `--radius-sm` 4px is 'Swatches, inline chips'",
     surface: "settings-keyboard",
   },
@@ -1245,7 +1245,7 @@ export const PARITY: readonly ParityRegion[] = [
       '[style*="border:1px solid var(--edge);border-radius:4px;padding:4px;font:400 11px/1.2 ui-monospace,Menlo,monospace;color:var(--muted)"]',
     mockupProperty: "padding",
     productSelector: ".editor-shell-keyboard kbd",
-    bibleSection:
+    designLanguageSection:
       "§3 spacing (`:74`) — 4px is 'Inside a control (well padding, icon button)'",
     surface: "settings-keyboard",
   },
@@ -1256,7 +1256,7 @@ export const PARITY: readonly ParityRegion[] = [
       '[style*="flex:0 0 auto;border:1px solid var(--edge);border-radius:6px"]',
     mockupProperty: "border-radius",
     productSelector: '[data-vigilia-shortcut-reset="file.new"]',
-    bibleSection:
+    designLanguageSection:
       "§3 radius table (`:91`) — `--radius-md` 6px is 'Controls, menu rows, small tiles', and a button is a control; the dialog's own Close already takes it",
     surface: "settings-keyboard",
   },
@@ -1267,7 +1267,7 @@ export const PARITY: readonly ParityRegion[] = [
       '[style*="margin-left:auto;border:1px solid var(--edge);border-radius:6px"]',
     mockupProperty: "border-radius",
     productSelector: "[data-vigilia-shortcut-reset-all]",
-    bibleSection:
+    designLanguageSection:
       "§3 radius table (`:91`) — `--radius-md` 6px is 'Controls'; the same value the per-row action takes, one act being one control",
     surface: "settings-keyboard",
   },
@@ -1278,7 +1278,7 @@ export const PARITY: readonly ParityRegion[] = [
       '[style*="display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px"]',
     mockupProperty: "border-radius",
     productSelector: '[data-vigilia-shortcut-arm="file.new"]',
-    bibleSection:
+    designLanguageSection:
       "§5 (`:154`) — 'Icon button — A 26–30px square at `--radius-md`, glyph only'",
     surface: "settings-keyboard",
   },
@@ -1289,7 +1289,7 @@ export const PARITY: readonly ParityRegion[] = [
       '[style*="display:flex;align-items:baseline;justify-content:space-between;gap:16px;padding:4px 0"]',
     mockupProperty: "gap",
     productSelector: "[data-vigilia-about] dl > div",
-    bibleSection:
+    designLanguageSection:
       "§5 rule 2 (`:163-164`) — 'Read-only rows are label + mono value, baseline-aligned, right-aligned'",
     surface: "settings-about",
   },

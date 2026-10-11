@@ -13,7 +13,7 @@ import {
 /**
  * A 2–4 way exclusive choice where every option has to stay readable: a
  * `--panel-2` well holding the labels, the active one lifted to `--stage`
- * (bible §5).
+ * (DESIGN.md §5).
  *
  * The arrow keys are the primitive's roving focus rather than one Tab stop per
  * label, and the group carries the row's label as its accessible name — the

@@ -39,7 +39,7 @@ const SETTINGS_TABS: readonly SettingsTab[] = [
 ];
 
 /** Each tab's glyph, from the one icon family the shell already draws with
- *  (bible §6: stroke-based, `currentColor`, on a 24px grid). The drawing's
+ *  (DESIGN.md §6: stroke-based, `currentColor`, on a 24px grid). The drawing's
  *  navigation column carries a glyph per row (`current/settings.html:26-37`);
  *  its three are a palette, a keyboard and an info mark, all of which the
  *  installed set has, so no glyph is invented and §6 needs no addition. The
@@ -71,7 +71,7 @@ interface VersionFact {
  *  document's own `metadata.version` — the same fact the Document pane's
  *  `releaseVersion` row reads. A document that carries no release version (a new
  *  or unsaved theme, or one whose stored version is empty) contributes no row:
- *  Bible §9's missing reading is a gap stated by absence, never a placeholder
+ *  DESIGN.md §9's missing reading is a gap stated by absence, never a placeholder
  *  that could read as data. */
 export function versionFacts(
   releaseVersion: string | undefined,
@@ -88,7 +88,7 @@ export function versionFacts(
 /** §7's Appearance tab: the six shell palettes, and follow-the-system.
  *
  *  The six are **cards in one radio group** rather than a `Segmented`, which
- *  bible §5 sizes at 2–4 labels: six lifted segments is a control the bible
+ *  DESIGN.md §5 sizes at 2–4 labels: six lifted segments is a control DESIGN.md
  *  does not draw. The drawing gives the group §5 rule 7's grid
  *  (`current/settings.html:44-87`, `repeat(3,1fr)` of `--radius-lg` cards), so
  *  the columns are the drawing's; the group's own keyboard model still walks the
@@ -341,10 +341,10 @@ export function Settings(props: {
     >
       <h2 className="editor-shell-dialog-lead">{uiCopy.settings.title}</h2>
       {/* A **vertical** tablist: the drawing's navigation is a column beside the
-          panel, not a row of words above it. §5 (`design-language.md:143`)
+          panel, not a row of words above it. §5 (`DESIGN.md:143`)
           opens the control vocabulary — "The vocabulary is closed. A control is
-          one of these, or it is not a control." — and no *tab* is in it, so the
-          bible requires nothing about the axis; spec §13 (`:451-454`) then makes
+          one of these, or it is not a control." — and no *tab* is in it, so
+          DESIGN.md requires nothing about the axis; spec §13 (`:451-454`) then makes
           the drawing the authority: "The mockup governs wherever the written
           rules are silent. Silence is not permission — it is the drawing's
           jurisdiction." The primitive stays Base UI's (`0038`) and only its

@@ -16,7 +16,7 @@ import type { EditorShellBridge } from "./bridge.js";
 import { Glyph } from "./icons.js";
 
 /**
- * Bible §4: `--hot` marks destructive affordances, and delete is the only object
+ * DESIGN.md §4: `--hot` marks destructive affordances, and delete is the only object
  * action that is one. The registry owns the id; the dock owns how it draws it.
  */
 const DESTRUCTIVE_ACTIONS: ReadonlySet<ObjectActionId> = new Set(["delete"]);

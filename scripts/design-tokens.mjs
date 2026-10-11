@@ -16,11 +16,11 @@
  * constant says why the path does not simply join the list above.
  *
  * This is deliberately the *cheap* ratchet, and its second px tier is coarse in
- * a way that is documented rather than accidental: in a spacing property the
- * bible's §3 steps are enforced exactly, because the property is right there to
- * read, and everywhere else only the values the bible prints are allowed. The
+ * a way that is documented rather than accidental: in a spacing property
+ * DESIGN.md's §3 steps are enforced exactly, because the property is right there to
+ * read, and everywhere else only the values DESIGN.md prints are allowed. The
  * real enforcement is the browser assertion in Task 4 — every gated element's
- * computed spacing on the bible's scale — which is what catches a `26px` in a
+ * computed spacing on DESIGN.md's scale — which is what catches a `26px` in a
  * place this text scan cannot reason about.
  *
  * `node scripts/design-tokens.mjs --self-test` proves every rule still fires.
@@ -34,14 +34,14 @@ import { resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
 
-/** Bible §3's named steps: the only spacing values a surface may write. */
+/** DESIGN.md §3's named steps: the only spacing values a surface may write. */
 const SPACING_STEPS = new Set([4, 6, 8, 10, 12, 14, 16, 20, 24, 32]);
 /** Always allowed anywhere: `1px` is a hairline border, and `0` is no border at all. */
 const ALWAYS_PX = new Set([0, 1]);
 
 /**
- * A px here *is* a spacing decision, so it is held to §3's steps alone — the
- * bible's `26px` row rhythm is a density, not a gutter, and 26 is in no step.
+ * A px here *is* a spacing decision, so it is held to §3's steps alone —
+ * DESIGN.md's `26px` row rhythm is a density, not a gutter, and 26 is in no step.
  */
 const SPACING_PROPERTY =
   /^(?:padding|margin|inset|translate)(?:-|$)|^(?:gap|row-gap|column-gap|top|right|bottom|left)$/;
@@ -212,19 +212,19 @@ function position(text, index) {
 }
 
 /**
- * Violations in one file's source. `biblePx` is the tier-2 allowlist: px
- * lengths the bible fixes outside §3's spacing table, whatever the property —
+ * Violations in one file's source. `designLanguagePx` is the tier-2 allowlist: px
+ * lengths DESIGN.md fixes outside §3's spacing table, whatever the property —
  * the row rhythms, the rail and pane widths, the pill and toggle heights, the
  * slider's track and value well, the swatch, and §6's stroke widths among
  * them. It is the set of values that actually appear, not an enumeration of
- * every number the bible prints. What it deliberately does NOT cover is §2's
+ * every number DESIGN.md prints. What it deliberately does NOT cover is §2's
  * type sizes 13/15/19, because a value here is allowed *anywhere*, so adding
  * them would license `padding: 13px`. The steps and `0`/`1` are allowed
  * without it, so an empty allowlist narrows the rule rather than disabling it.
  */
-export function check(relPath, source, biblePx = []) {
+export function check(relPath, source, designLanguagePx = []) {
   const path = String(relPath ?? "");
-  const named = new Set([...biblePx].map(Number));
+  const named = new Set([...designLanguagePx].map(Number));
   const text = scannable(String(source ?? ""), path);
   const definitions = definitionSpans(text);
   const inDefinition = (index) => definitions.some(([from, to]) => index >= from && index < to);
@@ -290,8 +290,8 @@ export function check(relPath, source, biblePx = []) {
  * `exempt` is a set of `text`s only — the reasons live in `CEILINGS`, beside the
  * `max` they belong to, rather than travelling through here unreached.
  */
-export function ceilingExcess(relPath, source, biblePx = [], ceiling = {}) {
-  const violations = check(relPath, source, biblePx);
+export function ceilingExcess(relPath, source, designLanguagePx = [], ceiling = {}) {
+  const violations = check(relPath, source, designLanguagePx);
   const exempt = new Set(
     (Array.isArray(ceiling.exempt) ? ceiling.exempt : []).map((entry) => String(entry.text)),
   );
@@ -318,12 +318,12 @@ function selfTest() {
     // Tier 1: a spacing property is held to §3's steps, and to nothing else.
     ["an off-scale px spacing is a violation", "a.css", ".x { padding: 7px; }", 1],
     ["an on-scale px spacing is not", "a.css", ".x { padding: 12px; }", 0],
-    ["a bible row rhythm is not a spacing step", "a.css", ".x { margin: 26px; }", 1, { biblePx: [26] }],
+    ["a DESIGN.md row rhythm is not a spacing step", "a.css", ".x { margin: 26px; }", 1, { designLanguagePx: [26] }],
     ["a hairline border is not", "a.css", ".x { border: 1px solid var(--edge); }", 0],
     ["a zero and a percentage are not", "a.css", ".x { margin: 0; opacity: 100%; }", 0],
 
-    // Tier 2: outside a spacing property, every value the bible prints is allowed.
-    ["a bible value outside a spacing property is not", "a.css", ".x { width: 26px; }", 0, { biblePx: [26] }],
+    // Tier 2: outside a spacing property, every value DESIGN.md prints is allowed.
+    ["a DESIGN.md value outside a spacing property is not", "a.css", ".x { width: 26px; }", 0, { designLanguagePx: [26] }],
     ["the same value is a violation with no allowlist", "a.css", ".x { width: 26px; }", 1],
     ["a rem length is not checked", "a.css", ".x { padding: 1rem; }", 0],
     ["calc() is not checked", "a.css", ".x { width: calc(100% - 7px); }", 0],
@@ -361,14 +361,14 @@ function selfTest() {
     ["an id selector is not a hex colour", "a.css", "#app { height: 100%; }", 0],
     ["a tsx literal is checked", "a.tsx", 'const s = { padding: "7px" };', 1],
     // A Tailwind spacing utility in a `.tsx` is tier 1, even where the value is
-    // a bible value tier 2 would admit — `26` is allowed here only with the
+    // a DESIGN.md value tier 2 would admit — `26` is allowed here only with the
     // allowlist, so this case fails if the utility rule is removed.
     [
-      "a tsx spacing utility is held to §3 even for a bible value",
+      "a tsx spacing utility is held to §3 even for a DESIGN.md value",
       "a.tsx",
       'const c = "p-[26px]";',
       1,
-      { biblePx: [26] },
+      { designLanguagePx: [26] },
     ],
     ["a tsx gap utility with an off-scale value is a violation", "a.tsx", 'const c = "gap-[7px]";', 1],
     ["a tsx spacing utility on a step is not", "a.tsx", 'const c = "px-[12px]";', 0],
@@ -379,11 +379,11 @@ function selfTest() {
       "a.tsx",
       'const c = "-mt-[26px]";',
       1,
-      { biblePx: [26] },
+      { designLanguagePx: [26] },
     ],
     ["a negative tsx spacing utility on a step is not", "a.tsx", 'const c = "-mt-[12px]";', 0],
     // Scoping: a non-spacing utility keeps the tier-2 allowlist.
-    ["a tsx non-spacing utility keeps the bible allowlist", "a.tsx", 'const c = "h-[26px]";', 0, { biblePx: [26] }],
+    ["a tsx non-spacing utility keeps the DESIGN.md allowlist", "a.tsx", 'const c = "h-[26px]";', 0, { designLanguagePx: [26] }],
     ["a tsx comment is not", "a.tsx", "// 7px was the bug\nconst s = {};", 0],
     ["a url in a tsx file is not a comment", "a.tsx", 'const u = "https://x"; const s = "7px";', 1],
     // A masked comment must not move the line it reports: it did, and a
@@ -404,7 +404,7 @@ function selfTest() {
   };
 
   for (const [name, path, source, expected, options = {}] of cases) {
-    const found = check(path, source, options.biblePx ?? []);
+    const found = check(path, source, options.designLanguagePx ?? []);
     report(
       name,
       found.length === expected && (options.line === undefined || found[0]?.line === options.line),
@@ -544,13 +544,13 @@ if (isEntryPoint) {
   // A bare array is the gated list alone, which is what the plan's own
   // empty-list proof writes into a temp file.
   const gated = Array.isArray(config) ? config : config.gated;
-  const biblePx = config.biblePx ?? [];
+  const designLanguagePx = config.designLanguagePx ?? [];
   if (!Array.isArray(gated)) {
     console.error(`design-tokens: ${gatedPath} must hold an array, or an object with a "gated" array`);
     process.exit(1);
   }
-  if (!Array.isArray(biblePx) || biblePx.some((value) => !Number.isFinite(value))) {
-    console.error(`design-tokens: ${gatedPath}'s "biblePx" must be an array of numbers`);
+  if (!Array.isArray(designLanguagePx) || designLanguagePx.some((value) => !Number.isFinite(value))) {
+    console.error(`design-tokens: ${gatedPath}'s "designLanguagePx" must be an array of numbers`);
     process.exit(1);
   }
   if (gated.length === 0) {
@@ -570,7 +570,7 @@ if (isEntryPoint) {
       violations += 1;
       continue;
     }
-    for (const violation of check(relPath, source, biblePx)) {
+    for (const violation of check(relPath, source, designLanguagePx)) {
       console.error(
         `${relPath}:${violation.line}:${violation.column} ${violation.rule} ${violation.text}`,
       );
@@ -611,7 +611,7 @@ if (isEntryPoint) {
       breached += 1;
       continue;
     }
-    const { counted, dead, over } = ceilingExcess(relPath, source, biblePx, ceiling);
+    const { counted, dead, over } = ceilingExcess(relPath, source, designLanguagePx, ceiling);
     for (const text of dead) {
       console.error(
         `design-tokens: ${relPath}'s ceiling exempts "${text}", which is not a violation any more — drop the exemption`,

@@ -4,7 +4,7 @@
  * The Tokens pane's preset list.
  *
  * **A resolution is not a control.** The line beside a preset is its label and a
- * mono value with no well — a border means editable (bible §5.1) — and the
+ * mono value with no well — a border means editable (DESIGN.md §5.1) — and the
  * editable copy of the same numbers is a bordered field inches below it. The
  * case below reads the resolution's own row, where a well would land, the way
  * the selection inspector's `index.dom.test.ts` reads its resolution row.
@@ -309,7 +309,7 @@ function binding(host: HTMLElement): HTMLElement {
 }
 
 it("shows each preset's resolved family, weight and size as a resolution, not as a field", async () => {
-  // Bible §5.1–§5.3: a border means editable, and the two treatments sit inches
+  // DESIGN.md §5.1–§5.3: a border means editable, and the two treatments sit inches
   // apart in this pane. The expected line is `resolveTypePreset`'s own answer,
   // read from the same record the panel is given — never a copy of its rule.
   const { host } = await mount(withWeight);

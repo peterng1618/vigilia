@@ -196,7 +196,7 @@ function invalidLine(host: HTMLElement): Element | null {
 /**
  * The refusal words a row renders for a control, read from the element the
  * control's own `aria-describedby` names — the same element a screen reader
- * announces, and a visible `<p>` rather than a tooltip (bible §5.3).
+ * announces, and a visible `<p>` rather than a tooltip (DESIGN.md §5.3).
  */
 function reasonText(host: HTMLElement, control: HTMLElement): string {
   const [id] = (control.getAttribute("aria-describedby") ?? "").split(/\s+/);
@@ -283,7 +283,7 @@ describe("the glass control in the selection inspector", () => {
     await setGlass(host, true);
 
     const blur = blurField(host);
-    // The blur is a bounded number, so it is a slider (bible §5) — the same
+    // The blur is a bounded number, so it is a slider (DESIGN.md §5) — the same
     // affordance the pre-plan field drew.
     expect(blur.type).toBe("range");
     for (const selector of [
@@ -342,7 +342,7 @@ describe("the glass control in the selection inspector", () => {
     const { host } = setup(rect);
     const blur = blurField(host);
 
-    // A bounded number is the bible's slider (§5), and the pre-plan field drew
+    // A bounded number is DESIGN.md's slider (§5), and the pre-plan field drew
     // one because both bounds were present. The maximum is the owner's constant,
     // asked of `renderer-core` rather than restated, and the well reads the
     // value back.
@@ -487,7 +487,7 @@ describe("the glass control in the selection inspector", () => {
       expect(control?.getAttribute("aria-disabled"), kind).toBe("true");
 
       // Refused, not omitted, and the reason is **words in the row** rather
-      // than a tooltip — bible §5.3, and the control's own `aria-describedby`
+      // than a tooltip — DESIGN.md §5.3, and the control's own `aria-describedby`
       // names them, so a keyboard user who never hovers still reads why. The
       // name the author selected is in it: "glass applies to panels" tells an
       // author nothing they can act on.

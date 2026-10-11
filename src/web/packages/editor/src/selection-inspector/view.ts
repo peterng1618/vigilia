@@ -134,7 +134,7 @@ export type FieldView =
       readonly halves: readonly PairHalfView[];
     })
   /**
-   * A line of prose, not a control: bible §5.1's "a border means editable", so a
+   * A line of prose, not a control: DESIGN.md §5.1's "a border means editable", so a
    * note carries no well. The size-disagreement line is the one it exists for.
    */
   | {
@@ -169,7 +169,7 @@ export type FieldView =
       readonly options: readonly FieldOption[];
     })
   /**
-   * A paint reference, as bible §5's *swatch well*: the list is still the only
+   * A paint reference, as DESIGN.md §5's *swatch well*: the list is still the only
    * way to change the value and the swatch is a picture of it, resolved by the
    * caller so nothing here is a second resolver. `colour` is that picture — the
    * selected token's colour, or `transparent` when the value is empty or no

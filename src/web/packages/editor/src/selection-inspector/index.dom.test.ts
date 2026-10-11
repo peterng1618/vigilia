@@ -345,7 +345,7 @@ describe("the selection inspector", () => {
       "[data-vigilia-opacity]",
     )!;
 
-    // A bounded number is the bible's slider (§5) — Fabric's own 0–1, projected
+    // A bounded number is DESIGN.md's slider (§5) — Fabric's own 0–1, projected
     // here as 0–100 — so the control is a track and the well reads the
     // percentage. `inspector-controls.html` names opacity as its example, and
     // the glass blur drew the same conclusion one directory away.
@@ -509,13 +509,13 @@ describe("the selection inspector", () => {
     expect(value?.className).toContain("font-mono");
     expect(value?.textContent).toContain("Ink");
     // The proof is scoped from the row, where a well would land: a border means
-    // editable (bible §5.1), and the row's own class list counts too.
+    // editable (DESIGN.md §5.1), and the row's own class list counts too.
     expect(row?.classList.contains("border")).toBe(false);
     expect(row?.querySelector('[class~="border"]')).toBeNull();
     expect(row?.querySelector("input, select, button, textarea")).toBeNull();
   });
 
-  it("baseline-aligns a read-only row, the one alignment the bible names", () => {
+  it("baseline-aligns a read-only row, the one alignment DESIGN.md names", () => {
     const { host } = setup(rect);
     const row =
       host.querySelector('[data-vigilia-resolution="Paint"]')?.parentElement ??
@@ -950,7 +950,7 @@ describe("the column's sections", () => {
     // rebuilding it: focus is kept by the element surviving, the same way the
     // name field keeps its caret. The imperative body deliberately did not
     // restore focus here, because doing so re-opened the glass control's reason
-    // popup — but the reason is words in the row now (bible §5.3), owned by plan
+    // popup — but the reason is words in the row now (DESIGN.md §5.3), owned by plan
     // 1's `ControlRow`, so there is no popup left to re-open.
     const after = host.querySelector<HTMLElement>(
       "[data-vigilia-glass-enabled]",

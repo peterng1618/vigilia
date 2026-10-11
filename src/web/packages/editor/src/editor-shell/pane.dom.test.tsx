@@ -69,7 +69,7 @@ function render(gate: EditorShellBridge): {
   return { host, root };
 }
 
-it("names the section and draws the title bar the bible's panes wear", () => {
+it("names the section and draws the title bar DESIGN.md's panes wear", () => {
   const { host, root } = render(bridge(object()));
 
   // The DOM name is the browsable contract the browser specs share, so the

@@ -187,10 +187,10 @@ describe("shell token stylesheet", () => {
 
   /** The values themselves, asserted rather than merely present.
    *
-   *  `docs/design/design-language.md` §2–§3 is normative for these, and these
+   *  `DESIGN.md` §2–§3 is normative for these, and these
    *  are the values it names. Asserting only that a token exists would let a
    *  change to `text-sm` land as a silent shift — which is how `--radius-md` sat
-   *  at 8px against the bible's 6px with nothing to catch it; asserting the
+   *  at 8px against DESIGN.md's 6px with nothing to catch it; asserting the
    *  value makes it an edit somebody has to make here too. The resolved result
    *  is measured in a real browser by `tests/e2e/shell-appearance.spec.ts`;
    *  jsdom resolves nothing. */
@@ -215,7 +215,7 @@ describe("shell token stylesheet", () => {
       "--text-xs": "11px",
       "--text-sm": "12px",
       "--text-md": "13px",
-      // §2's 10, 15 and 19 (`design-language.md:47`, `:51`, `:52`), pinned for
+      // §2's 10, 15 and 19 (`DESIGN.md:47`, `:51`, `:52`), pinned for
       // the reason the scrim below gives: the `settings modal — lead type` parity
       // row's expected value *is* `--text-lg`, so that row is green for whatever
       // the token holds — a dialog title at `16px` violates §2 `:51` with every
@@ -235,7 +235,7 @@ describe("shell token stylesheet", () => {
     // Tailwind writes each `--text-*` companion for its own size — `--text-sm`
     // ships `calc(1.25 / .875)`, computed for 14px — so a size changed without
     // its companion inherits a ratio belonging to a size the token no longer
-    // has. These are bible §2's ratios; every size states its own.
+    // has. These are DESIGN.md §2's ratios; every size states its own.
     for (const [size, lineHeight] of [
       ["2xs", "1.2"],
       ["xs", "1.3"],
@@ -304,7 +304,7 @@ describe("shell token stylesheet", () => {
     }
   });
 
-  /** Bible §4's role vocabulary is what a *surface* writes, and today only the
+  /** DESIGN.md §4's role vocabulary is what a *surface* writes, and today only the
    *  `--shell-*` layer exists. An alias is substituted where it is declared, so
    *  a role declared once at `:root` would resolve the root's palette and pin a
    *  subtree that re-declares `--shell-*` — the swatch chip — to it. Every

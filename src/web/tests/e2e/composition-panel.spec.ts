@@ -163,7 +163,7 @@ test("every row carries a role and a mark, and the role adds no height", async (
   expect(heights[0], "the row's height, unchanged by the role").toBe(26);
 });
 
-test("the shipped column is the bible's, and its clipping is measured against the one it supersedes", async ({
+test("the shipped column is DESIGN.md's, and its clipping is measured against the one it supersedes", async ({
   page,
 }, testInfo) => {
   test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
@@ -985,7 +985,7 @@ test("a group entered inside a large document", async ({ page }, testInfo) => {
       // layer's name does — so it can never end up the wider of the two.
       boundWidth: Math.round(bound.getBoundingClientRect().width),
       nameWidth: Math.round(name.getBoundingClientRect().width),
-      // **Recorded, not asserted.** At the bible's 246px a row drawing four
+      // **Recorded, not asserted.** At DESIGN.md's 246px a row drawing four
       // 26px controls is over budget: 122px of reservation on a 205px row, so
       // the bound's own box overflows the line and the key column is clipped,
       // the name with it. These four figures are the only instrument the row's

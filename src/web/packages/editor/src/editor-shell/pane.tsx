@@ -2,7 +2,7 @@ import type * as React from "react";
 import { Glyph, type LucideIcon } from "./icons.js";
 
 /**
- * One pane's chrome, to bible §7.3: a title bar (glyph, title, then a count or
+ * One pane's chrome, to DESIGN.md §7.3: a title bar (glyph, title, then a count or
  * a single pane-level action), a body, and an optional footer toolbar.
  *
  * `id` is the pane's DOM name, and it is required: the pane is the one owner of

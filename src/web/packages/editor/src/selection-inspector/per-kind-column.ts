@@ -335,7 +335,7 @@ function rotationField(
  * object's own edge is a different number, the author is told which is which
  * rather than left to compare a panel against a canvas.
  *
- * A note, not a control: it carries no well, because bible §5.1's border means
+ * A note, not a control: it carries no well, because DESIGN.md §5.1's border means
  * editable and this line is not.
  */
 function sizeDisagreement(
@@ -679,7 +679,7 @@ export function perKindColumn(
       title: titleOf(id),
       // Spends is the one question the author cannot answer by an edit — every
       // value in it is edited where it is owned, not here — so its header is
-      // the one that says so before the section is opened (bible §5 rule 1).
+      // the one that says so before the section is opened (DESIGN.md §5 rule 1).
       readOnly: id === "spends",
       defaultOpen: defaultOpenOf(id),
       // One number over one section, counted from the same parts the section is

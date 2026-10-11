@@ -97,7 +97,7 @@ async function sectionIds(page: Page): Promise<string[]> {
 
 async function isOpen(page: Page, id: string): Promise<boolean> {
   // The section is a disclosure whose header is a button carrying
-  // `aria-expanded` (bible §5), not a native `<details>` with an `.open`.
+  // `aria-expanded` (DESIGN.md §5), not a native `<details>` with an `.open`.
   return sectionExpanded(page, id);
 }
 
@@ -121,7 +121,7 @@ async function controlCount(
  * Whether the subject leads the column.
  *
  * The column's host mounts the subject in its first child and the sections in
- * the sibling after it (bible §7.4: "The column opens with the subject … not a
+ * the sibling after it (DESIGN.md §7.4: "The column opens with the subject … not a
  * chrome label"), so "the subject leads" is a document-order fact rather than a
  * presentation class: the subject's host carries copy and the first section
  * follows it. A projection that rendered the sections first, or no subject at
@@ -732,7 +732,7 @@ test.describe("the per-kind inspector column", () => {
     await page.locator('[data-vigilia-layer="group-cpu-card"]').click();
 
     // The picture is the rebuilt column, so the column is asserted first. The
-    // subject leads, the five questions render with Position closed (bible
+    // subject leads, the five questions render with Position closed (DESIGN.md
     // §7.4: geometry is collapsed by default), and Spends is read-only — its
     // rows carry a value and nothing to type into. A projection that returned
     // no sections would otherwise photograph an empty column and pass.

@@ -46,8 +46,8 @@ function optionRuns(options: readonly ControlOption[]): {
 /**
  * A value from a closed list, in a well with a chevron.
  *
- * Base UI's Select is the keyboard model and the popup; what this adds is the
- * bible's treatment and its refusal rule. A refused select uses the primitive's
+ * Base UI's Select is the keyboard model and the popup; what this adds is
+ * DESIGN.md's treatment and its refusal rule. A refused select uses the primitive's
  * `readOnly` rather than `disabled`: §5.3 wants the row present, the reason
  * readable and the tab order unchanged, and browsing a list you cannot choose
  * from is exactly what `readOnly` means here. `aria-disabled` is announced as

@@ -812,7 +812,7 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
             {/* The Add pane's body — the insert list and, at its foot, the
                 declared-asset library — is one host and one React tree. `§5.2`
                 puts the file path in Add, and a fourth slot for it would be a
-                slot the bible does not name. */}
+                slot DESIGN.md does not name. */}
             <Pane
               id="add"
               title={uiCopy.rail.slots.add}

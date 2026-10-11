@@ -44,13 +44,13 @@ body,
   --shell-primary-text: #f5f1e8;
   --shell-display: ui-serif, Georgia, "Times New Roman", serif;
   --shell-flat: 1;
-  /* Bible §4's role vocabulary, aliased per palette and never once at `:root`:
+  /* DESIGN.md §4's role vocabulary, aliased per palette and never once at `:root`:
      an alias is substituted where it is declared, so a root-only declaration
      would pin a subtree that re-declares `--shell-*` — the swatch chip — to
      the live palette. Nothing is renamed and no `--shell-*` is removed; this
      block's thirteen lines are repeated in each palette below for that reason.
      All thirteen of §4's roles are declared though three of them have no
-     consumer yet, on the user's instruction: a bible-named token the code
+     consumer yet, on the user's instruction: a DESIGN.md-named token the code
      lacks gets declared rather than worked around, which reverses the earlier
      "nothing declared for nothing" ruling recorded here.
      `--bg` and `--stage` are `background` values and not `color`s: light makes
@@ -305,7 +305,7 @@ body,
   --edge-2: color-mix(in srgb, var(--edge) 55%, transparent);
 }
 
-/* The scale, name for name from `docs/design/design-language.md` §2–§4, which
+/* The scale, name for name from `DESIGN.md` §2–§4, which
    is normative: a surface picks a step from here or it is off-scale, and
    `scripts/design-tokens.mjs` is what refuses the literal instead.
 
@@ -362,7 +362,7 @@ body,
   --elev-2: 0 18px 44px #00000099;
   --elev-3: 0 24px 60px #000000b3;
   /* §3's elevation 3 carries a scrim as well as a shadow
-     (`design-language.md:105`), and this is it. A token rather than a §4 role
+     (`DESIGN.md:105`), and this is it. A token rather than a §4 role
      because §4 names no scrim role, and a token rather than the literal the
      overlay wrote because §10 (`:462`) forbids a hex value in a surface. */
   --elev-scrim: #00000073;
@@ -387,7 +387,7 @@ body,
   --color-shell-danger: var(--shell-danger);
   --color-shell-primary-bg: var(--shell-primary-bg);
   --color-shell-primary-text: var(--shell-primary-text);
-  /* Bible §4's roles, so a React surface writes `bg-panel-2`, `text-muted` or
+  /* DESIGN.md §4's roles, so a React surface writes `bg-panel-2`, `text-muted` or
      `border-edge` and the utility carries the palette in force. `--color-bg` and
      `--color-stage` are omitted on purpose, and for the same reason: both alias
      `--shell-backdrop`, which light makes a gradient stack, and a colour utility
@@ -808,7 +808,7 @@ body,
 .editor-shell-body {
   display: grid;
   grid-template-areas: "rail panel stage inspector";
-  /* The layer panel is the bible's 246px (§7.3, "width 246px by default"). The
+  /* The layer panel is DESIGN.md's 246px (§7.3, "width 246px by default"). The
      360px this column carried before was plan 2's own measurement, taken when a
      row carried four things it had not: a 40px kind specimen, the name, and two
      columns naming it — what it *is* (`.vigilia-layer-role`) and the key it
@@ -843,14 +843,14 @@ body,
   grid-template-areas: "rail stage inspector";
   grid-template-columns: 46px minmax(0, 1fr) 276px;
 }
-/* The rail: a 46px column of glyph slots, one per pane (bible §7.2). It draws
+/* The rail: a 46px column of glyph slots, one per pane (DESIGN.md §7.2). It draws
    no pane content and decides nothing — the shell turns a press into open,
    swap or collapse. It owns the rail|pane hairline, carried by the §3
    elevation-0 block that selects the three body regions.
 
    The 1px `padding-left` is the arithmetic of that hairline, not a second
    boundary. §7.2 fixes the strip at 46px and the hairline is drawn *inside* it,
-   so the rail the bible describes keeps 45px of content and the other 1px *is*
+   so the rail DESIGN.md describes keeps 45px of content and the other 1px *is*
    the boundary. A one-sided border with no inset would move the centred 34px
    slots half a pixel left of the box's centre, and the selected slot's accent
    bar — hung in the gutter, flush with the rail's inner edge — would land half a
@@ -863,7 +863,7 @@ body,
    but with no left inset its 34px slots sat at 5.5…39.5 and its accent bar at
    43.5…45.5, half a pixel short of the strip's inner edge. The drawing now
    carries the same 1px left inset, so its slots reach 6…40 as §7.2's do. The
-   product's 46px is the bible's. */
+   product's 46px is DESIGN.md's. */
 .editor-shell-rail {
   grid-area: rail;
   display: flex;
@@ -883,7 +883,7 @@ body,
   border-radius: 8px;
   background: transparent;
   /* Closed slots are `--faint`; the selected one lifts to `--accent` with a
-     wash and a 2px bar on the rail's inner edge (bible §7.2). */
+     wash and a 2px bar on the rail's inner edge (DESIGN.md §7.2). */
   color: var(--faint);
   cursor: pointer;
 }
@@ -911,7 +911,7 @@ body,
   border-radius: 2px;
   background: var(--accent);
 }
-/* The settings gear, pinned to the foot (bible §7.2). `margin-top: auto` is the
+/* The settings gear, pinned to the foot (DESIGN.md §7.2). `margin-top: auto` is the
    whole of the pin: it takes the slack between the four slots and the gear, so
    the gear sits on the rail's bottom edge without a spacer element. It is
    `--muted` rather than a closed slot's `--faint`, because it is a real control
@@ -947,7 +947,7 @@ body,
    the **only** thing this rule may say about an inspector button. The rest of
    what it used to say — a transparent border and background, a 7px radius, a
    `--shell-text` colour — is a *treatment* of a control, and since the React
-   vocabulary moved into this column the control set owns it (bible §5: the well
+   vocabulary moved into this column the control set owns it (DESIGN.md §5: the well
    is `--panel-2` inside a 1px `--edge`). Unlayered, the old rule beat the
    utilities and repainted a well in the shell's own colours, which is the second
    owner `vg-298` records; the dock still needs its own. */
@@ -1021,7 +1021,7 @@ body,
   text-transform: uppercase;
   letter-spacing: 0.12em;
 }
-/* The Add pane's insert surface (bible §5.2). The group is an eyebrow over a
+/* The Add pane's insert surface (DESIGN.md §5.2). The group is an eyebrow over a
    grid, not a box: the panel-wide `fieldset` above draws a border and a legend
    padding, and both are taken back here rather than left to be out-specified
    per tile. The `fieldset` stays, because a group is what tells the shape Line
@@ -1170,7 +1170,7 @@ body,
    border inside a well that already draws one, gave the input a 30px
    `min-height` inside a 26px row and a 4px right margin that pulled a select's
    well 4px off the column the drawing draws. The React column owns its own
-   treatment now (bible §5 — the well *is* the box), and what is left here is the
+   treatment now (DESIGN.md §5 — the well *is* the box), and what is left here is the
    handful of buttons the inspector still renders as plain DOM: the runs'
    add/remove, the chart's remove-series, the crop row and the type-preset
    reveal. Add a hook here rather than widening the selector back to the
@@ -1295,7 +1295,7 @@ body,
   inset: 0;
   z-index: 70;
   /* §3's modal scrim, through the token rather than the `#0009` literal that
-     stood here: fifteen points darker than the bible's value, and a hex value in
+     stood here: fifteen points darker than DESIGN.md's value, and a hex value in
      a surface, which §10 forbids. Both dialogs render this one rule. */
   background: var(--elev-scrim);
 }
@@ -1330,7 +1330,7 @@ body,
    table, the action on the left and its chord pushed to the right edge as the
    menu rows already read.
 
-   **The lead is the dialog's visible name, and §2 (`design-language.md:51`)
+   **The lead is the dialog's visible name, and §2 (`DESIGN.md:51`)
    gives that `--text-lg` (15px): "Dialog titles".** It is one rule for one role
    across seven sites: two `<h2>`s (`settings.tsx`, `shortcut-reference.tsx`) and
    five `<p>`s — the theme library's chooser lead and its conflict lead
@@ -1352,7 +1352,7 @@ body,
   color: var(--shell-text);
 }
 /* A dialog's announced status, on §2's smallest reading step
-   (`design-language.md:48`: `--text-xs` 11px, "Panel rows, hints, status bar"),
+   (`DESIGN.md:48`: `--text-xs` 11px, "Panel rows, hints, status bar"),
    muted so it reads as an aside beside the dialog's name rather than as a
    second one. The node is present while empty so a screen reader hears it fill
    (the theme library mounts it whether or not it says anything). */
@@ -1389,7 +1389,7 @@ body,
 }
 .editor-shell-dialog kbd {
   font-family: ui-monospace, monospace;
-  /* §2 (`design-language.md:48`) — `--text-xs` 11px, the reading a hint or a
+  /* §2 (`DESIGN.md:48`) — `--text-xs` 11px, the reading a hint or a
      panel row has. A chord mark is mono by §2 (`:38`) and this size is the one
      every other chord mark in the shell already takes
      (`.editor-shell-menu-key`, `.editor-shell-primary-key`). */
@@ -1422,7 +1422,7 @@ body,
    on its leading edge; the horizontal word strip this replaces is a control the
    drawing does not draw.
 
-   **The axis is the drawing's because the bible is silent about it, and §13
+   **The axis is the drawing's because DESIGN.md is silent about it, and §13
    makes that the drawing's jurisdiction.** §5 `:143` opens the vocabulary with
    "The vocabulary is closed. A control is one of these, or it is not a control."
    and no *tab* control is in it, so no rule requires the horizontal form; §7
@@ -1549,7 +1549,7 @@ body,
    **Scoped to this panel, not on the shared `.editor-shell-dialog kbd`.** The
    `?` sheet renders that rule too and no drawing in `current/` draws the sheet,
    so the sheet's bare mark keeps Task 3's reading rather than being moved by a
-   surface nothing governs. §2 (`design-language.md:38`) — "Values are mono …
+   surface nothing governs. §2 (`DESIGN.md:38`) — "Values are mono …
    chord marks" — is the predating rule that a chord is a value; the chip is the
    drawing's, and the class is §5 (`:154`)'s icon button beside it, not this.
 
@@ -1570,7 +1570,7 @@ body,
   align-items: center;
   flex-wrap: wrap;
   padding: var(--space-4) var(--space-6);
-  /* §3 radius table (`design-language.md:90-91`) — `--radius-sm` 4px is
+  /* §3 radius table (`DESIGN.md:90-91`) — `--radius-sm` 4px is
      "Swatches, inline chips, the slider thumb's container" and `--radius-md` 6px
      is "Controls, menu rows, small tiles". **A binding row is a row**, so it
      takes `--radius-md`, the value the drawing gives it
@@ -1591,7 +1591,7 @@ body,
 .editor-shell-keyboard-action {
   padding: var(--space-4) var(--space-8);
   border: 1px solid var(--shell-edge);
-  /* §3 radius table (`design-language.md:91`) — `--radius-md` 6px is "Controls",
+  /* §3 radius table (`DESIGN.md:91`) — `--radius-md` 6px is "Controls",
      and a button is a control; the drawing draws both return-to-default actions
      at 6px (`current/settings-keyboard.html`), one act being one control. */
   border-radius: var(--radius-md);
@@ -1823,12 +1823,12 @@ body,
   background: var(--shell-accent);
   pointer-events: none;
 }
-/* Every pane's chrome (bible §7.3): a title bar, a body and an optional footer
+/* Every pane's chrome (DESIGN.md §7.3): a title bar, a body and an optional footer
    toolbar. The section is the pane itself, so `data-vigilia-panel` names it.
 
    The pane's own name overrides the panel-wide `h2` rule above it. That rule is
    for a *section* heading inside a pane — uppercase, display serif, a hairline
-   under it — and a pane's name is neither: bible §2 reserves uppercase for
+   under it — and a pane's name is neither: DESIGN.md §2 reserves uppercase for
    section eyebrows and gives a panel title `--text-md` in the UI sans. The
    selector is long because it has to out-rank
    `[data-shell-palette="editorial"] .editor-shell-panel h2`. */
@@ -1909,7 +1909,7 @@ body,
    name starts on the same left edge — which is what makes a column of them
    scannable at all.
 
-   28px, re-cut for the bible's 246px pane (§7.3). The 40px this column carried
+   28px, re-cut for DESIGN.md's 246px pane (§7.3). The 40px this column carried
    was the budget a 360px pane allowed, and it stopped fitting when the pane
    narrowed: measured on canvas at 1600×900 with every group open, the row
    `group-trends-card` ran its role `Performance trends` 11px past its own right
@@ -2312,7 +2312,7 @@ body,
   font-size: var(--text-sm);
   text-align: center;
 }
-/* The cluster's three camera controls: −, + and fit. Square at the bible's 26px
+/* The cluster's three camera controls: −, + and fit. Square at DESIGN.md's 26px
    icon button, transparent inside the cluster's own glass, and §5 rule 6's
    glyph-only hover — a resting 1px transparent border raised to `--muted`, so
    the control acquires its edge on hover and "nothing moves" holds (the

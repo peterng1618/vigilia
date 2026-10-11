@@ -46,7 +46,7 @@ function createStore(): InspectorStore {
  * The subject block and the empty state — the two things the column says before
  * it says anything about fields. The name leads at `--text-md`; the line under it
  * names the kind at `--text-xs` in `--muted`, in a block closed by a hairline
- * edge rather than a chrome label (bible §7.4).
+ * edge rather than a chrome label (DESIGN.md §7.4).
  */
 function Inspector({
   store,

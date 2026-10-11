@@ -19,7 +19,7 @@ import { InspectorSection } from "./inspector-section.js";
 /**
  * The shared rules of the one control set — the two that are defects rather
  * than style (a control with no programmatic name, a refusal that omits the
- * row), plus the editing and recovery contract bible §5 makes normative.
+ * row), plus the editing and recovery contract DESIGN.md §5 makes normative.
  *
  * The styles are not asserted here: jsdom resolves no custom properties, so a
  * computed-style assertion would pass whatever the cascade does. The rendered
@@ -810,7 +810,7 @@ it("names a section with data-vigilia-section from its own id", async () => {
 });
 
 it("raises the well's edge on hover, except when the control is blocked", () => {
-  // Bible §5 rule 6: hover raises the resting `--edge` to `--muted`. jsdom
+  // DESIGN.md §5 rule 6: hover raises the resting `--edge` to `--muted`. jsdom
   // resolves no custom property, so the pin is the class the cascade is built
   // from — it fails if the hover rule is removed.
   expect(wellClasses("panel")).toContain("hover:border-muted");

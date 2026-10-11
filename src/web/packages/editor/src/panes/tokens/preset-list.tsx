@@ -18,7 +18,7 @@ import { uiCopy } from "../../ui-copy.js";
  * chooser that names it, a new-preset row, and the chosen preset's own fields.
  *
  * **A resolution is not a control.** The line beside a preset is its label and a
- * mono value with no well, because a border means editable (bible §5.1) and the
+ * mono value with no well, because a border means editable (DESIGN.md §5.1) and the
  * editable copy of the same numbers sits inches below it. `resolveTypePreset` is
  * the one owner of what a preset resolves to, so this file reads the rule rather
  * than restating the "family weight sizepx" it composes.

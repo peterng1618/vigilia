@@ -102,7 +102,7 @@ function fieldControl(
       );
     case "note":
       // A line of prose, not a control: no well, because a border means
-      // editable (bible §5.1). The hook is on the value element itself.
+      // editable (DESIGN.md §5.1). The hook is on the value element itself.
       return (
         <p className="text-xs text-muted" {...field.data}>
           {field.value}
@@ -189,7 +189,7 @@ function fieldControl(
       );
     case "readOnly":
       // A read-only row is not a control: no well, no border, because a border
-      // means editable (bible §5.1). The hook is on the value element itself —
+      // means editable (DESIGN.md §5.1). The hook is on the value element itself —
       // never a wrapper, or it is a broken locator wearing a passing test — and
       // the row is baseline-aligned, the one alignment §5.2 names for it.
       return (

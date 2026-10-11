@@ -554,7 +554,7 @@ test.describe("Fabric editor route", () => {
     ).not.toHaveText("0");
 
     // The section opens, and the geometry it was always made of is inside it.
-    // The disclosure's header is the button (bible §5), not a `<summary>`.
+    // The disclosure's header is the button (DESIGN.md §5), not a `<summary>`.
     await page
       .locator('[data-vigilia-section="position"] button[aria-expanded]')
       .first()
@@ -1456,7 +1456,7 @@ test.describe("Fabric editor route", () => {
      * reach the row through `tooltip()`, and the browser half of the fix this
      * case proved was placement: an out-of-flow popup measured before it was
      * pinned landed on top of its own trigger, so hover never settled and only
-     * focus showed it. Bible §5.3 moved refusals out of tooltips and into the
+     * focus showed it. DESIGN.md §5.3 moved refusals out of tooltips and into the
      * row — `control-well.tsx`'s `ControlRow` renders the reason as words — so
      * there is no popup left to place, and the flicker it caused cannot recur.
      *

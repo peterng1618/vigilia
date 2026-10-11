@@ -257,7 +257,7 @@ it("opens the slot a reveal names before scrolling to the row inside it", async 
   root.remove();
 });
 
-it("gives every pane the bible's chrome, named by the section the specs browse", () => {
+it("gives every pane DESIGN.md's chrome, named by the section the specs browse", () => {
   const root = document.createElement("div");
   const layout = createShellLayout(root);
 
@@ -1110,7 +1110,7 @@ it("has no Insert menu, and every insertable group is still reachable from the A
   await Promise.resolve();
 
   // §7.1: Insert lives in the Add pane, so the header has no Insert menu. The
-  // three that remain are the three the bible names — a fourth coming back is
+  // three that remain are the three DESIGN.md names — a fourth coming back is
   // the second rendering this plan exists to prevent.
   expect(
     [...root.querySelectorAll(".editor-shell-menubar button")].map(

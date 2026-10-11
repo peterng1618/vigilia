@@ -80,7 +80,7 @@ function refusalOf(object: FabricObject): string | undefined {
 /**
  * The reason, and where it is carried.
  *
- * It is **not** a tooltip any more. Bible §5.3 has a refused control render in
+ * It is **not** a tooltip any more. DESIGN.md §5.3 has a refused control render in
  * the row with its reason readable by everyone, and plan 1's `refused` prop is
  * that: `aria-disabled` plus the reason as visible words, so a keyboard user who
  * never sees a hover still reads it. `ControlRow` is the one owner of that
@@ -184,7 +184,7 @@ export function glassFields(object: FabricObject): readonly FieldView[] {
       label: uiCopy.inspectorFields.glassBlur,
       value: treatment.blurRadius,
       // It had both bounds pre-plan (`0 … MAX_GLASS_BLUR_RADIUS`) and so drew a
-      // slider; the bible's vocabulary says a bounded number is a slider (§5).
+      // slider; DESIGN.md's vocabulary says a bounded number is a slider (§5).
       // The pre-plan field refused a fraction unconditionally; the boundary
       // re-checks it. See `panelMaterialFields`.
       min: 0,

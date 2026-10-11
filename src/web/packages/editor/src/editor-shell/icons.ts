@@ -41,7 +41,7 @@ import type { RailSlot } from "./rail.js";
 export type { LucideIcon };
 
 /**
- * The chrome's one icon vocabulary (bible §6): one family (lucide), one weight
+ * The chrome's one icon vocabulary (DESIGN.md §6): one family (lucide), one weight
  * rule, and one place that decides either.
  *
  * **This is the only chrome module that reads `lucide-react`.** A surface that
@@ -93,7 +93,7 @@ export function Glyph(props: {
   });
 }
 
-/** Bible §7.2's stack: a card on the canvas is an arbitrary group of elements,
+/** DESIGN.md §7.2's stack: a card on the canvas is an arbitrary group of elements,
  *  so its row cannot depict it and gets the stack glyph and its name. One glyph
  *  in one place — the rail's Composition slot, the layer row's group mark and
  *  Task 3's `KIND_GLYPHS.group` are all this constant. `Layers2`, not `Layers`:

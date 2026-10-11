@@ -274,7 +274,7 @@ describe("Settings", () => {
       uiCopy.settings.about,
     ]);
     // A pane, or a fifth rail slot, fails here and only here: the rail still
-    // holds the four the bible names, and the gear is not one of them.
+    // holds the four DESIGN.md names, and the gear is not one of them.
     expect(railSlotIds(host)).toEqual([...RAIL_SLOTS]);
   });
 

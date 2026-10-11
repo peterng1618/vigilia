@@ -11,7 +11,7 @@ import type { HostingStore } from "./shell-layout.js";
  * reads — and the mark is drawn **only** when the host reports the LAN on. An
  * unknown or absent host renders nothing rather than "not live": until the host
  * has answered the editor has nothing to say, and a mark invented for it would
- * be a fact the product does not have (bible §9). Nothing here polls the host;
+ * be a fact the product does not have (DESIGN.md §9). Nothing here polls the host;
  * a state changed outside the editor is stale until reload (`vg-214`).
  */
 export function PublishIndicator({
@@ -29,7 +29,7 @@ export function PublishIndicator({
   return (
     <p className="editor-shell-live">
       {/* §6 names the live check as a **filled** glyph at 12px: a 1.8px stroke
-          on a 12px check reads faint, and the answer the bible gives is the
+          on a 12px check reads faint, and the answer DESIGN.md gives is the
           fill rather than a second stroke weight. */}
       <Glyph icon={CHECK_GLYPH} size={12} filled />
       {uiCopy.statusBar.live}

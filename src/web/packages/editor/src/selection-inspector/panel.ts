@@ -556,7 +556,7 @@ function createShapeFields(object: FabricObject): readonly FieldView[] {
     // what a sweep means, held here as well as in the geometry. What is bounded
     // is a value outside 0–360, by the field's own bounds and the write funnel.
     // A slider, not a plain number: the pre-plan field drew one because both
-    // bounds were present, and the bible's vocabulary says a bounded number is a
+    // bounds were present, and DESIGN.md's vocabulary says a bounded number is a
     // slider (§5).
     for (const key of ["startAngle", "endAngle"] as const) {
       fields.push({

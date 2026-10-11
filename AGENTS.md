@@ -34,7 +34,9 @@ Vigilia process.
   `docs/superpowers/plans/`; completed or superseded plans move to
   `docs/superpowers/plans/archive/` once no active or queued plan depends on them.
 - Durable project truth lives under `docs/`; `docs/README.md` is the canonical
-  map. `§N` requirement markers are stable; never renumber them.
+  map. `§N` requirement markers are stable; never renumber them. They live in
+  `DESIGN.md`, and `design:md --cite` fails when a citation names a number with
+  no marker.
 - **Plans are contracts, not scripts.** Organize into phases of 3–5 tasks; each
   states outcome, owning symbols/landmarks, constraints, acceptance or failure
   modes, and verification. Avoid brittle line numbers, pasted implementation

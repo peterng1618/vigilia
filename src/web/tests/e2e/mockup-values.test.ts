@@ -606,7 +606,7 @@ test("a track count is read, and a value that is not one is null", () => {
 
 test("a colour is read as a resolved value, so one colour's spellings are equal", () => {
   // The colour comparator, and the reason it is not a string comparison: the
-  // bible writes the modal's scrim `#00000073` and a browser computes the same
+  // DESIGN.md writes the modal's scrim `#00000073` and a browser computes the same
   // colour as `rgba(0, 0, 0, 0.451)`, so the two sides of a colour row are never
   // the same text.
   expect(colourValue("#00000073")).toBe("rgba(0, 0, 0, 115)");
