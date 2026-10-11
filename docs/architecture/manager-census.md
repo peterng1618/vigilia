@@ -74,10 +74,16 @@ shell count.
 These are the finding the instrument exists for. Each is a decision that would
 reject a wrong value, living outside the row that claims the concept.
 
+**Files and managers are counted separately throughout.** A *manager* is one of
+the twenty `*-manager/` directories; a *file* is one source file. The distinction
+matters exactly where a manager contributes several files, and it is why the
+`locked` count below reads 9 files but 7 managers.
+
 1. **The `locked` predicate has no owner.** `object-lock-manager` owns writing
    the flag and re-deriving Fabric's transform flags, and its `isLocked` is
    module-private. The test is spelled again in **11 non-test sites across 9
-   modules**: `clipboard-manager/index.ts:310,338`,
+   files, spanning 7 managers** — `selection-inspector` contributes three of the
+   files: `clipboard-manager/index.ts:310,338`,
    `controls-manager/index.ts:82,157`, `deletion-manager/index.ts:15`,
    `editor-shell/bridge.ts:185`, `indicator-manager/index.ts:93`,
    `object-lock-manager/index.ts:40`, `selection-inspector/index.ts:437`,
@@ -156,14 +162,17 @@ reject a wrong value, living outside the row that claims the concept.
     `gradient-editor.tsx`. The map lists "shared colour parsing" as a known gap
     with no owner while a module already answers it.
 16. **A fresh object id.** The map names this gap itself and says "seven creation
-    sites". Measured at HEAD there are **six** inline prefix-plus-`randomUUID`
-    lines across five modules: `text-manager/index.ts:217`,
-    `image-manager/index.ts:123`, `grouping-manager/index.ts:187`,
-    `chart-manager/index.ts:267` and `:354`, `new-object-panel.ts:197`. The
-    seventh spell would be `clipboard-manager/index.ts:116`, where the uuid is a
-    fallback *derivation* for an unnamed object on the copy path rather than a
-    mint — so the map's count is one higher than the code's, and only the copy
-    path goes through `createWidgetIdAllocator`.
+    sites"; measured at HEAD there are **seven** inline prefix-plus-`randomUUID`
+    lines, across **six** files (`chart-manager` contributes two):
+    `chart-manager/index.ts:267` (`binding-`) and `:354` (`chart-`),
+    `grouping-manager/index.ts:187` (`group-`), `image-manager/index.ts:123`
+    (`image-`), `new-object-panel.ts:197` (`${kind}-`),
+    `selection-inspector/run-edits.ts:176` (`binding-`), and
+    `text-manager/index.ts:217` (`text-`). **The map's count is right.**
+    `clipboard-manager/index.ts:116` spells `crypto.randomUUID()` with **no
+    prefix**, so it is the odd one out rather than the eighth site — it is the
+    copy path's fallback *derivation* for an unnamed object, and only that path
+    goes through `createWidgetIdAllocator`.
 17. **The host's first-run page and route dispatch.** `host/src/server.ts:205`
     builds `firstRunPage()` with its own colour literals (`#14161c`, `#e8ecf3`)
     and the file carries 34 `url.pathname` reads under three rows, with no row
@@ -176,7 +185,7 @@ manager? Answered for all twenty, including the nos.
 
 | Manager | (a) |
 |---|---|
-| `snap-manager` | **Yes — the clearest case.** One acquire-hold-plan-verify protocol implemented twice, split movement-vs-scale (the duplicated axis) instead of by the sub-domains that are genuinely separate: spacing and gesture projection. 30 non-test files, 10,701 lines. |
+| `snap-manager` | **Yes — the clearest case.** One acquire-hold-plan-verify protocol implemented twice, split movement-vs-scale (the duplicated axis) instead of by the sub-domains that are genuinely separate: spacing and gesture projection. 30 non-test files, 10,701 lines (10,671 by `wc -l`; see §4). |
 | `controls-manager` | **Yes.** Handle styling *and* a Line's four document scalars *and* the authored text-box height — geometry writing under a styling row. |
 | `persistence-manager` | **Yes.** It owns download plus the dirty key; the save protocol it is named for (library base, conflict, payload policy) is in `editor-session.ts`. |
 | `grouping-manager` | **Yes, marginal.** Group/ungroup membership, plus the entered-group reachability mode — a separate concept with its own lifecycle, its own history re-resolve and its own known defect (`vg-188`). |
@@ -209,7 +218,7 @@ Is any concept it owns also decided by another manager? Answered for all twenty.
 | Manager | (b) |
 |---|---|
 | `deletion-manager` | **Yes, twice.** Reads `get("locked")` inline (`:15`) rather than asking the lock manager; re-spells the membership fact and the `ActiveSelection` companion (`:23`, `:36`) that `layer-manager` owns. |
-| `object-lock-manager` | **Yes.** It writes the flag but does not own the predicate: 8 other modules spell the test, in two polarities. |
+| `object-lock-manager` | **Yes.** It writes the flag but does not own the predicate: 8 other files spell the test, in two polarities. |
 | `indicator-manager` | **Yes.** Reads `locked` (`:93`) *and* Fabric's `lockRotation`/`lockMovementX`/`lockMovementY`/`lockScalingX`/`lockScalingY` directly — it decides what a lock means for a tooltip, separately from the manager that derives those flags. |
 | `clipboard-manager` | **Yes.** `get("locked") === true` twice (`:310`, `:338`); also consumes `deletion-manager` for cut, which is correct delegation rather than a second owner. |
 | `controls-manager` | **Yes.** `get("locked") !== true` twice (`:82`, `:157`), and it is one of the three writers of `vigiliaText.box`. |
@@ -231,25 +240,45 @@ Is any concept it owns also decided by another manager? Answered for all twenty.
 
 Clearance rate: **4 of 20 have no concept decided elsewhere** (`image-manager`,
 `crop-manager`, `error-manager`, `layer-manager`). The dominant family is the
-`locked` predicate, which reaches 9 modules, and the second is the Fabric
-membership fact, which reaches 4.
+`locked` predicate, which reaches 9 files across 7 managers, and the second is
+the Fabric membership fact, which reaches 6 files.
 
 ## 4. The size measurement, re-taken
 
-Measured in node over the file list at `03d820d7`, skipping
-`node_modules`/`dist`/`coverage`/`test-results`:
+**Scope and convention, stated because a count without them is not
+reproducible.**
+
+- **Root:** `src/web`.
+- **Skipped directories:** `node_modules`, `dist`, `.vite`, `coverage`,
+  `test-results`, `playwright-report`, `.agent-scratch`.
+- **Extensions counted:** `ts`, `tsx`, `mts`, `cts`, `js`, `jsx`, `mjs`, `css`.
+- **A file is a test file when** its basename holds a `.test.` or `.spec.`
+  infix, **or** its path contains a `tests`/`test`/`__tests__`/`e2e` directory
+  segment. Everything else is non-test.
+- **A line is a `split(/\r?\n/)` element**, so a file's trailing newline counts
+  as a line and every total here runs **one higher per file** than `wc -l`.
+  `snap-manager`'s 30 non-test files are **10,701** by this convention and
+  **10,671** by `wc -l`; both are the same file set. Where another document cites
+  a `wc -l` figure, subtract one per file to compare.
 
 | Measure | Count |
 |---|---|
-| Source files scanned (`ts`/`tsx`/`js`/`css`) | 610 |
-| Non-test source files | **317** |
+| Source files scanned | 602 |
+| Non-test source files | **309** |
 | Non-test at or past 500 lines | **32** |
 | Non-test past the 800 stop | **12** |
 | Test files at or past 500 lines | 64 |
 
-**The brief's numbers reproduce exactly** (32 / 12), and so does `vg-364`'s
-"at HEAD on 2026-10-12 it is 32 and 12". The denominator it recorded has moved:
-264 on 2026-10-09 against 317 now, so the *rate* has improved.
+`.agent-scratch` is excluded deliberately: it is gitignored (`gitignore:75`),
+untracked, and holds agent scratch rather than product source. Including it added
+8 files.
+
+**The load-bearing pair reproduces exactly** — 32 and 12 — and so does
+`vg-364`'s "at HEAD on 2026-10-12 it is 32 and 12". Every variant of scope and
+test predicate gives 32 and 12; only the denominator moves, and it says nothing
+about any conclusion here. The denominators at other scopes, for a reader who
+arrives with one: `src/web/packages` alone is 302 non-test files; adding
+`tests/` and the root configs gives the 309 above.
 
 Which over-limit files are a concept problem, and which are merely long:
 
@@ -278,11 +307,25 @@ index+panel+runs+view (737/752/671/638), `new-object-defaults.ts` (775).
 `vg-232`–`vg-248` are the seventeen rows this family already has. Each is
 re-established at HEAD below; nothing here re-files them.
 
+**One standard for a directory row, and it is the strict one.** A registry row
+that names a directory — "Theme semantic types/validation —
+`renderer-core/src/theme/`" — does not name the module a guard lives in, because
+the instrument asks whether the guard "lives in the module the map names" and a
+directory is not a module. The map's own preamble says the same thing from the
+other side: a module that owns a concept and appears nowhere is invisible, and a
+directory entry does not make it visible. So a guard in a declared directory but
+in an undeclared file is a **missing row**. The consequence is general, not
+specific to `vg-234`: several registry rows name directories, so the map's
+module-level coverage is thinner than its row count suggests. This census applies
+that standard uniformly — to `object-name.ts`, to `selection-inspector`'s
+`per-kind-column.ts` and `view.ts` (§1.2 items 3 and 4), and to the whole-family
+row in the Editor table.
+
 | Row | At HEAD | Note |
 |---|---|---|
 | `vg-232` | **Confirmed, and worse.** | Six/three/two owners per path, and the six-owner block is now written twice (`:1188-1193`, `:1214-1219`). |
 | `vg-233` | **Confirmed.** | `text-manager/index.ts:88-91` still stores `width * scaleX`; three writers of `vigiliaText.box` at HEAD. |
-| `vg-234` | **Partially contradicted.** | The second writer moved from `appearance.ts` to `selection-inspector/index.ts:384`, and the guard **is** now shared — `view.ts:456` and `bridge.ts:346` both call `isObjectName`. But the row's "the validity guard lives in a module the ownership map does not name" is contradicted: `object-name.ts` is `renderer-core/src/theme/`, which the registry names as "Theme semantic types/validation". Two writers and two notification behaviours survive. |
+| `vg-234` | **Confirmed — the complaint stands.** | The second writer moved from `appearance.ts` to `selection-inspector/index.ts:384`, and the guard **is** now shared — `view.ts:456` and `bridge.ts:346` both call `isObjectName`. The code half is as the row says. The row's other half — "the validity guard lives in a module the ownership map does not name" — also stands: `object-name.ts` is inside `renderer-core/src/theme/`, and the registry's row for that names a **directory** ("Theme semantic types/validation"). A directory row does not name the module, which is the standard this census applies to `selection-inspector` at §1.2 items 3 and 4 — one standard in both places. Two writers and two notification behaviours survive. |
 | `vg-235` | **Confirmed.** | The base, `#saveLibrary`, `#writeLibrary`, `#libraryPayload`, `#resolveConflict`, `#openLibrary` are all still in `editor-session.ts`, and the map has no row for them. |
 | `vg-236` | **Confirmed.** | `bridge.ts` writes `name`, `visible`, `locked` and owns `reorderLayer`. |
 | `vg-237` | **Confirmed.** | `controls-manager/index.ts:107-197` writes a Line's four scalars. |
@@ -295,7 +338,7 @@ re-established at HEAD below; nothing here re-files them.
 | `vg-244` | **Confirmed.** | The "Packaged fonts" note still gives z-order, grouping and locks to `editor-shell.ts`; the three table rows give them to three managers, and the code agrees with the table. |
 | `vg-245` | **Confirmed, and the drift is not yet real.** | `ASSET_PATH_PATTERN` is `renderer-core/src/theme/document.ts:14`; the schema hand-spells it at `theme-document.schema.json:113` and `:123`. Read at HEAD the non-font spelling is **identical**; the font one adds `\.woff2`. The divergence is possible, not observed. |
 | `vg-246` | **Confirmed.** | `colour-maths.ts` exists with `parseHex`/`toHex`/`parseColour` and two importers; the map has no row. |
-| `vg-247` | **Confirmed, and the count has grown.** | The row says 11 places across 8 modules with five `=== true` and three `!== true`. At HEAD: **11 places across 9 modules**, eight `=== true` and three `!== true` — a module was added since. |
+| `vg-247` | **Confirmed, and the count has grown.** | The row says 11 places across 8 modules with five `=== true` and three `!== true`. At HEAD: **11 places across 9 files — 7 managers**, eight `=== true` and three `!== true`. The row counted files; a file was added since, and two of the nine sit under one manager. |
 | `vg-248` | **Confirmed.** | Four spellings of the membership fact and four of the `ActiveSelection` companion; `layer-tree.ts:460` is the third `ownerOf`. |
 
 **Not named by any row, found here:**
@@ -319,30 +362,46 @@ evidence. `vg-268`/`vg-283` are the dead `FontPicker` family. `vg-364` itself is
 this phase's own row and is discharged by this census plus Task 9, not by any
 line here.
 
-## 6. Candidates ranked by blast radius
+## 6. Candidates
 
-Ranked by how many production modules reach the module, which is what decides
-whether a move is an extraction or a rewiring. Reach measured from import
-specifiers across all five packages, production files only.
+**The numbers 1–10 are identifiers, not positions.** A plan and register row
+`vg-364` cite candidates by number, the way a plan's task numbers are cited, so
+the numbering is stable and does not change when a reader disagrees with an
+order. Nothing here is presented as a reach ranking: reach is stated per
+candidate, in prose, under one definition — **reach = the production files
+outside the owner that hold a site the change must edit**, each measured by the
+search named with it. Two candidates also carry an *owner reach*, the number of
+production files that import the owner at all, and where those two differ the
+difference is the finding (`snap-manager` is the extreme: 30 files in the family,
+one external importer).
 
-| # | Candidate | Reach | Shape |
+The order below is the order candidates were found in, and the shape label is
+what Task 9 should order by.
+
+| # | Candidate | Reach, under the definition above | Shape |
 |---|---|---|---|
-| 1 | **The `locked` predicate** — export one predicate from `object-lock-manager` (or drop it to a shared Fabric-facts module, which is the same question `vg-248` raises) | **9 modules**, 11 sites | **Cross-cutting.** Every reader is a manager or an inspector surface. The ordering question is real: `object-lock-manager` may sit above some of its readers. |
-| 2 | **The Fabric membership fact** — one `ownerOf`/`targetsOf` | **4 modules**, 8 spellings | **Cross-cutting.** The fact is pure Fabric knowledge, so `scene-fabric` is a candidate owner alongside `layer-manager`. `deletion-manager`'s divergent signature is the mechanism, not a style difference. |
-| 3 | **The globals fan-out** — one "globals changed" signal the session owns | **6 owners**, 4 paths | **Cross-cutting.** Touches `editor-session`, `shell`, `runtime`, `charts`, `newObjects`, `artboard`, `selection`. Cheapest to fix by deleting three lists, not by adding an abstraction. |
-| 4 | **The three writers of `vigiliaText.box`** | **3 modules** | **Clean extraction.** `scene-fabric/src/authored-box.ts` already claims the job; the other two call it and stop writing inline. |
-| 5 | **The save protocol / library base** | **1 module, ~250 lines** | **Clean extraction** from `editor-session.ts` into its own owner — the largest single reduction available, and it is the only candidate whose move *creates* a manager rather than merging one. |
-| 6 | **`controls-manager`'s document writes** | 2 modules | **Clean-ish.** Moving the Line scalars out means the controls module stops writing document state; the text-box height follows candidate 4. |
-| 7 | **The contain rule** | 2 modules (`viewport-manager`, `renderer-core/src/artboard.ts`) | **Cross-cutting and a decision first.** The editor's fit is deliberately "the display's screen, not the host" — so this may be a second rule that needs its own row and guard rather than a caller of the first. |
-| 8 | **`selection-inspector`'s two unnamed decisions** | 7 modules name the family | **Map row, not code.** Two rows suffice; the file is already past the stop for reasons `vg-255` owns separately. |
-| 9 | **`object-actions` eligibility agreement** | 6 sites, 1 module | **Clean, and small**: eligibility should ask the manager that refuses, or the refusal reasons should be enumerated once. |
-| 10 | **The map's self-contradictions and missing rows** | none | **Documentation.** `vg-244` (one sentence), plus rows for `object-name.ts`, `colour-maths.ts`, the persisted-property set, the reference-GC decisions and `firstRunPage`. |
+| 1 | **The `locked` predicate** — export one predicate from `object-lock-manager` (or drop it to a shared Fabric-facts module, which is the same question `vg-248` raises) | **11 sites in 9 files, 7 of them managers**; owner reach 2 files. Search: `get\(\s*["`']locked["`']\s*\)` over non-test `.ts`/`.tsx`. | **Cross-cutting.** Every reader is a manager or an inspector surface. The ordering question is real: `object-lock-manager` may sit above some of its readers. |
+| 2 | **The Fabric membership fact** — one `ownerOf`/`targetsOf` | **8 spellings in 6 files** (4 `parent instanceof Group` + 4 `ActiveSelection` companions; `layer-manager`, `deletion-manager`, `layer-tree`, `bridge`, `canvas-nudge`, `history-manager`). | **Cross-cutting.** The fact is pure Fabric knowledge, so `scene-fabric` is a candidate owner alongside `layer-manager`. `deletion-manager`'s divergent signature is the mechanism, not a style difference. |
+| 3 | **The globals fan-out** — one "globals changed" signal the session owns | **7 files**: `editor-session.ts` plus the six receivers it names by hand (`editor-shell.ts`, `live-runtime.ts`, `chart-manager/index.ts`, `new-object-panel.ts`, `artboard-panel.ts`, `selection-inspector/index.ts`). Search: `setGlobals` over non-test `.ts`/`.tsx`, then read the four call paths. | **Cross-cutting.** Cheapest to fix by deleting three lists, not by adding an abstraction. |
+| 4 | **The three writers of `vigiliaText.box`** | **3 files**: `scene-fabric/src/authored-box.ts`, `selection-inspector/index.ts`, `text-manager/index.ts:88-91`. | **Clean extraction.** `authored-box.ts` already claims the job; the other two call it and stop writing inline. |
+| 5 | **The save protocol / library base** | **1 file** — `editor-session.ts`, ~250 lines. | **Clean extraction** into its own owner, and the only candidate whose move *creates* a manager rather than merging one. Its size is a fact about it, not the reason it is numbered 5. |
+| 6 | **`controls-manager`'s document writes** | **1 file** for the Line scalars (`controls-manager/index.ts:107-197`); the text-box height is the same file's call at `:255` and follows candidate 4. | **Clean-ish.** Moving the Line scalars out means the controls module stops writing document state. |
+| 7 | **The contain rule** | **2 files**: `viewport-manager/index.ts` (the re-derivation) and `renderer-core/src/artboard.ts` (the owner, reached by neither). | **Cross-cutting and a decision first.** The editor's fit is deliberately "the display's screen, not the host" — so this may be a second rule that needs its own row and guard rather than a caller of the first. |
+| 8 | **`selection-inspector`'s two unnamed decisions** | **0 code files to edit; 2 files to name** (`per-kind-column.ts`, `view.ts`) plus one map file. | **Map row, not code.** Two rows suffice; the file is already past the stop for reasons `vg-255` owns separately. |
+| 9 | **`object-actions` eligibility agreement** | **6 sites in 1 file** (`object-actions.ts:108,117,126,167,174,200`). | **Clean, and small**: eligibility should ask the manager that refuses, or the refusal reasons should be enumerated once. |
+| 10 | **The map's self-contradictions and missing rows** | **0 code files.** | **Documentation.** `vg-244` (one sentence), plus rows for `object-name.ts`, `colour-maths.ts`, the persisted-property set, the reference-GC decisions and `firstRunPage`. |
 
-**`snap-manager` is deliberately last despite being the largest.** It is the
-biggest code problem in the census (30 files, 10,701 lines, 4 past the stop) but
-it is reached by **one** external production module (`editor-session.ts`) and its
-fix is a protocol re-shape that needs a spec, not an extraction. Its blast radius
-is internal.
+**`snap-manager` is identifier 10, and its numbering carries no ordering claim.**
+Its blast radius is internal: 30 non-test files in the family and 4 past the stop,
+against **one** external production importer (`editor-session.ts:71`). Its fix is
+a protocol re-shape that needs a spec, not an extraction.
+
+### The dead-or-over-owning question, reported separately (brief step 6)
+
+**A manager with production references may still hold a dead method, and that is
+Phase 2's scanner's job, not this census's** — no line here reports, guesses at,
+or duplicates a dead-code finding, and a manager's absence from §1–§6 says
+nothing about whether every method inside it is reached.
 
 ## 7. What could not be established
 
@@ -359,8 +418,9 @@ is internal.
   waits on, and this census did not compute a topological order to settle it.
 - **Whether any lock reader is wrong today.** All eleven agree on the two current
   states; the risk is the third state, not the present.
-- **The reach figures are import-specifier counts**, not a transitive closure:
-  a module reached only through another manager's re-export would be missed.
+- **Reach is a count of files holding a site**, not a transitive closure: a
+  module reached only through another manager's re-export would be missed, and
+  the owner-reach figures are import-specifier counts on the same basis.
 - **Nothing was run.** No test, no build and no browser check was executed;
   every claim here is a read of source at `03d820d7`. The register rows that
   depend on runtime behaviour (`vg-233`'s reachability, `vg-245`'s drift) are
