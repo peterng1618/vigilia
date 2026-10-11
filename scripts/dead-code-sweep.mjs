@@ -121,6 +121,15 @@ const writeJson = (path, doc) => {
   writeFileSync(resolve(path), `${JSON.stringify(doc, null, 2)}\n`, "utf8");
 };
 
+/** Whether a path currently holds the start-of-run marker. */
+const readIncompleteMarker = (path) => {
+  try {
+    return JSON.parse(readFileSync(resolve(path), "utf8")).incomplete === true;
+  } catch {
+    return false;
+  }
+};
+
 if (SELF_TEST) writeJson(SELFTEST_JSON, incompleteSelfTestResult());
 if (jsonPath !== null && jsonPath !== undefined) writeJson(jsonPath, incompleteCandidateReport());
 
@@ -723,6 +732,16 @@ function renderReport(report) {
   return `${lines.join("\n")}\n`;
 }
 
+/**
+ * Read before overwriting: this is where the candidate marker must still be,
+ * and the self-test asserts it was. Without that assertion, deleting the
+ * start-up write above would leave the mechanism passing its own gate while a
+ * crash once again left the previous run's candidate list to be mistaken for
+ * this one's. Vacuous without `--json`, like the check that reads it.
+ */
+const candidateMarkerOnDisk =
+  jsonPath === null || jsonPath === undefined ? true : readIncompleteMarker(jsonPath);
+
 if (jsonPath !== null && jsonPath !== undefined) writeJson(jsonPath, report);
 
 if (!SELF_TEST) process.stdout.write(renderReport(report));
@@ -900,6 +919,9 @@ if (SELF_TEST) {
     result.total = checks.length;
     writeJson(SELFTEST_JSON, result);
   };
+
+  /** Read before the first write: the start-up marker is what completion replaces. */
+  const markerOnDisk = readIncompleteMarker(SELFTEST_JSON);
   write();
 
   /**
@@ -935,17 +957,21 @@ if (SELF_TEST) {
    *
    * The property is the short-circuit one: before completion the marker is the
    * *only* thing on disk, so if the marker cannot satisfy `isCompletePass`, no
-   * early exit can leave a completion behind. Asserting the real file is a
-   * complete pass as well keeps the predicate itself strict — a check on the
-   * marker alone would pass while `isCompletePass` was loosened to `passed ===
-   * total`, which is exactly the `0/0` marker reading as a vacuous pass.
+   * early exit can leave a completion behind. `markerOnDisk` is the other half —
+   * the assertion that the marker write really happened, which the shapes alone
+   * cannot show. And asserting the real file is a complete pass keeps the
+   * predicate strict: a check on the marker alone would pass while
+   * `isCompletePass` was loosened to `passed === total`, which is exactly the
+   * `0/0` marker reading as a vacuous pass.
    */
   checks.push([
-    "an unfinished run cannot read as a pass (the start-of-run marker is not a completion)",
+    "an unfinished run cannot read as a pass (both reports carry the start-up marker until completion)",
     (() => {
       const onDisk = JSON.parse(readFileSync(outPath, "utf8"));
       const marker = incompleteSelfTestResult();
       return (
+        markerOnDisk &&
+        candidateMarkerOnDisk &&
         isCompletePass(onDisk) &&
         onDisk.incomplete === false &&
         onDisk.passed === onDisk.total &&
