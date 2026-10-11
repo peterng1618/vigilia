@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { expect, it } from "vitest";
+import { Glyph, STACK_GLYPH } from "../../editor-shell/icons.js";
 import type { LayerMark } from "../../editor-shell/layer-tree.js";
 import { KindMark } from "./kind-mark.js";
 
@@ -41,9 +42,20 @@ it("gives a group a generic glyph, and nothing it could not know", () => {
   );
 
   // The group's own arm drew, and it drew a glyph rather than nothing — the
-  // whole correction to the earlier "a group shows nothing here".
+  // whole correction to the earlier "a group shows nothing here". It is the
+  // chrome vocabulary's stack glyph (`icons.ts`), the same one the rail's
+  // Composition slot wears, rather than a second hand-authored path set.
+  //
+  // The expected class is read off `STACK_GLYPH` itself rather than written as
+  // a literal, so changing the vocabulary's stack glyph moves this assertion
+  // with it instead of leaving a stale name that still passes.
   expect(glyph).not.toBeNull();
-  expect(glyph?.querySelectorAll("path")).toHaveLength(2);
+  const vocabulary = document.createElement("div");
+  const vocabularyRoot = createRoot(vocabulary);
+  act(() => vocabularyRoot.render(<Glyph icon={STACK_GLYPH} size={13} />));
+  expect(glyph?.querySelector("svg")?.getAttribute("class")).toBe(
+    vocabulary.querySelector("svg")?.getAttribute("class"),
+  );
   // A glyph, not a word: the mark says "this holds others" without a second
   // string the treeitem's accessible name would then repeat.
   expect(slot?.textContent).toBe("");

@@ -1,14 +1,14 @@
 import type { Canvas } from "fabric/es";
-import { OctagonAlert, TriangleAlert, type LucideIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import type { EditorDiagnostic } from "../error-manager/index.js";
 import { uiCopy } from "../ui-copy.js";
+import { ERROR_GLYPH, Glyph, type LucideIcon, WARNING_GLYPH } from "./icons.js";
 
 type DiagnosticSeverity = "error" | "warning";
 
 const SEVERITY_ICONS: Readonly<Record<DiagnosticSeverity, LucideIcon>> = {
-  error: OctagonAlert,
-  warning: TriangleAlert,
+  error: ERROR_GLYPH,
+  warning: WARNING_GLYPH,
 };
 
 interface ShownDiagnostic {
@@ -82,7 +82,7 @@ export function DiagnosticMessage({
     >
       {Icon === undefined ? null : (
         <>
-          <Icon aria-hidden size={13} strokeWidth={2} />
+          <Glyph icon={Icon} size={13} />
           <span>{text}</span>
         </>
       )}

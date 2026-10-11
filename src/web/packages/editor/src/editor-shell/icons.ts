@@ -1,0 +1,166 @@
+import {
+  ChartColumn,
+  ChartLine,
+  ChartPie,
+  Check,
+  ChevronDown,
+  ChevronRight,
+  Eye,
+  EyeOff,
+  FileText,
+  Gauge,
+  Info,
+  Keyboard,
+  Layers,
+  Lock,
+  LogIn,
+  LogOut,
+  type LucideIcon,
+  Minus,
+  OctagonAlert,
+  Palette,
+  Pencil,
+  Plus,
+  Scan,
+  Settings,
+  Star,
+  TriangleAlert,
+  Unlock,
+} from "lucide-react";
+import type * as React from "react";
+import { createElement } from "react";
+import type { RailSlot } from "./rail.js";
+
+/** The glyph component type, re-exported so a surface that holds a glyph in a
+ *  prop — `Pane`'s title icon, the domain maps — names it without reaching for
+ *  `lucide-react`, which only this module may read. */
+export type { LucideIcon };
+
+/**
+ * The chrome's one icon vocabulary (bible §6): one family (lucide), one weight,
+ * and one place that decides either.
+ *
+ * **This is the only chrome module that reads `lucide-react`.** A surface that
+ * named a lucide glyph itself would be a second owner of "which family and
+ * which weight", and two of those is how the shell grew four weights. The
+ * domain maps that name a *set* — severities, chart families, settings tabs —
+ * keep their shape and draw their members from here, so the vocabulary stays
+ * one and the meaning of each set stays with the surface that has it.
+ *
+ * Authored scene icon generation (`new-fabric-theme-icons.ts`) is deliberately
+ * outside this: it converts lucide geometry into path commands for the Fabric
+ * scene, which is data rather than chrome, and it reads the per-icon modules
+ * rather than the React components.
+ */
+
+/** Bible §6's stroke weight: one weight, inside the 1.6–1.8px band. Where that
+ *  weight reads faintly at 12px the answer is §6's `filled` escape, never a
+ *  second stroke weight. */
+export const GLYPH_STROKE_WIDTH = 1.75;
+
+/**
+ * A chrome glyph, and the one place its weight is set.
+ *
+ * `filled` carries **two** things §6 separates, and neither is a stroke weight:
+ * §6's own escape where a 1.75px stroke would be illegible at 12px (the record
+ * dot, the live check), and the **on/off channel of a binary state** — the font
+ * picker's favourited star, the layer row's locked lock (`vg-024`, "locked is a
+ * filled lock"). The second is not a licence to fill a glyph for looks; it is
+ * the one place a two-valued control can say which of the two it is without a
+ * second glyph or a second weight.
+ *
+ * Every glyph is `aria-hidden`: an icon-only control carries its name on the
+ * button (§6), and a decorative mark beside a word is not read twice.
+ */
+export function Glyph(props: {
+  readonly icon: LucideIcon;
+  readonly size: number;
+  readonly filled?: boolean;
+}): React.JSX.Element {
+  const { icon, size, filled = false } = props;
+  return createElement(icon, {
+    "aria-hidden": true,
+    size,
+    strokeWidth: GLYPH_STROKE_WIDTH,
+    ...(filled ? { fill: "currentColor" } : {}),
+  });
+}
+
+/** Bible §7.2's stack: a card on the canvas is an arbitrary group of elements,
+ *  so its row cannot depict it and gets the stack glyph and its name. One glyph
+ *  in one place — the rail's Composition slot, the layer row's group mark and
+ *  Task 3's `KIND_GLYPHS.group` are all this constant. */
+export const STACK_GLYPH: LucideIcon = Layers;
+
+/** §7.2's page, the Document slot. */
+export const PAGE_GLYPH: LucideIcon = FileText;
+/** The tokens palette — the rail's slot and the settings Appearance tab. */
+export const PALETTE_GLYPH: LucideIcon = Palette;
+/** The Add slot's plus, and the camera cluster's zoom-in. */
+export const PLUS_GLYPH: LucideIcon = Plus;
+/** The camera cluster's zoom-out. */
+export const MINUS_GLYPH: LucideIcon = Minus;
+/** The camera cluster's fit. */
+export const FIT_GLYPH: LucideIcon = Scan;
+/** The settings gear, the rail's one modal trigger. */
+export const SETTINGS_GLYPH: LucideIcon = Settings;
+/** A menu's tick. */
+export const CHECK_GLYPH: LucideIcon = Check;
+
+/** The two diagnostic severities (§6's icon-only rule does not apply — the word
+ *  follows the glyph, so this is a mark beside a sentence). */
+export const ERROR_GLYPH: LucideIcon = OctagonAlert;
+export const WARNING_GLYPH: LucideIcon = TriangleAlert;
+
+/** The four chart families the document can name. */
+export const CHART_GAUGE_GLYPH: LucideIcon = Gauge;
+export const CHART_LINE_GLYPH: LucideIcon = ChartLine;
+export const CHART_BAR_GLYPH: LucideIcon = ChartColumn;
+export const CHART_PIE_GLYPH: LucideIcon = ChartPie;
+
+/** The settings column's other two tabs. */
+export const KEYBOARD_GLYPH: LucideIcon = Keyboard;
+export const INFO_GLYPH: LucideIcon = Info;
+
+/** One-off chrome marks: the row's rename and the keyboard row's rebind, the
+ *  font picker's favourite, a group's enter/leave, a row's eye. */
+export const PENCIL_GLYPH: LucideIcon = Pencil;
+export const STAR_GLYPH: LucideIcon = Star;
+export const ENTER_GLYPH: LucideIcon = LogIn;
+export const LEAVE_GLYPH: LucideIcon = LogOut;
+export const VISIBLE_GLYPH: LucideIcon = Eye;
+export const HIDDEN_GLYPH: LucideIcon = EyeOff;
+
+/** The rail's four slot glyphs, from §7.2's table. Keyed by the rail's own slot
+ *  union so a fifth slot is a compile error here rather than a slot with no
+ *  mark. Exported because the pane each slot opens wears the same glyph in its
+ *  title bar — two owners of "which glyph names this pane" would be two places
+ *  for them to disagree. */
+export const RAIL_GLYPHS: Readonly<Record<RailSlot, LucideIcon>> = {
+  composition: STACK_GLYPH,
+  add: PLUS_GLYPH,
+  tokens: PALETTE_GLYPH,
+  document: PAGE_GLYPH,
+};
+
+/** The tree's open/closed chevrons. Each points the way the press goes, and the
+ *  state itself stays on `aria-expanded`. */
+export const TWISTY_GLYPHS: Readonly<
+  Record<"collapsed" | "expanded", LucideIcon>
+> = {
+  collapsed: ChevronRight,
+  expanded: ChevronDown,
+};
+
+/** Locked is a filled lock, unlocked an outline one: at this size the outlines
+ *  differ only by a gap in the shackle, so the state rides the fill (§6) rather
+ *  than a second glyph or a second weight. */
+export const LOCK_GLYPH: Readonly<
+  Record<
+    "locked" | "unlocked",
+    { readonly icon: LucideIcon; readonly filled?: true }
+  >
+> = {
+  locked: { icon: Lock, filled: true },
+  unlocked: { icon: Unlock },
+};

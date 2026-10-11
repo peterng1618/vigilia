@@ -1,7 +1,6 @@
 import { RadioGroup } from "@base-ui/react/radio-group";
 import { Tabs } from "@base-ui/react/tabs";
 import { SUPPORTED_SCHEMA_VERSION } from "@vigilia/renderer-core";
-import { Info, Keyboard, type LucideIcon, Palette } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import { ControlChoiceRow } from "../components/ui/control-choice-row.js";
 import { ControlToggle } from "../components/ui/control-toggle.js";
@@ -9,6 +8,13 @@ import { Dialog } from "../components/ui/dialog.js";
 import type { ShortcutOverrides } from "../shortcut-manager/bindings.js";
 import type { ProductShortcutId } from "../shortcut-manager/index.js";
 import { uiCopy } from "../ui-copy.js";
+import {
+  Glyph,
+  INFO_GLYPH,
+  KEYBOARD_GLYPH,
+  type LucideIcon,
+  PALETTE_GLYPH,
+} from "./icons.js";
 import {
   applyShellPalette,
   clearShellChoice,
@@ -39,9 +45,9 @@ const SETTINGS_TABS: readonly SettingsTab[] = [
  *  installed set has, so no glyph is invented and §6 needs no addition. The
  *  word stays beside the glyph, so the tab's accessible name is the label. */
 const SETTINGS_TAB_GLYPHS: Readonly<Record<SettingsTab, LucideIcon>> = {
-  appearance: Palette,
-  keyboard: Keyboard,
-  about: Info,
+  appearance: PALETTE_GLYPH,
+  keyboard: KEYBOARD_GLYPH,
+  about: INFO_GLYPH,
 };
 
 /** The id the palette group is named by, kept out of the shell's other ids. */
@@ -350,19 +356,16 @@ export function Settings(props: {
         className="editor-shell-settings"
       >
         <Tabs.List className="editor-shell-settings-tabs">
-          {SETTINGS_TABS.map((tab) => {
-            const Glyph = SETTINGS_TAB_GLYPHS[tab];
-            return (
-              <Tabs.Tab
-                key={tab}
-                value={tab}
-                className="editor-shell-settings-tab"
-              >
-                <Glyph aria-hidden size={14} strokeWidth={1.7} />
-                {uiCopy.settings[tab]}
-              </Tabs.Tab>
-            );
-          })}
+          {SETTINGS_TABS.map((tab) => (
+            <Tabs.Tab
+              key={tab}
+              value={tab}
+              className="editor-shell-settings-tab"
+            >
+              <Glyph icon={SETTINGS_TAB_GLYPHS[tab]} size={14} />
+              {uiCopy.settings[tab]}
+            </Tabs.Tab>
+          ))}
         </Tabs.List>
         {SETTINGS_TABS.map((tab) => (
           <Tabs.Panel

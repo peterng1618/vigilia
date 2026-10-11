@@ -1,4 +1,5 @@
 import type * as React from "react";
+import { Glyph, type LucideIcon } from "./icons.js";
 
 /**
  * One pane's chrome, to bible §7.3: a title bar (glyph, title, then a count or
@@ -17,10 +18,7 @@ import type * as React from "react";
 export function Pane(props: {
   readonly id: string;
   readonly title: string;
-  readonly icon: React.ComponentType<{
-    readonly size?: number;
-    readonly strokeWidth?: number;
-  }>;
+  readonly icon: LucideIcon;
   readonly count?: React.ReactNode;
   readonly footer?: React.ReactNode;
   /** Whether this slot's pane is showing. The shell keeps every pane mounted —
@@ -45,7 +43,7 @@ export function Pane(props: {
       hidden={hidden}
     >
       <header className="editor-shell-pane-title">
-        <Icon aria-hidden size={14} strokeWidth={1.7} />
+        <Glyph icon={Icon} size={14} />
         <h2 className="editor-shell-pane-name">{title}</h2>
         {count === undefined ? null : (
           <span className="editor-shell-pane-count">{count}</span>

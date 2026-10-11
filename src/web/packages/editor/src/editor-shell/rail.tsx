@@ -1,14 +1,7 @@
-import {
-  FileText,
-  Layers,
-  type LucideIcon,
-  Palette,
-  Plus,
-  Settings as SettingsGlyph,
-} from "lucide-react";
 import { useEffect, useRef } from "react";
 import { uiCopy } from "../ui-copy.js";
 import { tooltip } from "./controls/tooltip.js";
+import { Glyph, RAIL_GLYPHS, SETTINGS_GLYPH } from "./icons.js";
 
 /** The rail's four slots (bible §7.2). Named here rather than in
  *  `shell-layout.tsx` because the rail is what enumerates them — two owners of
@@ -30,19 +23,6 @@ export const RAIL_SLOTS: readonly RailSlot[] = [
   "tokens",
   "document",
 ];
-
-/** Each slot's glyph, from bible §7.2's table: the scene tree's stack, the add
- *  plus, the tokens palette, the document page. The kind glyph set is closed
- *  by plan 6; these are the marks that table names, drawn from the one icon
- *  family already installed. Exported because the pane each slot opens carries
- *  the same glyph in its title bar — two owners of "which glyph names this
- *  pane" would be two places for them to disagree. */
-export const RAIL_GLYPHS: Readonly<Record<RailSlot, LucideIcon>> = {
-  composition: Layers,
-  add: Plus,
-  tokens: Palette,
-  document: FileText,
-};
 
 /** One slot: a 34px icon-only control whose one word is both its tooltip and
  *  its accessible name, so the two cannot disagree.
@@ -74,7 +54,6 @@ function RailSlotButton({
   readonly disabled: boolean;
   readonly onChoose: (slot: RailSlot) => void;
 }): React.JSX.Element {
-  const Glyph = RAIL_GLYPHS[slot];
   const ref = useRef<HTMLButtonElement>(null);
   useEffect(() => {
     const button = ref.current;
@@ -94,7 +73,7 @@ function RailSlotButton({
       disabled={disabled}
       onClick={() => onChoose(slot)}
     >
-      <Glyph aria-hidden size={17} strokeWidth={1.7} />
+      <Glyph icon={RAIL_GLYPHS[slot]} size={17} />
     </button>
   );
 }
@@ -129,7 +108,7 @@ function SettingsGear({
       aria-label={label}
       onClick={onClick}
     >
-      <SettingsGlyph aria-hidden size={17} strokeWidth={1.7} />
+      <Glyph icon={SETTINGS_GLYPH} size={17} />
     </button>
   );
 }

@@ -1,6 +1,7 @@
 import { ControlIconButton } from "../components/ui/control-icon-button.js";
 import { objectActionsFor } from "../object-actions.js";
 import type { EditorShellBridge } from "./bridge.js";
+import { Glyph } from "./icons.js";
 
 /**
  * The Composition pane's footer toolbar: the object actions the registry says
@@ -31,7 +32,7 @@ export function LayerActions({
             label={label}
             onClick={() => bridge?.run(id)}
           >
-            <Icon aria-hidden size={15} strokeWidth={1.75} />
+            <Glyph icon={Icon} size={15} />
           </ControlIconButton>
         ),
       )}

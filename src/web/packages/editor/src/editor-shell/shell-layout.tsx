@@ -1,5 +1,4 @@
 import { Menu } from "@base-ui/react/menu";
-import { Check } from "lucide-react";
 import {
   type ReactNode,
   useEffect,
@@ -42,6 +41,7 @@ import { CanvasDock } from "./canvas-dock.js";
 import { DiagnosticMessage } from "./diagnostic-message.js";
 import { DisplaySwitch } from "./display-switch.js";
 import { DocumentIdentity } from "./document-identity.js";
+import { CHECK_GLYPH, Glyph, RAIL_GLYPHS } from "./icons.js";
 import { LayerActions } from "./layer-panel.js";
 import {
   applyShellPalette,
@@ -54,7 +54,7 @@ import {
 import { Pane } from "./pane.js";
 import { PublishControl } from "./publish-control.js";
 import { PublishIndicator } from "./publish-indicator.js";
-import { RAIL_GLYPHS, Rail, type RailSlot } from "./rail.js";
+import { Rail, type RailSlot } from "./rail.js";
 import { SaveState } from "./save-state.js";
 import type { EditorViewControls } from "./session-facade.js";
 import { Settings } from "./settings.js";
@@ -418,7 +418,7 @@ function ViewSetting<T extends string | number>({
               {options.map(([id, text]) => (
                 <Menu.RadioItem key={id} value={id}>
                   <Menu.RadioItemIndicator keepMounted style={checkSlot}>
-                    <Check aria-hidden size={12} strokeWidth={2.5} />
+                    <Glyph icon={CHECK_GLYPH} size={12} />
                   </Menu.RadioItemIndicator>
                   {text}
                 </Menu.RadioItem>

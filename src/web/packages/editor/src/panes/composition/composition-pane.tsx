@@ -1,11 +1,4 @@
 import {
-  ChevronDown,
-  ChevronRight,
-  LogIn,
-  LogOut,
-  type LucideIcon,
-} from "lucide-react";
-import {
   type CSSProperties,
   useEffect,
   useId,
@@ -14,22 +7,18 @@ import {
   useSyncExternalStore,
 } from "react";
 import type { EditorShellBridge } from "../../editor-shell/bridge.js";
+import {
+  ENTER_GLYPH,
+  Glyph,
+  LEAVE_GLYPH,
+  TWISTY_GLYPHS,
+} from "../../editor-shell/icons.js";
 import type { LayerRole, LayerRow } from "../../editor-shell/layer-tree.js";
 import { uiCopy } from "../../ui-copy.js";
 import { KindMark } from "./kind-mark.js";
 import { RowAffordances } from "./row-affordances.js";
 
-/** The twisty is a control like any other, so it is an icon and not a glyph:
- * `▸`/`▾` were announced as words of their own and could not inherit a shell
- * colour the way every icon beside them does (§35). The open/closed state
- * stays on `aria-expanded`, and each chevron points the way the press goes. */
-const TWISTY_ICONS: Readonly<Record<"collapsed" | "expanded", LucideIcon>> = {
-  collapsed: ChevronRight,
-  expanded: ChevronDown,
-};
-
-/**
- * The row's role in words, from the facts the projection reports.
+/** The row's role in words, from the facts the projection reports.
  *
  * One arm per `LayerRole`, so a kind added to the union is a compile error here
  * rather than a row that names nothing — and the words come from `uiCopy` rather
@@ -290,7 +279,8 @@ export function CompositionPane({
         aria-describedby={ruleId}
       >
         {rows.map((row, index) => {
-          const Twisty = TWISTY_ICONS[row.collapsed ? "collapsed" : "expanded"];
+          const Twisty =
+            TWISTY_GLYPHS[row.collapsed ? "collapsed" : "expanded"];
           const twisty = row.collapsed
             ? uiCopy.panels.expand
             : uiCopy.panels.collapse;
@@ -510,7 +500,7 @@ export function CompositionPane({
                     );
                   }}
                 >
-                  <Twisty aria-hidden size={13} strokeWidth={1.75} />
+                  <Glyph icon={Twisty} size={13} />
                 </button>
               ) : (
                 <span aria-hidden className="vigilia-layer-twisty" />
@@ -617,9 +607,9 @@ export function CompositionPane({
                     }}
                   >
                     {isEntered ? (
-                      <LogOut aria-hidden size={13} strokeWidth={1.75} />
+                      <Glyph icon={LEAVE_GLYPH} size={13} />
                     ) : (
-                      <LogIn aria-hidden size={13} strokeWidth={1.75} />
+                      <Glyph icon={ENTER_GLYPH} size={13} />
                     )}
                   </button>
                 ) : null}

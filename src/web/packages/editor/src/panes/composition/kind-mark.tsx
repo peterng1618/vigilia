@@ -1,10 +1,12 @@
 import {
-  ChartColumn,
-  ChartLine,
-  ChartPie,
-  Gauge,
+  CHART_BAR_GLYPH,
+  CHART_GAUGE_GLYPH,
+  CHART_LINE_GLYPH,
+  CHART_PIE_GLYPH,
+  Glyph,
   type LucideIcon,
-} from "lucide-react";
+  STACK_GLYPH,
+} from "../../editor-shell/icons.js";
 import type { LayerMark } from "../../editor-shell/layer-tree.js";
 
 /**
@@ -16,12 +18,12 @@ import type { LayerMark } from "../../editor-shell/layer-tree.js";
  * know, so the row still says what it is rather than what it is not.
  */
 const CHART_ICONS: Readonly<Record<string, LucideIcon>> = {
-  gauge: Gauge,
-  line: ChartLine,
-  bar: ChartColumn,
-  pie: ChartPie,
+  gauge: CHART_GAUGE_GLYPH,
+  line: CHART_LINE_GLYPH,
+  bar: CHART_BAR_GLYPH,
+  pie: CHART_PIE_GLYPH,
 };
-const CHART_FALLBACK: LucideIcon = ChartColumn;
+const CHART_FALLBACK: LucideIcon = CHART_BAR_GLYPH;
 
 /**
  * The glyph a chart family wears, wherever one is drawn.
@@ -37,15 +39,6 @@ export function chartFamilyGlyph(family: string | undefined): LucideIcon {
     ? CHART_FALLBACK
     : (CHART_ICONS[family] ?? CHART_FALLBACK);
 }
-
-/** The generic glyph a group draws (bible §6, §5.1). A card on the canvas is an
- *  arbitrary group of elements, so its row cannot depict it; the stack is the
- *  one word the rail already uses for the scene tree, drawn from the mockup's
- *  own two paths at the shell's stroke weight rather than a second icon family. */
-const STACK_PATHS: readonly string[] = [
-  "M12 3 3 8l9 5 9-5-9-5Z",
-  "m3 13 9 5 9-5",
-];
 
 /**
  * The kind, drawn as the thing rather than as a mark for the thing.
@@ -96,7 +89,7 @@ function treatment(mark: LayerMark): React.JSX.Element | null {
       const Icon = chartFamilyGlyph(mark.family);
       return (
         <span data-vigilia-layer-mark="chart" className="vigilia-layer-icon">
-          <Icon aria-hidden size={13} strokeWidth={1.75} />
+          <Glyph icon={Icon} size={13} />
         </span>
       );
     }
@@ -129,21 +122,7 @@ function treatment(mark: LayerMark): React.JSX.Element | null {
     case "group":
       return (
         <span data-vigilia-layer-mark="group" className="vigilia-layer-icon">
-          <svg
-            aria-hidden
-            width={13}
-            height={13}
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth={1.75}
-            strokeLinecap="round"
-            strokeLinejoin="round"
-          >
-            {STACK_PATHS.map((d) => (
-              <path key={d} d={d} />
-            ))}
-          </svg>
+          <Glyph icon={STACK_GLYPH} size={13} />
         </span>
       );
   }

@@ -1,6 +1,6 @@
-import { Check } from "lucide-react";
 import { useSyncExternalStore } from "react";
 import { uiCopy } from "../ui-copy.js";
+import { CHECK_GLYPH, Glyph } from "./icons.js";
 import type { HostingStore } from "./shell-layout.js";
 
 /**
@@ -28,7 +28,10 @@ export function PublishIndicator({
   // always-mounted regions are the ones that speak.
   return (
     <p className="editor-shell-live">
-      <Check aria-hidden size={12} strokeWidth={2.5} />
+      {/* §6 names the live check as a **filled** glyph at 12px: a 1.75px stroke
+          on a 12px check reads faint, and the answer the bible gives is the
+          fill rather than a second stroke weight. */}
+      <Glyph icon={CHECK_GLYPH} size={12} filled />
       {uiCopy.statusBar.live}
     </p>
   );

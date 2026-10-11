@@ -1,13 +1,12 @@
-import {
-  Eye,
-  EyeOff,
-  Lock,
-  type LucideIcon,
-  Pencil,
-  Unlock,
-} from "lucide-react";
 import { useEffect, useRef } from "react";
 import { tooltip } from "../../editor-shell/controls/tooltip.js";
+import {
+  Glyph,
+  HIDDEN_GLYPH,
+  LOCK_GLYPH,
+  PENCIL_GLYPH,
+  VISIBLE_GLYPH,
+} from "../../editor-shell/icons.js";
 import type { LayerRow } from "../../editor-shell/layer-tree.js";
 import { uiCopy } from "../../ui-copy.js";
 
@@ -66,7 +65,7 @@ export function RowAffordances({
     <>
       {showRename ? (
         <RowControl label={uiCopy.panels.rename} onClick={onRename}>
-          <Pencil aria-hidden size={15} strokeWidth={1.75} />
+          <Glyph icon={PENCIL_GLYPH} size={15} />
         </RowControl>
       ) : null}
       {showVisibility ? (
@@ -76,9 +75,9 @@ export function RowAffordances({
           onClick={onToggleVisible}
         >
           {row.visible ? (
-            <Eye aria-hidden size={15} strokeWidth={1.75} />
+            <Glyph icon={VISIBLE_GLYPH} size={15} />
           ) : (
-            <EyeOff aria-hidden size={15} strokeWidth={1.75} />
+            <Glyph icon={HIDDEN_GLYPH} size={15} />
           )}
         </RowControl>
       ) : null}
@@ -139,35 +138,15 @@ function RowControl({
   );
 }
 
-/** Locked is a filled lock, unlocked an outline one: at this size the outlines
- *  differ only by a gap in the shackle. `fill` is part of `LucideProps` and
- *  overrides Lucide's own `fill="none"`, so the weight changes without a
- *  second glyph. */
-const LOCK_STATES: Readonly<
-  Record<
-    "locked" | "unlocked",
-    { readonly icon: LucideIcon; readonly fill?: string }
-  >
-> = {
-  locked: { icon: Lock, fill: "currentColor" },
-  unlocked: { icon: Unlock },
-};
-
-/** `exactOptionalPropertyTypes` is on, so the absent fill is spread in rather
- *  than passed as `undefined` — that would type-check but defeat the default. */
+/** Locked is a filled lock and unlocked an outline one: at this size the
+ *  outlines differ only by a gap in the shackle, so the state rides §6's
+ *  `filled` escape and the vocabulary's own weight — no second glyph, no second
+ *  stroke weight. */
 function LockStateIcon({
   locked,
 }: {
   readonly locked: boolean;
 }): React.JSX.Element {
-  const state = LOCK_STATES[locked ? "locked" : "unlocked"];
-  const Icon = state.icon;
-  return (
-    <Icon
-      aria-hidden
-      size={15}
-      strokeWidth={1.75}
-      {...(state.fill === undefined ? {} : { fill: state.fill })}
-    />
-  );
+  const state = LOCK_GLYPH[locked ? "locked" : "unlocked"];
+  return <Glyph icon={state.icon} size={15} filled={state.filled ?? false} />;
 }

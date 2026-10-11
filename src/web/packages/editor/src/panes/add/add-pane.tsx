@@ -1,5 +1,6 @@
 import { Fragment, useEffect, useRef } from "react";
 import { tooltip } from "../../editor-shell/controls/tooltip.js";
+import { GLYPH_STROKE_WIDTH, Glyph } from "../../editor-shell/icons.js";
 import type { ShapeKind } from "../../new-object-defaults.js";
 import type { InsertableObject, InsertGroup } from "../../new-object-panel.js";
 import { chartFamilyGlyph } from "../composition/kind-mark.js";
@@ -127,12 +128,12 @@ function tileMark(object: InsertableObject): React.JSX.Element {
       return <Diagram />;
     }
     case "shape": {
-      const Glyph = SHAPE_GLYPHS[object.shape];
-      return <Glyph />;
+      const ShapeMark = SHAPE_GLYPHS[object.shape];
+      return <ShapeMark />;
     }
     case "chart": {
       const Icon = chartFamilyGlyph(object.family);
-      return <Icon aria-hidden size={20} strokeWidth={1.7} />;
+      return <Glyph icon={Icon} size={20} />;
     }
     case "text":
       return <TextGlyph />;
@@ -158,30 +159,38 @@ function tileKey(object: InsertableObject): string {
  * Each primitive, drawn as the shape itself rather than as a mark for it.
  *
  * Total over `ShapeKind`, so a primitive added to the owner fails to compile
- * here until it is drawn. The reference's own shape grid, at §6's weight: one
- * family, one weight, and a glyph that says which primitive the tile makes
- * without a second word beside it.
+ * here until it is drawn. This is §6's own escape from the library, alongside
+ * the card unit tile: a tile may carry a diagram of what it builds because the
+ * set it draws from is fixed — `SHAPE_KINDS` for these, the eight-card library
+ * for the units below — and the reference's shape grid (`shell.html:96-114`)
+ * draws the same hand paths at the same weight. Lucide has no `wedge` or `arc`
+ * to draw the last two with, so converting them would replace the drawing the
+ * mockup is the authority for. The *weight* is still the vocabulary's, so a
+ * shape tile sits inside the band with every chrome glyph.
  */
 const SHAPE_GLYPHS: Readonly<
   Record<ShapeKind, (props: { readonly size?: number }) => React.JSX.Element>
 > = {
-  rect: Glyph(() => <rect x="4" y="5" width="16" height="14" rx="2" />),
-  ellipse: Glyph(() => <ellipse cx="12" cy="12" rx="8" ry="6" />),
-  polygon: Glyph(() => <path d="M12 4 20 19H4Z" />),
-  polyline: Glyph(() => <path d="M4 17l4-6 4 4 4-8 4 5" />),
-  line: Glyph(() => <path d="M5 18 19 6" />),
-  path: Glyph(() => <path d="M4 18c5 0 6-12 12-12 3 0 4 2 4 4" />),
-  arc: Glyph(() => <path d="M4 19a8 8 0 0 1 16 0" />),
-  wedge: Glyph(() => <path d="M4 4v16h16A16 16 0 0 0 4 4Z" />),
+  rect: ShapeGlyph(() => <rect x="4" y="5" width="16" height="14" rx="2" />),
+  ellipse: ShapeGlyph(() => <ellipse cx="12" cy="12" rx="8" ry="6" />),
+  polygon: ShapeGlyph(() => <path d="M12 4 20 19H4Z" />),
+  polyline: ShapeGlyph(() => <path d="M4 17l4-6 4 4 4-8 4 5" />),
+  line: ShapeGlyph(() => <path d="M5 18 19 6" />),
+  path: ShapeGlyph(() => <path d="M4 18c5 0 6-12 12-12 3 0 4 2 4 4" />),
+  arc: ShapeGlyph(() => <path d="M4 19a8 8 0 0 1 16 0" />),
+  wedge: ShapeGlyph(() => <path d="M4 4v16h16A16 16 0 0 0 4 4Z" />),
 };
 
 /** The text tile's mark: the reference's own arrow-into-frame, for the one tile
- *  that makes an object with words in it rather than a shape. */
+ *  that makes an object with words in it rather than a shape. It is exempt for
+ *  the same reason the shape tiles are — it draws the object it builds. */
 const TextGlyph: (props: { readonly size?: number }) => React.JSX.Element =
-  Glyph(() => <path d="M12 4H7v16h5M11 11h9M17 8l3 3-3 3" />);
+  ShapeGlyph(() => <path d="M12 4H7v16h5M11 11h9M17 8l3 3-3 3" />);
 
-/** One inline stroke glyph on §6's 24px grid, at the shell's weight. */
-function Glyph(
+/** One hand-authored tile mark on §6's 24px grid, at the vocabulary's weight.
+ *  Named apart from `icons.ts`'s `Glyph` because it draws a path of its own
+ *  rather than a library component. */
+function ShapeGlyph(
   draw: () => React.ReactNode,
   defaultSize = 20,
 ): (props: { readonly size?: number }) => React.JSX.Element {
@@ -193,7 +202,7 @@ function Glyph(
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth={1.7}
+      strokeWidth={GLYPH_STROKE_WIDTH}
       strokeLinecap="round"
       strokeLinejoin="round"
     >

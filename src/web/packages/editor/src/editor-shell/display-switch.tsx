@@ -1,5 +1,4 @@
 import { Menu } from "@base-ui/react/menu";
-import { Minus, Plus, Scan } from "lucide-react";
 import {
   type ReactNode,
   useCallback,
@@ -8,9 +7,9 @@ import {
   useSyncExternalStore,
 } from "react";
 import {
-  artboardOrientation,
   type ArtboardOrientation,
   type ArtboardSize,
+  artboardOrientation,
 } from "../artboard-presets.js";
 import {
   type DisplayLens,
@@ -21,6 +20,7 @@ import { uiCopy } from "../ui-copy.js";
 import type { ViewportManager } from "../viewport-manager/index.js";
 import { ZOOM_STEP } from "../viewport-manager/navigation.js";
 import { tooltip } from "./controls/tooltip.js";
+import { FIT_GLYPH, Glyph, MINUS_GLYPH, PLUS_GLYPH } from "./icons.js";
 
 /**
  * One subscription for both camera facts, read as **primitives** so an
@@ -110,7 +110,7 @@ export function DisplaySwitch({
         label={uiCopy.display.zoomOut}
         onClick={() => viewport.zoomBy(1 / ZOOM_STEP)}
       >
-        <Minus aria-hidden size={15} strokeWidth={1.75} />
+        <Glyph icon={MINUS_GLYPH} size={15} />
       </ViewButton>
       <Menu.Root>
         <Menu.Trigger
@@ -205,7 +205,7 @@ export function DisplaySwitch({
         label={uiCopy.display.zoomIn}
         onClick={() => viewport.zoomBy(ZOOM_STEP)}
       >
-        <Plus aria-hidden size={15} strokeWidth={1.75} />
+        <Glyph icon={PLUS_GLYPH} size={15} />
       </ViewButton>
       {/* The state is the camera's own `isFitted()`, the same fact the display
           menu's Fit tick reads: one fact, two readings, so a lens chosen and
@@ -219,7 +219,7 @@ export function DisplaySwitch({
         fitted={isFitted}
         onClick={() => viewport.zoomToFit()}
       >
-        <Scan aria-hidden size={15} strokeWidth={1.75} />
+        <Glyph icon={FIT_GLYPH} size={15} />
       </ViewButton>
     </div>
   );

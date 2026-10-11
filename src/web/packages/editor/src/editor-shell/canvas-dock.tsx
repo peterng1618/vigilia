@@ -13,6 +13,7 @@ import {
 import { uiCopy } from "../ui-copy.js";
 import type { EditorShellBridge } from "./bridge.js";
 import { tooltip } from "./controls/tooltip.js";
+import { Glyph } from "./icons.js";
 
 /**
  * Bible §4: `--hot` marks destructive affordances, and delete is the only object
@@ -164,7 +165,7 @@ export function CanvasDock({
                       }
                 }
               >
-                <Icon aria-hidden size={15} strokeWidth={1.75} />
+                <Glyph icon={Icon} size={15} />
               </Action>
             ),
           )}
@@ -176,7 +177,7 @@ export function CanvasDock({
           label={label}
           disabled={bridge === undefined || !actionEnabled(bridge, id)}
         >
-          <Icon aria-hidden size={15} strokeWidth={1.75} />
+          <Glyph icon={Icon} size={15} />
         </ArrangeAction>
       ))}
     </nav>

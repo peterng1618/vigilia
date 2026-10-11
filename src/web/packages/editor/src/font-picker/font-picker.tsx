@@ -1,9 +1,9 @@
-import { Star } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   type ControlOption,
   ControlSelect,
 } from "../components/ui/control-select.js";
+import { Glyph, STAR_GLYPH } from "../editor-shell/icons.js";
 import type { CuratedFontFace, FontTrio } from "../font-catalog.js";
 import {
   type CatalogQuery,
@@ -53,19 +53,10 @@ function facetOptions(field: FacetField): readonly ControlOption[] {
 }
 
 /** Favourited is a filled star and unfavourited an outline one, as the layer
- *  row's lock is: `fill` is part of `LucideProps` and overrides Lucide's own
- *  `fill="none"`, so the state costs no second glyph and the icon keeps the
- *  shell's colour either way. `exactOptionalPropertyTypes` is on, so the
- *  absent fill is spread in rather than passed as `undefined`. */
+ *  row's lock is: §6's `filled` escape changes the fill without a second glyph
+ *  and the icon keeps the shell's colour either way. */
 function FavoriteStateIcon({ favorite }: { readonly favorite: boolean }) {
-  return (
-    <Star
-      aria-hidden
-      size={13}
-      strokeWidth={1.75}
-      {...(favorite ? { fill: "currentColor" } : {})}
-    />
-  );
+  return <Glyph icon={STAR_GLYPH} size={13} filled={favorite} />;
 }
 
 export interface FontPickerProps {

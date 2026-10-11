@@ -1,5 +1,4 @@
 // @vitest-environment jsdom
-import { Layers } from "lucide-react";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { expect, it } from "vitest";
@@ -9,6 +8,7 @@ import {
   objectActionsFor,
 } from "../object-actions.js";
 import type { EditorShellBridge } from "./bridge.js";
+import { STACK_GLYPH } from "./icons.js";
 import { LayerActions } from "./layer-panel.js";
 import { Pane } from "./pane.js";
 
@@ -51,7 +51,7 @@ function Composition({
     <Pane
       id="layers"
       title="Layers"
-      icon={Layers}
+      icon={STACK_GLYPH}
       footer={<LayerActions bridge={gate} />}
     >
       <div />

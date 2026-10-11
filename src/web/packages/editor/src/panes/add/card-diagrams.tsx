@@ -1,4 +1,5 @@
 import type { CardDiagram } from "../../card-library.js";
+import { GLYPH_STROKE_WIDTH } from "../../editor-shell/icons.js";
 
 /**
  * The diagram a card unit's tile draws, one per name `card-library.ts` declares.
@@ -12,7 +13,11 @@ import type { CardDiagram } from "../../card-library.js";
  * React surface. **The library owns the name; the pane owns the drawing.**
  *
  * Stroke paths at bible §6's weight on the 24px grid, taken from the reference's
- * own tile artwork, so no icon family and no dependency arrives with them.
+ * own tile artwork, so no icon family and no dependency arrives with them. That
+ * is exactly §6's own escape from the library — a card unit tile may carry a
+ * diagram of what it builds because the library is a fixed set of eight — while
+ * the weight still comes from the one chrome vocabulary (`icons.ts`), so these
+ * sit inside the band with every chrome glyph.
  * `time`, `ram`, `cpu`, `trends`, `storage` and `network` are the reference's
  * paths; `gpu` and `vram` are drawn here, because the reference drew one glyph
  * for each pair and **a diagram that two units share identifies neither**.
@@ -27,8 +32,10 @@ interface CardDiagramProps {
 
 type CardDiagramGlyph = (props: CardDiagramProps) => React.JSX.Element;
 
-/** The tile's own surface: one viewBox, one weight, one hook for a test. */
-function Glyph({
+/** The tile's own surface: one viewBox, one weight, one hook for a test. Named
+ *  apart from the vocabulary's `Glyph` because it draws a path of its own rather
+ *  than a library component — `add-pane`'s `ShapeGlyph` is its twin. */
+function DiagramGlyph({
   size,
   children,
 }: {
@@ -44,7 +51,7 @@ function Glyph({
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth={1.7}
+      strokeWidth={GLYPH_STROKE_WIDTH}
       strokeLinecap="round"
       strokeLinejoin="round"
     >
@@ -55,7 +62,7 @@ function Glyph({
 
 /** One unit's diagram, at the tile's own default size. */
 function diagramOf(draw: () => React.ReactNode): CardDiagramGlyph {
-  return ({ size = 22 }) => <Glyph size={size}>{draw()}</Glyph>;
+  return ({ size = 22 }) => <DiagramGlyph size={size}>{draw()}</DiagramGlyph>;
 }
 
 export const CARD_DIAGRAMS: Readonly<Record<CardDiagram, CardDiagramGlyph>> = {

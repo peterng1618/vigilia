@@ -1,4 +1,3 @@
-import { Keyboard, Pencil } from "lucide-react";
 import { type KeyboardEvent, useEffect, useRef, useState } from "react";
 import { ControlIconButton } from "../components/ui/control-icon-button.js";
 import {
@@ -20,6 +19,7 @@ import {
   shortcutReferenceGroups,
 } from "../shortcut-manager/reference.js";
 import { uiCopy } from "../ui-copy.js";
+import { Glyph, KEYBOARD_GLYPH, PENCIL_GLYPH } from "./icons.js";
 
 /** The refusal as §9 requires it: the reason, in words, rendered in the row of
  *  the binding it did not make. The words are `uiCopy`'s — this chooses which
@@ -154,7 +154,7 @@ export function SettingsKeyboard(props: {
           which put the one act that is about every row after the twentieth row,
           so an author had to scroll past the whole table to reach it. */}
       <div className="editor-shell-keyboard-header">
-        <Keyboard aria-hidden size={14} strokeWidth={1.7} />
+        <Glyph icon={KEYBOARD_GLYPH} size={14} />
         <span>{uiCopy.settings.keyboard}</span>
         <button
           type="button"
@@ -225,7 +225,7 @@ export function SettingsKeyboard(props: {
                       armed === row.action ? disarm() : onArmed(row.action)
                     }
                   >
-                    <Pencil aria-hidden size={15} strokeWidth={1.75} />
+                    <Glyph icon={PENCIL_GLYPH} size={15} />
                   </ControlIconButton>
                   <button
                     type="button"
