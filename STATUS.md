@@ -23,7 +23,7 @@ satisfies every token in `DESIGN.md` and still does not look like the mockup.
 
 ## Active work
 
-- **Active plan:** `docs/superpowers/plans/2026-10-12-the-dead-code-sweep.md` — reordered by the user on 2026-10-12 to **managers, then dead code, then the register**: Phase 1 is closed, **Phase 2 closed with both reference reports reviewed**, Phase 3 removal is under way with **Task 4 complete and Tasks 5–6 next**, Phase 4 the register (7); **task numbers are stable identifiers, not positions**, because a dozen references cite them.
+- **Active plan:** `docs/superpowers/plans/2026-10-12-the-dead-code-sweep.md` — reordered by the user on 2026-10-12 to **managers, then dead code, then the register**: Phase 1 is closed, **Phase 2 closed with both reference reports reviewed**, Phase 3 removal has **Tasks 4 and 5 complete, Task 6 next**, Phase 4 the register (7); **task numbers are stable identifiers, not positions**, because a dozen references cite them.
 - **Phase 1 closed with three moves and one dissolution** — [`manager-census.md`](docs/architecture/manager-census.md) ranked ten candidates and closed at `32265c25`; Task 9 moved ranks 4, 5 and 9 and confirmed rank 6 is not a move, its census label `Clean-ish` having hedged exactly that.
 - **Phase 2's reports land in `docs/architecture/`, not the plan workspace** — `.gitignore:90` hides `.superpowers/` and `docs/README.md` calls that ledger temporary, so evidence Phase 3's removals rest on would have died with a fresh clone; the plan's two output paths were corrected before either ran.
 - **`snap-manager` is the largest code problem and is not an extraction candidate at all** — one external production module reaches it, so its fix is a protocol re-shape needing a spec, and the plan no longer calls it the split's worked example.
@@ -32,19 +32,19 @@ satisfies every token in `DESIGN.md` and still does not look like the mockup.
 
 ## Last completed change
 
-- **Task 4 landed and passed both review verdicts** — the editor package's five §2.1 symbols and 143 `export` keywords go in `11029413` + `93bb2c5f`, and the scanner's after-picture reproduces exactly: 312 → 163 candidates, editor 224 → 75.
-- **The review re-established every deletion rather than sampling it** — all five §2.1 symbols dead under its own searches, tested against each named hiding form (barrel, namespace import, dynamic import, `require`, gate JSON), plus all 143 keyword rows scanned for an importer or a quoted-string registration.
-- **No fix round, ruled on cost rather than on the count** — five of the report's numbers are wrong or unreproducible (seven workspaces not six, 77 files not 76, 144 lines not 145, two property keys not one, and the `npm run lint` wrapper artefact unreproduced at 0 where the lane reported 1), and every correction stands beside the report in `task-4-review.md`.
-- **The 13 over-retained keywords are a residual, not a defect** — kept on a `vi.mock` factory that never names the symbol, which is the scanner's own sound conservatism about what a search can see, applied as a retention rule; the corrected rule travels into Task 5 rather than into a round.
-- **Two register rows were filed on verified verdicts, never on the lane's word** — `vg-381` (`importImage`'s inert `scale` option, passed `image-contain` by `asset-manager`) and `vg-382` (the `redundant-export` tier counting an object-literal property key as a use).
+- **Task 5 landed and passed both verdicts** — the six shared packages give up 51 `redundant-export` keywords, 3 dead symbols and 1 dead re-export in `47658230` + `c9ed9dcc` + `fd32a420`; the group went 88 → 32 candidates with 32 kept deliberately, and `theme-package`/`fake-source` yielded none.
+- **The persisted-scene boundary was the real risk and it held** — `PlanIssue`'s `"unresolved-asset"` had its producer's removal verified as an ancestor of base, the literal found nowhere constructed by string, and `PlanIssue` confirmed not persisted; nothing removed is a Fabric property name, a `KIND_*` key or a schema value.
+- **The 51 keyword strips were scanned rather than sampled** — 51 removed lines against 51 added, every one a bare `export ` strip; and all 24 retained rows were checked per row against the test the row names, with no `vi.mock`-only importer, so Task 4's over-retention gap did not repeat.
+- **The full-suite red was not this task's, and reading the source settled it** — the lane's 1 failure did not reproduce (a re-run at the same commit gave 770 suites / 3287 tests / 0 failed), the editor package is byte-identical base↔HEAD, and the assertion at `runs.dom.test.ts:220-221` reads `Date.now()` *after* the render, so it fails on a minute boundary; filed as `vg-383`.
+- **Two register rulings, one by amendment and one by declining** — the re-export finding amends `vg-382`, since a property key and a re-export are one rule with one fix, and its quoted count was corrected from 2 to 1; `"highest"` was **not** filed, because the scanner's own evidence names an outside-arriving value as its expected false positive and `lhm-mapping.ts` implements the documented default as the `Math.max` branch.
 
 ## Next
 
-1. **Task 5 is next — the host, player and shared packages** — 88 candidates between them, and it carries Task 4's corrected retention rule: a test importer justifies keeping a keyword only when the test *names the symbol*, never when it mocks the module wholesale.
-2. **Task 6 follows it** — the ungated trees and stale references, where `.mjs` sits in no gate at all and `tests/e2e/**` in no tsconfig, so the scanner's own coverage limits are limits rather than results.
-3. **Task 7 closes the plan** — Phase 4 discharges the register rows the sweep's instruments produced (`vg-378`, `vg-379`, `vg-381`, `vg-382` and the rest), each with a check naming a word from its own title.
-4. **`vg-368` waits on a decision** — whether `src/web/.agent-scratch/` is deleted, relocated outside the tree, or excluded per tool; deleting is not obviously safe because it holds screenshots and a vitest report that may be the only copy.
-5. **The three failures the capture run surfaced** — `vg-359` (which also owns the one stale capture), `vg-360` and `vg-361`; nothing fixed on sight, because the first question for each is whether the surface moved or the locator did, and those want opposite fixes.
+1. **Task 6 is next — the ungated trees and stale references** — `tests/e2e/**` and the `.mjs` scripts, which sit in no gate and no tsconfig, so a finding there is more likely real and a *removal* there more likely load-bearing to something outside the type system; `docs/architecture/dead-code-candidates.md` is stale for Tasks 4 and 5's removals and belongs to it.
+2. **Task 7 closes the plan** — Phase 4 discharges the register rows the sweep's instruments produced (`vg-378`, `vg-379`, `vg-381`, `vg-382`, `vg-383` and the rest), each with a check naming a word from its own title.
+3. **`vg-368` waits on a decision** — whether `src/web/.agent-scratch/` is deleted, relocated outside the tree, or excluded per tool; deleting is not obviously safe because it holds screenshots and a vitest report that may be the only copy.
+4. **The three failures the capture run surfaced** — `vg-359` (which also owns the one stale capture), `vg-360` and `vg-361`; nothing fixed on sight, because the first question for each is whether the surface moved or the locator did, and those want opposite fixes.
+5. **`vg-383` is a flake with a named mechanism and no owner yet** — the run-format preview is asserted against a clock read after the render, so the suite reads red about once in sixty runs and the failure lands on whichever commit is nearby.
 
 ## Blockers / unverified
 
