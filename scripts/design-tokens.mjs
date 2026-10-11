@@ -84,6 +84,14 @@ const ROOT = resolve(import.meta.dirname, "..");
  * stands after plan 8's CSS edits, so the instrument is green today and can only
  * tighten: a rise above `max` fails, a fall passes.
  *
+ * What it cannot do is the half a reader has to know about. It reads a count and
+ * not a set, so a **swap passes**: correct one violation while another arrives
+ * and the total is unchanged at `max`, green, while the file's residual set has
+ * moved. That limit is filed as `vg-327`. A `max` that is absent or not finite is
+ * treated as breached rather than compared, because `NaN` is never greater than
+ * anything and a ceiling that cannot be evaluated would otherwise be the one way
+ * this instrument silently stops being able to fail.
+ *
  * `exempt` names the values no §3 step can express, each with its reason — the
  * shape the drawings gate uses for `1px`/`2px`/`50%`. An exempt value does not
  * count, and an exemption that matches nothing is itself a failure: a licence
@@ -97,7 +105,7 @@ export const CEILINGS = [
       {
         text: "margin-right: 62px",
         reason:
-          "the layer row's reserved slot for two controls — `6 + 26*2 + 4` (§3's 26px row rhythm plus its 6px and 4px steps) — so the sum is off §3's step table by construction, and correcting it to a step would move the reserved width and let the icons cover the key again (editor-shell.css:2066-2084)",
+          "the layer row's reserved slot for two controls — `6 + 26*2 + 4` (§3's 26px row rhythm plus its 6px and 4px steps), declared on `.vigilia-layer-row:has(.vigilia-layer-state button:nth-child(N)) .vigilia-layer-bound` — so the sum is off §3's step table by construction, and correcting it to a step would move the reserved width and let the icons cover the key again",
       },
       {
         text: "margin-right: 92px",
@@ -273,22 +281,27 @@ export function check(relPath, source, biblePx = []) {
  *
  * `over` is strict — a count at the ceiling passes — because `>=` would redden
  * the gate at the number it was measured at, which is the failure the ceiling
- * exists to avoid. `dead` is returned rather than logged so a caller sees a
- * licence nobody needs as a failure, not a silent pass.
+ * exists to avoid — and it **fails closed**: a `max` that is absent, a string or
+ * `NaN` is not compared, because `NaN` is never greater than a count and that is
+ * the one way this instrument silently stops being able to fail. `dead` is
+ * returned rather than logged so a caller sees a licence nobody needs as a
+ * failure, not a silent pass.
+ *
+ * `exempt` is a set of `text`s only — the reasons live in `CEILINGS`, beside the
+ * `max` they belong to, rather than travelling through here unreached.
  */
 export function ceilingExcess(relPath, source, biblePx = [], ceiling = {}) {
   const violations = check(relPath, source, biblePx);
-  const exempt = new Map(
-    (Array.isArray(ceiling.exempt) ? ceiling.exempt : []).map((entry) => [
-      String(entry.text),
-      String(entry.reason),
-    ]),
+  const exempt = new Set(
+    (Array.isArray(ceiling.exempt) ? ceiling.exempt : []).map((entry) => String(entry.text)),
   );
   const counted = violations.filter((violation) => !exempt.has(violation.text));
-  const dead = [...exempt.keys()].filter(
-    (text) => !violations.some((violation) => violation.text === text),
-  );
-  return { counted, dead, over: counted.length > Number(ceiling.max) };
+  const dead = [...exempt].filter((text) => !violations.some((violation) => violation.text === text));
+  return {
+    counted,
+    dead,
+    over: !Number.isFinite(ceiling.max) || counted.length > ceiling.max,
+  };
 }
 
 /**
@@ -429,6 +442,9 @@ function selfTest() {
       1,
       false,
     ],
+    // Fail closed, not open: `NaN` is never greater than a count, so a ceiling
+    // whose `max` is absent or a typo would otherwise compare nothing and pass.
+    ["a ceiling with no finite max fails closed", ".x { padding: 12px; }", {}, 0, 0, true],
   ];
   for (const [name, source, ceiling, counted, dead, over] of ceilingCases) {
     const got = ceilingExcess("editor-shell.css", source, [], ceiling);
@@ -567,6 +583,23 @@ if (isEntryPoint) {
   }
   console.log(`design-tokens: ${gated.length} gated file(s) clean`);
 
+  // The same two guards the gated list gets above, for the same reason: a guard
+  // over nothing proves nothing, and a `max` that is not a finite number is a
+  // ceiling comparing against nothing. `ceilingExcess` fails closed on it too;
+  // this is the legible refusal.
+  if (CEILINGS.length === 0) {
+    console.error("design-tokens: CEILINGS is empty; the guard would compare no file at all");
+    process.exit(1);
+  }
+  for (const ceiling of CEILINGS) {
+    if (!Number.isFinite(ceiling.max)) {
+      console.error(
+        `design-tokens: CEILINGS entry ${String(ceiling.path)} has no finite "max"; a ceiling compared against nothing is never over`,
+      );
+      process.exit(1);
+    }
+  }
+
   let breached = 0;
   for (const ceiling of CEILINGS) {
     const relPath = String(ceiling.path);
@@ -595,7 +628,9 @@ if (isEntryPoint) {
         `design-tokens: ${relPath} holds ${counted.length} violation(s), above its ceiling of ${ceiling.max}`,
       );
       breached += 1;
-    } else {
+    } else if (dead.length === 0) {
+      // Not on a run a dead exemption already failed: a success sentence beside
+      // a failure is how a red run reads green.
       console.log(
         `design-tokens: ${relPath} holds ${counted.length} violation(s), at or below its ceiling of ${ceiling.max}`,
       );
