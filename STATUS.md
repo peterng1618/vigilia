@@ -30,11 +30,11 @@ satisfies every token in the bible and still does not look like the mockup.
 
 ## Last completed change
 
-- **Task 9, the parity capture and the close**: the shell photographed in the drawing's own state by a new registered action, `captures the shell glyphs and words with the Add pane open` (image `editor-shell-glyphs`, `editor-shell-glyphs-desktop-chromium.png`), copied beside `current/shell.html` as `shell-capture-glyphs.png`.
-- **The capture's assertion is the half `design:check` cannot read**: every rendered glyph's `stroke-width` is §6's weight for its own size (57 glyphs across sizes 13, 14, 15, 17, 20, 22px), no glyph's descendant overrides it, and all 20 icon-only controls' rendered tooltips equal their `aria-label`s.
-- **Red-proved**: with `glyphStrokeWidth`'s top tier planted at `1.9` and the editor rebuilt, the capture failed `1 failed` while `npm run design:check` stayed green (exit 0, 71 files clean) — a weight set in a JSX prop is invisible to the token scan, which is why this reading exists.
-- **Item 16 turns met and item 3 stays not met**: plan 6's own parity capture existed nowhere before this commit, so the ledger now reads fifteen met, one not met — §13.1's real-host walkthrough, which keeps the redesign open.
-- **One mockup correction**: `current/shell.html`'s Text-row glyph declared 16px at `stroke-width="1.6"`, which is in no §6 tier, and now reads `1.7`; every other glyph stroke in `current/` is on-tier.
+- **Task 9's stale captures re-taken** (fix round 1): the dock, the four inspector columns, the panes and the six settings frames were shot before Task 2's weight collapse, against the evidence README's own rule at `:58`; all are re-shot from the built bundle (`VIGILIA_CAPTURE=1 --workers=1`, 8 tests, 8 passed) and 13 of the 16 changed bytes.
+- **The pre-Task-2 check was run properly this time**: `git worktree add` at `b5abe5f0`, host/editor/player built there, capture run at `:1526` → **1 test, 1 failed**, every glyph at `stroke-width=1.75`, which is in no §6 tier; worktree removed before the commit.
+- **The pairing half got its own red proof**: appending one space in `useControlTooltip`'s `text` failed the capture on every icon-only control ("Composition: the tooltip reads \"Composition \""), restored by `cp` with `cmp` identical and one `sha256sum` before and after.
+- **The capture's own comment now states its boundaries**: the weight scan skips an `<svg>` with no numeric `width` and reads `#app` only; the tooltip population is `<button[aria-label]>`, narrower than the root scan, and the comment says so rather than leaving the asymmetry implicit.
+- **`backlog:check` reads 199 items, not the 198 the first report recorded** — the difference is this task's own `vg-340`.
 
 ## Next
 

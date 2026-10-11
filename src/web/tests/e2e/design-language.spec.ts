@@ -1514,11 +1514,16 @@ const GLYPH_TIERS: readonly number[] = [2, 1.8, 1.7];
  * unseen. Then §6's second rule: every icon-only control's rendered tooltip is
  * the same string as its `aria-label`.
  *
- * **It fails if the glyphs are not the new ones.** A bundle that drew a flat or
- * old weight reddens the weight reading; a control whose tooltip and accessible
- * name drifted apart reddens the pairing. Both were proved red by planting a
- * wrong weight in `glyphStrokeWidth` and rebuilding — `design:check` stays green
- * through that break, which is why this reading exists.
+ * **It fails if the glyphs are not the new ones**, and the weight reading was
+ * reddened two ways. A bundle built from before Task 2 (`b5abe5f0`, the parent of
+ * the commit that added `icons.ts`, built in a `git worktree`) fails it on every
+ * glyph: each is drawn at stroke-width 1.75, which is not one of §6's tiers.
+ * Planting a wrong weight in `glyphStrokeWidth` and rebuilding fails it too, and
+ * `design:check` stays green through that break — which is why a rendered reading
+ * exists at all. The pairing half has its own plant: appending one space in
+ * `useControlTooltip`'s `text` — the exact drift §6 names — fails it on every
+ * icon-only control in the state ("Composition: the tooltip reads
+ * \"Composition \""), and reverting by `cp` restores the file byte for byte.
  *
  * A `--grep` that matches nothing exits 0 with zero tests, so the run's own
  * summary — "1 test", this file — is the proof it ran at all, not the exit code.
@@ -1561,6 +1566,13 @@ test("captures the shell glyphs and words with the Add pane open", async ({
   // `stroke: none` and is not a stroke glyph (§6's one-weight set is stroke
   // chrome), so it is skipped rather than asserted against a weight it has none
   // of.
+  //
+  // Three boundaries, stated rather than left to be inferred. A mark with **no
+  // `width` attribute, or a non-numeric one**, is skipped: `Number(width)` is
+  // `NaN` for a CSS-sized mark such as `width="100%"`, so this is every
+  // width-bearing stroke glyph under the root, not every mark the shell draws. A
+  // glyph **portalled outside `#app`** is unreached. And only **this one state**
+  // is read — the Add pane open on graphite.
   const glyphs = await page.evaluate(() => {
     const drawn: {
       readonly where: string;
@@ -1652,6 +1664,15 @@ test("captures the shell glyphs and words with the Add pane open", async ({
   // is read as one — a non-empty `aria-label` on a button that renders no text —
   // so a labelled button (`Publish`) is not swept in. A hidden pane's control
   // cannot be focused, so it is skipped and named in the count.
+  //
+  // **This population is narrower than the weight scan above, and the boundary
+  // is stated for that reason.** It is `<button>` elements with an `aria-label`;
+  // an icon-only control that is not a `<button>`, or one named through
+  // `aria-labelledby` instead, is not swept in. Neither occurs in this state —
+  // the shell has no `role="button"`, and the only `aria-labelledby` holders are
+  // the segmented control, the slider's range, `settings.tsx`'s palette group and
+  // the dialog, none of them a button — but the weight half is exhaustive over
+  // the root and this half is not.
   const iconOnly = await page.evaluate(() => {
     const out: { readonly label: string; readonly index: number }[] = [];
     for (const [index, button] of [
