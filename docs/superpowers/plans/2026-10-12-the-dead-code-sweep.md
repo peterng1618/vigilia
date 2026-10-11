@@ -6,6 +6,8 @@
 
 **Architecture:** Build the reference picture first, then remove by owner. **The hard part is not deleting, it is deciding what is dead**, and this repo makes that unusually easy to get wrong: `data-vigilia-*` attributes, `--vigilia-*`/`--shell-*` custom properties, `KIND_*` registries and Fabric JSON keys are all resolved by *string*, and four gate scripts read the source tree as **data**. So Phase 1 produces a candidate report with its searches recorded, Phase 2 verifies and removes one owner at a time, and no candidate is deleted on the strength of an empty `grep` alone.
 
+**Four phases, and each is judged by a different thing:** Phase 1 builds the reference picture (Tasks 1–3), Phase 2 verifies and removes by owner (Tasks 4–6), Phase 3 makes the register agree with the tree (Task 7), Phase 4 redistributes the manager layer (Tasks 8–9). Phases 1–3 are judged by what disappeared; Phase 4 is judged by what *moved* without moving anything else.
+
 **Phase 4 is a different kind of change and is marked as one.** The manager layer's review and redistribution (requested by the user) turned out on measurement to contain **no dead code at all** — all 20 managers have production references — so it is a behaviour-preserving ownership refactor whose acceptance is that *nothing* changes, not that something disappeared. It sits in this plan because the user asked for it here, and it is separated because judging it by the removal phases' standard would be judging it backwards.
 
 **Tech Stack:** node (`node:fs`, no new dependency), the TypeScript compiler already in the workspace, and the repo's own gate scripts.
@@ -132,6 +134,10 @@ Each task below owns one group of packages and follows the same contract: **for 
 - [ ] **Step 2: Separate stale code from stale reference** (Review Focus 4). `vg-275`'s three decision records naming the deleted `PaletteMenu.choose`, and `vg-198`'s docs map, are prose fixes; they go in their own commit so code and docs are reviewable apart.
 - [ ] **Step 3: Verify and remove as Task 4**, and run `gates:self-test` plus `design:check` — the gate scripts are themselves in scope, so their own gate must be green afterwards.
 
+### Phase 3 — discharge the register
+
+This phase removes nothing, and it is separated from Phase 2 because its acceptance is different: Phase 2 is judged by what disappeared from the tree, and this one by whether the register ends up agreeing with the tree. It runs last among the removal work because a `verified` row needs an `artefacts` sha, and a sha can only be cited once the removal that earns it exists.
+
 ### Task 7: Discharge the register rows this sweep settles
 
 **Files:** `docs/product/backlog.jsonl`, `docs/product/backlog-archive.jsonl`.
@@ -142,8 +148,6 @@ Each task below owns one group of packages and follows the same contract: **for 
 - [ ] **Step 4: Edit the two registers by raw line, never by a JSON round-trip** — a round-trip rewrites every row holding a `§` escape.
 - [ ] **Step 5: Run `npm run backlog:check` from `src/web/`.**
 - [ ] **Step 6: Commit.** `docs(backlog): the rows the dead-code sweep discharges`.
-
----
 
 ---
 
