@@ -23,18 +23,18 @@ satisfies every token in `DESIGN.md` and still does not look like the mockup.
 
 ## Active work
 
-- **No implementation plan is active**: `design-md-replaces-the-bible` closed with this commit (six tasks, acceptance verified end to end); Plan 6 is complete and archived at [`archive/`](docs/superpowers/plans/archive/2026-10-08-iconography-and-copy.md).
+- **No implementation plan is active**: `design-md-replaces-the-bible` is closed and archived at [`archive/`](docs/superpowers/plans/archive/2026-10-10-design-md-replaces-the-bible.md); Plan 6 is complete and archived at [`archive/`](docs/superpowers/plans/archive/2026-10-08-iconography-and-copy.md).
 - **Plan 6's nine tasks are complete**: the census, the one glyph vocabulary and weight rule, the closed kind set, the one-string pairing, the copy nets, the ratchet, the sixteen-item Acceptance ledger and Task 9's parity capture.
 - **Its Acceptance ledger reads fifteen met, one not met** — §13.1's real-host walkthrough, which plan 6 was forbidden to add and no other plan owns.
 - **`vg-330` is parked by the user (2026-10-11)** — "Let's park the settings becomes a pane spec" — and `vg-331` still waits: the palettes gain a second highlight whose role is an attention or in-flight state, defined before any colour is chosen.
 
 ## Last completed change
 
-- **`design-md-replaces-the-bible` closed**: all six tasks done, and the plan's eight-item Acceptance list walked with evidence — `DESIGN.md` at the root, the old `docs/design/design-language.md` gone, and `design:check` lint/sync/cite clean.
-- **Eighteen markers resolve**: `§1`–`§10` and `§7.1`–`§7.8` each carry their marker in `DESIGN.md`, and `design:md --cite` is clean over 289 citation sources.
-- **Items 5 and 7 recorded as amended**: no current-truth document claims a bible exists (`git grep bible` empty over `DESIGN.md`, `AGENTS.md`, `docs/README.md`, `docs/design`, `docs/architecture`, `docs/engineering`, `docs/evidence`, `src` and `scripts`), and no queued plan names the deleted file.
-- **Four register rows re-pointed** — `biblePx` → `designLanguagePx` on `vg-227`, `vg-308`, `vg-332` and `vg-340`, by raw-line substitution, never a JSON round-trip.
-- **Nothing filed from the sweep**: it was a name sweep, not a citation audit, and it found nothing that warranted a row.
+- **The final review's fix round landed**: `design:md --cite` now asserts each `<!-- §N -->` marker sits under the heading the spec's section mapping names (F3), reading that mapping from the spec's `### Section mapping` table — a *moved* marker now fails naming `DESIGN.md` and its line, where before only a deleted or renamed one did.
+- **The register's `.jsonl` exclusion is a decision, not an accident** (F2): `.jsonl` stays out of the citation scan so the register's *historical* `§N` prose cannot satisfy a marker claim, with a comment giving the reason and a self-test that fails if the list is widened to admit it.
+- **Both gate changes red-proofed and restored byte-exact** (`cmp` against the committed blob): a `§9` marker moved under `## Overview` failed `--cite` with exit 1; admitting `.jsonl` failed the self-test.
+- **The completed plan archived** (F6): `2026-10-10-design-md-replaces-the-bible.md` moved to `docs/superpowers/plans/archive/`, and no tracked file referenced its old path.
+- **Two register rows filed** — `vg-354` (`fontFamily` is a value nothing owns; closing needs a decision, not a patch) and `vg-355` (`design:check`/`gates:self-test` are run by no CI job and no hook — searched and confirmed); both raw-line appends, `backlog:check` clean over 210 items.
 
 ## Next
 
