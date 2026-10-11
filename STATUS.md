@@ -32,22 +32,23 @@ satisfies every token in `DESIGN.md` and still does not look like the mockup.
 
 ## Last completed change
 
-- **The census closed clean and its re-review reproduced every number independently** — four findings closed, ranks 1–10 byte-equal and in order against `a2fe5a89`, the rule paragraph byte-identical, §1.1 at 28 rows and all twenty `*-manager/` directories holding an `index.ts`.
-- **The re-review's one leftover nuance was fixed on the fly rather than dispatched** — `:107` said "all three of `chart-manager/`'s" where the directory holds seven, so the count now says "source files"; a whole round and review seat for one qualifier is the churn the loop exists to avoid.
-- **Rank 4's facts were verified before Task 9's brief carries them, and a literal search would have lied** — `text-manager/index.ts:88-91` writes the box through the `VIGILIA_TEXT_PROPERTY` constant rather than the string, so grepping `vigiliaText` reports three writers as two.
-- **Task 9 now runs one candidate per dispatch, and the census's map findings went to the register** — a single brief covering four extractions cannot satisfy the plan's own "one manager per commit", and ranks 8 and 10 had no owning task.
+- **Task 9's rank 4 landed and passed both verdicts** — `dd7c3365` deletes `selection-inspector`'s private writer and points both inline writers at `writeAuthoredBoxDimension`, with `ownership.md` updated in the same commit.
+- **The manager suite is unchanged and was re-measured independently, not taken from the report** — 528 tests in 46 files, identical file sets and identical test names before and after, run in a detached base worktree.
+- **Consolidating three writers onto one owner cost one behaviour delta, and it is filed rather than papered over** — the owner's pre-existing `value < 1` refusal now applies on the resize path, so a text object under about two scene units wide stops updating its authored box; `vg-370` records it.
+- **No behaviour-neutral fix existed, which is why it was accepted** — relaxing the floor widens behaviour on `controls-manager`'s path and a second write path restores the two-owner defect rank 4 removed.
+- **The plan's "13,200 lines of manager tests" was deleted rather than corrected** — the paragraph above it rules that this phase never uses a line budget, so the count contradicted its own document; `vg-233`'s detail was also corrected to stop describing deleted code.
 
 ## Next
 
-1. **Task 9's first candidate goes out next — rank 4, the three `vigiliaText.box` writers** — `scene-fabric/src/authored-box.ts` already claims the job, so the other two call it and stop writing the box inline.
-2. **Task 9 runs one candidate per dispatch, four in all** — ranks 4, 6, 9 and 5 in the census's order within the clean-extraction label, each one commit and its own scoped review; rank 1's import-graph ordering is a separate decision-gated job and is not bundled with a move.
+1. **Task 9's second candidate goes out next — rank 6, `controls-manager`'s document writes** — moving the Line scalars out means the controls module stops writing document state.
+2. **Task 9 runs one candidate per dispatch, four in all** — rank 4 is done; ranks 6, 9 and 5 remain in the census's order within the clean-extraction label, each one commit and its own scoped review; rank 1's import-graph ordering is separate and decision-gated.
 3. **Phase 2's candidate report at HEAD, then per-candidate verification** — nothing is deleted until each candidate is checked against the string-resolved vocabulary: the `data-vigilia-*` attributes, the `--shell-*` custom properties, the `KIND_*` registries and the four gate scripts that read the source tree as data.
 4. **`vg-368` waits on a decision** — whether `src/web/.agent-scratch/` is deleted, relocated outside the tree, or excluded per tool; deleting is not obviously safe because it holds screenshots and a vitest report that may be the only copy.
 5. **The three failures the capture run surfaced** — `vg-359` (which also owns the one stale capture), `vg-360` and `vg-361`; nothing fixed on sight, because the first question for each is whether the surface moved or the locator did, and those want opposite fixes.
 
 ## Blockers / unverified
 
-- **The census document is closed, so nothing in the objective waits on it any more** — both of the user's 2026-10-12 rulings landed: §13.1 means a region with content, and `vg-358`'s unresolved reference is unreachable through the palette editor, so that item is discharged because the state cannot arise rather than because a surface was built for it.
+- **Phase 1 carries one known behaviour exception and it will not be guessed at** — `vg-370`'s refusal on the resize path is reachable in principle and unestablished in fact; one browser check settles it together with `vg-233`, which is why neither is closed on the strength of a source read.
 - **Five specs are red on `develop` and each is named rather than left a mystery**: the two deliberate walkthrough reds, and `vg-359`, `vg-360` and `vg-361`, which fail deterministically on the built bundle; `vg-204` passed 5/5 at HEAD and so is not reproducing today but stays open pending a ruling, and `vg-363` is the opposite hazard — a non-deterministic fixture, since a bare editor mount resumes among themes whose mtimes tie, which is the class most likely to be misread as flake.
 - **Read a run's own report and apply its `incomplete` marker** — `summary.json` reads green for the census that is committed red because it is another project's run; the scanner's reports carry `incomplete: true` from start-up because a crash used to leave the previous run's pass on disk; and the exit code alone is wrong too, since a red `desktop-host` project is expected here.
 - **Every open row lives in [`docs/product/backlog.jsonl`](docs/product/backlog.jsonl), and every parked or unverified observation in the plans' ledgers with its ruling — but `.superpowers/` is now untracked, so a ruling recorded only there does not survive a fresh clone; durable decisions belong in [`docs/decisions/`](docs/decisions/), and promoting this session's is a deliberate act nobody has done.**
