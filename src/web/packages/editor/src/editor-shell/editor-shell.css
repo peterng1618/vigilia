@@ -1507,6 +1507,31 @@ body,
   outline-offset: 2px;
 }
 
+/* The panel's own header, as the Keyboard drawing draws it
+   (`current/settings-keyboard.html`): the tab's glyph in the accent, the panel's
+   name, and the return-to-default action at the trailing edge. **The action's
+   home is the drawing's** — the reference puts "Reset all" here, not at the
+   tab's foot, where it followed twenty rows the author had to scroll past to
+   find the one act that is about all of them. */
+.editor-shell-keyboard-header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-8);
+  padding: 0 0 var(--space-12);
+  border-bottom: 1px solid var(--shell-edge);
+}
+.editor-shell-keyboard-header > svg {
+  color: var(--shell-accent);
+}
+.editor-shell-keyboard-header > span {
+  font-size: var(--text-sm);
+  font-weight: 600;
+  color: var(--shell-text);
+}
+.editor-shell-keyboard-header > .editor-shell-keyboard-action {
+  margin-left: auto;
+}
+
 /* The settings modal's Keyboard tab (§7). The rows reuse the dialog's `dl`
    rhythm — the tab renders the same reference the `?` sheet does — and add the
    three things the sheet has no use for: the armed row's ring, the chip that
@@ -1518,6 +1543,25 @@ body,
   display: flex;
   align-items: center;
   gap: var(--space-6);
+}
+/* The chord mark, as the Keyboard drawing draws it: a bordered chip at
+   `--radius-sm`, inset `4px` on **all four sides**.
+
+   **Scoped to this panel, not on the shared `.editor-shell-dialog kbd`.** The
+   `?` sheet renders that rule too and no drawing in `current/` draws the sheet,
+   so the sheet's bare mark keeps Task 3's reading rather than being moved by a
+   surface nothing governs. §2 (`design-language.md:38`) — "Values are mono …
+   chord marks" — is the predating rule that a chord is a value; the chip is the
+   drawing's, and the class is §5 (`:154`)'s icon button beside it, not this.
+
+   **The inset is one value, not `4px 6px`.** The parity row reads the element's
+   computed `padding` *shorthand*, and `lengthInPx` answers `null` for a mixed
+   shorthand, so a chip inset unevenly would fail the row for being unreadable
+   rather than for being wrong. */
+.editor-shell-keyboard kbd {
+  padding: var(--space-4);
+  border: 1px solid var(--shell-edge);
+  border-radius: var(--radius-sm);
 }
 .editor-shell-keyboard [data-vigilia-shortcut-row] {
   /* Centred rather than the sheet's baseline: a row here carries a 26px
@@ -1542,7 +1586,10 @@ body,
 .editor-shell-keyboard-action {
   padding: var(--space-4) var(--space-8);
   border: 1px solid var(--shell-edge);
-  border-radius: var(--radius-sm);
+  /* §3 radius table (`design-language.md:91`) — `--radius-md` 6px is "Controls",
+     and a button is a control; the drawing draws both return-to-default actions
+     at 6px (`current/settings-keyboard.html`), one act being one control. */
+  border-radius: var(--radius-md);
   background: var(--vigilia-control-bg);
   color: var(--shell-muted);
   font: inherit;

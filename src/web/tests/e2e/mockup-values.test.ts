@@ -108,8 +108,13 @@ test("the two shapes the field row is not are read from the drawing that draws e
   // `flex:1` inside a `--panel-2` panel at `--radius-lg`, with no label column.
   // That absence is the reading — a row that took the field row's 74px column
   // wrapped "Follow the system" onto a second line.
+  //
+  // **The inset in this address is Task 6's `8px`, not the `9px` it was
+  // written with.** The drawing's `9px` was off §3's scale and the drawing was
+  // the stale side (`vg-303`), so the declaration changed under the address
+  // while the row's own subject — the radius and the gap below — did not.
   const BOXED_ROW =
-    '[style*="display:flex;align-items:center;gap:10px;padding:9px 10px;background:var(--panel2);border:1px solid var(--edge);border-radius:8px"]';
+    '[style*="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--panel2);border:1px solid var(--edge);border-radius:8px"]';
   expect(mockupDeclared(settings, BOXED_ROW, "border-radius")).toBe("8px");
   expect(mockupDeclared(settings, BOXED_ROW, "gap")).toBe("10px");
 

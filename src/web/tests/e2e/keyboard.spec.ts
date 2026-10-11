@@ -1,4 +1,6 @@
 import { expect, test, type Page } from "@playwright/test";
+import { shortcutLabel } from "../../packages/editor/src/shortcut-manager/display.js";
+import { SHORTCUT_LABELS } from "../../packages/editor/src/shortcut-manager/reference.js";
 import { uiCopy } from "../../packages/editor/src/ui-copy.js";
 import { chooseIn } from "./control-set.js";
 import { captureVisualReview, enterLayer } from "./editor-canvas.js";
@@ -190,6 +192,122 @@ async function pixelsAt(
   if (read === null) throw new Error("the viewport could not be captured");
   return read as readonly Rgba[];
 }
+
+test("the Keyboard tab's four states, and the sheet's chord mark that did not move", async ({
+  page,
+}, testInfo) => {
+  // Spec §13.1: a screenshot proves one rendered state, not the behaviour behind
+  // it, and every surface owner also proves its applicable states. The armed
+  // row is the one the `keyboard-armed-row` capture shows (the test above); the
+  // four here are **driven**, and the capture is not read as proving any of
+  // them. The behaviour under each — what a capture refuses, what a rebind
+  // writes — is `settings-keyboard.dom.test.tsx`'s; this is the rendered half.
+  test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+
+  await openShell(page);
+  const dialog = page.getByRole("dialog", SETTINGS_DIALOG);
+  await page.locator(SETTINGS_GEAR).click();
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole("tab", { name: uiCopy.settings.keyboard }).click();
+
+  const row = dialog.locator('[data-vigilia-shortcut-row="publish.surface"]');
+  const chip = row.locator("kbd");
+  const arm = dialog.locator('[data-vigilia-shortcut-arm="publish.surface"]');
+  // The node is present while the row is armed even when it says nothing, so an
+  // empty one is the state before a refusal rather than an absent feature.
+  const refusal = row.locator('[data-vigilia-shortcut-reason][role="alert"]');
+
+  // ── 1. Empty overrides ───────────────────────────────────────────────────
+  // Proves the panel renders the drawing's own state: every chord is its
+  // default, and the header's return-to-default action is offered with nothing
+  // to return. The store is read too, because "no row is rebound" is a claim
+  // about what was stored and the marks alone cannot say it.
+  const storedShortcuts = await page.evaluate(() =>
+    Object.keys(window.localStorage).filter((key) => key.includes("shortcut")),
+  );
+  expect(
+    storedShortcuts,
+    "an override is already stored, so this is not the empty state",
+  ).toEqual([]);
+  await expect(chip).toHaveText(shortcutLabel("publish.surface"));
+  await expect(
+    dialog.locator("[data-vigilia-shortcut-reset-all]"),
+  ).toBeVisible();
+
+  // ── 2. An armed row ──────────────────────────────────────────────────────
+  // Proves the capture is listening where the press will land: the row takes
+  // focus inside the modal's trap, marks itself armed, and its mark stops
+  // printing a chord and starts asking for one.
+  await arm.click();
+  await expect(row).toHaveAttribute("data-armed", "");
+  await expect(row).toBeFocused();
+  await expect(chip).toHaveText(uiCopy.settings.keyboardPrompt);
+  await expect(refusal, "a refusal is rendered before one was made").toHaveText(
+    "",
+  );
+
+  // ── 3. A refusal in the armed row ────────────────────────────────────────
+  // §9's reason and role: the sentence lands in the row that refused, names the
+  // action that holds the chord, and the row stays armed so the author can press
+  // the chord they meant. Ctrl+O is `file.open`'s default.
+  await page.keyboard.press("Control+o");
+  await expect(refusal).toHaveText(
+    uiCopy.settings.keyboardTaken(SHORTCUT_LABELS["file.open"]),
+  );
+  await expect(row).toHaveAttribute("data-armed", "");
+  await expect(chip).toHaveText(uiCopy.settings.keyboardPrompt);
+
+  // ── The `?` sheet's chord mark, which Step 3 of the task must not move ────
+  // The panel's chip is scoped to `.editor-shell-keyboard`, and the sheet
+  // renders the shared `.editor-shell-dialog kbd` rule with no drawing behind
+  // it. Read as a computed style rather than inspected: the shared rule is what
+  // a change made for the modal would have moved by accident.
+  await page.keyboard.press("Escape");
+  await expect(dialog).toBeHidden();
+  await page.keyboard.press("?");
+  const sheet = page.getByRole("dialog", { name: uiCopy.shortcuts.reference });
+  await expect(sheet).toBeVisible();
+  const sheetChip = await sheet
+    .locator("kbd")
+    .first()
+    .evaluate((element) => {
+      const style = getComputedStyle(element);
+      return {
+        padding: style.padding,
+        borderWidth: style.borderTopWidth,
+        borderRadius: style.borderRadius,
+      };
+    });
+  expect(
+    sheetChip,
+    "the sheet's chord mark moved with the modal's chip, and no drawing governs the sheet",
+  ).toEqual({ padding: "0px", borderWidth: "0px", borderRadius: "0px" });
+  await page.keyboard.press("Escape");
+  await expect(sheet).toBeHidden();
+
+  // ── 4. Storage refused (session-only) ────────────────────────────────────
+  // The one state the editor cannot reach by clicking: `readStorage` answers
+  // `undefined` only where the browser refuses the store, so the refusal is what
+  // is planted, and the editor boots into it. What it proves is that the panel
+  // states the limit instead of implying a saved preference — and that the
+  // rebind still works for the session, which is the branch the unit suite
+  // holds and this reading names.
+  await page.addInitScript(() => {
+    Object.defineProperty(window, "localStorage", {
+      configurable: true,
+      get() {
+        throw new Error("the browser refused local storage");
+      },
+    });
+  });
+  await openShell(page);
+  await page.locator(SETTINGS_GEAR).click();
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole("tab", { name: uiCopy.settings.keyboard }).click();
+  await expect(dialog.locator(".editor-shell-keyboard-notice")).toHaveText(
+    uiCopy.settings.keyboardSessionOnly,
+  );
+});
 
 test("every canvas action's tooltip names the chord that runs it", async ({
   page,
