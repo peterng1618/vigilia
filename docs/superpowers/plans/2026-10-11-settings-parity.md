@@ -292,13 +292,13 @@ A current sentence of the bible is the bible, whoever wrote it; §13's "predates
 
 `settings.html:89` declares `padding:9px 10px`. §3 closes the spacing scale at `4, 6, 8, 10, 12, 14, 16, 20, 24, 32` (`design-language.md:69`), so `9` is off-scale and **the drawing is stale, not the product** — the product already renders `--space-8`. Correct the drawing to `8px` (the value the product renders), name §3 and `vg-303` in the commit, and edit nothing else in the file. This is the direction plan 7 Task 3 Step 1 set and it is never reversed.
 
-- [ ] **Step 3: Read the box's inset, so the third declared value is held**
+- [ ] **Step 3: Do not add a row for the box's inset — Task 8's spacing gate owns that class**
 
-The existing rows read the box's `border-radius` and `gap`; the drawing also declares its `padding`. Add the `padding-top` row — a drawing's declared value that no row reads is `vg-292`'s family, which plan 7 Task 8 left. The row goes green after Step 2 and reddens if the drawing's `9px` returns.
+The existing rows read the box's `border-radius` and `gap`; the drawing also declares its `padding`. **A `padding-top` row is impossible here and must not be attempted:** the drawing writes `padding:8px 10px` after Step 2, a shorthand, and `lookup` throws on a shorthand that sets a longhand a row reads — plan 7's guard, and the correct behaviour. **Ruled by the controller on 2026-10-11:** the drawing's declared spacing is held by Task 8's widened drawings gate, which reads declarations directly and needs no longhand; the shorthand guard is not to be weakened to make a row possible. A drawing's declared value that no row reads stays `vg-292`'s family, and Task 8 is its owner.
 
-- [ ] **Step 4: Prove the inset row fails on the stale value**
+- [ ] **Step 4: Prove the spacing gate reddens on the stale value**
 
-Put `padding:9px 10px` back, rebuild, confirm the row fails, restore with `cp`, confirm with `cmp`.
+Task 8 owns this proof, because it owns the class. Step 2's correction is proved there instead: `9px` put back reddens the drawings gate naming the file and line, restored with `cp` and proved with `cmp`. Record here only that Step 2's value is on §3's scale and that no row in this task reads it.
 
 - [ ] **Step 5: Commit**
 
