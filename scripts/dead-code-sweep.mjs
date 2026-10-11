@@ -53,7 +53,10 @@
  *                  `src/web/test-results/dead-code-sweep-self-test.json`, so a
  *                  run that asks for both cannot silently overwrite the counts
  *                  a later phase is budgeting against.
- *   --self-test    run the checks below and exit non-zero on any failure.
+ *   --self-test    run the checks below and exit non-zero on any failure. Both
+ *                  this file and the `--json` one are overwritten with an
+ *                  incomplete marker before the run starts (see below), so a
+ *                  crash cannot leave a previous run's result on disk.
  */
 import { mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
@@ -61,6 +64,65 @@ import { fileURLToPath } from "node:url";
 
 const ROOT = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const WEB = join(ROOT, "src/web");
+
+const argv = process.argv.slice(2);
+const jsonAt = argv.indexOf("--json");
+const jsonPath = jsonAt === -1 ? null : argv[jsonAt + 1];
+const SELF_TEST = argv.includes("--self-test");
+
+// ---------------------------------------------------------------------------
+// A crash must not read as a pass
+// ---------------------------------------------------------------------------
+
+/**
+ * Both reports are written once, at the end of the run, so a crash anywhere
+ * before that leaves the *previous* run's file in place: the process exits
+ * non-zero while the artefact still reads green. A TypeError thrown during
+ * classification produced exactly that — exit 1, and `20/20, failed: []` on
+ * disk from a run that never finished.
+ *
+ * That is not tidiness. Phases of this plan are told to read the report rather
+ * than the exit code, so a stale green is an instruction to trust the wrong
+ * thing. Each destination is therefore overwritten with an explicit "did not
+ * finish" marker the moment the run starts, and only completion replaces it. A
+ * reader sees this run's result or an explicit incomplete state — never a
+ * previous run's pass wearing this run's clothes.
+ *
+ * The marker does the work, not the clock: no timestamp or run id, which would
+ * invite comparing two runs instead of asking whether this one finished.
+ */
+const SELFTEST_JSON = join(WEB, "test-results", "dead-code-sweep-self-test.json");
+
+const incompleteSelfTestResult = () => ({
+  incomplete: true,
+  selfTest: true,
+  passed: 0,
+  failed: [],
+  total: 0,
+  checks: [],
+  note: "This run did not finish — the process ended before the checks completed, so this file holds no result for it. It is not a pass.",
+});
+
+/**
+ * The one predicate a reader should apply to the self-test file. The marker
+ * fails it by construction — `total > 0` is why a `0/0` marker cannot be read as
+ * a vacuous pass, and the self-test asserts both halves so the predicate cannot
+ * be loosened without failing the gate.
+ */
+const isCompletePass = (doc) => doc.incomplete === false && doc.total > 0 && doc.passed === doc.total;
+
+const incompleteCandidateReport = () => ({
+  incomplete: true,
+  note: "This run did not finish — the scan did not complete, so there is no candidate list for it. This is not a clean sweep and not a previous run's list.",
+});
+
+const writeJson = (path, doc) => {
+  mkdirSync(dirname(resolve(path)), { recursive: true });
+  writeFileSync(resolve(path), `${JSON.stringify(doc, null, 2)}\n`, "utf8");
+};
+
+if (SELF_TEST) writeJson(SELFTEST_JSON, incompleteSelfTestResult());
+if (jsonPath !== null && jsonPath !== undefined) writeJson(jsonPath, incompleteCandidateReport());
 
 /** Windows `relative()` yields backslashes; every path here is posix. */
 const posix = (p) => p.replaceAll("\\", "/");
@@ -616,6 +678,8 @@ const report = {
     candidates.filter((c) => c.kind === "unreachable-branch").map((c) => c.symbol),
   ).size,
   unresolvedRelativeSpecifiers: unresolved,
+  /** Set false only here; the start-of-run marker writes true to the same path. */
+  incomplete: false,
   note:
     "Candidates, not verdicts, and nothing here is deleted. `data-vigilia-*` attributes, " +
     "`--vigilia-*`/`--shell-*` custom properties, `KIND_*` registries, Fabric JSON keys, " +
@@ -659,16 +723,9 @@ function renderReport(report) {
   return `${lines.join("\n")}\n`;
 }
 
-const argv = process.argv.slice(2);
-const jsonAt = argv.indexOf("--json");
-const jsonPath = jsonAt === -1 ? null : argv[jsonAt + 1];
+if (jsonPath !== null && jsonPath !== undefined) writeJson(jsonPath, report);
 
-if (jsonPath !== null && jsonPath !== undefined) {
-  mkdirSync(dirname(resolve(jsonPath)), { recursive: true });
-  writeFileSync(resolve(jsonPath), `${JSON.stringify(report, null, 2)}\n`, "utf8");
-}
-
-if (!argv.includes("--self-test")) process.stdout.write(renderReport(report));
+if (!SELF_TEST) process.stdout.write(renderReport(report));
 
 // ---------------------------------------------------------------------------
 // Self-test
@@ -693,9 +750,7 @@ if (!argv.includes("--self-test")) process.stdout.write(renderReport(report));
  * row in this tree, so the branch that emits one is unexercised. The barrel
  * check below proves a route is *followed*, not that the kind can fire.
  */
-const SELFTEST_JSON = join(WEB, "test-results", "dead-code-sweep-self-test.json");
-
-if (argv.includes("--self-test")) {
+if (SELF_TEST) {
   const at = (kind, file, symbol) =>
     candidates.some(
       (candidate) =>
@@ -830,20 +885,20 @@ if (argv.includes("--self-test")) {
 
   const outPath = resolve(SELFTEST_JSON);
   const result = {
+    incomplete: false,
     checks: [],
     passed: 0,
     failed: [],
     total: 0,
     selfTest: true,
-    note: "A run with fewer than total passes is a failure; the file is written either way so the count can be read without the terminal.",
+    note: "A run with fewer than total passes is a failure; the file is written either way so the count can be read without the terminal. `incomplete: false` marks a finished run — the start-of-run marker writes `true` to this path.",
   };
   const write = () => {
     result.checks = checks.map(([name, ok]) => ({ name, ok }));
     result.passed = checks.filter(([, ok]) => ok).length;
     result.failed = checks.filter(([, ok]) => !ok).map(([name]) => name);
     result.total = checks.length;
-    mkdirSync(dirname(outPath), { recursive: true });
-    writeFileSync(outPath, `${JSON.stringify(result, null, 2)}\n`, "utf8");
+    writeJson(SELFTEST_JSON, result);
   };
   write();
 
@@ -872,6 +927,32 @@ if (argv.includes("--self-test")) {
   checks.push([
     "the report at --json still holds candidates after the self-test ran (vacuous unless --json was passed)",
     intact,
+  ]);
+
+  /**
+   * The guardian for the mechanism above, and pushed after its first write so it
+   * reads the artefact a later phase reads rather than the in-memory object.
+   *
+   * The property is the short-circuit one: before completion the marker is the
+   * *only* thing on disk, so if the marker cannot satisfy `isCompletePass`, no
+   * early exit can leave a completion behind. Asserting the real file is a
+   * complete pass as well keeps the predicate itself strict — a check on the
+   * marker alone would pass while `isCompletePass` was loosened to `passed ===
+   * total`, which is exactly the `0/0` marker reading as a vacuous pass.
+   */
+  checks.push([
+    "an unfinished run cannot read as a pass (the start-of-run marker is not a completion)",
+    (() => {
+      const onDisk = JSON.parse(readFileSync(outPath, "utf8"));
+      const marker = incompleteSelfTestResult();
+      return (
+        isCompletePass(onDisk) &&
+        onDisk.incomplete === false &&
+        onDisk.passed === onDisk.total &&
+        marker.incomplete === true &&
+        !isCompletePass(marker)
+      );
+    })(),
   ]);
   write();
 
