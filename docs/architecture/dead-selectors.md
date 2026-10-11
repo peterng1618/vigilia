@@ -80,19 +80,25 @@ unaffected.
   a class the product applies — the same trap `editor-shell.css:517-524` records
   for the `bg-shell-surface` utility, which exists only because a comment
   happens to contain the string.
-- **The boundary is `(?![A-Za-z0-9_-])`**, so `editor-shell-pane` is not
-  counted inside `editor-shell-panel`, and `data-drop` is not counted inside
-  `data-dragging`. A bare substring count over-reports on this file, where
-  prefix families share long stems.
+- **The boundary is `(?![A-Za-z0-9_-])`, and it guards the right-hand side
+  only.** `editor-shell-pane` is not counted inside `editor-shell-panel`, where
+  prefix families share long stems; a bare substring count over-reports on this
+  file for exactly that reason. But a token that *ends* a run while an
+  identifier continues on its *left* still matches — `by` inside `labelledby` —
+  so this instrument over-reports, and the composition pass in section 4 is
+  where the same one-sided guard is visible as seven named collisions.
 - **Buckets.** `PRODUCT` is a source file in `src/web` that is not a test, a
   spec, a test stage or a fixture; `TEST` is `*.test.*`, `*.spec.*`, `/tests/`,
   a `test-stage` or a fixture; `SCRIPT` is `scripts/`; `DOC` is `docs/`;
   `STYLE` is another `.css`, `.svg` or `.html`. The bucket is what separates
   "the product applies this" from "a document mentions this".
 - **It is a literal search and it says so.** A name assembled at run time is
-  invisible to it. Section 4 is that gap closed by hand; the clearance rate there is
-  the evidence that the search was run against the right shape, because a report
-  that lists only hits makes its own misses unreadable.
+  invisible to it, and so is a token lying *inside* a longer identifier on its
+  left — the boundary guard above checks only the right-hand side. Section 4
+  hunts the assembled case in a second pass and states the two limits that pass
+  has of its own; the clearance rate there is the evidence that the search was
+  run against the right shape, because a report that lists only hits makes its
+  own misses unreadable.
 
 ## 3. The count
 
@@ -102,11 +108,14 @@ unaffected.
 | `data-*` attribute selectors | 32 | 2 | **34** |
 | **Tokens in scope** | **116** | **19** | **135** |
 
-**No token is dead.** 130 of the 135 are named by a production source file
-outright. The remaining **5** — every one an attribute, none a class — have no
+**No token is dead.** 130 of the 135 are spelled in a production source file.
+The remaining **5** — every one an attribute, none a class — have no
 production-source spelling at all, and **all five are live** (section 4). One further
 token, `data-template`, has a production hit only inside a JSDoc comment and is
 the same case as the five.
+
+A spelling is not an application, and there is one class of token on this tree
+where the two come apart; section 7 names it.
 
 **Clearance rate: 135 of 135 live, 0 dead.** The one removal a reader might
 expect from this file already exists and is not a class: `vg-266`'s two
@@ -137,18 +146,51 @@ holding any of the 135 tokens:
 node -e 'const fs=require("fs"),path=require("path");const ROOT="D:/git-repos/vigilia";const CSS=[ROOT+"/src/web/packages/editor/src/editor-shell/editor-shell.css",ROOT+"/src/web/packages/host/public/vigilia-page.css"];const SKIP=["node_modules","dist",".git",".vite","coverage","test-results","playwright-report",".agent-scratch",".superpowers",".codegraph",".e2e-host-app"];const strip=s=>{let o="",i=0;for(;;){const a=s.indexOf("/*",i);if(a<0){o+=s.slice(i);break}o+=s.slice(i,a);const b=s.indexOf("*/",a+2);i=b<0?s.length:b+2}return o};const toks=[];for(const f of CSS){const t=strip(fs.readFileSync(f,"utf8"));for(const m of t.matchAll(new RegExp("[.]([A-Za-z_-][A-Za-z0-9_-]*)","g")))toks.push(m[1]);for(const m of t.matchAll(new RegExp("[[]data-[A-Za-z0-9_-]+","g")))toks.push(m[0].slice(1))}const set=[...new Set(toks)];const files=[];(function w(d){for(const e of fs.readdirSync(d,{withFileTypes:true})){if(SKIP.includes(e.name))continue;const p=d+"/"+e.name;if(e.isDirectory()){w(p);continue}const x=path.extname(e.name).toLowerCase();if([".ts",".tsx",".js",".jsx",".mjs",".cjs",".html",".htm"].includes(x))files.push(p)}})(ROOT+"/src/web");let hits=0;for(const f of files){const t=fs.readFileSync(f,"utf8");let i=0;for(;;){const a=t.indexOf("`",i);if(a<0)break;const b=t.indexOf("`",a+1);if(b<0)break;i=b+1;const lit=t.slice(a+1,b);if(lit.indexOf("${")<0)continue;for(const k of set){const idx=lit.indexOf(k);if(idx<0)continue;const after=lit.slice(idx+k.length,idx+k.length+1);if(after&&/[A-Za-z0-9_-]/.test(after))continue;console.log("COMPOSED "+k+"   in "+path.relative(ROOT,f).split(path.sep).join("/")+"   literal: "+lit.slice(0,110).split("\n").join(" "));hits++}}}console.log("composed-name sites reaching a token in the two files: "+hits)'
 ```
 
-Output: **38 sites, and not one of them composes a name.** They fall into two
-groups, and both were read:
+Output: **38 sites, and not one of them composes a name.** They are three
+shapes, all three read, and the command prints the token, file and literal for
+each so the split below can be re-derived from its output:
 
-- **English prose inside a template** — `${label}: ${current}`,
-  `"${id}" was changed by someone else…`, `describes itself by its hint`. The
-  token is a word in a sentence, in `hint`, `by` and `current`'s case.
-- **A test selector whose fixed part is the token and whose interpolation is a
-  VALUE** — `[data-vigilia-panel="${panel}"]`,
+- **18 spell the token as ordinary vocabulary** — the token is a common English
+  word (`by`, `current`, `hint`) inside a message: `describes itself by its
+  hint`, `"${id}" was changed by someone else…`, `the panel matched the current
+  frame on …`. One is a JS identifier
+  (`uiCopy.diagnostics[current.severity]`, `diagnostic-message.tsx`) and one a
+  path segment (`docs/design/mockups/current/${entry}`, `mockup-values.ts`).
+- **13 are a selector template whose fixed part is the token and whose
+  interpolation is a VALUE** — `[data-vigilia-panel="${panel}"]`,
   `.editor-shell-rail button[data-rail-slot="${id}"]`,
-  `[data-vigilia-layer="${id}"] .vigilia-layer-role`. The name is written whole;
-  the variable is what the attribute is set to, so the token is live by the
-  fixed part.
+  `[data-vigilia-layer="${id}"] .vigilia-layer-role`,
+  `button.theme-option[data-theme="${id}"]`, `[data-shell-palette="${palette}"]`.
+  The name is written whole; the variable is what the attribute is set to, so
+  the token is live by the fixed part.
+- **7 are boundary collisions — this pass's own false positives.** The guard
+  `(?![A-Za-z0-9_-])` checks the right-hand side only, so a token that *ends*
+  the matched run while an identifier continues on its *left* matches anyway:
+  `control-well.tsx`'s `${control}-hint`, `settings-field.ts`'s `${id}-hint` and
+  `chart-fields.dom.test.tsx`'s `${control.id}-hint` (twice) match the token
+  `hint` inside a generated `-hint` id; `kind-mark.dom.test.tsx`'s
+  `[data-vigilia-layer-mark="${mark.kind}"]` (twice) matches `vigilia-layer-mark`
+  inside the longer attribute name; `glass.dom.test.ts`'s `[id="${labelledby}"]`
+  matches `by` inside the variable name. None of the seven composes a stylesheet
+  name: the `-hint` sites build an `aria-describedby` id, not a class.
+
+**The two limits of this pass, stated rather than left to the reader.** It reads
+**backtick literals only** — a name built with `+`, or by any other route that
+never spells it whole in a backtick, is invisible to it. And its boundary guard
+is **right-side-only**, which is exactly the seven collisions above. Both gaps
+are unexercised on this tree, and those are searches rather than an impression.
+Over `src/web` (no `node_modules`, no `dist`), with the source extensions the
+sweep itself reads:
+
+```sh
+grep -rnE '"[a-z][a-z-]*"[[:space:]]*\+' src/web --include=*.ts --include=*.tsx --include=*.js --include=*.mjs --include=*.html --include=*.htm --exclude-dir=node_modules --exclude-dir=dist
+grep -rnE 'classList\.(add|remove|toggle)' src/web --include=*.ts --include=*.tsx --include=*.js --include=*.mjs --exclude-dir=node_modules --exclude-dir=dist
+```
+
+Both return nothing — no `+` composes a name here, and nothing calls
+`classList.add`/`remove`/`toggle` at all (every `classList` use in the repo is
+`classList.contains` inside a `*.dom.test.*` file). So the rate below stands for
+these shapes on this tree — not because the pass covers them.
 
 Nothing in production builds one of these 135 names from fragments. The other
 `dataset[…]` writes in production — `shellPalette`, `vigiliaPanel`,
@@ -163,16 +205,57 @@ either stylesheet.
 A token can be live while the selector that uses it still matches nothing,
 because the attribute is written but never with that value. A second command
 extracts every `[name="value"]` pair from both files and asks whether the value
-literal occurs in production source:
+literal occurs in production source. It searches **no stylesheet**, for the
+reason instrument 1 gives: a file must not prove its own selector live.
 
 ```sh
-node -e 'const fs=require("fs"),path=require("path");const Q=String.fromCharCode(34);const ROOT="D:/git-repos/vigilia";const CSS=[ROOT+"/src/web/packages/editor/src/editor-shell/editor-shell.css",ROOT+"/src/web/packages/host/public/vigilia-page.css"];const SKIP=["node_modules","dist",".git",".vite","coverage","test-results","playwright-report",".agent-scratch",".superpowers",".codegraph",".e2e-host-app"];const strip=s=>{let o="",i=0;for(;;){const a=s.indexOf("/*",i);if(a<0){o+=s.slice(i);break}o+=s.slice(i,a);const b=s.indexOf("*/",a+2);i=b<0?s.length:b+2}return o};const pairs=new Set();for(const f of CSS){const t=strip(fs.readFileSync(f,"utf8"));let i=0;for(;;){const a=t.indexOf("[",i);if(a<0)break;const b=t.indexOf("]",a);i=b<0?t.length:b+1;const seg=t.slice(a+1,b);if(seg.indexOf("=")>0)pairs.add(seg)}}const files=[];(function w(d){for(const e of fs.readdirSync(d,{withFileTypes:true})){if(SKIP.includes(e.name))continue;const p=d+"/"+e.name;if(e.isDirectory()){w(p);continue}const x=path.extname(e.name).toLowerCase();if([".ts",".tsx",".js",".jsx",".mjs",".cjs",".html",".htm",".css"].includes(x))files.push(p)}})(ROOT+"/src/web");const prod=files.filter(f=>{const q=path.relative(ROOT,f).split(path.sep).join("/");return !(q.indexOf("/tests/")>=0||q.indexOf(".test.")>=0||q.indexOf(".spec.")>=0||q.toLowerCase().indexOf("fixture")>=0)});const body=prod.map(f=>fs.readFileSync(f,"utf8"));console.log("attribute-value selector pairs in the two files: "+pairs.size);for(const pr of [...pairs].sort()){const i=pr.indexOf("=");const nm=pr.slice(0,i);let v=pr.slice(i+1);if(v.slice(0,1)===Q)v=v.slice(1,-1);let n=0;const where=[];for(let k=0;k<body.length;k++){if(body[k].indexOf(v)>=0){n++;if(where.length<3)where.push(path.relative(ROOT,prod[k]).split(path.sep).join("/"))}}console.log((n===0?"  NONE  ":"  live  ")+(nm+"="+Q+v+Q).padEnd(42)+" production files with the bare value: "+n+(n&&n<12?"   "+where.join(" "):""))}'
+node -e 'const fs=require("fs"),path=require("path");const Q=String.fromCharCode(34);const ROOT="D:/git-repos/vigilia";const CSS=[ROOT+"/src/web/packages/editor/src/editor-shell/editor-shell.css",ROOT+"/src/web/packages/host/public/vigilia-page.css"];const SKIP=["node_modules","dist",".git",".vite","coverage","test-results","playwright-report",".agent-scratch",".superpowers",".codegraph",".e2e-host-app"];const strip=s=>{let o="",i=0;for(;;){const a=s.indexOf("/*",i);if(a<0){o+=s.slice(i);break}o+=s.slice(i,a);const b=s.indexOf("*/",a+2);i=b<0?s.length:b+2}return o};const pairs=new Set();for(const f of CSS){const t=strip(fs.readFileSync(f,"utf8"));let i=0;for(;;){const a=t.indexOf("[",i);if(a<0)break;const b=t.indexOf("]",a);i=b<0?t.length:b+1;const seg=t.slice(a+1,b);if(seg.indexOf("=")>0)pairs.add(seg)}}const files=[];(function w(d){for(const e of fs.readdirSync(d,{withFileTypes:true})){if(SKIP.includes(e.name))continue;const p=d+"/"+e.name;if(e.isDirectory()){w(p);continue}const x=path.extname(e.name).toLowerCase();if([".ts",".tsx",".js",".jsx",".mjs",".cjs",".html",".htm"].includes(x))files.push(p)}})(ROOT+"/src/web");const prod=files.filter(f=>{const q=path.relative(ROOT,f).split(path.sep).join("/");return !(q.indexOf("/tests/")>=0||q.indexOf(".test.")>=0||q.indexOf(".spec.")>=0||q.toLowerCase().indexOf("fixture")>=0)});const body=prod.map(f=>fs.readFileSync(f,"utf8"));console.log("attribute-value selector pairs in the two files: "+pairs.size);for(const pr of [...pairs].sort()){const i=pr.indexOf("=");const nm=pr.slice(0,i);let v=pr.slice(i+1);if(v.slice(0,1)===Q)v=v.slice(1,-1);let n=0;const where=[];for(let k=0;k<body.length;k++){if(body[k].indexOf(v)>=0){n++;if(where.length<3)where.push(path.relative(ROOT,prod[k]).split(path.sep).join("/"))}}console.log((n===0?"  NONE  ":"  live  ")+(nm+"="+Q+v+Q).padEnd(42)+" production files with the bare value: "+n+(n&&n<12?"   "+where.join(" "):""))}'
 ```
 
-Output: **26 pairs, none with zero hits.** The counts are only evidence for the
-distinctive values; for `true`, `false`, `error`, `group`, `number` and `range`
-the bare string is ordinary vocabulary and the count is noise. The pairs that
-carry weight were read at their producer instead of counted:
+Output: **26 pairs, two with zero hits.**
+
+```
+attribute-value selector pairs in the two files: 26
+  live  aria-pressed="true"                        production files with the bare value: 164
+  live  data-collapsed="true"                      production files with the bare value: 164
+  live  data-context="false"                       production files with the bare value: 144
+  live  data-dirty="true"                          production files with the bare value: 164
+  live  data-drop="refused"                        production files with the bare value: 68
+  live  data-drop="slot"                           production files with the bare value: 29
+  live  data-fitted="true"                         production files with the bare value: 164
+  live  data-hidden="true"                         production files with the bare value: 164
+  live  data-kind="group"                          production files with the bare value: 90
+  live  data-selected="true"                       production files with the bare value: 164
+  live  data-severity="error"                      production files with the bare value: 79
+  live  data-shell-palette="editorial"             production files with the bare value: 2   src/web/packages/editor/src/editor-shell/palette.ts src/web/packages/editor/src/font-trios.generated.ts
+  live  data-shell-palette="ember"                 production files with the bare value: 41
+  live  data-shell-palette="graphite"              production files with the bare value: 3   src/web/packages/editor/index.html src/web/packages/editor/src/components/ui/control-slider.tsx src/web/packages/editor/src/editor-shell/palette.ts
+  live  data-shell-palette="light"                 production files with the bare value: 22
+  live  data-shell-palette="moss"                  production files with the bare value: 1   src/web/packages/editor/src/editor-shell/palette.ts
+  live  data-shell-palette="plum"                  production files with the bare value: 1   src/web/packages/editor/src/editor-shell/palette.ts
+  live  data-vigilia-panel="layers"                production files with the bare value: 9   src/web/packages/editor/src/components/ui/control-select.tsx src/web/packages/editor/src/editor-shell/bridge.ts src/web/packages/editor/src/editor-shell/shell-layout.tsx
+  live  data-visible="true"                        production files with the bare value: 164
+  live  role="alert"                               production files with the bare value: 4   src/web/packages/editor/src/editor-shell/controls/number-field.ts src/web/packages/editor/src/editor-shell/publish-control.tsx src/web/packages/editor/src/editor-shell/settings-keyboard.tsx
+  live  role="menuitem"                            production files with the bare value: 1   src/web/packages/editor/src/viewport-manager/navigation.ts
+  NONE  role="menuitemradio"                       production files with the bare value: 0
+  NONE  role="tabpanel"                            production files with the bare value: 0
+  live  role="tree"                                production files with the bare value: 50
+  live  type="number"                              production files with the bare value: 187
+  live  type="range"                               production files with the bare value: 31
+```
+
+The two zero rows are **`role="menuitemradio"`** and **`role="tabpanel"`**, and
+section 6 carries them: they are written by Base UI on the element it renders,
+not spelled in this repo, so no search over source can find them. Their earlier
+appearance as hits was the stylesheet vouching for itself — with `.css` in the
+search set, the file declaring `[role="menuitemradio"]` was also the file
+supplying its "hit". Removing CSS turns exactly those two rows zero and moves no
+other count; the pair total is 26 either way.
+
+The remaining counts are only evidence for the distinctive values; for `true`,
+`false`, `error`, `group`, `number` and `range` the bare string is ordinary
+vocabulary and the count is noise. The pairs that carry weight were read at
+their producer instead of counted:
 
 - The six `data-shell-palette` values are the six members of `SHELL_PALETTES`
   (`editor-shell/src/palette.ts:4-9`), written by `palette.ts:106`
@@ -204,19 +287,27 @@ know what was and was not measured.
 - **Element selectors.** Not counted above. **The two known-dead terms of
   `vg-266` are no longer in the file**: `grep -n 'editor-shell-inspector'
   editor-shell.css | grep -i select` and the same for `editor-shell-panel` both
-  return nothing at HEAD. What survives is shell-wide: `.editor-shell select`
+  return nothing at HEAD. What survives is four arms: `.editor-shell select`
   (`:1321`), the `select` arm of the `:is(…)` focus rule (`:1341`),
   `.vigilia-field select` and `.vigilia-field-row select` (`:1763`, `:1766`).
-  `settings-field.ts:196` still holds the only `document.createElement("select")`
-  in the packages, and its production importers take only the `isSettingVisible`
-  predicate — `settingsField` itself is imported by `controls.dom.test.ts` and
-  `copy-defects.test.ts` alone. That is a read of the import graph, **not** a
-  browser measurement; `vg-266` owns the browser half and should be retitled to
-  the shell-wide arms rather than closed.
+  Two of the four are shell-wide and two nest under `.vigilia-field`.
+  `settings-field.ts:196` holds the only `document.createElement("select")`
+  **under `.editor-shell`**: `grep -rn 'createElement("select")'` over
+  `src/web/packages/editor/src` returns it alone. The same search over
+  `src/web/packages` returns two more, `host/public/settings.html:197` and
+  `:372` — the host's own settings page, which loads `vigilia-page.css`
+  (`settings.html:15`), not this stylesheet. The material point is the import
+  graph: `settingsField` is imported by `controls.dom.test.ts` and
+  `copy-defects.test.ts` alone, and its production importers
+  (`chart-manager/panel.ts`) take only the `isSettingVisible` predicate. That is
+  a read of the import graph, **not** a browser measurement; `vg-266` owns the
+  browser half, and the four surviving arms are recorded there.
 - **`role=` selectors.** `[role="menuitemradio"]` and `[role="tabpanel"]` have
   no literal producer in this repo either; both are emitted by Base UI
   (`menu/radio-item/MenuRadioItem.js`, `tabs/panel/TabsPanel.js`), the same
-  mechanism as section 4. `[role="tree"]`, `[role="alert"]` and `[role="menuitem"]` are
+  mechanism as section 4. These two are also the two rows section 5 records as
+  zero hits — that instrument is what found them, and this section is what
+  clears them. `[role="tree"]`, `[role="alert"]` and `[role="menuitem"]` are
   written by the product.
 - **`id` selectors.** All three are live: `#app` (`editor/index.html:41`),
   `#canvas-host` (`shell-layout.tsx:603`), `#vigilia-fabric-editor`
@@ -232,6 +323,16 @@ gate (`scripts/design-tokens.mjs`), and `vg-357` owns an open defect in them.
   a class is *spelled* in production source, not that the element carrying it is
   mounted. A class applied on a branch nothing reaches would pass it. Only a
   rendered inspection can settle that, and this task ran no browser.
+- **A class applied only in a host page's HTML.** `PRODUCT` is defined by
+  exclusion (section 2) and `.html` is `STYLE`, so a class whose only
+  application is markup registers no `PRODUCT` hit at all: it lands in the zero
+  list and needs hand-clearing rather than being caught by the instrument.
+  `.hint`, `.lead` and `.elsewhere` are that shape on this tree. They are live —
+  `settings.html:48` (`lead`), `:51` (`elsewhere`), `:57`, `:62`, `:70`, `:85`
+  and `:316`, `:344` (`hint`), `library.html:39`, `:44` — but their `PRODUCT`
+  counts come from prose and identifiers that happen to contain the word, not
+  from that application. Live, and **not** by the route "spelled in a production
+  source file" implies.
 - **Whether a compound is dead while its class is live.** The unit here is the
   class or attribute name. `[data-drop="refused"]` and `"slot"` were checked at
   their producer, but no other compound selector was decomposed; a
