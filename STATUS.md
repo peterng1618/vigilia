@@ -24,11 +24,11 @@ satisfies every token in `DESIGN.md` and still does not look like the mockup.
 ## Active work
 
 - **The active plan is [`2026-10-12-the-dead-code-sweep`](docs/superpowers/plans/2026-10-12-the-dead-code-sweep.md)**, four phases: the reference scanner, verified removal by owner, the ungated trees, and the manager layer; Task 1 is the scanner, running now.
-- **Its Phase 4 is the manager review and redistribution the user asked for**, and measurement changed its shape: all 20 `*-manager` modules have production references, so nothing there is dead and the phase's acceptance is that **nothing** changes, not that something disappeared.
+- **Its Phase 4 is the manager review the user asked for twice, now `vg-364`**: each manager's *role* is reviewed — whether one grown too big owns a concept deserving an independent manager, and whether a concept is spread across several — where the size signal is what found it, not what fixes it: 32 non-test files at or past 500 lines against 12 past the 800 stop, and `snap-manager` at 5,978 lines in five files, four of them over.
+- **Nothing in Phase 4 is dead code, so its acceptance inverts**: all 20 managers have production references, and the phase is judged by what moved without moving anything else — splitting a file until both halves fit the number while both go on owning the same concept is the one forbidden move.
 - **The sweep's rule is detection before deletion**: `data-vigilia-*` attributes, `--shell-*` properties, `KIND_*` registries and Fabric JSON keys are string-resolved, so an empty grep is not proof of death, and four gate scripts read the source tree as data.
 - **Two plans are queued behind it**: [`the backlog reproduction pass`](docs/superpowers/plans/2026-10-12-the-backlog-reproduction-pass.md), which re-derives its batches from the register at run time because a written count rots the moment a row is filed, and [`the keyboard-only walkthrough`](docs/superpowers/plans/2026-10-12-the-keyboard-only-walkthrough.md).
 - **Neither ownerless question is settled by an agent**: a module with no production mount but a real test may be abandoned or built ahead of the surface that will mount it, and `vg-362` asks whether §13.1 means the shell's opening state or the state where a region has content.
-- **The register holds the candidates**, and its counts are deliberately not repeated here — `vg-283`/`vg-268` are the same missing FontPicker mount filed twice, `vg-266` is two selectors matching nothing, `vg-344` an unreachable variant, `vg-342` a control with no production caller.
 
 ## Last completed change
 
@@ -36,7 +36,7 @@ satisfies every token in `DESIGN.md` and still does not look like the mockup.
 - **`REGIONS` stayed at four and the test is committed red on purpose**, because weakening the region list to go green was named in advance as the forbidden move; `vg-362` reframes the finding as a rule question rather than a dead region, and both halves of the assertion carry a red-proof.
 - **`vg-363` was filed from the same run**: a bare `/editor/` mount resumes whichever theme won a millisecond mtime tie, and two runs opened different documents — 18 presses against 26.
 - **`.superpowers/` was untracked at the user's instruction** — tracked 20 to 0 with all 744 files left on disk, and a root ignore rule added because the ignore that was doing the work was itself untracked and would not exist in a fresh clone.
-- **The sweep and reproduction plans were written**, and the sweep's pre-flight scan caught two defects in its own text, the first of which mattered: its candidate kinds missed `test-only-consumer`, which is the shape FontPicker actually has.
+- **The sweep's scanner landed at `d4c820b2`** — `scripts/dead-code-sweep.mjs`, self-test 15/15, proven in both directions including the negative case, nothing deleted, and its own false-positive surface printed rather than hidden; **`vg-364` was filed in the same stretch**, after the user asked twice and nothing had tracked the manager review.
 
 ## Next
 

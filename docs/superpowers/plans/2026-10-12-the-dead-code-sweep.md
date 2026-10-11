@@ -63,7 +63,7 @@ The five ways this sweep deletes something alive.
 - [ ] **Step 3: A candidate is not a verdict — say so in the output.** Print each with the searches run, in the shape `ownership-sweep.mjs` already established ("Candidates, not verdicts"), and never delete anything.
 
 - [ ] **Step 4: Prove the scanner separates known cases, in both directions.** **A scanner that reports everything, or nothing, has told you nothing.** Assert it lands on:
-  - **`test-only-consumer`** for `packages/editor/src/editor-shell/font-picker.tsx`, whose only importers are tests (`vg-268`, `vg-283` — the same finding filed twice, which Task 6 merges).
+  - **`test-only-consumer`** for `packages/editor/src/font-picker/font-picker.tsx`, whose only importers are tests (`vg-268`, `vg-283` — the same finding filed twice, which Task 7 merges). **The path is `font-picker/`, not `editor-shell/`** — this plan's first draft stated the wrong directory, and the implementer corrected it against the tree rather than following the brief.
   - **`no-importer-export`** for `settingsField()` in `packages/editor/src/editor-shell/controls/settings-field.ts` (`vg-342`), which has zero production callers.
   - **nothing at all** for a module on the live path — pick one the editor mounts at boot, and show it absent from every kind. A scanner with no negative case is untested.
 
@@ -146,23 +146,33 @@ Each task below owns one group of packages and follows the same contract: **for 
 
 ### Phase 4 — the manager layer's review and redistribution
 
-**Requested by the user on 2026-10-12: *"the managers review/redistribution … as part of this dead code sweep."* The request is recorded verbatim because it referred to an earlier conversation this session does not hold; the reading below is the controller's, stated so it can be corrected cheaply.**
+**`vg-364` owns this phase.** The user raised it twice on 2026-10-12 — first as *"the managers review/redistribution … as part of this dead code sweep"*, then again to check it had been tracked, which it had not. **The second telling is the contract, verbatim:**
 
-**The measurement that decides what kind of work this is.** The editor has **20 `*-manager` modules** under `src/web/packages/editor/src/` — 18,700 source lines and 13,200 test lines — and **every one of them has production references**; none is dead. `snap-manager` alone is 5252 source lines, `chart-manager` 1633, `shortcut-manager` 917.
+> *"review the role of each manager and their ownership: some managers might have grown too big, owning concepts that should get an independent manager. Some concepts might be spread between multiple managers."* — and what prompted it: *"we have several files that go over the 500 lines limit."*
 
-**So this phase is not a deletion lane, and reading it as one would be the exact mistake AGENTS.md's Reuse-before-build section warns about.** What the managers need is **redistribution**: each is mapped in `docs/architecture/ownership.md` to a concept, and the register's ownership family already names specific places where a manager *decides* something it is not mapped to own — `vg-237` (`controls-manager` is mapped as handle styling but owns a Line's four document scalars and a text box's height), `vg-247` (the lock manager owns *writing* the `locked` flag but not *testing* it, so eight modules spell the predicate), `vg-240` (`snap-manager` implements one acquire-hold-plan-verify protocol twice), `vg-243`, `vg-244`, `vg-236`.
+**So this is a review of ROLE, not just of the map's accuracy, and it has two named questions rather than one:**
+- **A manager that has grown too big may own a concept that deserves to be an independent manager** — the split case. `snap-manager` is the worked example: **5,978 lines across five files, four past the 800 stop** (`scaling/scale-snapping-resolver.ts` 1510, `movement-snapping-resolver.ts` 1453, `spacing.ts` 1302, `scaling/rectangular-scale-gesture-projection.ts` 986, `scaling/scale-projection.ts` 727). One manager deciding *snapping*, *spacing* **and** *scale-gesture projection* is three concepts behind one name.
+- **A concept may be spread across several managers** — the consolidation case. The register already holds the evidence without ever having filed it as this: `vg-240` (one acquire-hold-plan-verify protocol implemented twice), `vg-247` (the lock manager owns *writing* the `locked` flag but not *testing* it, so eight modules spell the predicate), `vg-237` (`controls-manager` owns a Line's four document scalars and a text box's height), and `vg-232`–`vg-248` generally.
 
-**Acceptance for this phase is the opposite of the other three: nothing may change behaviour.** The 13,200 lines of manager tests are the harness, and a redistribution that turns one of them red is a defect rather than a refactor. Deletion phases are judged by what disappeared; this one is judged by what moved without moving anything else.
+**What the size measurement found, at HEAD on 2026-10-12:** 32 non-test files at or past 500 lines, 12 past the 800 stop. Two exceptions are not defects and must not be split to satisfy a number — `font-trios.generated.ts` (28,284 lines) is **generated**, and `editor-shell.css` (2559) is already owned by `vg-274`. The four per-file rows already on file (`vg-209`, `vg-255`, `vg-276`, `vg-337`) are this phase's evidence, not its scope.
+
+**It is still not a deletion lane.** All 20 managers have production references; none is dead. Reading this as dead code would produce a plan to delete live modules, which is the failure the sweep exists to avoid.
+
+**And it is not a line-count chore.** `AGENTS.md` calls 500 a signal and 800 a stop, so **the count is what found this, not what fixes it.** Splitting a file until both halves sit under the threshold while both go on owning the same concept is the failure mode, and it is the one move this phase forbids. The unit of work is a *concept and its owner*, never a line budget.
+
+**Acceptance inverts against the other three phases: nothing may change behaviour.** The 13,200 lines of manager tests are the harness, and a change that turns one of them red is a defect rather than a refactor. Removal phases are judged by what disappeared; this one is judged by what moved without moving anything else.
 
 ### Task 8: The manager census against the ownership map
 
 **Files:** none modified. Reads `src/web/packages/editor/src/*manager*/**`, `docs/architecture/ownership.md`, and the register's ownership rows.
 
 - [ ] **Step 1: For each of the 20 managers, list the concepts it *decides* and the concepts the ownership map says it *owns*.** The gap between those two lists is the work. Take the concept inventory from the code, not from the map — **a register claim is not evidence** (Global Constraints), and `vg-237`'s mismatch was found by reading the module, not the table.
-- [ ] **Step 2: Rank the mismatches by blast radius, not by count.** `snap-manager`'s duplicated protocol sits in 5252 lines and is reached by 11 production modules; a manager owning one stray scalar is a smaller move. Say which mismatches are one-owner moves and which are cross-cutting.
-- [ ] **Step 3: Fold in the register rather than re-finding it.** `vg-232`–`vg-248` already name most of this family. Each citation is re-established at HEAD, and the census says which rows it confirms, which it contradicts, and which it found that no row names.
-- [ ] **Step 4: Report the dead-or-over-owning question separately.** A manager that has production references may still contain a *dead method*; that is Phase 1's scanner's job, not this task's, and the census does not duplicate it.
-- [ ] **Step 5: Commit.** `docs(sweep): the manager census against the ownership map`.
+- [ ] **Step 2: Answer the user's two questions explicitly, one manager at a time.** For each of the 20: **(a)** does it own more than one concept, such that one of them deserves an independent manager? **(b)** is any concept it owns also decided by another manager? Answer both for every manager and print the two lists, including the managers where the answer is no — a census that only lists problems makes its own clearance rate invisible.
+- [ ] **Step 3: Bring the size measurement in as a signal, and say where it points and where it does not.** The measured set is 32 files at or past 500 lines, 12 past the 800 stop. **A file's length is a hint about a concept boundary, not the boundary itself** — `snap-manager`'s five files are the case where the two agree, and `font-trios.generated.ts` (28,284 lines, generated) is the case where length means nothing. Name which over-limit files are a concept problem and which are merely long.
+- [ ] **Step 4: Rank the candidates by blast radius, not by line count.** `snap-manager` is reached by 11 production modules and holds four of the twelve files past the stop; a manager owning one stray scalar is a smaller move. Say which candidates are a clean extraction and which are cross-cutting.
+- [ ] **Step 5: Fold in the register rather than re-finding it.** `vg-232`–`vg-248` already name most of this family. Each citation is re-established at HEAD, and the census says which rows it confirms, which it contradicts, and which it found that no row names. `vg-364` is this phase's own row and `vg-209`, `vg-255`, `vg-276` and `vg-337` are its per-file evidence.
+- [ ] **Step 6: Report the dead-or-over-owning question separately.** A manager that has production references may still contain a *dead method*; that is Phase 1's scanner's job, not this task's, and the census does not duplicate it.
+- [ ] **Step 7: Commit.** `docs(sweep): the manager census against the ownership map`.
 
 ### Task 9: Redistribute the confirmed mismatches, one owner at a time
 
@@ -172,7 +182,8 @@ Each task below owns one group of packages and follows the same contract: **for 
 - [ ] **Step 2: Move the decision, not the code.** The rule is `AGENTS.md`'s one owner per concept: after the move the *old* site stops deciding, and reads the owner's answer instead. A redistribution that leaves both sites deciding has added a second owner, which is worse than the mismatch it set out to fix.
 - [ ] **Step 3: Update the map in the same commit as the move.** A map that lags its code is how `vg-244` came to contradict itself on z-order, grouping and locks.
 - [ ] **Step 4: Run the manager tests and report the count, before and after.** `vg-239` records that a save-picture expression is written twice; a redistribution that makes the two sites agree by changing one of them silently is the failure mode.
-- [ ] **Step 5: Do not merge managers or introduce an abstraction over them.** The count of managers is not the defect, and a `BaseManager` is the framework-rebuild this repo's Reuse section exists to prevent.
+- [ ] **Step 5: An extraction creates an owner, so it updates the map, the barrel and the importers in the same commit.** A new manager that no document names is a concept with no declared owner, which is the state `vg-246` records as a "named gap that reads as unfilled".
+- [ ] **Step 6: Do not merge managers or introduce an abstraction over them.** The *count* of managers is not the defect, and a `BaseManager` is the framework-rebuild this repo's Reuse section exists to prevent. The defect is a manager owning a concept that is not its own — a bigger manager is not the fix for a manager that is too big.
 
 ---
 
