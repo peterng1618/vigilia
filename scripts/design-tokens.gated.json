@@ -69,6 +69,8 @@
     "src/web/packages/editor/src/editor-shell/diagnostic-message.tsx",
     "src/web/packages/editor/src/accessible-name.ts",
     "src/web/packages/editor/src/components/ui/control-icon-button.dom.test.tsx",
-    "src/web/packages/editor/src/ui-copy.ts"
+    "src/web/packages/editor/src/ui-copy.ts",
+    "src/web/packages/editor/src/copy-defects.test.ts",
+    "src/web/packages/editor/src/editor-shell/shell-layout.dom.test.tsx"
   ]
 }
