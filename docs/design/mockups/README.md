@@ -42,10 +42,10 @@ Open them in a browser. Each is self-contained — one file, no build, no server
 
 ## What they are, and what they are not
 
-- **They are the design language, drawn.** [`../design-language.md`](../design-language.md)
+- **They are the design language, drawn.** [`../../../DESIGN.md`](../../../DESIGN.md)
   is the normative text; these are its worked example. Where the **current set**
-  and the bible disagree, **the bible wins and the file is stale** — correct it
-  in the same commit that corrects the bible. The originals are never corrected,
+  and DESIGN.md disagree, **DESIGN.md wins and the file is stale** — correct it
+  in the same commit that corrects DESIGN.md. The originals are never corrected,
   by this rule or any other.
 - **They are not pixel baselines.** [`../../evidence/screenshots/`](../../evidence/screenshots/)
   holds rendered evidence from built bundles and is explicitly not cross-platform
@@ -57,7 +57,7 @@ Open them in a browser. Each is self-contained — one file, no build, no server
   `ui-copy.ts` or the component that owns the words, so the drawing and the
   editor cannot disagree about what a surface is called. The originals' copy is
   illustrative — it predates the surfaces it draws — and the copy rules are
-  bible §9.
+  DESIGN.md §9.
 
 ## Reviewed reference contract — 2026-10-08
 
@@ -69,7 +69,7 @@ The current set carries the direction this contract asked for.
 - **Preserve the original visual direction.** Warm illustrative artwork,
   compact diagram tiles, subtle stage texture, fine dividers, floating dock,
   lens chips and palette swatch cards remain. A contract correction is not a
-  licence to flatten or replace the composition (bible §7.8).
+  licence to flatten or replace the composition (DESIGN.md §7.8).
 - `editor-shell.html` retains the original shell and side-by-side Settings
   specimens. Corrections remove stale Document-menu/Canvas-tab proposals,
   ornamental search and empty-inspector statistics. Four slots and 246px pane
@@ -95,7 +95,7 @@ The current set carries the direction this contract asked for.
 A plan whose phase changes a visible surface ends with a **parity capture**: the
 built editor, photographed in the state the mockup shows, placed beside it, and
 the differences listed. Each difference is then either **fixed**, or **licensed
-by a rule that predates it** — a bible §N, an ADR or a spec section that
+by a rule that predates it** — a DESIGN.md §N, an ADR or a spec section that
 positively requires the product's treatment, named in the commit. Recording a
 difference **as deliberate is not a disposition**: it names no rule, and it is
 the escape hatch that let a week of drift pass every check green. Where the
@@ -111,7 +111,7 @@ one worker, previewing built bundles, capturing only actions registered in
 
 ## Keeping them current
 
-A mockup that no longer matches the bible is worse than no mockup, because it is
+A mockup that no longer matches DESIGN.md is worse than no mockup, because it is
 believed.
 
 - **The current files are refreshed when the set of surfaces changes.** A pane,
