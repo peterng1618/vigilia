@@ -11,6 +11,7 @@ artifacts and from Git history.
 | Product goals, constraints and stable requirements | [`product/requirements.md`](product/requirements.md) |
 | Current system shape and boundaries | [`architecture/README.md`](architecture/README.md) |
 | Who owns each concept | [`architecture/ownership.md`](architecture/ownership.md), and the review of it at [`architecture/manager-census.md`](architecture/manager-census.md) |
+| Which stylesheet selectors the product still reaches | [`architecture/dead-selectors.md`](architecture/dead-selectors.md) — a reachability check of the two shipped CSS files |
 | The editor's visual language, **normative** | [`../DESIGN.md`](../DESIGN.md) — scales, colour roles, the control and icon vocabulary, layout and copy rules |
 | Why major architecture choices were made | [`adr/`](adr/) |
 | Active feature design/spec | [`superpowers/specs/`](superpowers/specs/) |
