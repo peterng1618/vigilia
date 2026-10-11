@@ -178,10 +178,13 @@ interface AbsentReading {
  * word (`settings-field.ts:206`).
  *
  * **Not rendered here, the absence already owned and asserted elsewhere.** The
- * About tab's absent version is a row left out rather than a dash, asserted by
- * `settings.dom.test.tsx` (the About text holds neither `panels.notSet` nor a
- * dash). An unauthored optional *number* field is an empty box, never a zero,
- * asserted by `controls.dom.test.ts`. The artboard's non-preset board renders the
+ * About tab's absent version is a row left out — `versionFacts` pushes no release
+ * row, so no dash can stand in (`settings.tsx`) — and `settings.dom.test.tsx`
+ * asserts that row is absent and the About text holds neither `panels.notSet` nor
+ * `"undefined"`. An unauthored optional *number* field is an empty box, never a
+ * zero: `controls.dom.test.ts` asserts the box's value is `""` for an optional
+ * field, and `control.dom.test.tsx` asserts an empty draft commits nothing rather
+ * than a zero. The artboard's non-preset board renders the
  * word `uiCopy.panels.customSize` ("Custom", `ui-copy.ts`) on the control's
  * trigger — `control-select.tsx`'s `Select.Value` prints the selected item's
  * label and `artboard-fields.tsx:159` falls back to the `""` id, which
@@ -192,11 +195,11 @@ interface AbsentReading {
  * the saved document are also rendered and asserted by their own files.
  *
  * **Not rendered here, and no test renders it.** `chart-fields.tsx:351`, the
- * chart select's gap option: searched `panels.notSet` across every `*.test.ts`
- * and `*.test.tsx` under `packages/editor/src` (the only hits are the usage-figure
- * site — `paint-list.dom.test.tsx`, `usage.dom.test.ts` — and the About-tab
- * negative) and `role="option"` in `chart-fields.dom.test.tsx` (none), so no test
- * opens it.
+ * chart select's gap option. Searched `panels.notSet` across every `*.test.ts`
+ * and `*.test.tsx` under `packages/editor/src`: the only hits are
+ * `settings.dom.test.tsx:594` (the About tab asserting its *absence*),
+ * `usage.dom.test.ts:126` and `paint-list.dom.test.tsx:284` (the usage-figure
+ * site, a different renderer), so no test renders this one.
  * Read `panel.ts` (`an unauthored select reads as ""`) and `control-select.tsx`
  * (`Select.Value` prints the selected item's label), so its trigger *would* render
  * the gap's word if a test mounted a `line` target with `dash` unauthored — it is
@@ -294,11 +297,11 @@ it("states a missing reading as a gap rather than a zero or a dash", async () =>
  * flags: plan 2 drew the button alone and plan 5 bound `publish.surface`, so the
  * printed chord now runs the action.
  *
- * **Proven elsewhere, named.** The rail's `add` slot: `shell-layout.dom.test.tsx`
- * clicks it and asserts the Add pane reveals — its `segment()` helper composes the
- * selector `[data-rail-slot="${id}"]`, so a literal search for the attribute finds
- * nothing, and `segment(root, "add").click()` in fact runs four times with
- * `layout.hosts.add.parentElement?.hidden === false` after each. `saveState.unsaved`
+ * **Proven elsewhere, named.** The rail's `add` slot reveals the Add pane, and
+ * `shell-layout.dom.test.tsx` proves it: its `segment()` helper composes the
+ * selector `[data-rail-slot="${id}"]` — so a literal search for the attribute
+ * finds nothing while the click is there — and it clicks `segment(root, "add")`
+ * and asserts the Add pane is shown. `saveState.unsaved`
  * and `statusBar.live` are a state and a state, not actions: each is rendered and
  * asserted by its surface's own test (`save-state.dom.test.tsx`,
  * `publish-indicator.dom.test.tsx`). The diagnostics pair leads its message,

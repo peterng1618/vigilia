@@ -31,15 +31,14 @@ satisfies every token in the bible and still does not look like the mockup.
 
 ## Last completed change
 
-- **Fix round 2 on Task 6's copy nets**: three false boundary claims corrected — the rail's `add` slot IS clicked by `shell-layout.dom.test.tsx` (its `segment()` helper composes the selector, so a literal search missed it), the artboard trigger renders the owned word "Custom" and is asserted by `artboard-panel.dom.test.ts`, and the View readings are not uniform.
-- **The honest third category is the View menu's `dataSource` and `valueRuns` radios**, exercised by no test (only `chartRefresh` is proven); filed as `vg-339`, with the searches in that row and in the case's comment.
-- **The gap case's chart-select bound is restated**: its trigger would render the gap word with no popup open, so it is bounded for the `line` target mount, not for popup cost.
-- **Every negative claim now carries its search in the sentence** — the identifier and the helper, never a literal selector that a composed string defeats.
-- **Report §1.1/§2/§7 made consistent**: the eight entries reach six of §1.1's bullets (five full, the "not set" gap partial), and the retracted title is gone.
+- **Fix round 3 on Task 6**: the `add`-slot sentence drops its count and per-site assertion claim (the third round on this comment) and now states the capability and the citation only.
+- **The chart-select bound cites the search that supports it**: `panels.notSet` across every test file returns only the About-tab negative and the two usage-figure sites, so no test renders the chart select's gap word.
+- **Each About-tab and number-field half is attributed to what carries it**: `settings.dom.test.tsx` asserts the absent row and the missing gap word; `controls.dom.test.ts` and `control.dom.test.tsx` assert the empty box and the never-a-zero commit; the "rather than a dash" half is the source's.
+- **STATUS.md's Next no longer names Task 5's re-review** (Task 5 is closed); it says Task 6's close, then Tasks 7–9.
 
 ## Next
 
-1. **Plan 6 Task 5's re-review** (fix round 2 landed), then **Task 6 — the copy defects** fixed as defects: the surfaces a missing reading would fabricate into a zero or a dash, and the strings that name a capability no control can run.
+1. **Close Task 6** — the copy defect nets and their stated boundary are landed and verified through fix round 3; what remains is the task's own close (report and review sign-off), then the Phase 3 tasks below.
 2. **Plan 6 Tasks 7–9** — the gate, the Acceptance ledger and the parity capture; Task 9's browser assertion is the net the fixture-bound weight case cannot be, and it also carries the parity lines that the drawing draws its twisty at 10px where the product draws it at 13px and draws no kind mark at all.
 3. **The four rulings implemented**: `PINNED_FLOOR.boundary` deleted and §5's narrower rule written down, and the drawing's six preview bars repainted to the palette's ground with a `PARITY` row that reads a bar's colour.
 4. **Then, in order: the Settings pane** (`vg-330`, architectural — brainstorm → spec → plan), **the attention-colour role** (`vg-331`), and `design-md-replaces-the-bible` before the multi-device display objective.
