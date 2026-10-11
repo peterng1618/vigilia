@@ -114,9 +114,6 @@ production-source spelling at all, and **all five are live** (section 4). One fu
 token, `data-template`, has a production hit only inside a JSDoc comment and is
 the same case as the five.
 
-A spelling is not an application, and there is one class of token on this tree
-where the two come apart; section 7 names it.
-
 **Clearance rate: 135 of 135 live, 0 dead.** The one removal a reader might
 expect from this file already exists and is not a class: `vg-266`'s two
 `select` arms (section 6).
@@ -183,8 +180,8 @@ Over `src/web` (no `node_modules`, no `dist`), with the source extensions the
 sweep itself reads:
 
 ```sh
-grep -rnE '"[a-z][a-z-]*"[[:space:]]*\+' src/web --include=*.ts --include=*.tsx --include=*.js --include=*.mjs --include=*.html --include=*.htm --exclude-dir=node_modules --exclude-dir=dist
-grep -rnE 'classList\.(add|remove|toggle)' src/web --include=*.ts --include=*.tsx --include=*.js --include=*.mjs --exclude-dir=node_modules --exclude-dir=dist
+grep -rnE '"[a-z][a-z-]*"[[:space:]]*\+|[[:space:]]\+[[:space:]]*"[a-z][a-z-]*"' src/web --include=*.ts --include=*.tsx --include=*.js --include=*.jsx --include=*.mjs --include=*.cjs --include=*.html --include=*.htm --exclude-dir=node_modules --exclude-dir=dist
+grep -rnE 'classList\.(add|remove|toggle)' src/web --include=*.ts --include=*.tsx --include=*.js --include=*.jsx --include=*.mjs --include=*.cjs --exclude-dir=node_modules --exclude-dir=dist
 ```
 
 Both return nothing — no `+` composes a name here, and nothing calls
@@ -246,11 +243,7 @@ attribute-value selector pairs in the two files: 26
 
 The two zero rows are **`role="menuitemradio"`** and **`role="tabpanel"`**, and
 section 6 carries them: they are written by Base UI on the element it renders,
-not spelled in this repo, so no search over source can find them. Their earlier
-appearance as hits was the stylesheet vouching for itself — with `.css` in the
-search set, the file declaring `[role="menuitemradio"]` was also the file
-supplying its "hit". Removing CSS turns exactly those two rows zero and moves no
-other count; the pair total is 26 either way.
+not spelled in this repo, so no search over source can find them.
 
 The remaining counts are only evidence for the distinctive values; for `true`,
 `false`, `error`, `group`, `number` and `range` the bare string is ordinary
@@ -290,7 +283,6 @@ know what was and was not measured.
   return nothing at HEAD. What survives is four arms: `.editor-shell select`
   (`:1321`), the `select` arm of the `:is(…)` focus rule (`:1341`),
   `.vigilia-field select` and `.vigilia-field-row select` (`:1763`, `:1766`).
-  Two of the four are shell-wide and two nest under `.vigilia-field`.
   `settings-field.ts:196` holds the only `document.createElement("select")`
   **under `.editor-shell`**: `grep -rn 'createElement("select")'` over
   `src/web/packages/editor/src` returns it alone. The same search over
