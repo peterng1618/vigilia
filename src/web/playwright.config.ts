@@ -25,7 +25,14 @@ import { HOST_APP_DIR, HOST_PORT } from "./tests/e2e/host-theme.js";
  * with `isDesktopSurface`, so widening that project's `testMatch` later cannot
  * silently turn a desktop pixel read into a phone one.
  */
-const HOST_SPECS = /host-(player|settings|media|bleed|chrome).spec.ts/;
+// `walkthrough` is here for the reason the others are: it boots the real host
+// through this project's `webServer` and drives the editor through that host's
+// `/editor/` mount, which no preview server provides. The regex is also the
+// `desktop-chromium`/`phone-chromium` `testIgnore`, so widening it keeps the
+// walkthrough out of the two preview projects rather than pulling it into a
+// second one. `phone-host` matches `host-player` alone and is unaffected.
+const HOST_SPECS =
+  /host-(player|settings|media|bleed|chrome|walkthrough).spec.ts/;
 
 /**
  * The publish proofs each start their own host on their own port and drive the
