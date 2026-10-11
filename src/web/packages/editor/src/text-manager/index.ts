@@ -2,6 +2,7 @@ import type { TextContent, TextRun } from "@vigilia/renderer-core";
 import {
   type PlanTextObject,
   VIGILIA_TEXT_PROPERTY,
+  writeAuthoredBoxDimension,
 } from "@vigilia/scene-fabric";
 import { type Canvas, IText, Textbox } from "fabric/es";
 import { uiCopy } from "../ui-copy.js";
@@ -84,11 +85,11 @@ function adoptResizedBox(object: object): void {
   const authored = authoredOf(target);
   if (authored?.box === undefined) return;
 
+  // Scaled, as `vg-233` records it: the box is scene units and the owner seeds
+  // unscaled, but whether a resize reaches here with a non-1 scale is
+  // unmeasured, so the number is the caller's until that check runs.
   const scaleX = target.scaleX === 0 ? 1 : target.scaleX;
-  target.set(VIGILIA_TEXT_PROPERTY, {
-    ...authored,
-    box: { ...authored.box, width: target.width * scaleX },
-  });
+  writeAuthoredBoxDimension(target, "width", target.width * scaleX);
 }
 
 function isText(value: unknown): value is PlanTextObject & {

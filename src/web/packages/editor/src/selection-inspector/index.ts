@@ -3,7 +3,11 @@ import type {
   FabricGlobals,
   SampleSource,
 } from "@vigilia/renderer-core";
-import { applyAuthoredText } from "@vigilia/scene-fabric";
+import {
+  applyAuthoredText,
+  type PlanTextObject,
+  writeAuthoredBoxDimension,
+} from "@vigilia/scene-fabric";
 import type { FabricObject } from "fabric/es";
 import type { ChartEdits } from "../chart-manager/chart-fields.js";
 import type { EditorInteraction } from "../editor-interaction.js";
@@ -71,47 +75,6 @@ export interface SelectionInspector {
   setGlobals(next: FabricGlobals | undefined): void;
   /** The document's language changed, so a formatted preview may have too. */
   setLocale(next: string | undefined): void;
-}
-
-/** The two dimensions a text object's authored box carries. */
-type BoxKey = "width" | "height";
-
-/**
- * Writes one dimension of the authored box, keeping the other.
- *
- * A text object inserted by the editor has no box yet — its width is Fabric's
- * measurement until an author types one. Writing the height alone would then
- * create `{ height }` with no width, and `authoredBox` would multiply an
- * `undefined` width by the scale on the next text change: the object loses its
- * width and stops producing a bounding rect. Both dimensions start from the
- * object's own measured edge, so the first Size field an author fills in gives a
- * whole box rather than half of one.
- */
-function writeAuthoredBox(
-  object: FabricObject,
-  key: BoxKey,
-  value: number,
-): void {
-  const authored = object.get("vigiliaText") as Record<string, unknown>;
-  const box = (authored["box"] ?? {}) as {
-    width?: number;
-    height?: number;
-  };
-  const measured = (dimension: BoxKey): number =>
-    box[dimension] ??
-    (typeof object.get(dimension) === "number"
-      ? (object.get(dimension) as number)
-      : 0);
-
-  object.set("vigiliaText", {
-    ...authored,
-    box: {
-      ...box,
-      width: measured("width"),
-      height: measured("height"),
-      [key]: value,
-    },
-  });
 }
 
 export interface SelectionInspectorOptions {
@@ -321,7 +284,11 @@ export function createSelectionInspector(
         // H field squashed the same type to 0.44 of its height. The authored box
         // is the owner, and the renderer re-asserts it.
         if (isTextObject(object)) {
-          writeAuthoredBox(object, "width", dimension);
+          writeAuthoredBoxDimension(
+            object as PlanTextObject,
+            "width",
+            dimension,
+          );
           applyAuthoredText(editor.canvas, globals);
           break;
         }
@@ -332,7 +299,11 @@ export function createSelectionInspector(
       }
       case "height": {
         if (isTextObject(object)) {
-          writeAuthoredBox(object, "height", dimension);
+          writeAuthoredBoxDimension(
+            object as PlanTextObject,
+            "height",
+            dimension,
+          );
           applyAuthoredText(editor.canvas, globals);
           break;
         }

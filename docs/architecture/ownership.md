@@ -168,6 +168,7 @@ tree, and `editor-shell/layer-panel.tsx` renders those rows.
 | ECharts registration | `scene-fabric/src/chart-engine.ts` |
 | Fabric node updates | `scene-fabric/src/fabric-nodes.ts` |
 | Text runs | `scene-fabric/src/text-runs.ts` |
+| The authored text box (`vigiliaText.box`) — its two dimensions, and the one write every geometry surface shares | `scene-fabric/src/authored-box.ts` |
 | Image/SVG | `scene-fabric/src/fabric-image.ts` |
 | Paint conversion | `scene-fabric/src/paint.ts` |
 
