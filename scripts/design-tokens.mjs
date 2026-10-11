@@ -10,6 +10,11 @@
  * and refuses a literal that should have been a token. The list only grows, so
  * the repo never has to be green all at once.
  *
+ * A second instrument covers the one large surface that is not on that list: a
+ * ceiling (`CEILINGS`) caps how many violations such a file may hold, so it is
+ * green today and can only fall. It is a count rather than a conversion — the
+ * constant says why the path does not simply join the list above.
+ *
  * This is deliberately the *cheap* ratchet, and its second px tier is coarse in
  * a way that is documented rather than accidental: in a spacing property the
  * bible's §3 steps are enforced exactly, because the property is right there to
@@ -70,6 +75,43 @@ const PX = /(?<![\w.])(\d+(?:\.\d+)?)px(?![\w-])/g;
 
 const DEFAULT_GATED = "scripts/design-tokens.gated.json";
 const ROOT = resolve(import.meta.dirname, "..");
+
+/**
+ * The ceilings: a violation *count* over a file deliberately kept off the list
+ * above. `editor-shell.css` defines the scales and holds dozens of residuals, so
+ * putting it in `gated` would redden this gate at HEAD — a gate that starts red
+ * and stays red is turned off (ADR-0040 `:12`). `max` is set where the count
+ * stands after plan 8's CSS edits, so the instrument is green today and can only
+ * tighten: a rise above `max` fails, a fall passes.
+ *
+ * `exempt` names the values no §3 step can express, each with its reason — the
+ * shape the drawings gate uses for `1px`/`2px`/`50%`. An exempt value does not
+ * count, and an exemption that matches nothing is itself a failure: a licence
+ * nobody needs is the defect of a list that checks nothing, one rung along.
+ */
+export const CEILINGS = [
+  {
+    path: "src/web/packages/editor/src/editor-shell/editor-shell.css",
+    max: 58,
+    exempt: [
+      {
+        text: "margin-right: 62px",
+        reason:
+          "the layer row's reserved slot for two controls — `6 + 26*2 + 4` (§3's 26px row rhythm plus its 6px and 4px steps) — so the sum is off §3's step table by construction, and correcting it to a step would move the reserved width and let the icons cover the key again (editor-shell.css:2066-2084)",
+      },
+      {
+        text: "margin-right: 92px",
+        reason:
+          "the same arithmetic at three controls — `6 + 26*3 + 8` — and inexpressible as a §3 step for the same reason, `n=1` landing on the step 32 only because its gap term is zero",
+      },
+      {
+        text: "margin-right: 122px",
+        reason:
+          "the same arithmetic at four controls — `6 + 26*4 + 12` — so 62, 92 and 122 are one class of three, not three exceptions",
+      },
+    ],
+  },
+];
 
 /**
  * Blank a span to spaces, keeping its newlines. A masked span must not move a
@@ -225,6 +267,31 @@ export function check(relPath, source, biblePx = []) {
 }
 
 /**
+ * The ceiling's reading of one file: the violations that *count* (the ceiling's
+ * own exemptions removed), the `text` of any exemption that matched nothing, and
+ * whether the count is over `max`.
+ *
+ * `over` is strict — a count at the ceiling passes — because `>=` would redden
+ * the gate at the number it was measured at, which is the failure the ceiling
+ * exists to avoid. `dead` is returned rather than logged so a caller sees a
+ * licence nobody needs as a failure, not a silent pass.
+ */
+export function ceilingExcess(relPath, source, biblePx = [], ceiling = {}) {
+  const violations = check(relPath, source, biblePx);
+  const exempt = new Map(
+    (Array.isArray(ceiling.exempt) ? ceiling.exempt : []).map((entry) => [
+      String(entry.text),
+      String(entry.reason),
+    ]),
+  );
+  const counted = violations.filter((violation) => !exempt.has(violation.text));
+  const dead = [...exempt.keys()].filter(
+    (text) => !violations.some((violation) => violation.text === text),
+  );
+  return { counted, dead, over: counted.length > Number(ceiling.max) };
+}
+
+/**
  * Proves every rule still fires. Called only from the entry-point gate: an
  * importer in a process whose argv happens to mention `--self-test` must not
  * run it and exit mid-import.
@@ -329,6 +396,46 @@ function selfTest() {
       name,
       found.length === expected && (options.line === undefined || found[0]?.line === options.line),
       `expected ${expected} violation(s)${options.line === undefined ? "" : ` on line ${options.line}`}, got ${found.length} on ${found.map((v) => v.line).join(",") || "no line"}`,
+    );
+  }
+
+  // The ceiling, over a file that is deliberately not gated. Both of its silent
+  // failures are proved here rather than assumed: `>=` would redden the gate at
+  // the count it was measured at, and a ceiling above the count never fires.
+  const ceilingCases = [
+    ["a count at the ceiling passes", ".x { color: #ff0000; }", { max: 1 }, 1, 0, false],
+    [
+      "one above the ceiling reddens",
+      ".x { color: #ff0000; }\n.y { color: #00ff00; }",
+      { max: 1 },
+      2,
+      0,
+      true,
+    ],
+    ["a clean file under the ceiling passes", ".x { padding: 12px; }", { max: 4 }, 0, 0, false],
+    [
+      "an exempt value does not count",
+      ".x { margin-right: 62px; }",
+      { max: 0, exempt: [{ text: "margin-right: 62px", reason: "the row's own arithmetic" }] },
+      0,
+      0,
+      false,
+    ],
+    [
+      "an exemption that matches nothing fails",
+      ".x { padding: 12px; }",
+      { max: 4, exempt: [{ text: "margin-right: 62px", reason: "the row's own arithmetic" }] },
+      0,
+      1,
+      false,
+    ],
+  ];
+  for (const [name, source, ceiling, counted, dead, over] of ceilingCases) {
+    const got = ceilingExcess("editor-shell.css", source, [], ceiling);
+    report(
+      name,
+      got.counted.length === counted && got.dead.length === dead && got.over === over,
+      `expected ${counted} counted/${dead} dead/over ${over}, got ${got.counted.length}/${got.dead.length}/over ${got.over}`,
     );
   }
 
@@ -459,4 +566,40 @@ if (isEntryPoint) {
     process.exit(1);
   }
   console.log(`design-tokens: ${gated.length} gated file(s) clean`);
+
+  let breached = 0;
+  for (const ceiling of CEILINGS) {
+    const relPath = String(ceiling.path);
+    let source;
+    try {
+      source = await readFile(resolve(ROOT, relPath), "utf8");
+    } catch (error) {
+      console.error(`design-tokens: ${relPath} cannot be read (${error.code ?? error.message})`);
+      breached += 1;
+      continue;
+    }
+    const { counted, dead, over } = ceilingExcess(relPath, source, biblePx, ceiling);
+    for (const text of dead) {
+      console.error(
+        `design-tokens: ${relPath}'s ceiling exempts "${text}", which is not a violation any more — drop the exemption`,
+      );
+      breached += 1;
+    }
+    if (over) {
+      for (const violation of counted) {
+        console.error(
+          `${relPath}:${violation.line}:${violation.column} ${violation.rule} ${violation.text}`,
+        );
+      }
+      console.error(
+        `design-tokens: ${relPath} holds ${counted.length} violation(s), above its ceiling of ${ceiling.max}`,
+      );
+      breached += 1;
+    } else {
+      console.log(
+        `design-tokens: ${relPath} holds ${counted.length} violation(s), at or below its ceiling of ${ceiling.max}`,
+      );
+    }
+  }
+  if (breached > 0) process.exit(1);
 }
