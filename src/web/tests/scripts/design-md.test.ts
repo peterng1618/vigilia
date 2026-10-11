@@ -1,7 +1,11 @@
 import { expect, it } from "vitest";
 // The script lives at the repository root, four levels above this file:
 // src/web/tests/scripts → ../../../.. = repo root.
-import { checkCitations, checkSync } from "../../../../scripts/design-md.mjs";
+import {
+  CITE_EXTENSIONS,
+  checkCitations,
+  checkSync,
+} from "../../../../scripts/design-md.mjs";
 
 /**
  * The two checks' own proof. `design-md.mjs` is the reader every DESIGN.md gate
@@ -145,6 +149,38 @@ it("lets a marker sit under a sub-heading the mapped `##` encloses", () => {
   expect(
     checkCitations(read, { numbers: ["7.1"], uncitedOk: [] }),
   ).toEqual([]);
+});
+
+it("fails a marker under a duplicated heading its mapping names", () => {
+  // `markerPlacements` keys on heading text, so a second `## Colors` elsewhere in
+  // the file would otherwise let a marker parked under it pass unchecked.
+  const read = fixture({
+    design: "## Colors\n\n## Copy\n\n## Colors\n\n<!-- §4 -->\n",
+    citations: ["§4"],
+    mapping: new Map([["4", ["## Colors"]]]),
+  });
+  const findings = checkCitations(read, { numbers: ["4"], uncitedOk: [] });
+  expect(findings.map((f) => f.what)).toEqual(["§4"]);
+  expect(findings[0]?.why).toContain("more than once");
+});
+
+it("fails a number the section mapping has no row for, rather than skipping it", () => {
+  const read = fixture({
+    design: "## Colors\n\n<!-- §4 -->\n\n## Copy\n\n<!-- §9 -->\n",
+    citations: ["§4", "§9"],
+    mapping: new Map([["4", ["## Colors"]]]),
+  });
+  expect(
+    whats(checkCitations(read, { numbers: ["4", "9"], uncitedOk: [] })),
+  ).toEqual(["§9"]);
+});
+
+it("keeps the register's .jsonl out of the citation scan", () => {
+  // The register carries historical `§N` prose; admitting `.jsonl` would let it
+  // claim markers the live prose does not (`vg-352`). On the collected path so a
+  // widening fails in CI, not only under the hand-run `--self-test`.
+  expect(CITE_EXTENSIONS.test("docs/product/backlog.jsonl")).toBe(false);
+  expect(CITE_EXTENSIONS.test("data.json")).toBe(true);
 });
 
 it("merges a rule-1 and a rule-2 finding for one number into one line", () => {

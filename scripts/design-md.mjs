@@ -39,6 +39,12 @@
  * expected placement is read from the spec, never invented here, for the same
  * reason the range is a constant rather than read from DESIGN.md.
  *
+ * That fourth rule fails closed on the two edits that would otherwise slip a
+ * marker out of it. A number the mapping has no row for is a finding, not an
+ * exemption — deleting a row must not silently de-check its marker — and a mapped
+ * heading that appears twice is a finding too, because a placement keyed on
+ * heading *text* cannot tell which occurrence a marker sits under.
+ *
  * The canonical range lives HERE and is never read from DESIGN.md: if it were
  * read from the file, deleting a marker would shrink the range it is checked
  * against and the deletion would pass. `§1`–`§10` with `§7.1`–`§7.8` is
@@ -76,7 +82,7 @@ const CITE_TREES = ["docs", "src", "scripts"];
  * hole (`vg-352`) — the register would claim a marker the live prose does not.
  * Excluding it keeps the "every marker is cited" rule strict.
  */
-const CITE_EXTENSIONS = /\.(?:ts|tsx|js|jsx|mjs|cjs|md|json|css|html|txt|ya?ml)$/;
+export const CITE_EXTENSIONS = /\.(?:ts|tsx|js|jsx|mjs|cjs|md|json|css|html|txt|ya?ml)$/;
 
 /**
  * The check's own files, skipped: they live in the scanned trees and their
@@ -105,6 +111,16 @@ export const CITE_NUMBERS = [
  * recorded here with its reason rather than by dropping the rule.
  */
 export const UNCITED_OK = [];
+
+/**
+ * The canonical numbers the spec's section mapping has no row for, each with the
+ * reason it is exempt from the placement check — `{ number, reason }`, like
+ * `UNCITED_OK`, so a missing row is a decision rather than a silence. Empty today:
+ * all 18 numbers resolve to a row (the `§7.N` sub-numbers inherit `§7`'s). A number
+ * with neither a row nor an entry here fails `--cite`; deleting a row must not
+ * quietly de-check its marker.
+ */
+export const MAPPING_EXEMPT = [];
 
 /** `spacing` → `--space-<key>`, `rounded` → `--radius-<key>`, `typography` →
  *  `--text-<key>` (the front matter key is the bare suffix, per design D4). */
@@ -303,6 +319,23 @@ function markerPlacements(design) {
   return placements;
 }
 
+/**
+ * How many times each heading text (`## Copy`) appears in DESIGN.md. A placement is
+ * judged on that text, so a heading appearing twice leaves a marker's real location
+ * ambiguous — the mapping's `## Copy` could name either occurrence — and a marker
+ * parked under the impostor would otherwise pass.
+ */
+function headingOccurrences(design) {
+  const counts = new Map();
+  for (const line of String(design ?? "").split(/\r?\n/)) {
+    const heading = HEADING.exec(line);
+    if (heading === null) continue;
+    const text = `${heading[1]} ${heading[2]}`;
+    counts.set(text, (counts.get(text) ?? 0) + 1);
+  }
+  return counts;
+}
+
 const describePath = (path) =>
   path.length === 0 ? "no `##` heading" : path.map((h) => `\`${h}\``).join(" → ");
 
@@ -364,11 +397,12 @@ function orderFindings(entries) {
 /**
  * The citation rules. `what` is the citation (`§9`); a number missing its marker
  * gathers the reason from whichever rules caught it. `opts.numbers` and
- * `opts.uncitedOk` default to the constants and exist so a self-test can shrink
- * the range to one number; the real CLI never sets them. `read.mapping` — marker
- * number → heading path — is optional, and when present a marker under the wrong
- * heading is a finding too: a citation's number keeps its meaning only while its
- * marker sits where the mapping says.
+ * `opts.uncitedOk` and `opts.mappingExempt` default to the constants and exist so
+ * a self-test can shrink the range to one number; the real CLI never sets them.
+ * `read.mapping` — marker number → heading path — is optional, and when present a
+ * marker under the wrong heading is a finding too: a citation's number keeps its
+ * meaning only while its marker sits where the mapping says. It also fails a number
+ * the mapping has no row for, and a marker whose mapped heading appears twice.
  */
 export function checkCitations(read, opts = {}) {
   const numbers = opts.numbers ?? CITE_NUMBERS;
@@ -403,9 +437,26 @@ export function checkCitations(read, opts = {}) {
     });
   }
   if (mapping !== undefined) {
+    const exempt = new Set((opts.mappingExempt ?? MAPPING_EXEMPT).map((entry) => entry.number));
+    const occurrences = headingOccurrences(read?.design);
+    for (const number of numbers) {
+      if (expectedPath(mapping, number) !== undefined || exempt.has(number)) continue;
+      entries.push({
+        what: `§${number}`,
+        reason: `\`§${number}\` has no row in the spec's section mapping, so its marker's placement would be checked against nothing`,
+      });
+    }
     for (const { number, path, line } of markerPlacements(read?.design)) {
       const expected = expectedPath(mapping, number);
       if (expected === undefined || expected.length === 0) continue;
+      const repeated = expected.find((heading) => (occurrences.get(heading) ?? 0) > 1);
+      if (repeated !== undefined) {
+        entries.push({
+          what: `§${number}`,
+          reason: `\`${repeated}\` appears more than once in DESIGN.md, so \`§${number}\`'s placement under the mapped section cannot be checked`,
+        });
+        continue;
+      }
       if (expected.every((heading, i) => path[i] === heading)) continue;
       entries.push({
         what: `§${number}`,
@@ -514,6 +565,9 @@ function selfTest() {
   cite("a mapped `###` passes only where the mapping says", { design: "## Layout\n\n### The scales\n\n<!-- §3 -->\n", citations: ["§3"], mapping }, { numbers: ["3"], uncitedOk: [] }, []);
   cite("a parent `##` mapping admits a marker under its `###`", { design: "## Layout\n\n### The header\n\n<!-- §7.1 -->\n", citations: ["§7.1"], mapping }, { numbers: ["7.1"], uncitedOk: [] }, []);
   cite("no mapping means no placement finding", { design: "## Colors\n\n<!-- §1 -->\n", citations: ["§1"] }, { numbers: ["1"], uncitedOk: [] }, []);
+  cite("a number with no mapping row fails rather than going unchecked", { design: "## Colors\n\n<!-- §4 -->\n\n## Copy\n\n<!-- §9 -->\n", citations: ["§4", "§9"], mapping }, { numbers: ["4", "9"], uncitedOk: [] }, ["§9"], "no row in the spec's section mapping");
+  cite("an exempt number with no mapping row is not a finding", { design: "## Colors\n\n<!-- §4 -->\n\n## Copy\n\n<!-- §9 -->\n", citations: ["§4", "§9"], mapping }, { numbers: ["4", "9"], uncitedOk: [], mappingExempt: [{ number: "9", reason: "fixture" }] }, []);
+  cite("a marker under a duplicated heading fails", { design: "## Colors\n\n## Copy\n\n## Colors\n\n<!-- §4 -->\n", citations: ["§4"], mapping }, { numbers: ["4"], uncitedOk: [] }, ["§4"], "appears more than once");
 
   // The register's `.jsonl` files stay out of the scan on purpose (see the
   // constant): a widening that admits them must fail here first.
