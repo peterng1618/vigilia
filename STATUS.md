@@ -1,6 +1,6 @@
 # Vigilia status
 
-Updated: 2026-10-11
+Updated: 2026-10-12
 Branch: `develop`
 
 ## Current objective
@@ -23,25 +23,25 @@ satisfies every token in `DESIGN.md` and still does not look like the mockup.
 
 ## Active work
 
-- **The active plan is [`2026-10-12-the-keyboard-only-walkthrough`](docs/superpowers/plans/2026-10-12-the-keyboard-only-walkthrough.md)** — five tasks assembling §13.1's nine interactions into one spec on the real host, which is the last thing keeping the objective open; `design-md-replaces-the-bible` is closed and archived at [`archive/`](docs/superpowers/plans/archive/2026-10-10-design-md-replaces-the-bible.md) and Plan 6 is complete and archived.
-- **Plan 6's nine tasks are complete**: the census, the one glyph vocabulary and weight rule, the closed kind set, the one-string pairing, the copy nets, the ratchet, the sixteen-item Acceptance ledger and Task 9's parity capture.
-- **Its Acceptance ledger reads fifteen met, one not met** — §13.1's real-host walkthrough, which plan 6 was forbidden to add and no other plan owns.
-- **`vg-330` is parked by the user (2026-10-11)** — "Let's park the settings becomes a pane spec" — and `vg-331` still waits: the palettes gain a second highlight whose role is an attention or in-flight state, defined before any colour is chosen.
-- **Four user rulings of 2026-10-11 scope the next stretch**: the "no rule reads X" rows are first-class work for the drain rather than deferred; acceptance item 3 splits into the stress set now and a keyboard-walkthrough plan later; `vg-351` is repainted under a media query; and the drain opens with a reproduction pass, not a fix pass.
+- **The active plan is [`2026-10-12-the-dead-code-sweep`](docs/superpowers/plans/2026-10-12-the-dead-code-sweep.md)**, the user's instruction of 2026-10-12 to sweep several rounds of refactoring's dead and stale code; Task 1 is the scanner, running now.
+- **Two plans are queued behind it**: [`2026-10-12-the-backlog-reproduction-pass`](docs/superpowers/plans/2026-10-12-the-backlog-reproduction-pass.md) (215 open rows sorted at HEAD) and [`2026-10-12-the-keyboard-only-walkthrough`](docs/superpowers/plans/2026-10-12-the-keyboard-only-walkthrough.md), whose Task 1 is allowed to land because its files overlap neither plan.
+- **The sweep's rule is detection before deletion**: `data-vigilia-*` attributes, `--shell-*` properties, `KIND_*` registries and Fabric JSON keys are string-resolved, so an empty grep is not proof of death, and four gate scripts read the source tree as data.
+- **The register already holds the candidates**, 77 dead or stale rows: `vg-283`/`vg-268` are the same missing FontPicker mount filed twice, `vg-266` is two selectors matching nothing, `vg-344` an unreachable variant, `vg-342` a control with no production caller.
+- **The dead-or-pending question is not the sweep's to settle** — a module with no production mount but a real test may be abandoned or built ahead of the surface that will mount it, and those want opposite remedies.
+- **Its scanner is small on purpose**, node `fs`/`path` only with no new dependency, and `.mjs` is in no gate, so its self-test is the only thing that can fail it.
 
 ## Last completed change
 
-- **Graphite's capture regeneration ran on the frozen tree**: 208 tests (3 failed, 15.1 min) rewrote 61 PNGs, and **46 are committed** because their chrome moved from a light ground to graphite (`#fffdf7` → `#12161c`).
-- **Fifteen rewritten PNGs were restored** because their whole delta lay in the artboard's live canvas rather than the shell: `shell-palette-*` (six), the six settings-modal frames, `editor-shell-glyphs` and `editor-inspector-chart-graphite`.
-- **The one `-editorial` frame that was committed, inspected rather than assumed**: `editor-font-trio-editorial`'s ground is unchanged and its content change is real — the type-scale list shows all seven entries where three were visible — so reverting it would restore stale evidence.
-- **`editor-starter-cpu-card` could not be regenerated at all**: its spec times out waiting on a `[data-vigilia-layer="cpu-card"]` row that never appears, so that frame still shows the October 5 bundle and is the only editor capture not on graphite.
-- **Three deterministic failures at HEAD, named by no register and not by the red list below, are filed** as `vg-359`, `vg-360` and `vg-361` — the first reproduced directly at `editor.spec.ts` — and the red list now names them.
+- **The dead-code sweep plan and its ledger were written**, three phases: the reference scanner, verified removal one owner at a time, then the register rows the removals discharge.
+- **Its pre-flight scan found two defects in the plan's own text**, both fixed before dispatch: the candidate kinds missed `test-only-consumer`, which is the shape FontPicker actually has, and Task 1's self-proof asserted no negative case.
+- **The backlog reproduction pass plan was written** — six coverage-proven batches over all 215 open rows, 215 of 215 with none missing.
+- **Three rulings are recorded in the sweep's ledger**: the queue order, that Phase 2 re-runs the scanner because editor removals unlock shared-package exports, and that the walkthrough's Task 1 may land but is not resumed.
 
 ## Next
 
-1. **The three failures the capture run surfaced** — `vg-359` (which also owns the one stale capture), `vg-360` and `vg-361`; nothing fixed on sight, because the first question for each is whether the surface moved or the locator did, and those want opposite fixes.
-2. **The backlog drain, opened with a reproduction pass** — 215 open rows sorted at HEAD into closes-with-evidence, needs-a-decision and real work before anything is fixed.
-3. **`vg-357`** — a dark OS's pre-attribute frame still takes editorial's display face and control paper, because four palettes inherit those tokens from the bare root; closing it means declaring them per palette.
+1. **Sweep Task 1's report**, then Phase 1's candidate report at HEAD; nothing is deleted until Phase 2 verifies each candidate against the string-resolved vocabulary and the gate inputs.
+2. **The three failures the capture run surfaced** — `vg-359` (which also owns the one stale capture), `vg-360` and `vg-361`; nothing fixed on sight, because the first question for each is whether the surface moved or the locator did, and those want opposite fixes.
+3. **The backlog drain's reproduction pass**, queued behind the sweep, which shares the sweep's detection step and owns the other 138 rows.
 4. **`vg-358`** — an unresolved palette reference takes the inspector column down though the product renders that state and carries its copy; whether the state is reachable at all is the decision it waits on.
 
 ## Blockers / unverified
@@ -49,5 +49,5 @@ satisfies every token in `DESIGN.md` and still does not look like the mockup.
 - **Acceptance item 3 now keeps the objective open on its walkthrough half only**: the stress half ran on 2026-10-12 with every §13.1 item met, but one item — the long unresolved reference — is discharged at DOM level rather than in a browser, because the state is unreachable there (`vg-358`); the keyboard-only walkthrough still has no check on the real host, since `desktop-host` matches `host-(player|settings|media|bleed|chrome).spec.ts` and nothing else.
 - **Two things are asserted but unprovable by any rendered surface**: the 10px weight tier, because nothing draws a glyph at or below 10px, and the five `KIND_GLYPHS` choices, because nothing renders `KIND_GLYPHS` — the drawing depicts no object kind and draws its `--faint` twisty at 10px where the product draws it at 13px, so Task 9 could check neither and recorded both.
 - **Every open row lives in [`docs/product/backlog.jsonl`](docs/product/backlog.jsonl), and every parked or unverified observation in the closed plans' ledgers with its ruling — read them there; this file mirrors neither.**
-- **The known-red and over-claiming set is what to watch**: the capture run added three deterministic failures that no register and no red list named — `editor.spec.ts`'s frosted-CPU-card test (`vg-359`), `glass-authoring.spec.ts`'s empty-radius test (`vg-360`) and `reference-theme.spec.ts`'s background-media import (`vg-361`), each reproduced with and without `VIGILIA_CAPTURE`; and the red browser list is short but mixed — `composition-panel.spec.ts:897` (`vg-210`), `keyboard.spec.ts`'s palette-picker test "the palette picker lands beside its trigger, and its tracks answer the arrow keys" (`vg-204`, which **passed 5/5 at HEAD** and so is not reproducing today, but the row **stays open** pending a ruling), `publish-loop.spec.ts:380` (`vg-212`) and `editor-clip.spec.ts`'s phone run (`vg-257`), with **`vg-285` measured rather than suspected**; `vg-292`, `vg-304`, `vg-271`, `vg-274`, `vg-278`, `vg-286`, `vg-287`, `vg-296`, `vg-302`, `vg-313`, `vg-314` and `vg-320`/`vg-323`/`vg-324`/`vg-327`/`vg-329` each claim more coverage than they have; and **`vg-192` is that family repo-wide**: `tests/e2e/` belongs to no tsconfig, so a type error in a browser spec is caught by neither `typecheck` nor Playwright.
+- **The known-red and over-claiming set is what to watch**: `editor.spec.ts`'s frosted-CPU-card test (`vg-359`), `glass-authoring.spec.ts`'s empty-radius test (`vg-360`) and `reference-theme.spec.ts`'s background-media import (`vg-361`) fail deterministically; `composition-panel.spec.ts:897` (`vg-210`), `publish-loop.spec.ts:380` (`vg-212`) and `editor-clip.spec.ts`'s phone run (`vg-257`) are red, while `vg-204` passed 5/5 at HEAD and so is not reproducing today but stays open pending a ruling; and **`vg-192` is the over-claiming family repo-wide**: `tests/e2e/` belongs to no tsconfig, so a type error in a browser spec is caught by neither `typecheck` nor Playwright.
 - **Unpushed:** `develop` is far ahead of `origin/develop` and no push is authorised.
