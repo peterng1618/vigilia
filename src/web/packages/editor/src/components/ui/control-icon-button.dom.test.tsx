@@ -15,6 +15,7 @@ import { FontPicker } from "../../font-picker/font-picker.js";
 import { createSpecimenCache } from "../../font-specimen-cache.js";
 import { CompositionPane } from "../../panes/composition/composition-pane.js";
 import { ControlIconButton } from "./control-icon-button.js";
+import { GradientEditor } from "./gradient-editor.js";
 
 // Base UI's popups need three browser APIs jsdom has none of — the same three
 // `control.dom.test.tsx` supplies for the same reason — plus the switch's
@@ -95,12 +96,20 @@ function visibleText(control: Element): string {
  * §6's icon-only control: a focusable thing whose whole content is a glyph and
  * which shows no word of its own.
  *
+ * The `svg` clause draws that line. Drop it and the population swallows every
+ * `<input>`, `<select>` and `<textarea>` in the fleet — a field's value is not
+ * `textContent` and its text content is empty — and every drag handle whose
+ * whole content is a picture drawn in CSS rather than in markup. Those are the
+ * controls the clause exists to exclude; a glyph is what makes a control
+ * icon-only, not the mere absence of a word.
+ *
  * **Not every control with no text is one.** The gradient editor's stop dots
  * are focusable, carry an accessible name and draw no word — and they are drag
  * handles on a track, not glyph buttons, so §6 rule 1 does not reach them and
- * neither does this census. A glyph is what makes a control icon-only; the dots
- * draw none, and rule 2's tooltip there would be a box opening in the middle of
- * the drag it exists to serve. That ruling is recorded with this file.
+ * neither does this census. They *are* mounted in the fleet below; the clause
+ * is why they are not counted. A glyph is what makes a control icon-only; the
+ * dots draw none, and rule 2's tooltip there would be a box opening in the
+ * middle of the drag it exists to serve. That ruling is recorded with this file.
  */
 function iconOnly(scope: ParentNode): readonly HTMLElement[] {
   return Array.from(scope.querySelectorAll<HTMLElement>(FOCUSABLE))
@@ -115,9 +124,17 @@ function iconOnly(scope: ParentNode): readonly HTMLElement[] {
  * Only one tooltip is open at a time — `tooltip.ts` destroys the open one before
  * showing the next — and the popup is portalled to `body`, so this reads the
  * document rather than the mounted tree.
+ *
+ * The `pointerdown` is the dismissal a person's move from the last control
+ * would make, and it is not decoration: dispatching `focus` alone leaves the
+ * previous popup in the document, so the next control — one with no tooltip of
+ * its own — reads *that* popup and looks like it has one. Without it the census
+ * below counts only the controls before the first popup and reports 0 whatever
+ * the population.
  */
 function tooltipFor(control: HTMLElement): HTMLElement | null {
   act(() => {
+    document.body.dispatchEvent(new Event("pointerdown", { bubbles: true }));
     control.dispatchEvent(new Event("focus"));
   });
   return document.querySelector<HTMLElement>(".editor-shell-tooltip");
@@ -183,11 +200,16 @@ describe("an icon-only control's name and its tooltip", () => {
     // — a star is unambiguous, so the glyph may replace the word), the tree's
     // twisty, and its group-entry button (the same clause, where the door glyph
     // is made unambiguous *by* the tooltip — rule 1's middle clause at work).
-    // The fourth, the gradient editor's stop dots, left the census rather than
-    // gaining one: a drag handle is not a glyph, so rule 1 never applied to it.
-    // The number is 0 because no icon-only control is left without the tooltip
-    // that is its name — a fifth one written tomorrow makes it 1 and lands
-    // here.
+    // The fourth, the gradient editor's stop dots, is mounted in the fleet
+    // below and carries no tooltip **by ruling**: a drag handle is not a glyph,
+    // so rule 1 never applied to it. What keeps it out of the count is the
+    // glyph clause in `iconOnly`, and that the clause is *live* is the number
+    // this case measures the moment it is deleted — with the clause gone the
+    // fleet reports **6** (the two stop dots, the two colour-picker triggers,
+    // the font picker's search field and its favourites-only checkbox), where
+    // before the dots were mounted the same deletion still reported 0. The
+    // number is 0 because no icon-only control is left without the tooltip that
+    // is its name — a fifth one written tomorrow makes it 1 and lands here.
     expect(noTooltip(mountFleet()).length).toBe(0);
   });
 
@@ -286,6 +308,18 @@ function mountFleet(): HTMLElement {
           onApplyTrio={vi.fn()}
           onApplyFace={vi.fn()}
           onToggleFavorite={vi.fn()}
+        />
+        <GradientEditor
+          // Two stops, so the census has two handles to exclude rather than
+          // one. `hsl()` and not a hex: this file is under the design ratchet,
+          // which refuses a hex literal wherever a token belongs.
+          stops={[
+            { offset: 0, color: "hsl(0, 0%, 0%)" },
+            { offset: 1, color: "hsl(0, 0%, 100%)" },
+          ]}
+          angle={90}
+          onChange={vi.fn()}
+          label="Palette gradient"
         />
       </>,
     );
