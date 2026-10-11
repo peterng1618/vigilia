@@ -30,11 +30,11 @@ satisfies every token in the bible and still does not look like the mockup.
 
 ## Last completed change
 
-- **Plan 8 Task 9 — `editor-shell.css`'s residuals get a counted ceiling** (`abdb7603`): `scripts/design-tokens.mjs` gains `CEILINGS`, a second instrument over the one file kept out of `gated`, failing above the count and passing at or below it so it is green at HEAD and can only fall.
-- **The file holds 61 at HEAD — 6 hex-literal, 31 off-scale px, 24 spacing px** — so plan 8's CSS edits moved the classes and not the total: the overlay's `#0009` became `var(--elev-scrim)` and the modal's nav column added `width: 150px`, which a set diff against `43e24bc5` shows as the only two.
+- **Plan 8 Task 9 — `editor-shell.css`'s residuals get a counted ceiling** (`abdb7603`, fix round `32f5f7fc`): `scripts/design-tokens.mjs` gains `CEILINGS`, a second instrument over the one file kept out of `gated`, failing above the count and passing at or below it so it is green at HEAD and can only fall.
+- **The file holds 61 at HEAD — 6 hex-literal, 31 off-scale px, 24 spacing px** and the ceiling counts **58** after the three exempt `margin-right` values, so plan 8's CSS edits moved the classes and not the total: the overlay's `#0009` became `var(--elev-scrim)` and the modal's nav column added `width: 150px`.
 - **No no-op was left to convert**: all 61 violation literals were compared against the file's 114 declared custom-property values and none equals one, so plan 7 Task 6's substitution rule had nothing left in this file.
 - **The three inexpressibles are exempt by name and reason in the constant** (`margin-right` 62/92/122 as the layer row's `6 + 26n + 4(n-1)`), an exemption that matches nothing is itself a failure, and the ceiling counts four of `vg-325`'s six divergences by name.
-- **Red proof**: one planted `#ff0000` reddened it naming `editor-shell.css:455:10 hex-literal`, restored byte-identical (`cmp`); `npx vitest run` is green at 245 files / 3416 tests and all six gates exit 0.
+- **The last way it could pass while comparing against nothing is closed** (`32f5f7fc`): an absent, non-finite or string `max`, and an emptied `CEILINGS`, each exit 1 by plant, and a dead exemption no longer prints a green sentence beside its failure — red proof `#ff0000` at `editor-shell.css:455:10`, restored byte-identical (`cmp`); `npx vitest run` green at 245 files / 3416 tests and all six gates exit 0.
 
 ## Next
 
