@@ -349,9 +349,9 @@ Inside the candidate space that means:
 
 - Every root `scripts/*.mjs` is an entry point (`isScriptOrConfig`, `:382`), so a
   script is never a candidate container and an unused export inside one is never
-  a row. **A human pass at `f7900f5c`, because nothing else would look, found
-  one dead local declaration and two unused import specifiers across the ten and
-  removed them** — `sdd-checkpoint.mjs`'s `isActivePlan` (whose body is written
+  a row. **A human pass, because nothing else would look, found one dead local
+  declaration and two unused import specifiers across the ten and removed them in
+  `7bff97a1`** — `sdd-checkpoint.mjs`'s `isActivePlan` (whose body is written
   inline in `recoveryState`, the caller that survived) and the unused
   `readdirSync`/`statSync` and `dirname` imports of `ownership-overlap.mjs` and
   `ownership-sweep.mjs`. It also left every script's exported surface alone: the
