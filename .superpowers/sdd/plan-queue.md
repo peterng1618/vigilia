@@ -333,7 +333,9 @@ shape of its two siblings.
 
 ## Queued 2026-10-10: `2026-10-10-design-md-replaces-the-bible.md`
 
-**Order: last, behind plan 4 and plans 5–6.** The user asked for it by name while plan 4
+**CLOSED 2026-10-11 — complete and archived** (`docs/superpowers/plans/archive/2026-10-10-design-md-replaces-the-bible.md`). All six tasks landed; the final whole-plan review passed with 0 Critical / 0 High / 0 Medium, and its fix rounds closed every Low it raised (`48e5e531` and the residual round that followed). `DESIGN.md` is the normative design document, the old `docs/design/design-language.md` is gone, and `--cite` checks a marker's placement as well as its number. `STATUS.md` is the authority on what is active; nothing is. The text below is kept as the record of the sequencing that was ruled.
+
+**Order was: last, behind plan 4 and plans 5–6.** The user asked for it by name while plan 4
 (`the panes`) was active, so it is queued rather than started — `STATUS.md` names one active plan.
 
 Execution method chosen by the user 2026-10-10: **subagent-driven**, because Task 1 moves the
