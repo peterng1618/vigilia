@@ -69,21 +69,61 @@ shell count.
 | Open-package asset bytes | `ASSET_FILE_EXTENSIONS` and the `sha256` declaration | `asset-manager/index.ts` |
 | The artboard-to-viewport transform | `computeArtboardTransform`'s `RangeError` on a degenerate viewport | `renderer-core/src/artboard.ts` |
 
+**One rule, stated here and applied everywhere below: a row names a module when
+the file holding the guard is fixed by the row.** The map fixes it in two ways,
+and only two:
+
+- **A module directory** — a `*-manager/` directory, whose entry point is
+  `index.ts`, so the directory and its module are the same thing and the row
+  points at that one file. **All twenty `*-manager/` directories have an
+  `index.ts`** (verified for each). **Seventeen rows in the table above are this
+  case**, and each one's guard is in that entry, so all seventeen are right
+  rather than findings: `layer-manager`, `object-lock-manager`,
+  `deletion-manager`, `grouping-manager`, `history-manager`, `crop-manager`,
+  `image-manager`, `text-manager`, `error-manager`, `shortcut-manager`,
+  `palette-manager`, `type-preset-manager`, `persistence-manager`,
+  `clipboard-manager`, `snap-manager`, `indicator-manager`, `asset-manager`.
+- **An explicitly named file** — `selection-inspector/panel.ts`,
+  `renderer-core/src/theme/glass.ts`, `editor-shell/icons.ts` and the rest. Eleven
+  of the table's rows are this case.
+
+Anything else names a **shelf**: a directory that is not a module directory and
+is not a file. `renderer-core/src/theme/` is one — no `index.ts`, eleven non-test
+modules inside. `editor/src/selection-inspector/` is another, and it is the case
+that shows the criterion is not "does it have an `index.ts`": it has one, but it
+is a family of peer modules, and the map files them as peers by naming three of
+its files separately (`:85` `panel.ts`, `:86` `glass.ts`, `:100` `style.ts`)
+while its family row (`:99`) names only the directory. What makes a directory a
+module for this rule is being **the unit the row means**, and the map's own
+filing is the evidence for which that is. A guard in a sibling file inside a
+shelf is unnamed, which is what §1.2 items 3, 4 and 16 are.
+
+**The map's own habit is the evidence for the grain:** it names **no** file inside
+any `*-manager/` directory (zero rows), three files inside
+`editor/src/selection-inspector/` and two inside `renderer-core/src/theme/`. The
+map does not treat a manager directory and a shelf as the same kind of owner, so
+neither does this census. **Branch taken: the distinction holds.** The other
+branch — that a directory row suffices everywhere — would make all seventeen
+manager rows above missing rows, which is the opposite of what the code shows.
+
 ### 1.2 Guards found in modules the map does not name
 
 These are the finding the instrument exists for. Each is a decision that would
 reject a wrong value, living outside the row that claims the concept.
 
-**Files and managers are counted separately throughout.** A *manager* is one of
-the twenty `*-manager/` directories; a *file* is one source file. The distinction
-matters exactly where a manager contributes several files, and it is why the
-`locked` count below reads 9 files but 7 managers.
+**Files, directories and managers are counted separately throughout.** A *file*
+is one source file; a *directory* is where a file sits; a *manager* is one of the
+twenty `*-manager/` directories. "Module" is reserved for the §1.1 rule above,
+which is why the counts below never say "N modules". The three counts differ
+exactly where a manager holds several files, and it is why the `locked` count
+reads **9 files in 7 directories, only 5 of which are managers**.
 
 1. **The `locked` predicate has no owner.** `object-lock-manager` owns writing
    the flag and re-deriving Fabric's transform flags, and its `isLocked` is
    module-private. The test is spelled again in **11 non-test sites across 9
-   files, spanning 7 managers** — `selection-inspector` contributes three of the
-   files: `clipboard-manager/index.ts:310,338`,
+   files, in 7 directories — 5 of them managers** (the other two directories are
+   `editor-shell/` and `selection-inspector/`, which contributes three of the
+   nine files): `clipboard-manager/index.ts:310,338`,
    `controls-manager/index.ts:82,157`, `deletion-manager/index.ts:15`,
    `editor-shell/bridge.ts:185`, `indicator-manager/index.ts:93`,
    `object-lock-manager/index.ts:40`, `selection-inspector/index.ts:437`,
@@ -105,11 +145,13 @@ matters exactly where a manager contributes several files, and it is why the
    `canvas-nudge.ts`.
 3. **Which sections a selection gets.** `selectionKindOf` (`:135`),
    `KIND_QUESTIONS` (`:171`) and `perKindColumn` (`:649`) in
-   `selection-inspector/per-kind-column.ts`. The map's row names the
-   *directory*, not this module.
+   `selection-inspector/per-kind-column.ts`. The map's row (`:99`) names the
+   directory — a **shelf** by §1.1's rule, not the module this guard is in, and
+   the map names three sibling files in that same directory when it means them.
 4. **Whether an edit is permitted.** `editRefusal` at
    `selection-inspector/view.ts:441`, returning `stale`/`locked`/`unknown`/
-   `invalid`. Same: directory named, module not.
+   `invalid`. Same case as item 3: a shelf is named, the module holding the guard
+   is not.
 5. **The one-paint-per-chart-series invariant.** Declared by
    `chartPaintFieldsFor` in `renderer-core/src/charts/` and enforced by
    `seriesPaintFor` (`chart-manager/index.ts:38`) and the exported
@@ -172,7 +214,12 @@ matters exactly where a manager contributes several files, and it is why the
     `clipboard-manager/index.ts:116` spells `crypto.randomUUID()` with **no
     prefix**, so it is the odd one out rather than the eighth site — it is the
     copy path's fallback *derivation* for an unnamed object, and only that path
-    goes through `createWidgetIdAllocator`.
+    goes through `createWidgetIdAllocator`. **One of the seven sits in a shelf
+    and is unnamed for the same reason items 3 and 4 are**:
+    `selection-inspector/run-edits.ts` is a sibling of
+    `selection-inspector/index.ts`, and the map's row for that directory (`:99`)
+    names the family, not this file. The other six are in manager directories or
+    in `new-object-panel.ts`, both of which §1.1's rule fixes.
 17. **The host's first-run page and route dispatch.** `host/src/server.ts:205`
     builds `firstRunPage()` with its own colour literals (`#14161c`, `#e8ecf3`)
     and the file carries 34 `url.pathname` reads under three rows, with no row
@@ -240,7 +287,8 @@ Is any concept it owns also decided by another manager? Answered for all twenty.
 
 Clearance rate: **4 of 20 have no concept decided elsewhere** (`image-manager`,
 `crop-manager`, `error-manager`, `layer-manager`). The dominant family is the
-`locked` predicate, which reaches 9 files across 7 managers, and the second is
+`locked` predicate, which reaches 9 files in 7 directories, 5 of them managers,
+and the second is
 the Fabric membership fact, which reaches 6 files.
 
 ## 4. The size measurement, re-taken
@@ -307,25 +355,27 @@ index+panel+runs+view (737/752/671/638), `new-object-defaults.ts` (775).
 `vg-232`–`vg-248` are the seventeen rows this family already has. Each is
 re-established at HEAD below; nothing here re-files them.
 
-**One standard for a directory row, and it is the strict one.** A registry row
-that names a directory — "Theme semantic types/validation —
-`renderer-core/src/theme/`" — does not name the module a guard lives in, because
-the instrument asks whether the guard "lives in the module the map names" and a
-directory is not a module. The map's own preamble says the same thing from the
-other side: a module that owns a concept and appears nowhere is invisible, and a
-directory entry does not make it visible. So a guard in a declared directory but
-in an undeclared file is a **missing row**. The consequence is general, not
-specific to `vg-234`: several registry rows name directories, so the map's
-module-level coverage is thinner than its row count suggests. This census applies
-that standard uniformly — to `object-name.ts`, to `selection-inspector`'s
-`per-kind-column.ts` and `view.ts` (§1.2 items 3 and 4), and to the whole-family
-row in the Editor table.
+**The rule is §1.1's, and it is not "a directory is not a module".** A row names
+a module when the file holding the guard is fixed by the row — either a module
+directory whose entry is `index.ts`, or a file the row names outright. A row that
+names a **shelf** names no module. That is why the seventeen manager rows in §1.1
+are right (their guard is in the directory's own `index.ts`) while a guard in a
+sibling file of a shelf is a **missing row**. The registry row `vg-234` leans on —
+"Theme semantic types/validation — `renderer-core/src/theme/`" — is a shelf: no
+`index.ts`, eleven non-test modules inside, and the map names two of its files
+separately (`:113` `widget.ts`, `:148` `glass.ts`). So `vg-234`'s guard in
+`object-name.ts` is unnamed, and the same standard governs `selection-inspector`'s
+`per-kind-column.ts` and `view.ts` (§1.2 items 3 and 4), its `run-edits.ts` (item
+16), and the family row `editor/src/selection-inspector/` at `ownership.md:99`.
+The consequence is general: several registry rows name shelves — `theme-package/src/`
+(`:149`), `renderer-core/src/charts/` (`:153`), `host/src/transport/` (`:182`) —
+so the map's module-level coverage is thinner than its row count suggests.
 
 | Row | At HEAD | Note |
 |---|---|---|
 | `vg-232` | **Confirmed, and worse.** | Six/three/two owners per path, and the six-owner block is now written twice (`:1188-1193`, `:1214-1219`). |
 | `vg-233` | **Confirmed.** | `text-manager/index.ts:88-91` still stores `width * scaleX`; three writers of `vigiliaText.box` at HEAD. |
-| `vg-234` | **Confirmed — the complaint stands.** | The second writer moved from `appearance.ts` to `selection-inspector/index.ts:384`, and the guard **is** now shared — `view.ts:456` and `bridge.ts:346` both call `isObjectName`. The code half is as the row says. The row's other half — "the validity guard lives in a module the ownership map does not name" — also stands: `object-name.ts` is inside `renderer-core/src/theme/`, and the registry's row for that names a **directory** ("Theme semantic types/validation"). A directory row does not name the module, which is the standard this census applies to `selection-inspector` at §1.2 items 3 and 4 — one standard in both places. Two writers and two notification behaviours survive. |
+| `vg-234` | **Confirmed — the complaint stands.** | The second writer moved from `appearance.ts` to `selection-inspector/index.ts:384`, and the guard **is** now shared — `view.ts:456` and `bridge.ts:346` both call `isObjectName`. The code half is as the row says. The row's other half — "the validity guard lives in a module the ownership map does not name" — also stands: `object-name.ts` is a sibling inside `renderer-core/src/theme/`, a shelf under §1.1's rule, so the registry row for that directory names no module. It is the same standard §1.2 items 3, 4 and 16 are held to. Two writers and two notification behaviours survive. |
 | `vg-235` | **Confirmed.** | The base, `#saveLibrary`, `#writeLibrary`, `#libraryPayload`, `#resolveConflict`, `#openLibrary` are all still in `editor-session.ts`, and the map has no row for them. |
 | `vg-236` | **Confirmed.** | `bridge.ts` writes `name`, `visible`, `locked` and owns `reorderLayer`. |
 | `vg-237` | **Confirmed.** | `controls-manager/index.ts:107-197` writes a Line's four scalars. |
@@ -338,7 +388,7 @@ row in the Editor table.
 | `vg-244` | **Confirmed.** | The "Packaged fonts" note still gives z-order, grouping and locks to `editor-shell.ts`; the three table rows give them to three managers, and the code agrees with the table. |
 | `vg-245` | **Confirmed, and the drift is not yet real.** | `ASSET_PATH_PATTERN` is `renderer-core/src/theme/document.ts:14`; the schema hand-spells it at `theme-document.schema.json:113` and `:123`. Read at HEAD the non-font spelling is **identical**; the font one adds `\.woff2`. The divergence is possible, not observed. |
 | `vg-246` | **Confirmed.** | `colour-maths.ts` exists with `parseHex`/`toHex`/`parseColour` and two importers; the map has no row. |
-| `vg-247` | **Confirmed, and the count has grown.** | The row says 11 places across 8 modules with five `=== true` and three `!== true`. At HEAD: **11 places across 9 files — 7 managers**, eight `=== true` and three `!== true`. The row counted files; a file was added since, and two of the nine sit under one manager. |
+| `vg-247` | **Confirmed, and the count has grown.** | The row says 11 places across 8 modules with five `=== true` and three `!== true`. At HEAD: **11 places across 9 files, in 7 directories — 5 of them managers**, eight `=== true` and three `!== true`. The row counted files; a file was added since, and three of the nine sit under one directory. |
 | `vg-248` | **Confirmed.** | Four spellings of the membership fact and four of the `ActiveSelection` companion; `layer-tree.ts:460` is the third `ownerOf`. |
 
 **Not named by any row, found here:**
@@ -370,17 +420,23 @@ the numbering is stable and does not change when a reader disagrees with an
 order. Nothing here is presented as a reach ranking: reach is stated per
 candidate, in prose, under one definition — **reach = the production files
 outside the owner that hold a site the change must edit**, each measured by the
-search named with it. Two candidates also carry an *owner reach*, the number of
-production files that import the owner at all, and where those two differ the
-difference is the finding (`snap-manager` is the extreme: 30 files in the family,
-one external importer).
+search named with it. **One candidate (1) also carries an *owner reach**, the
+number of production files that import the owner at all; where the two measures
+differ, the difference is the finding.
+
+**`snap-manager` is not a candidate at all, and carries no number.** It is the
+largest code problem in the census — 30 non-test files, 4 past the stop — but its
+blast radius is internal: **one** external production importer
+(`editor-session.ts:71`) against 30 files in the family. Its fix is a protocol
+re-shape that needs a spec, not an extraction, so it appears here as the extreme
+contrast between the two reach measures rather than as a row.
 
 The order below is the order candidates were found in, and the shape label is
 what Task 9 should order by.
 
 | # | Candidate | Reach, under the definition above | Shape |
 |---|---|---|---|
-| 1 | **The `locked` predicate** — export one predicate from `object-lock-manager` (or drop it to a shared Fabric-facts module, which is the same question `vg-248` raises) | **11 sites in 9 files, 7 of them managers**; owner reach 2 files. Search: `get\(\s*["`']locked["`']\s*\)` over non-test `.ts`/`.tsx`. | **Cross-cutting.** Every reader is a manager or an inspector surface. The ordering question is real: `object-lock-manager` may sit above some of its readers. |
+| 1 | **The `locked` predicate** — export one predicate from `object-lock-manager` (or drop it to a shared Fabric-facts module, which is the same question `vg-248` raises) | **11 sites in 9 files, in 7 directories — 5 of them managers**; owner reach 2 files. Search: `get\(\s*["`']locked["`']\s*\)` over non-test `.ts`/`.tsx`. | **Cross-cutting.** Every reader is a manager or an inspector surface. The ordering question is real: `object-lock-manager` may sit above some of its readers. |
 | 2 | **The Fabric membership fact** — one `ownerOf`/`targetsOf` | **8 spellings in 6 files** (4 `parent instanceof Group` + 4 `ActiveSelection` companions; `layer-manager`, `deletion-manager`, `layer-tree`, `bridge`, `canvas-nudge`, `history-manager`). | **Cross-cutting.** The fact is pure Fabric knowledge, so `scene-fabric` is a candidate owner alongside `layer-manager`. `deletion-manager`'s divergent signature is the mechanism, not a style difference. |
 | 3 | **The globals fan-out** — one "globals changed" signal the session owns | **7 files**: `editor-session.ts` plus the six receivers it names by hand (`editor-shell.ts`, `live-runtime.ts`, `chart-manager/index.ts`, `new-object-panel.ts`, `artboard-panel.ts`, `selection-inspector/index.ts`). Search: `setGlobals` over non-test `.ts`/`.tsx`, then read the four call paths. | **Cross-cutting.** Cheapest to fix by deleting three lists, not by adding an abstraction. |
 | 4 | **The three writers of `vigiliaText.box`** | **3 files**: `scene-fabric/src/authored-box.ts`, `selection-inspector/index.ts`, `text-manager/index.ts:88-91`. | **Clean extraction.** `authored-box.ts` already claims the job; the other two call it and stop writing inline. |
@@ -391,10 +447,9 @@ what Task 9 should order by.
 | 9 | **`object-actions` eligibility agreement** | **6 sites in 1 file** (`object-actions.ts:108,117,126,167,174,200`). | **Clean, and small**: eligibility should ask the manager that refuses, or the refusal reasons should be enumerated once. |
 | 10 | **The map's self-contradictions and missing rows** | **0 code files.** | **Documentation.** `vg-244` (one sentence), plus rows for `object-name.ts`, `colour-maths.ts`, the persisted-property set, the reference-GC decisions and `firstRunPage`. |
 
-**`snap-manager` is identifier 10, and its numbering carries no ordering claim.**
-Its blast radius is internal: 30 non-test files in the family and 4 past the stop,
-against **one** external production importer (`editor-session.ts:71`). Its fix is
-a protocol re-shape that needs a spec, not an extraction.
+Row 10 of that table is the documentation candidate, and **no other candidate is
+numbered 10**. `snap-manager` is not in the table at all — it is the contrast
+case, stated above, and attaching a number to it would collide with a real one.
 
 ### The dead-or-over-owning question, reported separately (brief step 6)
 
