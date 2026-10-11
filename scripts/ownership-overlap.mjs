@@ -17,7 +17,7 @@
  * about code — only about the map's own text. Which is why it belongs in the
  * gate, unlike the enforcement reading list.
  */
-import { readFileSync, readdirSync, statSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 

@@ -259,13 +259,6 @@ function activePlanPath(root) {
   return match ? match[1].trim() : "";
 }
 
-// Does this workspace belong to the plan STATUS.md names? The workspace slug is
-// the plan file's basename, which is what sdd-workspace keys on.
-function isActivePlan(plan, activePath) {
-  if (!activePath) return false;
-  return activePath.split("/").pop().replace(/\.md$/, "") === plan.slug;
-}
-
 function readRecord(path) {
   try {
     return readFileSync(path, "utf8").trim();
