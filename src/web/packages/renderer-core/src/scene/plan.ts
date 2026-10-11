@@ -120,7 +120,7 @@ export interface PlanNode {
 
 /** Runtime frame diagnostics, not document-validation errors. */
 export interface PlanIssue {
-  readonly code: "unmapped-key" | "unresolved-global" | "unresolved-asset";
+  readonly code: "unmapped-key" | "unresolved-global";
   readonly nodeId: string;
   readonly detail: string;
 }
