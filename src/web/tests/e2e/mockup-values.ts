@@ -862,9 +862,10 @@ export const PARITY: readonly ParityRegion[] = [
      `--panel-2` box at `--radius-lg`, the label at `flex:1` and the 26×14
      switch at the right — no label column. That box is why the row is a shape
      and not a width: applying the inspector's 74px column to it wrapped
-     "Follow the system" onto a second line. The drawn box's vertical padding is
-     `9px`, which §3's scale has no step for, so the product renders
-     `--space-8` and the row reads the radius the drawing does declare.
+     "Follow the system" onto a second line. The drawn box's inset is §3's `8px`
+     (the off-scale `9px` was drawing-stale, `vg-303`); the drawing writes it as
+     a `padding` shorthand, which `lookup` refuses to read a longhand from, so no
+     row holds it and the rows read the radius and gap the drawing declares.
 
      The drawing's `gap: 10px` is the row's own: label to switch. The pane
      picker's `gap: 6px` is inside its trigger, name to chevron, which is the
@@ -873,7 +874,7 @@ export const PARITY: readonly ParityRegion[] = [
     region: "field row — the settings switch row's box (settings drawing)",
     mockupPath: SETTINGS_MOCKUP_PATH,
     mockupSelector:
-      '[style*="display:flex;align-items:center;gap:10px;padding:9px 10px;background:var(--panel2);border:1px solid var(--edge);border-radius:8px"]',
+      '[style*="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--panel2);border:1px solid var(--edge);border-radius:8px"]',
     mockupProperty: "border-radius",
     productSelector: '[data-fixture="boxed"] > div',
     bibleSection:
@@ -884,7 +885,7 @@ export const PARITY: readonly ParityRegion[] = [
     region: "field row — the settings switch row's box, label to switch",
     mockupPath: SETTINGS_MOCKUP_PATH,
     mockupSelector:
-      '[style*="display:flex;align-items:center;gap:10px;padding:9px 10px;background:var(--panel2);border:1px solid var(--edge);border-radius:8px"]',
+      '[style*="display:flex;align-items:center;gap:10px;padding:8px 10px;background:var(--panel2);border:1px solid var(--edge);border-radius:8px"]',
     mockupProperty: "gap",
     productSelector: '[data-fixture="boxed"] > div',
     bibleSection:
