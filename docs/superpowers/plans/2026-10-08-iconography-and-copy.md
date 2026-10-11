@@ -2,9 +2,9 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Close the editor's glyph vocabulary and its copy over the surfaces plans 1–5 landed: one stroke weight within bible §6's 1.6–1.8px band through one owner, the object-kind glyph set closed against the kind list, one string owning both an icon-only control's accessible name and its tooltip, and copy that claims only what the code can do — then check the spec's own Acceptance section item by item, and finish with the §13 parity gate.
+**Goal:** Close the editor's glyph vocabulary and its copy over the surfaces plans 1–5 landed: one weight rule over §6's size tiers through one owner, the object-kind glyph set closed against the kind list, one string owning both an icon-only control's accessible name and its tooltip, and copy that claims only what the code can do — then check the spec's own Acceptance section item by item, and finish with the §13 parity gate.
 
-**Architecture:** Nothing here is designed, and no surface is rebuilt. By the time this plan runs, plans 1–5 have moved every editor surface to React and onto one control set, which is exactly when a glyph set drifts: each plan added its icons as it needed them and wrote its copy in passing. So the plan's first task is a **census of the code as it landed**, not of what the earlier plans intended, and everything after it is closure over what the census finds. The glyphs get one owner (`editor-shell/icons.ts`) and one weight, because there is no chrome-glyph owner today: direct-import sites include chrome, declarations and authored scene-icon sources; their current count is measured in Task 1 and the tree carries three stroke weights (1.75, 2, 2.5). The accessible-name/tooltip pairing gets one owner (plan 1's `ControlIconButton`, extended) because today each call site wires the two strings by hand. The copy rules become tests over the React surfaces, extending the nets that already exist — `ui-copy.test.ts`'s pictograph rule and its no-literal-copy walk, and `accessible-names.dom.test.ts`'s `mountPanels` coverage list, whose own doc comment makes adding a surface to it the contract. No behaviour change and no new dependency: the family is `lucide-react`, already present and already the one family (`§6`, `0038`); the tooltip stays `controls/tooltip.ts` (`0033`).
+**Architecture:** Nothing here is designed, and no surface is rebuilt. By the time this plan runs, plans 1–5 have moved every editor surface to React and onto one control set, which is exactly when a glyph set drifts: each plan added its icons as it needed them and wrote its copy in passing. So the plan's first task is a **census of the code as it landed**, not of what the earlier plans intended, and everything after it is closure over what the census finds. The glyphs get one owner (`editor-shell/icons.ts`) and one weight rule, because there is no chrome-glyph owner today: direct-import sites include chrome, declarations and authored scene-icon sources; their current count is measured in Task 1 and the tree carries three stroke weights (1.75, 2, 2.5). The accessible-name/tooltip pairing gets one owner (plan 1's `ControlIconButton`, extended) because today each call site wires the two strings by hand. The copy rules become tests over the React surfaces, extending the nets that already exist — `ui-copy.test.ts`'s pictograph rule and its no-literal-copy walk, and `accessible-names.dom.test.ts`'s `mountPanels` coverage list, whose own doc comment makes adding a surface to it the contract. No behaviour change and no new dependency: the family is `lucide-react`, already present and already the one family (`§6`, `0038`); the tooltip stays `controls/tooltip.ts` (`0033`).
 
 **Tech Stack:** TypeScript, React 19, `lucide-react`, Tailwind v4 (`@theme`), Biome 2.x, Vitest (jsdom), Playwright, Node ESM scripts.
 
@@ -21,7 +21,7 @@ Plan 1 (`2026-10-08-gates-and-the-control-set.md`) lands the gates and the contr
 2. Read the landed `@theme static` block, `scripts/design-tokens.mjs` and `scripts/design-tokens.gated.json` — the `biblePx` list as landed (it already carries §6's `1.6`, `1.7`, `1.8`) and the gated union. If a decision note under `docs/decisions/` supersedes it, the note wins.
 3. Read `editor-shell/rail.tsx` and `uiCopy.rail`: which glyph each slot carries (`§7.2` names stack, plus, palette, page) and which words replaced the pane bar's `layers` / `insert` / `assets` / `document`.
 4. Read the landed `selection-inspector/` React column and the settings surface: which strings they render, and whether the inspector's glass refusal reached the row as text (`plan 3` Task 5) or stayed a tooltip.
-5. Read plan 4's landed Composition row and Add pane. As plan 4 is written, its Task 1 gives the group arm a constant stack glyph and **deliberately leaves the other four arms as treatments** (a text sample, a chart family icon, a paint swatch, a thumbnail), and its Task 3 maps each of the eight card units to an **inline hand-authored stroke diagram** taken from the mockup — that is the "depicted unit tile" bible §6 allows. Plan 4's Out of scope states that "the closed glyph set is plan 6's". So Task 3 here closes the *vocabulary* over `LayerKind` and does not re-open the arms; and Task 2 here brings plan 4's hand-authored unit diagrams to the one weight without replacing them with a library glyph lucide does not have.
+5. Read plan 4's landed Composition row and Add pane. As plan 4 is written, its Task 1 gives the group arm a constant stack glyph and **deliberately leaves the other four arms as treatments** (a text sample, a chart family icon, a paint swatch, a thumbnail), and its Task 3 maps each of the eight card units to an **inline hand-authored stroke diagram** taken from the mockup — that is the "depicted unit tile" bible §6 allows. Plan 4's Out of scope states that "the closed glyph set is plan 6's". So Task 3 here closes the *vocabulary* over `LayerKind` and does not re-open the arms; and Task 2 here brings plan 4's hand-authored unit diagrams to the one weight rule without replacing them with a library glyph lucide does not have.
 6. Read the landed `src/web/tests/e2e/design-language.spec.ts`, `docs/evidence/screenshots/README.md` and the registered captures it names. Task 9 **adds this plan's capture to that file**; it does not invent a procedure.
 
 Where a plan has not landed a piece this plan consumes, say so in the first commit and hold the dependent step, rather than writing a parallel version of it.
@@ -29,10 +29,10 @@ Where a plan has not landed a piece this plan consumes, say so in the first comm
 ## Global Constraints
 
 - **No behaviour changes** (§2.3). Same fields, same eligibility gates, same refusals. **"Text is not the interface" is not a licence to remove a label that carries meaning**: bible §6 rule 1 is the bar, and a glyph whose word is ambiguous keeps its word. Deleting a word a control's meaning depended on is a behaviour change.
-- **No new dependency, and one icon family.** `lucide-react` is present and is the one family (§6, `0038`). A second icon package is a plan failure. **Chrome glyphs are library glyphs**; a hand-authored chrome path is a second family by another name. The two documented exceptions are bible §6's own: a **filled** glyph where a stroke would be illegible at 12px, and the **card unit diagram** — a fixed set of eight, which plan 4 draws as inline stroke paths because lucide has no exact match and §6 permits a tile to depict a unit. Those eight are brought to the one weight by Task 2 and are not replaced. `new-fabric-theme-icons.ts` reads lucide's `__iconData` to author the *theme's* icons into Fabric JSON — that is scene content, not chrome, and it is not this plan's.
+- **No new dependency, and one icon family.** `lucide-react` is present and is the one family (§6, `0038`). A second icon package is a plan failure. **Chrome glyphs are library glyphs**; a hand-authored chrome path is a second family by another name. The two documented exceptions are bible §6's own: a **filled** glyph where a stroke would be illegible at 12px, and the **card unit diagram** — a fixed set of eight, which plan 4 draws as inline stroke paths because lucide has no exact match and §6 permits a tile to depict a unit. Those eight are brought to the one weight rule by Task 2 and are not replaced. `new-fabric-theme-icons.ts` reads lucide's `__iconData` to author the *theme's* icons into Fabric JSON — that is scene content, not chrome, and it is not this plan's.
 - **One owner per concept.** `object-actions.ts` stays the authority on which **action** icons are compiled in (`ownership.md`'s row: "their ids, labels, icons and eligibility"); this plan does not re-spell its set. `uiCopy` stays the one copy table. `layer-tree.ts` stays the projection. A new module that owns an enumeration **adds its `ownership.md` row in the same commit**.
 - **A watchlisted path needs a note, and these paths already have theirs.** `components/ui/` is claimed by `0039`, `scripts/design-tokens.*` by `0040`. A new `editor-shell/icons.ts` is **not** watchlisted — the watchlist's own comment says the editor's "ordinary layout and copy are deliberately absent — a wrong decision there is visible on the next render rather than invisible". If a task finds it touches a watched path with no covering note, stop and land the note; do not re-spell the gate.
-- **Scales and roles only.** Every value comes from plan 1's tokens (`--text-*`, `--radius-*`, `--space-*`, `--elev-*`) and bible §4's colour roles. **Every file a task converts joins `scripts/design-tokens.gated.json` in that same task.** §6's `1.6`–`1.8` are already in `biblePx`, so **a stroke width is legitimate where a spacing value would not be** — and the text scan still cannot see a component prop, which is why Task 2's closure is a DOM assertion and not a grep.
+- **Scales and roles only.** Every value comes from plan 1's tokens (`--text-*`, `--radius-*`, `--space-*`, `--elev-*`) and bible §4's colour roles. **Every file a task converts joins `scripts/design-tokens.gated.json` in that same task.** §6's stroke width is a weight rule over size, so **a stroke width is legitimate where a spacing value would not be** — and the text scan sees only `px` literals and a component prop is not a literal at all, which is why Task 2's closure is a DOM assertion and not a grep, and why the rule's bare numeric tiers need no `biblePx` entry.
 - **The one tooltip owner is `editor-shell/controls/tooltip.ts`.** It is a DOM function, not a component, because the inspector built elements with `document.createElement` and never saw React. Do not add a tooltip component (`0033`), and do not re-implement its positioning.
 - **The nets that already exist are the ones to extend.** `packages/editor/src/ui-copy.test.ts` (the pictograph rule over the table; the no-literal-copy walk; the unit-display single owner) and `packages/editor/src/accessible-names.dom.test.ts` (the accessible-name audit, whose `mountPanels` list is its own stated coverage). A new net beside them is a second audit.
 - `exactOptionalPropertyTypes` and `noUncheckedIndexedAccess` are enabled. No licence headers; comments are 1–3 lines and explain *why*. 500 lines is a signal and 800 is a stop.
@@ -51,14 +51,14 @@ The spec implies these and no task's tests exercise them. Each is pinned to the 
 1. **A missing reading repaired into a zero.** Bible §9's last rule and the product's "never fabricate a reading" invariant meet here, and the tempting repair for an unarrived sample is `0`. A statement of the gap that reads as data is the same defect in other words. → Task 6.
 2. **A kind glyph set closed against a second spelling of the kind list.** "Every kind has a glyph" passes trivially if the test enumerates the glyph map's own keys. The list must come from the kind vocabulary, and there are two places a kind has to reach — the type and the copy table's `layerKindLabels`. → Task 3.
 3. **A copy test that passes because it rendered nothing.** The no-literal-copy walk collects the labels a surface actually rendered; a surface that failed to mount contributes an empty list and the assertion holds. The failure is silent, and it is the shape `vg-114` already recorded once. → Task 5.
-4. **"One weight" read as licence to delete a weight that was carrying meaning.** The menu tick is drawn at 2.5 and the severity glyph at 2 because at 12–13px the lighter stroke reads faintly. Bible §6's own escape for that is **a filled glyph where a stroke would be illegible at that size** — not a second stroke weight, and not a heavier `--faint`. Reaching for the escape is a bible amendment in the same commit; reaching for a second weight is the drift this task removes. → Task 2.
+4. **The weight rule read as licence for a local exception.** The rule is §6's own tiers over size — 1.7px at 14px and above, 1.8px at 11–13px, 2px at 10px and below — so a glyph that reads faintly at its size is answered by **a filled glyph where a stroke would be illegible at that size**, not by a stroke weight outside its tier, and not by a heavier `--faint`. Reaching for a weight outside the rule is a bible amendment in the same commit; a stroke weight beside it is the drift this task removes. → Task 2.
 5. **A census that measures the plans' intentions rather than the code.** The whole point of doing this last is that the earlier plans' descriptions of their own glyphs are not evidence of what shipped. A census that reads the earlier plan files instead of the landed source produces a work list of fixes to code that does not exist and misses the drift that does. → Task 1.
 
 ---
 
 ## Phase 1 — The census and the glyph set
 
-What landed is measured before anything is changed; the glyphs get one owner and one weight; the kind glyph set closes against the kind list.
+What landed is measured before anything is changed; the glyphs get one owner and one weight rule; the kind glyph set closes against the kind list.
 
 ### Task 1: The census of what landed
 
@@ -136,9 +136,9 @@ The commit body carries the four inventories, the counts, the reconciliation ite
 
 ---
 
-### Task 2: One icon vocabulary, one weight
+### Task 2: One icon vocabulary, one weight rule
 
-**Outcome:** One module owns the chrome glyph vocabulary and the one stroke weight; every chrome glyph in the editor renders from it at that weight; chrome components import glyphs through the two owners; authored scene-icon generation and declaration files remain explicitly outside that chrome restriction.
+**Outcome:** One module owns the chrome glyph vocabulary and the weight rule; every chrome glyph in the editor renders from it at its size's weight; chrome components import glyphs through the two owners; authored scene-icon generation and declaration files remain explicitly outside that chrome restriction.
 
 **Owning symbols/landmarks:** the new `editor-shell/icons.ts`; `object-actions.ts`'s icons (read, not moved); `diagnostic-message.tsx`'s `SEVERITY_ICONS`; `shell-layout.tsx`'s and `publish-indicator.tsx`'s `Check` (the palette menu that held the third was deleted by plan 5's Task 2, and the choice row marks its selection with colour and border rather than a glyph); `font-picker.tsx`'s `Star`; `panes/composition/kind-mark.tsx`'s `CHART_ICONS` / `CHART_FALLBACK`, `panes/composition/composition-pane.tsx`'s `TWISTY_ICONS`, `panes/composition/row-affordances.tsx`'s `LOCK_STATES` (the maps the panes landed these in, not `layer-panel.tsx`); the rail's and panes' glyphs from plan 2; `controls/tooltip.ts` (read).
 
@@ -155,8 +155,10 @@ The commit body carries the four inventories, the counts, the reconciliation ite
 
 ```ts
 // icons.ts — the one chrome glyph vocabulary. One family (lucide), one weight
-// (§6's 1.6–1.8 band), and the named glyphs the shell and the panes read.
-export const GLYPH_STROKE_WIDTH = 1.75;
+// rule (§6's tiers over size), and the named glyphs the shell and the panes read.
+/** §6's weight rule: the stroke rises as the glyph shrinks, so the rendered
+ *  weight stays optically even. The tiers are the drawing's own. */
+export function glyphStrokeWidth(size: number): number;
 /** A chrome glyph, and the one place its weight is set. */
 export function Glyph(props: {
   readonly icon: LucideIcon;
@@ -172,17 +174,16 @@ export const TWISTY_GLYPHS: Readonly<Record<"collapsed" | "expanded", LucideIcon
 export const LOCK_GLYPH: Readonly<Record<"locked" | "unlocked", { readonly icon: LucideIcon; readonly filled?: true }>>;
 ```
 
-- [ ] **Step 1: Write the failing test for the one weight, from the rendered DOM**
+- [ ] **Step 1: Write the failing test for the weight rule, from the rendered DOM**
 
 `icons.test.tsx`, jsdom, mounting a surface that renders several glyphs:
 
 ```tsx
-it("draws every chrome glyph at the one weight", () => {
-  const weights = new Set(renderedGlyphs().map((svg) => svg.getAttribute("stroke-width")));
-  expect(weights.size).toBe(1);
-  const [only] = [...weights];
-  expect(Number(only)).toBeGreaterThanOrEqual(1.6);
-  expect(Number(only)).toBeLessThanOrEqual(1.8);
+it("draws every chrome glyph at its own size's weight, in §6's tiers", () => {
+  for (const svg of renderedGlyphs()) {
+    const size = Number(svg.getAttribute("width"));
+    expect(svg.getAttribute("stroke-width")).toBe(String(glyphStrokeWidth(size)));
+  }
 });
 it("keeps the family one, so no chrome glyph is a hand-authored path", () => {
   // Three owners — `icons.ts`, `object-actions.ts`, the theme icons — plus every
@@ -196,18 +197,18 @@ it("keeps the family one, so no chrome glyph is a hand-authored path", () => {
 });
 ```
 
-`stroke-width` is a real attribute lucide writes on the rendered `<svg>`, which is why this reads the DOM rather than the source: the text scan in `design-tokens.mjs` cannot see a component prop. The eight card unit diagrams are inline SVG rather than lucide components, so they carry `stroke-width` too and must satisfy the same one-weight case — that is how plan 4's hand-authored paths are brought to the band without being replaced. **This case is bounded by what it mounts**, so mount the fleet rather than one pane, and note in the commit which surfaces it covers; Task 9 Step 1 makes the same assertion in the browser over the built bundle, and that is the net that is not bounded by a fixture.
+`stroke-width` is a real attribute lucide writes on the rendered `<svg>`, which is why this reads the DOM rather than the source: the text scan in `design-tokens.mjs` sees only `px` literals and cannot see a component prop. The eight card unit diagrams are inline SVG rather than lucide components, so they carry `stroke-width` too and must satisfy the same weight case — that is how plan 4's hand-authored paths follow the one rule without being replaced. **This case is bounded by what it mounts**, so mount the fleet rather than one pane, and note in the commit which surfaces it covers; Task 9 Step 1 makes the same assertion in the browser over the built bundle, and that is the net that is not bounded by a fixture.
 
 Run: `npx vitest run packages/editor/src/editor-shell/icons.test.tsx`
-Expected: **FAIL** — the module does not exist, and the mounted glyphs do not share one weight: the census measured **four** across chrome (`1.7`×8, `1.75`×17, `2`×1, `2.5`×2).
+Expected: **FAIL** — the module does not exist, and the mounted glyphs did not follow one rule: the census measured **four** across chrome (`1.7`×8, `1.75`×17, `2`×1, `2.5`×2).
 
-- [ ] **Step 2: Write the vocabulary, and take §6's escape rather than a second weight**
+- [ ] **Step 2: Write the vocabulary, and take §6's escape rather than a weight outside the rule**
 
-One weight, one `Glyph`, one `size` per call site (the sizes plan 1 and 2 chose are not this task's to re-decide; record them in the commit). The census's **four** weights collapse to one **within the band**, and where a 12px tick or a 13px severity mark reads faintly at that weight, the answer is §6's own escape — a `filled` glyph — **not** a second stroke weight. Three of the four are out of band and each is adjudicated one at a time rather than swept: `diagnostic-message.tsx:85` (`2`), `shell-layout.tsx:421` (the menu tick, `2.5`) and `publish-indicator.tsx:31` (the live check, `2.5`). §6 names the live check as a **filled** glyph at 12px, so that site's honest fix is the fill, not a weight; if a case needs something the bible does not allow, **amend bible §6 in the same commit** and say so, rather than leaving a local exception (`design-language.md`'s own first paragraph).
+One weight rule, one `Glyph`, one `size` per call site (the sizes plan 1 and 2 chose are not this task's to re-decide; record them in the commit). The census's **four** weights become one **rule over size** — §6's tiers, `1.7px` at 14px and above, `1.8px` at 11–13px, `2px` at 10px and below — so a site's weight is its own size's tier, not a literal. Where a 12px tick or a 13px severity mark reads faintly, the answer is §6's own escape — a `filled` glyph — **not** a stroke weight outside its tier. Each of the census's out-of-tier sites is adjudicated one at a time rather than swept: `diagnostic-message.tsx:85` (`2`) resolves to its size's tier, and `shell-layout.tsx:421` (the menu tick, `2.5`) and `publish-indicator.tsx:31` (the live check, `2.5`) each resolve to theirs. §6 names the live check as a **filled** glyph at 12px, so that site's honest fix is the fill, not a weight; if a case needs something the bible does not allow, **amend bible §6 in the same commit** and say so, rather than leaving a local exception (`design-language.md`'s own first paragraph).
 
 - [ ] **Step 3: Migrate every chrome call site**
 
-Replace each direct lucide usage in the census's list with the vocabulary. `object-actions.ts` is **not** migrated: it is the authority on action icons and keeps its imports, and the surfaces that render an action read `action.icon` as they do now. The new `icons.ts` may read a lucide component; nothing else may. The eight card unit diagrams keep their hand-authored paths — lucide has no exact match and §6 allows a unit tile to be depicted — but take `GLYPH_STROKE_WIDTH` so they are inside the band with everything else.
+Replace each direct lucide usage in the census's list with the vocabulary. `object-actions.ts` is **not** migrated: it is the authority on action icons and keeps its imports, and the surfaces that render an action read `action.icon` as they do now. The new `icons.ts` may read a lucide component; nothing else may. The eight card unit diagrams keep their hand-authored paths — lucide has no exact match and §6 allows a unit tile to be depicted — but take `glyphStrokeWidth(size)` so they follow the one rule with everything else.
 
 **The census named four chrome surfaces that render a glyph and import no lucide**, so no importer grep ever listed them and only the weight histogram sees them: `layer-panel.tsx:34` (the registry's icons), `pane.tsx:48` (a prop-passed glyph), and the two hand-authored ones below. Convert those two with the rest — a site the importer list misses is exactly the one a vocabulary migration leaves behind.
 
@@ -218,11 +219,11 @@ Then settle the **hand-authored chrome paths**, one at a time, and record each d
 
 - [ ] **Step 4: Add the ownership row, in the same commit**
 
-`ownership.md` gains one row under **Editor**: the chrome glyph vocabulary and its one weight → `editor/src/editor-shell/icons.ts`. The map's own rule is that "if you add a module that owns an enumeration, add the row in the same change".
+`ownership.md` gains one row under **Editor**: the chrome glyph vocabulary and its one weight rule → `editor/src/editor-shell/icons.ts`. The map's own rule is that "if you add a module that owns an enumeration, add the row in the same change".
 
 - [ ] **Step 5: Red proof — the weight rule fires on one planted weight**
 
-Set one call site back to `strokeWidth={2}` and re-run. Expected: **the one-weight case fails**, naming the two weights. Restore it, then confirm the family case fires by adding a direct import to a converted file.
+Set one call site to a weight outside its size's tier — e.g. `strokeWidth={2}` on a 17px glyph — and re-run. Expected: **the weight case fails**, naming the size and the two weights. Restore it, then confirm the family case fires by adding a direct import to a converted file.
 
 - [ ] **Step 6: Turn the ratchet green, verify, commit**
 
@@ -496,7 +497,7 @@ Gated list, `npm run design:check`, `npx vitest run packages/editor/src/ui-copy.
 
 ### Task 7: The ratchet and the nets, over this plan's list
 
-**Outcome:** Every file this plan converted is in `scripts/design-tokens.gated.json`, `npm run design:check` exits 0 over them, it still refuses to pass over an empty list, and the three closures this plan added — one weight, one string, no literal copy — are each shown to fail when broken.
+**Outcome:** Every file this plan converted is in `scripts/design-tokens.gated.json`, `npm run design:check` exits 0 over them, it still refuses to pass over an empty list, and the three closures this plan added — one weight rule, one string, no literal copy — are each shown to fail when broken.
 
 **Owning symbols/landmarks:** `scripts/design-tokens.gated.json`, `scripts/design-tokens.mjs` (its proof is its own `--self-test`, chained into `gates:self-test` — not a second file), `npm run design:check`, `icons.test.tsx`, `control-icon-button.dom.test.tsx`, `ui-copy.test.ts`.
 
@@ -505,7 +506,7 @@ Gated list, `npm run design:check`, `npx vitest run packages/editor/src/ui-copy.
 - Modify: `scripts/design-tokens.mjs` **only** if a rule must change, in which case `--self-test` gains its case in the same commit and the reason is a decision note, not a plan edit
 
 **Interfaces:**
-- Consumes: plan 1's guard and its `--gated` argument, and `biblePx`'s `1.6`/`1.7`/`1.8`.
+- Consumes: plan 1's guard and its `--gated` argument, and `biblePx` (the scan reads `px` literals only, so the weight rule's bare numeric tiers need no entry).
 - Produces: the counts, in the commit. This task is a measurement.
 
 - [ ] **Step 1: Measure what this plan converted**
@@ -517,7 +518,7 @@ grep -rn "strokeWidth" packages/editor/src --include=*.tsx | grep -v "\.test\." 
 grep -c "#[0-9a-fA-F]\{3,8\}" packages/editor/src/editor-shell/editor-shell.css
 ```
 
-Expected: the gated union holds every file Tasks 2–6 converted; the weight column has **one** value and it is in the band; the `editor-shell.css` hex count is recorded as the before-state for whatever follows the redesign — it does not go to zero here, because the palettes are hex by design.
+Expected: the gated union holds every file Tasks 2–6 converted; the weight column shows every site drawing from `glyphStrokeWidth(...)` and none planting a literal; the `editor-shell.css` hex count is recorded as the before-state for whatever follows the redesign — it does not go to zero here, because the palettes are hex by design.
 
 - [ ] **Step 2: Run the guard and prove it is still not vacuous**
 
@@ -535,7 +536,7 @@ Expected: **0**, then **non-zero with a message naming the empty list**, then **
 
 - [ ] **Step 3: Red proof — the three closures, one at a time**
 
-Add a hex literal and an off-scale `px` to a converted file: expected **non-zero, naming the file and the value**. Then set one glyph's weight to `2`: expected the **one-weight case** fails — the text scan cannot see a prop, and saying so is part of this task. Then put a literal in a React surface: expected the **no-literal-copy walk** fails. Revert each, then re-run to green.
+Add a hex literal and an off-scale `px` to a converted file: expected **non-zero, naming the file and the value**. Then set one glyph's weight to a literal outside its size's tier: expected the **weight case** fails — the text scan cannot see a prop, and saying so is part of this task. Then put a literal in a React surface: expected the **no-literal-copy walk** fails. Revert each, then re-run to green.
 
 - [ ] **Step 4: Commit**
 
@@ -616,7 +617,7 @@ The ledger is the commit body: one item per line, `met` or `not met`, with its e
 
 - [ ] **Step 1: Write the capture so it fails if the glyphs are not the new ones**
 
-The capture opens the state the mockup draws (plan 2's capture does: the Add slot open with nothing selected), asserts the language mechanically — every rendered glyph's `stroke-width` is the one value and it is in §6's band, and no icon-only control's tooltip disagrees with its accessible name — and then writes the image. Run it against a bundle from before Task 2 and confirm it **fails** rather than producing a picture of the old weights.
+The capture opens the state the mockup draws (plan 2's capture does: the Add slot open with nothing selected), asserts the language mechanically — every rendered glyph's `stroke-width` is `glyphStrokeWidth(its size)` and in §6's tiers, and no icon-only control's tooltip disagrees with its accessible name — and then writes the image. Run it against a bundle from before Task 2 and confirm it **fails** rather than producing a picture of the old weights.
 
 - [ ] **Step 2: Prove the run is not vacuous**
 
@@ -665,9 +666,9 @@ Named so a later change owns them rather than this plan growing.
 
 ## Self-review
 
-- **Spec coverage.** §8's four requirements are Tasks 2 (one family, one weight), 4 (one string, one owner), 3 (the kind set closed with the kind list) and Tasks 4–5 (text is not the interface, with §6 rule 1 as the bar against removing a meaningful label); §9's copy rules are Tasks 5 and 6; §6's refusal in words is read where the census finds it; §12 row 6 is this document; §13 is Task 9 and Task 8's item-by-item ledger; the Acceptance section is Task 8 with the four no-single-owner items observed there and the comparison image produced in Task 9.
+- **Spec coverage.** §8's four requirements are Tasks 2 (one family, one weight rule), 4 (one string, one owner), 3 (the kind set closed with the kind list) and Tasks 4–5 (text is not the interface, with §6 rule 1 as the bar against removing a meaningful label); §9's copy rules are Tasks 5 and 6; §6's refusal in words is read where the census finds it; §12 row 6 is this document; §13 is Task 9 and Task 8's item-by-item ledger; the Acceptance section is Task 8 with the four no-single-owner items observed there and the comparison image produced in Task 9.
 - **Step scan.** No `TBD`, no "add error handling", no "similar to Task N". The one number left open — Task 4 Step 1's `noTooltip` count — is deliberately settled by that task's own adjudication rather than predicted here, because a count predicted before the code exists is not evidence (`AGENTS.md`).
-- **Type consistency.** `Glyph` is the one chrome glyph component and `GLYPH_STROKE_WIDTH` the one weight; `KIND_GLYPHS` is the closed kind vocabulary, declared `satisfies Record<LayerKind, LucideIcon>`; `ControlIconButton` takes one `label` and owns both strings; `absentReadingSurfaces()` and `placeholderReadings` are Task 6's two named sets, and a missing reading is a stated gap rather than a value.
+- **Type consistency.** `Glyph` is the one chrome glyph component and `glyphStrokeWidth` the one weight rule; `KIND_GLYPHS` is the closed kind vocabulary, declared `satisfies Record<LayerKind, LucideIcon>`; `ControlIconButton` takes one `label` and owns both strings; `absentReadingSurfaces()` and `placeholderReadings` are Task 6's two named sets, and a missing reading is a stated gap rather than a value.
 - **Review Focus.** Five, pinned above to Tasks 1, 2, 3, 5 and 6; each is a failure no existing test would catch. The four that were dropped are each a step's own red proof in the task that owns the code.
 - **Proportion.** 674 lines against the spec's 661, with 101 of them code — test cases and type signatures rather than bodies.
 - **Red proofs.** Every task states the break that must fail its own gate; Task 7 re-proves the guard's empty-list refusal and names which closure is a scan's and which is a DOM assertion's; Task 9's capture is proven non-vacuous with one test run, not zero.

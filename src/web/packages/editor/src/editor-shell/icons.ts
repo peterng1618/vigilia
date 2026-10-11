@@ -11,7 +11,7 @@ import {
   Gauge,
   Info,
   Keyboard,
-  Layers,
+  Layers2,
   Lock,
   LogIn,
   LogOut,
@@ -37,8 +37,8 @@ import type { RailSlot } from "./rail.js";
 export type { LucideIcon };
 
 /**
- * The chrome's one icon vocabulary (bible §6): one family (lucide), one weight,
- * and one place that decides either.
+ * The chrome's one icon vocabulary (bible §6): one family (lucide), one weight
+ * rule, and one place that decides either.
  *
  * **This is the only chrome module that reads `lucide-react`.** A surface that
  * named a lucide glyph itself would be a second owner of "which family and
@@ -53,17 +53,20 @@ export type { LucideIcon };
  * rather than the React components.
  */
 
-/** Bible §6's stroke weight: one weight, inside the 1.6–1.8px band. Where that
- *  weight reads faintly at 12px the answer is §6's `filled` escape, never a
- *  second stroke weight. */
-export const GLYPH_STROKE_WIDTH = 1.75;
+/** §6's weight rule: the stroke rises as the glyph shrinks, so the rendered
+ *  weight stays optically even. The tiers are the drawing's own. */
+export function glyphStrokeWidth(size: number): number {
+  if (size <= 10) return 2;
+  if (size <= 13) return 1.8;
+  return 1.7;
+}
 
 /**
  * A chrome glyph, and the one place its weight is set.
  *
  * `filled` carries **two** things §6 separates, and neither is a stroke weight:
- * §6's own escape where a 1.75px stroke would be illegible at 12px (the record
- * dot, the live check), and the **on/off channel of a binary state** — the font
+ * §6's own escape where a stroke would be illegible at 12px (the record dot, the
+ * live check), and the **on/off channel of a binary state** — the font
  * picker's favourited star, the layer row's locked lock (`vg-024`, "locked is a
  * filled lock"). The second is not a licence to fill a glyph for looks; it is
  * the one place a two-valued control can say which of the two it is without a
@@ -81,7 +84,7 @@ export function Glyph(props: {
   return createElement(icon, {
     "aria-hidden": true,
     size,
-    strokeWidth: GLYPH_STROKE_WIDTH,
+    strokeWidth: glyphStrokeWidth(size),
     ...(filled ? { fill: "currentColor" } : {}),
   });
 }
@@ -89,8 +92,10 @@ export function Glyph(props: {
 /** Bible §7.2's stack: a card on the canvas is an arbitrary group of elements,
  *  so its row cannot depict it and gets the stack glyph and its name. One glyph
  *  in one place — the rail's Composition slot, the layer row's group mark and
- *  Task 3's `KIND_GLYPHS.group` are all this constant. */
-export const STACK_GLYPH: LucideIcon = Layers;
+ *  Task 3's `KIND_GLYPHS.group` are all this constant. `Layers2`, not `Layers`:
+ *  three planes smudge at 13px, the layer row's size, and the drawing stacks
+ *  two. */
+export const STACK_GLYPH: LucideIcon = Layers2;
 
 /** §7.2's page, the Document slot. */
 export const PAGE_GLYPH: LucideIcon = FileText;

@@ -225,8 +225,10 @@ The vocabulary is closed. A control is one of these, or it is not a control.
 
 ## 6. Icons
 
-**Glyphs are stroke-based, 1.6–1.8px, `currentColor`, drawn on a 24px grid.**
-One family, one weight, everywhere. A filled glyph appears only where a stroke
+**Glyphs are stroke-based, `currentColor`, drawn on a 24px grid, at one weight
+rule: the stroke rises as the size falls, so the rendered weight stays optically
+even.** One family, one rule, everywhere — **1.7px at 14px and above, 1.8px at
+11–13px, 2px at 10px and below.** A filled glyph appears only where a stroke
 would be illegible at 12px (the record dot, the live check).
 
 Rules:

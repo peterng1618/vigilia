@@ -1,9 +1,9 @@
 // @vitest-environment jsdom
 
 /**
- * The chrome vocabulary's two invariants: one weight, one family.
+ * The chrome vocabulary's two invariants: one weight rule, one family.
  *
- * **The one-weight case reads the rendered DOM, not the source.** `stroke-width`
+ * **The weight case reads the rendered DOM, not the source.** `stroke-width`
  * is an attribute lucide writes on the `<svg>` it renders, and the eight card
  * unit diagrams and the Add pane's shape marks write it on theirs, so a scan of
  * the source cannot see a component prop and this reads what the browser would.
@@ -43,8 +43,8 @@ import {
   ENTER_GLYPH,
   ERROR_GLYPH,
   FIT_GLYPH,
-  GLYPH_STROKE_WIDTH,
   Glyph,
+  glyphStrokeWidth,
   HIDDEN_GLYPH,
   INFO_GLYPH,
   KEYBOARD_GLYPH,
@@ -106,8 +106,8 @@ function sourceFiles(root: string): readonly string[] {
 
 /**
  * Every source that draws a glyph without the vocabulary: a file that reads
- * `lucide-react` directly, or a file that sets the one weight on an inline
- * `<svg>` of its own. Test files and declarations are not chrome.
+ * `lucide-react` directly, or a file that sets the vocabulary's weight on an
+ * inline `<svg>` of its own. Test files and declarations are not chrome.
  */
 function glyphSources(): readonly string[] {
   const found: string[] = [];
@@ -118,7 +118,7 @@ function glyphSources(): readonly string[] {
     const withoutTypes = source.replace(TYPE_IMPORT, "");
     if (
       LUCIDE_IMPORT.test(withoutTypes) ||
-      source.includes("GLYPH_STROKE_WIDTH")
+      source.includes("glyphStrokeWidth")
     ) {
       found.push(rel);
     }
@@ -266,7 +266,7 @@ function renderedGlyphs(): readonly SVGSVGElement[] {
   return [...document.querySelectorAll("svg")];
 }
 
-it("draws every chrome glyph at the one weight", () => {
+it("draws every chrome glyph at its own size's weight, in §6's tiers", () => {
   const host = document.createElement("div");
   document.body.append(host);
   const root = createRoot(host);
@@ -276,13 +276,30 @@ it("draws every chrome glyph at the one weight", () => {
   const glyphs = renderedGlyphs();
   // A guard that asserted over nothing would pass for the wrong reason.
   expect(glyphs.length).toBeGreaterThan(20);
-  const weights = [
-    ...new Set(glyphs.map((svg) => svg.getAttribute("stroke-width"))),
-  ];
-  // The values themselves rather than their count, so a planted weight fails
-  // naming both it and the vocabulary's own.
-  expect(weights).toEqual([String(GLYPH_STROKE_WIDTH)]);
-  const [only] = weights;
-  expect(Number(only)).toBeGreaterThanOrEqual(1.6);
-  expect(Number(only)).toBeLessThanOrEqual(1.8);
+  // Pair each rendered glyph's weight with the size it was given — the `<svg>`'s
+  // own `width` is that size — and require the rule's own answer. A case that
+  // only asserted one value would pass over a flat weight, which is the defect
+  // the drawing's tiers replaced.
+  const sizes = new Set<string>();
+  for (const svg of glyphs) {
+    const size = Number(svg.getAttribute("width"));
+    sizes.add(String(size));
+    expect(svg.getAttribute("stroke-width")).toBe(
+      String(glyphStrokeWidth(size)),
+    );
+  }
+  // Both in-fleet tiers are exercised, so the case is not passing over one
+  // weight by accident: 13px is the 1.8 tier, the rail and pane sizes the 1.7.
+  expect(sizes.has("13")).toBe(true);
+  expect(sizes.has("17")).toBe(true);
+});
+
+it("rises the stroke as the glyph shrinks, in §6's tiers", () => {
+  // The 10px tier is the `--faint` disclosure chevron, which the fleet above
+  // does not mount, so the boundaries are checked on the pure rule.
+  expect(glyphStrokeWidth(10)).toBe(2);
+  expect(glyphStrokeWidth(11)).toBe(1.8);
+  expect(glyphStrokeWidth(13)).toBe(1.8);
+  expect(glyphStrokeWidth(14)).toBe(1.7);
+  expect(glyphStrokeWidth(24)).toBe(1.7);
 });

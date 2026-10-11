@@ -1,6 +1,6 @@
 import { Fragment, useEffect, useRef } from "react";
 import { tooltip } from "../../editor-shell/controls/tooltip.js";
-import { GLYPH_STROKE_WIDTH, Glyph } from "../../editor-shell/icons.js";
+import { Glyph, glyphStrokeWidth } from "../../editor-shell/icons.js";
 import type { ShapeKind } from "../../new-object-defaults.js";
 import type { InsertableObject, InsertGroup } from "../../new-object-panel.js";
 import { chartFamilyGlyph } from "../composition/kind-mark.js";
@@ -202,7 +202,7 @@ function ShapeGlyph(
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth={GLYPH_STROKE_WIDTH}
+      strokeWidth={glyphStrokeWidth(size)}
       strokeLinecap="round"
       strokeLinejoin="round"
     >

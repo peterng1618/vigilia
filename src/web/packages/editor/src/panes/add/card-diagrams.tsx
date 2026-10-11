@@ -1,5 +1,5 @@
 import type { CardDiagram } from "../../card-library.js";
-import { GLYPH_STROKE_WIDTH } from "../../editor-shell/icons.js";
+import { glyphStrokeWidth } from "../../editor-shell/icons.js";
 
 /**
  * The diagram a card unit's tile draws, one per name `card-library.ts` declares.
@@ -51,7 +51,7 @@ function DiagramGlyph({
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth={GLYPH_STROKE_WIDTH}
+      strokeWidth={glyphStrokeWidth(size)}
       strokeLinecap="round"
       strokeLinejoin="round"
     >
