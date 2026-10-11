@@ -1,4 +1,21 @@
 // @vitest-environment jsdom
+/**
+ * The copy net: every word an author reads comes from `uiCopy`, or is data — a
+ * token's name, a locale's, an asset's, a preset's. Two halves, one claim: the
+ * imperative panels are read for their own DOM, and the React surfaces are read
+ * through `mountLandedSurfaces`.
+ *
+ * **The React half's boundary, stated rather than implied.** `spokenIn` reads
+ * the shell (menubar, stage, rail, canvas toolbar and the panes), Settings on
+ * its Appearance tab, the colour picker with its popup open, and the selection
+ * inspector. Four reachable surfaces are **not** read: an opened menu popup, the
+ * Settings Keyboard and About tabs, and the canvas context menu. Each costs
+ * 50-90s per open under jsdom (`vg-135`, measured in `shell-layout.dom.test.tsx`)
+ * and a focused gate cannot pay that for a hole this costs nothing to leave
+ * today, because no literal lives in any of the four. A literal added to one of
+ * them would be missed here: that gap is filed with the surfaces named, not
+ * implied by silence.
+ */
 import { Canvas, type FabricObject, Rect, Textbox } from "fabric/es";
 import { act, createElement } from "react";
 import { flushSync } from "react-dom";
@@ -21,7 +38,10 @@ import {
   shellPalettes,
 } from "./editor-shell/palette.js";
 import { Settings } from "./editor-shell/settings.js";
-import { createShellLayout } from "./editor-shell/shell-layout.js";
+import {
+  createShellLayout,
+  EDIT_MENU_ROWS,
+} from "./editor-shell/shell-layout.js";
 import { catalogFaces, fontTrios } from "./font-catalog.js";
 import { FontPicker } from "./font-picker/font-picker.js";
 import { createPalettePanel } from "./palette-manager/panel.js";
@@ -532,10 +552,21 @@ it("leaves the React surfaces with no copy of their own", async () => {
  * names, its File and Edit rows and its View settings — not the whole table,
  * which carries `W`, `H`, `CPU`, `2K`, `(empty)` and `Left`/`Right`:
  * abbreviations, marks and a parenthesised gap, none of them a row a menu
- * prints. A row title-cased (`New From Starter`) is what this catches.
+ * prints. A row title-cased (`New From Starter`) or lower-cased (`value runs`)
+ * is what this catches.
+ *
+ * **The count is guarded, in the same shape as the per-surface assertion.** The
+ * case could pass by being fed nothing, so the Edit rows are counted against the
+ * six the menu is specified to hold (`EDIT_MENU_ROWS`), not against the length of
+ * the list the case derives: a row dropped from the menu's owner shrinks both it
+ * and this list together, which a derived count could not see.
  */
 it("prints every menu row in sentence case", () => {
-  for (const row of menuRows()) expect(isSentenceCase(row), row).toBe(true);
+  const rows = menuRows();
+  const editLabels = new Set(EDIT_MENU_ROWS.map((row) => row.label));
+  expect(rows.length).toBeGreaterThan(0);
+  expect(rows.filter((row) => editLabels.has(row)).length).toBe(6);
+  for (const row of rows) expect(isSentenceCase(row), row).toBe(true);
 });
 
 /** The shell's chrome, in the surfaces the walk reads. Each is a selector the
@@ -553,11 +584,14 @@ const LANDED_SURFACES = [
 ] as const;
 
 /**
- * The rows `ShellMenuBar` renders. Read from the menu's own list rather than the
- * whole table: the File rows are `uiCopy.file`, the Edit rows are the six action
- * words the menu draws (`shell-layout.tsx`), the View rows are `uiCopy.view`,
- * and the three names are `uiCopy.menus`. A row added to the menu is added here
- * beside it.
+ * The rows `ShellMenuBar` renders. Read from the menu's own owners rather than
+ * from the whole table: the three names are `uiCopy.menus`, the File rows are
+ * `uiCopy.file`, the Edit rows are `EDIT_MENU_ROWS` — the const the menu itself
+ * maps over, because `uiCopy.actions` holds fourteen keys and only six are Edit
+ * rows, so no `Object.values` derives them — and the View rows are `uiCopy.view`
+ * less the one entry no menu prints: `previewDetail` is the status line under
+ * the source control (`live-source.ts`), not a row. A row added to File or View
+ * is covered by the derivation; one added to Edit is covered by the const.
  */
 function menuRows(): string[] {
   return [
@@ -565,24 +599,21 @@ function menuRows(): string[] {
     uiCopy.menus.edit,
     uiCopy.menus.view,
     ...Object.values(uiCopy.file),
-    uiCopy.actions.undo,
-    uiCopy.actions.redo,
-    uiCopy.actions.copy,
-    uiCopy.actions.cut,
-    uiCopy.actions.duplicate,
-    uiCopy.actions.delete,
-    ...Object.values(uiCopy.view),
+    ...EDIT_MENU_ROWS.map((row) => row.label),
+    ...Object.values(uiCopy.view).filter(
+      (row) => row !== uiCopy.view.previewDetail,
+    ),
   ];
 }
 
-/** Sentence case: no word after the first is capitalised like a title. An
- *  acronym (`FPS`) is all caps and is not title case, so `30 FPS` passes and
- *  `New From Starter` does not. */
+/** Sentence case: the first word carries the capital and no later word is
+ *  capitalised like a title. An acronym (`FPS`) is all caps and is not title
+ *  case, so `30 FPS` passes and `New From Starter` does not; a lower-cased first
+ *  word (`value runs`) fails, which is the hole this closes. */
 function isSentenceCase(row: string): boolean {
-  return row
-    .split(/\s+/)
-    .slice(1)
-    .every((word) => !/^[A-Z][a-z]/.test(word));
+  const [first, ...rest] = row.split(/\s+/);
+  if (first === undefined || !/^[A-Z0-9]/.test(first)) return false;
+  return rest.every((word) => !/^[A-Z][a-z]/.test(word));
 }
 
 /**

@@ -472,7 +472,12 @@ export const uiCopy = {
    *
    *  The two readings answer different questions (§6): one answers for every
    *  sensor the theme names, the other for what this machine reports. Neither is
-   *  the fallback for the other, so neither is called a preview of the other. */
+   *  the fallback for the other, so neither is called a preview of the other.
+   *
+   *  A row here is a menu row and a menu row is sentence case (§9), so the two
+   *  run-display rows read `Values` and `Tokens`; the mode ids they set stay
+   *  lower case (`RunDisplayMode`), and only the words an author reads are
+   *  capitalised. */
   view: {
     dataSource: "Readings from",
     chartRefresh: "Chart refresh",
@@ -480,8 +485,8 @@ export const uiCopy = {
     live: "This machine",
     previewDetail: "every sensor this theme names",
     valueRuns: "Value runs",
-    tokens: "tokens",
-    values: "values",
+    tokens: "Tokens",
+    values: "Values",
     fps30: "30 FPS",
     fps1: "1 FPS",
   },

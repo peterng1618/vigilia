@@ -56,7 +56,10 @@ import { PublishControl } from "./publish-control.js";
 import { PublishIndicator } from "./publish-indicator.js";
 import { Rail, type RailSlot } from "./rail.js";
 import { SaveState } from "./save-state.js";
-import type { EditorViewControls } from "./session-facade.js";
+import type {
+  EditorActionFacade,
+  EditorViewControls,
+} from "./session-facade.js";
 import { Settings } from "./settings.js";
 import { ShortcutReference } from "./shortcut-reference.js";
 
@@ -431,6 +434,33 @@ function ViewSetting<T extends string | number>({
   );
 }
 
+/** The Edit menu's rows, in order — the one owner of what that menu draws.
+ *  `uiCopy.actions` carries fourteen keys and only these six are Edit rows, so
+ *  unlike File and View the list cannot be an `Object.values` of the table.
+ *  `ShellMenuBar` maps over this to render them and `ui-copy.test.ts`'s
+ *  sentence-case case reads the same const, so a row added to the menu enters
+ *  §9's net instead of escaping it silently. */
+export const EDIT_MENU_ROWS: readonly {
+  readonly label: string;
+  readonly shortcut: ProductShortcutId;
+  readonly run: (session: EditorActionFacade | undefined) => void;
+}[] = [
+  { label: uiCopy.actions.undo, shortcut: "edit.undo", run: (s) => s?.undo() },
+  { label: uiCopy.actions.redo, shortcut: "edit.redo", run: (s) => s?.redo() },
+  { label: uiCopy.actions.copy, shortcut: "edit.copy", run: (s) => s?.copy() },
+  { label: uiCopy.actions.cut, shortcut: "edit.cut", run: (s) => s?.cut() },
+  {
+    label: uiCopy.actions.duplicate,
+    shortcut: "edit.duplicate",
+    run: (s) => s?.duplicate(),
+  },
+  {
+    label: uiCopy.actions.delete,
+    shortcut: "edit.delete",
+    run: (s) => s?.deleteActive(),
+  },
+];
+
 function ShellMenuBar({
   store,
   getView,
@@ -496,41 +526,13 @@ function ShellMenuBar({
             none because that is what the plan enumerated, not because they fail
             the rule: `file.new`, `file.open` and `file.save` each reach the same
             call their row does. That disagreement is open as `vg-185`. */}
-        {item(
-          uiCopy.actions.undo,
-          () => session?.undo(),
-          kind === "none",
-          "edit.undo",
-        )}
-        {item(
-          uiCopy.actions.redo,
-          () => session?.redo(),
-          kind === "none",
-          "edit.redo",
-        )}
-        {item(
-          uiCopy.actions.copy,
-          () => session?.copy(),
-          kind === "none",
-          "edit.copy",
-        )}
-        {item(
-          uiCopy.actions.cut,
-          () => session?.cut(),
-          kind === "none",
-          "edit.cut",
-        )}
-        {item(
-          uiCopy.actions.duplicate,
-          () => session?.duplicate(),
-          kind === "none",
-          "edit.duplicate",
-        )}
-        {item(
-          uiCopy.actions.delete,
-          () => session?.deleteActive(),
-          kind === "none",
-          "edit.delete",
+        {EDIT_MENU_ROWS.map((row) =>
+          item(
+            row.label,
+            () => row.run(session),
+            kind === "none",
+            row.shortcut,
+          ),
         )}
       </MenuGroup>
       <MenuGroup label={uiCopy.menus.view}>
