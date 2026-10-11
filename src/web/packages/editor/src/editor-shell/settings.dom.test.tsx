@@ -423,7 +423,7 @@ describe("Settings", () => {
     // the selected state, so a reader who cannot see the lift still has it.
     expect(
       radios.map((radio) => radio.getAttribute("aria-checked")),
-      "the default palette is the one marked checked",
+      "the palette in force is the one marked checked",
     ).toEqual(
       shellPalettes.map((entry) => `${entry === DEFAULT_SHELL_PALETTE}`),
     );

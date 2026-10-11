@@ -1408,7 +1408,17 @@ test("the control set renders in the design language", async ({
   await setPalette(page, "graphite");
   await captureVisualReview(page, testInfo, "control-set");
   await setPalette(page, "editorial");
-  await captureVisualReview(page, testInfo, "control-set-editorial");
+  // `setPalette` sets the attribute with no stored choice in storage, so unlike
+  // the Appearance-tab route nothing holds this ground across a re-render. The
+  // helper asserts it before the shot rather than assuming it: ruling 3's
+  // light/dark pair must not be a picture the pin repainted to graphite.
+  await captureVisualReview(
+    page,
+    testInfo,
+    "control-set-editorial",
+    undefined,
+    "editorial",
+  );
   // The freeze stays on *through* the captures on purpose: the shell transitions
   // colour over 140ms, and a palette change captured mid-fade is a picture of
   // neither palette — the first editorial capture here showed teal toggles and

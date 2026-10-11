@@ -317,21 +317,39 @@ export async function clearSceneX(
  * section, bible §5 rule 1's standing example, never reaches the frame. Passing
  * the column element captures the whole column. With no scope the output is the
  * viewport shot every existing caller already produced.
+ *
+ * **An optional `ground` names the palette the frame must be on, and is asserted
+ * before the shot.** `page.screenshot` does not wait for the OS listener's
+ * re-render, so an assertion taken after the shot can pass while the PNG is a
+ * lighter frame; asserting here, after the emulation and before the shot, is what
+ * ties the claim to the pixels. A capture that chose through the Appearance tab
+ * needs no `ground` — its stored choice disarms the listener — and one taken on
+ * the parity fixture does, because the fixture sets the attribute with no stored
+ * choice and so has nothing holding it across a re-render.
  */
 export async function captureVisualReview(
   page: Page,
   testInfo: TestInfo,
   name: string,
   scope?: Locator,
+  ground?: string,
 ): Promise<void> {
   if (process.env["VIGILIA_CAPTURE"] === undefined) return;
-  // The shipping default, not whatever Playwright's `colorScheme` happens to
-  // be. Emulating a dark OS before the shot is the same move
-  // `design-language.spec.ts`'s "The drawing's own ground" capture already
-  // makes to pin graphite, so every capture that never chose a palette is the
-  // default rather than editorial. A spec that did choose one keeps its ground:
-  // the stored choice outranks the OS in `resolveShellPalette`.
+  // The shipping default, not whatever Playwright's `colorScheme` happens to be,
+  // and the same move `design-language.spec.ts`'s "The drawing's own ground"
+  // capture already makes to pin graphite. A capture that chose through the
+  // Appearance tab keeps its ground: the stored choice disarms the OS listener,
+  // so the emulation re-renders nothing. A palette set as a bare attribute — the
+  // parity fixture's `setPalette`, which writes no storage — has no such
+  // protection and survives only while nothing re-renders, so a capture on that
+  // route passes `ground` and is proven rather than assumed.
   await page.emulateMedia({ colorScheme: "dark" });
+  if (ground !== undefined) {
+    await expect(page.locator("html")).toHaveAttribute(
+      "data-shell-palette",
+      ground,
+    );
+  }
   const directory =
     process.env["VIGILIA_CAPTURE_DIR"] ?? "../../docs/evidence/screenshots";
   const filename = `${name}-${testInfo.project.name}.png`;

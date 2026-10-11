@@ -30,10 +30,10 @@ satisfies every token in the bible and still does not look like the mockup.
 
 ## Last completed change
 
-- **Graphite is the shell's default** — `DEFAULT_SHELL_PALETTE` is `"graphite"` and `systemShellPalette`'s dark branch is expressed through it; a light-reporting OS resolves `"light"`, not the default.
-- **The unit, dom and browser tests assert the new mapping** — `palette.test.ts` pins graphite and light, `shell-layout.dom.test.tsx` mounts `light`, and `shell-appearance.spec.ts`'s fresh-profile and OS-fallback tests read `light`.
-- **Every capture is shot on the shipping default now**: `captureVisualReview` emulates a dark OS before the screenshot, so an unchosen palette is graphite while a spec that chose one keeps its ground.
-- **`docs/design/design-language.md` §4 states the new truth** — graphite default, a light OS gets `light`, either overridable in Settings.
+- **Review round 1 on the graphite default**: the medium was the brief's own error — the pin's safety was argued from the mount-time `resolveShellPalette`, not the runtime `following` listener, so a palette set as a bare attribute had no stated protection.
+- **`captureVisualReview` now takes an optional `ground`** and asserts it after the emulation and *before* the shot, so a late re-render cannot leave a light PNG behind a green assertion.
+- **`control-set-editorial` is now asserted** — the one `-editorial` capture on the attribute-only route; `editor.spec.ts`'s duplicate editorial guard is dropped and its graphite guard moved into the helper.
+- **`settings.dom.test.tsx`'s harness comment corrected** — "the default palette" → "the palette in force"; the harness models an in-force palette, not a fresh light-OS profile.
 
 ## Next
 
