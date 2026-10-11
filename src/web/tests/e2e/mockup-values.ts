@@ -819,7 +819,7 @@ export const PARITY: readonly ParityRegion[] = [
      **The selector names the long-copy label, and that is not an accident.**
      Eleven of the twelve labels carry `width:74px;flex:0 0 auto` with nothing
      after it, and the twelfth — the one over the multi-line well — carries the
-     same declaration plus `padding-top:5px`. A `[style*="…"]` selector is a
+     same declaration plus `padding-top:4px`. A `[style*="…"]` selector is a
      substring match, so every prefix of the eleven also matches the twelfth and
      the reader refuses to pick one; the twelfth is the *only* address that
      settles which element is meant, and it declares the same column. Two rows
@@ -829,7 +829,7 @@ export const PARITY: readonly ParityRegion[] = [
     region: "field row — label column (controls drawing)",
     mockupPath: CONTROLS_MOCKUP_PATH,
     mockupSelector:
-      '[style*="width:74px;flex:0 0 auto;color:var(--muted);font-size:11.5px;padding-top:5px"]',
+      '[style*="width:74px;flex:0 0 auto;color:var(--muted);font-size:11px;padding-top:4px"]',
     mockupProperty: "width",
     productSelector: '[data-fixture="text"] label',
     bibleSection:
@@ -840,7 +840,7 @@ export const PARITY: readonly ParityRegion[] = [
     region: "field row — label column (controls-light drawing)",
     mockupPath: CONTROLS_LIGHT_MOCKUP_PATH,
     mockupSelector:
-      '[style*="width:74px;flex:0 0 auto;color:var(--muted);font-size:11.5px;padding-top:5px"]',
+      '[style*="width:74px;flex:0 0 auto;color:var(--muted);font-size:11px;padding-top:4px"]',
     mockupProperty: "width",
     productSelector: '[data-fixture="text"] label',
     bibleSection:
@@ -913,7 +913,7 @@ export const PARITY: readonly ParityRegion[] = [
     region: "field row — the inspector select trigger box (shell drawing)",
     mockupPath: MOCKUP_PATH,
     mockupSelector:
-      '[style*="flex:1;display:flex;align-items:center;gap:6px;background:var(--panel2);border:1px solid var(--edge);border-radius:6px;padding:5px 8px"]',
+      '[style*="flex:1;display:flex;align-items:center;gap:6px;background:var(--panel2);border:1px solid var(--edge);border-radius:6px;padding:4px 8px"]',
     mockupProperty: "border-radius",
     productSelector: '[data-fixture="headed"] [data-fixture-select]',
     bibleSection:
@@ -924,7 +924,7 @@ export const PARITY: readonly ParityRegion[] = [
     region: "field row — the inspector select trigger box, name to chevron",
     mockupPath: MOCKUP_PATH,
     mockupSelector:
-      '[style*="flex:1;display:flex;align-items:center;gap:6px;background:var(--panel2);border:1px solid var(--edge);border-radius:6px;padding:5px 8px"]',
+      '[style*="flex:1;display:flex;align-items:center;gap:6px;background:var(--panel2);border:1px solid var(--edge);border-radius:6px;padding:4px 8px"]',
     mockupProperty: "gap",
     productSelector: '[data-fixture="headed"] [data-fixture-select]',
     bibleSection:
@@ -1064,7 +1064,7 @@ export const PARITY: readonly ParityRegion[] = [
        the licence is §3's own spacing table.** The census records `#4` and `#7`
        as one composition difference: the drawing's frame carries no padding of
        its own and insets *from its children* (`current/settings.html:41`
-       `padding:14px 16px`, `:22` `padding:11px 7px`), while `.editor-shell-dialog`
+       `padding:14px 16px`, `:22` `padding:10px 6px`), while `.editor-shell-dialog`
        carries `padding: 20px 24px` on the frame and none on the panel. The two
        differ in **where** the inset sits, not in whether there is one — and §3
        `:79` positively requires `20–24` for "dialog padding", which is the

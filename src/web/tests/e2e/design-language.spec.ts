@@ -7,6 +7,7 @@ import {
   drawingTexts,
   lengthInPx,
   MOCKUP_PATH,
+  type MockupDeclaration,
   mockupDeclarations,
   mockupDeclared,
   mockupDeclaredOrNull,
@@ -2486,8 +2487,10 @@ test("the shell and the settings modal are what the drawings draw", async ({
 const SHELL_DRAWING = "docs/design/mockups/current/shell.html";
 
 /**
- * Every `border-radius` **every drawing in `docs/design/mockups/current/`**
- * declares, held to bible §3's closed scale (`vg-296`).
+ * Every literal **every drawing in `docs/design/mockups/current/`** declares, in
+ * the three classes §3 and §2 own, held to the scale that owns each: a
+ * `border-radius` to §3's closed radius table (`vg-296`), a spacing property to
+ * §3's closed step list, and a type size to §2's six-role size scale.
  *
  * **Why this is a gate and not a sweep.** Task 3 (`be54cfc5`) corrected
  * twenty-one off-scale `border-radius` literals in `shell.html` — seventeen dock
@@ -2495,8 +2498,17 @@ const SHELL_DRAWING = "docs/design/mockups/current/shell.html";
  * nothing read them afterwards: putting one `7px` back left this whole suite
  * green (`vg-296`, measured). A file **measured once** is a measurement; a gate
  * is a test that reddens when the property moves, and this one reads the
- * drawings' own declarations every run so a radius that leaves §3's scale fails
+ * drawings' own declarations every run, so a value that leaves its scale fails
  * here naming its file and line.
+ *
+ * **Radius was the only arm until plan 8 Task 8, and the narrowness was the
+ * class.** Task 7 closed with this row green and **268 off-scale literals in the
+ * same six files**: 103 `11.5px` sizes (`font-size` declarations and `font`
+ * shorthands between them), 75 `5px` spacing tokens, 21 `2px`, 19 `7px`, 15
+ * `9px`, 11 `3px`, 9 `11px`, 4 `13px`, 3 `13.5px`, 3 `18px`, 2 `26px` and one
+ * each of `15px`, `72px` and `10.5px`. §2's scale and §3's step list were both
+ * closed and neither was read. The same `padding:5px 8px` sat in all six files,
+ * green, because a gate holds the property it names and nothing else.
  *
  * **Every drawing, not `MOCKUP_PATH` alone.** The first gate read the shell
  * drawing only, and the class hid in the three it did not read: `settings.html`
@@ -2521,6 +2533,51 @@ const SHELL_DRAWING = "docs/design/mockups/current/shell.html";
  *   slider's thumb and the toggle's knob. It is not a second way to spell a
  *   rounded rectangle, so it does not open the scale.
  *
+ * **The spacing arm reads the properties whose px *is* a spacing decision** —
+ * `scripts/design-tokens.mjs`'s `SPACING_PROPERTY`, transcribed here for the
+ * same reason `SPACING_STEPS` above is (a `tests/e2e/` import of a script would
+ * arrive untyped and buy coupling rather than safety). `26px` is deliberately
+ * off this scale, as that file's own comment says: §3's row rhythm is a density,
+ * not a gutter. Four values are exempt, each named with its reason and each
+ * exercised by a drawing:
+ *
+ * - `0` is **no space** — the degenerate *absence* of a gutter, the square
+ *   corner's twin. `padding:5px 0` is an ordinary value, not an off-scale one,
+ *   and a row that rejected the `0` in it would cry wolf, which is how a gate
+ *   gets turned off.
+ * - `1px` is **a hairline**, whose value is its thickness: §7.2's rail inset in
+ *   the drawing itself (`shell.html:40` `padding:8px 0 8px 1px`, and the
+ *   product's `.editor-shell-rail` declares the identical value).
+ *   `design-tokens.mjs`'s `ALWAYS_PX` names 1 for the same reason.
+ * - a value that is **negative** or **fractional** is **a mark's anchor**, not a
+ *   gutter: the rail's accent bar hangs at `right:-6px` across the 6px gutter it
+ *   sits in, and the slider's thumb at `top:-3.5px` centres a 10px circle on a
+ *   3px track. §3's step table is a table of gutters and insets and has no row
+ *   for either, and correcting one would un-centre the mark rather than align
+ *   it. `editor-shell.css:898-914` says the same of the product's own bar.
+ * - `auto` and `%` are **not lengths on the base at all** — the slack a flex
+ *   line has left (`margin-left:auto`) and a share of the parent's own size
+ *   (`left:50%`, which centres the dock alongside its `translateX(-50%)`).
+ *
+ * **The type arm reads `font-size` and the `font` shorthand.** §2's scale is six
+ * roles (`design-language.md:47-51`), and a shorthand writes its size before its
+ * line-height (`600 13.5px/1.2 system-ui`), which is the token read here. A
+ * shorthand carrying no px length sets no size this row can read, so it is
+ * returned whole and fails naming itself rather than passing as the drawing's
+ * silence.
+ *
+ * **What this row cannot read, and does not claim.** `line-height`,
+ * `font-weight` and `letter-spacing`: §2 states a line-height and a weight per
+ * role, but a drawing's `/1` on a one-line label is a box rather than a reading
+ * step, and a size is what a role is chosen by. The drawings' **page furniture**
+ * — the `<style>` block's three boilerplate rules, and the token table the
+ * outermost element carries — is read like everything else, because
+ * `mockupDeclarations` gives no structural split between the page and the drawn
+ * surface inside it. That is the reading's own limit: today it is harmless,
+ * since the only furniture declaration in a spacing or type property is
+ * `padding:24px` on the three centring wrappers and 24 is a §3 step, but a
+ * future furniture value off the scale would redden this row and need naming.
+ *
  * The whole-file reading comes from `mockupDeclarations`, not from a selector:
  * the property is bound wherever it is written, and `[style*="…"]` could only
  * ever address the elements a row already knew about.
@@ -2528,7 +2585,7 @@ const SHELL_DRAWING = "docs/design/mockups/current/shell.html";
  * A `--grep` that matches nothing exits 0 with zero tests, so the run's own
  * summary is the proof this ran at all.
  */
-test("every radius the checked drawings declare is on §3's scale", () => {
+test("every literal the checked drawings declare is on §3's scale or §2's", () => {
   const drawings = currentDrawings();
   // The positive control: a reader that found no drawing at all would pass the
   // assertion below, and `vg-296` is exactly a file nothing read.
@@ -2537,10 +2594,10 @@ test("every radius the checked drawings declare is on §3's scale", () => {
     "docs/design/mockups/current/ holds no drawing, so this row read nothing",
   ).toBeGreaterThan(0);
 
-  /** §3's closed scale, transcribed from the table the comment cites. */
-  const SCALE = new Set(["4px", "6px", "8px", "10px", "999px"]);
-  /** The named degenerate marks, each with the reason it is exempt. */
-  const DEGENERATE = new Map([
+  /** §3's closed radius scale, transcribed from the table the comment cites. */
+  const RADIUS = new Set(["4px", "6px", "8px", "10px", "999px"]);
+  /** The named degenerate radius marks, each with the reason it is exempt. */
+  const RADIUS_DEGENERATE = new Map([
     ["1px", "a hairline mark, whose value is its thickness"],
     ["2px", "a thickness mark (§7.2's rail accent bar, the slider track ends)"],
     [
@@ -2560,53 +2617,170 @@ test("every radius the checked drawings declare is on §3's scale", () => {
     const parsed = /^(-?[\d.]+)(?:px|%)?$/.exec(corner);
     return parsed !== null && Number.parseFloat(parsed[1] ?? "NaN") === 0;
   };
-  const allowed = (corner: string): boolean =>
-    SCALE.has(corner) || DEGENERATE.has(corner) || isSquare(corner);
+  const radiusAllowed = (corner: string): boolean =>
+    RADIUS.has(corner) || RADIUS_DEGENERATE.has(corner) || isSquare(corner);
 
-  // The square-corner branch is unexercised by the drawings today — none draws
-  // a shorthand — so the two spellings it must accept and the corner it must
-  // still refuse are read here: a fix for a false positive that nothing
-  // exercises is a fix nobody can trust.
+  /** §3's closed step list — the same transcription the fixture rows above
+   *  read, so a §3 change moves one list rather than two. */
+  const SPACING = new Set(SPACING_STEPS);
+  /** The properties whose px **is** a spacing decision, transcribed from
+   *  `scripts/design-tokens.mjs`'s `SPACING_PROPERTY`. A px in one of these is
+   *  a gutter; a px anywhere else is a size this row does not hold. */
+  const SPACING_PROPERTY =
+    /^(?:padding|margin|inset|translate)(?:-|$)|^(?:gap|row-gap|column-gap|top|right|bottom|left)$/;
+  /** The named degenerate spacing values, each with the reason it is exempt. */
+  const SPACING_DEGENERATE = new Map([
+    ["0", "no space — the degenerate absence of a gutter"],
+    ["0px", "no space, spelled with the unit CSS also allows"],
+    [
+      "1px",
+      "a hairline, whose value is its thickness (§7.2's rail inset; `design-tokens.mjs`'s `ALWAYS_PX` names 1 for the same reason)",
+    ],
+    [
+      "auto",
+      "the slack a flex line has left — not a length on the base at all",
+    ],
+  ]);
+  /** A **mark's anchor**: negative (the rail's accent bar at `right:-6px` hangs
+   *  across the 6px gutter) or fractional (the slider's thumb at `top:-3.5px`
+   *  centres a 10px circle on a 3px track), and `%`, which is a share of the
+   *  parent's own size rather than a step. §3's step table is a table of gutters
+   *  and insets; none of these is one, and no step expresses them. */
+  const isAnchor = (value: string): boolean =>
+    value.endsWith("%") ||
+    (/^-?[\d.]+px$/.test(value) &&
+      (value.startsWith("-") || value.includes(".")));
+  const spacingAllowed = (value: string): boolean => {
+    if (SPACING_DEGENERATE.has(value) || isAnchor(value)) return true;
+    const parsed = /^(\d+(?:\.\d+)?)px$/.exec(value);
+    return (
+      parsed !== null && SPACING.has(Number.parseFloat(parsed[1] ?? "NaN"))
+    );
+  };
+
+  /** §2's six sizes (`design-language.md:47-51`). */
+  const TYPE = new Set([10, 11, 12, 13, 15, 19]);
+  /** The size a type declaration sets, or `null` where it sets none this row
+   *  reads: `font-size`'s whole value, or the first px length a `font`
+   *  shorthand carries. A shorthand with no px length has no size token, so the
+   *  whole value is returned and fails naming itself rather than passing as the
+   *  drawing's silence. */
+  const typeSize = (declaration: MockupDeclaration): string | null => {
+    if (declaration.property === "font-size") return declaration.value;
+    if (declaration.property !== "font") return null;
+    return (
+      /(\d+(?:\.\d+)?px)/.exec(declaration.value)?.[1] ?? declaration.value
+    );
+  };
+  const typeAllowed = (value: string): boolean => {
+    const parsed = /^(\d+(?:\.\d+)?)px$/.exec(value);
+    return parsed !== null && TYPE.has(Number.parseFloat(parsed[1] ?? "NaN"));
+  };
+
+  /** One declaration is several values — `8px 8px 0 0` is four radii and
+   *  `padding:4px 6px` two insets — so each token is held on its own: an
+   *  off-scale value cannot hide behind a legal neighbour. */
+  const tokens = (value: string): readonly string[] =>
+    value.split(/[\s/]+/).filter((part) => part !== "");
+
+  /** The three classes, each with what it reads, the values one declaration
+   *  spells, and the scale those values are held to. */
+  const ARMS: readonly {
+    readonly property: string;
+    readonly scale: string;
+    readonly values: (
+      declaration: MockupDeclaration,
+    ) => readonly string[] | null;
+    readonly allowed: (value: string) => boolean;
+  }[] = [
+    {
+      property: "border-radius",
+      scale: "§3's radius scale (4/6/8/10/999)",
+      values: (declaration) =>
+        declaration.property === "border-radius"
+          ? tokens(declaration.value)
+          : null,
+      allowed: radiusAllowed,
+    },
+    {
+      property: "spacing",
+      scale: "§3's step list (4/6/8/10/12/14/16/20/24/32)",
+      values: (declaration) =>
+        SPACING_PROPERTY.test(declaration.property)
+          ? tokens(declaration.value)
+          : null,
+      allowed: spacingAllowed,
+    },
+    {
+      property: "type",
+      scale: "§2's size scale (10/11/12/13/15/19)",
+      values: (declaration) => {
+        const size = typeSize(declaration);
+        return size === null ? null : [size];
+      },
+      allowed: typeAllowed,
+    },
+  ];
+
+  // An `allowed` nothing exercises is a fix nobody can trust: the two square
+  // spellings are unexercised by the drawings today — none writes a radius
+  // shorthand — so they are read here, and every named degenerate is read so a
+  // gate that names a value it still refuses fails at the naming rather than at
+  // the drawing. Each arm's **refusal** is read for the same reason from the
+  // other side: an `allowed` that returned true for everything would pass all
+  // six drawings below.
   expect(
-    ["0", "0px"].filter((corner) => !allowed(corner)),
-    "a square corner is not accepted, so an ordinary shorthand would false-positive",
+    ["0", "0px"].filter((corner) => !radiusAllowed(corner)),
+    "a square corner is not accepted, so an ordinary radius shorthand would false-positive",
   ).toEqual([]);
   expect(
-    allowed("7px"),
-    "an off-scale corner is accepted, so the row no longer holds a shorthand's corners to the scale",
-  ).toBe(false);
+    [...SPACING_DEGENERATE.keys(), "1.5px", "-3.5px", "-6px", "50%"].filter(
+      (value) => !spacingAllowed(value),
+    ),
+    "a named degenerate spacing value is not accepted, so this row would fail the drawing it names",
+  ).toEqual([]);
+  expect(
+    (
+      [
+        ["radius", () => radiusAllowed("7px")],
+        ["spacing", () => spacingAllowed("5px")],
+        ["type", () => typeAllowed("11.5px")],
+      ] as const
+    )
+      .filter(([, allowed]) => allowed())
+      .map(([name]) => name),
+    "an arm accepts an off-scale value, so this row no longer holds that class to a scale",
+  ).toEqual([]);
 
   const offScale: string[] = [];
   const read: string[] = [];
   for (const drawing of drawings) {
-    const declared = mockupDeclarations(readMockup(drawing.path)).filter(
-      (declaration) => declaration.property === "border-radius",
-    );
-    // The positive control per drawing: a file the reader opened but read
-    // nothing out of is the shape this gate exists to end, so it reddens here
-    // rather than passing as a file with no off-scale radius.
-    expect(
-      declared.length,
-      `${drawing.name}: the drawing declares no border-radius, so this row read nothing`,
-    ).toBeGreaterThan(0);
-    read.push(`${drawing.name} (${declared.length})`);
-    for (const { value, line } of declared) {
-      // A shorthand (`8px 8px 0 0`) is one declaration and four radii; each
-      // corner is held to the scale, so an off-scale corner cannot hide behind
-      // a legal neighbour.
-      for (const corner of value
-        .split(/[\s/]+/)
-        .filter((part) => part !== "")) {
-        if (allowed(corner)) continue;
-        offScale.push(
-          `${drawing.name}:${line} border-radius: ${value} — \`${corner}\` is not on §3's scale (4/6/8/10/999), is no named degenerate mark (${[...DEGENERATE.keys()].join(", ")}), and is not square`,
-        );
+    const declared = mockupDeclarations(readMockup(drawing.path));
+    for (const arm of ARMS) {
+      const inClass = declared.filter(
+        (declaration) => arm.values(declaration) !== null,
+      );
+      // The positive control per drawing per class: a file the reader opened
+      // but read nothing out of is the shape this gate exists to end, so it
+      // reddens here rather than passing as a file with no off-scale value.
+      expect(
+        inClass.length,
+        `${drawing.name}: the drawing declares no ${arm.property}, so this row read nothing`,
+      ).toBeGreaterThan(0);
+      read.push(`${drawing.name} ${arm.property} (${inClass.length})`);
+      for (const declaration of inClass) {
+        for (const value of arm.values(declaration) ?? []) {
+          if (arm.allowed(value)) continue;
+          offScale.push(
+            `${drawing.name}:${declaration.line} ${declaration.property}: ${declaration.value} — \`${value}\` is not on ${arm.scale}, is no named degenerate value, and is no mark's anchor`,
+          );
+        }
       }
     }
   }
   expect(
     offScale,
-    `${drawings.length} drawing(s) declare a radius §3's closed scale does not contain (read: ${read.join(", ")})`,
+    `${drawings.length} drawing(s) declare a value their own scale does not contain (read: ${read.join(", ")})`,
   ).toEqual([]);
 });
 

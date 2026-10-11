@@ -78,11 +78,11 @@ test("the drawing is the checked-in file, read from disk", () => {
 test("the two control drawings declare the one field row a row reads", () => {
   // The label column, addressed by the one label that settles which element is
   // meant: the eleven short labels carry the same declaration and the twelfth —
-  // the long-copy label — carries it plus `padding-top:5px`, so every shorter
+  // the long-copy label — carries it plus `padding-top:4px`, so every shorter
   // substring matches twelve elements and the reader refuses to choose. The
   // twelfth declares the same `width:74px;flex:0 0 auto`.
   const LABELS =
-    '[style*="width:74px;flex:0 0 auto;color:var(--muted);font-size:11.5px;padding-top:5px"]';
+    '[style*="width:74px;flex:0 0 auto;color:var(--muted);font-size:11px;padding-top:4px"]';
   // The other half of the same row: the value cell the drawing stretches. Two
   // elements carry it and their `style` attributes are identical, which is one
   // element form to this reader — the narrower prefix also matches the
@@ -126,7 +126,7 @@ test("the two shapes the field row is not are read from the drawing that draws e
   // the second form, and a reader that started guessing between them would make
   // this row a comparison of whichever element the document lists last.
   const ASSET_TRIGGER =
-    '[style*="flex:1;display:flex;align-items:center;gap:6px;background:var(--panel2);border:1px solid var(--edge);border-radius:6px;padding:5px 8px"]';
+    '[style*="flex:1;display:flex;align-items:center;gap:6px;background:var(--panel2);border:1px solid var(--edge);border-radius:6px;padding:4px 8px"]';
   expect(mockupDeclared(drawing, ASSET_TRIGGER, "border-radius")).toBe("6px");
   expect(mockupDeclared(drawing, ASSET_TRIGGER, "gap")).toBe("6px");
   // The picker's own element addresses two forms, and that is the reason the
@@ -135,7 +135,7 @@ test("the two shapes the field row is not are read from the drawing that draws e
   expect(() =>
     mockupDeclared(
       drawing,
-      '[style*="display:flex;align-items:center;gap:6px;background:var(--panel2);border:1px solid var(--edge);border-radius:6px;padding:5px 8px"]',
+      '[style*="display:flex;align-items:center;gap:6px;background:var(--panel2);border:1px solid var(--edge);border-radius:6px;padding:4px 8px"]',
       "border-radius",
     ),
   ).toThrow(/does not settle which one it means/);
