@@ -116,11 +116,14 @@ const CURRENT_MOCKUPS_DIR = fileURLToPath(
 /** Every drawing in `docs/design/mockups/current/`, in name order, each with
  *  the checked-in path a failure names it by.
  *
- *  **A directory read, not a list of the four the plan built**, because the hole
- *  this closes is a drawing the reader did not know about: three of those four
- *  declared the same off-scale `7px` toggle track Task 3 corrected in
- *  `shell.html`, and the only row that reads a drawing's radius scale read
- *  `MOCKUP_PATH` alone. A fifth drawing added here is read the moment it lands
+ *  **A directory read, not a list of the six the directory holds today** —
+ *  `controls.html`, `controls-light.html`, `settings.html`,
+ *  `settings-keyboard.html`, `settings-about.html`, `shell.html` — because the
+ *  hole this closes is a drawing the reader did not know about: the set was four
+ *  when it landed, all four declared the off-scale `7px` toggle track the radius
+ *  sweep corrected in `shell.html`, and the only row that read a drawing's radius
+ *  scale read `MOCKUP_PATH` alone. Task 4 added the settings panel's two siblings
+ *  and this read took them without an edit; a seventh is read the moment it lands
  *  rather than joining the set silently (`vg-296`). */
 export function currentDrawings(): readonly {
   readonly path: string;
