@@ -12,7 +12,7 @@ import { ASSIGNABLE_GROUPS, type AssignableGroup } from "./devices.js";
  * never see it again.
  */
 
-export type ThemeAnswers = Readonly<Partial<Record<AssignableGroup, string>>>;
+type ThemeAnswers = Readonly<Partial<Record<AssignableGroup, string>>>;
 
 export interface ThemeSettingsStore {
   read(themeId: string): Promise<ThemeAnswers>;

@@ -23,7 +23,7 @@ import type {
  * the choice away and put a format where a reading belongs.
  */
 
-export const CLOCK_PROVIDER_ID = "clock";
+const CLOCK_PROVIDER_ID = "clock";
 
 const CLOCK_KEYS = ["time.now", "date.today"] as const;
 

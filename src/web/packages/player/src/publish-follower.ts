@@ -13,11 +13,11 @@
  * existing mount instead of reloading.
  */
 
-export interface PublishFollowerSession {
+interface PublishFollowerSession {
   fetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response>;
 }
 
-export interface PublishFollowerOptions {
+interface PublishFollowerOptions {
   readonly intervalMs?: number;
   readonly onRefused?: (reason: string) => void;
 }

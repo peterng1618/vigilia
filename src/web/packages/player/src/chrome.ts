@@ -23,7 +23,7 @@ import { uiCopy } from "./ui-copy.js";
  * and the colours are `ui-copy.ts`'s and the counting is `scene-fabric`'s.
  */
 
-export type ChromeSide = "top" | "bottom";
+type ChromeSide = "top" | "bottom";
 
 /** The band a strip belongs in.
  *

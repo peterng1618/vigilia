@@ -10,7 +10,7 @@ import type { LhmSensor } from "./lhm-tree.js";
  * install; a hand-written fixture did not reveal them. */
 
 /** LHM's `SensorType`, spelling its kind as `data.json` reports it. */
-export type LhmSensorType =
+type LhmSensorType =
   | "Temperature"
   | "Load"
   | "Power"
@@ -24,9 +24,9 @@ export type LhmSensorType =
   | "Current";
 
 /** Which hardware node a binding applies to, matched against its name. */
-export type HardwareGroup = "cpu" | "cooling" | "gpu" | "storage" | "network";
+type HardwareGroup = "cpu" | "cooling" | "gpu" | "storage" | "network";
 
-export interface LhmBinding {
+interface LhmBinding {
   readonly semanticKey: string;
   readonly group: HardwareGroup;
   readonly type: LhmSensorType;
@@ -48,7 +48,7 @@ const STORAGE_PATTERN =
   /ssd|hdd|nvme|disk|wdc|wd\d|\bst\d|ct\d|micron|samsung|lexar|seagate|kingston|toshiba|crucial|sandisk|intel ssd/i;
 const NETWORK_PATTERN = /ethernet|wi-?fi|wireless|network|802\.11/i;
 
-export function groupOf(hardwareName: string): HardwareGroup | undefined {
+function groupOf(hardwareName: string): HardwareGroup | undefined {
   // Order matters: a "Bluetooth Network Connection" is a network node, and a GPU
   // named "Intel Arc" must not be read as a CPU.
   if (NETWORK_PATTERN.test(hardwareName)) return "network";
@@ -200,7 +200,7 @@ const BINDINGS: readonly LhmBinding[] = [
 const MIB_PER_GB = 1024;
 const MEGABIT_PER_BYTE_PER_SECOND = 8 / 1_000_000;
 
-export function scaleFor(binding: LhmBinding, value: number): number {
+function scaleFor(binding: LhmBinding, value: number): number {
   switch (binding.type) {
     case "SmallData":
       // MB to GB, the unit the vocabulary declares for VRAM.
@@ -269,7 +269,7 @@ function deriveDiskUsed(sensors: readonly LhmSensor[]): number | undefined {
 }
 
 /** A GPU this machine reports, so a consumer can choose between them. */
-export interface GpuDeviceReading {
+interface GpuDeviceReading {
   readonly deviceId: string;
   readonly name: string;
 }
@@ -296,7 +296,7 @@ export function gpuDeviceReadings(
  * A drive reports Total and Free in GB and Used Space as a percentage, so used
  * capacity is derived the same way the aggregate is.
  */
-export interface DiskDeviceReading {
+interface DiskDeviceReading {
   readonly deviceId: string;
   readonly name: string;
   readonly usedGb: number;

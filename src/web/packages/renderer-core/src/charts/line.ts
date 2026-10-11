@@ -20,7 +20,7 @@ export type { EngineColor, LinearGradientColor };
  */
 
 export type Interpolation = "linear" | "smooth" | "step";
-export type DashPattern = "solid" | "dashed" | "dotted";
+type DashPattern = "solid" | "dashed" | "dotted";
 export type SeriesPoint = readonly [number, number | null];
 
 export interface LineSettings {
@@ -275,7 +275,7 @@ export function buildLineOption(
  * there is no honest mapping to the visible axis, and the stroke stays a single
  * colour (§85).
  */
-export function thresholdBands(
+function thresholdBands(
   paint: ChartPaint,
   palette: FabricPalette | undefined,
   range: { readonly min?: number; readonly max?: number },
@@ -317,7 +317,7 @@ function sampleTimeMs(sample: Sample): number {
 }
 
 /** Palette entry for one series, falling back to `stroke`. */
-export function strokeFor(settings: LineSettings, index: number): ChartPaint {
+function strokeFor(settings: LineSettings, index: number): ChartPaint {
   const palette = settings.palette;
 
   if (palette === undefined || palette.length === 0) {

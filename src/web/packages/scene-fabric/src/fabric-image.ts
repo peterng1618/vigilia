@@ -11,11 +11,11 @@ import { clampRenderScale } from "./render-scale.js";
  * for viewBox-only SVGs.
  */
 
-export interface ImageOptions {
+interface ImageOptions {
   readonly renderScale: number;
 }
 
-export interface ImageHooks {
+interface ImageHooks {
   readonly onAssetError?: (nodeId: string, src: string) => void;
   readonly onUnsupported?: (nodeId: string, reason: string) => void;
   readonly onDecoded?: (nodeId: string) => void;

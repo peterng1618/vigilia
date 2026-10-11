@@ -236,7 +236,7 @@ export function updateText(
  * what they see. `refreshBoundText` cannot serve that case, since it refreshes
  * only objects a sample resolves.
  */
-export interface ApplyAuthoredTextOptions {
+interface ApplyAuthoredTextOptions {
   /**
    * Rewrites resolved segments before they are painted. The editor uses it to
    * show a value run's token while authoring; a display never supplies it, so a

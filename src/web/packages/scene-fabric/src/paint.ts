@@ -7,8 +7,8 @@ import { Shadow } from "fabric/es";
  * fill/stroke must be cleared because Fabric defaults to black fill/1px stroke.
  */
 
-export type PaintMode = "box" | "text";
-export type FabricPaint = Readonly<Record<string, unknown>>;
+type PaintMode = "box" | "text";
+type FabricPaint = Readonly<Record<string, unknown>>;
 
 /** Report authored paint properties this canvas path cannot express. */
 export function unsupportedPaint(

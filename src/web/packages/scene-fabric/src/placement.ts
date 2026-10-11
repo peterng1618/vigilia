@@ -5,7 +5,7 @@ import type { PlanBox, PlanNode } from "@vigilia/renderer-core";
  * top-left anchored; Fabric 7 uses centre origins.
  */
 
-export interface FabricPlacement {
+interface FabricPlacement {
   readonly left: number;
   readonly top: number;
   readonly width: number;
@@ -27,7 +27,7 @@ export function placementFor(box: PlanBox): FabricPlacement {
   };
 }
 
-export interface GroupExtent {
+interface GroupExtent {
   readonly width: number;
   readonly height: number;
 }

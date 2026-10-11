@@ -4,7 +4,7 @@
  * plot reaches authored edges.
  */
 
-export interface GridInset {
+interface GridInset {
   readonly left: number;
   readonly right: number;
   readonly top: number;

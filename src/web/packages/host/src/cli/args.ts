@@ -28,7 +28,7 @@ export const DEFAULT_PORT = 5227;
 export const DEFAULT_HOST = "127.0.0.1";
 
 /** Stable Vigilia data location across platforms; the app folder. */
-export const DEFAULT_APP_DIR = path.join(os.homedir(), ".vigilia");
+const DEFAULT_APP_DIR = path.join(os.homedir(), ".vigilia");
 
 /** One directory per theme, read and written in place (ADR-0017). */
 export const DEFAULT_THEMES_DIR = path.join(DEFAULT_APP_DIR, "themes");

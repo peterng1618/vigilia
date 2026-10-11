@@ -89,7 +89,7 @@ type Fetcher = (
   text(): Promise<string>;
 }>;
 
-export interface LhmProviderOptions {
+interface LhmProviderOptions {
   readonly baseUrl?: string;
   readonly fetcher?: Fetcher;
   readonly timeoutMs?: number;

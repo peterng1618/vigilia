@@ -30,7 +30,7 @@
  * depend on (`MEASUREMENT_SYSTEMS`), and moving one line there adds no edge.
  * Until a second entry exists, closing it buys a package for a label.
  */
-export interface TemplateEntry {
+interface TemplateEntry {
   readonly id: string;
   readonly name: string;
 }

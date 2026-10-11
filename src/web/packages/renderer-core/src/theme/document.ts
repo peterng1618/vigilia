@@ -170,7 +170,7 @@ export type TextRun =
  * width is a cache this re-asserts. The box's top-left is the object's
  * `left`/`top`, so only the two dimensions belong here.
  */
-export interface TextBox {
+interface TextBox {
   readonly width: number;
   readonly height: number;
 }

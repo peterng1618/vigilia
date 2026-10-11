@@ -23,7 +23,7 @@ export interface BackgroundMediaOptions {
 }
 
 /** Reconfiguration carries the document, never the frame subscription. */
-export type BackgroundMediaUpdate = Omit<
+type BackgroundMediaUpdate = Omit<
   BackgroundMediaOptions,
   "host" | "onFrame"
 >;

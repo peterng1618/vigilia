@@ -185,7 +185,7 @@ function diskTotals(
 }
 
 /** The device a controller is, and the name a consumer would recognise it by. */
-export interface GpuSelection {
+interface GpuSelection {
   readonly controller: ControllerLike;
   /**
    * Absent when the machine reports the card but does not name it. One field
@@ -212,7 +212,7 @@ export interface GpuSelection {
  * it is stable frame to frame, which a "busiest" default would not be: the
  * caption would change text every sample as load moved between cards.
  */
-export function selectGpu(
+function selectGpu(
   controllers: readonly ControllerLike[],
   assigned: string | undefined,
 ): GpuSelection | undefined {

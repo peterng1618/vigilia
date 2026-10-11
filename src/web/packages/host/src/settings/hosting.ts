@@ -11,20 +11,20 @@ import path from "node:path";
  * serving a home network because something could not be read.
  */
 
-export interface HostingSettings {
+interface HostingSettings {
   readonly lan: boolean;
 }
 
-export const DEFAULT_HOSTING_SETTINGS: HostingSettings = { lan: false };
+const DEFAULT_HOSTING_SETTINGS: HostingSettings = { lan: false };
 
-export interface HostingSettingsStore {
+interface HostingSettingsStore {
   read(): Promise<HostingSettings>;
   write(input: unknown): Promise<HostingSettings>;
 }
 
 const FILE = "hosting.json";
 
-export function normalizeHostingSettings(input: unknown): HostingSettings {
+function normalizeHostingSettings(input: unknown): HostingSettings {
   if (typeof input !== "object" || input === null || Array.isArray(input)) {
     return DEFAULT_HOSTING_SETTINGS;
   }

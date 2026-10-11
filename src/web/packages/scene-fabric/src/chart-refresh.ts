@@ -5,7 +5,7 @@ type FrameDriver = {
   readonly cancelFrame: (frame: number) => void;
 };
 
-export interface ChartRefreshOptions {
+interface ChartRefreshOptions {
   /** Reports a refresh that threw, once per distinct message. A refresh that
       throws still reschedules, so one bad chart degrades the cadence instead of
       stopping the scene from repainting at all. */

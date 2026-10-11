@@ -10,7 +10,7 @@ export interface DisplaySession {
   readonly expiresAt: string;
 }
 
-export interface SessionStoreOptions {
+interface SessionStoreOptions {
   /** Sessions are short-lived: a leaked token must stop working on its own. */
   readonly ttlMs?: number;
   readonly now?: () => number;

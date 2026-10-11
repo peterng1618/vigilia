@@ -12,7 +12,7 @@ import type { FabricThemeEnvelope } from "@vigilia/renderer-core";
  * number and re-reads only when it moves.
  */
 
-export interface PublishedDocument {
+interface PublishedDocument {
   readonly id: string;
   readonly envelope: FabricThemeEnvelope;
   /** Bumped by every publish and by every stop. A display polls this. */

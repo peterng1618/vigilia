@@ -16,7 +16,7 @@ export const ASSIGNABLE_GROUPS = ["gpu", "system-disk", "data-disk"] as const;
 
 export type AssignableGroup = (typeof ASSIGNABLE_GROUPS)[number];
 
-export interface DeviceSettings {
+interface DeviceSettings {
   /** Chosen device per group. An absent group means "the default device". */
   readonly assigned: Readonly<Partial<Record<AssignableGroup, string>>>;
   /**

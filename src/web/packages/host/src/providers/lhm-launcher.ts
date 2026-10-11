@@ -37,7 +37,7 @@ export function requiresElevation(executable: string): boolean {
 }
 
 /** The task LHM registers for "Start on Windows startup". */
-export const LHM_TASK_NAME = "LibreHardwareMonitor";
+const LHM_TASK_NAME = "LibreHardwareMonitor";
 
 /**
  * Whether LHM's own startup task is registered. Such a task runs with
@@ -63,7 +63,7 @@ export function hasLhmStartupTask(
   }
 }
 
-export interface LhmLaunchOptions {
+interface LhmLaunchOptions {
   /** Path to `LibreHardwareMonitor.exe`. */
   readonly executable: string;
   /** Endpoint to poll until the server answers. */
@@ -75,7 +75,7 @@ export interface LhmLaunchOptions {
   ) => Pick<ChildProcess, "kill" | "once" | "killed">;
 }
 
-export interface LhmLaunchResult {
+interface LhmLaunchResult {
   readonly started: boolean;
   /** Why it did not start, for the status line. */
   readonly reason?: string;
@@ -236,7 +236,7 @@ export async function launchLhm(
  * Windows shows a single consent dialog; the caller must run from a terminal
  * where that dialog can appear.
  */
-export interface RegisterTaskResult {
+interface RegisterTaskResult {
   readonly ok: boolean;
   readonly message: string;
 }

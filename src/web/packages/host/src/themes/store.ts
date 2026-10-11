@@ -18,7 +18,7 @@ import { moveToTrash } from "./trash.js";
  *     <library>/<theme-id>/assets/<declared path>
  */
 
-export interface ThemeStoreEntry {
+interface ThemeStoreEntry {
   readonly id: string;
   readonly name: string;
   /** The envelope's author, when it declares one; the library shows it. */
@@ -26,7 +26,7 @@ export interface ThemeStoreEntry {
   readonly updatedAt: string;
 }
 
-export interface ThemeStoreRecord extends ThemeStoreEntry {
+interface ThemeStoreRecord extends ThemeStoreEntry {
   readonly ok: true;
   /** The stored document's identity, which a save made from this read is
    *  based on. See {@link ThemeWriteOptions.base}. */
@@ -61,7 +61,7 @@ export interface ThemeContent {
  * trust — it is the same claim, already settled by the comparison above, and
  * the host re-checks the file itself before it copies.
  */
-export interface ThemeWriteOptions {
+interface ThemeWriteOptions {
   readonly base?: string;
   /** Apply the save whatever is stored. The one way past the guard, and only
    *  an author who was told their save was refused should reach for it. */
@@ -69,7 +69,7 @@ export interface ThemeWriteOptions {
 }
 
 /** A save's outcome: the listing line, and the base the next save is made on. */
-export interface ThemeStoreSave extends ThemeStoreEntry {
+interface ThemeStoreSave extends ThemeStoreEntry {
   readonly base: string;
 }
 
@@ -107,7 +107,7 @@ export class ThemeAssetLimitError extends Error {
  * a test substitutes a rename so the store's own decisions can be told apart
  * from the operating system's.
  */
-export interface ThemeStoreOptions {
+interface ThemeStoreOptions {
   readonly trash?: (folder: string) => Promise<void>;
 }
 

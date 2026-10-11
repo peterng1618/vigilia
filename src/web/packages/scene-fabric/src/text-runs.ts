@@ -11,17 +11,17 @@ import { paintFor } from "./paint.js";
  * are reported when a run tries to override them.
  */
 
-export type FabricTextStyles = Readonly<
+type FabricTextStyles = Readonly<
   Record<number, Readonly<Record<number, Readonly<Record<string, unknown>>>>>
 >;
 
-export interface FabricTextShape {
+interface FabricTextShape {
   readonly text: string;
   readonly styles: FabricTextStyles;
   readonly unsupported: readonly string[];
 }
 
-export type GraphemeSplitter = (value: string) => readonly string[];
+type GraphemeSplitter = (value: string) => readonly string[];
 
 /**
  * Fabric per-character key → authored properties that may feed it.

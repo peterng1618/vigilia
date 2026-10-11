@@ -86,7 +86,7 @@ function linux(folder: string): readonly TrashRoute[] {
 }
 
 /** What this platform's trash is reached by, or why it has none. */
-export type TrashPlan =
+type TrashPlan =
   | { readonly ok: true; readonly routes: readonly TrashRoute[] }
   | { readonly ok: false; readonly reason: string };
 
