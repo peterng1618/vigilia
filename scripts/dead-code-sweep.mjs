@@ -55,8 +55,10 @@
  *                  a later phase is budgeting against.
  *   --self-test    run the checks below and exit non-zero on any failure. Both
  *                  this file and the `--json` one are overwritten with an
- *                  incomplete marker before the run starts (see below), so a
- *                  crash cannot leave a previous run's result on disk.
+ *                  incomplete marker before the run starts (see below), and the
+ *                  self-test's own file is written twice at the end — an
+ *                  in-progress document, then the result — so moving any of
+ *                  those writes is a change to the crash story, not a tidy-up.
  */
 import { mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
@@ -90,16 +92,37 @@ const SELF_TEST = argv.includes("--self-test");
  *
  * The marker does the work, not the clock: no timestamp or run id, which would
  * invite comparing two runs instead of asking whether this one finished.
+ *
+ * The self-test needs a second write as well as the start-up marker, because it
+ * collects its checks in one array and reads them back off disk: between its
+ * first write and its last, a file that already read `incomplete: false` would
+ * be a pass sitting beside a non-zero exit — the same shape the marker exists to
+ * remove, one write later. So the first write carries `incomplete: true` in an
+ * explicit in-progress document, and only the completion write carries `false`.
+ * Collapsing the two into one end-of-run write is the obvious wrong fix: the
+ * guardian below proves the incomplete document really landed by reading it off
+ * disk, and the `--json` intactness check must run after the self-test has
+ * written — one write leaves both reading the previous run's artifact.
  */
 const SELFTEST_JSON = join(WEB, "test-results", "dead-code-sweep-self-test.json");
 
+/**
+ * The start-of-run marker, written before any check runs.
+ *
+ * Failure-shaped on purpose, not merely `incomplete: true`: `failed` is
+ * non-empty and `checks` is not an empty array, so the plausible reader
+ * predicates that are *not* `isCompletePass` — `doc.failed.length === 0` and
+ * `doc.checks.length === 0` — cannot read a crash as success either. `total: 0`
+ * is what blocks the `passed === total` vacuous pass.
+ */
 const incompleteSelfTestResult = () => ({
   incomplete: true,
   selfTest: true,
+  stage: "start-up",
   passed: 0,
-  failed: [],
   total: 0,
-  checks: [],
+  failed: ["this run did not finish — the process ended before the checks completed"],
+  checks: [{ name: "the checks never ran: this document is the start-of-run marker, not a result", ok: false }],
   note: "This run did not finish — the process ended before the checks completed, so this file holds no result for it. It is not a pass.",
 });
 
@@ -121,14 +144,46 @@ const writeJson = (path, doc) => {
   writeFileSync(resolve(path), `${JSON.stringify(doc, null, 2)}\n`, "utf8");
 };
 
-/** Whether a path currently holds the start-of-run marker. */
-const readIncompleteMarker = (path) => {
+/** The document at a path, or null when it is missing or is not JSON. */
+const readJsonDoc = (path) => {
   try {
-    return JSON.parse(readFileSync(resolve(path), "utf8")).incomplete === true;
+    return JSON.parse(readFileSync(resolve(path), "utf8"));
   } catch {
-    return false;
+    return null;
   }
 };
+
+/** Whether a path currently holds the start-of-run marker. */
+const readIncompleteMarker = (path) => readJsonDoc(path)?.incomplete === true;
+
+/**
+ * The self-test's in-progress document: written once its checks are collected
+ * but before the run is finished, so a crash before the completion write leaves
+ * this on disk instead of a pass. See `SELFTEST_JSON` above for why two writes
+ * are required rather than one.
+ *
+ * Distinct from the start-up marker by `stage`, so the guardian can tell "in
+ * progress" from "never started" — otherwise a silent in-progress write would
+ * leave the marker behind and the guardian would pass vacuously.
+ *
+ * Failure-shaped the same way the marker is: `failed` names the reason, `checks`
+ * is not an empty array, and `total: 0` blocks the `passed === total` vacuous
+ * pass. The collected checks are deliberately *not* carried here — a list of
+ * `ok: true` rows reads as a pass to a reader counting `failed`, which is the
+ * shape problem the marker was fixed for.
+ */
+const inProgressSelfTestResult = (collected) => ({
+  incomplete: true,
+  selfTest: true,
+  stage: "in-progress",
+  passed: 0,
+  total: 0,
+  failed: [
+    `this run has not finished — ${collected} of its checks are collected and the completion write has not run, so this document is a snapshot and not a result`,
+  ],
+  checks: [{ name: "the checks are collected but not yet a result", ok: false }],
+  note: "Written before the run finishes. The completion write replaces it; if this is still on disk, the process ended early and there is no result here.",
+});
 
 if (SELF_TEST) writeJson(SELFTEST_JSON, incompleteSelfTestResult());
 if (jsonPath !== null && jsonPath !== undefined) writeJson(jsonPath, incompleteCandidateReport());
@@ -903,26 +958,42 @@ if (SELF_TEST) {
   ];
 
   const outPath = resolve(SELFTEST_JSON);
+  /**
+   * The self-test's result, in the shape the completion write serialises.
+   * `incomplete` is deliberately absent: only the completion write may claim a
+   * finished run, and that flag is what every reader keys on.
+   */
   const result = {
-    incomplete: false,
+    selfTest: true,
     checks: [],
     passed: 0,
     failed: [],
     total: 0,
-    selfTest: true,
-    note: "A run with fewer than total passes is a failure; the file is written either way so the count can be read without the terminal. `incomplete: false` marks a finished run — the start-of-run marker writes `true` to this path.",
+    note: "A run with fewer than total passes is a failure; the file is written either way so the count can be read without the terminal. `incomplete: false` marks a finished run — the start-of-run marker and the in-progress write both leave `true` here.",
   };
-  const write = () => {
+
+  /** The checks collected so far, in the result document's shape. */
+  const collect = () => {
     result.checks = checks.map(([name, ok]) => ({ name, ok }));
     result.passed = checks.filter(([, ok]) => ok).length;
     result.failed = checks.filter(([, ok]) => !ok).map(([name]) => name);
     result.total = checks.length;
-    writeJson(SELFTEST_JSON, result);
   };
 
-  /** Read before the first write: the start-up marker is what completion replaces. */
-  const markerOnDisk = readIncompleteMarker(SELFTEST_JSON);
-  write();
+  /**
+   * Read before the first write — the only moment the start-up marker is on
+   * disk, since the in-progress write below replaces it. Its *shape* is read
+   * here and asserted in the guardian, not only its `incomplete` flag: a marker
+   * whose `failed` is empty reads as a pass to a reader who does not apply
+   * `isCompletePass`.
+   */
+  const startUpMarker = readJsonDoc(SELFTEST_JSON);
+  const markerOnDisk = startUpMarker?.incomplete === true;
+
+  // First write: the checks collected so far, in progress. It must be this
+  // document rather than the start-up marker, or the guardian below cannot tell
+  // that the write happened at all.
+  writeJson(SELFTEST_JSON, inProgressSelfTestResult(checks.length));
 
   /**
    * The regression this guards: the self-test once wrote its result to the same
@@ -952,35 +1023,60 @@ if (SELF_TEST) {
   ]);
 
   /**
-   * The guardian for the mechanism above, and pushed after its first write so it
-   * reads the artefact a later phase reads rather than the in-memory object.
+   * The guardian for the mechanism above, pushed after the in-progress write so
+   * it reads the artefact a later phase reads rather than the in-memory object.
    *
-   * The property is the short-circuit one: before completion the marker is the
-   * *only* thing on disk, so if the marker cannot satisfy `isCompletePass`, no
-   * early exit can leave a completion behind. `markerOnDisk` is the other half —
-   * the assertion that the marker write really happened, which the shapes alone
-   * cannot show. And asserting the real file is a complete pass keeps the
-   * predicate strict: a check on the marker alone would pass while
-   * `isCompletePass` was loosened to `passed === total`, which is exactly the
-   * `0/0` marker reading as a vacuous pass.
+   * Three properties, and the third is the one three earlier rounds missed by
+   * asserting only the first two:
+   *
+   *   1. the marker writes really landed — `markerOnDisk` and
+   *      `candidateMarkerOnDisk`, which the shapes alone cannot show;
+   *   2. nothing unfinished satisfies `isCompletePass`. The in-progress document
+   *      is on disk *right now*, while this check and the `--json` intactness
+   *      check above run, and a throw in either exits non-zero beside it. So
+   *      that window is precisely what has to fail the predicate;
+   *   3. the completed shape still satisfies it, so a later tightening cannot
+   *      make a finished run unreadable.
+   *
+   * Asserting the file was a *complete* pass here was the bug rather than the
+   * guard: it held only while the first write already claimed completion.
    */
   checks.push([
-    "an unfinished run cannot read as a pass (both reports carry the start-up marker until completion)",
+    "an unfinished run cannot read as a pass (the start-up marker and the in-progress write both fail it)",
     (() => {
-      const onDisk = JSON.parse(readFileSync(outPath, "utf8"));
-      const marker = incompleteSelfTestResult();
+      const onDisk = readJsonDoc(outPath);
+      const startUp = incompleteSelfTestResult();
       return (
         markerOnDisk &&
         candidateMarkerOnDisk &&
-        isCompletePass(onDisk) &&
-        onDisk.incomplete === false &&
-        onDisk.passed === onDisk.total &&
-        marker.incomplete === true &&
-        !isCompletePass(marker)
+        // The in-progress write really landed, and is not the start-up marker.
+        onDisk?.stage === "in-progress" &&
+        onDisk.incomplete === true &&
+        onDisk.total === 0 &&
+        onDisk.failed?.length > 0 &&
+        onDisk.checks?.length > 0 &&
+        !isCompletePass(onDisk) &&
+        // Not even a run that collected every check without finishing: the
+        // `incomplete` flag, not the counts, is what says the run ended.
+        !isCompletePass({ incomplete: true, total: checks.length, passed: checks.length }) &&
+        // While a genuinely finished document still passes it.
+        isCompletePass({ incomplete: false, total: checks.length, passed: checks.length }) &&
+        // And a zero-check document does not, which is what `total > 0` is for:
+        // without it, a `0/0` document reads as a vacuous pass.
+        !isCompletePass({ incomplete: false, total: 0, passed: 0 }) &&
+        // The start-up marker is failure-shaped as well as incomplete.
+        startUp.stage === "start-up" &&
+        startUp.incomplete === true &&
+        startUp.failed.length > 0 &&
+        startUp.checks.length > 0 &&
+        !isCompletePass(startUp)
       );
     })(),
   ]);
-  write();
+
+  // Second, and last, write: the only place `incomplete: false` is ever written.
+  collect();
+  writeJson(SELFTEST_JSON, { ...result, incomplete: false });
 
   for (const { name, ok } of result.checks) process.stdout.write(`${ok ? "  ok  " : "  FAIL"} ${name}\n`);
   process.stdout.write(`\ndead-code-sweep self-test: ${result.passed}/${result.total} passed -> ${outPath}\n`);
