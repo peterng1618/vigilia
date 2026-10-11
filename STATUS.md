@@ -31,10 +31,10 @@ satisfies every token in the bible and still does not look like the mockup.
 
 ## Last completed change
 
-- **Fix round 3 on Task 6**: the `add`-slot sentence drops its count and per-site assertion claim (the third round on this comment) and now states the capability and the citation only.
-- **The chart-select bound cites the search that supports it**: `panels.notSet` across every test file returns only the About-tab negative and the two usage-figure sites, so no test renders the chart select's gap word.
-- **Each About-tab and number-field half is attributed to what carries it**: `settings.dom.test.tsx` asserts the absent row and the missing gap word; `controls.dom.test.ts` and `control.dom.test.tsx` assert the empty box and the never-a-zero commit; the "rather than a dash" half is the source's.
-- **STATUS.md's Next no longer names Task 5's re-review** (Task 5 is closed); it says Task 6's close, then Tasks 7–9.
+- **Fix round 4 on Task 6**: the chart-select sentence's "the only hits are" becomes "the only assertions naming it are" — the sentence holds `panels.notSet`, so its own prose was among the search's hits and the claim could never reproduce.
+- **The one-word form was chosen over dropping the enumeration**: it is immune to the self-hit (this comment's line is not an assertion) and keeps the evidence round 3 verified.
+- **The three named lines are the only assertions naming the identifier**; a re-run returns six lines, two this comment's own text and one a comment in `settings.dom.test.tsx`.
+- **No assertion, source file or register row changed** — one comment sentence in `copy-defects.test.ts` and this STATUS edit.
 
 ## Next
 

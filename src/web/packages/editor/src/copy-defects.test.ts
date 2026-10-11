@@ -196,7 +196,7 @@ interface AbsentReading {
  *
  * **Not rendered here, and no test renders it.** `chart-fields.tsx:351`, the
  * chart select's gap option. Searched `panels.notSet` across every `*.test.ts`
- * and `*.test.tsx` under `packages/editor/src`: the only hits are
+ * and `*.test.tsx` under `packages/editor/src`: the only assertions naming it are
  * `settings.dom.test.tsx:594` (the About tab asserting its *absence*),
  * `usage.dom.test.ts:126` and `paint-list.dom.test.tsx:284` (the usage-figure
  * site, a different renderer), so no test renders this one.
