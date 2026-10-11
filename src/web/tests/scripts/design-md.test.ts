@@ -146,9 +146,7 @@ it("lets a marker sit under a sub-heading the mapped `##` encloses", () => {
     citations: ["§7.1"],
     mapping: new Map([["7", ["## Layout"]]]),
   });
-  expect(
-    checkCitations(read, { numbers: ["7.1"], uncitedOk: [] }),
-  ).toEqual([]);
+  expect(checkCitations(read, { numbers: ["7.1"], uncitedOk: [] })).toEqual([]);
 });
 
 it("fails a marker under a duplicated heading its mapping names", () => {
