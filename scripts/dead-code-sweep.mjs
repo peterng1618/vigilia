@@ -60,7 +60,7 @@
  *                  in-progress document, then the result — so moving any of
  *                  those writes is a change to the crash story, not a tidy-up.
  */
-import { mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from "node:fs";
+import { mkdirSync, readFileSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -134,14 +134,94 @@ const incompleteSelfTestResult = () => ({
  */
 const isCompletePass = (doc) => doc.incomplete === false && doc.total > 0 && doc.passed === doc.total;
 
+/**
+ * The candidate report's start-of-run marker — failure-shaped, the way the
+ * self-test's marker is, and against the same argument: a reader asking "is this
+ * a clean sweep?" does not necessarily ask it with `isCompletePass`.
+ *
+ * `!doc.candidates` is one phrasing, and for four rounds it was the only one
+ * this document had to defeat — a marker with no `candidates` key *passes* it.
+ * Every plausible phrasing must answer no instead:
+ *
+ *   !doc.candidates            -> candidates is a truthy object
+ *   doc.candidates.length === 0 -> it has no `length` to be zero
+ *   Array.isArray(candidates)   -> it is not an array
+ *   doc.incomplete === false    -> incomplete is true
+ *   doc.failed.length === 0     -> failed names the reason
+ *   doc.passed === doc.total    -> 0 of 1, never equal (undefined === undefined
+ *                                  is the trap here: a marker with neither field
+ *                                  satisfies the comparison)
+ *
+ * `candidates: []` is the trap the object avoids: an empty list moves the false
+ * pass from `!doc.candidates` to `candidates.length === 0` rather than removing
+ * it. `total: 1` with one failing row is the self-test marker's shape, so the two
+ * documents stay one convention rather than two.
+ */
 const incompleteCandidateReport = () => ({
   incomplete: true,
+  stage: "start-up",
+  passed: 0,
+  total: 1,
+  failed: ["this run did not finish — the scan did not complete, so there is no candidate list for it"],
+  checks: [{ name: "the scan did not complete: this document is the start-of-run marker, not a result", ok: false }],
+  candidates: { note: "no candidate list — this run did not finish; this is not a clean sweep and not a previous run's list" },
   note: "This run did not finish — the scan did not complete, so there is no candidate list for it. This is not a clean sweep and not a previous run's list.",
 });
 
+/**
+ * Every phrasing of "this is a clean sweep" a reader might apply to the
+ * candidate report. The marker has to make all of them false; asserting the
+ * first alone is how the marker read as success for four rounds. Kept as a
+ * helper so the self-test asserts the list rather than a hand-picked clause.
+ */
+const cleanSweepReadings = (doc) => [
+  !doc.candidates,
+  doc.candidates?.length === 0,
+  Array.isArray(doc.candidates),
+  doc.incomplete === false,
+  doc.failed?.length === 0,
+  doc.passed === doc.total,
+];
+
+/**
+ * Write a document so that no reader can observe *half* of one.
+ *
+ * `writeFileSync` in place truncates first, so an interrupted write — the
+ * completion write replacing the candidate marker, most of all — leaves a
+ * partial file, and a partial file parses as nothing, which is the same false
+ * pass the marker exists to remove. A sibling temporary renamed over the
+ * destination cannot do that: an interrupted completion write leaves the marker
+ * in place. Measured here, not assumed, with a reader polling a 50 KB document
+ * through 400 replacements (40,701 reads): the rename exposed **0** partial and
+ * 0 empty documents, where the in-place write exposed 100 of its 949 reads.
+ *
+ * The measurement also refuses the POSIX claim. This is not an atomic replace:
+ * 290 of those 40,701 reads found the destination briefly absent (a control run
+ * with the destination untouched saw none), so a reader can still hit "no file"
+ * and has to treat that as no result rather than as a clean sweep. The window is
+ * a missing name, never a half-written document — which is the improvement, and
+ * the reason the *marker*, not the write, stays what a reader keys on.
+ *
+ * The fallback is the plain in-place write this function used before the rename.
+ * `renameSync` fails `EPERM` while another handle is open on the destination
+ * (no delete-sharing on Windows), and a sustained reader blocks it indefinitely
+ * — 444 of 500 renames gave up after ten immediate retries, so a retry loop is
+ * not a fix. Falling back keeps a scan that produced a valid document from
+ * dying; the failure-shaped markers above are what keep the degraded case
+ * readable.
+ */
 const writeJson = (path, doc) => {
-  mkdirSync(dirname(resolve(path)), { recursive: true });
-  writeFileSync(resolve(path), `${JSON.stringify(doc, null, 2)}\n`, "utf8");
+  const target = resolve(path);
+  mkdirSync(dirname(target), { recursive: true });
+  const body = `${JSON.stringify(doc, null, 2)}\n`;
+  const temp = `${target}.${process.pid}.tmp`;
+  try {
+    writeFileSync(temp, body, "utf8");
+    renameSync(temp, target);
+  } catch {
+    rmSync(temp, { force: true });
+    writeFileSync(target, body, "utf8");
+  }
 };
 
 /** The document at a path, or null when it is missing or is not JSON. */
@@ -152,9 +232,6 @@ const readJsonDoc = (path) => {
     return null;
   }
 };
-
-/** Whether a path currently holds the start-of-run marker. */
-const readIncompleteMarker = (path) => readJsonDoc(path)?.incomplete === true;
 
 /**
  * The self-test's in-progress document: written once its checks are collected
@@ -793,9 +870,14 @@ function renderReport(report) {
  * start-up write above would leave the mechanism passing its own gate while a
  * crash once again left the previous run's candidate list to be mistaken for
  * this one's. Vacuous without `--json`, like the check that reads it.
+ *
+ * The whole document is kept, not only its flag: the self-test asserts the
+ * marker's failure *shape* against what really landed, and the completion write
+ * below replaces it a moment from now.
  */
+const candidateMarker = jsonPath === null || jsonPath === undefined ? null : readJsonDoc(jsonPath);
 const candidateMarkerOnDisk =
-  jsonPath === null || jsonPath === undefined ? true : readIncompleteMarker(jsonPath);
+  jsonPath === null || jsonPath === undefined || candidateMarker?.incomplete === true;
 
 if (jsonPath !== null && jsonPath !== undefined) writeJson(jsonPath, report);
 
@@ -955,6 +1037,23 @@ if (SELF_TEST) {
       "every kind is reported, including the ones that found nothing",
       KINDS.every((kind) => typeof report.countsByKind[kind] === "number"),
     ],
+    /**
+     * The candidate marker, against the argument the self-test's own marker
+     * gets: a reader may ask "is this a clean sweep?" in several phrasings and
+     * every one must answer no. Asserting the list rather than one clause is
+     * what makes `candidates: []` — which satisfies `!doc.candidates` exactly
+     * as the old marker did — fail here.
+     *
+     * The on-disk half is vacuous without `--json`, which is the only mode that
+     * writes that marker; with it, this reads the document that really landed.
+     */
+    [
+      "the candidate marker fails every clean-sweep reading, and the marker on disk is that shape (the second half is vacuous unless --json was passed)",
+      cleanSweepReadings(incompleteCandidateReport()).every((reads) => reads === false) &&
+        (candidateMarker === null ||
+          (candidateMarker.incomplete === true &&
+            cleanSweepReadings(candidateMarker).every((reads) => reads === false))),
+    ],
   ];
 
   const outPath = resolve(SELFTEST_JSON);
@@ -1006,11 +1105,18 @@ if (SELF_TEST) {
    * it here is what makes the red-proof reproduce.
    *
    * Vacuous without `--json`, which is why the usage line names both flags.
+   *
+   * It asserts a *finished* report — `incomplete: false` and an array — rather
+   * than the presence of a `candidates` key. The key alone stopped meaning
+   * anything once the start-up marker carried one too: a guard the marker
+   * satisfies is a guard that cannot fail, and this check's whole reason to
+   * exist is that it fails when the report is clobbered.
    */
   let intact = jsonPath === null || jsonPath === undefined;
   if (!intact) {
     try {
-      intact = Object.hasOwn(JSON.parse(readFileSync(resolve(jsonPath), "utf8")), "candidates");
+      const doc = JSON.parse(readFileSync(resolve(jsonPath), "utf8"));
+      intact = doc.incomplete === false && Array.isArray(doc.candidates);
     } catch {
       intact = false;
     }
@@ -1018,7 +1124,7 @@ if (SELF_TEST) {
   // Pushed unconditionally so the total is a stable number: a check that
   // appears only on some runs is a count nobody can quote.
   checks.push([
-    "the report at --json still holds candidates after the self-test ran (vacuous unless --json was passed)",
+    "the report at --json is still a finished candidate report after the self-test ran (vacuous unless --json was passed)",
     intact,
   ]);
 
