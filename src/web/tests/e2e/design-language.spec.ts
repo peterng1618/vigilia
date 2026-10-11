@@ -4,6 +4,7 @@ import { openPane } from "./editor-rail.js";
 import {
   colourValue,
   currentDrawings,
+  drawingTexts,
   lengthInPx,
   MOCKUP_PATH,
   mockupDeclarations,
@@ -12,6 +13,7 @@ import {
   PARITY,
   type ParityRegion,
   readMockup,
+  rowDrawing,
   SETTINGS_MOCKUP_PATH,
   SHELL_ROLES,
   SHELL_TOKEN_SELECTOR,
@@ -642,6 +644,10 @@ test("the control set renders in the design language", async ({
     drawings.length,
     "no parity row names the control-set fixture, so the two control drawings are read by nothing",
   ).toBeGreaterThanOrEqual(2);
+  /** Every drawing a row may name, read once — and a row naming a file this does
+   *  not hold throws (`rowDrawing`) rather than reading the shell's text as if it
+   *  were the file it named. */
+  const fixtureDrawings = drawingTexts();
   for (const row of drawings) {
     // `$eval` throws when the selector matches nothing, which is the reading
     // this row must not skip over.
@@ -652,7 +658,7 @@ test("the control set renders in the design language", async ({
       row.mockupProperty,
     );
     const declared = mockupDeclared(
-      readMockup(row.mockupPath ?? MOCKUP_PATH),
+      rowDrawing(row.mockupPath, fixtureDrawings),
       row.mockupSelector ?? "",
       row.mockupProperty,
     );
@@ -2186,12 +2192,10 @@ test("the shell and the settings modal are what the drawings draw", async ({
   // desktop surface, so a revert to reading the first token of a shorthand left
   // the fast suite green; the count and colour comparators plan 8 Task 1 added
   // are held there from the start, for the same reason.
-  const drawing = readMockup();
   expect(
     PARITY.length,
     "the parity table is empty, so this test can prove nothing",
   ).toBeGreaterThan(0);
-
   /** Rows are read with the surface they belong to open, because both dialogs
    *  render the one `.editor-shell-dialog` rule and only the route tells them
    *  apart — a value read with the wrong one open is a reading of the wrong
@@ -2309,17 +2313,15 @@ test("the shell and the settings modal are what the drawings draw", async ({
   const unresolved: string[] = [];
   const failures: string[] = [];
   const table: string[] = [];
-  /** A row's own drawing, read once per path. The shell's unless the row names
-   *  another file, so a surface drawn on its own (`current/settings.html`) is
-   *  compared against the file it was drawn in rather than against whichever one
-   *  this test opened first — which is how plan 8 Task 1's settings rows read a
-   *  drawing the shell test had never opened. */
-  const drawings = new Map<string, string>([
-    [MOCKUP_PATH, drawing],
-    [SETTINGS_MOCKUP_PATH, readMockup(SETTINGS_MOCKUP_PATH)],
-  ]);
+  /** A row's own drawing, read once per path, and **a path the reader was not
+   *  given throws** (`rowDrawing`): the shell's unless the row names another file,
+   *  so a surface drawn on its own (`current/settings.html`) is compared against
+   *  the file it was drawn in rather than against whichever one this test opened
+   *  first — which is how plan 8 Task 1's settings rows read a drawing the shell
+   *  test had never opened. */
+  const drawings = drawingTexts();
   const sourceOf = (row: ParityRegion): string =>
-    drawings.get(row.mockupPath ?? MOCKUP_PATH) ?? drawing;
+    rowDrawing(row.mockupPath, drawings);
   /** What a failure calls the row's drawing: a person has to be able to open it. */
   const nameOf = (row: ParityRegion): string =>
     row.mockupPath === undefined || row.mockupPath === MOCKUP_PATH

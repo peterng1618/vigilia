@@ -516,6 +516,42 @@ export function colourValue(value: string): string | null {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`;
 }
 
+/** Every drawing in `current/`, as text, keyed by the path a `PARITY` row names.
+ *
+ *  **The map a row's `mockupPath` is resolved against — a map rather than a
+ *  fallback.** A row that names a drawing the reader was not given is a broken
+ *  row: a settings row that lost its `mockupPath` would otherwise read
+ *  `current/shell.html` silently and could *pass* on a value the shell declares
+ *  where the drawing it means declares something else. `undefined` still means
+ *  the shell drawing, which is every plan 7 row. */
+export function drawingTexts(): ReadonlyMap<string, string> {
+  return new Map(
+    currentDrawings().map(({ path }) => [path, readMockup(path)] as const),
+  );
+}
+
+/** The drawing a row is read from: the one it names, or the shell drawing when it
+ *  names none.
+ *
+ *  **A path the reader was not given throws.** The silent default is what would
+ *  let a row read the wrong file and report the wrong file's value as its own —
+ *  the failure mode every other guard in this module exists to end, one level up.
+ *  A row's `mockupPath` is a claim about which file governs it, and a claim this
+ *  reader cannot honour has to be loud. */
+export function rowDrawing(
+  mockupPath: string | undefined,
+  drawings: ReadonlyMap<string, string>,
+): string {
+  const path = mockupPath ?? MOCKUP_PATH;
+  const text = drawings.get(path);
+  if (text === undefined) {
+    throw new Error(
+      `the row names a drawing the reader was not given (\`${path}\`): a row read from another file can pass on a value the drawing it names does not declare`,
+    );
+  }
+  return text;
+}
+
 /** Every property name the selector declares, each once and in document order.
  *
  *  The reading a *set* needs and a value cannot give: an assertion that each row

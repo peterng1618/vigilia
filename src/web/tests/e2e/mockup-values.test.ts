@@ -5,6 +5,7 @@ import {
   CONTROLS_MOCKUP_PATH,
   colourValue,
   currentDrawings,
+  drawingTexts,
   lengthInPx,
   MOCKUP_PATH,
   mockupDeclared,
@@ -12,6 +13,7 @@ import {
   mockupDeclaredProperties,
   PARITY,
   readMockup,
+  rowDrawing,
   SETTINGS_MOCKUP_PATH,
   SHELL_ROLES,
   SHELL_TOKEN_SELECTOR,
@@ -169,6 +171,44 @@ test("the settings drawing declares the modal's regions, each read by the row th
       "height",
     ),
   ).toThrow(/addresses 12 elements/);
+});
+
+test("a row is read from the drawing it names, and a path the reader was not given fails loudly", () => {
+  // **The silent default.** `undefined` means the shell drawing — every plan 7
+  // row — and must keep meaning it; a row that names a file must read *that* file;
+  // and a row naming a file the reader was not given is a broken row, not a shell
+  // reading. Without the throw, a settings row that lost its `mockupPath` would
+  // read `current/shell.html` and could pass on a value the shell declares where
+  // `current/settings.html` declares something else — the "a real value on the
+  // wrong element reads as a pass" failure this module exists to end, one level
+  // up. (The other half of that pair is proved above: the settings nav's
+  // `width:150px` selector addresses nothing in the shell drawing and throws.)
+  const known = drawingTexts();
+  expect(known.size).toBe(currentDrawings().length);
+  expect(rowDrawing(undefined, known)).toBe(drawing);
+  expect(rowDrawing(SETTINGS_MOCKUP_PATH, known)).toBe(settings);
+  expect(rowDrawing(CONTROLS_MOCKUP_PATH, known)).toBe(
+    readMockup(CONTROLS_MOCKUP_PATH),
+  );
+
+  // The exact case the fallback hid: a map holding the shell drawing and not the
+  // settings one. A fallback would answer the shell's text and the row would
+  // compare against the wrong file.
+  expect(() =>
+    rowDrawing(SETTINGS_MOCKUP_PATH, new Map([[MOCKUP_PATH, drawing]])),
+  ).toThrow(/was not given/);
+  expect(() => rowDrawing("/nowhere/missing.html", known)).toThrow(
+    /was not given/,
+  );
+
+  // And every row in the table resolves, so a `mockupPath` typo reddens here in
+  // the fast suite rather than reading another file in the browser run.
+  for (const row of PARITY) {
+    expect(
+      () => rowDrawing(row.mockupPath, known),
+      `${row.region}: the reader was not given the drawing this row names`,
+    ).not.toThrow();
+  }
 });
 
 test("the drawing's own token table is read, and all eleven tokens with it", () => {
