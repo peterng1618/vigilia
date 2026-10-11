@@ -30,18 +30,18 @@ satisfies every token in the bible and still does not look like the mockup.
 
 ## Last completed change
 
-- **Plan 8 Task 8 — the drawings gate holds spacing and type, not radius alone** (`80ae353f`): the six drawings' **268 off-scale literals** corrected to §3's steps and §2's six sizes, and the radii row widened to three classes over the same reader rather than a second one.
-- **The correction removed far more divergences than it made**: the settings nav's `gap:9px`/`padding:7px 8px` → `8px`/`6px 8px` is `.editor-shell-settings-tab`'s own pair, the preview bars' `3px` → `4px` is `settings.tsx:173`'s, the palette and switch labels' `11.5px` → `11px` is `text-xs`, the mono rows' `11.5px` → `12px` is `font-mono text-sm`, and the dock's `2px`/`5px` → `4px`/`4px` is `.editor-shell-dock`'s.
-- **Six divergences are created and reported, not absorbed**: the Close's `margin-top:16px` against `.editor-shell-dialog > button`'s off-scale `18px`, the rail's `gap:4px` against `.editor-shell-rail`'s off-scale `3px`, the asset buttons' `4px 8px`/`12px` against `4px 7px`/an inherited `13px`, the panel's `10px 10px 14px` against `12px`, and the nav column's `10px 6px`; four corrections have no product counterpart at all, and the stage's `72px` → `32px` moves a drawn composition rather than trimming a gutter.
-- **The red proof**: one spacing and one type value planted (`settings.html:42`, `shell.html:137`) reddened the row with exactly two entries, one per arm; restored with `cp`, `cmp` byte-identical, `sha256sum` `ca733dae…`/`989f67d2…` before and after.
-- **`npx vitest run` is green — 245 files / 3416 tests** (`vg-323`'s standing ruling that the six gates execute no test), and all six gates pass.
+- **Plan 8 Task 8 — the drawings gate holds spacing and type, not radius alone** (`80ae353f`, `f5e6870d`, `4beac147`): the six drawings' **268 off-scale literals** corrected to §3's steps and §2's six sizes, and the radii row widened to three classes over the same reader rather than a second one.
+- **The gate was verified non-vacuous, not assumed**: it accepts every named degenerate and refuses `7px`/`5px`/`11.5px` per arm at its own control, and an independent sweep of all six drawings — the reviewer's and mine, run separately — found only named exemptions left.
+- **The six divergences the corrections exposed are `vg-325`, filed as one class rather than six rows**, because two of them are composition differences where both sides are on §3's scale and so do not share the other four's remedy; Task 9 refuses pixel-moving fixes, so that file's own task is not their owner.
+- **`vg-326` files what no arm reads** — §3's 26/30/32 row-density rhythm, which is exactly where the 75 corrected well insets would have shown.
+- **The red proof plants one value per arm** (`settings.html:42`, `shell.html:137`) and records both `sha256sum` pairs; `npx vitest run` is green at 245 files / 3416 tests and all six gates exit 0.
 
 ## Next
 
-1. **Task 9 — `editor-shell.css`'s residuals get a counted ceiling** over a file deliberately outside the gated list, with the three inexpressibles named, and it inherits the six product divergences Task 8's corrections exposed.
-2. **Then Task 10** — the §13 capture beside the drawing; **it cannot close while `vg-321` and `vg-322` are only filed rows**, because its own condition is "every remaining difference either fixed or backed by a quoted predating rule".
-3. **Task 8's report carries what needs filing** — the six created divergences, the four corrections with no counterpart, and the decision that `vg-320`'s class is not expressible by a scale gate, which is Task 9's ceiling rather than a row this gate can hold.
-4. **`vg-296`, `vg-302`, `vg-308`, `vg-314`, `vg-320` and `vg-324` stay open on purpose** — surfaces, values and clusters with no reader.
+1. **Task 9 — `editor-shell.css`'s residuals get a counted ceiling** over a file deliberately outside the gated list, with the three inexpressibles named; it inherits `vg-325`'s six divergences as a row it must not absorb.
+2. **Then Task 10** — the §13 capture beside the drawing; **it cannot close while `vg-321`, `vg-322` and `vg-325` are only filed rows**, because its own condition is "every remaining difference either fixed or backed by a quoted predating rule".
+3. **`vg-320`'s class came back not expressible by this gate** — it is a comparison between two documents, and `mockupDeclarations` has no cross-file element identity — so it is recorded rather than covered, and Task 10 must dispose of it explicitly.
+4. **`vg-296`, `vg-302`, `vg-308`, `vg-314`, `vg-324`, `vg-325` and `vg-326` stay open on purpose** — surfaces, values, clusters and rules with no reader.
 5. **Then `design-md-replaces-the-bible`**, then the multi-device display objective — architectural, so brainstorm → spec → plan.
 
 ## Blockers / unverified
