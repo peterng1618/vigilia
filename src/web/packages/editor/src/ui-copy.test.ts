@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
-import { Canvas, Textbox } from "fabric/es";
+import { Canvas, type FabricObject, Rect, Textbox } from "fabric/es";
 import { act, createElement } from "react";
 import { flushSync } from "react-dom";
-import { createRoot } from "react-dom/client";
+import { createRoot, type Root } from "react-dom/client";
 import { expect, it } from "vitest";
 import { createArtboardPanel } from "./artboard-panel.js";
 import {
@@ -15,9 +15,17 @@ import {
   chartContentView,
   chartPaintView,
 } from "./chart-manager/panel.js";
+import { ColourPicker } from "./components/ui/colour-picker.js";
+import {
+  DEFAULT_SHELL_PALETTE,
+  shellPalettes,
+} from "./editor-shell/palette.js";
+import { Settings } from "./editor-shell/settings.js";
+import { createShellLayout } from "./editor-shell/shell-layout.js";
 import { catalogFaces, fontTrios } from "./font-catalog.js";
 import { FontPicker } from "./font-picker/font-picker.js";
 import { createPalettePanel } from "./palette-manager/panel.js";
+import { createSelectionInspector } from "./selection-inspector/index.js";
 import { projectRuns, RunEditor } from "./selection-inspector/runs.js";
 import type { RunEdits } from "./selection-inspector/view.js";
 import { createTypePresetPanel } from "./type-preset-manager/panel.js";
@@ -489,3 +497,231 @@ it("names each reading for the question it answers", () => {
   expect(uiCopy.view.dataSource).toBe("Readings from");
   expect(uiCopy.view.previewDetail).toBe("every sensor this theme names");
 });
+
+/**
+ * The React surfaces plans 1–5 landed say no word the table does not hold.
+ *
+ * The three panels above are imperative and are read for their own DOM; these
+ * are the shell, the Settings modal, the colour picker and the selection column,
+ * which that net never reached. A literal in a React surface is invisible to a
+ * reviewer reading `ui-copy.ts` and to the pictograph rule, exactly as one in a
+ * panel is — and the cost is the same: a word an author reads has no owner, so a
+ * rename fixes one surface and silently misses the other.
+ *
+ * **The list below is the coverage, and every surface is asserted non-empty by
+ * its own selector.** A surface that failed to mount contributes nothing and
+ * would satisfy the walk by being absent (Review Focus 3), so absence is made a
+ * failure rather than a pass.
+ */
+it("leaves the React surfaces with no copy of their own", async () => {
+  const { root, destroy } = await mountLandedSurfaces();
+  const owned = new Set(copy());
+  expect(
+    spokenIn(root).filter((text) => !owned.has(text) && !isStoredName(text)),
+  ).toEqual([]);
+  for (const surface of LANDED_SURFACES) {
+    const found = root.querySelector(surface);
+    if (found === null) throw new Error(`no ${surface} surface rendered`);
+    expect(spokenIn(found), surface).not.toEqual([]);
+  }
+  destroy();
+});
+
+/**
+ * §9: a menu's rows are sentence case. The list is the menu's own — its three
+ * names, its File and Edit rows and its View settings — not the whole table,
+ * which carries `W`, `H`, `CPU`, `2K`, `(empty)` and `Left`/`Right`:
+ * abbreviations, marks and a parenthesised gap, none of them a row a menu
+ * prints. A row title-cased (`New From Starter`) is what this catches.
+ */
+it("prints every menu row in sentence case", () => {
+  for (const row of menuRows()) expect(isSentenceCase(row), row).toBe(true);
+});
+
+/** The shell's chrome, in the surfaces the walk reads. Each is a selector the
+ *  mounted tree answers, so a surface dropped from `mountLandedSurfaces` is the
+ *  `null` this file already fails on rather than a silent gap. */
+const LANDED_SURFACES = [
+  ".editor-shell-menubar",
+  ".editor-shell-stage",
+  ".editor-shell-rail",
+  "[data-vigilia-canvas-toolbar]",
+  ".editor-shell-panel",
+  ".editor-shell-settings",
+  "[data-vigilia-section]",
+  '[data-testid="colour-picker"]',
+] as const;
+
+/**
+ * The rows `ShellMenuBar` renders. Read from the menu's own list rather than the
+ * whole table: the File rows are `uiCopy.file`, the Edit rows are the six action
+ * words the menu draws (`shell-layout.tsx`), the View rows are `uiCopy.view`,
+ * and the three names are `uiCopy.menus`. A row added to the menu is added here
+ * beside it.
+ */
+function menuRows(): string[] {
+  return [
+    uiCopy.menus.file,
+    uiCopy.menus.edit,
+    uiCopy.menus.view,
+    ...Object.values(uiCopy.file),
+    uiCopy.actions.undo,
+    uiCopy.actions.redo,
+    uiCopy.actions.copy,
+    uiCopy.actions.cut,
+    uiCopy.actions.duplicate,
+    uiCopy.actions.delete,
+    ...Object.values(uiCopy.view),
+  ];
+}
+
+/** Sentence case: no word after the first is capitalised like a title. An
+ *  acronym (`FPS`) is all caps and is not title case, so `30 FPS` passes and
+ *  `New From Starter` does not. */
+function isSentenceCase(row: string): boolean {
+  return row
+    .split(/\s+/)
+    .slice(1)
+    .every((word) => !/^[A-Z][a-z]/.test(word));
+}
+
+/**
+ * Every string the landed React surfaces say: a field's own label, a control's
+ * accessible name and a button's words — minus the three whose content is not
+ * copy. A section header is excluded because its text is an uppercase eyebrow
+ * (§2) and a count, neither a word the table owns; a converted select's trigger
+ * is excluded because it prints the chosen value; and a token well is excluded
+ * as the panel net above excludes it, because it prints the document's own name.
+ */
+function spokenIn(element: Element): string[] {
+  const out: string[] = [];
+  for (const label of element.querySelectorAll("label"))
+    out.push(label.textContent?.trim() ?? "");
+  for (const named of element.querySelectorAll("[aria-label]")) {
+    // A control named by its own `data-testid` (the picker's tracks) is a
+    // driver's hook, not a word of copy.
+    if (named.getAttribute("aria-label") === named.getAttribute("data-testid"))
+      continue;
+    out.push(named.getAttribute("aria-label")?.trim() ?? "");
+  }
+  for (const button of element.querySelectorAll("button")) {
+    if (button.getAttribute("data-vigilia-palette-token-row") !== null)
+      continue;
+    if (button.querySelector("[data-vigilia-value]") !== null) continue;
+    if (button.hasAttribute("aria-controls")) continue;
+    out.push(spokenText(button).trim());
+  }
+  return out.filter((text) => text !== "" && !/^[\d.v-]+$/.test(text));
+}
+
+/** A shell palette's name is the id `shellPalettes` stores — the same string
+ *  the swatch's `data-shell-palette` carries — so it is a preset's own name,
+ *  the data the carve-out above deliberately leaves out of the table. */
+function isStoredName(text: string): boolean {
+  return (shellPalettes as readonly string[]).includes(text);
+}
+
+/**
+ * The React surfaces plans 1–5 landed, mounted at once.
+ *
+ * The shell is assembled whole (`createShellLayout`) rather than piece by piece,
+ * because three of the strings this net exists to catch — the menubar's name,
+ * the stage's name and the canvas toolbar — are the shell's own markup; the
+ * Settings modal and the colour picker are mounted open, because a closed modal
+ * and an unopened popover render nothing and would pass the walk by being
+ * absent. The selection column is mounted on a text object and a shape, the two
+ * disjoint field sets.
+ */
+async function mountLandedSurfaces(): Promise<{
+  readonly root: HTMLElement;
+  readonly destroy: () => void;
+}> {
+  const shellRoot = document.createElement("div");
+  document.body.append(shellRoot);
+  const layout = createShellLayout(shellRoot);
+
+  const settingsHost = document.createElement("div");
+  document.body.append(settingsHost);
+  const settingsRoot = createRoot(settingsHost);
+  await act(async () => {
+    settingsRoot.render(
+      createElement(Settings, {
+        open: true,
+        onOpenChange: () => undefined,
+        storage: undefined,
+        palette: DEFAULT_SHELL_PALETTE,
+        following: true,
+        onPalette: () => undefined,
+        onFollowing: () => undefined,
+        overrides: {},
+        onOverrides: () => undefined,
+        releaseVersion: undefined,
+      }),
+    );
+  });
+
+  const pickerHost = document.createElement("div");
+  document.body.append(pickerHost);
+  const pickerRoot: Root = createRoot(pickerHost);
+  await act(async () => {
+    pickerRoot.render(
+      createElement(ColourPicker, {
+        value: "#123456",
+        onChange: () => undefined,
+        label: uiCopy.panels.colourPicker,
+      }),
+    );
+  });
+  const trigger = pickerHost.querySelector<HTMLElement>(
+    '[data-testid="picker-trigger"]',
+  );
+  if (trigger === null)
+    throw new Error("the colour picker rendered no trigger");
+  await act(async () => trigger.click());
+
+  // Plan 3's selection column. A text object whose run reads a clock is the
+  // richest selection, and a shape renders the other half of the field set.
+  for (const selection of [
+    new Textbox("", { id: "clock-label" }) as FabricObject,
+    new Rect({ left: 0, top: 0, width: 40, height: 20 }) as FabricObject,
+  ]) {
+    selection.set("vigiliaText", {
+      align: "centre",
+      runs: [{ kind: "value", bindingId: "clock-time" }],
+    });
+    selection.set("vigiliaGlass", { blurRadius: 16 });
+    const canvas = new Canvas(document.createElement("canvas"));
+    canvas.add(selection);
+    canvas.setActiveObject(selection);
+    const host = document.createElement("div");
+    document.body.append(host);
+    createSelectionInspector(host, {
+      editor: {
+        canvas,
+        historyManager: { saveState: () => undefined },
+        errorManager: { warn: () => undefined, error: () => undefined },
+        cropManager: { active: false, target: undefined },
+      } as never,
+      globals: {
+        palette: {
+          ink: { name: "Ink", value: { kind: "solid", color: "#ffffff" } },
+        },
+        typePresets: {
+          body: { name: "Body", value: { family: "Inter", size: 16 } },
+        },
+      } as never,
+      nodeBindings: () => [{ id: "clock-time", semanticKey: "date.today" }],
+      refreshGlass: () => undefined,
+    });
+  }
+
+  return {
+    root: document.body,
+    destroy: () => {
+      layout.destroy();
+      act(() => pickerRoot.unmount());
+      act(() => settingsRoot.unmount());
+      document.body.replaceChildren();
+    },
+  };
+}

@@ -26,20 +26,20 @@ satisfies every token in the bible and still does not look like the mockup.
 - **Task 1 is complete and reviewed clean** (`5f676da4`): the census of what landed, which refuted three of the plan's own hypotheses — 15 lucide importers against a guessed nine, **four** stroke weights against three, and both "hand-wired" pairings the brief named already one string by construction.
 - **Task 2 is complete and reviewed clean** (`ef81b183` + `93b2286f` + `08c71e28`): one chrome glyph vocabulary with one weight rule, the census's four weights collapsed, the three out-of-band sites adjudicated one at a time, and both hand-authored sources exempted with §6's reason recorded.
 - **Task 3 is complete and reviewed clean** (`9031ed7d`): the object-kind glyph set closed over `LayerKind` with a totality case enumerating the kind vocabulary rather than the map's own keys, and both closure halves red-proved — `satisfies` rejects a missing key and an excess one alike.
-- **Phase 1 is done**, so Phase 2 is open: the accessible-name/tooltip pairing, where each icon-only control's two strings become one by construction (Task 4, in review), then the copy (Tasks 5–6).
+- **Phase 2 is open**: Task 4's one-string pairing is complete (`4bae5ed9`, fix `a512efb7`), and **Task 5's copy net is complete and in review** (this commit) — what remains of the phase is **Task 6**, the copy defects fixed as defects.
 - **Two changes are ruled and queued after plan 6** (`vg-330`, `vg-331`): Settings becomes a pane opened from the rail's gear with the four slots kept and the drawing redrawn as a panel, and the palettes gain a second highlight whose role is an attention or in-flight state, defined before any colour is chosen.
 
 ## Last completed change
 
-- **Task 4's review finding is fixed** (this commit, on top of `4bae5ed9`): the census's `mountFleet` now mounts the gradient editor, so the fourth control the census found is *in* the test that measures it rather than absent from it.
-- **The `svg` clause is the mechanism, not the defect, and it is now proved live**: with the two stop dots mounted, deleting the clause makes the record case report **6** (the two stop dots, the two colour-picker triggers, the font picker's search field and its favourites-only checkbox), where before the dots were mounted the same deletion still reported 0.
-- **A second harness defect had to be fixed for that proof to exist**: `tooltipFor` now dismisses the previous popup before opening the next, because jsdom's synthetic `focus` left it in the document and every later control read it as its own — which is what made a count of 0 vacuous.
-- **`useControlTooltip` stays the control set's one owner of the label/tooltip pairing**, and the star, the twisty and the group-entry button were adjudicated one at a time (§6 rule 1's first and middle clauses), so `noTooltip` settles at 0 because no glyph control lacks the name its tooltip states.
-- **Two false claims in `task-4-report.md` are corrected**: there are three (not two) direct `tooltip()` callers — `control-well.tsx`, `settings-field.ts`, `add-pane.tsx` — and the capture was never unstaged, only written to a scratch dir, so the committed image stays the 2026-10-08 one with Task 9 owning the refresh.
+- **The copy net reaches the React surfaces** (this commit): the whole shell, the Settings modal, an open colour picker and the selection column are mounted and walked, and each surface is asserted non-empty so one that failed to mount is a failure rather than a pass.
+- **The census's three unowned literals moved into `uiCopy`**: `menus.label` "Editor menus", `stage.label` "Editor canvas" and `panels.colourHex` "Hex colour", out of `shell-layout.tsx` and `colour-picker.tsx` — the walk reports them before the move and not after.
+- **A menu-row sentence-case case** reads the rows the menus render (`uiCopy.menus` names, the File rows, the six Edit action words, `uiCopy.view`), not the whole table, so `W`, `H`, `CPU`, `2K`, `(empty)` and `Left`/`Right` stay out.
+- **The pictograph net is confirmed loaded by the run a plan executes**: `npx vitest run packages/editor/src/ui-copy.test.ts`, the same focused path Task 5 Step 6 runs — recorded rather than moved a second time (`vg-183`).
+- **`ui-copy.ts` joins the gated list** (69 files clean); `colour-picker.tsx` stays ungated because its hex values are the picker's own subject, as `editor-shell.css`'s are.
 
 ## Next
 
-1. **Plan 6 Task 4's review**, then **Tasks 5–6 — the copy**: the nets that reach the React surfaces, then the copy defects the census found fixed as defects.
+1. **Plan 6 Task 5's review**, then **Task 6 — the copy defects** fixed as defects: the surfaces a missing reading would fabricate into a zero or a dash, and the strings that name a capability no control can run.
 2. **Plan 6 Tasks 7–9** — the gate, the Acceptance ledger and the parity capture; Task 9's browser assertion is the net the fixture-bound weight case cannot be, and it also carries the parity lines that the drawing draws its twisty at 10px where the product draws it at 13px and draws no kind mark at all.
 3. **The four rulings implemented**: `PINNED_FLOOR.boundary` deleted and §5's narrower rule written down, and the drawing's six preview bars repainted to the palette's ground with a `PARITY` row that reads a bar's colour.
 4. **Then, in order: the Settings pane** (`vg-330`, architectural — brainstorm → spec → plan), **the attention-colour role** (`vg-331`), and `design-md-replaces-the-bible` before the multi-device display objective.

@@ -479,7 +479,7 @@ function ShellMenuBar({
   );
 
   return (
-    <nav className="editor-shell-menubar" aria-label="Editor menus">
+    <nav className="editor-shell-menubar" aria-label={uiCopy.menus.label}>
       <MenuGroup label={uiCopy.menus.file}>
         {item(uiCopy.file.newDocument, () => void session?.newDocument())}
         {item(uiCopy.file.newFromStarter, () => void session?.newFromStarter())}
@@ -839,7 +839,7 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
           <main
             id="stage"
             className="editor-shell-stage"
-            aria-label="Editor canvas"
+            aria-label={uiCopy.stage.label}
           >
             <Host node={hosts.canvas} />
             {/* §7.5's two top corners in one row, which is what keeps §7.7's

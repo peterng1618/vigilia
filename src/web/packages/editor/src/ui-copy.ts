@@ -340,6 +340,9 @@ export const uiCopy = {
     overflowVisible: "Visible",
   },
   menus: {
+    /** The menubar's own name, so a screen reader reaching the three menus is
+     *  told what the group is before it reads each one. */
+    label: "Editor menus",
     file: "File",
     edit: "Edit",
     view: "View",
@@ -524,6 +527,9 @@ export const uiCopy = {
   /** The canvas context menu's accessible name. Its entries reuse the action
    * registry's labels and `chartFamilies`, so no entry copy lives here. */
   canvasMenu: { label: "Canvas actions" },
+  /** The stage's own name: the region the artboard is drawn in, so a reader
+   *  reaching the canvas is told which surface it is before the drawing. */
+  stage: { label: "Editor canvas" },
   /** The stage camera's control: the display the stage looks through, and the
    *  two framings that are not a display. `label` names what the control is;
    *  the trigger appends the readout it shows, because an accessible name that
@@ -785,6 +791,9 @@ export const uiCopy = {
      *  itself, because the author has to be able to see which of several they
      *  mistyped. */
     colourPicker: "Pick a colour",
+    /** The hex field inside the picker's popup. Named so the author who types a
+     *  colour knows the field takes a hex, not the swatch's other channels. */
+    colourHex: "Hex colour",
     gradient: "Gradient",
     colourUnpaintable: (value: string) =>
       `Not a colour the browser can paint: "${value}". Hex, rgb(), hsl() or a CSS colour name.`,

@@ -8,6 +8,7 @@ import {
   toHex,
 } from "./colour-maths.js";
 import { cn } from "@/lib/utils";
+import { uiCopy } from "../../ui-copy.js";
 
 /** One press of an arrow key, as a fraction of the track. */
 const TRACK_STEP = 0.01;
@@ -234,7 +235,7 @@ export function ColourPicker({
             />
             <input
               data-testid="picker-hex"
-              aria-label="Hex colour"
+              aria-label={uiCopy.panels.colourHex}
               value={draft}
               spellCheck={false}
               onChange={(event) => {
