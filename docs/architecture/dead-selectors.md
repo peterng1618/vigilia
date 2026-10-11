@@ -20,10 +20,12 @@ Only **two** CSS files ship (`editor-shell.css`, and the host's own pages'
 `vigilia-page.css`), so this does not want a scanner framework. It wants naming
 because nothing else can see the problem:
 
-- `editor-shell.css` is the **largest file in the repo** — 2,558 lines by
-  `wc -l`, 2,559 by the line convention [`manager-census.md`](manager-census.md)
-  states — and `vg-274` records that it is in **no gate**: the design-token
-  ratchet parses CSS, and its `gated` list names no `.css` file.
+- `editor-shell.css` is the **largest hand-written, non-test source file in the
+  repo** — 2,558 lines by `wc -l`, 2,559 by the line convention
+  [`manager-census.md`](manager-census.md) states; the only larger files are the
+  generated `font-trios.generated.ts` (28,284) and three e2e specs. `vg-274`
+  records that it is in **no gate**: the design-token ratchet parses CSS, and its
+  `gated` list names no `.css` file.
 - `vg-266` records a dead selector in this very file, found by hand.
 - A dead selector is invisible to `typecheck`, to Biome (which parses CSS but
   has no unused-selector rule) and to every test that does not query the class
