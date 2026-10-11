@@ -569,6 +569,21 @@ it("prints every menu row in sentence case", () => {
   for (const row of rows) expect(isSentenceCase(row), row).toBe(true);
 });
 
+/**
+ * The digit arm of the first-word rule, on the shapes that reach it. This menu
+ * already prints `30 FPS` and `1 FPS`, so a digit-led row is one edit away —
+ * and `^[A-Z0-9]` alone admitted any of them, `3d view` included, which is how
+ * `2d mode` would have slipped through a sentence-case net unnoticed.
+ */
+it("reads the first letter of the first word, not its first character", () => {
+  expect(isSentenceCase("30 FPS")).toBe(true);
+  expect(isSentenceCase("3D view")).toBe(true);
+  expect(isSentenceCase("Tokens")).toBe(true);
+  expect(isSentenceCase("3d view")).toBe(false);
+  expect(isSentenceCase("2d mode")).toBe(false);
+  expect(isSentenceCase("(empty)")).toBe(false);
+});
+
 /** The shell's chrome, in the surfaces the walk reads. Each is a selector the
  *  mounted tree answers, so a surface dropped from `mountLandedSurfaces` is the
  *  `null` this file already fails on rather than a silent gap. */
@@ -607,12 +622,22 @@ function menuRows(): string[] {
 }
 
 /** Sentence case: the first word carries the capital and no later word is
- *  capitalised like a title. An acronym (`FPS`) is all caps and is not title
- *  case, so `30 FPS` passes and `New From Starter` does not; a lower-cased first
- *  word (`value runs`) fails, which is the hole this closes. */
+ *  capitalised like a title. A later acronym (`FPS`) is all caps and is not
+ *  title case, so `30 FPS` passes and `New From Starter` does not; a lower-cased
+ *  first word (`value runs`) fails.
+ *
+ *  The capital is read off the first token's first **letter**, so a leading
+ *  digit is not a licence: `30 FPS` and `1 FPS` pass because their first token
+ *  carries no letter at all, `3D view` passes on the `D`, and `3d view` — the
+ *  shape `2d mode` would have in this very menu — fails. A row leading with a
+ *  non-alphanumeric still fails, which is a loud false positive rather than a
+ *  silent pass; nothing produces that shape. */
 function isSentenceCase(row: string): boolean {
   const [first, ...rest] = row.split(/\s+/);
+  // The guard is the narrowing `noUncheckedIndexedAccess` requires of a
+  // destructured `string[]`, not a branch `split` can reach.
   if (first === undefined || !/^[A-Z0-9]/.test(first)) return false;
+  if (/^[^A-Za-z]*[a-z]/.test(first)) return false;
   return rest.every((word) => !/^[A-Z][a-z]/.test(word));
 }
 
