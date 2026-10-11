@@ -18,13 +18,10 @@ import type {
   ChartContent,
   ChartFamily,
   Globals,
-  PalettePaint,
   StyleMap,
   StyleValue,
   TextContent,
   TextRun,
-  ThemeDocument,
-  ThemeNode,
   TypePreset,
 } from "../theme/document.js";
 import type { Sample, SensorStatus } from "../types.js";
@@ -36,9 +33,9 @@ import {
 } from "./measurement.js";
 
 /**
- * Pure document + telemetry → render plan. All renderer-independent decisions
- * live here; DOM/Fabric layers only apply the result. Non-ok data becomes gaps,
- * never fabricated zeroes (§83).
+ * Pure authored state + telemetry → render plan. All renderer-independent
+ * decisions live here; DOM/Fabric layers only apply the result. Non-ok data
+ * becomes gaps, never fabricated zeroes (§83).
  */
 
 export const MISSING_VALUE_TEXT = "—";
@@ -140,54 +137,25 @@ export interface ScenePlan {
   readonly issues: readonly PlanIssue[];
 }
 
-export interface PlanContext {
-  readonly document: ThemeDocument;
+/** The runtime inputs a plan is derived from. A document is never one of them. */
+export interface PlanInputs {
   readonly source: SampleSource;
   /** Epoch milliseconds supplied by the caller; this module never reads the clock. */
   readonly nowMs: number;
   readonly animate?: boolean;
-  readonly resolveAsset?: (assetId: string) => string | undefined;
   /** Long unit names keyed by short symbol; absent entries fall back to short. */
   readonly longUnits?: Readonly<Record<string, string>>;
   /** The consumer's measurement preference; metric shows what was measured. */
   readonly measurement?: MeasurementSystem;
   /**
-   * The language the document's text is written in. A runtime input like
+   * The language the theme's text is written in. A runtime input like
    * `longUnits`, never persisted scene state: the theme's own `metadata` owns it.
    */
   readonly themeLanguage?: string;
 }
 
 /** Runtime inputs required to derive one authored chart's display option. */
-export type ChartPlanContext = Pick<
-  PlanContext,
-  "source" | "nowMs" | "animate"
->;
-
-export function buildScenePlan(context: PlanContext): ScenePlan {
-  // The document's own `metadata.themeLanguage` is the theme's language; a
-  // caller that sets `context.themeLanguage` overrides it for one plan.
-  // Normalized once, so the two `Pick` sites downstream only ever see a string
-  // or nothing.
-  const plan: PlanContext =
-    context.themeLanguage === undefined &&
-    context.document.metadata?.themeLanguage !== undefined
-      ? { ...context, themeLanguage: context.document.metadata.themeLanguage }
-      : context;
-
-  const issues: PlanIssue[] = [];
-  const globals = plan.document.globals ?? {};
-
-  const nodes = plan.document.nodes.map((node) =>
-    planNode(node, plan, globals, issues),
-  );
-
-  return {
-    artboard: planArtboard(plan.document.artboard, globals, issues),
-    nodes,
-    issues,
-  };
-}
+export type ChartPlanContext = Pick<PlanInputs, "source" | "nowMs" | "animate">;
 
 /**
  * The artboard's geometry with its two paints resolved through `globals`, the way
@@ -221,182 +189,7 @@ export function planArtboard(
   };
 }
 
-function planNode(
-  node: ThemeNode,
-  context: PlanContext,
-  globals: Globals,
-  issues: PlanIssue[],
-): PlanNode {
-  const box = planBox(node);
-  // Resolve once so an unresolved global is reported once.
-  const style = resolveStyleMap(node.style, globals, node.id, issues);
-
-  return {
-    id: node.id,
-    box,
-    visible: node.visible !== false,
-    style,
-    content: planContent(node, context, globals, issues, box, style),
-    children:
-      node.type === "group"
-        ? node.children.map((child) =>
-            planNode(child, context, globals, issues),
-          )
-        : [],
-  };
-}
-
-function planBox(node: ThemeNode): PlanBox {
-  const transform = node.transform ?? {};
-
-  return {
-    x: transform.x ?? 0,
-    y: transform.y ?? 0,
-    width: transform.width ?? 0,
-    height: transform.height ?? 0,
-    rotation: transform.rotation ?? 0,
-    scaleX: transform.scaleX ?? 1,
-    scaleY: transform.scaleY ?? 1,
-  };
-}
-
-function planContent(
-  node: ThemeNode,
-  context: PlanContext,
-  globals: Globals,
-  issues: PlanIssue[],
-  box: PlanBox,
-  style: ResolvedStyle,
-): PlanContent {
-  switch (node.type) {
-    case "group":
-      return { kind: "group" };
-
-    case "rectangle":
-      return {
-        kind: "shape",
-        shape: "rectangle",
-        cornerRadius: node.content?.cornerRadius ?? 0,
-      };
-
-    case "ellipse":
-      return { kind: "shape", shape: "ellipse", cornerRadius: 0 };
-
-    case "line":
-      return { kind: "shape", shape: "line", cornerRadius: 0 };
-
-    case "text":
-      const segments = resolveTextSegments(
-        node.id,
-        node.content.runs,
-        node.bindings ?? [],
-        context,
-        globals,
-        issues,
-      );
-      return {
-        kind: "text",
-        authored: node.content,
-        segments,
-        layout: planTextLayout(
-          node.content,
-          box.height,
-          segments[0]?.style ?? {},
-        ),
-      };
-
-    case "chart":
-      return buildChartPlan(
-        node.id,
-        node.content,
-        node.bindings ?? [],
-        context,
-        issues,
-        chartPalette(globals),
-      );
-
-    case "image": {
-      const src = resolveAsset(node.id, node.content.assetId, context, issues);
-      const monochrome = resolveStyleValue(
-        node.content.monochrome,
-        globals,
-        node.id,
-        issues,
-      );
-      const assetKind = assetKindOf(node.content.assetId, context);
-
-      return {
-        kind: "image",
-        src,
-        assetKind,
-        fit: node.content.fit ?? "contain",
-        ...(typeof monochrome === "string" && monochrome.length > 0
-          ? { monochrome }
-          : {}),
-      };
-    }
-
-    case "video": {
-      const src = resolveAsset(node.id, node.content.assetId, context, issues);
-      return {
-        kind: "video",
-        src,
-        loop: node.content.loop ?? true,
-        muted: node.content.muted ?? true,
-      };
-    }
-  }
-}
-
-function assetKindOf(
-  assetId: string,
-  context: PlanContext,
-): AssetKind | undefined {
-  return context.document.assets?.find((asset) => asset.id === assetId)?.kind;
-}
-
-function resolveAsset(
-  nodeId: string,
-  assetId: string,
-  context: PlanContext,
-  issues: PlanIssue[],
-): string | undefined {
-  const src = context.resolveAsset?.(assetId);
-
-  if (src === undefined) {
-    issues.push({
-      code: "unresolved-asset",
-      nodeId,
-      detail: `Asset "${assetId}" could not be resolved to a URL.`,
-    });
-  }
-
-  return src;
-}
-
 const DEFAULT_LINE_HEIGHT = 1.2;
-
-function planTextLayout(
-  content: TextContent,
-  boxHeight: number,
-  style: ResolvedStyle,
-): PlanTextLayout {
-  const wrap = content.wrap ?? false;
-  const overflow = content.overflow ?? "clip";
-
-  const maxLines =
-    wrap && overflow === "ellipsis"
-      ? computeMaxLines(boxHeight, style["fontSize"], style["lineHeight"])
-      : undefined;
-
-  return {
-    wrap,
-    overflow,
-    align: content.align ?? "left",
-    verticalAlign: content.verticalAlign ?? "top",
-    ...(maxLines === undefined ? {} : { maxLines }),
-  };
-}
 
 /** Return undefined rather than guessing when font metrics cannot determine a clamp. */
 export function computeMaxLines(
@@ -431,7 +224,7 @@ export function resolveTextSegments(
   runs: readonly TextRun[],
   bindings: readonly Binding[],
   context: Pick<
-    PlanContext,
+    PlanInputs,
     "source" | "longUnits" | "measurement" | "themeLanguage"
   >,
   globals: Globals,
@@ -480,7 +273,7 @@ function formatValueSegment(
   binding: Binding,
   run: Extract<TextRun, { kind: "value" }>,
   style: ResolvedStyle,
-  context: Pick<PlanContext, "longUnits" | "measurement" | "themeLanguage">,
+  context: Pick<PlanInputs, "longUnits" | "measurement" | "themeLanguage">,
 ): PlanTextSegment {
   if (sample.status !== "ok") {
     return {
@@ -917,41 +710,6 @@ function isTypePreset(value: unknown): value is TypePreset {
       (typeof preset["lineHeight"] === "number" &&
         Number.isFinite(preset["lineHeight"]) &&
         preset["lineHeight"] > 0))
-  );
-}
-
-/**
- * The chart builders take a `FabricPalette`; a document's `globals.palette` is
- * the same map with an unvalidated `value`. An entry that is not palette paint
- * is dropped rather than cast, so an unresolvable reference is a gap (0007).
- */
-function chartPalette(
-  globals: Globals,
-): import("../theme/fabric-envelope.js").FabricPalette | undefined {
-  const entries = Object.entries(globals.palette ?? {}).filter(
-    (
-      entry,
-    ): entry is [
-      string,
-      import("../theme/fabric-envelope.js").FabricPaletteEntry,
-    ] => isPalettePaint(entry[1].value),
-  );
-  return entries.length === 0 ? undefined : Object.fromEntries(entries);
-}
-
-function isPalettePaint(value: unknown): value is PalettePaint {
-  if (typeof value !== "object" || value === null) return false;
-  const paint = value as Record<string, unknown>;
-  if (paint["kind"] === "solid") return typeof paint["color"] === "string";
-  return (
-    paint["kind"] === "gradient" &&
-    Array.isArray(paint["stops"]) &&
-    paint["stops"].every(
-      (stop) =>
-        typeof stop === "object" &&
-        stop !== null &&
-        typeof (stop as Record<string, unknown>)["color"] === "string",
-    )
   );
 }
 

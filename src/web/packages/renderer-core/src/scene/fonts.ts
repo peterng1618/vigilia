@@ -1,5 +1,3 @@
-import type { ResolvedStyle, ScenePlan } from "./plan.js";
-
 /** Font availability diagnostics via metric comparison, not `document.fonts.check`. */
 
 /** Generic families always resolve and are excluded from missing-font diagnostics. */
@@ -43,37 +41,6 @@ export function parseFontStack(value: unknown): string[] {
     .filter((part) => part.length > 0);
 }
 
-/** Specific font families requested by a plan, in first-seen order. */
-export function requestedFontFamilies(plan: ScenePlan): string[] {
-  const families: string[] = [];
-
-  const add = (style: ResolvedStyle): void => {
-    for (const family of parseFontStack(style["fontFamily"])) {
-      if (!isGenericFamily(family) && !families.includes(family)) {
-        families.push(family);
-      }
-    }
-  };
-
-  const walk = (nodes: ScenePlan["nodes"]): void => {
-    for (const node of nodes) {
-      add(node.style);
-
-      if (node.content.kind === "text") {
-        for (const segment of node.content.segments) {
-          add(segment.style);
-        }
-      }
-
-      walk(node.children);
-    }
-  };
-
-  walk(plan.nodes);
-
-  return families;
-}
-
 const PROBE_SIZE = 72;
 const PROBE_TEXT = "mmmmmmmmmmlliWWWW@";
 
@@ -110,8 +77,4 @@ export function unavailableFontFamilies(families: readonly string[]): string[] {
   }
 
   return missing;
-}
-
-export function missingFontFamilies(plan: ScenePlan): string[] {
-  return unavailableFontFamilies(requestedFontFamilies(plan));
 }

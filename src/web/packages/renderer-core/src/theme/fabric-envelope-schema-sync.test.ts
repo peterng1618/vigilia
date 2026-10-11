@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { GLASS_TYPES, MAX_GLASS_BLUR_RADIUS } from "./glass.js";
+import { SUPPORTED_SCHEMA_VERSION } from "./fabric-envelope.js";
 import { MAX_OBJECT_NAME_LENGTH } from "./object-name.js";
 
 const SCHEMA_PATH = fileURLToPath(
@@ -27,6 +28,12 @@ describe("published Fabric theme schema", () => {
     const document = schema();
 
     expect(document.$id).toContain("/2.json");
+    // The version is stated twice — here and in `SUPPORTED_SCHEMA_VERSION` —
+    // and the About row reports the code's copy, so a theme published under
+    // one and opened under the other would be refused for no reason.
+    expect(document.properties["schemaVersion"]).toEqual({
+      const: SUPPORTED_SCHEMA_VERSION,
+    });
     expect(document.required).toEqual([
       "schemaVersion",
       "fabricVersion",

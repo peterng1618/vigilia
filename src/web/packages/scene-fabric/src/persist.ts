@@ -1,6 +1,7 @@
 import {
   type FabricThemeEnvelope,
   type FabricThemeEnvelopeInput,
+  SUPPORTED_SCHEMA_VERSION,
   VIGILIA_BLEEDS_PROPERTY,
   VIGILIA_GLASS_PROPERTY,
   VIGILIA_NAME_PROPERTY,
@@ -72,8 +73,8 @@ export const SCENE_PERSISTED_PROPERTIES = [
   // authored fact about the document, so it has to survive the save like every
   // other authored key — a copy whose origin is remembered only until the first
   // save is a copy whose origin nobody can state. The key is `WidgetProvenance`'s
-  // own field name on a `ThemeNode`; there is no Fabric-side constant for it,
-  // and one would have a single reader.
+  // own field name; there is no Fabric-side constant for it, and one would have
+  // a single reader.
   "provenance",
   "selectable",
   "evented",
@@ -107,8 +108,12 @@ export function serialiseThemeEnvelope(
   canvas: StaticCanvas,
   input: FabricThemeEnvelopeInput,
 ): FabricThemeEnvelope {
+  // The envelope version the product writes is the one the reader reports, so
+  // it comes from the constant rather than a literal that has to agree.
+  const version = SUPPORTED_SCHEMA_VERSION;
+
   return {
-    schemaVersion: 2,
+    schemaVersion: version,
     fabricVersion,
     ...input,
     scene: serialiseScene(canvas),

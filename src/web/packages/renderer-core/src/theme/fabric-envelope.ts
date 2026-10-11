@@ -1,13 +1,19 @@
-import {
-  type Artboard,
-  type AssetReference,
-  type Binding,
-  type Globals,
-  type PalettePaint,
-  type ThemeDocument,
-  type ThemeMetadata,
-  walkBindings,
+import type {
+  Artboard,
+  AssetReference,
+  Binding,
+  Globals,
+  PalettePaint,
+  ThemeMetadata,
 } from "./document.js";
+
+/**
+ * The theme schema version this build reads and writes.
+ *
+ * One owner, and the envelope's own type pins itself to it, so the number the
+ * About tab reports cannot drift from the number a save writes.
+ */
+export const SUPPORTED_SCHEMA_VERSION = 2;
 
 export interface FabricPaletteEntry {
   readonly name: string;
@@ -22,7 +28,7 @@ export type FabricGlobals = Pick<Globals, "typePresets"> & {
 
 /** Versioned Vigilia metadata around the opaque Fabric-authored scene. */
 export interface FabricThemeEnvelope {
-  readonly schemaVersion: 2;
+  readonly schemaVersion: typeof SUPPORTED_SCHEMA_VERSION;
   readonly fabricVersion: string;
   readonly id: string;
   readonly artboard: Artboard;
@@ -39,54 +45,3 @@ export type FabricThemeEnvelopeInput = Omit<
   FabricThemeEnvelope,
   "schemaVersion" | "fabricVersion" | "scene"
 >;
-
-/** Keeps v1 semantic data while Fabric becomes the sole geometry owner. */
-export function fabricEnvelopeInputFor(
-  document: ThemeDocument,
-): FabricThemeEnvelopeInput {
-  const bindings: Record<string, Binding[]> = {};
-
-  for (const { node, binding } of walkBindings(document.nodes)) {
-    (bindings[node.id] ??= []).push(binding);
-  }
-
-  return {
-    id: document.id,
-    artboard: document.artboard,
-    ...(document.metadata === undefined ? {} : { metadata: document.metadata }),
-    ...(document.globals === undefined
-      ? {}
-      : { globals: fabricGlobalsFor(document.globals) }),
-    ...(document.assets === undefined ? {} : { assets: document.assets }),
-    ...(Object.keys(bindings).length === 0 ? {} : { bindings }),
-    ...(document.editorMetadata === undefined
-      ? {}
-      : { editorMetadata: document.editorMetadata }),
-  };
-}
-
-/** The legacy document writer had untyped palette values; carry CSS solids forward into v2. */
-function fabricGlobalsFor(globals: Globals): FabricGlobals {
-  const palette = globals.palette;
-  return {
-    ...(globals.typePresets === undefined
-      ? {}
-      : { typePresets: globals.typePresets }),
-    ...(palette === undefined
-      ? {}
-      : {
-          palette: Object.fromEntries(
-            Object.entries(palette).map(([id, entry]) => [
-              id,
-              {
-                ...entry,
-                value:
-                  typeof entry.value === "string"
-                    ? { kind: "solid" as const, color: entry.value }
-                    : entry.value,
-              },
-            ]),
-          ) as FabricPalette,
-        }),
-  };
-}

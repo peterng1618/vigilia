@@ -38,11 +38,9 @@ import { uiCopy } from "./ui-copy.js";
  *
  * The document is Fabric JSON (§134), so a card is one Fabric `Group` over its
  * parts and its readings live in the envelope's `bindings`, keyed by object id.
- * `instantiateWidget` is that same algorithm over `ThemeNode`, and bridging the
- * two models would mean standing up a second scene tree — so this module is the
- * Fabric-shaped half, and borrows the one piece that is about identity rather
- * than about either model: `createWidgetIdAllocator`, the rule that decides
- * what a fresh id looks like.
+ * One piece of that is not about the scene model at all: identity.
+ * `createWidgetIdAllocator` is the rule that decides what a fresh id looks like,
+ * and it is shared so a pasted object and an inserted card agree on it.
  *
  * **Scope limit — the copy is faithful in ids, not necessarily in readings.**
  * `cardBindings` reads the *starter's* bindings map, keyed by the starter's own

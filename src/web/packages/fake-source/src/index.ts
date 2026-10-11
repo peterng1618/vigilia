@@ -13,14 +13,6 @@ export {
   demoSourceOptions,
 } from "./demo.js";
 
-export type { InvalidThemeFixture, ValidThemeFixture } from "./themes/index.js";
-
-export {
-  INVALID_THEMES,
-  VALID_THEMES,
-  validThemeByName,
-} from "./themes/index.js";
-
 /** Synthetic behaviour selected by the final semantic-key segment. */
 export interface SensorProfile {
   readonly unit: string;

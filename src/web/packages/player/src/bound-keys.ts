@@ -8,8 +8,8 @@ import type { FabricThemeEnvelope } from "@vigilia/renderer-core";
  * this list feeds: the stream URL repeated `cpu.load` three times, and the
  * availability notice told a reader it had 30 sensors for 19.
  *
- * `requiredSemanticKeys` is the same answer for a `ThemeDocument`; this is the
- * envelope shape, which is what a served theme arrives as.
+ * The envelope is the one shape a served theme arrives as, so the bindings are
+ * read from it directly.
  */
 export function boundSemanticKeys(
   envelope: Pick<FabricThemeEnvelope, "bindings">,

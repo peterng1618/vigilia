@@ -7,7 +7,15 @@ import {
   STABLE_ID_PATTERN,
 } from "./document.js";
 import { isBleedMark, VIGILIA_BLEEDS_PROPERTY } from "./bleed.js";
-import type { FabricThemeEnvelope } from "./fabric-envelope.js";
+import { envelopeKeysFor, knownKeysFor } from "./envelope-keys.js";
+import {
+  type ValidationIssue,
+  validateEnvelopeSemantics,
+} from "./envelope-semantics.js";
+import {
+  type FabricThemeEnvelope,
+  SUPPORTED_SCHEMA_VERSION,
+} from "./fabric-envelope.js";
 import {
   isGlassTreatment,
   MAX_GLASS_BLUR_RADIUS,
@@ -15,12 +23,6 @@ import {
   VIGILIA_GLASS_PROPERTY,
 } from "./glass.js";
 import { isObjectName, VIGILIA_NAME_PROPERTY } from "./object-name.js";
-import {
-  envelopeKeysFor,
-  knownKeysFor,
-  type ValidationIssue,
-  validateThemeDocument,
-} from "./validate.js";
 
 /** Bounds malformed Fabric JSON before it reaches Fabric's asynchronous revival. */
 const MAX_SCENE_DEPTH = MAX_NODE_DEPTH + 8;
@@ -47,18 +49,18 @@ export function validateFabricThemeEnvelope(
       "schemaVersion is required and must be an integer.",
     );
   }
-  if (version > 2) {
+  if (version > SUPPORTED_SCHEMA_VERSION) {
     return fail(
       "newer-schema-version",
       "/schemaVersion",
       `This theme was made with a newer version of Vigilia (schema ${version}). Update Vigilia to open it.`,
     );
   }
-  if (version !== 2) {
+  if (version !== SUPPORTED_SCHEMA_VERSION) {
     return fail(
       "unsupported-schema-version",
       "/schemaVersion",
-      `Schema version ${version} is not supported by this build (expected 2).`,
+      `Schema version ${version} is not supported by this build (expected ${SUPPORTED_SCHEMA_VERSION}).`,
     );
   }
 
@@ -76,7 +78,7 @@ export function validateFabricThemeEnvelope(
       ),
     );
   }
-  issues.push(...sharedSemanticIssues(input));
+  validateEnvelopeSemantics(input, issues);
   themeLanguage(input["metadata"], issues);
   v2Globals(input["globals"], issues);
   artboardPaintReferences(input["artboard"], input["globals"], issues);
@@ -738,24 +740,6 @@ function palettePaints(value: unknown, issues: ValidationIssue[]): void {
       } else previous = stop["offset"] as number;
     }
   }
-}
-
-/** Reuses the one semantic validator without treating Fabric JSON as a legacy node tree. */
-function sharedSemanticIssues(
-  input: Record<string, unknown>,
-): readonly ValidationIssue[] {
-  const result = validateThemeDocument({
-    schemaVersion: 1,
-    id: input["id"],
-    metadata: input["metadata"],
-    artboard: input["artboard"],
-    globals: input["globals"],
-    assets: input["assets"],
-    editorMetadata: input["editorMetadata"],
-    nodes: [],
-  });
-
-  return result.ok ? [] : result.issues;
 }
 
 function editorMetadata(value: unknown, issues: ValidationIssue[]): void {

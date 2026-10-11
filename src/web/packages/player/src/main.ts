@@ -1,24 +1,16 @@
-import { createDemoSource, validThemeByName } from "@vigilia/fake-source";
 import {
   type Binding,
   buildChartPlan,
-  buildScenePlan,
   type ChartContent,
   createAssetResolver,
   createLiveSource,
   type FabricPalette,
   type FabricThemeEnvelope,
   type LiveSourceHandle,
-  type MeasurementSystem,
-  missingFontFamilies,
   type PlanIssue,
-  requiredSemanticKeys,
   SAMPLE_STREAM_PATH,
   type SampleSource,
   type SceneHandle,
-  type ScenePlan,
-  type ThemeDocument,
-  validateThemeDocument,
 } from "@vigilia/renderer-core";
 import {
   applyAuthoredText,
@@ -35,7 +27,6 @@ import {
   showAvailabilityNotice,
   showConnectionState,
   showCropNotice,
-  showScaffoldBanner,
 } from "./chrome.js";
 import { envelopePlan } from "./hosted-plan.js";
 import { showLoadFailure } from "./load-failure.js";
@@ -56,34 +47,9 @@ if (!artboardHost) {
   throw new Error("Artboard host element is missing.");
 }
 
-const FIXTURE_THEME_IDS = new Set(["stress", "portrait-cover", "assets"]);
 async function start(host: HTMLElement): Promise<void> {
   const parameters = new URLSearchParams(window.location.search);
   const requested = parameters.get("theme");
-
-  const reducedMotion =
-    window.matchMedia?.("(prefers-reduced-motion: reduce)").matches === true;
-  const animate = parameters.get("static") !== "1" && !reducedMotion;
-
-  if (requested !== null && FIXTURE_THEME_IDS.has(requested)) {
-    const theme = validThemeByName(requested);
-    if (theme === undefined) {
-      throw new Error(`Fixture theme "${requested}" is missing.`);
-    }
-    const result = validateThemeDocument(theme);
-    if (!result.ok) {
-      throw new Error(`Fixture theme "${requested}" is invalid.`);
-    }
-    startFixtureTheme(
-      host,
-      result.document,
-      parameters,
-      requested,
-      animate,
-      await loadDisplayPreferences(fetch),
-    );
-    return;
-  }
 
   if (requested === null) {
     showLoadFailure(new ThemeLoadError("missing-id", "No ?theme=."));
@@ -130,151 +96,6 @@ function reportRepaintError(message: string): void {
  *  screen and a page that claims nothing is being shown. */
 function reportFontError(message: string): void {
   console.warn(`Vigilia: ${message}`);
-}
-
-function startFixtureTheme(
-  host: HTMLElement,
-  theme: ThemeDocument,
-  parameters: URLSearchParams,
-  requested: string | null,
-  animate: boolean,
-  measurement: MeasurementSystem,
-): void {
-  declareDocumentLanguage(theme.metadata?.themeLanguage);
-  // Fake vs live is explicit. Never fall back to invented data when live telemetry fails.
-  const live = parameters.get("data") === "live";
-  const fake = live ? undefined : createDemoSource(Date.now());
-  let source: SampleSource;
-  let liveHandle: LiveSourceHandle | undefined;
-
-  if (fake === undefined) {
-    const keys = requiredSemanticKeys(theme);
-
-    liveHandle = createLiveSource({
-      url: `${SAMPLE_STREAM_PATH}?keys=${encodeURIComponent(keys.join(","))}`,
-      onStatus: (status, detail) =>
-        showConnectionState(status, keys.length, detail),
-    });
-    source = liveHandle.source;
-  } else {
-    source = fake;
-  }
-
-  const resolveAsset = createAssetResolver(theme.assets, { baseUrl: "/" });
-
-  const plan = () =>
-    buildScenePlan({
-      document: theme,
-      source,
-      nowMs: Date.now(),
-      resolveAsset,
-      animate,
-      measurement,
-    });
-
-  const first = plan();
-
-  const onAssetError = (nodeId: string, src: string): void => {
-    console.warn(`Vigilia: asset for node "${nodeId}" failed to load: ${src}`);
-  };
-
-  const handle = mountFabricScene({
-    host,
-    plan: first,
-    artboard: theme.artboard,
-    assets: theme.assets ?? [],
-    resolveAsset: (assetId) => {
-      const url = resolveAsset(assetId);
-      return url === undefined ? undefined : { url };
-    },
-    onAssetError,
-    onUnsupported: (nodeId, reason) => {
-      console.warn(
-        `Vigilia: node "${nodeId}" cannot be drawn as authored — ${reason}`,
-      );
-    },
-    onGlassError: reportGlassError,
-  });
-
-  reportIssues(first);
-  reportMissingFonts(first);
-  showCropNotice(handle, theme.artboard);
-
-  if (fake === undefined) {
-    showConnectionState("connecting", requiredSemanticKeys(theme).length);
-  } else {
-    showScaffoldBanner(
-      requiredSemanticKeys(theme).length,
-      theme.metadata?.name ?? requested ?? "fixture",
-    );
-  }
-
-  let chartRefresh: ReturnType<typeof startChartRefresh> | undefined;
-
-  const tick = (): void => {
-    // Live sources advance on transport arrival; only the deterministic fake needs its clock moved.
-    fake?.setNow(Date.now());
-    handle.update(plan());
-    // Refreshed here because a provider's reason only exists once data has
-    // arrived; the notice removes itself when nothing is unreadable.
-    if (fake === undefined) {
-      showAvailabilityNotice(source, requiredSemanticKeys(theme));
-    }
-  };
-
-  const run = (): void => {
-    if (chartRefresh !== undefined) {
-      return;
-    }
-    tick();
-    chartRefresh = startChartRefresh(tick, 30, undefined, {
-      onError: reportRepaintError,
-    });
-  };
-
-  const pause = (): void => {
-    if (chartRefresh !== undefined) {
-      chartRefresh.dispose();
-      chartRefresh = undefined;
-    }
-  };
-
-  // Avoid rendering while the page is hidden.
-  document.addEventListener("visibilitychange", () => {
-    if (document.visibilityState === "visible") {
-      run();
-    } else {
-      pause();
-    }
-  });
-
-  // ResizeObserver updates the artboard transform after layout and before paint.
-  const observer = new ResizeObserver(() => handle.resize());
-  observer.observe(host);
-
-  // Some mobile WebViews settle orientation in stages; refit once after rotation completes.
-  window.addEventListener("orientationchange", () => {
-    window.setTimeout(() => handle.resize(), 200);
-  });
-
-  // Closing removes this display's keys from the host polling union, and
-  // releases the scene: its glass handle, media layer and video frame callback
-  // are not covered by anything else here. `once` because a `visibilitychange`
-  // that arrives after this would otherwise restart the refresh loop against a
-  // disposed scene.
-  window.addEventListener(
-    "pagehide",
-    () => {
-      liveHandle?.close();
-      pause();
-      observer.disconnect();
-      handle.dispose();
-    },
-    { once: true },
-  );
-
-  run();
-  exposeForDiagnostics(handle, liveHandle);
 }
 
 async function startHostedTheme(
@@ -455,34 +276,6 @@ function hydrateCharts(
 }
 
 const reportedChartIssues = new Set<string>();
-
-/** Logs frame issues while affected values remain visibly missing rather than fabricated. */
-function reportIssues(plan: ScenePlan): void {
-  if (plan.issues.length === 0) {
-    return;
-  }
-
-  console.warn(
-    `Vigilia: ${plan.issues.length} binding or asset issue(s) in this theme:\n` +
-      plan.issues
-        .map((issue) => `  [${issue.code}] ${issue.nodeId}: ${issue.detail}`)
-        .join("\n"),
-  );
-}
-
-/** Reports unavailable fonts after browser font loading settles. */
-function reportMissingFonts(plan: ScenePlan): void {
-  void document.fonts.ready.then(() => {
-    const missing = missingFontFamilies(plan);
-
-    if (missing.length > 0) {
-      console.warn(
-        `Vigilia: ${missing.length} font family/families are unavailable on this device and ` +
-          `a fallback is being used: ${missing.join(", ")}. Metrics will differ from the design.`,
-      );
-    }
-  });
-}
 
 /**
  * Declares the theme's language on the page that shows it.

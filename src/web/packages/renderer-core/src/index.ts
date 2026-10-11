@@ -166,9 +166,7 @@ export { isLocaleName } from "./scene/datetime/names.js";
 export {
   GENERIC_FAMILIES,
   isGenericFamily,
-  missingFontFamilies,
   parseFontStack,
-  requestedFontFamilies,
   unavailableFontFamilies,
 } from "./scene/fonts.js";
 export type { ConvertedValue, MeasurementSystem } from "./scene/measurement.js";
@@ -185,7 +183,7 @@ export type {
   PlanBox,
   PlanChart,
   PlanContent,
-  PlanContext,
+  PlanInputs,
   PlanIssue,
   PlanNode,
   PlanTextLayout,
@@ -195,7 +193,6 @@ export type {
 } from "./scene/plan.js";
 export {
   buildChartPlan,
-  buildScenePlan,
   computeMaxLines,
   formatNumber,
   formatUnit,
@@ -239,20 +236,14 @@ export type {
   GlobalGroupName,
   GlobalRef,
   Globals,
-  ImageContent,
   NodeType,
   PalettePaint,
-  RectangleContent,
   StyleMap,
   StyleValue,
   TextContent,
   TextRun,
-  ThemeDocument,
   ThemeMetadata,
-  ThemeNode,
-  Transform,
   TypePreset,
-  VideoContent,
   WidgetProvenance,
 } from "./theme/document.js";
 export {
@@ -264,11 +255,7 @@ export {
   MAX_NODE_COUNT,
   MAX_NODE_DEPTH,
   NODE_TYPES,
-  requiredSemanticKeys,
   STABLE_ID_PATTERN,
-  SUPPORTED_SCHEMA_VERSION,
-  walkBindings,
-  walkNodes,
 } from "./theme/document.js";
 export type {
   FabricGlobals,
@@ -277,7 +264,7 @@ export type {
   FabricThemeEnvelope,
   FabricThemeEnvelopeInput,
 } from "./theme/fabric-envelope.js";
-export { fabricEnvelopeInputFor } from "./theme/fabric-envelope.js";
+export { SUPPORTED_SCHEMA_VERSION } from "./theme/fabric-envelope.js";
 export type { FabricEnvelopeValidationResult } from "./theme/fabric-envelope-validate.js";
 export { validateFabricThemeEnvelope } from "./theme/fabric-envelope-validate.js";
 export type { GlassTreatment } from "./theme/glass.js";
@@ -318,19 +305,12 @@ export {
   objectName,
   VIGILIA_NAME_PROPERTY,
 } from "./theme/object-name.js";
-export { serializeThemeDocument } from "./theme/serialize.js";
 export type {
   IssueCode,
   ValidationIssue,
-  ValidationResult,
-} from "./theme/validate.js";
-export { validateThemeDocument } from "./theme/validate.js";
-export type {
-  InstantiateWidgetOptions,
-  InstantiateWidgetResult,
-  WidgetIssue,
-} from "./theme/widget.js";
-export { createWidgetIdAllocator, instantiateWidget } from "./theme/widget.js";
+} from "./theme/envelope-semantics.js";
+export type { WidgetIssue } from "./theme/widget.js";
+export { createWidgetIdAllocator } from "./theme/widget.js";
 export type {
   Fill,
   GaugeSettings,

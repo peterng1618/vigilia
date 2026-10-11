@@ -1,10 +1,15 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from "vitest";
 import { SampleStore } from "../data/store.js";
-import type { ThemeDocument, ThemeNode } from "../theme/document.js";
+import type { TextContent, TextRun } from "../theme/document.js";
 import type { Sample } from "../types.js";
 import { mountScene } from "./mount.js";
-import { buildScenePlan } from "./plan.js";
+import {
+  type PlanNode,
+  type PlanTextSegment,
+  resolveTextSegments,
+  type ScenePlan,
+} from "./plan.js";
 
 /**
  * The DOM applier's update path, which had no unit test at all.
@@ -25,36 +30,27 @@ import { buildScenePlan } from "./plan.js";
  * than throwing, so the former DOM display suite failed intermittently
  * and inexplicably. A browser test cannot assert the absence of churn without
  * catching it in the act; identity comparison here can.
+ *
+ * The plan is built by hand because the applier's input is a `ScenePlan`, not a
+ * document: the segments come from `resolveTextSegments`, which is still the one
+ * owner of what a run reads, and the rest is the scaffolding this test is about.
  */
 
 const NOW = Date.parse("2026-01-01T00:00:10Z");
 
-function documentWith(nodes: readonly ThemeNode[]): ThemeDocument {
-  return {
-    schemaVersion: 1,
-    id: "churn",
-    artboard: { width: 800, height: 480, contentFit: "contain" },
-    nodes,
-  };
-}
+const BINDINGS = [{ id: "load", semanticKey: "cpu.load.total" }];
 
 /** One literal run and one bound run, so both halves of §89 are exercised. */
-function textNode(label: string): ThemeNode {
-  return {
-    id: "readout",
-    type: "text",
-    transform: { x: 0, y: 0, width: 200, height: 40 },
-    bindings: [{ id: "load", semanticKey: "cpu.load.total" }],
-    content: {
-      runs: [
-        { kind: "literal", text: label, style: { color: { value: "#fff" } } },
-        { kind: "value", bindingId: "load" },
-      ],
-    },
-  } as unknown as ThemeNode;
+function authored(label: string): TextContent {
+  const runs: readonly TextRun[] = [
+    { kind: "literal", text: label, style: { color: { value: "#fff" } } },
+    { kind: "value", bindingId: "load" },
+  ];
+
+  return { runs };
 }
 
-function sourceWith(value: number) {
+function segmentsOf(content: TextContent, value: number): PlanTextSegment[] {
   const store = new SampleStore();
   const sample: Sample = {
     sensorId: "cpu.load.total",
@@ -66,16 +62,62 @@ function sourceWith(value: number) {
 
   store.ingest([["cpu.load.total", sample]], NOW);
 
-  return store;
+  return resolveTextSegments(
+    "readout",
+    content.runs,
+    BINDINGS,
+    { source: store },
+    {},
+    [],
+  );
 }
 
-function planFor(node: ThemeNode, value: number) {
-  return buildScenePlan({
-    document: documentWith([node]),
-    source: sourceWith(value),
-    nowMs: NOW,
-    animate: false,
-  });
+function nodeOf(
+  content: TextContent,
+  segments: readonly PlanTextSegment[],
+): PlanNode {
+  return {
+    id: "readout",
+    box: {
+      x: 0,
+      y: 0,
+      width: 200,
+      height: 40,
+      rotation: 0,
+      scaleX: 1,
+      scaleY: 1,
+    },
+    visible: true,
+    style: {},
+    content: {
+      kind: "text",
+      authored: content,
+      segments,
+      layout: {
+        wrap: false,
+        overflow: "clip",
+        align: "left",
+        verticalAlign: "top",
+      },
+    },
+    children: [],
+  };
+}
+
+function planFor(label: string, value: number): ScenePlan {
+  const content = authored(label);
+
+  return {
+    artboard: {
+      width: 800,
+      height: 480,
+      contentFit: "contain",
+      background: "#fff",
+      barColor: "#000",
+    },
+    nodes: [nodeOf(content, segmentsOf(content, value))],
+    issues: [],
+  };
 }
 
 function spansOf(host: HTMLElement): Element[] {
@@ -87,8 +129,7 @@ describe("updating a text node", () => {
     const host = document.createElement("div");
     document.body.append(host);
 
-    const node = textNode("CPU ");
-    const handle = mountScene({ host, plan: planFor(node, 42) });
+    const handle = mountScene({ host, plan: planFor("CPU ", 42) });
     const before = spansOf(host);
 
     // Two spans, one of them styled — so the comparison has a style map to get
@@ -100,7 +141,7 @@ describe("updating a text node", () => {
     // identical content. This is exactly what the player's 1 Hz tick produces
     // for a node whose reading has not moved, so identity of the plan says
     // nothing and the fields have to be compared.
-    handle.update(planFor(node, 42));
+    handle.update(planFor("CPU ", 42));
 
     const after = spansOf(host);
 
@@ -119,11 +160,10 @@ describe("updating a text node", () => {
     const host = document.createElement("div");
     document.body.append(host);
 
-    const node = textNode("CPU ");
-    const handle = mountScene({ host, plan: planFor(node, 42) });
+    const handle = mountScene({ host, plan: planFor("CPU ", 42) });
     const before = spansOf(host);
 
-    handle.update(planFor(node, 91));
+    handle.update(planFor("CPU ", 91));
 
     const after = spansOf(host);
 

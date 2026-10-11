@@ -8,9 +8,7 @@ import {
   removeStrip,
   showConnectionState,
   showCropNotice,
-  showScaffoldBanner,
 } from "./chrome.js";
-import { uiCopy } from "./ui-copy.js";
 
 /**
  * The document `index.html` ships: the chrome's two bands around the artboard
@@ -142,21 +140,10 @@ describe("the strips the display is told by", () => {
 
   it("marks every strip with one attribute, in the band for what it is", () => {
     showConnectionState("reconnecting", 3);
-    showScaffoldBanner(18, "Edge cases");
 
     expect(stripsIn("bottom").map((strip) => strip.id)).toEqual([
       "vigilia-connection",
-      "vigilia-scaffold",
     ]);
-    expect(document.querySelector("#vigilia-scaffold")?.textContent).toBe(
-      uiCopy.syntheticData("Edge cases", 18),
-    );
-  });
-
-  it("keeps the scaffold banner addressable, which it was not", () => {
-    showScaffoldBanner(18, "Edge cases");
-
-    expect(document.querySelector("[data-vigilia-scaffold]")).not.toBeNull();
   });
 
   it("clears the transport strip when the connection is live", () => {

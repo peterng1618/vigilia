@@ -7,10 +7,10 @@
  * edge is a composition, and telling the author "1 object outside" reports a
  * decision as a mistake. This is the mark that makes the two different.
  *
- * It is a Fabric custom property rather than a field on the v1 `ThemeDocument`
- * node tree because the v2 document persists Fabric JSON: a field there would
- * reach the card-library widget path and never a saved theme, so the notice
- * would keep firing for every marked object. See
+ * It is a Fabric custom property rather than a field somewhere beside the
+ * scene, because the document persists Fabric JSON: the mark has to travel with
+ * the object it applies to, and a note that is not on that object is a note
+ * about nothing. See
  * `docs/decisions/0027-a-deliberate-bleed-is-marked-not-warned-about.md`.
  */
 

@@ -55,7 +55,7 @@ SampleBatch
     ↓ SSE /ws?keys=…
 createLiveSource / SampleStore
     ↓
-buildScenePlan            pure domain decisions
+plan.ts                   pure domain decisions
     ↓
 scene-fabric
     ↓
@@ -133,9 +133,8 @@ display agrees without re-converting. The measurement system changes presentatio
 only, so the **display** applies it: a sample stays what the provider measured
 (§97), conversion happens after a binding's own scale and offset and before
 formatting, and only for a family that declares one — temperature today, in
-`renderer-core/src/scene/measurement.ts`. Both display paths convert: the planned
-scene (`buildScenePlan`'s `measurement`) and a hosted theme, which is revived
-rather than planned and converts in `refreshBoundText`. A display reads the
+`renderer-core/src/scene/measurement.ts`. A hosted theme is revived rather than
+planned, so it converts in `refreshBoundText`. A display reads the
 preference once at load (`player/src/theme-loader.ts`); the editor preview does
 not, so it stays metric.
 

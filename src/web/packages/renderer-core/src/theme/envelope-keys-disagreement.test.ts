@@ -9,12 +9,12 @@ import {
   type KnownKeyShape,
   knownKeyShapes,
   knownKeysFor,
-} from "./validate.js";
+} from "./envelope-keys.js";
 
 /**
  * The two registries, asked the same question about the same document.
  *
- * `validate.ts` decides (docs/decisions/0023); `schema/theme-document.schema.json`
+ * `envelope-keys.ts` decides (docs/decisions/0023); `schema/theme-document.schema.json`
  * is published for tools outside this repo. Nothing generates either from the
  * other, so the two can drift — and the schema is the stricter reader, so a
  * drift is a theme the editor opens and every published tool refuses, silently
@@ -54,7 +54,12 @@ function union(paths: readonly (readonly string[])[]): readonly string[] {
   return [...new Set(paths.flatMap((path) => publishedKeys(at(path))))].sort();
 }
 
-/** Where the schema publishes each bag `validate.ts` decides; `[]` is the root. */
+/**
+ * Where the schema publishes each bag this module decides; `[]` is the root.
+ *
+ * Every shape in `KNOWN_KEYS` has one, so a shape added there is a decision the
+ * length assertion below forces rather than a silence.
+ */
 const KNOWN_KEY_SHAPES: Partial<Record<KnownKeyShape, readonly string[][]>> = {
   metadata: [["$defs", "metadata"]],
   artboard: [["$defs", "artboard"]],
@@ -72,31 +77,6 @@ const KNOWN_KEY_SHAPES: Partial<Record<KnownKeyShape, readonly string[][]>> = {
     ["$defs", "typePresetGroup", "additionalProperties"],
   ],
 };
-
-/**
- * Shapes the v2 schema deliberately does not publish. In v2 these live inside
- * Fabric JSON, which the schema validates as opaque `jsonValue`; adding one to
- * the published contract would describe a document that does not exist. Listed
- * so that adding a shape to `KNOWN_KEYS` is a decision, not a silence.
- */
-const NOT_PUBLISHED: readonly KnownKeyShape[] = [
-  "document",
-  "transform",
-  "node",
-  "textContent",
-  "textBox",
-  "literalRun",
-  "valueRun",
-  "chartContent",
-  "rectangleContent",
-  "imageContent",
-  "videoContent",
-  "widgetProvenance",
-  "gaugeSettings",
-  "lineSettings",
-  "barSettings",
-  "pieSettings",
-];
 
 const ENVELOPE_BAGS: Record<EnvelopeKeyBag, readonly string[][]> = {
   envelope: [[]],
@@ -154,23 +134,13 @@ describe("the envelope's key bags, answered twice", () => {
     }
   });
 
-  it("decides every shape it declares, published or explicitly not", () => {
+  it("decides every shape it declares", () => {
     const shapes = knownKeyShapes();
 
-    expect(shapes).toHaveLength(
-      Object.keys(KNOWN_KEY_SHAPES).length + NOT_PUBLISHED.length,
-    );
+    expect(shapes).toHaveLength(Object.keys(KNOWN_KEY_SHAPES).length);
     expect([...shapes].sort()).toEqual(
-      [...Object.keys(KNOWN_KEY_SHAPES), ...NOT_PUBLISHED].sort(),
+      [...Object.keys(KNOWN_KEY_SHAPES)].sort(),
     );
-  });
-
-  it("does not publish a shape it says it does not publish", () => {
-    const defs = Object.keys(schema()["$defs"] as Node);
-
-    for (const shape of NOT_PUBLISHED) {
-      expect(defs).not.toContain(shape);
-    }
   });
 });
 

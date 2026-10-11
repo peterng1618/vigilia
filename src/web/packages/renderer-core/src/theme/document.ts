@@ -3,10 +3,7 @@ import type { LineSettings } from "../charts/line.js";
 import type { PieSettings } from "../charts/pie.js";
 import type { GaugeSettings } from "../types.js";
 
-/** In-memory form of the owned theme document format. */
-
-/** Only schema version accepted by this build; unsupported versions are refused, not migrated. */
-export const SUPPORTED_SCHEMA_VERSION = 1;
+/** The theme's authored vocabulary: artboard, globals, bindings, text runs and assets. */
 
 export const MAX_ARTBOARD_DIMENSION = 16384;
 
@@ -108,17 +105,6 @@ export interface TypePreset {
 export type GlobalGroup = Readonly<Record<string, GlobalEntry>>;
 export type Globals = Readonly<Partial<Record<GlobalGroupName, GlobalGroup>>>;
 
-/** Group-local transform; transforms compose through ancestry. */
-export interface Transform {
-  readonly x?: number;
-  readonly y?: number;
-  readonly width?: number;
-  readonly height?: number;
-  readonly rotation?: number;
-  readonly scaleX?: number;
-  readonly scaleY?: number;
-}
-
 export interface Artboard {
   readonly width: number;
   readonly height: number;
@@ -209,22 +195,6 @@ export type ChartContent =
   | { readonly family: "bar"; readonly settings: BarSettings }
   | { readonly family: "pie"; readonly settings: PieSettings };
 
-export interface RectangleContent {
-  readonly cornerRadius?: number;
-}
-
-export interface ImageContent {
-  readonly assetId: string;
-  readonly fit?: "contain" | "cover" | "stretch";
-  readonly monochrome?: StyleValue;
-}
-
-export interface VideoContent {
-  readonly assetId: string;
-  readonly loop?: boolean;
-  readonly muted?: boolean;
-}
-
 /** The unit a card was authored as, on the starter and on a copy; not a live
  * library link. */
 export interface WidgetProvenance {
@@ -233,34 +203,6 @@ export interface WidgetProvenance {
   readonly widgetVersion?: string;
   readonly insertedAt?: string;
 }
-
-interface NodeBase {
-  readonly id: string;
-  readonly name?: string;
-  readonly transform?: Transform;
-  readonly visible?: boolean;
-  readonly locked?: boolean;
-  readonly provenance?: WidgetProvenance;
-  readonly style?: StyleMap;
-  readonly bindings?: readonly Binding[];
-}
-
-/** Array order is paint order; there is no separate z-index. */
-export type ThemeNode =
-  | (NodeBase & {
-      readonly type: "group";
-      readonly children: readonly ThemeNode[];
-    })
-  | (NodeBase & {
-      readonly type: "rectangle";
-      readonly content?: RectangleContent;
-    })
-  | (NodeBase & { readonly type: "ellipse" })
-  | (NodeBase & { readonly type: "line" })
-  | (NodeBase & { readonly type: "text"; readonly content: TextContent })
-  | (NodeBase & { readonly type: "chart"; readonly content: ChartContent })
-  | (NodeBase & { readonly type: "image"; readonly content: ImageContent })
-  | (NodeBase & { readonly type: "video"; readonly content: VideoContent });
 
 export interface AssetLicense {
   readonly name?: string;
@@ -299,67 +241,12 @@ export interface ThemeMetadata {
   readonly updatedAt?: string;
   /**
    * The language this theme's text is written in, as a BCP 47 tag. Required on
-   * v2 envelopes: text a theme shows belongs to the theme's language, and a
-   * theme library filters on it. Absent means English when a v1 document is read.
+   * the envelope: text a theme shows belongs to the theme's language, and a
+   * theme library filters on it.
    *
    * Named for the language rather than the locale: the value is a bare language
    * tag from the curated list, and it states a fact about this theme rather than
    * the runtime's formatting preferences. See docs/decisions/0022.
    */
   readonly themeLanguage?: string;
-}
-
-export interface ThemeDocument {
-  readonly schemaVersion: number;
-  readonly id: string;
-  readonly metadata?: ThemeMetadata;
-  readonly artboard: Artboard;
-  readonly globals?: Globals;
-  readonly nodes: readonly ThemeNode[];
-  readonly assets?: readonly AssetReference[];
-  /** Persisted editor-only state; not rendered or part of document undo. */
-  readonly editorMetadata?: Readonly<Record<string, unknown>>;
-}
-
-/** Depth-first walk in paint order, parents before children. */
-export function* walkNodes(
-  nodes: readonly ThemeNode[],
-): Generator<{ node: ThemeNode; depth: number; path: string }> {
-  yield* walk(nodes, 0, "/nodes");
-}
-
-function* walk(
-  nodes: readonly ThemeNode[],
-  depth: number,
-  path: string,
-): Generator<{ node: ThemeNode; depth: number; path: string }> {
-  for (const [index, node] of nodes.entries()) {
-    const nodePath = `${path}/${index}`;
-    yield { node, depth, path: nodePath };
-
-    if (node.type === "group") {
-      yield* walk(node.children, depth + 1, `${nodePath}/children`);
-    }
-  }
-}
-
-export function* walkBindings(
-  nodes: readonly ThemeNode[],
-): Generator<{ binding: Binding; node: ThemeNode }> {
-  for (const { node } of walkNodes(nodes)) {
-    for (const binding of node.bindings ?? []) {
-      yield { binding, node };
-    }
-  }
-}
-
-/** Sorted semantic-key set required by this document. */
-export function requiredSemanticKeys(document: ThemeDocument): string[] {
-  const keys = new Set<string>();
-
-  for (const { binding } of walkBindings(document.nodes)) {
-    keys.add(binding.semanticKey);
-  }
-
-  return [...keys].sort();
 }

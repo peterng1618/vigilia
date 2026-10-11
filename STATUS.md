@@ -30,14 +30,15 @@ satisfies every token in the bible and still does not look like the mockup.
 
 ## Last completed change
 
-- **Fifteen generatorless captures deleted from `docs/evidence/screenshots/`** — every image there with no capture test that can produce it; all fifteen arrived in one bulk rename (`bd20b26e`, 2026-09-24) and none carries the `-{project}` suffix `captureVisualReview` always appends.
-- **The orphan call is evidence-backed, not a literal grep**: the four sites that write into that directory were found first, then each name was searched across `src/` and `docs/` in all history, with a positive control showing the same search *does* find known generator names.
-- **None of the fifteen was registered in the evidence README's table**, so no document needed an edit, and every image stays recoverable from git history. The re-shoots are a separate pass and are not done.
+- **Schema v1 is deleted rather than migrated (ADR 0041)**: `ThemeDocument`/`ThemeNode` and the two node walkers, the v1 validator and serializer, the v1 node-tree plan builder, `instantiateWidget`, every fixture under `fake-source/src/themes/`, and the player's `?theme=` fixture-render path are all gone — the player renders only host-served envelopes.
+- **The v2 envelope keeps its shared semantic validation**: the metadata, identity, artboard, globals, assets, background-media and artboard-paint checks moved to `theme/envelope-semantics.ts`, which `validateFabricThemeEnvelope` calls, so the checks did not leave with the v1 document that used to carry them.
+- **The About row still reads a schema version, now owned by the envelope**: `SUPPORTED_SCHEMA_VERSION = 2` lives in `theme/fabric-envelope.ts`, and `scene-fabric/src/persist.ts` writes it instead of a literal `2` that had to agree with it by hand.
+- **The brief's v1 starter generator does not exist**: `editor/src/new-fabric-theme.ts` already returned `schemaVersion: 2`, so the v1 emitters were the fixtures alone — recorded in the task report with the other two falsified facts.
 
 ## Next
 
-1. **Deprecate schema v1** and everything that emits or reads it, the starter theme generator included — the user's instruction of 2026-10-11; being surveyed now, and the survey decides whether this is a task or a spec.
-2. **The screenshot inventory** — remove every capture whose generator no longer exists, and regenerate the ones that are valid but outdated (`vg-341`'s seven are one known family); two surveys are in flight and nothing is deleted until the orphan list is evidence-backed, because a wrong call destroys evidence.
+1. **The schema-v1 screenshots pass** — the captures whose generator this deletion removed are listed by filename in `.superpowers/sdd/2026-10-11-schema-v1-retirement/task-1-report.md`; the screenshot inventory (item 2) folds into it.
+2. **The screenshot inventory** — remove every capture whose generator no longer exists, and regenerate the ones that are valid but outdated (`vg-341`'s seven are one known family); nothing is deleted until the orphan list is evidence-backed, because a wrong call destroys evidence.
 3. **The four rulings implemented**: `PINNED_FLOOR.boundary` deleted and §5's narrower rule written down, and the drawing's six preview bars repainted to the palette's ground with a `PARITY` row that reads a bar's colour — brief written at `.superpowers/sdd/2026-10-11-design-rulings/task-1-brief.md`, waiting behind the two surveys above.
 4. **`vg-331`** (the attention-colour role, defined before any colour is chosen); **`vg-330` is PARKED by the user** (2026-10-11) and is not queued.
 5. **`design-md-replaces-the-bible`**, then the multi-device objective; **Acceptance item 3** still keeps the editor-redesign objective open.

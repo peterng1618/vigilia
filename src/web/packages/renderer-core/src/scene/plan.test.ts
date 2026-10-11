@@ -1,20 +1,32 @@
 import { describe, expect, it } from "vitest";
 import { defaultBarSettings } from "../charts/bar.js";
 import { defaultLineSettings } from "../charts/line.js";
+import type { SampleSource } from "../data/source.js";
 import { emptySampleSource } from "../data/source.js";
 import { SampleStore } from "../data/store.js";
-import type { ThemeDocument, ThemeNode } from "../theme/document.js";
+import type { Artboard, Binding, Globals, TextRun } from "../theme/document.js";
 import { defaultGaugeSettings, type Sample } from "../types.js";
 import {
   buildChartPlan,
-  buildScenePlan,
   computeMaxLines,
   formatNumber,
   formatUnit,
   MISSING_VALUE_TEXT,
-  type PlanContext,
-  type PlanTextSegment,
+  type PlanInputs,
+  type PlanIssue,
+  planArtboard,
+  resolveStyleValue,
+  resolveTextSegments,
 } from "./plan.js";
+
+/**
+ * The pure decisions a render plan is made of.
+ *
+ * Each describe calls the owner directly rather than building a whole plan:
+ * `planArtboard`, `resolveStyleValue`, `resolveTextSegments` and
+ * `buildChartPlan` are what a document's authoring turns into, and the docless
+ * entry point that used to assemble them is gone with schema v1.
+ */
 
 const NOW = Date.parse("2026-01-01T00:00:10Z");
 
@@ -34,35 +46,13 @@ function storeWith(entries: Record<string, Sample>): SampleStore {
   return store;
 }
 
-function documentWith(
-  nodes: readonly ThemeNode[],
-  globals?: ThemeDocument["globals"],
-  metadata?: ThemeDocument["metadata"],
-): ThemeDocument {
-  return {
-    schemaVersion: 1,
-    id: "demo",
-    artboard: { width: 800, height: 480, contentFit: "contain" },
-    ...(metadata === undefined ? {} : { metadata }),
-    ...(globals === undefined ? {} : { globals }),
-    nodes,
-  };
-}
-
-function plan(document: ThemeDocument, overrides: Partial<PlanContext> = {}) {
-  return buildScenePlan({
-    document,
-    source: emptySampleSource,
-    nowMs: NOW,
-    animate: false,
-    ...overrides,
-  });
+function artboardWith(overrides: Partial<Artboard> = {}): Artboard {
+  return { width: 800, height: 480, contentFit: "contain", ...overrides };
 }
 
 describe("artboard", () => {
   it("carries size and fit mode through", () => {
-    const result = plan(documentWith([]));
-    expect(result.artboard).toMatchObject({
+    expect(planArtboard(artboardWith(), {}, [])).toMatchObject({
       width: 800,
       height: 480,
       contentFit: "contain",
@@ -70,231 +60,134 @@ describe("artboard", () => {
   });
 
   it("defaults fit mode to contain", () => {
-    const document: ThemeDocument = {
-      schemaVersion: 1,
-      id: "d",
-      artboard: { width: 100, height: 100 },
-      nodes: [],
-    };
-    expect(plan(document).artboard.contentFit).toBe("contain");
+    expect(planArtboard({ width: 100, height: 100 }, {}, []).contentFit).toBe(
+      "contain",
+    );
   });
 
   it("resolves the background through globals", () => {
-    const document = documentWith([], {
+    const globals: Globals = {
       palette: { bg: { name: "Background", value: "#101216" } },
-    });
-    const withBackground: ThemeDocument = {
-      ...document,
-      artboard: { ...document.artboard, background: { ref: "palette.bg" } },
     };
 
-    expect(plan(withBackground).artboard.background).toBe("#101216");
+    expect(
+      planArtboard(
+        artboardWith({ background: { ref: "palette.bg" } }),
+        globals,
+        [],
+      ).background,
+    ).toBe("#101216");
   });
 
   // The palette's other shape — `{ kind: "solid" }` rather than a bare colour —
   // and the artboard's second paint, which comes from the same globals. A solid
   // paint resolves to its colour, which is the form the renderer paints.
   it("resolves a structured palette value and the bar colour too", () => {
-    const document = documentWith([], {
+    const globals: Globals = {
       palette: {
         paper: { name: "Paper", value: { kind: "solid", color: "#e8e4da" } },
         bars: { name: "Bars", value: "#101318" },
       },
-    });
-    const withPaints: ThemeDocument = {
-      ...document,
-      artboard: {
-        ...document.artboard,
-        background: { ref: "palette.paper" },
-        barColor: { ref: "palette.bars" },
-      },
     };
 
-    expect(plan(withPaints).artboard).toMatchObject({
-      background: "#e8e4da",
-      barColor: "#101318",
-    });
+    expect(
+      planArtboard(
+        artboardWith({
+          background: { ref: "palette.paper" },
+          barColor: { ref: "palette.bars" },
+        }),
+        globals,
+        [],
+      ),
+    ).toMatchObject({ background: "#e8e4da", barColor: "#101318" });
   });
 });
 
 describe("type presets", () => {
   it("resolves each text run through its own preset and palette token", () => {
-    const result = plan(
-      documentWith(
-        [
-          {
-            id: "readout",
-            type: "text",
-            content: {
-              runs: [
-                {
-                  kind: "literal",
-                  text: "CPU ",
-                  typePreset: "typePresets.label",
-                  style: { color: { ref: "palette.ink" } },
-                },
-                {
-                  kind: "literal",
-                  text: "48%",
-                  typePreset: "typePresets.value",
-                },
-              ],
-            },
-          },
-        ],
-        {
-          palette: { ink: { name: "Ink", value: "#ffffff" } },
-          typePresets: {
-            label: {
-              name: "Label",
-              value: {
-                family: "Inter",
-                size: 14,
-                weight: 500,
-                letterSpacing: 1.2,
-                lineHeight: 1.1,
-              },
-            },
-            value: {
-              name: "Value",
-              value: { family: "Inter", size: 32, weight: 700 },
-            },
-          },
-        },
-      ),
-    );
-    const content = result.nodes[0]!.content;
-    expect(content).toMatchObject({
-      kind: "text",
-      segments: [
-        {
-          text: "CPU ",
-          style: {
-            fontFamily: "Inter",
-            fontSize: 14,
-            fontWeight: 500,
+    const globals: Globals = {
+      palette: { ink: { name: "Ink", value: "#ffffff" } },
+      typePresets: {
+        label: {
+          name: "Label",
+          value: {
+            family: "Inter",
+            size: 14,
+            weight: 500,
             letterSpacing: 1.2,
             lineHeight: 1.1,
-            color: "#ffffff",
           },
         },
-        {
-          text: "48%",
-          style: { fontFamily: "Inter", fontSize: 32, fontWeight: 700 },
+        value: {
+          name: "Value",
+          value: { family: "Inter", size: 32, weight: 700 },
         },
+      },
+    };
+
+    const result = resolveTextSegments(
+      "readout",
+      [
+        {
+          kind: "literal",
+          text: "CPU ",
+          typePreset: "typePresets.label",
+          style: { color: { ref: "palette.ink" } },
+        },
+        { kind: "literal", text: "48%", typePreset: "typePresets.value" },
       ],
-    });
-  });
-});
+      [],
+      { source: emptySampleSource },
+      globals,
+      [],
+    );
 
-describe("geometry", () => {
-  it("defaults an absent transform to a zero-sized box at the origin", () => {
-    // Defaulting to a visible size would put a rectangle on screen that the
-    // document never described.
-    const result = plan(documentWith([{ id: "r", type: "rectangle" }]));
-
-    expect(result.nodes[0]!.box).toEqual({
-      x: 0,
-      y: 0,
-      width: 0,
-      height: 0,
-      rotation: 0,
-      scaleX: 1,
-      scaleY: 1,
-    });
-  });
-
-  it("keeps group-local coordinates rather than flattening them", () => {
-    // §57: transforms compose, so a child's box stays relative to its group.
-    // Baking world coordinates here would break grouping and ungrouping.
-    const result = plan(
-      documentWith([
-        {
-          id: "g",
-          type: "group",
-          transform: { x: 100, y: 50 },
-          children: [
-            {
-              id: "r",
-              type: "rectangle",
-              transform: { x: 10, y: 5, width: 20, height: 20 },
-            },
-          ],
+    expect(result).toEqual([
+      {
+        text: "CPU ",
+        style: {
+          fontFamily: "Inter",
+          fontSize: 14,
+          fontWeight: 500,
+          letterSpacing: 1.2,
+          lineHeight: 1.1,
+          color: "#ffffff",
         },
-      ]),
-    );
-
-    expect(result.nodes[0]!.children[0]!.box.x).toBe(10);
-  });
-
-  it("treats a node as visible unless the document says otherwise", () => {
-    const result = plan(
-      documentWith([
-        { id: "a", type: "rectangle" },
-        { id: "b", type: "rectangle", visible: false },
-      ]),
-    );
-
-    expect(result.nodes.map((n) => n.visible)).toEqual([true, false]);
-  });
-
-  it("preserves document order, which is paint order (§137)", () => {
-    const result = plan(
-      documentWith([
-        { id: "first", type: "rectangle" },
-        { id: "second", type: "ellipse" },
-      ]),
-    );
-
-    expect(result.nodes.map((n) => n.id)).toEqual(["first", "second"]);
+      },
+      {
+        text: "48%",
+        style: { fontFamily: "Inter", fontSize: 32, fontWeight: 700 },
+      },
+    ]);
   });
 });
 
 describe("style resolution (§75)", () => {
-  const globals = { palette: { accent: { name: "Accent", value: "#00b8d9" } } };
+  const globals: Globals = {
+    palette: { accent: { name: "Accent", value: "#00b8d9" } },
+  };
 
   it("substitutes a global reference for its literal", () => {
-    const result = plan(
-      documentWith(
-        [
-          {
-            id: "r",
-            type: "rectangle",
-            style: { fill: { ref: "palette.accent" } },
-          },
-        ],
-        globals,
-      ),
+    expect(resolveStyleValue({ ref: "palette.accent" }, globals, "r", [])).toBe(
+      "#00b8d9",
     );
-
-    expect(result.nodes[0]!.style["fill"]).toBe("#00b8d9");
   });
 
   it("passes a local literal through", () => {
-    const result = plan(
-      documentWith([
-        { id: "r", type: "rectangle", style: { fill: { value: "#ff0000" } } },
-      ]),
+    expect(resolveStyleValue({ value: "#ff0000" }, globals, "r", [])).toBe(
+      "#ff0000",
     );
-
-    expect(result.nodes[0]!.style["fill"]).toBe("#ff0000");
   });
 
   it("reports an unresolvable reference instead of guessing a default", () => {
     // A silently substituted colour is how a theme ends up looking wrong with
     // nothing to point at.
-    const result = plan(
-      documentWith([
-        {
-          id: "r",
-          type: "rectangle",
-          style: { fill: { ref: "palette.nope" } },
-        },
-      ]),
-    );
+    const issues: PlanIssue[] = [];
 
-    expect(result.nodes[0]!.style["fill"]).toBeUndefined();
-    expect(result.issues).toEqual([
+    expect(
+      resolveStyleValue({ ref: "palette.nope" }, globals, "r", issues),
+    ).toBeUndefined();
+    expect(issues).toEqual([
       {
         code: "unresolved-global",
         nodeId: "r",
@@ -304,55 +197,41 @@ describe("style resolution (§75)", () => {
   });
 
   it("keeps a literal falsy value rather than dropping it", () => {
-    const result = plan(
-      documentWith([
-        { id: "r", type: "rectangle", style: { opacity: { value: 0 } } },
-      ]),
-    );
-
-    expect(result.nodes[0]!.style["opacity"]).toBe(0);
+    expect(resolveStyleValue({ value: 0 }, globals, "r", [])).toBe(0);
   });
 });
 
 describe("text (§89)", () => {
-  const node = (bindings: unknown[], runs: unknown[]): ThemeNode =>
-    ({
-      id: "t",
-      type: "text",
-      bindings,
-      content: { runs },
-    }) as unknown as ThemeNode;
-
   function segments(
-    source: SampleStore | typeof emptySampleSource,
-    bindings: unknown[],
-    runs: unknown[],
-    overrides: Partial<PlanContext> = {},
+    source: SampleSource,
+    bindings: readonly Binding[],
+    runs: readonly TextRun[],
+    overrides: Partial<
+      Pick<PlanInputs, "longUnits" | "measurement" | "themeLanguage">
+    > = {},
   ) {
-    const result = plan(documentWith([node(bindings, runs)]), {
-      source,
-      ...overrides,
-    });
-    const content = result.nodes[0]!.content;
-    if (content.kind !== "text") {
-      throw new Error("expected a text node");
-    }
+    const issues: PlanIssue[] = [];
+
     return {
-      authored: content.authored,
-      segments: content.segments as PlanTextSegment[],
-      issues: result.issues,
+      segments: resolveTextSegments(
+        "t",
+        runs,
+        bindings,
+        { source, ...overrides },
+        {},
+        issues,
+      ),
+      issues,
     };
   }
 
-  it("keeps authored runs separate from the current resolved value", () => {
-    const runs = [{ kind: "value", bindingId: "b", precision: 0 }];
+  it("reads a bound run through the run's own precision", () => {
     const result = segments(
       storeWith({ "cpu.temp": ok(61.4, "°C", "cpu.temp") }),
       [{ id: "b", semanticKey: "cpu.temp" }],
-      runs,
+      [{ kind: "value", bindingId: "b", precision: 0 }],
     );
 
-    expect(result.authored.runs).toEqual(runs);
     expect(result.segments.map((segment) => segment.text)).toEqual(["61°C"]);
   });
 
@@ -383,13 +262,7 @@ describe("text (§89)", () => {
     expect(
       segments(
         source,
-        [
-          {
-            id: "b",
-            semanticKey: "time.now",
-            format: "dddd, DD MMMM",
-          },
-        ],
+        [{ id: "b", semanticKey: "time.now", format: "dddd, DD MMMM" }],
         [{ kind: "value", bindingId: "b" }],
       ).segments.map((segment) => segment.text),
     ).toEqual(["Thursday, 24 September"]);
@@ -409,55 +282,19 @@ describe("text (§89)", () => {
     expect(result.segments[0]!.text).toBe("16:07");
   });
 
-  it("takes a theme's language from the document when the context sets none", () => {
+  it("reads a date in the language it is told", () => {
     const source = storeWith({
       "date.today": instant("2026-09-24T14:07:09+07:00", "clock:date.today"),
     });
-    const result = plan(
-      documentWith(
-        [
-          node(
-            [{ id: "b", semanticKey: "date.today", format: "dddd" }],
-            [{ kind: "value", bindingId: "b" }],
-          ),
-        ],
-        undefined,
-        { themeLanguage: "ja" },
-      ),
-      { source },
+    const result = segments(
+      source,
+      [{ id: "b", semanticKey: "date.today", format: "dddd" }],
+      [{ kind: "value", bindingId: "b" }],
+      { themeLanguage: "ja" },
     );
-    const content = result.nodes[0]!.content;
-    if (content.kind !== "text") throw new Error("expected a text node");
 
     // 2026-09-24 is a Thursday, however the language spells it.
-    expect(content.segments[0]!.text).toBe("木曜日");
-  });
-
-  it("lets a caller's language override the document's", () => {
-    // Both are declared, and the caller's wins: `context.themeLanguage` is how a
-    // consumer renders one plan in a language that is not the theme's own.
-    const source = storeWith({
-      "date.today": instant("2026-09-24T14:07:09+07:00", "clock:date.today"),
-    });
-    const result = plan(
-      documentWith(
-        [
-          node(
-            [{ id: "b", semanticKey: "date.today", format: "dddd" }],
-            [{ kind: "value", bindingId: "b" }],
-          ),
-        ],
-        undefined,
-        { themeLanguage: "ja" },
-      ),
-      { source, themeLanguage: "en" },
-    );
-    const content = result.nodes[0]!.content;
-    if (content.kind !== "text") throw new Error("expected a text node");
-
-    // The document says `ja`, and the caller still gets English: the theme's
-    // language did not win.
-    expect(content.segments[0]!.text).toBe("Thursday");
+    expect(result.segments[0]!.text).toBe("木曜日");
   });
 
   it("takes names from the pinned zone's own date, not from UTC", () => {
@@ -489,13 +326,7 @@ describe("text (§89)", () => {
     });
     const result = segments(
       source,
-      [
-        {
-          id: "b",
-          semanticKey: "date.today",
-          format: "DD/MM/YYYY HH:mm",
-        },
-      ],
+      [{ id: "b", semanticKey: "date.today", format: "DD/MM/YYYY HH:mm" }],
       [{ kind: "value", bindingId: "b" }],
       { themeLanguage: "ar" },
     );
@@ -506,9 +337,7 @@ describe("text (§89)", () => {
   });
 
   it("shows a text key that is not a time exactly as it was sent", () => {
-    const source = storeWith({
-      "cpu.model": instant("Ryzen 9", "cpu.model"),
-    });
+    const source = storeWith({ "cpu.model": instant("Ryzen 9", "cpu.model") });
     const result = segments(
       source,
       [{ id: "b", semanticKey: "cpu.model", format: "HH:mm" }],
@@ -522,7 +351,7 @@ describe("text (§89)", () => {
   it("converts a temperature for the consumer, once, after the author's scale", () => {
     const source = storeWith({ "cpu.temp": ok(61.4, "°C", "cpu.temp") });
     const bindings = [{ id: "b", semanticKey: "cpu.temp", scale: 2 }];
-    const runs = [{ kind: "value", bindingId: "b", precision: 1 }];
+    const runs = [{ kind: "value", bindingId: "b", precision: 1 }] as const;
 
     // The author's scale is part of the reading, so the preference converts what
     // that produces (122.8 °C → 253.04 °F), never the value it started from.
@@ -716,76 +545,56 @@ describe("text (§89)", () => {
   });
 
   it("resolves per-run styles independently", () => {
-    const result = plan(
-      documentWith(
-        [
-          node(
-            [],
-            [
-              { kind: "literal", text: "a", typePreset: "typePresets.small" },
-              { kind: "literal", text: "b", typePreset: "typePresets.large" },
-            ],
-          ),
-        ],
-        {
-          typePresets: {
-            small: { name: "Small", value: { family: "Inter", size: 12 } },
-            large: { name: "Large", value: { family: "Inter", size: 48 } },
-          },
-        },
-      ),
-    );
-    const content = result.nodes[0]!.content;
-    if (content.kind !== "text") throw new Error("expected a text node");
+    const globals: Globals = {
+      typePresets: {
+        small: { name: "Small", value: { family: "Inter", size: 12 } },
+        large: { name: "Large", value: { family: "Inter", size: 48 } },
+      },
+    };
 
-    expect(
-      content.segments.map((segment) => segment.style["fontSize"]),
-    ).toEqual([12, 48]);
+    const result = resolveTextSegments(
+      "t",
+      [
+        { kind: "literal", text: "a", typePreset: "typePresets.small" },
+        { kind: "literal", text: "b", typePreset: "typePresets.large" },
+      ],
+      [],
+      { source: emptySampleSource },
+      globals,
+      [],
+    );
+
+    expect(result.map((segment) => segment.style["fontSize"])).toEqual([
+      12, 48,
+    ]);
   });
 });
 
 describe("charts", () => {
-  const chartNode = (
-    family: string,
-    settings: unknown,
-    bindings: unknown[],
-  ): ThemeNode =>
-    ({
-      id: "c",
-      type: "chart",
-      bindings,
-      content: { family, settings },
-    }) as unknown as ThemeNode;
-
-  it("feeds the latest sample to a gauge", () => {
-    const result = plan(
-      documentWith([
-        chartNode("gauge", defaultGaugeSettings, [
-          { id: "b", semanticKey: "cpu.load.total" },
-        ]),
-      ]),
-      { source: storeWith({ "cpu.load.total": ok(42) }) },
-    );
-
-    const content = result.nodes[0]!.content;
-    expect(content.kind).toBe("chart");
-    if (content.kind === "chart" && content.family === "gauge") {
-      expect(content.option.series[0].data[0]!.value).toBe(42);
-    }
-  });
-
-  it("derives a chart option without requiring a legacy document tree", () => {
-    const issues = [] as import("./plan.js").PlanIssue[];
+  function chartPlan(
+    content: Parameters<typeof buildChartPlan>[1],
+    bindings: readonly Binding[],
+    source: SampleSource,
+    palette?: Parameters<typeof buildChartPlan>[5],
+  ) {
+    const issues: PlanIssue[] = [];
     const chart = buildChartPlan(
       "c",
+      content,
+      bindings,
+      { source, nowMs: NOW, animate: false },
+      issues,
+      palette,
+    );
+
+    return { chart, issues };
+  }
+
+  it("feeds the latest sample to a gauge", () => {
+    const { chart, issues } = chartPlan(
       { family: "gauge", settings: defaultGaugeSettings },
       [{ id: "b", semanticKey: "cpu.load.total" }],
-      {
-        source: storeWith({ "cpu.load.total": ok(42) }),
-        nowMs: NOW,
-        animate: false,
-      },
-      issues,
+      storeWith({ "cpu.load.total": ok(42) }),
     );
 
     expect(chart.family).toBe("gauge");
@@ -798,18 +607,14 @@ describe("charts", () => {
   it("applies scale and offset to chart data too", () => {
     // A gauge with a 0–100 range bound to a 0–1 ratio would otherwise sit at
     // the bottom of its range forever.
-    const result = plan(
-      documentWith([
-        chartNode("gauge", defaultGaugeSettings, [
-          { id: "b", semanticKey: "fan.ratio", scale: 100 },
-        ]),
-      ]),
-      { source: storeWith({ "fan.ratio": ok(0.42, "", "fan.ratio") }) },
+    const { chart } = chartPlan(
+      { family: "gauge", settings: defaultGaugeSettings },
+      [{ id: "b", semanticKey: "fan.ratio", scale: 100 }],
+      storeWith({ "fan.ratio": ok(0.42, "", "fan.ratio") }),
     );
 
-    const content = result.nodes[0]!.content;
-    if (content.kind === "chart" && content.family === "gauge") {
-      expect(content.option.series[0].data[0]!.value).toBeCloseTo(42);
+    if (chart.family === "gauge") {
+      expect(chart.option.series[0].data[0]!.value).toBeCloseTo(42);
     }
   });
 
@@ -833,18 +638,14 @@ describe("charts", () => {
       NOW,
     );
 
-    const result = plan(
-      documentWith([
-        chartNode("line", defaultLineSettings, [
-          { id: "b", semanticKey: "cpu.load.total" },
-        ]),
-      ]),
-      { source: store },
+    const { chart } = chartPlan(
+      { family: "line", settings: defaultLineSettings },
+      [{ id: "b", semanticKey: "cpu.load.total" }],
+      store,
     );
 
-    const content = result.nodes[0]!.content;
-    if (content.kind === "chart" && content.family === "line") {
-      expect(content.option.series[0]!.data.map((point) => point[1])).toEqual([
+    if (chart.family === "line") {
+      expect(chart.option.series[0]!.data.map((point) => point[1])).toEqual([
         10, 20, 30,
       ]);
     }
@@ -882,20 +683,17 @@ describe("charts", () => {
       NOW,
     );
     const source = Object.assign(store, { chartPlaybackDelayMs: 1_000 });
-    const result = plan(
-      documentWith([
-        chartNode("line", defaultLineSettings, [
-          { id: "b", semanticKey: "cpu.load.total" },
-        ]),
-      ]),
-      { source },
+
+    const { chart } = chartPlan(
+      { family: "line", settings: defaultLineSettings },
+      [{ id: "b", semanticKey: "cpu.load.total" }],
+      source,
     );
 
-    const content = result.nodes[0]!.content;
-    if (content.kind === "chart" && content.family === "line") {
-      expect(content.option.xAxis.max).toBe(NOW);
-      expect(content.option.renderOverscanRightMs).toBe(1_000);
-      expect(content.option.series[0]!.data.at(-1)).toEqual([NOW, 30]);
+    if (chart.family === "line") {
+      expect(chart.option.xAxis.max).toBe(NOW);
+      expect(chart.option.renderOverscanRightMs).toBe(1_000);
+      expect(chart.option.series[0]!.data.at(-1)).toEqual([NOW, 30]);
     }
   });
 
@@ -922,40 +720,34 @@ describe("charts", () => {
   });
 
   it("gives a bar chart one category per binding, in order", () => {
-    const result = plan(
-      documentWith([
-        chartNode("bar", defaultBarSettings, [
-          { id: "b1", semanticKey: "cpu.load.total" },
-          { id: "b2", semanticKey: "gpu.load.total" },
-        ]),
-      ]),
-      {
-        source: storeWith({
-          "cpu.load.total": ok(30),
-          "gpu.load.total": ok(70, "%", "gpu.load.total"),
-        }),
-      },
+    const { chart } = chartPlan(
+      { family: "bar", settings: defaultBarSettings },
+      [
+        { id: "b1", semanticKey: "cpu.load.total" },
+        { id: "b2", semanticKey: "gpu.load.total" },
+      ],
+      storeWith({
+        "cpu.load.total": ok(30),
+        "gpu.load.total": ok(70, "%", "gpu.load.total"),
+      }),
     );
 
-    const content = result.nodes[0]!.content;
-    if (content.kind === "chart" && content.family === "bar") {
-      expect(content.option.series[0].data.map((d) => d.value)).toEqual([
-        30, 70,
-      ]);
+    if (chart.family === "bar") {
+      expect(chart.option.series[0].data.map((d) => d.value)).toEqual([30, 70]);
     }
   });
 
   it("reports each unmapped chart key once", () => {
-    const result = plan(
-      documentWith([
-        chartNode("bar", defaultBarSettings, [
-          { id: "b1", semanticKey: "a.missing" },
-          { id: "b2", semanticKey: "b.missing" },
-        ]),
-      ]),
+    const { issues } = chartPlan(
+      { family: "bar", settings: defaultBarSettings },
+      [
+        { id: "b1", semanticKey: "a.missing" },
+        { id: "b2", semanticKey: "b.missing" },
+      ],
+      emptySampleSource,
     );
 
-    expect(result.issues.map((i) => i.detail)).toEqual([
+    expect(issues.map((i) => i.detail)).toEqual([
       'No sensor is mapped to "a.missing".',
       'No sensor is mapped to "b.missing".',
     ]);
@@ -964,53 +756,20 @@ describe("charts", () => {
   it("still emits a drawable option when a key is unmapped", () => {
     // The adapters' own gap rules cover the missing sample; the chart must
     // still render its track rather than the frame failing.
-    const result = plan(
-      documentWith([
-        chartNode("gauge", defaultGaugeSettings, [
-          { id: "b", semanticKey: "nope" },
-        ]),
-      ]),
+    const { chart } = chartPlan(
+      { family: "gauge", settings: defaultGaugeSettings },
+      [{ id: "b", semanticKey: "nope" }],
+      emptySampleSource,
     );
 
-    const content = result.nodes[0]!.content;
-    if (content.kind === "chart" && content.family === "gauge") {
-      expect(content.option.series[0].progress.show).toBe(false);
+    if (chart.family === "gauge") {
+      expect(chart.option.series[0].progress.show).toBe(false);
     }
-  });
-});
-
-describe("assets", () => {
-  it("resolves an image through the caller-supplied resolver", () => {
-    const result = plan(
-      documentWith([
-        { id: "i", type: "image", content: { assetId: "logo", fit: "cover" } },
-      ]),
-      { resolveAsset: (id) => (id === "logo" ? "blob:logo" : undefined) },
-    );
-
-    expect(result.nodes[0]!.content).toEqual({
-      kind: "image",
-      src: "blob:logo",
-      fit: "cover",
-    });
-  });
-
-  it("reports an asset it cannot resolve", () => {
-    const result = plan(
-      documentWith([{ id: "i", type: "image", content: { assetId: "logo" } }]),
-    );
-
-    expect(result.issues[0]).toMatchObject({
-      code: "unresolved-asset",
-      nodeId: "i",
-    });
   });
 });
 
 describe("formatNumber", () => {
   it("honours an explicit precision exactly, including trailing zeroes", () => {
-    // §89 asks for tabular readouts: a digit count that changes with the value
-    // makes a value box jitter.
     expect(formatNumber(45, 2)).toBe("45.00");
     expect(formatNumber(45.678, 1)).toBe("45.7");
     expect(formatNumber(45.678, 0)).toBe("46");
@@ -1022,8 +781,6 @@ describe("formatNumber", () => {
   });
 
   it("rounds to one decimal and drops a trailing zero when unspecified", () => {
-    // Reads correctly for percentages, temperatures and RPM alike; a fixed
-    // default would be wrong for at least one of them.
     expect(formatNumber(45.67, undefined)).toBe("45.7");
     expect(formatNumber(1200, undefined)).toBe("1200");
     expect(formatNumber(0.5, undefined)).toBe("0.5");
@@ -1031,22 +788,19 @@ describe("formatNumber", () => {
   });
 
   it("writes the reading in the theme's own number format", () => {
-    // The Language setting says what language this dashboard is in, and a
-    // German reading `17.6` where their keyboard writes `17,6` is the setting
-    // doing nothing — which is what the row recorded.
     expect(formatNumber(17.6, undefined, "de")).toBe("17,6");
     expect(formatNumber(17.6, undefined, "fr")).toBe("17,6");
     expect(formatNumber(17.6, undefined, "ru")).toBe("17,6");
     expect(formatNumber(17.6, 1, "de")).toBe("17,6");
-    // Explicit precision still holds, and a tag this runtime cannot parse reads
-    // as its own rather than failing a paint.
+
+    // A tag the runtime does not know falls back rather than throwing.
     expect(formatNumber(45, 2, "de")).toBe("45,00");
     expect(formatNumber(17.6, undefined, "not-a-tag")).toBe("17.6");
   });
 
   it("leaves the width of a reading where the author laid it out", () => {
-    // Grouping is deliberately off: a dashboard's text sits in boxes an author
-    // sized by hand, and only the separator is worth moving.
+    // Grouping is off: `8,667.3` is wider than `8667.3`, and a text box was
+    // sized by hand.
     expect(formatNumber(8667.25, undefined, "en")).toBe("8667.3");
     expect(formatNumber(8667.25, undefined, "de")).toBe("8667,3");
   });
@@ -1059,7 +813,6 @@ describe("formatNumber", () => {
 
 describe("formatUnit", () => {
   it("omits a space before a percent or degree sign", () => {
-    // The most visible formatting error on a dashboard.
     expect(formatUnit("%", "short", undefined)).toBe("%");
     expect(formatUnit("°C", "short", undefined)).toBe("°C");
   });
@@ -1081,96 +834,6 @@ describe("formatUnit", () => {
 
   it("falls back to the short symbol rather than inventing a long name", () => {
     expect(formatUnit("RPM", "long", undefined)).toBe(" RPM");
-  });
-});
-
-describe("text layout (§89)", () => {
-  const layoutOf = (
-    content: { runs: unknown[]; [key: string]: unknown },
-    height = 60,
-  ) => {
-    const runs =
-      content.runs.length === 0
-        ? [{ kind: "literal", text: "", typePreset: "typePresets.layout" }]
-        : content.runs;
-    const node = {
-      id: "t",
-      type: "text",
-      transform: { width: 200, height },
-      content: { ...content, runs },
-    } as unknown as ThemeNode;
-
-    const result = plan(
-      documentWith([node], {
-        typePresets: {
-          layout: {
-            name: "Layout",
-            value: { family: "Inter", size: 20, lineHeight: 1.5 },
-          },
-        },
-      }),
-    );
-    const planned = result.nodes[0]!.content;
-    if (planned.kind !== "text") {
-      throw new Error("expected a text node");
-    }
-    return planned.layout;
-  };
-
-  it("clips by default", () => {
-    // §89 wants overflow explicit. Of the three modes, clipping is the only one
-    // that cannot mislead: it shows less rather than something else.
-    expect(layoutOf({ runs: [] })).toMatchObject({
-      wrap: false,
-      overflow: "clip",
-      align: "left",
-      verticalAlign: "top",
-    });
-  });
-
-  it("carries authored layout through", () => {
-    expect(
-      layoutOf({
-        runs: [],
-        wrap: true,
-        overflow: "visible",
-        align: "right",
-        verticalAlign: "bottom",
-      }),
-    ).toMatchObject({
-      wrap: true,
-      overflow: "visible",
-      align: "right",
-      verticalAlign: "bottom",
-    });
-  });
-
-  it("computes a line clamp only for wrapped, ellipsised text", () => {
-    // text-overflow: ellipsis applies to a single line; only a clamp ellipsises
-    // wrapped text, and a clamp needs a line count.
-    expect(
-      layoutOf({ runs: [], wrap: true, overflow: "ellipsis" }, 60).maxLines,
-    ).toBe(2);
-    expect(
-      layoutOf({ runs: [], wrap: false, overflow: "ellipsis" }, 60).maxLines,
-    ).toBeUndefined();
-    expect(
-      layoutOf({ runs: [], wrap: true, overflow: "clip" }, 60).maxLines,
-    ).toBeUndefined();
-  });
-
-  it("omits the clamp when the type size is not resolvable", () => {
-    // A wrong clamp is worse than none: it hides text that would have fitted.
-    expect(
-      layoutOf(
-        {
-          runs: [{ kind: "literal", text: "" }],
-          wrap: true,
-          overflow: "ellipsis",
-        },
-        60,
-      ).maxLines,
-    ).toBeUndefined();
   });
 });
 
@@ -1205,53 +868,56 @@ describe("computeMaxLines", () => {
   });
 });
 
-// 0007: a chart's paint references resolve from the document's own globals, and
-// one that cannot is reported with the code `resolveStyleValue` already uses.
-describe("chart paint references in the plan", () => {
-  const paletteGlobals = {
-    palette: {
-      storage: {
-        name: "Storage",
-        value: { kind: "solid" as const, color: "#00b8d9" },
-      },
+// 0007: a chart's paint references resolve from the document's palette, and one
+// that cannot is reported with the code `resolveStyleValue` already uses.
+describe("chart paint references", () => {
+  const palette = {
+    storage: {
+      name: "Storage",
+      value: { kind: "solid" as const, color: "#00b8d9" },
     },
   };
 
-  const storageBar = {
-    id: "bar",
-    type: "chart",
-    bindings: [{ id: "b", semanticKey: "disk.used" }],
-    content: {
-      family: "bar",
-      settings: { ...defaultBarSettings, fill: { ref: "palette.storage" } },
-    },
-  } as unknown as ThemeNode;
+  const settings = { ...defaultBarSettings, fill: { ref: "palette.storage" } };
 
-  function storagePlan(withGlobals: boolean) {
-    return plan(
-      documentWith([storageBar], withGlobals ? paletteGlobals : undefined),
-      { source: storeWith({ "disk.used": ok(46.8) }) },
-    );
-  }
+  function storageBar(withPalette: boolean) {
+    const issues: PlanIssue[] = [];
 
-  function barOf(result: ReturnType<typeof storagePlan>) {
-    const content = result.nodes[0]!.content;
-    if (content.kind !== "chart" || content.family !== "bar") {
-      throw new Error("expected a bar chart");
-    }
-    return content;
+    return {
+      chart: buildChartPlan(
+        "bar",
+        { family: "bar", settings },
+        [{ id: "b", semanticKey: "disk.used" }],
+        {
+          source: storeWith({ "disk.used": ok(46.8) }),
+          nowMs: NOW,
+          animate: false,
+        },
+        issues,
+        withPalette ? palette : undefined,
+      ),
+      issues,
+    };
   }
 
   it("resolves a bar fill from the document palette", () => {
-    expect(
-      barOf(storagePlan(true)).option.series[0].data[0]!.itemStyle.color,
-    ).toBe("#00b8d9");
+    const { chart, issues } = storageBar(true);
+
+    if (chart.family === "bar") {
+      expect(chart.option.series[0].data[0]!.itemStyle.color).toBe("#00b8d9");
+    }
+    expect(issues).toEqual([]);
   });
 
   it("leaves a bar whose paint reference the document does not define unpainted", () => {
     // The datum is absent, not a transparent bar on a live number (0007).
-    expect(
-      barOf(storagePlan(false)).option.series[0].data[0]!.value,
-    ).toBeNull();
+    const { chart, issues } = storageBar(false);
+
+    if (chart.family === "bar") {
+      expect(chart.option.series[0].data[0]!.value).toBeNull();
+    }
+    expect(issues.map((issue) => issue.detail)).toEqual([
+      'Chart paint "palette.storage" is not defined in this document.',
+    ]);
   });
 });

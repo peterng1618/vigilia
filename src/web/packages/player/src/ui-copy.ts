@@ -70,10 +70,6 @@ export const uiCopy = {
     refused: (detail: string | undefined): string =>
       `The host is not compatible with this display${detail === undefined ? "" : `: ${detail}`}`,
   },
-  /** Disclosure that displayed values are synthetic, never measured (§97). */
-  syntheticData: (themeName: string, keyCount: number): string =>
-    `SYNTHETIC DATA — "${themeName}", ${keyCount} semantic keys served by ` +
-    "@vigilia/fake-source, not by hardware",
   /** Why sensors on this display have no reading. `groups` is already ordered
    *  and bounded by the caller: one entry per distinct cause, carrying how
    *  many sensors share it, so a cause said four times is said once. */

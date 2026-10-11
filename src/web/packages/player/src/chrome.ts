@@ -140,18 +140,6 @@ export function showCropNotice(
   strip.dataset["vigiliaCrop"] = "";
 }
 
-/** Persistent disclosure that displayed values are synthetic. */
-export function showScaffoldBanner(keyCount: number, themeName: string): void {
-  const strip = putStrip({
-    side: "bottom",
-    id: "vigilia-scaffold",
-    text: uiCopy.syntheticData(themeName, keyCount),
-    background: "#4a2c00",
-    color: "#ffc14d",
-  });
-  strip.dataset["vigiliaScaffold"] = "";
-}
-
 /** Shows non-live connection states; a healthy live display needs no badge. */
 export function showConnectionState(
   status: LiveSourceStatus,

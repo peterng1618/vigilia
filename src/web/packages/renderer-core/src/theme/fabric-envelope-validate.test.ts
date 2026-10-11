@@ -4,7 +4,7 @@ import {
   validateFabricThemeEnvelope,
 } from "./fabric-envelope-validate.js";
 import { MAX_OBJECT_NAME_LENGTH } from "./object-name.js";
-import type { ValidationIssue } from "./validate.js";
+import type { ValidationIssue } from "./envelope-semantics.js";
 
 function withMetadata(
   base: Record<string, unknown>,
