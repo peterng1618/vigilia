@@ -22,11 +22,11 @@ satisfies every token in the bible and still does not look like the mockup.
 
 ## Active work
 
-- **No plan is active.** Plan 8 is complete in all ten tasks, archived, and has taken its one post-review fix round; plan 6 (`iconography-and-copy`) is the spec's next plan and starts at the user's word.
+- **Plan 6 — [`iconography-and-copy`](docs/superpowers/plans/2026-10-08-iconography-and-copy.md) — is the active plan**, nine tasks in three phases: Phase 1 (1–3) the census and the glyph set, Phase 2 (4–6) the one-string pairing and the copy, Phase 3 (7–9) the gate, the Acceptance and the parity close.
 - **Plan 8 — [`settings-parity`](docs/superpowers/plans/archive/2026-10-11-settings-parity.md) — is archived as superseded by its own residue, not as clean**: its §13 closure condition is unmet, six differences are `fix` with owners outside the plan (`vg-328`'s nav eyebrow being the sixth), and three of those wait on the user's rulings.
 - **The §13 capture landed**: `settings-capture-graphite.png` and `settings-capture-editorial.png` sit in `docs/design/mockups/current/` beside `settings.html`, byte-identical to the six registered captures they were copied from.
 - **The instrument reads the drawings rather than one file**: the drawings gate opens every drawing in `docs/design/mockups/current/` (six, plus two parity PNGs it skips), holds each literal to its own scale — radius to §3's table, spacing to §3's steps, type to §2's six sizes — and names the file, line and value it fails on.
-- **Plan 6 waits on nothing but the user**: its first task is a census of the surfaces as they landed, which is cheapest now that both parity plans have stopped moving the shell.
+- **Plan 6's Task 1 is read-only by its own Files block** — a census of the glyph sites, the copy owners, the icon-only pairings and the capability strings as they landed — so it is dispatched before the pre-flight conflict scan, which rules before Task 2.
 
 ## Last completed change
 
@@ -38,7 +38,7 @@ satisfies every token in the bible and still does not look like the mockup.
 
 ## Next
 
-1. **Plan 6 — `iconography-and-copy`** — the spec's next plan, and the redesign's next step; read its file and dispatch Task 1.
+1. **Plan 6 Task 1 — the census** — the inventory of glyph sites, copy owners, icon-only pairings and capability strings as they landed, reconciled against plans 1–5 **and against plans 7 and 8**, which the plan was written before.
 2. **`vg-321`, `vg-322` and `vg-328` wait on the user's rulings** — whether a palette preview bar depicts the palette's surface or its ground, whether the modal takes the drawing's fixed `560px` or stays content-sized, and whether the nav also carries the surface name.
 3. **`vg-316`, `vg-319`, `vg-325`'s four product values and `vg-274`'s 24 spacing values wait on a product pass** in `editor-shell.css`, whose ceiling (58) counts four of them by name.
 4. **Then `design-md-replaces-the-bible`**, then the multi-device display objective — architectural, so brainstorm → spec → plan.
