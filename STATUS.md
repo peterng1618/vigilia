@@ -23,7 +23,7 @@ satisfies every token in `DESIGN.md` and still does not look like the mockup.
 
 ## Active work
 
-- **The active plan is [`2026-10-12-the-dead-code-sweep`](docs/superpowers/plans/2026-10-12-the-dead-code-sweep.md)**, four phases: the reference picture (Tasks 1–3), verified removal by owner (4–6), the register discharge (7), and the manager layer (8–9); Task 1's scanner is complete at `d4c820b2` with its fix round running.
+- **The active plan is [`2026-10-12-the-dead-code-sweep`](docs/superpowers/plans/2026-10-12-the-dead-code-sweep.md)**, reordered by the user on 2026-10-12 to **managers, then dead code, then the register**: Phase 1 redistributes the manager layer (Tasks 8–9, census running now), Phase 2 the reference picture (1–3), Phase 3 removal (4–6), Phase 4 the register (7); **task numbers are stable identifiers, not positions**, because a dozen references cite them.
 - **Its Phase 4 is the manager review the user asked for twice, now `vg-364`**: each manager's *role* is reviewed — whether one grown too big owns a concept deserving an independent manager, and whether a concept is spread across several — where the size signal is what found it, not what fixes it: 32 non-test files at or past 500 lines against 12 past the 800 stop, and `snap-manager` at 5,978 lines in five files, four of them over.
 - **Nothing in Phase 4 is dead code, so its acceptance inverts**: all 20 managers have production references, and the phase is judged by what moved without moving anything else — splitting a file until both halves fit the number while both go on owning the same concept is the one forbidden move.
 - **The sweep's rule is detection before deletion**, and the user set its bias on 2026-10-12 — *"I want a clean codebase but be careful to not overdo it and break the app"*: a survivor costs a ticket, a live symbol deleted costs the product, so no candidate goes on one detection signal.
@@ -42,7 +42,7 @@ satisfies every token in `DESIGN.md` and still does not look like the mockup.
 
 1. **Sweep Task 1's fix round 2** — the redundant tier's occurrence count says 2 for `instantiateCard`'s one call site, on 279 rows a Phase 2 agent will read; then Phase 1's candidate report at HEAD, and nothing is deleted until Phase 2 verifies each candidate against the string-resolved vocabulary and the gate inputs.
 2. **The walkthrough's amended Task 1** — its census now takes two walks because the user ruled on 2026-10-12 that §13.1 means a region *with content*, so the inspector's tab stops are counted after a keyboard selection; `REGIONS` stays four.
-3. **Sweep Phase 4 Task 8, the manager census**: what each of the 20 managers *decides* against what `ownership.md` says it *owns*, ranked by blast radius, folding in the register's `vg-232`–`vg-248` rather than re-finding them.
+3. **Task 9, the redistribution**, consumes the census now running: one manager per commit, the move relocates the *decision* rather than the code, and the map is updated in the same commit as the move.
 4. **The three failures the capture run surfaced** — `vg-359` (which also owns the one stale capture), `vg-360` and `vg-361`; nothing fixed on sight, because the first question for each is whether the surface moved or the locator did, and those want opposite fixes.
 5. **`vg-362` closes only when the amended census passes** — the ruling settles the question it asked, but its second branch is *the census is rewritten*, and the row now says so rather than re-asking a question the user has answered.
 
