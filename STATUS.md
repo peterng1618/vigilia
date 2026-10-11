@@ -26,16 +26,16 @@ satisfies every token in the bible and still does not look like the mockup.
 - **Task 1 is complete and reviewed clean** (`5f676da4`): the census of what landed, which refuted three of the plan's own hypotheses — 15 lucide importers against a guessed nine, **four** stroke weights against three, and both "hand-wired" pairings the brief named already one string by construction.
 - **Task 2 is complete and reviewed clean** (`ef81b183` + `93b2286f` + `08c71e28`): one chrome glyph vocabulary with one weight rule, the census's four weights collapsed, the three out-of-band sites adjudicated one at a time, and both hand-authored sources exempted with §6's reason recorded.
 - **Task 3 is complete and reviewed clean** (`9031ed7d`): the object-kind glyph set closed over `LayerKind` with a totality case enumerating the kind vocabulary rather than the map's own keys, and both closure halves red-proved — `satisfies` rejects a missing key and an excess one alike.
-- **Phase 2 is open**: Task 4's one-string pairing is complete (`4bae5ed9`, fix `a512efb7`), and **Task 5's copy net is complete and in re-review** after fix round 2 (this commit) — what remains of the phase is **Task 6**, the copy defects fixed as defects.
+- **Phase 2 is open**: Task 4's one-string pairing is complete (`4bae5ed9`, fix `a512efb7`), Task 5's copy net is complete, and **Task 6's two copy-defect nets are complete** (this commit) — Phase 3 (Tasks 7–9) is next.
 - **Two changes are ruled and queued after plan 6** (`vg-330`, `vg-331`): Settings becomes a pane opened from the rail's gear with the four slots kept and the drawing redrawn as a panel, and the palettes gain a second highlight whose role is an attention or in-flight state, defined before any colour is chosen.
 
 ## Last completed change
 
-- **Fix round 2 on the copy net** (this commit): the sentence-case predicate reads the first word's first *letter*, so a digit-led row cannot lean on its digit — `3d view` fails where `30 FPS` and `3D view` pass.
-- **A regression case pins the digit arm** on the shapes this menu can produce: `30 FPS`, `3D view` and `Tokens` pass; `3d view`, `2d mode` and `(empty)` fail.
-- **The `first === undefined` guard stays**, and the predicate's comment says why: it is the narrowing `noUncheckedIndexedAccess` needs of a destructured `string[]`, not a branch `split` can reach.
-- **The leading-non-alphanumeric rejection is deliberately unchanged** (the reviewer's Minor 2, stayed): no menu row has that shape, and it fails loudly rather than passing silently.
-- **The red proof reverts the arm to `^[A-Z0-9]`**: the new case alone goes red and the other eight stay green; both hashes are in the task report.
+- **Two copy-defect nets land in a new `copy-defects.test.ts`**: `ui-copy.test.ts` sits at 783, so the cases live beside the surfaces rather than crossing the 800-line stop.
+- **The missing-reading case** renders seven absence kinds — an unread host (two surfaces), a saved document, a sample not yet sent, an undeclared binding and two unset resolution lines — and requires the gap's own word or nothing, never `0`, `-`, `--` or `—`.
+- **The capability case** proves the `⌘⇧P` chip is the live binding the table owns and the header control that runs it is present and enabled; the view menu's three readings are proven in `shell-layout.dom.test.tsx`.
+- **Both cases red-proved**: `—` in the run row's unarrived note fails the gap case, and a disabled publish trigger fails the capability case while the string stays printed; both restored by `cp` and verified with `cmp`.
+- **The census's empty list is confirmed, not inherited**: no chrome surface renders `0`/`-`/`—`/`--` as an absent reading, and no capability string is over-claimed.
 
 ## Next
 
