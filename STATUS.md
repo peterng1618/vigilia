@@ -40,8 +40,8 @@ satisfies every token in `DESIGN.md` and still does not look like the mockup.
 
 ## Next
 
-1. **Task 9's second candidate goes out next — rank 6, `controls-manager`'s document writes** — moving the Line scalars out means the controls module stops writing document state.
-2. **Task 9 runs one candidate per dispatch, four in all** — rank 4 is done; ranks 6, 9 and 5 remain in the census's order within the clean-extraction label, each one commit and its own scoped review; rank 1's import-graph ordering is separate and decision-gated.
+1. **Task 9's second candidate goes out next — rank 5, the save protocol base** — ~250 lines out of `editor-session.ts`, the largest single reduction available and the one move that creates a manager rather than merging one.
+2. **The remaining order is 9 then 6, and the labels are why** — the census uses seven label phrases, not two, and rank 6's `Clean-ish` names no destination, so it waits until the Line scalars have an owner established from the code.
 3. **Phase 2's candidate report at HEAD, then per-candidate verification** — nothing is deleted until each candidate is checked against the string-resolved vocabulary: the `data-vigilia-*` attributes, the `--shell-*` custom properties, the `KIND_*` registries and the four gate scripts that read the source tree as data.
 4. **`vg-368` waits on a decision** — whether `src/web/.agent-scratch/` is deleted, relocated outside the tree, or excluded per tool; deleting is not obviously safe because it holds screenshots and a vitest report that may be the only copy.
 5. **The three failures the capture run surfaced** — `vg-359` (which also owns the one stale capture), `vg-360` and `vg-361`; nothing fixed on sight, because the first question for each is whether the surface moved or the locator did, and those want opposite fixes.
