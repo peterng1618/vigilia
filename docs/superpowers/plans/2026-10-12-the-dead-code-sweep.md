@@ -155,7 +155,7 @@ The five ways this sweep deletes something alive.
 **Files:** none modified. Reads `src/web/packages/editor/src/editor-shell/editor-shell.css` (2558 lines) and `src/web/packages/host/public/vigilia-page.css` (254).
 
 **Interfaces:**
-- Produces: `<plan workspace>/dead-selectors.md`, consumed by Task 5's removal.
+- Produces: `docs/architecture/dead-selectors.md`, consumed by Task 5's removal — **a tracked path, not the plan workspace**, because `.gitignore:90` hides `.superpowers/` and `docs/README.md` calls that ledger *temporary*; an untracked report would die with a fresh clone and take Phase 3's justification with it.
 
 - [ ] **Step 1: Note why this lane needs naming at all.** Only **two** CSS files exist, so this does not want a scanner framework or a new task of its own weight — but `editor-shell.css` is the largest file in the repo, `vg-274` records it as being in **no gate**, and `vg-266` records two selectors in it that match nothing. Dead selectors are invisible to `typecheck`, to Biome (which parses CSS but has no unused-selector rule) and to every test.
 
@@ -170,7 +170,7 @@ The five ways this sweep deletes something alive.
 ### Task 3: Run both, and make the numbers reproducible
 
 **Files:**
-- Create: `<plan workspace>/candidates.md` — the run's report, committed beside the plan's ledger.
+- Create: `docs/architecture/dead-code-candidates.md` — the run's report, tracked for the same reason Task 2's is: Phase 3's removals rest on it, and `.superpowers/` does not survive a clone. Named `dead-code-candidates` rather than `candidates` because the file is the only thing that says *which* scan produced it.
 
 - [ ] **Step 1: Run at HEAD and record the counts by kind and by package.** A count recorded as evidence that a case was collected is an invariant; a count predicted before the code exists is not.
 
