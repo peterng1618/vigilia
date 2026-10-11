@@ -77,8 +77,12 @@ and only two:
   `index.ts`, so the directory and its module are the same thing and the row
   points at that one file. **All twenty `*-manager/` directories have an
   `index.ts`** (verified for each). **Seventeen rows in the table above are this
-  case**, and each one's guard is in that entry, so all seventeen are right
-  rather than findings: `layer-manager`, `object-lock-manager`,
+  case.** What makes them right is *not* that every guard sits in the entry file
+  — `snap-manager`'s guard column names `isSupportedActiveSelection`, defined in
+  the sibling `snap-manager/selection-eligibility.ts:13` and imported by
+  `index.ts:28` — but that the directory is the unit the row means, so a guard
+  anywhere inside it is named. All seventeen are therefore right rather than
+  findings: `layer-manager`, `object-lock-manager`,
   `deletion-manager`, `grouping-manager`, `history-manager`, `crop-manager`,
   `image-manager`, `text-manager`, `error-manager`, `shortcut-manager`,
   `palette-manager`, `type-preset-manager`, `persistence-manager`,
@@ -98,11 +102,18 @@ module for this rule is being **the unit the row means**, and the map's own
 filing is the evidence for which that is. A guard in a sibling file inside a
 shelf is unnamed, which is what §1.2 items 3, 4 and 16 are.
 
-**The map's own habit is the evidence for the grain:** it names **no** file inside
-any `*-manager/` directory (zero rows), three files inside
-`editor/src/selection-inspector/` and two inside `renderer-core/src/theme/`. The
-map does not treat a manager directory and a shelf as the same kind of owner, so
-neither does this census. **Branch taken: the distinction holds.** The other
+**The map's own habit is the evidence for the grain:** 22 rows mention a
+`*-manager/` directory, and only two of them name a file inside one — `:75`, which
+names all three of `chart-manager/`'s (`panel.ts`, `chart-fields.tsx`, `index.ts`,
+each present in that directory), and `:89`, which names `asset-manager/`'s entry
+(`index.ts` bytes). Every other manager row names the directory bare. `:75` is
+**right, not a finding**: naming a directory's member files does not turn it into
+a shelf, because the directory is a `*-manager/` directory whose entry is
+`index.ts` and the files named are its own. The same map names three files inside
+`editor/src/selection-inspector/` (`:85`, `:86`, `:100`) and two inside
+`renderer-core/src/theme/` (`:113`, `:148`). The map does not treat a manager
+directory and a shelf as the same kind of owner, so neither does this census.
+**Branch taken: the distinction holds.** The other
 branch — that a directory row suffices everywhere — would make all seventeen
 manager rows above missing rows, which is the opposite of what the code shows.
 
@@ -359,17 +370,24 @@ re-established at HEAD below; nothing here re-files them.
 a module when the file holding the guard is fixed by the row — either a module
 directory whose entry is `index.ts`, or a file the row names outright. A row that
 names a **shelf** names no module. That is why the seventeen manager rows in §1.1
-are right (their guard is in the directory's own `index.ts`) while a guard in a
-sibling file of a shelf is a **missing row**. The registry row `vg-234` leans on —
+are right (the directory is the unit the row means, so a guard anywhere inside it
+is named) while a guard in a sibling file of a shelf is a **missing row**. The
+registry row `vg-234` leans on —
 "Theme semantic types/validation — `renderer-core/src/theme/`" — is a shelf: no
 `index.ts`, eleven non-test modules inside, and the map names two of its files
 separately (`:113` `widget.ts`, `:148` `glass.ts`). So `vg-234`'s guard in
 `object-name.ts` is unnamed, and the same standard governs `selection-inspector`'s
 `per-kind-column.ts` and `view.ts` (§1.2 items 3 and 4), its `run-edits.ts` (item
 16), and the family row `editor/src/selection-inspector/` at `ownership.md:99`.
-The consequence is general: several registry rows name shelves — `theme-package/src/`
-(`:149`), `renderer-core/src/charts/` (`:153`), `host/src/transport/` (`:182`) —
-so the map's module-level coverage is thinner than its row count suggests.
+The consequence is general: registry rows name shelves — `renderer-core/src/charts/`
+(`:153`, eleven non-test modules, no `index.ts`), `host/src/transport/` (`:182`,
+two non-test modules, no `index.ts`) — so the map's module-level coverage is thinner
+than its row count suggests. `theme-package/src/` (`:149`) is **not** one of the
+shelves: §1.1's definition makes it one (not a `*-manager/` directory, and the row
+names no file), but its rationale does not — the directory holds one source file,
+`index.ts`, declared as the package's `main`/`types`/`exports` entry, so naming the
+directory names the module. The definition is narrower than the rationale at that
+shape; the claim above rests on the two true shelves.
 
 | Row | At HEAD | Note |
 |---|---|---|
@@ -420,7 +438,7 @@ the numbering is stable and does not change when a reader disagrees with an
 order. Nothing here is presented as a reach ranking: reach is stated per
 candidate, in prose, under one definition — **reach = the production files
 outside the owner that hold a site the change must edit**, each measured by the
-search named with it. **One candidate (1) also carries an *owner reach**, the
+search named with it. **One candidate (1) also carries an *owner reach***, the
 number of production files that import the owner at all; where the two measures
 differ, the difference is the finding.
 
