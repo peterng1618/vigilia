@@ -217,6 +217,11 @@ describe("shell token stylesheet", () => {
       "--text-md": "13px",
       "--shadow-raised": "0 12px 28px #0000003d",
       "--shadow-overlay": "0 18px 44px #0006",
+      // §3's modal scrim (`:105`). Pinned here and not only read from `:root` by
+      // `design-language.spec.ts`'s colour row: that row compares the token
+      // against the overlay and is green for whatever value the token holds, so
+      // this is the assertion that a changed scrim is a deliberate edit.
+      "--elev-scrim": "#00000073",
     });
 
     // Tailwind writes each `--text-*` companion for its own size — `--text-sm`

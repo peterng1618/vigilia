@@ -360,6 +360,11 @@ body,
   --elev-1: 0 8px 20px #00000059;
   --elev-2: 0 18px 44px #00000099;
   --elev-3: 0 24px 60px #000000b3;
+  /* §3's elevation 3 carries a scrim as well as a shadow
+     (`design-language.md:105`), and this is it. A token rather than a §4 role
+     because §4 names no scrim role, and a token rather than the literal the
+     overlay wrote because §10 (`:449`) forbids a hex value in a surface. */
+  --elev-scrim: #00000073;
 }
 
 /* A name per shell colour, so a utility carries the palette in force.
@@ -1275,7 +1280,10 @@ body,
   position: fixed;
   inset: 0;
   z-index: 70;
-  background: #0009;
+  /* §3's modal scrim, through the token rather than the `#0009` literal that
+     stood here: fifteen points darker than the bible's value, and a hex value in
+     a surface, which §10 forbids. Both dialogs render this one rule. */
+  background: var(--elev-scrim);
 }
 .editor-shell-dialog {
   position: fixed;
@@ -1367,7 +1375,11 @@ body,
 }
 .editor-shell-dialog kbd {
   font-family: ui-monospace, monospace;
-  font-size: 11px;
+  /* §2 (`design-language.md:48`) — `--text-xs` 11px, the reading a hint or a
+     panel row has. A chord mark is mono by §2 (`:38`) and this size is the one
+     every other chord mark in the shell already takes
+     (`.editor-shell-menu-key`, `.editor-shell-primary-key`). */
+  font-size: var(--text-xs);
   color: var(--shell-muted);
 }
 .editor-shell-dialog > button {
@@ -1377,6 +1389,12 @@ body,
   border-radius: 6px;
   background: var(--vigilia-control-bg);
   color: var(--shell-text);
+  /* §2 (`:49`) — `--text-sm` 12px, "Control text": a dialog's own button is a
+     control, and this rule reaches the two dialogs that draw one directly (the
+     settings modal's Close and the `?` sheet's) rather than letting them inherit
+     the portalled document's 13px. The three dialogs that wrap their buttons in
+     `.vigilia-dialog-actions` already take `text-sm` from `ACTION_BUTTON`. */
+  font-size: var(--text-sm);
   cursor: pointer;
 }
 .editor-shell-dialog > button:hover {
