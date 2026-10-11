@@ -16,7 +16,7 @@ false-positive engine in this repository is *string-resolved vocabulary* —
 all of which are live with no importer anywhere, and none of which this graph can
 see. `dead-export` and `redundant-export` are deliberately separate kinds because
 their remedies are opposite: deleting a declaration versus deleting one
-`export` keyword (`scripts/dead-code-sweep.mjs:34-40`).
+`export` keyword (`scripts/dead-code-sweep.mjs:33-39`).
 
 ## 1. The run
 
@@ -31,9 +31,13 @@ The run that produced this document: `node scripts/dead-code-sweep.mjs --json
 `--self-test` invocation reporting **22/22 passed** (exit 0; the result lands in
 `src/web/test-results/dead-code-sweep-self-test.json`, which is gitignored and
 therefore not evidence a clone carries). The self-test is run in its own
-invocation because its result has its own fixed destination — `--self-test
---json <path>` once overwrote the candidate report, and the self-test's own
-check that the report is still a finished candidate report is what caught it.
+invocation because its result has its own fixed destination. That `--self-test
+--json <path>` once overwrote the candidate report is **corroborated, not
+reproduced**: it is fixed, so no run at HEAD demonstrates it, and the evidence is
+the source comment recording the regression (`scripts/dead-code-sweep.mjs:1097-1105`),
+commit `93c4f704`'s message, and the self-test check that reads the report back
+after the self-test ran (`:1126-1129`) — which is what now fails if the two
+destinations ever merge again.
 
 Nothing runs the scanner for you: no `package.json` script and no CI job names
 it (`vg-379` — the self-test that no command runs), so these numbers are
@@ -122,13 +126,16 @@ that one; it supersedes it.
 emits one has never fired in this tree, and the scanner's self-test says so — it
 proves a barrel's re-export is *followed*, not that the kind can fire.
 
-Two observations the table supports without judging either: five of the seven
-`test-only-consumer` rows are named `*.test-stage.*` or `*.test-utils.*`, which
-is why they are production files to the scanner and to both runners at once
-(`src/web/vitest.config.ts:23-28` collects `*.test.ts(x)`, `src/web/playwright.config.ts:75`
-collects `*.spec.ts`); and four of the five `"Level"`-family rows point at one
-file, `host/src/providers/lhm-mapping.ts`, whose whole subject is a vendor's own
-vocabulary arriving from outside the source.
+Two observations the table supports without judging either. Five of the seven
+`test-only-consumer` rows carry `test-stage` or `test-utils` in their basename —
+`chart-stage.test-stage.tsx`, `idle-crop.test-stage.ts`, `runs.test-stage.tsx`,
+`movement-snapping-core.test-utils.ts` and `glass-test-stage.ts` — and that is why
+they are production files to the scanner and to both runners at once:
+`src/web/vitest.config.ts:23-28` collects `*.test.ts(x)` and
+`src/web/playwright.config.ts:75` collects `*.spec.ts`, and a basename that merely
+contains `test-stage` matches neither. And four of the ten `unreachable-branch`
+rows point at one file, `host/src/providers/lhm-mapping.ts`, whose whole subject
+is a vendor's own vocabulary arriving from outside the source.
 
 ### 2.2 `redundant-export`, by file
 
