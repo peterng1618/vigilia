@@ -215,6 +215,14 @@ describe("shell token stylesheet", () => {
       "--text-xs": "11px",
       "--text-sm": "12px",
       "--text-md": "13px",
+      // §2's 10, 15 and 19 (`design-language.md:48`, `:51`, `:52`), pinned for
+      // the reason the scrim below gives: the `settings modal — lead type` parity
+      // row's expected value *is* `--text-lg`, so that row is green for whatever
+      // the token holds — a dialog title at `16px` violates §2 `:51` with every
+      // gate green. These are the assertions that such a change is deliberate.
+      "--text-2xs": "10px",
+      "--text-lg": "15px",
+      "--text-xl": "19px",
       "--shadow-raised": "0 12px 28px #0000003d",
       "--shadow-overlay": "0 18px 44px #0006",
       // §3's modal scrim (`:105`). Pinned here and not only read from `:root` by
@@ -246,11 +254,12 @@ describe("shell token stylesheet", () => {
 
   /** `static`, because Tailwind drops a theme variable no utility references.
    *
-   *  `--text-md`, `--radius-lg` and both elevations are used by nothing yet.
-   *  Without `static` they were emitted nowhere — measured in the built bundle,
-   *  where only `--spacing`, `--radius-sm|md` and `--text-xs|sm` survived —
-   *  which is the same resolves-to-nothing defect the `--vigilia-*` block had,
-   *  arrived at through the door that was supposed to fix it. */
+   *  The unreferenced set moves as the surface grows (`--text-xl` is referenced
+   *  by nothing today), so this names the mechanism rather than a list. Without
+   *  `static` the unreferenced ones were emitted nowhere — measured in the built
+   *  bundle, where only `--spacing`, `--radius-sm|md` and `--text-xs|sm`
+   *  survived — which is the same resolves-to-nothing defect the `--vigilia-*`
+   *  block had, arrived at through the door that was supposed to fix it. */
   it("keeps the unreferenced scale tokens in the bundle", () => {
     expect(css).toMatch(/^[ \t]*@theme[ \t]+static[ \t]*\{/m);
   });
