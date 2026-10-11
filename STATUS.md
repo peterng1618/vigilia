@@ -32,8 +32,8 @@ satisfies every token in the bible and still does not look like the mockup.
 
 - **Nine one-off captures are deleted with their generators**: `editor-snap-guides` and `editor-rotation-indicator`, whose capture blocks leave `src/web/tests/e2e/editor.spec.ts`, and — once the v1 landing was confirmed against HEAD, not the tree — `player-chrome-phone-chromium` plus the six `assets-`/`portrait-cover-`/`stress-` fixture captures.
 - **The screenshot registry is reconciled**: the deleted captures' rows are gone from `docs/evidence/screenshots/README.md`, and `editor-chart-creation`, standing but unregistered, gains the row the file's own rule requires.
-- **`vg-346` is filed, and it is a coverage hole the user was not told about**: the deleted indicator block was the only test performing the editor's rotation gesture, and nothing else reads its angle readout.
-- **`vg-345` is settled by the same removal**: the registry row and the orphan `player-chrome-phone-chromium.png` are both gone, and the row closes against this commit.
+- **`vg-346` and `vg-349` record what the deletions left unowned**: the deleted indicator block was the only test performing the editor's rotation canvas gesture — its angle readout is unit-tested, `indicator-manager/index.dom.test.ts` — and the deleted snap block was the only plain, unmodified single-object drag across a snap line.
+- **`vg-345` is settled by the same removal**: the registry row and the orphan `player-chrome-phone-chromium.png` are both gone, and its archived detail now says so rather than claiming the image is still on disk.
 
 ## Next
 
