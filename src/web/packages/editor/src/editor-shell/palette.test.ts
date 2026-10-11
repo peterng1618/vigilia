@@ -20,7 +20,7 @@ describe("shell palette", () => {
    *  resolver that lets the OS win passes a light-only check and fails here. */
   it("follows the OS while the author has not chosen", () => {
     expect(resolveShellPalette(undefined, true)).toBe("graphite");
-    expect(resolveShellPalette(undefined, false)).toBe("editorial");
+    expect(resolveShellPalette(undefined, false)).toBe("light");
   });
 
   it("lets the author's choice outlast the OS", () => {
@@ -58,7 +58,10 @@ describe("shell palette", () => {
 
   it("maps the OS onto the palettes that already exist", () => {
     expect(systemShellPalette(true)).toBe("graphite");
-    expect(systemShellPalette(false)).toBe(DEFAULT_SHELL_PALETTE);
+    expect(systemShellPalette(false)).toBe("light");
+    // The default is a separate fact from what the OS asks for, so it is pinned
+    // here rather than through either branch above.
+    expect(DEFAULT_SHELL_PALETTE).toBe("graphite");
     for (const palette of [
       systemShellPalette(true),
       systemShellPalette(false),

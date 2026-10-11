@@ -111,8 +111,9 @@ artboard the author is judging.
 ## 4. Colour
 
 Colour is a **runtime palette**, not a set of literals. Six palettes ship
-(`editorial`, `graphite`, `ember`, `moss`, `plum`, `light`); the OS appearance
-picks the default and the author may override it in Settings.
+(`editorial`, `graphite`, `ember`, `moss`, `plum`, `light`); graphite is the
+default, an OS reporting a light appearance gets `light` instead, and the author
+may override either in Settings.
 
 A surface never writes a hex value. It writes one of these roles, and the
 palette resolves it:

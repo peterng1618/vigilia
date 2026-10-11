@@ -11,8 +11,8 @@ export const shellPalettes = [
 
 export type ShellPalette = (typeof shellPalettes)[number];
 
-/** The editorial dashboard look is the shell's default. */
-export const DEFAULT_SHELL_PALETTE: ShellPalette = "editorial";
+/** The graphite look is the shell's default. */
+export const DEFAULT_SHELL_PALETTE: ShellPalette = "graphite";
 
 const storageKey = "vigilia.editor.shell-palette";
 
@@ -22,11 +22,13 @@ function isShellPalette(value: string | null): value is ShellPalette {
 
 /** The palette an OS reporting `prefersDark` gets when the author has not chosen.
  *
- *  `graphite` is the shell's one dark palette and `editorial` its default, so
- *  these are the same two names `DEFAULT_SHELL_PALETTE` and the picker already
- *  use — no new vocabulary, and no seventh entry in the picker. */
+ *  Both branches name a palette the picker already offers, so the OS asks for
+ *  one of the six rather than a look of its own. The dark branch is the shell's
+ *  default; the light branch is `light` and not `DEFAULT_SHELL_PALETTE`, because
+ *  a light-reporting OS must open on the light surface rather than the dark one
+ *  that is now the default. */
 export function systemShellPalette(prefersDark: boolean): ShellPalette {
-  return prefersDark ? "graphite" : DEFAULT_SHELL_PALETTE;
+  return prefersDark ? DEFAULT_SHELL_PALETTE : "light";
 }
 
 /** The palette in force: the author's choice, or what the OS asks for.

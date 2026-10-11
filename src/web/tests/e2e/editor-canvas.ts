@@ -325,6 +325,13 @@ export async function captureVisualReview(
   scope?: Locator,
 ): Promise<void> {
   if (process.env["VIGILIA_CAPTURE"] === undefined) return;
+  // The shipping default, not whatever Playwright's `colorScheme` happens to
+  // be. Emulating a dark OS before the shot is the same move
+  // `design-language.spec.ts`'s "The drawing's own ground" capture already
+  // makes to pin graphite, so every capture that never chose a palette is the
+  // default rather than editorial. A spec that did choose one keeps its ground:
+  // the stored choice outranks the OS in `resolveShellPalette`.
+  await page.emulateMedia({ colorScheme: "dark" });
   const directory =
     process.env["VIGILIA_CAPTURE_DIR"] ?? "../../docs/evidence/screenshots";
   const filename = `${name}-${testInfo.project.name}.png`;

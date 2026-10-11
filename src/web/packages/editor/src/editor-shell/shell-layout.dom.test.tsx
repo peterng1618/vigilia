@@ -170,13 +170,14 @@ function bridgeStub(
   };
 }
 
-it("mounts the editorial palette, menus, rail, inspector and dock hosts", () => {
+it("mounts the OS-resolved palette, menus, rail, inspector and dock hosts", () => {
   const root = document.createElement("div");
   const layout = createShellLayout(root);
 
-  // Fresh profile: editorial is the default and marks the document element,
-  // which is what the portalled popups inherit from.
-  expect(document.documentElement.dataset["shellPalette"]).toBe("editorial");
+  // Fresh profile: jsdom has no `matchMedia`, so the OS reads as light and the
+  // shell resolves `light`. The attribute marks the document element, which is
+  // what the portalled popups inherit from.
+  expect(document.documentElement.dataset["shellPalette"]).toBe("light");
   expect(root.querySelector("#stage")).not.toBeNull();
   expect(root.querySelector("#status")).not.toBeNull();
   expect(root.querySelector("#canvas-host")).not.toBeNull();

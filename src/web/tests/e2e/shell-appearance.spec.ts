@@ -605,27 +605,29 @@ test.describe("shell palettes", () => {
     ).toEqual([]);
   });
 
-  test("a fresh profile with no stored palette renders editorial", async ({
+  test("a fresh profile with no stored palette renders light", async ({
     page,
   }, testInfo) => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
-    // The comment above `:root` promises this, and moving the `--vigilia-*`
-    // block onto `:root` is exactly the change that could have broken it: a base
-    // that does not carry editorial's values renders the wrong palette before
-    // any attribute is applied. Each test gets its own storage, so this one
-    // arrives with nothing stored and only this one depends on that.
+    // With no emulation Playwright's `colorScheme` is light, so the shell
+    // resolves `light`. The assertion exists because moving the `--vigilia-*`
+    // block onto `:root` could have broken the fresh-profile first paint: a
+    // base that carries neither the resolved palette's values nor the
+    // attribute renders the wrong palette before anything applies. Each test
+    // gets its own storage, so this one arrives with nothing stored and only
+    // this one depends on that.
     await openEditor(page);
 
     await expect(page.locator("html")).toHaveAttribute(
       "data-shell-palette",
-      "editorial",
+      "light",
     );
     // And the tab agrees with the attribute rather than holding a default of
     // its own: the row that reads as chosen is the one the shell applied.
     const dialog = await openAppearance(page);
     await expect(
-      dialog.getByRole("radio", { name: "editorial", exact: true }),
+      dialog.getByRole("radio", { name: "light", exact: true }),
     ).toHaveAttribute("aria-checked", "true");
     await page.keyboard.press("Escape");
 
@@ -657,7 +659,7 @@ test.describe("shell palettes", () => {
     await page.emulateMedia({ colorScheme: "light" });
     await expect(page.locator("html")).toHaveAttribute(
       "data-shell-palette",
-      "editorial",
+      "light",
     );
 
     // The author chooses, and from here the OS has no vote — including when it

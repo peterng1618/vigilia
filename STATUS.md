@@ -30,10 +30,10 @@ satisfies every token in the bible and still does not look like the mockup.
 
 ## Last completed change
 
-- **§5's "only these two" and the gate now agree**: the review's medium finding was resolved on the bible's own classification question — a checked toggle's state is carried by the pill's fill, the thumb's position and the thumb's colour, so its accent fill is not the control's *only* mark; the spec no longer attributes a checked state to §5, and the gate's `checked` 3:1 floor is **kept** and named as the gate's own rather than deleted to make the words agree.
-- **27 stale bible line pointers were corrected in four files** (`mockup-values.ts`, `design-language.spec.ts`, `editor-shell.css`, `editor-shell.tokens.test.ts`); §7.1's and §7's diagram had rotted, `§4 (":123")` was never right, and every pointer left in those files was read at HEAD and resolves.
-- **`vg-350` files the light preview bar** — it is the one bar no colour row reads, because its ground is a gradient that `colourValue` answers `null` for, and the row says why that is a row and not a gate.
-- **The task-1 report's two stale evidence pointers are corrected**, one of them because the Playwright JSON reporter nests suites, so `testResults[].annotations` answers empty and makes a recorded row look absent; the design-language gate is 10/10 on a rebuilt bundle and the fix round changed no assertion.
+- **Graphite is the shell's default** — `DEFAULT_SHELL_PALETTE` is `"graphite"` and `systemShellPalette`'s dark branch is expressed through it; a light-reporting OS resolves `"light"`, not the default.
+- **The unit, dom and browser tests assert the new mapping** — `palette.test.ts` pins graphite and light, `shell-layout.dom.test.tsx` mounts `light`, and `shell-appearance.spec.ts`'s fresh-profile and OS-fallback tests read `light`.
+- **Every capture is shot on the shipping default now**: `captureVisualReview` emulates a dark OS before the screenshot, so an unchosen palette is graphite while a spec that chose one keeps its ground.
+- **`docs/design/design-language.md` §4 states the new truth** — graphite default, a light OS gets `light`, either overridable in Settings.
 
 ## Next
 

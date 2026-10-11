@@ -1939,6 +1939,15 @@ test.describe("Fabric editor route", () => {
       page.getByRole("button", { name: "Apply trio" }),
     ).toBeVisible();
     await captureVisualReview(page, testInfo, "editor-font-trio");
+    // Nothing was chosen, so the helper's dark OS is what puts this on the
+    // shipping default. Capture-only, because the emulation is: outside a
+    // capture the helper returns before it and the shell stays on `light`.
+    if (process.env["VIGILIA_CAPTURE"] !== undefined) {
+      await expect(page.locator("html")).toHaveAttribute(
+        "data-shell-palette",
+        "graphite",
+      );
+    }
     // Two palettes, for the reason the control set pairs them: these choosers
     // are wells with an accent boundary and a popup, and editorial is the light
     // ground the same vocabulary has to hold on as well as graphite.
@@ -1949,6 +1958,14 @@ test.describe("Fabric editor route", () => {
       page.getByRole("button", { name: "Apply trio" }),
     ).toBeVisible();
     await captureVisualReview(page, testInfo, "editor-font-trio-editorial");
+    // The stored choice outranks the OS, so the ground-pin leaves this one
+    // editorial — ruling 3's `-editorial` pair has to survive it.
+    if (process.env["VIGILIA_CAPTURE"] !== undefined) {
+      await expect(page.locator("html")).toHaveAttribute(
+        "data-shell-palette",
+        "editorial",
+      );
+    }
   });
 
   test("reassigns text type presets before deleting one", async ({
