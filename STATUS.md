@@ -30,11 +30,9 @@ satisfies every token in the bible and still does not look like the mockup.
 
 ## Last completed change
 
-- **Plan 6 passed its final whole-branch review and closed**: nine tasks over `762c740c..f7078e93`, verdict *ship it* with zero Critical, and the reviewer reproduced the ledger's fifteen met / one not met against the code rather than reading it.
-- **Its two findings were both a cited line number that had rotted** — item 11's `:1510`/`:1616` shifted 259 lines under Task 9's inserted capture, and the `keyboard.spec.ts` pointer is a file-header constant and no test — so all four citations now carry the test's title instead, which cannot rot.
-- **Two rows filed, not fixed**: `vg-341`, the seven shell captures (the add pane plus six `shell-palette-`) last touched at `7efea17f`, before Task 2's weight collapse, so they depict superseded chrome weights and caveat acceptance item 15's evidence; and `vg-342`, `settingsField()` with zero production callers and a module doc naming a consumer that is not there.
-- **`vg-204`'s two remaining locators were corrected on the fly** (`7d128c51`): one pointed at a comment where the assertion is at `:460`, the other at a `panel.dom.test.ts` that four files share and none of which records the incident.
-- **`backlog:check` reads 201 items, and the plan's SDD workspace is kept rather than deleted** — plan 6 ran on `develop`, so there was no branch to finish and no push is authorised.
+- **Fifteen generatorless captures deleted from `docs/evidence/screenshots/`** — every image there with no capture test that can produce it; all fifteen arrived in one bulk rename (`bd20b26e`, 2026-09-24) and none carries the `-{project}` suffix `captureVisualReview` always appends.
+- **The orphan call is evidence-backed, not a literal grep**: the four sites that write into that directory were found first, then each name was searched across `src/` and `docs/` in all history, with a positive control showing the same search *does* find known generator names.
+- **None of the fifteen was registered in the evidence README's table**, so no document needed an edit, and every image stays recoverable from git history. The re-shoots are a separate pass and are not done.
 
 ## Next
 
