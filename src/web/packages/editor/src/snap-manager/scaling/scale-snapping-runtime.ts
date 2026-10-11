@@ -39,9 +39,7 @@ type DuplicateScaleRuntimeStep = Readonly<{
 }>;
 
 /** A fresh or repeated scale-runtime result. */
-type ScaleRuntimeStep =
-  | PlannedScaleRuntimeStep
-  | DuplicateScaleRuntimeStep;
+type ScaleRuntimeStep = PlannedScaleRuntimeStep | DuplicateScaleRuntimeStep;
 
 /** The idempotent result of ending a scale session. */
 type ScaleRuntimeCleanup = Readonly<{

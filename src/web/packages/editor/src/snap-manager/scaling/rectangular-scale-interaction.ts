@@ -25,9 +25,7 @@ import type {
 } from "./scale-snapping-resolver.js";
 
 /** The source of one rectangular scale step's multipliers. */
-type RectangularScaleIntentSource =
-  | "fabric-preview"
-  | "pointer-projection";
+type RectangularScaleIntentSource = "fabric-preview" | "pointer-projection";
 
 /** The event data shared by image scaling and general selection scaling. */
 type RectangularScaleStepEvent = Readonly<{
