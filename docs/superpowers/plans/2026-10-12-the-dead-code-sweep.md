@@ -21,7 +21,8 @@
 - **Entry points to exclude:** `packages/*/index.html`, `packages/player/src/main.ts`, `packages/host/src/main.ts`, `packages/host/bin/vigilia.js`, the vite/playwright/vitest configs, `scripts/*.mjs` and `src/web/scripts/*.mjs`.
 - **Dynamic import is real but narrow** — `packages/host/src/providers/library.ts`'s `await import("systeminformation")`, and test-module factories (`vi.mock`, `importOriginal`). Not handling it produces live code reported as dead.
 - **`.mjs` is in no gate at all.** Biome's `files.includes` is `src/web/**/*.{ts,tsx,json,css}`, so the ten `scripts/*.mjs` and `src/web/scripts/*.mjs` are neither linted nor formatted, and no tsconfig includes them.
-- **`dist/**` is build output** and is never scanned or edited.
+- **`dist/**` is build output** and is never scanned or edited. It is correctly ignored, and **zero build output is tracked** — checked, so no task needs to spend time on that lane.
+- **`.superpowers/` is gitignored by a blanket `*` line but 20 files under it are tracked anyway**, and they are not scratch: closed plans' ledgers hold rulings that exist nowhere else, and one of them (`plan-queue.md`) owns the plan queue. **The sweep does not scan, clean or delete anything there.** A gitignored tree is not the same as a disposable one, and the checkpoints under `.superpowers/sdd/checkpoint/` are session-recovery state whose removal is the user's call, not a cleanup.
 - **Deleting is not a licence to restructure.** Remove what is dead; do not reorganise what is alive. 500 lines signals and 800 stops for anything that survives.
 - **Do not touch** plugins, skills, hooks, MCP servers, Claude/Codex settings, `AGENTS.md`, `STATUS.md` or `DESIGN.md`.
 
