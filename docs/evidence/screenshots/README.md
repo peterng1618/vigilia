@@ -41,6 +41,15 @@ and both are produced by the registered actions above: the first by
 `captures the shell with the Add pane open and nothing selected`, the second by
 `captures each palette's own surface` (the `shell-palette-graphite` file).
 
+**Plan 8's pair sits beside `settings.html` the same way**, and is the state that
+drawing draws — its Appearance panel, the only view it holds, in the drawing's
+own palette and in the light ground a hard-coded hex would show on:
+`docs/design/mockups/current/settings-capture-graphite.png` and
+`settings-capture-editorial.png`, produced by `captures the settings modal's
+three tabs` (the `settings-appearance` file, with and without `-editorial`). A
+PNG beside a drawing is skipped by the drawings gate rather than parsed — it
+enumerates `*.html` (`tests/e2e/mockup-values.ts`'s `currentDrawings`).
+
 ## Editor visual-action checklist
 
 Update/add a capture when a change affects a listed domain. Show the action's
