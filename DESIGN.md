@@ -55,7 +55,7 @@ omitted:
 **Normative.** Every editor surface is built from what is written here, and a
 new surface that needs something absent from it changes this file in the same
 commit rather than inventing a local exception. The design record for *why* is
-[`../superpowers/specs/2026-10-08-editor-design-language-design.md`](../superpowers/specs/2026-10-08-editor-design-language-design.md);
+[`docs/superpowers/specs/2026-10-08-editor-design-language-design.md`](docs/superpowers/specs/2026-10-08-editor-design-language-design.md);
 this file is what that spec produced and what later work reads instead of
 re-deriving.
 

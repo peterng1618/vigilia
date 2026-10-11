@@ -13,16 +13,18 @@ export default defineConfig({
     // Unit tests for the shared renderer's pure logic. Visual and cross-device
     // behaviour is covered by Playwright (tests/e2e), not here.
     //
-    // The one exception is a **pure reader of a file**, with no DOM and no
-    // server: `tests/e2e/mockup-values.test.ts` parses the checked design
-    // drawing, and it is the reader's own proof that it reads the drawing rather
-    // than a transcription of it. Playwright's own suite is `.spec.ts` only
-    // (`playwright.config.ts`), so the two runners do not collect each other's
-    // files.
+    // Two namespaces under `tests/` are pure readers of a file — no DOM, no
+    // server — and are collected here on purpose. `tests/e2e/mockup-values.test.ts`
+    // parses the checked design drawing, and `tests/scripts/design-md.test.ts`
+    // drives the root `scripts/design-md.mjs` checks; each is the reader's own
+    // proof that it reads the artefact rather than a transcription of it.
+    // Playwright's own suite is `.spec.ts` only (`playwright.config.ts`), so the
+    // two runners do not collect each other's files.
     include: [
       "packages/*/src/**/*.test.ts",
       "packages/*/src/**/*.test.tsx",
       "tests/e2e/**/*.test.ts",
+      "tests/scripts/**/*.test.ts",
     ],
     environment: "node",
     restoreMocks: true,
