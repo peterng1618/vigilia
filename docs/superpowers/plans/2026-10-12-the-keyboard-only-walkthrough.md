@@ -19,6 +19,7 @@
 - **`--workers=1`, and never two Playwright suites at once** (strictPort; `reuseExistingServer`).
 - **Screenshots are evidence, not golden files**; capture only actions registered in `docs/evidence/screenshots/README.md`, and only with `VIGILIA_CAPTURE=1 --workers=1`.
 - **A `--grep` matching nothing exits 0 having run zero tests.** Every browser run in this plan reports its test count.
+- **§13.1's "each region has a reachable focus target" means a region that has content — ruled by the user on 2026-10-12.** The shell's opening state has an empty inspector that renders one sentence and legitimately contributes no tab stop; adding a focus target to an empty column is not required and would be an anti-pattern. So a region's reachability is asserted **in the state where that region has content**, and the census is taken after a keyboard selection exists. `REGIONS` stays the same four — this changes *when* the assertion is taken, never how many regions there are, and trimming the list would still be the forbidden move.
 - **§N markers are stable**; never renumber. `DESIGN.md` is the design document, `docs/design/design-language.md` no longer exists.
 - **Do not touch** plugins, skills, hooks, MCP servers, Claude/Codex settings or `AGENTS.md`.
 
@@ -42,27 +43,35 @@ The five conditions most likely to bite a keyboard user that no task's steps exe
 
 **Interfaces:**
 - Consumes: the `desktop-host` project's `webServer` and its `testMatch` regex; `HOST_PORT`/`HOST_APP_DIR` from `tests/e2e/host-theme.ts`.
-- Produces: `host-walkthrough.spec.ts` with a `test.describe` block and a `press`/`tabUntil` helper used by every later task; the census's recorded findings.
+- Produces: `host-walkthrough.spec.ts` with a `test.describe` block and a `press`/`tabUntil` helper used by every later task; the census's recorded findings, reported as two walks (opening and populated).
 
 - [ ] **Step 1: Name the file so the project matches it.** The project's `testMatch` is `/host-(player|settings|media|bleed|chrome).spec.ts/`, so `host-walkthrough.spec.ts` does **not** match it. Widen that regex to admit `walkthrough` and say in a comment that the walkthrough is a host spec for the same reason the others are. This is the one edit outside the spec file, and it is what makes the spec run under the real host.
+
+**The §13.1 ruling of 2026-10-12 changed this task's premise, and this block is the correction.** Task 1 was written before the ruling and its census asserted the unqualified reading: walk the shell as it opens and expect all four regions. The user has since ruled that the requirement means a region **with content**, so the census is taken in the state where each region has content and the inspector's tab stops are counted **after a keyboard selection exists**. The two-walk shape this needs is why `tabUntil`/`keyboardReach` had to be made re-entrant, and why the marks are per walk.
+
+**What this does not change:** `REGIONS` is still the same four. Trimming it to the three opening-state regions to make a run go green is still the forbidden move — the difference is that the fourth region is now asserted *later in the walk* rather than deleted from the list.
 
 - [ ] **Step 2: Write the failing test — the shell is reachable by keyboard at all.**
 
 ```ts
 test("the shell's regions each have a reachable, named focus target", async ({ page }) => {
   await openWalkthrough(page);
-  const reached = await keyboardReach(page); // Tab until focus stops advancing
-  expect(reached).toEqual(expect.arrayContaining(REGIONS));
+  const opening = await keyboardReach(page); // Tab until focus stops advancing
+  await selectInPaneByKeyboard(page);        // the inspector now has content (§13.1 ruling)
+  const populated = await keyboardReach(page);
+  expect([...opening, ...populated]).toEqual(expect.arrayContaining(REGIONS));
 });
 ```
 
-where `REGIONS` is the region list §13.1 implies — the rail, the pane, the inspector and the stage's own controls. Assert an accessible name per region, which is Review Focus 4.
+where `REGIONS` is the region list §13.1 implies — the rail, the pane, the inspector and the stage's own controls. Assert an accessible name per region, which is Review Focus 4. **Report both walks separately** (`opening` and `populated`), because which regions the opening state reaches is evidence about the shell and a merged list cannot answer it.
+
+`selectInPaneByKeyboard` is Task 3's and Task 2's ground; Task 1 needs only enough of it to give the inspector content — reach the pane by Tab, move within it, and activate one item with `Enter`. If that proves larger than a few lines, say so in the report rather than growing the harness: an honest "this needed Task 2's helper" is a better outcome than a second selection mechanism.
 
 - [ ] **Step 3: Run it and record what it says.** `npx playwright test tests/e2e/host-walkthrough.spec.ts --project=desktop-host --workers=1` — **report the test count.** Expect FAIL: `openWalkthrough`, `keyboardReach` and `REGIONS` do not exist.
 
 - [ ] **Step 4: Implement the harness.** `openWalkthrough(page)` navigates to the host's editor mount and waits for the shell. `keyboardReach(page)` presses `Tab` up to a fixed bound, recording each `document.activeElement`'s region and accessible name, and stopping when focus returns to a node already seen. `REGIONS` names the four regions.
 
-- [ ] **Step 5: Run it again.** Expect PASS. **If a region is unreachable, that is the finding this task exists to produce** — record it as a register row (`Discovered, not fixed:`) and say in the commit which region and which target. Do not weaken `REGIONS` to make it green.
+- [ ] **Step 5: Run it again.** Expect PASS, in both walks. **A region unreachable in the state where it has content is still the finding this task exists to produce** — record it as a register row (`Discovered, not fixed:`), and say in the commit which region, which target, and which walk. An unreachable region in the *opening* state alone is no longer a finding (§13.1 ruling) and is recorded as the expected shape instead. Do not weaken `REGIONS` to make it green.
 
 - [ ] **Step 6: Commit.** `git add` the two explicit paths; `test(walkthrough): the shell's regions are reachable and named by keyboard`.
 

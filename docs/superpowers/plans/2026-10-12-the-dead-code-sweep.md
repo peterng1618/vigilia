@@ -69,7 +69,7 @@ The five ways this sweep deletes something alive.
 - [ ] **Step 3: A candidate is not a verdict — say so in the output.** Print each with the searches run, in the shape `ownership-sweep.mjs` already established ("Candidates, not verdicts"), and never delete anything.
 
 - [ ] **Step 4: Prove the scanner separates known cases, in both directions.** **A scanner that reports everything, or nothing, has told you nothing.** Assert it lands on:
-  - **`test-only-consumer`** for `packages/editor/src/font-picker/font-picker.tsx`, whose only importers are tests (`vg-268`, `vg-283` — the same finding filed twice, which Task 7 merges). **The path is `font-picker/`, not `editor-shell/`** — this plan's first draft stated the wrong directory, and the implementer corrected it against the tree rather than following the brief.
+  - **`test-only-consumer`** for `packages/editor/src/font-picker/font-picker.tsx`, whose only importers are tests (`vg-268`, `vg-283` — the same finding filed twice, which Task 7 merges). **The path is `font-picker/`, not `editor-shell/`** — the false directory was in this plan's first draft *and* in the Task 1 dispatch prompt. The plan names no path at all, so the implementer followed the tree rather than the dispatch; the correction is recorded here because the error was the controller's, not the brief's.
   - **`dead-export`** for `settingsField()` in `packages/editor/src/editor-shell/controls/settings-field.ts` (`vg-342`), which has zero production callers.
   - **nothing at all** for a module on the live path — pick one the editor mounts at boot, and show it absent from every kind. A scanner with no negative case is untested.
 
