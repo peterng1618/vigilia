@@ -69,15 +69,8 @@ import {
 } from "./selection-inspector/index.js";
 import { ShortcutManager } from "./shortcut-manager/index.js";
 import { createSnapManager, type SnapManager } from "./snap-manager/index.js";
-import {
-  createThemeLibraryClient,
-  ThemeConflictError,
-  type ThemeLibraryClient,
-} from "./theme-library-client.js";
-import {
-  promptThemeConflict,
-  promptThemeSelection,
-} from "./theme-library-dialog.js";
+import type { ThemeLibraryClient } from "./theme-library-client.js";
+import { ThemeLibraryManager } from "./theme-library-manager/index.js";
 import { captureThumbnail } from "./thumbnail-capture.js";
 import {
   createTypePresetPanel,
@@ -85,41 +78,6 @@ import {
   type TypePresetPanel,
   type TypePresets,
 } from "./type-preset-manager/index.js";
-
-/**
- * The stored document a session descends from, and what that document declared.
- *
- * A save names the first to say which version it was built from; the second is
- * what lets it leave an asset the stored folder already holds out of the
- * request, because a declared `sha256` that has not moved is proof the bytes
- * have not either. Keeping them in one value is the point — a base without its
- * hashes would upload the whole theme every time, which is what this exists to
- * stop.
- */
-interface LibraryBase {
-  readonly id: string;
-  readonly hashes: ReadonlyMap<string, string>;
-}
-
-/** The base of a document, paired with the hashes that document declares. */
-function libraryBase(
-  id: string | undefined,
-  declarations: readonly { readonly path: string; readonly sha256?: string }[],
-): LibraryBase | undefined {
-  if (id === undefined) {
-    return undefined;
-  }
-  return {
-    id,
-    hashes: new Map(
-      declarations.flatMap((declared) =>
-        declared.sha256 === undefined
-          ? []
-          : [[declared.path, declared.sha256] as const],
-      ),
-    ),
-  };
-}
 
 export interface EditorPanelHosts {
   /** Text and chart creation, and the declared-asset library at its foot. */
@@ -218,18 +176,8 @@ export class EditorSession {
   readonly #options: EditorSessionOptions;
   readonly #shell: EditorShell;
   #envelope: FabricThemeEnvelopeInput;
-  /**
-   * The stored document this one descends from, or nothing when it descends
-   * from nothing. It is the base every library save is checked against, so it
-   * is cleared wherever the document is replaced by something else: a base that
-   * outlived its document would make the next save look stale when it is not.
-   *
-   * The hashes travel with it because the pair is one claim: the base says this
-   * document is the one stored, and the hashes say what that document declared.
-   * Without the second half a save cannot tell an asset the author never
-   * touched from one they replaced, and sends bytes nobody changed.
-   */
-  #libraryBase: LibraryBase | undefined;
+  /** The host's library, which owns this document's stored base. */
+  readonly #library: ThemeLibraryManager;
   /** The picture this document arrived with, which a save falls back to. */
   #thumbnail: Uint8Array | undefined;
   /** The source the runtime reads, which a new source replaces. */
@@ -251,11 +199,31 @@ export class EditorSession {
     this.#shell = options.shell;
     this.#thumbnail = options.thumbnail;
     this.#assets = options.assetManager;
-    this.#libraryBase = libraryBase(
-      options.libraryBase,
-      this.#assets.declarations,
-    );
     this.#onBindingsChange = options.onBindingsChange;
+    // The library owns the stored base and the protocol a save against it
+    // follows. What it cannot decide — this document, its picture, whether the
+    // author has agreed to replace it — arrives as the manager's port.
+    this.#library = new ThemeLibraryManager({
+      snapshot: () => this.#snapshot(options.shell),
+      assets: this.#assets,
+      picture: () => this.#picture(options),
+      markSaved: (theme, assets) => this.#persistence.markSaved(theme, assets),
+      announceChange: this.#announceChange,
+      errors: options.shell.editor.errorManager,
+      confirmReplacement: () => this.#confirmReplacement(options),
+      onSaved: options.onSaved,
+      onNewFromStarter: options.onNewFromStarter,
+      ...(options.libraryBase === undefined
+        ? {}
+        : { base: options.libraryBase }),
+      ...(options.libraryClient === undefined
+        ? {}
+        : { client: options.libraryClient }),
+      ...(options.onError === undefined ? {} : { onError: options.onError }),
+      ...(options.onOpenTheme === undefined
+        ? {}
+        : { onOpenTheme: options.onOpenTheme }),
+    });
 
     /**
      * An undo rebuilds the scene from JSON, and an imported image's persisted
@@ -616,8 +584,8 @@ export class EditorSession {
       openPackage: () => this.#open(options),
       savePackage: () => this.#save(options),
       releasePackage: () => this.#release(options),
-      openLibrary: () => this.#openLibrary(options),
-      saveLibrary: () => this.#saveLibrary(options),
+      openLibrary: () => this.#library.open(),
+      saveLibrary: () => this.#library.save(),
       addText: () => insertNewText(editor, this.#envelope.globals),
       addShape: (kind) => insertNewShape(editor, this.#envelope.globals, kind),
       addChart: (family) => this.charts.addChart(family),
@@ -639,7 +607,7 @@ export class EditorSession {
         // display given one would render a theme with holes. The base's own
         // `id` is a content hash of the stored document, not the folder it
         // lives in, so the id published under is the document's.
-        if (this.#libraryBase === undefined) return undefined;
+        if (!this.#library.isStored()) return undefined;
         const envelope = this.#snapshot(this.#shell);
         return { id: envelope.id, envelope };
       },
@@ -791,185 +759,11 @@ export class EditorSession {
     }
   }
 
-  async #saveLibrary(options: EditorSessionOptions): Promise<void> {
-    const current = this.#snapshot(options.shell);
-    const client = options.libraryClient ?? createThemeLibraryClient();
-    try {
-      // The library is a folder, so the theme goes as its document and its
-      // declared bytes. Building an archive here would compress data the host
-      // is about to write uncompressed and inflate again on the next read.
-      await this.#writeLibrary(client, current, options, false);
-      options.onSaved("Saved to library");
-    } catch (error) {
-      const msg = error instanceof Error ? error.message : String(error);
-      // The editor's own words for a save that did not happen, whether it was
-      // refused or merely failed — the document is untouched either way, and
-      // `markSaved` was not reached, so the author still has it.
-      options.onError?.(`Could not save to library: ${msg}`);
-      if (error instanceof ThemeConflictError) {
-        await this.#resolveConflict(current, options, client);
-      }
-    }
-  }
-
-  /**
-   * The save itself, so a deliberate overwrite after a refusal takes the same
-   * road the refused save did — the same declared bytes, the same picture, and
-   * the same move of the base onto what was just written.
-   */
-  async #writeLibrary(
-    client: ThemeLibraryClient,
-    current: FabricThemeEnvelope,
-    options: EditorSessionOptions,
-    overwrite: boolean,
-  ): Promise<void> {
-    const base = this.#libraryBase;
-    this.#libraryBase = libraryBase(
-      await client.save(
-        current.id,
-        {
-          envelope: current,
-          assets: this.#libraryPayload(base, overwrite),
-          ...(base === undefined ? {} : { base: base.id }),
-        },
-        { overwrite },
-      ),
-      this.#assets.declarations,
-    );
-
-    const png = await this.#picture(options);
-    if (png !== undefined && client.saveThumbnail !== undefined) {
-      try {
-        await client.saveThumbnail(current.id, png);
-      } catch (error) {
-        options.shell.editor.errorManager.warn(
-          "controls",
-          `Saved, but the library picture failed: ${error instanceof Error ? error.message : String(error)}`,
-        );
-      }
-    }
-
-    this.#persistence.markSaved(current, this.#assets.assets);
-    // The document did not move, but whether it is saved just changed, and the
-    // marker reads that question rather than watching the scene.
-    this.#announceChange();
-  }
-
-  /**
-   * The bytes this save has to carry, which is only the ones the stored folder
-   * does not already hold.
-   *
-   * An asset the author has not touched since they opened the theme is left
-   * out, and the host takes it from the folder it is replacing — a 438 KB
-   * backdrop that has not moved does not go over the wire again. It may do that
-   * only because this save went out with the base the editor opened with, and
-   * the host's guard has already said the stored document is that one.
-   *
-   * A save with no base is a first save, and a deliberate overwrite stands the
-   * guard down, so both carry the whole theme: there is nothing to reconstruct
-   * from, and on the second road what is on disk is not the document this save
-   * came from.
-   */
-  #libraryPayload(
-    base: LibraryBase | undefined,
-    overwrite: boolean,
-  ): Readonly<Record<string, Uint8Array>> {
-    const all = this.#assets.assets;
-    if (base === undefined || overwrite) {
-      return all;
-    }
-    const payload: Record<string, Uint8Array> = {};
-    for (const declared of this.#assets.declarations) {
-      const sha256 = declared.sha256;
-      if (sha256 !== undefined && base.hashes.get(declared.path) === sha256) {
-        continue;
-      }
-      // A declaration with no bytes is a document that is already broken; the
-      // host refuses a theme that names an asset nobody can produce, which is
-      // the honest answer, and sending an empty file would not be.
-      const bytes = all[declared.path];
-      if (bytes !== undefined) {
-        payload[declared.path] = bytes;
-      }
-    }
-    return payload;
-  }
-
-  /**
-   * What an author wants done about a save the host refused. Nothing is thrown
-   * away on either road, and the third answer keeps both: reloading takes the
-   * stored document, overwriting sends the author's own with the guard stood
-   * down for this one save, and dismissing it leaves the document exactly as it
-   * was so they can copy anything out of it first.
-   */
-  async #resolveConflict(
-    current: FabricThemeEnvelope,
-    options: EditorSessionOptions,
-    client: ThemeLibraryClient,
-  ): Promise<void> {
-    const choice = await promptThemeConflict();
-    if (choice === "reload") {
-      const opened = await client.open(current.id);
-      this.#libraryBase = libraryBase(
-        opened.base,
-        opened.envelope.assets ?? [],
-      );
-      await options.onOpenTheme?.(opened.envelope, opened.assets, opened.base);
-      return;
-    }
-    if (choice !== "overwrite") {
-      return;
-    }
-    try {
-      await this.#writeLibrary(client, current, options, true);
-      options.onSaved("Saved to library");
-    } catch (error) {
-      options.onError?.(
-        `Could not save to library: ${error instanceof Error ? error.message : String(error)}`,
-      );
-    }
-  }
-
-  async #openLibrary(options: EditorSessionOptions): Promise<void> {
-    if (!(await this.#confirmReplacement(options))) return;
-    const client = options.libraryClient ?? createThemeLibraryClient();
-    try {
-      // The client goes in so a delete raised from this dialog reaches the host
-      // this session is already talking to, rather than one the dialog builds.
-      const choice = await promptThemeSelection(
-        await client.list(),
-        undefined,
-        {
-          client,
-        },
-      );
-      if (choice === undefined) return;
-      // A template is not a stored theme: it is not in the host's library, so
-      // there is nothing to fetch and nothing the author could have deleted.
-      // The editor already holds it, which is why it is offered at all.
-      if (choice.kind === "template") {
-        this.#libraryBase = undefined;
-        await options.onNewFromStarter();
-        return;
-      }
-      const opened = await client.open(choice.id);
-      if (options.onOpenTheme !== undefined) {
-        this.#libraryBase = libraryBase(
-          opened.base,
-          opened.envelope.assets ?? [],
-        );
-        await options.onOpenTheme(opened.envelope, opened.assets, opened.base);
-      }
-    } catch (error) {
-      options.onError?.(error instanceof Error ? error.message : String(error));
-    }
-  }
-
   async #open(options: EditorSessionOptions): Promise<void> {
     if (!(await this.#confirmReplacement(options))) return;
     // A package is a file the author brought in, not a stored theme, so the
     // next save is a first save and claims no base.
-    this.#libraryBase = undefined;
+    this.#library.forget();
     if (options.onOpenPackage !== undefined) {
       options.onOpenPackage();
     } else if (options.onOpen !== undefined) {
@@ -991,13 +785,13 @@ export class EditorSession {
     const answer = await chooseArtboardSize(this.#envelope.artboard);
     if (answer === undefined) return;
     if (!(await this.#confirmReplacement(options))) return;
-    this.#libraryBase = undefined;
+    this.#library.forget();
     await options.onNew(answer);
   }
 
   async #newFromStarter(options: EditorSessionOptions): Promise<void> {
     if (!(await this.#confirmReplacement(options))) return;
-    this.#libraryBase = undefined;
+    this.#library.forget();
     await options.onNewFromStarter();
   }
 
