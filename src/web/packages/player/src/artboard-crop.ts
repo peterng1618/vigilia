@@ -1,6 +1,4 @@
 import {
-  countable,
-  EDGE_TOLERANCE,
   outsideCount,
   outsideEdges,
   type ArtboardSize,
@@ -26,7 +24,6 @@ import { uiCopy } from "./ui-copy.js";
  * a display says about it.
  */
 export type { ArtboardSize, SceneBox };
-export { countable, EDGE_TOLERANCE };
 
 export function cropNoticeText(
   boxes: readonly SceneBox[],

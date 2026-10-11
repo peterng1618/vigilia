@@ -22,9 +22,6 @@ export function isMeasurementSystem(
   return (MEASUREMENT_SYSTEMS as readonly unknown[]).includes(value);
 }
 
-/** Families that convert, keyed by what the vocabulary declares. */
-export type ConvertibleFamily = "temperature";
-
 export interface ConvertedValue {
   readonly value: number;
   /** The symbol for the converted form; unchanged when nothing converted. */

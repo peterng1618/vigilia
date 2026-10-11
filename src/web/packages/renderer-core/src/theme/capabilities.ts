@@ -1,4 +1,4 @@
-import { NODE_TYPES, type NodeType } from "./document.js";
+import { type NodeType } from "./document.js";
 
 /** Single owner of node capabilities and the style-property vocabulary. */
 
@@ -181,6 +181,3 @@ export function stylePropertiesFor(type: NodeType): readonly string[] {
     (group) => STYLE_PROPERTIES_BY_GROUP[group] ?? [],
   );
 }
-
-/** Mirrors NODE_TYPES for schema/capability completeness tests. */
-export const CAPABILITY_TYPES: readonly NodeType[] = NODE_TYPES;
