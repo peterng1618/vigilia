@@ -23,7 +23,7 @@ satisfies every token in `DESIGN.md` and still does not look like the mockup.
 
 ## Active work
 
-- **No implementation plan is active**: `design-md-replaces-the-bible` is closed and archived at [`archive/`](docs/superpowers/plans/archive/2026-10-10-design-md-replaces-the-bible.md); Plan 6 is complete and archived at [`archive/`](docs/superpowers/plans/archive/2026-10-08-iconography-and-copy.md).
+- **The active plan is [`2026-10-12-the-keyboard-only-walkthrough`](docs/superpowers/plans/2026-10-12-the-keyboard-only-walkthrough.md)** — five tasks assembling §13.1's nine interactions into one spec on the real host, which is the last thing keeping the objective open; `design-md-replaces-the-bible` is closed and archived at [`archive/`](docs/superpowers/plans/archive/2026-10-10-design-md-replaces-the-bible.md) and Plan 6 is complete and archived.
 - **Plan 6's nine tasks are complete**: the census, the one glyph vocabulary and weight rule, the closed kind set, the one-string pairing, the copy nets, the ratchet, the sixteen-item Acceptance ledger and Task 9's parity capture.
 - **Its Acceptance ledger reads fifteen met, one not met** — §13.1's real-host walkthrough, which plan 6 was forbidden to add and no other plan owns.
 - **`vg-330` is parked by the user (2026-10-11)** — "Let's park the settings becomes a pane spec" — and `vg-331` still waits: the palettes gain a second highlight whose role is an attention or in-flight state, defined before any colour is chosen.
@@ -41,9 +41,8 @@ satisfies every token in `DESIGN.md` and still does not look like the mockup.
 
 1. **The three failures the capture run surfaced** — `vg-359` (which also owns the one stale capture), `vg-360` and `vg-361`; nothing fixed on sight, because the first question for each is whether the surface moved or the locator did, and those want opposite fixes.
 2. **The backlog drain, opened with a reproduction pass** — 215 open rows sorted at HEAD into closes-with-evidence, needs-a-decision and real work before anything is fixed.
-3. **§13.1's keyboard-only walkthrough gets its own plan** — the nine interactions plans 1–5 proved in isolation alone; `desktop-host` matches `host-(player|settings|media|bleed|chrome).spec.ts` and nothing else.
-4. **`vg-357`** — a dark OS's pre-attribute frame still takes editorial's display face and control paper, because four palettes inherit those tokens from the bare root; closing it means declaring them per palette.
-5. **`vg-358`** — an unresolved palette reference takes the inspector column down though the product renders that state and carries its copy; whether the state is reachable at all is the decision it waits on.
+3. **`vg-357`** — a dark OS's pre-attribute frame still takes editorial's display face and control paper, because four palettes inherit those tokens from the bare root; closing it means declaring them per palette.
+4. **`vg-358`** — an unresolved palette reference takes the inspector column down though the product renders that state and carries its copy; whether the state is reachable at all is the decision it waits on.
 
 ## Blockers / unverified
 
