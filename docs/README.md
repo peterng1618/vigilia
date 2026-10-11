@@ -10,7 +10,7 @@ artifacts and from Git history.
 | Driving the product to find what's wrong with it | [`product/tester-runbook.md`](product/tester-runbook.md) — operating procedure; [`product/tester-brief.md`](product/tester-brief.md) — what to file; [`product/probe-notes.md`](product/probe-notes.md) — the instrument traps, with evidence; [`product/probes/`](product/probes/README.md) — the reusable scripts |
 | Product goals, constraints and stable requirements | [`product/requirements.md`](product/requirements.md) |
 | Current system shape and boundaries | [`architecture/README.md`](architecture/README.md) |
-| Who owns each concept | [`architecture/ownership.md`](architecture/ownership.md) |
+| Who owns each concept | [`architecture/ownership.md`](architecture/ownership.md), and the review of it at [`architecture/manager-census.md`](architecture/manager-census.md) |
 | The editor's visual language, **normative** | [`../DESIGN.md`](../DESIGN.md) — scales, colour roles, the control and icon vocabulary, layout and copy rules |
 | Why major architecture choices were made | [`adr/`](adr/) |
 | Active feature design/spec | [`superpowers/specs/`](superpowers/specs/) |
