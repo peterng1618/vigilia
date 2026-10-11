@@ -6,6 +6,8 @@
 
 **Architecture:** Build the reference picture first, then remove by owner. **The hard part is not deleting, it is deciding what is dead**, and this repo makes that unusually easy to get wrong: `data-vigilia-*` attributes, `--vigilia-*`/`--shell-*` custom properties, `KIND_*` registries and Fabric JSON keys are all resolved by *string*, and four gate scripts read the source tree as **data**. So Phase 1 produces a candidate report with its searches recorded, Phase 2 verifies and removes one owner at a time, and no candidate is deleted on the strength of an empty `grep` alone.
 
+**Phase 4 is a different kind of change and is marked as one.** The manager layer's review and redistribution (requested by the user) turned out on measurement to contain **no dead code at all** — all 20 managers have production references — so it is a behaviour-preserving ownership refactor whose acceptance is that *nothing* changes, not that something disappeared. It sits in this plan because the user asked for it here, and it is separated because judging it by the removal phases' standard would be judging it backwards.
+
 **Tech Stack:** node (`node:fs`, no new dependency), the TypeScript compiler already in the workspace, and the repo's own gate scripts.
 
 **Spec:** the user's instruction of 2026-10-12 is the authority — *"the app has been through multiple rounds of refactoring on both backend & frontend. Do a deep sweep to remove dead/stale codes throughoutly."* The binding constraints are `AGENTS.md`'s **Reuse before build** and **Architecture guardrails** sections.
@@ -137,6 +139,40 @@ Each task below owns one group of packages and follows the same contract: **for 
 - [ ] **Step 4: Edit the two registers by raw line, never by a JSON round-trip** — a round-trip rewrites every row holding a `§` escape.
 - [ ] **Step 5: Run `npm run backlog:check` from `src/web/`.**
 - [ ] **Step 6: Commit.** `docs(backlog): the rows the dead-code sweep discharges`.
+
+---
+
+---
+
+### Phase 4 — the manager layer's review and redistribution
+
+**Requested by the user on 2026-10-12: *"the managers review/redistribution … as part of this dead code sweep."* The request is recorded verbatim because it referred to an earlier conversation this session does not hold; the reading below is the controller's, stated so it can be corrected cheaply.**
+
+**The measurement that decides what kind of work this is.** The editor has **20 `*-manager` modules** under `src/web/packages/editor/src/` — 18,700 source lines and 13,200 test lines — and **every one of them has production references**; none is dead. `snap-manager` alone is 5252 source lines, `chart-manager` 1633, `shortcut-manager` 917.
+
+**So this phase is not a deletion lane, and reading it as one would be the exact mistake AGENTS.md's Reuse-before-build section warns about.** What the managers need is **redistribution**: each is mapped in `docs/architecture/ownership.md` to a concept, and the register's ownership family already names specific places where a manager *decides* something it is not mapped to own — `vg-237` (`controls-manager` is mapped as handle styling but owns a Line's four document scalars and a text box's height), `vg-247` (the lock manager owns *writing* the `locked` flag but not *testing* it, so eight modules spell the predicate), `vg-240` (`snap-manager` implements one acquire-hold-plan-verify protocol twice), `vg-243`, `vg-244`, `vg-236`.
+
+**Acceptance for this phase is the opposite of the other three: nothing may change behaviour.** The 13,200 lines of manager tests are the harness, and a redistribution that turns one of them red is a defect rather than a refactor. Deletion phases are judged by what disappeared; this one is judged by what moved without moving anything else.
+
+### Task 8: The manager census against the ownership map
+
+**Files:** none modified. Reads `src/web/packages/editor/src/*manager*/**`, `docs/architecture/ownership.md`, and the register's ownership rows.
+
+- [ ] **Step 1: For each of the 20 managers, list the concepts it *decides* and the concepts the ownership map says it *owns*.** The gap between those two lists is the work. Take the concept inventory from the code, not from the map — **a register claim is not evidence** (Global Constraints), and `vg-237`'s mismatch was found by reading the module, not the table.
+- [ ] **Step 2: Rank the mismatches by blast radius, not by count.** `snap-manager`'s duplicated protocol sits in 5252 lines and is reached by 11 production modules; a manager owning one stray scalar is a smaller move. Say which mismatches are one-owner moves and which are cross-cutting.
+- [ ] **Step 3: Fold in the register rather than re-finding it.** `vg-232`–`vg-248` already name most of this family. Each citation is re-established at HEAD, and the census says which rows it confirms, which it contradicts, and which it found that no row names.
+- [ ] **Step 4: Report the dead-or-over-owning question separately.** A manager that has production references may still contain a *dead method*; that is Phase 1's scanner's job, not this task's, and the census does not duplicate it.
+- [ ] **Step 5: Commit.** `docs(sweep): the manager census against the ownership map`.
+
+### Task 9: Redistribute the confirmed mismatches, one owner at a time
+
+**Files:** `src/web/packages/editor/src/**` and `docs/architecture/ownership.md`.
+
+- [ ] **Step 1: One manager per commit, and one concept per commit within it.** A move that relocates three concepts at once cannot be reviewed, and this phase's whole risk is an invisible behaviour change.
+- [ ] **Step 2: Move the decision, not the code.** The rule is `AGENTS.md`'s one owner per concept: after the move the *old* site stops deciding, and reads the owner's answer instead. A redistribution that leaves both sites deciding has added a second owner, which is worse than the mismatch it set out to fix.
+- [ ] **Step 3: Update the map in the same commit as the move.** A map that lags its code is how `vg-244` came to contradict itself on z-order, grouping and locks.
+- [ ] **Step 4: Run the manager tests and report the count, before and after.** `vg-239` records that a save-picture expression is written twice; a redistribution that makes the two sites agree by changing one of them silently is the failure mode.
+- [ ] **Step 5: Do not merge managers or introduce an abstraction over them.** The count of managers is not the defect, and a `BaseManager` is the framework-rebuild this repo's Reuse section exists to prevent.
 
 ---
 
