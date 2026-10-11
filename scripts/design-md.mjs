@@ -31,6 +31,14 @@
  * but it is kept because it names the *citation*, and its per-`§N` reason is
  * merged with rule 1's rather than printed as a second line.
  *
+ * A marker's *placement* is part of the contract too. `§3` keeps meaning what it
+ * meant only while it sits under the heading the section mapping names, so a
+ * fourth rule reads that mapping from the spec (`### Section mapping`) and fails a
+ * marker under any other heading. Deleting, merging or renumbering a section is
+ * caught by the three rules above; *moving* one is caught by this one. The
+ * expected placement is read from the spec, never invented here, for the same
+ * reason the range is a constant rather than read from DESIGN.md.
+ *
  * The canonical range lives HERE and is never read from DESIGN.md: if it were
  * read from the file, deleting a marker would shrink the range it is checked
  * against and the deletion would pass. `§1`–`§10` with `§7.1`–`§7.8` is
@@ -54,10 +62,20 @@ import { resolve } from "node:path";
 const ROOT = resolve(import.meta.dirname, "..");
 const DESIGN_REL = "DESIGN.md";
 const CSS_REL = "src/web/packages/editor/src/editor-shell/editor-shell.css";
+/** The spec's `### Section mapping` table is where a marker's heading is declared. */
+const SPEC_REL = "docs/superpowers/specs/2026-10-10-design-md-replaces-the-bible-design.md";
 
 /** The trees a citation may live in. DESIGN.md itself is not scanned, so it
  *  cannot claim its own markers with the citations in its prose. */
 const CITE_TREES = ["docs", "src", "scripts"];
+/**
+ * The extension of a citation source. `.jsonl` is deliberately absent, and the
+ * self-test below fails if a later widening admits it: the two register files
+ * (`docs/product/backlog.jsonl`, `backlog-archive.jsonl`) carry *historical* `§N`
+ * prose, and letting it satisfy a marker claim would widen the shared-namespace
+ * hole (`vg-352`) — the register would claim a marker the live prose does not.
+ * Excluding it keeps the "every marker is cited" rule strict.
+ */
 const CITE_EXTENSIONS = /\.(?:ts|tsx|js|jsx|mjs|cjs|md|json|css|html|txt|ya?ml)$/;
 
 /**
@@ -254,6 +272,72 @@ function citedIn(sources, known) {
   return found;
 }
 
+const HEADING = /^(#{2,3})\s+(.+?)\s*$/;
+
+/**
+ * Each `<!-- §N -->` marker with the heading path it sits under and its line.
+ * The path is the enclosing `##` and, when a `###` intervenes, that heading too:
+ * a marker directly under `## Layout` has `["## Layout"]`, and `§7.1` under
+ * `### The header` has `["## Layout", "### The header"]`.
+ */
+function markerPlacements(design) {
+  const placements = [];
+  let h2 = null;
+  let h3 = null;
+  const lines = String(design ?? "").split(/\r?\n/);
+  for (let i = 0; i < lines.length; i += 1) {
+    const heading = HEADING.exec(lines[i]);
+    if (heading) {
+      if (heading[1] === "##") {
+        h2 = `## ${heading[2]}`;
+        h3 = null;
+      } else {
+        h3 = `### ${heading[2]}`;
+      }
+      continue;
+    }
+    for (const match of lines[i].matchAll(MARKER)) {
+      placements.push({ number: match[1], path: [h2, h3].filter((h) => h !== null), line: i + 1 });
+    }
+  }
+  return placements;
+}
+
+const describePath = (path) =>
+  path.length === 0 ? "no `##` heading" : path.map((h) => `\`${h}\``).join(" → ");
+
+/** The heading path a marker's row names. A sub-number (`§7.3`) inherits `§7`'s. */
+function expectedPath(mapping, number) {
+  return mapping.get(number) ?? mapping.get(number.split(".")[0]);
+}
+
+/**
+ * The spec's `### Section mapping` table, read as `marker number → heading path`.
+ * The first column names the heading (`` `## Layout` → `### The scales` ``) and
+ * the second the marker (`` `§5`, `§6` `` or `*no marker*`). A marker number with
+ * no row is absent, so a stray number is not judged here. Empty when the table is
+ * missing, which the CLI treats as a failure — a placement check that read nothing
+ * must not pass.
+ */
+function parseSectionMapping(spec) {
+  const mapping = new Map();
+  let inTable = false;
+  for (const line of String(spec ?? "").split(/\r?\n/)) {
+    if (!inTable) {
+      if (/^\|\s*DESIGN\.md section\s*\|/.test(line)) inTable = true;
+      continue;
+    }
+    if (!line.startsWith("|")) break;
+    const cells = line.split("|").map((cell) => cell.trim());
+    const section = cells[1] ?? "";
+    if (section.startsWith("---")) continue;
+    const path = [...section.matchAll(/`(#{2,3}\s+[^`]+)`/g)].map((match) => match[1].trim());
+    if (path.length === 0) continue;
+    for (const match of (cells[2] ?? "").matchAll(/§(\d+(?:\.\d+)?)/g)) mapping.set(match[1], path);
+  }
+  return mapping;
+}
+
 /** `§N` before `§N.M`, numeric; anything else last. */
 function rank(what) {
   const match = /^§(\d+)(?:\.(\d+))?$/.exec(what);
@@ -278,10 +362,13 @@ function orderFindings(entries) {
 }
 
 /**
- * The three citation rules. `what` is the citation (`§9`); a number missing its
- * marker gathers the reason from whichever rules caught it. `opts.numbers` and
+ * The citation rules. `what` is the citation (`§9`); a number missing its marker
+ * gathers the reason from whichever rules caught it. `opts.numbers` and
  * `opts.uncitedOk` default to the constants and exist so a self-test can shrink
- * the range to one number; the real CLI never sets them.
+ * the range to one number; the real CLI never sets them. `read.mapping` — marker
+ * number → heading path — is optional, and when present a marker under the wrong
+ * heading is a finding too: a citation's number keeps its meaning only while its
+ * marker sits where the mapping says.
  */
 export function checkCitations(read, opts = {}) {
   const numbers = opts.numbers ?? CITE_NUMBERS;
@@ -289,6 +376,7 @@ export function checkCitations(read, opts = {}) {
   const known = new Set(numbers);
   const markers = markersIn(read?.design);
   const cited = citedIn(read?.citations, known);
+  const mapping = read?.mapping;
   const entries = [];
 
   for (const number of numbers) {
@@ -313,6 +401,17 @@ export function checkCitations(read, opts = {}) {
       what: `§${number}`,
       reason: `\`§${number}\` is a marker in DESIGN.md that no citation in \`docs/\`, \`src/\` or \`scripts/\` claims`,
     });
+  }
+  if (mapping !== undefined) {
+    for (const { number, path, line } of markerPlacements(read?.design)) {
+      const expected = expectedPath(mapping, number);
+      if (expected === undefined || expected.length === 0) continue;
+      if (expected.every((heading, i) => path[i] === heading)) continue;
+      entries.push({
+        what: `§${number}`,
+        reason: `\`§${number}\` sits under ${describePath(path)} (DESIGN.md:${line}), but its section mapping names ${describePath(expected)}`,
+      });
+    }
   }
   return orderFindings(entries);
 }
@@ -401,6 +500,25 @@ function selfTest() {
   cite("a non-range number is ignored", { design: "<!-- §9 -->\n", citations: ["§9", "§75", "§141"] }, { numbers: ["9"], uncitedOk: [] }, []);
   cite("a claimed marker and a cited number agree", { design: "<!-- §9 -->\n", citations: ["DESIGN.md §9"] }, { numbers: ["9"], uncitedOk: [] }, []);
   cite("UNCITED_OK silences rule 3 only", { design: "<!-- §9 -->\n", citations: [] }, { numbers: ["9"], uncitedOk: ["9"] }, []);
+
+  // --cite placement: a marker's heading is checked against the spec's mapping,
+  // and read from it rather than invented here.
+  const mapping = new Map([
+    ["1", ["## Overview"]],
+    ["4", ["## Colors"]],
+    ["7", ["## Layout"]],
+    ["3", ["## Layout", "### The scales"]],
+  ]);
+  cite("a moved marker fails", { design: "## Colors\n\n<!-- §1 -->\n", citations: ["§1"], mapping }, { numbers: ["1"], uncitedOk: [] }, ["§1"], "sits under");
+  cite("a marker in its mapped heading passes", { design: "## Colors\n\n<!-- §4 -->\n", citations: ["§4"], mapping }, { numbers: ["4"], uncitedOk: [] }, []);
+  cite("a mapped `###` passes only where the mapping says", { design: "## Layout\n\n### The scales\n\n<!-- §3 -->\n", citations: ["§3"], mapping }, { numbers: ["3"], uncitedOk: [] }, []);
+  cite("a parent `##` mapping admits a marker under its `###`", { design: "## Layout\n\n### The header\n\n<!-- §7.1 -->\n", citations: ["§7.1"], mapping }, { numbers: ["7.1"], uncitedOk: [] }, []);
+  cite("no mapping means no placement finding", { design: "## Colors\n\n<!-- §1 -->\n", citations: ["§1"] }, { numbers: ["1"], uncitedOk: [] }, []);
+
+  // The register's `.jsonl` files stay out of the scan on purpose (see the
+  // constant): a widening that admits them must fail here first.
+  report("the register's .jsonl stays out of the citation scan", !CITE_EXTENSIONS.test("docs/product/backlog.jsonl"), "`.jsonl` matched CITE_EXTENSIONS");
+  report("`.json` is still scanned", CITE_EXTENSIONS.test("data.json"), "`.json` did not match CITE_EXTENSIONS");
 
   // --lint: the counts are read, and every shape they cannot be read from fails
   // closed rather than defaulting to clean.
@@ -565,13 +683,19 @@ if (isEntryPoint) {
 
   if (process.argv.includes("--cite")) {
     const design = await readOrFail(resolve(ROOT, DESIGN_REL), DESIGN_REL);
+    const spec = await readOrFail(resolve(ROOT, SPEC_REL), SPEC_REL);
+    const mapping = parseSectionMapping(spec);
+    if (mapping.size === 0) {
+      console.error(`design-md: no section mapping could be read from ${SPEC_REL}; the placement check would look at nothing`);
+      process.exit(1);
+    }
     const citations = [];
     await collectCitations(citations);
     if (citations.length === 0) {
       console.error("design-md: no citation sources were read; the check would look at nothing");
       process.exit(1);
     }
-    process.exit(printFindings(checkCitations({ design, citations }), `${citations.length} citation source(s)`));
+    process.exit(printFindings(checkCitations({ design, citations, mapping }), `${citations.length} citation source(s)`));
   }
 
   console.error("design-md: pass --lint, --sync, --cite or --self-test");

@@ -15,6 +15,7 @@ type Read = {
   readonly design?: string;
   readonly css?: string;
   readonly citations?: readonly string[];
+  readonly mapping?: ReadonlyMap<string, readonly string[]>;
 };
 
 /** A read of the world with only the pieces a case needs. */
@@ -115,6 +116,34 @@ it("fails a citation whose number has no marker, and lets UNCITED_OK silence the
   expect(whats(checkCitations(read, opts))).toContain("§9");
   expect(
     whats(checkCitations(read, { numbers: ["9"], uncitedOk: ["9"] })),
+  ).toEqual([]);
+});
+
+it("fails a marker moved under a heading its mapping does not name", () => {
+  const mapping = new Map([
+    ["1", ["## Overview"]],
+    ["4", ["## Colors"]],
+  ]);
+  // §1 sits under Overview — its mapped heading — and §4 under Overview too,
+  // which the mapping does not allow.
+  const read = fixture({
+    design: "## Overview\n\n<!-- §1 -->\n\n## Copy\n\n<!-- §4 -->\n",
+    citations: ["§1", "§4"],
+    mapping,
+  });
+  const findings = checkCitations(read, { numbers: ["1", "4"], uncitedOk: [] });
+  expect(findings.map((f) => f.what)).toEqual(["§4"]);
+  expect(findings[0]?.why).toContain("sits under");
+});
+
+it("lets a marker sit under a sub-heading the mapped `##` encloses", () => {
+  const read = fixture({
+    design: "## Layout\n\n### The header\n\n<!-- §7.1 -->\n",
+    citations: ["§7.1"],
+    mapping: new Map([["7", ["## Layout"]]]),
+  });
+  expect(
+    checkCitations(read, { numbers: ["7.1"], uncitedOk: [] }),
   ).toEqual([]);
 });
 
