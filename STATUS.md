@@ -10,7 +10,7 @@ frontend surface except the canvas.**
 
 Plans 1–5, 7 and 8 are closed, and plan 6 is finished locally and archived; the
 objective stays open on one blocked acceptance item. The target is
-[`docs/design/design-language.md`](docs/design/design-language.md), the contract is
+[`DESIGN.md`](DESIGN.md), the contract is
 [`2026-10-08-editor-design-language-design.md`](docs/superpowers/specs/2026-10-08-editor-design-language-design.md),
 the checked drawing is [`docs/design/mockups/`](docs/design/mockups/), and the boundary that
 makes it affordable is
@@ -19,29 +19,30 @@ makes it affordable is
 **The drawing is the acceptance instrument, by the user's ruling of 2026-10-10:** the
 mockup is not replaced and the shipped surface is pulled to it. The measure of done is the
 spec's Acceptance section, counted rather than reviewed — and it is not met while a surface
-satisfies every token in the bible and still does not look like the mockup.
+satisfies every token in `DESIGN.md` and still does not look like the mockup.
 
 ## Active work
 
-- **The active plan is [`design-md-replaces-the-bible`](docs/superpowers/plans/2026-10-10-design-md-replaces-the-bible.md)** — six tasks retiring the bible for a root `DESIGN.md`; Task 1 (the file) is running. Plan 6 is complete and moved to [`archive/`](docs/superpowers/plans/archive/2026-10-08-iconography-and-copy.md), its final whole-branch review clean.
+- **No implementation plan is active**: `design-md-replaces-the-bible` closed with this commit (six tasks, acceptance verified end to end); Plan 6 is complete and archived at [`archive/`](docs/superpowers/plans/archive/2026-10-08-iconography-and-copy.md).
 - **Plan 6's nine tasks are complete**: the census, the one glyph vocabulary and weight rule, the closed kind set, the one-string pairing, the copy nets, the ratchet, the sixteen-item Acceptance ledger and Task 9's parity capture.
 - **Its Acceptance ledger reads fifteen met, one not met** — §13.1's real-host walkthrough, which plan 6 was forbidden to add and no other plan owns.
 - **`vg-330` is parked by the user (2026-10-11)** — "Let's park the settings becomes a pane spec" — and `vg-331` still waits: the palettes gain a second highlight whose role is an attention or in-flight state, defined before any colour is chosen.
 
 ## Last completed change
 
-- **Review round 1 on the graphite default**: the medium was the brief's own error — the pin's safety was argued from the mount-time `resolveShellPalette` rather than the runtime `following` gate, so the stated reason was wrong; the risk it described is unreachable on `control-fixture.html`, which mounts no shell layout.
-- **`captureVisualReview` now takes an optional `ground`** and asserts it after the emulation and *before* the shot, so a late re-render cannot leave a light PNG behind a green assertion.
-- **`control-set-editorial` is now asserted** — the one `-editorial` capture on the attribute-only route; `editor.spec.ts`'s duplicate editorial guard is dropped and its graphite guard moved into the helper.
-- **`settings.dom.test.tsx`'s harness comment corrected** — "the default palette" → "the palette in force"; the harness models an in-force palette, not a fresh light-OS profile.
+- **`design-md-replaces-the-bible` closed**: all six tasks done, and the plan's eight-item Acceptance list walked with evidence — `DESIGN.md` at the root, the old `docs/design/design-language.md` gone, and `design:check` lint/sync/cite clean.
+- **Eighteen markers resolve**: `§1`–`§10` and `§7.1`–`§7.8` each carry their marker in `DESIGN.md`, and `design:md --cite` is clean over 289 citation sources.
+- **Items 5 and 7 recorded as amended**: no current-truth document claims a bible exists (`git grep bible` empty over `DESIGN.md`, `AGENTS.md`, `docs/README.md`, `docs/design`, `docs/architecture`, `docs/engineering`, `docs/evidence`, `src` and `scripts`), and no queued plan names the deleted file.
+- **Four register rows re-pointed** — `biblePx` → `designLanguagePx` on `vg-227`, `vg-308`, `vg-332` and `vg-340`, by raw-line substitution, never a JSON round-trip.
+- **Nothing filed from the sweep**: it was a name sweep, not a citation audit, and it found nothing that warranted a row.
 
 ## Next
 
-1. **Graphite's Part C, the one capture regeneration** — runs once, last, after the design-md plan's capture-free tasks; the deliberate `-editorial` and `-graphite` pairs stay.
-2. **`design-md-replaces-the-bible` Tasks 2–6** — the sync and citation checks, the pinned linter and its licence, the prose and code sweeps, and the close that deletes the bible.
-3. **`vg-351` needs a ruling**: the `:root` base still carries editorial, so a fresh profile's first frame is editorial while the settled default is graphite — repaint the base under `prefers-color-scheme`, or correct the comment.
-4. **`vg-331`** (the attention-colour role, defined before any colour is chosen); **`vg-330` is PARKED by the user** (2026-10-11) and is not queued.
-5. **The multi-device objective** after `DESIGN.md` lands; **Acceptance item 3** still keeps the editor-redesign objective open.
+1. **Graphite's Part C, the one capture regeneration** — unblocked now the design-md plan is closed; runs once with the machine to itself, and the deliberate `-editorial`/`-graphite` pairs stay.
+2. **`vg-351` needs a ruling**: the `:root` base still carries editorial, so a fresh profile's first frame is editorial while the settled default is graphite — repaint the base under `prefers-color-scheme`, or correct the comment.
+3. **`vg-331`** (the attention-colour role, defined before any colour is chosen); **`vg-330` is PARKED by the user** (2026-10-11) and is not queued.
+4. **The multi-device objective** — `DESIGN.md` has landed, so it is next: detect the connected displays and hold a theme per device (a "device" is a hardware sensor device in the host, not a display).
+5. **Acceptance item 3 keeps the editor-redesign objective open** — §13.1's keyboard-only walkthrough on the real host has no check; see Blockers.
 
 ## Blockers / unverified
 
