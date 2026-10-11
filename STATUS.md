@@ -32,18 +32,18 @@ satisfies every token in `DESIGN.md` and still does not look like the mockup.
 
 ## Last completed change
 
-- **The plan and register were corrected against the census review** — `3a92e367`: the plan's Step 4 carried the false "11 production modules" while another paragraph of the same file corrected it, so Task 9 read a self-contradicting plan.
-- **The census was right and its Task 8 brief was wrong** — `snap-manager` is reached by exactly one production module (`editor-session.ts`); the "11" is a *fork's* feature-scope count from `2026-09-25-snapping-fidelity.md` restated as importers, and `snap-manager/` also holds eleven test files, a second way to land on the same wrong number.
-- **Task 9 now orders by the census's clean/cross-cutting labels, not its rank numbers** — §6 claims to be ranked by reach while its own Reach column reads 9, 4, 6, 3, 1, 2, 2, 7, 1, 0, so rank 8 holds the second-highest reach; ordering by rank would reproduce the mistake the rule exists to prevent.
-- **Two numbers that were not the same measurement are gone** — a line total of 10,671 where the census says 10,701 (a trailing newline counted as a line) and a denominator that reproduces under no scope root tried; the phase now cites the file counts that do reproduce, 32 at or past 500 and 12 past 800.
-- **One review claim did not survive being checked** — it said a bad denominator had propagated into `vg-364`, and no register row ever held it; checked in node over all 220 rows, not by grep.
+- **`vg-234` came back CONFIRMED rather than contradicted** — `7ed8950f`: the census's fix round applied one standard in both places, and a registry row that names a *directory* does not name a *module*, so the row's complaint stands and my earlier "partly contradicted" verdict is replaced.
+- **The census's own bad denominator had a real cause: `src/web/.agent-scratch/`** — a gitignored, untracked directory of residue from earlier tasks, which `.gitignore` hides from git and from nothing else, so a filesystem walk counted eight files no git-based check can.
+- **`vg-368` filed for it rather than fixed** — the scanner is unaffected (its walk skips dot-prefixed entries and the directory sits outside all four of its roots, checked not assumed, so no row of the 311 is phantom), and deleting the directory is not obviously safe.
+- **The census's F3 was a false correction to a document of record** — it claimed `ownership.md`'s count of inline `prefix + randomUUID` sites was one too high; the code has **seven**, the missed one being `selection-inspector/run-edits.ts:176`.
+- **Task 1's round-4 re-review returned "fix sound"** — it induced the defect's absence across a six-point throw matrix rather than reading for it, and all five red-proofs fail the gate by name at md5 `be09fee1c4577e5244bf46a8966c8845`.
 
 ## Next
 
-1. **Two fix rounds are running**: Task 1's round-4 re-review, attacking the scanner's completion window by inducing the defect rather than reading for it, and Task 8's census fix round on findings F3–F9.
+1. **Two reviews are running**: Task 1's round-5 fix — the candidate report's crash marker still lets `!doc.candidates` read a crashed scan as a clean sweep, on the artefact Phase 2 reads — and Task 8's census fix re-review.
 2. **Task 9, the redistribution, once both close** — one manager per commit, the move relocates the *decision* rather than the code, it orders by the census's shape labels, and the map is updated in the same commit as the move.
-3. **`vg-234` waits on the census fix round** — the review found the census applying directory-level ownership as sufficient for `renderer-core/src/theme/` and insufficient for `selection-inspector/`, so its verdict is not settled until that inconsistency is resolved.
-4. **Phase 2's candidate report at HEAD, then per-candidate verification** — nothing is deleted until each candidate is checked against the string-resolved vocabulary: the `data-vigilia-*` attributes, the `--shell-*` custom properties, the `KIND_*` registries and the four gate scripts that read the source tree as data.
+3. **Phase 2's candidate report at HEAD, then per-candidate verification** — nothing is deleted until each candidate is checked against the string-resolved vocabulary: the `data-vigilia-*` attributes, the `--shell-*` custom properties, the `KIND_*` registries and the four gate scripts that read the source tree as data.
+4. **`vg-368` waits on a decision** — whether `src/web/.agent-scratch/` is deleted, relocated outside the tree, or excluded per tool; deleting is not obviously safe because it holds screenshots and a vitest report that may be the only copy.
 5. **The three failures the capture run surfaced** — `vg-359` (which also owns the one stale capture), `vg-360` and `vg-361`; nothing fixed on sight, because the first question for each is whether the surface moved or the locator did, and those want opposite fixes.
 
 ## Blockers / unverified
