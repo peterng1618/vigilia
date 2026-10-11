@@ -1118,7 +1118,28 @@ export const PARITY: readonly ParityRegion[] = [
      are the two halves of one difference. Both rows address the same element —
      twenty unchanged chips in the drawing, which is **one** element form to the
      reader (`addressed` counts identical attributes once), so the selector
-     settles which is meant. */
+     settles which is meant.
+
+     **The row container's radius is a row the census does not carry**, added at
+     review: `#13`–`#17` are the header, the chip, the per-row control, the armed
+     row and the refusal, and none of them is the container those sit in. §3's
+     table puts it out of reach of the value the product declared — a binding row
+     is a row, so `--radius-md` and not `--radius-sm` — and the drawing draws 6px.
+     Its selector is the container's whole declaration, which twenty rows carry
+     identically: one element form, the same reading the chip's row uses. The
+     container's `padding:4px 6px` is a shorthand this row does not read, so
+     `lookup`'s guard is not tripped. */
+  {
+    region: "keyboard — the shortcut row's radius",
+    mockupPath: SETTINGS_KEYBOARD_MOCKUP_PATH,
+    mockupSelector:
+      '[style*="display:flex;align-items:center;gap:16px;padding:4px 6px;border-radius:6px"]',
+    mockupProperty: "border-radius",
+    productSelector: ".editor-shell-keyboard [data-vigilia-shortcut-row]",
+    bibleSection:
+      "§3 radius table (`design-language.md:90-91`) — `--radius-md` 6px is 'Controls, menu rows, small tiles' and a binding row is a row; `--radius-sm` 4px is 'Swatches, inline chips, the slider thumb's container'",
+    surface: "settings-keyboard",
+  },
   {
     region: "keyboard — the chord mark's radius",
     mockupPath: SETTINGS_KEYBOARD_MOCKUP_PATH,

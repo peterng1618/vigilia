@@ -1509,10 +1509,9 @@ body,
 
 /* The panel's own header, as the Keyboard drawing draws it
    (`current/settings-keyboard.html`): the tab's glyph in the accent, the panel's
-   name, and the return-to-default action at the trailing edge. **The action's
-   home is the drawing's** — the reference puts "Reset all" here, not at the
-   tab's foot, where it followed twenty rows the author had to scroll past to
-   find the one act that is about all of them. */
+   name, and the return-to-default action at the trailing edge. The action's own
+   rules are the shared `.editor-shell-keyboard-action` ones; `margin-left: auto`
+   is what puts it at that edge. */
 .editor-shell-keyboard-header {
   display: flex;
   align-items: center;
@@ -1571,7 +1570,13 @@ body,
   align-items: center;
   flex-wrap: wrap;
   padding: var(--space-4) var(--space-6);
-  border-radius: var(--radius-sm);
+  /* §3 radius table (`design-language.md:90-91`) — `--radius-sm` 4px is
+     "Swatches, inline chips, the slider thumb's container" and `--radius-md` 6px
+     is "Controls, menu rows, small tiles". **A binding row is a row**, so it
+     takes `--radius-md`, the value the drawing gives it
+     (`current/settings-keyboard.html:56`). It also shapes this row's own ring:
+     the armed row's `outline` follows `border-radius`. */
+  border-radius: var(--radius-md);
 }
 /* §5.4's boundary, as the row's own ring. The accent is the palette's own
    token, the one the tab strip's focus ring already uses, so this clears the

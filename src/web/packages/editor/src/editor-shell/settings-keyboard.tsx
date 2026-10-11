@@ -150,13 +150,9 @@ export function SettingsKeyboard(props: {
     <div className="editor-shell-keyboard" data-vigilia-keyboard="">
       {/* The panel's header, as the drawing draws it
           (`current/settings-keyboard.html`): the glyph, the name, and "Reset all"
-          at the trailing edge. **The action moved here from the tab's foot.** The
-          foot put the one act that is about every row after the twentieth row,
-          so an author had to scroll past the table to reach it; the reference
-          puts it in the header, which is also where a reader looks for an act
-          that is not about any one row. The glyph is the tab's own
-          (`settings.tsx`'s `SETTINGS_TAB_GLYPHS`), so the panel and the tab that
-          opens it cannot disagree. */}
+          at the trailing edge. **The action moved here from the tab's foot**,
+          which put the one act that is about every row after the twentieth row,
+          so an author had to scroll past the whole table to reach it. */}
       <div className="editor-shell-keyboard-header">
         <Keyboard aria-hidden size={14} strokeWidth={1.7} />
         <span>{uiCopy.settings.keyboard}</span>
