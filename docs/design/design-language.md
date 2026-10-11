@@ -228,8 +228,11 @@ The vocabulary is closed. A control is one of these, or it is not a control.
 **Glyphs are stroke-based, `currentColor`, drawn on a 24px grid, at one weight
 rule: the stroke rises as the size falls, so the rendered weight stays optically
 even.** One family, one rule, everywhere — **1.7px at 14px and above, 1.8px at
-11–13px, 2px at 10px and below.** A filled glyph appears only where a stroke
-would be illegible at 12px (the record dot, the live check).
+11–13px, 2px at 10px and below.** A filled glyph carries one of two things, and
+never a licence for looks: the escape where a stroke would read faint at the
+size (the live check at 12px, the record dot), or the **on/off channel of a
+binary state** — the layer row's locked lock, the font picker's favourited star
+(`vg-024`).
 
 Rules:
 

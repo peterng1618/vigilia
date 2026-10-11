@@ -93,6 +93,13 @@ const SOURCE_ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const TYPE_IMPORT = /import\s+type\b[^;]*?;/g;
 const LUCIDE_IMPORT = /from\s+"lucide-react[^"]*"/;
 
+/** A hand-authored chrome `<svg>` that hardcodes its weight as a numeric JSX
+ *  prop — `strokeWidth={2}`. Such a source imports no lucide value and names no
+ *  `glyphStrokeWidth`, so both signals above miss it; a third one arriving would
+ *  otherwise slip this case unless its surface happened to be in the fleet. */
+const RAW_SVG = /<svg\b/;
+const NUMERIC_STROKE = /strokeWidth=\{\s*\d/;
+
 function sourceFiles(root: string): readonly string[] {
   const found: string[] = [];
   for (const name of readdirSync(root)) {
@@ -106,8 +113,9 @@ function sourceFiles(root: string): readonly string[] {
 
 /**
  * Every source that draws a glyph without the vocabulary: a file that reads
- * `lucide-react` directly, or a file that sets the vocabulary's weight on an
- * inline `<svg>` of its own. Test files and declarations are not chrome.
+ * `lucide-react` directly, a file that sets the vocabulary's weight on an
+ * inline `<svg>` of its own, or a file that draws a raw `<svg>` with a numeric
+ * `strokeWidth` literal. Test files and declarations are not chrome.
  */
 function glyphSources(): readonly string[] {
   const found: string[] = [];
@@ -118,7 +126,8 @@ function glyphSources(): readonly string[] {
     const withoutTypes = source.replace(TYPE_IMPORT, "");
     if (
       LUCIDE_IMPORT.test(withoutTypes) ||
-      source.includes("glyphStrokeWidth")
+      source.includes("glyphStrokeWidth") ||
+      (RAW_SVG.test(source) && NUMERIC_STROKE.test(source))
     ) {
       found.push(rel);
     }
