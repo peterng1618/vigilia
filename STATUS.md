@@ -32,18 +32,18 @@ satisfies every token in `DESIGN.md` and still does not look like the mockup.
 
 ## Last completed change
 
-- **The census landed and its corrections followed in the same session** — `a2fe5a89` and `6f11027b`: the plan amended, four register rows corrected, the three `Discovered, not fixed:` trailers on the census commit materialised as `vg-365`–`vg-367`, and `backlog:check` green at 220 items.
-- **The plan stopped calling `snap-manager` the split's worked example and Task 9 gained an ordering rule**, so the phase no longer starts with the largest and least tractable candidate — the census reaches it from one external production module, where three earlier figures had said eight files, eleven modules and 5,978 lines.
-- **`vg-365`–`vg-367` are the census commit's own findings, filed rather than fixed**: `object-actions.ts` restating each manager's lock refusal at six eligibility sites, `scene-fabric/src/persist.ts` listing `"locked"` in `SCENE_PERSISTED_PROPERTIES`, and "is this referenced" being decided in both `editor-shell.ts` and `asset-manager`.
-- **`vg-234` came back partly contradicted rather than confirmed** — the name guard is now shared through `isObjectName`, and the "unnamed module" it names is `renderer-core/src/theme/`, which the registry does name.
-- **The register mixes two serialisation styles**, spaced and compact, which cost four splice attempts on a matcher that assumed one of them; every assertion fired before a write, so no row was ever half-edited.
+- **The plan and register were corrected against the census review** — `3a92e367`: the plan's Step 4 carried the false "11 production modules" while another paragraph of the same file corrected it, so Task 9 read a self-contradicting plan.
+- **The census was right and its Task 8 brief was wrong** — `snap-manager` is reached by exactly one production module (`editor-session.ts`); the "11" is a *fork's* feature-scope count from `2026-09-25-snapping-fidelity.md` restated as importers, and `snap-manager/` also holds eleven test files, a second way to land on the same wrong number.
+- **Task 9 now orders by the census's clean/cross-cutting labels, not its rank numbers** — §6 claims to be ranked by reach while its own Reach column reads 9, 4, 6, 3, 1, 2, 2, 7, 1, 0, so rank 8 holds the second-highest reach; ordering by rank would reproduce the mistake the rule exists to prevent.
+- **Two numbers that were not the same measurement are gone** — a line total of 10,671 where the census says 10,701 (a trailing newline counted as a line) and a denominator that reproduces under no scope root tried; the phase now cites the file counts that do reproduce, 32 at or past 500 and 12 past 800.
+- **One review claim did not survive being checked** — it said a bad denominator had propagated into `vg-364`, and no register row ever held it; checked in node over all 220 rows, not by grep.
 
 ## Next
 
-1. **Task 9, the redistribution, once the census review closes** — one manager per commit, the move relocates the *decision* rather than the code, and the map is updated in the same commit as the move.
-2. **Scanner fix round 4 is running on the partial-completion window** — the file on disk reads `19/19, incomplete false` between the two completion writes, which the endorsed predicate reads as a pass; then Phase 2's candidate report at HEAD.
-3. **Nothing is deleted until Phase 2 verifies each candidate against the string-resolved vocabulary** — the `data-vigilia-*` attributes, the `--shell-*` custom properties, the `KIND_*` registries and the four gate scripts that read the source tree as data.
-4. **The walkthrough's amended Task 1** — its census now takes two walks because the user ruled on 2026-10-12 that §13.1 means a region *with content*, so the inspector's tab stops are counted after a keyboard selection; `REGIONS` stays four.
+1. **Two fix rounds are running**: Task 1's round-4 re-review, attacking the scanner's completion window by inducing the defect rather than reading for it, and Task 8's census fix round on findings F3–F9.
+2. **Task 9, the redistribution, once both close** — one manager per commit, the move relocates the *decision* rather than the code, it orders by the census's shape labels, and the map is updated in the same commit as the move.
+3. **`vg-234` waits on the census fix round** — the review found the census applying directory-level ownership as sufficient for `renderer-core/src/theme/` and insufficient for `selection-inspector/`, so its verdict is not settled until that inconsistency is resolved.
+4. **Phase 2's candidate report at HEAD, then per-candidate verification** — nothing is deleted until each candidate is checked against the string-resolved vocabulary: the `data-vigilia-*` attributes, the `--shell-*` custom properties, the `KIND_*` registries and the four gate scripts that read the source tree as data.
 5. **The three failures the capture run surfaced** — `vg-359` (which also owns the one stale capture), `vg-360` and `vg-361`; nothing fixed on sight, because the first question for each is whether the surface moved or the locator did, and those want opposite fixes.
 
 ## Blockers / unverified
