@@ -15,6 +15,26 @@ import { HOST_PORT, HOST_THEME_ID } from "./host-theme.js";
  * This task's own job is the census: does every region of the shell have a
  * focus target a keyboard can reach, and does each of those targets have a
  * name. A later task cannot be written on an answer of no.
+ *
+ * **The census is red, and the red is its result — not a broken test.** The
+ * walk reaches the rail, the pane and the stage and never reaches the
+ * inspector, because with nothing selected the column renders one paragraph
+ * and a paragraph is not a focus target. That is `vg-362`, and it is the answer
+ * this task existed to produce: the plan says in advance that an unreachable
+ * region is the deliverable and that `REGIONS` must not be trimmed to the
+ * regions that pass. So a red here means "the census ran and found what it
+ * found", and a *green* here would mean `REGIONS` had been weakened.
+ *
+ * **The red is one of two readings of §13.1, and this file asserts that one
+ * deliberately.** §13.1 says "Each region has a reachable focus target"
+ * without saying when — the shell's opening state, or the region's populated
+ * state. The inspector is empty at mount and full of controls once a selection
+ * exists, so the two readings disagree about exactly one region of the four.
+ * This test takes the unqualified reading, which is why it is red today. The
+ * other reading — the populated region, which is what the walkthrough itself
+ * reaches after it selects through Composition — is equally open, and §13.1
+ * has not been ruled on. `vg-362` names both and neither is settled here.
+ * Nothing in this file should be read as having settled it.
  */
 
 const HOST = `http://127.0.0.1:${HOST_PORT}`;
@@ -67,12 +87,18 @@ const REGION_SELECTOR: Record<Region, string> = {
  */
 const TAB_BOUND = 200;
 
-/** The attribute the census writes on each element it reached, so the stop
+/** The attribute a walk writes on each element it reached, so the stop
  *  condition is "focus came back to something already seen" rather than a
- *  count. A test-owned name: no shell style or selector reads it. */
+ *  count. A test-owned name: no shell style or selector reads it.
+ *
+ *  **Per walk, not per page.** It is cleared at the start of every walk
+ *  ({@link clearWalkMarks}), because a mark left behind is what a *previous*
+ *  walk saw: the next `Tab` from the document body lands on `File`, tagged by
+ *  the walk before, and `tabUntil` would throw on its first press. */
 const SEEN = "data-walkthrough-seen";
-/** The first element reached in each region, which is the one whose name is
- *  asserted. Scratch on the page, like {@link SEEN}. */
+/** The first element reached in each region during the current walk, which is
+ *  the one whose name is asserted. Cleared with {@link SEEN}, so the marks left
+ *  on the page are always the current walk's. */
 const FIRST = "data-walkthrough-first";
 
 /** What a focused element is, before the census numbers the step. */
@@ -87,7 +113,7 @@ interface Landed {
 }
 
 /** One step of the census: where focus landed, and when. */
-export interface Focus extends Landed {
+interface Focus extends Landed {
   /** The census's own index, in Tab order. */
   readonly press: number;
 }
@@ -110,7 +136,7 @@ export interface Focus extends Landed {
  * spec works against, and naming it makes the tree, the dock and the count the
  * same on every run. That a bare mount resumes arbitrarily among themes with
  * equal mtimes is `vg-363`, filed rather than repaired here. */
-export async function openWalkthrough(page: Page): Promise<void> {
+async function openWalkthrough(page: Page): Promise<void> {
   await page.goto(`${HOST}/editor/?theme=${HOST_THEME_ID}`);
   await expect(page.locator(".editor-shell-zoom")).toBeVisible();
 }
@@ -181,14 +207,77 @@ function focusProbe(args: {
 }
 
 /**
+ * Removes the marks a walk leaves on the page, so the next walk starts from the
+ * same place this one did.
+ *
+ * A walk's marks are its own record of what *it* has seen; keeping them across
+ * walks would make the second walk's first press land on an element the first
+ * walk had already tagged, which reads as a closed focus cycle when nothing has
+ * closed. Every walk therefore opens by clearing both marks — a walk is a
+ * question about the shell, and it must not be able to answer it with the
+ * previous question's notes.
+ */
+async function clearWalkMarks(page: Page): Promise<void> {
+  await page.evaluate(
+    (marks: readonly string[]) => {
+      for (const mark of marks) {
+        for (const element of document.querySelectorAll(`[${mark}]`)) {
+          element.removeAttribute(mark);
+        }
+      }
+    },
+    [SEEN, FIRST],
+  );
+}
+
+/** Puts focus back at the top of the document, which is where
+ *  {@link keyboardReach} claims its walks begin.
+ *
+ * Clearing the marks is not enough to make two censuses agree, and the way the
+ * first attempt at this failed is worth keeping. A walk's *closing* press is
+ * the one that lands on an element it has already seen, so the walk ends with
+ * focus on that element — `File`, the document's first tab stop. And a blur is
+ * not a reset: the browser keeps a **sequential focus navigation starting
+ * point**, set to the element that last lost focus, so the next Tab resumes
+ * *after* it. Measured on this shell: blur `File` and the next Tab lands on
+ * `Edit`; blur `Edit` and it lands on `View`. The second census therefore came
+ * back one press short on every step while passing every test of "did it
+ * move".
+ *
+ * Focusing the body instead puts the starting point back at the top, and the
+ * body needs a `tabindex` to be focusable at all. The attribute is removed in
+ * the same evaluate, so nothing of the page is left changed — the walk wants
+ * the document's focus, not a modified document. Nothing here is clicked: a
+ * `focus()` is not a pointer action, and the plan's rule is about how focus is
+ * *reached*, not about which of the two keyboard-adjacent verbs resets it.
+ *
+ * Only the census calls this. {@link tabUntil} deliberately does not: a later
+ * task opens a popup and then walks *inside* it, and a reset to the document
+ * would take focus out of the very surface being proved. */
+async function focusDocument(page: Page): Promise<void> {
+  await page.evaluate(() => {
+    const body = document.body;
+    body.setAttribute("tabindex", "-1");
+    body.focus();
+    body.removeAttribute("tabindex");
+  });
+}
+
+/**
  * Tabs from the document's own focus, recording each element focus lands on.
  *
  * Keyboard only: `Tab` is the one thing that moves focus. The walk stops when
  * focus returns to an element already seen — which is what a focus order that
  * has closed its cycle looks like — or at {@link TAB_BOUND} presses, whichever
  * comes first. The returned length is the press count.
+ *
+ * Re-entrant: it clears the previous walk's marks and returns focus to the
+ * document first, so two walks in one test are two whole walks from the same
+ * starting point rather than one truncated second one.
  */
-export async function keyboardReach(page: Page): Promise<readonly Focus[]> {
+async function keyboardReach(page: Page): Promise<readonly Focus[]> {
+  await clearWalkMarks(page);
+  await focusDocument(page);
   const reached: Focus[] = [];
   const seenRegions: Region[] = [];
 
@@ -217,12 +306,18 @@ export async function keyboardReach(page: Page): Promise<readonly Focus[]> {
  * The helper later tasks reach a control with. It asks what a control *is*
  * rather than where it sits in an order the shell is free to change, and it
  * fails saying how many presses it spent rather than running out of a loop.
+ *
+ * Re-entrant for the reason {@link keyboardReach} is: it clears the marks of
+ * whatever walk came before it, so a `tabUntil` after a `keyboardReach` — which
+ * is how a later task asserts that a region can be left as well as reached — is
+ * not tripped by the earlier walk's notes.
  */
-export async function tabUntil(
+async function tabUntil(
   page: Page,
   matches: (focus: Focus) => boolean,
   limit = TAB_BOUND,
 ): Promise<Focus> {
+  await clearWalkMarks(page);
   const seenRegions: Region[] = [];
   let pressed = 0;
   for (; pressed < limit; pressed++) {
@@ -260,6 +355,18 @@ test.describe("the shell, reached by keyboard alone", () => {
    * §13.1's rule and the shell's focus order are not this plan's to change. The
    * region list is left at four; it is not trimmed to the three that pass.
    *
+   * **It asserts one of §13.1's two readings, and the sentence does not choose
+   * between them.** §13.1 says "Each region has a reachable focus target"
+   * without fixing when. Read as the shell's opening state, this test is red
+   * and the shell owes the empty inspector a target. Read as the region's
+   * populated state, the inspector is fine — it is full of controls once a
+   * selection exists — and *this test* is what would change: the census would
+   * select through Composition first, which is the order §13.1's own list puts
+   * those interactions in anyway. The red is not evidence that the second
+   * reading is wrong, and a reader should not take it as one. `vg-362` carries
+   * the same two resolutions; the ruling is the controller's, and until it is
+   * made the unqualified reading is the one asserted here.
+   *
    * The name half is proved to have teeth: with the region list reduced to the
    * three reached ones and the name assertion pointed at an element with no
    * accessible name, the run gets past the reachability assertion and fails on
@@ -292,5 +399,54 @@ test.describe("the shell, reached by keyboard alone", () => {
         `the first ${region} focus target`,
       ).toHaveAccessibleName(/\S/);
     }
+  });
+
+  /**
+   * Two walks in one test, both of them whole.
+   *
+   * A walk marks every element it lands on and stops when it meets a mark, so a
+   * mark left on the page makes the *next* walk stop on its first press — and
+   * `tabUntil` throws on it rather than returning nothing. Every later task
+   * runs more than one walk in a test (reach a region, then assert it can be
+   * left), so the harness has to answer the same question twice on one page and
+   * get the same answer.
+   *
+   * The regression is the second walk: with the marks not cleared between
+   * walks, `keyboardReach` returns an empty record and this fails on the length
+   * rather than on the agreement. It is asserted as an equality and not just as
+   * "not empty", because a walk that skipped its first elements would also be
+   * non-empty.
+   */
+  test("a second walk on the same page is a whole walk too", async ({
+    page,
+  }) => {
+    await openWalkthrough(page);
+    const first = await keyboardReach(page);
+    const second = await keyboardReach(page);
+
+    expect(first.length).toBeGreaterThan(0);
+    expect(second).toEqual(first);
+  });
+
+  /**
+   * A `tabUntil` after a `keyboardReach`, which is the shape every later task
+   * has: census where focus can go, then go somewhere on purpose.
+   *
+   * This is the case the defect was reported against — `tabUntil` *throws* on a
+   * mark rather than returning an empty record, so without the clear it dies on
+   * its first press with "focus returned to a seen element after 1 presses".
+   *
+   * The destination is the pane, and that is the only claim here: the predicate
+   * accepts the pane whenever it arrives, so nothing is asserted about what
+   * sits between the rail and it. The rail-then-pane route happens to be what
+   * the census walks; that it *is* the next region is not this test's business.
+   */
+  test("a tabUntil can follow a walk on the same page", async ({ page }) => {
+    await openWalkthrough(page);
+    const walk = await keyboardReach(page);
+    const landed = await tabUntil(page, (focus) => focus.region === "pane");
+
+    expect(walk.some((step) => step.region === "pane")).toBe(true);
+    expect(landed.region).toBe("pane");
   });
 });
