@@ -31,11 +31,11 @@ satisfies every token in the bible and still does not look like the mockup.
 
 ## Last completed change
 
-- **Fix round 1 on Task 6's copy defects**: the capability case is retitled to the publish surface it proves, and both cases' doc comments now state their boundary — what they render, what is proven elsewhere with the test named, and what no test proves.
-- **The gap case reaches one more site**: an unauthored optional chart setting (`settings-field.ts:206`) must render the gap's own word — red-proved by rendering `—` there, restored by `cp` and verified with `cmp`.
-- **The two unreached absence sites are bounded, not hidden**: the chart clearable select needs a Base UI popup open (`vg-135`) and the artboard select's absence is a control *value* (`?? ""`), not its text.
-- **The rail's `add` slot id is clicked by no test** — only its generic slot→pane routing is; recorded in the case's comment rather than left silent.
-- **Report §1.1 corrected**: the gap case renders eight entries covering five bullets, not "each absence kind".
+- **Fix round 2 on Task 6's copy nets**: three false boundary claims corrected — the rail's `add` slot IS clicked by `shell-layout.dom.test.tsx` (its `segment()` helper composes the selector, so a literal search missed it), the artboard trigger renders the owned word "Custom" and is asserted by `artboard-panel.dom.test.ts`, and the View readings are not uniform.
+- **The honest third category is the View menu's `dataSource` and `valueRuns` radios**, exercised by no test (only `chartRefresh` is proven); filed as `vg-339`, with the searches in that row and in the case's comment.
+- **The gap case's chart-select bound is restated**: its trigger would render the gap word with no popup open, so it is bounded for the `line` target mount, not for popup cost.
+- **Every negative claim now carries its search in the sentence** — the identifier and the helper, never a literal selector that a composed string defeats.
+- **Report §1.1/§2/§7 made consistent**: the eight entries reach six of §1.1's bullets (five full, the "not set" gap partial), and the retracted title is gone.
 
 ## Next
 

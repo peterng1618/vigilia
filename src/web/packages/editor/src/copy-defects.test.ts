@@ -177,19 +177,32 @@ interface AbsentReading {
  * an unauthored optional chart setting, whose select renders the table's own gap
  * word (`settings-field.ts:206`).
  *
- * **Not rendered here, proven elsewhere:** the About tab's absent version is a
- * row left out rather than a dash, asserted by `settings.dom.test.tsx` (the About
- * text holds neither `panels.notSet` nor a dash); an unauthored optional *number*
- * field is an empty box, never a zero, asserted by `controls.dom.test.ts`. The
- * unread host and the saved document are also rendered and asserted by their own
- * files (`publish-indicator.dom.test.tsx`, `save-state.dom.test.tsx`).
+ * **Not rendered here, the absence already owned and asserted elsewhere.** The
+ * About tab's absent version is a row left out rather than a dash, asserted by
+ * `settings.dom.test.tsx` (the About text holds neither `panels.notSet` nor a
+ * dash). An unauthored optional *number* field is an empty box, never a zero,
+ * asserted by `controls.dom.test.ts`. The artboard's non-preset board renders the
+ * word `uiCopy.panels.customSize` ("Custom", `ui-copy.ts`) on the control's
+ * trigger — `control-select.tsx`'s `Select.Value` prints the selected item's
+ * label and `artboard-fields.tsx:159` falls back to the `""` id, which
+ * `resolutionOptions()` answers with that `CUSTOM` option — and
+ * `artboard-panel.dom.test.ts` asserts the control's value is `""` for such a
+ * board (`choiceOf("[data-vigilia-artboard-resolution]")`), so the word is already
+ * owned and already asserted and this net has nothing to add. The unread host and
+ * the saved document are also rendered and asserted by their own files.
  *
- * **Not rendered here, and no test renders it:** `chart-fields.tsx:351`, the
- * React clearable select's gap option — reading it needs a Base UI select popup
- * open, the 50–90s-per-open class (`vg-135`); and the artboard resolution select
- * (`artboard-fields.tsx:159`), whose absence is the control's *value* (`?? ""`)
- * rather than its text, so a rendered-text net would read its option list and the
- * right net is a value assertion this file does not make.
+ * **Not rendered here, and no test renders it.** `chart-fields.tsx:351`, the
+ * chart select's gap option: searched `panels.notSet` across every `*.test.ts`
+ * and `*.test.tsx` under `packages/editor/src` (the only hits are the usage-figure
+ * site — `paint-list.dom.test.tsx`, `usage.dom.test.ts` — and the About-tab
+ * negative) and `role="option"` in `chart-fields.dom.test.tsx` (none), so no test
+ * opens it.
+ * Read `panel.ts` (`an unauthored select reads as ""`) and `control-select.tsx`
+ * (`Select.Value` prints the selected item's label), so its trigger *would* render
+ * the gap's word if a test mounted a `line` target with `dash` unauthored — it is
+ * renderable without a popup, and it is bounded here only because that mount is a
+ * `line` `ChartFieldTarget` (the `over()` harness in `chart-fields.dom.test.tsx`),
+ * not a DOM factory.
  */
 async function absentReadings(): Promise<AbsentReading[]> {
   return [
@@ -281,21 +294,27 @@ it("states a missing reading as a gap rather than a zero or a dash", async () =>
  * flags: plan 2 drew the button alone and plan 5 bound `publish.surface`, so the
  * printed chord now runs the action.
  *
- * **Proven elsewhere, named.** The View menu's three readings
- * (`dataSource`/`chartRefresh`/`valueRuns`): `shell-layout.dom.test.tsx` opens
- * the refresh submenu, picks `1 FPS` and asserts `view.setChartRefreshRate(1)`,
- * so each reading's radio reaches its owner — opening a menu here would cost the
- * 50–90s per open the copy walk records against it (`vg-135`), and an existing
- * test already does it. `saveState.unsaved` and `statusBar.live` are a state and
- * a state, not actions: each is rendered and asserted by its surface's own test
- * (`save-state.dom.test.tsx`, `publish-indicator.dom.test.tsx`). The diagnostics
- * pair leads its message, asserted by `diagnostic-message.dom.test.tsx`.
+ * **Proven elsewhere, named.** The rail's `add` slot: `shell-layout.dom.test.tsx`
+ * clicks it and asserts the Add pane reveals — its `segment()` helper composes the
+ * selector `[data-rail-slot="${id}"]`, so a literal search for the attribute finds
+ * nothing, and `segment(root, "add").click()` in fact runs four times with
+ * `layout.hosts.add.parentElement?.hidden === false` after each. `saveState.unsaved`
+ * and `statusBar.live` are a state and a state, not actions: each is rendered and
+ * asserted by its surface's own test (`save-state.dom.test.tsx`,
+ * `publish-indicator.dom.test.tsx`). The diagnostics pair leads its message,
+ * asserted by `diagnostic-message.dom.test.tsx`.
  *
- * **Nothing to prove, and said so.** The rail's `add` slot claims no capability:
- * it draws a glyph and is named by `uiCopy.rail.slots`, and its slot→pane routing
- * is proven generically by `rail.dom.test.tsx` (a slot click chooses its pane) —
- * though **no test clicks the `add` slot id itself**, which is recorded here
- * rather than hidden.
+ * **One reading proven, two with no test at all.** The View menu's three readings
+ * are not uniform. Its `chartRefresh` radio is proven — `shell-layout.dom.test.tsx`
+ * opens that submenu, picks `uiCopy.view.fps1` and asserts
+ * `view.setChartRefreshRate(1)` — which is why this case does not open the menu
+ * again (50–90s per jsdom open, `vg-135`). Its `dataSource` and `valueRuns` radios
+ * are exercised by **nothing**: searched `setSourceMode`, `setRunDisplay` and
+ * `setChartDataSource`/`setValueRuns` across the test tree — `setSourceMode`
+ * appears only as a `vi.fn()` stub never asserted, and the menu's `setRunDisplay`
+ * is never asserted (the runtime method is tested directly in
+ * `live-runtime.dom.test.ts`/`run-display.dom.test.ts`, not the radio). Filed as a
+ * row (`vg-339`); the words are right, only their proof is missing.
  */
 it("maps the publish surface's capability strings to controls that can run them", async () => {
   const host = document.createElement("div");
