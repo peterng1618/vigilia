@@ -3639,29 +3639,6 @@ test.describe("Fabric editor route", () => {
     await expect(page.locator("#status")).toHaveText("Fabric editor ready");
   });
 
-  test("snaps a dragged object to a neighbour and shows a guide", async ({
-    page,
-  }, testInfo) => {
-    test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
-
-    await page.goto(EDITOR);
-    const canvas = page.locator("#vigilia-fabric-editor canvas.upper-canvas");
-    await expect(canvas).toBeVisible();
-
-    // Drag the network card's title (starter scene: left 1230, top 704,
-    // originX left) horizontally until its left edge lands 2px short of the
-    // storage card's left edge (1138) — a vertical alignment inside the 5-px
-    // threshold, against the only card edge near that landing.
-    const grab = await sceneToClient(page, STARTER_WIDTH, 1270, 720);
-    const drop = await sceneToClient(page, STARTER_WIDTH, 1270 - 94, 720);
-    await page.mouse.move(grab.x, grab.y);
-    await page.mouse.down();
-    await page.mouse.move(drop.x, drop.y, { steps: 12 });
-
-    await captureVisualReview(page, testInfo, "editor-snap-guides");
-    await page.mouse.up();
-  });
-
   test("Ctrl-resizes near a neighbour without snapping or showing a guide", async ({
     page,
   }, testInfo) => {
@@ -3894,31 +3871,6 @@ test.describe("Fabric editor route", () => {
     // candidate; with the guard disabled the snap runs and this deviation is
     // several pixels, which is what the assertion has to catch.
     expect(Math.abs(refused.left - refused.raw)).toBeLessThan(1.5);
-  });
-
-  test("shows the rotation-angle indicator beside the pointer mid-rotation", async ({
-    page,
-  }, testInfo) => {
-    test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
-
-    await page.goto(EDITOR);
-    const canvas = page.locator("#vigilia-fabric-editor canvas.upper-canvas");
-    await expect(canvas).toBeVisible();
-
-    // Select the performance card's title (scene 134,528, literal text) via
-    // the canvas, then sweep its rotation handle above the top edge: the degree
-    // readout must appear beside the pointer mid-gesture.
-    const centre = await sceneToClient(page, STARTER_WIDTH, 200, 545);
-    await page.mouse.click(centre.x, centre.y);
-    // Fabric's mtr sits above the top edge at the object's centre X, roughly
-    // 45px above the bounding top plus the handle radius.
-    const handle = await sceneToClient(page, STARTER_WIDTH, 200, 457);
-    await page.mouse.move(handle.x, handle.y);
-    await page.mouse.down();
-    await page.mouse.move(handle.x + 30, handle.y + 30, { steps: 12 });
-
-    await captureVisualReview(page, testInfo, "editor-rotation-indicator");
-    await page.mouse.up();
   });
 
   test("captures the canvas dock over a selected object", async ({

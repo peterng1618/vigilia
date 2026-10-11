@@ -30,10 +30,10 @@ satisfies every token in the bible and still does not look like the mockup.
 
 ## Last completed change
 
-- **Schema v1 is deleted rather than migrated (ADR 0041)**: `ThemeDocument`/`ThemeNode` and the two node walkers, the v1 validator and serializer, the v1 node-tree plan builder, `instantiateWidget`, every fixture under `fake-source/src/themes/`, and the player's `?theme=` fixture-render path are all gone — the player renders only host-served envelopes.
-- **The v2 envelope keeps its shared semantic validation**: the metadata, identity, artboard, globals, assets, background-media and artboard-paint checks moved to `theme/envelope-semantics.ts`, which `validateFabricThemeEnvelope` calls, so the checks did not leave with the v1 document that used to carry them.
-- **The About row still reads a schema version, now owned by the envelope**: `SUPPORTED_SCHEMA_VERSION = 2` lives in `theme/fabric-envelope.ts`, and `scene-fabric/src/persist.ts` writes it instead of a literal `2` that had to agree with it by hand.
-- **The brief's v1 starter generator does not exist**: `editor/src/new-fabric-theme.ts` already returned `schemaVersion: 2`, so the v1 emitters were the fixtures alone — recorded in the task report with the other two falsified facts.
+- **Nine one-off captures are deleted with their generators**: `editor-snap-guides` and `editor-rotation-indicator`, whose capture blocks leave `src/web/tests/e2e/editor.spec.ts`, and — once the v1 landing was confirmed against HEAD, not the tree — `player-chrome-phone-chromium` plus the six `assets-`/`portrait-cover-`/`stress-` fixture captures.
+- **The screenshot registry is reconciled**: the deleted captures' rows are gone from `docs/evidence/screenshots/README.md`, and `editor-chart-creation`, standing but unregistered, gains the row the file's own rule requires.
+- **`vg-346` is filed, and it is a coverage hole the user was not told about**: the deleted indicator block was the only test performing the editor's rotation gesture, and nothing else reads its angle readout.
+- **`vg-345` is settled by the same removal**: the registry row and the orphan `player-chrome-phone-chromium.png` are both gone, and the row closes against this commit.
 
 ## Next
 

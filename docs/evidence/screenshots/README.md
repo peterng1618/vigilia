@@ -66,6 +66,7 @@ result, not merely a mounted editor.
 | Live bindings | Select a bound text run, format its value and pin its zone | `editor-text-reads` / `captures the controls that give a text run its reading` |
 | Layers/arrange | Select a semantic layer and expose its layer/arrange controls | `editor-layer-arrange` / `captures semantic layer controls` |
 | Chart settings | Change family-specific scalar setting | `editor-chart-binding` / `captures selected chart binding controls` |
+| Chart creation | Create a chart, read its palette-backed settings, and reopen them | `editor-chart-creation` / `creates a chart with palette-backed settings that save and reopen` |
 | Artboard | Change dimensions or preview fit | `editor-artboard` / `captures changed artboard controls` |
 | Artboard | Change gradient/literal artboard paint | `editor-artboard-gradient` / `renders palette gradients` |
 | Session | Show dirty New/Open confirmation | `editor-dirty-replacement` / `captures dirty document replacement confirmation` |
@@ -73,7 +74,7 @@ result, not merely a mounted editor.
 | Open | Valid, invalid or incompatible file | add when changed |
 | Open library | Show the editor's theme-library chooser, both groups open | `editor-library-chooser` / `captures the theme-library chooser over a stubbed library` — the spec answers `**/api/themes` with `page.route`, because `openLibrary` awaits `client.list()` before it opens anything |
 | History | Save changed document or undo visible drag | add when changed |
-| Editor mechanics | Transform/group/duplicate/delete/reorder | `editor-snap-guides` / `snaps a dragged object`; `editor-snap-resize` / `snaps a resized object`; `editor-snap-resize-ctrl` / `Ctrl-resizes near a neighbour without snapping or showing a guide`; `editor-rotation-indicator` / `rotation-angle indicator`; `editor-toolbar` / `captures the canvas dock over a selected object`; `editor-canvas-context-menu` / `captures the canvas context menu over a selected object` |
+| Editor mechanics | Transform/group/duplicate/delete/reorder | `editor-snap-resize` / `snaps a resized object`; `editor-snap-resize-ctrl` / `Ctrl-resizes near a neighbour without snapping or showing a guide`; `editor-toolbar` / `captures the canvas dock over a selected object`; `editor-canvas-context-menu` / `captures the canvas context menu over a selected object` |
 | Object tools | Add/edit shape, text, image or SVG | `editor-arc-and-wedge` / `captures an arc and a wedge on the canvas` |
 | Right column | Select a card and open its Position section | `editor-inspector-card` / `captures the sectioned column a card gets` |
 | Right column | Select a free shape and read its own column | `editor-inspector-shape` / `captures the sectioned column a shape gets` |
@@ -115,7 +116,6 @@ result, not merely a mounted editor.
 | Theme library | Save the starter to the library and read the picture the host stored | `host-theme-thumbnail` / `stores the picture the editor captured` |
 | Player | Play the saved reference composition at the reference's own size | `player-reference` / `plays the reference composition on the real host` |
 | Player | The phone showing the theme the editor has open, after an edit reaches it | `publish-loop-live` / `an edit reaches the display` |
-| Player | The phone's chrome taking its room from the artboard rather than covering it | `player-chrome-phone-chromium` / `no strip covers the artboard at landscape` |
 
 The capture is the whole page, so the Devices and Display sections (including
 the units choice) are evidence from the same file.
