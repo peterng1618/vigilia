@@ -548,6 +548,35 @@ describe("the selection inspector", () => {
     ).toContain("palette.gone");
   });
 
+  /**
+   * §13.1's **long unresolved reference**: the whole reference and the reason,
+   * both read off one row.
+   *
+   * **The browser cannot carry this row, which is why it is read here.** The
+   * envelope validator admits only a document whose every reference names a
+   * declared global, and a declared palette token must hold a colour
+   * (`palettePaints`), so a live session never holds an unresolved reference to
+   * render. A reference written onto a live object afterwards is worse than
+   * unrendered: the shell's own `snapshot()` re-validates the serialised theme
+   * and throws, and selecting the object takes the whole inspector column down
+   * with it. The rendering is still the product's, and this is the surface where
+   * it can be read — the same place the two cases above read the short ref.
+   */
+  it("keeps a long unresolved reference whole, reason and all", () => {
+    const long =
+      "palette.companion-display-orientation-override-token-that-no-longer-exists";
+    rect.set({ vigiliaPaint: { fill: long } });
+    const { host } = setup(rect);
+
+    const text =
+      host.querySelector("[data-vigilia-resolution]")?.textContent ?? "";
+    // Both halves, and each in full: the reference is all that is left to find
+    // the dangling use, and the reason is why the row exists. A reference
+    // shortened to fit, or a reason dropped, fails on one of these.
+    expect(text).toContain(long);
+    expect(text).toContain(uiCopy.inspectorFields.unresolved);
+  });
+
   it("names the paint a chart keeps in its own settings", () => {
     const chart = chartOf("gauge", {
       ...defaultGaugeSettings,
