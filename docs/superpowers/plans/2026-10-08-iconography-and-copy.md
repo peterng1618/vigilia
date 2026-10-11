@@ -163,6 +163,10 @@ export function Glyph(props: {
   readonly size: number;
   readonly filled?: boolean;   // §6: only where a stroke is illegible at 12px
 }): React.JSX.Element;
+/** §6 gives a group the stack glyph and its name, because a group is an
+ *  arbitrary set of elements and its row cannot depict it. One glyph, one
+ *  place — Task 3's `KIND_GLYPHS.group` is this constant and nothing else. */
+export const STACK_GLYPH: LucideIcon;
 export const RAIL_GLYPHS: Readonly<Record<"composition" | "add" | "tokens" | "document", LucideIcon>>;
 export const TWISTY_GLYPHS: Readonly<Record<"collapsed" | "expanded", LucideIcon>>;
 export const LOCK_GLYPH: Readonly<Record<"locked" | "unlocked", { readonly icon: LucideIcon; readonly filled?: true }>>;
@@ -181,24 +185,36 @@ it("draws every chrome glyph at the one weight", () => {
   expect(Number(only)).toBeLessThanOrEqual(1.8);
 });
 it("keeps the family one, so no chrome glyph is a hand-authored path", () => {
-  // `icons.ts`, `object-actions.ts` and the theme icons are the three sources;
-  // the eight unit diagrams are §6's documented depiction and are listed by name.
-  expect(glyphSources()).toEqual(["icons.ts", "object-actions.ts", "new-fabric-theme-icons.ts", "card-unit-diagrams"]);
+  // Three owners — `icons.ts`, `object-actions.ts`, the theme icons — plus every
+  // source §6 exempts, named one entry apiece. `card-unit-diagrams` is §6's own
+  // ("a unit tile may carry a diagram of what it builds"). Step 3 settles whether
+  // `add-pane`'s shape and text marks join this list or are converted: the census
+  // left them open and §6 does not settle it, because those tiles also draw what
+  // they build. The case forbids an unaccounted source, not a particular list —
+  // so the list is `EXEMPT_SOURCES`, and Step 3 is what fills it in.
+  expect(glyphSources()).toEqual(EXEMPT_SOURCES);
 });
 ```
 
-`stroke-width` is a real attribute lucide writes on the rendered `<svg>`, which is why this reads the DOM rather than the source: the text scan in `design-tokens.mjs` cannot see a component prop. The eight card unit diagrams are inline SVG rather than lucide components, so they carry `stroke-width` too and must satisfy the same one-weight case — that is how plan 4's hand-authored paths are brought to the band without being replaced.
+`stroke-width` is a real attribute lucide writes on the rendered `<svg>`, which is why this reads the DOM rather than the source: the text scan in `design-tokens.mjs` cannot see a component prop. The eight card unit diagrams are inline SVG rather than lucide components, so they carry `stroke-width` too and must satisfy the same one-weight case — that is how plan 4's hand-authored paths are brought to the band without being replaced. **This case is bounded by what it mounts**, so mount the fleet rather than one pane, and note in the commit which surfaces it covers; Task 9 Step 1 makes the same assertion in the browser over the built bundle, and that is the net that is not bounded by a fixture.
 
 Run: `npx vitest run packages/editor/src/editor-shell/icons.test.tsx`
-Expected: **FAIL** — the module does not exist and the weight set has three members.
+Expected: **FAIL** — the module does not exist, and the mounted glyphs do not share one weight: the census measured **four** across chrome (`1.7`×8, `1.75`×17, `2`×1, `2.5`×2).
 
 - [ ] **Step 2: Write the vocabulary, and take §6's escape rather than a second weight**
 
-One weight, one `Glyph`, one `size` per call site (the sizes plan 1 and 2 chose are not this task's to re-decide; record them in the commit). The three weights collapse to one **within the band**, and where a 12px tick or a 13px severity mark reads faintly at that weight, the answer is §6's own escape — a `filled` glyph — **not** a second stroke weight. If a case needs something the bible does not allow, **amend bible §6 in the same commit** and say so, rather than leaving a local exception (`design-language.md`'s own first paragraph).
+One weight, one `Glyph`, one `size` per call site (the sizes plan 1 and 2 chose are not this task's to re-decide; record them in the commit). The census's **four** weights collapse to one **within the band**, and where a 12px tick or a 13px severity mark reads faintly at that weight, the answer is §6's own escape — a `filled` glyph — **not** a second stroke weight. Three of the four are out of band and each is adjudicated one at a time rather than swept: `diagnostic-message.tsx:85` (`2`), `shell-layout.tsx:421` (the menu tick, `2.5`) and `publish-indicator.tsx:31` (the live check, `2.5`). §6 names the live check as a **filled** glyph at 12px, so that site's honest fix is the fill, not a weight; if a case needs something the bible does not allow, **amend bible §6 in the same commit** and say so, rather than leaving a local exception (`design-language.md`'s own first paragraph).
 
 - [ ] **Step 3: Migrate every chrome call site**
 
 Replace each direct lucide usage in the census's list with the vocabulary. `object-actions.ts` is **not** migrated: it is the authority on action icons and keeps its imports, and the surfaces that render an action read `action.icon` as they do now. The new `icons.ts` may read a lucide component; nothing else may. The eight card unit diagrams keep their hand-authored paths — lucide has no exact match and §6 allows a unit tile to be depicted — but take `GLYPH_STROKE_WIDTH` so they are inside the band with everything else.
+
+**The census named four chrome surfaces that render a glyph and import no lucide**, so no importer grep ever listed them and only the weight histogram sees them: `layer-panel.tsx:34` (the registry's icons), `pane.tsx:48` (a prop-passed glyph), and the two hand-authored ones below. Convert those two with the rest — a site the importer list misses is exactly the one a vocabulary migration leaves behind.
+
+Then settle the **hand-authored chrome paths**, one at a time, and record each decision:
+
+- `kind-mark.tsx`'s group stack (two paths, `:139`) is **converted**: it is a stroke at size 13, so §6's filled-glyph escape does not apply, and §6 says a group "gets the stack glyph and its name". `icons.ts` exports it as `STACK_GLYPH` and Task 3's `KIND_GLYPHS.group` is that constant.
+- `add-pane.tsx`'s shape and text marks (`:196`, the `SHAPE_GLYPHS`/`TextGlyph` factory) are **decided here, not assumed**. §6 exempts "a unit tile [that] may carry a diagram of what it builds" for the card library because that set is fixed; a shape tile likewise draws the shape it builds, and `SHAPE_KINDS` is fixed too — so either reading is defensible and the bible does not settle it. Look at the drawing, decide each mark, and record which are converted and which are exempt with §6's reason. Whichever way it goes, `EXEMPT_SOURCES` names every exempt source and nothing is left unaccounted.
 
 - [ ] **Step 4: Add the ownership row, in the same commit**
 
@@ -291,7 +307,7 @@ Every icon-only control's accessible name and tooltip become one string by const
 
 **Outcome:** Every icon-only control in the editor declares one `label`, from which plan 1's `ControlIconButton` produces both the `aria-label` and the tooltip through `controls/tooltip.ts`; no call site wires the two by hand; the controls that had no tooltip are adjudicated one by one against bible §6 rule 1.
 
-**Owning symbols/landmarks:** `components/ui/control-icon-button.tsx`; `controls/tooltip.ts` (read, not rewritten); `canvas-dock.tsx`'s `Action` and `ArrangeAction`, `display-switch.tsx`'s `ViewButton`, `rail.tsx`'s slot and gear buttons and `panes/composition/row-affordances.tsx`'s `RowControl` (the census found these four already one-string by construction); the census's icon-only **no-tooltip** list — `font-picker.tsx`'s favourite `Star`, `composition-pane.tsx`'s twisty and group-entry buttons, `components/ui/gradient-editor.tsx`'s stop dots; plan 2's `pane.tsx` footers and publish control; `accessible-names.dom.test.ts` and its `mountPanels` list.
+**Owning symbols/landmarks:** `components/ui/control-icon-button.tsx`; `controls/tooltip.ts` (read, not rewritten); the four files whose icon-only controls the census found already one-string by construction — `canvas-dock.tsx`'s `Action` and `ArrangeAction`, `display-switch.tsx`'s `ViewButton`, `rail.tsx`'s `RailSlotButton` and `SettingsGear`, `panes/composition/row-affordances.tsx`'s `RowControl` (that is six controls across four files; they are reconciliation items, not work, and `layer-panel.tsx` renders through `ControlIconButton` already); the census's icon-only **no-tooltip** list — `font-picker.tsx`'s favourite `Star`, `composition-pane.tsx`'s twisty and group-entry buttons, `components/ui/gradient-editor.tsx`'s stop dots; plan 2's `pane.tsx` footers and publish control; `accessible-names.dom.test.ts` and its `mountPanels` list.
 
 **Files:**
 - Modify: `packages/editor/src/components/ui/control-icon-button.tsx`, `packages/editor/src/components/ui/control-icon-button.dom.test.tsx`
@@ -320,7 +336,10 @@ it("gives every icon-only control one string for its name and its tooltip", () =
 it("says how many icon-only controls carry no tooltip at all", () => {
   // Not an assertion of zero: §6 rule 1 decides per glyph, and the count is the
   // record. This case exists so the number cannot change unnoticed.
-  expect(noTooltip(root).length).toBe(<the number Task 4's adjudication settled>);
+  // Seeded at the census's 4, because the list is Step 3's to settle and a case
+  // written after the adjudication would record nothing. Step 3 adjusts it per
+  // control and says why, in this file's own comment.
+  expect(noTooltip(root).length).toBe(4);
 });
 ```
 
@@ -363,7 +382,7 @@ Read the summary and confirm the tests you named ran — a `--grep` matching not
 
 **Outcome:** A literal string in a React surface is caught by the same test that catches one in an imperative panel; menu rows are sentence case; the pictograph net is confirmed to be loaded by a run a plan actually executes.
 
-**Owning symbols/landmarks:** `packages/editor/src/ui-copy.test.ts` (`pictographs`, the `spoken` walk, `copy()`, the three mounted panels and the font picker); `ui-copy.ts`; the menus (`shell-layout.tsx`'s `ShellMenuBar`, the view menu, the context menu); plan 2's rail and panes; plan 3's column; plan 5's settings surface.
+**Owning symbols/landmarks:** `packages/editor/src/ui-copy.test.ts` (`pictographs`, the `spoken` walk, `copy()`, the three mounted panels and the font picker); `ui-copy.ts`; the menus (`shell-layout.tsx`'s `ShellMenuBar`, the view menu, the context menu); plan 2's rail and panes; plan 3's column; plan 5's settings surface; **the census's three unowned literals, named so none is left to the Files prose alone** — `shell-layout.tsx:482` "Editor menus", `shell-layout.tsx:842` "Editor canvas", `components/ui/colour-picker.tsx:237` "Hex colour" (an `aria-label` on the hex field).
 
 **Files:**
 - Modify: `packages/editor/src/ui-copy.test.ts`
@@ -505,11 +524,14 @@ Expected: the gated union holds every file Tasks 2–6 converted; the weight col
 ```bash
 cd src/web
 npm run design:check ; echo "EXIT=$?"
-printf '[]' > /tmp/gated.json && node ../../scripts/design-tokens.mjs --gated /tmp/gated.json ; echo "EXIT=$?"
+printf '[]' > ../../.superpowers/sdd/2026-10-08-iconography-and-copy/empty-gated.json
+node ../../scripts/design-tokens.mjs --gated ../../.superpowers/sdd/2026-10-08-iconography-and-copy/empty-gated.json ; echo "EXIT=$?"
 node ../../scripts/design-tokens.mjs --self-test ; echo "EXIT=$?"
 ```
 
-Expected: **0**, then **non-zero with a message naming the empty list**, then **0** with every rule's case reported. A guard over zero files reporting success is the defect `vg-149` is an instance of.
+**Write the fixture where the guard can read it.** A bare `/tmp/…` path is not that path: `printf` writes where the shell means it, and Node resolves `/tmp/x` to `<drive-of-cwd>:\tmp\x`, so the guard would fail on a **missing file** — and a missing file's non-zero exit is the outcome this step expects, which makes the check look green while never exercising the refusal. Measured on this box: `node -e fs.readFileSync('/tmp/…')` → `ENOENT … D:\tmp\…`. The plan's own git-ignored workspace is the path both sides resolve identically, which is why it is the one above.
+
+Expected: **0**, then **non-zero with a message naming the empty list**, then **0** with every rule's case reported. **Read the message, not the exit code** — the whole point of this step is that a guard over zero files must refuse, and an `ENOENT` also exits non-zero while proving nothing. A guard over zero files reporting success is the defect `vg-149` is an instance of.
 
 - [ ] **Step 3: Red proof — the three closures, one at a time**
 
@@ -647,6 +669,6 @@ Named so a later change owns them rather than this plan growing.
 - **Step scan.** No `TBD`, no "add error handling", no "similar to Task N". The one number left open — Task 4 Step 1's `noTooltip` count — is deliberately settled by that task's own adjudication rather than predicted here, because a count predicted before the code exists is not evidence (`AGENTS.md`).
 - **Type consistency.** `Glyph` is the one chrome glyph component and `GLYPH_STROKE_WIDTH` the one weight; `KIND_GLYPHS` is the closed kind vocabulary, declared `satisfies Record<LayerKind, LucideIcon>`; `ControlIconButton` takes one `label` and owns both strings; `absentReadingSurfaces()` and `placeholderReadings` are Task 6's two named sets, and a missing reading is a stated gap rather than a value.
 - **Review Focus.** Five, pinned above to Tasks 1, 2, 3, 5 and 6; each is a failure no existing test would catch. The four that were dropped are each a step's own red proof in the task that owns the code.
-- **Proportion.** 653 lines against the spec's 661, with 101 of them code — test cases and type signatures rather than bodies.
+- **Proportion.** 674 lines against the spec's 661, with 101 of them code — test cases and type signatures rather than bodies.
 - **Red proofs.** Every task states the break that must fail its own gate; Task 7 re-proves the guard's empty-list refusal and names which closure is a scan's and which is a DOM assertion's; Task 9's capture is proven non-vacuous with one test run, not zero.
 - **Owners.** No new dependency, no second tooltip component, no second icon family, no second kind list, no new net beside the two that exist, and the one new module's `ownership.md` row lands with it.
