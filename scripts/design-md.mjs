@@ -8,7 +8,8 @@
  * and 0 for warnings-only alike, and `npx … lint` returns 0 with no stdout at all
  * — so a `&&` chain could never notice a warning. This spawns the *installed*
  * binary, parses the JSON summary it prints, and fails on any error or warning.
- * Infos are permitted and printed.
+ * A report it cannot read fails too, never defaults to clean. Infos are
+ * permitted and printed.
  *
  * `--sync` — the front matter's `spacing`, `rounded` and `typography` groups and
  * `editor-shell.css`'s `@theme static` block declare the same tokens with the
@@ -401,6 +402,25 @@ function selfTest() {
   cite("a claimed marker and a cited number agree", { design: "<!-- §9 -->\n", citations: ["DESIGN.md §9"] }, { numbers: ["9"], uncitedOk: [] }, []);
   cite("UNCITED_OK silences rule 3 only", { design: "<!-- §9 -->\n", citations: [] }, { numbers: ["9"], uncitedOk: ["9"] }, []);
 
+  // --lint: the counts are read, and every shape they cannot be read from fails
+  // closed rather than defaulting to clean.
+  const lintCase = (name, reportValue, expected) => {
+    const got = lintCounts(reportValue);
+    const ok = expected.ok === false
+      ? got.ok === false
+      : got.ok === true && got.errors === expected.errors && got.warnings === expected.warnings;
+    report(name, ok, JSON.stringify(got));
+  };
+  lintCase("a clean summary is read", { summary: { errors: 0, warnings: 0 } }, { ok: true, errors: 0, warnings: 0 });
+  lintCase("a warning is not rounded to clean", { summary: { errors: 0, warnings: 1 } }, { ok: true, errors: 0, warnings: 1 });
+  lintCase("a report with no summary fails closed", { findings: [] }, { ok: false });
+  lintCase("a summary that is not an object fails closed", { summary: 0 }, { ok: false });
+  lintCase("a null summary fails closed", { summary: null }, { ok: false });
+  lintCase("an array summary fails closed", { summary: [] }, { ok: false });
+  lintCase("a count that is not a number fails closed", { summary: { errors: 0, warnings: "0" } }, { ok: false });
+  lintCase("a missing count fails closed", { summary: { errors: 0 } }, { ok: false });
+  lintCase("a non-object report fails closed", "lint output", { ok: false });
+
   if (failed > 0) {
     console.error(`design-md self-test: ${failed} case(s) wrong`);
     process.exit(1);
@@ -433,11 +453,34 @@ function linterCli() {
 }
 
 /**
+ * The counts a parsed lint report carries, or the reason it carries none. Fails
+ * closed on every shape it cannot read — no `summary`, a `summary` that is not an
+ * object, counts that are not finite numbers — because a default of "clean" here
+ * would be the same vacuity `--lint` exists to remove, re-implemented inside the
+ * guard. It never guesses a count.
+ */
+export function lintCounts(report) {
+  const summary = report?.summary;
+  if (typeof summary !== "object" || summary === null || Array.isArray(summary)) {
+    return { ok: false, why: "the report carries no `summary` object" };
+  }
+  const { errors, warnings } = summary;
+  if (!Number.isFinite(errors) || !Number.isFinite(warnings)) {
+    return {
+      ok: false,
+      why: `the summary carries no finite counts (errors: ${JSON.stringify(errors)}, warnings: ${JSON.stringify(warnings)})`,
+    };
+  }
+  return { ok: true, errors, warnings };
+}
+
+/**
  * `@google/design.md`'s own lint. Only the summary it prints decides: its exit
  * code is 0 for clean and 0 for warnings-only alike, so a shell chain could pass
  * on a warning. Infos are permitted and printed; an error or a warning fails. A
- * crash or unparseable output fails too — a lint that examined nothing must not
- * read as clean.
+ * crash, unparseable output, or a report whose counts cannot be read all fail —
+ * a lint that examined nothing, or whose verdict could not be read, must not
+ * come out as clean.
  */
 function checkLint() {
   let stdout;
@@ -457,15 +500,18 @@ function checkLint() {
     console.error("design-md: the linter printed no JSON to read; the check would find nothing");
     process.exit(1);
   }
-  for (const finding of report.findings ?? []) {
+  for (const finding of Array.isArray(report?.findings) ? report.findings : []) {
     const line = `${finding.rule ?? "lint"}: ${finding.message}`;
     if (finding.severity === "info") console.log(line);
     else console.error(line);
   }
-  const errors = report.summary?.errors ?? 0;
-  const warnings = report.summary?.warnings ?? 0;
-  if (errors > 0 || warnings > 0) {
-    console.error(`design-md: lint reports ${errors} error(s) and ${warnings} warning(s) in ${DESIGN_REL}`);
+  const counts = lintCounts(report);
+  if (!counts.ok) {
+    console.error(`design-md: cannot read the linter's counts — ${counts.why}; the check must not read this as clean`);
+    process.exit(1);
+  }
+  if (counts.errors > 0 || counts.warnings > 0) {
+    console.error(`design-md: lint reports ${counts.errors} error(s) and ${counts.warnings} warning(s) in ${DESIGN_REL}`);
     process.exit(1);
   }
   console.log(`design-md: lint clean in ${DESIGN_REL} (0 errors, 0 warnings)`);
