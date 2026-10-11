@@ -22,7 +22,7 @@
 - **Dynamic import is real but narrow** — `packages/host/src/providers/library.ts`'s `await import("systeminformation")`, and test-module factories (`vi.mock`, `importOriginal`). Not handling it produces live code reported as dead.
 - **`.mjs` is in no gate at all.** Biome's `files.includes` is `src/web/**/*.{ts,tsx,json,css}`, so the ten `scripts/*.mjs` and `src/web/scripts/*.mjs` are neither linted nor formatted, and no tsconfig includes them.
 - **`dist/**` is build output** and is never scanned or edited. It is correctly ignored, and **zero build output is tracked** — checked, so no task needs to spend time on that lane.
-- **`.superpowers/` is gitignored by a blanket `*` line but 20 files under it are tracked anyway**, and they are not scratch: closed plans' ledgers hold rulings that exist nowhere else, and one of them (`plan-queue.md`) owns the plan queue. **The sweep does not scan, clean or delete anything there.** A gitignored tree is not the same as a disposable one, and the checkpoints under `.superpowers/sdd/checkpoint/` are session-recovery state whose removal is the user's call, not a cleanup.
+- **`.superpowers/` is untracked as of 2026-10-12 (the user's ruling) and ignored at `.gitignore:90`.** It was 744 files on disk of which 20 were tracked despite a bare `*` in `sdd/.gitignore` — an ignore rule and a tracked set that contradicted each other. **It is still not the sweep's to scan, clean or delete.** Untracked is not disposable: the ledgers are the only *local* home of rulings that were never promoted into `docs/decisions/`, and a reference sweep that treats "not in git" as "safe to remove" would destroy them. The sweep does not touch that tree at all.
 - **Deleting is not a licence to restructure.** Remove what is dead; do not reorganise what is alive. 500 lines signals and 800 stops for anything that survives.
 - **Do not touch** plugins, skills, hooks, MCP servers, Claude/Codex settings, `AGENTS.md`, `STATUS.md` or `DESIGN.md`.
 
@@ -67,7 +67,24 @@ The five ways this sweep deletes something alive.
 
 - [ ] **Step 5: Commit.** `feat(sweep): the reference scanner for unused modules and exports`.
 
-### Task 2: Run it, and make the numbers reproducible
+### Task 2: The selector reachability check
+
+**Files:** none modified. Reads `src/web/packages/editor/src/editor-shell/editor-shell.css` (2558 lines) and `src/web/packages/host/public/vigilia-page.css` (254).
+
+**Interfaces:**
+- Produces: `<plan workspace>/dead-selectors.md`, consumed by Task 5's removal.
+
+- [ ] **Step 1: Note why this lane needs naming at all.** Only **two** CSS files exist, so this does not want a scanner framework or a new task of its own weight — but `editor-shell.css` is the largest file in the repo, `vg-274` records it as being in **no gate**, and `vg-266` records two selectors in it that match nothing. Dead selectors are invisible to `typecheck`, to Biome (which parses CSS but has no unused-selector rule) and to every test.
+
+- [ ] **Step 2: Extract every class and `data-*` attribute selector, then search the tree for each.** For each, the evidence is a named search over `.ts`/`.tsx`/`.html`/`.md`, and the report states why that search is sufficient. **Prefer one documented command over a script** — this is two files, and a re-runnable recipe in the report is worth more than another `scripts/*.mjs` that nothing runs.
+
+- [ ] **Step 3: Treat a templated or composed name as live.** `data-vigilia-${kind}`, a class built from a variant, and anything reached through `classList` are Review Focus 1 — the literal is absent and the selector is live. Say which selectors you cleared for this reason, because a report that only lists hits makes the clearance rate invisible.
+
+- [ ] **Step 4: Keep the `--vigilia-*`/`--shell-*` custom properties out of scope.** They are design tokens with their own owner and their own gate (`design-tokens.mjs`), and `vg-357` already owns an open defect in them.
+
+- [ ] **Step 5: Commit.** `docs(sweep): the dead-selector report`.
+
+### Task 3: Run both, and make the numbers reproducible
 
 **Files:**
 - Create: `<plan workspace>/candidates.md` — the run's report, committed beside the plan's ledger.
@@ -84,7 +101,7 @@ The five ways this sweep deletes something alive.
 
 Each task below owns one group of packages and follows the same contract: **for each candidate, re-establish the fact at HEAD; if it is dead, remove it and its test; if it is a decision, do not touch it and record the question; if it is live, say what the scanner missed.** A task that removes nothing is a valid outcome and must say so.
 
-### Task 3: The editor package
+### Task 4: The editor package
 
 **Files:** `src/web/packages/editor/**` — 322 source files, the largest and most refactored surface.
 
@@ -93,24 +110,24 @@ Each task below owns one group of packages and follows the same contract: **for 
 - [ ] **Step 3: Report the decision cases without settling them.** A module with no production mount but a substantial test is Review Focus 2, and the register already holds two such rows (`vg-268`, `vg-283`) — link them rather than opening a third.
 - [ ] **Step 4: Run the gates and the affected tests, and report the counts.** `npm run typecheck`, `npm run lint`, the touched package's vitest run.
 
-### Task 4: The host, player and shared packages
+### Task 5: The host, player and shared packages
 
 **Files:** `src/web/packages/{host,player,renderer-core,scene-fabric,theme-package,fake-source}/**`.
 
 - [ ] **Step 1: Note the asymmetry before starting.** `host` is Node with `types: ["node"]`; the others are browser bundles where `@types/node` is *deliberately* absent. A removal that pulls a `node:` import into a browser package is a new defect, not a cleanup.
-- [ ] **Step 2: Verify and remove as Task 3**, with the same evidence rules.
+- [ ] **Step 2: Verify and remove as Task 4**, with the same evidence rules.
 - [ ] **Step 3: Check the persisted-scene boundary explicitly.** In `scene-fabric` and `renderer-core`, a Fabric JSON property that nothing reads *in TypeScript* may still be the persisted scene's schema — that class is a decision, never a removal.
 - [ ] **Step 4: Run the gates and the touched packages' tests, and report the counts.**
 
-### Task 5: The ungated trees and stale references
+### Task 6: The ungated trees and stale references
 
 **Files:** `src/web/tests/e2e/**`, `scripts/*.mjs`, `src/web/scripts/*.mjs`, and the docs that name deleted modules.
 
 - [ ] **Step 1: These trees have no gate, so the sweep is their first reader** — treat a finding here as more likely to be real, and a *removal* here as more likely to be load-bearing to something outside the type system.
 - [ ] **Step 2: Separate stale code from stale reference** (Review Focus 4). `vg-275`'s three decision records naming the deleted `PaletteMenu.choose`, and `vg-198`'s docs map, are prose fixes; they go in their own commit so code and docs are reviewable apart.
-- [ ] **Step 3: Verify and remove as Task 3**, and run `gates:self-test` plus `design:check` — the gate scripts are themselves in scope, so their own gate must be green afterwards.
+- [ ] **Step 3: Verify and remove as Task 4**, and run `gates:self-test` plus `design:check` — the gate scripts are themselves in scope, so their own gate must be green afterwards.
 
-### Task 6: Discharge the register rows this sweep settles
+### Task 7: Discharge the register rows this sweep settles
 
 **Files:** `docs/product/backlog.jsonl`, `docs/product/backlog-archive.jsonl`.
 

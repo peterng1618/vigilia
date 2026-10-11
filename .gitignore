@@ -73,7 +73,18 @@ Thumbs.db
 
 # Agents leave scratch in the tree; it is never a deliverable.
 src/web/.agent-scratch/
-# Brainstorm mockup screens. The ledger beside it (`sdd/`) IS tracked; these are
-# throwaway screens the visual companion serves, and only the one that becomes a
-# spec's reference is worth keeping.
-.superpowers/brainstorm/
+# The agent's SDD workspace: per-plan ledgers, task briefs, review packages,
+# dispatch records and PreCompact checkpoints, plus the visual companion's
+# throwaway screens. **Local working state, never repository content** — it is
+# per-session, it is rewritten constantly, and a fresh clone should not carry it.
+#
+# A previous revision tracked 20 files here (nine checkpoints, nine September
+# ledgers, `plan-queue.md`) despite `sdd/.gitignore` holding a bare `*` — the
+# ignore rule and the tracked set contradicted each other and the comment here
+# asserted the tracked half. Both are now one answer.
+#
+# **The consequence, stated plainly:** a ruling recorded only in a ledger under
+# this tree does not survive a fresh clone. Durable decisions belong in
+# `docs/decisions/`, which is what AGENTS.md already says; the ledger is how a
+# session remembers, not how the project does.
+.superpowers/
