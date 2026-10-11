@@ -9,6 +9,7 @@ import {
   EyeOff,
   FileText,
   Gauge,
+  Image as ImageIcon,
   Info,
   Keyboard,
   Layers2,
@@ -23,12 +24,15 @@ import {
   Plus,
   Scan,
   Settings,
+  Shapes,
   Star,
   TriangleAlert,
+  Type,
   Unlock,
 } from "lucide-react";
 import type * as React from "react";
 import { createElement } from "react";
+import type { LayerKind } from "./layer-tree.js";
 import type { RailSlot } from "./rail.js";
 
 /** The glyph component type, re-exported so a surface that holds a glyph in a
@@ -147,6 +151,33 @@ export const RAIL_GLYPHS: Readonly<Record<RailSlot, LucideIcon>> = {
   tokens: PALETTE_GLYPH,
   document: PAGE_GLYPH,
 };
+
+/**
+ * Exactly one glyph per object kind, and the compile-time half of the closure:
+ * a new `LayerKind` with no glyph here does not build. The runtime half is
+ * `icons.test.tsx`'s comparison against `uiCopy.panels.layerKinds`, and neither
+ * half sees the other's failure — a type-level totality is invisible to a
+ * focused run, which is what a plan executes.
+ *
+ * **§6's own rule for the group arm**: a group is an arbitrary set of elements,
+ * so it cannot be depicted — it gets the stack glyph and its name. That is why
+ * `group` is `STACK_GLYPH` and nothing else, and why no entry here may be
+ * derived from what a row happens to hold.
+ *
+ * **This is the vocabulary, not the layer row's drawing.** The row reads it
+ * nowhere, deliberately: §6 and §5.1 leave four of its five arms as
+ * *treatments* — a text sample in the object's own face, a chart family icon, a
+ * paint swatch, an image thumbnail — because each carries a fact a glyph cannot
+ * (`kind-mark.tsx` records which arm is which). `chart` here is the kind's
+ * generic mark; the row's chart arm answers a different question, the *family*.
+ */
+export const KIND_GLYPHS = {
+  text: Type,
+  shape: Shapes,
+  chart: CHART_BAR_GLYPH,
+  group: STACK_GLYPH,
+  image: ImageIcon,
+} satisfies Readonly<Record<LayerKind, LucideIcon>>;
 
 /** The tree's open/closed chevrons. Each points the way the press goes, and the
  *  state itself stays on `aria-expanded`. */

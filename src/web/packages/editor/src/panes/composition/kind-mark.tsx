@@ -67,6 +67,12 @@ export function KindMark({
   return <span className="vigilia-layer-mark">{treatment(mark)}</span>;
 }
 
+/** The five arms, and which of them is a glyph: `chart` draws the family's icon
+ *  and `group` the kind's generic stack glyph; `text`, `shape` and `image` are
+ *  depictions a glyph cannot carry — the words in the object's own face, its
+ *  paint, its picture. This split is decided here, not by `icons.ts`'s
+ *  `KIND_GLYPHS`, which closes the vocabulary over the kinds and is drawn by no
+ *  arm of this switch. */
 function treatment(mark: LayerMark): React.JSX.Element | null {
   switch (mark.kind) {
     case "text":

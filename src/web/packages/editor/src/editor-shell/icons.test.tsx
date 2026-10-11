@@ -20,6 +20,12 @@
  * glyph without going through the vocabulary, and every entry there needs §6's
  * reason beside it. The case forbids an unaccounted source, not a particular
  * list.
+ *
+ * **The third invariant is the kind set's**: one glyph per object kind, closed
+ * against the kind vocabulary rather than against `KIND_GLYPHS`' own keys, and
+ * the Add pane drawing every object its owner offers. The row itself draws
+ * *treatments* for four of the five kinds and is deliberately not that case's
+ * subject — `kind-mark.dom.test.tsx` owns those arms.
  */
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
@@ -32,6 +38,7 @@ import { insertGroups } from "../new-object-panel.js";
 import { AddPane } from "../panes/add/add-pane.js";
 import { KindMark } from "../panes/composition/kind-mark.js";
 import { RowAffordances } from "../panes/composition/row-affordances.js";
+import { uiCopy } from "../ui-copy.js";
 import type { ViewportManager } from "../viewport-manager/index.js";
 import { DisplaySwitch } from "./display-switch.js";
 import {
@@ -48,6 +55,7 @@ import {
   HIDDEN_GLYPH,
   INFO_GLYPH,
   KEYBOARD_GLYPH,
+  KIND_GLYPHS,
   LEAVE_GLYPH,
   LOCK_GLYPH,
   type LucideIcon,
@@ -311,4 +319,53 @@ it("rises the stroke as the glyph shrinks, in §6's tiers", () => {
   expect(glyphStrokeWidth(13)).toBe(1.8);
   expect(glyphStrokeWidth(14)).toBe(1.7);
   expect(glyphStrokeWidth(24)).toBe(1.7);
+});
+
+it("gives every kind a glyph, so a new kind cannot arrive without one", () => {
+  // The list comes from the kind vocabulary and **never from `KIND_GLYPHS`'
+  // own keys**: a case that enumerated the map would pass over a map with
+  // anything in it, and over an empty one. `uiCopy.panels.layerKinds` is the
+  // second place a kind has to reach (its own doc says "Keys mirror
+  // `LayerKind`"), so the two closings are checked against each other rather
+  // than each against itself.
+  //
+  // The compile-time half is `satisfies Readonly<Record<LayerKind, LucideIcon>>`
+  // in `icons.ts`. It is not visible here and this run is exactly what a plan
+  // executes, which is why both halves exist.
+  expect(Object.keys(KIND_GLYPHS).sort()).toEqual(
+    Object.keys(uiCopy.panels.layerKinds).sort(),
+  );
+});
+
+it("draws a group with the generic glyph rather than a diagram of it", () => {
+  // §6's own rule: a group is an arbitrary set of elements, so it cannot be
+  // depicted — it gets the stack glyph and its name. The kind vocabulary reads
+  // the *constant* the row's group arm reads, so the two cannot grow two marks
+  // for one kind.
+  expect(KIND_GLYPHS.group).toBe(STACK_GLYPH);
+});
+
+it("draws every object the Add pane offers, so an insertable kind cannot arrive unmarked", () => {
+  // The list is the owner's (`insertGroups()`), never a fixture written here: an
+  // object added there arrives in this case the day it is added. Three of the
+  // four kinds are `LayerKind`s the case above closes; a card lands as a group,
+  // which wears the same stack glyph.
+  const offered = insertGroups().flatMap((group) => group.objects);
+  // A count over nothing would pass for the wrong reason.
+  expect(offered.length).toBeGreaterThan(0);
+
+  const host = document.createElement("div");
+  document.body.append(host);
+  const root = createRoot(host);
+  mounted.push(root);
+  act(() =>
+    root.render(<AddPane groups={insertGroups()} onInsert={() => {}} />),
+  );
+
+  const tiles = [...host.querySelectorAll("button")];
+  expect(tiles).toHaveLength(offered.length);
+  // A card's tile is §6's depicted unit and a primitive's is the object it
+  // builds; what this asks is only that each one is drawn, because a kind
+  // offered with no mark is a tile an author cannot choose.
+  for (const tile of tiles) expect(tile.querySelector("svg")).not.toBeNull();
 });
