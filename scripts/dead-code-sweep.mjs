@@ -314,6 +314,11 @@ const source = new Map(
  * whether a module *uses* one of its own exports. A name inside a string is
  * vocabulary, not a call — `data-vigilia-*` and the `KIND_*` registries are
  * exactly the trap this repository sets — so it must not count as a use.
+ *
+ * Not handled: backticks and regex literals — a symbol named only as static text
+ * inside a template literal still counts as a use, which would tier a dead export
+ * `redundant-export`, and a latent wrong tier is invisible in the report. No row
+ * is affected today; the only backtick hits are real `${…}` interpolations.
  */
 const stripStrings = (text) =>
   text.replace(/"(?:[^"\\\n]|\\.)*"/g, '""').replace(/'(?:[^'\\\n]|\\.)*'/g, "''");
@@ -322,6 +327,16 @@ const selfUse = new Map(all.map((file) => [file, stripStrings(source.get(file))]
 const escapeRe = (name) => name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 const usesIn = (text, name) =>
   (text.match(new RegExp(`\\b${escapeRe(name)}\\b`, "g")) ?? []).length;
+
+/**
+ * What the `redundant-export` evidence sentence claims: occurrences of the name
+ * in its own file outside quoted strings, minus the declaration's own mention of
+ * it. Counting the declaration reported `instantiateCard` as 2 occurrences for a
+ * single call site, which sends a Phase 2 reader hunting a call site that does
+ * not exist. The tier decision keeps the raw count — a use beyond the
+ * declaration is exactly what makes the export redundant.
+ */
+const usesOutsideDeclaration = (text, name) => Math.max(0, usesIn(text, name) - 1);
 
 /** consumedBy[target] = [{ from, names }] where names === null is the whole module. */
 const consumedBy = new Map(all.map((file) => [file, []]));
@@ -499,6 +514,9 @@ for (const file of all) {
 
     const importerSearch = `0 production importers; ${direct.length + through.length} importer(s), all tests: ${list(testConsumers)}. Search: ${IMPORTERS}, then for every file that imports this one the imported name list was read from the clause; a namespace import, a dynamic import(), a side-effect import or a vi.mock factory consumes every name and would have hidden this. Consumers reached through a re-exporting barrel are followed. String-resolved vocabulary is invisible to this search.`;
 
+    // `default` has no name to search for, so it is forced to 0 and always lands
+    // in the dead tier — an `export default function foo()` whose `foo` is used in
+    // its own module would be tiered dead-export. No default row exists at HEAD.
     // The two tiers take opposite actions, so they are two kinds, not one.
     const ownUses = name === "default" ? 0 : usesIn(selfUse.get(file), name);
     if (ownUses > 1) {
@@ -506,7 +524,7 @@ for (const file of all) {
         kind: "redundant-export",
         file,
         symbol: name,
-        evidence: `the symbol is LIVE: its own declaring file uses it (${ownUses} occurrences of the name outside quoted strings) and no other production file imports it. Only the "export" keyword is unnecessary — do not delete the symbol. ${importerSearch}`,
+        evidence: `the symbol is LIVE: its own declaring file uses it (${usesOutsideDeclaration(selfUse.get(file), name)} occurrence(s) of the name outside quoted strings, the declaration that names it excluded) and no other production file imports it. Only the "export" keyword is unnecessary — do not delete the symbol. ${importerSearch}`,
       });
     } else {
       candidates.push({
@@ -687,6 +705,7 @@ if (argv.includes("--self-test")) {
     );
   const inAnyKind = (file) => candidates.filter((candidate) => candidate.file === file);
 
+  const CARD_LIBRARY = "src/web/packages/editor/src/card-library.ts";
   const FONT_PICKER = "src/web/packages/editor/src/font-picker/font-picker.tsx";
   const SETTINGS_FIELD = "src/web/packages/editor/src/editor-shell/controls/settings-field.ts";
   const LIVE = "src/web/packages/editor/src/boot-theme.ts";
@@ -716,7 +735,38 @@ if (argv.includes("--self-test")) {
     ],
     [
       "redundant-export lands on instantiateCard (its own file calls it)",
-      at("redundant-export", "src/web/packages/editor/src/card-library.ts", "instantiateCard"),
+      at("redundant-export", CARD_LIBRARY, "instantiateCard"),
+    ],
+    /**
+     * The number in a redundant row is evidence a Phase 2 reader acts on, so it
+     * must mean what its sentence says. `instantiateCard` is declared once and
+     * called once: the raw occurrence count is 2, and a row reporting 2 says a
+     * second call site exists when it does not. This fails the moment the
+     * declaration is counted again — the raw count is asserted here separately,
+     * so the check is not a restatement of the emitter.
+     */
+    [
+      "a redundant row reports uses, not occurrences (instantiateCard is declared once and called once, so 1)",
+      (() => {
+        const row = candidates.find(
+          (candidate) =>
+            candidate.kind === "redundant-export" &&
+            candidate.file === CARD_LIBRARY &&
+            candidate.symbol === "instantiateCard",
+        );
+        const claimed = /\((\d+) occurrence/.exec(row?.evidence ?? "")?.[1];
+        return claimed === "1" && usesIn(selfUse.get(CARD_LIBRARY), "instantiateCard") === 2;
+      })(),
+    ],
+    [
+      "every redundant row's number is its use count, not its occurrence count",
+      candidates
+        .filter((candidate) => candidate.kind === "redundant-export")
+        .every(
+          (candidate) =>
+            Number(/\((\d+) occurrence/.exec(candidate.evidence)?.[1]) ===
+            usesIn(selfUse.get(candidate.file), candidate.symbol) - 1,
+        ),
     ],
     [
       "the two export tiers are disjoint (opposite remedies, one row never both)",
