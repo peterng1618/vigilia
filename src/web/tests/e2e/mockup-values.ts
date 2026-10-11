@@ -725,49 +725,49 @@ export const PARITY: readonly ParityRegion[] = [
     mockupSelector: '[style*="height:42px"]',
     mockupProperty: "height",
     productSelector: ".editor-shell-header",
-    bibleSection: "§7.1 (`:259`), §7's diagram (`:242-257`)",
+    bibleSection: "§7.1 (`:279`), §7's diagram (`:262-277`)",
   },
   {
     region: "body — inset",
     mockupSelector: '[style*="flex:1;min-height:0"]',
     mockupProperty: "padding-top",
     productSelector: ".editor-shell-body",
-    bibleSection: "§7's diagram (`:242-257`), §3 elevation 0 (`:102`)",
+    bibleSection: "§7's diagram (`:262-277`), §3 elevation 0 (`:102`)",
   },
   {
     region: "body — gap",
     mockupSelector: '[style*="flex:1;min-height:0"]',
     mockupProperty: "column-gap",
     productSelector: ".editor-shell-body",
-    bibleSection: "§7's diagram (`:242-257`), §3 elevation 0 (`:102`)",
+    bibleSection: "§7's diagram (`:262-277`), §3 elevation 0 (`:102`)",
   },
   {
     region: "rail — radius",
     mockupSelector: '[style*="width:46px"]',
     mockupProperty: "border-radius",
     productSelector: ".editor-shell-rail",
-    bibleSection: "§3 radius table (`:92`), §7's diagram (`:242-257`)",
+    bibleSection: "§3 radius table (`:92`), §7's diagram (`:262-277`)",
   },
   {
     region: "left pane — radius",
     mockupSelector: '[style*="width:246px"]',
     mockupProperty: "border-radius",
     productSelector: ".editor-shell-panel",
-    bibleSection: "§3 radius table (`:92`), §7's diagram (`:242-257`)",
+    bibleSection: "§3 radius table (`:92`), §7's diagram (`:262-277`)",
   },
   {
     region: "stage — radius",
     mockupSelector: '[style*="repeating-linear-gradient(45deg"]',
     mockupProperty: "border-radius",
     productSelector: ".editor-shell-stage",
-    bibleSection: "§3 radius table (`:86-94`), §7's diagram (`:242-257`)",
+    bibleSection: "§3 radius table (`:86-94`), §7's diagram (`:262-277`)",
   },
   {
     region: "inspector — radius",
     mockupSelector: '[style*="width:276px"]',
     mockupProperty: "border-radius",
     productSelector: ".editor-shell-inspector",
-    bibleSection: "§3 radius table (`:92`), §7's diagram (`:242-257`)",
+    bibleSection: "§3 radius table (`:92`), §7's diagram (`:262-277`)",
   },
   /* **A dialog's radius is not the drawing's to give.** The only 10px frame the
      superseded drawing had was the window's own — `.mockup` and the shell card it
@@ -805,9 +805,9 @@ export const PARITY: readonly ParityRegion[] = [
     mockupSelector: '[style*="repeating-linear-gradient(45deg"]',
     mockupProperty: "background",
     productSelector: ".editor-shell-stage",
-    bibleSection: "§7.5 (`:349-351`)",
+    bibleSection: "§7.5 (`:362-364`)",
     licensed:
-      '§7.5 (`:349-351`): "Subtle palette-derived stage texture is permitted when it stays behind the artwork and does not obscure controls; neither texture nor a flat ground is mandatory."',
+      '§7.5 (`:362-364`): "Subtle palette-derived stage texture is permitted when it stays behind the artwork and does not obscure controls; neither texture nor a flat ground is mandatory."',
   },
   /* **The control set's own drawing, read on the fixture.** Both files are the
      inspector column and both declare the same row: a label column of
@@ -1021,7 +1021,7 @@ export const PARITY: readonly ParityRegion[] = [
     mockupProperty: "background-color",
     productSelector: ".editor-shell-dialog-overlay",
     bibleSection:
-      "§3 elevation 3 (`:105`) — the modal's scrim is `#00000073`; §10 (`:449`) forbids a hex literal in a surface (`vg-294`)",
+      "§3 elevation 3 (`:105`) — the modal's scrim is `#00000073`; §10 (`:462`) forbids a hex literal in a surface (`vg-294`)",
     scaleToken: "--elev-scrim",
     comparator: "colour",
     surface: "settings",
@@ -1062,7 +1062,7 @@ export const PARITY: readonly ParityRegion[] = [
     mockupProperty: "height",
     productSelector: ".editor-shell-palette-swatch",
     bibleSection:
-      "§7.8 (`:412`) — 'Palette choices retain visual swatches'; the swatch's form is the drawing's, and §5 (`:155`) names a swatch, never one",
+      "§7.8 (`:425`) — 'Palette choices retain visual swatches'; the swatch's form is the drawing's, and §5 (`:155`) names a swatch, never one",
     surface: "settings",
   },
   /* ── The ground bar's COLOUR, one row per solid-ground palette (`vg-321`) ───
@@ -1093,7 +1093,7 @@ export const PARITY: readonly ParityRegion[] = [
     productSelector:
       '.editor-shell-palette-swatch[data-shell-palette="editorial"]',
     bibleSection:
-      "§4 (`:123`) — `--bg` is 'the window behind everything'; §7.8 (`:412`) names no role, so the drawing's bar is the palette's ground (`vg-321`)",
+      "§4 (`:122`) — `--bg` is 'the window behind everything'; §7.8 (`:425`) names no role, so the drawing's bar is the palette's ground (`vg-321`)",
     surface: "settings",
     comparator: "colour",
   },
@@ -1106,7 +1106,7 @@ export const PARITY: readonly ParityRegion[] = [
     productSelector:
       '.editor-shell-palette-swatch[data-shell-palette="graphite"]',
     bibleSection:
-      "§4 (`:123`) — `--bg` is 'the window behind everything'; §7.8 (`:412`) names no role, so the drawing's bar is the palette's ground (`vg-321`)",
+      "§4 (`:122`) — `--bg` is 'the window behind everything'; §7.8 (`:425`) names no role, so the drawing's bar is the palette's ground (`vg-321`)",
     surface: "settings",
     comparator: "colour",
   },
@@ -1118,7 +1118,7 @@ export const PARITY: readonly ParityRegion[] = [
     mockupProperty: "background-color",
     productSelector: '.editor-shell-palette-swatch[data-shell-palette="ember"]',
     bibleSection:
-      "§4 (`:123`) — `--bg` is 'the window behind everything'; §7.8 (`:412`) names no role, so the drawing's bar is the palette's ground (`vg-321`)",
+      "§4 (`:122`) — `--bg` is 'the window behind everything'; §7.8 (`:425`) names no role, so the drawing's bar is the palette's ground (`vg-321`)",
     surface: "settings",
     comparator: "colour",
   },
@@ -1130,7 +1130,7 @@ export const PARITY: readonly ParityRegion[] = [
     mockupProperty: "background-color",
     productSelector: '.editor-shell-palette-swatch[data-shell-palette="moss"]',
     bibleSection:
-      "§4 (`:123`) — `--bg` is 'the window behind everything'; §7.8 (`:412`) names no role, so the drawing's bar is the palette's ground (`vg-321`)",
+      "§4 (`:122`) — `--bg` is 'the window behind everything'; §7.8 (`:425`) names no role, so the drawing's bar is the palette's ground (`vg-321`)",
     surface: "settings",
     comparator: "colour",
   },
@@ -1142,7 +1142,7 @@ export const PARITY: readonly ParityRegion[] = [
     mockupProperty: "background-color",
     productSelector: '.editor-shell-palette-swatch[data-shell-palette="plum"]',
     bibleSection:
-      "§4 (`:123`) — `--bg` is 'the window behind everything'; §7.8 (`:412`) names no role, so the drawing's bar is the palette's ground (`vg-321`)",
+      "§4 (`:122`) — `--bg` is 'the window behind everything'; §7.8 (`:425`) names no role, so the drawing's bar is the palette's ground (`vg-321`)",
     surface: "settings",
     comparator: "colour",
   },

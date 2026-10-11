@@ -150,7 +150,9 @@ const PINNED_FLOOR: Readonly<Record<string, Partial<Record<Palette, number>>>> =
  *  `vg-200`/`vg-318`) therefore leaves a divider no floor — and it is `null`
  *  rather than `0` on purpose: a zero minimum would pass every palette
  *  silently, which is the failure these rows exist to end. Everything that
- *  carries words meets 4.5:1; the `checked` state boundary meets 3:1. */
+ *  carries words meets 4.5:1. A checked control's accent fill is not a §5
+ *  boundary — the switch's knob also moves and changes colour, so the fill is
+ *  not the state's only mark — but this gate holds it at 3:1 on its own terms. */
 function minimumFor(name: string): number | null {
   if (name === "divider") return null;
   return name === "checked" ? BOUNDARY_MIN : TEXT_MIN;
@@ -397,8 +399,9 @@ async function probes(page: Page): Promise<Probe[]> {
     const value = document.querySelector("[data-fixture='number'] input");
     add("value", value, centre(value));
 
-    // The checked toggle's accent fill against the panel it sits on — a state
-    // boundary, not decoration.
+    // The checked toggle's accent fill against the panel it sits on — this
+    // gate's own 3:1 floor, not a §5 boundary: the knob also moves and changes
+    // colour, so the fill is not the state's only mark.
     const checked = document.querySelector("[data-fixture='toggle-on'] button");
     const checkedRow = document.querySelector("[data-fixture='toggle-on']");
     if (checked !== null && checkedRow !== null) {
@@ -2801,7 +2804,7 @@ const SHELL_DRAWING = "docs/design/mockups/current/shell.html";
  *
  * - `1px` and `2px` are **marks whose value is their thickness**, not rounded
  *   surfaces: §7.2's 2px accent bar on the rail's inner edge
- *   (`design-language.md:301`), the slider track's ends, the layer dropline.
+ *   (`design-language.md:314`), the slider track's ends, the layer dropline.
  *   §3's scale answers a question only a surface that is *rounded* asks.
  * - `50%` is **a circle — `full` reached the other way**: the identity dot, the
  *   slider's thumb and the toggle's knob. It is not a second way to spell a
@@ -2834,7 +2837,7 @@ const SHELL_DRAWING = "docs/design/mockups/current/shell.html";
  *   (`left:50%`, which centres the dock alongside its `translateX(-50%)`).
  *
  * **The type arm reads `font-size` and the `font` shorthand.** §2's scale is six
- * roles (`design-language.md:47-51`), and a shorthand writes its size before its
+ * roles (`design-language.md:47-52`), and a shorthand writes its size before its
  * line-height (`600 13.5px/1.2 system-ui`), which is the token read here. A
  * shorthand carrying no px length sets no size this row can read, so it is
  * returned whole and fails naming itself rather than passing as the drawing's
@@ -2946,7 +2949,7 @@ test("every literal the checked drawings declare is on §3's scale or §2's", ()
     );
   };
 
-  /** §2's six sizes (`design-language.md:47-51`). */
+  /** §2's six sizes (`design-language.md:47-52`). */
   const TYPE = new Set([10, 11, 12, 13, 15, 19]);
   /** The size a type declaration sets, or `null` where it sets none this row
    *  reads: `font-size`'s whole value, or the first px length a `font`

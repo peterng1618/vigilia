@@ -215,7 +215,7 @@ describe("shell token stylesheet", () => {
       "--text-xs": "11px",
       "--text-sm": "12px",
       "--text-md": "13px",
-      // §2's 10, 15 and 19 (`design-language.md:48`, `:51`, `:52`), pinned for
+      // §2's 10, 15 and 19 (`design-language.md:47`, `:51`, `:52`), pinned for
       // the reason the scrim below gives: the `settings modal — lead type` parity
       // row's expected value *is* `--text-lg`, so that row is green for whatever
       // the token holds — a dialog title at `16px` violates §2 `:51` with every

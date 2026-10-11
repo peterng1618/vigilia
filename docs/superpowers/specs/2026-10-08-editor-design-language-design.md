@@ -541,12 +541,14 @@ check reads paints a colour outside the set §4's roles resolve to, which is
 on a side — **a gradient set through the `background` shorthand passes it**, and
 `background-image`, `box-shadow` and SVG `fill`/`stroke` are not read at all;
 every target has §5's 24×24 hit area without overlapping a neighbour; required
-text meets 4.5:1 and the boundaries §5 binds — the focus boundary, a control's
-only separation, and a control's checked state — meet 3:1 in all six palettes;
-a **divider** carries no floor (§5's narrow reading, `vg-200`/`vg-318`) **with a
-named debt**, because three cells are pinned below 4.5:1 today (`vg-201`'s
-`--warn` text) as measured floors that fail if they get worse; the slider's thumb
-is measured against both halves of its own track
+text meets 4.5:1 and the boundaries §5 binds — the focus boundary and a control's
+only separation — meet 3:1 in all six palettes; the gate holds one 3:1 floor of
+its own beside §5's — a checked control's accent fill against the surface under
+it, which is a state's mark rather than a boundary, because the switch's knob
+also moves and changes colour; a **divider** carries no floor (§5's narrow
+reading, `vg-200`/`vg-318`) **with a named debt**, because three cells are pinned
+below 4.5:1 today (`vg-201`'s `--warn` text) as measured floors that fail if they
+get worse; the slider's thumb is measured against both halves of its own track
 and must beat each with its interior or its ring — the thumb is two parts
 because no flat colour can, which left the unfilled half at 1.81:1 in graphite
 and 1.35:1 in light;

@@ -30,9 +30,10 @@ satisfies every token in the bible and still does not look like the mockup.
 
 ## Last completed change
 
-- **§5's 3:1 is the narrow reading the user ruled**: `PINNED_FLOOR.boundary` is deleted from `design-language.spec.ts`, the well and chrome-edge probes are a `divider` that is still measured and printed but asserted of no floor, and `design-language.md` §5 now names the two boundaries it binds — the focus boundary and a control's only separation.
-- **The drawing's preview bars depict the palette's ground**: five solid bars in `docs/design/mockups/current/settings.html` are repainted to `--shell-backdrop`, the height row is re-anchored on the value the drawing now paints, and five new `PARITY` colour rows read a bar's colour — the light bar's gradient ground is read by no colour row and is reported as uncovered.
-- **`vg-200`, `vg-318` and `vg-321` close as `withdrawn`** into `backlog-archive.jsonl`, each `detail` carrying the user's ruling quoted verbatim from `12e75d42`, and the spec's two `3:1` / `five cells` restatements are corrected.
+- **§5's "only these two" and the gate now agree**: the review's medium finding was resolved on the bible's own classification question — a checked toggle's state is carried by the pill's fill, the thumb's position and the thumb's colour, so its accent fill is not the control's *only* mark; the spec no longer attributes a checked state to §5, and the gate's `checked` 3:1 floor is **kept** and named as the gate's own rather than deleted to make the words agree.
+- **27 stale bible line pointers were corrected in four files** (`mockup-values.ts`, `design-language.spec.ts`, `editor-shell.css`, `editor-shell.tokens.test.ts`); §7.1's and §7's diagram had rotted, `§4 (":123")` was never right, and every pointer left in those files was read at HEAD and resolves.
+- **`vg-350` files the light preview bar** — it is the one bar no colour row reads, because its ground is a gradient that `colourValue` answers `null` for, and the row says why that is a row and not a gate.
+- **The task-1 report's two stale evidence pointers are corrected**, one of them because the Playwright JSON reporter nests suites, so `testResults[].annotations` answers empty and makes a recorded row look absent; the design-language gate is 10/10 on a rebuilt bundle and the fix round changed no assertion.
 
 ## Next
 

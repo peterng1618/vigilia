@@ -364,7 +364,7 @@ body,
   /* §3's elevation 3 carries a scrim as well as a shadow
      (`design-language.md:105`), and this is it. A token rather than a §4 role
      because §4 names no scrim role, and a token rather than the literal the
-     overlay wrote because §10 (`:449`) forbids a hex value in a surface. */
+     overlay wrote because §10 (`:462`) forbids a hex value in a surface. */
   --elev-scrim: #00000073;
 }
 
