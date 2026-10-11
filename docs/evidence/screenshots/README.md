@@ -40,6 +40,9 @@ open and nothing selected, the state `shell.html` draws) and
 and both are produced by the registered actions above: the first by
 `captures the shell with the Add pane open and nothing selected`, the second by
 `captures each palette's own surface` (the `shell-palette-graphite` file).
+**Plan 6's glyph close adds a third to that pair**: `shell-capture-glyphs.png`
+is the same state on the drawing's own ground, from `captures the shell glyphs
+and words with the Add pane open`.
 
 **Plan 8's pair sits beside `settings.html` the same way**, and is the state that
 drawing draws — its Appearance panel, the only view it holds, in the drawing's
@@ -100,6 +103,7 @@ result, not merely a mounted editor.
 | Settings modal | Open the rail's gear and read each tab, in both palettes | `settings-appearance`, `settings-keyboard`, `settings-about` / `captures the settings modal's three tabs` — six files from one action, each tab in graphite and `-editorial` |
 | Shell | Mount the shell with the Add slot open and nothing selected | `editor-shell-add` / `captures the shell with the Add pane open` |
 | Panes | Show each of the four rail panes and read its own surface | `pane-composition`, `pane-add`, `pane-tokens` and `pane-document` / `captures each pane of the four-slot rail` — four files from one action |
+| Glyphs | Mount the shell with the Add slot open and read every glyph's weight and every icon-only control's tooltip | `editor-shell-glyphs` / `captures the shell glyphs and words` |
 | Design language | Mount the control set over the built stylesheet and read it in a panel | `control-set` / `the control set renders in the design language` — two files, `-desktop-chromium` (graphite, the ground the mockup is drawn on) and `-editorial-desktop-chromium` |
 | Feedback | Error, notice, disabled action or compatibility message | add when changed |
 

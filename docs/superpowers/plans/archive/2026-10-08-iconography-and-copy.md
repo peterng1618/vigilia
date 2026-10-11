@@ -656,8 +656,10 @@ Replace "Last completed change" with 1–5 bullets on this commit, one item per 
 The spec's Acceptance section, item by item, `met` or `not met` with its evidence.
 Observed on a rebuilt bundle (`npm run build` + `build:fixture`, exit 0) at
 `9a97856e`; the raw commands, their counts and the runs' exit codes are in
-`.superpowers/sdd/2026-10-08-iconography-and-copy/task-8-report.md`. **Fourteen
-met; two not met** — item 3's real-host clause and item 16's plan-6 half.
+`.superpowers/sdd/2026-10-08-iconography-and-copy/task-8-report.md`. Task 9 then
+turned item 16 met (its own parity capture) and left item 3 where it stands, so
+the ledger reads **fifteen met; one not met** — item 3's real-host clause, which
+keeps the objective open even though this plan's local glyph work is finished.
 
 This is the ledger's home. A ledger is current truth, so it lives in a document
 rather than in a commit body that could only be corrected by rewriting history.
@@ -678,7 +680,7 @@ rather than in a commit body that could only be corrected by rewriting history.
    one history, undo) → 13 passed with `add-pane.spec.ts`.
 3. **NOT MET — §13.1's real-host clause.** The item reads that §13.1's
    walkthrough runs on the real host, and §13.1 assigns that walkthrough to this
-   plan (Task 8's Interaction closure). No existing spec runs it: the
+   plan (Task 8's Interaction closure, `:593`). No existing spec runs it: the
    `desktop-host` project boots the real host but matches
    `host-(player|settings|media|bleed|chrome).spec.ts` only, and none of those
    drives the editor's keyboard walkthrough (`host-player.spec.ts:323` saves from
@@ -699,7 +701,12 @@ rather than in a commit body that could only be corrected by rewriting history.
    language" → 1 passed.
 5. **met (on the spec §2.2 carve-out)** — No native `<select>` and no native
    `input type=range` in a rendered surface: the three commands read 1 / 12 / 6 —
-   the `<select` count is **12**, and all twelve are comments (none is a select).
+   the `<select` count is **12**, and all twelve are comments (none is a select),
+   and the **6** `"range"` hits are the one test-only builder
+   (`controls/number-field.ts:191`) plus five *assertions*
+   (`expect(x.type).toBe("range")` at `glass.dom.test.ts:288,349`,
+   `index.dom.test.ts:352` and `panel.dom.test.ts:685,896`), so the count is one
+   builder and five readings rather than six builders.
    The only real builders are the test-only
    `editor-shell/controls/settings-field.ts:196` and `number-field.ts:191`, and
    **`vg-266`** owns both (`vg-264` does not name `:191`). One native range input
@@ -748,19 +755,26 @@ rather than in a commit body that could only be corrected by rewriting history.
     `shell-palette-` capture, **6 of 6** images read rather than their computed
     values — graphite near-black, editorial cream, ember peach, moss sage, plum
     lilac, light mint; `shell-appearance.spec.ts` → 9 passed.
-16. **NOT MET (plan 6's half)** — Every plan's parity capture exists: of the five
-    earlier plans, all five have their images, but the evidence is thinner for two
-    than for the other three: plans 2, 4 and 5 have nameable completion reports
-    (plan 2's is `2026-10-08-the-shell-and-the-rail.md:693`), while plans 1 and 3
-    have none on disk and none in their plan files — no
+16. **met (Task 9 landed the missing half)** — Every plan's parity capture
+    exists: of the five earlier plans, all five have their images, but the
+    evidence is thinner for two than for the other three: plans 2, 4 and 5 have
+    nameable completion reports (plan 2's is
+    `2026-10-08-the-shell-and-the-rail.md:693`), while plans 1 and 3 have none on
+    disk and none in their plan files — no
     `.superpowers/sdd/gates-and-the-control-set/` or `the-inspector/` workspace
     survives — so their surviving record is the commit bodies `1f991845` and
     `9ee1fc21`. **Plan 1's ten differences no longer exist anywhere**: `1f991845`
     defers them to a task report deleted with its workspace. Plan 3's survive in
     `9ee1fc21`'s body beside each difference's owner. Plans 7 and 8 sit beside the
     drawing in `docs/design/mockups/current/`. **Plan 6's own capture is Task 9's
-    and does not exist yet**, so the redesign is not announced closed while this
-    stands.
+    and landed with it**: `docs/design/mockups/current/shell-capture-glyphs.png`
+    — the shell with the Add pane open and nothing selected, on the drawing's own
+    ground — sits beside `current/shell.html`, written by the registered action
+    `captures the shell glyphs and words with the Add pane open`
+    (`docs/evidence/screenshots/editor-shell-glyphs-desktop-chromium.png`), with
+    every difference adjudicated in the Task 9 report. This item stood `not met`
+    for that capture alone, so **it turned met when the capture was registered**
+    and no other item moved.
 
 **The interaction closure ran one half.** The preview half ran: `keyboard.spec.ts`
 → 5 passed on the rebuilt desktop-chromium bundle, plus the control-set contrast
@@ -770,11 +784,12 @@ gate. The real-host half did not run, for the reason item 3 states.
 existing row — `vg-266` (the dead `editor-shell/controls/` builders), `vg-271`
 (the native-control instrument's gap), `vg-274` (`editor-shell.css` in no gate),
 `vg-286` (no rule for test files), `vg-330` (supersedes item 11 when Settings
-becomes a pane) — or by Task 9 within this plan (item 16). Two rows were updated
-rather than filed: `vg-268`'s "three native selects" clause corrected to
-`ControlSelect` (`font-picker.tsx:277,294,315`), and `vg-204` left **open** with
-`keyboard.spec.ts`'s 5/5 at `78a5575e` recorded and not treated as proof the defect
-is gone.
+becomes a pane). Task 9 filed no row either: item 16 was the one it owned, and
+it is met. Two rows were updated rather than filed: `vg-268`'s "three native
+selects" clause corrected to `ControlSelect`
+(`font-picker.tsx:277,294,315`), and `vg-204` left **open** with
+`keyboard.spec.ts:123`'s 5/5 at `78a5575e` recorded and not treated as proof the
+defect is gone.
 
 ## Out of scope
 

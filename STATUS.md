@@ -8,7 +8,8 @@ Branch: `develop`
 **Rebuild the editor's GUI in the design language — the whole editor, every
 frontend surface except the canvas.**
 
-Plans 1–5, 7 and 8 are closed. The target is
+Plans 1–5, 7 and 8 are closed, and plan 6 is finished locally and archived; the
+objective stays open on one blocked acceptance item. The target is
 [`docs/design/design-language.md`](docs/design/design-language.md), the contract is
 [`2026-10-08-editor-design-language-design.md`](docs/superpowers/specs/2026-10-08-editor-design-language-design.md),
 the checked drawing is [`docs/design/mockups/`](docs/design/mockups/), and the boundary that
@@ -22,32 +23,31 @@ satisfies every token in the bible and still does not look like the mockup.
 
 ## Active work
 
-- **Plan 6 — [`iconography-and-copy`](docs/superpowers/plans/2026-10-08-iconography-and-copy.md) — is the active plan**, nine tasks in three phases: Phase 1 (1–3) the census and the glyph set, Phase 2 (4–6) the one-string pairing and the copy, Phase 3 (7–9) the gate, the Acceptance and the parity close.
-- **Task 1 is complete and reviewed clean** (`5f676da4`): the census of what landed, which refuted three of the plan's own hypotheses — 15 lucide importers against a guessed nine, **four** stroke weights against three, and both "hand-wired" pairings the brief named already one string by construction.
-- **Task 2 is complete and reviewed clean** (`ef81b183` + `93b2286f` + `08c71e28`): one chrome glyph vocabulary with one weight rule, the census's four weights collapsed, the three out-of-band sites adjudicated one at a time, and both hand-authored sources exempted with §6's reason recorded.
-- **Task 3 is complete and reviewed clean** (`9031ed7d`): the object-kind glyph set closed over `LayerKind` with a totality case enumerating the kind vocabulary rather than the map's own keys, and both closure halves red-proved — `satisfies` rejects a missing key and an excess one alike.
-- **Phase 2 is closed and Phase 3 is down to Task 9**: Task 4's one-string pairing (`4bae5ed9`, fix `a512efb7`), Task 5's copy net, **Task 6's two copy-defect nets**, **Task 7's ratchet and its three closures** and **Task 8's Acceptance ledger** are complete — the parity capture is Task 9's.
+- **No plan is active.** Plan 6 is finished locally and moved to [`archive/`](docs/superpowers/plans/archive/2026-10-08-iconography-and-copy.md); the next plan starts at the queued rulings below.
+- **Plan 6's nine tasks are complete**: the census, the one glyph vocabulary and weight rule, the closed kind set, the one-string pairing, the copy nets, the ratchet, the sixteen-item Acceptance ledger and Task 9's parity capture.
+- **Its Acceptance ledger reads fifteen met, one not met** — §13.1's real-host walkthrough, which plan 6 was forbidden to add and no other plan owns.
 - **Two changes are ruled and queued after plan 6** (`vg-330`, `vg-331`): Settings becomes a pane opened from the rail's gear with the four slots kept and the drawing redrawn as a panel, and the palettes gain a second highlight whose role is an attention or in-flight state, defined before any colour is chosen.
 
 ## Last completed change
 
-- **Task 8, the Acceptance ledger — fix round 2**: the ledger moved out of the commit body into the plan file's `## Acceptance ledger` section ([`2026-10-08-iconography-and-copy.md`](docs/superpowers/plans/2026-10-08-iconography-and-copy.md), after Task 9), because a ledger is current truth and a commit body can only be corrected by rewriting history.
-- **The commit body is now a short pointer, not a second copy** of the sixteen items — a duplicate is a second thing to keep true, which is the defect this removes.
-- **The self-misstating sentence is fixed as it moved**: round 1's body said "two verdicts change" when only item 3's verdict changed and three evidence sentences were false or loose.
-- **No verdict re-adjudicated**: 14 met, 2 not met (item 3's real-host clause, item 16's plan-6 half); `vg-204` stays `open` and `vg-268`'s corrected clause stands.
-- **Self-review's proportion line corrected**: 800 lines against the spec's 717, 115 of them code and 125 the ledger — both figures had gone stale as later tasks grew the files.
+- **Task 9, the parity capture and the close**: the shell photographed in the drawing's own state by a new registered action, `captures the shell glyphs and words with the Add pane open` (image `editor-shell-glyphs`, `editor-shell-glyphs-desktop-chromium.png`), copied beside `current/shell.html` as `shell-capture-glyphs.png`.
+- **The capture's assertion is the half `design:check` cannot read**: every rendered glyph's `stroke-width` is §6's weight for its own size (57 glyphs across sizes 13, 14, 15, 17, 20, 22px), no glyph's descendant overrides it, and all 20 icon-only controls' rendered tooltips equal their `aria-label`s.
+- **Red-proved**: with `glyphStrokeWidth`'s top tier planted at `1.9` and the editor rebuilt, the capture failed `1 failed` while `npm run design:check` stayed green (exit 0, 71 files clean) — a weight set in a JSX prop is invisible to the token scan, which is why this reading exists.
+- **Item 16 turns met and item 3 stays not met**: plan 6's own parity capture existed nowhere before this commit, so the ledger now reads fifteen met, one not met — §13.1's real-host walkthrough, which keeps the redesign open.
+- **One mockup correction**: `current/shell.html`'s Text-row glyph declared 16px at `stroke-width="1.6"`, which is in no §6 tier, and now reads `1.7`; every other glyph stroke in `current/` is on-tier.
 
 ## Next
 
-1. **Task 9, the parity capture and the close** — the rebuilt bundle captured by an action registered in `docs/evidence/screenshots/README.md`, the image placed beside `docs/design/mockups/editor-shell.html` with every difference fixed or licensed by a cited rule, then this plan archived; it is what makes Acceptance item 16 met.
-2. **Plan 6's browser assertion (Task 9 Step 1)** — every rendered glyph's `stroke-width` is `glyphStrokeWidth(its size)`, no icon-only control's tooltip disagrees with its accessible name; run against a bundle from before Task 2 and confirm it fails.
-3. **The four rulings implemented**: `PINNED_FLOOR.boundary` deleted and §5's narrower rule written down, and the drawing's six preview bars repainted to the palette's ground with a `PARITY` row that reads a bar's colour.
-4. **Then, in order: the Settings pane** (`vg-330`, architectural — brainstorm → spec → plan), **the attention-colour role** (`vg-331`), and `design-md-replaces-the-bible` before the multi-device display objective.
+1. **The four rulings implemented**: `PINNED_FLOOR.boundary` deleted and §5's narrower rule written down, and the drawing's six preview bars repainted to the palette's ground with a `PARITY` row that reads a bar's colour.
+2. **The Settings pane** (`vg-330`, architectural — brainstorm → spec → plan) — it rewrites Acceptance item 11 when it lands, so read it as written until then.
+3. **The attention-colour role** (`vg-331`), defined before any colour is chosen.
+4. **`design-md-replaces-the-bible`** before the multi-device display objective.
+5. **Acceptance item 3** — §13.1's real-host walkthrough: no Playwright project matches it, so a plan that adds the check is what closes the editor-redesign objective.
 
 ## Blockers / unverified
 
+- **Acceptance item 3 is not met, and it keeps the objective open**: §13.1's keyboard-only walkthrough has no check on the real host — the `desktop-host` project matches `host-(player|settings|media|bleed|chrome).spec.ts` only — so the six-plan sequence does not close cleanly while plan 6's local glyph work is done.
+- **Two things are asserted but unprovable by any rendered surface**: the 10px weight tier, because nothing draws a glyph at or below 10px, and the five `KIND_GLYPHS` choices, because nothing renders `KIND_GLYPHS` — the drawing depicts no object kind and draws its `--faint` twisty at 10px where the product draws it at 13px, so Task 9 could check neither and recorded both.
 - **Every open row lives in [`docs/product/backlog.jsonl`](docs/product/backlog.jsonl), and every parked or unverified observation in the closed plans' ledgers with its ruling — read them there; this file mirrors neither.**
-- **`vg-330` supersedes an Acceptance item Task 8 recorded as met today**: the rail's gear opens the settings modal rather than a fifth pane, which holds while Settings is a modal — so Task 9 must keep it as written and not "fix" it forward, because the pane change lands after plan 6 and rewrites the item then; **two Acceptance items are not met** — item 3, because §13.1's real-host walkthrough has no check and adding one was out of this round's scope, and item 16, because plan 6's own parity capture is Task 9's — and the redesign stays unclosed until the latter lands.
-- **Two things are asserted but unprovable by any rendered surface**: the 10px weight tier, because nothing draws a glyph at or below 10px, and the five `KIND_GLYPHS` choices, because nothing renders `KIND_GLYPHS` — the drawing depicts no object kind, and draws its `--faint` twisty at 10px where the product draws it at 13px, so Task 9 can check neither.
 - **The known-red and over-claiming set is what to watch**: the red browser list is short but mixed — `composition-panel.spec.ts:897` (`vg-210`), `keyboard.spec.ts:123` (`vg-204`, which **passed 5/5 at HEAD** and so is not reproducing today, but the row **stays open** pending a ruling), `publish-loop.spec.ts:380` (`vg-212`) and `editor-clip.spec.ts`'s phone run (`vg-257`), with **`vg-285` measured rather than suspected**; `vg-292`, `vg-304`, `vg-271`, `vg-274`, `vg-278`, `vg-286`, `vg-287`, `vg-296`, `vg-302`, `vg-313`, `vg-314` and `vg-320`/`vg-323`/`vg-324`/`vg-327`/`vg-329` each claim more coverage than they have; and **`vg-192` is that family repo-wide**: `tests/e2e/` belongs to no tsconfig, so a type error in a browser spec is caught by neither `typecheck` nor Playwright.
 - **Unpushed:** `develop` is far ahead of `origin/develop` and no push is authorised.
