@@ -32,16 +32,16 @@ satisfies every token in `DESIGN.md` and still does not look like the mockup.
 
 ## Last completed change
 
-- **Task 9's rank 4 landed and passed both verdicts** — `dd7c3365` deletes `selection-inspector`'s private writer and points both inline writers at `writeAuthoredBoxDimension`, with `ownership.md` updated in the same commit.
-- **The manager suite is unchanged and was re-measured independently, not taken from the report** — 528 tests in 46 files, identical file sets and identical test names before and after, run in a detached base worktree.
-- **Consolidating three writers onto one owner cost one behaviour delta, and it is filed rather than papered over** — the owner's pre-existing `value < 1` refusal now applies on the resize path, so a text object under about two scene units wide stops updating its authored box; `vg-370` records it.
-- **No behaviour-neutral fix existed, which is why it was accepted** — relaxing the floor widens behaviour on `controls-manager`'s path and a second write path restores the two-owner defect rank 4 removed.
-- **The plan's "13,200 lines of manager tests" was deleted rather than corrected** — the paragraph above it rules that this phase never uses a line budget, so the count contradicted its own document; `vg-233`'s detail was also corrected to stop describing deleted code.
+- **Task 9's rank 5 landed and passed both verdicts** — `248ff08f` gives the library save protocol its own owner: `theme-library-manager/index.ts` takes 223 lines out of `editor-session.ts`, which drops from 1283 to 1077.
+- **Nothing changed behaviour and the whole unit suite says so** — 3287 tests in 246 files, plus the session suite at 25/25, with 184 of the 240 deleted lines appearing verbatim in the new owner and the remaining 56 accounted for line by line.
+- **The plan named the wrong harness, and the correction is in both places** — no manager test references the session, so `editor-session.dom.test.ts` was rank 5's real harness; the plan and this file no longer claim the 528 manager tests as the evidence for a move they never touch.
+- **The census's `~250 lines` measures 223 and survives as an approximation** — 223 and 240 bracket it, and the implementer quoted the harsher reading.
+- **Rank 5 surfaced three rows rather than three fixes** — `vg-372` (`biome check` red where the gate is green), `vg-373` (the save error still reported under `controls`), `vg-374` (`editor-session.ts` past the 800 stop, and the new owner the only manager with no test).
 
 ## Next
 
-1. **Task 9's second candidate goes out next — rank 5, the save protocol base** — ~250 lines out of `editor-session.ts`, the largest single reduction available and the one move that creates a manager rather than merging one.
-2. **The remaining order is 9 then 6, and the labels are why** — the census uses seven label phrases, not two, and rank 6's `Clean-ish` names no destination, so it waits until the Line scalars have an owner established from the code.
+1. **Task 9's third candidate goes out next — rank 9, `object-actions`' eligibility agreement** — six sites in one file, and the file already holds the pattern at `:243-245`, where eligibility delegates to `arrangeEligible` rather than re-encoding the refusal.
+2. **Rank 6 goes last of the four, and its hedge is already surveyed** — `controls-manager`'s Line writes are Fabric `Control` action handlers, so the move either delegates to an existing geometry owner or the candidate dissolves; the census names no destination, and inventing one to give it somewhere to point is the failure mode.
 3. **Phase 2's candidate report at HEAD, then per-candidate verification** — nothing is deleted until each candidate is checked against the string-resolved vocabulary: the `data-vigilia-*` attributes, the `--shell-*` custom properties, the `KIND_*` registries and the four gate scripts that read the source tree as data.
 4. **`vg-368` waits on a decision** — whether `src/web/.agent-scratch/` is deleted, relocated outside the tree, or excluded per tool; deleting is not obviously safe because it holds screenshots and a vitest report that may be the only copy.
 5. **The three failures the capture run surfaced** — `vg-359` (which also owns the one stale capture), `vg-360` and `vg-361`; nothing fixed on sight, because the first question for each is whether the surface moved or the locator did, and those want opposite fixes.

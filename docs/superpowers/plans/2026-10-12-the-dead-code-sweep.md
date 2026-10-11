@@ -81,7 +81,7 @@ The five ways this sweep deletes something alive.
 
 **And it is not a line-count chore.** `AGENTS.md` calls 500 a signal and 800 a stop, so **the count is what found this, not what fixes it.** Splitting a file until both halves sit under the threshold while both go on owning the same concept is the failure mode, and it is the one move this phase forbids. The unit of work is a *concept and its owner*, never a line budget.
 
-**Acceptance inverts against the other three phases: nothing may change behaviour.** The manager tests are the harness, and a change that turns one of them red is a defect rather than a refactor. Removal phases are judged by what disappeared; this one is judged by what moved without moving anything else.
+**Acceptance inverts against the other three phases: nothing may change behaviour.** The tests that cover the *moved* code are the harness, and a change that turns one of them red is a defect rather than a refactor — **and that is not the manager suite by name.** Rank 5 moved the save protocol out of `editor-session.ts`, and **no manager test file references the session at all**; the harness for that move was `editor-session.dom.test.ts`. Naming one suite as *the* harness is how a move gets measured against tests that never touch it. Removal phases are judged by what disappeared; this one is judged by what moved without moving anything else.
 
 ### Task 8: The manager census against the ownership map
 
