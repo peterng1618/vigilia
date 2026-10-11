@@ -2570,13 +2570,15 @@ const SHELL_DRAWING = "docs/design/mockups/current/shell.html";
  * `font-weight` and `letter-spacing`: §2 states a line-height and a weight per
  * role, but a drawing's `/1` on a one-line label is a box rather than a reading
  * step, and a size is what a role is chosen by. The drawings' **page furniture**
- * — the `<style>` block's three boilerplate rules, and the token table the
- * outermost element carries — is read like everything else, because
- * `mockupDeclarations` gives no structural split between the page and the drawn
- * surface inside it. That is the reading's own limit: today it is harmless,
- * since the only furniture declaration in a spacing or type property is
- * `padding:24px` on the three centring wrappers and 24 is a §3 step, but a
- * future furniture value off the scale would redden this row and need naming.
+ * — each drawing's `<style>` block (`body { margin: 0; … font: 12px/1.45 … }`)
+ * and the token table the outermost element carries — is read like everything
+ * else, because `mockupDeclarations` gives no structural split between the page
+ * and the drawn surface inside it. That is the reading's own limit, and it is
+ * not "nothing furniture-shaped is in a scale property": `margin: 0`, `font:
+ * 12px` and the wrapper's `padding:24px` all are. It passes today because every
+ * one of those happens to be on the scale already (0 is the collapse reset, 12
+ * is `--text-sm`), so a future furniture value off the scale would redden this
+ * row and have to be named rather than exempted.
  *
  * The whole-file reading comes from `mockupDeclarations`, not from a selector:
  * the property is bound wherever it is written, and `[style*="…"]` could only
@@ -2628,30 +2630,37 @@ test("every literal the checked drawings declare is on §3's scale or §2's", ()
    *  a gutter; a px anywhere else is a size this row does not hold. */
   const SPACING_PROPERTY =
     /^(?:padding|margin|inset|translate)(?:-|$)|^(?:gap|row-gap|column-gap|top|right|bottom|left)$/;
-  /** The named degenerate spacing values, each with the reason it is exempt. */
+  /** The named degenerate spacing values, each with the reason it is exempt.
+   *  `0px` is deliberately absent: `0` is the same value, no drawing writes the
+   *  unit form, and a second spelling of one exemption is how a list of escapes
+   *  starts. */
   const SPACING_DEGENERATE = new Map([
     ["0", "no space — the degenerate absence of a gutter"],
-    ["0px", "no space, spelled with the unit CSS also allows"],
     [
       "1px",
-      "a hairline, whose value is its thickness (§7.2's rail inset; `design-tokens.mjs`'s `ALWAYS_PX` names 1 for the same reason)",
+      "a hairline, whose value is its thickness (§7.2's rail inset; `design-tokens.mjs`'s `ALWAYS_PX` names 1 for the same reason). This one cannot be keyed on the property: the drawing spells its hairlines as `padding`, and a 1px padding that *is* a gutter is indistinguishable from a 1px padding that is a rule, so a 1px gutter would pass here. Named rather than hidden.",
     ],
     [
       "auto",
       "the slack a flex line has left — not a length on the base at all",
     ],
   ]);
-  /** A **mark's anchor**: negative (the rail's accent bar at `right:-6px` hangs
-   *  across the 6px gutter) or fractional (the slider's thumb at `top:-3.5px`
-   *  centres a 10px circle on a 3px track), and `%`, which is a share of the
-   *  parent's own size rather than a step. §3's step table is a table of gutters
-   *  and insets; none of these is one, and no step expresses them. */
-  const isAnchor = (value: string): boolean =>
-    value.endsWith("%") ||
-    (/^-?[\d.]+px$/.test(value) &&
-      (value.startsWith("-") || value.includes(".")));
-  const spacingAllowed = (value: string): boolean => {
-    if (SPACING_DEGENERATE.has(value) || isAnchor(value)) return true;
+  /** The properties whose px is a **mark's anchor** rather than a gutter: a side
+   *  offset, where a negative pulls a mark across a gutter it does not own and a
+   *  fractional one centres a glyph in a box smaller than itself. §3's step
+   *  table is a table of gutters and insets; none of these is one.
+   *
+   *  Keyed on the **property**, not the value alone — the value cannot tell them
+   *  apart: `top:-3.5px` is a slider's thumb on a 3px track, and `padding:-3.5px`
+   *  would be a mistake the same test would wave through. */
+  const ANCHOR_PROPERTY = /^(?:inset|top|right|bottom|left)(?:-|$)/;
+  const isAnchor = (value: string, property: string): boolean =>
+    ANCHOR_PROPERTY.test(property) &&
+    (value.endsWith("%") ||
+      (/^-?[\d.]+px$/.test(value) &&
+        (value.startsWith("-") || value.includes("."))));
+  const spacingAllowed = (value: string, property: string): boolean => {
+    if (SPACING_DEGENERATE.has(value) || isAnchor(value, property)) return true;
     const parsed = /^(\d+(?:\.\d+)?)px$/.exec(value);
     return (
       parsed !== null && SPACING.has(Number.parseFloat(parsed[1] ?? "NaN"))
@@ -2683,15 +2692,23 @@ test("every literal the checked drawings declare is on §3's scale or §2's", ()
   const tokens = (value: string): readonly string[] =>
     value.split(/[\s/]+/).filter((part) => part !== "");
 
+  /** One named exemption, printed with its reason on a failure so the reader of
+   *  a red row sees what the row *does* let through, not only what it refused. */
+  const named = (value: string, reason: string): string =>
+    `${value} — ${reason}`;
+  const SQUARE = "0 / 0px / 0% — a square corner, the absence of rounding";
+
   /** The three classes, each with what it reads, the values one declaration
-   *  spells, and the scale those values are held to. */
+   *  spells, the scale those values are held to, and the exemptions a failure
+   *  should name. */
   const ARMS: readonly {
     readonly property: string;
     readonly scale: string;
     readonly values: (
       declaration: MockupDeclaration,
     ) => readonly string[] | null;
-    readonly allowed: (value: string) => boolean;
+    readonly allowed: (value: string, property: string) => boolean;
+    readonly exempt: readonly string[];
   }[] = [
     {
       property: "border-radius",
@@ -2700,7 +2717,13 @@ test("every literal the checked drawings declare is on §3's scale or §2's", ()
         declaration.property === "border-radius"
           ? tokens(declaration.value)
           : null,
-      allowed: radiusAllowed,
+      allowed: (value) => radiusAllowed(value),
+      exempt: [
+        SQUARE,
+        ...[...RADIUS_DEGENERATE].map(([value, reason]) =>
+          named(value, reason),
+        ),
+      ],
     },
     {
       property: "spacing",
@@ -2710,6 +2733,12 @@ test("every literal the checked drawings declare is on §3's scale or §2's", ()
           ? tokens(declaration.value)
           : null,
       allowed: spacingAllowed,
+      exempt: [
+        ...[...SPACING_DEGENERATE].map(([value, reason]) =>
+          named(value, reason),
+        ),
+        "a mark's anchor — a negative or fractional px, or a `%`, in `top`/`right`/`bottom`/`left`/`inset`",
+      ],
     },
     {
       property: "type",
@@ -2718,7 +2747,8 @@ test("every literal the checked drawings declare is on §3's scale or §2's", ()
         const size = typeSize(declaration);
         return size === null ? null : [size];
       },
-      allowed: typeAllowed,
+      allowed: (value) => typeAllowed(value),
+      exempt: ["none — §2's six sizes are the whole scale"],
     },
   ];
 
@@ -2734,16 +2764,40 @@ test("every literal the checked drawings declare is on §3's scale or §2's", ()
     "a square corner is not accepted, so an ordinary radius shorthand would false-positive",
   ).toEqual([]);
   expect(
-    [...SPACING_DEGENERATE.keys(), "1.5px", "-3.5px", "-6px", "50%"].filter(
-      (value) => !spacingAllowed(value),
+    [...SPACING_DEGENERATE.keys()].filter(
+      (value) => !spacingAllowed(value, ""),
     ),
     "a named degenerate spacing value is not accepted, so this row would fail the drawing it names",
+  ).toEqual([]);
+  // The anchors are read **on the properties that carry them**, and refused on
+  // the properties that do not: an exemption keyed on the value alone would let
+  // `padding:-3.5px` through, which is the hole this control closes.
+  expect(
+    [
+      ["left", "1.5px"],
+      ["top", "-3.5px"],
+      ["right", "-6px"],
+      ["left", "50%"],
+    ].filter(
+      ([property, value]) => !spacingAllowed(value ?? "", property ?? ""),
+    ),
+    "a mark's anchor is not accepted on the property that draws it, so this row would fail the drawing it names",
+  ).toEqual([]);
+  expect(
+    [
+      ["padding", "-3.5px"],
+      ["margin", "-20px"],
+      ["gap", "150%"],
+    ].filter(([property, value]) =>
+      spacingAllowed(value ?? "", property ?? ""),
+    ),
+    "the anchor exemption is keyed on the value alone, so an off-scale gutter would pass as a mark",
   ).toEqual([]);
   expect(
     (
       [
         ["radius", () => radiusAllowed("7px")],
-        ["spacing", () => spacingAllowed("5px")],
+        ["spacing", () => spacingAllowed("5px", "gap")],
         ["type", () => typeAllowed("11.5px")],
       ] as const
     )
@@ -2770,9 +2824,9 @@ test("every literal the checked drawings declare is on §3's scale or §2's", ()
       read.push(`${drawing.name} ${arm.property} (${inClass.length})`);
       for (const declaration of inClass) {
         for (const value of arm.values(declaration) ?? []) {
-          if (arm.allowed(value)) continue;
+          if (arm.allowed(value, declaration.property)) continue;
           offScale.push(
-            `${drawing.name}:${declaration.line} ${declaration.property}: ${declaration.value} — \`${value}\` is not on ${arm.scale}, is no named degenerate value, and is no mark's anchor`,
+            `${drawing.name}:${declaration.line} ${declaration.property}: ${declaration.value} — \`${value}\` is not on ${arm.scale} and is not one of this class's exemptions (${arm.exempt.join("; ")})`,
           );
         }
       }

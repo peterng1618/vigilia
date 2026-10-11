@@ -897,7 +897,7 @@ export const PARITY: readonly ParityRegion[] = [
 
      **The row reads the inspector's instance, and the title names it rather than
      claiming the picker.** `shell.html:129` (the picker) declares the trigger as
-     `display:flex;align-items:center;gap:6px;…;border-radius:6px;padding:5px
+     `display:flex;align-items:center;gap:6px;…;border-radius:6px;padding:4px
      8px`; `:275` and `:312` (the inspector's triggers) declare exactly that plus
      a leading `flex:1;`, so the picker's attribute is a **suffix** of theirs and
      every substring that matches it matches them too. A `[style*="…"]` selector
