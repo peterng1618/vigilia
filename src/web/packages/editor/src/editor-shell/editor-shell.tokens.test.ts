@@ -145,10 +145,120 @@ describe("shell token stylesheet", () => {
   /** A chip names a palette it is not necessarily rendering under, so without
    *  a declaration of its own it inherits the live palette's tokens — an ember
    *  chip under graphite painted graphite's dark glass behind an ember ring.
-   *  The swatch joins the token baseline so it cannot. */
-  it("scopes the swatch into the token baseline", () => {
-    expect(css).toMatch(
-      /:root,\s*\[data-shell-palette="editorial"\],\s*\.editor-shell-palette-swatch\s*\{/,
+   *  The swatch joins the editorial block so it cannot.
+   *
+   *  Editorial and **not** bare `:root`, which `vg-351` made the base frame
+   *  `systemShellPalette` resolves: a swatch grouped with the base would follow
+   *  the OS preference rather than the palette it names — the same defect,
+   *  arrived at from the other side. The pattern is anchored at the start of
+   *  the selector list so a list that merely *contains* these two still reds,
+   *  and a light-named swatch is the one case where that grouping and a palette
+   *  block collide at equal specificity: `light`'s block must come after it, or
+   *  the swatch paints editorial under a light name. */
+  it("scopes the swatch into the editorial baseline", () => {
+    const swatchAt = css.search(
+      /^\s*\[data-shell-palette="editorial"\],\s*\.editor-shell-palette-swatch\s*\{/m,
+    );
+    expect(swatchAt).toBeGreaterThan(-1);
+    expect(
+      css.indexOf('[data-shell-palette="light"] {'),
+      "`light`'s block precedes the baseline a light-named swatch shares with " +
+        "editorial, so the swatch paints editorial",
+    ).toBeGreaterThan(swatchAt);
+  });
+
+  /** `vg-351`: the frame before `applyShellPalette` writes the attribute, which
+   *  every browser assertion reads *instead of* seeing.
+   *
+   *  The base is `systemShellPalette`'s answer — `light` on the bare root, and
+   *  `graphite` from the dark media query — and `palette.ts` owns that rule
+   *  while this mirrors its outcome in CSS. Three ways the mirror can go wrong
+   *  with nothing to say so are checked here: either copy drifting from the
+   *  palette it mirrors, and either base rule being placed after a palette
+   *  block, where at equal specificity the palette block must win. The painted
+   *  frame is `shell-appearance.spec.ts`'s. */
+  it("paints the pre-attribute base as the palette the OS resolves", () => {
+    // Comments carry `:` and `;` — `/* --bg: the drawn ground is flat */` is a
+    // declaration as far as a regex is concerned — so they come out first.
+    const declarations = (body: string): Record<string, string> =>
+      Object.fromEntries(
+        [
+          ...body
+            .replace(/\/\*[\s\S]*?\*\//g, "")
+            .matchAll(/(--[a-z-]+)\s*:\s*([^;]+);/g),
+        ].flatMap((match) =>
+          match[1] === undefined || match[2] === undefined
+            ? []
+            : [[match[1], match[2].trim()] as const],
+        ),
+      );
+
+    // Column 0 is what separates the base from the dark base: the one inside
+    // the media query is indented.
+    const baseAt = css.search(/^:root \{/m);
+    const base = /^:root \{([^}]*)\}/m.exec(css)?.[1] ?? "";
+    expect(baseAt, "no bare `:root` base block").toBeGreaterThan(-1);
+
+    const darkAt = css.indexOf("@media (prefers-color-scheme: dark)");
+    const dark =
+      /@media \(prefers-color-scheme: dark\) \{\s*:root \{([^}]*)\}/.exec(
+        css,
+      )?.[1];
+    expect(
+      dark,
+      "no `prefers-color-scheme: dark` block repaints the bare root, so a " +
+        "dark-reporting OS paints the light base until the attribute lands",
+    ).toBeDefined();
+    expect(
+      darkAt,
+      "the dark base precedes the base block it overrides, so a dark OS gets " +
+        "light until the attribute lands",
+    ).toBeGreaterThan(baseAt);
+
+    // Every palette block must come after both, or the palette loses to the
+    // base on the document element — `[editorial]` is the first of them.
+    const palettesAt = css.indexOf('[data-shell-palette="editorial"],');
+    expect(palettesAt, "no palette blocks").toBeGreaterThan(-1);
+    expect(
+      darkAt,
+      "a base rule sits below the palette blocks, which it then outranks at " +
+        "equal specificity for every palette",
+    ).toBeLessThan(palettesAt);
+
+    expect(
+      declarations(base),
+      "the base has drifted from the `light` palette it mirrors, so a " +
+        "light-reporting OS's first frame is not the light palette",
+    ).toEqual(declarations(declarationBlock("light")));
+
+    // Three tokens graphite declares beyond its colours are deliberately not
+    // carried: they are what ember, moss, plum and light inherit from the bare
+    // root instead of declaring, and this rule matches the root with a palette
+    // resolved just as it does without one.
+    const omitted: ReadonlySet<string> = new Set([
+      "--shell-display",
+      "--shell-flat",
+      "--vigilia-control-bg",
+    ]);
+    const graphite = declarations(declarationBlock("graphite"));
+    for (const token of omitted) {
+      expect(
+        graphite[token],
+        `${token} is not graphite's to omit`,
+      ).toBeDefined();
+      expect(
+        dark,
+        `${token} in the dark base moves ember, moss, plum and light under a ` +
+          "dark-reporting OS, where they inherit it from the bare root",
+      ).not.toContain(token);
+    }
+    expect(
+      declarations(dark ?? ""),
+      "the dark base has drifted from the `graphite` palette it mirrors",
+    ).toEqual(
+      Object.fromEntries(
+        Object.entries(graphite).filter(([token]) => !omitted.has(token)),
+      ),
     );
   });
 

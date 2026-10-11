@@ -12,23 +12,126 @@ body,
   box-sizing: border-box;
 }
 
-/* Shell chrome tokens. The editorial palette is the default and is defined on
-   bare :root so a fresh profile renders it before any palette attribute is
-   applied. The five palettes below override only what they change.
+/* The base frame — and the fact that it is *not* editorial — is the first block
+   here. The bare root is the palette `systemShellPalette` resolves: `light` on
+   a light-reporting OS, `graphite` under the dark media query further down. It
+   is the same `light` body as `[data-shell-palette="light"]`'s, written twice
+   because a palette block may not share a selector list with the bare root and
+   still be beaten by one (equal specificity, source order) — and the `:not(…)`
+   guard that would save the copy is read as a *treatment* selector by
+   `scripts/design-tokens.mjs`, which counts such a block's literals as
+   violations where a definition block's are the values. That copy is
+   the one thing here that can drift silently, so `editor-shell.tokens.test.ts`
+   compares the two bodies token for token.
 
-   `applyShellPalette` writes `data-shell-palette` onto the document element,
-   so `:root` and the in-force palette selector are the same node and the
-   cascade picks the right one. Everything below resolves for all six.
+   It sits first because every palette block below overrides it by source order:
+   a bare `:root` and `[data-shell-palette="x"]` are the same node at equal
+   specificity, so nothing but order picks between them. `palette.ts` owns the
+   resolution rule and this mirrors its outcome for the one paint CSS reaches
+   before `applyShellPalette` writes the attribute; decision 0035 rejected a
+   second owner of the mapping, which is what an inline script resolving the
+   palette ahead of the bundle would have been. */
+:root {
+  --shell-surface: #eff9f2bf;
+  --shell-surface-strong: #f8fffbdf;
+  --shell-edge: #26463833;
+  --shell-text: #102119;
+  --shell-muted: #4f6659;
+  --shell-backdrop: linear-gradient(145deg, #d8ebe4, #afd4d1);
+  --shell-accent: #1c6b4f;
+  --shell-warm: #8a5a2b;
+  --shell-danger: color-mix(in srgb, #ff7e6e 40%, var(--shell-text));
+  --shell-primary-bg: var(--shell-accent);
+  --shell-primary-text: #eefaf3;
+  --bg: var(--shell-backdrop);
+  --panel: var(--shell-surface);
+  --panel-2: var(--shell-surface-strong);
+  --edge: var(--shell-edge);
+  --text: var(--shell-text);
+  --muted: var(--shell-muted);
+  --faint: color-mix(in srgb, var(--muted) 68%, transparent);
+  --accent: var(--shell-accent);
+  --warn: var(--shell-warm);
+  --hot: var(--shell-danger);
+  --stage: var(--shell-backdrop);
+  --hdr: var(--shell-surface);
+  --edge-2: color-mix(in srgb, var(--edge) 55%, transparent);
+}
 
-   The swatch joins this selector because a preview bar is a *self-contained
-   scope* rather than a window onto whatever is in force: it carries the
-   attribute of the palette it NAMES, and without a declaration here it would
-   inherit the live palette's tokens instead of resolving its own — an ember bar
-   under graphite painted graphite's dark ground behind an ember accent.
+/* The two `--shell-*` tokens that are not colours, and the only two no palette
+   block declares but graphite's and editorial's. They are on bare `:root`
+   because ember, moss, plum and light inherit them from here, and because
+   neither belongs in a palette: a display face and a flatness flag are not a
+   palette's colours. They are not in the base frame or the dark base either —
+   both of those match the root whatever palette is resolved, so a `--shell-flat`
+   there would move ember, moss, plum and light's settled value under a
+   dark-reporting OS. Editorial's block declares them a second time because a
+   swatch is a self-contained scope that declares every token it can paint with. */
+:root {
+  --shell-display: ui-serif, Georgia, "Times New Roman", serif;
+  --shell-flat: 1;
+}
+
+/* The dark half of the base frame: a dark-reporting OS resolves `graphite`, the
+   shell's default. A media query cannot share a selector list with the palette
+   block it mirrors, so graphite's colours and §4 roles are written a second
+   time here, and `editor-shell.tokens.test.ts` compares the two token for
+   token. Both base rules precede every palette block, whose values must win at
+   equal specificity — the dark one included: it matches the root with a palette
+   resolved exactly as it does without one.
+
+   It stops short of three of the tokens graphite declares beyond its colours:
+   `--shell-display`, `--shell-flat` and `--vigilia-control-bg`. Those are the
+   ones ember, moss, plum and light inherit from the bare root instead of
+   declaring, so carrying them here would move *their* settled values whenever
+   the OS reports dark. The cost is stated rather than hidden: a dark OS's
+   pre-attribute frame takes the editorial display face and control paper for
+   those three, and nothing paints them before the attribute lands. */
+@media (prefers-color-scheme: dark) {
+  :root {
+    --shell-backdrop: #0b0e12;
+    --shell-surface: #12161c;
+    --shell-surface-strong: #171c23;
+    --shell-edge: #242b34;
+    --shell-text: #e8ecf3;
+    --shell-muted: #8a97ab;
+    --shell-accent: #72e0c0;
+    --shell-warm: #f3aa64;
+    --shell-danger: #ff7e6e;
+    --shell-primary-bg: var(--shell-accent);
+    --shell-primary-text: #06131a;
+    --bg: var(--shell-backdrop);
+    --panel: var(--shell-surface);
+    --panel-2: var(--shell-surface-strong);
+    --edge: var(--shell-edge);
+    --text: var(--shell-text);
+    --muted: var(--shell-muted);
+    --faint: #5a6675;
+    --accent: var(--shell-accent);
+    --warn: var(--shell-warm);
+    --hot: var(--shell-danger);
+    --stage: var(--shell-backdrop);
+    --hdr: var(--shell-surface);
+    --edge-2: #1b212a;
+  }
+}
+
+/* Shell chrome tokens. The six palettes below override only what they change,
+   and `applyShellPalette` writes `data-shell-palette` onto the document
+   element, so `:root` and the in-force palette selector are the same node and
+   the cascade picks the right one. Everything below resolves for all six.
+
+   The swatch joins the *editorial* selector and not the bare root. A preview
+   bar is a *self-contained scope* rather than a window onto whatever is in
+   force: it carries the attribute of the palette it NAMES, and without a
+   declaration here it would inherit the live palette's tokens instead of
+   resolving its own — an ember bar under graphite painted graphite's dark
+   ground behind an ember accent. Editorial is the baseline it needs because
+   editorial is what the five derived blocks were written as overrides of — the
+   one palette with no block of its own.
    Declaring the baseline on the bar makes every token it paints its own, and
    the palette blocks below override it by later source order at equal
    specificity. */
-:root,
 [data-shell-palette="editorial"],
 .editor-shell-palette-swatch {
   --shell-backdrop: #f5f1e8;

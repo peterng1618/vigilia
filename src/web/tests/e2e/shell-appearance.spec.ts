@@ -3,6 +3,7 @@ import { captureVisualReview } from "./editor-canvas.js";
 import { openPane } from "./editor-rail.js";
 import {
   choosePalette,
+  EDITOR,
   openAppearance,
   openShell,
   PALETTES,
@@ -633,6 +634,78 @@ test.describe("shell palettes", () => {
 
     const colours = await shellColours(page);
     expect(colours.header).not.toBe("rgba(0, 0, 0, 0)");
+  });
+
+  /** The frame **before** React writes the palette attribute (`vg-351`).
+   *
+   *  Every other assertion in this file reads `data-shell-palette`, which is
+   *  exactly why none of them could see this: the attribute *is* the settled
+   *  state, and the defect lives in the frame before it exists. Two base paints
+   *  disagreed with `systemShellPalette` there — the stylesheet's bare `:root`
+   *  block resolved editorial, and this document's own pre-shell `<style>` drew
+   *  editorial cream with a `#0b1419` under its dark media query that matched no
+   *  palette in the set — so a fresh profile flashed cream and then snapped to
+   *  graphite.
+   *
+   *  The bundle is blocked rather than raced: with no script the attribute is
+   *  never written, so what is measured is the pre-JS frame by construction
+   *  rather than by timing. The expected value is read out of the stylesheet's
+   *  own palette block through a probe carrying the attribute, so no colour is
+   *  copied into this file — what is named here is the palette
+   *  `systemShellPalette` picks, which `palette.ts` owns. */
+  test("the frame before the palette attribute is the palette the OS resolves", async ({
+    page,
+  }, testInfo) => {
+    test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+
+    // Both halves of the first frame are read: the document's own pre-shell
+    // style, and the stylesheet's base block. `#app` stays empty without the
+    // bundle, so the body is the surface that paints.
+    await page.route("**/*.js", (route) => route.abort());
+
+    for (const [colorScheme, palette] of [
+      ["light", "light"],
+      ["dark", "graphite"],
+    ] as const) {
+      await page.emulateMedia({ colorScheme });
+      await page.goto(EDITOR);
+
+      const frame = await page.evaluate((named) => {
+        const painted = (element: Element): string => {
+          const style = getComputedStyle(element);
+          return `${style.backgroundColor} ${style.backgroundImage} ${style.color}`;
+        };
+        const token = (element: Element, name: string): string =>
+          getComputedStyle(element).getPropertyValue(name).trim();
+        const reading = (element: Element): string =>
+          `${painted(element)} | ${token(element, "--shell-backdrop")} ${token(element, "--shell-text")}`;
+
+        const probe = document.createElement("div");
+        probe.setAttribute("data-shell-palette", named);
+        probe.style.background = "var(--shell-backdrop)";
+        probe.style.color = "var(--shell-text)";
+        document.documentElement.append(probe);
+        const wanted = reading(probe);
+        probe.remove();
+
+        return {
+          attribute:
+            document.documentElement.getAttribute("data-shell-palette"),
+          wanted,
+          base: reading(document.body),
+        };
+      }, palette);
+
+      expect(
+        frame.attribute,
+        "the bundle ran, so this measured the settled frame and not the one before it",
+      ).toBeNull();
+      expect(
+        frame.base,
+        `a ${colorScheme}-reporting OS paints its first frame in a palette ` +
+          "systemShellPalette does not name",
+      ).toBe(frame.wanted);
+    }
   });
 
   /** The OS is a fallback, and a choice outranks it.

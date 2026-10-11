@@ -31,19 +31,18 @@ satisfies every token in `DESIGN.md` and still does not look like the mockup.
 
 ## Last completed change
 
-- **The scoped re-review's residuals closed** (`762fb4e3`): `--cite` now fails closed when a marker's number has no row in the spec's section mapping, so a *deleted* row can no longer silently exempt that marker from the check.
-- **A duplicated heading is a finding too** — the placement keys on heading text, so a repeat leaves the marker's real location ambiguous; both new guards red-proven and restored byte-exact with `cmp`.
-- **The `.jsonl` exclusion is asserted where CI collects it** — `src/web/tests/scripts/design-md.test.ts` — since the guard lived only in `--self-test`, which `vg-355` records that nothing runs.
-- **`vg-355`'s detail corrected** to describe its own command's real output (seven paths, not "two workflows"), and **`vg-356` filed** for the prefix-test drift left open, naming the legitimate case that forbids tightening it.
-- **The tightened checks do not false-positive**: `design:check` stays clean over the real `DESIGN.md` — 289 citation sources, 0 errors, 0 warnings.
+- **`vg-351`: the bare `:root` base is `systemShellPalette`'s answer** — `light` on a light-reporting OS, `graphite` from a new `prefers-color-scheme: dark` block — instead of editorial's values shared with `[data-shell-palette="editorial"]`, which is what a fresh profile painted before React resolved a palette.
+- **`packages/editor/index.html`'s pre-shell `<style>` follows the same rule**, and its dark branch's `#0b1419`/`#eef9f4` — literals from the 2026-10-07 plan that match no palette in the set — become graphite's `#0b0e12` and `#e8ecf3`.
+- **The swatch keeps the editorial baseline**: `.editor-shell-palette-swatch` stays grouped with editorial, and `--shell-display`/`--shell-flat` keep a bare-`:root` home so ember, moss, plum and light still inherit them; `editor-shell.tokens.test.ts` reds if either base copy drifts from the palette it mirrors, or lands below the palette blocks.
+- **The new browser case blocks the bundle and reads the frame before `data-shell-palette` is written** — the state every existing assertion of that attribute cannot see — and asserts the paint and both `--shell-backdrop`/`--shell-text` against the palette the OS resolves, with no colour copied into the test.
+- **The dark base deliberately omits `--vigilia-control-bg`, `--shell-display` and `--shell-flat`**: they are what ember, moss, plum and light inherit from the bare root rather than declare, so carrying them would move those four palettes under a dark-reporting OS. The cost — a dark OS's pre-attribute frame takes editorial's display face and control paper — is recorded in the stylesheet.
 
 ## Next
 
-1. **`vg-351`, ruled by the user**: repaint the bare `:root` base under `prefers-color-scheme` so a fresh profile's pre-JS first frame matches settled graphite — a source change, so it lands before any capture.
-2. **The contrast and visual stress set** — six palettes, 1280×720 and 1440×900, 200% zoom, a long Unicode name, a long unresolved reference, the two-hundred-row Composition fixture, reduced motion and forced colours; `design-language.spec.ts` already covers much of it, so the first step is measuring the gaps, not building.
-3. **Graphite's Part C, the one capture regeneration** — runs last on a frozen tree, because a capture is evidence about one commit and any later source change makes it stale.
-4. **The backlog drain, opened with a reproduction pass** — 211 open rows sorted at HEAD into closes-with-evidence, needs-a-decision and real work before anything is fixed.
-5. **§13.1's keyboard-only walkthrough gets its own plan** — the nine interactions plans 1–5 proved in isolation alone; `desktop-host` matches `host-(player|settings|media|bleed|chrome).spec.ts` and nothing else.
+1. **The contrast and visual stress set** — six palettes, 1280×720 and 1440×900, 200% zoom, a long Unicode name, a long unresolved reference, the two-hundred-row Composition fixture, reduced motion and forced colours; `design-language.spec.ts` already covers much of it, so the first step is measuring the gaps, not building.
+2. **Graphite's Part C, the one capture regeneration** — runs last on a frozen tree, because a capture is evidence about one commit and any later source change makes it stale.
+3. **The backlog drain, opened with a reproduction pass** — 211 open rows sorted at HEAD into closes-with-evidence, needs-a-decision and real work before anything is fixed.
+4. **§13.1's keyboard-only walkthrough gets its own plan** — the nine interactions plans 1–5 proved in isolation alone; `desktop-host` matches `host-(player|settings|media|bleed|chrome).spec.ts` and nothing else.
 
 ## Blockers / unverified
 
