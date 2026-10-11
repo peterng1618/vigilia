@@ -30,7 +30,7 @@ satisfies every token in the bible and still does not look like the mockup.
 
 ## Last completed change
 
-- **Plan 8's post-review fix round** (`FIXSHA`): `--text-lg`, `--text-2xs` and `--text-xl` are pinned in `editor-shell.tokens.test.ts`, because the `settings modal — lead type` parity row compares against `--text-lg` itself and was green for a dialog title at any size.
+- **Plan 8's post-review fix round** (`401d1765`): `--text-lg`, `--text-2xs` and `--text-xl` are pinned in `editor-shell.tokens.test.ts`, because the `settings modal — lead type` parity row compares against `--text-lg` itself and was green for a dialog title at any size.
 - **The red proof is the finding, not the failure**: `--text-lg: 16px` fails the new assertion while `design:check` still exits 0 (`58 … at or below its ceiling of 58` — 61 measured, 58 counted, the third figure what the three exempt `margin-right` values subtract) and the parity row still prints `--text-lg (16px) → 16`; restored from a `cp` copy, `cmp`-identical, `sha256sum` `be16e4f2…` before and after.
 - **`vg-328` filed** — the drawing names the surface as a nav eyebrow (`current/settings.html:23`) while the product names it once as the dialog title (`settings.tsx:336`); neither side draws the other's, and the census's "disposes of every difference" claim is withdrawn where it lives.
 - **`vg-329` filed and three register rows amended** — the archive is machine-checked by nobody (`backlog-check.mjs:45`, about twelve rows with no `artefacts`, `vg-303`'s bare string); `vg-327` gains its second instance (an exemption is not a site), `vg-274`'s count-is-not-a-set phrase is corrected, and the closure commit's five citation corrections live in the rows rather than in a report, with no licence invalidated.
