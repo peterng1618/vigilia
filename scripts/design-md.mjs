@@ -38,9 +38,10 @@
  * so an unparseable file is a failure, not an empty pass.
  */
 
-import { readFile, readdir } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import { realpathSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { execFileSync } from "node:child_process";
+import { resolve } from "node:path";
 
 const ROOT = resolve(import.meta.dirname, "..");
 const DESIGN_REL = "DESIGN.md";
@@ -50,7 +51,16 @@ const CSS_REL = "src/web/packages/editor/src/editor-shell/editor-shell.css";
  *  cannot claim its own markers with the citations in its prose. */
 const CITE_TREES = ["docs", "src", "scripts"];
 const CITE_EXTENSIONS = /\.(?:ts|tsx|js|jsx|mjs|cjs|md|json|css|html|txt|ya?ml)$/;
-const WALK_SKIP = new Set(["node_modules", "dist", ".git"]);
+
+/**
+ * The check's own files, skipped: they live in the scanned trees and their
+ * fixture strings (`§1`, `§5`, `§9`) would otherwise claim markers the prose
+ * does not — a check must not count its own fixtures as evidence.
+ */
+const CITE_EXCLUDE = new Set([
+  "scripts/design-md.mjs",
+  "src/web/tests/scripts/design-md.test.ts",
+]);
 
 /**
  * `docs/design/design-language.md`'s numbering: `§1`–`§10`, with sub-numbers
@@ -299,23 +309,30 @@ export function checkCitations(read, opts = {}) {
   return orderFindings(entries);
 }
 
-/** Read every text file under the citation trees, keeping the ones with a `§`. */
-async function collectCitations(dir, out) {
-  let entries;
+/**
+ * The citation sources: the tracked text files under the citation trees that
+ * carry a `§`. The list comes from `git ls-files`, not a directory walk, so the
+ * check reads tracked files only — untracked scratch under `src/` (a captured
+ * `.vitest` report, an `.agent-scratch` note) cannot make the gate's verdict
+ * depend on what happens to be lying on the disk. `git` failing is a failure,
+ * not an empty read.
+ */
+function trackedPaths() {
   try {
-    entries = await readdir(dir, { withFileTypes: true });
-  } catch {
-    return;
+    return execFileSync("git", ["ls-files", "--", ...CITE_TREES], { cwd: ROOT, encoding: "utf8" })
+      .split("\n")
+      .filter((line) => line !== "");
+  } catch (error) {
+    console.error(`design-md: cannot list tracked files (${error.message})`);
+    process.exit(1);
   }
-  for (const entry of entries) {
-    const path = join(dir, entry.name);
-    if (entry.isDirectory()) {
-      if (WALK_SKIP.has(entry.name)) continue;
-      await collectCitations(path, out);
-    } else if (entry.isFile() && CITE_EXTENSIONS.test(entry.name)) {
-      const text = await readFile(path, "utf8").catch(() => null);
-      if (text !== null && text.includes("§")) out.push(text);
-    }
+}
+
+async function collectCitations(out) {
+  for (const relPath of trackedPaths()) {
+    if (CITE_EXCLUDE.has(relPath) || !CITE_EXTENSIONS.test(relPath)) continue;
+    const text = await readFile(resolve(ROOT, relPath), "utf8").catch(() => null);
+    if (text !== null && text.includes("§")) out.push(text);
   }
 }
 
@@ -425,7 +442,7 @@ if (isEntryPoint) {
   if (process.argv.includes("--cite")) {
     const design = await readOrFail(resolve(ROOT, DESIGN_REL), DESIGN_REL);
     const citations = [];
-    for (const tree of CITE_TREES) await collectCitations(resolve(ROOT, tree), citations);
+    await collectCitations(citations);
     if (citations.length === 0) {
       console.error("design-md: no citation sources were read; the check would look at nothing");
       process.exit(1);
