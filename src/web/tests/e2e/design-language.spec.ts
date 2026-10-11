@@ -2652,8 +2652,13 @@ test("every literal the checked drawings declare is on §3's scale or §2's", ()
    *
    *  Keyed on the **property**, not the value alone — the value cannot tell them
    *  apart: `top:-3.5px` is a slider's thumb on a 3px track, and `padding:-3.5px`
-   *  would be a mistake the same test would wave through. */
-  const ANCHOR_PROPERTY = /^(?:inset|top|right|bottom|left)(?:-|$)/;
+   *  would be a mistake the same test would wave through.
+   *
+   *  `translate` is listed because `SPACING_PROPERTY` reads it, so leaving it out
+   *  would refuse a translated mark's own anchor as off-scale. No drawing uses it
+   *  today; the two lists move together so the arms cannot disagree about which
+   *  px is a gutter. */
+  const ANCHOR_PROPERTY = /^(?:inset|translate|top|right|bottom|left)(?:-|$)/;
   const isAnchor = (value: string, property: string): boolean =>
     ANCHOR_PROPERTY.test(property) &&
     (value.endsWith("%") ||
