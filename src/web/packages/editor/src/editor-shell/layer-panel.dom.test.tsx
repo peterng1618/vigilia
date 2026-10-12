@@ -214,6 +214,16 @@ function renameField(host: HTMLElement): HTMLInputElement {
   )!;
 }
 
+/** A key press on the focused row, awaited so React flushes a focus move. */
+async function pressOnFocused(host: HTMLElement, key: string): Promise<void> {
+  await act(async () => {
+    host.ownerDocument.activeElement?.dispatchEvent(
+      new KeyboardEvent("keydown", { key, bubbles: true }),
+    );
+    await Promise.resolve();
+  });
+}
+
 it("commits a rename typed into the field on Enter", async () => {
   const renameLayer = vi.fn();
   const host = await renderPanel([textRow], { renameLayer });
@@ -790,6 +800,86 @@ it("answers the keys a tree is defined by, and does not nudge", async () => {
   expect(await press("Home")).toBe(0);
   expect(await press("End")).toBe(2);
   host.remove();
+});
+
+it("expands a shut group on ArrowRight, and steps into an open one's first child", async () => {
+  // vg-273: moveFocus's ArrowRight branch. On a shut group it opens the group
+  // through the bridge; on an open one it moves focus into the first child.
+  const shut = layerRow({
+    id: "group",
+    name: "Group",
+    kind: "group",
+    hasChildren: true,
+    collapsed: true,
+  });
+  const child = layerRow({
+    id: "child",
+    name: "Child",
+    kind: "text",
+    depth: 1,
+    parentId: "group",
+  });
+
+  const setCollapsed = vi.fn();
+  const host = await renderPanel([shut, child], { setCollapsed });
+  document.body.append(host);
+  const [group] = host.querySelectorAll<HTMLElement>('[role="treeitem"]');
+  group!.focus();
+  await pressOnFocused(host, "ArrowRight");
+
+  expect(setCollapsed).toHaveBeenLastCalledWith("group", false);
+  // Opening the group keeps the author on it; focus moves only on a second press.
+  expect(host.ownerDocument.activeElement).toBe(group);
+  host.remove();
+
+  const open = await renderPanel([{ ...shut, collapsed: false }, child]);
+  document.body.append(open);
+  const [openGroup, openChild] =
+    open.querySelectorAll<HTMLElement>('[role="treeitem"]');
+  openGroup!.focus();
+  await pressOnFocused(open, "ArrowRight");
+
+  expect(open.ownerDocument.activeElement).toBe(openChild);
+  open.remove();
+});
+
+it("collapses an open group on ArrowLeft, and steps out to the parent otherwise", async () => {
+  // vg-273: moveFocus's ArrowLeft branch. On an open group it shuts the group
+  // through the bridge; on a child it walks out to the level above it.
+  const group = layerRow({
+    id: "group",
+    name: "Group",
+    kind: "group",
+    hasChildren: true,
+    collapsed: false,
+  });
+  const child = layerRow({
+    id: "child",
+    name: "Child",
+    kind: "text",
+    depth: 1,
+    parentId: "group",
+  });
+
+  const setCollapsed = vi.fn();
+  const host = await renderPanel([group, child], { setCollapsed });
+  document.body.append(host);
+  const [groupRow] = host.querySelectorAll<HTMLElement>('[role="treeitem"]');
+  groupRow!.focus();
+  await pressOnFocused(host, "ArrowLeft");
+
+  expect(setCollapsed).toHaveBeenLastCalledWith("group", true);
+  host.remove();
+
+  const out = await renderPanel([group, child]);
+  document.body.append(out);
+  const [outGroup, outChild] =
+    out.querySelectorAll<HTMLElement>('[role="treeitem"]');
+  outChild!.focus();
+  await pressOnFocused(out, "ArrowLeft");
+
+  expect(out.ownerDocument.activeElement).toBe(outGroup);
+  out.remove();
 });
 
 it("marks a hidden row so the list says what the canvas is doing", async () => {
