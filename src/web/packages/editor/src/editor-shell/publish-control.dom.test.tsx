@@ -299,6 +299,27 @@ it("opens the surface from the header's chord, and moves no host state", async (
   expect(hostSwitch()?.getAttribute("aria-pressed")).toBe("true");
 });
 
+it("closes the surface under jsdom, on a second press and on Escape", async () => {
+  // vg-215 recorded that the close half of a popover contract is browser-only,
+  // because re-adding a close assertion threw inside Base UI's own path. That
+  // does not reproduce, so the assertion is written here rather than left to the
+  // browser spec: a close no dom test asserts is the gap the row named.
+  const fake = hostServing({ lan: true });
+  const container = await mount();
+
+  await openSurface(container);
+  await act(async () => headerControl(container)?.click());
+  await vi.waitFor(() => expect(popupOpen()).toBe(false));
+
+  await openSurface(container);
+  await act(async () => {
+    document.dispatchEvent(new KeyboardEvent("keydown", { key: "Escape" }));
+  });
+  await vi.waitFor(() => expect(popupOpen()).toBe(false));
+  // Closing is not publishing: the press that hid the surface moved no host.
+  expect(fake.putCalls()).toBe(0);
+});
+
 it("turns the host on from inside the surface, and shows what it is serving", async () => {
   const fake = hostServing({ lan: false });
   const container = await mount();
