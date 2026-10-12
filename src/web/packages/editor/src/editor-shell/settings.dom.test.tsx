@@ -22,6 +22,7 @@ import {
   type ShellPalette,
   shellPalettes,
 } from "./palette.js";
+import { createEditorShellBridge } from "./bridge.js";
 import { RAIL_SLOTS, Rail, type RailSlot } from "./rail.js";
 import { Settings, versionFacts } from "./settings.js";
 
@@ -593,5 +594,45 @@ describe("About", () => {
     expect(aboutField("release-version")).toBeNull();
     expect(aboutText()).not.toContain(uiCopy.panels.notSet);
     expect(aboutText()).not.toContain("undefined");
+  });
+
+  it("renders the release row from a document's own metadata.version (vg-288)", async () => {
+    // vg-288: the starter and blank-theme builders write no `metadata.version`,
+    // so every loadable document left this row absent and only an absence
+    // assertion could be made. This fixture carries one, and the version the row
+    // shows is the real bridge's projection of it — the same wire `editor-main.ts`
+    // runs — not a string a case passed in beside the document.
+    const document = {
+      metadata: { name: "Living Room", version: "2.5.1", themeLanguage: "en" },
+    };
+    const bridge = createEditorShellBridge({
+      editor: {
+        canvas: {
+          on: vi.fn(),
+          off: vi.fn(),
+          getActiveObject: () => undefined,
+          getObjects: () => [],
+          requestRenderAll: vi.fn(),
+        },
+        groupingManager: { groupContext: () => [] },
+        historyManager: { saveState: vi.fn() },
+      },
+      session: { subscribeDocumentChange: () => () => undefined },
+      capture: () => undefined,
+      documentIdentity: () => ({
+        name: document.metadata.name,
+        id: "theme-id",
+        version: document.metadata.version,
+      }),
+    } as never);
+
+    const host = mount(bridge.snapshot().releaseVersion);
+    await press(gear(host));
+    await openTab(uiCopy.settings.about);
+
+    expect(aboutField("release-version")?.textContent).toBe(
+      document.metadata.version,
+    );
+    bridge.destroy();
   });
 });
