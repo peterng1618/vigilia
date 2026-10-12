@@ -21,7 +21,10 @@ import {
 } from "./server.js";
 import { createSessionStore } from "./session/pairing.js";
 import { createActiveThemeStore } from "./settings/active-theme.js";
-import { createDeviceSettingsStore } from "./settings/devices.js";
+import {
+  ASSIGNABLE_GROUPS,
+  createDeviceSettingsStore,
+} from "./settings/devices.js";
 import { createDisplaySettingsStore } from "./settings/display.js";
 import { createFontFavoritesStore } from "./settings/font-favorites.js";
 import { createThemeSettingsStore } from "./settings/theme-settings.js";
@@ -1646,6 +1649,39 @@ describe("A theme's own device answers", () => {
       names: { "lexar-500gb-ssd": "System drive" },
     });
   });
+
+  it("publishes every group the settings module declares it can assign", async () => {
+    // The host derives its assignable groups from `ASSIGNABLE_GROUPS` rather
+    // than re-spelling the union, so a group added to the owner must reach the
+    // providers without this server changing. Driving the owner's own list is
+    // what catches the drift a second copy of the union could not: a group the
+    // host stopped picking leaves its chosen id out of the publish (vg-189).
+    const assigned = Object.fromEntries(
+      ASSIGNABLE_GROUPS.map((group) => [group, `id-${group}`]),
+    );
+    await request(hosted.server, "PUT", "/api/devices", json({ assigned }));
+
+    const published = pushed.at(-1) as Readonly<Record<string, unknown>>;
+    const chosen = Object.values(published).filter(
+      (value): value is string => typeof value === "string",
+    );
+    expect(new Set(chosen)).toEqual(
+      new Set(ASSIGNABLE_GROUPS.map((group) => `id-${group}`)),
+    );
+  });
+});
+
+it("keeps the assignable-device vocabulary in the one module that owns it", async () => {
+  // vg-189: the groups are `ASSIGNABLE_GROUPS`'s (`settings/devices.ts`), so
+  // server.ts must not spell the union a second time — a copy is a second owner,
+  // and a group added to the real owner would silently never reach it. The
+  // runtime is identical whether the union is derived or copied, so the source is
+  // the only place this can be seen: reverting the derivation fails here.
+  const source = await fs.readFile(
+    new URL("./server.ts", import.meta.url),
+    "utf8",
+  );
+  expect(source).not.toMatch(/"gpu"\s*\|\s*"system-disk"/);
 });
 
 describe("A bundle 404 names the cause it can prove", () => {

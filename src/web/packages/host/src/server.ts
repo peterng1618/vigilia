@@ -23,6 +23,7 @@ import {
 import type { DisplaySession, SessionStore } from "./session/pairing.js";
 import type { ActiveThemeStore } from "./settings/active-theme.js";
 import {
+  type AssignableGroup,
   type DeviceSettingsStore,
   EMPTY_DEVICE_SETTINGS,
 } from "./settings/devices.js";
@@ -395,9 +396,12 @@ export function createHostServer(options: HostServerOptions): HostServer {
         ? {}
         : await themeSettings.read(chosen);
 
-    const pick = (
-      group: "gpu" | "system-disk" | "data-disk",
-    ): string | undefined => perTheme[group] ?? stored.assigned[group];
+    // The group is the settings module's `AssignableGroup`, not a union
+    // re-spelled here: the owner is `ASSIGNABLE_GROUPS` (`settings/devices.ts`),
+    // and a fourth group added there must reach this path rather than needing a
+    // second edit nobody would make (vg-189).
+    const pick = (group: AssignableGroup): string | undefined =>
+      perTheme[group] ?? stored.assigned[group];
 
     const gpu = pick("gpu");
     const systemDisk = pick("system-disk");
