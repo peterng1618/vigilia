@@ -272,6 +272,8 @@ Rows: `vg-113`, `vg-115`, `vg-137`, `vg-169`, `vg-217`, `vg-235`.
 
 **Verify:** a per-row grep for the marker **format** — not for the word `RULED`, which four live rows carry in prose today — before any work phase starts; the register checker after every batch.
 
+**Four decisions are already taken, and the sessions record them rather than asking again.** The user settled them on 2026-10-12 and each sits on its own rows as `RULED 2026-10-12:`: **D1's lead** (adopt `biome check` as the gate, with `gates:self-test` chained and the `organizeImports` findings fixed in that commit) on `vg-213`, `vg-262`, `vg-372`, `vg-355`, `vg-379`; **D5** (the ratchet's membership rule) on `vg-228`, `vg-267`, `vg-271`, `vg-274`, `vg-286`; **D4** on `vg-291` (it dissolves into `vg-292`); and **D11** on `vg-368` (`.agent-scratch/` leaves the tree). A session's steps below name them where a step would otherwise read as a question; where a step and this paragraph disagree, this paragraph wins and the step is a defect to fix in the same change.
+
 ### Task 1.1: The ruling mechanism, and the row's own line
 
 **Files:**
@@ -295,11 +297,11 @@ Rows: `vg-113`, `vg-115`, `vg-137`, `vg-169`, `vg-217`, `vg-235`.
 
 **Interfaces:**
 - Consumes: Task 1.1's helper
-- Produces: 13 ruled rows
+- Produces: 13 ruled rows, of which the five D1 lead rows already carry their ruling — 8 new rulings, 5 recorded
 
 Rows: `vg-213`, `vg-262`, `vg-372`, `vg-355`, `vg-379`, `vg-380`, `vg-382`, `vg-386`, `vg-184` (D1); `vg-282`, `vg-147`, `vg-150`, `vg-144` (D2).
 
-- [ ] **Step 1: Ask D1's lead question first** — is `biome check` and each scanner's own self-test suite part of the gate, or is the gate `format:check` + `lint` plus hand-run scripts? One answer settles `vg-213`, `vg-262`, `vg-372`, `vg-355`, `vg-379`; record it once and mark those five. Apply §8.9's count correction to `vg-262`'s line as it is taken: 60 `organizeImports` findings, not the 67 it reads.
+- [ ] **Step 1: D1's lead question is already answered — record it, do not re-ask it.** The user ruled on 2026-10-12 that `biome check` is the gate, and the ruling sits on `vg-213`, `vg-262`, `vg-372`, `vg-355` and `vg-379`; this session's job is the **four that do not share it**. Apply §8.9's count correction to `vg-262`'s line as it stands: 60 `organizeImports` findings, not the 67 it reads.
 - [ ] **Step 2: Take the four D1 rows that do not share it** — `vg-380`, `vg-382`, `vg-386`, `vg-184` — as their own questions.
 - [ ] **Step 3: Take D2's four**, each its own question.
 - [ ] **Step 4: Record D1's answer where W3 will find it**, since Task 4.3 cannot start without it. `npm run backlog:check`.
@@ -312,15 +314,15 @@ Rows: `vg-213`, `vg-262`, `vg-372`, `vg-355`, `vg-379`, `vg-380`, `vg-382`, `vg-
 
 **Interfaces:**
 - Consumes: Task 1.1's helper and its pre-pass
-- Produces: 31 ruled rows; the eight browser-pinned rows handed forward, not ruled here; the D4 rulings that gate W9
+- Produces: 31 rows ruled here — 6 of them already carrying their ruling (`vg-291` and D5's five) — with the eight browser-pinned rows handed forward, not ruled here; the D4 rulings that gate W9
 
 Rows: D3 — `vg-201`, `vg-202`, `vg-222`, `vg-223`, `vg-225`, `vg-227`, `vg-261`, `vg-306`, `vg-308`, `vg-310`, `vg-312`, `vg-319`, `vg-334`. D4 — `vg-301`, `vg-324`, `vg-350`, `vg-354`, `vg-291`, `vg-287`, `vg-278`. D5 — `vg-228`, `vg-267`, `vg-271`, `vg-274`, `vg-286`. D6 — `vg-254`, `vg-256`, `vg-260`, `vg-263`, `vg-264`, `vg-265`, `vg-268`, `vg-283`, `vg-269`, `vg-270`, `vg-272`, `vg-289`, `vg-290`, `vg-336`.
 
 **Eight of these 39 cannot be ruled from a reading.** `vg-306`, `vg-308`, `vg-310`, `vg-319` (D3), `vg-324`, `vg-278` (D4), `vg-265`, `vg-270` (D6) need a browser run, their runs are Phase 2's, and they are ruled in the Phase 1 follow-up session there (Task 2.5 Step 4). **31 here, 8 there** — the same split Phase 1's acceptance reads as 96 + 8.
 
-- [ ] **Step 1: Take D3's nine that a reading settles** — `vg-201`, `vg-202`, `vg-222`, `vg-223`, `vg-225`, `vg-227`, `vg-261`, `vg-312`, `vg-334` — as row-level amendment-or-code choices. Three (`vg-222`, `vg-225`, `vg-227`) are the same shape: a rule is silent and the product had to choose. `vg-225`'s `detail` already carries a ruling (Task 1.1 Step 2), so record it as taken rather than asking again.
-- [ ] **Step 2: Take D4's five that a reading settles** — `vg-301`, `vg-350`, `vg-354`, `vg-287`, `vg-291`. `vg-291`'s ruling decides whether `vg-292` and `vg-293` are one row or two; that ruling is taken here, and **applying** the collapse is Task 10.3 Step 1's (§8.3 applies a family once, at the task the §8 table names). Apply §8.2's line correction and §8.11's owner-path correction to `vg-301`'s line.
-- [ ] **Step 3: Take D5's five**, which are all one question in different clothes: what the ratchet's membership rule is. §8.9's correction to `vg-274` rides its line — its title's "in no gate" is already false while the design pass it asks for is real, so rule on the pass.
+- [ ] **Step 1: Take D3's nine that a reading settles** — `vg-201`, `vg-202`, `vg-222`, `vg-223`, `vg-225`, `vg-227`, `vg-261`, `vg-312`, `vg-334` — as row-level amendment-or-code choices. Three (`vg-222`, `vg-225`, `vg-227`) are the same shape: a rule is silent and the product had to choose. **`vg-225` is asked**: its `detail` carries `RULED to stand by the controller rather than treated as a nit`, which settles that the finding is real rather than the choice its own question poses.
+- [ ] **Step 2: Take D4's five that a reading settles** — `vg-301`, `vg-350`, `vg-354`, `vg-287`, `vg-291`. **`vg-291`'s ruling is already taken** (D4, 2026-10-12: it dissolves into `vg-292`) — record it, do not re-ask — and **applying** the collapse is Task 10.3 Step 1's (§8.3 applies a family once, at the task the §8 table names). Apply §8.2's line correction and §8.11's owner-path correction to `vg-301`'s line.
+- [ ] **Step 3: D5's five are already ruled, recorded together on 2026-10-12** — `vg-228`, `vg-267`, `vg-271`, `vg-274`, `vg-286` carry the ratchet's membership rule as one answer. Record them; do not re-ask. §8.9's correction to `vg-274` still rides its line — its title's "in no gate" is already false while the design pass it asks for is real, so record what the ruling said about the pass.
 - [ ] **Step 4: Take D6's twelve that a reading settles** — `vg-254`, `vg-256`, `vg-260`, `vg-263`, `vg-264`, `vg-268`, `vg-283`, `vg-269`, `vg-272`, `vg-289`, `vg-290`, `vg-336` — and apply §8.2's line correction to the rows that cite one.
 - [ ] **Step 5: Collapse `vg-268`/`vg-283` once, here** (§8.3 names this task the first member's), saying on both lines that one ruling covers the pair, and apply §8.9's count correction to `vg-283` (357 → 379). The other three collapses are Tasks 10.3, 4.1 and 1.4's — do not apply them here.
 - [ ] **Step 6: `npm run backlog:check`** and commit the session's rows.
@@ -350,15 +352,15 @@ Rows: D7 — `vg-023`, `vg-037`, `vg-041`, `vg-111`, `vg-123`, `vg-142`, `vg-188
 
 **Interfaces:**
 - Consumes: Task 1.1's helper
-- Produces: 31 ruled rows, of which some close directly
+- Produces: 31 rows ruled, of which one (`vg-368`) already carries its ruling
 
 Rows: D9 — `vg-109`, `vg-155`, `vg-159`, `vg-167`, `vg-168`, `vg-182`, `vg-185`, `vg-186`, `vg-191`, `vg-192`. D10 — `vg-029`, `vg-040`, `vg-056`, `vg-163`, `vg-171`, `vg-174`, `vg-190`, `vg-208`, `vg-211`, `vg-214`, `vg-230`, `vg-279`. D11 — `vg-051`, `vg-116`, `vg-178`, `vg-198`, `vg-315`, `vg-352`, `vg-363`, `vg-368`, `vg-373`.
 
 - [ ] **Step 1: Take D9's ten.** Two of them (`vg-109`, `vg-155`) may rule the row **withdrawn**, which closes it here with no `check` and no `artefacts`.
 - [ ] **Step 2: Take D10's twelve**, which only a product call settles. `vg-040` is one of the twelve and **is asked**: its own `detail` rules browser storage and then names the asset-ownership spec as the decider, and that spec is still `backlog`.
-- [ ] **Step 3: Take D11's nine as nine independent housekeeping questions** — no lead ruling exists for this cluster.
+- [ ] **Step 3: Take D11's eight as independent housekeeping questions** — `vg-051`, `vg-116`, `vg-178`, `vg-198`, `vg-315`, `vg-352`, `vg-363`, `vg-373`. **`vg-368` is already ruled** (2026-10-12: `src/web/.agent-scratch/` relocates outside the tree) — record it, do not re-ask.
 - [ ] **Step 4: Apply §8.7 to `vg-315`** — six tracked `.superpowers/sdd/` citations, not four — and §8.11's path corrections to this session's rows (`vg-109`, `vg-155`) as they are edited. `vg-328` left the live file in Task 0.2, so its correction was applied *before* the move; the other §8.11 rows are edited in the tasks that own them (`vg-104` Task 1.4 Step 3, `vg-301` Task 1.3 Step 2, `vg-333` Task 7.4 Step 4, `vg-314` Task 2.3 Step 4, `vg-235` Task 0.3 Step 2).
-- [ ] **Step 5: `npm run backlog:check`**, then check the marker **format** as a set: 96 rows carry `RULED <YYYY-MM-DD>:` now, 8 more after Phase 2. Print the ids, not a count.
+- [ ] **Step 5: `npm run backlog:check`**, then check the marker **format** as a set: **96 of the 104** carry it by Phase 1's close — the twelve ruled on 2026-10-12 plus the 84 these sessions take — and the remaining eight are the Phase 2 follow-up's. Print the ids, not a count.
 
 ---
 
