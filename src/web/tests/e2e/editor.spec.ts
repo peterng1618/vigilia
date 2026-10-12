@@ -17,8 +17,8 @@ import {
   typeIntoControl,
 } from "./control-set.js";
 import {
-  answerDialogIfShown,
   type ArtboardRect,
+  answerDialogIfShown,
   captureVisualReview,
   chooseAssetFile,
   clearSceneX,
@@ -545,9 +545,10 @@ async function activeAngle(page: Page): Promise<number> {
   });
 }
 
-/** How far a point is from a box's own rectangle, in CSS pixels: 0 when it is
- *  over the box, which is the difference between "beside the pointer" and
- *  "under it". */
+/** How far a point is from a box's own rectangle, in CSS pixels: the distance to
+ *  the nearest edge, and `0` for every point inside the rectangle — a readout
+ *  drawn *under* the cursor scores 0 too, so "beside" rather than "under" is
+ *  `boxContains` below, not this. */
 function distanceToBox(
   point: { readonly x: number; readonly y: number },
   box: {
@@ -560,6 +561,25 @@ function distanceToBox(
   const dx = Math.max(box.x - point.x, 0, point.x - (box.x + box.width));
   const dy = Math.max(box.y - point.y, 0, point.y - (box.y + box.height));
   return Math.hypot(dx, dy);
+}
+
+/** Whether a point lies inside a box's rectangle. `distanceToBox` cannot make
+ *  this distinction: it returns 0 for the whole rectangle. */
+function boxContains(
+  point: { readonly x: number; readonly y: number },
+  box: {
+    readonly x: number;
+    readonly y: number;
+    width: number;
+    height: number;
+  },
+): boolean {
+  return (
+    point.x >= box.x &&
+    point.x <= box.x + box.width &&
+    point.y >= box.y &&
+    point.y <= box.y + box.height
+  );
 }
 
 /** Drags the active selection by `amount` scene px in one gesture and reports
@@ -4140,10 +4160,33 @@ test.describe("Fabric editor route", () => {
     expect(second.text).toBe(`${Math.round(second.angle)}°`);
     expect(second.text).toMatch(/^-?\d+°$/);
 
-    // Beside the pointer, both legs: within a short reach of the cursor, and
-    // moving with it. A readout pinned to the object or to a corner would pass
-    // the text assertion above and fail this one.
+    // Beside the pointer, both legs: within a short reach of the cursor, moving
+    // with it, and not under it. A readout pinned to the object or to a corner
+    // would pass the text assertion above and fail the movement one; a readout
+    // drawn at the cursor would pass the reach check (`distanceToBox` is 0
+    // inside the rectangle) and fail the containment one. The product places it
+    // 16px right and below the pointer's client point, so "beside" is a claim
+    // with a measured answer either way.
+    console.log(
+      `vg-346 readout ${JSON.stringify({
+        legs: [first, second].map((leg) => ({
+          pointer: leg.pointer,
+          box: leg.box,
+          distance: distanceToBox(leg.pointer, leg.box),
+          containsPointer: boxContains(leg.pointer, leg.box),
+          offset: {
+            x: leg.box.x - leg.pointer.x,
+            y: leg.box.y - leg.pointer.y,
+          },
+          text: leg.text,
+        })),
+      })}`,
+    );
     expect(distanceToBox(second.pointer, second.box)).toBeLessThan(40);
+    expect(
+      boxContains(second.pointer, second.box),
+      "the readout is beside the pointer, not under it",
+    ).toBe(false);
     expect(second.box.x - first.box.x).toBeGreaterThan(8);
 
     // And it leaves when the gesture does.
@@ -4155,24 +4198,25 @@ test.describe("Fabric editor route", () => {
    * A scaled text resized by a side handle, read back at both ends — the one
    * check `vg-233` and `vg-370` are each waiting on.
    *
-   * **`vg-233`** is a contradiction in source: `text-manager`'s resize path
-   * writes `target.width * scaleX` into `vigiliaText.box`, while the shared
-   * writer's own comment says the scaled value "would grow the box on every
-   * pass", and `boxFrom` multiplies by `scaleX` again when it reads. Neither
-   * half is measured, because no case resizes a text carrying a non-1 scale.
-   * The measurement here is the author's own: resize the box, save it, reopen
-   * it, and see whether the box comes back the size it was left.
+   * **`vg-233`** is a units question in `text-manager`'s resize path: it wrote
+   * `target.width * scaleX` into `vigiliaText.box`, while the shared writer's own
+   * comment says the scaled value "would grow the box on every pass" and
+   * `boxFrom` multiplies by `scaleX` again when it reads. Read together, the
+   * stored box and the object's own width agree under either write — `assertBox`
+   * copies the box onto `object.width` on the next pass — so the case asserts the
+   * one surface the units reach: the edge the author dragged to. Measured both
+   * ways on a 240-unit drag at `scaleX` 0.74: 177.6 units landed with the scaled
+   * write, 239 with the unscaled one.
    *
    * **`vg-370`** is the box minimum, which lives in two places: the shared
    * writer refuses `value < 1` (`authored-box.ts`) and the inspector's funnel
-   * floors at `MIN_DIMENSION = 1`. The refusal is reachable only through a scale
-   * below 1, since Fabric floors its own `width` at 1 — which is why this text
-   * is scaled *down*. Whether it fires is measured and reported, not asserted:
-   * the row is open on exactly that fact. What the run found is that the input
-   * never gets there — the edge lands about 20 scene units from where the
-   * pointer asked, so no sub-unit width is produced to be refused, and the box
-   * is written rather than skipped. That landing-versus-request gap is its own
-   * finding (`vg-393`); this case concludes nothing about it either.
+   * floors at `MIN_DIMENSION = 1`. Whether that refusal fires is measured and
+   * reported, not asserted: the row is open on exactly that fact. What the run
+   * found is that no sub-unit width is ever produced — the drag asked to put the
+   * edge 0.4 units from the left edge and landed it tens of scene units away, so
+   * the box was written rather than skipped and the refusal was never reached.
+   * That landing-versus-request gap is its own finding (`vg-393`) and this case
+   * concludes nothing about its cause.
    */
   test("resizes a scaled text by its side handle, and reopens the box it wrote", async ({
     page,
@@ -4196,10 +4240,10 @@ test.describe("Fabric editor route", () => {
     );
     const textId = id!;
 
-    // A scale below 1, through the product's own corner drag. Below, and not
-    // merely non-unit: the authored value the resize path carries is
-    // `width * scaleX`, and Fabric's `width` is floored at 1, so a scale above
-    // 1 can never put it under the shared writer's minimum.
+    // A non-unit scale, through the product's own corner drag. `vg-233`'s
+    // comparison only exists there: at `scaleX` 1 the two candidate writes are
+    // the same number, and the run measured their difference as `scaleX` times
+    // the drag.
     await scaleByCornerHandle(page, textId, 0.5);
     const scaled = await textBoxState(page, textId);
     expect(
@@ -4237,22 +4281,27 @@ test.describe("Fabric editor route", () => {
       })}`,
     );
 
-    // ---- vg-233: does the box survive a round trip? ------------------------
+    // ---- vg-233: where does the resize put the edge it was dragged to? -----
     // Widened rather than narrowed, so the reopened box is not re-measured
     // against a wrapped run: the claim is the box the author dragged, not the
     // text's own width. The left edge is re-read because the probe above moved
     // the box.
+    const leftBeforeResize = await worldLeftOf(page, textId);
     const widened = await resizeRightHandleTo(
       page,
       textId,
-      (await worldLeftOf(page, textId)) + 240,
+      leftBeforeResize + 240,
       undefined,
     );
     const resized = await textBoxState(page, textId);
     console.log(
       `vg-233 resize ${JSON.stringify({
+        leftBeforeResize,
         askedLanding: widened.raw,
+        askedRenderedWidth: widened.raw - leftBeforeResize,
         landedRight: widened.right,
+        landedRenderedWidth: widened.right - leftBeforeResize,
+        missedBy: widened.raw - widened.right,
         boxBefore: afterSubUnit.boxWidth,
         boxAfter: resized.boxWidth,
         fabricWidth: resized.width,
@@ -4261,11 +4310,26 @@ test.describe("Fabric editor route", () => {
         renderedBefore: afterSubUnit.renderedWidth,
       })}`,
     );
-    // What the drag has to do, and all it has to do: the side handle leaves the
-    // text wider than it found it, and the resize path writes the box it wrote
-    // out of. Whether the edge lands where the pointer asked is not asserted
-    // here — the run below reports both numbers, because on this object they
-    // disagree and no reading yet says which of the two is wrong.
+    // **The arm this case exists for, and the only one that can see the defect.**
+    // `vigiliaText.box` is the object's size *before* `scaleX`: `assertBox`
+    // divides the stored number by the scale to get Fabric's `width`, and
+    // `boxFrom` multiplies it back for the clip and the placement. A resize that
+    // stores `width * scaleX` therefore hands the next pass a box that many units
+    // too large, and the pass writes it straight onto the width — so the object
+    // ends `scaleX` times the size the author dragged to.
+    //
+    // **Why this and not a box-versus-width assertion.** Read together, the
+    // stored box and the object's own width agree whatever was written, because
+    // `assertBox` makes them the same number: the saved box is copied onto
+    // `object.width` on the next pass. Measured in the run, `boxAfter` and
+    // `fabricWidth` are one double. The geometry the author ends up with is the
+    // only surface the write's units reach, and on this drag the difference is
+    // the whole of 62.4 units: 177.6 landed for a 240-unit request with the
+    // scaled write, 239 landed with the unscaled one.
+    expect(
+      Math.abs(widened.right - widened.raw),
+      "the resized edge lands where the author dragged it",
+    ).toBeLessThan(2);
     expect(
       resized.renderedWidth,
       "the side handle left the text wider than it found it",
@@ -4287,6 +4351,14 @@ test.describe("Fabric editor route", () => {
       persistedBox,
       "the saved document carries the text's box",
     ).toBeDefined();
+    // The row's own comparison — the persisted box against the object's own
+    // width — asserted rather than only logged. It holds under either write,
+    // because `assertBox` makes those two the same number; the landing above is
+    // the arm that moves.
+    expect(persistedBox, "the saved box is the object's own width").toBeCloseTo(
+      resized.width,
+      3,
+    );
 
     // The package the editor just wrote, re-imported as bytes. Not
     // `setThemePackage`: that rebuilds a document from the envelope alone and
@@ -4303,19 +4375,39 @@ test.describe("Fabric editor route", () => {
 
     console.log(
       `vg-233 reopen ${JSON.stringify({
-        fabricWidth: resized.width,
-        scaleX: resized.scaleX,
-        renderedWidth: resized.renderedWidth,
         storedBox: persistedBox,
-        reopenedRenderedWidth: reopened.renderedWidth,
+        before: {
+          width: resized.width,
+          scaleX: resized.scaleX,
+          renderedWidth: resized.renderedWidth,
+          boxWidth: resized.boxWidth,
+        },
+        after: {
+          width: reopened.width,
+          scaleX: reopened.scaleX,
+          renderedWidth: reopened.renderedWidth,
+          boxWidth: reopened.boxWidth,
+        },
       })}`,
     );
-    // The author's resize survives the save: the box they see after reopening
-    // is the box the drag left. A stored box carrying the scale twice lands the
-    // reopened text at `scaleX` times its own width.
+    // The author's resize survives the save. **What this arm does, and does not,
+    // show:** both sides are the same function of the same object, revived from
+    // the box the save wrote, so it is a save/reopen idempotence check, not a
+    // units check — the units arm is the landing above, because `assertBox` makes
+    // the stored box and the object's width agree whatever was stored.
     expect(
       Math.abs(reopened.renderedWidth - resized.renderedWidth),
       "the reopened text is the width the drag left it",
+    ).toBeLessThan(2);
+    // The reopened object's own numbers, not only the pre-save pair: the stored
+    // box is what the revival feeds `assertBox`, so it is the reopened object's
+    // width the claim is about.
+    expect(reopened.boxWidth, "the reopened box is the stored box").toBe(
+      persistedBox,
+    );
+    expect(
+      Math.abs(reopened.width - resized.width),
+      "the reopened object's own width is the width the drag left",
     ).toBeLessThan(2);
   });
 

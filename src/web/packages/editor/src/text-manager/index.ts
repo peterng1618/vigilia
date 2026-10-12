@@ -85,11 +85,15 @@ function adoptResizedBox(object: object): void {
   const authored = authoredOf(target);
   if (authored?.box === undefined) return;
 
-  // Scaled, as `vg-233` records it: the box is scene units and the owner seeds
-  // unscaled, but whether a resize reaches here with a non-1 scale is
-  // unmeasured, so the number is the caller's until that check runs.
-  const scaleX = target.scaleX === 0 ? 1 : target.scaleX;
-  writeAuthoredBoxDimension(target, "width", target.width * scaleX);
+  // Unscaled: `vigiliaText.box` is the object's size *before* `scaleX`.
+  // `assertBox` divides the stored number by the scale to get Fabric's `width`
+  // and `boxFrom` multiplies it back for the clip and the placement, so the
+  // stored number is `width` itself. Writing `width * scaleX` handed the next
+  // pass a box that many units too large, which the pass wrote straight onto the
+  // width -- every resize of a scaled text left it `scaleX` times the size the
+  // author dragged to (240 units dragged at `scaleX` 0.7432, 177.6 landed:
+  // `vg-233`).
+  writeAuthoredBoxDimension(target, "width", target.width);
 }
 
 function isText(value: unknown): value is PlanTextObject & {
