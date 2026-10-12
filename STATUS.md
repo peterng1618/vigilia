@@ -27,7 +27,7 @@ ledger did.
 
 ## Active work
 
-- **Active plan: [`2026-10-12-the-backlog-drain.md`](docs/superpowers/plans/2026-10-12-the-backlog-drain.md)** — named active now that the walkthrough's instrument is closed, which was the user's sequence of 2026-10-12 (*"Finish the walkthrough first"*); it runs to eleven phases and 43 tasks from the closed spec, **task numbers in it are stable identifiers, not positions**, and its Phase 0 needs no build, no suite and no ruling, so it starts immediately.
+- **Active plan: [`2026-10-12-the-backlog-drain.md`](docs/superpowers/plans/2026-10-12-the-backlog-drain.md)** — named active now that the walkthrough's instrument is closed, which was the user's sequence of 2026-10-12 (*"Finish the walkthrough first"*); it runs to eleven phases and 43 tasks from the closed spec, **task numbers in it are stable identifiers, not positions**, and **Phase 0 has closed** — its 22 rows are archived and proved, and Phase 1's ruling sessions are next.
 - **The drain's first four rulings are already taken and recorded** — the user settled D1 (biome check becomes the gate), D5 (tests join the gated list), D4 (`vg-291` dissolves into `vg-292`) and D11 (`src/web/.agent-scratch/` relocates outside the tree) on 2026-10-12, and each sits on its own row as `RULED 2026-10-12:` in the row's `detail`, which is where the drain reads it. The remaining 100 arrive in the plan's four ruling sessions.
 - **Phase 1 closed with three moves and one dissolution** — [`manager-census.md`](docs/architecture/manager-census.md) ranked ten candidates and closed at `32265c25`; Task 9 moved ranks 4, 5 and 9 and confirmed rank 6 is not a move, its census label `Clean-ish` having hedged exactly that.
 - **Phase 2's reports land in `docs/architecture/`, not the plan workspace** — `.gitignore:90` hides `.superpowers/` and `docs/README.md` calls that ledger temporary, so evidence Phase 3's removals rest on would have died with a fresh clone; the plan's two output paths were corrected before either ran.
@@ -37,15 +37,15 @@ ledger did.
 ## Last completed change
 
 - **Phase 0 closes 22 rows of the drain's List A, and each names its shape** — re-derived per row from the archived rows rather than copied from §3.1: 8 fixed, 3 refuted, 5 surface rebuilt or deleted, 6 discharged by a document or a ruling.
-- **The register proves itself at file level, not only behaviourally** — live holds 217 rows and the archive 173, no id appears in both files, and the checker's own `parse` + `check` run over the archive report no problem for any of the 22 (the CLI reads the live file only, so it cannot see a closed row).
-- **No other line moved** — the phase's diff is 22 deletions from `docs/product/backlog.jsonl` and 22 additions to `docs/product/backlog-archive.jsonl`, and every row present at both revisions is byte-identical, so each row's own `§` occurrences survive where the file-level total does not hold.
+- **The register proves itself at file level, not only behaviourally** — live holds **219** rows and the archive **173**, no id appears in both files, and the checker's own `parse` + `check` run over the archive report no problem for any of the 22 (the CLI reads the live file only, so it cannot see a closed row).
+- **No other line moved** — the 22 closes' diff is 22 deletions from `docs/product/backlog.jsonl` and 22 additions to `docs/product/backlog-archive.jsonl`, and every row present at both revisions is byte-identical, so each row's own `§` occurrences survive where the file-level total does not hold; the two filings then add exactly two lines to the live file and touch nothing else.
 - **Two residuals are filed rather than read out of a deleted row** — `vg-391` for the canvas-repaint coverage that went with `display-fabric.spec.ts`, and `vg-392` for the inspector's write funnel, whose writers left `index.ts` while the dispatch and its closure state stayed.
 
 ## Next
 
-1. **The drain's Phase 0 first** — its close list of 22 rows, each naming which of §3.1's four shapes it is, plus the archive and register mechanics, exercising them before 100+ rows depend on them.
+1. **The drain's Phase 1 next, and it is the user's to answer** — 104 decision rows across D1–D11, of which four are already taken (D1, D5, D4, D11, each recorded as `RULED 2026-10-12:` on its own row); the plan batches the rest into four sessions, so the next artifact is a question list rather than a dispatch.
 2. **Closing the sixteenth acceptance item is the redesign's only remaining work** — it needs the user's ruling on the settings frame's width and on which role a palette preview bar depicts, the work on the other `fix` differences, and a decision on `vg-390`.
-3. **A row whose defect does not reproduce is a finding about the row, not a licence to close it** — 22 rows close and each names which of §3.1's four shapes it is, because a rebuilt surface reported as a fix is the error the shapes exist to prevent.
+3. **A row whose defect does not reproduce is a finding about the row, not a licence to close it** — Phase 0's 22 closed rows each name which of §3.1's four shapes it is, because a rebuilt surface reported as a fix is the error the shapes exist to prevent.
 4. **The serialised browser follow-up still owes 31 of its 49 rows**, four of which (`vg-346`, `vg-347`, `vg-233`, `vg-370`) need a new case and are drain work rather than reproduction; they share the fixed preview ports, so two suites at once produce false results rather than slow ones.
 5. **`vg-386` is a sweep of its own** — the tier's definition is undecided (76 on the plan's literal wording, 133 on the code's own intent) and 133 candidates have never been adjudicated; **none of the 133 is proven dead and none may be deleted on classification alone**.
 
