@@ -108,7 +108,7 @@ Each correction attaches to **the task whose row list names the corrected row**,
 | §8.9 | drifted counts in `vg-262`, `vg-276`, `vg-283`, `vg-199`, `vg-204`, `vg-210`, `vg-284`, `vg-274` | Task 1.2 Step 1 (`vg-262`); Task 9.1 Step 4 (`vg-276`); Task 1.3 Step 5 (`vg-283`); Task 4.1 Step 1 (`vg-199`); Task 2.4 Step 4 (`vg-204`, `vg-210`, `vg-284`); Task 1.3 Step 3 (`vg-274`) |
 | §8.10 | `vg-252`'s premise is half-false, the defect is live | Task 1.4 Step 2 |
 | §8.11 | stale owner paths in `vg-104`, `vg-109`, `vg-155`, `vg-333`, `vg-314`, `vg-328`, `vg-301`, `vg-235` | **Task 3.1 Step 1 (`vg-104`)**; Task 1.5 Step 4 (`vg-109`, `vg-155`); Task 7.4 Step 4 (`vg-333`); Task 2.3 Step 4 (`vg-314`); Task 0.2 Step 3 (`vg-328`); Task 1.3 Step 2 (`vg-301`); **Task 0.3 Step 2 (`vg-235` — the same step that takes §8.5/§8.8)** |
-| §8.12, §8.13 | `vg-359` and `vg-361` misdescribe their own failures | Task 2.2 Step 5, Step 3 |
+| §8.12, §8.13 | `vg-359` and `vg-361` misdescribe their own failures | Task 2.2 Step 5, both on the same pass (the fixes predate the plan — `8a86b2b0` — so this task verifies and closes rather than edits the specs) |
 | §8.14 | `vg-309` moved from `work` to `closes` | Task 0.2 Step 3 |
 | §8.15 | `vg-296`'s row text carries a stale half | Task 2.3 Step 4 |
 
@@ -398,21 +398,37 @@ Rows: D9 — `vg-109`, `vg-155`, `vg-159`, `vg-167`, `vg-168`, `vg-182`, `vg-185
 
 ### Task 2.2: The four rows whose answer already exists
 
+**All four fixes are already in the tree.** They landed on 2026-10-12 before this plan ran — `8a86b2b0`
+(`fix(tests): re-aim three deterministic reds whose surfaces did not move`, red-before and green-after on the built
+bundle, three suites 85 passed) for `vg-359`, `vg-360` and `vg-361`, and `48ada839`
+(`test(walkthrough): the census asserts section 13.1 in the state the ruling puts it in`) for `vg-362`. **Do not
+re-apply them.** This task's work is to rebuild, run each case alone, read each verdict from its own JSON report, and
+close or re-scope each row with the row-text corrections §8.12 and §8.13 name.
+
 **Files:**
-- Modify: `src/web/tests/e2e/editor.spec.ts` (the click point, `vg-359`: the case is `ships the starter's frosted CPU card, reads it live, and round-trips it` at `:1107`, the click at `:1131`), `src/web/tests/e2e/glass-authoring.spec.ts` (the stale xpath, `vg-360`, at `:319`), `src/web/tests/e2e/reference-theme.spec.ts` (`vg-361`'s read at `:2488`), `src/web/tests/e2e/host-walkthrough.spec.ts` (`vg-362`'s census rewrite)
-- Modify: `docs/product/backlog.jsonl`
+- Modify: `docs/product/backlog.jsonl` (the four rows' own lines)
+- Read: `src/web/tests/e2e/editor.spec.ts` (`vg-359`), `src/web/tests/e2e/glass-authoring.spec.ts` (`vg-360`), `src/web/tests/e2e/reference-theme.spec.ts` (`vg-361`), `src/web/tests/e2e/host-walkthrough.spec.ts` (`vg-362`)
 
 **Interfaces:**
-- Consumes: §7's first slice, which answered all four
-- Produces: the fixes those four answers name
+- Consumes: §7's first slice, which answered all four, and the two commits above, which applied the answers
+- Produces: four rows closed or re-scoped on a fresh run, with their own text corrected
 
 Rows: `vg-359`, `vg-360`, `vg-361`, `vg-362`.
 
-- [ ] **Step 1: `vg-360`** — the locator is stale: the `ml-auto` carrier is a `span`, the xpath wants a `div`. Fix the locator.
-- [ ] **Step 2: `vg-359`** — re-aim the click from the row's centre (x=168.5, which lands on the row's own Leave control) to x=88. Then the capture can be regenerated.
-- [ ] **Step 3: `vg-361`** — the failure is a read at `reference-theme.spec.ts:2488` while the Add pane is active; it is a stale step order, not a missing surface. Apply §8.13 to the row's text in the same edit.
-- [ ] **Step 4: `vg-362`** — the census is red as its own spec documents; the owed fix is §13.1's select-first rewrite.
-- [ ] **Step 5: Apply §8.12 to `vg-359`'s line**, rebuild, re-run, and commit.
+- [ ] **Step 1: `vg-360` — confirm the locator fix is the one in the tree.** The stale locator wanted
+  `ancestor::div[contains(@class, 'ml-auto')]//span[contains(@class, 'font-mono')]`; the well is reached through the
+  track instead, at the xpath `ancestor::div[contains(@class, 'items-center')][1]/following-sibling::span[contains(@class, 'font-mono')]`
+  (`glass-authoring.spec.ts:327` at `3ca795a9` — carry the string, not the line).
+- [ ] **Step 2: `vg-359` — confirm the click is re-aimed at the row's own body.** A centre click landed on the row's
+  `Leave group-cpu-card` control, which left the group and removed the part row the case needs next; the case
+  (`ships the starter's frosted CPU card, reads it live, and round-trips it`, `editor.spec.ts:1287` at `3ca795a9`)
+  now clicks the row's body.
+- [ ] **Step 3: `vg-361` — confirm the read moved after the pane opens.** The failure was a read taken while the Add
+  pane was active, resolving to the hidden Document control; the pane is opened before the read.
+- [ ] **Step 4: `vg-362` — confirm the census reads both states.** `keyboardReach` runs at the opening state and again
+  after `selectInPaneByKeyboard`, which is the state the user's 2026-10-12 ruling puts §13.1 in.
+- [ ] **Step 5: Apply §8.12 to `vg-359`'s line and §8.13 to `vg-361`'s, rebuild, run each case alone with
+  `--workers=1`, read each run's JSON report, close or re-scope each row on that verdict, and commit.**
 
 ### Task 2.3: The design-language and chrome suite rows
 
