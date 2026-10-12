@@ -458,8 +458,19 @@ export class ChartManager {
         if (object instanceof VigiliaChart) {
           const id = object.get("id");
           if (typeof id !== "string") continue;
-          const reading = this.#readingSignature(id);
-          if (force || this.#drawnReading.get(id) !== reading) {
+          // A source that throws costs that chart, the way a throwing option
+          // does: the draw is still attempted, so `#applyChart` reports it.
+          let reading: string | undefined;
+          try {
+            reading = this.#readingSignature(id);
+          } catch {
+            reading = undefined;
+          }
+          if (
+            force ||
+            reading === undefined ||
+            this.#drawnReading.get(id) !== reading
+          ) {
             this.#applyChart(id, object, reading);
             drawn = true;
           }
@@ -529,9 +540,10 @@ export class ChartManager {
         this.#globals?.palette,
       );
       chart.setOption(plan.option);
-      // Recorded only once it drew: a chart whose option threw is retried on the
-      // next pass rather than left blank until its data happens to move.
-      this.#drawnReading.set(id, reading ?? this.#readingSignature(id));
+      // Recorded only once it drew, and only for a caller that read a reading:
+      // a chart whose option threw is retried on the next pass rather than left
+      // blank until its data happens to move.
+      if (reading !== undefined) this.#drawnReading.set(id, reading);
     } catch (error) {
       this.#editor.errorManager.warn(
         "controls",
