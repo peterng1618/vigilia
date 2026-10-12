@@ -80,7 +80,7 @@ two apart is the judgement the map cannot make for itself.
 | Theme metadata, artboard size/preview fit/paint/media — **the authoring controls** | `editor/src/artboard-panel.ts` |
 | Semantic layer projection | `editor/src/editor-shell/layer-tree.ts` |
 | **Which object and arrange actions exist** — their ids, labels and icons | `editor/src/object-actions.ts` |
-| **Which of a manager's refusals a menu advertises** — eligibility as the hand-kept agreement with each manager's own refusal, which nothing checks | `editor/src/object-actions.ts` |
+| **Which of a manager's refusals a menu advertises** — eligibility as the hand-kept agreement with each manager's own refusal, now checked by a witness that drives both | `editor/src/object-actions.ts` |
 | **The chrome glyph vocabulary** — the one icon family, the one weight rule, and the named glyphs the shell and the panes draw | `editor/src/editor-shell/icons.ts` |
 | Applying an arrange action to a multi-selection | `editor/src/arrange.ts` |
 | Palette-token authoring and reference reassignment | `editor/src/palette-manager/` |
@@ -96,7 +96,7 @@ two apart is the judgement the map cannot make for itself.
 | **Which bindings resolve** — the ones whose source has left the document, dropped on load | `editor/src/editor-shell.ts` (`dropDanglingBindings`) |
 | Type-preset authoring and reference reassignment | `editor/src/type-preset-manager/` |
 | Open-package asset bytes and controls | `editor/src/asset-manager/` (`index.ts` bytes), `editor/src/panes/add/file-section.tsx` (the pane) |
-| **Whether an asset is still referenced** — the reference that decides a deleted asset can go | `editor/src/asset-manager/index.ts` (`assetReferencedBy`) |
+| **Whether an asset is still referenced** — the reference that decides a deleted asset can go, and the walk a binding's own resolution reads with it | `editor/src/asset-manager/index.ts` (`assetReferencedBy`, `sceneObjects`) |
 | **Shared colour parsing** — hex, rgba and hsva conversion, and the refusal that returns `undefined` for a value that is not a colour | `editor/src/components/ui/colour-maths.ts` |
 | Editor runtime binding refresh | `editor/src/live-runtime.ts` |
 | v2 parsing/file boundary | `editor/src/persist.ts` |

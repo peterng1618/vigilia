@@ -1,10 +1,10 @@
 // @vitest-environment jsdom
 
 import { setObjectAssetReference } from "@vigilia/scene-fabric";
-import { Canvas, FabricImage, type StaticCanvas } from "fabric/es";
+import { Canvas, FabricImage, Group, Rect, type StaticCanvas } from "fabric/es";
 import { describe, expect, it, vi } from "vitest";
 import { fontTrio } from "../font-catalog.js";
-import { AssetManager } from "./index.js";
+import { AssetManager, assetReferencedBy } from "./index.js";
 
 const PNG = new Uint8Array([137, 80, 78, 71]);
 
@@ -374,5 +374,23 @@ describe("AssetManager.placeImage", () => {
     await manager.placeImage(editor, file(PNG, "solo.png", "image/png"));
 
     expect(manager.declarations).toHaveLength(1);
+  });
+});
+
+describe("assetReferencedBy", () => {
+  /** `vg-367`: the same depth `dropDanglingBindings` reads. A re-spelled walk
+   *  that stops at the canvas, or at the first group, reports a grouped image as
+   *  unused and takes its declaration out from under a live object — so this
+   *  pins the answer two groups down, where a shallow spelling diverges. */
+  it("finds a reference two groups down", () => {
+    const referenced = new FabricImage(document.createElement("img"));
+    setObjectAssetReference(referenced, { assetId: "logo", kind: "image" });
+    const inner = new Group([referenced]);
+    const outer = new Group([inner, new Rect({ width: 4, height: 4 })]);
+    const canvas = new Canvas(document.createElement("canvas"));
+    canvas.add(outer);
+
+    expect(assetReferencedBy(canvas.getObjects(), "logo")).toBe(true);
+    expect(assetReferencedBy(canvas.getObjects(), "absent")).toBe(false);
   });
 });

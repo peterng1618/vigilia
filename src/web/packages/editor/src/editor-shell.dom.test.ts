@@ -2,9 +2,10 @@
 
 import { createDemoSource } from "@vigilia/fake-source";
 import { objectName } from "@vigilia/renderer-core";
-import { serialiseScene } from "@vigilia/scene-fabric";
+import { isLocked, serialiseScene } from "@vigilia/scene-fabric";
 import { FabricImage, type FabricObject, Group, Rect } from "fabric/es";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { createEditorShellBridge } from "./editor-shell/bridge.js";
 import { mountEditorShell } from "./editor-shell.js";
 import { LiveRuntime } from "./live-runtime.js";
 import { createNewFabricTheme } from "./new-fabric-theme.js";
@@ -124,6 +125,94 @@ describe("a binding cannot outlive its object", () => {
       Object.keys(authored.bindings ?? {}).length - 1,
     );
 
+    shell.destroy();
+  });
+});
+
+describe("the one walk a reference question reads", () => {
+  /** `vg-367`: `dropDanglingBindings` and `assetReferencedBy` answer different
+   *  questions about the same scene, and both need every object at any depth.
+   *  The second spelling of that walk is what this pins: a copy that stopped at
+   *  the canvas, or at the first group, drops this binding on save while the
+   *  object it names is still on the canvas. */
+  it("keeps a binding whose object sits two groups down", async () => {
+    const host = document.createElement("div");
+    Object.defineProperties(host, {
+      clientWidth: { value: 800 },
+      clientHeight: { value: 600 },
+    });
+    const authored = createNewFabricTheme();
+    const shell = await mountEditorShell({
+      host,
+      artboard: authored.artboard,
+      envelope: authored,
+    });
+    const deep = new Rect({ left: 0, top: 0, width: 10, height: 10 });
+    deep.set("id", "deep-readout");
+    const sibling = new Rect({ width: 10, height: 10 });
+    sibling.set("id", "deep-sibling");
+    const inner = new Group([deep]);
+    inner.set("id", "inner-card");
+    const outer = new Group([inner, sibling]);
+    outer.set("id", "outer-card");
+    shell.editor.canvas.add(outer);
+
+    const after = shell.snapshot({
+      ...authored,
+      bindings: { "deep-readout": [{ id: "b1", semanticKey: "network.up" }] },
+    }) as unknown as {
+      bindings?: Record<string, unknown>;
+      scene: { objects: readonly unknown[] };
+    };
+
+    expect(sceneIds(after.scene)).toContain("deep-readout");
+    expect(Object.keys(after.bindings ?? {})).toContain("deep-readout");
+
+    shell.destroy();
+  });
+
+  /** `vg-365`: eligibility and the two managers that refuse a locked selection
+   *  answer one question — is this selection one they accept. Nothing forced
+   *  them to agree, so this drives both through their real objects: a
+   *  re-spelled lock test on either side, or a manager whose refusal moved,
+   *  turns one of these eight assertions red. */
+  it("offers no locking action the copying or deleting manager refuses", async () => {
+    const host = document.createElement("div");
+    Object.defineProperties(host, {
+      clientWidth: { value: 800 },
+      clientHeight: { value: 600 },
+    });
+    const authored = createNewFabricTheme();
+    const shell = await mountEditorShell({
+      host,
+      artboard: authored.artboard,
+      envelope: authored,
+    });
+    const bridge = createEditorShellBridge({
+      editor: shell.editor,
+      session: { subscribeDocumentChange: () => () => undefined } as never,
+      capture: () => undefined,
+    });
+    const object = new Rect({ left: 0, top: 0, width: 20, height: 20 });
+    object.set("id", "eligibility-probe");
+    shell.editor.canvas.add(object);
+    shell.editor.canvas.setActiveObject(object);
+    expect(shell.editor.canvas.getActiveObject()).toBe(object);
+
+    expect(isLocked(object)).toBe(false);
+    for (const id of ["copy", "cut", "duplicate", "delete"] as const)
+      expect([id, bridge.can(id)]).toEqual([id, true]);
+    expect(await shell.editor.clipboardManager.copy()).toBe(true);
+
+    shell.editor.objectLockManager.lockObject();
+    expect(isLocked(object)).toBe(true);
+
+    for (const id of ["copy", "cut", "duplicate", "delete"] as const)
+      expect([id, bridge.can(id)]).toEqual([id, false]);
+    expect(await shell.editor.clipboardManager.copy()).toBe(false);
+    expect(shell.editor.deletionManager.deleteActive()).toBe(false);
+
+    bridge.destroy();
     shell.destroy();
   });
 });

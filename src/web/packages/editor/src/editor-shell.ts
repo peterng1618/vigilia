@@ -33,10 +33,10 @@ import {
   Canvas,
   classRegistry,
   type FabricObject,
-  Group,
   Point,
   Rect,
 } from "fabric/es";
+import { sceneObjects } from "./asset-manager/index.js";
 import { createClipboardManager } from "./clipboard-manager/index.js";
 import { applyEditorControls } from "./controls-manager/index.js";
 import { createCropManager } from "./crop-manager/index.js";
@@ -129,18 +129,15 @@ function dropDanglingBindings(
 ): FabricThemeEnvelopeInput {
   const bindings = input.bindings;
   if (bindings === undefined) return input;
+  // Through groups: a binding is keyed by the id of the object that reads it,
+  // and the starter's cards are groups, so a walk that stops at the canvas
+  // would declare every reading inside a card dangling and strip it on the
+  // first save. `sceneObjects` owns that depth rule, so this cannot re-spell it.
   const live = new Set<string>();
-  // Into groups: a binding is keyed by the id of the object that reads it, and
-  // the starter's cards are groups, so a walk that stops at the canvas would
-  // declare every reading inside a card dangling and strip it on the first save.
-  const visit = (objects: readonly FabricObject[]): void => {
-    for (const object of objects) {
-      const id = object.get("id");
-      if (typeof id === "string") live.add(id);
-      if (object instanceof Group) visit(object.getObjects());
-    }
-  };
-  visit(canvas.getObjects());
+  for (const object of sceneObjects(canvas.getObjects())) {
+    const id = object.get("id");
+    if (typeof id === "string") live.add(id);
+  }
   const kept = Object.entries(bindings).filter(([id]) => live.has(id));
   if (kept.length === Object.keys(bindings).length) return input;
   return { ...input, bindings: Object.fromEntries(kept) };

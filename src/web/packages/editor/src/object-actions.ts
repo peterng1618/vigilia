@@ -26,7 +26,10 @@ import type { EditorInteraction } from "./editor-interaction.js";
 import type { ProductShortcutId } from "./shortcut-manager/index.js";
 import { uiCopy } from "./ui-copy.js";
 
-/** What a surface may render an action against. Serializable, Fabric-free. */
+/** What a surface may render an action against. Serializable, Fabric-free.
+ *  `locked` is the shared predicate's answer — `scene-fabric`'s `isLocked`,
+ *  asked once by the bridge against the live object — so nothing here tests the
+ *  flag or re-derives the vocabulary. */
 export interface ObjectTarget {
   readonly kind: "none" | "object" | "group" | "chart";
   readonly locked: boolean;
@@ -67,9 +70,11 @@ interface ObjectAction {
 
 const hasSelection = (target: ObjectTarget): boolean => target.kind !== "none";
 
-/** `ClipboardManager` (copy, cut, duplicate) and `DeletionManager` refuse a
- *  locked object, so the refusal is stated once here; `lock` reads it because a
- *  second lock is a no-op the control should not offer. */
+/** Eligibility's own question: is there a selection this control may offer
+ *  itself against. The lock term is the shared `locked` fact the projection
+ *  carries, so the refusal `ClipboardManager` and `DeletionManager` each make
+ *  is theirs and is not restated from outside them; `lock` reads the same term
+ *  because a second lock is a no-op the control should not offer. */
 const hasUnlockedSelection = (target: ObjectTarget): boolean =>
   hasSelection(target) && !target.locked;
 

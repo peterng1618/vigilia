@@ -242,7 +242,7 @@ export class AssetManager {
   }
 
   async hydrate(canvas: StaticCanvas): Promise<void> {
-    for (const object of objectsOf(canvas.getObjects())) {
+    for (const object of sceneObjects(canvas.getObjects())) {
       if (!(object instanceof FabricImage)) continue;
       const reference = objectAssetReference(object);
       if (reference === undefined) continue;
@@ -408,27 +408,39 @@ async function sha256(bytes: Uint8Array): Promise<string> {
     .join("");
 }
 
-function* objectsOf(objects: readonly FabricObject[]): Generator<FabricObject> {
-  for (const object of objects) {
-    yield object;
-    if (object instanceof Group) yield* objectsOf(object.getObjects());
-  }
+/**
+ * Every object the scene holds, at any depth, roots first.
+ *
+ * The one walk a "does the scene still hold this" question reads. Depth is the
+ * whole point: `canvas.getObjects()` is the root only, so an image the author
+ * had grouped reported itself unused and its declaration was removed out from
+ * under a live object, and a binding keyed by an object inside a card read as
+ * dangling and was stripped on the first save. Both are the same mistake, so
+ * both callers spend this walk rather than spelling it again.
+ */
+export function sceneObjects(
+  objects: readonly FabricObject[],
+): readonly FabricObject[] {
+  const found: FabricObject[] = [];
+  const visit = (list: readonly FabricObject[]): void => {
+    for (const object of list) {
+      found.push(object);
+      if (object instanceof Group) visit(object.getObjects());
+    }
+  };
+  visit(objects);
+  return found;
 }
 
 /**
  * Whether any object in the scene — at any depth — carries a reference to this
  * asset.
- *
- * Depth is the whole point. `canvas.getObjects()` is the root only, so an image
- * the author had grouped reported itself unused and its declaration was removed
- * out from under a live object. `hydrate` above already walked with
- * `objectsOf`; this is the same walk answering a different question.
  */
 export function assetReferencedBy(
   objects: readonly FabricObject[],
   assetId: string,
 ): boolean {
-  for (const object of objectsOf(objects)) {
+  for (const object of sceneObjects(objects)) {
     if (objectAssetReference(object)?.assetId === assetId) return true;
   }
   return false;
