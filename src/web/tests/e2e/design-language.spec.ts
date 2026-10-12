@@ -2594,8 +2594,8 @@ test("the shell and the settings modal are what the drawings draw", async ({
   // **hand-written and one entry long**, so a *new* product surface reddens
   // nothing until someone adds it here — which is the class of defect the row
   // exists for. Deriving the list from the product was measured and does not
-  // construct: the panes render **73** distinct `data-vigilia-*` hooks, **8** of
-  // them styled by `editor-shell.css`, and **no checked drawing names any of
+  // construct: the panes render **73** distinct `data-vigilia-*` hooks, **5** of
+  // them named anywhere in `editor-shell.css`, and **no checked drawing names any of
   // them** — the drawings are hand-authored HTML that names a product surface by
   // its *class*, in prose beside the box, never by a hook on a drawn element
   // (measured 2026-10-12 by walking `packages/editor/src/panes/**/*.tsx` and
