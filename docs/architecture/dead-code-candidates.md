@@ -98,7 +98,7 @@ By kind:
 | `no-importer-file` | 1 | 0 | −1 |
 | `dead-export` | 14 | 8 | −6 |
 | `redundant-export` | 280 | 83 | −197 |
-| `barrel-only-export` | 0 | 0 | 0 |
+| `barrel-only-export` | 0 | 0 | 0 — both zeros are the unreachable tier of §3.4, not a measurement that nothing changed |
 | `unreachable-branch` | 10 (8 distinct literals) | 9 (7 distinct) | −1 |
 
 By package:
@@ -428,6 +428,16 @@ test consumers disclosed in the row — yields all **133**. Both were measured: 
 rows have an empty test-importer list and 57 name test importers. Deciding which
 the tier means is a decision, and a corrected detector emits 133 unverified
 candidates whose adjudication is a sweep of its own.
+
+**Reproducing this section, because its numbers come from a filter and not from
+the command in §4.** Copy `scripts/dead-code-sweep.mjs` to a directory *outside*
+the repo, set its `ROOT` constant to the absolute repo path, and change the one
+filter that decides `prodConsumers` so the file's own barrel is excluded from it
+(`!isTestFile(file_) && file_ !== barrel`), then run it with `--json`. The
+unmodified scanner reports the 107 of §1.1; the corrected one reports 240, and
+the difference is this tier. **The `ROOT` pin is not optional**: the script
+resolves its own root from its file URL, so an unpinned copy scans its own
+parent directory and reports zero candidates without failing.
 
 **Nothing here is a verdict and nothing may be deleted on this section alone.**
 renderer-core's 91 (49 strict, 42 test-consumed) is consistent with a private

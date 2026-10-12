@@ -902,9 +902,11 @@ if (!SELF_TEST) process.stdout.write(renderReport(report));
  * in this environment, so a count read from the terminal is not evidence. That
  * file has its own fixed path and is never the `--json` path.
  *
- * What these checks do NOT establish: `barrel-only-export` has never produced a
- * row in this tree, so the branch that emits one is unexercised. The barrel
- * check below proves a route is *followed*, not that the kind can fire.
+ * What these checks do NOT establish: the branch that emits a `barrel-only-export`
+ * candidate **cannot fire at all** — the production-consumer gate above it skips
+ * every input that branch would report (see `vg-386`) — so no check here can
+ * exercise it, and the barrel check below proves a route is *followed*, not that
+ * the kind can fire.
  */
 if (SELF_TEST) {
   const at = (kind, file, symbol) =>
@@ -1024,8 +1026,9 @@ if (SELF_TEST) {
      * is *followed* as a route — so an export consumed through its own package
      * barrel is not reported as unused — for the real case of `settingsFieldsFor`
      * through `renderer-core/src/index.ts`. It does NOT exercise the branch that
-     * emits a `barrel-only-export` candidate, which has never produced a row in
-     * this tree; that branch is unproven by this file's only gate.
+     * emits a `barrel-only-export` candidate, and it cannot: that branch is
+     * unreachable by construction, because the production-consumer gate runs
+     * before it and its own barrel counts as a production consumer (`vg-386`).
      */
     [
       "a barrel's re-export is followed as a route (an import is not)",
