@@ -661,6 +661,25 @@ necessary, never sufficient; §13.1's interaction and stress proof also applies.
   forced-colours focus stays visible. Long names,
   unresolved references and 200% zoom leave controls and reasons reachable.
 
+  **Met at `c825ec75`** — `tests/e2e/host-walkthrough.spec.ts`'s *"§13.1's nine
+  interactions in order, on the real host, and the original document comes
+  back"* drives all nine interactions in §13.1's own order: a document created
+  from the starter, a rail pane chosen, a selection made through Composition, a
+  field edited and cancelled, a group entered and left, the stage's popup opened
+  and closed, a palette chosen, a shortcut capture cancelled, and the return to
+  the `e2e-hosted` fixture the walk booted on. The round trip is measured twice —
+  the identity chip names the fixture and the document's own persisted envelope
+  equals the one read before the walk — with 0 history entries recorded anywhere
+  in it, and §13.1's other two invariants are swept in the state the walk leaves:
+  the Escape that dismisses Settings affects that one owner, and every region
+  still has a reachable focus target. The check runs in the `desktop-host`
+  project, which boots the real host through its own `webServer`; the whole
+  project was run at that commit (`--workers=1`: 47 expected, 1 skipped, 0
+  unexpected). This is the clause plan 6's ledger recorded as **NOT MET**, and it
+  is the last one keeping the redesign objective open. The contrast,
+  forced-colours, zoom and long-name half of the item is §13.1's mechanical gate
+  above, recorded met in that same ledger rather than re-run here.
+
 - **The scales are consumed.** A ratchet over the twelve files listed in
   `scripts/design-tokens.gated.json` — `npm run design:check`, not a grep over
   all sources; a file outside the list is not covered — finds a surface using a
