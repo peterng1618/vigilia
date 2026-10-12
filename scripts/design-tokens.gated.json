@@ -1,5 +1,5 @@
 {
-  "designLanguagePx": [3, 11, 14, 26, 30, 32, 36, 46, 74, 246, 276, 999, 1.6, 1.7, 1.8],
+  "designLanguagePx": [3, 11, 14, 26, 30, 32, 36, 46, 74, 246, 276],
   "gated": [
     "src/web/packages/editor/src/components/ui/control-well.tsx",
     "src/web/packages/editor/src/components/ui/control-text.tsx",
