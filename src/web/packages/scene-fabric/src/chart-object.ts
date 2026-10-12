@@ -149,6 +149,7 @@ export class VigiliaChart extends FabricObject {
       notMerge: true,
       lazyUpdate: false,
     });
+    this._requestCanvasRender();
   }
 
   /** Re-layout ECharts at committed size instead of permanently scaling pixels. */
@@ -161,6 +162,7 @@ export class VigiliaChart extends FabricObject {
     this._renderScale = clampRenderScale(this._renderScale, width, height);
     this._resizeBackingCanvas();
     this.setCoords();
+    this._requestCanvasRender();
   }
 
   /** Change oversampling without reinitializing ECharts. */
@@ -174,6 +176,7 @@ export class VigiliaChart extends FabricObject {
     this._renderScale = next;
     this._resizeBackingCanvas();
     this.set("dirty", true);
+    this._requestCanvasRender();
   }
 
   /**
@@ -223,15 +226,27 @@ export class VigiliaChart extends FabricObject {
     );
   }
 
-  /** ECharts changed pixels outside Fabric's knowledge; invalidate through Fabric. */
+  /**
+   * ECharts changed pixels outside Fabric's knowledge; invalidate through Fabric.
+   *
+   * **The canvas render is asked for by the call that changed the pixels, not
+   * here.** Requesting one from this event made every engine repaint redraw the
+   * whole document — including repaints this object did not cause — and with a
+   * refresh loop driving `setOption` that was every chart, every frame (vg-107).
+   * `set` is what propagates the invalidation to an enclosing group's cache.
+   */
   private readonly _onEngineRendered = (): void => {
     if (this._disposed) {
       return;
     }
 
     this.set("dirty", true);
-    this.canvas?.requestRenderAll();
   };
+
+  /** Blit the pixels this object just repainted. One request per change, not per engine event. */
+  private _requestCanvasRender(): void {
+    this.canvas?.requestRenderAll();
+  }
 
   private _mount(): void {
     const element = document.createElement("canvas");

@@ -637,6 +637,15 @@ describe("a chart that throws", () => {
       setActiveObject: vi.fn(),
     };
     const warn = vi.fn();
+    // Both charts read one sensor, and the source is moved between the
+    // constructor's own pass and the pass under test — so this is a refresh that
+    // has something to draw. A refresh whose readings have not moved draws
+    // nothing at all (vg-107), which would make the claim untestable.
+    const source = createDemoSource(0);
+    const bindings = {
+      good: [{ id: "good-read", semanticKey: "cpu.load" }],
+      bad: [{ id: "bad-read", semanticKey: "cpu.load" }],
+    };
     const manager = new ChartManager({
       editor: {
         canvas,
@@ -645,7 +654,8 @@ describe("a chart that throws", () => {
         errorManager: { warn, error: vi.fn() },
       } as unknown as EditorInteraction,
       scene: {} as SceneAdapter,
-      source: createDemoSource(0),
+      source,
+      bindings,
     });
 
     // The constructor hydrates too, so the spies are cleared and the assertion
@@ -653,6 +663,7 @@ describe("a chart that throws", () => {
     goodSetOption.mockClear();
     badSetOption.mockClear();
     warn.mockClear();
+    source.setNow(60_000);
 
     manager.refresh();
 
@@ -664,6 +675,81 @@ describe("a chart that throws", () => {
     // indistinguishable from a chart with no data.
     expect(warn).toHaveBeenCalledTimes(1);
     expect(String(warn.mock.calls[0]?.[1])).toContain("setOption blew up");
+    manager.destroy();
+  });
+});
+
+describe("a chart whose reading has not moved", () => {
+  /** A manager over one gauge bound to one sensor, and the source it reads. */
+  function harness(bindings: Record<string, readonly { id: string; semanticKey: string }[]>) {
+    const chart = new VigiliaChart({
+      id: "cpu",
+      family: "gauge",
+      width: 100,
+      height: 100,
+      settings: defaultGaugeSettings,
+    });
+    const objects = [chart];
+    const canvas = {
+      on: vi.fn(),
+      off: vi.fn(),
+      add: vi.fn(),
+      getActiveObject: vi.fn(),
+      getObjects: vi.fn(() => objects),
+      requestRenderAll: vi.fn(),
+      setActiveObject: vi.fn(),
+    };
+    const source = createDemoSource(0);
+    const manager = new ChartManager({
+      editor: {
+        canvas,
+        artboard,
+        historyManager: { saveState: vi.fn() },
+        errorManager: { warn: vi.fn(), error: vi.fn() },
+      } as unknown as EditorInteraction,
+      scene: {} as SceneAdapter,
+      source,
+      bindings,
+    });
+    const setOption = vi.spyOn(chart, "setOption");
+    setOption.mockClear();
+    return { manager, source, setOption, chart };
+  }
+
+  it("is not drawn again, and is drawn the moment the reading moves", () => {
+    // **The claim under test.** The loop calls `refresh` at the author's chart
+    // rate, 30 times a second by default, and every one of those calls used to
+    // re-apply every chart's option whether or not its data had moved. ECharts
+    // repainted and Fabric redrew the whole document for an identical picture
+    // (vg-107). The rate is the ceiling on how often a chart *may* re-apply,
+    // never a promise that it does.
+    const { manager, source, setOption } = harness({
+      cpu: [{ id: "cpu-read", semanticKey: "cpu.load" }],
+    });
+
+    manager.refresh();
+    expect(setOption).not.toHaveBeenCalled();
+
+    // The same reading, one frame later: still nothing to draw.
+    manager.refresh();
+    expect(setOption).not.toHaveBeenCalled();
+
+    // A new sample is what moves a chart, and it is drawn for it.
+    source.setNow(60_000);
+    manager.refresh();
+    expect(setOption).toHaveBeenCalledTimes(1);
+    manager.destroy();
+  });
+
+  it("is a chart with no bindings: drawn once, and never for the loop again", () => {
+    // An unbound chart draws a fixed placeholder, so nothing it reads can move.
+    // Re-applying its option thirty times a second was the purest form of the
+    // cost the row measures — the picture could not have changed.
+    const { manager, setOption } = harness({});
+
+    manager.refresh();
+    manager.refresh();
+    expect(setOption).not.toHaveBeenCalled();
     manager.destroy();
   });
 });

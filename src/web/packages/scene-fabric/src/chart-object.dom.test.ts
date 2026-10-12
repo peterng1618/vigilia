@@ -12,7 +12,7 @@ import {
   type Sample,
 } from "@vigilia/renderer-core";
 import { Group, StaticCanvas } from "fabric/es";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { VigiliaChart, type VigiliaChartOptions } from "./chart-object.js";
 
 /**
@@ -319,6 +319,36 @@ describe("an engine repaint reaches the canvas", () => {
 
     expect(chart.dirty).toBe(true);
     expect(group.dirty).toBe(true);
+    chart.dispose();
+  });
+
+  it("asks the canvas to redraw for its own repaint, and not for the engine's", () => {
+    // The second half of `vg-107`. The canvas render used to ride the engine's
+    // `rendered` event, so every engine repaint — an animation frame, a group's
+    // re-render, anything the engine did on its own — asked Fabric to redraw the
+    // **whole document**. The chart asks for the blit where it changes its own
+    // pixels instead, so a repaint it did not ask for invalidates the object
+    // (which is what an enclosing group's cache reads) without redrawing the
+    // scene.
+    const chart = new VigiliaChart(chartOptions());
+    const canvas = new StaticCanvas(undefined, { width: 400, height: 300 });
+    canvas.add(chart);
+    const render = vi
+      .spyOn(canvas, "requestRenderAll")
+      .mockImplementation(() => undefined as never);
+    render.mockClear();
+    chart.set("dirty", false);
+
+    // zrender's `rendered`, invoked the way the engine invokes it.
+    (chart as unknown as { _onEngineRendered: () => void })._onEngineRendered();
+
+    expect(chart.dirty).toBe(true);
+    expect(render).not.toHaveBeenCalled();
+
+    // The repaint the chart *did* ask for still reaches the canvas, so the
+    // pixels it painted cannot be left invisible.
+    chart.setOption(LINE_OPTION);
+    expect(render).toHaveBeenCalledTimes(1);
     chart.dispose();
   });
 });

@@ -117,6 +117,18 @@ export class ChartManager {
     | undefined;
 
   /**
+   * The reading each chart last drew with, keyed by object id.
+   *
+   * The frame loop calls `refresh` at the author's chart rate, which makes that
+   * rate the ceiling on how often a chart *may* re-apply — not a promise that
+   * every tick draws every chart. Re-applying an option the chart already has
+   * made ECharts repaint, and Fabric redraw the whole document, thirty times a
+   * second for an identical picture (vg-107). A chart absent from this map has
+   * never been drawn by this manager and is drawn.
+   */
+  readonly #drawnReading = new Map<string, string>();
+
+  /**
    * The chart's own fields, for the selection inspector's column to render.
    *
    * The mount point moved out of a Data tab and into the chart's own column;
@@ -210,7 +222,9 @@ export class ChartManager {
 
   setGlobals(globals: FabricGlobals | undefined): void {
     this.#globals = globals;
-    this.refresh();
+    // A palette decides every chart's ink, so new globals move a chart the
+    // data did not.
+    this.#applyCharts(true);
   }
 
   /**
@@ -222,16 +236,18 @@ export class ChartManager {
    */
   setBindings(bindings: Readonly<Record<string, readonly Binding[]>>): void {
     this.#bindings = bindings;
-    this.refresh();
+    // Which series a chart has is a binding, so a re-bound chart moves even
+    // where its readings do not.
+    this.#applyCharts(true);
   }
 
   setSource(source: SampleSource): void {
     this.#source = source;
-    this.refresh();
+    this.#applyCharts(true);
   }
 
   refresh(): void {
-    this.#hydrateRevivedCharts();
+    this.#applyCharts(false);
   }
 
   setRefreshRate(rate: 1 | 30): void {
@@ -422,19 +438,63 @@ export class ChartManager {
     chart.resizeTo(width, height);
   };
 
-  /** A revived v2 chart deliberately has no persisted engine pixels or samples. */
+  /** A revived or pasted chart is a new object, so every chart is redrawn. */
   readonly #hydrateRevivedCharts = (): void => {
-    const hydrate = (objects: readonly object[]): void => {
+    this.#applyCharts(true);
+  };
+
+  /**
+   * Draw the charts whose reading moved — and, when `force` is set, all of them.
+   *
+   * `force` is for a change that moves a chart without moving its data: a new
+   * palette or source, a re-bound chart, or one revived from history. Everything
+   * else is the refresh loop's own call, and it draws nothing where nothing has
+   * moved.
+   */
+  #applyCharts(force: boolean): void {
+    let drawn = false;
+    const visit = (objects: readonly object[]): void => {
       for (const object of objects) {
         if (object instanceof VigiliaChart) {
           const id = object.get("id");
-          if (typeof id === "string") this.#applyChart(id, object);
-        } else if (object instanceof Group) hydrate(object.getObjects());
+          if (typeof id !== "string") continue;
+          const reading = this.#readingSignature(id);
+          if (force || this.#drawnReading.get(id) !== reading) {
+            this.#applyChart(id, object, reading);
+            drawn = true;
+          }
+        } else if (object instanceof Group) {
+          visit(object.getObjects());
+        }
       }
     };
-    hydrate(this.#editor.canvas.getObjects());
-    this.#editor.canvas.requestRenderAll();
-  };
+    visit(this.#editor.canvas.getObjects());
+    if (drawn) this.#editor.canvas.requestRenderAll();
+  }
+
+  /**
+   * The newest sample each binding would draw, as one string.
+   *
+   * Read from `history` rather than `latest`, because `history`'s newest entry
+   * moves only when the source has a new sample: the preview source answers
+   * `latest` from the wall clock, so a chart bound to one would look as though
+   * it had moved on every call. A chart with no bindings draws a fixed
+   * placeholder, so its reading never moves and it is drawn once.
+   *
+   * The window is one second rather than the chart's own, because only the
+   * newest sample is read and a source denser than a second still puts its
+   * newest sample last.
+   */
+  #readingSignature(id: string): string {
+    return (this.#bindings[id] ?? [])
+      .map((binding) => {
+        const newest = this.#source.history(binding.semanticKey, 1).at(-1);
+        return `${binding.id}:${newest?.status ?? "-"}:${
+          newest?.timestamp ?? "-"
+        }:${newest?.value ?? newest?.textValue ?? "-"}`;
+      })
+      .join("|");
+  }
 
   #chartFor(id: string): VigiliaChart | undefined {
     const find = (objects: readonly object[]): VigiliaChart | undefined => {
@@ -451,7 +511,7 @@ export class ChartManager {
     return find(this.#editor.canvas.getObjects());
   }
 
-  #applyChart(id: string, chart: VigiliaChart): void {
+  #applyChart(id: string, chart: VigiliaChart, reading?: string): void {
     // **Per chart, and reported, not swallowed.** `refresh()` runs beside the
     // text repaint in one callback, so a chart that throws would take every
     // bound reading on the canvas down with it. One bad chart costs that chart.
@@ -469,6 +529,9 @@ export class ChartManager {
         this.#globals?.palette,
       );
       chart.setOption(plan.option);
+      // Recorded only once it drew: a chart whose option threw is retried on the
+      // next pass rather than left blank until its data happens to move.
+      this.#drawnReading.set(id, reading ?? this.#readingSignature(id));
     } catch (error) {
       this.#editor.errorManager.warn(
         "controls",
