@@ -385,6 +385,12 @@ test.describe("the shell, reached by keyboard alone", () => {
     await expect(rename, "the draft before it is cancelled").not.toHaveValue(
       name,
     );
+    // **The Escape that closes the field leaves focus on `document.body`**
+    // (measured: `PROBE-AFTER-ESCAPE BODY|`), so every press after this point
+    // restarts from the document root rather than resuming on the row. That is
+    // `vg-389`, and it is out of this plan's scope — new focus management is its
+    // own change with its own spec. The walk below is written not to depend on
+    // it either way.
     await page.keyboard.press("Escape");
     await expect(rename, "the rename field after Escape").toHaveCount(0);
     expect(
