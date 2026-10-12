@@ -315,8 +315,16 @@ test.describe("authoring frosted glass through the inspector", () => {
 
     // The well beside the track: the one place a value is shown, and the one
     // place a draft could have lived.
+    //
+    // **Arrived at through the track, not through a right-aligned wrapper.**
+    // The well is the `span.font-mono` sibling of `Slider.Control`
+    // (`control-slider.tsx`), held at the row's end by `justify-end` and a fixed
+    // width rather than by an `ml-auto` — so a locator wanting a `div.ml-auto`
+    // ancestor finds nothing and reports a missing well where the well is
+    // present. The nearest `items-center` ancestor of the input *is*
+    // `Slider.Control`: the thumb between them carries neither.
     const well = blur.locator(
-      "xpath=ancestor::div[contains(@class, 'ml-auto')][1]//span[contains(@class, 'font-mono')]",
+      "xpath=ancestor::div[contains(@class, 'items-center')][1]/following-sibling::span[contains(@class, 'font-mono')]",
     );
     await expect(well).toHaveText(await blur.inputValue());
     await expect(well.locator("input, textarea")).toHaveCount(0);

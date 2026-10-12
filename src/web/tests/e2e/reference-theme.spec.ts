@@ -2485,12 +2485,19 @@ test.describe("background media", () => {
     });
     // The declared ids, read from the media control's own opened list: it is
     // plan 1's select, so it has no `option` elements to evaluate.
+    //
+    // **The pane is opened before the read, as it is for the first image.** The
+    // control lives in the Document pane, so a read taken while the Add pane is
+    // showing resolves to the hidden Document control — still in the document,
+    // never becoming visible — and the read waits there until the case times
+    // out. The row filed this as "the background-media row never becomes
+    // visible"; the control is present and fine, and the step order was stale.
+    await openPane(page, "Document");
     const ids = await optionsOf(page, "[data-vigilia-background-asset]");
     expect(ids).toEqual(expect.arrayContaining(["hero", "hero-2"]));
     expect(ids.filter((id) => id.startsWith("hero"))).toHaveLength(2);
 
     // **Repoint.** The artboard names the new one, and the layer follows it.
-    await openPane(page, "Document");
     await chooseIn(page, "[data-vigilia-background-asset]", "hero-2");
     await waitForMedia(page);
     const second = await mediaSrc(page);

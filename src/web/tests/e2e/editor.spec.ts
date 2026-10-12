@@ -1126,7 +1126,15 @@ test.describe("Fabric editor route", () => {
     // card's *own* row still selects the card, and the panel's row selects the
     // part. A tree that answered the part for both would put the card beyond
     // reach the moment the author went into it.
-    await page.locator('[data-vigilia-layer="group-cpu-card"]').click();
+    //
+    // **Click the row's own body, not its centre.** Once a row is entered and
+    // attended it draws its state controls over the right two thirds of itself
+    // — on this row `.vigilia-layer-state` spans x 155-277 of 58-279 — and the
+    // element at the row's centre is the `Leave group-cpu-card` button. A
+    // centre click therefore leaves the group instead of selecting the row,
+    // and the part row this test needs next is gone. An author aiming at a row
+    // aims at its name for the same reason.
+    await page.locator('[data-vigilia-layer="group-cpu-card"]').click({ position: { x: 30, y: 13 } });
     await expect.poll(() => activeId(page)).toBe("group-cpu-card");
     await page.locator('[data-vigilia-layer="cpu-card"]').click();
     await expect.poll(() => activeId(page)).toBe("cpu-card");
