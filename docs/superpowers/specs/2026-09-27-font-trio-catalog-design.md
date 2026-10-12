@@ -198,7 +198,7 @@ a valid envelope. The bound preset renders Family and Weight disabled.
 the empty fallback, and writes through, matching `display.test.ts`.
 
 **Browser.** The picker opens; search narrows; a facet filters the list to the
-entries that carry its tag — a triplet with no matching tag leaves the list, and
+entries that carry its tag — a trio with no matching tag leaves the list, and
 a face leaves it only when none of the trios that seed it carries the tag; a row
 previews in its own face; apply seeds all three roles;
 a single face overrides one role; a later trio apply re-seeds it; unbind leaves
