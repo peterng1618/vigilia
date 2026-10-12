@@ -725,7 +725,7 @@ A same-rules read over the 149 archived rows produces **14 problems** today, and
 
 ---
 
-# Phase 6 — W5: manager protocols and single-owner facts (5 rows)
+# Phase 6 — W5: manager protocols and single-owner facts (5 rows + Task 6.5's eight)
 
 **Outcome:** the session and the managers name one owner per fact, and `vg-364`'s deadline is checked rather than worked.
 
