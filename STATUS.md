@@ -32,19 +32,19 @@ satisfies every token in `DESIGN.md` and still does not look like the mockup.
 
 ## Last completed change
 
-- **The dead-code sweep is closed and archived, on nine tasks, four phases and two verdicts each** — the plan-boundary whole-branch review raised two load-bearing findings and no third, both were dispositioned in tracked documents, and its scoped re-review **passed with no load-bearing finding** while reproducing the counts from scratch rather than ratifying them.
-- **Its first finding was in the sweep's own instrument and is filed as `vg-386`** — `scripts/dead-code-sweep.mjs:705` runs before the `barrel-only-export` branch at `:708`, and the file's own package barrel counts as a production consumer, so the tier cannot fire for any input and **133 candidate rows were never reported**; an unexercised kind might fire tomorrow, this one cannot fire at all.
-- **Reproduced twice and independently** — a corrected filter reports **240** candidates at `93fa9a5a`, 133 of them `barrel-only-export`, the other kinds unchanged at 8/83/7/9 (plus `no-importer-file` at 0), so the 133 are additions and nothing reclassifies; **76** are the plan's literal sole-importer shape and **57** name test importers, which is why the tier's definition is a decision rather than a fix.
-- **The report's zero was a detector limit reading as a measurement, and the corrected claim now reaches every site** — `dead-code-candidates.md` says so in §1.1, §1.3, its delta table and a new §3.4 that carries the reproduction method, the plan records Step 2's unimplemented kind, and the scanner's own prose no longer calls the tier unexercised.
-- **Phase 1's acceptance names its exception at all four sites** — the `dd7c3365` delta is ruling AJ's pre-existing `value < 1` floor reached on a new path, reproduced against a real Fabric `Textbox`, and the plan marks its real-gesture reachability unverified instead of claiming nothing changed.
+- **All six triage tables are complete and committed** — **237 open rows**, the last three batches 40/40, 39/39 and 39/39, every id in exactly one batch and none in two, proved by set comparison rather than by adding counts.
+- **The phase's verdicts: 21 close, 104 are decisions, 110 are work, 2 are parked by the user** — a close on movement is named as such and is never used as a substitute for a close on a fix.
+- **49 rows wait on a serialised browser follow-up**, each carrying its spec, `--grep` and build command; the three the capture run already fails (`vg-359`, `vg-360`, `vg-361`) are among them.
+- **B5's phase output is sixteen rules over fourteen rows** — the "no rule reads X" rows close only on gates that do not exist, and the user ruled those are separate holes and separate work rather than one merged pass.
+- **One finding is deliberately not filed while the pass runs** — literal copy in the dev fixture `control-fixture.tsx`, which the copy walk does not mount; a row now would belong to no batch and break Task 7's coverage arithmetic, so the synthesis carries it.
 
 ## Next
 
-1. **The backlog reproduction pass is the active plan and has not started** — third in the user's sequence, it re-derives its batches from the register at run time rather than from a written count, and its first step is a **reproduction pass, not a fix pass**: **236 open rows** in [`backlog.jsonl`](docs/product/backlog.jsonl) plus 149 archived, and a row whose defect does not reproduce is a finding about the row, not a licence to close it.
-2. **`vg-386` is a sweep of its own, not a fix inside the closed plan** — the tier's definition is undecided (76 on the plan's literal wording, 133 on the code's own intent) and 133 candidates have never been adjudicated, so the filter, the re-run and whatever removals follow belong to a successor plan; **none of the 133 is proven dead and none may be deleted on classification alone**.
-3. **`vg-368` waits on a decision** — whether `src/web/.agent-scratch/` is deleted, relocated outside the tree, or excluded per tool; deleting is not obviously safe because it holds screenshots and a vitest report that may be the only copy.
-4. **The three failures the capture run surfaced** — `vg-359` (which also owns the one stale capture), `vg-360` and `vg-361`; nothing fixed on sight, because the first question for each is whether the surface moved or the locator did, and those want opposite fixes.
-5. **`vg-383` is a flake with a named mechanism and no owner yet** — the run-format preview is asserted against a clock read after the render, so the suite reads red about once in sixty runs and the failure lands on whichever commit is nearby.
+1. **Task 7, the synthesis, is the pass's next step and its last** — it proves coverage over all six tables and writes `docs/superpowers/specs/2026-10-12-the-backlog-drain-design.md`, which is what the drain is planned from; its input is the **237 open rows** in [`backlog.jsonl`](docs/product/backlog.jsonl) plus 149 archived.
+2. **The drain's rule is that a row whose defect does not reproduce is a finding about the row, not a licence to close it** — 21 rows close and each names which of the two kinds of close it is.
+3. **The serialised browser follow-up runs 49 deferred rows one at a time** — they share the fixed preview ports, so two suites at once produce false results rather than slow ones, and one sample of a flaky spec is not a measurement.
+4. **`vg-386` is a sweep of its own, not a fix inside the closed plan** — the tier's definition is undecided (76 on the plan's literal wording, 133 on the code's own intent) and 133 candidates have never been adjudicated; **none of the 133 is proven dead and none may be deleted on classification alone**.
+5. **`vg-368` waits on a decision** — whether `src/web/.agent-scratch/` is deleted, relocated outside the tree, or excluded per tool; deleting is not obviously safe because it holds screenshots and a vitest report that may be the only copy.
 
 ## Blockers / unverified
 
