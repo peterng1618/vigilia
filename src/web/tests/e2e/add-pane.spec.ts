@@ -60,15 +60,21 @@ test("a card inserted from the Add pane arrives as a unit the tree can name", as
   test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
   await page.goto(EDITOR);
+
+  // The starter already holds its own time card, so the inserted unit is the
+  // Clock row the insert *adds* — counted rather than located by the id the
+  // allocator mints (`card-library.ts`'s `COPY_PREFIX` prepends `card` to the
+  // card's `group-time-card`). That id is the product's to choose, not the
+  // spec's to restate (vg-170; the rule `composition-panel.spec.ts` states).
+  await openPane(page, "Composition");
+  const clocks = page.locator(".vigilia-layer-role", { hasText: "Clock" });
+  const before = await clocks.count();
+
   await openPane(page, "Add");
   await addPane(page)
     .getByRole("button", { name: "Clock", exact: true })
     .click();
 
   await openPane(page, "Composition");
-  await expect(
-    page.locator(
-      '[data-vigilia-layer="card-group-time-card"] .vigilia-layer-role',
-    ),
-  ).toHaveText("Clock");
+  await expect(clocks).toHaveCount(before + 1);
 });
