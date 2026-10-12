@@ -36,18 +36,18 @@ ledger did.
 
 ## Last completed change
 
-- **Task 2.3b closes the chrome row and re-scopes the worker-count row** — `vg-313` is `verified` with its membership derived from `editor-shell.css` and red-proved, and `vg-285` stays `open` on the reading its own gate produced, because the ruling the row asked for is answered by the instrument rather than by a decision.
-- **The boundary arm reads its three sets out of the stylesheet** — a rule whose fill is `--panel`/`--shell-surface` is glass when lifted and chrome when flat, so the literal `GLASS_CLUSTERS` pair became the derived `SHEEN_CLUSTERS` and a surface added later is read with the rule that paints it instead of escaping a list.
-- **The red proof plants the row's own defect** — a further element carrying `editor-glass` with its own blur rule reddens the cluster arm in all six palettes, naming `7:.editor-shell-probe-cluster.editor-glass`, and the plant was reverted byte-exact (`cmp` against `git show HEAD:<path>`) before the green run.
-- **`vg-285` reproduces on an idle box, and its bisect is a curve rather than a boundary** — 4 timeouts at 10 workers, 3 at 8, 1 at 6, none at 5, each failure 1–14% over the 30s limit, so the row's "on an idle box there is nothing to fix" is the half the reading falsifies.
-- **Two spec files past the 800 stop are filed and two records corrected** — `vg-394` and `vg-395` carry them, and `vg-313`'s proof limits and `vg-285`'s missing A/B are written on the rows rather than left in a report.
+- **Task 2.4a reads twelve rows and closes four** — `vg-158`, `vg-172`, `vg-195` and `vg-210` are `verified` on cases that redden under a planted defect, restored byte-exact and `cmp`-checked; eight stay `open` with their runs' evidence on their own lines rather than in the report.
+- **A row kept open says what its run produced, not what it hoped** — `vg-028`'s cell `--grep` collects zero tests, `vg-138` planted its defect on the live preview and the spec still passed, and `vg-141`, `vg-143`, `vg-156`, `vg-164`, `vg-197`, `vg-204` are further green samples, none of them a close.
+- **`vg-197`'s fix was deliberately not written** — its cause is unestablished, so `AGENTS.md`'s bug rule makes it a filed issue rather than a guessed fix, and the row says so.
+- **The §8.9 corrections ride the rows they belong to** — `vg-204`'s and `vg-210`'s line numbers are re-measured at HEAD; `vg-210`'s lands on its archived line, which is where a `verified` row lives.
+- **The controller's align/distribute fix is separate work** (`001b203a`) — a grouped selection was moved by its group's transform a second time; the residual, a scaled or rotated group whose members are displaced before `arrange` runs, is filed as `vg-396`.
 
 ## Next
 
 1. **The drain's four ruling sessions are the user's to answer, and Phase 2 runs beside them** — the agenda classifies all 104 decision rows (**12 answered, 8 deferred to the browser follow-up, 84 to ask**); Session 1's eight questions across D1 and D2 are put in chat and unanswered, so the next artifact from them is rulings, not a dispatch.
 2. **Closing the sixteenth acceptance item is the redesign's only remaining work** — it needs the user's ruling on the settings frame's width and on which role a palette preview bar depicts, the work on the other `fix` differences, and a decision on `vg-390`.
 3. **A row whose defect does not reproduce is a finding about the row, not a licence to close it** — Phase 0's 22 closed rows each name which of §3.1's four shapes it is, because a rebuilt surface reported as a fix is the error the shapes exist to prevent.
-4. **Task 2.3 is closed in both halves, and Phase 2 moves to Task 2.4's 23 rows** — 2.3a's four rows and 2.3b's two are read and committed, and `vg-314`, `vg-326` and `vg-285` stay `open` on what their own lines say would close them; Task 2.4 runs the remaining suites one at a time on the fixed preview ports, and Task 2.5's capture row follows.
+4. **Task 2.4a is committed and under review, and Task 2.4b's eleven rows are next** — 2.4b waits on that review rather than running beside it, because both halves edit `backlog.jsonl`; its brief is written and its rows are the B3–B6 cells, `vg-284` among them.
 5. **`vg-386` is a sweep of its own** — the tier's definition is undecided (76 on the plan's literal wording, 133 on the code's own intent) and 133 candidates have never been adjudicated; **none of the 133 is proven dead and none may be deleted on classification alone**.
 
 ## Blockers / unverified
