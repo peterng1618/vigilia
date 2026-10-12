@@ -18,6 +18,8 @@ const EDITOR_PORT = 4223;
 
 export default defineConfig({
   testDir: "./tests/e2e",
+  // Its own artifact dir, for the reason playwright.config.ts states (vg-216).
+  outputDir: "test-results/display",
   testMatch: /author-journey-display\.spec\.ts/,
   retries: 0,
   // One document, one editor, and the editor global's `N` is per instance.

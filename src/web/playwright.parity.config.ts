@@ -5,6 +5,8 @@ const EDITOR_PORT = 4226;
 
 export default defineConfig({
   testDir: "./tests/e2e",
+  // Its own artifact dir, for the reason playwright.config.ts states (vg-216).
+  outputDir: "test-results/parity",
   testMatch: /glass-circle-parity\.spec\.ts/,
   retries: 0,
   workers: 1,

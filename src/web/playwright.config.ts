@@ -68,6 +68,9 @@ const DISPLAY_SPEC = /author-journey-display\.spec\.ts/;
 
 export default defineConfig({
   testDir: "./tests/e2e",
+  // Its own artifact dir: a shared test-results/ lets the first run to finish
+  // clear the other's traces, which the survivor reports as test failures (vg-216).
+  outputDir: "test-results/main",
   // Every Playwright spec is a `.spec.ts`. The default (`spec` **or** `test`)
   // would also collect a Vitest unit test that lives beside the harness —
   // `tests/e2e/mockup-values.test.ts` is one, because the reader it proves is

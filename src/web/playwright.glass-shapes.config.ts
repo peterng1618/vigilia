@@ -11,6 +11,8 @@ const EDITOR_PORT = 4219;
 
 export default defineConfig({
   testDir: "./tests/e2e",
+  // Its own artifact dir, for the reason playwright.config.ts states (vg-216).
+  outputDir: "test-results/glass-shapes",
   testMatch: /glass-shapes-(budget|visual)\.spec\.ts/,
   retries: 0,
   // One measurement at a time. A second worker competing for the same CPU would
