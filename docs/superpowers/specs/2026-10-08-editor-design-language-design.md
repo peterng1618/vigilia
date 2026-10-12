@@ -683,8 +683,9 @@ necessary, never sufficient; §13.1's interaction and stress proof also applies.
   forced-colours, zoom and long-name half of the item is §13.1's mechanical gate
   above, recorded met in that same ledger rather than re-run here.
 
-- **The scales are consumed.** A ratchet over the twelve files listed in
-  `scripts/design-tokens.gated.json` — `npm run design:check`, not a grep over
+- **The scales are consumed.** A ratchet over the files listed in
+  `scripts/design-tokens.gated.json` — 71 of them today, counted rather than
+  carried in this sentence — `npm run design:check`, not a grep over
   all sources; a file outside the list is not covered — finds a surface using a
   spacing value not in the bible's steps, or a hex colour outside the palette
   roles, **fails**. An automated check, not a review note — §9's whole point is
@@ -721,6 +722,68 @@ necessary, never sufficient; §13.1's interaction and stress proof also applies.
   this item**; neither has one whose deliberate differences rest on a rule's
   silence, and an empty difference list is stated as a finding rather than
   assumed.
+
+### Where each item stands, counted
+
+Counted on 2026-10-12 by running each item's own check rather than reading its
+annotation, which is §13.1's rule for closing one — a named check and the rebuilt
+commit. Fifteen hold; the last does not, and it is the only thing keeping the
+redesign objective open. Until this section carried them, fifteen of the sixteen
+verdicts lived only in the archived acceptance ledger of plan 6
+([`plans/archive/2026-10-08-iconography-and-copy.md`](../plans/archive/2026-10-08-iconography-and-copy.md)),
+which is a plan artifact rather than this spec's own statement.
+
+- **Every editor surface is React** — the five surfaces are React and gated, and
+  the one imperative UI module is ADR-0033's exemption — **met**, and it is the
+  one item no gate runs: it is a reading.
+- **Edits are safe transactions** — `control.dom.test.tsx` and
+  `preset-list.dom.test.tsx` (43 cases) plus `inspector-sections.spec.ts` —
+  **met**.
+- **Keyboard and contrast are observed** — `design-language.spec.ts` (10 passed)
+  and the real-host walkthrough — **met**, annotated above.
+- **The scales are consumed** — `npm run design:check`, 71 gated files clean —
+  **met for the gated subset**, with its two coverage gaps named and open
+  (`vg-274`, `vg-286`).
+- **No native `<select>` or `input type=range`** — the panes assert zero of each
+  in the running gate — **met as written**; the clause's *count* is a one-time
+  ledger reading, and the residue is `vg-266`/`vg-271`, open.
+- **Every panel's behaviour survives its rewrite** — the panel suites pass on the
+  rebuilt bundle (`composition-panel`, `inspector-sections`, `add-pane`,
+  `editor-rail`, `editor-display`, `shell-appearance`) — **met**, with plan 3's
+  red-proof ledger no longer on disk.
+- **Nothing selected → the inspector is empty and says where to choose from** —
+  `inspector-sections.spec.ts` — **met**.
+- **A card selects as a group, with no property a group does not have** — the
+  same file — **met**.
+- **A text run's binding is one Enter from its card** — `editor.spec.ts`'s
+  round-trip case — **met**.
+- **The dock shows only what the selection can run** — `editor.spec.ts`'s dock
+  capture — **met**.
+- **The four rail slots each open, one at a time, and the gear opens settings** —
+  `editor-rail.spec.ts` and the pane captures — **met** (`vg-330` supersedes the
+  gear half later and is not fixed forward).
+- **The Add pane offers units and primitives, neither greyed** — `add-pane.spec.ts`
+  with `composition-panel.spec.ts`'s row assertions — **met**.
+- **The Tokens pane lists paints and presets, bound to the selection** —
+  `preset-list.dom.test.tsx`'s `vg-094` case, and `vg-094` is closed — **met**.
+- **The stage draws no device frame** — `editor-display.spec.ts` — **met**.
+- **Six palettes are distinguishable by surface** — `shell-appearance.spec.ts`
+  and the six committed PNGs — **met**; the "read rather than computed" half is a
+  one-time human reading, not a gate.
+- **Every plan's parity capture exists, and every difference is fixed or backed
+  by a cited rule** — **NOT MET**. Plans 6, 7 and 8 have their captures
+  registered. Plan 8's own completion report rules the second clause *"NOT met
+  for the plan's closure condition"*: six of its differences are `fix` with
+  owners outside that plan, and they are open rows today (`vg-316`, `vg-319`,
+  `vg-322`, `vg-325`, and `vg-274`'s spacing pass), two of them waiting on the
+  user's rulings. Plans 1 and 3 cannot be checked at all: no capture sits beside
+  `current/controls.html` or `controls-light.html`, no `.superpowers/sdd/`
+  workspace survives for either, and the archived ledger records that plan 1's
+  ten differences "no longer exist anywhere" — so the item asks for a comparison
+  the repo can no longer make, which is `vg-390`. **What discharges it:** the
+  ruling on the settings frame's width and on which role a palette preview bar
+  depicts, the work on the other `fix` differences, and a decision on the
+  plans 1–3 wording — reproduce the comparison or narrow the item.
 
 ## Ruled during review
 

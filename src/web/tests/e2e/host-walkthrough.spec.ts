@@ -522,12 +522,12 @@ test.describe("the shell, reached by keyboard alone", () => {
     //
     // **The budget is stated rather than inherited.** `test.slow()` would give
     // 3× the 30 s default — 90 s — with nothing in this file saying so, and the
-    // walk measures **67.8 s** on an idle box against **91.3 s, 92.2 s, 94.8 s
-    // and 96.1 s** in the runs taken while this close-out shared the machine,
-    // every one of them past that inherited budget. 120 s is ~1.8× the clean
-    // measurement and ~1.25× the worst sample: room for a loaded run, still
-    // close enough that a genuine hang reports as a timeout rather than
-    // arriving as a "flake".
+    // walk measures **63.2 s** on an idle box (67.8 s for the file that holds it)
+    // against **91.3 s, 92.2 s, 94.8 s and 96.1 s** in the runs taken while this
+    // close-out shared the machine, every one of them past that inherited budget.
+    // 120 s is ~1.9× the clean measurement and ~1.25× the worst sample: room for
+    // a loaded run, still close enough that a genuine hang reports as a timeout
+    // rather than arriving as a "flake".
     test.setTimeout(120_000);
     await openWalkthrough(page);
     // The state the round trip is measured against, read before anything moves.

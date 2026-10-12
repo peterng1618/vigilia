@@ -21,7 +21,7 @@ import type { Page } from "@playwright/test";
  *
  * **Taken from DESIGN.md §7's own drawing, not invented to fit a result.** Its
  * labelled bands are `header · rail · pane · stage · inspector · status bar`.
- * The four here are the body's — the ones §13.1's interactions move through,
+ * The four here are the body's — the body regions the interactions act in,
  * and the ones that own a focusable surface: the rail chooses a pane, the pane
  * holds the scene tree, the stage holds the canvas and its dock, the inspector
  * holds the selection's own column.
