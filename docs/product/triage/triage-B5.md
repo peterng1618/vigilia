@@ -94,6 +94,11 @@ enough that merging them would lose one:
 | an interior colour role where a literal stands | vg-334 | §4 | the control set's owner |
 | a copy table's exemption from the 800-line stop | vg-337 | the file and the rule | the repo's own guardrail |
 
+**A re-count of the table above the gate table, not of this one:** seven verdict cells end in a gate and are
+absent here — `vg-313`, `vg-316`, `vg-317`, `vg-333`, `vg-335`, `vg-338`, `vg-339` — so **fourteen is a floor,
+not the class**. This table is the rule-and-owner mapping and stays as it is; the drain plans by owner, and
+the synthesis carries the correction.
+
 ## Deferred to the serialised browser follow-up — **not run, deferred**
 
 Sixteen rows cannot be reproduced or proved in this phase because their proof is a Playwright or capture

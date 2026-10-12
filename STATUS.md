@@ -32,15 +32,15 @@ satisfies every token in `DESIGN.md` and still does not look like the mockup.
 
 ## Last completed change
 
-- **All six triage tables are complete and committed** — **237 open rows**, the last three batches 40/40, 39/39 and 39/39, every id in exactly one batch and none in two, proved by set comparison rather than by adding counts.
-- **The phase's verdicts: 21 close, 104 are decisions, 110 are work, 2 are parked by the user** — a close on movement is named as such and is never used as a substitute for a close on a fix.
-- **49 rows wait on a serialised browser follow-up**, each carrying its spec, `--grep` and build command; the three the capture run already fails (`vg-359`, `vg-360`, `vg-361`) are among them.
-- **B5's phase output is sixteen rules over fourteen rows** — the "no rule reads X" rows close only on gates that do not exist, and the user ruled those are separate holes and separate work rather than one merged pass.
-- **One finding is deliberately not filed while the pass runs** — literal copy in the dev fixture `control-fixture.tsx`, which the copy walk does not mount; a row now would belong to no batch and break Task 7's coverage arithmetic, so the synthesis carries it.
+- **The drain spec is written and its arithmetic is machine-checked** — [`2026-10-12-the-backlog-drain-design.md`](docs/superpowers/specs/2026-10-12-the-backlog-drain-design.md) sorts all **237** rows into **21 closes**, **104 decisions** in eleven ruling clusters, **110 work** rows in nine candidates and **2 parked**; every cluster header was re-counted against its own rows and two were wrong.
+- **Coverage was re-proved from the register rather than carried** — 237 open rows and 237 verdicts, the six batches being contiguous slices of the sorted open list, and the plan's own id lists shown stale (216 rows covered, 23 open rows in no list).
+- **Closing has a price the spec names** — 13 of the 21 closes carry no sha, so the drain finds one at close time or the close is not a close; `vg-196` closes on a deletion and leaves a possible repaint-coverage hole to file afresh rather than read out of a deleted subject.
+- **The gate class's count is stated as soft** — B5's rule table names sixteen rules over fourteen rows and a re-count of its verdict cells finds more, so the drain plans by owner: nine of them, and the mapping is in the spec.
+- **The copy boundary is decided instead of left open** — `control-fixture.tsx` is exempt by name because the product build never includes it, and the condition that would flip the decision is named.
 
 ## Next
 
-1. **Task 7, the synthesis, is the pass's next step and its last** — it proves coverage over all six tables and writes `docs/superpowers/specs/2026-10-12-the-backlog-drain-design.md`, which is what the drain is planned from; its input is the **237 open rows** in [`backlog.jsonl`](docs/product/backlog.jsonl) plus 149 archived.
+1. **The drain spec awaits its independent review, which is this pass's real check** — the review reads the spec rather than re-reading 237 rows (ruling E); once it passes, the pass closes and the drain is planned from the spec. Its input was the **237 open rows** in [`backlog.jsonl`](docs/product/backlog.jsonl) plus 149 archived.
 2. **The drain's rule is that a row whose defect does not reproduce is a finding about the row, not a licence to close it** — 21 rows close and each names which of the two kinds of close it is.
 3. **The serialised browser follow-up runs 49 deferred rows one at a time** — they share the fixed preview ports, so two suites at once produce false results rather than slow ones, and one sample of a flaky spec is not a measurement.
 4. **`vg-386` is a sweep of its own, not a fix inside the closed plan** — the tier's definition is undecided (76 on the plan's literal wording, 133 on the code's own intent) and 133 candidates have never been adjudicated; **none of the 133 is proven dead and none may be deleted on classification alone**.
