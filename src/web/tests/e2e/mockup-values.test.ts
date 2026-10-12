@@ -4,7 +4,9 @@ import {
   assertParityRowProperty,
   CONTROLS_LIGHT_MOCKUP_PATH,
   CONTROLS_MOCKUP_PATH,
+  COPIED_ELEMENTS,
   colourValue,
+  copiedElementDrift,
   currentDrawings,
   drawingTexts,
   lengthInPx,
@@ -12,6 +14,7 @@ import {
   mockupDeclared,
   mockupDeclaredOrNull,
   mockupDeclaredProperties,
+  ORIGINAL_MOCKUP_PATH,
   PARITY,
   readMockup,
   rowDrawing,
@@ -695,4 +698,58 @@ test("a parity row names a property its drawing's selector declares, or says its
       mockupSilence: true,
     }),
   ).toThrow(/the marker is stale/);
+});
+
+test("every element a drawing copies from the original declares the original's treatment", () => {
+  // **The value §3 cannot be asked about (`vg-320`).** The drawings gate asks
+  // whether a value is one §3 has — and `4px` is, which is how the keyboard
+  // drawing shipped a `4px` row container where the original draws `6px` with
+  // every gate green. This reads the pair the doctrine makes (README: the
+  // treatment "is copied from the original drawings" and "is never redrawn from
+  // the product") over a named list, because a whole-file diff would report the
+  // current set's own density and its scale normalisation as drift.
+  const original = readMockup(ORIGINAL_MOCKUP_PATH);
+  const failures: string[] = [];
+  for (const entry of COPIED_ELEMENTS) {
+    const drift = copiedElementDrift(
+      readMockup(entry.drawing),
+      original,
+      entry,
+    );
+    if (drift.length > 0) failures.push(`${entry.region}: ${drift.join("; ")}`);
+  }
+  expect(failures).toEqual([]);
+
+  // The check the loop above cannot make: a comparator answering `[]` passes it.
+  // The row's own instance, put back — all twenty containers at the 4px only a
+  // reviewer's eye caught — must come back as a difference.
+  const row = named(COPIED_ELEMENTS, "keyboard — the shortcut row container");
+  const current = readMockup(row.drawing);
+  const drifted = current.replaceAll(
+    "gap:16px;padding:4px 6px;border-radius:6px",
+    "gap:16px;padding:4px 6px;border-radius:4px",
+  );
+  expect(drifted).not.toBe(current);
+  expect(copiedElementDrift(drifted, original, row)).toEqual([
+    "border-radius: the drawing declares `4px`, the original `6px`",
+  ]);
+
+  // And the half a single-row drift would otherwise hide: the address does not
+  // carry the compared value, so one drifted container leaves nineteen still
+  // carrying it and the reader refuses to settle between two forms rather than
+  // answering with the ones that did not move.
+  const one = current.replace(
+    "gap:16px;padding:4px 6px;border-radius:6px",
+    "gap:16px;padding:4px 6px;border-radius:4px",
+  );
+  expect(one).not.toBe(current);
+  expect(() => copiedElementDrift(one, original, row)).toThrow(
+    /does not settle which one it means/,
+  );
+
+  // And what the list deliberately leaves out: the same element's `gap` is the
+  // current set's own density against the original's, so the pair is not held to
+  // it. Both sides are read, so the ceiling is a measurement and not a claim.
+  expect(mockupDeclared(current, row.selector, "gap")).toBe("16px");
+  expect(mockupDeclared(original, row.originalSelector, "gap")).toBe("10px");
 });
