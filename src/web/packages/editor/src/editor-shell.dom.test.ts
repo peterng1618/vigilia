@@ -129,7 +129,9 @@ describe("a binding cannot outlive its object", () => {
 });
 
 describe("the dirty guard and what the renderer paints", () => {
-  /** The instrument that found this: snapshot, one live pass, snapshot. */
+  /** The instrument that found this: one live pass, then count the non-empty
+   *  `styles` tables on the canvas — the snapshot cannot carry them any more,
+   *  because `serialiseScene` strips the derived table (`vg-129`). */
   it("is not made dirty by a reading being painted", async () => {
     const host = document.createElement("div");
     Object.defineProperties(host, {
