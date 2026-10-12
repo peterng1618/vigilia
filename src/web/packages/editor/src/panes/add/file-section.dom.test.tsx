@@ -496,11 +496,13 @@ describe("the Add pane's file section", () => {
     expect(saveState.mock.calls.length - afterImport).toBe(1);
   });
 
-  it("swaps the chosen asset's bytes without declaring a new one or re-pointing a placed object at one", async () => {
+  it("swaps the chosen asset's bytes without declaring a second asset", async () => {
     // `vg-154`'s remaining work is "re-point the *selected object* at a new
-    // asset" — the opposite shape to this. A placed object bound to the id
-    // keeps that id, because `replace` swaps bytes in place rather than
-    // declaring a second asset and moving the object onto it.
+    // asset" — the opposite shape to this, and the shape that would declare one.
+    // What this case can pin is the declaration side only: `replace` swaps bytes
+    // under the id instead of declaring a second asset. It cannot pin "the
+    // object kept that id", because `hydrate` is mocked below and nothing here
+    // reads the reference back.
     const image = new FabricImage(document.createElement("img"), {
       id: "image-1",
     });
@@ -510,13 +512,12 @@ describe("the Add pane's file section", () => {
     await importFile(host, IMAGE_FILE);
     await replaceFile(host, "logo", OTHER_IMAGE_FILE);
 
-    // The id and path survive and no second declaration appears, so no object
-    // was pointed at a new asset — the bytes under the same id are all that
-    // moved.
-    expect(
-      manager.declarations.map((asset) => [asset.id, asset.path]),
-    ).toEqual([["logo", "assets/logo.png"]]);
-    // The re-point that did happen is through the id, on every bound object.
+    // The id and path survive and no second declaration appears: the bytes under
+    // the same id are all that moved.
+    expect(manager.declarations.map((asset) => [asset.id, asset.path])).toEqual(
+      [["logo", "assets/logo.png"]],
+    );
+    // And the edit commits once, rehydrating every object bound to the id.
     expect(hydrate).toHaveBeenCalledTimes(1);
   });
 
