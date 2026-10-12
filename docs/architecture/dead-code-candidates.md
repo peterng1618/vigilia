@@ -195,6 +195,12 @@ documents both of these as **decisions rather than deletions** — a variant
 produced or read through a composed string, and a value arriving from outside the
 source. That is why they read as rows and not as work.
 
+Two of the nine `unreachable-branch` rows are **closed**: the literals
+`"image-cover"` and `"scale-montage"`, declared in `editor-interaction.ts` and
+`image-manager/index.ts`, were `importImage`'s inert `scale` option and went with
+its removal (`vg-381`, `678efef9`). The whole union is gone, so no branch of it is
+unreachable any more.
+
 Two rows in this table are known to be a downstream question rather than a
 candidate: `settingsField` is `vg-342` (which names both remedies and says the
 doc half's cause is not established), and `createSpecimenCache`'s only production
