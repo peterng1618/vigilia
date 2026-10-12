@@ -29,9 +29,10 @@ export function LayerActions({
         <ControlIconButton
           key={action.id}
           label={action.label}
-          // §4's mark and its `--hot` rendering both come from the registry's
-          // own flag, so the footer cannot disagree with the dock about delete.
-          destructive={action.destructive === true}
+          // The mark is the whole mechanism: `destructiveMarker` carries the
+          // registry's flag to every surface, and the one
+          // `[data-vigilia-destructive]` rule in the shell paints it `--hot`.
+          // Nothing here says "destructive" a second time.
           data={destructiveMarker(action)}
           onClick={() => bridge?.run(action.id)}
         >

@@ -96,3 +96,62 @@ describe("§2's role on a dialog's own body", () => {
     ).toContain("font-size: var(--text-sm)");
   });
 });
+
+/** §4's destructive mark, painted by one rule that reaches every surface.
+ *
+ *  `vg-226`'s complaint was that Delete was `--hot` in the dock and ordinary in
+ *  the layer footer and the canvas context menu. The colour is painted by the
+ *  shared `data-vigilia-destructive` the registry's `destructiveMarker` puts on
+ *  each control, and the failure it replaced was a **surface-scoped** rule:
+ *  `.editor-shell-dock button[data-vigilia-destructive]` cannot reach a popup
+ *  Base UI portals to `body`, so the menu's Delete kept its inherited colour.
+ *
+ *  A text read rather than a rendered one on purpose: jsdom has no cascade, so a
+ *  DOM assertion could only ever prove the string it wrote. This is the half that
+ *  reddens in `vitest` when the rule is reverted; the rendered half is the
+ *  browser. */
+/** The stylesheet without its comments, for the two reads below that look for a
+ *  *declaration*: a comment that explains why a declaration is gone
+ *  (`color: inherit`, the removed restatement) is text the same regexes would
+ *  otherwise find and accuse. */
+const cssNoComments = css.replace(/\/\*[\s\S]*?\*\//g, "");
+
+describe("§4's destructive mark", () => {
+  it("paints --hot from the shared marker, and from one rule that no surface scopes", () => {
+    expect(
+      ruleBodies("[data-vigilia-destructive]"),
+      "no rule keys §4's `--hot` on the shared `data-vigilia-destructive`, so a " +
+        "surface the bare selector cannot be beaten to — the portalled context " +
+        "menu — paints its destructive action as ordinary text",
+    ).toContain("color: var(--hot)");
+
+    // One rule, not one per surface. A rule whose *selector* mentions the marker
+    // is a rule that paints it; two of them is the owner violation `vg-226` was
+    // filed for, one level down, whatever colours they name.
+    const painters = [
+      ...cssNoComments.matchAll(
+        /^[^{}\n]*\[data-vigilia-destructive\][^{}\n]*\{/gm,
+      ),
+    ].map((match) => match[0]);
+    expect(
+      painters,
+      "more than one rule paints the destructive mark",
+    ).toHaveLength(1);
+    expect(
+      painters[0],
+      "the destructive mark is still painted by a surface-scoped rule, so a " +
+        "surface outside that scope — a portalled popup — is left ordinary",
+    ).not.toMatch(/\.editor-shell-|\[role=/);
+
+    // And nothing else declares a colour on a control that carries the mark. The
+    // menu popup's items are the ones that did: a rule there outranks a bare
+    // attribute at (0,2,0), which is exactly how the menu's Delete stayed
+    // ordinary while carrying the mark.
+    expect(
+      cssNoComments,
+      "the menu popup's item rule declares a colour again, so it outranks the " +
+        "bare `[data-vigilia-destructive]` selector and the menu's Delete stops " +
+        "painting §4's `--hot`",
+    ).not.toMatch(/\.editor-shell-menu-popup\s+\[role="menuitem"\][^}]*color:/);
+  });
+});

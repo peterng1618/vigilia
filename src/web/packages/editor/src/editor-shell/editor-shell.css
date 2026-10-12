@@ -552,6 +552,37 @@ body,
    blaming the cascade. */
 @source inline("bg-shell-surface");
 
+/* §4: `--hot` marks destructive affordances, and delete is the only one. This is
+   the **one** rule that paints the mark, so it is keyed on the shared
+   `data-vigilia-destructive` (`objectActions.ts`'s `destructiveMarker` owns both
+   the attribute name and which actions carry it) and on nothing a surface owns.
+   It is deliberately not a control's own class: the mark has to reach every
+   surface the registry renders, including the one that is portalled out of the
+   dock.
+
+   That is the failure it replaced. The colour used to be painted by
+   `.editor-shell-dock button[data-vigilia-destructive]`, and the canvas context
+   menu portals its popup to `body`, so the dock-scoped rule could not reach it:
+   the menu's Delete carried the mark and painted `--shell-text` like every other
+   entry. A popup-scoped second rule would have expressed "destructive paints
+   `--hot`" in two places — the one-owner violation `vg-226` was filed for, one
+   level down.
+
+   This selector needs no surface qualifier and no specificity trick. Tailwind's
+   utilities are in `@layer utilities` and this rule is unlayered, so it outranks
+   every `text-*` class whatever the selector weight; and no other rule declares
+   a colour on the elements that carry the mark — a menu item inherits
+   `--shell-text` from its popup, which is why the popup's items no longer
+   restate `color: inherit` (a declaration there was the one thing that outranked
+   a bare attribute, at (0,2,0)).
+
+   A blocked control never carries the mark: eligibility removes Delete before a
+   surface draws it, so §4's "a disabled destructive control stays `--faint`" is
+   not fought here. */
+[data-vigilia-destructive] {
+  color: var(--hot);
+}
+
 /* ── One treatment boundary: chrome is flat and opaque; a floating cluster
    over the canvas is glass. ──────────────────────────────────────────────
    §3's elevation table gives row 0 — no shadow, a 1px `--edge` hairline — to
@@ -823,7 +854,12 @@ body,
 .editor-shell-menu-popup [role="menuitemradio"] {
   /* A flex line, so a trailing chord can be pushed to the right edge with
      `margin-left: auto` and the label and key share one baseline instead of
-     block-stacking. */
+     block-stacking.
+
+     No `color` here, deliberately: an item inherits the popup's `--shell-text`
+     already, and the declaration that used to restate that (`color: inherit`)
+     outranked a bare `[data-vigilia-destructive]` at (0,2,0) — which is what
+     kept the menu's Delete from painting §4's `--hot`. */
   display: flex;
   align-items: center;
   width: 100%;
@@ -832,7 +868,6 @@ body,
   background: transparent;
   border-radius: 6px;
   padding: 6px 9px;
-  color: inherit;
   cursor: pointer;
 }
 .editor-shell-menu-popup [role="menuitem"]:hover,
@@ -2409,10 +2444,6 @@ body,
   display: inline-flex;
   align-items: center;
   justify-content: center;
-}
-/* §4: `--hot` marks destructive affordances, and delete is the only one. */
-.editor-shell-dock button[data-vigilia-destructive] {
-  color: var(--hot);
 }
 .editor-shell-dock button:disabled {
   opacity: 0.35;

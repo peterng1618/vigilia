@@ -138,17 +138,17 @@ it("marks delete destructive in the footer too, from the registry", () => {
   // The footer is the second surface of the registry, and the mark is §4's own:
   // read off the rendered controls, so a footer that stopped reading the flag
   // reddens. `delete` and only `delete` carries it.
+  //
+  // The *colour* the mark paints is not asserted here and cannot be: jsdom has
+  // no cascade, so a class or an inline value would prove only the string.
+  // `[data-vigilia-destructive]` in the stylesheet is what paints it, and
+  // `editor-shell.control-rules.test.ts` reads that rule as text.
   const marked = Array.from(
     host.querySelectorAll(
       "[data-vigilia-layer-actions] button[data-vigilia-destructive]",
     ),
   ).map((button) => button.getAttribute("aria-label"));
   expect(marked).toEqual([uiCopy.actions.delete]);
-  expect(
-    host.querySelector(
-      "[data-vigilia-layer-actions] button[data-vigilia-destructive]",
-    )?.className,
-  ).toContain("text-hot");
 
   act(() => root.unmount());
 });
