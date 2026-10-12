@@ -76,7 +76,10 @@ export function GradientEditor({
               style={{
                 left,
                 background: stop.color,
-                boxShadow: "0 0 0 1px #000",
+                // §4's boundary role, not a shadow: the 1px spread separates the
+                // dot from the track beneath it, which is separation rather than
+                // altitude (`--elev-*` are offset-and-blur depths).
+                boxShadow: "0 0 0 1px var(--edge)",
               }}
               onPointerDown={(event) => {
                 const track =
