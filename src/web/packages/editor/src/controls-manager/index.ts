@@ -134,10 +134,11 @@ function createLineControls(): Record<string, Control> {
           new Point(x, y),
           frame ?? util.invertTransform(line.calcTransformMatrix()),
         );
-        // One call, not two. `Line` re-derives `left`/`top` from `x1`/`y1`
-        // whenever its geometry changes, and it does that consistently only for
-        // a single write of the whole quad: setting `x2` alone parks the anchor
-        // at -1 while `x1` still reads 0.
+        // Both of the endpoint's scalars are written: `x2` alone leaves `y2`
+        // where it was and the handle stops following the pointer on the other
+        // axis. One `set` for the pair, because `Line._set` recomputes
+        // `left`/`top` from `x1`..`y2` on every coordinate write, so a split
+        // pair re-derives the box twice.
         line.set({
           [which]: point.x,
           [which === "x1" ? "y1" : "y2"]: point.y,

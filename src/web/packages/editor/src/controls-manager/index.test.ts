@@ -123,7 +123,10 @@ describe("applyEditorControls", () => {
     drag("endpointB", 400, 0);
     // The other end did not move — that is the whole point of an end handle.
     expect({ x1: line.x1, y1: line.y1 }).toEqual({ x1: 0, y1: 0 });
+    // The dragged end is a point: both of its scalars follow the pointer, so a
+    // handler that wrote only `x2` would leave `y2` at its old value (vg-377).
     expect(line.x2).not.toBe(far.x2);
+    expect(line.y2).not.toBe(far.y2);
 
     // Shift holds the line at a multiple of 15 degrees, so a free drag cannot
     // leave it a few degrees off level.
