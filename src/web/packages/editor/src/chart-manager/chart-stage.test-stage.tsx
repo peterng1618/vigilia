@@ -2,8 +2,8 @@ import { act } from "react";
 import { flushSync } from "react-dom";
 import { createRoot } from "react-dom/client";
 import {
-  type ChartContentFieldsView,
   ChartContentFields,
+  type ChartContentFieldsView,
   type ChartEdits,
   ChartPaintFields,
   type ChartPaintFieldsView,

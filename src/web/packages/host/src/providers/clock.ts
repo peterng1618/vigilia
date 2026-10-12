@@ -1,7 +1,7 @@
 import {
-  type SampleEntry,
   describeSemanticKey,
   instantIn,
+  type SampleEntry,
 } from "@vigilia/renderer-core";
 import type {
   ProviderHealth,

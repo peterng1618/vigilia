@@ -782,8 +782,10 @@ test("deleting a part inside a group empties the right column too", async ({
   await selectLayer(page, "cpu-card");
   await expect.poll(() => activeId(page)).toBe("cpu-card");
   await expect(nameField).toBeVisible();
-  expect(await documentHolds(page, "cpu-card"), "the part is in the document")
-    .toBe(true);
+  expect(
+    await documentHolds(page, "cpu-card"),
+    "the part is in the document",
+  ).toBe(true);
 
   await page
     .locator('[data-vigilia-layer-actions] [aria-label="Delete"]')

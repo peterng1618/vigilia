@@ -3,10 +3,10 @@ import { describeSemanticKey, diskDeviceId } from "@vigilia/renderer-core";
 import type { DeviceAssignment } from "./lhm-mapping.js";
 import {
   type BlockDeviceLike,
-  type DriveDevice,
   type DriveLayoutLike as DiskLayoutLike,
-  drivesFrom,
+  type DriveDevice,
   driveFor,
+  drivesFrom,
   nameFor,
   volumesOf,
 } from "./library-devices.js";

@@ -1,12 +1,12 @@
 import { isTimeZoneName } from "../scene/datetime/instant.js";
 import { isLocaleName } from "../scene/datetime/names.js";
+import { isBleedMark, VIGILIA_BLEEDS_PROPERTY } from "./bleed.js";
 import {
   MAX_ARTBOARD_DIMENSION,
   MAX_NODE_COUNT,
   MAX_NODE_DEPTH,
   STABLE_ID_PATTERN,
 } from "./document.js";
-import { isBleedMark, VIGILIA_BLEEDS_PROPERTY } from "./bleed.js";
 import { envelopeKeysFor, knownKeysFor } from "./envelope-keys.js";
 import {
   type ValidationIssue,

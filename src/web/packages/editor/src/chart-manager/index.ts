@@ -17,13 +17,13 @@ import {
   nextNewObjectPlacement,
 } from "../new-object-defaults.js";
 import type { ChartFieldsPort } from "../selection-inspector/per-kind-column.js";
+import type { ChartEdits } from "./chart-fields.js";
 import {
   ASPECT_RATIOS,
   type ChartFieldTarget,
   chartContentView,
   chartPaintView,
 } from "./panel.js";
-import type { ChartEdits } from "./chart-fields.js";
 
 /**
  * The family's per-series paint, with one entry per series.

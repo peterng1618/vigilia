@@ -2,8 +2,8 @@
 import { objectBleeds, VIGILIA_BLEEDS_PROPERTY } from "@vigilia/renderer-core";
 import { outsideCount, sceneBoxesOf } from "@vigilia/scene-fabric";
 import { Circle, Rect } from "fabric/es";
-import { describe, expect, it, vi } from "vitest";
 import { act } from "react";
+import { describe, expect, it, vi } from "vitest";
 import { createArtboardPanel } from "../artboard-panel.js";
 import { idleCrop } from "./idle-crop.test-stage.js";
 import { createSelectionInspector } from "./index.js";

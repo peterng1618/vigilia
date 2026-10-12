@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
-import { afterEach, describe, expect, it, vi } from "vitest";
+
 import { defaultPieSettings, settingsFieldsFor } from "@vigilia/renderer-core";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { numberField } from "./number-field.js";
 import { isSettingVisible, settingsField } from "./settings-field.js";
 

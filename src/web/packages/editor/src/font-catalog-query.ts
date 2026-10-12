@@ -1,6 +1,6 @@
 import {
-  catalogFaces,
   type CuratedFontFace,
+  catalogFaces,
   type FontTrio,
   fontTrios,
 } from "./font-catalog.js";

@@ -1,7 +1,7 @@
 import { ContextMenu } from "@base-ui/react/context-menu";
 import { useEffect, useMemo, useState } from "react";
-import { objectActionsFor } from "../object-actions.js";
 import { insertGroups } from "../new-object-panel.js";
+import { objectActionsFor } from "../object-actions.js";
 import { uiCopy } from "../ui-copy.js";
 import type { EditorShellBridge } from "./bridge.js";
 import type { EditorActionFacade } from "./session-facade.js";

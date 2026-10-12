@@ -28,9 +28,9 @@ import {
 } from "fabric/es";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { uiCopy } from "../ui-copy.js";
+import { supportsGlassControl } from "./glass.js";
 import { idleCrop } from "./idle-crop.test-stage.js";
 import { createSelectionInspector } from "./index.js";
-import { supportsGlassControl } from "./glass.js";
 // The shared React drivers: the converted glass and material controls are plan-1
 // controls, so a raw `change` event no longer commits them.
 import { click, slide, valueText } from "./runs.test-stage.js";

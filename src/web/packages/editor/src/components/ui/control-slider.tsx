@@ -2,8 +2,8 @@ import { Slider } from "@base-ui/react/slider";
 import type * as React from "react";
 import { useEffect, useRef } from "react";
 import {
-  ControlRow,
   type ControlProps,
+  ControlRow,
   isBlocked,
   useControlIds,
   wellClasses,

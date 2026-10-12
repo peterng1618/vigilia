@@ -10,7 +10,6 @@ import {
 } from "@vigilia/scene-fabric";
 import { classRegistry, type FabricObject } from "fabric/es";
 import { describe, expect, it } from "vitest";
-import { insertGroups } from "./new-object-panel.js";
 import {
   createNewChartDefaults,
   createNewPaintDefaults,
@@ -27,6 +26,7 @@ import {
   SHAPE_KINDS,
   type ShapeKind,
 } from "./new-object-defaults.js";
+import { insertGroups } from "./new-object-panel.js";
 import { uiCopy } from "./ui-copy.js";
 
 const globals = {

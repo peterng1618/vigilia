@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, type Page, test } from "@playwright/test";
 import { shortcutLabel } from "../../packages/editor/src/shortcut-manager/display.js";
 import { SHORTCUT_LABELS } from "../../packages/editor/src/shortcut-manager/reference.js";
 import { uiCopy } from "../../packages/editor/src/ui-copy.js";
@@ -328,7 +328,9 @@ test("a chord rebound in the Keyboard tab is the chord the ? sheet prints", asyn
   const row = dialog.locator('[data-vigilia-shortcut-row="publish.surface"]');
   const chip = row.locator("kbd");
   const fallback = shortcutLabel("publish.surface");
-  await expect(chip, "the row starts on its default chord").toHaveText(fallback);
+  await expect(chip, "the row starts on its default chord").toHaveText(
+    fallback,
+  );
 
   // A free chord on this machine's platform, which is the spelling the tooltip
   // case below pins for `Ctrl+D` as well.

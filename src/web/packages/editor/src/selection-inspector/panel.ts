@@ -1,10 +1,10 @@
 import type { FabricGlobals } from "@vigilia/renderer-core";
 import {
+  Arc,
   applyObjectPalettePaints,
   type FabricPaintRefs,
   paintPropertyFor,
   VIGILIA_PAINT_PROPERTY,
-  Arc,
   Wedge,
 } from "@vigilia/scene-fabric";
 import {

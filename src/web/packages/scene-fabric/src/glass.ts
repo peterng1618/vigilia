@@ -6,8 +6,8 @@ import {
   Group,
   Polygon,
   Rect,
-  Triangle,
   type StaticCanvas,
+  Triangle,
 } from "fabric/es";
 import { Arc, sectorPath, Wedge } from "./sector-object.js";
 

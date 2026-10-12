@@ -1,11 +1,11 @@
 // @vitest-environment jsdom
 import { type FabricObject, StaticCanvas, Textbox } from "fabric/es";
 import { describe, expect, it } from "vitest";
+import { VIGILIA_TEXT_PROPERTY } from "./fabric-text.js";
 import {
   applyObjectTypePresets,
   reassignObjectTypePresetReferences,
 } from "./object-type.js";
-import { VIGILIA_TEXT_PROPERTY } from "./fabric-text.js";
 import { reviveScene, serialiseScene } from "./persist.js";
 
 /**

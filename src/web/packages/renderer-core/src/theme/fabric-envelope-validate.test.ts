@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
+import type { ValidationIssue } from "./envelope-semantics.js";
 import {
   type FabricEnvelopeValidationResult,
   validateFabricThemeEnvelope,
 } from "./fabric-envelope-validate.js";
 import { MAX_OBJECT_NAME_LENGTH } from "./object-name.js";
-import type { ValidationIssue } from "./envelope-semantics.js";
 
 function withMetadata(
   base: Record<string, unknown>,

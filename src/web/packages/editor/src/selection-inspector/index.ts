@@ -15,8 +15,8 @@ import { OBJECT_LOCK_CHANGED_EVENT } from "../object-lock-manager/index.js";
 import { uiCopy } from "../ui-copy.js";
 import { writeMark } from "./bleed.js";
 import { createSelectionColumnRoot } from "./column.js";
-import { createInspectorRoot } from "./inspector.js";
 import { writeGlassField } from "./glass.js";
+import { createInspectorRoot } from "./inspector.js";
 import { writePanelField, writeShapeGeometryField } from "./panel.js";
 import {
   type ChartFieldsPort,

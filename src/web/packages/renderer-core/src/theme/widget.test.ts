@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { type WidgetIssue, createWidgetIdAllocator } from "./widget.js";
+import { createWidgetIdAllocator, type WidgetIssue } from "./widget.js";
 
 /**
  * The id rule an inserted unit takes with it.

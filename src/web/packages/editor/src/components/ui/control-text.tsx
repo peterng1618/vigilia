@@ -1,9 +1,9 @@
 import type * as React from "react";
 import { useRef, useState } from "react";
 import {
+  type ControlProps,
   ControlRow,
   ControlWell,
-  type ControlProps,
   isBlocked,
   useControlIds,
 } from "./control-well.js";

@@ -11,13 +11,13 @@ import {
 } from "@vigilia/renderer-core";
 import { writeThemePackage } from "@vigilia/theme-package";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { type HostBinding, createHostBinding } from "./cli/hosting.js";
+import { createHostBinding, type HostBinding } from "./cli/hosting.js";
 import type { DeviceAssignment } from "./providers/lhm-mapping.js";
 import { ProviderRegistry } from "./providers/registry.js";
 import {
   createHostServer,
-  type HostServerOptions,
   type HostingState,
+  type HostServerOptions,
 } from "./server.js";
 import { createSessionStore } from "./session/pairing.js";
 import { createActiveThemeStore } from "./settings/active-theme.js";

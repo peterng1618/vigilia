@@ -4,15 +4,15 @@ import { VIGILIA_TEXT_PROPERTY } from "@vigilia/scene-fabric";
 import {
   ActiveSelection,
   Canvas,
-  Group,
   type FabricObject,
+  Group,
   Rect,
   Textbox,
 } from "fabric/es";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { createDeletionManager } from "../deletion-manager/index.js";
 import { createErrorManager } from "../error-manager/index.js";
-import { createClipboardManager, type ClipboardBindings } from "./index.js";
+import { type ClipboardBindings, createClipboardManager } from "./index.js";
 
 function setup(bindings?: ClipboardBindings["read"]) {
   const canvas = new Canvas(document.createElement("canvas"));

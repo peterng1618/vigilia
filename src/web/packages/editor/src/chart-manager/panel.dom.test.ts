@@ -1,11 +1,12 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from "vitest";
+
 import {
   defaultPieSettings,
   type FabricPalette,
   type PieSettings,
   settingsFieldsFor,
 } from "@vigilia/renderer-core";
+import { describe, expect, it } from "vitest";
 import { isSettingVisible } from "../editor-shell/controls/settings-field.js";
 import {
   ASPECT_RATIOS,

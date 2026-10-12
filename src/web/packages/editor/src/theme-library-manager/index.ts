@@ -2,14 +2,14 @@ import type { FabricThemeEnvelope } from "@vigilia/renderer-core";
 import type { AssetManager } from "../asset-manager/index.js";
 import type { ErrorManager } from "../error-manager/index.js";
 import {
-  promptThemeConflict,
-  promptThemeSelection,
-} from "../theme-library-dialog.js";
-import {
   createThemeLibraryClient,
   ThemeConflictError,
   type ThemeLibraryClient,
 } from "../theme-library-client.js";
+import {
+  promptThemeConflict,
+  promptThemeSelection,
+} from "../theme-library-dialog.js";
 
 /**
  * The stored document a session descends from, and what that document declared.

@@ -2,8 +2,8 @@
 
 import {
   outsideCount,
-  sceneBoxesOf,
   type SceneBox,
+  sceneBoxesOf,
 } from "@vigilia/scene-fabric";
 import {
   ActiveSelection,

@@ -1,8 +1,8 @@
 // @vitest-environment jsdom
 
 import type { FabricThemeEnvelope } from "@vigilia/renderer-core";
-import { describe, expect, it } from "vitest";
 import { mountFabricScene, reviveThemeEnvelope } from "@vigilia/scene-fabric";
+import { describe, expect, it } from "vitest";
 
 /**
  * The artboard is a clip, and revival used to take it away.

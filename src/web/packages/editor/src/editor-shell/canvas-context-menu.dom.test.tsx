@@ -2,8 +2,8 @@
 import type { FabricObject } from "fabric/es";
 import { createRoot, type Root } from "react-dom/client";
 import { beforeAll, expect, it, vi } from "vitest";
-import { OBJECT_ACTIONS, type ObjectTarget } from "../object-actions.js";
 import { insertGroups } from "../new-object-panel.js";
+import { OBJECT_ACTIONS, type ObjectTarget } from "../object-actions.js";
 import { uiCopy } from "../ui-copy.js";
 import type { EditorShellBridge } from "./bridge.js";
 import { CanvasContextMenu } from "./canvas-context-menu.js";

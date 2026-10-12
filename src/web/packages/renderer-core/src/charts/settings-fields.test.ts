@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { CHART_FAMILIES, type ChartFamily } from "../theme/document.js";
 import { defaultGaugeSettings, type GaugeSettings } from "../types.js";
 import { ANIMATION_EASINGS, type AnimationSettings } from "./animation.js";
-import { defaultBarSettings, type BarSettings } from "./bar.js";
+import { type BarSettings, defaultBarSettings } from "./bar.js";
 import { defaultLineSettings, type LineSettings } from "./line.js";
 import { defaultPieSettings, type PieSettings } from "./pie.js";
 import {

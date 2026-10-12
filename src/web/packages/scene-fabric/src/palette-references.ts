@@ -1,5 +1,5 @@
 import { objectName } from "@vigilia/renderer-core";
-import { Group, type FabricObject, type StaticCanvas } from "fabric/es";
+import { type FabricObject, Group, type StaticCanvas } from "fabric/es";
 import { VIGILIA_TEXT_PROPERTY } from "./fabric-text.js";
 import {
   type FabricPaintRefs,

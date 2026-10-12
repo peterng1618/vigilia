@@ -590,7 +590,7 @@ Rows: `vg-285`, `vg-296`, `vg-313`, `vg-314`, `vg-325`, `vg-326` — the five of
 
 **Failure modes:** widening a checker until it reports a count, not a set; a gate that runs green because its self-test was never chained in.
 
-**Verify:** `npm run gates:self-test`, `npm run design:check`, `npm run backlog:check`.
+**Verify:** `npm run gates:self-test`, `npm run design:check`, `npm run backlog:check`. [Annotated 2026-10-13: the list above is a restatement, and a restated gate list is exactly the artifact that rots (`vg-384`) — read the steps from `.github/workflows/ci.yml`, which is the authority for what "green" means. What that job runs now is `npm run gate` (`biome check`, `gates:self-test`, the unit suite) and `design:check`, beside the steps it already had.]
 
 ### Task 4.1: `backlog-check.mjs` reads the archive, and the 14 archived rows it finds are repaired
 
@@ -647,7 +647,7 @@ A same-rules read over the 149 archived rows produces **14 problems** today, and
 - [ ] **Step 1: Grep D1's rows for the marker format.** None, no task.
 - [ ] **Step 2: If D1 ruled the gate is `biome check`**, add the CI step and whatever `vg-384`/`vg-385` name; if it ruled `format:check` + `lint` is the surface, record that as the decision instead — the work is the same either way.
 - [ ] **Step 3: `vg-323`** — the brief a dispatch names must match what the gate runs; correct the brief and the script together.
-- [ ] **Step 4: Run CI's job list locally** where it can be run (`gates:self-test`, `design:check`, `backlog:check`, `status:check`).
+- [ ] **Step 4: Run CI's job list locally** where it can be run (`gates:self-test`, `design:check`, `backlog:check`, `status:check`). [Annotated 2026-10-13: read the list from `.github/workflows/ci.yml`, which is its owner — this sentence is now the restatement `vg-384` warns about, and Step 2's ruling landed as `biome check` (`vg-213`, `vg-262`, `vg-372`, `vg-355`, `vg-379`).]
 - [ ] **Step 5: Commit**, naming D1's ruling as the warrant.
 
 ### Task 4.4: Close the 9

@@ -2,9 +2,9 @@
 import { createDemoSource } from "@vigilia/fake-source";
 import type { Binding } from "@vigilia/renderer-core";
 import {
-  type GaugeSettings,
   defaultGaugeSettings,
   defaultLineSettings,
+  type GaugeSettings,
 } from "@vigilia/renderer-core";
 import {
   type SceneAdapter,

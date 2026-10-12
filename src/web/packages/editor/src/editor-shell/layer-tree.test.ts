@@ -2,29 +2,29 @@
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import { Arc } from "@vigilia/scene-fabric";
-import {
-  FabricImage,
-  Gradient,
-  Group,
-  Path,
-  Rect,
-  type FabricObject,
-  StaticCanvas,
-  Textbox,
-  util,
-} from "fabric/es";
-import { describe, expect, it } from "vitest";
 import {
   defaultGaugeSettings,
   defaultLineSettings,
   type TextRun,
 } from "@vigilia/renderer-core";
 import {
+  Arc,
   reviveThemeEnvelope,
   VIGILIA_TEXT_PROPERTY,
   VigiliaChart,
 } from "@vigilia/scene-fabric";
+import {
+  FabricImage,
+  type FabricObject,
+  Gradient,
+  Group,
+  Path,
+  Rect,
+  StaticCanvas,
+  Textbox,
+  util,
+} from "fabric/es";
+import { describe, expect, it } from "vitest";
 import { CARD_LIBRARY, instantiateCard } from "../card-library.js";
 import { createNewFabricTheme } from "../new-fabric-theme.js";
 import { uiCopy } from "../ui-copy.js";

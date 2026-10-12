@@ -2,10 +2,18 @@ name: CI
 
 on:
   push:
-    branches: [main]
+    # `develop` is the integration branch this work lands on, and it had no CI
+    # signal at all — which is how four missing licence notices and a red
+    # `format:check` both went unseen (vg-385).
+    branches: [main, develop]
   pull_request:
     branches: [main]
   workflow_dispatch:
+  schedule:
+    # vg-282: the rebuild and display suites take too long for every push (the
+    # display one alone measured 11.4 minutes), so they run on the nightly
+    # schedule and on demand rather than per commit.
+    - cron: '0 3 * * *'
 
 permissions:
   contents: read
@@ -17,6 +25,9 @@ concurrency:
 jobs:
   frontend:
     name: Frontend (renderer, player)
+    # The nightly run is for the two slow suites below; this job's steps repeat
+    # per-push work, so the schedule leaves them alone.
+    if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -34,11 +45,22 @@ jobs:
 
       - run: npm ci
 
-      - name: Format check
-        run: npm run format:check
+      - name: Gate
+        # D1's ruling (2026-10-12), recorded on vg-213, vg-262, vg-372, vg-355
+        # and vg-379: `biome check` is the gate, not `format:check` + `lint`.
+        # organizeImports is an assist action that only `check` runs, so a file
+        # whose imports were unsorted passed both of the steps this replaces.
+        # `npm run gate` is `biome check`, `gates:self-test` and the unit suite;
+        # that suite is in the command because the gate list carried no test run
+        # at all and a task closed with `vitest run` red (vg-323).
+        run: npm run gate
 
-      - name: Lint
-        run: npm run lint
+      - name: Design gates (live tree)
+        # `gates:self-test` runs the design scripts' own self-tests; this is the
+        # live-tree verdict over DESIGN.md and editor-shell.css, which CI never
+        # ran — an unrun gate and a green gate look identical from outside
+        # (vg-355).
+        run: npm run design:check
 
       - name: Status handoff
         run: npm run status:check
@@ -58,8 +80,8 @@ jobs:
         # the only copy that cannot fall behind `package.json`.
         run: npm run typecheck
 
-      - name: Unit tests
-        run: npx vitest run
+      # The unit suite is not a step of its own: `npm run gate` above runs it, so
+      # a second `npx vitest run` here would run the same suite twice per job.
 
       - name: Build display-only player
         run: npx vite build packages/player
@@ -105,6 +127,7 @@ jobs:
 
   licences:
     name: Licence notices present
+    if: github.event_name != 'schedule'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -151,3 +174,45 @@ jobs:
             fi
           done
           exit $missing
+
+  slow-suites:
+    name: Rebuild and display suites (nightly, or on demand)
+    # vg-282, ruled 2026-10-12: WIRE BOTH SUITES, BUT NOT ON EVERY PUSH.
+    # `playwright.config.ts` `testIgnore`s both spec sets, and nothing passed
+    # `--config`, so three reds were reachable only by a hand-typed command while
+    # every gate reported green. The display suite alone measured 11.4 minutes.
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: src/web
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: src/web/package-lock.json
+
+      - run: npm ci
+
+      # Both suites preview a built editor; the display proof starts a real host
+      # itself (its themes directory is written by the test), so the host's dist
+      # has to exist too. `vite preview` on an unbuilt package cannot start.
+      - name: Build editor
+        run: npx vite build packages/editor
+
+      - name: Build host
+        run: npx vite build packages/host
+
+      - name: Install Playwright Chromium
+        run: npx playwright install --with-deps chromium
+
+      # One suite at a time: each takes its own preview port, and two concurrent
+      # suites on a shared machine produce false results rather than slow ones.
+      - name: Rebuild suite
+        run: npm run test:rebuild
+
+      - name: Display suite
+        run: npm run test:display

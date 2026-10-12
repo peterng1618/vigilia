@@ -9,11 +9,11 @@ import {
   type TypePreset,
 } from "@vigilia/renderer-core";
 import {
+  Arc,
   type FabricPaintRefs,
   fabricArtboardPaint,
   VIGILIA_PAINT_PROPERTY,
   VIGILIA_TEXT_PROPERTY,
-  Arc,
   Wedge,
 } from "@vigilia/scene-fabric";
 import {

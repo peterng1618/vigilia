@@ -9,8 +9,8 @@ import {
 import {
   Circle,
   classRegistry,
-  version as fabricVersion,
   type FabricObject,
+  version as fabricVersion,
   Group,
   Path,
   Rect,
@@ -27,9 +27,9 @@ import {
 import {
   ARC_FILL_REFUSED,
   type PaintApplicationOptions,
-  VIGILIA_PAINT_PROPERTY,
   refusalIsPaintPasses,
   refusesFill,
+  VIGILIA_PAINT_PROPERTY,
 } from "./object-paint.js";
 
 // `fabric/es` is selective: register every baseline scene class that v2 JSON

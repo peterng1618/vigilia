@@ -1,7 +1,6 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-import { validateFabricThemeEnvelope } from "./fabric-envelope-validate.js";
 import {
   type EnvelopeKeyBag,
   envelopeKeyBags,
@@ -10,6 +9,7 @@ import {
   knownKeyShapes,
   knownKeysFor,
 } from "./envelope-keys.js";
+import { validateFabricThemeEnvelope } from "./fabric-envelope-validate.js";
 
 /**
  * The two registries, asked the same question about the same document.

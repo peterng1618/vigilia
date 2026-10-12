@@ -1,24 +1,24 @@
 // @vitest-environment jsdom
 import {
+  emptySampleSource,
   type FabricGlobals,
   type Globals,
-  emptySampleSource,
   resolveTextSegments,
 } from "@vigilia/renderer-core";
 import {
-  FabricText,
   type FabricObject,
+  FabricText,
   Rect,
   StaticCanvas,
   Textbox,
 } from "fabric/es";
 import { describe, expect, it } from "vitest";
-import { applyObjectTypePresets } from "./object-type.js";
 import {
   applyAuthoredText,
   refreshBoundText,
   VIGILIA_TEXT_PROPERTY,
 } from "./fabric-text.js";
+import { applyObjectTypePresets } from "./object-type.js";
 import { reviveScene, serialiseScene } from "./persist.js";
 import { textShapeFor } from "./text-runs.js";
 

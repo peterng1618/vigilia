@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  type ContentFit,
   computeArtboardTransform,
   documentToViewport,
-  type ContentFit,
   isFullyVisible,
   toCssTransform,
   viewportToDocument,

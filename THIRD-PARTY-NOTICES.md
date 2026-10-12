@@ -17,6 +17,9 @@ inventory, not a release-grade transitive audit. Provenance:
 | lucide-react 1.48.0 | ISC AND MIT (Feather-derived subset) | editor action-bar icons |
 | systeminformation 5.33.13 | MIT | host hardware metrics (no dependencies of its own) |
 | qr 0.7.2 | MIT OR Apache-2.0 | QR symbol for the display link (no dependencies of its own) |
+| class-variance-authority 0.7.1 | Apache-2.0 | editor component variants |
+| clsx 2.1.1 | MIT | editor class-name joins |
+| tailwind-merge 3.7.0 | MIT | editor class-name overrides |
 
 Preserve applicable Apache-2.0 and MIT licence/NOTICE obligations.
 
@@ -55,8 +58,18 @@ TypeScript 7.0.2 (Apache-2.0), Vite 8.3.0 (MIT), Vitest 5.0.0 (MIT),
 @types/node 22.10.2 (MIT), @types/react 19.3.x (MIT), @types/react-dom
 19.3.x (MIT), tailwindcss 4.3.3 (MIT, editor dev styling), @tailwindcss/vite
 4.3.3 (MIT, editor dev), jsqr 1.4.0 (Apache-2.0), @google/design.md 0.4.0
-(Apache-2.0, lints `DESIGN.md` in the design gate). Native `canvas` may carry
-linked-library obligations.
+(Apache-2.0, lints `DESIGN.md` in the design gate), @playwright/mcp 0.0.83
+(Apache-2.0, the Playwright MCP server used as an agent tool). Native `canvas`
+may carry linked-library obligations.
+
+Four entries were added on 2026-10-13 — `class-variance-authority`, `clsx` and
+`tailwind-merge` to the runtime/editor table and `@playwright/mcp` to this
+section. CI's `licences` job derives every non-`@vigilia/` name from the
+workspace manifests and fails on one absent from this file, and these four had
+been declared without an entry. Their licences were read from each installed
+package's own `package.json` (`.license`), which is also why they sit in two
+sections: the three the editor declares in `dependencies` ship with it, and
+`@playwright/mcp` is a `devDependency`.
 
 ## Vendored source
 

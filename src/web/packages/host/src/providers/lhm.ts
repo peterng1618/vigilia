@@ -4,6 +4,7 @@ import {
   diskDeviceId,
   diskDeviceOf,
 } from "@vigilia/renderer-core";
+import { displayNameFor } from "../settings/devices.js";
 import {
   type DeviceAssignment,
   diskDeviceReadings,
@@ -11,7 +12,6 @@ import {
   lhmDeviceName,
   matchLhmSensorsAssigned,
 } from "./lhm-mapping.js";
-import { displayNameFor } from "../settings/devices.js";
 import { flattenLhmSensors } from "./lhm-tree.js";
 import type {
   ProviderHealth,

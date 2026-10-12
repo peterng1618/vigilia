@@ -1,5 +1,9 @@
-import { type Binding, type ChartContent } from "@vigilia/renderer-core";
-import { removeSetting, writeSetting } from "@vigilia/renderer-core";
+import {
+  type Binding,
+  type ChartContent,
+  removeSetting,
+  writeSetting,
+} from "@vigilia/renderer-core";
 import type * as React from "react";
 import { ControlNumber } from "../components/ui/control-number.js";
 import { ControlSegmented } from "../components/ui/control-segmented.js";

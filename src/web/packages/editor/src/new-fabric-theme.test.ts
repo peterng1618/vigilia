@@ -16,7 +16,7 @@ import {
   VigiliaChart,
 } from "@vigilia/scene-fabric";
 import { readThemePackage } from "@vigilia/theme-package";
-import { StaticCanvas, Group, type FabricObject } from "fabric/es";
+import { type FabricObject, Group, StaticCanvas } from "fabric/es";
 import { strFromU8, unzipSync } from "fflate";
 import { describe, expect, it } from "vitest";
 import { CARD_LIBRARY } from "./card-library.js";

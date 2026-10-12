@@ -1,7 +1,7 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { DEFAULT_HOST, isLoopbackHost, parseArgs } from "./cli/args.js";
-import { type HostBinding, createHostBinding } from "./cli/hosting.js";
+import { createHostBinding, type HostBinding } from "./cli/hosting.js";
 import {
   lanAddress,
   listenWithFallback,

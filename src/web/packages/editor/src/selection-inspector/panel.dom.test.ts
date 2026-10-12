@@ -12,12 +12,12 @@ import {
   Textbox,
   Triangle,
 } from "fabric/es";
-import { afterEach, describe, expect, it, vi } from "vitest";
 import { act } from "react";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import { createNewShape } from "../new-object-defaults.js";
 import { uiCopy } from "../ui-copy.js";
-import { createSelectionInspector } from "./index.js";
 import { idleCrop } from "./idle-crop.test-stage.js";
+import { createSelectionInspector } from "./index.js";
 import { writeShapeGeometryField } from "./panel.js";
 // The shared React drivers: a converted field is a plan-1 control, so a raw
 // `change` event no longer commits it — the picker is opened and an entry

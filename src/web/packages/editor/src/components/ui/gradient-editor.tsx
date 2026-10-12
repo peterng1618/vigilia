@@ -1,5 +1,5 @@
-import { ColourPicker } from "./colour-picker.js";
 import { parseColour } from "./colour-maths.js";
+import { ColourPicker } from "./colour-picker.js";
 
 /** One authored stop: where it sits along the gradient, and what colour it is. */
 interface GradientStop {

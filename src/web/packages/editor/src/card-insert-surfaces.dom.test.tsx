@@ -25,18 +25,18 @@
 import { Canvas } from "fabric/es";
 import { createRoot, type Root } from "react-dom/client";
 import { beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
-import { AssetManager } from "./asset-manager/index.js";
-import { createBlankFabricTheme } from "./new-fabric-theme.js";
-import { uiCopy } from "./ui-copy.js";
-import { CanvasContextMenu } from "./editor-shell/canvas-context-menu.js";
-import type { EditorShellBridge } from "./editor-shell/bridge.js";
-import { EditorSession } from "./editor-session.js";
-import { createErrorManager } from "./error-manager/index.js";
-import { createNewObjectPanel } from "./new-object-panel.js";
-import { createDeletionManager } from "./deletion-manager/index.js";
-import { createClipboardManager } from "./clipboard-manager/index.js";
-import { idleCrop } from "./selection-inspector/idle-crop.test-stage.js";
 import { artboardSize } from "./artboard-presets.js";
+import { AssetManager } from "./asset-manager/index.js";
+import { createClipboardManager } from "./clipboard-manager/index.js";
+import { createDeletionManager } from "./deletion-manager/index.js";
+import { EditorSession } from "./editor-session.js";
+import type { EditorShellBridge } from "./editor-shell/bridge.js";
+import { CanvasContextMenu } from "./editor-shell/canvas-context-menu.js";
+import { createErrorManager } from "./error-manager/index.js";
+import { createBlankFabricTheme } from "./new-fabric-theme.js";
+import { createNewObjectPanel } from "./new-object-panel.js";
+import { idleCrop } from "./selection-inspector/idle-crop.test-stage.js";
+import { uiCopy } from "./ui-copy.js";
 
 // Base UI's popup needs two browser APIs jsdom has none of: floating-ui observes
 // its anchor, and the popup waits for its own open transition before reporting

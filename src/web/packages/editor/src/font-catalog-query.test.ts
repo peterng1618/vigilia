@@ -1,16 +1,16 @@
 import { describe, expect, it } from "vitest";
 import {
+  catalogFaces,
+  type FontTrio,
+  fontTrio,
+  fontTrios,
+} from "./font-catalog.js";
+import {
+  type CatalogQuery,
   catalogFacets,
   queryFaces,
   queryTrios,
-  type CatalogQuery,
 } from "./font-catalog-query.js";
-import {
-  catalogFaces,
-  fontTrio,
-  fontTrios,
-  type FontTrio,
-} from "./font-catalog.js";
 
 /** The facet width under test, written out rather than imported. Reading the
  * source's own constant here would make every width assertion true by

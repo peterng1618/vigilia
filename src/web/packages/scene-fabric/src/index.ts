@@ -69,7 +69,6 @@ export {
   paintPropertyFor,
   VIGILIA_PAINT_PROPERTY,
 } from "./object-paint.js";
-export { Arc, Wedge } from "./sector-object.js";
 export {
   applyObjectTypePresets,
   reassignObjectTypePresetReferences,
@@ -97,3 +96,4 @@ export {
 } from "./render-scale.js";
 export type { FabricSceneHandle, FabricSceneOptions } from "./scene.js";
 export { mountFabricScene } from "./scene.js";
+export { Arc, Wedge } from "./sector-object.js";

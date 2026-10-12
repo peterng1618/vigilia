@@ -3,10 +3,10 @@ import { readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
-  objectBleeds,
   buildLineOption,
   defaultLineSettings,
   glassTreatment,
+  objectBleeds,
   objectName,
   type Sample,
   VIGILIA_BLEEDS_PROPERTY,
@@ -26,7 +26,7 @@ import {
   StaticCanvas,
   Textbox,
 } from "fabric/es";
-import { describe, expect, it, beforeEach, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import { VigiliaChart, type VigiliaChartOptions } from "./chart-object.js";
 import { refreshBoundText, VIGILIA_TEXT_PROPERTY } from "./fabric-text.js";
 import {
@@ -45,7 +45,6 @@ import {
 } from "./object-type.js";
 import { reassignObjectPaletteReferences } from "./palette-references.js";
 import type { SerialisedScene } from "./persist.js";
-import { Arc, Wedge } from "./sector-object.js";
 import {
   assertFabricThemeEnvelopeCompatible,
   reviveScene,
@@ -54,6 +53,7 @@ import {
   serialiseScene,
   serialiseThemeEnvelope,
 } from "./persist.js";
+import { Arc, Wedge } from "./sector-object.js";
 
 /**
  * What a saved scene contains, asserted exactly.

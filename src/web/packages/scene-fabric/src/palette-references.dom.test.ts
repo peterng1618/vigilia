@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { defaultGaugeSettings } from "@vigilia/renderer-core";
-import { Group, Rect, type FabricObject, Textbox } from "fabric/es";
+import { type FabricObject, Group, Rect, Textbox } from "fabric/es";
 import { describe, expect, it } from "vitest";
 import { VigiliaChart, type VigiliaChartOptions } from "./chart-object.js";
 import { VIGILIA_TEXT_PROPERTY } from "./fabric-text.js";

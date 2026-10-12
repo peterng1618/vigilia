@@ -14,8 +14,8 @@
  */
 
 import {
-  applyObjectPalettePaints,
   Arc,
+  applyObjectPalettePaints,
   VIGILIA_PAINT_PROPERTY,
   Wedge,
 } from "@vigilia/scene-fabric";

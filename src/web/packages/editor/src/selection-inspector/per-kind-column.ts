@@ -12,11 +12,11 @@ import {
   type FabricObject,
   Group,
 } from "fabric/es";
-import type { EditorInteraction } from "../editor-interaction.js";
 import type {
   ChartContentFieldsView,
   ChartPaintFieldsView,
 } from "../chart-manager/chart-fields.js";
+import type { EditorInteraction } from "../editor-interaction.js";
 import { uiCopy } from "../ui-copy.js";
 import {
   type AppearanceContext,

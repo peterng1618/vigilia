@@ -1,7 +1,7 @@
 import {
+  type ArtboardSize,
   outsideCount,
   outsideEdges,
-  type ArtboardSize,
   type SceneBox,
 } from "@vigilia/scene-fabric";
 import { uiCopy } from "./ui-copy.js";

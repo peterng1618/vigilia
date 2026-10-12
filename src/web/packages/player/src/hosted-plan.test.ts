@@ -1,5 +1,5 @@
-import { describe, expect, it } from "vitest";
 import type { FabricThemeEnvelope } from "@vigilia/renderer-core";
+import { describe, expect, it } from "vitest";
 import { envelopePlan } from "./hosted-plan.js";
 
 /** The shape a host serves: artboard paint is a palette reference (the envelope

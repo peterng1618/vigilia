@@ -2,10 +2,10 @@ import { VIGILIA_BLEEDS_PROPERTY } from "@vigilia/renderer-core";
 import { describe, expect, it } from "vitest";
 import {
   type ArtboardSize,
-  type SceneBox,
   countable,
   outsideCount,
   outsideEdges,
+  type SceneBox,
   sceneBoxesOf,
 } from "./artboard-crop.js";
 

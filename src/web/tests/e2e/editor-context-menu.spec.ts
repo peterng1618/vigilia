@@ -121,37 +121,41 @@ async function emptyCanvasPointHigh(
   page: Page,
   minX: number,
 ): Promise<{ x: number; y: number }> {
-  const point = await page.evaluate(([minimumX, topBand]) => {
-    const canvas = document.querySelector<HTMLCanvasElement>(
-      "#vigilia-fabric-editor canvas.upper-canvas",
-    );
-    if (canvas === null) throw new Error("The editor's upper canvas is gone.");
-    const rect = canvas.getBoundingClientRect();
-    const editorCanvas = (
-      window as unknown as {
-        vigiliaEditorBridge: {
-          editor: {
-            canvas: { findTarget(event: unknown): { target?: unknown } };
+  const point = await page.evaluate(
+    ([minimumX, topBand]) => {
+      const canvas = document.querySelector<HTMLCanvasElement>(
+        "#vigilia-fabric-editor canvas.upper-canvas",
+      );
+      if (canvas === null)
+        throw new Error("The editor's upper canvas is gone.");
+      const rect = canvas.getBoundingClientRect();
+      const editorCanvas = (
+        window as unknown as {
+          vigiliaEditorBridge: {
+            editor: {
+              canvas: { findTarget(event: unknown): { target?: unknown } };
+            };
           };
-        };
+        }
+      ).vigiliaEditorBridge.editor.canvas;
+      for (let fy = 0.02; fy < topBand; fy += 0.02) {
+        for (let fx = 0.02; fx < 0.95; fx += 0.02) {
+          const x = rect.left + rect.width * fx;
+          if (x < minimumX) continue;
+          const y = rect.top + rect.height * fy;
+          if (document.elementFromPoint(x, y) !== canvas) continue;
+          if (
+            editorCanvas.findTarget({ clientX: x, clientY: y }).target !==
+            undefined
+          )
+            continue;
+          return { x, y };
+        }
       }
-    ).vigiliaEditorBridge.editor.canvas;
-    for (let fy = 0.02; fy < topBand; fy += 0.02) {
-      for (let fx = 0.02; fx < 0.95; fx += 0.02) {
-        const x = rect.left + rect.width * fx;
-        if (x < minimumX) continue;
-        const y = rect.top + rect.height * fy;
-        if (document.elementFromPoint(x, y) !== canvas) continue;
-        if (
-          editorCanvas.findTarget({ clientX: x, clientY: y }).target !==
-          undefined
-        )
-          continue;
-        return { x, y };
-      }
-    }
-    return null;
-  }, [minX, TOP_BAND] as const);
+      return null;
+    },
+    [minX, TOP_BAND] as const,
+  );
   if (point === null)
     throw new Error(
       `No empty canvas point at or right of ${minX}: the starter covers the top.`,

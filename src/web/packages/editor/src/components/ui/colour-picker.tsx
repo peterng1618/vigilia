@@ -1,14 +1,14 @@
 import { Popover } from "@base-ui/react/popover";
 import { useCallback, useEffect, useRef, useState } from "react";
+import { cn } from "@/lib/utils";
+import { uiCopy } from "../../ui-copy.js";
 import {
-  hsvaToRgba,
   type Hsva,
+  hsvaToRgba,
   parseColour,
   rgbaToHsva,
   toHex,
 } from "./colour-maths.js";
-import { cn } from "@/lib/utils";
-import { uiCopy } from "../../ui-copy.js";
 
 /** One press of an arrow key, as a fraction of the track. */
 const TRACK_STEP = 0.01;

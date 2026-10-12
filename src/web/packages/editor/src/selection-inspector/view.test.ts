@@ -11,9 +11,9 @@ import {
 import { projectLayers } from "../editor-shell/layer-tree.js";
 import { uiCopy } from "../ui-copy.js";
 import {
-  editRefusal,
-  type ExtraView,
   type ColumnSectionView,
+  type ExtraView,
+  editRefusal,
   measuredEdgeOf,
   type ProjectionPorts,
   projectSelection,

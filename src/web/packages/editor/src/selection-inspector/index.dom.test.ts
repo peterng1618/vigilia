@@ -28,12 +28,12 @@ import {
 } from "fabric/es";
 import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { createObjectLockManager } from "../object-lock-manager/index.js";
 import {
   type ChartFieldTarget,
   chartContentView,
   chartPaintView,
 } from "../chart-manager/panel.js";
+import { createObjectLockManager } from "../object-lock-manager/index.js";
 import { uiCopy } from "../ui-copy.js";
 import { idleCrop } from "./idle-crop.test-stage.js";
 import { createSelectionInspector } from "./index.js";

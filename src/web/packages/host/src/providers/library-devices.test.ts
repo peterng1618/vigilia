@@ -3,18 +3,19 @@ import {
   type ControllerLike,
   type CpuLike,
   type FsSizeLike,
-  LibrarySensorProvider,
   type LibraryModule,
+  LibrarySensorProvider,
 } from "./library.js";
 import {
   type BlockDeviceLike,
-  drivesFrom,
-  driveFor,
   type DriveDevice,
   type DriveLayoutLike,
+  driveFor,
+  drivesFrom,
   type VolumeLike,
   volumesOf,
 } from "./library-devices.js";
+
 const GB = 1024 ** 3;
 
 /** Two cards whose busiest figures belong to different devices on purpose. */
