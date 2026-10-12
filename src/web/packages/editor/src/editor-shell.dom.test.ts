@@ -183,6 +183,19 @@ describe("the dirty guard and what the renderer paints", () => {
 
     const manager = new PersistenceManager(shell.snapshot({ ...authored }), {});
 
+    // The instrument for "the renderer moved" reads the live canvas, not a
+    // snapshot: the per-character `styles` table Fabric writes while it paints
+    // a run is derived state, and `removeDerivedTextStyles` takes it off on the
+    // way into a document, so only the canvas itself still shows it.
+    const paintedStyles = (): number =>
+      objectsDeep(shell.editor.canvas.getObjects()).filter((object) => {
+        const styles = (
+          object as unknown as { styles?: Record<string, unknown> }
+        ).styles;
+        return styles !== undefined && Object.keys(styles).length > 0;
+      }).length;
+    const beforePass = paintedStyles();
+
     new LiveRuntime({
       canvas: shell.editor.canvas,
       bindings: bindings as never,
@@ -191,15 +204,10 @@ describe("the dirty guard and what the renderer paints", () => {
     }).refresh();
 
     // The canvas has genuinely moved — a reading is now painted on it.
-    // `scene` is an opaque record on the envelope, so this is a look, not a
-    // claim about its type.
-    const painted = shell.snapshot({ ...authored }) as unknown as {
-      scene: { objects: readonly unknown[] };
-    };
-    const styledByPass = sceneNodes(
-      painted.scene.objects as ReadonlyArray<Record<string, unknown>>,
-    ).filter((object) => object.styles !== undefined);
-    expect(styledByPass.length).toBeGreaterThan(0);
+    expect(
+      paintedStyles(),
+      "the pass painted no reading, so the dirty check below proved nothing",
+    ).toBeGreaterThan(beforePass);
 
     // ...and the document has not, because a reading is not an edit. Without
     // this the Starter is reported as edited the moment it opens and every New

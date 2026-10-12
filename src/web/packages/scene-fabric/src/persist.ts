@@ -99,6 +99,8 @@ export function serialiseScene(canvas: StaticCanvas): SerialisedScene {
   removeRuntimeText(scene.objects);
   removeGroupEntryFlags(scene.objects);
   removeDerivedTextClips(scene.objects);
+  removeDerivedTextStyles(scene.objects);
+  removeImageCrossOrigin(scene.objects);
   removeResolvedAssetSources(scene.objects);
   return scene;
 }
@@ -336,6 +338,46 @@ function removeResolvedAssetSources(
     const children = object["objects"];
     if (Array.isArray(children))
       removeResolvedAssetSources(children.filter(isRecord));
+  }
+}
+
+/**
+ * Fabric's derived per-character style table is a repaint's output, not a
+ * document.
+ *
+ * `FabricText.toObject` writes `styles` on every text object whatever the
+ * caller asked for, and `stylesToArray` reports whatever ranges the last
+ * repaint left — so two exports of one unchanged document disagree on it. The
+ * authored equivalent is `vigiliaText.runs`, which nothing here touches, and
+ * no reader reads `styles` back.
+ */
+function removeDerivedTextStyles(
+  objects: readonly Readonly<Record<string, unknown>>[],
+): void {
+  for (const object of objects) {
+    delete (object as Record<string, unknown>)["styles"];
+    const children = object["objects"];
+    if (Array.isArray(children))
+      removeDerivedTextStyles(children.filter(isRecord));
+  }
+}
+
+/**
+ * `crossOrigin` is the network policy of the session that decoded an image,
+ * not a choice an author made, and a revived reader makes its own.
+ *
+ * Fabric persists it once set, because it is a set property rather than a
+ * Fabric default, so a package can carry a CORS policy that meant something
+ * only to the tab that saved it.
+ */
+function removeImageCrossOrigin(
+  objects: readonly Readonly<Record<string, unknown>>[],
+): void {
+  for (const object of objects) {
+    delete (object as Record<string, unknown>)["crossOrigin"];
+    const children = object["objects"];
+    if (Array.isArray(children))
+      removeImageCrossOrigin(children.filter(isRecord));
   }
 }
 

@@ -33,12 +33,12 @@ const EDITOR = "http://127.0.0.1:4174/";
  *    and the sharp-text claims are pixel measurements, and the thumbnails are
  *    looked at.
  *  - **A requirement the product does not meet is pinned, not written around.**
- *    `test.fail` marks the gaps in "known gaps, pinned", so the suite stays
- *    runnable and still refuses to stay green once a gap closes. The third
- *    one, the round-capped gauge's missing progress arc, lives in
- *    `host-player.spec.ts` because only the real host mounts it. Only a gap
- *    that reproduces every time earns a marker: an intermittent one flaps,
- *    and the first version of the fourth marker did.
+ *    `test.fail` marks such a gap, so the suite stays runnable and still
+ *    refuses to stay green once the gap closes. Both gaps this file pinned have
+ *    closed, and their marks went with their fixes; the round-capped gauge's
+ *    missing progress arc lives in `host-player.spec.ts` because only the real
+ *    host mounts it. Only a gap that reproduces every time earns a marker: an
+ *    intermittent one flaps, and the first version of that marker did.
  */
 
 const STARTER_WIDTH = 1672;
@@ -2572,19 +2572,14 @@ function mediaSrc(page: Page): Promise<string | null> {
 }
 
 /**
- * The two gaps this file pins rather than writes around.
+ * The two gaps this file once pinned rather than wrote around.
  *
- * `test.fail` keeps the requirement written down, keeps the suite runnable, and
- * turns red the moment the gap closes — so neither can be quietly forgotten.
+ * Each carried a `test.fail` that turned red the moment the gap closed, and
+ * both have. The marks went with their fixes: a `test.fail` that starts passing
+ * is a failure, so a mark left after its fix is a suite red for the wrong
+ * reason. What the block asserts is unchanged.
  */
 test.describe("known gaps, pinned", () => {
-  // **Marked, and the mark is the finding.** `objectsOf` read only the top level
-  // of the scene, so before it descended it reported **no** object carrying the
-  // table — on a document whose every text part carries one. The pin had no
-  // teeth and was green for the wrong reason; fixing the search turned it red
-  // for the right one. `test.fail` is what this block's own docblock says it
-  // does, and these two had never been marked.
-  test.fail("a saved object carries no derived per-character style table");
   test("a saved object carries no derived per-character style table", async ({
     page,
   }, testInfo) => {
@@ -2592,25 +2587,12 @@ test.describe("known gaps, pinned", () => {
     // **Measured, and pinned on the cause rather than the symptom.** Fabric
     // writes a per-character `styles` table on every `Textbox`, and
     // `serialiseScene` — which passes `SCENE_PERSISTED_PROPERTIES` and sets
-    // `includeDefaultValues = false` — carries it into the package anyway,
+    // `includeDefaultValues = false` — carried it into the package anyway,
     // because `styles` is a set property rather than a Fabric default. The
     // authored equivalent is `vigiliaText.runs`; nothing reads `styles` back.
-    //
-    // The symptom is that two exports of one document disagree: the starter's
-    // own `gpu-card-caption` exports `styles: [{start: 0, end: 2}]` from a
-    // first mount and `{start: 0, end: 4}]` after that same document is
-    // reopened — the range left behind by whichever placeholder the run last
-    // showed. That symptom is a **race** between the live repaint and the
-    // save, and it reproduced in only one of three measured runs, so it is
-    // reported rather than asserted. The presence of the table is
-    // deterministic, so that is what this pins.
-    //
-    // Owner: `packages/scene-fabric/src/persist.ts`, beside
-    // `removeDerivedTextClips`, which already strips the sibling derived field.
-    test.fail(
-      true,
-      "Fabric's derived styles table is serialised into the package",
-    );
+    // `removeDerivedTextStyles` is the strip that closed it, and this asserts
+    // the absence of the table on a real save — descended into, because the
+    // table is written on a card's text parts rather than on the card.
     await openEditor(page);
     const saved = await savePackage(page);
     const styled = objectsOf(saved.envelope).filter(
@@ -2622,33 +2604,25 @@ test.describe("known gaps, pinned", () => {
     ).toEqual([]);
   });
 
-  // Marked for the same reason: this one found nothing for the same reason,
-  // and reports `envelope.scene.objects[10].crossOrigin` once the search can
-  // see the image again.
-  test.fail("a packaged image object saves no runtime object URL");
   test("a packaged image object saves no runtime object URL", async ({
     page,
   }, testInfo) => {
     desktop(testInfo);
-    // **Measured.** Importing an image through the Add pane's file section inserts a
-    // Fabric `Image` whose `src` is the `blob:` URL the editor minted for it.
-    // `serialiseScene` sets `includeDefaultValues = false` and passes
-    // `SCENE_PERSISTED_PROPERTIES`, but `src` is a set property rather than a
-    // Fabric default, so it survives into the exported package:
+    // **Measured.** Importing an image through the Add pane's file section
+    // inserts a Fabric `Image` whose `src` was the `blob:` URL the editor minted
+    // for it and whose `crossOrigin` was whatever that decode asked the network
+    // for. `serialiseScene` sets `includeDefaultValues = false` and passes
+    // `SCENE_PERSISTED_PROPERTIES`, but both are set properties rather than
+    // Fabric defaults, so they survived into the exported package. The
+    // asset-reference fix took `src` off an image that names its asset; the
+    // measured residual of the run that closed this was
+    // `envelope.scene.objects[10].crossOrigin`, which `removeImageCrossOrigin`
+    // now strips.
     //
-    //   "src": "blob:http://127.0.0.1:4174/e16c3b9b-…"
-    //
-    // It is unrevivable state in a shareable artifact: it names the editor's
-    // own origin and a UUID that dies with the tab, and it changes on every
-    // save of the same document. The round trip still works — the object is
-    // re-resolved from `vigiliaAsset.assetId` — so this is a leak, not a
-    // break.
-    //
-    // Owner: `scene-fabric/src/persist.ts`, beside `removeRuntimeText`.
-    test.fail(
-      true,
-      "a Fabric Image's blob: src is serialised into the package",
-    );
+    // It is unrevivable state in a shareable artifact: a network policy that
+    // meant something only to the tab that saved it. The round trip still
+    // works — the object is re-resolved from `vigiliaAsset.assetId` — so this
+    // is a leak, not a break.
     await openEditor(page);
     await openPane(page, "Add");
     await chooseAssetFile(page, "import", {

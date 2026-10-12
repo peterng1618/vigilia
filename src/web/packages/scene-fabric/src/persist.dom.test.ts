@@ -153,6 +153,11 @@ describe("the persisted key set, per class", () => {
   // Defaults are stripped, so each list is exactly what the author deviated
   // from plus Fabric's three unstrippable keys (`left`, `top`, `type`) and its
   // version stamp. Anything else appearing here is a format change.
+  //
+  // `styles` and `crossOrigin` are absent by the same rule as `subTargetCheck`:
+  // Fabric writes both and neither is authored, so the serialiser takes them
+  // back off rather than letting a repaint's table or a decode's network policy
+  // into the package.
   const CASES: readonly (readonly [string, () => object, readonly string[]])[] =
     [
       [
@@ -171,38 +176,17 @@ describe("the persisted key set, per class", () => {
       [
         "FabricText",
         () => new FabricText("hi"),
-        [
-          "height",
-          "id",
-          "left",
-          "styles",
-          "text",
-          "top",
-          "type",
-          "version",
-          "width",
-        ],
+        ["height", "id", "left", "text", "top", "type", "version", "width"],
       ],
       [
         "Textbox",
         () => new Textbox("hi", { width: 40 }),
-        [
-          "height",
-          "id",
-          "left",
-          "styles",
-          "text",
-          "top",
-          "type",
-          "version",
-          "width",
-        ],
+        ["height", "id", "left", "text", "top", "type", "version", "width"],
       ],
       [
         "FabricImage",
         image,
         [
-          "crossOrigin",
           "filters",
           "height",
           "id",
@@ -297,6 +281,31 @@ describe("Fabric’s own keys are held to the same rule", () => {
       "version",
       "width",
     ]);
+  });
+
+  it("never persists the derived per-character style table", () => {
+    // `FabricText.toObject` writes `styles` on every text object whatever the
+    // caller asked for, and the table is a race with the repaint that wrote it
+    // — two exports of one document disagree on the range. The authored
+    // equivalent is `vigiliaText.runs`; nothing reads `styles` back.
+    const text = new FabricText("CPU 48%");
+    text.set("id", "readout");
+    text.set("styles", { 0: { 0: { fontSize: 24 } } });
+
+    expect(keysOf(serialiseScene(canvasOf(text)))).not.toContain("styles");
+  });
+
+  it("never persists the image's runtime crossOrigin flag", () => {
+    // `crossOrigin` is what the session that decoded the image asked the
+    // network for, not a choice an author made, and a revived reader makes its
+    // own. It reaches `toObject` because it is a set property rather than a
+    // Fabric default.
+    const source = image();
+    source.set("crossOrigin", "anonymous");
+
+    expect(keysOf(serialiseScene(canvasOf(source)))).not.toContain(
+      "crossOrigin",
+    );
   });
 });
 
