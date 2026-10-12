@@ -6,6 +6,7 @@ import {
   type TextRun,
 } from "@vigilia/renderer-core";
 import {
+  isLocked,
   paintPropertyFor,
   VIGILIA_TEXT_PROPERTY,
   VigiliaChart,
@@ -410,9 +411,7 @@ export function projectLayers({
           hasChildren,
           collapsed,
           visible: path.every((entry) => entry.visible),
-          locked: path.some(
-            (entry) => (entry as { locked?: boolean }).locked === true,
-          ),
+          locked: path.some((entry) => isLocked(entry)),
           selected: selected.includes(object),
         });
       }
