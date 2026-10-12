@@ -339,6 +339,22 @@ describe("editor panels", () => {
       .map((element) => element.outerHTML.slice(0, 60));
     expect(unnamed).toEqual([]);
   });
+
+  it("names the gradient editor's stop handles, which the palette panel reaches", () => {
+    // The census that also mounts the editor excludes these by its glyph clause
+    // — a drag handle draws no glyph — so this audit is the only place their
+    // names are read, and only for as long as the palette panel mounts the
+    // editor for its gradient token. Pinned so the mount going quiet is a red
+    // case rather than the gap `vg-333` found.
+    const { root } = mountPanels();
+    const handles = Array.from(
+      root.querySelectorAll<HTMLElement>("[data-testid^='gradient-stop-']"),
+    );
+    expect(handles.map((handle) => accessibleName(handle))).toEqual([
+      `${uiCopy.panels.gradient} stop 1`,
+      `${uiCopy.panels.gradient} stop 2`,
+    ]);
+  });
 });
 
 /**
@@ -353,6 +369,12 @@ describe("editor panels", () => {
  * a font picker, a delete control, and a text object with a run bound to a
  * clock — the inspector's richest selection, and the one that reaches the
  * format and zone fields nothing else does.
+ *
+ * The gradient with stops is `components/ui/gradient-editor.tsx`, and the
+ * palette panel is what reaches it: selecting the `glow` token below renders the
+ * editor, so its two stop handles are controls this audit names (`vg-333`). It
+ * is not mounted a second time here — a duplicate would be one more control
+ * with the same name, not wider coverage.
  *
  * **This list is the coverage.** An editor panel that is not mounted here is
  * not audited, and the assertions below pass on it by never seeing it — which
