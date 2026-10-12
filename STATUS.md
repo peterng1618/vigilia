@@ -32,10 +32,11 @@ satisfies every token in `DESIGN.md` and still does not look like the mockup.
 
 ## Last completed change
 
-- **The walkthrough's Task 2 landed** — `openDocumentByKeyboard` and `chooseRailPane` drive a document created from the starter and a rail pane chosen with no pointer, at `4ef0c94a`; the task's review is in flight, so its reported counts (4 tests, 4 passed, `desktop-host`, `--workers=1`, read from that run's own report) and its two red-proofs are reported rather than accepted.
-- **`format:check` was red at HEAD and is green again** — the click line `8a86b2b0` wrote into `editor.spec.ts` was 96 columns and biome folds it; fixed at `a174c300`, 615 files clean, which is the gate CI runs before lint.
-- **`vg-387` closes on that fix** — filed by the Task 2 implementer with a `Discovered, not fixed:` trailer and repaired by the controller in its own commit, because the row's stated blocker (a concurrent lane possibly holding the file) had ended when that lane committed.
-- **The ruling Task 5 was waiting on** — "create or open" is **create from the starter**, since the pinned fixture carries no group and §13.1 requires entering one; so Task 5's "return to the original document" means returning to the `e2e-hosted` fixture the walk booted on.
+- **Task 2 of the walkthrough is complete and reviewed** — spec compliance ✅ and task quality ✅, no Critical, High or Medium finding; the reviewer reproduced the 4/4 run on `desktop-host` and re-derived both red-proofs on the committed bytes rather than accepting them, and drove the assertions to show they cannot pass vacuously.
+- **The walk now runs on a document created from the starter** — `openDocumentByKeyboard` gives it 8 groups, a palette and 13 type presets, which is what §13.1's enter-a-group and choose-a-palette interactions need; Ruling K fixes Task 5's "return to the original document" as returning to the `e2e-hosted` fixture the walk booted on.
+- **`vg-387` is closed and `format:check` is green** — the 96-column line `8a86b2b0` wrote into `editor.spec.ts`, folded at `a174c300`, 615 files clean, which is the gate CI runs before lint.
+- **Two of Task 2's four Minor findings are repaired** — `EDIT_MENU_BOUND` renamed to `FILE_MENU_BOUND` because "Edit menu" already means the Edit menu here, and `tabUntil`'s docstring moved back onto its own function after Task 2's insertions left it 136 lines away, at `4ccbbbdc`; 4/4 green after the edit.
+- **Browser run reports now go outside the repo** — `test-results/` is cleared at the start of every Playwright run, so a count cited from it is unverifiable by the next reader; Task 3 onward writes its own report to `C:/tmp/…` and cites that.
 
 ## Next
 
