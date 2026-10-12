@@ -5,16 +5,27 @@
  * imperative panels are read for their own DOM, and the React surfaces are read
  * through `mountLandedSurfaces`.
  *
- * **The React half's boundary, stated rather than implied.** `spokenIn` reads
- * the shell (menubar, stage, rail, canvas toolbar and the panes), Settings on
- * its Appearance tab, the colour picker with its popup open, and the selection
- * inspector. Four reachable surfaces are **not** read: an opened menu popup, the
- * Settings Keyboard and About tabs, and the canvas context menu. Each costs
- * 50-90s per open under jsdom (`vg-135`, measured in `shell-layout.dom.test.tsx`)
- * and a focused gate cannot pay that for a hole this costs nothing to leave
- * today, because no literal lives in any of the four. A literal added to one of
- * them would be missed here: that gap is filed with the surfaces named, not
- * implied by silence.
+ * **What the React half reads.** The shell is mounted whole with a bridge and a
+ * selection, so the chrome it prints only then is in the tree at all; Settings is
+ * read on its Appearance, Keyboard and About tabs; the colour picker is mounted
+ * open; the selection column is mounted on a text object and a shape; and the
+ * three menubar menus and the canvas context menu are opened and read in turn.
+ * `spokenIn` takes a surface's words — its labels, accessible names, buttons and
+ * an opened menu's rows — and `saidIn` adds the paragraphs it does not read.
+ *
+ * **What it deliberately does not read, and why.** A control that prints a
+ * *value* is read for the concept and not the reading: a select's trigger shows
+ * the chosen token or unit, a token well the document's own name, the camera's
+ * readout `Display and zoom: 100%`, and a `kbd` the chord the binding table
+ * prints. Two owners of words are carved out by name, because the words are
+ * theirs and not this table's: `shellPalettes`' stored ids (`isStoredName`) and
+ * the shortcut reference's action words (`isShortcutWord`). And only the
+ * shell's paragraphs are read: the inspector, the picker and the panes print
+ * data in paragraphs of their own — a run's binding id, a colour's reading —
+ * which is the same carve-out the walk makes for a select's trigger.
+ *
+ * Surfaces this file does not mount are not read here: the `?` reference sheet,
+ * the publish popover, and the library and new-document dialogs.
  */
 import { Canvas, type FabricObject, Rect, Textbox } from "fabric/es";
 import { act, createElement } from "react";
@@ -806,16 +817,25 @@ function spokenIn(element: Element): string[] {
       continue;
     // A `kbd`'s label is the chord the binding table prints, not a word.
     if (named.closest("kbd") !== null) continue;
-    // The camera's readout names the concept and then the reading, the way a
-    // select's trigger prints the chosen value.
-    if (named.hasAttribute("data-vigilia-zoom")) continue;
-    out.push(named.getAttribute("aria-label")?.trim() ?? "");
+    const name = named.getAttribute("aria-label") ?? "";
+    // The camera's readout is the concept and then the reading, the way a
+    // select's trigger prints the chosen value. The concept is a word this table
+    // must hold, so it is read; the reading is dropped by its own shape — and a
+    // reading in a shape this does not know is pushed whole and goes red, so a
+    // change to the readout cannot quietly take the concept out of the net.
+    out.push(
+      named.hasAttribute("data-vigilia-zoom")
+        ? name.replace(/: \d+(?:\.\d+)?%$/, "")
+        : name,
+    );
   }
   for (const button of element.querySelectorAll("button")) {
     if (button.getAttribute("data-vigilia-palette-token-row") !== null)
       continue;
     if (button.querySelector("[data-vigilia-value]") !== null) continue;
     if (button.hasAttribute("aria-controls")) continue;
+    // The readout's trigger prints the reading alone, so the button half has no
+    // words of its own; the concept above is where its name is read.
     if (button.hasAttribute("data-vigilia-zoom")) continue;
     out.push(spokenText(button).trim());
   }
