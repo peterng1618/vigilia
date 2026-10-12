@@ -631,7 +631,7 @@ A same-rules read over the 149 archived rows produces **14 problems** today, and
 
 - [ ] **Step 1: `vg-327` rule one** — report the violation set, not its count, so a changed violation is visible.
 - [ ] **Step 2: `vg-327` rule two** — key an exemption on the site as well as the text, so a new site cannot inherit an old exemption.
-- [ ] **Step 3: `vg-332` and `vg-340`**, each its own rule in the same scanner.
+- [ ] **Step 3: `vg-332` and `vg-340`**, each its own rule in the same scanner. [Ruled otherwise when the task ran: the two rows are ONE rule -- an allowlist entry no gated file consumes -- because both name the same defect in the same list. Ruling and evidence are in the ledger's Task 4.2 entry.]
 - [ ] **Step 4: Add a self-test case per rule, and one that fails if the rule is disabled.**
 - [ ] **Step 5: `npm run design:check`, `gates:self-test`, commit.**
 
