@@ -41,9 +41,11 @@ Element.prototype.getAnimations ??= (): never[] => [];
 
 // jsdom's selector engine cannot answer `:modal`/`:popover-open`, and
 // floating-ui asks for both on every position. Each unanswerable call costs
-// ~0.5s of selector parsing, which turns one open into tens of seconds — the
-// `vg-135` family this file already knows. Real browsers answer both. The
-// sibling `publish-control.dom.test.tsx` carries the same patch.
+// ~0.5s of selector parsing, which turns one open into tens of seconds — this
+// stub is the cure for the `vg-135` stall (measured at HEAD: the file is 23
+// passed in ~8s with it, and one 20s timeout plus three 17-52s stalls without).
+// Real browsers answer both. The sibling `publish-control.dom.test.tsx` carries
+// the same patch.
 beforeAll(() => {
   const matches = Element.prototype.matches;
   Element.prototype.matches = Object.assign(function (
@@ -84,14 +86,15 @@ function facade(): EditorActionFacade {
   };
 }
 
-/** Base UI portals a menu to `body` and unmounts it on the next frame, so an
- *  open menu from one test is still in the document for the next one and
- *  `openPopup()` would read it. Escape is the gesture that closes it. The live
- *  binding table is module state too, so it is put back with the menus. */
+/** The live binding table is module state, so it is put back after every test.
+ *
+ *  The menu check is the ordering guard (`vg-186`), inverted: each test's own
+ *  `layout.destroy()` is what unmounts the menu it opened, so a menu still in
+ *  `body` here means one outlived its test — which is what made this file's
+ *  tests depend on where they sit. It fails at the test that leaked rather than
+ *  as a stall in whichever test runs next. */
 afterEach(() => {
-  document.dispatchEvent(
-    new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
-  );
+  expect(document.querySelectorAll(".editor-shell-menu-popup")).toHaveLength(0);
   setActiveShortcuts(PRODUCT_SHORTCUTS);
 });
 
@@ -169,6 +172,41 @@ function bridgeStub(
     ...overrides,
   };
 }
+
+/**
+ * First in the file because it is the case `vg-186` is proved by.
+ *
+ * The row recorded that an earlier menu stalls this test's close, so it only
+ * passed because of where it sat. Re-measured at HEAD neither half holds: the
+ * stall was jsdom's `:modal`/`:popover-open` selector cost — the stub at the
+ * top of this file — and this test now passes wherever it sits (0.17 s here,
+ * 0.1 s last), so no case in the file depends on the order. It stays first
+ * because that is the position the row's ruling named as its proof.
+ */
+it("opens the shortcut sheet from the shell's own surface, and closes it again", async () => {
+  const root = document.createElement("div");
+  const layout = createShellLayout(root);
+  // No wait before the read: `flushSync` inside `showShortcuts` settles the
+  // external store synchronously, so the result is observable without a poll —
+  // the same reason `setBridge` uses it. The wait after the close is real:
+  // neither library takes a popup out of the document synchronously, and Base
+  // UI holds it behind `hidden` until the close settles.
+  layout.showShortcuts();
+  const dialog = document.querySelector('[role="dialog"]');
+  expect(dialog).not.toBeNull();
+  // The words are the sample's, not the document's: a sheet that printed an
+  // authored theme's tokens would be shell copy owned by a theme.
+  expect(dialog?.textContent).toContain(uiCopy.shortcuts.reference);
+
+  const close = [...(dialog?.querySelectorAll("button") ?? [])].find(
+    (button) => button.textContent === uiCopy.shortcuts.close,
+  );
+  close?.click();
+  await vi.waitFor(() =>
+    expect(document.querySelector('[role="dialog"]')).toBeNull(),
+  );
+  layout.destroy();
+});
 
 it("mounts the OS-resolved palette, menus, rail, inspector and dock hosts", () => {
   const root = document.createElement("div");
@@ -293,45 +331,6 @@ it("gives every pane DESIGN.md's chrome, named by the section the specs browse",
 });
 
 /**
- * This one runs before the menu tests on purpose.
- *
- * A Base UI menu opened by any earlier test in this file leaves jsdom's frame
- * pipeline in a state where this test stalls. That is the same `vg-135` stall
- * family, one surface further out: it is a property of the file, not of the
- * change under test, and it is why this test is not last.
- *
- * **Re-measured after the dialog moved from Radix to Base UI** (decision
- * `0038`, Task 1.1): it still stalls, and it now *passes slowly* rather than
- * timing out — 20 656 ms at the end of the file against 126 ms here, same
- * commit, same command. So `vg-186`'s premise survives the migration even
- * though the library under the sheet changed; only its symptom softened.
- */
-it("opens the shortcut sheet from the shell's own surface, and closes it again", async () => {
-  const root = document.createElement("div");
-  const layout = createShellLayout(root);
-  // No wait before the read: `flushSync` inside `showShortcuts` settles the
-  // external store synchronously, so the result is observable without a poll —
-  // the same reason `setBridge` uses it. The wait after the close is real:
-  // neither library takes a popup out of the document synchronously, and Base
-  // UI holds it behind `hidden` until the close settles.
-  layout.showShortcuts();
-  const dialog = document.querySelector('[role="dialog"]');
-  expect(dialog).not.toBeNull();
-  // The words are the sample's, not the document's: a sheet that printed an
-  // authored theme's tokens would be shell copy owned by a theme.
-  expect(dialog?.textContent).toContain(uiCopy.shortcuts.reference);
-
-  const close = [...(dialog?.querySelectorAll("button") ?? [])].find(
-    (button) => button.textContent === uiCopy.shortcuts.close,
-  );
-  close?.click();
-  await vi.waitFor(() =>
-    expect(document.querySelector('[role="dialog"]')).toBeNull(),
-  );
-  layout.destroy();
-});
-
-/**
  * The chord's shell door, driven directly.
  *
  * F1 on this branch: the header's `⌘⇧P` called `hosting.toggle()`, so a press
@@ -342,9 +341,8 @@ it("opens the shortcut sheet from the shell's own surface, and closes it again",
  * nothing. Revert the door to moving the host and the popover never opens;
  * leave the popover and write the host too, and `puts` catches it.
  *
- * Placed with the sheet test rather than with the menus: opening a Base UI
- * popup after a menu stalls under jsdom (`vg-135`), which is why both popup
- * tests sit ahead of the menu group.
+ * Placed beside the sheet test rather than with the menus: both drive a surface
+ * the header owns, and neither reads the menu group's markup.
  */
 it("opens the publish surface from the shell's own door, and moves no host state", async () => {
   const token = "t".repeat(43);
@@ -1153,10 +1151,9 @@ function groupsOf(
 it("prints the chord on the menu rows the shortcut table binds", async () => {
   const root = document.createElement("div");
   const layout = createShellLayout(root);
-  // Opening a Base UI menu is the click that costs 50-90s under jsdom
-  // (`vg-135`). Open it, assert, and close it — do not add a second one. Read
-  // straight after the gesture, as the View and Insert tests do: awaiting a
-  // `vi.waitFor` poll lets the 20s budget fire while the click still blocks.
+  // Open it, assert, and close it — do not add a second one. Read straight
+  // after the gesture, as the View and Insert tests do, so the assertion names
+  // the menu this click opened rather than whichever poll settles first.
   menubarEntry(root, uiCopy.menus.edit).click();
   await Promise.resolve();
   // `openPopup()` reads the open menu rather than the bare class: the display
@@ -1174,7 +1171,7 @@ it("prints the chord on the menu rows the shortcut table binds", async () => {
   // replaced, so the mark would name a key that runs something else. The rebind
   // is written the way the shell writes it — resolve first, then publish — and
   // asserted on the same open menu rather than by opening a second one, which
-  // costs 50-90s under jsdom.
+  // would be a second gesture for the same fact.
   const moved: ShortcutBinding = {
     key: "j",
     modifier: true,
