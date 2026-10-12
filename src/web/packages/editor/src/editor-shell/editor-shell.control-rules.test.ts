@@ -65,6 +65,22 @@ describe("§5 rule 6 on the shell's glyph-only controls", () => {
       ).not.toContain("background");
     });
   }
+
+  /** "Nothing moves" is not in the two declarations above: it holds because the
+   *  acquired 1px border lands *inside* the box. Two of these rules say
+   *  `box-sizing: border-box` for themselves; the rail's slot and the layer
+   *  row's square rely on the global rule, which nothing else pins — without it
+   *  the 34px slot and the 20px square grow by 2px on hover and every case above
+   *  stays green. */
+  it("puts every box on border-box, so the acquired border does not grow it", () => {
+    expect(
+      css,
+      "the global `*, *::before, *::after` rule no longer sets border-box, so a " +
+        "control that acquires its 1px hover border grows by 2px instead",
+    ).toMatch(
+      /^\*,\s*\n\s*\*::before,\s*\n\s*\*::after\s*\{\s*\n\s*box-sizing:\s*border-box;/m,
+    );
+  });
 });
 
 /** §2 gives list rows `--text-sm`. A dialog is portalled, so a body that

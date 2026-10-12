@@ -225,21 +225,25 @@ describe("shell token stylesheet", () => {
         "equal specificity for every palette",
     ).toBeLessThan(palettesAt);
 
+    // The three `vg-357` gave `light` its own declaration for, so the base
+    // frame is still compared to the palette it mirrors *value for value*: a
+    // key comparison would let a `--shell-*` colour drift on the bare root while
+    // `light`'s block kept its own, which is the drift this case exists to see.
+    const companions: ReadonlySet<string> = new Set([
+      "--shell-display",
+      "--shell-flat",
+      "--vigilia-control-bg",
+    ]);
     expect(
-      // `light`'s block is the base frame plus the three tokens the two `:root`
-      // companions carry: `vg-357` gave it its own declarations for them, so a
-      // dark-reporting OS cannot move three of its settled values through the
-      // dark base. Any other difference is a drift on one side or the other.
-      Object.keys(declarations(declarationBlock("light"))).sort(),
+      declarations(base),
       "the base has drifted from the `light` palette it mirrors, so a " +
         "light-reporting OS's first frame is not the light palette",
     ).toEqual(
-      [
-        ...Object.keys(declarations(base)),
-        "--shell-display",
-        "--shell-flat",
-        "--vigilia-control-bg",
-      ].sort(),
+      Object.fromEntries(
+        Object.entries(declarations(declarationBlock("light"))).filter(
+          ([token]) => !companions.has(token),
+        ),
+      ),
     );
 
     // Every token graphite declares, the three beyond its colours included
