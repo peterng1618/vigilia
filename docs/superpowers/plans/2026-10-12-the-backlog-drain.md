@@ -835,6 +835,10 @@ Rows: `vg-365`, `vg-367`.
 
 **Verify:** the focused vitest file per row; `npm run design:md` after the `design-md.mjs` change; `npm run backlog:check` at the batch's end.
 
+**Closed 2026-10-13, base `720daa22`.** All twenty rows the phase owned are decided: nineteen `verified`, and the twentieth is `vg-175`, which was closed on a falsified premise and **reopened `open`** by its own review (`614265de`) — the row's finding is that a test whose verdict depends on what else is running is evidence neither way, so a green run on an idle box measures the opposite of the condition the row records, and its named twin `vg-164` stayed `open` on exactly that reasoning. **Four of the closes are refutations, not fixes** — `vg-135`, `vg-186`, `vg-215` and `vg-333` did not reproduce at HEAD — and each carries a dated `RULED 2026-10-13` correction on its archived line so a later session does not re-investigate a gap that is not there. `vg-215` is the one of the four that landed an artefact anyway: the close assertion the row said could not be written under jsdom is written (`24f8dd96`). `vg-337` closed the way Step 3 asks — the exemption is written down in `ui-copy.ts`'s own header rather than satisfied by moving lines — and neither of the phase's two failure modes occurred. Four rows came out of the phase's reviews instead of being lost: `vg-415`, `vg-416`, `vg-417`, `vg-418`. The two serialising files each had one author, and every one of the twenty has a commit recorded against it.
+
+**The gate, run by the controller at `614265de` from `src/web/`:** `npm run gate` **exit 0** — `biome check` 629 files with no fixes applied, `gates:self-test` with all ten self-tests passing, and the unit suite 252/252 files and 3326/3326 tests. `npm run design:check` **exit 0** (lint clean, `DESIGN.md` and `editor-shell.css` in sync, 307 citation sources clean) and `npm run backlog:check` **exit 0** (418 items across both registers, all valid).
+
 ### Task 7.1: The copy walk's two rows
 
 **Files:**
