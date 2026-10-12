@@ -36,18 +36,18 @@ ledger did.
 
 ## Last completed change
 
-- **Task 2.3a closes two of its four rows and reopens a third** — `vg-296`'s elevation and boundary arms and `vg-325`'s product side are `verified` on red-proved arms, and the elevation arm found a live defect on the way (the shell drawing's artwork shadow at a 50px blur where §3 prints 44).
-- **`vg-314` is back to `open`, on measurement rather than on a shrug** — the surface inventory was a name-presence check over a hand-written one-entry list, so a product surface that is not on the list reddens nothing, and its drawing side is satisfied by a comment at `current/shell.html:133`.
-- **`vg-326` stays open for the same shape of reason** — nothing in the workspace passes `density="dialog"`, so no element renders at §3's 30px and a rendered arm over the densities that do render would assert one number three times, the shape `vg-233`'s first pass closed on.
-- **The review's two blockers were both about what a close claims, not about wrong code** — the fix round re-took every red proof after the arms changed, and the scoped re-review read each arm at source; the one residual, a count that did not reproduce (8 → 5), the controller corrected directly in `5c667871`.
-- **Task 2.3 was split by file after two implementers died on the same API stall** — a foreground Playwright run is indistinguishable from an idle stream, so long commands now run in the background; `vg-394` filed the drawings spec's growth past the 800 stop.
+- **Task 2.3b closes the chrome row and re-scopes the worker-count row** — `vg-313` is `verified` with its membership derived from `editor-shell.css` and red-proved, and `vg-285` stays `open` on the reading its own gate produced, because the ruling the row asked for is answered by the instrument rather than by a decision.
+- **The boundary arm reads its three sets out of the stylesheet** — a rule whose fill is `--panel`/`--shell-surface` is glass when lifted and chrome when flat, so the literal `GLASS_CLUSTERS` pair became the derived `SHEEN_CLUSTERS` and a surface added later is read with the rule that paints it instead of escaping a list.
+- **The red proof plants the row's own defect** — a further element carrying `editor-glass` with its own blur rule reddens the cluster arm in all six palettes, naming `7:.editor-shell-probe-cluster.editor-glass`, and the plant was reverted byte-exact (`cmp` against `git show HEAD:<path>`) before the green run.
+- **`vg-285` reproduces on an idle box, and its bisect is a curve rather than a boundary** — 4 timeouts at 10 workers, 3 at 8, 1 at 6, none at 5, each failure 1–14% over the 30s limit, so the row's "on an idle box there is nothing to fix" is the half the reading falsifies.
+- **`shell-appearance.spec.ts` crosses the 800-line stop with the derivation** — 782 → 868, reported rather than split, because the growth is the instrument and splitting the file is not this task's.
 
 ## Next
 
 1. **The drain's four ruling sessions are the user's to answer, and Phase 2 runs beside them** — the agenda classifies all 104 decision rows (**12 answered, 8 deferred to the browser follow-up, 84 to ask**); Session 1's eight questions across D1 and D2 are put in chat and unanswered, so the next artifact from them is rulings, not a dispatch.
 2. **Closing the sixteenth acceptance item is the redesign's only remaining work** — it needs the user's ruling on the settings frame's width and on which role a palette preview bar depicts, the work on the other `fix` differences, and a decision on `vg-390`.
 3. **A row whose defect does not reproduce is a finding about the row, not a licence to close it** — Phase 0's 22 closed rows each name which of §3.1's four shapes it is, because a rebuilt surface reported as a fix is the error the shapes exist to prevent.
-4. **Phase 2 is on Task 2.3b, the chrome suite row and the worker-count row** — `vg-313`'s membership must be derived from the stylesheet rather than named, and `vg-285` is one idle-box run at Playwright's default worker count whose second attempt already reproduced three 30 s timeouts, so the worker-count bisect is next; `vg-314` and `vg-326` stay open on what their own lines say would close them.
+4. **Task 2.3 is read by file, and `vg-285` now waits on a decision rather than a run** — 2.3a's four rows and 2.3b's two are read and committed, the worker-count row's gate is taken (10 workers red, the same three files green at 5), so what it waits on is which count this suite is run at here; Task 2.4's 23 rows follow, one suite at a time on the fixed preview ports.
 5. **`vg-386` is a sweep of its own** — the tier's definition is undecided (76 on the plan's literal wording, 133 on the code's own intent) and 133 candidates have never been adjudicated; **none of the 133 is proven dead and none may be deleted on classification alone**.
 
 ## Blockers / unverified
