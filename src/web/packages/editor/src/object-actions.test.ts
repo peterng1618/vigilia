@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   type ActionGate,
   arrangeActions,
+  destructiveMarker,
   OBJECT_ACTIONS,
   type ObjectTarget,
   objectAction,
@@ -47,6 +48,20 @@ describe("object action registry", () => {
       "ungroup",
       "delete",
     ]);
+  });
+
+  it("marks delete, and only delete, destructive — the registry's own fact", () => {
+    // §4: `--hot` marks destructive affordances, and delete is the only one. The
+    // owner is this entry, not a second list inside a surface: the surfaces read
+    // this flag through `destructiveMarker`, so a surface cannot re-decide it.
+    const destructive = [...OBJECT_ACTIONS, ...arrangeActions()]
+      .filter((action) => action.destructive === true)
+      .map((action) => action.id);
+    expect(destructive).toEqual(["delete"]);
+    expect(destructiveMarker(objectAction("delete"))).toEqual({
+      "data-vigilia-destructive": "",
+    });
+    expect(destructiveMarker(objectAction("copy"))).toEqual({});
   });
 
   it("offers group only for a real multi-selection", () => {

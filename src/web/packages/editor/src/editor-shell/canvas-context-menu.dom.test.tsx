@@ -169,6 +169,24 @@ it("renders exactly the registry's eligible entries for the object under the poi
   await opened.close();
 });
 
+it("marks the registry's destructive entry, and only it", async () => {
+  const opened = await openMenu({
+    hit: {} as unknown as FabricObject,
+    target: CHART_TARGET,
+  });
+
+  // The menu carries the same `data-*` mark the dock draws, from the registry's
+  // own flag. Read off the rendered items, not the registry, so a menu that
+  // dropped the mark reddens rather than agreeing with the source. Close before
+  // asserting: a failed case must not leave an open menu for the file's other
+  // cases — the portal is in `document.body`, and a leak cascades.
+  const marked = opened.items
+    .filter((item) => item.hasAttribute("data-vigilia-destructive"))
+    .map((item) => item.getAttribute("aria-label"));
+  await opened.close();
+  expect(marked).toEqual([uiCopy.actions.delete]);
+});
+
 it("dispatches the clicked entry through the bridge's own run", async () => {
   const opened = await openMenu({
     hit: {} as unknown as FabricObject,

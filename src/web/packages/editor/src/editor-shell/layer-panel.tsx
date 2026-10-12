@@ -1,5 +1,5 @@
 import { ControlIconButton } from "../components/ui/control-icon-button.js";
-import { objectActionsFor } from "../object-actions.js";
+import { destructiveMarker, objectActionsFor } from "../object-actions.js";
 import type { EditorShellBridge } from "./bridge.js";
 import { Glyph } from "./icons.js";
 
@@ -25,17 +25,19 @@ export function LayerActions({
 }): React.JSX.Element {
   return (
     <footer className="editor-shell-pane-actions" data-vigilia-layer-actions="">
-      {(bridge === undefined ? [] : objectActionsFor(bridge)).map(
-        ({ id, icon: Icon, label }) => (
-          <ControlIconButton
-            key={id}
-            label={label}
-            onClick={() => bridge?.run(id)}
-          >
-            <Glyph icon={Icon} size={15} />
-          </ControlIconButton>
-        ),
-      )}
+      {(bridge === undefined ? [] : objectActionsFor(bridge)).map((action) => (
+        <ControlIconButton
+          key={action.id}
+          label={action.label}
+          // §4's mark and its `--hot` rendering both come from the registry's
+          // own flag, so the footer cannot disagree with the dock about delete.
+          destructive={action.destructive === true}
+          data={destructiveMarker(action)}
+          onClick={() => bridge?.run(action.id)}
+        >
+          <Glyph icon={action.icon} size={15} />
+        </ControlIconButton>
+      ))}
     </footer>
   );
 }

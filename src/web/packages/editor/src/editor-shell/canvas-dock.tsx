@@ -3,6 +3,7 @@ import { useControlTooltip } from "../components/ui/control-icon-button.js";
 import {
   actionEnabled,
   arrangeActions,
+  destructiveMarker,
   type ObjectActionId,
   objectActionsFor,
 } from "../object-actions.js";
@@ -16,12 +17,6 @@ import type { EditorShellBridge } from "./bridge.js";
 import { Glyph } from "./icons.js";
 
 /**
- * DESIGN.md §4: `--hot` marks destructive affordances, and delete is the only object
- * action that is one. The registry owns the id; the dock owns how it draws it.
- */
-const DESTRUCTIVE_ACTIONS: ReadonlySet<ObjectActionId> = new Set(["delete"]);
-
-/**
  * One dock button. The tooltip is a DOM control, so React owns the button and
  * the control set's `useControlTooltip` owns the popup — a React tooltip here
  * would be a second owner for something the selection inspector, which never
@@ -32,6 +27,7 @@ function Action({
   id,
   label,
   shortcut,
+  mark,
   children,
 }: {
   readonly bridge: EditorShellBridge | undefined;
@@ -40,6 +36,9 @@ function Action({
   readonly shortcut:
     | { readonly printed: string; readonly spoken: string }
     | undefined;
+  /** §4's destructive mark the registry hands the surface; empty for an action
+   *  that does not destroy. */
+  readonly mark: Readonly<Record<`data-${string}`, string>>;
   readonly children: React.ReactNode;
 }): React.JSX.Element {
   const ref = useRef<HTMLButtonElement>(null);
@@ -52,8 +51,9 @@ function Action({
       type="button"
       aria-label={label}
       // A `data-*` hook is the mark, not an ARIA state: nothing about a
-      // destructive action is a toggle or a pressed state to announce.
-      data-vigilia-destructive={DESTRUCTIVE_ACTIONS.has(id) ? "" : undefined}
+      // destructive action is a toggle or a pressed state to announce. The
+      // registry decides which actions carry it, not the dock.
+      {...mark}
       onClick={() => bridge?.run(id)}
     >
       {children}
@@ -136,26 +136,25 @@ export function CanvasDock({
     >
       {bridge === undefined
         ? null
-        : objectActionsFor(bridge).map(
-            ({ id, icon: Icon, label, shortcut }) => (
-              <Action
-                key={id}
-                bridge={bridge}
-                id={id}
-                label={label}
-                shortcut={
-                  shortcut === undefined
-                    ? undefined
-                    : {
-                        printed: shortcutLabel(shortcut),
-                        spoken: shortcutSpokenLabel(shortcut),
-                      }
-                }
-              >
-                <Glyph icon={Icon} size={15} />
-              </Action>
-            ),
-          )}
+        : objectActionsFor(bridge).map((action) => (
+            <Action
+              key={action.id}
+              bridge={bridge}
+              id={action.id}
+              label={action.label}
+              mark={destructiveMarker(action)}
+              shortcut={
+                action.shortcut === undefined
+                  ? undefined
+                  : {
+                      printed: shortcutLabel(action.shortcut),
+                      spoken: shortcutSpokenLabel(action.shortcut),
+                    }
+              }
+            >
+              <Glyph icon={action.icon} size={15} />
+            </Action>
+          ))}
       {arrangeActions().map(({ id, icon: Icon, label }) => (
         <ArrangeAction
           key={id}

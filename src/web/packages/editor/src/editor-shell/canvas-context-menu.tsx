@@ -1,7 +1,7 @@
 import { ContextMenu } from "@base-ui/react/context-menu";
 import { useEffect, useMemo, useState } from "react";
 import { insertGroups } from "../new-object-panel.js";
-import { objectActionsFor } from "../object-actions.js";
+import { destructiveMarker, objectActionsFor } from "../object-actions.js";
 import { uiCopy } from "../ui-copy.js";
 import type { EditorShellBridge } from "./bridge.js";
 import type { EditorActionFacade } from "./session-facade.js";
@@ -18,6 +18,9 @@ interface MenuEntry {
   readonly id: string;
   readonly label: string;
   readonly run: () => void;
+  /** §4's destructive mark for a registry action, spread onto the item; empty
+   *  for a creation entry, which is not an object action. */
+  readonly mark: Readonly<Record<`data-${string}`, string>>;
 }
 
 /** A heading's worth of them, or `undefined` for an entry that stands alone. */
@@ -51,6 +54,7 @@ function creationGroups(session: EditorActionFacade): readonly MenuGroup[] {
       // already rests on.
       id: object.label,
       label: object.label,
+      mark: {},
       run: () => {
         switch (object.kind) {
           case "text":
@@ -77,6 +81,8 @@ function entryItem(entry: MenuEntry): React.JSX.Element {
     <ContextMenu.Item
       key={entry.id}
       aria-label={entry.label}
+      // The same `data-*` hook the dock draws, from the same registry flag.
+      {...entry.mark}
       onClick={entry.run}
     >
       {entry.label}
@@ -162,6 +168,7 @@ export function CanvasContextMenu({
       : objectActionsFor(bridge).map((action) => ({
           id: action.id,
           label: action.label,
+          mark: destructiveMarker(action),
           run: () => bridge.run(action.id),
         }));
 

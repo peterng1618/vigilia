@@ -7,6 +7,7 @@ import {
   type ObjectTarget,
   objectActionsFor,
 } from "../object-actions.js";
+import { uiCopy } from "../ui-copy.js";
 import type { EditorShellBridge } from "./bridge.js";
 import { STACK_GLYPH } from "./icons.js";
 import { LayerActions } from "./layer-panel.js";
@@ -127,6 +128,27 @@ it("asks the registry for eligibility and decides nothing itself", () => {
     .sort();
   expect(rendered).toEqual(expected);
   expect(expected.length).toBeGreaterThan(1);
+
+  act(() => root.unmount());
+});
+
+it("marks delete destructive in the footer too, from the registry", () => {
+  const { host, root } = render(bridge(object()));
+
+  // The footer is the second surface of the registry, and the mark is §4's own:
+  // read off the rendered controls, so a footer that stopped reading the flag
+  // reddens. `delete` and only `delete` carries it.
+  const marked = Array.from(
+    host.querySelectorAll(
+      "[data-vigilia-layer-actions] button[data-vigilia-destructive]",
+    ),
+  ).map((button) => button.getAttribute("aria-label"));
+  expect(marked).toEqual([uiCopy.actions.delete]);
+  expect(
+    host.querySelector(
+      "[data-vigilia-layer-actions] button[data-vigilia-destructive]",
+    )?.className,
+  ).toContain("text-hot");
 
   act(() => root.unmount());
 });

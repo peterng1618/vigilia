@@ -64,6 +64,10 @@ interface ObjectAction {
    *  per `exactOptionalPropertyTypes`; the absence is the fact that the product
    *  binds nothing. */
   readonly shortcut?: ProductShortcutId;
+  /** §4: this action destroys, so a surface marks its control `--hot`. Omitted
+   *  rather than `false`, per `exactOptionalPropertyTypes`; the absence is the
+   *  fact that it does not, and the registry is the one owner of the decision. */
+  readonly destructive?: true;
   readonly eligible: (target: ObjectTarget) => boolean;
   readonly run: (editor: EditorInteraction) => void;
 }
@@ -111,6 +115,19 @@ export function actionEnabled(gate: ActionGate, id: ObjectActionId): boolean {
  */
 export function objectActionsFor(gate: ActionGate): readonly ObjectAction[] {
   return OBJECT_ACTIONS.filter((action) => actionEnabled(gate, action.id));
+}
+
+/**
+ * §4's destructive mark, as the attributes a surface spreads onto the control
+ * it draws for an action: `data-vigilia-destructive` when the registry says the
+ * action destroys, and nothing otherwise. One owner for the attribute name and
+ * the decision, so a surface that renders the registry cannot re-decide which
+ * actions destroy — the mark reads the same on every one of them.
+ */
+export function destructiveMarker(
+  action: ObjectAction,
+): Readonly<Record<`data-${string}`, string>> {
+  return action.destructive === true ? { "data-vigilia-destructive": "" } : {};
 }
 
 /** One owner for object actions: what each is, when it applies, how it runs. */
@@ -209,6 +226,7 @@ export const OBJECT_ACTIONS: readonly ObjectAction[] = [
     label: uiCopy.actions.delete,
     icon: Trash2,
     shortcut: "edit.delete",
+    destructive: true,
     eligible: hasUnlockedSelection,
     run: (e) => e.deletionManager.deleteActive(),
   },
