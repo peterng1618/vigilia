@@ -328,9 +328,10 @@ function position(text, index) {
  * type sizes 13/15/19, because a value here is allowed *anywhere*, so adding
  * them would license `padding: 13px`. The steps and `0`/`1` are allowed
  * without it, so an empty allowlist narrows the rule rather than disabling it.
- * Each violation carries its `rule`, its position, the `site` it sits at (the
- * enclosing selector) and its `text` — the last two being what an exemption is
- * keyed on.
+ * Each violation carries its `rule`, its position, the `site` it sits at — the
+ * prelude of the block containing it, which is the enclosing selector for a
+ * declaration and the at-rule's own prelude for a literal in one (`siteOf`) —
+ * and its `text`, the last two being what an exemption is keyed on.
  */
 export function check(relPath, source, designLanguagePx = []) {
   const path = String(relPath ?? "");
