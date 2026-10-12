@@ -110,11 +110,33 @@ describe("§2's role on a dialog's own body", () => {
  *  DOM assertion could only ever prove the string it wrote. This is the half that
  *  reddens in `vitest` when the rule is reverted; the rendered half is the
  *  browser. */
-/** The stylesheet without its comments, for the two reads below that look for a
+/** The stylesheet without its comments, for the reads below that look for a
  *  *declaration*: a comment that explains why a declaration is gone
  *  (`color: inherit`, the removed restatement) is text the same regexes would
  *  otherwise find and accuse. */
 const cssNoComments = css.replace(/\/\*[\s\S]*?\*\//g, "");
+
+/** Every rule body whose *selector list contains* `selector` as one of its
+ *  comma-separated parts.
+ *
+ *  `ruleBodies` above cannot answer this one: it anchors the whole selector at a
+ *  line start, so a rule written as a list (`.a [role="menuitem"],\n.a
+ *  [role="menuitemradio"] {`) is invisible to it — which is exactly the rule
+ *  that has to be read here. */
+function bodiesFor(selector: string): string {
+  return [...cssNoComments.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+    .filter(([, selectors]) =>
+      (selectors ?? "")
+        .split(",")
+        .map((one) => one.trim())
+        .includes(selector),
+    )
+    .map(([, , body]) => body ?? "")
+    .join("\n");
+}
+
+/** A declaration whose *property* is `color`, not `border-color`/`background-color`. */
+const PAINTS_COLOUR = /(?<![\w-])color\s*:/;
 
 describe("§4's destructive mark", () => {
   it("paints --hot from the shared marker, and from one rule that no surface scopes", () => {
@@ -143,15 +165,26 @@ describe("§4's destructive mark", () => {
         "surface outside that scope — a portalled popup — is left ordinary",
     ).not.toMatch(/\.editor-shell-|\[role=/);
 
-    // And nothing else declares a colour on a control that carries the mark. The
-    // menu popup's items are the ones that did: a rule there outranks a bare
-    // attribute at (0,2,0), which is exactly how the menu's Delete stayed
-    // ordinary while carrying the mark.
-    expect(
-      cssNoComments,
-      "the menu popup's item rule declares a colour again, so it outranks the " +
-        "bare `[data-vigilia-destructive]` selector and the menu's Delete stops " +
-        "painting §4's `--hot`",
-    ).not.toMatch(/\.editor-shell-menu-popup\s+\[role="menuitem"\][^}]*color:/);
+    // And no rule declares a colour **on the control** a mark lands on. A
+    // declaration there applies directly to the element, so it outranks a bare
+    // attribute by specificity — this file is unlayered, and the two surfaces
+    // each did it once: `color: inherit` on a menu item at (0,2,0), and
+    // `color: var(--shell-text)` on `.editor-shell-dock button` at (0,1,1). The
+    // first left the menu's Delete ordinary; the second did the same to the
+    // dock's the moment the mark's rule stopped carrying a dock qualifier.
+    // Inheritance never does this, which is why the colour now sits on each
+    // surface's *container*.
+    for (const selector of [
+      '.editor-shell-menu-popup [role="menuitem"]',
+      '.editor-shell-menu-popup [role="menuitemradio"]',
+      ".editor-shell-dock button",
+    ] as const) {
+      expect(
+        bodiesFor(selector),
+        `${selector} declares a colour on the control itself, which outranks the ` +
+          "bare `[data-vigilia-destructive]` selector — so the marked control " +
+          "paints the surface's colour instead of §4's `--hot`",
+      ).not.toMatch(PAINTS_COLOUR);
+    }
   });
 });

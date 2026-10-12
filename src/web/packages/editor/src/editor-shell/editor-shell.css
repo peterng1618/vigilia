@@ -568,13 +568,20 @@ body,
    `--hot`" in two places — the one-owner violation `vg-226` was filed for, one
    level down.
 
-   This selector needs no surface qualifier and no specificity trick. Tailwind's
-   utilities are in `@layer utilities` and this rule is unlayered, so it outranks
-   every `text-*` class whatever the selector weight; and no other rule declares
-   a colour on the elements that carry the mark — a menu item inherits
-   `--shell-text` from its popup, which is why the popup's items no longer
-   restate `color: inherit` (a declaration there was the one thing that outranked
-   a bare attribute, at (0,2,0)).
+   This selector needs no surface qualifier and no specificity trick, and it is
+   the **only rule that declares a colour directly on an element that carries the
+   mark**. Two things make that true, and both are deliberate:
+   - Tailwind's utilities are in `@layer utilities` and this rule is unlayered,
+     so it outranks every `text-*` class whatever the selector weight.
+   - Each surface a mark lands on sets its colour on its **container**, which the
+     control inherits, so no declaration of the surface's own competes on the
+     control: `.editor-shell-menu-popup` declares `--shell-text` for its items and
+     `.editor-shell-dock` declares it for its buttons. Both used to restate the
+     colour on the control instead (`color: inherit` on a menu item at (0,2,0);
+     `color: var(--shell-text)` on a dock button at (0,1,1)), and a declaration
+     on the control beats a bare attribute — which is how the mark lost its
+     colour on the menu first, and on the dock the moment this rule stopped being
+     dock-scoped. Inheritance never has that effect.
 
    A blocked control never carries the mark: eligibility removes Delete before a
    surface draws it, so §4's "a disabled destructive control stays `--faint`" is
@@ -1123,8 +1130,15 @@ body,
 .editor-shell-inspector button {
   cursor: pointer;
 }
+/* The dock's buttons take their *shape* here and their **colour from the dock
+   below**, not from a declaration of their own. A `color:` on the button applies
+   directly to it, so it outranks §4's bare `[data-vigilia-destructive]` marker
+   rule at (0,1,1) against (0,1,0) — both unlayered author styles, so specificity
+   decides. That is exactly how the dock's Delete stopped painting `--hot` when
+   the mark's rule stopped being dock-scoped. On the container the buttons
+   inherit the colour and the marker rule still applies directly to the one
+   control that carries the mark, whichever surface that control is on. */
 .editor-shell-dock button {
-  color: var(--shell-text);
   border: 0;
   background: transparent;
   border-radius: var(--radius-md);
@@ -2400,6 +2414,11 @@ body,
   bottom: 16px;
   left: 50%;
   transform: translateX(-50%);
+  /* The cluster's colour, inherited by every control in it. It is here rather
+     than on `.editor-shell-dock button` so that §4's bare
+     `[data-vigilia-destructive]` rule is the only declaration applying directly
+     to Delete — see the note on the button rule above. */
+  color: var(--shell-text);
   /* §7.5: a cluster sits 14–16px in from the stage's edges, so the dock is
      `stage − 32px` at most. `max-content` rather than `100%` because the dock
      is a bottom-centre corner, not a bar: with three actions it is a pill, and

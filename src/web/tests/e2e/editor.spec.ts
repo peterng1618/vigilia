@@ -4501,6 +4501,40 @@ test.describe("Fabric editor route", () => {
     // Arrange has no `OBJECT_ACTIONS` id, so it cannot leak in from the toolbar.
     expect(itemNames).not.toContain("Align left");
 
+    // §4's mark has to **paint**, not merely be present. `vg-226`'s failure was
+    // exactly that gap: both surfaces carried `data-vigilia-destructive` and only
+    // the dock resolved to `--hot`, because the colour came from a rule scoped to
+    // the dock and the popup is portalled outside it. No vitest case can settle
+    // it — jsdom has no cascade, so it can prove the attribute and never which
+    // declaration wins — so two computed colours do. Delete must read the same
+    // **on the dock and in the menu**, and differently from an ordinary action
+    // sitting beside it in the same popup.
+    const colours = await page.evaluate(() => {
+      const colourOf = (root: ParentNode, label: string): string | null => {
+        const control = root.querySelector<HTMLElement>(
+          `[aria-label="${label}"]`,
+        );
+        return control === null ? null : getComputedStyle(control).color;
+      };
+      const popup = document.querySelector('[aria-label="Canvas actions"]');
+      const dock = document.querySelector("[data-vigilia-canvas-toolbar]");
+      return {
+        menuDelete: popup === null ? null : colourOf(popup, "Delete"),
+        menuDuplicate: popup === null ? null : colourOf(popup, "Duplicate"),
+        dockDelete: dock === null ? null : colourOf(dock, "Delete"),
+      };
+    });
+    expect(colours.menuDelete, "the menu offers a Delete entry").not.toBeNull();
+    expect(colours.dockDelete, "and the dock does too").not.toBeNull();
+    expect(
+      colours.menuDelete,
+      "Delete is §4's `--hot` in the dock and ordinary in the canvas menu",
+    ).toBe(colours.dockDelete);
+    expect(
+      colours.menuDelete,
+      "and it is the mark that paints it, not the surface's own text colour",
+    ).not.toBe(colours.menuDuplicate);
+
     await captureVisualReview(page, testInfo, "editor-canvas-context-menu");
 
     // Phase 1 adds a second owner of the arrow keys. Read both axes of the
