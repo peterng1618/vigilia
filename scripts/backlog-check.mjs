@@ -186,16 +186,43 @@ export function check(items) {
   return problems;
 }
 
+/**
+ * One register's rows and problems, from its text.
+ *
+ * A register that cannot be read, or holds no rows, is a failure like any
+ * malformed line. An absent file must not throw and an empty one must not read
+ * `all valid`: a baseline that answers green to a missing register is the same
+ * false green the rules below exist to catch, one level up.
+ */
+export function registerRows(name, text) {
+  if (text === null) {
+    return { name, items: [], problems: ["unreadable — the file is missing or cannot be opened"] };
+  }
+  if (text.trim() === "") {
+    return { name, items: [], problems: ["empty — a register with no rows is not a clean register"] };
+  }
+  return { name, ...parse(text) };
+}
+
+/** Read one register by path. A failure is returned as a problem, never thrown. */
+export function readRegister(path) {
+  let text = null;
+  try {
+    text = readFileSync(path, "utf8");
+  } catch {
+    // Left null on purpose: the problem set must always be the thing that
+    // answers, so an unreadable register is reported like any other finding.
+  }
+  return registerRows(path.slice(ROOT.length + 1).replace(/\\/g, "/"), text);
+}
+
 if (process.argv[1]?.endsWith("backlog-check.mjs")) {
   // Split by state, the two files are one register: a row acquires `verified`
   // as it *leaves* the live file, so reading only the live file never runs
   // rules 2-4 on any row they were written for. The archive read lands as an
   // error, not a warning — a gate that tolerates the drift it finds is the
   // false green the whole split was meant to prevent.
-  const registers = [FILE, ARCHIVE].map((path) => ({
-    name: path.slice(ROOT.length + 1).replace(/\\/g, "/"),
-    ...parse(readFileSync(path, "utf8")),
-  }));
+  const registers = [FILE, ARCHIVE].map(readRegister);
   const problems = registers.flatMap(({ name, items, problems: readProblems }) =>
     [...readProblems, ...check(items)].map((problem) => `${name}: ${problem}`),
   );
@@ -232,6 +259,12 @@ if (process.argv[1]?.endsWith("backlog-check.mjs")) {
       ["a bare-string artefacts is rejected as a shape", problem({ ...valid, artefacts: "abc1234" }, /array/)],
       ["an artefact that is not a commit fails", bad({ ...valid, artefacts: ["a1b2c3d"] })],
       ["a malformed line loses one item, not the file", parse('{"id":"a","statement":"x","state":"open","source":"user"}\nnot json\n{"id":"b","statement":"y","state":"open","source":"user"}').items.length === 2],
+      // The central deliverable is the *set* the CLI reads. Narrowing it to the
+      // live file alone is the change this check exists to fail, and it is the
+      // one no rule inside check() can see, because check() never knew the set.
+      ["both registers are read, live and archive", registers.map((r) => r.name).join(",") === "docs/product/backlog.jsonl,docs/product/backlog-archive.jsonl"],
+      ["an unreadable register is a labelled failure", registerRows("docs/product/backlog.jsonl", null).problems.some((p) => /unreadable/.test(p))],
+      ["an empty register is a failure, not all-valid", registerRows("docs/product/backlog.jsonl", "\n\n").problems.some((p) => /empty/.test(p))],
     ];
     const failed = cases.filter(([, pass]) => !pass);
     for (const [name, pass] of cases) process.stdout.write(`${pass ? "  ok  " : "  FAIL"} ${name}\n`);
