@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { expect, type Page, test } from "@playwright/test";
 import { captureVisualReview } from "./editor-canvas.js";
 import { openPane } from "./editor-rail.js";
@@ -486,15 +487,100 @@ test.describe("shell palettes", () => {
 
     await openEditor(page);
 
-    const CHROME = [
-      ".editor-shell-rail",
-      ".editor-shell-panel",
-      ".editor-shell-inspector",
-      ".editor-shell-header",
-      ".editor-shell-status",
-    ];
-    const GLASS_CLUSTERS = [".editor-shell-dock", ".editor-shell-zoom"];
-    const CLUSTERS = [...GLASS_CLUSTERS, ".editor-shell-identity"];
+    // Membership is **derived from the stylesheet**, not named here, so a
+    // surface added later is read with the rule that paints it: a rule whose
+    // fill is `--panel`/`--shell-surface` is **glass** when lifted and
+    // **chrome** when flat, and a lifted fill carrying a gradient is one of the
+    // clusters that take the shared sheen.
+    //
+    // The authored file, not the loaded stylesheet, because the built one cannot
+    // classify its own glass: Lightning CSS emits the blur as
+    // `-webkit-backdrop-filter` alone, this Chromium supports the unprefixed
+    // property alone (`CSS.supports("-webkit-backdrop-filter", "blur(1px)")` is
+    // false), and a declaration the parser cannot use is dropped from CSSOM — so
+    // the live `.editor-shell-dock` rule carries no blur and the dock computes
+    // `backdropFilter: none`. That dead blur is `vg-311`'s finding, and reading
+    // the loaded rules would classify nothing as glass.
+    const css = readFileSync(
+      new URL(
+        "../../packages/editor/src/editor-shell/editor-shell.css",
+        import.meta.url,
+      ),
+      "utf8",
+    );
+    const membership = await page.evaluate((source) => {
+      const sheet = new CSSStyleSheet();
+      sheet.replaceSync(source);
+      const rules: CSSStyleRule[] = [];
+      const visit = (list: CSSRuleList): void => {
+        for (const rule of list) {
+          if (rule instanceof CSSStyleRule) rules.push(rule);
+          if ("cssRules" in rule) visit((rule as CSSGroupingRule).cssRules);
+        }
+      };
+      visit(sheet.cssRules);
+      const chrome = new Set<Element>();
+      const glass = new Set<Element>();
+      const sheen = new Set<Element>();
+      for (const rule of rules) {
+        const fill = rule.style.getPropertyValue("background");
+        if (!/var\(--(?:panel|shell-surface)\)/.test(fill)) continue;
+        const lifted = rule.style
+          .getPropertyValue("backdrop-filter")
+          .startsWith("blur(");
+        const flat =
+          rule.style.getPropertyValue("box-shadow") === "none" ||
+          rule.style.getPropertyValue("border-top") !== "" ||
+          rule.style.getPropertyValue("border-bottom") !== "";
+        for (const selector of rule.selectorText.split(",")) {
+          for (const element of document.querySelectorAll(selector.trim())) {
+            if (lifted) {
+              glass.add(element);
+              if (fill.includes("gradient(")) sheen.add(element);
+            } else if (flat) chrome.add(element);
+          }
+        }
+      }
+      // A surface that is glass is not chrome, whichever rule reached it first:
+      // `.editor-glass` is the chrome default and the two clusters opt into the
+      // blur by name.
+      for (const element of glass) chrome.delete(element);
+      const probe = new Map<Element, string>();
+      [...new Set([...chrome, ...glass])].forEach((element, index) => {
+        // The probe value is the handle **and** the name a failure prints, so a
+        // failure names the surface rather than a probe index.
+        const value = `${index}:.${[...element.classList].join(".")}`;
+        element.setAttribute("data-treatment-probe", value);
+        probe.set(element, value);
+      });
+      const handles = (elements: Set<Element>): string[] =>
+        [...elements].map(
+          (element) => `[data-treatment-probe="${probe.get(element)}"]`,
+        );
+      return {
+        chrome: handles(chrome),
+        glass: handles(glass),
+        sheen: handles(sheen),
+      };
+    }, css);
+    // Each of these three is a positive control on an empty read: an empty set
+    // makes the arm that consumes it vacuous, which is the one way a green run
+    // could say nothing.
+    expect(
+      membership.chrome.length,
+      "no stylesheet rule classified chrome",
+    ).toBeGreaterThan(0);
+    expect(
+      membership.glass.length,
+      "no stylesheet rule classified a glass cluster",
+    ).toBeGreaterThan(0);
+    expect(
+      membership.sheen.length,
+      "no stylesheet rule classified a sheen cluster",
+    ).toBeGreaterThan(0);
+    const CHROME = membership.chrome;
+    const CLUSTERS = membership.glass;
+    const SHEEN_CLUSTERS = membership.sheen;
 
     const read = (selector: string) =>
       page.evaluate((sel) => {
@@ -587,7 +673,7 @@ test.describe("shell palettes", () => {
             `${palette} ${selector}: the cluster's fill is ${cluster.background}, and §3 has a floating cluster never fully opaque`,
           );
         }
-        if (cluster.image === "none" && GLASS_CLUSTERS.includes(selector)) {
+        if (cluster.image === "none" && SHEEN_CLUSTERS.includes(selector)) {
           failures.push(
             `${palette} ${selector}: the cluster carries no glass gradient`,
           );
