@@ -719,6 +719,93 @@ test("the right column names where to choose from, and empties when nothing is s
   await expect(nameField).toHaveCount(0);
 });
 
+/**
+ * Whether the document still holds an object with this id, **at any depth**.
+ *
+ * The case above deletes a root object, where the canvas's own `remove` is the
+ * only owner that could be involved. A part of a group is a different route:
+ * `deletion-manager`'s `deleteActive` resolves the object's own `parent` and
+ * asks *that* to remove it, and the question `vg-158` left open is whether a
+ * delete reached the document at all or stopped at the layer projection.
+ */
+async function documentHolds(page: Page, id: string): Promise<boolean> {
+  return page.evaluate((wanted) => {
+    type Obj = { id?: string; getObjects?(): readonly Obj[] };
+    const objects = (
+      window as unknown as {
+        vigiliaEditorBridge: {
+          editor: { canvas: { getObjects(): readonly Obj[] } };
+        };
+      }
+    ).vigiliaEditorBridge.editor.canvas.getObjects();
+    const holds = (list: readonly Obj[]): boolean =>
+      list.some(
+        (candidate) =>
+          candidate.id === wanted || holds(candidate.getObjects?.() ?? []),
+      );
+    return holds(objects);
+  }, id);
+}
+
+/** Every layer row's id, in the panel's own order. */
+async function layerIds(page: Page): Promise<readonly string[]> {
+  return page
+    .locator("[data-vigilia-layer]")
+    .evaluateAll((rows) =>
+      rows.map((row) => row.getAttribute("data-vigilia-layer") ?? ""),
+    );
+}
+
+test("deleting a part inside a group empties the right column too", async ({
+  page,
+}, testInfo) => {
+  test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+
+  // **`vg-158`, measured at 42169371 and never reproduced as a case.** Deleting
+  // `cpu-card` from inside `group-cpu-card` through the layer panel left the
+  // right column still describing it, while deleting a top-level object emptied
+  // it — which the case above pins. Two readings fit that measurement and this
+  // case separates them: either the column's binding was stale, or the delete
+  // stopped at the projection and the object is still in the document, in which
+  // case `selection-inspector` keeping the last object while `objectById` still
+  // finds its id is behaving as designed and the removal is the defect. The row
+  // also noted the second reading would be `vg-156`'s disagreement seen from the
+  // other side: rows and objects disagreeing about what the document holds.
+  await openStarterEditor(page);
+
+  const emptyLine = page.locator("[data-vigilia-nothing-selected]");
+  const nameField = page.locator("[data-vigilia-name]");
+
+  // Reached the way the case above reaches a part: entering the group is what
+  // puts its parts on their own rows.
+  await enterLayer(page, "group-cpu-card");
+  await selectLayer(page, "cpu-card");
+  await expect.poll(() => activeId(page)).toBe("cpu-card");
+  await expect(nameField).toBeVisible();
+  expect(await documentHolds(page, "cpu-card"), "the part is in the document")
+    .toBe(true);
+
+  await page
+    .locator('[data-vigilia-layer-actions] [aria-label="Delete"]')
+    .click();
+
+  // The document first, because it is the reading the row could not take: a row
+  // that disappeared from the list while its object survived is the failure
+  // this case exists to tell apart from a stale column.
+  await expect
+    .poll(() => documentHolds(page, "cpu-card"), {
+      message: "the part left the document, not only the list",
+    })
+    .toBe(false);
+  await expect.poll(() => layerIds(page)).not.toContain("cpu-card");
+  await expect.poll(() => activeId(page)).toBeUndefined();
+  await expect(
+    emptyLine,
+    "and the column names where to choose from rather than the deleted part",
+  ).toBeVisible();
+  await expect(nameField).toHaveCount(0);
+});
+
 test("two hundred loose shapes, re-measured", async ({ page }, testInfo) => {
   test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
