@@ -10,7 +10,6 @@ const MAX_IMPORT_IMAGE_EDGE = 4096;
 export interface ImageManager {
   importImage(options: {
     readonly source: File;
-    readonly scale?: "image-contain" | "image-cover" | "scale-montage";
     readonly withoutAdding?: boolean;
     readonly withoutSave?: boolean;
   }): Promise<{ readonly image: FabricObject } | null>;

@@ -88,7 +88,6 @@ export class AssetManager {
     const asset = declared ?? (await this.import(file));
     const imported = await editor.imageManager.importImage({
       source: file,
-      scale: "image-contain",
       withoutSave: true,
     });
     if (imported === null || !(imported.image instanceof FabricImage)) {
