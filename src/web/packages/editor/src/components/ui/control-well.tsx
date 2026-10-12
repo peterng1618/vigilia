@@ -289,3 +289,61 @@ export function describedBy(
   const present = ids.filter((id): id is string => id !== undefined);
   return present.length === 0 ? undefined : present.join(" ");
 }
+
+/**
+ * DESIGN.md §5's draft/commit keyboard decision, in one place for both the text
+ * and the number field (vg-203).
+ *
+ * A keystroke writes a draft rather than the authored value; Enter commits that
+ * draft, and the blur it causes must not commit it a second time. An IME's Enter
+ * ends a composition instead — the string it would commit is not finished yet —
+ * carried by the `composing` ref and `event.nativeEvent.isComposing` together,
+ * because a ref misses a composition that began without a keydown and the native
+ * flag misses a browser that fires it late. Escape drops the draft, restoring
+ * the authored value with no history.
+ *
+ * The caller owns the draft's meaning — what a committed string becomes, and
+ * what "the authored value" is — so `draft`, `setDraft` and `commit` are its
+ * own. `multiline` keeps Enter for a newline; `reset` runs on Escape after the
+ * draft is dropped, which is where the number field clears its refusal.
+ */
+export function useDraftCommit(options: {
+  readonly draft: string | null;
+  readonly setDraft: (value: string | null) => void;
+  readonly commit: () => void;
+  readonly multiline?: boolean | undefined;
+  readonly reset?: (() => void) | undefined;
+}): {
+  readonly onCompositionStart: () => void;
+  readonly onCompositionEnd: () => void;
+  readonly onKeyDown: (event: React.KeyboardEvent) => void;
+} {
+  const composing = useRef(false);
+
+  const onKeyDown = (event: React.KeyboardEvent): void => {
+    if (event.key === "Enter" && options.multiline !== true) {
+      if (composing.current || event.nativeEvent.isComposing) return;
+      event.preventDefault();
+      options.commit();
+      return;
+    }
+    if (event.key === "Escape") {
+      // An edit that is not open has no draft to cancel, so Escape belongs to
+      // the innermost layer that does have one.
+      if (options.draft === null) return;
+      event.preventDefault();
+      options.setDraft(null);
+      options.reset?.();
+    }
+  };
+
+  return {
+    onCompositionStart: () => {
+      composing.current = true;
+    },
+    onCompositionEnd: () => {
+      composing.current = false;
+    },
+    onKeyDown,
+  };
+}

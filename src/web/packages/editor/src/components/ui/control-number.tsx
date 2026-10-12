@@ -1,5 +1,5 @@
 import type * as React from "react";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import {
   type ControlProps,
   ControlRow,
@@ -7,6 +7,7 @@ import {
   describedBy,
   isBlocked,
   useControlIds,
+  useDraftCommit,
 } from "./control-well.js";
 
 /**
@@ -74,7 +75,6 @@ export function ControlNumber(
   const blocked = isBlocked({ disabled, refused });
   const [draft, setDraft] = useState<string | null>(null);
   const [invalid, setInvalid] = useState<string | undefined>(undefined);
-  const composing = useRef(false);
   const shown = draft ?? format(value);
   const invalidId = `${ids.control}-invalid`;
 
@@ -116,6 +116,14 @@ export function ControlNumber(
     if (parsed !== value) onCommit(parsed);
   };
 
+  const keys = useDraftCommit({
+    draft,
+    setDraft,
+    commit,
+    // Escape drops the draft, so the refusal the draft raised is dropped too.
+    reset: () => setInvalid(undefined),
+  });
+
   const body = (
     <>
       <ControlWell density={density} blocked={blocked}>
@@ -140,26 +148,7 @@ export function ControlNumber(
             setDraft(event.target.value);
             setInvalid(undefined);
           }}
-          onCompositionStart={() => {
-            composing.current = true;
-          }}
-          onCompositionEnd={() => {
-            composing.current = false;
-          }}
-          onKeyDown={(event) => {
-            if (event.key === "Enter") {
-              if (composing.current || event.nativeEvent.isComposing) return;
-              event.preventDefault();
-              commit();
-              return;
-            }
-            if (event.key === "Escape") {
-              if (draft === null) return;
-              event.preventDefault();
-              setDraft(null);
-              setInvalid(undefined);
-            }
-          }}
+          {...keys}
           onBlur={commit}
         />
         {unit === undefined ? null : (

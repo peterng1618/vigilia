@@ -1,21 +1,22 @@
 import type * as React from "react";
-import { useRef, useState } from "react";
+import { useState } from "react";
 import {
   type ControlProps,
   ControlRow,
   ControlWell,
   isBlocked,
   useControlIds,
+  useDraftCommit,
 } from "./control-well.js";
 
 /**
  * A text field that commits on Enter or blur, and never on a keystroke.
  *
  * DESIGN.md §5's editing and recovery contract: the draft is not authored state, so
- * a publication that lands mid-edit cannot replace what is being typed, Enter
- * followed by the blur it causes cannot commit twice, and Escape restores the
- * authored value without adding history. An IME's Enter ends a composition
- * rather than committing — the string it would commit is not finished yet.
+ * a publication that lands mid-edit cannot replace what is being typed, and
+ * Escape restores the authored value without adding history. The keyboard
+ * decision itself — the Enter/IME guard and the Escape reset — is
+ * `useDraftCommit`'s, shared with the number field so the two cannot drift.
  *
  * The input is `h-full` of the well's 26px box, so its target is DESIGN.md §5's
  * 24×24. A field cannot take the button route (`hitTargetClasses`): a replaced
@@ -51,7 +52,6 @@ export function ControlText(
   // `null` is not editing: the authored value is shown, and a publication moves
   // it. Any other string is the person's draft, and nothing else may replace it.
   const [draft, setDraft] = useState<string | null>(null);
-  const composing = useRef(false);
   const shown = draft ?? value;
 
   const commit = (): void => {
@@ -60,6 +60,8 @@ export function ControlText(
     if (blocked || next === value) return;
     onCommit(next);
   };
+
+  const keys = useDraftCommit({ draft, setDraft, commit, multiline });
 
   const shared = {
     ...data,
@@ -71,27 +73,7 @@ export function ControlText(
     "aria-describedby": refused === undefined ? undefined : ids.reason,
     onChange: (event: { target: { value: string } }) =>
       setDraft(event.target.value),
-    onCompositionStart: () => {
-      composing.current = true;
-    },
-    onCompositionEnd: () => {
-      composing.current = false;
-    },
-    onKeyDown: (event: React.KeyboardEvent) => {
-      if (event.key === "Enter" && multiline !== true) {
-        if (composing.current || event.nativeEvent.isComposing) return;
-        event.preventDefault();
-        commit();
-        return;
-      }
-      if (event.key === "Escape") {
-        // An edit that is not open has no draft to cancel, so Escape
-        // belongs to the innermost layer that does have one.
-        if (draft === null) return;
-        event.preventDefault();
-        setDraft(null);
-      }
-    },
+    ...keys,
     onBlur: commit,
   };
 

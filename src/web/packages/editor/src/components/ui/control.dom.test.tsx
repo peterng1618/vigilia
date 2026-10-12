@@ -670,6 +670,71 @@ it("does not commit on the Enter of a composition", async () => {
   expect(onCommit).toHaveBeenCalledWith("CPU load");
 });
 
+it("takes the draft/commit keyboard decision from one owner, for the text and number fields alike", async () => {
+  // vg-203: the composing ref, the Enter/IME guard and the Escape reset live in
+  // `useDraftCommit`, which both controls call, so the *same* contract is run
+  // against each — the case that would catch one copy drifting from the other.
+  for (const field of ["text", "number"] as const) {
+    const onCommit = vi.fn();
+    await mount(
+      field === "text" ? (
+        <ControlText label="Title" value="CPU" onCommit={onCommit} />
+      ) : (
+        <ControlNumber label="Width" value={299} onCommit={onCommit} />
+      ),
+    );
+    const input = labelled(
+      field === "text" ? "Title" : "Width",
+    ) as HTMLInputElement;
+    const authored = field === "text" ? "CPU" : "299";
+    const typed = field === "text" ? "CPU load" : "320";
+    const committed = field === "text" ? "CPU load" : 320;
+    input.focus();
+
+    // An IME's Enter ends the composition; it never commits a half-typed draft.
+    await type(input, typed);
+    await act(async () => {
+      input.dispatchEvent(
+        new CompositionEvent("compositionstart", { bubbles: true }),
+      );
+    });
+    await press(input, "Enter");
+    expect(
+      onCommit,
+      `${field}: a composition's Enter commits`,
+    ).not.toHaveBeenCalled();
+    await act(async () => {
+      input.dispatchEvent(
+        new CompositionEvent("compositionend", { bubbles: true }),
+      );
+    });
+
+    // Enter commits the draft once; the blur it causes commits nothing more.
+    await press(input, "Enter");
+    expect(onCommit, `${field}: Enter commits the draft`).toHaveBeenCalledWith(
+      committed,
+    );
+    await unblur(input);
+    expect(
+      onCommit,
+      `${field}: Enter then blur commits twice`,
+    ).toHaveBeenCalledTimes(1);
+
+    // Escape restores the authored value and commits nothing for the draft.
+    input.focus();
+    await type(input, typed);
+    await press(input, "Escape");
+    expect(input.value, `${field}: Escape restores the authored value`).toBe(
+      authored,
+    );
+    await unblur(input);
+    expect(
+      onCommit,
+      `${field}: Escape then blur commits`,
+    ).toHaveBeenCalledTimes(1);
+  }
+});
+
 it("commits one slider step once, and previews it separately from history", async () => {
   const onPreview = vi.fn();
   const onCommit = vi.fn();
