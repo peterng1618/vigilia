@@ -4762,7 +4762,7 @@ test.describe("Fabric editor route", () => {
       .boundingBox())!;
     // Artboard point -> client point. The scale is uniform and derived from the
     // rect, so this mapping is correct whatever the artboard's aspect:
-    // `fitScale()` is `Math.min(vw/w, vh/h)` (`viewport-manager/index.ts:97-100`), a
+    // `fitScaleFor` is `Math.min(box.w/w, box.h/h)` (`viewport-manager/index.ts`), a
     // contain-fit, so at the measured 626x594 host the 1672x941 artboard draws
     // 626x352 and every point below y=941 in artboard space is BELOW the canvas.
     //
@@ -4779,7 +4779,7 @@ test.describe("Fabric editor route", () => {
     const before = await read();
 
     // The pasteboard is the vertical band BELOW the artboard, and it is the only
-    // one there is. `fitScale()` is a contain-fit, so at the 626x594 host the
+    // one there is. `fitScaleFor` is a contain-fit, so at the 626x594 host the
     // scale is `min(626/1672, 594/941) = 0.374` and the artboard draws 626x352 —
     // full canvas width, centred vertically, leaving 121px bands above and below.
     // An earlier revision of this step claimed "about 240px of pasteboard below
