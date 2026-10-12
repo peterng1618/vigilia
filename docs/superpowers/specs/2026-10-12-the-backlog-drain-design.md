@@ -117,8 +117,8 @@ version of that.
 
 The register's rule is mechanical, not editorial: [`scripts/backlog-check.mjs`](../../../scripts/backlog-check.mjs)
 refuses a `verified` row when no word of its `check` appears in its own `title` (`wordsOf` at `:63-76`, the
-comparison at `:124-131`). Running the 21 checks above through that function against their own rows' titles:
-**15 pass as the check text stands and 6 do not.** All 21 name their row's subject — no check is of a
+comparison at `:124-131`). Running the 22 checks above through that function against their own rows' titles:
+**16 pass as the check text stands and 6 do not.** All 22 name their row's subject — no check is of a
 capability merely *nearby* — but the six do so in words the tokeniser cannot bridge, so the drain must write
 the wording below rather than the text as printed above:
 
@@ -132,7 +132,7 @@ the wording below rather than the text as printed above:
 | `vg-235` | the check shares no word with a title about a stored-document domain and its save protocol | `248ff08f` extracted `theme-library-manager/` and added the ownership map row for the stored-document base and the save protocol gated on it |
 
 Each of the six still owes the §3.3 sha, and the rewording does not supply it: `vg-113`, `vg-115` and
-`vg-217` are three of the thirteen with none yet, while `vg-137`, `vg-169` and `vg-235` keep `4faaecb2`,
+`vg-217` are three of the fourteen with none yet, while `vg-137`, `vg-169` and `vg-235` keep `4faaecb2`,
 `2eeb4516`/`b0e2eb73` and `248ff08f`.
 
 Three residuals, all stated rather than hidden:
@@ -161,6 +161,13 @@ user ruling instead (`vg-087`, `vg-113`, `vg-115`, `vg-179`, `vg-206`, `vg-209`,
 header) — were verified to resolve and to be ancestors of HEAD. The drain finds a sha for each of the 14 at
 close time (`git log -1 -- <path>` for the document and file closes); a close that cannot produce one is
 not a close.
+
+**`vg-328` is the one whose artefact column names no path at all** — it reads "the row's own `detail`",
+because its close is a user ruling of 2026-10-11 rather than a code change. Its sha is the commit that
+records the close, reached through the file the ruling is written in: `git log -1 --
+docs/product/backlog-archive.jsonl`, taken at that commit. `scripts/backlog-check.mjs` accepts `HEAD` as a
+resolving ancestor by its own self-test, so the rule is satisfiable either way; the archive path is named
+because it is the honest referent, not because the checker needs it.
 
 ## 4. List B — needs a user decision (104)
 
@@ -616,7 +623,10 @@ is a new row.
    D7 lists `vg-041` and `vg-188` as two decision rows while `vg-041`'s own cell says it owns `vg-188`, and
    both cells ask the same question — a general/instance pair the collapse list does not name.
 4. **`vg-329`'s "about twelve"** is 3 verified rows with no `artefacts` (`vg-030`, `vg-064`, `vg-076`) and 8
-   carrying a bare string rather than an array; 15 rows in the archive carry none at all. Verified.
+   carrying a bare string rather than an array — 11 of the 136 `verified` rows against 126 holding a valid
+   array, which is the row's own shape. The archive has another 15 rows with no `artefacts` key at all, and
+   **12 of those are `withdrawn`, which need none**; counting them into this row would overstate the rule's
+   reach by twelve. Verified, and the distinction is what the correction must preserve.
 5. **`vg-341`'s "all seven captures at `7efea17f`"** is six there and one —
    `editor-shell-add-desktop-chromium.png` — at `f069e56c`. Verified.
 6. **`vg-320`'s identifier** is `RADIUS` at `design-language.spec.ts:2887`, not `SCALE` at `:2541`.
