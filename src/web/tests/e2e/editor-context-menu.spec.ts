@@ -79,10 +79,91 @@ async function emptyCanvasPoint(page: Page): Promise<{ x: number; y: number }> {
   return point;
 }
 
+/**
+ * A window with the room the anchoring case needs.
+ *
+ * The menu is 745px tall in this build, so a pointer in the canvas's own top
+ * band leaves the whole popup inside a 1000px window and Base UI has no reason
+ * to shift or flip it. A shorter window is the *other* case's subject.
+ */
+const TALL_WINDOW = { width: 1280, height: 1000 };
+
+/**
+ * The canvas's top band, as a fraction of its height: high enough that the menu
+ * has room below it, tall enough to hold the empty point the case clicks.
+ */
+const TOP_BAND = 0.15;
+
+/**
+ * Tolerances for "the menu landed at the pointer".
+ *
+ * Both are measured, not chosen: three clicks at different x put the popup's
+ * left edge 1.4–1.8px right of the click and its top a constant 5.64px above it
+ * (2026-10-12, `chromium`, 1280×1000), which is the popup's own edge rather than
+ * a position the pointer did not choose. The bounds admit that rounding; the
+ * failures they are here to catch are hundreds of pixels wide — a popup at the
+ * window's corner reads left ≈ 0, and one anchored to the canvas or to a trigger
+ * does not move between two clicks at all.
+ */
+const ANCHOR_X_PX = 2;
+const ANCHOR_Y_PX = 8;
+
+/**
+ * The first empty point scanning from the **top** of the canvas, at or right of
+ * `minX` (a client x, so two calls can take two different columns).
+ *
+ * The anchoring case needs room *below* the pointer: the menu is 745px tall in
+ * this build, so a click low in the canvas makes Base UI shift the popup up to
+ * fit — correct behaviour, and the opposite of what that case measures. The
+ * clipping case above wants the lowest point; this one wants the highest.
+ */
+async function emptyCanvasPointHigh(
+  page: Page,
+  minX: number,
+): Promise<{ x: number; y: number }> {
+  const point = await page.evaluate(([minimumX, topBand]) => {
+    const canvas = document.querySelector<HTMLCanvasElement>(
+      "#vigilia-fabric-editor canvas.upper-canvas",
+    );
+    if (canvas === null) throw new Error("The editor's upper canvas is gone.");
+    const rect = canvas.getBoundingClientRect();
+    const editorCanvas = (
+      window as unknown as {
+        vigiliaEditorBridge: {
+          editor: {
+            canvas: { findTarget(event: unknown): { target?: unknown } };
+          };
+        };
+      }
+    ).vigiliaEditorBridge.editor.canvas;
+    for (let fy = 0.02; fy < topBand; fy += 0.02) {
+      for (let fx = 0.02; fx < 0.95; fx += 0.02) {
+        const x = rect.left + rect.width * fx;
+        if (x < minimumX) continue;
+        const y = rect.top + rect.height * fy;
+        if (document.elementFromPoint(x, y) !== canvas) continue;
+        if (
+          editorCanvas.findTarget({ clientX: x, clientY: y }).target !==
+          undefined
+        )
+          continue;
+        return { x, y };
+      }
+    }
+    return null;
+  }, [minX, TOP_BAND] as const);
+  if (point === null)
+    throw new Error(
+      `No empty canvas point at or right of ${minX}: the starter covers the top.`,
+    );
+  return point;
+}
+
 /** The open canvas menu, with the geometry a clipped menu is missing. */
 async function readMenu(page: Page): Promise<{
   readonly itemCount: number;
   readonly viewportHeight: number;
+  readonly popupLeft: number;
   readonly popupTop: number;
   readonly popupBottom: number;
   readonly clientHeight: number;
@@ -110,6 +191,7 @@ async function readMenu(page: Page): Promise<{
     return {
       itemCount: items.length,
       viewportHeight: window.innerHeight,
+      popupLeft: rect.left,
       popupTop: rect.top,
       popupBottom: rect.bottom,
       clientHeight: popup.clientHeight,
@@ -192,4 +274,79 @@ test("the last entry is reachable in a window too short to hold the menu", async
     inserted,
     "Enter on the last entry inserted an object",
   ).toBeGreaterThan(0);
+});
+
+/**
+ * The canvas menu is anchored to the **pointer**, and that is the behaviour the
+ * library ruling rests on (0038).
+ *
+ * The case above proves the menu scrolls and its last entry is reachable in a
+ * window too short to hold it — all of which passes on a menu anchored to the
+ * wrong corner, which is what `vg-195` recorded: `readMenu` returned `popupTop`
+ * and no `expect` consumed it. Pinning the anchor in *that* window would pin the
+ * flip rather than the anchor, because Base UI has to move a 745px menu in a
+ * 420px window; this is the second case that row asked for, in a window with the
+ * room to leave the popup where it was put.
+ *
+ * Two clicks, because "near the pointer" is not the claim — `Positioner` is
+ * being handed a synthetic zero-size rect at the gesture, and a popup anchored
+ * to the window's corner or to an element would satisfy no bound that says the
+ * pointer chose it, while a popup in the right place would satisfy a bound on
+ * either click alone. The second click is what makes the movement the subject.
+ */
+test("the menu lands where the pointer was, in a window with room to hold it", async ({
+  page,
+}, testInfo) => {
+  test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+
+  await page.setViewportSize(TALL_WINDOW);
+  await page.goto(EDITOR);
+  await expect(
+    page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+  ).toBeVisible();
+
+  const first = await emptyCanvasPointHigh(page, 0);
+  const second = await emptyCanvasPointHigh(page, first.x + 200);
+
+  /** Right-click `point`, read where the menu opened, then close it. */
+  const openAt = async (point: { readonly x: number; readonly y: number }) => {
+    await page.mouse.click(point.x, point.y, { button: "right" });
+    await expect(
+      page.getByRole("menu", { name: "Canvas actions" }),
+    ).toBeVisible();
+    const menu = await readMenu(page);
+    // The window has the room, so the bounds below are about the library's own
+    // rounding and not about a popup Base UI moved to fit.
+    expect(
+      menu.popupBottom,
+      "the window holds the whole menu, unshifted",
+    ).toBeLessThanOrEqual(menu.viewportHeight);
+    await page.keyboard.press("Escape");
+    await expect(
+      page.getByRole("menu", { name: "Canvas actions" }),
+    ).toBeHidden();
+    return menu;
+  };
+
+  const firstMenu = await openAt(first);
+  const secondMenu = await openAt(second);
+
+  for (const [point, menu] of [
+    [first, firstMenu],
+    [second, secondMenu],
+  ] as const) {
+    expect(
+      Math.abs(menu.popupLeft - point.x),
+      "the menu's left edge is the pointer's x",
+    ).toBeLessThanOrEqual(ANCHOR_X_PX);
+    expect(
+      Math.abs(menu.popupTop - point.y),
+      "and its top edge is the pointer's y",
+    ).toBeLessThanOrEqual(ANCHOR_Y_PX);
+  }
+
+  expect(
+    Math.abs(secondMenu.popupLeft - firstMenu.popupLeft - (second.x - first.x)),
+    "a second click further along moves the menu by the same distance",
+  ).toBeLessThanOrEqual(ANCHOR_X_PX);
 });
