@@ -265,6 +265,10 @@ if (process.argv[1]?.endsWith("backlog-check.mjs")) {
       ["both registers are read, live and archive", registers.map((r) => r.name).join(",") === "docs/product/backlog.jsonl,docs/product/backlog-archive.jsonl"],
       ["an unreadable register is a labelled failure", registerRows("docs/product/backlog.jsonl", null).problems.some((p) => /unreadable/.test(p))],
       ["an empty register is a failure, not all-valid", registerRows("docs/product/backlog.jsonl", "\n\n").problems.some((p) => /empty/.test(p))],
+      // The two cases above call registerRows directly, so the catch that stops
+      // a missing file from throwing is exercised by neither. This one reads a
+      // real path that does not exist, so the throwing path itself is covered.
+      ["a register path that does not exist is a failure, not a throw", readRegister(`${ROOT}/docs/product/backlog-no-such-register.jsonl`).problems.some((p) => /unreadable/.test(p))],
     ];
     const failed = cases.filter(([, pass]) => !pass);
     for (const [name, pass] of cases) process.stdout.write(`${pass ? "  ok  " : "  FAIL"} ${name}\n`);
