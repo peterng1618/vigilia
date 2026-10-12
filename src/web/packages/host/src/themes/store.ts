@@ -4,6 +4,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import {
   type FabricThemeEnvelope,
+  type ValidationIssue,
   validateFabricThemeEnvelope,
 } from "@vigilia/renderer-core";
 import { moveToTrash } from "./trash.js";
@@ -99,6 +100,30 @@ export class ThemeAssetLimitError extends Error {
   constructor(reason: string) {
     super(reason);
     this.name = "ThemeAssetLimitError";
+  }
+}
+
+/**
+ * A stored theme whose `theme.json` is present and does not validate — a stale
+ * locale key, a stray `backgroundMedia.scale`. The read-side sibling of the two
+ * refusals above: the file is there, the validator's own diagnosis already
+ * exists, and answering the `undefined` an absent theme answers with is what
+ * throws that diagnosis away one layer below the reader (vg-110, ADR-0043).
+ *
+ * `issues` is the validator's own list rather than one flattened sentence, so a
+ * reader can point at the fault. `list()` still skips such a theme: an
+ * unreadable document is not a library line, and that half is a different
+ * decision.
+ */
+export class ThemeValidationError extends Error {
+  readonly issues: readonly ValidationIssue[];
+  constructor(id: string, issues: readonly ValidationIssue[]) {
+    super(
+      `"${id}" is stored but does not validate: ` +
+        (issues[0]?.message ?? "no reason was reported."),
+    );
+    this.name = "ThemeValidationError";
+    this.issues = issues;
   }
 }
 
@@ -440,23 +465,71 @@ interface StoredTheme {
   readonly contentId: string;
 }
 
+/** The document the bytes hold, or a validation error if they are not JSON. */
+function parseThemeDocument(id: string, bytes: Buffer): unknown {
+  try {
+    return JSON.parse(bytes.toString("utf8"));
+  } catch (error) {
+    throw new ThemeValidationError(id, [
+      {
+        code: "not-an-object",
+        path: "",
+        message: `theme.json is not valid JSON: ${
+          error instanceof Error ? error.message : String(error)
+        }`,
+      },
+    ]);
+  }
+}
+
+/**
+ * The stored document, or `undefined` when the file is not there. A file that
+ * *is* there and does not validate throws {@link ThemeValidationError} rather
+ * than answering `undefined`: the two facts were indistinguishable to every
+ * reader, and only the open path wants them apart (vg-110, ADR-0043).
+ *
+ * The size bound still answers `undefined`: an over-large document is not a
+ * validation failure, and naming it one here would be a different decision.
+ */
 async function readStored(
   library: string,
   id: string,
 ): Promise<StoredTheme | undefined> {
+  let bytes: Buffer;
   try {
-    const bytes = await fs.readFile(path.join(library, id, THEME_FILE));
-    if (bytes.byteLength > MAX_THEME_FILE_BYTES) {
-      return undefined;
-    }
-    const validation = validateFabricThemeEnvelope(
-      JSON.parse(bytes.toString("utf8")),
-    );
-    return validation.ok
-      ? { envelope: validation.envelope, contentId: contentId(bytes) }
-      : undefined;
+    bytes = await fs.readFile(path.join(library, id, THEME_FILE));
   } catch {
     return undefined;
+  }
+  if (bytes.byteLength > MAX_THEME_FILE_BYTES) {
+    return undefined;
+  }
+  const validation = validateFabricThemeEnvelope(parseThemeDocument(id, bytes));
+  if (!validation.ok) {
+    throw new ThemeValidationError(id, validation.issues);
+  }
+  return { envelope: validation.envelope, contentId: contentId(bytes) };
+}
+
+/**
+ * {@link readStored} with a present-but-invalid theme answered as the same
+ * absence a missing one is. Every reader that treats "no theme I can serve" as
+ * one answer uses this — the listing, a removal, and the previous document a
+ * save is checked against. Only {@link ThemeStore.read} calls `readStored`
+ * directly, because it is the one caller the two facts are different answers
+ * for.
+ */
+async function readStoredOrAbsent(
+  library: string,
+  id: string,
+): Promise<StoredTheme | undefined> {
+  try {
+    return await readStored(library, id);
+  } catch (error) {
+    if (error instanceof ThemeValidationError) {
+      return undefined;
+    }
+    throw error;
   }
 }
 
@@ -465,7 +538,7 @@ async function readEnvelope(
   library: string,
   id: string,
 ): Promise<FabricThemeEnvelope | undefined> {
-  return (await readStored(library, id))?.envelope;
+  return (await readStoredOrAbsent(library, id))?.envelope;
 }
 
 /** One library line: what the document says, and when the folder changed. */
@@ -609,7 +682,7 @@ export function createThemeStore(
       content: ThemeContent,
       options?: ThemeWriteOptions,
     ): Promise<ThemeStoreSave> {
-      const stored = await readStored(directory, id);
+      const stored = await readStoredOrAbsent(directory, id);
       let reconstructFrom: StoredTheme | undefined;
       if (options?.overwrite !== true && options?.base !== undefined) {
         // A theme that is not stored cannot have been moved on, so a base

@@ -338,6 +338,43 @@ describe("Host theme routes", () => {
     expect(content).toEqual(encodeThemeContent(validEmptyAssetTheme));
   });
 
+  it("answers a stored theme that does not validate with 422, and an absent one with 404", async () => {
+    // vg-110: the store answered the same `undefined` for a theme that is not
+    // there and one that is there and does not validate, so both were a 404 and
+    // the author was told a theme they can see on disk does not exist. The two
+    // facts are different answers now — 422 carrying the validator's issues,
+    // 404 for the id that is not there (ADR-0043).
+    await fs.mkdir(path.join(tmpDir, "broken"), { recursive: true });
+    await fs.writeFile(
+      path.join(tmpDir, "broken", "theme.json"),
+      JSON.stringify({ id: "broken" }),
+    );
+
+    const broken = await request(hosted.server, "GET", "/api/themes/broken");
+    expect(broken.status).toBe(422);
+    const body = broken.json() as { issues: readonly { path: string }[] };
+    expect(body.issues[0]?.path).toBe("/schemaVersion");
+
+    expect(
+      (await request(hosted.server, "GET", "/api/themes/absent")).status,
+    ).toBe(404);
+
+    // A display's document route treats it as absent, not as a server fault —
+    // a corrupt theme must not turn a page into a 500.
+    expect(
+      (await request(hosted.server, "GET", "/api/themes/broken/document"))
+        .status,
+    ).toBe(404);
+
+    // And it is not a library line.
+    const list = (
+      await request(hosted.server, "GET", "/api/themes")
+    ).json() as {
+      themes: readonly { id: string }[];
+    };
+    expect(list.themes.map((entry) => entry.id)).not.toContain("broken");
+  });
+
   it("refuses a save built from a document the stored theme has moved past", async () => {
     // Two tabs open the same theme; the first one saves an edit.
     const opened = await request(

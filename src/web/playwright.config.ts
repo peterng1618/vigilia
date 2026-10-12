@@ -35,13 +35,15 @@ const HOST_SPECS =
   /host-(player|settings|media|bleed|chrome|walkthrough).spec.ts/;
 
 /**
- * The publish proofs each start their own host on their own port and drive the
- * editor through that host's `/editor/` mount, because `/api/hosting`,
- * `/api/publish` and `/api/published` are only same-origin there. Like the host
- * specs they therefore cannot run under the preview projects, and they cannot
- * share their port — `publish-header` owns 4227 and `publish-loop` owns 4229.
+ * The own-host editor proofs each start their own host on its own port and drive
+ * the editor through that host's `/editor/` mount, because `/api/hosting`,
+ * `/api/publish` and `/api/published` are only same-origin there — and a theme
+ * store on disk is a fixture the preview projects do not provide. Like the host
+ * specs they cannot run under the preview projects, and they cannot share their
+ * port — `publish-header` owns 4227, `publish-loop` owns 4229 and
+ * `editor-invalid-theme` owns 4231.
  */
-const PUBLISH_SPEC = /publish-(header|loop)\.spec\.ts/;
+const OWN_HOST_SPEC = /(publish-(header|loop)|editor-invalid-theme)\.spec\.ts/;
 
 /**
  * The rebuild drives its own preview on its own port, under
@@ -126,7 +128,7 @@ export default defineConfig({
         viewport: { width: 1280, height: 720 },
       },
       testIgnore: new RegExp(
-        `${HOST_SPECS.source}|${REBUILD_SPEC.source}|${DISPLAY_SPEC.source}|${PUBLISH_SPEC.source}`,
+        `${HOST_SPECS.source}|${REBUILD_SPEC.source}|${DISPLAY_SPEC.source}|${OWN_HOST_SPEC.source}`,
       ),
     },
     {
@@ -134,7 +136,7 @@ export default defineConfig({
       name: "phone-chromium",
       use: { ...devices["Pixel 7"] },
       testIgnore: new RegExp(
-        `${HOST_SPECS.source}|${REBUILD_SPEC.source}|${DISPLAY_SPEC.source}|${PUBLISH_SPEC.source}`,
+        `${HOST_SPECS.source}|${REBUILD_SPEC.source}|${DISPLAY_SPEC.source}|${OWN_HOST_SPEC.source}`,
       ),
     },
     {
@@ -156,12 +158,12 @@ export default defineConfig({
     {
       // Its own host on its own port, so it is serial by construction for the
       // same reason the host projects are.
-      name: "publish",
+      name: "own-host",
       use: {
         ...devices["Desktop Chrome"],
         viewport: { width: 1680, height: 1000 },
       },
-      testMatch: PUBLISH_SPEC,
+      testMatch: OWN_HOST_SPEC,
       workers: 1,
     },
   ],

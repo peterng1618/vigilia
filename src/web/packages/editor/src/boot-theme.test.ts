@@ -1,9 +1,10 @@
 import type { FabricThemeEnvelope } from "@vigilia/renderer-core";
 import { describe, expect, it, vi } from "vitest";
 import { bootTheme } from "./boot-theme.js";
-import type {
-  ThemeLibraryClient,
-  ThemeLibraryContent,
+import {
+  type ThemeLibraryClient,
+  type ThemeLibraryContent,
+  ThemeValidationError,
 } from "./theme-library-client.js";
 
 /**
@@ -42,6 +43,18 @@ const SAVED: FabricThemeEnvelope = {
 
 const content = { envelope: SAVED, assets: {} };
 
+/** The content of an `opened` outcome, or a failure the case reads as its own
+ *  — the outcome is discriminated, so a test has to say which kind it expected
+ *  rather than reaching through an optional. */
+function openedContent(
+  outcome: Awaited<ReturnType<typeof bootTheme>>,
+): ThemeLibraryContent {
+  if (outcome.kind !== "opened") {
+    throw new Error(`expected an opened theme, got "${outcome.kind}"`);
+  }
+  return outcome.content;
+}
+
 function clientOpening(opened: ThemeLibraryContent): ThemeLibraryClient {
   return {
     list: vi.fn(async () => []),
@@ -63,13 +76,15 @@ describe("the editor on a URL that names a theme", () => {
   it("opens that theme, by name and by what is in it", async () => {
     const client = clientOpening(content);
 
-    const opened = await bootTheme("?theme=edited-by-hand", client);
+    const opened = openedContent(
+      await bootTheme("?theme=edited-by-hand", client),
+    );
 
     expect(client.open).toHaveBeenCalledWith("edited-by-hand");
     // Name and a distinctive object id, never a count: a saved copy of the
     // default has the same number of objects as the default it replaced.
-    expect(opened?.envelope.metadata?.name).toBe("EDITED BY HAND");
-    expect(firstObjectId(opened?.envelope ?? SAVED)).toBe("renamed-headline");
+    expect(opened.envelope.metadata?.name).toBe("EDITED BY HAND");
+    expect(firstObjectId(opened.envelope)).toBe("renamed-headline");
   });
 
   it("carries the base, so a save from a URL-opened theme can be checked", async () => {
@@ -78,9 +93,41 @@ describe("the editor on a URL that names a theme", () => {
     // stored, and its save would go through as if it were the newer one.
     const client = clientOpening({ ...content, base: "base-as-stored" });
 
-    const opened = await bootTheme("?theme=edited-by-hand", client);
+    const opened = openedContent(
+      await bootTheme("?theme=edited-by-hand", client),
+    );
 
-    expect(opened?.base).toBe("base-as-stored");
+    expect(opened.base).toBe("base-as-stored");
+  });
+
+  it("names the validation problem instead of reporting a blank success", async () => {
+    // THE DEFECT this row closes (vg-110): a theme on disk that fails
+    // validation was answered as though it were not there, so the editor
+    // mounted the template and said "Fabric editor ready" over a document it
+    // never opened. The outcome is `invalid`, carrying the validator's own
+    // issues, and never `undefined` (ADR-0043).
+    const client: ThemeLibraryClient = {
+      list: vi.fn(async () => []),
+      open: vi.fn(async () => {
+        throw new ThemeValidationError("broken-theme", [
+          {
+            code: "missing-field",
+            path: "/schemaVersion",
+            message: "schemaVersion is required and must be an integer.",
+          },
+        ]);
+      }),
+      save: vi.fn(async () => "base-after-save"),
+    };
+
+    const outcome = await bootTheme("?theme=broken-theme", client);
+
+    expect(outcome.kind).toBe("invalid");
+    if (outcome.kind !== "invalid") {
+      throw new Error(`expected an invalid outcome, got "${outcome.kind}"`);
+    }
+    expect(outcome.issues[0]?.message).toContain("schemaVersion is required");
+    expect(client.open).toHaveBeenCalledExactlyOnceWith("broken-theme");
   });
 
   it("opens nothing when the theme this host does not have", async () => {
@@ -107,8 +154,10 @@ describe("the editor on a URL that names a theme", () => {
       save: vi.fn(async () => "base-after-save"),
     };
 
-    await expect(bootTheme("?theme=deleted-long-ago", client)).resolves.toBe(
-      undefined,
+    await expect(bootTheme("?theme=deleted-long-ago", client)).resolves.toEqual(
+      {
+        kind: "none",
+      },
     );
     // The point of the case: the store held something, and it was not opened.
     expect(client.open).toHaveBeenCalledExactlyOnceWith("deleted-long-ago");
@@ -120,7 +169,7 @@ describe("the editor on a URL that names a theme", () => {
     // reach into the library at all.
     const client = clientOpening(content);
 
-    await expect(bootTheme("", client)).resolves.toBe(undefined);
+    await expect(bootTheme("", client)).resolves.toEqual({ kind: "none" });
     expect(client.list).toHaveBeenCalledOnce();
     expect(client.open).not.toHaveBeenCalled();
   });
@@ -133,7 +182,7 @@ describe("the editor on a URL that names a theme", () => {
       { id: "vigilia-starter-template", name: "Starter — System dashboard" },
     ]);
 
-    await expect(bootTheme("", client)).resolves.toBe(undefined);
+    await expect(bootTheme("", client)).resolves.toEqual({ kind: "none" });
     expect(client.open).not.toHaveBeenCalled();
   });
 
@@ -146,7 +195,7 @@ describe("the editor on a URL that names a theme", () => {
       save: vi.fn(async () => "base-after-save"),
     };
 
-    await expect(bootTheme("", client)).resolves.toBe(undefined);
+    await expect(bootTheme("", client)).resolves.toEqual({ kind: "none" });
     expect(client.open).not.toHaveBeenCalled();
   });
 
@@ -180,10 +229,10 @@ describe("the editor on a URL that names nothing", () => {
       { id: "vigilia-starter-template", name: "Starter" },
     ]);
 
-    const opened = await bootTheme("", client);
+    const opened = openedContent(await bootTheme("", client));
 
     expect(client.open).toHaveBeenCalledExactlyOnceWith("edited-by-hand");
-    expect(opened?.envelope.metadata?.name).toBe("EDITED BY HAND");
+    expect(opened.envelope.metadata?.name).toBe("EDITED BY HAND");
   });
 
   it("reads the store's ISO timestamps as text, newest last in the file wins", async () => {
@@ -239,8 +288,10 @@ describe("the editor on a URL that names nothing", () => {
       return content;
     });
 
-    await expect(bootTheme("?theme=deleted-long-ago", client)).resolves.toBe(
-      undefined,
+    await expect(bootTheme("?theme=deleted-long-ago", client)).resolves.toEqual(
+      {
+        kind: "none",
+      },
     );
     // Asked once, for the bookmark, and did not go looking for a substitute.
     expect(client.open).toHaveBeenCalledExactlyOnceWith("deleted-long-ago");

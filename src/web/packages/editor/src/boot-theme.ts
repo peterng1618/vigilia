@@ -1,7 +1,9 @@
-import type {
-  ThemeLibraryClient,
-  ThemeLibraryContent,
-  ThemeLibraryEntry,
+import type { ValidationIssue } from "@vigilia/renderer-core";
+import {
+  type ThemeLibraryClient,
+  type ThemeLibraryContent,
+  type ThemeLibraryEntry,
+  ThemeValidationError,
 } from "./theme-library-client.js";
 
 /**
@@ -34,27 +36,45 @@ import type {
  * shared store. If the store ever grows an author identity, this is the line
  * that has to change with it: scope the resume to the author rather than
  * dropping it, or the round trip and the safety go together.
+ *
+ * **The outcome is discriminated, not nullable.** A theme on disk that exists
+ * and fails validation was answered with the same "nothing to open" a dead id
+ * gets, so the editor mounted the template and reported success over a document
+ * it never opened (`vg-110`); `Content | undefined` let every later reader drop
+ * the report again. `invalid` carries the validator's own issues, and a caller
+ * that ignores it will not compile (ADR-0043).
  */
+export type BootThemeOutcome =
+  | { readonly kind: "opened"; readonly content: ThemeLibraryContent }
+  | { readonly kind: "none" }
+  | { readonly kind: "invalid"; readonly issues: readonly ValidationIssue[] };
+
 export async function bootTheme(
   search: string,
   client: ThemeLibraryClient,
-): Promise<ThemeLibraryContent | undefined> {
+): Promise<BootThemeOutcome> {
   const id = new URLSearchParams(search).get("theme");
   if (id !== null && id !== "") {
-    return openQuietly(client, id);
+    return openTheme(client, id);
   }
   return latestOwnTheme(client);
 }
 
-/** An id that cannot be opened is nothing to open, not a boot failure. */
-async function openQuietly(
+/**
+ * An id that cannot be opened is nothing to open, not a boot failure — but a
+ * theme the host holds and refuses is its own answer: `invalid`, carrying the
+ * reason, so the caller can say why instead of reporting a blank success.
+ */
+async function openTheme(
   client: ThemeLibraryClient,
   id: string,
-): Promise<ThemeLibraryContent | undefined> {
+): Promise<BootThemeOutcome> {
   try {
-    return await client.open(id);
-  } catch {
-    return undefined;
+    return { kind: "opened", content: await client.open(id) };
+  } catch (error) {
+    return error instanceof ThemeValidationError
+      ? { kind: "invalid", issues: error.issues }
+      : { kind: "none" };
   }
 }
 
@@ -69,12 +89,12 @@ async function openQuietly(
  */
 async function latestOwnTheme(
   client: ThemeLibraryClient,
-): Promise<ThemeLibraryContent | undefined> {
+): Promise<BootThemeOutcome> {
   let entries: readonly ThemeLibraryEntry[];
   try {
     entries = await client.list();
   } catch {
-    return undefined;
+    return { kind: "none" };
   }
   const saved = entries.filter(
     (entry): entry is ThemeLibraryEntry & { readonly updatedAt: string } =>
@@ -85,5 +105,5 @@ async function latestOwnTheme(
       best === undefined || entry.updatedAt > best.updatedAt ? entry : best,
     undefined,
   );
-  return latest === undefined ? undefined : openQuietly(client, latest.id);
+  return latest === undefined ? { kind: "none" } : openTheme(client, latest.id);
 }

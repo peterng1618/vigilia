@@ -1,4 +1,7 @@
-import type { FabricThemeEnvelope } from "@vigilia/renderer-core";
+import type {
+  FabricThemeEnvelope,
+  ValidationIssue,
+} from "@vigilia/renderer-core";
 
 /**
  * The host's library is a folder (ADR-0017), so a save carries the document
@@ -32,6 +35,22 @@ export class ThemeConflictError extends Error {
   constructor(message: string) {
     super(message);
     this.name = "ThemeConflictError";
+  }
+}
+
+/**
+ * The host holds the theme and its document does not validate — a different
+ * answer from "no such theme", which is what the host used to give for both.
+ * `issues` is the validator's own list, carried through the `422` the host
+ * answers (ADR-0043), so a caller can tell this from the 404 a dead id gets and
+ * say why rather than reporting a bare status.
+ */
+export class ThemeValidationError extends Error {
+  readonly issues: readonly ValidationIssue[];
+  constructor(id: string, issues: readonly ValidationIssue[]) {
+    super(`"${id}" is stored but does not validate.`);
+    this.name = "ThemeValidationError";
+    this.issues = issues;
   }
 }
 
@@ -129,6 +148,21 @@ export function createThemeLibraryClient(options?: {
       const response = await fetcher(
         `${baseUrl}/api/themes/${encodeURIComponent(id)}`,
       );
+      // Its own error, because the theme is there and the reason is a document
+      // the author can fix — not the not-found a dead id gets. Without this the
+      // two collapsed into one failure and the editor reported success over a
+      // document it never opened (vg-110, ADR-0043).
+      if (response.status === 422) {
+        const body = (await response.json().catch(() => undefined)) as
+          | { readonly issues?: unknown }
+          | undefined;
+        throw new ThemeValidationError(
+          id,
+          Array.isArray(body?.issues)
+            ? (body.issues as readonly ValidationIssue[])
+            : [],
+        );
+      }
       if (!response.ok) {
         throw new Error(`Could not open theme "${id}" (${response.status}).`);
       }

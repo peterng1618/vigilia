@@ -395,23 +395,51 @@ async function start(): Promise<void> {
   // composition the editor ships. Nothing is open yet, so there is nothing to
   // confirm over; the document this replaces is the one that never opened.
   const requested = await bootTheme(window.location.search, libraryClient);
-  if (requested !== undefined) {
-    await mount({
-      input: envelopeInputFor(requested.envelope),
-      envelope: requested.envelope,
-      assets: requested.assets,
-      ...(requested.base === undefined ? {} : { base: requested.base }),
-    });
-    status.textContent = `Opened ${requested.envelope.metadata?.name ?? requested.envelope.id}`;
-    return;
+  switch (requested.kind) {
+    case "opened": {
+      const { content } = requested;
+      await mount({
+        input: envelopeInputFor(content.envelope),
+        envelope: content.envelope,
+        assets: content.assets,
+        ...(content.base === undefined ? {} : { base: content.base }),
+      });
+      status.textContent = `Opened ${content.envelope.metadata?.name ?? content.envelope.id}`;
+      return;
+    }
+    // A theme the URL named that is stored and does not validate is not a
+    // blank success: the author is told why, over the template that stands in
+    // for the document they asked for (vg-110, ADR-0043).
+    case "invalid": {
+      const theme = createNewFabricTheme();
+      await mount({
+        input: envelopeInputFor(theme),
+        envelope: theme,
+        assets: await starterAssets(),
+      });
+      status.textContent = `Could not open the saved theme: ${requested.issues
+        .map((issue) => issue.message)
+        .join(" ")}`;
+      return;
+    }
+    case "none": {
+      const theme = createNewFabricTheme();
+      await mount({
+        input: envelopeInputFor(theme),
+        envelope: theme,
+        assets: await starterAssets(),
+      });
+      status.textContent = "Fabric editor ready";
+      return;
+    }
+    default: {
+      // A new boot outcome must be handled here rather than quietly opening the
+      // template — the assignment fails to compile if `BootThemeOutcome` grows
+      // a kind, which is how the report stayed dropped last time.
+      const unhandled: never = requested;
+      throw new Error(`Unhandled boot outcome: ${String(unhandled)}`);
+    }
   }
-  const theme = createNewFabricTheme();
-  await mount({
-    input: envelopeInputFor(theme),
-    envelope: theme,
-    assets: await starterAssets(),
-  });
-  status.textContent = "Fabric editor ready";
 }
 
 /**

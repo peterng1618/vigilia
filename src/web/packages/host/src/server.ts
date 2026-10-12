@@ -39,6 +39,7 @@ import {
   ThemeAssetLimitError,
   ThemeConflictError,
   type ThemeStore,
+  ThemeValidationError,
 } from "./themes/store.js";
 import { SHIPPED_TEMPLATES } from "./themes/templates.js";
 import type { ThumbnailStore } from "./themes/thumbnails.js";
@@ -53,6 +54,10 @@ import { SseConnection } from "./transport/sse.js";
 
 /** Non-loopback displays present this header; loopback never needs to. */
 const SESSION_HEADER = "x-vigilia-session";
+
+/** What a theme read answers: the stored record, or undefined for a theme the
+ *  store will not serve. */
+type ThemeRecord = Awaited<ReturnType<ThemeStore["read"]>>;
 
 export interface BundleRoots {
   readonly player: string;
@@ -449,6 +454,25 @@ export function createHostServer(options: HostServerOptions): HostServer {
     }
 
     return sessions?.verify(tokenFor(request, url)) === true;
+  }
+
+  /**
+   * The stored theme, with a document that exists but does not validate
+   * answered as the same absence one that is not there is. Every read that is
+   * not the open route wants this: a display, an asset lookup, the active-theme
+   * resolution and every existence check can serve neither, and a corrupt theme
+   * must not turn a listing or a page into a 500. The open route reads the
+   * store directly so it can tell the two apart (ADR-0043).
+   */
+  async function readThemeOrAbsent(id: string): Promise<ThemeRecord> {
+    try {
+      return await themeStore.read(id);
+    } catch (error) {
+      if (error instanceof ThemeValidationError) {
+        return undefined;
+      }
+      throw error;
+    }
   }
 
   const server = http.createServer((request, response) => {
@@ -871,7 +895,7 @@ export function createHostServer(options: HostServerOptions): HostServer {
         // Which device slots the choice needs, so the settings page asks only
         // the questions that theme raises.
         const record =
-          chosen === null ? undefined : await themeStore.read(chosen);
+          chosen === null ? undefined : await readThemeOrAbsent(chosen);
 
         sendJson(response, 200, {
           active: chosen,
@@ -938,7 +962,9 @@ export function createHostServer(options: HostServerOptions): HostServer {
         sendText(response, 400, "Invalid theme asset path.");
         return;
       }
-      const record = isValidThemeId(id) ? await themeStore.read(id) : undefined;
+      const record = isValidThemeId(id)
+        ? await readThemeOrAbsent(id)
+        : undefined;
       const declared = record?.envelope.assets?.find(
         (asset) => asset.path === assetPath,
       );
@@ -977,7 +1003,7 @@ export function createHostServer(options: HostServerOptions): HostServer {
       }
 
       if (request.method === "GET") {
-        const record = await themeStore.read(rawId);
+        const record = await readThemeOrAbsent(rawId);
         sendJson(response, 200, {
           answers: await themeSettings.read(rawId),
           required: requiredDeviceGroups(record?.envelope),
@@ -1100,7 +1126,10 @@ export function createHostServer(options: HostServerOptions): HostServer {
         return;
       }
 
-      const record = await themeStore.read(rawId);
+      // A display's view of the document: a theme that does not validate is
+      // one it cannot serve, which is the same answer as a theme that is not
+      // there — not the 422 the editor's own open gets (ADR-0043).
+      const record = await readThemeOrAbsent(rawId);
       if (record === undefined) {
         sendText(response, 404, "Theme not found.");
         return;
@@ -1117,7 +1146,25 @@ export function createHostServer(options: HostServerOptions): HostServer {
           sendText(response, 400, "Invalid theme id.");
           return;
         }
-        const record = await themeStore.read(rawId);
+        let record: ThemeRecord;
+        try {
+          record = await themeStore.read(rawId);
+        } catch (error) {
+          // A theme that is present and does not validate is understood and
+          // its semantics are invalid, which is exactly 422 — RFC 9110
+          // §15.5.21. Not the 404 an absent id gets, and not a 400 that would
+          // blame the request: the validator's own issues travel with it, so
+          // the editor can report the reason instead of a status number
+          // (ADR-0043).
+          if (error instanceof ThemeValidationError) {
+            sendJson(response, 422, {
+              error: `Theme "${rawId}" is stored but does not validate.`,
+              issues: error.issues,
+            });
+            return;
+          }
+          throw error;
+        }
         if (record === undefined) {
           sendText(response, 404, "Theme not found.");
           return;
@@ -1267,7 +1314,7 @@ export function createHostServer(options: HostServerOptions): HostServer {
         // The assets a display fetches come from the theme's own folder, so a
         // document with no folder would render with holes. Refusing is honest;
         // publishing it anyway is not.
-        if ((await themeStore.read(id)) === undefined) {
+        if ((await readThemeOrAbsent(id)) === undefined) {
           // 404, the same answer `/api/themes/:id` gives for the same fact.
           sendText(
             response,

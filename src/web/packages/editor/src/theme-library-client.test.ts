@@ -4,6 +4,7 @@ import {
   createThemeLibraryClient,
   ThemeConflictError,
   type ThemeLibraryClient,
+  ThemeValidationError,
 } from "./theme-library-client.js";
 
 const envelope: FabricThemeEnvelope = {
@@ -280,6 +281,51 @@ describe("ThemeLibraryClient", () => {
 
     await expect(client.open("not-found")).rejects.toThrow(
       'Could not open theme "not-found" (404)',
+    );
+  });
+
+  it("carries a stored theme that does not validate as its own error, with the issues", async () => {
+    // vg-110: the host answers 422 for a theme that is there and does not
+    // validate, where the 404 stays for one that is not — and the client has to
+    // keep the two apart, because `openQuietly` cannot tell a document worth
+    // reporting from a dead bookmark otherwise (ADR-0043).
+    const mockFetch = vi.fn(
+      async () =>
+        new Response(
+          JSON.stringify({
+            error: '"broken" is stored but does not validate.',
+            issues: [
+              {
+                code: "missing-field",
+                path: "/schemaVersion",
+                message: "schemaVersion is required and must be an integer.",
+              },
+            ],
+          }),
+          { status: 422 },
+        ),
+    );
+    const client = createThemeLibraryClient({
+      fetch: mockFetch as unknown as typeof fetch,
+    });
+
+    const refusal = client.open("broken");
+    await expect(refusal).rejects.toThrow(ThemeValidationError);
+    await expect(refusal).rejects.toThrow("does not validate");
+    const error = await refusal.catch((reason: unknown) => reason);
+    expect(error).toBeInstanceOf(ThemeValidationError);
+    expect((error as ThemeValidationError).issues[0]?.path).toBe(
+      "/schemaVersion",
+    );
+
+    // The 404 is a different answer, and not this error.
+    const notFound = createThemeLibraryClient({
+      fetch: vi.fn(
+        async () => new Response("Not Found", { status: 404 }),
+      ) as unknown as typeof fetch,
+    });
+    await expect(notFound.open("gone")).rejects.not.toThrow(
+      ThemeValidationError,
     );
   });
 

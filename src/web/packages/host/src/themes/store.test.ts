@@ -12,6 +12,7 @@ import {
   ThemeConflictError,
   type ThemeContent,
   type ThemeStore,
+  ThemeValidationError,
 } from "./store.js";
 
 function envelopeFor(id: string, name: string): FabricThemeEnvelope {
@@ -324,6 +325,73 @@ describe("ThemeStore", () => {
   it("returns undefined when theme is not found", async () => {
     const store = createThemeStore(tmpDir);
     expect(await store.read("non-existent")).toBeUndefined();
+  });
+
+  it("throws the validation error for a theme on disk that does not validate", async () => {
+    // vg-110: a `theme.json` that exists and fails validation answered the same
+    // `undefined` a missing file gets, so the store threw the validator's own
+    // diagnosis away one layer below the reader. It is the typed error now,
+    // carrying the issues (ADR-0043) — the read-side sibling of the `409`/`413`
+    // refusals, not a sentence flattened into a bare failure.
+    const store = createThemeStore(tmpDir);
+    await fs.mkdir(path.join(tmpDir, "broken"), { recursive: true });
+    await fs.writeFile(
+      path.join(tmpDir, "broken", "theme.json"),
+      JSON.stringify({ id: "broken" }),
+    );
+    // An unparseable document is the same fact — present and unreadable.
+    await fs.mkdir(path.join(tmpDir, "unparseable"), { recursive: true });
+    await fs.writeFile(
+      path.join(tmpDir, "unparseable", "theme.json"),
+      "{ this is not json",
+    );
+
+    const refusal = store.read("broken");
+    await expect(refusal).rejects.toThrow(ThemeValidationError);
+    const error = await refusal.catch((reason: unknown) => reason);
+    expect(error).toBeInstanceOf(ThemeValidationError);
+    expect((error as ThemeValidationError).issues[0]?.path).toBe(
+      "/schemaVersion",
+    );
+
+    await expect(store.read("unparseable")).rejects.toThrow(
+      ThemeValidationError,
+    );
+
+    // A theme that is not there is still `undefined`, not this error.
+    expect(await store.read("not-there")).toBeUndefined();
+  });
+
+  it("keeps an invalid theme out of the listing, and answers a save over it", async () => {
+    // The listing half is a different decision (ADR-0043): an unreadable
+    // document is not a library line, and `list()` skips it exactly as before.
+    // The write path also reads the stored document, and an invalid one is "no
+    // previous to compare against" there — otherwise an author could never save
+    // over a theme they can see is broken.
+    const store = createThemeStore(tmpDir);
+    await fs.mkdir(path.join(tmpDir, "broken"), { recursive: true });
+    await fs.writeFile(
+      path.join(tmpDir, "broken", "theme.json"),
+      JSON.stringify({ id: "broken" }),
+    );
+    await fs.mkdir(path.join(tmpDir, "living-room"), { recursive: true });
+    await fs.writeFile(
+      path.join(tmpDir, "living-room", "theme.json"),
+      JSON.stringify(envelopeFor("living-room", "Living Room")),
+    );
+
+    const listed = await store.list();
+    expect(listed.map((entry) => entry.id)).toEqual(["living-room"]);
+
+    await expect(
+      store.write("broken", {
+        envelope: envelopeFor("broken", "Repaired"),
+        assets: {},
+      }),
+    ).resolves.toMatchObject({ id: "broken" });
+    expect((await store.read("broken"))?.envelope.metadata?.name).toBe(
+      "Repaired",
+    );
   });
 });
 
