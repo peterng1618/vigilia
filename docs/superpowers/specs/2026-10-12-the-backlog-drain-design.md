@@ -50,20 +50,25 @@ batch (40/40, 40/40, 40/40, 39/39, 39/39, 39/39).
 
 | Verdict | Rows |
 |---|---|
-| `closes` | 21 |
+| `closes` | 22 |
 | `decision` | 104 |
-| `work` | 110 |
+| `work` | 109 |
 | `parked` | 2 |
 
-Per batch: B1 7/18/15/0, B2 5/18/17/0, B3 5/16/19/0, B4 1/25/13/0, B5 2/12/23/2, B6 1/15/23/0.
+Per batch, as the tables cut them: B1 7/18/15/0, B2 5/18/17/0, B3 5/16/19/0, B4 1/25/13/0, B5 2/12/23/2,
+B6 1/15/23/0. **One row has moved since the tables were written, and it is the only one:** `vg-309` (B5) was
+classified `work` and closes on §7's second slice, so B5 reads **3/12/22/2** in this spec where
+`triage-B5.md` says 2/12/23/2. The move is carried in §8.14 rather than applied to the table, because the
+tables are the pass's evidence and the drain is what acts.
 
 ### 2.2 Why the plan's own id lists are not the authority
 
-The plan's lists covered 216 rows; 2 of those are no longer open and 23 open rows appeared in no list
-(`vg-363`…`vg-386`). A per-batch instruction to a seat is not the register's shape; a later reader
-re-derives membership the way §2 did — sort the open ids and cut.
+The plan's lists covered 216 rows; 2 of those are no longer open and 23 open rows appeared in no list — the
+range `vg-363`…`vg-386` is 24 ids and `vg-375` is archived, so the 23 is right and the range as written is
+not. A per-batch instruction to a seat is not the register's shape; a later reader re-derives membership the
+way §2 did — sort the open ids and cut.
 
-## 3. List A — closes with evidence (21)
+## 3. List A — closes with evidence (22)
 
 A close here means **the claim no longer holds**: a landed commit fixed it, the measurement was refuted,
 the surface it named was rebuilt or deleted, the document it asked for now exists, or the user already
@@ -91,12 +96,14 @@ listed check.
 | `vg-235` | a domain with no ownership row | `248ff08f` extracted `theme-library-manager/` and added the map row; **`manager-census.md`'s verdict on this row predates it** (§8.5) | `248ff08f` |
 | `vg-255` | a line-count constraint | the file is 707 lines, below the stop, and the only warrant left is an archived plan's own 540 | `selection-inspector/index.ts` |
 | `vg-300` | "recording a difference as deliberate" | the mockups README now requires fixed or licensed-by-a-predating-rule | `516327f1` |
+| `vg-309` | a token declared outside the drawing's token table being invisible to the assertion that exists to catch it | `design-language.spec.ts:3160` "the shell drawing declares its token table at one site" reads **every** custom-property declaration in the drawing, keys them by kind and owner, asserts there is exactly one site, and carries a positive control — so a `:root` or child declaration reddens it. **Moved here from `work` on §7's second slice; see §8.14** | `design-language.spec.ts` |
 | `vg-328` | the drawing's eyebrow vs the product's title | the user ruled it: one name, and §2 already licenses the title role | the row's own `detail` |
 | `vg-349` | the drag-snap path question | one `object:moving` binding serves every drag; `startGesture`'s only branch is selection eligibility | `scene-fabric`… `editor/src/snap-manager/index.ts` |
 
 ### 3.1 The four shapes of a close, and why the drain should say which one it is doing
 
-- **fixed** — `vg-112`, `vg-115`, `vg-124`, `vg-137`, `vg-231`, `vg-235`, `vg-300`.
+- **fixed** — `vg-112`, `vg-115`, `vg-124`, `vg-137`, `vg-231`, `vg-235`, `vg-300`, `vg-309` (the gate that
+  was blind to a declaration outside the table now reads every one).
 - **refuted** — the defect was never real as filed: `vg-087`, `vg-113`, `vg-206`.
 - **surface rebuilt or deleted** — the subject is gone, not repaired: `vg-140`, `vg-169`, `vg-179`,
   `vg-196`, `vg-209`.
@@ -105,41 +112,75 @@ listed check.
 A "surface rebuilt" close is not a fix and must not be reported as one; `vg-196` carries the sharpest
 version of that.
 
-### 3.2 Step 3 — every close against its own title
+### 3.2 Step 3 — every close against its own title, run through the checker's own function
 
-Each of the 21 checks was read against the row's `title` for the register's rule that a `check` must name a
-word from its own title. All 21 name their row's subject; no check is of a capability merely *nearby*.
-Two residuals, both stated rather than hidden:
+The register's rule is mechanical, not editorial: [`scripts/backlog-check.mjs`](../../../scripts/backlog-check.mjs)
+refuses a `verified` row when no word of its `check` appears in its own `title` (`wordsOf` at `:63-76`, the
+comparison at `:124-131`). Running the 21 checks above through that function against their own rows' titles:
+**15 pass as the check text stands and 6 do not.** All 21 name their row's subject — no check is of a
+capability merely *nearby* — but the six do so in words the tokeniser cannot bridge, so the drain must write
+the wording below rather than the text as printed above:
 
-- **`vg-137`** — the title says "five more tests" and the fix commit says "in all three places". The check
-  names the row's subject (the camera as a constant), so the close holds; the count was never reconciled.
+| row | why the printed check fails | write the check as |
+|---|---|---|
+| `vg-113` | `unitDisplayOptions` reaches the tokeniser as one word, so nothing in the check is in the title | the unit display options are four hardcoded English strings in `ui-copy.ts`, the one owner both panels read |
+| `vg-115` | the check shares no word with a title about the reuse gate and a script directory | `matchesDirectory` matches a bare watchlist entry at any depth, so the reuse gate covers a script directory under `src/web/`; probe exits 2 |
+| `vg-137` | the check shares no word with a title about tests reading the camera as a constant | the camera's band floor and the guide rows derive from the same measurement; no test reads it as a constant |
+| `vg-169` | the check shares no word with a title about the plus and the chooser it opened | `insert-popover.tsx` is deleted and with it the chooser the plus opened; no `InsertPopover` survives |
+| `vg-217` | the check shares no word with a title about the status strip's background | the Task 10 difference list records the status strip's background against the mockup and rules it defensible |
+| `vg-235` | the check shares no word with a title about a stored-document domain and its save protocol | `248ff08f` extracted `theme-library-manager/` and added the ownership map row for the stored-document base and the save protocol gated on it |
+
+Each of the six still owes the §3.3 sha, and the rewording does not supply it: `vg-113`, `vg-115` and
+`vg-217` are three of the thirteen with none yet, while `vg-137`, `vg-169` and `vg-235` keep `4faaecb2`,
+`2eeb4516`/`b0e2eb73` and `248ff08f`.
+
+Three residuals, all stated rather than hidden:
+
+- **`vg-137`** — the title says "five more tests" and the fix commit says "in all three places". The
+  reworded check names the row's subject (the camera as a constant), so the close holds; the count was never
+  reconciled.
 - **`vg-196`** — the close is on a deletion, and the coverage the row named (the update loop reaching the
   canvas) may now be absent entirely. Closing this row leaves a possible hole in repaint coverage. The
   drain should close it and file a *fresh* row against the current owner if the coverage is wanted, rather
   than reading the coverage out of a row whose subject was deleted.
+- **`vg-255`** — the same shape, and B4 recommends the same remedy. The close is on a line count, and
+  splitting the write funnel out of `selection-inspector/index.ts` means deciding where the write path
+  lives and how it reaches the closure state it reads — a real design question the close drops. No open row
+  tracks that ownership today, so the drain should close `vg-255` and file a *fresh* row against the funnel
+  and its owner, exactly as with `vg-196`.
 
-### 3.3 What closing costs: 13 of the 21 carry no sha
+### 3.3 What closing costs: 14 of the 22 carry no sha
 
 `AGENTS.md` requires a `verified` row to carry a `check` **and** an `artefacts` sha that resolves and is an
-ancestor of HEAD. **8** of the 21 closes cite a commit (`bc3696c7`, `a374cff4`, `4faaecb2`, `ad94e5ed`,
-`2eeb4516`/`b0e2eb73`, `248ff08f`, `516327f1`); **13** cite a file at HEAD, an ADR, an archived plan or a
+ancestor of HEAD. **8** of the 22 closes cite a commit (`bc3696c7`, `a374cff4`, `4faaecb2`, `ad94e5ed`,
+`2eeb4516`/`b0e2eb73`, `248ff08f`, `516327f1`); **14** cite a file at HEAD, an ADR, an archived plan or a
 user ruling instead (`vg-087`, `vg-113`, `vg-115`, `vg-179`, `vg-206`, `vg-209`, `vg-217`, `vg-219`,
-`vg-229`, `vg-231`, `vg-255`, `vg-328`, `vg-349`). All ten shas cited across the tables were verified to
-resolve and to be ancestors of HEAD. The drain finds a sha for each of the 13 at close time
-(`git log -1 -- <path>` for the document and file closes); a close that cannot produce one is not a close.
+`vg-229`, `vg-231`, `vg-255`, `vg-309`, `vg-328`, `vg-349`). All twelve distinct shas this spec itself cites
+— the eight the closes name, `c145598a` (§8.1), `7efea17f` and `f069e56c` (§8.5) and `564f8dcf` (the input
+header) — were verified to resolve and to be ancestors of HEAD. The drain finds a sha for each of the 14 at
+close time (`git log -1 -- <path>` for the document and file closes); a close that cannot produce one is
+not a close.
 
 ## 4. List B — needs a user decision (104)
 
 Step 2 asks for a list that is "short and sharp or it is not a decision list". 104 rows is not short, so
-this list is **organised as rulings**: eleven clusters, each with one question that closes all its members,
-and a per-row line saying what changes under each answer. The cluster is the unit the user answers; the row
-is the unit the drain then acts on. Eight of the 104 need a browser run to pin the choice (§7).
+this list is **organised as rulings**: eleven clusters, grouped by the decision surface their rows share,
+with a per-row line saying what changes under each answer.
+
+**A cluster is a grouping, not one question.** A cluster's lead ruling settles only the members that share
+it; every other member is its own row-level answer. Only D1 claims that one ruling settles named members
+together, and it covers five of its nine; D3 says it outright ("Each row is an amendment-or-code choice");
+D8 says each row names its own fact; and D11 states no ruling line at all — for those, the table is the
+question list. So the drain must **not** read List B as answered by eleven answers: the count of answers is
+larger, much closer to the per-row count, and the row is the unit the drain acts on. Eight of the 104 need a
+browser run to pin the choice (§7).
 
 ### D1 — What the repo's gate is (9)
 
 **The ruling:** is `biome check` — and each scanner's own self-test suite — part of the gate, run by CI or a
 hook, or is the gate exactly `format:check` + `lint` plus a set of scripts run by hand? One ruling settles
-`vg-213`, `vg-262`, `vg-372`, `vg-355` and `vg-379` together.
+`vg-213`, `vg-262`, `vg-372`, `vg-355` and `vg-379` together. The other four — `vg-380`, `vg-382`,
+`vg-386`, `vg-184` — do not share it and are row-level answers.
 
 | id | the choice | what changes |
 |---|---|---|
@@ -309,6 +350,9 @@ canvas does to reachability.
 
 ### D11 — Repo housekeeping and provenance (9)
 
+**No single ruling:** these nine are independent housekeeping choices — the register's queue, a licence
+closure, a directory merge, a claim filter — so the table below is nine separate questions.
+
 | id | the choice | what changes |
 |---|---|---|
 | `vg-051` | keep the register as the queue, or adopt a second framework beside it | the register stays the only queue, or a second one is governed |
@@ -324,19 +368,21 @@ canvas does to reachability.
 **Parked (2, not a decision list entry):** `vg-330` is parked by the user, and `vg-322` is parked
 transitively — it closes when `vg-330` does and carries no independent work.
 
-## 5. List C — real work (110)
+## 5. List C — real work (109)
 
-Nine themed candidates. Every `work` row is in exactly one; **39 of them are the browser follow-up (§7)**
+Nine themed candidates. Every `work` row is in exactly one; **38 of them are the browser follow-up (§7)**
 and are held only by W1 so that no row is counted twice. "Kind" is a fix, a gate to build, or a design
 change; "fit" says whether the candidate can run beside another plan task under `AGENTS.md`'s one-active-
 plan rule.
 
-### W1 — The serialised browser follow-up (39 work rows; kind: measurement; fit: no, serialised)
+### W1 — The serialised browser follow-up (38 work rows; kind: measurement; fit: no, serialised)
 
 Rows: `vg-028`, `vg-138`, `vg-141`, `vg-143`, `vg-156`, `vg-158`, `vg-164`, `vg-172`, `vg-195`, `vg-197`,
 `vg-204`, `vg-210`, `vg-212`, `vg-233`, `vg-257`, `vg-258`, `vg-259`, `vg-266`, `vg-280`, `vg-281`,
-`vg-284`, `vg-285`, `vg-296`, `vg-309`, `vg-311`, `vg-313`, `vg-314`, `vg-316`, `vg-325`, `vg-326`,
-`vg-341`, `vg-346`, `vg-347`, `vg-359`, `vg-360`, `vg-361`, `vg-362`, `vg-370`, `vg-376`.
+`vg-284`, `vg-285`, `vg-296`, `vg-311`, `vg-313`, `vg-314`, `vg-316`, `vg-325`, `vg-326`, `vg-341`,
+`vg-346`, `vg-347`, `vg-359`, `vg-360`, `vg-361`, `vg-362`, `vg-370`, `vg-376`.
+
+(`vg-309` was in this list as a `work` row until the second slice; it closes instead — §8.14.)
 
 Owner: one seat, one suite at a time — the fixed preview ports (4173/4174) make a second concurrent suite
 produce *false* results rather than slow ones. Each row's table cell carries its spec path, `--grep` value
@@ -414,23 +460,32 @@ accepted any reason for a divergence, and the settings modal fails the drawing o
 regions. **No plan owns this**; both parity plans are archived. It is the drain's largest single piece of
 product work.
 
-### 5.1 The sixteen rules over fourteen rows
+### 5.1 The fifteen rules over thirteen rows
 
 B5 holds the rows whose closure is a **gate that does not exist**, and they are **separate holes and separate
 work and are not merged** (`vg-296` and `vg-327` each carry two rules). The class has two counts in the
 tables, and they differ, so **the drain plans by owner and not by a count**:
 
-- B5's rule table names **sixteen rules over fourteen rows** — the figure this spec repeats.
+- B5's rule table names **sixteen rules over fourteen rows** — the figure this spec started from.
 - A re-count of B5's *verdict cells* finds a gate named in more rows than that: `vg-313`, `vg-316`,
   `vg-317`, `vg-333`, `vg-335`, `vg-338` and `vg-339` all end their cells with a gate and none is in the rule
   table's fourteen. The rule table's fourteen is therefore a floor, not the class.
 
-By owner — this is the mapping the drain plans from, and it is the rule table's own:
+By owner — this is the mapping the drain plans from. It follows the rule table's owner column, with **two
+relabels** and no new hole:
+
+- **`vg-320`** — the table's owner is "new, with a named copied-element list"; it is filed here under the
+  parity reader (`mockup-values.ts`, vitest), which is where the table itself notes the case is vitest-able.
+- **`vg-334`** — the table's owner is "the control set's owner"; it is filed here under §4 and the palette
+  derivation case, which is what settles a gradient stop's role.
+
+The remaining owner strings are the table's, lightly qualified where the drain needs a file or a suite to
+seat — "the drawings gate" carries its spec, and the table's two `new` instruments are named here:
 
 | owner | rules | rows |
 |---|---|---|
 | the drawings gate (`design-language.spec.ts`) | 3 | `vg-296` (×2), `vg-326` |
-| the parity reader (`mockup-values.ts`, vitest) | 3 | `vg-304`, `vg-309`, `vg-320` |
+| the parity reader (`mockup-values.ts`, vitest) | 2 | `vg-304`, `vg-320` |
 | the token scanner (`design-tokens.mjs`) | 2 | `vg-327` (×2) |
 | §4 and the palette derivation case | 2 | `vg-308`, `vg-334` |
 | new instruments | 2 | `vg-314` (a surface inventory), `vg-325` (the product side of a comparison) |
@@ -444,6 +499,13 @@ above (`vg-313` and `vg-335` and `vg-338` on the suites that walk the surface; `
 dialog's shared rules; `vg-333` on the naming audit; `vg-339` on the View-menu case). Their per-rule detail
 is `triage-B5.md`'s rule table; this spec names the owners so the drain can plan one seat per owner rather
 than one per rule.
+
+**One of B5's sixteen is discharged, and the table above reflects that.** `vg-309`'s rule — the reader
+walking the drawing's whole style block — is **already enforced**: `design-language.spec.ts:3160` reads
+every custom-property declaration in the drawing, keys them by kind and owner, and asserts exactly one site,
+so a `:root` or child declaration reddens it. That makes `vg-309` a row the drain **closes** rather than a
+rule it builds, which is why it sits in List A (§3) and why the parity-reader row above reads two rules, not
+three. The class is therefore **fifteen rules over thirteen rows**.
 
 ## 6. Parallelism under the one-active-plan rule
 
@@ -464,19 +526,75 @@ with anything that drives Playwright), and within a phase the W7/W8 rows are the
 
 ## 7. The browser follow-up — a list, not a search (49 rows)
 
-39 `work` rows (in W1), 8 `decision` rows whose choice a run pins (`vg-265`, `vg-270`, `vg-278`, `vg-306`,
-`vg-308`, `vg-310`, `vg-319`, `vg-324`), 1 parked (`vg-322`) and 1 `closes` (`vg-328`). Per batch: B1 6,
-B2 6, B3 2, B4 11, B5 16, B6 8.
+38 `work` rows (in W1), 8 `decision` rows whose choice a run pins (`vg-265`, `vg-270`, `vg-278`, `vg-306`,
+`vg-308`, `vg-310`, `vg-319`, `vg-324`), 1 parked (`vg-322`) and 2 `closes` (`vg-328` and, after the second
+slice, `vg-309` — §8.14). Per batch: B1 6, B2 6, B3 2, B4 11, B5 16, B6 8.
+
+**This is the deferred set the tables define, not every browser need.** Four further rows are
+browser-dependent and classified outside it: `vg-037` (D7), whose residual fact `triage-B1.md` records as
+needing the browser and "**not run — deferred**", and `vg-260` (D6), `vg-292` and `vg-293` (W9), which
+`triage-B4.md` records would each be *pinned* by a capture rather than closed by one, so they stay in the
+lists that own them — `vg-037` and `vg-260` decisions, `vg-292` and `vg-293` work. Read the 49 as the
+follow-up's scope; the four are named here so nothing browser-dependent is lost between the two.
 
 The four rows needing a **new** case rather than an existing suite — `vg-346`, `vg-347`, `vg-233`,
 `vg-370` — are implementation work and belong to the drain's plan, not to a reproduction slice. `vg-370`
 and `vg-233` are the two the tables name as jointly settled by one check (a scaled text resized by a side
 handle).
 
-**First slice, running now:** `vg-359`, `vg-360`, `vg-361`, `vg-362` — whose suite already exists and
-whose deterministic reds also hold a redesign acceptance item open. Their first question is not the fix but
-**whether the surface moved or the locator went stale**, and `vg-360` is the row that says so in its own
-evidence.
+**First slice, reported:** `vg-359`, `vg-360`, `vg-361`, `vg-362` — whose suites already exist and whose
+deterministic reds also hold a redesign acceptance item open. Each ran alone with `--workers=1`, sampled
+twice on the same build, and all four are deterministic. Their first question was not the fix but **whether
+the surface moved or the locator went stale**, and **none of the four is a missing surface:**
+
+- **`vg-359` — neither.** The frosted CPU card and its 17 part rows render, and the card's own row still
+  selects it. What moved is the click point: the row spans x 58–279 and its centre is x=168.5, while the
+  entered, selected row's four-control `.vigilia-layer-state` slot begins at x=155 — so the click lands on
+  the row's own **Leave** control and the tree collapses before the assertion. Clicking x=88 keeps the
+  context. The capture cannot be regenerated until the click is re-aimed, so
+  `editor-starter-cpu-card-desktop-chromium.png` is still the 2026-10-05 frame. The row's text misdescribes
+  it (**§8.12**).
+- **`vg-360` — locator stale**, as the row's own evidence hypothesised. The well exists carrying `16`; the
+  xpath needs a `div` carrying `ml-auto`, and every `ml-auto` in source sits on a `span`. The sibling case
+  that drives the same slider passes on the same build.
+- **`vg-361` — neither.** The control does become visible, and the same locator is asserted correct 20 lines
+  earlier in the run; the failure is `reference-theme.spec.ts:2488`, where the ids are read while the Add
+  pane is mounted but `hidden`. The row's text misdescribes it (**§8.13**).
+- **`vg-362` — the census is red as its own spec documents.** The inspector is never reached, so the walk
+  closes on `body`, and §13.1's populated-region ruling makes the select-first rewrite the owed fix the row
+  already names.
+
+So the per-row answer exists for all four, and two of the four answers are register corrections, carried in
+§8.12 and §8.13.
+
+**Second slice, reported:** fourteen rows over five suites that already exist — `design-language.spec.ts`'s
+four greps and `shell-appearance.spec.ts`'s one — after a single build, run serially, each read from its own
+JSON report, none carrying an `incomplete` marker, and the three short suites sampled twice with identical
+results. **Twelve of the fourteen claims hold today; one is answered rather than owed, and one is open
+exactly as its row says:**
+
+- **`vg-309` — refuted, and it moves from `work` to `closes` (§8.14).** Its row says a token declared at
+  `:root` or on a child "is invisible to the assertion that exists to catch it", and calls the gap "a ceiling
+  rather than a live miss". The run shows the assertion is no longer blind: `design-language.spec.ts:3160`
+  reads **every** custom-property declaration in the drawing, keys them by kind and owner, asserts exactly one
+  site, and carries a positive control, so a declaration outside the table reddens it. Nothing is owed here,
+  which is why it leaves B5's rule table (§5.1) and enters List A.
+- **`vg-296` — its two remaining clauses are open, as its own row says.** The three `#0007` shadows and the
+  bordered follow-the-system row are read by no row; the radius clause has its mechanism. And the drawing's
+  *original* is not a missing file: `docs/design/mockups/editor-shell.html` is present at 33.6 KB and frozen
+  by design — the row's own detail says it "stays as it was", and the checked set is `current/`. A copied
+  element's original is therefore still there to compare against (`vg-320`). The row's own text does carry a
+  stale half when it is closed (it reads as though the drawing were missing); **§8.15** records it.
+- **The other twelve hold**, including the two that decide a design question directly: `vg-308`'s ladder is
+  asserted as order with no magnitude floor, so the rule D3 asks for is still missing; and `vg-310`'s
+  exemption is **live, not historical** — the chrome suite is green because `CHROME_NOT_YET_OPAQUE` still
+  names `light`, which is exactly the exemption the decision is about.
+
+**A green run cannot carry a "no gate reads X" row.** Eight of these rows claim that no mechanism reads
+something, and a passing suite shows only that the suite did not notice: the evidence is whether any
+assertion's arms read the property, which is a reading of the gate and not of its colour. The slice's own
+numbers are of that shape and are carried rather than interpreted — suite 1 prints **29** `parity` records
+against a `PARITY` table of **35** rows, and the difference between those two is not established here.
 
 ## 8. Corrections carried, not filed
 
@@ -490,10 +608,12 @@ is a new row.
 2. **`editor-shell.css` line numbers are stale in every row that cites one.** The checked instances moved
    non-uniformly (`+13` to `+103`): rows cite `:1400` for what is `:1503`, `:45`/`:136` for `:72`/`:149`,
    `:1353-1357`/`:1368` for `:1470-1476`/`:1480-1486`.
-3. **Three duplicate families collapse rather than count twice:** `vg-268`/`vg-283` (one FontPicker),
-   `vg-291`/`vg-292`/`vg-293` (one mockup-parity plan). A fourth the tables did not pair: **`vg-166` and
+3. **Two duplicate families collapse rather than count twice:** `vg-268`/`vg-283` (one FontPicker),
+   `vg-291`/`vg-292`/`vg-293` (one mockup-parity plan). A third the tables did not pair: **`vg-166` and
    `vg-329`** are one hole — `backlog-check.mjs` never reads the archive — found in two batches, and
-   `vg-199` is that hole's data half. Ruling wanted at planning time.
+   `vg-199` is that hole's data half. Ruling wanted at planning time. Related and worth the same ruling:
+   D7 lists `vg-041` and `vg-188` as two decision rows while `vg-041`'s own cell says it owns `vg-188`, and
+   both cells ask the same question — a general/instance pair the collapse list does not name.
 4. **`vg-329`'s "about twelve"** is 3 verified rows with no `artefacts` (`vg-030`, `vg-064`, `vg-076`) and 8
    carrying a bare string rather than an array; 15 rows in the archive carry none at all. Verified.
 5. **`vg-341`'s "all seven captures at `7efea17f`"** is six there and one —
@@ -511,6 +631,29 @@ is a new row.
     titled defect (Ctrl+Z on a focused slider) still reproduces. Triage on the live source, not the prose.
 11. **Stale owner paths** in `vg-104`, `vg-109`, `vg-155`, `vg-333`, `vg-314`, `vg-328`, `vg-301`,
     `vg-235`'s census row: the subjects exist, the cited lines and directories moved.
+12. **`vg-359`'s row text misdescribes its own failure.** It reads "the starter's frosted CPU card never
+    appears"; the card and its 17 part rows do render, and a click point that now lands on the row's Leave
+    control is what collapses the tree (§7). A fixer reading the row alone looks in the wrong place, and
+    `editor-starter-cpu-card-desktop-chromium.png` cannot be recaptured until the click is re-aimed.
+13. **`vg-361`'s row text misdescribes its own failure.** It reads "the background-media row never becomes
+    visible"; the control does become visible and the same locator is asserted correct in the same run, at
+    `:2467-2470` against a failure at `:2488`. The failure is a read attempted at
+    `reference-theme.spec.ts:2488` while the Add pane is the active one (§7), which is a stale step order
+    rather than a missing surface.
+14. **`vg-309` moves from `work` to `closes` on a run rather than on a reading.** `triage-B5.md` classifies it
+    `work`, one rule for the parity reader, on the strength of `mockup-values.ts` resolving the drawing's
+    token table through a single element. The second slice's run shows the row's actual claim — that a token
+    declared outside that table is "invisible to the assertion that exists to catch it" — is false at HEAD:
+    `design-language.spec.ts:3160` reads every custom-property declaration in the drawing, keys them by kind
+    and owner, asserts exactly one site and carries a positive control. So B5 reads 3 closes / 12 decisions /
+    22 work / 2 parked where its table says 2/12/23/2 (§2.1), B5's rule table holds fifteen rules over
+    thirteen rows rather than sixteen over fourteen (§5.1), and the drain closes `vg-309` on §3's check. This
+    is the one triage verdict the browser follow-up changed, and it changed in the direction the follow-up
+    exists to find.
+15. **`vg-296`'s row text carries a stale half.** Its two remaining clauses are open exactly as it says (§7),
+    but the row reads as though `docs/design/mockups/editor-shell.html` were missing; the file is present at
+    33.6 KB and frozen by design. Correct the row when the drain closes it — not before, since the run's own
+    reading of the prose is not what the row's `detail` says.
 
 ## 9. The copy boundary: `control-fixture.tsx`
 
@@ -520,23 +663,35 @@ B5 found literal copy in
 not mount. It was deliberately left unfiled, because a row filed mid-pass would belong to no batch.
 
 **The boundary decision, stated:** the copy rule's scope is **the product bundle**, and this fixture is not
-in it. It is built only by `vite build --config vite.config.fixture.ts` (`npm run build:fixture -w
-@vigilia/editor`) and is served at `control-fixture.html` for the design-language evidence run; the
-product build (`vite build`, the one Playwright previews and the host serves) never includes it. So the
-fixture is **exempt by name**, and the exemption is recorded here rather than left as a hole.
+in it. It is built by its own `vite` invocation — `vite build --config vite.config.fixture.ts` (`npm run
+build:fixture -w @vigilia/editor`), a second invocation with `emptyOutDir: false` — and is served at
+`control-fixture.html` for the design-language evidence run; the product build (`vite build`) emits exactly
+the bundle graph it emitted before the fixture existed, so the fixture is **exempt by name** and the
+exemption is recorded here rather than left as a hole.
+
+**What the exemption does not say.** The fixture command is a second invocation whose `emptyOutDir: false`
+writes `control-fixture.html` **into the same `packages/editor/dist`** the host serves
+([`packages/host/src/main.ts`](../../../src/web/packages/host/src/main.ts)), and CI runs it before previewing
+that tree. So the exemption is true of the *build command*, not of everything the served tree can contain —
+the fixture page is reachable on any host that has run `build:fixture`.
 
 **The other answer, and what it costs:** if the rule is meant to cover every tracked source file, the
 fixture becomes in scope and the drain files **one** row — the eight literal strings move behind `uiCopy`
-accessors. The state that would flip the decision is the fixture entering a shipped bundle, which is a
-build-config change, so the exemption should be re-checked when the fixture build config changes (W1's
-`vg-341` capture work touches it).
+accessors. The state that would flip the decision is the fixture entering a shipped bundle, and by the
+paragraph above that is closer to met than the `vite build` argument suggests: `build:fixture` already lands
+the page and its assets in the `dist` the host serves. What decides it is a build-config change rather than
+a code one, so the exemption should be re-checked against what is actually deployed when that config
+changes (W1's `vg-341` capture work touches it).
 
 ## 10. What the drain must do with this
 
-1. **Close the 21** in List A with a `check` naming a word from each row's own `title` and an `artefacts`
-   sha that resolves and is an ancestor of HEAD — 13 of them need that sha found at close time.
-2. **Take D1–D11's rulings**; each cluster's lead ruling closes its members together, so the user answers
-   eleven questions, not 104.
+1. **Close the 22** in List A with a `check` naming a word from each row's own `title` and an `artefacts`
+   sha that resolves and is an ancestor of HEAD — 14 of them need that sha found at close time, and **six
+   need the check reworded** as §3.2 prints it, because the register's own tokeniser rejects the text as
+   the table above writes it.
+2. **Take D1–D11's rulings**; a cluster's lead ruling settles only the members that share it — D1's covers
+   five of its nine — and every other member is a row-level answer. So the user session is larger than
+   eleven questions, much closer to the per-row count, and List B is not finished by eleven answers.
 3. **Plan W1…W9 as phases**, one active plan, with W1 its own phase (it cannot share a machine with any
    Playwright work) and W7/W8 as the parallel-safe set.
 4. **Apply §8's corrections at the moment each row closes**, and collapse the duplicate families once.
@@ -545,9 +700,19 @@ build-config change, so the exemption should be re-checked when the fixture buil
 
 ## 11. Unverified, and where this spec is weakest
 
-- **The four first-slice browser rows (`vg-359`…`vg-362`) have not reported**, and their answers decide
-  whether *other* deferred rows are "surface moved" or "locator stale". This spec does not predict which.
-- **The 49 deferred rows are classified, not reproduced.** Every browser verdict here rests on a seat's
-  reading of source or of a spec file — never on a run. That is ruling B's accepted cost.
+- **Eighteen of the 49 deferred rows have now been run, in two slices, and none of them turned out to be a
+  missing surface** (§7). The first slice settled four — two stale gestures or locators, one stale step
+  order, one documented red — and the second settled fourteen: twelve claims hold, `vg-309` closes on a gate
+  that already exists (§8.14, the one triage verdict a run changed), and `vg-296` is open exactly as its own
+  row says. **Thirty-one rows are still classified by reading rather than by a run**, and so are the
+  browser-dependent rows §7 names outside the 49. That is ruling B's accepted cost, and two slices of it
+  have been paid.
+- **A "no gate reads X" row cannot be settled by a green run at all.** Eight of the second slice's rows are
+  of that shape, and their evidence is the assertion's arms rather than the suite's colour (§7). Any later
+  slice will meet the same limit, so its verdicts should be read as readings of the gate.
+- **Two numbers from the second slice are carried uninterpreted**, because the run does not explain them:
+  suite 1 prints 29 `parity` records against a `PARITY` table of 35 rows, and the chrome suite's green
+  depends on an exemption set that still names one palette.
 - **§4's eleven clusters are my grouping, not the user's.** A cluster that turns out not to be one ruling
-  reverts to eleven separate questions; nothing else in the spec moves.
+  reverts to its own members as separate questions — D3's thirteen, D11's nine — not to eleven; nothing else
+  in the spec moves.
