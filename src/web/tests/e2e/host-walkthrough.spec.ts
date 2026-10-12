@@ -353,6 +353,89 @@ async function selectInPaneByKeyboard(page: Page): Promise<void> {
   ).not.toHaveCount(0);
 }
 
+/** Copy a spec names as literals — the File menu, the row this walk creates its
+ *  document with, and the name that document gives itself. A renamed row or an
+ *  upgraded starter reddens here rather than quietly stopping to be about the
+ *  document. `STARTER_DOCUMENT_NAME` is the starter's own metadata name, which
+ *  is what tells the created document apart from the fixture (`?theme=`). */
+const FILE_MENU_NAME = "File";
+const NEW_FROM_STARTER_ROW = "New from starter";
+const STARTER_DOCUMENT_NAME = "System dashboard";
+/** Bounds for the two searches, which report a count rather than hang. */
+const EDIT_MENU_BOUND = 12;
+const RAIL_BOUND = 40;
+
+/** Creates a document through the shell's own File menu, with no pointer.
+ *
+ * **"Create or open" is discharged by creating**, on the row that creates a
+ * document **with content**: `New theme` is blank, and a blank document is a
+ * different walkthrough — the Composition pane it lands on has nothing to
+ * select, and selection is §13.1's next interaction.
+ *
+ * The route is the menu's own keyboard model, not an invented order: Tab reaches
+ * the `File` trigger (the census's own first press), `ArrowDown` opens a menu on
+ * its first row the way a menu button does, `ArrowDown` moves between rows and
+ * `Enter` activates the row it is on. Which row is answered by its own name, so
+ * no press count is baked in.
+ *
+ * It ends on the document naming itself, which is what makes it safe to call
+ * before the next step: the create remounts the shell, and the identity chip can
+ * only say the created name once the new shell is wired. */
+async function openDocumentByKeyboard(page: Page): Promise<void> {
+  await tabUntil(
+    page,
+    (focus) => focus.tag === "button" && focus.name === FILE_MENU_NAME,
+  );
+  await page.keyboard.press("ArrowDown");
+  for (let press = 0; press < EDIT_MENU_BOUND; press++) {
+    const onRow = await page.evaluate(
+      (wanted: string) =>
+        (document.activeElement?.textContent ?? "").includes(wanted),
+      NEW_FROM_STARTER_ROW,
+    );
+    if (onRow) {
+      await page.keyboard.press("Enter");
+      await expect(
+        page.locator(".editor-shell-identity-name"),
+        "the created document's own name",
+      ).toHaveText(STARTER_DOCUMENT_NAME);
+      return;
+    }
+    await page.keyboard.press("ArrowDown");
+  }
+  throw new Error(
+    `no menu row naming ${NEW_FROM_STARTER_ROW} in ${EDIT_MENU_BOUND} presses`,
+  );
+}
+
+/** Chooses a rail pane by its spoken name, with no pointer.
+ *
+ * Tab reaches the rail's slot button of that name — the census's own region, in
+ * the shell's own tab order — and `Enter` presses it. The claim it makes for
+ * itself is that the shell took the choice (`aria-pressed`), because a press
+ * that did nothing would leave the next step measuring the pane the walk was
+ * already on. Which pane is now *showing* is the caller's: the slot's label and
+ * the pane's DOM name are two vocabularies and the shell owns the mapping. */
+async function chooseRailPane(page: Page, name: string): Promise<void> {
+  await tabUntil(
+    page,
+    (focus) =>
+      focus.region === "rail" && focus.tag === "button" && focus.name === name,
+    RAIL_BOUND,
+  );
+  const slot = await page.evaluate(() =>
+    document.activeElement?.getAttribute("data-rail-slot"),
+  );
+  if (slot === null || slot === undefined) {
+    throw new Error(`the rail button named ${name} carries no slot`);
+  }
+  await page.keyboard.press("Enter");
+  await expect(
+    page.locator(`button[data-rail-slot="${slot}"]`),
+    `the rail slot ${name} after Enter`,
+  ).toHaveAttribute("aria-pressed", "true");
+}
+
 async function tabUntil(
   page: Page,
   matches: (focus: Focus) => boolean,
@@ -506,5 +589,59 @@ test.describe("the shell, reached by keyboard alone", () => {
 
     expect(walk.some((step) => step.region === "pane")).toBe(true);
     expect(landed.region).toBe("pane");
+  });
+
+  /**
+   * §13.1's first two interactions, and both halves of Review Focus 1.
+   *
+   * A document is created and a rail pane is chosen, after which the pane is
+   * asked the two questions a keyboard user needs answered: **can focus get
+   * in**, and **can it get out**. Reached is not enough — a pane that traps Tab
+   * is reachable and useless, and a trap is what a focus-order bug produces — so
+   * one continuous walk looks for a *later* region (the stage) after the pane.
+   * Arriving somewhere later is what "left" means; a second walk would prove
+   * nothing about the order.
+   *
+   * The name half is Review Focus 4: the first pane element the walk reached is
+   * asked for its accessible name by Playwright's own `toHaveAccessibleName`,
+   * since a target nobody can name is not a target a voice user has.
+   *
+   * **Tokens is a deliberate pane.** It is not the one the shell opens on, so
+   * the walk cannot pass on the opening state, and it holds controls of its own
+   * whatever is selected. `layers` is asserted hidden beside it, because "the
+   * pane I asked for is showing" is half an answer without "and the one I left
+   * is not".
+   */
+  test("a document is created and a rail pane is chosen with no pointer", async ({
+    page,
+  }) => {
+    await openWalkthrough(page);
+    await openDocumentByKeyboard(page);
+    await chooseRailPane(page, "Tokens");
+
+    await expect(
+      page.locator('[data-vigilia-panel="tokens"]'),
+      "the Tokens pane after the rail choice",
+    ).toBeVisible();
+    await expect(
+      page.locator('[data-vigilia-panel="layers"]'),
+      "the Composition pane after the rail choice",
+    ).toBeHidden();
+
+    const walk = await keyboardReach(page);
+    const paneAt = walk.findIndex((step) => step.region === "pane");
+    expect(
+      paneAt,
+      `the walk never reached the pane:\n${JSON.stringify(walk, null, 2)}`,
+    ).toBeGreaterThanOrEqual(0);
+    expect(
+      walk.slice(paneAt + 1).some((step) => step.region === "stage"),
+      `focus did not leave the pane:\n${JSON.stringify(walk, null, 2)}`,
+    ).toBe(true);
+
+    await expect(
+      page.locator(`[${FIRST}="pane"]`),
+      "the first pane focus target",
+    ).toHaveAccessibleName(/\S/);
   });
 });
