@@ -68,16 +68,19 @@ function DocumentReferences(props: {
  *
  * The factory keeps its signature and its `root`/`render` pair, so
  * `editor-session.ts` keeps its construction site; what changed is the
- * rendering, which is the React tree above. `data-vigilia-panel="style"` is this
- * panel's own name, as `selection-inspector/index.ts` writes `"selection"` —
- * `Pane` owns the *pane's* name, and a sub-panel names itself.
+ * rendering, which is the React tree above. `data-vigilia-panel="references"` is
+ * this panel's own name, as `selection-inspector/index.ts` writes `"selection"` —
+ * `Pane` owns the *pane's* name, and a sub-panel names itself. It read `"style"`
+ * only because a locator another task was rewiring in the same plan still named
+ * it; that locator is now `openPane(page, "Document")`, so the name says what
+ * this is.
  */
 export function createDocumentReferencesPanel(
   host: HTMLElement,
   options: DocumentReferencesOptions,
 ): DocumentReferencesPanel {
   const root = document.createElement("section");
-  root.dataset["vigiliaPanel"] = "style";
+  root.dataset["vigiliaPanel"] = "references";
   host.append(root);
 
   const reactRoot: Root = createRoot(root);

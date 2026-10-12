@@ -1478,7 +1478,7 @@ test("captures the shell with the Add pane open and nothing selected", async ({
   // are not showing carry `hidden` (`display: none`), which is not showing.
   // **A direct child**, because a sub-panel names itself with the same
   // attribute: the Document pane's References section writes
-  // `data-vigilia-panel="style"`, so the descendant form counts 2 the moment
+  // `data-vigilia-panel="references"`, so the descendant form counts 2 the moment
   // this capture is pointed at Document (the rail-pane capture measures it).
   await expect(
     page.locator(".editor-shell-panel > [data-vigilia-panel]:visible"),
@@ -1830,11 +1830,11 @@ test("captures each pane of the four-slot rail in the design language", async ({
     await expect(pane, `${slot}: its pane is not showing`).toBeVisible();
     // One pane out, read as a **direct child** of the rail's column. The
     // descendant form counts a sub-panel as a pane: the Document pane's own
-    // References section names itself `data-vigilia-panel="style"`
+    // References section names itself `data-vigilia-panel="references"`
     // (`panes/document/references.tsx`), so with Document showing a descendant
-    // match is 2 — measured, `["document", "style"]` — and `"style"`'s parent
-    // carries no column class. A visible `pane` plus one visible direct child
-    // is what says it is the one the rail has out.
+    // match is 2 — measured, `["document", "references"]` — and `"references"`'s
+    // parent carries no column class. A visible `pane` plus one visible direct
+    // child is what says it is the one the rail has out.
     await expect(
       page.locator(".editor-shell-panel > [data-vigilia-panel]:visible"),
       `${slot} is not the pane the rail has out`,

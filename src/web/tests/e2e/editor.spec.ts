@@ -2462,17 +2462,17 @@ test.describe("Fabric editor route", () => {
     // The document's own references, in the left column's Document pane: what
     // the document offers before the author has picked anything.
     await openPane(page, "Document");
-    const style = page.locator('[data-vigilia-panel="style"]');
+    const references = page.locator('[data-vigilia-panel="references"]');
     // The panel names the token and its value, not the `palette.ink` string the
     // reference is written as. `Ink → #00b8d9` is the same fact in the author's
     // words, and asserting it keeps both halves of the claim — which token, and
     // what it resolves to here.
-    await expect(style).toContainText("Ink");
-    await expect(style).toContainText("#00b8d9");
-    await expect(style).toContainText("Body");
+    await expect(references).toContainText("Ink");
+    await expect(references).toContainText("#00b8d9");
+    await expect(references).toContainText("Body");
     // It lists the document the same way whatever is selected, so its globals
     // stay put — the selection's own resolution is a different column.
-    await expect(style.locator("[data-vigilia-globals]")).toHaveCount(1);
+    await expect(references.locator("[data-vigilia-globals]")).toHaveCount(1);
 
     // Selecting the text shows its own resolution in the Spends section, not in
     // the document panel, which cannot see a selection. Select through the layer
