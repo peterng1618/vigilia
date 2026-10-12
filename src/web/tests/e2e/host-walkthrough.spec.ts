@@ -619,9 +619,11 @@ test.describe("the shell, reached by keyboard alone", () => {
       `the regions after the walk:\n${JSON.stringify(after, null, 2)}`,
     ).toEqual(expect.arrayContaining([...REGIONS]));
 
-    // **No history entry landed anywhere in the walk**, which is §13.1's
-    // "without unintended history" measured as far as the application states it
-    // (there is no history length to read: `EditorShellBridge` publishes none).
+    // **No history entry landed across the interactions this watcher spans** —
+    // the second through the eighth, from after the create to before the return
+    // trip — which is §13.1's "without unintended history" measured as far as
+    // the application states it (there is no history length to read:
+    // `EditorShellBridge` publishes none).
     expect(
       await editCommits(page),
       "history entries the whole walk recorded",

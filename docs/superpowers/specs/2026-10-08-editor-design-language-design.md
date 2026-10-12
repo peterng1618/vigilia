@@ -669,8 +669,9 @@ necessary, never sufficient; §13.1's interaction and stress proof also applies.
   and closed, a palette chosen, a shortcut capture cancelled, and the return to
   the `e2e-hosted` fixture the walk booted on. The round trip is measured twice —
   the identity chip names the fixture and the document's own persisted envelope
-  equals the one read before the walk — with 0 history entries recorded across
-  the nine interactions, counted before the return trip remounts the shell, and
+  equals the one read before the walk — with 0 history entries recorded from the
+  second interaction through the eighth, counted from after the create remounts
+  the shell and stopped before the return trip remounts it again, and
   §13.1's other two invariants are swept in the state the walk leaves:
   the Escape that dismisses Settings affects that one owner, and every region
   still has a reachable focus target. The check runs in the `desktop-host`
