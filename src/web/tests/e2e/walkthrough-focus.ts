@@ -298,3 +298,73 @@ export async function tabUntil(
   }
   throw new Error(`nothing matched in ${limit} presses`);
 }
+
+/** What a control carries so the walk can reach it by what it *is* rather than
+ *  by where it sits.
+ *
+ *  `attribute` is an attribute the shell already writes for its own reasons —
+ *  every mark here is a `data-*` name except `role`, which a primitive sets —
+ *  and `value` narrows it when a surface holds several. A mark whose value is
+ *  omitted matches any, and it is omitted rather than passed `undefined`:
+ *  `exactOptionalPropertyTypes` is on, and the absence is the fact being
+ *  stated. */
+export interface Mark {
+  readonly attribute: string;
+  readonly value?: string;
+}
+
+/**
+ * Tabs until the focused element carries `mark`, and answers that value.
+ *
+ * {@link tabUntil}'s sibling for the marks a control already carries: a group
+ * row's own entry control, a palette card named `graphite`, the arm control of
+ * one shortcut row. The predicate is the attribute itself, so nothing here
+ * bakes in a Tab count or a position the shell is free to change, and the bound
+ * reports how many presses it spent rather than hanging.
+ *
+ * Re-entrant for the reason {@link tabUntil} is: it clears the marks of
+ * whatever walk came before it.
+ */
+export async function tabToMark(
+  page: Page,
+  mark: Mark,
+  limit = TAB_BOUND,
+): Promise<string> {
+  await clearWalkMarks(page);
+  for (let press = 0; press < limit; press++) {
+    const carried = await page.evaluate(
+      (args: { readonly attribute: string; readonly value: string | null }) => {
+        const value = document.activeElement?.getAttribute(args.attribute);
+        if (value === null || value === undefined) return null;
+        if (args.value !== null && value !== args.value) return null;
+        return value;
+      },
+      // `null`, not `undefined`, for "any value": an optional field survives
+      // the trip into the page as itself, and the sentinel is a value the
+      // attribute can never carry.
+      { attribute: mark.attribute, value: mark.value ?? null },
+    );
+    if (carried !== null) return carried;
+    await page.keyboard.press("Tab");
+  }
+  throw new Error(
+    mark.value === undefined
+      ? `no element carrying ${mark.attribute} took focus in ${limit} presses`
+      : `no element carrying ${mark.attribute}="${mark.value}" took focus in ${limit} presses`,
+  );
+}
+
+/** Whether focus is inside the element `selector` names.
+ *
+ *  The question Review Focus 3 turns on, asked the only way it can be: a popup
+ *  that is visible proves nothing about where the keyboard is, and `closest`
+ *  answers for the focused element rather than for a descendant of it. */
+export async function focusedWithin(
+  page: Page,
+  selector: string,
+): Promise<boolean> {
+  return page.evaluate((scope: string) => {
+    const active = document.activeElement;
+    return active !== null && active.closest(scope) !== null;
+  }, selector);
+}

@@ -1,6 +1,12 @@
 import { expect, type Page } from "@playwright/test";
 import { HOST_PORT, HOST_THEME_ID } from "./host-theme.js";
-import { REGION_SELECTOR, TAB_BOUND, tabUntil } from "./walkthrough-focus.js";
+import {
+  focusedWithin,
+  REGION_SELECTOR,
+  TAB_BOUND,
+  tabToMark,
+  tabUntil,
+} from "./walkthrough-focus.js";
 
 /**
  * The shell's own keyboard vocabulary: the gestures §13.1's order is made of,
@@ -9,7 +15,9 @@ import { REGION_SELECTOR, TAB_BOUND, tabUntil } from "./walkthrough-focus.js";
  * Split out of `host-walkthrough.spec.ts` under Ruling L. Where a control is and
  * how focus reaches it is `walkthrough-focus.ts`'s; what a control *means* —
  * a document, a rail pane, a selected row, a field — is this module's, and the
- * spec holds the tests and nothing else.
+ * spec holds the tests and nothing else. The settings modal's own vocabulary
+ * (§4's palette, the shortcut capture) is `walkthrough-settings.ts`'s, split out
+ * of here when it passed AGENTS.md's 800-line stop.
  */
 
 const HOST = `http://127.0.0.1:${HOST_PORT}`;
@@ -439,4 +447,214 @@ export async function surroundingState(
     document: (await chip.isVisible()) ? await chip.textContent() : null,
     field: await page.locator(FIELD_SELECTOR).isVisible(),
   };
+}
+
+/** Marks the four interactions after Task 3 reach their controls by. Every one
+ *  is an attribute the shell already writes for its own reasons, so a renamed
+ *  class or a moved control reddens here rather than quietly reaching nothing. */
+/** The Composition row's own entry control, whose value says which way it goes
+ *  (`composition-pane.tsx`): `enter` into the group, `leave` back out of it. */
+const LAYER_ENTRY = "data-vigilia-layer-entry";
+/** A row itself, addressed by the object id the projection gives it. */
+const LAYER_ROW = "data-vigilia-layer";
+/** The stage's display-and-zoom readout, which is a popup's trigger
+ *  (`display-switch.tsx`). Marked rather than named: its accessible name
+ *  carries the readout's own percentage, which moves with the camera. */
+const DISPLAY_TRIGGER = "data-vigilia-zoom";
+/** Bounds smaller than {@link TAB_BOUND}, for the one search whose answer is a
+ *  handful of presses away: the controls inside a row, ahead of the row itself.
+ *  It reports a count rather than hanging. */
+const ROW_BOUND = 4;
+
+/** The entered group's ids, as the bridge publishes them — never Fabric
+ *  objects, which is what makes this readable from a test at all
+ *  (`bridge.ts`'s `groupContext`). */
+export async function groupContext(page: Page): Promise<readonly string[]> {
+  return page.evaluate(() => {
+    const bridge = (
+      window as unknown as {
+        vigiliaEditorBridge?: { groupContext(): readonly string[] };
+      }
+    ).vigiliaEditorBridge;
+    if (bridge === undefined) {
+      throw new Error("no editor bridge on this mount");
+    }
+    return bridge.groupContext();
+  });
+}
+
+/** The layer row the focused element sits in, which is what addresses that row
+ *  afterwards — the same identity {@link focusLayerRow} answers with. */
+async function focusedLayerId(page: Page): Promise<string> {
+  const id = await page.evaluate(() => {
+    const active = document.activeElement;
+    if (active === null) return null;
+    return (
+      active.getAttribute("data-vigilia-layer") ??
+      active.closest("[data-vigilia-layer]")?.getAttribute("data-vigilia-layer")
+    );
+  });
+  if (id === null || id === undefined) {
+    throw new Error("the focused element is not inside a layer row");
+  }
+  return id;
+}
+
+/**
+ * Enters the first group the Composition pane offers, with no pointer.
+ *
+ * **The pane's own control is the route**, not a canvas gesture: a group row
+ * that has focus draws an entry control (`composition-pane.tsx`), `Enter`
+ * presses it, and the control then names the *other* direction — which is the
+ * panel's own statement that the context changed rather than a claim made here.
+ * {@link groupContext} is the bridge's statement of the same fact, and the two
+ * are asserted together because they are the two halves of "the group was
+ * entered": what the tree draws, and what the canvas has.
+ *
+ * **Entering a group expands it in the layer panel, and that is the answer
+ * plan 3 named and did not settle.** The projection's expanded set is the
+ * author's own openings *plus the entered group's ancestor path*
+ * (`bridge.ts`'s `expansionFor`), so the row's twisty goes from shut to open —
+ * and the walk asserts the shut state first, so the expansion is the entry's
+ * doing rather than something the panel was already showing. The reason it
+ * expands rather than merely dimming is in the same place: a nested entry whose
+ * parent stayed shut would expand a row the panel never draws.
+ *
+ * Answers the group's id, which is what addresses that row afterwards.
+ */
+export async function enterGroup(page: Page): Promise<string> {
+  await tabUntil(page, (focus) => focus.region === "pane");
+  await tabToMark(page, { attribute: LAYER_ENTRY, value: "enter" });
+  const id = await focusedLayerId(page);
+  const twisty = page.locator(`[${LAYER_ROW}="${id}"] button[aria-expanded]`);
+  expect(
+    await twisty.getAttribute("aria-expanded"),
+    `the group ${id} before it was entered`,
+  ).toBe("false");
+
+  await page.keyboard.press("Enter");
+
+  const entry = page.locator(`[${LAYER_ROW}="${id}"] [${LAYER_ENTRY}]`);
+  await expect(
+    entry,
+    `the row ${id} after Enter on its entry control`,
+  ).toHaveAttribute(LAYER_ENTRY, "leave");
+  expect(
+    await groupContext(page),
+    `the entered context after entering ${id}`,
+  ).toEqual([id]);
+  await expect(
+    twisty,
+    `the entered group ${id} in the layer panel`,
+  ).toHaveAttribute("aria-expanded", "true");
+  await expect(
+    entry,
+    "the control the interaction left focus on",
+  ).toBeFocused();
+  return id;
+}
+
+/**
+ * Leaves the entered group through the pane's own control, with no pointer.
+ *
+ * Not `Escape`: that key is `view.exit-group`, and the deferral that binding
+ * takes inside a text field is the thing
+ * `host-walkthrough.spec.ts` drives separately. This is the deliberate gesture,
+ * and it asserts what leaving means — an empty context, the row's control
+ * naming the other direction again, and focus still on it.
+ *
+ * Answers the id of the group that was left.
+ */
+export async function exitGroup(page: Page): Promise<string> {
+  await tabToMark(page, { attribute: LAYER_ENTRY, value: "leave" });
+  const id = await focusedLayerId(page);
+  await page.keyboard.press("Enter");
+
+  const entry = page.locator(`[${LAYER_ROW}="${id}"] [${LAYER_ENTRY}]`);
+  await expect(
+    entry,
+    `the row ${id} after Enter on its leave control`,
+  ).toHaveAttribute(LAYER_ENTRY, "enter");
+  expect(
+    await groupContext(page),
+    `the entered context after leaving ${id}`,
+  ).toEqual([]);
+  await expect(
+    entry,
+    "the control the interaction left focus on",
+  ).toBeFocused();
+  return id;
+}
+
+/**
+ * Opens the rename field on the row the walk is on, with no pointer.
+ *
+ * `Enter` and `F2` are the row's own keys for it (`composition-pane.tsx`), and
+ * the field does not exist until one of them is pressed — so this presses
+ * `Enter` on the row rather than reaching for a field. The row is reached by
+ * `Shift+Tab` from wherever the walk left focus, which is the index's own
+ * control when {@link enterGroup} has just run.
+ *
+ * It exists because a text entry is what makes `view.exit-group`'s deferral
+ * observable: the binding is deferred while `isTextEntryTarget` holds, and with
+ * nothing entered an Escape that reached it and one that did not look the
+ * same — `exitGroup()` on an empty context is a no-op.
+ */
+export async function openLayerRenameField(page: Page): Promise<void> {
+  for (let press = 0; press < ROW_BOUND; press++) {
+    const onRow = await page.evaluate(
+      () => document.activeElement?.hasAttribute("data-vigilia-layer") === true,
+    );
+    if (onRow) {
+      await page.keyboard.press("Enter");
+      return;
+    }
+    await page.keyboard.press("Shift+Tab");
+  }
+  throw new Error(`no layer row took focus in ${ROW_BOUND} presses`);
+}
+
+/**
+ * Opens the stage's display-and-zoom popup with no pointer, and asserts where
+ * focus went.
+ *
+ * **Review Focus 3 is the whole assertion.** That the popup is visible is not
+ * the claim — a popup that opened with focus left behind on its trigger is
+ * visible too, and its first Tab walks the page instead of the popup — so the
+ * assertion is on the focused element: it is inside `[role="menu"]`, and it is
+ * not the trigger.
+ *
+ * The trigger is the stage's zoom readout (`display-switch.tsx`), and
+ * `ArrowDown` is the menu button's own key for opening itself on its first row,
+ * the same gesture `openDocumentByKeyboard` uses on the File menu.
+ */
+export async function openPopup(page: Page): Promise<void> {
+  await tabToMark(page, { attribute: DISPLAY_TRIGGER });
+  const trigger = page.locator(`[${DISPLAY_TRIGGER}]`);
+  await page.keyboard.press("ArrowDown");
+
+  await expect(
+    page.getByRole("menu"),
+    "the popup the trigger opened",
+  ).toBeVisible();
+  expect(
+    await focusedWithin(page, '[role="menu"]'),
+    "the popup opened with focus inside it rather than left on its trigger",
+  ).toBe(true);
+  await expect(
+    trigger,
+    "the trigger focus was left behind on",
+  ).not.toBeFocused();
+}
+
+/** Closes the popup the walk opened, with no pointer, and asserts the contract
+ *  DESIGN.md gives every popup: it goes, and focus comes back to the trigger
+ *  that opened it. */
+export async function closePopup(page: Page): Promise<void> {
+  await page.keyboard.press("Escape");
+  await expect(page.getByRole("menu"), "the popup after Escape").toBeHidden();
+  await expect(
+    page.locator(`[${DISPLAY_TRIGGER}]`),
+    "the trigger focus came back to",
+  ).toBeFocused();
 }

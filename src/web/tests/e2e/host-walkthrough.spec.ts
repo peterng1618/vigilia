@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { PALETTES } from "./shell-palette.js";
 import {
   FIRST,
   keyboardReach,
@@ -7,12 +8,23 @@ import {
   tabUntil,
 } from "./walkthrough-focus.js";
 import {
+  cancelShortcutCapture,
+  choosePalette,
+} from "./walkthrough-settings.js";
+import {
   chooseRailPane,
+  closePopup,
   editCommits,
   editFieldThenCancel,
+  enterGroup,
+  exitGroup,
+  FIELD_DRAFT,
   FIELD_SELECTOR,
+  groupContext,
   layerTree,
   openDocumentByKeyboard,
+  openLayerRenameField,
+  openPopup,
   openWalkthrough,
   STARTER_DOCUMENT_NAME,
   selectInComposition,
@@ -50,10 +62,13 @@ import {
  * is still the same four — trimming it to the regions an opening-state walk
  * reaches remains the forbidden move, and a green here does not license it.
  *
- * **The primitives are `walkthrough-focus.ts`'s and the shell's vocabulary is
- * `walkthrough-shell.ts`'s** (Ruling L): the split is by responsibility because
- * the file had passed AGENTS.md's 800-line stop, and what is left here is the
- * tests, which is what the walkthrough's acceptance is read from.
+ * **The primitives are `walkthrough-focus.ts`'s, the shell's vocabulary is
+ * `walkthrough-shell.ts`'s and the settings modal's is
+ * `walkthrough-settings.ts`'s** (Ruling L): the split is by responsibility
+ * because the file had passed AGENTS.md's 800-line stop, and the second split is
+ * the same rule applied again when Task 4's helpers took the shell module past
+ * it. What is left here is the tests, which is what the walkthrough's acceptance
+ * is read from.
  */
 
 test.describe("the shell, reached by keyboard alone", () => {
@@ -310,5 +325,100 @@ test.describe("the shell, reached by keyboard alone", () => {
     expect(await layerTree(page), "the document after a second Escape").toEqual(
       before,
     );
+  });
+
+  /**
+   * §13.1's fifth to eighth interactions, and the two questions Task 3 could not
+   * ask.
+   *
+   * **The deferral, which needed a group to be entered to be observable.** Task
+   * 3's review found the one outer owner Escape can reach from a text field:
+   * the window-level `view.exit-group` binding, deferred while
+   * `isTextEntryTarget` holds. With nothing entered `exitGroup()` is a no-op, so
+   * no assertion could tell a deferred Escape from one that ran. Here a group is
+   * entered first, so the Escape from the row's own rename field is the case
+   * that distinguishes them: the field's draft goes and the context does not.
+   *
+   * **Entering a group expands it in the layer panel, and that is asserted
+   * rather than assumed.** Plan 3 named the question and did not settle it; the
+   * bridge answers it in code — the projection's expanded set is the author's
+   * own openings *plus the entered group's ancestor path* (`bridge.ts`,
+   * `expansionFor`) — so the row goes from shut to open. The assertion is in
+   * `enterGroup`, which reads the twisty before it presses anything.
+   *
+   * **A popup opens with focus inside it** (Review Focus 3). Visibility is not
+   * the claim: the popup this walk opens is the stage's display-and-zoom menu,
+   * and what is asserted is where focus landed — a popup that opened with focus
+   * left behind on its trigger fails here.
+   *
+   * The palette is DESIGN.md §4's shell palette, chosen in Settings, and it is
+   * chosen by the name the walk is not already in: the browser's own
+   * `prefers-color-scheme` decides which of the six the shell boots, and a
+   * choice of the palette already in force would assert nothing.
+   *
+   * The shortcut capture is cancelled with Escape and then proved not to have
+   * taken a chord, which is what a cancel means: nothing was recorded. The
+   * count and the last assertion of the walk are the helper's.
+   */
+  test("groups, a popup, a palette and a shortcut capture, by keyboard alone", async ({
+    page,
+  }) => {
+    await openWalkthrough(page);
+    // The walk's document is the one the step before created from the starter
+    // (Ruling K) — eight groups, a palette and thirteen type presets — not the
+    // host fixture `openWalkthrough` booted on.
+    await openDocumentByKeyboard(page);
+
+    // 1. Into a group. The helper asserts the panel's own statement, the
+    //    context the bridge publishes, and where focus is.
+    const group = await enterGroup(page);
+
+    // 2. Escape from a text field, with the group entered: the field's draft is
+    //    cancelled and the group is **not** left. `view.exit-group` is bound on
+    //    exactly this key.
+    const row = page.locator(`[data-vigilia-layer="${group}"]`);
+    const name = (await row.locator(".vigilia-layer-name").textContent()) ?? "";
+    await openLayerRenameField(page);
+    const rename = row.locator(".vigilia-layer-rename");
+    await expect(rename, "the row's own rename field").toBeFocused();
+    await page.keyboard.type(FIELD_DRAFT);
+    await expect(rename, "the draft before it is cancelled").not.toHaveValue(
+      name,
+    );
+    await page.keyboard.press("Escape");
+    await expect(rename, "the rename field after Escape").toHaveCount(0);
+    expect(
+      await groupContext(page),
+      "the entered context after Escape from a text field",
+    ).toEqual([group]);
+    await expect(
+      row.locator(".vigilia-layer-name"),
+      "the row's name after the cancelled rename",
+    ).toHaveText(name);
+
+    // 3. Out of the group, on its own control.
+    expect(await exitGroup(page), "the group the deliberate exit left").toBe(
+      group,
+    );
+
+    // 4. A popup, opened and closed.
+    await openPopup(page);
+    await closePopup(page);
+
+    // 5. A palette, chosen rather than the one already in force.
+    const inForce =
+      (await page.locator("html").getAttribute("data-shell-palette")) ?? "";
+    const chosen = PALETTES.find((palette) => palette !== inForce);
+    if (chosen === undefined) {
+      throw new Error("every palette is the one already in force");
+    }
+    await choosePalette(page, chosen);
+
+    // 6. A shortcut capture, armed and cancelled.
+    const cancelled = await cancelShortcutCapture(page);
+    await expect(
+      page.locator(`[data-vigilia-shortcut-arm="${cancelled}"]`),
+      "the control the walk ended on",
+    ).toBeFocused();
   });
 });
