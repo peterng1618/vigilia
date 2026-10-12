@@ -129,14 +129,14 @@ export const CEILINGS = [
       { site: ".editor-shell-menubar button", text: "padding: 9px" },
       { site: ".editor-shell-menu-popup", text: "190px" },
       { site: ".editor-shell-menu-popup", text: "padding: 5px" },
-      { site: '.editor-shell-menu-popup [role="menuitem"], .editor-shell-menu-popup [role="menuitemradio"]', text: 'padding: 9px' },
+      { site: ".editor-shell-menu-popup [role=\"menuitem\"], .editor-shell-menu-popup [role=\"menuitemradio\"]", text: "padding: 9px" },
       { site: ".editor-shell-menu-label", text: "padding: 9px" },
       { site: ".editor-shell-menu-label", text: "padding: 3px" },
       { site: ".editor-shell-primary", text: "padding: 7px" },
       { site: ".editor-shell-rail button", text: "34px" },
       { site: ".editor-shell-rail button", text: "34px", occurrence: 1 },
-      { site: '.editor-shell-rail button[aria-pressed="true"]::before', text: '2px' },
-      { site: '.editor-shell-rail button[aria-pressed="true"]::before', text: '2px', occurrence: 1 },
+      { site: ".editor-shell-rail button[aria-pressed=\"true\"]::before", text: "2px" },
+      { site: ".editor-shell-rail button[aria-pressed=\"true\"]::before", text: "2px", occurrence: 1 },
       { site: ".editor-shell-panel fieldset", text: "padding: 2px" },
       { site: ".editor-shell-panel .vigilia-asset-preview", text: "120px" },
       { site: ".editor-shell-panel [data-vigilia-asset-import], .editor-shell-panel [data-vigilia-asset-replace], .editor-shell-panel [data-vigilia-asset-remove]", text: "margin: 3px" },
@@ -145,7 +145,7 @@ export const CEILINGS = [
       { site: ".editor-shell-panel .vigilia-layer-rename", text: "margin: 3px", occurrence: 1 },
       { site: ".editor-shell-inspector [data-vigilia-run-add], .editor-shell-inspector [data-vigilia-run-remove], .editor-shell-inspector [data-vigilia-chart-binding-remove], .editor-shell-inspector [data-vigilia-crop], .editor-shell-inspector [data-vigilia-crop-aspect], .editor-shell-inspector [data-vigilia-crop-apply], .editor-shell-inspector [data-vigilia-crop-cancel], .editor-shell-inspector [data-vigilia-reveal-type-presets]", text: "margin: 3px" },
       { site: ".editor-shell-inspector [data-vigilia-run-add], .editor-shell-inspector [data-vigilia-run-remove], .editor-shell-inspector [data-vigilia-chart-binding-remove], .editor-shell-inspector [data-vigilia-crop], .editor-shell-inspector [data-vigilia-crop-aspect], .editor-shell-inspector [data-vigilia-crop-apply], .editor-shell-inspector [data-vigilia-crop-cancel], .editor-shell-inspector [data-vigilia-reveal-type-presets]", text: "margin: 3px", occurrence: 1 },
-      { site: '.editor-shell :is( button, input, select, [tabindex]:not(:where([role="tabpanel"])) ):focus-visible', text: '2px' },
+      { site: ".editor-shell :is( button, input, select, [tabindex]:not(:where([role=\"tabpanel\"])) ):focus-visible", text: "2px" },
       { site: ".editor-shell-dialog", text: "720px" },
       { site: ".editor-shell-dialog", text: "340px" },
       { site: ".editor-shell-dialog", text: "560px" },
@@ -182,7 +182,7 @@ export const CEILINGS = [
       { site: ".editor-shell-identity-dot", text: "7px" },
       { site: ".editor-shell-identity-dot", text: "7px", occurrence: 1 },
       { site: ".editor-shell-view-readout", text: "56px" },
-      { site: "[hidden]", text: "980px" },
+      { site: "@media (max-width: 980px)", text: "980px" },
       { site: ".editor-shell-body", text: "280px" },
     ],
   },
@@ -274,19 +274,43 @@ function declarationProperty(text, index) {
 }
 
 /**
- * The prelude of the block the literal at `index` sits in — its selector, in a
- * `.css`. It is what identifies *where* a declaration is, so an exemption keyed
- * on it cannot be inherited by a second rule that happens to write the same
- * text; a line number would identify it too, and would move under every
- * unrelated edit above it. Walked the way `declarationProperty` walks, and over
- * the scanned text, so a comment before a selector is already blanked to spaces.
+ * The prelude of the *smallest block that contains* `index` — its selector, in a
+ * `.css`, and the at-rule's own prelude for a literal in one, which is where a
+ * media query's px lives (`@media (max-width: 980px)`, not the `[hidden] {` block
+ * above it). It is what identifies *where* a declaration is, so an exemption
+ * keyed on it cannot be inherited by a second rule that happens to write the same
+ * text — and a block inserted above it does not move the key, which is the reason
+ * it is not a line number.
+ *
+ * The span of a block runs from the end of the previous block or statement (its
+ * prelude's first character) to its own `}`, so the innermost containing block is
+ * well defined whether the literal is in a body or in a prelude. Walked over the
+ * scanned text, so a comment before a selector is already blanked to spaces.
+ * `""` for a literal outside every block, which is why `CEILINGS` refuses to
+ * record an entry with an empty site.
  */
 function siteOf(text, index) {
-  const open = text.lastIndexOf("{", index);
-  if (open === -1) return "";
-  const start =
-    Math.max(text.lastIndexOf("}", open), text.lastIndexOf("{", open - 1), text.lastIndexOf(";", open)) + 1;
-  return text.slice(start, open).replace(/\s+/g, " ").trim();
+  let from = 0;
+  const open = [];
+  for (let i = 0; i < text.length; i += 1) {
+    const ch = text[i];
+    if (ch === "{") {
+      open.push([from, i]);
+      from = i + 1;
+    } else if (ch === "}") {
+      // Blocks close innermost first, so the first containing span to close *is*
+      // the smallest one; an outer block's span also contains the index, and a
+      // sibling's has already been passed.
+      const span = open.pop();
+      if (span !== undefined && index > span[0] && index < i) {
+        return text.slice(span[0], span[1]).replace(/\s+/g, " ").trim();
+      }
+      from = i + 1;
+    } else if (ch === ";") {
+      from = i + 1;
+    }
+  }
+  return "";
 }
 
 function position(text, index) {
@@ -434,19 +458,32 @@ export function ceilingExcess(relPath, source, designLanguagePx = [], ceiling = 
  *
  * `sources` is `[relPath, source]` pairs — everything the run reads, the gated
  * list *and* the ceilings' paths, because a value consumed only by a ceiling file
- * is still consumed.
+ * is still consumed. A pair whose `source` is not a string is a read that failed,
+ * and it makes the union a subset of what the run reads: `46`'s only consumer is
+ * `editor-shell.css`, so a transient `ENOENT` on that file would report `46` as an
+ * entry with no consumer and the message says to drop it — a deleted load-bearing
+ * entry, which is worse than a rule that did not run. Nothing is reported instead;
+ * `unread` is returned so the caller prints the rule as *not checked*.
+ *
+ * Returns `{ unconsumed, unread }`: `unconsumed` is empty whenever `unread` is.
  */
 export function unconsumedPx(designLanguagePx, sources) {
+  const unread = [];
   const written = new Set();
   for (const [relPath, source] of sources) {
-    const text = scannable(String(source ?? ""), String(relPath ?? ""));
+    if (typeof source !== "string") {
+      unread.push(String(relPath ?? ""));
+      continue;
+    }
+    const text = scannable(source, String(relPath ?? ""));
     const definitions = definitionSpans(text);
     for (const match of text.matchAll(PX)) {
       if (definitions.some(([from, to]) => match.index >= from && match.index < to)) continue;
       written.add(Number(match[1]));
     }
   }
-  return [...designLanguagePx].filter((value) => !written.has(value));
+  if (unread.length > 0) return { unconsumed: [], unread };
+  return { unconsumed: [...designLanguagePx].filter((value) => !written.has(value)), unread };
 }
 
 /**
@@ -540,6 +577,25 @@ function selfTest() {
       1,
       { line: 3 },
     ],
+    // The site is the smallest block *containing* the literal. A px in an at-rule
+    // prelude belongs to that at-rule and not to the block above it, and an
+    // unrelated block inserted before it must not move the key — the second case
+    // is the one the first cannot see, because a key read off the preceding `{`
+    // would name `[hidden]` there and `.vg-probe-between` here.
+    [
+      "a prelude literal's site is its at-rule's prelude",
+      "a.css",
+      "[hidden] { display: none; }\n@media (max-width: 980px) {\n  .x { color: var(--a); }\n}",
+      1,
+      { site: "@media (max-width: 980px)" },
+    ],
+    [
+      "a prelude literal's site survives a block inserted above it",
+      "a.css",
+      "[hidden] { display: none; }\n.vg-probe-between { color: var(--a); }\n@media (max-width: 980px) {\n  .x { color: var(--a); }\n}",
+      1,
+      { site: "@media (max-width: 980px)" },
+    ],
   ];
 
   let failed = 0;
@@ -552,8 +608,10 @@ function selfTest() {
     const found = check(path, source, options.designLanguagePx ?? []);
     report(
       name,
-      found.length === expected && (options.line === undefined || found[0]?.line === options.line),
-      `expected ${expected} violation(s)${options.line === undefined ? "" : ` on line ${options.line}`}, got ${found.length} on ${found.map((v) => v.line).join(",") || "no line"}`,
+      found.length === expected &&
+        (options.line === undefined || found[0]?.line === options.line) &&
+        (options.site === undefined || found[0]?.site === options.site),
+      `expected ${expected} violation(s)${options.line === undefined ? "" : ` on line ${options.line}`}${options.site === undefined ? "" : ` at site ${JSON.stringify(options.site)}`}, got ${found.length} on ${found.map((v) => v.line).join(",") || "no line"}${options.site === undefined ? "" : ` at ${JSON.stringify(found[0]?.site)}`}`,
     );
   }
 
@@ -666,13 +724,20 @@ function selfTest() {
     // suppresses: a spacing utility is held to §3 anyway, and its value still
     // counts as written, which is why a §3 step in the list is not reported.
     ["a spacing utility still writes its value", [46], [["a.tsx", 'const s = "p-[46px]";']], []],
+    // A read that failed truncates the union, so the rule reports nothing and
+    // names the unread pair instead: `46`'s only consumer is the file that did
+    // not load, and the message below would otherwise say to drop it.
+    ["a source that could not be read leaves the rule unrun", [46], [["gone.css", null]], [], ["gone.css"]],
   ];
-  for (const [name, values, sources, expected] of allowlistCases) {
+  for (const [name, values, sources, expected, unread = []] of allowlistCases) {
     const got = unconsumedPx(values, sources);
     report(
       name,
-      got.length === expected.length && got.every((value, at) => value === expected[at]),
-      `expected [${expected.join(",")}] unconsumed, got [${got.join(",")}]`,
+      got.unconsumed.length === expected.length &&
+        got.unconsumed.every((value, at) => value === expected[at]) &&
+        got.unread.length === unread.length &&
+        got.unread.every((value, at) => value === unread[at]),
+      `expected [${expected.join(",")}] unconsumed / [${unread.join(",")}] unread, got [${got.unconsumed.join(",")}] / [${got.unread.join(",")}]`,
     );
   }
 
@@ -887,10 +952,16 @@ if (isEntryPoint) {
 
   // The tier-2 allowlist's own guard: an entry no file the run reads writes
   // permits nothing. It reads the same union the checker does — a value consumed
-  // only by a ceiling file is still consumed — and it runs after the ceilings, so
-  // an unreadable ceiling file is reported as that rather than as the entries its
-  // absence would orphan.
-  const unconsumed = unconsumedPx(designLanguagePx, [...sources].filter(([, source]) => typeof source === "string"));
+  // only by a ceiling file is still consumed — and a file the run could not read
+  // makes the union a subset, so the rule reports nothing and says so instead of
+  // reporting an entry whose only consumer is that file. The failed read has
+  // already reddened the run, so the skip cannot pass silently.
+  const { unconsumed, unread } = unconsumedPx(designLanguagePx, [...sources]);
+  if (unread.length > 0) {
+    console.error(
+      `design-tokens: the allowlist was NOT checked — ${unread.join(", ")} could not be read, so an entry whose only consumer that file is would report as one with no consumer here`,
+    );
+  }
   for (const value of unconsumed) {
     console.error(
       `design-tokens: designLanguagePx allows ${value}px, which no file this run reads writes — the entry has no consumer, so drop it`,
