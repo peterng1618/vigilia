@@ -71,7 +71,7 @@ two apart is the judgement the map cannot make for itself.
 | Object lock/unlock | `editor/src/object-lock-manager/` |
 | Scene undo/redo history | `editor/src/history-manager/` |
 | Editor session composition and disposal | `editor/src/editor-session.ts` |
-| **A globals edit reaching every consumer** — the receiver list each palette and type-preset setter and deleter repeats by hand, and which nothing owns | `editor/src/editor-session.ts` |
+| **A globals edit reaching every consumer** — the one `#globalsChanged` fan-out every palette and type-preset setter and deleter goes through, so a consumer cannot be dropped by not being edited | `editor/src/editor-session.ts` |
 | Product shortcuts | `editor/src/shortcut-manager/` |
 | Theme download | `editor/src/persistence-manager/` |
 | **The stored-document base and the library save protocol** — what a save carries, and the conflict it can be refused on | `editor/src/theme-library-manager/` |
