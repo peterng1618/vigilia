@@ -10,7 +10,7 @@ The finding's ruling, quoted verbatim (the row repeats its date prefix):
 
 > RULED 2026-10-12: RULED 2026-10-12 by the user: SPEC IT NOW. The one acquire-hold-plan-verify protocol implemented twice along the movement-versus-scale axis is specified before any re-shape, so the axis that duplicated is settled on paper -- spacing and projection preserved -- rather than discovered while moving 30 non-test files, four of them past the 800-line stop. The spec names which sub-domains are genuinely separate and which protocol is shared, and the re-shape lands from it.
 
-Scope: describe the shared protocol, its variation points, separate spacing and projection domains, preservation proof and re-shape cost. No product changes, tests, new dependency or implementation plan in this task. Source evidence and corrected historical cites will be completed below before linking the document from the register.
+Scope: describe the shared protocol, its variation points, separate spacing and projection domains, preservation proof and re-shape cost. No product changes, tests, new dependency or implementation plan in this task. Source evidence and corrected historical cites are below, and the document is linked from `vg-240`'s row.
 
 ## One acquire-hold-plan-verify protocol
 
@@ -98,9 +98,9 @@ counterpart:
 | `scale-projection.ts` | 726 |
 | **total** | **1,711** |
 
-Neither imports either runtime; only the family resolver and controllers import them.
+Neither imports either runtime: each is imported within its own family, by that family's resolver, controllers and sibling modules.
 The shared protocol never needs to enter them. Spacing's interval identity and
-projection's canonical values stay domain-owned payloads (section 3).
+projection's canonical values stay domain-owned payloads (the axis question).
 
 ### The duplicated halves — the movement-versus-scale axis
 
@@ -149,7 +149,7 @@ a review of the diff.
 | Proof | File | Reaches |
 |---|---|---|
 | Direct unit | `spacing.test.ts` | `calculateHorizontalSpacing` — exact position under a fractional shift, gap equal to the displayed distance, central guides from real bounds, primary/secondary intervals, reference-context switch |
-| Integration | `movement-snapping-resolver.test.ts` | `resolveMovementPlan` over `useForSpacing` fixtures — spacing hold, re-plan per pointer step, release |
+| Integration | `movement-snapping-resolver.test.ts` | `resolveMovementSnapPlan` (the resolver function, not the runtime method) over `useForSpacing` fixtures — spacing hold, re-plan per pointer step, release |
 | jsdom driver | `spacing-hold.dom.test.ts` | `createSnapManager` reaching an equal-spacing hold |
 | Browser | `tests/e2e/snapping.spec.ts` — `moving spacing reaches equal gaps` | the real editor host and canvas |
 
@@ -185,7 +185,7 @@ Sequence:
 
 1. **Add the shared core first**, in its own new file (working name
    `verified-snap-session.ts`, settled at implementation): the states, transitions,
-   identity tokens, duplicate cache and pending-plan replacement of section 1, plus the
+   identity tokens, duplicate cache and pending-plan replacement of the protocol section, plus the
    single acquisition/release/spacing-release/verification threshold policy both
    factories compute today. Pure addition — no existing file grows.
 2. **Re-point the two runtime facades** (`movement-snapping-runtime.ts` 308,
@@ -196,7 +196,7 @@ Sequence:
    into the session and its adapters, leaving each resolver its own geometry solver.
    These are the two files the re-shape actually shrinks; each must reach 800 lines or
    fewer before the re-shape is done.
-4. **Touch neither spacing nor projection.** They sit off the move path (section 4). If
+4. **Touch neither spacing nor projection.** They sit off the move path (the sub-domain boundary). If
    the shared session needs a spacing interval identity, the movement adapter supplies
    it; no `spacing.ts` edit is part of this design.
 
@@ -218,7 +218,7 @@ exists to shrink.
 
 **Cost.** No new dependency; one new source file enters the `snap-manager/` census. The
 work is a move plus adapter types, and the only real risk is a lost variation point —
-which section 5's unchanged suites and the browser spec exist to catch.
+which the preservation section's unchanged suites and the browser spec exist to catch.
 
 ## Open questions for owner review
 
