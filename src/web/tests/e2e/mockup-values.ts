@@ -209,7 +209,7 @@ type Declaration = {
   readonly value: string;
   /** 1-based line in the drawing's text. For an inline declaration it is the
    *  line the `style` attribute's value starts on; for a `<style>` rule it is
-   *  the rule's own line, which is also the line of the block's first rule. */
+   *  the line the rule's **selector** starts on. */
   readonly line: number;
 };
 
@@ -266,8 +266,19 @@ function declarations(mockupHtml: string): Declaration[] {
     const contentStart = (block.index ?? 0) + blockText.indexOf(css);
     for (const rule of blanked.matchAll(/([^{}]+)\{([^{}]*)\}/g)) {
       const pairs_ = pairs(rule[2] ?? "");
-      const line = lineOf(mockupHtml, contentStart + (rule.index ?? 0));
-      for (const selector of (rule[1] ?? "").split(",")) {
+      const head = rule[1] ?? "";
+      // The **selector's** line, not the match's. `[^{}]+` is greedy, so a match
+      // begins at the previous rule's closing brace: reading `rule.index` alone
+      // reports a rule on the line the one before it ended, which is how a
+      // declaration in a 2,500-line stylesheet got reported 22 lines above
+      // itself. Trimming the lead whitespace lands on the selector.
+      const line = lineOf(
+        mockupHtml,
+        contentStart +
+          (rule.index ?? 0) +
+          (head.length - head.trimStart().length),
+      );
+      for (const selector of head.split(",")) {
         const owner = selector.trim();
         if (owner === "") continue;
         for (const pair of pairs_) {
