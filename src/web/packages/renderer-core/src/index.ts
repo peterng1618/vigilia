@@ -90,6 +90,10 @@ export {
   computeComposition,
   defaultPieSettings,
 } from "./charts/pie.js";
+export {
+  carriedPaintFor,
+  seriesPaintFor,
+} from "./charts/series-paint.js";
 export type {
   ChartPaintFieldDescriptor,
   SettingsFieldDescriptor,
@@ -110,10 +114,6 @@ export {
   removeSetting,
   writeSetting,
 } from "./charts/settings-path.js";
-export {
-  carriedPaintFor,
-  seriesPaintFor,
-} from "./charts/series-paint.js";
 export type {
   EventSourceLike,
   LiveSourceHandle,
@@ -180,7 +180,6 @@ export {
   isMeasurementSystem,
   MEASUREMENT_SYSTEMS,
 } from "./scene/measurement.js";
-export type { SceneHandle } from "./scene/scene-handle.js";
 export type {
   ChartPlanContext,
   PlanBox,
@@ -203,6 +202,7 @@ export {
   resolveStyleValue,
   resolveTextSegments,
 } from "./scene/plan.js";
+export type { SceneHandle } from "./scene/scene-handle.js";
 export type { AssetResolver, AssetResolverOptions } from "./theme/assets.js";
 export {
   createAssetResolver,
@@ -281,8 +281,6 @@ export type {
   FabricThemeEnvelopeInput,
 } from "./theme/fabric-envelope.js";
 export { SUPPORTED_SCHEMA_VERSION } from "./theme/fabric-envelope.js";
-export type { PaletteTokenOption } from "./theme/palette-tokens.js";
-export { paletteTokenOptions } from "./theme/palette-tokens.js";
 export type { FabricEnvelopeValidationResult } from "./theme/fabric-envelope-validate.js";
 export { validateFabricThemeEnvelope } from "./theme/fabric-envelope-validate.js";
 export type { GlassTreatment } from "./theme/glass.js";
@@ -313,6 +311,8 @@ export {
   objectName,
   VIGILIA_NAME_PROPERTY,
 } from "./theme/object-name.js";
+export type { PaletteTokenOption } from "./theme/palette-tokens.js";
+export { paletteTokenOptions } from "./theme/palette-tokens.js";
 export type { WidgetIssue } from "./theme/widget.js";
 export { createWidgetIdAllocator } from "./theme/widget.js";
 export type {

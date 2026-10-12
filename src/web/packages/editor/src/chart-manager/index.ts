@@ -1,9 +1,9 @@
 import {
   type Binding,
   buildChartPlan,
-  carriedPaintFor,
   type ChartContent,
   type ChartFamily,
+  carriedPaintFor,
   type FabricGlobals,
   reassignChartPaintReferences,
   type SampleSource,

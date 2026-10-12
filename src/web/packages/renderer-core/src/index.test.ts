@@ -23,6 +23,8 @@ describe("the legacy DOM mount and the clamp are gone", () => {
   });
 
   it("keeps no scene/mount module", () => {
-    expect(() => readFileSync(resolve(here, "scene/mount.ts"), "utf8")).toThrow();
+    expect(() =>
+      readFileSync(resolve(here, "scene/mount.ts"), "utf8"),
+    ).toThrow();
   });
 });
