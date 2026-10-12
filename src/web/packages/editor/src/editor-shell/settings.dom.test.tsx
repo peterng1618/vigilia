@@ -14,6 +14,7 @@ import {
   ShortcutManager,
 } from "../shortcut-manager/index.js";
 import { uiCopy } from "../ui-copy.js";
+import { createEditorShellBridge } from "./bridge.js";
 import {
   DEFAULT_SHELL_PALETTE,
   prefersDarkAppearance,
@@ -22,7 +23,6 @@ import {
   type ShellPalette,
   shellPalettes,
 } from "./palette.js";
-import { createEditorShellBridge } from "./bridge.js";
 import { RAIL_SLOTS, Rail, type RailSlot } from "./rail.js";
 import { Settings, versionFacts } from "./settings.js";
 

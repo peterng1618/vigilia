@@ -743,7 +743,9 @@ describe("the selection inspector", () => {
     rect.set({ opacity: 0.5 });
     const { host, history, editor } = setup(rect);
     // The control the author is holding, bound to `rect` at its revision.
-    const held = host.querySelector<HTMLInputElement>("[data-vigilia-opacity]")!;
+    const held = host.querySelector<HTMLInputElement>(
+      "[data-vigilia-opacity]",
+    )!;
     const other = new Rect({ left: 0, top: 0, width: 10, height: 10 });
     other.set({ opacity: 0.5 });
     const handlerFor = (name: string): (() => void) => {
