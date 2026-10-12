@@ -39,6 +39,13 @@
  * expected placement is read from the spec, never invented here, for the same
  * reason the range is a constant rather than read from DESIGN.md.
  *
+ * The path is checked for **equality**, not as a prefix, and the mapping therefore
+ * names the `###` a marker actually sits under (`§6` → `### Icons`). A prefix test
+ * admitted a marker mapped at a bare `##` anywhere beneath it, so `§7` could drift
+ * off the top of `## Layout` down to `### The rail` and still pass `--cite`. Only
+ * an exact path rejects that without also rejecting the legitimate case — `§6`
+ * and `§7.1`–`§7.8` sit under a subsection of their mapped `##` by design.
+ *
  * That fourth rule fails closed on the two edits that would otherwise slip a
  * marker out of it. A number the mapping has no row for is a finding, not an
  * exemption — deleting a row must not silently de-check its marker — and a mapped
@@ -339,6 +346,16 @@ function headingOccurrences(design) {
 const describePath = (path) =>
   path.length === 0 ? "no `##` heading" : path.map((h) => `\`${h}\``).join(" → ");
 
+/**
+ * The marker's heading path *is* the mapped one — heading for heading, no shorter
+ * and no longer. Equality, not a prefix: a prefix let a marker mapped at a bare
+ * `##` sit under any `###` beneath it (`vg-356`), which is the drift the exact
+ * path rejects.
+ */
+const samePath = (path, expected) =>
+  path.length === expected.length &&
+  expected.every((heading, i) => path[i] === heading);
+
 /** The heading path a marker's row names. A sub-number (`§7.3`) inherits `§7`'s. */
 function expectedPath(mapping, number) {
   return mapping.get(number) ?? mapping.get(number.split(".")[0]);
@@ -457,7 +474,7 @@ export function checkCitations(read, opts = {}) {
         });
         continue;
       }
-      if (expected.every((heading, i) => path[i] === heading)) continue;
+      if (samePath(path, expected)) continue;
       entries.push({
         what: `§${number}`,
         reason: `\`§${number}\` sits under ${describePath(path)} (DESIGN.md:${line}), but its section mapping names ${describePath(expected)}`,
@@ -563,7 +580,8 @@ function selfTest() {
   cite("a moved marker fails", { design: "## Colors\n\n<!-- §1 -->\n", citations: ["§1"], mapping }, { numbers: ["1"], uncitedOk: [] }, ["§1"], "sits under");
   cite("a marker in its mapped heading passes", { design: "## Colors\n\n<!-- §4 -->\n", citations: ["§4"], mapping }, { numbers: ["4"], uncitedOk: [] }, []);
   cite("a mapped `###` passes only where the mapping says", { design: "## Layout\n\n### The scales\n\n<!-- §3 -->\n", citations: ["§3"], mapping }, { numbers: ["3"], uncitedOk: [] }, []);
-  cite("a parent `##` mapping admits a marker under its `###`", { design: "## Layout\n\n### The header\n\n<!-- §7.1 -->\n", citations: ["§7.1"], mapping }, { numbers: ["7.1"], uncitedOk: [] }, []);
+  cite("a marker mapped at a `##` no longer drifts into a `###` beneath it", { design: "## Layout\n\n### The header\n\n<!-- §7.1 -->\n", citations: ["§7.1"], mapping }, { numbers: ["7.1"], uncitedOk: [] }, ["§7.1"], "sits under");
+  cite("a marker mapped at its exact `###` passes", { design: "## Layout\n\n### The header\n\n<!-- §7.1 -->\n", citations: ["§7.1"], mapping: new Map([["7.1", ["## Layout", "### The header"]]]) }, { numbers: ["7.1"], uncitedOk: [] }, []);
   cite("no mapping means no placement finding", { design: "## Colors\n\n<!-- §1 -->\n", citations: ["§1"] }, { numbers: ["1"], uncitedOk: [] }, []);
   cite("a number with no mapping row fails rather than going unchecked", { design: "## Colors\n\n<!-- §4 -->\n\n## Copy\n\n<!-- §9 -->\n", citations: ["§4", "§9"], mapping }, { numbers: ["4", "9"], uncitedOk: [] }, ["§9"], "no row in the spec's section mapping");
   cite("an exempt number with no mapping row is not a finding", { design: "## Colors\n\n<!-- §4 -->\n\n## Copy\n\n<!-- §9 -->\n", citations: ["§4", "§9"], mapping }, { numbers: ["4", "9"], uncitedOk: [], mappingExempt: [{ number: "9", reason: "fixture" }] }, []);

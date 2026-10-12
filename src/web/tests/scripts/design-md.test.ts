@@ -140,11 +140,25 @@ it("fails a marker moved under a heading its mapping does not name", () => {
   expect(findings[0]?.why).toContain("sits under");
 });
 
-it("lets a marker sit under a sub-heading the mapped `##` encloses", () => {
+it("fails a marker that drifts into a `###` the mapped `##` does not name", () => {
+  // vg-356: the mapping names `## Layout` for §7, so §7.1 parked under
+  // `### The header` is a drift the exact-path check rejects. A prefix test
+  // admitted it.
   const read = fixture({
     design: "## Layout\n\n### The header\n\n<!-- §7.1 -->\n",
     citations: ["§7.1"],
     mapping: new Map([["7", ["## Layout"]]]),
+  });
+  const findings = checkCitations(read, { numbers: ["7.1"], uncitedOk: [] });
+  expect(findings.map((f) => f.what)).toEqual(["§7.1"]);
+  expect(findings[0]?.why).toContain("sits under");
+});
+
+it("passes a marker under the exact `###` its mapping names", () => {
+  const read = fixture({
+    design: "## Layout\n\n### The header\n\n<!-- §7.1 -->\n",
+    citations: ["§7.1"],
+    mapping: new Map([["7.1", ["## Layout", "### The header"]]]),
   });
   expect(checkCitations(read, { numbers: ["7.1"], uncitedOk: [] })).toEqual([]);
 });

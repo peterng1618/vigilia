@@ -174,11 +174,20 @@ Do's and Don'ts, where an unknown heading is preserved and costs no warning.
 | `## Overview` | `§1` | the one rule; what the language is for | §1 |
 | `## Colors` | `§4` | the palette tables, the roles, per-theme resolution | §4 |
 | `## Typography` | `§2` | the type scale and its use | §2 |
-| `## Layout` | `§7` | the shell's layout: header, rail, panes, inspector, stage, status bar, overflow and motion, the reference's character | §7, §7.1–7.8 |
+| `## Layout` | `§7` | the shell's layout: header, rail, panes, inspector, stage, status bar, overflow and motion, the reference's character | §7 |
 | `## Layout` → `### The scales` | `§3` | the spacing steps and the row rhythms | §3 (spacing) |
+| `## Layout` → `### The header` | `§7.1` | the header | §7.1 |
+| `## Layout` → `### The rail` | `§7.2` | the rail | §7.2 |
+| `## Layout` → `### Panes` | `§7.3` | the panes | §7.3 |
+| `## Layout` → `### The inspector` | `§7.4` | the inspector | §7.4 |
+| `## Layout` → `### The stage` | `§7.5` | the stage | §7.5 |
+| `## Layout` → `### The status bar` | `§7.6` | the status bar | §7.6 |
+| `## Layout` → `### Overflow, scrolling and motion` | `§7.7` | overflow, scrolling and motion | §7.7 |
+| `## Layout` → `### Preserve the reference's character` | `§7.8` | the reference's character | §7.8 |
 | `## Elevation & Depth` | *no marker* | the elevation ladder — prose, because the format has no token group for it | §3 (elevation) |
 | `## Shapes` | *no marker* | the radius scale, and what is square by rule | §3 (radius) |
-| `## Components` | `§5`, `§6` | the control set, states, sizes, editing and recovery, keyboard and target size; the icon vocabulary | §5, §6 |
+| `## Components` | `§5` | the control set, states, sizes, editing and recovery, keyboard and target size | §5 |
+| `## Components` → `### Icons` | `§6` | the icon vocabulary | §6 |
 | `## Do's and Don'ts` | `§10` | what is forbidden, and why | §10 |
 | `## Density and disclosure` | `§8` | density rules | §8 |
 | `## Copy` | `§9` | the copy rules | §9 |
@@ -190,6 +199,13 @@ every `§3` citation in the codebase means — and the radius and elevation halv
 carry named headings (`### Radius`, `### Elevation`) with no marker of their own.
 A `§3` citation still resolves; a citation that means the radius scale says
 `DESIGN.md → Shapes`, which is where a reader finds it.
+
+Each row names the **exact** heading a marker sits under, down to the `###` where
+there is one, because `design:md --cite` checks a marker's heading path for
+equality rather than as a prefix. A row that stopped at a bare `##` would legalise
+a marker drifting into any subsection beneath it; naming the subsection is what
+lets the check reject the drift without rejecting `§6` under `### Icons` or the
+`§7.1`–`§7.8` under their own subsections.
 
 Sub-structure survives as **named `###` headings** — `### Pane widths` under
 Layout, `### The three state controls` under Components — so the marker keeps its
