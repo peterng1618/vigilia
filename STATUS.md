@@ -35,17 +35,17 @@ ledger did.
 
 ## Last completed change
 
-- **Task 1.1 is complete and re-reviewed: the ruling mechanism and the four-session agenda stand up** — `rule-row.mjs` appends one `RULED <date>:` sentence to a row's `detail` and nothing else, `state` included, and proves the composed file before writing so a damaged write is impossible rather than reported.
-- **The refusal is the marker `RULED <YYYY-MM-DD>`, not the word** — the review showed the word-wide form would have blocked a real ruling mid-session on `vg-225`, and the row it left exposed (`vg-040`) is now asked; enumerating all 219 live rows, the narrow check catches every one that carries a ruling, so nothing slips past it.
-- **`vg-040` is asked rather than skipped** — its own `RULED: draft in browser storage` is conditional on the asset-ownership spec, which `triage-B1.md:21` records as `backlog` — so the 104 classify as **12 answered · 8 deferred · 84 to ask**, Session 4 to 30 ASK and 1 answered.
-- **Plan §2 carries both corrections** (`vg-225` and `vg-040`) and states that the marker, not the word, is what counts as ruled — that sentence is what a session reads before deciding to skip a row.
+- **Task 2.1 closes four browser rows, and one of them was a real product bug** — `vg-346` and `vg-347` got the cases no test had (a rotation gesture, and a paused clock proved to draw one chart twice), and `vg-233`'s resize landed 62.4 units from the drag because `adoptResizedBox` stored a rendered-size value where `authored-box.ts` seeds the authored one; one line of product code fixed it.
+- **The fix round red-proved the case, which is what made the bug visible** — round 1 found `vg-233` closed `verified` on assertions that could not fail (`toBeGreaterThan`, `not.toBe`, and a round-trip comparison whose two sides moved together); the case now asserts the landing measurement and fails with `Received: 62.4156816858345` when the defect is restored.
+- **The product change is carried on a checked blast radius** — it agrees with the unscaled seed, no other writer of the text box passes a scaled number, and only the new case resizes a scaled text; documents saved in the short window before the fix keep the rendered-size box, deliberately unmigrated in a pre-release tree.
+- **Two Minors are parked for the next register-bearing commit** — `RUN-RED.json` is not a run of the committed blob (a uniform 15-line offset, substance intact), and two rows state the drag's shortfall as the request times `scaleX` where the landing is what that product gives.
 
 ## Next
 
 1. **The drain's four ruling sessions are the user's to answer, and Phase 2 runs beside them** — the agenda classifies all 104 decision rows (**12 answered, 8 deferred to the browser follow-up, 84 to ask**); Session 1's eight questions across D1 and D2 are put in chat and unanswered, so the next artifact from them is rulings, not a dispatch.
 2. **Closing the sixteenth acceptance item is the redesign's only remaining work** — it needs the user's ruling on the settings frame's width and on which role a palette preview bar depicts, the work on the other `fix` differences, and a decision on `vg-390`.
 3. **A row whose defect does not reproduce is a finding about the row, not a licence to close it** — Phase 0's 22 closed rows each name which of §3.1's four shapes it is, because a rebuilt surface reported as a fix is the error the shapes exist to prevent.
-4. **Phase 2 runs its 49 rows one suite at a time, and Task 2.1 is in flight** — the four rows needing a new case (`vg-346`, `vg-347`, `vg-233`, `vg-370`), with Tasks 2.2–2.5 following; they share the fixed preview ports, so two suites at once produce false results rather than slow ones.
+4. **Phase 2 is on Task 2.2, which verifies four fixes that had already landed** — `vg-359`, `vg-360`, `vg-361` (re-aimed by `8a86b2b0`) and `vg-362` (the two-state census read, `48ada839`), so it rebuilds, runs each case alone and closes the rows; Tasks 2.3–2.5 follow, one suite at a time on the fixed preview ports.
 5. **`vg-386` is a sweep of its own** — the tier's definition is undecided (76 on the plan's literal wording, 133 on the code's own intent) and 133 candidates have never been adjudicated; **none of the 133 is proven dead and none may be deleted on classification alone**.
 
 ## Blockers / unverified
