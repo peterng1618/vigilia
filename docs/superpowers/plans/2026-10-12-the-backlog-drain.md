@@ -582,11 +582,11 @@ Rows: `vg-285`, `vg-296`, `vg-313`, `vg-314`, `vg-325`, `vg-326` — the five of
 
 **Outcome:** the three gate owners each read what their rows claim, and the register's own checker reads the archive.
 
-**Owners:** `scripts/backlog-check.mjs` (`vg-166`, `vg-199`, `vg-329`), `scripts/design-tokens.mjs` (`vg-327` ×2, `vg-332`, `vg-340`), `package.json` scripts and `.github/workflows/ci.yml` (`vg-323`, `vg-384`, `vg-385`).
+**Owners:** `scripts/backlog-check.mjs` (`vg-166`, `vg-199`, `vg-329`), `scripts/design-tokens.mjs` (`vg-327` ×2, `vg-332`, `vg-340`), `package.json` scripts and `.github/workflows/ci.yml` (`vg-323`, `vg-384`, `vg-385`). [Annotated 2026-10-13: Task 4.4 closed **ten** rows — these nine plus `vg-282`, whose two `test:*` scripts and `slow-suites` job Task 4.3 built and which no task in this plan owned the close of. The ruling, its reason and its cost are in the ledger.]
 
 **Constraints:** gated on D1 — its ruling decides *whether* these gates count, not what they read. One seat per file. A gate whose self-test is not chained into `gates:self-test` is not built yet.
 
-**Acceptance:** the seven verdict cells that end in a gate but sit outside §5.1's rule table are not lost here — `vg-313`, `vg-316` (W1), `vg-317` (W7), `vg-333`, `vg-335`, `vg-338`, `vg-339` (W6) land with their owners and are named in the report so nothing goes missing.
+**Acceptance:** the seven verdict cells that end in a gate but sit outside §5.1's rule table are not lost here — `vg-313`, `vg-316` (W1), `vg-317` (W7), `vg-333`, `vg-335`, `vg-338`, `vg-339` (W6) land with their owners and are named in the report so nothing goes missing. [Annotated 2026-10-13: Task 4.4 named all seven in its report with the phase that owns each — `vg-313`/`vg-316` Phase 2, `vg-317` Phase 8, `vg-333`/`vg-335`/`vg-338`/`vg-339` Phase 7 — and closed the phase's rows in `9739f6e6`: ten `verified`, each `check` proved against `scripts/backlog-check.mjs` before the move.]
 
 **Failure modes:** widening a checker until it reports a count, not a set; a gate that runs green because its self-test was never chained in.
 
