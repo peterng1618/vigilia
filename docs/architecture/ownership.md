@@ -60,10 +60,10 @@ two apart is the judgement the map cannot make for itself.
 
 | Concept | Owner |
 |---|---|
-| Canvas mount/disposal, viewport fitting, artboard paint | `editor/src/editor-shell.ts` |
+| Canvas mount/disposal, artboard paint | `editor/src/editor-shell.ts` |
 | **Which displays a theme can be seen through** — their ids and aspect ratios, and the screen rect one becomes | `editor/src/display-lens.ts` |
 | The stage camera — zoom, pan, framing, and the lens it frames through | `editor/src/viewport-manager/` |
-| **The editor's own fit** — the author framed to the display's screen rather than to the host: its contain scale and centring, deliberately a different rule from the renderer-core transform, and the one place its refusals live | `editor/src/viewport-manager/` |
+| **The editor's own fit** — the author framed to the display's screen rather than to the host: its own containment and centring, a rule of its own rather than the renderer-core one, and the one place its refusals live | `editor/src/viewport-manager/` |
 | `EditorInteraction` contract consumed by product panels | `editor/src/editor-interaction.ts` |
 | Text creation | `editor/src/text-manager/` |
 | Image import | `editor/src/image-manager/` |
@@ -71,34 +71,43 @@ two apart is the judgement the map cannot make for itself.
 | Object lock/unlock | `editor/src/object-lock-manager/` |
 | Scene undo/redo history | `editor/src/history-manager/` |
 | Editor session composition and disposal | `editor/src/editor-session.ts` |
+| **A globals edit reaching every consumer** — the receiver list each palette and type-preset setter and deleter repeats by hand, and which nothing owns | `editor/src/editor-session.ts` |
 | Product shortcuts | `editor/src/shortcut-manager/` |
 | Theme download | `editor/src/persistence-manager/` |
 | **The stored-document base and the library save protocol** — what a save carries, and the conflict it can be refused on | `editor/src/theme-library-manager/` |
 | Chart selection/settings/bindings — projected by `panel.ts`, rendered by `chart-fields.tsx`, written by `index.ts` | `editor/src/chart-manager/` |
-| **The plan-and-player artboard-to-viewport transform** — contain/cover scale, letterbox bars, cover crop; the editor's own fit is a different rule, above | `renderer-core/src/artboard.ts` |
+| **The plan-and-player artboard-to-viewport transform** — contain/cover scale, letterbox bars, cover crop; the editor's case is a separate rule, above | `renderer-core/src/artboard.ts` |
 | Theme metadata, artboard size/preview fit/paint/media — **the authoring controls** | `editor/src/artboard-panel.ts` |
 | Semantic layer projection | `editor/src/editor-shell/layer-tree.ts` |
 | **Which object and arrange actions exist** — their ids, labels, icons and eligibility | `editor/src/object-actions.ts` |
+| **Which of a manager's refusals a menu advertises** — eligibility as the hand-kept agreement with each manager's own refusal, which nothing checks | `editor/src/object-actions.ts` |
 | **The chrome glyph vocabulary** — the one icon family, the one weight rule, and the named glyphs the shell and the panes draw | `editor/src/editor-shell/icons.ts` |
 | Applying an arrange action to a multi-selection | `editor/src/arrange.ts` |
 | Palette-token authoring and reference reassignment | `editor/src/palette-manager/` |
 | **Listing the document's tokens by name** — one function in the token owner, each caller passing its own filter, and the raw ref returned only for a token the author deleted | `editor/src/palette-manager/` |
 | New-object defaults (text, charts, shapes) and the shape list | `editor/src/new-object-defaults.ts` |
+| **The card units a document can be built from, and what they are called** — the card vocabulary and its names | `editor/src/card-library.ts` (`CARD_LIBRARY`) |
 | The Add panel's construction actions | `editor/src/new-object-panel.ts` |
 | Shape material fields (fill, stroke, border, shadow, radius) and each shape's own geometry | `editor/src/selection-inspector/panel.ts` |
+| **Which sections a selection gets** — the per-kind questions and the order they are asked in, total over every selection kind by construction | `editor/src/selection-inspector/per-kind-column.ts` |
+| **The refusal a document edit earns** — stale, locked, unknown or invalid, decided before anything is written | `editor/src/selection-inspector/view.ts` (`editRefusal`) |
 | Frosted-glass control (enable, blur radius) | `editor/src/selection-inspector/glass.ts` |
 | Glass lifecycle re-resolve, asked for by that control | `editor/src/editor-shell.ts` (`EditorShell.refreshGlass`) |
+| **Which bindings resolve** — the ones whose source has left the document, dropped on load | `editor/src/editor-shell.ts` (`dropDanglingBindings`) |
 | Type-preset authoring and reference reassignment | `editor/src/type-preset-manager/` |
 | Open-package asset bytes and controls | `editor/src/asset-manager/` (`index.ts` bytes), `editor/src/panes/add/file-section.tsx` (the pane) |
+| **Whether an asset is still referenced** — the reference that decides a deleted asset can go | `editor/src/asset-manager/index.ts` (`assetReferencedBy`) |
+| **Shared colour parsing** — hex, rgba and hsva conversion, and the refusal that returns `undefined` for a value that is not a colour | `editor/src/components/ui/colour-maths.ts` |
 | Editor runtime binding refresh | `editor/src/live-runtime.ts` |
 | v2 parsing/file boundary | `editor/src/persist.ts` |
 | Structured editor diagnostics | `editor/src/error-manager/` |
-| Selection and rotation handle styling | `editor/src/controls-manager/` |
+| Selection and rotation handle styling, and what its own handles write — a Line's four scalars (`x1`/`y1`/`x2`/`y2`) with the Shift-snap constraint, and the authored text-box height | `editor/src/controls-manager/` |
 | Active-object and selection deletion | `editor/src/deletion-manager/` |
 | OS clipboard copy/cut/paste/duplicate | `editor/src/clipboard-manager/` |
 | Group and ungroup | `editor/src/grouping-manager/` |
+| **Entered-group reachability** — the `selectable`/`evented` a group writes on every object outside it, and the values it restores on exit | `editor/src/grouping-manager/` (`applyReachability`, `restoreReachability`) |
 | Canvas dock (former floating toolbar) | `editor/src/editor-shell/canvas-dock.tsx` |
-| Selection snapshot, the document's identity and dock eligibility | `editor/src/editor-shell/bridge.ts` |
+| Selection snapshot, the document's identity and dock eligibility, and the layer writes: `name`, `visible` and the lock, plus the reorder | `editor/src/editor-shell/bridge.ts` |
 | Selection geometry, appearance, runs and text layout | `editor/src/selection-inspector/` |
 | The Document pane's own resolved references | `editor/src/selection-inspector/style.ts` |
 | Authoring-time value-run tokens | `editor/src/run-placeholder.ts` |
@@ -155,6 +164,8 @@ tree, and `editor-shell/layer-panel.tsx` renders those rows.
 | Semantic sensor keys | `renderer-core/src/data/semantic-keys.ts` |
 | Chart setting descriptors | `renderer-core/src/charts/` |
 | **The one-paint-per-chart-series rule** — a series' paint array, and the rejection or repair of a wrong one, held at the descriptor owner rather than by one consumer | `renderer-core/src/charts/` |
+| **What a valid object name is** — the emptiness and length rule two rename writers must agree on | `renderer-core/src/theme/object-name.ts` (`isObjectName`) |
+| **The shape an asset path must have** — the pattern it must match, hand-spelled a second time outside this module | `renderer-core/src/theme/document.ts` (`ASSET_PATH_PATTERN`) |
 | Provider contract | `host/src/providers/provider.ts` |
 
 ### Fabric renderer
@@ -175,6 +186,8 @@ tree, and `editor-shell/layer-panel.tsx` renders those rows.
 | The authored text box (`vigiliaText.box`) — its two dimensions, and the one write every geometry surface shares | `scene-fabric/src/authored-box.ts` |
 | Image/SVG | `scene-fabric/src/fabric-image.ts` |
 | Paint conversion | `scene-fabric/src/paint.ts` |
+| **Which objects point at a token** — the walk a token delete and a swap both read | `scene-fabric/src/palette-references.ts` |
+| **What persists** — the scene properties a save carries, and which of an object's state is authored | `scene-fabric/src/persist.ts` (`SCENE_PERSISTED_PROPERTIES`) |
 | **Whether an object is locked** — the one `locked` predicate, a Fabric fact rather than lock policy, so no reader reaches up to a manager for it | `scene-fabric/src/` |
 | **Which collection holds an object** — the one owner-of/targets-of helper, replacing the four return contracts `layer-manager`, `deletion-manager`, `layer-tree` and `bridge` each spell themselves | `scene-fabric/src/` |
 
@@ -185,6 +198,7 @@ tree, and `editor-shell/layer-panel.tsx` renders those rows.
 | CLI flags | `host/src/cli/args.ts` |
 | HTTP routing | `host/src/server.ts` |
 | Declared package-asset HTTP reads | `host/src/server.ts` |
+| **The host's first-run page, and the route that serves it** — the page a fresh install reads | `host/src/server.ts` (`firstRunPage`) |
 | Static-path safety | `host/src/serve/static-path.ts` |
 | SSE connection/keep-latest | `host/src/transport/` |
 | Provider scheduling/failure isolation/fallback | `host/src/providers/registry.ts` |
@@ -211,8 +225,6 @@ tree, and `editor-shell/layer-panel.tsx` renders those rows.
 
 Establish one owner when these become active work:
 
-- shared colour parsing;
-- asset-path safety rules beyond current schema checks;
 - stale-reading visual treatment under Fabric.
 
 Legacy behaviour candidates such as advanced snapping remain review-only in the
