@@ -116,27 +116,69 @@ describe("§2's role on a dialog's own body", () => {
  *  otherwise find and accuse. */
 const cssNoComments = css.replace(/\/\*[\s\S]*?\*\//g, "");
 
-/** Every rule body whose *selector list contains* `selector` as one of its
- *  comma-separated parts.
- *
- *  `ruleBodies` above cannot answer this one: it anchors the whole selector at a
- *  line start, so a rule written as a list (`.a [role="menuitem"],\n.a
- *  [role="menuitemradio"] {`) is invisible to it — which is exactly the rule
- *  that has to be read here. */
-function bodiesFor(selector: string): string {
-  return [...cssNoComments.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
-    .filter(([, selectors]) =>
-      (selectors ?? "")
-        .split(",")
-        .map((one) => one.trim())
-        .includes(selector),
-    )
-    .map(([, , body]) => body ?? "")
-    .join("\n");
-}
-
 /** A declaration whose *property* is `color`, not `border-color`/`background-color`. */
 const PAINTS_COLOUR = /(?<![\w-])color\s*:/;
+
+/** §4's mark lands on a `<button>` (the dock, the pane footer) or on a menu item
+ *  (`[role="menuitem"]`, `[role="menuitemradio"]` — the canvas context menu). A
+ *  selector part is in that family when its **subject** compound is one of them:
+ *  the last combinator-separated step is a bare `button`, or carries the role
+ *  attribute, with any pseudo-class still attached (`button:hover`). Where the
+ *  part sits is irrelevant — `.editor-shell-rail button` and
+ *  `.editor-shell-dialog > button` are both in it. */
+const MARKABLE_CONTROL_SUBJECT =
+  /(?:^|[\s>+~])(?:button|\[role="menuitem"\]|\[role="menuitemradio"\])(?:[^\s,>+~]*)$/;
+
+/**
+ * Every colour-bearing rule in that family, as normalised selector parts.
+ *
+ * The failure message names what to do about a hit, because there are exactly
+ * two right answers: move the colour onto the surface's **container** (which the
+ * control inherits, and which the mark rule then outranks by applying directly to
+ * the control), or add the entry below with a reason.
+ */
+function colourBearingMarkableControls(): readonly string[] {
+  return [
+    ...new Set(
+      [...cssNoComments.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+        .filter(([, , body]) => PAINTS_COLOUR.test(body ?? ""))
+        .flatMap(([, selectors]) => (selectors ?? "").split(","))
+        .map((part) => part.trim().replace(/\s+/g, " "))
+        .filter((part) => MARKABLE_CONTROL_SUBJECT.test(part)),
+    ),
+  ].sort();
+}
+
+/**
+ * The colour-bearing rules in that family that are *allowed* to exist, each one a
+ * surface that renders no registry action — so no control carrying §4's mark is
+ * ever inside it, and its `color:` cannot beat the marker rule.
+ *
+ * Written out rather than counted, and checked one-directionally — every
+ * colour-bearing rule in the family has to appear here, but an entry whose rule
+ * stops declaring a colour does not fail, because that is a deletion and this
+ * guard is about colours arriving.
+ *
+ *  - `.editor-shell-menubar button` — the File/Edit menubar's entries.
+ *  - `.editor-shell-rail button` — the rail's pane slots.
+ *  - `.editor-shell-rail button[aria-pressed="true"]` — the selected slot.
+ *  - `.editor-shell-rail button.editor-shell-rail-settings` — the settings gear.
+ *  - `.editor-shell-dialog > button` — a dialog's own buttons (`?` sheet, theme
+ *    dialog), which are direct children of the dialog and no registry's.
+ *  - `.editor-shell-dialog > button:hover` — the same buttons on hover.
+ *
+ * Measured at `d9f81f1f` by parsing every rule body in the stylesheet, which is
+ * how this set was reproduced rather than copied: those six are the complete
+ * family.
+ */
+const MARKABLE_CONTROL_ALLOWLIST: readonly string[] = [
+  ".editor-shell-dialog > button",
+  ".editor-shell-dialog > button:hover",
+  ".editor-shell-menubar button",
+  ".editor-shell-rail button",
+  ".editor-shell-rail button.editor-shell-rail-settings",
+  '.editor-shell-rail button[aria-pressed="true"]',
+];
 
 describe("§4's destructive mark", () => {
   it("paints --hot from the shared marker, and from one rule that no surface scopes", () => {
@@ -165,26 +207,25 @@ describe("§4's destructive mark", () => {
         "surface outside that scope — a portalled popup — is left ordinary",
     ).not.toMatch(/\.editor-shell-|\[role=/);
 
-    // And no rule declares a colour **on the control** a mark lands on. A
-    // declaration there applies directly to the element, so it outranks a bare
-    // attribute by specificity — this file is unlayered, and the two surfaces
-    // each did it once: `color: inherit` on a menu item at (0,2,0), and
-    // `color: var(--shell-text)` on `.editor-shell-dock button` at (0,1,1). The
-    // first left the menu's Delete ordinary; the second did the same to the
-    // dock's the moment the mark's rule stopped carrying a dock qualifier.
-    // Inheritance never does this, which is why the colour now sits on each
-    // surface's *container*.
-    for (const selector of [
-      '.editor-shell-menu-popup [role="menuitem"]',
-      '.editor-shell-menu-popup [role="menuitemradio"]',
-      ".editor-shell-dock button",
-    ] as const) {
-      expect(
-        bodiesFor(selector),
-        `${selector} declares a colour on the control itself, which outranks the ` +
-          "bare `[data-vigilia-destructive]` selector — so the marked control " +
-          "paints the surface's colour instead of §4's `--hot`",
-      ).not.toMatch(PAINTS_COLOUR);
-    }
+    // And no rule may declare a colour **on a control a mark lands on**. A
+    // declaration there applies directly to the element, so it outranks the bare
+    // attribute by specificity — this file is unlayered. Both surfaces this fix
+    // changed did it once (`color: inherit` on a menu item at (0,2,0);
+    // `color: var(--shell-text)` on `.editor-shell-dock button` at (0,1,1)), and
+    // the footer — the third surface — was not covered here at all, which is how
+    // the same evasion landed green on the re-review's probe. An enumeration that
+    // gains one entry per regression is the thing that rots, so this asserts the
+    // whole family instead: every colour-bearing rule whose selector can select a
+    // `<button>` or a menu item must be written down below with a reason.
+    expect(
+      colourBearingMarkableControls().filter(
+        (part) => !MARKABLE_CONTROL_ALLOWLIST.includes(part),
+      ),
+      "a rule declares a colour on a control §4's mark can land on. A declaration " +
+        "there applies directly to the element, so it outranks the bare marker " +
+        "attribute by specificity and the destructive action paints ordinary. " +
+        "Here, the listed selectors are the ones not yet allowlisted below: move " +
+        "the colour onto the surface's container, or add the entry with a reason.",
+    ).toEqual([]);
   });
 });

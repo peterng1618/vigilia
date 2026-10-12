@@ -583,9 +583,12 @@ body,
      colour on the menu first, and on the dock the moment this rule stopped being
      dock-scoped. Inheritance never has that effect.
 
-   A blocked control never carries the mark: eligibility removes Delete before a
-   surface draws it, so §4's "a disabled destructive control stays `--faint`" is
-   not fought here. */
+   A blocked control never carries the mark here, so §4's "a disabled destructive
+   control stays `--faint`" is not fought by this rule. What holds that is **no
+   surface passes `disabled` or `refused` for a destructive action** — an
+   omission, not an invariant: nothing in the registry or these rules would stop
+   the next surface that renders a blocked Delete from marking it and painting it
+   `--hot` anyway. */
 [data-vigilia-destructive] {
   color: var(--hot);
 }

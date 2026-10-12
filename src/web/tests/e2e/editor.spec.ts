@@ -4518,18 +4518,28 @@ test.describe("Fabric editor route", () => {
       };
       const popup = document.querySelector('[aria-label="Canvas actions"]');
       const dock = document.querySelector("[data-vigilia-canvas-toolbar]");
+      const footer = document.querySelector("[data-vigilia-layer-actions]");
       return {
         menuDelete: popup === null ? null : colourOf(popup, "Delete"),
         menuDuplicate: popup === null ? null : colourOf(popup, "Duplicate"),
         dockDelete: dock === null ? null : colourOf(dock, "Delete"),
+        footerDelete: footer === null ? null : colourOf(footer, "Delete"),
       };
     });
     expect(colours.menuDelete, "the menu offers a Delete entry").not.toBeNull();
     expect(colours.dockDelete, "and the dock does too").not.toBeNull();
     expect(
+      colours.footerDelete,
+      "and the layer footer does too",
+    ).not.toBeNull();
+    expect(
       colours.menuDelete,
       "Delete is §4's `--hot` in the dock and ordinary in the canvas menu",
     ).toBe(colours.dockDelete);
+    expect(
+      colours.footerDelete,
+      "Delete is `--hot` in the layer footer and ordinary in the canvas menu",
+    ).toBe(colours.menuDelete);
     expect(
       colours.menuDelete,
       "and it is the mark that paints it, not the surface's own text colour",
