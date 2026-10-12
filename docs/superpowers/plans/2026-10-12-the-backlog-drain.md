@@ -800,6 +800,8 @@ Rows: `vg-365`, `vg-367`.
 - [ ] **Step 2: If any is open, leave `vg-364` open and say so** in the phase report. It closes with them, not before.
 - [ ] **Step 3: If all are closed, close it** with a `check` naming the manager protocol set, and commit.
 
+[Ruled 2026-10-13, before this task runs: **Step 2 fires, and three of the seven open rows do not close anywhere in this plan.** The span is 17 ids — measured as a **set**, because an earlier reading of the same span said 9 open / 8 closed and today's says 7 / 10, the movement being Task 6.5a's two. Task 6.3 and Task 6.5b close four (`vg-232`, `vg-239`, `vg-241`, `vg-242`); the three that remain are not this phase's to close — **`vg-240`** waits on the re-shape its protocol spec describes, since writing a spec closes nothing, and **`vg-234` and `vg-245`** are held open by Phase 3's own ruling, each carrying a reading that names what its map row discharged and what it did not. So this task is dispatched as a **reading, not a close**: its outcome is Step 2's stated reason, and `vg-364` carries into a later phase. The rule the reading obeys is D1's — a set of ids, never a count over lines.]
+
 ### Task 6.5: The eight rows D8 ruled and nothing lands
 
 **Files:**
