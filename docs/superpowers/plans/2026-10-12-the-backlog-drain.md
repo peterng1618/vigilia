@@ -457,6 +457,13 @@ Rows: `vg-285`, `vg-296`, `vg-313`, `vg-314`, `vg-325`, `vg-326` — the five of
 
 ### Task 2.4: The remaining suites
 
+> **Split by the controller, 2026-10-12, along the group boundary Step 4 already commits by.** Two implementers died
+> on an API stall before the mitigation (long commands in the background) was adopted, and this task is the largest
+> in the phase — 23 rows over 16 suites, whose diff would be one review package too big to read. It runs as **2.4a**,
+> the twelve rows whose triage cells are B1's and B2's, and **2.4b**, the eleven whose cells are B3's through B6's.
+> The two halves are file-disjoint. Steps 1–4 below apply to each half; the ruling that matters is unchanged: a row
+> closes only on evidence that could have failed.
+
 **Files:**
 - Test: the specs the triage tables name for each remaining row — `editor.spec.ts`, `editor-clip.spec.ts`, `editor-display.spec.ts`, `editor-context-menu.spec.ts`, `inspector-sections.spec.ts`, `composition-panel.spec.ts`, `clip-parity.spec.ts`, `glass-circle-parity.spec.ts`, `host-media.spec.ts`, `host-player.spec.ts`, `host-settings.spec.ts`, `keyboard.spec.ts`, `publish-header.spec.ts`, `publish-loop.spec.ts`, `snapping.spec.ts`, `author-journey-rebuild.spec.ts` and `reference-theme.spec.ts`
 
