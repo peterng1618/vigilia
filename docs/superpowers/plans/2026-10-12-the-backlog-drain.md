@@ -526,7 +526,7 @@ Rows: `vg-285`, `vg-296`, `vg-313`, `vg-314`, `vg-325`, `vg-326` — the five of
 
 **Constraints:** one file, one seat — the map is the instrument the census reads, so two seats editing it disagree by construction. Entries are derived from `manager-census.md` and the live modules, never from the rows' own prose (§8.11's path drift is what prose costs).
 
-**Acceptance:** `npm run ownership:sweep` and `npm run ownership:overlap` run clean over the new rows; each of the 10 rows is closed against the map row that now exists.
+**Acceptance:** `npm run ownership:sweep` and `npm run ownership:overlap` run clean over the new rows; each of the 10 rows is closed against the map row that now exists. [Annotated 2026-10-13 at the phase's close: **eight** of the ten closed — `vg-162`, `vg-236`, `vg-237`, `vg-238`, `vg-243`, `vg-244`, `vg-246`, `vg-369` — and `vg-234` and `vg-245` stay `open`, each with a reading naming what the map row discharged and what it did not: a refused rename is still silent at `editor-shell/bridge.ts:341-352` and reported at `selection-inspector/view.ts:440-450`, and nothing yet compares the schema's two hand-spelled asset-path patterns (`theme-document.schema.json:113`, `:123`) to `ASSET_PATH_PATTERN`. Both closable rows would have been false `verified`s; the ruling and its evidence are in the plan's ledger under "Task 3.3: complete, and Phase 3 closes".]
 
 **Failure modes:** a row closed against a map row that says something *nearby* — the false-landed shape the checker exists to catch.
 
