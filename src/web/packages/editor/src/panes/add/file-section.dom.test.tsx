@@ -496,6 +496,30 @@ describe("the Add pane's file section", () => {
     expect(saveState.mock.calls.length - afterImport).toBe(1);
   });
 
+  it("swaps the chosen asset's bytes without declaring a new one or re-pointing a placed object at one", async () => {
+    // `vg-154`'s remaining work is "re-point the *selected object* at a new
+    // asset" — the opposite shape to this. A placed object bound to the id
+    // keeps that id, because `replace` swaps bytes in place rather than
+    // declaring a second asset and moving the object onto it.
+    const image = new FabricImage(document.createElement("img"), {
+      id: "image-1",
+    });
+    setObjectAssetReference(image, { assetId: "logo", kind: "image" });
+    const { host, manager, hydrate } = await mount(() => false, [image]);
+
+    await importFile(host, IMAGE_FILE);
+    await replaceFile(host, "logo", OTHER_IMAGE_FILE);
+
+    // The id and path survive and no second declaration appears, so no object
+    // was pointed at a new asset — the bytes under the same id are all that
+    // moved.
+    expect(
+      manager.declarations.map((asset) => [asset.id, asset.path]),
+    ).toEqual([["logo", "assets/logo.png"]]);
+    // The re-point that did happen is through the id, on every bound object.
+    expect(hydrate).toHaveBeenCalledTimes(1);
+  });
+
   it("replaces the asset the author chose, not the one a rebuild happened to leave selected", async () => {
     const { host, replace } = await mount();
 
