@@ -1134,7 +1134,9 @@ test.describe("Fabric editor route", () => {
     // centre click therefore leaves the group instead of selecting the row,
     // and the part row this test needs next is gone. An author aiming at a row
     // aims at its name for the same reason.
-    await page.locator('[data-vigilia-layer="group-cpu-card"]').click({ position: { x: 30, y: 13 } });
+    await page
+      .locator('[data-vigilia-layer="group-cpu-card"]')
+      .click({ position: { x: 30, y: 13 } });
     await expect.poll(() => activeId(page)).toBe("group-cpu-card");
     await page.locator('[data-vigilia-layer="cpu-card"]').click();
     await expect.poll(() => activeId(page)).toBe("cpu-card");
