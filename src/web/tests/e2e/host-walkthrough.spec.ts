@@ -301,18 +301,6 @@ async function keyboardReach(page: Page): Promise<readonly Focus[]> {
 }
 
 /**
- * Tabs until the focused element satisfies `matches`, and answers with it.
- *
- * The helper later tasks reach a control with. It asks what a control *is*
- * rather than where it sits in an order the shell is free to change, and it
- * fails saying how many presses it spent rather than running out of a loop.
- *
- * Re-entrant for the reason {@link keyboardReach} is: it clears the marks of
- * whatever walk came before it, so a `tabUntil` after a `keyboardReach` — which
- * is how a later task asserts that a region can be left as well as reached — is
- * not tripped by the earlier walk's notes.
- */
-/**
  * Selects a layer with the keyboard alone, so the inspector has content.
  *
  * The census's fourth region is the inspector, and §13.1's requirement is a
@@ -361,8 +349,9 @@ async function selectInPaneByKeyboard(page: Page): Promise<void> {
 const FILE_MENU_NAME = "File";
 const NEW_FROM_STARTER_ROW = "New from starter";
 const STARTER_DOCUMENT_NAME = "System dashboard";
-/** Bounds for the two searches, which report a count rather than hang. */
-const EDIT_MENU_BOUND = 12;
+/** Bounds for the two searches — the File menu's rows and the rail's slots —
+ *  which report a count rather than hang. */
+const FILE_MENU_BOUND = 12;
 const RAIL_BOUND = 40;
 
 /** Creates a document through the shell's own File menu, with no pointer.
@@ -387,7 +376,7 @@ async function openDocumentByKeyboard(page: Page): Promise<void> {
     (focus) => focus.tag === "button" && focus.name === FILE_MENU_NAME,
   );
   await page.keyboard.press("ArrowDown");
-  for (let press = 0; press < EDIT_MENU_BOUND; press++) {
+  for (let press = 0; press < FILE_MENU_BOUND; press++) {
     const onRow = await page.evaluate(
       (wanted: string) =>
         (document.activeElement?.textContent ?? "").includes(wanted),
@@ -404,7 +393,7 @@ async function openDocumentByKeyboard(page: Page): Promise<void> {
     await page.keyboard.press("ArrowDown");
   }
   throw new Error(
-    `no menu row naming ${NEW_FROM_STARTER_ROW} in ${EDIT_MENU_BOUND} presses`,
+    `no menu row naming ${NEW_FROM_STARTER_ROW} in ${FILE_MENU_BOUND} presses`,
   );
 }
 
@@ -436,6 +425,18 @@ async function chooseRailPane(page: Page, name: string): Promise<void> {
   ).toHaveAttribute("aria-pressed", "true");
 }
 
+/**
+ * Tabs until the focused element satisfies `matches`, and answers with it.
+ *
+ * The helper later tasks reach a control with. It asks what a control *is*
+ * rather than where it sits in an order the shell is free to change, and it
+ * fails saying how many presses it spent rather than running out of a loop.
+ *
+ * Re-entrant for the reason {@link keyboardReach} is: it clears the marks of
+ * whatever walk came before it, so a `tabUntil` after a `keyboardReach` — which
+ * is how a later task asserts that a region can be left as well as reached — is
+ * not tripped by the earlier walk's notes.
+ */
 async function tabUntil(
   page: Page,
   matches: (focus: Focus) => boolean,
