@@ -63,11 +63,118 @@ This shares actual repeated orchestration, not all lines in two resolvers. The h
 
 ## Sub-domain boundary
 
-Pending census and owner verification.
+Census re-measured for this document at `17891681`, from
+`src/web/packages/editor/src/snap-manager/`:
+
+```
+find . -name '*.ts' ! -name '*.test.ts'                          # 30 files
+find . -name '*.ts' ! -name '*.test.ts' -exec cat {} + | wc -l   # 10,655 lines
+```
+
+`movement-snapping-core.test-utils.ts` (111 lines) is test furniture, so the shipped
+production set is **29 files / 10,544 lines** — which corrects the row's "~8,300
+non-test lines across eight files". The files fall into three groups, and only the
+middle one is the duplicated axis.
+
+### Separate sub-domains that stay separate
+
+**Spacing** — equal-gap intervals, chains and patterns. Its own algebra, with no scale
+counterpart:
+
+| File | Lines |
+|---|---|
+| `spacing.ts` | 1,301 |
+| `spacing-chains.ts` | 342 |
+| `movement-spacing-correction.ts` | 311 |
+| `movement-spacing-verification.ts` | 150 |
+| `spacing-patterns.ts` | 145 |
+| **total** | **2,249** |
+
+**Projection** — pointer-to-multiplier and value-to-edge geometry. Also its own:
+
+| File | Lines |
+|---|---|
+| `scaling/rectangular-scale-gesture-projection.ts` | 985 |
+| `scale-projection.ts` | 726 |
+| **total** | **1,711** |
+
+Neither imports either runtime; only the family resolver and controllers import them.
+The shared protocol never needs to enter them. Spacing's interval identity and
+projection's canonical values stay domain-owned payloads (section 3).
+
+### The duplicated halves — the movement-versus-scale axis
+
+| Protocol half | Movement | Lines | Scale | Lines |
+|---|---|---|---|---|
+| Resolver (geometry plus orchestration) | `movement-snapping-resolver.ts` | 1,452 | `scaling/scale-snapping-resolver.ts` | 1,509 |
+| Runtime (lifecycle facade) | `movement-snapping-runtime.ts` | 308 | `scaling/scale-snapping-runtime.ts` | 378 |
+| Candidate builder | `movement-snap-candidates.ts` | 195 | `scaling/scale-snap-candidates.ts` | 153 |
+| **total** | | **1,955** | | **2,040** |
+
+3,995 lines split down one axis. The resolvers carry both the shared orchestration and
+each family's own geometry, so folding the protocol removes the first and leaves the
+second.
+
+### Neither half — shared or one-sided
+
+**Shared, nothing to fold into a family:** `bounds.ts` 114, `constants.ts` 5,
+`distance.ts` 19, `excluded-objects.ts` 52, `guide-painting.ts` 114,
+`guide-renderer.ts` 168, `index.ts` 398, `selection-eligibility.ts` 27, `types.ts` 34
+— 931 lines.
+
+**Scale-only and real, with no movement counterpart:** `scaling/rectangular-scale-interaction.ts`
+323, `scaling/text-width-resize-controller.ts` 439, `scaling/text-width-resize-projection.ts`
+295, `scaling/scale-snapping-controller.ts` 285, `scaling/text-width-resize-step.ts` 119,
+`scaling/text-width-resize-measurer.ts` 109, `scaling/standard-scale-control.ts` 88
+— 1,658 lines.
+
+2,249 + 1,711 + 3,995 + 931 + 1,658 = 10,544, the production census.
 
 ## Preservation constraints and evidence
 
-Pending focused suite inspection; distinguish existing checks from missing preservation proof.
+**The constraint.** A re-shape may move orchestration, never geometry. Spacing and
+projection must produce identical decisions afterwards: the same positions, the same
+guides, the same interval and context selections, the same projections. A behaviour
+change in any of those is a different design, not this one.
+
+**How the re-shape's result is checked.** The suites named below run unchanged after the
+move; a re-shape is acceptable only while they pass with no edit to their expected
+values. A move that forces an assertion to change has changed behaviour and stops. Per
+the repo's red-proof rule, any new guard added during the move must fail when the moved
+behaviour is disabled before it is trusted. The evidence is these unchanged suites, not
+a review of the diff.
+
+### Spacing
+
+| Proof | File | Reaches |
+|---|---|---|
+| Direct unit | `spacing.test.ts` | `calculateHorizontalSpacing` — exact position under a fractional shift, gap equal to the displayed distance, central guides from real bounds, primary/secondary intervals, reference-context switch |
+| Integration | `movement-snapping-resolver.test.ts` | `resolveMovementPlan` over `useForSpacing` fixtures — spacing hold, re-plan per pointer step, release |
+| jsdom driver | `spacing-hold.dom.test.ts` | `createSnapManager` reaching an equal-spacing hold |
+| Browser | `tests/e2e/snapping.spec.ts` — `moving spacing reaches equal gaps` | the real editor host and canvas |
+
+**Missing.** No test imports `movement-spacing-correction.ts`,
+`movement-spacing-verification.ts`, `spacing-chains.ts` or `spacing-patterns.ts`
+directly. Their exported functions have no contract test of their own; they are pinned
+only through the movement resolver and the browser spec. A move that changes behaviour
+*inside* one of those four files is caught by a suite one level up, not at its own
+boundary.
+
+### Projection
+
+| Proof | File | Reaches |
+|---|---|---|
+| Direct unit | `scaling/scale-projection.test.ts` | `createScaleProjection`, `projectScaleEdgePositions`, `resolveScaleProjection`, `getScaleProjectionEdge`, `getScaleProjectionCorrectionMagnitude`, `resolveScaleSceneEdgeAxis`; plus the `scale snap candidates` cases |
+| Direct unit | `scaling/gesture-projection.test.ts` | `rectangular-scale-gesture-projection.ts` — the handle and rotation cases over mode multipliers, moving-edge resolution and pointer projection |
+| Browser | `tests/e2e/snapping.spec.ts` — `resizing geometry snaps to a guide` (shape, text, group) and the `text side handle` cases | real host resize gestures |
+
+**Missing.** No suite pins the numeric output of `text-width-resize-projection.ts`
+independently; it is reached only through `text-width-resize.dom.test.ts`'s
+`createSnapManager` driver. There is no golden or visual comparison for either family,
+and screenshots are evidence, not cross-platform goldens.
+
+**Both browser proofs are `isDesktopSurface`-gated**, so the real-host evidence does not
+run on non-desktop surfaces.
 
 ## Re-shape and cost
 
