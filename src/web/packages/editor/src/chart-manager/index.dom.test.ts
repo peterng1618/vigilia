@@ -1,6 +1,5 @@
 // @vitest-environment jsdom
 import { createDemoSource } from "@vigilia/fake-source";
-import type { Binding } from "@vigilia/renderer-core";
 import {
   defaultGaugeSettings,
   defaultLineSettings,
@@ -24,7 +23,7 @@ import {
   pressedLabel,
   segment,
 } from "./chart-stage.test-stage.js";
-import { ChartManager, carriedPaintFor } from "./index.js";
+import { ChartManager } from "./index.js";
 import { type ChartFieldTarget, chartContentView } from "./panel.js";
 
 /** The authored frame a new chart has to land inside, as the editor supplies it. */
@@ -115,139 +114,6 @@ describe("ChartManager", () => {
       manager.destroy();
     },
   );
-
-  it("keeps each series its own colour when a middle one is removed", () => {
-    // The per-series paint is a positional array sitting beside the bindings.
-    // Filtering the bindings without it slid every later series onto its
-    // neighbour's colour — silently, with nothing on screen that looked wrong.
-    // Measured on the reference trends chart: removing the middle of CPU/GPU/RAM
-    // left CPU on its blue and painted **RAM with the GPU's green**.
-    const settings = {
-      palette: [
-        { ref: "palette.cpu" },
-        { ref: "palette.gpu" },
-        { ref: "palette.ram" },
-      ],
-    } as unknown as Parameters<typeof carriedPaintFor>[1];
-    const cpu = { id: "b1", semanticKey: "cpu.load" };
-    const gpu = { id: "b2", semanticKey: "gpu.load" };
-    const ram = { id: "b3", semanticKey: "ram.used.percent" };
-    const paint = (
-      previous: readonly Binding[],
-      next: readonly Binding[],
-    ): unknown =>
-      (
-        carriedPaintFor("line", settings, previous, next) as {
-          palette: unknown;
-        }
-      ).palette;
-
-    // The middle one, where truncating from the end would leave cpu and gpu.
-    expect(paint([cpu, gpu, ram], [cpu, ram])).toEqual([
-      { ref: "palette.cpu" },
-      { ref: "palette.ram" },
-    ]);
-    // The last one, which truncation already got right.
-    expect(paint([cpu, gpu, ram], [cpu, gpu])).toEqual([
-      { ref: "palette.cpu" },
-      { ref: "palette.gpu" },
-    ]);
-    // Nothing removed: the settings come back untouched, so an unrelated edit
-    // does not rewrite a chart's paint.
-    expect(
-      carriedPaintFor("line", settings, [cpu, gpu, ram], [cpu, gpu, ram]),
-    ).toBe(settings);
-  });
-
-  it("keeps a series' paint when its key is repointed", () => {
-    // **Repointing a chart's key emptied its paint, and unmounted the editor.**
-    // The filter asked whether the *binding object* survived, but the panel
-    // hands over `{ ...binding, semanticKey }` — a fresh object for a binding
-    // nobody touched. So the one gesture every author makes on a chart reported
-    // every series removed: the paint array was emptied, `seriesPaintFor` grew
-    // it back by repeating `current.at(-1)` (which is `undefined`), and the
-    // document carried `palette: [null]`.
-    //
-    // `chartPaint` reads a non-record as "must reference a palette token", so
-    // the next `snapshot()` threw `Invalid Fabric theme` from inside React's
-    // `useSyncExternalStore` — a render-phase throw, which unmounts the shell.
-    // Measured: repointing the starter's own sparkline from `cpu.load` to
-    // `gpu.load` unmounted the editor in 200 ms, which is what
-    // `reference-theme.spec.ts:533` then waited 90 s for a save button to
-    // reappear inside.
-    const settings = {
-      palette: [{ ref: "palette.frostInk" }],
-    } as unknown as Parameters<typeof carriedPaintFor>[1];
-    const before = { id: "cpu-card-spark", semanticKey: "cpu.load" };
-    const after = { id: "cpu-card-spark", semanticKey: "gpu.load" };
-
-    // Same series, new key: the paint is untouched, by identity.
-    expect(carriedPaintFor("line", settings, [before], [after])).toBe(settings);
-
-    // The removed case this filter exists for still works, on `id` now.
-    expect(
-      (
-        carriedPaintFor(
-          "line",
-          {
-            palette: [{ ref: "palette.cpu" }, { ref: "palette.gpu" }],
-          } as unknown as Parameters<typeof carriedPaintFor>[1],
-          [
-            { id: "b1", semanticKey: "cpu.load" },
-            { id: "b2", semanticKey: "gpu.load" },
-          ],
-          [{ id: "b1", semanticKey: "gpu.temp" }],
-        ) as { palette: unknown }
-      ).palette,
-    ).toEqual([{ ref: "palette.cpu" }]);
-  });
-
-  it("keeps a chart's colour when a series is bound to it or unbound from it", () => {
-    // **Binding a series to a chart emptied its own property panel.** An author
-    // who bound a reading could not then choose the series colour: the panel went
-    // from `[stroke, palette.0]` to `[]`, measured in live DOM.
-    //
-    // The filter walked `previous` and kept only entries whose series survived,
-    // so an empty `previous` — binding the *first* series — kept nothing at all.
-    // Unbinding the last one emptied it from the other side. `seriesPaintFor`
-    // then regrew the empty array by repeating `current.at(-1)`, which is
-    // `undefined`, so the envelope carried `palette: [null]`: a paint entry that
-    // is not a record, which the validator refuses and no picker can render.
-    const line = (entries: readonly unknown[]) =>
-      ({ palette: entries }) as unknown as Parameters<
-        typeof carriedPaintFor
-      >[1];
-    const paletteOf = (settings: unknown): unknown =>
-      (settings as { palette: unknown }).palette;
-
-    // Binding the first series to a chart inserted from the Add pane.
-    expect(
-      paletteOf(
-        carriedPaintFor(
-          "line",
-          line([{ ref: "palette.series" }]),
-          [],
-          [{ id: "b1", semanticKey: "cpu.load" }],
-        ),
-      ),
-    ).toEqual([{ ref: "palette.series" }]);
-
-    // Unbinding the last one: the series is gone, but the slot it is chosen into
-    // is not, and `seriesPaintFor` still guarantees one.
-    expect(
-      paletteOf(
-        carriedPaintFor(
-          "line",
-          line([{ ref: "palette.cpu" }, { ref: "palette.gpu" }]),
-          [
-            { id: "b1", semanticKey: "cpu.load" },
-            { id: "b2", semanticKey: "gpu.load" },
-          ],
-          [],
-        ),
-      ),
-    ).toEqual([{ ref: "palette.cpu" }]);
-  });
 
   it("draws a chart it did not create once the document's bindings reach it", () => {
     // A chart's series *are* its bindings, and this manager held only what it

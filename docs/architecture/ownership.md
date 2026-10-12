@@ -159,7 +159,7 @@ adapter does not own catalog, preview or adoption semantics.
 | Wire protocol | `renderer-core/src/data/protocol.ts` |
 | Semantic sensor keys | `renderer-core/src/data/semantic-keys.ts` |
 | Chart setting descriptors | `renderer-core/src/charts/` |
-| **The one-paint-per-chart-series rule** — a series' paint array, and the rejection or repair of a wrong one, held at the descriptor owner rather than by one consumer | `renderer-core/src/charts/` |
+| **The one-paint-per-chart-series rule** — a series' paint array, and the rejection or repair of a wrong one, held at the descriptor owner rather than by one consumer | `renderer-core/src/charts/` (`seriesPaintFor`, `carriedPaintFor`) |
 | **What a valid object name is** — the emptiness and length rule two rename writers must agree on | `renderer-core/src/theme/object-name.ts` (`isObjectName`) |
 | **The shape an asset path must have** — the pattern it must match, hand-spelled a second time outside this module | `renderer-core/src/theme/document.ts` (`ASSET_PATH_PATTERN`) |
 | Provider contract | `host/src/providers/provider.ts` |

@@ -110,6 +110,10 @@ export {
   removeSetting,
   writeSetting,
 } from "./charts/settings-path.js";
+export {
+  carriedPaintFor,
+  seriesPaintFor,
+} from "./charts/series-paint.js";
 export type {
   EventSourceLike,
   LiveSourceHandle,
