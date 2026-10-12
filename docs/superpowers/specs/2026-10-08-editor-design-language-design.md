@@ -661,7 +661,7 @@ necessary, never sufficient; §13.1's interaction and stress proof also applies.
   forced-colours focus stays visible. Long names,
   unresolved references and 200% zoom leave controls and reasons reachable.
 
-  **Met at `c825ec75`** — `tests/e2e/host-walkthrough.spec.ts`'s *"§13.1's nine
+  **Met at `472ca4c5`** — `tests/e2e/host-walkthrough.spec.ts`'s *"§13.1's nine
   interactions in order, on the real host, and the original document comes
   back"* drives all nine interactions in §13.1's own order: a document created
   from the starter, a rail pane chosen, a selection made through Composition, a
@@ -675,9 +675,10 @@ necessary, never sufficient; §13.1's interaction and stress proof also applies.
   the Escape that dismisses Settings affects that one owner, and every region
   still has a reachable focus target. The check runs in the `desktop-host`
   project, which boots the real host through its own `webServer`; the whole
-  project was run at that commit (`--workers=1`: 47 expected, 1 skipped, 0
-  unexpected). This is the clause plan 6's ledger recorded as **NOT MET**, and it
-  is the last one keeping the redesign objective open. The contrast,
+  project was run at `c825ec75` (`--workers=1`: 47 expected, 1 skipped, 0
+  unexpected), whose other specs this fix round does not touch. This is the
+  clause plan 6's ledger recorded as **NOT MET**, and it is the last one keeping
+  the redesign objective open. The contrast,
   forced-colours, zoom and long-name half of the item is §13.1's mechanical gate
   above, recorded met in that same ledger rather than re-run here.
 
