@@ -733,7 +733,7 @@ A same-rules read over the 149 archived rows produces **14 problems** today, and
 
 **Constraints:** **gated on D8's rulings** (Task 1.4) — do not start before they exist. `vg-364` is a deadline, not a task: its subject is `vg-232`…`vg-248`, so it closes when they do.
 
-**Acceptance:** `vg-365` and `vg-367` each name one owner for their one concept in two modules; `vg-232` and `vg-239` land on the owner D8 named; `vg-364` closes only against the closed set.
+**Acceptance:** `vg-365` and `vg-367` each name one owner for their one concept in two modules; `vg-232` and `vg-239` land on the owner D8 named; `vg-364` closes only against the closed set. [Annotated 2026-10-13, when the phase opened, by two rulings. **(1) The eight ruled rows nothing lands.** D8's nine were consumed here as gates — Tasks 6.2, 6.3 and 6.4 name four rows between them (`vg-365`, `vg-367`, `vg-232`, `vg-239`) — and no task anywhere in this plan names `vg-104`, `vg-241`, `vg-242`, `vg-247`, `vg-248`, `vg-342`, `vg-343` or `vg-381`, each of which the user **ruled** on 2026-10-12 and each of which carries an implementation decision (*one function in the token owner*, *the repair moves to the chart descriptor owner*, *scene-fabric owns the fact*, *migrate the inspector's column to it*, *retire the mount path and the clamp together*, *remove the inert option*). A ruling no task implements is the residue the drain exists to end, so **Task 6.5 lands them**, and the phase's row count is 5 + 8. **(2) Task 6.2's `vg-365` half is ordered after `vg-247`.** That row's surviving half is `hasUnlockedSelection` stating ClipboardManager's and DeletionManager's refusal from outside both modules, and its own corrected text says the half *"defers to rank 1 and `vg-247`"*: the restatement is a `locked` test, so it can only ask the predicate once `vg-247`'s ruling has given that predicate a home. The dependency is real, not stylistic — a `vg-365` closer that lands first would re-spell the predicate a fourth time.]
 
 **Failure modes:** implementing a protocol re-shape D8 declined; closing `vg-364` while any of `vg-232`…`vg-248` is still open.
 
@@ -778,8 +778,8 @@ Rows: `vg-365`, `vg-367`.
 - Consumes: Tasks 6.1 and 6.2
 - Produces: two landed rows
 
-- [ ] **Step 1: `vg-232`** — implement the owner D8 named.
-- [ ] **Step 2: `vg-239`** — same, on its own manager.
+- [ ] **Step 1: `vg-232`** — implement the owner D8 named. [Ruled 2026-10-13: **no ruling names an owner for this row** — it is not one of D8's nine and carries no `RULED` marker, so "the owner D8 named" is a dangling reference in this plan. The owner comes from the row's own text, which is what this step means: `editor-session.ts` decides the receiver list inline, once per setter, and the lists disagree (`#setPalette` `:1145-1158` calls six owners, `#setTypes` `:1187-1194` three, `#deleteType` `:1219-1235` two). The fix is one receiver list the setters share rather than three spellings of it — the owner is `editor-session.ts` and no further ruling is owed.]
+- [ ] **Step 2: `vg-239`** — same, on its own manager. [Ruled 2026-10-13: the row states its own owner — *"OWNER: `editor-session.ts`. SEVERITY: low"* — because `#save` spells `(await this.#capture(options)) ?? this.#thumbnail` inline at `:723` while `#picture` (`:734-738`) is what `#writeLibrary` (`:802`) calls. The fix is to call `#picture` from `#save`; no further ruling is owed.]
 - [ ] **Step 3: Run the focused suites for both, then `npm run ownership:overlap`.**
 - [ ] **Step 4: Commit.**
 
@@ -795,6 +795,23 @@ Rows: `vg-365`, `vg-367`.
 - [ ] **Step 1: Check the 17 rows `vg-232`…`vg-248`** — every one closed, in either register file.
 - [ ] **Step 2: If any is open, leave `vg-364` open and say so** in the phase report. It closes with them, not before.
 - [ ] **Step 3: If all are closed, close it** with a `check` naming the manager protocol set, and commit.
+
+### Task 6.5: The eight rows D8 ruled and nothing lands
+
+**Files:**
+- Modify: whichever module each ruling names — `vg-104` the token owner, `vg-241` the editor's own fit, `vg-242` the chart descriptor owner, `vg-247` a lower shared module, `vg-248` scene-fabric, `vg-342` the inspector's per-kind column, `vg-343` the legacy mount path, `vg-381` `importImage`
+- Test: one focused case per ruling, in the module that gains the owner
+- Modify: `docs/product/backlog.jsonl` / `backlog-archive.jsonl` (eight rows)
+- Modify: `docs/architecture/ownership.md`, for the concepts whose owner moves
+
+**Interfaces:**
+- Consumes: the eight `RULED 2026-10-12` sentences in those rows' own `detail`
+- Produces: eight `verified` rows, each `check` naming the capability its ruling decided
+
+- [ ] **Step 1: `vg-247` and `vg-248` first, together** — both rulings put a Fabric fact in a lower shared module (*"a lower shared module owns the predicate"*, *"scene-fabric owns the fact"*), so they land as one change in that layer, and Task 6.2's `vg-365` half waits on the first of them.
+- [ ] **Step 2: Then the six whose owner is already named** — `vg-104` (one function in the token owner, each caller passing its own filter), `vg-381` (remove the inert `scale` option), `vg-239`'s sibling shape in `vg-343` (retire the mount path and the clamp in one commit), `vg-342` (re-point the per-kind column at `settingsField`), `vg-242` (move the repair to the chart descriptor owner), `vg-241` (the editor's contain rule gains the refusals `renderer-core` already has).
+- [ ] **Step 3: A row closes only on evidence that could have failed** — the case is written before the change, run red, then green; a removal (`vg-381`, `vg-343`) proves the removal by the case that would have caught the option being read.
+- [ ] **Step 4: Run `npm run ownership:sweep`, `npm run ownership:overlap`, `npm run typecheck`, then close the eight rows.** The map is corrected in the same commit wherever a ruling moved an owner, because a map that still names the old owner is the contradiction the next session reads.
 
 ---
 
