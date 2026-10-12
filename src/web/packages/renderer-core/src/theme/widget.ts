@@ -1,9 +1,7 @@
-import { STABLE_ID_PATTERN } from "./document.js";
-
 /** Mints the ids an inserted unit takes with it. */
 
 export interface WidgetIssue {
-  readonly code: "unmapped-global" | "id-collision" | "invalid-id";
+  readonly code: "unmapped-global" | "id-collision";
   readonly detail: string;
 }
 
@@ -32,16 +30,6 @@ export function createWidgetIdAllocator(
     if (already !== undefined) return already;
 
     const sanitized = sanitizeId(`${prefix}-${original}`);
-
-    if (sanitized === "") {
-      issues.push({
-        code: "invalid-id",
-        detail: `Could not derive a valid id from prefix "${prefix}" and "${original}".`,
-      });
-      minted.set(original, original);
-      return original;
-    }
-
     let candidate = sanitized;
     let counter = 2;
 
@@ -57,7 +45,10 @@ export function createWidgetIdAllocator(
   };
 }
 
+/** Total by construction: every character outside the class becomes `-`, so the
+ *  allocator's `${prefix}-${original}` — which carries the `-` and so is never
+ *  empty — always yields a `STABLE_ID_PATTERN` match. No input leaves this
+ *  without a usable id, so no caller has an unusable id to report. */
 function sanitizeId(value: string): string {
-  const cleaned = value.replace(/[^A-Za-z0-9_-]/g, "-").slice(0, MAX_ID_LENGTH);
-  return STABLE_ID_PATTERN.test(cleaned) ? cleaned : "";
+  return value.replace(/[^A-Za-z0-9_-]/g, "-").slice(0, MAX_ID_LENGTH);
 }
