@@ -698,6 +698,19 @@ test("a parity row names a property its drawing's selector declares, or says its
       mockupSilence: true,
     }),
   ).toThrow(/the marker is stale/);
+
+  // And a shorthand is not silence. The header's element declares `padding`,
+  // which sets `padding-top`: a value row reading that longhand throws naming the
+  // shorthand, so a marked row may not call it the drawing's silence. The two
+  // readings answer the same question and must not disagree.
+  expect(() =>
+    assertParityRowProperty(drawing, {
+      ...named(PARITY, "header — height"),
+      region: "header — a longhand its element sets by shorthand",
+      mockupProperty: "padding-top",
+      mockupSilence: true,
+    }),
+  ).toThrow(/shorthand that sets/);
 });
 
 test("every element a drawing copies from the original declares the original's treatment", () => {

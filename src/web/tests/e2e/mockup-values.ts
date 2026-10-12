@@ -744,6 +744,11 @@ export function assertParityRowProperty(
 ): void {
   const selector = row.mockupSelector ?? "";
   const declared = mockupDeclaredProperties(mockupHtml, selector);
+  // The set matches property names exactly, so a shorthand the drawing writes is
+  // invisible to it — and not to the value path, which refuses to read a longhand
+  // out of one. Ask it before either branch below can call the property absent, so
+  // the two readings of the same drawing cannot disagree about whether it is there.
+  mockupDeclaredOrNull(mockupHtml, selector, row.mockupProperty);
   if (declared.includes(row.mockupProperty)) {
     if (row.mockupSilence === true) {
       throw new Error(
