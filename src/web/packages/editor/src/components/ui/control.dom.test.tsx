@@ -1,5 +1,7 @@
 // @vitest-environment jsdom
 
+import { readFileSync } from "node:fs";
+import { fileURLToPath } from "node:url";
 import { RadioGroup } from "@base-ui/react/radio-group";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
@@ -732,6 +734,27 @@ it("takes the draft/commit keyboard decision from one owner, for the text and nu
       onCommit,
       `${field}: Escape then blur commits`,
     ).toHaveBeenCalledTimes(1);
+  }
+});
+
+it("keeps the composing guard in the one hook, not in a copy inside a control", () => {
+  // vg-203: the case above runs the shared contract, but both copies of the
+  // decision were *correct* when the row was filed, so a behavioural case cannot
+  // see a copy coming back — it passes against either shape. Reading the two
+  // controls is what sees it: neither may carry a composing ref or a composition
+  // handler of its own, and both must take the decision from `useDraftCommit`.
+  for (const file of ["control-text.tsx", "control-number.tsx"]) {
+    const source = readFileSync(
+      fileURLToPath(new URL(file, import.meta.url)),
+      "utf8",
+    );
+    expect(source, `${file}: calls the shared hook`).toMatch(/useDraftCommit/);
+    expect(source, `${file}: a composing ref of its own`).not.toMatch(
+      /\buseRef\b/,
+    );
+    expect(source, `${file}: a composition handler of its own`).not.toMatch(
+      /onComposition(Start|End)/,
+    );
   }
 });
 

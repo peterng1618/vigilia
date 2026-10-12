@@ -1475,6 +1475,11 @@ describe("Font favourite routes", () => {
   });
 });
 
+/** The published key a group's choice rides under — `system-disk` →
+ *  `systemDisk`, the `DeviceAssignment` convention the rest of the host reads. */
+const assignmentKey = (group: string): string =>
+  group.replace(/-([a-z])/g, (_, letter: string) => letter.toUpperCase());
+
 describe("A theme's own device answers", () => {
   let tmpDir: string;
   let hosted: ReturnType<typeof createHostServer>;
@@ -1656,18 +1661,26 @@ describe("A theme's own device answers", () => {
     // providers without this server changing. Driving the owner's own list is
     // what catches the drift a second copy of the union could not: a group the
     // host stopped picking leaves its chosen id out of the publish (vg-189).
+    //
+    // Read at each group's **own key** (`system-disk` → `systemDisk`, the
+    // payload's `DeviceAssignment` convention) rather than across every string
+    // value, so a payload that later carries another string field cannot fail
+    // this spuriously.
     const assigned = Object.fromEntries(
       ASSIGNABLE_GROUPS.map((group) => [group, `id-${group}`]),
     );
     await request(hosted.server, "PUT", "/api/devices", json({ assigned }));
 
     const published = pushed.at(-1) as Readonly<Record<string, unknown>>;
-    const chosen = Object.values(published).filter(
-      (value): value is string => typeof value === "string",
-    );
-    expect(new Set(chosen)).toEqual(
-      new Set(ASSIGNABLE_GROUPS.map((group) => `id-${group}`)),
-    );
+    // Read each group's **own key** (`system-disk` → `systemDisk`, the payload's
+    // `DeviceAssignment` convention), never the whole payload's keys or values: a
+    // payload that later carries another field must not fail this spuriously.
+    for (const group of ASSIGNABLE_GROUPS) {
+      expect(
+        published[assignmentKey(group)],
+        `${group} reaches its own key`,
+      ).toBe(`id-${group}`);
+    }
   });
 });
 
@@ -1676,12 +1689,19 @@ it("keeps the assignable-device vocabulary in the one module that owns it", asyn
   // server.ts must not spell the union a second time — a copy is a second owner,
   // and a group added to the real owner would silently never reach it. The
   // runtime is identical whether the union is derived or copied, so the source is
-  // the only place this can be seen: reverting the derivation fails here.
+  // the only place this can be seen.
+  //
+  // Resolving `pick`'s parameter **annotation** to the owner's own type, rather
+  // than matching a member list, is what catches a re-spelling of a different
+  // member set or order, or a local alias: only `AssignableGroup` passes.
   const source = await fs.readFile(
     new URL("./server.ts", import.meta.url),
     "utf8",
   );
-  expect(source).not.toMatch(/"gpu"\s*\|\s*"system-disk"/);
+  const annotation = source.match(
+    /const pick = \(group\s*:\s*([A-Za-z][\w.]*)\)/,
+  )?.[1];
+  expect(annotation).toBe("AssignableGroup");
 });
 
 describe("A bundle 404 names the cause it can prove", () => {
