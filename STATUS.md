@@ -34,9 +34,9 @@ satisfies every token in `DESIGN.md` and still does not look like the mockup.
 
 - **Task 5 assembles the walkthrough, and §13.1's instrument exists** — `host-walkthrough.spec.ts` now carries the nine interactions in §13.1's own order as one continuous real-host walk, ending at the round trip, with both of §13.1's other invariants swept in the state the walk leaves.
 - **The return trip is the library, and it is measured twice** — `openThemeFromLibrary` reaches `File → Open library` by keyboard and opens the `e2e-hosted` fixture the walk booted on; the identity chip names it and `serializedDocument` compares the whole persisted envelope with the opening read.
-- **History is read before the return, not after** — the counter watches the published canvas and opening a theme remounts the shell, so a later read would observe nothing; the walk asserts 0 entries across all nine interactions.
-- **Three red-proofs, each restored `cmp`-clean** — opening a different theme reddens the chip and, with the chip removed, the envelope comparison; a committed edit anywhere in the walk reddens the history leg at 1 against 0.
-- **Assembly exposed one harness bound, not a shell defect** — the rail search spends 53 presses getting back to Composition, so `RAIL_BOUND` takes the census's whole-walk bound and the walk declares itself slow.
+- **History is counted only where it can be observed, and the claim now says so** — the watcher attaches after the create and the counter is read before the return, because each remounts the shell and `editCommits` throws on a stale canvas, so the walk asserts 0 entries across interactions 2–8 and the annotation names that window rather than "the nine".
+- **The Escape sweep has a non-vacuity control, red-proved** — it reads `surroundingState` at a row id that is not the covered one and fails if they agree; the red-proof reddens on exactly that control, restored `cmp`-clean.
+- **Task 5's review was ✅/✅ with one Medium, and two fix rounds closed it** — the comment that stated the opposite of its helper's contract, the annotation's over-wide history claim, and the missing control landed at `472ca4c5`/`c767c7d6`/`bbda1816`; the spec's §13.1 annotation cites `472ca4c5`.
 
 ## Next
 
