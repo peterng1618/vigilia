@@ -681,7 +681,9 @@ describe("a chart that throws", () => {
 
 describe("a chart whose reading has not moved", () => {
   /** A manager over one gauge bound to one sensor, and the source it reads. */
-  function harness(bindings: Record<string, readonly { id: string; semanticKey: string }[]>) {
+  function harness(
+    bindings: Record<string, readonly { id: string; semanticKey: string }[]>,
+  ) {
     const chart = new VigiliaChart({
       id: "cpu",
       family: "gauge",
