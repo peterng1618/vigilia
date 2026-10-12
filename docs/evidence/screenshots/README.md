@@ -28,8 +28,8 @@ unaffected.
 
 Pick the project the capture's spec lives in: `desktop-chromium` for the
 preview-server captures (editor and player), `desktop-host` for the ones that
-drive the real host (the settings page), and `publish` for the ones that start
-their own host on their own port to prove the publish loop.
+drive the real host (the settings page), and `own-host` for the ones that start
+their own host on their own port (the publish loop and the invalid-theme boot).
 
 **The parity capture lives beside its drawing.** Spec §13's gate asks for the
 surfaces a plan changed to be photographed and placed beside the matching mockup,
