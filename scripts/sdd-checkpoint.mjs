@@ -53,6 +53,10 @@ const MAX_LEDGER_LINES = 40;
 // small; the full snapshot stays on disk for the controller to read.
 const MAX_CONTEXT_CHARS = 6000;
 
+// The exact form `STATUS.md`'s active-plan bullet must take. Declared above the
+// self-check so it is initialized before that block reads it (TZ).
+const ACTIVE_PLAN_MARKER = /^\s*[-*]\s*\*\*Active plan:\*\*\s*`([^`]+)`/m;
+
 const mode = process.argv[2];
 
 // Both silent-when-wrong behaviours get a runnable check: a task shown complete
@@ -141,10 +145,36 @@ if (mode === "--self-check") {
     expiredLines.some((line) => line.includes("EXPIRED")) &&
     !expiredLines.some((line) => line.includes("Task 6"));
 
+  // The marker form is machine-read, so the two silent failures it can hide — a
+  // reworded bullet and a name pointing at no plan — must both be reported
+  // (vg-378). A synthetic STATUS.md cannot catch the real file drifting, which is
+  // why `scripts/check-status.mjs` asserts against the real one; this proves the
+  // banner's own reporting does not degrade to "names no active plan".
+  const markerDir = mkdtempSync(join(tmpdir(), "sdd-marker-"));
+  const markerFile = join(markerDir, "STATUS.md");
+  writeFileSync(
+    markerFile,
+    "## Active work\n\n- **The active plan is [x](docs/x.md)** — reworded.\n",
+  );
+  const reworded = activePlan(markerDir).problem;
+  writeFileSync(
+    markerFile,
+    "## Active work\n\n- **Active plan:** `docs/superpowers/plans/does-not-exist.md`.\n",
+  );
+  const missing = activePlan(markerDir).problem;
+  const markerOk = reworded !== "" && missing !== "";
+
+  // An empty task read is stated as the missed convention, not as an absence.
+  const emptyLedger = join(markerDir, "empty.md");
+  writeFileSync(emptyLedger, "# ledger\n\nSome prose with no task lines.\n");
+  const emptyOk = statusSection(emptyLedger)[0].includes("no `Task <n>:");
+
   const checks = [
     ["statusLines", statusOk, JSON.stringify(got)],
     ["recoveryState", plansOk, JSON.stringify(shape)],
     ["expiredRecords", expiredOk, JSON.stringify(expiredLines)],
+    ["activePlanMarker", markerOk, JSON.stringify({ reworded, missing })],
+    ["statusSection", emptyOk, JSON.stringify(statusSection(emptyLedger))],
   ];
   const ok = checks.every(([, passed]) => passed);
   console.log(
@@ -244,19 +274,45 @@ function dispatchRecords(dir) {
   return { live: live.sort(byNewest), expired: expired.sort(byNewest) };
 }
 
-// The plan `STATUS.md` names, read from its own `**Active plan:**` marker. Only
-// the path is needed, so this is a scan for that marker rather than a parse of
-// the document; a missing or unreadable STATUS.md yields "" and every plan is
-// then treated as non-authoritative.
-function activePlanPath(root) {
+// The plan `STATUS.md` names, read from its own `- **Active plan:** \`<path>\``
+// marker. Only the path is needed, so this is a scan for that marker rather than
+// a parse of the document.
+//
+// The form is machine-read, so a reworded bullet fails silently: once the banner
+// reported a running plan as unowned and a live dispatch as stray, with nothing
+// red anywhere (vg-378). A marker that is present-but-mentioned or that names a
+// plan that does not exist is therefore returned as a `problem` for the banner
+// to state loudly, rather than degrading to "names no active plan".
+function activePlan(root) {
   let text;
   try {
     text = readFileSync(join(root, "STATUS.md"), "utf8");
   } catch {
-    return "";
+    return { path: "", problem: "" };
   }
-  const match = /^\s*[-*]\s*\*\*Active plan:\*\*\s*`([^`]+)`/m.exec(text);
-  return match ? match[1].trim() : "";
+  const match = ACTIVE_PLAN_MARKER.exec(text);
+  if (!match) {
+    // Absent is a real state between plans, so warn only when the file still
+    // plainly intends to name one.
+    return {
+      path: "",
+      problem: /active plan/i.test(text)
+        ? "STATUS.md mentions an active plan but no `- **Active plan:** `<path>`` marker matched — the bullet was reworded or the marker dropped"
+        : "",
+    };
+  }
+  const path = match[1].trim();
+  const slug = path.split("/").pop().replace(/\.md$/, "");
+  const exists =
+    existsSync(join(root, path)) ||
+    existsSync(join(root, "docs", "superpowers", "plans", `${slug}.md`)) ||
+    existsSync(join(sddRoot(root), slug, "progress.md"));
+  return {
+    path,
+    problem: exists
+      ? ""
+      : `STATUS.md names \`${path}\` but no plan file or \`.superpowers/sdd/${slug}/\` ledger exists`,
+  };
 }
 
 function readRecord(path) {
@@ -288,7 +344,7 @@ function recordLines(plan) {
 // exactly the state a resumed controller has to reconcile — a dispatch against
 // the wrong plan is a mistake worth surfacing, not evidence worth trusting.
 function recoveryState(root) {
-  const activePath = activePlanPath(root);
+  const { path: activePath, problem: activePathProblem } = activePlan(root);
   const named = activePath ? activePath.split("/").pop().replace(/\.md$/, "") : "";
   const active = [];
   const unowned = [];
@@ -298,7 +354,7 @@ function recoveryState(root) {
     const entry = { ...plan, records: live, expired, named: plan.slug === named };
     (entry.named ? active : unowned).push(entry);
   }
-  return { active, unowned, activePath };
+  return { active, unowned, activePath, activePathProblem };
 }
 
 // The ledger's own task-status section is the recovery-critical part; its
@@ -336,6 +392,17 @@ function statusLines(path) {
     .map(([, line]) => line);
 }
 
+// The banner's task list reads only `Task <n>: <state>` lines. A ledger whose
+// states are prose lists nothing, which reads as "no tasks" rather than "the
+// convention was missed" — so an empty read is stated as the convention, not as
+// an absence (vg-378).
+function statusSection(path) {
+  const lines = statusLines(path);
+  return lines.length > 0
+    ? lines.map((line) => `  ${line}`)
+    : ["  (no `Task <n>: <state>` lines — the banner reads only that form)"];
+}
+
 function snapshot(root, sessionId) {
   const parts = [
     `# Compaction checkpoint — session ${sessionId}`,
@@ -360,13 +427,12 @@ function snapshot(root, sessionId) {
     git(root, ["status", "--porcelain"]),
     "```",
   ];
-  const { active, unowned, activePath } = recoveryState(root);
-  parts.push(
-    "",
-    "## Active plan (STATUS.md)",
-    "",
-    activePath ? `STATUS.md names: ${activePath}` : "STATUS.md names no active plan",
-  );
+  const { active, unowned, activePath, activePathProblem } =
+    recoveryState(root);
+  let planLine = "STATUS.md names no active plan";
+  if (activePathProblem) planLine = `STATUS.md marker problem: ${activePathProblem}`;
+  else if (activePath) planLine = `STATUS.md names: ${activePath}`;
+  parts.push("", "## Active plan (STATUS.md)", "", planLine);
   if (active.length === 0) {
     parts.push("", "## In-flight dispatch", "", "(no live dispatch record)");
   }
@@ -430,7 +496,15 @@ function startContext(root) {
 function resumeContext(root, sessionId) {
   const dir = join(sddRoot(root), "checkpoint");
   const file = join(dir, `${sessionId}.md`);
-  const { active, unowned, activePath } = recoveryState(root);
+  const { active, unowned, activePath, activePathProblem } =
+    recoveryState(root);
+  let planLine =
+    "STATUS.md names no active plan — every dispatch record below is unreconciled.";
+  if (activePathProblem) {
+    planLine = `WARNING — ${activePathProblem}; every dispatch record below is unreconciled until the marker is fixed.`;
+  } else if (activePath) {
+    planLine = `Active plan per STATUS.md: ${activePath}`;
+  }
   const text = [
     "Context was compacted. Your recollection of in-flight work is gone; the files are not.",
     "Trust `git log` and the ledgers below over your own recollection of what you did.",
@@ -440,9 +514,7 @@ function resumeContext(root, sessionId) {
     `  head: ${git(root, ["log", "-1", "--format=%h %s"])}`,
     `  dirty: ${git(root, ["status", "--porcelain"]).split("\n").filter(Boolean).length} paths (read the snapshot before trusting any working-tree edit)`,
     "",
-    activePath
-      ? `Active plan per STATUS.md: ${activePath}`
-      : "STATUS.md names no active plan — every dispatch record below is unreconciled.",
+    planLine,
     "",
     "In-flight dispatch and task status:",
   ];
@@ -456,7 +528,7 @@ function resumeContext(root, sessionId) {
       ...recordLines(plan),
       "",
       "Tasks:",
-      ...statusLines(plan.ledger).map((line) => `  ${line}`),
+      ...statusSection(plan.ledger),
     );
   }
   if (unowned.length > 0) {

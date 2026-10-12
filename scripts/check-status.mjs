@@ -14,6 +14,7 @@
  * everything, so a rule that cannot fail is treated as a defect.
  */
 
+import { existsSync } from "node:fs";
 import { readFile } from "node:fs/promises";
 import { resolve } from "node:path";
 
@@ -33,6 +34,30 @@ const LIMITS = [
 ];
 
 const isBullet = (line) => /^\s*(?:[-*]|\d+\.)\s+/.test(line);
+
+// The active-plan bullet is machine-read by scripts/sdd-checkpoint.mjs (the
+// compaction banner), which degrades silently to "names no active plan" when the
+// form is not exact — once telling every resumed session its running plan was
+// unowned (vg-378). Asserting the real file here, next to the bullet-limit check
+// that already reads STATUS.md, removes the class rather than the instance.
+const ACTIVE_PLAN = /^\s*[-*]\s*\*\*Active plan:\*\*\s*`([^`]+)`/m;
+
+// `exists(path)` is injected so the rule is provable against a fixture rather
+// than only against the live tree.
+function checkActivePlan(text, exists) {
+  const match = ACTIVE_PLAN.exec(text);
+  if (!match) {
+    return /active plan/i.test(text)
+      ? [
+          "no `- **Active plan:** `<path>`` marker; the compaction banner reads only that form",
+        ]
+      : [];
+  }
+  const path = match[1].trim();
+  return exists(path)
+    ? []
+    : [`active plan \`${path}\` names no existing plan file or .superpowers/sdd ledger`];
+}
 
 function check(text) {
   const errors = [];
@@ -130,6 +155,21 @@ if (SELF_TEST) {
       `${ok ? "ok  " : "FAIL"} ${name}${ok ? "" : ` (expected ${expected ? "a failure" : "success"}, got ${found.length} error(s))`}`,
     );
   }
+  // The active-plan rule, proven against fixtures through an injected `exists`.
+  const markerCases = [
+    ["accepts a marker naming an existing plan", "- **Active plan:** `x.md`", () => true, 0],
+    ["rejects a reworded marker", "The active plan is [x](x.md).", () => true, 1],
+    ["rejects a marker naming no plan", "- **Active plan:** `gone.md`", () => false, 1],
+    ["accepts a file that names no plan", "No plans yet.", () => true, 0],
+  ];
+  for (const [name, input, exists, expected] of markerCases) {
+    const found = checkActivePlan(input, exists);
+    const ok = (found.length > 0) === (expected > 0);
+    if (!ok) failed += 1;
+    console.log(
+      `${ok ? "ok  " : "FAIL"} ${name}${ok ? "" : ` (expected ${expected ? "a failure" : "success"}, got ${found.length} error(s))`}`,
+    );
+  }
   if (failed > 0) {
     console.error(`check-status self-test: ${failed} case(s) wrong`);
     process.exit(1);
@@ -141,5 +181,14 @@ if (SELF_TEST) {
 const root = resolve(import.meta.dirname, "..");
 const text = await readFile(resolve(root, "STATUS.md"), "utf8");
 const errors = check(text);
+const planExists = (path) => {
+  const slug = path.split("/").pop().replace(/\.md$/, "");
+  return (
+    existsSync(resolve(root, path)) ||
+    existsSync(resolve(root, "docs/superpowers/plans", `${slug}.md`)) ||
+    existsSync(resolve(root, ".superpowers/sdd", slug, "progress.md"))
+  );
+};
+errors.push(...checkActivePlan(text, planExists));
 for (const error of errors) console.error(`STATUS.md: ${error}`);
 if (errors.length > 0) process.exit(1);
