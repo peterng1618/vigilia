@@ -200,6 +200,36 @@ test.describe("the header's publish surface", () => {
     await page.setViewportSize({ width: 390, height: 844 });
     await expect(facts.locator("code")).toBeVisible();
     await expect(qr).toBeVisible();
+
+    // **And it is inside the window rather than clipped by it.** What `vg-172`
+    // recorded at this width was a surface running past the right edge with
+    // nothing to scroll it back: a 327.3px publish root from left 232.5, its
+    // address code ending at 401.9 and its 135px QR beginning at 413.9, wholly
+    // unseen — and `documentElement.scrollWidth` equal to `innerWidth`, so the
+    // overflow was clipped rather than reachable. Measured on the built bundle
+    // at 390px with the LAN on (2026-10-12): the popup is 238.3px from 144 to
+    // 382.3, its code 156.8 to 369.5, the QR 156.8 to 291.8, and the document
+    // still reports no horizontal scroll. This asserts the claim rather than
+    // those numbers — a surface a person cannot reach is the defect, and a
+    // scrollbar would not be the repair.
+    const windowWidth = await page.evaluate(() => window.innerWidth);
+    for (const [what, where] of [
+      ["the publish surface", facts],
+      ["the address", facts.locator("code")],
+      ["the camera's code", qr],
+    ] as const) {
+      const box = await where.boundingBox();
+      expect(box, `${what} is rendered`).not.toBeNull();
+      expect(
+        (box?.x ?? 0) + (box?.width ?? 0),
+        `${what} ends inside the window rather than past it`,
+      ).toBeLessThanOrEqual(windowWidth);
+      expect(
+        box?.x ?? -1,
+        `${what} begins inside the window too`,
+      ).toBeGreaterThanOrEqual(0);
+    }
+
     await page.screenshot({
       path: "test-results/publish/header-390.png",
       fullPage: false,
