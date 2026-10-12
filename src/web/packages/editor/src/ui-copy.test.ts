@@ -577,11 +577,9 @@ it("leaves the React surfaces with no copy of their own", async () => {
     if (found === null) throw new Error(`no ${surface} surface rendered`);
     expect(spokenIn(found), surface).not.toEqual([]);
   }
-  // The shell's own paragraphs, which `spokenIn` reads none of: `vg-338`'s
-  // hint was written as a literal and every net here agreed with itself. The
-  // read is scoped to the shell because the panels, the picker and the
-  // inspector print data in paragraphs of their own — a run's binding id, a
-  // colour's reading — the carve-out this walk already makes elsewhere.
+  // `vg-338`: the shell's own paragraphs, which `spokenIn` reads none of. Only
+  // the shell's are read here — the header says why — and the sentence had no
+  // net at all while it was a literal.
   const hints = paragraphsOf(shell);
   expect(hints.length).toBeGreaterThan(0);
   expect(hints.filter((text) => !owned.has(text))).toEqual([]);
