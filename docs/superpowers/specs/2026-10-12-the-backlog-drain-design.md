@@ -1,8 +1,9 @@
 # The backlog drain — design
 
-**Status:** draft, awaiting review. Design id: `2026-10-12-the-backlog-drain-design`.
+**Status:** reviewed, fixed and closed; the drain is planned from it. Design id:
+`2026-10-12-the-backlog-drain-design`.
 **Produced by:** Phase 7 of
-[`docs/superpowers/plans/2026-10-12-the-backlog-reproduction-pass.md`](../plans/2026-10-12-the-backlog-reproduction-pass.md),
+[`docs/superpowers/plans/archive/2026-10-12-the-backlog-reproduction-pass.md`](../plans/archive/2026-10-12-the-backlog-reproduction-pass.md),
 the synthesis over six triage tables.
 **Inputs (tracked, at `564f8dcf`):** [`docs/product/triage/triage-B1.md`](../../product/triage/triage-B1.md)
 … `triage-B6.md`, [`docs/product/backlog.jsonl`](../../product/backlog.jsonl) (237 open rows),
