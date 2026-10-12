@@ -1,3 +1,4 @@
+import { isLocked } from "@vigilia/scene-fabric";
 import { ActiveSelection, type Canvas, type FabricObject } from "fabric/es";
 
 /** Fired when a lock is applied. `apply` writes the Fabric flags and fires no
@@ -35,9 +36,6 @@ const TRANSFORM_FREE = {
   lockScalingY: false,
   lockRotation: false,
 } as const;
-
-const isLocked = (object: FabricObject): boolean =>
-  object.get("locked") === true;
 
 /** A multi-selection transforms its members through itself, so the flags above
  * go unconsulted and a locked object would ride along. `onSelect` is Fabric's

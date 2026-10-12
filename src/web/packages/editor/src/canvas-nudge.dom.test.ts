@@ -97,6 +97,9 @@ function canvasWith(start: { readonly x: number; readonly y: number }) {
   let y = start.y;
   const object = {
     locked: false,
+    // `isLocked` reads the flag through Fabric's accessor, so the double models
+    // it rather than exposing the instance property alone.
+    get: (key: string) => (key === "locked" ? object.locked : undefined),
     getRelativeCenterPoint: () => ({ x, y }),
     setPositionByOrigin: (point: {
       readonly x: number;

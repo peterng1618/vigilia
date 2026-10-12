@@ -61,6 +61,8 @@ export {
   setObjectAssetReference,
   VIGILIA_ASSET_PROPERTY,
 } from "./object-asset.js";
+export { holderOf, targetsOf } from "./object-holder.js";
+export { isLocked } from "./object-lock.js";
 export {
   ARC_FILL_REFUSED,
   applyObjectPalettePaints,

@@ -184,8 +184,8 @@ adapter does not own catalog, preview or adoption semantics.
 | Paint conversion | `scene-fabric/src/paint.ts` |
 | **Which objects point at a token** — the walk a token delete and a swap both read | `scene-fabric/src/palette-references.ts` |
 | **What persists** — the scene properties a save carries, and which of an object's state is authored | `scene-fabric/src/persist.ts` (`SCENE_PERSISTED_PROPERTIES`) |
-| **Whether an object is locked** — the one `locked` predicate, a Fabric fact rather than lock policy, so no reader reaches up to a manager for it | `scene-fabric/src/` |
-| **Which collection holds an object** — the one owner-of/targets-of helper, replacing the four return contracts `layer-manager`, `deletion-manager`, `layer-tree` and `bridge` each spell themselves | `scene-fabric/src/` |
+| **Whether an object is locked** — the one `locked` predicate, a Fabric fact rather than lock policy, so no reader reaches up to a manager for it | `scene-fabric/src/object-lock.ts` (`isLocked`) |
+| **Which collection holds an object** — the one `holderOf` helper for the owning collection (or the canvas, never the `undefined` a caller had to patch with `?? canvas`) and `targetsOf` for an `ActiveSelection`'s members | `scene-fabric/src/object-holder.ts` (`holderOf`, `targetsOf`) |
 
 ### Host
 

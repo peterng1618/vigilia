@@ -1,5 +1,5 @@
 import { type Binding, isObjectName } from "@vigilia/renderer-core";
-import { VigiliaChart } from "@vigilia/scene-fabric";
+import { isLocked, VigiliaChart } from "@vigilia/scene-fabric";
 import { ActiveSelection, type FabricObject, Group } from "fabric/es";
 import { type ArrangeAction, applyArrange, canArrange } from "../arrange.js";
 import type { EditorInteraction } from "../editor-interaction.js";
@@ -182,7 +182,7 @@ export function createEditorShellBridge(input: {
           : active === undefined
             ? 0
             : 1,
-      locked: active?.get("locked") === true,
+      locked: active !== undefined && isLocked(active),
       activeKind: activeKindOf(active),
       // `||`, not `??`: an empty stored name is a name the document does not
       // have, and the id behind it is what the schema guarantees is there.

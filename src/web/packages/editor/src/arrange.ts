@@ -1,3 +1,4 @@
+import { isLocked } from "@vigilia/scene-fabric";
 import { ActiveSelection, type FabricObject, Point, util } from "fabric/es";
 import type { EditorInteraction } from "./editor-interaction.js";
 
@@ -50,7 +51,7 @@ export function canArrange(
   if (!(active instanceof ActiveSelection)) return false;
   const objects = active.getObjects() as ArrangeObject[];
   return (
-    !objects.some((object) => object.locked) &&
+    !objects.some((object) => isLocked(object)) &&
     objects.length >= arrangeMinimum(action)
   );
 }

@@ -4,6 +4,7 @@ import {
   type WidgetIssue,
 } from "@vigilia/renderer-core";
 import {
+  isLocked,
   SCENE_PERSISTED_PROPERTIES,
   VIGILIA_TEXT_PROPERTY,
 } from "@vigilia/scene-fabric";
@@ -307,7 +308,7 @@ export function createClipboardManager(
   const manager: ClipboardManager = {
     async copy(): Promise<boolean> {
       const active = canvas.getActiveObject();
-      if (active === undefined || active.get("locked") === true) return false;
+      if (active === undefined || isLocked(active)) return false;
       try {
         held = await cloneOf(active);
         return true;
@@ -335,7 +336,7 @@ export function createClipboardManager(
     async duplicate(
       object = canvas.getActiveObject() ?? undefined,
     ): Promise<boolean> {
-      if (object === undefined || object.get("locked") === true) return false;
+      if (object === undefined || isLocked(object)) return false;
       try {
         return await place(object);
       } catch (error) {

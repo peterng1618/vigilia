@@ -5,6 +5,7 @@ import type {
 } from "@vigilia/renderer-core";
 import {
   applyAuthoredText,
+  isLocked,
   type PlanTextObject,
   writeAuthoredBoxDimension,
 } from "@vigilia/scene-fabric";
@@ -405,7 +406,7 @@ export function createSelectionInspector(
 
       const refusal = editRefusal(
         { expectedRevision, fieldId, value },
-        { targetRevision, locked: object.get("locked") === true },
+        { targetRevision, locked: isLocked(object) },
       );
       if (refusal !== undefined) {
         if (refusal === "invalid") {

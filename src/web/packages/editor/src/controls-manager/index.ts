@@ -1,5 +1,6 @@
 import {
   applyAuthoredText,
+  isLocked,
   writeAuthoredBoxDimension,
 } from "@vigilia/scene-fabric";
 import {
@@ -79,7 +80,7 @@ function applyOverrides(controls: Record<string, Control>): void {
   if (rotate === undefined) return;
   rotate.mouseDownHandler = (_eventData, transform) => {
     const { target } = transform;
-    if (target.get("locked") !== true && !target.lockRotation) {
+    if (!isLocked(target) && !target.lockRotation) {
       target.canvas?.setCursor("grabbing");
     }
     return true;
@@ -154,7 +155,7 @@ function createLineControls(): Record<string, Control> {
   const rotate = new Control({ ...ROTATION });
   rotate.mouseDownHandler = (_eventData, transform) => {
     const { target } = transform;
-    if (target.get("locked") !== true && !target.lockRotation) {
+    if (!isLocked(target) && !target.lockRotation) {
       target.canvas?.setCursor("grabbing");
     }
     return true;

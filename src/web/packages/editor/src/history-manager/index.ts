@@ -1,4 +1,4 @@
-import type { SerialisedScene } from "@vigilia/scene-fabric";
+import { type SerialisedScene, targetsOf } from "@vigilia/scene-fabric";
 import { ActiveSelection, type Canvas, type FabricObject } from "fabric/es";
 
 type HistoryCanvas = Canvas;
@@ -110,8 +110,7 @@ export class EditorHistory {
 function selectedIds(canvas: HistoryCanvas): readonly string[] {
   const active = canvas.getActiveObject();
   if (active === undefined) return [];
-  const objects =
-    active instanceof ActiveSelection ? active.getObjects() : [active];
+  const objects = targetsOf(active);
   return objects
     .map((object) => object.get("id"))
     .filter((id): id is string => typeof id === "string");

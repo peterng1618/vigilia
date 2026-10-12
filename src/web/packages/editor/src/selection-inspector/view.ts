@@ -1,4 +1,5 @@
 import { isObjectName } from "@vigilia/renderer-core";
+import { isLocked } from "@vigilia/scene-fabric";
 import type { FabricObject } from "fabric/es";
 import type {
   ChartContentFieldsView,
@@ -624,7 +625,7 @@ export function projectSelection(
         bindingKeyOf(target, ports),
       ),
     },
-    locked: target.get("locked") === true,
+    locked: isLocked(target),
     sections,
   };
 }

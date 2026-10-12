@@ -1,3 +1,4 @@
+import { isLocked } from "@vigilia/scene-fabric";
 import type { Canvas, FabricObject } from "fabric/es";
 import { createCursorIndicator } from "./cursor-indicator.js";
 
@@ -90,7 +91,7 @@ export function createIndicatorManager(
     if (
       !showObjectSizeOnScale ||
       target === undefined ||
-      target.get("locked") === true ||
+      isLocked(target) ||
       (target.lockScalingX === true && target.lockScalingY === true)
     ) {
       hideSize();

@@ -1,9 +1,5 @@
-import {
-  ActiveSelection,
-  type Canvas,
-  type FabricObject,
-  Point,
-} from "fabric/es";
+import { isLocked, targetsOf } from "@vigilia/scene-fabric";
+import { type Canvas, Point } from "fabric/es";
 
 const NUDGE_STEP = 1;
 const NUDGE_STEP_LARGE = 10;
@@ -12,10 +8,6 @@ export const NUDGE_IDLE_MS = 300;
 
 export const stepFor = (event: KeyboardEvent): number =>
   event.shiftKey ? NUDGE_STEP_LARGE : NUDGE_STEP;
-
-interface NudgeObject extends FabricObject {
-  readonly locked?: boolean;
-}
 
 interface CanvasNudgeOptions {
   readonly canvas: Canvas;
@@ -42,9 +34,7 @@ export function createCanvasNudge(options: CanvasNudgeOptions): CanvasNudge {
   const nudge = (dx: number, dy: number): void => {
     const active = canvas.getActiveObject();
     if (active === undefined) return;
-    const targets = (
-      active instanceof ActiveSelection ? active.getObjects() : [active]
-    ).filter((object) => (object as NudgeObject).locked !== true);
+    const targets = targetsOf(active).filter((object) => !isLocked(object));
     if (targets.length === 0) return;
     for (const object of targets) {
       // Read and write must name the same origin: this is the origin point under

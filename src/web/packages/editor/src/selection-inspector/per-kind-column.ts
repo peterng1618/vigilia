@@ -5,7 +5,7 @@ import type {
   SettingsSection,
 } from "@vigilia/renderer-core";
 import { SETTINGS_SECTIONS } from "@vigilia/renderer-core";
-import { VigiliaChart } from "@vigilia/scene-fabric";
+import { isLocked, VigiliaChart } from "@vigilia/scene-fabric";
 import {
   ActiveSelection,
   FabricImage,
@@ -650,7 +650,7 @@ export function perKindColumn(
   target: FabricObject,
   context: ColumnContext,
 ): readonly ColumnSectionView[] {
-  const locked = target.get("locked") === true;
+  const locked = isLocked(target);
   // The selection's kind is asked once, and its answers are read by name — so a
   // kind that reaches here without a rule cannot have been added to
   // `SELECTION_KINDS` without a compile error. See `KIND_QUESTIONS`.

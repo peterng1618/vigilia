@@ -1,9 +1,5 @@
-import {
-  ActiveSelection,
-  type Canvas,
-  type FabricObject,
-  Group,
-} from "fabric/es";
+import { holderOf, isLocked, targetsOf } from "@vigilia/scene-fabric";
+import type { Canvas, FabricObject } from "fabric/es";
 
 export interface DeletionManager {
   /** True when at least one object was removed. */
@@ -12,17 +8,7 @@ export interface DeletionManager {
 
 /** A keyboard delete must respect the same lock the panels honour. */
 function deletable(object: FabricObject): boolean {
-  return object.get("locked") !== true;
-}
-
-/** The collection that actually holds `object`, which `canvas` does not when the
- * object is a group child: `Collection.remove` searches only its own `_objects`
- * and returns an empty removal for anything else. `parent` is the real owner even
- * while an `ActiveSelection` holds the object — Fabric leaves it there so
- * discarding the selection re-enters the group rather than orphaning the child. */
-function ownerOf(object: FabricObject): Canvas | Group | undefined {
-  const parent = object.parent;
-  return parent instanceof Group ? parent : undefined;
+  return !isLocked(object);
 }
 
 export function createDeletionManager(
@@ -33,15 +19,13 @@ export function createDeletionManager(
     deleteActive(): boolean {
       const active = canvas.getActiveObject();
       if (active === undefined) return false;
-      const targets = (
-        active instanceof ActiveSelection ? active.getObjects() : [active]
-      ).filter(deletable);
+      const targets = targetsOf(active).filter(deletable);
       if (targets.length === 0) return false;
 
       // Resolved before the selection is discarded: an `ActiveSelection` is one
       // of the things that put these objects where they are.
       const removals = targets.map(
-        (object) => [ownerOf(object) ?? canvas, object] as const,
+        (object) => [holderOf(canvas, object), object] as const,
       );
 
       canvas.discardActiveObject();

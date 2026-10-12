@@ -648,6 +648,9 @@ describe("EditorSession", () => {
     const undo = vi.fn();
     const object = {
       locked: false,
+      // `isLocked` reads the flag through Fabric's accessor, so the double
+      // models it rather than exposing the instance property alone.
+      get: (key: string) => (key === "locked" ? object.locked : undefined),
       getRelativeCenterPoint: () => ({ x: 10, y: 20 }),
       setPositionByOrigin: vi.fn(),
       setCoords: vi.fn(),
