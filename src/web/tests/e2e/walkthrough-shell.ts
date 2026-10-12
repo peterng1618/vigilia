@@ -148,9 +148,18 @@ const FILE_MENU_NAME = "File";
 const NEW_FROM_STARTER_ROW = "New from starter";
 export const STARTER_DOCUMENT_NAME = "System dashboard";
 /** Bounds for the two searches — the File menu's rows and the rail's slots —
- *  which report a count rather than hang. */
+ *  which report a count rather than hang.
+ *
+ *  **The rail's is the shell's whole tab order, not a handful of presses.** A
+ *  walk that is already on one slot and wants one earlier in the rail crosses
+ *  the pane, the stage, the inspector, the status bar and the header first,
+ *  because Tab goes forwards and the rail is the first region in the body —
+ *  which is the shell's order and not a detour around it. Measured on the
+ *  assembled walk: from the Tokens slot to the Composition slot is 53 presses,
+ *  so this takes the census's own whole-walk bound rather than a shorter one
+ *  that would read a real route as a missing pane. */
 const FILE_MENU_BOUND = 12;
-const RAIL_BOUND = 40;
+const RAIL_BOUND = TAB_BOUND;
 
 /** The Composition row this task's walk selects. It is the starter's own
  *  `wordmark` — a top-level text object — so the walk selects something that
@@ -194,23 +203,19 @@ const WALKTHROUGH_COMMITS = "__vigiliaWalkthroughEditCommits";
  *  tell a live attach from one the editor has outlived. */
 const WALKTHROUGH_CANVAS = "__vigiliaWalkthroughCanvas";
 
-/** Creates a document through the shell's own File menu, with no pointer.
- *
- * **"Create or open" is discharged by creating**, on the row that creates a
- * document **with content**: `New theme` is blank, and a blank document is a
- * different walkthrough — the Composition pane it lands on has nothing to
- * select, and selection is §13.1's next interaction.
+/** Opens the File menu and presses the row whose own text names `row`, with no
+ *  pointer.
  *
  * The route is the menu's own keyboard model, not an invented order: Tab reaches
  * the `File` trigger (the census's own first press), `ArrowDown` opens a menu on
  * its first row the way a menu button does, `ArrowDown` moves between rows and
  * `Enter` activates the row it is on. Which row is answered by its own name, so
- * no press count is baked in.
+ * no press count is baked in, and the bound reports one rather than hanging.
  *
- * It ends on the document naming itself, which is what makes it safe to call
- * before the next step: the create remounts the shell, and the identity chip can
- * only say the created name once the new shell is wired. */
-export async function openDocumentByKeyboard(page: Page): Promise<void> {
+ * Shared by the two File-menu routes the walk makes — creating its document and
+ * returning to the one it booted on — because they differ in the row they name
+ * and in nothing else. */
+async function chooseFileMenuRow(page: Page, row: string): Promise<void> {
   await tabUntil(
     page,
     (focus) => focus.tag === "button" && focus.name === FILE_MENU_NAME,
@@ -220,21 +225,142 @@ export async function openDocumentByKeyboard(page: Page): Promise<void> {
     const onRow = await page.evaluate(
       (wanted: string) =>
         (document.activeElement?.textContent ?? "").includes(wanted),
-      NEW_FROM_STARTER_ROW,
+      row,
     );
     if (onRow) {
       await page.keyboard.press("Enter");
-      await expect(
-        page.locator(".editor-shell-identity-name"),
-        "the created document's own name",
-      ).toHaveText(STARTER_DOCUMENT_NAME);
       return;
     }
     await page.keyboard.press("ArrowDown");
   }
-  throw new Error(
-    `no menu row naming ${NEW_FROM_STARTER_ROW} in ${FILE_MENU_BOUND} presses`,
-  );
+  throw new Error(`no menu row naming ${row} in ${FILE_MENU_BOUND} presses`);
+}
+
+/** Creates a document through the shell's own File menu, with no pointer.
+ *
+ * **"Create or open" is discharged by creating**, on the row that creates a
+ * document **with content**: `New theme` is blank, and a blank document is a
+ * different walkthrough — the Composition pane it lands on has nothing to
+ * select, and selection is §13.1's next interaction.
+ *
+ * It ends on the document naming itself, which is what makes it safe to call
+ * before the next step: the create remounts the shell, and the identity chip can
+ * only say the created name once the new shell is wired. */
+export async function openDocumentByKeyboard(page: Page): Promise<void> {
+  await chooseFileMenuRow(page, NEW_FROM_STARTER_ROW);
+  await expect(
+    page.locator(".editor-shell-identity-name"),
+    "the created document's own name",
+  ).toHaveText(STARTER_DOCUMENT_NAME);
+}
+
+/** The File menu's own row for the library (`uiCopy.file.openLibrary`), and the
+ *  chooser's own pieces (`theme-library-dialog.tsx` / `control-select.tsx`). */
+const OPEN_LIBRARY_ROW = "Open library";
+/** The chooser's theme picker, on its trigger — where the value it commits is
+ *  also read (`data-vigilia-value`). */
+const LIBRARY_THEME_FIELD = "data-vigilia-library-theme";
+/** The chooser's own Open button. */
+const LIBRARY_OPEN = "data-vigilia-library-open";
+/** The value behind one option of a plan-1 select. The picker renders labels,
+ *  and a label here is the theme's own metadata name, which is document data
+ *  rather than an id a test may match on. */
+const LIBRARY_OPTION = "data-vigilia-option";
+/** How many presses the option search spends before it reports a count. The
+ *  fixture's theme is one row below the product's own template. */
+const LIBRARY_BOUND = 40;
+
+/** Opens a stored theme through the library dialog, with no pointer.
+ *
+ * **This is §13.1's return trip.** Under the walkthrough's own ruling the
+ * "original document" is the host fixture the walk booted on (`?theme=`), and
+ * the editor has no route back to it that is not the library: `File`'s
+ * `uiCopy.file.openLibrary` row opens the chooser, the chooser lists the host's
+ * own themes beside the product's template, and `Open` replaces the document —
+ * all of it reached with Tab, the arrows and Enter.
+ *
+ * The picker is a plan-1 `ControlSelect` (Base UI's select), so the keyboard
+ * model is the primitive's own: `ArrowDown` on the trigger opens the list and
+ * focuses a row, the arrows move between rows, and `Enter` commits. The walk
+ * moves **downwards only**, because the rows are the product's template first
+ * and the author's own themes under it (measured: the trigger opens with the
+ * template focused), so a stored theme is always below where the list opens.
+ * Which row carries focus is read from the row itself — the primitive moves DOM
+ * focus onto the option, it does not point at it with `aria-activedescendant` —
+ * and the row is named by `data-vigilia-option`, so the id this helper is given
+ * and the id the control commits are one string.
+ *
+ * `id` is asserted as committed before `Open` is pressed, so a walk that
+ * committed the wrong theme fails here rather than reporting the fixture's
+ * content as unchanged. */
+export async function openThemeFromLibrary(
+  page: Page,
+  id: string,
+): Promise<void> {
+  await chooseFileMenuRow(page, OPEN_LIBRARY_ROW);
+  await expect(
+    page.locator(`[${LIBRARY_THEME_FIELD}]`),
+    "the library chooser's theme field",
+  ).toBeVisible();
+
+  await tabToMark(page, { attribute: LIBRARY_THEME_FIELD });
+  await page.keyboard.press("ArrowDown");
+  for (let press = 0; press < LIBRARY_BOUND; press++) {
+    const on = await page.evaluate(
+      (attribute: string) =>
+        document.activeElement?.getAttribute(attribute) ?? "",
+      LIBRARY_OPTION,
+    );
+    if (on === id) break;
+    if (press === LIBRARY_BOUND - 1) {
+      throw new Error(
+        `the library offered no theme ${id} in ${LIBRARY_BOUND} presses`,
+      );
+    }
+    await page.keyboard.press("ArrowDown");
+  }
+  await page.keyboard.press("Enter");
+  await expect(
+    page.locator(`[${LIBRARY_THEME_FIELD}] [data-vigilia-value]`),
+    `the theme the chooser committed rather than ${id}`,
+  ).toHaveAttribute("data-vigilia-value", id);
+
+  await tabToMark(page, { attribute: LIBRARY_OPEN });
+  await page.keyboard.press("Enter");
+}
+
+/** The open document as the product serializes it for persistence and publish
+ *  (`session.publishableDocument()`, which is the same envelope `savePackage`
+ *  writes). The strongest available reading of "the document", and the one the
+ *  round trip compares: a projection or a row count would answer a narrower
+ *  question than "the same document came back".
+ *
+ *  Throws rather than answering `undefined` for a document that has no stored
+ *  theme — a `New theme` or a starter has no envelope to compare, and an
+ *  `undefined` compared against an `undefined` is the silent green this walk
+ *  must not carry. */
+export async function serializedDocument(page: Page): Promise<unknown> {
+  return page.evaluate(() => {
+    const bridge = (
+      window as unknown as {
+        vigiliaEditorBridge?: {
+          session?: {
+            publishableDocument(): { envelope: unknown } | undefined;
+          };
+        };
+      }
+    ).vigiliaEditorBridge;
+    if (bridge?.session === undefined) {
+      throw new Error("no editor bridge on this mount");
+    }
+    const published = bridge.session.publishableDocument();
+    if (published === undefined) {
+      throw new Error(
+        "this document has no stored theme, so it has no serialized state to compare",
+      );
+    }
+    return published.envelope;
+  });
 }
 
 /** Chooses a rail pane by its spoken name, with no pointer.

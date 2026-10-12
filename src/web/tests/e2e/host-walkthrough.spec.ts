@@ -1,4 +1,5 @@
 import { expect, test } from "@playwright/test";
+import { HOST_THEME_ID } from "./host-theme.js";
 import { PALETTES } from "./shell-palette.js";
 import {
   FIRST,
@@ -25,7 +26,9 @@ import {
   openDocumentByKeyboard,
   openLayerRenameField,
   openPopup,
+  openThemeFromLibrary,
   openWalkthrough,
+  serializedDocument,
   STARTER_DOCUMENT_NAME,
   selectInComposition,
   selectInPaneByKeyboard,
@@ -45,9 +48,13 @@ import {
  * **This file is a host spec for the reason the others are**, and
  * `playwright.config.ts`'s `HOST_SPECS` admits it by name for the same reason.
  *
- * This task's own job is the census: does every region of the shell have a
- * focus target a keyboard can reach, and does each of those targets have a
- * name. A later task cannot be written on an answer of no.
+ * **What this file holds is §13.1's whole instrument**: the census (§13.1's
+ * "each region has a reachable focus target", asked in the two states the user's
+ * ruling puts it in), a test for each interaction proved on its own page state,
+ * and the **assembled walk** at the end — the nine interactions in §13.1's own
+ * order, ending at the round trip, with both of §13.1's other invariants swept in
+ * the state the walk leaves. That last test is what the spec's Acceptance item
+ * for keyboard and contrast is read from.
  *
  * **The census was red, and the red was its result — not a broken test.** The
  * walk reached the rail, the pane and the stage and never the inspector, because
@@ -70,6 +77,13 @@ import {
  * it. What is left here is the tests, which is what the walkthrough's acceptance
  * is read from.
  */
+
+/** The host fixture's own metadata name, which is what the identity chip reads
+ *  on the mount `?theme=` boots (`host-theme.ts`'s
+ *  `envelopeFor(HOST_THEME_ID, "E2E hosted", …)`). A literal for the same
+ *  reason `STARTER_DOCUMENT_NAME` is one: renaming the fixture reddens here
+ *  rather than quietly leaving the round trip unasserted. */
+const FIXTURE_DOCUMENT_NAME = "E2E hosted";
 
 test.describe("the shell, reached by keyboard alone", () => {
   /**
@@ -426,5 +440,177 @@ test.describe("the shell, reached by keyboard alone", () => {
       page.locator(`[data-vigilia-shortcut-arm="${cancelled}"]`),
       "the control the walk ended on",
     ).toBeFocused();
+  });
+
+  /**
+   * **§13.1's acceptance instrument, and this plan's reason for existing.**
+   *
+   * The four tests above prove one interaction each, on their own page state.
+   * This is the assembly: the nine interactions §13.1 names, in §13.1's own
+   * order, as one continuous walk on the real host, ending at the round trip —
+   * *"return to the original document without unintended history"*. A walk whose
+   * steps each hold in isolation and stop holding in sequence is the failure
+   * assembling them exists to find, which is why this test re-derives so little:
+   * every helper asserts what its own interaction means, and what is added here
+   * is the *order*, the two invariants §13.1 states swept in the state the walk
+   * leaves, and the ending claim no individual test could make.
+   *
+   * **Two rail choices, and the second is not a repeat.** §13.1 puts "choose a
+   * rail pane" before "select through Composition", and the walk is a change
+   * rather than a re-press only if the pane it chooses is not the one already
+   * showing: the shell opens on Composition, so `Tokens` is chosen first (the
+   * pane Task 2 proved holds controls whatever is selected) and Composition is
+   * chosen again because the next interaction's own claim is that selection goes
+   * *through Composition* — `selectInComposition` asserts that pane is showing.
+   * **The second rail choice costs 53 presses**, because Tab goes forwards and
+   * Composition is the rail's first slot: the walk crosses the pane, the stage,
+   * the inspector, the status bar and the header to come round to it, which is
+   * the shell's own order rather than a detour — and it is why `RAIL_BOUND` is
+   * the census's whole-walk bound and why this test declares itself slow.
+   *
+   * **The return trip is the library.** Under the walkthrough's own ruling the
+   * original document is the `e2e-hosted` fixture `openWalkthrough` boots on, and
+   * `File → Open library` is the editor's only keyboard route back to a stored
+   * theme (`openThemeFromLibrary`, and the fixture is listed there as the host
+   * wrote it). The library's own listing is what makes this a route rather than a
+   * hope: the chooser reads `/api/themes`, which is the host's library folder,
+   * and the fixture is one of its rows.
+   *
+   * **No press here positions focus by anything but Tab and the arrows.** The
+   * walk never opens a layer rename, which is the one gesture whose Escape leaves
+   * focus on `document.body` (`vg-389`, Task 4's measurement and this plan's
+   * out-of-scope): the rename is Task 4's interaction, and what the walk does
+   * with a field is Task 3's cancel, which leaves focus where it was. So nothing
+   * below depends on focus surviving an Escape, and `vg-389` is not on this path.
+   *
+   * **History is read before the round trip leaves, not after.** The counter
+   * watches the canvas the bridge publishes, and opening a theme remounts the
+   * shell — so a read after the return would be a read of a canvas nobody edited,
+   * which is why `editCommits` throws on exactly that. The claim is made while
+   * the walk's own document is still the published one.
+   */
+  test("§13.1's nine interactions in order, on the real host, and the original document comes back", async ({
+    page,
+  }) => {
+    // Declared slow because it is nine interactions, each of which reaches its
+    // own control by pressing Tab: the two rail choices alone spend 5 and 53
+    // presses. The default budget fails it on the clock rather than on the shell.
+    test.slow();
+    await openWalkthrough(page);
+    // The state the round trip is measured against, read before anything moves.
+    const opening = await serializedDocument(page);
+
+    // 1. Create or open a document. Create, and from the starter: the fixture
+    //    carries no group, and §13.1's own list requires entering one.
+    await openDocumentByKeyboard(page);
+    // History is watched from here, because the create remounts the shell and a
+    // listener attached before it would be watching a canvas that is gone.
+    await watchEditCommits(page);
+
+    // 2. Choose a rail pane, and leave the walk on the one step 3 goes through.
+    await chooseRailPane(page, "Tokens");
+    await expect(
+      page.locator('[data-vigilia-panel="tokens"]'),
+      "the Tokens pane after the rail choice",
+    ).toBeVisible();
+    await expect(
+      page.locator('[data-vigilia-panel="layers"]'),
+      "the Composition pane after the Tokens choice",
+    ).toBeHidden();
+    await chooseRailPane(page, "Composition");
+
+    // 3. Select through Composition.
+    const id = await selectInComposition(page, WALKTHROUGH_LAYER_NAME);
+
+    // 4. Edit and cancel a field. The helper asserts the field went back to the
+    //    authored value; this is the same claim one surface further out, on the
+    //    row that would have moved had the cancel not happened.
+    const authored = await editFieldThenCancel(page);
+    await expect(
+      page.locator(`[data-vigilia-layer="${id}"] .vigilia-layer-name`),
+      "the row after the cancelled edit",
+    ).toHaveText(authored);
+
+    // 5. Enter a group and leave it again — §13.1's "enter/exit a group".
+    const group = await enterGroup(page);
+    expect(await exitGroup(page), "the group the deliberate exit left").toBe(
+      group,
+    );
+
+    // 6. Open the stage's popup and close it — §13.1's "open and close a popup".
+    //    `openPopup` asserts focus landed inside it rather than on its trigger;
+    //    `closePopup` asserts focus came back where it belongs.
+    await openPopup(page);
+    await closePopup(page);
+
+    // 7. Choose a palette, rather than the one already in force.
+    const inForce =
+      (await page.locator("html").getAttribute("data-shell-palette")) ?? "";
+    const chosen = PALETTES.find((palette) => palette !== inForce);
+    if (chosen === undefined) {
+      throw new Error("every palette is the one already in force");
+    }
+    await choosePalette(page, chosen);
+
+    // 8. Cancel a shortcut capture — armed, cancelled, and proved not to have
+    //    recorded anything.
+    await cancelShortcutCapture(page);
+
+    // **The first of the two invariants §13.1 states, swept.** The capture's
+    // cancel left the settings modal open, and Escape is the key that dismisses
+    // it. §13.1's sentence is that Escape affects one innermost owner: the modal
+    // goes, and everything the shell was carrying behind it is still there. The
+    // four readings are the shell's own state — the pane the walk chose, the row
+    // it selected, the document it named and the field it edited — so an Escape
+    // that reached a second owner fails here rather than passing on the modal's
+    // disappearance.
+    const covered = await surroundingState(page, id);
+    await page.keyboard.press("Escape");
+    await expect(
+      page.locator(".editor-shell-dialog"),
+      "the settings modal after Escape",
+    ).toBeHidden();
+    expect(
+      await surroundingState(page, id),
+      "the shell behind the settings modal's Escape",
+    ).toEqual(covered);
+
+    // **The second invariant, swept in the walk's own state.** §13.1's "each
+    // region has a reachable focus target" is Task 1's census in detail —
+    // opening state and populated state — and this is the same question asked of
+    // the shell the walk itself leaves behind: a created document, a selection, a
+    // pane chosen by the walk, a palette just applied. A walk ending somewhere its
+    // own regions can no longer be reached is a failure the census cannot see,
+    // because the census never takes the walk first.
+    const after = await keyboardReach(page);
+    expect(
+      [
+        ...new Set(
+          after
+            .map((step) => step.region)
+            .filter((region): region is Region => region !== null),
+        ),
+      ],
+      `the regions after the walk:\n${JSON.stringify(after, null, 2)}`,
+    ).toEqual(expect.arrayContaining([...REGIONS]));
+
+    // **No history entry landed anywhere in the walk**, which is §13.1's
+    // "without unintended history" measured as far as the application states it
+    // (there is no history length to read: `EditorShellBridge` publishes none).
+    expect(
+      await editCommits(page),
+      "history entries the whole walk recorded",
+    ).toBe(0);
+
+    // 9. Return to the original document — §13.1's last interaction.
+    await openThemeFromLibrary(page, HOST_THEME_ID);
+    await expect(
+      page.locator(".editor-shell-identity-name"),
+      "the document the round trip returned to",
+    ).toHaveText(FIXTURE_DOCUMENT_NAME);
+    expect(
+      await serializedDocument(page),
+      "the document after the round trip",
+    ).toEqual(opening);
   });
 });

@@ -32,11 +32,11 @@ satisfies every token in `DESIGN.md` and still does not look like the mockup.
 
 ## Last completed change
 
-- **Task 3 of the walkthrough is complete and reviewed** — `selectInComposition` and `editFieldThenCancel` at `0814d2cc`, spec compliance ✅ and task quality ✅; the reviewer re-derived three of the five red-proofs and drove two attacks of its own, one of which found a Medium.
-- **The Medium is fixed, and it was the acceptance instrument going quietly vacuous** — the history counter attached to whatever canvas the bridge published and never checked again, so a listener outliving its canvas would read 0 forever and "no history entry was added" would pass having observed nothing; `editCommits` now throws when the watched canvas is no longer the published one, and the decoy that used to go green reddens with that message.
-- **The file header no longer says the census is red** — it described the pre-ruling state while the test above it was green, which is the one text that could talk a future reader into trimming `REGIONS`.
-- **Two more hardenings landed with it** — the field is matched inside the inspector only, and the identity chip's leg of `surroundingState` reads visibility before its text, so a hidden chip answers `null` instead of a string.
-- **The spec is now 997 lines**, and the split is Task 4's opening step under Ruling L: the focus primitives and the shell vocabulary move to their own modules before Task 4 adds six helpers to them.
+- **Task 5 assembles the walkthrough, and §13.1's instrument exists** — `host-walkthrough.spec.ts` now carries the nine interactions in §13.1's own order as one continuous real-host walk, ending at the round trip, with both of §13.1's other invariants swept in the state the walk leaves.
+- **The return trip is the library, and it is measured twice** — `openThemeFromLibrary` reaches `File → Open library` by keyboard and opens the `e2e-hosted` fixture the walk booted on; the identity chip names it and `serializedDocument` compares the whole persisted envelope with the opening read.
+- **History is read before the return, not after** — the counter watches the published canvas and opening a theme remounts the shell, so a later read would observe nothing; the walk asserts 0 entries across all nine interactions.
+- **Three red-proofs, each restored `cmp`-clean** — opening a different theme reddens the chip and, with the chip removed, the envelope comparison; a committed edit anywhere in the walk reddens the history leg at 1 against 0.
+- **Assembly exposed one harness bound, not a shell defect** — the rail search spends 53 presses getting back to Composition, so `RAIL_BOUND` takes the census's whole-walk bound and the walk declares itself slow.
 
 ## Next
 
