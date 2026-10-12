@@ -79,7 +79,7 @@ two apart is the judgement the map cannot make for itself.
 | **The plan-and-player artboard-to-viewport transform** — contain/cover scale, letterbox bars, cover crop; the editor's case is a separate rule, above | `renderer-core/src/artboard.ts` |
 | Theme metadata, artboard size/preview fit/paint/media — **the authoring controls** | `editor/src/artboard-panel.ts` |
 | Semantic layer projection | `editor/src/editor-shell/layer-tree.ts` |
-| **Which object and arrange actions exist** — their ids, labels, icons and eligibility | `editor/src/object-actions.ts` |
+| **Which object and arrange actions exist** — their ids, labels and icons | `editor/src/object-actions.ts` |
 | **Which of a manager's refusals a menu advertises** — eligibility as the hand-kept agreement with each manager's own refusal, which nothing checks | `editor/src/object-actions.ts` |
 | **The chrome glyph vocabulary** — the one icon family, the one weight rule, and the named glyphs the shell and the panes draw | `editor/src/editor-shell/icons.ts` |
 | Applying an arrange action to a multi-selection | `editor/src/arrange.ts` |
