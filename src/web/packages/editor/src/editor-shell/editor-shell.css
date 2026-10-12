@@ -58,18 +58,63 @@ body,
   --edge-2: color-mix(in srgb, var(--edge) 55%, transparent);
 }
 
-/* The two `--shell-*` tokens that are not colours, and the only two no palette
-   block declares but graphite's and editorial's. They are on bare `:root`
-   because ember, moss, plum and light inherit them from here, and because
-   neither belongs in a palette: a display face and a flatness flag are not a
-   palette's colours. They are not in the base frame or the dark base either —
-   both of those match the root whatever palette is resolved, so a `--shell-flat`
-   there would move ember, moss, plum and light's settled value under a
-   dark-reporting OS. Editorial's block declares them a second time because a
-   swatch is a self-contained scope that declares every token it can paint with. */
+/* The two `--shell-*` tokens that are not colours. They are on bare `:root`
+   because neither belongs in a palette: a display face and a flatness flag are
+   not a palette's colours. This block is what a node under *no* palette
+   resolves; every one of the six palette blocks now declares both for itself,
+   which is what lets the dark base below carry graphite's pair without moving a
+   palette that had inherited this one (`vg-357`). Editorial's is the same
+   declaration a second time because a swatch is a self-contained scope that
+   declares every token it can paint with. */
 :root {
   --shell-display: ui-serif, Georgia, "Times New Roman", serif;
   --shell-flat: 1;
+}
+
+/* Editor-wide control tokens, so the existing panel controls inherit the
+   palette with no per-control overrides. These derive from the `--shell-*` layer
+   rather than restating its colours, so a palette that moves one moves these.
+   On `:root`, not on the editorial selector, so all six resolve — a reference to
+   a token declared under only one palette is invalid at computed-value time and
+   the declaration using it is dropped whole, which is how the header's palette
+   trigger was left transparent under five of six.
+
+   This block sits ABOVE the palette blocks on purpose, and above the dark base
+   too. `:root` and `[data-shell-palette="x"]` have equal specificity, so a
+   palette can only override a base value by source order; below them, this
+   block silently won and graphite's control surface never applied. For the same
+   reason the dark base must come *after* it (`vg-357`), or `--vigilia-control-bg`
+   would outrank the dark base and a dark-reporting OS would paint this block's
+   editorial paper in the pre-attribute frame.
+
+   The values with no `--shell-*` counterpart keep literals because no shell
+   token is that colour: `--vigilia-input-bg` is a text field's own white,
+   `--vigilia-subdued` and `--vigilia-selection-bg` sit between the shell's
+   muted and its surface, and the scrollbar trio has no shell token at all.
+   `--vigilia-accent` is editorial's *warm*, not its accent — the control
+   layer's highlight was brown, and reading it as `--shell-accent` would have
+   repainted it ink. `--vigilia-control-bg` cannot alias `--shell-backdrop`
+   either: that holds this same colour under editorial and light's gradient and
+   graphite's dark flat ground everywhere else, so aliasing it painted the wrong
+   surface onto every button. A palette that needs a different control surface
+   declares one below. */
+:root {
+  --vigilia-canvas-bg: #26241f;
+  --vigilia-text: var(--shell-text);
+  --vigilia-panel-bg: var(--shell-surface);
+  --vigilia-panel-border: var(--shell-edge);
+  --vigilia-control-bg: #f5f1e8;
+  --vigilia-control-border: var(--shell-edge);
+  --vigilia-input-bg: #ffffff;
+  --vigilia-muted: var(--shell-muted);
+  --vigilia-subdued: #8a8272;
+  --vigilia-selection-bg: #e4ddcb;
+  --vigilia-accent: var(--shell-warm);
+  --vigilia-accent-dim: #8a5a2b22;
+  --vigilia-guide: var(--shell-danger);
+  --vigilia-scrollbar-thumb: #c9c2b1;
+  --vigilia-scrollbar-thumb-hover: #a9a191;
+  --vigilia-scrollbar-track: transparent;
 }
 
 /* The dark half of the base frame: a dark-reporting OS resolves `graphite`, the
@@ -80,13 +125,16 @@ body,
    equal specificity — the dark one included: it matches the root with a palette
    resolved exactly as it does without one.
 
-   It stops short of three of the tokens graphite declares beyond its colours:
-   `--shell-display`, `--shell-flat` and `--vigilia-control-bg`. Those are the
-   ones ember, moss, plum and light inherit from the bare root instead of
-   declaring, so carrying them here would move *their* settled values whenever
-   the OS reports dark. The cost is stated rather than hidden: a dark OS's
-   pre-attribute frame takes the editorial display face and control paper for
-   those three, and nothing paints them before the attribute lands. */
+   It carries every token graphite declares, the three beyond its colours
+   included. A token declared here wins over the palette blocks below at equal
+   specificity, so carrying those three is only safe while every palette that
+   inherited one states its own — which `vg-357` made true: ember, moss, plum
+   and light name the display/flat pair they took from the `:root` block above,
+   and editorial and light name the control paper. That block precedes this one
+   for the same reason: had the control tokens' `:root` stayed below, its
+   `--vigilia-control-bg` would have outranked this one by source order at equal
+   specificity. With that, the pre-attribute frame is graphite in full rather
+   than graphite's ground under the editorial display face and control paper. */
 @media (prefers-color-scheme: dark) {
   :root {
     --shell-backdrop: #0b0e12;
@@ -100,6 +148,9 @@ body,
     --shell-danger: #ff7e6e;
     --shell-primary-bg: var(--shell-accent);
     --shell-primary-text: #06131a;
+    --shell-display: system-ui, sans-serif;
+    --shell-flat: 0;
+    --vigilia-control-bg: #0a1116c9;
     --bg: var(--shell-backdrop);
     --panel: var(--shell-surface);
     --panel-2: var(--shell-surface-strong);
@@ -147,6 +198,10 @@ body,
   --shell-primary-text: #f5f1e8;
   --shell-display: ui-serif, Georgia, "Times New Roman", serif;
   --shell-flat: 1;
+  /* `vg-357`: editorial's control paper, declared for the same reason as the
+     pair above and at the value `:root` already gave it, so the dark base can
+     carry graphite's. */
+  --vigilia-control-bg: #f5f1e8;
   /* DESIGN.md §4's role vocabulary, aliased per palette and never once at `:root`:
      an alias is substituted where it is declared, so a root-only declaration
      would pin a subtree that re-declares `--shell-*` — the swatch chip — to
@@ -180,49 +235,6 @@ body,
   --stage: var(--shell-backdrop);
   --hdr: var(--shell-surface);
   --edge-2: color-mix(in srgb, var(--edge) 55%, transparent);
-}
-
-/* Editor-wide control tokens, so the existing panel controls inherit the
-   palette with no per-control overrides. These derive from the `--shell-*` layer
-   rather than restating its colours, so a palette that moves one moves these.
-   On `:root`, not on the editorial selector, so all six resolve — a reference to
-   a token declared under only one palette is invalid at computed-value time and
-   the declaration using it is dropped whole, which is how the header's palette
-   trigger was left transparent under five of six.
-
-   This block sits ABOVE the palette blocks on purpose. `:root` and
-   `[data-shell-palette="x"]` have equal specificity, so a palette can only
-   override a base value by source order; below them, this block silently won
-   and graphite's control surface never applied.
-
-   The values with no `--shell-*` counterpart keep literals because no shell
-   token is that colour: `--vigilia-input-bg` is a text field's own white,
-   `--vigilia-subdued` and `--vigilia-selection-bg` sit between the shell's
-   muted and its surface, and the scrollbar trio has no shell token at all.
-   `--vigilia-accent` is editorial's *warm*, not its accent — the control
-   layer's highlight was brown, and reading it as `--shell-accent` would have
-   repainted it ink. `--vigilia-control-bg` cannot alias `--shell-backdrop`
-   either: that holds this same colour under editorial and light's gradient and
-   graphite's dark flat ground everywhere else, so aliasing it painted the wrong
-   surface onto every button. A palette that needs a different control surface
-   declares one below. */
-:root {
-  --vigilia-canvas-bg: #26241f;
-  --vigilia-text: var(--shell-text);
-  --vigilia-panel-bg: var(--shell-surface);
-  --vigilia-panel-border: var(--shell-edge);
-  --vigilia-control-bg: #f5f1e8;
-  --vigilia-control-border: var(--shell-edge);
-  --vigilia-input-bg: #ffffff;
-  --vigilia-muted: var(--shell-muted);
-  --vigilia-subdued: #8a8272;
-  --vigilia-selection-bg: #e4ddcb;
-  --vigilia-accent: var(--shell-warm);
-  --vigilia-accent-dim: #8a5a2b22;
-  --vigilia-guide: var(--shell-danger);
-  --vigilia-scrollbar-thumb: #c9c2b1;
-  --vigilia-scrollbar-thumb-hover: #a9a191;
-  --vigilia-scrollbar-track: transparent;
 }
 
 /* ── One source, five derivations ──────────────────────────────────────────
@@ -287,7 +299,11 @@ body,
    not see. Each is now the same hue at a value that holds 4.5:1 against its own
    surface — the overlay the non-editorial rules used to put over that surface
    retired with the glass chrome, plan 7 Task 5 — and the ring still reads as
-   ember, moss or plum. */
+   ember, moss or plum.
+
+   Each names `--shell-display` and `--shell-flat` at the values it used to
+   inherit from `:root`, which is what leaves the dark base free to carry
+   graphite's pair (`vg-357`). */
 [data-shell-palette="ember"] {
   --shell-backdrop: #e9cdb4;
   --shell-surface: #f7e2d2;
@@ -304,6 +320,8 @@ body,
   --shell-danger: color-mix(in srgb, #ff7e6e 40%, var(--shell-text));
   --shell-primary-bg: var(--shell-accent);
   --shell-primary-text: #f7e2d2;
+  --shell-display: ui-serif, Georgia, "Times New Roman", serif;
+  --shell-flat: 1;
   --vigilia-control-bg: #f0d3bc;
   --bg: var(--shell-backdrop);
   --panel: var(--shell-surface);
@@ -332,6 +350,8 @@ body,
   --shell-danger: color-mix(in srgb, #ff7e6e 40%, var(--shell-text));
   --shell-primary-bg: var(--shell-accent);
   --shell-primary-text: #e4efd9;
+  --shell-display: ui-serif, Georgia, "Times New Roman", serif;
+  --shell-flat: 1;
   --vigilia-control-bg: #d8e8c8;
   --bg: var(--shell-backdrop);
   --panel: var(--shell-surface);
@@ -360,6 +380,8 @@ body,
   --shell-danger: color-mix(in srgb, #ff7e6e 40%, var(--shell-text));
   --shell-primary-bg: var(--shell-accent);
   --shell-primary-text: #ece3f7;
+  --shell-display: ui-serif, Georgia, "Times New Roman", serif;
+  --shell-flat: 1;
   --vigilia-control-bg: #ded1ef;
   --bg: var(--shell-backdrop);
   --panel: var(--shell-surface);
@@ -393,6 +415,12 @@ body,
   --shell-danger: color-mix(in srgb, #ff7e6e 40%, var(--shell-text));
   --shell-primary-bg: var(--shell-accent);
   --shell-primary-text: #eefaf3;
+  /* The three tokens `light` inherited from the two `:root` blocks above,
+     declared here at the values it already resolved to so the dark base can
+     carry graphite's without moving this palette (`vg-357`). */
+  --shell-display: ui-serif, Georgia, "Times New Roman", serif;
+  --shell-flat: 1;
+  --vigilia-control-bg: #f5f1e8;
   --bg: var(--shell-backdrop);
   --panel: var(--shell-surface);
   --panel-2: var(--shell-surface-strong);
@@ -982,7 +1010,10 @@ body,
   height: 34px;
   align-items: center;
   justify-content: center;
-  border: 0;
+  /* §5 rule 6: a slot is glyph-only, so hover is the border it acquires rather
+     than a wash. The transparent resting border is what keeps the 34px slot the
+     same size, so "nothing moves" holds. */
+  border: 1px solid transparent;
   border-radius: 8px;
   background: transparent;
   /* Closed slots are `--faint`; the selected one lifts to `--accent` with a
@@ -991,7 +1022,7 @@ body,
   cursor: pointer;
 }
 .editor-shell-rail button:hover {
-  background: color-mix(in srgb, var(--text) 10%, transparent);
+  border-color: var(--muted);
 }
 .editor-shell-rail button[aria-pressed="true"] {
   color: var(--accent);
@@ -1066,8 +1097,9 @@ body,
 }
 /* §5 rule 6: on a glyph-only control the border is what hover raises, not a
    background wash. The dock's controls carry a 1px transparent resting border
-   (set with the 26px square below), so hovering acquires `--muted`. The same
-   wash on the rail, the dialog and the layer row is filed as `vg-224`. */
+   (set with the 26px square below), so hovering acquires `--muted`. The rail and
+   the layer row take the same shape since `vg-224`; a dialog's own button is a
+   labelled control with a resting `--edge`, and raises that to the accent. */
 .editor-shell-dock button:hover {
   border-color: var(--muted);
 }
@@ -1422,6 +1454,14 @@ body,
   border-radius: var(--radius-lg);
   background: var(--shell-surface);
   color: var(--shell-text);
+  /* §2's `--text-sm` 12px, "Control text, menu items, list rows" (`vg-317`). A
+     dialog is portalled, so without a role of its own every surface inside it
+     that declares no size inherits the host document's 13px — the `?` sheet's
+     rows landed on `--text-md` for the wrong reason, and the day the host's base
+     moves they move with it. Every region that draws its own type declares it:
+     the lead at `--text-lg`, the status and the chord at `--text-xs`, the group
+     heading at 11px, the button at `--text-sm`. */
+  font-size: var(--text-sm);
   /* §3's overlay elevation, the token every floating surface rides on: the
      scrim is the overlay's, and the popup itself is `--elev-3`. */
   box-shadow: var(--elev-3);
@@ -1990,11 +2030,14 @@ body,
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  border: 0;
+  /* §5 rule 6's glyph-only clause, the same shape the dock, the view steps and
+     the rail take: no resting edge, so the 1px transparent border is what hover
+     raises and the 20px box does not move. */
+  border: 1px solid transparent;
   background: transparent;
 }
 .vigilia-layer-row button:hover {
-  border: 0;
+  border-color: var(--muted);
 }
 /* The twisty column, whether the row draws one or only reserves its place.
    Fixed rather than left to its content: measured on canvas, a button-sized

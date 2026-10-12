@@ -722,7 +722,8 @@ test.describe("shell palettes", () => {
     expect(colours.header).not.toBe("rgba(0, 0, 0, 0)");
   });
 
-  /** The frame **before** React writes the palette attribute (`vg-351`).
+  /** The frame **before** React writes the palette attribute (`vg-351`, and
+   *  `vg-357` for the three tokens the dark base first left out).
    *
    *  Every other assertion in this file reads `data-shell-palette`, which is
    *  exactly why none of them could see this: the attribute *is* the settled
@@ -731,7 +732,11 @@ test.describe("shell palettes", () => {
    *  block resolved editorial, and this document's own pre-shell `<style>` drew
    *  editorial cream with a `#0b1419` under its dark media query that matched no
    *  palette in the set — so a fresh profile flashed cream and then snapped to
-   *  graphite.
+   *  graphite. `vg-357` was the same frame painted with the right palette and
+   *  three of its tokens coming from somewhere else: the dark base carried
+   *  graphite's colours and left `--shell-display`, `--shell-flat` and
+   *  `--vigilia-control-bg` to the bare root, so a dark OS's first frame took
+   *  the editorial display face and control paper.
    *
    *  The bundle is blocked rather than raced: with no script the attribute is
    *  never written, so what is measured is the pre-JS frame by construction
@@ -763,8 +768,22 @@ test.describe("shell palettes", () => {
         };
         const token = (element: Element, name: string): string =>
           getComputedStyle(element).getPropertyValue(name).trim();
+        // `vg-357`: the three tokens beyond graphite's colours are read with
+        // the two that paint. A dark base that omits one resolves it from a
+        // `:root` block instead, which is the base frame's value and not the
+        // palette the OS resolved — the pre-attribute frame took the editorial
+        // display face and control paper there.
         const reading = (element: Element): string =>
-          `${painted(element)} | ${token(element, "--shell-backdrop")} ${token(element, "--shell-text")}`;
+          `${painted(element)} | ` +
+          [
+            "--shell-backdrop",
+            "--shell-text",
+            "--shell-display",
+            "--shell-flat",
+            "--vigilia-control-bg",
+          ]
+            .map((name) => token(element, name))
+            .join(" ");
 
         const probe = document.createElement("div");
         probe.setAttribute("data-shell-palette", named);

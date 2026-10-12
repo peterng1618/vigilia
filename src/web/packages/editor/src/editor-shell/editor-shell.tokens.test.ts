@@ -226,40 +226,62 @@ describe("shell token stylesheet", () => {
     ).toBeLessThan(palettesAt);
 
     expect(
-      declarations(base),
+      // `light`'s block is the base frame plus the three tokens the two `:root`
+      // companions carry: `vg-357` gave it its own declarations for them, so a
+      // dark-reporting OS cannot move three of its settled values through the
+      // dark base. Any other difference is a drift on one side or the other.
+      Object.keys(declarations(declarationBlock("light"))).sort(),
       "the base has drifted from the `light` palette it mirrors, so a " +
         "light-reporting OS's first frame is not the light palette",
-    ).toEqual(declarations(declarationBlock("light")));
+    ).toEqual(
+      [
+        ...Object.keys(declarations(base)),
+        "--shell-display",
+        "--shell-flat",
+        "--vigilia-control-bg",
+      ].sort(),
+    );
 
-    // Three tokens graphite declares beyond its colours are deliberately not
-    // carried: they are what ember, moss, plum and light inherit from the bare
-    // root instead of declaring, and this rule matches the root with a palette
-    // resolved just as it does without one.
-    const omitted: ReadonlySet<string> = new Set([
-      "--shell-display",
-      "--shell-flat",
-      "--vigilia-control-bg",
-    ]);
+    // Every token graphite declares, the three beyond its colours included
+    // (`vg-357`). A token declared in the dark base wins over the palette
+    // blocks below at equal specificity, so carrying graphite's three is only
+    // safe while each palette that used to inherit them declares its own — and
+    // this reads every palette rather than assuming the four the row named.
     const graphite = declarations(declarationBlock("graphite"));
-    for (const token of omitted) {
-      expect(
-        graphite[token],
-        `${token} is not graphite's to omit`,
-      ).toBeDefined();
-      expect(
-        dark,
-        `${token} in the dark base moves ember, moss, plum and light under a ` +
-          "dark-reporting OS, where they inherit it from the bare root",
-      ).not.toContain(token);
-    }
     expect(
       declarations(dark ?? ""),
       "the dark base has drifted from the `graphite` palette it mirrors",
-    ).toEqual(
-      Object.fromEntries(
-        Object.entries(graphite).filter(([token]) => !omitted.has(token)),
-      ),
-    );
+    ).toEqual(graphite);
+
+    const inheritsNothing = (
+      palette: string,
+      tokens: readonly string[],
+      from: string,
+    ): void => {
+      const block = declarationBlock(palette);
+      for (const token of tokens) {
+        expect(
+          block,
+          `${palette} inherits ${token} from ${from}, so a dark-reporting OS ` +
+            "moves its settled value through the dark base",
+        ).toContain(token);
+      }
+    };
+    for (const palette of shellPalettes) {
+      inheritsNothing(
+        palette,
+        ["--shell-display", "--shell-flat"],
+        "bare :root",
+      );
+      // Graphite is the palette the dark base mirrors; the other five paint a
+      // control surface of their own, editorial's and light's coming from
+      // `:root`'s control block until `vg-357` restated them here.
+      inheritsNothing(
+        palette,
+        ["--vigilia-control-bg"],
+        ":root's control block",
+      );
+    }
   });
 
   /** The scale, on `:root`, silently overrode Tailwind's own theme.
