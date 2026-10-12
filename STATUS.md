@@ -32,7 +32,10 @@ satisfies every token in `DESIGN.md` and still does not look like the mockup.
 
 ## Last completed change
 
-- **`vg-362` is closed on its rewrite, not on its ruling** — the close condition the row itself names, met at `48ada839`: the live register drops to 236 rows and the archived row carries the check *"the census selects a layer by keyboard and the populated walk reaches the inspector"* beside that sha, both accepted by `npm run backlog:check`.
+- **The walkthrough's Task 2 landed** — `openDocumentByKeyboard` and `chooseRailPane` drive a document created from the starter and a rail pane chosen with no pointer, at `4ef0c94a`; the task's review is in flight, so its reported counts (4 tests, 4 passed, `desktop-host`, `--workers=1`, read from that run's own report) and its two red-proofs are reported rather than accepted.
+- **`format:check` was red at HEAD and is green again** — the click line `8a86b2b0` wrote into `editor.spec.ts` was 96 columns and biome folds it; fixed at `a174c300`, 615 files clean, which is the gate CI runs before lint.
+- **`vg-387` closes on that fix** — filed by the Task 2 implementer with a `Discovered, not fixed:` trailer and repaired by the controller in its own commit, because the row's stated blocker (a concurrent lane possibly holding the file) had ended when that lane committed.
+- **The ruling Task 5 was waiting on** — "create or open" is **create from the starter**, since the pinned fixture carries no group and §13.1 requires entering one; so Task 5's "return to the original document" means returning to the `e2e-hosted` fixture the walk booted on.
 
 ## Next
 
