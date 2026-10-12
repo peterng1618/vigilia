@@ -63,6 +63,7 @@ two apart is the judgement the map cannot make for itself.
 | Canvas mount/disposal, viewport fitting, artboard paint | `editor/src/editor-shell.ts` |
 | **Which displays a theme can be seen through** — their ids and aspect ratios, and the screen rect one becomes | `editor/src/display-lens.ts` |
 | The stage camera — zoom, pan, framing, and the lens it frames through | `editor/src/viewport-manager/` |
+| **The editor's own fit** — the author framed to the display's screen rather than to the host: its contain scale and centring, deliberately a different rule from the renderer-core transform, and the one place its refusals live | `editor/src/viewport-manager/` |
 | `EditorInteraction` contract consumed by product panels | `editor/src/editor-interaction.ts` |
 | Text creation | `editor/src/text-manager/` |
 | Image import | `editor/src/image-manager/` |
@@ -74,13 +75,14 @@ two apart is the judgement the map cannot make for itself.
 | Theme download | `editor/src/persistence-manager/` |
 | **The stored-document base and the library save protocol** — what a save carries, and the conflict it can be refused on | `editor/src/theme-library-manager/` |
 | Chart selection/settings/bindings — projected by `panel.ts`, rendered by `chart-fields.tsx`, written by `index.ts` | `editor/src/chart-manager/` |
-| **The artboard-to-viewport transform** — contain/cover scale, letterbox bars, cover crop | `renderer-core/src/artboard.ts` |
+| **The plan-and-player artboard-to-viewport transform** — contain/cover scale, letterbox bars, cover crop; the editor's own fit is a different rule, above | `renderer-core/src/artboard.ts` |
 | Theme metadata, artboard size/preview fit/paint/media — **the authoring controls** | `editor/src/artboard-panel.ts` |
 | Semantic layer projection | `editor/src/editor-shell/layer-tree.ts` |
 | **Which object and arrange actions exist** — their ids, labels, icons and eligibility | `editor/src/object-actions.ts` |
 | **The chrome glyph vocabulary** — the one icon family, the one weight rule, and the named glyphs the shell and the panes draw | `editor/src/editor-shell/icons.ts` |
 | Applying an arrange action to a multi-selection | `editor/src/arrange.ts` |
 | Palette-token authoring and reference reassignment | `editor/src/palette-manager/` |
+| **Listing the document's tokens by name** — one function in the token owner, each caller passing its own filter, and the raw ref returned only for a token the author deleted | `editor/src/palette-manager/` |
 | New-object defaults (text, charts, shapes) and the shape list | `editor/src/new-object-defaults.ts` |
 | The Add panel's construction actions | `editor/src/new-object-panel.ts` |
 | Shape material fields (fill, stroke, border, shadow, radius) and each shape's own geometry | `editor/src/selection-inspector/panel.ts` |
@@ -152,6 +154,7 @@ tree, and `editor-shell/layer-panel.tsx` renders those rows.
 | Wire protocol | `renderer-core/src/data/protocol.ts` |
 | Semantic sensor keys | `renderer-core/src/data/semantic-keys.ts` |
 | Chart setting descriptors | `renderer-core/src/charts/` |
+| **The one-paint-per-chart-series rule** — a series' paint array, and the rejection or repair of a wrong one, held at the descriptor owner rather than by one consumer | `renderer-core/src/charts/` |
 | Provider contract | `host/src/providers/provider.ts` |
 
 ### Fabric renderer
@@ -172,6 +175,8 @@ tree, and `editor-shell/layer-panel.tsx` renders those rows.
 | The authored text box (`vigiliaText.box`) — its two dimensions, and the one write every geometry surface shares | `scene-fabric/src/authored-box.ts` |
 | Image/SVG | `scene-fabric/src/fabric-image.ts` |
 | Paint conversion | `scene-fabric/src/paint.ts` |
+| **Whether an object is locked** — the one `locked` predicate, a Fabric fact rather than lock policy, so no reader reaches up to a manager for it | `scene-fabric/src/` |
+| **Which collection holds an object** — the one owner-of/targets-of helper, replacing the four return contracts `layer-manager`, `deletion-manager`, `layer-tree` and `bridge` each spell themselves | `scene-fabric/src/` |
 
 ### Host
 
