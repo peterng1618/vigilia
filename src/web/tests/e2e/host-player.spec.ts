@@ -1,13 +1,16 @@
 import { expect, type Page, test } from "@playwright/test";
 import { canvasProp, sceneBounds, sceneProperty } from "./canvas-probe.js";
+import { openPaused } from "./clock.js";
 import { captureVisualReview } from "./editor-canvas.js";
 import { openPane } from "./editor-rail.js";
 import {
   BADGE_INK,
+  CHART_NODE_ID,
   CLOCK_NODE_ID,
   GROUPED_GROUP_ANGLE,
   GROUPED_GROUP_ID,
   GROUPED_PANEL_IDS,
+  HOST_CHART_THEME_ID,
   HOST_ENGLISH_THEME_ID,
   HOST_GROUPED_THEME_ID,
   HOST_JAPANESE_THEME_ID,
@@ -867,6 +870,113 @@ test.describe("the clock the host reports", () => {
       // outlives this test even though the seeded themes do not.
       await request.put(`${HOST}/api/display`, { data: {} });
     }
+  });
+});
+
+/**
+ * The frame determinism `tests/e2e/clock.ts` exists to guarantee.
+ *
+ * The case that measured it was deleted with the schema-v1 retirement, along
+ * with the fake-source themes it captured, and nothing in the suite compared two
+ * frames afterwards (`vg-347`). This is that case rebuilt on a theme that still
+ * exists: `HOST_CHART_THEME_ID` is one gauge that binds no reading, so the frame
+ * has no variable left in it but time.
+ *
+ * **Why the ink check comes first, and why it is on the chart.** Two captures of
+ * a blank artboard are byte-identical for a reason that says nothing about the
+ * clock, and the deleted case failed exactly that way under load: one capture
+ * came back a nearly empty artboard. The ink is read off the chart's own canvas,
+ * so the frame being compared is the one the row is about.
+ */
+test.describe("a paused clock on one chart", () => {
+  /** Every chart canvas on the display, with the ink on each — the same read
+   *  `chartPixels` makes, sized down to what this case needs. */
+  const chartsOn = (
+    page: Page,
+  ): Promise<{ readonly id: string; readonly ink: number }[]> =>
+    chartPixels(page).then((charts) =>
+      charts.map((chart) => ({ id: chart.id, ink: chart.ink })),
+    );
+
+  test("makes two frames of one chart byte-identical", async ({
+    browser,
+  }, testInfo) => {
+    test.skip(
+      !isDesktopSurface(testInfo),
+      "the frame is compared in device pixels",
+    );
+    test.slow();
+
+    /** One capture of the mounted display, on its own page and its own paused
+     *  clock — the deleted case's shape, and the reason it is three pages rather
+     *  than three shots of one: `page.clock` is context-scoped, so only a fresh
+     *  context pauses at the same instant again. */
+    const capture = async (): Promise<{
+      readonly shot: Buffer;
+      readonly charts: readonly { readonly id: string; readonly ink: number }[];
+    }> => {
+      const page = await browser.newPage({
+        viewport: { width: 1280, height: 720 },
+      });
+      // The scene's own canvas is the ready condition, and it is what gets
+      // compared.
+      await openPaused(
+        page,
+        `${HOST}/?theme=${HOST_CHART_THEME_ID}`,
+        "#artboard canvas.lower-canvas",
+      );
+      // Charts paint synchronously inside `setOption` ("Ensure zr refresh
+      // sychronously, and then pixel in canvas can be fetched after
+      // `setOption`"), so a paused clock is not a wait for a frame — but the
+      // chart's canvas is created by that paint, so the condition to wait on is
+      // ink rather than a selector.
+      await expect
+        .poll(
+          async () =>
+            (await chartsOn(page)).reduce(
+              (total, chart) => total + Math.max(0, chart.ink),
+              0,
+            ),
+          { timeout: 30_000 },
+        )
+        .toBeGreaterThan(0);
+      await page.evaluate(() => document.fonts.ready);
+      const shot = await page
+        .locator("#artboard canvas.lower-canvas")
+        .screenshot();
+      const charts = await chartsOn(page);
+      await page.close();
+      return { shot, charts };
+    };
+
+    // The ink condition before the comparison, for the reason the describe says.
+    // The chart is named as well as counted: the theme is one gauge and nothing
+    // else, so ink from anywhere else would be a fixture that drifted.
+    const painted = await capture();
+    expect(
+      painted.charts.map((chart) => chart.id),
+      "the frame being compared is the fixture's own chart",
+    ).toEqual([CHART_NODE_ID]);
+    expect(
+      painted.charts[0]?.ink ?? 0,
+      "the chart drew ink before any two frames are compared",
+    ).toBeGreaterThan(0);
+    const first = await capture();
+    const second = await capture();
+    // Every capture, not the probe alone: two blank frames compare equal for a
+    // reason that says nothing about the clock, and that is the failure the
+    // deleted case hit under load.
+    for (const [index, frame] of [first, second].entries()) {
+      expect(
+        frame.charts.map((chart) => chart.id),
+        `capture ${index + 1} is the fixture's own chart`,
+      ).toEqual([CHART_NODE_ID]);
+      expect(
+        frame.charts[0]?.ink ?? 0,
+        `capture ${index + 1} drew ink before the two are compared`,
+      ).toBeGreaterThan(0);
+    }
+    expect(Buffer.compare(first.shot, second.shot)).toBe(0);
   });
 });
 

@@ -65,6 +65,20 @@ export const HOST_BLEED_THEME_ID = "e2e-bleed";
  * was seeded.
  */
 export const HOST_BLEED_ALL_THEME_ID = "e2e-bleed-all";
+/**
+ * **One chart, bound to nothing** — the theme a frame-determinism case needs.
+ *
+ * Every other fixture here binds a key the host's own sample stream answers, and
+ * a live reading is a different value on every page load, so two frames of one
+ * display would differ for a reason that has nothing to do with the clock. This
+ * theme declares no `bindings` at all, so nothing on it moves except time: a
+ * gauge with no datum draws its track and nothing else (`buildGaugeOption`'s
+ * "missing samples show only the track, never a false zero").
+ */
+export const HOST_CHART_THEME_ID = "e2e-chart";
+/** The chart's own id, so a test can name the canvas it compares. */
+export const CHART_NODE_ID = "e2e-gauge";
+
 /** The host's app folder; it owns both the library and the settings beside it. */
 export const HOST_APP_DIR = path.join(here, "..", "..", ".e2e-host-app");
 /** The library itself, where each theme is one folder (ADR-0017). */
@@ -242,6 +256,70 @@ const envelopeFor = (
     [nodeId]: [{ id: "bound-value", ...binding }],
   },
 });
+
+/**
+ * The chart-only envelope. Settings carry palette references rather than
+ * literals for the reason every other chart does: a resolved colour with no
+ * token behind it is what the envelope validator refuses
+ * (`chartPaintReferences`).
+ */
+const chartEnvelope = {
+  schemaVersion: 2 as const,
+  fabricVersion: "7.4.0",
+  id: HOST_CHART_THEME_ID,
+  metadata: { name: "E2E chart", themeLanguage: "en" },
+  artboard: {
+    width: 640,
+    height: 360,
+    contentFit: "contain" as const,
+    background: { ref: "palette.bar" },
+    barColor: { ref: "palette.bar" },
+  },
+  globals: {
+    palette: {
+      // Required by the envelope validator on every v2 document, used or not.
+      none: {
+        name: "None",
+        value: { kind: "solid" as const, color: "transparent" },
+      },
+      bar: { name: "Bar", value: { kind: "solid" as const, color: "#101318" } },
+      track: {
+        name: "Track",
+        value: { kind: "solid" as const, color: "#2a2f3a" },
+      },
+      ink: { name: "Ink", value: { kind: "solid" as const, color: "#e8ecf3" } },
+    },
+    typePresets: {},
+  },
+  assets: [],
+  scene: {
+    version: "7.4.0" as const,
+    objects: [
+      {
+        type: "VigiliaChart" as const,
+        version: "7.4.0" as const,
+        id: CHART_NODE_ID,
+        name: CHART_NODE_ID,
+        // Centred, because that is `VigiliaChart`'s own default origin.
+        left: 320,
+        top: 180,
+        width: 260,
+        height: 260,
+        family: "gauge" as const,
+        settings: {
+          startAngle: 225,
+          endAngle: -45,
+          min: 0,
+          max: 100,
+          thickness: 18,
+          roundCap: true,
+          track: { ref: "palette.track" },
+          progress: { ref: "palette.ink" },
+        },
+      },
+    ],
+  },
+};
 
 const badge = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="24" height="24">
   <circle cx="12" cy="12" r="10" fill="#e8ecf3" />
@@ -736,6 +814,7 @@ export async function seedHostTheme(): Promise<void> {
     }),
     groupedGlassEnvelope,
     mediaEnvelope,
+    chartEnvelope,
     bleedEnvelope(HOST_BLEED_THEME_ID, false),
     bleedEnvelope(HOST_BLEED_ALL_THEME_ID, true),
     // **A key nothing can report.** The envelope validator only checks that a

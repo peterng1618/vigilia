@@ -27,6 +27,7 @@ import {
   expandLayer,
   objectHandleScenePoint,
   objectRect,
+  readSceneObject,
   sceneToClient,
   worldLeftOf,
   worldRightOf,
@@ -380,6 +381,185 @@ async function scaleActiveSelection(page: Page, factor: number): Promise<void> {
     active.setCoords();
     bridge.editor.canvas.requestRenderAll();
   }, factor);
+}
+
+/**
+ * One named object's own box and scale, plus the authored box the product
+ * stored — the two halves every `vigiliaText.box` claim compares.
+ *
+ * Read from the object rather than from a saved document because the question is
+ * what the live canvas holds mid-edit; the round-trip half of the case reads the
+ * envelope instead, where the stored value is the persisted one.
+ */
+async function textBoxState(
+  page: Page,
+  id: string,
+): Promise<{
+  width: number;
+  scaleX: number;
+  renderedWidth: number;
+  boxWidth: number | undefined;
+}> {
+  return page.evaluate((objectId) => {
+    type Obj = {
+      readonly id?: string;
+      get(name: string): unknown;
+      getObjects?(): readonly Obj[];
+      readonly width: number;
+      readonly scaleX: number;
+      getScaledWidth(): number;
+    };
+    const objects = (
+      window as unknown as {
+        vigiliaEditorBridge: {
+          editor: { canvas: { getObjects(): readonly Obj[] } };
+        };
+      }
+    ).vigiliaEditorBridge.editor.canvas.getObjects();
+    const find = (list: readonly Obj[]): Obj | undefined => {
+      for (const candidate of list) {
+        if (candidate.id === objectId) return candidate;
+        const found = find(candidate.getObjects?.() ?? []);
+        if (found !== undefined) return found;
+      }
+      return undefined;
+    };
+    const object = find(objects);
+    if (object === undefined) throw new Error(`no object with id ${objectId}`);
+    const authored = object.get("vigiliaText") as
+      | { box?: { width?: number } }
+      | undefined;
+    return {
+      width: object.width,
+      scaleX: object.scaleX,
+      renderedWidth: object.getScaledWidth(),
+      boxWidth: authored?.box?.width,
+    };
+  }, id);
+}
+
+/**
+ * Scales a named object by dragging its `br` corner — the product's own route to
+ * a non-unit `scaleX`, and the only one: the state is a gesture's result and
+ * nothing in the inspector writes it.
+ *
+ * The grab is the object's own corner and the landing is a point on the diagonal
+ * from its centre, so the scale that comes out is Fabric's own arithmetic on a
+ * real drag rather than a number this test wrote into the scene.
+ *
+ * **The object must not be in text editing.** Fabric withdraws the controls and
+ * locks movement while a text is being edited (`_setEditingProps`), so a corner
+ * dragged on a text that still holds the caret does nothing at all and the
+ * gesture goes missing without failing.
+ */
+async function scaleByCornerHandle(
+  page: Page,
+  id: string,
+  factor: number,
+): Promise<void> {
+  const corner = await objectHandleScenePoint(page, id, "br");
+  const centre = await readSceneObject<{ x: number; y: number }>(
+    page,
+    id,
+    "center",
+  );
+  const from = await sceneToClient(page, STARTER_WIDTH, corner.x, corner.y);
+  const to = await sceneToClient(
+    page,
+    STARTER_WIDTH,
+    centre.x + (corner.x - centre.x) * factor,
+    centre.y + (corner.y - centre.y) * factor,
+  );
+  await page.mouse.move(from.x, from.y);
+  await page.mouse.down();
+  await page.mouse.move(to.x, to.y, { steps: 12 });
+  await page.mouse.up();
+}
+
+/**
+ * The client point of a named object's `mtr` control.
+ *
+ * Read from Fabric's own `oCoords`, which is where the control is drawn and
+ * hit-tested — a corner nudged by a literal would be a grab the fixture never
+ * promised. `setCoords` first, because `oCoords` is computed from the viewport
+ * transform when the object was last asked for its coordinates.
+ */
+async function rotationHandleClientPoint(
+  page: Page,
+  id: string,
+): Promise<{ x: number; y: number }> {
+  return page.evaluate((objectId) => {
+    type Obj = {
+      readonly id?: string;
+      getObjects?(): readonly Obj[];
+      setCoords(): void;
+      readonly oCoords?: Record<string, { x: number; y: number }>;
+    };
+    const objects = (
+      window as unknown as {
+        vigiliaEditorBridge: {
+          editor: { canvas: { getObjects(): readonly Obj[] } };
+        };
+      }
+    ).vigiliaEditorBridge.editor.canvas.getObjects();
+    const find = (list: readonly Obj[]): Obj | undefined => {
+      for (const candidate of list) {
+        if (candidate.id === objectId) return candidate;
+        const found = find(candidate.getObjects?.() ?? []);
+        if (found !== undefined) return found;
+      }
+      return undefined;
+    };
+    const object = find(objects);
+    if (object === undefined) throw new Error(`no object with id ${objectId}`);
+    object.setCoords();
+    const mtr = object.oCoords?.["mtr"];
+    if (mtr === undefined) {
+      throw new Error(`${objectId} has no rotation control`);
+    }
+    const canvas = document.querySelector<HTMLCanvasElement>(
+      "#vigilia-fabric-editor canvas.upper-canvas",
+    );
+    if (canvas === null) throw new Error("the upper canvas is missing");
+    const box = canvas.getBoundingClientRect();
+    return { x: box.left + mtr.x, y: box.top + mtr.y };
+  }, id);
+}
+
+/** The active object's own angle, which is the number the readout names. */
+async function activeAngle(page: Page): Promise<number> {
+  return page.evaluate(() => {
+    const active = (
+      window as unknown as {
+        vigiliaEditorBridge: {
+          editor: {
+            canvas: {
+              getActiveObject(): { angle?: number } | undefined;
+            };
+          };
+        };
+      }
+    ).vigiliaEditorBridge.editor.canvas.getActiveObject();
+    if (active === undefined) throw new Error("no active object");
+    return active.angle ?? 0;
+  });
+}
+
+/** How far a point is from a box's own rectangle, in CSS pixels: 0 when it is
+ *  over the box, which is the difference between "beside the pointer" and
+ *  "under it". */
+function distanceToBox(
+  point: { readonly x: number; readonly y: number },
+  box: {
+    readonly x: number;
+    readonly y: number;
+    width: number;
+    height: number;
+  },
+): number {
+  const dx = Math.max(box.x - point.x, 0, point.x - (box.x + box.width));
+  const dy = Math.max(box.y - point.y, 0, point.y - (box.y + box.height));
+  return Math.hypot(dx, dy);
 }
 
 /** Drags the active selection by `amount` scene px in one gesture and reports
@@ -3893,6 +4073,250 @@ test.describe("Fabric editor route", () => {
     // candidate; with the guard disabled the snap runs and this deviation is
     // several pixels, which is what the assertion has to catch.
     expect(Math.abs(refused.left - refused.raw)).toBeLessThan(1.5);
+  });
+
+  /**
+   * The canvas rotation gesture, which no other test performs (`vg-346`).
+   *
+   * The block this replaces asserted only that the canvas was visible, and it
+   * was the one thing driving Fabric's `mtr` handle — so the readout and the
+   * control were unit-tested and the gesture was covered by nothing. Both halves
+   * of the deleted case's name are asserted here: the gesture, and the readout
+   * appearing *beside the pointer* rather than merely existing.
+   *
+   * The angle is never written into the scene. A shape is inserted through the
+   * Add pane (which selects it) and its own rotation handle is swept, so the
+   * number the readout shows is the number that sweep produced.
+   */
+  test("shows the rotation-angle indicator beside the pointer mid-rotation", async ({
+    page,
+  }, testInfo) => {
+    test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+
+    await page.goto(EDITOR);
+    await expect(
+      page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+    ).toBeVisible();
+
+    await openPane(page, "Add");
+    await insertShape(page, "Rectangle");
+    const id = await activeId(page);
+    expect(id, "insertion selects the object it inserted").toBeDefined();
+
+    const grab = await rotationHandleClientPoint(page, id!);
+    const readout = page.locator(".vigilia-angle-indicator");
+
+    /** What the readout says and where it sits, read while the pointer is down
+     *  and still — the readout is repainted by `object:rotating` alone. */
+    const readoutAt = async (pointer: { x: number; y: number }) => {
+      await expect(readout).toBeVisible();
+      const text = ((await readout.textContent()) ?? "").trim();
+      const box = (await readout.boundingBox()) ?? {
+        x: 0,
+        y: 0,
+        width: 0,
+        height: 0,
+      };
+      return { text, box, pointer, angle: await activeAngle(page) };
+    };
+
+    await page.mouse.move(grab.x, grab.y);
+    await page.mouse.down();
+
+    const firstLeg = { x: grab.x + 18, y: grab.y + 18 };
+    await page.mouse.move(firstLeg.x, firstLeg.y, { steps: 8 });
+    const first = await readoutAt(firstLeg);
+
+    const secondLeg = { x: grab.x + 36, y: grab.y + 36 };
+    await page.mouse.move(secondLeg.x, secondLeg.y, { steps: 8 });
+    const second = await readoutAt(secondLeg);
+
+    // The sweep rotated the object, and the readout names that angle — the
+    // degree value is the product's own, formatted by `formatAngle`. The sweep
+    // is a drag of tens of pixels, so the angle stays inside ±180 where
+    // `formatAngle`'s normalisation is the identity and this rounding is the
+    // same arithmetic.
+    expect(second.angle, "the sweep rotated the object").not.toBe(0);
+    expect(second.text).toBe(`${Math.round(second.angle)}°`);
+    expect(second.text).toMatch(/^-?\d+°$/);
+
+    // Beside the pointer, both legs: within a short reach of the cursor, and
+    // moving with it. A readout pinned to the object or to a corner would pass
+    // the text assertion above and fail this one.
+    expect(distanceToBox(second.pointer, second.box)).toBeLessThan(40);
+    expect(second.box.x - first.box.x).toBeGreaterThan(8);
+
+    // And it leaves when the gesture does.
+    await page.mouse.up();
+    await expect(readout).toBeHidden();
+  });
+
+  /**
+   * A scaled text resized by a side handle, read back at both ends — the one
+   * check `vg-233` and `vg-370` are each waiting on.
+   *
+   * **`vg-233`** is a contradiction in source: `text-manager`'s resize path
+   * writes `target.width * scaleX` into `vigiliaText.box`, while the shared
+   * writer's own comment says the scaled value "would grow the box on every
+   * pass", and `boxFrom` multiplies by `scaleX` again when it reads. Neither
+   * half is measured, because no case resizes a text carrying a non-1 scale.
+   * The measurement here is the author's own: resize the box, save it, reopen
+   * it, and see whether the box comes back the size it was left.
+   *
+   * **`vg-370`** is the box minimum, which lives in two places: the shared
+   * writer refuses `value < 1` (`authored-box.ts`) and the inspector's funnel
+   * floors at `MIN_DIMENSION = 1`. The refusal is reachable only through a scale
+   * below 1, since Fabric floors its own `width` at 1 — which is why this text
+   * is scaled *down*. Whether it fires is measured and reported, not asserted:
+   * the row is open on exactly that fact. What the run found is that the input
+   * never gets there — the edge lands about 20 scene units from where the
+   * pointer asked, so no sub-unit width is produced to be refused, and the box
+   * is written rather than skipped. That landing-versus-request gap is its own
+   * finding (`vg-393`); this case concludes nothing about it either.
+   */
+  test("resizes a scaled text by its side handle, and reopens the box it wrote", async ({
+    page,
+  }, testInfo) => {
+    test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+
+    await page.goto(EDITOR);
+    await expect(
+      page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+    ).toBeVisible();
+
+    // The starter's own wordmark, through the canvas click `selectTwoLabels`
+    // uses: it is a top-level `Textbox` carrying an authored box, which is what
+    // both halves below need — `text-manager`'s resize path writes the box, and
+    // a text with no box is returned from before it writes anything.
+    const wordmark = await sceneToClient(page, STARTER_WIDTH, 200, 78);
+    await page.mouse.click(wordmark.x, wordmark.y);
+    const id = await activeId(page);
+    expect(id, "a canvas click selects the starter's own text").toBe(
+      "wordmark",
+    );
+    const textId = id!;
+
+    // A scale below 1, through the product's own corner drag. Below, and not
+    // merely non-unit: the authored value the resize path carries is
+    // `width * scaleX`, and Fabric's `width` is floored at 1, so a scale above
+    // 1 can never put it under the shared writer's minimum.
+    await scaleByCornerHandle(page, textId, 0.5);
+    const scaled = await textBoxState(page, textId);
+    expect(
+      scaled.scaleX,
+      "the corner drag left the text below a unit scale",
+    ).toBeGreaterThan(0.2);
+    expect(scaled.scaleX).toBeLessThan(0.9);
+    expect(
+      scaled.boxWidth,
+      "the starter's text carries the authored box both halves write",
+    ).toBeDefined();
+
+    // ---- vg-370: does the sub-unit resize reach the refusal? ---------------
+    // The handle is dragged to a rendered width under one unit. What the run
+    // reports — through the test's own stdout in the JSON report — is the box
+    // before and after, the width Fabric settled on, and the landing the pointer
+    // asked for.
+    const left = await worldLeftOf(page, textId);
+    const subUnit = await resizeRightHandleTo(
+      page,
+      textId,
+      left + 0.4,
+      undefined,
+    );
+    const afterSubUnit = await textBoxState(page, textId);
+    console.log(
+      `vg-370 sub-unit resize ${JSON.stringify({
+        boxBefore: scaled.boxWidth,
+        boxAfter: afterSubUnit.boxWidth,
+        fabricWidth: afterSubUnit.width,
+        scaleX: afterSubUnit.scaleX,
+        renderedWidth: afterSubUnit.renderedWidth,
+        askedLanding: subUnit.raw,
+        landedRight: subUnit.right,
+      })}`,
+    );
+
+    // ---- vg-233: does the box survive a round trip? ------------------------
+    // Widened rather than narrowed, so the reopened box is not re-measured
+    // against a wrapped run: the claim is the box the author dragged, not the
+    // text's own width. The left edge is re-read because the probe above moved
+    // the box.
+    const widened = await resizeRightHandleTo(
+      page,
+      textId,
+      (await worldLeftOf(page, textId)) + 240,
+      undefined,
+    );
+    const resized = await textBoxState(page, textId);
+    console.log(
+      `vg-233 resize ${JSON.stringify({
+        askedLanding: widened.raw,
+        landedRight: widened.right,
+        boxBefore: afterSubUnit.boxWidth,
+        boxAfter: resized.boxWidth,
+        fabricWidth: resized.width,
+        scaleX: resized.scaleX,
+        renderedWidth: resized.renderedWidth,
+        renderedBefore: afterSubUnit.renderedWidth,
+      })}`,
+    );
+    // What the drag has to do, and all it has to do: the side handle leaves the
+    // text wider than it found it, and the resize path writes the box it wrote
+    // out of. Whether the edge lands where the pointer asked is not asserted
+    // here — the run below reports both numbers, because on this object they
+    // disagree and no reading yet says which of the two is wrong.
+    expect(
+      resized.renderedWidth,
+      "the side handle left the text wider than it found it",
+    ).toBeGreaterThan(afterSubUnit.renderedWidth);
+    expect(resized.boxWidth, "the resize wrote the authored box").not.toBe(
+      afterSubUnit.boxWidth,
+    );
+
+    const saved = await savePackage(page);
+    expect(saved.parsed.ok).toBe(true);
+    if (!saved.parsed.ok) throw new Error(saved.parsed.message);
+    const persisted = sceneObjects(saved.parsed.envelope).find(
+      (object) => object["id"] === textId,
+    );
+    const persistedBox = (
+      persisted?.["vigiliaText"] as { box?: { width?: number } } | undefined
+    )?.box?.width;
+    expect(
+      persistedBox,
+      "the saved document carries the text's box",
+    ).toBeDefined();
+
+    // The package the editor just wrote, re-imported as bytes. Not
+    // `setThemePackage`: that rebuilds a document from the envelope alone and
+    // this scene carries a background asset, so the rebuilt one is refused.
+    await page.locator('input[accept=".vigilia-theme"]').setInputFiles({
+      name: "resized-scaled-text.vigilia-theme",
+      mimeType: "application/octet-stream",
+      buffer: saved.bytes,
+    });
+    await expect(page.locator("#status")).toContainText(
+      "Opened resized-scaled-text.vigilia-theme",
+    );
+    const reopened = await textBoxState(page, textId);
+
+    console.log(
+      `vg-233 reopen ${JSON.stringify({
+        fabricWidth: resized.width,
+        scaleX: resized.scaleX,
+        renderedWidth: resized.renderedWidth,
+        storedBox: persistedBox,
+        reopenedRenderedWidth: reopened.renderedWidth,
+      })}`,
+    );
+    // The author's resize survives the save: the box they see after reopening
+    // is the box the drag left. A stored box carrying the scale twice lands the
+    // reopened text at `scaleX` times its own width.
+    expect(
+      Math.abs(reopened.renderedWidth - resized.renderedWidth),
+      "the reopened text is the width the drag left it",
+    ).toBeLessThan(2);
   });
 
   test("captures the canvas dock over a selected object", async ({
