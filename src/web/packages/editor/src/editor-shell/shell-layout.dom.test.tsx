@@ -1087,6 +1087,85 @@ it("opens every View setting's choices instead of toggling on a bare click", asy
   layout.destroy();
 });
 
+/** Opens the View menu and the submenu whose trigger prints `label`, read the
+ *  way the chart-refresh case does: a submenu is a second popup, found by the
+ *  radios it holds rather than by position. */
+async function openViewSetting(
+  root: HTMLElement,
+  label: string,
+): Promise<HTMLElement> {
+  menubarEntry(root, uiCopy.menus.view).click();
+  await Promise.resolve();
+  const trigger = menuItems().find(
+    (item) =>
+      item.getAttribute("aria-haspopup") === "menu" &&
+      (item.textContent ?? "").startsWith(label),
+  );
+  if (trigger === undefined) throw new Error(`No "${label}" View setting.`);
+  trigger.click();
+  await Promise.resolve();
+  const submenu = openPopups().find(
+    (popup) => popup.querySelector("[role=menuitemradio]") !== null,
+  );
+  if (submenu === undefined) throw new Error(`No "${label}" submenu.`);
+  return submenu;
+}
+
+/** Picks the radio whose own words are `text`, as an author does. */
+function pickRadio(submenu: HTMLElement, text: string): void {
+  const item = Array.from(
+    submenu.querySelectorAll<HTMLElement>("[role=menuitemradio]"),
+  ).find((candidate) => candidate.textContent?.trim() === text);
+  if (item === undefined) throw new Error(`No "${text}" radio.`);
+  item.click();
+}
+
+/** The other two readings answer for the theme's sensors and for what this
+ *  machine reports (§6), and each is proven by picking it: the refresh case
+ *  above only ever opened the third setting, so `setSourceMode` and
+ *  `setRunDisplay` reached their owners with nothing asserting it (`vg-339`). */
+it("routes the readings submenu's choice to setSourceMode", async () => {
+  const root = document.createElement("div");
+  const layout = createShellLayout(root);
+  const view = viewStub();
+  layout.setBridge(bridgeStub(), view);
+  await Promise.resolve();
+
+  const submenu = await openViewSetting(root, uiCopy.view.dataSource);
+  // Which reading is current is the half a screen reader hears and a sighted
+  // reader sees as a tick, so it is asserted before the pick moves it.
+  expect(openRadioItems(submenu)).toEqual([
+    [uiCopy.view.preview, "true"],
+    [uiCopy.view.live, "false"],
+  ]);
+
+  pickRadio(submenu, uiCopy.view.live);
+  await Promise.resolve();
+  expect(view.setSourceMode).toHaveBeenCalledWith("live");
+
+  layout.destroy();
+});
+
+it("routes the value-runs submenu's choice to setRunDisplay", async () => {
+  const root = document.createElement("div");
+  const layout = createShellLayout(root);
+  const view = viewStub();
+  layout.setBridge(bridgeStub(), view);
+  await Promise.resolve();
+
+  const submenu = await openViewSetting(root, uiCopy.view.valueRuns);
+  expect(openRadioItems(submenu)).toEqual([
+    [uiCopy.view.values, "true"],
+    [uiCopy.view.tokens, "false"],
+  ]);
+
+  pickRadio(submenu, uiCopy.view.tokens);
+  await Promise.resolve();
+  expect(view.setRunDisplay).toHaveBeenCalledWith("tokens");
+
+  layout.destroy();
+});
+
 it("has no Insert menu, and every insertable group is still reachable from the Add pane", async () => {
   const root = document.createElement("div");
   const layout = createShellLayout(root);
