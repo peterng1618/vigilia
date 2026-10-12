@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { ActiveSelection, Canvas, Rect } from "fabric/es";
+import { ActiveSelection, Canvas, Group, Rect } from "fabric/es";
 import { describe, expect, it, vi } from "vitest";
 import { applyArrange, canArrange } from "./arrange.js";
 import type { EditorInteraction } from "./editor-interaction.js";
@@ -94,6 +94,81 @@ describe("selection-relative arrange actions", () => {
     expect(
       other.getBoundingRect().left + other.getBoundingRect().width,
     ).toBeLessThanOrEqual(320);
+  });
+
+  it("aligns a grouped selection's members inside their group, not off the canvas", () => {
+    const canvas = new Canvas(document.createElement("canvas"), {
+      width: 320,
+      height: 180,
+    });
+    const anchor = rectangle(20, 20, 30, 20);
+    const other = rectangle(120, 40, 30, 20);
+    const group = new Group([anchor, other]);
+    canvas.add(group);
+    // A group away from the origin is what separates the two coordinate
+    // planes: a child's `left`/`top` are group-local while `getBoundingRect`
+    // and `getCenterPoint` are canvas coordinates.
+    group.set({ left: 500, top: 300 });
+    group.setCoords();
+    const beforeAnchorLeft = anchor.getBoundingRect().left;
+    const beforeOtherTop = other.getBoundingRect().top;
+
+    const selection = new ActiveSelection([anchor, other], { canvas });
+    canvas.setActiveObject(selection);
+    const editor = {
+      canvas,
+      historyManager: { saveState: vi.fn() },
+    } as unknown as EditorInteraction;
+
+    expect(applyArrange(editor, "align-left")).toBe(true);
+
+    // Aligned, and the anchor's own edge did not move.
+    expect(other.getBoundingRect().left).toBeCloseTo(beforeAnchorLeft, 3);
+    expect(anchor.getBoundingRect().left).toBeCloseTo(beforeAnchorLeft, 3);
+    // The group's translation is not applied a second time.
+    expect(anchor.getBoundingRect().top).toBeCloseTo(beforeOtherTop - 20, 3);
+    expect(anchor.parent).toBe(group);
+    expect(other.parent).toBe(group);
+  });
+
+  it("distributes a grouped selection's members inside their group", () => {
+    const canvas = new Canvas(document.createElement("canvas"), {
+      width: 320,
+      height: 180,
+    });
+    const first = rectangle(0, 0, 10, 10);
+    const middle = rectangle(50, 0, 20, 10);
+    const last = rectangle(100, 0, 30, 10);
+    const group = new Group([first, middle, last]);
+    canvas.add(group);
+    group.set({ left: 500, top: 300 });
+    group.setCoords();
+    const beforeFirst = first.getBoundingRect().left;
+    const beforeLastRight =
+      last.getBoundingRect().left + last.getBoundingRect().width;
+
+    const selection = new ActiveSelection([first, middle, last], { canvas });
+    canvas.setActiveObject(selection);
+    const editor = {
+      canvas,
+      historyManager: { saveState: vi.fn() },
+    } as unknown as EditorInteraction;
+
+    expect(applyArrange(editor, "distribute-x")).toBe(true);
+
+    const firstRight =
+      first.getBoundingRect().left + first.getBoundingRect().width;
+    const middleLeft = middle.getBoundingRect().left;
+    const middleRight = middleLeft + middle.getBoundingRect().width;
+    // Endpoints unmoved, and in canvas coordinates rather than the group's.
+    expect(first.getBoundingRect().left).toBeCloseTo(beforeFirst, 3);
+    expect(
+      last.getBoundingRect().left + last.getBoundingRect().width,
+    ).toBeCloseTo(beforeLastRight, 3);
+    expect(middleLeft - firstRight).toBeCloseTo(
+      last.getBoundingRect().left - middleRight,
+      3,
+    );
   });
 });
 

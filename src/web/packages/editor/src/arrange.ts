@@ -1,4 +1,4 @@
-import { ActiveSelection, type FabricObject, Point } from "fabric/es";
+import { ActiveSelection, type FabricObject, Point, util } from "fabric/es";
 import type { EditorInteraction } from "./editor-interaction.js";
 
 export type ArrangeAction =
@@ -142,12 +142,28 @@ function size(object: ArrangeObject, axis: "x" | "y"): number {
   return axis === "x" ? bounds.width : bounds.height;
 }
 
+/** Moves by a canvas-plane delta, expressed in the plane `left`/`top` live in.
+ *
+ * `getBoundingRect()` is a canvas coordinate, while `left`/`top` are the
+ * parent's plane — for a grouped object the two differ by the group's
+ * transform. Writing the one into the other moved a group member by its group's
+ * translation a second time, which reads as objects thrown off the canvas.
+ *
+ * The delta is therefore converted through the parent's inverse with its offset
+ * ignored — a delta is a vector, not a point — and added to `left`/`top`,
+ * which is a pure translation of the anchor. Going through
+ * `setPositionByOrigin(centre, …)` instead is not equivalent: entering a group
+ * bakes the group's angle and scale onto the children, and the centre read is
+ * then no longer the exact inverse of the write. */
 function move(object: ArrangeObject, dx: number, dy: number): void {
-  const center = object.getCenterPoint();
-  object.setPositionByOrigin(
-    new Point(center.x + dx, center.y + dy),
-    "center",
-    "center",
-  );
+  const parent = object.parent;
+  const delta = parent
+    ? util.transformPoint(
+        new Point(dx, dy),
+        util.invertTransform(parent.calcTransformMatrix()),
+        true,
+      )
+    : new Point(dx, dy);
+  object.set({ left: object.left + delta.x, top: object.top + delta.y });
   object.setCoords();
 }
