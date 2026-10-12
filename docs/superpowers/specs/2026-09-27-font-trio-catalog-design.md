@@ -115,9 +115,14 @@ and — for trios — the three families it seeds.
 
 **Facets are derived, not invented.** Mood and use-case take the highest-
 frequency tags by count, superfamily comes from Fontsource's own `category`
-field. A pairing carrying no matching tag stays reachable by search: facets
-narrow the list, they never remove an entry from it. Facet chips whose count is
-one are not shown.
+field. A facet **narrows** — it keeps the entries that carry its tag and drops
+the rest, so a trio with no matching tag leaves the list: keeping the tagged and
+the untagged alike is the whole list, and a control that never filters anything
+is not a facet. "Reachable by search" is the narrower guarantee, and it applies
+where it literally can: a face carries no tag of its own, so it stays reachable
+while any trio that seeds it carries the chosen tag. `font-catalog-query.ts` is
+the owner — `matchesFacet` drops an untagged trio and `queryFaces` keeps a face
+through any seeding trio. Facet chips whose count is one are not shown.
 
 **Faces load progressively.** `font-preview.ts` currently holds exactly one
 face and releases the previous on entry, which cannot back a list where many
@@ -192,8 +197,10 @@ a valid envelope. The bound preset renders Family and Weight disabled.
 **Host.** The favourites store normalises, refuses unknown values, reads with
 the empty fallback, and writes through, matching `display.test.ts`.
 
-**Browser.** The picker opens; search narrows; a facet filters without hiding
-untagged entries; a row previews in its own face; apply seeds all three roles;
+**Browser.** The picker opens; search narrows; a facet filters the list to the
+entries that carry its tag — a triplet with no matching tag leaves the list, and
+a face leaves it only when none of the trios that seed it carries the tag; a row
+previews in its own face; apply seeds all three roles;
 a single face overrides one role; a later trio apply re-seeds it; unbind leaves
 a preset editable and saveable; favourites survive an editor reload. Screenshot
 capture follows `docs/evidence/screenshots/README.md`.
