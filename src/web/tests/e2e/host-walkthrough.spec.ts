@@ -312,6 +312,47 @@ async function keyboardReach(page: Page): Promise<readonly Focus[]> {
  * is how a later task asserts that a region can be left as well as reached — is
  * not tripped by the earlier walk's notes.
  */
+/**
+ * Selects a layer with the keyboard alone, so the inspector has content.
+ *
+ * The census's fourth region is the inspector, and §13.1's requirement is a
+ * region **with content** — the user's ruling of 2026-10-12, which is what
+ * `vg-362` was filed to settle. While nothing is selected the column renders one
+ * paragraph and legitimately contributes no tab stop; the populated walk
+ * therefore needs a selection first, and it is made the way an author makes it,
+ * with no pointer.
+ *
+ * **Space selects; Enter renames.** A composition row gives `Enter` and `F2` to
+ * its rename field and selection takes `Space` (`composition-pane.tsx`), the key
+ * a list has always used for it. A helper pressing Enter would open a rename
+ * input and leave the inspector empty — indistinguishable, from the census's
+ * side, from the defect this walk exists to disprove.
+ *
+ * Waits on the column having a control rather than on the bridge, because the
+ * region the next walk has to reach is a DOM fact and `bridge.selectLayer` is
+ * not on this mount's window.
+ */
+async function selectInPaneByKeyboard(page: Page): Promise<void> {
+  await tabUntil(page, (focus) => focus.region === "pane");
+  for (let press = 0; press < TAB_BOUND; press++) {
+    const onRow = await page.evaluate(
+      () => document.activeElement?.hasAttribute("data-vigilia-layer") ?? false,
+    );
+    if (onRow) break;
+    await page.keyboard.press("Tab");
+    if (press === TAB_BOUND - 1) {
+      throw new Error(`no layer row took focus in ${TAB_BOUND} presses`);
+    }
+  }
+  await page.keyboard.press(" ");
+  await expect(
+    page.locator(
+      ".editor-shell-inspector input, .editor-shell-inspector button",
+    ),
+    "the inspector has no control after a keyboard selection",
+  ).not.toHaveCount(0);
+}
+
 async function tabUntil(
   page: Page,
   matches: (focus: Focus) => boolean,
@@ -347,25 +388,27 @@ async function tabUntil(
 
 test.describe("the shell, reached by keyboard alone", () => {
   /**
-   * **This test is red, and the red is its result.** The census reaches the
-   * rail, the pane and the stage; it does not reach the inspector, because the
-   * inspector renders only "Select an object to inspect it." while nothing is
-   * selected and a paragraph is not a focus target. That is `vg-362` — the
-   * finding this task existed to produce, filed rather than fixed, because
-   * §13.1's rule and the shell's focus order are not this plan's to change. The
-   * region list is left at four; it is not trimmed to the three that pass.
+   * **Two walks, and the union is what the region list is read against.**
    *
-   * **It asserts one of §13.1's two readings, and the sentence does not choose
-   * between them.** §13.1 says "Each region has a reachable focus target"
-   * without fixing when. Read as the shell's opening state, this test is red
-   * and the shell owes the empty inspector a target. Read as the region's
-   * populated state, the inspector is fine — it is full of controls once a
-   * selection exists — and *this test* is what would change: the census would
-   * select through Composition first, which is the order §13.1's own list puts
-   * those interactions in anyway. The red is not evidence that the second
-   * reading is wrong, and a reader should not take it as one. `vg-362` carries
-   * the same two resolutions; the ruling is the controller's, and until it is
-   * made the unqualified reading is the one asserted here.
+   * §13.1's sentence — "Each region has a reachable focus target" — does not
+   * itself fix *when*, and the census found the difference: walked as the shell
+   * opens, three of the four regions take focus and the inspector never does,
+   * because it renders one paragraph while nothing is selected and a paragraph
+   * is not a focus target. That was `vg-362`, filed as a rule question rather
+   * than repaired.
+   *
+   * **The user ruled on 2026-10-12 that the requirement means a region with
+   * content**, so an empty inspector legitimately contributes no tab stop and
+   * no product change is owed. The census is what changes: it takes the opening
+   * walk, makes a keyboard selection, and takes a second walk over the shell
+   * where each region now has content. `REGIONS` is unchanged at four — a red
+   * here still means the census ran and found what it found, and trimming the
+   * list to the regions that pass is still the forbidden move. What changed is
+   * *which walk* the fourth region is asserted in.
+   *
+   * **Both walks are reported and only their union is asserted**, because which
+   * regions the opening state reaches is evidence about the shell that a merged
+   * list cannot answer, and a failure should print both.
    *
    * The name half is proved to have teeth: with the region list reduced to the
    * three reached ones and the name assertion pointed at an element with no
@@ -376,11 +419,15 @@ test.describe("the shell, reached by keyboard alone", () => {
     page,
   }) => {
     await openWalkthrough(page);
-    const reached = await keyboardReach(page);
+    const opening = await keyboardReach(page);
+    // The inspector has content from here on, which is the state §13.1's
+    // requirement is read in.
+    await selectInPaneByKeyboard(page);
+    const populated = await keyboardReach(page);
 
     const regionsReached = [
       ...new Set(
-        reached
+        [...opening, ...populated]
           .map((step) => step.region)
           .filter((region): region is Region => region !== null),
       ),
@@ -388,8 +435,19 @@ test.describe("the shell, reached by keyboard alone", () => {
 
     expect(
       regionsReached,
-      `the census, in Tab order:\n${JSON.stringify(reached, null, 2)}`,
+      `the census, in Tab order:\nopening:\n${JSON.stringify(opening, null, 2)}\n` +
+        `populated:\n${JSON.stringify(populated, null, 2)}`,
     ).toEqual(expect.arrayContaining([...REGIONS]));
+
+    // **The second walk is the one that carries the fourth region.** Stated
+    // separately so the union above cannot pass on the opening walk alone: the
+    // opening state reaches three regions, and this is the claim the §13.1
+    // ruling turns on — a populated inspector has a tab stop and an empty one
+    // need not.
+    expect(
+      [...new Set(populated.map((step) => step.region))],
+      `the populated walk should reach the inspector:\n${JSON.stringify(populated, null, 2)}`,
+    ).toContain("inspector");
 
     // Reachable is not reachable if nothing can say its name (Review Focus 4),
     // so the first target in each region is asked what it is called.
