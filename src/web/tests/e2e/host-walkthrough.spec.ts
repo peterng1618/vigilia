@@ -16,25 +16,18 @@ import { HOST_PORT, HOST_THEME_ID } from "./host-theme.js";
  * focus target a keyboard can reach, and does each of those targets have a
  * name. A later task cannot be written on an answer of no.
  *
- * **The census is red, and the red is its result — not a broken test.** The
- * walk reaches the rail, the pane and the stage and never reaches the
- * inspector, because with nothing selected the column renders one paragraph
- * and a paragraph is not a focus target. That is `vg-362`, and it is the answer
- * this task existed to produce: the plan says in advance that an unreachable
- * region is the deliverable and that `REGIONS` must not be trimmed to the
- * regions that pass. So a red here means "the census ran and found what it
- * found", and a *green* here would mean `REGIONS` had been weakened.
+ * **The census was red, and the red was its result — not a broken test.** The
+ * walk reached the rail, the pane and the stage and never the inspector, because
+ * with nothing selected the column renders one paragraph and a paragraph is not
+ * a focus target. That is `vg-362`.
  *
- * **The red is one of two readings of §13.1, and this file asserts that one
- * deliberately.** §13.1 says "Each region has a reachable focus target"
- * without saying when — the shell's opening state, or the region's populated
- * state. The inspector is empty at mount and full of controls once a selection
- * exists, so the two readings disagree about exactly one region of the four.
- * This test takes the unqualified reading, which is why it is red today. The
- * other reading — the populated region, which is what the walkthrough itself
- * reaches after it selects through Composition — is equally open, and §13.1
- * has not been ruled on. `vg-362` names both and neither is settled here.
- * Nothing in this file should be read as having settled it.
+ * **The user ruled on 2026-10-12 that §13.1's "each region has a reachable focus
+ * target" means a region that has CONTENT.** The empty inspector therefore
+ * contributes no tab stop legitimately, no product change is owed, and what
+ * changed is this census: it walks the shell as it opens, makes a selection with
+ * the keyboard alone, and walks it a second time, reporting both walks. `REGIONS`
+ * is still the same four — trimming it to the regions an opening-state walk
+ * reaches remains the forbidden move, and a green here does not license it.
  */
 
 const HOST = `http://127.0.0.1:${HOST_PORT}`;
@@ -421,6 +414,13 @@ const FIELD_DRAFT = "walkthrough draft";
  *  wrapper. */
 const FIELD_HOOK = "[data-vigilia-name]";
 
+/** That field **inside the inspector**, which is what the three places that
+ *  reach for it mean. Scoped because the hook is the inspector's own convention
+ *  and nothing stops a second surface from carrying it: an unscoped match would
+ *  find the other one and report a confusing mismatch rather than a clean
+ *  failure. */
+const FIELD_SELECTOR = `${REGION_SELECTOR.inspector} ${FIELD_HOOK}`;
+
 /** The canvas event `EditorHistory.save()` fires at the one place an entry is
  *  appended to the history (`history-manager/index.ts`) and nowhere else.
  *
@@ -434,6 +434,10 @@ const EDIT_COMMITTED = "editor:edit-committed";
 /** Where the count lives on the page while the listener is attached. A
  *  test-owned name: no shell style or script reads it. */
 const WALKTHROUGH_COMMITS = "__vigiliaWalkthroughEditCommits";
+
+/** The canvas the listener above attached to, kept so {@link editCommits} can
+ *  tell a live attach from one the editor has outlived. */
+const WALKTHROUGH_CANVAS = "__vigiliaWalkthroughCanvas";
 
 /** Creates a document through the shell's own File menu, with no pointer.
  *
@@ -568,12 +572,19 @@ async function tabUntil(
  * assert about the document without re-deriving it from a second surface.
  */
 async function editFieldThenCancel(page: Page): Promise<string> {
-  const field = page.locator(`.editor-shell-inspector ${FIELD_HOOK}`);
+  const field = page.locator(FIELD_SELECTOR);
   await tabUntil(page, (focus) => focus.region === "inspector");
   for (let press = 0; press < TAB_BOUND; press++) {
     const onField = await page.evaluate(
-      (hook: string) => document.activeElement?.matches(hook) ?? false,
-      FIELD_HOOK,
+      (sel: { readonly hook: string; readonly scope: string }) => {
+        const active = document.activeElement;
+        return (
+          active !== null &&
+          active.matches(sel.hook) &&
+          active.closest(sel.scope) !== null
+        );
+      },
+      { hook: FIELD_HOOK, scope: REGION_SELECTOR.inspector },
     );
     if (onField) break;
     await page.keyboard.press("Tab");
@@ -621,11 +632,17 @@ async function layerTree(page: Page): Promise<readonly unknown[]> {
  *
  *  A mount with no canvas would leave the count at its sentinel and a "no
  *  entries were added" assertion would pass having observed nothing — so the
- *  attach answers whether it happened and this throws when it did not. */
+ *  attach answers whether it happened and this throws when it did not. The
+ *  other half of that liveness is {@link editCommits}: an attach that happened
+ *  and then went stale reads 0 forever. */
 async function watchEditCommits(page: Page): Promise<void> {
   const attached = await page.evaluate(
-    (names: { readonly event: string; readonly key: string }) => {
-      const scope = window as unknown as Record<string, number | undefined> & {
+    (names: {
+      readonly event: string;
+      readonly key: string;
+      readonly canvasKey: string;
+    }) => {
+      const scope = window as unknown as Record<string, unknown> & {
         vigiliaEditorBridge?: {
           readonly editor?: {
             readonly canvas?: {
@@ -637,12 +654,19 @@ async function watchEditCommits(page: Page): Promise<void> {
       const canvas = scope.vigiliaEditorBridge?.editor?.canvas;
       if (canvas === undefined) return false;
       scope[names.key] = 0;
+      // The instance itself, so the reader can tell a live attach from a stale
+      // one rather than trusting that a listener it cannot see still fires.
+      scope[names.canvasKey] = canvas;
       canvas.on(names.event, () => {
-        scope[names.key] = (scope[names.key] ?? 0) + 1;
+        scope[names.key] = ((scope[names.key] as number | undefined) ?? 0) + 1;
       });
       return true;
     },
-    { event: EDIT_COMMITTED, key: WALKTHROUGH_COMMITS },
+    {
+      event: EDIT_COMMITTED,
+      key: WALKTHROUGH_COMMITS,
+      canvasKey: WALKTHROUGH_CANVAS,
+    },
   );
   if (!attached) {
     throw new Error(
@@ -653,12 +677,34 @@ async function watchEditCommits(page: Page): Promise<void> {
 
 /** How many history entries the application has recorded since
  *  {@link watchEditCommits}. `-1` when nothing was ever attached, which no
- *  assertion here reads as zero. */
+ *  assertion here reads as zero.
+ *
+ *  **Reading throws when the watched canvas is no longer the published one.** A
+ *  listener attached to a canvas the editor has since replaced would count 0
+ *  forever, and "no history entry was added" would pass having observed
+ *  nothing — the same silent green the attach guard exists to prevent, one step
+ *  later. The bridge is re-published on every remount, so the comparison is
+ *  cheap and the failure is the honest one. */
 async function editCommits(page: Page): Promise<number> {
   return page.evaluate(
-    (key: string) =>
-      (window as unknown as Record<string, number | undefined>)[key] ?? -1,
-    WALKTHROUGH_COMMITS,
+    (names: { readonly key: string; readonly canvasKey: string }) => {
+      const scope = window as unknown as Record<string, unknown> & {
+        vigiliaEditorBridge?: {
+          readonly editor?: { readonly canvas?: unknown };
+        };
+      };
+      const count = scope[names.key];
+      if (count === undefined) return -1;
+      if (
+        scope[names.canvasKey] !== scope.vigiliaEditorBridge?.editor?.canvas
+      ) {
+        throw new Error(
+          "the watched canvas is no longer the one the editor publishes: a cancelled edit's history cannot be observed",
+        );
+      }
+      return count as number;
+    },
+    { key: WALKTHROUGH_COMMITS, canvasKey: WALKTHROUGH_CANVAS },
   );
 }
 
@@ -678,15 +724,18 @@ async function surroundingState(
   readonly document: string | null;
   readonly field: boolean;
 }> {
+  const chip = page.locator(".editor-shell-identity-name");
   return {
     pane: await page.locator('[data-vigilia-panel="layers"]').isVisible(),
     selected: await page
       .locator(`[data-vigilia-layer="${id}"]`)
       .getAttribute("aria-selected"),
-    document: await page.locator(".editor-shell-identity-name").textContent(),
-    field: await page
-      .locator(`.editor-shell-inspector ${FIELD_HOOK}`)
-      .isVisible(),
+    // Visibility is part of the reading, not a separate assertion: a hidden
+    // chip still answers `textContent()`, so the leg would hold while the shell
+    // said nothing where a reader can see it. The other three legs read state
+    // the same way, and `null` is what a hidden one contributes.
+    document: (await chip.isVisible()) ? await chip.textContent() : null,
+    field: await page.locator(FIELD_SELECTOR).isVisible(),
   };
 }
 
@@ -930,7 +979,7 @@ test.describe("the shell, reached by keyboard alone", () => {
       "Escape closed something above the field",
     ).toEqual(opened);
     expect(
-      await page.locator(`.editor-shell-inspector ${FIELD_HOOK}`),
+      await page.locator(FIELD_SELECTOR),
       "the field focus stayed in",
     ).toBeFocused();
 

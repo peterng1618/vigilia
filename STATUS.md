@@ -32,11 +32,11 @@ satisfies every token in `DESIGN.md` and still does not look like the mockup.
 
 ## Last completed change
 
-- **Task 2 of the walkthrough is complete and reviewed** — spec compliance ✅ and task quality ✅, no Critical, High or Medium finding; the reviewer reproduced the 4/4 run on `desktop-host` and re-derived both red-proofs on the committed bytes rather than accepting them, and drove the assertions to show they cannot pass vacuously.
-- **The walk now runs on a document created from the starter** — `openDocumentByKeyboard` gives it 8 groups, a palette and 13 type presets, which is what §13.1's enter-a-group and choose-a-palette interactions need; Ruling K fixes Task 5's "return to the original document" as returning to the `e2e-hosted` fixture the walk booted on.
-- **`vg-387` is closed and `format:check` is green** — the 96-column line `8a86b2b0` wrote into `editor.spec.ts`, folded at `a174c300`, 615 files clean, which is the gate CI runs before lint.
-- **Two of Task 2's four Minor findings are repaired** — `EDIT_MENU_BOUND` renamed to `FILE_MENU_BOUND` because "Edit menu" already means the Edit menu here, and `tabUntil`'s docstring moved back onto its own function after Task 2's insertions left it 136 lines away, at `4ccbbbdc`; 4/4 green after the edit.
-- **Browser run reports now go outside the repo** — `test-results/` is cleared at the start of every Playwright run, so a count cited from it is unverifiable by the next reader; Task 3 onward writes its own report to `C:/tmp/…` and cites that.
+- **Task 3 of the walkthrough is complete and reviewed** — `selectInComposition` and `editFieldThenCancel` at `0814d2cc`, spec compliance ✅ and task quality ✅; the reviewer re-derived three of the five red-proofs and drove two attacks of its own, one of which found a Medium.
+- **The Medium is fixed, and it was the acceptance instrument going quietly vacuous** — the history counter attached to whatever canvas the bridge published and never checked again, so a listener outliving its canvas would read 0 forever and "no history entry was added" would pass having observed nothing; `editCommits` now throws when the watched canvas is no longer the published one, and the decoy that used to go green reddens with that message.
+- **The file header no longer says the census is red** — it described the pre-ruling state while the test above it was green, which is the one text that could talk a future reader into trimming `REGIONS`.
+- **Two more hardenings landed with it** — the field is matched inside the inspector only, and the identity chip's leg of `surroundingState` reads visibility before its text, so a hidden chip answers `null` instead of a string.
+- **The spec is now 997 lines**, and the split is Task 4's opening step under Ruling L: the focus primitives and the shell vocabulary move to their own modules before Task 4 adds six helpers to them.
 
 ## Next
 
