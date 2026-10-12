@@ -904,9 +904,7 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
                 asked for them — so a chart keeps every question it has. */}
             <Host node={hosts.selection} />
             {kind !== "none" && (
-              <p className="editor-shell-hint">
-                Move and lock the selection with the canvas dock.
-              </p>
+              <p className="editor-shell-hint">{uiCopy.selectionHint}</p>
             )}
           </aside>
         </div>

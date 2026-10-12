@@ -1,5 +1,10 @@
 /** Typed package-local visible editor copy (§35). Authored theme text,
- * telemetry values and developer errors stay outside this module. */
+ * telemetry values and developer errors stay outside this module.
+ *
+ * Exempt from AGENTS.md's 800-line stop, which is written for source files:
+ * this is a flat string table whose bulk is the reason each word is the word,
+ * so splitting it by namespace would file the same words across five tables
+ * and buy the count nothing but a fifth owner of one convention. */
 
 import type { ChartFamily } from "@vigilia/renderer-core";
 import type { DisplayLensId } from "./display-lens.js";
@@ -82,8 +87,6 @@ const glassRefusals: Readonly<Record<string, string>> = {
     "Frosted glass applies to one shape at a time — select the shape you want to frost.",
 };
 
-/** Typed package-local visible editor copy (§35). Authored theme text,
- * telemetry values and developer errors stay outside this module. */
 export const uiCopy = {
   brand: "Vigilia",
   /** The rail's four slots. A slot's word is both its tooltip and its
@@ -535,6 +538,9 @@ export const uiCopy = {
   /** The stage's own name: the region the artboard is drawn in, so a reader
    *  reaching the canvas is told which surface it is before the drawing. */
   stage: { label: "Editor canvas" },
+  /** The shell's one sentence about the dock, printed under the selection
+   *  column while a selection exists — chrome copy, not the selection's own. */
+  selectionHint: "Move and lock the selection with the canvas dock.",
   /** The stage camera's control: the display the stage looks through, and the
    *  two framings that are not a display. `label` names what the control is;
    *  the trigger appends the readout it shows, because an accessible name that

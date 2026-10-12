@@ -33,6 +33,8 @@ import {
   chartPaintView,
 } from "./chart-manager/panel.js";
 import { ColourPicker } from "./components/ui/colour-picker.js";
+import type { EditorShellBridge } from "./editor-shell/bridge.js";
+import { CanvasContextMenu } from "./editor-shell/canvas-context-menu.js";
 import {
   DEFAULT_SHELL_PALETTE,
   shellPalettes,
@@ -48,6 +50,10 @@ import { createPalettePanel } from "./palette-manager/panel.js";
 import { createSelectionInspector } from "./selection-inspector/index.js";
 import { projectRuns, RunEditor } from "./selection-inspector/runs.js";
 import type { RunEdits } from "./selection-inspector/view.js";
+// The reference table owns the words for actions no menu prints, so the walk
+// reads the Keyboard tab through its carve-out rather than demanding the copy
+// table own the shortcut registry.
+import { SHORTCUT_LABELS } from "./shortcut-manager/reference.js";
 import { createTypePresetPanel } from "./type-preset-manager/panel.js";
 import { uiCopy } from "./ui-copy.js";
 
@@ -478,14 +484,30 @@ async function runUnitDisplayOptions(root: HTMLElement): Promise<string[]> {
  * this panel renders, which yields a superset of what they show: extra entries
  * only loosen the net, they cannot break it.
  */
-/** A button's own words. A section's disclosure chrome is an `aria-hidden`
- *  `▾`, which is decoration the way a select's chevron is — the words beside it
- *  are what this table has to hold, not the glyph they are printed next to. */
+/** A button's or a menu row's own words. A section's disclosure chrome is an
+ *  `aria-hidden` `▾`, which is decoration the way a select's chevron is, and a
+ *  `kbd` prints a chord the binding table owns — the words beside them are what
+ *  this table has to hold, not the glyph or the key they are printed next to. */
 function spokenText(element: Element): string {
   const words = element.cloneNode(true) as Element;
-  for (const hidden of words.querySelectorAll('[aria-hidden="true"]'))
+  for (const hidden of words.querySelectorAll('[aria-hidden="true"], kbd'))
     hidden.remove();
   return words.textContent ?? "";
+}
+
+/** Everything a surface says: what `spokenIn` reads, and the paragraphs it does
+ *  not. The About tab's words are all in one paragraph, so a read without this
+ *  would agree with itself by finding nothing. */
+function saidIn(element: Element): string[] {
+  return [...spokenIn(element), ...paragraphsOf(element)];
+}
+
+/** The words a surface prints in paragraphs of its own, empty ones dropped. */
+function paragraphsOf(element: Element): string[] {
+  return Array.from(
+    element.querySelectorAll("p"),
+    (paragraph) => paragraph.textContent?.trim() ?? "",
+  ).filter((text) => text !== "");
 }
 
 function copy(): string[] {
@@ -534,7 +556,7 @@ it("names each reading for the question it answers", () => {
  * failure rather than a pass.
  */
 it("leaves the React surfaces with no copy of their own", async () => {
-  const { root, destroy } = await mountLandedSurfaces();
+  const { root, shell, destroy } = await mountLandedSurfaces();
   const owned = new Set(copy());
   expect(
     spokenIn(root).filter((text) => !owned.has(text) && !isStoredName(text)),
@@ -544,8 +566,132 @@ it("leaves the React surfaces with no copy of their own", async () => {
     if (found === null) throw new Error(`no ${surface} surface rendered`);
     expect(spokenIn(found), surface).not.toEqual([]);
   }
+  // The shell's own paragraphs, which `spokenIn` reads none of: `vg-338`'s
+  // hint was written as a literal and every net here agreed with itself. The
+  // read is scoped to the shell because the panels, the picker and the
+  // inspector print data in paragraphs of their own — a run's binding id, a
+  // colour's reading — the carve-out this walk already makes elsewhere.
+  const hints = paragraphsOf(shell);
+  expect(hints.length).toBeGreaterThan(0);
+  expect(hints.filter((text) => !owned.has(text))).toEqual([]);
   destroy();
 });
+
+/**
+ * The surfaces `vg-335` found reachable but unread say no word the table does
+ * not hold: an opened menu popup, the Settings Keyboard and About tabs, and the
+ * canvas context menu. `spokenIn` read the closed chrome, so a literal written
+ * into any of the four had no net at all — and each is opened here, read for
+ * its own words, and asserted non-empty first, so a surface that failed to open
+ * is a failure rather than a walk that agreed with nothing.
+ *
+ * The menu read pays no stall: `vg-135`'s 50-90 s per open is jsdom's
+ * unanswerable `:modal`/`:popover-open` selectors, and this file patches them
+ * at the top for exactly that reason.
+ */
+it("reads the opened menus, the Settings tabs and the canvas context menu", async () => {
+  const { root, destroy } = await mountLandedSurfaces();
+  const owned = new Set(copy());
+
+  for (const menu of [
+    uiCopy.menus.file,
+    uiCopy.menus.edit,
+    uiCopy.menus.view,
+  ]) {
+    menubarEntry(root, menu).click();
+    await Promise.resolve();
+    const popup = root.querySelector<HTMLElement>(
+      ".editor-shell-menu-popup[data-open]",
+    );
+    if (popup === null) throw new Error(`the ${menu} menu opened no popup`);
+    expect(spokenIn(popup), menu).not.toEqual([]);
+    expect(
+      spokenIn(popup).filter((text) => !owned.has(text)),
+      menu,
+    ).toEqual([]);
+  }
+
+  const { keyboard, about } = uiCopy.settings;
+  for (const tab of [keyboard, about]) {
+    const panel = openSettingsTab(tab);
+    const said = saidIn(panel);
+    expect(said, tab).not.toEqual([]);
+    expect(
+      said.filter(
+        (text) =>
+          !owned.has(text) && !isShortcutWord(text) && !isStoredName(text),
+      ),
+      tab,
+    ).toEqual([]);
+  }
+  destroy();
+
+  // The canvas context menu, which mounts on a bridge of its own rather than
+  // inside the shell — the shell's own copy of it renders no rows until a
+  // right-click arrives on a real upper canvas.
+  const bridge = selectionBridge();
+  const host = document.createElement("div");
+  document.body.append(host);
+  const menuRoot = createRoot(host);
+  menuRoot.render(createElement(CanvasContextMenu, { bridge }));
+  await flushTasks();
+  const upper = bridge.editor.canvas.upperCanvasEl as unknown as HTMLElement;
+  upper.dispatchEvent(
+    new MouseEvent("contextmenu", {
+      bubbles: true,
+      cancelable: true,
+      clientX: 120,
+      clientY: 90,
+    }),
+  );
+  await flushTasks();
+  const items = Array.from(
+    document.querySelectorAll<HTMLElement>('[role="menuitem"]'),
+  );
+  // Without this the read below passes on a menu that rendered nothing.
+  expect(items.length).toBeGreaterThan(0);
+  const spoken = spokenIn(document.body);
+  expect(spoken).not.toEqual([]);
+  expect(
+    spoken.filter((text) => !owned.has(text) && !isStoredName(text)),
+  ).toEqual([]);
+  await act(async () => menuRoot.unmount());
+  document.body.replaceChildren();
+});
+
+/** The menubar trigger for a menu, found by the text it carries. */
+function menubarEntry(root: HTMLElement, label: string): HTMLButtonElement {
+  const entry = Array.from(
+    root.querySelectorAll<HTMLButtonElement>(".editor-shell-menubar button"),
+  ).find((button) => button.textContent === label);
+  if (entry === undefined) throw new Error(`No "${label}" menu.`);
+  return entry;
+}
+
+/** The Settings modal's tab named `label`, clicked the way a reader opens it,
+ *  returning the panel the tab points at — not the first `tabpanel`, which is
+ *  the Appearance tab's while Base UI still holds it. */
+function openSettingsTab(label: string): HTMLElement {
+  const tab = Array.from(
+    document.querySelectorAll<HTMLElement>('[role="tab"]'),
+  ).find((element) => element.textContent?.trim() === label);
+  if (tab === undefined) throw new Error(`No "${label}" tab in the modal.`);
+  act(() => {
+    tab.click();
+  });
+  const controlled = tab.getAttribute("aria-controls");
+  const panel =
+    controlled === null ? null : document.getElementById(controlled);
+  if (panel === null) throw new Error(`the ${label} tab points at no panel`);
+  return panel;
+}
+
+/** React schedules outside `act` and floating-ui's measurement never settles
+ *  inside one, so a popup is flushed with macrotasks instead. */
+async function flushTasks(): Promise<void> {
+  for (let round = 0; round < 3; round += 1)
+    await new Promise((resolve) => setTimeout(resolve, 0));
+}
 
 /**
  * §9: a menu's rows are sentence case. The list is the menu's own — its three
@@ -658,6 +804,11 @@ function spokenIn(element: Element): string[] {
     // driver's hook, not a word of copy.
     if (named.getAttribute("aria-label") === named.getAttribute("data-testid"))
       continue;
+    // A `kbd`'s label is the chord the binding table prints, not a word.
+    if (named.closest("kbd") !== null) continue;
+    // The camera's readout names the concept and then the reading, the way a
+    // select's trigger prints the chosen value.
+    if (named.hasAttribute("data-vigilia-zoom")) continue;
     out.push(named.getAttribute("aria-label")?.trim() ?? "");
   }
   for (const button of element.querySelectorAll("button")) {
@@ -665,8 +816,15 @@ function spokenIn(element: Element): string[] {
       continue;
     if (button.querySelector("[data-vigilia-value]") !== null) continue;
     if (button.hasAttribute("aria-controls")) continue;
+    if (button.hasAttribute("data-vigilia-zoom")) continue;
     out.push(spokenText(button).trim());
   }
+  // An opened menu's rows, which are not buttons and carry no accessible name
+  // of their own: their words are their text, minus the chord printed beside.
+  for (const item of element.querySelectorAll(
+    '[role="menuitem"], [role="menuitemradio"]',
+  ))
+    out.push(spokenText(item).trim());
   return out.filter((text) => text !== "" && !/^[\d.v-]+$/.test(text));
 }
 
@@ -675,6 +833,100 @@ function spokenIn(element: Element): string[] {
  *  the data the carve-out above deliberately leaves out of the table. */
 function isStoredName(text: string): boolean {
   return (shellPalettes as readonly string[]).includes(text);
+}
+
+/** A shortcut's action word is the reference table's. `SHORTCUT_LABELS` reuses
+ *  `uiCopy`'s names and owns the five no menu prints (`Select all` and the four
+ *  nudges), so the Keyboard tab names its rows from there and the copy table is
+ *  not their owner. */
+function isShortcutWord(text: string): boolean {
+  return (Object.values(SHORTCUT_LABELS) as readonly string[]).includes(text);
+}
+
+/**
+ * The shell's bridge, cut to what a mounted shell reaches.
+ *
+ * A walk that reads words mounts the shell whole, and the shell mounts the
+ * composition pane, so the pane's reads are here too. It reports a selection
+ * because the shell prints some of its chrome only then — `vg-338`'s hint
+ * paragraph among it, which no net could read while the shell mounted with no
+ * selection at all. Everything answers empty: this file reads copy, not state.
+ */
+function selectionBridge(): EditorShellBridge {
+  const noop = (): undefined => undefined;
+  return {
+    snapshot: () => ({
+      selectedCount: 1,
+      locked: false,
+      activeKind: "text",
+      documentName: undefined,
+      selectionPresetId: undefined,
+    }),
+    capture: noop,
+    target: () => ({
+      kind: "text",
+      locked: false,
+      memberCount: 1,
+      isGroup: false,
+    }),
+    can: () => false,
+    canArrange: () => false,
+    layers: () => [],
+    groupContext: () => [],
+    selectLayer: noop,
+    enterGroup: noop,
+    exitGroup: noop,
+    setLayerVisible: noop,
+    setLayerLocked: noop,
+    setCollapsed: noop,
+    renameLayer: noop,
+    sameLayerParent: () => false,
+    reorderLayer: () => false,
+    subscribe: () => () => undefined,
+    run: noop,
+    destroy: noop,
+    session: {
+      newDocument: noop,
+      newFromStarter: noop,
+      openPackage: noop,
+      savePackage: noop,
+      releasePackage: noop,
+      openLibrary: noop,
+      saveLibrary: noop,
+      addText: noop,
+      addShape: noop,
+      addChart: noop,
+      insertCard: noop,
+      arrange: () => true,
+      canArrange: () => true,
+      undo: noop,
+      redo: noop,
+      copy: noop,
+      cut: noop,
+      deleteActive: noop,
+      duplicate: noop,
+      group: noop,
+      ungroup: noop,
+      isDirty: () => false,
+      publishableDocument: () => undefined,
+      subscribeDocumentChange: () => () => undefined,
+    },
+    editor: {
+      artboard: () => ({ width: 1280, height: 720 }),
+      viewport: {
+        zoom: () => 1,
+        display: () => undefined,
+        isFitted: () => false,
+        onChange: () => () => undefined,
+      },
+      canvas: {
+        upperCanvasEl: document.createElement("canvas"),
+        findTarget: () => ({ target: undefined }),
+        on: noop,
+        off: noop,
+      },
+    },
+  } as unknown as EditorShellBridge;
 }
 
 /**
@@ -686,15 +938,18 @@ function isStoredName(text: string): boolean {
  * Settings modal and the colour picker are mounted open, because a closed modal
  * and an unopened popover render nothing and would pass the walk by being
  * absent. The selection column is mounted on a text object and a shape, the two
- * disjoint field sets.
+ * disjoint field sets. The shell is given a bridge, so the chrome it prints
+ * only for a selection is in the tree rather than absent.
  */
 async function mountLandedSurfaces(): Promise<{
   readonly root: HTMLElement;
+  readonly shell: HTMLElement;
   readonly destroy: () => void;
 }> {
   const shellRoot = document.createElement("div");
   document.body.append(shellRoot);
   const layout = createShellLayout(shellRoot);
+  layout.setBridge(selectionBridge(), undefined);
 
   const settingsHost = document.createElement("div");
   document.body.append(settingsHost);
@@ -773,6 +1028,7 @@ async function mountLandedSurfaces(): Promise<{
 
   return {
     root: document.body,
+    shell: shellRoot,
     destroy: () => {
       layout.destroy();
       act(() => pickerRoot.unmount());
