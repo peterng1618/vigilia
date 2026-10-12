@@ -647,7 +647,13 @@ export function writeShapeGeometryField(
   if (object instanceof Line && fieldId.startsWith("shape-line-")) {
     const key = fieldId.slice("shape-line-".length);
     if (key === "x1" || key === "y1" || key === "x2" || key === "y2") {
-      object.set(key, Number(value));
+      // `vg-376`: the branch above refuses an unreadable path while this one
+      // wrote `NaN` for an unreadable number, which is an endpoint nothing can
+      // select or draw. The funnel is public, so the guard belongs here and not
+      // only in the control that happens to call it.
+      const endpoint = Number(value);
+      if (!Number.isFinite(endpoint)) return false;
+      object.set(key, endpoint);
       return true;
     }
   }

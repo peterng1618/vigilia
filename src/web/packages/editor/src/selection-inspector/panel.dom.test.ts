@@ -18,6 +18,7 @@ import { createNewShape } from "../new-object-defaults.js";
 import { uiCopy } from "../ui-copy.js";
 import { createSelectionInspector } from "./index.js";
 import { idleCrop } from "./idle-crop.test-stage.js";
+import { writeShapeGeometryField } from "./panel.js";
 // The shared React drivers: a converted field is a plan-1 control, so a raw
 // `change` event no longer commits it — the picker is opened and an entry
 // clicked, and a number is typed through React's own value tracker.
@@ -711,6 +712,37 @@ describe("shape material and a shape's own fields", () => {
     expect(polygon.left).toBe(20);
     expect(polygon.top).toBe(30);
     expect(history.saveState).toHaveBeenCalled();
+  });
+
+  it("refuses a non-finite endpoint at the funnel, the one branch that wrote it unchecked", () => {
+    const line = new Line([0, 0, 100, 50], PLACED);
+
+    // Called directly, not through the field: `ControlNumber`'s own parse
+    // refuses a non-numeric draft before it ever commits, so no field can red
+    // this line — which is exactly why the guard is the funnel's, and why
+    // driving the control (the case below) measures reachability rather than
+    // the guard.
+    expect(writeShapeGeometryField(line, "shape-line-x1", "abc")).toBe(false);
+    expect(writeShapeGeometryField(line, "shape-line-y2", "Infinity")).toBe(
+      false,
+    );
+    expect(line.x1).toBe(0);
+    expect(line.y2).toBe(50);
+    expect(Number.isFinite(line.x1) && Number.isFinite(line.y2)).toBe(true);
+  });
+
+  it("refuses a non-numeric endpoint through the control, and says so in the field", async () => {
+    const line = new Line([0, 0, 100, 50], PLACED);
+    const { history, field } = setup(line);
+    const endpoint = field<HTMLInputElement>('[data-vigilia-shape-line="x1"]');
+
+    await edit(endpoint, "abc");
+
+    // The write never arrives: the control holds the refusal and the object is
+    // left exactly as it was.
+    expect(line.x1).toBe(0);
+    expect(history.saveState).not.toHaveBeenCalled();
+    expect(endpoint.getAttribute("aria-invalid")).toBe("true");
   });
 
   it("shows a polyline's own points and writes back the ones typed", async () => {
