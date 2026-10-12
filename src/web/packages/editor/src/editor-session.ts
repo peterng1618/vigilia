@@ -726,7 +726,7 @@ export class EditorSession {
       await this.#persistence.save(
         current,
         this.#assets.assets,
-        (await this.#capture(options)) ?? this.#thumbnail,
+        await this.#picture(options),
       );
       this.#announceChange();
       options.onSaved("Theme package saved");
@@ -736,7 +736,10 @@ export class EditorSession {
   }
 
   /** The picture a save ships, or the one this document arrived with: a
-   *  capture that fails must cost the preview, not the theme. */
+   *  capture that fails must cost the preview, not the theme. One owner for the
+   *  fallback, called by every save that ships a picture — `#save` and the
+   *  library's `picture` port alike. It was spelled inline at `#save` as well,
+   *  so two changes to the policy left one of them missing `#save` (`vg-239`). */
   async #picture(
     options: EditorSessionOptions,
   ): Promise<Uint8Array | undefined> {
@@ -904,7 +907,8 @@ export class EditorSession {
     }
     // The language is the one metadata field that changes what is painted, and
     // `metadata` is the only way to set it, so this is the only push site needed
-    // — unlike the globals fan-out above, which four separate setters repeat.
+    // — unlike the globals fan-out above, which every globals setter goes
+    // through rather than repeating the receiver list.
     this.#pushLocale();
   }
 
@@ -974,17 +978,32 @@ export class EditorSession {
     });
   }
 
-  #setPalette(shell: EditorShell, palette: FabricPalette): void {
-    this.#writeEnvelope({
-      ...this.#envelope,
-      globals: { ...this.#envelope.globals, palette },
-    });
+  /**
+   * Every owner that reads the theme's globals, handed the new value once.
+   *
+   * The receivers used to be listed inline, once per setter, and the lists
+   * disagreed: `#setPalette` reached six, `#setTypes` three, `#deleteType` two.
+   * A consumer a setter did not happen to name stopped updating, which is
+   * exactly how a renamed type preset left the inspector's Spends line printing
+   * the old name — `#setTypes` never told `#selection` (`vg-232`). One list is
+   * what makes the omission unrepresentable: a setter cannot drop a receiver by
+   * not naming it.
+   */
+  #globalsChanged(shell: EditorShell): void {
     shell.setGlobals(this.#envelope.globals);
     this.#runtime.setGlobals(this.#envelope.globals);
     this.charts.setGlobals(this.#envelope.globals);
     this.#newObjects.setGlobals(this.#envelope.globals);
     this.#artboard.setGlobals(this.#envelope.globals);
     this.#selection.setGlobals(this.#envelope.globals);
+  }
+
+  #setPalette(shell: EditorShell, palette: FabricPalette): void {
+    this.#writeEnvelope({
+      ...this.#envelope,
+      globals: { ...this.#envelope.globals, palette },
+    });
+    this.#globalsChanged(shell);
     this.#documentReferences.render();
     this.#palette.render(palette);
   }
@@ -1005,12 +1024,7 @@ export class EditorSession {
       globals: { ...this.#envelope.globals, palette },
     });
     shell.setArtboard(artboard);
-    shell.setGlobals(this.#envelope.globals);
-    this.#runtime.setGlobals(this.#envelope.globals);
-    this.charts.setGlobals(this.#envelope.globals);
-    this.#newObjects.setGlobals(this.#envelope.globals);
-    this.#artboard.setGlobals(this.#envelope.globals);
-    this.#selection.setGlobals(this.#envelope.globals);
+    this.#globalsChanged(shell);
     this.#documentReferences.render();
     this.#artboard.render(artboard);
     this.#palette.render(palette);
@@ -1021,9 +1035,7 @@ export class EditorSession {
       ...this.#envelope,
       globals: { ...this.#envelope.globals, typePresets },
     });
-    shell.setGlobals(this.#envelope.globals);
-    this.#runtime.setGlobals(this.#envelope.globals);
-    this.#newObjects.setGlobals(this.#envelope.globals);
+    this.#globalsChanged(shell);
     this.#types.render(typePresets);
     this.#documentReferences.render();
   }
@@ -1060,8 +1072,7 @@ export class EditorSession {
       ...this.#envelope,
       globals: { ...this.#envelope.globals, typePresets },
     });
-    shell.setGlobals(this.#envelope.globals);
-    this.#newObjects.setGlobals(this.#envelope.globals);
+    this.#globalsChanged(shell);
     this.#types.render(typePresets);
     this.#documentReferences.render();
   }

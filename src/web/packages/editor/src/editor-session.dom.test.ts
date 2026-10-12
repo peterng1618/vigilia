@@ -34,8 +34,23 @@ vi.mock("./artboard-panel.js", () => ({ createArtboardPanel: () => panel() }));
 vi.mock("./palette-manager/index.js", () => ({
   createPalettePanel: () => panel(),
 }));
+/** The panel's two ports are held so a test can drive a rename the way the
+ *  panel's own field does — the panel is a double here, so nothing else
+ *  reaches the session's `#setTypes`. */
+const typePresetPortMock = vi.hoisted(() => ({
+  change: undefined as ((presets: Record<string, unknown>) => void) | undefined,
+  remove: undefined as ((id: string, replacement: string) => void) | undefined,
+}));
 vi.mock("./type-preset-manager/index.js", () => ({
-  createTypePresetPanel: () => panel(),
+  createTypePresetPanel: (
+    _host: unknown,
+    change: (presets: Record<string, unknown>) => void,
+    remove: (id: string, replacement: string) => void,
+  ) => {
+    typePresetPortMock.change = change;
+    typePresetPortMock.remove = remove;
+    return panel();
+  },
 }));
 vi.mock("./new-object-panel.js", () => ({
   createNewObjectPanel: () => panel(),
@@ -916,6 +931,153 @@ describe("EditorSession", () => {
       "tokens",
       '[data-vigilia-type-preset-row="body"]',
     );
+    extensions.destroy();
+  });
+
+  it("reaches every globals consumer when a type preset is renamed, so the inspector's Spends line follows", () => {
+    // vg-232. The receivers were listed inline once per setter and the lists
+    // disagreed: `#setTypes` told three, never the inspector. The inspector
+    // reads a preset's name out of `context.globals`, and `setGlobals` is the
+    // only thing that updates it, so a rename left the Spends line printing the
+    // old name until an unrelated `object:modified` re-rendered it. This reads
+    // the surface the author reads rather than counting the calls.
+    const text = new IText("Hi", { left: 0, top: 0 });
+    text.set({
+      vigiliaText: {
+        runs: [{ kind: "literal", text: "Hi", typePreset: "typePresets.body" }],
+      },
+    });
+    const selectionHost = document.createElement("div");
+    const documentHost = document.createElement("div");
+    document.body.append(selectionHost, documentHost);
+    const shell = {
+      editor: {
+        canvas: {
+          on: vi.fn(),
+          off: vi.fn(),
+          getActiveObject: () => text,
+          getObjects: () => [text],
+          requestRenderAll: vi.fn(),
+          fire: vi.fn(),
+        },
+        clipboardManager: { setImageImporter: vi.fn(), setBindings: vi.fn() },
+        textManager: {
+          addText: vi.fn(),
+          setAuthoringView: vi.fn(),
+          setRepaint: vi.fn(),
+        },
+        cropManager: idleCrop(),
+        historyManager: { saveState: vi.fn() },
+        errorManager: { warn: vi.fn(), error: vi.fn() },
+      },
+      scene: {},
+      snapshot: vi.fn((input) => ({ ...envelope, ...input })),
+      setBackgroundMedia: vi.fn(),
+      setGlobals: vi.fn(),
+      refreshGlass: vi.fn(),
+    };
+    const presets = (name: string) => ({
+      body: { name, value: { family: "Inter", size: 16, weight: "600" } },
+    });
+    const extensions = new EditorSession({
+      assetManager: new AssetManager(),
+      shell: shell as never,
+      source: {} as never,
+      envelope: { ...envelope, globals: { typePresets: presets("Body") } },
+      panelHosts: {
+        add: document.body,
+        document: documentHost,
+        tokens: document.body,
+        selection: selectionHost,
+      },
+      onNew: vi.fn(),
+      onNewFromStarter: vi.fn(),
+      onSaved: vi.fn(),
+    });
+
+    const printed = (): string =>
+      selectionHost.querySelector('[data-vigilia-resolution="Type preset"]')
+        ?.textContent ?? "";
+
+    expect(printed()).toContain("Body");
+
+    // The panel's own field writes the whole map, which is what a rename is.
+    typePresetPortMock.change?.(presets("Body Renamed"));
+
+    expect(printed()).toContain("Body Renamed");
+    extensions.destroy();
+  });
+
+  it("falls back to the shipped thumbnail when a capture fails, on both save paths", async () => {
+    // vg-239. The fallback — "a capture that fails must cost the preview, not
+    // the theme" — was spelled twice: inline at `#save` and named in `#picture`,
+    // which the library's save calls. The two spellings are equivalent today, so
+    // this case passing on either proves nothing; it closes the row only because
+    // it fails when either copy drops its fallback. Both entry points are taken
+    // so each copy has a path of its own to red on.
+    const thumbnail = new TextEncoder().encode("shipped-thumbnail");
+    const client = {
+      list: vi.fn(async () => []),
+      open: vi.fn(async () => ({ envelope, assets: {} })),
+      save: vi.fn(async () => "base-after-save"),
+      saveThumbnail: vi.fn(async (_id: string, _png: Uint8Array) => {}),
+    };
+    const extensions = new EditorSession({
+      assetManager: new AssetManager(),
+      shell: {
+        editor: {
+          // A canvas never laid out, which is `captureCanvas`'s own failure: no
+          // picture is produced, so the fallback is the only thing left to see.
+          canvas: {
+            width: 0,
+            height: 0,
+            on: vi.fn(),
+            off: vi.fn(),
+            getActiveObject: () => undefined,
+            getObjects: () => [],
+            requestRenderAll: vi.fn(),
+          },
+          clipboardManager: { setImageImporter: vi.fn(), setBindings: vi.fn() },
+          textManager: {
+            addText: vi.fn(),
+            setAuthoringView: vi.fn(),
+            setRepaint: vi.fn(),
+          },
+          cropManager: idleCrop(),
+          historyManager: { saveState: vi.fn() },
+        },
+        scene: {},
+        snapshot: vi.fn(() => envelope),
+        setBackgroundMedia: vi.fn(),
+        setGlobals: vi.fn(),
+        backdrop: () => undefined,
+      } as never,
+      source: {} as never,
+      envelope,
+      thumbnail,
+      panelHosts: {
+        add: document.body,
+        document: document.body,
+        tokens: document.body,
+        selection: document.body,
+      },
+      libraryClient: client as never,
+      onNew: vi.fn(),
+      onNewFromStarter: vi.fn(),
+      onSaved: vi.fn(),
+    });
+
+    // The `.vigilia-theme` the author shares.
+    await extensions.actionFacade().savePackage();
+    const shipped = saveMock.mock.calls.at(-1) as
+      | [unknown, unknown, Uint8Array | undefined]
+      | undefined;
+    expect(shipped?.[2]).toEqual(thumbnail);
+
+    // The library card.
+    await extensions.actionFacade().saveLibrary();
+    expect(client.saveThumbnail.mock.calls.at(-1)?.[1]).toEqual(thumbnail);
+
     extensions.destroy();
   });
 });

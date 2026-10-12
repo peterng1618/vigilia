@@ -101,11 +101,12 @@ export class LiveRuntime {
     if (globals === this.#globals) return;
     this.#globals = globals;
     // Deliberately not a `refresh`, and that is what makes it work. A palette
-    // drag is the reason: the session hands new globals to six owners
-    // (`editor-session.ts:1041-1046`) and not one of them repaints text, so this
-    // pass is the only thing that shows the canvas recolouring as the saturation
-    // square is dragged. Marking it due rather than repainting here keeps that
-    // within a frame of the pointer without repainting on every one of them.
+    // drag is the reason: the session hands new globals to every owner through
+    // one fan-out (`editor-session.ts`'s `#globalsChanged`), and not one of them
+    // repaints text, so this pass is the only thing that shows the canvas
+    // recolouring as the saturation square is dragged. Marking it due rather than
+    // repainting here keeps that within a frame of the pointer without repainting
+    // on every one of them.
     this.#authoredDue = true;
   }
 
