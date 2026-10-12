@@ -556,15 +556,40 @@ test.describe("the shell, reached by keyboard alone", () => {
     //    recorded anything.
     await cancelShortcutCapture(page);
 
-    // **The first of the two invariants §13.1 states, swept.** The capture's
-    // cancel left the settings modal open, and Escape is the key that dismisses
-    // it. §13.1's sentence is that Escape affects one innermost owner: the modal
-    // goes, and everything the shell was carrying behind it is still there. The
-    // four readings are the shell's own state — the pane the walk chose, the row
-    // it selected, the document it named and the field it edited — so an Escape
-    // that reached a second owner fails here rather than passing on the modal's
-    // disappearance.
+    // **The first of the two invariants §13.1 states, swept.** The modal open
+    // here is not the capture's: `cancelShortcutCapture`'s own Escape *was* the
+    // cancel, dismissing the modal, and it reopened it on the Keyboard tab to
+    // prove the chord came back unchanged — so this Escape is the walk's, and
+    // the modal it dismisses is the reopened one. §13.1's sentence is that
+    // Escape affects one innermost owner: the modal goes, and everything the
+    // shell was carrying behind it is still there. The four readings are the
+    // shell's own state — the pane the walk chose, the row it selected, the
+    // document it named and the field it edited — so an Escape that reached a
+    // second owner fails here rather than passing on the modal's disappearance.
     const covered = await surroundingState(page, id);
+    // **And the sweep can tell one row from another**, which is the whole of
+    // its non-vacuity: three of `surroundingState`'s four legs read the shell's
+    // surface rather than the row, so a `surroundingState` that ignored its id
+    // would hand back the same object whatever it was given — the shape of
+    // assertion this plan exists to refuse. A row the walk did not cover must
+    // therefore read differently from `covered`. The `pane`, `document` and
+    // `field` legs do not vary with the id, so the difference is the `selected`
+    // leg — the only one the sweep's claim actually turns on.
+    const other = await page.evaluate(
+      (ridden: string) =>
+        [...document.querySelectorAll("[data-vigilia-layer]")]
+          .map((row) => row.getAttribute("data-vigilia-layer"))
+          .find((candidate) => candidate !== null && candidate !== ridden) ??
+        null,
+      id,
+    );
+    if (other === null) {
+      throw new Error("the walk's document holds only the row it covered");
+    }
+    expect(
+      await surroundingState(page, other),
+      "the sweep reads the row it is handed rather than the covered one",
+    ).not.toEqual(covered);
     await page.keyboard.press("Escape");
     await expect(
       page.locator(".editor-shell-dialog"),
