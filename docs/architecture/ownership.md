@@ -63,7 +63,7 @@ two apart is the judgement the map cannot make for itself.
 | Canvas mount/disposal, artboard paint | `editor/src/editor-shell.ts` |
 | **Which displays a theme can be seen through** — their ids and aspect ratios, and the screen rect one becomes | `editor/src/display-lens.ts` |
 | The stage camera — zoom, pan, framing, and the lens it frames through | `editor/src/viewport-manager/` |
-| **The editor's own fit** — the author framed to the display's screen rather than to the host: its own containment and centring, a rule of its own rather than the renderer-core one, and the one place its refusals live | `editor/src/viewport-manager/` |
+| **The editor's own fit** — the author framed to the display's screen rather than to the host: its own containment and centring, a rule of its own rather than the renderer-core one, and the one place its refusals live (a board with no frameable area refused as `computeArtboardTransform` refuses it) | `editor/src/viewport-manager/` |
 | `EditorInteraction` contract consumed by product panels | `editor/src/editor-interaction.ts` |
 | Text creation | `editor/src/text-manager/` |
 | Image import | `editor/src/image-manager/` |

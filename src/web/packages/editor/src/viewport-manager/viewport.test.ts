@@ -83,6 +83,60 @@ describe("viewport camera", () => {
     expect(camera.zoom()).toBeCloseTo(1000 / 1280, 5);
   });
 
+  it("refuses to fit a board with no frameable area, as the renderer-core transform does", () => {
+    // The editor's fit is deliberately its own rule — it frames the display's
+    // screen rather than the host — but it must carry the refusals
+    // `computeArtboardTransform` already has, or only one of the two copies is
+    // guarded (vg-241, RULED 2026-10-12).
+    //
+    // A zero-width board is the shape that slips past the derived-scale guard:
+    // `box.width / 0` is `Infinity`, and `Math.min(Infinity, 800 / 720)` is a
+    // perfectly finite scale, so the camera would fit to a board that cannot be
+    // framed. The renderer-core transform refuses the same board with a
+    // `RangeError`.
+    const host = document.createElement("div");
+    Object.defineProperties(host, {
+      clientWidth: { get: () => 1000 },
+      clientHeight: { get: () => 800 },
+    });
+    const canvas = new Canvas(document.createElement("canvas"));
+    let board = { width: 1280, height: 720 };
+    const camera = createViewportManager({
+      canvas,
+      host,
+      artboard: () => board,
+    });
+    camera.zoomToPoint(new Point(0, 0), 0.5);
+
+    board = { width: 0, height: 720 };
+    camera.zoomToFit();
+
+    // The camera keeps the zoom it had rather than fitting to the board, which
+    // is the same answer a collapsed box already gets.
+    expect(camera.zoom()).toBeCloseTo(0.5, 6);
+  });
+
+  it("refuses to fit a board with a non-finite dimension", () => {
+    const host = document.createElement("div");
+    Object.defineProperties(host, {
+      clientWidth: { get: () => 1000 },
+      clientHeight: { get: () => 800 },
+    });
+    const canvas = new Canvas(document.createElement("canvas"));
+    let board = { width: 1280, height: 720 };
+    const camera = createViewportManager({
+      canvas,
+      host,
+      artboard: () => board,
+    });
+    camera.zoomToPoint(new Point(0, 0), 0.5);
+
+    board = { width: Number.NaN, height: 720 };
+    camera.zoomToFit();
+
+    expect(camera.zoom()).toBeCloseTo(0.5, 6);
+  });
+
   it("keeps the point under the cursor fixed while zooming", () => {
     // Unfitted, because the anchor below reads the identity transform.
     const { canvas, camera } = setup({ fitted: false });

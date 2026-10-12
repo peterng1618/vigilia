@@ -28,6 +28,23 @@ interface Viewport {
   height: number;
 }
 
+/** Whether a board has an area a fit can frame.
+ *
+ * The editor's fit is its own rule — it frames the display's screen rather than
+ * the host — but a board with no positive area has no contain scale in either
+ * rule, and `computeArtboardTransform` refuses exactly this shape (a
+ * `RangeError` on the dimension, `assertFinite` on the value) while the editor's
+ * derived-scale guard does not. One refusal per rule, and neither left to a
+ * symptom of its input. */
+function isFrameable(board: Viewport): boolean {
+  return (
+    Number.isFinite(board.width) &&
+    Number.isFinite(board.height) &&
+    board.width > 0 &&
+    board.height > 0
+  );
+}
+
 export interface ViewportManager {
   zoom(): number;
   /** Zoom about a point in canvas-screen coordinates. */
@@ -208,6 +225,12 @@ export function createViewportManager({
    *  differ are the truth about the mismatch. */
   const fitScaleFor = (box: ScreenRect): number => {
     const board = artboard();
+    // The refusal `computeArtboardTransform` already carries, kept here for the
+    // editor's own rule rather than left to the derived scale. `box.width / 0`
+    // is `Infinity`, and `Math.min(Infinity, box.height / board.height)` is a
+    // perfectly finite number, so a board with no frameable area slips past the
+    // guard below and the camera fits to a board that cannot be framed.
+    if (!isFrameable(board)) return zoom();
     const scale = Math.min(box.width / board.width, box.height / board.height);
     if (!Number.isFinite(scale) || scale <= 0) return zoom();
     return Math.min(Math.max(scale, MIN_ZOOM), MAX_ZOOM);
