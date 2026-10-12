@@ -2584,14 +2584,28 @@ test("the shell and the settings modal are what the drawings draw", async ({
   // pane's asset preview was that surface (`vg-314`): its contract is a **bound**
   // (`max-height:120px` with `object-fit:contain`) rather than a size, and the
   // Add pane is `display:none` while Document is open, so even now that
-  // `current/shell.html` draws it, it cannot be a `PARITY` row. This is the
-  // inventory instead: the three sides that have to agree are read **by name** —
-  // the component that renders the surface, the stylesheet that treats it, and
-  // the drawing that owns the region it sits in — and a side that names nothing
-  // fails naming the file that dropped it. **What it does not check** is the
-  // drawn treatment's *values* (the drawn box's height against the stylesheet's
-  // bound); that is a comparator the drawn bound does not yet have, and the row
-  // says so.
+  // `current/shell.html` draws it, it cannot be a `PARITY` row.
+  //
+  // **What it reads is a NAME, on three sides, and the row is `open` because of
+  // it.** The drawn box in `current/shell.html:134` carries no class and no hook
+  // — it is an anonymous inline-styled div — so the drawing side is satisfied by
+  // the `<!-- asset preview (.vigilia-asset-preview) … -->` comment at `:133`
+  // that documents it, as by any other mention in the file. And the list below is
+  // **hand-written and one entry long**, so a *new* product surface reddens
+  // nothing until someone adds it here — which is the class of defect the row
+  // exists for. Deriving the list from the product was measured and does not
+  // construct: the panes render **73** distinct `data-vigilia-*` hooks, **8** of
+  // them styled by `editor-shell.css`, and **no checked drawing names any of
+  // them** — the drawings are hand-authored HTML that names a product surface by
+  // its *class*, in prose beside the box, never by a hook on a drawn element
+  // (measured 2026-10-12 by walking `packages/editor/src/panes/**/*.tsx` and
+  // testing each hook against the stylesheet and the six checked drawings). So
+  // this proves the surface it names is named on all three sides — the component
+  // that renders it, the stylesheet that treats it, and the drawing that owns the
+  // region it sits in — and cannot prove an unlisted one is anywhere. **What it
+  // also does not check** is the drawn treatment's *values* (the drawn box's
+  // height against the stylesheet's bound); that is a comparator the drawn bound
+  // does not yet have.
   const SURFACES: readonly {
     readonly surface: string;
     readonly component: string;
@@ -3014,11 +3028,14 @@ const SHELL_DRAWING = "docs/design/mockups/current/shell.html";
  * **Two arms read what no arm read before (`vg-296`'s two remaining clauses).**
  * The **elevation arm** holds every `box-shadow` a drawing declares to §3's
  * elevation table — level 1 `0 8px 20px #00000059`, level 2 `0 18px 44px
- * #00000099`, level 3 `0 24px 60px #000000b3`, or no shadow at all (level 0) —
- * and exempts only the two *marks* §5 rule 4 keeps: the spread-only
- * accent-at-18% halo and an `inset` shadow. Without it a cluster shadow off the
- * table is inherited by the product, which is what the three `#0007` shadows in
- * the superseded drawing did. Both arms are **not** per-drawing: a control
+ * #00000099`, level 3 `0 24px 60px #000000b3`, or no shadow at all (level 0,
+ * spelled by omitting the property or by writing `none`) — and exempts only the
+ * two *marks* §5 rule 4 keeps: the spread-only accent-at-18% halo and an `inset`
+ * shadow. It reads a shadow **list** part by part, so a halo layered over an
+ * off-table shadow is refused rather than admitted by its first part. Without it
+ * a cluster shadow off the table is inherited by the product, which is what the
+ * three `#0007` shadows in the superseded drawing did. Both arms are **not**
+ * per-drawing: a control
  * drawing legitimately draws no shadow (level 0), so the per-arm control below
  * is what refuses an empty read. The **boundary arm** holds every `border` and
  * `border-*` to §5's hairline (`1px`) vocabulary. It is deliberately the width
@@ -3027,7 +3044,12 @@ const SHELL_DRAWING = "docs/design/mockups/current/shell.html";
  * product writes `color-mix(…)`, so a colour allow-list would fail a drawing
  * technique §5 has no entry against. **What the boundary arm therefore cannot
  * catch is a bordered *container*** — a declaration cannot tell a container
- * from a control — and that clause of `vg-296` stays open with this reason.
+ * from a control — and that clause of `vg-296` is **dispositioned, not open**:
+ * §5 rule 2 admits "a row a surface's own drawing shapes differently — a switch
+ * row whose label fills the row inside a panel box … is not a field row and
+ * keeps the shape it is drawn with", and a licensing rule that predates the row
+ * is a disposition rather than a gate this arm owes. The arm's limit and the
+ * row's disposition are the same fact, so neither waits on the other.
  *
  * **What this row cannot read, and does not claim.** `line-height`,
  * `font-weight` and `letter-spacing`: §2 states a line-height and a weight per
@@ -3189,9 +3211,44 @@ test("every literal the checked drawings declare is on §3's scale or §2's", ()
    *  adding a colour to an allow-list: a shadow that is neither a mark nor one
    *  of the table's three treatments fails. */
   const ELEVATION_MARK = /^(?:inset\b|0 0 0 \d+(?:\.\d+)?px\b)/;
+  /** §3's level 0 is *no shadow*, and a drawing may spell that `none` as readily
+   *  as it may omit the property — the scale clause above admits both, so the
+   *  arm has to accept the spelling or it is a false red waiting for a drawing
+   *  that says it the long way. */
+  const NO_SHADOW = new Set(["none"]);
+  /** A `box-shadow` is a **list**, and it is read part by part. A drawing that
+   *  layers a mark under a surface (`0 0 0 3px …, 0 10px 26px …`) is drawing a
+   *  halo *and* a shadow, so reading only the first part would let any off-table
+   *  shadow through behind a ring. A comma inside parentheses belongs to a
+   *  colour function (`color-mix(in srgb, …)`), not to the list, so the split
+   *  tracks depth. */
+  const shadowParts = (value: string): string[] => {
+    const parts: string[] = [];
+    let depth = 0;
+    let start = 0;
+    for (let at = 0; at < value.length; at += 1) {
+      const char = value[at];
+      if (char === "(") depth += 1;
+      else if (char === ")") depth = Math.max(0, depth - 1);
+      else if (char === "," && depth === 0) {
+        parts.push(value.slice(start, at));
+        start = at + 1;
+      }
+    }
+    parts.push(value.slice(start));
+    return parts.map((part) => part.trim()).filter((part) => part !== "");
+  };
   const elevationAllowed = (value: string): boolean => {
-    const text = value.trim();
-    return ELEVATION.has(text) || ELEVATION_MARK.test(text);
+    const parts = shadowParts(value);
+    return (
+      parts.length > 0 &&
+      parts.every(
+        (part) =>
+          NO_SHADOW.has(part) ||
+          ELEVATION.has(part) ||
+          ELEVATION_MARK.test(part),
+      )
+    );
   };
 
   /** §5's boundary vocabulary: every treatment the table admits draws its edge
@@ -3272,14 +3329,15 @@ test("every literal the checked drawings declare is on §3's scale or §2's", ()
     {
       property: "box-shadow",
       scale:
-        "§3's elevation table (1 `0 8px 20px #00000059`, 2 `0 18px 44px #00000099`, 3 `0 24px 60px #000000b3`, or no shadow at all)",
+        "§3's elevation table (1 `0 8px 20px #00000059`, 2 `0 18px 44px #00000099`, 3 `0 24px 60px #000000b3`, or no shadow at all — `none` or the property omitted)",
       values: (declaration) =>
         declaration.property === "box-shadow" ? [declaration.value] : null,
       allowed: (value) => elevationAllowed(value),
       exempt: [
-        "no `box-shadow` at all — §3's level 0, which is also every surface in a drawing that floats nothing",
+        "no `box-shadow` at all, or `none` — §3's level 0, which is also every surface in a drawing that floats nothing",
         "`0 0 0 <n>px …` — §5 rule 4's 3px accent-at-18% focus halo, decoration and not a surface",
         "`inset …` — a mark **on** the element (§5 rule 4's focus boundary, §7.2's rail accent bar), where §3's table is depth *under* a surface",
+        "each part of a comma list is read on its own, so a halo layered over an off-table shadow is refused rather than admitted by its first part",
       ],
       readPerDrawing: false,
     },
@@ -3347,6 +3405,10 @@ test("every literal the checked drawings declare is on §3's scale or §2's", ()
         ["spacing", () => spacingAllowed("5px", "gap")],
         ["type", () => typeAllowed("11.5px")],
         ["elevation", () => elevationAllowed("0 18px 50px #0009")],
+        [
+          "elevation-list",
+          () => elevationAllowed("0 0 0 3px #72e0c02e, 0 10px 26px #0007"),
+        ],
         ["boundary", () => boundaryAllowed("2px solid var(--edge)")],
       ] as const
     )
@@ -3357,13 +3419,19 @@ test("every literal the checked drawings declare is on §3's scale or §2's", ()
   // The two families the new arms name as exempt are read the same way: a mark
   // the arm still refused would fail the drawing at the naming, and an
   // exemption that swallowed a real treatment would take the arm's teeth out.
+  // §3's level 0 is read in **both** of its spellings — the property omitted is
+  // read by every drawing that declares no shadow, and `none` is the one the arm
+  // used to refuse — and a layered list is read so the part-by-part rule accepts
+  // a legitimate halo-over-shadow as readily as it refuses an off-table tail.
   expect(
     [
       "0 8px 20px #00000059",
       "0 18px 44px #00000099",
       "0 24px 60px #000000b3",
+      "none",
       "inset 2px 0 0 var(--accent)",
       "0 0 0 3px #72e0c02e",
+      "0 0 0 3px #72e0c02e, 0 8px 20px #00000059",
     ].filter((value) => !elevationAllowed(value)),
     "an exempt or on-table shadow is refused, so this row would fail the drawing it names",
   ).toEqual([]);
