@@ -864,12 +864,14 @@ Rows: `vg-356`, `vg-371`, `vg-377`.
 **Files:**
 - Modify: `src/web/packages/editor/src/editor-shell/shell-layout.dom.test.tsx`
 
-Rows: `vg-135`.
+Rows: `vg-135`, `vg-186`.
 
 - [ ] **Step 1: Grep `vg-186`'s line for the marker format.** No ruling, no change to this file.
 - [ ] **Step 2: Reproduce the 50–90 s stall** with `npx vitest run packages/editor/src/editor-shell/shell-layout.dom.test.tsx`.
 - [ ] **Step 3: Apply the mechanism D9's `vg-186` ruling named** — DOM isolation, a separate file, or the leak.
 - [ ] **Step 4: Run it, commit.**
+
+[Ruled 2026-10-13, read before this phase runs, and the two corrections are about reading the ruling rather than following it. **(1) The mechanism is not a menu of three.** `vg-186`'s ruling chose **DOM isolation** — "tear down the earlier menu inside the test that opened it, so no test in the file depends on where it sits" — and rejected the other two in its own words: *"A separate file is rejected because it MOVES the dependency instead of removing it — the stall follows the pair into whichever file holds both — and chasing the leak is the same unestablished hypothesis with a longer investigation."* Step 3 lists all three as live choices, so following it literally could land a rejected remedy. **The ruling's proof condition is also fixed and must be the evidence**: "the proof that isolation worked is the sheet test running FIRST in the file and still passing; until that is shown the ordering guard stays" — so the case is the sheet test moved first, not merely a green file. **(2) `vg-186` joins this task's rows.** Step 3 already applies that row's own ruled mechanism to that row's own file, and a mechanism applied while its row stays open is the residue Task 6.5 was added to end — the same shape as the eight ruled rows no task landed. **If the applied isolation does not in fact fix the unmount stall, `vg-186` stays `open` and the report states the reading rather than the task reaching for the close**, which is Step 2's shape in Task 6.4. `vg-135` and `vg-186` are one file and one root — two Base UI surfaces stalling the same jsdom frame state — and Phase 1 took `vg-186`'s ruling, not its close.]
 
 ### Task 7.4: The independent single-file rows
 
