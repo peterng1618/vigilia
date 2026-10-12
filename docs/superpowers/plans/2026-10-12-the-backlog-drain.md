@@ -384,16 +384,17 @@ Rows: D9 — `vg-109`, `vg-155`, `vg-159`, `vg-167`, `vg-168`, `vg-182`, `vg-185
 
 **Files:**
 - Modify: the spec each row names
-- Test: `src/web/tests/e2e/editor.spec.ts` (`vg-346`, `vg-233`, `vg-370`) and the `tests/e2e/host-theme.ts` fixture (`vg-347`) — the paths are the triage tables' own cells, not memory
+- Test: `src/web/tests/e2e/editor.spec.ts` (`vg-346`, and the one case that carries `vg-233` and `vg-370`), `src/web/tests/e2e/host-player.spec.ts` and the `tests/e2e/host-theme.ts` fixture (`vg-347`) — the paths are the triage tables' own cells, not memory
 
 **Interfaces:**
 - Consumes: each row's spec path, `--grep` and build command from the triage table
-- Produces: four new cases, one of which (`vg-370` and `vg-233` jointly) proves a scaled text resized by a side handle
+- Produces: **three** new cases for four rows — the triage tables pair `vg-233` and `vg-370` onto one check, so a task reporting four would be counting rows, not cases
+- **A case that closes a row must be able to fail on the defect the row names.** Run the red proof before closing: revert the defect's own line, require the case to fail, revert and `cmp`. A case whose assertions are `toBeGreaterThan`/`not.toBe`, or whose two sides move together, passes either way and closes nothing — `vg-233`'s first pass did exactly that.
 
 - [ ] **Step 1: `vg-346`** — the canvas rotation gesture is the one thing no test performs; the deleted block was `shows the rotation-angle indicator beside the pointer mid-rotation`. Write the gesture case.
-- [ ] **Step 2: `vg-347`, then `vg-233` and `vg-370` together** — the tables name the last two as settled by one check.
-- [ ] **Step 3: Build, run each alone with `--workers=1`, read each run's JSON report.**
-- [ ] **Step 4: Record each row's verdict on its own line and close or re-scope it.**
+- [ ] **Step 2: `vg-347`** — build the `host-theme.ts` fixture the case needs, then the case itself: three captures through `openPaused` at a fixed clock, an ink check first, then a byte comparison of two captures required to be `0`. **Then `vg-233` and `vg-370` together** — the tables name the last two as settled by one check.
+- [ ] **Step 3: Build, run each alone with `--workers=1`, read each run's JSON report, and run each closing case's red proof.**
+- [ ] **Step 4: Record each row's verdict on its own line and close or re-scope it** — a row whose red proof did not fail on its defect stays `open` with what the run established, however green the case reads.
 - [ ] **Step 5: Commit** the new cases and the row changes.
 
 ### Task 2.2: The four rows whose answer already exists
