@@ -372,7 +372,7 @@ Rows: D9 — `vg-109`, `vg-155`, `vg-159`, `vg-167`, `vg-168`, `vg-182`, `vg-185
 
 **Owners:** the suites under `src/web/tests/e2e/`, `src/web/playwright.config.ts` (ports 4173/4174), `tests/e2e/mockup-values.test.ts` (vitest).
 
-**Constraints:** one suite at a time; `--workers=1`; rebuild before each preview; captures need `VIGILIA_CAPTURE=1`. **Nothing else in the drain builds or drives Playwright during this phase.**
+**Constraints:** one suite at a time; `--workers=1`; rebuild before each preview; captures need `VIGILIA_CAPTURE=1`. **Nothing else in the drain builds or drives Playwright during this phase.** **A row closes `verified` only on evidence that could have failed**: a new case needs its red proof (revert the defect's line, watch it fail, revert, `cmp`), and where a case is amended, its re-pointed locator or gesture is demonstrated to fail when the behaviour it addresses is disabled. A green run whose assertions are `toBeGreaterThan`/`not.toBe`, or whose two sides move together, settles nothing — `vg-233`'s first pass closed on exactly that and the review caught it.
 
 **Acceptance:** every one of the 38 rows has a verdict recorded in its own line, and no run reported a result twice from the same build (each suite read from its own JSON report, per the memory that a rewritten stdout is not evidence).
 
