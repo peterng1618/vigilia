@@ -100,10 +100,11 @@ async function start(): Promise<void> {
       active?.extensions.runDisplay() ?? DEFAULT_RUN_DISPLAY_MODE,
     setRunDisplay: (runMode) => active?.extensions.setRunDisplay(runMode),
     chartRefreshRate: () => chartRefreshRate,
+    // The loop is the only owner of cadence: the charts draw when their data
+    // moves, so a rate change is a rate change here and nothing downstream.
     setChartRefreshRate: (rate) => {
       chartRefreshRate = rate;
       chartRefresh.setRate(rate);
-      active?.extensions.charts.setRefreshRate(rate);
     },
   };
 

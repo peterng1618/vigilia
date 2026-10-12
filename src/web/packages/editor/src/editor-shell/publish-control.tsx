@@ -8,6 +8,7 @@ import {
   shortcutSpokenLabel,
 } from "../shortcut-manager/display.js";
 import { uiCopy } from "../ui-copy.js";
+import { documentNameOf } from "./bridge.js";
 import { QrCode } from "./qr-symbol.js";
 import type { EditorActionFacade } from "./session-facade.js";
 import type { HostingStore, PublishSurfaceStore } from "./shell-layout.js";
@@ -78,7 +79,12 @@ export function PublishControl({
       setShowing(
         document === undefined
           ? undefined
-          : { name: document.envelope.metadata?.name ?? document.id },
+          : {
+              name: documentNameOf({
+                name: document.envelope.metadata?.name,
+                id: document.id,
+              }),
+            },
       );
     };
     read();

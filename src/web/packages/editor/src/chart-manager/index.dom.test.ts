@@ -1,9 +1,12 @@
 // @vitest-environment jsdom
 import { createDemoSource } from "@vigilia/fake-source";
 import {
+  defaultBarSettings,
   defaultGaugeSettings,
   defaultLineSettings,
   type GaugeSettings,
+  type Sample,
+  SampleStore,
 } from "@vigilia/renderer-core";
 import {
   type SceneAdapter,
@@ -677,6 +680,80 @@ describe("a chart that throws", () => {
     expect(String(warn.mock.calls[0]?.[1])).toContain("setOption blew up");
     manager.destroy();
   });
+
+  it("costs one chart when the source throws, not the walk behind it", () => {
+    // **The guard around the reading read.** The reading is read in the walk,
+    // outside `#applyChart`'s own per-chart guard, so a source whose `history`
+    // throws would end the walk with every chart after the bad one left
+    // undrawn — the property that comment exists to protect, and the one a
+    // later refactor inlining the read back into `#applyChart` would quietly
+    // lose.
+    const at = new Date(Date.UTC(2026, 8, 15, 12, 0, 0)).toISOString();
+    let healthy: Sample | undefined = {
+      sensorId: "ok",
+      timestamp: at,
+      status: "ok",
+      value: 1,
+    };
+    const source = {
+      latest: (key: string) => (key === "ok" ? healthy : undefined),
+      history: (key: string) => {
+        if (key === "bad") throw new Error("history blew up");
+        return [];
+      },
+    };
+    const bad = new VigiliaChart({
+      id: "bad",
+      family: "line",
+      width: 100,
+      height: 100,
+      settings: defaultLineSettings,
+    });
+    const good = new VigiliaChart({
+      id: "good",
+      family: "gauge",
+      width: 100,
+      height: 100,
+      settings: defaultGaugeSettings,
+    });
+    const objects = [bad, good];
+    const canvas = {
+      on: vi.fn(),
+      off: vi.fn(),
+      add: vi.fn(),
+      getActiveObject: vi.fn(),
+      getObjects: vi.fn(() => objects),
+      requestRenderAll: vi.fn(),
+      setActiveObject: vi.fn(),
+    };
+    const warn = vi.fn();
+    const manager = new ChartManager({
+      editor: {
+        canvas,
+        artboard,
+        historyManager: { saveState: vi.fn() },
+        errorManager: { warn, error: vi.fn() },
+      } as unknown as EditorInteraction,
+      scene: {} as SceneAdapter,
+      source: source as never,
+      bindings: {
+        bad: [{ id: "bad-read", semanticKey: "bad" }],
+        good: [{ id: "good-read", semanticKey: "ok" }],
+      },
+    });
+    const goodSetOption = vi.spyOn(good, "setOption");
+    goodSetOption.mockClear();
+    warn.mockClear();
+
+    // The chart after the bad one has moved, so the walk has something to reach.
+    healthy = { ...healthy, value: 2 };
+    manager.refresh();
+
+    expect(goodSetOption).toHaveBeenCalledTimes(1);
+    expect(warn).toHaveBeenCalled();
+    expect(String(warn.mock.calls[0]?.[1])).toContain("history blew up");
+    manager.destroy();
+  });
 });
 
 describe("a chart whose reading has not moved", () => {
@@ -752,6 +829,63 @@ describe("a chart whose reading has not moved", () => {
     manager.refresh();
     manager.refresh();
     expect(setOption).not.toHaveBeenCalled();
+    manager.destroy();
+  });
+
+  it("draws a bar whose newest sample runs ahead of the store's own clock", () => {
+    // **Why the reading is the family's own pull.** `SampleStore.history`
+    // returns only samples at or before `lastNowMs` (:37, :76-79) while `latest`
+    // returns the newest whatever its timestamp — so a sample whose own clock
+    // runs ahead, which is reachable on a LAN device, is returned by one and
+    // excluded by the other. A bar draws `latest`; gating it on `history` left
+    // it drawing the old value while its newest one had changed, which is a
+    // wrong reading on screen rather than a saving.
+    const t0 = Date.UTC(2026, 8, 15, 12, 0, 0);
+    const sample = (atMs: number, value: number): Sample => ({
+      sensorId: "cpu.load",
+      timestamp: new Date(atMs).toISOString(),
+      status: "ok",
+      value,
+    });
+    const source = new SampleStore();
+    source.ingest([["cpu.load", sample(t0, 10)]], t0);
+
+    const chart = new VigiliaChart({
+      id: "cpu",
+      family: "bar",
+      width: 100,
+      height: 100,
+      settings: defaultBarSettings,
+    });
+    const objects = [chart];
+    const canvas = {
+      on: vi.fn(),
+      off: vi.fn(),
+      add: vi.fn(),
+      getActiveObject: vi.fn(),
+      getObjects: vi.fn(() => objects),
+      requestRenderAll: vi.fn(),
+      setActiveObject: vi.fn(),
+    };
+    const manager = new ChartManager({
+      editor: {
+        canvas,
+        artboard,
+        historyManager: { saveState: vi.fn() },
+        errorManager: { warn: vi.fn(), error: vi.fn() },
+      } as unknown as EditorInteraction,
+      scene: {} as SceneAdapter,
+      source,
+      bindings: { cpu: [{ id: "cpu-read", semanticKey: "cpu.load" }] },
+    });
+    const setOption = vi.spyOn(chart, "setOption");
+    setOption.mockClear();
+
+    // Ingested at the same `nowMs`, two seconds ahead of it.
+    source.ingest([["cpu.load", sample(t0 + 2000, 90)]], t0);
+    manager.refresh();
+
+    expect(setOption).toHaveBeenCalledTimes(1);
     manager.destroy();
   });
 });

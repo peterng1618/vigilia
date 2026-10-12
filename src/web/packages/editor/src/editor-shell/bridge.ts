@@ -115,10 +115,11 @@ function activeKindOf(active: FabricObject | undefined): ActiveKind {
  *
  * Spelled out at each reader it drifted: the identity chip took the fallback on
  * an empty name and the status line did not, so an unnamed theme showed its id
- * in the chip and a blank `Opened ` in the status line. The status line and the
- * snapshot's `documentName` both call this, so they cannot disagree again
- * (vg-218). `||`, not `??`: an empty stored name is a name the document does not
- * have, and the id behind it is what the schema guarantees is there.
+ * in the chip and a blank `Opened ` in the status line — and the publish
+ * control's `Showing …` line kept the empty name too. Every reader in
+ * `packages/editor/src` calls this one (vg-218). `||`, not `??`: an empty stored
+ * name is a name the document does not have, and the id behind it is what the
+ * schema guarantees is there.
  */
 export function documentNameOf(identity: {
   readonly name: string | undefined;

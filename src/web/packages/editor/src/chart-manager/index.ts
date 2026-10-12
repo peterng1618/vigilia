@@ -5,6 +5,7 @@ import {
   type ChartFamily,
   carriedPaintFor,
   type FabricGlobals,
+  linePlaybackDelayMs,
   reassignChartPaintReferences,
   type SampleSource,
   seriesPaintFor,
@@ -250,10 +251,6 @@ export class ChartManager {
     this.#applyCharts(false);
   }
 
-  setRefreshRate(rate: 1 | 30): void {
-    this.refresh();
-  }
-
   /** Add a typed chart while preserving the editor's canvas and history ownership. */
   addChart(family: ChartFamily): void {
     const id = `chart-${crypto.randomUUID()}`;
@@ -462,7 +459,7 @@ export class ChartManager {
           // does: the draw is still attempted, so `#applyChart` reports it.
           let reading: string | undefined;
           try {
-            reading = this.#readingSignature(id);
+            reading = this.#readingSignature(id, object);
           } catch {
             reading = undefined;
           }
@@ -486,23 +483,45 @@ export class ChartManager {
   /**
    * The newest sample each binding would draw, as one string.
    *
-   * Read from `history` rather than `latest`, because `history`'s newest entry
-   * moves only when the source has a new sample: the preview source answers
-   * `latest` from the wall clock, so a chart bound to one would look as though
-   * it had moved on every call. A chart with no bindings draws a fixed
-   * placeholder, so its reading never moves and it is drawn once.
+   * **The pull is the family's own**, because a reading that is not what the
+   * chart draws is not a reading. A gauge, a bar and a pie draw `latest`; a line
+   * draws its trailing window, so its newest entry is what moves — read with the
+   * same window the plan builder asks for (`windowSeconds` plus the source's own
+   * playback delay), because a shorter one would miss a sample that arrived late
+   * with an older timestamp. `history`'s newest entry is also what keeps the
+   * preview source honest: it answers `latest` from the wall clock, so a gauge
+   * bound to one genuinely moves on every call and is drawn for it.
    *
-   * The window is one second rather than the chart's own, because only the
-   * newest sample is read and a source denser than a second still puts its
-   * newest sample last.
+   * A chart with no bindings draws a fixed placeholder, so its reading never
+   * moves and it is drawn once.
+   *
+   * **Nothing is guaranteed about `history(small).at(-1)` being `latest`**
+   * (`renderer-core/src/data/source.ts`): a sample whose own timestamp runs
+   * ahead of the store's `lastNowMs` — reachable with clock skew on a LAN device
+   * — is returned by `latest` and excluded by `history`. Reading `history` for a
+   * gauge was how a bar kept drawing the old value while its newest changed.
    */
-  #readingSignature(id: string): string {
+  #readingSignature(id: string, chart: VigiliaChart): string {
+    const content = {
+      family: chart.family,
+      settings: chart.settings,
+    } as ChartContent;
     return (this.#bindings[id] ?? [])
       .map((binding) => {
-        const newest = this.#source.history(binding.semanticKey, 1).at(-1);
-        return `${binding.id}:${newest?.status ?? "-"}:${
-          newest?.timestamp ?? "-"
-        }:${newest?.value ?? newest?.textValue ?? "-"}`;
+        const sample =
+          content.family === "line"
+            ? this.#source
+                .history(
+                  binding.semanticKey,
+                  content.settings.windowSeconds +
+                    linePlaybackDelayMs(this.#source.chartPlaybackDelayMs) /
+                      1000,
+                )
+                .at(-1)
+            : this.#source.latest(binding.semanticKey);
+        return `${binding.id}:${sample?.status ?? "-"}:${
+          sample?.timestamp ?? "-"
+        }:${sample?.value ?? sample?.textValue ?? "-"}`;
       })
       .join("|");
   }

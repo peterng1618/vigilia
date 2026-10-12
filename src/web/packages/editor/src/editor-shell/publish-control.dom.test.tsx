@@ -449,6 +449,22 @@ it("names the document a display is showing, because a live overlay is invisible
   );
 });
 
+it("names a document the theme never named by its id, as the chip and the status line do", async () => {
+  // The reading is `documentNameOf`'s, the one the identity chip and the status
+  // line take. Spelled here as `metadata?.name ?? id` it kept an empty stored
+  // name — which the schema permits — so this line read "Showing " where the
+  // chip beside it read the id (vg-218).
+  hostServing({ lan: true });
+  const container = await mount(
+    sessionShowing({ id: "living-room", name: "" }),
+  );
+  await openSurface(container);
+
+  await vi.waitFor(() =>
+    expect(popupText()).toContain(uiCopy.publish.live("living-room")),
+  );
+});
+
 it("says what is left to do for a theme the library does not hold", async () => {
   hostServing({ lan: true });
   const container = await mount(sessionShowing(undefined));
