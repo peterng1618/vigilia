@@ -2228,7 +2228,7 @@ test.describe("Fabric editor route", () => {
     await insertShape(page, "Rectangle");
 
     await page.keyboard.press("Control+n");
-    // New asks the size first (`editor-session.ts:979`), then this.
+    // New asks the size first (`editor-session.ts`'s `#new`), then this.
     await expect(
       page.locator('[role="dialog"]', { hasText: "Choose an artboard size" }),
     ).toBeVisible();
@@ -2267,8 +2267,9 @@ test.describe("Fabric editor route", () => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     // **A stubbed library, not the real host.** `openLibrary` awaits
-    // `client.list()` before it opens anything (`editor-session.ts:937`), so on
-    // the preview server the chooser never appears at all. The stub answers the
+    // `client.list()` before it opens anything (`ThemeLibraryManager.open` in
+    // `theme-library-manager/index.ts`), so on the preview server the chooser
+    // never appears at all. The stub answers the
     // one request the chooser makes, and the list, the two groups and the delete
     // control that follows a selection are all the real component's.
     await page.route("**/api/themes", (route) =>
