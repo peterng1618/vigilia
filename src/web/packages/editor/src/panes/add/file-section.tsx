@@ -21,11 +21,15 @@ import { uiCopy } from "../../ui-copy.js";
  * silently loses everything else, which is the defect Review Focus 5 names: a
  * font imported once would be unreachable and un-removable.
  *
- * **Replace is a byte swap on the chosen asset.** The author picks a row and
- * gives *it* a new file; every object bound to that id re-points when the
- * manager rehydrates, and the package does not grow. It is not "re-point the
- * selected object at a new asset", which is the capability `vg-154` still
- * records as unmet.
+ * **Replace is a byte swap on the chosen asset, never a re-point of a
+ * selection.** The author picks a row and gives *it* a new file; every object
+ * bound to that id re-points when the manager rehydrates, and the package does
+ * not grow. "Re-point the selected object at a new asset" is a different,
+ * selection-scoped capability that `vg-154` records as remaining work, and its
+ * home is ruled elsewhere: a control over a selected object lives in the
+ * selection inspector (`selection-inspector/crop.ts` states the rule), not in
+ * this library. Building it is the row's own open decision, so this file must
+ * not grow it.
  *
  * The element contracts the imperative panel carried are preserved verbatim:
  * `data-vigilia-asset-select`, `-preview`, `-import`, `-replace`, `-remove` and
