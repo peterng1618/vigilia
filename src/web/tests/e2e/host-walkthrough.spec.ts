@@ -322,16 +322,7 @@ async function keyboardReach(page: Page): Promise<readonly Focus[]> {
  */
 async function selectInPaneByKeyboard(page: Page): Promise<void> {
   await tabUntil(page, (focus) => focus.region === "pane");
-  for (let press = 0; press < TAB_BOUND; press++) {
-    const onRow = await page.evaluate(
-      () => document.activeElement?.hasAttribute("data-vigilia-layer") ?? false,
-    );
-    if (onRow) break;
-    await page.keyboard.press("Tab");
-    if (press === TAB_BOUND - 1) {
-      throw new Error(`no layer row took focus in ${TAB_BOUND} presses`);
-    }
-  }
+  await focusLayerRow(page, undefined);
   await page.keyboard.press(" ");
   await expect(
     page.locator(
@@ -339,6 +330,65 @@ async function selectInPaneByKeyboard(page: Page): Promise<void> {
     ),
     "the inspector has no control after a keyboard selection",
   ).not.toHaveCount(0);
+}
+
+/**
+ * Tabs inside the pane until focus is on a layer row, and answers its id.
+ *
+ * `name` is the row's own `.vigilia-layer-name`; `undefined` accepts the first
+ * row focus reaches, which is what {@link selectInPaneByKeyboard} — the
+ * census's unnamed selection — asks for. The search is by **name, not by a Tab
+ * count**, so nothing here bakes in a position the shell is free to change, and
+ * the bound reports how many presses it spent rather than hanging.
+ */
+async function focusLayerRow(
+  page: Page,
+  name: string | undefined,
+): Promise<string> {
+  for (let press = 0; press < TAB_BOUND; press++) {
+    const id = await page.evaluate((wanted: string | undefined) => {
+      const active = document.activeElement;
+      const row = active?.getAttribute("data-vigilia-layer");
+      if (row === null || row === undefined) return null;
+      if (wanted === undefined) return row;
+      const shown = active?.querySelector(".vigilia-layer-name")?.textContent;
+      return (shown ?? "") === wanted ? row : null;
+    }, name);
+    if (id !== null) return id;
+    await page.keyboard.press("Tab");
+  }
+  throw new Error(
+    name === undefined
+      ? `no layer row took focus in ${TAB_BOUND} presses`
+      : `no layer row named ${name} took focus in ${TAB_BOUND} presses`,
+  );
+}
+
+/**
+ * Selects a named layer through the Composition pane, with no pointer.
+ *
+ * The pane is named first, because "through Composition" is part of the claim:
+ * the row is the one that pane draws, and a run that had left another pane
+ * showing would be selecting through something else. `Space` selects — a
+ * composition row gives `Enter` and `F2` to its rename field
+ * (`composition-pane.tsx`) — and the row's own `aria-selected` is the shell's
+ * statement that the selection landed rather than a claim made here.
+ *
+ * Answers the row's object id, which is what addresses that row afterwards.
+ */
+async function selectInComposition(page: Page, name: string): Promise<string> {
+  await expect(
+    page.locator('[data-vigilia-panel="layers"]'),
+    "the Composition pane the row is selected through",
+  ).toBeVisible();
+  await tabUntil(page, (focus) => focus.region === "pane");
+  const id = await focusLayerRow(page, name);
+  await page.keyboard.press(" ");
+  await expect(
+    page.locator(`[data-vigilia-layer="${id}"]`),
+    `the row named ${name} after Space`,
+  ).toHaveAttribute("aria-selected", "true");
+  return id;
 }
 
 /** Copy a spec names as literals — the File menu, the row this walk creates its
@@ -353,6 +403,37 @@ const STARTER_DOCUMENT_NAME = "System dashboard";
  *  which report a count rather than hang. */
 const FILE_MENU_BOUND = 12;
 const RAIL_BOUND = 40;
+
+/** The Composition row this task's walk selects. It is the starter's own
+ *  `wordmark` — a top-level text object — so the walk selects something that
+ *  sits inside no group; a row whose group had to be entered first is a
+ *  different interaction, and Task 4's. */
+const WALKTHROUGH_LAYER_NAME = "wordmark";
+
+/** The draft a cancelled edit is given. Any string but the authored one leaves
+ *  the field having really held it, which is what makes the cancel mean
+ *  something: a field that never took the text would revert to the same value
+ *  while proving nothing. */
+const FIELD_DRAFT = "walkthrough draft";
+
+/** The hook the selection's own name field carries (`nameField`,
+ *  `selection-inspector/appearance.ts`), on the focus target rather than a
+ *  wrapper. */
+const FIELD_HOOK = "[data-vigilia-name]";
+
+/** The canvas event `EditorHistory.save()` fires at the one place an entry is
+ *  appended to the history (`history-manager/index.ts`) and nowhere else.
+ *
+ *  **There is no history length to read from the browser.** `#entries` is a
+ *  private field and `EditorShellBridge` publishes no accessor — only
+ *  `saveState`, `resetHistory`, `undo`, `redo` and `suspend` cross it — so this
+ *  event is the application's own statement that an entry landed, which is the
+ *  strongest thing actually observable rather than a count this file invents. */
+const EDIT_COMMITTED = "editor:edit-committed";
+
+/** Where the count lives on the page while the listener is attached. A
+ *  test-owned name: no shell style or script reads it. */
+const WALKTHROUGH_COMMITS = "__vigiliaWalkthroughEditCommits";
 
 /** Creates a document through the shell's own File menu, with no pointer.
  *
@@ -468,6 +549,145 @@ async function tabUntil(
     if (matches(focus)) return focus;
   }
   throw new Error(`nothing matched in ${limit} presses`);
+}
+
+/**
+ * Opens the selection's name field, drafts a value into it, and cancels it.
+ *
+ * The field is reached the way a keyboard user reaches one — by Tab, from
+ * wherever the walk left focus — never by `focus()`. So the edit is the
+ * interaction §13.1 names, not a call to the control behind it.
+ *
+ * **Escape is the cancel and the value coming back is the assertion.**
+ * `ControlText` keeps the draft in its own state and commits on Enter or blur,
+ * so a cancelled edit writes nothing: the field shows the authored value again.
+ * The draft is asserted to have landed *first* (`not.toHaveValue`), or a field
+ * that never took the text would pass while proving nothing.
+ *
+ * Answers the value the field went back to, which is what the caller can then
+ * assert about the document without re-deriving it from a second surface.
+ */
+async function editFieldThenCancel(page: Page): Promise<string> {
+  const field = page.locator(`.editor-shell-inspector ${FIELD_HOOK}`);
+  await tabUntil(page, (focus) => focus.region === "inspector");
+  for (let press = 0; press < TAB_BOUND; press++) {
+    const onField = await page.evaluate(
+      (hook: string) => document.activeElement?.matches(hook) ?? false,
+      FIELD_HOOK,
+    );
+    if (onField) break;
+    await page.keyboard.press("Tab");
+    if (press === TAB_BOUND - 1) {
+      throw new Error(
+        `no ${FIELD_HOOK} field took focus in ${TAB_BOUND} presses`,
+      );
+    }
+  }
+
+  const original = await field.inputValue();
+  await page.keyboard.press("End");
+  await page.keyboard.type(FIELD_DRAFT);
+  await expect(field, "the draft before it is cancelled").not.toHaveValue(
+    original,
+  );
+  await page.keyboard.press("Escape");
+  await expect(field, "the field after Escape").toHaveValue(original);
+  return original;
+}
+
+/** The document as the application projects it: the very rows the Composition
+ *  pane renders, read back from the bridge. Selection is part of the
+ *  projection, so a row that lost its selection moves this as well as a row
+ *  that lost its name.
+ *
+ *  Comparing this before and after is what "the document is unchanged" means
+ *  for a cancelled edit **from the state the document was created in** — the
+ *  walk's own baseline, not the fixture it booted on. */
+async function layerTree(page: Page): Promise<readonly unknown[]> {
+  return page.evaluate(() => {
+    const bridge = (
+      window as unknown as {
+        vigiliaEditorBridge?: { layers(): readonly unknown[] };
+      }
+    ).vigiliaEditorBridge;
+    if (bridge === undefined) {
+      throw new Error("no editor bridge on this mount");
+    }
+    return bridge.layers();
+  });
+}
+
+/** Attaches the history-commit listener, or fails saying it could not.
+ *
+ *  A mount with no canvas would leave the count at its sentinel and a "no
+ *  entries were added" assertion would pass having observed nothing — so the
+ *  attach answers whether it happened and this throws when it did not. */
+async function watchEditCommits(page: Page): Promise<void> {
+  const attached = await page.evaluate(
+    (names: { readonly event: string; readonly key: string }) => {
+      const scope = window as unknown as Record<string, number | undefined> & {
+        vigiliaEditorBridge?: {
+          readonly editor?: {
+            readonly canvas?: {
+              on(name: string, listener: () => void): void;
+            };
+          };
+        };
+      };
+      const canvas = scope.vigiliaEditorBridge?.editor?.canvas;
+      if (canvas === undefined) return false;
+      scope[names.key] = 0;
+      canvas.on(names.event, () => {
+        scope[names.key] = (scope[names.key] ?? 0) + 1;
+      });
+      return true;
+    },
+    { event: EDIT_COMMITTED, key: WALKTHROUGH_COMMITS },
+  );
+  if (!attached) {
+    throw new Error(
+      "no editor canvas on this mount: a cancelled edit's history cannot be observed",
+    );
+  }
+}
+
+/** How many history entries the application has recorded since
+ *  {@link watchEditCommits}. `-1` when nothing was ever attached, which no
+ *  assertion here reads as zero. */
+async function editCommits(page: Page): Promise<number> {
+  return page.evaluate(
+    (key: string) =>
+      (window as unknown as Record<string, number | undefined>)[key] ?? -1,
+    WALKTHROUGH_COMMITS,
+  );
+}
+
+/** What a cancelled Escape must have left open, as one object, so three
+ *  moments — before the edit, after the first Escape, after the second — can be
+ *  compared for being the same rather than asserted one line at a time.
+ *
+ *  The four are the field's own surroundings and nothing else: the Composition
+ *  pane the selection was made through, the selection itself, the document the
+ *  shell names, and the field the draft lived in. */
+async function surroundingState(
+  page: Page,
+  id: string,
+): Promise<{
+  readonly pane: boolean;
+  readonly selected: string | null;
+  readonly document: string | null;
+  readonly field: boolean;
+}> {
+  return {
+    pane: await page.locator('[data-vigilia-panel="layers"]').isVisible(),
+    selected: await page
+      .locator(`[data-vigilia-layer="${id}"]`)
+      .getAttribute("aria-selected"),
+    document: await page.locator(".editor-shell-identity-name").textContent(),
+    field: await page
+      .locator(`.editor-shell-inspector ${FIELD_HOOK}`)
+      .isVisible(),
+  };
 }
 
 test.describe("the shell, reached by keyboard alone", () => {
@@ -644,5 +864,85 @@ test.describe("the shell, reached by keyboard alone", () => {
       page.locator(`[${FIRST}="pane"]`),
       "the first pane focus target",
     ).toHaveAccessibleName(/\S/);
+  });
+
+  /**
+   * §13.1's third and fourth interactions: select through Composition, and edit
+   * and cancel a field. Both halves of Review Focus 5 live here, because "the
+   * document is unchanged" is the whole claim a cancelled edit makes — a field
+   * that reverted while the document moved is a cancel that did not happen.
+   *
+   * The walk's document is the one the step before it created from the starter,
+   * so the state it is unchanged from is that document's own, read once the
+   * selection is in place: the field's surroundings and the layer projection the
+   * Composition pane renders.
+   *
+   * **Review Focus 2 is the second claim, and it is not the same one.** §13.1
+   * says Escape affects one innermost owner, so what this test asks after the
+   * first Escape is not "did the field revert" — the helper answers that — but
+   * what is still open: the field sits inside the inspector, inside the shell,
+   * beside the pane the selection was made through, and all four are still
+   * there. The second Escape is the other half: a cancel that needed two would
+   * fail the first comparison, and one that reached a further owner on the way
+   * out would fail the second.
+   */
+  test("a field is edited and cancelled, and the document is unchanged", async ({
+    page,
+  }) => {
+    await openWalkthrough(page);
+    await openDocumentByKeyboard(page);
+    const id = await selectInComposition(page, WALKTHROUGH_LAYER_NAME);
+
+    const before = await layerTree(page);
+    // An empty projection would make "unchanged" mean nothing, so the state the
+    // cancelled edit must leave alone is asserted to have something in it.
+    expect(
+      before.length,
+      "the projection the Composition pane renders",
+    ).toBeGreaterThan(0);
+    const opened = await surroundingState(page, id);
+    expect(opened, "the field's surroundings before it is edited").toEqual({
+      pane: true,
+      selected: "true",
+      document: STARTER_DOCUMENT_NAME,
+      field: true,
+    });
+
+    await watchEditCommits(page);
+    const original = await editFieldThenCancel(page);
+
+    expect(
+      await editCommits(page),
+      "history entries the cancelled edit recorded",
+    ).toBe(0);
+    expect(
+      await layerTree(page),
+      "the document after the cancelled edit",
+    ).toEqual(before);
+    await expect(
+      page.locator(`[data-vigilia-layer="${id}"] .vigilia-layer-name`),
+      "the row still reads the name the cancelled edit did not take",
+    ).toHaveText(original);
+
+    // One Escape, and exactly one owner closed: the field's draft.
+    expect(
+      await surroundingState(page, id),
+      "Escape closed something above the field",
+    ).toEqual(opened);
+    expect(
+      await page.locator(`.editor-shell-inspector ${FIELD_HOOK}`),
+      "the field focus stayed in",
+    ).toBeFocused();
+
+    // A second Escape is not needed, and reaches nothing further.
+    await page.keyboard.press("Escape");
+    expect(
+      await surroundingState(page, id),
+      "a second Escape changed something",
+    ).toEqual(opened);
+    expect(await editCommits(page), "history after a second Escape").toBe(0);
+    expect(await layerTree(page), "the document after a second Escape").toEqual(
+      before,
+    );
   });
 });
