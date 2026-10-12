@@ -33,9 +33,8 @@ export interface EditorShellSnapshot {
   /** The document's identity, as the session reports it (§7.5): the theme's own
    *  name, or its id where the theme carries no name. `undefined` only while no
    *  document is open — never `""`, because a chip that named nothing is a
-   *  claim the product does not have. The schema lets `metadata.name` be empty
-   *  (`maxLength` with no `minLength`), so the fallback is taken on `""` too,
-   *  and `stableId` requires 1–64 characters, so the id can never be empty. */
+   *  claim the product does not have. The reading is `documentNameOf`, the same
+   *  one the status line takes, so the two cannot disagree (vg-218). */
   readonly documentName: string | undefined;
   /** The open document's release version (`ThemeMetadata.version`), or
    *  `undefined` where it carries none. The same fact the Document pane's
@@ -108,6 +107,32 @@ function activeKindOf(active: FabricObject | undefined): ActiveKind {
   if (active instanceof ActiveSelection || active instanceof Group)
     return "group";
   return active instanceof VigiliaChart ? "chart" : "object";
+}
+
+/**
+ * The document's name, else its id — the one reading of what a document is
+ * called.
+ *
+ * Spelled out at each reader it drifted: the identity chip took the fallback on
+ * an empty name and the status line did not, so an unnamed theme showed its id
+ * in the chip and a blank `Opened ` in the status line. The status line and the
+ * snapshot's `documentName` both call this, so they cannot disagree again
+ * (vg-218). `||`, not `??`: an empty stored name is a name the document does not
+ * have, and the id behind it is what the schema guarantees is there.
+ */
+export function documentNameOf(identity: {
+  readonly name: string | undefined;
+  readonly id: string;
+}): string {
+  return identity.name || identity.id;
+}
+
+/** The status line's wording for the document that just opened. */
+export function openedStatusText(identity: {
+  readonly name: string | undefined;
+  readonly id: string;
+}): string {
+  return `Opened ${documentNameOf(identity)}`;
 }
 
 /** Product panels depend only on the editor mechanics they exercise. */
@@ -184,10 +209,10 @@ export function createEditorShellBridge(input: {
             : 1,
       locked: active !== undefined && isLocked(active),
       activeKind: activeKindOf(active),
-      // `||`, not `??`: an empty stored name is a name the document does not
-      // have, and the id behind it is what the schema guarantees is there.
+      // The schema lets `metadata.name` be empty, so the fallback is taken on
+      // `""` too, by the one reading the status line takes as well.
       documentName:
-        identity === undefined ? undefined : identity.name || identity.id,
+        identity === undefined ? undefined : documentNameOf(identity),
       releaseVersion: identity?.version,
       selectionPresetId: presetRef?.slice("typePresets.".length),
     };

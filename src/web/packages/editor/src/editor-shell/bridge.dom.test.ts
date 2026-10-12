@@ -12,7 +12,11 @@ import {
 } from "fabric/es";
 import { beforeEach, expect, it, vi } from "vitest";
 import { objectAction } from "../object-actions.js";
-import { createEditorShellBridge } from "./bridge.js";
+import {
+  createEditorShellBridge,
+  documentNameOf,
+  openedStatusText,
+} from "./bridge.js";
 import type { EditorActionFacade } from "./session-facade.js";
 
 // A real applyArrange needs a live Fabric canvas; spying on it asserts the
@@ -235,6 +239,26 @@ it("names a document that reports no name by its id, never by nothing", () => {
   // And no document open is still the one case that renders nothing.
   const { bridge: closed } = bridgeFor(undefined);
   expect(closed.snapshot().documentName).toBeUndefined();
+});
+
+it("names the document once, so the status line and the chip cannot disagree", () => {
+  // vg-218. The reading was spelled three times — twice in `editor-main.ts` for
+  // the status line and once in the bridge's projection — and the two spellings
+  // had already drifted: the chip took the fallback on an empty
+  // `metadata.name` and the status line did not, so an unnamed theme showed its
+  // id in the chip and a blank `Opened ` in the status line. Both callers take
+  // this one reading now, and the status line's own wording had no test at all
+  // — which is what the second half pins.
+  expect(documentNameOf({ name: undefined, id: "theme-id" })).toBe("theme-id");
+  expect(documentNameOf({ name: "", id: "theme-id" })).toBe("theme-id");
+  expect(documentNameOf({ name: "Kitchen", id: "theme-id" })).toBe("Kitchen");
+
+  expect(openedStatusText({ name: "", id: "theme-id" })).toBe(
+    "Opened theme-id",
+  );
+  expect(openedStatusText({ name: "Kitchen", id: "theme-id" })).toBe(
+    "Opened Kitchen",
+  );
 });
 
 it("routes selection kind for menus, groups and charts", () => {

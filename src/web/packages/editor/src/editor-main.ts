@@ -13,6 +13,7 @@ import { EditorSession } from "./editor-session.js";
 import {
   createEditorShellBridge,
   type EditorShellBridge,
+  openedStatusText,
 } from "./editor-shell/bridge.js";
 import type { RailSlot } from "./editor-shell/rail.js";
 import type { EditorViewControls } from "./editor-shell/session-facade.js";
@@ -279,7 +280,10 @@ async function start(): Promise<void> {
           assets,
           ...(base === undefined ? {} : { base }),
         });
-        status.textContent = `Opened ${envelope.metadata?.name ?? envelope.id}`;
+        status.textContent = openedStatusText({
+          name: envelope.metadata?.name,
+          id: envelope.id,
+        });
       },
       onSaved: (msg: string | undefined) => {
         status.textContent = msg ?? "Fabric theme saved";
@@ -300,9 +304,8 @@ async function start(): Promise<void> {
       bindings: () => extensions.envelope.bindings ?? {},
       // The theme's name is the document's identity; a theme the author has not
       // named — including one whose stored name is empty, which the schema
-      // permits — is identified by its own id. The status line still reads the
-      // name with `??`, so it writes a blank one where this falls back; the two
-      // disagree until that reader is changed (vg-218).
+      // permits — is identified by its own id. The status line takes the same
+      // reading (`openedStatusText`), so the two name one document one way.
       documentIdentity: () => ({
         name: extensions.envelope.metadata?.name,
         id: extensions.envelope.id,
@@ -407,7 +410,10 @@ async function start(): Promise<void> {
         assets: content.assets,
         ...(content.base === undefined ? {} : { base: content.base }),
       });
-      status.textContent = `Opened ${content.envelope.metadata?.name ?? content.envelope.id}`;
+      status.textContent = openedStatusText({
+        name: content.envelope.metadata?.name,
+        id: content.envelope.id,
+      });
       return;
     }
     // A theme the URL named that is stored and does not validate is not a
