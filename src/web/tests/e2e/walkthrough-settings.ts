@@ -18,7 +18,7 @@ import { focusedWithin, tabToMark } from "./walkthrough-focus.js";
 
 /** §7's settings modal and the rail's gear that opens it (`rail.tsx`,
  *  `components/ui/dialog.tsx`). */
-const SETTINGS_DIALOG = ".editor-shell-dialog";
+export const SETTINGS_MODAL_CLASS = ".editor-shell-dialog";
 const SETTINGS_GEAR = "data-rail-settings";
 /** The Appearance tab's six palette cards, each marked with the palette it
  *  offers (`settings.tsx`). */
@@ -28,6 +28,9 @@ const PALETTE_CHOICE = "data-vigilia-palette-choice";
  *  name, and a bare name is a **tag** selector to `page.locator`, which matches
  *  nothing and would read every tab as the wrong one. */
 const PALETTE_CARDS = `[${PALETTE_CHOICE}]`;
+/** The attribute `applyShellPalette` writes to the document element: what a
+ *  choice is read back from, and what "the palette in force" means. */
+const PALETTE_ATTRIBUTE = "data-shell-palette";
 /** The Keyboard tab's own tree, which exists only while that tab is showing:
  *  Base UI unmounts an inactive panel, so its presence *is* the tab's answer
  *  and a tab's word is not needed to ask. */
@@ -48,7 +51,7 @@ const SHORTCUT_CHORD = "data-vigilia-shortcut-chord";
  *  `openPopup` does — Review Focus 3, asked of the surface §13.1's palette
  *  is chosen in. */
 export async function openSettingsByKeyboard(page: Page): Promise<void> {
-  const dialog = page.locator(SETTINGS_DIALOG);
+  const dialog = page.locator(SETTINGS_MODAL_CLASS);
   if (await dialog.isVisible()) return;
   await tabToMark(page, { attribute: SETTINGS_GEAR });
   await page.keyboard.press("Enter");
@@ -57,7 +60,7 @@ export async function openSettingsByKeyboard(page: Page): Promise<void> {
     "the settings modal after Enter on the gear",
   ).toBeVisible();
   expect(
-    await focusedWithin(page, SETTINGS_DIALOG),
+    await focusedWithin(page, SETTINGS_MODAL_CLASS),
     "the settings modal opened with focus inside it rather than left on its gear",
   ).toBe(true);
 }
@@ -171,7 +174,30 @@ export async function choosePalette(page: Page, name: Palette): Promise<void> {
   await expect(
     page.locator("html"),
     `the palette in force after choosing ${name}`,
-  ).toHaveAttribute("data-shell-palette", name);
+  ).toHaveAttribute(PALETTE_ATTRIBUTE, name);
+}
+
+/**
+ * A §4 palette the shell is **not** already in.
+ *
+ * **The decision has one owner** because it has two callers — §13.1's
+ * four-interaction test and the assembled walk — and both need a choice that is
+ * a change: the browser's own `prefers-color-scheme` decides which of the six
+ * the shell boots, so a walk that re-chose the palette already in force would
+ * assert nothing, the attribute reading back whatever the selection did.
+ *
+ * The `throw` is the same decision stated where it can fire: a shell whose
+ * palette attribute is the only one `PALETTES` holds has no choice to make, and
+ * that is worth saying rather than picking one anyway.
+ */
+export async function paletteNotInForce(page: Page): Promise<Palette> {
+  const inForce =
+    (await page.locator("html").getAttribute(PALETTE_ATTRIBUTE)) ?? "";
+  const chosen = PALETTES.find((palette) => palette !== inForce);
+  if (chosen === undefined) {
+    throw new Error("every palette is the one already in force");
+  }
+  return chosen;
 }
 
 /**
@@ -214,7 +240,7 @@ export async function cancelShortcutCapture(page: Page): Promise<string> {
 
   await page.keyboard.press("Escape");
   await expect(
-    page.locator(SETTINGS_DIALOG),
+    page.locator(SETTINGS_MODAL_CLASS),
     "the settings modal after Escape on an armed row",
   ).toBeHidden();
   await expect(

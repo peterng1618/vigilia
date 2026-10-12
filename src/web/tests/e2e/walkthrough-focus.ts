@@ -26,12 +26,23 @@ import type { Page } from "@playwright/test";
  * holds the scene tree, the stage holds the canvas and its dock, the inspector
  * holds the selection's own column.
  *
- * The header and the status bar are outside the set because nothing in
- * §13.1's order lands in either: the header's menus and publish control are
- * commands about a finished document, and the status bar is a readout. That is
- * a reading of the drawing, so it is written down here rather than left
- * implicit — if a later task reaches a control in one of them, the region
- * belongs in this list and the list is what moves.
+ * **The box is the boundary, and it is why there are four and not six.** These
+ * four are exactly `.editor-shell-body`'s children (`shell-layout.tsx`), and
+ * §7's drawing puts the header and the status bar outside that box — the
+ * `<header>` before it and the `<footer id="status">` after it. A reader
+ * counting the drawing's bands against this list is off by those two on
+ * purpose, and the reason is the box rather than how the bands are used.
+ *
+ * **The instrument does reach into the header, and a command path is not a
+ * region.** §13.1's first and last interactions are commands about a document —
+ * `File → New from starter` and `File → Open library` — and the walk performs
+ * them through the header's own `File` menu (`walkthrough-shell.ts`'s
+ * `chooseFileMenuRow`); the census's own first press lands on that button. That
+ * is a route *through* a band to a command, not a band that owns a focusable
+ * surface a walk wanders, which is what "each region has a reachable focus
+ * target" is read against and what a region earns its place by. The status
+ * bar's reachability has never been measured either way, so censusing it would
+ * assert something §13.1 was not read against.
  *
  * Each region's selector is the shell's own class or id, the same ones
  * `shell-appearance.spec.ts`, `inspector-sections.spec.ts` and

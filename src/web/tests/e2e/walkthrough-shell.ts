@@ -582,7 +582,7 @@ export async function surroundingState(
  *  (`composition-pane.tsx`): `enter` into the group, `leave` back out of it. */
 const LAYER_ENTRY = "data-vigilia-layer-entry";
 /** A row itself, addressed by the object id the projection gives it. */
-const LAYER_ROW = "data-vigilia-layer";
+export const LAYER_ROW = "data-vigilia-layer";
 /** The stage's display-and-zoom readout, which is a popup's trigger
  *  (`display-switch.tsx`). Marked rather than named: its accessible name
  *  carries the readout's own percentage, which moves with the camera. */

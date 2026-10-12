@@ -1,6 +1,5 @@
 import { expect, test } from "@playwright/test";
 import { HOST_THEME_ID } from "./host-theme.js";
-import { PALETTES } from "./shell-palette.js";
 import {
   FIRST,
   keyboardReach,
@@ -11,6 +10,8 @@ import {
 import {
   cancelShortcutCapture,
   choosePalette,
+  paletteNotInForce,
+  SETTINGS_MODAL_CLASS,
 } from "./walkthrough-settings.js";
 import {
   chooseRailPane,
@@ -22,6 +23,7 @@ import {
   FIELD_DRAFT,
   FIELD_SELECTOR,
   groupContext,
+  LAYER_ROW,
   layerTree,
   openDocumentByKeyboard,
   openLayerRenameField,
@@ -201,10 +203,13 @@ test.describe("the shell, reached by keyboard alone", () => {
   test("a tabUntil can follow a walk on the same page", async ({ page }) => {
     await openWalkthrough(page);
     const walk = await keyboardReach(page);
-    const landed = await tabUntil(page, (focus) => focus.region === "pane");
+    // `tabUntil` answers only a focus its own predicate accepted, so asking
+    // afterwards that the landing region *is* the pane would restate the
+    // argument rather than test it. Reaching the pane is this call's own claim:
+    // it throws otherwise.
+    await tabUntil(page, (focus) => focus.region === "pane");
 
     expect(walk.some((step) => step.region === "pane")).toBe(true);
-    expect(landed.region).toBe("pane");
   });
 
   /**
@@ -315,7 +320,7 @@ test.describe("the shell, reached by keyboard alone", () => {
       "the document after the cancelled edit",
     ).toEqual(before);
     await expect(
-      page.locator(`[data-vigilia-layer="${id}"] .vigilia-layer-name`),
+      page.locator(`[${LAYER_ROW}="${id}"] .vigilia-layer-name`),
       "the row still reads the name the cancelled edit did not take",
     ).toHaveText(original);
 
@@ -366,9 +371,8 @@ test.describe("the shell, reached by keyboard alone", () => {
    * left behind on its trigger fails here.
    *
    * The palette is DESIGN.md §4's shell palette, chosen in Settings, and it is
-   * chosen by the name the walk is not already in: the browser's own
-   * `prefers-color-scheme` decides which of the six the shell boots, and a
-   * choice of the palette already in force would assert nothing.
+   * a choice rather than a re-press: `paletteNotInForce` owns that decision,
+   * including why the palette already in force would assert nothing.
    *
    * The shortcut capture is cancelled with Escape and then proved not to have
    * taken a chord, which is what a cancel means: nothing was recorded. The
@@ -377,11 +381,37 @@ test.describe("the shell, reached by keyboard alone", () => {
   test("groups, a popup, a palette and a shortcut capture, by keyboard alone", async ({
     page,
   }) => {
+    // The four interactions reach their controls the same way the assembled walk
+    // does — a whole traverse of the shell per control — and the budget is
+    // stated rather than inherited for the same reason. Playwright's 30 s
+    // default was crossed twice in this close-out round (31.1 s) against 18.4 s
+    // and 21.9 s measured earlier, and 23.1 s on these bytes with the box to
+    // itself. 60 s is ~2× the slowest sample: room for a shared box, still close
+    // enough that a genuine hang reports as a timeout rather than as a "flake".
+    test.setTimeout(60_000);
     await openWalkthrough(page);
     // The walk's document is the one the step before created from the starter
     // (Ruling K) — eight groups, a palette and thirteen type presets — not the
     // host fixture `openWalkthrough` booted on.
     await openDocumentByKeyboard(page);
+
+    // **The `field` leg of `surroundingState`, in its other value.** Every
+    // other reading of that leg in this instrument is taken with something
+    // selected, where it reads `true` — so a leg hard-coded to `true` would
+    // satisfy the assembled walk's Escape sweep. Here the walk has just created
+    // a document and chosen nothing, so the inspector has no name field on it.
+    // The reading moves nothing, so the walk's order is untouched.
+    const firstRow = await page
+      .locator(`[${LAYER_ROW}]`)
+      .first()
+      .getAttribute(LAYER_ROW);
+    if (firstRow === null) {
+      throw new Error("the created document draws no layer row");
+    }
+    expect(
+      (await surroundingState(page, firstRow)).field,
+      "the inspector's name field before anything is selected",
+    ).toBe(false);
 
     // 1. Into a group. The helper asserts the panel's own statement, the
     //    context the bridge publishes, and where focus is.
@@ -390,7 +420,7 @@ test.describe("the shell, reached by keyboard alone", () => {
     // 2. Escape from a text field, with the group entered: the field's draft is
     //    cancelled and the group is **not** left. `view.exit-group` is bound on
     //    exactly this key.
-    const row = page.locator(`[data-vigilia-layer="${group}"]`);
+    const row = page.locator(`[${LAYER_ROW}="${group}"]`);
     const name = (await row.locator(".vigilia-layer-name").textContent()) ?? "";
     await openLayerRenameField(page);
     const rename = row.locator(".vigilia-layer-rename");
@@ -426,13 +456,7 @@ test.describe("the shell, reached by keyboard alone", () => {
     await closePopup(page);
 
     // 5. A palette, chosen rather than the one already in force.
-    const inForce =
-      (await page.locator("html").getAttribute("data-shell-palette")) ?? "";
-    const chosen = PALETTES.find((palette) => palette !== inForce);
-    if (chosen === undefined) {
-      throw new Error("every palette is the one already in force");
-    }
-    await choosePalette(page, chosen);
+    await choosePalette(page, await paletteNotInForce(page));
 
     // 6. A shortcut capture, armed and cancelled.
     const cancelled = await cancelShortcutCapture(page);
@@ -492,10 +516,19 @@ test.describe("the shell, reached by keyboard alone", () => {
   test("§13.1's nine interactions in order, on the real host, and the original document comes back", async ({
     page,
   }) => {
-    // Declared slow because it is nine interactions, each of which reaches its
-    // own control by pressing Tab: the two rail choices alone spend 5 and 53
-    // presses. The default budget fails it on the clock rather than on the shell.
-    test.slow();
+    // Nine interactions, each reaching its own control by pressing Tab: the two
+    // rail choices alone spend 5 and 53 presses. The default budget fails it on
+    // the clock rather than on the shell.
+    //
+    // **The budget is stated rather than inherited.** `test.slow()` would give
+    // 3× the 30 s default — 90 s — with nothing in this file saying so, and the
+    // walk measures **67.8 s** on an idle box against **91.3 s, 92.2 s, 94.8 s
+    // and 96.1 s** in the runs taken while this close-out shared the machine,
+    // every one of them past that inherited budget. 120 s is ~1.8× the clean
+    // measurement and ~1.25× the worst sample: room for a loaded run, still
+    // close enough that a genuine hang reports as a timeout rather than
+    // arriving as a "flake".
+    test.setTimeout(120_000);
     await openWalkthrough(page);
     // The state the round trip is measured against, read before anything moves.
     const opening = await serializedDocument(page);
@@ -527,7 +560,7 @@ test.describe("the shell, reached by keyboard alone", () => {
     //    row that would have moved had the cancel not happened.
     const authored = await editFieldThenCancel(page);
     await expect(
-      page.locator(`[data-vigilia-layer="${id}"] .vigilia-layer-name`),
+      page.locator(`[${LAYER_ROW}="${id}"] .vigilia-layer-name`),
       "the row after the cancelled edit",
     ).toHaveText(authored);
 
@@ -544,13 +577,7 @@ test.describe("the shell, reached by keyboard alone", () => {
     await closePopup(page);
 
     // 7. Choose a palette, rather than the one already in force.
-    const inForce =
-      (await page.locator("html").getAttribute("data-shell-palette")) ?? "";
-    const chosen = PALETTES.find((palette) => palette !== inForce);
-    if (chosen === undefined) {
-      throw new Error("every palette is the one already in force");
-    }
-    await choosePalette(page, chosen);
+    await choosePalette(page, await paletteNotInForce(page));
 
     // 8. Cancel a shortcut capture — armed, cancelled, and proved not to have
     //    recorded anything.
@@ -576,12 +603,16 @@ test.describe("the shell, reached by keyboard alone", () => {
     // `field` legs do not vary with the id, so the difference is the `selected`
     // leg — the only one the sweep's claim actually turns on.
     const other = await page.evaluate(
-      (ridden: string) =>
-        [...document.querySelectorAll("[data-vigilia-layer]")]
-          .map((row) => row.getAttribute("data-vigilia-layer"))
-          .find((candidate) => candidate !== null && candidate !== ridden) ??
-        null,
-      id,
+      (args: { readonly ridden: string; readonly row: string }) =>
+        [...document.querySelectorAll(`[${args.row}]`)]
+          .map((row) => row.getAttribute(args.row))
+          .find(
+            (candidate) => candidate !== null && candidate !== args.ridden,
+          ) ?? null,
+      // The attribute arrives as an argument, not as a closure: `evaluate`
+      // ships this function's own source, so a module constant named inside it
+      // would arrive undefined.
+      { ridden: id, row: LAYER_ROW },
     );
     if (other === null) {
       throw new Error("the walk's document holds only the row it covered");
@@ -592,7 +623,7 @@ test.describe("the shell, reached by keyboard alone", () => {
     ).not.toEqual(covered);
     await page.keyboard.press("Escape");
     await expect(
-      page.locator(".editor-shell-dialog"),
+      page.locator(SETTINGS_MODAL_CLASS),
       "the settings modal after Escape",
     ).toBeHidden();
     expect(
