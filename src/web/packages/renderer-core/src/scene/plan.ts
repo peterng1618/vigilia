@@ -364,7 +364,7 @@ function numberFormat(
       maximumFractionDigits,
     });
   }
-  const key = `${themeLanguage} ${minimumFractionDigits} ${maximumFractionDigits}`;
+  const key = `${themeLanguage}\u0000${minimumFractionDigits}\u0000${maximumFractionDigits}`;
   const cached = numberFormatters.get(key);
   if (cached !== undefined) return cached;
 
