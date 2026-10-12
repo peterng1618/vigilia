@@ -433,6 +433,13 @@ Rows: `vg-359`, `vg-360`, `vg-361`, `vg-362`.
 
 ### Task 2.3: The design-language and chrome suite rows
 
+> **Split by the controller, 2026-10-12.** Two implementers died on the same API stall (`StreamIdleTimeoutError`,
+> ~180 s with no stream event — a long foreground Playwright run looks exactly like an idle stream), the second
+> leaving a draft in `design-language.spec.ts` and `shell-appearance.spec.ts`. The task is therefore executed as
+> **2.3a** — the `design-language.spec.ts` half: `vg-296` ×2, `vg-314`, `vg-325`, `vg-326` — and **2.3b** — the
+> `shell-appearance.spec.ts` half plus the measurement row: `vg-313`, `vg-285`. Long commands run in the background;
+> a suite is still run one at a time. The steps below apply to each half. The rulings stand unchanged.
+
 **Files:**
 - Test: `src/web/tests/e2e/design-language.spec.ts`, `src/web/tests/e2e/shell-appearance.spec.ts`, `src/web/tests/e2e/mockup-values.test.ts`
 
