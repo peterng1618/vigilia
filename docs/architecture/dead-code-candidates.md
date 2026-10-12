@@ -64,9 +64,9 @@ root `scripts/` (10).
 | `no-importer-file` | **0** | A module nothing imports, entry points and runner globs set aside |
 | `dead-export` | **8** | A symbol nothing imports *and* whose own file never uses — a declaration to delete |
 | `redundant-export` | **83** | A symbol nothing imports but whose own file *does* use — one keyword to delete, **never the symbol** |
-| `barrel-only-export` | **0** | An export reached only through its own package barrel and taken from there by nobody |
+| `barrel-only-export` | **0** | An export reached only through its own package barrel and taken from there by nobody — **this zero is a detector limit, not a count**: the tier cannot fire at all, see §3.4 and `vg-386` |
 | `unreachable-branch` | **9** | A closed union's member whose literal appears nowhere else — **7 distinct literals**, since `"image-cover"` and `"scale-montage"` are each declared in two files |
-| **Total** | **107** | |
+| **Total** | **107** | A floor rather than a measurement: the tier above cannot fire, and a corrected detector reports 133 more (§3.4) |
 
 ### 1.2 By package
 
@@ -137,10 +137,10 @@ Two things did **not** move, and their staying still is part of the picture.
 `test-only-consumer` is unchanged at 7: the removal tasks kept every one of them
 deliberately — five are shared test helpers under `src/` whose basenames miss
 both runners' globs, and `font-picker/font-picker.tsx` is the decision case the
-register already holds twice (`vg-268`, `vg-283`). `barrel-only-export` has never
-fired: the branch that emits one has never done so in this tree, and the
-scanner's self-test proves a barrel's re-export is *followed*, not that the kind
-can fire.
+register already holds twice (`vg-268`, `vg-283`). `barrel-only-export` is **0 because the tier cannot fire at all**, and that is a
+detector incapability rather than a measurement that this tree has none. §3.4
+gives the mechanism, the 133 rows a corrected filter reports, and why the zero
+may not be read either way; `vg-386` owns it.
 
 **Verdicts are not in this table.** A surviving row is not a claim that the
 symbol is dead; several of §2.1's rows are deliberate keeps or decisions whose
@@ -400,6 +400,42 @@ The scanner does not blank template literals (`stripComments`, `:508-509`), so a
 string of emitted source text is read as this file's own import. It resolved to
 nothing here; a specifier that did resolve would put a phantom importer on its
 target.
+
+### 3.4 `barrel-only-export` — the tier cannot fire, so its zero is not a count
+
+The most important limit in this document, because it is the one that made a
+number look like a measurement. `scripts/dead-code-sweep.mjs:705` is
+`if (prodConsumers.length > 0) continue;`, and it runs **before** the
+`barrel-only-export` branch at `:708`. A file's own package barrel reaches it by
+a re-export edge the scanner does follow, and the barrel is not a test file — so
+`prodConsumers` is non-empty for exactly the shape `:708` exists to report, and
+its condition can only ever be evaluated when it is already false. **The tier
+cannot fire for any input.** That is structural, not a property of this tree: an
+unexercised kind might fire tomorrow, this one cannot fire at all.
+
+**A corrected detector changes the picture, and the correction is one filter.**
+Excluding the file's own barrel from `prodConsumers`, then running over the same
+tree at `93fa9a5a`, reports **240 candidates** — `barrel-only-export` **133**,
+with the other four kinds at exactly their counts above (8, 83, 7 and 9). The 133
+are therefore pure additions and none of the 107 reclassifies. By package:
+editor 1, fake-source 2, host 21, renderer-core 91, scene-fabric 18.
+
+**Two defensible definitions, which is why this is filed rather than corrected
+here.** The plan's literal wording — the only importer is the barrel, tests
+included — yields **76**, the rows whose evidence names no test importer. The
+code's own intent at `:708` — no *production* consumer other than the barrel,
+test consumers disclosed in the row — yields all **133**. Both were measured: 76
+rows have an empty test-importer list and 57 name test importers. Deciding which
+the tier means is a decision, and a corrected detector emits 133 unverified
+candidates whose adjudication is a sweep of its own.
+
+**Nothing here is a verdict and nothing may be deleted on this section alone.**
+renderer-core's 91 (49 strict, 42 test-consumed) is consistent with a private
+library barrel wider than its consumers, but no row was adjudicated, and the
+string-resolved vocabulary this repo resolves at runtime is invisible to the
+graph (§3). The removals the sweep made are unaffected: none of them was reported
+by this tier, so they stand. What does not stand is the picture — **§1's total is
+a floor, not a measurement of what remains**, and `vg-386` records the defect.
 
 ## 4. Reproducing
 
