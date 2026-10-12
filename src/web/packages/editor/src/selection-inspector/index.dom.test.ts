@@ -739,22 +739,34 @@ describe("the selection inspector", () => {
     expect(host.querySelector("[data-vigilia-nothing-selected]")).toBeNull();
   });
 
-  it("refuses a stale opacity event rather than mutating the old selection", () => {
+  it("refuses a stale opacity event rather than mutating the old selection", async () => {
     rect.set({ opacity: 0.5 });
     const { host, history, editor } = setup(rect);
-    const opacity = host.querySelector<HTMLInputElement>(
-      "[data-vigilia-opacity]",
-    )!;
+    // The control the author is holding, bound to `rect` at its revision.
+    const held = host.querySelector<HTMLInputElement>("[data-vigilia-opacity]")!;
     const other = new Rect({ left: 0, top: 0, width: 10, height: 10 });
+    other.set({ opacity: 0.5 });
+    const handlerFor = (name: string): (() => void) => {
+      const call = editor.canvas.on.mock.calls.find(
+        ([registered]) => registered === name,
+      );
+      return call?.[1] as () => void;
+    };
+
+    // The selection really moves to `other`, so the column republishes and every
+    // row is re-keyed by its new revision. A raw `change` no longer commits now
+    // that the element is Base UI's slider, so the gesture is a person's: focus
+    // the held control and step it. The row's revision key is what discards it —
+    // the write must reach neither object and add no history.
     (editor.canvas as { getActiveObject: () => unknown }).getActiveObject =
       () => other;
+    await act(async () => {
+      handlerFor("selection:created")();
+    });
+    await slide(held, "ArrowRight");
 
-    opacity.value = "10";
-    opacity.dispatchEvent(new Event("change"));
-
-    // The panel describes `other` now; the field the author was holding was
-    // bound to `rect`, and an event from it must not reach back.
     expect(rect.opacity).toBe(0.5);
+    expect(other.opacity).toBe(0.5);
     expect(history.saveState).not.toHaveBeenCalled();
   });
 
