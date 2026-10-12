@@ -688,6 +688,18 @@ export type ParityRegion = {
     | "sheet"
     | "fixture";
   readonly licensed?: string;
+  /** The row's value **is the drawing's silence** about `mockupProperty` — a
+   *  region it draws flush or square, whose omission is the `0` the product
+   *  must render (the four body regions and the four panel radii).
+   *
+   *  **Required, not decorative.** A row whose selector declares no
+   *  `mockupProperty` is otherwise indistinguishable from a row that misspelt
+   *  one: both read the drawing's silence, and a silent pass is exactly what
+   *  `vg-304` is about. So the reading is asserted both ways
+   *  (`assertParityRowProperty`) — an unmarked row naming an undeclared
+   *  property throws, and a marked row on an element that *does* declare it
+   *  throws too, because then the marker is stale. */
+  readonly mockupSilence?: true;
   /** Which comparator reads this row's two values. **Absent means `length`**,
    *  the px reading every row used before the modal's regions arrived; `count`
    *  is a track list's number of tracks (`trackCount`) and `colour` is a colour
@@ -697,6 +709,45 @@ export type ParityRegion = {
    *  comparator reads fails naming the whole rendered value. */
   readonly comparator?: "length" | "count" | "colour";
 };
+
+/** A `PARITY` row's `mockupProperty`, checked against the set its
+ *  `mockupSelector` actually declares (`vg-304`).
+ *
+ *  **The hole this closes is silence mistaken for a reading.** `mockupDeclared`
+ *  throws when the drawing declares no value, but `mockupDeclaredOrNull`
+ *  answers `null` — the row's own reading of a region drawn flush — and a row
+ *  that *misspelt* its property reads the same `null` and passes. Nothing
+ *  related the two before: a row naming `border-radius` where its element
+ *  declares `gap` compared the drawing's silence, and a real value on the wrong
+ *  property still reads as a pass.
+ *
+ *  So a row must say which of the two it means. Without `mockupSilence` the
+ *  drawing must declare the property it names; with it, the drawing must
+ *  *not* — a marker on an element that declares the property is a stale claim
+ *  about a declaration that now exists. The set is read through `addressed`, so
+ *  a selector that addresses nothing or settles between two elements throws here
+ *  as it does for a value. */
+export function assertParityRowProperty(
+  mockupHtml: string,
+  row: ParityRegion,
+): void {
+  const selector = row.mockupSelector ?? "";
+  const declared = mockupDeclaredProperties(mockupHtml, selector);
+  if (declared.includes(row.mockupProperty)) {
+    if (row.mockupSilence === true) {
+      throw new Error(
+        `\`${row.region}\` says its value is the drawing's silence about \`${row.mockupProperty}\`, but \`${selector}\` declares it: the marker is stale and the row is comparing a declaration it claims the drawing does not make`,
+      );
+    }
+    return;
+  }
+  if (row.mockupSilence === true) return;
+  throw new Error(
+    `\`${row.region}\` names \`${row.mockupProperty}\`, which \`${selector}\` does not declare (it declares \`${
+      declared.join("`, `") || "nothing"
+    }\`): a row reading a property its element does not carry compares the drawing's silence, not a value`,
+  );
+}
 
 /**
  * The shell's regions, as the census adjudicates them
@@ -745,6 +796,7 @@ export const PARITY: readonly ParityRegion[] = [
     mockupProperty: "padding-top",
     productSelector: ".editor-shell-body",
     designLanguageSection: "§7's diagram, §3 elevation 0",
+    mockupSilence: true,
   },
   {
     region: "body — gap",
@@ -752,6 +804,7 @@ export const PARITY: readonly ParityRegion[] = [
     mockupProperty: "column-gap",
     productSelector: ".editor-shell-body",
     designLanguageSection: "§7's diagram, §3 elevation 0",
+    mockupSilence: true,
   },
   {
     region: "rail — radius",
@@ -759,6 +812,7 @@ export const PARITY: readonly ParityRegion[] = [
     mockupProperty: "border-radius",
     productSelector: ".editor-shell-rail",
     designLanguageSection: "§3 radius table, §7's diagram",
+    mockupSilence: true,
   },
   {
     region: "left pane — radius",
@@ -766,6 +820,7 @@ export const PARITY: readonly ParityRegion[] = [
     mockupProperty: "border-radius",
     productSelector: ".editor-shell-panel",
     designLanguageSection: "§3 radius table, §7's diagram",
+    mockupSilence: true,
   },
   {
     region: "stage — radius",
@@ -773,6 +828,7 @@ export const PARITY: readonly ParityRegion[] = [
     mockupProperty: "border-radius",
     productSelector: ".editor-shell-stage",
     designLanguageSection: "§3 radius table, §7's diagram",
+    mockupSilence: true,
   },
   {
     region: "inspector — radius",
@@ -780,6 +836,7 @@ export const PARITY: readonly ParityRegion[] = [
     mockupProperty: "border-radius",
     productSelector: ".editor-shell-inspector",
     designLanguageSection: "§3 radius table, §7's diagram",
+    mockupSilence: true,
   },
   /* **A dialog's radius is not the drawing's to give.** The only 10px frame the
      superseded drawing had was the window's own — `.mockup` and the shell card it

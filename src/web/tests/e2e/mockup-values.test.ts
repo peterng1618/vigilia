@@ -1,6 +1,7 @@
 import { existsSync } from "node:fs";
 import { expect, test } from "vitest";
 import {
+  assertParityRowProperty,
   CONTROLS_LIGHT_MOCKUP_PATH,
   CONTROLS_MOCKUP_PATH,
   colourValue,
@@ -630,4 +631,68 @@ test("a colour is read as a resolved value, so one colour's spellings are equal"
   expect(colourValue("")).toBeNull();
   expect(colourValue("rgba(0, 0)")).toBeNull();
   expect(colourValue("#12345")).toBeNull();
+});
+
+/** The row or copied element a case names, or a throw — both tables are data,
+ *  and a case that silently found nothing would assert nothing. */
+function named<T extends { readonly region: string }>(
+  list: readonly T[],
+  region: string,
+): T {
+  const found = list.find((one) => one.region === region);
+  if (found === undefined) {
+    throw new Error(
+      `no entry named \`${region}\`: the case names a row the table does not carry`,
+    );
+  }
+  return found;
+}
+
+test("a parity row names a property its drawing's selector declares, or says its value is the drawing's silence", () => {
+  // **The reading this closes is silence mistaken for a value (`vg-304`).**
+  // `mockupDeclaredOrNull` answers `null` for a region the drawing draws flush —
+  // the four body regions and the four panel radii — and it answers `null` for a
+  // property the row *misspelt* too. Nothing related a row's `mockupProperty` to
+  // the set its `mockupSelector` declares, so a row could compare nothing and
+  // pass. The table now says which of the two it means: a row reads what its
+  // element declares, unless it marks the silence as its value.
+  const failures: string[] = [];
+  for (const row of PARITY) {
+    // A scale-owned row names no drawing selector — the table's own case below
+    // asserts that contract — so it has no declared set to be checked against.
+    if (row.mockupSelector === undefined) continue;
+    const source =
+      row.mockupPath === undefined ? drawing : readMockup(row.mockupPath);
+    try {
+      assertParityRowProperty(source, row);
+    } catch (error) {
+      failures.push(`${row.region}: ${(error as Error).message}`);
+    }
+  }
+  expect(failures).toEqual([]);
+
+  // The row the rule is for: one naming a property its element does not carry.
+  // The header's element declares `height`, `flex`, `gap`, `padding` and more,
+  // and declares no `border-radius` — a row naming it compared the drawing's
+  // silence, and nothing reddened for that before this.
+  expect(() =>
+    assertParityRowProperty(drawing, {
+      ...named(PARITY, "header — height"),
+      region: "header — a property the header does not declare",
+      mockupProperty: "border-radius",
+    }),
+  ).toThrow(/does not declare/);
+
+  // And the marker read the other way. The body row's element declares no
+  // `padding-top`, so its silence is the row's value — but the same element
+  // *does* declare `display`, and a marker there claims a silence the drawing
+  // stopped drawing, which is a stale claim rather than a licence.
+  expect(() =>
+    assertParityRowProperty(drawing, {
+      ...named(PARITY, "body — inset"),
+      region: "body — a silence the drawing does not draw",
+      mockupProperty: "display",
+      mockupSilence: true,
+    }),
+  ).toThrow(/the marker is stale/);
 });
