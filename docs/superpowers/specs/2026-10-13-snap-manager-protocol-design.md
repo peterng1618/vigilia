@@ -178,7 +178,47 @@ run on non-desktop surfaces.
 
 ## Re-shape and cost
 
-Pending verified boundaries and file sizes. This section describes a proposed migration, not executable tasks.
+A proposed migration, not executable tasks. Nothing here is implemented; the moves land
+only after the owner approves this design.
+
+Sequence:
+
+1. **Add the shared core first**, in its own new file (working name
+   `verified-snap-session.ts`, settled at implementation): the states, transitions,
+   identity tokens, duplicate cache and pending-plan replacement of section 1, plus the
+   single acquisition/release/spacing-release/verification threshold policy both
+   factories compute today. Pure addition — no existing file grows.
+2. **Re-point the two runtime facades** (`movement-snapping-runtime.ts` 308,
+   `scaling/scale-snapping-runtime.ts` 378) at the shared session through typed
+   adapters. Both are under the stop and stay under it.
+3. **Lift the shared orchestration out of the two resolvers**
+   (`movement-snapping-resolver.ts` 1,452, `scaling/scale-snapping-resolver.ts` 1,509)
+   into the session and its adapters, leaving each resolver its own geometry solver.
+   These are the two files the re-shape actually shrinks; each must reach 800 lines or
+   fewer before the re-shape is done.
+4. **Touch neither spacing nor projection.** They sit off the move path (section 4). If
+   the shared session needs a spacing interval identity, the movement adapter supplies
+   it; no `spacing.ts` edit is part of this design.
+
+**Files past the 800-line stop at HEAD**, re-derived rather than assumed — four in all:
+
+| File | Lines | Under the re-shape |
+|---|---|---|
+| `scaling/scale-snapping-resolver.ts` | 1,509 | shrinks in step 3 |
+| `movement-snapping-resolver.ts` | 1,452 | shrinks in step 3 |
+| `spacing.ts` | 1,301 | untouched; stays past the stop |
+| `scaling/rectangular-scale-gesture-projection.ts` | 985 | untouched; stays past the stop |
+
+The two separate sub-domains remain beyond the stop after this re-shape — their size is
+their own, and folding the protocol does not excuse splitting them here. **The one
+ordering rule that matters:** the shared core must land in a new file. Seeded instead
+inside the already-1,509-line `scaling/scale-snapping-resolver.ts`, that file could
+never reach the stop in a single move, and the re-shape would have to grow the file it
+exists to shrink.
+
+**Cost.** No new dependency; one new source file enters the `snap-manager/` census. The
+work is a move plus adapter types, and the only real risk is a lost variation point —
+which section 5's unchanged suites and the browser spec exist to catch.
 
 ## Open questions for owner review
 
@@ -190,7 +230,45 @@ Pending verified boundaries and file sizes. This section describes a proposed mi
 
 ## Current-source cites and historical corrections
 
-Pending re-derived symbols, census and suite evidence. Historical numbers in `vg-240` are not adopted as verified facts.
+Every line below was re-derived at `17891681`; the row's cites are its 2026-10-09
+readings.
+
+| Row cite (2026-10-09) | Current line | Note |
+|---|---|---|
+| `movement-snapping-resolver.ts:313-314` `assertMovementHoldState`/`assertRawIntentMatchesBaseline` | 313-314 | unchanged call site; the definitions now sit at `:1308` and `:1221` |
+| `movement-snapping-resolver.ts:1315-1316` `assertAxisHold` | 1315-1316 | unchanged call site; definition at `:1320` |
+| `movement-snapping-resolver.ts:81-87` threshold record | 81-86 | the `MovementSnapThresholds` type; the values are built in `createMovementSnapThresholds` at `:1294`, with `acquire`/`release` at `:1300-1301` and `spacingRelease`/`verification` at `:1302-1303` |
+| `MOVEMENT_SNAP_VERIFICATION_EPSILON = 0.1` at `:203` | 203 | unchanged |
+| `FREE_MOVEMENT_HOLD_STATE` at `:240` | 240 | unchanged |
+| `movement-snapping-runtime.ts:75-190`, five methods | 83, 102, 115, 159, 190 | the class opens at 75; the five methods are `startSession` / `getDuplicateStep` / `resolveMovementPlan` / `verifyMovementPlan` / `finishSession`, and there is no refinement |
+| `movement-snap-candidates.ts:23-76` | 23-76 | unchanged block; the builder opens at `:69` |
+| `scaling/scale-projection.ts:95,117,156,186,187` | 95,117,156,186,187 | all five asserts unchanged |
+| `scaling/scale-snapping-runtime.ts:84-229` | 90,108,119,173,198,227 | six methods; the row's range blanketed the block rather than naming them |
+| `scaling/scale-snapping-resolver.ts:88-94` threshold record | 88-93 | the `ScaleSnapThresholds` type; the values are built in `createScaleSnapThresholds` at `:533`, with `acquire`/`release` at `:543-544` and `spacingRelease`/`verification` at `:545-546` |
+| `SCALE_SNAP_VERIFICATION_EPSILON = 0.1` at `:243` | 243 | unchanged |
+| `FREE_SCALE_HOLD_STATE` at `:265` | 265 | unchanged |
+| `spacing.ts` at 1,302 lines | 1,301 | off by one |
+| `scaling/rectangular-scale-gesture-projection.ts` at 985 | 985 | unchanged |
+| `scaling/scale-projection.ts` at 726 | 726 | unchanged |
+
+### Historical claims corrected
+
+- **The scale runtime has six public methods, not five.** `refineScalePlan`
+  (`scaling/scale-snapping-runtime.ts:173`) is the extra; the movement runtime has five
+  and no refinement. Section 3 records this, and the row's "same five-method protocol"
+  is the claim it corrects. Do not invent a movement refinement method to make the
+  counts match.
+- **`spacing.ts` is 1,301 lines, not the 1,302 the row states.**
+- **The row's "~8,300 non-test lines across eight files" is wrong.** The 2026-10-12
+  census, re-measured here, gives 30 non-test files / 10,655 lines (29 / 10,544
+  production). The row already carries this correction; this document re-derives it.
+- **The row's "roughly 4,900 duplicated lines" is not an extraction-size measurement.**
+  It counted the two families' total, not the lines a shared protocol would lift.
+  Section 3 states this and does not use the figure to promise savings.
+- The row's "five files over 700 lines and three over 1,300" **hold**. Over 700:
+  `scaling/scale-snapping-resolver.ts` 1,509, `movement-snapping-resolver.ts` 1,452,
+  `spacing.ts` 1,301, `scaling/rectangular-scale-gesture-projection.ts` 985,
+  `scale-projection.ts` 726. Over 1,300: the first three.
 
 ## Acceptance
 
