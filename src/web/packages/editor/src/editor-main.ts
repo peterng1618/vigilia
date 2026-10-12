@@ -19,7 +19,7 @@ import type { EditorViewControls } from "./editor-shell/session-facade.js";
 import { createShellLayout } from "./editor-shell/shell-layout.js";
 import { mountEditorShell } from "./editor-shell.js";
 import "./editor-shell/editor-shell.css";
-import { bootTheme } from "./boot-theme.js";
+import { type BootThemeOutcome, bootTheme } from "./boot-theme.js";
 import { createEditorSource } from "./live-source.js";
 import type { NewDocumentAnswer } from "./new-document-chooser.js";
 import {
@@ -394,7 +394,10 @@ async function start(): Promise<void> {
   // A saved theme the author came back to, rather than the reference
   // composition the editor ships. Nothing is open yet, so there is nothing to
   // confirm over; the document this replaces is the one that never opened.
-  const requested = await bootTheme(window.location.search, libraryClient);
+  const requested: BootThemeOutcome = await bootTheme(
+    window.location.search,
+    libraryClient,
+  );
   switch (requested.kind) {
     case "opened": {
       const { content } = requested;
