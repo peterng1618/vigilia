@@ -36,11 +36,10 @@ ledger did.
 
 ## Last completed change
 
-- **The redesign's last instrument is closed and archived** — `2026-10-12-the-keyboard-only-walkthrough.md` moved to `docs/superpowers/plans/archive/`; it built §13.1's acceptance instrument, three task reviews and four scoped re-reviews found no vacuous assertion left in it, and the spec's §13.1 clause is annotated met at `472ca4c5`.
-- **Fifteen of sixteen acceptance items were counted, and the spec now says so** — the verdicts for most of them lived only in plan 6's archived ledger; the spec's Acceptance section carries them directly now, each with the check that carries it, which is §13.1's own rule.
-- **The sixteenth is named rather than assumed** — the parity-capture item is **NOT MET**: plan 8's own report rules its second clause unmet and six differences sit in open rows (`vg-316`, `vg-319`, `vg-322`, `vg-325`, `vg-274`), while plans 1 and 3 have no capture beside their drawings and no surviving workspace to compare.
-- **`vg-390` is filed for the half that needs a decision** — for plans 1 and 3 the item asks for a comparison the repo can no longer make, so it needs the wording narrowed or the comparison reproduced; taking the `met` verdict on the capture half alone is the defect the row records.
-- **Two residual comment defects in the instrument are fixed, after the review that found them** — a budget comment compared the whole file's 67.8 s against four walk durations (the walk's own clean figure is 63.2 s), and `REGIONS`' docblock still called its four "the ones §13.1's interactions move through" when the interactions also act in the header.
+- **Phase 0 closes 22 rows of the drain's List A, and each names its shape** — re-derived per row from the archived rows rather than copied from §3.1: 8 fixed, 3 refuted, 5 surface rebuilt or deleted, 6 discharged by a document or a ruling.
+- **The register proves itself at file level, not only behaviourally** — live holds 217 rows and the archive 173, no id appears in both files, and the checker's own `parse` + `check` run over the archive report no problem for any of the 22 (the CLI reads the live file only, so it cannot see a closed row).
+- **No other line moved** — the phase's diff is 22 deletions from `docs/product/backlog.jsonl` and 22 additions to `docs/product/backlog-archive.jsonl`, and every row present at both revisions is byte-identical, so each row's own `§` occurrences survive where the file-level total does not hold.
+- **Two residuals are filed rather than read out of a deleted row** — `vg-391` for the canvas-repaint coverage that went with `display-fabric.spec.ts`, and `vg-392` for the inspector's write funnel, whose writers left `index.ts` while the dispatch and its closure state stayed.
 
 ## Next
 
