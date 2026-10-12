@@ -753,6 +753,8 @@ A same-rules read over the 149 archived rows produces **14 problems** today, and
 - [ ] **Step 2: If the ruling owes a spec**, write it in `docs/superpowers/specs/` in the repo's own shape and link it from `vg-240`'s line. If it does not, record that and take the next task.
 - [ ] **Step 3: Commit.**
 
+[Annotated 2026-10-13: **this task took four attempts, and what was tried belongs in the record.** Attempts 1 and 2 (one seat, resumed once) were each terminated by a gateway stream idle timeout — `StreamIdleTimeoutError`, two stream events and then nothing for 180 s — and left nothing on disk: no spec file, no `vg-240` edit, no commit. Two failures with the same shape were read as a context-size problem, so attempt 3 was a *fresh* seat scoped to write in stages; it landed `13d5c73e` (scaffold) and `b7fafcdc` (the protocol and the axis question) and then died the same way, which refuted that diagnosis: the fresh seat's first stream event arrived after 7.3 s and then the stream went silent, so the delay was never the agent's accumulated context. The variable that differed from the seats that ran clean all session was the **model**, and the three failures were all on one; attempt 4 therefore runs on another and is scoped to finish the partial document rather than rewrite it. The partial spec is the useful residue: sections 1–3 are written and its four stub sections are marked "Pending", so a fifth attempt would not start from nothing either.]
+
 ### Task 6.2: One concept, two modules
 
 **Files:**
