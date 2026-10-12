@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import { expect, type Page, test } from "@playwright/test";
 import { captureVisualReview } from "./editor-canvas.js";
 import { openPane } from "./editor-rail.js";
@@ -2483,6 +2484,163 @@ test("the shell and the settings modal are what the drawings draw", async ({
 
   await openShell(page);
 
+  // ── The product side of the drawing comparison (`vg-325`) ──────────────────
+  //
+  // Every row below runs the comparison **one way**: the drawings are parsed and
+  // the product is pulled to them. `editor-shell.css` is in no
+  // `design-tokens.gated.json` entry, so a value the drawing moves leaves the
+  // product behind and no row says so — which is how the four residuals
+  // `vg-325` names arrived. This is the **inverse read**: the product's own
+  // declarations are parsed the same way a drawing's are, and each of the four
+  // is held to the value the drawing that owns it declares. A drawing-side
+  // sweep cannot see them, because none is a rendered element of a `PARITY` row
+  // (the two asset-button groups are product-only DOM, and the dialog's button
+  // and the rail are read here as *declarations*, not as rendered boxes).
+  const productPath =
+    "src/web/packages/editor/src/editor-shell/editor-shell.css";
+  const productCss = readFileSync(
+    new URL(
+      "../../packages/editor/src/editor-shell/editor-shell.css",
+      import.meta.url,
+    ),
+    "utf8",
+  );
+  const productDeclarations = mockupDeclarations(
+    `<style>${productCss}</style>`,
+  );
+  const drawingValue = (
+    path: string,
+    selector: string,
+    property: string,
+  ): string => mockupDeclared(readMockup(path), selector, property);
+  const controlsPath = currentDrawings().find((drawing) =>
+    drawing.name.endsWith("/controls.html"),
+  )?.path;
+  expect(
+    controlsPath,
+    "the product-side comparison has no controls drawing to read",
+  ).toBeDefined();
+  const productRows = [
+    {
+      // `settings.html:96` draws the Close row at `margin-top:16px`.
+      selector: ".editor-shell-dialog > button",
+      property: "margin-top",
+      expected: drawingValue(
+        SETTINGS_MOCKUP_PATH,
+        '[style*="margin-top:16px;display:flex;justify-content:flex-end"]',
+        "margin-top",
+      ),
+    },
+    {
+      // `shell.html:40` draws the rail's `gap:4px`.
+      selector: ".editor-shell-rail",
+      property: "gap",
+      expected: drawingValue(MOCKUP_PATH, '[style*="width:46px"]', "gap"),
+    },
+    ...[
+      ".editor-shell-panel [data-vigilia-asset-import]",
+      ".editor-shell-inspector [data-vigilia-run-add]",
+    ].map((selector) => ({
+      selector,
+      property: "padding",
+      // `controls.html:112` draws the plain-DOM button box both groups render.
+      expected: drawingValue(
+        controlsPath ?? "",
+        '[style*="flex:1;text-align:center;border:1px solid var(--well-edge);border-radius:6px;background:var(--well);padding:4px 8px"]',
+        "padding",
+      ),
+    })),
+  ];
+  const productFailures: string[] = [];
+  for (const row of productRows) {
+    const declarations = productDeclarations.filter(
+      (declaration) =>
+        declaration.owner === row.selector &&
+        declaration.property === row.property,
+    );
+    // The empty-read control: a selector the product no longer declares is a
+    // broken row, not a row that agrees.
+    expect(
+      declarations.length,
+      `${productPath}: no \`${row.selector}\` \`${row.property}\` was read, so this row proves nothing`,
+    ).toBeGreaterThan(0);
+    const declaration = declarations.at(-1);
+    if (declaration?.value !== row.expected) {
+      productFailures.push(
+        `${productPath}:${declaration?.line} \`${row.selector}\` ${row.property}: ${declaration?.value}; the drawing declares ${row.expected} (§3)`,
+      );
+    }
+  }
+  expect(
+    productFailures,
+    "the product's own declarations contradict the drawings that own them",
+  ).toEqual([]);
+
+  // ── The surface inventory (`vg-314`) ───────────────────────────────────────
+  //
+  // A surface the product renders that no drawing draws is one **no row can
+  // address**: the parity table holds a *value* of an element both sides carry,
+  // so an element the drawing omits has nothing to be read against. The Add
+  // pane's asset preview was that surface (`vg-314`): its contract is a **bound**
+  // (`max-height:120px` with `object-fit:contain`) rather than a size, and the
+  // Add pane is `display:none` while Document is open, so even now that
+  // `current/shell.html` draws it, it cannot be a `PARITY` row. This is the
+  // inventory instead: the three sides that have to agree are read **by name** —
+  // the component that renders the surface, the stylesheet that treats it, and
+  // the drawing that owns the region it sits in — and a side that names nothing
+  // fails naming the file that dropped it. **What it does not check** is the
+  // drawn treatment's *values* (the drawn box's height against the stylesheet's
+  // bound); that is a comparator the drawn bound does not yet have, and the row
+  // says so.
+  const SURFACES: readonly {
+    readonly surface: string;
+    readonly component: string;
+    readonly componentUrl: URL;
+    readonly drawing: string;
+    readonly drawingName: string;
+  }[] = [
+    {
+      surface: "vigilia-asset-preview",
+      component: "src/web/packages/editor/src/panes/add/file-section.tsx",
+      componentUrl: new URL(
+        "../../packages/editor/src/panes/add/file-section.tsx",
+        import.meta.url,
+      ),
+      // The Add pane is the shell drawing's, not a settings panel's.
+      drawing: MOCKUP_PATH,
+      drawingName: DRAWING_NAMES.get(MOCKUP_PATH) ?? MOCKUP_PATH,
+    },
+  ];
+  expect(
+    SURFACES.length,
+    "the surface inventory is empty, so it can prove nothing",
+  ).toBeGreaterThan(0);
+  const inventoryFailures: string[] = [];
+  for (const entry of SURFACES) {
+    const sides = [
+      { name: entry.component, text: readFileSync(entry.componentUrl, "utf8") },
+      { name: productPath, text: productCss },
+      { name: entry.drawingName, text: readMockup(entry.drawing) },
+    ];
+    for (const side of sides) {
+      // The empty-read control, per side: a file the reader opened but read
+      // nothing out of is not a side that agrees.
+      expect(
+        side.text.length,
+        `${side.name} was read as empty, so this inventory proves nothing about it`,
+      ).toBeGreaterThan(0);
+      if (!side.text.includes(entry.surface)) {
+        inventoryFailures.push(
+          `\`${entry.surface}\` is not named by ${side.name}, so the surface it stands for is one a row cannot address`,
+        );
+      }
+    }
+  }
+  expect(
+    inventoryFailures,
+    "a surface the product renders is missing from its drawing, the stylesheet or its component",
+  ).toEqual([]);
+
   // The comparators the rows below run every rendered value through are pure
   // decisions and are proved in `mockup-values.test.ts`, where `vitest run` holds
   // them. `lengthInPx` was asserted here first, and this test is skipped off a
@@ -2853,6 +3011,24 @@ const SHELL_DRAWING = "docs/design/mockups/current/shell.html";
  * returned whole and fails naming itself rather than passing as the drawing's
  * silence.
  *
+ * **Two arms read what no arm read before (`vg-296`'s two remaining clauses).**
+ * The **elevation arm** holds every `box-shadow` a drawing declares to §3's
+ * elevation table — level 1 `0 8px 20px #00000059`, level 2 `0 18px 44px
+ * #00000099`, level 3 `0 24px 60px #000000b3`, or no shadow at all (level 0) —
+ * and exempts only the two *marks* §5 rule 4 keeps: the spread-only
+ * accent-at-18% halo and an `inset` shadow. Without it a cluster shadow off the
+ * table is inherited by the product, which is what the three `#0007` shadows in
+ * the superseded drawing did. Both arms are **not** per-drawing: a control
+ * drawing legitimately draws no shadow (level 0), so the per-arm control below
+ * is what refuses an empty read. The **boundary arm** holds every `border` and
+ * `border-*` to §5's hairline (`1px`) vocabulary. It is deliberately the width
+ * and not the colour: §5 rule 2 admits "a switch row whose label fills the row
+ * inside a panel box", and the drawing materialises a derived colour where the
+ * product writes `color-mix(…)`, so a colour allow-list would fail a drawing
+ * technique §5 has no entry against. **What the boundary arm therefore cannot
+ * catch is a bordered *container*** — a declaration cannot tell a container
+ * from a control — and that clause of `vg-296` stays open with this reason.
+ *
  * **What this row cannot read, and does not claim.** `line-height`,
  * `font-weight` and `letter-spacing`: §2 states a line-height and a weight per
  * role, but a drawing's `/1` on a one-line label is a box rather than a reading
@@ -2990,7 +3166,51 @@ test("every literal the checked drawings declare is on §3's scale or §2's", ()
     `${value} — ${reason}`;
   const SQUARE = "0 / 0px / 0% — a square corner, the absence of rounding";
 
-  /** The three classes, each with what it reads, the values one declaration
+  /** §3's elevation table, transcribed: level 0 is *no shadow at all*, and the
+   *  three shadowed levels have exactly one treatment each (level 3's scrim is
+   *  a second declaration, not a shadow).
+   *
+   *  **The gap this closes (`vg-296`).** The drawings gate held radii, spacing
+   *  and type to a scale and read no shadow at all, so a drawing could carry a
+   *  cluster shadow off the table and nothing said so — which is how the three
+   *  `#0007` cluster shadows reached the current set unnoticed until a task
+   *  corrected them by hand. The table is the bible's, so a drawing that
+   *  disagrees with it is the stale side (spec §13, `docs/design/mockups/README.md`). */
+  const ELEVATION = new Map([
+    ["0 8px 20px #00000059", "level 1 — floating clusters over the canvas"],
+    ["0 18px 44px #00000099", "level 2 — menus, popovers, tooltips"],
+    ["0 24px 60px #000000b3", "level 3 — dialogs"],
+  ]);
+  /** The two shadow *marks* §5 rule 4 keeps beside §3's elevation: the
+   *  3px accent halo is decoration ("Keep the 3px accent-at-18% halo as
+   *  decoration") and an `inset` shadow is a mark **on** the element — a focus
+   *  boundary or a selected row's accent bar — where §3's table is depth
+   *  *under* a surface. Both are read by shape so the arm cannot be widened by
+   *  adding a colour to an allow-list: a shadow that is neither a mark nor one
+   *  of the table's three treatments fails. */
+  const ELEVATION_MARK = /^(?:inset\b|0 0 0 \d+(?:\.\d+)?px\b)/;
+  const elevationAllowed = (value: string): boolean => {
+    const text = value.trim();
+    return ELEVATION.has(text) || ELEVATION_MARK.test(text);
+  };
+
+  /** §5's boundary vocabulary: every treatment the table admits draws its edge
+   *  as a **1px hairline** — the Well is "1px `--edge`", and §3's level 0 is
+   *  "1px `--edge` border"; no §5 entry and no §3 level names any other width.
+   *  The arm is deliberately the *width* and not the colour: §5 rule 2 admits
+   *  "a switch row whose label fills the row inside a panel box", and the
+   *  drawing materialises a derived colour where the product writes
+   *  `color-mix(...)` (`.editor-shell-primary-key`), so a colour allow-list
+   *  would fail a drawing technique §5 has no entry against. **What this arm
+   *  therefore does not catch** is the bordered container the row's third
+   *  clause names: a declaration cannot tell a container from a control, and
+   *  §5 rule 2 licenses that box by name — see the row's line. */
+  const boundaryAllowed = (value: string): boolean => {
+    const text = value.trim();
+    return /^(?:0|1px)\b/.test(text) || text === "none";
+  };
+
+  /** Every class, each with what it reads, the values one declaration
    *  spells, the scale those values are held to, and the exemptions a failure
    *  should name. */
   const ARMS: readonly {
@@ -3001,6 +3221,13 @@ test("every literal the checked drawings declare is on §3's scale or §2's", ()
     ) => readonly string[] | null;
     readonly allowed: (value: string, property: string) => boolean;
     readonly exempt: readonly string[];
+    /** Whether **every** drawing must declare the class. The three scale arms
+     *  are per-drawing — a drawing that declares no spacing is the silent read
+     *  they exist to catch. The elevation and boundary arms are not: a control
+     *  drawing legitimately draws no shadow at all (level 0) and no boundary
+     *  that is not 1px, so the per-arm control below is what keeps an empty
+     *  read from passing. */
+    readonly readPerDrawing?: boolean;
   }[] = [
     {
       property: "border-radius",
@@ -3041,6 +3268,34 @@ test("every literal the checked drawings declare is on §3's scale or §2's", ()
       },
       allowed: (value) => typeAllowed(value),
       exempt: ["none — §2's six sizes are the whole scale"],
+    },
+    {
+      property: "box-shadow",
+      scale:
+        "§3's elevation table (1 `0 8px 20px #00000059`, 2 `0 18px 44px #00000099`, 3 `0 24px 60px #000000b3`, or no shadow at all)",
+      values: (declaration) =>
+        declaration.property === "box-shadow" ? [declaration.value] : null,
+      allowed: (value) => elevationAllowed(value),
+      exempt: [
+        "no `box-shadow` at all — §3's level 0, which is also every surface in a drawing that floats nothing",
+        "`0 0 0 <n>px …` — §5 rule 4's 3px accent-at-18% focus halo, decoration and not a surface",
+        "`inset …` — a mark **on** the element (§5 rule 4's focus boundary, §7.2's rail accent bar), where §3's table is depth *under* a surface",
+      ],
+      readPerDrawing: false,
+    },
+    {
+      property: "border",
+      scale:
+        "§5's boundary vocabulary — a 1px hairline (`1px --edge` in §3's level 0 and in §5's Well), or no boundary",
+      values: (declaration) =>
+        /^border(?:-(?:top|right|bottom|left))?$/.test(declaration.property)
+          ? [declaration.value]
+          : null,
+      allowed: (value) => boundaryAllowed(value),
+      exempt: [
+        "`none` / `0` — no boundary at all, which is every region §3 does not draw an edge on",
+      ],
+      readPerDrawing: false,
     },
   ];
 
@@ -3091,15 +3346,39 @@ test("every literal the checked drawings declare is on §3's scale or §2's", ()
         ["radius", () => radiusAllowed("7px")],
         ["spacing", () => spacingAllowed("5px", "gap")],
         ["type", () => typeAllowed("11.5px")],
+        ["elevation", () => elevationAllowed("0 18px 50px #0009")],
+        ["boundary", () => boundaryAllowed("2px solid var(--edge)")],
       ] as const
     )
       .filter(([, allowed]) => allowed())
       .map(([name]) => name),
     "an arm accepts an off-scale value, so this row no longer holds that class to a scale",
   ).toEqual([]);
+  // The two families the new arms name as exempt are read the same way: a mark
+  // the arm still refused would fail the drawing at the naming, and an
+  // exemption that swallowed a real treatment would take the arm's teeth out.
+  expect(
+    [
+      "0 8px 20px #00000059",
+      "0 18px 44px #00000099",
+      "0 24px 60px #000000b3",
+      "inset 2px 0 0 var(--accent)",
+      "0 0 0 3px #72e0c02e",
+    ].filter((value) => !elevationAllowed(value)),
+    "an exempt or on-table shadow is refused, so this row would fail the drawing it names",
+  ).toEqual([]);
+  expect(
+    ["1px solid var(--edge)", "1px dashed var(--edge2)", "none", "0"].filter(
+      (value) => !boundaryAllowed(value),
+    ),
+    "a 1px boundary is refused, so this row would fail the drawing it names",
+  ).toEqual([]);
 
   const offScale: string[] = [];
   const read: string[] = [];
+  /** How many declarations each arm read across the whole set, so an arm no
+   *  drawing feeds reddens here instead of passing over an empty read. */
+  const readCount = new Map<string, number>();
   for (const drawing of drawings) {
     const declared = mockupDeclarations(readMockup(drawing.path));
     for (const arm of ARMS) {
@@ -3109,10 +3388,16 @@ test("every literal the checked drawings declare is on §3's scale or §2's", ()
       // The positive control per drawing per class: a file the reader opened
       // but read nothing out of is the shape this gate exists to end, so it
       // reddens here rather than passing as a file with no off-scale value.
-      expect(
-        inClass.length,
-        `${drawing.name}: the drawing declares no ${arm.property}, so this row read nothing`,
-      ).toBeGreaterThan(0);
+      if (arm.readPerDrawing !== false) {
+        expect(
+          inClass.length,
+          `${drawing.name}: the drawing declares no ${arm.property}, so this row read nothing`,
+        ).toBeGreaterThan(0);
+      }
+      readCount.set(
+        arm.property,
+        (readCount.get(arm.property) ?? 0) + inClass.length,
+      );
       read.push(`${drawing.name} ${arm.property} (${inClass.length})`);
       for (const declaration of inClass) {
         for (const value of arm.values(declaration) ?? []) {
@@ -3123,6 +3408,14 @@ test("every literal the checked drawings declare is on §3's scale or §2's", ()
         }
       }
     }
+  }
+  // The per-arm control, for the classes no single drawing has to declare: an
+  // arm nothing feeds is an arm that cannot fail, whatever the drawings do.
+  for (const arm of ARMS) {
+    expect(
+      readCount.get(arm.property) ?? 0,
+      `no drawing declares a ${arm.property}, so that arm read nothing`,
+    ).toBeGreaterThan(0);
   }
   expect(
     offScale,

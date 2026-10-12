@@ -972,7 +972,7 @@ body,
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 3px;
+  gap: 4px;
   padding: 8px 0 8px 1px;
 }
 .editor-shell-rail button {
@@ -1248,7 +1248,7 @@ body,
   max-width: 100%;
   min-height: 30px;
   margin: 3px 4px 3px 0;
-  padding: 4px 7px;
+  padding: 4px 8px;
   border: 1px solid var(--shell-edge);
   border-radius: 6px;
   background: var(--vigilia-control-bg);
@@ -1289,7 +1289,7 @@ body,
   max-width: 100%;
   min-height: 30px;
   margin: 3px 4px 3px 0;
-  padding: 4px 7px;
+  padding: 4px 8px;
   border: 1px solid var(--shell-edge);
   border-radius: 6px;
   background: var(--vigilia-control-bg);
@@ -1500,7 +1500,7 @@ body,
   color: var(--shell-muted);
 }
 .editor-shell-dialog > button {
-  margin-top: 18px;
+  margin-top: 16px;
   padding: 6px 12px;
   border: 1px solid var(--shell-edge);
   border-radius: 6px;
