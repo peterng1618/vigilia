@@ -189,36 +189,6 @@ export function planArtboard(
   };
 }
 
-const DEFAULT_LINE_HEIGHT = 1.2;
-
-/** Return undefined rather than guessing when font metrics cannot determine a clamp. */
-export function computeMaxLines(
-  boxHeight: number,
-  fontSize: unknown,
-  lineHeight: unknown,
-): number | undefined {
-  if (!Number.isFinite(boxHeight) || boxHeight <= 0) {
-    return undefined;
-  }
-
-  if (
-    typeof fontSize !== "number" ||
-    !Number.isFinite(fontSize) ||
-    fontSize <= 0
-  ) {
-    return undefined;
-  }
-
-  const factor =
-    typeof lineHeight === "number" &&
-    Number.isFinite(lineHeight) &&
-    lineHeight > 0
-      ? lineHeight
-      : DEFAULT_LINE_HEIGHT;
-
-  return Math.max(1, Math.floor(boxHeight / (fontSize * factor)));
-}
-
 export function resolveTextSegments(
   nodeId: string,
   runs: readonly TextRun[],

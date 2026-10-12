@@ -176,8 +176,7 @@ export {
   isMeasurementSystem,
   MEASUREMENT_SYSTEMS,
 } from "./scene/measurement.js";
-export type { MountOptions, SceneHandle } from "./scene/mount.js";
-export { mountScene } from "./scene/mount.js";
+export type { SceneHandle } from "./scene/scene-handle.js";
 export type {
   ChartPlanContext,
   PlanBox,
@@ -193,7 +192,6 @@ export type {
 } from "./scene/plan.js";
 export {
   buildChartPlan,
-  computeMaxLines,
   formatNumber,
   formatUnit,
   MISSING_VALUE_TEXT,
