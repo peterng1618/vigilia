@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import type { FabricGlobals, TextRun } from "@vigilia/renderer-core";
 import { formatInstant, instantIn } from "@vigilia/renderer-core";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import {
   blur,
   choose,
@@ -200,6 +200,11 @@ describe("binding a text run to a sensor", () => {
   });
 
   it("reads the clock in the zone the author pinned to it", async () => {
+    // The preview reads Date.now() at render, so two reads straddle a minute
+    // boundary about once in sixty runs. Pin the clock so the render and the
+    // assertion share one instant; a single read cannot race itself (vg-383).
+    const pinned = Date.parse("2026-10-13T04:24:30Z");
+    vi.spyOn(Date, "now").mockReturnValue(pinned);
     const box = mountRunEditor({ runs: literalClock });
     await choose(
       box.host,
@@ -218,7 +223,7 @@ describe("binding a text run to a sensor", () => {
     // The preview is the reading the run will paint, so pinning a zone has to
     // change what it says rather than only what is stored.
     expect(box.pick('[data-vigilia-run-format-preview="0"]').textContent).toBe(
-      formatInstant(instantIn(Date.now()), "HH:mm", "Asia/Tokyo"),
+      formatInstant(instantIn(pinned), "HH:mm", "Asia/Tokyo"),
     );
 
     await choose(box.host, 'data-vigilia-run-zone="0"', "Follow the display");
