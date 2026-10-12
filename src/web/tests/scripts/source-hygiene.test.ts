@@ -23,7 +23,13 @@ function nulOffsets(bytes: Uint8Array): number[] {
   return found;
 }
 
-const SKIP = new Set(["node_modules", "dist", ".vite", "coverage", "test-results"]);
+const SKIP = new Set([
+  "node_modules",
+  "dist",
+  ".vite",
+  "coverage",
+  "test-results",
+]);
 const SOURCE = /\.(?:[cm]?[jt]sx?|css|json)$/;
 
 function collectSourceFiles(root: string): string[] {
