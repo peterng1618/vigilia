@@ -35,6 +35,12 @@
  *    statement.** A capability proven nearby is not a finding fixed. It cost two
  *    false "landed" reports on 2026-09-30, both found by the user testing.
  * 3. An `unverified` item carries a `note` saying what claims it is fixed.
+ * 4. A `verified` item carries `artefacts` as an **array** of shas that resolve
+ *    and are ancestors of HEAD. A bare string is a different defect from a
+ *    missing one and is reported as itself, not read as absent.
+ * 5. Both registers run these rules. A row acquires `verified` as it *leaves*
+ *    the live file for `backlog-archive.jsonl`, so a checker reading only the
+ *    live file never enforces rules 2–4 on any row they were written for.
  */
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
@@ -43,6 +49,7 @@ import { fileURLToPath } from "node:url";
 
 const ROOT = resolve(fileURLToPath(new URL("..", import.meta.url)));
 const FILE = resolve(ROOT, "docs/product/backlog.jsonl");
+const ARCHIVE = resolve(ROOT, "docs/product/backlog-archive.jsonl");
 
 const STATES = new Set(["open", "in progress", "unverified", "verified", "withdrawn"]);
 const SOURCES = new Set(["user", "agent", "mixed"]);
@@ -136,27 +143,39 @@ export function check(items) {
       // branch that was never merged — the shape of ten agents that died
       // mid-task with their work uncommitted. Read-only git calls, no shell:
       // execFileSync takes an argv array, so a sha cannot become a command.
-      const shas = Array.isArray(item.artefacts) ? item.artefacts : [];
-      if (shas.length === 0) {
+      //
+      // A bare string and an absent key are different defects: the first is a
+      // shape the reader cannot consume, the second is a row with no close to
+      // check. Reading the string as absent would report the wrong problem and
+      // hide the shape, so it is rejected as itself.
+      if (item.artefacts !== undefined && !Array.isArray(item.artefacts)) {
         problems.push(
-          `${where}: verified with no artefact commit — name the sha that closed it, so this ` +
-            `stays checkable after the session that fixed it is gone`,
+          `${where}: artefacts must be an array of shas — a bare ${typeof item.artefacts} is ` +
+            `read as absent, so the row's close is never checked`,
         );
-      }
-      for (const sha of shas) {
-        try {
-          execFileSync("git", ["cat-file", "-e", `${sha}^{commit}`], { cwd: ROOT, stdio: "ignore" });
-        } catch {
-          problems.push(`${where}: artefact ${sha} does not resolve to a commit`);
-          continue;
-        }
-        try {
-          execFileSync("git", ["merge-base", "--is-ancestor", sha, "HEAD"], { cwd: ROOT, stdio: "ignore" });
-        } catch {
+      } else {
+        const shas = Array.isArray(item.artefacts) ? item.artefacts : [];
+        if (shas.length === 0) {
           problems.push(
-            `${where}: artefact ${sha} is not an ancestor of HEAD — it is on a branch that was ` +
-              `never merged, or was lost, so nothing downstream can rely on it`,
+            `${where}: verified with no artefact commit — name the sha that closed it, so this ` +
+              `stays checkable after the session that fixed it is gone`,
           );
+        }
+        for (const sha of shas) {
+          try {
+            execFileSync("git", ["cat-file", "-e", `${sha}^{commit}`], { cwd: ROOT, stdio: "ignore" });
+          } catch {
+            problems.push(`${where}: artefact ${sha} does not resolve to a commit`);
+            continue;
+          }
+          try {
+            execFileSync("git", ["merge-base", "--is-ancestor", sha, "HEAD"], { cwd: ROOT, stdio: "ignore" });
+          } catch {
+            problems.push(
+              `${where}: artefact ${sha} is not an ancestor of HEAD — it is on a branch that was ` +
+                `never merged, or was lost, so nothing downstream can rely on it`,
+            );
+          }
         }
       }
     }
@@ -168,12 +187,24 @@ export function check(items) {
 }
 
 if (process.argv[1]?.endsWith("backlog-check.mjs")) {
-  const { items, problems: readProblems } = parse(readFileSync(FILE, "utf8"));
-  const problems = [...readProblems, ...check(items)];
+  // Split by state, the two files are one register: a row acquires `verified`
+  // as it *leaves* the live file, so reading only the live file never runs
+  // rules 2-4 on any row they were written for. The archive read lands as an
+  // error, not a warning — a gate that tolerates the drift it finds is the
+  // false green the whole split was meant to prevent.
+  const registers = [FILE, ARCHIVE].map((path) => ({
+    name: path.slice(ROOT.length + 1).replace(/\\/g, "/"),
+    ...parse(readFileSync(path, "utf8")),
+  }));
+  const problems = registers.flatMap(({ name, items, problems: readProblems }) =>
+    [...readProblems, ...check(items)].map((problem) => `${name}: ${problem}`),
+  );
+  const items = registers.reduce((count, register) => count + register.items.length, 0);
 
   if (process.argv.includes("--self-test")) {
     const ok = (i) => check([i]).length === 0;
     const bad = (i) => check([i]).length > 0;
+    const problem = (i, re) => check([i]).some((p) => re.test(p));
     const valid = {
       id: "vg-abc123",
       state: "verified",
@@ -195,6 +226,10 @@ if (process.argv[1]?.endsWith("backlog-check.mjs")) {
       ["unverified with no note fails", bad({ ...valid, state: "unverified", check: undefined })],
       // The sha rule answers what the check cannot: does the work still exist.
       ["verified with no artefact commit fails", bad({ ...valid, artefacts: [] })],
+      // A bare string must be named as a shape, not silently read as absent:
+      // asserting the message is what makes this case fail when the rule is
+      // disabled, since the absent-key path would otherwise still reject it.
+      ["a bare-string artefacts is rejected as a shape", problem({ ...valid, artefacts: "abc1234" }, /array/)],
       ["an artefact that is not a commit fails", bad({ ...valid, artefacts: ["a1b2c3d"] })],
       ["a malformed line loses one item, not the file", parse('{"id":"a","statement":"x","state":"open","source":"user"}\nnot json\n{"id":"b","statement":"y","state":"open","source":"user"}').items.length === 2],
     ];
@@ -208,8 +243,8 @@ if (process.argv[1]?.endsWith("backlog-check.mjs")) {
   }
 
   if (problems.length > 0) {
-    process.stderr.write(`docs/product/backlog.jsonl:\n  ${problems.join("\n  ")}\n\n`);
+    process.stderr.write(`backlog-check:\n  ${problems.join("\n  ")}\n\n`);
     process.exit(1);
   }
-  process.stdout.write(`backlog-check: ${items.length} items, all valid\n`);
+  process.stdout.write(`backlog-check: ${items} items across both registers, all valid\n`);
 }
