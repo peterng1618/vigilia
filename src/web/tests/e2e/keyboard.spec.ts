@@ -309,6 +309,49 @@ test("the Keyboard tab's four states, and the sheet's chord mark that did not mo
   );
 });
 
+test("a chord rebound in the Keyboard tab is the chord the ? sheet prints", async ({
+  page,
+}, testInfo) => {
+  // **`vg-284`'s missing browser assertion.** The `?` sheet's 20 `<kbd>`s are a
+  // projection's membership count, so a rebind that reached the Keyboard tab and
+  // stopped reaching the sheet left `toHaveCount(20)` green. Two jsdom files
+  // redden on that break (`settings-keyboard.dom.test.tsx`,
+  // `shortcut-reference.dom.test.tsx`); nothing in a browser did.
+  test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+
+  await openShell(page);
+  await page.locator(SETTINGS_GEAR).click();
+  const dialog = page.getByRole("dialog", SETTINGS_DIALOG);
+  await expect(dialog).toBeVisible();
+  await dialog.getByRole("tab", { name: uiCopy.settings.keyboard }).click();
+
+  const row = dialog.locator('[data-vigilia-shortcut-row="publish.surface"]');
+  const chip = row.locator("kbd");
+  const fallback = shortcutLabel("publish.surface");
+  await expect(chip, "the row starts on its default chord").toHaveText(fallback);
+
+  // A free chord on this machine's platform, which is the spelling the tooltip
+  // case below pins for `Ctrl+D` as well.
+  const rebound = "Ctrl+J";
+  await dialog.locator('[data-vigilia-shortcut-arm="publish.surface"]').click();
+  await expect(row).toHaveAttribute("data-armed", "");
+  await page.keyboard.press("Control+j");
+  await expect(chip, "the tab recorded the chord that was pressed").toHaveText(
+    rebound,
+  );
+  expect(rebound).not.toBe(fallback);
+
+  await page.keyboard.press("Escape");
+  await expect(dialog).toBeHidden();
+  await page.keyboard.press("?");
+  const sheet = page.getByRole("dialog", { name: uiCopy.shortcuts.reference });
+  await expect(sheet).toBeVisible();
+  await expect(
+    sheet.locator('[data-vigilia-reference-row="publish.surface"] kbd'),
+    "the sheet prints the effective chord, not the default",
+  ).toHaveText(rebound);
+});
+
 test("every canvas action's tooltip names the chord that runs it", async ({
   page,
 }, testInfo) => {
