@@ -44,7 +44,7 @@ satisfies every token in `DESIGN.md` and still does not look like the mockup.
 2. **A row whose defect does not reproduce is a finding about the row, not a licence to close it** — 22 rows close and each names which of §3.1's four shapes it is, because a rebuilt surface reported as a fix is the error the shapes exist to prevent.
 3. **The serialised browser follow-up still owes 31 of its 49 rows**, four of which (`vg-346`, `vg-347`, `vg-233`, `vg-370`) need a new case and are drain work rather than reproduction; they share the fixed preview ports, so two suites at once produce false results rather than slow ones.
 4. **`vg-386` is a sweep of its own, not a fix inside the closed plan** — the tier's definition is undecided (76 on the plan's literal wording, 133 on the code's own intent) and 133 candidates have never been adjudicated; **none of the 133 is proven dead and none may be deleted on classification alone**.
-5. **`vg-368` waits on a decision** — whether `src/web/.agent-scratch/` is deleted, relocated outside the tree, or excluded per tool; deleting is not obviously safe because it holds screenshots and a vitest report that may be the only copy.
+5. **`vg-368` is ruled and not yet executed** — the user chose on 2026-10-12 to relocate `src/web/.agent-scratch/` outside the tree, keeping its eight files, and the ruling is recorded on the row itself (`RULED 2026-10-12:` in its `detail`), which is where the drain reads it; the move is drain work, not walkthrough work.
 
 ## Blockers / unverified
 
