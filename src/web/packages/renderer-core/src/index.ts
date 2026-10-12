@@ -277,6 +277,8 @@ export type {
   FabricThemeEnvelopeInput,
 } from "./theme/fabric-envelope.js";
 export { SUPPORTED_SCHEMA_VERSION } from "./theme/fabric-envelope.js";
+export type { PaletteTokenOption } from "./theme/palette-tokens.js";
+export { paletteTokenOptions } from "./theme/palette-tokens.js";
 export type { FabricEnvelopeValidationResult } from "./theme/fabric-envelope-validate.js";
 export { validateFabricThemeEnvelope } from "./theme/fabric-envelope-validate.js";
 export type { GlassTreatment } from "./theme/glass.js";

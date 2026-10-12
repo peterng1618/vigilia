@@ -1,4 +1,5 @@
 import type { FabricGlobals } from "@vigilia/renderer-core";
+import { paletteTokenOptions } from "@vigilia/renderer-core";
 import {
   Arc,
   applyObjectPalettePaints,
@@ -146,12 +147,11 @@ function paintOptions(
 ): readonly FieldOption[] {
   return [
     { id: "", name: uiCopy.inspectorFields.notSet },
-    ...Object.entries(globals?.palette ?? {})
-      .filter(
-        ([id, entry]) =>
-          id !== "none" && !(solidOnly && entry.value.kind !== "solid"),
-      )
-      .map(([id, entry]) => ({ id: `palette.${id}`, name: entry.name })),
+    ...paletteTokenOptions(
+      globals?.palette,
+      (id, entry) =>
+        id !== "none" && !(solidOnly && entry.value.kind !== "solid"),
+    ),
   ];
 }
 

@@ -4,6 +4,7 @@ import {
   type ChartFamily,
   chartPaintFieldsFor,
   type FabricPalette,
+  paletteTokenOptions,
   readSetting,
   SEMANTIC_KEYS,
   settingsFieldsFor,
@@ -260,9 +261,7 @@ export function chartPaintView(
   palette: FabricPalette | undefined,
 ): ChartPaintFieldsView {
   const { content } = target;
-  const options: readonly ChartOptionView[] = Object.entries(palette ?? {}).map(
-    ([tokenId, entry]) => ({ id: `palette.${tokenId}`, name: entry.name }),
-  );
+  const options: readonly ChartOptionView[] = paletteTokenOptions(palette);
   const settings = content.settings as unknown as Record<string, unknown>;
   const rows: ChartPaintRowView[] = [];
 

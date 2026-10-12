@@ -1,7 +1,6 @@
 import type {
   Binding,
   FabricGlobals,
-  FabricPalette,
   SampleSource,
   TextRun,
 } from "@vigilia/renderer-core";
@@ -10,6 +9,7 @@ import {
   formatInstant,
   instantIn,
   knownTimeZones,
+  paletteTokenOptions,
   SEMANTIC_KEYS,
 } from "@vigilia/renderer-core";
 import type * as React from "react";
@@ -84,13 +84,9 @@ function paletteOptions(globals: FabricGlobals | undefined): readonly {
   readonly name: string;
   readonly ref: string;
 }[] {
-  return Object.entries((globals?.palette as FabricPalette | undefined) ?? {})
-    .filter(([id]) => id !== "none")
-    .map(([id, entry]) => ({
-      id: `palette.${id}`,
-      name: entry.name,
-      ref: `palette.${id}`,
-    }));
+  return paletteTokenOptions(globals?.palette, (id) => id !== "none").map(
+    (option) => ({ id: option.id, name: option.name, ref: option.id }),
+  );
 }
 
 /**

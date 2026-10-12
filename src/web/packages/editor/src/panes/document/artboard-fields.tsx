@@ -1,8 +1,10 @@
 import {
   type Artboard,
   type AssetReference,
+  type FabricPalette,
   type Globals,
   MAX_ARTBOARD_DIMENSION,
+  paletteTokenOptions,
 } from "@vigilia/renderer-core";
 import { outsideCount, type SceneBox } from "@vigilia/scene-fabric";
 import { useId } from "react";
@@ -294,16 +296,17 @@ function fitOptions(): readonly ControlOption[] {
 }
 
 /** The palette tokens, plus the blank reading that clears the reference.
- *  `setGlobals` and an edit both redraw, so the list is never a stale copy. */
+ *  `setGlobals` and an edit both redraw, so the list is never a stale copy.
+ *  Every token is offered and named by the token owner's one list. */
 function paletteOptions(
   globals: Globals | undefined,
 ): readonly ControlOption[] {
   return [
     { id: "", name: uiCopy.panels.notSet },
-    ...Object.entries(globals?.palette ?? {}).map(([id, entry]) => ({
-      id: `palette.${id}`,
-      name: entry.name,
-    })),
+    // `Globals` types every group's values as `unknown`; the palette is the one
+    // group whose values are `PalettePaint`, which is the cast the inspector's
+    // own resolvers already make.
+    ...paletteTokenOptions(globals?.palette as FabricPalette | undefined),
   ];
 }
 

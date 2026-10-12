@@ -84,7 +84,6 @@ two apart is the judgement the map cannot make for itself.
 | **The chrome glyph vocabulary** — the one icon family, the one weight rule, and the named glyphs the shell and the panes draw | `editor/src/editor-shell/icons.ts` |
 | Applying an arrange action to a multi-selection | `editor/src/arrange.ts` |
 | Palette-token authoring and reference reassignment | `editor/src/palette-manager/` |
-| **Listing the document's tokens by name** — one function in the token owner, each caller passing its own filter, and the raw ref returned only for a token the author deleted | `editor/src/palette-manager/` |
 | New-object defaults (text, charts, shapes) and the shape list | `editor/src/new-object-defaults.ts` |
 | **The card units a document can be built from, and what they are called** — the card vocabulary and its names | `editor/src/card-library.ts` (`CARD_LIBRARY`) |
 | The Add panel's construction actions | `editor/src/new-object-panel.ts` |
@@ -153,6 +152,7 @@ adapter does not own catalog, preview or adoption semantics.
 | Samples/status | `renderer-core/src/types.ts` |
 | Live presentation buffer | `renderer-core/src/data/live-source.ts` |
 | Theme semantic types/validation | `renderer-core/src/theme/` |
+| **Listing the document's tokens by name** — one function in the token owner, each caller passing its own filter, and the raw ref returned only for a token the author deleted | `renderer-core/src/theme/` (`paletteTokenOptions`) |
 | The authored `vigiliaGlass` treatment and its bounds | `renderer-core/src/theme/glass.ts` (DOM/Fabric-free; rendering lives in `scene-fabric/src/glass.ts`) |
 | Theme ZIP layout and bounds | `theme-package/src/` |
 | Published development schema | `schema/theme-document.schema.json` |
