@@ -144,10 +144,6 @@ metadata and transient previews; the existing type-preset/asset boundaries own
 adoption; `scene-fabric/src/font-assets.ts` owns loaded-face lifecycle. The UI
 adapter does not own catalog, preview or adoption semantics.
 
-`editor-shell.ts` owns generic z-order, grouping and locks; the Vigilia layer
-tree (`editor-shell/layer-tree.ts`) projects that state without a parallel scene
-tree, and `editor-shell/layer-panel.tsx` renders those rows.
-
 ## Ownership registry
 
 ### Shared/domain
