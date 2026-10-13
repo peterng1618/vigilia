@@ -805,14 +805,16 @@ pass is a smoke test over the same bundle, not the check.
   registered. Plan 8's own completion report rules the second clause *"NOT met
   for the plan's closure condition"*: six of its differences are `fix` with
   owners outside that plan, and the rows that carry them are open today
-  (`vg-316`, `vg-319`, `vg-322`, and `vg-274`, whose own subject is the file's
-  gate membership and which still carries D9's one live value), two of them
+  (`vg-316`, `vg-319` and `vg-322`; `vg-274` carried D9's last surviving value
+  until 2026-10-13, when the three rules that stated no type were given
+  `--text-sm`, so it no longer carries a live difference), two of them
   waiting on the user's rulings. **`vg-325` was named here among them and is not
   one**: it is `verified` against `6f9b3492` and `c64ac390` in
   `2026-10-11-settings-parity.md`, and it had already closed when this list was
   written on 2026-10-12 — the row's own red proof reverts `.editor-shell-rail`'s
   `gap` to `3px` and reads the product-side failure naming the drawing's `4px`.
-  So the differences this clause still waits on are four rows, not five. **The capture half is now placed for every drawing**:
+  So the differences this clause still waits on are three rows, not five — D9's
+  four values are all fixed, the last of them on 2026-10-13. **The capture half is now placed for every drawing**:
   `controls-capture-graphite.png` and `controls-capture-editorial.png` sit in
   `current/` beside `controls.html` and `controls-light.html` (`988d1788`), and
   `settings-keyboard-capture-*.png` and `settings-about-capture-*.png` were
@@ -854,9 +856,13 @@ pass is a smoke test over the same bundle, not the check.
   `vg-319`'s two
   remaining facts are each one sentence on the row now: §2 **reserves** uppercase
   for the shell surfaces it names, and §5 rule 2's **escape clause** may already
-  cover the read-only row both sheets draw with a 16px gap. `vg-274`'s subject is
-  the file's gate membership, which the row itself calls a design decision rather
-  than a task. **`vg-322` is not a width anyone can choose.** The user rejected
+  cover the read-only row both sheets draw with a 16px gap. `vg-274` no longer
+  carries a live difference at all: D9's four values are fixed, the last of them
+  on 2026-10-13, when the three rules that stated no type were given §2's control
+  text with its companion — and a browser reads the value a person sees
+  (`add-pane.spec.ts`, red at `Received: "13px"` before the declaration and green
+  after). What stays open on that row is its own subject, the file's gate
+  membership, which the row itself calls a design decision rather than a task. **`vg-322` is not a width anyone can choose.** The user rejected
   that question rather than answering it on 2026-10-11 — "Setting should not be a
   modal but a panel like add, composition" — so its 405/507/393px measurements
   are of a container that is going away, and by its own words it "closes when

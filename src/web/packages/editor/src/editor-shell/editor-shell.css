@@ -1323,6 +1323,11 @@ body,
   padding: 4px 8px;
   border: 1px solid var(--shell-edge);
   border-radius: 6px;
+  /* §2 — the box `controls.html:112` draws for both plain-DOM groups states
+     control text, and this rule stated no type at all, so it took the shell
+     root's `--text-md` 13px instead (plan 8's D9). */
+  font-size: var(--text-sm);
+  line-height: var(--text-sm--line-height);
   background: var(--vigilia-control-bg);
   color: var(--shell-text);
 }
@@ -1336,6 +1341,11 @@ body,
   padding: 4px 6px;
   border: 1px solid var(--shell-edge);
   border-radius: 6px;
+  /* §2 — the box `controls.html:112` draws for both plain-DOM groups states
+     control text, and this rule stated no type at all, so it took the shell
+     root's `--text-md` 13px instead (plan 8's D9). */
+  font-size: var(--text-sm);
+  line-height: var(--text-sm--line-height);
   background: var(--vigilia-control-bg);
   color: var(--shell-text);
 }
@@ -1364,6 +1374,11 @@ body,
   padding: 4px 8px;
   border: 1px solid var(--shell-edge);
   border-radius: 6px;
+  /* §2 — the box `controls.html:112` draws for both plain-DOM groups states
+     control text, and this rule stated no type at all, so it took the shell
+     root's `--text-md` 13px instead (plan 8's D9). */
+  font-size: var(--text-sm);
+  line-height: var(--text-sm--line-height);
   background: var(--vigilia-control-bg);
   color: var(--shell-text);
 }

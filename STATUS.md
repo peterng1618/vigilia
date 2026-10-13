@@ -37,9 +37,10 @@ ledger did.
 
 ## Last completed change
 
-- **Plan 8's D9 block is re-measured and three of its four values are fixed on the tree** — the Close's `margin-top` is 16px (`vg-316`), the rail's `gap` is 4px (`editor-shell.css:1027`, `vg-325`'s work) and the asset-button rule states `padding: 4px 8px` (`:1323`); what is left is the plain-DOM control boxes' type, which no rule states, so both inherit the shell root's `--text-md` 13px (`:687-689`) where §2 gives control text `--text-sm` 12px.
-- **That value is blocked on an instrument rather than on itself, and the instrument is now a row** — the declared-versus-drawn block compares literal strings and the drawing writes its type as a `font` shorthand `mockup-values.ts` refuses to read as a `font-size`; the scale route needs the element rendered and the surfaces that parity test reads are a whitelist naming no pane. Filed as **`vg-442`**; `vg-274` carries the value and the residue of the file's other inherited-type rules.
-- **Gates**: `npm run backlog:check` exit 0 (442 items across both registers, all valid); `npm run status:check` exit 0 and `npm run design:check` exit 0 (lint clean, 315 citation sources clean).
+- **Plan 8's last D9 value is fixed, and it was red in a browser first** — the two plain-DOM boxes `controls.html:112` draws as one and the pane's rename field all stated no type and so took the shell root's `--text-md` 13px; each now states §2's control text `--text-sm` with its companion, and `add-pane.spec.ts`'s new case reads `[data-vigilia-asset-import]`'s resolved `font-size`/`line-height`: `Expected: "12px", Received: "13px"` against the pre-fix bundle (exit 1), passing after the rebuild (exit 0).
+- **So D9 has no surviving value and the item-16 list is three rows, not four** — `vg-274` no longer carries a live parity difference (its own subject, the file's gate membership, is untouched), and the spec says so at both places it named the row; `vg-442` narrows to the drawing-comparison route alone, which is the half a pane-owned spec cannot cover.
+- **Proof, named**: 47 test files / 696 tests green over `packages/editor/src/panes`, `.../selection-inspector` and `.../editor-shell` (including the pair contract); the four touched browser specs serially **90 passed** in 3.6m, exit 0; `npm run backlog:check` 0 (442 items), `npm run design:check` 0, `npm run status:check` 0.
+- **The Add pane capture was re-shot to keep the evidence current and then inspected — it shows none of the changed region**, because the Asset group's boxes sit below the pane's fold, so its pixels differed only by re-encode and it was left uncommitted; that second face of `vg-402` (a current capture can still compare nothing for a region the drawing draws) is recorded on the row.
 
 ## Next
 

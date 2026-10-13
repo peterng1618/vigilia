@@ -54,6 +54,26 @@ test("the Add pane offers units and primitives, neither greyed, neither a fallba
   }
 });
 
+test("the pane's file controls take control text, not the shell's 13px base", async ({
+  page,
+}, testInfo) => {
+  test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+
+  await page.goto(EDITOR);
+  await openPane(page, "Add");
+
+  // Plan 8's census measured these boxes' text as *inherited*, not stated
+  // (D9), so they took the shell root's `--text-md` 13px. §2 gives control
+  // text `--text-sm` 12px, and the box `controls.html:112` draws for both
+  // plain-DOM groups states 12px — as does `shell.html:137`/`:140` for this
+  // pane's own instances.
+  const importButton = page.locator("[data-vigilia-asset-import]");
+  await expect(importButton).toBeVisible();
+  await expect(importButton).toHaveCSS("font-size", "12px");
+  // §2's companion for `--text-sm` is 1.4, so the pair is stated too.
+  await expect(importButton).toHaveCSS("line-height", "16.8px");
+});
+
 test("a card inserted from the Add pane arrives as a unit the tree can name", async ({
   page,
 }, testInfo) => {
