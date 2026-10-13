@@ -37,9 +37,9 @@ ledger did.
 
 ## Last completed change
 
-- **The sixteenth item's evidence gap turned out to be a recording gap, and measuring it answered `vg-390`'s open question** — the spec's eight plans map many-to-many onto six drawings, so plans 2, 4 and 5's surfaces are photographed (the shell's pair, the Add pane, the three panes no drawing draws, the settings sheets) while the durable record attached those captures to the later parity plans, which is why they read as missing.
-- **`docs/evidence/screenshots/README.md` now records which surfaces each of the six drawings and their eleven captures shows, and the spec's standing note is corrected rather than left asserting otherwise** — the sentence saying no durable record names a capture for plans 2, 4 or 5 stopped being true the moment the register was written.
-- **What the clause still cannot reach is now named rather than implied** — plan 4's three undrawn panes and plan 6's missing drawing have no matching mockup at all, so there is nothing for a capture to sit beside, and plans 1 and 3's own comparisons are gone with their workspaces.
+- **The item's discharge list was verified item by item rather than asserted, and every one of the four is a decision** — the settings frame's width, the role a palette preview bar depicts, the `fix` differences, and `vg-390`'s wording, which is now the narrow question above rather than "reproduce the comparisons or narrow the item".
+- **`vg-319`'s fact one is a conflict between the drawings, and the other side is measured now** — `settings.html:42` heads the palette grid at 12px sentence case while `settings-keyboard.html` heads its groups at 10px uppercase `.11em`, so whichever sheet wins decides whether the product's 11px becomes `--text-2xs` or `--text-sm`; the row carried only one side of it.
+- **`vg-316` stays open on the record's own refusals rather than mine** — `--vigilia-control-bg` is declared on five rules across six palettes and `design-language.spec.ts:2045-2050` names it as the separation editorial carries instead of a panel rung, so repainting it is a decision about the control set; three separate tasks have re-confirmed it rather than taken it, and the one-token fix is deliberately not taken.
 
 ## Next
 
