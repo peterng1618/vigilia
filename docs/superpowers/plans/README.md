@@ -2,8 +2,9 @@
 
 Superpowers is Vigilia's sole planning/execution workflow.
 
-Active executable plans live here. Move a completed or superseded plan to
-`archive/`; it is historical context, not current instruction.
+Active and queued executable plans live here. A completed or superseded plan
+moves to `archive/` **once no active or queued plan depends on it** — the
+condition, and the process around it, are `AGENTS.md`'s, not this file's.
 `.superpowers/sdd/` is ignored execution state and points to the plan it
 executes.
 
@@ -24,3 +25,13 @@ not when its list runs out.
 
 It also settled a set of product decisions by hand that no spec covered, and its
 ledger records the rulings and the evidence behind them.
+
+## The one plan held out of the queue
+
+**`2026-10-03-editor-left-column-and-header.md` is neither executable nor
+archived.** Its left-column and Insert-menu work landed under later plans and was
+then reversed by the shell redesign, and the one task it still describes — the
+View menu leaving the menubar — turns on a product decision the redesign owns.
+It is kept here, unexecuted, rather than moved to `archive/`, because a live
+plan's Task 3 is now false as written and restoring it would fight the product;
+see `vg-161` in `docs/product/backlog.jsonl`.
