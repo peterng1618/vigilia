@@ -818,12 +818,15 @@ pass is a smoke test over the same bundle, not the check.
   that count is plan 8's alone**: measured across all eight on 2026-10-13
   (`vg-390` carries the census), plans 2, 4 and 7 also list differences whose
   owner is an open row — `vg-227`, `vg-222`, `vg-225` and `vg-230` in plan 2,
-  `vg-260`, `vg-265`, `vg-269` and `vg-270` in plan 4, `vg-308`, `vg-310` and
+  `vg-260`, `vg-269` and `vg-270` in plan 4, `vg-308`, `vg-310` and
   `vg-274` in plan 7 — while plans 3, 5 and 6 list none an open row owns, plan
   3's four surviving in `9ee1fc21`'s body. **Every one of those rows is a row
   the drain's Phase 1 sessions take** (D3, D5, D6, D10 and the browser-pinned
   follow-up at Task 2.5 Step 4), so this clause cannot be met before those
-  sessions run; the two it cannot reach that way are `vg-316`, a Phase 2 work
+  sessions run; `vg-265` is the one that left the list on 2026-10-13 — its
+  reading showed a defect rather than a choice, so it was fixed and verified
+  (`7588f5bc`) and the decision moved one state further in, to `vg-447`; the two
+  the sessions cannot reach are `vg-316`, a Phase 2 work
   row whose residue is the `DESIGN.md` decision `vg-441`, and plan 1's ten,
   whose owner no record holds. **The capture half is now placed for every drawing**:
   `controls-capture-graphite.png` and `controls-capture-editorial.png` sit in
