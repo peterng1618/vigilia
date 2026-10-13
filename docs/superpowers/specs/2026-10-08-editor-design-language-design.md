@@ -807,14 +807,25 @@ pass is a smoke test over the same bundle, not the check.
   owners outside that plan, and the rows that carry them are open today
   (`vg-316`, `vg-319` and `vg-322`; `vg-274` carried D9's last surviving value
   until 2026-10-13, when the three rules that stated no type were given
-  `--text-sm`, so it no longer carries a live difference), two of them
-  waiting on the user's rulings. **`vg-325` was named here among them and is not
+  `--text-sm`, so it no longer carries a live difference), and each of the
+  three waits on the user rather than on a fixer. **`vg-325` was named here among them and is not
   one**: it is `verified` against `6f9b3492` and `c64ac390` in
   `2026-10-11-settings-parity.md`, and it had already closed when this list was
   written on 2026-10-12 — the row's own red proof reverts `.editor-shell-rail`'s
   `gap` to `3px` and reads the product-side failure naming the drawing's `4px`.
-  So the differences this clause still waits on are three rows, not five — D9's
-  four values are all fixed, the last of them on 2026-10-13. **The capture half is now placed for every drawing**:
+  So plan 8's own differences are three rows, not five — D9's four values are
+  all fixed, the last of them on 2026-10-13. **The clause is every plan's, and
+  that count is plan 8's alone**: measured across all eight on 2026-10-13
+  (`vg-390` carries the census), plans 2, 4 and 7 also list differences whose
+  owner is an open row — `vg-227`, `vg-222`, `vg-225` and `vg-230` in plan 2,
+  `vg-260`, `vg-265`, `vg-269` and `vg-270` in plan 4, `vg-308`, `vg-310` and
+  `vg-274` in plan 7 — while plans 3, 5 and 6 list none an open row owns, plan
+  3's four surviving in `9ee1fc21`'s body. **Every one of those rows is a row
+  the drain's Phase 1 sessions take** (D3, D5, D6, D10 and the browser-pinned
+  follow-up at Task 2.5 Step 4), so this clause cannot be met before those
+  sessions run; the two it cannot reach that way are `vg-316`, a Phase 2 work
+  row whose residue is the `DESIGN.md` decision `vg-441`, and plan 1's ten,
+  whose owner no record holds. **The capture half is now placed for every drawing**:
   `controls-capture-graphite.png` and `controls-capture-editorial.png` sit in
   `current/` beside `controls.html` and `controls-light.html` (`988d1788`), and
   `settings-keyboard-capture-*.png` and `settings-about-capture-*.png` were
@@ -841,8 +852,8 @@ pass is a smoke test over the same bundle, not the check.
   them; narrow this item to the six current drawings; or carry the residue.
   Drawing them is the ruling owner's act, because a drawing is the acceptance
   instrument rather than a description of one.
-  **What discharges it, stated so the four rows are not read as four questions
-  for the user:** `vg-316` is the control set's own fill, re-measured on
+  **What discharges it, stated so the rows are not read as questions for the
+  user:** `vg-316` is the control set's own fill, re-measured on
   2026-10-13 and confirmed a decision rather than a fix — the token carries
   three palettes' tints and editorial's licensed equal rung, so "use `--panel2`"
   would kill the tints or blank the controls in editorial. **The gap behind that
