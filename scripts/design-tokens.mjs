@@ -113,7 +113,7 @@ export const CEILINGS = [
   {
     path: "src/web/packages/editor/src/editor-shell/editor-shell.css",
     max: 0,
-    recordedAt: "f832ddd8",
+    recordedAt: "303dfdf6",
     exempt: [
       { site: ".editor-shell-header", text: "42px" },
       { site: ".editor-shell-publish-toggle", text: "padding: 7px" },
@@ -160,19 +160,24 @@ export const CEILINGS = [
       { site: ".vigilia-layer-thumb", text: "18px" },
       { site: ".vigilia-layer-state", text: "right: 2px" },
       {
-        site: ".vigilia-layer-row:has(.vigilia-layer-state button:nth-child(2)) .vigilia-layer-bound",
-        text: "margin-right: 62px",
-        reason: "the layer row's reserved slot for two controls — `6 + 26*2 + 4` (§3's 26px row rhythm plus its 6px and 4px steps) — so the sum is off §3's step table by construction, and correcting it to a step would move the reserved width and let the icons cover the key again",
+        site: ".vigilia-layer-row:has(.vigilia-layer-state button)",
+        text: "padding-right: 36px",
+        reason: "the layer row's reservation for one control — the row's own 4px, then the slot's `right: 2px` and `6 + 26*1 + 0` (§3's 26px row rhythm plus its 6px and 4px steps) — so the sum is off §3's step table by construction, and correcting it to a step would move the reserved width and let the slot cover the role again (`vg-265`)",
       },
       {
-        site: ".vigilia-layer-row:has(.vigilia-layer-state button:nth-child(3)) .vigilia-layer-bound",
-        text: "margin-right: 92px",
-        reason: "the same arithmetic at three controls — `6 + 26*3 + 8` — and inexpressible as a §3 step for the same reason, `n=1` landing on the step 32 only because its gap term is zero",
+        site: ".vigilia-layer-row:has(.vigilia-layer-state button:nth-child(2))",
+        text: "padding-right: 66px",
+        reason: "the same arithmetic at two controls — `4 + 2 + 6 + 26*2 + 4` — off §3's table for the same reason; the reservation is the row's padding rather than the key column's margin because the column under the slot is the role on a row whose selection reads nothing",
       },
       {
-        site: ".vigilia-layer-row:has(.vigilia-layer-state button:nth-child(4)) .vigilia-layer-bound",
-        text: "margin-right: 122px",
-        reason: "the same arithmetic at four controls — `6 + 26*4 + 12` — so 62, 92 and 122 are one class of three, not three exceptions",
+        site: ".vigilia-layer-row:has(.vigilia-layer-state button:nth-child(3))",
+        text: "padding-right: 96px",
+        reason: "the same arithmetic at three controls — `4 + 2 + 6 + 26*3 + 8`",
+      },
+      {
+        site: ".vigilia-layer-row:has(.vigilia-layer-state button:nth-child(4))",
+        text: "padding-right: 126px",
+        reason: "the same arithmetic at four controls — `4 + 2 + 6 + 26*4 + 12` — so 36, 66, 96 and 126 are one class of four, not four exceptions",
       },
       { site: ".vigilia-layer-rename", text: "22px" },
       { site: ".editor-shell-identity-dot", text: "7px" },

@@ -163,6 +163,71 @@ test("every row carries a role and a mark, and the role adds no height", async (
   expect(heights[0], "the row's height, unchanged by the role").toBe(26);
 });
 
+/**
+ * `vg-265`: the row's state slot is absolutely positioned over the row's right
+ * edge and always carries its own surface, so the slot covers the last glyphs
+ * of the role on a row that draws no key — the role is *covered*, not clipped,
+ * which is why the case above (the role's box against the row's right edge)
+ * passes while the glyphs are gone, and why the check has to be geometric.
+ */
+test("the state slot does not cover the role, at rest or with the row attended", async ({
+  page,
+}, testInfo) => {
+  test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+
+  await openStarterEditor(page);
+
+  // `openEveryGroup` clicks twisties, and the row it last clicked keeps both
+  // the pointer and the focus — either one attends it and draws its controls,
+  // so the state below would not be the one the captures beside the drawings
+  // were taken in. The pointer goes to the stage, and the focus goes nowhere.
+  await page.mouse.move(900, 400);
+  await page.evaluate(() => (document.activeElement as HTMLElement)?.blur());
+
+  // The role's box against the slot's, on every row, with nothing selected and
+  // nothing hovered. This is the state `vg-265` measured — the slot painted its
+  // own surface whether or not it held a control, so every row's role lost its
+  // last glyphs to a six-pixel block that drew nothing.
+  const rows = page.locator("[data-vigilia-layer]");
+  const overlaps = (): Promise<
+    readonly { readonly name: string; readonly overlap: number }[]
+  > =>
+    rows.evaluateAll((elements) =>
+      elements
+        .map((row) => {
+          const role = row
+            .querySelector(".vigilia-layer-role")
+            ?.getBoundingClientRect();
+          const slot = row
+            .querySelector(".vigilia-layer-state")
+            ?.getBoundingClientRect();
+          if (role === undefined || slot === undefined) return undefined;
+          return {
+            name: row.querySelector(".vigilia-layer-name")?.textContent ?? "",
+            // A slot drawing no control paints nothing whatever its box says,
+            // so the threshold is for fractional layout rather than for
+            // coverage: the half-pixel a zero-width box can land on is not a
+            // covered glyph.
+            overlap: Math.round((role.right - slot.left) * 10) / 10,
+          };
+        })
+        .filter((row) => row !== undefined && row.overlap > 0.5),
+    );
+
+  expect(
+    await overlaps(),
+    "rows whose role the slot paints over at rest",
+  ).toEqual([]);
+
+  // The attended row is a second defect and is NOT this one: there the slot
+  // holds real controls, and on a row whose reserved strip is wider than what
+  // its columns can spare — a group's four controls, or a chart's three — the
+  // in-flow line overflows under them, because the mark, the name's 6ch floor
+  // and the role are each recorded as never giving way. Which of the three
+  // yields is a design question, and it is filed as `vg-447`; this case asserts
+  // the state `vg-265` measured and the three captures beside the drawings show.
+});
+
 test("the shipped column is DESIGN.md's, and its clipping is measured against the one it supersedes", async ({
   page,
 }, testInfo) => {
@@ -1058,18 +1123,25 @@ test("a group entered inside a large document", async ({ page }, testInfo) => {
   ).toHaveCount(4);
   const slot = await groupRow.evaluate((row) => {
     const state = row.querySelector(".vigilia-layer-state") as HTMLElement;
+    const role = row.querySelector(".vigilia-layer-role") as HTMLElement;
     const bound = row.querySelector(".vigilia-layer-bound") as HTMLElement;
     const name = row.querySelector(".vigilia-layer-name") as HTMLElement;
     return {
       // **The two halves of the reservation, bound to each other.** One half is
       // what the slot's own rendered box needs — 6px of padding plus four 26px
       // squares and three 4px gaps — and the other is what the stylesheet's
-      // fourth `:has` arm promises the *bound* column it must give up. A button
-      // box that drifts out of the arithmetic, or an arm dropped while the
-      // buttons still need it, desyncs the two and fails below; the raw
-      // computed `margin-right` never could, because it restates the promise.
+      // fourth `:has` arm reserves out of the row. The room is the row's own
+      // `padding-right` rather than the key column's margin, because the slot
+      // covers whatever is last in the row and that column is the role on a row
+      // whose selection reads nothing (`vg-265`); the 4px subtracted is the
+      // padding the row carries whether or not it draws a control, so what is
+      // left is the slot's own footprint. A button box that drifts out of the
+      // arithmetic, or an arm dropped while the buttons still need it, desyncs
+      // the two and fails below.
       slotWidth: Math.round(state.getBoundingClientRect().width),
-      reservedPx: Number.parseFloat(getComputedStyle(bound).marginRight),
+      reservedPx: Math.round(
+        Number.parseFloat(getComputedStyle(row).paddingRight) - 4,
+      ),
       // The bound column is the one that gives way — a key yields before a
       // layer's name does — so it can never end up the wider of the two.
       boundWidth: Math.round(bound.getBoundingClientRect().width),
@@ -1088,6 +1160,17 @@ test("a group entered inside a large document", async ({ page }, testInfo) => {
       ),
       keyClipped: bound.scrollWidth > bound.clientWidth,
       nameClipped: name.scrollWidth > name.clientWidth,
+      // **Recorded too, and it is the wider failure of the same over-budget
+      // row**: with four controls the row's own columns cannot fit beside the
+      // slot, so the role — which `flex: none` keeps at its full width, and
+      // which the stylesheet promises is never the column that gives way — runs
+      // under the slot and is painted over. Which column yields when a row is
+      // this narrow is a design question between three recorded invariants and
+      // is filed as `vg-447`; `vg-265` closed the half where the slot held no
+      // control at all, which the case above asserts.
+      roleCoveredPx: Math.round(
+        role.getBoundingClientRect().right - state.getBoundingClientRect().left,
+      ),
     };
   });
   expect(
@@ -1115,6 +1198,7 @@ test("a group entered inside a large document", async ({ page }, testInfo) => {
     ["four-control-room-kept-px", String(slot.roomKept)],
     ["four-control-key-clipped", String(slot.keyClipped)],
     ["four-control-name-clipped", String(slot.nameClipped)],
+    ["four-control-role-covered-px", String(slot.roleCoveredPx)],
   ] as const) {
     testInfo.annotations.push({ type, description: String(value) });
   }

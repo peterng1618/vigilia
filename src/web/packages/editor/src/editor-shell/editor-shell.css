@@ -2238,8 +2238,14 @@ body,
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  /* The row's own surface, so a key running underneath is covered rather than
-     showing through the gaps between two icons. */
+}
+/* The surface and the 6px of lead-in belong to the controls, not to the slot:
+   the slot is always present so the icons land in the same place, and an empty
+   one that still painted them laid 6px of panel over the last glyphs of the
+   role on every row at rest (`vg-265` — the role is covered, not clipped, which
+   is why no overflow reading saw it). Where controls are drawn, the surface is
+   still what keeps a key running underneath from showing between two icons. */
+.vigilia-layer-state:has(button) {
   background: var(--shell-surface);
   border-radius: 4px;
   padding-left: 6px;
@@ -2272,49 +2278,46 @@ body,
 /* Room for the state controls, and only the room the row's own controls need.
 
    `:has` asks the controls themselves, so a row that draws none reserves
-   nothing, and the room is held open exactly where something would cover the
-   key — hovered, focused, selected, locked or hidden — and nowhere else. At
-   rest, with nothing selected, zero of the starter's sixty rows draw a control
-   and zero reserve anything. Held open on every row instead, it cost the
-   *name* permanently, on all sixty.
+   nothing, and the room is held open exactly where something would cover what
+   is under it — hovered, focused, selected, locked or hidden — and nowhere
+   else. At rest, with nothing selected, zero of the starter's sixty rows draw a
+   control and zero reserve anything. Held open on every row instead, it cost
+   the *name* permanently, on all sixty.
+
+   The reservation is the row's `padding-right` rather than a margin on the key
+   column, because the slot covers whatever is last in the row and that column
+   is not always the key: a row whose selection reads nothing ends in the
+   *role*, which `flex: none` keeps at its full width, so a key-column margin
+   left the slot lying over the role's last glyphs (`vg-265`). Padding the row
+   takes the width out of the flex line itself, so it lands on whichever column
+   is under the slot, and the arithmetic is unchanged: the same 32px the key
+   column used to reserve is still reserved, because the row's own 4px and the
+   32px here sum to what the margin plus the row's padding did.
 
    One rule per count rather than one for the strip, because the count is the
    row's own answer and a row drawing two controls must not pay for four: the
-   strip is 6px of padding plus a 26px button and a 4px gap each, so n controls
-   need `6 + 26n + 4(n - 1)`. The buttons are direct children of the slot — a
-   wrapper would make every one of them its parent's first child and answer the
-   question for one control on a row that draws four — and each rule below
+   slot is 6px of padding plus a 26px button and a 4px gap each, and it stands
+   2px off the row's right edge, so n controls need `4 + 6 + 26n + 4(n - 1)`
+   counting the row's own padding. The buttons are direct children of the slot —
+   a wrapper would make every one of them its parent's first child and answer
+   the question for one control on a row that draws four — and each rule below
    overrides the one above it.
 
    The cost falls on the attended row, where the name narrows by whatever the
    key does not take, with every other row holding still. That is the price of
    not taking it from every row in every theme, and it is charged to the one row
-   the author is looking at.
-
-   `margin-right` rather than `padding-right`, and on the bound rather than on
-   the row: padding a flex item whose width is already its content's pads a box
-   that does not move, and measured on canvas that left the icons covering the
-   end of the key. `calc` rather than a fixed number because the row is
-   narrower in the small layout below and the controls are a fixed size in
-   both. */
-.vigilia-layer-row:has(.vigilia-layer-state button) .vigilia-layer-bound {
-  max-width: calc(100% - 32px);
-  margin-right: 32px;
+   the author is looking at. */
+.vigilia-layer-row:has(.vigilia-layer-state button) {
+  padding-right: 36px;
 }
-.vigilia-layer-row:has(.vigilia-layer-state button:nth-child(2))
-  .vigilia-layer-bound {
-  max-width: calc(100% - 62px);
-  margin-right: 62px;
+.vigilia-layer-row:has(.vigilia-layer-state button:nth-child(2)) {
+  padding-right: 66px;
 }
-.vigilia-layer-row:has(.vigilia-layer-state button:nth-child(3))
-  .vigilia-layer-bound {
-  max-width: calc(100% - 92px);
-  margin-right: 92px;
+.vigilia-layer-row:has(.vigilia-layer-state button:nth-child(3)) {
+  padding-right: 96px;
 }
-.vigilia-layer-row:has(.vigilia-layer-state button:nth-child(4))
-  .vigilia-layer-bound {
-  max-width: calc(100% - 122px);
-  margin-right: 122px;
+.vigilia-layer-row:has(.vigilia-layer-state button:nth-child(4)) {
+  padding-right: 126px;
 }
 .vigilia-layer-rename {
   flex: 1;

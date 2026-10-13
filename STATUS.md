@@ -37,10 +37,11 @@ ledger did.
 
 ## Last completed change
 
-- **`vg-446` and `vg-445` both close, on the one commit that answers both halves they left open** — the empty column names the canvas (`ui-copy.ts`), and the Add group headings have no difference left to land: the current drawings write the product’s own singular words.
-- **`vg-445`’s process finding survives its close, because it is the finding** — plan 2 recorded the difference as deliberate on plan 4’s ownership and plan 4 asserted the same ownership while changing nothing (`bd36733d`), so the difference was owned by nobody until the target absorbed it.
-- **Each row carries its disposition in `detail` before the move** — an archived row’s `check` is one sentence, so the measured half (`CARDS` belongs to the frozen original `editor-shell.html:91`, not the target, and the README requires the current set’s copy to come from `ui-copy.ts`) is written where a session reading the archive finds it.
-- **Registers: `npm run backlog:check` exit 0, 446 items across both registers** — live two rows lighter and archive two heavier, and §7.4 is now asserted by a case that can fail (`toHaveText(/canvas/i)`) rather than by a pin that passes whatever the line says.
+- **`vg-265` is fixed: the state slot’s surface belongs to its controls** — `.vigilia-layer-state:has(button)` now owns the panel fill and the 6px lead-in, so a slot holding nothing paints nothing; every row’s role had been losing its last glyphs (Networ / Storag / Cloc / Tex) to a six-pixel block that drew nothing.
+- **The reservation moved off the key column and onto the row** — it is the row’s `padding-right` now, because the slot covers whatever is last in the row and that column is the role on a row whose selection reads nothing; the arithmetic is unchanged (`4 + 2 + 6 + 26n + 4(n-1)`) and `design-tokens`’ ceiling records the four new sites in place of the three old ones.
+- **The check is geometric, and it asserts the state the captures show** — `composition-panel.spec.ts` reads role against slot on every row at rest, red first at 4px on all ten rows with a 6px slot, and the file’s 11 cases pass on the rebuilt bundle.
+- **The half that is a design decision is filed, not fixed** — an attended row whose reserved strip is wider than its columns can spare runs the role under the slot (45.3px at three controls, 53.8px at four), and the mark, the name’s 6ch floor and the role are each recorded as never yielding, so which one does is `vg-447`.
+- **Gate exit 0 and the captures re-shot** — 255 test files and 3,363 tests passed; the four Composition images beside the drawings were re-taken (`composition-panel-starter`, `-two-hundred`, `-document`, `pane-composition`).
 
 ## Next
 
