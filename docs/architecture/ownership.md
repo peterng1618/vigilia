@@ -117,7 +117,7 @@ two apart is the judgement the map cannot make for itself.
 | Thumbnail capture in the editor | `editor/src/thumbnail-capture.ts` |
 | Shell chrome, rail and panes — the composition root: the persistent host nodes it builds and the `ShellLayout` API it returns | `editor/src/editor-shell/shell-layout.tsx` |
 | **The header's File, Edit and View menus** — the menubar and the Edit menu's own row table | `editor/src/editor-shell/shell-menu-bar.tsx` |
-| **The shell state the imperative session writes and React subscribes to** — the selection snapshot, the `?` sheet and the publish surface, each a store with its hook | `editor/src/editor-shell/shell-stores.ts` |
+| **The shell state the imperative session writes and React subscribes to** — the selection snapshot, the `?` sheet and the publish surface, each a store of its own | `editor/src/editor-shell/shell-stores.ts` |
 | **The host's publishing answer** — whether the LAN is on, the pairing credential, a refusal and a pending toggle, read and toggled in one place | `editor/src/editor-shell/hosting-store.ts` |
 | Shell palette | `editor/src/editor-shell/palette.ts` |
 | Drag-time snapping and smart guides | `editor/src/snap-manager/` |
