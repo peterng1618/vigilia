@@ -423,6 +423,87 @@ test.describe("the per-kind inspector column", () => {
     });
   });
 
+  test("follows the pointer while the opacity slider is dragged, and lands the value once", async ({
+    page,
+  }, testInfo) => {
+    test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+    await page.goto(EDITOR);
+    await page.waitForFunction(() => "vigiliaEditorBridge" in window);
+    await page.locator('[data-vigilia-layer="group-cpu-card"]').click();
+
+    /**
+     * The Layer section's slider as the author reads it: the track's box, the
+     * value well's text, and the value the accessible input carries.
+     *
+     * Read from the row rather than from a locator chain because the control is
+     * three nested divs around a visually hidden `input[type="range"]`, and a
+     * chain that names them by class would pass on a row other than this one.
+     */
+    const slider = async () =>
+      page.evaluate(() => {
+        const input = document.querySelector<HTMLInputElement>(
+          'input[type="range"][data-vigilia-opacity]',
+        );
+        const track = input?.parentElement?.parentElement ?? null;
+        const row = input?.closest('[role="group"]') ?? null;
+        const well =
+          row === null
+            ? null
+            : ([...row.querySelectorAll("span")].find((candidate) =>
+                candidate.classList.contains("font-mono"),
+              ) ?? null);
+        const box = track?.getBoundingClientRect();
+        return {
+          box:
+            box === undefined
+              ? null
+              : { x: box.x, y: box.y, width: box.width, height: box.height },
+          readout: well?.textContent ?? null,
+          input: input?.value ?? null,
+        };
+      });
+
+    const start = await slider();
+    expect(start.box, "the Layer section draws no opacity slider").not.toBeNull();
+    expect(start.readout).toBe("100");
+    const box = start.box ?? { x: 0, y: 0, width: 0, height: 0 };
+    const y = box.y + box.height / 2;
+
+    // **The button stays down across every read.** A slider rendered only from
+    // the committed value reports the same number at all three points and moves
+    // once, on release — which is what an author describing it as updating half
+    // a second late is seeing (vg-449). Nothing here is timed: the claim is
+    // that the number changed while the gesture was still open, and by how much
+    // is the pointer's business.
+    await page.mouse.move(box.x + box.width * 0.75, y);
+    await page.mouse.down();
+    const during: (string | null)[] = [];
+    for (const fraction of [0.6, 0.45, 0.3]) {
+      await page.mouse.move(box.x + box.width * fraction, y);
+      during.push((await slider()).readout);
+    }
+    const held = await slider();
+    await page.mouse.up();
+
+    const [first, second, third] = during.map(Number);
+    // Three readings, all different: a readout that never moved fails here on
+    // its own message rather than on the arithmetic below.
+    expect(
+      new Set(during).size,
+      `the readout did not follow the pointer: ${during.join(", ")}`,
+    ).toBe(3);
+    expect(first).toBeGreaterThan(second as number);
+    expect(second).toBeGreaterThan(third as number);
+    // The hidden range input is the element a screen reader reads, so it moves
+    // with the well rather than only at the end.
+    expect(held.input).toBe(held.readout);
+
+    // One value lands for the gesture, and it is the one the pointer left.
+    await expect
+      .poll(async () => (await slider()).readout)
+      .toBe(during[2]);
+  });
+
   test("draws a remainder slice for a fixed pie total, measured on the canvas", async ({
     page,
   }, testInfo) => {

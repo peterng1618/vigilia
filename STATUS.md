@@ -37,10 +37,10 @@ ledger did.
 
 ## Last completed change
 
-- **`vg-260` is withdrawn on your 2026-10-13 ruling: the mark slot holds at 28px and the attended row's clip is accepted** — the narrower slot was measured first and changed none of that row's numbers (name 28px short, key 41px short at both widths), so the lever is disproved rather than declined.
-- **The clip is now the language's stated trade rather than a silent one** — §7.3 gains "a row yields its name and its key before it yields a control", the normative source item 16's clause needs for a difference that stands instead of being fixed.
-- **Two halves of the finding landed rather than being withdrawn with it** — the instrument (`11d8ce0e`) is what lets a person see the clip at all, and it prices any future width in one run.
-- **Item 16's plan-4 list is down to `vg-269`** — and your other ruling this turn, the D5 criterion, is the union rule: a test file joins the gated list if it imports the shell's modules or drives it in a browser.
+- **`vg-449` is fixed on your 2026-10-13 report that slider adjustments take half a second to show** — the inspector's Opacity slider did not follow the pointer at all: `ControlSlider` is a controlled slider whose preview half no caller wires (`SelectionEdits` has no preview route), so with nothing feeding the drag position back the thumb could not move until the gesture ended.
+- **The control now owns the gesture's own value** — a `dragging` state drives the thumb and the readout, cleared by the commit and by Escape's cancel so a refused write cannot strand it; `onPreview` stays for a caller that also wants a live preview elsewhere.
+- **The regression is a browser case, not a unit one** — "the drag itself is the browser fixture's business" was the old comment, and nothing proved it; `inspector-sections.spec.ts` now drags the real slider with the button held and reads the well between moves, failing at "the readout did not follow the pointer: 100, 100, 100" with the fix disabled and reading three descending values with it.
+- **The hover half of that report is a constant rather than a stall, and is filed as `vg-450`** — `HOVER_DELAY_MS = 600`; the editor at rest is clean (2,783 animation frames with one over 40ms, four long tasks totalling 374ms, all during load), so `<500ms` is scheduled, not made.
 
 ## Next
 

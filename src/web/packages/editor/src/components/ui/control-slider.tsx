@@ -1,6 +1,6 @@
 import { Slider } from "@base-ui/react/slider";
 import type * as React from "react";
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   type ControlProps,
   ControlRow,
@@ -18,6 +18,14 @@ import {
  * value reaches `onCommit` when the gesture ends, and Escape ends it with
  * `onCancel` and no commit at all. Base UI's commit does not fire when the
  * value did not change, so a press that moves nothing adds nothing.
+ *
+ * **The gesture's own value is this control's state.** A controlled slider
+ * renders from `value`, and every caller here implements `onCommit` alone —
+ * `SelectionEdits` has no preview route — so with nothing feeding the moving
+ * value back the thumb could not move until the gesture ended and the value
+ * landed, which is what the author saw as a slider that updates half a second
+ * late (vg-449). `onPreview` stays for a caller that also wants a live preview
+ * elsewhere; the pointer no longer depends on one being supplied.
  *
  * The value well is a readout of the slider, not a second input: the well shows
  * the value the control edits, and the slider is the edit route.
@@ -54,6 +62,11 @@ export function ControlSlider(
   // clears it, which is what stops a stale cancel from eating a later commit.
   const pressing = useRef(false);
   const cancelled = useRef(false);
+  // What the pointer is holding, until the committed value arrives. The two are
+  // cleared together at the end of the gesture, so a refusal — which writes
+  // nothing — cannot strand the thumb on a value the document never took.
+  const [dragging, setDragging] = useState<number | null>(null);
+  const shown = dragging ?? value;
   // Base UI's slider is not the accessible element: the nested `input[type=range]`
   // is, and most aria props land on the thumb `div` beside it. So the refusal
   // state is written onto the input directly, or a screen reader never hears it.
@@ -82,7 +95,7 @@ export function ControlSlider(
   return (
     <ControlRow ids={ids} label={label} refused={refused} density={density}>
       <Slider.Root
-        value={value}
+        value={shown}
         min={min}
         max={max}
         disabled={disabled}
@@ -99,6 +112,7 @@ export function ControlSlider(
           event.preventDefault();
           pressing.current = false;
           cancelled.current = true;
+          setDragging(null);
           onCancel?.();
         }}
         onValueChange={(next, details) => {
@@ -109,10 +123,12 @@ export function ControlSlider(
             return;
           }
           if (details.reason === "keyboard") cancelled.current = false;
+          setDragging(next);
           onPreview?.(next);
         }}
         onValueCommitted={(next) => {
           pressing.current = false;
+          setDragging(null);
           if (cancelled.current) {
             cancelled.current = false;
             return;
@@ -141,7 +157,7 @@ export function ControlSlider(
         <span
           className={`${wellClasses(density, blocked)} w-[36px] flex-none justify-end font-mono text-sm text-text`}
         >
-          {value}
+          {shown}
         </span>
       </Slider.Root>
     </ControlRow>
