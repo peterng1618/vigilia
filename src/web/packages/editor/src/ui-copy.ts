@@ -215,7 +215,11 @@ export const uiCopy = {
     sizeDisagrees: (box: string, drawn: string) =>
       `Size is the box the text was authored in (${box}). The object measures ${drawn}.`,
     invalidValue: "That value cannot be applied to the selection.",
-    nothingSelected: "Select an object to inspect it.",
+    /** §7.4: the empty column "says where to choose from" (`DESIGN.md:279`),
+        which needs the place named — "select an object" said the act and not
+        where to do it. The canvas is the surface existing objects are chosen
+        on; the Add pane inserts new ones, which is a different act. */
+    nothingSelected: "Select an object on the canvas to inspect it.",
     /** Shown instead of any field when the selection is locked. */
     locked: "This object is locked. Unlock it to edit it.",
     /** Crop, on a selected image. The session owns the drag and the refusals;

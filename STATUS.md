@@ -37,10 +37,10 @@ ledger did.
 
 ## Last completed change
 
-- **`vg-444` is closed and its row moved to the archive** — the two halves are answered separately, which is why it was not closed last commit: the section header's trailing rule is implemented (`inspector-section.tsx`, `data-vigilia-section-rule`), and the read-only rows' omitted dashed divider is backed by a rule the census had missed, `selection-inspector/column.tsx:191-194` citing §5.1.
-- **The close passes the gate that reads it, not just a green suite** — `backlog-check` requires the `check` to name a word from the row's own title *and* the sha to resolve and be an ancestor of HEAD, so the row carries `9bff9ffd` and a check naming the drawing's rule; `npm run backlog:check` exit 0, 446 items across both registers.
-- **The live register had lost its trailing newline, and a scripted edit of an earlier session dropped it** — `move-row.mjs` refuses to splice a file that does not end in one, so the byte was restored before the move rather than the guard relaxed; the guard is what keeps a partial write from leaving a half-line row.
-- **`vg-443` stays open on purpose, and is the user's** — `--shell-display` is a deliberately-applied chrome idiom (the brand mark, the dialog lead, the panel and inspector headings, one of those rules carrying the recorded decision), so the serif heading is a question about an undrawn chrome face rather than an oversight.
+- **`vg-446` is fixed rather than left filed: the empty column now names the place** — `ui-copy.ts`'s `nothingSelected` reads "Select an object on the canvas to inspect it."; §7.4 requires the empty column to "say where to choose from" (`DESIGN.md:279`) and the old line named the act, not the surface.
+- **The case named for §7.4 can finally fail** — `inspector-sections.spec.ts` asserted the literal, so it passed whatever the literal said, which is how the clause was counted met by a check that could not register a regression; it now asserts the place the line names (`/canvas/i`), and **the red is recorded**: against the pre-fix bundle it failed `unexpected value "Select an object to inspect it."`, and passes after the rebuild (spec file 12 passed, exit 0).
+- **`vg-445`'s other half is not a difference against the target, measured** — the current drawings' Add headings are singular at `shell.html:63`, `:96`, `:116` and `:128` (uppercase by CSS), and the drawings README requires the current set's copy to be taken from `ui-copy.ts`; the plural `CARDS` belongs to the frozen original `editor-shell.html:91`, which the README says is the record and not the target.
+- **Gate: exit 0** — `npm run gate` from `src/web`, 255 test files and 3,363 tests passed, `design-md --lint --sync --cite` clean over 315 citation sources; the bundle was rebuilt (`build` then `build:fixture`) because Playwright previews `dist`.
 
 ## Next
 

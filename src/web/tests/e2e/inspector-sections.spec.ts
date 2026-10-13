@@ -700,12 +700,15 @@ test.describe("the per-kind inspector column", () => {
     await page.waitForFunction(() => "vigiliaEditorBridge" in window);
     await openBlank(page);
 
-    // The provenance of this string is pinned in jsdom, where it is compared
+    // §7.4's requirement is a property of the line, not its spelling: "the
+    // column is empty and says where to choose from" (`DESIGN.md:279`). A pin
+    // on the literal passes whatever the literal says, so the case named for
+    // the clause could not fail while the line named no place — `vg-446`.
+    // The string's provenance stays pinned in jsdom, where it is compared
     // against `uiCopy.inspectorFields.nothingSelected` itself
-    // (`selection-inspector/index.dom.test.ts`); the browser's job is the one
-    // the unit test cannot do — that the line is the one an author reads.
+    // (`selection-inspector/index.dom.test.ts`).
     await expect(page.locator("[data-vigilia-nothing-selected]")).toHaveText(
-      "Select an object to inspect it.",
+      /canvas/i,
     );
     expect(await sectionIds(page)).toEqual([]);
     await expect(page.locator("[data-vigilia-geometry]")).toHaveCount(0);
