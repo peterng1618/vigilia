@@ -96,13 +96,23 @@ function overlap(a: Box, b: Box): number {
 
 const HOST = `http://127.0.0.1:${HOST_PORT}`;
 
-test("a strip that arrives after the fit takes its room then", async ({
+test("a notice that arrives after the fit does not move the composition", async ({
   page,
 }) => {
   // The availability strip is raised from the refresh cadence, not at mount
   // (`main.ts:220-222`), so on a real display the first fit happens with no
   // chrome. This is that display: its only binding is a key no provider on this
   // PC reports.
+  //
+  // **The fit must not change when it appears** (vg-028, measured and ruled
+  // 2026-10-14). A strip in flow takes its room from the artboard, the scene's
+  // `ResizeObserver` re-fits, and the whole composition moves 16-25px as the
+  // notice arrives and back as it leaves — read off the built display's own
+  // pixels at 1920x1080. A transport or availability notice can flash on any
+  // reconnect, so it overlays its edge instead: the host keeps the viewport's
+  // height and the notice covers the artboard while it is up. That is the
+  // assertion this replaces (`painted.h` strictly less than the viewport, and
+  // no strip over the artboard), which is what the flow behaviour measured.
   //
   // `&data=live` is load-bearing: the demo source fabricates a reading for
   // every key it is asked for, and the availability notice is raised on the
@@ -116,23 +126,19 @@ test("a strip that arrives after the fit takes its room then", async ({
   });
 
   const geometry = await chromeGeometry(page, { width: 640, height: 360 });
-  for (const strip of geometry.strips) {
-    expect(
-      overlap(strip.box, geometry.painted),
-      `${strip.id} over the artboard`,
-    ).toBe(0);
-  }
-  // The artboard took the room the strip needed rather than being covered: it
-  // no longer fills the viewport's height, and still fills its host.
-  await expect
-    .poll(
-      async () =>
-        (await chromeGeometry(page, { width: 640, height: 360 })).painted.h,
-      {
-        timeout: 10_000,
-      },
-    )
-    .toBeLessThan(PHONE.landscape.height);
+  // The whole viewport, exactly as a display with nothing to say gets it: a
+  // fit that moved here is the slide the author reported.
+  expect([geometry.host.w, geometry.host.h]).toEqual([
+    PHONE.landscape.width,
+    PHONE.landscape.height,
+  ]);
+
+  const [strip] = geometry.strips;
+  if (strip === undefined) throw new Error("the notice was not drawn");
+  expect(strip.id).toBe("vigilia-availability");
+  // At the display's top edge, over the artboard rather than beside it.
+  expect(strip.box.y).toBe(0);
+  expect(overlap(strip.box, geometry.painted)).toBeGreaterThan(0);
 });
 
 test("two strips at once leave the artboard more than half the phone", async ({
@@ -189,12 +195,19 @@ test("two strips at once leave the artboard more than half the phone", async ({
   // The ceiling's own number, said once: past half the screen the conversation
   // is about the design, not about this test.
   expect(chrome).toBeLessThan(PHONE.portrait.height / 2);
-  for (const strip of geometry.strips) {
-    expect(
-      overlap(strip.box, geometry.painted),
-      `${strip.id} over the artboard`,
-    ).toBe(0);
+  // One of each kind, and the two are treated differently on purpose: the crop
+  // strip describes the composition and is told once, so it keeps taking room;
+  // the transport notice can flash, so it overlays and the host keeps its
+  // height (vg-028). Both halves are asserted, because "the chrome no longer
+  // covers the artboard" is now true of one of them only.
+  const boxes = new Map(geometry.strips.map((strip) => [strip.id, strip.box]));
+  const crop = boxes.get("vigilia-crop");
+  const connection = boxes.get("vigilia-connection");
+  if (crop === undefined || connection === undefined) {
+    throw new Error("this display should carry both strips");
   }
+  expect(overlap(crop, geometry.painted), "the crop strip took room").toBe(0);
+  expect(geometry.host.h).toBe(PHONE.portrait.height - crop.h);
 });
 
 test("a display with nothing to say is a display unchanged", async ({

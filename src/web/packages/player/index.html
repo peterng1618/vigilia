@@ -24,9 +24,12 @@
         overflow: hidden;
       }
       /* The display is one column: the chrome's two bands, and the artboard
-         between them. A strip in a band is in flow, so a diagnostic takes its
-         room *from* the artboard rather than over it. An empty band is zero
-         tall, so a display with nothing to say is a display unchanged. */
+         between them. A strip in a band is in flow, so the composition's own
+         chrome takes its room *from* the artboard rather than over it, and an
+         empty band is zero tall — a display with nothing to say is a display
+         unchanged. A notice that can flash is `position:fixed` instead
+         (`chrome.ts`), because taking room re-fits the scene and moves the
+         whole picture (vg-028). */
       body {
         display: flex;
         flex-direction: column;

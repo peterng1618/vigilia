@@ -21,6 +21,17 @@ import { uiCopy } from "./ui-copy.js";
  * column out, and the scene's own `ResizeObserver` (`main.ts`) refits to the
  * box that is left. Nothing here decides what a strip says either — the words
  * and the colours are `ui-copy.ts`'s and the counting is `scene-fabric`'s.
+ *
+ * **Room is for the composition's own chrome; a notice that comes and goes
+ * overlays instead.** Taking room re-fits the scene, and a re-fit moves the
+ * whole picture: measured on the built player at 1920×1080, a 29px strip takes
+ * the artboard from 1051 to 1022 and moves the ink 16–25px, right when the
+ * notice arrives and left when it leaves (vg-028, measured and ruled
+ * 2026-10-14). That is the right trade for the crop strip, which is told once
+ * and describes what the display is showing; it is the wrong one for a
+ * transport or availability notice, which can flash on any reconnect and would
+ * move a dashboard nobody touched. So those two `overlay` — they sit at the
+ * display's edge and the composition stays put.
  */
 
 type ChromeSide = "top" | "bottom";
@@ -56,6 +67,12 @@ export function putStrip(input: {
   readonly text: string;
   readonly background: string;
   readonly color: string;
+  /** A notice that can flash: fixed to the display's edge rather than laid out
+   *  in the band, so raising or clearing it cannot re-fit the scene (see the
+   *  module comment). The `z-index` is what puts it over the artboard — the top
+   *  band precedes `#artboard` in `index.html`, and Fabric's wrapper is
+   *  positioned, so without one the canvas would paint over the notice. */
+  readonly overlay?: boolean;
 }): HTMLElement {
   removeStrip(input.id);
 
@@ -65,6 +82,9 @@ export function putStrip(input: {
   strip.textContent = input.text;
   strip.style.cssText =
     `${stripInset(input.side)};text-align:center;` +
+    (input.overlay === true
+      ? `position:fixed;left:0;right:0;z-index:1;${input.side}:0;`
+      : "") +
     `background:${input.background};color:${input.color};` +
     "font:12px/1.4 ui-monospace,monospace;letter-spacing:0.02em";
 
@@ -103,6 +123,9 @@ export function showAvailabilityNotice(
     text,
     background: "#3a2a00",
     color: "#ffce6a",
+    // A reading can come back at any cadence, so this one must not move the
+    // composition when it clears.
+    overlay: true,
   });
   strip.dataset["vigiliaAvailability"] = "";
 }
@@ -162,6 +185,9 @@ export function showConnectionState(
         : uiCopy.connection.reconnecting,
     background: refused ? "#4a0000" : "#003a4a",
     color: refused ? "#ff9a9a" : "#7fdce9",
+    // The one that flashes most: a reconnect raises it and the next batch
+    // clears it, which is what a reader sees as the dashboard jumping.
+    overlay: true,
   });
 }
 

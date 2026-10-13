@@ -153,6 +153,39 @@ describe("the strips the display is told by", () => {
     expect(stripsIn("bottom")).toHaveLength(0);
   });
 
+  it("overlays the notices that can flash, and leaves the crop strip in flow", () => {
+    // A strip in flow takes room, and taking room re-fits the scene: 16-25px of
+    // movement on the built display, right as the notice arrives and left as it
+    // leaves (vg-028). The transport and availability notices do that on any
+    // reconnect, so they are fixed to the display's edge instead; the crop strip
+    // describes the composition and is told once, so it keeps its room.
+    showConnectionState("reconnecting", 3);
+    expect(document.getElementById("vigilia-connection")?.style.position).toBe(
+      "fixed",
+    );
+
+    showCropNotice(
+      {
+        canvas: {
+          getObjects: () => [
+            {
+              visible: true,
+              get: () => undefined,
+              getBoundingRect: () => ({
+                left: 0,
+                top: 0,
+                width: 2000,
+                height: 100,
+              }),
+            },
+          ],
+        },
+      } as unknown as FabricSceneHandle,
+      { width: 1024, height: 768 },
+    );
+    expect(document.getElementById("vigilia-crop")?.style.position).toBe("");
+  });
+
   it("says nothing at all when there is nothing to say", () => {
     // The quiet display: a connection that is live raises no strip, and a theme
     // whose objects are inside its artboard raises no crop strip.
