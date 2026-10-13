@@ -68,7 +68,12 @@ function Inspector({
   return (
     <div className="flex flex-col">
       <div className="flex flex-col gap-[var(--space-4)] border-b border-edge pb-[var(--space-8)]">
-        <span className="text-md text-text">{view.subject.name}</span>
+        <span
+          className="text-md font-semibold text-text"
+          data-vigilia-subject-name=""
+        >
+          {view.subject.name}
+        </span>
         <span className="text-xs text-muted">{view.subject.kindLine}</span>
       </div>
       {view.locked ? (

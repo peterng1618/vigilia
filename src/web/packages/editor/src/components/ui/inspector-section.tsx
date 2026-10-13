@@ -72,7 +72,7 @@ export function InspectorSection(props: {
           {count === undefined ? null : (
             <span
               data-vigilia-section-count=""
-              className="text-2xs text-muted tabular-nums"
+              className="text-2xs font-mono text-faint tabular-nums"
             >
               {count}
             </span>

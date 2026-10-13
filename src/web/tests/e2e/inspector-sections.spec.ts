@@ -632,6 +632,50 @@ test.describe("the per-kind inspector column", () => {
     await expect(page.locator("[data-vigilia-crop]")).toHaveCount(0);
   });
 
+  test("the section count takes §2's mono and §4's faint, and the subject name §2's 600", async ({
+    page,
+  }, testInfo) => {
+    test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+    await page.goto(EDITOR);
+    await page.waitForFunction(() => "vigiliaEditorBridge" in window);
+    await openBlank(page);
+    await addChart(page, {
+      family: "Line",
+      name: "line",
+      x: 100,
+      y: 100,
+      w: 300,
+      h: 200,
+      series: ["cpu.load"],
+    });
+
+    // Plan 1's parity census (`vg-390`) re-derived these two from
+    // `docs/design/mockups/current/controls.html`: `:30` draws the header's
+    // count in `ui-monospace` and `var(--faint)`, and `:24` draws the subject's
+    // name at weight 600. §2 gives counts to UI mono (`DESIGN.md:124`) and
+    // titles 600 (`:149`); §4 gives `--faint` to counts (`:103`). Both were
+    // inherited before this case existed — the count took the heading's sans
+    // and `--muted`, the name the shell's 400.
+    const count = page.locator("[data-vigilia-section-count]").first();
+    await expect(count).toBeVisible();
+    expect(
+      await count.evaluate((el) => getComputedStyle(el).fontFamily),
+    ).toMatch(/mono/i);
+    // Read against the header's own chevron, which §5 already draws in
+    // `--faint`, so this holds in every palette rather than in one.
+    const chevron = page
+      .locator('[data-vigilia-section="position"] span[aria-hidden]')
+      .first();
+    expect(await count.evaluate((el) => getComputedStyle(el).color)).toBe(
+      await chevron.evaluate((el) => getComputedStyle(el).color),
+    );
+
+    await expect(page.locator("[data-vigilia-subject-name]")).toHaveCSS(
+      "font-weight",
+      "600",
+    );
+  });
+
   test("names where to choose from when nothing is selected", async ({
     page,
   }, testInfo) => {
