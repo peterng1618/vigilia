@@ -776,13 +776,17 @@ which is a plan artifact rather than this spec's own statement.
   for the plan's closure condition"*: six of its differences are `fix` with
   owners outside that plan, and they are open rows today (`vg-316`, `vg-319`,
   `vg-322`, `vg-325`, and `vg-274`'s spacing pass), two of them waiting on the
-  user's rulings. **Plans 1 and 3 took their capture half on 2026-10-13**:
-  `controls-capture-graphite.png` and `controls-capture-editorial.png` now sit
-  in `current/` beside those two drawings (`988d1788`), so the item's first
-  clause is met for both. The rest of the item is not: no `.superpowers/sdd/`
-  workspace survives for either, and the archived ledger records that plan 1's
-  ten differences "no longer exist anywhere" — so the comparison the second
-  clause asks for can no longer be made, which is `vg-390`.
+  user's rulings. **The capture half is now placed for every drawing**:
+  `controls-capture-graphite.png` and `controls-capture-editorial.png` sit in
+  `current/` beside `controls.html` and `controls-light.html` (`988d1788`), and
+  `settings-keyboard-capture-*.png` and `settings-about-capture-*.png` were
+  added beside their comparators while the modal's existing two were re-shot, so
+  all six drawings carry a capture pair (`e412c98d`). What the item still lacks
+  is the other half: no `.superpowers/sdd/` workspace survives for plans 1 or 3,
+  and the archived ledger records that plan 1's ten differences "no longer exist
+  anywhere" — so the comparison the second clause asks for can no longer be
+  made, which is `vg-390`. No durable record names a capture for plans 2, 4 or 5
+  either, which is that same row's question.
   **What discharges it:** the
   ruling on the settings frame's width and on which role a palette preview bar
   depicts, the work on the other `fix` differences, and a decision on the
