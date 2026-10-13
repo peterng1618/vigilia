@@ -728,7 +728,12 @@ necessary, never sufficient; §13.1's interaction and stress proof also applies.
 Counted on 2026-10-12 by running each item's own check rather than reading its
 annotation, which is §13.1's rule for closing one — a named check and the rebuilt
 commit. Fifteen hold; the last does not, and it is the only thing keeping the
-redesign objective open. Until this section carried them, fifteen of the sixteen
+redesign objective open. **Reviewed on 2026-10-13, which is a different act from
+counting**: every row this section names as open was looked up in the register,
+and two named blockers had already been discharged — the palette preview bar's
+role, ruled by the user and landed on 2026-10-11 (`vg-321`), and `vg-325`, named
+open after it had closed. Neither changes the verdict; both were costing a reader
+a ruling that no longer existed. Until this section carried them, fifteen of the sixteen
 verdicts lived only in the archived acceptance ledger of plan 6
 ([`plans/archive/2026-10-08-iconography-and-copy.md`](../plans/archive/2026-10-08-iconography-and-copy.md)),
 which is a plan artifact rather than this spec's own statement.
@@ -774,9 +779,14 @@ which is a plan artifact rather than this spec's own statement.
   by a cited rule** — **NOT MET**. Plans 6, 7 and 8 have their captures
   registered. Plan 8's own completion report rules the second clause *"NOT met
   for the plan's closure condition"*: six of its differences are `fix` with
-  owners outside that plan, and they are open rows today (`vg-316`, `vg-319`,
-  `vg-322`, `vg-325`, and `vg-274`'s spacing pass), two of them waiting on the
-  user's rulings. **The capture half is now placed for every drawing**:
+  owners outside that plan, and the rows that carry them are open today
+  (`vg-316`, `vg-319`, `vg-322`, and `vg-274`'s spacing pass), two of them
+  waiting on the user's rulings. **`vg-325` was named here among them and is not
+  one**: it is `verified` against `6f9b3492` and `c64ac390` in
+  `2026-10-11-settings-parity.md`, and it had already closed when this list was
+  written on 2026-10-12 — the row's own red proof reverts `.editor-shell-rail`'s
+  `gap` to `3px` and reads the product-side failure naming the drawing's `4px`.
+  So the differences this clause still waits on are four rows, not five. **The capture half is now placed for every drawing**:
   `controls-capture-graphite.png` and `controls-capture-editorial.png` sit in
   `current/` beside `controls.html` and `controls-light.html` (`988d1788`), and
   `settings-keyboard-capture-*.png` and `settings-about-capture-*.png` were
