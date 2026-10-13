@@ -44,14 +44,19 @@ and both are produced by the registered actions above: the first by
 is the same state on the drawing's own ground, from `captures the shell glyphs
 and words with the Add pane open`.
 
-**Plan 8's pair sits beside `settings.html` the same way**, and is the state that
-drawing draws — its Appearance panel, the only view it holds, in the drawing's
-own palette and in the light ground a hard-coded hex would show on:
+**Plan 8's captures sit beside the three settings drawings the same way**, one
+pair per sheet, all of them produced by `captures the settings modal's three
+tabs` (the `settings-appearance` file, with and without `-editorial`).
+`settings.html` draws the Appearance panel alone, so
 `docs/design/mockups/current/settings-capture-graphite.png` and
-`settings-capture-editorial.png`, produced by `captures the settings modal's
-three tabs` (the `settings-appearance` file, with and without `-editorial`). A
-PNG beside a drawing is skipped by the drawings gate rather than parsed — it
-enumerates `*.html` (`tests/e2e/mockup-values.ts`'s `currentDrawings`).
+`settings-capture-editorial.png` are that panel in the drawing's own palette and
+in the light ground a hard-coded hex would show on; `settings-keyboard.html` and
+`settings-about.html` are the comparators plan 8 Task 4 added for the modal's
+other two panels, so `settings-keyboard-capture-graphite.png`,
+`settings-keyboard-capture-editorial.png`, `settings-about-capture-graphite.png`
+and `settings-about-capture-editorial.png` are those panels. A PNG beside a
+drawing is skipped by the drawings gate rather than parsed — it enumerates
+`*.html` (`tests/e2e/mockup-values.ts`'s `currentDrawings`).
 
 **Plans 1 and 3's control-set pair sits beside the controls drawings the same
 way**: `docs/design/mockups/current/controls-capture-graphite.png` is the set on
