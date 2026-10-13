@@ -817,7 +817,7 @@ pass is a smoke test over the same bundle, not the check.
   all fixed, the last of them on 2026-10-13. **The clause is every plan's, and
   that count is plan 8's alone**: measured across all eight on 2026-10-13
   (`vg-390` carries the census), plans 2, 4 and 7 also list differences whose
-  owner is an open row — `vg-227`, `vg-222`, `vg-225` and `vg-230` in plan 2,
+  owner is an open row — `vg-222`, `vg-225` and `vg-230` in plan 2,
   `vg-260` and `vg-269` in plan 4, `vg-308`, `vg-310` and
   `vg-274` in plan 7 — while plans 3, 5 and 6 list none an open row owns, plan
   3's four surviving in `9ee1fc21`'s body. **Every one of those rows is a row
@@ -829,7 +829,14 @@ pass is a smoke test over the same bundle, not the check.
   verified at `7588f5bc`, its decision having moved one state further in to
   `vg-447`; `vg-270` was a difference that no longer existed (`0e7b3405` gave
   the well's column row its `min-w-0`) and is verified at `8eff3abf`, where a
-  red proof against that same declaration reproduces it; the two
+  red proof against that same declaration reproduces it. **`vg-227` left the
+  list on 2026-10-13 by the other route — a ruling implemented rather than a
+  choice dissolved**: its 2026-10-12 ruling took the rail's slot to 36px and
+  gave §5 a **Rail slot** row rather than stretching the icon button's range, so
+  the one control larger than an icon button now has a vocabulary entry of its
+  own; it is verified at `64871ccd`, where a browser case pins the slot's width
+  and the accent bar's re-derived offset together and reddens on either moving
+  back. The two
   the sessions cannot reach are `vg-316`, a Phase 2 work
   row whose residue is the `DESIGN.md` decision `vg-441`, and plan 1's ten,
   whose owner no record holds. **The capture half is now placed for every drawing**:
