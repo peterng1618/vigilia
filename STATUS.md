@@ -37,10 +37,9 @@ ledger did.
 
 ## Last completed change
 
-- **`vg-316`'s open question is answered, and its own record was wrong about it** — `--vigilia-control-bg` IS the control set's own resting fill, measured at seven palette declarations and five consuming rule-blocks, every one of them in `editor-shell.css` (`:1317`, `:1332`, `:1353`, `:1587`, `:1782`), so the divergence is systemic across the control set rather than a Close-button slip.
-- **Task 2.4b's last line is false of the row's first instance** — "the fill is the divergence and the text colour is not" generalises the Keyboard instance's finding: the Close's own label measures rgb(16, 33, 25) (`--shell-text`) against the drawing's `--muted`, and its padding is `6px 12px` against the drawing's 4px 12px, so a fixer reading that line alone would repaint one property and leave two.
-- **The close path the row states is not available, and the gap behind that is filed as `vg-441`** — `button` occurs in DESIGN.md only at `:110`, `:150` and `:203`, always as the primary one, and §5's closed vocabulary holds no labelled button, so the Close's shape is governed by no cited rule on either side and `vg-316` needs a DESIGN.md decision, not a §4 colour-role correction.
-- **What the two checks say**: `npm run backlog:check` exit 0 (441 items across both registers, all valid) and `npm run status:check` exit 0; the change touches `docs/product/backlog.jsonl` and this file alone.
+- **The spec's item-16 discharge clause now names the cause rather than one of its symptoms** — `vg-316`'s gap is filed on that clause as `vg-441`: DESIGN.md defines no labelled button at all, so the row waits on a DESIGN.md decision and not, as the clause read, on a §4 colour-role correction.
+- **One stale word in the same section is corrected with it** — the row list's "`vg-274`'s spacing pass" becomes "gate membership", which is what the section's own discharge sentence already calls that row.
+- **What the check says**: `npm run design:check` exit 0 — lint clean in DESIGN.md, DESIGN.md and `editor-shell.css` clean, 315 citation sources clean.
 
 ## Next
 

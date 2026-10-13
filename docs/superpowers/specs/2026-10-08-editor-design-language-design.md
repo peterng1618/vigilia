@@ -805,7 +805,7 @@ pass is a smoke test over the same bundle, not the check.
   registered. Plan 8's own completion report rules the second clause *"NOT met
   for the plan's closure condition"*: six of its differences are `fix` with
   owners outside that plan, and the rows that carry them are open today
-  (`vg-316`, `vg-319`, `vg-322`, and `vg-274`'s spacing pass), two of them
+  (`vg-316`, `vg-319`, `vg-322`, and `vg-274`'s gate membership), two of them
   waiting on the user's rulings. **`vg-325` was named here among them and is not
   one**: it is `verified` against `6f9b3492` and `c64ac390` in
   `2026-10-11-settings-parity.md`, and it had already closed when this list was
@@ -842,7 +842,15 @@ pass is a smoke test over the same bundle, not the check.
   for the user:** `vg-316` is the control set's own fill, re-measured on
   2026-10-13 and confirmed a decision rather than a fix — the token carries
   three palettes' tints and editorial's licensed equal rung, so "use `--panel2`"
-  would kill the tints or blank the controls in editorial. `vg-319`'s two
+  would kill the tints or blank the controls in editorial. **The gap behind that
+  row is filed as `vg-441`, and it is why the close path the row states is not
+  available**: DESIGN.md defines no labelled button at all — `button` occurs at
+  `:110`, `:150` and `:203` and always as the primary one, and §5's vocabulary is
+  closed with no labelled button in it — so the Close's fill is one of three
+  divergent properties on a control no rule assigns, and neither the product's
+  treatment nor the drawing's can be called wrong by a cited rule; the row now
+  waits on a DESIGN.md decision rather than on a §4 colour-role correction.
+  `vg-319`'s two
   remaining facts are each one sentence on the row now: §2 **reserves** uppercase
   for the shell surfaces it names, and §5 rule 2's **escape clause** may already
   cover the read-only row both sheets draw with a 16px gap. `vg-274`'s subject is
