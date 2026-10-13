@@ -1082,6 +1082,61 @@ Rows: `vg-152`, `vg-161`.
 
 ---
 
+## 11. The ruled work no phase took
+
+**D5's ruling of 2026-10-12 produced work this plan never carried.** Measured on 2026-10-13 (`vg-228`, `vg-286`): none of D5's five rows appears in any phase list, and the plan's closing rule lets a ruled row close only on the phase that lands its change. The criterion the ruling left open — what "a test file that renders the shell" means to a checker — was put to the user on 2026-10-13 and answered: **everything that renders or drives the shell**. Phase 11 exists to land that, and its rows are D5's three the criterion settles (`vg-228`, `vg-267`, `vg-286`).
+
+The other two are not in it, and the reason is written on them: `vg-271`'s question is the Acceptance item's wording, and `vg-274`'s is whether `editor-shell.css` joins the gated list — neither is a membership question, so neither is answered by the criterion.
+
+### Task 11.1: The membership rule, and the test files that render the shell
+
+**Files:**
+- Modify: `scripts/design-tokens.mjs`, `scripts/design-tokens.gated.json`
+- Test: the checker's own self-test, `node scripts/design-tokens.mjs --self-test`
+
+**Interfaces:**
+- Consumes: the 2026-10-13 criterion as recorded on `vg-228`
+- Produces: a gated set whose test half is derived on every run; the selection the later two tasks convert
+
+- [ ] **Step 1: Derive the test half of the gated set.** Every `*.dom.test.tsx` under `src/web` (a test file that renders the shell) and every Playwright spec under `src/web/tests/e2e/` that opens the editor preview (a test file that drives it) joins the set the checker scans; the test-file entries leave `design-tokens.gated.json`, which keeps its source files, so the rule is test membership's single owner. The existing empty-set guard covers the derived half: a rule that selects nothing fails rather than passing.
+- [ ] **Step 2: Extend the self-test over both halves** on a scratch tree — a selected file is scanned and an unselected one is not — so the rule's firing is proved without the repo's own files being the proof.
+- [ ] **Step 3: Red-proof the rule.** A literal planted in a `*.dom.test.tsx` and in a driving spec reads red naming both; the same tree with the rule removed reads green, which is what says the rule is what caught it.
+- [ ] **Step 4: Make the selected `*.dom.test.tsx` files clean**, which is 10 files and 44 literals today. Fixture data moves to a fixture module beside its test — the repo's existing pattern (`glass-fixture.ts`, `host-theme.ts`) — and an assertion that pins a rendered product value reads that value's owner rather than restating it. No literal is silenced by a comment and no assertion is weakened to pass.
+- [ ] **Step 5: Run `npm run gate`, then commit** with the counts: files the rule selects, files converted, literals converted.
+
+**Acceptance:** the selection is derived on every run and printed by the checker; every selected `*.dom.test.tsx` is clean, so the gate's exit code is the evidence; the self-test covers both halves of the rule.
+**Failure modes:** a rule that selects nothing and passes; a fixture moved to dodge the rule while the product value it pins stays unowned; an assertion deleted rather than re-owned.
+
+### Task 11.2: The driving specs, and what a spec may restate
+
+**Files:**
+- Modify: the Playwright specs that open the editor and carry literals
+
+**Interfaces:**
+- Consumes: Task 11.1's rule
+- Produces: every driving spec clean; `vg-286`'s six measured violators among them
+
+- [ ] **Step 1: Convert the driving specs' literals** — 12 files and roughly 102 literals at Task 11.1's landing, `design-language.spec.ts` the largest by far. Fixture data moves to a fixture module; a spec that pins a rendered value reads the owner of that value.
+- [ ] **Step 2: Where a spec's literal is the drawing's own value** (`design-language.spec.ts` compares the product to `docs/design/mockups/`), the value comes from the drawing reader rather than from a second copy of the number, so the instrument keeps one source.
+- [ ] **Step 3: Run the affected specs one file at a time** on a rebuilt bundle (`--workers=1`), then `npm run gate`.
+- [ ] **Step 4: Commit**, naming the files converted and the literals removed.
+
+**Acceptance:** the gate is green with the rule in place and no spec skipped, narrowed or deleted to get there.
+**Failure modes:** a spec weakened into passing; a parity comparison that stops comparing; fixtures moved wholesale so the rule's coverage reads wider than it is.
+
+### Task 11.3: Close D5's three
+
+**Files:**
+- Modify: both register files, `STATUS.md`
+
+- [ ] **Step 1: Close `vg-228`, `vg-267` and `vg-286`** as `verified`, each with a `check` naming a word from its own title and `artefacts` naming Task 11.1's and 11.2's commits.
+- [ ] **Step 2: Leave `vg-271` and `vg-274` open**, and say on each line which question survives — the Acceptance item's wording, and the stylesheet's membership.
+- [ ] **Step 3: `npm run backlog:check`, `npm run status:check`, commit.**
+
+**Acceptance:** the three carry a check that names their own subject and a resolvable ancestor sha; the two left open say why in their own lines.
+
+---
+
 # Parked rows — held, not a phase
 
 `vg-330` is parked by the user (2026-10-11) and `vg-322` is parked transitively: it closes when `vg-330` does and carries no independent work. **No phase owns them.** `vg-322`'s rule in §5.1's owner table stays unbuilt until `vg-330` is unparked, and W9's `vg-292`/`vg-293` are independent of it. They are named in the drain's final report so the count is legible: 22 closed, 0 withdrawn unless a D9 ruling withdraws one, 109 worked, 2 parked.
