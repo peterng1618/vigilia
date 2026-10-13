@@ -37,11 +37,11 @@ ledger did.
 
 ## Last completed change
 
-- **`vg-260`'s ruling was measured rather than implemented, and the measurement disproves its lever** — narrowing the kind slot 28px→20px leaves the attended four-control row's own numbers *identical* (name 28px short, key 41px short at both widths), so the slot is held at 28px and the decision goes back to the user with the numbers.
-- **The reason is arithmetic, not taste** — both columns are already at their floors (`flex: none` role, 6ch name, the reserve), so the freed 8px only shortens how far the line overruns into the reserved strip; the role's coverage falls 58px→50px and the name and key are untouched.
-- **What the narrowing buys and costs is now two counts taken in one run** — 2 of 60 names unclip and 5 more of the starter's 28 specimens lose their last letters (12 clipped at 20px against 7 at 28px), where at 20px the marks read `V…`, `R…`, `G…`, which is a mark that says nothing.
-- **The spec prices any future width in one run and pins the shipped one** — `composition-panel.spec.ts` measures the trade through the slot's own declaration and asserts the rendered 28px, and the four captures were left alone because the product's appearance does not change.
-- **Gates: `npm run gate` exit 0 (255 files, 3,363 tests), `composition-panel.spec.ts` 11 cases on the rebuilt bundle** — the ratchet's residual record is unchanged, which is what holding the value means.
+- **`vg-222` is verified: the shell ships one cluster treatment, and the last declaration of the other one is gone** — the dock and the view cluster came down to §3's `--elev-1` under the user's later *all six palettes, all flat* ruling, and the identity chip's own dead `backdrop-filter` went with them.
+- **That leftover was invisible to every computed read** — the build emits the prefixed form alone (`vg-311`, cause `vg-430`), so the case reading all six palettes was green over a stylesheet that still asked to blur; it now also scans the authored text for `backdrop-filter:`, prefixed forms included.
+- **Red proof: exit 1 naming `2410: backdrop-filter: blur(6px);` and `2411: -webkit-backdrop-filter: blur(6px);`, exit 0 after the deletion** — on rebuilt bundles, with no rendered change, because the declaration was dead in the build.
+- **Item 16's plan-2 list is down to `vg-225` and `vg-230`** — `vg-222` left by the route `vg-227` took, a ruling implemented rather than a choice dissolved, and its blur clause is the one part not carried: the user superseded it the next day.
+- **Gates: `npm run gate` exit 0 (255 files, 3,363 tests; `design:check` 315 citation sources), `npm run backlog:check` exit 0 (448 items)** — the captures and the ratchet's residual record are untouched, which is what a dead declaration means.
 
 ## Next
 

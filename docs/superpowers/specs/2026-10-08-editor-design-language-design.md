@@ -817,7 +817,7 @@ pass is a smoke test over the same bundle, not the check.
   all fixed, the last of them on 2026-10-13. **The clause is every plan's, and
   that count is plan 8's alone**: measured across all eight on 2026-10-13
   (`vg-390` carries the census), plans 2, 4 and 7 also list differences whose
-  owner is an open row — `vg-222`, `vg-225` and `vg-230` in plan 2,
+  owner is an open row — `vg-225` and `vg-230` in plan 2,
   `vg-260` and `vg-269` in plan 4, `vg-308`, `vg-310` and
   `vg-274` in plan 7 — while plans 3, 5 and 6 list none an open row owns, plan
   3's four surviving in `9ee1fc21`'s body. **Every one of those rows is a row
@@ -836,7 +836,14 @@ pass is a smoke test over the same bundle, not the check.
   the one control larger than an icon button now has a vocabulary entry of its
   own; it is verified at `64871ccd`, where a browser case pins the slot's width
   and the accent bar's re-derived offset together and reddens on either moving
-  back. The two
+  back. **`vg-222` left the list the same day by that same route**: its ruling
+  settled which of the shell's two cluster treatments is the product's — the dock
+  and the view cluster came down to §3's elevation 1, which the user's later *all
+  six palettes, all flat* ruling is what landed (`d0c67844`) — and the identity
+  chip's own `backdrop-filter`, the last declaration of the other treatment and
+  dead in the build, went with them (`f7f838dc`), so the case that reads §7.5's
+  three clusters as a set now also asserts the stylesheet authors no blur for the
+  build to drop. The two
   the sessions cannot reach are `vg-316`, a Phase 2 work
   row whose residue is the `DESIGN.md` decision `vg-441`, and plan 1's ten,
   whose owner no record holds. **The capture half is now placed for every drawing**:
