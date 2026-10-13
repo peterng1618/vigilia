@@ -37,11 +37,11 @@ ledger did.
 
 ## Last completed change
 
-- **`vg-222` is verified: the shell ships one cluster treatment, and the last declaration of the other one is gone** — the dock and the view cluster came down to §3's `--elev-1` under the user's later *all six palettes, all flat* ruling, and the identity chip's own dead `backdrop-filter` went with them.
-- **That leftover was invisible to every computed read** — the build emits the prefixed form alone (`vg-311`, cause `vg-430`), so the case reading all six palettes was green over a stylesheet that still asked to blur; it now also scans the authored text for `backdrop-filter:`, prefixed forms included.
-- **Red proof: exit 1 naming `2410: backdrop-filter: blur(6px);` and `2411: -webkit-backdrop-filter: blur(6px);`, exit 0 after the deletion** — on rebuilt bundles, with no rendered change, because the declaration was dead in the build.
-- **Item 16's plan-2 list is down to `vg-225` and `vg-230`** — `vg-222` left by the route `vg-227` took, a ruling implemented rather than a choice dissolved, and its blur clause is the one part not carried: the user superseded it the next day.
-- **Gates: `npm run gate` exit 0 (255 files, 3,363 tests; `design:check` 315 citation sources), `npm run backlog:check` exit 0 (448 items)** — the captures and the ratchet's residual record are untouched, which is what a dead declaration means.
+- **`vg-225` is verified: §5's closed vocabulary gains a `Bare readout` entry, and the zoom readout stops being an unnamed exception** — the ruling answered the row's tension by amending the language rather than the control, so the readout keeps its bare percentage and stays the display chooser's trigger.
+- **It is the first row on item 16's lists that a ruling amended the language for rather than the product** — §5 had a well-and-chevron shape for "opens a list" and no word for a control that is a value display and a trigger at once.
+- **`editor-display.spec.ts` holds the product to that entry** — the text is a percentage, the fill and all four edges are bare, no glyph, `aria-haspopup` is `menu`, and a click opens the list, which is the half a computed style cannot state.
+- **Red proof: the case exits 1 with the rule's own `border: 0` set to `9px solid var(--edge)`, reddening on "and no edge"** — no capture moved, because the drawing already draws the readout as a bare percentage.
+- **Gates: `npm run gate` exit 0 (255 files, 3,363 tests; `design:check` 315 citation sources), `npm run backlog:check` exit 0 (448 items)** — item 16's plan-2 list is down to `vg-230`.
 
 ## Next
 

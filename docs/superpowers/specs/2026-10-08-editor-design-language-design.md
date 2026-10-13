@@ -817,7 +817,7 @@ pass is a smoke test over the same bundle, not the check.
   all fixed, the last of them on 2026-10-13. **The clause is every plan's, and
   that count is plan 8's alone**: measured across all eight on 2026-10-13
   (`vg-390` carries the census), plans 2, 4 and 7 also list differences whose
-  owner is an open row — `vg-225` and `vg-230` in plan 2,
+  owner is an open row — `vg-230` in plan 2,
   `vg-260` and `vg-269` in plan 4, `vg-308`, `vg-310` and
   `vg-274` in plan 7 — while plans 3, 5 and 6 list none an open row owns, plan
   3's four surviving in `9ee1fc21`'s body. **Every one of those rows is a row
@@ -843,7 +843,12 @@ pass is a smoke test over the same bundle, not the check.
   chip's own `backdrop-filter`, the last declaration of the other treatment and
   dead in the build, went with them (`f7f838dc`), so the case that reads §7.5's
   three clusters as a set now also asserts the stylesheet authors no blur for the
-  build to drop. The two
+  build to drop. **`vg-225` left the list the same day, and it is the first on it
+  that the ruling answered by amending the language rather than the product**:
+  §5's closed vocabulary had no entry for a control that is a value display and
+  opens a list, so it gains **Bare readout** and the zoom keeps its bare
+  percentage (`61d7435b`), where a browser case reads the control's text, fill,
+  four edges, glyph and the menu it opens. The two
   the sessions cannot reach are `vg-316`, a Phase 2 work
   row whose residue is the `DESIGN.md` decision `vg-441`, and plan 1's ten,
   whose owner no record holds. **The capture half is now placed for every drawing**:
