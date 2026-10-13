@@ -1,6 +1,6 @@
 # GitHub Issues as the backlog
 
-- **Status:** implemented — [implementation plan](../plans/2026-09-27-github-issues-backlog.md) executed 2026-09-27.
+- **Status:** implemented — [implementation plan](../plans/archive/2026-09-27-github-issues-backlog.md) executed 2026-09-27.
 - **Date:** 2026-09-27
 - **Queue:** independent of the feature queue. Runs when the active plan closes.
 

@@ -90,7 +90,7 @@ listed check.
 | `vg-196` | the repaint check's standing red | `display-fabric.spec.ts` deleted by `ad94e5ed`; no `page.clock` caller remains. **See §3.3** | `ad94e5ed` |
 | `vg-206` | `data-visible`'s false state | the base rule is `display: none` and only `[data-visible="true"]` flexes it — no defect | `editor-shell.css` |
 | `vg-209` | an 838-line file past the stop | `layer-panel.tsx` is now 41 lines: the file was split | `editor/src/editor-shell/layer-panel.tsx` |
-| `vg-217` | the status strip was never listed as a difference | the Task 10 difference list records it and rules it defensible | [`2026-10-08-the-shell-and-the-rail.md`](../plans/2026-10-08-the-shell-and-the-rail.md) |
+| `vg-217` | the status strip was never listed as a difference | the Task 10 difference list records it and rules it defensible | [`2026-10-08-the-shell-and-the-rail.md`](../plans/archive/2026-10-08-the-shell-and-the-rail.md) |
 | `vg-219` | the identity chip's three differences | the same list records all three | same file |
 | `vg-229` | a blanket capture claim | the README now scopes `?static=1` to player captures and says why the editor cannot | [`docs/evidence/screenshots/README.md`](../../evidence/screenshots/README.md) |
 | `vg-231` | inset, off-scale body regions | the body grid has no gap and no padding; no `border-radius: 12px` remains; the file records the decision | `editor-shell.css` |

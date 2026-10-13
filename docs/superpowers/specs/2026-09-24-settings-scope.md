@@ -1,7 +1,7 @@
 # Settings scope — global and theme-specific
 
-- **Status:** in progress. Plan: [`2026-09-24-settings-scope.md`](../plans/2026-09-24-settings-scope.md).
-- **Plan:** [`2026-09-24-settings-scope.md`](../plans/2026-09-24-settings-scope.md)
+- **Status:** in progress. Plan: [`2026-09-24-settings-scope.md`](../plans/archive/2026-09-24-settings-scope.md).
+- **Plan:** [`2026-09-24-settings-scope.md`](../plans/archive/2026-09-24-settings-scope.md)
 
 ## Why
 
