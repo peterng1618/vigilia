@@ -785,8 +785,15 @@ which is a plan artifact rather than this spec's own statement.
   is the other half: no `.superpowers/sdd/` workspace survives for plans 1 or 3,
   and the archived ledger records that plan 1's ten differences "no longer exist
   anywhere" — so the comparison the second clause asks for can no longer be
-  made, which is `vg-390`. No durable record names a capture for plans 2, 4 or 5
-  either, which is that same row's question.
+  made, which is `vg-390`. No durable record named a capture for plans 2, 4 or 5
+  either, which was that same row's question — **and that half is now answered**:
+  `docs/evidence/screenshots/README.md` records which surfaces each of the six
+  drawings and their eleven captures show, so plans 2, 4 and 5's surfaces are
+  photographed (the shell's own pair, the Add pane, the three panes no drawing
+  draws, the settings sheets) and what the clause turns on for them is whether a
+  capture the record attaches to a later parity plan counts. Plan 4's three
+  undrawn panes and plan 6's missing drawing are the residue it cannot reach at
+  all, because there is no matching mockup to carry a capture beside.
   **What discharges it:** the
   ruling on the settings frame's width and on which role a palette preview bar
   depicts, the work on the other `fix` differences, and a decision on the
