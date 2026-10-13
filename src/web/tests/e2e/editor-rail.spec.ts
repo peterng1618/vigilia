@@ -275,6 +275,46 @@ test("every pane's title bar sits at the same top offset", async ({
 });
 
 /**
+ * A pane's column does not scroll sideways — `vg-270`, and the reading that
+ * closed it.
+ *
+ * The row measured the Tokens pane's column at `scrollWidth` 449 against a
+ * `clientWidth` of 244, a 205px sideways scroll, and named the cause as a flex
+ * item with `white-space: nowrap` and no `min-w-0`: the min-content width of
+ * "Yaldevi Libre Franklin — Yaldevi + Libre" became the pane's own width. The
+ * reading on 2026-10-12 found the overflow gone and `min-w-0` present on that
+ * row. Nothing watched for its return, which is what this case is: a column
+ * that scrolls sideways clips whatever the author cannot scroll to, and the
+ * capture cannot show it because the column image is the scroll origin.
+ *
+ * The panes are read one at a time for the reason the case above gives — only
+ * the chosen slot's pane is laid out.
+ */
+test("no pane's column scrolls sideways", async ({ page }, testInfo) => {
+  test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+
+  await page.goto(EDITOR);
+  await expect(
+    page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+  ).toBeVisible();
+
+  const overflow: [string, number][] = [];
+  for (const slot of ["Composition", "Add", "Tokens", "Document"]) {
+    await openPane(page, slot);
+    const column = page.locator(".editor-shell-panel");
+    await expect(column, `${slot}'s column is showing`).toHaveCount(1);
+    const scroll = await column.evaluate((element) =>
+      Math.round(element.scrollWidth - element.clientWidth),
+    );
+    // The measurement names the pane it belongs to: a bare number in the
+    // failure would not say which slot to open.
+    if (scroll > 0) overflow.push([slot, scroll]);
+  }
+
+  expect(overflow, "panes whose column scrolls sideways").toEqual([]);
+});
+
+/**
  * The status bar's box, which no other gate in this plan can see.
  *
  * The strip **is** the deliverable, and its geometry is a rendered fact: a

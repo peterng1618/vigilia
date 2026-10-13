@@ -37,10 +37,9 @@ ledger did.
 
 ## Last completed change
 
-- **`vg-265` closes as verified, and the fix was not the one the row proposed** — the slot carried its panel fill and its 6px `padding-left` whether or not it held a control, so an empty slot laid a six-pixel opaque block over the role’s tail on every row at rest; the fill and the lead-in now belong to the slot’s buttons.
-- **The room the buttons need is the row’s own `padding-right`** — the column under the slot is the key on some rows and the role on a row whose selection reads nothing, so a margin on the key column could not be the reservation; the arithmetic is unchanged and `design-tokens`’ ceiling records the four new sites in place of the three old ones.
-- **`vg-447` carries the half that is a design decision** — once the slot holds real controls, a row whose reserved strip is wider than its columns can spare runs the role under the slot (45.3px at three controls, 53.8px at four) and none of the three columns may yield by its own record.
-- **Registers: `npm run backlog:check` exit 0, 447 items across both registers** — live one row lighter and archive one heavier; the row’s disposition (what the captures showed, what the cause turned out to be, and the check that now reads it) is appended to its own `detail` before the move.
+- **`vg-270`’s difference is gone and now has a check that would notice its return** — the Tokens pane’s column measured `scrollWidth` 449 against `clientWidth` 244 (a 205px sideways scroll) because the font-trio well’s row had no `min-w-0`; `editor-rail.spec.ts` now reads every pane’s column in turn and fails on any sideways scroll.
+- **The check is red-proved against the cause the row named** — removing `min-w-0` from `control-well.tsx`’s column shape reproduces it on a built bundle (Tokens, 198px, the other three panes clean), and the file was restored byte-identical (`cmp`) before the rebuild that made the case green.
+- **Gate exit 0** — 255 test files and 3,363 tests passed; the rail spec’s 11 cases pass on the rebuilt bundle.
 
 ## Next
 
