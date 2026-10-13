@@ -766,7 +766,14 @@ pass is a smoke test over the same bundle, not the check.
   a violation (`vg-438`).
 - **The scales are consumed** — `npm run design:check`, 71 gated files clean —
   **met for the gated subset**, with its two coverage gaps named and open
-  (`vg-274`, `vg-286`).
+  (`vg-274`, `vg-286`). **`vg-286`'s discharge is not a task waiting on a
+  session but one sentence from the ruling's own owner**, measured on
+  2026-10-13: D5 ruled that test files join the gated list, no phase of the
+  active plan carries it, and the membership test it names — “a test file that
+  renders the shell” — is one the checker cannot evaluate, because a rule keyed
+  on literals gates 275 test files and 732 violations while a rule keyed on
+  imports misses the six `tests/e2e/` specs that are most of the row's own
+  violators. Which of the two readings the ruling means is the sentence.
 - **No native `<select>` or `input type=range`** — the panes assert zero of each
   in the running gate — **met as written**; the clause's *count* is a one-time
   ledger reading, and the residue is `vg-266`/`vg-271`, open.
