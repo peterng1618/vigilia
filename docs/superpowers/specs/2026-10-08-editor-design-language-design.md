@@ -738,6 +738,21 @@ verdicts lived only in the archived acceptance ledger of plan 6
 ([`plans/archive/2026-10-08-iconography-and-copy.md`](../plans/archive/2026-10-08-iconography-and-copy.md)),
 which is a plan artifact rather than this spec's own statement.
 
+**Re-checked against the whole browser suite on 2026-10-13, which is a third
+act again.** Two whole-suite runs now exist — `3a368c6a` and `aa16a2c5`, each
+273 passed, 18 failed, 214 skipped — and **their red memberships differ by nine
+of eighteen**, so a whole-suite red count is the load the config names rather
+than a defect list, and it is why no item here was ever closed on one. Every
+acceptance-named check that was red in either sample passes at HEAD: the
+control-set case once the run has built the fixture (`vg-438`), the rail's
+accent bar after `8b1b9106`, and `shell-appearance.spec.ts`'s flat-chrome case
+in a serial re-run at the same commit — so **the fifteen verdicts stand, and
+none was resting on a check that is red**. The only persistent reds are the two
+phone-`chromium` `editor-display` cases, `vg-258`, which are not the
+device-frame claim this section names. The instrument is therefore the item's
+own targeted run, which is what each annotation below cites; the whole-suite
+pass is a smoke test over the same bundle, not the check.
+
 - **Every editor surface is React** — the five surfaces are React and gated, and
   the one imperative UI module is ADR-0033's exemption — **met**, and it is the
   one item no gate runs: it is a reading.
@@ -745,7 +760,10 @@ which is a plan artifact rather than this spec's own statement.
   `preset-list.dom.test.tsx` (43 cases) plus `inspector-sections.spec.ts` —
   **met**.
 - **Keyboard and contrast are observed** — `design-language.spec.ts` (10 passed)
-  and the real-host walkthrough — **met**, annotated above.
+  and the real-host walkthrough — **met**, annotated above. That count is the
+  whole-suite run at `aa16a2c5` with the fixture built; a run whose build
+  skipped `build:fixture` reads 9 and the tenth failure is a missing page, not
+  a violation (`vg-438`).
 - **The scales are consumed** — `npm run design:check`, 71 gated files clean —
   **met for the gated subset**, with its two coverage gaps named and open
   (`vg-274`, `vg-286`).
