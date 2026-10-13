@@ -37,11 +37,10 @@ ledger did.
 
 ## Last completed change
 
-- **`vg-265` is fixed: the state slot’s surface belongs to its controls** — `.vigilia-layer-state:has(button)` now owns the panel fill and the 6px lead-in, so a slot holding nothing paints nothing; every row’s role had been losing its last glyphs (Networ / Storag / Cloc / Tex) to a six-pixel block that drew nothing.
-- **The reservation moved off the key column and onto the row** — it is the row’s `padding-right` now, because the slot covers whatever is last in the row and that column is the role on a row whose selection reads nothing; the arithmetic is unchanged (`4 + 2 + 6 + 26n + 4(n-1)`) and `design-tokens`’ ceiling records the four new sites in place of the three old ones.
-- **The check is geometric, and it asserts the state the captures show** — `composition-panel.spec.ts` reads role against slot on every row at rest, red first at 4px on all ten rows with a 6px slot, and the file’s 11 cases pass on the rebuilt bundle.
-- **The half that is a design decision is filed, not fixed** — an attended row whose reserved strip is wider than its columns can spare runs the role under the slot (45.3px at three controls, 53.8px at four), and the mark, the name’s 6ch floor and the role are each recorded as never yielding, so which one does is `vg-447`.
-- **Gate exit 0 and the captures re-shot** — 255 test files and 3,363 tests passed; the four Composition images beside the drawings were re-taken (`composition-panel-starter`, `-two-hundred`, `-document`, `pane-composition`).
+- **`vg-265` closes as verified, and the fix was not the one the row proposed** — the slot carried its panel fill and its 6px `padding-left` whether or not it held a control, so an empty slot laid a six-pixel opaque block over the role’s tail on every row at rest; the fill and the lead-in now belong to the slot’s buttons.
+- **The room the buttons need is the row’s own `padding-right`** — the column under the slot is the key on some rows and the role on a row whose selection reads nothing, so a margin on the key column could not be the reservation; the arithmetic is unchanged and `design-tokens`’ ceiling records the four new sites in place of the three old ones.
+- **`vg-447` carries the half that is a design decision** — once the slot holds real controls, a row whose reserved strip is wider than its columns can spare runs the role under the slot (45.3px at three controls, 53.8px at four) and none of the three columns may yield by its own record.
+- **Registers: `npm run backlog:check` exit 0, 447 items across both registers** — live one row lighter and archive one heavier; the row’s disposition (what the captures showed, what the cause turned out to be, and the check that now reads it) is appended to its own `detail` before the move.
 
 ## Next
 
