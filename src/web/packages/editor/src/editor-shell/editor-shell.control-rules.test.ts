@@ -134,8 +134,10 @@ const PAINTS_COLOUR = /(?<![\w-])color\s*:/;
  *
  *  The ceiling this read cannot cross: a rule that paints the marked control
  *  *without* naming a button, a menu role or the marker — a positional or
- *  attribute selector on some other name, say — is invisible here, as it is to
- *  any selector-text read. The browser case is the instrument that reads actual
+ *  attribute selector on some other name, or the same name in an **escaped
+ *  spelling** (`\62 utton` is `button` with the `b` escaped, and a substring test
+ *  sees neither), say — is invisible here, as it is to any selector-text read.
+ *  The browser case is the instrument that reads actual
  *  paint, and it covers the three surfaces that exist, not any future one;
  *  `MARKABLE_CONTROL_ALLOWLIST` rests on reachability for the same reason. */
 const NAMES_A_MARKABLE_CONTROL = /button|menuitem/i;
