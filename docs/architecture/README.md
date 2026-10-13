@@ -33,10 +33,14 @@ managers), sized to what Vigilia's panels actually exercise rather than the
 fork's full feature surface. `editor-shell.ts` owns canvas mount/disposal,
 viewport fitting and artboard paint, and composes the other managers behind
 the `EditorInteraction` contract consumed by product panels. `editor-session.ts`
-owns product composition over that shell: envelope state, panel wiring,
-dirty-work confirmation and deterministic disposal. `scene-fabric`'s
-`FabricSceneHandle` exposes `updateArtboard` for document-level artboard
-changes that a `ScenePlan` cannot carry (it never carries `backgroundMedia`).
+owns product composition over that shell — panel wiring, the chord table, the
+action façade and deterministic disposal — and `editor-document.ts` owns the
+document that composition edits: the authored envelope and every write to it,
+the fan-out each write makes, the picture a save ships, and the file protocol
+that creates, opens, saves and releases a package, the replacement question
+included. `scene-fabric`'s `FabricSceneHandle` exposes `updateArtboard` for
+document-level artboard changes that a `ScenePlan` cannot carry (it never
+carries `backgroundMedia`).
 
 `editor-shell/` is React chrome over that boundary: it owns the header menus,
 rail, pane bar and canvas dock, and React re-renders only on selection

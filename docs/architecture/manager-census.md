@@ -17,8 +17,11 @@ no manager is too small to stand alone and a merge needs an argument about a
 concept, never a line count. This census confirms that reading and adds no row
 to it.
 
-**This document modifies nothing.** It is the input to the redistribution task;
-nothing in it has been acted on.
+**This document modifies nothing.** It is the input to the redistribution task,
+and it remains a snapshot of `03d820d7`; the work it calls for has since begun —
+`248ff08f` took the library save protocol into `theme-library-manager/` and
+`aff063d8` took the theme document into `editor-document.ts` — so its tables
+describe that commit rather than the code as it stands.
 
 ## The instrument
 
