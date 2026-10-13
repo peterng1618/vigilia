@@ -828,7 +828,16 @@ pass is a smoke test over the same bundle, not the check.
   draws, the settings sheets) and what the clause turns on for them is whether a
   capture the record attaches to a later parity plan counts. Plan 4's three
   undrawn panes and plan 6's missing drawing are the residue it cannot reach at
-  all, because there is no matching mockup to carry a capture beside.
+  all, because there is no matching mockup to carry a capture beside — **and
+  they are not merely unreachable: the drawings' own README carries a rule that
+  requires the panes to have been drawn** (“The current files are refreshed when
+  the set of surfaces changes. A pane, a tab, a section or a rail slot that
+  appears or disappears is drawn”). That sentence names four things, so it binds
+  the three panes and not plan 6's glyph sheet. So this residue is a three-way
+  choice rather than a gap: draw the panes and the clause becomes reachable for
+  them; narrow this item to the six current drawings; or carry the residue.
+  Drawing them is the ruling owner's act, because a drawing is the acceptance
+  instrument rather than a description of one.
   **What discharges it:** the
   ruling on the settings frame's width (`vg-322`, itself parked on `vg-330`), the
   work on the other `fix` differences, and a decision on the plans 1–3 wording —
