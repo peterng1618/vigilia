@@ -2382,9 +2382,13 @@ body,
   pointer-events: auto;
 }
 /* §7.5's top-left corner: the document's identity. A floating cluster at
-   §7's `--radius-xl`, `--panel` at 95%, backdrop-blurred, hairline `--edge`
-   and elevation 1, 14px in from the stage's own edges — the inset the row above
-   gives it.
+   §7's `--radius-xl`, `--panel` at 95%, hairline `--edge` and elevation 1,
+   14px in from the stage's own edges — the inset the row above gives it.
+   The `backdrop-filter` this rule used to declare is gone with the other two
+   clusters': the user's 2026-10-13 ruling flattened all six palettes and the
+   drawing never blurred anything, so elevation is the whole difference between
+   chrome and a cluster, and the declaration was dead in the build anyway
+   (`vg-311`, `vg-430`).
    `min-width: 0` is the chip's half of "clusters cannot collide": it can shrink
    below its content, and the name ellipsises, rather than pushing the view
    cluster off the stage. */
@@ -2407,8 +2411,6 @@ body,
   border-radius: var(--radius-xl);
   border: 1px solid var(--edge);
   background: color-mix(in srgb, var(--panel) 95%, transparent);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
   box-shadow: var(--elev-1);
 }
 /* The record dot (§6): filled, because a 7px stroke is not a stroke. Warn while

@@ -507,7 +507,17 @@ test.describe("shell palettes", () => {
    *  prefixed `-webkit-backdrop-filter`, this Chromium does not support that form,
    *  so every cluster computed `backdropFilter: none` under every palette — the
    *  dead blur `vg-311` records, which this change retired by deleting the
-   *  declarations rather than by asserting them. */
+   *  declarations rather than by asserting them.
+   *
+   *  **The authored declarations are asserted absent all the same, and the
+   *  computed read is why that is not redundant.** Retirement by deletion left
+   *  one declaration behind — the identity chip's own `backdrop-filter`, which
+   *  no cluster renders because the build prefixes it away (`vg-430`) — so
+   *  "every cluster computes `none`" was green over a stylesheet that still
+   *  asked to blur. A computed read cannot see a declaration the toolchain
+   *  drops, which is exactly the state `vg-311` was filed from; the source scan
+   *  below is what holds §3's "floating clusters do not blur their backdrop"
+   *  against the rule text rather than against the build's treatment of it. */
   test("chrome is flat and opaque, and a canvas cluster is lifted by its shadow alone", async ({
     page,
   }, testInfo) => {
@@ -583,9 +593,21 @@ test.describe("shell palettes", () => {
         [...elements].map(
           (element) => `[data-treatment-probe="${probe.get(element)}"]`,
         );
+      // **Every declaration, prefix included, on the authored text.** CSSOM
+      // drops the prefixed form, and the prefixed form is the one the build
+      // emits (`vg-311`, `vg-430`), so a rule read through `CSSStyleSheet` would
+      // miss precisely the declaration that used to blur.
+      const blurred = source
+        .split("\n")
+        .flatMap((line, index) =>
+          /backdrop-filter\s*:/.test(line)
+            ? [`${index + 1}: ${line.trim()}`]
+            : [],
+        );
       return {
         chrome: handles(chrome),
         clusters: handles(clusters),
+        blurred,
       };
     }, css);
     // Each of these three is a positive control on an empty read: an empty set
@@ -601,6 +623,11 @@ test.describe("shell palettes", () => {
     ).toBeGreaterThan(0);
     const CHROME = membership.chrome;
     const CLUSTERS = membership.clusters;
+
+    expect(
+      membership.blurred,
+      "`editor-shell.css` still authorises a backdrop blur, and §3 and §7.5 say a cluster does not blur its backdrop — the count is the declarations, prefixed forms included",
+    ).toEqual([]);
 
     const read = (selector: string) =>
       page.evaluate((sel) => {
