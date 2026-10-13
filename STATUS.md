@@ -37,10 +37,10 @@ ledger did.
 
 ## Last completed change
 
-- **`vg-449` is fixed on your 2026-10-13 report that slider adjustments take half a second to show** — the inspector's Opacity slider did not follow the pointer at all: `ControlSlider` is a controlled slider whose preview half no caller wires (`SelectionEdits` has no preview route), so with nothing feeding the drag position back the thumb could not move until the gesture ended.
-- **The control now owns the gesture's own value** — a `dragging` state drives the thumb and the readout, cleared by the commit and by Escape's cancel so a refused write cannot strand it; `onPreview` stays for a caller that also wants a live preview elsewhere.
-- **The regression is a browser case, not a unit one** — "the drag itself is the browser fixture's business" was the old comment, and nothing proved it; `inspector-sections.spec.ts` now drags the real slider with the button held and reads the well between moves, failing at "the readout did not follow the pointer: 100, 100, 100" with the fix disabled and reading three descending values with it.
-- **The hover half of that report is a constant rather than a stall, and is filed as `vg-450`** — `HOVER_DELAY_MS = 600`; the editor at rest is clean (2,783 animation frames with one over 40ms, four long tasks totalling 374ms, all during load), so `<500ms` is scheduled, not made.
+- **The gated set's test half is derived on every run rather than listed (`vg-228`, `vg-267`, `vg-286`)** — every `*.dom.test.tsx` under `src/web` plus every `tests/e2e` spec that opens the editor preview, printed by the checker, with the empty-set refusal the JSON list already had extended to it; the 11 test entries leave `design-tokens.gated.json`, which keeps its 60 source files, and the rule is self-tested over a scratch tree.
+- **The rule selects 58 files — 36 dom tests and 22 driving specs — and the 44 literals the 10 ungated dom tests carried are converted** — 7 fixture modules beside their tests, and the 3 assertions that pin a product value now read its owner (`QR_INK`/`QR_PAPER`, `ROW_HEIGHT`, `LAYER_ROW_INDENT`, or a hex pattern) instead of restating it.
+- **`npm run gate` exits 1 and the rule is why** — all 116 remaining violations are in the driving specs Task 11.2 owns, nothing outside `tests/e2e` is reported at all, and the unit suite is separately 255 files / 3363 tests green beside `design:md`'s 315 citation sources.
+- **Red-proofed both ways**: a literal planted in a dom test and in a driving spec reads red naming both, and the same tree with the derived half removed reads green and names neither.
 
 ## Next
 

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import type { FabricGlobals, TextRun } from "@vigilia/renderer-core";
+import type { TextRun } from "@vigilia/renderer-core";
 import { act } from "react";
 import { describe, expect, it } from "vitest";
 import {
@@ -9,6 +9,7 @@ import {
   press,
   typeInto,
 } from "./runs.test-stage.js";
+import { RUN_GLOBALS } from "./runs-fixture.js";
 
 /**
  * The run-editor cases that need the editor's *own* state, rather than what a
@@ -22,17 +23,6 @@ import {
  * selection can move.
  */
 
-const globals = {
-  typePresets: {
-    plain: { name: "Plain", value: { family: "Inter", size: 16 } },
-    caption: { name: "Caption", value: { family: "Inter", size: 12 } },
-    title: { name: "Title", value: { family: "Inter", size: 24 } },
-  },
-  palette: {
-    text: { name: "Text", value: { kind: "solid", color: "#fff" } },
-  },
-} as unknown as FabricGlobals;
-
 const twoRuns: readonly TextRun[] = [
   { kind: "literal", text: "CPU ", typePreset: "typePresets.plain" },
   { kind: "literal", text: "%", typePreset: "typePresets.plain" },
@@ -40,7 +30,7 @@ const twoRuns: readonly TextRun[] = [
 
 describe("the run editor's own state", () => {
   it("keeps the caret in the field being typed into across a re-publish", async () => {
-    const box = mountRunEditor({ runs: twoRuns, globals });
+    const box = mountRunEditor({ runs: twoRuns, globals: RUN_GLOBALS });
     const field = box.pick<HTMLInputElement>('[data-vigilia-run-text="0"]');
     field.focus();
     expect(document.activeElement).toBe(field);
@@ -64,7 +54,7 @@ describe("the run editor's own state", () => {
   });
 
   it("keeps the caret when Enter commits a literal's text", async () => {
-    const box = mountRunEditor({ runs: twoRuns, globals });
+    const box = mountRunEditor({ runs: twoRuns, globals: RUN_GLOBALS });
     const field = box.pick<HTMLInputElement>('[data-vigilia-run-text="0"]');
     field.focus();
 
@@ -84,7 +74,7 @@ describe("the run editor's own state", () => {
   });
 
   it("adds and removes a run without the editor losing its own state", async () => {
-    const box = mountRunEditor({ runs: twoRuns, globals });
+    const box = mountRunEditor({ runs: twoRuns, globals: RUN_GLOBALS });
     const field = box.pick<HTMLInputElement>('[data-vigilia-run-text="0"]');
     await typeInto(field, "GPU ");
 
@@ -119,7 +109,7 @@ describe("the run editor's own state", () => {
         { kind: "literal", text: "B", typePreset: "typePresets.caption" },
         { kind: "literal", text: "C", typePreset: "typePresets.title" },
       ],
-      globals,
+      globals: RUN_GLOBALS,
     });
     const field = box.pick<HTMLInputElement>('[data-vigilia-run-text="1"]');
     await typeInto(field, "GPU ");

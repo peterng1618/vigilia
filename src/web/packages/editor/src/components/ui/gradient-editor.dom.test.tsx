@@ -20,6 +20,11 @@ afterEach(() => {
   host = undefined;
 });
 
+/** What "a raw colour" means to the assertion below: any hex literal written
+ *  into the ring would be the value the `--edge` token replaced. The pattern is
+ *  the general form of the claim that used to be spelled with one hex. */
+const RAW_HEX = /#[0-9a-f]{3,8}\b/i;
+
 it("rings a stop with §4's `--edge` boundary token, not a raw colour", () => {
   const mounted = document.createElement("div");
   host = mounted;
@@ -49,5 +54,5 @@ it("rings a stop with §4's `--edge` boundary token, not a raw colour", () => {
     '[data-testid="gradient-stop-0"]',
   );
   expect(dot?.style.boxShadow).toBe("0 0 0 1px var(--edge)");
-  expect(dot?.style.boxShadow).not.toContain("#000");
+  expect(dot?.style.boxShadow).not.toMatch(RAW_HEX);
 });

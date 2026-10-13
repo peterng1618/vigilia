@@ -3,6 +3,7 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { beforeAll, expect, it, vi } from "vitest";
 import { ColourPicker } from "./colour-picker.js";
+import { GREY, PURE_RED } from "./colour-picker-fixture.js";
 
 // jsdom's selector engine cannot answer `:modal`/`:popover-open`, and floating-ui
 // asks for both on every position. Each unanswerable call costs ~0.5s of selector
@@ -86,9 +87,9 @@ async function press(track: HTMLElement, key: string): Promise<void> {
 }
 
 it("moves a track's value from the keyboard, which vg-194 recorded as missing", async () => {
-  // `#808080` is a grey: zero saturation, so the saturation track starts at the
+  // `GREY` is a grey: zero saturation, so the saturation track starts at the
   // bottom of its range and an arrow has somewhere to go.
-  const picker = await openPicker("#808080");
+  const picker = await openPicker(GREY);
 
   // The role is a promise about a range, so the range has to be declared. A
   // keyboard path over `role="slider"` with no `aria-valuemin`/`aria-valuemax`
@@ -111,7 +112,7 @@ it("moves a track's value from the keyboard, which vg-194 recorded as missing", 
 });
 
 it("steps downward, and clamps at both ends rather than wrapping", async () => {
-  const picker = await openPicker("#ff0000");
+  const picker = await openPicker(PURE_RED);
   const hue = picker.track("picker-hue");
   // Pure red is hue 0, so this track also starts at the bottom.
   expect(picker.read("picker-hue").now).toBe(0);
@@ -133,7 +134,7 @@ it("steps downward, and clamps at both ends rather than wrapping", async () => {
 });
 
 it("leaves a key it does not own to the panel behind it", async () => {
-  const picker = await openPicker("#808080");
+  const picker = await openPicker(GREY);
   const track = picker.track("picker-saturation");
 
   // `preventDefault` on every key would swallow the panel's own handling of a

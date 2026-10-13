@@ -8,6 +8,7 @@ import { expect, it } from "vitest";
 import { Glyph, STACK_GLYPH } from "../../editor-shell/icons.js";
 import type { LayerMark } from "../../editor-shell/layer-tree.js";
 import { KindMark } from "./kind-mark.js";
+import { MEMBER_PAINT, SHAPE_PAINT } from "./layer-mark-fixture.js";
 
 // React only flushes work scheduled inside `act` when it has been told it is in
 // a test; without this, `act` warns and the update lands after the assertion.
@@ -22,7 +23,7 @@ import { KindMark } from "./kind-mark.js";
 const ARMS: readonly LayerMark[] = [
   { kind: "text", text: "VIGILIA", family: "Inter, sans-serif", weight: "600" },
   { kind: "chart", family: "gauge" },
-  { kind: "shape", paint: "#2ee6a8" },
+  { kind: "shape", paint: SHAPE_PAINT },
   { kind: "image", src: "blob:pic" },
   { kind: "group" },
 ];
@@ -67,7 +68,7 @@ it("gives a group a generic glyph, and nothing it could not know", () => {
   const planted = {
     kind: "group",
     name: "CPU card",
-    children: [{ kind: "shape", paint: "#f00" }],
+    children: [{ kind: "shape", paint: MEMBER_PAINT }],
   } as unknown as LayerMark;
   const plantedHost = render(planted);
   expect(
@@ -114,12 +115,21 @@ it("gives each kind a mark that says which kind it is", () => {
       .querySelector('[data-vigilia-layer-mark="chart"] svg')
       ?.getAttribute("class"),
   ).toContain("lucide-chart-line");
-  // A shape's own paint, not a square in the shell's colour.
+  // A shape's own paint, not a square in the shell's colour. The expected colour
+  // is the fixture's, read back through the same normalisation the swatch got:
+  // jsdom reports a hex as `rgb()`, so writing the triplet here would be a
+  // second copy of the value the fixture already owns.
   const swatch = render({
     kind: "shape",
-    paint: "#2ee6a8",
+    paint: SHAPE_PAINT,
   }).querySelector<HTMLElement>('[data-vigilia-layer-mark="shape"]')!;
-  expect(swatch.style.background).toBe("rgb(46, 230, 168)");
+  const normalised = document.createElement("div");
+  normalised.style.background = SHAPE_PAINT;
+  expect(
+    normalised.style.background,
+    "the fixture is a colour jsdom reads",
+  ).not.toBe("");
+  expect(swatch.style.background).toBe(normalised.style.background);
   // An image is its own picture.
   expect(
     render({ kind: "image", src: "blob:pic" })
@@ -150,7 +160,7 @@ it("draws the mark the projection named, and never walks the group's children", 
     kind: "group",
     children: [
       { kind: "chart", family: "pie" },
-      { kind: "shape", paint: "#f00" },
+      { kind: "shape", paint: MEMBER_PAINT },
     ],
   } as unknown as LayerMark);
   expect(planted.querySelectorAll("[data-vigilia-layer-mark]")).toHaveLength(1);

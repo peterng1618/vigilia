@@ -14,6 +14,7 @@ import { afterEach, describe, expect, it } from "vitest";
 import { isSettingVisible } from "../editor-shell/controls/settings-field.js";
 import { uiCopy } from "../ui-copy.js";
 import type { ChartEdits } from "./chart-fields.js";
+import { CHART_PALETTE } from "./chart-fields-fixture.js";
 import {
   type ChartFieldsStage,
   choose,
@@ -44,12 +45,6 @@ import {
  * alone would pass on a renderer that drew nothing, which is what this file
  * exists to catch.
  */
-
-const palette: FabricPalette = {
-  cpu: { name: "CPU", value: { kind: "solid", color: "#00b8d9" } },
-  gpu: { name: "GPU", value: { kind: "solid", color: "#a78bfa" } },
-  ram: { name: "RAM", value: { kind: "solid", color: "#2dd4bf" } },
-};
 
 const gauge: ChartFieldTarget = {
   id: "cpu-gauge",
@@ -156,7 +151,7 @@ const stages: ChartFieldsStage[] = [];
 
 function over(
   target: ChartFieldTarget,
-  tokens: FabricPalette | undefined = palette,
+  tokens: FabricPalette | undefined = CHART_PALETTE,
 ) {
   const box = stageFor(target, tokens);
   stages.push(box.stage);

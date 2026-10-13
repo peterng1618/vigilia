@@ -2,7 +2,7 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, expect, it } from "vitest";
-import { QrCode } from "./qr-symbol.js";
+import { QR_INK, QR_PAPER, QrCode } from "./qr-symbol.js";
 
 const URL = `http://192.168.1.42:5227/?session=${"a".repeat(43)}`;
 
@@ -33,11 +33,13 @@ it("draws the ink on the paper, whatever palette the shell is in", () => {
   const svg = container.querySelector("svg");
   expect(svg).not.toBeNull();
 
+  // The two colours are read from the module that owns them, so this pins the
+  // symbol's own ink and paper rather than a second copy of the hex.
   const background = svg?.querySelector("rect");
-  expect(background?.getAttribute("fill")).toBe("#ffffff");
+  expect(background?.getAttribute("fill")).toBe(QR_PAPER);
 
   const module = svg?.querySelectorAll("path")[0];
-  expect(module?.getAttribute("fill")).toBe("#101418");
+  expect(module?.getAttribute("fill")).toBe(QR_INK);
   // A token here would invert under a dark shell palette and stop scanning.
   expect(module?.getAttribute("fill")).not.toContain("var(--vigilia");
 });

@@ -17,8 +17,12 @@ import { qrMatrix } from "./qr-code.js";
  * `./qr-code.js` resolves to the `.ts`, so a `.tsx` sibling of the same name is
  * unreachable — a silent wrong-module resolution, not an error.
  */
-const INK = "#101418";
-const PAPER = "#ffffff";
+/**
+ * The symbol's two colours — exported because the test that pins them reads the
+ * value from here rather than restating the hex.
+ */
+export const QR_INK = "#101418";
+export const QR_PAPER = "#ffffff";
 
 /** Pixels per module. 3 keeps a version-5 symbol (45 modules with its quiet
  *  zone) at 135 px, which is a comfortable camera target at arm's length. */
@@ -47,10 +51,10 @@ export function QrCode({
       style={style}
       data-vigilia-qr=""
     >
-      <rect width={modules} height={modules} fill={PAPER} />
+      <rect width={modules} height={modules} fill={QR_PAPER} />
       {/* One path for every dark module: a version-5 symbol is over a thousand
           rects as elements, and the browser lays each one out. */}
-      <path fill={INK} d={pathOf(matrix)} />
+      <path fill={QR_INK} d={pathOf(matrix)} />
     </svg>
   );
 }

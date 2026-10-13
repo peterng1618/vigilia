@@ -10,6 +10,16 @@
  * and refuses a literal that should have been a token. The list only grows, so
  * the repo never has to be green all at once.
  *
+ * The set is in two halves. The JSON holds its *source* files, one per line, as
+ * each conversion named them. The *test* half is derived on every run from the
+ * tree (`selectTestFiles`): everything that renders or drives the shell — every
+ * `*.dom.test.tsx` under `src/web`, and every Playwright spec under
+ * `src/web/tests/e2e/` that opens the editor preview (`vg-228`, `vg-286`). A
+ * membership rule rather than a list, because file-by-file membership meant the
+ * list said 'whichever task happened to name it', which a reader cannot tell
+ * from an omission. Both halves are needed: a rule that selects nothing is the
+ * same vacuous guard as an empty file list, and it fails the same way.
+ *
  * A second instrument covers the one large surface that is not on that list:
  * `CEILINGS` *records that file's whole residual set*, so it is green today and
  * any movement in it fails — a violation arriving, one leaving, or a swap of one
@@ -31,9 +41,10 @@
  * exists to remove, so an empty gated list is a failure, not a pass.
  */
 
-import { readFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { realpathSync } from "node:fs";
-import { resolve } from "node:path";
+import { dirname, join, relative, resolve } from "node:path";
+import { tmpdir } from "node:os";
 import { spawnSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
 
@@ -78,6 +89,27 @@ const PX = /(?<![\w.])(\d+(?:\.\d+)?)px(?![\w-])/g;
 
 const DEFAULT_GATED = "scripts/design-tokens.gated.json";
 const ROOT = resolve(import.meta.dirname, "..");
+
+/**
+ * What "a Playwright spec that opens the editor preview" means to a text scan:
+ * the preview origin the suite fixes (W1's `4174`), or the shared `openEditor(`
+ * helper every editor-driving spec starts from. A spec that names neither never
+ * opens the editor, so nothing it writes is the shell's to answer for.
+ */
+const OPENS_EDITOR = /127\.0\.0\.1:4174|openEditor\(/;
+
+/**
+ * Directories the test-file walk never descends into. Build output and installed
+ * dependencies are not this repo's source, and a `.dom.test.tsx` inside one is
+ * somebody else's file — the same reason the ratchet is not a whole-repo lint.
+ */
+const UNWALKED = new Set([
+  "node_modules",
+  "dist",
+  "coverage",
+  "test-results",
+  "playwright-report",
+]);
 
 /**
  * The ceiling over a file deliberately kept off the list above.
@@ -482,11 +514,64 @@ export function unconsumedPx(designLanguagePx, sources) {
 }
 
 /**
+ * Every file under `dir` whose name ends with one of `suffixes`, as absolute
+ * paths. A directory that cannot be read — a root with no `src/web` under it —
+ * is not an error here: the selection it produces is empty, and an empty
+ * selection is refused by the caller rather than reported as a clean run.
+ */
+async function walkFiles(dir, suffixes, out = []) {
+  let entries;
+  try {
+    entries = await readdir(dir, { withFileTypes: true });
+  } catch {
+    return out;
+  }
+  for (const entry of entries) {
+    const path = join(dir, entry.name);
+    if (entry.isDirectory()) {
+      if (!UNWALKED.has(entry.name)) await walkFiles(path, suffixes, out);
+    } else if (suffixes.some((suffix) => entry.name.endsWith(suffix))) {
+      out.push(path);
+    }
+  }
+  return out;
+}
+
+/** Windows `relative()` yields backslashes; every path this file emits is posix. */
+function posix(path) {
+  return path.replaceAll("\\", "/");
+}
+
+/**
+ * The test half of the gated set, derived from the tree on every run (`vg-228`:
+ * the criterion is *everything that renders or drives the shell*). Root-relative
+ * and sorted, so the selection a run prints is the same list twice in a row.
+ *
+ * Exported because the self-test proves the rule over a scratch tree rather than
+ * over this repo's own files — a rule that fires only on the tree that happens to
+ * be here is the per-file list this replaces.
+ */
+export async function selectTestFiles(root) {
+  const web = resolve(root, "src", "web");
+  const selected = await walkFiles(web, [".dom.test.tsx"]);
+  for (const path of await walkFiles(resolve(web, "tests", "e2e"), [".spec.ts"])) {
+    let source;
+    try {
+      source = await readFile(path, "utf8");
+    } catch {
+      continue;
+    }
+    if (OPENS_EDITOR.test(source)) selected.push(path);
+  }
+  return [...new Set(selected.map((path) => posix(relative(root, path))))].sort();
+}
+
+/**
  * Proves every rule still fires. Called only from the entry-point gate: an
  * importer in a process whose argv happens to mention `--self-test` must not
  * run it and exit mid-import.
  */
-function selfTest() {
+async function selfTest() {
   const cases = [
     // A literal is a violation; a role reference is not.
     ["a hex colour is a violation", "a.css", ".x { color: #ff0000; }", 1],
@@ -736,6 +821,82 @@ function selfTest() {
     );
   }
 
+  // The test-file rule, over a tree this repo does not own (`vg-228`). The
+  // rule's firing is proved on files written here, so it does not depend on
+  // which `*.dom.test.tsx` files happen to be in the repo today: a selected file
+  // is scanned, an unselected one is not, and a rule that selects nothing fails.
+  const scratchTree = async (files) => {
+    const dir = await mkdtemp(join(tmpdir(), "design-tokens-selftest-"));
+    for (const [relPath, contents] of Object.entries(files)) {
+      const path = join(dir, relPath);
+      await mkdir(dirname(path), { recursive: true });
+      await writeFile(path, contents);
+    }
+    return dir;
+  };
+  const runOver = (dir) =>
+    spawnSync(process.execPath, [import.meta.filename, "--root", dir], {
+      encoding: "utf8",
+    });
+
+  // Every file that must *not* be scanned carries a literal of its own, so the
+  // silence about it is a fact about the rule rather than about a clean file.
+  const tree = await scratchTree({
+    "scripts/design-tokens.gated.json": JSON.stringify({
+      gated: ["src/web/packages/editor/src/listed.tsx"],
+      designLanguagePx: [],
+    }),
+    "src/web/packages/editor/src/listed.tsx": "export const listed = 1;",
+    "src/web/packages/editor/src/selected.dom.test.tsx": 'const s = { color: "#ff0000" };',
+    "src/web/packages/editor/src/unselected.tsx": 'const s = { color: "#00ff00" };',
+    "src/web/tests/e2e/driving.spec.ts": 'await page.goto("http://127.0.0.1:4174/");\nconst c = "#0000ff";',
+    "src/web/tests/e2e/unopened.spec.ts": 'await page.goto("https://example.com/");\nconst c = "#ff00ff";',
+    "src/web/tests/e2e/helper.ts": 'export const helper = "#ffff00";',
+    "src/web/node_modules/pkg/ignored.dom.test.tsx": 'const s = { color: "#00ffff" };',
+  });
+  try {
+    const selected = await selectTestFiles(tree);
+    report(
+      "the rule selects a dom test and a driving spec, and nothing else",
+      selected.join(",") ===
+        "src/web/packages/editor/src/selected.dom.test.tsx,src/web/tests/e2e/driving.spec.ts",
+      `expected a dom test and a driving spec, got [${selected.join(",")}]`,
+    );
+    const run = runOver(tree);
+    report(
+      "a selected file is scanned",
+      run.stderr.includes("src/web/packages/editor/src/selected.dom.test.tsx:1:") &&
+        run.stderr.includes("src/web/tests/e2e/driving.spec.ts:2:"),
+      `exit ${run.status}, stderr ${JSON.stringify(run.stderr.slice(0, 300))}`,
+    );
+    report(
+      "a file the rule did not select is not scanned",
+      !["unselected.tsx", "unopened.spec.ts", "helper.ts", "ignored.dom.test.tsx"].some(
+        (name) => run.stderr.includes(name),
+      ),
+      `exit ${run.status}, stderr ${JSON.stringify(run.stderr.slice(0, 300))}`,
+    );
+  } finally {
+    await rm(tree, { recursive: true, force: true });
+  }
+
+  const bare = await scratchTree({
+    "scripts/design-tokens.gated.json": JSON.stringify([
+      "src/web/packages/editor/src/listed.tsx",
+    ]),
+    "src/web/packages/editor/src/listed.tsx": "export const listed = 1;",
+  });
+  try {
+    const run = runOver(bare);
+    report(
+      "a rule that selects nothing fails rather than passing",
+      run.status === 1 && run.stderr.includes("selected no file"),
+      `exit ${run.status}, stderr ${JSON.stringify(run.stderr.slice(0, 300))}`,
+    );
+  } finally {
+    await rm(bare, { recursive: true, force: true });
+  }
+
   // The brief writes its test as `check(...)` calls from an importer. Importing
   // must hand back the function and nothing else — no CLI, no exit, and not the
   // self-test either, whatever the importing process's argv happens to hold.
@@ -810,10 +971,14 @@ const isEntryPoint = (() => {
 })();
 
 if (isEntryPoint) {
-  if (process.argv.includes("--self-test")) selfTest();
+  if (process.argv.includes("--self-test")) await selfTest();
 
   const gatedArg = flagValue("--gated");
-  const gatedPath = gatedArg === null ? resolve(ROOT, DEFAULT_GATED) : resolve(gatedArg);
+  const rootArg = flagValue("--root");
+  // `--root` exists for the self-test and a red proof: both run this whole
+  // instrument over a tree the repo does not own.
+  const root = rootArg === null ? ROOT : resolve(rootArg);
+  const gatedPath = gatedArg === null ? resolve(root, DEFAULT_GATED) : resolve(gatedArg);
 
   let config;
   try {
@@ -840,6 +1005,29 @@ if (isEntryPoint) {
     process.exit(1);
   }
 
+  // The derived half, and the same guard for it one level out: a rule that
+  // selects nothing reports a clean run over every test file in the repo, which
+  // is the defect an empty list has and the reason both halves are checked.
+  const derived = await selectTestFiles(root);
+  if (derived.length === 0) {
+    console.error(
+      `design-tokens: the test-file rule selected no file under ${posix(resolve(root, "src", "web"))}; every *.dom.test.tsx and every tests/e2e spec that opens the editor preview must resolve, or the rule checks nothing`,
+    );
+    process.exit(1);
+  }
+  // Deduped rather than concatenated: a path both halves name is one file, and
+  // the JSON keeps its source files while a source file's test joins by rule.
+  const files = [...new Set([...gated.map(String), ...derived])];
+
+  // The selection is stated, not inferred — a membership a reader cannot see is
+  // the file-by-file list this replaced (`vg-228`). Printed before the scan
+  // rather than among the success notices below, because a red run is exactly
+  // when a reader asks what the rule took.
+  console.log(
+    `design-tokens: the test-file rule selected ${derived.length} file(s) — every *.dom.test.tsx under src/web, and every tests/e2e spec that opens the editor preview`,
+  );
+  for (const relPath of derived) console.log(`design-tokens: by rule: ${relPath}`);
+
   // Every file the run reads, read once: the gated list and the ceilings' paths.
   // The allowlist rule at the end needs the same union, and reading a file twice
   // would let the two rules disagree about which file they looked at. A read that
@@ -848,7 +1036,7 @@ if (isEntryPoint) {
   const sourceOf = async (relPath) => {
     if (!sources.has(relPath)) {
       try {
-        sources.set(relPath, await readFile(resolve(ROOT, relPath), "utf8"));
+        sources.set(relPath, await readFile(resolve(root, relPath), "utf8"));
       } catch (error) {
         sources.set(relPath, { error });
       }
@@ -860,7 +1048,7 @@ if (isEntryPoint) {
   const notices = [];
 
   let violations = 0;
-  for (const entry of gated) {
+  for (const entry of files) {
     const relPath = String(entry);
     const source = await sourceOf(relPath);
     if (typeof source !== "string") {
@@ -876,10 +1064,10 @@ if (isEntryPoint) {
     }
   }
   if (violations > 0) {
-    console.error(`design-tokens: ${violations} violation(s) across ${gated.length} gated file(s)`);
+    console.error(`design-tokens: ${violations} violation(s) across ${files.length} gated file(s)`);
     process.exit(1);
   }
-  notices.push(`design-tokens: ${gated.length} gated file(s) clean`);
+  notices.push(`design-tokens: ${files.length} gated file(s) clean`);
 
   // The same guards the gated list gets above, for the same reason: a guard over
   // nothing proves nothing, and a `max` that is not a finite number is a ceiling

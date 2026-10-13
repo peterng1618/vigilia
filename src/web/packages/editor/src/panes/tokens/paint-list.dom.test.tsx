@@ -20,11 +20,11 @@
  * remount would render the previous token's state for a frame. All three are
  * asserted, because only the first two are what the measured defect named.
  *
- * **This file is deliberately not in `scripts/design-tokens.gated.json`** (R37).
- * Its colour literals are document fixtures — the values a case asserts an author
- * typed — not styling, and the ratchet exists to catch a surface that paints a
- * colour instead of naming one. It was added and removed: gating it reports 20
- * hex-literal violations. The omission is a decision, not an oversight.
+ * **This file's colour literals are document fixtures** — the values a case
+ * asserts an author typed — not styling, and they live in
+ * `paint-list-fixture.ts` beside this file for exactly that reason. The ratchet
+ * reads this file by rule (`vg-228`), so the fixture is where a document value
+ * belongs and this file is where the behaviour does.
  *
  * `Harness` is the session's half of that contract: a commit comes back as a new
  * palette prop, exactly as `editor-session`'s `render()` hands one back.
@@ -35,6 +35,17 @@ import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeAll, expect, it, vi } from "vitest";
 import { uiCopy } from "../../ui-copy.js";
 import { PaintList, type PaintListProps } from "./paint-list.js";
+import {
+  BACKGROUND_PAINT,
+  EDITED_ACCENT_PAINT,
+  FROST_PAINT,
+  FROSTED_PANEL,
+  GLOW_GRADIENT,
+  MOVED_FROST_PAINT,
+  PAINT_LIST_PALETTE,
+  RED_PAINT,
+  TYPED_PAINT,
+} from "./paint-list-fixture.js";
 
 // Base UI's popups need three browser APIs jsdom has none of — the same three
 // `control.dom.test.tsx` supplies, for the same reason.
@@ -207,21 +218,6 @@ async function chooseIn(control: string, id: string): Promise<void> {
   await flush();
 }
 
-const palette = {
-  none: {
-    name: "None",
-    value: { kind: "solid" as const, color: "transparent" },
-  },
-  background: {
-    name: "Background",
-    value: { kind: "solid" as const, color: "#102030" },
-  },
-  accent: {
-    name: "Accent",
-    value: { kind: "solid" as const, color: "#00b8d9" },
-  },
-};
-
 const usageWith =
   (
     record: Readonly<
@@ -257,7 +253,7 @@ const fieldError = (host: HTMLElement): Element | null =>
   host.querySelector("[data-vigilia-palette-error]");
 
 it("lists every token with its name and its usage figure, and skips the none token", async () => {
-  const { host } = await mount(palette, {
+  const { host } = await mount(PAINT_LIST_PALETTE, {
     usage: usageWith({
       none: [],
       background: [
@@ -279,7 +275,7 @@ it("lists every token with its name and its usage figure, and skips the none tok
 
 it("states a missing reading rather than fabricating a zero when there is no scene", async () => {
   // §2.3 and the host's rule: a missing reading is stated, never defaulted.
-  const { host } = await mount(palette, { usage: undefined });
+  const { host } = await mount(PAINT_LIST_PALETTE, { usage: undefined });
 
   expect(usageFigure(host, "background")).toBe(uiCopy.panels.notSet);
   expect(usageFigure(host, "background")).not.toBe("0");
@@ -289,7 +285,7 @@ it("states a missing reading rather than fabricating a zero when there is no sce
 });
 
 it("keeps the picker's element standing while a value changes", async () => {
-  const { host } = await mount(palette, { usage: undefined });
+  const { host } = await mount(PAINT_LIST_PALETTE, { usage: undefined });
   const beforeHost = pickerHost(host);
   const beforeFields = fieldsHost(host);
   const beforeTrigger = host.querySelector(
@@ -297,7 +293,7 @@ it("keeps the picker's element standing while a value changes", async () => {
   );
   expect(beforeHost).not.toBeNull();
 
-  await commitField("[data-vigilia-palette-color]", "#123456");
+  await commitField("[data-vigilia-palette-color]", TYPED_PAINT);
 
   expect(pickerHost(host), "a colour change re-renders in place").toBe(
     beforeHost,
@@ -312,7 +308,7 @@ it("keeps the picker's element standing while a value changes", async () => {
 });
 
 it("remounts the field set when the paint kind changes", async () => {
-  const { host } = await mount(palette, { usage: undefined });
+  const { host } = await mount(PAINT_LIST_PALETTE, { usage: undefined });
   const before = fieldsHost(host);
   expect(before).not.toBeNull();
 
@@ -337,7 +333,7 @@ it("rebuilds the field set when the token changes, so the picker cannot show the
   // flushed by `act` before any assertion runs, so the value read here would
   // agree with the correct implementation either way. A node that survived the
   // switch is the same defect stated where it can be caught.
-  const { host } = await mount(palette, { usage: undefined });
+  const { host } = await mount(PAINT_LIST_PALETTE, { usage: undefined });
   const before = pickerHost(host);
   expect(before).not.toBeNull();
 
@@ -349,7 +345,9 @@ it("rebuilds the field set when the token changes, so the picker cannot show the
 });
 
 it("refuses a colour the engine cannot paint, and says so beside the field", async () => {
-  const { host, change } = await mount(palette, { usage: undefined });
+  const { host, change } = await mount(PAINT_LIST_PALETTE, {
+    usage: undefined,
+  });
 
   await commitField("[data-vigilia-palette-color]", "not-a-colour");
 
@@ -358,14 +356,19 @@ it("refuses a colour the engine cannot paint, and says so beside the field", asy
 });
 
 it("edits the token the author picks, and commits it under its own stable id", async () => {
-  const { host, change } = await mount(palette, { usage: undefined });
+  const { host, change } = await mount(PAINT_LIST_PALETTE, {
+    usage: undefined,
+  });
 
   await click(host.querySelector('[data-vigilia-palette-token-row="accent"]')!);
-  await commitField("[data-vigilia-palette-color]", "#abcdef");
+  await commitField("[data-vigilia-palette-color]", EDITED_ACCENT_PAINT);
 
   expect(change).toHaveBeenLastCalledWith({
-    ...palette,
-    accent: { name: "Accent", value: { kind: "solid", color: "#abcdef" } },
+    ...PAINT_LIST_PALETTE,
+    accent: {
+      name: "Accent",
+      value: { kind: "solid", color: EDITED_ACCENT_PAINT },
+    },
   });
 });
 
@@ -373,15 +376,7 @@ it("carries the colour across a paint-kind switch in both directions", async () 
   // The measured defect: choosing Linear gradient over a 30% alpha panel
   // replaced it, in one dropdown choice, with an opaque white-to-black sweep,
   // and undo was the way back.
-  const { host, change } = await mount(
-    {
-      frost: {
-        name: "Frosted panel",
-        value: { kind: "solid", color: "#0815234d" },
-      },
-    },
-    { usage: undefined },
-  );
+  const { host, change } = await mount(FROSTED_PANEL, { usage: undefined });
 
   await chooseIn("[data-vigilia-palette-kind]", "gradient");
   expect(change).toHaveBeenLastCalledWith({
@@ -391,8 +386,8 @@ it("carries the colour across a paint-kind switch in both directions", async () 
         kind: "gradient",
         angle: 0,
         stops: [
-          { offset: 0, color: "#0815234d" },
-          { offset: 1, color: "#0815234d" },
+          { offset: 0, color: FROST_PAINT },
+          { offset: 1, color: FROST_PAINT },
         ],
       },
     },
@@ -404,35 +399,20 @@ it("carries the colour across a paint-kind switch in both directions", async () 
     document.querySelector<HTMLInputElement>(
       "[data-vigilia-palette-stop-color]",
     )!,
-    "#0a16234d",
+    MOVED_FROST_PAINT,
   );
   await chooseIn("[data-vigilia-palette-kind]", "solid");
   expect(change).toHaveBeenLastCalledWith({
     frost: {
       name: "Frosted panel",
-      value: { kind: "solid", color: "#0a16234d" },
+      value: { kind: "solid", color: MOVED_FROST_PAINT },
     },
   });
   void host;
 });
 
 it("edits a gradient's angle, its stops and an added stop", async () => {
-  const { host, change } = await mount(
-    {
-      glow: {
-        name: "Glow",
-        value: {
-          kind: "gradient" as const,
-          angle: 0,
-          stops: [
-            { offset: 0, color: "#102030" },
-            { offset: 1, color: "#102030" },
-          ],
-        },
-      },
-    },
-    { usage: undefined },
-  );
+  const { host, change } = await mount(GLOW_GRADIENT, { usage: undefined });
 
   await commitField("[data-vigilia-palette-angle]", "45");
   expect(change).toHaveBeenLastCalledWith({
@@ -442,8 +422,8 @@ it("edits a gradient's angle, its stops and an added stop", async () => {
         kind: "gradient",
         angle: 45,
         stops: [
-          { offset: 0, color: "#102030" },
-          { offset: 1, color: "#102030" },
+          { offset: 0, color: BACKGROUND_PAINT },
+          { offset: 1, color: BACKGROUND_PAINT },
         ],
       },
     },
@@ -455,7 +435,7 @@ it("edits a gradient's angle, its stops and an added stop", async () => {
     document.querySelector<HTMLInputElement>(
       "[data-vigilia-palette-stop-color]",
     )!,
-    "#ff0000",
+    RED_PAINT,
   );
   expect(change).toHaveBeenLastCalledWith({
     glow: {
@@ -464,8 +444,8 @@ it("edits a gradient's angle, its stops and an added stop", async () => {
         kind: "gradient",
         angle: 45,
         stops: [
-          { offset: 0, color: "#ff0000" },
-          { offset: 1, color: "#102030" },
+          { offset: 0, color: RED_PAINT },
+          { offset: 1, color: BACKGROUND_PAINT },
         ],
       },
     },
@@ -479,9 +459,9 @@ it("edits a gradient's angle, its stops and an added stop", async () => {
         kind: "gradient",
         angle: 45,
         stops: [
-          { offset: 0, color: "#ff0000" },
-          { offset: 1, color: "#102030" },
-          { offset: 1, color: "#102030" },
+          { offset: 0, color: RED_PAINT },
+          { offset: 1, color: BACKGROUND_PAINT },
+          { offset: 1, color: BACKGROUND_PAINT },
         ],
       },
     },
@@ -490,7 +470,10 @@ it("edits a gradient's angle, its stops and an added stop", async () => {
 
 it("carries a replacement into the delete, and deletes through the port", async () => {
   const remove = vi.fn();
-  const { host } = await mount(palette, { usage: undefined, onDelete: remove });
+  const { host } = await mount(PAINT_LIST_PALETTE, {
+    usage: undefined,
+    onDelete: remove,
+  });
 
   await chooseIn("[data-vigilia-palette-replacement]", "accent");
   await click(
@@ -501,7 +484,7 @@ it("carries a replacement into the delete, and deletes through the port", async 
 });
 
 it("names the objects a token is used by, for the chosen token", async () => {
-  const { host } = await mount(palette, {
+  const { host } = await mount(PAINT_LIST_PALETTE, {
     usage: usageWith({
       background: [{ objectId: "card", name: "Card title" }],
       accent: [{ objectId: "header", name: "Header" }],

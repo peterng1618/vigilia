@@ -7,7 +7,13 @@ import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { expect, it, vi } from "vitest";
 import { createGroupingManager } from "../grouping-manager/index.js";
-import { CompositionPane } from "../panes/composition/composition-pane.js";
+import {
+  CompositionPane,
+  LAYER_ROW_INDENT,
+  LAYER_ROW_INDENT_STEP,
+  ROW_HEIGHT,
+} from "../panes/composition/composition-pane.js";
+import { NEUTRAL_PAINT } from "../panes/composition/layer-mark-fixture.js";
 import { uiCopy } from "../ui-copy.js";
 import { createEditorShellBridge, type EditorShellBridge } from "./bridge.js";
 import type {
@@ -31,7 +37,7 @@ function markFor(kind: LayerKind): LayerMark {
     case "chart":
       return { kind, family: "bar" };
     case "shape":
-      return { kind, paint: "#000" };
+      return { kind, paint: NEUTRAL_PAINT };
     case "image":
       return { kind, src: undefined };
     case "group":
@@ -697,11 +703,16 @@ it("only marks a drop slot that would actually land", async () => {
   expect(line().hidden).toBe(false);
   // The units are the assertion, not the numbers: `top: 52` is an invalid
   // length, so the declaration is dropped, `top` falls back to `auto` and the
-  // line sizes to zero. Measured on canvas — the line had never drawn. The
-  // figure is the row's own height times the slot's index (2 × 26px), so it
-  // moves with `ROW_HEIGHT` and the stylesheet's `.vigilia-layer-row`.
-  expect(line().style.getPropertyValue("--layer-dropline-top")).toBe("52px");
-  expect(line().style.getPropertyValue("--layer-dropline-left")).toBe("19px");
+  // line sizes to zero. Measured on canvas — the line had never drawn. Both
+  // figures are the panel's own arithmetic rather than a second copy of it: the
+  // row's height times the slot's index, and the two indents a depth-1 row
+  // sits at.
+  expect(line().style.getPropertyValue("--layer-dropline-top")).toBe(
+    `${2 * ROW_HEIGHT}px`,
+  );
+  expect(line().style.getPropertyValue("--layer-dropline-left")).toBe(
+    `${LAYER_ROW_INDENT + LAYER_ROW_INDENT_STEP}px`,
+  );
 
   await act(async () => row("peer").dispatchEvent(drag("drop")));
   expect(reorderLayer).toHaveBeenCalledWith("child", "peer");
@@ -1507,7 +1518,7 @@ it("names a chart row's family and a shape row's kind for a screen reader", asyn
       id: "panel",
       name: "Panel",
       kind: "shape",
-      mark: { kind: "shape", paint: "#2ee6a8" },
+      mark: { kind: "shape", paint: NEUTRAL_PAINT },
       role: { kind: "shape" },
     }),
   ]);

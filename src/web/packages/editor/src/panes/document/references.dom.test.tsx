@@ -1,10 +1,6 @@
 // @vitest-environment jsdom
 // No `createRoot` of its own: the panel is mounted through its factory, the way
 // `editor-session.ts` mounts it, so the tree under test is the shipped one.
-// Deliberately **not** in `scripts/design-tokens.gated.json`: its colour literals
-// are document fixtures — the values a case asserts are printed — not styling,
-// and the ratchet exists to catch a surface that paints a colour instead of
-// naming one.
 
 /**
  * The Document pane's References section: the document's own resolved tokens and
@@ -22,20 +18,15 @@ import {
   createDocumentReferencesPanel,
   type DocumentReferencesPanel,
 } from "./references.js";
+import {
+  EDITED_GLOBALS,
+  INK_PAINT,
+  REFERENCES_GLOBALS,
+} from "./references-fixture.js";
 
 (
   globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
 ).IS_REACT_ACT_ENVIRONMENT = true;
-
-const globals = {
-  palette: {
-    none: { name: "None", value: { kind: "solid", color: "#00000000" } },
-    ink: { name: "Ink", value: { kind: "solid", color: "#e8ecf3" } },
-  },
-  typePresets: {
-    body: { name: "Body", value: { family: "Inter", size: 16, weight: "600" } },
-  },
-} as never;
 
 let panel: DocumentReferencesPanel | undefined;
 
@@ -49,7 +40,7 @@ function mount(): { host: HTMLElement; setGlobals: (next: unknown) => void } {
   document.body.replaceChildren();
   const host = document.createElement("div");
   document.body.append(host);
-  let current = globals;
+  let current = REFERENCES_GLOBALS;
   panel = createDocumentReferencesPanel(host, {
     globals: () => current,
   });
@@ -115,7 +106,9 @@ it("resolves each row through the document's own globals", () => {
   const opened = sectionBody(host);
   const ink = opened.querySelector('[data-vigilia-resolution="Ink"]');
   expect(ink?.textContent).toContain("Ink");
-  expect(ink?.textContent).toContain("#e8ecf3");
+  // The printed paint is the fixture's own ink, so the assertion reads the
+  // value's owner rather than a second copy of it.
+  expect(ink?.textContent).toContain(INK_PAINT);
   const body = opened.querySelector('[data-vigilia-resolution="Body"]');
   expect(body?.textContent).toContain("Body");
   expect(body?.textContent).toContain("Inter");
@@ -124,13 +117,7 @@ it("resolves each row through the document's own globals", () => {
 it("shows globals that changed after the panel mounted", () => {
   const { host, setGlobals } = mount();
 
-  setGlobals({
-    palette: {
-      ink: { name: "Ink", value: { kind: "solid", color: "#e8ecf3" } },
-      accent: { name: "Accent", value: { kind: "solid", color: "#ff8800" } },
-    },
-    typePresets: {},
-  });
+  setGlobals(EDITED_GLOBALS);
   panel?.render();
 
   // Read on demand, so a theme edit cannot leave a stale resolution behind.

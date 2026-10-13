@@ -133,8 +133,20 @@ class LayerStore {
 /** Paired with `.vigilia-layer-row`'s height in `editor-shell.css`: the row is
  * the control set's 26px panel rhythm (§3) because the row's own controls are
  * 26px squares (§5), and a 26px control in a shorter row is a control the row
- * clips. */
-const ROW_HEIGHT = 26;
+ * clips.
+ *
+ * Exported with the indent pair below because the drop line's placement is this
+ * arithmetic, and the test that pins it reads the constants rather than a second
+ * copy of the numbers. */
+export const ROW_HEIGHT = 26;
+
+/** The row's indentation: `LAYER_ROW_INDENT` at the root and
+ *  `LAYER_ROW_INDENT_STEP` per level, matched by `.vigilia-layer-row`'s
+ *  `calc(6px + var(--layer-depth, 0) * 13px)` and by the drop line's
+ *  `--layer-dropline-left`, which promises the slot the row it crosses would
+ *  take. */
+export const LAYER_ROW_INDENT = 6;
+export const LAYER_ROW_INDENT_STEP = 13;
 
 /** The entered group and everything under it. The projection emits a parent
  * before its children, so one forward pass reaches any depth — and a row whose
@@ -477,7 +489,7 @@ export function CompositionPane({
                 );
                 line.style.setProperty(
                   "--layer-dropline-left",
-                  `${6 + row.depth * 13}px`,
+                  `${LAYER_ROW_INDENT + row.depth * LAYER_ROW_INDENT_STEP}px`,
                 );
               }}
               onDrop={(event) => {
@@ -492,7 +504,7 @@ export function CompositionPane({
               style={
                 {
                   "--layer-depth": String(row.depth),
-                  paddingLeft: "calc(6px + var(--layer-depth) * 13px)",
+                  paddingLeft: `calc(${LAYER_ROW_INDENT}px + var(--layer-depth) * ${LAYER_ROW_INDENT_STEP}px)`,
                 } as CSSProperties
               }
               onClick={() => store.mutate(() => bridge?.selectLayer(row.id))}
