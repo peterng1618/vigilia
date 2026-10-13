@@ -1451,7 +1451,7 @@ export function copiedElementDrift(
  *  not drift answer for the ones that did. So the compared properties are the
  *  ones the address leaves out, and a drift in a property the address *does*
  *  carry is loud too: the address matches nothing and `mockupDeclared` throws.
- *  The rail's 34px slot is the one copied element this cannot be written for —
+ *  The rail's slot is the one copied element this cannot be written for —
  *  every address that settles its plain form carries the size and the radius it
  *  would be compared on — and it is left out rather than read through an address
  *  that goes stale the moment either moves.

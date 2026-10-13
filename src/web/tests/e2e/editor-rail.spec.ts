@@ -404,7 +404,7 @@ test("the status bar is the window's full-width bottom edge", async ({
  * the assertion that can see it — the bar's own edges measured against the
  * rail's — and the measurement is printed as the report's evidence.
  *
- * The rail is a 46px column and the slot a centred 34px button, so a 6px gutter
+ * The rail is a 46px column and the slot a centred 36px button, so a 5px gutter
  * sits on each side. The bar belongs to the rail, so its outer edge is flush
  * with the rail's inner (right) edge, not past it: the mirror `right: -8px`
  * lands 2px out in the rail-to-pane gap and fails `barRight` below.
@@ -458,6 +458,14 @@ test("the selected slot's accent bar sits on the rail's inner edge", async ({
   console.log(`accent-bar ${report}`);
   testInfo.annotations.push({ type: "accent-bar", description: report });
 
+  // §5's rail slot, which is the size the bar's offset is derived from: at 34px
+  // the same `-6px` lands the bar's outer edge 1px short of the rail. Read here
+  // rather than by a geometry case of its own, because the two numbers are one
+  // decision — `vg-227` moved the slot and the bar together.
+  expect(
+    measured.slotRight - measured.slotLeft,
+    "the slot is §5's 36px rail slot",
+  ).toBe(36);
   expect(measured.barWidth, "the bar is DESIGN.md's 2px").toBe(2);
   expect(
     measured.barLeft,

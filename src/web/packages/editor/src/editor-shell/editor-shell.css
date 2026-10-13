@@ -1006,19 +1006,19 @@ body,
    The 1px `padding-left` is the arithmetic of that hairline, not a second
    boundary. §7.2 fixes the strip at 46px and the hairline is drawn *inside* it,
    so the rail DESIGN.md describes keeps 45px of content and the other 1px *is*
-   the boundary. A one-sided border with no inset would move the centred 34px
-   slots half a pixel left of the box's centre, and the selected slot's accent
-   bar — hung in the gutter, flush with the rail's inner edge — would land half a
+   the boundary. A one-sided border with no inset would move the centred slots
+   half a pixel left of the box's centre, and the selected slot's accent bar —
+   hung in the gutter, flush with the rail's inner edge — would land half a
    pixel short of that edge. The inset holds the slots where the centre puts
    them, so the hairline draws a boundary without moving the rail's contents.
 
    The drawing is the one that was over, and plan 7 Task 3 Step 1 corrected it.
    `shell.html`'s rail is a **46px border-box** — the drawing's own `*` rule sets
    `box-sizing: border-box`, so the brief's "47px content-box" premise was wrong —
-   but with no left inset its 34px slots sat at 5.5…39.5 and its accent bar at
-   43.5…45.5, half a pixel short of the strip's inner edge. The drawing now
-   carries the same 1px left inset, so its slots reach 6…40 as §7.2's do. The
-   product's 46px is DESIGN.md's. */
+   but with no left inset its slots sat half a pixel left of the strip's centre
+   and its accent bar half a pixel short of the strip's inner edge. The drawing
+   now carries the same 1px left inset the product does, so the two centre their
+   slots the same way. The product's 46px is DESIGN.md's. */
 .editor-shell-rail {
   grid-area: rail;
   display: flex;
@@ -1030,12 +1030,15 @@ body,
 .editor-shell-rail button {
   position: relative;
   display: flex;
-  width: 34px;
-  height: 34px;
+  /* §5's rail slot: a 36px square, and the one control larger than §5's 26–30px
+     icon button. The slot carries the size rather than the glyph, which stays
+     the 17px the rest of the chrome uses. */
+  width: 36px;
+  height: 36px;
   align-items: center;
   justify-content: center;
   /* §5 rule 6: a slot is glyph-only, so hover is the border it acquires rather
-     than a wash. The transparent resting border is what keeps the 34px slot the
+     than a wash. The transparent resting border is what keeps the 36px slot the
      same size, so "nothing moves" holds. */
   border: 1px solid transparent;
   border-radius: 8px;
@@ -1052,14 +1055,20 @@ body,
   color: var(--accent);
   background: color-mix(in srgb, var(--accent) 14%, transparent);
 }
-/* The bar hangs in the 6px gutter between the 34px slot and the 46px rail, so
-   its outer edge is flush with the rail's inner (right) edge.
+/* The bar hangs in the gutter between the slot and the 46px rail, so its outer
+   edge is flush with the rail's inner (right) edge. The gutter is **5px**: the
+   strip's 1px right hairline and its 1px left inset leave 44px of content, and a
+   36px slot centred in that sits at 5…41.
 
-   **`-7px`, not `-6px`, because the slot carries §5 rule 6's 1px transparent
-   resting border.** An absolutely positioned child resolves `right` against its
-   containing block's *padding* box, which the border insets by its own width, so
-   the bar would sit 1px inside the rail's inner edge — measured, not reasoned:
-   at `-6px` the bar's outer edge read 44 against a rail edge of 46.
+   **`-6px`, and not the drawing's `-5px`, because the slot carries §5 rule 6's
+   1px transparent resting border.** An absolutely positioned child resolves
+   `right` against its containing block's *padding* box, which the border insets
+   by its own width: the slot's border box ends at 41 and its padding box at 40,
+   so 46 − 40 is 6. The drawing's spans have no border, which is the whole of the
+   difference between the two numbers. **Measured on the built bundle**: the slot
+   reads 5…41 in a 46px rail and the bar 44…46, its outer edge on the rail's inner
+   edge. The value moved with the slot — at 34px the same arithmetic wanted
+   `-7px`, and `-6px` there put the bar's outer edge at 44.
 
    The `2px` radius is a **degenerate mark**: its value *is* the bar's own
    thickness (a 2px bar rounded to half its width), not a step on §3's closed
@@ -1069,7 +1078,7 @@ body,
   position: absolute;
   top: 6px;
   bottom: 6px;
-  right: -7px;
+  right: -6px;
   width: 2px;
   border-radius: 2px;
   background: var(--accent);

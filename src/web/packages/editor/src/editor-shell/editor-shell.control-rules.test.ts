@@ -70,7 +70,7 @@ describe("§5 rule 6 on the shell's glyph-only controls", () => {
    *  acquired 1px border lands *inside* the box. Two of these rules say
    *  `box-sizing: border-box` for themselves; the rail's slot and the layer
    *  row's square rely on the global rule, which nothing else pins — without it
-   *  the 34px slot and the 20px square grow by 2px on hover and every case above
+   *  the rail's 36px slot and the 20px square grow by 2px on hover and every case above
    *  stays green. */
   it("puts every box on border-box, so the acquired border does not grow it", () => {
     expect(

@@ -24,7 +24,7 @@ export const RAIL_SLOTS: readonly RailSlot[] = [
   "document",
 ];
 
-/** One slot: a 34px icon-only control whose one word is both its tooltip and
+/** One slot: a 36px icon-only control whose one word is both its tooltip and
  *  its accessible name, so the two cannot disagree.
  *
  *  The tooltip is the control set's one owner of the pairing
@@ -78,7 +78,7 @@ function RailSlotButton({
 /** The settings gear, pinned to the rail's foot (DESIGN.md §7.2).
  *
  *  It draws its own button for the reason the slots do — the control set's icon
- *  button is a 26px action and this is the rail's 34px rhythm — and it carries
+ *  button is a 26px action and this is the rail's 36px rhythm — and it carries
  *  no `aria-pressed`, because it chooses nothing: pressing it opens a modal and
  *  nothing else. The name and the tooltip are one string, the rail's slot rule.
  */

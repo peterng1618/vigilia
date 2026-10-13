@@ -37,9 +37,11 @@ ledger did.
 
 ## Last completed change
 
-- **`vg-270` closes as verified, on a reading and a red proof rather than on a reading alone** — the Tokens overflow is gone (`0e7b3405` gave the well’s column row its `min-w-0`), and removing that one declaration reproduces it on a built bundle (Tokens, 198px, the other three panes clean), so the cause the row named is the cause.
-- **The instrument exists now, which the row did not have** — `editor-rail.spec.ts` reads each of the four panes’ columns in turn and fails on any sideways scroll, naming the slot; the capture could never show it, because the column image is the scroll origin.
-- **Registers: `npm run backlog:check` exit 0, 447 items across both registers** — the row carries both artefacts (`8eff3abf` for the check, `0e7b3405` for the fix that removed the overflow) and its disposition is appended to its own `detail` before the move.
+- **`vg-227` lands as work rather than as a ruling: the rail's slot is §5's 36px rail slot, and §5's closed vocabulary gains the role** — the 2026-10-12 ruling added a row instead of stretching the icon button's 26–30px range, so the larger control has a name of its own.
+- **The rail's dependent arithmetic was re-derived and measured on a built bundle, not asserted** — the slot reads 5…41 in the 46px strip (a 5px gutter each side) and the accent bar moved to `right: -6px`, reading 44…46 with its outer edge on the rail's inner edge; at the stale `-7px` it reads 45…47, one pixel into the pane, and the case fails.
+- **The red proof is the pre-change CSS, and the case now pins the size directly** — reverting the file to `423c557f`'s copy reddens `editor-rail.spec.ts` on "the slot is §5's 36px rail slot" (34 against 36), and the restore was verified byte-identical with `cmp` before the rebuild that made it green.
+- **The drawing moved with the code, so the parity pair stays honest** — `current/shell.html`'s five slot spans are 36px with the bar at the drawing's own `-5px`, and the three shell captures beside the drawings (add, glyphs, graphite) are re-shot; `design-language.spec.ts`'s ten cases and the ceiling's re-recorded residual set both pass.
+- **Gates: `npm run gate` exit 0 (255 files, 3,363 tests; `design:check` lint clean, 315 citation sources)** — the ratchet's record for `editor-shell.css` dropped the two `34px` and the `right: 7px` exemptions, and `vg-448` files the slot's `--radius-lg` radius, which §4 gives to surfaces rather than to controls.
 
 ## Next
 

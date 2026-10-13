@@ -113,7 +113,7 @@ export const CEILINGS = [
   {
     path: "src/web/packages/editor/src/editor-shell/editor-shell.css",
     max: 0,
-    recordedAt: "303dfdf6",
+    recordedAt: "423c557f",
     exempt: [
       { site: ".editor-shell-header", text: "42px" },
       { site: ".editor-shell-publish-toggle", text: "padding: 7px" },
@@ -125,15 +125,8 @@ export const CEILINGS = [
       { site: ".editor-shell-menu-label", text: "padding: 9px" },
       { site: ".editor-shell-menu-label", text: "padding: 3px" },
       { site: ".editor-shell-primary", text: "padding: 7px" },
-      { site: ".editor-shell-rail button", text: "34px" },
-      { site: ".editor-shell-rail button", text: "34px", occurrence: 1 },
       { site: ".editor-shell-rail button[aria-pressed=\"true\"]::before", text: "2px" },
       { site: ".editor-shell-rail button[aria-pressed=\"true\"]::before", text: "2px", occurrence: 1 },
-      // `right: -7px` is the 1px a `§5` rule-6 transparent resting border insets
-      // the padding box by, measured at `8b1b9106` — not a §3 step, and `-6px`
-      // reads 44 against the rail's 46. The instrument strips the sign, so the
-      // key is the text below.
-      { site: ".editor-shell-rail button[aria-pressed=\"true\"]::before", text: "right: 7px" },
       { site: ".editor-shell-panel fieldset", text: "padding: 2px" },
       { site: ".editor-shell-panel .vigilia-asset-preview", text: "120px" },
       { site: ".editor-shell-panel [data-vigilia-asset-import], .editor-shell-panel [data-vigilia-asset-replace], .editor-shell-panel [data-vigilia-asset-remove]", text: "margin: 3px" },

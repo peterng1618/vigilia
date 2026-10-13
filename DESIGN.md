@@ -412,6 +412,7 @@ The vocabulary is closed. A control is one of these, or it is not a control.
 | **Toggle** | A 26×14 pill, accent when on | A boolean that applies immediately |
 | **Segmented** | A `--panel-2` well holding 2–4 labels, the active one lifted to `--stage` | A small exclusive choice where both options must be readable |
 | **Icon button** | A 26–30px square at `--radius-md`, glyph only | An action whose glyph is unambiguous |
+| **Rail slot** | A 36px square at `--radius-lg`, glyph only | One of §7.2's four panes; at most one is open |
 | **Choice row** | A `--radius-md` row at `--panel-2` carrying a swatch and a name; the chosen row is lifted to `--stage` with the accent border | One member of a closed set where each member has its own colour |
 
 **Rules that make it readable:**
