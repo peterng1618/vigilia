@@ -21,15 +21,15 @@ import { act, createElement, type ReactElement } from "react";
 import { createRoot } from "react-dom/client";
 import { expect, it } from "vitest";
 import { settingsField } from "./editor-shell/controls/settings-field.js";
+import type {
+  HostingSnapshot,
+  HostingStore,
+} from "./editor-shell/hosting-store.js";
 import { PublishControl } from "./editor-shell/publish-control.js";
 import { PublishIndicator } from "./editor-shell/publish-indicator.js";
 import { SaveState } from "./editor-shell/save-state.js";
 import type { EditorActionFacade } from "./editor-shell/session-facade.js";
-import type {
-  HostingSnapshot,
-  HostingStore,
-  PublishSurfaceStore,
-} from "./editor-shell/shell-layout.js";
+import type { PublishSurfaceStore } from "./editor-shell/shell-stores.js";
 import { resolutionValue } from "./selection-inspector/appearance.js";
 import { projectRuns, RunEditor } from "./selection-inspector/runs.js";
 import type { RunEdits } from "./selection-inspector/view.js";

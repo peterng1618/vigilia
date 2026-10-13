@@ -9,7 +9,7 @@ import type { EditorShellBridge } from "./bridge.js";
 import { DocumentIdentity } from "./document-identity.js";
 import { SaveState } from "./save-state.js";
 import type { EditorActionFacade } from "./session-facade.js";
-import { SelectionStore } from "./shell-layout.js";
+import { SelectionStore } from "./shell-stores.js";
 
 /** Only what the marks read. The session owns both answers; a stub here would
  *  be a second implementation of them. */

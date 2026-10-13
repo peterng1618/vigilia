@@ -1,6 +1,6 @@
 import { useCallback, useSyncExternalStore } from "react";
 import { uiCopy } from "../ui-copy.js";
-import type { SelectionStore } from "./shell-layout.js";
+import type { SelectionStore } from "./shell-stores.js";
 
 /**
  * The stage's top-left corner: what the author is editing, and whether it is

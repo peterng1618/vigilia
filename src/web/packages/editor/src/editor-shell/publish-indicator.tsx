@@ -1,7 +1,7 @@
 import { useSyncExternalStore } from "react";
 import { uiCopy } from "../ui-copy.js";
+import type { HostingStore } from "./hosting-store.js";
 import { CHECK_GLYPH, Glyph } from "./icons.js";
-import type { HostingStore } from "./shell-layout.js";
 
 /**
  * The status bar's one mark of its own: the host is serving this editor on the

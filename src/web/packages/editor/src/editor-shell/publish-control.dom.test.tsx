@@ -15,9 +15,10 @@ import {
   type ShortcutBinding,
 } from "../shortcut-manager/index.js";
 import { uiCopy } from "../ui-copy.js";
+import { HostingStore } from "./hosting-store.js";
 import { PublishControl } from "./publish-control.js";
 import type { EditorActionFacade } from "./session-facade.js";
-import { HostingStore, PublishSurfaceStore } from "./shell-layout.js";
+import { PublishSurfaceStore } from "./shell-stores.js";
 
 const token = "t".repeat(43);
 const EXPIRES = "2026-10-08T00:00:00.000Z";

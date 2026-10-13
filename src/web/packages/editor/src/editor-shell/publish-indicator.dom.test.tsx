@@ -5,8 +5,8 @@ import { createRoot } from "react-dom/client";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { uiCopy } from "../ui-copy.js";
+import type { HostingSnapshot, HostingStore } from "./hosting-store.js";
 import { PublishIndicator } from "./publish-indicator.js";
-import type { HostingSnapshot, HostingStore } from "./shell-layout.js";
 
 /** A store fixed at one snapshot. The real `HostingStore` reads the host on
  *  construction, which a unit test has no host for, so only the two members the

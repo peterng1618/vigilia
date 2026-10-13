@@ -51,10 +51,8 @@ import {
   shellPalettes,
 } from "./editor-shell/palette.js";
 import { Settings } from "./editor-shell/settings.js";
-import {
-  createShellLayout,
-  EDIT_MENU_ROWS,
-} from "./editor-shell/shell-layout.js";
+import { createShellLayout } from "./editor-shell/shell-layout.js";
+import { EDIT_MENU_ROWS } from "./editor-shell/shell-menu-bar.js";
 import { catalogFaces, fontTrios } from "./font-catalog.js";
 import { FontPicker } from "./font-picker/font-picker.js";
 import { createPalettePanel } from "./palette-manager/panel.js";

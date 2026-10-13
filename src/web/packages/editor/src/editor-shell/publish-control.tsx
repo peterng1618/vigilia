@@ -9,9 +9,10 @@ import {
 } from "../shortcut-manager/display.js";
 import { uiCopy } from "../ui-copy.js";
 import { documentNameOf } from "./bridge.js";
+import type { HostingStore } from "./hosting-store.js";
 import { QrCode } from "./qr-symbol.js";
 import type { EditorActionFacade } from "./session-facade.js";
-import type { HostingStore, PublishSurfaceStore } from "./shell-layout.js";
+import type { PublishSurfaceStore } from "./shell-stores.js";
 
 /**
  * The editor's one filled accent button, and behind it everything publishing
