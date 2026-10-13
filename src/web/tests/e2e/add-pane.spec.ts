@@ -1,5 +1,6 @@
 import { expect, type Locator, type Page, test } from "@playwright/test";
 import { openPane } from "./editor-rail.js";
+import { themeToken, typeStep } from "./shell-tokens.js";
 import { isDesktopSurface } from "./surface.js";
 
 /**
@@ -54,7 +55,7 @@ test("the Add pane offers units and primitives, neither greyed, neither a fallba
   }
 });
 
-test("the pane's file controls take control text, not the shell's 13px base", async ({
+test(`the pane's file controls take control text, not the shell's ${themeToken("--text-md")} base`, async ({
   page,
 }, testInfo) => {
   test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
@@ -63,15 +64,22 @@ test("the pane's file controls take control text, not the shell's 13px base", as
   await openPane(page, "Add");
 
   // Plan 8's census measured these boxes' text as *inherited*, not stated
-  // (D9), so they took the shell root's `--text-md` 13px. §2 gives control
-  // text `--text-sm` 12px, and the box `controls.html:112` draws for both
-  // plain-DOM groups states 12px — as does `shell.html:137`/`:140` for this
-  // pane's own instances.
+  // (D9), so they took the shell root's `--text-md`. §2 gives control text
+  // `--text-sm`, and the box `controls.html:112` draws for both plain-DOM
+  // groups states it — as does `shell.html:137`/`:140` for this pane's own
+  // instances. The expected pair is the stylesheet's own declaration, so the
+  // row moves with §2 rather than restating it.
   const importButton = page.locator("[data-vigilia-asset-import]");
   await expect(importButton).toBeVisible();
-  await expect(importButton).toHaveCSS("font-size", "12px");
-  // §2's companion for `--text-sm` is 1.4, so the pair is stated too.
-  await expect(importButton).toHaveCSS("line-height", "16.8px");
+  await expect(importButton).toHaveCSS(
+    "font-size",
+    typeStep("--text-sm")["font-size"],
+  );
+  // §2's companion ratio for `--text-sm`, resolved the way the browser does.
+  await expect(importButton).toHaveCSS(
+    "line-height",
+    typeStep("--text-sm")["line-height"],
+  );
 });
 
 test("a card inserted from the Add pane arrives as a unit the tree can name", async ({

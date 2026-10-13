@@ -2,6 +2,11 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { expect, type Page, test } from "@playwright/test";
 import { writeThemePackage } from "@vigilia/theme-package";
+import {
+  frost,
+  solidOf,
+} from "../../packages/editor/src/new-fabric-theme-globals.js";
+import { GLASS_BAR } from "./glass-fixture.js";
 
 /**
  * The browser proof that a frosted **Circle** and a frosted **Triangle** are
@@ -134,18 +139,19 @@ function envelope(fill: "panel" | "frost" | "none", withGlass: boolean) {
         },
         bar: {
           name: "Bar",
-          value: { kind: "solid" as const, color: "#101318" },
+          value: { kind: "solid" as const, color: GLASS_BAR },
         },
-        // The product's own tokens, verbatim from `new-fabric-theme-globals.ts`.
-        // A fill invented for the fixture would make the number a statement
-        // about the fixture.
+        // The product's own tokens, imported from the module that owns them
+        // rather than transcribed. A fill invented for the fixture would make
+        // the number a statement about the fixture; a copy of the product's
+        // would make it a statement about that copy.
         panel: {
           name: "Panel",
-          value: { kind: "solid" as const, color: "#081523d9" },
+          value: { kind: "solid" as const, color: solidOf.panel },
         },
         frost: {
           name: "Frost",
-          value: { kind: "solid" as const, color: "#0815234d" },
+          value: { kind: "solid" as const, color: frost },
         },
       },
     },

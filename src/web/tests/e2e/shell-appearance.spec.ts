@@ -9,6 +9,7 @@ import {
   openShell,
   PALETTES,
 } from "./shell-palette.js";
+import { themeToken, typeStep } from "./shell-tokens.js";
 import { isDesktopSurface } from "./surface.js";
 
 /**
@@ -436,38 +437,34 @@ test.describe("shell palettes", () => {
       return { utilities, rules, theme };
     });
 
+    // The expected values are the stylesheet's own `@theme` declarations, read
+    // rather than transcribed: the claim is that the **bundle resolves what the
+    // source declares**, so a second copy of each number here would let the two
+    // drift while this row kept passing.
     expect(probe.utilities).toEqual({
-      "text-xs": { "font-size": "11px", "line-height": "14.3px" },
-      "text-sm": { "font-size": "12px", "line-height": "16.8px" },
-      "rounded-sm": { "border-radius": "4px" },
-      "rounded-md": { "border-radius": "6px" },
+      "text-xs": typeStep("--text-xs"),
+      "text-sm": typeStep("--text-sm"),
+      "rounded-sm": { "border-radius": themeToken("--radius-sm") },
+      "rounded-md": { "border-radius": themeToken("--radius-md") },
     });
     // §2's ratio for each token, resolved on the rule that states it.
     expect(probe.rules).toEqual({
-      "editor-shell-status": { "font-size": "11px", "line-height": "14.3px" },
-      "editor-shell-view-readout": {
-        "font-size": "12px",
-        "line-height": "16.8px",
-      },
-      "editor-shell-keyboard-reason": {
-        "font-size": "11px",
-        "line-height": "14.3px",
-      },
-      "editor-shell-pane-count": { "font-size": "10px", "line-height": "12px" },
-      "editor-shell-dialog": { "font-size": "12px", "line-height": "16.8px" },
-      "editor-shell-dialog-lead": {
-        "font-size": "15px",
-        "line-height": "19.5px",
-      },
+      "editor-shell-status": typeStep("--text-xs"),
+      "editor-shell-view-readout": typeStep("--text-sm"),
+      "editor-shell-keyboard-reason": typeStep("--text-xs"),
+      "editor-shell-pane-count": typeStep("--text-2xs"),
+      "editor-shell-dialog": typeStep("--text-sm"),
+      "editor-shell-dialog-lead": typeStep("--text-lg"),
     });
     expect(probe.theme).toEqual({
       // `.25rem`, not `0.25rem`: the bundle is minified, and this reads what
-      // the browser resolved rather than what the source says.
+      // the browser resolved rather than what the source says, so this one
+      // value stays spelled the way the minifier writes it.
       "--spacing": ".25rem",
-      "--text-md": "13px",
-      "--radius-lg": "8px",
-      "--shadow-raised": "0 12px 28px #0000003d",
-      "--shadow-overlay": "0 18px 44px #0006",
+      "--text-md": themeToken("--text-md"),
+      "--radius-lg": themeToken("--radius-lg"),
+      "--shadow-raised": themeToken("--shadow-raised"),
+      "--shadow-overlay": themeToken("--shadow-overlay"),
     });
   });
 

@@ -47,6 +47,11 @@ export const GLASS_MEDIA_SOURCE = { width: 800, height: 450 } as const;
 export const GLASS_STRIPE_SOURCE_X = 440;
 export const GLASS_STRIPE_SOURCE_WIDTH = 120;
 
+/** The letterbox bar the glass fixtures paint an artboard's edge with — a
+ *  document colour, so it belongs to the fixture. Every glass spec's `palette`
+ *  entry and the shared envelope read it here rather than each spelling it. */
+export const GLASS_BAR = "#101318";
+
 /** Every 64 source px - about 50 device px, well past twice the blur radius. The
  *  bars therefore flatten out under a real blur while a tint leaves them
  *  intact, and the marker is left as the only feature in the band, so a
@@ -101,7 +106,7 @@ export const GLASS_ENVELOPE = {
         name: "None",
         value: { kind: "solid" as const, color: "transparent" },
       },
-      bar: { name: "Bar", value: { kind: "solid" as const, color: "#101318" } },
+      bar: { name: "Bar", value: { kind: "solid" as const, color: GLASS_BAR } },
       panel: {
         name: "Panel",
         value: { kind: "solid" as const, color: "rgba(255, 255, 255, 0.10)" },

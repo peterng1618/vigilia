@@ -1,6 +1,6 @@
 import { expect, type Page, test } from "@playwright/test";
 import { writeThemePackage } from "@vigilia/theme-package";
-import { glassStripesPng } from "./glass-fixture.js";
+import { GLASS_BAR, glassStripesPng } from "./glass-fixture.js";
 
 /**
  * The editor preview `playwright.config.ts` starts, as `glass.spec.ts` does.
@@ -139,7 +139,7 @@ function envelope(kinds: readonly Kind[]) {
         },
         bar: {
           name: "Bar",
-          value: { kind: "solid" as const, color: "#101318" },
+          value: { kind: "solid" as const, color: GLASS_BAR },
         },
         panel: {
           name: "Panel",

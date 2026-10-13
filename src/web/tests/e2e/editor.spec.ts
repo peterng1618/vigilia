@@ -32,6 +32,18 @@ import {
   worldLeftOf,
   worldRightOf,
 } from "./editor-canvas.js";
+import {
+  ACCENT_PAINT,
+  ARTBOARD_BACKGROUND_PAINT,
+  ARTBOARD_BAR_PAINT,
+  BACKGROUND_END_PAINT,
+  BACKGROUND_PAINT,
+  BARS_END_PAINT,
+  BARS_START_PAINT,
+  INK_PAINT,
+  PALETTE_FIELD_PAINT,
+  PLATE_PAINT,
+} from "./editor-fixture.js";
 import { openPane } from "./editor-rail.js";
 import { openPosition } from "./rebuild-driver.js";
 import { choosePalette } from "./shell-palette.js";
@@ -893,9 +905,9 @@ test.describe("Fabric editor route", () => {
 
     // jsdom has no `CSS` object, so this refusal can only be proven where the
     // predicate actually lives: the browser that will paint the value.
-    await field.fill("#123456");
+    await field.fill(PALETTE_FIELD_PAINT);
     await field.press("Tab");
-    await expect(field).toHaveValue("#123456");
+    await expect(field).toHaveValue(PALETTE_FIELD_PAINT);
     await expect(refusal).toHaveCount(0);
 
     // A value the engine rejects is refused with a message that names it, and
@@ -905,7 +917,7 @@ test.describe("Fabric editor route", () => {
     await field.fill("not-a-colour");
     await field.press("Tab");
     await expect(refusal).toHaveText(/not-a-colour/);
-    await expect(field).toHaveValue("#123456");
+    await expect(field).toHaveValue(PALETTE_FIELD_PAINT);
 
     // The refusal is not sticky: a value the engine can paint clears it.
     await field.fill("rgb(1, 2, 3)");
@@ -1878,8 +1890,8 @@ test.describe("Fabric editor route", () => {
       artboard: {
         width: 1000,
         height: 720,
-        background: { value: "#101216" },
-        barColor: { value: "#e20074" },
+        background: { value: ARTBOARD_BACKGROUND_PAINT },
+        barColor: { value: ARTBOARD_BAR_PAINT },
       },
       scene: { version: "7.4.0", objects: [] },
     });
@@ -1918,8 +1930,8 @@ test.describe("Fabric editor route", () => {
               kind: "gradient",
               angle: 0,
               stops: [
-                { offset: 0, color: "#102030" },
-                { offset: 1, color: "#d0e0f0" },
+                { offset: 0, color: BACKGROUND_PAINT },
+                { offset: 1, color: BACKGROUND_END_PAINT },
               ],
             },
           },
@@ -1929,8 +1941,8 @@ test.describe("Fabric editor route", () => {
               kind: "gradient",
               angle: 90,
               stops: [
-                { offset: 0, color: "#001122" },
-                { offset: 1, color: "#334455" },
+                { offset: 0, color: BARS_START_PAINT },
+                { offset: 1, color: BARS_END_PAINT },
               ],
             },
           },
@@ -2422,9 +2434,9 @@ test.describe("Fabric editor route", () => {
           },
           background: {
             name: "Background",
-            value: { kind: "solid", color: "#102030" },
+            value: { kind: "solid", color: BACKGROUND_PAINT },
           },
-          ink: { name: "Ink", value: { kind: "solid", color: "#00b8d9" } },
+          ink: { name: "Ink", value: { kind: "solid", color: ACCENT_PAINT } },
         },
         typePresets: {
           body: { name: "Body", value: { family: "sans-serif", size: 16 } },
@@ -2442,7 +2454,7 @@ test.describe("Fabric editor route", () => {
             text: "CPU",
             originX: "left",
             originY: "top",
-            fill: "#00b8d9",
+            fill: ACCENT_PAINT,
             vigiliaPaint: { fill: "palette.ink" },
             vigiliaText: {
               runs: [
@@ -2468,7 +2480,7 @@ test.describe("Fabric editor route", () => {
     // words, and asserting it keeps both halves of the claim — which token, and
     // what it resolves to here.
     await expect(references).toContainText("Ink");
-    await expect(references).toContainText("#00b8d9");
+    await expect(references).toContainText(ACCENT_PAINT);
     await expect(references).toContainText("Body");
     // It lists the document the same way whatever is selected, so its globals
     // stay put — the selection's own resolution is a different column.
@@ -2613,9 +2625,9 @@ test.describe("Fabric editor route", () => {
           },
           background: {
             name: "Background",
-            value: { kind: "solid", color: "#102030" },
+            value: { kind: "solid", color: BACKGROUND_PAINT },
           },
-          ink: { name: "Ink", value: { kind: "solid", color: "#00b8d9" } },
+          ink: { name: "Ink", value: { kind: "solid", color: ACCENT_PAINT } },
         },
         typePresets: {
           body: { name: "Body", value: { family: "sans-serif", size: 16 } },
@@ -2636,7 +2648,7 @@ test.describe("Fabric editor route", () => {
             text: "CPU --",
             originX: "left",
             originY: "top",
-            fill: "#00b8d9",
+            fill: ACCENT_PAINT,
             vigiliaPaint: { fill: "palette.ink" },
             vigiliaText: {
               runs: [
@@ -2709,10 +2721,10 @@ test.describe("Fabric editor route", () => {
         };
       }),
     ).resolves.toMatchObject({
-      fill: "#00b8d9",
+      fill: ACCENT_PAINT,
       height: expect.any(Number),
       opacity: 1,
-      styles: { 0: { 0: { fill: "#00b8d9" } } },
+      styles: { 0: { 0: { fill: ACCENT_PAINT } } },
       visible: true,
       width: 200,
     });
@@ -3013,7 +3025,7 @@ test.describe("Fabric editor route", () => {
       name: "logo.svg",
       mimeType: "image/svg+xml",
       buffer: Buffer.from(
-        '<svg xmlns="http://www.w3.org/2000/svg" width="160" height="120"><rect width="160" height="120" fill="#00b8d9"/></svg>',
+        `<svg xmlns="http://www.w3.org/2000/svg" width="160" height="120"><rect width="160" height="120" fill="${ACCENT_PAINT}"/></svg>`,
       ),
     });
     await expect(page.locator("#status")).toContainText(
@@ -3251,7 +3263,7 @@ test.describe("Fabric editor route", () => {
           },
           accent: {
             name: "Accent",
-            value: { kind: "solid", color: "#00b8d9" },
+            value: { kind: "solid", color: ACCENT_PAINT },
           },
         },
       },
@@ -3268,7 +3280,7 @@ test.describe("Fabric editor route", () => {
             scaleX: 1.2,
             scaleY: 0.8,
             angle: 30,
-            fill: "#00b8d9",
+            fill: ACCENT_PAINT,
             vigiliaPaint: { fill: "palette.accent" },
             originX: "left",
             originY: "top",
@@ -3339,7 +3351,7 @@ test.describe("Fabric editor route", () => {
           },
           accent: {
             name: "Accent",
-            value: { kind: "solid", color: "#00b8d9" },
+            value: { kind: "solid", color: ACCENT_PAINT },
           },
         },
       },
@@ -3363,7 +3375,7 @@ test.describe("Fabric editor route", () => {
                 top: 0,
                 width: 30,
                 height: 30,
-                fill: "#00b8d9",
+                fill: ACCENT_PAINT,
                 vigiliaPaint: { fill: "palette.accent" },
                 originX: "left",
                 originY: "top",
@@ -3377,7 +3389,7 @@ test.describe("Fabric editor route", () => {
             top: 40,
             width: 30,
             height: 30,
-            fill: "#00b8d9",
+            fill: ACCENT_PAINT,
             vigiliaPaint: { fill: "palette.accent" },
             originX: "left",
             originY: "top",
@@ -3631,11 +3643,11 @@ test.describe("Fabric editor route", () => {
           },
           plate: {
             name: "Plate",
-            value: { kind: "solid" as const, color: "#101318" },
+            value: { kind: "solid" as const, color: PLATE_PAINT },
           },
           ink: {
             name: "Ink",
-            value: { kind: "solid" as const, color: "#ecf5ff" },
+            value: { kind: "solid" as const, color: INK_PAINT },
           },
         },
         typePresets: {},
@@ -4895,7 +4907,10 @@ test.describe("Fabric editor route", () => {
     const paint = {
       palette: {
         none: { name: "None", value: { kind: "solid", color: "transparent" } },
-        accent: { name: "Accent", value: { kind: "solid", color: "#00b8d9" } },
+        accent: {
+          name: "Accent",
+          value: { kind: "solid", color: ACCENT_PAINT },
+        },
       },
     };
     const rect = (id: string, left: number, top: number) => ({
@@ -4905,7 +4920,7 @@ test.describe("Fabric editor route", () => {
       top,
       width: 40,
       height: 40,
-      fill: "#00b8d9",
+      fill: ACCENT_PAINT,
       vigiliaPaint: { fill: "palette.accent" },
       originX: "left",
       originY: "top",

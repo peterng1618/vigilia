@@ -8,6 +8,7 @@ import {
   sceneToClient,
   worldLeftOf,
 } from "./editor-canvas.js";
+import { SNAPPING_ACCENT } from "./snapping-fixture.js";
 import { isDesktopSurface } from "./surface.js";
 
 // Built editor E2E host, started by Playwright config.
@@ -26,7 +27,10 @@ function paint(): Record<string, unknown> {
   return {
     palette: {
       none: { name: "None", value: { kind: "solid", color: "transparent" } },
-      accent: { name: "Accent", value: { kind: "solid", color: "#ef476f" } },
+      accent: {
+        name: "Accent",
+        value: { kind: "solid", color: SNAPPING_ACCENT },
+      },
     },
     typePresets: {
       body: {
@@ -50,7 +54,7 @@ function rect(
     top,
     width,
     height: 80,
-    fill: "#ef476f",
+    fill: SNAPPING_ACCENT,
     vigiliaPaint: { fill: "palette.accent" },
     originX: "left",
     originY: "top",
@@ -73,7 +77,7 @@ function source(
       width: 80,
       text: "TEXT",
       fontSize: 32,
-      fill: "#ef476f",
+      fill: SNAPPING_ACCENT,
       vigiliaPaint: { fill: "palette.accent" },
       vigiliaText: {
         runs: [

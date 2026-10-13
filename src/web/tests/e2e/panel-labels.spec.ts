@@ -2,6 +2,7 @@ import { expect, type Locator, test } from "@playwright/test";
 import { chooseIn } from "./control-set.js";
 import { openPane } from "./editor-rail.js";
 import { openAppearance } from "./shell-palette.js";
+import { compactViewportMaxPx } from "./shell-tokens.js";
 import { isDesktopSurface } from "./surface.js";
 
 /**
@@ -109,12 +110,14 @@ async function accessibleName(locator: Locator): Promise<string> {
 test.describe("the settings panels name every control", () => {
   test.beforeEach(async ({ page }, testInfo) => {
     // The panels live in the inspector, which the shell's own CSS drops below
-    // 980px, so on a phone these controls have no box to be pressed at and the
-    // audit would be reporting on a panel no author can reach. Measured: the
-    // panel opens at 240px wide and the select inside it is 0x0.
+    // its compact breakpoint, so on a phone these controls have no box to be
+    // pressed at and the audit would be reporting on a panel no author can
+    // reach. Measured: the panel opens at 240px wide and the select inside it
+    // is 0x0. The breakpoint is the stylesheet's own `@media` value, read
+    // rather than restated.
     test.skip(
       !isDesktopSurface(testInfo),
-      "the settings panels are hidden below 980px",
+      `the settings panels are hidden below ${compactViewportMaxPx()}px`,
     );
     await page.goto(EDITOR);
     await page.waitForSelector("[data-vigilia-panel]");

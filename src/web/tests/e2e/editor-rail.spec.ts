@@ -17,6 +17,11 @@ import { isDesktopSurface } from "./surface.js";
 
 const EDITOR = "http://127.0.0.1:4174/";
 
+/** DESIGN.md §7.2's rail accent bar, in px. A bare number rather than a `px`
+ *  string so the one value is written once and the assertion's message spells
+ *  it from here — §3's step table has no entry for it. */
+const RAIL_ACCENT_BAR_PX = 2;
+
 test("asking for the pane already showing leaves it showing", async ({
   page,
 }, testInfo) => {
@@ -466,7 +471,10 @@ test("the selected slot's accent bar sits on the rail's inner edge", async ({
     measured.slotRight - measured.slotLeft,
     "the slot is §5's 36px rail slot",
   ).toBe(36);
-  expect(measured.barWidth, "the bar is DESIGN.md's 2px").toBe(2);
+  expect(
+    measured.barWidth,
+    `the bar is DESIGN.md's ${RAIL_ACCENT_BAR_PX}px`,
+  ).toBe(RAIL_ACCENT_BAR_PX);
   expect(
     measured.barLeft,
     "the bar starts inside the rail's outer edge",

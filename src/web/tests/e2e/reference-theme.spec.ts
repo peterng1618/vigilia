@@ -1,6 +1,7 @@
 import { expect, type Page, type TestInfo, test } from "@playwright/test";
 import { readThemePackage, writeThemePackage } from "@vigilia/theme-package";
 import { strToU8, zipSync } from "fflate";
+import { solidOf } from "../../packages/editor/src/new-fabric-theme-globals.js";
 import { chooseIn, optionsOf, typeIntoControl } from "./control-set.js";
 import {
   type ArtboardRect,
@@ -12,6 +13,10 @@ import {
 } from "./editor-canvas.js";
 import { openPane } from "./editor-rail.js";
 import { GLASS_ENVELOPE, glassStripesPng } from "./glass-fixture.js";
+import {
+  EDGE_OBJECT_FILL,
+  REFERENCE_BADGE_SVG,
+} from "./reference-theme-fixture.js";
 import { isDesktopSurface } from "./surface.js";
 
 const EDITOR = "http://127.0.0.1:4174/";
@@ -887,7 +892,7 @@ test.describe("the reference composition, authored", () => {
             text: "",
             fontSize: 40,
             fontFamily: "Segoe UI, sans-serif",
-            fill: "#ffffff",
+            fill: EDGE_OBJECT_FILL,
             id: "orphan",
             vigiliaPaint: { fill: "palette.edge" },
             vigiliaText: {
@@ -1144,7 +1149,7 @@ const FIXTURE_WITH_MEDIA = {
         text: "FROST",
         fontSize: 40,
         fontFamily: "Segoe UI, sans-serif",
-        fill: "#ffffff",
+        fill: EDGE_OBJECT_FILL,
         id: "over-glass",
         vigiliaPaint: { fill: "palette.edge" },
         vigiliaText: {
@@ -1162,11 +1167,7 @@ const FIXTURE_WITH_MEDIA = {
   },
 };
 
-const BADGE_SVG = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 40" width="128" height="40">
-  <rect width="64" height="40" fill="#101820"/>
-  <rect x="64" width="64" height="40" fill="#f0f4f8"/>
-</svg>
-`;
+const BADGE_SVG = REFERENCE_BADGE_SVG;
 
 async function openCaptureFixture(page: Page): Promise<Buffer> {
   const built = writeThemePackage({
@@ -1391,7 +1392,7 @@ test.describe("the reference composition, captured", () => {
     // `docs/evidence/screenshots/README.md` and inspected before it is kept.
     expect(capture.png.length).toBeGreaterThan(1000);
     await page.setContent(
-      `<body style="margin:0;background:#0c0e13;display:flex;align-items:center;justify-content:center;height:100vh">` +
+      `<body style="margin:0;background:${solidOf.background};display:flex;align-items:center;justify-content:center;height:100vh">` +
         `<img src="${capture.png}" style="image-rendering:pixelated;transform:scale(2);transform-origin:center">` +
         `</body>`,
     );

@@ -2,6 +2,10 @@ import type { Page, TestInfo } from "@playwright/test";
 import { expect, test } from "@playwright/test";
 import { writeThemePackage } from "@vigilia/theme-package";
 import {
+  COMPOSITION_ACCENT,
+  COMPOSITION_WARN,
+} from "./composition-panel-fixture.js";
+import {
   type ArtboardRect,
   answerDialogIfShown,
   captureVisualReview,
@@ -11,6 +15,7 @@ import {
 } from "./editor-canvas.js";
 import { openPane } from "./editor-rail.js";
 import { selectLayer } from "./rebuild-driver.js";
+import { rulePx } from "./shell-tokens.js";
 import { isDesktopSurface } from "./surface.js";
 
 /**
@@ -41,6 +46,26 @@ import { isDesktopSurface } from "./surface.js";
  */
 
 const EDITOR = "http://127.0.0.1:4174/";
+
+/** The layer row's fourth `:has` arm — the one that reserves room for four
+ *  controls — read from the stylesheet so the arm's reservation and this
+ *  spec's expectation stay one fact rather than two numbers kept in step by
+ *  hand. */
+const FOUR_CONTROL_ARM =
+  ".vigilia-layer-row:has(.vigilia-layer-state button:nth-child(4))";
+
+/** The row's own padding, which the arm's reservation includes and the slot's
+ *  own footprint does not. The in-page measurement subtracts the same value. */
+const LAYER_ROW_PADDING_PX = 4;
+
+/** The slot's own footprint with four controls: 6px of padding, four §3-rhythm
+ *  26px squares and three 4px gaps — the arm's reservation less the row's own
+ *  padding. */
+const FOUR_CONTROL_SLOT_PX =
+  rulePx(FOUR_CONTROL_ARM, "padding-right") - LAYER_ROW_PADDING_PX;
+
+/** The mark column's slot, sized on `.vigilia-layer-mark` itself. */
+const MARK_SLOT_PX = rulePx(".vigilia-layer-mark", "flex");
 
 /**
  * The column this plan supersedes: plan 2 shipped a 360px pane, and the design
@@ -320,9 +345,9 @@ test("the shipped column is DESIGN.md's, and its clipping is measured against th
     ["clipped@shipped", shipped.clipped],
     ["clipped@shipped-without-role", withoutRole.clipped],
     [`clipped@${SUPERSEDED_WIDTH}`, superseded.clipped],
-    ["mark-slot-px", "28"],
+    ["mark-slot-px", String(MARK_SLOT_PX)],
     ["specimens", String(shipped.specimens)],
-    ["specimens-clipped@28px", String(shipped.specimensClipped)],
+    [`specimens-clipped@${MARK_SLOT_PX}px`, String(shipped.specimensClipped)],
     ["specimens-clipped@20px", String(narrowMark.specimensClipped)],
     ["clipped@mark-20px", String(narrowMark.clipped)],
   ] as const) {
@@ -567,7 +592,7 @@ function looseRect(
     top,
     width: 44,
     height: 44,
-    fill: "#00b8d9",
+    fill: COMPOSITION_ACCENT,
     vigiliaPaint: { fill: "palette.accent" },
     originX: "left",
     originY: "top",
@@ -641,9 +666,12 @@ function packageBytes(
           },
           accent: {
             name: "Accent",
-            value: { kind: "solid", color: "#00b8d9" },
+            value: { kind: "solid", color: COMPOSITION_ACCENT },
           },
-          warn: { name: "Warn", value: { kind: "solid", color: "#e8b04b" } },
+          warn: {
+            name: "Warn",
+            value: { kind: "solid", color: COMPOSITION_WARN },
+          },
         },
       },
       bindings,
@@ -1236,8 +1264,8 @@ test("a group entered inside a large document", async ({ page }, testInfo) => {
   });
   expect(
     slot.slotWidth,
-    "the slot's rendered box is the 122px the fourth `:has` arm promises",
-  ).toBe(122);
+    `the slot's rendered box is the ${FOUR_CONTROL_SLOT_PX}px the fourth \`:has\` arm promises`,
+  ).toBe(FOUR_CONTROL_SLOT_PX);
   expect(
     slot.reservedPx,
     "and the room the arm asks the key column for is the room the slot needs",
@@ -1248,8 +1276,8 @@ test("a group entered inside a large document", async ({ page }, testInfo) => {
   ).toBeLessThanOrEqual(slot.nameWidth);
   expect(
     slot.markWidth,
-    "the mark slot is the 28px the ruling's own measurement held it at",
-  ).toBe(28);
+    `the mark slot is the ${MARK_SLOT_PX}px the ruling's own measurement held it at`,
+  ).toBe(MARK_SLOT_PX);
 
   for (const [type, value] of [
     ["viewport", viewportOf(testInfo)],

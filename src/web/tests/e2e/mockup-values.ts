@@ -158,6 +158,13 @@ export function currentDrawings(): readonly {
  *  reader exists to report rather than to hide. */
 export const SHELL_TOKEN_SELECTOR = '[style*="width:1180px"]';
 
+/** The settings dialog's own frame in `current/settings.html:20`, addressed by
+ *  the width it declares. The row that reads its `border-radius` against the
+ *  product's `--radius-lg` names the drawing's element through this constant
+ *  rather than a second copy of the drawn width, so the drawing stays the one
+ *  owner of the value the selector is built from. */
+export const SETTINGS_DIALOG_SELECTOR = '[style*="width:560px"]';
+
 /** The drawing's tokens and the product variable each one owns.
  *
  *  **Eleven, not ten.** The brief that scoped this row listed the table's ten

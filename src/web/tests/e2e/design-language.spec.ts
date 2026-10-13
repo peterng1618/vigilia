@@ -1,5 +1,21 @@
 import { readFileSync } from "node:fs";
 import { expect, type Page, test } from "@playwright/test";
+import {
+  ANCHOR_FRACTIONAL,
+  ANCHOR_NEGATIVE,
+  BOUNDARY_PX,
+  FULL_RADIUS,
+  GUTTER_NEGATIVE,
+  HALO_INSET,
+  HALO_RING,
+  OFF_SCALE_BOUNDARY,
+  OFF_SCALE_GUTTER,
+  OFF_SCALE_RADIUS,
+  OFF_SCALE_TYPE,
+  OFF_TABLE_SHADOW,
+  OFF_TABLE_SHADOW_LIST,
+  THICKNESS_MARK,
+} from "./design-language-fixture.js";
 import { captureVisualReview } from "./editor-canvas.js";
 import { openPane } from "./editor-rail.js";
 import {
@@ -16,12 +32,14 @@ import {
   type ParityRegion,
   readMockup,
   rowDrawing,
+  SETTINGS_DIALOG_SELECTOR,
   SETTINGS_MOCKUP_PATH,
   SHELL_ROLES,
   SHELL_TOKEN_SELECTOR,
   trackCount,
 } from "./mockup-values.js";
 import { openShell, SETTINGS_DIALOG, SETTINGS_GEAR } from "./shell-palette.js";
+import { themeToken } from "./shell-tokens.js";
 import { isDesktopSurface } from "./surface.js";
 
 /**
@@ -758,7 +776,10 @@ test("the control set renders in the design language", async ({
     const allowed = new Set(["rgba(0, 0, 0, 0)"]);
     const probe = document.createElement("div");
     probe.style.position = "absolute";
-    probe.style.left = "-9999px";
+    // One viewport to the left: the probe exists only long enough to resolve a
+    // role to its computed colour, and a length that cannot be mistaken for a
+    // design value keeps it off every pixel this run samples.
+    probe.style.left = "-100vw";
     document.body.append(probe);
     for (const role of roles) {
       probe.style.background = `var(--${role})`;
@@ -1181,8 +1202,8 @@ test("the control set renders in the design language", async ({
   ).toBe("solid");
   expect(
     twofold?.activeOutlineWidth,
-    "the focused row's outline is not §5's 2px boundary",
-  ).toBeGreaterThanOrEqual(2);
+    `the focused row's outline is not §5's ${BOUNDARY_PX}px boundary`,
+  ).toBeGreaterThanOrEqual(BOUNDARY_PX);
   expect(
     twofold?.checkedStillChecked,
     "the checked row stopped being checked while another row is focused",
@@ -2772,7 +2793,7 @@ test("the shell and the settings modal are what the drawings draw", async ({
   expect(
     mockupDeclared(
       readMockup(SETTINGS_MOCKUP_PATH),
-      '[style*="width:560px"]',
+      SETTINGS_DIALOG_SELECTOR,
       "border-radius",
     ),
     "the settings drawing's dialog frame is not drawn at the closed scale's panel radius",
@@ -3081,12 +3102,24 @@ test("every literal the checked drawings declare is on §3's scale or §2's", ()
     "docs/design/mockups/current/ holds no drawing, so this row read nothing",
   ).toBeGreaterThan(0);
 
-  /** §3's closed radius scale, transcribed from the table the comment cites. */
-  const RADIUS = new Set(["4px", "6px", "8px", "10px", "999px"]);
+  /** §3's closed radius scale. The four steps are the stylesheet's own
+   *  `--radius-*` tokens, read rather than transcribed, so a scale change moves
+   *  this row with the product; `full` is DESIGN.md's prose row and is named in
+   *  the fixture. */
+  const RADIUS = new Set([
+    themeToken("--radius-sm"),
+    themeToken("--radius-md"),
+    themeToken("--radius-lg"),
+    themeToken("--radius-xl"),
+    FULL_RADIUS,
+  ]);
   /** The named degenerate radius marks, each with the reason it is exempt. */
   const RADIUS_DEGENERATE = new Map([
     ["1px", "a hairline mark, whose value is its thickness"],
-    ["2px", "a thickness mark (§7.2's rail accent bar, the slider track ends)"],
+    [
+      THICKNESS_MARK,
+      "a thickness mark (§7.2's rail accent bar, the slider track ends)",
+    ],
     [
       "50%",
       "a circle — `full` reached the other way (the thumb, the knob, the dot)",
@@ -3199,9 +3232,9 @@ test("every literal the checked drawings declare is on §3's scale or §2's", ()
    *  corrected them by hand. The table is the bible's, so a drawing that
    *  disagrees with it is the stale side (spec §13, `docs/design/mockups/README.md`). */
   const ELEVATION = new Map([
-    ["0 8px 20px #00000059", "level 1 — floating clusters over the canvas"],
-    ["0 18px 44px #00000099", "level 2 — menus, popovers, tooltips"],
-    ["0 24px 60px #000000b3", "level 3 — dialogs"],
+    [themeToken("--elev-1"), "level 1 — floating clusters over the canvas"],
+    [themeToken("--elev-2"), "level 2 — menus, popovers, tooltips"],
+    [themeToken("--elev-3"), "level 3 — dialogs"],
   ]);
   /** The two shadow *marks* §5 rule 4 keeps beside §3's elevation: the
    *  3px accent halo is decoration ("Keep the 3px accent-at-18% halo as
@@ -3328,8 +3361,7 @@ test("every literal the checked drawings declare is on §3's scale or §2's", ()
     },
     {
       property: "box-shadow",
-      scale:
-        "§3's elevation table (1 `0 8px 20px #00000059`, 2 `0 18px 44px #00000099`, 3 `0 24px 60px #000000b3`, or no shadow at all — `none` or the property omitted)",
+      scale: `§3's elevation table (1 \`${themeToken("--elev-1")}\`, 2 \`${themeToken("--elev-2")}\`, 3 \`${themeToken("--elev-3")}\`, or no shadow at all — \`none\` or the property omitted)`,
       values: (declaration) =>
         declaration.property === "box-shadow" ? [declaration.value] : null,
       allowed: (value) => elevationAllowed(value),
@@ -3379,8 +3411,8 @@ test("every literal the checked drawings declare is on §3's scale or §2's", ()
   // `padding:-3.5px` through, which is the hole this control closes.
   expect(
     [
-      ["left", "1.5px"],
-      ["top", "-3.5px"],
+      ["left", ANCHOR_FRACTIONAL],
+      ["top", ANCHOR_NEGATIVE],
       ["right", "-6px"],
       ["left", "50%"],
     ].filter(
@@ -3390,7 +3422,7 @@ test("every literal the checked drawings declare is on §3's scale or §2's", ()
   ).toEqual([]);
   expect(
     [
-      ["padding", "-3.5px"],
+      ["padding", GUTTER_NEGATIVE],
       ["margin", "-20px"],
       ["gap", "150%"],
     ].filter(([property, value]) =>
@@ -3401,15 +3433,12 @@ test("every literal the checked drawings declare is on §3's scale or §2's", ()
   expect(
     (
       [
-        ["radius", () => radiusAllowed("7px")],
-        ["spacing", () => spacingAllowed("5px", "gap")],
-        ["type", () => typeAllowed("11.5px")],
-        ["elevation", () => elevationAllowed("0 18px 50px #0009")],
-        [
-          "elevation-list",
-          () => elevationAllowed("0 0 0 3px #72e0c02e, 0 10px 26px #0007"),
-        ],
-        ["boundary", () => boundaryAllowed("2px solid var(--edge)")],
+        ["radius", () => radiusAllowed(OFF_SCALE_RADIUS)],
+        ["spacing", () => spacingAllowed(OFF_SCALE_GUTTER, "gap")],
+        ["type", () => typeAllowed(OFF_SCALE_TYPE)],
+        ["elevation", () => elevationAllowed(OFF_TABLE_SHADOW)],
+        ["elevation-list", () => elevationAllowed(OFF_TABLE_SHADOW_LIST)],
+        ["boundary", () => boundaryAllowed(OFF_SCALE_BOUNDARY)],
       ] as const
     )
       .filter(([, allowed]) => allowed())
@@ -3425,13 +3454,13 @@ test("every literal the checked drawings declare is on §3's scale or §2's", ()
   // a legitimate halo-over-shadow as readily as it refuses an off-table tail.
   expect(
     [
-      "0 8px 20px #00000059",
-      "0 18px 44px #00000099",
-      "0 24px 60px #000000b3",
+      themeToken("--elev-1"),
+      themeToken("--elev-2"),
+      themeToken("--elev-3"),
       "none",
-      "inset 2px 0 0 var(--accent)",
-      "0 0 0 3px #72e0c02e",
-      "0 0 0 3px #72e0c02e, 0 8px 20px #00000059",
+      HALO_INSET,
+      HALO_RING,
+      `${HALO_RING}, ${themeToken("--elev-1")}`,
     ].filter((value) => !elevationAllowed(value)),
     "an exempt or on-table shadow is refused, so this row would fail the drawing it names",
   ).toEqual([]);

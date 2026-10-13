@@ -1,5 +1,12 @@
 import { expect, type Page, test } from "@playwright/test";
 import { writeThemePackage } from "@vigilia/theme-package";
+import {
+  CLIP_FIELD,
+  CLIP_INK,
+  CLIP_PALETTE,
+  CLIP_PLATE,
+  QUADRANTS_SVG,
+} from "./clip-parity-fixture.js";
 import { HOST_PORT } from "./host-theme.js";
 import { isDesktopSurface } from "./surface.js";
 
@@ -89,28 +96,9 @@ const FONT_SIZE = 40;
 /** How far down the unclipped twin sits; only its top differs from the clipped box. */
 const VISIBLE_BOX_SHIFT = VISIBLE_TEXT_BOX.top - CLIPPED_TEXT_BOX.top;
 
-/** Four solid quadrants, so a clip that moved shows up as a colour. */
-const QUADRANTS_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="240" height="240" viewBox="0 0 240 240">
-  <rect x="0" y="0" width="120" height="120" fill="#e01020"/>
-  <rect x="120" y="0" width="120" height="120" fill="#10c030"/>
-  <rect x="0" y="120" width="120" height="120" fill="#1040e0"/>
-  <rect x="120" y="120" width="120" height="120" fill="#e8d010"/>
-</svg>
-`;
-
 const BADGE_ASSET = "assets/quadrants.svg";
 
-const PALETTE = {
-  // Every v2 palette carries it; the validator refuses a document without.
-  none: {
-    name: "None",
-    value: { kind: "solid" as const, color: "transparent" },
-  },
-  plate: { name: "Plate", value: { kind: "solid" as const, color: "#101318" } },
-  field: { name: "Field", value: { kind: "solid" as const, color: "#1d3557" } },
-  ink: { name: "Ink", value: { kind: "solid" as const, color: "#f0f4f8" } },
-  bar: { name: "Bar", value: { kind: "solid" as const, color: "#101318" } },
-};
+const PALETTE = CLIP_PALETTE;
 
 /** One text box; `overflow` is the only difference between the twins. */
 function textBox(
@@ -133,8 +121,9 @@ function textBox(
     lineHeight: 1,
     // Resolved paint, with the authored token beside it: a display resolves no
     // palette paints of its own (ADR-0026), and the validator refuses a
-    // resolved colour with no token behind it.
-    fill: "#f0f4f8",
+    // resolved colour with no token behind it. The value is the palette
+    // entry's own, read from the one place both spell.
+    fill: CLIP_INK,
     id,
     vigiliaPaint: { fill: "palette.ink" },
     vigiliaText: {
@@ -200,7 +189,7 @@ const ENVELOPE = {
         top: 0,
         width: ARTBOARD.width,
         height: ARTBOARD.height,
-        fill: "#101318",
+        fill: CLIP_PLATE,
         id: "plate",
         vigiliaPaint: { fill: "palette.plate" },
       },
@@ -215,7 +204,7 @@ const ENVELOPE = {
         top: 60,
         width: 350,
         height: 200,
-        fill: "#1d3557",
+        fill: CLIP_FIELD,
         id: "text-field",
         vigiliaPaint: { fill: "palette.field" },
       },

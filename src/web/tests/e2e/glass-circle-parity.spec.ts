@@ -2,7 +2,8 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { expect, type Page, test } from "@playwright/test";
 import { writeThemePackage } from "@vigilia/theme-package";
-import { glassStripesPng } from "./glass-fixture.js";
+import { frost as FROST } from "../../packages/editor/src/new-fabric-theme-globals.js";
+import { GLASS_BAR, glassStripesPng } from "./glass-fixture.js";
 
 /**
  * The editor preview `playwright.config.ts` starts, as `glass.spec.ts` does.
@@ -58,8 +59,9 @@ const STRIPES = { width: 1200, height: 800 } as const;
 const BOX = { left: 470, top: 300, size: 260 } as const;
 const RADIUS = 24;
 
-/** The product's own frost token: a 30 % tint that transmits. */
-const FROST = "#0815234d";
+// `FROST` is the product's own frost token — a 30 % tint that transmits, whose
+// full rationale is on `new-fabric-theme-globals.ts`'s export. A local copy
+// would be a second owner of a value the product changes.
 
 type Kind = "Rect" | "Circle";
 type Backdrop = "photograph" | "stripes";
@@ -164,7 +166,7 @@ function packageFor(scene: Scene, backdrop: Backdrop): Uint8Array {
           },
           bar: {
             name: "Bar",
-            value: { kind: "solid" as const, color: "#101318" },
+            value: { kind: "solid" as const, color: GLASS_BAR },
           },
           frost: {
             name: "Frost",
