@@ -838,9 +838,25 @@ pass is a smoke test over the same bundle, not the check.
   them; narrow this item to the six current drawings; or carry the residue.
   Drawing them is the ruling owner's act, because a drawing is the acceptance
   instrument rather than a description of one.
-  **What discharges it:** the
-  ruling on the settings frame's width (`vg-322`, itself parked on `vg-330`), the
-  work on the other `fix` differences, and a decision on the plans 1–3 wording —
+  **What discharges it, stated so the four rows are not read as four questions
+  for the user:** `vg-316` is the control set's own fill, re-measured on
+  2026-10-13 and confirmed a decision rather than a fix — the token carries
+  three palettes' tints and editorial's licensed equal rung, so "use `--panel2`"
+  would kill the tints or blank the controls in editorial. `vg-319`'s two
+  remaining facts are each one sentence on the row now: §2 **reserves** uppercase
+  for the shell surfaces it names, and §5 rule 2's **escape clause** may already
+  cover the read-only row both sheets draw with a 16px gap. `vg-274`'s subject is
+  the file's gate membership, which the row itself calls a design decision rather
+  than a task. **`vg-322` is not a width anyone can choose.** The user rejected
+  that question rather than answering it on 2026-10-11 — "Setting should not be a
+  modal but a panel like add, composition" — so its 405/507/393px measurements
+  are of a container that is going away, and by its own words it "closes when
+  `vg-330` does". `vg-330` is **parked by the user**, so this item cannot be met
+  while that parking stands: there is no width ruling to take, and the difference
+  is neither fixed nor backed by a cited rule, because a parked workstream is not
+  a rule that requires it. Two acts by the user discharge that half — unpark
+  `vg-330`, or narrow this item so a surface scheduled to disappear is not one of
+  the differences it counts. The rest is a decision on the plans 1–3 wording:
   reproduce the comparison or narrow the item. **The palette preview bar's role is
   no longer among them**: the user ruled on 2026-10-11 that the bar depicts the
   palette's ground, `--shell-backdrop` — the product's reading — the drawing's
