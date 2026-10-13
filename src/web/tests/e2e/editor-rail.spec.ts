@@ -390,11 +390,19 @@ test("the selected slot's accent bar sits on the rail's inner edge", async ({
     // The `::before` has no `getBoundingClientRect` of its own, so its box is
     // composed from the slot's rect and the pseudo's resolved anchor.
     const bar = getComputedStyle(slot, "::before");
+    const slotStyle = getComputedStyle(slot);
     const width = Number.parseFloat(bar.width);
+    // **The padding box, not the border box.** An absolutely positioned child
+    // resolves against its containing block's padding box, and this Chromium
+    // hands back the *used* `left`, so composing it against the slot's
+    // border-box rect counts the slot's border a second time. The slot carries
+    // §5 rule 6's 1px transparent resting border, which is exactly that 1px.
+    const borderLeft = Number.parseFloat(slotStyle.borderLeftWidth) || 0;
+    const borderRight = Number.parseFloat(slotStyle.borderRightWidth) || 0;
     const left =
       bar.left !== "auto"
-        ? slotBox.left + Number.parseFloat(bar.left)
-        : slotBox.right - Number.parseFloat(bar.right) - width;
+        ? slotBox.left + borderLeft + Number.parseFloat(bar.left)
+        : slotBox.right - borderRight - Number.parseFloat(bar.right) - width;
     return {
       railLeft: railBox.left,
       railRight: railBox.right,

@@ -1052,8 +1052,13 @@ body,
   background: color-mix(in srgb, var(--accent) 14%, transparent);
 }
 /* The bar hangs in the 6px gutter between the 34px slot and the 46px rail, so
-   its outer edge is flush with the rail's inner (right) edge — not the mirror
-   `right: -8px`, which lands 2px past that edge in the rail-to-pane gap.
+   its outer edge is flush with the rail's inner (right) edge.
+
+   **`-7px`, not `-6px`, because the slot carries §5 rule 6's 1px transparent
+   resting border.** An absolutely positioned child resolves `right` against its
+   containing block's *padding* box, which the border insets by its own width, so
+   the bar would sit 1px inside the rail's inner edge — measured, not reasoned:
+   at `-6px` the bar's outer edge read 44 against a rail edge of 46.
 
    The `2px` radius is a **degenerate mark**: its value *is* the bar's own
    thickness (a 2px bar rounded to half its width), not a step on §3's closed
@@ -1063,7 +1068,7 @@ body,
   position: absolute;
   top: 6px;
   bottom: 6px;
-  right: -6px;
+  right: -7px;
   width: 2px;
   border-radius: 2px;
   background: var(--accent);

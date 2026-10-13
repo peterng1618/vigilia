@@ -910,6 +910,12 @@ Rows: `vg-175`, `vg-177`, `vg-181`, `vg-215`, `vg-216`, `vg-251`, `vg-273`, `vg-
 
 **Verify:** the focused vitest file or the browser case per row; `npm run gates:self-test` after the parity reader changes.
 
+[Annotated 2026-10-13 at the phase close: **the phase's evidence, named as commands with their exit codes rather than as the claim that "gates run".** From `src/web/` at `3a368c6a`: `npm run build` exit 0; **`npm run gate` exit 0** (`biome check ..` + `gates:self-test` + `vitest run`: 254 files, 3353 tests, 95.77 s); **`npm run test:e2e` exit 1** — 273 passed, 18 failed, 214 skipped, 0 flaky (533 s). The browser pass is named separately because **`gate` does not run it**: `gate`'s `test` is `vitest run`, so every browser case this phase produced, including the three-surface destructive-paint case that carries `vg-226`, lives behind `test:e2e` alone.
+
+**The 18 were triaged by comparison rather than by diagnosis, and the comparison is the record.** Re-run alone and serial at the same commit, **13 of the 18 passed** — the load the config itself names ("oversubscription is what turned the long `clock.runFor` waits into 30 s timeouts under load"), not a defect. The remaining 5 were then run against this phase's base `614265de` with the wave's 18 production files reverted and HEAD's tests left in place: **2 are this phase's** — `editor-rail.spec.ts:372`, whose selected-slot accent bar the §5-rule-6 resting `border: 1px solid transparent` moved 1px off the rail's inner edge (the test's own reconstruction then counted that border twice; both are fixed here), and `glass-lifecycle.spec.ts:25`, whose `> 10` repaint floor `97264e6c` deleted and which is filed as `vg-431` because repairing the instrument is a measurement decision rather than a patch — and **3 are pre-existing**, failing identically at base: `design-language.spec.ts:437`, whose fixture page is not a vite input and so is absent from every built `dist/`, and the two phone-`chromium` `editor-display.spec.ts` cases.
+
+**Row accounting: 17 of 21, not 19 of 19.** The denominator the header states was never the phase's; the four that stay open — `vg-133`, `vg-154`, `vg-308` and `vg-331` — each carry their reason on their own line rather than as an omission here.]
+
 ### Task 8.1: The parity reader's two rules
 
 **Files:**
