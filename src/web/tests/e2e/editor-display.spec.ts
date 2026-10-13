@@ -534,6 +534,47 @@ test.describe("the stage looks through a display", () => {
     ).toHaveAttribute("aria-checked", "false");
   });
 
+  test("the zoom readout is §5's bare readout, and it is still the trigger", async ({
+    page,
+  }) => {
+    // The vocabulary is closed and this is the entry the 2026-10-12 ruling added
+    // rather than an exception to rule 1: a value display that opens a list.
+    // What the shape has to hold is that it stays *bare* — no well, no chevron,
+    // because §5 draws the chevron on a well and the readout has none — while
+    // staying the control, which is what the click at the end says.
+    const readout = page.locator("[data-vigilia-zoom]");
+    const shape = await readout.evaluate((node) => {
+      const style = getComputedStyle(node);
+      return {
+        text: node.textContent?.trim() ?? "",
+        background: style.backgroundColor,
+        edges: [
+          style.borderTopWidth,
+          style.borderRightWidth,
+          style.borderBottomWidth,
+          style.borderLeftWidth,
+        ],
+        glyph: node.querySelector("svg") !== null,
+        popup: node.getAttribute("aria-haspopup"),
+      };
+    });
+    expect(shape.text, "the bare readout reports the value it means").toMatch(
+      /^\d+%$/,
+    );
+    expect(shape.background, "and carries no well").toBe("rgba(0, 0, 0, 0)");
+    expect(shape.edges, "and no edge").toEqual(["0px", "0px", "0px", "0px"]);
+    expect(shape.glyph, "and no chevron").toBe(false);
+    expect(shape.popup, "and it declares the list it opens").toBe("menu");
+
+    // The half a computed style cannot state, and the reason this control is in
+    // the vocabulary at all: it opens the list rather than only reporting.
+    await readout.click();
+    await expect(
+      page.getByRole("menuitemradio", { name: "Fit" }),
+    ).toBeVisible();
+    await page.keyboard.press("Escape");
+  });
+
   test("choosing a display changes the view and leaves the document alone", async ({
     page,
   }) => {

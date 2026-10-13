@@ -406,6 +406,7 @@ The vocabulary is closed. A control is one of these, or it is not a control.
 |---|---|---|
 | **Well** | `--panel-2` fill, 1px `--edge`, `--radius-md`, text or value inside | You can change this |
 | **Well with chevron** | A well, plus a `▼` in `--faint` | Opens a list |
+| **Bare readout** | A value in tabular figures, no well and no chevron — the readout itself is the trigger | Opens a list, and is also the value it reports |
 | **Well with unit** | A well, value right-aligned in mono, unit in `--faint` at the right edge | A number with a fixed unit |
 | **Slider + well** | A 3px track, an accent fill, a 10px thumb, and a 36px well | A bounded number |
 | **Swatch well** | A well containing an 11px radius-4 swatch, then the token name, then a chevron | A paint reference |

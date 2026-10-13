@@ -2543,7 +2543,12 @@ body,
    both what the author reads the scale from and the way to every other framing.
    Wide enough for the widest readout the camera can reach (`6400 %` at
    MAX_ZOOM), so zooming does not resize it under the pointer that is zooming.
-   The trigger shows a percentage and never a display name. */
+   The trigger shows a percentage and never a display name.
+   §5's **bare readout** is the entry this control is: the closed vocabulary's one
+   member that is a value display and opens a list, which is why the zoom keeps no
+   well and no chevron — it is named rather than an unnamed exception, and what
+   separates it from §5 rule 2's read-only row is that it opens the menu rather
+   than that it looks like a control. */
 .editor-shell-view-readout {
   min-width: 56px;
   padding: var(--space-6) var(--space-10);
