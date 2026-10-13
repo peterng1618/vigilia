@@ -37,9 +37,9 @@ ledger did.
 
 ## Last completed change
 
-- **The fifteen acceptance verdicts were re-checked against whole-suite browser runs rather than trusted** — two runs now exist (`3a368c6a`, `aa16a2c5`) at 273 passed / 18 failed / 214 skipped each, and **their red memberships differ by nine of eighteen**, so the count is the load the config names and not a defect list; every acceptance-named check red in either sample passes at HEAD.
-- **One of the baseline's three "pre-existing" reds was the run's own build recipe, and measuring it both ways is what showed that** — `npm run build` alone leaves `packages/editor/dist` without `control-fixture.html`, so `design-language.spec.ts:437` failed on a missing page; with `build:fixture` it passes in a whole-suite run (15.4 s), so the drain's phase-8 triage annotation now reads two pre-existing reds and the gap is filed as `vg-438`.
-- **The five other reds sampled from the second run pass alone and serial at the same commit** — `shell-appearance.spec.ts:478`, `editor.spec.ts:1025` and `:2103`, `snapping.spec.ts:598` and `:702`; what stays red is the two phone-`chromium` `editor-display` cases (`vg-258`), which are not the device-frame item's claim.
+- **The colour and gradient spec was self-reviewed before the owner sees it, and the review found a step that could not be built** — its parser bullet told an implementer to make `renderer-core`'s `fill.ts` consume the editor's `colour-maths.ts`, which is an upward import across a package boundary (`renderer-core` imports nothing from `editor`, measured, and the editor bundles it from source), so the primitive now moves down and the map's ownership row moves with it.
+- **`vg-246` closed on the narrow half of its own text, and the other half is measured and filed** — `renderer-core/src/charts/fill.ts` holds a second `parseHex` with a different return type, in no ownership row, and that row's detail had left exactly this open ("whether other colour parsing exists that the survey did not find"); filed as `vg-439` and linked from the spec.
+- **A count the spec cited was reproducible by no command** — "18 hex violations between the two files" measures as 17, every one in `colour-picker.tsx` and none in `gradient-editor.tsx`, by adding both to a gated-list copy and running `node scripts/design-tokens.mjs --gated <copy>`; the spec now states the method and the measured number.
 
 ## Next
 

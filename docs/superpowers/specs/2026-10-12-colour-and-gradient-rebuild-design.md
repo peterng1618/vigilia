@@ -8,7 +8,9 @@
   it changes no `§N` marker and adds no step to §3.
 - **Register:** `vg-405` is the verdict this spec serves. It links, and does not
   re-file, `vg-336`, `vg-334`, `vg-333`, `vg-246`, `vg-263`, `vg-204`, `vg-286`
-  and `vg-194`.
+  and `vg-194`. **Four of those eight — `vg-246`, `vg-334`, `vg-333` and
+  `vg-194` — are archived `verified`**: they are linked as the findings this
+  rebuild must not regress, not as open work.
 - **Research provenance:** two untracked documents under
   `.superpowers/sdd/2026-10-12-the-backlog-drain/` — `colour-and-gradient-research.md`
   (the consensus survey and the defect measurements) and
@@ -157,11 +159,30 @@ swatch is the picker’s trigger, the picker’s field edits the same stored val
 and both go through the same parse, the same refusal channel and the same
 settled-write boundary. Concretely:
 
-- **The colour parser gets one owner.** `parseHex` exists in
-  `components/ui/colour-maths.ts` **and** in `renderer-core/src/charts/fill.ts`,
-  and `docs/architecture/ownership.md` already lists “shared colour parsing”
-  under Known ownership gaps (`vg-246`). The rebuild settles it rather than
-  adding a third copy: `colour-maths.ts` is the owner, and `fill.ts` consumes it.
+- **The colour parser gets one owner, and the owner sits below both
+  consumers.** Measured at the base: `parseHex` and `parseColour` live in
+  `editor/src/components/ui/colour-maths.ts`, consumed by `colour-picker.tsx`,
+  `gradient-editor.tsx` and one test — and a second, tuple-returning `parseHex`
+  lives in `renderer-core/src/charts/fill.ts`. Two implementations of one
+  concept, neither importing the other. **The first instinct — `colour-maths.ts`
+  owns it and `fill.ts` consumes it — cannot be built**: `renderer-core` imports
+  nothing from `editor` and the editor bundles `renderer-core` from source
+  through a Vite alias, so that direction is a cycle. The primitive therefore
+  moves **down**: `renderer-core` owns turning a value into channels and
+  refusing what is not a colour; `colour-maths.ts` keeps the richer conversions
+  (`Hsva`, `rgbaToHsva`, `hsvaToRgba`, `toHex`) and consumes the primitive; and
+  `fill.ts`'s second copy retires into it, with the two signatures reconciled on
+  the shape the chart path already returns. `ownership.md`'s Editor row for
+  “shared colour parsing” moves with the primitive, because the map is the owner
+  of record and a row that names the old home is the contradiction the map
+  exists to prevent.
+  **Corrected on self-review, 2026-10-13.** This bullet cited `vg-246` as an
+  open gap; the row is archived `verified`, and the map no longer lists colour
+  parsing under Known ownership gaps — it names the owner in the Editor table,
+  which is what that row's close accomplished. Its own text left one half
+  unmeasured — “whether other colour parsing exists that the survey did not
+  find” — and that half is `renderer-core`'s second parser, filed as **`vg-439`**
+  with the two signatures and the import direction this bullet now turns on.
 - **The gradient-CSS formula is written once.** It exists in
   `gradient-editor.tsx` and again in `paint-list.tsx` (including the `90 - angle`
   mapping). One function, one owner, two consumers.
@@ -187,9 +208,19 @@ not name.
 **Both files join the token gate.** `scripts/design-tokens.gated.json` does not
 list `colour-picker.tsx` or `gradient-editor.tsx` today; the rebuilt files do,
 together with their tests, per `vg-286`’s ruling that tests join the gated list.
-Measured at the base: the checker currently reports 18 hex violations between the
-two files and no off-scale `px` ones — the sizes are written as `h-28`-style
-classes and inline `width: 28`, which the property rule does not catch.
+**Measured on 2026-10-13, with the method stated because the plain command does
+not show it**: add both files to a copy of the gated list and run
+`node scripts/design-tokens.mjs --gated <copy>` — it reports **17 hex-literal
+violations, every one of them in `colour-picker.tsx`** (the hue strip's
+`#f00`–`#f0f` run, the alpha checkerboard's `#666`/`#999`, the area's
+`#fff`/`#000`, and one `#3a3f4b`), and **none in `gradient-editor.tsx`**, whose
+own raw `#000` outline `vg-334` had already fixed. No off-scale `px` violation
+fires on either file, because the sizes are `h-28`-style classes and inline
+`width: 28`, which the property rule does not catch. The checker as it runs today
+says nothing about either file: it reads the gated list and the ceiling paths, so
+an ungated file is not in its run at all. **Corrected on self-review,
+2026-10-13**, from 18-between-two-files to 17-in-one — a count no command
+produced, which is what the rule against citing counts is for.
 
 ## Before the first write
 
@@ -235,9 +266,37 @@ classes and inline `width: 28`, which the property rule does not catch.
 6. A refused colour leaves the value editable and says why, in words, through the
    announced channel.
 7. `design:check`, `gates:self-test` and the token gate over both files are green,
-   and both files are inside the gated list.
+   and both files are inside the gated list, **with their tests** — which is what
+   the amendment above states and what `vg-286`'s ruling requires.
 8. The browser evidence is captured for the picker and the gradient editor per
    `docs/evidence/screenshots/README.md`.
+
+## Self-review, 2026-10-13
+
+Run before handing the spec over, as the four checks the writing process asks for
+— placeholders, internal consistency, scope and ambiguity — and it changed three
+things, each corrected in place above:
+
+- **Consistency, and the one that would have stopped a plan.** The parser bullet
+  told an implementer to make `renderer-core/src/charts/fill.ts` consume
+  `editor/src/components/ui/colour-maths.ts`. That import points upward across a
+  package boundary — measured, `renderer-core` imports nothing from `editor`, and
+  the editor bundles `renderer-core` from source — so it is a cycle, not a plan
+  step. The primitive now moves down instead, and the ownership row moves with
+  it. The same bullet cited `vg-246` as an open gap; the row is archived
+  `verified` and the map names the owner.
+- **Consistency, a count.** The token-gate paragraph stated 18 hex violations
+  “between the two files”. Measured with a probe list, it is 17, all in
+  `colour-picker.tsx`, and `gradient-editor.tsx` is clean.
+- **Ambiguity, one clause.** The acceptance item on the gate did not name the
+  tests the amendment above it adds to the gated list, so it could be read as
+  passing with the files gated and the tests not.
+- **Placeholders:** none. The one wildcard is the decision note's path,
+  `docs/decisions/0042-*.md`, and 0042 is free — 0041 and 0043 exist, 0042 does
+  not.
+- **Scope:** one plan. The picker, the gradient editor, the one owner for the
+  value, the `DESIGN.md` amendment and the gate membership are one workstream
+  against one verdict, `vg-405`.
 
 ## Open questions for the owner
 
