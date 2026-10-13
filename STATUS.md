@@ -37,10 +37,10 @@ ledger did.
 
 ## Last completed change
 
-- **`vg-444` closed: one half of it implemented, the other half backed by a rule the census had missed** — the section header now renders the drawn trailing rule (`controls.html:31` and five siblings: `flex:1;height:1px;background:var(--edge2)`) with a `data-vigilia-section-rule` hook, and the read-only rows' omitted dashed divider turns out to be the product's own recorded decision, `column.tsx:191-194` citing §5.1 — "no well, no border, because a border means editable" — four lines above the JSX the census read.
-- **The census's own error is recorded rather than quietly fixed** — `vg-390` now names the failure mode: it read declarations and structure, and a product note saying why a declaration is *absent* is a source it did not weigh, which is how a rule-backed difference was filed as unowned.
-- **Red first, on a build from this tree** — `toHaveCSS("height", "1px")` against `[data-vigilia-section-rule]` failed `Error: element(s) not found` before the rule landed; the whole edited spec passes after the rebuild (`npm run build -w @vigilia/editor` then `build:fixture`), **12 passed**, exit 0.
-- **`vg-443` was re-examined and is *not* this class**: `--shell-display` is a deliberately-applied chrome idiom — the brand mark, the dialog lead and the panel/inspector headings, one of those rules carrying a comment recording the decision ("A status is not a name and does not wear this rule") — so the serif heading is a design question about an undrawn chrome face rather than an oversight, and it stays the user's.
+- **`vg-444` is closed and its row moved to the archive** — the two halves are answered separately, which is why it was not closed last commit: the section header's trailing rule is implemented (`inspector-section.tsx`, `data-vigilia-section-rule`), and the read-only rows' omitted dashed divider is backed by a rule the census had missed, `selection-inspector/column.tsx:191-194` citing §5.1.
+- **The close passes the gate that reads it, not just a green suite** — `backlog-check` requires the `check` to name a word from the row's own title *and* the sha to resolve and be an ancestor of HEAD, so the row carries `9bff9ffd` and a check naming the drawing's rule; `npm run backlog:check` exit 0, 446 items across both registers.
+- **The live register had lost its trailing newline, and a scripted edit of an earlier session dropped it** — `move-row.mjs` refuses to splice a file that does not end in one, so the byte was restored before the move rather than the guard relaxed; the guard is what keeps a partial write from leaving a half-line row.
+- **`vg-443` stays open on purpose, and is the user's** — `--shell-display` is a deliberately-applied chrome idiom (the brand mark, the dialog lead, the panel and inspector headings, one of those rules carrying the recorded decision), so the serif heading is a question about an undrawn chrome face rather than an oversight.
 
 ## Next
 
