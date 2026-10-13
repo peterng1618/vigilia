@@ -725,6 +725,7 @@ body,
   background: var(--panel);
   font-family: ui-monospace, monospace;
   font-size: var(--text-xs);
+  line-height: var(--text-xs--line-height);
   color: var(--faint);
 }
 .editor-shell-header strong {
@@ -1144,6 +1145,7 @@ body,
   color: var(--shell-text);
   font-family: var(--shell-display);
   font-size: var(--text-md);
+  line-height: var(--text-md--line-height);
   text-transform: uppercase;
   letter-spacing: 0.14em;
 }
@@ -1212,6 +1214,7 @@ body,
   padding: 0;
   color: var(--muted);
   font-size: var(--text-2xs);
+  line-height: var(--text-2xs--line-height);
   font-weight: 600;
   letter-spacing: 0.11em;
   text-transform: uppercase;
@@ -1263,7 +1266,7 @@ body,
   max-width: 100%;
   overflow: hidden;
   font-size: var(--text-2xs);
-  line-height: 1.2;
+  line-height: var(--text-2xs--line-height);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -1283,11 +1286,13 @@ body,
   background: var(--panel-2);
   color: var(--text);
   font-size: var(--text-sm);
+  line-height: var(--text-sm--line-height);
   text-align: left;
   cursor: pointer;
 }
 .editor-shell-panel .vigilia-add-text .vigilia-add-label {
   font-size: var(--text-sm);
+  line-height: var(--text-sm--line-height);
 }
 /* §5.2's file path at the pane's foot. The preview is bounded rather than
    sized: an asset's intrinsic dimensions are the author's, so the picture is
@@ -1497,6 +1502,7 @@ body,
      the lead at `--text-lg`, the status and the chord at `--text-xs`, the group
      heading at 11px, the button at `--text-sm`. */
   font-size: var(--text-sm);
+  line-height: var(--text-sm--line-height);
   /* §3's overlay elevation, the token every floating surface rides on: the
      scrim is the overlay's, and the popup itself is `--elev-3`. */
   box-shadow: var(--elev-3);
@@ -1527,6 +1533,7 @@ body,
   margin: 0 0 12px;
   font-family: var(--shell-display);
   font-size: var(--text-lg);
+  line-height: var(--text-lg--line-height);
   color: var(--shell-text);
 }
 /* A dialog's announced status, on §2's smallest reading step
@@ -1538,6 +1545,7 @@ body,
   margin: 0;
   color: var(--shell-muted);
   font-size: var(--text-xs);
+  line-height: var(--text-xs--line-height);
 }
 .editor-shell-dialog section + section {
   margin-top: 14px;
@@ -1573,6 +1581,7 @@ body,
      every other chord mark in the shell already takes
      (`.editor-shell-menu-key`, `.editor-shell-primary-key`). */
   font-size: var(--text-xs);
+  line-height: var(--text-xs--line-height);
   color: var(--shell-muted);
 }
 .editor-shell-dialog > button {
@@ -1588,6 +1597,7 @@ body,
      the portalled document's 13px. The three dialogs that wrap their buttons in
      `.vigilia-dialog-actions` already take `text-sm` from `ACTION_BUTTON`. */
   font-size: var(--text-sm);
+  line-height: var(--text-sm--line-height);
   cursor: pointer;
 }
 .editor-shell-dialog > button:hover {
@@ -1651,6 +1661,7 @@ body,
   color: var(--shell-muted);
   font: inherit;
   font-size: var(--text-sm);
+  line-height: var(--text-sm--line-height);
   text-align: left;
   cursor: pointer;
 }
@@ -1703,6 +1714,7 @@ body,
 }
 .editor-shell-keyboard-header > span {
   font-size: var(--text-sm);
+  line-height: var(--text-sm--line-height);
   font-weight: 600;
   color: var(--shell-text);
 }
@@ -1778,6 +1790,7 @@ body,
   color: var(--shell-muted);
   font: inherit;
   font-size: var(--text-xs);
+  line-height: var(--text-xs--line-height);
   cursor: pointer;
 }
 .editor-shell-keyboard-action:hover {
@@ -1794,6 +1807,7 @@ body,
   margin: var(--space-4) 0 0;
   color: var(--shell-text);
   font-size: var(--text-xs);
+  line-height: var(--text-xs--line-height);
 }
 .editor-shell-keyboard-reason:empty {
   display: none;
@@ -1802,6 +1816,7 @@ body,
   margin: var(--space-8) 0 0;
   color: var(--shell-muted);
   font-size: var(--text-xs);
+  line-height: var(--text-xs--line-height);
 }
 /* §7.1's chord on the header's one filled control. It inherits that button's
    own text colour rather than taking a shell role: the primary button's text is
@@ -1814,6 +1829,7 @@ body,
   border-radius: var(--radius-sm);
   font-family: ui-monospace, monospace;
   font-size: var(--text-xs);
+  line-height: var(--text-xs--line-height);
   color: inherit;
 }
 
@@ -2016,6 +2032,7 @@ body,
   color: var(--text);
   font-family: inherit;
   font-size: var(--text-md);
+  line-height: var(--text-md--line-height);
   font-weight: 600;
   letter-spacing: normal;
   text-transform: none;
@@ -2035,6 +2052,7 @@ body,
   margin-left: auto;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: var(--text-2xs);
+  line-height: var(--text-2xs--line-height);
   color: var(--faint);
 }
 /* The footer toolbar: `ControlIconButton`s at §5's 26px, flat, over §3's
@@ -2374,6 +2392,7 @@ body,
   text-overflow: ellipsis;
   color: var(--text);
   font-size: var(--text-sm);
+  line-height: var(--text-sm--line-height);
 }
 /* The word the status bar's `SaveState` also shows, and reads from the same
    `isDirty()`; `nowrap` so a name ellipsises before this does. */
@@ -2382,6 +2401,7 @@ body,
   white-space: nowrap;
   color: var(--warn);
   font-size: var(--text-xs);
+  line-height: var(--text-xs--line-height);
 }
 .editor-shell-stage #canvas-host {
   position: absolute;
@@ -2493,6 +2513,7 @@ body,
   cursor: pointer;
   font-variant-numeric: tabular-nums;
   font-size: var(--text-sm);
+  line-height: var(--text-sm--line-height);
   text-align: center;
 }
 /* The cluster's three camera controls: −, + and fit. Square at DESIGN.md's 26px

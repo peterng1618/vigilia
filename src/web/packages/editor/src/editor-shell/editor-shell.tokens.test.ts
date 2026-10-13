@@ -388,6 +388,41 @@ describe("shell token stylesheet", () => {
     }
   });
 
+  /** The other half of the scale pin: a rule that states a size states that
+   *  token's own line-height too.
+   *
+   *  Tailwind's utility is the only shape that consumes a companion — `.text-sm`
+   *  compiles to `var(--tw-leading,var(--text-sm--line-height))` — so a rule
+   *  writing `font-size: var(--text-sm)` takes the size alone and leaves the
+   *  element on preflight's `1.5`, a ratio nothing in this repo chose. Measured
+   *  2026-10-13: 22 rules stated a size, one stated its companion, and the
+   *  browser showed the dialog at 18px where §2's `--text-sm` is 16.8px. The
+   *  resolved value is asserted in a browser by `shell-appearance.spec.ts`; this
+   *  is the source contract that keeps a new rule from reopening the gap. */
+  it("pairs every stated size with that token's own line-height", () => {
+    // Comments are blanked rather than removed, so a line number stays the
+    // line number: this is what a reader following the failure will open.
+    const source = css.replace(/\/\*[\s\S]*?\*\//g, (comment) =>
+      comment.replace(/[^\n]/g, " "),
+    );
+    const offenders: string[] = [];
+    for (const rule of source.matchAll(/(^[^\n@/][^{}]*)\{([^}]*)\}/gm)) {
+      const body = rule[2] ?? "";
+      const size = /font-size:\s*var\((--text-[a-z0-9]+)\)/.exec(body)?.[1];
+      if (size === undefined) continue;
+      if (body.includes(`line-height: var(${size}--line-height)`)) continue;
+      const line = source.slice(0, rule.index).split("\n").length;
+      offenders.push(
+        `line ${line}: ${(rule[1] ?? "").trim().split("\n").at(-1)?.trim()} ` +
+          `states ${size} without var(${size}--line-height)`,
+      );
+    }
+    expect(
+      offenders,
+      "a stated size with no stated line-height inherits preflight's 1.5",
+    ).toEqual([]);
+  });
+
   /** `static`, because Tailwind drops a theme variable no utility references.
    *
    *  The unreferenced set moves as the surface grows (`--text-xl` is referenced

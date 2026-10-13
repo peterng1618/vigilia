@@ -417,8 +417,23 @@ test.describe("shell palettes", () => {
         "rounded-sm": measure("rounded-sm", ["border-radius"]),
         "rounded-md": measure("rounded-md", ["border-radius"]),
       };
+      // The shell's own rules, not only the utility. A rule writing
+      // `font-size: var(--text-sm)` used to take the size alone and leave the
+      // element on preflight's `1.5`; the source contract is in
+      // `editor-shell.tokens.test.ts`, and this is the half that proves the
+      // declaration reaches the element as the resolved value.
+      const rules = Object.fromEntries(
+        [
+          "editor-shell-status",
+          "editor-shell-view-readout",
+          "editor-shell-keyboard-reason",
+          "editor-shell-pane-count",
+          "editor-shell-dialog",
+          "editor-shell-dialog-lead",
+        ].map((name) => [name, measure(name, ["font-size", "line-height"])]),
+      );
       host.remove();
-      return { utilities, theme };
+      return { utilities, rules, theme };
     });
 
     expect(probe.utilities).toEqual({
@@ -426,6 +441,24 @@ test.describe("shell palettes", () => {
       "text-sm": { "font-size": "12px", "line-height": "16.8px" },
       "rounded-sm": { "border-radius": "4px" },
       "rounded-md": { "border-radius": "6px" },
+    });
+    // §2's ratio for each token, resolved on the rule that states it.
+    expect(probe.rules).toEqual({
+      "editor-shell-status": { "font-size": "11px", "line-height": "14.3px" },
+      "editor-shell-view-readout": {
+        "font-size": "12px",
+        "line-height": "16.8px",
+      },
+      "editor-shell-keyboard-reason": {
+        "font-size": "11px",
+        "line-height": "14.3px",
+      },
+      "editor-shell-pane-count": { "font-size": "10px", "line-height": "12px" },
+      "editor-shell-dialog": { "font-size": "12px", "line-height": "16.8px" },
+      "editor-shell-dialog-lead": {
+        "font-size": "15px",
+        "line-height": "19.5px",
+      },
     });
     expect(probe.theme).toEqual({
       // `.25rem`, not `0.25rem`: the bundle is minified, and this reads what
