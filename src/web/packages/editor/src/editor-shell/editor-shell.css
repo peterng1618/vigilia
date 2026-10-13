@@ -1557,7 +1557,8 @@ body,
   align-items: baseline;
   justify-content: space-between;
   gap: 16px;
-  padding: 3px 0;
+  /* §3 has no 3 step; the drawing takes 4 (`current/settings-about.html`). */
+  padding: 4px 0;
 }
 .editor-shell-dialog dt {
   color: var(--shell-text);
