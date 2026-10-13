@@ -593,67 +593,45 @@ body,
   color: var(--hot);
 }
 
-/* ── One treatment boundary: chrome is flat and opaque; a floating cluster
-   over the canvas is glass. ──────────────────────────────────────────────
+/* ── One treatment; elevation is the whole difference. ──────────────────────
    §3's elevation table gives row 0 — no shadow, a 1px `--edge` hairline — to
-   the panels, the rail, the header and the inspector, and row 1 to the
-   "floating clusters over the canvas", which §3 also says blur their backdrop
-   and are *never fully opaque: the canvas must read through them*. So an
-   element is one of exactly two things, and this block is where the file says
-   which. **The split is per element, not per palette** — it used to be
-   `editorial` against the other five, and every palette now paints the same
-   two treatments.
+   the panels, the rail, the header and the inspector, and row 1
+   (`0 8px 20px #00000059`) to the "floating clusters over the canvas". Nothing
+   blurs and nothing lets the canvas read through itself: the drawing paints a
+   cluster as a 95% fill of the same charcoal the chrome uses, with no gradient
+   and no backdrop filter, so the gradient sheen and the blur the product
+   carried were its own invention rather than the drawing's. **The split is per
+   element, not per palette**, and every palette paints the same two rows.
 
    - **chrome** — the rail, both panes, the inspector, and the header and status
      strips that declare their own surface — paints the palette's own `--panel`,
-     with no gradient, no blur and no shadow. `--panel` is opaque in five
-     palettes (Task 4 made graphite's the drawing's `#12161c`); `light` declares
+     with no gradient and no shadow. `--panel` is opaque in five palettes
+     (Task 4 made graphite's the drawing's `#12161c`); `light` declares
      `--shell-surface: #eff9f2bf`, so its chrome is still 75% and still
      composites against the mint ground. That is a derivation Task 4 did not
      reach rather than a literal to invent here, and `vg-310` owns it.
    - a **floating cluster over the canvas** — the dock and the view cluster —
-     paints `--panel` at 95% over the glass gradient, blurs it and takes the
-     elevation-1 shadow. The 95% is §7.5's derivation for a cluster's fill and
-     the same one `.editor-shell-identity` declares in its own rule: a cluster
-     painted from `--panel` alone would be a solid block, which §3 forbids.
+     adds row 1's shadow and a 95% fill. The 95% is §7.5's derivation for a
+     cluster's fill and the same one `.editor-shell-identity` declares in its
+     own rule.
 
    `.editor-glass` is the **chrome** default — it is on the rail, the pane
    column and the inspector, three of the five elements that carry it — and the
-   two clusters opt into the glass by name. The glass rule therefore cannot
-   reach a chrome region whatever the source order, which is what `vg-207`'s
-   (0,4,0) tie-break used to buy and this shape buys instead. */
+   two clusters opt into the shadow by name, so the elevation cannot reach a
+   chrome region whatever the source order. That is what `vg-207`'s (0,4,0)
+   tie-break used to buy and this shape buys instead. */
 .editor-glass {
   background: var(--panel);
   border: 1px solid var(--shell-edge);
   box-shadow: none;
 }
+/* §3 row 1, and the drawing's own `#0d1116f2`: a 95% fill and the elevation
+   shadow, with no gradient, no inner sheen and no backdrop filter. The two
+   clusters are separated from the chrome by elevation alone. */
 .editor-shell-dock.editor-glass,
 .editor-shell-zoom.editor-glass {
-  background:
-    linear-gradient(135deg, #ffffff1f, #ffffff05 42%, #020b0e18),
-    color-mix(in srgb, var(--panel) 95%, transparent);
-  box-shadow:
-    inset 0 1px #ffffff4d,
-    inset 0 -1px #ffffff12,
-    0 18px 40px #0000004a;
-  backdrop-filter: blur(10px) saturate(135%);
-  -webkit-backdrop-filter: blur(10px) saturate(135%);
-}
-
-@media (prefers-reduced-transparency: reduce) {
-  .editor-shell-dock.editor-glass,
-  .editor-shell-zoom.editor-glass {
-    background: var(--shell-surface-strong);
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
-  }
-}
-
-@supports not (backdrop-filter: blur(1px)) {
-  .editor-shell-dock.editor-glass,
-  .editor-shell-zoom.editor-glass {
-    background: var(--shell-surface-strong);
-  }
+  background: color-mix(in srgb, var(--panel) 95%, transparent);
+  box-shadow: var(--elev-1);
 }
 
 /* The chrome regions' own boundary resets. The flat surface itself is

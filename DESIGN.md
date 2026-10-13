@@ -309,8 +309,10 @@ arrange half is *greyed* — it needs two or more and stays discoverable. Both
 halves ask the registry for eligibility the same way, so the surface never
 re-derives what an action can do.
 
-Floating clusters are `--radius-xl`, `--panel` at ~95% with backdrop blur, 1px
-`--edge`, elevation 1, and sit 14–16px in from the stage's edges.
+Floating clusters are `--radius-xl`, `--panel` at 95%, 1px `--edge`, elevation 1,
+and sit 14–16px in from the stage's edges. **No backdrop blur**: the drawing
+fills a cluster from the same `--panel` the chrome uses and separates it from
+the stage by its elevation shadow alone.
 
 ### The status bar
 
@@ -377,9 +379,10 @@ Four levels, and a surface sits at exactly one.
 | 2 — overlay | `0 18px 44px #00000099` | Menus, popovers, tooltips |
 | 3 — modal | `0 24px 60px #000000b3` + scrim `#00000073` | Dialogs |
 
-**Floating clusters blur their backdrop** (`backdrop-filter: blur(6px)`) and are
-never fully opaque: the canvas must read through them, because they sit on the
-artboard the author is judging.
+**Floating clusters do not blur their backdrop.** They take the chrome's own
+`--panel` at 95% with no gradient and no filter, and row 1's shadow is the only
+thing that separates them from the chrome and from the stage. The canvas reads
+*around* a cluster, never through it.
 
 ## Shapes
 

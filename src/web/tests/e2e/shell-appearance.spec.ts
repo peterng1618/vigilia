@@ -439,19 +439,18 @@ test.describe("shell palettes", () => {
   });
 
   /** The one treatment boundary: chrome is flat and opaque, and a floating
-   *  cluster over the canvas is glass.
+   *  cluster over the canvas is that same fill lifted by §3's elevation-1 shadow.
    *
-   *  **This assertion changed shape, deliberately** (plan 7 Task 5), and the shape
-   *  it had is why it is named here rather than quietly rewritten. It read
-   *  "editorial is flat and the other five are glass" — three facts about
-   *  `editorial` written as one assertion, and a `flat` that described a whole
-   *  *palette* rather than an element. §3 draws the boundary between elements and
-   *  not between palettes: elevation 0 is the chrome (no shadow, a 1px `--edge`
-   *  hairline) and elevation 1 is "floating clusters over the canvas", which blur
-   *  their backdrop and are never fully opaque. Task 5 moved the gradient and the
-   *  blur onto the clusters by name and gave the chrome the palette's own
-   *  `--panel`, so the palette split this test used to assert is exactly what was
-   *  removed — `editorial`'s clusters are glass now, as every palette's are.
+   *  **This assertion changed shape twice, deliberately**, and the shapes it had
+   *  are why they are named here rather than quietly rewritten. It first read
+   *  "editorial is flat and the other five are glass" — a `flat` describing a
+   *  whole *palette* rather than an element, which is not the boundary §3 draws.
+   *  Task 5 moved the gradient and the blur onto the clusters by name and gave the
+   *  chrome the palette's own `--panel`. The clusters' glass was then removed
+   *  outright: the drawing never blurred anything and filled a cluster from the
+   *  same charcoal at 95%, so the gradient, the two inner highlights and the blur
+   *  were the product's own invention. **Elevation is now the whole difference**
+   *  between §3's two rows, and it is what this assertion discriminates on.
    *
    *  Both halves are read as a **set, not a sample** (review round 1): a boundary
    *  stated per element is not held by one element a side, and the two surfaces
@@ -467,20 +466,16 @@ test.describe("shell palettes", () => {
    *    alpha is what "paints `--panel`" is meant to rule out — and it carries no
    *    gradient, no blur and no shadow.
    *  - a **floating cluster** — §7.5's three: the dock, the view cluster and the
-   *    identity chip. Each is translucent and lifted. The two that carry
-   *    `editor-glass` also carry the sheen; the chip declares its fill, blur,
-   *    hairline and `--elev-1` in its own rule and no gradient, so the gradient is
-   *    asserted on those two — §7.5's cluster contract is the `--radius-xl`, the
-   *    ~95% fill and the blur, and the sheen is the shared class's.
+   *    identity chip. Each is translucent and lifted, and **none of them blurs or
+   *    paints a gradient**.
    *
-   *  The cluster's `backdrop-filter` cannot be one of them, and the reason is
-   *  measured rather than assumed: the built stylesheet carries only the prefixed
-   *  `-webkit-backdrop-filter`, this Chromium does not support that form, and so
-   *  every glass element computes `backdropFilter: none` under every palette —
-   *  which is what the assertion this replaced already recorded when it chose
-   *  `box-shadow` over `backdrop-filter` as its discriminator. The dead blur is
-   *  `vg-311`'s finding; asserting it here would pass for the wrong reason. */
-  test("chrome is flat and opaque, and the canvas clusters keep the glass", async ({
+   *  `backdrop-filter` is deliberately **not** the discriminator, and the reason
+   *  is measured rather than assumed: the built stylesheet carried only the
+   *  prefixed `-webkit-backdrop-filter`, this Chromium does not support that form,
+   *  so every cluster computed `backdropFilter: none` under every palette — the
+   *  dead blur `vg-311` records, which this change retired by deleting the
+   *  declarations rather than by asserting them. */
+  test("chrome is flat and opaque, and a canvas cluster is lifted by its shadow alone", async ({
     page,
   }, testInfo) => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
@@ -489,18 +484,12 @@ test.describe("shell palettes", () => {
 
     // Membership is **derived from the stylesheet**, not named here, so a
     // surface added later is read with the rule that paints it: a rule whose
-    // fill is `--panel`/`--shell-surface` is **glass** when lifted and
-    // **chrome** when flat, and a lifted fill carrying a gradient is one of the
-    // clusters that take the shared sheen.
+    // fill is `--panel`/`--shell-surface` is a **lifted cluster** when it
+    // declares a shadow and **chrome** when it does not.
     //
-    // The authored file, not the loaded stylesheet, because the built one cannot
-    // classify its own glass: Lightning CSS emits the blur as
-    // `-webkit-backdrop-filter` alone, this Chromium supports the unprefixed
-    // property alone (`CSS.supports("-webkit-backdrop-filter", "blur(1px)")` is
-    // false), and a declaration the parser cannot use is dropped from CSSOM — so
-    // the live `.editor-shell-dock` rule carries no blur and the dock computes
-    // `backdropFilter: none`. That dead blur is `vg-311`'s finding, and reading
-    // the loaded rules would classify nothing as glass.
+    // The authored file, not the loaded stylesheet: the discriminator is the
+    // authored `box-shadow` declaration, and the built rule is that same
+    // declaration after a minifier has been through it.
     const css = readFileSync(
       new URL(
         "../../packages/editor/src/editor-shell/editor-shell.css",
@@ -520,33 +509,37 @@ test.describe("shell palettes", () => {
       };
       visit(sheet.cssRules);
       const chrome = new Set<Element>();
-      const glass = new Set<Element>();
-      const sheen = new Set<Element>();
+      const clusters = new Set<Element>();
       for (const rule of rules) {
         const fill = rule.style.getPropertyValue("background");
         if (!/var\(--(?:panel|shell-surface)\)/.test(fill)) continue;
+        // **Elevation is the discriminator**, because it is the whole of the
+        // difference between §3's two rows. It used to be `backdrop-filter`,
+        // and that read was already dead before it was removed: Lightning CSS
+        // emits the blur as the prefixed property alone, this Chromium has
+        // dropped the alias, and so every cluster computed `none` (`vg-311`).
+        // Row 1 is `--elev-1` by name, not "any shadow": elevation 2 and 3 are
+        // menus and dialogs, which are opaque overlays rather than clusters.
         const lifted = rule.style
-          .getPropertyValue("backdrop-filter")
-          .startsWith("blur(");
+          .getPropertyValue("box-shadow")
+          .includes("--elev-1");
         const flat =
           rule.style.getPropertyValue("box-shadow") === "none" ||
           rule.style.getPropertyValue("border-top") !== "" ||
           rule.style.getPropertyValue("border-bottom") !== "";
         for (const selector of rule.selectorText.split(",")) {
           for (const element of document.querySelectorAll(selector.trim())) {
-            if (lifted) {
-              glass.add(element);
-              if (fill.includes("gradient(")) sheen.add(element);
-            } else if (flat) chrome.add(element);
+            if (lifted) clusters.add(element);
+            else if (flat) chrome.add(element);
           }
         }
       }
-      // A surface that is glass is not chrome, whichever rule reached it first:
+      // A surface that is lifted is not chrome, whichever rule reached it first:
       // `.editor-glass` is the chrome default and the two clusters opt into the
-      // blur by name.
-      for (const element of glass) chrome.delete(element);
+      // elevation by name.
+      for (const element of clusters) chrome.delete(element);
       const probe = new Map<Element, string>();
-      [...new Set([...chrome, ...glass])].forEach((element, index) => {
+      [...new Set([...chrome, ...clusters])].forEach((element, index) => {
         // The probe value is the handle **and** the name a failure prints, so a
         // failure names the surface rather than a probe index.
         const value = `${index}:.${[...element.classList].join(".")}`;
@@ -559,8 +552,7 @@ test.describe("shell palettes", () => {
         );
       return {
         chrome: handles(chrome),
-        glass: handles(glass),
-        sheen: handles(sheen),
+        clusters: handles(clusters),
       };
     }, css);
     // Each of these three is a positive control on an empty read: an empty set
@@ -571,16 +563,11 @@ test.describe("shell palettes", () => {
       "no stylesheet rule classified chrome",
     ).toBeGreaterThan(0);
     expect(
-      membership.glass.length,
-      "no stylesheet rule classified a glass cluster",
-    ).toBeGreaterThan(0);
-    expect(
-      membership.sheen.length,
-      "no stylesheet rule classified a sheen cluster",
+      membership.clusters.length,
+      "no stylesheet rule classified a lifted cluster",
     ).toBeGreaterThan(0);
     const CHROME = membership.chrome;
-    const CLUSTERS = membership.glass;
-    const SHEEN_CLUSTERS = membership.sheen;
+    const CLUSTERS = membership.clusters;
 
     const read = (selector: string) =>
       page.evaluate((sel) => {
@@ -673,9 +660,16 @@ test.describe("shell palettes", () => {
             `${palette} ${selector}: the cluster's fill is ${cluster.background}, and §3 has a floating cluster never fully opaque`,
           );
         }
-        if (cluster.image === "none" && SHEEN_CLUSTERS.includes(selector)) {
+        // A cluster is the chrome's own fill plus a shadow, and nothing else:
+        // no blur and no sheen, which is what the drawing has always painted.
+        if (cluster.blur !== "none") {
           failures.push(
-            `${palette} ${selector}: the cluster carries no glass gradient`,
+            `${palette} ${selector}: the cluster blurs its backdrop (${cluster.blur})`,
+          );
+        }
+        if (cluster.image !== "none") {
+          failures.push(
+            `${palette} ${selector}: the cluster carries a gradient (${cluster.image})`,
           );
         }
         if (cluster.shadow === "none") {
@@ -688,7 +682,7 @@ test.describe("shell palettes", () => {
 
     expect(
       failures,
-      "the treatment boundary — chrome flat and opaque, a floating cluster glass — does not hold",
+      "the treatment boundary — chrome flat and opaque, a floating cluster lifted by its shadow alone — does not hold",
     ).toEqual([]);
   });
 
