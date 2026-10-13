@@ -53,6 +53,14 @@ three tabs` (the `settings-appearance` file, with and without `-editorial`). A
 PNG beside a drawing is skipped by the drawings gate rather than parsed — it
 enumerates `*.html` (`tests/e2e/mockup-values.ts`'s `currentDrawings`).
 
+**Plans 1 and 3's control-set pair sits beside the controls drawings the same
+way**: `docs/design/mockups/current/controls-capture-graphite.png` is the set on
+the ground `controls.html` draws (its `#0b0e12` paper, `#72e0c0` accent) and
+`controls-capture-editorial.png` the light ground `controls-light.html` draws
+(its `#fffdf7` paper), both the three-panel state the drawn sheets hold, from
+`the control set renders in the design language` (the `control-set` file, with
+and without `-editorial`).
+
 ## Editor visual-action checklist
 
 Update/add a capture when a change affects a listed domain. Show the action's
