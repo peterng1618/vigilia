@@ -80,6 +80,18 @@ export function InspectorSection(props: {
           {readOnly === true ? (
             <span className="text-2xs text-muted">Read-only</span>
           ) : null}
+          {/* The header's trailing rule, drawn in every current mockup
+              (`controls.html:31`, `:43`, `:119`, `:126`, `:152`, `:171` as
+              `flex:1;height:1px;background:var(--edge2)`). Nothing in the
+              product or in DESIGN.md argued against it — the read-only row's
+              omitted divider is the different case, where `column.tsx` cites
+              §5.1 ("a border means editable") and the drawing is the stale
+              side. */}
+          <span
+            aria-hidden
+            className="h-px flex-1 bg-edge-2"
+            data-vigilia-section-rule=""
+          />
           <span aria-hidden className="ml-auto text-faint">
             {open ? "▾" : "▸"}
           </span>

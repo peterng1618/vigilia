@@ -632,7 +632,7 @@ test.describe("the per-kind inspector column", () => {
     await expect(page.locator("[data-vigilia-crop]")).toHaveCount(0);
   });
 
-  test("the section count takes §2's mono and §4's faint, and the subject name §2's 600", async ({
+  test("the section header takes the drawing's rule, §2's mono count and §4's faint, and the subject name §2's 600", async ({
     page,
   }, testInfo) => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
@@ -662,9 +662,12 @@ test.describe("the per-kind inspector column", () => {
       await count.evaluate((el) => getComputedStyle(el).fontFamily),
     ).toMatch(/mono/i);
     // Read against the header's own chevron, which §5 already draws in
-    // `--faint`, so this holds in every palette rather than in one.
+    // `--faint`, so this holds in every palette rather than in one. The rule
+    // span beside it is `aria-hidden` too, so it is excluded by name.
     const chevron = page
-      .locator('[data-vigilia-section="position"] span[aria-hidden]')
+      .locator(
+        '[data-vigilia-section="position"] span[aria-hidden]:not([data-vigilia-section-rule])',
+      )
       .first();
     expect(await count.evaluate((el) => getComputedStyle(el).color)).toBe(
       await chevron.evaluate((el) => getComputedStyle(el).color),
@@ -674,6 +677,19 @@ test.describe("the per-kind inspector column", () => {
       "font-weight",
       "600",
     );
+
+    // The header's trailing rule, which every current drawing draws between the
+    // count and the chevron (`controls.html:31` and five siblings). Nothing
+    // argued against it, so it is a difference the drawing wins; the read-only
+    // rows' omitted dashed divider is the neighbouring case where a cited rule
+    // (`column.tsx`'s §5.1 note) wins instead.
+    const rule = page.locator(
+      '[data-vigilia-section="position"] [data-vigilia-section-rule]',
+    );
+    await expect(rule).toHaveCSS("height", "1px");
+    expect(
+      await rule.evaluate((el) => getComputedStyle(el).backgroundColor),
+    ).not.toBe("rgba(0, 0, 0, 0)");
   });
 
   test("names where to choose from when nothing is selected", async ({
