@@ -795,9 +795,14 @@ which is a plan artifact rather than this spec's own statement.
   undrawn panes and plan 6's missing drawing are the residue it cannot reach at
   all, because there is no matching mockup to carry a capture beside.
   **What discharges it:** the
-  ruling on the settings frame's width and on which role a palette preview bar
-  depicts, the work on the other `fix` differences, and a decision on the
-  plans 1–3 wording — reproduce the comparison or narrow the item.
+  ruling on the settings frame's width (`vg-322`, itself parked on `vg-330`), the
+  work on the other `fix` differences, and a decision on the plans 1–3 wording —
+  reproduce the comparison or narrow the item. **The palette preview bar's role is
+  no longer among them**: the user ruled on 2026-10-11 that the bar depicts the
+  palette's ground, `--shell-backdrop` — the product's reading — the drawing's
+  five solid bars were repainted to it, and five `PARITY` rows now read a bar's
+  colour where the only row before read its height (`vg-321`, withdrawn as done
+  and not a defect; `mockup-values.ts:1153-1200`).
 
 ## Ruled during review
 
