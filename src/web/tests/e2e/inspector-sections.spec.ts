@@ -464,7 +464,10 @@ test.describe("the per-kind inspector column", () => {
       });
 
     const start = await slider();
-    expect(start.box, "the Layer section draws no opacity slider").not.toBeNull();
+    expect(
+      start.box,
+      "the Layer section draws no opacity slider",
+    ).not.toBeNull();
     expect(start.readout).toBe("100");
     const box = start.box ?? { x: 0, y: 0, width: 0, height: 0 };
     const y = box.y + box.height / 2;
@@ -499,9 +502,7 @@ test.describe("the per-kind inspector column", () => {
     expect(held.input).toBe(held.readout);
 
     // One value lands for the gesture, and it is the one the pointer left.
-    await expect
-      .poll(async () => (await slider()).readout)
-      .toBe(during[2]);
+    await expect.poll(async () => (await slider()).readout).toBe(during[2]);
   });
 
   test("draws a remainder slice for a fixed pie total, measured on the canvas", async ({
