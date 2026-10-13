@@ -37,10 +37,10 @@ ledger did.
 
 ## Last completed change
 
-- **`vg-446` is fixed rather than left filed: the empty column now names the place** — `ui-copy.ts`'s `nothingSelected` reads "Select an object on the canvas to inspect it."; §7.4 requires the empty column to "say where to choose from" (`DESIGN.md:279`) and the old line named the act, not the surface.
-- **The case named for §7.4 can finally fail** — `inspector-sections.spec.ts` asserted the literal, so it passed whatever the literal said, which is how the clause was counted met by a check that could not register a regression; it now asserts the place the line names (`/canvas/i`), and **the red is recorded**: against the pre-fix bundle it failed `unexpected value "Select an object to inspect it."`, and passes after the rebuild (spec file 12 passed, exit 0).
-- **`vg-445`'s other half is not a difference against the target, measured** — the current drawings' Add headings are singular at `shell.html:63`, `:96`, `:116` and `:128` (uppercase by CSS), and the drawings README requires the current set's copy to be taken from `ui-copy.ts`; the plural `CARDS` belongs to the frozen original `editor-shell.html:91`, which the README says is the record and not the target.
-- **Gate: exit 0** — `npm run gate` from `src/web`, 255 test files and 3,363 tests passed, `design-md --lint --sync --cite` clean over 315 citation sources; the bundle was rebuilt (`build` then `build:fixture`) because Playwright previews `dist`.
+- **`vg-446` and `vg-445` both close, on the one commit that answers both halves they left open** — the empty column names the canvas (`ui-copy.ts`), and the Add group headings have no difference left to land: the current drawings write the product’s own singular words.
+- **`vg-445`’s process finding survives its close, because it is the finding** — plan 2 recorded the difference as deliberate on plan 4’s ownership and plan 4 asserted the same ownership while changing nothing (`bd36733d`), so the difference was owned by nobody until the target absorbed it.
+- **Each row carries its disposition in `detail` before the move** — an archived row’s `check` is one sentence, so the measured half (`CARDS` belongs to the frozen original `editor-shell.html:91`, not the target, and the README requires the current set’s copy to come from `ui-copy.ts`) is written where a session reading the archive finds it.
+- **Registers: `npm run backlog:check` exit 0, 446 items across both registers** — live two rows lighter and archive two heavier, and §7.4 is now asserted by a case that can fail (`toHaveText(/canvas/i)`) rather than by a pin that passes whatever the line says.
 
 ## Next
 
