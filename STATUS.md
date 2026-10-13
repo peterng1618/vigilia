@@ -37,11 +37,11 @@ ledger did.
 
 ## Last completed change
 
-- **`vg-227` lands as work rather than as a ruling: the rail's slot is §5's 36px rail slot, and §5's closed vocabulary gains the role** — the 2026-10-12 ruling added a row instead of stretching the icon button's 26–30px range, so the larger control has a name of its own.
-- **The rail's dependent arithmetic was re-derived and measured on a built bundle, not asserted** — the slot reads 5…41 in the 46px strip (a 5px gutter each side) and the accent bar moved to `right: -6px`, reading 44…46 with its outer edge on the rail's inner edge; at the stale `-7px` it reads 45…47, one pixel into the pane, and the case fails.
-- **The red proof is the pre-change CSS, and the case now pins the size directly** — reverting the file to `423c557f`'s copy reddens `editor-rail.spec.ts` on "the slot is §5's 36px rail slot" (34 against 36), and the restore was verified byte-identical with `cmp` before the rebuild that made it green.
-- **The drawing moved with the code, so the parity pair stays honest** — `current/shell.html`'s five slot spans are 36px with the bar at the drawing's own `-5px`, and the three shell captures beside the drawings (add, glyphs, graphite) are re-shot; `design-language.spec.ts`'s ten cases and the ceiling's re-recorded residual set both pass.
-- **Gates: `npm run gate` exit 0 (255 files, 3,363 tests; `design:check` lint clean, 315 citation sources)** — the ratchet's record for `editor-shell.css` dropped the two `34px` and the `right: 7px` exemptions, and `vg-448` files the slot's `--radius-lg` radius, which §4 gives to surfaces rather than to controls.
+- **`vg-260`'s ruling was measured rather than implemented, and the measurement disproves its lever** — narrowing the kind slot 28px→20px leaves the attended four-control row's own numbers *identical* (name 28px short, key 41px short at both widths), so the slot is held at 28px and the decision goes back to the user with the numbers.
+- **The reason is arithmetic, not taste** — both columns are already at their floors (`flex: none` role, 6ch name, the reserve), so the freed 8px only shortens how far the line overruns into the reserved strip; the role's coverage falls 58px→50px and the name and key are untouched.
+- **What the narrowing buys and costs is now two counts taken in one run** — 2 of 60 names unclip and 5 more of the starter's 28 specimens lose their last letters (12 clipped at 20px against 7 at 28px), where at 20px the marks read `V…`, `R…`, `G…`, which is a mark that says nothing.
+- **The spec prices any future width in one run and pins the shipped one** — `composition-panel.spec.ts` measures the trade through the slot's own declaration and asserts the rendered 28px, and the four captures were left alone because the product's appearance does not change.
+- **Gates: `npm run gate` exit 0 (255 files, 3,363 tests), `composition-panel.spec.ts` 11 cases on the rebuilt bundle** — the ratchet's residual record is unchanged, which is what holding the value means.
 
 ## Next
 

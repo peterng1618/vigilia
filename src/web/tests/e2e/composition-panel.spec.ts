@@ -71,13 +71,33 @@ async function openEveryGroup(page: Page): Promise<void> {
  * The measurement the stylesheet's comment records: a name is clipped when its
  * own content is wider than the box it was given. A number, not a judgement.
  */
-async function clippedNames(
-  page: Page,
-): Promise<{ readonly clipped: number; readonly total: number }> {
-  return page.locator(".vigilia-layer-name").evaluateAll((names) => ({
-    clipped: names.filter((name) => name.scrollWidth > name.clientWidth).length,
-    total: names.length,
-  }));
+async function clippedNames(page: Page): Promise<{
+  readonly clipped: number;
+  readonly total: number;
+  readonly specimens: number;
+  readonly specimensClipped: number;
+}> {
+  const names = await page
+    .locator(".vigilia-layer-name")
+    .evaluateAll((all) => ({
+      clipped: all.filter((name) => name.scrollWidth > name.clientWidth).length,
+      total: all.length,
+    }));
+  // **The mark's own clipping, counted beside the name's.** The kind slot is the
+  // column the row is *designed* to give up — a specimen is recognised rather
+  // than read — so when the slot's width moves, both what it costs and what it
+  // buys have to be numbers in the same run (`vg-260`).
+  const specimens = await page
+    .locator(".vigilia-layer-sample")
+    .evaluateAll((all) => ({
+      total: all.length,
+      clipped: all.filter((one) => one.scrollWidth > one.clientWidth).length,
+    }));
+  return {
+    ...names,
+    specimens: specimens.total,
+    specimensClipped: specimens.clipped,
+  };
 }
 
 /**
@@ -263,6 +283,17 @@ test("the shipped column is DESIGN.md's, and its clipping is measured against th
   const superseded = await clippedNames(page);
   await instrument(page, "superseded", "");
 
+  // **And the mark's own trade, which is what the 2026-10-12 ruling turned on.**
+  // The ruling narrowed the kind slot to 20px so the name keeps its room and the
+  // mark pays; this run prices both halves of that trade at once, so "which loss
+  // is worse" is two counts rather than two opinions. The instrument is the
+  // slot's own declaration and nothing else, so the width is the only variable —
+  // and the width the product ships is the 28px the ruling's own measurement
+  // held (`vg-260`), which is why the *instrument* is the narrow side here.
+  await instrument(page, "mark-20", ".vigilia-layer-mark { flex: 0 0 20px; }");
+  const narrowMark = await clippedNames(page);
+  await instrument(page, "mark-20", "");
+
   // The role is paid for out of the name, so taking it out can only unclip
   // names; and the shipped column is the narrower one, so it clips at least as
   // many as the column it supersedes. Both are directions, not pixel values: the
@@ -270,12 +301,30 @@ test("the shipped column is DESIGN.md's, and its clipping is measured against th
   // comment and the commit that measured it.
   expect(shipped.clipped).toBeGreaterThanOrEqual(withoutRole.clipped);
   expect(shipped.clipped).toBeGreaterThanOrEqual(superseded.clipped);
+  // The narrowing's two directions: a narrower slot can only unclip names, and
+  // it can only make more specimens clip. Both are directions for the same
+  // reason as the pair above — the count belongs to one font stack — and the
+  // counts themselves are recorded below rather than asserted, because what they
+  // show is the size of the trade rather than a pass condition.
+  expect(
+    narrowMark.clipped,
+    "the narrower slot unclips names rather than clipping more of them",
+  ).toBeLessThanOrEqual(shipped.clipped);
+  expect(
+    narrowMark.specimensClipped,
+    "and it is the specimens that pay for that room",
+  ).toBeGreaterThanOrEqual(shipped.specimensClipped);
 
   for (const [type, value] of [
     ["rows", shipped.total],
     ["clipped@shipped", shipped.clipped],
     ["clipped@shipped-without-role", withoutRole.clipped],
     [`clipped@${SUPERSEDED_WIDTH}`, superseded.clipped],
+    ["mark-slot-px", "28"],
+    ["specimens", String(shipped.specimens)],
+    ["specimens-clipped@28px", String(shipped.specimensClipped)],
+    ["specimens-clipped@20px", String(narrowMark.specimensClipped)],
+    ["clipped@mark-20px", String(narrowMark.clipped)],
   ] as const) {
     testInfo.annotations.push({ type, description: String(value) });
   }
@@ -1126,7 +1175,12 @@ test("a group entered inside a large document", async ({ page }, testInfo) => {
     const role = row.querySelector(".vigilia-layer-role") as HTMLElement;
     const bound = row.querySelector(".vigilia-layer-bound") as HTMLElement;
     const name = row.querySelector(".vigilia-layer-name") as HTMLElement;
+    const mark = row.querySelector(".vigilia-layer-mark") as HTMLElement;
     return {
+      // The slot the narrowing rules, read off the row the worst case is on: a
+      // value this column's own `:has`-free `flex-basis` sets, so a re-widening
+      // is caught here rather than only in a comment.
+      markWidth: Math.round(mark.getBoundingClientRect().width),
       // **The two halves of the reservation, bound to each other.** One half is
       // what the slot's own rendered box needs — 6px of padding plus four 26px
       // squares and three 4px gaps — and the other is what the stylesheet's
@@ -1160,6 +1214,13 @@ test("a group entered inside a large document", async ({ page }, testInfo) => {
       ),
       keyClipped: bound.scrollWidth > bound.clientWidth,
       nameClipped: name.scrollWidth > name.clientWidth,
+      // **How far short, not only that it is short.** The row's own requirement
+      // is that the selected row keeps its name and its key readable, and the
+      // mark is the column that is allowed to give way — so the decision the
+      // ruling asks for is "how much does the mark have to yield", which a
+      // boolean cannot answer. Recorded as the overflow in px.
+      nameDeficitPx: Math.max(0, name.scrollWidth - name.clientWidth),
+      keyDeficitPx: Math.max(0, bound.scrollWidth - bound.clientWidth),
       // **Recorded too, and it is the wider failure of the same over-budget
       // row**: with four controls the row's own columns cannot fit beside the
       // slot, so the role — which `flex: none` keeps at its full width, and
@@ -1185,6 +1246,10 @@ test("a group entered inside a large document", async ({ page }, testInfo) => {
     slot.boundWidth,
     "the key gives way before the layer's name does",
   ).toBeLessThanOrEqual(slot.nameWidth);
+  expect(
+    slot.markWidth,
+    "the mark slot is the 28px the ruling's own measurement held it at",
+  ).toBe(28);
 
   for (const [type, value] of [
     ["viewport", viewportOf(testInfo)],
@@ -1198,7 +1263,10 @@ test("a group entered inside a large document", async ({ page }, testInfo) => {
     ["four-control-room-kept-px", String(slot.roomKept)],
     ["four-control-key-clipped", String(slot.keyClipped)],
     ["four-control-name-clipped", String(slot.nameClipped)],
+    ["four-control-name-deficit-px", String(slot.nameDeficitPx)],
+    ["four-control-key-deficit-px", String(slot.keyDeficitPx)],
     ["four-control-role-covered-px", String(slot.roleCoveredPx)],
+    ["four-control-mark-width-px", String(slot.markWidth)],
   ] as const) {
     testInfo.annotations.push({ type, description: String(value) });
   }

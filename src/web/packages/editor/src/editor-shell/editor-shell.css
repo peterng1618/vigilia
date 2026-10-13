@@ -2144,7 +2144,19 @@ body,
    the old budget named: at 28px a specimen that overran 40px now overruns 28px
    too, and `Storage`, `VRAM` and `VIGILIA` lose their last letters — but a
    specimen that runs long ellipsises and its `title` carries the whole string,
-   where a clipped role said nothing at all. */
+   where a clipped role said nothing at all.
+
+   **Held here after the 2026-10-12 ruling narrowed it to 20px, because the
+   measurement that ruling asked for shows the lever cannot do what it was ruled
+   for.** Narrowing to 20px leaves the attended four-control row's own numbers
+   *identical* — the name is 28px short and the key 41px short at both widths —
+   because both columns are already at their floors and the freed 8px only
+   shortens how far the line overruns into the reserved strip (the role's
+   coverage falls 58px → 50px). What it costs is legibility: of the starter's 28
+   specimens, 12 clip at 20px against 7 at 28px, and at 20px they read `V…`,
+   `R…`, `G…` — a mark that says nothing. Two names of 60 unclip, on rows the
+   ruling is not about. So the value waits for a ruling that names a lever the
+   arithmetic can honour; `vg-260` carries both counts. */
 .vigilia-layer-mark {
   flex: 0 0 28px;
   min-width: 0;
