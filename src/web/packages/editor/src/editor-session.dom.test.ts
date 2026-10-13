@@ -36,7 +36,7 @@ vi.mock("./palette-manager/index.js", () => ({
 }));
 /** The panel's two ports are held so a test can drive a rename the way the
  *  panel's own field does — the panel is a double here, so nothing else
- *  reaches the session's `#setTypes`. */
+ *  reaches `EditorDocument.setTypes`. */
 const typePresetPortMock = vi.hoisted(() => ({
   change: undefined as ((presets: Record<string, unknown>) => void) | undefined,
   remove: undefined as ((id: string, replacement: string) => void) | undefined,
@@ -936,7 +936,7 @@ describe("EditorSession", () => {
 
   it("reaches every globals consumer when a type preset is renamed, so the inspector's Spends line follows", () => {
     // vg-232. The receivers were listed inline once per setter and the lists
-    // disagreed: `#setTypes` told three, never the inspector. The inspector
+    // disagreed: `setTypes` told three, never the inspector. The inspector
     // reads a preset's name out of `context.globals`, and `setGlobals` is the
     // only thing that updates it, so a rename left the Spends line printing the
     // old name until an unrelated `object:modified` re-rendered it. This reads

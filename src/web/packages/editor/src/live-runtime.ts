@@ -102,7 +102,7 @@ export class LiveRuntime {
     this.#globals = globals;
     // Deliberately not a `refresh`, and that is what makes it work. A palette
     // drag is the reason: the session hands new globals to every owner through
-    // one fan-out (`editor-session.ts`'s `#globalsChanged`), and not one of them
+    // one fan-out (`editor-document.ts`'s `#globalsChanged`), and not one of them
     // repaints text, so this pass is the only thing that shows the canvas
     // recolouring as the saturation square is dragged. Marking it due rather than
     // repainting here keeps that within a frame of the pointer without repainting

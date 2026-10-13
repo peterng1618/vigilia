@@ -1,0 +1,331 @@
+import type { FabricThemeEnvelope } from "@vigilia/renderer-core";
+import { describe, expect, it, vi } from "vitest";
+import {
+  AssetManager,
+  type LocalAssetReference,
+} from "../asset-manager/index.js";
+import type { ErrorManager } from "../error-manager/index.js";
+import {
+  ThemeConflictError,
+  type ThemeLibraryClient,
+} from "../theme-library-client.js";
+import { ThemeLibraryManager } from "./index.js";
+
+/** Both dialogs are React components with no node implementation, and both are
+ *  answers rather than behaviour: what the author picked is the only difference
+ *  between two roads through this manager. */
+const selectionMock = vi.hoisted(() => vi.fn());
+const conflictMock = vi.hoisted(() => vi.fn());
+vi.mock("../theme-library-dialog.js", () => ({
+  promptThemeSelection: () => selectionMock(),
+  promptThemeConflict: () => conflictMock(),
+}));
+
+const envelope: FabricThemeEnvelope = {
+  schemaVersion: 2,
+  fabricVersion: "7.4.0",
+  id: "living-room",
+  artboard: { width: 1920, height: 1080 },
+  scene: { version: "7.4.0", objects: [] },
+};
+
+const PNG = new Uint8Array([137, 80, 78, 71]);
+const OTHER = new Uint8Array([137, 80, 78, 72]);
+
+function declaration(id: string, sha256: string): LocalAssetReference {
+  return { id, kind: "image", path: `assets/${id}.png`, sha256 };
+}
+
+/** A manager holding these declarations, as the shell hands one over once it
+ *  has revived the document's scene. */
+function assetsWith(
+  declarations: readonly LocalAssetReference[],
+  bytes: Readonly<Record<string, Uint8Array>>,
+): AssetManager {
+  const assets = new AssetManager();
+  assets.load({ assets: declarations }, bytes);
+  return assets;
+}
+
+/** What a request body carries, kept in one place so a test asserts on the save
+ *  rather than on a transcription of it. */
+interface SaveCall {
+  readonly id: string;
+  readonly base: string | undefined;
+  readonly assets: Readonly<Record<string, Uint8Array>>;
+  readonly overwrite: boolean;
+}
+
+function savedCalls(save: ReturnType<typeof vi.fn>): SaveCall[] {
+  return save.mock.calls.map(([id, content, options]) => ({
+    id: id as string,
+    base: (content as { readonly base?: string }).base,
+    assets: (
+      content as { readonly assets: Readonly<Record<string, Uint8Array>> }
+    ).assets,
+    overwrite: (options as { readonly overwrite: boolean }).overwrite,
+  }));
+}
+
+function harness(options: {
+  readonly assets?: AssetManager;
+  readonly base?: string;
+  readonly picture?: () => Promise<Uint8Array | undefined>;
+  readonly client?: ThemeLibraryClient;
+}) {
+  const save = vi.fn(async () => "base-after-save");
+  const open = vi.fn(async () => ({
+    envelope,
+    assets: {},
+    base: "base-from-open",
+  }));
+  const saveThumbnail = vi.fn(async () => {});
+  const markSaved = vi.fn();
+  const announceChange = vi.fn();
+  const warn = vi.fn();
+  const onSaved = vi.fn();
+  const onError = vi.fn();
+  const onNewFromStarter = vi.fn(async () => {});
+  const onOpenTheme = vi.fn(async () => {});
+  const errors: ErrorManager = { error: vi.fn(), warn };
+  const manager = new ThemeLibraryManager({
+    snapshot: () => envelope,
+    assets: options.assets ?? assetsWith([], {}),
+    picture: options.picture ?? (async () => undefined),
+    markSaved,
+    announceChange,
+    errors,
+    confirmReplacement: async () => true,
+    onSaved,
+    onNewFromStarter,
+    client: options.client ?? {
+      list: async () => [],
+      open,
+      save,
+      saveThumbnail,
+    },
+    onError,
+    onOpenTheme,
+    ...(options.base === undefined ? {} : { base: options.base }),
+  });
+  return {
+    manager,
+    save,
+    saveThumbnail,
+    markSaved,
+    announceChange,
+    warn,
+    onSaved,
+    onError,
+    onNewFromStarter,
+    onOpenTheme,
+  };
+}
+
+describe("ThemeLibraryManager", () => {
+  it("holds the stored base only while the document descends from one", () => {
+    // The base is the claim that this document is the one stored. A document
+    // opened from a package, or created here, descends from nothing and must
+    // not save as though it were the stored theme.
+    expect(harness({ base: "stored-base" }).manager.isStored()).toBe(true);
+    expect(harness({}).manager.isStored()).toBe(false);
+
+    const { manager } = harness({ base: "stored-base" });
+    manager.forget();
+    expect(manager.isStored()).toBe(false);
+  });
+
+  it("sends only the bytes the stored folder does not already hold", async () => {
+    // The whole reason a base carries its hashes: a declared `sha256` that has
+    // not moved is proof the bytes have not either, so a backdrop the author
+    // never touched is not uploaded again.
+    const assets = assetsWith([declaration("kept", "digest-kept")], {
+      "assets/kept.png": PNG,
+    });
+    const { manager, save } = harness({ assets, base: "stored-base" });
+    // The author swaps an asset while the document is open, which is the only
+    // thing that can move a declaration's digest.
+    assets.load(
+      { assets: [declaration("swapped", "digest-new")] },
+      {
+        "assets/swapped.png": OTHER,
+      },
+    );
+
+    await manager.save();
+
+    expect(savedCalls(save)).toEqual([
+      {
+        id: "living-room",
+        base: "stored-base",
+        assets: { "assets/swapped.png": OTHER },
+        overwrite: false,
+      },
+    ]);
+  });
+
+  it("carries the whole theme when there is no stored document to build on", async () => {
+    const assets = assetsWith([declaration("backdrop", "digest-backdrop")], {
+      "assets/backdrop.png": PNG,
+    });
+    const { manager, save } = harness({ assets });
+
+    await manager.save();
+
+    expect(savedCalls(save)).toEqual([
+      {
+        id: "living-room",
+        base: undefined,
+        assets: { "assets/backdrop.png": PNG },
+        overwrite: false,
+      },
+    ]);
+  });
+
+  it("says a refused save did not happen, in the editor's own words, and keeps the document", async () => {
+    const { manager, onError, markSaved, onSaved, announceChange } = harness({
+      assets: assetsWith([declaration("backdrop", "digest")], {
+        "assets/backdrop.png": PNG,
+      }),
+      base: "stored-base",
+      client: {
+        list: async () => [],
+        open: async () => ({ envelope, assets: {} }),
+        save: async () => {
+          throw new ThemeConflictError("the stored theme moved on");
+        },
+      },
+    });
+    conflictMock.mockResolvedValue(undefined);
+
+    await manager.save();
+
+    expect(onError).toHaveBeenCalledWith(
+      "Could not save to library: the stored theme moved on",
+    );
+    // Nothing was written, so nothing reads as saved and the document is still
+    // the author's.
+    expect(markSaved).not.toHaveBeenCalled();
+    expect(announceChange).not.toHaveBeenCalled();
+    expect(onSaved).not.toHaveBeenCalled();
+  });
+
+  it("overwrites deliberately when that is the answer about a refused save", async () => {
+    // The second road takes the same road the refused one did — the same
+    // declared bytes, and the same move of the base onto what was written —
+    // with the host's guard stood down for this one save.
+    const save = vi
+      .fn(async () => "base-after-overwrite")
+      .mockRejectedValueOnce(new ThemeConflictError("stale"));
+    const assets = assetsWith([declaration("backdrop", "digest")], {
+      "assets/backdrop.png": PNG,
+    });
+    const { manager, onSaved, markSaved } = harness({
+      assets,
+      base: "stored-base",
+      client: {
+        list: async () => [],
+        open: async () => ({ envelope, assets: {} }),
+        save,
+      },
+    });
+    conflictMock.mockResolvedValue("overwrite");
+
+    await manager.save();
+
+    expect(savedCalls(save)).toEqual([
+      {
+        id: "living-room",
+        base: "stored-base",
+        assets: {},
+        overwrite: false,
+      },
+      {
+        id: "living-room",
+        base: "stored-base",
+        assets: { "assets/backdrop.png": PNG },
+        overwrite: true,
+      },
+    ]);
+    expect(markSaved).toHaveBeenCalledWith(envelope, {
+      "assets/backdrop.png": PNG,
+    });
+    expect(onSaved).toHaveBeenCalledWith("Saved to library");
+  });
+
+  it("reloads the stored document when that is the answer, and hands it on with its base", async () => {
+    const save = vi
+      .fn(async () => "base-after-save")
+      .mockRejectedValueOnce(new ThemeConflictError("stale"));
+    const open = vi.fn(async () => ({
+      envelope,
+      assets: { "assets/backdrop.png": PNG },
+      base: "base-from-reload",
+    }));
+    const { manager, onOpenTheme } = harness({
+      base: "stored-base",
+      client: { list: async () => [], open, save },
+    });
+    conflictMock.mockResolvedValue("reload");
+
+    await manager.save();
+
+    expect(open).toHaveBeenCalledWith("living-room");
+    expect(onOpenTheme).toHaveBeenCalledWith(
+      envelope,
+      { "assets/backdrop.png": PNG },
+      "base-from-reload",
+    );
+  });
+
+  it("opens a template as a new document rather than claiming it is stored", async () => {
+    const { manager, onNewFromStarter, onOpenTheme } = harness({
+      base: "stored-base",
+    });
+    selectionMock.mockResolvedValue({ kind: "template", id: "starter" });
+
+    await manager.open();
+
+    expect(onNewFromStarter).toHaveBeenCalled();
+    expect(onOpenTheme).not.toHaveBeenCalled();
+    expect(manager.isStored()).toBe(false);
+  });
+
+  it("opens a stored theme under the base its own read came from", async () => {
+    const open = vi.fn(async () => ({
+      envelope,
+      assets: { "assets/backdrop.png": PNG },
+      base: "base-from-open",
+    }));
+    const { manager, onOpenTheme } = harness({
+      client: { list: async () => [], open, save: async () => "base" },
+    });
+    selectionMock.mockResolvedValue({ kind: "theme", id: "living-room" });
+
+    await manager.open();
+
+    expect(onOpenTheme).toHaveBeenCalledWith(
+      envelope,
+      { "assets/backdrop.png": PNG },
+      "base-from-open",
+    );
+    expect(manager.isStored()).toBe(true);
+  });
+
+  it("stores the picture beside the document, and a picture that fails does not fail the save", async () => {
+    const test = harness({ picture: async () => PNG });
+    test.saveThumbnail.mockRejectedValueOnce(new Error("no room"));
+
+    await test.manager.save();
+
+    expect(test.saveThumbnail).toHaveBeenCalledWith("living-room", PNG);
+    expect(test.warn).toHaveBeenCalledWith(
+      "controls",
+      "Saved, but the library picture failed: no room",
+    );
+    // The picture is a preview of the theme, so losing it costs the preview and
+    // not the theme.
+    expect(test.onSaved).toHaveBeenCalledWith("Saved to library");
+    expect(test.onError).not.toHaveBeenCalled();
+  });
+});

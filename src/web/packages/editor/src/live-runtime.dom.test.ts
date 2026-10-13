@@ -317,7 +317,7 @@ describe("LiveRuntime tick", () => {
 
   it("repaints authored runs on the very next frame after the palette moves", async () => {
     // A palette drag reaches the canvas only through the loop: the session hands
-    // new globals to six owners (`editor-session.ts:1041-1046`) and none of them
+    // new globals to six owners (`editor-document.ts`'s `#globalsChanged`) and none of them
     // repaints text. So the authored pass is what shows a colour changing as
     // the saturation square is dragged, and it cannot wait for its own interval
     // to come round.

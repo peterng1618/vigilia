@@ -1,8 +1,4 @@
 import {
-  type Artboard,
-  type Binding,
-  bumpSemanticVersion,
-  type FabricPalette,
   type FabricThemeEnvelope,
   type FabricThemeEnvelopeInput,
   type SampleSource,
@@ -17,26 +13,19 @@ import {
   createCanvasNudge,
   stepFor,
 } from "./canvas-nudge.js";
-import { insertCard } from "./card-library.js";
 import { ChartManager } from "./chart-manager/index.js";
+import { EditorDocument } from "./editor-document.js";
 import type { RailSlot } from "./editor-shell/rail.js";
 import type { EditorActionFacade } from "./editor-shell/session-facade.js";
 import { type EditorShell } from "./editor-shell.js";
-import {
-  applyFontTrio,
-  type CuratedFontFace,
-  fontTrio,
-} from "./font-catalog.js";
+import { type CuratedFontFace } from "./font-catalog.js";
 import { previewFontFace, releaseFontPreview } from "./font-preview.js";
 import {
   createIndicatorManager,
   type IndicatorManager,
 } from "./indicator-manager/index.js";
 import { LiveRuntime } from "./live-runtime.js";
-import {
-  chooseArtboardSize,
-  type NewDocumentAnswer,
-} from "./new-document-chooser.js";
+import type { NewDocumentAnswer } from "./new-document-chooser.js";
 import {
   createNewObjectPanel,
   insertNewShape,
@@ -47,7 +36,6 @@ import {
   createPalettePanel,
   type PalettePanel,
   paletteTokenUsage,
-  reassignPaletteToken,
 } from "./palette-manager/index.js";
 import {
   createDocumentReferencesPanel,
@@ -57,11 +45,6 @@ import {
   type PresetSelection,
   presetRevealTarget,
 } from "./panes/tokens/preset-list.js";
-import { serializeThemePackage } from "./persist.js";
-import {
-  confirmDocumentReplacement,
-  PersistenceManager,
-} from "./persistence-manager/index.js";
 import type { RunDisplayMode } from "./run-placeholder.js";
 import {
   createSelectionInspector,
@@ -70,11 +53,8 @@ import {
 import { ShortcutManager } from "./shortcut-manager/index.js";
 import { createSnapManager, type SnapManager } from "./snap-manager/index.js";
 import type { ThemeLibraryClient } from "./theme-library-client.js";
-import { ThemeLibraryManager } from "./theme-library-manager/index.js";
-import { captureThumbnail } from "./thumbnail-capture.js";
 import {
   createTypePresetPanel,
-  reassignTypePresetToken,
   type TypePresetPanel,
   type TypePresets,
 } from "./type-preset-manager/index.js";
@@ -168,26 +148,16 @@ export class EditorSession {
   readonly #documentReferences: DocumentReferencesPanel;
   readonly #snapping: SnapManager;
   readonly #indicators: IndicatorManager;
-  readonly #persistence: PersistenceManager;
   readonly #assets: AssetManager;
   readonly #shortcuts = new ShortcutManager();
   readonly #nudge: CanvasNudge;
   readonly #panelHosts: EditorPanelHosts;
   readonly #options: EditorSessionOptions;
-  readonly #shell: EditorShell;
-  #envelope: FabricThemeEnvelopeInput;
-  /** The host's library, which owns this document's stored base. */
-  readonly #library: ThemeLibraryManager;
-  /** The picture this document arrived with, which a save falls back to. */
-  #thumbnail: Uint8Array | undefined;
+  /** The theme the author is editing. Every owner composed below is a view of
+   *  it, so it is built first. */
+  readonly #document: EditorDocument;
   /** The source the runtime reads, which a new source replaces. */
   #source: SampleSource;
-  readonly #onBindingsChange: (() => void) | undefined;
-  /** Told the document may have moved; see `#writeEnvelope`. */
-  readonly #documentChangeListeners = new Set<() => void>();
-  readonly #announceChange = (): void => {
-    for (const listener of this.#documentChangeListeners) listener();
-  };
 
   constructor(options: EditorSessionOptions) {
     if (options.shell.scene === undefined) {
@@ -195,34 +165,24 @@ export class EditorSession {
         "The editor shell needs a scene adapter for Vigilia extensions.",
       );
     }
-    this.#envelope = options.envelope;
-    this.#shell = options.shell;
-    this.#thumbnail = options.thumbnail;
+    this.#options = options;
+    this.#panelHosts = options.panelHosts;
     this.#assets = options.assetManager;
-    this.#onBindingsChange = options.onBindingsChange;
-    // The library owns the stored base and the protocol a save against it
-    // follows. What it cannot decide — this document, its picture, whether the
-    // author has agreed to replace it — arrives as the manager's port.
-    this.#library = new ThemeLibraryManager({
-      snapshot: () => this.#snapshot(options.shell),
-      assets: this.#assets,
-      picture: () => this.#picture(options),
-      markSaved: (theme, assets) => this.#persistence.markSaved(theme, assets),
-      announceChange: this.#announceChange,
-      errors: options.shell.editor.errorManager,
-      confirmReplacement: () => this.#confirmReplacement(options),
-      onSaved: options.onSaved,
-      onNewFromStarter: options.onNewFromStarter,
-      ...(options.libraryBase === undefined
-        ? {}
-        : { base: options.libraryBase }),
-      ...(options.libraryClient === undefined
-        ? {}
-        : { client: options.libraryClient }),
-      ...(options.onError === undefined ? {} : { onError: options.onError }),
-      ...(options.onOpenTheme === undefined
-        ? {}
-        : { onOpenTheme: options.onOpenTheme }),
+    // Before the owners below, because they read the document as they mount;
+    // the ones it fans out to are named here as ports and resolved when a
+    // write happens.
+    this.#document = new EditorDocument({
+      source: options,
+      consumers: {
+        runtime: () => this.#runtime,
+        charts: () => this.charts,
+        newObjects: () => this.#newObjects,
+        artboard: () => this.#artboard,
+        palette: () => this.#palette,
+        types: () => this.#types,
+        selection: () => this.#selection,
+        documentReferences: () => this.#documentReferences,
+      },
     });
 
     /**
@@ -254,18 +214,16 @@ export class EditorSession {
     ]) {
       options.shell.editor.canvas.on(
         event as never,
-        this.#announceChange as never,
+        this.#document.announceChange as never,
       );
     }
 
     // The File menu dispatches these through `actionFacade`; the section that
     // used to hold the buttons is gone.
-    this.#options = options;
-    this.#panelHosts = options.panelHosts;
     this.#snapping = createSnapManager({
       canvas: options.shell.editor.canvas,
       bounds: () => {
-        const artboard = this.#envelope.artboard;
+        const artboard = this.#document.envelope.artboard;
         return {
           left: 0,
           top: 0,
@@ -282,11 +240,11 @@ export class EditorSession {
     });
     this.#artboard = createArtboardPanel(
       options.panelHosts.document,
-      this.#envelope.globals,
-      (artboard) => this.#setArtboard(options.shell, artboard),
+      this.#document.envelope.globals,
+      (artboard) => this.#document.setArtboard(artboard),
       {
         assets: this.#assets.declarations,
-        onMetadataChange: (metadata) => this.#setMetadata(metadata),
+        onMetadataChange: (metadata) => this.#document.setMetadata(metadata),
         // The panel's own comment said the scene was not its to read, so it
         // stated a rule true at every size and therefore said nothing. It is
         // given the scene now that the counting lives with it.
@@ -304,37 +262,42 @@ export class EditorSession {
         },
       },
     );
-    this.#artboard.render(this.#envelope.artboard, this.#envelope.metadata);
+    this.#artboard.render(
+      this.#document.envelope.artboard,
+      this.#document.envelope.metadata,
+    );
     this.#palette = createPalettePanel(
       options.panelHosts.tokens,
-      (palette) => this.#setPalette(options.shell, palette),
-      (id, replacement) => this.#deletePalette(options.shell, id, replacement),
+      (palette) => this.#document.setPalette(palette),
+      (id, replacement) => this.#document.deletePalette(id, replacement),
       {
         // The same walk the delete uses, so the figure beside a token and the
         // references a deletion will move cannot disagree about the scene.
         usage: () =>
           paletteTokenUsage(
             options.shell.editor.canvas,
-            this.#envelope.globals?.palette ?? {},
+            this.#document.envelope.globals?.palette ?? {},
           ),
       },
     );
-    this.#palette.render(this.#envelope.globals?.palette);
+    this.#palette.render(this.#document.envelope.globals?.palette);
     this.#types = createTypePresetPanel(
       options.panelHosts.tokens,
-      (presets) => this.#setTypes(options.shell, presets),
-      (id, replacement) => this.#deleteType(options.shell, id, replacement),
+      (presets) => this.#document.setTypes(presets),
+      (id, replacement) => this.#document.deleteType(id, replacement),
       {
         preview: async (face) => {
-          await this.#runFontAction(options, () => previewFontFace(face));
+          await this.#document.runFontAction(() => previewFontFace(face));
         },
         applyFace: async (id, face) => {
-          await this.#runFontAction(options, () =>
-            this.applyPresetFace(id, face),
+          await this.#document.runFontAction(() =>
+            this.#document.applyPresetFace(id, face),
           );
         },
         applyTrio: async (id) => {
-          await this.#runFontAction(options, () => this.applyFontTrio(id));
+          await this.#document.runFontAction(() =>
+            this.#document.applyFontTrio(id),
+          );
         },
       },
       // The shell's own selection projection, so the list's chooser opens on
@@ -343,7 +306,7 @@ export class EditorSession {
       options.selection,
     );
     this.#types.render(
-      this.#envelope.globals?.typePresets as TypePresets | undefined,
+      this.#document.envelope.globals?.typePresets as TypePresets | undefined,
     );
     // The chart owner, built before the inspector that renders its fields: the
     // inspector is published with both halves of the port at construction, so
@@ -352,23 +315,25 @@ export class EditorSession {
       editor: options.shell.editor,
       scene: options.shell.scene,
       source: options.source,
-      ...(options.envelope.bindings === undefined
+      ...(this.#document.envelope.bindings === undefined
         ? {}
-        : { bindings: options.envelope.bindings }),
-      ...(options.envelope.globals === undefined
+        : { bindings: this.#document.envelope.bindings }),
+      ...(this.#document.envelope.globals === undefined
         ? {}
-        : { globals: options.envelope.globals }),
-      onBindingsChange: (id, bindings) => this.#setBindings(id, bindings),
+        : { globals: this.#document.envelope.globals }),
+      onBindingsChange: (id, bindings) =>
+        this.#document.setBindings(id, bindings),
     });
     this.#selection = createSelectionInspector(options.panelHosts.selection, {
       editor: options.shell.editor,
-      ...(options.envelope.globals === undefined
+      ...(this.#document.envelope.globals === undefined
         ? {}
-        : { globals: options.envelope.globals }),
+        : { globals: this.#document.envelope.globals }),
       // Bindings are envelope state, so the inspector reads and writes them
       // through the session rather than holding a second copy of them.
-      nodeBindings: (id) => this.#envelope.bindings?.[id] ?? [],
-      onNodeBindingsChange: (id, bindings) => this.#setBindings(id, bindings),
+      nodeBindings: (id) => this.#document.envelope.bindings?.[id] ?? [],
+      onNodeBindingsChange: (id, bindings) =>
+        this.#document.setBindings(id, bindings),
       // Pulled, not held: the inspector must see the source the runtime is
       // using, not the one the session was constructed with.
       sampleSource: () => this.#source,
@@ -393,7 +358,7 @@ export class EditorSession {
       chartFields: () => this.charts.fields,
       chartEdits: () => this.charts.edits,
     });
-    this.#selection.setLocale(options.envelope.metadata?.themeLanguage);
+    this.#selection.setLocale(this.#document.envelope.metadata?.themeLanguage);
     // Entering inline editing asks the runtime for the authoring view: the
     // shell built the text manager before this session existed, so the
     // dependency is installed here rather than passed in.
@@ -408,15 +373,15 @@ export class EditorSession {
       options.panelHosts.document,
       // Pulled, not held: the panel is mounted for the session and read-only, so
       // this cannot show a copy of globals that a theme edit has since changed.
-      { globals: () => this.#envelope.globals },
+      { globals: () => this.#document.envelope.globals },
     );
     this.#newObjects = createNewObjectPanel(
       options.panelHosts.add,
       options.shell.editor,
-      this.#envelope.globals,
+      this.#document.envelope.globals,
       {
         addChart: (family) => this.charts.addChart(family),
-        insertCard: (cardId) => this.#insertCard(cardId),
+        insertCard: (cardId) => this.#document.insertCard(cardId),
       },
       // The file path travels in the Add pane rather than beside it (`§5.2`),
       // so the manager, the reference check and the re-resolve are handed to
@@ -425,24 +390,24 @@ export class EditorSession {
         manager: this.#assets,
         changed: () => {
           this.#artboard.setAssets(this.#assets.declarations);
-          this.#refreshBackgroundMedia(options.shell);
+          this.#document.refreshBackgroundMedia();
         },
-        isReferenced: (assetId) => this.#holdsAsset(assetId),
+        isReferenced: (assetId) => this.#document.holdsAsset(assetId),
       },
     );
     this.#source = options.source;
     this.#runtime = new LiveRuntime({
       canvas: options.shell.editor.canvas,
       source: options.source,
-      ...(options.envelope.bindings === undefined
+      ...(this.#document.envelope.bindings === undefined
         ? {}
-        : { bindings: options.envelope.bindings }),
-      ...(options.envelope.globals === undefined
+        : { bindings: this.#document.envelope.bindings }),
+      ...(this.#document.envelope.globals === undefined
         ? {}
-        : { globals: options.envelope.globals }),
-      ...(options.envelope.metadata?.themeLanguage === undefined
+        : { globals: this.#document.envelope.globals }),
+      ...(this.#document.envelope.metadata?.themeLanguage === undefined
         ? {}
-        : { themeLanguage: options.envelope.metadata.themeLanguage }),
+        : { themeLanguage: this.#document.envelope.metadata.themeLanguage }),
     });
     // A pasted image must be a declared asset, not a blob URL: the half-only
     // path saves a document whose image is a handle into this session's memory
@@ -458,22 +423,18 @@ export class EditorSession {
     // nothing, and its runs point at the original's binding ids — which the
     // validator refuses as a duplicate, so the save fails for the session.
     options.shell.editor.clipboardManager.setBindings({
-      read: () => this.#envelope.bindings ?? {},
-      write: (bindings) => this.#addBindings(bindings),
+      read: () => this.#document.envelope.bindings ?? {},
+      write: (bindings) => this.#document.addBindings(bindings),
     });
-    this.#refreshBackgroundMedia(options.shell);
-    this.#persistence = new PersistenceManager(
-      this.#snapshot(options.shell),
-      this.#assets.assets,
-    );
+    this.#document.refreshBackgroundMedia();
     this.#shortcuts.register("file.save", () => {
-      void this.#save(options);
+      void this.#document.save();
     });
     this.#shortcuts.register("file.open", () => {
-      void this.#open(options);
+      void this.#document.open();
     });
     this.#shortcuts.register("file.new", () => {
-      void this.#new(options);
+      void this.#document.newDocument();
     });
     this.#shortcuts.register("edit.undo", () => {
       // First: a burst's entry is not recorded until it closes, so an undo
@@ -570,7 +531,7 @@ export class EditorSession {
   }
 
   get envelope(): FabricThemeEnvelopeInput {
-    return this.#envelope;
+    return this.#document.envelope;
   }
 
   /** Reachability only: the shell menus dispatch through the existing owners,
@@ -579,17 +540,18 @@ export class EditorSession {
     const options = this.#options;
     const editor = options.shell.editor;
     return {
-      newDocument: () => this.#new(options),
-      newFromStarter: () => this.#newFromStarter(options),
-      openPackage: () => this.#open(options),
-      savePackage: () => this.#save(options),
-      releasePackage: () => this.#release(options),
-      openLibrary: () => this.#library.open(),
-      saveLibrary: () => this.#library.save(),
-      addText: () => insertNewText(editor, this.#envelope.globals),
-      addShape: (kind) => insertNewShape(editor, this.#envelope.globals, kind),
+      newDocument: () => this.#document.newDocument(),
+      newFromStarter: () => this.#document.newFromStarter(),
+      openPackage: () => this.#document.open(),
+      savePackage: () => this.#document.save(),
+      releasePackage: () => this.#document.release(),
+      openLibrary: () => this.#document.openLibrary(),
+      saveLibrary: () => this.#document.saveLibrary(),
+      addText: () => insertNewText(editor, this.#document.envelope.globals),
+      addShape: (kind) =>
+        insertNewShape(editor, this.#document.envelope.globals, kind),
       addChart: (family) => this.charts.addChart(family),
-      insertCard: (cardId) => this.#insertCard(cardId),
+      insertCard: (cardId) => this.#document.insertCard(cardId),
       arrange: (action) => applyArrange(editor, action),
       canArrange: (action) => canArrange(editor, action),
       undo: () => void editor.historyManager.undo(),
@@ -607,8 +569,8 @@ export class EditorSession {
         // display given one would render a theme with holes. The base's own
         // `id` is a content hash of the stored document, not the folder it
         // lives in, so the id published under is the document's.
-        if (!this.#library.isStored()) return undefined;
-        const envelope = this.#snapshot(this.#shell);
+        if (!this.#document.isStored()) return undefined;
+        const envelope = this.#document.snapshot();
         return { id: envelope.id, envelope };
       },
       subscribeDocumentChange: (listener) =>
@@ -655,56 +617,21 @@ export class EditorSession {
     await this.#assets.hydrate(shell.editor.canvas);
   }
 
-  async applyFontTrio(id: string): Promise<FabricThemeEnvelope> {
-    const trio = fontTrio(id);
-    if (trio === undefined) throw new Error(`Unknown font trio "${id}".`);
-    const bytes = await Promise.all(
-      trio.faces.map((face) => this.#downloadFace(face)),
-    );
-    for (const [index, face] of trio.faces.entries()) {
-      await this.#assets.adoptFont(face, bytes[index]!);
-    }
-    const presets = this.#envelope.globals?.typePresets as
-      | TypePresets
-      | undefined;
-    if (presets !== undefined)
-      this.#setTypes(this.#shell, applyFontTrio(presets, trio));
-    this.#shell.editor.historyManager.saveState();
-    return this.#snapshot(this.#shell);
+  applyFontTrio(id: string): Promise<FabricThemeEnvelope> {
+    return this.#document.applyFontTrio(id);
   }
 
-  async applyPresetFace(
+  applyPresetFace(
     id: string,
     face: CuratedFontFace,
   ): Promise<FabricThemeEnvelope> {
-    const presets = this.#envelope.globals?.typePresets as
-      | TypePresets
-      | undefined;
-    const preset = presets?.[id];
-    if (preset === undefined) throw new Error(`Unknown type preset "${id}".`);
-    const bytes = await this.#downloadFace(face);
-    await this.#assets.adoptFont(face, bytes);
-    this.#setTypes(this.#shell, {
-      ...presets,
-      [id]: {
-        ...preset,
-        value: {
-          ...preset.value,
-          family: face.family,
-          weight: face.weight,
-          face: { assetId: face.id },
-        },
-      },
-    });
-    this.#shell.editor.historyManager.saveState();
-    return this.#snapshot(this.#shell);
+    return this.#document.applyPresetFace(id, face);
   }
 
   destroy(): void {
     this.#shortcuts.destroy();
     this.#nudge.dispose();
-    this.#documentChangeListeners.clear();
-    this.#persistence.destroy();
+    this.#document.destroy();
     this.#assets.destroy();
     releaseFontPreview();
     this.charts.destroy();
@@ -718,371 +645,16 @@ export class EditorSession {
     this.#indicators.destroy();
   }
 
-  async #save(options: EditorSessionOptions): Promise<void> {
-    try {
-      const current = this.#snapshot(options.shell);
-      // The package carries the theme's picture so whoever receives the file
-      // can see the look without installing anything.
-      await this.#persistence.save(
-        current,
-        this.#assets.assets,
-        await this.#picture(options),
-      );
-      this.#announceChange();
-      options.onSaved("Theme package saved");
-    } catch (error) {
-      options.onError?.(error instanceof Error ? error.message : String(error));
-    }
-  }
-
-  /** The picture a save ships, or the one this document arrived with: a
-   *  capture that fails must cost the preview, not the theme. One owner for the
-   *  fallback, called by every save that ships a picture — `#save` and the
-   *  library's `picture` port alike. It was spelled inline at `#save` as well,
-   *  so two changes to the policy left one of them missing `#save` (`vg-239`). */
-  async #picture(
-    options: EditorSessionOptions,
-  ): Promise<Uint8Array | undefined> {
-    return (await this.#capture(options)) ?? this.#thumbnail;
-  }
-
-  /** The browser already has the theme on screen, so it is the right place to
-   *  render it; a failure here is not a failure of what is being saved. */
-  async #capture(
-    options: EditorSessionOptions,
-  ): Promise<Uint8Array | undefined> {
-    try {
-      return await captureThumbnail(
-        options.shell.editor.canvas,
-        undefined,
-        options.shell.backdrop(),
-      );
-    } catch {
-      return undefined;
-    }
-  }
-
-  async #open(options: EditorSessionOptions): Promise<void> {
-    if (!(await this.#confirmReplacement(options))) return;
-    // A package is a file the author brought in, not a stored theme, so the
-    // next save is a first save and claims no base.
-    this.#library.forget();
-    if (options.onOpenPackage !== undefined) {
-      options.onOpenPackage();
-    } else if (options.onOpen !== undefined) {
-      options.onOpen();
-    }
-  }
-
-  async #new(options: EditorSessionOptions): Promise<void> {
-    // The chooser first, then the replacement question: an author who opens
-    // `New` and then thinks better of it must not be asked to confirm
-    // discarding their work on the way to deciding they wanted none of it.
-    // It opens on the display the artboard being replaced is, so a document
-    // already settled on an upright lens is not thrown back to the 16:9 one
-    // without being asked.
-    //
-    // The whole answer travels, not just its size: the display the author
-    // picked is what the new document is shown through, and dropping it here
-    // is what left a portrait artboard inside a landscape frame.
-    const answer = await chooseArtboardSize(this.#envelope.artboard);
-    if (answer === undefined) return;
-    if (!(await this.#confirmReplacement(options))) return;
-    this.#library.forget();
-    await options.onNew(answer);
-  }
-
-  async #newFromStarter(options: EditorSessionOptions): Promise<void> {
-    if (!(await this.#confirmReplacement(options))) return;
-    this.#library.forget();
-    await options.onNewFromStarter();
-  }
-
-  async #confirmReplacement(options: {
-    readonly shell: EditorShell;
-    readonly onSaved: (message?: string) => void;
-  }): Promise<boolean> {
-    const current = this.#snapshot(options.shell);
-
-    if (this.#persistence.isDirty(current, this.#assets.assets)) {
-      const choice = await confirmDocumentReplacement();
-
-      if (choice === "cancel") return false;
-      if (choice === "save") {
-        await this.#persistence.save(current, this.#assets.assets);
-        options.onSaved("Theme package saved");
-      }
-    }
-    return true;
-  }
-
-  /**
-   * The envelope-side asset references, which no Fabric object carries.
-   *
-   * The artboard's background media is a DOM sibling of the canvas, and a type
-   * preset's face is a reference in `globals` — neither is an object, so the
-   * canvas walk the asset panel does cannot see either. A font whose bytes went
-   * away under a live preset would leave a theme that validates and renders
-   * nothing.
-   */
-  #holdsAsset(assetId: string): boolean {
-    if (this.#envelope.artboard.backgroundMedia?.assetId === assetId)
-      return true;
-    const presets = this.#envelope.globals?.typePresets as
-      | TypePresets
-      | undefined;
-    return Object.values(presets ?? {}).some(
-      (preset) => preset.value.face?.assetId === assetId,
-    );
-  }
-
-  /**
-   * The document as the author last left it. Every write after the constructor
-   * goes through here, so a panel that changes the theme name, a palette token
-   * or a binding cannot leave the unsaved marker reading "saved" — the failure
-   * being one setter missing a line, which nothing else would notice.
-   */
-  #writeEnvelope(envelope: FabricThemeEnvelopeInput): void {
-    this.#envelope = envelope;
-    this.#announceChange();
-  }
-
   /** Whether the document differs from what was last saved. Pulled, never held:
    *  the comparison already exists for the replace prompt, and a stored flag
    *  would be one more thing to keep true. */
   isDirty(): boolean {
-    return this.#persistence.isDirty(
-      this.#snapshot(this.#shell),
-      this.#assets.assets,
-    );
+    return this.#document.isDirty();
   }
 
   /** Told "look again", not told the answer: a path that announces without
    *  having changed anything costs a recompute rather than a wrong marker. */
   subscribeDocumentChange(listener: () => void): () => void {
-    this.#documentChangeListeners.add(listener);
-    return () => {
-      this.#documentChangeListeners.delete(listener);
-    };
-  }
-
-  #setArtboard(shell: EditorShell, artboard: Artboard): void {
-    this.#writeEnvelope({ ...this.#envelope, artboard });
-    shell.setArtboard(artboard);
-    this.#refreshBackgroundMedia(shell);
-    this.#artboard.render(artboard, this.#envelope.metadata);
-  }
-
-  async #release(options: EditorSessionOptions): Promise<void> {
-    const level = window.prompt("Release bump: major, minor or patch", "patch");
-    if (level !== "major" && level !== "minor" && level !== "patch") return;
-    try {
-      // **The one archive left in this file, and it is not a round trip.**
-      // Nothing is stored here: the package is built so the release refuses a
-      // theme that would not export, and the archive is then downloaded by
-      // `#save`. The library is a folder (ADR-0017); the export is not.
-      const beforeRelease = serializeThemePackage(
-        this.#snapshot(options.shell),
-        this.#assets.assets,
-      );
-      if (!beforeRelease.ok) throw new Error(beforeRelease.message);
-      const version = bumpSemanticVersion(
-        this.#envelope.metadata?.version,
-        level,
-      );
-      this.#setMetadata({ ...this.#envelope.metadata, version });
-      await this.#save(options);
-      options.onSaved(`Released ${version}`);
-    } catch (error) {
-      options.onError?.(error instanceof Error ? error.message : String(error));
-    }
-  }
-
-  #setMetadata(metadata: FabricThemeEnvelopeInput["metadata"]): void {
-    if (metadata === undefined || Object.keys(metadata).length === 0) {
-      const { metadata: _metadata, ...withoutMetadata } = this.#envelope;
-      this.#writeEnvelope(withoutMetadata);
-    } else {
-      this.#writeEnvelope({ ...this.#envelope, metadata });
-    }
-    // The language is the one metadata field that changes what is painted, and
-    // `metadata` is the only way to set it, so this is the only push site needed
-    // — unlike the globals fan-out above, which every globals setter goes
-    // through rather than repeating the receiver list.
-    this.#pushLocale();
-  }
-
-  #pushLocale(): void {
-    const themeLanguage = this.#envelope.metadata?.themeLanguage;
-    // Two receivers, not four: the editor paints bound text only through the
-    // live runtime, and the inspector's run preview is the other place a
-    // formatted reading is written. `runs.ts`'s own `applyAuthoredText` calls
-    // pass no bindings, so they resolve no reading and need no language.
-    this.#runtime.setThemeLanguage(themeLanguage);
-    this.#selection.setLocale(themeLanguage);
-  }
-
-  #refreshBackgroundMedia(shell: EditorShell): void {
-    shell.setBackgroundMedia(this.#assets.declarations, (assetId) =>
-      this.#assets.backgroundSource(assetId),
-    );
-  }
-
-  #setBindings(id: string, bindings: readonly Binding[]): void {
-    this.#addBindings({ [id]: bindings });
-  }
-
-  /**
-   * The one writer of the envelope's bindings, whoever is writing them.
-   *
-   * A single object's list and an inserted card's whole subtree are the same
-   * fact — a reading is keyed by the object that shows it — so they share one
-   * write and one fan-out. Charts are in that fan-out because a chart's series
-   * *are* its bindings: a chart manager holding only what it was constructed
-   * with draws every inserted card's sparkline with no series at all.
-   */
-  #addBindings(additions: Readonly<Record<string, readonly Binding[]>>): void {
-    this.#writeEnvelope({
-      ...this.#envelope,
-      bindings: { ...this.#envelope.bindings, ...additions },
-    });
-    const bindings = this.#envelope.bindings ?? {};
-    this.#runtime.setBindings(bindings);
-    this.charts.setBindings(bindings);
-    this.#onBindingsChange?.();
-  }
-
-  /** One card, as a unit. The copy's readings are envelope state, so they land
-   * through the one writer above rather than beside it.
-   *
-   * **The refusal is reported here rather than thrown at a caller.** Two
-   * surfaces dispatch this — the Add pane and the canvas context menu — and the
-   * menu's entry holds a `void`, so a thrown refusal reached nobody there: the
-   * author clicked a card, nothing happened, nothing was said, and an unhandled
-   * rejection went to the console. Reporting at the one owner is what makes it
-   * told once on every surface, and the Add pane's `constructing` does not
-   * double-report because nothing rejects.
-   */
-  #insertCard(cardId: string): void {
-    void insertCard(this.#options.shell.editor, cardId, {
-      globals: this.#envelope.globals,
-      ...(this.#envelope.bindings === undefined
-        ? {}
-        : { bindings: this.#envelope.bindings }),
-      onBindings: (bindings) => this.#addBindings(bindings),
-    }).catch((error: unknown) => {
-      this.#options.shell.editor.errorManager.warn(
-        "controls",
-        error instanceof Error ? error.message : String(error),
-      );
-    });
-  }
-
-  /**
-   * Every owner that reads the theme's globals, handed the new value once.
-   *
-   * The receivers used to be listed inline, once per setter, and the lists
-   * disagreed: `#setPalette` reached six, `#setTypes` three, `#deleteType` two.
-   * A consumer a setter did not happen to name stopped updating, which is
-   * exactly how a renamed type preset left the inspector's Spends line printing
-   * the old name — `#setTypes` never told `#selection` (`vg-232`). One list is
-   * what makes the omission unrepresentable: a setter cannot drop a receiver by
-   * not naming it.
-   */
-  #globalsChanged(shell: EditorShell): void {
-    shell.setGlobals(this.#envelope.globals);
-    this.#runtime.setGlobals(this.#envelope.globals);
-    this.charts.setGlobals(this.#envelope.globals);
-    this.#newObjects.setGlobals(this.#envelope.globals);
-    this.#artboard.setGlobals(this.#envelope.globals);
-    this.#selection.setGlobals(this.#envelope.globals);
-  }
-
-  #setPalette(shell: EditorShell, palette: FabricPalette): void {
-    this.#writeEnvelope({
-      ...this.#envelope,
-      globals: { ...this.#envelope.globals, palette },
-    });
-    this.#globalsChanged(shell);
-    this.#documentReferences.render();
-    this.#palette.render(palette);
-  }
-
-  #deletePalette(shell: EditorShell, id: string, replacement: string): void {
-    if (id === "none" || id === replacement) return;
-    const { from, to, artboard, palette } = reassignPaletteToken(
-      shell.editor.canvas,
-      this.#envelope.artboard,
-      this.#envelope.globals?.palette ?? {},
-      id,
-      replacement,
-    );
-    this.charts.reassignPaletteReferences(from, to);
-    this.#writeEnvelope({
-      ...this.#envelope,
-      artboard,
-      globals: { ...this.#envelope.globals, palette },
-    });
-    shell.setArtboard(artboard);
-    this.#globalsChanged(shell);
-    this.#documentReferences.render();
-    this.#artboard.render(artboard);
-    this.#palette.render(palette);
-  }
-
-  #setTypes(shell: EditorShell, typePresets: TypePresets): void {
-    this.#writeEnvelope({
-      ...this.#envelope,
-      globals: { ...this.#envelope.globals, typePresets },
-    });
-    this.#globalsChanged(shell);
-    this.#types.render(typePresets);
-    this.#documentReferences.render();
-  }
-
-  async #downloadFace(face: CuratedFontFace): Promise<Uint8Array> {
-    const response = await fetch(face.sourceUrl);
-    if (!response.ok)
-      throw new Error(
-        `Could not download ${face.family} (${response.status}).`,
-      );
-    return new Uint8Array(await response.arrayBuffer());
-  }
-
-  async #runFontAction(
-    options: EditorSessionOptions,
-    action: () => Promise<unknown>,
-  ): Promise<void> {
-    try {
-      await action();
-    } catch (error) {
-      options.onError?.(error instanceof Error ? error.message : String(error));
-    }
-  }
-
-  #deleteType(shell: EditorShell, id: string, replacement: string): void {
-    if (id === replacement) return;
-    const typePresets = reassignTypePresetToken(
-      shell.editor.canvas,
-      (this.#envelope.globals?.typePresets ?? {}) as TypePresets,
-      id,
-      replacement,
-    );
-    this.#writeEnvelope({
-      ...this.#envelope,
-      globals: { ...this.#envelope.globals, typePresets },
-    });
-    this.#globalsChanged(shell);
-    this.#types.render(typePresets);
-    this.#documentReferences.render();
-  }
-
-  #snapshot(shell: EditorShell): FabricThemeEnvelope {
-    return shell.snapshot({
-      ...this.#envelope,
-      ...(this.#assets.declarations.length === 0
-        ? {}
-        : { assets: this.#assets.declarations }),
-    });
+    return this.#document.subscribeDocumentChange(listener);
   }
 }

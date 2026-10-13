@@ -2228,7 +2228,7 @@ test.describe("Fabric editor route", () => {
     await insertShape(page, "Rectangle");
 
     await page.keyboard.press("Control+n");
-    // New asks the size first (`editor-session.ts`'s `#new`), then this.
+    // New asks the size first (`editor-document.ts`'s `newDocument`), then this.
     await expect(
       page.locator('[role="dialog"]', { hasText: "Choose an artboard size" }),
     ).toBeVisible();
