@@ -37,9 +37,9 @@ ledger did.
 
 ## Last completed change
 
-- **`vg-270`’s difference is gone and now has a check that would notice its return** — the Tokens pane’s column measured `scrollWidth` 449 against `clientWidth` 244 (a 205px sideways scroll) because the font-trio well’s row had no `min-w-0`; `editor-rail.spec.ts` now reads every pane’s column in turn and fails on any sideways scroll.
-- **The check is red-proved against the cause the row named** — removing `min-w-0` from `control-well.tsx`’s column shape reproduces it on a built bundle (Tokens, 198px, the other three panes clean), and the file was restored byte-identical (`cmp`) before the rebuild that made the case green.
-- **Gate exit 0** — 255 test files and 3,363 tests passed; the rail spec’s 11 cases pass on the rebuilt bundle.
+- **`vg-270` closes as verified, on a reading and a red proof rather than on a reading alone** — the Tokens overflow is gone (`0e7b3405` gave the well’s column row its `min-w-0`), and removing that one declaration reproduces it on a built bundle (Tokens, 198px, the other three panes clean), so the cause the row named is the cause.
+- **The instrument exists now, which the row did not have** — `editor-rail.spec.ts` reads each of the four panes’ columns in turn and fails on any sideways scroll, naming the slot; the capture could never show it, because the column image is the scroll origin.
+- **Registers: `npm run backlog:check` exit 0, 447 items across both registers** — the row carries both artefacts (`8eff3abf` for the check, `0e7b3405` for the fix that removed the overflow) and its disposition is appended to its own `detail` before the move.
 
 ## Next
 
