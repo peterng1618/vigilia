@@ -120,17 +120,29 @@ const cssNoComments = css.replace(/\/\*[\s\S]*?\*\//g, "");
 const PAINTS_COLOUR = /(?<![\w-])color\s*:/;
 
 /** §4's mark lands on a `<button>` (the dock, the pane footer) or on a menu item
- *  (`[role="menuitem"]`, `[role="menuitemradio"]` — the canvas context menu). A
- *  selector part is in that family when its **subject** compound is one of them:
- *  the last combinator-separated step is a bare `button`, or carries the role
- *  attribute, with any pseudo-class still attached (`button:hover`). Where the
- *  part sits is irrelevant — `.editor-shell-rail button` and
- *  `.editor-shell-dialog > button` are both in it. */
-const MARKABLE_CONTROL_SUBJECT =
-  /(?:^|[\s>+~])(?:button|\[role="menuitem"\]|\[role="menuitemradio"\])(?:[^\s,>+~]*)$/;
+ *  (a `menuitem`/`menuitemradio` role — the canvas context menu). A selector part
+ *  is in that family when it **names** one of them, anywhere and in any form: a
+ *  bare substring test for `button` or `menuitem`, case-insensitive.
+ *
+ *  Substring rather than a subject-compound or token-boundary match, because those
+ *  are the shapes that were evaded: `:is(button)`, `:where(button)` and a
+ *  single-quoted `[role='menuitem']` each select a markable control, and a
+ *  compound-anchored pattern misses all three. A substring test subsumes them and
+ *  cannot be evaded by selector syntax not anticipated here. Measured cost none:
+ *  all 72 colour-bearing rules in `editor-shell.css` yield the same six parts
+ *  under the substring, mention-anywhere and subject-compound filters.
+ *
+ *  The ceiling this read cannot cross: a rule that paints the marked control
+ *  *without* naming a button, a menu role or the marker — a positional or
+ *  attribute selector on some other name, say — is invisible here, as it is to
+ *  any selector-text read. The browser case is the instrument that reads actual
+ *  paint, and it covers the three surfaces that exist, not any future one;
+ *  `MARKABLE_CONTROL_ALLOWLIST` rests on reachability for the same reason. */
+const NAMES_A_MARKABLE_CONTROL = /button|menuitem/i;
 
 /**
- * Every colour-bearing rule in that family, as normalised selector parts.
+ * Every colour-bearing rule whose **selector names** a button or a menu item, as
+ * normalised selector parts.
  *
  * The failure message names what to do about a hit, because there are exactly
  * two right answers: move the colour onto the surface's **container** (which the
@@ -144,7 +156,7 @@ function colourBearingMarkableControls(): readonly string[] {
         .filter(([, , body]) => PAINTS_COLOUR.test(body ?? ""))
         .flatMap(([, selectors]) => (selectors ?? "").split(","))
         .map((part) => part.trim().replace(/\s+/g, " "))
-        .filter((part) => MARKABLE_CONTROL_SUBJECT.test(part)),
+        .filter((part) => NAMES_A_MARKABLE_CONTROL.test(part)),
     ),
   ].sort();
 }
@@ -221,11 +233,12 @@ describe("§4's destructive mark", () => {
       colourBearingMarkableControls().filter(
         (part) => !MARKABLE_CONTROL_ALLOWLIST.includes(part),
       ),
-      "a rule declares a colour on a control §4's mark can land on. A declaration " +
-        "there applies directly to the element, so it outranks the bare marker " +
-        "attribute by specificity and the destructive action paints ordinary. " +
-        "Here, the listed selectors are the ones not yet allowlisted below: move " +
-        "the colour onto the surface's container, or add the entry with a reason.",
+      "a rule declares a colour whose selector names a button or a menu item — " +
+        "the controls §4's mark lands on. A declaration there applies directly " +
+        "to the element, so it outranks the bare marker attribute by specificity " +
+        "and the destructive action paints ordinary. The listed selectors are " +
+        "the ones not yet allowlisted below: move the colour onto the surface's " +
+        "container, or add the entry with a reason.",
     ).toEqual([]);
   });
 });
