@@ -590,7 +590,7 @@ Rows: `vg-285`, `vg-296`, `vg-313`, `vg-314`, `vg-325`, `vg-326` — the five of
 
 **Failure modes:** widening a checker until it reports a count, not a set; a gate that runs green because its self-test was never chained in.
 
-**Verify:** `npm run gates:self-test`, `npm run design:check`, `npm run backlog:check`. [Annotated 2026-10-13: the list above is a restatement, and a restated gate list is exactly the artifact that rots (`vg-384`) — read the steps from `.github/workflows/ci.yml`, which is the authority for what "green" means. What that job runs now is `npm run gate` (`biome check`, `gates:self-test`, the unit suite) and `design:check`, beside the steps it already had.]
+**Verify:** `npm run gates:self-test`, `npm run design:check`, `npm run backlog:check`. [Annotated 2026-10-13: the list above is a restatement, and a restated gate list is exactly the artifact that rots (`vg-384`) — read the steps from `.github/workflows/ci.yml`, which is the authority for what "green" means. What that job runs now is `npm run gate` for all four of these — `biome check`, `gates:self-test`, `design:check` and the unit suite — beside the steps it already had. `design:check` joined the chain on 2026-10-13 (`vg-435`), because it had run only as a separate CI step and a local gate therefore read green over a verdict CI would have failed; its own CI step went with it, so no step runs it twice.]
 
 ### Task 4.1: `backlog-check.mjs` reads the archive, and the 14 archived rows it finds are repaired
 

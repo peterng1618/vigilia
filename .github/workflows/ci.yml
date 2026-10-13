@@ -50,17 +50,14 @@ jobs:
         # and vg-379: `biome check` is the gate, not `format:check` + `lint`.
         # organizeImports is an assist action that only `check` runs, so a file
         # whose imports were unsorted passed both of the steps this replaces.
-        # `npm run gate` is `biome check`, `gates:self-test` and the unit suite;
-        # that suite is in the command because the gate list carried no test run
-        # at all and a task closed with `vitest run` red (vg-323).
+        # `npm run gate` is `biome check`, `gates:self-test`, `design:check` and
+        # the unit suite. The suite is in the command because the gate list
+        # carried no test run at all and a task closed with `vitest run` red
+        # (vg-323). `design:check` is in it because an unrun gate and a green
+        # gate look identical from outside (vg-355) -- and because it ran only
+        # as a step of this workflow, a local `npm run gate` read green over a
+        # red live-tree verdict (vg-435). No step here repeats either one.
         run: npm run gate
-
-      - name: Design gates (live tree)
-        # `gates:self-test` runs the design scripts' own self-tests; this is the
-        # live-tree verdict over DESIGN.md and editor-shell.css, which CI never
-        # ran — an unrun gate and a green gate look identical from outside
-        # (vg-355).
-        run: npm run design:check
 
       - name: Status handoff
         run: npm run status:check
