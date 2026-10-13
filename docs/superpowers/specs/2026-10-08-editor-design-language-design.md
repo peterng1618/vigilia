@@ -818,7 +818,7 @@ pass is a smoke test over the same bundle, not the check.
   that count is plan 8's alone**: measured across all eight on 2026-10-13
   (`vg-390` carries the census), plans 2, 4 and 7 also list differences whose
   owner is an open row — `vg-230` in plan 2,
-  `vg-260` and `vg-269` in plan 4, `vg-308`, `vg-310` and
+  `vg-269` in plan 4, `vg-308`, `vg-310` and
   `vg-274` in plan 7 — while plans 3, 5 and 6 list none an open row owns, plan
   3's four surviving in `9ee1fc21`'s body. **Every one of those rows is a row
   the drain's Phase 1 sessions take** (D3, D5, D6, D10 and the browser-pinned
@@ -848,7 +848,13 @@ pass is a smoke test over the same bundle, not the check.
   §5's closed vocabulary had no entry for a control that is a value display and
   opens a list, so it gains **Bare readout** and the zoom keeps its bare
   percentage (`61d7435b`), where a browser case reads the control's text, fill,
-  four edges, glyph and the menu it opens. The two
+  four edges, glyph and the menu it opens. **`vg-260` left the list the same day
+  by a third route — a ruling that accepted the difference and gave it a section
+  to cite**: the user held the mark slot at 28px on the measurement that disproved
+  the narrower one, so the attended row keeps its clip and §7.3 states it — a row
+  yields its name and its key before it yields a control — which is the normative
+  source this clause requires for a difference that survives rather than one that
+  was fixed. The two
   the sessions cannot reach are `vg-316`, a Phase 2 work
   row whose residue is the `DESIGN.md` decision `vg-441`, and plan 1's ten,
   whose owner no record holds. **The capture half is now placed for every drawing**:

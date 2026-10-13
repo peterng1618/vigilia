@@ -37,11 +37,10 @@ ledger did.
 
 ## Last completed change
 
-- **`vg-225` is verified: §5's closed vocabulary gains a `Bare readout` entry, and the zoom readout stops being an unnamed exception** — the ruling answered the row's tension by amending the language rather than the control, so the readout keeps its bare percentage and stays the display chooser's trigger.
-- **It is the first row on item 16's lists that a ruling amended the language for rather than the product** — §5 had a well-and-chevron shape for "opens a list" and no word for a control that is a value display and a trigger at once.
-- **`editor-display.spec.ts` holds the product to that entry** — the text is a percentage, the fill and all four edges are bare, no glyph, `aria-haspopup` is `menu`, and a click opens the list, which is the half a computed style cannot state.
-- **Red proof: the case exits 1 with the rule's own `border: 0` set to `9px solid var(--edge)`, reddening on "and no edge"** — no capture moved, because the drawing already draws the readout as a bare percentage.
-- **Gates: `npm run gate` exit 0 (255 files, 3,363 tests; `design:check` 315 citation sources), `npm run backlog:check` exit 0 (448 items)** — item 16's plan-2 list is down to `vg-230`.
+- **`vg-260` is withdrawn on your 2026-10-13 ruling: the mark slot holds at 28px and the attended row's clip is accepted** — the narrower slot was measured first and changed none of that row's numbers (name 28px short, key 41px short at both widths), so the lever is disproved rather than declined.
+- **The clip is now the language's stated trade rather than a silent one** — §7.3 gains "a row yields its name and its key before it yields a control", the normative source item 16's clause needs for a difference that stands instead of being fixed.
+- **Two halves of the finding landed rather than being withdrawn with it** — the instrument (`11d8ce0e`) is what lets a person see the clip at all, and it prices any future width in one run.
+- **Item 16's plan-4 list is down to `vg-269`** — and your other ruling this turn, the D5 criterion, is the union rule: a test file joins the gated list if it imports the shell's modules or drives it in a browser.
 
 ## Next
 

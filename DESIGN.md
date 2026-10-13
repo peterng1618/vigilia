@@ -251,6 +251,15 @@ Width 246px by default. Structure, top to bottom:
 object actions; it is not a place for global commands, and the status bar is not
 a place for tools.
 
+**A row yields its name and its key before it yields a control.** A Composition
+row that carries all four controls — twisty, rename, eye, lock — and a bound key
+is wider than the pane's body, and it clips the name and the key rather than
+dropping a control, painting over the role, or taking the mark slot below 28px.
+The role is never the column that gives way: it is the only statement of what a
+row is on four rows in five. This is the pane's trade at its default width and
+not a defect to be measured away — the mark slot is already at the floor its own
+contents set, so narrowing it moves the clip rather than removing it.
+
 ### The inspector
 
 <!-- §7.4 -->
