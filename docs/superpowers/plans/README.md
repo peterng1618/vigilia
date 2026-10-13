@@ -29,8 +29,11 @@ ledger records the rulings and the evidence behind them.
 ## The one plan held out of the queue
 
 **`2026-10-03-editor-left-column-and-header.md` is neither executable nor
-archived.** Its left-column and Insert-menu work landed under later plans and
-was then reversed by the shell redesign; only its View-menu task still matches
-the product, and whether that menu leaves the menubar is a decision the redesign
-owns. It is kept here, unexecuted, rather than moved to `archive/` — see `vg-161`
-in `docs/product/backlog.jsonl` for the measurement.
+archived.** Its left column and pane bar were superseded by the shell redesign,
+and its insert popover landed under a different contract in a later plan. Its
+Task 4 is "Two menus, and the View settings beside the canvas": the Insert half
+of that has since landed — `shell-menu-bar.tsx` renders File, Edit and View only,
+and `shell-layout.dom.test.tsx` asserts the Insert menu's absence — so what
+remains is the View half, and whether the View menu leaves the menubar is a
+decision the redesign owns. It is kept here, unexecuted, rather than moved to
+`archive/` — see `vg-161` in `docs/product/backlog.jsonl` for the measurement.
