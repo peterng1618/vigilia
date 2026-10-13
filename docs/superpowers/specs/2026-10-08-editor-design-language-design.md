@@ -805,7 +805,8 @@ pass is a smoke test over the same bundle, not the check.
   registered. Plan 8's own completion report rules the second clause *"NOT met
   for the plan's closure condition"*: six of its differences are `fix` with
   owners outside that plan, and the rows that carry them are open today
-  (`vg-316`, `vg-319`, `vg-322`, and `vg-274`'s gate membership), two of them
+  (`vg-316`, `vg-319`, `vg-322`, and `vg-274`, whose own subject is the file's
+  gate membership and which still carries D9's one live value), two of them
   waiting on the user's rulings. **`vg-325` was named here among them and is not
   one**: it is `verified` against `6f9b3492` and `c64ac390` in
   `2026-10-11-settings-parity.md`, and it had already closed when this list was

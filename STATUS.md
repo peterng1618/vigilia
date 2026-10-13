@@ -37,9 +37,9 @@ ledger did.
 
 ## Last completed change
 
-- **The spec's item-16 discharge clause now names the cause rather than one of its symptoms** — `vg-316`'s gap is filed on that clause as `vg-441`: DESIGN.md defines no labelled button at all, so the row waits on a DESIGN.md decision and not, as the clause read, on a §4 colour-role correction.
-- **One stale word in the same section is corrected with it** — the row list's "`vg-274`'s spacing pass" becomes "gate membership", which is what the section's own discharge sentence already calls that row.
-- **What the check says**: `npm run design:check` exit 0 — lint clean in DESIGN.md, DESIGN.md and `editor-shell.css` clean, 315 citation sources clean.
+- **Plan 8's D9 block is re-measured and three of its four values are fixed on the tree** — the Close's `margin-top` is 16px (`vg-316`), the rail's `gap` is 4px (`editor-shell.css:1027`, `vg-325`'s work) and the asset-button rule states `padding: 4px 8px` (`:1323`); what is left is the plain-DOM control boxes' type, which no rule states, so both inherit the shell root's `--text-md` 13px (`:687-689`) where §2 gives control text `--text-sm` 12px.
+- **That value is blocked on an instrument rather than on itself, and the instrument is now a row** — the declared-versus-drawn block compares literal strings and the drawing writes its type as a `font` shorthand `mockup-values.ts` refuses to read as a `font-size`; the scale route needs the element rendered and the surfaces that parity test reads are a whitelist naming no pane. Filed as **`vg-442`**; `vg-274` carries the value and the residue of the file's other inherited-type rules.
+- **Gates**: `npm run backlog:check` exit 0 (442 items across both registers, all valid); `npm run status:check` exit 0 and `npm run design:check` exit 0 (lint clean, 315 citation sources clean).
 
 ## Next
 
