@@ -195,8 +195,8 @@ expanding it and aiming at a child row.
 own event is what has to be suppressed.** The transform bake is not: it is
 `Group._enterGroup`'s / `_exitGroup`'s, reached by the `insertAt`/`remove` pair.
 `detachFromRoot` splices `canvas._objects` and reproduces what the removal hook does
-with the object it hands
-on — the cached render list, the active object's deselection, the hovered target's
+with the object it hands on — the cached render list, the active object's deselection,
+the hovered target's
 release (`Canvas._onObjectRemoved`, `fabric/src/canvas/SelectableCanvas.ts:356`; the
 splice is `Collection.remove`'s, the rest is the hook's, and the deselection is
 delegated to Fabric's own `discardActiveObject`, so listeners hear what a real removal

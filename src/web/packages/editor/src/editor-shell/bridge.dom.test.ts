@@ -985,8 +985,9 @@ it("leaves the canvas in the state a removal leaves, except the object itself", 
   // The state is projected by *shape*, not by a list of names. A removal
   // changes a canvas in one of three shapes — a reference to an object, a list
   // of them, or a field the hook clears — and everything else on a canvas is
-  // binder plumbing (contexts, elements, options, a rAF handle) that differs
-  // between two canvases for reasons a move has nothing to do with. A list of
+  // either binder plumbing (contexts, elements, options, a rAF handle) or a
+  // derived cache the object rebuilds, and both differ between two canvases for
+  // reasons a move has nothing to do with. A list of
   // names is what let this case miss `_hoveredActualTarget`, which
   // `_onObjectRemoved` does *not* clear and no reader would have thought to
   // write down; projected by shape it is in the state, and so is any field a
