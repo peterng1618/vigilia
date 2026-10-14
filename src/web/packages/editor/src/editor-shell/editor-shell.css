@@ -2450,9 +2450,11 @@ body,
   height: 100%;
 }
 /* One contextual toolbar, bottom-centre: the object actions the selection can
-   run, then the arrange actions it is too small to enable. It draws once a
-   document is open — the arrange half greys before a selection so it stays
-   discoverable, and the object half appears as it becomes eligible. */
+   run, and nothing it cannot — the registry filters the row rather than greying
+   it. It draws once a document is open, so the surface exists before the
+   selection does and its row fills as actions become eligible. **The eight
+   arrange actions are not here** (`vg-463`): they are the selection inspector's,
+   so nothing on this row greys for want of a second subject. */
 .editor-shell-dock {
   position: absolute;
   z-index: 3;

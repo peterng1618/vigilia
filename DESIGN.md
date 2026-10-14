@@ -275,8 +275,11 @@ thing actually raises**, and describes what the thing *is*:
 | **Paint** | What ink? |
 | **Spends** | Read-only: what does it resolve to? |
 
-- The column opens with **the subject**: its name at `--text-md`, and one line
-  naming its kind. It does not open with a chrome label.
+- The column opens with **the subject**: its kind's glyph, then its name at
+  `--text-md`, and the binding key beneath the row when one is bound — a
+  multi-selection, which has no kind of its own, draws the name alone. It does
+  not open with a chrome label, and **the kind is that glyph, not a line of its
+  own**: `vg-466`, the user's item 9, took the type label away for the icon.
 - **A section with nothing in it is not rendered** — no header, no zero count.
 - Geometry is collapsed by default; the binding is what changes constantly.
 - **A property a kind does not have is not shown as a field.** Where the
@@ -351,7 +354,11 @@ menus.** Anything actionable belongs to a region that owns it.
 - **Chrome stays still.** Pane title and footer stay outside the scrolling body;
   inspector sections share one vertical scroller. Preserve per-pane offsets and
   disclosure state across routine updates. Use native scrollbars and reserve
-  their gutter where necessary; no custom scrollbar or scroll-jacking owner.
+  their gutter where necessary; no custom scrollbar and no scroll-jacking owner,
+  with one exception — the shell's own two scrollers, the pane column and the
+  inspector, restyle that native bar from the three `--vigilia-scrollbar-*`
+  tokens (`vg-458`), which is what those tokens were declared for. No other
+  surface paints a scrollbar, and none is a scroll-jacking owner.
 - **Clusters cannot collide.** Identity may truncate its name; view controls
   may wrap or use the existing labelled lens chooser. Never omit a lens, zoom
   command or focused target to fit a screenshot. Pointer events belong to the

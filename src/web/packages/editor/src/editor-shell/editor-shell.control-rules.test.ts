@@ -225,7 +225,9 @@ describe("§4's destructive mark", () => {
     // declaration there applies directly to the element, so it outranks the bare
     // attribute by specificity — the marker's own rule is unlayered, and the
     // stylesheet's one `@layer base` block holds the focus fallback, which
-    // declares no colour of any kind. Both surfaces this fix
+    // declares no `color:` at all. Its `outline: 2px solid var(--shell-accent)`
+    // paints the focus ring, a different property, so whatever its specificity it
+    // cannot beat the marker's `color`. Both surfaces this fix
     // changed did it once (`color: inherit` on a menu item at (0,2,0);
     // `color: var(--shell-text)` on `.editor-shell-dock button` at (0,1,1)), and
     // the footer — the third surface — was not covered here at all, which is how
