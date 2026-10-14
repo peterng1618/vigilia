@@ -1502,7 +1502,13 @@ test("a focused field in a well draws one boundary, not two", async ({
     if (input === null) return null;
 
     /** The boundary an element draws, or `null` for the element that draws
-     *  none. A named `none` would count as one, so absence is `null`. */
+     *  none. A named `none` would count as one, so absence is `null`.
+     *
+     *  `up === 1` is named "its well" because `control-text.tsx` renders the
+     *  input directly inside `ControlWell`, which is what makes the well the
+     *  input's parent. A wrapper inserted between them would leave the label
+     *  lying while the assertion below still passed — the well carries no
+     *  attribute to bind by instead, so if one is ever added, bind by it. */
     const drawnBy = (element: HTMLElement, up: number): string | null => {
       const style = getComputedStyle(element);
       const width = Number.parseFloat(style.outlineWidth);
@@ -1524,7 +1530,6 @@ test("a focused field in a well draws one boundary, not two", async ({
 
     return {
       focusVisible: input.matches(":focus-visible"),
-      wellFocusWithin: input.parentElement?.matches(":focus-within") ?? false,
       fieldShadow: getComputedStyle(input).boxShadow,
       boundaries,
     };
@@ -1544,10 +1549,10 @@ test("a focused field in a well draws one boundary, not two", async ({
     reading.focusVisible,
     "the field does not match :focus-visible, so no boundary of §5's is under test",
   ).toBe(true);
-  expect(
-    reading.wellFocusWithin,
-    "the well does not match :focus-within, so it owns no boundary and the field would be the only candidate",
-  ).toBe(true);
+  // A guard on the well's own `:focus-within` reads as the obvious companion to
+  // the line above and asserts nothing: a focused descendant makes `:focus-within`
+  // true on every ancestor, so it could only fail if the parent were not an
+  // ancestor. The count below is what distinguishes the two states.
   expect(
     reading.boundaries,
     `a focused field in a well draws one boundary, and it is the well's: ${reading.boundaries.join(" | ") || "none"}`,
@@ -1556,8 +1561,11 @@ test("a focused field in a well draws one boundary, not two", async ({
     reading.boundaries[0] ?? "none",
     "the count is one, but the boundary is not the well's",
   ).toMatch(/^its well: solid/);
-  // §5's treatment is the well's by both routes: a ring on the field would be
-  // the same defect drawn in the other medium.
+  // A forward guard, not one of the two reds: `outline-none` is what the field
+  // says today and the fallback never paints a shadow either way, so this holds
+  // with the defect present and with it fixed. It pins the shape of the next
+  // focus treatment — §5 puts the boundary in one medium, so a field that starts
+  // drawing a ring would be the same defect drawn the other way.
   expect(
     reading.fieldShadow,
     `the field paints a box-shadow of its own (${reading.fieldShadow})`,
