@@ -106,6 +106,25 @@ function aspectOf(
   return match === undefined ? {} : { aspect: match };
 }
 
+/**
+ * The smaller edge of the chart's own drawn box, whole units.
+ *
+ * The same read `aspectOf` takes — the object's own size at its own scale — and
+ * the ceiling the panel bounds a chart's pixel measures with: the canvas the
+ * renderer draws into is sized from these two numbers, so a thickness or a
+ * radius past them is a value nothing on screen can show. Absent when the object
+ * measures nothing: a field with no readable box keeps a typed box rather than a
+ * guessed ceiling (`vg-469`).
+ */
+function drawnEdgeOf(chart: VigiliaChart): { readonly drawnEdge: number } | Record<string, never> {
+  const width = chart.width * chart.scaleX;
+  const height = chart.height * chart.scaleY;
+  const smaller = Math.min(width, height);
+  return Number.isFinite(smaller) && smaller > 0
+    ? { drawnEdge: Math.floor(smaller) }
+    : {};
+}
+
 /** Vigilia-owned chart semantics layered on the editor's generic canvas mechanics. */
 export class ChartManager {
   readonly #editor: EditorInteraction;
@@ -302,8 +321,9 @@ export class ChartManager {
 
   /**
    * Reads one chart as the fields' own input: the family and settings off the
-   * object, the bindings off the envelope, the ratio off its shape. `undefined`
-   * for anything that is not a chart this manager owns by id.
+   * object, the bindings off the envelope, the ratio and the drawn box off its
+   * own shape. `undefined` for anything that is not a chart this manager owns by
+   * id.
    */
   #targetFor(chart: FabricObject): ChartFieldTarget | undefined {
     if (!(chart instanceof VigiliaChart)) return undefined;
@@ -317,6 +337,7 @@ export class ChartManager {
       } as ChartContent,
       bindings: this.#bindings[id] ?? [],
       ...aspectOf(chart, ASPECT_RATIOS),
+      ...drawnEdgeOf(chart),
     };
   }
 

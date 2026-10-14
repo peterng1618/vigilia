@@ -51,6 +51,17 @@ import { ANIMATION_EASINGS, type AnimationEasing } from "./animation.js";
  * no authored value shows its placeholder and the renderer's default applies —
  * the same rule the style rows follow.
  *
+ * ## A bound that is not a number
+ *
+ * `min`/`max` are numbers; a pixel measure's ceiling is not. `bound` says where
+ * it comes from instead — the chart's own drawn box, halved for a radius — and
+ * the surface reads it at projection time off the object the renderer sizes its
+ * canvas from, so a chart the author resized re-bounds its own fields and a
+ * surface that cannot read the box leaves the field typed rather than guessing.
+ * A field with a floor and no ceiling this table can name (`windowSeconds`,
+ * `maxPoints`, `total.value`) carries neither, and is deliberately not a slider:
+ * a track would offer a range the sample store or the data does not honour.
+ *
  * ## Why the validator does not read this table
  *
  * `min`/`max` below are **authoring bounds**: the range a control offers and the
@@ -136,6 +147,23 @@ export interface SettingsFieldDescriptor {
   readonly min?: number;
   readonly max?: number;
   readonly step?: number;
+  /**
+   * What this field's ceiling is read from, when it is not a number.
+   *
+   * A pixel measure cannot exceed the chart's own drawn box, and a radius
+   * cannot exceed **half** of it — which is what Fabric's own `Rect` does with
+   * `rx` at draw time (`vg-478`), and the same finding this rule met in the
+   * selection column. The box is read at projection time from the object the
+   * renderer sizes its canvas from, never written here as a constant: a chart
+   * the author resized re-bounds its own measures, and a surface that cannot
+   * read the box leaves the field typed rather than guessing a ceiling.
+   *
+   * A field with `min` alone and no `bound` has no ceiling this table can name
+   * — `windowSeconds` and `maxPoints` are bounded by the sample store and
+   * `total.value` by the chart's own data — so it is not a slider: a track
+   * would offer a range the store or the data does not honour (`vg-469`).
+   */
+  readonly bound?: "drawnBox" | "halfDrawnBox";
   /** For `select`, the allowed values in the order a picker should list them. */
   readonly options?: readonly {
     readonly value: string;
@@ -300,6 +328,7 @@ export const CHART_SETTINGS_FIELDS: Readonly<
       section: "content",
       hint: "How wide the ring is drawn, in pixels.",
       min: 0,
+      bound: "drawnBox",
     },
     {
       property: "roundCap",
@@ -329,6 +358,7 @@ export const CHART_SETTINGS_FIELDS: Readonly<
       section: "content",
       hint: "How thick the line is drawn, in pixels.",
       min: 0,
+      bound: "drawnBox",
     },
     {
       property: "interpolation",
@@ -361,6 +391,7 @@ export const CHART_SETTINGS_FIELDS: Readonly<
       section: "content",
       hint: "The diameter of those dots, in pixels.",
       min: 0,
+      bound: "drawnBox",
     },
     {
       property: "windowSeconds",
@@ -445,6 +476,7 @@ export const CHART_SETTINGS_FIELDS: Readonly<
       optional: true,
       hint: "How thick each bar is, in pixels; empty sizes it to the category.",
       min: 0,
+      bound: "drawnBox",
     },
     {
       property: "categoryGapPercent",
@@ -463,6 +495,7 @@ export const CHART_SETTINGS_FIELDS: Readonly<
       section: "content",
       hint: "How much the bar's own corners are rounded, in pixels.",
       min: 0,
+      bound: "halfDrawnBox",
     },
     {
       property: "trackCornerRadius",
@@ -473,6 +506,7 @@ export const CHART_SETTINGS_FIELDS: Readonly<
       advanced: true,
       hint: "The unfilled remainder's own rounding, beside the bar's. Empty leaves it square.",
       min: 0,
+      bound: "halfDrawnBox",
     },
     {
       property: "showAxes",
@@ -538,6 +572,7 @@ export const CHART_SETTINGS_FIELDS: Readonly<
       advanced: true,
       hint: "The gap left between neighbouring slices, in degrees.",
       min: 0,
+      max: 360,
     },
     {
       property: "cornerRadius",
@@ -547,6 +582,7 @@ export const CHART_SETTINGS_FIELDS: Readonly<
       advanced: true,
       hint: "How much each slice's outer corners are rounded, in pixels.",
       min: 0,
+      bound: "halfDrawnBox",
     },
     {
       property: "total",

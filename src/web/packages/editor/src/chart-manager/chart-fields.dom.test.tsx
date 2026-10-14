@@ -281,16 +281,19 @@ describe("every chart family's controls", () => {
           stage.host,
           `data-vigilia-chart-setting="${field.property}"`,
         );
-        const described = (
-          control.getAttribute("aria-describedby") ?? ""
-        ).split(/\s+/);
+        // Resolved rather than compared to a minted id: a number field's input
+        // carries the control's own id while a slider's track is Base UI's
+        // element beside it, and what matters is that the words reach the
+        // control a screen reader lands on.
+        const described = (control.getAttribute("aria-describedby") ?? "")
+          .split(/\s+/)
+          .filter(Boolean)
+          .map((id) => document.getElementById(id)?.textContent ?? "")
+          .join(" ")
+          .trim();
         expect(
           described,
           `${target.id}: ${field.property} describes itself by its hint`,
-        ).toContain(`${control.id}-hint`);
-        expect(
-          document.getElementById(`${control.id}-hint`)?.textContent,
-          `${target.id}: ${field.property} hint text`,
         ).toBe(field.hint);
       }
     }
@@ -384,6 +387,30 @@ describe("a setting one level down", () => {
     expect(composition.remainder).toBe(64 - 32);
   });
 
+  it("carries the track and the typed well for a bounded pixel measure", async () => {
+    // The bound is the chart's own drawn box, so the target carries one the way
+    // the manager reads it off the object.
+    const boxed: ChartFieldTarget = { ...bar, drawnEdge: 160 };
+    const { stage, calls } = over(boxed);
+
+    const track = pick<HTMLInputElement>(
+      stage.host,
+      'data-vigilia-chart-setting="barWidth"',
+    );
+    expect(track.type).toBe("range");
+    expect(track.min).toBe("0");
+    expect(track.max).toBe("160");
+
+    const well = pick<HTMLInputElement>(
+      stage.host,
+      'data-vigilia-chart-setting-well="barWidth"',
+    );
+    expect(well.inputMode).toBe("decimal");
+    await edit(well, "30");
+
+    expect(calls.settings.at(-1)?.barWidth).toBe(30);
+  });
+
   it("clears an optional setting back to the renderer's own choice", async () => {
     const { stage, calls } = over({
       ...pie,
@@ -393,9 +420,11 @@ describe("a setting one level down", () => {
       },
     });
 
+    // End angle is bounded, so it is a slider; the empty draft that means
+    // "the renderer decides" is typed into the well beside the track.
     const end = pick<HTMLInputElement>(
       stage.host,
-      'data-vigilia-chart-setting="endAngle"',
+      'data-vigilia-chart-setting-well="endAngle"',
     );
     expect(end.value).toBe("200");
     await edit(end, "");

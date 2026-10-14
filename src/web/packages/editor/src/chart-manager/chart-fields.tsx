@@ -8,6 +8,7 @@ import type * as React from "react";
 import { ControlNumber } from "../components/ui/control-number.js";
 import { ControlSegmented } from "../components/ui/control-segmented.js";
 import { ControlSelect } from "../components/ui/control-select.js";
+import { ControlSlider } from "../components/ui/control-slider.js";
 import { ControlToggle } from "../components/ui/control-toggle.js";
 import { uiCopy } from "../ui-copy.js";
 
@@ -51,6 +52,25 @@ export type ChartSettingView =
       readonly min?: number;
       readonly max?: number;
       /** `descriptor.optional`: the empty box is a removal, not a zero. */
+      readonly clearable: boolean;
+    }
+  | {
+      readonly id: string;
+      readonly key: string;
+      readonly label: string;
+      readonly hint: string;
+      readonly path: readonly string[];
+      readonly control: "slider";
+      /**
+       * Always a number, where the number arm's may be absent: a track has no
+       * empty state, so an unauthored setting shows what the renderer draws
+       * with rather than nothing.
+       */
+      readonly value: number;
+      readonly min: number;
+      readonly max: number;
+      /** `descriptor.optional`: the well's empty draft is a removal, which is
+       *  the one way back to "the renderer decides". */
       readonly clearable: boolean;
     }
   | {
@@ -322,6 +342,22 @@ function ChartSettingRow(props: {
           value={row.value}
           {...(row.min === undefined ? {} : { min: row.min })}
           {...(row.max === undefined ? {} : { max: row.max })}
+          onCommit={(value) => write(row.path, value)}
+          {...(row.clearable
+            ? { onClear: () => write(row.path, undefined) }
+            : {})}
+        />
+      );
+    case "slider":
+      return (
+        <ControlSlider
+          label={row.label}
+          hint={row.hint}
+          id={row.id}
+          data={data}
+          value={row.value}
+          min={row.min}
+          max={row.max}
           onCommit={(value) => write(row.path, value)}
           {...(row.clearable
             ? { onClear: () => write(row.path, undefined) }

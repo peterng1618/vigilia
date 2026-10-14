@@ -5,6 +5,7 @@ import { ControlNumber } from "./control-number.js";
 import {
   type ControlProps,
   ControlRow,
+  describedBy,
   isBlocked,
   useControlIds,
 } from "./control-well.js";
@@ -216,7 +217,14 @@ export function ControlSlider(
           <Slider.Thumb
             inputRef={input}
             aria-labelledby={ids.label}
-            aria-describedby={refused === undefined ? undefined : ids.reason}
+            // The hint and the refusal are the two notes the row owns, and the
+            // range input is the element a screen reader reaches: a hint that
+            // stayed on the wrapper would reach nobody (§5.3 keeps a refusal out
+            // of a tooltip for the same reason).
+            aria-describedby={describedBy(
+              hint === undefined ? undefined : ids.hint,
+              refused === undefined ? undefined : ids.reason,
+            )}
             className="size-[10px] rounded-sm border border-panel bg-text focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
           />
         </Slider.Control>

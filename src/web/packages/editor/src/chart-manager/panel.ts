@@ -3,10 +3,16 @@ import {
   type ChartContent,
   type ChartFamily,
   chartPaintFieldsFor,
+  defaultAnimationSettings,
+  defaultBarSettings,
+  defaultGaugeSettings,
+  defaultLineSettings,
+  defaultPieSettings,
   type FabricPalette,
   paletteTokenOptions,
   readSetting,
   SEMANTIC_KEYS,
+  type SettingsFieldDescriptor,
   settingsFieldsFor,
 } from "@vigilia/renderer-core";
 import { isSettingVisible } from "../editor-shell/controls/settings-field.js";
@@ -45,6 +51,62 @@ export interface ChartFieldTarget {
   readonly content: ChartContent;
   readonly bindings: readonly Binding[];
   readonly aspect?: number;
+  /**
+   * The smaller edge of the chart's own drawn box, in artboard units — what the
+   * renderer sizes the chart's canvas from, and the ceiling a pixel measure in
+   * its settings is read against. Absent when the object measures nothing, which
+   * leaves those fields typed rather than bounded by a guess (`vg-469`).
+   */
+  readonly drawnEdge?: number;
+}
+
+/**
+ * The family's own defaults, plus the block a nested write materialises: the
+ * value a setting draws with when the author has not set it.
+ *
+ * Read from the objects that own them (`default*Settings`) rather than restated
+ * here or in the descriptor table, which deliberately declares no defaults. A
+ * slider is why the surface needs one at all: a typed box shows an empty
+ * placeholder, and a track has to start somewhere — and the honest somewhere is
+ * the number the renderer is drawing with.
+ */
+function defaultsOf(family: ChartFamily): unknown {
+  const families: Readonly<Record<ChartFamily, unknown>> = {
+    gauge: defaultGaugeSettings,
+    line: defaultLineSettings,
+    bar: defaultBarSettings,
+    pie: defaultPieSettings,
+  };
+  return { animation: defaultAnimationSettings, ...(families[family] as object) };
+}
+
+/** The authored value, when the author wrote a finite number: absent is absent,
+    never a zero nobody typed. */
+function authoredNumber(value: unknown): number | undefined {
+  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+}
+
+/**
+ * The ceiling a slider takes, or nothing when the field has no ceiling this
+ * surface can read.
+ *
+ * Both bounds where the descriptor declares them; the chart's own drawn box for
+ * a pixel measure, halved for a radius; and nothing at all when the field's only
+ * bound is its floor — `windowSeconds`, `maxPoints` and `total.value` are
+ * bounded by the sample store and by the chart's data, so a track would offer a
+ * range nothing honours.
+ */
+function ceilingOf(
+  field: SettingsFieldDescriptor,
+  drawnEdge: number | undefined,
+): { readonly min: number; readonly max: number } | undefined {
+  const min = field.min ?? 0;
+  if (field.max !== undefined) return { min, max: field.max };
+  if (field.bound === undefined || drawnEdge === undefined) return undefined;
+  return {
+    min,
+    max: field.bound === "halfDrawnBox" ? Math.floor(drawnEdge / 2) : drawnEdge,
+  };
 }
 
 /**
@@ -143,8 +205,19 @@ function seriesFields(target: ChartFieldTarget): ChartSeriesFieldsView {
  *
  * A `visibleWhen` that does not match is not a question in this state, so it
  * renders nothing — unlike a refused field, which renders and says why.
+ *
+ * **A bounded number is a slider, and its bound comes from its owner.** The ten
+ * descriptors that carry both bounds hand those over; a pixel measure is
+ * bounded by the chart's own drawn box (half of it for a radius), read off the
+ * object the renderer sizes its canvas from rather than chosen here; and a
+ * field with a minimum and no ceiling this table can name — `windowSeconds`,
+ * `maxPoints`, `total.value` — keeps its typed box, because a track would offer
+ * a range the store or the data does not honour (`vg-469`).
  */
-function settingRows(content: ChartContent): readonly ChartSettingView[] {
+function settingRows(
+  content: ChartContent,
+  drawnEdge: number | undefined,
+): readonly ChartSettingView[] {
   const rows: ChartSettingView[] = [];
 
   for (const field of settingsFieldsFor(content.family)) {
@@ -158,6 +231,29 @@ function settingRows(content: ChartContent): readonly ChartSettingView[] {
     const id = `vigilia-chart-setting-${field.property}`;
 
     if (field.kind === "number") {
+      const bound = ceilingOf(field, drawnEdge);
+      if (bound !== undefined) {
+        rows.push({
+          id,
+          key: field.property,
+          label: field.label,
+          hint: field.hint,
+          path,
+          control: "slider",
+          // What the renderer draws: the authored number where there is one,
+          // and the family's own default where the key is absent — a track has
+          // no empty state, and showing a floor it did not choose would be the
+          // field believing itself rather than the picture (`vg-109`).
+          value:
+            authoredNumber(value) ??
+            authoredNumber(readSetting(defaultsOf(content.family), path)) ??
+            bound.min,
+          min: bound.min,
+          max: bound.max,
+          clearable: field.optional === true,
+        });
+        continue;
+      }
       rows.push({
         id,
         key: field.property,
@@ -167,10 +263,7 @@ function settingRows(content: ChartContent): readonly ChartSettingView[] {
         control: "number",
         // Absent is an empty box, never a zero: "empty lets the data choose it"
         // is what the descriptor's `optional` promises.
-        value:
-          typeof value === "number" && Number.isFinite(value)
-            ? value
-            : undefined,
+        value: authoredNumber(value),
         ...(field.min === undefined ? {} : { min: field.min }),
         ...(field.max === undefined ? {} : { max: field.max }),
         clearable: field.optional === true,
@@ -223,7 +316,7 @@ export function chartContentView(
     content: target.content,
     ...(target.content.family === "line" ? { aspect: aspectView(target) } : {}),
     series: seriesFields(target),
-    rows: settingRows(target.content),
+    rows: settingRows(target.content, target.drawnEdge),
   };
 }
 

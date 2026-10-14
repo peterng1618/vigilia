@@ -14,6 +14,7 @@ import {
   chartContentView,
   chartPaintView,
 } from "./panel.js";
+import type { ChartSettingView } from "./chart-fields.js";
 
 /**
  * What the chart owner hands the column, as data.
@@ -181,6 +182,117 @@ describe("the chart fields, as the owner hands them over", () => {
   });
 });
 
+describe("a chart's bounded settings, as the owner hands them over", () => {
+  /** The same targets with a drawn box, which is what the manager always reads
+      off a real chart: the smaller edge of the object's own size at its scale. */
+  const boxed = (target: ChartFieldTarget): ChartFieldTarget => ({
+    ...target,
+    drawnEdge: 160,
+  });
+  const rowOf = (
+    target: ChartFieldTarget,
+    key: string,
+  ): ChartSettingView | undefined =>
+    chartContentView(boxed(target)).rows.find((row) => row.key === key);
+
+  it("gives every bounded number a slider, with its bound read from its owner", () => {
+    // Ten descriptors carry both bounds and hand those over.
+    expect(rowOf(charts[2]!, "categoryGapPercent")).toMatchObject({
+      control: "slider",
+      min: 0,
+      max: 100,
+    });
+    expect(rowOf(charts[0]!, "startAngle")).toMatchObject({
+      control: "slider",
+      min: -360,
+      max: 360,
+    });
+    // A slice gap's ceiling is a full turn, which is the unit's own bound.
+    expect(rowOf(charts[3]!, "padAngle")).toMatchObject({
+      control: "slider",
+      min: 0,
+      max: 360,
+    });
+    // A pixel measure's ceiling is the chart's own drawn box, and a radius
+    // takes half of it — the finding `vg-478` met in the selection column.
+    expect(rowOf(charts[0]!, "thickness")).toMatchObject({
+      control: "slider",
+      min: 0,
+      max: 160,
+    });
+    expect(rowOf(charts[2]!, "trackCornerRadius")).toMatchObject({
+      control: "slider",
+      max: 80,
+    });
+    expect(rowOf(charts[3]!, "cornerRadius")).toMatchObject({
+      control: "slider",
+      max: 80,
+    });
+  });
+
+  it("leaves the three a track cannot honour typed, and says why", () => {
+    // Bounded by the sample store and by the chart's own data: a slider would
+    // offer a range the store or the data does not honour.
+    for (const [target, key] of [
+      [charts[1]!, "windowSeconds"],
+      [charts[1]!, "maxPoints"],
+    ] as const) {
+      expect(rowOf(target, key), key).toMatchObject({ control: "number" });
+    }
+    const fixed: ChartFieldTarget = {
+      id: "ram",
+      content: {
+        family: "pie",
+        settings: { ...defaultPieSettings, total: { kind: "fixed", value: 64 } },
+      },
+      bindings: [],
+    };
+    expect(rowOf(fixed, "total.value")).toMatchObject({ control: "number" });
+  });
+
+  it("shows the value the renderer draws with when the author set none", () => {
+    // A track has no empty state, and an unauthored setting is one the renderer
+    // decides: the number shown is the family's own default, read from the
+    // object that owns it rather than restated in the descriptor table. The
+    // animation block is the case the document usually does not carry at all.
+    const line = chartContentView(boxed(charts[1]!));
+    expect(
+      line.rows.find((row) => row.key === "animation.durationMs"),
+    ).toMatchObject({ control: "slider", value: 1000, min: 0, max: 5000 });
+    const bare: ChartFieldTarget = {
+      id: "bare",
+      content: {
+        family: "bar",
+        settings: {
+          orientation: "horizontal",
+          min: 0,
+          max: 100,
+          categoryGapPercent: 40,
+          cornerRadius: 7,
+          showAxes: false,
+          showCategoryLabels: false,
+        },
+      },
+      bindings: [],
+    };
+    expect(rowOf(bare, "barWidth")).toMatchObject({
+      control: "slider",
+      value: 14,
+      clearable: true,
+    });
+  });
+
+  it("leaves a pixel measure typed when the chart's box cannot be read", () => {
+    // No guessed ceiling: an object that measures nothing gets no bound, and the
+    // field keeps the typed box it had rather than a track to nowhere.
+    expect(
+      chartContentView(charts[0] as ChartFieldTarget).rows.find(
+        (row) => row.key === "thickness",
+      ),
+    ).toMatchObject({ control: "number" });
+  });
+});
+
 describe("the fixed-total question", () => {
   const pie = (settings: PieSettings): ChartFieldTarget => ({
     id: "ram",
@@ -225,7 +337,9 @@ describe("the fixed-total question", () => {
     ).rows;
     const clearable = (key: string): boolean | undefined => {
       const row = rows.find((candidate) => candidate.key === key);
-      return row?.control === "number" || row?.control === "select"
+      return row?.control === "number" ||
+        row?.control === "select" ||
+        row?.control === "slider"
         ? row.clearable
         : undefined;
     };
