@@ -1170,23 +1170,43 @@ the settings *drawing* as a panel, and Phase 10 fixes the settings *modal* again
 is drawn today: **the ruling is that Phase 10 does not wait**, because the pane spec is unwritten and
 the drawing is the instrument Phase 10 is measured against until then.
 
-- [ ] **Task 12.1 — the two drawing corrections.** Landed. `vg-306` and `vg-436` separately, one commit
-      each, the drawings README split by hunk.
-- [ ] **Task 12.2 — the self-contained product fixes.** `vg-109`, `vg-182`, `vg-185` and `vg-029` landed,
-      one commit each. **`vg-155` and `vg-040` remain** and are this task's open half: the pane must say
-      which of the two things an import did, and the draft must survive a crash with recovery offered.
-- [ ] **Task 12.3 — the four that need a measurement** (`vg-037`, `vg-450`, `vg-190`, `vg-447`). Each is
-      a different owner — `vg-450` names `editor-shell/controls/tooltip.ts`; the other three's owning
-      landmark is **read from the row's own `RULED` marker and its measured section rather than named
-      here**, because this section was written from the ruling's grouping and not from the rows, and
-      naming a file this session has not read is the mistake two briefs already made. Take each
-      measurement first and record it on the row; a fix judged without it is the failure mode.
-- [ ] **Task 12.4 — the six wide ones** (`vg-230`, `vg-269`, `vg-274`, `vg-023`, `vg-056`, `vg-123`). Same
-      rule on landmarks, same reason. These reach several panes each, so **they are grouped by file
-      ownership when this task is written** — as Phase 13's tasks were — rather than run as one
-      dispatch, which is the arrangement that cost 13.2 a split record.
-- [ ] **Task 12.5 — `vg-330`'s spec.** Runs after 12.3 and 12.4, since it redraws the drawing the others
-      are measured against. A brainstorm → spec → plan of its own, not a task in this plan.
+**Restated as `### Task` headings on 2026-10-15, having run as `- [ ]` items until then.** The plan's own
+counting method reads a row as carried when a `### Task` block names it, and as `- [ ]` items this
+section sat inside *Phase 10's* last task block — everything before the next heading of that form belongs
+to it — so **these 13 rows counted as Phase 10's**, and Phase 10 would have appeared to own thirteen rows
+it never had. The tasks are the same tasks, in the same order, with the same rulings on the same rows;
+only the form changed, and it is now the form every other phase uses.
+
+### Task 12.1: The two drawing corrections
+
+- [ ] Landed. `vg-306` and `vg-436` separately, one commit each, the drawings README split by hunk.
+
+### Task 12.2: The self-contained product fixes
+
+- [ ] `vg-109`, `vg-182`, `vg-185` and `vg-029` landed, one commit each. **`vg-155` and `vg-040` remain**
+      and are this task's open half: the pane must say which of the two things an import did, and the
+      draft must survive a crash with recovery offered.
+
+### Task 12.3: The four that need a measurement
+
+- [ ] `vg-037`, `vg-450`, `vg-190`, `vg-447`. Each is a different owner — `vg-450` names
+      `editor-shell/controls/tooltip.ts`; the other three's owning landmark is **read from the row's own
+      `RULED` marker and its measured section rather than named here**, because this section was written
+      from the ruling's grouping and not from the rows, and naming a file this session has not read is
+      the mistake two briefs already made. Take each measurement first and record it on the row; a fix
+      judged without it is the failure mode.
+
+### Task 12.4: The six wide ones
+
+- [ ] `vg-230`, `vg-269`, `vg-274`, `vg-023`, `vg-056`, `vg-123`. Same rule on landmarks, same reason.
+      These reach several panes each, so **they are grouped by file ownership when this task is written**
+      — as Phase 13's tasks were — rather than run as one dispatch, which is the arrangement that cost
+      13.2 a split record.
+
+### Task 12.5: `vg-330`'s spec
+
+- [ ] Runs after 12.3 and 12.4, since it redraws the drawing the others are measured against. A
+      brainstorm → spec → plan of its own, not a task in this plan.
 
 **Acceptance for the phase:** every row closes on the phase that lands its change, each with a `check`
 naming a word from its own `title` and `artefacts` naming a resolvable ancestor sha; no row closes on a
