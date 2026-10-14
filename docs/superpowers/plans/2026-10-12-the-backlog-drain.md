@@ -1724,19 +1724,30 @@ right alignment re-implemented locally; a chord taught for an action whose row r
 - Consumes: nothing from an earlier task in this phase
 - Produces: no user-facing string naming the renderer, and no helper line above the layer tree
 
-- [ ] **Step 1: Remove the layer helper line (item 15)** — `ui-copy.ts:690`, rendered at
-      `composition-pane.tsx:330`, and pinned by `layer-panel.dom.test.tsx:1174`. The assertion
-      changes in the same commit.
+- [ ] **Step 1: Remove the layer helper line (item 15)** — `ui-copy.ts`'s `panels.reorderRule` key, the
+      long string about dragging into or out of a group, rendered at `composition-pane.tsx:333`.
+      **It is pinned by `layer-panel.dom.test.tsx`'s assertion that the rule's text equals
+      `uiCopy.panels.reorderRule` — it pins the *key*, not a literal — so the assertion is removed
+      with the key rather than reworded, and the commit names it.** *(The row and this step both
+      quoted "reorder it within its group" and both cited `:1174` until 2026-10-15. That wording is
+      the pre-13.3 copy — reparenting rewrote the string — and `:1174` is a drop-line assertion, so
+      the step's own failure mode, a string the product no longer prints, was true of its premise.)*
 - [ ] **Step 2: The footer says "Editor ready" (item 16).** The user's own example, and the only one
-      of the 26 sites visible on screen: `editor-shell.ts`'s status line.
-- [ ] **Step 3: The remaining author-facing sites.** `editor-main.ts:290` and `:442`,
-      `editor-shell.ts:432` and `:579` (`:425` is a dev-mode error and stays a developer's message).
-      **The eighteen validation messages in `renderer-core/src/theme/fabric-envelope-validate.ts` are
-      a decision this task must take rather than assume**: they are the author's own errors, so if
-      they keep the renderer's name the task says why, and if they lose it the task says what they
-      say instead. `scene-fabric`'s three sites (`glass.ts:250`, `object-asset.ts:20`,
-      `persist.ts:260`) are read the same way. The two source comments (`ui-copy.ts:290`,
-      `per-kind-column.ts:170`) are not user-facing and are left alone.
+      of the 26 sites visible on screen: `editor-main.ts`'s status line, the `status.textContent` that
+      reads `"Fabric editor ready"` today. **Not `editor-shell.ts`, which this step named until
+      2026-10-15** — that file carries the two "Invalid Fabric theme" messages in Step 3 and no status
+      line.
+- [ ] **Step 3: The remaining author-facing sites.** `editor-main.ts:290` — the "Fabric theme saved"
+      message, `:442` belonging to Step 2 — and `editor-shell.ts:432` and `:579` (`:425` is a dev-mode
+      error and stays a developer's message). **The eighteen validation messages in
+      `renderer-core/src/theme/fabric-envelope-validate.ts` are a decision this task must take rather
+      than assume**: they are the author's own errors, so if they keep the renderer's name the task
+      says why, and if they lose it the task says what they say instead. `scene-fabric`'s three sites
+      (`glass.ts:250`, `object-asset.ts:20`, `persist.ts:260`) are read the same way. The source
+      comments (`ui-copy.ts:67` and `:285`, `per-kind-column.ts:170`) are not user-facing and are left
+      alone — **the `ui-copy.ts:290` this step named until 2026-10-15 is `documentStyle`, a
+      user-facing string and a site of the kind the step above is about, so it was the one entry in
+      this list whose exclusion was wrong.**
 - [ ] **Step 4: Red-proof** at the one visible site: restore the string and the rendered status line
       reads "Fabric editor ready" again.
 - [ ] **Step 5: `npm run gate`, then commit**, naming the sites changed and the ones deliberately
