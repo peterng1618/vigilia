@@ -922,9 +922,7 @@ test("what the rebuild authored survives the save", async ({
   // The File menu's own Save row, and the package it writes.
   const download = page.waitForEvent("download");
   await page.getByRole("button", { name: "File", exact: true }).click();
-  await page
-    .getByRole("menuitem", { name: "Save package" })
-    .click();
+  await page.getByRole("menuitem", { name: "Save package" }).click();
   const file = await (await download).path();
   expect(file, "Save package should write a package").not.toBeNull();
 

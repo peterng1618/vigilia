@@ -5047,17 +5047,18 @@ test.describe("Fabric editor route", () => {
     // level only, and the whole point of this half is the level the child is on.
     const idsInside = (envelope: unknown, group: string): string[] => {
       const objects = (
-        envelope as { scene: { objects: Array<{ id?: string; objects?: unknown[] }> } }
+        envelope as {
+          scene: { objects: Array<{ id?: string; objects?: unknown[] }> };
+        }
       ).scene.objects;
       const holder = objects.find((object) => object.id === group);
       return (holder?.objects ?? []).map(
         (child) => (child as { id?: string }).id ?? "",
       );
     };
-    expect(
-      idsIn(moved),
-      "the child is a top-level object now",
-    ).toContain("child");
+    expect(idsIn(moved), "the child is a top-level object now").toContain(
+      "child",
+    );
     expect(
       idsInside(moved, "grp"),
       "and the group no longer holds it",
@@ -5316,9 +5317,7 @@ async function savePackage(page: Page): Promise<{
   // `exact: true` matched none of them. Which rows print a chord is the markup's
   // business, so demanding the label *be* the whole name makes the locator fail
   // whenever the product adds one.
-  await page
-    .getByRole("menuitem", { name: "Save package" })
-    .click();
+  await page.getByRole("menuitem", { name: "Save package" }).click();
   // **Contained, not exact.** The status line also carries whatever diagnostic
   // is on screen, and a diagnostic is retired by the next *committed* edit — so
   // a save immediately after a refusal reads as both. The claim here is that

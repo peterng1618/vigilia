@@ -195,9 +195,7 @@ test.describe("the rebuilt composition, on a display", () => {
     const saveToHost = async (): Promise<void> => {
       const download = page.waitForEvent("download");
       await page.getByRole("button", { name: "File", exact: true }).click();
-      await page
-        .getByRole("menuitem", { name: "Save package" })
-        .click();
+      await page.getByRole("menuitem", { name: "Save package" }).click();
       const file = await (await download).path();
       expect(file, "Save package should write a package").not.toBeNull();
       copyFileSync(file!, EXPORTED);
@@ -225,9 +223,7 @@ test.describe("the rebuilt composition, on a display", () => {
     await reopened.waitForSelector("#canvas-host canvas");
     const openPackage = reopened.waitForEvent("filechooser");
     await reopened.getByRole("button", { name: "File", exact: true }).click();
-    await reopened
-      .getByRole("menuitem", { name: "Open package" })
-      .click();
+    await reopened.getByRole("menuitem", { name: "Open package" }).click();
     // The dirty-document guard, and it is **correct**: the editor opens on the
     // starter, which nobody has edited and which therefore counts as unsaved
     // work. Without this the file chooser never opens and the step hangs until

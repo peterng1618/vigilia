@@ -691,9 +691,7 @@ async function openPackageWithTiming(
 ): Promise<number> {
   const chooser = page.waitForEvent("filechooser");
   await page.getByRole("button", { name: "File", exact: true }).click();
-  await page
-    .getByRole("menuitem", { name: "Open package" })
-    .click();
+  await page.getByRole("menuitem", { name: "Open package" }).click();
   await answerDialogIfShown(page, "Discard");
   const started = Date.now();
   await (await chooser).setFiles({
