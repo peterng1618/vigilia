@@ -1319,6 +1319,7 @@ side that is right**, and the user's own items 1 and 9 are the newer authority.
 **Files:**
 - Modify: `DESIGN.md`
 - Modify: `packages/editor/src/editor-shell.control-rules.test.ts`
+- Modify: `packages/editor/src/editor-shell/editor-shell.css` (one comment)
 
 - [ ] **Step 1: §7.7.** It reads *"Use native scrollbars and reserve their gutter where necessary; no
       custom scrollbar or scroll-jacking owner."* `editor-shell.css:1124-1143` now makes
@@ -1338,7 +1339,14 @@ side that is right**, and the user's own items 1 and 9 are the newer authority.
       colour of any kind" while it declares `outline: 2px solid var(--shell-accent)`. The claim's
       substance holds — `PAINTS_COLOUR` keys on `color:`, and an outline colour cannot beat the
       marker's `color` — but the sentence is imprecise. Make it say what is true.
-- [ ] **Step 4: `npm run design:check` and `npm run gate`, then commit.** A `§N` marker is stable and
+- [ ] **Step 4: `editor-shell.css`'s comment above `.editor-shell-dock`**, which `13.4` reported as a
+      `Discovered, not fixed:` trailer and left alone. It still says the dock carries "the arrange
+      actions it is too small to enable" and that "the arrange half greys before a selection" — false
+      since `4927f2f0` moved those eight into the inspector, so it now describes a surface that no
+      longer exists. **This is the third piece of text in the phase that describes behaviour the phase
+      replaced**, which is why it rides here rather than in a row: the file that states the rule, the
+      file that reads it, and the test that pins it all move in one commit.
+- [ ] **Step 5: `npm run design:check` and `npm run gate`, then commit.** A `§N` marker is stable and
       is never renumbered; `design:md --cite` fails on a citation naming a number with no marker, so
       if a rewritten sentence moves a marker, the citations to it move in the same commit.
 
