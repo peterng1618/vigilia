@@ -174,7 +174,7 @@ async function saveEnvelope(page: Page): Promise<unknown> {
   const download = page.waitForEvent("download");
   await page.getByRole("button", { name: "File", exact: true }).click();
   await page
-    .getByRole("menuitem", { name: "Save package", exact: true })
+    .getByRole("menuitem", { name: "Save package" })
     .click();
   // **Contains**, not equals. The footer is a status line *and* a diagnostic
   // surface (F1.15): a test whose own action raised a refusal — the radius case

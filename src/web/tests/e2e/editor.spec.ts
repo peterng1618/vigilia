@@ -756,7 +756,13 @@ test.describe("Fabric editor route", () => {
       page.locator('[data-vigilia-section="position"]'),
     ).toBeVisible();
     expect(await isOpen("position")).toBe(false);
-    for (const id of ["content", "layer", "paint", "spends"]) {
+    // **Three questions, not four, because the wordmark is a text run.** A
+    // text object's only Paint row was the glass refusal, and `vg-465` moved
+    // that sentence into the lead block above the sections rather than leaving
+    // a section standing over one refusal — so `per-kind-column.ts`'s
+    // empty-section rule takes the whole section away, and asking for it here
+    // would be asking for the surface `vg-006` was reversed to remove.
+    for (const id of ["content", "layer", "spends"]) {
       expect(await isOpen(id), id).toBe(true);
     }
     await expect(
@@ -1873,8 +1879,10 @@ test.describe("Fabric editor route", () => {
       page.locator('[data-vigilia-layer="group-ram-card"]'),
     ).toHaveAttribute("aria-selected", "true");
     // One dense line per layer: the row's own controls, not the old six text
-    // buttons. The pointer rests on the row, so all three are drawn.
-    await expect(layer.locator("button")).toHaveCount(3);
+    // buttons. The pointer rests on the row, so both are drawn — visibility and
+    // lock. It was three until `vg-462` took the rename pen off the row, since
+    // double-clicking the name already opens it for typing.
+    await expect(layer.locator("button")).toHaveCount(2);
     await expect(layer.locator('[aria-label="Hide"]')).toBeVisible();
 
     await captureVisualReview(page, testInfo, "editor-layer-arrange");
@@ -5270,8 +5278,15 @@ async function savePackage(page: Page): Promise<{
   // The File menu owns Save; the header's own button is gone, so the row is the
   // one route an author takes.
   await page.getByRole("button", { name: "File", exact: true }).click();
+  // **Not `exact`, and the row is why.** A row that prints a chord carries the
+  // chord's `aria-label` inside it (`shell-menu-bar.tsx`), and a descendant's
+  // `aria-label` joins the ancestor's name-from-content — measured: the three
+  // chorded File rows compute a name their own label does not equal, so
+  // `exact: true` matched none of them. Which rows print a chord is the markup's
+  // business, so demanding the label *be* the whole name makes the locator fail
+  // whenever the product adds one.
   await page
-    .getByRole("menuitem", { name: "Save package", exact: true })
+    .getByRole("menuitem", { name: "Save package" })
     .click();
   // **Contained, not exact.** The status line also carries whatever diagnostic
   // is on screen, and a diagnostic is retired by the next *committed* edit — so

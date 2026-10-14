@@ -196,7 +196,7 @@ test.describe("the rebuilt composition, on a display", () => {
       const download = page.waitForEvent("download");
       await page.getByRole("button", { name: "File", exact: true }).click();
       await page
-        .getByRole("menuitem", { name: "Save package", exact: true })
+        .getByRole("menuitem", { name: "Save package" })
         .click();
       const file = await (await download).path();
       expect(file, "Save package should write a package").not.toBeNull();
@@ -226,7 +226,7 @@ test.describe("the rebuilt composition, on a display", () => {
     const openPackage = reopened.waitForEvent("filechooser");
     await reopened.getByRole("button", { name: "File", exact: true }).click();
     await reopened
-      .getByRole("menuitem", { name: "Open package", exact: true })
+      .getByRole("menuitem", { name: "Open package" })
       .click();
     // The dirty-document guard, and it is **correct**: the editor opens on the
     // starter, which nobody has edited and which therefore counts as unsaved

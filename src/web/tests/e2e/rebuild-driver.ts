@@ -119,7 +119,7 @@ export async function openBlank(
   await page.getByRole("button", { name: "File", exact: true }).click();
   // `role="menuitem"`, never `[role=menu] button`: a closed menu stays in the
   // DOM and that selector matches a stale menu's items.
-  await page.getByRole("menuitem", { name: "New theme", exact: true }).click();
+  await page.getByRole("menuitem", { name: "New theme" }).click();
   const chooser = page.locator('[role="dialog"]', {
     hasText: "Choose an artboard size",
   });

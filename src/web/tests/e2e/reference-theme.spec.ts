@@ -266,7 +266,7 @@ async function savePackage(page: Page): Promise<{
   const download = page.waitForEvent("download");
   await page.getByRole("button", { name: "File", exact: true }).click();
   await page
-    .getByRole("menuitem", { name: "Save package", exact: true })
+    .getByRole("menuitem", { name: "Save package" })
     .click();
   await expect(page.locator("#status")).toHaveText("Theme package saved");
   const stream = await (await download).createReadStream();
