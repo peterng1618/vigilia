@@ -1641,22 +1641,37 @@ and leaving the rest, which is the defect this row exists to end.
 ### Task 14.2: The inspector's section list (items 13, 17)
 
 **Files:**
-- Modify: `packages/editor/src/selection-inspector/per-kind-column.ts`, `packages/editor/src/selection-inspector/references.tsx`, `packages/editor/src/ui-copy.ts`
-- Possibly modify: `packages/editor/src/editor-session.ts`
+- Modify: `packages/editor/src/selection-inspector/per-kind-column.ts`, `packages/editor/src/ui-copy.ts`
+- Modify: `packages/editor/src/panes/document/references.tsx` — **the path this task named until
+  2026-10-15 (`selection-inspector/references.tsx`) does not exist.** The panel's owner is
+  `createDocumentReferencesPanel` in `panes/document/`, and `panes/document/references.dom.test.tsx`
+  drives it.
+- Possibly modify: `packages/editor/src/editor-session.ts`, which composes that panel
 
 **Interfaces:**
 - Consumes: the total membership rule `per-kind-column.ts` already enforces by construction
 - Produces: a section list with no read-only residue, and Position's default stated as its reason
 
-- [ ] **Step 1: Position opens by default (item 13).** `per-kind-column.ts:242-244` sets it away from
-      true and `:55-58` gives the reason; both change together, and the new reason says why the
-      asymmetry is gone rather than being deleted.
-- [ ] **Step 2: Remove the Spends section (item 17, first owner)** — `per-kind-column.ts:526`, `:632`
-      and `:649`. It is section-list entries, so its removal is contained.
-- [ ] **Step 3: Remove the This document section (item 17, second owner)** — `ui-copy.ts:295` with
-      `references.tsx:46-61` and `editor-session.ts:372`. **This is a sub-panel rather than an
-      entry**, and its removal reaches Playwright: `tests/e2e/composition-panel.spec.ts:377` and
-      `:385`, and `editor.spec.ts:2529`. Cases that exist only to drive a panel that no longer
+**Line numbers in this task were re-checked on 2026-10-15 and several did not resolve** — a blank line,
+a neighbour's entry, and a test name a few lines out. They are replaced by symbol names and selectors,
+which is the rule the plan's preamble states and what every other task already does. **A citation that
+resolves to the wrong thing reads exactly like one that resolves to the right thing**, and an implementer
+following the old form would have opened a file that is not there.
+
+- [ ] **Step 1: Position opens by default (item 13).** `per-kind-column.ts`'s `defaultOpenOf` returns
+      false for `"position"`, and the comment above it gives the reason; both change together, and the
+      new reason says why the asymmetry is gone rather than being deleted.
+- [ ] **Step 2: Remove the Spends section (item 17, first owner)** — `per-kind-column.ts`'s
+      `spendsBody`, its `["spends", …]` entry in the section list, and the `readOnly: id === "spends"`
+      flag beside it. It is section-list entries, so its removal is contained; the section is the one
+      `[data-vigilia-section="spends"]` names.
+- [ ] **Step 3: Remove the This document section (item 17, second owner)** — the document-references
+      sub-panel: `ui-copy.ts`'s `documentStyle` label ("This document"), `panes/document/references.tsx`,
+      and `editor-session.ts`'s `this.#documentReferences = createDocumentReferencesPanel(`. **This is a
+      sub-panel rather than an entry**, and its removal reaches Playwright. **Find those cases by
+      grepping the specs for the panel's own selector rather than from a line number** — the three this
+      step carried did not resolve, and the Spends case sits in `editor.spec.ts` beside its
+      `[data-vigilia-section="spends"]` locator. Cases that exist only to drive a panel that no longer
       renders are removed with it, and each one's removal is named.
 - [ ] **Step 4: Rendered evidence** on a rebuilt bundle: the inspector opens with Position expanded
       and shows neither read-only section, on the selections that used to carry them.
