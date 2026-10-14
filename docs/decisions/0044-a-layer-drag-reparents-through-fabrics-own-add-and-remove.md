@@ -83,6 +83,12 @@ Found: **Fabric already owns both halves.**
   removal from a canvas root and a removal from a group are the same shape to the
   object and **very different to a listener on the canvas** — which is what the
   scene adapter is (see the decision).
+- Removing at the root is not one write but four, split between two methods:
+  `Collection.remove` splices `_objects` and then calls the canvas's removal hook,
+  and `Canvas._onObjectRemoved` (`fabric/src/canvas/SelectableCanvas.ts:356`) drops
+  the cached render list (`:357`), releases the active object (`:359`) and the
+  hovered target (`:367`) before its `super` nulls the canvas and fires the event.
+  The splice is `Collection.remove`'s; the rest is the hook's.
 
 ## Rung 4 — ecosystem
 
@@ -107,7 +113,7 @@ here rather than in a dependency.
 | Splice `_objects` / assign `object.group` by hand | Invisible | ~6 lines | High — transform bake, `subTargetCheck` flags and serialization all skipped; nothing fails | Rejected |
 | Rebuild the group (`new Group([...members, moved])`, the `group()` idiom) | Fits the existing idiom | ~30 lines | High — a new instance loses the group's authored identity (`id`, `name`, `opacity`, glass), and every other reference to it goes stale | Rejected |
 | Fabric's `group.add` / `canvas.remove` + `canvas.add` / `group.remove` | Native, symmetric | ~20 lines in `bridge.moveLayer` | High — measured: `canvas.remove` disposes the object through the scene adapter, and the move then inserts the corpse | Rejected in review round 1 |
-| The same, with the **root-side** removal silent (`_objects` splice + render-list invalidation) and the transform bake left to Fabric's `insertAt` | Fabric's bake, Fabric's collection API for a group child | ~25 lines | Low — measured in rung 6, and the two fields re-implemented are the two `Collection.remove` writes a mover still needs | **Chosen** |
+| The same, with the **root-side** removal silent (`_objects` splice + the removal hook's own bookkeeping) and the transform bake left to Fabric's `insertAt` | Fabric's bake, Fabric's collection API for a group child | ~30 lines | Low — measured in rung 6, and every write re-implemented is a write the removal hook makes | **Chosen** |
 | A new dependency for drag-and-drop trees | Invisible | A second owner of the tree | High | Rejected — the tree is `layer-tree.ts`'s |
 
 ## Rung 6 — probe
@@ -149,6 +155,14 @@ in `bridge.dom.test.ts`:
 | After a reparent into a group at `angle: 24, scaleX: 1.4` | A surviving child's cached `getBoundingRect().left` was `74.496` while its recomputed box was `−28.858`; a `setCoords()` on every member of both collections brings the cache and the transform back into agreement |
 | Dropping on an empty group | `layerDrop`/`moveLayer` both answered true and the group stayed empty, because the destination is the anchor's parent — a group whose last child was dragged out could never be refilled |
 
+Round 3 measured the two shapes the first fix missed, both now cases in
+`bridge.dom.test.ts`:
+
+| Probe | Reading |
+|---|---|
+| Reparenting while the canvas's active object and hovered target are both the moved chart | `getActiveObject()` and `_hoveredTarget` both still pointed at it after the move; `canvas.remove` + `insertAt` releases both. The two paths' whole observable state now compares equal (**except** the disposal), which is the acceptance — the narrower "the fields I know about are cleared" is what let the disposal through |
+| `outer[inner[a, b], peer]`, a root `loose` dropped on `a` | `inner`'s members came out fresh and `peer` kept a stale box, although the move never names the collection `peer` lives in — the refresh named the destination and the source, and the blast radius is nesting |
+
 Also measured, and the reason `moveLayer` releases a multi-selection first: an
 `ActiveSelection` member's `group` **is the selection**, so a `remove` issued against
 the tree's own parent while the selection is live bakes against a matrix the object
@@ -168,25 +182,39 @@ question about an index in a destination.
 **The anchor names the container when the anchor *is* the container.** It names the
 anchor's parent — the sibling slot directly above it — everywhere else, which is what
 makes dragging a row *out* of a group work. The one exception is a group with nothing
-in it: it has no interior row to aim at, so its own row is the only thing that can
-name it as a destination, and without it a group emptied by dragging its last child
-out could never be refilled. A group that has children keeps its row as a slot, and
-its interior is reached through the child rows it draws.
+in it, and the discriminator is not that it draws no interior row: a **shut** group
+draws none either — `layer-tree.ts:342` collapses every group with children by default,
+and a group created later starts shut. It is that it has no rows to *open*: expanding
+is the route to a group's interior, and a group with nothing in it has nothing to
+expand, so its own row is the only thing that can ever name it as a destination.
+Without that, a group emptied by dragging its last child out could never be refilled.
+A group that has children keeps its row as a slot, and its interior is reached by
+expanding it and aiming at a child row.
 
 **Nothing is written by hand where Fabric writes it.** The transform bake is
 `Group._enterGroup`'s / `_exitGroup`'s, reached by the `insertAt`/`remove` pair; the
-only hand-written write is the *root-side* removal, and only because the removal event
-is the renderer's word for "this node left the scene". `detachFromRoot` splices
-`canvas._objects` and drops `canvas._objectsToRender` — the two writes `Collection.remove`
-makes that a mover still needs — and does not fire `object:removed`, so the scene
-adapter does not dispose an object that is about to be inserted. A group-side removal
-keeps Fabric's own `Group.remove`: it fires the event on the group, which no adapter
-listens to, and it is what bakes the child out of the plane it leaves.
+only hand-written writes are the *root-side* removal's, and only because the removal
+event is the renderer's word for "this node left the scene". `detachFromRoot` splices
+`canvas._objects` and reproduces what the removal hook does with the object it hands
+on — the cached render list, the active object's deselection, the hovered target's
+release (`Canvas._onObjectRemoved`, `fabric/src/canvas/SelectableCanvas.ts:356`; the
+splice is `Collection.remove`'s, the rest is the hook's, and the deselection is
+delegated to Fabric's own `discardActiveObject`, so listeners hear what a real removal
+fires). It does not fire `object:removed`, so the scene adapter does not dispose an
+object that is about to be inserted. A group-side removal keeps Fabric's own
+`Group.remove`: it fires the event on the group, which no adapter listens to, and it
+is what bakes the child out of the plane it leaves.
 
-**The move then refreshes the coordinate caches of both collections**, deepest first,
-for the reason rung 3 records: the layout commit rebases the destination's members but
-nothing cascades `setCoords` while `subTargetCheck` is false, and `sceneBoxesOf` reads
-those caches. That is `grouping-manager`'s idiom, and it is now this path's too.
+**The move then recomputes the coordinate caches of everything under the root**,
+deepest first, for the reason rung 3 records: the layout commit rebases the
+destination's members but nothing cascades `setCoords` while `subTargetCheck` is false,
+and `sceneBoxesOf` reads those caches. Naming the collections the move touches is not
+enough, and round 3 corrected it: an ancestor's box is the fit of its subtree and its
+other children read their box through that ancestor's matrix, so `outer[inner[a, b],
+peer]` leaves `peer` stale although the move never names where `peer` lives. A walk
+from the root is the one shape that does not depend on which collection the caller
+happened to name — `ponytail:` O(objects) per drop, narrow it to the ancestors if a
+document ever makes that measurable. It is `grouping-manager`'s idiom, widened.
 
 **Two consequences worth naming.** A same-parent restack goes through `moveObjectTo`
 on the collection the two objects share (Fabric's own `moveObjectTo` splices `_objects`

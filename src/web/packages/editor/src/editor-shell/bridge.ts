@@ -1,11 +1,6 @@
 import { type Binding, isObjectName } from "@vigilia/renderer-core";
 import { isLocked, VigiliaChart } from "@vigilia/scene-fabric";
-import {
-  ActiveSelection,
-  type Canvas,
-  type FabricObject,
-  Group,
-} from "fabric/es";
+import { ActiveSelection, type FabricObject, Group } from "fabric/es";
 import { type ArrangeAction, applyArrange, canArrange } from "../arrange.js";
 import type { EditorInteraction } from "../editor-interaction.js";
 import { GROUP_CONTEXT_EVENT } from "../grouping-manager/index.js";
@@ -411,11 +406,15 @@ export function createEditorShellBridge(input: {
    * `anchorId` names both the container (its own parent) and the position
    * (directly above it), which is what lets one anchor express entering a
    * group, leaving one, and restacking inside one. **An empty group is the
-   * exception, and it is a container rather than a slot**: it has no interior
-   * row to aim at, so without this a group emptied by dragging its last child
-   * out could never be filled again by drag. A group that *has* children keeps
-   * its row as a slot — that is what makes dragging a row out of a group work —
-   * and its interior is reachable through the child rows it draws.
+   * exception, and it is a container rather than a slot.** Not because it draws
+   * no interior row — a *shut* group with children draws none either
+   * (`layer-tree.ts:342`) — but because it has no rows to open: expanding is
+   * the route to a group's interior, and a group with nothing in it has nothing
+   * to expand, so its own row is the only thing that can ever name it. Without
+   * that, a group emptied by dragging its last child out could never be filled
+   * again by drag. A group with children keeps its row as a slot — which is
+   * what makes dragging a row out of a group work — and its interior is
+   * reachable through the child rows it draws.
    *
    * The cycle is refused here, in the tree's own terms, rather than left to
    * Fabric: its `canEnterGroup` *logs* a circular tree and drops the add, so an
@@ -479,13 +478,25 @@ export function createEditorShellBridge(input: {
    * disposes the object there (`scene-fabric/src/adapter.ts:62`): a chart's
    * ECharts instance and backing pixels are released while the object is about
    * to be inserted into a group and still serializes — a save that looks right
-   * reloads wrong. A reparent is not a deletion, so the two effects of
-   * `Collection.remove` a mover still needs are reproduced and the event is not
-   * fired: the splice, and the canvas's cached render list, which `add`,
-   * `remove` and the stack methods clear and which the render path reads
-   * (`index.mjs:11043`). The object keeps its `canvas`, which is right — its
-   * new owner is a group on the same canvas — where `StaticCanvas`'s own
-   * removal would have nulled it before `insertAt` set it again.
+   * reloads wrong. A reparent is not a deletion, so every write a mover still
+   * needs is reproduced and the event is not fired. Two owners write them and
+   * this is which is which: the splice is `Collection.remove`'s, and everything
+   * below is the removal hook it calls, `Canvas._onObjectRemoved`
+   * (`fabric/src/canvas/SelectableCanvas.ts:356`) — the cached render list
+   * (`:357`, which `add`, `remove` and the stack methods clear and the render
+   * path reads at `:409`), the active object's deselection (`:359`), which is
+   * why a live selection must not keep pointing at a row that has left its
+   * plane, and the hovered target's release (`:367`). Only `super`'s tail is
+   * skipped: the null `canvas`, the `object:removed` fire, and the object's own
+   * `removed` — the object keeps its `canvas`, which is right, since its new
+   * owner is a group on the same canvas.
+   *
+   * The deselection is Fabric's own `discardActiveObject`, so listeners hear
+   * the selection events a real removal fires. The rest is written here because
+   * Fabric reaches it nowhere outside the method that fires the event — and
+   * that fire is the whole reason this function exists. Measured against the
+   * removal path it stands in for, not inferred: `bridge.dom.test.ts`'s
+   * "leaves the canvas in the state a removal leaves" compares the two states.
    *
    * The transform bake is deliberately *not* reproduced here: it is
    * `Group._enterGroup`'s, reached by the `insertAt` that follows.
@@ -497,9 +508,19 @@ export function createEditorShellBridge(input: {
     // `delete` rather than an `undefined` write: the field is optional under
     // `exactOptionalPropertyTypes`, and the render path tests it by truth.
     delete canvas._objectsToRender;
+    if (canvas.getActiveObject() === object) canvas.discardActiveObject();
+    if (canvas._hoveredTarget === object) {
+      // `delete` for the reason above: Fabric writes `void 0` here, and this
+      // field is declared optional too.
+      delete canvas._hoveredTarget;
+      canvas._hoveredTargets = [];
+    }
     return true;
   };
   /**
+   * Recomputes `object`'s cached box, and everything nested under it, deepest
+   * first.
+   *
    * A cached box is not a transform: Fabric's layout rebases a destination's
    * children when the membership changes (`FitContentLayout.shouldPerformLayout`
    * always answers true), but neither `Group.setCoords` nor the layout pass
@@ -508,9 +529,10 @@ export function createEditorShellBridge(input: {
    * caches, so the artboard reported a box the document does not have.
    * `grouping-manager` refreshes its members for the same reason.
    */
-  const refreshCoords = (collection: Canvas | Group): void => {
-    for (const object of collection.getObjects()) object.setCoords();
-    if (collection instanceof Group) collection.setCoords();
+  const refreshCoords = (object: FabricObject): void => {
+    if (object instanceof Group)
+      for (const child of object.getObjects()) refreshCoords(child);
+    object.setCoords();
   };
   const moveLayer = (id: string, anchorId: string): boolean => {
     const move = layerMove(id, anchorId);
@@ -542,10 +564,15 @@ export function createEditorShellBridge(input: {
         if (!detachFromRoot(moved)) return false;
       } else from.remove(moved);
       (to ?? canvas).insertAt(target, moved);
-      // Both collections, deepest first: the destination's own members were
-      // rebased by the insert, and the source's box is now short one child.
-      refreshCoords(to ?? canvas);
-      if (from !== undefined && from !== to) refreshCoords(from);
+      // The whole tree rather than the two collections this branch happens to
+      // name. Which caches a reparent invalidated is a question about nesting,
+      // not about which side of the drag a row is on: an ancestor's box is the
+      // fit of its subtree, and the ancestor's *other* children read their own
+      // box through the ancestor's matrix — so `outer[inner[a, b], peer]` leaves
+      // `peer` stale, and neither collection named here is where `peer` lives.
+      // `ponytail:` O(objects) per drop; narrow it to the ancestors if a
+      // document ever makes that measurable.
+      for (const object of canvas.getObjects()) refreshCoords(object);
     }
     canvas.requestRenderAll();
     input.editor.historyManager.saveState();

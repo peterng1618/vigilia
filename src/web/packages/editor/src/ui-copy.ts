@@ -686,7 +686,8 @@ export const uiCopy = {
      *
      * The empty group is named because it is the one destination the rule
      * otherwise cannot describe: every other drop is "above this row", and a
-     * group with no children has no row inside it to be above. */
+     * shut group can be expanded to show its rows, while a group with nothing
+     * in it will never have a row to be above. */
     reorderRule:
       "Drag a row to reorder it, or to move it into or out of a group. Drop it on an empty group to put it inside.",
     text: "Text",

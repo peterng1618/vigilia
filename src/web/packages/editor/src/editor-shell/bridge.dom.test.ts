@@ -940,6 +940,127 @@ it("refreshes the cached boxes a reparent moves", async () => {
   await canvas.dispose();
 });
 
+it("leaves the canvas in the state a removal leaves, except the object itself", async () => {
+  // P1's second half, and the shape the acceptance asks for: parity with the
+  // removal this path stands in for, measured, rather than "the two fields are
+  // cleared" — a case asserting only the fields its author knew about is what
+  // let the disposal through four green tests. `canvas.remove` runs
+  // `Canvas._onObjectRemoved` (`fabric/src/canvas/SelectableCanvas.ts:356`),
+  // which releases the canvas's active object and its hovered target as well as
+  // the render list. The hand-written detach reproduced the render list alone,
+  // so a moved object stayed the canvas's active *and* hovered target — a state
+  // `selectLayer`'s own rule forbids, and one the next transform gesture would
+  // write from, against a plane the object has left.
+  const build = () => {
+    const canvas = new Canvas(document.createElement("canvas"));
+    const child = new Rect({ left: 0, top: 0, width: 10, height: 10 });
+    child.set("id", "child");
+    const group = new Group([child]);
+    group.set("id", "grp");
+    const chart = new VigiliaChart({
+      id: "chart",
+      width: 100,
+      height: 60,
+      family: "bar",
+      settings: {},
+    } as never);
+    canvas.add(group, chart);
+    const adapter = createSceneAdapter({ canvas });
+    // What a live editor holds mid-drag: the row being moved is selected and is
+    // whatever the pointer last hovered.
+    canvas.setActiveObject(chart);
+    canvas._hoveredTarget = chart;
+    canvas._hoveredTargets = [chart];
+    const { bridge } = bridgeFor(undefined, {
+      canvas,
+      historyManager: { saveState: vi.fn() },
+    });
+    return { canvas, group, chart, bridge, adapter };
+  };
+  const stateOf = (scene: ReturnType<typeof build>) => ({
+    active: scene.canvas.getActiveObject()?.get("id") ?? null,
+    hovered: scene.canvas._hoveredTarget?.get("id") ?? null,
+    hoveredTargets: scene.canvas._hoveredTargets.map((object) =>
+      object.get("id"),
+    ),
+    root: scene.canvas.getObjects().map((object) => object.get("id")),
+    group: scene.group.getObjects().map((object) => object.get("id")),
+    renderList:
+      scene.canvas._objectsToRender === undefined ? "invalidated" : "cached",
+    chartOnCanvas: scene.chart.canvas === scene.canvas,
+    chartInGroup: scene.chart.group === scene.group,
+    disposed: scene.chart.disposed,
+  });
+
+  // The reference: what Fabric's own removal leaves, which is the path
+  // `moveLayer` took before `detachFromRoot` existed.
+  const removed = build();
+  removed.canvas.remove(removed.chart);
+  removed.group.insertAt(1, removed.chart);
+  removed.canvas.requestRenderAll();
+
+  const moved = build();
+  expect(moved.bridge.moveLayer("chart", "child")).toBe(true);
+
+  // The reference disposes and the fixed path does not, which is the one
+  // difference this fix exists for; everything else must match it exactly.
+  expect(stateOf(removed).disposed).toBe(true);
+  expect(stateOf(moved).disposed).toBe(false);
+  expect({ ...stateOf(moved), disposed: stateOf(removed).disposed }).toEqual(
+    stateOf(removed),
+  );
+
+  removed.adapter.dispose();
+  moved.adapter.dispose();
+  await removed.canvas.dispose();
+  await moved.canvas.dispose();
+});
+
+it("refreshes the caches beside a nested destination, not only those the drop names", async () => {
+  // Finding 2: the refresh ran on the destination and on the source collection
+  // only when the source was not the root, so a drag that *started* at the root
+  // never refreshed the root. A reparent's blast radius is a question about
+  // nesting — a container's box is the fit of its subtree, and its other
+  // children read their box through its matrix — so `outer[inner[a, b], peer]`
+  // with a root `loose` dropped on `a` names `inner` and leaves `peer` stale,
+  // even though no collection this path named contains it.
+  const canvas = new Canvas(document.createElement("canvas"));
+  const a = new Rect({ left: 0, top: 0, width: 20, height: 20 });
+  const b = new Rect({ left: 80, top: 0, width: 20, height: 20 });
+  const peer = new Rect({ left: 0, top: 200, width: 20, height: 20 });
+  const loose = new Rect({ left: 400, top: 170, width: 20, height: 20 });
+  const named: readonly (readonly [FabricObject, string])[] = [
+    [a, "a"],
+    [b, "b"],
+    [peer, "peer"],
+    [loose, "loose"],
+  ];
+  for (const [object, id] of named) object.set("id", id);
+  const inner = new Group([a, b], { angle: 24, scaleX: 1.4 });
+  inner.set("id", "inner");
+  const outer = new Group([inner, peer]);
+  outer.set("id", "outer");
+  canvas.add(outer, loose);
+  const scene = [outer, inner, a, b, peer, loose];
+  // Every cache populated, for the reason the flat case states: an unprimed box
+  // is recomputed rather than read, so staleness would be unobservable.
+  for (const object of scene) object.setCoords();
+  const { bridge } = bridgeFor(undefined, {
+    canvas,
+    historyManager: { saveState: vi.fn() },
+  });
+
+  expect(bridge.moveLayer("loose", "a")).toBe(true);
+  const stale = scene.filter((object) => {
+    const cached = object.getBoundingRect();
+    const refreshed = (object.setCoords(), object.getBoundingRect());
+    return Math.abs(cached.left - refreshed.left) > 1e-6;
+  });
+  expect(stale.map((object) => object.get("id"))).toEqual([]);
+
+  await canvas.dispose();
+});
+
 it("fills a group that has nothing in it, and refills one a drag emptied", async () => {
   // The reviewer's third finding. The destination is the anchor's *parent*, so
   // dropping on a group row lands beside the group and entering it requires
