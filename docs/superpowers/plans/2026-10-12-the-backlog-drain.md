@@ -1349,6 +1349,15 @@ right alignment exists and is measured, the File and Edit menus carry their chor
 remaining surface is the canvas context menu, which draws none. `vg-473` (item 16): 26 sites name
 Fabric, and exactly one is visible on screen — the footer status line the user quoted.
 
+**The sweep item grew after the census, and one row joined this phase from the user's own
+testing.** `vg-469`'s min/max list was five examples and is now the full census the user asked for
+on 2026-10-15 (25 fields, three render sites), which is why Task 14.1 carries a fourth step and a
+ruling about where a slider's maximum comes from. **`vg-478` lands with Task 14.1**: the corner
+radius stores any value while `fabric/src/shapes/Rect.ts:93-94` renders `Math.min(rx, w / 2)`, so
+its bound is half the smaller *drawn* dimension. That is the same question as the seven pixel
+measures Step 4 rules on, and the same shape as `vg-109`, so the two are answered together rather
+than twice.
+
 ### Task 14.1: The slider's well, its wheel, and the rule's remaining fields (items 10, 11, 12)
 
 **Files:**
@@ -1373,11 +1382,33 @@ Fabric, and exactly one is visible on screen — the footer status line the user
       the panel border, the shadow's blur and offset (`panel.ts:200-212`, `:244-263`, `:281-299`)
       and rotation (`per-kind-column.ts:312-326`). The census covered the selection column, so
       **sweep every bounded number in the inspector**, not the five named: the row's list is a lower
-      bound.
-- [ ] **Step 4: Red-proof each** — the typed value fails to commit with the input reverted to a
+      bound. `vg-469` carries the full census — 25 fields, and **exactly three render sites** decide
+      how any of them draws (`selection-inspector/panel.ts:207`, `per-kind-column.ts:318`,
+      `chart-manager/panel.ts:167`), so the sweep is small in code and wide in reach.
+- [ ] **Step 4: The chart settings, where the census found the bulk of it.** Of
+      `renderer-core/src/charts/settings-fields.ts`'s 27 numeric descriptors, **10 carry both
+      bounds already and need no decision** — `animation.durationMs`, `animation.appearMs` (0–5000),
+      `startAngle`/`endAngle` (−360–360, four descriptors), `gradientSegments` (2–256),
+      `categoryGapPercent` (0–100), `innerRadiusPercent`, `outerRadiusPercent` (0–100); their slider
+      takes those numbers. The other eleven are ruled as follows, and **the ruling is that a bound
+      comes from its owner rather than from a constant chosen here**:
+      - `padAngle` (slice gap, degrees) — **max 360**: a full turn is the ceiling the unit itself gives.
+      - `thickness`, `lineWidth`, `markerSize`, `barWidth`, `cornerRadius` (bar), `cornerRadius`
+        (pie), `trackCornerRadius` — every one is a pixel measure that cannot exceed **the chart's
+        own drawn box**, and a radius cannot exceed **half** of it, which is `vg-478`'s finding in
+        the selection column. So the bound is read from the same owner the renderer reads its box
+        from, not written as a number here. If that box is not available where the field is
+        projected, the field keeps a typed number and the task says why — it does not get a
+        guessed ceiling.
+      - `windowSeconds`, `maxPoints`, `total.value` — **these get no slider.** The first two are
+        bounded by the sample store and the third is the chart's own data domain; a slider would
+        offer a range that the store or the data does not honour, which is the defect this step
+        exists to end rather than to spread. Say so on `vg-469`.
+- [ ] **Step 5: Red-proof each** — the typed value fails to commit with the input reverted to a
       span; the wheel does nothing with the listener removed; a swept field renders a typed-only
       well with its slider removed.
-- [ ] **Step 5: `npm run gate`, then commit**, naming the fields the sweep converted.
+- [ ] **Step 6: `npm run gate`, then commit**, naming the fields the sweep converted and the three
+      the ruling leaves typed.
 
 **Acceptance:** a value can be typed into the well and committed, and the wheel moves the control,
 both verified rendered; every bounded number in the inspector carries the pair.
