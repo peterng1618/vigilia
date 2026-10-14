@@ -14,7 +14,6 @@ import {
   type ColumnSectionView,
   type ExtraView,
   editRefusal,
-  measuredEdgeOf,
   type ProjectionPorts,
   projectSelection,
   readField,
@@ -45,7 +44,7 @@ function ports(overrides: Partial<ProjectionPorts> = {}): ProjectionPorts {
     locale: undefined,
     nodeBindings: undefined,
     sampleSource: undefined,
-    geometry: { read: readField, measuredEdge: measuredEdgeOf },
+    geometry: { read: readField },
     ...overrides,
   };
 }

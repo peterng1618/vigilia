@@ -189,11 +189,6 @@ export type GeometryKey = "left" | "top" | "width" | "height" | "angle";
 export interface GeometryPort {
   read(object: FabricObject, key: GeometryKey): number;
   write(object: FabricObject, key: GeometryKey, value: number): void;
-  /** The object's own drawn edge, when it is not the number the Size field
-      shows. See `measuredEdgeOf` in `index.ts`. */
-  measuredEdge(
-    object: FabricObject,
-  ): { readonly width: number; readonly height: number } | undefined;
 }
 
 /**
@@ -330,32 +325,6 @@ function rotationField(
   };
 }
 
-/**
- * The Size pair reads the authored box, which is what it writes. Where the
- * object's own edge is a different number, the author is told which is which
- * rather than left to compare a panel against a canvas.
- *
- * A note, not a control: it carries no well, because DESIGN.md §5.1's border means
- * editable and this line is not.
- */
-function sizeDisagreement(
-  context: ColumnContext,
-  object: FabricObject,
-  edge: { readonly width: number; readonly height: number },
-): FieldView {
-  return {
-    id: "size-disagreement",
-    control: "note",
-    value: uiCopy.inspectorFields.sizeDisagrees(
-      `${Math.round(context.geometry.read(object, "width"))} × ${Math.round(
-        context.geometry.read(object, "height"),
-      )}`,
-      `${edge.width} × ${edge.height}`,
-    ),
-    data: { "data-vigilia-resolution": uiCopy.inspectorFields.size },
-  };
-}
-
 /** What it shows: the name, and a text object's runs and layout. */
 function contentBody(
   target: FabricObject,
@@ -434,9 +403,6 @@ function positionBody(
       "height",
     ),
   ];
-
-  const edge = context.geometry.measuredEdge(target);
-  if (edge !== undefined) fields.push(sizeDisagreement(context, target, edge));
 
   // The mark that says this object's overhang is deliberate. It is beside crop
   // rather than under appearance because what it changes is the crop notice

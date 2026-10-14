@@ -65,12 +65,9 @@ function fieldControl(
   const commit = (value: string | number | boolean): void => {
     edits.commit(revision, field.id, value);
   };
-  // A `note` carries no refusal; a guard rather than a cast keeps the union
-  // honest as arms are added.
-  const refused =
-    field.control !== "note" && field.refused !== undefined
-      ? { refused: field.refused }
-      : {};
+  // A refusal rides with every control that can carry one; a kind that cannot
+  // is guarded rather than cast, so the union stays honest as arms are added.
+  const refused = field.refused !== undefined ? { refused: field.refused } : {};
 
   switch (field.control) {
     case "text":
@@ -99,14 +96,6 @@ function fieldControl(
             onCommit: (value: number) => edits.commit(revision, half.id, value),
           }))}
         />
-      );
-    case "note":
-      // A line of prose, not a control: no well, because a border means
-      // editable (DESIGN.md §5.1). The hook is on the value element itself.
-      return (
-        <p className="text-xs text-muted" {...field.data}>
-          {field.value}
-        </p>
       );
     case "number":
       return (

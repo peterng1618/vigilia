@@ -1202,7 +1202,6 @@ describe("the column's sections", () => {
       geometry: {
         read: () => 0,
         write: () => {},
-        measuredEdge: () => undefined,
       },
       stillTarget: () => true,
       commit: () => {},
@@ -1267,7 +1266,6 @@ describe("the column's sections", () => {
       geometry: {
         read: () => 0,
         write: () => {},
-        measuredEdge: () => undefined,
       },
       stillTarget: () => true,
       commit: () => {},
@@ -1390,27 +1388,34 @@ describe("the size of a text object", () => {
     expect(Number.isFinite(authored.box.width)).toBe(true);
   });
 
-  it("shows the authored box back, not the measurement underneath it", () => {
-    // A `Textbox` derives its own width from its longest unbreakable run, so a
-    // re-read of the measurement reports what the text happens to measure —
-    // 64 here — where the author wrote 300. The box is the authored truth.
+  /** The number a Size half shows, as the author reads it. */
+  const shown = (
+    root: HTMLElement,
+    key: "width" | "height",
+  ): string | undefined =>
+    root.querySelector<HTMLInputElement>(`[data-vigilia-geometry="${key}"]`)
+      ?.value;
+
+  it("reads the object's own edge, not the box it was told", () => {
+    // vg-109, ruled: the Size readout is a probe for what the canvas has, so it
+    // reads the object's own measured edge — where the object has been placed
+    // and what it measures — rather than echoing the `vigiliaText.box` beside
+    // it. Here the box says 300 × 90 and the object measures something else,
+    // and the field follows the object.
     const text = caption();
     text.set("vigiliaText", {
       ...(text.get("vigiliaText") as Record<string, unknown>),
       box: { width: 300, height: 90 },
     });
-    const { inspector } = setup(text);
+    const { host } = setup(text);
 
-    expect(
-      inspector.root.querySelector<HTMLInputElement>(
-        '[data-vigilia-geometry="width"]',
-      )?.value,
-    ).toBe("300");
-    expect(
-      inspector.root.querySelector<HTMLInputElement>(
-        '[data-vigilia-geometry="height"]',
-      )?.value,
-    ).toBe("90");
+    expect(text.width).not.toBe(300);
+    expect(shown(host, "width")).toBe(
+      String(Math.round(text.width * text.scaleX)),
+    );
+    expect(shown(host, "height")).toBe(
+      String(Math.round(text.height * text.scaleY)),
+    );
   });
 
   it("still scales a shape, whose width is a size rather than a box", async () => {
@@ -1429,11 +1434,11 @@ describe("the size of a text object", () => {
   });
 
   /**
-   * `vigiliaText.box` is stored **unscaled** — `assertBoxHeight` puts the object
-   * back at `box.height / scaleY` precisely so the scale can be reapplied by
-   * `boxFrom` — so a text object carrying a scale draws a box larger than the
-   * number the Size field shows. Measured on the running editor: a 140 × 27.12
-   * box at `scaleY 2` read **27** in the H field and drew an edge of 54.24.
+   * A text object whose box and whose own edge are different numbers, which is
+   * what the ruling above is about: `vigiliaText.box` is stored **unscaled**, so
+   * a scaled text object draws a box larger than the box says. Measured on the
+   * running editor: a 140 × 27.12 box at `scaleY 2` read **27** in the H field
+   * and drew an edge of 54.24.
    */
   function scaledCaption(): Textbox {
     const text = caption();
@@ -1443,34 +1448,33 @@ describe("the size of a text object", () => {
       box,
     });
     text.set({ scaleX: 2, scaleY: 2 });
-    // Where the text pass leaves the object's own edges: `assertBoxWidth` and
-    // `assertBoxHeight` assign the authored box straight onto the object,
-    // because a `set` re-enters `initDimensions` and Fabric re-derives the
-    // height from the wrapped text. Assigned rather than set here for the same
-    // reason; left at Fabric's measurement, this would be asserting jsdom's
-    // font metrics rather than the inspector.
+    // Where the text pass leaves the object's own edges: `assertBox` assigns the
+    // authored box straight onto the object, because a `set` re-enters
+    // `initDimensions` and Fabric re-derives the height from the wrapped text.
+    // Assigned rather than set here for the same reason; left at Fabric's
+    // measurement, this would be asserting jsdom's font metrics rather than the
+    // inspector.
     text.width = box.width;
     text.height = box.height;
     return text;
   }
 
-  const sizeLine = (host: HTMLElement): string | null | undefined =>
-    host.querySelector('[data-vigilia-resolution="Size"]')?.textContent;
-
-  it("says which number the Size fields show, and what the object measures", () => {
-    // The field cannot show the measured edge instead: `write` puts the number
-    // the author types into `vigiliaText.box`, so a field reading the edge
-    // would name a number it is about to overwrite. So it keeps the box and
-    // reports the disagreement, rather than leaving the author to choose
-    // between a number on a panel and a box on a canvas.
+  it("reads the drawn box on a scaled text object, where the box is a different number", () => {
+    // The measured disagreement the row was re-measured on: the field said 27
+    // where the canvas drew 54, so a reader comparing the two had to work out
+    // which was wrong before either could be fixed. It reads the drawn number
+    // now. The box stays the *write*'s owner and the text pass asserts it back
+    // onto the object, so the two agree wherever a pass has run.
     const { host } = setup(scaledCaption());
 
-    const line = sizeLine(host);
-    expect(line).toContain("authored");
-    expect(line).toContain("280 × 54");
+    expect(shown(host, "width")).toBe("280");
+    expect(shown(host, "height")).toBe("54");
   });
 
-  it("says nothing when the box and the edge are the same number", () => {
+  it("reads the numbers back where the object's edges carry the box", () => {
+    // The state the text pass leaves every text object in: `assertBox` puts the
+    // box onto the object's own edges, so the readout agrees with the box it
+    // just wrote. Nothing on screen moves for a document in this state.
     const text = caption();
     text.set("vigiliaText", {
       ...(text.get("vigiliaText") as Record<string, unknown>),
@@ -1478,21 +1482,18 @@ describe("the size of a text object", () => {
     });
     const { host } = setup(text);
 
-    expect(sizeLine(host)).toBeUndefined();
+    expect(shown(host, "width")).toBe(String(Math.round(text.width)));
+    expect(shown(host, "height")).toBe(String(Math.round(text.height)));
   });
 
-  it("says nothing for a shape, whose fields already are its measured edge", () => {
+  it("reads a shape's scaled size, which is the same rule", () => {
     const panel = new Rect({ left: 0, top: 0, width: 360, height: 200 });
     panel.set({ scaleX: 2, scaleY: 2 });
     const { host } = setup(panel);
 
-    // W reads 360 and the object draws 720, which is the same disagreement —
-    // but there the field *is* the scaled edge, so there is nothing to report.
-    expect(
-      host.querySelector<HTMLInputElement>('[data-vigilia-geometry="width"]')
-        ?.value,
-    ).toBe("720");
-    expect(sizeLine(host)).toBeUndefined();
+    // A shape has no box: its `width` is a size and the scale is part of it, so
+    // this is the number the canvas draws — which the readout has always read.
+    expect(shown(host, "width")).toBe("720");
   });
 });
 

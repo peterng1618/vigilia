@@ -133,16 +133,6 @@ export type FieldView =
       readonly control: "pair";
       readonly halves: readonly PairHalfView[];
     })
-  /**
-   * A line of prose, not a control: DESIGN.md §5.1's "a border means editable", so a
-   * note carries no well. The size-disagreement line is the one it exists for.
-   */
-  | {
-      readonly id: string;
-      readonly control: "note";
-      readonly value: string;
-      readonly data: FieldHooks;
-    }
   | (FieldBase & { readonly control: "toggle"; readonly checked: boolean })
   | (FieldBase & {
       readonly control: "select";
@@ -335,7 +325,7 @@ export type ProjectionPorts = Pick<
   ColumnContext,
   "globals" | "locale" | "nodeBindings" | "sampleSource"
 > & {
-  readonly geometry: Pick<GeometryPort, "read" | "measuredEdge">;
+  readonly geometry: Pick<GeometryPort, "read">;
 };
 
 /**
@@ -476,28 +466,6 @@ export function editRefusal(
   return undefined;
 }
 
-/**
- * The box a text object was authored with, when it has one.
- *
- * `vigiliaText.box` is the owner (ADR 0003): a `Textbox` cannot hold a box,
- * because `width` re-enters `initDimensions` and widens the object to its
- * longest run. So the Size fields write this rather than a scale, and read it
- * back, and the type stays the size its preset says it is.
- */
-function authoredBoxOf(
-  object: FabricObject,
-  key: GeometryKey,
-): number | undefined {
-  if (key !== "width" && key !== "height") return undefined;
-  const authored = object.get("vigiliaText") as
-    | { readonly box?: { readonly width?: number; readonly height?: number } }
-    | undefined;
-  const value = authored?.box?.[key];
-  return typeof value === "number" && Number.isFinite(value)
-    ? value
-    : undefined;
-}
-
 /** Whether the object is a text object, whose size is a box and not a scale. */
 export function isTextObject(object: FabricObject): boolean {
   const authored = object.get("vigiliaText");
@@ -505,57 +473,21 @@ export function isTextObject(object: FabricObject): boolean {
 }
 
 /**
- * The object's own drawn edge, when it is not the number the Size fields show.
- *
- * `vigiliaText.box` is stored **unscaled** — `assertBoxHeight` puts the object
- * back at `box.height / scaleY` precisely so the scale can be reapplied by
- * `boxFrom` — so a text object carrying a scale draws a box larger than the
- * number in the field. Measured on the running editor: a 140 × 27 box at
- * `scaleX/scaleY 2` read 140 and **27** in the Size pair and drew an edge of
- * 280 × 54.
- *
- * The field cannot show the drawn edge instead. `write` puts the number the
- * author types into `vigiliaText.box`, so a Size field reading the edge would
- * name a number it is about to overwrite — and it would be wrong on the next
- * render, which is exactly the kind of quiet disagreement this reports instead.
- *
- * Only a text object with a box can disagree: for anything else `readField`
- * already returns the scaled edge, and a box-less text object's height *is*
- * Fabric's measurement. A difference under one whole unit is the field's own
- * rounding, not a disagreement.
- */
-export function measuredEdgeOf(
-  object: FabricObject,
-): { readonly width: number; readonly height: number } | undefined {
-  if (!isTextObject(object)) return undefined;
-  const authoredWidth = authoredBoxOf(object, "width");
-  const authoredHeight = authoredBoxOf(object, "height");
-  if (authoredWidth === undefined && authoredHeight === undefined) {
-    return undefined;
-  }
-
-  const drawn = {
-    width: Math.round(object.width * object.scaleX),
-    height: Math.round(object.height * object.scaleY),
-  };
-  const shown = {
-    width: Math.round(authoredWidth ?? drawn.width),
-    height: Math.round(authoredHeight ?? drawn.height),
-  };
-  return drawn.width === shown.width && drawn.height === shown.height
-    ? undefined
-    : drawn;
-}
-
-/**
  * Fabric reports geometry in the object's own origin; these read whole artboard
  * units (§57). Position is the object's own `left`/`top` — its placement in the
  * artboard — not the drawn box, which also includes any stroke and the group
  * context, so the numbers an author types match what they placed.
+ *
+ * A size is the object's own measured edge, scale included: the number the
+ * canvas has. It used to prefer `vigiliaText.box` for a text object, and where
+ * that object carried a scale the two disagreed — a 140 × 27 box at scale 2
+ * read **27** in H while the canvas drew 54 — so the readout was a probe that
+ * could be wrong about the surface it describes, and two findings had to be
+ * told apart before either could be fixed (vg-109). Where the box and the edge
+ * are the same number, which is every object the text pass has been through,
+ * this reads the same value it did before.
  */
 export function readField(object: FabricObject, key: GeometryKey): number {
-  const box = authoredBoxOf(object, key);
-  if (box !== undefined) return box;
   if (key === "width") return object.width * object.scaleX;
   if (key === "height") return object.height * object.scaleY;
   if (key === "left") return object.left;

@@ -43,7 +43,6 @@ import {
   type CropEdits,
   editRefusal,
   isTextObject,
-  measuredEdgeOf,
   type ProjectionPorts,
   projectSelection,
   type RunEdits,
@@ -592,7 +591,6 @@ export function createSelectionInspector(
       geometry: {
         read: readField,
         write,
-        measuredEdge: measuredEdgeOf,
       },
       stillTarget,
       commit,
@@ -640,7 +638,7 @@ export function createSelectionInspector(
       locale,
       nodeBindings: options.nodeBindings,
       sampleSource: options.sampleSource,
-      geometry: { read: readField, measuredEdge: measuredEdgeOf },
+      geometry: { read: readField },
     };
     const sections =
       object === undefined ? [] : perKindColumn(object, columnContext());

@@ -9,7 +9,6 @@ import { SelectionColumn } from "./column.js";
 import { idleCrop, idleCropEdits } from "./idle-crop.test-stage.js";
 import { type ColumnContext, perKindColumn } from "./per-kind-column.js";
 import {
-  measuredEdgeOf,
   type ProjectionPorts,
   projectSelection,
   type RunEdits,
@@ -67,7 +66,7 @@ function ports(): ProjectionPorts {
     locale: undefined,
     nodeBindings: undefined,
     sampleSource: undefined,
-    geometry: { read: readField, measuredEdge: measuredEdgeOf },
+    geometry: { read: readField },
   };
 }
 
@@ -90,7 +89,6 @@ function context(): ColumnContext {
     geometry: {
       read: readField,
       write: () => {},
-      measuredEdge: measuredEdgeOf,
     },
     stillTarget: () => true,
     commit: () => {},
