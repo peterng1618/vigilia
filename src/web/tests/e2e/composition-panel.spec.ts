@@ -99,30 +99,15 @@ async function openEveryGroup(page: Page): Promise<void> {
 async function clippedNames(page: Page): Promise<{
   readonly clipped: number;
   readonly total: number;
-  readonly specimens: number;
-  readonly specimensClipped: number;
 }> {
-  const names = await page
-    .locator(".vigilia-layer-name")
-    .evaluateAll((all) => ({
-      clipped: all.filter((name) => name.scrollWidth > name.clientWidth).length,
-      total: all.length,
-    }));
-  // **The mark's own clipping, counted beside the name's.** The kind slot is the
-  // column the row is *designed* to give up — a specimen is recognised rather
-  // than read — so when the slot's width moves, both what it costs and what it
-  // buys have to be numbers in the same run (`vg-260`).
-  const specimens = await page
-    .locator(".vigilia-layer-sample")
-    .evaluateAll((all) => ({
-      total: all.length,
-      clipped: all.filter((one) => one.scrollWidth > one.clientWidth).length,
-    }));
-  return {
-    ...names,
-    specimens: specimens.total,
-    specimensClipped: specimens.clipped,
-  };
+  // The mark's own clipping was counted here beside the name's, for the ruling
+  // that traded the kind slot's width against it (`vg-260`). A glyph cannot
+  // clip, so that half is gone with the specimens it measured: the mark column
+  // pays for the narrowing and no longer pays with legibility.
+  return page.locator(".vigilia-layer-name").evaluateAll((all) => ({
+    clipped: all.filter((name) => name.scrollWidth > name.clientWidth).length,
+    total: all.length,
+  }));
 }
 
 /**
@@ -308,13 +293,13 @@ test("the shipped column is DESIGN.md's, and its clipping is measured against th
   const superseded = await clippedNames(page);
   await instrument(page, "superseded", "");
 
-  // **And the mark's own trade, which is what the 2026-10-12 ruling turned on.**
-  // The ruling narrowed the kind slot to 20px so the name keeps its room and the
-  // mark pays; this run prices both halves of that trade at once, so "which loss
-  // is worse" is two counts rather than two opinions. The instrument is the
-  // slot's own declaration and nothing else, so the width is the only variable —
-  // and the width the product ships is the 28px the ruling's own measurement
-  // held (`vg-260`), which is why the *instrument* is the narrow side here.
+  // **And the mark slot's own trade, which is what the 2026-10-12 ruling turned
+  // on.** The ruling narrowed the kind slot to 20px so the name keeps its room
+  // and the mark pays; the instrument is the slot's own declaration and nothing
+  // else, so the width is the only variable — and the width the product ships is
+  // the 28px the ruling's own measurement held (`vg-260`), which is why the
+  // *instrument* is the narrow side here. What the mark pays is now only room: a
+  // glyph does not clip, so this run prices the names' half of the trade.
   await instrument(page, "mark-20", ".vigilia-layer-mark { flex: 0 0 20px; }");
   const narrowMark = await clippedNames(page);
   await instrument(page, "mark-20", "");
@@ -326,19 +311,15 @@ test("the shipped column is DESIGN.md's, and its clipping is measured against th
   // comment and the commit that measured it.
   expect(shipped.clipped).toBeGreaterThanOrEqual(withoutRole.clipped);
   expect(shipped.clipped).toBeGreaterThanOrEqual(superseded.clipped);
-  // The narrowing's two directions: a narrower slot can only unclip names, and
-  // it can only make more specimens clip. Both are directions for the same
-  // reason as the pair above — the count belongs to one font stack — and the
-  // counts themselves are recorded below rather than asserted, because what they
-  // show is the size of the trade rather than a pass condition.
+  // The narrowing's direction: a narrower slot can only unclip names. It is a
+  // direction rather than a pixel value for the reason the pair above is — the
+  // count belongs to one font stack — and the counts themselves are recorded
+  // below rather than asserted, because what they show is the size of the trade
+  // rather than a pass condition.
   expect(
     narrowMark.clipped,
     "the narrower slot unclips names rather than clipping more of them",
   ).toBeLessThanOrEqual(shipped.clipped);
-  expect(
-    narrowMark.specimensClipped,
-    "and it is the specimens that pay for that room",
-  ).toBeGreaterThanOrEqual(shipped.specimensClipped);
 
   for (const [type, value] of [
     ["rows", shipped.total],
@@ -346,9 +327,6 @@ test("the shipped column is DESIGN.md's, and its clipping is measured against th
     ["clipped@shipped-without-role", withoutRole.clipped],
     [`clipped@${SUPERSEDED_WIDTH}`, superseded.clipped],
     ["mark-slot-px", String(MARK_SLOT_PX)],
-    ["specimens", String(shipped.specimens)],
-    [`specimens-clipped@${MARK_SLOT_PX}px`, String(shipped.specimensClipped)],
-    ["specimens-clipped@20px", String(narrowMark.specimensClipped)],
     ["clipped@mark-20px", String(narrowMark.clipped)],
   ] as const) {
     testInfo.annotations.push({ type, description: String(value) });

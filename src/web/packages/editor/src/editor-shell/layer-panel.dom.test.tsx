@@ -13,7 +13,6 @@ import {
   LAYER_ROW_INDENT_STEP,
   ROW_HEIGHT,
 } from "../panes/composition/composition-pane.js";
-import { NEUTRAL_PAINT } from "../panes/composition/layer-mark-fixture.js";
 import { uiCopy } from "../ui-copy.js";
 import { createEditorShellBridge, type EditorShellBridge } from "./bridge.js";
 import type {
@@ -23,23 +22,17 @@ import type {
   LayerRow,
 } from "./layer-tree.js";
 
-/** The mark a fixture gets unless it names its own: the kind's own data, with
- * nothing a test would mistake for a real document's reading. */
+/** The mark a fixture gets unless it names its own: the kind's own glyph, and
+ *  for the two kinds whose glyph names something more, a primitive and a family
+ *  a real document could hold. */
 function markFor(kind: LayerKind): LayerMark {
   switch (kind) {
-    case "text":
-      return {
-        kind,
-        text: "Aa",
-        family: "Segoe UI, sans-serif",
-        weight: "400",
-      };
     case "chart":
       return { kind, family: "bar" };
     case "shape":
-      return { kind, paint: NEUTRAL_PAINT };
+      return { kind, shape: "rect" };
+    case "text":
     case "image":
-      return { kind, src: undefined };
     case "group":
       return { kind };
   }
@@ -1518,7 +1511,7 @@ it("names a chart row's family and a shape row's kind for a screen reader", asyn
       id: "panel",
       name: "Panel",
       kind: "shape",
-      mark: { kind: "shape", paint: NEUTRAL_PAINT },
+      mark: { kind: "shape", shape: "rect" },
       role: { kind: "shape" },
     }),
   ]);

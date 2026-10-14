@@ -23,9 +23,9 @@
  *
  * **The third invariant is the kind set's**: one glyph per object kind, closed
  * against the kind vocabulary rather than against `KIND_GLYPHS`' own keys, and
- * the Add pane drawing every object its owner offers. The row itself draws
- * *treatments* for four of the five kinds and is deliberately not that case's
- * subject — `kind-mark.dom.test.tsx` owns those arms.
+ * the Add pane drawing every object its owner offers. The layer row's own arms
+ * are drawn by the fleet below but asserted in `kind-mark.dom.test.tsx`, which
+ * is where one kind's mark and another's are told apart.
  */
 import { readdirSync, readFileSync, statSync } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
@@ -86,7 +86,7 @@ import { Rail } from "./rail.js";
  * the shape tiles read too because `SHAPE_KINDS` is fixed the same way.
  */
 const EXEMPT_SOURCES: readonly string[] = [
-  "editor-shell/icons.ts", // the vocabulary: one family, one weight, one reader of lucide-react
+  "editor-shell/icons.ts", // the vocabulary: one family, one weight, and the one place both are decided
   "new-fabric-theme-icons.ts", // authored scene icons — lucide geometry turned into Fabric paths, not chrome
   "object-actions.ts", // §6: the registry owns which action wears which icon
   "panes/add/add-pane.tsx", // §6: a shape/text tile draws the primitive it builds (§7.8's glyph-led tiles)
@@ -191,12 +191,14 @@ const VOCABULARY: readonly Drawn[] = [
   { icon: TWISTY_GLYPHS.expanded, size: 13 },
 ];
 
-/** Every mark a row can carry, so the chart and group arms are drawn too. */
+/** Every mark a row can carry, so all five arms are drawn — and the shape arm
+ *  with a primitive of its own, since its glyph comes from `SHAPE_GLYPHS`
+ *  rather than from the kind map. */
 const MARKS: readonly LayerMark[] = [
-  { kind: "text", text: "Heading", family: undefined, weight: undefined },
+  { kind: "text" },
   { kind: "chart", family: "gauge" },
-  { kind: "shape", paint: undefined },
-  { kind: "image", src: undefined },
+  { kind: "shape", shape: "wedge" },
+  { kind: "image" },
   { kind: "group" },
 ];
 

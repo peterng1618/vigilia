@@ -5,20 +5,14 @@ import { fileURLToPath } from "node:url";
 import {
   defaultGaugeSettings,
   defaultLineSettings,
-  type TextRun,
 } from "@vigilia/renderer-core";
+import { Arc, reviveThemeEnvelope, VigiliaChart } from "@vigilia/scene-fabric";
 import {
-  Arc,
-  reviveThemeEnvelope,
-  VIGILIA_TEXT_PROPERTY,
-  VigiliaChart,
-} from "@vigilia/scene-fabric";
-import {
+  Ellipse,
   FabricImage,
   type FabricObject,
-  Gradient,
   Group,
-  Path,
+  Line,
   Rect,
   StaticCanvas,
   Textbox,
@@ -275,119 +269,59 @@ describe("layer projection", () => {
   });
 });
 
-describe("the kind, read as the thing rather than as a mark for it", () => {
-  /** A text object as `buildText` leaves it: the authored runs beside the id,
-   * and the face `applyObjectTypePresets` resolved onto the object. Both are
-   * read here rather than stubbed, because a stub would let the projection
-   * agree with itself about values nothing in a real document holds. */
-  const authoredText = (
-    id: string,
-    runs: readonly TextRun[],
-    face: { family?: string; weight?: string } = {},
-  ): FabricObject => {
-    const object = new Textbox("", {
-      id,
-      ...(face.family === undefined ? {} : { fontFamily: face.family }),
-      ...(face.weight === undefined ? {} : { fontWeight: face.weight }),
-    });
-    object.set(VIGILIA_TEXT_PROPERTY, { runs });
-    return object;
-  };
-
-  it("takes a text row's words and face from the object itself", () => {
-    const object = authoredText(
-      "cpu-card-title",
-      [{ kind: "literal", text: "CPU", typePreset: "typePresets.24-400" }],
-      { family: "Inter, sans-serif", weight: "400" },
-    );
+describe("the kind, read as one glyph per row", () => {
+  it("gives a text row its kind and no member of the object", () => {
+    // The mark carries the kind alone. The object's own words, set in its own
+    // face, were a 28px column trying to be a canvas — and a row says what it
+    // holds through its name, its role and its bound key, which are columns
+    // that can render a string without a legibility budget.
+    const object = new Textbox("CPU", { id: "cpu-card-title" });
     const rows = projectLayers({ ...base, root: [object] });
-    // Both owners named in `textMark`: the runs for the string, the object for
-    // the face. A row that re-resolved the preset from globals could not do
-    // this without them, which is why it does not.
-    expect(rows[0]?.mark).toEqual({
-      kind: "text",
-      text: "CPU",
-      family: "Inter, sans-serif",
-      weight: "400",
-    });
+    expect(rows[0]?.mark).toEqual({ kind: "text" });
   });
 
-  it("says a value run only once, and never as a reading", () => {
-    // §83: missing or non-ok telemetry is never fabricated. A row printing the
-    // last number the canvas happened to hold would be a stale reading dressed
-    // as a name, and it would change under the pointer.
-    //
-    // The key itself is not in the specimen either: the bound column prints it,
-    // one column along, in the document's own words. A treeitem's accessible
-    // name is the concatenation of its columns, so printing it in both said
-    // every binding in the panel twice — on screen and to a screen reader.
-    const object = authoredText("cpu-card-value", [
-      { kind: "value", bindingId: "cpu-card-load" },
-      { kind: "literal", text: "%" },
-    ]);
-    const rows = projectLayers({
-      ...base,
-      root: [object],
-      bindings: {
-        "cpu-card-value": [{ id: "cpu-card-load", semanticKey: "cpu.load" }],
-      },
-    });
-    expect(rows[0]?.mark).toMatchObject({ kind: "text", text: "%" });
-    expect(rows[0]?.bound).toEqual(["cpu.load"]);
-  });
-
-  it("says the run is undeclared rather than inventing a key for it", () => {
-    // The three states stay distinct: a run naming a binding the document does
-    // not declare is a mistake in the theme, and the row must not smooth it
-    // over by printing the id as though it were a key. Nothing else on the row
-    // would say so — the bound column is empty — so this one keeps the
-    // placeholder even though the other case drops it.
-    const object = authoredText("orphan", [
-      { kind: "value", bindingId: "gone" },
-    ]);
-    const rows = projectLayers({ ...base, root: [object] });
-    expect(rows[0]?.mark).toMatchObject({ text: "@(gone: undeclared)" });
-    expect(rows[0]?.bound).toEqual([]);
-  });
-
-  it("takes a shape's swatch from the property its own paint belongs on", () => {
-    // `paintPropertyFor` is the inspector's rule and the one that put a stroked
-    // path's ink on its stroke. Reading the same property here is what stops the
-    // swatch and the canvas disagreeing about what colour a shape is.
-    const filled = new Rect({
-      id: "panel",
-      width: 10,
-      height: 10,
-      fill: "#2ee6a8",
-    });
-    const inked = new Path("M 0 0 L 10 10", {
-      id: "icon",
-      stroke: "#dbeafe",
-      strokeWidth: 3,
-      fill: null,
-    });
+  it("names the primitive a shape row is, and none rather than guessing", () => {
+    // Fabric's own `type` tag, which is the vocabulary the Add pane's
+    // `SHAPE_KINDS` and this union already share. The two sweeps are
+    // `scene-fabric`'s own classes — Fabric 7 ships no arc — but Fabric's
+    // instance getter lowercases whatever the class calls itself, so they read
+    // here like every built-in tag and a reader needs no special case.
+    const filled = new Rect({ id: "panel", width: 10, height: 10 });
+    const round = new Ellipse({ id: "chip", rx: 5, ry: 5 });
+    const rule = new Line([0, 0, 10, 10], { id: "rule" });
     // A value rather than a fresh literal, for the reason the production file
     // gives: Fabric infers its options type from one, and the inferred type has
     // no room for the authored `id`.
     const arcOptions = {
-      id: "arc",
+      id: "sweep",
       radius: 10,
       startAngle: 0,
       endAngle: 90,
       stroke: "#f59e0b",
-      strokeWidth: 3,
       fill: null,
     };
     const swept = new Arc(arcOptions);
-    const rows = projectLayers({ ...base, root: [filled, inked, swept] });
+    // A tag this build does not know is reported as none. Defaulting to a
+    // neighbour would have a square stand for whatever a newer build wrote —
+    // the one thing a kind mark must never do, so this is the case a theme made
+    // by a newer build lands in. Defined on the instance rather than set:
+    // Fabric's `type` setter is a documented no-op ("Setting type has no
+    // effect"), so a test that assigned it would be asserting against `rect`.
+    const future = new Rect({ id: "future", width: 10, height: 10 });
+    Object.defineProperty(future, "type", { value: "star" });
+    const rows = projectLayers({
+      ...base,
+      root: [filled, round, rule, swept, future],
+    });
     const mark = (id: string): unknown =>
       rows.find((row) => row.id === id)?.mark;
-    expect(mark("panel")).toEqual({ kind: "shape", paint: "#2ee6a8" });
-    expect(mark("icon")).toEqual({ kind: "shape", paint: "#dbeafe" });
-    // An arc is the third unfilled shape, and the same disagreement is waiting
-    // for it: a row reading `fill` off a shape whose paint is on its stroke
-    // shows nothing at all, so the layer list and the canvas name two colours.
-    expect(mark("arc")).toEqual({ kind: "shape", paint: "#f59e0b" });
+    expect(mark("panel")).toEqual({ kind: "shape", shape: "rect" });
+    // A `Circle` is an ellipse the author has not stretched, and the editor has
+    // no circle kind: both classes are the one primitive.
+    expect(mark("chip")).toEqual({ kind: "shape", shape: "ellipse" });
+    expect(mark("rule")).toEqual({ kind: "shape", shape: "line" });
+    expect(mark("sweep")).toEqual({ kind: "shape", shape: "arc" });
+    expect(mark("future")).toEqual({ kind: "shape", shape: undefined });
   });
 
   it("names a chart's family, and names none rather than guessing", () => {
@@ -469,28 +403,6 @@ describe("the kind, read as the thing rather than as a mark for it", () => {
       "gpu.load",
       "ram.used.percent",
     ]);
-  });
-
-  it("refuses a paint it cannot show rather than coercing one", () => {
-    // Fabric keeps a gradient as a paint object rather than a colour. A 10px
-    // swatch cannot show one honestly, so the row draws its outline alone —
-    // where reaching for the first stop, or for the shape's stroke, would put a
-    // colour on screen that the object does not carry.
-    const gradient = new Rect({
-      id: "wash",
-      width: 10,
-      height: 10,
-      fill: new Gradient({
-        type: "linear",
-        coords: { x1: 0, y1: 0, x2: 1, y2: 0 },
-        colorStops: [
-          { offset: 0, color: "#223047" },
-          { offset: 1, color: "#2ee6a8" },
-        ],
-      }),
-    });
-    const rows = projectLayers({ ...base, root: [gradient] });
-    expect(rows[0]?.mark).toEqual({ kind: "shape", paint: undefined });
   });
 });
 
@@ -773,10 +685,12 @@ describe("the starter theme", () => {
       }
       expect(row.mark.kind).toBe(row.kind);
     }
-    // The four readings that make a card a card, named off the document.
+    // The readings that make a card a card, named off the document.
     const mark = (id: string): unknown =>
       rows.find((row) => row.id === id)?.mark;
-    expect(mark("cpu-card-title")).toMatchObject({ text: "CPU" });
+    expect(rows.find((row) => row.id === "cpu-card-title")?.mark).toEqual({
+      kind: "text",
+    });
     expect(mark("ram-gauge")).toEqual({ kind: "chart", family: "gauge" });
     expect(rows.find((row) => row.id === "cpu-card-value")?.bound).toEqual([
       "cpu.load",
@@ -790,7 +704,7 @@ describe("the starter theme", () => {
     ]);
     // And the wordmark, which is a loose label rather than a card — the case
     // that keeps a card being a fact about the starter.
-    expect(mark("wordmark")).toMatchObject({ text: "VIGILIA" });
+    expect(rows.find((row) => row.id === "wordmark")?.kind).toBe("text");
   });
 
   it("names the unit on every card row, and nothing else anywhere", async () => {

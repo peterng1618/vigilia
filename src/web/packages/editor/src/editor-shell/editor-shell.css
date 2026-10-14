@@ -978,8 +978,8 @@ body,
      2 in the superseded 360px column. At 246px the row also stopped holding its
      four columns, and the give came from the kind column rather than the role:
      `group-trends-card`'s role `Performance trends` ran 11px past the row's own
-     edge, and the mark slot went 40px → 28px to buy it back, since a specimen
-     is designed to clip and a role is not (`.vigilia-layer-mark`).
+     edge, and the mark slot went 40px → 28px to buy it back, since the mark
+     slot is designed to clip and a role is not (`.vigilia-layer-mark`).
 
      The canvas is `minmax(0, 1fr)`, so every pixel here comes off the stage —
      which is why the 360px was measured at all. The narrower pane gives those
@@ -2129,7 +2129,7 @@ body,
   display: inline-flex;
   justify-content: center;
 }
-/* The kind, drawn as the thing. One slot for all five arms, so every row's
+/* The kind, drawn as one glyph. One slot for all five arms, so every row's
    name starts on the same left edge — which is what makes a column of them
    scannable at all.
 
@@ -2139,12 +2139,10 @@ body,
    `group-trends-card` ran its role `Performance trends` 11px past its own right
    edge, and the row clips its overflow — so the role was cut mid-word. The role
    is `flex: none` and must never be the column that gives way; this slot is the
-   one *designed* to clip ("a specimen is not read — it is recognised, so it
-   clips rather than shrinks"), so the 12px comes from here. The cost is the one
-   the old budget named: at 28px a specimen that overran 40px now overruns 28px
-   too, and `Storage`, `VRAM` and `VIGILIA` lose their last letters — but a
-   specimen that runs long ellipsises and its `title` carries the whole string,
-   where a clipped role said nothing at all.
+   one *designed* to clip, so the 12px comes from here. That measurement was
+   taken on the text specimen this slot used to draw; what sits here now is a
+   13px glyph, so the 28px is slack rather than tight, and the width is left
+   where the ruling put it.
 
    **Held here after the 2026-10-12 ruling narrowed it to 20px, because the
    measurement that ruling asked for shows the lever cannot do what it was ruled
@@ -2152,11 +2150,8 @@ body,
    *identical* — the name is 28px short and the key 41px short at both widths —
    because both columns are already at their floors and the freed 8px only
    shortens how far the line overruns into the reserved strip (the role's
-   coverage falls 58px → 50px). What it costs is legibility: of the starter's 28
-   specimens, 12 clip at 20px against 7 at 28px, and at 20px they read `V…`,
-   `R…`, `G…` — a mark that says nothing. Two names of 60 unclip, on rows the
-   ruling is not about. So the value waits for a ruling that names a lever the
-   arithmetic can honour; `vg-260` carries both counts. */
+   coverage falls 58px → 50px). So the value waits for a ruling that names a
+   lever the arithmetic can honour; `vg-260` carries the counts. */
 .vigilia-layer-mark {
   flex: 0 0 28px;
   min-width: 0;
@@ -2164,41 +2159,6 @@ body,
   align-items: center;
   justify-content: center;
   overflow: hidden;
-}
-.vigilia-layer-sample {
-  /* 11px is the smallest the shell reads comfortably, and a specimen is not
-     read — it is recognised, so it clips rather than shrinks. Left-aligned
-     inside the slot so a long word starts where every other one starts. */
-  font-size: 11px;
-  line-height: 1;
-  overflow: hidden;
-  white-space: nowrap;
-  text-overflow: ellipsis;
-  justify-content: flex-start;
-  color: var(--shell-text);
-}
-.vigilia-layer-swatch {
-  /* Sized here rather than on `.vigilia-layer-mark`: `flex-basis` sets the
-     main size, so a `width` on the same element would be overridden and a
-     10px swatch would draw as a 40px bar. */
-  flex: 0 0 auto;
-  width: 10px;
-  height: 10px;
-  border-radius: var(--radius-sm);
-  /* The outline is what a shape with no flat paint — a gradient, or ink alone —
-     shows instead, so it is always drawn and the fill sits inside it. */
-  border: 1px solid color-mix(in srgb, var(--shell-text) 35%, transparent);
-  box-sizing: border-box;
-}
-.vigilia-layer-thumb {
-  flex: 0 0 auto;
-  width: 18px;
-  height: 12px;
-  border-radius: var(--radius-sm);
-  object-fit: cover;
-  /* A picture that has not decoded is a hole, not a picture, so the frame is
-     drawn before it arrives rather than after. */
-  background: color-mix(in srgb, var(--shell-text) 12%, transparent);
 }
 /* The name is the row's identity, so it is the one thing that does not give up
    its width: everything beside it is allowed to shrink first. */

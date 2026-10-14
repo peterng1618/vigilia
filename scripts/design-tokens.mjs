@@ -182,7 +182,6 @@ export const CEILINGS = [
       { site: ".vigilia-field", text: "72px" },
       { site: ".vigilia-layer-dropline", text: "2px" },
       { site: ".vigilia-layer-mark", text: "28px" },
-      { site: ".vigilia-layer-thumb", text: "18px" },
       { site: ".vigilia-layer-state", text: "right: 2px" },
       {
         site: ".vigilia-layer-row:has(.vigilia-layer-state button)",

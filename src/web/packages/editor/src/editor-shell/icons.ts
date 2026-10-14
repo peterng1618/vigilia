@@ -1,18 +1,22 @@
 import {
+  Activity,
   ChartColumn,
   ChartLine,
   ChartPie,
   Check,
   ChevronDown,
   ChevronRight,
+  Ellipse,
   Eye,
   EyeOff,
   FileText,
   Gauge,
+  Hexagon,
   Image as ImageIcon,
   Info,
   Keyboard,
   Layers2,
+  LoaderCircle,
   Lock,
   LogIn,
   LogOut,
@@ -25,6 +29,8 @@ import {
   Scan,
   Settings,
   Shapes,
+  Spline,
+  Square,
   Star,
   TriangleAlert,
   Type,
@@ -32,20 +38,23 @@ import {
 } from "lucide-react";
 import type * as React from "react";
 import { createElement } from "react";
+import type { ShapeKind } from "../new-object-defaults.js";
 import type { LayerKind } from "./layer-tree.js";
 import type { RailSlot } from "./rail.js";
 
 /** The glyph component type, re-exported so a surface that holds a glyph in a
  *  prop — `Pane`'s title icon, the domain maps — names it without reaching for
- *  `lucide-react`, which only this module may read. */
+ *  `lucide-react`, which `object-actions.ts` is the one other chrome reader of. */
 export type { LucideIcon };
 
 /**
  * The chrome's one icon vocabulary (DESIGN.md §6): one family (lucide), one weight
  * rule, and one place that decides either.
  *
- * **This is the only chrome module that reads `lucide-react`.** A surface that
- * named a lucide glyph itself would be a second owner of "which family and
+ * **This is the vocabulary, and the one place a chrome glyph's family and
+ * weight are decided.** `object-actions.ts` is the single other chrome module
+ * that reads `lucide-react`, because the action registry owns which icon an
+ * action wears; a third reader would be a second owner of "which family and
  * which weight", and two of those is how the shell grew four weights. The
  * domain maps that name a *set* — severities, chart families, settings tabs —
  * keep their shape and draw their members from here, so the vocabulary stays
@@ -127,6 +136,42 @@ export const CHART_LINE_GLYPH: LucideIcon = ChartLine;
 export const CHART_BAR_GLYPH: LucideIcon = ChartColumn;
 export const CHART_PIE_GLYPH: LucideIcon = ChartPie;
 
+/**
+ * One glyph per primitive the Add pane offers, keyed by `ShapeKind`, so a
+ * primitive added to that list fails to compile here until it wears a mark.
+ *
+ * **Every entry is a lucide glyph, and four of them are approximations.** Lucide
+ * has no `polyline`, `arc` or `wedge`, and the Add pane's own tiles answer that
+ * by drawing the geometry by hand — which is a licence its tiles have and this
+ * vocabulary does not (§6: the tiles are fixed, so a tile may depict the shape it
+ * builds; a row may not). Each of the three takes the nearest glyph of the same
+ * family, and the two the row shares with another surface are noted here because
+ * a reader will meet them twice:
+ *
+ * - `polyline` is `Activity`, which draws the same open multi-segment line at the
+ *   same weight — it is the one lucide glyph whose path is a bare zigzag.
+ * - `arc` is `LoaderCircle`, a single open sweep. Nothing in the set names a
+ *   sweep, so this is the closest *drawing*; the name is a spinner's.
+ * - `wedge` is `ChartPie`, a sector of a disc — the honest mark for a quarter-disc,
+ *   and the same glyph the chart family `pie` wears one row over. The two are told
+ *   apart by the row's own role column, not by the mark.
+ *
+ * `polygon` is `Hexagon` rather than the tile's triangle: the new polygon's own
+ * default is six sides (`NEW_POLYGON_SIDES`), so the row's mark is the figure the
+ * author actually inserted — and a three-sided mark would name a kind the Add
+ * pane does not offer.
+ */
+export const SHAPE_GLYPHS: Readonly<Record<ShapeKind, LucideIcon>> = {
+  rect: Square,
+  ellipse: Ellipse,
+  polygon: Hexagon,
+  polyline: Activity,
+  line: Minus,
+  path: Spline,
+  arc: LoaderCircle,
+  wedge: ChartPie,
+};
+
 /** The settings column's other two tabs. */
 export const KEYBOARD_GLYPH: LucideIcon = Keyboard;
 export const INFO_GLYPH: LucideIcon = Info;
@@ -164,12 +209,12 @@ export const RAIL_GLYPHS: Readonly<Record<RailSlot, LucideIcon>> = {
  * `group` is `STACK_GLYPH` and nothing else, and why no entry here may be
  * derived from what a row happens to hold.
  *
- * **This is the vocabulary, not the layer row's drawing.** The row reads it
- * nowhere, deliberately: §6 and §5.1 leave four of its five arms as
- * *treatments* — a text sample in the object's own face, a chart family icon, a
- * paint swatch, an image thumbnail — because each carries a fact a glyph cannot
- * (`kind-mark.tsx` records which arm is which). `chart` here is the kind's
- * generic mark; the row's chart arm answers a different question, the *family*.
+ * **The layer row draws these, one arm per kind.** `text`, `image` and `group`
+ * wear this map's own entry; `shape` wears the primitive's own glyph
+ * (`SHAPE_GLYPHS`, falling back to this map's generic `Shapes` for a shape whose
+ * kind the build does not know); and `chart` answers a different question — the
+ * *family* — through `chartFamilyGlyph`, so `chart` here is the kind's generic
+ * mark rather than the one four chart rows wear.
  */
 export const KIND_GLYPHS = {
   text: Type,

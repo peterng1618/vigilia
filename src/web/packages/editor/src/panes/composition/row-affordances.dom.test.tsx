@@ -8,7 +8,6 @@ import type { LayerRow } from "../../editor-shell/layer-tree.js";
 import { type ObjectTarget, objectActionsFor } from "../../object-actions.js";
 import { uiCopy } from "../../ui-copy.js";
 import { CompositionPane } from "./composition-pane.js";
-import { NEUTRAL_PAINT } from "./layer-mark-fixture.js";
 
 // React only flushes work scheduled inside `act` when it has been told it is in
 // a test; without this, `act` warns and the update lands after the assertion.
@@ -24,7 +23,7 @@ function row(parts: Partial<LayerRow> = {}): LayerRow {
     id: "loose-0",
     name: "loose-0",
     kind: "shape",
-    mark: { kind: "shape", paint: NEUTRAL_PAINT },
+    mark: { kind: "shape", shape: "rect" },
     role: { kind: "shape" },
     bound: [],
     depth: 0,

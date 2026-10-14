@@ -3,44 +3,36 @@ import {
   CHART_FAMILIES,
   type ChartFamily,
   objectName,
-  type TextRun,
 } from "@vigilia/renderer-core";
-import {
-  isLocked,
-  paintPropertyFor,
-  VIGILIA_TEXT_PROPERTY,
-  VigiliaChart,
-} from "@vigilia/scene-fabric";
-import { FabricImage, type FabricObject, Group } from "fabric/es";
-import { runPlaceholder } from "../run-placeholder.js";
+import { isLocked, VigiliaChart } from "@vigilia/scene-fabric";
+import { type FabricObject, Group } from "fabric/es";
+import type { ShapeKind } from "../new-object-defaults.js";
 import { uiCopy } from "../ui-copy.js";
 
 export type LayerKind = "text" | "shape" | "chart" | "group" | "image";
 
 /**
- * What a row draws in place of a kind glyph.
+ * What a row draws in place of its name: the kind's glyph, and the one fact a
+ * glyph cannot carry.
  *
- * Each arm carries the object's own data rather than a symbol standing in for
- * it, because a 12px glyph cannot survive 340px and this can: a text row says
- * what it says and in what face, a chart which family it is, a shape the paint
- * it fills with, an image its own source. A group carries nothing — the twisty
- * and a bold name are its mark, and a mark of its own would be a third thing
- * saying the same word.
+ * One icon per kind, drawn from the chrome vocabulary (`icons.ts`), so the mark
+ * column reads as one family at one weight — a text row is the `T`, an image row
+ * the picture mark, a group the stack. Two arms carry a fact the kind alone does
+ * not name: a chart says which *family* it is and a shape which primitive,
+ * because eight rows all saying "chart" is the one word an author scanning for
+ * the ring cannot use. A group carries nothing — §5.1: it is an arbitrary set of
+ * elements, so its mark is generic by construction.
+ *
+ * Nothing here is the object's own data any more. A row that printed the text's
+ * words in the text's own face, the shape's paint or the image's own bytes was a
+ * 28px column pretending to be a canvas; the name, the role and the bound key are
+ * what say those things, and each of them is a column the tree already owns.
  */
 export type LayerMark =
-  | {
-      readonly kind: "text";
-      /** The string the object says, and the face it says it in. */
-      readonly text: string;
-      /** `undefined` when the object names no family, which is not the same as
-       * the shell's own: an undeclared face is left undeclared rather than
-       * guessed at. */
-      readonly family: string | undefined;
-      readonly weight: string | number | undefined;
-    }
+  | { readonly kind: "text" }
   | { readonly kind: "chart"; readonly family: ChartFamily | undefined }
-  | { readonly kind: "shape"; readonly paint: string | undefined }
-  | { readonly kind: "image"; readonly src: string | undefined }
+  | { readonly kind: "shape"; readonly shape: ShapeKind | undefined }
+  | { readonly kind: "image" }
   | { readonly kind: "group" };
 
 /**
@@ -170,66 +162,43 @@ export function rowNameOf(object: FabricObject, kindWord: string): string {
 }
 
 /**
- * The row's own words: the literal runs, and a value run only where nothing
- * else on the row will say it.
+ * Which primitive a shape object is, in the Add pane's own vocabulary, or
+ * `undefined` for a shape this build cannot name.
  *
- * The bound column prints every key this node reads, in the document's own
- * words, one column along — so a resolvable run's `@key` repeated it on screen
- * and said it a second time in a treeitem, whose accessible name is the
- * concatenation of its own columns. Dropping it also stops a row saying `61%`
- * where the author wrote `cpu.load`: a reading is what the object currently
- * shows, not what it says. An **undeclared** run keeps the placeholder, because
- * the bound column says nothing for it and a row that smoothed that over would
- * claim the run reads nothing at all.
- */
-function specimen(
-  runs: readonly TextRun[],
-  bindings: readonly Binding[],
-): string {
-  return runs
-    .map((run) => {
-      if (run.kind === "literal") return run.text;
-      return bindings.some((entry) => entry.id === run.bindingId)
-        ? ""
-        : runPlaceholder(run, bindings);
-    })
-    .join("");
-}
-
-/**
- * A text object's own string, and the face it says it in.
+ * Read off Fabric's own `type` tag, the same way `kindOf` tells one object from
+ * another — and it is Fabric's getter rather than the envelope's spelling, so
+ * `scene-fabric`'s `Arc` and `Wedge` (whose classes keep the capitals a scene
+ * JSON carries, because Fabric 7 ships no sweep and the tag is what keeps an arc
+ * from reviving as a full disc) read here as `arc` and `wedge`.
  *
- * Two owners, both the ones that already own the answers. The string is the
- * authored runs under `vigiliaText`, printed by `specimen`. The face is what
- * `applyObjectTypePresets` wrote onto the object from the first run's type
- * preset: the same family the canvas paints with, read from the object rather
- * than re-resolved from the document's globals, so a row can never disagree
- * with the text it names.
+ * `undefined` is an answer rather than a gap — a shape tag a newer build wrote is
+ * not a `rect`, and a row that guessed a neighbour would name a kind the document
+ * does not hold. `icons.ts` draws that row the generic shape mark.
  */
-function textMark(
-  object: FabricObject,
-  bindings: readonly Binding[],
-): LayerMark {
-  const authored = object.get(VIGILIA_TEXT_PROPERTY) as
-    | { readonly runs?: readonly TextRun[] }
-    | undefined;
-  // Fabric's own `text` is what the object draws, so a text object authored
-  // before `vigiliaText` existed still has a string to show rather than a hole.
-  const fallback =
-    typeof object.get("text") === "string" ? object.get("text") : undefined;
-  const runs = authored?.runs;
-  const text = runs === undefined ? fallback : specimen(runs, bindings);
-  const family = object.get("fontFamily");
-  const weight = object.get("fontWeight");
-  return {
-    kind: "text",
-    text: text === undefined ? "" : text,
-    family: typeof family === "string" ? family : undefined,
-    weight:
-      typeof weight === "string" || typeof weight === "number"
-        ? weight
-        : undefined,
-  };
+function shapeKindOf(object: FabricObject): ShapeKind | undefined {
+  switch ((object as { type?: string }).type) {
+    case "rect":
+      return "rect";
+    // A `Circle` is an ellipse the author has not stretched: there is no Circle
+    // kind, so both classes answer the one primitive.
+    case "ellipse":
+    case "circle":
+      return "ellipse";
+    case "polygon":
+      return "polygon";
+    case "polyline":
+      return "polyline";
+    case "line":
+      return "line";
+    case "path":
+      return "path";
+    case "arc":
+      return "arc";
+    case "wedge":
+      return "wedge";
+    default:
+      return undefined;
+  }
 }
 
 /**
@@ -244,32 +213,6 @@ function chartMark(object: FabricObject): LayerMark {
   return {
     kind: "chart",
     family: CHART_FAMILIES.find((known) => known === family),
-  };
-}
-
-/**
- * A shape's own paint, read from the property its owner says the paint belongs
- * on — `paintPropertyFor` is the inspector's own rule and the one that put a
- * stroked path's ink on its stroke, so the swatch and the canvas agree.
- *
- * Fabric keeps a gradient here as a paint object rather than a colour, and a
- * 10px swatch cannot show one honestly; that row draws its outline alone.
- */
-function shapeMark(object: FabricObject): LayerMark {
-  const paint: unknown = object.get(paintPropertyFor(object));
-  return {
-    kind: "shape",
-    paint: typeof paint === "string" ? paint : undefined,
-  };
-}
-
-/** An image's own source, so the row shows the picture rather than a symbol for
- * "there is a picture". Fabric's `getSrc` is the same accessor its own `toObject`
- * persists, so the thumbnail cannot drift from what a save writes. */
-function imageMark(object: FabricObject): LayerMark {
-  return {
-    kind: "image",
-    src: object instanceof FabricImage ? object.getSrc() : undefined,
   };
 }
 
@@ -333,20 +276,20 @@ function roleOf(
   }
 }
 
-function markOf(
-  object: FabricObject,
-  kind: LayerKind,
-  bindings: readonly Binding[],
-): LayerMark {
+/** The one glyph a row wears, and the one fact the kind alone does not name:
+ *  a chart's family, a shape's primitive. Every other arm is the kind and
+ *  nothing else, because a mark that read anything more would be a third column
+ *  of the row drawn as an icon. */
+function markOf(object: FabricObject, kind: LayerKind): LayerMark {
   switch (kind) {
     case "text":
-      return textMark(object, bindings);
+      return { kind: "text" };
     case "chart":
       return chartMark(object);
     case "shape":
-      return shapeMark(object);
+      return { kind: "shape", shape: shapeKindOf(object) };
     case "image":
-      return imageMark(object);
+      return { kind: "image" };
     case "group":
       return { kind: "group" };
   }
@@ -403,7 +346,7 @@ export function projectLayers({
           id,
           name: nameOf(object, id, kind),
           kind,
-          mark: markOf(object, kind, own),
+          mark: markOf(object, kind),
           role: roleOf(object, kind, own),
           bound: own.map((entry) => entry.semanticKey),
           depth,

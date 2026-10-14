@@ -5,10 +5,15 @@ import { fileURLToPath } from "node:url";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { expect, it } from "vitest";
-import { Glyph, STACK_GLYPH } from "../../editor-shell/icons.js";
+import {
+  Glyph,
+  KIND_GLYPHS,
+  type LucideIcon,
+  SHAPE_GLYPHS,
+  STACK_GLYPH,
+} from "../../editor-shell/icons.js";
 import type { LayerMark } from "../../editor-shell/layer-tree.js";
 import { KindMark } from "./kind-mark.js";
-import { MEMBER_PAINT, SHAPE_PAINT } from "./layer-mark-fixture.js";
 
 // React only flushes work scheduled inside `act` when it has been told it is in
 // a test; without this, `act` warns and the update lands after the assertion.
@@ -17,14 +22,13 @@ import { MEMBER_PAINT, SHAPE_PAINT } from "./layer-mark-fixture.js";
 ).IS_REACT_ACT_ENVIRONMENT = true;
 
 /** One arm per kind, so a case can ask every arm rather than the ones it happens
- *  to get right. The image carries a `src` so the arm draws rather than returning
- *  nothing — `src: undefined` is a real row state and not what slot width is
- *  about. */
+ *  to get right. The shape carries a primitive, because its glyph is the one
+ *  that comes from `SHAPE_GLYPHS` rather than from the kind map. */
 const ARMS: readonly LayerMark[] = [
-  { kind: "text", text: "VIGILIA", family: "Inter, sans-serif", weight: "600" },
+  { kind: "text" },
   { kind: "chart", family: "gauge" },
-  { kind: "shape", paint: SHAPE_PAINT },
-  { kind: "image", src: "blob:pic" },
+  { kind: "shape", shape: "rect" },
+  { kind: "image" },
   { kind: "group" },
 ];
 
@@ -33,6 +37,24 @@ function render(mark: LayerMark): HTMLElement {
   const root = createRoot(host);
   act(() => root.render(<KindMark mark={mark} />));
   return host;
+}
+
+/** The class lucide writes on the `<svg>` it renders for a glyph. Every mark's
+ *  expected icon is read off the vocabulary through this rather than written as
+ *  a literal, so moving an entry in `icons.ts` moves these cases with it instead
+ *  of leaving stale names that still pass. */
+function lucideClass(icon: LucideIcon): string | null {
+  const host = document.createElement("div");
+  const root = createRoot(host);
+  act(() => root.render(<Glyph icon={icon} size={13} />));
+  return host.querySelector("svg")?.getAttribute("class") ?? null;
+}
+
+/** The one glyph an arm drew, in the arm's own slot. */
+function armGlyph(mark: LayerMark): string | null | undefined {
+  return render(mark)
+    .querySelector<SVGElement>(`[data-vigilia-layer-mark="${mark.kind}"] svg`)
+    ?.getAttribute("class");
 }
 
 it("gives a group a generic glyph, and nothing it could not know", () => {
@@ -46,16 +68,9 @@ it("gives a group a generic glyph, and nothing it could not know", () => {
   // whole correction to the earlier "a group shows nothing here". It is the
   // chrome vocabulary's stack glyph (`icons.ts`), the same one the rail's
   // Composition slot wears, rather than a second hand-authored path set.
-  //
-  // The expected class is read off `STACK_GLYPH` itself rather than written as
-  // a literal, so changing the vocabulary's stack glyph moves this assertion
-  // with it instead of leaving a stale name that still passes.
   expect(glyph).not.toBeNull();
-  const vocabulary = document.createElement("div");
-  const vocabularyRoot = createRoot(vocabulary);
-  act(() => vocabularyRoot.render(<Glyph icon={STACK_GLYPH} size={13} />));
   expect(glyph?.querySelector("svg")?.getAttribute("class")).toBe(
-    vocabulary.querySelector("svg")?.getAttribute("class"),
+    lucideClass(STACK_GLYPH),
   );
   // A glyph, not a word: the mark says "this holds others" without a second
   // string the treeitem's accessible name would then repeat.
@@ -68,7 +83,7 @@ it("gives a group a generic glyph, and nothing it could not know", () => {
   const planted = {
     kind: "group",
     name: "CPU card",
-    children: [{ kind: "shape", paint: MEMBER_PAINT }],
+    children: [{ kind: "shape", shape: "wedge" }],
   } as unknown as LayerMark;
   const plantedHost = render(planted);
   expect(
@@ -76,66 +91,60 @@ it("gives a group a generic glyph, and nothing it could not know", () => {
   ).toBe(glyph?.outerHTML);
 });
 
-it("draws a text mark as its own words, in its own face", () => {
-  // A 12px `T` glyph answers neither question an author has; the mark's own
-  // string does both at once — *what it says* and *that it is text*. Read on the
-  // declared value: jsdom applies no stylesheet, so a computed style would be
-  // theatre, but the inline declaration is exactly what the browser paints.
-  const host = render({
-    kind: "text",
-    text: "VIGILIA",
-    family: "Inter, sans-serif",
-    weight: "600",
-  });
+it("draws a text row as the vocabulary's T, and never the object's words", () => {
+  // A row's own words, set in the object's own face, were a 28px column
+  // pretending to be a canvas: at 11px they clipped to `V…` and said nothing the
+  // row's name does not. The kind's glyph is what belongs in the slot.
+  const host = render({ kind: "text" });
+  const glyph = host.querySelector<SVGElement>(
+    '[data-vigilia-layer-mark="text"] svg',
+  );
 
-  const sample = host.querySelector<HTMLElement>(
-    '[data-vigilia-layer-mark="text"]',
-  )!;
-  expect(sample.textContent).toBe("VIGILIA");
-  expect(sample.style.fontFamily).toBe("Inter, sans-serif");
-  expect(sample.style.fontWeight).toBe("600");
-  // The mark declares no face of its own beyond the object's, so the specimen is
-  // the only place a font family appears — checked on the declaration rather
-  // than a substring, because `sans-serif` contains `serif`.
-  expect(host.querySelectorAll("[style*='font-family']")).toHaveLength(1);
+  expect(glyph).not.toBeNull();
+  expect(glyph?.getAttribute("class")).toBe(lucideClass(KIND_GLYPHS.text));
+  // Nothing is drawn beside the glyph: no specimen, and no `title` carrying the
+  // words either — a tooltip only a pointer can reach is not where a row says
+  // what it holds.
+  const slot = host.querySelector<HTMLElement>(".vigilia-layer-mark");
+  expect(slot?.textContent).toBe("");
+  expect(slot?.querySelector("[title]")).toBeNull();
 });
 
 it("gives each kind a mark that says which kind it is", () => {
   // The negative half matters as much as the positive: one mark for everything
   // would pass a case that only checked the arms it happens to get right.
-  const gauge = render({ kind: "chart", family: "gauge" });
   expect(
-    gauge
+    render({ kind: "chart", family: "gauge" })
       .querySelector('[data-vigilia-layer-mark="chart"] svg')
       ?.getAttribute("class"),
   ).toContain("lucide-gauge");
-  const line = render({ kind: "chart", family: "line" });
   expect(
-    line
+    render({ kind: "chart", family: "line" })
       .querySelector('[data-vigilia-layer-mark="chart"] svg')
       ?.getAttribute("class"),
   ).toContain("lucide-chart-line");
-  // A shape's own paint, not a square in the shell's colour. The expected colour
-  // is the fixture's, read back through the same normalisation the swatch got:
-  // jsdom reports a hex as `rgb()`, so writing the triplet here would be a
-  // second copy of the value the fixture already owns.
-  const swatch = render({
-    kind: "shape",
-    paint: SHAPE_PAINT,
-  }).querySelector<HTMLElement>('[data-vigilia-layer-mark="shape"]')!;
-  const normalised = document.createElement("div");
-  normalised.style.background = SHAPE_PAINT;
+  // A shape wears its own primitive's glyph, from the vocabulary: the two shapes
+  // below are told apart by their marks, which is the one question a kind mark
+  // answers. The expected classes are read off `SHAPE_GLYPHS`, so a primitive
+  // that leaves the map is a compile error rather than a stale assertion.
+  expect(armGlyph({ kind: "shape", shape: "rect" })).toBe(
+    lucideClass(SHAPE_GLYPHS.rect),
+  );
+  expect(armGlyph({ kind: "shape", shape: "wedge" })).toBe(
+    lucideClass(SHAPE_GLYPHS.wedge),
+  );
   expect(
-    normalised.style.background,
-    "the fixture is a colour jsdom reads",
-  ).not.toBe("");
-  expect(swatch.style.background).toBe(normalised.style.background);
-  // An image is its own picture.
-  expect(
-    render({ kind: "image", src: "blob:pic" })
-      .querySelector<HTMLImageElement>('[data-vigilia-layer-mark="image"]')
-      ?.getAttribute("src"),
-  ).toBe("blob:pic");
+    armGlyph({ kind: "shape", shape: "rect" }),
+    "two primitives do not wear one mark",
+  ).not.toBe(armGlyph({ kind: "shape", shape: "wedge" }));
+  // A primitive this build cannot name still draws, with the kind's generic
+  // shape mark — a row that drew nothing would be a row with no kind at all.
+  expect(armGlyph({ kind: "shape", shape: undefined })).toBe(
+    lucideClass(KIND_GLYPHS.shape),
+  );
+  // An image is the vocabulary's picture mark rather than its own bytes, which
+  // is what puts every kind's mark in one family at one weight.
+  expect(armGlyph({ kind: "image" })).toBe(lucideClass(KIND_GLYPHS.image));
   // A group draws the generic stack glyph, never a diagram of what it holds.
   expect(
     render({ kind: "group" }).querySelector(
@@ -160,7 +169,7 @@ it("draws the mark the projection named, and never walks the group's children", 
     kind: "group",
     children: [
       { kind: "chart", family: "pie" },
-      { kind: "shape", paint: MEMBER_PAINT },
+      { kind: "shape", shape: "wedge" },
     ],
   } as unknown as LayerMark);
   expect(planted.querySelectorAll("[data-vigilia-layer-mark]")).toHaveLength(1);
