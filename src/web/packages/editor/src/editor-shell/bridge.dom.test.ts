@@ -343,6 +343,27 @@ it("gates ungroup on a real Group selection", () => {
   expect(bridge.can("group")).toBe(false);
 });
 
+it("offers its constructions with nothing selected, and runs them through the façade", () => {
+  // vg-460: the footer was present and empty until a layer was, because every
+  // object command needs a subject. A construction does not, so `can` answers
+  // true with no active object at all — the one exemption from the selection
+  // gate — and the dispatch is the façade's own route, which pulls the
+  // document's theme. A second, editor-only construction here would build a
+  // poorer object than the Add pane one gesture away.
+  const { bridge, session } = bridgeFor(undefined);
+  expect(bridge.snapshot().activeKind).toBe("none");
+  expect(bridge.can("new-text")).toBe(true);
+  expect(bridge.can("new-shape:ellipse")).toBe(true);
+  // The gate still holds for everything that has a subject.
+  expect(bridge.can("delete")).toBe(false);
+  expect(bridge.can("arrange:align-left")).toBe(false);
+
+  bridge.run("new-text");
+  expect(session.addText).toHaveBeenCalledTimes(1);
+  bridge.run("new-shape:ellipse");
+  expect(session.addShape).toHaveBeenCalledWith("ellipse");
+});
+
 it("republishes when an object is deleted, so the row goes with it", () => {
   // A deletion fires no selection event — the active object is discarded
   // first — so the projection was never re-read and the layer list kept a row
@@ -754,7 +775,7 @@ it("reorders within one parent and reports the move", () => {
 
   // Paint order is bottom-first; the panel reverses it for display.
   expect(order()).toEqual(["alpha", "beta"]);
-  expect(bridge.reorderLayer("alpha", "beta")).toBe(true);
+  expect(bridge.moveLayer("alpha", "beta")).toBe(true);
   expect(order()).toEqual(["beta", "alpha"]);
   // Reordering is authored state: without this the drop would not reach the
   // saved envelope, and the browser test below is the only other thing that
@@ -762,25 +783,71 @@ it("reorders within one parent and reports the move", () => {
   expect(saveState).toHaveBeenCalledTimes(1);
 });
 
-it("refuses to move a layer across a group boundary", () => {
-  // Crossing owners changes membership, which is a different operation.
+it("moves a layer across a group boundary, in and out", () => {
+  // vg-461: the refusal was by construction rather than by a rule. The anchor
+  // names the container — its own parent — so one operation covers both
+  // directions, and what the author gets is the object in a different place in
+  // the tree: 0044's rung 6 measured that nothing moves on the screen either
+  // way, because the transform bake is Fabric's own.
+  const canvas = new Canvas(document.createElement("canvas"));
+  const child = new Rect({ left: 0, top: 0, width: 10, height: 10 });
+  const loose = new Rect({ left: 60, top: 0, width: 10, height: 10 });
+  child.set("id", "child");
+  loose.set("id", "loose");
+  const group = new Group([child]);
+  group.set("id", "grp");
+  canvas.add(group, loose);
+  const saveState = vi.fn();
+  const { bridge } = bridgeFor(undefined, {
+    canvas,
+    historyManager: { saveState },
+  });
+  const ids = (objects: readonly { get(key: string): unknown }[]): unknown[] =>
+    objects.map((object) => object.get("id"));
+
+  // In, above the group's only child: the anchor is inside, so the container is
+  // the group. The panel paints topmost-first, so `loose` now has a row above
+  // `child`'s and no row of its own at the root.
+  expect(bridge.canMoveLayer("loose", "child")).toBe(true);
+  expect(bridge.moveLayer("loose", "child")).toBe(true);
+  expect(ids(canvas.getObjects())).toEqual(["grp"]);
+  expect(ids(group.getObjects())).toEqual(["child", "loose"]);
+  expect(loose.parent).toBe(group);
+
+  // And back out, above the group itself: the anchor is at the root, so that is
+  // the container the drop enters.
+  expect(bridge.moveLayer("loose", "grp")).toBe(true);
+  expect(ids(canvas.getObjects())).toEqual(["grp", "loose"]);
+  expect(ids(group.getObjects())).toEqual(["child"]);
+  expect(loose.parent).toBeUndefined();
+  expect(saveState).toHaveBeenCalledTimes(2);
+});
+
+it("refuses a cycle, before the drop rather than after it", () => {
+  // Fabric's own `canEnterGroup` refuses this by *logging* the refusal, so the
+  // add would be dropped and the move would silently do nothing. The refusal is
+  // made here, in the tree's own terms, which is also what lets the panel mark
+  // the row refused rather than promising a slot it cannot take.
   const canvas = new Canvas(document.createElement("canvas"));
   const child = new Rect({ left: 0, top: 0, width: 10, height: 10 });
   child.set("id", "child");
   const group = new Group([child]);
   group.set("id", "grp");
-  const sibling = new Rect({ left: 60, top: 0, width: 10, height: 10 });
-  sibling.set("id", "sibling");
-  canvas.add(group, sibling);
+  canvas.add(group);
   const { bridge } = bridgeFor(undefined, {
     canvas,
     historyManager: { saveState: vi.fn() },
   });
+  const ids = (objects: readonly { get(key: string): unknown }[]): unknown[] =>
+    objects.map((object) => object.get("id"));
 
-  const before = canvas.getObjects().map((object) => object.get("id"));
-  expect(bridge.reorderLayer("child", "sibling")).toBe(false);
-  expect(canvas.getObjects().map((object) => object.get("id"))).toEqual(before);
-  expect(child.group).toBe(group);
+  expect(bridge.canMoveLayer("grp", "child")).toBe(false);
+  expect(bridge.moveLayer("grp", "child")).toBe(false);
+  expect(ids(canvas.getObjects())).toEqual(["grp"]);
+  expect(ids(group.getObjects())).toEqual(["child"]);
+  // A row dropped on itself is neither a slot nor a refusal: there is nothing
+  // to move, and the panel answers with neither mark.
+  expect(bridge.canMoveLayer("child", "child")).toBe(false);
 });
 
 it("refuses an unknown id instead of moving something else", () => {
@@ -796,8 +863,8 @@ it("refuses an unknown id instead of moving something else", () => {
   });
 
   const before = canvas.getObjects().map((object) => object.get("id"));
-  expect(bridge.reorderLayer("nope", "beta")).toBe(false);
-  expect(bridge.reorderLayer("alpha", "nope")).toBe(false);
+  expect(bridge.moveLayer("nope", "beta")).toBe(false);
+  expect(bridge.moveLayer("alpha", "nope")).toBe(false);
   expect(canvas.getObjects().map((object) => object.get("id"))).toEqual(before);
 });
 
@@ -826,7 +893,7 @@ it("reorders inside a group without lifting the child out of it", () => {
 
   expect(ids(canvas.getObjects())).toEqual(["grp"]);
   expect(ids(group.getObjects())).toEqual(["child", "peer"]);
-  expect(bridge.reorderLayer("child", "peer")).toBe(true);
+  expect(bridge.moveLayer("child", "peer")).toBe(true);
   // The group is still the only canvas-root object, and the child is still in it.
   expect(ids(canvas.getObjects())).toEqual(["grp"]);
   expect(ids(group.getObjects())).toEqual(["peer", "child"]);

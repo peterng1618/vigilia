@@ -6,6 +6,8 @@ import type { EditorInteraction } from "../editor-interaction.js";
 import { GROUP_CONTEXT_EVENT } from "../grouping-manager/index.js";
 import {
   actionEnabled,
+  constructedShape,
+  isConstructionAction,
   type ObjectActionId,
   type ObjectTarget,
 } from "../object-actions.js";
@@ -81,12 +83,15 @@ export interface EditorShellBridge {
   setCollapsed(id: string, collapsed: boolean): void;
   /** Editor-only display state: never authored history, never a Fabric write. */
   renameLayer(id: string, name: string): void;
-  /** Whether both ids share one parent, i.e. whether `reorderLayer` would
-   * accept the drop. The panel asks this to mark only reachable slots. */
-  sameLayerParent(a: string, b: string): boolean;
-  /** Restacks `id` directly above `beforeId`, inside one parent only.
-   * `true` when the move happened; a refusal changes nothing. */
-  reorderLayer(id: string, beforeId: string): boolean;
+  /** Whether `moveLayer` would accept this drop: both ids resolve, and the
+   * anchor is neither the object itself nor inside it. The panel asks this to
+   * mark only reachable slots; the two answers come from one comparison, so a
+   * slot the panel draws is a drop the bridge takes. */
+  canMoveLayer(id: string, beforeId: string): boolean;
+  /** Moves `id` directly above `beforeId`, into the anchor's own parent — so a
+   * drop may cross a group boundary in either direction. `true` when the move
+   * happened; a refusal changes nothing. */
+  moveLayer(id: string, beforeId: string): boolean;
   subscribe(listener: () => void): () => void;
   run(action: ShellAction): void;
   /**
@@ -233,9 +238,13 @@ export function createEditorShellBridge(input: {
   const canArrangeAction = (action: ArrangeAction): boolean =>
     canArrange(input.editor, action);
   const gate = { target, canArrange: canArrangeAction };
-  // Eligibility is owned by the registry; this only adds the selection gate.
+  /** Eligibility is owned by the registry; all this adds is the selection gate —
+   * and the one exemption from it. A construction needs no subject, so it is
+   * available with nothing selected, which is the whole of what `vg-460` asks
+   * for; every other action still has to have one. */
   const can = (action: ShellAction): boolean =>
-    activeObject() !== undefined && actionEnabled(gate, action);
+    isConstructionAction(action) ||
+    (activeObject() !== undefined && actionEnabled(gate, action));
   /** The entered group, as objects — the manager's own transient state (§67). */
   const enteredContext = (): readonly FabricObject[] =>
     input.editor.groupingManager.groupContext();
@@ -381,48 +390,87 @@ export function createEditorShellBridge(input: {
     input.editor.historyManager.saveState();
     notify();
   };
-  // The owner comparison `reorderLayer` refuses on, exposed so the panel can
-  // mark only the drops that would land. Never `object.group`: an active
-  // selection temporarily repoints it at the selection itself.
-  const sameLayerParent = (a: string, b: string): boolean => {
-    const root = canvas.getObjects();
-    return (
-      findById(root, a) !== undefined &&
-      findById(root, b) !== undefined &&
-      ownerOf(root, a) === ownerOf(root, b)
-    );
-  };
-  const reorderLayer = (id: string, beforeId: string): boolean => {
+  /**
+   * The structural shape of a drop, or `undefined` when it cannot land — one
+   * owner for the question, because two askers have to agree: the panel marks a
+   * slot only where `moveLayer` would accept the drop, and a plan that said
+   * "slot" to one and "refusal" to the other is the failure `vg-099` is about.
+   *
+   * `beforeId` names both the container (its own parent) and the position
+   * (directly above it), which is what lets one anchor express entering a
+   * group, leaving one, and restacking inside one.
+   *
+   * The cycle is refused here, in the tree's own terms, rather than left to
+   * Fabric: its `canEnterGroup` *logs* a circular tree and drops the add, so an
+   * author would get a move that silently did nothing (`vg-461`).
+   */
+  const layerMove = (
+    id: string,
+    beforeId: string,
+  ):
+    | {
+        readonly moved: FabricObject;
+        readonly from: Group | undefined;
+        readonly to: Group | undefined;
+        readonly target: number;
+      }
+    | undefined => {
     const root = canvas.getObjects();
     const moved = findById(root, id);
     const anchor = findById(root, beforeId);
-    if (moved === undefined || anchor === undefined) return false;
-    // v1 restacks inside one parent only: crossing a group boundary changes
-    // membership, which is a different operation with different semantics.
-    if (ownerOf(root, id) !== ownerOf(root, beforeId)) return false;
-    const parent = ownerOf(root, id);
-    const siblings = parent === undefined ? root : parent.getObjects();
-    const from = siblings.indexOf(moved);
-    const anchorAt = siblings.indexOf(anchor);
-    // Defence in depth, NOT the thing that stops a reparent: with the receiver
-    // below chosen from the same `parent` these indices came from, a mismatch
-    // can no longer cross arrays. Keep it for an inconsistent read.
-    if (from < 0 || anchorAt < 0) return false;
+    if (moved === undefined || anchor === undefined || moved === anchor)
+      return undefined;
+    // The anchor inside the moved object: a group dropped on its own descendant
+    // would be a container inside itself.
+    if (pathTo(root, beforeId).includes(moved)) return undefined;
+    // Never `object.group`: an active selection temporarily repoints it at the
+    // selection itself.
+    const from = ownerOf(root, id);
+    const to = ownerOf(root, beforeId);
+    const destination = to === undefined ? root : to.getObjects();
+    const anchorAt = destination.indexOf(anchor);
+    if (anchorAt < 0) return undefined;
     // `beforeId` means directly above that row in the panel, and the panel paints
     // topmost-first, so in Fabric's bottom-first paint order the target is one
     // past the anchor. Fabric's `moveObjectTo` removes the object and then
-    // splices at `index` in the *post-removal* array, so an upward move in paint
-    // order shifts down by one.
+    // splices at `index` in the *post-removal* array, so a move within one
+    // collection from above the anchor shifts down by one — a move between two
+    // collections does not, because nothing leaves the destination.
     let target = anchorAt + 1;
-    if (from < target) target -= 1;
-    // The receiver must be the collection `siblings` came from. `moveObjectTo` is
-    // `createCollectionMixin`'s and exists on `Group` too (`index.mjs:1978`,
-    // `:9132`), but it splices `this._objects` — so calling it on the canvas while
-    // indexing the group's array inserts the child into the canvas root and
-    // leaves it inside the group, giving Fabric's paint and serialization arrays
-    // one object each. Its boolean return is the move's own verdict — it answers
-    // false when the object already sits at `target` — so keep checking it.
-    if (!(parent ?? canvas).moveObjectTo(moved, target)) return false;
+    if (from === to && destination.indexOf(moved) < target) target -= 1;
+    return { moved, from, to, target };
+  };
+  const canMoveLayer = (id: string, beforeId: string): boolean =>
+    layerMove(id, beforeId) !== undefined;
+  const moveLayer = (id: string, beforeId: string): boolean => {
+    const move = layerMove(id, beforeId);
+    if (move === undefined) return false;
+    const { moved, from, to, target } = move;
+    // A live `ActiveSelection` repoints each member's `group` at the selection
+    // itself, so a `remove` issued against the tree's own parent would bake the
+    // child against a matrix it no longer belongs to (0044, rung 6). Releasing
+    // the selection puts every member back under its real parent first.
+    const active = canvas.getActiveObject();
+    if (active instanceof ActiveSelection && active.contains(moved))
+      canvas.discardActiveObject();
+    if (from === to) {
+      // The receiver must be the collection `target` was measured against.
+      // `moveObjectTo` is `createCollectionMixin`'s and exists on `Group` too
+      // (`index.mjs:1162`, `:9132`), but it splices `this._objects` — so calling
+      // it on the canvas while indexing the group's array would insert into the
+      // root and leave the child inside the group, giving Fabric's paint and
+      // serialization arrays one object each.
+      if (!(from ?? canvas).moveObjectTo(moved, target)) return false;
+    } else {
+      // The two structural writes are Fabric's, and they are the point of 0044:
+      // `remove` bakes the child out of the plane it leaves (`exitGroup`),
+      // `insertAt` bakes it into the plane it enters (`enterGroup`) — the
+      // symmetric pair Fabric's own `loadFromJSON` depends on. Nothing moves on
+      // screen, and the container's box follows its membership.
+      if (from === undefined) canvas.remove(moved);
+      else from.remove(moved);
+      (to ?? canvas).insertAt(target, moved);
+    }
     canvas.requestRenderAll();
     input.editor.historyManager.saveState();
     notify();
@@ -442,8 +490,8 @@ export function createEditorShellBridge(input: {
     setLayerLocked,
     setCollapsed,
     renameLayer,
-    sameLayerParent,
-    reorderLayer,
+    canMoveLayer,
+    moveLayer,
     session: input.session,
     editor: input.editor,
     capture: input.capture,
@@ -453,6 +501,16 @@ export function createEditorShellBridge(input: {
     },
     run(action) {
       if (!can(action)) return;
+      if (isConstructionAction(action)) {
+        // The façade's own two routes, which pull the document's theme the way
+        // the Add pane's tiles do — so the footer cannot build a poorer object
+        // than the pane one gesture away. The new object's own `object:added` is
+        // what republishes the tree, so this closes without a second notify.
+        const shape = constructedShape(action);
+        if (shape === undefined) input.session.addText();
+        else input.session.addShape(shape);
+        return;
+      }
       if (action.startsWith("arrange:")) {
         applyArrange(
           input.editor,

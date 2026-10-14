@@ -446,11 +446,16 @@ export function CompositionPane({
                 // Not above ourselves: that is where the layer already is, which
                 // is a third answer and neither a slot nor a refusal.
                 const moved = row.id !== active.from;
-                // Nothing marked outside one parent — the bridge would refuse
-                // it, and a marker there would promise a drop that cannot land.
+                // Every other slot can land, including one across a group
+                // boundary: the anchor's own parent is the container the drop
+                // enters, which is what makes dragging a row into a group and
+                // back out to the root the same gesture as restacking one
+                // (`vg-461`). What is left refused is a cycle — a group dropped
+                // inside itself — and the bridge answers that in the tree's own
+                // terms, so the panel cannot promise a drop Fabric would log and
+                // drop.
                 const lands =
-                  moved &&
-                  bridge?.sameLayerParent(active.from, row.id) === true;
+                  moved && bridge?.canMoveLayer(active.from, row.id) === true;
                 active.before = lands ? row.id : undefined;
 
                 if (lands) {
@@ -498,7 +503,7 @@ export function CompositionPane({
                 unmark();
                 if (active === undefined || before === undefined) return;
                 event.preventDefault();
-                store.mutate(() => bridge?.reorderLayer(active.from, before));
+                store.mutate(() => bridge?.moveLayer(active.from, before));
               }}
               onDragEnd={unmark}
               style={
@@ -640,11 +645,16 @@ export function CompositionPane({
 
                   Entry is the control that is not a state toggle and not the
                   row's own: it appears on a group the author can go into, under
-                  the attention rule the three beside it keep — and the row the
+                  the attention rule the two beside it keep — and the row the
                   author is *inside* draws it unattended, so the way out is
-                  never the one thing a quiet row withholds. Rename, the eye and
-                  the lock are `RowAffordances`' own, and the pane hands it the
-                  attention it computed rather than letting it ask again. */}
+                  never the one thing a quiet row withholds. The eye and the
+                  lock are `RowAffordances`' own, and the pane hands it the
+                  attention it computed rather than letting it ask again.
+
+                  There is no rename control: the name the pen acted on is this
+                  row's own, so the field opens from the row itself — a
+                  double-click on it, or F2/Enter from the keyboard
+                  (`vg-462`). */}
               <span className="vigilia-layer-state">
                 {showEnter ? (
                   <RowIconButton
@@ -673,12 +683,6 @@ export function CompositionPane({
                 <RowAffordances
                   row={row}
                   attended={attended}
-                  // The same field the double-click and F2 open, so the control
-                  // is a second route to one behaviour rather than a second one.
-                  onRename={() => {
-                    cancelled.current = false;
-                    setEditing(row.id);
-                  }}
                   onToggleVisible={() =>
                     store.mutate(() =>
                       bridge?.setLayerVisible(row.id, !row.visible),

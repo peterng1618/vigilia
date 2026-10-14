@@ -678,11 +678,13 @@ export const uiCopy = {
     enter: "Enter",
     leave: "Leave",
     /** The drag rule, in the panel's own words rather than in a cursor. A drop
-     * across a group boundary is refused by design (Fabric membership is a
-     * different operation), and a refusal nothing says reads as a panel being
+     * between a group and its interior is a membership change rather than a
+     * restack, and `vg-461` lifted the refusal that made it impossible; the
+     * cycle is what is left refused. A rule nothing says reads as a panel being
      * unreliable — the same gesture works one row over, so the author has no
-     * other evidence that a rule is what stopped it. */
-    reorderRule: "Drag a row to reorder it within its group.",
+     * other evidence for what stopped it. */
+    reorderRule:
+      "Drag a row to reorder it, or to move it into or out of a group.",
     text: "Text",
     panel: "Panel",
     /** A pasted image and a fresh group arrive without an authored name, so

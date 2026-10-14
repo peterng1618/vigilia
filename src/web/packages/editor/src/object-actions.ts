@@ -23,6 +23,8 @@ import {
 } from "lucide-react";
 import { type ArrangeAction, applyArrange, arrangeMinimum } from "./arrange.js";
 import type { EditorInteraction } from "./editor-interaction.js";
+import { KIND_GLYPHS, SHAPE_GLYPHS } from "./editor-shell/icons.js";
+import { SHAPE_KINDS, type ShapeKind } from "./new-object-defaults.js";
 import type { ProductShortcutId } from "./shortcut-manager/index.js";
 import { uiCopy } from "./ui-copy.js";
 
@@ -38,7 +40,11 @@ export interface ObjectTarget {
   readonly isGroup: boolean;
 }
 
-export type ObjectActionId =
+export type ObjectActionId = ObjectCommandId | ConstructionActionId;
+
+/** An object command: it acts on the selection, from a projection of what the
+ *  selection is. */
+export type ObjectCommandId =
   | "duplicate"
   | "copy"
   | "cut"
@@ -53,7 +59,14 @@ export type ObjectActionId =
   | "ungroup"
   | `arrange:${ArrangeAction}`;
 
-interface ObjectAction {
+/** A construction: it needs no subject, and the id names what it makes — the
+ *  kind rides in the id's tail exactly as an arrange verb rides in its own, so
+ *  one dispatch carries the whole question. */
+export type ConstructionActionId = "new-text" | `new-shape:${ShapeKind}`;
+
+/** What every entry carries, whichever half of the registry it is in: the word
+ *  it is called, the glyph it wears, and §4's mark. */
+interface ActionIdentity {
   readonly id: ObjectActionId;
   readonly label: string;
   readonly icon: LucideIcon;
@@ -68,8 +81,29 @@ interface ObjectAction {
    *  rather than `false`, per `exactOptionalPropertyTypes`; the absence is the
    *  fact that it does not, and the registry is the one owner of the decision. */
   readonly destructive?: true;
+}
+
+interface ObjectAction extends ActionIdentity {
+  readonly id: ObjectCommandId;
   readonly eligible: (target: ObjectTarget) => boolean;
   readonly run: (editor: EditorInteraction) => void;
+}
+
+/**
+ * An action that needs no selection: it constructs rather than commands, so a
+ * surface may offer it with nothing selected at all (`vg-460`).
+ *
+ * **It carries no `eligible` and no `run`, and both absences are the fact.**
+ * There is no rule to state, because the whole of this action's eligibility is
+ * that a subject is not needed. And there is no executor here, because
+ * constructing needs the document's theme and bindings — `new-object-panel.ts`
+ * owns `insertNewText`/`insertNewShape`, which take `FabricGlobals` — and the
+ * shell's façade is what holds them. So a surface dispatches the id through
+ * `bridge.run`, and this registry states the verb rather than carrying a
+ * second, poorer construction beside the one owner of it.
+ */
+export interface ConstructionAction extends ActionIdentity {
+  readonly id: ConstructionActionId;
 }
 
 const hasSelection = (target: ObjectTarget): boolean => target.kind !== "none";
@@ -98,7 +132,7 @@ export interface ActionGate {
 }
 
 /** The one predicate both action surfaces use, so they cannot drift. */
-export function actionEnabled(gate: ActionGate, id: ObjectActionId): boolean {
+export function actionEnabled(gate: ActionGate, id: ObjectCommandId): boolean {
   if (!objectAction(id).eligible(gate.target())) return false;
   return (
     !id.startsWith("arrange:") ||
@@ -107,11 +141,14 @@ export function actionEnabled(gate: ActionGate, id: ObjectActionId): boolean {
 }
 
 /**
- * Every object action this gate can run, in registry order — the dock, the
- * context menu, the layer panel's toolbar and the pane footer all render this
- * rather than re-filtering, so a surface cannot advertise an action its
- * selection refuses. The eight arrange actions are *not* here: they grey rather
- * than disappear, so they come from `arrangeActions()`, not this filter.
+ * Every object command this gate can run, in registry order — the dock, the
+ * canvas context menu and the layer footer all render this rather than
+ * re-filtering, so a surface cannot advertise an action its selection refuses.
+ * The eight arrange actions are *not* here: they grey rather than disappear, so
+ * they come from `arrangeActions()`, which the selection inspector's lead
+ * draws. Neither are the constructions: they need no selection, so a filter
+ * over what a selection can run has nothing to say about them, and
+ * `CONSTRUCTION_ACTIONS` is where they are read.
  */
 export function objectActionsFor(gate: ActionGate): readonly ObjectAction[] {
   return OBJECT_ACTIONS.filter((action) => actionEnabled(gate, action.id));
@@ -124,9 +161,9 @@ export function objectActionsFor(gate: ActionGate): readonly ObjectAction[] {
  * the decision, so a surface that renders the registry cannot re-decide which
  * actions destroy — the mark reads the same on every one of them.
  */
-export function destructiveMarker(
-  action: ObjectAction,
-): Readonly<Record<`data-${string}`, string>> {
+export function destructiveMarker(action: {
+  readonly destructive?: true;
+}): Readonly<Record<`data-${string}`, string>> {
   return action.destructive === true ? { "data-vigilia-destructive": "" } : {};
 }
 
@@ -278,7 +315,68 @@ export function arrangeActions(): readonly ObjectAction[] {
   });
 }
 
+/**
+ * The constructions, in the Add pane's own order: text, then one entry per
+ * primitive. **These are what the layer footer offers with nothing selected**,
+ * which is the whole of `vg-460`'s ask — the footer was present but empty until
+ * a layer was, and an action whose manager needs no subject is the half that
+ * does not depend on one.
+ *
+ * **The set is the Add pane's primitives, and the words are the Add pane's own**
+ * (`uiCopy.shapeKinds`, `uiCopy.panels.text` — the labels `insertGroups()` hands
+ * its tiles), so a shape is one kind in both surfaces rather than two spellings
+ * of it, and a test pins the two lists equal. Cards and charts are deliberately
+ * not here, and not for size: a chart family's word collides with a shape's
+ * ("Line" is both) and the footer is a flat row with no heading to tell them
+ * apart — the Add pane's own rule is that a heading is what makes "Line"
+ * unambiguous — while `wedge` and `pie` already wear the same glyph (`vg-459`).
+ * A card unit's mark is a hand-drawn diagram the Add pane owns, and inserting
+ * one needs the document's bindings.
+ */
+export const CONSTRUCTION_ACTIONS: readonly ConstructionAction[] = [
+  { id: "new-text", label: uiCopy.panels.text, icon: KIND_GLYPHS.text },
+  ...SHAPE_KINDS.map((shape) => ({
+    id: `new-shape:${shape}` as const,
+    label: uiCopy.shapeKinds[shape],
+    icon: SHAPE_GLYPHS[shape],
+  })),
+];
+
+/** Whether an id names a construction rather than a command — the question
+ *  `bridge.can` and `bridge.run` have to ask before the selection gate. */
+export function isConstructionAction(
+  id: ObjectActionId,
+): id is ConstructionActionId {
+  return CONSTRUCTION_ACTIONS.some((action) => action.id === id);
+}
+
+/** The primitive behind a `new-shape:<kind>` id, or `undefined` for the text
+ *  one. This module owns that id format, so this is its one reader. */
+export function constructedShape(
+  id: ConstructionActionId,
+): ShapeKind | undefined {
+  return id === "new-text"
+    ? undefined
+    : (id.slice("new-shape:".length) as ShapeKind);
+}
+
+/**
+ * One command by id: the object actions and the arrange verbs in one lookup.
+ *
+ * **The parameter is the whole id union, and the command half is what it
+ * answers for.** Askers hold an `ObjectActionId` — the selection inspector's
+ * arrange row and the lead that draws it both do — so narrowing the parameter
+ * to `ObjectCommandId` would push a cast onto every caller asking a question
+ * that is not about constructions at all. A construction id arriving here is
+ * refused *by name* instead: it has no `run` (the shell's façade is the one
+ * owner of building a new object, `ConstructionAction`), and a silent no-op or
+ * a vague "unknown action" would be the failure an author cannot diagnose.
+ */
 export function objectAction(id: ObjectActionId): ObjectAction {
+  if (isConstructionAction(id))
+    throw new Error(
+      `objectAction(): ${id} is a construction, not a command — it has no executor here, so the shell's run() is its route.`,
+    );
   const found =
     OBJECT_ACTIONS.find((action) => action.id === id) ??
     arrangeActions().find((action) => action.id === id);

@@ -1,9 +1,14 @@
 import { describe, expect, it } from "vitest";
+import { insertGroups } from "./new-object-panel.js";
 import {
   type ActionGate,
   arrangeActions,
+  CONSTRUCTION_ACTIONS,
+  constructedShape,
   destructiveMarker,
+  isConstructionAction,
   OBJECT_ACTIONS,
+  type ObjectActionId,
   type ObjectTarget,
   objectAction,
   objectActionsFor,
@@ -124,6 +129,72 @@ describe("object action registry", () => {
       "back",
       "unlock",
     ]);
+  });
+});
+
+describe("the constructions", () => {
+  it("is the Add pane's own primitives, in its own order and its own words", () => {
+    // The one thing that could silently drift: a shape the Add pane offers and
+    // the footer does not, or two spellings of one kind. Read off `insertGroups`
+    // — the Add pane's one owner of the list — rather than written out here, so
+    // a primitive added to the pane fails this until the footer carries it too.
+    const primitives = insertGroups()
+      .flatMap((group) => group.objects)
+      .filter((object) => object.kind === "text" || object.kind === "shape");
+    expect(primitives.map((object) => object.label)).toEqual(
+      CONSTRUCTION_ACTIONS.map((action) => action.label),
+    );
+
+    // And the id's tail is the primitive itself, not a word from a list: the one
+    // thing `constructedShape` reads, checked against the object the Add pane
+    // would have inserted.
+    for (const shape of primitives.filter(
+      (object) => object.kind === "shape",
+    )) {
+      const entry = CONSTRUCTION_ACTIONS.find(
+        (action) => action.label === shape.label,
+      );
+      expect(entry?.id).toBe(`new-shape:${shape.shape}`);
+    }
+    // Text is the arm with no kind, and `undefined` is that fact rather than an
+    // empty string a caller would have to test for itself.
+    expect(constructedShape("new-text")).toBeUndefined();
+  });
+
+  it("keeps constructions out of the commands, so neither filter sees the other", () => {
+    // A construction has no selection to be eligible against, which is why it is
+    // a second list rather than an entry with an always-true rule: `actionEnabled`
+    // takes a `ObjectCommandId`, and a construction's id would not typecheck
+    // there. The runtime half of the same fact: the command filter never returns
+    // one, whatever the gate says.
+    const ids = CONSTRUCTION_ACTIONS.map((action) => action.id);
+    expect(ids.every((id) => isConstructionAction(id))).toBe(true);
+    // The two families are disjoint, and the accessor both can be handed says
+    // which side the id is on rather than answering with the wrong one: a
+    // surface that reached a construction through the command lookup would
+    // otherwise draw a command's label and glyph under a construction's id.
+    for (const id of ids)
+      expect(() => objectAction(id)).toThrow(
+        "is a construction, not a command",
+      );
+    const oneAndOnly: ActionGate = {
+      target: () => target(),
+      canArrange: () => true,
+    };
+    expect(
+      objectActionsFor(oneAndOnly).some((action) =>
+        isConstructionAction(action.id),
+      ),
+    ).toBe(false);
+    // And the predicate is not "everything unknown": a command is not one.
+    for (const id of ["delete", "arrange:align-left"] as ObjectActionId[])
+      expect(isConstructionAction(id)).toBe(false);
+  });
+
+  it("reports every construction exactly once", () => {
+    const ids = CONSTRUCTION_ACTIONS.map((action) => action.id);
+    expect(new Set(ids).size).toBe(ids.length);
+    expect(ids).toContain("new-text");
   });
 });
 

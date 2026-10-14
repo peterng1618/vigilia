@@ -259,7 +259,6 @@ function Fleet(): React.JSX.Element {
       <RowAffordances
         row={row()}
         attended
-        onRename={() => {}}
         onToggleVisible={() => {}}
         onToggleLocked={() => {}}
       />

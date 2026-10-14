@@ -10,7 +10,6 @@ import { createGroupingManager } from "../grouping-manager/index.js";
 import {
   CompositionPane,
   LAYER_ROW_INDENT,
-  LAYER_ROW_INDENT_STEP,
   ROW_HEIGHT,
 } from "../panes/composition/composition-pane.js";
 import { uiCopy } from "../ui-copy.js";
@@ -111,8 +110,8 @@ function bridge(rows: readonly LayerRow[], overrides = {}): EditorShellBridge {
     setLayerLocked: vi.fn(),
     renameLayer: vi.fn(),
     setCollapsed: vi.fn(),
-    sameLayerParent: () => false,
-    reorderLayer: () => false,
+    canMoveLayer: () => false,
+    moveLayer: () => false,
     subscribe: () => () => undefined,
     run: vi.fn(),
     session: { savePackage: vi.fn() } as never,
@@ -168,10 +167,10 @@ it("indents a group child and carries the row's controls once it is selected", a
 
   const rows = host.querySelectorAll<HTMLElement>("[data-vigilia-layer]");
   expect(rows).toHaveLength(2);
-  // One dense line, plus rename, lock and visibility indicators — not six text
-  // buttons.
+  // One dense line, plus the two state indicators — not six text buttons, and
+  // no pen beside the name (`vg-462`).
   expect(rows[1]?.style.getPropertyValue("--layer-depth")).toBe("1");
-  expect(rows[1]?.querySelectorAll("button")).toHaveLength(3);
+  expect(rows[1]?.querySelectorAll("button")).toHaveLength(2);
   expect(rows[1]?.querySelector('[aria-label="Unlock"]')).not.toBeNull();
   // The group row is marked as a group for the stylesheet, which bolds its name,
   // and it carries the generic stack glyph the kind arm draws (§5.1).
@@ -211,6 +210,23 @@ function renameField(host: HTMLElement): HTMLInputElement {
   return host.querySelector<HTMLInputElement>(
     '[aria-label="Rename wordmark"]',
   )!;
+}
+
+/** The one answer the panel asks the bridge about before a drop, keyed by the
+ *  fixture's own `parentId`s: a row may not land inside a subtree it contains.
+ *  Each drag case below wires this rather than re-spelling the rule, so the
+ *  cases differ in the tree they drag and not in the refusal they assume. */
+function moveRule(
+  rows: readonly LayerRow[],
+): (from: string, before: string) => boolean {
+  const parentOf = new Map(rows.map((row) => [row.id, row.parentId]));
+  const contains = (ancestor: string, id: string): boolean => {
+    for (let at = parentOf.get(id); at !== undefined; at = parentOf.get(at)) {
+      if (at === ancestor) return true;
+    }
+    return false;
+  };
+  return (from, before) => from !== before && !contains(from, before);
 }
 
 /** A key press on the focused row, awaited so React flushes a focus move. */
@@ -601,15 +617,14 @@ it("draws no action footer of its own, so the pane's toolbar is the only one", a
   expect(host.querySelector('[data-vigilia-layer="child"]')).not.toBeNull();
 });
 
-it("only marks a drop slot that would actually land", async () => {
-  const reorderLayer = vi.fn(() => false);
+it("marks a slot across a group boundary, and refuses only the cycle", async () => {
+  const moveLayer = vi.fn(() => false);
   // A drop is a pointing gesture: without this the click that precedes the
   // drag would select the row the drop refused.
   const selectLayer = vi.fn();
-  // Two children in one group and a sibling at the top level: the first pair
-  // shares a parent, so a drop between them lands; the sibling does not, so the
-  // same gesture across the boundary must stay unmarked — including a drop on
-  // the group's own row, since a child is not the group's sibling.
+  // Two children in one group and a sibling at the top level. The boundary that
+  // used to be the refusal is now a slot — that is `vg-461` — so what a row can
+  // still be refused is a drop that would put a container inside itself.
   const tree = [
     layerRow({
       id: "group",
@@ -656,13 +671,17 @@ it("only marks a drop slot that would actually land", async () => {
       selected: false,
     }),
   ];
-  const owned = (id: string): string =>
-    id === "child" || id === "peer" ? "group" : "";
+  // The bridge's own rule, keyed by the tree above: an id may not be dropped
+  // inside itself. A stub that answered "same parent" instead would keep the
+  // old refusal green — which is the drift this file's real-bridge case exists
+  // for.
+  const inside = (ancestor: string, id: string): boolean =>
+    id === "group" ? false : ancestor === "group";
   const host = await renderPanel(tree, {
-    reorderLayer,
+    moveLayer,
     selectLayer,
-    // The bridge's own owner comparison, keyed by the tree above.
-    sameLayerParent: (a: string, b: string) => owned(a) === owned(b),
+    canMoveLayer: (from: string, before: string) =>
+      from !== before && !inside(from, before),
   });
   const row = (id: string): HTMLElement =>
     host.querySelector<HTMLElement>(`[data-vigilia-layer="${id}"]`)!;
@@ -682,35 +701,34 @@ it("only marks a drop slot that would actually land", async () => {
     return event;
   };
 
+  // Out of the group and above a root sibling: the anchor is at the root, so
+  // that is the container the drop enters. Unmarked before this task.
   await act(async () => row("child").dispatchEvent(drag("dragstart")));
-  for (const refused of ["sibling", "group"]) {
-    await act(async () => row(refused).dispatchEvent(drag("dragover")));
-    // Across the boundary the same pointer position that lands below is left
-    // unmarked: the difference can only come from the parent comparison.
-    expect(line().hidden).toBe(true);
-  }
-
-  await act(async () => row("peer").dispatchEvent(drag("dragover")));
-  // Landing: the child moves above its peer, inside their shared group. The
-  // line is placed at the slot the drop would take.
+  await act(async () => row("sibling").dispatchEvent(drag("dragover")));
   expect(line().hidden).toBe(false);
   // The units are the assertion, not the numbers: `top: 52` is an invalid
   // length, so the declaration is dropped, `top` falls back to `auto` and the
   // line sizes to zero. Measured on canvas — the line had never drawn. Both
   // figures are the panel's own arithmetic rather than a second copy of it: the
-  // row's height times the slot's index, and the two indents a depth-1 row
-  // sits at.
+  // row's height times the slot's index, and the root indent.
   expect(line().style.getPropertyValue("--layer-dropline-top")).toBe(
-    `${2 * ROW_HEIGHT}px`,
+    `${3 * ROW_HEIGHT}px`,
   );
   expect(line().style.getPropertyValue("--layer-dropline-left")).toBe(
-    `${LAYER_ROW_INDENT + LAYER_ROW_INDENT_STEP}px`,
+    `${LAYER_ROW_INDENT}px`,
   );
-
-  await act(async () => row("peer").dispatchEvent(drag("drop")));
-  expect(reorderLayer).toHaveBeenCalledWith("child", "peer");
+  await act(async () => row("sibling").dispatchEvent(drag("drop")));
+  expect(moveLayer).toHaveBeenCalledWith("child", "sibling");
   expect(selectLayer).not.toHaveBeenCalled();
   expect(line().hidden).toBe(true);
+
+  // And the refusal that is left: the group dropped inside its own child.
+  await act(async () => row("group").dispatchEvent(drag("dragstart")));
+  await act(async () => row("child").dispatchEvent(drag("dragover")));
+  expect(line().hidden).toBe(true);
+  expect(row("child").getAttribute("data-drop")).toBe("refused");
+  await act(async () => row("child").dispatchEvent(drag("drop")));
+  expect(moveLayer).toHaveBeenCalledTimes(1);
 });
 
 it("draws locked as a filled lock and unlocked as an outline one", async () => {
@@ -952,11 +970,12 @@ function dragEvent(type: string): Event {
 
 /** vg-099: the refusal was silent, so an author dragging toward another group
  * saw the same row, the same cursor and the same list as a drop that lands.
- * `draggable` is honest and cross-group reordering is still refused — what was
- * missing is the panel saying so, so the state a row carries mid-gesture is
- * the thing pinned here: a slot, a refusal, or neither. */
+ * What was missing is the panel saying so, so the state a row carries
+ * mid-gesture is the thing pinned here: a slot, a refusal, or neither. The
+ * refusal itself is the cycle now (`vg-461`), which is why the gesture below
+ * picks a group up rather than a child. */
 it("tells a refused drop target from one that would land, mid-gesture", async () => {
-  const reorderLayer = vi.fn(() => false);
+  const moveLayer = vi.fn(() => false);
   const tree = [
     layerRow({
       id: "group",
@@ -1003,11 +1022,10 @@ it("tells a refused drop target from one that would land, mid-gesture", async ()
       selected: false,
     }),
   ];
-  const owned = (id: string): string =>
-    id === "child" || id === "peer" ? "group" : "";
+  // The bridge's rule, keyed by the tree above: nothing may land inside itself.
   const host = await renderPanel(tree, {
-    reorderLayer,
-    sameLayerParent: (a: string, b: string) => owned(a) === owned(b),
+    moveLayer,
+    canMoveLayer: moveRule(tree),
   });
   const row = (id: string): HTMLElement =>
     host.querySelector<HTMLElement>(`[data-vigilia-layer="${id}"]`)!;
@@ -1015,38 +1033,38 @@ it("tells a refused drop target from one that would land, mid-gesture", async ()
     host.querySelector<HTMLElement>('[role="tree"]')!;
 
   // Before any gesture nothing is marked, so an ordinary hover is untouched.
-  expect(row("peer").getAttribute("data-drop")).toBeNull();
+  expect(row("child").getAttribute("data-drop")).toBeNull();
   expect(tree_().getAttribute("data-dragging")).toBeNull();
 
-  await act(async () => row("child").dispatchEvent(dragEvent("dragstart")));
+  await act(async () => row("group").dispatchEvent(dragEvent("dragstart")));
   // The tree knows a gesture is in flight, which is what lets the stylesheet
   // dim every row that is not the slot — the refusal has to be visible
   // somewhere other than the row the pointer happens to be over.
-  expect(tree_().getAttribute("data-dragging")).toBe("child");
+  expect(tree_().getAttribute("data-dragging")).toBe("group");
 
   const refused = await act(async () => {
     const event = dragEvent("dragover");
-    row("sibling").dispatchEvent(event);
+    row("child").dispatchEvent(event);
     return event.defaultPrevented;
   });
   // The gesture is answered rather than swallowed: a refused row is not
   // cancelled, so the browser's own drag cursor joins in and says no too.
   expect(refused).toBe(false);
-  expect(row("sibling").getAttribute("data-drop")).toBe("refused");
+  expect(row("child").getAttribute("data-drop")).toBe("refused");
   // The source row is not a refusal — it is where the layer already is, which
   // is a third answer the panel must not confuse with either of the others.
-  await act(async () => row("child").dispatchEvent(dragEvent("dragover")));
+  await act(async () => row("group").dispatchEvent(dragEvent("dragover")));
+  expect(row("group").getAttribute("data-drop")).toBeNull();
+
+  await act(async () => row("sibling").dispatchEvent(dragEvent("dragover")));
+  expect(row("sibling").getAttribute("data-drop")).toBe("slot");
+  // Only one row is ever marked, so a refusal cannot linger beside a slot.
   expect(row("child").getAttribute("data-drop")).toBeNull();
 
-  await act(async () => row("peer").dispatchEvent(dragEvent("dragover")));
-  expect(row("peer").getAttribute("data-drop")).toBe("slot");
-  // Only one row is ever marked, so a refusal cannot linger beside a slot.
-  expect(row("sibling").getAttribute("data-drop")).toBeNull();
-
   // The mark is the drag's, so the gesture ending takes it with it.
-  await act(async () => row("peer").dispatchEvent(dragEvent("dragend")));
+  await act(async () => row("sibling").dispatchEvent(dragEvent("dragend")));
   expect(tree_().getAttribute("data-dragging")).toBeNull();
-  expect(row("peer").getAttribute("data-drop")).toBeNull();
+  expect(row("sibling").getAttribute("data-drop")).toBeNull();
 });
 
 it("takes the drop line away when the row under the pointer refuses it", async () => {
@@ -1054,6 +1072,10 @@ it("takes the drop line away when the row under the pointer refuses it", async (
   // reading the handler: it is a single element for the whole tree, so a line
   // shown over a sibling is still lit while the pointer has moved a row further
   // to a refusal — offering the very drop that row has just said no to.
+  //
+  // The refusal left after `vg-461` is the cycle, so the gesture picks up the
+  // group: a bar of line over a row the whole drag would have to land inside is
+  // the same false promise in the other direction.
   const tree = [
     layerRow({
       id: "group",
@@ -1100,58 +1122,67 @@ it("takes the drop line away when the row under the pointer refuses it", async (
       selected: false,
     }),
   ];
-  const owned = (id: string): string =>
-    id === "child" || id === "peer" ? "group" : "";
-  const host = await renderPanel(tree, {
-    sameLayerParent: (a: string, b: string) => owned(a) === owned(b),
-  });
+  const host = await renderPanel(tree, { canMoveLayer: moveRule(tree) });
   const row = (id: string): HTMLElement =>
     host.querySelector<HTMLElement>(`[data-vigilia-layer="${id}"]`)!;
   const line = (): HTMLElement =>
     host.querySelector<HTMLElement>("[data-vigilia-layer-dropline]")!;
 
-  await act(async () => row("child").dispatchEvent(dragEvent("dragstart")));
-  await act(async () => row("peer").dispatchEvent(dragEvent("dragover")));
+  await act(async () => row("group").dispatchEvent(dragEvent("dragstart")));
+  await act(async () => row("sibling").dispatchEvent(dragEvent("dragover")));
   expect(line().hidden).toBe(false);
 
-  // One row further, across the boundary: the line must go with the slot.
-  await act(async () => row("sibling").dispatchEvent(dragEvent("dragover")));
+  // Into the group's own rows: the line must go with the slot.
+  await act(async () => row("child").dispatchEvent(dragEvent("dragover")));
   expect(line().hidden).toBe(true);
 
   // And back again, so it is the row's answer that drives it rather than a
   // one-way latch.
-  await act(async () => row("peer").dispatchEvent(dragEvent("dragover")));
+  await act(async () => row("sibling").dispatchEvent(dragEvent("dragover")));
   expect(line().hidden).toBe(false);
 });
 
-it("still restacks on a drop the panel marked, and refuses the one it did not", async () => {
+it("still moves on a drop the panel marked, and refuses the one it did not", async () => {
   // The half of vg-099 that must not move: making a refusal visible is not a
   // reason to stop accepting a drop, and the two answers come from one gesture.
-  const reorderLayer = vi.fn(() => true);
+  // What the accepted half now moves is a *reparent* (`vg-460`), which is why
+  // the row dropped on sits outside the dragged row's group.
+  const moveLayer = vi.fn(() => true);
   const tree = [
-    { ...textRow, id: "child", name: "Child", depth: 1, parentId: "group" },
-    { ...textRow, id: "peer", name: "Peer", depth: 1, parentId: "group" },
+    layerRow({ id: "group", name: "Group", kind: "group", hasChildren: true }),
+    {
+      ...textRow,
+      id: "child",
+      name: "Child",
+      depth: 1,
+      parentId: "group",
+    },
     { ...textRow, id: "sibling", name: "Sibling", depth: 0 },
   ];
-  const owned = (id: string): string =>
-    id === "child" || id === "peer" ? "group" : "";
   const host = await renderPanel(tree, {
-    reorderLayer,
-    sameLayerParent: (a: string, b: string) => owned(a) === owned(b),
+    moveLayer,
+    canMoveLayer: moveRule(tree),
   });
   const row = (id: string): HTMLElement =>
     host.querySelector<HTMLElement>(`[data-vigilia-layer="${id}"]`)!;
 
+  // The cycle: the group dropped on its own child. Refused, so the drop does
+  // not reach the bridge at all. The mark is read mid-gesture, because a drop
+  // is the end of the gesture and takes the mark with it.
+  await act(async () => row("group").dispatchEvent(dragEvent("dragstart")));
+  await act(async () => row("child").dispatchEvent(dragEvent("dragover")));
+  expect(row("child").getAttribute("data-drop")).toBe("refused");
+  await act(async () => row("child").dispatchEvent(dragEvent("drop")));
+  expect(moveLayer).not.toHaveBeenCalled();
+  expect(row("child").getAttribute("data-drop")).toBeNull();
+
+  // The slot: a child dropped on the loose row beside its group. The panel
+  // passes the ids and nothing else — where the layer lands is the bridge's.
   await act(async () => row("child").dispatchEvent(dragEvent("dragstart")));
   await act(async () => row("sibling").dispatchEvent(dragEvent("dragover")));
   await act(async () => row("sibling").dispatchEvent(dragEvent("drop")));
-  expect(reorderLayer).not.toHaveBeenCalled();
-
-  await act(async () => row("child").dispatchEvent(dragEvent("dragstart")));
-  await act(async () => row("peer").dispatchEvent(dragEvent("dragover")));
-  await act(async () => row("peer").dispatchEvent(dragEvent("drop")));
-  expect(reorderLayer).toHaveBeenCalledWith("child", "peer");
-  expect(row("peer").getAttribute("data-drop")).toBeNull();
+  expect(moveLayer).toHaveBeenCalledWith("child", "sibling");
+  expect(row("sibling").getAttribute("data-drop")).toBeNull();
   expect(
     host.querySelector('[role="tree"]')?.getAttribute("data-dragging"),
   ).toBeNull();
@@ -1171,7 +1202,7 @@ it("states the reorder rule in the panel's own words, for a reader and not only 
 
 /** vg-087: the rows said `draggable` and nothing acted on it. Every earlier test
  * here drove the panel through a stub bridge, so a stub that answered
- * `sameLayerParent` and `reorderLayer` the way the test wanted would keep them
+ * `canMoveLayer` and `moveLayer` the way the test wanted would keep them
  * green while the real bridge refused the same gesture. This one wires the real
  * `createEditorShellBridge` over a real Fabric canvas, so the drag has to land
  * in Fabric's own array — the thing the panel's markup promises.
@@ -1235,6 +1266,91 @@ it("restacks the document when a row is dropped on another", async () => {
   // And the list the author reads followed the document, rather than the panel
   // re-rendering the order it was handed a moment earlier.
   expect(panelOrder()).toEqual(["alpha", "beta"]);
+
+  host.remove();
+});
+
+/** vg-461: a row can be dragged into a group and back out again. The stub cases
+ *  above pin the panel's half (which row is offered, what the bridge is handed);
+ *  this one pins the document's, over Fabric's real group, because a reparent is
+ *  the one move whose write is Fabric's own — `Group.add` and `Group.remove`
+ *  bake the child into (and out of) the group's plane, so a list that agrees
+ *  with the tree by accident is exactly the failure this would not see.
+ *
+ *  The reading is the panel's own nesting, taken as an author reads it: a row's
+ *  `--layer-depth`, which is what the indentation is drawn from. The drop is
+ *  driven straight at the handlers because a browser cannot be asked to perform
+ *  a drag — and because the panel's half is already covered above. */
+it("moves a row into a group and back out, and the panel shows where it landed", async () => {
+  const canvas = new Canvas(document.createElement("canvas"));
+  const inner = new Rect({ left: 0, top: 0, width: 10, height: 10 });
+  const loose = new Rect({ left: 20, top: 0, width: 10, height: 10 });
+  const group = new Group([inner]);
+  inner.set("id", "inner");
+  loose.set("id", "loose");
+  group.set("id", "grp");
+  canvas.add(group, loose);
+  const real = createEditorShellBridge({
+    editor: {
+      canvas,
+      groupingManager: { groupContext: () => [] },
+      historyManager: { saveState: vi.fn() },
+    },
+    session: { subscribeDocumentChange: () => () => undefined } as never,
+    capture: () => undefined,
+  } as never);
+
+  const host = document.createElement("div");
+  await act(async () =>
+    (await Promise.resolve(createRoot(host))).render(
+      <CompositionPane bridge={real} />,
+    ),
+  );
+  const row = (id: string): HTMLElement =>
+    host.querySelector<HTMLElement>(`[data-vigilia-layer="${id}"]`)!;
+  const has = (id: string): boolean =>
+    host.querySelector(`[data-vigilia-layer="${id}"]`) !== null;
+  /** Each visible row as the author sees it: the id, and the depth the
+   *  indentation is computed from. */
+  const read = (): string[] =>
+    [...host.querySelectorAll<HTMLElement>("[data-vigilia-layer]")].map(
+      (element) =>
+        `${element.getAttribute("data-vigilia-layer")}@${element.style.getPropertyValue("--layer-depth")}`,
+    );
+
+  // A group is shut until it is opened, so the child is not a row yet.
+  expect(read()).toEqual(["loose@0", "grp@0"]);
+  // The twisty is the group row's own control: a row with children draws it and
+  // a leaf draws a spacer, so this is the one button on that row.
+  const twisty = row("grp").querySelector<HTMLButtonElement>("button");
+  expect(twisty?.getAttribute("aria-label")).toContain(uiCopy.panels.expand);
+  await act(async () => twisty?.click());
+  expect(read()).toEqual(["loose@0", "grp@0", "inner@1"]);
+
+  // Into the group: dropped on its first child, so the loose row lands beside
+  // it inside the group's own plane.
+  await act(async () => row("loose").dispatchEvent(dragEvent("dragstart")));
+  await act(async () => row("inner").dispatchEvent(dragEvent("dragover")));
+  await act(async () => row("inner").dispatchEvent(dragEvent("drop")));
+  expect(group.getObjects()).toEqual([inner, loose]);
+  expect(canvas.getObjects()).toEqual([group]);
+  expect(loose.parent).toBe(group);
+  // The rendered half: the row indented under the group it now belongs to, and
+  // above the child it was dropped on — the panel paints topmost first.
+  expect(read()).toEqual(["grp@0", "loose@1", "inner@1"]);
+
+  // And back out, dropped on the group row itself — an anchor at the root puts
+  // the row beside it there.
+  await act(async () => row("loose").dispatchEvent(dragEvent("dragstart")));
+  await act(async () => row("grp").dispatchEvent(dragEvent("dragover")));
+  await act(async () => row("grp").dispatchEvent(dragEvent("drop")));
+  expect(group.getObjects()).toEqual([inner]);
+  expect(canvas.getObjects()).toEqual([group, loose]);
+  expect(loose.parent).toBeUndefined();
+  expect(read()).toEqual(["loose@0", "grp@0", "inner@1"]);
+  // The group is left where it was, so the row that moved is the loose one and
+  // nothing else in the document followed it.
+  expect(has("grp")).toBe(true);
 
   host.remove();
 });
@@ -1308,8 +1424,9 @@ it("shows the state icons on hover, on focus and on selection", async () => {
   await act(async () =>
     row.dispatchEvent(new MouseEvent("mouseover", { bubbles: true })),
   );
-  // Rename, the eye and the lock: the whole of what a row at rest withholds.
-  expect(icons()).toBe(3);
+  // The eye and the lock: the whole of what a row at rest withholds. The pen
+  // used to be the third and is gone (`vg-462`).
+  expect(icons()).toBe(2);
 
   await act(async () =>
     row.dispatchEvent(new MouseEvent("mouseout", { bubbles: true })),
@@ -1321,7 +1438,7 @@ it("shows the state icons on hover, on focus and on selection", async () => {
   await act(async () =>
     row.dispatchEvent(new FocusEvent("focusin", { bubbles: true })),
   );
-  expect(icons()).toBe(3);
+  expect(icons()).toBe(2);
 
   await act(async () =>
     row.dispatchEvent(new FocusEvent("focusout", { bubbles: true })),

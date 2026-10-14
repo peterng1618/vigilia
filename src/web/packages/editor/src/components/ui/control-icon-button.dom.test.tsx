@@ -383,8 +383,8 @@ function treeBridge(): EditorShellBridge {
     setLayerLocked: vi.fn(),
     renameLayer: vi.fn(),
     setCollapsed: vi.fn(),
-    sameLayerParent: () => false,
-    reorderLayer: () => false,
+    canMoveLayer: () => false,
+    moveLayer: () => false,
     subscribe: () => () => undefined,
     run: vi.fn(),
   } as unknown as EditorShellBridge;

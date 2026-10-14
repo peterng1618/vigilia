@@ -5,7 +5,11 @@ import { expect, it, vi } from "vitest";
 import type { EditorShellBridge } from "../../editor-shell/bridge.js";
 import { LayerActions } from "../../editor-shell/layer-panel.js";
 import type { LayerRow } from "../../editor-shell/layer-tree.js";
-import { type ObjectTarget, objectActionsFor } from "../../object-actions.js";
+import {
+  CONSTRUCTION_ACTIONS,
+  type ObjectTarget,
+  objectActionsFor,
+} from "../../object-actions.js";
 import { uiCopy } from "../../ui-copy.js";
 import { CompositionPane } from "./composition-pane.js";
 
@@ -92,6 +96,9 @@ it("shows the row's own controls on the attended row and on a row whose state is
   // true carry no information, so a visible unlocked row at rest draws no
   // control at all — 104 icons reading "visible, unlocked" was the measured
   // defect, and it grows with the row count.
+  //
+  // Rename is not a column here and is not a case: `vg-462` removed the pen, so
+  // there is no control whose presence a row's state could decide.
   const cases: readonly {
     readonly what: string;
     readonly row: LayerRow;
@@ -108,29 +115,28 @@ it("shows the row's own controls on the attended row and on a row whose state is
       what: "the attended row",
       row: row(),
       attended: true,
-      shows: [uiCopy.panels.rename, uiCopy.panels.hide, uiCopy.actions.lock],
+      shows: [uiCopy.panels.hide, uiCopy.actions.lock],
     },
     {
       what: "a selected row",
       row: row({ selected: true }),
       attended: false,
-      shows: [uiCopy.panels.rename, uiCopy.panels.hide, uiCopy.actions.lock],
+      shows: [uiCopy.panels.hide, uiCopy.actions.lock],
     },
     {
       what: "a hidden row",
       row: row({ visible: false }),
       attended: false,
-      // Rename is not a state and reads nothing about the eye: the row's state
-      // brings back the control that names it, and the eye's neighbour — an
-      // unlocked row's lock — stays away, because a hidden row is still
-      // unlocked and an unlocked lock icon is noise even here.
-      shows: [uiCopy.panels.rename, uiCopy.panels.show],
+      // The row's own state brings back the control that names it, and only
+      // that one: a hidden row is still unlocked, and an unlocked lock icon is
+      // noise even here.
+      shows: [uiCopy.panels.show],
     },
     {
       what: "a locked row",
       row: row({ locked: true }),
       attended: false,
-      shows: [uiCopy.panels.rename, uiCopy.actions.unlock],
+      shows: [uiCopy.actions.unlock],
     },
   ];
 
@@ -142,9 +148,9 @@ it("shows the row's own controls on the attended row and on a row whose state is
   }
 });
 
-it("reaches rename, visibility and lock from the keyboard, with a name each", async () => {
+it("reaches visibility and lock from the keyboard, with a name each", async () => {
   // Review Focus 3. A pointer-only gate would leave a keyboard author with no
-  // way to reach any of the three, so attendance is hover OR focus — and the
+  // way to reach either control, so attendance is hover OR focus — and the
   // focus half is checked with no pointer anywhere near the row. Each control
   // is a real button with its own name, so it is in the tab order and it is
   // announced; and a press on one reaches the bridge rather than selecting the
@@ -175,7 +181,7 @@ it("reaches rename, visibility and lock from the keyboard, with a name each", as
     ...host.querySelectorAll<HTMLButtonElement>(".vigilia-layer-state button"),
   ];
   expect(controls.map((control) => control.getAttribute("aria-label"))).toEqual(
-    [uiCopy.panels.rename, uiCopy.panels.hide, uiCopy.actions.lock],
+    [uiCopy.panels.hide, uiCopy.actions.lock],
   );
   for (const control of controls) {
     expect(
@@ -201,7 +207,7 @@ it("reaches rename, visibility and lock from the keyboard, with a name each", as
   expect(
     affordanceLabels(host),
     "focus that stays inside the row does not stand the controls down",
-  ).toEqual([uiCopy.panels.rename, uiCopy.panels.hide, uiCopy.actions.lock]);
+  ).toEqual([uiCopy.panels.hide, uiCopy.actions.lock]);
 
   // The other half, so the case above is not vacuous: focus that leaves the row
   // entirely does stand them down.
@@ -236,27 +242,53 @@ it("reaches rename, visibility and lock from the keyboard, with a name each", as
   expect(setLayerVisible.mock.calls).toEqual([["loose-0", false]]);
   expect(setLayerLocked.mock.calls).toEqual([["loose-0", true]]);
 
-  // Rename is the third: pressing it opens the field the double-click and F2
-  // have always opened, so the control is a second route to one behaviour
-  // rather than a second behaviour.
-  expect(host.querySelector('[aria-label="Rename loose-0"]')).toBeNull();
-  await press(uiCopy.panels.rename);
-  expect(
-    host.querySelector<HTMLInputElement>('[aria-label="Rename loose-0"]'),
-  ).not.toBeNull();
-
   // A press on a control is not a press on the row: selecting the layer under
   // the control the author pressed is the failure this guards.
   expect(selectLayer).not.toHaveBeenCalled();
   host.remove();
 });
 
-it("offers only the object actions this selection can run, and asks the registry", async () => {
+it("draws no rename control on an attended row, and the name still opens for typing", async () => {
+  // vg-462's item is a removal: the name the pen acted on is the row's own, so a
+  // control beside it was a second route to what a double-click had always
+  // opened. The failure mode to guard is the other half — removing the pen while
+  // taking the pointer and keyboard routes with it.
+  const host = await renderPane([row()]);
+  const line = host.querySelector<HTMLElement>(
+    '[data-vigilia-layer="loose-0"]',
+  )!;
+  await hover(host, "loose-0");
+
+  // Attended, so every control this row draws at all is on screen: none of them
+  // is a rename, and none wears the pen's own name.
+  expect(affordanceLabels(host)).not.toContain(uiCopy.panels.rename);
+  expect(
+    host.querySelector(`[aria-label="${uiCopy.panels.rename} loose-0"]`),
+    "no control opens the field on the author's behalf",
+  ).toBeNull();
+  expect(host.querySelector('[aria-label="Rename loose-0"]')).toBeNull();
+
+  // The name itself is the route: a double-click on the row opens the field.
+  await act(async () =>
+    line.dispatchEvent(new MouseEvent("dblclick", { bubbles: true })),
+  );
+  expect(
+    host.querySelector<HTMLInputElement>('[aria-label="Rename loose-0"]'),
+  ).not.toBeNull();
+  host.remove();
+});
+
+it("offers the object actions this selection can run plus the constructions, and asks the registry", async () => {
   // The footer decides nothing: eligibility is `objectActionsFor`'s, and the
   // expected column below is that function's own answer rather than a copy of
   // its rule. A surface that re-spelled the filter would agree with it on one
   // selection and diverge on another — which is why three selections are asked,
   // one of them a locked object, where the delete half of the registry refuses.
+  //
+  // The other half is `CONSTRUCTION_ACTIONS`, and it is drawn in every one of
+  // those states: a construction needs no subject, so the filter has nothing to
+  // say about it (`vg-460`). It leads the row, because it is the half that does
+  // not move as the selection changes.
   const cases: readonly {
     readonly what: string;
     readonly target: ObjectTarget;
@@ -312,10 +344,14 @@ it("offers only the object actions this selection can run, and asks the registry
 
   for (const { what, target } of cases) {
     const { host, labels, offered, run } = await renderFooter(target);
-    expect(labels, what).toEqual(offered.map((action) => action.label));
+    // The rendered order is the constructions first, then the commands.
+    const expected = [...CONSTRUCTION_ACTIONS, ...offered].map(
+      (action) => action.label,
+    );
+    expect(labels, what).toEqual(expected);
     // The press carries the registry's own id, so the footer is rendering the
     // registry's entries rather than a list of its own that happens to match.
-    const first = offered[0];
+    const first = [...CONSTRUCTION_ACTIONS, ...offered][0];
     if (first !== undefined) {
       await act(async () =>
         host.querySelector<HTMLButtonElement>("button")?.click(),
@@ -326,16 +362,19 @@ it("offers only the object actions this selection can run, and asks the registry
   }
 
   // The absences the filter buys, said outright: a locked object is offered no
-  // Delete and no Lock, and a selection of nothing is offered nothing at all.
+  // Delete and no Lock, and a selection of nothing is offered no command at all.
   // Rendering the whole registry instead would put a control on the footer that
-  // the selection cannot run.
+  // the selection cannot run — and the constructions below are the difference
+  // between that and a footer that is *present* without being useful.
   const none = await renderFooter({
     kind: "none",
     locked: false,
     memberCount: 0,
     isGroup: false,
   });
-  expect(none.labels).toEqual([]);
+  expect(none.labels).toEqual(
+    CONSTRUCTION_ACTIONS.map((action) => action.label),
+  );
 
   const locked = await renderFooter({
     kind: "object",

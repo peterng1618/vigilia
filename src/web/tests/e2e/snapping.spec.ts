@@ -578,11 +578,26 @@ test("layer-panel object actions match canvas dock", async ({
     buttons.map((button) => button.getAttribute("aria-label") ?? "").sort();
   const footerEntries = await footer.getByRole("button").evaluateAll(entries);
   expect(footerEntries).not.toEqual([]);
-  // The layer footer and the toolbar both offer object actions and nothing else:
-  // `vg-463` moved the eight arrange actions out of the toolbar and into the
-  // inspector, so the two entry sets are comparable directly.
+  // The layer footer offers the object commands *and* the constructions, and the
+  // dock offers the commands alone (`vg-460`): a construction needs no subject,
+  // so a surface that only ever draws what a selection can run had nothing to
+  // draw with nothing selected. The two sets are therefore no longer equal, and
+  // the difference is not a stray action — it is the Add pane's primitives, read
+  // off the pane's own tiles rather than listed here, so a primitive added to
+  // the Add pane fails this until the footer carries it too. `vg-463` moved the
+  // eight arrange actions out of the toolbar and into the inspector, so the
+  // command halves are still comparable directly.
+  const add = page.locator('[data-vigilia-panel="add"]');
+  const constructions = [
+    ...(await add.locator(".vigilia-add-text").evaluateAll(entries)),
+    ...(await add.locator("[data-vigilia-panel-add]").evaluateAll(entries)),
+  ];
+  expect(constructions.length).toBeGreaterThan(1);
   expect(footerEntries).toEqual(
-    await dock.locator("button").evaluateAll(entries),
+    [
+      ...(await dock.locator("button").evaluateAll(entries)),
+      ...constructions,
+    ].sort(),
   );
 });
 

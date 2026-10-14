@@ -4,6 +4,7 @@ import { createRoot } from "react-dom/client";
 import { expect, it } from "vitest";
 import {
   type ActionGate,
+  CONSTRUCTION_ACTIONS,
   type ObjectTarget,
   objectActionsFor,
 } from "../object-actions.js";
@@ -86,24 +87,31 @@ it("names the section and draws the title bar DESIGN.md's panes wear", () => {
   act(() => root.unmount());
 });
 
-it("offers only the object actions this selection can run", () => {
-  // Nothing selected: the footer is empty. An action the selection cannot run
-  // is **absent, not greyed** — the arrange half is the one that greys, and it
-  // lives on the dock, not here.
+it("offers the object actions this selection can run, and the constructions whatever it is", () => {
+  // Nothing selected: no *command* — an action the selection cannot run is
+  // **absent, not greyed**, and the arrange half is the one that greys, on the
+  // inspector's lead. What is there is the constructions, which need no subject
+  // at all (`vg-460`): the footer after this task is not present-but-empty, it
+  // is present and usable.
   const empty = render(bridge(nothing()));
-  expect(
-    empty.host
+  const emptyLabels = [
+    ...(empty.host
       .querySelector("[data-vigilia-layer-actions]")
-      ?.querySelectorAll("button"),
-  ).toHaveLength(0);
+      ?.querySelectorAll("button") ?? []),
+  ].map((button) => button.getAttribute("aria-label"));
+  expect(emptyLabels).toEqual(
+    CONSTRUCTION_ACTIONS.map((action) => action.label),
+  );
 
-  // One unlocked object: the registry's answer, and it is not empty.
+  // One unlocked object: the registry's answer on top of them, and it is not
+  // empty.
   const filled = render(bridge(object()));
-  expect(
-    filled.host
+  const filledLabels = [
+    ...(filled.host
       .querySelector("[data-vigilia-layer-actions]")
-      ?.querySelectorAll("button").length,
-  ).toBeGreaterThan(1);
+      ?.querySelectorAll("button") ?? []),
+  ].map((button) => button.getAttribute("aria-label"));
+  expect(filledLabels.length).toBeGreaterThan(emptyLabels.length);
 
   act(() => empty.root.unmount());
   act(() => filled.root.unmount());
@@ -115,8 +123,12 @@ it("asks the registry for eligibility and decides nothing itself", () => {
 
   // Derived rather than written out: a literal list would pass if the footer
   // re-derived eligibility, which is the drift this pins. `objectActionsFor` is
-  // the dock's own filter, so the two surfaces cannot disagree.
-  const expected = objectActionsFor(gate as unknown as ActionGate)
+  // the dock's own filter, so the two surfaces cannot disagree about the command
+  // half; `CONSTRUCTION_ACTIONS` is the half the dock does not draw.
+  const expected = [
+    ...CONSTRUCTION_ACTIONS,
+    ...objectActionsFor(gate as unknown as ActionGate),
+  ]
     .map((action) => action.label)
     .sort();
   const rendered = Array.from(
