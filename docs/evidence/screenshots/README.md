@@ -61,12 +61,12 @@ drawing is skipped by the drawings gate rather than parsed — it enumerates
 **Plans 1 and 3's control-set pair sits beside the controls drawings the same
 way**: `docs/design/mockups/current/controls-capture-graphite.png` is the set on
 the ground `controls.html` draws (its `#0b0e12` paper, `#72e0c0` accent) and
-`controls-capture-editorial.png` the light ground `controls-light.html` draws
+`controls-capture-editorial.png` the light ground `controls-editorial.html` draws
 (its `#fffdf7` paper), both the three-panel state the drawn sheets hold, from
 `the control set renders in the design language` (the `control-set` file, with
 and without `-editorial`).
 
-**Which plan each drawing answers for, because the mapping is many-to-many and the per-plan passages above name only some of it.** The design-language spec's eight plans are the control set (1), the shell and rail (2), the inspector (3), the panes (4), settings and appearance (5), iconography and copy (6), shell parity (7) and settings parity (8). `controls.html` and `controls-light.html` draw plan 1's set, which plan 3's column is built on; `shell.html` draws plans 2, 3 and 7 at once — its Position, Paint and Spends sections are the inspector's, and it is the drawing both parity plans were pulled to; the three settings sheets draw plans 5 and 8. **Plan 6 has no drawing of its own**, so `shell-capture-glyphs.png` is its evidence and was placed beside the shell. **Plan 4's panes are drawn only where `shell.html` shows the Add one** — Composition, Tokens and Document appear in no drawing, so `pane-composition`, `pane-tokens` and `pane-document` sit in this directory beside no drawing. Nothing above is a claim that a plan's *own* report names its capture; it records which surfaces each image shows.
+**Which plan each drawing answers for, because the mapping is many-to-many and the per-plan passages above name only some of it.** The design-language spec's eight plans are the control set (1), the shell and rail (2), the inspector (3), the panes (4), settings and appearance (5), iconography and copy (6), shell parity (7) and settings parity (8). `controls.html` and `controls-editorial.html` draw plan 1's set, which plan 3's column is built on; `shell.html` draws plans 2, 3 and 7 at once — its Position, Paint and Spends sections are the inspector's, and it is the drawing both parity plans were pulled to; the three settings sheets draw plans 5 and 8. **Plan 6 has no drawing of its own**, so `shell-capture-glyphs.png` is its evidence and was placed beside the shell. **Plan 4's panes are drawn only where `shell.html` shows the Add one** — Composition, Tokens and Document appear in no drawing, so `pane-composition`, `pane-tokens` and `pane-document` sit in this directory beside no drawing. Nothing above is a claim that a plan's *own* report names its capture; it records which surfaces each image shows.
 
 ## Editor visual-action checklist
 

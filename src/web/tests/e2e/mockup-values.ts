@@ -103,7 +103,7 @@ export const CONTROLS_MOCKUP_PATH = fileURLToPath(
  *  else, so a row that reads both is reading one geometry twice. */
 export const CONTROLS_LIGHT_MOCKUP_PATH = fileURLToPath(
   new URL(
-    "../../../../docs/design/mockups/current/controls-light.html",
+    "../../../../docs/design/mockups/current/controls-editorial.html",
     import.meta.url,
   ),
 );
@@ -128,7 +128,7 @@ const CURRENT_MOCKUPS_DIR = fileURLToPath(
  *  the checked-in path a failure names it by.
  *
  *  **A directory read, not a list of the six the directory holds today** —
- *  `controls.html`, `controls-light.html`, `settings.html`,
+ *  `controls.html`, `controls-editorial.html`, `settings.html`,
  *  `settings-keyboard.html`, `settings-about.html`, `shell.html` — because the
  *  hole this closes is a drawing the reader did not know about: the set was four
  *  when it landed, all four declared the off-scale `7px` toggle track the radius
@@ -929,7 +929,7 @@ export const PARITY: readonly ParityRegion[] = [
     surface: "fixture",
   },
   {
-    region: "field row — label column (controls-light drawing)",
+    region: "field row — label column (controls-editorial drawing)",
     mockupPath: CONTROLS_LIGHT_MOCKUP_PATH,
     mockupSelector:
       '[style*="width:74px;flex:0 0 auto;color:var(--muted);font-size:11px;padding-top:4px"]',

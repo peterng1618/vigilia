@@ -70,7 +70,7 @@ test("the drawing is the checked-in file, read from disk", () => {
     "docs/design/mockups/current/controls.html",
   );
   expect(CONTROLS_LIGHT_MOCKUP_PATH.replace(/\\/g, "/")).toContain(
-    "docs/design/mockups/current/controls-light.html",
+    "docs/design/mockups/current/controls-editorial.html",
   );
   // The frozen originals are provenance, and the target is never one of them:
   // reading one to decide a value is the drift this plan exists to end.
@@ -395,7 +395,7 @@ test("the current set is enumerated by directory, and every drawing in it reads"
     "docs/design/mockups/current/shell.html",
     "docs/design/mockups/current/settings.html",
     "docs/design/mockups/current/controls.html",
-    "docs/design/mockups/current/controls-light.html",
+    "docs/design/mockups/current/controls-editorial.html",
   ]) {
     expect(
       names,

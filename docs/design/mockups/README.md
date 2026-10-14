@@ -22,7 +22,7 @@ guess between them.
 | [`current/settings-keyboard.html`](current/settings-keyboard.html) | The same modal with §7's Keyboard panel showing: its header bar and return-to-default action, and the reference's own rows with their chord marks and per-row controls |
 | [`current/settings-about.html`](current/settings-about.html) | The same modal with §7's About panel showing: what the editor is, and the version facts this build can read |
 | [`current/controls.html`](current/controls.html) | The inspector column as it renders, in the reference palette: wells, a slider, segmented rows, the read-only treatment, a refusal |
-| [`current/controls-light.html`](current/controls-light.html) | The same column in the light palette — the same file with the token table swapped, so a hard-coded colour cannot hide in it |
+| [`current/controls-editorial.html`](current/controls-editorial.html) | The same column on the editorial ground — the same file with the token table swapped, so a hard-coded colour cannot hide in it |
 
 ## The originals — the record
 

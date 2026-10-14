@@ -479,7 +479,7 @@ test("the control set renders in the design language", async ({
   //
   // A field row is **one track**: a fixed label column, and a value cell every
   // control fills. That is what the control set's own drawing declares
-  // (`current/controls.html` and its light twin, `current/controls-light.html`:
+  // (`current/controls.html` and its light twin, `current/controls-editorial.html`:
   // the label is `width:74px;flex:0 0 auto` and the value is `flex:1`), and the
   // product declared neither — a number well was as wide as its `<input>`, a
   // select filled the slot and a segmented group hugged its right edge, which is
