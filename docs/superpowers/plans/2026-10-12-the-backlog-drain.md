@@ -1310,15 +1310,68 @@ somewhere it will meet.
 **Failure modes:** the eight duplicated in both surfaces; the glass explanation deleted with the
 section; `vg-016`'s sentence left standing in contradiction to the tree.
 
+### Task 13.2b: One vocabulary for every icon, the add pane included (item 2's unmet half)
+
+**Added 2026-10-15 by the scoped review of `a7745cc7`**, which found that 13.2 discharged one of the
+two owners `vg-459`'s own title names. **`vg-459` stays open until this lands.**
+
+**Files:**
+- Modify: `packages/editor/src/panes/add/add-pane.tsx`
+- Modify: `packages/editor/src/editor-shell/icons.ts`, `packages/editor/src/editor-shell/icons.test.tsx`
+- Modify: `packages/editor/src/panes/composition/kind-mark.tsx`, `kind-mark.dom.test.tsx`
+
+**Interfaces:**
+- Consumes: `KIND_GLYPHS` and the `CHART_*_GLYPH` family 13.2 built, which are now the one vocabulary
+- Produces: no hand-authored glyph left in the add pane, and every layer kind distinguishable by its mark
+
+- [ ] **Step 1: The add pane's shape tiles read the one vocabulary.** `add-pane.tsx:158-182` draws them
+      by hand and `:158-170` records the reason: Lucide has no `wedge` or `arc`. **That reason is the
+      obstacle this row has to answer rather than restate**, and it is why the item's two halves — a
+      shape row drawn "as the add panel draws it" and every icon Lucide — cannot both hold while the
+      pane draws its own. Bringing the tiles into the vocabulary is what makes them agree by
+      construction instead of by being copied.
+- [ ] **Step 2: De-collide `wedge` from `pie`.** `icons.ts:172` and `:137` are the same component, so a
+      wedge shape row and a pie chart row render the identical class and the mark stops naming the
+      kind. Decide which side moves and name the owner in the commit — the wedge is the shape family's
+      own primitive and the pie belongs to the chart family, so moving the chart's glyph is allowed
+      only if the user's "group and chart icons are right" survives it.
+- [ ] **Step 3: `text`'s mark, decided rather than left.** The user asked for a `T` in a
+      rounded-rectangle outline and no installed `lucide-react` glyph is one — `SquareText` is a
+      rounded square with three text rules and no `square-type` exists. Either the box is dropped and
+      the commit says the user's wording yields to the one-family rule, or the rule gains a named
+      exemption. **Do not draw a second hand-authored glyph to satisfy the box**: that reinstates the
+      defect this row exists to end.
+- [ ] **Step 4: Distinguishability is asserted, not read.** Add a case that every kind's mark differs
+      from every other kind's — the case that would have caught Step 2 by itself, and the one
+      `kind-mark.dom.test.tsx:136-139` does not have, since it compares `rect` against `wedge` alone.
+- [ ] **Step 5: `kind-mark.dom.test.tsx:42-45`'s comment.** It claims the expectations are read off the
+      vocabulary "rather than written as a literal" while `:120` and `:125` assert the literals
+      `lucide-gauge` and `lucide-chart-line`. The assertions are defensible; the comment is untrue.
+      Make one of them change.
+- [ ] **Step 6: `npm run gate`, then commit**, naming the kinds whose glyph is an approximation, the
+      side that moved in Step 2, and the side taken in Step 3.
+
+**Constraints:** runs after Task 13.4 has landed, because it edits `icons.test.tsx`'s exemption list
+and the add pane while 13.4 holds the tree.
+
+**Acceptance:** no hand-authored glyph renders in the add pane, verified rendered; every kind's mark
+differs from every other's, asserted; the approximations, the de-collision and the `text` decision are
+each named in the commit.
+**Failure modes:** a second hand-authored glyph added to draw the box; `wedge` de-collided by moving a
+glyph the user called right; the `text` decision taken silently; distinctness claimed from reading the
+vocabulary rather than from a case.
+
 ### Task 13.5: Close the nine, and set what item 2 could not settle
 
 **Files:**
 - Modify: both register files, `STATUS.md`
 
-- [ ] **Step 1: Close `vg-458`–`vg-466`** as `verified`, each with a `check` naming a word from its
-      own `title` and `artefacts` naming the commit that landed it. Item 2's row closes only on the
-      rendered layer list, and any part of it left unresolved (`vigil-459`'s Lucide question) stays
-      open on its own line rather than being closed with the rest.
+- [ ] **Step 1: Close `vg-458` and `vg-460`–`vg-466`** as `verified`, each with a `check` naming a word
+      from its own `title` and `artefacts` naming the commit that landed it. **`vg-459` is not among
+      them and does not close here** — the scoped review of `a7745cc7` of 2026-10-15 found that
+      `vg-459`'s title names two owners and the commit discharged one, so it closes with **Task
+      13.2b**, whose own close must name a word from the add pane's half. `vg-463` closes here only
+      once Phase 13.4's rendered reading exists.
 - [ ] **Step 2: Record the two moved decisions** — `vg-016` and `vg-006` keep `verified` and gain a
       line naming where the decision moved, so the next reader finds the current answer from either.
 - [ ] **Step 3: `npm run backlog:check`, `npm run status:check`, commit.**
