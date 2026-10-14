@@ -751,7 +751,18 @@ test.describe("the stage looks through a display", () => {
    *  ("nothing at rest, an edge on hover"), which is what a page cannot state
    *  for itself and jsdom cannot see at all. The rested border is asserted
    *  transparent rather than merely different, because a resting border of any
-   *  colour would be a different control. */
+   *  colour would be a different control.
+   *
+   *  **The edge arrives over a transition, so the read has to wait for it.**
+   *  This control transitions `border-color` over 0.14 s, and a read in the same
+   *  frame as the hover returns the resting value *exactly* — measured on the
+   *  running editor: transparent at +0 ms, `rgba(79, 102, 89, 0.62)` at +30 ms,
+   *  the token's own `rgb(79, 102, 89)` by +250 ms. The state was never the
+   *  problem (`:hover` matched from the first frame); reading it as though the
+   *  change were instant was, which is how this case failed every time it was
+   *  measured rather than intermittently. Polling waits for the edge without
+   *  naming a duration, and still fails if the rule is removed, because then the
+   *  colour never leaves the resting value at all. */
   test("a camera step acquires its edge on hover, and nothing moves", async ({
     page,
   }) => {
@@ -769,8 +780,9 @@ test.describe("the stage looks through a display", () => {
     ).toMatch(/^(rgba\(0, 0, 0, 0\)|transparent)$/);
 
     await step.hover();
-    const hovered = await borderOf();
-    expect(hovered, "and hover is what gives it one").not.toBe(resting);
+    await expect
+      .poll(borderOf, { message: "and hover is what gives it one" })
+      .not.toBe(resting);
     expect(
       await step.boundingBox(),
       "the border changes no box, so nothing moves",

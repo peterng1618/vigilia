@@ -37,7 +37,10 @@ ledger did.
 
 ## Last completed change
 
-- **The zone picker offered 419 zones in a popup with no height of its own, so every zone past the fold was unreachable** — `control-select.tsx`'s `Select.Popup` grew to fit its contents, and being portalled and fixed-positioned, the page could not be scrolled to reach the rest; `Intl.supportedValuesOf("timeZone")` is 418 entries plus *follow the display*. **The rule already existed next door**: `.editor-shell-menu-popup` reads Base UI's `--available-height` and scrolls for exactly this reason, so the primitive now reads the same variable. `editor.spec.ts`'s clock case chose Asia/Tokyo and had timed out at 30.6 s for its whole life; green in 3.6 s now.
+- **Step 4's reds are triaged: three defects, each measured alone, all three fixed rather than filed** — the serial re-run gave 3 passed / 3 failed, and every one of the three was a real defect rather than load, so the 18-red full pass was one pass's worth of contention over three causes.
+- **The zone picker offered 419 zones in a popup with no height of its own, so every zone past the fold was unreachable** — `control-select.tsx`'s `Select.Popup` grew to fit its contents, and being portalled and fixed-positioned, the page could not be scrolled to reach the rest; **the rule already existed next door**, so the primitive now reads Base UI's `--available-height` as `.editor-shell-menu-popup` does. The clock case that picks Asia/Tokyo was **30.6 s red and is 3.6 s green** (`2252c38d`).
+- **A camera step's hover edge was read in the frame the hover landed in, before its 0.14 s transition had moved** — measured: transparent at +0 ms, `rgba(79, 102, 89, 0.62)` at +30 ms, the token by +250 ms, with `:hover` matching from the first frame, so the state was never the problem and the product is unchanged; the read now polls, and **the red-proof runs both ways** — rule deleted, the poll fails at its 5 s timeout; rule restored byte-identical (`cmp`), green in 2.5 s.
+- **Ten e2e locators asserted a menu row's name *is* its label, and a chorded row's is not** — the chord `kbd`'s `aria-label` joins the row's name-from-content (`1189c459`), so `exact: true` matched 0 rows where the substring matched 1; nine files, tests only.
 
 
 ## Next
