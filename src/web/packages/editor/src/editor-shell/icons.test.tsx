@@ -80,16 +80,17 @@ import { Rail } from "./rail.js";
  * The sources allowed to draw a glyph without going through `icons.ts`, each
  * with §6's reason. `icons.ts` is the vocabulary itself and the one chrome
  * reader of `lucide-react`; the theme icons are authored scene geometry rather
- * than chrome; the registry is §6's own authority on action icons; and the two
- * Add-pane sources are §6's unit-tile escape — "a card unit in the Add pane is
- * not arbitrary … so a unit tile may carry a diagram of what it builds", which
- * the shape tiles read too because `SHAPE_KINDS` is fixed the same way.
+ * than chrome; the registry is §6's own authority on action icons; and the card
+ * diagrams are §6's unit-tile escape — "a card unit in the Add pane is not
+ * arbitrary … so a unit tile may carry a diagram of what it builds". The Add
+ * pane is *not* here: its shape, chart and text tiles are the vocabulary's own
+ * glyphs, so a tile that went back to drawing its own path would arrive in this
+ * list and fail the case below.
  */
 const EXEMPT_SOURCES: readonly string[] = [
   "editor-shell/icons.ts", // the vocabulary: one family, one weight, and the one place both are decided
   "new-fabric-theme-icons.ts", // authored scene icons — lucide geometry turned into Fabric paths, not chrome
   "object-actions.ts", // §6: the registry owns which action wears which icon
-  "panes/add/add-pane.tsx", // §6: a shape/text tile draws the primitive it builds (§7.8's glyph-led tiles)
   "panes/add/card-diagrams.tsx", // §6: "a unit tile may carry a diagram of what it builds"
 ];
 
@@ -368,5 +369,15 @@ it("draws every object the Add pane offers, so an insertable kind cannot arrive 
   // A card's tile is §6's depicted unit and a primitive's is the object it
   // builds; what this asks is only that each one is drawn, because a kind
   // offered with no mark is a tile an author cannot choose.
-  for (const tile of tiles) expect(tile.querySelector("svg")).not.toBeNull();
+  for (const tile of tiles) {
+    const svg = tile.querySelector("svg");
+    expect(svg).not.toBeNull();
+    // **Rendered, not read off the source.** Every tile but a card unit's now
+    // wears a vocabulary glyph, and a lucide glyph is the only mark that writes
+    // this class — the pane's own hand-authored `<svg>`s wrote none, which is
+    // how a tile drawn by hand again is caught here rather than in a reading.
+    if (tile.getAttribute("data-vigilia-panel-card") === null) {
+      expect(svg?.getAttribute("class")).toMatch(/^lucide/);
+    }
+  }
 });

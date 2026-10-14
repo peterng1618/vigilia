@@ -33,6 +33,7 @@ import {
   Square,
   Star,
   TriangleAlert,
+  TriangleRight,
   Type,
   Unlock,
 } from "lucide-react";
@@ -141,20 +142,21 @@ export const CHART_PIE_GLYPH: LucideIcon = ChartPie;
  * primitive added to that list fails to compile here until it wears a mark.
  *
  * **Every entry is a lucide glyph, and four of them are approximations.** Lucide
- * has no `polyline`, `arc` or `wedge`, and the Add pane's own tiles answer that
- * by drawing the geometry by hand — which is a licence its tiles have and this
- * vocabulary does not (§6: the tiles are fixed, so a tile may depict the shape it
- * builds; a row may not). Each of the three takes the nearest glyph of the same
- * family, and the two the row shares with another surface are noted here because
- * a reader will meet them twice:
+ * has no `polyline`, `arc` or `wedge`. **The Add pane's tiles read this same map
+ * and draw nothing of their own**, so a primitive's tile and its layer row agree
+ * by construction rather than by being copied, and the two cannot drift apart
+ * the way a second drawing would let them. Each of the three takes the nearest
+ * glyph of the same family:
  *
  * - `polyline` is `Activity`, which draws the same open multi-segment line at the
  *   same weight — it is the one lucide glyph whose path is a bare zigzag.
  * - `arc` is `LoaderCircle`, a single open sweep. Nothing in the set names a
  *   sweep, so this is the closest *drawing*; the name is a spinner's.
- * - `wedge` is `ChartPie`, a sector of a disc — the honest mark for a quarter-disc,
- *   and the same glyph the chart family `pie` wears one row over. The two are told
- *   apart by the row's own role column, not by the mark.
+ * - `wedge` is `TriangleRight`, a right triangle with one rounded corner — the
+ *   closest the set has to the quarter-disc a new wedge is drawn as, and
+ *   deliberately not `ChartPie`, which the chart family `pie` wears: a wedge
+ *   shape row and a pie chart row that rendered one class would leave the mark
+ *   naming neither kind, and the row's role column is a different column.
  *
  * `polygon` is `Hexagon` rather than the tile's triangle: the new polygon's own
  * default is six sides (`NEW_POLYGON_SIDES`), so the row's mark is the figure the
@@ -169,7 +171,7 @@ export const SHAPE_GLYPHS: Readonly<Record<ShapeKind, LucideIcon>> = {
   line: Minus,
   path: Spline,
   arc: LoaderCircle,
-  wedge: ChartPie,
+  wedge: TriangleRight,
 };
 
 /** The settings column's other two tabs. */
@@ -208,6 +210,13 @@ export const RAIL_GLYPHS: Readonly<Record<RailSlot, LucideIcon>> = {
  * so it cannot be depicted — it gets the stack glyph and its name. That is why
  * `group` is `STACK_GLYPH` and nothing else, and why no entry here may be
  * derived from what a row happens to hold.
+ *
+ * **`text` is a bare `T`; the rounded-rectangle box it was asked for is dropped
+ * rather than drawn.** Lucide 1.48.0 has no `T` inside an outline — `SquareText`
+ * is a rounded square carrying three text rules and draws no `T` — so the box
+ * could only arrive as a hand-authored path, a second icon family inside the map
+ * that exists to be the one family. The wording yields to the rule; `Type` is
+ * the `T`.
  *
  * **The layer row draws these, one arm per kind.** `text`, `image` and `group`
  * wear this map's own entry; `shape` wears the primitive's own glyph

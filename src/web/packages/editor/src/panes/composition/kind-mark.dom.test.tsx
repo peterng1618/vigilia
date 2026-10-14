@@ -2,6 +2,7 @@
 import { readFileSync } from "node:fs";
 import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
+import { CHART_FAMILIES } from "@vigilia/renderer-core";
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { expect, it } from "vitest";
@@ -13,6 +14,7 @@ import {
   STACK_GLYPH,
 } from "../../editor-shell/icons.js";
 import type { LayerMark } from "../../editor-shell/layer-tree.js";
+import { SHAPE_KINDS } from "../../new-object-defaults.js";
 import { KindMark } from "./kind-mark.js";
 
 // React only flushes work scheduled inside `act` when it has been told it is in
@@ -42,7 +44,11 @@ function render(mark: LayerMark): HTMLElement {
 /** The class lucide writes on the `<svg>` it renders for a glyph. Every mark's
  *  expected icon is read off the vocabulary through this rather than written as
  *  a literal, so moving an entry in `icons.ts` moves these cases with it instead
- *  of leaving stale names that still pass. */
+ *  of leaving stale names that still pass. The two chart-family literals in the
+ *  third case below are the deliberate exception: a family reaches the row
+ *  through `chartFamilyGlyph`'s own map rather than through an exported
+ *  constant, so there is nothing to read it off — and a literal that goes stale
+ *  fails there rather than passing over a mark that changed. */
 function lucideClass(icon: LucideIcon): string | null {
   const host = document.createElement("div");
   const root = createRoot(host);
@@ -151,6 +157,65 @@ it("gives each kind a mark that says which kind it is", () => {
       '[data-vigilia-layer-mark="group"] svg',
     ),
   ).not.toBeNull();
+});
+
+/** A mark's own words, so a failure names the pair that shared rather than two
+ *  rendered class strings. */
+function label(mark: LayerMark): string {
+  switch (mark.kind) {
+    case "shape":
+      return `${mark.shape ?? "unnamed"} shape`;
+    case "chart":
+      return `${mark.family ?? "unnamed"} chart`;
+    default:
+      return mark.kind;
+  }
+}
+
+it("gives every kind a mark no other kind wears", () => {
+  // Written for the pair that did collide: `wedge` and `pie` were the same
+  // component twice in `icons.ts`, so a wedge shape row and a pie chart row
+  // rendered one class and neither mark named its kind. Reading the vocabulary
+  // did not show it — the two entries sit rows apart — and the case above
+  // compares `rect` against `wedge` alone. So every mark is rendered and every
+  // pair compared.
+  const marks: readonly LayerMark[] = [
+    { kind: "text" },
+    { kind: "image" },
+    { kind: "group" },
+    { kind: "shape", shape: undefined },
+    ...SHAPE_KINDS.map((shape) => ({ kind: "shape", shape }) as const),
+    ...CHART_FAMILIES.map((family) => ({ kind: "chart", family }) as const),
+  ];
+  const drawn = marks.map((mark) => ({
+    name: label(mark),
+    glyph: armGlyph(mark) ?? "",
+  }));
+  // A loop over a short list would pass for the wrong reason: the count is one
+  // mark per primitive, one per family, and the four kinds that wear one mark.
+  expect(drawn).toHaveLength(SHAPE_KINDS.length + CHART_FAMILIES.length + 4);
+  for (const { name, glyph } of drawn) {
+    expect(glyph, `the ${name} mark drew no glyph`).not.toBe("");
+  }
+  // Every pair, because the defect was one pair: a set's size would report that
+  // two marks matched without saying which two.
+  for (const [index, one] of drawn.entries()) {
+    for (const other of drawn.slice(index + 1)) {
+      expect(
+        other.glyph,
+        `${one.name} and ${other.name} wear one mark`,
+      ).not.toBe(one.glyph);
+    }
+  }
+
+  // The one sharing this set leaves out, stated rather than hidden: a chart
+  // whose family this build cannot name wears `bar`'s mark, because
+  // `chartFamilyGlyph`'s fallback *is* `CHART_BAR_GLYPH` — no glyph exists for a
+  // family no build can name, and the row's role is what says the family is
+  // unknown.
+  expect(armGlyph({ kind: "chart", family: undefined })).toBe(
+    armGlyph({ kind: "chart", family: "bar" }),
+  );
 });
 
 it("draws the mark the projection named, and never walks the group's children", () => {

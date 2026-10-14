@@ -1,7 +1,6 @@
 import { Fragment, useEffect, useRef } from "react";
 import { tooltip } from "../../editor-shell/controls/tooltip.js";
-import { Glyph, glyphStrokeWidth } from "../../editor-shell/icons.js";
-import type { ShapeKind } from "../../new-object-defaults.js";
+import { Glyph, KIND_GLYPHS, SHAPE_GLYPHS } from "../../editor-shell/icons.js";
 import type { InsertableObject, InsertGroup } from "../../new-object-panel.js";
 import { chartFamilyGlyph } from "../composition/kind-mark.js";
 import { CARD_DIAGRAMS } from "./card-diagrams.js";
@@ -120,23 +119,27 @@ function InsertTile({
   );
 }
 
-/** What the tile draws: a unit's diagram, a primitive's kind, a family's glyph. */
+/** What the tile draws: a unit's diagram, a primitive's kind, a family's glyph.
+ *
+ * **Every mark but a card unit's is the chrome vocabulary's own** (`icons.ts`),
+ * the same map the layer row's mark reads, so a primitive's tile and its row
+ * agree by construction rather than by being copied — and there is no second
+ * drawing anywhere for the two to drift apart in. Lucide has no `wedge` or
+ * `arc`, and the approximation each takes lives once, in that map, beside the
+ * reason for it.
+ */
 function tileMark(object: InsertableObject): React.JSX.Element {
   switch (object.kind) {
     case "card": {
       const Diagram = CARD_DIAGRAMS[object.diagram];
       return <Diagram />;
     }
-    case "shape": {
-      const ShapeMark = SHAPE_GLYPHS[object.shape];
-      return <ShapeMark />;
-    }
-    case "chart": {
-      const Icon = chartFamilyGlyph(object.family);
-      return <Glyph icon={Icon} size={20} />;
-    }
+    case "shape":
+      return <Glyph icon={SHAPE_GLYPHS[object.shape]} size={20} />;
+    case "chart":
+      return <Glyph icon={chartFamilyGlyph(object.family)} size={20} />;
     case "text":
-      return <TextGlyph />;
+      return <Glyph icon={KIND_GLYPHS.text} size={20} />;
   }
 }
 
@@ -153,60 +156,4 @@ function tileKey(object: InsertableObject): string {
     case "text":
       return "text";
   }
-}
-
-/**
- * Each primitive, drawn as the shape itself rather than as a mark for it.
- *
- * Total over `ShapeKind`, so a primitive added to the owner fails to compile
- * here until it is drawn. This is §6's own escape from the library, alongside
- * the card unit tile: a tile may carry a diagram of what it builds because the
- * set it draws from is fixed — `SHAPE_KINDS` for these, the eight-card library
- * for the units below — and the reference's shape grid (`shell.html:96-114`)
- * draws the same hand paths at the same weight. Lucide has no `wedge` or `arc`
- * to draw the last two with, so converting them would replace the drawing the
- * mockup is the authority for. The *weight* is still the vocabulary's, so a
- * shape tile sits inside the band with every chrome glyph.
- */
-const SHAPE_GLYPHS: Readonly<
-  Record<ShapeKind, (props: { readonly size?: number }) => React.JSX.Element>
-> = {
-  rect: ShapeGlyph(() => <rect x="4" y="5" width="16" height="14" rx="2" />),
-  ellipse: ShapeGlyph(() => <ellipse cx="12" cy="12" rx="8" ry="6" />),
-  polygon: ShapeGlyph(() => <path d="M12 4 20 19H4Z" />),
-  polyline: ShapeGlyph(() => <path d="M4 17l4-6 4 4 4-8 4 5" />),
-  line: ShapeGlyph(() => <path d="M5 18 19 6" />),
-  path: ShapeGlyph(() => <path d="M4 18c5 0 6-12 12-12 3 0 4 2 4 4" />),
-  arc: ShapeGlyph(() => <path d="M4 19a8 8 0 0 1 16 0" />),
-  wedge: ShapeGlyph(() => <path d="M4 4v16h16A16 16 0 0 0 4 4Z" />),
-};
-
-/** The text tile's mark: the reference's own arrow-into-frame, for the one tile
- *  that makes an object with words in it rather than a shape. It is exempt for
- *  the same reason the shape tiles are — it draws the object it builds. */
-const TextGlyph: (props: { readonly size?: number }) => React.JSX.Element =
-  ShapeGlyph(() => <path d="M12 4H7v16h5M11 11h9M17 8l3 3-3 3" />);
-
-/** One hand-authored tile mark on §6's 24px grid, at the vocabulary's weight.
- *  Named apart from `icons.ts`'s `Glyph` because it draws a path of its own
- *  rather than a library component. */
-function ShapeGlyph(
-  draw: () => React.ReactNode,
-  defaultSize = 20,
-): (props: { readonly size?: number }) => React.JSX.Element {
-  return ({ size = defaultSize }) => (
-    <svg
-      aria-hidden
-      width={size}
-      height={size}
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth={glyphStrokeWidth(size)}
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    >
-      {draw()}
-    </svg>
-  );
 }
