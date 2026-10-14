@@ -1310,6 +1310,46 @@ somewhere it will meet.
 **Failure modes:** the eight duplicated in both surfaces; the glass explanation deleted with the
 section; `vg-016`'s sentence left standing in contradiction to the tree.
 
+### Task 13.1b: The two sentences in `DESIGN.md` that describe what this commit replaced
+
+**Added 2026-10-15 by the scoped review of `3328ae33`**, which found no code defect and two
+contradictions between the code and the contract it implements. **Not a fix round: the code is the
+side that is right**, and the user's own items 1 and 9 are the newer authority.
+
+**Files:**
+- Modify: `DESIGN.md`
+- Modify: `packages/editor/src/editor-shell.control-rules.test.ts`
+
+- [ ] **Step 1: §7.7.** It reads *"Use native scrollbars and reserve their gutter where necessary; no
+      custom scrollbar or scroll-jacking owner."* `editor-shell.css:1124-1143` now makes
+      `.editor-shell-panel` and `.editor-shell-inspector` exactly that owner — `scrollbar-width`,
+      `scrollbar-color` from the two tokens, and four `::-webkit-scrollbar*` rules — and the tokens
+      were declared and read by nothing until `3328ae33` consumed them, which is the state the
+      sentence was true of. **Move the sentence rather than delete it**: the rule it states still
+      binds everything else, so it now excludes scrollbar *paint* by the shell's own tokens, and says
+      why the shell is allowed this one.
+- [ ] **Step 2: §7.4.** It reads that the column *"opens with the subject: its name at `--text-md`,
+      and one line naming its kind"*. After `3328ae33` there is no line naming the kind — the kind is
+      the name row's own glyph (`inspector.tsx:81-82`) and the second line carries the binding key and
+      is present only when one is bound (`:91-92`). `uiCopy.inspectorFields.subjectKind` was deleted
+      with it, so the sentence has no implementation anywhere. Rewrite it to describe what the column
+      now opens with, citing the user's item 9 as the reason the description changed.
+- [ ] **Step 3: `control-rules.test.ts:210-211`'s comment** says the `@layer base` block "declares no
+      colour of any kind" while it declares `outline: 2px solid var(--shell-accent)`. The claim's
+      substance holds — `PAINTS_COLOUR` keys on `color:`, and an outline colour cannot beat the
+      marker's `color` — but the sentence is imprecise. Make it say what is true.
+- [ ] **Step 4: `npm run design:check` and `npm run gate`, then commit.** A `§N` marker is stable and
+      is never renumbered; `design:md --cite` fails on a citation naming a number with no marker, so
+      if a rewritten sentence moves a marker, the citations to it move in the same commit.
+
+**Constraints:** runs after Task 13.4 has landed — `DESIGN.md` is dirty from its own `vg-463` edit at
+the time of writing, and this task is a second writer on that file.
+
+**Acceptance:** neither sentence contradicts the tree; `design:check` exits 0; the `§7.4`/`§7.7`
+markers are unchanged and their citations still resolve.
+**Failure modes:** the sentence deleted rather than moved, so the rule stops binding where it still
+applies; a marker renumbered; the `text` decision the code made described in the doc as the old one.
+
 ### Task 13.2b: One vocabulary for every icon, the add pane included (item 2's unmet half)
 
 **Added 2026-10-15 by the scoped review of `a7745cc7`**, which found that 13.2 discharged one of the
