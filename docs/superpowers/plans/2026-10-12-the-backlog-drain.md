@@ -1710,10 +1710,13 @@ messages changed without the task saying which side it took.
 - Modify: `packages/editor/src/selection-inspector/index.ts`
 - Modify: both register files, `STATUS.md`
 
-- [ ] **Step 1: Rotate about the centre.** `selection-inspector/index.ts:333-334` calls
-      `object.set({ angle })`, which rotates about the object's own origin at left/top
-      (`new-object-defaults.ts:170-178`); Fabric's own route rotates about the centre through the
-      `centeredRotation` branch. The funnel uses the centred route, so the inspector and the canvas
+- [ ] **Step 1: Rotate about the centre.** The `case "angle":` arm of the inspector's write funnel
+      calls `object.set({ angle })` — **`selection-inspector/index.ts:349`, found by the arm's own
+      name**, which is how it must be found: this step cited `:333-334` when it was written and those
+      lines are now the `height` case, since the funnel grew two arms above it. The write rotates
+      about the object's own origin at left/top (`new-object-defaults.ts:170-178`); Fabric's own route
+      rotates about the centre through the `centeredRotation` branch, which this version of Fabric
+      has (`fabric/dist/index.js`). The funnel uses the centred route, so the inspector and the canvas
       gesture agree.
 - [ ] **Step 2: Red-proof it on the measured case** — `group-cpu-card` (left/top at 421,187 with its
       centre at 561,340.5) turned by 45° pivot about (421,187) before the fix and about its centre
