@@ -37,7 +37,11 @@ function MenuGroup({
     <Menu.Root>
       <Menu.Trigger>{label}</Menu.Trigger>
       <Menu.Portal>
-        <Menu.Positioner className="editor-shell-positioner">
+        {/* Base UI centres a positioned popup on its trigger by default, which
+            floats the menu over the middle of its own label; a menu belongs at
+            the trigger's start edge, which is the idiom the colour picker
+            already uses (`components/ui/colour-picker.tsx`). */}
+        <Menu.Positioner align="start" className="editor-shell-positioner">
           <Menu.Popup className="editor-shell-menu-popup">
             {children}
           </Menu.Popup>
@@ -88,7 +92,9 @@ function ViewSetting<T extends string | number>({
     <Menu.SubmenuRoot>
       <Menu.SubmenuTrigger>{`${label}: ${current}`}</Menu.SubmenuTrigger>
       <Menu.Portal>
-        <Menu.Positioner className="editor-shell-positioner">
+        {/* A submenu opens beside its item and lines its top up with it, so it
+            takes the same start alignment as the menubar's own menus. */}
+        <Menu.Positioner align="start" className="editor-shell-positioner">
           <Menu.Popup className="editor-shell-menu-popup">
             <Menu.RadioGroup value={value} onValueChange={onChange}>
               {options.map(([id, text]) => (
