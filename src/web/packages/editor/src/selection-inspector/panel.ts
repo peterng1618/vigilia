@@ -156,6 +156,30 @@ function paintOptions(
 }
 
 /**
+ * The smaller edge of the box Fabric draws an object in, whole units — or
+ * nothing when the object measures nothing, which is a box no bound can be read
+ * from.
+ *
+ * Every pixel measure on a panel is read against this: a border, a blur or a
+ * radius past the object's own drawn size is a number nothing on the canvas can
+ * show. It is the object's own read, so a scaled or resized panel re-bounds its
+ * fields when the projection runs again.
+ */
+function drawnEdge(object: FabricObject): number | undefined {
+  const smaller = Math.min(
+    object.width * object.scaleX,
+    object.height * object.scaleY,
+  );
+  return Number.isFinite(smaller) && smaller > 0 ? Math.floor(smaller) : undefined;
+}
+
+/** Half the drawn edge, because a corner is one of a rectangle's four and two
+    opposite radii meeting is the most a corner can be (`vg-478`). */
+function radiusBound(edge: number | undefined): number | undefined {
+  return edge === undefined ? undefined : Math.floor(edge / 2);
+}
+
+/**
  * The panel's material fields — fill (or ink), stroke, border width, corner
  * radius, shadow, shadow blur and shadow offset — as values, or nothing when the
  * selection is not a panel.
@@ -170,6 +194,12 @@ function paintOptions(
  * fraction unconditionally, and the flag is how the control set says so; the
  * write boundary re-checks it, because a control is a convenience and the
  * boundary is what must hold.
+ *
+ * The bounded ones carry a slider, and their bound is the panel's own drawn box
+ * rather than a number chosen here (`measure`, `drawnEdge`). The shadow's offset
+ * is the one that does not: Fabric's `offsetY` is unbounded — a shadow above a
+ * panel is legitimate — so it keeps a typed box, which is `vg-007`'s rule not
+ * reaching a field with no ceiling.
  */
 export function panelMaterialFields(
   context: AppearanceContext,
@@ -210,6 +240,36 @@ export function panelMaterialFields(
     integer: true,
     data,
   });
+  /**
+   * A pixel measure on the object, bounded by the box the renderer draws it in.
+   *
+   * The bound is read from the object — Fabric draws `width`/`height` at the
+   * object's own scale — rather than chosen here, and a radius takes half of it,
+   * because that is what Fabric's own `Rect` does with `rx` at draw time
+   * (`vg-478`): a larger radius is stored while the corner stops moving. When
+   * the box cannot be read the field keeps a typed box instead of a guessed
+   * ceiling, which is the same rule the chart settings' pixel measures follow.
+   */
+  const measure = (
+    id: string,
+    label: string,
+    value: number,
+    bound: number | undefined,
+    data: FieldHooks,
+  ): FieldView =>
+    bound === undefined
+      ? number(id, label, value, data)
+      : {
+          id,
+          control: "slider",
+          label,
+          value,
+          min: 0,
+          max: bound,
+          integer: true,
+          data,
+        };
+  const edge = drawnEdge(object);
 
   // One field on the paint, and which property it writes is the scene's own
   // decision: an unfilled path is stroked, so its paint is ink.
@@ -242,10 +302,11 @@ export function panelMaterialFields(
   }
 
   fields.push(
-    number(
+    measure(
       "panel-border",
       uiCopy.inspectorFields.panelBorder,
       Math.round(object.get("strokeWidth") as number),
+      edge,
       { "data-vigilia-panel-border": "" },
     ),
   );
@@ -254,10 +315,11 @@ export function panelMaterialFields(
   // other shape would read back `NaN` and write a property nothing draws.
   if (object instanceof Rect) {
     fields.push(
-      number(
+      measure(
         "panel-radius",
         uiCopy.inspectorFields.panelRadius,
         Math.round(object.get("rx") as number),
+        radiusBound(edge),
         { "data-vigilia-panel-radius": "" },
       ),
     );
@@ -280,15 +342,18 @@ export function panelMaterialFields(
   const shadow = object.get("shadow");
   if (shadow instanceof Shadow) {
     fields.push(
-      number(
+      measure(
         "panel-shadow-blur",
         uiCopy.inspectorFields.panelShadowBlur,
         Math.round(shadow.blur),
+        edge,
         { "data-vigilia-panel-shadow-blur": "" },
       ),
       // Unbounded, because Fabric's own `offsetY` is: a shadow above a panel is
       // legitimate, and a floor of zero would display a value the field then
-      // refused to accept on the author's next edit.
+      // refused to accept on the author's next edit. Its ceiling is the page
+      // rather than the panel — an offset of 400 is still a shadow — so it
+      // carries no slider and the rule that a bounded number does not reach it.
       number(
         "panel-shadow-offset",
         uiCopy.inspectorFields.panelShadowOffset,
@@ -308,11 +373,13 @@ export function panelMaterialFields(
  * blur and offset live here with the fields that describe them; `index.ts` is
  * the funnel that asks for them and this module owns no second one.
  *
- * A number **lands on its bound** rather than being refused: the pre-plan
- * `numberField` clamped an out-of-range value to the bound it crossed, and the
- * author who types a negative border width to find the floor is taught by the
- * zero that lands. The one whole-number rule — a fraction is refused — is the
- * control's `integer` flag and the boundary's, not this writer's.
+ * A number **lands on its bound** rather than being refused here: the pre-plan
+ * `numberField` clamped an out-of-range value to the bound it crossed, and this
+ * writer still does, because a commit can reach it without the control. The
+ * control is the stricter of the two — a draft past a bound is kept with its
+ * reason rather than coerced (§5) — so the clamp is the copy that holds for a
+ * bypassed one, and the fraction rule is the control's `integer` flag and
+ * `editRefusal`'s, not this writer's.
  */
 export function writePanelField(
   object: FabricObject,
@@ -337,7 +404,16 @@ export function writePanelField(
       // Both axes, because Fabric derives `ry` from `rx` only while it is
       // unset; persisting one and reading the other back would depend on that
       // default.
-      const radius = Math.max(number, 0);
+      //
+      // Clamped to what the renderer can show: Fabric draws
+      // `Math.min(rx, w / 2)`, so a larger stored value is a field claiming a
+      // corner the canvas never draws (`vg-478`). An unreadable box clamps to
+      // the floor alone rather than to a guessed ceiling.
+      const ceiling = radiusBound(drawnEdge(object));
+      const radius =
+        ceiling === undefined
+          ? Math.max(number, 0)
+          : Math.min(Math.max(number, 0), ceiling);
       object.set({ rx: radius, ry: radius });
       return true;
     }

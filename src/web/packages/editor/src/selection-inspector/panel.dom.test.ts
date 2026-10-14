@@ -19,7 +19,7 @@ import { uiCopy } from "../ui-copy.js";
 import { supportsGlassControl } from "./glass.js";
 import { idleCrop } from "./idle-crop.test-stage.js";
 import { createSelectionInspector } from "./index.js";
-import { writeShapeGeometryField } from "./panel.js";
+import { writePanelField, writeShapeGeometryField } from "./panel.js";
 // The shared React drivers: a converted field is a plan-1 control, so a raw
 // `change` event no longer commits it — the picker is opened and an entry
 // clicked, and a number is typed through React's own value tracker.
@@ -173,22 +173,32 @@ const SHAPES = [
 describe("panel fields in the selection inspector", () => {
   it("offers fill, stroke, border width and corner radius for a panel", () => {
     const rect = panel();
-    const { host } = setup(rect);
+    const { host, field } = setup(rect);
     // Non-vacuous: the selection must actually be a rectangle, or a gate that
     // refuses everything would satisfy the field assertions below.
     expect(rect).toBeInstanceOf(Rect);
     expect(host.querySelector("[data-vigilia-panel-fill]")).not.toBeNull();
     expect(host.querySelector("[data-vigilia-panel-stroke]")).not.toBeNull();
-    // A number field is a plan-1 `ControlNumber`: a text input that takes a
-    // decimal, not a native `<input type=number>`.
-    expect(
-      host.querySelector<HTMLInputElement>("[data-vigilia-panel-border]")
-        ?.inputMode,
-    ).toBe("decimal");
-    expect(
-      host.querySelector<HTMLInputElement>("[data-vigilia-panel-radius]")
-        ?.inputMode,
-    ).toBe("decimal");
+    // A bounded pixel measure is a slider whose bound is the panel's own drawn
+    // box — a border can be as wide as the object's smaller edge, a corner no
+    // more than half of it (vg-478) — and the well beside the track is the
+    // typed route, a text input that takes a decimal rather than a
+    // native `<input type=number>`.
+    const border = field<HTMLInputElement>("[data-vigilia-panel-border]");
+    expect(border.type).toBe("range");
+    expect(border.min).toBe("0");
+    expect(border.max).toBe("200");
+    const radius = field<HTMLInputElement>("[data-vigilia-panel-radius]");
+    expect(radius.type).toBe("range");
+    expect(radius.max).toBe("100");
+    for (const selector of [
+      "[data-vigilia-panel-border-well]",
+      "[data-vigilia-panel-radius-well]",
+    ]) {
+      expect(field<HTMLInputElement>(selector).inputMode, selector).toBe(
+        "decimal",
+      );
+    }
   });
 
   it("names every panel control", () => {
@@ -205,11 +215,56 @@ describe("panel fields in the selection inspector", () => {
       "[data-vigilia-panel-shadow-offset]",
     ]) {
       const control = host.querySelector<HTMLElement>(selector)!;
+      // A row's label is a `<label for>` where the control is labelable and the
+      // row's own `<span>` where the control names itself by it — which is what
+      // a slider does, so the name is read the way an assistive technology
+      // resolves it: the `<label for>` first, then `aria-labelledby`.
+      const named = (control.getAttribute("aria-labelledby") ?? "")
+        .split(/\s+/)
+        .filter(Boolean)
+        .map((id) => document.getElementById(id)?.textContent ?? "")
+        .join(" ")
+        .trim();
       const name =
-        host.querySelector<HTMLLabelElement>(`label[for="${control.id}"]`)
-          ?.textContent ?? control.closest("label")?.textContent;
+        named === ""
+          ? (host.querySelector<HTMLLabelElement>(`label[for="${control.id}"]`)
+              ?.textContent ?? control.closest("label")?.textContent)
+          : named;
       expect(name, selector).toBeTruthy();
     }
+  });
+
+  it("carries the track-and-well pair on every bounded panel number", () => {
+    const rect = panel();
+    rect.set({ shadow: new Shadow({ color: "#ecf5ff", blur: 8, offsetY: 4 }) });
+    const { host } = setup(rect);
+
+    // The census, not the five fields the finding named: every bounded number
+    // the panel offers is a slider with a typeable well beside it, because a
+    // rule applied to some of them is the defect this sweep ends.
+    for (const hook of [
+      "data-vigilia-panel-border",
+      "data-vigilia-panel-radius",
+      "data-vigilia-panel-shadow-blur",
+    ]) {
+      const track = host.querySelector<HTMLInputElement>(`[${hook}]`)!;
+      expect(track.type, hook).toBe("range");
+      expect(track.max, hook).not.toBe("");
+      expect(
+        host.querySelector(`[${hook}-well]`),
+        `${hook}: no typed route`,
+      ).not.toBeNull();
+    }
+
+    // And the one that is deliberately typed-only: Fabric's offsetY is
+    // unbounded, so a slider would offer a range nothing honours.
+    const offset = host.querySelector<HTMLInputElement>(
+      "[data-vigilia-panel-shadow-offset]",
+    )!;
+    expect(offset.type).toBe("text");
+    expect(
+      host.querySelector("[data-vigilia-panel-shadow-offset-well]"),
+    ).toBeNull();
   });
 
   it("writes a chosen fill token onto the object and its palette reference", async () => {
@@ -301,20 +356,35 @@ describe("panel fields in the selection inspector", () => {
     expect(history.saveState).toHaveBeenCalledTimes(1);
   });
 
-  it("clamps a negative border width onto zero, because the bound is where it lands", async () => {
+  it("refuses a negative border width, and the boundary clamps one that bypasses it", async () => {
     const rect = panel();
-    const { history, field } = setup(rect);
-    const width = field<HTMLInputElement>("[data-vigilia-panel-border]");
+    const { editor, history, field } = setup(rect);
+    const width = field<HTMLInputElement>("[data-vigilia-panel-border-well]");
+    const before = rect.get("strokeWidth") as number;
 
     await edit(width, "-4");
 
-    // Was a refusal, and the reasoning was that a clamp to zero "would look
-    // identical on screen but lose the authored border". That is the finding
-    // this pass overturned: the author typed -4 to find out what the bound is,
-    // and reverting them to the old value teaches nothing. Landing on 0 says it.
+    // The field refuses the draft with its reason rather than clamping it: the
+    // track cannot reach below zero either, and §5's validation belongs to the
+    // one number control, which says why rather than coercing.
+    expect(rect.get("strokeWidth")).toBe(before);
+    expect(history.saveState).not.toHaveBeenCalled();
+    expect(
+      document.getElementById(`${width.id}-invalid`)?.textContent?.trim(),
+    ).toBe("at least 0");
+
+    // The rule that a bounded number **lands on its bound** is the writer's, and
+    // it still holds for a commit that reached it without the control.
+    rect.set({ strokeWidth: 4 });
+    expect(
+      writePanelField(
+        rect,
+        { editor: editor as never, globals: globals as never },
+        "panel-border",
+        -4,
+      ),
+    ).toBe(true);
     expect(rect.get("strokeWidth")).toBe(0);
-    expect(width.value).toBe("0");
-    expect(history.saveState).toHaveBeenCalledTimes(1);
   });
 
   it("refuses a fractional paint number rather than rounding it", async () => {
@@ -330,9 +400,9 @@ describe("panel fields in the selection inspector", () => {
     // stores nothing either. Rounding would be a different act from displaying a
     // value a gesture left fractional.
     for (const selector of [
-      "[data-vigilia-panel-border]",
-      "[data-vigilia-panel-radius]",
-      "[data-vigilia-panel-shadow-blur]",
+      "[data-vigilia-panel-border-well]",
+      "[data-vigilia-panel-radius-well]",
+      "[data-vigilia-panel-shadow-blur-well]",
     ]) {
       const box = host.querySelector<HTMLInputElement>(selector)!;
       await edit(box, "4.5");
@@ -356,7 +426,7 @@ describe("panel fields in the selection inspector", () => {
     const rect = panel();
     rect.set({ rx: 18, ry: 18 });
     const { history, field } = setup(rect);
-    const radius = field<HTMLInputElement>("[data-vigilia-panel-radius]");
+    const radius = field<HTMLInputElement>("[data-vigilia-panel-radius-well]");
 
     await edit(radius, "");
 

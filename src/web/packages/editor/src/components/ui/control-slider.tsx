@@ -119,6 +119,7 @@ export function ControlSlider(
   // with — otherwise five steps would write the same number five times.
   const ticked = useRef<number | null>(null);
   const root = useRef<HTMLDivElement>(null);
+  const hooks = wellData(data);
 
   useEffect(() => {
     const node = root.current;
@@ -225,6 +226,7 @@ export function ControlSlider(
           inline
           labelledById={ids.label}
           label={label}
+          {...(hooks === undefined ? {} : { data: hooks })}
           wellClassName="w-[36px] flex-none"
           value={shown}
           min={min}
@@ -237,6 +239,23 @@ export function ControlSlider(
       </Slider.Root>
     </ControlRow>
   );
+}
+
+/**
+ * The well's own hooks: the slider's name the track, and the well is the same
+ * control's typed route, so each takes the same name with `-well` appended.
+ *
+ * Two elements under one name would be a strict-mode violation for every suite
+ * that reads the track's value, and the field has to stay addressable by both
+ * routes — one hook naming both is a locator that cannot say which one it means.
+ */
+function wellData(
+  data: Readonly<Record<`data-${string}`, string>> | undefined,
+): Readonly<Record<`data-${string}`, string>> | undefined {
+  const entries = Object.entries(data ?? {});
+  return entries.length === 0
+    ? undefined
+    : Object.fromEntries(entries.map(([key, value]) => [`${key}-well`, value]));
 }
 
 /**

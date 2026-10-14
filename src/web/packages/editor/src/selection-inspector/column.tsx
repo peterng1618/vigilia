@@ -172,6 +172,7 @@ function fieldControl(
           value={field.value}
           min={field.min}
           max={field.max}
+          {...(field.integer === undefined ? {} : { integer: field.integer })}
           onCommit={(value) => commit(value)}
           {...refused}
         />

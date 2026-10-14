@@ -307,6 +307,16 @@ function geometryPair(
   };
 }
 
+/**
+ * The bounds on a rotation, in degrees. A rotation is modular, so one turn each
+ * way covers every angle an object can be at — and the signed range rather than
+ * 0–360, because a rotated-left object reads back negative and a floor of zero
+ * would show a value the field then refused to accept, the same argument
+ * `panel.ts` makes for the shadow's offset.
+ */
+const MIN_ANGLE_DEGREES = -360;
+const MAX_ANGLE_DEGREES = 360;
+
 /** Rotation, the one angle a Layer column asks for. It is whole units, and it
     writes through the same geometry port the Position pair does. */
 function rotationField(
@@ -315,9 +325,11 @@ function rotationField(
 ): FieldView {
   return {
     id: "angle",
-    control: "number",
+    control: "slider",
     label: GEOMETRY_LABELS.angle,
     value: Math.round(context.geometry.read(object, "angle")),
+    min: MIN_ANGLE_DEGREES,
+    max: MAX_ANGLE_DEGREES,
     // The control refuses a fraction inline; `editRefusal` refuses it again at
     // the write boundary, which is the copy that must hold.
     integer: true,

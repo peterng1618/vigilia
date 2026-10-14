@@ -223,8 +223,16 @@ describe("the selection inspector", () => {
 
   it("refuses a fractional rotation rather than storing it", async () => {
     const { host, history } = setup(rect);
-    const angle = host.querySelector<HTMLInputElement>(
+    // Rotation is a bounded number, so it is a slider; the typed route is the
+    // well beside the track, and that is where a draft is refused.
+    const track = host.querySelector<HTMLInputElement>(
       '[data-vigilia-geometry="angle"]',
+    )!;
+    expect(track.type).toBe("range");
+    expect(track.min).toBe("-360");
+    expect(track.max).toBe("360");
+    const angle = host.querySelector<HTMLInputElement>(
+      '[data-vigilia-geometry-well="angle"]',
     )!;
     angle.focus();
 
@@ -243,7 +251,7 @@ describe("the selection inspector", () => {
   it("stores a whole rotation", async () => {
     const { host, history } = setup(rect);
     const angle = host.querySelector<HTMLInputElement>(
-      '[data-vigilia-geometry="angle"]',
+      '[data-vigilia-geometry-well="angle"]',
     )!;
 
     await edit(angle, "45");
