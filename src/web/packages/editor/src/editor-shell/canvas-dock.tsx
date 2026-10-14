@@ -80,8 +80,10 @@ export function CanvasDock({
   readonly bridge: EditorShellBridge | undefined;
 }): React.JSX.Element {
   // Every read below goes through the bridge, which projects the live selection
-  // on demand — so the notification only has to force a render, and the filtered
-  // and greyed halves both follow the selection without holding a copy of it.
+  // on demand — so the notification only has to force a render, and the set it
+  // draws follows the selection without holding a copy of it. There is no greyed
+  // half here: `vg-463` moved the arrange actions to the inspector, which greys
+  // them, and this surface filters.
   const [, setRevision] = useState(0);
   // And the chords the tooltips print follow the live binding table, for the
   // same reason: `tooltip()` is rebuilt from the chord on every change, so a
