@@ -1470,7 +1470,7 @@ vocabulary rather than from a case.
 
 **Files:**
 - Modify: `tests/e2e/shell-appearance.spec.ts`, `tests/e2e/design-language.spec.ts`
-- Read (do not modify): every e2e spec the five landed items' rendered claims live in
+- Read (do not modify): every e2e spec the six landed items' rendered claims live in
 
 - [ ] **Step 1: Item 1's case, which does not exist.** A grep over the whole e2e suite for
       `scrollbarColor`, `scrollbar-color` and `scrollbarWidth` returns **nothing**, so `vg-458` has no
@@ -1480,12 +1480,14 @@ vocabulary rather than from a case.
       computed values on both scrollers, not the declaration**: the point of the row is that the tokens
       were declared and consumed by nothing, so a case that reads the stylesheet text would have passed
       before the fix.
-- [ ] **Step 2: Item 6's case, which exists but cannot catch the defect.** `design-language.spec.ts:952-987`
+- [ ] **Step 2: Item 7's case, which exists but cannot catch the defect.** `design-language.spec.ts:952-987`
       measures the focused control's outline and its contrast, and it would keep passing with the
       doubled square outline still drawn inside the rounded one — which is exactly what `vg-464` was.
       Add what that case cannot see: **one boundary, not two**, on a focused control inside a well.
       `keyboard.spec.ts:78-105` reads `outlineStyle`, `outlineWidth` and `outlineColor` off a focused
-      element and is the closer model for the shape of the reading.
+      element and is the closer model for the shape of the reading. **(This step read "item 6" until
+      2026-10-15. The row id was always right and the plan's own headings agree — 13.1 is items 1, 7, 9
+      and 13.4 is items 6, 8 — so the doubled outline is item 7.)**
 - [ ] **Step 3: Red-prove both**, by reverting the fix each pins — `editor-shell.css`'s scrollbar rules
       for Step 1 and the `@layer base` wrapper for Step 2 — and confirming each new case fails.
       **Restore and confirm with `cmp`, not `git checkout`**: a Windows text-mode write leaves CRLF and
@@ -1494,14 +1496,15 @@ vocabulary rather than from a case.
       `dist`, so a source change needs a rebuild first), `--workers=1`, covering the rendered claims of
       items 1, 2, 6, 7, 8 and 9 together. Record the exit code beside the command. **This is the only
       rendered evidence those six rows will have**, so a row whose reading is missing stays open rather
-      than closing on a source reading. Item 2's reading waits for Task 13.2b; the other five do not.
+      than closing on a source reading. Item 2's reading waited on Task 13.2b, which has landed, so all
+      six are read here rather than five.
 
 **Constraints:** runs after 13.1b and 13.2b have landed, because the bundle this pass reads is built
 from the tree and a second writer during the build makes the reading unattributable.
 
 **Acceptance:** both new cases fail when the fix they pin is reverted, and pass at HEAD; the browser
-pass's exit code is recorded beside the command that produced it; the pass covers items 1, 6, 7, 8 and
-9, with item 2's reading explicitly deferred and said so.
+pass's exit code is recorded beside the command that produced it; the pass covers items 1, 2, 6, 7, 8 and
+9, item 2's deferral having ended when Task 13.2b landed.
 **Failure modes:** a case that reads the stylesheet text rather than the rendered control, so it would
 have passed before the fix; a reading taken on a stale bundle; a pass reported as green while a
 project in it is red — `desktop-host` is expected red here and the exit code alone does not say which.
