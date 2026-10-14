@@ -1409,7 +1409,47 @@ each named in the commit.
 glyph the user called right; the `text` decision taken silently; distinctness claimed from reading the
 vocabulary rather than from a case.
 
-### Task 13.5: Close the nine, and set what item 2 could not settle
+### Task 13.5: The two cases the phase owes, and the pass that reads them
+
+**Files:**
+- Modify: `tests/e2e/shell-appearance.spec.ts`, `tests/e2e/design-language.spec.ts`
+- Read (do not modify): every e2e spec the five landed items' rendered claims live in
+
+- [ ] **Step 1: Item 1's case, which does not exist.** A grep over the whole e2e suite for
+      `scrollbarColor`, `scrollbar-color` and `scrollbarWidth` returns **nothing**, so `vg-458` has no
+      browser assertion at all and cannot carry a `check` that runs. `shell-appearance.spec.ts:141`
+      already enumerates the shell's surfaces against the `--vigilia-*` tokens that paint them — that
+      case's own subject — so the pair is asserted there rather than in a new file. **Assert the
+      computed values on both scrollers, not the declaration**: the point of the row is that the tokens
+      were declared and consumed by nothing, so a case that reads the stylesheet text would have passed
+      before the fix.
+- [ ] **Step 2: Item 6's case, which exists but cannot catch the defect.** `design-language.spec.ts:952-987`
+      measures the focused control's outline and its contrast, and it would keep passing with the
+      doubled square outline still drawn inside the rounded one — which is exactly what `vg-464` was.
+      Add what that case cannot see: **one boundary, not two**, on a focused control inside a well.
+      `keyboard.spec.ts:78-105` reads `outlineStyle`, `outlineWidth` and `outlineColor` off a focused
+      element and is the closer model for the shape of the reading.
+- [ ] **Step 3: Red-prove both**, by reverting the fix each pins — `editor-shell.css`'s scrollbar rules
+      for Step 1 and the `@layer base` wrapper for Step 2 — and confirming each new case fails.
+      **Restore and confirm with `cmp`, not `git checkout`**: a Windows text-mode write leaves CRLF and
+      git normalises, so only `cmp` sees the difference.
+- [ ] **Step 4: The controller's serial browser pass**, on a rebuilt bundle (`vite preview` serves
+      `dist`, so a source change needs a rebuild first), `--workers=1`, covering the rendered claims of
+      items 1, 2, 6, 7, 8 and 9 together. Record the exit code beside the command. **This is the only
+      rendered evidence those six rows will have**, so a row whose reading is missing stays open rather
+      than closing on a source reading. Item 2's reading waits for Task 13.2b; the other five do not.
+
+**Constraints:** runs after 13.1b and 13.2b have landed, because the bundle this pass reads is built
+from the tree and a second writer during the build makes the reading unattributable.
+
+**Acceptance:** both new cases fail when the fix they pin is reverted, and pass at HEAD; the browser
+pass's exit code is recorded beside the command that produced it; the pass covers items 1, 6, 7, 8 and
+9, with item 2's reading explicitly deferred and said so.
+**Failure modes:** a case that reads the stylesheet text rather than the rendered control, so it would
+have passed before the fix; a reading taken on a stale bundle; a pass reported as green while a
+project in it is red — `desktop-host` is expected red here and the exit code alone does not say which.
+
+### Task 13.6: Close the eight, and set what item 2 could not settle
 
 **Files:**
 - Modify: both register files, `STATUS.md`
@@ -1418,14 +1458,15 @@ vocabulary rather than from a case.
       from its own `title` and `artefacts` naming the commit that landed it. **`vg-459` is not among
       them and does not close here** — the scoped review of `a7745cc7` of 2026-10-15 found that
       `vg-459`'s title names two owners and the commit discharged one, so it closes with **Task
-      13.2b**, whose own close must name a word from the add pane's half. `vg-463` closes here only
-      once Phase 13.4's rendered reading exists.
+      13.2b**, whose own close must name a word from the add pane's half.
 - [ ] **Step 2: Record the two moved decisions** — `vg-016` and `vg-006` keep `verified` and gain a
       line naming where the decision moved, so the next reader finds the current answer from either.
 - [ ] **Step 3: `npm run backlog:check`, `npm run status:check`, commit.**
 
 **Acceptance:** every close carries a check naming its own subject and a resolvable ancestor sha; the
 two reversed rows point at the new home; the count of live rows is what the two commands report.
+**Failure modes:** a check whose wording names a capability near the row rather than the row's own
+subject; a close reported while Task 13.5's rendered reading is missing.
 
 ---
 
