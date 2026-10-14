@@ -191,11 +191,11 @@ Without that, a group emptied by dragging its last child out could never be refi
 A group that has children keeps its row as a slot, and its interior is reached by
 expanding it and aiming at a child row.
 
-**Nothing is written by hand where Fabric writes it.** The transform bake is
-`Group._enterGroup`'s / `_exitGroup`'s, reached by the `insertAt`/`remove` pair; the
-only hand-written writes are the *root-side* removal's, and only because the removal
-event is the renderer's word for "this node left the scene". `detachFromRoot` splices
-`canvas._objects` and reproduces what the removal hook does with the object it hands
+**What is written by hand is the root-side removal's, and only because that removal's
+own event is what has to be suppressed.** The transform bake is not: it is
+`Group._enterGroup`'s / `_exitGroup`'s, reached by the `insertAt`/`remove` pair.
+`detachFromRoot` splices `canvas._objects` and reproduces what the removal hook does
+with the object it hands
 on — the cached render list, the active object's deselection, the hovered target's
 release (`Canvas._onObjectRemoved`, `fabric/src/canvas/SelectableCanvas.ts:356`; the
 splice is `Collection.remove`'s, the rest is the hook's, and the deselection is

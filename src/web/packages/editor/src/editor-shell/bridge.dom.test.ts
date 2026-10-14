@@ -5,7 +5,7 @@ import { createSceneAdapter, VigiliaChart } from "@vigilia/scene-fabric";
 import {
   ActiveSelection,
   Canvas,
-  type FabricObject,
+  FabricObject,
   Group,
   IText,
   Rect,
@@ -967,30 +967,63 @@ it("leaves the canvas in the state a removal leaves, except the object itself", 
     canvas.add(group, chart);
     const adapter = createSceneAdapter({ canvas });
     // What a live editor holds mid-drag: the row being moved is selected and is
-    // whatever the pointer last hovered.
+    // whatever the pointer last hovered. All three fields, because that is what
+    // a real hover writes (`fabric/src/canvas/Canvas.ts:1236`) — and leaving
+    // `_hoveredActualTarget` out of the fixture is what made this case blind to
+    // the one field the removal hook does *not* clear (`vg-487`, Fabric's side,
+    // not fixed here).
     canvas.setActiveObject(chart);
     canvas._hoveredTarget = chart;
     canvas._hoveredTargets = [chart];
+    canvas._hoveredActualTarget = chart;
     const { bridge } = bridgeFor(undefined, {
       canvas,
       historyManager: { saveState: vi.fn() },
     });
     return { canvas, group, chart, bridge, adapter };
   };
-  const stateOf = (scene: ReturnType<typeof build>) => ({
-    active: scene.canvas.getActiveObject()?.get("id") ?? null,
-    hovered: scene.canvas._hoveredTarget?.get("id") ?? null,
-    hoveredTargets: scene.canvas._hoveredTargets.map((object) =>
-      object.get("id"),
-    ),
-    root: scene.canvas.getObjects().map((object) => object.get("id")),
-    group: scene.group.getObjects().map((object) => object.get("id")),
-    renderList:
-      scene.canvas._objectsToRender === undefined ? "invalidated" : "cached",
-    chartOnCanvas: scene.chart.canvas === scene.canvas,
-    chartInGroup: scene.chart.group === scene.group,
-    disposed: scene.chart.disposed,
-  });
+  // The state is projected by *shape*, not by a list of names. A removal
+  // changes a canvas in one of three shapes — a reference to an object, a list
+  // of them, or a field the hook clears — and everything else on a canvas is
+  // binder plumbing (contexts, elements, options, a rAF handle) that differs
+  // between two canvases for reasons a move has nothing to do with. A list of
+  // names is what let this case miss `_hoveredActualTarget`, which
+  // `_onObjectRemoved` does *not* clear and no reader would have thought to
+  // write down; projected by shape it is in the state, and so is any field a
+  // future Fabric clears that this fix would have to clear too.
+  const stateOf = (scene: ReturnType<typeof build>) => {
+    const entry = (value: unknown): string | undefined => {
+      if (value === scene.canvas) return "this canvas";
+      if (value instanceof FabricObject)
+        return `object ${String(value.get("id"))}`;
+      return undefined;
+    };
+    const state: Record<string, string | string[] | boolean> = {
+      // The one expected difference, named here so the assertion can exclude it
+      // by name rather than by leaving it out of a list.
+      "chart.disposed": scene.chart.disposed,
+    };
+    for (const source of [scene.canvas, scene.chart]) {
+      for (const key of Object.keys(source)) {
+        const value = (source as unknown as Record<string, unknown>)[key];
+        const single = entry(value);
+        if (single !== undefined) state[key] = single;
+        else if (
+          Array.isArray(value) &&
+          value.every((item) => item instanceof FabricObject)
+        )
+          state[key] = value.map((item) => `object ${String(item.get("id"))}`);
+      }
+    }
+    return state;
+  };
+  const differences = (
+    left: Record<string, unknown>,
+    right: Record<string, unknown>,
+  ): string[] =>
+    [...new Set([...Object.keys(left), ...Object.keys(right)])]
+      .filter((key) => JSON.stringify(left[key]) !== JSON.stringify(right[key]))
+      .sort();
 
   // The reference: what Fabric's own removal leaves, which is the path
   // `moveLayer` took before `detachFromRoot` existed.
@@ -1003,12 +1036,32 @@ it("leaves the canvas in the state a removal leaves, except the object itself", 
   expect(moved.bridge.moveLayer("chart", "child")).toBe(true);
 
   // The reference disposes and the fixed path does not, which is the one
-  // difference this fix exists for; everything else must match it exactly.
-  expect(stateOf(removed).disposed).toBe(true);
-  expect(stateOf(moved).disposed).toBe(false);
-  expect({ ...stateOf(moved), disposed: stateOf(removed).disposed }).toEqual(
-    stateOf(removed),
+  // difference this fix exists for; everything else must match it exactly —
+  // and the difference is asserted, not assumed: any other key that diverges,
+  // including one this case was never told about, joins the list and fails it.
+  expect(stateOf(removed)["chart.disposed"]).toBe(true);
+  expect(stateOf(moved)["chart.disposed"]).toBe(false);
+  // Coverage, so a projection that quietly dropped a field cannot pass: these
+  // are the reference-shaped fields the fixture sets that survive the move, and
+  // `_hoveredActualTarget` among them is the point — it is the field the removal
+  // hook does not clear, and a set that never held it could not report a
+  // divergence in it. The cleared ones (`_activeObject`, `_hoveredTarget`) are
+  // absent from both projections, which is the parity being asserted.
+  expect(Object.keys(stateOf(moved))).toEqual(
+    expect.arrayContaining([
+      "_hoveredActualTarget",
+      "_hoveredTargets",
+      "_objects",
+      "canvas",
+      "group",
+    ]),
   );
+  expect(differences(stateOf(removed), stateOf(moved))).toEqual([
+    "chart.disposed",
+  ]);
+  expect(differences(stateOf(moved), stateOf(removed))).toEqual([
+    "chart.disposed",
+  ]);
 
   removed.adapter.dispose();
   moved.adapter.dispose();
