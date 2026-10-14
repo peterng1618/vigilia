@@ -1741,12 +1741,21 @@ is missing.
 **196 open rows**. This plan names **145** of them — 141 by id and 4 by item number alone (`vg-461`,
 `vg-462`, `vg-468`, `vg-474`) — and **51 are named by no phase at all: `vg-388` through `vg-482`.**
 
-**The method, so the next measurement is comparable rather than merely different.** A row is *named*
-when its `vg-` id appears in this file above this section, or when a Phase 13/14 task heading carries it
-by item number; the section you are reading is excluded from the search, or it would name every row it
-counts. Both halves matter: six rows were filed on 2026-10-15 and carry no task (`vg-476`, `vg-477`,
-`vg-479`–`vg-482`), which is exactly the 45 → 51 difference from the first taking of this count — the
-method is unchanged and the register grew.
+**The method, stated so the next measurement is comparable rather than merely different — and it took
+three takings to get right, which is why it is written down.** **A row is *carried* when a `### Task`
+block names it**, by `vg-` id, or when a Phase 13/14 task heading carries it by item number (the four:
+`vg-461`, `vg-462`, `vg-468`, `vg-474`). **Prose outside a task carries nothing** — not this census, not
+Global Constraints, not a phase annotation, not the five decisions — **because naming a row is not owning
+it.**
+
+**The first method failed exactly there, and by my own hand.** It counted any mention above this section,
+which was adequate until the 2026-10-15 Global Constraints bullet named `vg-455` as an unowned gate hole:
+the count fell from 51 to 50 **because the plan described the problem**, and a measure that improves when
+you write about it is not a measure. The task-scoped method returns 51 with the same register, so the
+number never moved — only the definition of it did.
+
+**The register grew by six rows on 2026-10-15** (`vg-476`, `vg-477`, `vg-479`–`vg-482`), which is the
+whole of the 45 → 51 difference between the first taking and this one.
 
 **They are the drain's own by-products, and that is the finding.** 49 of the 51 are `source: agent` —
 rows a phase of this plan filed while doing something else, then left behind. `STATUS.md` sets the rule
