@@ -1591,6 +1591,12 @@ than twice.
 - Consumes: `ControlNumber`'s inline form, which `control-pair.tsx` already composes as a layout
 - Produces: a slider whose value can be typed and wheeled, and one set of fields that all carry it
 
+**Pointers checked 2026-10-15 and all of them resolve:** the three render sites are the
+`control: "number"` sites the step names; `control-slider.tsx`'s well is a `<span>` at `:157-161` with
+the decision sentence above it at `:30-31`; and `settings-fields.ts` carries 27 numeric descriptors.
+**Recorded because the same pass found Task 14.2's citations did not resolve** — a task whose pointers
+have been checked should say so, or the next reader re-derives it and cannot tell the two apart.
+
 - [ ] **Step 1: The well becomes an input (item 10).** `control-slider.tsx:157-161` renders a
       `<span>`; `:30-31` states the decision being reversed in the module's own words, so that
       sentence changes in the same commit. The well becomes `ControlNumber` in its inline form, so
