@@ -1137,6 +1137,62 @@ The other two are not in it, and the reason is written on them: `vg-271`'s quest
 
 ---
 
+# Phase 12 — the 2026-10-14 rulings no phase carried (13 rows, and `vg-330`'s spec)
+
+**Created by a ledger ruling of 2026-10-14 and run under it** — `.superpowers/sdd/2026-10-12-the-backlog-drain/progress.md`,
+"Session 2's rulings taken on 2026-10-14" → "Ruling: the drain runs Phase 10 first, then a new Phase 12
+for the ruled work". **Its first two groups were dispatched as named groups rather than numbered
+tasks, so until 2026-10-15 this plan referenced "Phase 12" in five places without containing it.**
+Written here so a session arriving through `STATUS.md` — which says *"Phase 12 continues"* — can find
+it at all. That gap is the reason this section exists; it is not a re-plan of ruled work.
+
+**Every row here carries its ruling in its own `detail`, in the `RULED 2026-10-14:` marker format.**
+That is where the decision lives, and this phase states only the order and what each task owes.
+
+| group | rows | state |
+|---|---|---|
+| 1 the two drawing corrections | `vg-306`, `vg-436` | **landed** — both `verified` |
+| 2 the self-contained product fixes | `vg-109`, `vg-182`, `vg-185`, `vg-029` landed; `vg-155`, `vg-040` open | part-landed |
+| 3 the ones needing a measurement | `vg-037`, `vg-450`, `vg-190`, `vg-447` | not started |
+| 4 the wide ones | `vg-230`, `vg-269`, `vg-274`, `vg-023`, `vg-056`, `vg-123` | not started |
+| then `vg-330`'s spec | `vg-330` | not started, and it is a brainstorm → spec → plan of its own |
+
+**Group 1 had to land first** because `vg-306` and `vg-436` change the drawings every other row in this
+phase is read against. It has. **Group 3 runs before group 4** because each of its four rows needs a
+measurement taken before its fix can be judged, and a measurement taken after a wider change is a
+measurement of the wider change.
+
+**Constraints on this phase.** `vg-274` is `editor-shell.css` joining the gated list — a ratchet
+conversion of 94 values — and Task 13.1 has since edited that stylesheet, so its row's count is a
+count taken before that edit and must be re-taken rather than trusted. `vg-330`'s unparking redraws
+the settings *drawing* as a panel, and Phase 10 fixes the settings *modal* against the drawing as it
+is drawn today: **the ruling is that Phase 10 does not wait**, because the pane spec is unwritten and
+the drawing is the instrument Phase 10 is measured against until then.
+
+- [ ] **Task 12.1 — the two drawing corrections.** Landed. `vg-306` and `vg-436` separately, one commit
+      each, the drawings README split by hunk.
+- [ ] **Task 12.2 — the self-contained product fixes.** `vg-109`, `vg-182`, `vg-185` and `vg-029` landed,
+      one commit each. **`vg-155` and `vg-040` remain** and are this task's open half: the pane must say
+      which of the two things an import did, and the draft must survive a crash with recovery offered.
+- [ ] **Task 12.3 — the four that need a measurement** (`vg-037`, `vg-450`, `vg-190`, `vg-447`). Each is
+      a different owner — `vg-450` names `editor-shell/controls/tooltip.ts`; the other three's owning
+      landmark is **read from the row's own `RULED` marker and its measured section rather than named
+      here**, because this section was written from the ruling's grouping and not from the rows, and
+      naming a file this session has not read is the mistake two briefs already made. Take each
+      measurement first and record it on the row; a fix judged without it is the failure mode.
+- [ ] **Task 12.4 — the six wide ones** (`vg-230`, `vg-269`, `vg-274`, `vg-023`, `vg-056`, `vg-123`). Same
+      rule on landmarks, same reason. These reach several panes each, so **they are grouped by file
+      ownership when this task is written** — as Phase 13's tasks were — rather than run as one
+      dispatch, which is the arrangement that cost 13.2 a split record.
+- [ ] **Task 12.5 — `vg-330`'s spec.** Runs after 12.3 and 12.4, since it redraws the drawing the others
+      are measured against. A brainstorm → spec → plan of its own, not a task in this plan.
+
+**Acceptance for the phase:** every row closes on the phase that lands its change, each with a `check`
+naming a word from its own `title` and `artefacts` naming a resolvable ancestor sha; no row closes on a
+source reading where a measurement was the ruling; `vg-330` has its spec and its own plan.
+**Failure modes:** a row's ruling re-argued instead of applied; `vg-274`'s 94-value count trusted after
+Task 13.1 edited the stylesheet it counts; a wide row run as one dispatch across several panes.
+
 # Phase 13 — the user's 2026-10-14 GUI list (9 rows, items 1–9)
 
 **Why this phase runs ahead of Phase 12.** The list is the user's own, written while testing the
@@ -1674,6 +1730,41 @@ asserts the angle property, which was already correct; a close reported while th
 is missing.
 
 ---
+
+# The rows no phase carries — the drain's own by-products (45 open, measured 2026-10-15)
+
+**Counted rather than estimated, because the count is the point of this plan.** The register holds
+**196 open rows**. This plan names **145** of them — 141 by id and 4 by item number alone (`vg-461`,
+`vg-462`, `vg-468`, `vg-474`) — six were filed on 2026-10-15 and have no task yet (`vg-476`, `vg-477`,
+`vg-479`–`vg-482`), and **45 are named by no phase at all: `vg-388` through `vg-457`.**
+
+**They are the drain's own by-products, and that is the finding.** 43 of the 45 are `source: agent` —
+rows a phase of this plan filed while doing something else, then left behind. `STATUS.md` sets the rule
+that puts them there: *"file it if you found it and it is not the task you are doing"*. The rule is
+right and this is its cost, unpaid: **a plan that files faster than it carries does not drain**, and the
+open count is the measure. Two are `source: user` and are not in the same lane — `vg-388` (an in-app
+theme store) and `vg-405` (the colour picker and gradient editor, in the user's own words after using
+them, "barely usable"). **User rows outrank agent rows, and those two are the user's own words.**
+
+**No phase carries these and none is invented here.** Writing 45 tasks from row titles alone is the
+mistake this plan's own §"Plans are contracts" forbids and that two of today's briefs already paid for:
+a task names owning symbols and a landmark, and a landmark cannot be written from a title. So this is a
+position rather than a phase, exactly as the parked rows below are:
+
+- **They are not abandoned and they are not parked.** A parked row has a named reason and an owner who
+  will unpark it; these have neither, which is the state this section exists to end.
+- **They enter a phase by triage, and the triage is the next plan-authoring work** — after Phase 12,
+  13 and 14 land, because triage reads code and the three phases are editing it now.
+- **Triage decides one of three things per row, and writes which on the row**: fix it in a phase named
+  here; **withdraw** it, with the reason on the row, because a LOW finding that is not worth doing is
+  a row that should stop being counted; or **park** it with what it waits on. `vg-386`'s sweep (133
+  candidates, none proven dead) is the model for how a withdrawal is argued, and `vg-434`'s measurement
+  is the model for how a count is taken rather than guessed.
+- **What is explicitly not the answer:** a phase that carries all 45 because they exist. That converts
+  a queue into a backlog again.
+
+**The measure of the drain is therefore two numbers, and both belong in the final report:** the open
+count, and how many of those no phase carries. Today they are **196** and **45**.
 
 # Parked rows — held, not a phase
 
