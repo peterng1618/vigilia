@@ -5,8 +5,8 @@
  *
  * **The weight case reads the rendered DOM, not the source.** `stroke-width`
  * is an attribute lucide writes on the `<svg>` it renders, and the eight card
- * unit diagrams and the Add pane's shape marks write it on theirs, so a scan of
- * the source cannot see a component prop and this reads what the browser would.
+ * unit diagrams write it on theirs, so a scan of the source cannot see a
+ * component prop and this reads what the browser would.
  * It is **bounded by what it mounts**: the fleet below draws the vocabulary, the
  * rail, the camera cluster, a pane title, the row's affordances, every kind mark
  * and the whole Add pane. The surfaces it does *not* mount — settings, the
@@ -377,7 +377,9 @@ it("draws every object the Add pane offers, so an insertable kind cannot arrive 
     // this class — the pane's own hand-authored `<svg>`s wrote none, which is
     // how a tile drawn by hand again is caught here rather than in a reading.
     if (tile.getAttribute("data-vigilia-panel-card") === null) {
-      expect(svg?.getAttribute("class")).toMatch(/^lucide/);
+      // `?? ""` so a glyph rendered with no class fails as a mismatch against
+      // the pattern rather than as vitest's "expected a string, got object".
+      expect(svg?.getAttribute("class") ?? "").toMatch(/^lucide/);
     }
   }
 });

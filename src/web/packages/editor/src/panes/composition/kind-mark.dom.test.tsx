@@ -211,8 +211,10 @@ it("gives every kind a mark no other kind wears", () => {
   // The one sharing this set leaves out, stated rather than hidden: a chart
   // whose family this build cannot name wears `bar`'s mark, because
   // `chartFamilyGlyph`'s fallback *is* `CHART_BAR_GLYPH` — no glyph exists for a
-  // family no build can name, and the row's role is what says the family is
-  // unknown.
+  // family no build can name. **Nothing else on the row corrects it**: the role
+  // abstains and reads the kind word ("Chart", `ui-copy.ts`), so the row claims
+  // `bar` through the mark alone. That is a defect and not a licence — filed as
+  // `vg-489` — and this assertion is the one a fix flips.
   expect(armGlyph({ kind: "chart", family: undefined })).toBe(
     armGlyph({ kind: "chart", family: "bar" }),
   );

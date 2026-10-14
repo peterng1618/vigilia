@@ -329,9 +329,8 @@ export function arrangeActions(): readonly ObjectAction[] {
  * not here, and not for size: a chart family's word collides with a shape's
  * ("Line" is both) and the footer is a flat row with no heading to tell them
  * apart — the Add pane's own rule is that a heading is what makes "Line"
- * unambiguous — while `wedge` and `pie` already wear the same glyph (`vg-459`).
- * A card unit's mark is a hand-drawn diagram the Add pane owns, and inserting
- * one needs the document's bindings.
+ * unambiguous. A card unit's mark is a hand-drawn diagram the Add pane owns, and
+ * inserting one needs the document's bindings.
  */
 export const CONSTRUCTION_ACTIONS: readonly ConstructionAction[] = [
   { id: "new-text", label: uiCopy.panels.text, icon: KIND_GLYPHS.text },
