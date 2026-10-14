@@ -132,7 +132,10 @@ export function ControlSlider(
       // `any` reports 0, and a wheel cannot move by nothing.
       const step = stepOf(input.current);
       const from = ticked.current ?? value;
-      const next = Math.min(Math.max(from + (event.deltaY < 0 ? step : -step), min), max);
+      const next = Math.min(
+        Math.max(from + (event.deltaY < 0 ? step : -step), min),
+        max,
+      );
       if (next === from) return;
       ticked.current = next;
       cancelled.current = false;

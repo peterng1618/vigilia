@@ -170,7 +170,9 @@ function drawnEdge(object: FabricObject): number | undefined {
     object.width * object.scaleX,
     object.height * object.scaleY,
   );
-  return Number.isFinite(smaller) && smaller > 0 ? Math.floor(smaller) : undefined;
+  return Number.isFinite(smaller) && smaller > 0
+    ? Math.floor(smaller)
+    : undefined;
 }
 
 /** Half the drawn edge, because a corner is one of a rectangle's four and two

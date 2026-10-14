@@ -77,13 +77,18 @@ function defaultsOf(family: ChartFamily): unknown {
     bar: defaultBarSettings,
     pie: defaultPieSettings,
   };
-  return { animation: defaultAnimationSettings, ...(families[family] as object) };
+  return {
+    animation: defaultAnimationSettings,
+    ...(families[family] as object),
+  };
 }
 
 /** The authored value, when the author wrote a finite number: absent is absent,
     never a zero nobody typed. */
 function authoredNumber(value: unknown): number | undefined {
-  return typeof value === "number" && Number.isFinite(value) ? value : undefined;
+  return typeof value === "number" && Number.isFinite(value)
+    ? value
+    : undefined;
 }
 
 /**

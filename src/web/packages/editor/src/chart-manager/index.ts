@@ -116,7 +116,9 @@ function aspectOf(
  * measures nothing: a field with no readable box keeps a typed box rather than a
  * guessed ceiling (`vg-469`).
  */
-function drawnEdgeOf(chart: VigiliaChart): { readonly drawnEdge: number } | Record<string, never> {
+function drawnEdgeOf(
+  chart: VigiliaChart,
+): { readonly drawnEdge: number } | Record<string, never> {
   const width = chart.width * chart.scaleX;
   const height = chart.height * chart.scaleY;
   const smaller = Math.min(width, height);

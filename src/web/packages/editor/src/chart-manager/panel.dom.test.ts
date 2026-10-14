@@ -8,13 +8,13 @@ import {
 } from "@vigilia/renderer-core";
 import { describe, expect, it } from "vitest";
 import { isSettingVisible } from "../editor-shell/controls/settings-field.js";
+import type { ChartSettingView } from "./chart-fields.js";
 import {
   ASPECT_RATIOS,
   type ChartFieldTarget,
   chartContentView,
   chartPaintView,
 } from "./panel.js";
-import type { ChartSettingView } from "./chart-fields.js";
 
 /**
  * What the chart owner hands the column, as data.
@@ -243,7 +243,10 @@ describe("a chart's bounded settings, as the owner hands them over", () => {
       id: "ram",
       content: {
         family: "pie",
-        settings: { ...defaultPieSettings, total: { kind: "fixed", value: 64 } },
+        settings: {
+          ...defaultPieSettings,
+          total: { kind: "fixed", value: 64 },
+        },
       },
       bindings: [],
     };

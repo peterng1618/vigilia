@@ -898,7 +898,8 @@ it("moves the value by the slider's own step on a wheel, and not when refused", 
     />,
   );
   const next = document.querySelector<HTMLInputElement>('input[type="range"]');
-  const nextWell = document.querySelector<HTMLInputElement>('input[type="text"]');
+  const nextWell =
+    document.querySelector<HTMLInputElement>('input[type="text"]');
   if (next === null || nextWell === null) return;
   next.step = "5";
   onCommit.mockClear();
@@ -916,9 +917,8 @@ it("moves the value by the slider's own step on a wheel, and not when refused", 
       onCommit={refused}
     />,
   );
-  const refusedWell = document.querySelector<HTMLInputElement>(
-    'input[type="text"]',
-  );
+  const refusedWell =
+    document.querySelector<HTMLInputElement>('input[type="text"]');
   if (refusedWell === null) return;
   await wheel(refusedWell, -100);
   expect(refused).not.toHaveBeenCalled();

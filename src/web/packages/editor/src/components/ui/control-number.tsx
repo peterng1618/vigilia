@@ -140,7 +140,9 @@ export function ControlNumber(
       <ControlWell
         density={density}
         blocked={blocked}
-        {...(wellClassName === undefined ? {} : { widthClassName: wellClassName })}
+        {...(wellClassName === undefined
+          ? {}
+          : { widthClassName: wellClassName })}
       >
         <input
           {...data}
