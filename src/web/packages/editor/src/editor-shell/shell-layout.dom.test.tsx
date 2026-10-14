@@ -16,6 +16,7 @@ import {
 import { shortcutLabel } from "../shortcut-manager/display.js";
 import {
   PRODUCT_SHORTCUTS,
+  type ProductShortcutId,
   type ShortcutBinding,
 } from "../shortcut-manager/index.js";
 import { uiCopy } from "../ui-copy.js";
@@ -1261,6 +1262,46 @@ it("prints the chord on the menu rows the shortcut table binds", async () => {
     setActiveShortcuts(resolveShortcuts({ "edit.undo": moved }));
   });
   expect(openPopup().querySelector("kbd")?.textContent).toBe("Ctrl+J");
+
+  layout.destroy();
+});
+
+it("teaches a File row exactly the chord whose id runs the call that row runs", async () => {
+  const root = document.createElement("div");
+  const layout = createShellLayout(root);
+  menubarEntry(root, uiCopy.menus.file).click();
+  await Promise.resolve();
+
+  // Each row's own id, and the pairing is the ruled one (vg-185): a chord is
+  // taught where the `PRODUCT_SHORTCUTS` id reaches the same call the row
+  // reaches, which for these three is one method on the same receiver —
+  // `file.save`/`savePackage` both end at `#document.save()`, and the same for
+  // `open` and `newDocument`. The four rows with no id stay chordless; the
+  // menu does not pair a chord by eye, which is how a menu starts teaching a
+  // key that runs something else.
+  const keyed = new Map<string, ProductShortcutId | undefined>([
+    [uiCopy.file.newDocument, "file.new"],
+    [uiCopy.file.newFromStarter, undefined],
+    [uiCopy.file.openPackage, "file.open"],
+    [uiCopy.file.savePackage, "file.save"],
+    [uiCopy.file.releasePackage, undefined],
+    [uiCopy.file.openLibrary, undefined],
+    [uiCopy.file.saveLibrary, undefined],
+  ]);
+
+  const rows = menuItems();
+  expect(rows.length, "every File row is read").toBe(keyed.size);
+  for (const row of rows) {
+    const text = row.textContent ?? "";
+    const label = [...keyed.keys()].find((candidate) =>
+      text.startsWith(candidate),
+    );
+    if (label === undefined) throw new Error(`No File row for "${text}".`);
+    const id = keyed.get(label);
+    expect(row.querySelector("kbd")?.textContent ?? undefined, label).toBe(
+      id === undefined ? undefined : shortcutLabel(id),
+    );
+  }
 
   layout.destroy();
 });

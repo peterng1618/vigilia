@@ -184,21 +184,41 @@ export function ShellMenuBar({
   return (
     <nav className="editor-shell-menubar" aria-label={uiCopy.menus.label}>
       <MenuGroup label={uiCopy.menus.file}>
-        {item(uiCopy.file.newDocument, () => void session?.newDocument())}
+        {/* A File row prints a chord where the row and its `PRODUCT_SHORTCUTS`
+            id run the same call — `item`'s fourth argument — and each of the
+            three names the call it shares. `newFromStarter`, `releasePackage`,
+            `openLibrary` and `saveLibrary` carry none because the table binds
+            nothing for them, not because a File row cannot have one. */}
+        {/* `file.new` → `#document.newDocument()`. */}
+        {item(
+          uiCopy.file.newDocument,
+          () => void session?.newDocument(),
+          false,
+          "file.new",
+        )}
         {item(uiCopy.file.newFromStarter, () => void session?.newFromStarter())}
-        {item(uiCopy.file.openPackage, () => session?.openPackage())}
-        {item(uiCopy.file.savePackage, () => void session?.savePackage())}
+        {/* `file.open` → `#document.open()`. */}
+        {item(
+          uiCopy.file.openPackage,
+          () => session?.openPackage(),
+          false,
+          "file.open",
+        )}
+        {/* `file.save` → `#document.save()`. */}
+        {item(
+          uiCopy.file.savePackage,
+          () => void session?.savePackage(),
+          false,
+          "file.save",
+        )}
         {item(uiCopy.file.releasePackage, () => void session?.releasePackage())}
         {item(uiCopy.file.openLibrary, () => void session?.openLibrary())}
         {item(uiCopy.file.saveLibrary, () => void session?.saveLibrary())}
       </MenuGroup>
       <MenuGroup label={uiCopy.menus.edit}>
         {/* A row names an id only when that binding reaches the same manager the
-            row calls through the session — `edit.undo` and this row both end at
-            `historyManager.undo()`, and so on for the six. The File rows carry
-            none because that is what the plan enumerated, not because they fail
-            the rule: `file.new`, `file.open` and `file.save` each reach the same
-            call their row does. That disagreement is open as `vg-185`. */}
+            row calls through the session — `edit.undo` and its row both end at
+            `historyManager.undo()`, and so on for the six. */}
         {EDIT_MENU_ROWS.map((row) =>
           item(
             row.label,
