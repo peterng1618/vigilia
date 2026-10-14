@@ -5,6 +5,8 @@ import {
   setActiveShortcuts,
 } from "./bindings.js";
 import {
+  bindingLabel,
+  printableChord,
   shortcutLabel,
   shortcutSpokenLabel,
   usesCommandKey,
@@ -69,6 +71,28 @@ describe("shortcutLabel", () => {
     // renderer never guesses a default, which is the same rule the repo applies
     // to a refused numeric field.
     expect(shortcutLabel("view.exit-group")).toBe("");
+  });
+});
+
+describe("the display vocabulary", () => {
+  it("names no key that only a context-only binding can carry", () => {
+    // vg-182: `escape` was named in both tables here — `Esc` printed, `Escape`
+    // spoken — while its one binding lives in `CONTEXT_SHORTCUTS`, whose own
+    // comment says those bindings are never displayed. Two modules disagreed
+    // about whether Escape is displayable; the vocabulary now takes the side
+    // the binding's owner took, so a cap the product cannot print is not in
+    // the table to be printed. The break this catches is restoring either
+    // entry: the pair below is then printable and speaks a word nothing shows.
+    const onEscape: ShortcutBinding = {
+      key: "escape",
+      modifier: false,
+      action: "view.exit-group",
+    };
+    expect(printableChord(onEscape)).toBe(false);
+    expect(bindingLabel(onEscape)).toBe("");
+    // And the same rule read from the other side: a key the product *does*
+    // display keeps its name, so this cannot pass by emptying the table.
+    expect(printableChord({ key: "delete", modifier: false, action: "edit.delete" })).toBe(true);
   });
 });
 

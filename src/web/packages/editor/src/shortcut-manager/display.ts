@@ -30,23 +30,31 @@ const CAPS = {
  * screen reader announces `⌘` as "place of interest sign" and `⇧` as "upwards
  * white arrow" — names of pictures, not of keys. `aria-label` carries these
  * instead, so the visible chip keeps the platform's own mark while what is
- * spoken is what the key does. `Esc` prints short and is spoken whole.
+ * spoken is what the key does.
  */
 const SPOKEN_CAPS = {
   mac: { modifier: "Command", shift: "Shift" },
   other: { modifier: "Control", shift: "Shift" },
 } as const;
 
-/** Keys whose name is a word or a mark rather than the character a reader would
- *  recognise from the cap. `event.key` is lowercased before lookup, which is
- *  the form this table stores.
+/**
+ * Keys whose name is a word or a mark rather than the character a reader would
+ * recognise from the cap. `event.key` is lowercased before lookup, which is
+ * the form this table stores.
  *
- *  The four arrows are `\p{S}` pictographs, which is the whole reason this
- *  table is not in `ui-copy.ts`: `ui-copy.test.ts` forbids one there, and it is
- *  right to — a glyph in the copy table is announced as a word of its own, it
- *  cannot inherit a shell colour, and it does not render like the icons beside
- *  it. A key cap escapes all three by being styled by its own `<kbd>` rule, but
- *  it does not escape the rule, so it moves rather than earning an exemption. */
+ * Every entry names a key a binding the product **displays** can carry, because
+ * a cap nothing can print is a second vocabulary for a key the author is never
+ * shown: `escape` left this table with `vg-182`, since its one binding lives in
+ * `CONTEXT_SHORTCUTS`, whose comment says those bindings are never displayed.
+ * `f5`/`f11`/`f12` are the one exception, and they are here for the refusal
+ * reason rather than for a surface — the note below says why.
+ *
+ * The four arrows are `\p{S}` pictographs, which is the whole reason this table
+ * is not in `ui-copy.ts`: `ui-copy.test.ts` forbids one there, and it is right
+ * to — a glyph in the copy table is announced as a word of its own, it cannot
+ * inherit a shell colour, and it does not render like the icons beside it. A
+ * key cap escapes all three by being styled by its own `<kbd>` rule, but it
+ * does not escape the rule, so it moves rather than earning an exemption. */
 const NAMED_KEYS: Readonly<Record<string, string>> = {
   arrowleft: "←",
   arrowright: "→",
@@ -54,7 +62,6 @@ const NAMED_KEYS: Readonly<Record<string, string>> = {
   arrowdown: "↓",
   delete: "Delete",
   backspace: "Backspace",
-  escape: "Esc",
   // The three keys `bindings.ts`'s `RESERVED_KEYS` refuses as reserved rather
   // than as unprintable: without a name here `keyCap` answers `undefined` and
   // the refusal reads unprintable, so the reason would be about a missing mark
@@ -64,14 +71,13 @@ const NAMED_KEYS: Readonly<Record<string, string>> = {
   f12: "F12",
 };
 
-/** What the four arrows and the shortened `Esc` are called out loud. Every other
- *  entry above is already a word and is spoken as printed. */
+/** What the four arrows are called out loud. Every other entry above is already
+ *  a word and is spoken as printed. */
 const SPOKEN_NAMED_KEYS: Readonly<Record<string, string>> = {
   arrowleft: "Left arrow",
   arrowright: "Right arrow",
   arrowup: "Up arrow",
   arrowdown: "Down arrow",
-  escape: "Escape",
 };
 
 /** The part of an action id before its first dot: the group an action lives in.
