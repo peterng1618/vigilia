@@ -1457,6 +1457,114 @@ test("the control set renders in the design language", async ({
 });
 
 /**
+ * One boundary, not two, on a focused field inside a well (`vg-464`, item 7).
+ *
+ * `editor-shell.css`'s focus fallback is `.editor-shell :is(button, input,
+ * select, [tabindex]):focus-visible { outline: 2px solid var(--shell-accent) }`,
+ * and its `@layer base` wrapper is load-bearing. The well `control-well.tsx`
+ * draws **is** the field's focus treatment — rounded to the control's own radius,
+ * with §5's halo beside it — and the field inside it says `outline-none`.
+ * Unlayered, the fallback outranked both utilities and every field in a well
+ * wore a second, square outline inside the rounded one; in the base layer the
+ * field's own declaration wins and the well is the boundary's one owner.
+ *
+ * **What section 4b cannot see.** It reads the focused control's outline and its
+ * contrast and would keep passing with the doubled outline still drawn: the
+ * accent outline exists either way, in the same colour, on a button that sits in
+ * no well at all. What separates the two states is the **count** — exactly one
+ * element on the path from the focused field up through its well draws a
+ * boundary, and it is the well's. Two reds.
+ *
+ * A case of its own rather than another section of "the control set renders in
+ * the design language", so a red-proof can run it alone: reverting the `@layer
+ * base` wrapper moves every control's focus treatment, and a red-proof that
+ * cannot say which assertion failed is no red-proof.
+ */
+test("a focused field in a well draws one boundary, not two", async ({
+  page,
+}, testInfo) => {
+  test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+
+  await openFixture(page);
+
+  const field = page.locator("[data-fixture='text'] input");
+  // Tab first, then the explicit focus: the press is what sets the heuristic
+  // that makes a programmatic focus match `:focus-visible`, which is the state
+  // §5's boundary is for (the same route section 4b takes).
+  await page.keyboard.press("Tab");
+  await field.focus();
+  await expect(field).toBeFocused();
+
+  const reading = await page.evaluate(() => {
+    const input = document.querySelector<HTMLElement>(
+      "[data-fixture='text'] input",
+    );
+    if (input === null) return null;
+
+    /** The boundary an element draws, or `null` for the element that draws
+     *  none. A named `none` would count as one, so absence is `null`. */
+    const drawnBy = (element: HTMLElement, up: number): string | null => {
+      const style = getComputedStyle(element);
+      const width = Number.parseFloat(style.outlineWidth);
+      if (style.outlineStyle === "none" || !(width > 0)) return null;
+      const where =
+        up === 0 ? "the field" : up === 1 ? "its well" : `ancestor ${up}`;
+      return `${where}: ${style.outlineStyle} ${width}px ${style.outlineColor}`;
+    };
+
+    // Three levels rather than the well alone, so a boundary further up than
+    // the well is counted instead of being hidden by a parent-only read.
+    const boundaries: string[] = [];
+    let node: HTMLElement | null = input;
+    for (let up = 0; up < 3 && node !== null; up += 1) {
+      const drawn = drawnBy(node, up);
+      if (drawn !== null) boundaries.push(drawn);
+      node = node.parentElement;
+    }
+
+    return {
+      focusVisible: input.matches(":focus-visible"),
+      wellFocusWithin: input.parentElement?.matches(":focus-within") ?? false,
+      fieldShadow: getComputedStyle(input).boxShadow,
+      boundaries,
+    };
+  });
+
+  expect(reading, "the focused field is not mounted").not.toBeNull();
+  if (reading === null) return;
+  // The reading is the evidence, attached rather than only asserted so the
+  // count can be read without a trace — and still attached on a failure.
+  testInfo.annotations.push({
+    type: "boundary",
+    description: `${reading.boundaries.length} on the field's path: ${reading.boundaries.join(" | ") || "none"}; field box-shadow ${reading.fieldShadow}`,
+  });
+  // Without this the reading is not the state a keyboard user sees, so the
+  // count below could be one for a reason this case does not claim.
+  expect(
+    reading.focusVisible,
+    "the field does not match :focus-visible, so no boundary of §5's is under test",
+  ).toBe(true);
+  expect(
+    reading.wellFocusWithin,
+    "the well does not match :focus-within, so it owns no boundary and the field would be the only candidate",
+  ).toBe(true);
+  expect(
+    reading.boundaries,
+    `a focused field in a well draws one boundary, and it is the well's: ${reading.boundaries.join(" | ") || "none"}`,
+  ).toHaveLength(1);
+  expect(
+    reading.boundaries[0] ?? "none",
+    "the count is one, but the boundary is not the well's",
+  ).toMatch(/^its well: solid/);
+  // §5's treatment is the well's by both routes: a ring on the field would be
+  // the same defect drawn in the other medium.
+  expect(
+    reading.fieldShadow,
+    `the field paints a box-shadow of its own (${reading.fieldShadow})`,
+  ).toBe("none");
+});
+
+/**
  * The shell parity capture (DESIGN.md §7.1–§7.3, mockup
  * `docs/design/mockups/current/shell.html`).
  *
