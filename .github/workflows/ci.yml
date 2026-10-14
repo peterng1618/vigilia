@@ -34,6 +34,14 @@ jobs:
         working-directory: src/web
     steps:
       - uses: actions/checkout@v4
+        with:
+          # The parity gate dates a licence by the commit the rule it quotes
+          # entered (`tests/e2e/mockup-values.test.ts`), and a depth-1 clone
+          # answers every history query with the boundary commit — every licence
+          # would read as written by its own citing commit. This job runs
+          # `npm run gate`, so it is the one that needs the history; the ledger
+          # refuses a shallow tree loudly rather than manufacturing findings.
+          fetch-depth: 0
 
       - uses: actions/setup-node@v4
         with:

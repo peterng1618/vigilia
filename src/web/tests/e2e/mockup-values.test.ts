@@ -6,6 +6,7 @@ import { expect, test } from "vitest";
 import {
   CITE_NUMBERS,
   checkCitations,
+  sectionTexts,
 } from "../../../../scripts/design-md.mjs";
 import {
   assertParityRowProperty,
@@ -17,6 +18,7 @@ import {
   currentDrawings,
   drawingTexts,
   LICENCE_SPEC,
+  LICENCE_SPEC_ALIASES,
   type LicenceLedger,
   lengthInPx,
   licenceFindings,
@@ -788,69 +790,158 @@ test("every element a drawing copies from the original declares the original's t
  * the real tree. A fixture proves a refusal fires; a real licence proves it does
  * not fire on a reason that is genuinely licensed — without one, a predicate
  * returning a constant would pass every case here.
+ *
+ * **The dates come from this repository, and the repository is not always
+ * complete.** Everything here derives from `git log` / `git blame`, and in a
+ * shallow clone the boundary commit is diffed against the empty tree, so *every*
+ * query answers the boundary: both table licences would read as written by their
+ * own citing commit and be refused for a reason that is not about any licence. A
+ * false refusal is worse than no check — it is how a gate gets switched off — so
+ * the ledger refuses a shallow tree outright, naming the cause, and
+ * `.github/workflows/ci.yml` asks its checkout for the history rather than
+ * letting a depth-1 clone quietly answer every question wrongly.
  */
 
 const REPO_ROOT = fileURLToPath(new URL("../../../..", import.meta.url));
 const DESIGN_TEXT = readFileSync(resolve(REPO_ROOT, "DESIGN.md"), "utf8");
 const MOCKUP_VALUES_REL = "src/web/tests/e2e/mockup-values.ts";
+/** The commit that added §5's "Bare readout" row and left `<!-- §5 -->` alone —
+ *  the real amendment the predating limb exists for. Named, not inferred: the
+ *  assertion below is that the rule's own line blames to *this* commit where the
+ *  marker blames to an older one. */
+const BARE_READOUT_COMMIT = "61d7435bddd5c205019cf97a2849740a06e0713f";
+
+/** Ask git one question and read its answer, or throw naming `what` — a query
+ *  that fails is a failure here, not an empty read that refuses a licence for a
+ *  reason unrelated to it. */
+function git(args: readonly string[], what: string): string {
+  try {
+    return execFileSync("git", args, { cwd: REPO_ROOT }).toString();
+  } catch (error) {
+    throw new Error(
+      `${what}: \`git ${args.join(" ")}\` failed (${(error as Error).message})`,
+    );
+  }
+}
+
+/** The refusal a `--is-shallow-repository` answer earns, or `null` for a full
+ *  tree. Pure, so the `true` case is pinned without cloning this repository at
+ *  depth 1 from inside its own suite. */
+function shallowRefusal(answer: string): string | null {
+  return answer.trim() === "true"
+    ? "this checkout is shallow, so `git log` and `git blame` answer every question with the boundary commit and the licence dates are meaningless: fetch the full history (`fetch-depth: 0`, which `.github/workflows/ci.yml` sets) before running the parity gate"
+    : null;
+}
+
+/** The repository's history, or a refusal naming why it cannot be read. */
+function requireFullHistory(): void {
+  const refusal = shallowRefusal(
+    git(
+      ["rev-parse", "--is-shallow-repository"],
+      "the licence dates were not read",
+    ),
+  );
+  if (refusal !== null) throw new Error(refusal);
+}
 
 /** The commit whose diff first changed `needle`'s occurrence count in `path` —
- *  where the rule first appeared. `git log` is newest-first. */
+ *  where the licence text itself appeared. `git log` is newest-first. */
 function introducedBy(needle: string, path: string): string | null {
-  const out = execFileSync(
-    "git",
+  const shas = git(
     ["log", "--format=%H", `-S${needle}`, "--", path],
-    { cwd: REPO_ROOT },
-  ).toString();
-  const shas = out
+    "the licence's own commit was not read",
+  )
     .trim()
     .split("\n")
     .filter((line) => line !== "");
   return shas[shas.length - 1] ?? null;
 }
 
-/** A file's own introduction, which is when the rule written in it first stood. */
-function addedBy(path: string): string | null {
-  const out = execFileSync(
-    "git",
-    ["log", "--format=%H", "--diff-filter=A", "--", path],
-    { cwd: REPO_ROOT },
-  ).toString();
-  const shas = out
-    .trim()
-    .split("\n")
-    .filter((line) => line !== "");
-  return shas[shas.length - 1] ?? null;
+/** Where in `text` the whitespace-collapsed `flatQuote` begins, as a raw offset,
+ *  or `-1`. */
+function rawOffsetOf(text: string, flatQuote: string): number {
+  const offsets: number[] = [];
+  let flat = "";
+  let spaced = true;
+  for (let index = 0; index < text.length; index += 1) {
+    const character = text[index] ?? "";
+    if (/\s/.test(character)) {
+      if (spaced) continue;
+      spaced = true;
+    } else {
+      spaced = false;
+    }
+    flat += spaced ? " " : character;
+    offsets.push(index);
+  }
+  const at = flat.indexOf(flatQuote);
+  return at < 0 ? -1 : (offsets[at] ?? -1);
 }
 
-const DECISIONS = new Map(
-  execFileSync("git", ["ls-files", "docs/decisions"], { cwd: REPO_ROOT })
-    .toString()
+/** The commit the quotation entered `path` in — the rule's own introduction.
+ *
+ *  **The line the quotation stands on, blamed, rather than `git log -S<quote>`.**
+ *  A rule the file wraps across lines matches no `-S` needle: §7.5's sentence
+ *  spans three lines of DESIGN.md and, measured in this repository,
+ *  `git log -S'<the whole quotation>' -- DESIGN.md` returns *nothing* — which
+ *  would refuse the table's own §7.5 licence as quoting nothing. Blaming the
+ *  quotation's first line dates the text as written, wrap and all, and it
+ *  catches what a marker's sha cannot: `61d7435b` amended §5's table without
+ *  touching `<!-- §5 -->`, so a marker-dated check reads §5's birth and lets a
+ *  licence landing with that amendment through. */
+function ruleCommit(path: string, quote: string): string | null {
+  const text = readFileSync(resolve(REPO_ROOT, path), "utf8");
+  const offset = rawOffsetOf(text, quote.replace(/\s+/g, " ").trim());
+  if (offset < 0) return null;
+  const line = text.slice(0, offset).split("\n").length;
+  const blamed = git(
+    ["blame", "--porcelain", "-L", `${line},${line}`, "--", path],
+    `the rule \`${quote.slice(0, 40)}…\` could not be dated`,
+  );
+  return blamed.slice(0, 40) || null;
+}
+
+/** The commit that introduced a `<!-- §N -->` marker — the *older* reading this
+ *  limb moved off. Kept so the test can show the two disagree for the case that
+ *  matters. */
+function markerCommit(number: string): string | null {
+  return introducedBy(`<!-- §${number} -->`, "DESIGN.md");
+}
+
+/** Every note an `ADR-NNNN` or a path may name: the ADRs and the decision
+ *  notes, read from the tracked list rather than from a directory walk. */
+const NOTES = new Map(
+  git(
+    ["ls-files", "docs/adr", "docs/decisions"],
+    "the decision notes were not read",
+  )
     .split("\n")
-    .filter((line) => line.endsWith(".md"))
+    .filter((line) => line.endsWith(".md") && !line.endsWith("README.md"))
     .map(
       (path) => [path, readFileSync(resolve(REPO_ROOT, path), "utf8")] as const,
     ),
 );
 
+const SECTIONS = sectionTexts(DESIGN_TEXT);
+
 /** The ledger a licence is judged against, dated by git. `licensedAt` is the
  *  commit that introduced the licence text — the row's own record of the
- *  divergence it keeps — and each named source is dated from the file it is
- *  written in. */
+ *  divergence it keeps — and each quotation is dated from the line it stands on
+ *  in the file the licence names. */
 function licenceLedger(licensed: string): LicenceLedger {
+  requireFullHistory();
   return {
     design: DESIGN_TEXT,
-    decisions: DECISIONS,
+    sections: SECTIONS,
+    notes: NOTES,
     spec: {
       path: LICENCE_SPEC,
+      aliases: LICENCE_SPEC_ALIASES,
       text: readFileSync(resolve(REPO_ROOT, LICENCE_SPEC), "utf8"),
     },
     canonicalNumbers: [...CITE_NUMBERS],
     licensedAt: introducedBy(licensed, MOCKUP_VALUES_REL),
-    introducedAt: (label) =>
-      label.startsWith("§")
-        ? introducedBy(`<!-- ${label} -->`, "DESIGN.md")
-        : addedBy(label),
+    introducedAt: ruleCommit,
   };
 }
 
@@ -864,6 +955,13 @@ function rowLicence(region: string): string {
   ).toBeTruthy();
   return row?.licensed ?? "";
 }
+
+/** §5's "Bare readout" row, as DESIGN.md writes it. Read from the section rather
+ *  than transcribed, so the case cannot drift from the rule it names. */
+const BARE_READOUT = (SECTIONS.get("5") ?? "")
+  .split("\n")
+  .find((line) => line.includes("Bare readout"))
+  ?.trim();
 
 test("every licence names a resolvable rule, quotes it, and predates its row", () => {
   const licensed = PARITY.filter((row) => row.licensed !== undefined);
@@ -880,21 +978,21 @@ test("every licence names a resolvable rule, quotes it, and predates its row", (
       licenceFindings(text, licenceLedger(text)),
       `${row.region}: the licence does not discharge spec §13`,
     ).toEqual([]);
-    // The half `licenceFindings` delegates to `design-md --cite`. The licence
-    // lives under `src/`, so every `§N` in it already resolves through the
-    // checker's own rule; read here too, so a licence naming a section DESIGN.md
-    // has no marker for reddens this test and not only `npm run design:check`.
-    const named = new Set(
-      [...text.matchAll(/§\d+(?:\.\d+)?/g)].map((match) => match[0]),
-    );
-    for (const finding of checkCitations(
-      { design: DESIGN_TEXT, citations: [text] },
-      { numbers: [...CITE_NUMBERS], uncitedOk: [...CITE_NUMBERS] },
-    )) {
-      expect(named.has(finding.what), `${row.region}: ${finding.why}`).toBe(
-        false,
-      );
-    }
+    // The half `licenceFindings` delegates to `design-md --cite`: every
+    // canonical number this licence names must have a marker DESIGN.md carries,
+    // which is that checker's own rules 1 and 2. Its range is narrowed to the
+    // numbers in the licence and its "marker no citation claims" rule silenced,
+    // so a finding about some *other* marker cannot be read as a verdict here.
+    const numbers = [...text.matchAll(/§(\d+(?:\.\d+)?)/g)]
+      .map((match) => match[1] ?? "")
+      .filter((number) => CITE_NUMBERS.includes(number));
+    expect(
+      checkCitations(
+        { design: DESIGN_TEXT, citations: [text] },
+        { numbers, uncitedOk: [...CITE_NUMBERS] },
+      ).map((finding) => `${finding.what}: ${finding.why}`),
+      `${row.region}: the licence names a section that does not resolve`,
+    ).toEqual([]);
   }
 });
 
@@ -909,41 +1007,29 @@ test("a licence naming no normative source is refused", () => {
   // A number outside the canonical range names another document's section, not a
   // DESIGN.md one: the redesign spec's own `§N` shares the glyph (vg-352).
   expect(why("§75 permits it")).toContain("names no normative source");
-  // A section *named* but not quoted is refused too, and by the other rule: `§7`
-  // fixes the three tabs and says nothing about their axis, so there is no rule
-  // here to quote — which is exactly the reason plan 5 recorded as deliberate.
-  expect(
-    why("§7 fixes the three tabs and what each holds, not their axis"),
-  ).toContain("without quoting it");
   // A note the tree does not hold is no rule, and reads as a finding rather than
   // as a crash.
-  expect(
-    licenceLedger("x").introducedAt("docs/decisions/9999-nothing.md"),
-  ).toBeNull();
-  expect(
-    licenceFindings(
-      "docs/decisions/9999-nothing.md requires it",
-      licenceLedger("y"),
-    ).join("; "),
-  ).toContain("which the tree does not hold");
+  expect(why("docs/decisions/9999-nothing.md requires it")).toContain(
+    "which the tree does not hold",
+  );
+  expect(why("ADR-9999 requires it")).toContain("which the tree does not hold");
 });
 
-test("a licence that does not quote its source's own text is refused", () => {
-  // `§7.5` really does permit the texture — but only its own words say so, and a
-  // reason that paraphrases or gestures at a section has quoted nothing.
-  const bare =
-    "§7.5: stage texture is permitted when it stays behind the artwork.";
-  expect(licenceFindings(bare, licenceLedger(bare)).join("; ")).toContain(
-    "without quoting it",
-  );
-  // A quotation has to be a normative source's text: these words are not
-  // DESIGN.md's anywhere, so a licence carrying them has quoted no rule.
-  const misquoted =
-    '§7.5: "stage texture must always be drawn over a flat ground" requires it.';
+test("a licence that quotes nothing of its source is refused", () => {
+  const why = (text: string) =>
+    licenceFindings(text, licenceLedger(text)).join("; ");
+  // The decisive case: `§7` fixes the three tabs and says nothing about their
+  // axis, so there is no rule to quote — the reason plan 5 recorded as
+  // deliberate, and the one this limb has to kill.
   expect(
-    licenceFindings(misquoted, licenceLedger(misquoted)).join("; "),
-  ).toContain("without quoting it");
-  // And the other direction, so the two are not one refusal: the modal's licence
+    why("§7 fixes the three tabs and what each holds, not their axis"),
+  ).toContain("without quoting its rule");
+  // A quotation has to be that source's: these words are DESIGN.md's, but they
+  // are not §7.5's, so naming §7.5 and quoting them quotes nothing of it.
+  expect(
+    why('§7.5: "| 20–24 | Between regions; dialog padding |" permits it.'),
+  ).toContain("without quoting its rule");
+  // The other direction, so the two are not one refusal: the modal's licence
   // quotes its own §3 table row verbatim, which is what the rule admits.
   const real = rowLicence(
     "settings modal — the frame's inset (the dialog's padding)",
@@ -951,27 +1037,69 @@ test("a licence that does not quote its source's own text is refused", () => {
   expect(licenceFindings(real, licenceLedger(real))).toEqual([]);
 });
 
-test("a licence naming a rule written by its own commit is refused", () => {
-  // The failure spec §13 names by hand: plan 5 added §5's choice row and then
-  // cited §5 as the warrant for drawing the palette as radio rows. A licence and
-  // its rule landing in one commit is that shape, and `introducedAt` answering
-  // the licence's own commit is how it reads.
-  const text = rowLicence("stage ground — texture");
-  const shared: LicenceLedger = {
-    ...licenceLedger(text),
-    licensedAt: "0".repeat(40),
-    introducedAt: () => "0".repeat(40),
-  };
-  expect(licenceFindings(text, shared).join("; ")).toContain(
-    "written in the same commit",
+test("a quotation scoped to the wrong place, or cut to a fragment, is refused", () => {
+  const why = (text: string) =>
+    licenceFindings(text, licenceLedger(text)).join("; ");
+  // A term is in every section of a document about layout and quotes no rule.
+  expect(why('§3: "padding"')).toContain("quotes a fragment of");
+  // DESIGN.md's front matter is not §9's rule: the *section*, not the file, is
+  // what a `§N` licence's quotation is read against.
+  expect(why('§9: "system-ui, sans-serif"')).toContain(
+    "without quoting its rule",
   );
-  // A rule nothing dates cannot be shown to predate the divergence, so it is
-  // refused rather than passed by default.
-  const undated: LicenceLedger = {
-    ...licenceLedger(text),
-    introducedAt: () => null,
-  };
-  expect(licenceFindings(text, undated).join("; ")).toContain("nothing dates");
+  // And the cross-section case a whole-document reading admits: §7.5's own
+  // sentence, quoted under §3's number.
+  expect(
+    why(
+      '§3: "Subtle palette-derived stage texture is permitted when it stays behind the artwork and does not obscure controls; neither texture nor a flat ground is mandatory."',
+    ),
+  ).toContain("without quoting its rule");
+  // The positive control for the same limb: a whole line of §5 is a rule, and §5
+  // is where it is written.
+  expect(BARE_READOUT).toBeTruthy();
+  const text = `§5: "${BARE_READOUT ?? ""}" requires the readout`;
+  expect(licenceFindings(text, licenceLedger(text))).toEqual([]);
+});
+
+test("a licence citing a rule amended by its own commit is refused, on real dates", () => {
+  // `61d7435b` added a row to §5's vocabulary table and did not touch
+  // `<!-- §5 -->`, so a marker-dated check reads §5's birth and lets the case
+  // through. Every date below is this repository's own.
+  expect(BARE_READOUT).toBeTruthy();
+  const text = `§5: "${BARE_READOUT ?? ""}" requires the readout`;
+  const rule = ruleCommit("DESIGN.md", BARE_READOUT ?? "");
+  expect(rule, "§5's bare-readout row could not be dated").toBe(
+    BARE_READOUT_COMMIT,
+  );
+  expect(
+    markerCommit("5"),
+    "the marker and the amended row blame to one commit, so this case no longer distinguishes them",
+  ).not.toBe(rule);
+  // A licence that landed with the amendment is refused...
+  expect(
+    licenceFindings(text, { ...licenceLedger(text), licensedAt: rule }).join(
+      "; ",
+    ),
+  ).toContain("entered in the same commit");
+  // ...and the same licence citing the same rule, read a commit later, is not —
+  // so the finding above is the date, not the wording.
+  expect(
+    licenceFindings(text, {
+      ...licenceLedger(text),
+      licensedAt: "0".repeat(40),
+    }),
+  ).toEqual([]);
+});
+
+test("a shallow checkout refuses rather than answering every licence wrongly", () => {
+  // A depth-1 clone answers *every* history query with the boundary commit, so
+  // both table licences would read as written by their own citing commit. The
+  // decision is pinned here; the real tree is the control, and a real `--depth
+  // 1` clone is the red-proof run outside the suite.
+  expect(shallowRefusal("true")).toContain("shallow");
+  expect(shallowRefusal("true\n")).toContain("fetch-depth: 0");
+  expect(shallowRefusal("false")).toBeNull();
+  expect(() => requireFullHistory()).not.toThrow();
 });
 
 test("the licence the table carries today passes, over the real tree", () => {
@@ -983,20 +1111,19 @@ test("the licence the table carries today passes, over the real tree", () => {
   expect(
     licenceSources(text, licenceLedger(text)).map((source) => source.label),
   ).toEqual(["§7.5"]);
-  // The wiring, not only the predicate: both dates come back as real commits
-  // and they differ, so the predating arm is reading history rather than
-  // answering a constant.
+  // The wiring, not only the predicate: the licence's own commit and the quoted
+  // text's are both real commits and they differ, so the predating arm is
+  // reading history rather than answering a constant.
   const dated = licenceLedger(text);
   expect(dated.licensedAt).toMatch(/^[0-9a-f]{40}$/);
-  expect(dated.introducedAt("§7.5")).toMatch(/^[0-9a-f]{40}$/);
-  expect(dated.introducedAt("§7.5")).not.toBe(dated.licensedAt);
-  // §7.5's sentence is wrapped across three lines of DESIGN.md, so the quote
-  // matches only once whitespace is collapsed. Asserted both ways, because a
-  // reader that stopped collapsing would refuse a licence for quoting a rule the
-  // file happens to wrap — the false failure that gets a gate turned off.
-  const wrapped =
+  const quote =
     "Subtle palette-derived stage texture is permitted when it stays behind the artwork and does not obscure controls; neither texture nor a flat ground is mandatory.";
+  expect(ruleCommit("DESIGN.md", quote)).toMatch(/^[0-9a-f]{40}$/);
+  expect(ruleCommit("DESIGN.md", quote)).not.toBe(dated.licensedAt);
+  // §7.5's sentence is wrapped across three lines of DESIGN.md, so the blame
+  // path — not `-S` — is what can date it. Asserted both ways, because a reader
+  // that stopped reading the wrapped form would refuse the table's own licence.
   expect(DESIGN_TEXT).toMatch(/Subtle\s+palette-derived stage texture/);
-  expect(DESIGN_TEXT).not.toContain(wrapped);
-  expect(text).toContain(wrapped);
+  expect(DESIGN_TEXT).not.toContain(quote);
+  expect(text).toContain(quote);
 });

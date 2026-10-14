@@ -285,6 +285,50 @@ function markersIn(design) {
   return found;
 }
 
+/**
+ * The text each `<!-- §N -->` marker opens, keyed by the bare number — the
+ * section a citation is *about*, where `markersIn` only answers that a number
+ * has a marker at all.
+ *
+ * **Why the owner of the marker namespace publishes it.** A citation that quotes
+ * a rule has to be read against the rule's own text: `padding` is in every
+ * section of a document that is about layout, and a quotation checked against
+ * the whole file proves nothing about which section it came from. Reading a
+ * marker's span anywhere but here would be a second parser of the same markers.
+ *
+ * **A section ends at the first marker that is not one of its own
+ * descendants.** `§7.5`'s span runs to `§7.6`'s marker, and a parent's runs past
+ * any `N.M` subsection that follows it before it stops — a parent section
+ * carries its subsections, or a citation of `§7` would be refused for quoting
+ * the `###` beneath it. The end is a marker and not the next heading: `§7.5`
+ * sits under a `###` and its rule runs to `§7.6`. Where a marker's own order in
+ * the file differs from its number (DESIGN.md writes `§7` before `§3`), the
+ * span is what the order gives — this reader never reorders the file.
+ *
+ * A number carried by two markers throws rather than picking one — the caller
+ * would otherwise read a rule that is not the one it named, and the placement
+ * check already refuses the state that allows it.
+ */
+export function sectionTexts(design) {
+  const text = String(design ?? "");
+  const hits = [...text.matchAll(MARKER)];
+  const found = new Map();
+  for (let index = 0; index < hits.length; index += 1) {
+    const number = hits[index]?.[1] ?? "";
+    if (found.has(number)) {
+      throw new Error(
+        `DESIGN.md carries more than one \`<!-- §${number} -->\` marker, so the section it opens cannot be read`,
+      );
+    }
+    const start = (hits[index]?.index ?? 0) + (hits[index]?.[0].length ?? 0);
+    const next = hits
+      .slice(index + 1)
+      .find((hit) => !String(hit[1]).startsWith(`${number}.`));
+    found.set(number, text.slice(start, next?.index ?? text.length));
+  }
+  return found;
+}
+
 function citedIn(sources, known) {
   const found = new Set();
   for (const source of sources ?? []) {
@@ -586,6 +630,35 @@ function selfTest() {
   cite("a number with no mapping row fails rather than going unchecked", { design: "## Colors\n\n<!-- §4 -->\n\n## Copy\n\n<!-- §9 -->\n", citations: ["§4", "§9"], mapping }, { numbers: ["4", "9"], uncitedOk: [] }, ["§9"], "no row in the spec's section mapping");
   cite("an exempt number with no mapping row is not a finding", { design: "## Colors\n\n<!-- §4 -->\n\n## Copy\n\n<!-- §9 -->\n", citations: ["§4", "§9"], mapping }, { numbers: ["4", "9"], uncitedOk: [], mappingExempt: [{ number: "9", reason: "fixture" }] }, []);
   cite("a marker under a duplicated heading fails", { design: "## Colors\n\n## Copy\n\n## Colors\n\n<!-- §4 -->\n", citations: ["§4"], mapping }, { numbers: ["4"], uncitedOk: [] }, ["§4"], "appears more than once");
+
+  // --sectionTexts: the span a marker opens, which a citation quoting a rule is
+  // read against. The two directions a section reader can be wrong in are both
+  // here: a span that runs past its own end, and one that stops before a
+  // subsection it should carry.
+  const sections = sectionTexts(
+    "<!-- §4 -->\nred\n<!-- §7 -->\nbase\n<!-- §7.1 -->\nsub\n<!-- §7.2 -->\ntail\n<!-- §9 -->\nblue\n",
+  );
+  const section = (name, number, expected) => {
+    const got = (sections.get(number) ?? "").replace(/\s+/g, " ").trim();
+    report(name, got === expected, JSON.stringify(got));
+  };
+  section("a section stops at the next marker — §4 is `red` only", "4", "red");
+  section("a subsection stops at the next marker — §7.1 is `sub`", "7.1", "sub");
+  section("a parent section carries its subsections — §7", "7", "base <!-- §7.1 --> sub <!-- §7.2 --> tail");
+  section("a middle subsection stops where the next starts — §7.2", "7.2", "tail");
+  section("the last section runs to the end of the file — §9", "9", "blue");
+  report(
+    "a number carried by two markers throws rather than picking one",
+    (() => {
+      try {
+        sectionTexts("<!-- §4 -->\na\n<!-- §4 -->\nb\n");
+        return false;
+      } catch {
+        return true;
+      }
+    })(),
+    "no throw",
+  );
 
   // The register's `.jsonl` files stay out of the scan on purpose (see the
   // constant): a widening that admits them must fail here first.
