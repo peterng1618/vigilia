@@ -80,16 +80,29 @@ describe("the display vocabulary", () => {
     // spoken — while its one binding lives in `CONTEXT_SHORTCUTS`, whose own
     // comment says those bindings are never displayed. Two modules disagreed
     // about whether Escape is displayable; the vocabulary now takes the side
-    // the binding's owner took, so a cap the product cannot print is not in
-    // the table to be printed. The break this catches is restoring either
-    // entry: the pair below is then printable and speaks a word nothing shows.
+    // the binding's owner took, so a cap the product cannot print is not in the
+    // table to be printed.
     const onEscape: ShortcutBinding = {
       key: "escape",
       modifier: false,
       action: "view.exit-group",
     };
+    // The printed half, which is `keyCap(key, false)` — it reads `NAMED_KEYS`
+    // and only `NAMED_KEYS`: restoring `NAMED_KEYS.escape` alone reddens these
+    // two.
     expect(printableChord(onEscape)).toBe(false);
     expect(bindingLabel(onEscape)).toBe("");
+
+    // The spoken half reads whichever entry survived, because `keyCap` falls
+    // back to `NAMED_KEYS` — so this catches a restored `SPOKEN_NAMED_KEYS
+    // .escape` as well, which the two above cannot. It speaks through the live
+    // table, which is the only way in: the table is set by hand because a
+    // binding on Escape is the one arrangement that reaches the spoken lookup
+    // for this key at all, and an arrangement the vocabulary must not be able
+    // to name. `afterEach` puts the product's own table back.
+    setActiveShortcuts([onEscape]);
+    expect(shortcutSpokenLabel("view.exit-group")).toBe("");
+
     // And the same rule read from the other side: a key the product *does*
     // display keeps its name, so this cannot pass by emptying the table.
     expect(
@@ -139,10 +152,12 @@ describe("shortcutSpokenLabel", () => {
     expect(shortcutLabel("edit.undo")).toBe("Ctrl+Z");
   });
 
-  it("names the arrows and spells `Esc` whole, which print as marks and a clipped word", () => {
+  it("names the arrows, which print as marks", () => {
     onPlatform(WINDOWS);
     expect(shortcutLabel("canvas.nudge-left")).toBe("←");
     expect(shortcutSpokenLabel("canvas.nudge-left")).toBe("Left arrow");
+    // The context-only action is the one a caller can still ask for, and it
+    // answers with nothing rather than with a chord (vg-182).
     expect(shortcutLabel("view.exit-group")).toBe("");
   });
 
