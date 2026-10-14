@@ -903,13 +903,22 @@ describe("a line chart's trailing window", () => {
       status: "ok",
       value: 42,
     };
-    const chart = new VigiliaChart({
-      id: "cpu",
-      family,
-      width: 100,
-      height: 100,
-      settings: family === "line" ? defaultLineSettings : defaultGaugeSettings,
-    });
+    // Built per family rather than from a union-typed `family`: a chart's
+    // options are a discriminated union on `family`, so an object carrying
+    // `family: "line" | "gauge"` is assignable to neither arm.
+    const box = { id: "cpu", width: 100, height: 100 };
+    const chart =
+      family === "line"
+        ? new VigiliaChart({
+            ...box,
+            family: "line",
+            settings: defaultLineSettings,
+          })
+        : new VigiliaChart({
+            ...box,
+            family: "gauge",
+            settings: defaultGaugeSettings,
+          });
     const objects = [chart];
     const canvas = {
       on: vi.fn(),
