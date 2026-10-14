@@ -1448,12 +1448,15 @@ describe("the size of a text object", () => {
       box,
     });
     text.set({ scaleX: 2, scaleY: 2 });
-    // Where the text pass leaves the object's own edges: `assertBox` assigns the
-    // authored box straight onto the object, because a `set` re-enters
-    // `initDimensions` and Fabric re-derives the height from the wrapped text.
-    // Assigned rather than set here for the same reason; left at Fabric's
-    // measurement, this would be asserting jsdom's font metrics rather than the
-    // inspector.
+    // Where the text pass leaves the object's own edges: `refreshLayout` hands
+    // `assertBox` the authored box in parent space (`authoredBox` is `boxFrom`,
+    // so the stored number times the scale) and `assertBox` divides that scale
+    // straight back out, so the object's own `width`/`height` end at the stored
+    // number — which is why the field, reading `width * scaleX`, shows twice it.
+    // Assigned rather than `set` here because a `set` re-enters
+    // `initDimensions` and Fabric re-derives the height from the wrapped text;
+    // left at Fabric's measurement, this would be asserting jsdom's font metrics
+    // rather than the inspector.
     text.width = box.width;
     text.height = box.height;
     return text;
@@ -1463,12 +1466,50 @@ describe("the size of a text object", () => {
     // The measured disagreement the row was re-measured on: the field said 27
     // where the canvas drew 54, so a reader comparing the two had to work out
     // which was wrong before either could be fixed. It reads the drawn number
-    // now. The box stays the *write*'s owner and the text pass asserts it back
-    // onto the object, so the two agree wherever a pass has run.
+    // now.
     const { host } = setup(scaledCaption());
 
     expect(shown(host, "width")).toBe("280");
     expect(shown(host, "height")).toBe("54");
+  });
+
+  it("writes the Size it shows, in the units it shows it in", async () => {
+    // The other half of reading in drawn units: the write divides by the same
+    // scale the read multiplies by, because `vigiliaText.box` is stored
+    // unscaled — the unit a dragged handle writes. `box × scale` is what the
+    // object draws, since `assertBox` puts the box onto the object's own edges
+    // and the scale goes back on over them, so the number typed has to be the
+    // number drawn. Without the divide this was the one arm of the control
+    // whose shown number could not be typed back: it read 280, a typed 300 drew
+    // 600, and the field then showed 600 — every edit multiplied the object by
+    // its own scale (vg-109).
+    const text = scaledCaption();
+    const box = (): { readonly width: number; readonly height: number } =>
+      (text.get("vigiliaText") as { box: { width: number; height: number } })
+        .box;
+    const half = (key: "width" | "height"): HTMLInputElement =>
+      host.querySelector<HTMLInputElement>(`[data-vigilia-geometry="${key}"]`)!;
+
+    // Typing the number the field *shows* is not this case: `control-text.tsx`
+    // skips an unchanged draft (`next === value`), so a retype never reaches
+    // the write at all — measured, with the field showing 280 and the box left
+    // at 140 either side of it. What a write has to hold is the unit: whatever
+    // is typed, the object draws it and the field reads it back.
+    const { host, inspector } = setup(text);
+    expect(shown(host, "width")).toBe("280");
+    await edit(half("width"), "300");
+    expect(box().width * text.scaleX, "W draws the number typed").toBe(300);
+
+    // What the text pass does next, done by hand because jsdom has no canvas to
+    // run it: `assertBox` puts the box onto the object's own edges, and the
+    // field then reads back the number that was typed.
+    text.width = box().width;
+    inspector.render();
+    expect(shown(host, "width"), "W reads the number back").toBe("300");
+
+    expect(shown(host, "height")).toBe("54");
+    await edit(half("height"), "60");
+    expect(box().height * text.scaleY, "H draws the number typed").toBe(60);
   });
 
   it("reads the numbers back where the object's edges carry the box", () => {

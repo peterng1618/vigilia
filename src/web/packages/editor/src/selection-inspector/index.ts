@@ -7,6 +7,7 @@ import {
   applyAuthoredText,
   isLocked,
   type PlanTextObject,
+  scaleOf,
   writeAuthoredBoxDimension,
 } from "@vigilia/scene-fabric";
 import type { FabricObject } from "fabric/es";
@@ -283,11 +284,25 @@ export function createSelectionInspector(
         // caption asked for a 220-unit box came back at 3.4× the size, and the
         // H field squashed the same type to 0.44 of its height. The authored box
         // is the owner, and the renderer re-asserts it.
+        //
+        // The unit the box is written in is the object's own, unscaled one:
+        // `dimension` is what the field *shows*, which is the drawn edge —
+        // `readField` reads `width * scaleX` — and a scaled text object draws
+        // `box × scale`. So the write divides by the same scale the read
+        // multiplies by, or the control cannot round-trip: a 140 × 27 box at
+        // scale 2 read 280, typing 280 back stored 280, and the object drew
+        // 560 (vg-109). A dragged handle writes the same unscaled unit
+        // (`text-manager`'s `adoptResizedBox`, `controls-manager`'s height
+        // control), and `scaleOf` is the rule for a zero scale, so neither side
+        // re-spells it. A drawn number below the object's own scale divides
+        // below the box's floor of 1 and the writer refuses it, which is this
+        // control's floor read in the other unit — the box does not vanish for
+        // it, and the field keeps the number it had.
         if (isTextObject(object)) {
           writeAuthoredBoxDimension(
             object as PlanTextObject,
             "width",
-            dimension,
+            dimension / scaleOf(object.scaleX),
           );
           applyAuthoredText(editor.canvas, globals);
           break;
@@ -299,10 +314,14 @@ export function createSelectionInspector(
       }
       case "height": {
         if (isTextObject(object)) {
+          // Same unit as the width above, and as `writeAuthoredBoxDimension`'s
+          // own seeding of the other dimension from the object's edges — those
+          // are unscaled too, so the first Size edit still produces a whole box
+          // in one unit (vg-057).
           writeAuthoredBoxDimension(
             object as PlanTextObject,
             "height",
-            dimension,
+            dimension / scaleOf(object.scaleY),
           );
           applyAuthoredText(editor.canvas, globals);
           break;
