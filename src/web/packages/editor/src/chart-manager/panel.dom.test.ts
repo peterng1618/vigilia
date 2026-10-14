@@ -272,6 +272,7 @@ describe("a chart's bounded settings, as the owner hands them over", () => {
           max: 100,
           categoryGapPercent: 40,
           cornerRadius: 7,
+          fill: { kind: "solid", color: "#000" },
           showAxes: false,
           showCategoryLabels: false,
         },

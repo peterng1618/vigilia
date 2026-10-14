@@ -1,5 +1,17 @@
-import { expect, type Page, type TestInfo, test } from "@playwright/test";
-import { choiceOf, chooseIn, sectionExpanded } from "./control-set.js";
+import {
+  expect,
+  type Locator,
+  type Page,
+  type TestInfo,
+  test,
+} from "@playwright/test";
+import {
+  choiceOf,
+  chooseIn,
+  optionsOf,
+  sectionExpanded,
+  typeIntoControl,
+} from "./control-set.js";
 import {
   captureVisualReview,
   chooseAssetFile,
@@ -155,6 +167,44 @@ async function positionValues(
       height: value("height"),
     };
   });
+}
+
+/**
+ * One property of the named object, read through the editor handle.
+ *
+ * `readObject` projects a fixed set of fields, and "the edit landed in the
+ * document" is a claim about a property that projection does not carry — a
+ * missing key reads as `undefined` and compares equal to nothing rather than
+ * failing.
+ */
+/** A control's own id, which is what its refusal paragraph is named after. */
+async function idOf(locator: Locator): Promise<string> {
+  return (await locator.getAttribute("id")) ?? "";
+}
+
+async function propertyOf(
+  page: Page,
+  name: string,
+  key: string,
+): Promise<unknown> {
+  return page.evaluate(
+    ({ wanted, property }) => {
+      const handle = Object.values(window).find(
+        (value) =>
+          value !== null &&
+          typeof value === "object" &&
+          "canvas" in value &&
+          "historyManager" in value,
+      ) as
+        | { canvas: { getObjects(): { get(name: string): unknown }[] } }
+        | undefined;
+      const object = handle?.canvas
+        .getObjects()
+        .find((candidate) => candidate.get("name") === wanted);
+      return object?.get(property) ?? null;
+    },
+    { wanted: name, property: key },
+  );
 }
 
 /**
@@ -326,9 +376,7 @@ function geometryOf(scene: readonly SceneObject[], id: string) {
 async function savePackage(page: Page): Promise<Buffer> {
   const download = page.waitForEvent("download");
   await page.getByRole("button", { name: "File", exact: true }).click();
-  await page
-    .getByRole("menuitem", { name: "Save package" })
-    .click();
+  await page.getByRole("menuitem", { name: "Save package" }).click();
   await expect(page.locator("#status")).toContainText("Theme package saved");
   const stream = await (await download).createReadStream();
   const chunks: Buffer[] = [];
@@ -440,6 +488,11 @@ test.describe("the per-kind inspector column", () => {
      * Read from the row rather than from a locator chain because the control is
      * three nested divs around a visually hidden `input[type="range"]`, and a
      * chain that names them by class would pass on a row other than this one.
+     *
+     * **The well is an input, and its own hook names it.** It was a
+     * `span.font-mono` readout until item 10 made it the slider's typed route;
+     * a locator still looking for a span finds nothing and reports the readout
+     * as `null`, which reads as a missing well rather than a moved one.
      */
     const slider = async () =>
       page.evaluate(() => {
@@ -451,16 +504,16 @@ test.describe("the per-kind inspector column", () => {
         const well =
           row === null
             ? null
-            : ([...row.querySelectorAll("span")].find((candidate) =>
-                candidate.classList.contains("font-mono"),
-              ) ?? null);
+            : row.querySelector<HTMLInputElement>(
+                "input[data-vigilia-opacity-well]",
+              );
         const box = track?.getBoundingClientRect();
         return {
           box:
             box === undefined
               ? null
               : { x: box.x, y: box.y, width: box.width, height: box.height },
-          readout: well?.textContent ?? null,
+          readout: well?.value ?? null,
           input: input?.value ?? null,
         };
       });
@@ -505,6 +558,183 @@ test.describe("the per-kind inspector column", () => {
 
     // One value lands for the gesture, and it is the one the pointer left.
     await expect.poll(async () => (await slider()).readout).toBe(during[2]);
+  });
+
+  test("commits a value typed into the slider's well, and refuses one past its bound", async ({
+    page,
+  }, testInfo) => {
+    test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+    await page.goto(EDITOR);
+    await page.waitForFunction(() => "vigiliaEditorBridge" in window);
+    await page.locator('[data-vigilia-layer="group-cpu-card"]').click();
+
+    // The typed route the well owns (item 10). A bound typed past is **kept
+    // with its reason rather than coerced** (§5): the field that lands the
+    // value the author typed is the one that teaches nothing about the bound,
+    // and an invalid `aria-invalid` does not raise `blur`.
+    const track = page.locator('input[type="range"][data-vigilia-opacity]');
+    const well = page.locator("input[data-vigilia-opacity-well]");
+    await expect(well).toHaveValue("100");
+    // The well is named by the row's own label rather than by a label element
+    // beside it, so the association is what proves it is this row's field.
+    await expect(well).toHaveAttribute("aria-labelledby", /.+/);
+
+    await well.fill("40");
+    await well.blur();
+    await expect(track).toHaveValue("40");
+    await expect(well).toHaveValue("40");
+    expect(
+      await propertyOf(page, "group-cpu-card", "opacity"),
+      "the typed value reached the document",
+    ).toBeCloseTo(0.4, 5);
+
+    await well.fill("140");
+    await well.blur();
+    // The refusal is the field's own, by the id it mints for it: a `getByText`
+    // over the whole page also matches the ancestor that contains the message.
+    await expect(page.locator(`#${await idOf(well)}-invalid`)).toHaveText(
+      "at most 100",
+    );
+    // Nothing was written, so the field and the document both still hold the
+    // last value that committed.
+    await expect(track).toHaveValue("40");
+    expect(await propertyOf(page, "group-cpu-card", "opacity")).toBeCloseTo(
+      0.4,
+      5,
+    );
+  });
+
+  test("moves a slider by its own step on a wheel, and not past its bound", async ({
+    page,
+  }, testInfo) => {
+    test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+    await page.goto(EDITOR);
+    await page.waitForFunction(() => "vigiliaEditorBridge" in window);
+    await openBlank(page);
+    await insert(page, "Rectangle");
+
+    // The wheel's own case (item 11). The step is read off the range input
+    // rather than declared beside it, so the gesture and the drag cannot step
+    // by different amounts — which is why the two readings below are compared
+    // rather than the numbers 1 and 0 being asserted outright.
+    const track = page.locator(
+      'input[type="range"][data-vigilia-panel-border]',
+    );
+    await expect(track).toHaveAttribute("step", "1");
+    const well = page.locator("input[data-vigilia-panel-border-well]");
+    const step = Number(await track.getAttribute("step"));
+    const start = Number(await well.inputValue());
+    const box = await track.boundingBox();
+    expect(box, "the column draws no border slider").not.toBeNull();
+    const at = {
+      x: (box?.x ?? 0) + (box?.width ?? 0) / 2,
+      y: (box?.y ?? 0) + (box?.height ?? 0) / 2,
+    };
+
+    // The pointer is over the control and the wheel goes down: the value rises
+    // by the track's own step, and the document takes it.
+    await page.mouse.move(at.x, at.y);
+    await page.mouse.wheel(0, -120);
+    await expect(well).toHaveValue(String(start + step));
+    expect(await propertyOf(page, "Rectangle", "strokeWidth")).toBe(
+      start + step,
+    );
+
+    // Past the ceiling the wheel writes nothing at all, rather than writing the
+    // ceiling again or running away above it.
+    await well.fill(await track.getAttribute("max"));
+    await well.blur();
+    const ceiling = Number(await well.inputValue());
+    await page.mouse.move(at.x, at.y);
+    await page.mouse.wheel(0, -120);
+    await expect(well).toHaveValue(String(ceiling));
+    expect(await propertyOf(page, "Rectangle", "strokeWidth")).toBe(ceiling);
+  });
+
+  test("gives every bounded number in the column the pair, and leaves the unbounded one typed", async ({
+    page,
+  }, testInfo) => {
+    test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+    await page.goto(EDITOR);
+    await page.waitForFunction(() => "vigiliaEditorBridge" in window);
+    await openBlank(page);
+    await insert(page, "Rectangle");
+
+    // A shadow's blur and offset are only offered while there is a shadow for
+    // them to change, so the census asks for one the way an author does: through
+    // the picker, on whatever solid token the document offers.
+    const tokens = await optionsOf(page, "[data-vigilia-panel-shadow]");
+    const ink = tokens.find((token) => token !== "");
+    expect(
+      ink,
+      "the document offers no solid token for a shadow",
+    ).toBeDefined();
+    await chooseIn(page, "[data-vigilia-panel-shadow]", ink as string);
+
+    /**
+     * The census, read off the rendered column rather than off the projection.
+     *
+     * `vg-007` owns the rule — a bounded number clamps onto its bound and
+     * carries a native slider — and this is its application to every field the
+     * column has, which is what item 12 asked for. Each bounded name must be a
+     * `input[type=range]` **and** carry a typed well of its own; each unbounded
+     * one must be neither.
+     */
+    const shape = async (
+      name: string,
+      value?: string,
+    ): Promise<{ range: number; well: number; typed: number }> =>
+      page.evaluate(
+        ({ name, value }) => {
+          const scope = document.querySelector(".editor-shell-inspector");
+          const count = (selector: string): number =>
+            scope === null ? 0 : scope.querySelectorAll(selector).length;
+          const hook =
+            value === undefined ? `[${name}]` : `[${name}="${value}"]`;
+          // The well takes the hook's own name with `-well` appended —
+          // `control-slider.tsx` mirrors `data` onto the typed half, because two
+          // elements under one name is a locator that cannot say which it means.
+          const well =
+            value === undefined
+              ? `[${name}-well]`
+              : `[${name}-well="${value}"]`;
+          return {
+            range: count(`input[type="range"]${hook}`),
+            well: count(`input[type="text"]${well}`),
+            typed: count(`input[type="text"]${hook}`),
+          };
+        },
+        { name, value },
+      );
+
+    // Bounded, so every one of them carries both halves: the panel's three
+    // pixel measures, the Layer section's opacity, and geometry's rotation.
+    for (const [name, value] of [
+      ["data-vigilia-panel-border"],
+      ["data-vigilia-panel-radius"],
+      ["data-vigilia-panel-shadow-blur"],
+      ["data-vigilia-opacity"],
+      ["data-vigilia-geometry", "angle"],
+    ] as const) {
+      const field = await shape(name, value);
+      expect(field.range, `${name} ${value ?? ""} draws no track`).toBe(1);
+      expect(field.well, `${name} ${value ?? ""} has no typed well`).toBe(1);
+    }
+
+    // Unbounded, so the rule does not reach them: a text box, no track beside
+    // it, and no second well either. The shadow's offset is above the panel as
+    // well as below it, and the position pair is the artboard's own extent.
+    for (const [name, value] of [
+      ["data-vigilia-panel-shadow-offset"],
+      ["data-vigilia-geometry", "left"],
+      ["data-vigilia-geometry", "width"],
+    ] as const) {
+      const field = await shape(name, value);
+      expect(field.range, `${name} draws a track for an unbounded number`).toBe(
+        0,
+      );
+      expect(field.typed, `${name} ${value ?? ""} is not a typed box`).toBe(1);
+    }
   });
 
   test("draws a remainder slice for a fixed pie total, measured on the canvas", async ({
@@ -594,14 +824,24 @@ test.describe("the per-kind inspector column", () => {
     );
     await expect(duration).toBeVisible();
     await expect(easing).toBeVisible();
-    // Absence means the defaults apply rather than that the chart is static, so
-    // both fields read empty until the author writes one — and the write
-    // materialises the whole block from its owner.
-    await expect(duration).toHaveValue("");
+    // Absence means the defaults apply rather than that the chart is static.
+    // The easing is a picker and reads empty until the author writes one — the
+    // write materialises the whole block from its owner. The duration is a
+    // slider now, and **a track has no empty state**: it shows the value the
+    // renderer draws with, read from the animation block's own defaults, and
+    // the well's empty draft is how the author returns to absent.
+    await expect(duration).toHaveAttribute("type", "range");
+    await expect(duration).toHaveAttribute("max", "5000");
+    await expect(
+      page.locator('[data-vigilia-chart-setting-well="animation.durationMs"]'),
+    ).toHaveValue("1000");
     await expect(await choiceOf(easing)).toBe("");
 
-    await duration.fill("2500");
-    await duration.blur();
+    await typeIntoControl(
+      page,
+      page.locator('[data-vigilia-chart-setting-well="animation.durationMs"]'),
+      "2500",
+    );
     await expect(duration).toHaveValue("2500");
     await chooseIn(
       page,

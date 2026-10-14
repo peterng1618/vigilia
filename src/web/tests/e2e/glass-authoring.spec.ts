@@ -173,9 +173,7 @@ async function clearOfHandles(
 async function saveEnvelope(page: Page): Promise<unknown> {
   const download = page.waitForEvent("download");
   await page.getByRole("button", { name: "File", exact: true }).click();
-  await page
-    .getByRole("menuitem", { name: "Save package" })
-    .click();
+  await page.getByRole("menuitem", { name: "Save package" }).click();
   // **Contains**, not equals. The footer is a status line *and* a diagnostic
   // surface (F1.15): a test whose own action raised a refusal — the radius case
   // below types a value the product correctly refuses — leaves the refusal on
@@ -290,18 +288,17 @@ test.describe("authoring frosted glass through the inspector", () => {
     });
   });
 
-  test("offers no empty radius to read, so no draft can coerce to no blur", async ({
+  test("keeps a radius typed past the ceiling out of the document", async ({
     page,
   }, testInfo) => {
     /**
-     * **Replaced, not re-pointed.** This case was "refuses an emptied radius
-     * rather than reading it as no blur", and a slider has no empty state to
-     * reach: its edit route is the track and its well is a `<span>` readout
-     * (`control-slider.tsx:22-23` and `:141`), so `Number("")` — the coercion
-     * the old case guarded — has no input to arise in. Re-pointing the case
-     * would have asserted nothing; what survives is the rule it protected, and
-     * that rule is now structural: **there is no draft**, and the radius the
-     * document ends up with is one the slider wrote.
+     * **Rewritten with the well.** This case was "offers no empty radius to
+     * read, so no draft can coerce to no blur": a slider's well was a
+     * `span.font-mono` readout, so `Number("")` — the coercion it guarded — had
+     * no input to arise in. Item 10 made the well the slider's typed route, so
+     * the draft exists again and the guard that replaces it is `ControlNumber`'s
+     * own: a draft past the bound is kept with its reason and writes nothing,
+     * and a cleared box with no `onClear` is refused rather than read as zero.
      */
     desktop(testInfo.project.name);
     await openFixture(page);
@@ -314,25 +311,38 @@ test.describe("authoring frosted glass through the inspector", () => {
     await expect(blur).toHaveAttribute("type", "range");
 
     // The well beside the track: the one place a value is shown, and the one
-    // place a draft could have lived.
-    //
-    // **Arrived at through the track, not through a right-aligned wrapper.**
-    // The well is the `span.font-mono` sibling of `Slider.Control`
-    // (`control-slider.tsx`), held at the row's end by `justify-end` and a fixed
-    // width rather than by an `ml-auto` — so a locator wanting a `div.ml-auto`
-    // ancestor finds nothing and reports a missing well where the well is
-    // present. The nearest `items-center` ancestor of the input *is*
-    // `Slider.Control`: the thumb between them carries neither.
-    const well = blur.locator(
-      "xpath=ancestor::div[contains(@class, 'items-center')][1]/following-sibling::span[contains(@class, 'font-mono')]",
-    );
-    await expect(well).toHaveText(await blur.inputValue());
-    await expect(well.locator("input, textarea")).toHaveCount(0);
+    // place a draft lives. It is named by the track's own hook with `-well`
+    // appended — two elements under one name would be a locator that cannot say
+    // which one it means.
+    const well = page.locator("[data-vigilia-glass-blur-well]");
+    await expect(well).toBeVisible();
+    await expect(well).toHaveValue(await blur.inputValue());
 
-    // And a value written through the slider is a real radius in the document,
-    // never a coercion of something absent.
-    await typeIntoControl(page, blur, "24");
-    await expect(well).toHaveText("24");
+    // The refusal is the field's own, by the id it mints for it: a `getByText`
+    // over the page also matches the ancestor that contains the message.
+    const refusal = page.locator(`#${await well.getAttribute("id")}-invalid`);
+
+    // Past the ceiling: the field says why and the document does not move.
+    await well.fill("60");
+    await well.blur();
+    await expect(refusal).toHaveText("at most 48");
+    expect(await treatmentOf(page, AUTHORING_PANEL_ID)).toEqual({
+      blurRadius: Number(await blur.inputValue()),
+    });
+
+    // Empty is not zero: a radius is required, and the coercion the old case
+    // guarded would have written no blur from a box the author cleared.
+    await well.fill("");
+    await well.blur();
+    await expect(refusal).toHaveText("a value is required");
+    expect((await treatmentOf(page, AUTHORING_PANEL_ID)).blurRadius).toBe(
+      Number(await blur.inputValue()),
+    );
+
+    // And a value written through the well is a real radius in the document.
+    await well.fill("24");
+    await well.blur();
+    await expect(blur).toHaveValue("24");
     expect(await treatmentOf(page, AUTHORING_PANEL_ID)).toEqual({
       blurRadius: 24,
     });

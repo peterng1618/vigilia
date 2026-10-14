@@ -356,6 +356,41 @@ describe("panel fields in the selection inspector", () => {
     expect(history.saveState).toHaveBeenCalledTimes(1);
   });
 
+  it("bounds the corner radius by half the box Fabric draws it in", async () => {
+    // `vg-478`: Fabric draws `Math.min(rx, w / 2)` (`Rect.ts`), so a stored
+    // radius past half the smaller drawn dimension is a field claiming a corner
+    // the canvas never draws — which is what the author saw as a radius that
+    // stopped having any effect. The bound is read from the object's own drawn
+    // box rather than written here, so a resized panel re-bounds its own field.
+    const rect = panel(); // 360 × 200, so the smaller edge is 200
+    const { editor, field } = setup(rect);
+    const track = field<HTMLInputElement>("[data-vigilia-panel-radius]");
+    expect(track.max).toBe("100");
+
+    // A draft past the bound is kept with its reason rather than clamped (§5),
+    // which is the rule every other bounded number in the column keeps.
+    rect.set({ rx: 8, ry: 8 });
+    const well = field<HTMLInputElement>("[data-vigilia-panel-radius-well]");
+    await edit(well, "240");
+    expect(rect.get("rx")).toBe(8);
+    expect(
+      document.getElementById(`${well.id}-invalid`)?.textContent?.trim(),
+    ).toBe("at most 100");
+
+    // And a commit that reached the writer without the control lands on the
+    // bound rather than storing a radius nothing renders.
+    expect(
+      writePanelField(
+        rect,
+        { editor: editor as never, globals: globals as never },
+        "panel-radius",
+        240,
+      ),
+    ).toBe(true);
+    expect(rect.get("rx")).toBe(100);
+    expect(rect.get("ry")).toBe(100);
+  });
+
   it("refuses a negative border width, and the boundary clamps one that bypasses it", async () => {
     const rect = panel();
     const { editor, history, field } = setup(rect);

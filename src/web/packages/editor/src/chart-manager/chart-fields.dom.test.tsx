@@ -408,7 +408,11 @@ describe("a setting one level down", () => {
     expect(well.inputMode).toBe("decimal");
     await edit(well, "30");
 
-    expect(calls.settings.at(-1)?.barWidth).toBe(30);
+    // Read off the committed object rather than off a typed settings value: the
+    // port carries every family's settings, and the case is about which number
+    // was written to which key.
+    const written = lastSettings(calls) as unknown as Record<string, unknown>;
+    expect(written.barWidth).toBe(30);
   });
 
   it("clears an optional setting back to the renderer's own choice", async () => {
