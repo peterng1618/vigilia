@@ -890,6 +890,108 @@ describe("a chart whose reading has not moved", () => {
   });
 });
 
+describe("a line chart's trailing window", () => {
+  /**
+   * A manager over one chart bound to one sensor whose sample never changes, so
+   * the clock is the only thing that moves between two refreshes.
+   */
+  function harness(family: "line" | "gauge") {
+    const at = new Date(Date.UTC(2026, 8, 15, 12, 0, 0)).toISOString();
+    const sample: Sample = {
+      sensorId: "cpu.load",
+      timestamp: at,
+      status: "ok",
+      value: 42,
+    };
+    const chart = new VigiliaChart({
+      id: "cpu",
+      family,
+      width: 100,
+      height: 100,
+      settings: family === "line" ? defaultLineSettings : defaultGaugeSettings,
+    });
+    const objects = [chart];
+    const canvas = {
+      on: vi.fn(),
+      off: vi.fn(),
+      add: vi.fn(),
+      getActiveObject: vi.fn(),
+      getObjects: vi.fn(() => objects),
+      requestRenderAll: vi.fn(),
+      setActiveObject: vi.fn(),
+    };
+    const manager = new ChartManager({
+      editor: {
+        canvas,
+        artboard,
+        historyManager: { saveState: vi.fn() },
+        errorManager: { warn: vi.fn(), error: vi.fn() },
+      } as unknown as EditorInteraction,
+      scene: {} as SceneAdapter,
+      // Whatever the clock says, this source answers with the same sample.
+      source: { latest: () => sample, history: () => [sample] },
+      bindings: { cpu: [{ id: "cpu-read", semanticKey: "cpu.load" }] },
+    });
+    const setOption = vi.spyOn(chart, "setOption");
+    setOption.mockClear();
+    return { manager, setOption };
+  }
+
+  const pinned = Date.UTC(2026, 8, 15, 12, 0, 0);
+
+  it("is redrawn as the clock advances, though its newest sample has not moved", () => {
+    // **The claim under test.** The chart refresh the author picks is the
+    // *drawing* rate; polling stays at one sample a second under either choice,
+    // and the frames between two samples are the same window interpolated. A
+    // line's picture is that window: `buildLineOption` places it from `nowMs`
+    // (`xAxis.min`/`max`) and draws the series one playback delay past the
+    // visible right edge. vg-107 gated the redraw on the newest sample alone,
+    // so a trends chart drew at its data's cadence — 1 fps against a 30 fps
+    // selection, which is the refresh that never happened.
+    const clock = vi.spyOn(Date, "now").mockReturnValue(pinned);
+    try {
+      const { manager, setOption } = harness("line");
+      // The same instant, the same sample: the window moved for nobody.
+      manager.refresh();
+      expect(setOption).not.toHaveBeenCalled();
+
+      // One frame later at 30 fps, with the reading untouched.
+      clock.mockReturnValue(pinned + 33);
+      manager.refresh();
+      expect(setOption).toHaveBeenCalledTimes(1);
+
+      // And again, because the window only ever advances.
+      clock.mockReturnValue(pinned + 66);
+      manager.refresh();
+      expect(setOption).toHaveBeenCalledTimes(2);
+      manager.destroy();
+    } finally {
+      clock.mockRestore();
+    }
+  });
+
+  it("is not, for a gauge whose sample has not moved", () => {
+    // The half of vg-107 that stands: a gauge draws `latest` and nothing else,
+    // so an idle gauge is genuinely an identical picture and re-applying it
+    // thirty times a second was the cost the row measured. A clock in every
+    // family's signature would buy the line its rate back by paying that cost
+    // again.
+    const clock = vi.spyOn(Date, "now").mockReturnValue(pinned);
+    try {
+      const { manager, setOption } = harness("gauge");
+      manager.refresh();
+      clock.mockReturnValue(pinned + 33);
+      manager.refresh();
+      clock.mockReturnValue(pinned + 66);
+      manager.refresh();
+      expect(setOption).not.toHaveBeenCalled();
+      manager.destroy();
+    } finally {
+      clock.mockRestore();
+    }
+  });
+});
+
 describe("a chart's series paint", () => {
   /**
    * Measured on the surface while building the trends panel: a line chart with

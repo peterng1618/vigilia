@@ -450,6 +450,12 @@ export class ChartManager {
    */
   #applyCharts(force: boolean): void {
     let drawn = false;
+    // **One clock reading per pass.** A line's drawn picture is placed from the
+    // clock (`buildLineOption`'s `xAxis.min`/`max`), so the instant that decides
+    // whether a chart is drawn and the instant the plan draws it with have to be
+    // the same one: read twice, a chart that moved between the two reads is
+    // skipped for a window it never drew.
+    const nowMs = Date.now();
     const visit = (objects: readonly object[]): void => {
       for (const object of objects) {
         if (object instanceof VigiliaChart) {
@@ -459,7 +465,7 @@ export class ChartManager {
           // does: the draw is still attempted, so `#applyChart` reports it.
           let reading: string | undefined;
           try {
-            reading = this.#readingSignature(id, object);
+            reading = this.#readingSignature(id, object, nowMs);
           } catch {
             reading = undefined;
           }
@@ -468,7 +474,7 @@ export class ChartManager {
             reading === undefined ||
             this.#drawnReading.get(id) !== reading
           ) {
-            this.#applyChart(id, object, reading);
+            this.#applyChart(id, object, reading, nowMs);
             drawn = true;
           }
         } else if (object instanceof Group) {
@@ -481,7 +487,7 @@ export class ChartManager {
   }
 
   /**
-   * The newest sample each binding would draw, as one string.
+   * What this chart's own plan would draw, as one string.
    *
    * **The pull is the family's own**, because a reading that is not what the
    * chart draws is not a reading. A gauge, a bar and a pie draw `latest`; a line
@@ -492,6 +498,17 @@ export class ChartManager {
    * preview source honest: it answers `latest` from the wall clock, so a gauge
    * bound to one genuinely moves on every call and is drawn for it.
    *
+   * **A line's signature carries `nowMs`, because a line draws its window and
+   * the window is placed from the clock.** `buildLineOption` sets `xAxis.min`
+   * and `xAxis.max` from `nowMs` and extends the series one playback delay past
+   * the visible right edge, so two frames with one sample between them draw two
+   * different pictures. Gating on the sample alone held a trends chart at its
+   * data's cadence — 1 fps against the 30 fps the author chose, which is the
+   * refresh that never happened (vg-107 reversed this trade for the line family
+   * alone). A gauge, a bar and a pie read `latest` and are genuinely
+   * clock-independent, so they keep the data-only signature and an idle one is
+   * still skipped.
+   *
    * A chart with no bindings draws a fixed placeholder, so its reading never
    * moves and it is drawn once.
    *
@@ -501,12 +518,12 @@ export class ChartManager {
    * — is returned by `latest` and excluded by `history`. Reading `history` for a
    * gauge was how a bar kept drawing the old value while its newest changed.
    */
-  #readingSignature(id: string, chart: VigiliaChart): string {
+  #readingSignature(id: string, chart: VigiliaChart, nowMs: number): string {
     const content = {
       family: chart.family,
       settings: chart.settings,
     } as ChartContent;
-    return (this.#bindings[id] ?? [])
+    const readings = (this.#bindings[id] ?? [])
       .map((binding) => {
         const sample =
           content.family === "line"
@@ -524,6 +541,7 @@ export class ChartManager {
         }:${sample?.value ?? sample?.textValue ?? "-"}`;
       })
       .join("|");
+    return content.family === "line" ? `${readings}|now:${nowMs}` : readings;
   }
 
   #chartFor(id: string): VigiliaChart | undefined {
@@ -541,7 +559,12 @@ export class ChartManager {
     return find(this.#editor.canvas.getObjects());
   }
 
-  #applyChart(id: string, chart: VigiliaChart, reading?: string): void {
+  #applyChart(
+    id: string,
+    chart: VigiliaChart,
+    reading?: string,
+    nowMs = Date.now(),
+  ): void {
     // **Per chart, and reported, not swallowed.** `refresh()` runs beside the
     // text repaint in one callback, so a chart that throws would take every
     // bound reading on the canvas down with it. One bad chart costs that chart.
@@ -552,7 +575,7 @@ export class ChartManager {
         this.#bindings[id] ?? [],
         {
           source: this.#source,
-          nowMs: Date.now(),
+          nowMs,
           animate: false,
         },
         [],
