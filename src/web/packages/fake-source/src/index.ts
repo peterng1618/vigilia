@@ -48,6 +48,18 @@ const FALLBACK_PROFILE: SensorProfile = {
   spikiness: 1,
 };
 
+/**
+ * A device's capacity does not move, so a total is answered as the constant it
+ * is rather than as a waveform. Both sit above `used`'s range (max 22.5 GB), so
+ * a theme reading `used` against its total still adds up.
+ */
+const CAPACITY_TOTALS: Readonly<
+  Record<string, { readonly value: number; readonly unit: string }>
+> = {
+  "ram.total": { value: 32, unit: "GB" },
+  "vram.total": { value: 24, unit: "GB" },
+};
+
 /** Deterministic outage rule for exercising gap rendering. */
 export interface OutageRule {
   readonly semanticKey: string;
@@ -164,6 +176,17 @@ export class FakeSampleSource implements SampleSource {
         timestamp,
         status: "ok",
         textValue: instantIn(timeMs),
+      };
+    }
+
+    const total = CAPACITY_TOTALS[semanticKey];
+    if (total !== undefined) {
+      return {
+        sensorId: semanticKey,
+        timestamp,
+        status: "ok",
+        value: total.value,
+        unit: total.unit,
       };
     }
 

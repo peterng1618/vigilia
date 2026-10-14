@@ -22,4 +22,22 @@ describe("createPreviewSource", () => {
 
     expect(preview.source.history("cpu.load", 1_000)).toHaveLength(301);
   });
+
+  it("reads on the source's sampling cadence, not the frame clock", () => {
+    // §122: sampling and animation are separate rates. A preview that sampled
+    // at the frame's instant would flicker through digits the real host cannot
+    // produce — it reports once a second.
+    let now = 1_000_000;
+    const preview = createPreviewSource({ keys: ["cpu.load"], now: () => now });
+
+    const tick = preview.source.latest("cpu.load");
+
+    for (const frameMs of [1, 16, 17, 500]) {
+      now += frameMs;
+      expect(preview.source.latest("cpu.load")).toEqual(tick);
+    }
+
+    now = 1_001_000;
+    expect(preview.source.latest("cpu.load")).not.toEqual(tick);
+  });
 });

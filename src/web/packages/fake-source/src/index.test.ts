@@ -121,6 +121,35 @@ describe("latest", () => {
     expect(source.latest("cpu.load.total")).not.toEqual(first);
   });
 
+  it("answers a capacity total as the constant it is", () => {
+    // A device's total is not a moving quantity: the real host reports the same
+    // 31.87 GB every tick while `used` moves. Both totals are above `used`'s
+    // range (max 22.5 GB) so a theme reading the pair still adds up.
+    const source = new FakeSampleSource(T0);
+
+    for (const [key, total] of [
+      ["ram.total", 32],
+      ["vram.total", 24],
+    ] as const) {
+      expect(source.latest(key)?.value).toBe(total);
+      source.setNow(T0 + 61_000);
+      expect(source.latest(key)?.value).toBe(total);
+      expect(source.sampleAt(key, T0 + 7_777)?.value).toBe(total);
+      expect(
+        new Set(source.history(key, 60).map((sample) => sample.value)).size,
+      ).toBe(1);
+    }
+  });
+
+  it("still moves the used reading a total is a share of", () => {
+    const source = new FakeSampleSource(T0);
+    source.setNow(T0 + 9_000);
+
+    expect(source.latest("ram.used")?.value).not.toBe(
+      source.sampleAt("ram.used", T0).value,
+    );
+  });
+
   it("carries the profile unit", () => {
     const source = new FakeSampleSource(T0);
     expect(source.latest("cpu.package.temp")?.unit).toBe("°C");

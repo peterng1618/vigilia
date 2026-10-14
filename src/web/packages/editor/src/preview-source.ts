@@ -19,7 +19,12 @@ export function createPreviewSource(options: {
       latest(key) {
         if (!keys.has(key)) return undefined;
         const now = options.now();
-        return Number.isFinite(now) ? waveform.sampleAt(key, now) : undefined;
+        if (!Number.isFinite(now)) return undefined;
+        // Through the source's own clock, so a reading holds still between its
+        // ticks (§122) instead of re-sampling at the frame's instant — the
+        // source ticks at the host's one-second reporting interval.
+        waveform.setNow(now);
+        return waveform.latest(key);
       },
       history(key, windowSeconds) {
         if (!keys.has(key)) return [];
