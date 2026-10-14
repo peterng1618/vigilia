@@ -117,6 +117,10 @@ believed.
 - **The current files are refreshed when the set of surfaces changes.** A pane,
   a tab, a section or a rail slot that appears or disappears is drawn — in the
   original's treatment, never in a treatment of the product's devising.
+- **A glyph square drawn as a control starts at §5's 26px bound.** DESIGN.md's
+  icon button is "a 26–30px square at `--radius-md`, glyph only", so a drawing
+  that draws one as a control draws it 26px at `--radius-md` — never smaller,
+  not even where the cluster around it is compact.
 - **The treatment is the target and is never redrawn from the product.** Colour,
   spacing, radii, type, elevation, hairlines, flush regions and the palette,
   navigation and dock treatments are copied from the original drawings. When the
