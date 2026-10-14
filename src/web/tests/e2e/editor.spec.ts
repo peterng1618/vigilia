@@ -4930,14 +4930,17 @@ test.describe("Fabric editor route", () => {
     expect((await read()).rects).not.toEqual(before.rects);
   });
 
-  test("reorders a layer and refuses a cross-group drop", async ({
+  test("reorders a layer and moves one out of its group", async ({
     page,
   }, testInfo) => {
     test.skip(!isDesktopSurface(testInfo), "desktop surface");
 
     await page.goto(EDITOR);
     // A fixture with both shapes the rule distinguishes: two plain siblings, and a
-    // group whose child must not be movable across the boundary.
+    // group whose child can be moved across the boundary. **It could not be, and
+    // that was `vg-461` (item 4)**: the drop slots admitted only the slot the row
+    // came from, so entering or leaving a group was refused by construction
+    // rather than by a rule. The half below asserts the membership change now.
     // `vigiliaPaint` and `globals.palette` are not decoration: a literal `fill`
     // with no paint ref is `unresolved-global-ref` and `setThemePackage` asserts
     // `writeThemePackage` returned ok, so a fixture without them fails before the
@@ -5029,12 +5032,40 @@ test.describe("Fabric editor route", () => {
     expect(pairRelativeTo(afterIds)).toBe(!pairRelativeTo(beforeIds));
 
     // Cross-group: a child dropped on a top-level sibling changes membership,
-    // which this operation must refuse outright.
+    // and that is the operation now (`vg-461`, item 4 — it was refused outright
+    // when the slots admitted only the row's own). Membership is what this reads,
+    // so it is read off the envelope, which is the only place the level exists:
+    // **the panel is deliberately not asserted to change**, because a child
+    // directly under `grp` paints in the same slot as a child inside it, and the
+    // two orders are identical. What the panel is asked is only that the row
+    // survived the drop.
     await page
       .locator('[data-vigilia-layer="child"]')
       .dragTo(page.locator('[data-vigilia-layer="alpha"]'));
-    expect(await panelOrder()).toEqual(afterPanel);
-    expect(idsIn(await saveEnvelope(page))).toEqual(afterIds);
+    const moved = await saveEnvelope(page);
+    // The group's own children, which `idsIn` does not reach: it reads the top
+    // level only, and the whole point of this half is the level the child is on.
+    const idsInside = (envelope: unknown, group: string): string[] => {
+      const objects = (
+        envelope as { scene: { objects: Array<{ id?: string; objects?: unknown[] }> } }
+      ).scene.objects;
+      const holder = objects.find((object) => object.id === group);
+      return (holder?.objects ?? []).map(
+        (child) => (child as { id?: string }).id ?? "",
+      );
+    };
+    expect(
+      idsIn(moved),
+      "the child is a top-level object now",
+    ).toContain("child");
+    expect(
+      idsInside(moved, "grp"),
+      "and the group no longer holds it",
+    ).not.toContain("child");
+    expect(
+      await panelOrder(),
+      "and the row is still drawn, at the top level now",
+    ).toContain("child");
   });
 
   test("nudges the selection and records one history entry", async ({

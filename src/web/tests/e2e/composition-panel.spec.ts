@@ -47,22 +47,27 @@ import { isDesktopSurface } from "./surface.js";
 
 const EDITOR = "http://127.0.0.1:4174/";
 
-/** The layer row's fourth `:has` arm — the one that reserves room for four
- *  controls — read from the stylesheet so the arm's reservation and this
- *  spec's expectation stay one fact rather than two numbers kept in step by
- *  hand. */
-const FOUR_CONTROL_ARM =
-  ".vigilia-layer-row:has(.vigilia-layer-state button:nth-child(4))";
+/** The layer row's third `:has` arm — the one that reserves room for three
+ *  controls, which is the most a row can draw — read from the stylesheet so the
+ *  arm's reservation and this spec's expectation stay one fact rather than two
+ *  numbers kept in step by hand. **It was the fourth arm until `vg-462` took the
+ *  rename pen off the row**; the fourth arm is still in the stylesheet with no
+ *  row that can match it, filed rather than deleted because the register's own
+ *  recordings cite it. */
+const THREE_CONTROL_ARM =
+  ".vigilia-layer-row:has(.vigilia-layer-state button:nth-child(3))";
 
 /** The row's own padding, which the arm's reservation includes and the slot's
  *  own footprint does not. The in-page measurement subtracts the same value. */
 const LAYER_ROW_PADDING_PX = 4;
 
-/** The slot's own footprint with four controls: 6px of padding, four §3-rhythm
- *  26px squares and three 4px gaps — the arm's reservation less the row's own
- *  padding. */
-const FOUR_CONTROL_SLOT_PX =
-  rulePx(FOUR_CONTROL_ARM, "padding-right") - LAYER_ROW_PADDING_PX;
+/** The slot's own footprint with three controls: 6px of padding, three
+ *  §3-rhythm 26px squares and two 4px gaps — the arm's reservation less the
+ *  row's own padding. The four-control figures this replaces are the closed
+ *  plan `2026-10-08-the-panes` report's, taken while the rename pen existed,
+ *  and `vg-260` carries the measurement. */
+const THREE_CONTROL_SLOT_PX =
+  rulePx(THREE_CONTROL_ARM, "padding-right") - LAYER_ROW_PADDING_PX;
 
 /** The mark column's slot, sized on `.vigilia-layer-mark` itself. */
 const MARK_SLOT_PX = rulePx(".vigilia-layer-mark", "flex");
@@ -1166,16 +1171,17 @@ test("a group entered inside a large document", async ({ page }, testInfo) => {
   const selectMs = msSince(selectStarted);
 
   // **The row that draws the whole state slot**, which nothing before Task 2
-  // ever put on a row: the entry control, rename, the eye and the lock — four
-  // controls at §5's 26px square. The stylesheet asks for the room they need out
+  // ever put on a row: the entry control, the eye and the lock — three controls
+  // at §5's 26px square, and three is the most a row can draw since `vg-462`
+  // took the rename pen off it. The stylesheet asks for the room they need out
   // of the *bound* column, one `:has` arm per control count.
   await selectLayer(page, "group-large");
   await expect.poll(() => activeId(page)).toBe("group-large");
   const groupRow = page.locator('[data-vigilia-layer="group-large"]');
   await expect(
     groupRow.locator(".vigilia-layer-state button"),
-    "entry, rename, visibility and lock, all four on one row",
-  ).toHaveCount(4);
+    "entry, visibility and lock, all three on one row",
+  ).toHaveCount(3);
   const slot = await groupRow.evaluate((row) => {
     const state = row.querySelector(".vigilia-layer-state") as HTMLElement;
     const role = row.querySelector(".vigilia-layer-role") as HTMLElement;
@@ -1188,9 +1194,9 @@ test("a group entered inside a large document", async ({ page }, testInfo) => {
       // is caught here rather than only in a comment.
       markWidth: Math.round(mark.getBoundingClientRect().width),
       // **The two halves of the reservation, bound to each other.** One half is
-      // what the slot's own rendered box needs — 6px of padding plus four 26px
-      // squares and three 4px gaps — and the other is what the stylesheet's
-      // fourth `:has` arm reserves out of the row. The room is the row's own
+      // what the slot's own rendered box needs — 6px of padding plus three 26px
+      // squares and two 4px gaps — and the other is what the stylesheet's third
+      // `:has` arm reserves out of the row. The room is the row's own
       // `padding-right` rather than the key column's margin, because the slot
       // covers whatever is last in the row and that column is the role on a row
       // whose selection reads nothing (`vg-265`); the 4px subtracted is the
@@ -1206,14 +1212,16 @@ test("a group entered inside a large document", async ({ page }, testInfo) => {
       // layer's name does — so it can never end up the wider of the two.
       boundWidth: Math.round(bound.getBoundingClientRect().width),
       nameWidth: Math.round(name.getBoundingClientRect().width),
-      // **Recorded, not asserted.** At DESIGN.md's 246px a row drawing four
-      // 26px controls is over budget: 122px of reservation on a 205px row, so
-      // the bound's own box overflows the line and the key column is clipped,
-      // the name with it. These four figures are the only instrument the row's
-      // cost has (`vg-260` carries the measurement; Task 10's ratchet and
+      // **Recorded, not asserted.** At DESIGN.md's 246px a row drawing three
+      // 26px controls is over budget: 92px of reservation on a 211px row, so
+      // the bound's own box still overflows the line — the key short by 41px
+      // and the name by 28px. These four figures are the only instrument the
+      // row's cost has (`vg-260` carries the measurement; Task 10's ratchet and
       // Task 12's register own the decision). Asserting that the room stayed
       // whole would assert a defect as a pass condition, which is a red proof
-      // against its own fix.
+      // against its own fix. **`vg-462` took 26px of the reservation away and
+      // did not end the overrun**: the four-control figures this replaces are
+      // 122px on a 205px row, in the closed plan `2026-10-08-the-panes` report.
       rowWidth: Math.round(row.getBoundingClientRect().width),
       roomKept: Math.round(
         row.getBoundingClientRect().right - bound.getBoundingClientRect().right,
@@ -1228,13 +1236,13 @@ test("a group entered inside a large document", async ({ page }, testInfo) => {
       nameDeficitPx: Math.max(0, name.scrollWidth - name.clientWidth),
       keyDeficitPx: Math.max(0, bound.scrollWidth - bound.clientWidth),
       // **Recorded too, and it is the wider failure of the same over-budget
-      // row**: with four controls the row's own columns cannot fit beside the
-      // slot, so the role — which `flex: none` keeps at its full width, and
+      // row**: with three controls the row's own columns still cannot fit beside
+      // the slot, so the role — which `flex: none` keeps at its full width, and
       // which the stylesheet promises is never the column that gives way — runs
-      // under the slot and is painted over. Which column yields when a row is
-      // this narrow is a design question between three recorded invariants and
-      // is filed as `vg-447`; `vg-265` closed the half where the slot held no
-      // control at all, which the case above asserts.
+      // under the slot by 23px and is painted over. Which column yields when a
+      // row is this narrow is a design question between three recorded
+      // invariants and is filed as `vg-447`; `vg-265` closed the half where the
+      // slot held no control at all, which the case above asserts.
       roleCoveredPx: Math.round(
         role.getBoundingClientRect().right - state.getBoundingClientRect().left,
       ),
@@ -1242,8 +1250,8 @@ test("a group entered inside a large document", async ({ page }, testInfo) => {
   });
   expect(
     slot.slotWidth,
-    `the slot's rendered box is the ${FOUR_CONTROL_SLOT_PX}px the fourth \`:has\` arm promises`,
-  ).toBe(FOUR_CONTROL_SLOT_PX);
+    `the slot's rendered box is the ${THREE_CONTROL_SLOT_PX}px the third \`:has\` arm promises`,
+  ).toBe(THREE_CONTROL_SLOT_PX);
   expect(
     slot.reservedPx,
     "and the room the arm asks the key column for is the room the slot needs",
@@ -1263,16 +1271,16 @@ test("a group entered inside a large document", async ({ page }, testInfo) => {
     ["rows-after-entry", "205"],
     ["enter-ms", String(enterMs)],
     ["select-inside-ms", String(selectMs)],
-    ["four-control-slot-width-px", String(slot.slotWidth)],
-    ["four-control-reserved-px", String(slot.reservedPx)],
-    ["four-control-row-width-px", String(slot.rowWidth)],
-    ["four-control-room-kept-px", String(slot.roomKept)],
-    ["four-control-key-clipped", String(slot.keyClipped)],
-    ["four-control-name-clipped", String(slot.nameClipped)],
-    ["four-control-name-deficit-px", String(slot.nameDeficitPx)],
-    ["four-control-key-deficit-px", String(slot.keyDeficitPx)],
-    ["four-control-role-covered-px", String(slot.roleCoveredPx)],
-    ["four-control-mark-width-px", String(slot.markWidth)],
+    ["three-control-slot-width-px", String(slot.slotWidth)],
+    ["three-control-reserved-px", String(slot.reservedPx)],
+    ["three-control-row-width-px", String(slot.rowWidth)],
+    ["three-control-room-kept-px", String(slot.roomKept)],
+    ["three-control-key-clipped", String(slot.keyClipped)],
+    ["three-control-name-clipped", String(slot.nameClipped)],
+    ["three-control-name-deficit-px", String(slot.nameDeficitPx)],
+    ["three-control-key-deficit-px", String(slot.keyDeficitPx)],
+    ["three-control-role-covered-px", String(slot.roleCoveredPx)],
+    ["three-control-mark-width-px", String(slot.markWidth)],
   ] as const) {
     testInfo.annotations.push({ type, description: String(value) });
   }

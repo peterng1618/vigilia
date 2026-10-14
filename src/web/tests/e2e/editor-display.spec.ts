@@ -768,6 +768,12 @@ test.describe("the stage looks through a display", () => {
   }) => {
     const step = page.locator('.editor-shell-view-step[aria-label="Zoom in"]');
     await expect(step).toBeVisible();
+    // **Before the resting box is read, because `hover()` scrolls.** On the phone
+    // surface the stage starts below the fold, so the resting box was measured
+    // pre-scroll and the box after the hover post-scroll — 457 against 356 on
+    // `x`, with the size identical, which is a scroll and not a movement. The
+    // older zone case carried this call for the same reason.
+    await step.scrollIntoViewIfNeeded();
 
     const borderOf = () =>
       step.evaluate((node) => getComputedStyle(node).borderTopColor);

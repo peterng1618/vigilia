@@ -396,18 +396,20 @@ test.describe("the per-kind inspector column", () => {
     expect(rows).toHaveLength(10);
 
     await page.locator('[data-vigilia-layer="group-cpu-card"]').click();
+    // **Four, not five: the card is a Group, and a Group has no render boundary
+    // for the treatment to reach.** `vg-465` (item 8) withholds the section there
+    // and says so in the lead block instead, so it is gone rather than empty.
     expect(await sectionIds(page)).toEqual([
       "content",
       "position",
       "layer",
-      "paint",
       "spends",
     ]);
 
     // Geometry is adjusted once and the binding chosen constantly, so the one
     // question an author does not return to is put away rather than hidden.
     expect(await isOpen(page, "position")).toBe(false);
-    for (const id of ["content", "layer", "paint", "spends"]) {
+    for (const id of ["content", "layer", "spends"]) {
       expect(await isOpen(page, id), id).toBe(true);
     }
 
@@ -877,20 +879,22 @@ test.describe("the per-kind inspector column", () => {
     await page.locator('[data-vigilia-layer="group-cpu-card"]').click();
 
     // The picture is the rebuilt column, so the column is asserted first. The
-    // subject leads, the five questions render with Position closed (DESIGN.md
+    // subject leads, the card's questions render with Position closed (DESIGN.md
     // §7.4: geometry is collapsed by default), and Spends is read-only — its
     // rows carry a value and nothing to type into. A projection that returned
     // no sections would otherwise photograph an empty column and pass.
+    // **Four questions, not five, and again because the card is a Group**
+    // (`vg-465`, item 8): the treatment section is withheld where there is no
+    // render boundary for it to reach, and the refusal is said in the lead block.
     expect(await subjectLeadsColumn(page)).toBe(true);
     expect(await sectionIds(page)).toEqual([
       "content",
       "position",
       "layer",
-      "paint",
       "spends",
     ]);
     expect(await isOpen(page, "position")).toBe(false);
-    for (const id of ["content", "layer", "paint", "spends"]) {
+    for (const id of ["content", "layer", "spends"]) {
       expect(await isOpen(page, id), id).toBe(true);
     }
     await expect(
