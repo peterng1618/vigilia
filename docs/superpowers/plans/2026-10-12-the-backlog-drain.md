@@ -1163,7 +1163,7 @@ so `vg-274` waits. Nothing else in the two lists shares a file.
 drawn by two owners — in two mechanisms (`vg-464`, `vg-466`). Task 13.1 fixes both, so the pair
 closes together rather than one waiting on the other.
 
-### Task 13.1: One owner per boundary, and scrollbars the shell draws (items 1, 7)
+### Task 13.1: One owner per boundary, and scrollbars the shell draws (items 1, 7, 9)
 
 **Files:**
 - Modify: `packages/editor/src/editor-shell/editor-shell.css`, `packages/editor/src/components/ui/control-well.tsx`
