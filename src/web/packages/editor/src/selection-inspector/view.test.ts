@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import type { FabricGlobals } from "@vigilia/renderer-core";
 import { MAX_OBJECT_NAME_LENGTH } from "@vigilia/renderer-core";
-import { Rect } from "fabric/es";
+import { ActiveSelection, Rect } from "fabric/es";
 import { describe, expect, it } from "vitest";
 import {
   type ChartFieldTarget,
@@ -235,10 +235,10 @@ describe("projectSelection", () => {
     }
   });
 
-  it("names the kind, and the key a binding carries", () => {
+  it("carries the kind, and the key a binding carries", () => {
     const rect = new Rect({ id: "shape", width: 10, height: 10 });
-    const kindLine = projectSelection(rect, 1, ports()).subject?.kindLine;
-    expect(kindLine).toBe(uiCopy.inspectorFields.subjectKind("Shape"));
+    const kind = projectSelection(rect, 1, ports()).subject?.kind;
+    expect(kind).toBe("shape");
 
     const bound = projectSelection(
       rect,
@@ -246,8 +246,21 @@ describe("projectSelection", () => {
       ports({
         nodeBindings: () => [{ id: "b1", semanticKey: "cpu.load" }],
       }),
-    ).subject?.kindLine;
-    expect(bound).toBe(uiCopy.inspectorFields.subjectKind("Shape", "cpu.load"));
+    ).subject?.key;
+    expect(bound).toBe("cpu.load");
+    // Unbound is a state, not a missing read: the header draws no key line for
+    // it rather than a line saying nothing.
+    expect(projectSelection(rect, 1, ports()).subject?.key).toBeUndefined();
+  });
+
+  it("gives a multi-selection its own kind, which has no layer kind's glyph", () => {
+    // `SubjectView.kind` is `selectionKindOf`'s answer, not a `LayerKind`: the
+    // header narrows the one member the per-kind glyph map does not hold, so the
+    // union has to cross the boundary whole.
+    const multi = new ActiveSelection([namedRect("a"), namedRect("b")]);
+    expect(projectSelection(multi, 1, ports()).subject?.kind).toBe(
+      "activeSelection",
+    );
   });
 
   it("reports the lock on the subject", () => {

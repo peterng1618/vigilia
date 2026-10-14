@@ -1,6 +1,7 @@
 import { createElement, useSyncExternalStore } from "react";
 import { flushSync } from "react-dom";
 import { createRoot, type Root } from "react-dom/client";
+import { Glyph, KIND_GLYPHS } from "../editor-shell/icons.js";
 import { uiCopy } from "../ui-copy.js";
 import type { SelectionEdits, SelectionView } from "./view.js";
 
@@ -44,9 +45,12 @@ function createStore(): InspectorStore {
 
 /**
  * The subject block and the empty state — the two things the column says before
- * it says anything about fields. The name leads at `--text-md`; the line under it
- * names the kind at `--text-xs` in `--muted`, in a block closed by a hairline
- * edge rather than a chrome label (DESIGN.md §7.4).
+ * it says anything about fields. The kind's glyph leads the name at `--text-md`,
+ * in the chrome's one icon vocabulary, and the line under them carries the key a
+ * binding reads at `--text-xs` in `--muted`. The block is closed by a hairline
+ * edge rather than a chrome label (DESIGN.md §7.4), and that edge is the column's
+ * *one* boundary below the header: the first section draws none of its own
+ * (`vg-466`).
  */
 function Inspector({
   store,
@@ -68,13 +72,25 @@ function Inspector({
   return (
     <div className="flex flex-col">
       <div className="flex flex-col gap-[var(--space-4)] border-b border-edge pb-[var(--space-8)]">
-        <span
-          className="text-md font-semibold text-text"
-          data-vigilia-subject-name=""
-        >
-          {view.subject.name}
-        </span>
-        <span className="text-xs text-muted">{view.subject.kindLine}</span>
+        {/* The mark and the name on one line, as the pane title draws its own
+            (`pane.tsx`): the glyph inherits `--muted` from the row and the name
+            takes `--text` for itself. A kind with no layer kind — a
+            multi-selection — draws no mark rather than a second table's guess
+            at one. */}
+        <div className="flex items-center gap-[var(--space-8)] text-muted">
+          {view.subject.kind === "activeSelection" ? null : (
+            <Glyph icon={KIND_GLYPHS[view.subject.kind]} size={14} />
+          )}
+          <span
+            className="text-md font-semibold text-text"
+            data-vigilia-subject-name=""
+          >
+            {view.subject.name}
+          </span>
+        </div>
+        {view.subject.key === undefined ? null : (
+          <span className="text-xs text-muted">{view.subject.key}</span>
+        )}
       </div>
       {view.locked ? (
         <p

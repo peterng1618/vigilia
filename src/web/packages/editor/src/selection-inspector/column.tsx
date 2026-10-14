@@ -263,6 +263,9 @@ function Section(props: {
   readonly revealTypePresets: (() => void) | undefined;
   readonly revision: number;
   readonly idPrefix: string;
+  /** The section's place in the column: the first one sits under the subject
+      block, whose own hairline is the boundary between them (`vg-466`). */
+  readonly index: number;
 }): React.JSX.Element {
   const {
     section,
@@ -273,6 +276,7 @@ function Section(props: {
     revealTypePresets,
     revision,
     idPrefix,
+    index,
   } = props;
 
   return (
@@ -283,6 +287,7 @@ function Section(props: {
       readOnly={section.readOnly}
       defaultOpen={section.defaultOpen}
       count={section.count}
+      first={index === 0}
     >
       {section.fields.map((field) => (
         <Fragment key={`${revision}:${field.id}`}>
@@ -368,9 +373,10 @@ export function SelectionColumn(props: {
 
   return (
     <>
-      {view.sections.map((section) => (
+      {view.sections.map((section, index) => (
         <Section
           key={section.id}
+          index={index}
           section={section}
           edits={edits}
           runs={runs}

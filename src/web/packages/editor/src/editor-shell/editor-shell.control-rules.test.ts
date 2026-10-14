@@ -223,7 +223,9 @@ describe("§4's destructive mark", () => {
 
     // And no rule may declare a colour **on a control a mark lands on**. A
     // declaration there applies directly to the element, so it outranks the bare
-    // attribute by specificity — this file is unlayered. Both surfaces this fix
+    // attribute by specificity — the marker's own rule is unlayered, and the
+    // stylesheet's one `@layer base` block holds the focus fallback, which
+    // declares no colour of any kind. Both surfaces this fix
     // changed did it once (`color: inherit` on a menu item at (0,2,0);
     // `color: var(--shell-text)` on `.editor-shell-dock button` at (0,1,1)), and
     // the footer — the third surface — was not covered here at all, which is how
@@ -242,5 +244,173 @@ describe("§4's destructive mark", () => {
         "the ones not yet allowlisted below: move the colour onto the surface's " +
         "container, or add the entry with a reason.",
     ).toEqual([]);
+  });
+});
+
+/** Every `@layer <name> { … }` block, brace-matched rather than body-regexed:
+ *  a layer's body contains whole rules, so a `[^}]*` body — what the reads above
+ *  use — would stop at the first of them. `from`/`to` are offsets into `css`, so
+ *  a caller can blank a block without moving another's. */
+function layers(): readonly {
+  readonly name: string;
+  readonly from: number;
+  readonly to: number;
+  readonly body: string;
+}[] {
+  return [...css.matchAll(/@layer\s+([a-z-]+)\s*\{/g)].flatMap((match) => {
+    const open = (match.index ?? 0) + match[0].length;
+    let depth = 1;
+    let i = open;
+    while (i < css.length && depth > 0) {
+      if (css[i] === "{") depth += 1;
+      else if (css[i] === "}") depth -= 1;
+      i += 1;
+    }
+    return [
+      {
+        name: match[1] ?? "",
+        from: match.index ?? 0,
+        to: i,
+        body: css.slice(open, i - 1),
+      },
+    ];
+  });
+}
+
+/** The stylesheet with every layer's body blanked to spaces — length for length,
+ *  so the reads of the text around it keep their offsets. What is left is the
+ *  cascade level that outranks every utility whatever its specificity. */
+function unlayered(): string {
+  let text = css;
+  for (const layer of layers()) {
+    text =
+      text.slice(0, layer.from) +
+      text.slice(layer.from, layer.to).replace(/[^\n]/g, " ") +
+      text.slice(layer.to);
+  }
+  return text;
+}
+
+/** The declaration bodies of every rule whose selector list names `part`, joined
+ *  in document order. The reads above anchor at a line start, which a selector
+ *  *list* never satisfies: these rules name two scrollers and one rule. */
+function bodiesNaming(part: string): string {
+  return [...cssNoComments.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+    .filter(([, selectors]) => (selectors ?? "").includes(part))
+    .map(([, , body]) => body ?? "")
+    .join("\n");
+}
+
+/**
+ * `vg-464`: two owners drew one focus boundary. The well `control-well.tsx`
+ * draws is the owner — rounded to the control's own radius, §5's halo beside it
+ * — so the field inside it says `outline-none` and the shell's fallback has to
+ * *lose* to that. Unlayered it beat both whatever their specificity, and every
+ * field in a well wore a second, square outline inside the rounded one (the
+ * cascade fact `vg-278` measured).
+ *
+ * A text read, because jsdom resolves no cascade: what a DOM case here could
+ * prove is the class strings, and `control.dom.test.tsx` is where those are
+ * read. This is the half that reddens in `vitest` when the rule is taken back
+ * out of its layer or a second, unlayered one is added beside it. */
+describe("the shell's focus fallback", () => {
+  it("is layered below the utilities, so a control's own outline wins", () => {
+    const base = layers().find((layer) => layer.name === "base")?.body ?? "";
+
+    expect(
+      base,
+      "the shell's `:focus-visible` fallback is not inside an `@layer` block, " +
+        "so it outranks the field's `outline-none` and the well's " +
+        "`focus-within:outline-*` and draws the second boundary `vg-464` records",
+    ).toContain(":focus-visible {");
+    expect(base).toContain("outline: 2px solid var(--shell-accent);");
+  });
+
+  it("leaves the fallback out of the unlayered cascade", () => {
+    // The selector itself, and not `:focus-visible` — four other rules in this
+    // stylesheet carry that pseudo-class (the menu items, the Add pane's tile,
+    // the settings tab and its panel), and none of them is the shell-wide
+    // fallback this row is about.
+    expect(
+      unlayered().replace(/\s+/g, " "),
+      "the shell's fallback is unlayered again, so it beats every utility and " +
+        "the well's own boundary is drawn twice",
+    ).not.toContain(".editor-shell :is(");
+  });
+});
+
+/**
+ * `vg-458`: the three `--vigilia-scrollbar-*` values were declared for the
+ * scrollers and read by nothing, so the platform painted them. Both spellings
+ * are needed and neither is optional — Firefox reads the standard pair and
+ * ignores the pseudo-elements, Chrome reads the pseudo-elements and ignores the
+ * pair the moment one of them matches.
+ */
+describe("the scrollers' scrollbar", () => {
+  /** The two the row names: the pane column and the inspector column. */
+  const SCROLLERS = [".editor-shell-panel", ".editor-shell-inspector"] as const;
+
+  it("gives each of the three tokens a consumer", () => {
+    for (const token of [
+      "--vigilia-scrollbar-thumb",
+      "--vigilia-scrollbar-thumb-hover",
+      "--vigilia-scrollbar-track",
+    ]) {
+      expect(
+        css,
+        `${token} is declared and read by nothing, so the scrollers paint the ` +
+          "platform's scrollbar",
+      ).toContain(`var(${token})`);
+    }
+  });
+
+  it("takes the standard pair from the tokens", () => {
+    for (const scroller of SCROLLERS) {
+      const bodies = bodiesNaming(scroller);
+      expect(bodies, `${scroller} takes no scrollbar-width`).toContain(
+        "scrollbar-width:",
+      );
+      expect(
+        bodies,
+        `${scroller} takes no scrollbar-color, so Firefox paints the platform's`,
+      ).toContain(
+        "scrollbar-color: var(--vigilia-scrollbar-thumb) " +
+          "var(--vigilia-scrollbar-track);",
+      );
+    }
+  });
+
+  it("takes the pseudo-element family from the tokens as well", () => {
+    for (const scroller of SCROLLERS) {
+      const thumb = bodiesNaming(`${scroller}::-webkit-scrollbar-thumb`);
+      expect(
+        thumb,
+        `${scroller}'s thumb is not drawn from the token, so Chrome paints the ` +
+          "platform's",
+      ).toContain("background: var(--vigilia-scrollbar-thumb);");
+      expect(
+        thumb,
+        `${scroller}'s thumb has no hover, which is the one state the standard ` +
+          "pair cannot express — it is why the family is written at all",
+      ).toContain("background: var(--vigilia-scrollbar-thumb-hover);");
+      expect(
+        bodiesNaming(`${scroller}::-webkit-scrollbar-track`),
+        `${scroller}'s track is not drawn from the token`,
+      ).toContain("background: var(--vigilia-scrollbar-track);");
+    }
+  });
+
+  it("paints them from no literal of its own", () => {
+    const scrollbarRules = [...cssNoComments.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
+      .filter(([, selectors]) => /scrollbar/.test(selectors ?? ""))
+      .map(([, , body]) => body ?? "")
+      .join("\n");
+
+    expect(scrollbarRules).not.toBe("");
+    expect(
+      scrollbarRules,
+      "a scrollbar rule paints a literal beside the three values the shell " +
+        "already declares for it",
+    ).not.toMatch(/#[0-9a-fA-F]{3,8}(?![\w-])/);
   });
 });

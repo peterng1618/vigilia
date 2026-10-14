@@ -1114,6 +1114,32 @@ body,
 .editor-shell-inspector {
   min-height: 0;
   overflow: auto;
+  /* The scrollbar is the shell's, not the platform's: the three
+     `--vigilia-scrollbar-*` tokens were declared for this and read by nothing
+     until `vg-458`, so every scroller painted the OS default. Both spellings are
+     needed and neither is optional — Firefox reads `scrollbar-width`/`-color`
+     and ignores the pseudo-elements, while Chrome reads the `::-webkit-*` family
+     and ignores the standard pair the moment one of them matches. The thumb is
+     those tokens and never a literal of its own. */
+  scrollbar-width: thin;
+  scrollbar-color: var(--vigilia-scrollbar-thumb) var(--vigilia-scrollbar-track);
+}
+.editor-shell-panel::-webkit-scrollbar,
+.editor-shell-inspector::-webkit-scrollbar {
+  width: 10px;
+}
+.editor-shell-panel::-webkit-scrollbar-track,
+.editor-shell-inspector::-webkit-scrollbar-track {
+  background: var(--vigilia-scrollbar-track);
+}
+.editor-shell-panel::-webkit-scrollbar-thumb,
+.editor-shell-inspector::-webkit-scrollbar-thumb {
+  background: var(--vigilia-scrollbar-thumb);
+  border-radius: var(--radius-sm);
+}
+.editor-shell-panel::-webkit-scrollbar-thumb:hover,
+.editor-shell-inspector::-webkit-scrollbar-thumb:hover {
+  background: var(--vigilia-scrollbar-thumb-hover);
 }
 /* `cursor: pointer` is the shell's standing convention for a control, and it is
    the **only** thing this rule may say about an inspector button. The rest of
@@ -1429,16 +1455,27 @@ body,
 /* The popup is portalled outside `.editor-shell`, so this rule misses it — that
    portal is the only protection, since Base UI marks menu items `tabindex="-1"`
    and one moved in-shell would match through `[tabindex]`. `:where` drops the
-   tabpanel without raising this rule's specificity. */
-.editor-shell
-:is(
-  button,
-  input,
-  select,
-  [tabindex]:not(:where([role="tabpanel"]))
-):focus-visible {
-  outline: 2px solid var(--shell-accent);
-  outline-offset: 1px;
+   tabpanel without raising this rule's specificity.
+
+   **A control that declares its own focus treatment keeps it**, so this is the
+   fallback and it sits in a layer *below* the utilities rather than beside them.
+   The well `control-well.tsx` draws is that treatment for a field — rounded to
+   the control's own radius, with §5's halo beside it — and the field inside it
+   says `outline-none`. Unlayered, this rule beat both and every field in a well
+   wore a second, square outline inside the rounded one (`vg-464`); layered, the
+   field's own declaration wins and the well is the boundary's one owner. What
+   still takes its boundary here is every control that declares none. */
+@layer base {
+  .editor-shell
+    :is(
+      button,
+      input,
+      select,
+      [tabindex]:not(:where([role="tabpanel"]))
+    ):focus-visible {
+    outline: 2px solid var(--shell-accent);
+    outline-offset: 1px;
+  }
 }
 /* Panel reveal: opacity 0→1 with a 4px rise, on mount only — no list stagger. */
 .editor-shell-panel,

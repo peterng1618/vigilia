@@ -907,6 +907,55 @@ it("raises the well's edge on hover, except when the control is blocked", () => 
   expect(wellClasses("panel", true)).not.toContain("hover:border-muted");
 });
 
+/**
+ * `vg-464`: one focus boundary, owned by the well.
+ *
+ * The well draws it (`focus-within:outline-*`, following the control's
+ * `rounded-md`), and the field inside a well declares `outline-none` so the
+ * shell's `:focus-visible` fallback is the only other rule that could draw one.
+ * That fallback wins the cascade while it is unlayered, whatever the specificity
+ * — the fact is `editor-shell.control-rules.test.ts`'s to hold, because jsdom
+ * resolves no cascade and a computed-style assertion here would pass whatever
+ * the stylesheet said. What this file can read is the *split*: which node takes
+ * focus, and which of the two declares the boundary.
+ */
+it("focuses the field, and leaves the focus boundary to the well around it", async () => {
+  await mount(
+    <ControlText label="Name" value="wordmark" onCommit={() => {}} />,
+  );
+  const field = labelled("Name");
+  field.focus();
+
+  expect(document.activeElement, "the field is not the focus target").toBe(
+    field,
+  );
+  expect(
+    field.className,
+    "the field draws a boundary of its own, which is the second outline " +
+      "vg-464 records beside the well's rounded one",
+  ).toContain("outline-none");
+  const well = field.parentElement;
+  expect(
+    well?.className,
+    "nothing inside the well declares the focus boundary, so the field has " +
+      "none — the shell's fallback is no longer a substitute for one",
+  ).toContain("focus-within:outline-2");
+  expect(well?.className).toContain("focus-within:outline-accent");
+
+  // The number field is the same shape in the same cascade, which is what the
+  // row's failure mode names: the second outline removed from one input and
+  // left on the others.
+  await mount(<ControlNumber label="Opacity" value={5} onCommit={() => {}} />);
+  const number = labelled("Opacity");
+  number.focus();
+  expect(number.className).toContain("outline-none");
+  expect(
+    number.parentElement?.className,
+    "the number field's well draws no boundary, so removing the field's own " +
+      "left the control with none",
+  ).toContain("focus-within:outline-2");
+});
+
 it("raises the toggle's edge on hover only while it is unchecked", async () => {
   await mount(
     <ControlToggle label="Glass" checked={false} onChange={() => {}} />,

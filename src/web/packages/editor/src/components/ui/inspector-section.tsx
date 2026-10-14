@@ -31,6 +31,16 @@ export function InspectorSection(props: {
   readonly defaultOpen?: boolean;
   readonly count?: number;
   /**
+   * The section sits directly under an owner that already drew the boundary
+   * between them — the column's subject block, whose `border-b` is it — so this
+   * one draws none of its own. Two adjacent owners drawing one hairline is what
+   * `vg-466` records: the author saw two lines under the header and none between
+   * the sections below. The default draws the rule, because every other surface
+   * this composes into (`control-fixture.tsx`, the document panes) has nothing
+   * above it that does.
+   */
+  readonly first?: boolean;
+  /**
    * Scopes the header and panel ids so two sections with the same `id` in one
    * document do not collide. `id` names the section and is the locator hook, but
    * the aria pair has to be document-unique — two selection columns would
@@ -47,6 +57,7 @@ export function InspectorSection(props: {
     readOnly,
     defaultOpen = true,
     count,
+    first = false,
     idPrefix = "",
     children,
   } = props;
@@ -55,7 +66,7 @@ export function InspectorSection(props: {
   return (
     <section
       data-vigilia-section={id}
-      className="border-t border-edge py-[var(--space-12)]"
+      className={`${first ? "" : "border-t border-edge "}py-[var(--space-12)]`}
     >
       <h2 className="m-0">
         <button

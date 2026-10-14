@@ -27,11 +27,29 @@ import {
 
 export interface SelectionView {
   readonly targetRevision: number;
-  readonly subject:
-    | { readonly name: string; readonly kindLine: string }
-    | undefined;
+  readonly subject: SubjectView | undefined;
   readonly locked: boolean;
   readonly sections: readonly ColumnSectionView[];
+}
+
+/**
+ * The block that heads the column: what the selection is called, the kind whose
+ * glyph heads it, and the key a binding on it reads.
+ *
+ * **The kind is a kind, not a word** (vg-466): the header draws `KIND_GLYPHS`'
+ * mark for it, so `selectionKindOf`'s own union is what crosses the boundary and
+ * `activeSelection` — which is not a `LayerKind` and has no glyph — is the one
+ * member the header draws nothing for. Its name already says "Selection".
+ */
+export interface SubjectView {
+  readonly name: string;
+  readonly kind: SelectionKind;
+  /**
+   * The binding key this node reads, where one is bound. It is the fact that
+   * tells two otherwise identical subjects apart, and it is *not* the kind word
+   * the glyph replaced: a key is the object's own, the kind is its type.
+   */
+  readonly key: string | undefined;
 }
 
 export interface ColumnSectionView {
@@ -552,10 +570,8 @@ export function projectSelection(
     targetRevision,
     subject: {
       name: subjectNameOf(target),
-      kindLine: uiCopy.inspectorFields.subjectKind(
-        KIND_WORD[selectionKindOf(target)],
-        bindingKeyOf(target, ports),
-      ),
+      kind: selectionKindOf(target),
+      key: bindingKeyOf(target, ports),
     },
     locked: isLocked(target),
     sections,

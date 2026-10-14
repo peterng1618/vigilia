@@ -181,6 +181,32 @@ describe("SelectionColumn", () => {
     }
   });
 
+  /** `vg-466`: the subject block's `border-b` is the boundary between the
+   *  header and the first section, so a `border-t` here drew one hairline twice.
+   *  Every later section keeps its own top rule — that boundary is between two
+   *  sections, and nothing above draws it. */
+  it("draws the hairline into the first section once, not twice", () => {
+    const sections = renderedSections(
+      viewOf(new Rect({ width: 40, height: 20 })),
+    );
+
+    expect(
+      sections[0]?.className,
+      "the section's own shape was lost",
+    ).toContain("py-[var(--space-12)]");
+    expect(
+      sections[0]?.className,
+      "the first section draws a second rule under the subject block's own",
+    ).not.toContain("border-t");
+    for (const element of sections.slice(1)) {
+      expect(
+        element.className,
+        `${element.dataset["vigiliaSection"]} lost its top rule, so two sections ` +
+          "now run together",
+      ).toContain("border-t");
+    }
+  });
+
   it("keeps the section the author opened across a re-publish", () => {
     const view = viewOf(new Rect({ width: 40, height: 20 }));
     renderedSections(view);
