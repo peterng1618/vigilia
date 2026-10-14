@@ -1731,14 +1731,20 @@ is missing.
 
 ---
 
-# The rows no phase carries — the drain's own by-products (45 open, measured 2026-10-15)
+# The rows no phase carries — the drain's own by-products (51 open, measured 2026-10-15)
 
 **Counted rather than estimated, because the count is the point of this plan.** The register holds
 **196 open rows**. This plan names **145** of them — 141 by id and 4 by item number alone (`vg-461`,
-`vg-462`, `vg-468`, `vg-474`) — six were filed on 2026-10-15 and have no task yet (`vg-476`, `vg-477`,
-`vg-479`–`vg-482`), and **45 are named by no phase at all: `vg-388` through `vg-457`.**
+`vg-462`, `vg-468`, `vg-474`) — and **51 are named by no phase at all: `vg-388` through `vg-482`.**
 
-**They are the drain's own by-products, and that is the finding.** 43 of the 45 are `source: agent` —
+**The method, so the next measurement is comparable rather than merely different.** A row is *named*
+when its `vg-` id appears in this file above this section, or when a Phase 13/14 task heading carries it
+by item number; the section you are reading is excluded from the search, or it would name every row it
+counts. Both halves matter: six rows were filed on 2026-10-15 and carry no task (`vg-476`, `vg-477`,
+`vg-479`–`vg-482`), which is exactly the 45 → 51 difference from the first taking of this count — the
+method is unchanged and the register grew.
+
+**They are the drain's own by-products, and that is the finding.** 49 of the 51 are `source: agent` —
 rows a phase of this plan filed while doing something else, then left behind. `STATUS.md` sets the rule
 that puts them there: *"file it if you found it and it is not the task you are doing"*. The rule is
 right and this is its cost, unpaid: **a plan that files faster than it carries does not drain**, and the
@@ -1746,7 +1752,7 @@ open count is the measure. Two are `source: user` and are not in the same lane �
 theme store) and `vg-405` (the colour picker and gradient editor, in the user's own words after using
 them, "barely usable"). **User rows outrank agent rows, and those two are the user's own words.**
 
-**No phase carries these and none is invented here.** Writing 45 tasks from row titles alone is the
+**No phase carries these and none is invented here.** Writing 51 tasks from row titles alone is the
 mistake this plan's own §"Plans are contracts" forbids and that two of today's briefs already paid for:
 a task names owning symbols and a landmark, and a landmark cannot be written from a title. So this is a
 position rather than a phase, exactly as the parked rows below are:
@@ -1760,11 +1766,14 @@ position rather than a phase, exactly as the parked rows below are:
   a row that should stop being counted; or **park** it with what it waits on. `vg-386`'s sweep (133
   candidates, none proven dead) is the model for how a withdrawal is argued, and `vg-434`'s measurement
   is the model for how a count is taken rather than guessed.
-- **What is explicitly not the answer:** a phase that carries all 45 because they exist. That converts
+- **What is explicitly not the answer:** a phase that carries all 51 because they exist. That converts
   a queue into a backlog again.
 
 **The measure of the drain is therefore two numbers, and both belong in the final report:** the open
-count, and how many of those no phase carries. Today they are **196** and **45**.
+count, and how many of those no phase carries. Today they are **196** and **51**. **The second number is
+the one that moves**, and it is the one this section exists to keep visible: the open count falls when a
+phase lands, and rises again by however many rows that phase's own work files — `vg-481` and `vg-482`
+were filed by 13.1b's review on the morning this count was taken.
 
 # Parked rows — held, not a phase
 
