@@ -92,7 +92,9 @@ describe("the display vocabulary", () => {
     expect(bindingLabel(onEscape)).toBe("");
     // And the same rule read from the other side: a key the product *does*
     // display keeps its name, so this cannot pass by emptying the table.
-    expect(printableChord({ key: "delete", modifier: false, action: "edit.delete" })).toBe(true);
+    expect(
+      printableChord({ key: "delete", modifier: false, action: "edit.delete" }),
+    ).toBe(true);
   });
 });
 
