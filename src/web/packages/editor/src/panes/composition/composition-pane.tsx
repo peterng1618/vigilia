@@ -270,7 +270,10 @@ export function CompositionPane({
   const drag = useRef<
     | {
         from: string;
-        before: string | undefined;
+        /** The row the drop would be anchored on: the container when the row is
+         *  an empty group, its sibling slot otherwise. The bridge decides which,
+         *  so the same value is what `moveLayer` is handed. */
+        anchor: string | undefined;
         marked: HTMLElement | undefined;
         source: HTMLElement | undefined;
       }
@@ -425,7 +428,7 @@ export function CompositionPane({
                 );
                 drag.current = {
                   from: row.id,
-                  before: undefined,
+                  anchor: undefined,
                   marked: undefined,
                   source: event.currentTarget,
                 };
@@ -442,23 +445,24 @@ export function CompositionPane({
               onDragOver={(event) => {
                 const active = drag.current;
                 if (active === undefined) return;
-                if (active.before === row.id) return;
+                if (active.anchor === row.id) return;
                 // Not above ourselves: that is where the layer already is, which
                 // is a third answer and neither a slot nor a refusal.
                 const moved = row.id !== active.from;
-                // Every other slot can land, including one across a group
-                // boundary: the anchor's own parent is the container the drop
-                // enters, which is what makes dragging a row into a group and
-                // back out to the root the same gesture as restacking one
-                // (`vg-461`). What is left refused is a cycle — a group dropped
-                // inside itself — and the bridge answers that in the tree's own
-                // terms, so the panel cannot promise a drop Fabric would log and
-                // drop.
-                const lands =
-                  moved && bridge?.canMoveLayer(active.from, row.id) === true;
-                active.before = lands ? row.id : undefined;
+                // Every anchor a row can name can land, including one across a
+                // group boundary: the anchor's own parent is the container the
+                // drop enters, which is what makes dragging a row into a group
+                // and back out to the root the same gesture as restacking one
+                // (`vg-461`). Two things are refused instead — a cycle, a group
+                // dropped inside itself, and an anchor that does not resolve —
+                // and the bridge answers both in the tree's own terms, so the
+                // panel cannot promise a drop Fabric would log and drop.
+                const drop = moved
+                  ? bridge?.layerDrop(active.from, row.id)
+                  : undefined;
+                active.anchor = drop === undefined ? undefined : row.id;
 
-                if (lands) {
+                if (drop !== undefined) {
                   // A permanent marker reads as state, not as a target.
                   event.preventDefault();
                   mark(event.currentTarget, "slot");
@@ -478,7 +482,11 @@ export function CompositionPane({
                 // under the cursor has just refused.
                 const line = indicator.current;
                 if (line === null) return;
-                if (!lands) {
+                // An empty group is a container rather than a gap between two
+                // rows: the object lands *inside* it, so the row's own mark is
+                // the whole of the promise and a line between rows would name a
+                // position no drop would take.
+                if (drop === undefined || drop.kind === "into") {
                   line.hidden = true;
                   return;
                 }
@@ -499,11 +507,11 @@ export function CompositionPane({
               }}
               onDrop={(event) => {
                 const active = drag.current;
-                const before = active?.before;
+                const anchor = active?.anchor;
                 unmark();
-                if (active === undefined || before === undefined) return;
+                if (active === undefined || anchor === undefined) return;
                 event.preventDefault();
-                store.mutate(() => bridge?.moveLayer(active.from, before));
+                store.mutate(() => bridge?.moveLayer(active.from, anchor));
               }}
               onDragEnd={unmark}
               style={

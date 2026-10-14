@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { MAX_OBJECT_NAME_LENGTH } from "@vigilia/renderer-core";
-import { VigiliaChart } from "@vigilia/scene-fabric";
+import { createSceneAdapter, VigiliaChart } from "@vigilia/scene-fabric";
 import {
   ActiveSelection,
   Canvas,
@@ -808,7 +808,10 @@ it("moves a layer across a group boundary, in and out", () => {
   // In, above the group's only child: the anchor is inside, so the container is
   // the group. The panel paints topmost-first, so `loose` now has a row above
   // `child`'s and no row of its own at the root.
-  expect(bridge.canMoveLayer("loose", "child")).toBe(true);
+  expect(bridge.layerDrop("loose", "child")).toEqual({
+    kind: "slot",
+    before: "child",
+  });
   expect(bridge.moveLayer("loose", "child")).toBe(true);
   expect(ids(canvas.getObjects())).toEqual(["grp"]);
   expect(ids(group.getObjects())).toEqual(["child", "loose"]);
@@ -816,6 +819,10 @@ it("moves a layer across a group boundary, in and out", () => {
 
   // And back out, above the group itself: the anchor is at the root, so that is
   // the container the drop enters.
+  expect(bridge.layerDrop("loose", "grp")).toEqual({
+    kind: "slot",
+    before: "grp",
+  });
   expect(bridge.moveLayer("loose", "grp")).toBe(true);
   expect(ids(canvas.getObjects())).toEqual(["grp", "loose"]);
   expect(ids(group.getObjects())).toEqual(["child"]);
@@ -841,13 +848,144 @@ it("refuses a cycle, before the drop rather than after it", () => {
   const ids = (objects: readonly { get(key: string): unknown }[]): unknown[] =>
     objects.map((object) => object.get("id"));
 
-  expect(bridge.canMoveLayer("grp", "child")).toBe(false);
+  expect(bridge.layerDrop("grp", "child")).toBeUndefined();
   expect(bridge.moveLayer("grp", "child")).toBe(false);
   expect(ids(canvas.getObjects())).toEqual(["grp"]);
   expect(ids(group.getObjects())).toEqual(["child"]);
   // A row dropped on itself is neither a slot nor a refusal: there is nothing
   // to move, and the panel answers with neither mark.
-  expect(bridge.canMoveLayer("child", "child")).toBe(false);
+  expect(bridge.layerDrop("child", "child")).toBeUndefined();
+});
+
+it("leaves a reparented object alive in the scene the adapter is drawing", async () => {
+  // The reviewer's P1, as a case: with the scene adapter installed,
+  // `canvas.remove` fires `object:removed`, which the adapter reads as "this node
+  // left the scene" and disposes (`scene-fabric/src/adapter.ts:62`). The chart
+  // still serializes afterwards, so a save that looks right reloads wrong — and
+  // the drag tests that omit the adapter cannot see it, which is why this one
+  // installs it. A chart rather than a rect: dispose is what releases its ECharts
+  // instance and backing pixels, and a plain Rect makes the defect invisible.
+  const canvas = new Canvas(document.createElement("canvas"));
+  const child = new Rect({ left: 0, top: 0, width: 10, height: 10 });
+  child.set("id", "child");
+  const group = new Group([child]);
+  group.set("id", "grp");
+  const chart = new VigiliaChart({
+    id: "chart",
+    width: 100,
+    height: 60,
+    family: "bar",
+    settings: {},
+  } as never);
+  canvas.add(group, chart);
+  const adapter = createSceneAdapter({ canvas });
+  const { bridge } = bridgeFor(undefined, {
+    canvas,
+    historyManager: { saveState: vi.fn() },
+  });
+
+  expect(chart.disposed).toBe(false);
+  expect(bridge.moveLayer("chart", "child")).toBe(true);
+  // In the group, and still the object it was.
+  expect(group.getObjects()).toEqual([child, chart]);
+  expect(chart.disposed).toBe(false);
+  // And in the scene once: the root array let it go, so the group is not a
+  // second place it is painted from or serialized by.
+  expect(canvas.getObjects()).toEqual([group]);
+  expect(JSON.stringify(canvas.toObject(["id"]))).toContain('"chart"');
+  expect(
+    JSON.stringify(canvas.toObject(["id"])).match(/"chart"/g),
+  ).toHaveLength(1);
+  adapter.dispose();
+  await canvas.dispose();
+});
+
+it("refreshes the cached boxes a reparent moves", async () => {
+  // The reviewer's second finding, as a case. `FitContentLayout` always commits
+  // a layout, so inserting beside a child rebases every member's `left`/`top` —
+  // but a cached box is not recomputed by that, and `Group.setCoords` only
+  // cascades while `subTargetCheck` is on (a default group's is off). Left
+  // alone, the cached box disagrees with the transform it belongs to and
+  // `sceneBoxesOf` reports a box nothing moved.
+  const canvas = new Canvas(document.createElement("canvas"));
+  const a = new Rect({ left: 0, top: 0, width: 20, height: 20 });
+  const b = new Rect({ left: 80, top: 0, width: 20, height: 20 });
+  const loose = new Rect({ left: 300, top: 170, width: 20, height: 20 });
+  a.set("id", "a");
+  b.set("id", "b");
+  loose.set("id", "loose");
+  const group = new Group([a, b], { angle: 24, scaleX: 1.4 });
+  group.set("id", "grp");
+  canvas.add(group, loose);
+  // Every cache populated before the move, as a live editor's would be after
+  // one paint: without this `getBoundingRect` has nothing cached to read and
+  // recomputes, so a stale box could not be observed at all — the case would
+  // pass for the wrong reason.
+  for (const object of [a, b, loose, group]) object.setCoords();
+  const { bridge } = bridgeFor(undefined, {
+    canvas,
+    historyManager: { saveState: vi.fn() },
+  });
+
+  expect(bridge.moveLayer("loose", "a")).toBe(true);
+  // Read the cache first, then let Fabric recompute it: the two must agree, or
+  // the box a reader consumed was stale.
+  const stale = [a, b, loose, group].filter((object) => {
+    const cached = object.getBoundingRect();
+    const refreshed = (object.setCoords(), object.getBoundingRect());
+    return Math.abs(cached.left - refreshed.left) > 1e-6;
+  });
+  expect(stale.map((object) => object.get("id"))).toEqual([]);
+
+  await canvas.dispose();
+});
+
+it("fills a group that has nothing in it, and refills one a drag emptied", async () => {
+  // The reviewer's third finding. The destination is the anchor's *parent*, so
+  // dropping on a group row lands beside the group and entering it requires
+  // targeting a child row — which a group with no children does not have, so a
+  // group emptied by dragging its last child out could never be refilled.
+  const canvas = new Canvas(document.createElement("canvas"));
+  const child = new Rect({ left: 0, top: 0, width: 10, height: 10 });
+  const other = new Rect({ left: 40, top: 0, width: 10, height: 10 });
+  child.set("id", "child");
+  other.set("id", "other");
+  const group = new Group([child]);
+  group.set("id", "grp");
+  canvas.add(group, other);
+  const { bridge } = bridgeFor(undefined, {
+    canvas,
+    historyManager: { saveState: vi.fn() },
+  });
+  const ids = (objects: readonly { get(key: string): unknown }[]): unknown[] =>
+    objects.map((object) => object.get("id"));
+
+  // Out of the group, onto a root sibling, which leaves the group empty.
+  expect(bridge.layerDrop("child", "other")).toEqual({
+    kind: "slot",
+    before: "other",
+  });
+  expect(bridge.moveLayer("child", "other")).toBe(true);
+  expect(ids(group.getObjects())).toEqual([]);
+
+  // And back in, on the group's own row — the one row left that can name it.
+  expect(bridge.layerDrop("child", "grp")).toEqual({
+    kind: "into",
+    container: "grp",
+  });
+  expect(bridge.moveLayer("child", "grp")).toBe(true);
+  expect(ids(group.getObjects())).toEqual(["child"]);
+  expect(child.parent).toBe(group);
+
+  // A group with children keeps its row as a *slot*: that is what makes
+  // dragging a row out of a group work, and its interior is reachable through
+  // the child rows it draws.
+  expect(bridge.layerDrop("other", "grp")).toEqual({
+    kind: "slot",
+    before: "grp",
+  });
+
+  await canvas.dispose();
 });
 
 it("refuses an unknown id instead of moving something else", () => {

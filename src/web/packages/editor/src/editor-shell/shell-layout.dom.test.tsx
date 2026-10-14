@@ -144,7 +144,7 @@ function bridgeStub(
     setLayerLocked: vi.fn(),
     setCollapsed: vi.fn(),
     renameLayer: vi.fn(),
-    canMoveLayer: () => false,
+    layerDrop: () => undefined,
     moveLayer: () => false,
     subscribe: () => () => undefined,
     run: vi.fn(),

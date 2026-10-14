@@ -63,10 +63,26 @@ Found: **Fabric already owns both halves.**
 - `canEnterGroup` refuses a cycle (`object === this || this.isDescendantOf(object)`)
   and a duplicate, and *logs* the refusal rather than throwing — which is why the
   caller must refuse in its own terms (rung 6).
-- What Fabric leaves to the caller: `FitContentLayout.shouldPerformLayout` returns
-  true only for `initialization`, `imperative` and a strategy change (index.mjs:8878),
-  so an `added`/`removed` event does **not** commit a layout — yet the group's box
-  must follow its members.
+- What Fabric leaves to the caller: the base `LayoutStrategy.shouldPerformLayout`
+  returns true only for `initialization`, `imperative` and a strategy change
+  (index.mjs:8870), but **`FitContentLayout` overrides it and always returns true**
+  (index.mjs:8916), and that is the strategy a `Group` is constructed with — so an
+  `added`/`removed` event *does* commit a layout, and the group's box and its
+  children's `left`/`top` both follow the membership from that one call. **This
+  bullet is a correction:** the first draft of this note read the base condition as
+  the `FitContentLayout` one and concluded the caller had to trigger layout itself.
+  It must not — the imperative pass is a measured no-op (rung 6) — but it must
+  refresh the coordinate *caches* the rebase leaves behind (see the decision).
+- What the same read leaves to the caller, and this is the invisible half:
+  `Group.setCoords` cascades to its children only while `subTargetCheck` is true
+  (`_shouldSetNestedCoords`), and a group's default is false — so after a reparent
+  neither the surviving children nor the inserted object have a cached box that
+  matches the transform the layout just rewrote (rung 6, measured).
+- `StaticCanvas._onObjectRemoved` (index.mjs:2038) fires `object:removed` and nulls
+  `object.canvas`; `Group._onObjectRemoved` fires it too, but on the *group*, so a
+  removal from a canvas root and a removal from a group are the same shape to the
+  object and **very different to a listener on the canvas** — which is what the
+  scene adapter is (see the decision).
 
 ## Rung 4 — ecosystem
 
@@ -90,7 +106,8 @@ here rather than in a dependency.
 |---|---|---|---|---|
 | Splice `_objects` / assign `object.group` by hand | Invisible | ~6 lines | High — transform bake, `subTargetCheck` flags and serialization all skipped; nothing fails | Rejected |
 | Rebuild the group (`new Group([...members, moved])`, the `group()` idiom) | Fits the existing idiom | ~30 lines | High — a new instance loses the group's authored identity (`id`, `name`, `opacity`, glass), and every other reference to it goes stale | Rejected |
-| Fabric's `group.add` / `canvas.remove` + `canvas.add` / `group.remove` | Native, symmetric | ~20 lines in `bridge.moveLayer` | Low — measured in rung 6 | **Chosen** |
+| Fabric's `group.add` / `canvas.remove` + `canvas.add` / `group.remove` | Native, symmetric | ~20 lines in `bridge.moveLayer` | High — measured: `canvas.remove` disposes the object through the scene adapter, and the move then inserts the corpse | Rejected in review round 1 |
+| The same, with the **root-side** removal silent (`_objects` splice + render-list invalidation) and the transform bake left to Fabric's `insertAt` | Fabric's bake, Fabric's collection API for a group child | ~25 lines | Low — measured in rung 6, and the two fields re-implemented are the two `Collection.remove` writes a mover still needs | **Chosen** |
 | A new dependency for drag-and-drop trees | Invisible | A second owner of the tree | High | Rejected — the tree is `layer-tree.ts`'s |
 
 ## Rung 6 — probe
@@ -112,14 +129,25 @@ Two things this settles, and one it corrected:
 1. **No object moves on screen**, in either direction: the coordinate bake is
    Fabric's and it is right.
 2. **The container's box follows the membership** — 61×21 → 221×121 → 181×121 —
-   even though `FitContentLayout` skips the `added`/`removed` layout. The serialized
-   group agrees (`toObject()` = 120, 50, 181, 121 for the box above), and the
-   imperative pass is a **no-op** here (identical numbers before and after), so the
-   caller must not add one.
+   which the `added`/`removed` layout commit does on its own (`FitContentLayout`
+   answers true to everything, corrected above). The serialized group agrees
+   (`toObject()` = 120, 50, 181, 121 for the box above), and an imperative layout
+   pass is a **no-op** here (identical numbers before and after), so the caller must
+   not add one.
 3. **Corrected assumption:** the probe first read the child's own
    `calcTransformMatrix()`, which is the child's matrix *including* its own
    transform, and every number came out doubled. `getRelativeCenterPoint()` is
    already in the parent's plane; the parent's matrix is what takes it to the canvas.
+
+Round 2 measured three more things on the same surface, each of which is now a case
+in `bridge.dom.test.ts`:
+
+| Probe | Reading |
+|---|---|
+| Reparent a root `VigiliaChart` into a group **with the scene adapter installed** | `moveLayer` returned true, the chart was in the group, and `chart.disposed` went false → true: `canvas.remove` fires `object:removed`, the adapter disposes it (`scene-fabric/src/adapter.ts:62`), and the disposed object is then inserted |
+| `groupingManager.group()` over an `ActiveSelection` holding a chart, adapter installed | The member is disposed the same way — the same defect in the other caller of `canvas.remove`, and it is why the fix is not "always order the writes differently" |
+| After a reparent into a group at `angle: 24, scaleX: 1.4` | A surviving child's cached `getBoundingRect().left` was `74.496` while its recomputed box was `−28.858`; a `setCoords()` on every member of both collections brings the cache and the transform back into agreement |
+| Dropping on an empty group | `layerDrop`/`moveLayer` both answered true and the group stayed empty, because the destination is the anchor's parent — a group whose last child was dragged out could never be refilled |
 
 Also measured, and the reason `moveLayer` releases a multi-selection first: an
 `ActiveSelection` member's `group` **is the selection**, so a `remove` issued against
@@ -128,33 +156,61 @@ no longer belongs to.
 
 ## Decision
 
-`bridge.moveLayer(id, beforeId)` — the anchor names both the container (its parent)
-and the position (directly above it) — resolves both objects, refuses a cycle
-(`pathTo(root, beforeId).includes(moved)`, in the tree's own terms rather than
-Fabric's logged refusal), releases an `ActiveSelection` that holds the moved object,
-and then hands the two structural writes to Fabric: `remove` from the collection it
-leaves, `add` to the collection the anchor is in. The call is split from `reorderLayer`,
-which it replaces: `layerMove` plans the move (both objects, the destination, the
-index) and `moveLayer` performs it, with `canMoveLayer` answering the same plan
-without performing it — the one question the panel asks before it marks a slot, so
-the refusal and the drop are the same decision rather than two that must agree. The
-index arithmetic is the old `reorderLayer`'s, kept where it was because a
-same-parent restack and a cross-parent reparent are one question about an index in a
-destination, and the move closes with one history entry and a re-projected tree, as
-every other layer command does.
+`bridge.layerDrop(id, anchorId)` answers what a drop would do and
+`bridge.moveLayer(id, anchorId)` performs it; both come from one plan, `layerMove`,
+so a mark the panel draws is a drop the bridge takes — the failure `vg-099` is about.
+`layerMove` resolves both objects, refuses a cycle (`pathTo(root, anchorId).includes(moved)`,
+in the tree's own terms rather than Fabric's logged refusal), and computes the
+destination and the index. The index arithmetic is the old `reorderLayer`'s, kept
+where it was because a same-parent restack and a cross-parent reparent are one
+question about an index in a destination.
 
-**Two consequences worth naming.** A same-parent restack now goes through
-`moveObjectTo` on the collection the two objects share (Fabric's own `moveObjectTo`
-splices `_objects` and nothing else needs to happen), while a reparent goes through
-`remove`+`insertAt`; both are Fabric's, and neither touches a child's coordinates by
-hand. And the pane's rule changed shape: it no longer asks "is this the same parent"
+**The anchor names the container when the anchor *is* the container.** It names the
+anchor's parent — the sibling slot directly above it — everywhere else, which is what
+makes dragging a row *out* of a group work. The one exception is a group with nothing
+in it: it has no interior row to aim at, so its own row is the only thing that can
+name it as a destination, and without it a group emptied by dragging its last child
+out could never be refilled. A group that has children keeps its row as a slot, and
+its interior is reached through the child rows it draws.
+
+**Nothing is written by hand where Fabric writes it.** The transform bake is
+`Group._enterGroup`'s / `_exitGroup`'s, reached by the `insertAt`/`remove` pair; the
+only hand-written write is the *root-side* removal, and only because the removal event
+is the renderer's word for "this node left the scene". `detachFromRoot` splices
+`canvas._objects` and drops `canvas._objectsToRender` — the two writes `Collection.remove`
+makes that a mover still needs — and does not fire `object:removed`, so the scene
+adapter does not dispose an object that is about to be inserted. A group-side removal
+keeps Fabric's own `Group.remove`: it fires the event on the group, which no adapter
+listens to, and it is what bakes the child out of the plane it leaves.
+
+**The move then refreshes the coordinate caches of both collections**, deepest first,
+for the reason rung 3 records: the layout commit rebases the destination's members but
+nothing cascades `setCoords` while `subTargetCheck` is false, and `sceneBoxesOf` reads
+those caches. That is `grouping-manager`'s idiom, and it is now this path's too.
+
+**Two consequences worth naming.** A same-parent restack goes through `moveObjectTo`
+on the collection the two objects share (Fabric's own `moveObjectTo` splices `_objects`
+and nothing else needs to happen), while a reparent goes through the root detach or
+`Group.remove` plus `insertAt`; neither touches a child's coordinates by hand. And the
+pane's rule changed shape: it no longer asks "is this the same parent"
 but "would this land", which is why the module that refuses is the module that is
 asked.
 
 **The specific reason:** the transform bake is the only part of this that is
 expensive and invisible, and Fabric already owns it — correctly, symmetrically, and
-in the code path its own `loadFromJSON` uses. A hand-written splice or a rebuilt
-group buys nothing except the opportunity to be wrong in a way no test would see.
+in the code path its own `loadFromJSON` uses. A rebuilt group buys nothing except the
+opportunity to be wrong in a way no test would see. The one splice this note does take
+is not the one rung 5 rejected: rung 5's was an alternative to Fabric's *bake*, and
+this one sits beside the bake, replacing only the event that tells a renderer the node
+is gone.
+
+## What this fix does not reach, and is filed instead
+
+`grouping-manager.group()` removes each member from the canvas by the same
+`canvas.remove` this note now avoids, so with the scene adapter installed a chart
+in a grouping is disposed exactly as the reparented one was (measured in rung 6).
+It is a different owner — the manager's own write, not this path's — so it is filed
+rather than fixed here.
 
 ## The second path this note claimed, and did not take
 

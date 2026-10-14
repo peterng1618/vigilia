@@ -13,7 +13,11 @@ import {
   ROW_HEIGHT,
 } from "../panes/composition/composition-pane.js";
 import { uiCopy } from "../ui-copy.js";
-import { createEditorShellBridge, type EditorShellBridge } from "./bridge.js";
+import {
+  createEditorShellBridge,
+  type EditorShellBridge,
+  type LayerDrop,
+} from "./bridge.js";
 import type {
   LayerKind,
   LayerMark,
@@ -110,7 +114,7 @@ function bridge(rows: readonly LayerRow[], overrides = {}): EditorShellBridge {
     setLayerLocked: vi.fn(),
     renameLayer: vi.fn(),
     setCollapsed: vi.fn(),
-    canMoveLayer: () => false,
+    layerDrop: () => undefined,
     moveLayer: () => false,
     subscribe: () => () => undefined,
     run: vi.fn(),
@@ -213,20 +217,31 @@ function renameField(host: HTMLElement): HTMLInputElement {
 }
 
 /** The one answer the panel asks the bridge about before a drop, keyed by the
- *  fixture's own `parentId`s: a row may not land inside a subtree it contains.
- *  Each drag case below wires this rather than re-spelling the rule, so the
- *  cases differ in the tree they drag and not in the refusal they assume. */
+ *  fixture's own `parentId`s: a row may not land inside a subtree it contains,
+ *  and a container with nothing in it can only be named as a destination by its
+ *  own row. Each drag case below wires this rather than re-spelling the rule, so
+ *  the cases differ in the tree they drag and not in the refusal they assume. */
 function moveRule(
   rows: readonly LayerRow[],
-): (from: string, before: string) => boolean {
+): (from: string, anchor: string) => LayerDrop | undefined {
   const parentOf = new Map(rows.map((row) => [row.id, row.parentId]));
+  const hollow = new Set(
+    rows
+      .filter((row) => row.kind === "group" && !row.hasChildren)
+      .map((r) => r.id),
+  );
   const contains = (ancestor: string, id: string): boolean => {
     for (let at = parentOf.get(id); at !== undefined; at = parentOf.get(at)) {
       if (at === ancestor) return true;
     }
     return false;
   };
-  return (from, before) => from !== before && !contains(from, before);
+  return (from, anchor) => {
+    if (from === anchor || contains(from, anchor)) return undefined;
+    return hollow.has(anchor)
+      ? { kind: "into", container: anchor }
+      : { kind: "slot", before: anchor };
+  };
 }
 
 /** A key press on the focused row, awaited so React flushes a focus move. */
@@ -617,14 +632,15 @@ it("draws no action footer of its own, so the pane's toolbar is the only one", a
   expect(host.querySelector('[data-vigilia-layer="child"]')).not.toBeNull();
 });
 
-it("marks a slot across a group boundary, and refuses only the cycle", async () => {
+it("marks a slot across a group boundary, a container for an empty group, and only the cycle as refused", async () => {
   const moveLayer = vi.fn(() => false);
   // A drop is a pointing gesture: without this the click that precedes the
   // drag would select the row the drop refused.
   const selectLayer = vi.fn();
-  // Two children in one group and a sibling at the top level. The boundary that
-  // used to be the refusal is now a slot — that is `vg-461` — so what a row can
-  // still be refused is a drop that would put a container inside itself.
+  // Two children in one group, a sibling at the top level, and an empty group
+  // whose row is the only thing that can name it as a destination. The boundary
+  // that used to be the refusal is now a slot — that is `vg-461` — so what a row
+  // can still be refused is a drop that would put a container inside itself.
   const tree = [
     layerRow({
       id: "group",
@@ -670,18 +686,33 @@ it("marks a slot across a group boundary, and refuses only the cycle", async () 
       locked: false,
       selected: false,
     }),
+    layerRow({
+      id: "hollow",
+      name: "Hollow",
+      kind: "group",
+      depth: 0,
+      parentId: undefined,
+      hasChildren: false,
+      visible: true,
+      locked: false,
+      selected: false,
+    }),
   ];
   // The bridge's own rule, keyed by the tree above: an id may not be dropped
-  // inside itself. A stub that answered "same parent" instead would keep the
-  // old refusal green — which is the drift this file's real-bridge case exists
-  // for.
+  // inside itself, and an empty group row is a container rather than a slot. A
+  // stub that answered "same parent" instead would keep the old refusal green —
+  // which is the drift this file's real-bridge case exists for.
   const inside = (ancestor: string, id: string): boolean =>
     id === "group" ? false : ancestor === "group";
   const host = await renderPanel(tree, {
     moveLayer,
     selectLayer,
-    canMoveLayer: (from: string, before: string) =>
-      from !== before && !inside(from, before),
+    layerDrop: (from: string, anchor: string) =>
+      from === anchor || inside(from, anchor)
+        ? undefined
+        : anchor === "hollow"
+          ? ({ kind: "into", container: anchor } as const)
+          : ({ kind: "slot", before: anchor } as const),
   });
   const row = (id: string): HTMLElement =>
     host.querySelector<HTMLElement>(`[data-vigilia-layer="${id}"]`)!;
@@ -722,13 +753,23 @@ it("marks a slot across a group boundary, and refuses only the cycle", async () 
   expect(selectLayer).not.toHaveBeenCalled();
   expect(line().hidden).toBe(true);
 
+  // A container rather than a gap: the empty group's row is the destination, so
+  // the row is marked and no line is drawn — there is no *between* for the line
+  // to name, and an empty group could not be filled by drag at all otherwise.
+  await act(async () => row("child").dispatchEvent(drag("dragstart")));
+  await act(async () => row("hollow").dispatchEvent(drag("dragover")));
+  expect(row("hollow").getAttribute("data-drop")).toBe("slot");
+  expect(line().hidden).toBe(true);
+  await act(async () => row("hollow").dispatchEvent(drag("drop")));
+  expect(moveLayer).toHaveBeenLastCalledWith("child", "hollow");
+
   // And the refusal that is left: the group dropped inside its own child.
   await act(async () => row("group").dispatchEvent(drag("dragstart")));
   await act(async () => row("child").dispatchEvent(drag("dragover")));
   expect(line().hidden).toBe(true);
   expect(row("child").getAttribute("data-drop")).toBe("refused");
   await act(async () => row("child").dispatchEvent(drag("drop")));
-  expect(moveLayer).toHaveBeenCalledTimes(1);
+  expect(moveLayer).toHaveBeenCalledTimes(2);
 });
 
 it("draws locked as a filled lock and unlocked as an outline one", async () => {
@@ -1025,7 +1066,7 @@ it("tells a refused drop target from one that would land, mid-gesture", async ()
   // The bridge's rule, keyed by the tree above: nothing may land inside itself.
   const host = await renderPanel(tree, {
     moveLayer,
-    canMoveLayer: moveRule(tree),
+    layerDrop: moveRule(tree),
   });
   const row = (id: string): HTMLElement =>
     host.querySelector<HTMLElement>(`[data-vigilia-layer="${id}"]`)!;
@@ -1122,7 +1163,7 @@ it("takes the drop line away when the row under the pointer refuses it", async (
       selected: false,
     }),
   ];
-  const host = await renderPanel(tree, { canMoveLayer: moveRule(tree) });
+  const host = await renderPanel(tree, { layerDrop: moveRule(tree) });
   const row = (id: string): HTMLElement =>
     host.querySelector<HTMLElement>(`[data-vigilia-layer="${id}"]`)!;
   const line = (): HTMLElement =>
@@ -1161,7 +1202,7 @@ it("still moves on a drop the panel marked, and refuses the one it did not", asy
   ];
   const host = await renderPanel(tree, {
     moveLayer,
-    canMoveLayer: moveRule(tree),
+    layerDrop: moveRule(tree),
   });
   const row = (id: string): HTMLElement =>
     host.querySelector<HTMLElement>(`[data-vigilia-layer="${id}"]`)!;
@@ -1202,7 +1243,7 @@ it("states the reorder rule in the panel's own words, for a reader and not only 
 
 /** vg-087: the rows said `draggable` and nothing acted on it. Every earlier test
  * here drove the panel through a stub bridge, so a stub that answered
- * `canMoveLayer` and `moveLayer` the way the test wanted would keep them
+ * `layerDrop` and `moveLayer` the way the test wanted would keep them
  * green while the real bridge refused the same gesture. This one wires the real
  * `createEditorShellBridge` over a real Fabric canvas, so the drag has to land
  * in Fabric's own array — the thing the panel's markup promises.

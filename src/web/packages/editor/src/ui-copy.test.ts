@@ -896,7 +896,7 @@ function selectionBridge(): EditorShellBridge {
     setLayerLocked: noop,
     setCollapsed: noop,
     renameLayer: noop,
-    canMoveLayer: () => false,
+    layerDrop: () => undefined,
     moveLayer: () => false,
     subscribe: () => () => undefined,
     run: noop,

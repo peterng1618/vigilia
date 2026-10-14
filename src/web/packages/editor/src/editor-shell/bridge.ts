@@ -1,6 +1,11 @@
 import { type Binding, isObjectName } from "@vigilia/renderer-core";
 import { isLocked, VigiliaChart } from "@vigilia/scene-fabric";
-import { ActiveSelection, type FabricObject, Group } from "fabric/es";
+import {
+  ActiveSelection,
+  type Canvas,
+  type FabricObject,
+  Group,
+} from "fabric/es";
 import { type ArrangeAction, applyArrange, canArrange } from "../arrange.js";
 import type { EditorInteraction } from "../editor-interaction.js";
 import { GROUP_CONTEXT_EVENT } from "../grouping-manager/index.js";
@@ -53,6 +58,15 @@ export interface EditorShellSnapshot {
   readonly selectionPresetId: string | undefined;
 }
 
+/**
+ * Where a drop lands. The anchor names the container when the anchor *is* the
+ * container — a group with nothing in it, whose row is the whole of its
+ * representation; otherwise the anchor names a sibling slot beside it.
+ */
+export type LayerDrop =
+  | { readonly kind: "slot"; readonly before: string }
+  | { readonly kind: "into"; readonly container: string };
+
 export interface EditorShellBridge {
   snapshot(): EditorShellSnapshot;
   /** The registry's view of the selection. Serializable; never a FabricObject. */
@@ -83,15 +97,13 @@ export interface EditorShellBridge {
   setCollapsed(id: string, collapsed: boolean): void;
   /** Editor-only display state: never authored history, never a Fabric write. */
   renameLayer(id: string, name: string): void;
-  /** Whether `moveLayer` would accept this drop: both ids resolve, and the
-   * anchor is neither the object itself nor inside it. The panel asks this to
-   * mark only reachable slots; the two answers come from one comparison, so a
-   * slot the panel draws is a drop the bridge takes. */
-  canMoveLayer(id: string, beforeId: string): boolean;
-  /** Moves `id` directly above `beforeId`, into the anchor's own parent — so a
-   * drop may cross a group boundary in either direction. `true` when the move
+  /** What a drop of `id` on `anchorId` would do, or `undefined` when it is
+   * refused. The panel asks this to mark what it draws, so the mark and the
+   * move come from one comparison rather than two that must agree. */
+  layerDrop(id: string, anchorId: string): LayerDrop | undefined;
+  /** Performs the drop `layerDrop` just answered for. `true` when the move
    * happened; a refusal changes nothing. */
-  moveLayer(id: string, beforeId: string): boolean;
+  moveLayer(id: string, anchorId: string): boolean;
   subscribe(listener: () => void): () => void;
   run(action: ShellAction): void;
   /**
@@ -392,13 +404,18 @@ export function createEditorShellBridge(input: {
   };
   /**
    * The structural shape of a drop, or `undefined` when it cannot land — one
-   * owner for the question, because two askers have to agree: the panel marks a
-   * slot only where `moveLayer` would accept the drop, and a plan that said
-   * "slot" to one and "refusal" to the other is the failure `vg-099` is about.
+   * owner for the question, because two askers have to agree: the panel marks
+   * only what `layerDrop` answers for, and a plan that said "slot" to one and
+   * "refusal" to the other is the failure `vg-099` is about.
    *
-   * `beforeId` names both the container (its own parent) and the position
+   * `anchorId` names both the container (its own parent) and the position
    * (directly above it), which is what lets one anchor express entering a
-   * group, leaving one, and restacking inside one.
+   * group, leaving one, and restacking inside one. **An empty group is the
+   * exception, and it is a container rather than a slot**: it has no interior
+   * row to aim at, so without this a group emptied by dragging its last child
+   * out could never be filled again by drag. A group that *has* children keeps
+   * its row as a slot — that is what makes dragging a row out of a group work —
+   * and its interior is reachable through the child rows it draws.
    *
    * The cycle is refused here, in the tree's own terms, rather than left to
    * Fabric: its `canEnterGroup` *logs* a circular tree and drops the add, so an
@@ -406,44 +423,97 @@ export function createEditorShellBridge(input: {
    */
   const layerMove = (
     id: string,
-    beforeId: string,
+    anchorId: string,
   ):
     | {
         readonly moved: FabricObject;
         readonly from: Group | undefined;
         readonly to: Group | undefined;
         readonly target: number;
+        readonly drop: LayerDrop;
       }
     | undefined => {
     const root = canvas.getObjects();
     const moved = findById(root, id);
-    const anchor = findById(root, beforeId);
+    const anchor = findById(root, anchorId);
     if (moved === undefined || anchor === undefined || moved === anchor)
       return undefined;
     // The anchor inside the moved object: a group dropped on its own descendant
     // would be a container inside itself.
-    if (pathTo(root, beforeId).includes(moved)) return undefined;
+    if (pathTo(root, anchorId).includes(moved)) return undefined;
+    const into = anchor instanceof Group && anchor.getObjects().length === 0;
     // Never `object.group`: an active selection temporarily repoints it at the
     // selection itself.
     const from = ownerOf(root, id);
-    const to = ownerOf(root, beforeId);
+    const to = into ? anchor : ownerOf(root, anchorId);
     const destination = to === undefined ? root : to.getObjects();
-    const anchorAt = destination.indexOf(anchor);
+    // An empty container has one position and it is the first: there is nothing
+    // to sit beside inside it.
+    const anchorAt = into ? destination.length : destination.indexOf(anchor);
     if (anchorAt < 0) return undefined;
-    // `beforeId` means directly above that row in the panel, and the panel paints
+    // `anchorId` means directly above that row in the panel, and the panel paints
     // topmost-first, so in Fabric's bottom-first paint order the target is one
     // past the anchor. Fabric's `moveObjectTo` removes the object and then
     // splices at `index` in the *post-removal* array, so a move within one
     // collection from above the anchor shifts down by one — a move between two
     // collections does not, because nothing leaves the destination.
-    let target = anchorAt + 1;
-    if (from === to && destination.indexOf(moved) < target) target -= 1;
-    return { moved, from, to, target };
+    let target = into ? anchorAt : anchorAt + 1;
+    if (!into && from === to && destination.indexOf(moved) < target)
+      target -= 1;
+    return {
+      moved,
+      from,
+      to,
+      target,
+      drop: into
+        ? { kind: "into", container: anchorId }
+        : { kind: "slot", before: anchorId },
+    };
   };
-  const canMoveLayer = (id: string, beforeId: string): boolean =>
-    layerMove(id, beforeId) !== undefined;
-  const moveLayer = (id: string, beforeId: string): boolean => {
-    const move = layerMove(id, beforeId);
+  const layerDrop = (id: string, anchorId: string): LayerDrop | undefined =>
+    layerMove(id, anchorId)?.drop;
+  /**
+   * Takes `object` out of the canvas root **without firing `object:removed`**.
+   *
+   * That event is the scene adapter's "this node left the scene", and it
+   * disposes the object there (`scene-fabric/src/adapter.ts:62`): a chart's
+   * ECharts instance and backing pixels are released while the object is about
+   * to be inserted into a group and still serializes — a save that looks right
+   * reloads wrong. A reparent is not a deletion, so the two effects of
+   * `Collection.remove` a mover still needs are reproduced and the event is not
+   * fired: the splice, and the canvas's cached render list, which `add`,
+   * `remove` and the stack methods clear and which the render path reads
+   * (`index.mjs:11043`). The object keeps its `canvas`, which is right — its
+   * new owner is a group on the same canvas — where `StaticCanvas`'s own
+   * removal would have nulled it before `insertAt` set it again.
+   *
+   * The transform bake is deliberately *not* reproduced here: it is
+   * `Group._enterGroup`'s, reached by the `insertAt` that follows.
+   */
+  const detachFromRoot = (object: FabricObject): boolean => {
+    const at = canvas._objects.indexOf(object);
+    if (at < 0) return false;
+    canvas._objects.splice(at, 1);
+    // `delete` rather than an `undefined` write: the field is optional under
+    // `exactOptionalPropertyTypes`, and the render path tests it by truth.
+    delete canvas._objectsToRender;
+    return true;
+  };
+  /**
+   * A cached box is not a transform: Fabric's layout rebases a destination's
+   * children when the membership changes (`FitContentLayout.shouldPerformLayout`
+   * always answers true), but neither `Group.setCoords` nor the layout pass
+   * cascades while `subTargetCheck` is false, so the rows' `left`/`top` move
+   * under a cached box nothing recomputed — and `sceneBoxesOf` reads those
+   * caches, so the artboard reported a box the document does not have.
+   * `grouping-manager` refreshes its members for the same reason.
+   */
+  const refreshCoords = (collection: Canvas | Group): void => {
+    for (const object of collection.getObjects()) object.setCoords();
+    if (collection instanceof Group) collection.setCoords();
+  };
+  const moveLayer = (id: string, anchorId: string): boolean => {
+    const move = layerMove(id, anchorId);
     if (move === undefined) return false;
     const { moved, from, to, target } = move;
     // A live `ActiveSelection` repoints each member's `group` at the selection
@@ -466,10 +536,16 @@ export function createEditorShellBridge(input: {
       // `remove` bakes the child out of the plane it leaves (`exitGroup`),
       // `insertAt` bakes it into the plane it enters (`enterGroup`) — the
       // symmetric pair Fabric's own `loadFromJSON` depends on. Nothing moves on
-      // screen, and the container's box follows its membership.
-      if (from === undefined) canvas.remove(moved);
-      else from.remove(moved);
+      // screen, and the container's box follows its membership. Only the root is
+      // left silently, because only its removal is announced to the renderer.
+      if (from === undefined) {
+        if (!detachFromRoot(moved)) return false;
+      } else from.remove(moved);
       (to ?? canvas).insertAt(target, moved);
+      // Both collections, deepest first: the destination's own members were
+      // rebased by the insert, and the source's box is now short one child.
+      refreshCoords(to ?? canvas);
+      if (from !== undefined && from !== to) refreshCoords(from);
     }
     canvas.requestRenderAll();
     input.editor.historyManager.saveState();
@@ -490,7 +566,7 @@ export function createEditorShellBridge(input: {
     setLayerLocked,
     setCollapsed,
     renameLayer,
-    canMoveLayer,
+    layerDrop,
     moveLayer,
     session: input.session,
     editor: input.editor,
