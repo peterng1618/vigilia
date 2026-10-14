@@ -705,6 +705,12 @@ export type ParityRegion = {
     | "settings-about"
     | "sheet"
     | "fixture";
+  /** The text of a **predating** normative rule that positively requires the
+   *  product's treatment, quoted. Not free text: `licenceFindings` refuses a
+   *  licence that names no source from spec §13's set, quotes nothing of that
+   *  source, or names a rule written by the commit that cites it — asserted in
+   *  `mockup-values.test.ts`, since this table is the only place the licence
+   *  text and the rule it cites can be read together. */
   readonly licensed?: string;
   /** The row's value **is the drawing's silence** about `mockupProperty` — a
    *  region it draws flush or square, whose omission is the `0` the product
@@ -727,6 +733,174 @@ export type ParityRegion = {
    *  comparator reads fails naming the whole rendered value. */
   readonly comparator?: "length" | "count" | "colour";
 };
+
+/* ── The licence policy ──────────────────────────────────────────────────────
+ *
+ * **The defect this closes is `vg-292`.** `licensed` was free text, and a row
+ * carrying one was *recorded* rather than compared, so a reason discharged the
+ * gate by existing. Plan 5's Task 6 recorded ten of the modal's eleven
+ * differences as deliberate, each citing the *silence* of a section as its
+ * warrant, and the aggregate was a modal the user said looked nothing like the
+ * drawing. Spec §13's amendment of 2026-10-10 states the policy this file now
+ * enforces: a deliberate difference must "name the normative source that
+ * requires it, quoted", that source "can only be a bible `§N`, an ADR, or this
+ * spec", and "only a licence that predates the divergence counts".
+ *
+ * **Three refusals, each one a reason the old gate accepted.** A licence that
+ * names no source; a licence that quotes nothing, or quotes text its named
+ * source does not contain (the shape of every "the section does not forbid it"
+ * reason); and a licence naming a rule introduced by the commit that cites it,
+ * which is what plan 5 did when it added §5's choice row and then cited it.
+ *
+ * **The `§N` arm resolves through `design-md --cite`, and nothing here parses
+ * DESIGN.md's markers.** The canonical range arrives as `canonicalNumbers`, so
+ * the check's own constant is the only owner of "which numbers are a section",
+ * and the marker each number resolves to is the checker's rule, not a second
+ * one written here — the licence lives under `src/`, so `--cite` already scans
+ * it. `mockup-values.test.ts` calls `checkCitations` over each licence for the
+ * half this predicate delegates.
+ *
+ * **What this cannot read.** Whether the *product* treatment a row records is
+ * itself the divergence — a row can name a region it matches. A `§N` quotation
+ * is found in DESIGN.md's whole text rather than in the named section, so a
+ * licence can quote one section's words under another's number; finding the
+ * section a marker opens would be a second reader of a namespace
+ * `design-md.mjs` owns. And predating is read as commit identity, not ancestry:
+ * a rule split into a later commit of the same change passes, and a licence that
+ * is **not committed yet** has no commit to compare, so the check stays silent
+ * until the commit that adds it lands — the same shape as `vg-287`'s recorded
+ * capture sha, which is read against history rather than against the tree.
+ * `ponytail:` commit identity and document-wide quotation are the ceiling —
+ * upgrade to `git merge-base --is-ancestor` against the commit that introduced
+ * the product's own deviation once a row records that commit, and to a
+ * marker-section reader if a mislabelled quotation ever costs a review.
+ */
+
+/** The spec that owns §13, and so the third source spec §13 admits. Named here
+ *  because the rule and the file it is written in are one fact. */
+export const LICENCE_SPEC =
+  "docs/superpowers/specs/2026-10-08-editor-design-language-design.md";
+
+/** A source a licence may name, with the text it must quote. `text` is `null`
+ *  for a decision note or spec the tree does not hold — a licence naming a file
+ *  that is not there is a finding, not a crash. */
+export type LicenceSource = {
+  /** The token as the licence writes it: `§7.5`, a `docs/decisions/…` path, or
+   *  the spec's own path. This is what `introducedAt` is keyed on. */
+  readonly label: string;
+  readonly text: string | null;
+};
+
+/** Everything the licence policy reads, supplied by the caller so the predicate
+ *  stays pure and its decisions are pinned with fixtures.
+ *
+ *  **The git-shaped members are the caller's to fill.** `licensedAt` is the
+ *  commit that introduced the licence text and `introducedAt(label)` the commit
+ *  that introduced the rule the label names; the two are compared for identity.
+ *  Keeping them out of this module is what lets a unit test date a fixture
+ *  without a repository. */
+export type LicenceLedger = {
+  /** `DESIGN.md`'s text — where a `§N` licence's quote has to be found. */
+  readonly design: string;
+  /** Every `docs/decisions/**` note the tree holds, keyed by the path a licence
+   *  writes for it. */
+  readonly decisions: ReadonlyMap<string, string>;
+  /** The spec §13 lives in: its path, and its text. */
+  readonly spec: { readonly path: string; readonly text: string };
+  /** `scripts/design-md.mjs`'s `CITE_NUMBERS` — the numbers that are a
+   *  DESIGN.md section. Transcribed nowhere: the caller imports the constant. */
+  readonly canonicalNumbers: readonly string[];
+  /** The commit that introduced the licence. */
+  readonly licensedAt: string | null;
+  /** The commit that introduced the rule `label` names, or `null` when the tree
+   *  does not hold it or nothing dates it. */
+  readonly introducedAt: (label: string) => string | null;
+};
+
+const LICENCE_SECTION = /§(\d+(?:\.\d+)?)/g;
+const LICENCE_DECISION = /docs\/decisions\/\d{4}-[a-z0-9-]+\.md/g;
+/** The spaced spellings a licence may use for a quotation: `"…"`, `“…”`. */
+const LICENCE_QUOTES = [/"([^"]+)"/g, /“([^”]+)”/g];
+
+/** Whitespace collapsed, so a rule a file wraps across lines is still the text a
+ *  licence quotes — §7.5's sentence spans three lines of DESIGN.md. */
+const flatten = (text: string): string => text.replace(/\s+/g, " ").trim();
+
+/** The sources a licence names, in the order it names them, without repeats.
+ *  Exported so a caller can date each label without re-reading the licence. */
+export function licenceSources(
+  licensed: string,
+  ledger: LicenceLedger,
+): LicenceSource[] {
+  const found = new Map<string, LicenceSource>();
+  const add = (label: string, text: string | null) => {
+    if (!found.has(label)) found.set(label, { label, text });
+  };
+  for (const match of licensed.matchAll(LICENCE_SECTION)) {
+    const number = match[1] ?? "";
+    // A number outside the canonical range belongs to another document's
+    // numbering (the redesign spec's own `§N`), so it names no DESIGN.md rule.
+    if (!ledger.canonicalNumbers.includes(number)) continue;
+    add(`§${number}`, ledger.design);
+  }
+  for (const match of licensed.matchAll(LICENCE_DECISION)) {
+    add(match[0], ledger.decisions.get(match[0]) ?? null);
+  }
+  if (licensed.includes(ledger.spec.path)) {
+    add(ledger.spec.path, ledger.spec.text);
+  }
+  return [...found.values()];
+}
+
+/** Why a `licensed` string does not discharge the gate, one line per reason; an
+ *  empty list is a licence that does.
+ *
+ *  A licence must name a source from the set spec §13 admits, that source's own
+ *  words must appear in it as a quotation, and the source must not have been
+ *  written by the commit that cites it. Each refusal names the row's licence so
+ *  the finding can be read against the row it is about. */
+export function licenceFindings(
+  licensed: string,
+  ledger: LicenceLedger,
+): string[] {
+  const sources = licenceSources(licensed, ledger);
+  if (sources.length === 0) {
+    return [
+      "names no normative source: spec §13 admits a DESIGN.md `§N`, a `docs/decisions/` note or the design spec, and this reason names none of them",
+    ];
+  }
+  const quotes = LICENCE_QUOTES.flatMap((pattern) =>
+    [...licensed.matchAll(pattern)].map((match) => flatten(match[1] ?? "")),
+  );
+  const findings: string[] = [];
+  for (const source of sources) {
+    if (source.text === null) {
+      findings.push(
+        `names \`${source.label}\`, which the tree does not hold, so there is no rule to read`,
+      );
+      continue;
+    }
+    // The decisive one: a section's *silence* cannot be quoted, so every reason
+    // that cited what a section does not say dies here.
+    const body = flatten(source.text);
+    if (!quotes.some((quote) => quote !== "" && body.includes(quote))) {
+      findings.push(
+        `names \`${source.label}\` without quoting it: spec §13 requires the source's own text, and a section's silence is not quotable`,
+      );
+    }
+    const at = ledger.introducedAt(source.label);
+    if (at === null) {
+      findings.push(
+        `names \`${source.label}\`, which nothing dates, so its rule cannot be shown to predate the divergence it licenses`,
+      );
+    } else if (at === ledger.licensedAt) {
+      findings.push(
+        `names \`${source.label}\`, written in the same commit as the licence that cites it: a rule this change writes cannot license this change's divergence`,
+      );
+    }
+  }
+  return findings;
+}
 
 /** A `PARITY` row's `mockupProperty`, checked against the set its
  *  `mockupSelector` actually declares (`vg-304`).

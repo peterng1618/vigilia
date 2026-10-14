@@ -1,5 +1,12 @@
-import { existsSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { existsSync, readFileSync } from "node:fs";
+import { resolve } from "node:path";
+import { fileURLToPath } from "node:url";
 import { expect, test } from "vitest";
+import {
+  CITE_NUMBERS,
+  checkCitations,
+} from "../../../../scripts/design-md.mjs";
 import {
   assertParityRowProperty,
   CONTROLS_LIGHT_MOCKUP_PATH,
@@ -9,7 +16,11 @@ import {
   copiedElementDrift,
   currentDrawings,
   drawingTexts,
+  LICENCE_SPEC,
+  type LicenceLedger,
   lengthInPx,
+  licenceFindings,
+  licenceSources,
   MOCKUP_PATH,
   mockupDeclared,
   mockupDeclaredOrNull,
@@ -765,4 +776,227 @@ test("every element a drawing copies from the original declares the original's t
   // it. Both sides are read, so the ceiling is a measurement and not a claim.
   expect(mockupDeclared(current, row.selector, "gap")).toBe("16px");
   expect(mockupDeclared(original, row.originalSelector, "gap")).toBe("10px");
+});
+
+/* ── The licence policy (`vg-292`) ──────────────────────────────────────────
+ *
+ * **Why this is a test of its own.** A `licensed` row is *recorded*, not
+ * compared (`design-language.spec.ts`), so the licence is the whole of that
+ * row's gate — and before `licenceFindings` existed, any string discharged it.
+ * Spec §13's amendment of 2026-10-10 states the policy; these are its refusals,
+ * each pinned with a fixture *and*, for the licences the table carries, run over
+ * the real tree. A fixture proves a refusal fires; a real licence proves it does
+ * not fire on a reason that is genuinely licensed — without one, a predicate
+ * returning a constant would pass every case here.
+ */
+
+const REPO_ROOT = fileURLToPath(new URL("../../../..", import.meta.url));
+const DESIGN_TEXT = readFileSync(resolve(REPO_ROOT, "DESIGN.md"), "utf8");
+const MOCKUP_VALUES_REL = "src/web/tests/e2e/mockup-values.ts";
+
+/** The commit whose diff first changed `needle`'s occurrence count in `path` —
+ *  where the rule first appeared. `git log` is newest-first. */
+function introducedBy(needle: string, path: string): string | null {
+  const out = execFileSync(
+    "git",
+    ["log", "--format=%H", `-S${needle}`, "--", path],
+    { cwd: REPO_ROOT },
+  ).toString();
+  const shas = out
+    .trim()
+    .split("\n")
+    .filter((line) => line !== "");
+  return shas[shas.length - 1] ?? null;
+}
+
+/** A file's own introduction, which is when the rule written in it first stood. */
+function addedBy(path: string): string | null {
+  const out = execFileSync(
+    "git",
+    ["log", "--format=%H", "--diff-filter=A", "--", path],
+    { cwd: REPO_ROOT },
+  ).toString();
+  const shas = out
+    .trim()
+    .split("\n")
+    .filter((line) => line !== "");
+  return shas[shas.length - 1] ?? null;
+}
+
+const DECISIONS = new Map(
+  execFileSync("git", ["ls-files", "docs/decisions"], { cwd: REPO_ROOT })
+    .toString()
+    .split("\n")
+    .filter((line) => line.endsWith(".md"))
+    .map(
+      (path) => [path, readFileSync(resolve(REPO_ROOT, path), "utf8")] as const,
+    ),
+);
+
+/** The ledger a licence is judged against, dated by git. `licensedAt` is the
+ *  commit that introduced the licence text — the row's own record of the
+ *  divergence it keeps — and each named source is dated from the file it is
+ *  written in. */
+function licenceLedger(licensed: string): LicenceLedger {
+  return {
+    design: DESIGN_TEXT,
+    decisions: DECISIONS,
+    spec: {
+      path: LICENCE_SPEC,
+      text: readFileSync(resolve(REPO_ROOT, LICENCE_SPEC), "utf8"),
+    },
+    canonicalNumbers: [...CITE_NUMBERS],
+    licensedAt: introducedBy(licensed, MOCKUP_VALUES_REL),
+    introducedAt: (label) =>
+      label.startsWith("§")
+        ? introducedBy(`<!-- ${label} -->`, "DESIGN.md")
+        : addedBy(label),
+  };
+}
+
+/** The licence a named row carries, so a test reads the text the table actually
+ *  holds rather than a restatement of it. */
+function rowLicence(region: string): string {
+  const row = PARITY.find((candidate) => candidate.region === region);
+  expect(
+    row?.licensed,
+    `no parity row named \`${region}\` carries a licence`,
+  ).toBeTruthy();
+  return row?.licensed ?? "";
+}
+
+test("every licence names a resolvable rule, quotes it, and predates its row", () => {
+  const licensed = PARITY.filter((row) => row.licensed !== undefined);
+  // The positive control: a predicate that read nothing would pass an empty
+  // table, and a table carrying no licence is the state the policy is
+  // unexercised in.
+  expect(
+    licensed.length,
+    "no parity row carries a licence, so this test reads nothing",
+  ).toBeGreaterThan(0);
+  for (const row of licensed) {
+    const text = row.licensed ?? "";
+    expect(
+      licenceFindings(text, licenceLedger(text)),
+      `${row.region}: the licence does not discharge spec §13`,
+    ).toEqual([]);
+    // The half `licenceFindings` delegates to `design-md --cite`. The licence
+    // lives under `src/`, so every `§N` in it already resolves through the
+    // checker's own rule; read here too, so a licence naming a section DESIGN.md
+    // has no marker for reddens this test and not only `npm run design:check`.
+    const named = new Set(
+      [...text.matchAll(/§\d+(?:\.\d+)?/g)].map((match) => match[0]),
+    );
+    for (const finding of checkCitations(
+      { design: DESIGN_TEXT, citations: [text] },
+      { numbers: [...CITE_NUMBERS], uncitedOk: [...CITE_NUMBERS] },
+    )) {
+      expect(named.has(finding.what), `${row.region}: ${finding.why}`).toBe(
+        false,
+      );
+    }
+  }
+});
+
+test("a licence naming no normative source is refused", () => {
+  const why = (text: string) =>
+    licenceFindings(text, licenceLedger(text)).join("; ");
+  // Plan 5's Task 6 shape: eleven differences, ten reasons, each citing what a
+  // section does *not* say — reasons with no source in them at all.
+  expect(why("the drawing's texture is a composition choice")).toContain(
+    "names no normative source",
+  );
+  // A number outside the canonical range names another document's section, not a
+  // DESIGN.md one: the redesign spec's own `§N` shares the glyph (vg-352).
+  expect(why("§75 permits it")).toContain("names no normative source");
+  // A section *named* but not quoted is refused too, and by the other rule: `§7`
+  // fixes the three tabs and says nothing about their axis, so there is no rule
+  // here to quote — which is exactly the reason plan 5 recorded as deliberate.
+  expect(
+    why("§7 fixes the three tabs and what each holds, not their axis"),
+  ).toContain("without quoting it");
+  // A note the tree does not hold is no rule, and reads as a finding rather than
+  // as a crash.
+  expect(
+    licenceLedger("x").introducedAt("docs/decisions/9999-nothing.md"),
+  ).toBeNull();
+  expect(
+    licenceFindings(
+      "docs/decisions/9999-nothing.md requires it",
+      licenceLedger("y"),
+    ).join("; "),
+  ).toContain("which the tree does not hold");
+});
+
+test("a licence that does not quote its source's own text is refused", () => {
+  // `§7.5` really does permit the texture — but only its own words say so, and a
+  // reason that paraphrases or gestures at a section has quoted nothing.
+  const bare =
+    "§7.5: stage texture is permitted when it stays behind the artwork.";
+  expect(licenceFindings(bare, licenceLedger(bare)).join("; ")).toContain(
+    "without quoting it",
+  );
+  // A quotation has to be a normative source's text: these words are not
+  // DESIGN.md's anywhere, so a licence carrying them has quoted no rule.
+  const misquoted =
+    '§7.5: "stage texture must always be drawn over a flat ground" requires it.';
+  expect(
+    licenceFindings(misquoted, licenceLedger(misquoted)).join("; "),
+  ).toContain("without quoting it");
+  // And the other direction, so the two are not one refusal: the modal's licence
+  // quotes its own §3 table row verbatim, which is what the rule admits.
+  const real = rowLicence(
+    "settings modal — the frame's inset (the dialog's padding)",
+  );
+  expect(licenceFindings(real, licenceLedger(real))).toEqual([]);
+});
+
+test("a licence naming a rule written by its own commit is refused", () => {
+  // The failure spec §13 names by hand: plan 5 added §5's choice row and then
+  // cited §5 as the warrant for drawing the palette as radio rows. A licence and
+  // its rule landing in one commit is that shape, and `introducedAt` answering
+  // the licence's own commit is how it reads.
+  const text = rowLicence("stage ground — texture");
+  const shared: LicenceLedger = {
+    ...licenceLedger(text),
+    licensedAt: "0".repeat(40),
+    introducedAt: () => "0".repeat(40),
+  };
+  expect(licenceFindings(text, shared).join("; ")).toContain(
+    "written in the same commit",
+  );
+  // A rule nothing dates cannot be shown to predate the divergence, so it is
+  // refused rather than passed by default.
+  const undated: LicenceLedger = {
+    ...licenceLedger(text),
+    introducedAt: () => null,
+  };
+  expect(licenceFindings(text, undated).join("; ")).toContain("nothing dates");
+});
+
+test("the licence the table carries today passes, over the real tree", () => {
+  // The control the fixtures cannot be: the real licence, the real DESIGN.md,
+  // and git doing the dating. A predicate that refused everything would pass
+  // every test above and fail this one.
+  const text = rowLicence("stage ground — texture");
+  expect(licenceFindings(text, licenceLedger(text))).toEqual([]);
+  expect(
+    licenceSources(text, licenceLedger(text)).map((source) => source.label),
+  ).toEqual(["§7.5"]);
+  // The wiring, not only the predicate: both dates come back as real commits
+  // and they differ, so the predating arm is reading history rather than
+  // answering a constant.
+  const dated = licenceLedger(text);
+  expect(dated.licensedAt).toMatch(/^[0-9a-f]{40}$/);
+  expect(dated.introducedAt("§7.5")).toMatch(/^[0-9a-f]{40}$/);
+  expect(dated.introducedAt("§7.5")).not.toBe(dated.licensedAt);
+  // §7.5's sentence is wrapped across three lines of DESIGN.md, so the quote
+  // matches only once whitespace is collapsed. Asserted both ways, because a
+  // reader that stopped collapsing would refuse a licence for quoting a rule the
+  // file happens to wrap — the false failure that gets a gate turned off.
+  const wrapped =
+    "Subtle palette-derived stage texture is permitted when it stays behind the artwork and does not obscure controls; neither texture nor a flat ground is mandatory.";
+  expect(DESIGN_TEXT).toMatch(/Subtle\s+palette-derived stage texture/);
+  expect(DESIGN_TEXT).not.toContain(wrapped);
+  expect(text).toContain(wrapped);
 });

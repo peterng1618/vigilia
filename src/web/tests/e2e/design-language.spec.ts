@@ -2464,14 +2464,21 @@ const DRAWING_NAMES = new Map(
  * read from the product's own `:root` declaration (`--radius-lg`), so this file
  * cannot drift from the token.
  *
- * **A `licensed` row is recorded, not asserted.** `licensed` carries a
- * *predating* rule — a DESIGN.md §N, an ADR, a spec section — that positively
- * requires the product's treatment. Its absence is what makes a difference a
- * defect; two rows carry one today, each the narrow case and never "DESIGN.md
- * does not forbid it": the stage ground (§7.5, which names that property and
- * permits both variants) and the settings modal's frame inset (§3, whose
- * spacing table positively requires `20–24` for "dialog padding" — the value
- * `.editor-shell-dialog` renders where the drawing insets its children).
+ * **A `licensed` row is recorded, not asserted — and the licence is policed.**
+ * `licensed` carries a *predating* rule — a DESIGN.md §N, an ADR, a spec section
+ * — that positively requires the product's treatment. Its absence is what makes
+ * a difference a defect; two rows carry one today, each the narrow case and
+ * never "DESIGN.md does not forbid it": the stage ground (§7.5, which names that
+ * property and permits both variants) and the settings modal's frame inset (§3,
+ * whose spacing table positively requires `20–24` for "dialog padding" — the
+ * value `.editor-shell-dialog` renders where the drawing insets its children).
+ *
+ * **The licence is what is left of that row's gate, so it is a rule rather than
+ * free text.** This test cannot read one — it has no DESIGN.md and no git — so
+ * `mockup-values.test.ts` does, through `licenceFindings`: a licence names a
+ * source from spec §13's set, quotes that source's own words, and was not
+ * written by the same commit as the rule it cites (`vg-292`). A row that passes
+ * here has already passed there.
  *
  * **The header row is the control.** The drawing and the product agree that the
  * header is 42px, so it passed from the start and still does. Its job is to keep
