@@ -49,6 +49,15 @@ export function ControlNumber(
      * lone number field wants its own row.
      */
     readonly inline?: boolean;
+    /**
+     * The element outside this control that names it, when the caller renders
+     * its own label — a slider's well is 36px at the end of a row whose label
+     * already sits at its head, so the inline form drops its label element and
+     * takes the row's. The input is still named; only the second copy goes.
+     */
+    readonly labelledById?: string;
+    /** The inline well's width, when it is not the row's whole value cell. */
+    readonly wellClassName?: string;
     readonly onCommit: (value: number) => void;
     readonly onClear?: () => void;
   },
@@ -68,6 +77,8 @@ export function ControlNumber(
     max,
     integer,
     inline,
+    labelledById,
+    wellClassName,
     onCommit,
     onClear,
   } = props;
@@ -126,7 +137,11 @@ export function ControlNumber(
 
   const body = (
     <>
-      <ControlWell density={density} blocked={blocked}>
+      <ControlWell
+        density={density}
+        blocked={blocked}
+        {...(wellClassName === undefined ? {} : { widthClassName: wellClassName })}
+      >
         <input
           {...data}
           id={ids.control}
@@ -137,6 +152,9 @@ export function ControlNumber(
           readOnly={refused !== undefined}
           disabled={disabled}
           aria-disabled={refused === undefined ? undefined : true}
+          {...(inline === true && labelledById !== undefined
+            ? { "aria-labelledby": labelledById }
+            : {})}
           aria-invalid={invalid === undefined ? undefined : true}
           aria-describedby={describedBy(
             describedById,
@@ -166,13 +184,15 @@ export function ControlNumber(
   if (inline === true) {
     return (
       <>
-        <label
-          id={ids.label}
-          htmlFor={ids.control}
-          className="text-xs text-muted"
-        >
-          {label}
-        </label>
+        {labelledById === undefined ? (
+          <label
+            id={ids.label}
+            htmlFor={ids.control}
+            className="text-xs text-muted"
+          >
+            {label}
+          </label>
+        ) : null}
         {body}
       </>
     );

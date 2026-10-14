@@ -1,12 +1,12 @@
 import { Slider } from "@base-ui/react/slider";
 import type * as React from "react";
 import { useEffect, useRef, useState } from "react";
+import { ControlNumber } from "./control-number.js";
 import {
   type ControlProps,
   ControlRow,
   isBlocked,
   useControlIds,
-  wellClasses,
 } from "./control-well.js";
 
 /**
@@ -27,14 +27,32 @@ import {
  * late (vg-449). `onPreview` stays for a caller that also wants a live preview
  * elsewhere; the pointer no longer depends on one being supplied.
  *
- * The value well is a readout of the slider, not a second input: the well shows
- * the value the control edits, and the slider is the edit route.
+ * **The well is the slider's other edit route, and it is not a second one.** It
+ * is a `ControlNumber` in its inline form, so the draft, the validation and the
+ * commit rule stay in the one control that owns them (the reasoning
+ * `control-pair.tsx` states for its halves) — a readout beside a track would put
+ * a second copy of §5's rules three lines away from the first. It is named by
+ * the row's own label rather than printing that label a second time, and it is
+ * 36px wide because the track takes the rest of the row.
+ *
+ * A wheel over the control moves it by **the slider's own step**, read back off
+ * the range input, so the gesture and the drag cannot step differently. The
+ * listener is native and non-passive — React attaches `wheel` passively, so a
+ * `preventDefault` through its own prop is a no-op and the panel would scroll
+ * under the gesture, which is the reasoning `viewport-manager/navigation.ts`
+ * already states for the canvas.
  */
 export function ControlSlider(
   props: ControlProps & {
     readonly value: number;
     readonly min: number;
     readonly max: number;
+    /** The owner says the value is whole; the well refuses a fraction the way
+     *  every other number field does, and the track already steps by 1. */
+    readonly integer?: boolean;
+    /** The owner can take the key away again — an absent optional setting. The
+     *  track has no empty state, so the well is where that act lives. */
+    readonly onClear?: () => void;
     readonly onPreview?: (value: number) => void;
     readonly onCancel?: () => void;
     readonly onCommit: (value: number) => void;
@@ -45,11 +63,14 @@ export function ControlSlider(
     id,
     disabled,
     refused,
+    hint,
     density,
     data,
     value,
     min,
     max,
+    integer,
+    onClear,
     onPreview,
     onCancel,
     onCommit,
@@ -92,9 +113,53 @@ export function ControlSlider(
     };
   }, [data]);
 
+  // What a wheel tick has moved the value to, until the document answers. A
+  // burst of ticks arrives faster than React re-renders, so each tick reads the
+  // previous tick's result rather than the value this control was rendered
+  // with — otherwise five steps would write the same number five times.
+  const ticked = useRef<number | null>(null);
+  const root = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const node = root.current;
+    if (node === null) return;
+    const onWheel = (event: WheelEvent): void => {
+      if (blocked) return;
+      event.preventDefault();
+      // The step the drag uses, read off the element that carries it. A step of
+      // `any` reports 0, and a wheel cannot move by nothing.
+      const step = stepOf(input.current);
+      const from = ticked.current ?? value;
+      const next = Math.min(Math.max(from + (event.deltaY < 0 ? step : -step), min), max);
+      if (next === from) return;
+      ticked.current = next;
+      cancelled.current = false;
+      setDragging(next);
+      onPreview?.(next);
+      onCommit(next);
+    };
+    node.addEventListener("wheel", onWheel, { passive: false });
+    return () => node.removeEventListener("wheel", onWheel);
+  }, [blocked, value, min, max, onPreview, onCommit]);
+
+  // The hold is only honest while the document catches up: any answer that
+  // moves the value retires it, so a tick that was refused cannot strand the
+  // thumb on a number the document never took.
+  useEffect(() => {
+    ticked.current = null;
+    setDragging(null);
+  }, [value]);
+
   return (
-    <ControlRow ids={ids} label={label} refused={refused} density={density}>
+    <ControlRow
+      ids={ids}
+      label={label}
+      refused={refused}
+      hint={hint}
+      density={density}
+    >
       <Slider.Root
+        ref={root}
         value={shown}
         min={min}
         max={max}
@@ -136,7 +201,7 @@ export function ControlSlider(
           if (blocked) return;
           onCommit(next);
         }}
-        className="flex w-full items-center gap-[var(--space-6)]"
+        className="flex w-full flex-wrap items-center gap-x-[var(--space-6)] gap-y-[var(--space-4)]"
       >
         <Slider.Control className="relative flex h-[26px] flex-1 items-center">
           <Slider.Track className="h-[3px] w-full rounded-sm bg-edge">
@@ -154,12 +219,37 @@ export function ControlSlider(
             className="size-[10px] rounded-sm border border-panel bg-text focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
           />
         </Slider.Control>
-        <span
-          className={`${wellClasses(density, blocked)} w-[36px] flex-none justify-end font-mono text-sm text-text`}
-        >
-          {shown}
-        </span>
+        {/* The row wraps, so a refused draft's own words take a line under the
+            track instead of being squeezed into the fixed 36px the well is. */}
+        <ControlNumber
+          inline
+          labelledById={ids.label}
+          label={label}
+          wellClassName="w-[36px] flex-none"
+          value={shown}
+          min={min}
+          max={max}
+          {...(integer === undefined ? {} : { integer })}
+          {...(density === undefined ? {} : { density })}
+          {...(onClear === undefined ? {} : { onClear })}
+          onCommit={onCommit}
+        />
       </Slider.Root>
     </ControlRow>
   );
+}
+
+/**
+ * The step the drag moves by, read off the range input Base UI renders.
+ *
+ * Read rather than declared: a step held here beside the slider's own could
+ * disagree with it, and the wheel would then step differently from every other
+ * way of moving the value. The default step (no `step` attribute) is 1, which
+ * is what this control has always used; `any` parses to nothing and cannot move
+ * a value.
+ */
+function stepOf(node: HTMLInputElement | null): number {
+  const raw = node === null ? null : node.getAttribute("step");
+  const step = raw === null ? 1 : Number(raw);
+  return Number.isFinite(step) && step > 0 ? step : 1;
 }

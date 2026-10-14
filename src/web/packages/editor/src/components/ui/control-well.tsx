@@ -102,11 +102,19 @@ export const hitTargetClasses =
 export function ControlWell(props: {
   readonly density?: ControlDensity | undefined;
   readonly blocked?: boolean | undefined;
+  /**
+   * How wide the well is. The default is the row's whole value cell; a well
+   * that shares its row with something else — a slider's track — is a fixed
+   * readout instead, and says its own width here. Replacing the class rather
+   * than adding one, because two width utilities on one element resolve by
+   * stylesheet order rather than by which was written last.
+   */
+  readonly widthClassName?: string | undefined;
   readonly children: React.ReactNode;
 }): React.JSX.Element {
   return (
     <div
-      className={`${wellClasses(props.density, props.blocked ?? false)} w-full`}
+      className={`${wellClasses(props.density, props.blocked ?? false)} ${props.widthClassName ?? "w-full"}`}
     >
       {props.children}
     </div>

@@ -199,6 +199,14 @@ async function pointerDown(target: Element): Promise<void> {
   });
 }
 
+async function wheel(target: Element, deltaY: number): Promise<void> {
+  await act(async () => {
+    target.dispatchEvent(
+      new WheelEvent("wheel", { deltaY, bubbles: true, cancelable: true }),
+    );
+  });
+}
+
 async function unblur(target: HTMLElement): Promise<void> {
   await act(async () => {
     target.blur();
@@ -817,6 +825,103 @@ it("cancels a slider gesture with Escape and commits nothing for it", async () =
   });
   expect(onCancel).toHaveBeenCalledTimes(1);
   expect(onCommit).not.toHaveBeenCalled();
+});
+
+it("commits a value typed into the slider's well, refusing one past the bound", async () => {
+  const onCommit = vi.fn();
+  await mount(
+    <ControlSlider
+      label="Opacity"
+      value={5}
+      min={0}
+      max={10}
+      onCommit={onCommit}
+    />,
+  );
+  const well = document.querySelector<HTMLInputElement>('input[type="text"]');
+  expect(well, "the well is not an input").toBeTruthy();
+  if (well === null) return;
+  // The row's own label names the well as well as the track: one word for one
+  // control, and no second copy of it beside the fixed-width readout.
+  const nameId = well.getAttribute("aria-labelledby");
+  expect(document.getElementById(nameId ?? "")?.textContent).toBe("Opacity");
+  expect(nameId, "the well is unnamed").toBe(
+    document
+      .querySelector<HTMLInputElement>('input[type="range"]')
+      ?.getAttribute("aria-labelledby"),
+  );
+
+  await type(well, "8");
+  await press(well, "Enter");
+  expect(onCommit).toHaveBeenCalledTimes(1);
+  expect(onCommit).toHaveBeenCalledWith(8);
+
+  // A draft past the bound is kept with its reason rather than clamped: §5's
+  // rule, and the same one the control's own number field keeps.
+  await type(well, "60");
+  await press(well, "Enter");
+  expect(onCommit).toHaveBeenCalledTimes(1);
+  expect(document.body.textContent).toContain("at most 10");
+});
+
+it("moves the value by the slider's own step on a wheel, and not when refused", async () => {
+  const onCommit = vi.fn();
+  const onPreview = vi.fn();
+  await mount(
+    <ControlSlider
+      label="Opacity"
+      value={5}
+      min={0}
+      max={20}
+      onPreview={onPreview}
+      onCommit={onCommit}
+    />,
+  );
+  const range = document.querySelector<HTMLInputElement>('input[type="range"]');
+  const well = document.querySelector<HTMLInputElement>('input[type="text"]');
+  expect(range?.getAttribute("step"), "the drag's step is not one").toBe("1");
+  expect(well, "the wheel has no surface to be dispatched on").toBeTruthy();
+  if (well === null) return;
+  await wheel(well, -100);
+  expect(onPreview).toHaveBeenCalledWith(6);
+  expect(onCommit).toHaveBeenCalledWith(6);
+
+  // The step is read from the slider rather than declared beside it: the
+  // input's own step is what the wheel moves by, which a constant could not be.
+  await mount(
+    <ControlSlider
+      label="Opacity"
+      value={5}
+      min={0}
+      max={20}
+      onCommit={onCommit}
+    />,
+  );
+  const next = document.querySelector<HTMLInputElement>('input[type="range"]');
+  const nextWell = document.querySelector<HTMLInputElement>('input[type="text"]');
+  if (next === null || nextWell === null) return;
+  next.step = "5";
+  onCommit.mockClear();
+  await wheel(nextWell, 100);
+  expect(onCommit).toHaveBeenCalledWith(0);
+
+  const refused = vi.fn();
+  await mount(
+    <ControlSlider
+      label="Opacity"
+      value={5}
+      min={0}
+      max={20}
+      refused="not offered for a group"
+      onCommit={refused}
+    />,
+  );
+  const refusedWell = document.querySelector<HTMLInputElement>(
+    'input[type="text"]',
+  );
+  if (refusedWell === null) return;
+  await wheel(refusedWell, -100);
+  expect(refused).not.toHaveBeenCalled();
 });
 
 it("gives an icon button its name and its tooltip from one label", async () => {
