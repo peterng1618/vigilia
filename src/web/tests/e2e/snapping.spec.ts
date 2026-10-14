@@ -578,12 +578,11 @@ test("layer-panel object actions match canvas dock", async ({
     buttons.map((button) => button.getAttribute("aria-label") ?? "").sort();
   const footerEntries = await footer.getByRole("button").evaluateAll(entries);
   expect(footerEntries).not.toEqual([]);
-  // The layer footer offers only object actions, so the merged toolbar's
-  // arrange half — which the footer never carries — is excluded by its marker.
+  // The layer footer and the toolbar both offer object actions and nothing else:
+  // `vg-463` moved the eight arrange actions out of the toolbar and into the
+  // inspector, so the two entry sets are comparable directly.
   expect(footerEntries).toEqual(
-    await dock
-      .locator("button:not([data-vigilia-arrange-action])")
-      .evaluateAll(entries),
+    await dock.locator("button").evaluateAll(entries),
   );
 });
 

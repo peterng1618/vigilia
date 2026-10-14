@@ -2,7 +2,7 @@
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { arrangeActions, type ObjectTarget } from "../object-actions.js";
+import type { ObjectTarget } from "../object-actions.js";
 import {
   resolveShortcuts,
   setActiveShortcuts,
@@ -126,8 +126,9 @@ describe("the canvas dock's tooltips", () => {
   });
 });
 
-/** A bridge whose selection is `count` objects, so the arrange half's
- *  two-or-more threshold is the fact the mount reads. */
+/** A bridge whose selection is `count` objects. `canArrange` is the answer the
+ *  inspector's arrange row gates on now, so the dock's own mount reads it for
+ *  nothing — it is here because the bridge interface carries it. */
 function bridgeOverSelection(
   count: number,
   canArrange: boolean,
@@ -151,46 +152,51 @@ function unmount(): void {
   host = undefined;
 }
 
-/** The dock's asymmetry, which the re-layering must not disturb: the object
- *  half is *filtered* (an action this selection cannot run is absent) and the
- *  arrange half is *greyed* (it needs two or more and stays discoverable). */
-describe("the canvas dock's two halves", () => {
-  it("shows no object action and a greyed arrange half with nothing selected", async () => {
+/** The dock's remaining half, after `vg-463` moved the arrange actions into the
+ *  selection inspector: the object actions, *filtered* — an action this
+ *  selection cannot run is absent — and **no arrange button at all**.
+ *
+ *  The negative is worth a case of its own, because the failure mode of a move
+ *  like this is two surfaces answering one question: the row that used to draw
+ *  them has to stop, and this is the instrument that notices if it does not. */
+describe("the canvas dock's one half", () => {
+  it("draws no button at all with nothing selected", async () => {
     const container = await mount(bridgeOverSelection(0, false));
 
-    // Filtered: nothing selected, so no unmarked button is drawn at all.
     expect(
-      container.querySelectorAll(
-        "[data-vigilia-canvas-toolbar] button:not([data-vigilia-arrange-action])",
-      ).length,
+      container.querySelectorAll("[data-vigilia-canvas-toolbar] button").length,
     ).toBe(0);
-
-    // Greyed, not filtered: every arrange action is drawn, and disabled.
-    const arrange = [
-      ...container.querySelectorAll<HTMLButtonElement>(
-        "[data-vigilia-canvas-toolbar] button[data-vigilia-arrange-action]",
-      ),
-    ];
-    expect(arrange.length).toBe(arrangeActions().length);
-    for (const button of arrange) expect(button.disabled).toBe(true);
   });
 
-  it("enables the arrange half only from two objects", async () => {
+  it("carries no arrange action, whatever the selection is", async () => {
     const one = await mount(bridgeOverSelection(1, true));
     expect(
-      one.querySelector<HTMLButtonElement>(
-        `[aria-label="${uiCopy.arrangeLabels["align-left"]}"]`,
-      )?.disabled,
-    ).toBe(true);
-    unmount();
+      one.querySelectorAll("[data-vigilia-arrange-action]").length,
+      "one object",
+    ).toBe(0);
+    // The dock is still the surface for this selection, so its absence above is
+    // the arrange half's and not the whole row's.
+    expect(
+      one
+        .querySelector("[data-vigilia-canvas-toolbar]")
+        ?.getAttribute("data-visible"),
+    ).toBe("true");
 
+    // Two objects is exactly the selection the eight are for, and this is the
+    // mount that would draw them if the move had left them here.
+    unmount();
     const two = await mount(bridgeOverSelection(2, true));
-    const button = (label: string): HTMLButtonElement | null =>
-      two.querySelector<HTMLButtonElement>(`[aria-label="${label}"]`);
-    expect(button(uiCopy.arrangeLabels["align-left"])?.disabled).toBe(false);
-    // Distribute needs three, so two objects still greys it out.
-    expect(button(uiCopy.arrangeLabels["distribute-x"])?.disabled).toBe(true);
-    expect(button(uiCopy.arrangeLabels["distribute-y"])?.disabled).toBe(true);
+    expect(
+      two.querySelectorAll("[data-vigilia-arrange-action]").length,
+      "two objects",
+    ).toBe(0);
+    // And the object half is drawn on the same mount, so the row is not simply
+    // empty: `Duplicate` is runnable for a group of two.
+    expect(
+      two.querySelector<HTMLButtonElement>(
+        `[aria-label="${uiCopy.actions.duplicate}"]`,
+      ),
+    ).not.toBeNull();
   });
 
   it("marks delete destructive and every other action not", async () => {

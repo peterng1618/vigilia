@@ -312,11 +312,19 @@ The separation is not cosmetic: **the dock acts on the selection, the corners
 act on the view.** A view control that appears only when something is selected
 teaches an author that the view is a property of the selection.
 
-**The dock renders the action registries and decides nothing itself.** The
-object half is *filtered* — an action this selection cannot run is absent. The
-arrange half is *greyed* — it needs two or more and stays discoverable. Both
-halves ask the registry for eligibility the same way, so the surface never
+**The dock renders the action registries and decides nothing itself.** It
+carries the object half alone, *filtered* — an action this selection cannot run
+is absent — and asks the registry for eligibility, so the surface never
 re-derives what an action can do.
+
+**The arrange actions are the selection inspector's** (`vg-463`). The column
+leads with them for a selection of two or more, because that column has just
+named the subjects they act on, and shows none at all for a selection that cannot
+arrange — a lone shape is not one. Within the row the actions that need more than
+this selection has are *greyed* rather than withheld: `Distribute` beside two
+objects stays discoverable instead of appearing once a third is added. One
+surface owns them, and it is this one: the dock no longer carries the eight that
+used to sit beside its object half.
 
 Floating clusters are `--radius-xl`, `--panel` at 95%, 1px `--edge`, elevation 1,
 and sit 14–16px in from the stage's edges. **No backdrop blur**: the drawing

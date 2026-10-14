@@ -28,7 +28,7 @@ import {
 } from "fabric/es";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { uiCopy } from "../ui-copy.js";
-import { supportsGlassControl } from "./glass.js";
+import { supportsGlassControl, writeGlassField } from "./glass.js";
 import { idleCrop } from "./idle-crop.test-stage.js";
 import { createSelectionInspector } from "./index.js";
 // The shared React drivers: the converted glass and material controls are plan-1
@@ -194,15 +194,15 @@ function invalidLine(host: HTMLElement): Element | null {
 }
 
 /**
- * The refusal words a row renders for a control, read from the element the
- * control's own `aria-describedby` names — the same element a screen reader
- * announces, and a visible `<p>` rather than a tooltip (DESIGN.md §5.3).
+ * The words the panel prints for a subject it offers no glass section — the
+ * element the column renders under the subject's own name, or the empty string
+ * where the section was offered (`vg-465`).
  */
-function reasonText(host: HTMLElement, control: HTMLElement): string {
-  const [id] = (control.getAttribute("aria-describedby") ?? "").split(/\s+/);
-  return id === undefined || id === ""
-    ? ""
-    : (host.querySelector<HTMLElement>(`[id="${id}"]`)?.textContent ?? "");
+function refusalNote(host: HTMLElement): string {
+  return (
+    host.querySelector<HTMLElement>("[data-vigilia-glass-refusal]")
+      ?.textContent ?? ""
+  );
 }
 
 /** A live object of every kind the editor can have selected. */
@@ -239,6 +239,22 @@ const LIVE_KIND: Readonly<Record<string, () => unknown>> = {
       settings: defaultGaugeSettings,
     }),
 };
+
+/**
+ * The kinds the treatment reaches, and the kinds it does not — **the owner's
+ * own answers**, over every kind the editor can have selected, so a kind added
+ * here joins the right case without anyone remembering to list it.
+ *
+ * `FROSTABLE` and `UNFROSTABLE` stay, and stay hand-kept: they are the
+ * independent witness that the predicate still answers for the kinds this file
+ * thought about, and the guard below is what fails if the two ever part.
+ */
+const FROSTABLE_KINDS: readonly string[] = Object.keys(LIVE_KIND).filter(
+  (kind) => supportsGlassControl(LIVE_KIND[kind]!() as never),
+);
+const UNFROSTABLE_KINDS: readonly string[] = Object.keys(LIVE_KIND).filter(
+  (kind) => !supportsGlassControl(LIVE_KIND[kind]!() as never),
+);
 
 /** The kinds the treatment reaches, which is the owner's answer, not a list. */
 const FROSTABLE: readonly string[] = [
@@ -438,27 +454,20 @@ describe("the glass control in the selection inspector", () => {
     expect(enabled.isConnected).toBe(false);
   });
 
-  it("offers a selection that cannot carry glass a disabled control that says why", () => {
-    // The finding this control exists to close: a `Circle` — or, before the
-    // widening, any shape the editor had not been taught — arrived with no
-    // control at all, so the rule was something an author could only infer from
-    // an absence.
+  it("offers no glass section on a subject that cannot carry it, and takes nothing else with it", () => {
+    // `vg-465`: the section is **withheld** from a kind the treatment cannot
+    // reach, which reverses `vg-006`. What that ruling was against — a silence
+    // an author has to infer a rule from — is answered by the reason beside the
+    // subject, not by a control that looks operable and is not.
     const text = new Textbox("Hi", { left: 0, top: 0, width: 40 });
     const { host } = setup(text);
-    const control = glassControl(host);
 
-    expect(control).not.toBeNull();
-    expect(control?.getAttribute("aria-disabled")).toBe("true");
-    // Not `disabled`: that would put it out of the tab order and make the
-    // reason a disclosure only a pointer could reach.
-    expect(control?.hasAttribute("disabled")).toBe(false);
-    // The reason is visible words the control is described by.
-    expect(reasonText(host, control!)).toContain("Text");
-    // A radius box over an object with no treatment accepts an edit and applies
-    // none, so it stays out.
-    expect(host.querySelector("[data-vigilia-glass-blur]")).toBeNull();
-    // And the fields the editor does serve for it are untouched by the refusal.
+    expect(glassControl(host)).toBeNull();
+    // The refusal replaces the control and nothing else: the fields the editor
+    // does serve for this subject are untouched.
+    expect(refusalNote(host)).toContain("Text");
     expect(host.querySelector("[data-vigilia-opacity]")).not.toBeNull();
+    expect(host.querySelector("[data-vigilia-name]")).not.toBeNull();
   });
 
   it.each(FROSTABLE)("offers the control enabled on a %s", (kind) => {
@@ -472,80 +481,61 @@ describe("the glass control in the selection inspector", () => {
     expect(control?.getAttribute("aria-disabled"), kind).toBeNull();
     expect(control?.hasAttribute("disabled"), kind).toBe(false);
     expect(control?.getAttribute("aria-checked"), kind).toBe("false");
+    // A kind that can carry the treatment is never told it cannot.
+    expect(refusalNote(host), kind).toBe("");
   });
 
-  it.each(UNFROSTABLE)(
-    "offers the control refused, in words, on a %s",
+  it.each(UNFROSTABLE_KINDS)(
+    "withholds the control from a %s and says why under the subject",
     (kind) => {
       const make = LIVE_KIND[kind];
       expect(typeof make, `${kind} has no live object`).toBe("function");
       if (make === undefined) return;
       const { host } = setup(make());
 
-      const control = glassControl(host);
-      expect(control, kind).not.toBeNull();
-      expect(control?.getAttribute("aria-disabled"), kind).toBe("true");
+      expect(glassControl(host), kind).toBeNull();
 
-      // Refused, not omitted, and the reason is **words in the row** rather
-      // than a tooltip — DESIGN.md §5.3, and the control's own `aria-describedby`
-      // names them, so a keyboard user who never hovers still reads why. The
-      // name the author selected is in it: "glass applies to panels" tells an
-      // author nothing they can act on.
-      const reason = reasonText(host, control!);
-      expect(reason, kind).toContain(SHOWN_AS[kind] ?? kind);
+      // The reason is **words**, under the name of the thing it is about, and
+      // it is this kind's own sentence rather than the catch-all — "glass
+      // applies to panels" tells an author nothing they can act on.
+      const reason = refusalNote(host);
+      expect(reason, kind).not.toBe("");
+      expect(reason, kind).toBe(uiCopy.inspectorFields.glassRefused(kind));
       expect(reason, kind).not.toBe(
         uiCopy.inspectorFields.glassRefused("__not a shape__"),
       );
+      const shownAs = SHOWN_AS[kind];
+      if (shownAs !== undefined) expect(reason, kind).toContain(shownAs);
     },
   );
 
-  it("takes no edit on a refused control, and says nothing about the refusal", async () => {
-    // The refusal is the control's reason, not an error: the author did nothing
-    // wrong, so an alert line beside a control they cannot operate would blame
-    // them for the editor's decision.
+  it("withholds the treatment the section is gone from, and warns nobody about it", async () => {
+    // Two claims, because the button's absence and the write's refusal are
+    // different facts: the panel no longer offers the edit, and the boundary
+    // still refuses it — a bypassed write must not land a treatment the
+    // renderer would never composite.
     const line = new Line([0, 0, 20, 20]);
     const { history, refreshGlass, editor, host } = setup(line);
 
-    await setGlass(host, true);
-
-    expect(line.get("vigiliaGlass")).toBeUndefined();
-    // Reads back off, so the switch does not claim a treatment the object does
-    // not have.
-    expect(glassOn(host)).toBe(false);
-    expect(history.saveState).not.toHaveBeenCalled();
-    expect(refreshGlass).not.toHaveBeenCalled();
+    expect(glassControl(host)).toBeNull();
+    // No alert line: the author did nothing wrong, so the editor's own decision
+    // is not reported as their error.
     expect(editor.errorManager.warn).not.toHaveBeenCalled();
     expect(invalidLine(host)).toBeNull();
-  });
 
-  it("renders a refused control's reason as words in the row, with no pointer", () => {
-    // A `disabled` control is out of the tab order, so the same reason carried
-    // only by a tooltip would reach nobody not holding a mouse — the absence it
-    // replaces, in a form that now looks deliberate. The row renders the words
-    // instead, and the control is described by them.
-    const path = new Path("M 0 0 L 20 20 L 40 0");
-    const { host } = setup(path);
-    const control = glassControl(host)!;
-
-    expect(control.tabIndex).toBeGreaterThanOrEqual(0);
-    expect(control.hasAttribute("disabled")).toBe(false);
-    expect(reasonText(host, control)).toBe(
-      uiCopy.inspectorFields.glassRefused("Path"),
+    // The boundary, asked directly: `glass.ts`'s own writer is what a bypassed
+    // control would reach, and it refuses.
+    const wrote = writeGlassField(
+      line,
+      { editor: editor as never, globals },
+      "glass-enabled",
+      true,
     );
-  });
 
-  it("renders the glass control refused, with its reason, for a group", () => {
-    const group = new Group([new Rect({ width: 40, height: 40 })]);
-    const { host } = setup(group);
-    const control = glassControl(host);
-
-    // Present, not omitted: absence and refusal look identical to an author,
-    // and only one of them is true.
-    expect(control).not.toBeNull();
-    expect(control?.getAttribute("aria-disabled")).toBe("true");
-    expect(reasonText(host, control!)).toBe(
-      uiCopy.inspectorFields.glassRefused("Group"),
-    );
+    expect(wrote).toBe(false);
+    expect(line.get("vigiliaGlass")).toBeUndefined();
+    expect(history.saveState).not.toHaveBeenCalled();
+    expect(refreshGlass).not.toHaveBeenCalled();
   });
 
   it("offers a rect its material fields and a group none", () => {
@@ -574,10 +564,13 @@ describe("the glass control in the selection inspector", () => {
     ]) {
       expect(absence.querySelector(hook), hook).toBeNull();
     }
-    // But the glass control is still there, refused with its reason.
-    expect(
-      absence.querySelector("[data-vigilia-glass-enabled]"),
-    ).not.toBeNull();
+    // And no Paint section stands over the group at all: the glass row was the
+    // only thing left in it, and a section whose whole body is one refusal is
+    // not a question a group is asked (`vg-465`).
+    expect(absence.querySelector('[data-vigilia-section="paint"]')).toBeNull();
+    expect(refusalNote(absence)).toBe(
+      uiCopy.inspectorFields.glassRefused("Group"),
+    );
   });
 
   it("withholds glass from a locked object, which the editor refuses to write", () => {
@@ -652,15 +645,21 @@ describe("the glass control in the selection inspector", () => {
     // A group is in the owner's set and the renderer still refuses it: Fabric
     // overrides `Group.drawObject`, so a group never fires `before:render` and
     // `scene-fabric/src/glass.ts` refuses the treatment at attach. Enabling it
-    // here would take an edit that paints nothing, so it is refused with the
-    // reason instead — and an edit through it still writes nothing.
+    // here would take an edit that paints nothing, so no control is offered for
+    // it — and the write that a bypassed one would reach still refuses.
     const group = new Group([new Rect({ width: 40, height: 40 })]);
-    const { history, refreshGlass, host } = setup(group);
+    const { history, refreshGlass, editor, host } = setup(group);
 
-    expect(glassControl(host)?.getAttribute("aria-disabled")).toBe("true");
+    expect(glassControl(host)).toBeNull();
 
-    await setGlass(host, true);
+    const wrote = writeGlassField(
+      group,
+      { editor: editor as never, globals },
+      "glass-enabled",
+      true,
+    );
 
+    expect(wrote).toBe(false);
     expect(group.get("vigiliaGlass")).toBeUndefined();
     expect(group.get(VIGILIA_PAINT_PROPERTY)).toBeUndefined();
     expect(history.saveState).not.toHaveBeenCalled();
@@ -689,6 +688,18 @@ describe("the glass control in the selection inspector", () => {
     expect(uiCopy.inspectorFields.glassRefused("Group")).toMatch(
       /panel inside/,
     );
+
+    // And the two hand-kept lists below are the independent witness: the cases
+    // are driven from the predicate's own answers, so these are what fail if it
+    // silently starts answering for a kind this file thought about.
+    expect(
+      FROSTABLE.filter((kind) => !FROSTABLE_KINDS.includes(kind)),
+      "the hand-kept frostable kinds",
+    ).toEqual([]);
+    expect(
+      UNFROSTABLE.filter((kind) => !UNFROSTABLE_KINDS.includes(kind)),
+      "the hand-kept unfrostable kinds",
+    ).toEqual([]);
   });
 
   it("has a live object for every kind the published schema allows", () => {
@@ -698,12 +709,13 @@ describe("the glass control in the selection inspector", () => {
       );
   });
 
-  it("offers every kind the schema allows, so none is left un-authorable", () => {
+  it("answers every kind the schema allows, authorable or explained", () => {
     /**
      * The gap the controller ruled on: a kind the published schema lets carry
-     * `vigiliaGlass` but the inspector gives no control for. Every kind gets
-     * one now — enabled, or refused with its own reason — so a kind added to
-     * the vocabulary cannot reopen the gap silently.
+     * `vigiliaGlass` but the inspector gives no control for — and, since
+     * `vg-465`, the second half of it: a kind the panel answers with silence.
+     * Every kind either offers the control or says why it does not, so a kind
+     * added to the vocabulary cannot reopen the gap silently.
      */
     for (const type of PUBLISHED_GLASS_TYPES) {
       const make = LIVE_KIND[type];
@@ -716,8 +728,13 @@ describe("the glass control in the selection inspector", () => {
       if (make === undefined) continue;
 
       const { host } = setup(make());
+      const answered =
+        glassControl(host) !== null || refusalNote(host).length > 0;
 
-      expect(glassControl(host), `${type} has no glass control`).not.toBeNull();
+      expect(
+        answered,
+        `${type} is offered neither a control nor a reason`,
+      ).toBe(true);
     }
   });
 });

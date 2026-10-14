@@ -1712,23 +1712,25 @@ test.describe("Fabric editor route", () => {
     await expect.poll(() => injectedTransition(tooltip)).toBe("0s");
   });
 
-  test("a refused glass control says why in its row, to a pointer and to a keyboard alike", async ({
+  test("a subject the treatment cannot reach is offered no glass section, and says why in the column", async ({
     page,
   }, testInfo) => {
     /**
-     * **Re-pointed, because the channel changed by design.** The reason used to
+     * **Re-pointed twice, and this is the second reversal.** The reason used to
      * reach the row through `tooltip()`, and the browser half of the fix this
      * case proved was placement: an out-of-flow popup measured before it was
      * pinned landed on top of its own trigger, so hover never settled and only
      * focus showed it. DESIGN.md §5.3 moved refusals out of tooltips and into the
      * row — `control-well.tsx`'s `ControlRow` renders the reason as words — so
      * there is no popup left to place, and the flicker it caused cannot recur.
+     * Then `vg-465`, the author's own ruling, took the row away with the section
+     * for a subject the treatment cannot reach.
      *
-     * What is asserted instead is the same claim on the surface that exists: a
-     * refused control **renders** and says why, the words are visible to a
-     * pointer, they are what the control describes itself by for a keyboard, and
-     * the control is not natively disabled — a disabled control leaves the tab
-     * order, so the reason would reach nobody not holding a mouse.
+     * What survives both is the claim, and it is the one asserted here: the
+     * author is **told**, in words they meet without an interaction, on the
+     * surface that names the thing the words are about. The control is gone, so
+     * there is no longer an `aria-describedby` to follow and no tab stop to
+     * argue about — what is read instead is the absence, and the sentence.
      *
      * A `Path` is one of the kinds the treatment cannot reach, and the reason
      * named for it is a full sentence.
@@ -1750,35 +1752,18 @@ test.describe("Fabric editor route", () => {
     await expect.poll(() => activeId(page)).toBe("cpu-card-icon");
 
     const control = page.locator("[data-vigilia-glass-enabled]");
-    await expect(control).toHaveAttribute("aria-disabled", "true");
-    // Refused, not disabled. Playwright reads `aria-disabled="true"` as disabled,
-    // which would erase the very distinction this case is about, so the DOM is
-    // asked directly instead: no `disabled` attribute, and the `focus()` at the
-    // end still lands. A natively disabled button cannot take focus at all,
-    // which is what makes that keystroke part of this proof rather than a
-    // separate step.
-    expect(await control.getAttribute("disabled")).toBeNull();
+    // Withheld, not refused: the control the section carried is absent, so there
+    // is no operable-looking switch left to hunt for.
+    await expect(control).toHaveCount(0);
+    await expect(page.locator("[data-vigilia-glass-blur]")).toHaveCount(0);
 
-    // The pointer's channel: words in the row, visible without an interaction.
-    //
-    // **Read off the control's own `aria-describedby`, not a spelled id.** The
-    // claim is that the control *names* the element holding its reason, and that
-    // the named element is on screen with the reason in it; both hold whatever
-    // the id is minted as. `control-well.tsx` mints `-reason` from the control's
-    // own id, so a hard-coded `#glass-enabled-reason` would be asserting the id
-    // scheme — a second copy of a rule this file does not own — rather than the
-    // channel that reaches a pointer and a screen reader alike.
-    const describedBy = await control.getAttribute("aria-describedby");
-    expect(describedBy, "the refused control describes itself").not.toBeNull();
-    const reason = page.locator(`#${describedBy}`);
+    // The words the author meets instead, under the subject the column names.
+    // Read off the hook the block publishes rather than a spelled control id:
+    // the claim is that the reason is on screen and is the one named for this
+    // kind, which holds whatever the column mints ids as.
+    const reason = page.locator("[data-vigilia-glass-refusal]");
     await expect(reason).toBeVisible();
     await expect(reason).toContainText("Path");
-
-    // The keyboard's channel is the same element: the control is described by
-    // the reason, so a screen reader reads it when the control takes focus.
-    await control.focus();
-    await expect(control).toBeFocused();
-    await expect(reason).toBeVisible();
   });
 
   test("captures selected chart binding controls for visual review", async ({
@@ -4490,13 +4475,17 @@ test.describe("Fabric editor route", () => {
     // which is what a multi-selection gets and this selection is not.
     await expect(dock.getByRole("button", { name: "Ungroup" })).toBeVisible();
 
-    // The toolbar is the arrange surface: it stays visible for one object, so
-    // the capture shows the discoverable-but-greyed state.
+    // **The dock carries no arrange action at all** (`vg-463`): the eight moved
+    // to the selection inspector's lead, which is the surface that names the
+    // selection they act on, so what this capture shows is the object half
+    // alone. The absence is asserted rather than merely left out of the capture,
+    // because the failure mode of a move like this is two surfaces answering one
+    // question.
     const toolbar = page.locator("[data-vigilia-canvas-toolbar]");
     await expect(toolbar).toBeVisible();
-    await expect(
-      toolbar.getByRole("button", { name: "Align left" }),
-    ).toBeDisabled();
+    await expect(toolbar.locator("[data-vigilia-arrange-action]")).toHaveCount(
+      0,
+    );
 
     await captureVisualReview(page, testInfo, "editor-toolbar");
   });
@@ -4512,15 +4501,13 @@ test.describe("Fabric editor route", () => {
     await selectStarterChart(page);
 
     // The one canvas toolbar is the other surface that renders the same
-    // registry, so its object-action buttons are the expected entry set without
-    // restating the registry here. Arrange shares the toolbar but the menu never
-    // offers it, so the merge's eight buttons are excluded by their own marker —
-    // `:not(...)` is what keeps this comparison about object actions alone.
+    // registry, so its buttons are the expected entry set without restating the
+    // registry here. It is the object half alone now — `vg-463` moved the eight
+    // arrange actions to the inspector — so there is nothing to exclude and the
+    // comparison is about that set on both surfaces.
     const dockNames = (
       await page
-        .locator(
-          "[data-vigilia-canvas-toolbar] button:not([data-vigilia-arrange-action])",
-        )
+        .locator("[data-vigilia-canvas-toolbar] button")
         .evaluateAll((buttons) =>
           buttons.map((button) => button.getAttribute("aria-label") ?? ""),
         )
@@ -4552,7 +4539,8 @@ test.describe("Fabric editor route", () => {
     // A menu that rendered nothing would satisfy a containment check.
     expect(dockNames.length).toBeGreaterThan(0);
     expect(itemNames).toEqual(dockNames);
-    // Arrange has no `OBJECT_ACTIONS` id, so it cannot leak in from the toolbar.
+    // Arrange has no `OBJECT_ACTIONS` id, so it belongs to neither surface's
+    // entry set — and since `vg-463` it is not in the toolbar to leak from.
     expect(itemNames).not.toContain("Align left");
 
     // §4's mark has to **paint**, not merely be present. `vg-226`'s failure was

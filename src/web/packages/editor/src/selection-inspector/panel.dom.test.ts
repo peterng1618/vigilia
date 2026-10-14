@@ -16,6 +16,7 @@ import { act } from "react";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import { createNewShape } from "../new-object-defaults.js";
 import { uiCopy } from "../ui-copy.js";
+import { supportsGlassControl } from "./glass.js";
 import { idleCrop } from "./idle-crop.test-stage.js";
 import { createSelectionInspector } from "./index.js";
 import { writeShapeGeometryField } from "./panel.js";
@@ -601,16 +602,22 @@ describe("shape material and a shape's own fields", () => {
       // the surface's own hooks is the re-point; naming every expected hook is
       // the guard the count never was.
       //
-      // Every shape owns these. `stroke` is absent on an arc — its one paint
-      // field already writes the stroke and is labelled `Ink` — and the corner
-      // radius is a `Rect`'s alone.
+      // Every shape owns these, except the glass switch: a shape the treatment
+      // cannot reach — an open path, a line, a polyline, an arc — is offered no
+      // glass section at all (`vg-465`), and the same gate that decides that is
+      // asked here rather than hand-listed, so this census cannot drift into a
+      // second copy of it. `stroke` is absent on an arc — its one paint field
+      // already writes the stroke and is labelled `Ink` — and the corner radius
+      // is a `Rect`'s alone.
       const expected = [
         "[data-vigilia-panel-fill]",
         "[data-vigilia-panel-border]",
         "[data-vigilia-panel-shadow]",
         "[data-vigilia-panel-shadow-blur]",
         "[data-vigilia-panel-shadow-offset]",
-        "[data-vigilia-glass-enabled]",
+        ...(supportsGlassControl(shape)
+          ? ["[data-vigilia-glass-enabled]"]
+          : []),
         ...(kind === "arc" ? [] : ["[data-vigilia-panel-stroke]"]),
         ...(kind === "rect" ? ["[data-vigilia-panel-radius]"] : []),
       ];
@@ -623,6 +630,14 @@ describe("shape material and a shape's own fields", () => {
         expect(
           host.querySelector("[data-vigilia-panel-radius]"),
           kind,
+        ).toBeNull();
+      }
+      // The other side of the glass gate, so the list above cannot pass by
+      // listing a hook nothing draws.
+      if (!supportsGlassControl(shape)) {
+        expect(
+          host.querySelector("[data-vigilia-glass-enabled]"),
+          `${kind} is offered no glass control`,
         ).toBeNull();
       }
 

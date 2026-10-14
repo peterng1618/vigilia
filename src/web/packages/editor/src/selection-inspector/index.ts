@@ -11,13 +11,19 @@ import {
   writeAuthoredBoxDimension,
 } from "@vigilia/scene-fabric";
 import type { FabricObject } from "fabric/es";
+import { type ArrangeAction, canArrange } from "../arrange.js";
 import type { ChartEdits } from "../chart-manager/chart-fields.js";
 import type { EditorInteraction } from "../editor-interaction.js";
+import {
+  arrangeActions,
+  type ObjectActionId,
+  objectAction,
+} from "../object-actions.js";
 import { OBJECT_LOCK_CHANGED_EVENT } from "../object-lock-manager/index.js";
 import { uiCopy } from "../ui-copy.js";
 import { writeMark } from "./bleed.js";
 import { createSelectionColumnRoot } from "./column.js";
-import { writeGlassField } from "./glass.js";
+import { glassRefusal, writeGlassField } from "./glass.js";
 import { createInspectorRoot } from "./inspector.js";
 import { writePanelField, writeShapeGeometryField } from "./panel.js";
 import {
@@ -40,6 +46,10 @@ import {
   writeTextLayout,
   writeUnitDisplay,
 } from "./run-edits.js";
+import {
+  type ArrangeButtonView,
+  createSelectionLeadRoot,
+} from "./selection-lead.js";
 import {
   type CropEdits,
   editRefusal,
@@ -155,14 +165,19 @@ export function createSelectionInspector(
   root.dataset["vigiliaPanel"] = "selection";
   host.append(root);
 
-  // Two React roots share the column. The first renders the subject and the
-  // empty state; the second renders the sections — header, count, open state and
-  // every row under them — in `sectionsHost`, so the visual order the imperative
-  // column had is preserved.
+  // Three React roots share the column, in document order: the subject and the
+  // empty state; the lead — the arrange actions and the one refusal the
+  // subject's kind carries, which are the selection's own rather than a
+  // property of it; then the sections, header, count, open state and every row
+  // under them. Splitting them rather than growing one root is what keeps each
+  // value beside the code that projects it, and the order here is the order the
+  // imperative column had.
   const reactHost = document.createElement("div");
+  const leadHost = document.createElement("div");
   const sectionsHost = document.createElement("div");
-  root.append(reactHost, sectionsHost);
+  root.append(reactHost, leadHost, sectionsHost);
   const column = createInspectorRoot(reactHost);
+  const lead = createSelectionLeadRoot(leadHost);
   const sectionColumn = createSelectionColumnRoot(sectionsHost);
 
   const selected = (): FabricObject | undefined =>
@@ -641,9 +656,38 @@ export function createSelectionInspector(
     };
 
   /**
-   * Projects the described object and publishes it to React. Every row, and the
-   * reveal a section may carry, is the column's to render — there is nothing
-   * left for this module to mount into a rendered container.
+   * The arrange actions, in the registry's order, each with its own answer — and
+   * none at all when this selection can run none of them.
+   *
+   * Two or more selected objects — or groups — is what the eight are for, and
+   * the threshold is `arrange.ts`'s: `canArrange` is asked per action, so a
+   * control cannot advertise one `applyArrange` would refuse. Asking it per
+   * action is also what draws `Distribute` disabled beside two selected objects
+   * instead of absent, and what makes a single object's column show no arrange
+   * row rather than eight greyed buttons about a question it does not have.
+   */
+  const arrangeRow = (): readonly ArrangeButtonView[] => {
+    const buttons = arrangeActions().map(({ id, label }) => ({
+      id,
+      label,
+      // The action's verb is the tail of the registry's own id; the run below
+      // never parses it, because the registry's `run` carries it.
+      enabled: canArrange(editor, id.slice("arrange:".length) as ArrangeAction),
+    }));
+    return buttons.some((button) => button.enabled) ? buttons : [];
+  };
+
+  /** The arrange row's one way to run: the registry's, so this module neither
+   *  restates a verb nor reaches `applyArrange` behind the registry's back. */
+  const runArrange = (id: ObjectActionId): void => {
+    objectAction(id).run(editor);
+  };
+
+  /**
+   * Projects the described object and publishes it to React. Every row, the
+   * reveal a section may carry and the lead's two questions are the roots' to
+   * render — there is nothing left for this module to mount into a rendered
+   * container.
    */
   const render = (): void => {
     const object = target();
@@ -663,11 +707,22 @@ export function createSelectionInspector(
       object === undefined ? [] : perKindColumn(object, columnContext());
 
     const view = projectSelection(object, targetRevision, ports, sections);
-    // Both roots read the same view: the subject root renders the subject and
-    // the empty state, the section root renders the sections and every row in
+    // All three roots read the same selection: the subject root renders the
+    // subject and the empty state, the lead renders what the selection itself
+    // has to say, and the section root renders the sections and every row in
     // them. `revealTypePresets` reaches the column as a port, the same way the
     // three edit ports do — the view carries the label, never the callback.
     column.publish(view, edits);
+    lead.publish(
+      {
+        // A refusal is about the object the panel describes, so it follows
+        // `target()` — including the crop session's own subject — rather than
+        // the live selection the arrange row reads.
+        glassRefusal: object === undefined ? undefined : glassRefusal(object),
+        arrange: object === undefined ? [] : arrangeRow(),
+      },
+      runArrange,
+    );
     sectionColumn.publish(
       view,
       edits,

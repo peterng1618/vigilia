@@ -93,7 +93,7 @@ const FIELDS = "input,select,textarea";
  * the preset library's chooser, curated face, trio and reassignment — the run
  * editor's five — its
  * four selects and its swatch, which is `SelectControl` with an adornment — the
- * inspector's three paint selects and its four toggles are what this exclusion is
+ * inspector's three paint selects and its three toggles are what this exclusion is
  * for; naming them would create the `<label for>` pointing at nothing this
  * comment already refuses.
  *
@@ -261,10 +261,11 @@ describe("editor panels", () => {
       "INPUT[type=][aria-hidden]", // Reads
       "INPUT[type=][aria-hidden]", // Unit display
       "INPUT[type=][aria-hidden]", // Zone
-      // The inspector's four toggles, two per mount, each a Base UI switch's
-      // hidden checkbox.
+      // The inspector's three toggles: deliberate bleed on both mounts, and
+      // frosted glass on the shape alone. The text run's frost toggle is gone
+      // with its section — a `Textbox` cannot be frosted, so `vg-465` offers it
+      // no glass section at all rather than a switch that writes nothing.
       "INPUT[type=checkbox][aria-hidden]", // Deliberate bleed, text run
-      "INPUT[type=checkbox][aria-hidden]", // Frosted glass, text run
       "INPUT[type=checkbox][aria-hidden]", // Deliberate bleed, shape
       // The shape's three paint selects: `ControlSelect` again.
       "INPUT[type=][aria-hidden]", // Fill

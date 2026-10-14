@@ -910,12 +910,11 @@ it("shows one pane at a time and routes the dock through the bridge", async () =
   // Ineligible actions must not be advertised: a single object cannot group,
   // and `canArrange` refuses one too.
   expect(dock.querySelector('[aria-label="Group"]')).toBeNull();
-  // Arrange shares the one surface but greys rather than filters: a single
-  // object cannot align, so the control is drawn disabled rather than dropped.
-  expect(
-    dock.querySelector<HTMLButtonElement>('[aria-label="Align left"]')
-      ?.disabled,
-  ).toBe(true);
+  // **Arrange is not here at all** (`vg-463`). The dock used to share this one
+  // surface with the eight and grey them; they belong to the selection
+  // inspector's lead now, which is the surface that names the selection they act
+  // on, so the toolbar carries the object half alone and greys nothing.
+  expect(dock.querySelector("[data-vigilia-arrange-action]")).toBeNull();
 
   duplicate?.click();
   expect(run).toHaveBeenCalledWith("duplicate");
@@ -923,7 +922,7 @@ it("shows one pane at a time and routes the dock through the bridge", async () =
   layout.destroy();
 });
 
-it("draws one toolbar holding every canvas action the registry owns", () => {
+it("draws one toolbar holding the object actions, and no arrange action at all", () => {
   const root = document.createElement("div");
   const layout = createShellLayout(root);
   const toolbar = root.querySelector("[data-vigilia-canvas-toolbar]");
@@ -932,21 +931,25 @@ it("draws one toolbar holding every canvas action the registry owns", () => {
   // the second toolbar was deleted rather than left drawing somewhere.
   expect(root.querySelector("[data-vigilia-arrange-toolbar]")).toBeNull();
   // Derived, not a literal — a ninth arrange action added to `ARRANGE_ICONS`
-  // must fail here rather than be silently dropped.
+  // must fail here rather than be silently dropped. It fails by being **absent**
+  // now: `vg-463` moved the whole set to the inspector's lead, so the registry
+  // is still the list this surface is measured against, and the measurement is
+  // that it draws none of it.
   for (const action of arrangeActions())
     expect(
-      toolbar?.querySelector<HTMLButtonElement>(
-        `[aria-label="${action.label}"]`,
-      )?.disabled,
-    ).toBe(true);
+      toolbar?.querySelector(`[aria-label="${action.label}"]`),
+      `${action.label} is the inspector's, not the dock's`,
+    ).toBeNull();
   layout.destroy();
 });
 
-it("enables only the arrange actions a two-object selection can run", async () => {
+it("draws no arrange action for a multi-selection either, whatever the bridge says", async () => {
   const root = document.createElement("div");
   const layout = createShellLayout(root);
-  // `canArrange` refuses distribute below three objects, so the toolbar must
-  // grey those two out rather than advertise a click that silently does nothing.
+  // The bridge is told every arrange action is runnable, which is the case that
+  // would make a surviving arrange half draw them all live. The dock must draw
+  // none: eligibility for these is the inspector's question (`canArrange` is
+  // read there), and a toolbar that grew its half back would fail here.
   const bridge = bridgeStub({
     snapshot: () => ({
       selectedCount: 2,
@@ -968,11 +971,12 @@ it("enables only the arrange actions a two-object selection can run", async () =
   await Promise.resolve();
 
   const toolbar = root.querySelector("[data-vigilia-canvas-toolbar]");
-  const button = (label: string) =>
-    toolbar?.querySelector<HTMLButtonElement>(`[aria-label="${label}"]`);
-  expect(button("Align left")?.disabled).toBe(false);
-  expect(button("Distribute horizontally")?.disabled).toBe(true);
-  expect(button("Distribute vertically")?.disabled).toBe(true);
+  expect(
+    toolbar?.querySelectorAll("[data-vigilia-arrange-action]").length,
+  ).toBe(0);
+  // And the surface is still the object half's, so that absence is the arrange
+  // half's alone: a group of two can duplicate.
+  expect(toolbar?.querySelector('[aria-label="Duplicate"]')).not.toBeNull();
 
   layout.destroy();
 });

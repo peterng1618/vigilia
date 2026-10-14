@@ -46,7 +46,7 @@ import {
   type SelectionKind,
   selectionKindOf,
 } from "./per-kind-column.js";
-import { slide } from "./runs.test-stage.js";
+import { click, slide } from "./runs.test-stage.js";
 
 // The column's sections keep their open state in React now, and React only
 // flushes a click's update inside `act` — so the one test that clicks a header
@@ -883,6 +883,148 @@ describe("the selection inspector", () => {
   });
 });
 
+/**
+ * The arrange actions the column leads with (`vg-463`).
+ *
+ * The dock carried them and no longer does; the inspector is their one home,
+ * and it is the panel of the selection they act on. What this file can prove is
+ * the wiring: which selections get the row, that the row sits between the
+ * subject and the first section, and that pressing one arranges the objects —
+ * the rendered reading of it is the controller's browser pass.
+ */
+describe("the arrange actions the column leads with", () => {
+  const buttons = (host: HTMLElement): readonly HTMLButtonElement[] => [
+    ...host.querySelectorAll<HTMLButtonElement>(
+      "[data-vigilia-arrange-action]",
+    ),
+  ];
+
+  /** The inspector over a real canvas, the way the shell builds it — the one
+   *  stub that can carry an arrange action through to the objects. */
+  function onCanvas(canvas: Canvas): {
+    readonly host: HTMLElement;
+    readonly history: { saveState: ReturnType<typeof vi.fn> };
+  } {
+    const host = document.createElement("div");
+    document.body.append(host);
+    const history = { saveState: vi.fn() };
+    createSelectionInspector(host, {
+      editor: {
+        canvas,
+        historyManager: history,
+        errorManager: { warn: vi.fn(), error: vi.fn() },
+        cropManager: idleCrop(),
+      } as never,
+      refreshGlass: vi.fn(),
+    });
+    return { host, history };
+  }
+
+  it("offers the eight to a multi-selection, and nothing to one object", () => {
+    const first = new Rect({ left: 0, top: 0, width: 40, height: 20 });
+    const second = new Rect({ left: 100, top: 60, width: 40, height: 20 });
+
+    // One object: no row at all. Eight greyed buttons would be a section
+    // standing over a question this selection does not have.
+    const alone = setup(first);
+    expect(alone.host.querySelector("[data-vigilia-arrange-row]")).toBeNull();
+    expect(buttons(alone.host)).toHaveLength(0);
+
+    const pair = setup(new ActiveSelection([first, second]));
+    expect(
+      pair.host.querySelector("[data-vigilia-arrange-row]"),
+    ).not.toBeNull();
+    expect(buttons(pair.host).map((b) => b.getAttribute("aria-label"))).toEqual(
+      Object.values(uiCopy.arrangeLabels),
+    );
+    // Greyed rather than filtered inside the row: an align needs two and lives,
+    // a distribute needs three and is drawn disabled.
+    const live = (label: string): boolean =>
+      buttons(pair.host).find((b) => b.getAttribute("aria-label") === label)
+        ?.disabled === false;
+    expect(live(uiCopy.arrangeLabels["align-left"])).toBe(true);
+    expect(live(uiCopy.arrangeLabels["distribute-x"])).toBe(false);
+    expect(live(uiCopy.arrangeLabels["distribute-y"])).toBe(false);
+  });
+
+  it("leads the column: under the subject, above the first section", () => {
+    const canvas = new Canvas(document.createElement("canvas"));
+    const first = new Rect({ left: 0, top: 0, width: 40, height: 20 });
+    const second = new Rect({ left: 100, top: 60, width: 40, height: 20 });
+    canvas.add(first, second);
+    const { host } = onCanvas(canvas);
+
+    canvas.setActiveObject(new ActiveSelection([first, second], { canvas }));
+
+    const subject = host.querySelector("[data-vigilia-subject-name]")!;
+    const row = host.querySelector("[data-vigilia-arrange-row]")!;
+    const section = host.querySelector("[data-vigilia-section]")!;
+    const follows = (anchor: Element, later: Element): boolean =>
+      (anchor.compareDocumentPosition(later) &
+        Node.DOCUMENT_POSITION_FOLLOWING) !==
+      0;
+
+    expect(follows(subject, row), "the subject leads").toBe(true);
+    expect(follows(row, section), "the row is above the sections").toBe(true);
+
+    // **The boundary the lead creates is its own.** `inspector.tsx` closes the
+    // subject block with a hairline and `column.tsx` suppresses the first
+    // section's rule under it (`vg-466`) — which is right for a column with no
+    // lead, and would leave this block sharing a band with the first section's
+    // header once one is here. So the lead closes itself, and the read is that
+    // the panel has one rule per boundary: the subject's above the lead, the
+    // lead's below it, and none of the first section's. jsdom has no cascade, so
+    // what is read is the declaration the class names.
+    const lead = host.querySelector("[data-vigilia-selection-lead]")!;
+    expect(lead.classList.contains("border-b"), "the lead closes itself").toBe(
+      true,
+    );
+    expect(
+      subject.closest(".border-b"),
+      "the subject still owns the rule above the lead",
+    ).not.toBeNull();
+    expect(
+      section.classList.contains("border-t"),
+      "the first section draws none of its own",
+    ).toBe(false);
+  });
+
+  it("arranges the objects when the author presses one", async () => {
+    const canvas = new Canvas(document.createElement("canvas"));
+    const first = new Rect({ left: 0, top: 0, width: 40, height: 20 });
+    const second = new Rect({ left: 100, top: 60, width: 40, height: 20 });
+    canvas.add(first, second);
+    const { host, history } = onCanvas(canvas);
+    canvas.setActiveObject(new ActiveSelection([first, second], { canvas }));
+
+    // Measured on the **drawn** rect, not on `left`/`top`: joining a selection
+    // rewrites those into the selection's own plane, so the properties of two
+    // aligned objects are equal for a reason the author cannot see. The rect is
+    // what the canvas shows.
+    const before = second.getBoundingRect().top;
+
+    await click(
+      buttons(host).find(
+        (button) =>
+          button.getAttribute("aria-label") ===
+          uiCopy.arrangeLabels["align-left"],
+      )!,
+    );
+
+    // The anchor is the selection's first object, so the second lands on its
+    // left edge — through the registry's own run, which is `arrange.ts`.
+    expect(second.getBoundingRect().left).toBeCloseTo(
+      first.getBoundingRect().left,
+      6,
+    );
+    // An align is horizontal: the object the action moved keeps its own height,
+    // and its vertical position with it.
+    expect(second.getBoundingRect().top).toBeCloseTo(before, 6);
+    // And one arrange action is one history entry (§67).
+    expect(history.saveState).toHaveBeenCalledTimes(1);
+  });
+});
+
 describe("the column's sections", () => {
   let rect: Rect;
 
@@ -1594,9 +1736,13 @@ describe("the column a kind gets", () => {
    * and would agree with a bug.
    *
    * The gates are `perKindColumn`'s own: a locked object loses Content's name
-   * and all of Position, Layer and Paint while Spends, being read-only, stays;
-   * the glass control is offered for **every** unlocked selection, because its
-   * refusal is why it is never absent.
+   * and all of Position, Layer and Paint while Spends, being read-only, stays.
+   *
+   * **The glass control left this shared floor with `vg-465`.** It used to be
+   * offered for every unlocked selection, because its refusal is why it was
+   * never absent; it is now offered only to a subject the treatment reaches, so
+   * it belongs to `shape`'s own row — and the reason a subject that cannot carry
+   * it is given is a subject note (`glass.dom.test.ts`), not a section row.
    *
    * `shape`'s reference is the `Wedge`, so the corner radius is absent on
    * purpose and asserted separately: `rx` is a `Rect`'s property and no other
@@ -1637,13 +1783,15 @@ describe("the column a kind gets", () => {
     '[data-vigilia-geometry="angle"]',
     "[data-vigilia-opacity]",
     "[data-vigilia-bleeds]",
-    "[data-vigilia-glass-enabled]",
     "[data-vigilia-resolution]",
   ];
 
   const PRE_PLAN: Readonly<Record<SelectionKind, readonly string[]>> = {
     shape: [
       ...EVERY_OBJECT,
+      // This kind's row alone: a `Wedge` is a region, so the treatment reaches
+      // it (`vg-465`).
+      "[data-vigilia-glass-enabled]",
       "[data-vigilia-panel-fill]",
       "[data-vigilia-panel-stroke]",
       "[data-vigilia-panel-border]",

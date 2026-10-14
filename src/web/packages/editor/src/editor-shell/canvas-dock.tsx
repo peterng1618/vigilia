@@ -1,8 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { useControlTooltip } from "../components/ui/control-icon-button.js";
 import {
-  actionEnabled,
-  arrangeActions,
   destructiveMarker,
   type ObjectActionId,
   objectActionsFor,
@@ -62,48 +60,19 @@ function Action({
 }
 
 /**
- * Arrange shares the dock but greys rather than filters: it needs two or more
- * objects, so it draws disabled with nothing selected and comes alive as the
- * selection grows. The product binds no chord for any of the eight, so its
- * popup is the words alone — and the marker is what the context menu's browser
- * test uses to tell the object actions from the arrange ones on one surface.
- */
-function ArrangeAction({
-  bridge,
-  id,
-  label,
-  disabled,
-  children,
-}: {
-  readonly bridge: EditorShellBridge | undefined;
-  readonly id: ObjectActionId;
-  readonly label: string;
-  readonly disabled: boolean;
-  readonly children: React.ReactNode;
-}): React.JSX.Element {
-  const ref = useRef<HTMLButtonElement>(null);
-  useControlTooltip(ref, label);
-  return (
-    <button
-      ref={ref}
-      type="button"
-      aria-label={label}
-      data-vigilia-arrange-action=""
-      disabled={disabled}
-      onClick={() => bridge?.run(id)}
-    >
-      {children}
-    </button>
-  );
-}
-
-/**
  * The one contextual toolbar on the canvas: the object actions this selection
- * can run, then the arrange actions it is too small to enable. Both render from
- * the registry — and both ask it the same way, so the surface never re-decides
- * eligibility. It filters the object half (an action this selection cannot run
- * is not shown) and greys the arrange half (an action it is too small for is
- * still discoverable, as the old toolbar drew it).
+ * can run, and nothing it cannot.
+ *
+ * **The eight arrange actions are not here.** They are the selection
+ * inspector's now (`vg-463`) — the author's own ruling, and the reversal of
+ * `vg-016`'s: the Arrange *menu* went because this toolbar already had all
+ * eight, and a toolbar that no longer carries them would make that sentence
+ * false. One surface owns them, and it is the column that names the selection
+ * they act on: `selection-inspector/selection-lead.tsx`.
+ *
+ * What is left renders from the registry and asks it the same way, so the
+ * surface never re-decides eligibility: an action this selection cannot run is
+ * filtered out rather than drawn refused.
  */
 export function CanvasDock({
   bridge,
@@ -130,8 +99,8 @@ export function CanvasDock({
       aria-label={uiCopy.canvasToolbar.label}
       data-vigilia-canvas-toolbar=""
       // The surface derives its own visibility: it is present as soon as a
-      // document is, so the arrange half stays discoverable before a selection
-      // exists and the object half appears as it becomes eligible.
+      // document is, and the object half appears on it as the selection becomes
+      // eligible — the absent half is an empty row, not an absent surface.
       data-visible={bridge !== undefined}
     >
       {bridge === undefined
@@ -155,17 +124,6 @@ export function CanvasDock({
               <Glyph icon={action.icon} size={15} />
             </Action>
           ))}
-      {arrangeActions().map(({ id, icon: Icon, label }) => (
-        <ArrangeAction
-          key={id}
-          bridge={bridge}
-          id={id}
-          label={label}
-          disabled={bridge === undefined || !actionEnabled(bridge, id)}
-        >
-          <Glyph icon={Icon} size={15} />
-        </ArrangeAction>
-      ))}
     </nav>
   );
 }

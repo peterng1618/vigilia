@@ -52,8 +52,8 @@ function kindOf(object: FabricObject): string {
  * what Fabric's overridden `drawObject` is. Fabric renders a group's children
  * directly, so a group never fires `before:render` and there is no boundary to
  * sample its backdrop through; `scene-fabric/src/glass.ts` refuses the
- * treatment there. Enabling it would take an edit that paints nothing, so the
- * author is told in this control's own reason instead.
+ * treatment there. Enabling it would take an edit that paints nothing, so no
+ * control is offered for it and `glassRefusal` is the reason instead.
  *
  * Kept apart from `panel.ts`'s `supportsPanelFields` on purpose. That answers
  * "may these fields write this object's material?" — a group has no own fill,
@@ -67,11 +67,14 @@ export function supportsGlassControl(object: FabricObject): boolean {
 }
 
 /**
- * Why this control is refused, in the selected shape's own terms, or
- * `undefined` when it is offered. One function, so "offered enabled" and "why
- * not" cannot drift into answering two different questions.
+ * Why this subject is offered no frosted-glass section, in its own terms, or
+ * `undefined` when it is offered one.
+ *
+ * One function, so "is the section offered" and "why is it not" cannot drift
+ * into answering two different questions: `glassFields` withholds exactly when
+ * this answers, and it is what the column carries so the author is told.
  */
-function refusalOf(object: FabricObject): string | undefined {
+export function glassRefusal(object: FabricObject): string | undefined {
   return supportsGlassControl(object)
     ? undefined
     : uiCopy.inspectorFields.glassRefused(kindOf(object));
@@ -80,12 +83,14 @@ function refusalOf(object: FabricObject): string | undefined {
 /**
  * The reason, and where it is carried.
  *
- * It is **not** a tooltip any more. DESIGN.md §5.3 has a refused control render in
- * the row with its reason readable by everyone, and plan 1's `refused` prop is
- * that: `aria-disabled` plus the reason as visible words, so a keyboard user who
- * never sees a hover still reads it. `ControlRow` is the one owner of that
- * treatment, and `tooltip.ts` the one owner of what a tooltip is — this module
- * builds neither.
+ * It is **not** a tooltip, and it is not a refused row either — there is no row
+ * to carry it once the section is withheld. `index.ts` hands it to
+ * `selection-lead.tsx`, so the column prints it as words under the name of the
+ * thing it is about: the
+ * same visible sentence the refused row used to print (plan 1's `refused` prop,
+ * and §5.3 before it), reached without a hover and without a control that looks
+ * operable and is not. `tooltip.ts` stays the one owner of what a tooltip is —
+ * this module builds neither.
  */
 
 /** The panel's authored treatment, or none. */
@@ -147,22 +152,27 @@ function frostTheSurface(
 }
 
 /**
- * The glass fields for any selection, offered enabled or refused with a reason.
+ * The glass fields, for a subject that can carry the treatment, and none for
+ * one that cannot.
  *
- * The control used to be withheld from a shape that could not carry the
- * treatment, which left nothing anywhere saying so: an author who inserted a
- * `Line` and found no frosted-glass control could only infer the rule from its
- * absence, and could not tell a deliberate rule from a shape the editor had not
- * caught up with. It is always here now, and says the shape's own reason.
+ * **The section is withheld rather than rendered refused**, which reverses the
+ * decision recorded here before (`vg-006`): the control used to appear on every
+ * subject with the shape's own reason in the row, because withholding it "left
+ * nothing anywhere saying so". The author has since ruled the other way — the
+ * subject's inability is a fact about its kind, and a section that exists only
+ * to refuse one row is not a question (§7.4, "a property a kind does not have is
+ * not shown as a field"). What the earlier ruling was protecting is kept rather
+ * than dropped: {@link glassRefusal} is the same reason in the same words, and
+ * `index.ts` hands it to `selection-inspector/selection-lead.tsx` so the column
+ * leads the subject with it — an author
+ * selecting a group is told why the control they expected is not there, instead
+ * of meeting a silence they have to infer a rule from.
  *
  * Values, not controls: React renders them through the control set and
- * `index.ts` writes them through {@link writeGlassField}. The reason rides
- * `FieldBase.refused`, so plan 1's `ControlRow` renders it as words in the row
- * rather than a tooltip only a pointer could reach — the reason is a refusal and
- * §5.3 keeps refusals out of tooltips.
+ * `index.ts` writes them through {@link writeGlassField}.
  */
 export function glassFields(object: FabricObject): readonly FieldView[] {
-  const refusal = refusalOf(object);
+  if (!supportsGlassControl(object)) return [];
   const fields: FieldView[] = [
     {
       id: "glass-enabled",
@@ -170,7 +180,6 @@ export function glassFields(object: FabricObject): readonly FieldView[] {
       label: uiCopy.inspectorFields.glassEnabled,
       checked: treatmentOf(object) !== undefined,
       data: { "data-vigilia-glass-enabled": "" },
-      ...(refusal === undefined ? {} : { refused: refusal }),
     },
   ];
 

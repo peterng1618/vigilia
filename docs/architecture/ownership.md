@@ -91,7 +91,7 @@ two apart is the judgement the map cannot make for itself.
 | Shape material fields (fill, stroke, border, shadow, radius) and each shape's own geometry | `editor/src/selection-inspector/panel.ts` |
 | **Which sections a selection gets** — the per-kind questions and the order they are asked in, total over every selection kind by construction | `editor/src/selection-inspector/per-kind-column.ts` |
 | **The refusal a document edit earns** — stale, locked, unknown or invalid, decided before anything is written | `editor/src/selection-inspector/view.ts` (`editRefusal`) |
-| Frosted-glass control (enable, blur radius) | `editor/src/selection-inspector/glass.ts` |
+| Frosted-glass control (enable, blur radius), and which subjects are offered one at all | `editor/src/selection-inspector/glass.ts` |
 | Glass lifecycle re-resolve, asked for by that control | `editor/src/editor-shell.ts` (`EditorShell.refreshGlass`) |
 | **Which bindings resolve** — the ones whose source has left the document, dropped on load | `editor/src/editor-shell.ts` (`dropDanglingBindings`) |
 | Type-preset authoring and reference reassignment | `editor/src/type-preset-manager/` |
@@ -106,8 +106,9 @@ two apart is the judgement the map cannot make for itself.
 | OS clipboard copy/cut/paste/duplicate | `editor/src/clipboard-manager/` |
 | Group and ungroup | `editor/src/grouping-manager/` |
 | **Entered-group reachability** — the `selectable`/`evented` a group writes on every object outside it, and the values it restores on exit | `editor/src/grouping-manager/` (`applyReachability`, `restoreReachability`) |
-| Canvas dock (former floating toolbar) | `editor/src/editor-shell/canvas-dock.tsx` |
+| Canvas dock (former floating toolbar) — the object actions alone, filtered to what the selection can run (`vg-463` moved the eight arrange actions out) | `editor/src/editor-shell/canvas-dock.tsx` |
 | Selection snapshot, the document's identity and dock eligibility, and the layer writes: `name`, `visible` and the lock, plus the reorder | `editor/src/editor-shell/bridge.ts` |
+| **The block the column leads with, under the subject** — the arrange actions for a multi-selection and the reason a subject is offered no frosted-glass section, with its own closing edge | `editor/src/selection-inspector/selection-lead.tsx` |
 | Selection geometry, appearance, runs and text layout | `editor/src/selection-inspector/` |
 | The Document pane's own resolved references | `editor/src/selection-inspector/style.ts` |
 | Authoring-time value-run tokens | `editor/src/run-placeholder.ts` |

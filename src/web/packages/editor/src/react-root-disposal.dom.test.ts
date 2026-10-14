@@ -310,6 +310,9 @@ const SHIPPED_ROOTS: readonly (readonly [string, number])[] = [
   ["panes/document/references.tsx", 1],
   ["selection-inspector/column.tsx", 1],
   ["selection-inspector/inspector.tsx", 1],
+  // the lead block's own tree, between the subject and the sections, released
+  // by `destroy()` on the inspector's disposal path (`vg-463`, `vg-465`).
+  ["selection-inspector/selection-lead.tsx", 1],
   // the type-preset panel's own tree, released by `destroy()` (Task 6). It was
   // imperative field builders until then, so it created no root; the preset
   // library is a React tree now and the file declares the one it makes.
