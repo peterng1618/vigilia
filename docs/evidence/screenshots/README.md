@@ -61,7 +61,7 @@ drawing is skipped by the drawings gate rather than parsed — it enumerates
 **Plans 1 and 3's control-set pair sits beside the controls drawings the same
 way**: `docs/design/mockups/current/controls-capture-graphite.png` is the set on
 the ground `controls.html` draws (its `#0b0e12` paper, `#72e0c0` accent) and
-`controls-capture-editorial.png` the light ground `controls-editorial.html` draws
+`controls-capture-editorial.png` the editorial ground `controls-editorial.html` draws
 (its `#fffdf7` paper), both the three-panel state the drawn sheets hold, from
 `the control set renders in the design language` (the `control-set` file, with
 and without `-editorial`).
