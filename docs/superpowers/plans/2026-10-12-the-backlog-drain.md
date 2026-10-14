@@ -1137,6 +1137,371 @@ The other two are not in it, and the reason is written on them: `vg-271`'s quest
 
 ---
 
+# Phase 13 — the user's 2026-10-14 GUI list (9 rows, items 1–9)
+
+**Why this phase runs ahead of Phase 12.** The list is the user's own, written while testing the
+editor, and on 2026-10-15 they set it first: *"Once the items I reported are filled, prioritize
+addressing them."* Priority is theirs to set, so these tasks dispatch ahead of Phase 12's and
+Phase 12 resumes when they land. **No ruling is required before a task here** (§10 step 2 binds
+ruled rows): each item's authority is the user's own sentence, which the brief carries verbatim.
+
+**Two of the nine reverse a verified decision, and moving the surface is not enough.** `vg-463`
+moves the eight arrange actions out of the canvas dock, and the dock is exactly what `vg-016`
+(verified, `source: user`) recorded as the reason the Arrange menu could go. `vg-465` hides the
+glass section where a subject cannot be frosted, and withholding it is what `vg-006` (verified,
+`source: user`) recorded as the mistake. Neither needs a new ruling — the author is the same party
+and has just changed their mind — but **each task moves the decision, not only the surface**: the
+contradicting sentence in the archived row, the module docstring that states the old behaviour, and
+any test pinning it, in the same commit.
+
+**Where this phase meets Phase 12, and who waits.** `vg-037` (Phase 12) owns the glass *control's
+rendered value*; Task 13.4 owns whether the section is offered at all, so `vg-037` waits.
+`vg-274` (Phase 12) is `editor-shell.css` joining the gated list; Task 13.1 edits that stylesheet,
+so `vg-274` waits. Nothing else in the two lists shares a file.
+
+**One root cause is filed twice, deliberately.** Items 7 and 9 are the same mistake — a boundary
+drawn by two owners — in two mechanisms (`vg-464`, `vg-466`). Task 13.1 fixes both, so the pair
+closes together rather than one waiting on the other.
+
+### Task 13.1: One owner per boundary, and scrollbars the shell draws (items 1, 7)
+
+**Files:**
+- Modify: `packages/editor/src/editor-shell/editor-shell.css`, `packages/editor/src/components/ui/control-well.tsx`
+- Test: the affected `*.dom.test.tsx`; one spec that renders a focused field
+
+**Interfaces:**
+- Produces: a focus boundary with one owner; the three scrollbar tokens' one consumer
+
+- [ ] **Step 1: Give the focus boundary one owner.** `control-well.tsx:83` draws it rounded on the
+      well; `editor-shell.css:1432-1441` draws a second, square one on the input and wins, because
+      that rule is unlayered while the input's `outline-none` utility sits inside `@layer utilities`
+      (measured in `vg-278`). The boundary stays on the well, which follows the control's radius,
+      and the shell's rule stops drawing a second one — including for `control-text.tsx` and
+      `control-select.tsx`, which are the same shape in the same cascade.
+- [ ] **Step 2: The header's two rules become one (item 9).** `inspector.tsx:70`'s
+      `border-b border-edge` and `inspector-section.tsx:58`'s `border-t border-edge` are adjacent
+      owners drawing one boundary; the subject block keeps the rule and the first section does not
+      draw a second. The same task adds the kind's glyph before the name (`inspector.tsx:71-77`),
+      reading the per-kind map at `icons.ts:174-180` rather than a second table.
+- [ ] **Step 3: Consume the scrollbar tokens.** `editor-shell.css:115-117` declares
+      `--vigilia-scrollbar-thumb`, `-thumb-hover` and `-track` and nothing reads them; the panel and
+      inspector scrollers (`:1115-1118`) take `scrollbar-width`/`scrollbar-color` and the
+      `::-webkit-scrollbar` family from those three values. **No new paint value is introduced.**
+- [ ] **Step 4: Red-proof each half** — restore the shell's outline rule and the boundary reads
+      doubled; unset the scrollbar properties and the scroller reads platform-painted; restore the
+      first section's `border-t` and the doubled rule returns. Confirm each restore byte-for-byte
+      with `cmp`, not with `git`.
+- [ ] **Step 5: Rendered evidence on a rebuilt bundle** (`--workers=1`): a focused input shows one
+      boundary, the inspector header shows one rule below it and an icon before the name, and a
+      scrolling panel's scrollbar draws in shell paint.
+- [ ] **Step 6: `npm run gate` (exit code read from `$?`, redirected to a file), then commit.**
+
+**Acceptance:** one outline per focused control and one rule below the header, both measured in the
+browser; the three tokens have a consumer; the gate green.
+**Failure modes:** the second outline removed from one input and left on the others; a scrollbar
+themed with a new hard-coded colour; a header icon read from a second per-kind table; a browser
+claim taken from a stale `dist`.
+
+### Task 13.2: One mark per layer kind, from the one icon family (item 2)
+
+**Files:**
+- Modify: `packages/editor/src/panes/composition/kind-mark.tsx`, `packages/editor/src/editor-shell/icons.ts`
+- Possibly modify: `packages/editor/src/panes/add/add-pane.tsx` (the shape glyphs it draws)
+
+**Interfaces:**
+- Consumes: `icons.ts`'s glyph vocabulary as the single icon family
+- Produces: one representative glyph per layer kind
+
+- [ ] **Step 1: One glyph per kind, drawn from the vocabulary.** Today `kind-mark.tsx` draws four
+      different pictures — the object's own words (`:78`), a paint swatch (`:102`), an image
+      thumbnail (`:115`), a chart family glyph (`:94`) and `STACK_GLYPH` (`:128`). A text row
+      becomes a `T` in a rounded-rectangle outline at the chrome's own weight; a shape row becomes
+      that shape type's glyph as the add panel identifies it.
+- [ ] **Step 2: Settle the Lucide question in the open, not by assumption.** `add-pane.tsx:158-170`
+      records that Lucide has no `wedge` or `arc`, which is why those tiles are hand-authored SVG.
+      The user's rule is that every GUI icon is Lucide, so **the mark for a shape Lucide cannot draw
+      is the nearest Lucide glyph naming the same family**, and the hand-authored geometry stays in
+      the add panel where it depicts the shape being created rather than standing for a kind. If a
+      shape has no defensible Lucide counterpart, say so on `vg-459` rather than inventing one.
+- [ ] **Step 3: Correct `icons.ts:47`'s claim** that it is the only module reading lucide —
+      `object-actions.ts:1-23` reads it too — or make the claim true.
+- [ ] **Step 4: Rendered evidence**: a capture of the layer list showing every kind's mark at once,
+      which is the reading this item asks for and cannot be replaced by a source read.
+- [ ] **Step 5: `npm run gate`, then commit.**
+
+**Acceptance:** one representative icon per kind, drawn from the one family, verified on a rendered
+layer list rather than by reading `kind-mark.tsx`.
+**Failure modes:** the object's own words left on the text row at 8px; a colour-carrying swatch kept
+for shapes; a hand-authored glyph claimed as Lucide; the item's "every icon anywhere in the GUI"
+read as discharged by the layer list alone, which no check in this task establishes.
+
+### Task 13.3: The layer list's actions and its drag (items 3, 4, 5)
+
+**Files:**
+- Modify: `packages/editor/src/editor-shell/layer-panel.tsx`, `packages/editor/src/editor-shell/shell-layout.tsx`, `packages/editor/src/panes/composition/composition-pane.tsx`, `packages/editor/src/panes/composition/row-affordances.tsx`
+- Possibly modify: `packages/editor/src/object-actions.ts`
+
+**Interfaces:**
+- Consumes: `OBJECT_ACTIONS` and `objectActionsFor` as the one owner of which actions exist
+- Produces: a footer whose content does not depend on a selection; a row that can be dropped into a
+  group; a name reached by double-click alone
+
+- [ ] **Step 1: The footer's actions stop depending on a selection.** `shell-layout.tsx:358` already
+      passes the footer unconditionally and `layer-panel.tsx:27-28` maps `objectActionsFor`, but
+      every entry is selection-gated (`object-actions.ts:105-116`, `:140`), so the row is empty with
+      nothing selected. **The item does not ask for a footer that is present; it asks for one that is
+      usable**, so the actions that need no selection (new text, new shape, new group — whatever the
+      panel's own construction verbs are) are available at all times, and the registry gains a way to
+      say which those are rather than the panel re-deriving it.
+- [ ] **Step 2: Remove the rename pen** (`row-affordances.tsx:62`, `:67-71`) — double-click already
+      opens the name (`composition-pane.tsx:511-514`), so the item is a removal. Keep the rename
+      reachable by keyboard, and read `vg-389` and `vg-234` before removing it, since both are open
+      on that same field.
+- [ ] **Step 3: Let a dragged row land inside and outside a group.** `composition-pane.tsx:451-454`
+      refuses by construction (`sameLayerParent`), only a landing slot calls `preventDefault`
+      (`:458`), and `onDrop` bails without `before` (`:495-502`). A row dragged into a group's
+      interior must have a drop target and must move the object's parent; the same for dragging out
+      to the root. `vg-099` (verified) left "deliberate intent or implementation limit" open and this
+      item answers it: the limit is lifted.
+- [ ] **Step 4: Red-proof the drag** — with `sameLayerParent` restored, the new case fails; the
+      gesture cannot be captured in a browser, so the case drives the drop handlers directly and the
+      rendered reading is the layer list's nesting after a synthetic drag.
+- [ ] **Step 5: `npm run gate`, then commit.**
+
+**Acceptance:** the footer offers its construction actions with nothing selected, measured in the
+browser; no pen is rendered and the name still opens for typing; a row can be dropped into a group
+and out of one, with the tree reflecting it.
+**Failure modes:** the footer made "always visible" by offering actions whose manager would refuse
+them; the pen removed while the keyboard route to rename breaks; a drop target added that reorders
+without reparenting.
+
+### Task 13.4: The glass section, and the arrange actions' one home (items 6, 8)
+
+**Files:**
+- Modify: `packages/editor/src/selection-inspector/glass.ts`, `packages/editor/src/selection-inspector/index.ts`, `packages/editor/src/editor-shell/canvas-dock.tsx`
+- Possibly modify: `packages/editor/src/selection-inspector/per-kind-column.ts`
+
+**Interfaces:**
+- Consumes: `per-kind-column.ts`'s total membership rule for which sections a selection gets
+- Produces: two moved decisions, each carried on its row
+
+- [ ] **Step 1: Withhold the glass section where the subject cannot be frosted (item 8).**
+      `glass.ts:164-175` always returns the field with a `refused` state and `:149-163` records the
+      reason: withholding it "left nothing anywhere saying so". **The ruling the section reverses is
+      `vg-006`'s**, so the explanation moves rather than vanishes — the shape's inability is stated
+      where the author meets it (the section's own absence is not self-explanatory for a Group), and
+      `glass.ts`'s docstring records the new decision in the same commit.
+- [ ] **Step 2: The eight arrange actions get their single home (item 6).** They render only in the
+      dock (`canvas-dock.tsx:158-168`), and the inspector panel offers nothing (`selection-inspector/`
+      has no arrange match). Two or more selected objects or groups show them at the top of the
+      inspector. **This is the reversal `vg-016` obliges**: the dock stops carrying them, so the
+      reason the Arrange *menu* was removed — the toolbar above the canvas already had all eight —
+      stops being true, and the commit says where the one owner now lives rather than leaving two.
+- [ ] **Step 3: Read `vg-396` before moving them** (open: entering and leaving a selection inside a
+      scaled or rotated group moves its members, so align and distribute misbehave). If the move
+      makes that defect more reachable, it lands with this task or the task says why it does not.
+- [ ] **Step 4: Rendered evidence** for both: the inspector on a two-object selection shows the
+      eight; a Group's inspector shows no glass section, and the explanation is where Step 1 put it.
+- [ ] **Step 5: `npm run gate`, then commit, naming both reversed rows.**
+
+**Acceptance:** the inspector hosts the arrange actions for a multi-selection and the dock does not,
+verified rendered; a subject that cannot be frosted is offered no glass section and is told why
+somewhere it will meet.
+**Failure modes:** the eight duplicated in both surfaces; the glass explanation deleted with the
+section; `vg-016`'s sentence left standing in contradiction to the tree.
+
+### Task 13.5: Close the nine, and set what item 2 could not settle
+
+**Files:**
+- Modify: both register files, `STATUS.md`
+
+- [ ] **Step 1: Close `vg-458`–`vg-466`** as `verified`, each with a `check` naming a word from its
+      own `title` and `artefacts` naming the commit that landed it. Item 2's row closes only on the
+      rendered layer list, and any part of it left unresolved (`vigil-459`'s Lucide question) stays
+      open on its own line rather than being closed with the rest.
+- [ ] **Step 2: Record the two moved decisions** — `vg-016` and `vg-006` keep `verified` and gain a
+      line naming where the decision moved, so the next reader finds the current answer from either.
+- [ ] **Step 3: `npm run backlog:check`, `npm run status:check`, commit.**
+
+**Acceptance:** every close carries a check naming its own subject and a resolvable ancestor sha; the
+two reversed rows point at the new home; the count of live rows is what the two commands report.
+
+---
+
+# Phase 14 — the user's 2026-10-14 GUI list (9 rows, items 10–18)
+
+**The second half of the same list, and it runs behind Phase 13 by the same priority.** Items 10–18
+were verified in the same pass and are filed as `vg-467`–`vg-475`. Three of them are not new
+decisions and their tasks say so rather than re-deciding:
+
+- **`vg-469` (item 12) is an existing verified rule's unfinished application.** `vg-007` (archived,
+  `source: user`) owns "a bounded number field clamps onto its bound and carries a native slider";
+  five fields implement it and rotation, corner radius, panel border and the shadow's blur and
+  offset do not. The task applies the rule and cites it; it does not argue it again.
+- **`vg-470` (item 13) moves a recorded decision.** Position's collapsed default is deliberate and
+  `per-kind-column.ts:55-58` says why, so the rationale is revised in the same commit as the
+  surface — a surface changed without it leaves the code asserting the opposite of what it does.
+- **`vg-472` (item 15) removes a pinned string.** `layer-panel.dom.test.tsx:1174` asserts the line,
+  so the removal and the assertion change together.
+
+**Two items are already half-true and the rows say which half is left.** `vg-471` (item 14): the
+right alignment exists and is measured, the File and Edit menus carry their chords, and the one
+remaining surface is the canvas context menu, which draws none. `vg-473` (item 16): 26 sites name
+Fabric, and exactly one is visible on screen — the footer status line the user quoted.
+
+### Task 14.1: The slider's well, its wheel, and the rule's remaining fields (items 10, 11, 12)
+
+**Files:**
+- Modify: `packages/editor/src/components/ui/control-slider.tsx`
+- Modify: `packages/editor/src/selection-inspector/panel.ts`, `packages/editor/src/selection-inspector/per-kind-column.ts`
+- Possibly modify: `packages/editor/src/selection-inspector/view.ts` (the `slider` arm of `FieldView`)
+
+**Interfaces:**
+- Consumes: `ControlNumber`'s inline form, which `control-pair.tsx` already composes as a layout
+- Produces: a slider whose value can be typed and wheeled, and one set of fields that all carry it
+
+- [ ] **Step 1: The well becomes an input (item 10).** `control-slider.tsx:157-161` renders a
+      `<span>`; `:30-31` states the decision being reversed in the module's own words, so that
+      sentence changes in the same commit. The well becomes `ControlNumber` in its inline form, so
+      the draft, the validation and the commit rule stay in the control that owns them rather than
+      being re-derived — which is why `control-pair.tsx` composes two halves the way it does.
+- [ ] **Step 2: The wheel moves the value (item 11).** A wheel event over the control moves it by
+      the slider's own step, and **the step is read from the slider rather than invented**, so the
+      gesture and the drag cannot disagree. The viewport's wheel handler
+      (`viewport-manager/navigation.ts:124`) is a different subject and does not change.
+- [ ] **Step 3: Apply `vg-007`'s rule to the fields that lack it (item 12)** — the corner radius,
+      the panel border, the shadow's blur and offset (`panel.ts:200-212`, `:244-263`, `:281-299`)
+      and rotation (`per-kind-column.ts:312-326`). The census covered the selection column, so
+      **sweep every bounded number in the inspector**, not the five named: the row's list is a lower
+      bound.
+- [ ] **Step 4: Red-proof each** — the typed value fails to commit with the input reverted to a
+      span; the wheel does nothing with the listener removed; a swept field renders a typed-only
+      well with its slider removed.
+- [ ] **Step 5: `npm run gate`, then commit**, naming the fields the sweep converted.
+
+**Acceptance:** a value can be typed into the well and committed, and the wheel moves the control,
+both verified rendered; every bounded number in the inspector carries the pair.
+**Failure modes:** a second validation route built beside `ControlNumber`'s; a wheel that moves the
+value without a history boundary or without a preview; the sweep converting the five named fields
+and leaving the rest, which is the defect this row exists to end.
+
+### Task 14.2: The inspector's section list (items 13, 17)
+
+**Files:**
+- Modify: `packages/editor/src/selection-inspector/per-kind-column.ts`, `packages/editor/src/selection-inspector/references.tsx`, `packages/editor/src/ui-copy.ts`
+- Possibly modify: `packages/editor/src/editor-session.ts`
+
+**Interfaces:**
+- Consumes: the total membership rule `per-kind-column.ts` already enforces by construction
+- Produces: a section list with no read-only residue, and Position's default stated as its reason
+
+- [ ] **Step 1: Position opens by default (item 13).** `per-kind-column.ts:242-244` sets it away from
+      true and `:55-58` gives the reason; both change together, and the new reason says why the
+      asymmetry is gone rather than being deleted.
+- [ ] **Step 2: Remove the Spends section (item 17, first owner)** — `per-kind-column.ts:526`, `:632`
+      and `:649`. It is section-list entries, so its removal is contained.
+- [ ] **Step 3: Remove the This document section (item 17, second owner)** — `ui-copy.ts:295` with
+      `references.tsx:46-61` and `editor-session.ts:372`. **This is a sub-panel rather than an
+      entry**, and its removal reaches Playwright: `tests/e2e/composition-panel.spec.ts:377` and
+      `:385`, and `editor.spec.ts:2529`. Cases that exist only to drive a panel that no longer
+      renders are removed with it, and each one's removal is named.
+- [ ] **Step 4: Rendered evidence** on a rebuilt bundle: the inspector opens with Position expanded
+      and shows neither read-only section, on the selections that used to carry them.
+- [ ] **Step 5: `npm run gate`, then commit.**
+
+**Acceptance:** Position renders expanded; neither read-only section renders anywhere; the specs
+that drove them are gone rather than skipped, and the remaining suite is green.
+**Failure modes:** the rationale deleted with the flag so the file explains nothing; a spec skipped
+or narrowed instead of removed; the Spends section removed in one panel and left in another.
+
+### Task 14.3: The context menu's chords (item 14)
+
+**Files:**
+- Modify: `packages/editor/src/editor-shell/canvas-context-menu.tsx`
+
+**Interfaces:**
+- Consumes: the `item` helper's chord route in `shell-menu-bar.tsx`, and `shortcutLabel`
+- Produces: one surface drawing chords the way the other two do
+
+- [ ] **Step 1: Draw the chord on each row that has one.** `canvas-context-menu.tsx:79-91` renders
+      no chords for the same Duplicate/Copy/Cut/Delete the Edit menu draws, so the context menu
+      reads the shared label route rather than restating a chord. **The four File rows with no
+      binding are not part of this** — `vg-185` (verified, ruled 2026-10-14 "teach the File chords")
+      left them deliberately chordless because the table binds nothing for them, and this task does
+      not reopen it.
+- [ ] **Step 2: Red-proof** — with the label route bypassed the case fails on a row's own chord.
+- [ ] **Step 3: Rendered evidence**: the canvas context menu on a selected object shows the same
+      chords the Edit menu shows, right-aligned by the existing rule.
+- [ ] **Step 4: `npm run gate`, then commit.**
+
+**Acceptance:** every context-menu row with a binding prints it, verified rendered, and the
+alignment comes from the one existing rule rather than a second one.
+**Failure modes:** a chord restated in the context menu rather than read from the binding; the
+right alignment re-implemented locally; a chord taught for an action whose row runs a different call.
+
+### Task 14.4: The author-facing copy (items 15, 16)
+
+**Files:**
+- Modify: `packages/editor/src/ui-copy.ts`, `packages/editor/src/panes/composition/composition-pane.tsx`
+- Modify: `packages/editor/src/editor-main.ts`, `packages/editor/src/editor-shell.ts`
+- Possibly modify: `packages/renderer-core/src/theme/fabric-envelope-validate.ts`, `packages/scene-fabric/*`
+
+**Interfaces:**
+- Consumes: nothing from an earlier task in this phase
+- Produces: no user-facing string naming the renderer, and no helper line above the layer tree
+
+- [ ] **Step 1: Remove the layer helper line (item 15)** — `ui-copy.ts:690`, rendered at
+      `composition-pane.tsx:330`, and pinned by `layer-panel.dom.test.tsx:1174`. The assertion
+      changes in the same commit.
+- [ ] **Step 2: The footer says "Editor ready" (item 16).** The user's own example, and the only one
+      of the 26 sites visible on screen: `editor-shell.ts`'s status line.
+- [ ] **Step 3: The remaining author-facing sites.** `editor-main.ts:290` and `:442`,
+      `editor-shell.ts:432` and `:579` (`:425` is a dev-mode error and stays a developer's message).
+      **The eighteen validation messages in `renderer-core/src/theme/fabric-envelope-validate.ts` are
+      a decision this task must take rather than assume**: they are the author's own errors, so if
+      they keep the renderer's name the task says why, and if they lose it the task says what they
+      say instead. `scene-fabric`'s three sites (`glass.ts:250`, `object-asset.ts:20`,
+      `persist.ts:260`) are read the same way. The two source comments (`ui-copy.ts:290`,
+      `per-kind-column.ts:170`) are not user-facing and are left alone.
+- [ ] **Step 4: Red-proof** at the one visible site: restore the string and the rendered status line
+      reads "Fabric editor ready" again.
+- [ ] **Step 5: `npm run gate`, then commit**, naming the sites changed and the ones deliberately
+      kept.
+
+**Acceptance:** the footer reads "Editor ready", verified rendered; every site the task keeps is
+named with its reason; no test asserts a string the product no longer prints.
+**Failure modes:** a blind find-and-replace that renames the renderer in code where it is the
+correct name; a message left saying "Fabric" on screen while the footer is fixed; the validation
+messages changed without the task saying which side it took.
+
+### Task 14.5: The rotation pivot (item 18), and the phase's close
+
+**Files:**
+- Modify: `packages/editor/src/selection-inspector/index.ts`
+- Modify: both register files, `STATUS.md`
+
+- [ ] **Step 1: Rotate about the centre.** `selection-inspector/index.ts:333-334` calls
+      `object.set({ angle })`, which rotates about the object's own origin at left/top
+      (`new-object-defaults.ts:170-178`); Fabric's own route rotates about the centre through the
+      `centeredRotation` branch. The funnel uses the centred route, so the inspector and the canvas
+      gesture agree.
+- [ ] **Step 2: Red-proof it on the measured case** — `group-cpu-card` (left/top at 421,187 with its
+      centre at 561,340.5) turned by 45° pivot about (421,187) before the fix and about its centre
+      after; the case asserts the centre's own position rather than the angle property.
+- [ ] **Step 3: Close `vg-467`–`vg-475`** as `verified`, each with a `check` naming a word from its
+      own `title` and `artefacts` naming the commit that landed it. `vg-469`'s check cites `vg-007`'s
+      rule as the thing applied.
+- [ ] **Step 4: `npm run backlog:check`, `npm run status:check`, commit**, and record Phase 13's and
+      Phase 14's landing in the ledger together.
+
+**Acceptance:** a group rotated from the inspector keeps its centre, measured rendered on the case
+above; every close carries a check naming its own subject and an ancestor sha.
+**Failure modes:** the angle set through a second route so the two surfaces disagree; a case that
+asserts the angle property, which was already correct; a close reported while the rendered reading
+is missing.
+
+---
+
 # Parked rows — held, not a phase
 
 `vg-330` is parked by the user (2026-10-11) and `vg-322` is parked transitively: it closes when `vg-330` does and carries no independent work. **No phase owns them.** `vg-322`'s rule in §5.1's owner table stays unbuilt until `vg-330` is unparked, and W9's `vg-292`/`vg-293` are independent of it. They are named in the drain's final report so the count is legible: 22 closed, 0 withdrawn unless a D9 ruling withdraws one, 109 worked, 2 parked.
