@@ -171,7 +171,16 @@ export function SelectControl(
               what the new-theme chooser and the library chooser both did. 80
               keeps one order for both places. */}
           <Select.Positioner sideOffset={6} className="z-80">
-            <Select.Popup className="min-w-[10rem] rounded-md border border-edge bg-panel p-[var(--space-6)] text-sm text-text shadow-[var(--elev-2)]">
+            {/* **A list taller than the room it opens into scrolls.** Base UI
+                measures the space on the popup's chosen side and publishes it as
+                `--available-height`; without reading it the popup simply grows,
+                and since it is portalled and fixed-positioned, the page cannot
+                be scrolled to reach the rest. The clock's zone select is why
+                this is not hypothetical — `Intl.supportedValuesOf("timeZone")`
+                is 418 entries, so every zone past the fold was unreachable by
+                any means. `.editor-shell-menu-popup` states the same rule for
+                menus, which is where the failure was found the first time. */}
+            <Select.Popup className="max-h-[var(--available-height)] min-w-[10rem] overflow-y-auto rounded-md border border-edge bg-panel p-[var(--space-6)] text-sm text-text shadow-[var(--elev-2)]">
               {optionRuns(options).map((run) => {
                 const items = run.options.map((option) => (
                   <Select.Item

@@ -37,10 +37,7 @@ ledger did.
 
 ## Last completed change
 
-- **Ten e2e locators asserted a menu row's name *is* its label, and a chorded row's is not** — `shell-menu-bar.tsx` gives each chord `kbd` an `aria-label` so a screen reader hears "Control S" rather than the mark `⌘` (`1189c459`), and a descendant's `aria-label` joins the ancestor's name-from-content, so the three File rows that print a chord compute a name their own label does not equal; **measured on the running editor, `exact: true` counted 0 rows where the substring counted 1**, and the fix is deleting the flag, since Playwright's `name` is already a substring match. Nine files, tests only; the product is unchanged.
-- **`editor.spec.ts`'s save case had read as a download that never fired, and the click was the whole of it** — the same test is **30.4 s red before and 2.6 s green after**, with the envelope still asserted on the bytes the browser wrote, so no download defect was hiding behind the locator.
-- **Two counts the phase itself moved, now stated with their reason** — a text run's only Paint row was the glass refusal `vg-465` took up into the lead block, so the empty-section rule takes the section away; and `vg-462` took the rename pen off an attended layer row, so the row carries two controls where it carried three.
-- **The class is one shape and it is the phase's recurring cost** — an expectation the product's own deliberate change invalidated, invisible because `npm run gate` is `vitest run` and never runs Playwright.
+- **The zone picker offered 419 zones in a popup with no height of its own, so every zone past the fold was unreachable** — `control-select.tsx`'s `Select.Popup` grew to fit its contents, and being portalled and fixed-positioned, the page could not be scrolled to reach the rest; `Intl.supportedValuesOf("timeZone")` is 418 entries plus *follow the display*. **The rule already existed next door**: `.editor-shell-menu-popup` reads Base UI's `--available-height` and scrolls for exactly this reason, so the primitive now reads the same variable. `editor.spec.ts`'s clock case chose Asia/Tokyo and had timed out at 30.6 s for its whole life; green in 3.6 s now.
 
 
 ## Next
