@@ -37,11 +37,11 @@ ledger did.
 
 ## Last completed change
 
-- **`vg-415` closes and the register is 175 open** — the copy net's 1055 lines became three files over one readers module: `ui-copy.test.ts` 143, `ui-copy-panels.test.ts` 418, `ui-copy-surfaces.test.ts` 420 and `ui-copy-readers.ts` 141, **all four under the 500-line signal as well as the 800 stop**.
-- **The row's own first suggested remedy was checked and refused** — a bridge fixture shared with `shell-layout.dom.test.tsx` cannot be it, because that file's `bridgeStub()` is a partial stub whose `editor` is cast through `unknown as`, and the row's own text says a partial stub throws on the shell's first render since the shell mounts the composition pane.
-- **The collection was verified by the controller rather than taken from the implementer's report**: 10 test titles before and after, **0 missing and 0 added**, read out of `git show cd14e82b:` against the three files at `2273b6cb`, and a focused run of the three files is **10 passed, exit 0**. Every one of the 10 bodies is a verbatim slice, which is the stronger evidence than a re-run red proof.
-- **Task 15.1 is in flight and its first commit has landed** — `b950c1ad` adds the instrument that reads a drawing's unread declarations and the shell drawing's view cluster (`vg-419`, `vg-456`); `vg-442`'s type half, the red proofs and the parity suite are still running.
-- **What this leaves, plainly**: **175 open, 36 parked**; **Task 15.1 in flight**, Tasks 15.5 and 15.6's second half (`vg-420`) remain, and `vg-310`, `vg-324` and `vg-308` each carry a ruling that has not been applied.
+- **`vg-419` and `vg-456` close and `vg-442` does not, and the register is 173 open** — Task 15.1's three rows, two `verified` at `b950c1ad` and the third updated rather than closed.
+- **`vg-442`'s own premise was false, and that is why it stays open** — the row states that `mockup-values.ts` deliberately refuses to answer a `font-size` question with the drawings' `font` shorthand, "with the reason in its message". **It did not**: `SHORTHANDS_SETTING` named no font longhand, so the question returned the drawing's *silence*, which the parity table reads as `0`. The refusal is now real but **the comparison is not**, so the row's subject is still exactly true and a `verified` close would have claimed a check that was not built.
+- **`vg-419` took the row's own second candidate — a declared allow-list**, because the rule needs a row per property per region: **123 properties across 26 selectors on the six checked drawings**. `tests/e2e/parity-unread-declarations.ts` measures `declared − read` and **fails both ways**, so the list cannot rot into stale exemptions; the controller proved it red independently by growing the shell drawing's rail an `opacity`.
+- **`vg-456` gets two `PARITY` rows** (41 → 43) reading the three zoom/fit squares at 26px against `.editor-shell-view-step`; moving the drawing to 22px reddens the suite **two different ways** — a value mismatch on `width`, an address matching nothing on `height`.
+- **What this leaves, plainly**: **173 open, 36 parked**; **Task 15.5 is in flight** (the `vg-401` probe and three captures), Task 15.6's second half (`vg-420`) is next, and `vg-310`, `vg-324` and `vg-308` each carry a ruling that has not been applied.
 
 ## Next
 
