@@ -74,8 +74,15 @@ export interface EditorShellBridge {
    * The group's descendants are inside the context too, which the panel derives
    * from the projection's own parent links. */
   groupContext(): readonly string[];
+  /** Selects the rows named, replacing the selection. Ids the tree no longer
+   * holds are ignored, and a row that resolves through its owning group selects
+   * that group, exactly as `selectLayer` does. An empty list clears; a list
+   * that resolves to nothing is a refusal, which is what `selectLayer` has
+   * always done with an id it cannot resolve. */
+  selectLayers(ids: readonly string[]): void;
   /** Selects a row's object: directly inside the entered group, else through the
-   * group that owns it. */
+   * group that owns it. One row is a set of one, so this is `selectLayers`
+   * itself. */
   selectLayer(id: string): void;
   /** Enters the group a row names, so its descendants become the reachable rows
    * the panel stops dimming. A row that is not a group, and an id the tree no
@@ -312,19 +319,60 @@ export function createEditorShellBridge(input: {
       ...(input.bindings === undefined ? {} : { bindings: input.bindings() }),
     });
   };
-  const selectLayer = (id: string): void => {
+  /**
+   * The rows named, as one selection.
+   *
+   * Gesture-neutral on purpose: "extend" is a fact about a list the composition
+   * pane is rendering, and this is the editor's Fabric boundary rather than a
+   * gesture interpreter — the pane decides *which* ids, this decides what they
+   * select.
+   */
+  const selectLayers = (ids: readonly string[]): void => {
     const root = canvas.getObjects();
-    const target = findById(root, id);
-    if (target === undefined) return;
-    const owner = ownerOf(root, id);
-    // Inside the entered group its children are reachable in their own right, so
-    // a tree click selects one directly; anywhere else a group child is selected
-    // through its owning group, since a bare child has no transform controls.
-    const inContext = owner !== undefined && enteredContext().includes(owner);
-    canvas.setActiveObject(inContext ? target : (owner ?? target));
+    // An empty list is the clear gesture, and it is the only route to one: the
+    // pane sends `[]` when a toggle takes the last row out.
+    if (ids.length === 0) {
+      canvas.discardActiveObject();
+      canvas.requestRenderAll();
+      notify();
+      return;
+    }
+    const entered = enteredContext();
+    const subjects: FabricObject[] = [];
+    for (const id of ids) {
+      const target = findById(root, id);
+      if (target === undefined) continue;
+      const owner = ownerOf(root, id);
+      // Inside the entered group its children are reachable in their own right,
+      // so a tree click selects one directly; anywhere else a group child is
+      // selected through its owning group, since a bare child has no transform
+      // controls.
+      const subject =
+        owner !== undefined && entered.includes(owner)
+          ? target
+          : (owner ?? target);
+      // **After resolution, not before.** Two rows inside one group both resolve
+      // to that group when it is not entered, and a range across them must not
+      // select it twice.
+      if (!subjects.includes(subject)) subjects.push(subject);
+    }
+    if (subjects.length === 0) return;
+    // Three cases, three shapes, and the single one matters: wrapping one object
+    // in an `ActiveSelection` would change the selection inspector's kind from
+    // the object's own to `activeSelection` and lose the per-kind column.
+    canvas.setActiveObject(
+      subjects.length === 1
+        ? subjects[0]!
+        : new ActiveSelection(subjects, {
+            canvas,
+            multiSelectionStacking: "selection-order",
+          }),
+    );
     canvas.requestRenderAll();
     notify();
   };
+  /** One row is a set of one, so the group-resolution rule above exists once. */
+  const selectLayer = (id: string): void => selectLayers([id]);
   const enterGroup = (id: string): void => {
     const root = canvas.getObjects();
     const target = findById(root, id);
@@ -586,6 +634,7 @@ export function createEditorShellBridge(input: {
     canArrange: canArrangeAction,
     layers,
     groupContext,
+    selectLayers,
     selectLayer,
     enterGroup,
     exitGroup,

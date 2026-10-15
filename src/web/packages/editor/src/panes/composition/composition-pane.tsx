@@ -284,6 +284,11 @@ export function CompositionPane({
   // The tree itself, so the stylesheet can tell "a drag is in flight" from
   // "this row is a target" — the two answer different questions.
   const tree = useRef<HTMLDivElement | null>(null);
+  // Where a shift-click's range starts: the last row the author *chose* — a
+  // plain or ctrl click, or the Space key, which is this list's plain select
+  // from the keyboard — and never a shift-click. A ref rather than state,
+  // because it changes nothing the panel renders.
+  const anchor = useRef<string | undefined>(undefined);
 
   /** The one row carrying `data-drop`, and the only one that may: two marked
    * rows would claim two slots, and the second would be a lie. Written to the
@@ -316,6 +321,54 @@ export function CompositionPane({
   const commit = (id: string, name: string): void => {
     setEditing(undefined);
     store.mutate(() => bridge?.renameLayer(id, name));
+  };
+
+  /**
+   * What a row click selects, given the gesture.
+   *
+   * `shift` takes the range from the anchor to this row **over the rows as
+   * rendered** — the projection's flat list is the order the author sees, and a
+   * shut group has no rows to range over. `ctrl`/`cmd` adds or removes one. A
+   * plain click replaces, which is what it has always done. The bridge takes the
+   * ids; this decides which ones, because "extend" is a fact about this list.
+   *
+   * The three forms are the ruling's own (`vg-056`): shift extends a range and
+   * ctrl toggles, rather than one idiom or the other.
+   */
+  const clickRow = (event: React.MouseEvent, id: string): void => {
+    const ids = rows.map((row) => row.id);
+    const from =
+      anchor.current === undefined ? -1 : ids.indexOf(anchor.current);
+    if (event.shiftKey && from >= 0) {
+      const to = ids.indexOf(id);
+      if (to >= 0) {
+        // A shift-click leaves the anchor where it is: it changes the range,
+        // not where the range starts.
+        store.mutate(() =>
+          bridge?.selectLayers(
+            ids.slice(Math.min(from, to), Math.max(from, to) + 1),
+          ),
+        );
+        return;
+      }
+    }
+    anchor.current = id;
+    if (event.ctrlKey || event.metaKey) {
+      // Read from the projection rather than kept here: it is the same answer
+      // the rows are painted from, so a toggle cannot disagree with the tree.
+      const chosen = rows.filter((row) => row.selected).map((row) => row.id);
+      // Removing the last one sends `[]`, which clears rather than leaving a
+      // stale object active.
+      store.mutate(() =>
+        bridge?.selectLayers(
+          chosen.includes(id)
+            ? chosen.filter((chosenId) => chosenId !== id)
+            : [...chosen, id],
+        ),
+      );
+      return;
+    }
+    store.mutate(() => bridge?.selectLayer(id));
   };
 
   return (
@@ -506,7 +559,7 @@ export function CompositionPane({
                   paddingLeft: `calc(${LAYER_ROW_INDENT}px + var(--layer-depth) * ${LAYER_ROW_INDENT_STEP}px)`,
                 } as CSSProperties
               }
-              onClick={() => store.mutate(() => bridge?.selectLayer(row.id))}
+              onClick={(event) => clickRow(event, row.id)}
               onDoubleClick={() => {
                 cancelled.current = false;
                 setEditing(row.id);
@@ -531,6 +584,11 @@ export function CompositionPane({
                 // always used for it.
                 if (event.key === " " || event.key === "Spacebar") {
                   event.preventDefault();
+                  // Space is this row's plain select from the keyboard, so it
+                  // moves the anchor the way the plain click does: a keyboard
+                  // select that left a stale anchor would be the same gesture
+                  // behaving two ways.
+                  anchor.current = row.id;
                   store.mutate(() => bridge?.selectLayer(row.id));
                   return;
                 }

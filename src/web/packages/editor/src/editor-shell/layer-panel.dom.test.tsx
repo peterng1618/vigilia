@@ -107,6 +107,7 @@ function bridge(rows: readonly LayerRow[], overrides = {}): EditorShellBridge {
     // a fixture left out, so a row that names its own treatment still has it.
     layers: () => rows.map((row) => layerRow(row)) as never,
     groupContext: () => [],
+    selectLayers: vi.fn(),
     selectLayer: vi.fn(),
     enterGroup: vi.fn(),
     exitGroup: vi.fn(),

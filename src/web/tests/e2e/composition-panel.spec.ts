@@ -1360,6 +1360,157 @@ test("the starter's own card rows name the unit the document says they are", asy
   ).toHaveText("group-cpu-card");
 });
 
+// ---------------------------------------------------------------------------
+// Task 12.4a: the layer list can select more than one row
+// ---------------------------------------------------------------------------
+
+/**
+ * The ids the canvas holds selected, **read from the canvas** rather than from
+ * the panel — a panel that merely painted two rows must not pass.
+ *
+ * An `ActiveSelection` carries no `id` of its own, so its members are what it
+ * reports; a selected group carries one, so it reports itself rather than the
+ * parts it is made of. That is the same reading the bridge's own `layers()`
+ * takes.
+ */
+async function activeIds(page: Page): Promise<readonly string[]> {
+  return page.evaluate(() => {
+    type Obj = { get(name: string): unknown; getObjects?(): readonly Obj[] };
+    const active = (
+      window as unknown as {
+        vigiliaEditorBridge?: {
+          editor: { canvas: { getActiveObject(): Obj | undefined } };
+        };
+      }
+    ).vigiliaEditorBridge?.editor.canvas.getActiveObject();
+    if (active === undefined) return [];
+    const own = active.get("id");
+    if (typeof own === "string") return [own];
+    return (active.getObjects?.() ?? [])
+      .map((object) => object.get("id"))
+      .filter((id): id is string => typeof id === "string");
+  });
+}
+
+/** Whether `action` is one of the arrange actions the current selection allows. */
+async function arrangeAllowed(page: Page, action: string): Promise<boolean> {
+  return page.evaluate(
+    (wanted) =>
+      (
+        window as unknown as {
+          vigiliaEditorBridge: { canArrange(action: string): boolean };
+        }
+      ).vigiliaEditorBridge.canArrange(wanted),
+    action,
+  );
+}
+
+/**
+ * A row clicked with **real** modifier keys — `page.click`'s own, so the
+ * browser raises a genuine `mousedown`/`mouseup` with the modifier held, not a
+ * synthesised event carrying a flag.
+ *
+ * The row's own name element, at its left end: the name is `flex: 1 1 auto`, so
+ * its centre lands under the attended row's absolutely positioned state slot —
+ * `rebuild-driver`'s helper presses the same point for the same reason.
+ */
+async function clickRow(
+  page: Page,
+  id: string,
+  modifiers: readonly ("Control" | "Meta" | "Shift")[] = [],
+): Promise<void> {
+  await page
+    .locator(`[data-vigilia-layer="${id}"] .vigilia-layer-name`)
+    .click({ position: { x: 6, y: 6 }, modifiers: [...modifiers] });
+}
+
+test("shift extends a range and ctrl toggles one, and the list's own selection reaches arrange", async ({
+  page,
+}, testInfo) => {
+  test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+
+  // **Every card shut**, so the ten top-level rows are the whole tree and each
+  // row is its own object: a range over them is exactly the rows between the two
+  // clicked, with no group resolution folding several rows onto one object. The
+  // opened tree is `openStarterEditor`'s, and is a different claim.
+  await openBareEditor(page);
+
+  const ids = await layerIds(page);
+  expect(ids.length, "the starter's ten top-level rows").toBe(10);
+  const first = ids[0]!;
+  const fourth = ids[3]!;
+  const sixth = ids[5]!;
+  const range = ids.slice(0, 4);
+
+  // **A plain click still replaces**, which is the behaviour that must not
+  // regress: one row selected, and the canvas really holds it.
+  await clickRow(page, first);
+  await expect.poll(() => activeIds(page)).toEqual([first]);
+
+  // **Shift extends a range**, over the rows in render order, and the selection
+  // is read back from the canvas — the measured failure was *"shift-clicking
+  // strapline after wordmark left only strapline selected"*.
+  await clickRow(page, fourth, ["Shift"]);
+  await expect.poll(() => activeIds(page)).toEqual(range);
+
+  // **Ctrl toggles one.** The row is selected plainly first, so the anchor is
+  // this case's own rather than the range above's.
+  await clickRow(page, first);
+  await expect.poll(() => activeIds(page)).toEqual([first]);
+  await clickRow(page, sixth, ["Control"]);
+  await expect.poll(() => activeIds(page)).toEqual([first, sixth]);
+  // …removes a selected row…
+  await clickRow(page, first, ["Control"]);
+  await expect.poll(() => activeIds(page)).toEqual([sixth]);
+  // …and taking the last one out clears rather than leaving a stale object
+  // active — the canvas is empty, not merely the panel.
+  await clickRow(page, sixth, ["Control"]);
+  await expect.poll(() => activeIds(page)).toEqual([]);
+  expect(await activeId(page), "no object is left active").toBeUndefined();
+
+  // **And the Space key moves the anchor too**, because it is this row's plain
+  // select from the keyboard: a keyboard select that left a stale anchor would
+  // be the same gesture behaving two ways. Read as the range that follows it —
+  // an anchor left at `first` would take the eight rows from there, not these
+  // five.
+  await clickRow(page, first);
+  await expect.poll(() => activeIds(page)).toEqual([first]);
+  await page.locator(`[data-vigilia-layer="${fourth}"]`).focus();
+  await page.keyboard.press("Space");
+  await expect.poll(() => activeIds(page)).toEqual([fourth]);
+  await clickRow(page, ids[7]!, ["Shift"]);
+  await expect.poll(() => activeIds(page)).toEqual(ids.slice(3, 8));
+
+  // **The cross-link requirement, and this is the assertion that keeps it from
+  // being dropped.** Arrange is gated on a multi-selection, so a multi-selection
+  // made *in the layer list* has to reach that gate: `bridge.canArrange` is the
+  // predicate `applyArrange` shares, and the selection panel's arrange row is
+  // the control it draws.
+  await clickRow(page, first);
+  await clickRow(page, fourth, ["Shift"]);
+  await expect.poll(() => activeIds(page)).toEqual(range);
+  await expect
+    .poll(() => arrangeAllowed(page, "align-left"), {
+      message:
+        "the list's own multi-selection satisfies the gate arrange is behind",
+    })
+    .toBe(true);
+  await expect(
+    page.locator('[data-vigilia-panel="selection"] [data-vigilia-arrange-row]'),
+    "and the control it gates is on screen",
+  ).toBeVisible();
+
+  // **And it is genuinely gated**, so the assertion above is the multi-selection
+  // rather than a panel that always draws the row: one row selected offers no
+  // arrange row at all.
+  await clickRow(page, first);
+  await expect.poll(() => activeIds(page)).toEqual([first]);
+  await expect(
+    page.locator('[data-vigilia-panel="selection"] [data-vigilia-arrange-row]'),
+    "one object is not a multi-selection",
+  ).toHaveCount(0);
+});
+
 test("a copy inserted beside the starter names its unit without costing the starter its own", async ({
   page,
 }, testInfo) => {
