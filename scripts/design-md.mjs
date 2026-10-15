@@ -44,7 +44,7 @@
  * admitted a marker mapped at a bare `##` anywhere beneath it, so `§7` could drift
  * off the top of `## Layout` down to `### The rail` and still pass `--cite`. Only
  * an exact path rejects that without also rejecting the legitimate case — `§6`
- * and `§7.1`–`§7.8` sit under a subsection of their mapped `##` by design.
+ * and `§7.1`–`§7.9` sit under a subsection of their mapped `##` by design.
  *
  * That fourth rule fails closed on the two edits that would otherwise slip a
  * marker out of it. A number the mapping has no row for is a finding, not an
@@ -54,7 +54,7 @@
  *
  * The canonical range lives HERE and is never read from DESIGN.md: if it were
  * read from the file, deleting a marker would shrink the range it is checked
- * against and the deletion would pass. `§1`–`§10` with `§7.1`–`§7.8` is
+ * against and the deletion would pass. `§1`–`§10` with `§7.1`–`§7.9` is
  * DESIGN.md's own numbering (D3); every other `§N` in the repo belongs to the
  * redesign spec and is ignored.
  *
@@ -108,7 +108,7 @@ const CITE_EXCLUDE = new Set([
  */
 export const CITE_NUMBERS = [
   "1", "2", "3", "4", "5", "6", "7", "8", "9", "10",
-  "7.1", "7.2", "7.3", "7.4", "7.5", "7.6", "7.7", "7.8",
+  "7.1", "7.2", "7.3", "7.4", "7.5", "7.6", "7.7", "7.8", "7.9",
 ];
 
 /**
@@ -478,7 +478,7 @@ export function checkCitations(read, opts = {}) {
     if (!markers.has(number)) {
       entries.push({
         what: `§${number}`,
-        reason: `\`§${number}\` is in the canonical range (§1–§10, §7.1–§7.8) but DESIGN.md carries no \`<!-- §${number} -->\` marker`,
+        reason: `\`§${number}\` is in the canonical range (§1–§10, §7.1–§7.9) but DESIGN.md carries no \`<!-- §${number} -->\` marker`,
       });
     }
   }

@@ -37,10 +37,11 @@ ledger did.
 
 ## Last completed change
 
-- **Triage batch F applied: four rows parked, each on a ruling rather than on an owner** — `vg-397`, `vg-410`, `vg-427` and `vg-457`, every one measured at HEAD so the park records a fact and not a restatement.
-- **`vg-397`'s stated debt was already paid on disk** — the row says the 1.4–1.8px anchor reading was never reproduced, and it is written in the spec's own docblock at `tests/e2e/editor-context-menu.spec.ts:100-104`, dated and attributed, so what remains is the tolerance decision plus a re-taken red proof.
-- **The other three are still true**: `ownerGroup` at `grouping-manager/index.ts:43` beside the same test at `layer-tree.ts:408` and `bridge.ts:432`; `bridge.ts:175`'s `||` against `store.ts:555`'s `??` with the schema's `name` still carrying no `minLength`; and `CAPACITY_TOTALS` still holding `ram.total` and `vram.total` alone.
-- **The register is at 196 open with 8 parked, from 207 when the triage began** — thirteen closed, two withdrawn, eight parked, and two filed for the halves that were not patches.
+- **`vg-528` fixed, and it needed a decision note rather than a patch** — `"7.9"` joins `CITE_NUMBERS` in `scripts/design-md.mjs`, so the `<!-- §7.9 -->` marker `DESIGN.md` has carried since 2026-10-15 is required to exist *and* required to be claimed; note `0047` records the search, and the ruling it executes is the row's own.
+- **The citation the ruling asked for was already in source** — `grouping-manager/index.ts:52` cites `§7.9` beside `DIM_OPACITY`, the constant that implements the section, so the one edit closed both directions the row measured as open.
+- **The red proof is both directions**: with the fix, deleting the marker makes `--cite` exit 1 and its reason names `§7.9` twice — no marker, and no citation resolving to one; with the range reverted to `§7.1–§7.8`, the same deletion exits 0, which is the gap.
+- **`npm run gate` exit 0 with the new typecheck step in the chain** — 258/258 test files — which is also the first end-to-end run of `vg-455`'s fix.
+- **The register is at 195 open with 8 parked, from 207 when the triage began** — fourteen closed, two withdrawn, eight parked, and two filed for the halves that were not patches.
 
 ## Next
 
