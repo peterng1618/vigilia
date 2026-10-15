@@ -37,11 +37,10 @@ ledger did.
 
 ## Last completed change
 
-- **Triage batch E applied: one row withdrawn and two parked** — `vg-482` stops being counted, and `vg-430` and `vg-439` each name what they wait on.
-- **`vg-482` is withdrawn on a measurement stronger than "it was fixed"** — `DESIGN.md` carries **zero** `file:line` citations at HEAD and zero at `82692760`, the commit the row says moved one of them, and neither cited string exists anywhere in the tree at any of the three commits it names.
-- **`vg-430` parks on the user** — its own text says a ruling on the editor's browser floor is what settles it, and measured 2026-10-16 the editor's `vite.config.ts` still sets no `css:` key and no package declares a `browserslist`.
-- **`vg-439` parks transitively on the colour spec's review**, the same shape as `vg-322`'s park on `vg-330` — the decision it asks for is already taken in `2026-10-12-colour-and-gradient-rebuild-design.md`, and both `parseHex` definitions are still in place, so the work is real and unscheduled.
-- **The register is at 196 open, from 207 when the triage began** — thirteen closed, two withdrawn, four parked, and two filed for the halves that were not patches.
+- **Triage batch F applied: four rows parked, each on a ruling rather than on an owner** — `vg-397`, `vg-410`, `vg-427` and `vg-457`, every one measured at HEAD so the park records a fact and not a restatement.
+- **`vg-397`'s stated debt was already paid on disk** — the row says the 1.4–1.8px anchor reading was never reproduced, and it is written in the spec's own docblock at `tests/e2e/editor-context-menu.spec.ts:100-104`, dated and attributed, so what remains is the tolerance decision plus a re-taken red proof.
+- **The other three are still true**: `ownerGroup` at `grouping-manager/index.ts:43` beside the same test at `layer-tree.ts:408` and `bridge.ts:432`; `bridge.ts:175`'s `||` against `store.ts:555`'s `??` with the schema's `name` still carrying no `minLength`; and `CAPACITY_TOTALS` still holding `ram.total` and `vram.total` alone.
+- **The register is at 196 open with 8 parked, from 207 when the triage began** — thirteen closed, two withdrawn, eight parked, and two filed for the halves that were not patches.
 
 ## Next
 
