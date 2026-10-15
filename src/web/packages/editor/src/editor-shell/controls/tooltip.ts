@@ -32,8 +32,15 @@ const MAX_WIDTH = 280;
 const WIDTH = "max-content";
 /** Hover waits, focus does not: a delay is what stops a pointer crossing the
     dock from flashing every label, and a keyboard user has already committed to
-    a control by focusing it. */
-const HOVER_DELAY_MS = 600;
+    a control by focusing it.
+
+    The wait is measured, not chosen (`vg-450`). Crossing the dock's 296px row of
+    26px controls dwells at most 120ms on any one of them, so anything above that
+    cannot flash; a pointer that arrives to read comes to rest on its control in
+    about 110ms, so a wait much past that is one the author is standing still for.
+    150ms sits above the first and inside the second. The 600ms it replaces left
+    a deliberate 400ms hover with no label at all. */
+const HOVER_DELAY_MS = 150;
 
 let seq = 0;
 /** The open tooltip, if any. Two at once would put two `.editor-shell-tooltip`

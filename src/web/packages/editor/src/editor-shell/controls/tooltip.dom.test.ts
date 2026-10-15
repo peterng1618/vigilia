@@ -74,11 +74,16 @@ describe("the editor's shared tooltip", () => {
     live.push(tooltip({ trigger: other, text: "Second" }));
 
     other.dispatchEvent(new Event("pointerenter"));
-    vi.advanceTimersByTime(500);
+    // The wait is a literal rather than the constant read back, so this case
+    // fails when the constant moves. 150 is measured, in the dock as it ships
+    // (`vg-450`): crossing its 296px row of 26px controls dwells at most 120ms on
+    // any one of them, and a pointer that arrives to read comes to rest in about
+    // 110ms — so 150ms is above every crossing and up while the author is there.
+    vi.advanceTimersByTime(149);
     expect(open()?.textContent).toBe(
       "A control".length > 0 ? "Glass blur" : "",
     );
-    vi.advanceTimersByTime(200);
+    vi.advanceTimersByTime(1);
     expect(open()?.textContent).toBe("Second");
   });
 

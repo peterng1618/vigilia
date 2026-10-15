@@ -159,8 +159,9 @@ describe("the Add pane's insert surface", () => {
     tile.blur();
     expect(document.querySelector(".editor-shell-tooltip")).toBeNull();
 
-    // The hover arm of the same registration. Hover waits 600ms by design, so
-    // the clock is controlled rather than waited on.
+    // The hover arm of the same registration. Hover waits rather than opening at
+    // once, so the clock is controlled instead of waited on — 600 is a wait
+    // longer than the delay, not a reading of it (`vg-450`).
     vi.useFakeTimers();
     try {
       tile.dispatchEvent(new Event("pointerenter"));
