@@ -1,0 +1,48 @@
+{
+  "row": "vg-037",
+  "date": "2026-10-15",
+  "question": "At one authored blur radius, does a Circle's frost read stronger than a Rect's?",
+  "ruling": "RULED 2026-10-14: MEASURE FIRST. Drive the real scene, read the frost over a Circle and a Rect at the same value, and let the number answer whether an area-equalisation is wanted.",
+  "method": {
+    "bundle": "npm run build, then npm run build:fixture -w @vigilia/editor; served by vite preview on 127.0.0.1:4174",
+    "driver": "a standalone Playwright script outside the repo, driving the editor's own UI in Chromium",
+    "scene": "a theme package opened through the editor's own file input: artboard 1672x941, the starter photograph as the only backdrop (backgroundMedia fit cover), no scene objects",
+    "authoring": "Add pane -> Shape -> Rectangle, and Add pane -> Shape -> Ellipse (a Circle: rx = ry = 180); both selected and given a box through the inspector's own Position and Size fields; the Frosted glass toggle then the Glass blur well, both through the inspector",
+    "instrument": "the row's own: the thresholded frost box (each frosted capture differenced against an untreated capture of the same shape, threshold 6 luma), mean luma, and distinct colours, read over the disc the two frost boxes share (45% of the intersection's half-width, so no measurement touches either rim)",
+    "repeats": "each shape alone in its own browser context, at the same left/top and the same box, so the shared disc is literally the same canvas pixels"
+  },
+  "boxDecision": {
+    "chosen": "the same box",
+    "bothBoxes": "left 200, top 200, drawn 361 x 361.8 (Rect) and 361 x 361 (Ellipse), scene units",
+    "authored": "the Rect carries width 360 x height 200 with scaleY 1.8 (the inspector's Size fields scale a shape rather than resize it); the Ellipse carries rx 180 x ry 180. Both draw the same box, which is what the sample region and the clip are built from.",
+    "why": "the sample region is derived from the object's own bounding box, so two shapes with different boxes are sampled through different regions and a difference between them would include the region rather than only the material. The same box is the only choice in which the two frosts are produced by the same region.",
+    "rejected": {
+      "sameWidth": "the product's own defaults (Rect 360x200, Ellipse 360 diameter) share a width and differ in height, so the two carry 72,000 and 101,788 scene units of area - a difference there measures the footprint",
+      "sameArea": "equalising the areas is itself the edit the ruling asks whether to make, so measuring it assumes the answer"
+    }
+  },
+  "authoredValue": { "blurRadius": 24, "setThrough": "the Glass blur well; the track read 24 on both shapes" },
+  "numbers": {
+    "frostBoxPx": {
+      "rect": { "left": 85, "top": 211, "right": 238, "bottom": 364, "area": 23260 },
+      "circle": { "left": 86, "top": 212, "right": 237, "bottom": 363, "area": 18300 }
+    },
+    "sharedDisc": { "cx": 161.5, "cy": 287.5, "radiusPx": 67.95, "pixels": 14520 },
+    "overSharedDisc": {
+      "rect": { "meanLuma": 79.56090961432507, "range": 58.7172, "detail": 0.4278441322313876, "distinctColours": 1007 },
+      "circle": { "meanLuma": 79.56090961432507, "range": 58.7172, "detail": 0.4278441322313876, "distinctColours": 1007 },
+      "delta": { "meanLuma": 0, "detail": 0, "distinctColours": 0 }
+    },
+    "untreatedControlOverSameDisc": {
+      "rect": { "meanLuma": 128.30073439393948, "distinctColours": 9199 },
+      "circle": { "meanLuma": 128.30073439393948, "distinctColours": 9199 }
+    },
+    "ownFootprint": {
+      "rect": { "areaPx": 23260, "meanLuma": 80.28650334794997, "distinctColours": 2593 },
+      "circle": { "areaPx": 18300, "meanLuma": 84.0812280211214, "distinctColours": 5433 }
+    },
+    "frostedAreaRatio": 0.7868
+  },
+  "answer": "No. Over the area both shapes carry the frost is bit-identical in every statistic (mean luma 79.5609 both, detail 0.42784 both, 1007 distinct colours both, zero delta); the two untreated captures over the same disc are identical too, so the backdrop behind both is the same photograph at the same place. The only difference is extent, and the circle's extent is smaller: 18,300 px against the rect's 23,260, a ratio of 0.787 - the pi/4 a disc covers of the box its rect fills. So the circle reads lighter, not stronger, and the report's premise is not reproduced. No area-equalisation was made and glass.ts is untouched.",
+  "exitCodes": { "typecheck": 0, "designCheck": 0, "gate": 0 }
+}
