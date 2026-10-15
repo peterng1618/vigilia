@@ -37,10 +37,11 @@ ledger did.
 
 ## Last completed change
 
-- **`vg-422` parked on the user, and the measurement is what makes it a decision rather than a patch** — the dialog's accent hover is a repeated pattern at four sites (`editor-shell.css:1446`, `:1452`, `:1455`, `:1708`, `:1900`), and the stylesheet's own comment at `:1194` documents it as deliberate while citing §5 rule 6 for a clause rule 6 does not contain.
-- **So either the labelled-control accent hover becomes a `DESIGN.md` clause or the four sites move to `--muted`** — `DESIGN.md:509` says hover raises `--edge` to `--muted`, and either resolution changes the editor's look, which is the user's call; the same gap `vg-441` records for the control set's fill.
-- **Phase 15's Task 15.5 takes `vg-504`'s capture half** — the drawing is fixed and the three captures are not, so its remaining half is the same act on the same three files that task already re-shoots.
-- **The census after both: 195 open, 119 named by a task block, 76 by no phase, 127 with no home** — against 150 at 207 open, and the second number is the one the plan says moves.
+- **Triage batch H applied: 22 rows parked, each naming the options it waits on** — a measurement pass over 66 orphan rows found the family dominated by **needs-a-decision**, not by dead subjects, so the park marker is doing exactly the job decision `0045` built it for.
+- **`vg-507`, `vg-508` and `vg-422` are one gap seen from three owners** — `DESIGN.md`'s §5 vocabulary defines no labelled button at all, so the CSS rule and the React `ACTION_BUTTON` each invented one; they park together with `vg-441` on one design-language decision.
+- **Three rows' stale sub-claims are corrected on the rows themselves** — `vg-391` (its "no player spec installs a clock" is now false), `vg-405` (the raw literal moved to `var(--edge)`), and `vg-520` (the typecheck third is fixed by `vg-455`, so its residue is two CI steps, not three).
+- **`vg-535` filed and opened as issue #34: the reuse gate's PreToolUse hook does not block** — the gate refuses the same payload on stdin with exit 2, but an `Edit` to that exact watchlisted, unclaimed path succeeded; cause not established, and `.claude/settings.json` is user-owned so the repair is the user's to authorise.
+- **The register is at 196 open with 34 parked** — and the parks are the triage's own output, not a count reduction: each says what it waits on.
 
 ## Next
 
