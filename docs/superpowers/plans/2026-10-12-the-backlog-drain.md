@@ -1875,4 +1875,14 @@ were filed by 13.1b's review on the morning this count was taken.
 
 # Parked rows — held, not a phase
 
-`vg-330` is parked by the user (2026-10-11) and `vg-322` is parked transitively: it closes when `vg-330` does and carries no independent work. **No phase owns them.** `vg-322`'s rule in §5.1's owner table stays unbuilt until `vg-330` is unparked, and W9's `vg-292`/`vg-293` are independent of it. They are named in the drain's final report so the count is legible: 22 closed, 0 withdrawn unless a D9 ruling withdraws one, 109 worked, 2 parked.
+**`vg-330` was parked by the user on 2026-10-11 and UNPARKED by the user on 2026-10-14**, and this
+section read only the first half until 2026-10-15: the ruling is "**UNPARKED. The spec is
+commissioned** — settings becomes a pane opened from the rail's gear, the settings drawing is redrawn
+as a panel, and the pane's frame gains a PARITY row so the next divergence is visible." **So it is not
+a parked row and Task 12.5 is not waiting on the user** — it is the remaining work of Phase 12, and the
+row stays `open` with its closing terms unchanged (the spec and its plan land, with the redrawn drawing
+committed beside the shipped pane). **Nothing here waits for permission that was given on 2026-10-14.**
+`vg-322` is parked transitively on it — that reading still holds — and two rows whose subjects the
+change invalidates are revisited **inside that spec rather than before it**: `vg-318`'s scrim
+measurement measures a container that will not exist, and `vg-322`'s whole subject is the modal's width.
+**No phase owns them.** `vg-322`'s rule in §5.1's owner table stays unbuilt until `vg-330` is unparked, and W9's `vg-292`/`vg-293` are independent of it. They are named in the drain's final report so the count is legible: 22 closed, 0 withdrawn unless a D9 ruling withdraws one, 109 worked, 2 parked.
