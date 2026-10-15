@@ -102,11 +102,11 @@ test("a stored theme that does not validate is reported, not opened as success",
   await page.goto(`${HOST}/editor/?theme=${THEME_ID}`);
 
   // The status element names the problem the validator found, in place of the
-  // "Fabric editor ready" that used to stand over a document never opened.
+  // "Editor ready" that used to stand over a document never opened.
   await expect(page.locator("#status")).toContainText(
     "schemaVersion is required",
   );
-  await expect(page.locator("#status")).not.toHaveText("Fabric editor ready");
+  await expect(page.locator("#status")).not.toHaveText("Editor ready");
 
   // The invalid document did not open: what is mounted is the template. The
   // bridge is the reader the header chip uses, so this is the product's own

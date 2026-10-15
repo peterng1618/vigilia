@@ -1,7 +1,6 @@
 import {
   type CSSProperties,
   useEffect,
-  useId,
   useRef,
   useState,
   useSyncExternalStore,
@@ -285,7 +284,6 @@ export function CompositionPane({
   // The tree itself, so the stylesheet can tell "a drag is in flight" from
   // "this row is a target" — the two answer different questions.
   const tree = useRef<HTMLDivElement | null>(null);
-  const ruleId = useId();
 
   /** The one row carrying `data-drop`, and the only one that may: two marked
    * rows would claim two slots, and the second would be a lie. Written to the
@@ -324,20 +322,8 @@ export function CompositionPane({
     <>
       {/* The pane's own chrome — its title bar, its section frame and its
        * footer toolbar — belongs to `Pane`, which names the section
-       * `[data-vigilia-panel="layers"]`. What is left here is the tree and the
-       * rule that reads above it. */}
-      {/* The rule, stated where the author reads the panel rather than only in
-       * a cursor they may never look at. `aria-describedby` is the same string
-       * reached without a pointer, so it is not two copies of the rule. */}
-      <p id={ruleId} data-vigilia-layer-rule className="vigilia-layer-rule">
-        {uiCopy.panels.reorderRule}
-      </p>
-      <div
-        ref={tree}
-        role="tree"
-        aria-label={uiCopy.panels.layers}
-        aria-describedby={ruleId}
-      >
+       * `[data-vigilia-panel="layers"]`. What is left here is the tree. */}
+      <div ref={tree} role="tree" aria-label={uiCopy.panels.layers}>
         {rows.map((row, index) => {
           const Twisty =
             TWISTY_GLYPHS[row.collapsed ? "collapsed" : "expanded"];

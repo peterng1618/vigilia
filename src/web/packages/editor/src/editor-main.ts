@@ -282,7 +282,7 @@ async function start(): Promise<void> {
         });
       },
       onSaved: (msg: string | undefined) => {
-        status.textContent = msg ?? "Fabric theme saved";
+        status.textContent = msg ?? "Theme saved";
       },
       onError: (msg: string) => {
         status.textContent = msg;
@@ -434,7 +434,7 @@ async function start(): Promise<void> {
         envelope: theme,
         assets: await starterAssets(),
       });
-      status.textContent = "Fabric editor ready";
+      status.textContent = "Editor ready";
       return;
     }
     default: {

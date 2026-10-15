@@ -247,7 +247,7 @@ export function createGlass(options: GlassOptions): GlassHandle {
     // refused group is left exactly as the author set it.
     if (object instanceof Group) {
       report(
-        `Glass on "${nameOf(object)}" is a group, which Fabric gives no render boundary; put the treatment on the panel rectangle instead.`,
+        `Glass on "${nameOf(object)}" is a group, which gives no render boundary to sample; put the treatment on the panel rectangle instead.`,
       );
       return;
     }

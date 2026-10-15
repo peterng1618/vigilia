@@ -787,7 +787,7 @@ test.describe("Fabric editor route", () => {
     await page.goto(EDITOR);
     // The scene has to be mounted before a gesture means anything: hit-testing
     // an empty canvas finds nothing empty, because nothing is on it yet.
-    await expect(page.locator("#status")).toHaveText("Fabric editor ready");
+    await expect(page.locator("#status")).toHaveText("Editor ready");
     await page.waitForFunction(() => "vigiliaEditorBridge" in window);
 
     // Fabric draws the marquee onto the context rather than into the scene, so
@@ -894,7 +894,7 @@ test.describe("Fabric editor route", () => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     await page.goto(EDITOR);
-    await expect(page.locator("#status")).toHaveText("Fabric editor ready");
+    await expect(page.locator("#status")).toHaveText("Editor ready");
     // "Add colour" is the palette panel's control, and the palette is the
     // Tokens pane's.
     await openPane(page, "Tokens");
@@ -940,7 +940,7 @@ test.describe("Fabric editor route", () => {
     await expect(
       page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
     ).toBeVisible();
-    await expect(page.locator("#status")).toHaveText("Fabric editor ready");
+    await expect(page.locator("#status")).toHaveText("Editor ready");
   });
 
   test("switches chart refresh between 30 and 1 FPS", async ({
@@ -995,7 +995,7 @@ test.describe("Fabric editor route", () => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     await page.goto(EDITOR);
-    await expect(page.locator("#status")).toHaveText("Fabric editor ready");
+    await expect(page.locator("#status")).toHaveText("Editor ready");
 
     const trigger = page.getByRole("button", { name: "View", exact: true });
     await trigger.click();
@@ -3817,7 +3817,7 @@ test.describe("Fabric editor route", () => {
     await expect(dialog).toBeVisible();
     await dialog.getByRole("button", { name: "Cancel" }).click();
     await expect(dialog).toHaveCount(0);
-    await expect(page.locator("#status")).toHaveText("Fabric editor ready");
+    await expect(page.locator("#status")).toHaveText("Editor ready");
   });
 
   test("Ctrl-resizes near a neighbour without snapping or showing a guide", async ({

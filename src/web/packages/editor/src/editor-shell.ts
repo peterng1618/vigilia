@@ -429,7 +429,7 @@ export async function mountEditorShell({
     const validation = validateFabricThemeEnvelope(envelope);
     if (!validation.ok) {
       throw new Error(
-        `Invalid Fabric theme: ${validation.issues[0]?.message ?? "unknown validation error"}`,
+        `Invalid theme: ${validation.issues[0]?.message ?? "unknown validation error"}`,
       );
     }
   }
@@ -576,7 +576,7 @@ export async function mountEditorShell({
         const validation = validateFabricThemeEnvelope(next);
         if (!validation.ok) {
           throw new Error(
-            `Invalid Fabric theme: ${validation.issues[0]?.message ?? "unknown validation error"}`,
+            `Invalid theme: ${validation.issues[0]?.message ?? "unknown validation error"}`,
           );
         }
         return validation.envelope;

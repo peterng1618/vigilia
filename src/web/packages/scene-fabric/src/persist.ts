@@ -257,7 +257,7 @@ export function assertFabricThemeEnvelopeCompatible(
 ): void {
   if (envelope.fabricVersion !== fabricVersion) {
     throw new Error(
-      `Fabric ${envelope.fabricVersion} is incompatible with this Fabric ${fabricVersion} runtime.`,
+      `This theme's renderer version ${envelope.fabricVersion} is incompatible with this editor's ${fabricVersion}.`,
     );
   }
 }

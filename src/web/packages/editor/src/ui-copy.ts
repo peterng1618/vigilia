@@ -675,19 +675,6 @@ export const uiCopy = {
      *  says something different again. */
     enter: "Enter",
     leave: "Leave",
-    /** The drag rule, in the panel's own words rather than in a cursor. A drop
-     * between a group and its interior is a membership change rather than a
-     * restack, and `vg-461` lifted the refusal that made it impossible; the
-     * cycle is what is left refused. A rule nothing says reads as a panel being
-     * unreliable — the same gesture works one row over, so the author has no
-     * other evidence for what stopped it.
-     *
-     * The empty group is named because it is the one destination the rule
-     * otherwise cannot describe: every other drop is "above this row", and a
-     * shut group can be expanded to show its rows, while a group with nothing
-     * in it will never have a row to be above. */
-    reorderRule:
-      "Drag a row to reorder it, or to move it into or out of a group. Drop it on an empty group to put it inside.",
     text: "Text",
     panel: "Panel",
     /** A pasted image and a fresh group arrive without an authored name, so

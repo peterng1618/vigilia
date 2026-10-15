@@ -17,7 +17,7 @@ export function setObjectAssetReference(
   reference: FabricAssetReference,
 ): void {
   if (!isFabricAssetReference(reference))
-    throw new Error("Invalid Fabric asset reference.");
+    throw new Error("Invalid asset reference.");
   object.set(VIGILIA_ASSET_PROPERTY, reference);
 }
 

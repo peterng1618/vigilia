@@ -1999,14 +1999,6 @@ body,
   cursor: pointer;
 }
 
-/* The reorder rule, stated once in the panel rather than only in a cursor. */
-.vigilia-layer-rule {
-  margin: 0 0 4px;
-  color: var(--shell-muted);
-  font-size: 11px;
-  line-height: 1.35;
-}
-
 /* Mid-gesture there are three answers and all three are visible. Before this
    the row under the pointer was the same row it had been all along, so a
    refused drop and a landing one looked identical until release. */

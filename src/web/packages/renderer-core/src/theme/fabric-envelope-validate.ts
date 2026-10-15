@@ -37,7 +37,7 @@ export function validateFabricThemeEnvelope(
   options: { readonly requireTrioRoles?: boolean } = {},
 ): FabricEnvelopeValidationResult {
   if (!isRecord(input)) {
-    return fail("not-an-object", "", "The Fabric theme must be a JSON object.");
+    return fail("not-an-object", "", "The theme must be a JSON object.");
   }
 
   // An unknown version cannot be safely interpreted, so report it alone (§141).
@@ -65,7 +65,7 @@ export function validateFabricThemeEnvelope(
   }
 
   const issues: ValidationIssue[] = [];
-  unknownKeys(input, "", envelopeKeysFor("envelope"), "A Fabric theme", issues);
+  unknownKeys(input, "", envelopeKeysFor("envelope"), "A theme", issues);
   if (
     typeof input["fabricVersion"] !== "string" ||
     !/^\d+\.\d+\.\d+$/.test(input["fabricVersion"])
@@ -783,25 +783,20 @@ function bindings(
       issue(
         "wrong-type",
         "/bindings",
-        "bindings must be an object keyed by Fabric object id.",
+        "bindings must be an object keyed by scene object id.",
       ),
     );
     return;
   }
   const ids = new Set<string>();
   for (const [objectId, entries] of Object.entries(value)) {
-    stableId(
-      objectId,
-      `/bindings/${objectId}`,
-      "A bound Fabric object id",
-      issues,
-    );
+    stableId(objectId, `/bindings/${objectId}`, "A bound object id", issues);
     if (!sceneIds.has(objectId)) {
       issues.push(
         issue(
           "unresolved-binding-ref",
           `/bindings/${objectId}`,
-          `Fabric object "${objectId}" is not in this scene.`,
+          `Object "${objectId}" is not in this scene.`,
         ),
       );
     }
@@ -810,7 +805,7 @@ function bindings(
         issue(
           "wrong-type",
           `/bindings/${objectId}`,
-          "Bindings for a Fabric object must be an array.",
+          "Bindings for an object must be an array.",
         ),
       );
       continue;
@@ -917,11 +912,7 @@ function scene(value: unknown, issues: ValidationIssue[]): ReadonlySet<string> {
   const ids = new Set<string>();
   if (!isRecord(value)) {
     issues.push(
-      issue(
-        "invalid-fabric-scene",
-        "/scene",
-        "scene must be a Fabric JSON object.",
-      ),
+      issue("invalid-fabric-scene", "/scene", "scene must be a JSON object."),
     );
     return ids;
   }
@@ -933,7 +924,7 @@ function scene(value: unknown, issues: ValidationIssue[]): ReadonlySet<string> {
       issue(
         "invalid-fabric-scene",
         "/scene/version",
-        "scene.version must be a Fabric version string.",
+        "scene.version must be a version string.",
       ),
     );
   }
@@ -964,11 +955,7 @@ function sceneObject(
 ): void {
   if (!isRecord(value)) {
     issues.push(
-      issue(
-        "invalid-fabric-scene",
-        path,
-        "A Fabric scene object must be an object.",
-      ),
+      issue("invalid-fabric-scene", path, "A scene object must be an object."),
     );
     return;
   }
@@ -993,13 +980,13 @@ function sceneObject(
     );
     return;
   }
-  if (stableId(value["id"], `${path}/id`, "A Fabric object id", issues)) {
+  if (stableId(value["id"], `${path}/id`, "An object id", issues)) {
     if (ids.has(value["id"])) {
       issues.push(
         issue(
           "duplicate-id",
           `${path}/id`,
-          `Fabric object id "${value["id"]}" is used more than once.`,
+          `Object id "${value["id"]}" is used more than once.`,
         ),
       );
     }
@@ -1010,7 +997,7 @@ function sceneObject(
       issue(
         "invalid-fabric-scene",
         `${path}/type`,
-        "A Fabric scene object needs a type.",
+        "A scene object needs a type.",
       ),
     );
   }
@@ -1024,7 +1011,7 @@ function sceneObject(
         issue(
           "invalid-fabric-scene",
           `${path}/objects`,
-          "A Fabric group objects property must be an array.",
+          "A group objects property must be an array.",
         ),
       );
     } else {
@@ -1092,7 +1079,7 @@ function objectName(
     issue(
       "invalid-fabric-scene",
       `${path}/${VIGILIA_NAME_PROPERTY}`,
-      "A Fabric object name must be a non-blank string, so the layer list has something to show.",
+      "An object name must be a non-blank string, so the layer list has something to show.",
     ),
   );
 }
@@ -1118,7 +1105,7 @@ function objectBleeds(
     issue(
       "invalid-fabric-scene",
       `${path}/${VIGILIA_BLEEDS_PROPERTY}`,
-      "A Fabric object bleed mark must be exactly true, so an unmarked object carries no key at all.",
+      "An object bleed mark must be exactly true, so an unmarked object carries no key at all.",
     ),
   );
 }
@@ -1137,14 +1124,14 @@ function jsonSafe(
       issue(
         "invalid-fabric-scene",
         path,
-        "Fabric scene values must be finite JSON values.",
+        "Scene values must be finite JSON values.",
       ),
     );
     return false;
   }
   if (depth > MAX_SCENE_DEPTH + 8) {
     issues.push(
-      issue("too-deep", path, "Fabric scene JSON is too deeply nested."),
+      issue("too-deep", path, "The scene JSON is too deeply nested."),
     );
     return false;
   }
@@ -1157,11 +1144,7 @@ function jsonSafe(
       jsonSafe(item, `${path}/${key}`, depth + 1, issues),
     );
   issues.push(
-    issue(
-      "invalid-fabric-scene",
-      path,
-      "Fabric scene values must be JSON-safe.",
-    ),
+    issue("invalid-fabric-scene", path, "Scene values must be JSON-safe."),
   );
   return false;
 }

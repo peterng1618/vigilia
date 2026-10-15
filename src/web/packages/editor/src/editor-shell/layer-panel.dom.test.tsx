@@ -1229,18 +1229,6 @@ it("still moves on a drop the panel marked, and refuses the one it did not", asy
   ).toBeNull();
 });
 
-it("states the reorder rule in the panel's own words, for a reader and not only a pointer", async () => {
-  // A cursor is a pointer's answer; an author who has never read a line of
-  // documentation needs the rule in text too. It hangs off the tree through
-  // `aria-describedby`, which is how a screen-reader user reaches it — the
-  // brief's own criterion was one an author can satisfy without hovering.
-  const host = await renderPanel([textRow]);
-  const rule = host.querySelector<HTMLElement>("[data-vigilia-layer-rule]");
-  expect(rule?.textContent).toBe(uiCopy.panels.reorderRule);
-  const tree = host.querySelector('[role="tree"]');
-  expect(tree?.getAttribute("aria-describedby")).toBe(rule?.id);
-});
-
 /** vg-087: the rows said `draggable` and nothing acted on it. Every earlier test
  * here drove the panel through a stub bridge, so a stub that answered
  * `layerDrop` and `moveLayer` the way the test wanted would keep them
