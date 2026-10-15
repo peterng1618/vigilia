@@ -63,7 +63,7 @@ Eleven phases, in this order:
 | 9 | W8 — structural stops and the plans directory | 4 | parallel-safe |
 | 10 | W9 — the unowned mockup-parity plan | 2 | gated on D4 and D3/D6 |
 
-**Six phases were added after that table was written, so the table records the order rather than the
+**Twelve phases were added after that table was written, so the table records the order rather than the
 count**: Phase 12 (the 2026-10-14 rulings no phase carried), Phases 13 and 14 (the user's 2026-10-14
 GUI list, items 1–9 and 10–18), and **Phases 15, 16 and 17, which are the phases the triage's own
 verdicts named** — the `# The rows no phase carries` section rules that a triaged row is fixed *in a
@@ -71,6 +71,21 @@ phase named here*, withdrawn or parked, so the rows a measurement pass returned 
 Phase 15 (nine instrument gaps), Phase 16 (eighteen behaviour findings) and Phase 17 (the eighteen the
 first two left standing). All three are authored from measurements taken on 2026-10-16 rather than from
 titles.
+
+**Phases 18 to 23 are the second half of that same rule, and they are authored from the rulings rather
+than from measurements**, because the rows they home already carry one. The triage's first pass read the
+90 rows no phase named; the second read the **51 rows whose only carrying phase is Phase 1** — a row with
+a decision and no phase that will land it, which the census's fourth correction is what made visible.
+Each of the 51 was triaged by reading what it was *ruled* to be, and the verdicts came out three ways:
+**three closed** (`vg-111`, `vg-256`, `vg-315` — their own rulings ask for no change, so applying a ruling
+already taken is not new work), **one whose ruling does not hold** (`vg-163`, whose premise was read
+against a file the row never cited — the correction is on the row and its fix is Task 19.5), and **47
+homed in six phases grouped by owner**: Phase 18 (twelve, the editor's control set and shell), Phase 19
+(six, the surfaces), Phase 20 (seven, tokens and drawings), Phase 21 (six, the repo's own instruments),
+Phase 22 (seven, proofs and test configuration) and Phase 23 (ten, the host, the schema and the records).
+**Every task in them cites its row's own ruling, and the ruling names the owning symbols** — which is what
+separates a phase authored from a measurement from the phase this plan's census explicitly forbids, the
+one that carries rows because they exist.
 
 **Rulings open first, work opens at W1.** The close phase precedes everything because it needs no build, no suite and no ruling, and because it is where the register mechanics are exercised before 100+ rows depend on them. The ruling phase precedes the work phases for one reason: D8 gates W5, D1 decides whether W3's gates count, and D4/D3/D6 gate W9. A work phase whose gating cluster is unanswered stays queued — do not start it and hope.
 
@@ -2137,6 +2152,701 @@ suite for Tasks 17.1, 17.2 and 17.3 on a rebuilt bundle.
 
 ---
 
+# Phase 18 — W13: the editor's control set, its copy, and the states it expresses
+
+**Outcome:** the twelve ruled rows whose owner is the editor's control set and shell are landed — the
+control set stops printing hardcoded English, gains a channel for an invalid-but-editable value, and the
+shell's keyboard and chip rules match what their own comments claim.
+
+**Why a phase of its own.** These twelve share one owner (`components/ui/` and `selection-inspector/`)
+and one subject: a shared control expressing its states the way the rest of the product does. Phase 16
+homed behaviour findings *in the panes*; these are the controls those panes are built from.
+
+**Owners:** `src/web/packages/editor/src/components/ui/` (`control-*.tsx`, `dialog.tsx`),
+`src/web/packages/editor/src/selection-inspector/` (`index.ts`, `style.ts`), the editor shell's shortcut
+manager and identity chip, `src/web/packages/editor/src/ui-copy.ts`, `host/src/themes/store.ts` and
+`editor/src/boot-theme.ts` for the tie-break.
+
+**Constraints:** **queued behind Phases 12 and 15–17**, because one phase is active at a time.
+**`components/ui/` and `selection-inspector/style.ts` are on `scripts/reuse-gate.mjs`'s watchlist**, so
+Tasks 18.1 and 18.5 land a decision note before their first write. **Every row here was ruled in Phase 1
+on 2026-10-12 and none has been measured since**, so each task reproduces its own case first: several
+rulings cite line numbers taken that day.
+
+**Acceptance:** each row's own `check` passes and is recorded on its line; the copy rows name the census
+key they added or moved; `vg-252` and `vg-290` each carry a case that fails when the fix is disabled;
+`npm run gate` exit 0 with its exit code named in the close commit, and the browser suite named
+separately for Tasks 18.3, 18.4 and 18.5.
+
+**Failure modes:** moving a string into `uiCopy` and leaving the hardcoded one in place; a control-set
+state added as a prop no consumer reads; widening `RESERVED_LETTERS` by guess rather than by the browser
+measurement the ruling asks for.
+
+**Verify:** `npm run gate` (exit code read from `$?` into a file, never through a pipe); the browser suite
+for the chip, the slider preview and the picker tracks, on a rebuilt bundle.
+
+### Task 18.1: The control set's copy and its invalid-value channel
+
+**Files:**
+- Modify: `src/web/packages/editor/src/components/ui/control-*.tsx`; `src/web/packages/editor/src/ui-copy.ts`; the copy census test beside it
+
+**Interfaces:**
+- Produces: `vg-264`, `vg-263`, `vg-336` closed
+
+- [ ] **Step 1: `vg-264` — the control set's refusal copy comes from `uiCopy`.** The React control set prints its refusals in hardcoded English; `uiCopy` is the repo's one owner for user-visible strings and carries a copy census, so the control set gains a copy dependency and each consumer supplies its strings through the locale the shell already sets. The row's other half is corrected rather than ruled: the panes' own invalid-value copy was never unreachable because it never existed.
+- [ ] **Step 2: `vg-336` — the picker's four tracks announce their names.** They announce their `data-testid`, so a screen reader reads a CSS-selector-shaped string; they announce Saturation, Hue, Alpha and Value from `uiCopy` and keep their current testids, so the specs that address them do not move.
+- [ ] **Step 3: `vg-263` — an invalid-but-editable value becomes a named member of the control set**, rather than the platform's `reportValidity()` carrying it, so the state is expressed and reviewed the way every other control state is.
+- [ ] **Step 4: Close the three**, each naming the census key it added or moved.
+
+### Task 18.2: One owner for the two button idioms
+
+**Files:**
+- Modify: `src/web/packages/editor/src/components/ui/dialog.tsx`; `new-document-chooser.tsx`; `replace-document-prompt.tsx`; `theme-library-dialog.tsx`; `panes/add/paint-list.tsx`; `panes/add/preset-list.tsx`
+
+**Interfaces:**
+- Produces: `vg-289`, `vg-272` closed
+
+- [ ] **Step 1: `vg-289` — the shared dialog primitive owns `ACTION_BUTTON`.** It is already declared in `dialog.tsx:43` and every one of the three dialogs already imports that primitive; the three declarations were already drifting, so their own copies are deleted and the token imported. A new `components/ui` module is rejected — the primitive every consumer already depends on is the owner it already has.
+- [ ] **Step 2: `vg-272` — one shared class token for the plain-button idiom, owned by the control set.** The four copies are the same Tailwind string with no behaviour to own, so a component would be a wrapper with one product and a pass-through prop set. `paint-list.tsx:127`, `:339` and `:391` and `preset-list.tsx:468` import it and stop carrying their own. Revisit only if the button acquires behaviour (disabled, aria, a variant).
+- [ ] **Step 3: Close the two.**
+
+### Task 18.3: The shell's keyboard rules
+
+**Files:**
+- Modify: the editor shell's shortcut manager (its text-entry predicate and `RESERVED_LETTERS`)
+
+**Interfaces:**
+- Produces: `vg-252`, `vg-290` closed
+
+- [ ] **Step 1: `vg-252` — the predicate answers "does this target consume this key", not "is this a text-entry target".** A text field consumes everything printable, so the coarse question happens to work there; a range consumes its own navigation keys and nothing else. The repair is a consumption rule per target shape, **enumerated as data beside the control set**: a text-like target consumes printable keys, a range consumes exactly the four arrows, Home, End, Page Up and Page Down, and every other control consumes nothing. That keeps the camera keys on a focused slider and gives `Ctrl+Z` back, which is the half the row measured as broken.
+- [ ] **Step 2: `vg-290` — `RESERVED_LETTERS` becomes two sets.** The blanket `shift !== true` exclusion was never a measurement; it is an assumption that Shift makes a chord safe, and three of the four chords most likely to be tried are exactly the Shift variants the browser keeps. Membership is measured against Chromium's documented page-unreachable accelerators — `Ctrl+Shift+N`, `Ctrl+Shift+R`, `Ctrl+Shift+T`, `Ctrl+Shift+W` — and Firefox is checked against them, because the host opens the editor in the author's own browser. **The comment carries the browser and the date it was measured against**; a reserved set with no provenance is the claim-without-a-reason shape this row already names.
+- [ ] **Step 3: Close the two**, each with a case that fails when the fix is disabled.
+
+### Task 18.4: The identity chip and the version line
+
+**Files:**
+- Modify: the editor shell's identity chip; the About tab; the Vite config's `define`
+- Read: `src/web/package.json`
+
+**Interfaces:**
+- Produces: `vg-223`, `vg-279` closed
+
+- [ ] **Step 1: `vg-223` — the chip loses its unsaved-changes marker and keeps the coloured indicator dot.** The marker was the fixed part that overflowed once the name truncated, and the dirty state is already carried by the status bar; the chip loses the text rather than dropping, shortening, wrapping or accepting a clip. Neither `vg-219` nor `vg-230` is absorbed.
+- [ ] **Step 2: `vg-279` — the workspace manifest's `version` is the product's version, and both readers take it from there.** The host reads `src/web/package.json`; the editor bundle takes it through Vite's `define` at build time. Two things the fix must not do: `SUPPORTED_SCHEMA_VERSION` stays a separate fact and the About tab keeps labelling it as what it is, and the open document's release version is never presented as Vigilia's own.
+- [ ] **Step 3: Close the two.**
+
+### Task 18.5: The selection column's live-value paths
+
+**Files:**
+- Modify: `src/web/packages/editor/src/selection-inspector/index.ts` (the field funnel, `writeOpacity` beside it); the inspector's text-run reconciliation
+
+**Interfaces:**
+- Produces: `vg-254`, `vg-249` closed
+
+- [ ] **Step 1: `vg-254` — a slider previews while dragging and commits on release.** The field funnel gains a preview and a cancel path, and **the preview writes no history entry** — the release commits exactly one value, which is what the one-undo-boundary rule asks. A control that shows nothing until release is one whose value the author cannot see while choosing it, and the same renderer draws every slider in the column, so the fix is one path rather than one field.
+- [ ] **Step 2: `vg-249` — the persisted text-run model gains no per-run id, and the inspector reconciles survivors at mutation time as `vg-044` did.** An id added to persisted runs is editor bookkeeping written into the theme file, which is the line `AGENTS.md` draws.
+- [ ] **Step 3: Close the two.**
+
+### Task 18.6: The theme list's tie-break, pinned
+
+**Files:**
+- Modify: a test beside `host/src/themes/store.ts` or `editor/src/boot-theme.ts`
+- Read: `host/src/themes/store.ts` (`list()`); `editor/src/boot-theme.ts` (`latestOwnTheme`)
+
+**Interfaces:**
+- Produces: `vg-363` closed
+
+- [ ] **Step 1: Reproduce the ruling's own reading.** `store.list()` sorts by `a.id.localeCompare(b.id)` with no recency term, and `latestOwnTheme` reduces with `entry.updatedAt > best.updatedAt` — strictly greater, so on a tie the first entry wins. Composed, those give exactly what the ruling asked for: max `updatedAt`, ties by id ascending.
+- [ ] **Step 2: Add the case the triage named, because a source reading is not the measurement this plan's Acceptance requires.** One case that saves two themes with the same `updatedAt` and asserts the mount opens the lower `id`, after which the answer is pinned rather than incidental.
+- [ ] **Step 3: Do not add a persisted save counter** — it would add a column to every theme document to cover two saves inside one millisecond, and `id` is already stable, unique and persisted.
+- [ ] **Step 4: Close it against that case.**
+
+---
+
+# Phase 19 — W14: the surfaces the editor has not wired, and the ones it draws wrong
+
+**Outcome:** the six ruled rows whose owner is a product surface rather than a control are landed —
+`FontPicker` reaches the field it was written for, the artboard's crop figure tracks the drag, a pane's
+chrome stops scrolling with its body, the Add pane's shape controls get their own scope, and the spec
+stops promising a primitive the product cannot deliver.
+
+**Why a phase of its own.** Five of the six are one-surface changes under `panes/`, the artboard and the
+pane frame, and the sixth (`vg-163`) is a sentence in a spec. They share an owner — the surfaces
+themselves — and none is an instrument, a token or a control.
+
+**Owners:** `src/web/packages/editor/src/panes/` (the shapes section, the asset file section); the
+selection inspector's text face field; the artboard panel's crop figure; the pane frame
+(`shell-layout.tsx`, `layer-tree.ts`, the per-pane scroll body and `choosePane`'s offset restore);
+`src/web/tests/e2e/`; and `docs/superpowers/specs/2026-10-03-dashboard-authoring-design.md`.
+
+**Constraints:** **queued behind Phases 12 and 15–18.** **`shell-layout.tsx` and `layer-tree.ts` are on
+the reuse gate's watchlist**, so Task 19.3 lands a decision note before its first write. **`vg-163`'s
+Phase-1 ruling named the wrong file** — the correction is Task 19.5 Step 1, and it is recorded on the row
+before anything is fixed.
+
+**Acceptance:** each row's own `check` passes and is recorded on its line; `vg-208`'s restructure changes
+`shell-layout-scroll.dom.test.ts` in the same commit as the structure it pins; `vg-211`'s four locators
+point at the new scope hook; the browser suite is named separately for Tasks 19.1–19.4.
+
+**Failure modes:** wiring `FontPicker` to a field that does not exist rather than building the field the
+ruling names; treating `vg-208` as a one-line fix, which its own ruling says it is not; correcting
+`DESIGN.md` for `vg-163` when the sentence is in the spec.
+
+**Verify:** `npm run gate` (exit code read from `$?`); the browser suite for Tasks 19.1–19.4 on a rebuilt
+bundle.
+
+### Task 19.1: `FontPicker` reaches the field it was written for
+
+**Files:**
+- Modify: the selection inspector's text section (the new text face field)
+- Read: `src/web/packages/editor/src/components/ui/font-picker.tsx`
+
+**Interfaces:**
+- Produces: `vg-268`, `vg-283` closed
+
+- [ ] **Step 1: Build the field `vg-268` names as the owner.** The capability is choosing a text object's font face, no other control provides it, and the control is the font catalogue plan's own output — so the mount is the fix and deleting it would discard a shipped implementation of a live capability.
+- [ ] **Step 2: Do not delete the control, and leave the test consumers alone.** The consumer grep returns three test mounts, including `components/ui/control-icon-button.dom.test.tsx`; no product surface renders it, which is the finding.
+- [ ] **Step 3: Close the two together** — they file one question, ruled once, and neither closes without the other.
+
+### Task 19.2: The artboard's crop figure tracks the drag
+
+**Files:**
+- Modify: the artboard panel's crop figure
+
+**Interfaces:**
+- Produces: `vg-142` closed
+
+- [ ] **Step 1: Subscribe to `object:moving`,** so the figure tracks during the drag rather than catching up on release. A figure that only catches up on release is the same defect `vg-254` rules on for sliders: the author cannot see what they are choosing.
+- [ ] **Step 2: Coalesce the recompute to the animation frame** the canvas already paints rather than dropping the event, and measure the drag's frame budget. If the per-frame recompute costs it, the answer is a cheaper recompute, not a return to release-only tracking.
+- [ ] **Step 3: Close it.**
+
+### Task 19.3: A pane's chrome stops scrolling with its body
+
+**Files:**
+- Modify: the pane frame (`shell-layout.tsx`, `layer-tree.ts`); `shell-layout-scroll.dom.test.ts`; the per-pane offset restore in `choosePane`
+
+**Interfaces:**
+- Produces: `vg-208` closed
+
+- [ ] **Step 1: The BODY element owns the scroll, and the title bar and footer sit outside it**, per `DESIGN.md:332`. The plan's Global Constraint that made the aside the single scroller was an implementation shortcut taken so `choosePane` could restore a per-pane offset through one element, and a shortcut taken for a mechanism does not outrank the intent it broke.
+- [ ] **Step 2: Restore the per-pane offset and disclosure state through the body**, and change `shell-layout-scroll.dom.test.ts` in the same commit as the structure it pins.
+- [ ] **Step 3: Close it.** The ruling names this restructure as the row's owner and records why it is not a one-line fix; the severity stays low for behaviour, since the footer is still reachable by scrolling.
+
+### Task 19.4: The Add pane's shape controls get their own scope
+
+**Files:**
+- Modify: `src/web/packages/editor/src/panes/add/` (the shapes section); `src/web/tests/e2e/` (the four add-pane locators)
+
+**Interfaces:**
+- Produces: `vg-211` closed
+
+- [ ] **Step 1: One stable scope hook on the shapes section**, and the four locators that today scope the whole pane point at it. A locator any unrelated surface can invalidate by gaining a label is the flake class this repo has already paid for, and the churn is cheaper than the first misdiagnosed ambiguity.
+- [ ] **Step 2: Do not rename the asset host's labels** — changing product copy to suit a test is explicitly not the fix.
+- [ ] **Step 3: Close it**, with the spec churn in the same commit.
+
+### Task 19.5: The spec stops promising video
+
+**Files:**
+- Modify: `docs/superpowers/specs/2026-10-03-dashboard-authoring-design.md` (the §5 primitives bullet)
+- Read: `src/web/packages/editor/src/panes/add/file-section.tsx` (`isPlaceable`); `docs/adr/0008-video-is-background-media.md`
+
+**Interfaces:**
+- Produces: `vg-163` closed
+
+- [ ] **Step 1: Correct the premise before anything is fixed.** `vg-163`'s Phase-1 ruling reads the row against the bible `docs/design/design-language.md`, which `DESIGN.md` replaced on 2026-10-10 — but the row's own detail cites the **spec**, and that sentence is still on disk: `2026-10-03-dashboard-authoring-design.md`'s §5 primitives bullet reads "text, shape, chart, image, video, exactly as today". The ruling's grep read the wrong file, so the defect it retired reproduces. Record the correction on the row, with both paths and both greps.
+- [ ] **Step 2: Correct the sentence to the primitives that exist.** `isPlaceable` (`panes/add/file-section.tsx:266`) is the two-element allowlist image or svg, and `ADR-0008` decided video is background media rather than a scene object — so the sentence drops video, rather than the product gaining a video object kind, which is `vg-154`'s question and not this row's.
+- [ ] **Step 3: Close it** against the corrected sentence, with a check naming the row's own problem rather than the retired premise.
+
+---
+
+# Phase 20 — W15: the design tokens and the drawings they came from
+
+**Outcome:** the seven ruled rows whose owner is the token vocabulary or a drawing are landed — one
+elevation ladder survives, `--shell-warm` is readable in every palette, `--shell-flat` goes, and the
+drawings agree with the product where they had invented or drifted.
+
+**Why a phase of its own.** Six of the seven edit `editor-shell.css` or a drawing under
+`docs/design/mockups/`, and the seventh edits the design-language reader. They are one subject: what the
+design language declares, and what the drawings show.
+
+**Owners:** `src/web/packages/editor/src/editor-shell/editor-shell.css`; its token test
+(`editor-shell.tokens.test.ts`); `design-language.spec.ts` (`PINNED_FLOOR`); `docs/design/mockups/`;
+`scripts/design-md.mjs` and the `--sync` reader.
+
+**Constraints:** **queued behind Phases 12 and 15–19.** **`renderer-core/src/theme/` is on the reuse
+gate's watchlist** where a token crosses into the renderer; the shell's own CSS is not. **`vg-201`'s
+`PINNED_FLOOR.invalid` values (ember 1.9, moss 1.35, plum 1.35) are the pinned floor being deleted**, so
+the contrast spec changes in the same commit as the value it pins.
+
+**Acceptance:** each row's own `check` passes; **every contrast claim is a measured ratio, not an
+asserted one**; each drawing correction names the file and the element it touches; `npm run gate` and
+`npm run design:check` both exit 0 with their codes named.
+
+**Failure modes:** deepening `--shell-warm` in one palette and not the other two; breaking the
+`--vigilia-accent` alias instead of moving the value it aliases; correcting a drawing to a value nobody
+ruled.
+
+**Verify:** `npm run gate` (exit code read from `$?`); `npm run design:check`; the parity captures for the
+corrected drawings, rebuilt.
+
+### Task 20.1: One elevation ladder
+
+**Files:**
+- Modify: `src/web/packages/editor/src/editor-shell/editor-shell.css`; the two `--shadow-raised` consumers
+
+**Interfaces:**
+- Produces: `vg-261` closed
+
+- [ ] **Step 1: One ladder survives.** `--elev-1`, `--elev-2` and `--elev-3` stay; `--shadow-raised` and `--shadow-overlay` are deleted, and the two `--shadow-raised` consumers are re-pointed to the nearest ladder step **in the same commit**. The duplicate is what reproduces: `--shadow-overlay`'s declared depth is `--elev-2`'s, so the surviving vocabulary is the one the design language names.
+- [ ] **Step 2: Correct the row's count.** It does not reproduce: measured in source with `dist` and `node_modules` excluded, each `--elev-N` has one consumer, `--shadow-raised` two and `--shadow-overlay` none — not three unconsumed of five. Record the measurement on the row.
+- [ ] **Step 3: Close it**, with the two surfaces that shift by a step checked in the browser.
+
+### Task 20.2: `--shell-warm` is readable in every palette
+
+**Files:**
+- Modify: `editor-shell.css` (ember, moss and plum); `design-language.spec.ts` (`PINNED_FLOOR`); the `--vigilia-accent` alias
+
+**Interfaces:**
+- Produces: `vg-201` closed
+
+- [ ] **Step 1: Deepen `--shell-warm` to at least 4.5:1** against each palette's own `--shell-surface` and against the glass overlay.
+- [ ] **Step 2: `--vigilia-accent` aliases `--shell-warm` on the canvas side**, so the readable value moves the canvas accent rather than the alias being broken.
+- [ ] **Step 3: Delete `PINNED_FLOOR.invalid`'s three values and replace them with the 4.5:1 minimum**, and close it with the measured ratios named for all three palettes and the overlay.
+
+### Task 20.3: The token that lies goes
+
+**Files:**
+- Modify: `editor-shell.css`; `editor-shell.tokens.test.ts`
+
+**Interfaces:**
+- Produces: `vg-312` closed
+
+- [ ] **Step 1: `--shell-flat`'s two declarations and its `NOT_A_COLOUR` entry are deleted in one commit.** The flat treatment is selector-driven, so a per-palette flag no `var()` reads is a knob that lies: changing it moves nothing and fails nothing.
+- [ ] **Step 2: Confirm it is not one of `ADR-0040`'s three roles declared ahead of a consumer** — those are named and this is not among them.
+- [ ] **Step 3: Close it.**
+
+### Task 20.4: The drawings agree with the product's composed paint
+
+**Files:**
+- Modify: `docs/design/mockups/` (the segmented control, the in-button chord, the well padding)
+
+**Interfaces:**
+- Produces: `vg-301`, `vg-202` closed
+
+- [ ] **Step 1: `vg-301` — the product's composed values stand as the drawings' values.** The segmented control and the in-button chord keep the composed paint — the chip border as `color-mix(currentColor 45%)` — and the drawings are corrected where they differ, rather than a drawn value being ruled for them.
+- [ ] **Step 2: `vg-202` — the well's horizontal padding stays 6px**, and the mockup's `5px 8px` wells are the half that is corrected. Section 3's 4px is the step inside a control rather than this row's horizontal padding, and the drawing's own well already draws `4px 6px` for the same element.
+- [ ] **Step 3: Close the two**, each naming the file and the element its correction touches.
+
+### Task 20.5: One ground per palette
+
+**Files:**
+- Modify: the settings drawing's light preview bar; the parity reader
+
+**Interfaces:**
+- Produces: `vg-350` closed
+
+- [ ] **Step 1: The light palette's bar becomes a solid `background-color` like the other five**, so one ground per palette and one rule in the reader.
+- [ ] **Step 2: Do not grow the reader a gradient comparator** plus a ruling on which stop is the ground. `vg-322` still owns which role a palette preview ground bar depicts and is not absorbed.
+- [ ] **Step 3: Close it**, with the parity check reading all six bars.
+
+### Task 20.6: `DESIGN.md`'s front matter and the CSS agree
+
+**Files:**
+- Modify: `DESIGN.md` front matter; `scripts/design-md.mjs` (`--sync`, the linter)
+- Read: `editor-shell.css` (`--shell-display`)
+
+**Interfaces:**
+- Produces: `vg-354` closed
+
+- [ ] **Step 1: The front matter's `fontFamily` syncs against the shell's default display stack.** The shell already declares `--shell-display` per palette, so `--sync` compares them and the linter requires the key — one fact declared once, rather than a field no consumer reads.
+- [ ] **Step 2: The change sits inside the existing `--sync` reader**, so no new module and no new dependency.
+- [ ] **Step 3: Close it with both directions proved**: a front matter that disagrees fails the sync, and one that agrees passes.
+
+---
+
+# Phase 21 — W16: the repo's own instruments
+
+**Outcome:** the six ruled rows whose owner is a script or a registry are landed — the reuse gate's path
+claim becomes a file claim, the citation check declares its sources, the capture registry owns a freshness
+check, and the sweep's three tiers report what they claim.
+
+**Why a phase of its own.** All six edit `scripts/` or a registry under `docs/evidence/`, and the three
+sweep rows (`vg-380`, `vg-382`, `vg-386`) are **one instrument read three ways** — its selector direction,
+its `redundant-export` tier and its `barrel-only-export` tier. Phase 15 homed instrument gaps a
+measurement pass found; these six were ruled in Phase 1 and never scheduled.
+
+**Owners:** `scripts/reuse-gate.mjs` (`claimedPaths`, `covers`); `scripts/design-md.mjs` (`--cite`);
+`docs/evidence/screenshots/README.md` and its registry; the sweep script and its report.
+
+**Constraints:** **queued behind Phases 12 and 15–20.** **`scripts/` is on the reuse gate's own
+watchlist**, so every task here lands a decision note before its first write — and `vg-535` records that
+the gate's hook does not block, so the note is owed on the merits rather than enforced. **`vg-386`'s
+re-run is a sweep of its own**: the newly visible rows are adjudicated, not reported and left.
+
+**Acceptance:** each row's own `check` passes; `vg-144`, `vg-380` and `vg-382` each carry a case that
+fails when the fix is disabled; `vg-386`'s re-run count is recorded as a measurement with its command.
+
+**Failure modes:** widening the reuse gate until it refuses the tree, which `vg-144`'s own ruling rejects
+— the blunt presence-only reading stays and only the *unit* a claim is made in changes; a citation source
+set that over-excludes; treating a tier's count as the finding rather than the rows behind it.
+
+**Verify:** `npm run gate`; each script's own `--self-test`; the sweep re-run with its output read from a
+file, never through a pipe.
+
+### Task 21.1: A note claims the file, not the directory
+
+**Files:**
+- Modify: `scripts/reuse-gate.mjs` (`claimedPaths`, `covers`); the decision notes' `- **Paths:**` bullets
+
+**Interfaces:**
+- Produces: `vg-144` closed
+
+- [ ] **Step 1: A path claim matches the file being written rather than a directory prefix**, so `0005`'s claim on `charts/` stops licensing every later change in it and the gate answers the question it appears to answer. The blunt, presence-only reading stays; what changes is the unit a claim is made in.
+- [ ] **Step 2: A trailing `/` claim currently matches everything beneath it.** Re-point the notes that rely on one, **in the same commit**, or the gate refuses paths it used to allow.
+- [ ] **Step 3: Close it**, with a case proving a sibling file under a formerly-claimed directory is now refused — and note that a test which picks a path some note *does* claim proves nothing, so the case must use a watchlisted path no note claims.
+
+### Task 21.2: The citation namespace is declared by source
+
+**Files:**
+- Modify: `scripts/design-md.mjs` (`--cite`, where the canonical range is declared)
+
+**Interfaces:**
+- Produces: `vg-352` closed
+
+- [ ] **Step 1: The check takes a SOURCE SET** — the documents whose `§N` are design-language citations, declared where the canonical range is declared. `requirements.md` is not in it, because a document about the product's requirements is not a document about the design language and its numbers belong to itself.
+- [ ] **Step 2: State the two consequences so they are not rediscovered:** `DESIGN.md` is the target and never a source, and the sweep's guard stands — a `requirements.md` `§N` is not re-pointed as though it were a bible citation. Over-exclusion is the risk the row names, and the set bounds it: a document joins by being *about* the design language, which a reviewer can check, unlike a number.
+- [ ] **Step 3: Close it, proving both directions**: a `requirements.md` §7 passes as its own number, and a design-language document's §7 still cites `DESIGN.md`.
+
+### Task 21.3: The capture registry owns a freshness check
+
+**Files:**
+- Modify: `docs/evidence/screenshots/README.md` and the registry; add a scanner under `scripts/`
+
+**Interfaces:**
+- Produces: `vg-287` closed
+
+- [ ] **Step 1: Each registered capture records the commit it was taken at and the surface paths it shows**, and the scanner reports a capture whose surface paths have commits after that sha, so a stale image is a finding rather than a habit.
+- [ ] **Step 2: Both READMEs today name an action and a file and nothing about the product generation** — which is how the shell-palette and keyboard-reference images could contradict the product for two plans with every gate green.
+- [ ] **Step 3: Close it**, with the scanner's own `--self-test` and one deliberately stale capture reported.
+
+### Task 21.4: The sweep reads class writes
+
+**Files:**
+- Modify: the sweep script's selector instrument
+
+**Interfaces:**
+- Produces: `vg-380` closed
+
+- [ ] **Step 1: Read `className` and `classList` writes alongside `class=` literals**, so a class production writes that no stylesheet defines becomes visible and the PRODUCT column stops depending on whether a name happens to appear in prose.
+- [ ] **Step 2: Record the one measured instance in the report rather than dropping it** — it is harmless by accident, which is why the gap is closed before an instance arrives that is not.
+- [ ] **Step 3: Close it**, with a case that fails when the widened reading is disabled.
+
+### Task 21.5: A declaration is not a use
+
+**Files:**
+- Modify: the sweep script's `redundant-export` tier
+
+**Interfaces:**
+- Produces: `vg-382` closed
+
+- [ ] **Step 1: The self-use test excludes declaration-shaped occurrences**, so an object key or a re-export stops counting as a read of the name it declares, and the tier reports a symbol kept alive only by its own declaration.
+- [ ] **Step 2: Re-run the sweep and record the newly reported symbols** as rows, not as a count.
+- [ ] **Step 3: Close it.**
+
+### Task 21.6: The barrel-only tier means no production consumer
+
+**Files:**
+- Modify: the sweep script's `barrel-only-export` tier
+
+**Interfaces:**
+- Produces: `vg-386` closed
+
+- [ ] **Step 1: The tier means no production consumer other than the barrel, with test consumers disclosed** — 133 candidates, not the plan's literal sole-importer shape's 76. A test importing a barrel export is disclosed in the report and does not hide the export from the tier, because a survivor costs a ticket and a deleted live symbol costs the product, so the bias stays on detection.
+- [ ] **Step 2: The newly visible rows are adjudicated as a sweep of its own**, not reported and left.
+- [ ] **Step 3: Close it**, with the count recorded as a measurement and its command.
+
+---
+
+# Phase 22 — W17: the proofs the plans owe, and the test configuration
+
+**Outcome:** the seven ruled rows whose owner is a test or a test config are landed — one project timeout
+covers the rebuild journey, the json reporter takes its path from the environment, `tests/e2e/` joins a
+typecheck program, and three assertions and bullets that cannot fail are replaced by ones that can.
+
+**Why a phase of its own.** Every row here is a claim about **evidence** rather than about product
+behaviour, and three of them (`vg-167`, `vg-168`, `vg-159`) are the same finding: an assertion or a
+verification bullet that cannot fail for the reason it claims to check. Phase 16 homed behaviour findings;
+these are the proofs those findings were supposed to come from.
+
+**Owners:** `playwright.rebuild.config.ts`; `playwright.config.ts`; a new `tsconfig.e2e.json` and the
+`typecheck` script; `layer-tree.test.ts`; `bridge.dom.test.ts`; `src/web/tests/e2e/` fixtures; and the
+verification bullets of the plan `vg-159` names.
+
+**Constraints:** **queued behind Phases 12 and 15–21.** **`vg-192` wires the new project into `typecheck`
+in the same commit, or the project exists and nothing runs it** — and `gate` runs `typecheck`, so the
+wiring is what makes the check real. **`vg-147` and `vg-150` change how the browser suites run**, so no
+other task in this phase runs a browser suite concurrently.
+
+**Acceptance:** each row's own `check` passes; `vg-167`, `vg-168` and `vg-159` each carry a case or a
+corrected claim that fails when the fix is disabled; the new tsconfig's coverage is shown by a deliberate
+type error in a spec and then reverted, with the restore proved byte-for-byte.
+
+**Failure modes:** replacing a tautology with a source-shape assertion, which `vg-168`'s ruling
+explicitly rejects; authoring a nested group into the starter instead of constructing a document; a
+project timeout so wide it hides a real hang.
+
+**Verify:** `npm run gate` (exit code read from `$?`); the rebuild journey for Task 22.1;
+`npm run typecheck` before and after Task 22.3, with a deliberate error in a spec as the proof.
+
+### Task 22.1: One budget for the rebuild journey
+
+**Files:**
+- Modify: `playwright.rebuild.config.ts`
+
+**Interfaces:**
+- Produces: `vg-147` closed
+
+- [ ] **Step 1: A project-level timeout covers the whole journey.** The memory-rings test takes 45–52 seconds against Playwright's 30-second default, and the three siblings measured 27.0–27.9 seconds — so a loaded box reddens them for no defect. `test.slow()` on individual tests is not the mechanism.
+- [ ] **Step 2: The memory-rings test's existing `test.slow()` call becomes redundant** rather than load-bearing once the project budget lands.
+- [ ] **Step 3: Close it**, naming the measured sibling times that decided the budget and the budget chosen.
+
+### Task 22.2: The json reporter's path comes from the environment
+
+**Files:**
+- Modify: `playwright.config.ts`
+
+**Interfaces:**
+- Produces: `vg-150` closed
+
+- [ ] **Step 1: Drop `outputFile` from the config**, so the environment variable applies unconditionally and an instruction naming only the variable cannot be obeyed wrongly.
+- [ ] **Step 2: The shared one-path collision ends** rather than being documented in every instruction: every session's report lands where the variable says.
+- [ ] **Step 3: Close it**, showing two runs landing in two paths.
+
+### Task 22.3: `tests/e2e/` joins a typecheck program
+
+**Files:**
+- Add: `tsconfig.e2e.json`
+- Modify: the `typecheck` script; `src/web/tests/e2e/`
+
+**Interfaces:**
+- Produces: `vg-192` closed
+
+- [ ] **Step 1: `tests/e2e/` joins a tsconfig program as its OWN project**, not by folding into the editor's — the e2e project needs Playwright's types and the DOM, and pulling those into the editor's program would trade one missing check for a weaker one.
+- [ ] **Step 2: Wire it into `typecheck` in the same commit**, or the project exists and nothing runs it.
+- [ ] **Step 3: Prove it with a deliberate type error in a spec** — `npm run typecheck` exit 1 — then revert it and prove the restore byte-for-byte, because a Windows text-mode write leaves CRLF where git normalises, so `cmp` sees it and `git diff` does not.
+- [ ] **Step 4: Close it**, naming both exit codes.
+
+### Task 22.4: The nested-group stamp walk
+
+**Files:**
+- Modify: `layer-tree.test.ts` (the walk beside the group filter)
+
+**Interfaces:**
+- Produces: `vg-167` closed
+
+- [ ] **Step 1: The assertion the row names is structurally empty.** It filters `row.kind === "group" && row.depth > 0` and expects length 0, which can only fail if the starter gains a nested group by accident, so it asserts nothing about the stamp rule it sits beside.
+- [ ] **Step 2: Walk the projection against a CONSTRUCTED document containing a nested group**, and keep the starter out of it — the starter is product content and its shape is not a test's to choose.
+- [ ] **Step 3: Close it**, having shown the new case fails when the stamp walk is disabled.
+
+### Task 22.5: The card-library tautology goes
+
+**Files:**
+- Modify: `layer-tree.test.ts` (the `uiCopy.cardLibrary` comparison)
+- Read: `new-fabric-theme-cards.ts` (the library it compares against)
+
+**Interfaces:**
+- Produces: `vg-168` closed
+
+- [ ] **Step 1: Remove the tautology.** `uiCopy.cardLibrary` compared against the library resolves one object on both sides, so the comparison holds for every value that object could ever take: it cannot fail for the reason it claims to check.
+- [ ] **Step 2: Do NOT replace it with a source-shape assertion.** Source-reading is rejected: this suite's business is behaviour, and an assertion over a builder's spelling pins the text of a file rather than what the product does.
+- [ ] **Step 3: Keep the two assertions the break proved real** — the stamp is present at all, and its `widgetId` — and leave the cross-path comparison as the one that covers agreement.
+- [ ] **Step 4: Close it.**
+
+### Task 22.6: The bullets plan 4 wrote are discharged
+
+**Files:**
+- Modify: the plan whose verification bullets these are; `bridge.dom.test.ts`; the offset-survival surfaces
+
+**Interfaces:**
+- Produces: `vg-159` closed
+
+- [ ] **Step 1: The offset-survival case is ADDED for the surfaces the bullet claimed.** `DESIGN.md` §7.7 specifies preserving per-pane offsets and disclosure state across routine updates, so a proof that exists for the layer list alone is a proof of one surface's luck rather than of the rule.
+- [ ] **Step 2: The once/twice case is PROVED as the bridge stands.** `bridge.dom.test.ts` carries no such case at all, and an unproved verification bullet is the defect whether or not the behaviour is fine — and if reading the bridge's contract shows it no longer carries entering-twice, the bullet is annotated as superseded rather than a test invented for a contract that is gone.
+- [ ] **Step 3: The selection bullet is DISCHARGED by the browser case that already covers it**, and the bullet is annotated to name where its proof lives, because a unit test is not owed where the panel cannot accept a selection by construction.
+- [ ] **Step 4: Close it.** A bullet is a claim, and a claim is discharged by pointing at its proof or by correcting the claim — never by leaving it standing.
+
+### Task 22.7: One fixture raises both gaps
+
+**Files:**
+- Modify: `src/web/tests/e2e/` fixtures
+
+**Interfaces:**
+- Produces: `vg-191` closed
+
+- [ ] **Step 1: Add one document that both bleeds and binds a key the host cannot report.** The requirement's rationale is that an unreadable sensor and a cropped object must be legible as DIFFERENT things, which is why two strips may be on screen at once.
+- [ ] **Step 2: Today's two-strip assertion passes with a transport gap standing in for the composition gap**, which is a different pair — so the fixture inventory is the entry it is missing, against a requirement that already exists.
+- [ ] **Step 3: Close it**, with the fixture shown to raise both strips at once.
+
+---
+
+# Phase 23 — W18: the host, the schema, the persisted model, and the records
+
+**Outcome:** the ten ruled rows whose owner is the host, the published schema, the persisted model or a
+document are landed — `lanAddress` prefers the default-route interface, a LAN move cannot deadlock, the
+schema refuses an empty theme name, the chart validator refuses at the envelope boundary, and five records
+say what they were ruled to say.
+
+**Why a phase of its own.** Nine of the ten are one of two things: a `host/src/` behaviour, or a document
+stating a fact the repo relies on. They share no file with Phases 18–22, and two of them (`vg-171`,
+`vg-174`) are the only host rows in the whole triage.
+
+**Owners:** `host/src/cli/net.ts`; `host/src/cli/hosting.ts`; `schema/theme-document.schema.json` and the
+loader's migration; `renderer-core/src/charts/` (the validator, with `settings-fields.ts` read as the
+owner); `docs/architecture/ownership.md`; `THIRD-PARTY-NOTICES.md` and
+`docs/engineering/dependencies.md`; `docs/adr/README.md` and `docs/decisions/README.md`; a new decision
+note for `vg-366`; and wherever the live indicator's contract is written.
+
+**Constraints:** **queued behind Phases 12 and 15–22.** **`host/src/server.ts` and
+`renderer-core/src/charts/` are on the reuse gate's watchlist**, so Tasks 23.2 and 23.4 land a decision
+note before their first write. **`vg-221` must not make a document that validates today unloadable**: the
+schema refuses an empty name and the loader names what it finds unnamed, in one commit. **`vg-174`'s fix
+is decided by the repo's own rule rather than by taste** — answering from `state()` before the move
+settles would have the host assert something it knows to be stale.
+
+**Acceptance:** each row's own `check` passes; `vg-171`'s ranking is data beside the function and logs the
+alternatives when two candidates survive; `vg-174`'s deadlock has a case that fails when the fix is
+disabled; `vg-221`'s migration is proved against a stored document carrying an empty name.
+
+**Failure modes:** deleting a decision that still governs (`vg-198`); widening the ownership sweep instead
+of correcting its claim (`vg-184`); making the schema refuse a document the loader then cannot read.
+
+**Verify:** `npm run gate` (exit code read from `$?`); the host's own tests for Tasks 23.1 and 23.2; the
+schema's sync test for Task 23.3.
+
+### Task 23.1: `lanAddress` prefers the default-route interface
+
+**Files:**
+- Modify: `host/src/cli/net.ts` (the ranking as data beside the function)
+
+**Interfaces:**
+- Produces: `vg-171` closed
+
+- [ ] **Step 1: The rule, in order.** Drop loopback, link-local and internal candidates; drop interfaces whose name matches a virtual-adapter pattern (Hyper-V and `vEthernet`, WSL, Docker and `br-`, VirtualBox, VMware, and the tunnel adapters a VPN installs), because those are exactly the ones a phone cannot reach; among what remains prefer the interface carrying the default IPv4 route, since that is the address the phone's own traffic leaves by.
+- [ ] **Step 2: When two candidates survive and neither carries the route, keep the choice DETERMINISTIC** (lowest interface index) and log the alternatives — the failure this row describes is invisible on the machine that makes it, so the alternatives being on the record is what makes a wrong pick findable without a phone.
+- [ ] **Step 3: The pattern list is data, owned beside the function**, so a new virtual adapter is a one-line addition rather than a new heuristic.
+- [ ] **Step 4: Close it.**
+
+### Task 23.2: The LAN move does not wait on a request
+
+**Files:**
+- Modify: `host/src/cli/hosting.ts` (`move()`)
+
+**Interfaces:**
+- Produces: `vg-174` closed
+
+- [ ] **Step 1: Destroy the remaining connections rather than letting `server.close` wait for them.** `move()` calls `closeIdleConnections()` and then `server.close(cb)`, and close waits for ACTIVE connections — so a GET arriving during the move blocks the callback, the move blocks the GET, and the host never listens again. That is a deadlock reachable by any second client, not a race.
+- [ ] **Step 2: Accept the trade `vg-173` already measured**: whichever request was unlucky gets an empty reply, and its bounded re-read recovers. Do **not** answer from `state()` before the move settles — that would have the host assert something it knows to be stale.
+- [ ] **Step 3: Close it**, with a case that fails when the fix is disabled.
+
+### Task 23.3: The schema refuses an empty theme name
+
+**Files:**
+- Modify: `schema/theme-document.schema.json`; the loader's migration
+
+**Interfaces:**
+- Produces: `vg-221` closed
+
+- [ ] **Step 1: `metadata.name` gains `minLength: 1`**, because a theme with an empty name cannot be presented in the library.
+- [ ] **Step 2: The loader names what it finds unnamed** — from the file, or a generated label — because a stored document that validates today is not allowed to become unloadable. **Both halves land in one commit.** The cost if wrong is accepted explicitly: a theme saved without a name gains one the author did not choose, which is visible and renameable, where the alternative is a document that cannot be opened at all.
+- [ ] **Step 3: Close it**, with the migration proved against a stored document carrying an empty name.
+
+### Task 23.4: The chart validator refuses at the envelope boundary
+
+**Files:**
+- Modify: `renderer-core/src/charts/` (the validator)
+- Read: `charts/settings-fields.ts` as the owner of each scalar's range
+
+**Interfaces:**
+- Produces: `vg-348` closed
+
+- [ ] **Step 1: The validator READS `settings-fields.ts`'s own `min`** (`windowSeconds` 1, `maxPoints` 2, `lineWidth` and `markerSize` 0) rather than re-deciding it, which is what the deleted v1 validator did — deleting it removed the refusal without moving the ownership anywhere. `settings: ["windowSeconds"]` is the third shape of the same rule: the allowed key set is the descriptor table's own reading, not a list the validator keeps.
+- [ ] **Step 2: The relational cases are the pair's own descriptor.** `min` above `max`, and `innerRadiusPercent` at or above `outerRadiusPercent`, are a PAIR the family's descriptor owns, so they are refused where the pair is complete rather than by a range on either half.
+- [ ] **Step 3: The pie's render-time clamp STAYS** as defence for the in-memory path that never passes through the envelope, but it stops being the only thing between an impossible document and a drawing — a clamp at render is the authored-versus-derived disagreement made invisible.
+- [ ] **Step 4: Close it**, with a document carrying `min` above `max` refused on load.
+
+### Task 23.5: The indicator's staleness is stated as a boundary
+
+**Files:**
+- Modify: wherever the live indicator's contract is written (the `HostingStore` docblock and the editor's host-connection notes)
+
+**Interfaces:**
+- Produces: `vg-214` closed
+
+- [ ] **Step 1: Record the ruling where the contract lives.** No poll — the host pushes, or the editor is the session's only writer; an editor polling the host would be a timer the host owns, per this repo's own boundary, and it would race the editor's own writes. The editor is the only in-session writer by design.
+- [ ] **Step 2: Name the direction for when the staleness is judged worth fixing**: the host announces the change on the connection the editor already holds, and the store re-reads. The editor never polls.
+- [ ] **Step 3: Close it.** This is a stated boundary, not a feature.
+
+### Task 23.6: `locked` gets the record it lacks
+
+**Files:**
+- Add: a decision note under `docs/decisions/`
+- Modify: the ownership map's entry for `scene-fabric/src/persist.ts`
+
+**Interfaces:**
+- Produces: `vg-366` closed
+
+- [ ] **Step 1: The behaviour is already decided and stated in code** — `object-lock-manager/index.ts:92-94` says undo rebuilds the scene, so a revived locked object is a new instance at Fabric's defaults, `locked` is the persisted state, and the transform flags are re-derived from it rather than persisted alongside it. `onHistoryLoaded` is the re-derivation. **The missing thing is the RECORD, not the behaviour.**
+- [ ] **Step 2: `selectable` and `evented` beside it in `SCENE_PERSISTED_PROPERTIES` are NOT covered and are not the same case** — the lock writes `hasControls` and the `lock*` flags and never those two. Name that question in the map entry rather than answering it.
+- [ ] **Step 3: Close it against the note.**
+
+### Task 23.7: The provenance files declare their convention
+
+**Files:**
+- Modify: `THIRD-PARTY-NOTICES.md`; `docs/engineering/dependencies.md`
+
+**Interfaces:**
+- Produces: `vg-178` closed
+
+- [ ] **Step 1: Declare whether the rows are direct dependencies only or the installed closure**, in the file that owns the convention, and apply it to whichever dependency ships next. The risk has not gone with the dependency the row was filed on: the next shipped package arrives with the same unstated rule.
+- [ ] **Step 2: Record that the row's original premise is discharged** — `grep -rn radix` over every `package.json` in the workspace returns nothing, because `ADR-0038` took the popover and its eighteen siblings out of the manifest. The row closes on the convention, not on the removal.
+- [ ] **Step 3: Close it.**
+
+### Task 23.8: `docs/adr/` is a closed series
+
+**Files:**
+- Modify: `docs/adr/README.md`; `docs/decisions/README.md`
+
+**Interfaces:**
+- Produces: `vg-198` closed
+
+- [ ] **Step 1: A header in `docs/adr/README.md`** saying the series closed at 0010 on 2026-09-25 and its numbers are its own. **Do not merge, remove or renumber**: the two series collide across 0001–0010 and both hold a 0004 on a different decision, so a merge renumbers one and breaks every citation to the other.
+- [ ] **Step 2: A citation convention that always writes the directory** (`adr/0004` against `decisions/0004`), and one line in `docs/decisions/README.md` accounting for the 0011–0018 gap so the next reader does not go looking for it.
+- [ ] **Step 3: Close it.**
+
+### Task 23.9: The ownership sweep's claim is corrected
+
+**Files:**
+- Modify: `docs/architecture/ownership.md` (the sweep's description, beside the lesson at `:48`)
+
+**Interfaces:**
+- Produces: `vg-184` closed
+
+- [ ] **Step 1: Do NOT widen the sweep.** `ownership.md` says it finds every exported id vocabulary when it cannot see a type union or a dotted id, and that reads as verification while being none — the same shape as `vg-111` and `vg-380`.
+- [ ] **Step 2: The doc states the boundary instead**, because a gate widened to flag most of the tree is ignored, which `:48` already records as the hard-won lesson.
+- [ ] **Step 3: Close it.**
+
+### Task 23.10: The scratch directory leaves the tree
+
+**Files:**
+- Move: `src/web/.agent-scratch/` (eight files) to a location outside the tree
+
+**Interfaces:**
+- Produces: `vg-368` closed
+
+- [ ] **Step 1: Relocate the directory outside the tree**, so the filesystem skew ends for every scanner at once — a gitignore rule hides a directory from git, not from a walk.
+- [ ] **Step 2: The eight files — browser probes, screenshots and a vitest report that may be the only copy — are kept rather than deleted.**
+- [ ] **Step 3: Close it**, showing a filesystem walk no longer sees the directory.
+
 # The rows no phase carries — the drain's own by-products (90 open, re-measured 2026-10-15)
 
 **Counted rather than estimated, because the count is the point of this plan.** The register holds
@@ -2220,6 +2930,44 @@ drain look unfinished. Measured with the park held out:
 one just done: each carries a ruling, so triaging one means reading what it was ruled to be — fix, park or
 withdraw — rather than measuring whether its subject still exists. The pair that was 207/150 is now
 **190/53**, and the second number fell by 97 while the first fell by 17.
+
+**That job is done, and the sixth correction is what it returned.** The 51 were read one at a time — each
+row's ruling was extracted and read as the verdict it is — and the same measurement taken afterwards:
+
+| | rows |
+|---|---|
+| open | **187** |
+| parked — known, not scheduled | 36 |
+| carried by an implementing phase | **149** |
+| **ruled only** | **0** |
+| named by no phase at all | **2** (`vg-388`, `vg-405`) |
+| **no home** | **2** |
+
+**The arithmetic is exact and it is the evidence:** 101 + 48 = 149 carried, 51 − 48 = 3 ruled-only and
+those three closed, 190 − 3 = 187 open. **The three verdicts the triage's own rule allows came out
+three ways, and the fourth shape is the one worth recording.**
+
+- **Three closed by applying a ruling already taken** (`vg-111`, `vg-256`, `vg-315`). Each row's own
+  ruling asks for **no** change — the published contract is a ceiling and says so; the opacity guard stays
+  and no test seam is added; a citation into git-ignored execution state is provenance only. Applying a
+  ruling is not new work, so these needed no phase, and each closed `verified` with a `check` that was
+  **run** rather than assumed and an artefact naming the commit that took the ruling.
+- **One ruling does not hold, and it was found by reading the row against the file it names.** `vg-163`'s
+  Phase-1 ruling retires the row's premise by grepping `DESIGN.md` for video and finding none — but the
+  row cites the **spec**, `2026-10-03-dashboard-authoring-design.md`, and that sentence is still on disk
+  reading "text, shape, chart, image, video, exactly as today". The ruling's grep is true and answers a
+  different question: the bible it names is gone and the row never cited it. **So the defect reproduces
+  where the row said it was**, the correction is recorded on the row, and its fix is Task 19.5. This is
+  the shape to watch in any ruling that quotes a file the row does not: a retired premise is only retired
+  for the file that was read.
+- **47 were real work with no home, and became six phases grouped by owner.** Phases 18–23, authored from
+  the rulings rather than from titles — each ruling names the owning symbols, which is the measurement
+  this section requires and the thing a title cannot supply.
+
+**The count is now 187/2, from 207/150.** The first number fell by 20 and the second by 148, and **the
+second is the one this section exists to keep visible**: two rows remain with no home, both the user's
+own and both already ordered ahead of the triage, so the drain's structural work on the register is
+finished and what remains is the work the phases carry.
 
 **The measure of the drain is therefore two numbers, and both belong in the final report:** the open
 count, and how many of those no phase carries. Re-measured 2026-10-15 they are **204** and **90** —
