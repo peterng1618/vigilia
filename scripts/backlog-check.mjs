@@ -122,6 +122,21 @@ export function check(items) {
     if (!SOURCES.has(item.source)) {
       problems.push(`${where}: source "${item.source}" is not one of [${[...SOURCES].join(", ")}]`);
     }
+    // `detail` is prose, and it was the last field a reader consumes whose shape
+    // nothing stated. `vg-174` carried a two-element array for as long as it has
+    // been that way, and the failure was silent *and reader-dependent*:
+    // `row.detail.match(…)` throws while `MARKER.test(row.detail)` coerces the
+    // array to a comma-joined string and matches anyway, so two probes over one
+    // register disagreed about whether that row carried a ruling. Refused as a
+    // shape, like a bare-string `artefacts` below, rather than coerced on read —
+    // see docs/decisions/0046-a-rows-detail-is-a-string.md.
+    if (item.detail !== undefined && typeof item.detail !== "string") {
+      const shape = Array.isArray(item.detail) ? "array" : typeof item.detail;
+      problems.push(
+        `${where}: detail must be a string — a bare ${shape} is read differently by a ` +
+          `reader that coerces it and one that does not, so the register says two things at once`,
+      );
+    }
     if (seen.has(item.id)) problems.push(`${where}: duplicate id`);
     seen.add(item.id);
 
@@ -368,6 +383,12 @@ if (process.argv[1]?.endsWith("backlog-check.mjs")) {
       ["a check naming nothing from the statement fails", bad({ ...valid, check: "ran the linter" })],
       ["an unknown state fails", bad({ ...valid, state: "done" })],
       ["an unknown source fails", bad({ ...valid, source: "maybe" })],
+      // `vg-174` was the only row of 529 whose detail was not a string, and the
+      // two readers of that field disagreed about what it said. Asserting the
+      // message keeps the case failing when the rule is disabled, since the row
+      // is valid in every other respect.
+      ["a row whose detail is an array fails", problem({ ...valid, detail: ["the finding", "the ruling"] }, /detail must be a string/)],
+      ["a row whose detail is a string passes", ok({ ...valid, detail: "why it was closed" })],
       ["an open item needs no check", ok({ ...valid, state: "open", check: undefined })],
       ["unverified with no note fails", bad({ ...valid, state: "unverified", check: undefined })],
       // The sha rule answers what the check cannot: does the work still exist.
