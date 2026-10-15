@@ -24,9 +24,11 @@ import {
   Polyline,
   Rect,
   Textbox,
+  util,
 } from "fabric/es";
 import { act } from "react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { CARD_LIBRARY } from "../card-library.js";
 import {
   type ChartFieldTarget,
   chartContentView,
@@ -186,6 +188,23 @@ async function edit(input: HTMLInputElement, value: string): Promise<void> {
   await leave(input);
 }
 
+/** The starter's CPU card, revived from `CARD_LIBRARY`'s own authored JSON
+ *  through Fabric's enliven utility — so the case starts from the document the
+ *  product ships rather than from numbers re-typed into this file. Its panel is
+ *  `frostedCard("cpu-card", 421, 187, 280, 307)`, so the card's centre is
+ *  (561, 340.5). */
+async function starterCpuCard(): Promise<Group> {
+  const unit = CARD_LIBRARY.find(
+    (candidate) => candidate.id === "group-cpu-card",
+  );
+  if (unit === undefined) throw new Error("no group-cpu-card unit");
+  const [object] = await util.enlivenObjects<FabricObject>([unit.build()]);
+  if (!(object instanceof Group)) {
+    throw new Error("group-cpu-card did not revive as a group");
+  }
+  return object;
+}
+
 describe("the selection inspector", () => {
   let rect: Rect;
 
@@ -254,6 +273,28 @@ describe("the selection inspector", () => {
 
     expect(rect.angle).toBe(45);
     expect(history.saveState).toHaveBeenCalledTimes(1);
+  });
+
+  it("rotating a group from the inspector keeps its centre where it was", async () => {
+    const card = await starterCpuCard();
+    // The authored card: left/top 421,187 over 280 × 307, so its centre is
+    // (561, 340.5). Assert it before the write too — a case that only reads the
+    // centre afterwards cannot tell "held" from "was never there".
+    expect(card.getRelativeCenterPoint()).toMatchObject({ x: 561, y: 340.5 });
+
+    const { host } = setup(card);
+    const well = host.querySelector<HTMLInputElement>(
+      '[data-vigilia-geometry-well="angle"]',
+    )!;
+    await edit(well, "45");
+
+    // Rotating the property alone swings the box about its authored left/top
+    // corner, which lands the centre at about (411.5, 394.6) — 54px away.
+    // Fabric's own gesture holds the centre (`centeredRotation`), and the two
+    // routes agree only if this one does too (vg-475).
+    expect(card.getRelativeCenterPoint().x).toBeCloseTo(561, 6);
+    expect(card.getRelativeCenterPoint().y).toBeCloseTo(340.5, 6);
+    expect(card.angle).toBe(45);
   });
 
   it("moves the object and records exactly one history entry", async () => {
