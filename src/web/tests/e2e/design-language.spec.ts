@@ -1624,7 +1624,7 @@ test("captures the shell with the Add pane open and nothing selected", async ({
   ).toHaveCount(1);
 
   // Park the pointer over the stage before the shot. `openPane` clicked the Add
-  // slot, leaving the pointer hovering it: after 600ms the slot's tooltip
+  // slot, leaving the pointer hovering it: after 220ms the slot's tooltip
   // bubble opens and paints over the rail/pane boundary — a difference the
   // mockup does not draw, in the one image this plan calls the primary
   // comparison.
@@ -1886,7 +1886,7 @@ test("captures the shell glyphs and words with the Add pane open", async ({
 
   // Park the pointer over the stage before the shot, for the reason the shell
   // capture above gives: `openPane` left it hovering a rail slot, and that
-  // slot's tooltip opens over the rail/pane boundary after 600ms.
+  // slot's tooltip opens over the rail/pane boundary after 220ms.
   const stage = await page.locator(".editor-shell-stage").boundingBox();
   if (stage !== null) {
     await page.mouse.move(
@@ -2024,7 +2024,7 @@ test("captures each pane of the four-slot rail in the design language", async ({
 
     // Park the pointer over the stage before the shot, for the reason the
     // shell capture gives: `openPane` left it hovering a rail slot, and that
-    // slot's tooltip opens over the rail/pane boundary after 600ms.
+    // slot's tooltip opens over the rail/pane boundary after 220ms.
     const stage = await page.locator(".editor-shell-stage").boundingBox();
     if (stage !== null) {
       await page.mouse.move(

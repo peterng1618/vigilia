@@ -56,7 +56,7 @@ beforeAll(() => {
  * of the component would say nothing about the dock, the rail or a layer row,
  * each of which draws its own button. They are driven the way a person reaches
  * them: focus, which opens a popup immediately, where hover waits out
- * `tooltip.ts`'s 600ms.
+ * `tooltip.ts`'s 220ms.
  *
  * The surfaces mounted here are the ones the census found carrying an icon-only
  * control: the rail and its gear, the canvas dock's two halves, a pane's footer

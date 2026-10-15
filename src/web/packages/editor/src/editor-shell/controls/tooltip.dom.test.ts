@@ -75,11 +75,11 @@ describe("the editor's shared tooltip", () => {
 
     other.dispatchEvent(new Event("pointerenter"));
     // The wait is a literal rather than the constant read back, so this case
-    // fails when the constant moves. 150 is measured, in the dock as it ships
-    // (`vg-450`): crossing its 296px row of 26px controls dwells at most 120ms on
-    // any one of them, and a pointer that arrives to read comes to rest in about
-    // 110ms — so 150ms is above every crossing and up while the author is there.
-    vi.advanceTimersByTime(149);
+    // fails when the constant moves. 220 is measured, in the dock as it ships
+    // (`vg-450`): crossing its 296px row of 26px controls in the 0.4–1.7s a hand
+    // takes dwells at most 195ms on any one of them — so the label stays down for
+    // the whole of a crossing, and is up well inside a deliberate hover's 400ms.
+    vi.advanceTimersByTime(219);
     expect(open()?.textContent).toBe(
       "A control".length > 0 ? "Glass blur" : "",
     );
