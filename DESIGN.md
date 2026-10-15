@@ -96,6 +96,7 @@ palette resolves it:
 | `--bg` | The window behind everything |
 | `--stage` | The area around the artboard |
 | `--panel` / `--panel-2` | A panel, and a control inside it |
+| `--vigilia-control-bg` | A control's own fill, between `--panel-2` and the ground; a palette whose control surface differs declares its own |
 | `--hdr` | The header and the dock chrome |
 | `--edge` / `--edge-2` | A boundary, and a fainter one (dividers inside a section) |
 | `--text` | Primary text |
@@ -441,6 +442,7 @@ The vocabulary is closed. A control is one of these, or it is not a control.
 | **Toggle** | A 26×14 pill, accent when on | A boolean that applies immediately |
 | **Segmented** | A `--panel-2` well holding 2–4 labels, the active one lifted to `--stage` | A small exclusive choice where both options must be readable |
 | **Icon button** | A 26–30px square at `--radius-md`, glyph only | An action whose glyph is unambiguous |
+| **Labelled button** | A label in `--text-sm` on the `--vigilia-control-bg` fill, 1px `--edge`, `--radius-md`, `6px 12px` padding | You can answer the surface that raised it; it is chrome around an answer, not a control in a panel |
 | **Rail slot** | A 36px square at `--radius-lg`, glyph only | One of §7.2's four panes; at most one is open |
 | **Choice row** | A `--radius-md` row at `--panel-2` carrying a swatch and a name; the chosen row is lifted to `--stage` with the accent border | One member of a closed set where each member has its own colour |
 
