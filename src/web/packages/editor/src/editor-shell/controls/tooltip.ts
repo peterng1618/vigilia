@@ -35,7 +35,7 @@ const WIDTH = "max-content";
     a control by focusing it.
 
     The wait is measured, not chosen (`vg-450`): crossing the dock's 296px row of
-    26px controls in the 0.4–1.7s a hand takes dwells at most 195ms on any one
+    26px controls in the 0.4–1.6s a hand takes dwells at most 195ms on any one
     control, and 220ms clears that floor with room for the run-to-run spread. The
     rows this tooltip also hangs on are full width (`control-well.tsx` and
     `settings-field.ts` span a pane), so a pointer crosses one slower than it
