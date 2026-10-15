@@ -3095,6 +3095,35 @@ withdrawn. **The count is 185/50, from 207/150**, and the sixth correction's 187
 than superseded: its arithmetic was right about what it measured, and what it measured was "named by a
 phase" rather than "named by a phase that will run".
 
+**That job is done, and the eighth correction is what it returned: reading them was worth six rows, not
+fifty, and the other forty-four are real work rather than triage.** Measured 2026-10-16 over all 50:
+
+- **Five closed by applying a ruling already taken** (`vg-213`, `vg-262`, `vg-355`, `vg-372`, `vg-379`).
+  They were one ruling's, not five problems: D1's of 2026-10-12, *"adopt `biome check` as the gate, chain
+  every `scripts/*.mjs` self-test into `gates:self-test`, run both from CI"*, applied by a single commit
+  `8477e70a` whose `.github/workflows/ci.yml` Gate step names all five rows in its own comment. **They
+  stayed open because nothing re-read them after the ruling landed** — the shape this correction found 50
+  times over, at one remove.
+- **One parked by its own ruling** (`vg-133`), which reads *"the row LEAVES PHASE 8 and is not built in
+  this drain"* — decision `0045`'s park, so the census can tell "known, not scheduled" from "to do".
+- **Nine more carry a ruling and were read against the tree rather than trusted.** **None is discharged**:
+  `vg-308`'s own assertion in `design-language-palettes.spec.ts` still reads `bg < panel && panel <
+  panel2` and its comment still says *"How far apart the rungs must sit is `vg-308`"*, so a ladder
+  collapsed to `0.0001` steps still passes — the row's defect reproduces; `vg-310`'s light is still
+  translucent (`--shell-surface: #eff9f2bf`, and `CHROME_NOT_YET_OPAQUE` still holds `"light"`); `vg-324`'s
+  seventh drawing is absent (`docs/design/mockups/current/` holds six HTML drawings and the README still
+  says six); `vg-373`'s label is still `controls` (`editor-main.ts` still calls `manager.warn("controls",
+  …)`); `vg-342` is blocked on a conflict with the redesign's settled architecture; `vg-240`'s ruling was
+  *"SPEC IT NOW"* and the spec landed, but the re-shape it specifies is unbuilt; `vg-278`'s two fixtures
+  are unbuilt; `vg-175`'s own ruling reverses a close to keep it open.
+- **A reproduction pass over the 36 unruled rows found no withdrawal candidate at all** — every one cites
+  at least one path that still exists (34 of 36 cite a live path; `vg-331` and `vg-389` cite no path and
+  cannot be judged this way). **So the pass is not the instrument, which is what the earlier triage found
+  twice**; these 44 are fixes, and they belong in a phase rather than in a triage pass.
+
+**The count is 178/44, from 207/150.** The sixth correction's 187/0 was right about what it measured, and
+what it measured was "named by a phase" rather than "named by a phase that will run".
+
 **The count is now 187/0, from 207/150.** The first number fell by 20 and the second by 150, and **the
 second is the one this section exists to keep visible**: every open row now carries a phase, a park, or a
 ruling that says it is the user's. **The drain's structural work on the register is finished**, and what
