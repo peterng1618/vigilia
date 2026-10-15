@@ -263,10 +263,15 @@ const GEOMETRY = {
 /**
  * Opens the Position section.
  *
- * Geometry is the one section closed by default — an author adjusts it once and
- * chooses the binding constantly — so every geometry control is behind a
- * disclosure. A helper that filled one without opening it would wait on a hidden
- * input, which is a hidden control and not a failing one.
+ * Position used to be the one section closed by default — an author adjusts
+ * geometry once and chooses the binding constantly — and the author's item 13
+ * reversed that: every question opens, so on a fresh selection this call is a
+ * no-op. It stays because a case may have closed the section itself (a reader
+ * may, and the column no longer decides that for them), and because a helper
+ * that filled a geometry field without opening it would wait on a hidden input,
+ * which is a hidden control and not a failing one. `openSection` reads
+ * `aria-expanded` and clicks only when the section is closed, so a caller that
+ * does not care about the disclosure can call this either way.
  *
  * The disclosure is plan 1's (`InspectorSection`), so the rule lives with the
  * control it is about rather than here.

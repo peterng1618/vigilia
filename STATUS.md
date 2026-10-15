@@ -37,11 +37,10 @@ ledger did.
 
 ## Last completed change
 
-- **Task 14.2's fix round landed the review's eight items, and its two HIGHs first** — the doc commit now carries `DESIGN.md` alone (`ab3edf12`) and the code commit holds the removal (`aa5edf96`), tree-for-tree identical to the two commits they replace, so no revision deletes a file another file at that revision imports.
-- **The Document-pane half of the acceptance has a reader at last** — the four-slot rail's capture now asserts the Document pane's regions are exactly `theme` and `artboard` with no `data-vigilia-panel="references"`, and the frame is taken at the pane's end, which is where the removed section rendered.
-- **Twenty affected captures were refreshed and audited by looking at the image**, `editor-chart-binding` and `editor-layer-arrange` among them — two committed pictures that still showed `SPENDS 2/7 Read-only` and a collapsed `POSITION 3`; the other nineteen the run rewrote depict neither the inspector column nor the Document pane and went back to HEAD's bytes.
-- **Three stale claims were corrected** — `DESIGN.md` names `advanced` as the one section that still opens closed (carrying the exception rather than changing the code), `SELECTION_KINDS`' docblock points at `KIND_WORD` and the census case that actually enforce totality, and `vg-423`'s `detail` records that its subject file went with the removal and that the row's state is the user's call.
-- **Five gates 0 after the rewrite** — `gate`, `typecheck`, `design:check`, `backlog:check` and `status:check`, each read from `$?` with output in a file; the affected specs ran serially on a rebuilt bundle, including the case the Document-pane assertion landed in.
+- **Fix round R2 closed the last review finding** — two test-tree comments still stated the rule item 13 reversed ("geometry is the one section closed by default", "the one section the column starts closed"), and a test helper's prose is what the next person reads before deciding whether a call is needed at all.
+- **Both now say what the code does, and the helper call stays** — every question opens, so `openPosition` is a no-op on a fresh selection; it is still called because a case may have closed the section itself and because `openSection` reads `aria-expanded` and clicks only when the section is closed.
+- **The sweep for the old phrasing found no third live site** — the four other "starts closed"/"put away" comments in the tree are either past-tense history citing item 13 or the current rule; the module docblock in `per-kind-column.ts` was named and left, because the exception F6 carried into `DESIGN.md` is stated on `defaultOpenOf` in that same file.
+- **`gate` 0 and `status:check` 0**, each read from `$?` with output in a file; comments only, so no bundle was rebuilt and no browser case re-run.
 
 ## Next
 

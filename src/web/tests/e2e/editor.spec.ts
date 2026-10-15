@@ -1293,8 +1293,10 @@ test.describe("Fabric editor route", () => {
     // it has no corner radius to show, and it has a side count of its own.
     await expect(page.locator("[data-vigilia-panel-fill]")).toBeVisible();
     await expect(page.locator("[data-vigilia-panel-radius]")).toHaveCount(0);
-    // The side count is geometry, and geometry is the one section the column
-    // starts closed — so it is opened the way an author opens it.
+    // The side count is geometry, and Position opens with every other question
+    // now that item 13 reversed the column's closed default. The call stays
+    // because this case does not care about the disclosure either way, and
+    // `openPosition` opens a closed section and no-ops on an open one.
     await openPosition(page);
     const sides = page.locator("[data-vigilia-shape-sides]");
     await expect(sides).toBeVisible();
