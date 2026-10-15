@@ -364,6 +364,11 @@ async function start(): Promise<void> {
         captureCanvas(shell.editor.canvas, shell.backdrop())?.toDataURL(
           "image/png",
         ),
+      // The theme's paints, for the Tokens pane's title-bar count (§7.3). The
+      // session owns the document, so this is pulled at each snapshot rather
+      // than copied: a token added, renamed or deleted moves the number, and
+      // `subscribeDocumentChange` is what republishes it.
+      palette: () => extensions.envelope.globals?.palette,
     });
     active?.bridge.destroy();
     delete (window as unknown as Record<string, unknown>).vigiliaEditorBridge;

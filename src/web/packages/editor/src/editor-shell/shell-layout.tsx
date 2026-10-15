@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { createRoot, type Root } from "react-dom/client";
+import { CARD_LIBRARY } from "../card-library.js";
 import { CompositionPane } from "../panes/composition/composition-pane.js";
 import type { PublishSwitch } from "../publish-client.js";
 import {
@@ -194,7 +195,12 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
      *  shell's one reading of `ThemeMetadata` — the bridge snapshot — so the
      *  About tab's version is the same fact the Document pane's
      *  `releaseVersion` row reads, never a second source. */
-    const { activeKind: kind, releaseVersion } = useSelection(store);
+    const {
+      activeKind: kind,
+      releaseVersion,
+      objectCount,
+      tokenCount,
+    } = useSelection(store);
     const sheetOpen = useSheet(sheet);
     /** Re-frame on the panel toggle, once the viewport has the new width.
      *
@@ -323,11 +329,38 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
                 `layers` — the name the specs and the panel CSS already browse
                 by — and the other three are named for their rail slot. The
                 visible title is the slot's own word, as the other three are;
-                the `layers` name is only the DOM handle. */}
+                the `layers` name is only the DOM handle.
+
+                **Each title bar carries its own list's count (§7.3), and the
+                list is named at the mount rather than in the pane.** Three of
+                the four panes are imperative hosts, so no React component
+                inside one owns its list and the count has to be sourced here.
+                The source of each:
+                - Composition — the scene's objects, through the bridge's own
+                  `objectCount`, which §7.6's strip reads too. One number, two
+                  chrome surfaces, and deliberately not a second spelling of it.
+                - Add — the card library's entry count, `CARD_LIBRARY`, not
+                  `insertGroups()`'s objects: the pane's insert grid adds
+                  primitives and a text object to the library, and the drawing's
+                  title bar counts the library.
+                - Tokens — the theme's paints, through the bridge's
+                  `tokenCount`, whose membership rule `PaintList` shares.
+                - Document — nothing. Its body is two sections of fields and it
+                  holds no list of its own, so it draws no count rather than a
+                  fabricated `0` (the same rule the two counts above take before
+                  a bridge is set).
+
+                A count is `undefined` where the list has not loaded, and `Pane`
+                then draws no count span at all. */}
             <Pane
               id="layers"
               title={uiCopy.rail.slots.composition}
               icon={RAIL_GLYPHS.composition}
+              count={
+                objectCount === undefined
+                  ? undefined
+                  : uiCopy.statusBar.objects(objectCount)
+              }
               hidden={slot !== "composition"}
               footer={<LayerActions bridge={store.bridge} />}
             >
@@ -341,6 +374,7 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
               id="add"
               title={uiCopy.rail.slots.add}
               icon={RAIL_GLYPHS.add}
+              count={uiCopy.paneCounts.units(CARD_LIBRARY.length)}
               hidden={slot !== "add"}
             >
               <Host node={hosts.add} hidden={slot !== "add"} />
@@ -349,6 +383,11 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
               id="tokens"
               title={uiCopy.rail.slots.tokens}
               icon={RAIL_GLYPHS.tokens}
+              count={
+                tokenCount === undefined
+                  ? undefined
+                  : uiCopy.paneCounts.tokens(tokenCount)
+              }
               hidden={slot !== "tokens"}
             >
               <Host node={hosts.tokens} hidden={slot !== "tokens"} />

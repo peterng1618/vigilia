@@ -9,6 +9,7 @@ export class SelectionStore {
   readonly #listeners = new Set<() => void>();
   #snapshot: EditorShellSnapshot = {
     objectCount: undefined,
+    tokenCount: undefined,
     selectedCount: 0,
     locked: false,
     activeKind: "none",
@@ -29,9 +30,11 @@ export class SelectionStore {
       });
     } else {
       // No scene to count, so the strip's count readout has nothing to draw —
-      // never `0`, which is a blank document's own answer.
+      // never `0`, which is a blank document's own answer. The Tokens pane's
+      // count is absent for the same reason: no document is no palette.
       this.#snapshot = {
         objectCount: undefined,
+        tokenCount: undefined,
         selectedCount: 0,
         locked: false,
         activeKind: "none",

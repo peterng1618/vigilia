@@ -1,4 +1,8 @@
-import { type Binding, isObjectName } from "@vigilia/renderer-core";
+import {
+  type Binding,
+  type FabricPalette,
+  isObjectName,
+} from "@vigilia/renderer-core";
 import { isLocked, VigiliaChart } from "@vigilia/scene-fabric";
 import { ActiveSelection, type FabricObject, Group } from "fabric/es";
 import { type ArrangeAction, applyArrange, canArrange } from "../arrange.js";
@@ -11,6 +15,7 @@ import {
   type ObjectActionId,
   type ObjectTarget,
 } from "../object-actions.js";
+import { paletteTokenIds } from "../palette-manager/token-list.js";
 import { typePresetOf } from "../selection-inspector/appearance.js";
 import {
   findById,
@@ -40,6 +45,18 @@ export interface EditorShellSnapshot {
    *  really holds nothing reports `0`, which is a reading rather than a
    *  default, and the two are different answers. */
   readonly objectCount: number | undefined;
+  /** The Tokens pane's own list, as §7.3's title bar counts it: the theme's
+   *  paints, minus the reserved `none` (`paletteTokenIds`, the same module
+   *  `PaintList` draws its rows from — one membership rule, so the number beside
+   *  the title and the rows under it cannot disagree).
+   *
+   *  A number rather than `number | undefined` wherever a bridge exists: the
+   *  bridge is only built over an open document, and a document whose globals
+   *  declare no palette really holds none — `0 tokens` there is a reading, the
+   *  same way `0 objects` is for an empty document. The `undefined` case is the
+   *  shell's own no-document state, stated by `SelectionStore` before a bridge
+   *  is set, where the pane draws no count at all (DESIGN.md §9). */
+  readonly tokenCount: number | undefined;
   readonly selectedCount: number;
   readonly locked: boolean;
   readonly activeKind: ActiveKind;
@@ -185,6 +202,12 @@ export function createEditorShellBridge(input: {
     readonly id: string;
     readonly version: string | undefined;
   };
+  /** The theme's palette, pulled the way `bindings` and `documentIdentity` are:
+   *  the session owns the document, so the Tokens pane's count reads the live
+   *  palette rather than a copy this bridge was built with — a token added,
+   *  renamed or deleted afterwards moves the number. Absent reads as no theme,
+   *  which is no palette and so no tokens. */
+  readonly palette?: () => FabricPalette | undefined;
   /** The product's own library capture; see `EditorShellBridge.capture`. */
   readonly capture: () => string | undefined;
 }): EditorShellBridge {
@@ -237,6 +260,9 @@ export function createEditorShellBridge(input: {
       // is always a number; the snapshot's `undefined` is the shell's own
       // no-scene state, stated by `SelectionStore` before a bridge is set.
       objectCount: canvas.getObjects().length,
+      // Counted through the palette's own membership rule, so the pane's title
+      // bar and its rows are one list rather than two that must agree.
+      tokenCount: paletteTokenIds(input.palette?.() ?? {}).length,
       selectedCount:
         active instanceof ActiveSelection
           ? active.getObjects().length

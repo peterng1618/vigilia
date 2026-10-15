@@ -89,6 +89,7 @@ function bridge(rows: readonly LayerRow[], overrides = {}): EditorShellBridge {
   return {
     snapshot: () => ({
       objectCount: rows.length,
+      tokenCount: 0,
       selectedCount: 1,
       locked: false,
       activeKind: "object",

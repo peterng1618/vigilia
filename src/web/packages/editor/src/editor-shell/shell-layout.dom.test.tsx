@@ -2,6 +2,7 @@
 import { Canvas } from "fabric/es";
 import { act } from "react";
 import { afterEach, beforeAll, expect, it, vi } from "vitest";
+import { CARD_LIBRARY } from "../card-library.js";
 import { createErrorManager } from "../error-manager/index.js";
 import {
   createNewObjectPanel,
@@ -121,6 +122,7 @@ function bridgeStub(
   return {
     snapshot: () => ({
       objectCount: 0,
+      tokenCount: 0,
       selectedCount: 0,
       locked: false,
       activeKind: "none",
@@ -288,6 +290,63 @@ it("gives every pane DESIGN.md's chrome, named by the section the specs browse",
       '[data-vigilia-panel="layers"] [data-vigilia-layer-actions]',
     ),
   ).toHaveLength(1);
+
+  layout.destroy();
+});
+
+/**
+ * §7.3's count, one per pane's own list, and the absences it takes.
+ *
+ * The row ruled per pane rather than per editor: the Add pane counts the card
+ * library, the Composition pane the scene's objects, the Tokens pane the
+ * theme's paints. Each source is named at the mount in `shell-layout`, because
+ * three of the four panes are imperative hosts with no React component inside
+ * that owns a list.
+ *
+ * Two absences are the whole of the negative half. **Document draws none** —
+ * its body is two sections of fields and it holds no list of its own, so a
+ * count there would be fabricated. And **before a bridge is set the two
+ * snapshot-fed counts draw none either**: `0 objects` over a canvas that has not
+ * mounted its document is a claim the product does not have (DESIGN.md §9). The
+ * Add pane's count is the exception, and it proves the rule rather than
+ * breaking it: `CARD_LIBRARY` is a module constant, so eight units is a reading
+ * at every moment the pane exists, never a default standing in for one.
+ */
+it("prints each pane's own count, and no count where a pane has no list", () => {
+  const root = document.createElement("div");
+  const layout = createShellLayout(root);
+
+  const countOf = (pane: string): string | null =>
+    root.querySelector(
+      `[data-vigilia-panel="${pane}"] .editor-shell-pane-count`,
+    )?.textContent ?? null;
+
+  expect(countOf("add")).toBe(uiCopy.paneCounts.units(CARD_LIBRARY.length));
+  expect(countOf("layers")).toBeNull();
+  expect(countOf("tokens")).toBeNull();
+  expect(countOf("document")).toBeNull();
+
+  layout.setBridge(
+    bridgeStub({
+      snapshot: () => ({
+        objectCount: 52,
+        tokenCount: 5,
+        selectedCount: 0,
+        locked: false,
+        activeKind: "none",
+        documentName: undefined,
+        selectionPresetId: undefined,
+      }),
+    }),
+    undefined,
+  );
+
+  expect(countOf("layers")).toBe(uiCopy.statusBar.objects(52));
+  expect(countOf("tokens")).toBe(uiCopy.paneCounts.tokens(5));
+  expect(countOf("add")).toBe(uiCopy.paneCounts.units(CARD_LIBRARY.length));
+  expect(countOf("document")).toBeNull();
+  // Three spans, not four: the Document pane is the one pane that prints none.
+  expect(root.querySelectorAll(".editor-shell-pane-count")).toHaveLength(3);
 
   layout.destroy();
 });
@@ -783,6 +842,7 @@ it("reads the scene's counts on the left, and draws none before a bridge is set"
     bridgeStub({
       snapshot: () => ({
         objectCount: 52,
+        tokenCount: 5,
         selectedCount: 3,
         locked: false,
         activeKind: "group",
@@ -813,6 +873,7 @@ it("puts the document's identity in the stage's top-left corner", async () => {
   const bridge = bridgeStub({
     snapshot: () => ({
       objectCount: 1,
+      tokenCount: 0,
       selectedCount: 0,
       locked: false,
       activeKind: "none",
@@ -876,6 +937,7 @@ it("shows one pane at a time and routes the dock through the bridge", async () =
   const bridge = bridgeStub({
     snapshot: () => ({
       objectCount: 1,
+      tokenCount: 0,
       selectedCount: 1,
       locked: false,
       activeKind: "object",
@@ -946,6 +1008,7 @@ it("draws no arrange action for a multi-selection either, whatever the bridge sa
   const bridge = bridgeStub({
     snapshot: () => ({
       objectCount: 2,
+      tokenCount: 0,
       selectedCount: 2,
       locked: false,
       activeKind: "group",
@@ -983,6 +1046,7 @@ it("keeps a chart's fields in the Design column, with no Data tab to reach for",
   const bridge = bridgeStub({
     snapshot: () => ({
       objectCount: 1,
+      tokenCount: 0,
       selectedCount: kind === "none" ? 0 : 1,
       locked: false,
       activeKind: kind,

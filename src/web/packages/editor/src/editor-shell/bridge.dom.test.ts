@@ -520,6 +520,56 @@ it("counts a scene that holds nothing as zero, and follows it as it changes", ()
   expect(bridge.snapshot().objectCount).toBe(1);
 });
 
+it("counts the theme's paints, and leaves the reserved `none` out of the count", () => {
+  // §7.3's Tokens count. The membership rule is `paletteTokenIds` — the module
+  // `PaintList` draws its rows from — so the number beside the title is the
+  // number of rows under it: `none` is a reassignment target with no row of its
+  // own, and counting it would put the title one above the list it names.
+  const palette = {
+    none: { name: "None", value: { kind: "solid", color: "#00000000" } },
+    cpu: { name: "CPU", value: { kind: "solid", color: "#ff0000" } },
+    panel: { name: "Panel", value: { kind: "solid", color: "#111111" } },
+  };
+  const { bridge } = bridgeFor(
+    undefined,
+    {},
+    {},
+    {},
+    {
+      palette: () => palette,
+    },
+  );
+
+  expect(bridge.snapshot().tokenCount).toBe(2);
+});
+
+it("reads the palette at each snapshot, so a token added moves the count", () => {
+  // Pulled, not copied: the session owns the document, so a count frozen at
+  // construction would leave the title bar naming a palette the author has
+  // since edited — and a document whose globals declare no palette really holds
+  // none, which is `0` rather than an absence.
+  let palette: Record<string, unknown> = {
+    none: { name: "None", value: { kind: "solid", color: "#00000000" } },
+  };
+  const { bridge } = bridgeFor(
+    undefined,
+    {},
+    {},
+    {},
+    {
+      palette: () => palette,
+    },
+  );
+
+  expect(bridge.snapshot().tokenCount).toBe(0);
+
+  palette = {
+    ...palette,
+    cpu: { name: "CPU", value: { kind: "solid", color: "#ff0000" } },
+  };
+  expect(bridge.snapshot().tokenCount).toBe(1);
+});
+
 it("projects the entered group's context as ids, never Fabric objects", () => {
   const child = new Rect({ id: "child", width: 10, height: 10 });
   const group = new Group([child]);

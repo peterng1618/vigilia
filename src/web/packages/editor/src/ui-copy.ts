@@ -451,6 +451,26 @@ export const uiCopy = {
       `${count} ${count === 1 ? "object" : "objects"}`,
     selected: (count: number): string => `${count} selected`,
   },
+  /** §7.3's title-bar counts: one per pane's own list, so a pane whose list has
+   *  not loaded prints nothing rather than a `0` (the same rule `statusBar`'s
+   *  counts take for a scene that has not mounted).
+   *
+   * `units` is the card library's own word for what it holds — a card is a
+   * *unit* an author inserts (`card-library.ts`), and it is the word the Add
+   * pane's title bar carries in the drawing. `tokens` is the Tokens pane's own
+   * list, the theme's paints; the reserved `none` is not one of them, because
+   * `PaintList` lists every token but that one.
+   *
+   * **The Composition pane's count is deliberately not here.** Its list is the
+   * scene's own objects, which §7.6's strip already names, so the pane reads
+   * `statusBar.objects` rather than a second spelling of one fact — the
+   * duplication the row accepted and named. */
+  paneCounts: {
+    units: (count: number): string =>
+      `${count} ${count === 1 ? "unit" : "units"}`,
+    tokens: (count: number): string =>
+      `${count} ${count === 1 ? "token" : "tokens"}`,
+  },
   /** The publish surface. §145: plain LAN HTTP has no confidentiality, so the
    *  words that turn it on have to say what it is. */
   publish: {

@@ -11,6 +11,7 @@ import { ControlText } from "../../components/ui/control-text.js";
 import { GradientEditor } from "../../components/ui/gradient-editor.js";
 import { newTokenPaint } from "../../new-fabric-theme-globals.js";
 import type { PaletteTokenUse } from "../../palette-manager/panel.js";
+import { paletteTokenIds } from "../../palette-manager/token-list.js";
 import { uiCopy } from "../../ui-copy.js";
 
 /**
@@ -18,10 +19,11 @@ import { uiCopy } from "../../ui-copy.js";
  * its usage figure, the chooser that names it, a new-paint row, and the chosen
  * token's own fields.
  *
- * **The membership is not re-derived here.** The list is `Object.keys(palette)`
- * — the document's own tokens, minus the reserved `none` — and the figure beside
- * a token is the caller's `usage` walk, read per draw. The count the author
- * reads and the set a deletion moves therefore come from one owner
+ * **The membership is not re-derived here.** The list is `paletteTokenIds`,
+ * which the pane's title-bar count also reads, so the rows drawn and the number
+ * beside the title are one list rather than two that must agree; the figure
+ * beside a token is the caller's `usage` walk, read per draw. The count the
+ * author reads and the set a deletion moves therefore come from one owner
  * (`paletteTokenUsage`), which is what stops a token being reported unused while
  * an object is painted with it.
  *
@@ -52,7 +54,9 @@ export function PaintList(props: PaintListProps): React.JSX.Element {
   // Read once per draw, so the figure beside a token and the set a deletion
   // moves are one walk of one scene.
   const uses = usage?.();
-  const ids = Object.keys(palette).filter((id) => id !== "none");
+  // The pane's own list, from the module the bridge's count also reads, so the
+  // rows drawn and the number in the title bar cannot disagree (§7.3).
+  const ids = paletteTokenIds(palette);
   const [picked, setPicked] = useState<string | undefined>(ids[0]);
   // Derived, not stored: when the picked token leaves the palette the pane falls
   // back to the first declared one, which is what `draw` did imperatively.

@@ -487,6 +487,82 @@ test("the status bar reads the scene's counts, and still carries its message", a
 });
 
 /**
+ * §7.3's count, in each pane's title bar, read where an author reads it.
+ *
+ * The row ruled it per pane, so this walks all four slots and reads each title
+ * bar against **the list that pane draws** rather than against a number this
+ * test remembers: the Add pane's count is the tiles under it, the Tokens pane's
+ * is the token rows under it, and the Composition pane's is the scene's own
+ * total, which is also what §7.6's strip prints — the duplication the row
+ * accepted and named, asserted here as one string in two surfaces so a pane
+ * that drifted to a different number fails.
+ *
+ * **The Document pane is the one with no count, and the absence is the
+ * assertion.** Its body is two sections of fields and it holds no list of its
+ * own, so a count there would be a number the product does not have. A dom case
+ * can show the span is absent from the tree; only a rendered pane shows that it
+ * is absent from the surface the author opens.
+ */
+test("every pane's title bar carries the count of its own list, and Document carries none", async ({
+  page,
+}, testInfo) => {
+  test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+
+  await page.goto(EDITOR);
+  await expect(
+    page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+  ).toBeVisible();
+  await page.waitForFunction(() => "vigiliaEditorBridge" in window);
+
+  const titleCount = (pane: string) =>
+    page.locator(`[data-vigilia-panel="${pane}"] .editor-shell-pane-count`);
+
+  // Composition is the slot the shell opens on.
+  const objects = await page.evaluate(
+    () =>
+      (
+        window as unknown as {
+          readonly vigiliaEditorBridge: {
+            snapshot(): { readonly objectCount: number };
+          };
+        }
+      ).vigiliaEditorBridge.snapshot().objectCount,
+  );
+  expect(objects, "the booted document holds objects").toBeGreaterThan(0);
+  await expect(titleCount("layers")).toHaveText(`${objects} objects`);
+  // The strip and the pane print one number. Two chrome surfaces, one fact.
+  await expect(page.locator("[data-vigilia-status-objects]")).toHaveText(
+    `${objects} objects`,
+  );
+
+  // Add: the card library's own entry count, which is the tiles it draws —
+  // not `insertGroups()`'s objects, which add primitives and a text object to
+  // the library.
+  await openPane(page, "Add");
+  const cards = await page
+    .locator('[data-vigilia-panel="add"] [data-vigilia-panel-card]')
+    .count();
+  expect(cards, "the booted library holds units").toBeGreaterThan(0);
+  await expect(titleCount("add")).toHaveText(`${cards} units`);
+
+  // Tokens: the theme's paints, which is the rows the pane draws.
+  await openPane(page, "Tokens");
+  const tokens = await page
+    .locator('[data-vigilia-panel="tokens"] [data-vigilia-palette-token-row]')
+    .count();
+  expect(tokens, "the booted theme declares tokens").toBeGreaterThan(0);
+  await expect(titleCount("tokens")).toHaveText(`${tokens} tokens`);
+
+  // Document: no list, so no count.
+  await openPane(page, "Document");
+  await expect(page.locator('[data-vigilia-panel="document"]')).toBeVisible();
+  await expect(
+    page.locator('[data-vigilia-panel="document"] .editor-shell-pane-count'),
+    "the Document pane holds no list, so its title bar prints no count",
+  ).toHaveCount(0);
+});
+
+/**
  * The selected slot's accent bar is on the rail's **inner** edge (DESIGN.md §7.2),
  * and only a rendered box can show which edge that is.
  *

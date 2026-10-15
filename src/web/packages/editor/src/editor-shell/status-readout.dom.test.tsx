@@ -19,6 +19,7 @@ function stubBridge(snapshot: EditorShellSnapshot): EditorShellBridge {
 function snapshotWith(objectCount: number, selectedCount: number) {
   return {
     objectCount,
+    tokenCount: 0,
     selectedCount,
     locked: false,
     activeKind: "none",
