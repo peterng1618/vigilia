@@ -20,13 +20,11 @@
  * from an omission. Both halves are needed: a rule that selects nothing is the
  * same vacuous guard as an empty file list, and it fails the same way.
  *
- * A second instrument covers the one large surface that is not on that list:
- * `CEILINGS` *records that file's whole residual set*, so it is green today and
- * any movement in it fails — a violation arriving, one leaving, or a swap of one
- * for another at the same size. It records the set rather than a count because a
- * count cannot see a swap, and it is a recording rather than a conversion: the
- * constant says why the path does not simply join the list above, and every entry
- * names the site it sits at, not just the text it holds.
+ * A second instrument covered the one large surface that was not on that list —
+ * `CEILINGS`, which recorded `editor-shell.css`'s whole residual set. It retired
+ * with that file's conversion (`vg-274`): the path is in the list above now, so
+ * the file that declares the scales is held to them exactly as the surfaces
+ * consuming them are, and one instrument covers it rather than two.
  *
  * This is deliberately the *cheap* ratchet, and its second px tier is coarse in
  * a way that is documented rather than accidental: in a spacing property
@@ -110,108 +108,6 @@ const UNWALKED = new Set([
   "test-results",
   "playwright-report",
 ]);
-
-/**
- * The ceiling over a file deliberately kept off the list above.
- * `editor-shell.css` defines the scales and holds dozens of residuals, so putting
- * it in `gated` would redden this gate at HEAD — a gate that starts red and stays
- * red is turned off (ADR-0040 `:12`). `max` is 0 and `exempt` records the file's
- * whole residual set, keyed on `site`, `text` and — where a rule writes one value
- * twice — `occurrence`. So the instrument is green today and *any* movement in
- * the set fails: a violation the record does not hold (arrival), and a recorded
- * one that no longer occurs (`dead`, departure). That is the shape `vg-327` asks
- * for: a count could not see a swap, because correcting one violation while
- * another arrives leaves the total unchanged.
- *
- * The consequence is deliberate and a maintainer has to know it: fixing one of
- * these violations reddens the gate until the record is updated in the same
- * commit. The record is the review point, not a number to stay under. A `max`
- * that is absent or not finite is treated as breached rather than compared,
- * because `NaN` is never greater than anything and a ceiling that cannot be
- * evaluated would otherwise be the one way this instrument silently stops being
- * able to fail.
- *
- * Three of the recorded entries are a different kind of thing and carry their
- * reasons: the values no §3 step can express — the shape the drawings gate uses
- * for `1px`/`2px`/`50%`. The rest are the file's existing off-scale px and hex
- * literals, recorded rather than justified: a rationale per entry would be 54
- * fabrications, and the reason they are permitted is the one stated here — this
- * file defines the scales and cannot be converted in one pass (`vg-274`).
- * `recordedAt` is the sha the set was taken at — `git diff <sha> -- <path>` shows
- * it — and one entry per line, in the checker's own order, is what re-recording
- * the set emits.
- */
-export const CEILINGS = [
-  {
-    path: "src/web/packages/editor/src/editor-shell/editor-shell.css",
-    max: 0,
-    recordedAt: "423c557f",
-    exempt: [
-      { site: ".editor-shell-header", text: "42px" },
-      { site: ".editor-shell-publish-toggle", text: "padding: 7px" },
-      { site: ".editor-shell-menubar", text: "gap: 2px" },
-      { site: ".editor-shell-menubar button", text: "padding: 9px" },
-      { site: ".editor-shell-menu-popup", text: "190px" },
-      { site: ".editor-shell-menu-popup", text: "padding: 5px" },
-      { site: ".editor-shell-menu-popup [role=\"menuitem\"], .editor-shell-menu-popup [role=\"menuitemradio\"]", text: "padding: 9px" },
-      { site: ".editor-shell-menu-label", text: "padding: 9px" },
-      { site: ".editor-shell-menu-label", text: "padding: 3px" },
-      { site: ".editor-shell-primary", text: "padding: 7px" },
-      { site: ".editor-shell-rail button[aria-pressed=\"true\"]::before", text: "2px" },
-      { site: ".editor-shell-rail button[aria-pressed=\"true\"]::before", text: "2px", occurrence: 1 },
-      { site: ".editor-shell-panel fieldset", text: "padding: 2px" },
-      { site: ".editor-shell-panel .vigilia-asset-preview", text: "120px" },
-      { site: ".editor-shell-panel [data-vigilia-asset-import], .editor-shell-panel [data-vigilia-asset-replace], .editor-shell-panel [data-vigilia-asset-remove]", text: "margin: 3px" },
-      { site: ".editor-shell-panel [data-vigilia-asset-import], .editor-shell-panel [data-vigilia-asset-replace], .editor-shell-panel [data-vigilia-asset-remove]", text: "margin: 3px", occurrence: 1 },
-      { site: ".editor-shell-panel .vigilia-layer-rename", text: "margin: 3px" },
-      { site: ".editor-shell-panel .vigilia-layer-rename", text: "margin: 3px", occurrence: 1 },
-      { site: ".editor-shell-inspector [data-vigilia-run-add], .editor-shell-inspector [data-vigilia-run-remove], .editor-shell-inspector [data-vigilia-chart-binding-remove], .editor-shell-inspector [data-vigilia-crop], .editor-shell-inspector [data-vigilia-crop-aspect], .editor-shell-inspector [data-vigilia-crop-apply], .editor-shell-inspector [data-vigilia-crop-cancel]", text: "margin: 3px" },
-      { site: ".editor-shell-inspector [data-vigilia-run-add], .editor-shell-inspector [data-vigilia-run-remove], .editor-shell-inspector [data-vigilia-chart-binding-remove], .editor-shell-inspector [data-vigilia-crop], .editor-shell-inspector [data-vigilia-crop-aspect], .editor-shell-inspector [data-vigilia-crop-apply], .editor-shell-inspector [data-vigilia-crop-cancel]", text: "margin: 3px", occurrence: 1 },
-      { site: ".editor-shell :is( button, input, select, [tabindex]:not(:where([role=\"tabpanel\"])) ):focus-visible", text: "2px" },
-      { site: ".editor-shell-dialog", text: "720px" },
-      { site: ".editor-shell-dialog", text: "340px" },
-      { site: ".editor-shell-dialog", text: "560px" },
-      { site: ".editor-shell-settings-tabs", text: "150px" },
-      { site: ".editor-shell-settings-tab[data-active]", text: "2px" },
-      { site: ".editor-shell-settings-tab:focus-visible", text: "2px" },
-      { site: ".editor-shell-settings-tab:focus-visible", text: "2px", occurrence: 1 },
-      { site: ".editor-shell-settings-panel:focus-visible", text: "2px" },
-      { site: ".editor-shell-settings-panel:focus-visible", text: "2px", occurrence: 1 },
-      { site: ".editor-shell-keyboard [data-armed]", text: "2px" },
-      { site: ".editor-shell-keyboard [data-armed]", text: "2px", occurrence: 1 },
-      { site: ".vigilia-field", text: "72px" },
-      { site: ".vigilia-layer-dropline", text: "2px" },
-      { site: ".vigilia-layer-mark", text: "28px" },
-      { site: ".vigilia-layer-state", text: "right: 2px" },
-      {
-        site: ".vigilia-layer-row:has(.vigilia-layer-state button)",
-        text: "padding-right: 36px",
-        reason: "the layer row's reservation for one control — the row's own 4px, then the slot's `right: 2px` and `6 + 26*1 + 0` (§3's 26px row rhythm plus its 6px and 4px steps) — so the sum is off §3's step table by construction, and correcting it to a step would move the reserved width and let the slot cover the role again (`vg-265`)",
-      },
-      {
-        site: ".vigilia-layer-row:has(.vigilia-layer-state button:nth-child(2))",
-        text: "padding-right: 66px",
-        reason: "the same arithmetic at two controls — `4 + 2 + 6 + 26*2 + 4` — off §3's table for the same reason; the reservation is the row's padding rather than the key column's margin because the column under the slot is the role on a row whose selection reads nothing",
-      },
-      {
-        site: ".vigilia-layer-row:has(.vigilia-layer-state button:nth-child(3))",
-        text: "padding-right: 96px",
-        reason: "the same arithmetic at three controls — `4 + 2 + 6 + 26*3 + 8`",
-      },
-      {
-        site: ".vigilia-layer-row:has(.vigilia-layer-state button:nth-child(4))",
-        text: "padding-right: 126px",
-        reason: "the same arithmetic at four controls — `4 + 2 + 6 + 26*4 + 12` — so 36, 66, 96 and 126 are one class of four, not four exceptions",
-      },
-      { site: ".vigilia-layer-rename", text: "22px" },
-      { site: ".editor-shell-identity-dot", text: "7px" },
-      { site: ".editor-shell-identity-dot", text: "7px", occurrence: 1 },
-      { site: ".editor-shell-view-readout", text: "56px" },
-      { site: "@media (max-width: 980px)", text: "980px" },
-      { site: ".editor-shell-body", text: "280px" },
-    ],
-  },
-];
 
 /**
  * Blank a span to spaces, keeping its newlines. A masked span must not move a
@@ -302,17 +198,14 @@ function declarationProperty(text, index) {
  * The prelude of the *smallest block that contains* `index` — its selector, in a
  * `.css`, and the at-rule's own prelude for a literal in one, which is where a
  * media query's px lives (`@media (max-width: 980px)`, not the `[hidden] {` block
- * above it). It is what identifies *where* a declaration is, so an exemption
- * keyed on it cannot be inherited by a second rule that happens to write the same
- * text — and a block inserted above it does not move the key, which is the reason
- * it is not a line number.
+ * above it). It is what identifies *where* a declaration is, and a block inserted
+ * above it does not move it, which is the reason it is not a line number.
  *
  * The span of a block runs from the end of the previous block or statement (its
  * prelude's first character) to its own `}`, so the innermost containing block is
  * well defined whether the literal is in a body or in a prelude. Walked over the
  * scanned text, so a comment before a selector is already blanked to spaces.
- * `""` for a literal outside every block, which is why `CEILINGS` refuses to
- * record an entry with an empty site.
+ * `""` for a literal outside every block.
  */
 function siteOf(text, index) {
   let from = 0;
@@ -346,17 +239,18 @@ function position(text, index) {
 /**
  * Violations in one file's source. `designLanguagePx` is the tier-2 allowlist: px
  * lengths DESIGN.md fixes outside §3's spacing table, whatever the property —
- * the row rhythms, the rail and pane widths, the pill and toggle heights, the
- * slider's track and value well, the swatch, and §6's stroke widths among
- * them. It is the set of values that actually appear, not an enumeration of
- * every number DESIGN.md prints. What it deliberately does NOT cover is §2's
- * type sizes 13/15/19, because a value here is allowed *anywhere*, so adding
- * them would license `padding: 13px`. The steps and `0`/`1` are allowed
- * without it, so an empty allowlist narrows the rule rather than disabling it.
- * Each violation carries its `rule`, its position, the `site` it sits at — the
- * prelude of the block containing it, which is the enclosing selector for a
- * declaration and the at-rule's own prelude for a literal in one (`siteOf`) —
- * and its `text`, the last two being what an exemption is keyed on.
+ * the row rhythms, the rail and pane widths, §7.2's `2px` accent bar on the rail's
+ * inner edge, §7.3's `28px` mark slot, the pill and toggle heights, the slider's
+ * track and value well, the swatch, and §6's stroke widths among them. It is the
+ * set of values that actually appear, not an enumeration of every number
+ * DESIGN.md prints. What it deliberately does NOT cover is §2's type sizes
+ * 13/15/19, because a value here is allowed *anywhere*, so adding them would
+ * license `padding: 13px`. The steps and `0`/`1` are allowed without it, so an
+ * empty allowlist narrows the rule rather than disabling it. Each violation
+ * carries its `rule`, its position, the `site` it sits at — the prelude of the
+ * block containing it, which is the enclosing selector for a declaration and the
+ * at-rule's own prelude for a literal in one (`siteOf`) — and its `text`: where
+ * the value is, and what it says.
  */
 export function check(relPath, source, designLanguagePx = []) {
   const path = String(relPath ?? "");
@@ -418,57 +312,6 @@ export function check(relPath, source, designLanguagePx = []) {
 }
 
 /**
- * The key an exemption and a violation meet on: the site the declaration sits
- * at, its text, and *which* of that text's occurrences in that site it is. Site
- * and text together because neither alone identifies a declaration — a text-only
- * key is inherited by a second rule that happens to write the same value
- * (`vg-327`), and a site-only key cannot tell a `width`/`height` pair apart.
- * `occurrence` is the index among one site's identical texts in source order, so
- * only the second and later have to say it.
- */
-function keyOf(site, text, occurrence) {
-  return `${String(site ?? "")}\u0000${String(text)}\u0000${occurrence ?? 0}`;
-}
-
-/**
- * The ceiling's reading of one file, as a *set*: `counted` is every violation the
- * record does not hold, `dead` is every recorded entry that matches no violation
- * any more, and `over` is true when `counted` is over `max` — 0 in `CEILINGS`, so
- * an arrival fails. Together the two directions are the swap a count could not
- * see: correcting one violation while another arrives reddens the gate on both
- * sides of the same commit.
- *
- * `over` is strict — a count at the ceiling passes — because `>=` would redden
- * the gate at the number it was measured at, which is the failure the ceiling
- * exists to avoid — and it **fails closed**: a `max` that is absent, a string or
- * `NaN` is not compared, because `NaN` is never greater than a count and that is
- * the one way this instrument silently stops being able to fail. `dead` is
- * returned rather than logged so a caller sees a licence nobody needs as a
- * failure, not a silent pass, and it is returned as the entries themselves so the
- * caller can name the site as well as the text.
- */
-export function ceilingExcess(relPath, source, designLanguagePx = [], ceiling = {}) {
-  const seen = new Map();
-  const keyed = check(relPath, source, designLanguagePx).map((violation) => {
-    const base = keyOf(violation.site, violation.text);
-    const occurrence = seen.get(base) ?? 0;
-    seen.set(base, occurrence + 1);
-    return { violation, key: keyOf(violation.site, violation.text, occurrence) };
-  });
-  const exempt = new Map(
-    (Array.isArray(ceiling.exempt) ? ceiling.exempt : []).map((entry) => [keyOf(entry.site, entry.text, entry.occurrence), entry]),
-  );
-  const counted = keyed.filter(({ key }) => !exempt.has(key)).map(({ violation }) => violation);
-  const present = new Set(keyed.map(({ key }) => key));
-  const dead = [...exempt].filter(([key]) => !present.has(key)).map(([, entry]) => entry);
-  return {
-    counted,
-    dead,
-    over: !Number.isFinite(ceiling.max) || counted.length > ceiling.max,
-  };
-}
-
-/**
  * The tier-2 allowlist entries that permit nothing: no source the checker reads
  * *writes* that px value where the checker could see it (`vg-340`, `vg-332`).
  *
@@ -483,13 +326,13 @@ export function ceilingExcess(relPath, source, designLanguagePx = [], ceiling = 
  * this rule exists to forbid.
  *
  * `sources` is `[relPath, source]` pairs — everything the run reads, the gated
- * list *and* the ceilings' paths, because a value consumed only by a ceiling file
- * is still consumed. A pair whose `source` is not a string is a read that failed,
- * and it makes the union a subset of what the run reads: `46`'s only consumer is
- * `editor-shell.css`, so a transient `ENOENT` on that file would report `46` as an
- * entry with no consumer and the message says to drop it — a deleted load-bearing
- * entry, which is worse than a rule that did not run. Nothing is reported instead;
- * `unread` is returned so the caller prints the rule as *not checked*.
+ * list and the files the test-file rule selects. A pair whose `source` is not a
+ * string is a read that failed, and it makes the union a subset of what the run
+ * reads: `46`'s only consumer is `editor-shell.css`, so a transient `ENOENT` on
+ * that file would report `46` as an entry with no consumer and the message says
+ * to drop it — a deleted load-bearing entry, which is worse than a rule that did
+ * not run. Nothing is reported instead; `unread` is returned so the caller
+ * prints the rule as *not checked*.
  *
  * Returns `{ unconsumed, unread }`: `unconsumed` is empty whenever `unread` is.
  */
@@ -691,101 +534,6 @@ async function selfTest() {
         (options.line === undefined || found[0]?.line === options.line) &&
         (options.site === undefined || found[0]?.site === options.site),
       `expected ${expected} violation(s)${options.line === undefined ? "" : ` on line ${options.line}`}${options.site === undefined ? "" : ` at site ${JSON.stringify(options.site)}`}, got ${found.length} on ${found.map((v) => v.line).join(",") || "no line"}${options.site === undefined ? "" : ` at ${JSON.stringify(found[0]?.site)}`}`,
-    );
-  }
-
-  // The ceiling, over a file that is deliberately not gated. Both of its silent
-  // failures are proved here rather than assumed: `>=` would redden the gate at
-  // the count it was measured at, and a ceiling above the count never fires.
-  const ceilingCases = [
-    ["a count at the ceiling passes", ".x { color: #ff0000; }", { max: 1 }, 1, 0, false],
-    [
-      "one above the ceiling reddens",
-      ".x { color: #ff0000; }\n.y { color: #00ff00; }",
-      { max: 1 },
-      2,
-      0,
-      true,
-    ],
-    ["a clean file under the ceiling passes", ".x { padding: 12px; }", { max: 4 }, 0, 0, false],
-    [
-      "an exempt value does not count",
-      ".x { margin-right: 62px; }",
-      { max: 0, exempt: [{ site: ".x", text: "margin-right: 62px", reason: "the row's own arithmetic" }] },
-      0,
-      0,
-      false,
-    ],
-    [
-      "an exemption that matches nothing fails",
-      ".x { padding: 12px; }",
-      { max: 4, exempt: [{ site: ".x", text: "margin-right: 62px", reason: "the row's own arithmetic" }] },
-      0,
-      1,
-      false,
-    ],
-    // `vg-327`: a count cannot see a swap, so the recorded set has to fail on
-    // both sides of one — a violation the record does not hold, and a recorded
-    // one that has gone. The size is unchanged at two either way.
-    [
-      "a swap at an unchanged size fails on both sides",
-      ".x { padding: 7px; }\n.z { padding: 9px; }",
-      {
-        max: 0,
-        exempt: [
-          { site: ".x", text: "padding: 7px" },
-          { site: ".y", text: "padding: 9px" },
-        ],
-      },
-      1,
-      1,
-      true,
-    ],
-    // `vg-327`'s second instance: an exemption is not a site either. The text is
-    // the same in both rules, so a text-only key exempts the second rule too and
-    // the dead-exemption guard stays quiet, because the keyed text still occurs.
-    [
-      "an exemption is keyed on its site, so a second site is not exempt",
-      ".a { margin-right: 62px; }\n.b { margin-right: 62px; }",
-      { max: 0, exempt: [{ site: ".a", text: "margin-right: 62px" }] },
-      1,
-      0,
-      true,
-    ],
-    // One site can carry two of one text — `width`/`height` pair — so the key is
-    // the occurrence too, and the record has to name the second one.
-    [
-      "two of one text in one site are not one entry",
-      ".x { width: 34px; height: 34px; }",
-      { max: 0, exempt: [{ site: ".x", text: "34px" }] },
-      1,
-      0,
-      true,
-    ],
-    [
-      "the second of one text in a site is its own entry",
-      ".x { width: 34px; height: 34px; }",
-      {
-        max: 0,
-        exempt: [
-          { site: ".x", text: "34px" },
-          { site: ".x", text: "34px", occurrence: 1 },
-        ],
-      },
-      0,
-      0,
-      false,
-    ],
-    // Fail closed, not open: `NaN` is never greater than a count, so a ceiling
-    // whose `max` is absent or a typo would otherwise compare nothing and pass.
-    ["a ceiling with no finite max fails closed", ".x { padding: 12px; }", {}, 0, 0, true],
-  ];
-  for (const [name, source, ceiling, counted, dead, over] of ceilingCases) {
-    const got = ceilingExcess("editor-shell.css", source, [], ceiling);
-    report(
-      name,
-      got.counted.length === counted && got.dead.length === dead && got.over === over,
-      `expected ${counted} counted/${dead} dead/over ${over}, got ${got.counted.length}/${got.dead.length}/over ${got.over}`,
     );
   }
 
@@ -1027,10 +775,11 @@ if (isEntryPoint) {
   );
   for (const relPath of derived) console.log(`design-tokens: by rule: ${relPath}`);
 
-  // Every file the run reads, read once: the gated list and the ceilings' paths.
-  // The allowlist rule at the end needs the same union, and reading a file twice
-  // would let the two rules disagree about which file they looked at. A read that
-  // failed is kept as the error, so the caller that reports it reports once.
+  // Every file the run reads, read once: the gated list and the files the
+  // test-file rule selects. The allowlist rule at the end needs the same union,
+  // and reading a file twice would let the two rules disagree about which file
+  // they looked at. A read that failed is kept as the error, so the caller that
+  // reports it reports once.
   const sources = new Map();
   const sourceOf = async (relPath) => {
     if (!sources.has(relPath)) {
@@ -1068,82 +817,18 @@ if (isEntryPoint) {
   }
   notices.push(`design-tokens: ${files.length} gated file(s) clean`);
 
-  // The same guards the gated list gets above, for the same reason: a guard over
-  // nothing proves nothing, and a `max` that is not a finite number is a ceiling
-  // comparing against nothing. `ceilingExcess` fails closed on it too; this is
-  // the legible refusal. An exemption is refused unless it names a site and a
-  // text, because a key missing either half would match nothing and report as a
-  // dead exemption, hiding the shape mistake behind a plausible message.
-  if (CEILINGS.length === 0) {
-    console.error("design-tokens: CEILINGS is empty; the guard would compare no file at all");
-    process.exit(1);
-  }
-  for (const ceiling of CEILINGS) {
-    if (!Number.isFinite(ceiling.max)) {
-      console.error(
-        `design-tokens: CEILINGS entry ${String(ceiling.path)} has no finite "max"; a ceiling compared against nothing is never over`,
-      );
-      process.exit(1);
-    }
-    for (const entry of Array.isArray(ceiling.exempt) ? ceiling.exempt : []) {
-      const shape =
-        typeof entry.site !== "string" || entry.site === "" || typeof entry.text !== "string" || entry.text === "";
-      const occurrence =
-        entry.occurrence !== undefined && (!Number.isInteger(entry.occurrence) || entry.occurrence < 0);
-      if (shape || occurrence) {
-        console.error(
-          `design-tokens: CEILINGS entry ${String(ceiling.path)} has an exemption that is not { site, text, occurrence? }; an exemption is keyed on all three`,
-        );
-        process.exit(1);
-      }
-    }
-  }
-
-  let breached = 0;
-  for (const ceiling of CEILINGS) {
-    const relPath = String(ceiling.path);
-    const source = await sourceOf(relPath);
-    if (typeof source !== "string") {
-      console.error(`design-tokens: ${relPath} cannot be read (${source.error.code ?? source.error.message})`);
-      breached += 1;
-      continue;
-    }
-    const { counted, dead, over } = ceilingExcess(relPath, source, designLanguagePx, ceiling);
-    for (const entry of dead) {
-      console.error(
-        `design-tokens: ${relPath}'s ceiling records "${entry.text}" at "${entry.site}", which is not a violation any more — update the record`,
-      );
-      breached += 1;
-    }
-    if (over) {
-      for (const violation of counted) {
-        console.error(
-          `${relPath}:${violation.line}:${violation.column} ${violation.rule} ${violation.text}`,
-        );
-      }
-      console.error(
-        `design-tokens: ${relPath} holds ${counted.length} violation(s) the record does not, above its ceiling of ${ceiling.max} — re-record the file's residual set`,
-      );
-      breached += 1;
-    } else if (dead.length === 0) {
-      notices.push(
-        `design-tokens: ${relPath} holds ${counted.length} violation(s) not in its record, at or below its ceiling of ${ceiling.max}`,
-      );
-    }
-  }
-
   // The tier-2 allowlist's own guard: an entry no file the run reads writes
-  // permits nothing. It reads the same union the checker does — a value consumed
-  // only by a ceiling file is still consumed — and a file the run could not read
-  // makes the union a subset, so the rule reports nothing and says so instead of
-  // reporting an entry whose only consumer is that file. The failed read has
-  // already reddened the run, so the skip cannot pass silently.
+  // permits nothing. It reads the same union the checker does, and a file the run
+  // could not read makes the union a subset, so the rule reports nothing and says
+  // so instead of reporting an entry whose only consumer is that file. The failed
+  // read has already reddened the run, so the skip cannot pass silently.
   const { unconsumed, unread } = unconsumedPx(designLanguagePx, [...sources]);
   if (unread.length > 0) {
     console.error(
       `design-tokens: the allowlist was NOT checked — ${unread.join(", ")} could not be read, so an entry whose only consumer that file is would report as one with no consumer here`,
     );
   }
+  let breached = 0;
   for (const value of unconsumed) {
     console.error(
       `design-tokens: designLanguagePx allows ${value}px, which no file this run reads writes — the entry has no consumer, so drop it`,

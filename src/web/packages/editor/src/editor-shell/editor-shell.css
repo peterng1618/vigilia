@@ -497,6 +497,27 @@ body,
      because §4 names no scrim role, and a token rather than the literal the
      overlay wrote because §10 forbids a hex value in a surface. */
   --elev-scrim: #00000073;
+  /* §3's step table is the spacing scale, not the layout one: a region's own
+     height, a dialog's bounds and the compact-viewport breakpoint are
+     dimensions no step can spell, and DESIGN.md leaves them to §7's diagram and
+     to the drawings. Each is a token rather than a literal because
+     `scripts/design-tokens.mjs` holds this file to the same scale it holds
+     every surface consuming it (`vg-274`), so a dimension written here needs a
+     name and one owner like any other value. */
+  --header-height: 42px;
+  --menu-min-width: 190px;
+  --asset-preview-max-height: 120px;
+  --dialog-min-width: 340px;
+  --dialog-max-width: 560px;
+  --dialog-max-height: 720px;
+  --settings-tabs-width: 150px;
+  --field-label-width: 72px;
+  --layer-rename-min-height: 22px;
+  --view-readout-min-width: 56px;
+  --compact-layer-panel-width: 280px;
+  /* Read through `theme()` by the media query below: a custom property cannot
+     be a `@media` feature value, so the query is resolved at build time. */
+  --breakpoint-compact: 980px;
 }
 
 /* A name per shell colour, so a utility carries the palette in force.
@@ -695,7 +716,7 @@ body,
    first row is drawn once, here. */
 .editor-shell-header {
   flex: none;
-  height: 42px;
+  height: var(--header-height);
   padding: 0 14px;
   display: flex;
   align-items: center;
@@ -764,7 +785,7 @@ body,
   background: var(--shell-surface-strong);
   color: var(--shell-text);
   border-radius: 8px;
-  padding: 7px 12px;
+  padding: 8px 12px;
   cursor: pointer;
   font: inherit;
   font-size: 11px;
@@ -798,14 +819,14 @@ body,
 }
 .editor-shell-menubar {
   display: flex;
-  gap: 2px;
+  gap: 4px;
 }
 .editor-shell-menubar button {
   color: var(--shell-text);
   border: 0;
   background: transparent;
   border-radius: 6px;
-  padding: 4px 9px;
+  padding: 4px 8px;
   cursor: pointer;
 }
 .editor-shell-menubar button:hover,
@@ -820,7 +841,7 @@ body,
   z-index: 60;
 }
 .editor-shell-menu-popup {
-  min-width: 190px;
+  min-width: var(--menu-min-width);
   /* A menu taller than the room it was given scrolls rather than running off the
      bottom of the window. The canvas menu carries the Add pane's whole list —
      13 entries under two headings, 470px — which fits 720px and not a shorter
@@ -832,7 +853,7 @@ body,
      the keyboard follows the scroll rather than walking off the end. */
   max-height: var(--available-height);
   overflow-y: auto;
-  padding: 5px;
+  padding: 4px;
   border-radius: 8px;
   border: 1px solid var(--shell-edge);
   background: var(--shell-surface);
@@ -856,7 +877,7 @@ body,
   border: 0;
   background: transparent;
   border-radius: 6px;
-  padding: 6px 9px;
+  padding: 6px 8px;
   cursor: pointer;
 }
 .editor-shell-menu-popup [role="menuitem"]:hover,
@@ -889,7 +910,7 @@ body,
 }
 .editor-shell-menu-label {
   display: block;
-  padding: 6px 9px 3px;
+  padding: 6px 8px 4px;
   font-size: 10px;
   letter-spacing: 0.14em;
   text-transform: uppercase;
@@ -942,7 +963,7 @@ body,
   background: var(--shell-primary-bg);
   color: var(--shell-primary-text);
   border-radius: 8px;
-  padding: 7px 14px;
+  padding: 8px 14px;
   cursor: pointer;
   font-weight: 600;
 }
@@ -1216,7 +1237,7 @@ body,
    in. */
 .editor-shell-panel fieldset {
   margin: 12px 0 0;
-  padding: 2px 6px 4px;
+  padding: 4px 6px 4px;
   min-inline-size: 0;
   border: 1px solid var(--shell-edge);
   border-radius: 8px;
@@ -1336,7 +1357,7 @@ body,
 .editor-shell-panel .vigilia-asset-preview {
   display: block;
   max-width: 100%;
-  max-height: 120px;
+  max-height: var(--asset-preview-max-height);
   object-fit: contain;
 }
 /* The panes' remaining plain-DOM controls, **named by the surface that needs
@@ -1354,7 +1375,7 @@ body,
 .editor-shell-panel [data-vigilia-asset-remove] {
   max-width: 100%;
   min-height: 30px;
-  margin: 3px 4px 3px 0;
+  margin: 4px 4px 4px 0;
   padding: 4px 8px;
   border: 1px solid var(--shell-edge);
   border-radius: 6px;
@@ -1372,7 +1393,7 @@ body,
 .editor-shell-panel .vigilia-layer-rename {
   max-width: 100%;
   min-height: 30px;
-  margin: 3px 4px 3px 0;
+  margin: 4px 4px 4px 0;
   padding: 4px 6px;
   border: 1px solid var(--shell-edge);
   border-radius: 6px;
@@ -1404,7 +1425,7 @@ body,
 .editor-shell-inspector [data-vigilia-crop-cancel] {
   max-width: 100%;
   min-height: 30px;
-  margin: 3px 4px 3px 0;
+  margin: 4px 4px 4px 0;
   padding: 4px 8px;
   border: 1px solid var(--shell-edge);
   border-radius: 6px;
@@ -1544,10 +1565,10 @@ body,
      rather than moving it — and scrolls rather than running off a shorter one.
      The row is named rather than counted: the count moved twice in this plan
      alone (19, then 20), and an ordinal here is what goes stale. */
-  max-height: min(80vh, 720px);
+  max-height: min(80vh, var(--dialog-max-height));
   overflow-y: auto;
-  min-width: 340px;
-  max-width: 560px;
+  min-width: var(--dialog-min-width);
+  max-width: var(--dialog-max-width);
   padding: 20px 24px;
   border: 1px solid var(--shell-edge);
   border-radius: var(--radius-lg);
@@ -1728,7 +1749,7 @@ body,
   flex-direction: column;
   gap: var(--space-4);
   flex: 0 0 auto;
-  width: 150px;
+  width: var(--settings-tabs-width);
   padding: 0;
   border: 0;
 }
@@ -1920,7 +1941,7 @@ body,
    forcing every control onto its own full-width line. */
 .vigilia-field {
   display: grid;
-  grid-template-columns: 72px 1fr;
+  grid-template-columns: var(--field-label-width) 1fr;
   align-items: center;
   gap: 6px;
   margin-top: 12px;
@@ -2300,7 +2321,7 @@ body,
    because it is on the row as a fact and a key is one hover away. */
 .vigilia-layer-state {
   position: absolute;
-  right: 2px;
+  right: 4px;
   top: 0;
   height: 26px;
   display: inline-flex;
@@ -2376,22 +2397,33 @@ body,
    key does not take, with every other row holding still. That is the price of
    not taking it from every row in every theme, and it is charged to the one row
    the author is looking at. */
+/* The four arms carry the reasons the record used to: the reason is the only
+   thing that stops a later pass "correcting" a reservation to a §3 step. 36 is
+   the row's own 4px plus the slot's footprint for one control — 6px of lead-in,
+   a 26px square, and a 4px gap per further control — so the sum is off the step
+   table by construction, and moving it to a step would move the reserved width
+   and let the slot cover the role again (`vg-265`). The reservation is the
+   row's `padding-right` rather than a margin on the key column because the
+   column under the slot is the role on a row whose selection reads nothing. 66
+   and 96 are the same arithmetic at two and three controls and 126 at four, so
+   the four are one class and not four exceptions. `calc()` states the
+   arithmetic rather than hiding it behind a number. */
 .vigilia-layer-row:has(.vigilia-layer-state button) {
-  padding-right: 36px;
+  padding-right: calc(4px + 6px + 26px * 1);
 }
 .vigilia-layer-row:has(.vigilia-layer-state button:nth-child(2)) {
-  padding-right: 66px;
+  padding-right: calc(4px + 6px + 26px * 2 + 4px);
 }
 .vigilia-layer-row:has(.vigilia-layer-state button:nth-child(3)) {
-  padding-right: 96px;
+  padding-right: calc(4px + 6px + 26px * 3 + 8px);
 }
 .vigilia-layer-row:has(.vigilia-layer-state button:nth-child(4)) {
-  padding-right: 126px;
+  padding-right: calc(4px + 6px + 26px * 4 + 12px);
 }
 .vigilia-layer-rename {
   flex: 1;
   min-width: 0;
-  min-height: 22px;
+  min-height: var(--layer-rename-min-height);
   margin: 0;
 }
 .editor-shell-stage {
@@ -2461,13 +2493,15 @@ body,
   background: color-mix(in srgb, var(--panel) 95%, transparent);
   box-shadow: var(--elev-1);
 }
-/* The record dot (§6): filled, because a 7px stroke is not a stroke. Warn while
-   the document differs from what was saved, faint when it does not — the same
-   isDirty() the status bar's save state reads, never a second source (§7.5). */
+/* The record dot (§6): filled, because a stroke at this size is not a stroke.
+   Warn while the document differs from what was saved, faint when it does not —
+   the same isDirty() the status bar's save state reads, never a second source
+   (§7.5). The 8px is §3's own step: §3 names a one-off `7px` as the mark of a
+   layout tuned by eye, and a bare mark is still a size on the base. */
 .editor-shell-identity-dot {
   flex: none;
-  width: 7px;
-  height: 7px;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
   background: var(--faint);
 }
@@ -2600,7 +2634,7 @@ body,
    separates it from §5 rule 2's read-only row is that it opens the menu rather
    than that it looks like a control. */
 .editor-shell-view-readout {
-  min-width: 56px;
+  min-width: var(--view-readout-min-width);
   padding: var(--space-6) var(--space-10);
   border: 0;
   border-radius: var(--radius-lg);
@@ -2738,12 +2772,16 @@ body,
 [hidden] {
   display: none !important;
 }
-@media (max-width: 980px) {
+/* The compact viewport: below the breakpoint the inspector is dropped and the
+   layer panel takes the width the stage can spare. `theme()` because a `@media`
+   feature value cannot be a custom property — the query is resolved from
+   `--breakpoint-compact` at build time. */
+@media (max-width: theme(--breakpoint-compact)) {
   .editor-shell-body {
     grid-template-areas: "rail panel stage";
-    /* 280px rather than the wide layout's 360px, because the stage is sharing
+    /* 280px rather than the wide layout's 246px, because the stage is sharing
        a narrow window with it. The bound column is what gives way first. */
-    grid-template-columns: 46px 280px minmax(0, 1fr);
+    grid-template-columns: 46px var(--compact-layer-panel-width) minmax(0, 1fr);
   }
   .editor-shell-body[data-collapsed="true"] {
     grid-template-areas: "rail stage";

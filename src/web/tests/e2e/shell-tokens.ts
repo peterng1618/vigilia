@@ -53,22 +53,44 @@ export function themeToken(name: string): string {
 /** The shell's compact-viewport breakpoint, in px — the width below which
  *  `editor-shell.css` drops the panels. Read from the one `@media (max-width:
  *  …)` the stylesheet declares rather than restated, so a spec's skip reason
- *  moves with the rule that actually hides the panel. Throws where the
- *  stylesheet carries no such query, for the same reason `themeToken` does. */
+ *  moves with the rule that actually hides the panel. The value is either a
+ *  literal px or the `@theme` token a `@media` feature value needs (a custom
+ *  property cannot be one, so the query names the token through Tailwind's
+ *  `theme()` and that function resolves it at build time). Throws where the
+ *  stylesheet carries no such query, or a themed query names no token, for the
+ *  same reason `themeToken` does. */
 export function compactViewportMaxPx(): number {
-  const found = /@media[^{]*\(max-width:[ \t]*(\d+)px\)/.exec(CSS);
+  const found =
+    /@media[^{]*\(max-width:[ \t]*(?:(\d+)px|theme\((--[a-z0-9-]+)\))\)/.exec(
+      CSS,
+    );
   if (found === null) {
     throw new Error(
       "editor-shell.css declares no (max-width: …px) media query",
     );
   }
-  return Number(found[1]);
+  const literal = found[1] === undefined ? null : Number(found[1]);
+  return literal ?? Number.parseFloat(themeToken(found[2] ?? ""));
+}
+
+/** One `+`-separated term of a `calc()` as px: `26px * 3`, or a bare `6px`. */
+function calcTermPx(term: string): number {
+  const scaled = /^[ \t]*(\d+(?:\.\d+)?)px[ \t]*\*[ \t]*(\d+)[ \t]*$/.exec(
+    term,
+  );
+  if (scaled !== null) return Number(scaled[1]) * Number(scaled[2]);
+  const bare = /^[ \t]*(\d+(?:\.\d+)?)px[ \t]*$/.exec(term);
+  if (bare !== null) return Number(bare[1]);
+  throw new Error(
+    `a calc() term carries no px length: ${JSON.stringify(term.trim())}`,
+  );
 }
 
 /** The px a stylesheet *rule* declares for a property — the owner a value has
  *  when no token names it: `.vigilia-layer-mark`'s `flex: 0 0 28px` mark slot,
- *  and the layer row's fourth `:has` arm's reserved `padding-right`. Found by
- *  the rule's own selector text, anchored at a line start so a longer selector
+ *  and the layer row's `:has` arms' reserved `padding-right`, which state their
+ *  arithmetic as a `calc()` of px terms rather than as one number. Found by the
+ *  rule's own selector text, anchored at a line start so a longer selector
  *  sharing the prefix cannot match in its place. Throws when the rule or the
  *  declaration is absent, so a renamed selector reddens the spec that read it
  *  rather than resolving to nothing. */
@@ -86,6 +108,12 @@ export function rulePx(selector: string, property: string): number {
   ).exec(rule[1] ?? "");
   if (declaration === null) {
     throw new Error(`${selector} declares no ${property}`);
+  }
+  const calc = /calc\(([^()]*)\)/.exec(declaration[0]);
+  if (calc !== null) {
+    return (calc[1] ?? "")
+      .split("+")
+      .reduce((sum, term) => sum + calcTermPx(term), 0);
   }
   const px = /(\d+(?:\.\d+)?)px/.exec(declaration[0]);
   if (px === null) {

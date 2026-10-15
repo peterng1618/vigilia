@@ -1,5 +1,5 @@
 {
-  "designLanguagePx": [3, 11, 14, 26, 30, 32, 36, 40, 46, 74, 246, 276],
+  "designLanguagePx": [2, 3, 11, 14, 26, 28, 30, 32, 36, 40, 46, 74, 246, 276],
   "gated": [
     "src/web/packages/editor/src/components/ui/control-well.tsx",
     "src/web/packages/editor/src/components/ui/control-text.tsx",
@@ -59,6 +59,7 @@
     "src/web/packages/editor/src/editor-shell/diagnostic-message.tsx",
     "src/web/packages/editor/src/accessible-name.ts",
     "src/web/packages/editor/src/ui-copy.ts",
-    "src/web/packages/editor/src/copy-defects.test.ts"
+    "src/web/packages/editor/src/copy-defects.test.ts",
+    "src/web/packages/editor/src/editor-shell/editor-shell.css"
   ]
 }
