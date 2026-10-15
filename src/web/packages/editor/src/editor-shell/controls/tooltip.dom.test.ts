@@ -80,9 +80,7 @@ describe("the editor's shared tooltip", () => {
     // takes dwells at most 195ms on any one of them — so the label stays down for
     // the whole of a crossing, and is up well inside a deliberate hover's 400ms.
     vi.advanceTimersByTime(219);
-    expect(open()?.textContent).toBe(
-      "A control".length > 0 ? "Glass blur" : "",
-    );
+    expect(open()?.textContent).toBe("Glass blur");
     vi.advanceTimersByTime(1);
     expect(open()?.textContent).toBe("Second");
   });
