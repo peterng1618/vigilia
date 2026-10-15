@@ -1235,8 +1235,7 @@ only the form changed, and it is now the form every other phase uses.
 
 ### Task 12.5: `vg-330`'s spec
 
-- [ ] Runs after 12.3 and 12.4, since it redraws the drawing the others are measured against. A
-      brainstorm → spec → plan of its own, not a task in this plan.
+- [ ] **Step 1: `vg-330`'s spec is WRITTEN and awaiting the user's review (2026-10-16)** — `docs/superpowers/specs/2026-10-16-settings-pane-design.md`, and it answers the three questions the user ruled (the section headings become a vertical list, the pane is named `Editor Settings`, `vg-322` closes with the change) plus the four that were left open, each marked as a recommendation with its reversal cost. **The phase's Acceptance is not met by the spec alone** — it requires `vg-330` to have "its spec **and its own plan**" — so this step completes when the user approves the spec and its plan is written by `writing-plans`, and **Phase 12 closes on that, not on this commit.** Runs after 12.3 and 12.4, since it redraws the drawing the others are measured against. A brainstorm → spec → plan of its own, not a task in this plan.
 
 **Acceptance for the phase:** every row closes on the phase that lands its change, each with a `check`
 naming a word from its own `title` and `artefacts` naming a resolvable ancestor sha; no row closes on a
