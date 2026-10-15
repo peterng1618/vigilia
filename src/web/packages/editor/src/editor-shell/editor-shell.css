@@ -940,7 +940,7 @@ body,
    **Two bars, the palette's ground and its accent** — the drawing
    (`current/settings.html:44-87`) draws both, and one bar cannot show a palette
    §4 gives two roles. The row that reads the preview's height
-   (`tests/e2e/mockup-values.ts`) addresses `.editor-shell-palette-swatch`, which
+   (`tests/e2e/mockup-parity.ts`) addresses `.editor-shell-palette-swatch`, which
    is the ground bar; the accent bar is its next sibling. */
 .editor-shell-palette-swatch,
 .editor-shell-palette-swatch-accent {

@@ -174,7 +174,7 @@ export function isBlocked(props: {
  *
  * What each shape's classes declare is not free: the drawing's `border-radius`
  * *and* its `gap` are compared to the product by the fixture's `PARITY` rows
- * (`tests/e2e/mockup-values.ts`), and read out of the drawing by their own test.
+ * (`tests/e2e/mockup-parity.ts`), and read out of the drawing by their own test.
  */
 export type ControlShape = "column" | "boxed" | "headed";
 
