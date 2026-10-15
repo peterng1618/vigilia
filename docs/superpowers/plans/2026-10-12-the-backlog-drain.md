@@ -1201,7 +1201,26 @@ only the form changed, and it is now the form every other phase uses.
 - [ ] `vg-230`, `vg-269`, `vg-274`, `vg-023`, `vg-056`, `vg-123`. Same rule on landmarks, same reason.
       These reach several panes each, so **they are grouped by file ownership when this task is written**
       — as Phase 13's tasks were — rather than run as one dispatch, which is the arrangement that cost
-      13.2 a split record.
+      13.2 a split record. **Written 2026-10-15, from the rows read against the tree rather than from
+      their titles**, and the grouping is:
+
+- [ ] **12.4a `vg-056`, 12.4b `vg-230`, 12.4c `vg-269` — the serial cluster.** They share
+      `editor-shell/bridge.ts` (`vg-056`'s additive selection, `vg-230`'s object total),
+      `editor-shell/shell-layout.tsx` (`vg-230`'s status footer, `vg-269`'s four `Pane` mounts) and
+      `panes/composition/composition-pane.tsx` (`vg-056`'s row click, `vg-269`'s Composition count), so
+      **one writer per file per step and they run in that order** — `bridge.ts` and `shell-layout.tsx`
+      each get exactly one author at a time.
+- [ ] **12.4d `vg-123` — `snap-manager/index.ts` and `snap-manager/movement-snap-candidates.ts`**, with
+      `tests/e2e/snapping.spec.ts` as its case. The measurement instrument already landed (`95e24b1f`),
+      so this is the change the instrument was built to pin. Independent of the cluster.
+- [ ] **12.4e `vg-274` — `editor-shell/editor-shell.css` plus the ratchet it joins**:
+      `scripts/design-tokens.gated.json`, `scripts/design-tokens.mjs`'s `CEILINGS` entry, and
+      `tests/e2e/design-language.spec.ts`. **It owns `editor-shell.css` outright**, so it runs after
+      Task 12.3d's edits there have landed, which they have.
+- [ ] **12.4f `vg-023` — the canvas dim.** **Not dispatchable as written:** the row names no renderer
+      path, and no `DESIGN.md` §7 entry for the dim exists. Its layer half already landed as `vg-058` at
+      `b5e2f798`; the canvas half needs its landmark found before a brief can be written, so it is the
+      one of the six that is work to scope rather than work to dispatch.
 
 ### Task 12.5: `vg-330`'s spec
 
