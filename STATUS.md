@@ -37,11 +37,11 @@ ledger did.
 
 ## Last completed change
 
-- **Task 14.1's fix round answers the review's seven items, and the check that was false is repaired rather than re-worded** — `chart-manager/chart-fields.tsx`'s series `Precision` was the one bounded `ControlNumber` in the file swept by form (Scale and Offset carry no bound), and it is a track with a typed well over the schema's own 0–6 (`dc0fa28d`).
-- **The chart manager has a rendered census at last** — `inspector-sections.spec.ts` reads every `data-vigilia-chart-setting` and `data-vigilia-binding-field` control by form, so a field that stops being paired fails rather than passing an enumeration, and `vg-469`'s check cites a rendered reading on both surfaces.
-- **A slider's wheel does nothing while the value sits outside its own range** — the reason is written where the handler is, and the thumb-against-well inconsistency that survives is filed as `vg-494` rather than folded in.
-- **A 36px well gave a 22px field against §5's 24×24 target, and only the full pass could see it** — the well is 40px now, licensed in `design-tokens.gated.json`; `panel.ts` came back under the stop at 772 lines by moving `drawnEdge`/`radiusBound` to `selection-inspector/bounds-from-drawn-box.ts`.
-- **The full browser pass reads 299 passed / 6 failed / 226 skipped, exit 1** — three are the registered reds (`vg-431`, `vg-258`, the `publish-loop` case `vg-212` owns), one is `net::ERR_NO_BUFFER_SPACE` on the preview origin and one is `host-player:901`, both green on re-run, and one is filed as `vg-495`; `npm run gate` and `npm run typecheck` each exit 0.
+- **Task 14.1's fix round R2 moves the normative document rather than the product** — `DESIGN.md` §5's slider well is 40px with the arithmetic beside the row (`5f8def05`): item 10 made the well an input, so 36 leaves the field 22px against §5's own 24×24 target rule, and until item 10 it was a readout no target rule bound.
+- **The two current control drawings still draw 36, and the refresh rule owns them** — filed as `vg-496` naming `controls.html:144` and `controls-editorial.html:145` rather than edited, because their well is a literal paired with a capture.
+- **`vg-212`'s paragraph described a shape that does not exist and is corrected** — the `:349` case is red in the file's ordered two-case run and green alone (3.1 s), which is the row's own recorded shape; R1 had called a two-case ordered run "alone".
+- **The precision fallback is no longer silent** — `chart-fields.tsx`'s `PRECISION_FLOOR` names the hazard at the field (the floor is not the absent state), and `vg-497` files what a slider is missing, since a track has no unauthored position.
+- **`vg-469`'s universal states the reading it holds under** — "carries a `max` this surface reads", so the three descriptors bounded by the sample store or the chart's data are outside it rather than exceptions to it.
 
 ## Next
 
