@@ -37,11 +37,10 @@ ledger did.
 
 ## Last completed change
 
-- **Phase 15 authored: the instrument gaps the triage decided** — five tasks homing `vg-394`, `vg-395`, `vg-401`, `vg-402`, `vg-419`, `vg-426`, `vg-434`, `vg-442` and `vg-456`, written from measurements taken 2026-10-16 rather than from titles.
-- **The plan's own rule is why it exists** — its `# The rows no phase carries` section says a triaged row is fixed *in a phase named here*, withdrawn or parked, so the nine fix-verdicts needed a phase and not another position statement.
-- **The census moved for three reasons at once and the plan now separates them** — at 195 open: 118 named by a task block, 77 by no phase, and **128 with no home** (77 + the 51 Phase 1 names for a ruling only), against 150 at 207 open.
-- **`design:check`, `gates:self-test` and `status:check` all exit 0** over the edit, and §1's phase table now records that four phases were added after it was written.
-- **Phase 15 is queued behind Phase 12**, because one phase is active at a time and Phase 12 is the only phase that has not closed.
+- **`vg-422` parked on the user, and the measurement is what makes it a decision rather than a patch** — the dialog's accent hover is a repeated pattern at four sites (`editor-shell.css:1446`, `:1452`, `:1455`, `:1708`, `:1900`), and the stylesheet's own comment at `:1194` documents it as deliberate while citing §5 rule 6 for a clause rule 6 does not contain.
+- **So either the labelled-control accent hover becomes a `DESIGN.md` clause or the four sites move to `--muted`** — `DESIGN.md:509` says hover raises `--edge` to `--muted`, and either resolution changes the editor's look, which is the user's call; the same gap `vg-441` records for the control set's fill.
+- **Phase 15's Task 15.5 takes `vg-504`'s capture half** — the drawing is fixed and the three captures are not, so its remaining half is the same act on the same three files that task already re-shoots.
+- **The census after both: 195 open, 119 named by a task block, 76 by no phase, 127 with no home** — against 150 at 207 open, and the second number is the one the plan says moves.
 
 ## Next
 
