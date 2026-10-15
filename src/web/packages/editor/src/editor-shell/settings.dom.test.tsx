@@ -147,7 +147,7 @@ let host: HTMLDivElement | undefined;
  *
  *  `storage` is the prop the shell passes through, and `undefined` is a state
  *  the product reaches: `readStorage` answers `undefined` when the browser
- *  refuses it (`shell-layout.tsx:310`), so a mounting with no store is the same
+ *  refuses it (`readStorage` in `shell-layout.tsx`), so a mounting with no store is the same
  *  run a private window gets, not a harness fiction. */
 function Harness({
   storage,

@@ -232,8 +232,9 @@ export function instantiateCard(options: InstantiateCardOptions): CardCopy {
   // Every id is claimed before anything is rebuilt, so a run pointing at a
   // binding later in the tree resolves to an id that is already spoken for.
   //
-  // The guard is the one `claim()` in `widget.ts` keeps, and it is the check
-  // the extraction deliberately left behind: two parts declaring one id is the
+  // The guard is this file's own `claim()`, whose `issued.has` loop refuses an
+  // id this copy has already handed out, and it is the check the extraction
+  // deliberately left behind: two parts declaring one id is the
   // card's own defect, and without it both copies would sit at the same minted
   // id, which the envelope validator refuses as `duplicate-id` — leaving the
   // author with a canvas that looks right and a save that fails for the rest of

@@ -25,6 +25,12 @@ Provenance behind `THIRD-PARTY-NOTICES.md`. Re-audit the installed graph before 
 | `class-variance-authority` | 0.7.1 | Apache-2.0 | editor component variants |
 | `clsx` | 2.1.1 | MIT | editor class-name joins |
 | `tailwind-merge` | 3.7.0 | MIT | editor class-name overrides |
+| `react-dom` | 19.3.0 | MIT | editor shell chrome |
+| `@base-ui/react` | 1.8.0 | MIT | editor shell primitives |
+| `tailwindcss` | 4.3.3 | MIT | editor dev styling |
+| `@tailwindcss/vite` | 4.3.3 | MIT | editor dev |
+| `@types/react` | 19.3.0 | MIT | types |
+| `@types/react-dom` | 19.3.0 | MIT | types |
 
 `@google/design.md` 0.4.0 is Apache-2.0. Its installed `package.json` carries no
 `license` field (and the registry publishes none), so the licence was verified
