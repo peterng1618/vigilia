@@ -320,7 +320,7 @@ describe("ThemeLibraryManager", () => {
 
     expect(test.saveThumbnail).toHaveBeenCalledWith("living-room", PNG);
     expect(test.warn).toHaveBeenCalledWith(
-      "controls",
+      "theme-library",
       "Saved, but the library picture failed: no room",
     );
     // The picture is a preview of the theme, so losing it costs the preview and

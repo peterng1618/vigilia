@@ -11,6 +11,7 @@ type EditorErrorCategory =
   | "crop"
   | "image"
   | "background-media"
+  | "theme-library"
   | "paint"
   | "glass";
 

@@ -213,7 +213,7 @@ export class ThemeLibraryManager {
         await client.saveThumbnail(current.id, png);
       } catch (error) {
         options.errors.warn(
-          "controls",
+          "theme-library",
           `Saved, but the library picture failed: ${error instanceof Error ? error.message : String(error)}`,
         );
       }
