@@ -1863,9 +1863,10 @@ title.
 **Outcome:** the four instruments that were silent about a class of defect are no longer silent, and
 the two files past the stop have a named responsibility each.
 
-**Owners:** the parity gate (`src/web/tests/e2e/mockup-values.ts` and `design-language.spec.ts`), the
-token ratchet (`scripts/design-tokens.mjs` with `scripts/design-tokens.gated.json`), the reference
-reader, and the two spec files.
+**Owners:** the parity gate (`src/web/tests/e2e/mockup-values.ts` and the `design-language-*.spec.ts`
+files Task 15.4 split, over `design-language-readers.ts`), the token ratchet
+(`scripts/design-tokens.mjs` with `scripts/design-tokens.gated.json`), the reference reader, and the
+two spec files Task 15.4 split.
 
 **Constraints:** **queued behind Phase 12**, because one phase is active at a time and Phase 12 is the
 only phase that has not closed. Task 15.2 and Task 15.3 edit `scripts/`, which is on
@@ -1883,6 +1884,15 @@ each still exceed the stop.
 
 **Verify:** `npm run gate` (its exit code read from `$?` into a file, never through a pipe), plus the
 parity suite on a built bundle for Tasks 15.1 and 15.5.
+
+**Annotated 2026-10-16, when Task 15.4 closed: the task's own framing was two rows short.** Task 15.4
+was "the two files past the stop" and named `design-language.spec.ts` and `shell-appearance.spec.ts`.
+The ledger's own note at that close measured **`ui-copy.test.ts` at 1039 lines and
+`tests/e2e/mockup-values.ts` at 1512**, both past the stop and both carrying their own register rows
+(`vg-415` and `vg-420`) — so the framing was a count of the files the task happened to know about, not
+of the files that breach. **Both rows are among the 44 the eighth census correction found named only by
+a phase the SDD ledger records closed**, which is the state this plan exists to end, so **Task 15.6
+homes them** rather than leaving a measured breach in the same class as a closed task's own subject.
 
 ### Task 15.1: The parity instrument's unread directions
 
@@ -1946,6 +1956,30 @@ parity suite on a built bundle for Tasks 15.1 and 15.5.
 - [ ] **Step 2: Re-shoot the three captures `vg-402` names** — `shell-capture-graphite.png`, `settings-capture-graphite.png` and `settings-capture-editorial.png` — whose last-touch commits are ancestors of Task 2's weight collapse `ef81b183`. **`vg-504`'s remaining half is the same act on the same three files** — its drawing is fixed and its captures are not — so it lands here rather than in a task of its own.
 - [ ] **Step 3: Rebuild the affected bundles first**, since Playwright's `webServer` is `vite preview` and reads `dist`.
 - [ ] **Step 4: Close both rows**, or close `vg-401` as a non-defect if the first reading holds — which is a legitimate outcome and must say so on the row.
+
+### Task 15.6: The two files past the stop, second half
+
+**Added 2026-10-16**, when Task 15.4's own framing was found to be two rows short (see the annotation
+above). Same class, same failure mode, and the same rule: **split by reading or by surface, never by
+line count.**
+
+**Files:**
+- Modify: `src/web/packages/editor/src/ui-copy.test.ts`
+- Modify: `src/web/tests/e2e/mockup-values.ts`
+
+**Interfaces:**
+- Consumes: Task 15.1's edits to `mockup-values.ts`'s `PARITY` table and its assertions
+- Produces: `vg-415` closed (the copy walk's four added surfaces), `vg-420` closed (the e2e instrument)
+
+**Ordered after Task 15.1**, which edits the same file, and after Task 15.4, whose split is the
+precedent for the shape rather than for the cut.
+
+- [ ] **Step 1: Re-measure both files.** The register's numbers (1039 and 1512) are stale; `mockup-values.ts` read **1784** at `da6f1f31`. A count carried from a row is a claim about a past tree.
+- [ ] **Step 2: `vg-415`'s remedy is named on its own row** — a `*.test-stage` bridge fixture shared with `shell-layout.dom.test.tsx`, and the four surface reads divided so each file stays under the stop. The bridge fixture is the large shared chunk; **whether it is one module or belongs with an existing owner is the decision the row says it is**, and it goes on the row rather than into a header comment.
+- [ ] **Step 3: `vg-420` is explicitly NOT a line-count split.** Its reader is one module with one export surface and the `PARITY` table follows it, so the split is **by reading** — values, declared sets, copied elements — with the table's own halves going with the reading that serves them. Say which readings the file actually holds before cutting it.
+- [ ] **Step 4: Name each piece's responsibility in its own header**, and prove the collection is comparable rather than merely countable: the test titles before and after, with the missing and added counts.
+- [ ] **Step 5: Re-run the red proof of every arm that moved** — a moved assertion that was not re-proved is not the same evidence — unless the bodies are verbatim slices of the original, in which case say so and compare them line by line, as Task 15.4's second half did.
+- [ ] **Step 6: Close both rows**, each naming its own file.
 
 ---
 
