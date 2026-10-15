@@ -8,33 +8,35 @@ import {
   checkCitations,
   sectionTexts,
 } from "../../../../scripts/design-md.mjs";
+import { colourValue, lengthInPx, trackCount } from "./mockup-comparators.js";
+import {
+  COPIED_ELEMENTS,
+  copiedElementDrift,
+} from "./mockup-copied-elements.js";
+import {
+  LICENCE_SPEC,
+  LICENCE_SPEC_ALIASES,
+  type LicenceLedger,
+  licenceFindings,
+  licenceSources,
+} from "./mockup-licence.js";
+import { PARITY } from "./mockup-parity.js";
 import {
   assertParityRowProperty,
   CONTROLS_LIGHT_MOCKUP_PATH,
   CONTROLS_MOCKUP_PATH,
-  COPIED_ELEMENTS,
-  colourValue,
-  copiedElementDrift,
   currentDrawings,
   drawingTexts,
-  LICENCE_SPEC,
-  LICENCE_SPEC_ALIASES,
-  type LicenceLedger,
-  lengthInPx,
-  licenceFindings,
-  licenceSources,
   MOCKUP_PATH,
   mockupDeclared,
   mockupDeclaredOrNull,
   mockupDeclaredProperties,
   ORIGINAL_MOCKUP_PATH,
-  PARITY,
   readMockup,
   rowDrawing,
   SETTINGS_MOCKUP_PATH,
   SHELL_ROLES,
   SHELL_TOKEN_SELECTOR,
-  trackCount,
 } from "./mockup-values.js";
 
 /**
@@ -808,8 +810,8 @@ test("every element a drawing copies from the original declares the original's t
 /* ── The licence policy (`vg-292`) ──────────────────────────────────────────
  *
  * **Why this is a test of its own.** A `licensed` row is *recorded*, not
- * compared (`design-language.spec.ts`), so the licence is the whole of that
- * row's gate — and before `licenceFindings` existed, any string discharged it.
+ * compared (`design-language-parity.spec.ts`), so the licence is the whole of
+ * that row's gate — and before `licenceFindings` existed, any string discharged it.
  * Spec §13's amendment of 2026-10-10 states the policy; these are its refusals,
  * each pinned with a fixture *and*, for the licences the table carries, run over
  * the real tree. A fixture proves a refusal fires; a real licence proves it does
@@ -829,7 +831,13 @@ test("every element a drawing copies from the original declares the original's t
 
 const REPO_ROOT = fileURLToPath(new URL("../../../..", import.meta.url));
 const DESIGN_TEXT = readFileSync(resolve(REPO_ROOT, "DESIGN.md"), "utf8");
-const MOCKUP_VALUES_REL = "src/web/tests/e2e/mockup-values.ts";
+/** Where the `licensed` text is searched for, as a pathspec. **The directory,
+ *  not the file that holds it today**: a `licensed` string moved between the
+ *  readers beside it leaves the directory's own occurrence count unchanged, so
+ *  `introducedBy` still answers the commit that *wrote* the licence rather than
+ *  the one that moved it — a move must not re-date a licence forward past the
+ *  rule it quotes. */
+const LICENCE_PATHSPEC = "src/web/tests/e2e/";
 /** The commit that added §5's "Bare readout" row and left `<!-- §5 -->` alone —
  *  the real amendment the predating limb exists for. Named, not inferred: the
  *  assertion below is that the rule's own line blames to *this* commit where the
@@ -964,7 +972,7 @@ function licenceLedger(licensed: string): LicenceLedger {
       text: readFileSync(resolve(REPO_ROOT, LICENCE_SPEC), "utf8"),
     },
     canonicalNumbers: [...CITE_NUMBERS],
-    licensedAt: introducedBy(licensed, MOCKUP_VALUES_REL),
+    licensedAt: introducedBy(licensed, LICENCE_PATHSPEC),
     introducedAt: ruleCommit,
   };
 }

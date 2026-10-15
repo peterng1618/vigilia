@@ -1,11 +1,6 @@
 import { expect, type Page } from "@playwright/test";
-import {
-  colourValue,
-  currentDrawings,
-  lengthInPx,
-  type ParityRegion,
-  trackCount,
-} from "./mockup-values.js";
+import { colourValue, lengthInPx, trackCount } from "./mockup-comparators.js";
+import { currentDrawings, type ParityRegion } from "./mockup-values.js";
 
 /** Responsibility: shared fixture setup, geometry, colour/pixel readers and design-language constants; drawing parsing stays in mockup-values.ts. */
 /**

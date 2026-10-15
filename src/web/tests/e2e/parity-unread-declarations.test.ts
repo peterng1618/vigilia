@@ -1,7 +1,8 @@
 /** Responsibility: the proof of the parity instrument's reverse direction — the
  *  declarations a drawing makes that no `PARITY` row reads (`vg-419`). */
 import { expect, test } from "vitest";
-import { currentDrawings, PARITY, readMockup } from "./mockup-values.js";
+import { PARITY } from "./mockup-parity.js";
+import { currentDrawings, readMockup } from "./mockup-values.js";
 import {
   type Drawing,
   UNREAD_DECLARATIONS,

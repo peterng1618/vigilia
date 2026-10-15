@@ -7,6 +7,7 @@ import {
   DRAWING_NAMES,
   renderedDialogs,
 } from "./design-language-readers.js";
+import { PARITY } from "./mockup-parity.js";
 import {
   currentDrawings,
   drawingTexts,
@@ -14,7 +15,6 @@ import {
   mockupDeclarations,
   mockupDeclared,
   mockupDeclaredOrNull,
-  PARITY,
   type ParityRegion,
   readMockup,
   rowDrawing,

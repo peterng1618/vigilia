@@ -4,13 +4,9 @@ import {
   ROLES,
   SPACING_STEPS,
 } from "./design-language-readers.js";
-import {
-  drawingTexts,
-  lengthInPx,
-  mockupDeclared,
-  PARITY,
-  rowDrawing,
-} from "./mockup-values.js";
+import { lengthInPx } from "./mockup-comparators.js";
+import { PARITY } from "./mockup-parity.js";
+import { drawingTexts, mockupDeclared, rowDrawing } from "./mockup-values.js";
 import { isDesktopSurface } from "./surface.js";
 
 /** Responsibility: §3 spacing, §4 roles and §5 control-row geometry, drawing columns and hit targets. */
