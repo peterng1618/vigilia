@@ -58,7 +58,11 @@ export function themeToken(name: string): string {
  *  property cannot be one, so the query names the token through Tailwind's
  *  `theme()` and that function resolves it at build time). Throws where the
  *  stylesheet carries no such query, or a themed query names no token, for the
- *  same reason `themeToken` does. */
+ *  same reason `themeToken` does. Its one consumer is a `test.skip` **reason**
+ *  string, never a condition, so a wrong value could only mislabel a skip — but
+ *  the value is still required to be a px length, so a themed query naming a
+ *  token this reader cannot read as px throws as an absent one does, rather than
+ *  resolving to whatever `parseFloat` makes of it. */
 export function compactViewportMaxPx(): number {
   const found =
     /@media[^{]*\(max-width:[ \t]*(?:(\d+)px|theme\((--[a-z0-9-]+)\))\)/.exec(
@@ -69,8 +73,15 @@ export function compactViewportMaxPx(): number {
       "editor-shell.css declares no (max-width: …px) media query",
     );
   }
-  const literal = found[1] === undefined ? null : Number(found[1]);
-  return literal ?? Number.parseFloat(themeToken(found[2] ?? ""));
+  if (found[1] !== undefined) return Number(found[1]);
+  const value = themeToken(found[2] ?? "");
+  const px = /^[ \t]*(\d+(?:\.\d+)?)px[ \t]*$/.exec(value);
+  if (px === null) {
+    throw new Error(
+      `the breakpoint's ${found[2]} is not a px length: ${JSON.stringify(value)}`,
+    );
+  }
+  return Number(px[1]);
 }
 
 /** One `+`-separated term of a `calc()` as px: `26px * 3`, or a bare `6px`. */
@@ -93,7 +104,11 @@ function calcTermPx(term: string): number {
  *  rule's own selector text, anchored at a line start so a longer selector
  *  sharing the prefix cannot match in its place. Throws when the rule or the
  *  declaration is absent, so a renamed selector reddens the spec that read it
- *  rather than resolving to nothing. */
+ *  rather than resolving to nothing. A `calc()` carrying its own parentheses —
+ *  a `var()`, a nested `calc()` — also throws, because the no-parentheses body
+ *  the sum reads cannot see inside one and falling through to the first-`px`
+ *  path would resolve to a number instead. No such declaration is in the
+ *  stylesheet today: that is a guard, not a bug fix. */
 export function rulePx(selector: string, property: string): number {
   const escaped = selector.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
   const rule = new RegExp(`^[ \\t]*${escaped}[ \\t]*\\{([^}]*)\\}`, "m").exec(
@@ -114,6 +129,12 @@ export function rulePx(selector: string, property: string): number {
     return (calc[1] ?? "")
       .split("+")
       .reduce((sum, term) => sum + calcTermPx(term), 0);
+  }
+  if (declaration[0].includes("calc(")) {
+    throw new Error(
+      `${selector}'s ${property} states a calc() this reader cannot read: ` +
+        JSON.stringify(declaration[0].trim()),
+    );
   }
   const px = /(\d+(?:\.\d+)?)px/.exec(declaration[0]);
   if (px === null) {

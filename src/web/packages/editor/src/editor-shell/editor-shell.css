@@ -2387,8 +2387,8 @@ body,
    One rule per count rather than one for the strip, because the count is the
    row's own answer and a row drawing two controls must not pay for four: the
    slot is 6px of padding plus a 26px button and a 4px gap each, and it stands
-   2px off the row's right edge, so n controls need `4 + 6 + 26n + 4(n - 1)`
-   counting the row's own padding. The buttons are direct children of the slot —
+   4px off the row's right edge, so n controls need `4 + 6 + 26n + 4(n - 1)`
+   counting the slot's own offset. The buttons are direct children of the slot —
    a wrapper would make every one of them its parent's first child and answer
    the question for one control on a row that draws four — and each rule below
    overrides the one above it.
@@ -2399,15 +2399,16 @@ body,
    the author is looking at. */
 /* The four arms carry the reasons the record used to: the reason is the only
    thing that stops a later pass "correcting" a reservation to a §3 step. 36 is
-   the row's own 4px plus the slot's footprint for one control — 6px of lead-in,
-   a 26px square, and a 4px gap per further control — so the sum is off the step
-   table by construction, and moving it to a step would move the reserved width
-   and let the slot cover the role again (`vg-265`). The reservation is the
-   row's `padding-right` rather than a margin on the key column because the
-   column under the slot is the role on a row whose selection reads nothing. 66
-   and 96 are the same arithmetic at two and three controls and 126 at four, so
-   the four are one class and not four exceptions. `calc()` states the
-   arithmetic rather than hiding it behind a number. */
+   the slot's own 4px offset from the row's right edge plus its footprint for
+   one control — 6px of lead-in, a 26px square, and a 4px gap per further
+   control — so the sum is off the step table by construction, and moving it to
+   a step would move the reserved width and let the slot cover the role again
+   (`vg-265`). The reservation is the row's `padding-right` rather than a margin
+   on the key column because the column under the slot is the role on a row
+   whose selection reads nothing. 66 and 96 are the same arithmetic at two and
+   three controls and 126 at four, so the four are one class and not four
+   exceptions. `calc()` states the arithmetic rather than hiding it behind a
+   number. */
 .vigilia-layer-row:has(.vigilia-layer-state button) {
   padding-right: calc(4px + 6px + 26px * 1);
 }

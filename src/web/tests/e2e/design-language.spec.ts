@@ -2667,10 +2667,14 @@ test("the shell and the settings modal are what the drawings draw", async ({
   // ── The product side of the drawing comparison (`vg-325`) ──────────────────
   //
   // Every row below runs the comparison **one way**: the drawings are parsed and
-  // the product is pulled to them. `editor-shell.css` is in no
-  // `design-tokens.gated.json` entry, so a value the drawing moves leaves the
-  // product behind and no row says so — which is how the four residuals
-  // `vg-325` names arrived. This is the **inverse read**: the product's own
+  // the product is pulled to them. **An ungated stylesheet is what this block
+  // exists to catch**: a value a drawing moves leaves the product behind and no
+  // row says so — which is how the four residuals `vg-325` names arrived.
+  // `editor-shell.css` is no longer one of those files: it joined
+  // `design-tokens.gated.json` with the source ratchet (`vg-274`). That ratchet
+  // reads a file's own literals against §3's scale and says nothing about
+  // whether the product still agrees with the drawing that owns a value, which
+  // is this block's job. This is the **inverse read**: the product's own
   // declarations are parsed the same way a drawing's are, and each of the four
   // is held to the value the drawing that owns it declares. A drawing-side
   // sweep cannot see them, because none is a rendered element of a `PARITY` row
@@ -3193,7 +3197,8 @@ const SHELL_DRAWING = "docs/design/mockups/current/shell.html";
  *   sits in, and the slider's thumb at `top:-3.5px` centres a 10px circle on a
  *   3px track. §3's step table is a table of gutters and insets and has no row
  *   for either, and correcting one would un-centre the mark rather than align
- *   it. `editor-shell.css:898-914` says the same of the product's own bar.
+ *   it. `.editor-shell-rail button[aria-pressed="true"]::before` says the same
+ *   of the product's own bar.
  * - `auto` and `%` are **not lengths on the base at all** — the slack a flex
  *   line has left (`margin-left:auto`) and a share of the parent's own size
  *   (`left:50%`, which centres the dock alongside its `translateX(-50%)`).

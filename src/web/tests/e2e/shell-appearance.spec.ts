@@ -178,7 +178,7 @@ test.describe("shell palettes", () => {
    *  and `.editor-shell-inspector` painted the OS default. The pair that
    *  consumes them is `scrollbar-width`/`scrollbar-color`, beside the
    *  `::-webkit-*` family that is Chromium's half of the same decision
-   *  (`editor-shell.css:1113-1143`).
+   *  (`.editor-shell-panel`'s and `.editor-shell-inspector`'s own rules).
    *
    *  **The computed values, not the declarations.** The row's defect was a
    *  declaration nothing consumed, so a case that read the stylesheet text

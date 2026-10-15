@@ -193,12 +193,13 @@ export async function selectLayer(page: Page, name: string): Promise<void> {
       hasText: new RegExp(`^${name.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`),
     })
     .first()
-    // **The row's left end, not its centre.** The name is `flex: 1 1 auto`
-    // (`editor-shell.css:1658`), so it fills the row and its centre lands under
-    // the attended row's absolutely-positioned state slot (`:1707`, `right: 2px`,
-    // as wide as its controls) — a press there is intercepted, and five of
-    // `author-journey-rebuild.spec.ts`'s cases hung on it. The name's own text
-    // leads the row, which is where an author presses anyway.
+    // **The row's left end, not its centre.** `.vigilia-layer-name` is
+    // `flex: 1 1 auto`, so it fills the row and its centre lands under the
+    // attended row's absolutely-positioned state slot (`.vigilia-layer-state`,
+    // `right: 4px` off the row's own edge, as wide as its controls) — a press
+    // there is intercepted, and five of `author-journey-rebuild.spec.ts`'s
+    // cases hung on it. The name's own text leads the row, which is where an
+    // author presses anyway.
     .click({ position: { x: 6, y: 6 } });
 }
 
