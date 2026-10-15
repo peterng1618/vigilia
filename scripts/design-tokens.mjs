@@ -10,6 +10,13 @@
  * and refuses a literal that should have been a token. The list only grows, so
  * the repo never has to be green all at once.
  *
+ * The list alone could say only that a listed file is clean, so a component
+ * written with a literal was invisible for ever and "the list only grows" had no
+ * finish. `remainderCeiling` answers that (`vg-426`): every run reports how many
+ * product source files off the list still hold a literal, and refuses a run
+ * where that number grew. The ceiling falls in the commit that converts a file,
+ * and the run says so when it can.
+ *
  * The set is in two halves. The JSON holds its *source* files, one per line, as
  * each conversion named them. The *test* half is derived on every run from the
  * tree (`selectTestFiles`): everything that renders or drives the shell — every
@@ -409,6 +416,55 @@ export async function selectTestFiles(root) {
 }
 
 /**
+ * The remainder (`vg-426`): the files the ratchet *could* gate that still hold a
+ * literal, and so the answer to "how much is left" rather than "the list grew".
+ *
+ * Without it the ratchet can only say that a listed file is clean, so a new
+ * component written with a literal is invisible for ever — which is the row's
+ * whole finding. A count with a ceiling is the cheapest target that stops the
+ * remainder growing, and it takes no position on where a new component's tokens
+ * come from, which the row records as a policy call rather than a scanner edit.
+ *
+ * Every package's `src`, not the editor's alone: the scales are the design
+ * language for the whole product, and a surface that writes `7px` has gone
+ * around them wherever it lives.
+ *
+ * **Tests and fixtures are out of the count.** A test that asserts `#ff0000` is
+ * a test *about* a literal, and a fixture is a document rather than a surface —
+ * measuring them would report 81 where the product's own source holds 19, and a
+ * measure that mostly counts things nobody intends to convert is a count with no
+ * finish, which is the failure this row names. The `.dom.test.tsx` half is gated
+ * by the derived rule on its own criterion and is unaffected.
+ */
+const NOT_PRODUCT_SOURCE = /\.test\.tsx?$|\.spec\.ts$|-fixture\.tsx?$/;
+
+export async function remainderFiles(root, gated, designLanguagePx = []) {
+  const packages = resolve(root, "src", "web", "packages");
+  let entries;
+  try {
+    entries = await readdir(packages, { withFileTypes: true });
+  } catch {
+    return [];
+  }
+  const found = [];
+  for (const entry of entries) {
+    if (!entry.isDirectory()) continue;
+    for (const path of await walkFiles(join(packages, entry.name, "src"), [".ts", ".tsx"])) {
+      const relPath = posix(relative(root, path));
+      if (gated.has(relPath) || NOT_PRODUCT_SOURCE.test(relPath)) continue;
+      let source;
+      try {
+        source = await readFile(path, "utf8");
+      } catch {
+        continue;
+      }
+      if (check(relPath, source, designLanguagePx).length > 0) found.push(relPath);
+    }
+  }
+  return found.sort();
+}
+
+/**
  * Proves every rule still fires. Called only from the entry-point gate: an
  * importer in a process whose argv happens to mention `--self-test` must not
  * run it and exit mid-import.
@@ -644,6 +700,67 @@ async function selfTest() {
     await rm(bare, { recursive: true, force: true });
   }
 
+  // The remainder (`vg-426`), both directions, over a tree this repo does not
+  // own. Every file that must NOT be counted carries a literal of its own, so a
+  // count of one is a fact about the rule rather than about a clean tree.
+  const remainderTree = await scratchTree({
+    "scripts/design-tokens.gated.json": JSON.stringify({
+      gated: ["src/web/packages/editor/src/listed.tsx"],
+      designLanguagePx: [],
+      remainderCeiling: 1,
+    }),
+    "src/web/packages/editor/src/listed.tsx": "export const listed = 1;",
+    "src/web/packages/editor/src/selected.dom.test.tsx": "export const selected = 1;",
+    "src/web/tests/e2e/driving.spec.ts": 'await page.goto("http://127.0.0.1:4174/");',
+    "src/web/packages/editor/src/unconverted.tsx": 'const s = { color: "#00ff00" };',
+    "src/web/packages/editor/src/fixture-fixture.ts": 'export const f = "#123456";',
+    "src/web/packages/editor/src/thing.test.ts": 'export const t = "#654321";',
+  });
+  try {
+    const atCeiling = runOver(remainderTree);
+    report(
+      "the remainder counts product source and stops at its ceiling",
+      atCeiling.status === 0 &&
+        atCeiling.stdout.includes("the remainder is 1 file(s)") &&
+        !atCeiling.stdout.includes("fixture-fixture") &&
+        !atCeiling.stdout.includes("thing.test"),
+      `exit ${atCeiling.status}, stdout ${JSON.stringify(atCeiling.stdout.slice(-260))}`,
+    );
+
+    await writeFile(
+      join(remainderTree, "scripts/design-tokens.gated.json"),
+      JSON.stringify({
+        gated: ["src/web/packages/editor/src/listed.tsx"],
+        designLanguagePx: [],
+        remainderCeiling: 0,
+      }),
+    );
+    const overCeiling = runOver(remainderTree);
+    report(
+      "a remainder past its ceiling fails and names the file",
+      overCeiling.status === 1 &&
+        overCeiling.stderr.includes("the remainder grew to 1") &&
+        overCeiling.stderr.includes("unconverted: src/web/packages/editor/src/unconverted.tsx"),
+      `exit ${overCeiling.status}, stderr ${JSON.stringify(overCeiling.stderr.slice(-260))}`,
+    );
+
+    await writeFile(
+      join(remainderTree, "scripts/design-tokens.gated.json"),
+      JSON.stringify({
+        gated: ["src/web/packages/editor/src/listed.tsx"],
+        designLanguagePx: [],
+      }),
+    );
+    const noCeiling = runOver(remainderTree);
+    report(
+      "a config with no ceiling fails rather than measuring nothing",
+      noCeiling.status === 1 && noCeiling.stderr.includes("needs a \"remainderCeiling\""),
+      `exit ${noCeiling.status}, stderr ${JSON.stringify(noCeiling.stderr.slice(-200))}`,
+    );
+  } finally {
+    await rm(remainderTree, { recursive: true, force: true });
+  }
+
   // The brief writes its test as `check(...)` calls from an importer. Importing
   // must hand back the function and nothing else — no CLI, no exit, and not the
   // self-test either, whatever the importing process's argv happens to hold.
@@ -837,5 +954,36 @@ if (isEntryPoint) {
   }
 
   if (breached > 0) process.exit(1);
+
+  // The remainder's ceiling is read here rather than with the other config
+  // fields, because a bare-array config is the gated list alone and the proofs
+  // that use one exit above on a rule that selected nothing.
+  const ceiling = config.remainderCeiling;
+  if (!Number.isInteger(ceiling) || ceiling < 0) {
+    console.error(
+      `design-tokens: ${gatedPath} needs a "remainderCeiling" — a whole number, the most files off the gated list that may still hold a literal (vg-426)`,
+    );
+    process.exit(1);
+  }
+  const remainder = await remainderFiles(root, new Set(files), designLanguagePx);
+  notices.push(
+    `design-tokens: the remainder is ${remainder.length} file(s) off the gated list that still hold a literal, against a ceiling of ${ceiling}`,
+  );
+  if (remainder.length > ceiling) {
+    console.error(
+      `design-tokens: the remainder grew to ${remainder.length}, past its ceiling of ${ceiling} — a file written with a literal should have consumed a token instead`,
+    );
+    for (const relPath of remainder) console.error(`design-tokens: unconverted: ${relPath}`);
+    process.exit(1);
+  }
+  if (remainder.length < ceiling) {
+    // A ceiling nobody lowers is a count with no finish, which is the failure
+    // this row names. Said as a nudge rather than a refusal: the conversion and
+    // the ceiling belong in one commit, and this is the sentence that says so.
+    notices.push(
+      `design-tokens: the ceiling can be lowered to ${remainder.length} — it is lowered in the commit that converts a file, or the remainder can grow back`,
+    );
+  }
+
   for (const notice of notices) console.log(notice);
 }

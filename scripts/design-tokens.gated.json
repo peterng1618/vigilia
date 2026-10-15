@@ -1,4 +1,5 @@
 {
+  "remainderCeiling": 19,
   "designLanguagePx": [2, 3, 11, 14, 26, 28, 30, 32, 36, 40, 46, 74, 246, 276],
   "gated": [
     "src/web/packages/editor/src/components/ui/control-well.tsx",

@@ -146,3 +146,24 @@ What shipped:
 
 The guard's own test lives behind `--self-test` in the same file and is wired
 into `gates:self-test`, so its proof cannot drift out of the aggregate gate.
+
+## Extended 2026-10-16 — the ratchet owes a remainder (`vg-426`)
+
+The list only grows, and a list that only grows can say only that a *listed* file is clean. So a
+component written with a literal was invisible for ever, and "the list only grows" had no finish.
+`vg-426` is that gap and names this note as the decision it extends.
+
+**The measure is a count with a ceiling, not a policy.** Every run reports how many product source
+files off the gated list still hold a literal, and refuses a run where that number grew; the ceiling
+is lowered in the commit that converts a file. That stops the remainder growing **without taking the
+position the row explicitly leaves open** — where a new component's tokens come from is a policy call
+about the component, not a scanner edit, and the ceiling does not answer it.
+
+**Tests and fixtures are out of the count, and that is measured rather than assumed.** Counting them
+reports 81 files where the product's own source holds 19, because a test asserting `#ff0000` is a test
+*about* a literal and a fixture is a document rather than a surface. A measure that mostly counts
+things nobody intends to convert is a count with no finish, which is the failure the row names. The
+`.dom.test.tsx` half is gated by the derived rule on its own criterion and is unaffected.
+
+Measured 2026-10-16: **120 gated files clean, remainder 19, ceiling 19** — and
+`components/ui/colour-picker.tsx`, the instance the row names, is one of the 19.
