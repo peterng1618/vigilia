@@ -37,11 +37,11 @@ ledger did.
 
 ## Last completed change
 
-- **Phase 15 is running, because Phase 12 is gated on the user's spec review and nothing else in the plan is** — Tasks 15.2 and 15.3 have landed, **`vg-434` and `vg-426` are closed `verified`**, and the register is **185 open**.
-- **`vg-426` — the token ratchet now reports its remainder and refuses growth**: every run says how many product source files off the gated list still hold a literal, and a run past `remainderCeiling` fails; **120 gated files clean, remainder 19, ceiling 19**, and `components/ui/colour-picker.tsx`, the instance the row names, is one of the 19.
-- **The count was measured rather than assumed, and the first cut was wrong** — counting every file off the list reports **81**; product source alone reports **19**, because a test asserting a hex is a test *about* a literal and a fixture is a document rather than a surface.
-- **`vg-434` — `scripts/check-doc-references.mjs` resolves every reference into the plans directory** and runs as `docs:check`: **51 references, 49 resolving, 2 broken** against the 82 and 32 the row reported on 2026-10-13, with both survivors deliberate and carrying `doc-ref-ok:` and its reason; its red proof caught its own first bug, since `git ls-files --cached` cannot see an untracked file.
-- **`npm run gate` exit 0** (biome 654 files, gates:self-test with three new remainder cases, status:check, docs:check over 867 files, design:check, typecheck ×5, 258/258 files, 3441/3441 tests).
+- **Task 15.4's design-language half landed and `vg-394` is closed `verified`** — the register is **184 open**, and `shell-appearance.spec.ts`'s half of the task is still to do.
+- **The 3743-line spec is now seven spec files over one reader module, and every piece is under the 800-line stop** — `controls` 401, `contrast` 761, `layout` 530, `glyphs` 250, `palettes` 216, `parity` 563, `drawings` 640, with `design-language-readers.ts` (661) the single owner for the fixture setup, the geometry reading and the colour/pixel readers; **`mockup-values.ts` still owns the drawing readers and is imported, not copied.**
+- **Nothing was lost, and the collection is the evidence** — 11 titles before and after, all eleven present, sixteen promoted out of the monolithic control-set test; source assertions rose 136 → 146, and a split browser run reads 29 passed / 25 skipped / 0 failed, exit 0. **One title is weaker than it reads and that is recorded rather than hidden**: `the control set renders in the design language` is retained for comparability and now proves only the invalid-draft arm.
+- **Seventeen red proofs, one per arm, each exiting 1** with every restore `cmp`-verified against a copy outside the repo — and **two first mutations stayed green, so the mutations were corrected rather than the result reported**.
+- **Found while verifying it, and fixed on the fly (`105aa777`)**: `scripts/check-doc-references.mjs` threw `ENOENT` on a tracked path the worktree no longer held, so this task's first gate run died on the deleted monolith and passed once the deletion was staged; the scan now skips a listed path that does not exist, proved both ways, with decision `0048` extended. **`vg-415` and `vg-420` are the same class as this task and are not closed by it** — 1039 and 1512 lines, both past the stop.
 
 ## Next
 
