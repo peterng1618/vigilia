@@ -249,7 +249,18 @@ describe("every chart family's controls", () => {
     expect(valueText(stage.host, 'data-vigilia-binding="cpu"')).toBe(
       "CPU load",
     );
-    for (const field of ["precision", "scale", "offset"]) {
+    // **A pair's typed half carries the row's own id.** The hook rides the track,
+    // which is Base UI's own element and carries its own id; the caller's id
+    // names the well, the element a `<label for>` can reach. A typed field is its
+    // own input, so both halves of this reading land on the element the author
+    // edits.
+    expect(
+      pick<HTMLInputElement>(
+        stage.host,
+        'data-vigilia-binding-field-well="cpu.precision"',
+      ).id,
+    ).toBe("vigilia-chart-binding-cpu-precision");
+    for (const field of ["scale", "offset"]) {
       expect(
         pick<HTMLInputElement>(
           stage.host,
@@ -562,14 +573,24 @@ describe("a chart's series", () => {
     ).toBe("Short");
   });
 
-  it("refuses a fraction in a whole-number field", async () => {
+  it("carries a precision as a bounded whole number, and refuses a fraction in its well", async () => {
+    // A precision is 0–6 whole units — the range the document format states —
+    // so it is the track-and-well pair like every other bounded number here, and
+    // the fraction is the well's to refuse.
     const { stage, calls } = over({
       ...gauge,
       bindings: [{ id: "cpu", semanticKey: "cpu.load", precision: 1 }],
     });
-    const precision = pick<HTMLInputElement>(
+    const track = pick<HTMLInputElement>(
       stage.host,
       'data-vigilia-binding-field="cpu.precision"',
+    );
+    expect(track.type).toBe("range");
+    expect(track.min).toBe("0");
+    expect(track.max).toBe("6");
+    const precision = pick<HTMLInputElement>(
+      stage.host,
+      'data-vigilia-binding-field-well="cpu.precision"',
     );
 
     await edit(precision, "2.5");
@@ -579,6 +600,25 @@ describe("a chart's series", () => {
 
     await edit(precision, "3");
     expect(calls.bindings.at(-1)).toMatchObject({ precision: 3 });
+  });
+
+  it("shows the floor for a series whose precision the author never set", async () => {
+    // The renderer's rule for an absent precision is "at most one decimal",
+    // which is not a member of this integer range, so the track shows the range's
+    // own floor and the well's empty draft is the route back to absent.
+    const { stage, calls } = over(gauge);
+    const track = pick<HTMLInputElement>(
+      stage.host,
+      'data-vigilia-binding-field="cpu.precision"',
+    );
+    expect(track.value).toBe("0");
+
+    const well = pick<HTMLInputElement>(
+      stage.host,
+      'data-vigilia-binding-field-well="cpu.precision"',
+    );
+    await edit(well, "");
+    expect(calls.bindings.at(-1)).not.toHaveProperty("precision");
   });
 });
 

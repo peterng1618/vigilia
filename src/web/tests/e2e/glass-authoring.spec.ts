@@ -316,7 +316,12 @@ test.describe("authoring frosted glass through the inspector", () => {
     // which one it means.
     const well = page.locator("[data-vigilia-glass-blur-well]");
     await expect(well).toBeVisible();
-    await expect(well).toHaveValue(await blur.inputValue());
+    // **The number the enable wrote, not whatever the field happens to show**:
+    // `glass.ts`'s `DEFAULT_GLASS_BLUR_RADIUS` is 16, and an assertion that
+    // compares the document to the control passes when the field, the track and
+    // the document agree on a wrong value.
+    await expect(blur).toHaveValue("16");
+    await expect(well).toHaveValue("16");
 
     // The refusal is the field's own, by the id it mints for it: a `getByText`
     // over the page also matches the ancestor that contains the message.
@@ -327,7 +332,7 @@ test.describe("authoring frosted glass through the inspector", () => {
     await well.blur();
     await expect(refusal).toHaveText("at most 48");
     expect(await treatmentOf(page, AUTHORING_PANEL_ID)).toEqual({
-      blurRadius: Number(await blur.inputValue()),
+      blurRadius: 16,
     });
 
     // Empty is not zero: a radius is required, and the coercion the old case
@@ -335,9 +340,9 @@ test.describe("authoring frosted glass through the inspector", () => {
     await well.fill("");
     await well.blur();
     await expect(refusal).toHaveText("a value is required");
-    expect((await treatmentOf(page, AUTHORING_PANEL_ID)).blurRadius).toBe(
-      Number(await blur.inputValue()),
-    );
+    expect(await treatmentOf(page, AUTHORING_PANEL_ID)).toEqual({
+      blurRadius: 16,
+    });
 
     // And a value written through the well is a real radius in the document.
     await well.fill("24");

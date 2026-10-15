@@ -23,6 +23,12 @@ import {
 import { cornersForSides } from "../new-object-defaults.js";
 import { uiCopy } from "../ui-copy.js";
 import { type AppearanceContext, resolveToken } from "./appearance.js";
+import {
+  boundedIntegerField,
+  drawnEdge,
+  integerField,
+  radiusBound,
+} from "./bounds-from-drawn-box.js";
 import type { FieldHooks, FieldOption, FieldView } from "./view.js";
 
 /**
@@ -156,32 +162,6 @@ function paintOptions(
 }
 
 /**
- * The smaller edge of the box Fabric draws an object in, whole units — or
- * nothing when the object measures nothing, which is a box no bound can be read
- * from.
- *
- * Every pixel measure on a panel is read against this: a border, a blur or a
- * radius past the object's own drawn size is a number nothing on the canvas can
- * show. It is the object's own read, so a scaled or resized panel re-bounds its
- * fields when the projection runs again.
- */
-function drawnEdge(object: FabricObject): number | undefined {
-  const smaller = Math.min(
-    object.width * object.scaleX,
-    object.height * object.scaleY,
-  );
-  return Number.isFinite(smaller) && smaller > 0
-    ? Math.floor(smaller)
-    : undefined;
-}
-
-/** Half the drawn edge, because a corner is one of a rectangle's four and two
-    opposite radii meeting is the most a corner can be (`vg-478`). */
-function radiusBound(edge: number | undefined): number | undefined {
-  return edge === undefined ? undefined : Math.floor(edge / 2);
-}
-
-/**
  * The panel's material fields — fill (or ink), stroke, border width, corner
  * radius, shadow, shadow blur and shadow offset — as values, or nothing when the
  * selection is not a panel.
@@ -192,16 +172,15 @@ function radiusBound(edge: number | undefined): number | undefined {
  * — a rectangle's alone, because `rx` is a `Rect` property and no other class
  * reads it.
  *
- * Every number is `integer: true`. The pre-plan `numberField` refused a typed
- * fraction unconditionally, and the flag is how the control set says so; the
- * write boundary re-checks it, because a control is a convenience and the
- * boundary is what must hold.
+ * Every number is whole units, and the control shape for each comes from
+ * `bounds-from-drawn-box.ts`: the pair when the field has a ceiling to draw, a
+ * typed box when it has none.
  *
  * The bounded ones carry a slider, and their bound is the panel's own drawn box
- * rather than a number chosen here (`measure`, `drawnEdge`). The shadow's offset
- * is the one that does not: Fabric's `offsetY` is unbounded — a shadow above a
- * panel is legitimate — so it keeps a typed box, which is `vg-007`'s rule not
- * reaching a field with no ceiling.
+ * rather than a number chosen here. The shadow's offset is the one that does
+ * not: Fabric's `offsetY` is unbounded — a shadow above a panel is legitimate —
+ * so it keeps a typed box, which is `vg-007`'s rule not reaching a field with no
+ * ceiling.
  */
 export function panelMaterialFields(
   context: AppearanceContext,
@@ -229,48 +208,6 @@ export function panelMaterialFields(
     colour: resolveToken(context.globals, selected) ?? "transparent",
     data,
   });
-  const number = (
-    id: string,
-    label: string,
-    value: number,
-    data: FieldHooks,
-  ): FieldView => ({
-    id,
-    control: "number",
-    label,
-    value,
-    integer: true,
-    data,
-  });
-  /**
-   * A pixel measure on the object, bounded by the box the renderer draws it in.
-   *
-   * The bound is read from the object — Fabric draws `width`/`height` at the
-   * object's own scale — rather than chosen here, and a radius takes half of it,
-   * because that is what Fabric's own `Rect` does with `rx` at draw time
-   * (`vg-478`): a larger radius is stored while the corner stops moving. When
-   * the box cannot be read the field keeps a typed box instead of a guessed
-   * ceiling, which is the same rule the chart settings' pixel measures follow.
-   */
-  const measure = (
-    id: string,
-    label: string,
-    value: number,
-    bound: number | undefined,
-    data: FieldHooks,
-  ): FieldView =>
-    bound === undefined
-      ? number(id, label, value, data)
-      : {
-          id,
-          control: "slider",
-          label,
-          value,
-          min: 0,
-          max: bound,
-          integer: true,
-          data,
-        };
   const edge = drawnEdge(object);
 
   // One field on the paint, and which property it writes is the scene's own
@@ -304,7 +241,7 @@ export function panelMaterialFields(
   }
 
   fields.push(
-    measure(
+    boundedIntegerField(
       "panel-border",
       uiCopy.inspectorFields.panelBorder,
       Math.round(object.get("strokeWidth") as number),
@@ -317,7 +254,7 @@ export function panelMaterialFields(
   // other shape would read back `NaN` and write a property nothing draws.
   if (object instanceof Rect) {
     fields.push(
-      measure(
+      boundedIntegerField(
         "panel-radius",
         uiCopy.inspectorFields.panelRadius,
         Math.round(object.get("rx") as number),
@@ -344,7 +281,7 @@ export function panelMaterialFields(
   const shadow = object.get("shadow");
   if (shadow instanceof Shadow) {
     fields.push(
-      measure(
+      boundedIntegerField(
         "panel-shadow-blur",
         uiCopy.inspectorFields.panelShadowBlur,
         Math.round(shadow.blur),
@@ -356,7 +293,7 @@ export function panelMaterialFields(
       // refused to accept on the author's next edit. Its ceiling is the page
       // rather than the panel — an offset of 400 is still a shadow — so it
       // carries no slider and the rule that a bounded number does not reach it.
-      number(
+      integerField(
         "panel-shadow-offset",
         uiCopy.inspectorFields.panelShadowOffset,
         Math.round(shadow.offsetY),

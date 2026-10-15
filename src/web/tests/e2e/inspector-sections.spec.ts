@@ -895,6 +895,110 @@ test.describe("the per-kind inspector column", () => {
     });
   });
 
+  test("gives every bounded number in the chart manager the pair, read rendered", async ({
+    page,
+  }, testInfo) => {
+    test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+    await page.goto(EDITOR);
+    await page.waitForFunction(() => "vigiliaEditorBridge" in window);
+    await openBlank(page);
+    await addChart(page, {
+      family: "Line",
+      name: "line",
+      x: 100,
+      y: 100,
+      w: 300,
+      h: 200,
+      series: ["cpu.load"],
+    });
+
+    /**
+     * The census for the **other** surface this task swept.
+     *
+     * The selection column has had one since item 12; the chart manager had
+     * none, and both its suites are jsdom, so a stylesheet regression on a chart
+     * track — or a bounded field silently reverting to a typed box — was
+     * invisible to every check in the repo. `vg-469`'s check cited a rendered
+     * reading on one surface and a jsdom reading on the other, which is the
+     * asymmetry this case ends.
+     *
+     * **Read by form, not from a list.** Every numeric control the manager
+     * renders is either the track-and-well pair or a typed box, and the assertion
+     * is that relation, so a field that stops being paired fails here rather
+     * than passing an enumeration that no longer names it.
+     */
+    const census = async (
+      attribute: string,
+    ): Promise<{ key: string; type: string; paired: boolean }[]> =>
+      page.evaluate((name) => {
+        const rows: { key: string; type: string; paired: boolean }[] = [];
+        for (const input of document.querySelectorAll<HTMLInputElement>(
+          `input[${name}]`,
+        )) {
+          const key = input.getAttribute(name) ?? "";
+          rows.push({
+            key,
+            type: input.type,
+            paired:
+              document.querySelector(`input[${name}-well="${key}"]`) !== null,
+          });
+        }
+        return rows;
+      }, attribute);
+
+    const settings = await census("data-vigilia-chart-setting");
+    // Not vacuous: the surface is mounted and these two rows are its two shapes.
+    expect(settings.map((row) => row.key)).toContain("animation.durationMs");
+    expect(settings.map((row) => row.key)).toContain("windowSeconds");
+    for (const row of settings) {
+      expect(
+        row.paired,
+        `${row.key} is a ${row.type} box with ${
+          row.paired ? "" : "no "
+        }typed well beside it`,
+      ).toBe(row.type === "range");
+    }
+
+    // The drawn-box measures are the ones a chart's own size bounds, and the
+    // three the ruling leaves typed are the ones a track cannot honour.
+    const typeOf = (key: string): string | undefined =>
+      settings.find((row) => row.key === key)?.type;
+    expect(["lineWidth", "animation.durationMs"].map(typeOf)).toEqual([
+      "range",
+      "range",
+    ]);
+    expect(["windowSeconds", "maxPoints"].map(typeOf)).toEqual([
+      "text",
+      "text",
+    ]);
+
+    // And the series rows, which are hand-built JSX rather than descriptor-driven
+    // — the shape the first census's enumeration never reached, and the one a
+    // bounded `Precision` sat typed-only in. The hook's value is
+    // `${binding.id}.${property}` and a binding's id is minted per series, so
+    // the row is found by the property half rather than by the key's whole text.
+    const series = await census("data-vigilia-binding-field");
+    const seriesOf = (
+      property: string,
+    ): { type: string; paired: boolean } | undefined => {
+      const row = series.find((entry) => entry.key.endsWith(property));
+      return row === undefined
+        ? undefined
+        : { type: row.type, paired: row.paired };
+    };
+    for (const row of series) {
+      expect(
+        row.paired,
+        `${row.key} is a ${row.type} box with ${
+          row.paired ? "" : "no "
+        }typed well beside it`,
+      ).toBe(row.type === "range");
+    }
+    expect(seriesOf(".precision")).toEqual({ type: "range", paired: true });
+    expect(seriesOf(".scale")).toEqual({ type: "text", paired: false });
+    expect(seriesOf(".offset")).toEqual({ type: "text", paired: false });
+  });
+
   test("gives every kind a column, and shows no kind a property it lacks", async ({
     page,
   }, testInfo) => {

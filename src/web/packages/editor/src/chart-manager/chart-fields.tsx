@@ -29,6 +29,30 @@ import { uiCopy } from "../ui-copy.js";
  * a chart's specs, screenshots and drivers already address.
  */
 
+/**
+ * A binding's precision range, as the document format states it.
+ *
+ * Written here rather than exported from the validator because the range has two
+ * owners already and neither can import the other: the published JSON schema
+ * (`schema/theme-document.schema.json`) and `fabric-envelope-validate.ts` each
+ * state 0–6, and a constant in one of them would leave the third spelling
+ * beside it. What the field must not do is invent a range of its own, and it
+ * does not — these are the schema's numbers.
+ */
+const MIN_PRECISION = 0;
+const MAX_PRECISION = 6;
+
+/**
+ * What the track shows when the binding carries no precision.
+ *
+ * The renderer's rule for an absent precision is "at most one decimal" —
+ * per-value, and not a member of this integer range — so the track shows the
+ * range's own floor and the well's empty draft is the route back to absent. It
+ * is the same fallback the chart settings state for an optional number with no
+ * family default (`chart-manager/panel.ts`'s `settingRows`).
+ */
+const PRECISION_FLOOR = MIN_PRECISION;
+
 /** One entry in a chart control's list: the stored value, and its name. */
 export interface ChartOptionView {
   readonly id: string;
@@ -279,13 +303,18 @@ function ChartSeriesRow(props: {
         </button>
       ) : null}
 
-      <ControlNumber
+      {/* The pair, like every other bounded number in this manager: the range is
+          the document format's own — `schema/theme-document.schema.json` and
+          `fabric-envelope-validate.ts` both state 0–6 for a binding's precision
+          — and seven whole steps is a range an author drags, which is what
+          separates it from the artboard's 16384 validity ceiling (`vg-493`). */}
+      <ControlSlider
         label="Precision"
         id={`vigilia-chart-binding-${binding.id}-precision`}
         data={{ "data-vigilia-binding-field": field("precision") }}
-        value={binding.precision}
-        min={0}
-        max={6}
+        value={binding.precision ?? PRECISION_FLOOR}
+        min={MIN_PRECISION}
+        max={MAX_PRECISION}
         integer
         onCommit={(value) => set("precision", value)}
         onClear={() => set("precision", undefined)}

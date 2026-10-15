@@ -924,6 +924,51 @@ it("moves the value by the slider's own step on a wheel, and not when refused", 
   expect(refused).not.toHaveBeenCalled();
 });
 
+it("does nothing on a wheel while the value sits outside the control's own range", async () => {
+  // The state another owner's measure leaves behind: a panel carrying a border
+  // of 100 whose box is then resized to 40 has `max` 40 and a value of 100. A
+  // tick *up* clamped inside the handler would commit 40 — lowering the value
+  // and writing history for an edit the gesture never asked for.
+  const onCommit = vi.fn();
+  const onPreview = vi.fn();
+  await mount(
+    <ControlSlider
+      label="Border"
+      value={100}
+      min={0}
+      max={40}
+      onPreview={onPreview}
+      onCommit={onCommit}
+    />,
+  );
+  const well = document.querySelector<HTMLInputElement>('input[type="text"]');
+  expect(well, "the wheel has no surface to be dispatched on").toBeTruthy();
+  if (well === null) return;
+
+  await wheel(well, -100);
+  await wheel(well, 100);
+  expect(onCommit).not.toHaveBeenCalled();
+  expect(onPreview).not.toHaveBeenCalled();
+  // And the well still reads the document's own value rather than a clamp.
+  expect(well.value).toBe("100");
+
+  // Below the floor is the same state in the other direction: a stored
+  // rotation left over from a range this field no longer carries.
+  await mount(
+    <ControlSlider
+      label="Angle"
+      value={-500}
+      min={-360}
+      max={360}
+      onCommit={onCommit}
+    />,
+  );
+  const under = document.querySelector<HTMLInputElement>('input[type="text"]');
+  if (under === null) return;
+  await wheel(under, -100);
+  expect(onCommit).not.toHaveBeenCalled();
+});
+
 it("gives an icon button its name and its tooltip from one label", async () => {
   await mount(
     <ControlIconButton

@@ -51,7 +51,7 @@ export function ControlNumber(
     readonly inline?: boolean;
     /**
      * The element outside this control that names it, when the caller renders
-     * its own label — a slider's well is 36px at the end of a row whose label
+     * its own label — a slider's well is 40px at the end of a row whose label
      * already sits at its head, so the inline form drops its label element and
      * takes the row's. The input is still named; only the second copy goes.
      */

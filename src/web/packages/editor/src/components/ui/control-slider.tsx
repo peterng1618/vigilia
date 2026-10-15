@@ -34,7 +34,8 @@ import {
  * `control-pair.tsx` states for its halves) — a readout beside a track would put
  * a second copy of §5's rules three lines away from the first. It is named by
  * the row's own label rather than printing that label a second time, and it is
- * 36px wide because the track takes the rest of the row.
+ * 40px wide because the track takes the rest of the row — the narrowest well
+ * whose own input still measures §5's 24×24.
  *
  * A wheel over the control moves it by **the slider's own step**, read back off
  * the range input, so the gesture and the drag cannot step differently. The
@@ -128,6 +129,15 @@ export function ControlSlider(
     const onWheel = (event: WheelEvent): void => {
       if (blocked) return;
       event.preventDefault();
+      // **A value outside this control's range makes the wheel a no-op.** That
+      // state belongs to another owner's measure, not to the author's gesture:
+      // a panel carrying a border of 100 and then resized to a drawn edge of 40
+      // has `max` 40 and a value of 100, and clamping inside the handler would
+      // turn one tick *up* into a commit of 40 — a gesture that should raise the
+      // value lowering it, with a history entry for an edit nobody made. Which
+      // of the two is right is not this control's to decide, so it decides
+      // neither.
+      if (value < min || value > max) return;
       // The step the drag uses, read off the element that carries it. A step of
       // `any` reports 0, and a wheel cannot move by nothing.
       const step = stepOf(input.current);
@@ -232,13 +242,21 @@ export function ControlSlider(
           />
         </Slider.Control>
         {/* The row wraps, so a refused draft's own words take a line under the
-            track instead of being squeezed into the fixed 36px the well is. */}
+            track instead of being squeezed into the fixed width the well is.
+            That width is 40px and not the 36px the readout used, because **the
+            well's own input is a target** and `hitTargetClasses` cannot widen a
+            replaced element: `well − 2(--space-6) − 2(1px border)` is the input's
+            box, which §5 asks to be 24×24 — a floor of 38px, with a pixel either
+            side of the box the design-language case samples at ±11. The narrow
+            well gave a 22px field, which that case hit-tests and fails; `vg-469`'s
+            item 10 is what put a field where a readout used to be. */}
         <ControlNumber
           inline
+          {...(id === undefined ? {} : { id })}
           labelledById={ids.label}
           label={label}
           {...(hooks === undefined ? {} : { data: hooks })}
-          wellClassName="w-[36px] flex-none"
+          wellClassName="w-[40px] flex-none"
           value={shown}
           min={min}
           max={max}

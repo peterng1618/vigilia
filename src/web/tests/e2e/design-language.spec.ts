@@ -524,7 +524,7 @@ test("the control set renders in the design language", async ({
     }
 
     // The slider is one row whose visible box is not the cell: its track starts
-    // at the cell's left edge and its 36px well ends at its right (§5).
+    // at the cell's left edge and its 40px well ends at its right (§5).
     const sliderRoot = cellOf("slider")?.firstElementChild ?? null;
     const track = rectOf(
       sliderRoot?.firstElementChild?.firstElementChild ?? null,
