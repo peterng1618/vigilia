@@ -1,4 +1,4 @@
-import { expect, test } from "@playwright/test";
+import { expect, type Page, test } from "@playwright/test";
 import {
   choosePalette,
   openAppearance,
@@ -51,110 +51,142 @@ test.describe("shell palettes", () => {
     ).toEqual([]);
   });
 
-  /** `vg-458` (item 1): the three `--vigilia-scrollbar-*` tokens were declared
-   *  for the shell's own scrollers and read by nothing, so `.editor-shell-panel`
-   *  and `.editor-shell-inspector` painted the OS default. The pair that
-   *  consumes them is `scrollbar-width`/`scrollbar-color`, beside the
-   *  `::-webkit-*` family that is Chromium's half of the same decision
-   *  (`.editor-shell-panel`'s and `.editor-shell-inspector`'s own rules).
+  /** `vg-458` (item 1): the `--vigilia-scrollbar-*` tokens were declared for
+   *  the shell's own scrollers and read by nothing, so `.editor-shell-panel`
+   *  and `.editor-shell-inspector` painted the OS default.
+   *
+   *  `vg-480`: two more scrollers are **portalled out of `.editor-shell`** — the
+   *  menu popup and the settings sheet — so the rule names them and this case
+   *  reads them too. They are read **open**, and by the attribute Base UI sets
+   *  when they are, because a closed one is still in the DOM (`display-switch`
+   *  keeps its menu mounted) and a class query would measure that one.
    *
    *  **The computed values, not the declarations.** The row's defect was a
    *  declaration nothing consumed, so a case that read the stylesheet text
    *  would have passed before the fix; read through the cascade, an
    *  unconsumed property is its initial `auto` and the fix is the token pair.
+   *  `vg-491` removed the `::-webkit-scrollbar*` family on a measurement that it
+   *  paints nothing beside this pair, so the pair is now the whole styling and
+   *  this case is the whole rendered proof of it.
    *
    *  `--hide-scrollbars` — Playwright's headless default, and the flag
    *  `composition-panel.spec.ts:83` lifts — hides the *painted* scrollbar and
    *  leaves the computed value alone, which is what this reads, so the flag
    *  stays on. The ceiling is deliberate and named: this proves the scrollers
    *  are styled by the tokens, **not** that a thumb is painted from them.
-   *  Reading the painted thumb is the upgrade path and would have to lift that
-   *  flag.
-   */
-  test("both shell scrollers carry the scrollbar tokens", async ({
+   *  Reading the painted thumb would have to lift that flag. */
+  test("every shell scroller, portalled or not, carries the scrollbar tokens", async ({
     page,
   }, testInfo) => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
     await openShell(page);
 
-    const reading = await page.evaluate(() => {
-      /** A reference declaring the same tokens by the same `var()`
-       *  expressions, so the comparison is token-to-token: a scroller painting
-       *  a literal of its own reds here rather than matching whatever the
-       *  tokens happen to hold. */
-      const reference = document.createElement("div");
-      reference.style.scrollbarWidth = "thin";
-      reference.style.scrollbarColor =
-        "var(--vigilia-scrollbar-thumb) var(--vigilia-scrollbar-track)";
-      document.body.append(reference);
-      const declared = getComputedStyle(reference);
-      const expected = {
-        width: declared.scrollbarWidth,
-        colour: declared.scrollbarColor,
-      };
-      reference.remove();
-
-      const read = (
-        selector: string,
-      ): { width: string; colour: string } | null => {
-        const node = document.querySelector(selector);
-        if (node === null) return null;
-        const style = getComputedStyle(node);
-        return { width: style.scrollbarWidth, colour: style.scrollbarColor };
-      };
-
-      return {
-        expected,
-        panel: read(".editor-shell-panel"),
-        inspector: read(".editor-shell-inspector"),
-      };
+    const columns = await scrollbarReading(page, [
+      ".editor-shell-panel",
+      ".editor-shell-inspector",
+    ]);
+    expectScrollbarTokens(columns, {
+      ".editor-shell-panel": "the panel scroller",
+      ".editor-shell-inspector": "the inspector scroller",
     });
 
-    // A declaration whose `var()` resolves to nothing is dropped at
-    // computed-value time and answers `auto` — the same `auto` an unstyled
-    // scroller answers. Without these two the equality below would hold with
-    // the tokens missing entirely and this case would prove nothing.
-    expect(
-      reading.expected.width,
-      "the reference's own scrollbar-width did not resolve",
-    ).toBe("thin");
-    expect(
-      reading.expected.colour,
-      "the reference's own scrollbar-color did not resolve to the tokens",
-    ).not.toBe("auto");
+    // The menubar's popup, which Base UI portals to `body`: a descendant
+    // selector on the shell never reached it.
+    await page.locator(".editor-shell-menubar button").first().click();
+    await expect(
+      page.locator(".editor-shell-menu-popup[data-open]"),
+    ).toBeVisible();
+    const popup = await scrollbarReading(page, [
+      ".editor-shell-menu-popup[data-open]",
+    ]);
+    expectScrollbarTokens(popup, {
+      ".editor-shell-menu-popup[data-open]": "the menu popup",
+    });
+    await page.keyboard.press("Escape");
 
-    const scrollers: Record<string, { width: string; colour: string } | null> =
-      {
-        "the panel scroller": reading.panel,
-        "the inspector scroller": reading.inspector,
-      };
+    // §7's modal, portalled the same way and asserted to be by the case above
+    // ("a portalled surface carries the palette in force").
+    await openAppearance(page);
+    const sheet = await scrollbarReading(page, [".editor-shell-dialog"]);
+    expectScrollbarTokens(sheet, {
+      ".editor-shell-dialog": "the settings sheet",
+    });
+
     // The reading is the evidence, and it is attached rather than only
     // asserted so a reader can check the values without a trace.
     testInfo.annotations.push({
       type: "scrollbar",
-      description: `tokens ${reading.expected.width} / ${reading.expected.colour} | ${Object.entries(
-        scrollers,
-      )
+      description: [columns, popup, sheet]
         .map(
-          ([name, scroller]) =>
-            `${name}: ${scroller?.width ?? "unmounted"} / ${scroller?.colour ?? "unmounted"}`,
+          (reading) =>
+            `tokens ${reading.expected.width} / ${reading.expected.colour} | ` +
+            Object.entries(reading.scrollers)
+              .map(
+                ([selector, scroller]) =>
+                  `${selector}: ${scroller?.width ?? "unmounted"} / ${scroller?.colour ?? "unmounted"}`,
+              )
+              .join(" | "),
         )
-        .join(" | ")}`,
+        .join(" || "),
     });
 
-    for (const [name, scroller] of Object.entries(scrollers)) {
-      expect(scroller, `${name} is not mounted`).not.toBeNull();
-      if (scroller === null) continue;
-      expect(
-        scroller.width,
-        `${name} is not styled thin (${scroller.width})`,
-      ).toBe(reading.expected.width);
-      expect(
-        scroller.colour,
-        `${name} is not painted by the --vigilia-scrollbar-* tokens (${scroller.colour})`,
-      ).toBe(reading.expected.colour);
-    }
+    await page.keyboard.press("Escape");
+  });
+
+  /** `vg-479`: the thumb was a `:root` literal, so every palette that is not a
+   *  light one painted the light thumb — a graphite shell read `#c9c2b1`
+   *  against its own dark ground. Derived from `--shell-text`, which every
+   *  palette declares, it moves with the palette.
+   *
+   *  Two palettes rather than a value: what the row says is *unreachable* is
+   *  "a thumb the palette cannot change", so the reading that falsifies it is
+   *  one thumb differing from another. A single expected value here would be a
+   *  second copy of the stylesheet's own derivation. */
+  test("the scrollbar thumb follows the palette in force", async ({
+    page,
+  }, testInfo) => {
+    test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+
+    await openShell(page);
+
+    const read = (): Promise<{ palette: string | null; thumb: string }> =>
+      page.evaluate(() => {
+        const style = getComputedStyle(document.documentElement);
+        return {
+          palette: document.documentElement.getAttribute("data-shell-palette"),
+          thumb: style.getPropertyValue("--vigilia-scrollbar-thumb").trim(),
+        };
+      });
+
+    await choosePalette(page, "editorial");
+    const editorial = await read();
+    await choosePalette(page, "graphite");
+    const graphite = await read();
+
+    testInfo.annotations.push({
+      type: "scrollbar-token",
+      description: `editorial ${editorial.thumb} | graphite ${graphite.thumb}`,
+    });
+
+    expect(editorial.palette, "the editorial palette was not in force").toBe(
+      "editorial",
+    );
+    expect(graphite.palette, "the graphite palette was not in force").toBe(
+      "graphite",
+    );
+    // An unresolved `var()` makes the whole declaration invalid at
+    // computed-value time, and both readings would then be "" and equal.
+    expect(editorial.thumb, "the editorial thumb resolved to nothing").not.toBe(
+      "",
+    );
+    expect(graphite.thumb, "the graphite thumb resolved to nothing").not.toBe(
+      "",
+    );
+    expect(
+      graphite.thumb,
+      "the thumb is the same under both palettes, so it is a literal no palette reaches",
+    ).not.toBe(editorial.thumb);
   });
 
   test("a portalled surface carries the palette in force", async ({
@@ -500,3 +532,81 @@ test.describe("shell palettes", () => {
    *  below is what holds §3's "floating clusters do not blur their backdrop"
    *  against the rule text rather than against the build's treatment of it. */
 });
+
+/** One set of scrollers' computed `scrollbar-width`/`scrollbar-color`, with the
+ *  reference they are compared against.
+ *
+ *  The reference declares the same tokens by the same `var()` expressions, so
+ *  the comparison is token-to-token: a scroller painting a literal of its own
+ *  reds here rather than matching whatever the tokens happen to hold. */
+async function scrollbarReading(
+  page: Page,
+  selectors: readonly string[],
+): Promise<{
+  expected: { width: string; colour: string };
+  scrollers: Record<string, { width: string; colour: string } | null>;
+}> {
+  return page.evaluate((list) => {
+    const reference = document.createElement("div");
+    reference.style.scrollbarWidth = "thin";
+    reference.style.scrollbarColor =
+      "var(--vigilia-scrollbar-thumb) var(--vigilia-scrollbar-track)";
+    document.body.append(reference);
+    const declared = getComputedStyle(reference);
+    const expected = {
+      width: declared.scrollbarWidth,
+      colour: declared.scrollbarColor,
+    };
+    reference.remove();
+
+    const scrollers: Record<string, { width: string; colour: string } | null> =
+      {};
+    for (const selector of list) {
+      const node = document.querySelector(selector);
+      if (node === null) {
+        scrollers[selector] = null;
+        continue;
+      }
+      const style = getComputedStyle(node);
+      scrollers[selector] = {
+        width: style.scrollbarWidth,
+        colour: style.scrollbarColor,
+      };
+    }
+    return { expected, scrollers };
+  }, selectors as string[]);
+}
+
+/** The guards and the equality, so every scroller is held to the same reading.
+ *
+ *  A declaration whose `var()` resolves to nothing is dropped at computed-value
+ *  time and answers `auto` — the same `auto` an unstyled scroller answers.
+ *  Without the two guards the equality below would hold with the tokens missing
+ *  entirely and the case would prove nothing. */
+function expectScrollbarTokens(
+  reading: Awaited<ReturnType<typeof scrollbarReading>>,
+  labels: Record<string, string>,
+): void {
+  expect(
+    reading.expected.width,
+    "the reference's own scrollbar-width did not resolve",
+  ).toBe("thin");
+  expect(
+    reading.expected.colour,
+    "the reference's own scrollbar-color did not resolve to the tokens",
+  ).not.toBe("auto");
+
+  for (const [selector, name] of Object.entries(labels)) {
+    const scroller = reading.scrollers[selector] ?? null;
+    expect(scroller, `${name} is not mounted`).not.toBeNull();
+    if (scroller === null) continue;
+    expect(
+      scroller.width,
+      `${name} is not styled thin (${scroller.width})`,
+    ).toBe(reading.expected.width);
+    expect(
+      scroller.colour,
+      `${name} is not painted by the --vigilia-scrollbar-* tokens (${scroller.colour})`,
+    ).toBe(reading.expected.colour);
+  }
+}

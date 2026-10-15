@@ -342,20 +342,36 @@ describe("the shell's focus fallback", () => {
 });
 
 /**
- * `vg-458`: the three `--vigilia-scrollbar-*` values were declared for the
- * scrollers and read by nothing, so the platform painted them. Both spellings
- * are needed and neither is optional — Firefox reads the standard pair and
- * ignores the pseudo-elements, Chrome reads the pseudo-elements and ignores the
- * pair the moment one of them matches.
+ * `vg-458`: the `--vigilia-scrollbar-*` values were declared for the scrollers
+ * and read by nothing, so the platform painted them.
+ *
+ * `vg-480`: two of the four scrollers are portalled out of `.editor-shell`, so
+ * the rule names them by name — which is a list that can go stale, and this is
+ * the case that holds it.
+ *
+ * `vg-491`: the `::-webkit-scrollbar*` family that stood beside the standard
+ * pair painted nothing. Measured in the Chromium the browser suite runs: either
+ * property being non-`auto` disables the family for that scroller, so a 20px
+ * webkit gutter beside `scrollbar-width: thin` renders as the thin bar. The
+ * family is gone, and with it the thumb's hover colour — `scrollbar-color`
+ * states a thumb and a track and no state between them, and the family that had
+ * one is inert wherever the pair is declared. So the pair is the whole styling,
+ * and both halves of that are asserted below: the pair, and the family's
+ * absence.
  */
 describe("the scrollers' scrollbar", () => {
-  /** The two the row names: the pane column and the inspector column. */
-  const SCROLLERS = [".editor-shell-panel", ".editor-shell-inspector"] as const;
+  /** The four the rows name: the two shell columns, and the two surfaces Base UI
+   *  portals out of `.editor-shell`. This is the rule's own selector list. */
+  const SCROLLERS = [
+    ".editor-shell-panel",
+    ".editor-shell-inspector",
+    ".editor-shell-menu-popup",
+    ".editor-shell-dialog",
+  ] as const;
 
-  it("gives each of the three tokens a consumer", () => {
+  it("gives each of the two tokens a consumer", () => {
     for (const token of [
       "--vigilia-scrollbar-thumb",
-      "--vigilia-scrollbar-thumb-hover",
       "--vigilia-scrollbar-track",
     ]) {
       expect(
@@ -382,36 +398,29 @@ describe("the scrollers' scrollbar", () => {
     }
   });
 
-  it("takes the pseudo-element family from the tokens as well", () => {
-    for (const scroller of SCROLLERS) {
-      const thumb = bodiesNaming(`${scroller}::-webkit-scrollbar-thumb`);
-      expect(
-        thumb,
-        `${scroller}'s thumb is not drawn from the token, so Chrome paints the ` +
-          "platform's",
-      ).toContain("background: var(--vigilia-scrollbar-thumb);");
-      expect(
-        thumb,
-        `${scroller}'s thumb has no hover, which is the one state the standard ` +
-          "pair cannot express — it is why the family is written at all",
-      ).toContain("background: var(--vigilia-scrollbar-thumb-hover);");
-      expect(
-        bodiesNaming(`${scroller}::-webkit-scrollbar-track`),
-        `${scroller}'s track is not drawn from the token`,
-      ).toContain("background: var(--vigilia-scrollbar-track);");
-    }
+  it("styles the scroller from the standard pair alone", () => {
+    expect(
+      cssNoComments,
+      "the `::-webkit-scrollbar*` family is back, and it paints nothing " +
+        "beside the standard pair the four scrollers declare",
+    ).not.toContain("::-webkit-scrollbar");
   });
 
   it("paints them from no literal of its own", () => {
+    // Filtered on the body rather than the selector: no selector in this
+    // stylesheet contains the word any more, so a selector filter would find
+    // nothing and the emptiness guard below would hold for the wrong reason.
+    // A *property* rather than the token names, which are declared in the
+    // control block beside every other literal this file carries.
     const scrollbarRules = [...cssNoComments.matchAll(/([^{}]+)\{([^{}]*)\}/g)]
-      .filter(([, selectors]) => /scrollbar/.test(selectors ?? ""))
+      .filter(([, , body]) => /scrollbar-(width|color)\s*:/.test(body ?? ""))
       .map(([, , body]) => body ?? "")
       .join("\n");
 
     expect(scrollbarRules).not.toBe("");
     expect(
       scrollbarRules,
-      "a scrollbar rule paints a literal beside the three values the shell " +
+      "a scrollbar rule paints a literal beside the two values the shell " +
         "already declares for it",
     ).not.toMatch(/#[0-9a-fA-F]{3,8}(?![\w-])/);
   });
