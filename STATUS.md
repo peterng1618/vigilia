@@ -37,11 +37,11 @@ ledger did.
 
 ## Last completed change
 
-- **Batch B applied: three rows closed on their own measurements and one withdrawn as a duplicate** — `vg-433` (a private field assigned and read nowhere), `vg-481` (a rule pair painting a state the product had removed), `vg-517` (a comment that outlived the ruling that settled it).
-- **`vg-476` and `vg-506` were one finding filed twice, and the duplicate check is what found it** — both name `ruleCommit` in `mockups-values.test.ts` (`:896` and `:892` are the line and the declaration), both report the same defect, both demonstrated it in a scratch repo with a three-line quotation, and **both were found by the same review** at `13015088`. `vg-506` survives as the fuller record and now carries a note saying so.
-- **Two rows were split rather than half-closed** — `vg-481`'s second half (the dead-code sweep reported nothing over a rule whose selector can never match) is `vg-534`, and `vg-407`'s (nothing reads `dependencies.md` at all) is `vg-533`; both need a decision about where a check lives, which is why they are rows and not patches.
-- **The register is at 200 open, from 207 when the triage began** — nine rows closed, one withdrawn, one parked, and two filed for the halves that were not patches.
-- **Every close names the commit that landed its fix and a check a later session can run** — `3abbb964` for batch A and `fee3b673` for batch B; verified by `biome check ..` exit 0, `design:check` exit 0, and the covering test files (29 + 18 + 34 tests) exit 0.
+- **Batch C applied: two rows closed and one parked** — `vg-403` (the last live citations to the design file `db000c40` deleted) and `vg-501` (whose own ruling had already been executed), with `vg-488` parked.
+- **`vg-501` was open on nothing** — its 2026-10-15 ruling is "CLOSE THE THREE AS `withdrawn`, and add no `moot` state", and measuring found `vg-160`, `vg-102` and `vg-423` all `withdrawn` already at `e64a4c27`; the row's subject is settled by the ruling rather than by a new state, which is the option the ruling chose.
+- **`vg-403`'s last two live citations took its own second option** — recorded that the number has no successor rather than rewritten, because both sentences are the search record of 2026-10-11 rather than pointers a reader should follow, and `design:md --cite` fails on a number with no marker so it cannot simply be ported.
+- **`vg-488` parks on the user rather than on an owner** — the row's own text says item 2's scope ("every icon Lucide" against eight diagrams `DESIGN.md` licenses) is the user's to decide, so the park names that wait instead of leaving it as plain work.
+- **The register is at 198 open, from 207 when the triage began** — twelve closed, one withdrawn, two parked, and two filed for the halves that were not patches.
 
 ## Next
 
