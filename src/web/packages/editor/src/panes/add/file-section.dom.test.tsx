@@ -385,6 +385,26 @@ describe("the Add pane's file section", () => {
     expect(placeImage).toHaveBeenCalledTimes(2);
   });
 
+  it("says a video was declared and not placed, and the canvas is untouched", async () => {
+    const { host, placeImage } = await mount();
+
+    await importFile(host, VIDEO_FILE);
+
+    // `vg-155`: the two outcomes stay different, so the pane has to say which
+    // one it took rather than leaving the canvas's silence to say it.
+    expect(alert(host).textContent).toBe(uiCopy.panels.assetDeclaredVideo);
+    expect(placeImage).not.toHaveBeenCalled();
+  });
+
+  it("says an image was placed on the canvas", async () => {
+    const { host, placeImage } = await mount();
+
+    await importFile(host, IMAGE_FILE);
+
+    expect(alert(host).textContent).toBe(uiCopy.panels.assetPlaced);
+    expect(placeImage).toHaveBeenCalledTimes(1);
+  });
+
   it("keeps a declared-but-unplaced asset in the list, because it has no layer to hang on", async () => {
     const { host } = await mount();
 

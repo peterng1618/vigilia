@@ -122,7 +122,7 @@ export function FileSection({
         return;
       }
     }
-    setMessage("");
+    setMessage(importMessage(asset));
     // The selection is left where it was, as the deleted panel left it: an
     // author pointing at one asset must not find the list pointing at another
     // because they added a file. Only an empty list moves it, via `chosen`'s
@@ -267,6 +267,25 @@ function isPlaceable(
   asset: LocalAssetReference,
 ): asset is PlacedAssetReference {
   return asset.kind === "image" || asset.kind === "svg";
+}
+
+/**
+ * What the pane says an import did, decided by the kind.
+ *
+ * The switch has no `default`, so a fifth kind in the manager's `TYPES` fails to
+ * compile here rather than falling through to the placed message: the kind union
+ * is what decides, and the code should have to say so.
+ */
+function importMessage(asset: LocalAssetReference): string {
+  switch (asset.kind) {
+    case "image":
+    case "svg":
+      return uiCopy.panels.assetPlaced;
+    case "video":
+      return uiCopy.panels.assetDeclaredVideo;
+    case "font":
+      return uiCopy.panels.assetDeclaredFont;
+  }
 }
 
 /** The file an author chose, not the id the package keys it by. */

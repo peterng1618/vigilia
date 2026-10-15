@@ -706,6 +706,15 @@ export const uiCopy = {
     /** Shown when a chosen file is not a readable image, video or font the
         package accepts. The author's other work is untouched. */
     assetImportFailed: "That file could not be imported.",
+    /** Shown when an import declared the file and put it on the canvas. */
+    assetPlaced: "Imported and placed on the canvas.",
+    /** Shown when an import declared the file and did not place it, because a
+        video is not a canvas object. The pane says which of the two happened
+        rather than leaving the canvas's silence to say it. */
+    assetDeclaredVideo:
+      "Imported and declared. A video is not placed on the canvas.",
+    assetDeclaredFont:
+      "Imported and declared. A font is not placed on the canvas.",
     /** Shown when a removal is refused because something still points at it. */
     assetReferenced: "That asset is in use and cannot be removed.",
     removeAsset: "Remove asset",
