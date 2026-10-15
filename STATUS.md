@@ -37,11 +37,11 @@ ledger did.
 
 ## Last completed change
 
-- **Phase 16 authored, and the two triage phases now carry every row the passes returned as real work** — eighteen behaviour findings in five tasks, grouped by owner rather than by row number.
-- **The census moved three times as far as the open count did** — at 193 open: 136 named by a task block, 57 by no phase, **108 with no home**, against 150 at 207 open; homing a row and parking it both count, and neither is a close.
-- **The triage has now decided 53 rows — fourteen closed, five withdrawn, thirty-four parked** — over nine batches, and what the passes found is the shape of the remainder: dominated by rows that need a decision, not by rows whose subject is gone.
-- **Phase 16's constraints are the ones its rows taught**: every row was measured by a pass that ran nothing, so each task reproduces its own case first; and where a drawing and the design language disagree, the drawing loses unless the user has ruled — which is `vg-496` and `vg-498`.
-- **Phases 15 and 16 are both queued behind Phase 12**, which is the only phase that has not closed.
+- **`vg-520` fixed: the local gate now reaches every CI step it omitted** — `npm run gate` chains `npm run status:check` beside the typecheck, so a STATUS.md the check refuses stops the gate before the unit suite starts.
+- **The row's own count is corrected, not just fixed** — it named three missing CI steps, and **`hooks:check` was already reached**: `gates:self-test` chains `sdd-checkpoint.mjs --self-check`, which is exactly what `hooks:check` runs, as the `//gate` comment had recorded all along. So two steps were genuinely missing, not three.
+- **The red proof is both directions**: with `status:check` in the chain and STATUS.md's active-plan bullet broken, the gate exits **1** and never reaches vitest; with the step removed from the same chain and the same break in place, it exits **0** — the row's own state.
+- **The first attempt at that proof passed while proving nothing**, which is the lesson worth keeping: the break was a plain string replace of `- **Active plan:**`, and STATUS.md *documents that marker inside an HTML comment* above the bullet, so the replace hit the comment and the real bullet was untouched.
+- **The register is at 192 open, 34 parked, 22 withdrawn** — from 207 open when the triage began.
 
 ## Next
 
