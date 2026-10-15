@@ -126,9 +126,17 @@ export interface DraftAutosave {
  * the trigger is the *transition* out of dirty rather than the state. A document
  * can be born clean while a draft is pending — the failed-restore fallback,
  * where the mount the draft asked for threw and the boot opened something else
- * — and that document never adopted the draft, so clearing it would delete the
- * only copy of the author's work. It is the same pull of `isDirty()`, read
- * across two ticks instead of one.
+ * — and that document never adopted the draft, so the clear would delete work it
+ * never superseded. It is the same pull of `isDirty()`, read across two ticks
+ * instead of one.
+ *
+ * **The rule guards the clear, not the slot.** One draft is the brief's own
+ * decision, so the first edit of that fallback document turns `dirty` true and
+ * the next tick writes *its* draft over the pending one — and an edit undone
+ * before that tick clears it. The pending draft therefore survives the refused
+ * restore and the fallback's own first tick, and not the author touching the
+ * document in front of them. Leaving it in place instead would leave the
+ * document being edited undrafted, which is the worse of the two.
  */
 export function startDraftAutosave(input: {
   readonly store: DraftStore;

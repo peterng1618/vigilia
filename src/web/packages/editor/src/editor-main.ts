@@ -463,9 +463,9 @@ async function start(): Promise<void> {
         });
         return;
       } catch (error) {
-        // A draft this build cannot render is not a boot failure: the document
-        // the boot would have opened is still the author's, and the draft stays
-        // where a build that can read it will find it.
+        // A draft this build cannot render is not a boot failure: the boot opens
+        // the document it would have, and the draft survives until the fallback
+        // document's first edit takes the slot (`draft-store.ts`).
         status.textContent = `Could not restore the draft: ${error instanceof Error ? error.message : String(error)}`;
       }
     }
