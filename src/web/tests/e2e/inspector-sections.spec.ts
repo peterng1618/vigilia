@@ -1052,6 +1052,53 @@ test.describe("the per-kind inspector column", () => {
     await expect(page.locator("[data-vigilia-crop]")).toHaveCount(0);
   });
 
+  test("drives the Line-endpoint geometry field, and the non-numeric draft is refused by the control", async ({
+    page,
+  }, testInfo) => {
+    test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+    await page.goto(EDITOR);
+    await page.waitForFunction(() => "vigiliaEditorBridge" in window);
+    await openBlank(page);
+    // The Shape group's own Line, not `insert(page, "Line")`: the label is a
+    // shape and a chart family, and the driver's `insert` takes the last match,
+    // which is the chart.
+    await openPane(page, "Add");
+    await page
+      .locator('[data-vigilia-panel="add"]')
+      .getByRole("group", { name: "Shape" })
+      .getByRole("button", { name: "Line", exact: true })
+      .click();
+
+    // `vg-401`'s reading, taken here rather than inferred. The field is **not**
+    // in a refused state — `ControlNumber` renders `readOnly={refused !==
+    // undefined}`, and the inspector sets no `refused` on a shape's own
+    // geometry — so Playwright's editability wait is not what an earlier probe
+    // hit, and a field a browser cannot type into is not what the product does.
+    const endpoint = page.locator('[data-vigilia-shape-line="x1"]');
+    await expect(endpoint).toHaveCount(1);
+    await expect(endpoint).toBeEditable();
+    expect(
+      await endpoint.evaluate((element: HTMLInputElement) => element.readOnly),
+    ).toBe(false);
+    const start = await endpoint.inputValue();
+
+    // The unreadable draft lands and stays: the control's own parse refuses it
+    // and says so, rather than reverting in silence.
+    await endpoint.fill("abc");
+    await expect(endpoint).toHaveValue("abc");
+    await endpoint.blur();
+    await expect(endpoint).toHaveAttribute("aria-invalid", "true");
+    await expect(
+      page.locator(`#${await endpoint.getAttribute("aria-describedby")}`),
+    ).toHaveText("not a number");
+
+    // Escape drops the draft, so what is shown is the object's own endpoint
+    // again — the unreadable text never reached the write funnel.
+    await endpoint.press("Escape");
+    await expect(endpoint).toHaveValue(start);
+    await expect(endpoint).not.toHaveAttribute("aria-invalid", "true");
+  });
+
   test("the section header takes the drawing's rule, §2's mono count and §4's faint, and the subject name §2's 600", async ({
     page,
   }, testInfo) => {
