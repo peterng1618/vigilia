@@ -120,6 +120,10 @@ interface EditorSessionOptions {
   readonly onSaved: (message?: string) => void;
   readonly onError?: (message: string) => void;
   readonly onBindingsChange?: () => void;
+  /** Nothing is saved behind this document — a draft restored after a crash.
+   *  It reads as unsaved from its first frame, because it is: the work exists
+   *  in the editor and in the draft, and nowhere else. */
+  readonly unsaved?: boolean;
 }
 
 /** Owns Vigilia editor composition on the native Fabric canvas. */

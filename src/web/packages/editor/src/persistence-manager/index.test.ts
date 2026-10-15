@@ -163,6 +163,17 @@ describe("PersistenceManager", () => {
     expect(manager.isDirty(changed, {})).toBe(false);
   });
 
+  it("reads a document with nothing saved behind it as unsaved, until a save gives it a baseline", () => {
+    // A restored draft (`vg-040`): the work exists in the editor and in the
+    // draft, so it is unsaved even though the document has not moved since it
+    // mounted. The first save is what makes it clean.
+    const manager = new PersistenceManager(baseline, {}, { unsaved: true });
+    expect(manager.isDirty(baseline, {})).toBe(true);
+
+    manager.markSaved(baseline, {});
+    expect(manager.isDirty(baseline, {})).toBe(false);
+  });
+
   it("detects a one-byte change in an asset's content", () => {
     const manager = new PersistenceManager(withAsset("a".repeat(64)), {
       "assets/logo.png": logo,

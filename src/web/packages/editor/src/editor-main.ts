@@ -22,7 +22,12 @@ import { mountEditorShell } from "./editor-shell.js";
 import "./editor-shell/editor-shell.css";
 import { type BootThemeOutcome, bootTheme } from "./boot-theme.js";
 import { confirmDraftRecovery } from "./draft-recovery-prompt.js";
-import { type Draft, DraftStore, startDraftAutosave } from "./draft-store.js";
+import {
+  bindDraftAutosave,
+  type DraftSource,
+  DraftStore,
+  startDraftAutosave,
+} from "./draft-store.js";
 import { createEditorSource } from "./live-source.js";
 import type { NewDocumentAnswer } from "./new-document-chooser.js";
 import {
@@ -65,22 +70,34 @@ async function start(): Promise<void> {
   // the whole editor, because the author has one editor, and a browser that
   // refuses its own storage has no draft rather than an error to report.
   const draftStore = new DraftStore(readStorage());
-  /** The document's draft, or nothing while it is clean. Writing a clean
-   *  document is what makes a recovery prompt fire over work already saved —
-   *  the failure the unload warning below already names in its own words. */
-  const captureDraft = (): Draft | undefined => {
-    if (active === undefined || !active.extensions.isDirty()) return undefined;
-    const content = active.extensions.snapshot();
+  /** The open document as the autosave asks it. `isDirty` is the session's own,
+   *  pulled rather than held, so nothing here re-derives what "saved" means. */
+  const draftDocument = (): DraftSource | undefined => {
+    if (active === undefined) return undefined;
+    const extensions = active.extensions;
     return {
-      name: documentNameOf({ name: content.metadata?.name, id: content.id }),
-      savedAt: new Date().toISOString(),
-      content,
+      isDirty: () => extensions.isDirty(),
+      draft: () => {
+        const content = extensions.snapshot();
+        return {
+          name: documentNameOf({
+            name: content.metadata?.name,
+            id: content.id,
+          }),
+          savedAt: new Date().toISOString(),
+          content,
+        };
+      },
     };
   };
   const autosave = startDraftAutosave({
     store: draftStore,
-    capture: captureDraft,
+    document: draftDocument,
   });
+  // The page's own lifetime — written on the way out, re-armed on the way back
+  // from the back/forward cache — belongs to the autosave, so it is bound where
+  // the timer is and can be driven by a test.
+  bindDraftAutosave(autosave);
   // A pointer gesture owns the canvas for its duration. The refresh loop runs
   // at 30fps and a full repaint erases Fabric's drag marquee — which is drawn
   // straight onto the context, not into the scene — so the marquee survived
@@ -202,6 +219,10 @@ async function start(): Promise<void> {
      *  A new session is built on every mount, so the base has to arrive with
      *  the document rather than be remembered by the one being replaced. */
     readonly base?: string;
+    /** Nothing is saved behind this document — a draft restored after a crash.
+     *  It reads as unsaved from its first frame, because it is: the work exists
+     *  in the editor and in the draft, and nowhere else. */
+    readonly unsaved?: boolean;
   }) => {
     assertFabricThemeEnvelopeCompatible(next.envelope);
     const releaseFonts = await loadFontAssets({
@@ -246,6 +267,7 @@ async function start(): Promise<void> {
       // even where this machine cannot render one.
       ...(next.thumbnail === undefined ? {} : { thumbnail: next.thumbnail }),
       ...(next.base === undefined ? {} : { libraryBase: next.base }),
+      ...(next.unsaved === true ? { unsaved: true } : {}),
       assetManager,
       panelHosts: {
         add: layout.hosts.add,
@@ -404,14 +426,6 @@ async function start(): Promise<void> {
   window.addEventListener("pagehide", () => chartRefresh.dispose(), {
     once: true,
   });
-  // The timer's last tick can be half a minute behind the edit that mattered,
-  // so the draft is written again while the author is leaving. `pagehide` and
-  // not `beforeunload`: it fires for a backgrounded tab and for a killed one,
-  // and this write is synchronous by design.
-  window.addEventListener("pagehide", () => {
-    autosave.writeNow();
-    autosave.stop();
-  });
   // Publishing stops when the author does. The host holds the document in its
   // own memory, so an editor that goes away without saying so leaves a phone
   // showing something nobody is editing any more.
@@ -441,6 +455,7 @@ async function start(): Promise<void> {
         await mount({
           input: envelopeInputFor(draft.content),
           envelope: draft.content,
+          unsaved: true,
         });
         status.textContent = openedStatusText({
           name: draft.content.metadata?.name,

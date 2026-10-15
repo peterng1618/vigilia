@@ -23,15 +23,25 @@ function defaultDownloader(name: string, bytes: Uint8Array): void {
 
 /** Product file export for .vigilia-theme packages. */
 export class PersistenceManager {
-  #savedDocument: string;
+  /** What was last saved, or `undefined` while nothing has been. A document
+   *  with nothing saved behind it — a draft restored after a crash — has no
+   *  state to compare against, so it reads as unsaved from its first frame
+   *  rather than claiming to match a save that never happened. */
+  #savedDocument: string | undefined;
   readonly #downloader: Downloader;
 
   constructor(
     initial: FabricThemeEnvelope,
     initialAssets: Readonly<Record<string, Uint8Array>> = {},
-    options?: { readonly downloader?: Downloader },
+    options?: {
+      readonly downloader?: Downloader;
+      readonly unsaved?: boolean;
+    },
   ) {
-    this.#savedDocument = documentKey(initial, initialAssets);
+    this.#savedDocument =
+      options?.unsaved === true
+        ? undefined
+        : documentKey(initial, initialAssets);
     this.#downloader = options?.downloader ?? defaultDownloader;
   }
 
@@ -39,7 +49,10 @@ export class PersistenceManager {
     theme: FabricThemeEnvelope,
     assets: Readonly<Record<string, Uint8Array>> = {},
   ): boolean {
-    return documentKey(theme, assets) !== this.#savedDocument;
+    return (
+      this.#savedDocument === undefined ||
+      documentKey(theme, assets) !== this.#savedDocument
+    );
   }
 
   markSaved(

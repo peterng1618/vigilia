@@ -1,8 +1,11 @@
 import type { FabricThemeEnvelope } from "@vigilia/renderer-core";
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  bindDraftAutosave,
   DRAFT_STORAGE_KEY,
   type Draft,
+  type DraftAutosave,
+  type DraftSource,
   DraftStore,
   startDraftAutosave,
 } from "./draft-store.js";
@@ -138,42 +141,77 @@ describe("the draft's autosave", () => {
     vi.useRealTimers();
   });
 
-  /** What the timer sees: a document that is dirty, or one that is not. The
-   *  dirty comparison itself is `EditorDocument.isDirty`'s. */
-  function autosaveOver(
-    store: DraftStore,
-    isDirty: () => boolean,
-  ): ReturnType<typeof startDraftAutosave> {
-    return startDraftAutosave({
-      store,
-      capture: () => (isDirty() ? DRAFT : undefined),
-    });
+  /** The open document as the autosave asks it. The dirty comparison itself is
+   *  the session's; what a case moves here is only its answer. */
+  function documentOver(isDirty: () => boolean): DraftSource {
+    return { isDirty, draft: () => DRAFT };
   }
 
-  it("writes a dirty document on the interval and leaves a clean one alone", () => {
+  function autosaveOver(
+    store: DraftStore,
+    document: () => DraftSource | undefined,
+  ): DraftAutosave {
+    return startDraftAutosave({ store, document });
+  }
+
+  it("writes a dirty document on the interval, and nothing while none is open", () => {
     vi.useFakeTimers();
     const store = new DraftStore(memoryStorage());
-    let dirty = true;
-    const autosave = autosaveOver(store, () => dirty);
+    let open = false;
+    const autosave = autosaveOver(store, () =>
+      open ? documentOver(() => true) : undefined,
+    );
 
+    vi.advanceTimersByTime(30_000);
+    expect(store.read(), "no document, no draft").toBeUndefined();
+
+    open = true;
     vi.advanceTimersByTime(30_000);
     expect(store.read(), "a dirty document is written").toEqual(DRAFT);
-
-    store.clear();
-    dirty = false;
-    vi.advanceTimersByTime(30_000);
-    expect(store.read(), "a clean document is not").toBeUndefined();
 
     autosave.stop();
   });
 
-  it("writes on the way out, where the timer's last tick is behind the edit", () => {
+  it("writes nothing for a clean document, and clears what a dirty one left", () => {
     vi.useFakeTimers();
     const store = new DraftStore(memoryStorage());
-    const autosave = autosaveOver(store, () => true);
+    let dirty = true;
+    const autosave = autosaveOver(store, () => documentOver(() => dirty));
 
-    autosave.writeNow();
-    expect(store.read()).toEqual(DRAFT);
+    vi.advanceTimersByTime(30_000);
+    expect(store.read(), "the edit is kept").toEqual(DRAFT);
+
+    // The author undoes back to what was saved. The draft holds an edit they
+    // have taken back, and the next boot would offer it as unsaved work.
+    dirty = false;
+    vi.advanceTimersByTime(30_000);
+    expect(store.read(), "a clean document leaves no draft").toBeUndefined();
+
+    autosave.stop();
+  });
+
+  it("writes on the way out, and resumes when the page comes back", () => {
+    vi.useFakeTimers();
+    const store = new DraftStore(memoryStorage());
+    const autosave = autosaveOver(store, () => documentOver(() => true));
+    const page = new EventTarget();
+    bindDraftAutosave(autosave, page);
+
+    // Leaving: the timer's last tick can be half a minute behind the edit.
+    page.dispatchEvent(new Event("pagehide"));
+    expect(store.read(), "the page-leave write").toEqual(DRAFT);
+
+    // Away: nothing is written, and a frozen page's interval must not be
+    // running behind the editor's back.
+    store.clear();
+    vi.advanceTimersByTime(120_000);
+    expect(store.read(), "stopped while the page was away").toBeUndefined();
+
+    // Back from the back/forward cache: the same session, still live, and it
+    // has to be writing drafts again.
+    page.dispatchEvent(new Event("pageshow"));
+    vi.advanceTimersByTime(30_000);
+    expect(store.read(), "writing again after the round trip").toEqual(DRAFT);
 
     autosave.stop();
   });
@@ -181,7 +219,7 @@ describe("the draft's autosave", () => {
   it("stops writing when the editor goes away", () => {
     vi.useFakeTimers();
     const store = new DraftStore(memoryStorage());
-    const autosave = autosaveOver(store, () => true);
+    const autosave = autosaveOver(store, () => documentOver(() => true));
 
     autosave.stop();
     vi.advanceTimersByTime(120_000);

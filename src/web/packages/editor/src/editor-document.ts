@@ -59,6 +59,10 @@ interface EditorDocumentSource {
   /** The stored document this one was opened from, when it was opened from
    *  the library. Every save made from here is checked against it. */
   readonly libraryBase?: string;
+  /** Nothing is saved behind this document — a draft restored after a crash —
+   *  so it has no state to compare against and reads as unsaved until a save
+   *  gives it one. */
+  readonly unsaved?: boolean;
   /** Creates a blank document at the artboard the author chose. The chooser
    *  itself is the session's, so the size is asked before the open document is
    *  even offered up for replacement. */
@@ -142,10 +146,13 @@ export class EditorDocument {
     this.#assets = source.assetManager;
     this.#onBindingsChange = source.onBindingsChange;
     this.#consumers = options.consumers;
-    // What was last saved, which the unsaved marker is compared against.
+    // What was last saved, which the unsaved marker is compared against. A
+    // restored draft has nothing saved behind it, so there is nothing to
+    // compare against: it reads as unsaved until a save gives it a baseline.
     this.#persistence = new PersistenceManager(
       this.snapshot(),
       this.#assets.assets,
+      source.unsaved === true ? { unsaved: true } : undefined,
     );
     // The library owns the stored base and the protocol a save against it
     // follows. What it cannot decide — this document, its picture, whether the

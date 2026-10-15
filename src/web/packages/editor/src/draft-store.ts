@@ -82,39 +82,101 @@ export class DraftStore {
   }
 }
 
-/** What the autosave needs of the document: the draft it holds now, or nothing
- *  while it is clean. The dirty comparison is the document's own. */
+/** The open document, as the autosave asks it. */
+export interface DraftSource {
+  /** The document's own comparison — `EditorSession.isDirty()` — pulled, never
+   *  a second one. A document reads clean the moment it matches what was last
+   *  saved, and nothing here re-derives that. */
+  isDirty(): boolean;
+  /** The document as the draft holds it: its authored snapshot, the name it is
+   *  read under, and the moment. Read only when it is dirty, because the
+   *  snapshot walks the scene. */
+  draft(): Draft;
+}
+
 export interface DraftAutosave {
   /** Writes now, if the document is dirty. The page-leave path, where the
    *  timer's last tick can be half a minute behind the edit that mattered. */
   writeNow(): void;
+  /** Arms the interval. Idempotent, because `pageshow` fires on the first load
+   *  as well as on a return from the back/forward cache and a second interval
+   *  would double the writes. */
+  start(): void;
   /** Stops the timer, beside `chartRefresh.dispose()` at the same teardown. */
   stop(): void;
 }
 
 /**
- * Copies a dirty document into the draft on an interval.
+ * Keeps the draft level with the open document, on an interval.
  *
- * **Dirty only.** A draft over work the author already saved makes the
- * recovery prompt fire on every boot over nothing, and a prompt learned to
- * dismiss is the same as no prompt — the failure the unload warning already
- * names in its own words (`editor-main.ts`).
+ * **The gate is the document's own, and this is the only place it is read.** A
+ * draft over work the author already saved makes the recovery prompt fire on
+ * every boot over nothing, and a prompt learned to dismiss is the same as no
+ * prompt — the failure the unload warning already names in its own words
+ * (`editor-main.ts`).
+ *
+ * **A clean document clears the draft, it does not merely skip it.** A save is
+ * the common way to become clean, not the only one: an author who undoes back
+ * to what was saved has no unsaved work, and a draft left holding the edit they
+ * took back would be offered to them at the next boot as work "edited and not
+ * saved" — which would by then be false, and restoring it would resurrect the
+ * edit they chose to discard.
  */
 export function startDraftAutosave(input: {
   readonly store: DraftStore;
-  readonly capture: () => Draft | undefined;
+  /** The open document, or nothing while none is mounted. */
+  readonly document: () => DraftSource | undefined;
 }): DraftAutosave {
+  let timer: ReturnType<typeof setInterval> | undefined;
+
   const writeNow = (): void => {
-    const draft = input.capture();
-    if (draft !== undefined) input.store.write(draft);
+    const document = input.document();
+    if (document === undefined) return;
+    if (document.isDirty()) input.store.write(document.draft());
+    else input.store.clear();
   };
-  const timer = setInterval(writeNow, DRAFT_INTERVAL_MS);
-  return {
+
+  const autosave: DraftAutosave = {
     writeNow,
+    start: () => {
+      timer ??= setInterval(writeNow, DRAFT_INTERVAL_MS);
+    },
     stop: () => {
+      if (timer === undefined) return;
       clearInterval(timer);
+      timer = undefined;
     },
   };
+  autosave.start();
+  return autosave;
+}
+
+/**
+ * Binds the autosave to the page's own lifetime.
+ *
+ * `pagehide` is the last event a page gets before it is unloaded or frozen into
+ * the back/forward cache, and it is where the draft is written again: the
+ * timer's last tick can be half a minute behind the edit that mattered. It is
+ * **not** the event a backgrounded tab fires — that is `visibilitychange` — so
+ * a tab switch does not stop the timer, only the page going away does.
+ *
+ * **`pageshow` is what makes the round trip resume.** A page restored from the
+ * back/forward cache comes back with its state intact and no reload, so without
+ * this the timer stopped at `pagehide` would never write again for the rest of
+ * the session, silently. `start` is idempotent, which is what makes the initial
+ * `pageshow` — it fires on the first load too — a no-op.
+ */
+export function bindDraftAutosave(
+  autosave: DraftAutosave,
+  target: EventTarget = window,
+): void {
+  target.addEventListener("pagehide", () => {
+    autosave.writeNow();
+    autosave.stop();
+  });
+  target.addEventListener("pageshow", () => {
+    autosave.start();
+  });
 }
 
 /** The three fields, and nothing about what is inside them: the envelope's own
