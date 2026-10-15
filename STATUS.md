@@ -37,11 +37,11 @@ ledger did.
 
 ## Last completed change
 
-- **Phase 15 is running, because Phase 12 is gated on the user's spec review and nothing else in the plan is** — Task 15.3 landed first and **`vg-434` is closed `verified`**, so the register is **186 open**.
-- **`scripts/check-doc-references.mjs` resolves every reference into the plans directory** and runs in the gate as `docs:check`, with decision `0048` recording why it is a script rather than a dependency — the rule is three parts a generic link checker does not carry.
-- **The row's counts were re-derived rather than restated**: **51 references into `plans/`, 49 resolving, 2 broken**, against the 82 and 32 the row reported on 2026-10-13, so the class has been repaired in the interval; both survivors are deliberate and carry `doc-ref-ok:` with its reason.
-- **The red proof caught the check's own first bug** — `git ls-files --cached` alone cannot see a file that is still untracked, so it reported green over the document being written; it now scans untracked-but-not-ignored files too.
-- **`npm run gate` exit 0** with the new step chained (biome 654 files, gates:self-test, status:check, docs:check over 867 files, design:check, typecheck ×5, 258/258 files, 3441/3441 tests).
+- **Phase 15 is running, because Phase 12 is gated on the user's spec review and nothing else in the plan is** — Tasks 15.2 and 15.3 have landed, **`vg-434` and `vg-426` are closed `verified`**, and the register is **185 open**.
+- **`vg-426` — the token ratchet now reports its remainder and refuses growth**: every run says how many product source files off the gated list still hold a literal, and a run past `remainderCeiling` fails; **120 gated files clean, remainder 19, ceiling 19**, and `components/ui/colour-picker.tsx`, the instance the row names, is one of the 19.
+- **The count was measured rather than assumed, and the first cut was wrong** — counting every file off the list reports **81**; product source alone reports **19**, because a test asserting a hex is a test *about* a literal and a fixture is a document rather than a surface.
+- **`vg-434` — `scripts/check-doc-references.mjs` resolves every reference into the plans directory** and runs as `docs:check`: **51 references, 49 resolving, 2 broken** against the 82 and 32 the row reported on 2026-10-13, with both survivors deliberate and carrying `doc-ref-ok:` and its reason; its red proof caught its own first bug, since `git ls-files --cached` cannot see an untracked file.
+- **`npm run gate` exit 0** (biome 654 files, gates:self-test with three new remainder cases, status:check, docs:check over 867 files, design:check, typecheck ×5, 258/258 files, 3441/3441 tests).
 
 ## Next
 
