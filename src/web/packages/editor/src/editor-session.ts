@@ -140,7 +140,6 @@ export class EditorSession {
   readonly #assets: AssetManager;
   readonly #shortcuts = new ShortcutManager();
   readonly #nudge: CanvasNudge;
-  readonly #panelHosts: EditorPanelHosts;
   readonly #options: EditorSessionOptions;
   /** The theme the author is editing. Every owner composed below is a view of
    *  it, so it is built first. */
@@ -155,7 +154,6 @@ export class EditorSession {
       );
     }
     this.#options = options;
-    this.#panelHosts = options.panelHosts;
     this.#assets = options.assetManager;
     // Before the owners below, because they read the document as they mount;
     // the ones it fans out to are named here as ports and resolved when a

@@ -2597,13 +2597,6 @@ body,
   align-items: center;
   justify-content: center;
 }
-.editor-shell-dock button:disabled {
-  opacity: 0.35;
-  cursor: default;
-}
-.editor-shell-dock button:disabled:hover {
-  border-color: transparent;
-}
 /* §7.5's top-right corner: how the stage is shown. One floating cluster holding
    the display chooser and its zoom readout, at the identity chip's treatment —
    `--radius-xl`, a hairline `--edge`, 14px in from the stage's own edges — so

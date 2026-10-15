@@ -24,12 +24,12 @@ export function showLoadFailure(error: unknown): void {
   // between two bands — and this is the one failure that replaces the whole
   // screen, not a part of it.
   //
-  // The second caller is a `catch` around the display's whole lifetime
-  // (`main.ts:103`, with the scene mounted at `:301`), so a rejection arriving
-  // **after** the scene mounted reaches here too and takes that with it. That is
-  // what the page is for — a half-drawn display is not something to leave on a
-  // wall — but the status of a late failure is `vg-190`'s question rather than
-  // something this comment settles.
+  // The second caller is the `catch` around `startHostedTheme` in `main.ts` —
+  // the call that mounts the scene through `mountFabricScene` and then keeps
+  // running — so a rejection arriving **after** the scene mounted reaches here
+  // too and takes that with it. That is what the page is for, and it is the
+  // ruled behaviour rather than an open question: a display that says it is
+  // broken beats one showing stale art (`vg-190`, ruled 2026-10-14).
   document.body.replaceChildren(
     loadFailureView(loadFailureReason(error), () => window.location.reload()),
   );
