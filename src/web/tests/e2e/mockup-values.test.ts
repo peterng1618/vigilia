@@ -931,7 +931,6 @@ const SECTIONS = sectionTexts(DESIGN_TEXT);
 function licenceLedger(licensed: string): LicenceLedger {
   requireFullHistory();
   return {
-    design: DESIGN_TEXT,
     sections: SECTIONS,
     notes: NOTES,
     spec: {

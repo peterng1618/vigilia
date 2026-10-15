@@ -812,8 +812,6 @@ export type LicenceSource = {
  *  fixture without a repository — and a caller that has no history (a shallow
  *  clone) must refuse there rather than answering every question with `HEAD`. */
 export type LicenceLedger = {
-  /** `DESIGN.md`'s text — the source a `§N` names. */
-  readonly design: string;
   /** The section each `<!-- §N -->` marker opens, by bare number, read by
    *  `design-md.mjs`'s `sectionTexts`. A number its markers do not carry is
    *  absent, and a licence naming it is refused rather than searching the whole
