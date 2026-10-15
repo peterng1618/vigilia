@@ -90,12 +90,12 @@ unaffected.
 ## 5. The modal host, and what stays a dialog
 
 **The modal host stays; only Settings leaves it.** Checked at source rather than assumed: the shared
-host is `components/ui/dialog.tsx`, and `.editor-shell-dialog` is consumed by six surfaces besides
-Settings — `draft-recovery-prompt.tsx`, `new-document-chooser.tsx`,
-`persistence-manager/replace-document-prompt.tsx`, `theme-library-dialog.tsx`, plus the host's own
-rules and `editor-shell.control-rules.test.ts`. "The settings modal goes away" is therefore **not**
-"the modal host goes away", and this spec takes the narrow reading: Settings stops being a dialog
-consumer, the host and the five other consumers are untouched.
+host is `components/ui/dialog.tsx`, and **six modules import it** — `draft-recovery-prompt.tsx`,
+`new-document-chooser.tsx`, `persistence-manager/replace-document-prompt.tsx`,
+`theme-library-dialog.tsx`, `editor-shell/settings.tsx` and `editor-shell/shortcut-reference.tsx` — so
+Settings has **five** siblings and `.editor-shell-dialog` keeps them. "The settings modal goes away" is
+therefore **not** "the modal host goes away", and this spec takes the narrow reading: Settings stops
+being a dialog consumer, the host and the five other consumers are untouched.
 
 **What happens to the settings-specific CSS.** `editor-shell.css` is gated by the ratchet (`vg-274`),
 so rules that only ever matched the settings modal become dead entries in a gated file — which is the
