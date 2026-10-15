@@ -2211,14 +2211,35 @@ body,
   justify-content: center;
   overflow: hidden;
 }
-/* The name is the row's identity, so it is the one thing that does not give up
-   its width: everything beside it is allowed to shrink first. */
+/* The name is the row's identity and it is the column that yields, because
+   DESIGN.md §7.3 is explicit: "a row yields its name and its key before it
+   yields a control", and the role beside it "is never the column that gives
+   way". The `6ch` floor below is the *resting* row's — the row that draws no
+   control has no strip to pay for, and the floor is what keeps a deep,
+   key-heavy row from crushing its name. */
 .vigilia-layer-name {
   flex: 1 1 auto;
   min-width: 6ch;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+/* **The attended row lowers that floor**, which is the whole of `vg-447`: a row
+   drawing state controls reserves their strip out of the flex line (the `:has`
+   arms further down), and where the reservation is wider than the mark, the
+   role and the key can spare, the in-flow line overflows to the right and the
+   slot paints over the role. The role cannot be the column that yields — it is
+   `flex: none`, and a covered role says nothing at all — so the name pays, and
+   it pays by ellipsising, which `overflow`/`text-overflow` above already do.
+
+   `0` and not a smaller floor: any positive floor is still a width the row may
+   not have, and the row that cannot pay it overflows again. The name loses
+   nothing where there is room to take: `flex-grow: 1` still gives it every
+   free pixel on every row that has any, so the floor only ever mattered when
+   the line was shrinking. Scoped to the attended row rather than removed
+   outright, because at rest there is no strip to pay for. */
+.vigilia-layer-row:has(.vigilia-layer-state button) .vigilia-layer-name {
+  min-width: 0;
 }
 /* A group holds others, and a bold name says so without a mark repeating it. */
 .vigilia-layer-row[data-kind="group"] .vigilia-layer-name {
