@@ -33,11 +33,17 @@ function collectParts({
 /** Collects the set of objects excluded from processing.
  *
  * The dragged object's own ancestors and its own parts are both excluded
- * (`vg-123`): a group's box is the box of the parts it holds, and a group
- * wrapped around a single part has exactly that part's box, so either end of
- * the tree hands the dragged object its own lines back as a candidate and pins
- * the drag wherever it starts. Neither end was reachable while the candidate
- * set was roots. */
+ * (`vg-123`), and the reason is that **everything excluded here travels with the
+ * drag**: its own parts move with it, and Fabric re-fits a group's box around the
+ * child being dragged — measured in `vg-123`'s fix round on the nested fixture,
+ * where the child's own `left` moved `-90.5` while the card's box collapsed from
+ * 400×200 onto it. So an ancestor's box, or one of the object's own parts, offers
+ * the drag a line that moves with it, which is acquired at every step and pins
+ * the drag wherever it starts. A group with a **declared** `width`/`height` keeps
+ * that box rather than the parts' union, so the box equality the first version of
+ * this comment asserted does not hold; the exclusion does, because the re-fit is
+ * what makes the ancestor's box the drag's own line. Neither end was reachable
+ * while the candidate set was roots. */
 export const collectExcludedObjects = ({
   activeObject,
 }: {

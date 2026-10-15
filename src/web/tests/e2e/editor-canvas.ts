@@ -325,7 +325,11 @@ export async function clearSceneX(
 
       // The artboard is a snap source too; every test in this file treats the
       // scene as the starter's artboard wide, so its edges and centre belong
-      // here. Passed in rather than closed over: this runs in the page.
+      // here. Passed in rather than closed over: this runs in the page. The
+      // product reads the artboard object's own bounds instead, so this is the
+      // one residual where the helper's set is not a superset of the gesture's —
+      // it agrees only while the artboard starts at the origin, which every
+      // fixture here does.
       const lines = [0, artboard / 2, artboard];
       for (const object of all) {
         if (excluded.has(object)) continue;

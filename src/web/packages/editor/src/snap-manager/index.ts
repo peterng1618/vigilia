@@ -72,20 +72,22 @@ const SNAP_SOURCE_BOUNDS_EPSILON = 0.000000001;
 
 /** Whether a nested object repeats every line its enclosing box already offers.
  *
- * **This fires only on a child that adds no stroke.** A group with a declared
- * `width`/`height` keeps that box, while a child's `getBoundingRect()` includes
- * its own stroke — so on real shapes the two boxes differ by a stroke and the
+ * **This fires when the enclosing box equals the child's, which depends on
+ * whether the group was fitted or declared.** Fabric fits a group around its
+ * children, so `new Group([sole])` takes the child's own box — stroke included,
+ * `strokeWidth` 1 and 81×81 on both sides — and the dedupe fires. A group that
+ * *declares* a `width`/`height` keeps that box, while a child's
+ * `getBoundingRect()` still includes its own stroke, so the two differ and the
  * part *is* offered. Measured on the nested fixture's card: the group's declared
  * box is its 400×200, its `left-card-part` child is 61×81 at 360…421, and the
- * starter's card is the same story with a 2-unit stroke. Only a child whose box
- * matches its group's to within this epsilon — an image, or a shape with
- * `strokeWidth` 0, in a group whose declared box is that child's box — repeats
- * it, and only then is one edge kept from being weighed twice.
+ * starter's card is the same story with a 2-unit stroke.
  *
- * The narrow scope is a standing gap rather than a settled question: a
- * stroke-carrying part offers a duplicate of its group's centre line and its own
- * half-stroke edges (`vg-123`'s review, F2). Widening the epsilon to absorb the
- * stroke would be the other choice and is not this task's. */
+ * The narrow scope is a standing gap rather than a settled question, and it is
+ * shape-dependent: a stroke-carrying part repeats its group's line exactly on
+ * `snapping.spec.ts`'s own `source("group", …)` shape, as a shared left/top edge
+ * on the starter's cards, and not at all on the nested fixture's (`vg-526`).
+ * Widening the epsilon to absorb the stroke would be the other choice and is not
+ * this task's. */
 function repeatsEnclosingBounds(
   bounds: ObjectBounds,
   enclosing: ObjectBounds | null,
