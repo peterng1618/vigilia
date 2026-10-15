@@ -398,6 +398,62 @@ test("the status bar is the window's full-width bottom edge", async ({
 });
 
 /**
+ * §7.6's left readouts, as the strip draws them, and the report beside them.
+ *
+ * The counts are the strip's *resting* content: nothing has to happen for them
+ * to be there. What they read is the scene's own — compared against the
+ * bridge's snapshot rather than against a number this test remembers — so a
+ * strip that kept its own tally would fail here the moment the two drifted.
+ *
+ * The message is a distinct element now, so it is read where it is written.
+ * `#status`'s own text is the footer's: the counts, the message, the diagnostic
+ * and the save state together, and a whole-text assertion on it would say
+ * nothing about which of them a reader meant.
+ */
+test("the status bar reads the scene's counts, and still carries its message", async ({
+  page,
+}, testInfo) => {
+  test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+
+  await page.goto(EDITOR);
+  await expect(
+    page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+  ).toBeVisible();
+  await page.waitForFunction(() => "vigiliaEditorBridge" in window);
+
+  const objects = page.locator("[data-vigilia-status-objects]");
+  const selected = page.locator("[data-vigilia-status-selected]");
+  await expect(
+    objects,
+    "the object count is on the left at rest",
+  ).toBeVisible();
+  await expect(selected).toBeVisible();
+  await expect(selected).toHaveText("0 selected");
+  await expect(page.locator("#status-message")).toHaveText("Editor ready");
+
+  // The reading is the scene's, not a tally the strip keeps. The starter is the
+  // document this route boots, so it holds something.
+  const total = await page.evaluate(
+    () =>
+      (
+        window as unknown as {
+          readonly vigiliaEditorBridge: {
+            snapshot(): { readonly objectCount: number };
+          };
+        }
+      ).vigiliaEditorBridge.snapshot().objectCount,
+  );
+  expect(total, "the booted document holds objects").toBeGreaterThan(0);
+  await expect(objects).toHaveText(`${total} objects`);
+
+  // A selection moves the reading, and the message keeps its own element while
+  // it does.
+  await selectLayer(page, "group-cpu-card");
+  await expect(selected).toHaveText("1 selected");
+  await expect(page.locator("#status-message")).toHaveText("Editor ready");
+});
+
+/**
  * The selected slot's accent bar is on the rail's **inner** edge (DESIGN.md §7.2),
  * and only a rendered box can show which edge that is.
  *

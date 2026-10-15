@@ -266,7 +266,9 @@ async function savePackage(page: Page): Promise<{
   const download = page.waitForEvent("download");
   await page.getByRole("button", { name: "File", exact: true }).click();
   await page.getByRole("menuitem", { name: "Save package" }).click();
-  await expect(page.locator("#status")).toHaveText("Theme package saved");
+  await expect(page.locator("#status-message")).toHaveText(
+    "Theme package saved",
+  );
   const stream = await (await download).createReadStream();
   const chunks: Buffer[] = [];
   for await (const chunk of stream) chunks.push(Buffer.from(chunk));
@@ -289,7 +291,7 @@ async function importPackage(
     mimeType: "application/octet-stream",
     buffer: bytes,
   });
-  await expect(page.locator("#status")).toHaveText(`Opened ${name}`);
+  await expect(page.locator("#status-message")).toHaveText(`Opened ${name}`);
 }
 
 function activeId(page: Page): Promise<string | undefined> {
@@ -500,7 +502,7 @@ test.describe("the reference composition, authored", () => {
     // hung there — a timeout that read like a product fault and was not one.
     await answerDialogIfShown(page, "Create");
     await answerDialogIfShown(page, "Discard");
-    await expect(page.locator("#status")).toHaveText("New theme");
+    await expect(page.locator("#status-message")).toHaveText("New theme");
     await expect
       .poll(async () => idsOf(await sceneFacts(page)), { timeout: 15_000 })
       .not.toContain(authored);
@@ -805,7 +807,7 @@ test.describe("the reference composition, authored", () => {
     // `Opened <name>` overwrites it, so the author is told the package opened
     // and nothing else. Measured for the report; the observable truth here is
     // that no face was registered.
-    await expect(page.locator("#status")).toHaveText(
+    await expect(page.locator("#status-message")).toHaveText(
       "Opened broken-font.vigilia-theme",
     );
     const faces = await page.evaluate(() =>
@@ -922,7 +924,7 @@ test.describe("the reference composition, authored", () => {
       mimeType: "application/octet-stream",
       buffer: Buffer.from(built.bytes),
     });
-    await expect(page.locator("#status")).toHaveText(
+    await expect(page.locator("#status-message")).toHaveText(
       "Opened undeclared.vigilia-theme",
     );
     await waitForBridge(page);
@@ -1185,7 +1187,7 @@ async function openCaptureFixture(page: Page): Promise<Buffer> {
     mimeType: "application/octet-stream",
     buffer: Buffer.from(built.bytes),
   });
-  await expect(page.locator("#status")).toHaveText(
+  await expect(page.locator("#status-message")).toHaveText(
     "Opened capture.vigilia-theme",
   );
   await waitForBridge(page);

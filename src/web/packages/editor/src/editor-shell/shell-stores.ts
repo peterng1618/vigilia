@@ -8,6 +8,7 @@ export class SelectionStore {
   #bridge: EditorShellBridge | undefined;
   readonly #listeners = new Set<() => void>();
   #snapshot: EditorShellSnapshot = {
+    objectCount: undefined,
     selectedCount: 0,
     locked: false,
     activeKind: "none",
@@ -27,7 +28,10 @@ export class SelectionStore {
         for (const listener of this.#listeners) listener();
       });
     } else {
+      // No scene to count, so the strip's count readout has nothing to draw —
+      // never `0`, which is a blank document's own answer.
       this.#snapshot = {
+        objectCount: undefined,
         selectedCount: 0,
         locked: false,
         activeKind: "none",

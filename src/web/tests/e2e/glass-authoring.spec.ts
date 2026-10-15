@@ -49,7 +49,7 @@ async function openFixture(page: Page): Promise<void> {
     mimeType: "application/octet-stream",
     buffer: Buffer.from(fixture.bytes),
   });
-  await expect(page.locator("#status")).toHaveText(
+  await expect(page.locator("#status-message")).toHaveText(
     "Opened glass.vigilia-theme",
   );
 }

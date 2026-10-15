@@ -43,6 +43,7 @@ import {
   useSheet,
 } from "./shell-stores.js";
 import { ShortcutReference } from "./shortcut-reference.js";
+import { StatusReadout } from "./status-readout.js";
 
 /** Persistent DOM owners the imperative panels mount into. React positions
  * these; it never renders panel content. The Composition pane has no node
@@ -150,6 +151,11 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
     dock: document.createElement("div"),
   };
   hosts.canvas.id = "canvas-host";
+  // The status line's address. `editor-main` writes every report the editor
+  // makes into this span, and the footer around it now also carries the counts,
+  // the diagnostic, the save state and the live mark — so a reader that means
+  // the message has to name the message rather than the footer.
+  hosts.status.id = "status-message";
 
   let view: EditorViewControls | undefined;
   let publish: PublishSwitch | undefined;
@@ -426,7 +432,13 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
             )}
           </aside>
         </div>
+        {/* §7.6's strip: readouts only, the counts on the left and the save
+            state and live mark on the right. The message span sits between the
+            counts and the diagnostic, so a report is added to the left's
+            reading rather than replacing it — the counts are what the author
+            has when the editor is simply open, and a message is a moment. */}
         <footer id="status" className="editor-shell-status">
+          <StatusReadout store={store} />
           <Host node={hosts.status} />
           <DiagnosticMessage canvas={store.bridge?.editor.canvas} />
           <SaveState session={store.bridge?.session} />

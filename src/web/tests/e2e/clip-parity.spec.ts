@@ -469,7 +469,7 @@ async function openEditor(page: Page): Promise<void> {
     mimeType: "application/octet-stream",
     buffer: Buffer.from(written.bytes),
   });
-  await expect(page.locator("#status")).toHaveText(
+  await expect(page.locator("#status-message")).toHaveText(
     "Opened clip-parity.vigilia-theme",
   );
   await page.waitForFunction(

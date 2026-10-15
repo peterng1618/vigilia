@@ -477,6 +477,49 @@ it("selects the child itself when its group is the entered context", () => {
   expect(setActiveObject).toHaveBeenCalledWith(child);
 });
 
+it("resolves a range across one group's children to a single member", () => {
+  // The panel opens a group with its own twisty *without* entering it, so two
+  // of its rows are clickable while both still resolve through the group that
+  // owns them — and a shift-click across those two rows is the only gesture
+  // that reaches `selectLayers`'s dedupe (12.4a's own case runs with every card
+  // shut, so no two rows ever fold onto one group). Without the dedupe the same
+  // object enters the `ActiveSelection` twice.
+  const first = new Rect({ id: "first", width: 10, height: 10 });
+  const second = new Rect({ id: "second", width: 10, height: 10 });
+  const group = new Group([first, second]);
+  group.set("id", "group");
+  const setActiveObject = vi.fn();
+  const { bridge } = bridgeFor(group, {}, {}, { setActiveObject });
+
+  bridge.selectLayers(["first", "second"]);
+
+  // One member, so the group itself — not an `ActiveSelection` holding it twice.
+  expect(setActiveObject).toHaveBeenCalledWith(group);
+});
+
+it("carries the scene's object total beside the selection", () => {
+  // §7.6's left readout, and the one fact the strip carries that is not a
+  // message. Counted off the canvas, so it is the scene the layer list projects
+  // from rather than a second tally that could drift from it.
+  const rect = new Rect({ id: "header", width: 10, height: 10 });
+  const { bridge } = bridgeFor(rect);
+  expect(bridge.snapshot().objectCount).toBe(1);
+  expect(bridge.snapshot().selectedCount).toBe(1);
+});
+
+it("counts a scene that holds nothing as zero, and follows it as it changes", () => {
+  // `0` is a reading a blank document really has — the starter's composition
+  // taken out — and it is a different answer from having no scene to count,
+  // which the bridge never reports because it only exists over a mounted one.
+  const { bridge, canvas } = bridgeFor(undefined);
+  expect(bridge.snapshot().objectCount).toBe(0);
+
+  const added = new Rect({ id: "added", width: 10, height: 10 });
+  canvas.add(added);
+  canvas.fire("object:added", { target: added });
+  expect(bridge.snapshot().objectCount).toBe(1);
+});
+
 it("projects the entered group's context as ids, never Fabric objects", () => {
   const child = new Rect({ id: "child", width: 10, height: 10 });
   const group = new Group([child]);

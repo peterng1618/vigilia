@@ -41,7 +41,7 @@ test.describe("glass lifecycle in the real editor", () => {
       mimeType: "application/octet-stream",
       buffer: Buffer.from(fixture.bytes),
     });
-    await expect(page.locator("#status")).toHaveText(
+    await expect(page.locator("#status-message")).toHaveText(
       "Opened glass.vigilia-theme",
     );
     // The media must have real pixels, or a panel has no backdrop to blur and

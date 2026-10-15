@@ -42,7 +42,7 @@ test.describe("frosted glass in the editor", () => {
       mimeType: "application/octet-stream",
       buffer: Buffer.from(fixture.bytes),
     });
-    await expect(page.locator("#status")).toHaveText(
+    await expect(page.locator("#status-message")).toHaveText(
       "Opened glass.vigilia-theme",
     );
 

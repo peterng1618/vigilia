@@ -441,8 +441,16 @@ export const uiCopy = {
   },
   saveState: { unsaved: "Unsaved changes" },
   /** The status bar's own readings. `live` is the one word on the host mark the
-   *  strip draws when the LAN is serving this document. */
-  statusBar: { live: "live" },
+   *  strip draws when the LAN is serving this document; the two counts are the
+   *  strip's left half, which §7.6 makes the readouts it rests on. `objects`
+   *  carries the noun because a bare number names nothing, and `selected` needs
+   *  none because the word is the same at one and at many. */
+  statusBar: {
+    live: "live",
+    objects: (count: number): string =>
+      `${count} ${count === 1 ? "object" : "objects"}`,
+    selected: (count: number): string => `${count} selected`,
+  },
   /** The publish surface. §145: plain LAN HTTP has no confidentiality, so the
    *  words that turn it on have to say what it is. */
   publish: {

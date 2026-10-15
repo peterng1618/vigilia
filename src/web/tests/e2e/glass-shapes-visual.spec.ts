@@ -204,7 +204,7 @@ async function open(
     mimeType: "application/octet-stream",
     buffer: Buffer.from(packageFor(fill, withGlass)),
   });
-  await expect(page.locator("#status")).toHaveText(`Opened ${name}`);
+  await expect(page.locator("#status-message")).toHaveText(`Opened ${name}`);
   await page.waitForFunction(
     () => {
       const image = document.querySelector<HTMLImageElement>(

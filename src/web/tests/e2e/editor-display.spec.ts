@@ -249,7 +249,7 @@ test.describe("the stage looks through a display", () => {
         prompt.getByRole("button", { name: "Discard", exact: true }).click(),
       )
       .catch(() => undefined);
-    await expect(page.locator("#status")).toHaveText("New theme");
+    await expect(page.locator("#status-message")).toHaveText("New theme");
 
     const after = await measure(page);
 
@@ -434,7 +434,7 @@ test.describe("the stage looks through a display", () => {
         prompt.getByRole("button", { name: "Discard", exact: true }).click(),
       )
       .catch(() => undefined);
-    await expect(page.locator("#status")).toHaveText("New theme");
+    await expect(page.locator("#status-message")).toHaveText("New theme");
 
     await openMenu(page);
     expect(

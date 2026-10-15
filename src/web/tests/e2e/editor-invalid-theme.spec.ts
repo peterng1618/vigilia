@@ -106,7 +106,7 @@ test("a stored theme that does not validate is reported, not opened as success",
   await expect(page.locator("#status")).toContainText(
     "schemaVersion is required",
   );
-  await expect(page.locator("#status")).not.toHaveText("Editor ready");
+  await expect(page.locator("#status-message")).not.toHaveText("Editor ready");
 
   // The invalid document did not open: what is mounted is the template. The
   // bridge is the reader the header chip uses, so this is the product's own

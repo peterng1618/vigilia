@@ -7,8 +7,8 @@ import { GLASS_BAR, glassStripesPng } from "./glass-fixture.js";
  *
  * **This was `page.goto("/")`, which resolved against `use.baseURL` — the
  * *player* at 4173.** Every step below is an editor affordance: a theme file
- * input, `#status`, `canvas.lower-canvas`. On the player, `open()` waited out
- * its 20 s image poll and then sat on the `#status` expectation for the rest of
+ * input, `#status-message`, `canvas.lower-canvas`. On the player, `open()` waited out
+ * its 20 s image poll and then sat on the `#status-message` expectation for the rest of
  * the budget, so the test reported a timeout and said nothing whatever about
  * glass. The 240s/300s budgets were never too small; the page was never the
  * editor. A relative URL here names the config, and the config names the player.
@@ -183,7 +183,7 @@ async function open(page: Page, kinds: readonly Kind[]): Promise<void> {
     mimeType: "application/octet-stream",
     buffer: Buffer.from(packageFor(kinds)),
   });
-  await expect(page.locator("#status")).toHaveText(`Opened ${name}`);
+  await expect(page.locator("#status-message")).toHaveText(`Opened ${name}`);
   await page.waitForFunction(
     () => {
       const image = document.querySelector<HTMLImageElement>(

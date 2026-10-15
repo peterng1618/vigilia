@@ -47,7 +47,7 @@ function fixture(withMedia: boolean) {
 
 /**
  * The **file name is the barrier**, and it has to be: both opens report the
- * same status text, so waiting on `#status` after the second open is satisfied
+ * same status text, so waiting on `#status-message` after the second open is satisfied
  * by the first open's text and returns immediately - measuring whatever canvas
  * happens to be mounted at that moment. Distinct names make the wait mean
  * something, and the media-layer count is asserted afterwards so the scene
@@ -62,7 +62,7 @@ async function open(page: Page, withMedia: boolean): Promise<void> {
     mimeType: "application/octet-stream",
     buffer: Buffer.from(fixture(withMedia)),
   });
-  await expect(page.locator("#status")).toHaveText(`Opened ${name}`);
+  await expect(page.locator("#status-message")).toHaveText(`Opened ${name}`);
   // Match set: the scene just opened is the one measured. A stale editor would
   // still have the media layer the no-media open is supposed to have dropped.
   await expect(page.locator("[data-vigilia-background-media] img")).toHaveCount(

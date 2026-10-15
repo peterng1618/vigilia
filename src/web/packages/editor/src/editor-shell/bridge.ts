@@ -29,6 +29,17 @@ export type ActiveKind = "none" | "object" | "group" | "chart";
 type ShellAction = ObjectActionId;
 
 export interface EditorShellSnapshot {
+  /** The scene's own object total — §7.6's left readout, and the one fact the
+   *  strip carries that is not a message. The scene is the canvas, so this is
+   *  counted there rather than held here.
+   *
+   *  `undefined` where there is no scene to count. A strip reading `0 objects`
+   *  over a canvas that has not mounted its document is a claim the product
+   *  does not have (DESIGN.md §9), and the absence is what says so — the same
+   *  shape `documentName` takes for the document it names. A document that
+   *  really holds nothing reports `0`, which is a reading rather than a
+   *  default, and the two are different answers. */
+  readonly objectCount: number | undefined;
   readonly selectedCount: number;
   readonly locked: boolean;
   readonly activeKind: ActiveKind;
@@ -221,6 +232,11 @@ export function createEditorShellBridge(input: {
     // prefix is dropped once here rather than at every reader of the field.
     const presetRef = active === undefined ? undefined : typePresetOf(active);
     return {
+      // Counted here, off the canvas, so the strip and the layer list read one
+      // scene. The bridge only exists over a mounted document, so this reading
+      // is always a number; the snapshot's `undefined` is the shell's own
+      // no-scene state, stated by `SelectionStore` before a bridge is set.
+      objectCount: canvas.getObjects().length,
       selectedCount:
         active instanceof ActiveSelection
           ? active.getObjects().length

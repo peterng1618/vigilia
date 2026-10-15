@@ -120,6 +120,7 @@ function bridgeStub(
 ): EditorShellBridge {
   return {
     snapshot: () => ({
+      objectCount: 0,
       selectedCount: 0,
       locked: false,
       activeKind: "none",
@@ -745,10 +746,10 @@ it("keeps the diagnostic surface in the footer, and it still reports a refusal",
   layout.setBridge(bridge, undefined);
   await Promise.resolve();
   const line = root.querySelector("#status");
-  // The footer keeps its three readings — the counts span the status host is
-  // handed, the diagnostic and the save state — and the live mark joins them
-  // only when the host reports the LAN on. No host is behind this shell, so no
-  // mark is drawn rather than "not live" (§9).
+  // The footer keeps its readings — the counts, the status host's message, the
+  // diagnostic and the save state — and the live mark joins them only when the
+  // host reports the LAN on. No host is behind this shell, so no mark is drawn
+  // rather than "not live" (§9).
   expect(line?.contains(layout.hosts.status)).toBe(true);
   expect(line?.querySelector(".editor-shell-save-state")).not.toBeNull();
   expect(line?.querySelector(".editor-shell-live")).toBeNull();
@@ -766,6 +767,42 @@ it("keeps the diagnostic surface in the footer, and it still reports a refusal",
 
   layout.destroy();
   logged.mockRestore();
+});
+
+it("reads the scene's counts on the left, and draws none before a bridge is set", async () => {
+  const root = document.createElement("div");
+  const layout = createShellLayout(root);
+
+  // No scene has mounted, so there is no total to read. The left is empty
+  // rather than reading `0 objects` over a canvas the editor has not built —
+  // that reading is a claim the product does not have (§9).
+  expect(root.querySelector("[data-vigilia-status-objects]")).toBeNull();
+  expect(root.querySelector("#status")?.textContent).toBe("");
+
+  layout.setBridge(
+    bridgeStub({
+      snapshot: () => ({
+        objectCount: 52,
+        selectedCount: 3,
+        locked: false,
+        activeKind: "group",
+        documentName: undefined,
+        selectionPresetId: undefined,
+      }),
+    }),
+    undefined,
+  );
+  await Promise.resolve();
+
+  const line = root.querySelector("#status");
+  expect(
+    line?.querySelector("[data-vigilia-status-objects]")?.textContent,
+  ).toBe("52 objects");
+  expect(
+    line?.querySelector("[data-vigilia-status-selected]")?.textContent,
+  ).toBe("3 selected");
+
+  layout.destroy();
 });
 
 it("puts the document's identity in the stage's top-left corner", async () => {

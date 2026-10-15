@@ -392,7 +392,7 @@ async function openPackage(
     mimeType: "application/octet-stream",
     buffer: bytes,
   });
-  await expect(page.locator("#status")).toHaveText(`Opened ${name}`);
+  await expect(page.locator("#status-message")).toHaveText(`Opened ${name}`);
 }
 
 /**
