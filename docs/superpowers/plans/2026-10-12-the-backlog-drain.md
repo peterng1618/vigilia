@@ -1217,10 +1217,11 @@ only the form changed, and it is now the form every other phase uses.
       `scripts/design-tokens.gated.json`, `scripts/design-tokens.mjs`'s `CEILINGS` entry, and
       `tests/e2e/design-language.spec.ts`. **It owns `editor-shell.css` outright**, so it runs after
       Task 12.3d's edits there have landed, which they have.
-- [ ] **12.4f `vg-023` — the canvas dim.** **Not dispatchable as written:** the row names no renderer
-      path, and no `DESIGN.md` §7 entry for the dim exists. Its layer half already landed as `vg-058` at
-      `b5e2f798`; the canvas half needs its landmark found before a brief can be written, so it is the
-      one of the six that is work to scope rather than work to dispatch.
+- [ ] **12.4f `vg-023` — the canvas dim.** **Dispatchable** — its brief was written 2026-10-15 and
+      quotes the row's ruling verbatim (the dim is a view-layer effect the renderer draws at draw time
+      and never object opacity). Its layer half already landed as `vg-058` at `b5e2f798`, so what
+      remains is the canvas half plus the `DESIGN.md` §7 entry the dim has to have. It runs after
+      12.4d's fix round, because the browser serves one shared `dist`.
 
 ### Task 12.5: `vg-330`'s spec
 
