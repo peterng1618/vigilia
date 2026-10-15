@@ -8,9 +8,8 @@ import { uiCopy } from "../ui-copy.js";
 export type ReplacementAnswer = "save" | "discard" | "cancel";
 
 /** The one control treatment a dialog's own buttons share, in tokens. A dialog
- *  button is not in the closed control vocabulary (§5) — it is chrome around an
- *  answer — so it carries the well's surface and edge rather than a `Control`
- *  component. */
+ *  button is chrome around an answer rather than a `Control` component, so the
+ *  three dialogs that render one take this string rather than the control set. */
 const ACTION_BUTTON =
   "rounded-sm border border-edge bg-panel-2 px-[var(--space-12)] py-[var(--space-6)] text-sm text-text hover:border-accent hover:text-accent";
 

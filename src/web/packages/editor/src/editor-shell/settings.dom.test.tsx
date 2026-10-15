@@ -719,4 +719,23 @@ describe("the modal's own language", () => {
     if (value === null) throw new Error("no value cell in the row.");
     expect(getComputedStyle(value).textAlign).toBe("right");
   });
+
+  it("leaves the Keyboard tab's rebind row the flex row its drawing draws", async () => {
+    // §5 rule 2's escape clause: this row's `dd` carries a rebind and a Reset
+    // button, so it is not read-only and the 74px column is not its track.
+    // `display` is the declaration the grid would take, because the row's own
+    // rule declares none of its own.
+    const host = mount();
+    await press(gear(host));
+    await openTab(uiCopy.settings.keyboard);
+
+    const row = document.querySelector<HTMLElement>(
+      '[data-vigilia-shortcut-row="publish.surface"]',
+    );
+    if (row === null) throw new Error("no rebind row in the Keyboard tab.");
+    const style = getComputedStyle(row);
+
+    expect(style.display).toBe("flex");
+    expect(style.gridTemplateColumns, "no 74px track reached it").toBe("");
+  });
 });

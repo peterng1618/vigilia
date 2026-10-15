@@ -1624,28 +1624,37 @@ body,
 .editor-shell-dialog dl {
   margin: 0;
 }
-/* §5 rule 2's read-only row: the grid is a 74px label column and one value
-   cell. The literal is the rule's, and `control-well.tsx`'s `column` label
-   writes the same track (`w-[74px]`); the two drawings' 16px gap is not the
-   column and stays, because the ruling moves the label's *track*, not the
-   space between the label and its value. */
+/* The `dl`'s shared rhythm. The drawings' 16px gap stays: §5 rule 2 moves the
+   label's *track*, not the space between the label and its value. */
 .editor-shell-dialog dl > div {
-  display: grid;
-  grid-template-columns: 74px 1fr;
+  display: flex;
   align-items: baseline;
+  justify-content: space-between;
   gap: 16px;
   /* §3 has no 3 step; the drawing takes 4 (`current/settings-about.html`). */
   padding: 4px 0;
 }
+/* §5 rule 2's read-only rows — the About pane's and the `?` sheet's. The
+   Keyboard tab's rebind row is excluded: it is interactive, and keeps the flex
+   row its drawing gives it (`current/settings-keyboard.html:56`). */
+.editor-shell-dialog dl > div:not([data-vigilia-shortcut-row]) {
+  display: grid;
+  grid-template-columns: 74px 1fr;
+}
 .editor-shell-dialog dt {
   color: var(--shell-text);
-  /* §5 rule 2 — a label longer than the 74px column wraps rather than widening
-     the track, the way `control-well.tsx`'s `column` label already does. */
+}
+/* §5 rule 2 — the label wraps inside the 74px column rather than widening it.
+   `anywhere` and not `break-word`: only `anywhere` counts the break in the
+   element's min-content size, so only it keeps a long word inside the track. */
+.editor-shell-dialog dl > div:not([data-vigilia-shortcut-row]) > dt {
   overflow-wrap: anywhere;
 }
 .editor-shell-dialog dd {
   margin: 0;
-  /* §5 rule 2 — the value cell is right-aligned. */
+}
+/* §5 rule 2 — the value cell is right-aligned. */
+.editor-shell-dialog dl > div:not([data-vigilia-shortcut-row]) > dd {
   text-align: right;
 }
 .editor-shell-dialog kbd {
