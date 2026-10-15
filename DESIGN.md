@@ -141,7 +141,7 @@ number that is prose ("three parts") is sans.
 | `--text-xl` | 19px | 1.2 | Empty-state headings |
 
 Uppercase is reserved for **section eyebrows** — Content, Position, Layer,
-Paint, Spends, and the group headings in the Add pane. An eyebrow is
+Paint, and the group headings in the Add pane. An eyebrow is
 `--text-2xs`, `600`, `letter-spacing: .11em`, muted, and it always labels a
 region, never a control. Nothing else is uppercase: a chord is printed as the
 platform prints it, and a menu row is sentence case.
@@ -273,7 +273,6 @@ thing actually raises**, and describes what the thing *is*:
 | **Position** | Where does it sit, and how big? |
 | **Layer** | How does it present? |
 | **Paint** | What ink? |
-| **Spends** | Read-only: what does it resolve to? |
 
 - The column opens with **the subject**: its kind's glyph, then its name at
   `--text-md`, and the binding key beneath the row when one is bound — a
@@ -281,13 +280,17 @@ thing actually raises**, and describes what the thing *is*:
   not open with a chrome label, and **the kind is that glyph, not a line of its
   own**: `vg-466`, the user's item 9, took the type label away for the icon.
 - **A section with nothing in it is not rendered** — no header, no zero count.
-- Geometry is collapsed by default; the binding is what changes constantly.
+- **Every section opens; none starts closed.** Position was the one exception,
+  on the reasoning that geometry is set once — but a new object's position is
+  what it is usually selected *for*, so the asymmetry cost more than it saved.
+  The column stops deciding this for the author; a reader may still close a
+  section, and §8 keeps that disclosure.
 - **A property a kind does not have is not shown as a field.** Where the
   capability exists but this selection cannot carry it, the row renders refused
   with the reason (see §5.3).
 - **There is no per-card column.** A card is a `Group`; groups get name,
-  transform, opacity, and their children's effective appearance. The question
-  "which sensor" is asked on the element that carries the binding.
+  transform and opacity. The question "which sensor" is asked on the element
+  that carries the binding.
 - With nothing selected the column is empty and says where to choose from.
 
 ### The stage
@@ -349,8 +352,7 @@ menus.** Anything actionable belongs to a region that owns it.
 - **Content survives density.** Names may ellipsize in lists, but their full
   value remains in the accessible name and is available on focus as well as
   hover. Refusals, validation messages, units and numeric edits never
-  ellipsize. Read-only references may wrap with `overflow-wrap: anywhere`.
-  A long name cannot widen a pane or hide its row actions.
+  ellipsize. A long name cannot widen a pane or hide its row actions.
 - **Chrome stays still.** Pane title and footer stay outside the scrolling body;
   inspector sections share one vertical scroller. Preserve per-pane offsets and
   disclosure state across routine updates. Use native scrollbars and reserve
@@ -451,9 +453,9 @@ so 40 keeps a pixel either side of the box that rule measures. **§3's table is 
 **Rules that make it readable:**
 
 1. **A value inside a well means editable.** Structural borders on panels and
-   disclosures do not mean editable. A value row with no well is read-only, and
-   it says so in its section header — never in a tooltip, never inferable only
-   from absence. `Spends` is the standing example.
+   disclosures do not mean editable: a disclosure says how much the section
+   holds, never whether it may be written. A value with no well is not editable,
+   and that is never stated in a tooltip alone.
 2. **Read-only rows are label + mono value, baseline-aligned, right-aligned.**
    They share the grid with controls so a section does not jump between shapes.
    **The grid is a 74px label column and one value cell**, and the cell is one
@@ -580,7 +582,7 @@ Rules:
 - **Disclosure is for the once-in-a-while, not the frequent.** A frequently used
   control stays visible; a collapsed section is for what is adjusted rarely.
   Choosing wrong here is the mistake §7.1 exists to prevent.
-- **A section header says what the section is**, and a read-only section says so.
+- **A section header says what the section is** — the question it answers.
 
 ## Copy
 
