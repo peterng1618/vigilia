@@ -341,12 +341,9 @@ export function createSelectionInspector(
         break;
       }
       case "angle": {
-        // The property alone rotates about the authored left/top origin, while
-        // the canvas gesture holds the centre (Fabric's `centeredRotation`), so
-        // the centre is read before the write and restored after it (vg-475).
-        // Read *relative*: `getCenterPoint` maps a grouped child through its
-        // group while `setPositionByOrigin` writes the child's own left/top, so
-        // the absolute route moves a child by its group's centre (canvas-nudge).
+        // The property alone rotates about the authored left/top origin while
+        // the gesture holds the centre (`centeredRotation`), so the centre is
+        // read before the write and restored after it (vg-475; canvas-nudge).
         const centre = object.getRelativeCenterPoint();
         object.set({ angle: value });
         object.setPositionByOrigin(centre, "center", "center");
