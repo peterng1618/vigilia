@@ -220,6 +220,31 @@ export function checkPlacement(register, items) {
 }
 
 /**
+ * A row lives in one register, never both.
+ *
+ * Cross-file id disjointness is *assumed* by the moves between the two files
+ * and was checked by nothing: a row copied into the archive without being
+ * removed from the live file, or returned to live without leaving the archive,
+ * leaves the checker reporting nothing while the same finding is counted twice
+ * (or worked twice). A row that has moved is a `git mv` of one line, so a
+ * reader may rely on the two files being disjoint.
+ */
+export function checkDisjoint(registers) {
+  const problems = [];
+  const owners = new Map();
+  for (const { name, items } of registers) {
+    if (!Array.isArray(items)) continue;
+    for (const item of items) {
+      if (item?.id === undefined) continue;
+      const first = owners.get(item.id);
+      if (first === undefined) owners.set(item.id, name);
+      else problems.push(`${item.id}: present in both ${first} and ${name} — a row lives in one register, so one of the two is stale`);
+    }
+  }
+  return problems;
+}
+
+/**
  * One register's rows and problems, from its text.
  *
  * A register that cannot be read, or holds no rows, is a failure like any
@@ -256,11 +281,14 @@ if (process.argv[1]?.endsWith("backlog-check.mjs")) {
   // error, not a warning — a gate that tolerates the drift it finds is the
   // false green the whole split was meant to prevent.
   const registers = [FILE, ARCHIVE].map(readRegister);
-  const problems = registers.flatMap(({ name, items, problems: readProblems }) =>
-    [...readProblems, ...check(items), ...checkPlacement(name, items)].map(
-      (problem) => `${name}: ${problem}`,
+  const problems = [
+    ...registers.flatMap(({ name, items, problems: readProblems }) =>
+      [...readProblems, ...check(items), ...checkPlacement(name, items)].map(
+        (problem) => `${name}: ${problem}`,
+      ),
     ),
-  );
+    ...checkDisjoint(registers),
+  ];
   const items = registers.reduce((count, register) => count + register.items.length, 0);
 
   if (process.argv.includes("--self-test")) {
@@ -306,6 +334,10 @@ if (process.argv[1]?.endsWith("backlog-check.mjs")) {
       ["a verified row in the archive passes", checkPlacement("docs/product/backlog-archive.jsonl", [{ id: "vg-x", state: "verified" }]).length === 0],
       ["a withdrawn row in the archive passes", checkPlacement("docs/product/backlog-archive.jsonl", [{ id: "vg-x", state: "withdrawn" }]).length === 0],
       ["a verified row left in the live file fails", checkPlacement("docs/product/backlog.jsonl", [{ id: "vg-x", state: "verified" }]).length > 0],
+      // Rule 7: a row lives in one register. Disjointness was assumed by every
+      // move between the files and checked by nothing.
+      ["an id in both registers fails", checkDisjoint([{ name: FILE, items: [{ id: "vg-x" }] }, { name: ARCHIVE, items: [{ id: "vg-x" }] }]).length > 0],
+      ["registers with no shared id pass", checkDisjoint([{ name: FILE, items: [{ id: "vg-x" }] }, { name: ARCHIVE, items: [{ id: "vg-y" }] }]).length === 0],
       ["an unreadable register is a labelled failure", registerRows("docs/product/backlog.jsonl", null).problems.some((p) => /unreadable/.test(p))],
       ["an empty register is a failure, not all-valid", registerRows("docs/product/backlog.jsonl", "\n\n").problems.some((p) => /empty/.test(p))],
       // The two cases above call registerRows directly, so the catch that stops
