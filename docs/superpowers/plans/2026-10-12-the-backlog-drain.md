@@ -2776,6 +2776,22 @@ project timeout so wide it hides a real hang.
 - [ ] **Step 2: Today's two-strip assertion passes with a transport gap standing in for the composition gap**, which is a different pair — so the fixture inventory is the entry it is missing, against a requirement that already exists.
 - [ ] **Step 3: Close it**, with the fixture shown to raise both strips at once.
 
+### Task 22.8: The insert driver names the family it inserts
+
+**Added 2026-10-16**, homing `vg-537`, which was filed the same day by Task 15.5's seat. It belongs to
+this phase because it is a **test driver**, and the phase's own subject is the proofs the plans owe.
+
+**Files:**
+- Modify: `src/web/tests/e2e/rebuild-driver.ts` (`insert`)
+
+**Interfaces:**
+- Produces: `vg-537` closed
+
+- [ ] **Step 1: The code and its comment disagree, and the comment is the wrong one.** `insert` takes `button.last()` when a label matches twice, while the comment above says *"'Line' is a shape and a chart, and the legend above each is what tells them apart"*. **Taking the last match is an ordering assumption, not the legend** — a caller asking for the shape's Line silently gets the chart family's, and the helper's own poll is satisfied either way because the scene grew by one.
+- [ ] **Step 2: Address the tile by its legend or its group**, so the family is named rather than inferred — or take the family as a parameter and make the ambiguous call a type error. **`.first()` is not the fix**: it has the same defect mirrored.
+- [ ] **Step 3: Read the Add pane's structure rather than reordering its tiles**, and prove the driver red by asking for the shape's Line and asserting the inserted object's kind.
+- [ ] **Step 4: Close it.**
+
 ---
 
 # Phase 23 — W18: the host, the schema, the persisted model, and the records
