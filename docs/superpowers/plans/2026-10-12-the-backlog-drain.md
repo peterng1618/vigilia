@@ -3057,6 +3057,44 @@ shape is the one worth recording.**
   wish … so it is fixed, not parked"*). Both are gated on their own spec's acceptance, which is why
   Phase 24 is ordered ahead of Phases 15–23 and behind Phase 12 rather than by its number.
 
+**The seventh correction, measured 2026-10-16 at `566a3665`, and it says the sixth was measuring the
+wrong thing: a phase the ledger records *closed* is not a home.** The sixth counted a row as carried when
+any phase names it. **Thirteen of the plan's phases have closed** — 0–10, 13 and 14, each with a closing
+entry in `.superpowers/sdd/2026-10-12-the-backlog-drain/progress.md` (the plan has no Phase 11) — so a row
+whose only named phase is one of those is carried by work that will never run. Measured over the open
+rows, **with the closed set taken from the ledger rather than from the plan's own `- [ ]` boxes**, which
+are essentially unticked — Phase 1 reads 7 of 25 and every other phase 0, because the ledger and not the
+plan owns completion, so a box is not evidence either way:
+
+| | rows |
+|---|---|
+| open | **185** |
+| parked — known, not scheduled | 35 |
+| carried by a phase the ledger records **open** | **102** |
+| **carried only by phases the ledger records closed** | **50** |
+| named by no phase at all, outside the park | **0** |
+
+**So the second number is 50, not 0.** The 33 rows named nowhere are exactly the parked set, which is what
+the fifth correction predicted and why this one does not re-count them. The 50 are spread over the closed
+phases as **76 namings** — 26 by Phase 2, 13 by Phase 1, 9 by Phase 6, 7 by Phase 8, 6 by Phase 7, 5 by
+Phase 4, 4 by Phase 13, 3 by Phase 3, 2 by Phase 9 and 1 by Phase 5, a row named by two closed phases
+counting in both — and **every one comes from the 101 rows the triage found already carried, never from
+the 48 it homed**, which is why the sixth correction could not see them.
+
+**Four of the 50 were read rather than counted, and none is a deferral with a forward pointer.**
+`vg-133`'s ruling ends *"this row is the first candidate for the device-lens work that follows the drain"*;
+`vg-389`'s names no phase at all, only *"whoever owns the composition row's own focus"*; `vg-396`'s
+WHAT-WOULD-CLOSE-IT is a browser reading no phase holds; `vg-326`'s subject is unchanged and unowned.
+**A closed phase's ruling that defers a row forward does not name the phase it defers to**, so this census
+cannot see the pointer even where one exists — the same shape as the fourth correction, where Phase 1's
+tasks turned out to be rulings and not homes.
+
+**What that makes the next structural job:** reading the 50 one at a time, as the sixth did for its 51 —
+each row's ruling read as the verdict it is, and each either homed in a phase that will run, parked, or
+withdrawn. **The count is 185/50, from 207/150**, and the sixth correction's 187/0 is corrected rather
+than superseded: its arithmetic was right about what it measured, and what it measured was "named by a
+phase" rather than "named by a phase that will run".
+
 **The count is now 187/0, from 207/150.** The first number fell by 20 and the second by 150, and **the
 second is the one this section exists to keep visible**: every open row now carries a phase, a park, or a
 ruling that says it is the user's. **The drain's structural work on the register is finished**, and what
