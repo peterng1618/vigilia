@@ -4,7 +4,7 @@ import { createDemoSource } from "@vigilia/fake-source";
 import { objectName } from "@vigilia/renderer-core";
 import { isLocked, serialiseScene } from "@vigilia/scene-fabric";
 import { FabricImage, type FabricObject, Group, Rect } from "fabric/es";
-import { beforeEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { createEditorShellBridge } from "./editor-shell/bridge.js";
 import { mountEditorShell } from "./editor-shell.js";
 import { LiveRuntime } from "./live-runtime.js";
@@ -32,6 +32,25 @@ beforeEach(() => {
         }) as unknown as CanvasRenderingContext2D,
     );
   }
+});
+
+/** The shell a case mounted, so a case that throws before its own `destroy()`
+ *  does not leak it — canvas, listeners and the `window` entry
+ *  `mountEditorShell` publishes — into the next case, which then fails on the
+ *  previous case's leak rather than on its own subject (`vg-414`). */
+let live: Awaited<ReturnType<typeof mountEditorShell>> | null = null;
+
+async function mount(
+  options: Parameters<typeof mountEditorShell>[0],
+): Promise<Awaited<ReturnType<typeof mountEditorShell>>> {
+  const shell = await mountEditorShell(options);
+  live = shell;
+  return shell;
+}
+
+afterEach(() => {
+  live?.destroy();
+  live = null;
 });
 
 /** Fabric objects at any depth: the starter's cards are groups, so a walk that
@@ -92,7 +111,7 @@ describe("a binding cannot outlive its object", () => {
       clientHeight: { value: 600 },
     });
     const authored = createNewFabricTheme();
-    const shell = await mountEditorShell({
+    const shell = await mount({
       host,
       artboard: authored.artboard,
       envelope: {
@@ -124,8 +143,6 @@ describe("a binding cannot outlive its object", () => {
     expect(Object.keys(after.bindings ?? {}).length).toBe(
       Object.keys(authored.bindings ?? {}).length - 1,
     );
-
-    shell.destroy();
   });
 });
 
@@ -142,7 +159,7 @@ describe("the one walk a reference question reads", () => {
       clientHeight: { value: 600 },
     });
     const authored = createNewFabricTheme();
-    const shell = await mountEditorShell({
+    const shell = await mount({
       host,
       artboard: authored.artboard,
       envelope: authored,
@@ -167,8 +184,6 @@ describe("the one walk a reference question reads", () => {
 
     expect(sceneIds(after.scene)).toContain("deep-readout");
     expect(Object.keys(after.bindings ?? {})).toContain("deep-readout");
-
-    shell.destroy();
   });
 
   /** `vg-365`: eligibility and the two managers that refuse a locked selection
@@ -183,7 +198,7 @@ describe("the one walk a reference question reads", () => {
       clientHeight: { value: 600 },
     });
     const authored = createNewFabricTheme();
-    const shell = await mountEditorShell({
+    const shell = await mount({
       host,
       artboard: authored.artboard,
       envelope: authored,
@@ -213,7 +228,6 @@ describe("the one walk a reference question reads", () => {
     expect(shell.editor.deletionManager.deleteActive()).toBe(false);
 
     bridge.destroy();
-    shell.destroy();
   });
 });
 
@@ -228,7 +242,7 @@ describe("the dirty guard and what the renderer paints", () => {
       clientHeight: { value: 600 },
     });
     const authored = createNewFabricTheme();
-    const shell = await mountEditorShell({
+    const shell = await mount({
       host,
       artboard: authored.artboard,
       envelope: authored,
@@ -310,8 +324,6 @@ describe("the dirty guard and what the renderer paints", () => {
     const moved = (edited.scene as { objects: { left: number }[] }).objects;
     if (moved?.[0] !== undefined) moved[0].left += 5;
     expect(manager.isDirty(edited, {})).toBe(true);
-
-    shell.destroy();
   });
 });
 
@@ -323,7 +335,7 @@ describe("native editor shell", () => {
       clientHeight: { value: 300 },
     });
 
-    const shell = await mountEditorShell({
+    const shell = await mount({
       host,
       artboard: { width: 100, height: 100 },
     });
@@ -331,7 +343,6 @@ describe("native editor shell", () => {
 
     expect(host.querySelector("canvas")).not.toBeNull();
     expect(shell.editor.canvas.getActiveObject()).toBe(text);
-    shell.destroy();
   });
 
   it("exposes the mounted editor on window for devtools/e2e access, and removes it on destroy", async () => {
@@ -341,7 +352,7 @@ describe("native editor shell", () => {
       clientHeight: { value: 300 },
     });
 
-    const shell = await mountEditorShell({
+    const shell = await mount({
       host,
       artboard: { width: 100, height: 100 },
     });
@@ -367,7 +378,7 @@ describe("native editor shell", () => {
       clientHeight: { value: 300 },
     });
 
-    const shell = await mountEditorShell({
+    const shell = await mount({
       host,
       artboard: { width: 100, height: 100 },
     });
@@ -381,7 +392,6 @@ describe("native editor shell", () => {
       .getObjects()
       .find((object) => object.get("id") === text.get("id"));
     expect(revived?.left).toBe(5);
-    shell.destroy();
   });
 
   it("keeps an open crop frame out of the serialised scene", async () => {
@@ -390,7 +400,7 @@ describe("native editor shell", () => {
       clientWidth: { value: 400 },
       clientHeight: { value: 300 },
     });
-    const shell = await mountEditorShell({
+    const shell = await mount({
       host,
       artboard: { width: 400, height: 300 },
     });
@@ -409,6 +419,7 @@ describe("native editor shell", () => {
     expect(scene.objects[0]?.["id"]).toBe("image-1");
 
     shell.destroy();
+    live = null;
     host.remove();
   });
 
@@ -418,7 +429,7 @@ describe("native editor shell", () => {
       clientWidth: { value: 400 },
       clientHeight: { value: 300 },
     });
-    const shell = await mountEditorShell({
+    const shell = await mount({
       host,
       artboard: { width: 100, height: 100 },
     });
@@ -441,11 +452,12 @@ describe("native editor shell", () => {
     );
 
     shell.destroy();
+    live = null;
     host.remove();
 
     // Reopening the saved envelope is what makes the name durable; keeping it
     // only on the live object would pass every assertion above.
-    const reopened = await mountEditorShell({
+    const reopened = await mount({
       host: document.createElement("div"),
       artboard: { width: 100, height: 100 },
       envelope: saved,
@@ -461,7 +473,7 @@ describe("native editor shell", () => {
     Object.defineProperty(host, "clientWidth", { value: 1000 });
     Object.defineProperty(host, "clientHeight", { value: 400 });
     document.body.append(host);
-    const shell = await mountEditorShell({
+    const shell = await mount({
       host,
       artboard: {
         width: 1280,
@@ -476,7 +488,6 @@ describe("native editor shell", () => {
     // host instead.
     expect(shell.editor.canvas.getWidth()).toBe(1000);
     expect(shell.editor.canvas.getHeight()).toBe(400);
-    shell.destroy();
   });
 });
 
@@ -529,7 +540,7 @@ describe("editor background media", () => {
     };
 
     try {
-      const shell = await mountEditorShell({
+      const shell = await mount({
         host,
         artboard,
         assets: video,
@@ -568,7 +579,7 @@ describe("editor background media", () => {
       { id: "hero", kind: "image" as const, path: "assets/hero.png" },
     ];
 
-    const shell = await mountEditorShell({
+    const shell = await mount({
       host,
       artboard: {
         width: 100,
@@ -600,7 +611,6 @@ describe("editor background media", () => {
     // Once, not a loop: a still image is not a moving thing.
     image?.dispatchEvent(new Event("load"));
     expect(asked, "and it is not a loop").toBe(1);
-    shell.destroy();
   });
 
   it("stops asking for a repaint once the editor is destroyed", async () => {
@@ -614,7 +624,7 @@ describe("editor background media", () => {
       clientWidth: { value: 400 },
       clientHeight: { value: 300 },
     });
-    const shell = await mountEditorShell({
+    const shell = await mount({
       host,
       artboard: {
         width: 100,
@@ -637,6 +647,7 @@ describe("editor background media", () => {
     };
 
     shell.destroy();
+    live = null;
     expect(asked, "teardown itself asks for nothing").toBe(0);
     image?.dispatchEvent(new Event("load"));
     expect(asked, "and a decode afterwards asks for nothing").toBe(0);
@@ -692,7 +703,7 @@ describe("one resize path on the host", () => {
       clientHeight: { get: () => size.height },
     });
     const observers = recordObservers();
-    const shell = await mountEditorShell({
+    const shell = await mount({
       host,
       artboard: { width: 1280, height: 720 },
     });
@@ -706,7 +717,6 @@ describe("one resize path on the host", () => {
 
     expect(observers.onHost(host), "resize paths on the host").toBe(1);
     expect(changed, "camera changes per host resize").toHaveBeenCalledTimes(1);
-    shell.destroy();
   });
 
   it("still refits a fitted camera when the host resizes", async () => {
@@ -720,7 +730,7 @@ describe("one resize path on the host", () => {
       clientHeight: { get: () => size.height },
     });
     const observers = recordObservers();
-    const shell = await mountEditorShell({
+    const shell = await mount({
       host,
       artboard: { width: 1280, height: 720 },
     });
@@ -738,6 +748,5 @@ describe("one resize path on the host", () => {
       shell.editor.canvas.getWidth(),
       "and the canvas took the host' new box",
     ).toBe(800);
-    shell.destroy();
   });
 });
