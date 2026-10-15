@@ -37,11 +37,11 @@ ledger did.
 
 ## Last completed change
 
-- **`vg-520` fixed: the local gate now reaches every CI step it omitted** — `npm run gate` chains `npm run status:check` beside the typecheck, so a STATUS.md the check refuses stops the gate before the unit suite starts.
-- **The row's own count is corrected, not just fixed** — it named three missing CI steps, and **`hooks:check` was already reached**: `gates:self-test` chains `sdd-checkpoint.mjs --self-check`, which is exactly what `hooks:check` runs, as the `//gate` comment had recorded all along. So two steps were genuinely missing, not three.
-- **The red proof is both directions**: with `status:check` in the chain and STATUS.md's active-plan bullet broken, the gate exits **1** and never reaches vitest; with the step removed from the same chain and the same break in place, it exits **0** — the row's own state.
-- **The first attempt at that proof passed while proving nothing**, which is the lesson worth keeping: the break was a plain string replace of `- **Active plan:**`, and STATUS.md *documents that marker inside an HTML comment* above the bullet, so the replace hit the comment and the real bullet was untouched.
-- **The register is at 192 open, 34 parked, 22 withdrawn** — from 207 open when the triage began.
+- **Two rows closed on the same shape: an instrument that read green over something it should have refused** — `vg-520` (the local gate omitted a CI step) and `vg-513` (a test asserted through an always-true ternary).
+- **`vg-520` fixed, and its own count corrected**: `npm run gate` now chains `npm run status:check`, and **`hooks:check` was already reached** — `gates:self-test` chains `sdd-checkpoint.mjs --self-check`, which is exactly what `hooks:check` runs — so two steps were genuinely missing, not the three the row named.
+- **`vg-513` fixed by the row's own first option** — the ternary is replaced by the literal it always evaluated to, since the case has no variable it means to read.
+- **Both proofs are two-directional and both were wrong first.** `vg-520`'s break hit the HTML comment that *documents* the active-plan marker rather than the bullet, so it proved nothing until it was anchored to the line start; `vg-513`'s fix changes no outcome, so its proof shows the assertion still reddens (exit 1) when pointed at a wrong label, rather than only that the file passes.
+- **The register is at 191 open, 34 parked, 22 withdrawn** — from 207 open when the triage began.
 
 ## Next
 
