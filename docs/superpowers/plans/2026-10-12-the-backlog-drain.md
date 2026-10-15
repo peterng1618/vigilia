@@ -63,7 +63,7 @@ Eleven phases, in this order:
 | 9 | W8 — structural stops and the plans directory | 4 | parallel-safe |
 | 10 | W9 — the unowned mockup-parity plan | 2 | gated on D4 and D3/D6 |
 
-**Twelve phases were added after that table was written, so the table records the order rather than the
+**Thirteen phases were added after that table was written, so the table records the order rather than the
 count**: Phase 12 (the 2026-10-14 rulings no phase carried), Phases 13 and 14 (the user's 2026-10-14
 GUI list, items 1–9 and 10–18), and **Phases 15, 16 and 17, which are the phases the triage's own
 verdicts named** — the `# The rows no phase carries` section rules that a triaged row is fixed *in a
@@ -86,6 +86,14 @@ Phase 22 (seven, proofs and test configuration) and Phase 23 (ten, the host, the
 **Every task in them cites its row's own ruling, and the ruling names the owning symbols** — which is what
 separates a phase authored from a measurement from the phase this plan's census explicitly forbids, the
 one that carries rows because they exist.
+
+**Phase 24 is the last of the thirteen and the only one whose order is not its number.** It carries the two
+`source: user` rows no phase named — `vg-388` (an in-app store) and `vg-405` (the colour picker and the
+gradient editor) — and **the user's own ruling puts them ahead of everything the triage touches**:
+`vg-405`'s is *"SCHEDULED AHEAD OF THE TRIAGE, and it enters a phase … It and `vg-388` are the two
+user-sourced rows among the 95 and both move ahead of the rest."* So it runs **ahead of Phases 15–23 and
+behind Phase 12**, and both its tasks are gated on their own spec's acceptance rather than on a
+measurement: each row's own text says it takes its own spec and plan rather than a task inside another.
 
 **Rulings open first, work opens at W1.** The close phase precedes everything because it needs no build, no suite and no ruling, and because it is where the register mechanics are exercised before 100+ rows depend on them. The ruling phase precedes the work phases for one reason: D8 gates W5, D1 decides whether W3's gates count, and D4/D3/D6 gate W9. A work phase whose gating cluster is unanswered stays queued — do not start it and hope.
 
@@ -2847,6 +2855,82 @@ schema's sync test for Task 23.3.
 - [ ] **Step 2: The eight files — browser probes, screenshots and a vitest report that may be the only copy — are kept rather than deleted.**
 - [ ] **Step 3: Close it**, showing a filesystem walk no longer sees the directory.
 
+---
+
+# Phase 24 — W19: the two rows the user ordered ahead of the triage
+
+**Outcome:** the only two open rows no phase named — `vg-388` (an in-app store) and `vg-405` (the colour
+picker and the gradient editor) — each have a phase, a spec and the design decision their own rulings say
+they need before code.
+
+**Why these two and no others, and why they are numbered last but run first.** They are the two
+`source: user` rows among the orphans, and **the user's own words put them ahead of everything else the
+triage touches**: `vg-405`'s ruling is *"SCHEDULED AHEAD OF THE TRIAGE, and it enters a phase. It is a
+defect rather than a wish … so it is fixed, not parked. It and `vg-388` are the two user-sourced rows
+among the 95 and both move ahead of the rest."* The number is an identifier rather than a position, the
+same way task numbers are — the order is stated here and in §1.
+
+**Both are gated on their own spec's acceptance, and neither is gated on anything else.** `vg-405`'s own
+route is explicit: *"the rebuild touches `DESIGN.md`'s section 5 control vocabulary, so it needs a design
+decision before code, and it is not part of the active plan (the backlog drain), so it takes its own spec
+and plan rather than a task inside another."* `vg-388`'s spec says the same of itself: *"not accepted
+work: `STATUS.md` alone decides acceptance, and nothing here is the active plan."* **So each task's first
+step is the user's word on a written spec, and the drain does not write either plan before it.**
+
+**Owners:** `docs/superpowers/specs/2026-10-12-theme-store-design.md` and
+`docs/superpowers/specs/2026-10-12-colour-and-gradient-rebuild-design.md`; then, after acceptance, the
+store's own packages and `DESIGN.md` §5's control vocabulary with the picker and gradient-editor
+components.
+
+**Constraints:** **ordered ahead of Phases 15–23 and behind Phase 12**, and one phase is active at a
+time. **Neither spec is accepted, so neither task may start with code.** A task that touches
+`DESIGN.md` §5 needs a decision note before its first write, and `vg-405`'s rebuild does. **The store's
+three kinds are already decided** — the user ruled on 2026-10-15 that the store carries dashboard themes,
+widget presets and editor themes, and that v1 ships the dashboard theme only because it is the only kind
+with an exchange unit.
+
+**Acceptance:** each row closes on the phase that lands its change, with a `check` naming a word from its
+own `title` and `artefacts` naming a resolvable ancestor sha; `vg-388`'s store carries all three kinds as
+specified rather than the theme half alone; `vg-405`'s rebuild carries the research pass the row asked for
+as its own evidence rather than as a verdict.
+
+**Failure modes:** starting either build before its spec is accepted; reading `vg-388` as the theme half
+only, which the 2026-10-16 revision explicitly supersedes; treating `vg-405`'s usability verdict as a
+measurement, when the row's own text says the user *"gave a verdict, not a measurement"*.
+
+**Verify:** the spec review is the user's; after acceptance, each task names its own gate command and
+that command's exit code, and the browser suite separately on a rebuilt bundle.
+
+### Task 24.1: The store, and the three kinds it carries
+
+**Files:**
+- Read: `docs/superpowers/specs/2026-10-12-theme-store-design.md`
+- After acceptance: the store's own packages; `host/src/themes/store.ts` as the existing bounds owner
+
+**Interfaces:**
+- Produces: `vg-388` closed
+
+- [ ] **Step 1: The user accepts the spec, or names what changes.** It is `Status: draft`, revised 2026-10-16 after the `hydralauncher/hydra-themes` study, and it is scoped **storefront-now, kinds-follow**: v1 ships the dashboard theme because it is the only kind with an exchange unit today.
+- [ ] **Step 2: Its plan is written by `writing-plans`, not here** — the same rule Phase 12's `vg-330` runs under, and the reason this phase's tasks are gated rather than scheduled.
+- [ ] **Step 3: The two addenda are its remaining design work, and each is a decision rather than a build.** A widget preset is a theme envelope minus the artboard — a scene subtree plus its `bindings`, `globals` and `assets` — and `§139` still defers widget packages until an authoring workflow exists. **An editor theme has no artifact at all today**, and that is a decision rather than a gap: `§35` separates editor-shell theming from authored dashboard theme globals, so its addendum must settle what the artifact is before the store can carry it.
+- [ ] **Step 4: Close `vg-388`** when the store lands, with a check naming the row's own subject.
+
+### Task 24.2: The picker and the gradient editor, rebuilt
+
+**Files:**
+- Read: `docs/superpowers/specs/2026-10-12-colour-and-gradient-rebuild-design.md`
+- After acceptance: the picker and gradient-editor components; `DESIGN.md` §5's control vocabulary
+
+**Interfaces:**
+- Produces: `vg-405` closed
+
+- [ ] **Step 1: The research pass the row asked for is the spec, and it is written.** The row's own closing terms are a research pass naming what established tools do, an assessment of each component against that set with `file:line` evidence, and then the rebuild or the amendments that follow. **The user accepts the spec, or names what changes.**
+- [ ] **Step 2: The rebuild touches `DESIGN.md` §5's control vocabulary, so it lands a decision note before its first write** — the row's own route, and the reason it takes its own spec and plan rather than a task inside another.
+- [ ] **Step 3: One sub-claim is already corrected on the row and must not be re-fixed**: `gradient-editor.tsx`'s raw literal is gone (`61e33eef` moved the ring to `var(--edge)`), so that instance no longer stands — the usability verdict and the rebuild ask do.
+- [ ] **Step 4: Close `vg-405`** when the rebuild lands, with a check naming the row's own subject.
+
+---
+
 # The rows no phase carries — the drain's own by-products (90 open, re-measured 2026-10-15)
 
 **Counted rather than estimated, because the count is the point of this plan.** The register holds
@@ -2938,14 +3022,18 @@ row's ruling was extracted and read as the verdict it is — and the same measur
 |---|---|
 | open | **187** |
 | parked — known, not scheduled | 36 |
-| carried by an implementing phase | **149** |
+| carried by an implementing phase | **151** |
 | **ruled only** | **0** |
-| named by no phase at all | **2** (`vg-388`, `vg-405`) |
-| **no home** | **2** |
+| named by no phase at all | **0** |
+| **no home** | **0** |
 
-**The arithmetic is exact and it is the evidence:** 101 + 48 = 149 carried, 51 − 48 = 3 ruled-only and
-those three closed, 190 − 3 = 187 open. **The three verdicts the triage's own rule allows came out
-three ways, and the fourth shape is the one worth recording.**
+**The arithmetic is exact and it is the evidence:** 101 + 48 + 2 = 151 carried, 51 − 48 = 3 ruled-only and
+those three closed, 190 − 3 = 187 open. The two are `vg-388` and `vg-405`, the only `source: user` rows
+among the orphans, and **they are Phase 24's because the user's own ruling put them ahead of everything
+the triage touches** rather than because a phase was invented to reach zero — the census's own rule
+against a phase that carries rows because they exist is why they waited for a phase that a ruling
+already required. **The three verdicts the triage's own rule allows came out three ways, and the fourth
+shape is the one worth recording.**
 
 - **Three closed by applying a ruling already taken** (`vg-111`, `vg-256`, `vg-315`). Each row's own
   ruling asks for **no** change — the published contract is a ceiling and says so; the opacity guard stays
@@ -2963,11 +3051,19 @@ three ways, and the fourth shape is the one worth recording.**
 - **47 were real work with no home, and became six phases grouped by owner.** Phases 18–23, authored from
   the rulings rather than from titles — each ruling names the owning symbols, which is the measurement
   this section requires and the thing a title cannot supply.
+- **The last two are the user's own, and they are Phase 24's.** `vg-388` and `vg-405` are the only
+  `source: user` rows among the orphans, and the user ruled on 2026-10-15 that **both are scheduled ahead
+  of the triage and each enters a phase** — `vg-405` in as many words (*"It is a defect rather than a
+  wish … so it is fixed, not parked"*). Both are gated on their own spec's acceptance, which is why
+  Phase 24 is ordered ahead of Phases 15–23 and behind Phase 12 rather than by its number.
 
-**The count is now 187/2, from 207/150.** The first number fell by 20 and the second by 148, and **the
-second is the one this section exists to keep visible**: two rows remain with no home, both the user's
-own and both already ordered ahead of the triage, so the drain's structural work on the register is
-finished and what remains is the work the phases carry.
+**The count is now 187/0, from 207/150.** The first number fell by 20 and the second by 150, and **the
+second is the one this section exists to keep visible**: every open row now carries a phase, a park, or a
+ruling that says it is the user's. **The drain's structural work on the register is finished**, and what
+remains is the work the phases carry — nine of them queued behind Phase 12, which waits on the user's
+review of `vg-330`'s spec, plus Phase 24's two spec acceptances. **Four things now wait on the user's
+word and nothing else does**: Phase 12's settings-pane spec, Phase 24's two specs, and `vg-023`'s
+cancelled review.
 
 **The measure of the drain is therefore two numbers, and both belong in the final report:** the open
 count, and how many of those no phase carries. Re-measured 2026-10-15 they are **204** and **90** —
