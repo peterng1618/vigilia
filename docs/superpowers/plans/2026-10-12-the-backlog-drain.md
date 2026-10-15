@@ -1910,6 +1910,26 @@ of the 53 whose own ruling asks for **no** change, so they closed on 2026-10-16 
 already taken rather than by inventing a phase; `vg-041`/`vg-188`, `vg-268`/`vg-283`, `vg-271` and
 `vg-363` name work and are the shape the rest are.
 
+**Triage pass 1 and 2, run 2026-10-16, and both came back negative — which is the result that matters.**
+The plan's second option is "**withdraw** it, with the reason on the row", and `vg-386`'s sweep is the
+model for how a withdrawal is argued. Two measurable shapes of withdrawal were swept over the 97:
+
+- **The row's subject is gone.** Of the 97, **27 name a path or a backticked symbol in their own
+  title**; of those, exactly **one** (`vg-391`) has no named path that resolves — and reading it shows
+  the path is *where the missing assertion should live*, not the row's subject, so it is not a
+  withdrawal. **Zero rows are provably dead.**
+- **The row's subject is already owned.** No orphan's title shares a backticked identifier with any
+  archived row: **zero duplicates.**
+
+**So the withdraw option has no bookkeeping yield, and that is the finding worth carrying**: these 97
+are real, distinct, open findings rather than a queue that can be shrunk by tidying. It also repeats
+`vg-386`'s own shape a second time — 133 candidates swept, none proven dead — which suggests the
+sweep is not the instrument that will drain them. What is left is the honest one: **each row read on
+its own**, which is the work the triage is, and it is why the triage is plan-authoring rather than a
+script. The two sweeps' limits are recorded with them: pass 1 reads **titles**, not `detail`, so a row
+whose title is prose is invisible to it, and pass 2 matches only on backticked identifiers, so two rows
+describing one defect in different words are not caught.
+
 # Parked rows — held, not a phase
 
 **`vg-330` was parked by the user on 2026-10-11 and UNPARKED by the user on 2026-10-14**, and this
