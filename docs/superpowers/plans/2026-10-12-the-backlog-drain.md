@@ -63,6 +63,12 @@ Eleven phases, in this order:
 | 9 | W8 — structural stops and the plans directory | 4 | parallel-safe |
 | 10 | W9 — the unowned mockup-parity plan | 2 | gated on D4 and D3/D6 |
 
+**Four phases were added after that table was written, so the table records the order rather than the
+count**: Phase 12 (the 2026-10-14 rulings no phase carried), Phases 13 and 14 (the user's 2026-10-14
+GUI list, items 1–9 and 10–18), and **Phase 15, the instrument gaps the triage decided** — which is the
+phase the `# The rows no phase carries` section's own rule names, authored from measurements taken on
+2026-10-16 rather than from titles.
+
 **Rulings open first, work opens at W1.** The close phase precedes everything because it needs no build, no suite and no ruling, and because it is where the register mechanics are exercised before 100+ rows depend on them. The ruling phase precedes the work phases for one reason: D8 gates W5, D1 decides whether W3's gates count, and D4/D3/D6 gate W9. A work phase whose gating cluster is unanswered stays queued — do not start it and hope.
 
 **One phase is active at a time.** Inside a phase, tasks run as parallel seats only to the width the spec's §6 fit column allows: W4, W7 and W8 are one-owner-per-row and can host several seats; W3 and W6 are **partly** — one seat per file, because `backlog-check.mjs`, `design-tokens.mjs`, `ui-copy.test.ts` and `design-md.mjs` each serialise. W1, W2, W5 and W9 are one seat.
@@ -1819,6 +1825,104 @@ is missing.
 
 ---
 
+# Phase 15 — W10: the instrument gaps the triage decided
+
+**This is the phase the triage's own verdicts name**, and it exists because the plan's
+`# The rows no phase carries` section rules that a triaged row is either **fixed in a phase named
+here**, withdrawn, or parked — and nine rows the triage has now measured are real work with no home.
+It is authored from measurements taken on 2026-10-16 rather than from titles, which is the line that
+section draws: a task names owning symbols and a landmark, and a landmark cannot be written from a
+title.
+
+**Outcome:** the four instruments that were silent about a class of defect are no longer silent, and
+the two files past the stop have a named responsibility each.
+
+**Owners:** the parity gate (`src/web/tests/e2e/mockup-values.ts` and `design-language.spec.ts`), the
+token ratchet (`scripts/design-tokens.mjs` with `scripts/design-tokens.gated.json`), the reference
+reader, and the two spec files.
+
+**Constraints:** **queued behind Phase 12**, because one phase is active at a time and Phase 12 is the
+only phase that has not closed. Task 15.2 and Task 15.3 edit `scripts/`, which is on
+`scripts/reuse-gate.mjs`'s watchlist, so **each lands a note under `docs/decisions/` before its first
+write** — note `0047` is the precedent and records the cost knowingly. Task 15.5 is browser work and
+therefore runs alone on the machine, one suite at a time, against a rebuilt bundle.
+
+**Acceptance:** each row's own `check` passes and is recorded on its line; the four instruments each
+refuse a case they currently accept, proved by disabling the new check and showing it red before the
+fix is trusted; `npm run gate` exit 0 with its exit code named in the close commit.
+
+**Failure modes:** an instrument widened until it accepts the failure it was written to catch; a check
+over prose whose unit is undefined, which is the shape `vg-529` records; a file split into pieces that
+each still exceed the stop.
+
+**Verify:** `npm run gate` (its exit code read from `$?` into a file, never through a pipe), plus the
+parity suite on a built bundle for Tasks 15.1 and 15.5.
+
+### Task 15.1: The parity instrument's unread directions
+
+**Files:**
+- Modify: `src/web/tests/e2e/mockup-values.ts` (the `PARITY` rows and `assertParityRowProperty`)
+
+**Interfaces:**
+- Consumes: `mockupSilence`'s existing marker semantics
+- Produces: `vg-419` closed (a property a drawing declares that no row reads), `vg-456` closed (the shell drawing's view cluster), `vg-442` closed (a pane surface's rendered type)
+
+- [ ] **Step 1: Measure the reverse direction first.** `vg-419`'s claim is that a drawing can grow a declaration nobody compares; list the declarations in `docs/design/mockups/current/shell.html` that no `PARITY` row reads, and record the count you computed rather than an estimate.
+- [ ] **Step 2: Add the region `vg-456` names** — the three zoom/fit squares in the view cluster, whose 26px is currently pinned only by the drawings README's prose.
+- [ ] **Step 3: Take `vg-442`'s type half** as far as the drawing's shorthand allows, and record on the row what the shorthand still refuses rather than claiming it whole.
+- [ ] **Step 4: Disable each new check and show it red**, then re-enable, rebuild, and run the parity suite.
+- [ ] **Step 5: Close the three rows against this task's commits.**
+
+### Task 15.2: The ratchet's missing measure
+
+**Files:**
+- Modify: `scripts/design-tokens.mjs`; `scripts/design-tokens.gated.json`
+
+**Interfaces:**
+- Consumes: the gated list's existing meaning (a listed file must be clean)
+- Produces: `vg-426` closed — the ratchet can say what is left, not only that the list grows
+
+- [ ] **Step 1: Land the decision note** claiming `scripts/design-tokens.mjs` — the gate refuses the write without one.
+- [ ] **Step 2: Report the remainder.** Measured 2026-10-16: `gated` holds 60 entries and the editor's source tree holds 341 files, and no instrument states either number or the ratio.
+- [ ] **Step 3: Give the measure a target rather than only a count** — a remainder with no finish is the failure the row names.
+- [ ] **Step 4: Run the self-test and `npm run design:check`, then commit.**
+
+### Task 15.3: References that resolve to nothing
+
+**Files:**
+- Modify: the reference reader named in `vg-434`'s own measurement; the broken references themselves
+
+**Interfaces:**
+- Consumes: `vg-482`'s withdrawal, which left the file-reference half with this row
+- Produces: `vg-434` closed — a reference into `docs/superpowers/plans/` resolves or the check refuses
+
+- [ ] **Step 1: Land the decision note** if the reader is under `scripts/`.
+- [ ] **Step 2: Re-derive the counts the row reports** (55 register rows and 32 of 82 path references) rather than restating them; the numbers move with every commit.
+- [ ] **Step 3: Repair the references that have a correct target**, and record on the row the ones that have none, as `vg-403` did for the deleted design file.
+- [ ] **Step 4: Add the check**, and prove it red against a deliberately broken reference.
+
+### Task 15.4: The two files past the stop
+
+**Files:**
+- Modify: `src/web/tests/e2e/design-language.spec.ts`; `src/web/tests/e2e/shell-appearance.spec.ts`
+
+- [ ] **Step 1: Split by surface, not by line count.** Measured 2026-10-16, the two are 3743 and 1044 lines against `AGENTS.md`'s 800 stop — both grown since their rows were filed (3550 and 868).
+- [ ] **Step 2: Name each piece's responsibility** in its own header; a split with no responsibility per file is the failure mode this phase names.
+- [ ] **Step 3: Prove the suite still collects what it collected** — the test count before and after is evidence, not a goal.
+- [ ] **Step 4: Close `vg-394` and `vg-395` against this task's commits**, each naming its own file.
+
+### Task 15.5: The two browser readings
+
+**Files:**
+- Modify: the Line-endpoint geometry field's probe (`vg-401`); the mockup captures under `docs/design/mockups/current/` (`vg-402`)
+
+- [ ] **Step 1: Settle `vg-401`'s two readings** with one browser probe: whether the field was in a refused state (a mundane `readOnly` explanation, no defect) or not (an untypeable field, a real one). The row says the reading was never taken; take it.
+- [ ] **Step 2: Re-shoot the three captures `vg-402` names** — `shell-capture-graphite.png`, `settings-capture-graphite.png` and `settings-capture-editorial.png` — whose last-touch commits are ancestors of Task 2's weight collapse `ef81b183`.
+- [ ] **Step 3: Rebuild the affected bundles first**, since Playwright's `webServer` is `vite preview` and reads `dist`.
+- [ ] **Step 4: Close both rows**, or close `vg-401` as a non-defect if the first reading holds — which is a legitimate outcome and must say so on the row.
+
+---
+
 # The rows no phase carries — the drain's own by-products (90 open, re-measured 2026-10-15)
 
 **Counted rather than estimated, because the count is the point of this plan.** The register holds
@@ -1875,6 +1979,19 @@ position rather than a phase, exactly as the parked rows below are:
   is the model for how a count is taken rather than guessed.
 - **What is explicitly not the answer:** a phase that carries all 51 because they exist. That converts
   a queue into a backlog again.
+
+**The triage is now running, and Phase 15 is where its fix-verdicts went.** Batches A–G on 2026-10-16
+decided 27 rows by measurement — fourteen closed, two withdrawn, eleven parked — and the nine rows whose
+verdict was *real work with no home* became **Phase 15**, authored from those measurements rather than
+from titles. **So this section's rule is no longer a plan for later; it has a phase.** The parks and the
+withdrawals are recorded on the rows themselves, which is where a ruling lives.
+
+**Re-measured 2026-10-16 after Phase 15 was authored, at `37e72f0a` plus that edit: 195 open, 118 named
+by a `### Task` block, 77 named by no phase, and 128 with no home** (77 unnamed + 51 named only by
+Phase 1). The pair moved for three different reasons at once and each is worth separating: the open
+count fell by twelve (fourteen closes, two withdrawals, and two rows filed), **Phase 15 homed nine**,
+and the unnamed count fell by twenty for the same reason — so a census that reported only the open count
+would have shown a smaller improvement than the one that happened.
 
 **The measure of the drain is therefore two numbers, and both belong in the final report:** the open
 count, and how many of those no phase carries. Re-measured 2026-10-15 they are **204** and **90** —
