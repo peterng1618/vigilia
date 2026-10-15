@@ -1914,10 +1914,10 @@ parity suite on a built bundle for Tasks 15.1 and 15.5.
 ### Task 15.5: The two browser readings
 
 **Files:**
-- Modify: the Line-endpoint geometry field's probe (`vg-401`); the mockup captures under `docs/design/mockups/current/` (`vg-402`)
+- Modify: the Line-endpoint geometry field's probe (`vg-401`); the mockup captures under `docs/design/mockups/current/` (`vg-402`, `vg-504`)
 
 - [ ] **Step 1: Settle `vg-401`'s two readings** with one browser probe: whether the field was in a refused state (a mundane `readOnly` explanation, no defect) or not (an untypeable field, a real one). The row says the reading was never taken; take it.
-- [ ] **Step 2: Re-shoot the three captures `vg-402` names** — `shell-capture-graphite.png`, `settings-capture-graphite.png` and `settings-capture-editorial.png` — whose last-touch commits are ancestors of Task 2's weight collapse `ef81b183`.
+- [ ] **Step 2: Re-shoot the three captures `vg-402` names** — `shell-capture-graphite.png`, `settings-capture-graphite.png` and `settings-capture-editorial.png` — whose last-touch commits are ancestors of Task 2's weight collapse `ef81b183`. **`vg-504`'s remaining half is the same act on the same three files** — its drawing is fixed and its captures are not — so it lands here rather than in a task of its own.
 - [ ] **Step 3: Rebuild the affected bundles first**, since Playwright's `webServer` is `vite preview` and reads `dist`.
 - [ ] **Step 4: Close both rows**, or close `vg-401` as a non-defect if the first reading holds — which is a legitimate outcome and must say so on the row.
 
