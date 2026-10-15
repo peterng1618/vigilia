@@ -432,13 +432,18 @@ The vocabulary is closed. A control is one of these, or it is not a control.
 | **Well with chevron** | A well, plus a `▼` in `--faint` | Opens a list |
 | **Bare readout** | A value in tabular figures, no well and no chevron — the readout itself is the trigger | Opens a list, and is also the value it reports |
 | **Well with unit** | A well, value right-aligned in mono, unit in `--faint` at the right edge | A number with a fixed unit |
-| **Slider + well** | A 3px track, an accent fill, a 10px thumb, and a 36px well | A bounded number |
+| **Slider + well** | A 3px track, an accent fill, a 10px thumb, and a 40px well | A bounded number |
 | **Swatch well** | A well containing an 11px radius-4 swatch, then the token name, then a chevron | A paint reference |
 | **Toggle** | A 26×14 pill, accent when on | A boolean that applies immediately |
 | **Segmented** | A `--panel-2` well holding 2–4 labels, the active one lifted to `--stage` | A small exclusive choice where both options must be readable |
 | **Icon button** | A 26–30px square at `--radius-md`, glyph only | An action whose glyph is unambiguous |
 | **Rail slot** | A 36px square at `--radius-lg`, glyph only | One of §7.2's four panes; at most one is open |
 | **Choice row** | A `--radius-md` row at `--panel-2` carrying a swatch and a name; the chosen row is lifted to `--stage` with the accent border | One member of a closed set where each member has its own colour |
+
+**The slider row's well is 40px and not 36, and the arithmetic is what fixes it.** The well
+carries an editable field now, so the 24×24 target below binds it: §3's well padding is
+`--space-6` and the border 1px, leaving the field `well − 12 − 2` — 22px at 36 and 24 at 38,
+which is the floor, so 40 keeps a pixel either side of the box that rule measures.
 
 **Rules that make it readable:**
 
