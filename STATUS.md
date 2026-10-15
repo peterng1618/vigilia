@@ -37,11 +37,11 @@ ledger did.
 
 ## Last completed change
 
-- **Triage batch A is applied: three rows closed on their own measurements and one parked** — `vg-407`, `vg-424` and `vg-432` were each measured live at `71d839a0` before being touched, so none closed on a stale reading.
-- **`vg-407` was split rather than half-closed** — its title's claim (six declared names missing from `docs/engineering/dependencies.md`) is fixed with versions and licences read from each installed package's metadata; its body's second half, that nothing in `scripts/`, `src/web/tests/` or any package source names that file at all, is now `vg-533` and needs a decision about where the check lives.
-- **`vg-432`'s line number was dropped rather than re-pointed** — the same call `vg-283` recorded, because a citation that names its symbol cannot rot and this row exists because the number did.
-- **`vg-452` is the register's first parked row, so decision `0045`'s marker and `parkedCount` are now exercised on real data** — `npm run backlog:check` reads `533 items across both registers, all valid (1 parked, 532 to work or closed)`, and it was parked rather than closed because its own finding calls it an ownership smell and not a defect.
-- **Verified** — `npx biome check ..` exit 0 over 654 files; `npx vitest run packages/editor/src/card-library.test.ts` exit 0 (29 tests); `npx vitest run packages/editor/src/editor-shell/settings.dom.test.tsx` exit 0 (18 tests); `npm run backlog:check` exit 0.
+- **Batch B applied: three rows closed on their own measurements and one withdrawn as a duplicate** — `vg-433` (a private field assigned and read nowhere), `vg-481` (a rule pair painting a state the product had removed), `vg-517` (a comment that outlived the ruling that settled it).
+- **`vg-476` and `vg-506` were one finding filed twice, and the duplicate check is what found it** — both name `ruleCommit` in `mockups-values.test.ts` (`:896` and `:892` are the line and the declaration), both report the same defect, both demonstrated it in a scratch repo with a three-line quotation, and **both were found by the same review** at `13015088`. `vg-506` survives as the fuller record and now carries a note saying so.
+- **Two rows were split rather than half-closed** — `vg-481`'s second half (the dead-code sweep reported nothing over a rule whose selector can never match) is `vg-534`, and `vg-407`'s (nothing reads `dependencies.md` at all) is `vg-533`; both need a decision about where a check lives, which is why they are rows and not patches.
+- **The register is at 200 open, from 207 when the triage began** — nine rows closed, one withdrawn, one parked, and two filed for the halves that were not patches.
+- **Every close names the commit that landed its fix and a check a later session can run** — `3abbb964` for batch A and `fee3b673` for batch B; verified by `biome check ..` exit 0, `design:check` exit 0, and the covering test files (29 + 18 + 34 tests) exit 0.
 
 ## Next
 
