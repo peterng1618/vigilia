@@ -2001,7 +2001,9 @@ test("captures each pane of the four-slot rail in the design language", async ({
       await expect(regions, "the Document pane's own regions").toHaveCount(2);
       expect(
         await regions.evaluateAll((elements) =>
-          elements.map((element) => element.getAttribute("data-vigilia-section")),
+          elements.map((element) =>
+            element.getAttribute("data-vigilia-section"),
+          ),
         ),
         "the Document pane is Theme settings and the artboard, and nothing else",
       ).toEqual(["theme", "artboard"]);
