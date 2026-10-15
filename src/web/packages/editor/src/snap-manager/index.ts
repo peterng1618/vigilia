@@ -4,6 +4,7 @@ import type { ErrorManager } from "../error-manager/index.js";
 import { getObjectExactBounds, type ObjectBounds } from "./bounds.js";
 import {
   collectExcludedObjects,
+  partsOf,
   shouldIgnoreObject,
 } from "./excluded-objects.js";
 import { renderSnappingGuides } from "./guide-renderer.js";
@@ -54,15 +55,36 @@ function toSnapSource(
   object: FabricObject,
   index: number,
   excluded: Set<FabricObject>,
+  bounds: ObjectBounds | null,
 ): MovementSnapCandidateSource | undefined {
   if (!isSnapTarget(object, excluded)) return undefined;
-  const bounds = getObjectExactBounds({ object });
   if (bounds === null) return undefined;
   return {
     id: object.get("id") ?? `snap-source-${index}`,
     bounds,
     useForSpacing: true,
   };
+}
+
+/** Tolerance for "this box is the box already offered above it", which absorbs
+ * the float drift between a group's laid-out box and its child's own. */
+const SNAP_SOURCE_BOUNDS_EPSILON = 0.000000001;
+
+/** Whether a nested object repeats every line its enclosing box already offers,
+ * which is the case for a group wrapped around a single part. */
+function repeatsEnclosingBounds(
+  bounds: ObjectBounds,
+  enclosing: ObjectBounds | null,
+): boolean {
+  if (enclosing === null) return false;
+  return (
+    Math.max(
+      Math.abs(bounds.left - enclosing.left),
+      Math.abs(bounds.right - enclosing.right),
+      Math.abs(bounds.top - enclosing.top),
+      Math.abs(bounds.bottom - enclosing.bottom),
+    ) <= SNAP_SOURCE_BOUNDS_EPSILON
+  );
 }
 
 /**
@@ -109,6 +131,12 @@ export function readMovementModifiers({
  * Snap sources for one gesture: every eligible neighbour, then the artboard as
  * a domain-boundary line set. Shared by the movement and resize paths so both
  * see the same candidates.
+ *
+ * Candidates come from the whole scene, not its roots (`vg-123`): roots-only
+ * was every object while the scene was flat, and once cards are groups a part
+ * inside one is content an author can align against now that selection can
+ * enter a group. A nested part that adds no line of its own — a group wrapped
+ * around a single part — is not offered a second time.
  */
 export function collectSnapSources({
   canvas,
@@ -121,10 +149,27 @@ export function collectSnapSources({
 }): MovementSnapCandidateSource[] {
   const excluded = collectExcludedObjects({ activeObject });
   const sources: MovementSnapCandidateSource[] = [];
-  canvas.forEachObject((object, index) => {
-    const source = toSnapSource(object, index, excluded);
-    if (source !== undefined) sources.push(source);
-  });
+  let index = 0;
+
+  /** Offers one object and then its own parts, in scene order. `enclosing` is
+   * the nearest box already offered above it, so a part repeating that box is
+   * skipped rather than doubling every one of its lines. */
+  const visit = (
+    object: FabricObject,
+    enclosing: ObjectBounds | null,
+  ): void => {
+    const objectBounds = getObjectExactBounds({ object });
+    const source = toSnapSource(object, index, excluded, objectBounds);
+    index += 1;
+    if (
+      source !== undefined &&
+      !repeatsEnclosingBounds(source.bounds, enclosing)
+    )
+      sources.push(source);
+    for (const part of partsOf(object)) visit(part, objectBounds);
+  };
+
+  canvas.forEachObject((object) => visit(object, null));
   const artboard = bounds();
   sources.push({
     id: "artboard",

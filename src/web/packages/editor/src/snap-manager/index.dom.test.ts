@@ -1,8 +1,9 @@
 // @vitest-environment jsdom
-import { Canvas, Rect } from "fabric/es";
+import { Canvas, Group, Rect } from "fabric/es";
 import { describe, expect, it, vi } from "vitest";
 import { IGNORED_IDS } from "./excluded-objects.js";
-import { createSnapManager } from "./index.js";
+import { collectSnapSources, createSnapManager } from "./index.js";
+import type { MovementSnapCandidateSource } from "./movement-snap-candidates.js";
 
 function setup() {
   const canvas = new Canvas(document.createElement("canvas"));
@@ -293,5 +294,149 @@ describe("SnapManager", () => {
     expect(dragged.left).toBe(120);
     expect(logged).not.toHaveBeenCalled();
     snapping.destroy();
+  });
+});
+
+/**
+ * `vg-123`: which objects one gesture may align to. **RULED 2026-10-14 — parts
+ * snap to parts**, so the candidate set is the whole scene rather than its
+ * roots. The collected set is the pure decision and belongs here; the landing
+ * and the guide it draws are browser facts and live in
+ * `tests/e2e/snapping.spec.ts`.
+ */
+describe("collectSnapSources", () => {
+  const artboard = () => ({
+    left: 0,
+    top: 0,
+    right: 1200,
+    bottom: 900,
+    centerX: 600,
+    centerY: 450,
+  });
+
+  function candidateIds(
+    sources: readonly MovementSnapCandidateSource[],
+  ): string[] {
+    return sources.map(({ id }) => id);
+  }
+
+  /** A card holding `part` and a second shape, so the group's box is the
+   * second shape's and the part's own lines are strictly inside it. */
+  function cardHolding(part: Rect): Group {
+    const card = new Group([
+      new Rect({ id: "card-body", left: 0, top: 0, width: 300, height: 200 }),
+      part,
+    ]);
+    // `id` is Vigilia's own persisted property, not a Fabric GroupProps key.
+    card.set("id", "card");
+    return card;
+  }
+
+  it("offers a group's own parts beside the group itself", () => {
+    const canvas = new Canvas(document.createElement("canvas"));
+    const part = new Rect({
+      id: "card-part",
+      left: 60,
+      top: 40,
+      width: 60,
+      height: 60,
+    });
+    const card = cardHolding(part);
+    const mover = new Rect({
+      id: "mover",
+      left: 900,
+      top: 700,
+      width: 40,
+      height: 40,
+    });
+    canvas.add(card, mover);
+
+    const sources = collectSnapSources({
+      canvas,
+      bounds: artboard,
+      activeObject: mover,
+    });
+    part.setCoords();
+    const partEdge = sources.find(({ id }) => id === "card-part")?.bounds.left;
+
+    expect(candidateIds(sources)).toContain("card");
+    // The part's own world edge, which the group's box does not already offer:
+    // the body the group was laid out around starts elsewhere.
+    expect(partEdge).toBe(part.getBoundingRect().left);
+  });
+
+  it("offers neither the card a dragged part sits in nor the part itself", () => {
+    const canvas = new Canvas(document.createElement("canvas"));
+    const dragged = new Rect({
+      id: "dragged-part",
+      left: 60,
+      top: 40,
+      width: 60,
+      height: 60,
+    });
+    const card = new Group([
+      new Rect({ id: "card-body", left: 0, top: 0, width: 300, height: 200 }),
+      dragged,
+      new Rect({
+        id: "sibling-part",
+        left: 200,
+        top: 40,
+        width: 60,
+        height: 60,
+      }),
+    ]);
+    card.set("id", "card");
+    const neighbour = new Rect({
+      id: "neighbour",
+      left: 900,
+      top: 40,
+      width: 60,
+      height: 60,
+    });
+    canvas.add(card, neighbour);
+    canvas.setActiveObject(dragged);
+
+    const ids = candidateIds(
+      collectSnapSources({ canvas, bounds: artboard, activeObject: dragged }),
+    );
+
+    // A group's box is the box of the parts it holds, so the card the drag is
+    // inside offers the dragged part its own lines back and would pin it.
+    expect(ids).not.toContain("card");
+    expect(ids).not.toContain("dragged-part");
+    // A part beside it is a neighbour like any other shape on the artboard.
+    expect(ids).toContain("sibling-part");
+    expect(ids).toContain("neighbour");
+  });
+
+  it("offers a part repeating its group's own box once, as the group", () => {
+    const canvas = new Canvas(document.createElement("canvas"));
+    const sole = new Rect({
+      id: "sole-part",
+      left: 0,
+      top: 0,
+      width: 80,
+      height: 80,
+    });
+    const card = new Group([sole]);
+    card.set("id", "card");
+    const mover = new Rect({
+      id: "mover",
+      left: 900,
+      top: 700,
+      width: 40,
+      height: 40,
+    });
+    canvas.add(card, mover);
+
+    const ids = candidateIds(
+      collectSnapSources({ canvas, bounds: artboard, activeObject: mover }),
+    );
+
+    expect(ids).toContain("card");
+    // A group wrapped around one part has exactly that part's box, so every
+    // line it offers is already offered: doubling them would weigh one edge
+    // twice in the ranking and once again in the equal-spacing chain.
+    expect(ids).not.toContain("sole-part");
   });
 });

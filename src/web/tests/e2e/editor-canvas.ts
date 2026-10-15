@@ -255,12 +255,12 @@ export async function worldRightOf(page: Page, id: string): Promise<number> {
  * every snap candidate, so "the raw landing survived" is a real no-snap
  * assertion — a guide drawn there would be a snap with no line to snap to.
  *
- * **The candidates are the root objects only, and that is the product's own
- * rule rather than a limit of this helper.** `snap-manager` enumerates
- * `canvas.forEachObject`, so a card snaps to cards and to loose objects but not
- * to a part inside a neighbouring card (`vg-123`, filed). Measuring against
- * anything more would make "clear of every candidate" vacuous in the safe
- * direction, which is the direction that hides a regression.
+ * **The candidates read here are the root objects, and on every fixture this
+ * is used with they are every candidate.** `snap-manager` walks a group's own
+ * parts as well (`vg-123`), but a group wrapped around a single part has
+ * exactly that part's box, so the parts offer no line its group does not
+ * already offer. A fixture that gave a part its own line would make this read
+ * narrower than the product's set, and a resize aimed here could then snap.
  */
 export async function clearSceneX(
   page: Page,

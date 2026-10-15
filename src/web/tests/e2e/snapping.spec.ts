@@ -7,6 +7,7 @@ import {
   objectRect as sceneObjectRect,
   sceneToClient,
   worldLeftOf,
+  worldRightOf,
 } from "./editor-canvas.js";
 import { SNAPPING_ACCENT } from "./snapping-fixture.js";
 import { isDesktopSurface } from "./surface.js";
@@ -792,29 +793,26 @@ async function resizeTextSideTo(
 /**
  * `vg-123`: what a card's *parts* snap to.
  *
- * The open question is whether a part inside one card aligns to a part inside
- * another, and this measures it rather than deciding it. The resize specs this
- * file already had resized whole cards, which is what an author drags and what
- * the product snaps, so part-level targets were left unmeasured — and
- * `collectSnapSources` walks `canvas.forEachObject`, which enumerates roots
- * only, so the answer this file records is the one the code gives today.
+ * **RULED 2026-10-14: PARTS SNAP TO PARTS.** Inner guides are offered once
+ * selection can enter a group, so a card's inner part can be aligned against a
+ * neighbouring card's — which is what this row was told to wait for.
  *
- * **The drag aims at the neighbouring part's world left edge, 760.** The
- * dragged part ends at 220 and the target is 760, so the gesture is
- * geometrically ordinary; the part line and the card's own left edge (700) are
- * 60 apart, far beyond the 5-screen-pixel snap threshold, so nothing can land
- * between them and the landing says which family was a target.
+ * **The instrument landed as a resize and this block keeps it as one**, because
+ * a gesture *inside* the group reaches no candidate at all: both paths refuse a
+ * group child before the candidate set is consulted. A resize is refused by the
+ * scale path's `isSupportedScaleTarget`; a drag is refused by the movement
+ * path's baseline check, which reads the child's canvas-plane bounds against its
+ * group-plane position and reports "Movement raw intent must be a translation of
+ * the baseline". So the reading the instrument records — landed short of the
+ * part line, no guide — is about those refusals rather than about which objects
+ * are candidates.
  *
- * Three readings are possible and all three are recorded rather than asserted:
+ * The case below asks the row's own question through the gesture that can reach
+ * the candidates today: **a card snapping to a part inside the neighbouring
+ * card**, which is the row's title and also the ruling's first half.
  *
- *  - **part** — it joined the neighbouring part's edge.
- *  - **card** — it joined the neighbouring *card's* edge, which is what
- *    `forEachObject` yields.
- *  - **none** — it did not snap at all.
- *
- * The control below is the same gesture between two loose shapes, which is what
- * rules out `none` being about the gesture rather than about grouping: without
- * it a recorded `none` would mean nothing.
+ * The control is the same gesture between two loose shapes, which is what
+ * proves the widening widened only the nested path.
  */
 test.describe("a part inside a card", () => {
   test.beforeEach(async ({}, testInfo) => {
@@ -848,8 +846,10 @@ test.describe("a part inside a card", () => {
     const result = await resizePartInsideCardTo(page, partLine - 2);
     const landed = result.right;
 
-    /** Recorded rather than asserted: whether parts should align to parts is
-     *  the user's call, and this row exists to hand them the measurement. */
+    // Recorded rather than asserted, and the reason is now known: `landed` is
+    // the raw aim, because a resize of a group child is refused before the
+    // candidates are ever consulted. Asserting `part` here would be asserting a
+    // fix this path does not have; `vg-123`'s ruling is asserted one case down.
     const snappedTo =
       Math.abs(landed - partLine) < (await snappedTolerance(page))
         ? "part"
@@ -871,6 +871,51 @@ test.describe("a part inside a card", () => {
       Math.abs(landed - result.raw),
       "the gesture moved the edge rather than being refused",
     ).toBeLessThan(await rawTolerance(page));
+  });
+
+  test("a dragged card's edge aligns to a part inside the other card", async ({
+    page,
+  }) => {
+    await openNestedFixture(page);
+    const partEdge = await worldRightOf(page, "left-card-part");
+    const before = await sceneObjectRect(page, "right-card");
+
+    // **The premise: that line belongs to no object at the root.** The drag
+    // aims the card's left edge two units short of the neighbouring card's
+    // part, and every line the root objects and the artboard offer is further
+    // than the acquire threshold can reach — which is exactly the candidate set
+    // this gesture had before the widening. Without it a landing on the part
+    // could be explained by the card line beside it.
+    for (const { left, width } of await Promise.all(
+      ["left-card", "mover", "loose-source"].map((id) =>
+        sceneObjectRect(page, id),
+      ),
+    )) {
+      for (const line of [left, left + width / 2, left + width]) {
+        expect(Math.abs(line - partEdge)).toBeGreaterThan(
+          await snapAcquire(page),
+        );
+      }
+    }
+    expect(Math.abs(partEdge - (before.left + before.width))).toBeGreaterThan(
+      100,
+    );
+
+    // Inside the acquire threshold, so it must snap, and far enough outside the
+    // landing tolerance that a landing short of the part edge is not a rounding.
+    const result = await dragCardTo(
+      page,
+      partEdge - (await snapAcquire(page)) / 2,
+    );
+
+    expect(
+      Math.abs(result.left - partEdge),
+      `landed ${result.left} against the part edge ${partEdge}`,
+    ).toBeLessThan(await snappedTolerance(page));
+    // A snap an author cannot see is not the behaviour §175 asks for.
+    expect(result.guideRows).toBeGreaterThan(
+      GUIDE_ROWS_PRESENT * (await artboardDeviceRows(page)),
+    );
   });
 
   test("the same gesture snaps between two loose shapes", async ({ page }) => {
@@ -972,6 +1017,40 @@ async function resizePartInsideCardTo(
     raw: before.left + before.width + travelled,
     guideRows,
   };
+}
+
+/**
+ * Drags `right-card` so its left edge lands unsnapped at `rawLeft`.
+ *
+ * A card is a root object, so its Fabric position and its world bounds are the
+ * same plane and the movement path's own consistency check holds — unlike a
+ * part's, which lives in its group's plane.
+ */
+async function dragCardTo(
+  page: Page,
+  rawLeft: number,
+): Promise<{ left: number; guideRows: number }> {
+  await page.locator('[data-vigilia-layer="right-card"]').click();
+  const before = await sceneObjectRect(page, "right-card");
+  const from = await sceneToClient(
+    page,
+    NESTED_ARTBOARD,
+    before.left + before.width / 2,
+    before.top + before.height / 2,
+  );
+  const target = await sceneToClient(
+    page,
+    NESTED_ARTBOARD,
+    rawLeft + before.width / 2,
+    before.top + before.height / 2,
+  );
+  await page.mouse.move(from.x, from.y);
+  await page.mouse.down();
+  await page.mouse.move(target.x, target.y, { steps: 12 });
+  const rect = await sceneObjectRect(page, "right-card");
+  const guideRows = await guideRowsAtSceneX(page, rect.left, NESTED_ARTBOARD);
+  await page.mouse.up();
+  return { left: rect.left, guideRows };
 }
 
 /** The same drag between two loose shapes, which is the control for the above. */
