@@ -1809,7 +1809,7 @@ is missing.
 
 ---
 
-# The rows no phase carries — the drain's own by-products (51 open, measured 2026-10-15)
+# The rows no phase carries — the drain's own by-products (90 open, re-measured 2026-10-15)
 
 **Counted rather than estimated, because the count is the point of this plan.** The register holds
 **196 open rows**. This plan names **145** of them — 141 by id and 4 by item number alone (`vg-461`,
@@ -1830,6 +1830,16 @@ number never moved — only the definition of it did.
 
 **The register grew by six rows on 2026-10-15** (`vg-476`, `vg-477`, `vg-479`–`vg-482`), which is the
 whole of the 45 → 51 difference between the first taking and this one.
+
+**Re-measured at `e421d897`: 204 open, 114 named, 90 named by no phase.** The taking above is kept as
+the dated record it is; what moved is that the phases kept landing (Phase 12's first three wide rows,
+Phase 13's and Phase 14's whole pass) while the work filed faster than it carried, so the unnamed count
+rose from 51 to 90 even as the named-and-open count fell from 145 to 114. **The third correction to the
+method is the one worth carrying forward, because it is the trap this section sets for its own
+re-measurement: the section *lists the orphans*, so a census that reads past this heading counts the
+list as a carry.** A recount taken here reported 81 rather than 90 for exactly that reason, until the
+two were diffed; the cut is this heading. The regenerated index is
+`.superpowers/sdd/2026-10-12-the-backlog-drain/orphan-triage-index.md`.
 
 **They are the drain's own by-products, and that is the finding.** 49 of the 51 are `source: agent` —
 rows a phase of this plan filed while doing something else, then left behind. `STATUS.md` sets the rule
@@ -1857,7 +1867,8 @@ position rather than a phase, exactly as the parked rows below are:
   a queue into a backlog again.
 
 **The measure of the drain is therefore two numbers, and both belong in the final report:** the open
-count, and how many of those no phase carries. Today they are **196** and **51**. **The second number is
+count, and how many of those no phase carries. Re-measured 2026-10-15 they are **204** and **90** —
+**196** and **51** at this section's first taking. **The second number is
 the one that moves**, and it is the one this section exists to keep visible: the open count falls when a
 phase lands, and rises again by however many rows that phase's own work files — `vg-481` and `vg-482`
 were filed by 13.1b's review on the morning this count was taken.
