@@ -37,10 +37,11 @@ ledger did.
 
 ## Last completed change
 
-- **`vg-455` fixed: the gate now runs the typecheck** — `npm run gate` is `biome check .. && gates:self-test && design:check && typecheck && test`, so the one command that means green can no longer pass over source its own compiler rejects.
-- **The row's claim was reproduced rather than argued** — with a deliberate `TS2322` in `packages/editor/src/index.ts`, the **old** chain (biome, gates:self-test, design:check, test) exits **0 with 258/258 test files passing** while `npm run typecheck` exits **1**; the new chain exits **1 at typecheck and never starts vitest**.
-- **The break was restored byte-for-byte and proved with `cmp`, not git** — the source file is unmodified in `git status`, and `typecheck` is 5s across all seven workspaces, so it sits before the unit suite in the chain's fastest-first order.
-- **No decision note was needed and the reason is recorded**: `src/web/package.json` is not on `scripts/reuse-gate.mjs`'s watchlist, which was read rather than assumed.
+- **Triage batch E applied: one row withdrawn and two parked** — `vg-482` stops being counted, and `vg-430` and `vg-439` each name what they wait on.
+- **`vg-482` is withdrawn on a measurement stronger than "it was fixed"** — `DESIGN.md` carries **zero** `file:line` citations at HEAD and zero at `82692760`, the commit the row says moved one of them, and neither cited string exists anywhere in the tree at any of the three commits it names.
+- **`vg-430` parks on the user** — its own text says a ruling on the editor's browser floor is what settles it, and measured 2026-10-16 the editor's `vite.config.ts` still sets no `css:` key and no package declares a `browserslist`.
+- **`vg-439` parks transitively on the colour spec's review**, the same shape as `vg-322`'s park on `vg-330` — the decision it asks for is already taken in `2026-10-12-colour-and-gradient-rebuild-design.md`, and both `parseHex` definitions are still in place, so the work is real and unscheduled.
+- **The register is at 196 open, from 207 when the triage began** — thirteen closed, two withdrawn, four parked, and two filed for the halves that were not patches.
 
 ## Next
 
