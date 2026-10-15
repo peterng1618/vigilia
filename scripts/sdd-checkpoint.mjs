@@ -159,6 +159,7 @@ if (mode === "--self-check") {
   const reworded = activePlan(markerDir).problem;
   writeFileSync(
     markerFile,
+    // doc-ref-ok: this self-test's own fixture — check-doc-references must refuse it
     "## Active work\n\n- **Active plan:** `docs/superpowers/plans/does-not-exist.md`.\n",
   );
   const missing = activePlan(markerDir).problem;

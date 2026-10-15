@@ -2,7 +2,7 @@
 
 - **Status:** draft for review. Plan: not yet written.
 - **Supersedes:** the curated-font slice of
-  [`2026-09-20-packaged-fonts.md`](../plans/archive/2026-09-20-packaged-fonts.md)
+  [`2026-09-20-packaged-fonts.md`](../plans/archive/2026-09-20-packaged-fonts.md) <!-- doc-ref-ok: never migrated into plans/; its source at .agents/plans/ is gone (04dc86dd) -->
   Task 3, which was never completed.
 
 ## Why
