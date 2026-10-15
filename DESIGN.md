@@ -441,9 +441,12 @@ The vocabulary is closed. A control is one of these, or it is not a control.
 | **Choice row** | A `--radius-md` row at `--panel-2` carrying a swatch and a name; the chosen row is lifted to `--stage` with the accent border | One member of a closed set where each member has its own colour |
 
 **The slider row's well is 40px and not 36, and the arithmetic is what fixes it.** The well
-carries an editable field now, so the 24×24 target below binds it: §3's well padding is
-`--space-6` and the border 1px, leaving the field `well − 12 − 2` — 22px at 36 and 24 at 38,
-which is the floor, so 40 keeps a pixel either side of the box that rule measures.
+carries an editable field now, so the 24×24 target below binds it: the control pads its wells with
+`px-[var(--space-6)]` (`control-well.tsx`'s `wellClasses`, 6px at `editor-shell.css:465`)
+and the border 1px, leaving the field `well − 12 − 2` — 22px at 36 and 24 at 38, which is the floor,
+so 40 keeps a pixel either side of the box that rule measures. **§3's table is the odd one out here**
+— it names the 4px step for well padding, while both current drawings draw 6
+(`padding:4px 6px`) and the code agrees with them; `vg-498` carries that drift and the choice it owes.
 
 **Rules that make it readable:**
 
