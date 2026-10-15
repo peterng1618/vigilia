@@ -97,6 +97,11 @@ function facade(): EditorActionFacade {
  *  as a stall in whichever test runs next. */
 afterEach(() => {
   expect(document.querySelectorAll(".editor-shell-menu-popup")).toHaveLength(0);
+  // The positioner's own half of the same invariant (`vg-416`). The
+  // publish-surface case used to sweep these by hand *after* its own
+  // `layout.destroy()`, where the sweep removed nothing — so it guarded a leak
+  // no case produced and left every other case's leak unread.
+  expect(document.querySelectorAll(".editor-shell-positioner")).toHaveLength(0);
   setActiveShortcuts(PRODUCT_SHORTCUTS);
 });
 
@@ -416,9 +421,6 @@ it("opens the publish surface from the shell's own door, and moves no host state
 
   layout.destroy();
   vi.unstubAllGlobals();
-  for (const stray of document.querySelectorAll(".editor-shell-positioner")) {
-    stray.remove();
-  }
 });
 
 /** The rail's slot for a pane, found by the id it carries rather than by text:
