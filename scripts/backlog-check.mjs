@@ -194,6 +194,57 @@ export function check(items) {
 }
 
 /**
+ * Rule 8: a parked row is `open` and carries a well-formed `PARKED <date>:` marker.
+ *
+ * The triage parks a real-but-low-value finding rather than closing it, so the
+ * census can separate "known, not scheduled" from "to do". A marker nothing
+ * validates defeats that, because parking a row by making it invisible is the
+ * outcome the policy exists to prevent.
+ *
+ * **The rule is deliberately narrow about what it calls a marker.** The word
+ * `PARKED` already appears in three rows as prose — "PARKED BY THE USER
+ * (2026-10-11)", "PARKED by the controller", "MINOR 5 WAS PARKED, NOT FIXED" —
+ * which is three informal parking records spelled three ways, and is the reason a
+ * canonical marker is worth having. But a rule that read any `PARKED` as a marker
+ * would fail those three rows, so only a `PARKED` followed by a **date-shaped
+ * token** is treated as an attempt at the marker: that catches the near-miss a
+ * person actually writes (`PARKED 2026-10-16` with no colon, or a non-ISO date)
+ * and leaves the prose alone.
+ *
+ * See docs/decisions/0045-a-parked-row-is-a-marker-not-a-state.md.
+ */
+const PARKED_ATTEMPT = /PARKED\s+\d{1,4}[-/.]\d{1,2}[-/.]\d{1,4}/;
+const PARKED_MARKER = /PARKED \d{4}-\d{2}-\d{2}:/;
+
+export function checkParked(items) {
+  const problems = [];
+  if (!Array.isArray(items)) return problems;
+  for (const item of items) {
+    const where = item?.id ?? "?";
+    const detail = typeof item?.detail === "string" ? item.detail : "";
+    if (!PARKED_ATTEMPT.test(detail)) continue;
+    if (!PARKED_MARKER.test(detail)) {
+      problems.push(
+        `${where}: a PARKED marker that is not "PARKED <YYYY-MM-DD>:" — a malformed marker parks the row for a reader and not for the census`,
+      );
+      continue;
+    }
+    if (item.state !== "open") {
+      problems.push(
+        `${where}: parked with state "${item.state}" — a parked row stays open, because a closed row has nothing left to defer`,
+      );
+    }
+  }
+  return problems;
+}
+
+/** How many rows are parked, so the census separates them from the work. */
+export function parkedCount(items) {
+  if (!Array.isArray(items)) return 0;
+  return items.filter((i) => typeof i?.detail === "string" && PARKED_MARKER.test(i.detail)).length;
+}
+
+/**
  * Which file a row may sit in, because the split is by state.
  *
  * A row that reaches a closed state leaves the live file; a row that is not
@@ -283,18 +334,23 @@ if (process.argv[1]?.endsWith("backlog-check.mjs")) {
   const registers = [FILE, ARCHIVE].map(readRegister);
   const problems = [
     ...registers.flatMap(({ name, items, problems: readProblems }) =>
-      [...readProblems, ...check(items), ...checkPlacement(name, items)].map(
+      [...readProblems, ...check(items), ...checkPlacement(name, items), ...checkParked(items)].map(
         (problem) => `${name}: ${problem}`,
       ),
     ),
     ...checkDisjoint(registers),
   ];
   const items = registers.reduce((count, register) => count + register.items.length, 0);
+  const parked = registers.reduce((count, register) => count + parkedCount(register.items), 0);
 
   if (process.argv.includes("--self-test")) {
     const ok = (i) => check([i]).length === 0;
     const bad = (i) => check([i]).length > 0;
     const problem = (i, re) => check([i]).some((p) => re.test(p));
+    // Rule 8 lives in its own function, so `problem` above cannot reach it —
+    // asserting the message is what makes each case fail when the rule is
+    // disabled, rather than passing because some other rule rejected the row.
+    const parkedProblem = (i, re) => checkParked([i]).some((p) => re.test(p));
     const valid = {
       id: "vg-abc123",
       state: "verified",
@@ -340,6 +396,16 @@ if (process.argv[1]?.endsWith("backlog-check.mjs")) {
       ["registers with no shared id pass", checkDisjoint([{ name: FILE, items: [{ id: "vg-x" }] }, { name: ARCHIVE, items: [{ id: "vg-y" }] }]).length === 0],
       ["an unreadable register is a labelled failure", registerRows("docs/product/backlog.jsonl", null).problems.some((p) => /unreadable/.test(p))],
       ["an empty register is a failure, not all-valid", registerRows("docs/product/backlog.jsonl", "\n\n").problems.some((p) => /empty/.test(p))],
+      // Rule 8: a parked row is `open` and carries a canonical marker. The last
+      // case is the one that keeps the rule honest — three real rows say PARKED
+      // in prose, and a rule that read the bare word would fail all three.
+      ["a canonical PARKED marker on an open row passes", checkParked([{ id: "vg-x", state: "open", detail: "why it is parked. PARKED 2026-10-16: low value, real." }]).length === 0],
+      ["PARKED with no colon fails", parkedProblem({ id: "vg-x", state: "open", detail: "PARKED 2026-10-16 low value" }, /not "PARKED/)],
+      ["PARKED with a non-ISO date fails", parkedProblem({ id: "vg-x", state: "open", detail: "PARKED 16/10/2026: low value" }, /not "PARKED/)],
+      ["a parked verified row fails", parkedProblem({ id: "vg-x", state: "verified", detail: "PARKED 2026-10-16: low value" }, /stays open/)],
+      ["a parked withdrawn row fails", parkedProblem({ id: "vg-x", state: "withdrawn", detail: "PARKED 2026-10-16: low value" }, /stays open/)],
+      ["PARKED as prose passes, because it is not a marker attempt", checkParked([{ id: "vg-x", state: "open", detail: "MINOR 5 WAS PARKED, NOT FIXED: the count stays optional." }]).length === 0],
+      ["parkedCount counts markers and not prose", parkedCount([{ id: "a", state: "open", detail: "PARKED 2026-10-16: x" }, { id: "b", state: "open", detail: "was PARKED by the controller" }]) === 1],
       // The two cases above call registerRows directly, so the catch that stops
       // a missing file from throwing is exercised by neither. This one reads a
       // real path that does not exist, so the throwing path itself is covered.
@@ -358,5 +424,8 @@ if (process.argv[1]?.endsWith("backlog-check.mjs")) {
     process.stderr.write(`backlog-check:\n  ${problems.join("\n  ")}\n\n`);
     process.exit(1);
   }
-  process.stdout.write(`backlog-check: ${items} items across both registers, all valid\n`);
+  process.stdout.write(
+    `backlog-check: ${items} items across both registers, all valid` +
+      ` (${parked} parked, ${items - parked} to work or closed)\n`,
+  );
 }
