@@ -1909,6 +1909,19 @@ homes them** rather than leaving a measured breach in the same class as a closed
 - [ ] **Step 4: Disable each new check and show it red**, then re-enable, rebuild, and run the parity suite.
 - [ ] **Step 5: Close the three rows against this task's commits.**
 
+**Annotated 2026-10-16, at the task's close: two of the three rows are `verified` and `vg-442` is
+not, and the reason is the task's most useful result.** `vg-419` (`b950c1ad`) took the row's second
+candidate — a declared allow-list, because the rule needs 123 rows nobody asked for — and
+`tests/e2e/parity-unread-declarations.ts` fails both ways so the list cannot rot into stale
+exemptions. `vg-456` added the two view-cluster `PARITY` rows. **`vg-442`'s own premise was false**:
+`SHORTHANDS_SETTING` named no font longhand, so a `font-size` question against the drawings' `font`
+shorthand returned the drawing's *silence* — which the parity table reads as `0` — rather than the
+deliberate refusal the row describes. The refusal is now real; **the comparison is not, so the row's
+subject is still exactly true and a `verified` close would have claimed a check that was not built.**
+The row is updated rather than closed, and it is the task's residual: no check yet compares a drawing's
+drawn type to the product's. **Task 15.1's Acceptance therefore holds for two of its three rows and
+the third is a recorded exception rather than a silent one.**
+
 ### Task 15.2: The ratchet's missing measure
 
 **Files:**
