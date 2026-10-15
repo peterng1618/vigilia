@@ -1878,6 +1878,18 @@ therefore runs alone on the machine, one suite at a time, against a rebuilt bund
 refuse a case they currently accept, proved by disabling the new check and showing it red before the
 fix is trusted; `npm run gate` exit 0 with its exit code named in the close commit.
 
+**Annotated 2026-10-16, at the phase's close: every task has run, and the phase's thirteen rows stand at
+ten `verified`, one `withdrawn` (`vg-482`) and two still open — `vg-442` and `vg-402`.** Each was refused
+for the same reason and it is the reason this phase's Acceptance exists: **the close would have claimed a
+check that was not built.** `vg-442`'s own
+premise was false — the shorthand refusal it describes did not exist, and the instrument was reading the
+drawing's *silence* as `0`; the refusal is now real and the comparison is still absent. `vg-402`'s
+documentation half landed and its title's claim — that nothing re-shoots the captures beside the
+drawings — is still exactly true, so it is homed in Task 21.3 rather than closed on a README edit. **Both
+rows carry their measurement on the row itself, so neither is an exception anyone has to rediscover.**
+`npm run gate` is exit 0 on every close commit in the phase, read from `$?` into a file, and the parity
+suite ran on a built bundle for Tasks 15.1 and 15.5. **Phase 16 is the next phase.**
+
 **Failure modes:** an instrument widened until it accepts the failure it was written to catch; a check
 over prose whose unit is undefined, which is the shape `vg-529` records; a file split into pieces that
 each still exceed the stop.
