@@ -50,6 +50,13 @@ const MAX_PRECISION = 6;
  * range's own floor and the well's empty draft is the route back to absent. It
  * is the same fallback the chart settings state for an optional number with no
  * family default (`chart-manager/panel.ts`'s `settingRows`).
+ *
+ * **The floor is not the absent state, and a drag cannot say so.** A slider has
+ * no unauthored position, so an author who drags `0 → 2 → 0` to put the number
+ * back writes `precision: 0` and switches the chart from "at most one decimal"
+ * to whole numbers; the empty draft is the only route back and the field then
+ * re-reads `0`, so neither state is distinguishable from the other (`vg-497`
+ * carries what a slider is missing).
  */
 const PRECISION_FLOOR = MIN_PRECISION;
 
