@@ -184,6 +184,7 @@ Do's and Don'ts, where an unknown heading is preserved and costs no warning.
 | `## Layout` → `### The status bar` | `§7.6` | the status bar | §7.6 |
 | `## Layout` → `### Overflow, scrolling and motion` | `§7.7` | overflow, scrolling and motion | §7.7 |
 | `## Layout` → `### Preserve the reference's character` | `§7.8` | the reference's character | §7.8 |
+| `## Layout` → `### Entering a group` | `§7.9` | what entering a group looks like: the dim outside it | new — `vg-023` |
 | `## Elevation & Depth` | *no marker* | the elevation ladder — prose, because the format has no token group for it | §3 (elevation) |
 | `## Shapes` | *no marker* | the radius scale, and what is square by rule | §3 (radius) |
 | `## Components` | `§5` | the control set, states, sizes, editing and recovery, keyboard and target size | §5 |

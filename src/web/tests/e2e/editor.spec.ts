@@ -298,6 +298,96 @@ async function inkReachOf(page: Page, id: string): Promise<number> {
   );
 }
 
+/**
+ * The canvas backing-store pixel at a named object's own centre, as
+ * `[r, g, b, a]`.
+ *
+ * **A rendered effect needs a rendered read.** Which objects a rule covers is an
+ * object count, and that count is already asserted elsewhere; whether the author
+ * can see the difference is only in the paint. The centre rather than the box,
+ * so a selection border drawn on the object's own edge is not what is measured.
+ *
+ * `lower-canvas` is where Fabric paints objects; `upper-canvas` carries only the
+ * selection overlay. Two animation frames first, for the reason
+ * `guidePixelsAtSceneX` gives. Alpha rather than luminance, because this scene's
+ * artboard paint is a DOM sibling *below* the canvas, so the canvas itself reads
+ * as ink over nothing and a dim is exactly a smaller alpha.
+ */
+async function pixelAtObjectCentre(
+  page: Page,
+  id: string,
+  artboard = 320,
+): Promise<readonly number[]> {
+  return page.evaluate(
+    async ([objectId, width]) => {
+      await new Promise((resolve) => {
+        requestAnimationFrame(() => requestAnimationFrame(resolve));
+      });
+      const bridge = (
+        window as unknown as {
+          vigiliaEditorBridge: {
+            editor: {
+              viewport: {
+                artboardScreenRect(): {
+                  left: number;
+                  top: number;
+                  width: number;
+                };
+              };
+              canvas: {
+                getObjects(): Array<{
+                  id?: string;
+                  getObjects?(): Array<{ id?: string }>;
+                  getBoundingRect(): ArtboardRect;
+                }>;
+              };
+            };
+          };
+        }
+      ).vigiliaEditorBridge;
+      const find = (
+        candidates: ReadonlyArray<{
+          id?: string;
+          getObjects?(): Array<{ id?: string }>;
+          getBoundingRect(): ArtboardRect;
+        }>,
+      ): (typeof candidates)[number] | undefined => {
+        for (const candidate of candidates) {
+          if (candidate.id === objectId) return candidate;
+          const found = find(
+            (candidate.getObjects?.() ?? []) as typeof candidates,
+          );
+          if (found !== undefined) return found;
+        }
+        return undefined;
+      };
+      const object = find(bridge.editor.canvas.getObjects());
+      if (object === undefined)
+        throw new Error(`no object with id ${objectId}`);
+      const element = document.querySelector<HTMLCanvasElement>(
+        "#vigilia-fabric-editor canvas.lower-canvas",
+      );
+      const context = element?.getContext("2d");
+      if (element === null || context === null || context === undefined)
+        throw new Error("no lower canvas");
+
+      const rect = object.getBoundingRect();
+      const view = bridge.editor.viewport.artboardScreenRect();
+      const ratio = element.width / element.getBoundingClientRect().width;
+      const scale = view.width / width;
+      const x = Math.round(
+        (view.left + (rect.left + rect.width / 2) * scale) * ratio,
+      );
+      const y = Math.round(
+        (view.top + (rect.top + rect.height / 2) * scale) * ratio,
+      );
+      const data = context.getImageData(x, y, 1, 1).data;
+      return [data[0] ?? -1, data[1] ?? -1, data[2] ?? -1, data[3] ?? -1];
+    },
+    [id, artboard] as const,
+  );
+}
+
 /** Drags a named object's `mr` handle so its raw right edge would land at
  * `toSceneX`, and reports the right edge the resize actually left, plus the
  * guide pixels drawn along that edge while the pointer was still down. The
@@ -3485,6 +3575,105 @@ test.describe("Fabric editor route", () => {
     await expect.poll(inCanvas).toBe(true);
     await expect.poll(async () => (await state()).active).toBe("grp");
     expect((await state()).groupPresent).toBe(true);
+  });
+
+  test("dims the artboard outside an entered group, and leaves it on exit", async ({
+    page,
+  }, testInfo) => {
+    test.skip(!isDesktopSurface(testInfo), "desktop surface");
+    await page.goto(EDITOR);
+    // The same two rectangles the case above enters, with nothing else on the
+    // canvas: one is the group's own part and one is what entering puts out of
+    // reach, so the two pixels below are the whole of what the rule acts on.
+    await setThemePackage(page, "group-dim.vigilia-theme", {
+      schemaVersion: 2,
+      fabricVersion: "7.4.0",
+      id: "group-dim",
+      metadata: { themeLanguage: "en" },
+      artboard: { width: 320, height: 180 },
+      globals: {
+        palette: {
+          none: {
+            name: "None",
+            value: { kind: "solid", color: "transparent" },
+          },
+          accent: {
+            name: "Accent",
+            value: { kind: "solid", color: ACCENT_PAINT },
+          },
+        },
+      },
+      scene: {
+        version: "7.4.0",
+        objects: [
+          {
+            type: "Group",
+            id: "grp",
+            left: 40,
+            top: 40,
+            width: 30,
+            height: 30,
+            objects: [
+              {
+                type: "Rect",
+                id: "child",
+                left: 0,
+                top: 0,
+                width: 30,
+                height: 30,
+                fill: ACCENT_PAINT,
+                vigiliaPaint: { fill: "palette.accent" },
+                originX: "left",
+                originY: "top",
+              },
+            ],
+          },
+          {
+            type: "Rect",
+            id: "outside",
+            left: 240,
+            top: 40,
+            width: 30,
+            height: 30,
+            fill: ACCENT_PAINT,
+            vigiliaPaint: { fill: "palette.accent" },
+            originX: "left",
+            originY: "top",
+          },
+        ],
+      },
+    });
+    await expect(page.locator("#status-message")).toHaveText(
+      "Opened group-dim.vigilia-theme",
+    );
+
+    const untouched = await pixelAtObjectCentre(page, "outside");
+    const insideUntouched = await pixelAtObjectCentre(page, "child");
+    // Both rectangles are authored opaque, so a full alpha at their centres is
+    // the paint rather than a dim, and the reading below has a baseline.
+    expect(untouched[3]).toBe(255);
+    expect(insideUntouched[3]).toBe(255);
+
+    // Entered the way an author does: a double-click inside the group's part.
+    const inside = await sceneToClient(page, 320, 55, 55);
+    await page.mouse.dblclick(inside.x, inside.y);
+
+    // **0.45, the layer list's own dim** (`.vigilia-layer-row[data-context="false"]`,
+    // read on the row in the case above): the two surfaces must not disagree
+    // about what the author can reach. The canvas is at DPR 1 under Playwright,
+    // so an opaque fill at 0.45 reads as 115 of 255.
+    await expect
+      .poll(async () => (await pixelAtObjectCentre(page, "outside"))[3])
+      .toBe(115);
+    // The positive half: the object the author entered the group to work on is
+    // untouched, so a rule that dimmed the whole canvas could not pass.
+    expect((await pixelAtObjectCentre(page, "child"))[3]).toBe(255);
+
+    // Escape is the keyboard route out — the case above owns that claim.
+    await page.keyboard.press("Escape");
+    await expect
+      .poll(async () => pixelAtObjectCentre(page, "outside"))
+      .toEqual(untouched);
   });
 
   test("rehydrates a chart runtime after undo", async ({ page }, testInfo) => {

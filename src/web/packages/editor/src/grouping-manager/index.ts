@@ -45,6 +45,14 @@ const ownerGroup = (object: FabricObject): Group | undefined => object.parent;
 /** Fired on the canvas when the entered group changes; see `setContext`. */
 export const GROUP_CONTEXT_EVENT = "editor:group-context-changed";
 
+/**
+ * What the artboard dims to outside the entered group, and it is the layer
+ * list's own value (`.vigilia-layer-row[data-context="false"]`): the two
+ * surfaces must not disagree about what the author can currently reach, which is
+ * the rule `DESIGN.md` §7.9 states.
+ */
+const DIM_OPACITY = 0.45;
+
 export function createGroupingManager(
   options: GroupingManagerOptions,
 ): GroupingManager {
@@ -108,6 +116,79 @@ export function createGroupingManager(
   const inside = (object: FabricObject, entry: Group): boolean =>
     object === entry || (object.parent as Group | undefined) === entry;
 
+  /** What the manager is dimming, and the cache each dim has been painted into. */
+  const dimmed = new Map<
+    FabricObject,
+    {
+      readonly onBeforeRender: (event: {
+        readonly ctx: CanvasRenderingContext2D;
+      }) => void;
+      cacheContext: CanvasRenderingContext2D | undefined;
+    }
+  >();
+
+  /**
+   * Dims `object` and everything under it, and stops at the entered group: the
+   * entry and its descendants are what the author is working inside, so they
+   * keep their own alpha.
+   *
+   * **Two contexts, and they are not interchangeable.** Fabric hands the event
+   * whichever surface it is painting on. On the live canvas the object's own
+   * opacity has already been multiplied in and Fabric brackets the paint in a
+   * `save`/`restore`, so the dim multiplies into it and is gone with the paint.
+   * A cache is the object's own and is neither bracketed nor cleared between
+   * repaints, so it takes the *value* rather than a multiplication — a
+   * multiplication would compound on each repaint and would outlive the exit,
+   * because nothing else ever writes that context's alpha.
+   *
+   * This is why a dimmed object is not forced uncached: a `clipPath` object is
+   * cached whatever `objectCaching` says (`needsItsOwnCache` answers for it, and
+   * a clip composites with `destination-in`, which needs a cache to happen on),
+   * and a cached paint is the paint. `Group` carries no listener at all, because
+   * Fabric overrides `Group.drawObject` and a group never fires `before:render`;
+   * its children are dimmed individually, one multiplication each.
+   */
+  const dimOutside = (object: FabricObject, entry: Group): void => {
+    if (object === entry) return;
+    const children = object instanceof Group ? object.getObjects() : undefined;
+    if (children !== undefined)
+      for (const child of children) dimOutside(child, entry);
+    if (dimmed.has(object)) return;
+    const record = {
+      cacheContext: undefined as CanvasRenderingContext2D | undefined,
+      onBeforeRender: ({ ctx }: { readonly ctx: CanvasRenderingContext2D }) => {
+        // Fabric's own private field, which `glass.ts` reads for the same
+        // question: which of the two surfaces this paint is landing on.
+        if (ctx === (object as { _cacheContext?: unknown })._cacheContext) {
+          record.cacheContext = ctx;
+          ctx.globalAlpha = DIM_OPACITY;
+          return;
+        }
+        ctx.globalAlpha *= DIM_OPACITY;
+      },
+    };
+    dimmed.set(object, record);
+    // An object that paints from its own cache fires nothing while that cache is
+    // clean, so the transition is what makes the repaint that carries the dim.
+    object.dirty = true;
+    // A group takes no listener for the same reason it renders: Fabric never
+    // fires this event for one, and its children carry the dim themselves.
+    if (children === undefined)
+      object.on("before:render", record.onBeforeRender);
+  };
+
+  const restoreDim = (): void => {
+    for (const [object, record] of dimmed) {
+      object.off("before:render", record.onBeforeRender);
+      // Back to the alpha a cache context is expected to carry, ahead of the
+      // repaint that takes the dim back out of the paint.
+      if (record.cacheContext !== undefined)
+        record.cacheContext.globalAlpha = 1;
+      object.dirty = true;
+    }
+    dimmed.clear();
+  };
+
   /**
    * The artboard half of entering a group.
    *
@@ -116,6 +197,12 @@ export function createGroupingManager(
    * learn to disbelieve. `selectable`/`evented` is `object-lock-manager`'s own
    * idiom for "not reachable", and neither key is in Fabric's `stateProperties`,
    * so it stays view state (§67) where `opacity` would not.
+   *
+   * The dim rides this same walk because it has the same lifetime and the same
+   * subject: what the entry puts out of reach. Only the subtree predicate
+   * differs, and deliberately — the panel marks the entered group and every
+   * descendant of it as the context, so an object *under* an outside group is
+   * outside too and a group cannot be dimmed as one object.
    */
   const applyReachability = (entry: Group): void => {
     for (const object of canvas.getObjects()) {
@@ -123,6 +210,7 @@ export function createGroupingManager(
       reachabilityTaken.set(object, previousReachability(object));
       object.set({ selectable: false, evented: false });
     }
+    for (const object of canvas.getObjects()) dimOutside(object, entry);
     canvas.requestRenderAll();
   };
 
@@ -131,6 +219,7 @@ export function createGroupingManager(
       object.set(previous);
     }
     reachabilityTaken.clear();
+    restoreDim();
     if (render) canvas.requestRenderAll();
   };
 
@@ -146,6 +235,7 @@ export function createGroupingManager(
     if (!(entry instanceof Group)) return;
     const object = event.target as FabricObject | undefined;
     if (object === undefined || inside(object, entry)) return;
+    dimOutside(object, entry);
     if (reachabilityTaken.has(object)) return;
     reachabilityTaken.set(object, previousReachability(object));
     object.set({ selectable: false, evented: false });

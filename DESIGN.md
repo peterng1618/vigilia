@@ -398,6 +398,25 @@ and chart tiles, with full accessible names and focus/hover descriptions. Lens
 chips remain compact where they fit; overflow composition preserves the full
 choice set without dictating a permanently larger chooser.
 
+### Entering a group
+
+<!-- §7.9 -->
+
+Entering a group is a **view state, not a document change**: it says what the
+author is working inside, and the scene it leaves behind is byte-identical to the
+one it found. Both surfaces say so the same way. The layer list dims the rows the
+entered group puts out of reach, and **the canvas dims what is outside the entered
+group at the same value** — `0.45`, the opacity the unreachable rows already take —
+so the list and the canvas cannot disagree about what the author can currently reach.
+
+**The dim belongs to the view and never to the objects.** The renderer applies it at
+draw time and does not touch any object's `opacity`. That is not a stylistic
+preference: Fabric serialises `opacity`, so a dim that reached an object would write
+view state into every save, which the project's guardrail against persisting anything
+but authored state forbids. It does not stack either — an object that is hidden *and*
+outside the entered group is dimmed once, at `0.45`, not twice, which is the rule the
+layer list already states for a hidden row inside an unreachable one.
+
 ## Elevation & Depth
 
 ### Elevation
