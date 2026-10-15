@@ -37,11 +37,11 @@ ledger did.
 
 ## Last completed change
 
-- **Task 14.1's fix round R2 moves the normative document rather than the product** — `DESIGN.md` §5's slider well is 40px with the arithmetic beside the row (`5f8def05`): item 10 made the well an input, so 36 leaves the field 22px against §5's own 24×24 target rule, and until item 10 it was a readout no target rule bound.
-- **The two current control drawings still draw 36, and the refresh rule owns them** — filed as `vg-496` naming `controls.html:144` and `controls-editorial.html:145` rather than edited, because their well is a literal paired with a capture.
-- **`vg-212`'s paragraph described a shape that does not exist and is corrected** — the `:349` case is red in the file's ordered two-case run and green alone (3.1 s), which is the row's own recorded shape; R1 had called a two-case ordered run "alone".
-- **The precision fallback is no longer silent** — `chart-fields.tsx`'s `PRECISION_FLOOR` names the hazard at the field (the floor is not the absent state), and `vg-497` files what a slider is missing, since a track has no unauthored position.
-- **`vg-469`'s universal states the reading it holds under** — "carries a `max` this surface reads", so the three descriptors bounded by the sample store or the chart's data are outside it rather than exceptions to it.
+- **Task 14.1's fix round R3 corrects the §5 paragraph's citation and files the drift that exposed** — §5 now cites `control-well.tsx`'s `px-[var(--space-6)]` (6px at `editor-shell.css:465`) and the drawings' `padding:4px 6px` rather than §3's table, which assigns that job the **4px** step (`d95ad2cf`).
+- **The drift is filed as `vg-498`** — the well pads 6, both drawings draw 6, §3's table says 4, and no case asserts the well's width, so nothing has ever reddened on it.
+- **Both remedies are named because they are not equivalent** — narrowing the pad to §3's 4px leaves a 26px field at 36px, so the 36px well was never a violation and neither §5's amendment nor `vg-496` would have been needed; against it, `wellClasses` pads every well in the shell and §5's vocabulary is closed.
+- **The §5 arithmetic and the 38-floor sentence are unchanged** — only the citation moved, and the paragraph names §3's table as the odd one out so it no longer contradicts the document it lives in.
+- **`design:check`, `gate`, `typecheck` and `backlog-check` all exit 0.**
 
 ## Next
 
