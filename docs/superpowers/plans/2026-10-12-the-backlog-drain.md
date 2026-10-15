@@ -1883,6 +1883,33 @@ the one that moves**, and it is the one this section exists to keep visible: the
 phase lands, and rises again by however many rows that phase's own work files — `vg-481` and `vg-482`
 were filed by 13.1b's review on the morning this count was taken.
 
+**The fourth correction to the method, measured 2026-10-16 at `0c5db3fe`, and it is the largest one:
+"named by a `### Task` block" is not "has a home".** The census counts a row as carried when a task
+block names it, and **Phase 1's task blocks are the ruling sessions** — its Outcome is that every one of
+the 104 decision rows carries a `RULED <date>:` line, and its tasks are "Session 2 — D3, D4, D5 and D6".
+So a row Phase 1 names has a **decision**, not a phase that will implement it. Measured over the live
+register:
+
+| | rows |
+|---|---|
+| open | **207** |
+| named by a `### Task` block | 110 |
+| **named only by Phase 1, the ruling phase** | **53** |
+| named by a phase that implements something | **57** |
+| named by no phase at all | **97** |
+| **open with no home** (97 + 53) | **150** |
+
+**So the second number is 150, not 97, and the first is 207, not 204.** Every one of the 53 carries a
+`RULED <date>:` marker, which is what makes them invisible to the orphan count and why this correction
+matters: the census's own instrument reports them as carried while no phase will ever land them. **The
+plan's closing rule is what put them there** — a ruled row closes only on the phase that lands its
+change — so a ruling taken in Phase 1 with no adopting phase is a row the plan cannot close and the
+orphan count cannot see. **The two kinds are not the same and the triage must take them differently:**
+the 97 need a decision, and the 53 already have one and need a home. `vg-051` and `vg-116` were the two
+of the 53 whose own ruling asks for **no** change, so they closed on 2026-10-16 by applying a ruling
+already taken rather than by inventing a phase; `vg-041`/`vg-188`, `vg-268`/`vg-283`, `vg-271` and
+`vg-363` name work and are the shape the rest are.
+
 # Parked rows — held, not a phase
 
 **`vg-330` was parked by the user on 2026-10-11 and UNPARKED by the user on 2026-10-14**, and this
