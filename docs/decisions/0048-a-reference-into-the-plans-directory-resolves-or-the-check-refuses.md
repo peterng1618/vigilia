@@ -82,6 +82,19 @@ Chosen because the three-part rule above is the whole work and no generic checke
 code span and in a `.mjs` string rather than in a link. A dependency would answer a wider question
 badly and this one not at all.
 
+## Extended 2026-10-16 — the scan skips a path the worktree no longer holds
+
+`git ls-files --cached` lists a tracked path whether or not the worktree still holds it, so a file
+**deleted and not yet staged** — the normal state during any refactor that deletes one — was listed,
+read, and threw `ENOENT` out of the scan loop. **Task 15.4's first gate run died this way**, at
+`design-language.spec.ts:138`, with an error naming neither the check nor the cause; the run passed once
+the deletion was staged, which is why it read as a staging problem rather than a defect here.
+
+**The scan now skips a listed path that does not exist.** A file that is not on disk carries no
+reference to check, so this is the rule's own answer rather than a suppression. Proved both ways on
+2026-10-16 by deleting a tracked file with the fix present (exit 0, 873 files) and absent (exit 1,
+`ENOENT`), with both the script and the deleted file restored byte-identical under `cmp`.
+
 **The escape is deliberate and is not a loophole.** Two references in this repo resolve to nothing
 on purpose — one names a plan that was never migrated, one is a fixture a self-test must feed the
 checker. `doc-ref-ok: <reason>` on the line or the line above records which, so the next reader sees

@@ -134,6 +134,10 @@ if (process.argv.includes("--self-test")) {
 let broken = 0;
 let scanned = 0;
 for (const file of scannedFiles()) {
+  // `git ls-files --cached` lists a tracked path the worktree no longer holds — a file deleted and
+  // not yet staged, which is the normal state mid-refactor and was `Task 15.4`'s first gate run.
+  // It carries no reference to check, and reading it threw ENOENT out of this loop.
+  if (!existsSync(join(ROOT, file))) continue;
   scanned += 1;
   for (const { line, token } of brokenIn(readFileSync(join(ROOT, file), "utf8"), planExists)) {
     process.stderr.write(`${file}:${line}  ${token} resolves to nothing\n`);
