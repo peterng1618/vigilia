@@ -103,7 +103,7 @@ jobs:
         # `/control-fixture.html`. `npm run build:fixture` is a second invocation
         # into the same `dist` with `emptyOutDir: false` (vite.config.fixture.ts),
         # so a fresh checkout needs it or the page SPA-falls back to `index.html`
-        # and design-language.spec.ts fails at its `[data-fixture-root]` assert.
+        # and the design-language specs fail at their `[data-fixture-root]` assert.
         # Deliberately NOT chained into `npm run build` — the fixture must stay
         # out of the editor's production output.
         run: npm run build:fixture -w @vigilia/editor

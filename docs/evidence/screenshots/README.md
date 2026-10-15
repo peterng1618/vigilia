@@ -22,9 +22,9 @@ artifact.
 (`packages/editor/control-fixture.html`). It is a separate invocation on purpose:
 building it inside `npm run build` would ship test scaffolding in the editor's
 production output and move `index.html` onto a shared chunk it does not otherwise
-need. Run it before any capture or browser run that names
-`design-language.spec.ts`; without it that one spec 404s and the rest are
-unaffected.
+need. Run it before any capture or browser run that names the
+`design-language-*.spec.ts` specs; without it the ones that mount the fixture
+404 and the rest are unaffected.
 
 Pick the project the capture's spec lives in: `desktop-chromium` for the
 preview-server captures (editor and player), `desktop-host` for the ones that
@@ -140,4 +140,4 @@ changes their rendered outcome. Keep this table aligned with the specs that
 carry the captures: `src/web/tests/e2e/editor.spec.ts`,
 `reference-theme.spec.ts`, `glass-authoring.spec.ts`,
 `inspector-sections.spec.ts`, `composition-panel.spec.ts`,
-`design-language.spec.ts` and `publish-loop.spec.ts`.
+the `design-language-*.spec.ts` specs and `publish-loop.spec.ts`.
