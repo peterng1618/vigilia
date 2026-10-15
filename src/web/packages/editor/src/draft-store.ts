@@ -115,12 +115,20 @@ export interface DraftAutosave {
  * prompt — the failure the unload warning already names in its own words
  * (`editor-main.ts`).
  *
- * **A clean document clears the draft, it does not merely skip it.** A save is
- * the common way to become clean, not the only one: an author who undoes back
- * to what was saved has no unsaved work, and a draft left holding the edit they
- * took back would be offered to them at the next boot as work "edited and not
- * saved" — which would by then be false, and restoring it would resurrect the
- * edit they chose to discard.
+ * **A document that becomes clean clears the draft, and one that merely is
+ * clean does not.** A save is the common way to become clean, not the only one:
+ * an author who undoes back to what was saved has no unsaved work, and a draft
+ * left holding the edit they took back would be offered to them at the next
+ * boot as work "edited and not saved" — which would by then be false, and
+ * restoring it would resurrect the edit they chose to discard.
+ *
+ * **But being clean is not the same as superseding the draft**, which is why
+ * the trigger is the *transition* out of dirty rather than the state. A document
+ * can be born clean while a draft is pending — the failed-restore fallback,
+ * where the mount the draft asked for threw and the boot opened something else
+ * — and that document never adopted the draft, so clearing it would delete the
+ * only copy of the author's work. It is the same pull of `isDirty()`, read
+ * across two ticks instead of one.
  */
 export function startDraftAutosave(input: {
   readonly store: DraftStore;
@@ -128,12 +136,16 @@ export function startDraftAutosave(input: {
   readonly document: () => DraftSource | undefined;
 }): DraftAutosave {
   let timer: ReturnType<typeof setInterval> | undefined;
+  /** The document's own answer, as this autosave last read it. */
+  let dirty = false;
 
   const writeNow = (): void => {
     const document = input.document();
     if (document === undefined) return;
-    if (document.isDirty()) input.store.write(document.draft());
-    else input.store.clear();
+    const next = document.isDirty();
+    if (next) input.store.write(document.draft());
+    else if (dirty) input.store.clear();
+    dirty = next;
   };
 
   const autosave: DraftAutosave = {

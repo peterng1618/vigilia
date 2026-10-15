@@ -190,6 +190,26 @@ describe("the draft's autosave", () => {
     autosave.stop();
   });
 
+  it("leaves a draft alone when the document was clean from its first tick", () => {
+    vi.useFakeTimers();
+    const store = new DraftStore(memoryStorage());
+    // A draft is pending while a document mounts clean: the failed-restore
+    // fallback, where the mount a draft asked for threw and the boot opened
+    // something else. That document never superseded the draft — it was born
+    // clean and never adopted it — and the draft is the only copy of the work.
+    store.write(DRAFT);
+    const autosave = autosaveOver(store, () => documentOver(() => false));
+
+    vi.advanceTimersByTime(120_000);
+
+    expect(
+      store.read(),
+      "a document that was never dirty does not clear the draft",
+    ).toEqual(DRAFT);
+
+    autosave.stop();
+  });
+
   it("writes on the way out, and resumes when the page comes back", () => {
     vi.useFakeTimers();
     const store = new DraftStore(memoryStorage());
