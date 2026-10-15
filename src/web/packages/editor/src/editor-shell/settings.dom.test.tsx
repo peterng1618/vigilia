@@ -1,4 +1,7 @@
 // @vitest-environment jsdom
+import { readFileSync } from "node:fs";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { SUPPORTED_SCHEMA_VERSION } from "@vigilia/renderer-core";
 import { act, useState } from "react";
 import { createRoot, type Root } from "react-dom/client";
@@ -101,6 +104,36 @@ function closeControl(): HTMLElement {
   );
   if (found === null) throw new Error("No close control.");
   return found;
+}
+
+/** The product stylesheet, injected by the two cases below because jsdom applies
+ *  a `<style>` element's rules and nothing in this harness loads the app's CSS.
+ *  Tailwind's own `@import` is dropped: jsdom cannot resolve it and raises on
+ *  it, and none of these reads comes from it.
+ *
+ *  The path is joined from the test file's own URL rather than built as a second
+ *  URL: under this file's jsdom environment `URL` is jsdom's, and Node's
+ *  `fileURLToPath` refuses an instance it did not make.
+ *
+ *  jsdom resolves no custom property (`editor-shell.tokens.test.ts` records the
+ *  same), so a value a rule states as a token comes back as the token's name;
+ *  `token()` turns that back into the value §2 declares, and `resolved()` is
+ *  the substitution. */
+const shellCss = readFileSync(
+  join(dirname(fileURLToPath(import.meta.url)), "editor-shell.css"),
+  "utf8",
+).replace(/^\s*@import[^;]*;\s*$/gm, "");
+
+function token(name: string): string {
+  const declared = new RegExp(`^\\s*${name}:\\s*([^;]+);`, "m").exec(
+    shellCss,
+  )?.[1];
+  if (declared === undefined) throw new Error(`${name} is declared nowhere`);
+  return declared.trim();
+}
+
+function resolved(value: string): string {
+  return value.replace(/var\((--[\w-]+)\)/g, (_, name: string) => token(name));
 }
 
 let root: Root | undefined;
@@ -634,5 +667,56 @@ describe("About", () => {
       document.metadata.version,
     );
     bridge.destroy();
+  });
+});
+
+/** §2's eyebrow and §5 rule 2's read-only row, read off the rendered modal
+ *  rather than off the sheet: a value a rule states is a rendered outcome, and
+ *  this is the half that reddens in `vitest` when the rule is reverted. The
+ *  rendered half is the browser (`design-language.spec.ts`). */
+describe("the modal's own language", () => {
+  let injected: HTMLStyleElement;
+
+  beforeEach(() => {
+    injected = document.createElement("style");
+    injected.textContent = shellCss;
+    document.head.append(injected);
+  });
+
+  afterEach(() => {
+    injected.remove();
+  });
+
+  it("takes §2's eyebrow for the group heading — --text-2xs, 600, .11em", async () => {
+    const host = mount();
+    await press(gear(host));
+
+    const heading = document.querySelector<HTMLElement>(
+      ".editor-shell-dialog h3",
+    );
+    if (heading === null) throw new Error("no group heading in the modal.");
+    const style = getComputedStyle(heading);
+
+    expect(resolved(style.fontSize), "§2's --text-2xs is 10px").toBe("10px");
+    expect(style.fontWeight).toBe("600");
+    expect(style.letterSpacing).toBe("0.11em");
+  });
+
+  it("gives the About row §5 rule 2's 74px label column and right-aligned value", async () => {
+    const host = mount("2.5.1");
+    await press(gear(host));
+    await openTab(uiCopy.settings.about);
+
+    const row = document.querySelector<HTMLElement>(
+      "[data-vigilia-about] dl > div",
+    );
+    if (row === null) throw new Error("no read-only row in the About tab.");
+    const tracks = getComputedStyle(row).gridTemplateColumns.split(/\s+/);
+    expect(tracks[0], "the label column is the rule's 74px").toBe("74px");
+    expect(tracks, "and one value cell beside it").toHaveLength(2);
+
+    const value = row.querySelector<HTMLElement>("dd");
+    if (value === null) throw new Error("no value cell in the row.");
+    expect(getComputedStyle(value).textAlign).toBe("right");
   });
 });
