@@ -37,11 +37,11 @@ ledger did.
 
 ## Last completed change
 
-- **The triage's first two passes ran and both came back negative, which is the result that matters** — over the 97 orphans, **zero are provably dead and zero duplicate a closed row**, so the withdraw option has no bookkeeping yield.
-- **Pass 1, "the row's subject is gone"** — 27 of the 97 name a path or a backticked symbol in their own title, and exactly one (`vg-391`) has no resolving path; reading it shows the path is *where the missing assertion should live*, not the row's subject, so it is not a withdrawal.
-- **Pass 2, "the row's subject is already owned"** — no orphan's title shares a backticked identifier with any archived row.
-- **So the 97 are real, distinct, open findings rather than a queue shrunk by tidying** — it repeats `vg-386`'s own shape a second time (133 candidates swept, none proven dead), and what is left is each row read on its own, which is why triage is plan-authoring rather than a script.
-- **Both sweeps' limits are recorded with them** — pass 1 reads titles and not `detail`, so a row whose title is prose is invisible to it, and pass 2 matches only backticked identifiers, so two rows describing one defect in different words are not caught.
+- **Triage batch A is applied: three rows closed on their own measurements and one parked** — `vg-407`, `vg-424` and `vg-432` were each measured live at `71d839a0` before being touched, so none closed on a stale reading.
+- **`vg-407` was split rather than half-closed** — its title's claim (six declared names missing from `docs/engineering/dependencies.md`) is fixed with versions and licences read from each installed package's metadata; its body's second half, that nothing in `scripts/`, `src/web/tests/` or any package source names that file at all, is now `vg-533` and needs a decision about where the check lives.
+- **`vg-432`'s line number was dropped rather than re-pointed** — the same call `vg-283` recorded, because a citation that names its symbol cannot rot and this row exists because the number did.
+- **`vg-452` is the register's first parked row, so decision `0045`'s marker and `parkedCount` are now exercised on real data** — `npm run backlog:check` reads `533 items across both registers, all valid (1 parked, 532 to work or closed)`, and it was parked rather than closed because its own finding calls it an ownership smell and not a defect.
+- **Verified** — `npx biome check ..` exit 0 over 654 files; `npx vitest run packages/editor/src/card-library.test.ts` exit 0 (29 tests); `npx vitest run packages/editor/src/editor-shell/settings.dom.test.tsx` exit 0 (18 tests); `npm run backlog:check` exit 0.
 
 ## Next
 
