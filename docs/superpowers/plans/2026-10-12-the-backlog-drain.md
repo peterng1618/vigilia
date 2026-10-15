@@ -2523,12 +2523,16 @@ corrected drawings, rebuilt.
 
 **Outcome:** the six ruled rows whose owner is a script or a registry are landed — the reuse gate's path
 claim becomes a file claim, the citation check declares its sources, the capture registry owns a freshness
-check, and the sweep's three tiers report what they claim.
+check, and the sweep's three tiers report what they claim — **and Task 21.7 adds a seventh, `vg-536`,
+which no ruling named: the 800-line stop gets an instrument.**
 
 **Why a phase of its own.** All six edit `scripts/` or a registry under `docs/evidence/`, and the three
 sweep rows (`vg-380`, `vg-382`, `vg-386`) are **one instrument read three ways** — its selector direction,
 its `redundant-export` tier and its `barrel-only-export` tier. Phase 15 homed instrument gaps a
-measurement pass found; these six were ruled in Phase 1 and never scheduled.
+measurement pass found; these six were ruled in Phase 1 and never scheduled. **Task 21.7 is the same
+kind of arrival as Phase 15's rows — found by a measurement rather than by a ruling — and it is seated
+here rather than in Phase 15 because Phase 15 fixed instruments that were silent, while this one did not
+exist.**
 
 **Owners:** `scripts/reuse-gate.mjs` (`claimedPaths`, `covers`); `scripts/design-md.mjs` (`--cite`);
 `docs/evidence/screenshots/README.md` and its registry; the sweep script and its report.
@@ -2619,6 +2623,24 @@ file, never through a pipe.
 - [ ] **Step 1: The tier means no production consumer other than the barrel, with test consumers disclosed** — 133 candidates, not the plan's literal sole-importer shape's 76. A test importing a barrel export is disclosed in the report and does not hide the export from the tier, because a survivor costs a ticket and a deleted live symbol costs the product, so the bias stays on detection.
 - [ ] **Step 2: The newly visible rows are adjudicated as a sweep of its own**, not reported and left.
 - [ ] **Step 3: Close it**, with the count recorded as a measurement and its command.
+
+### Task 21.7: The 800-line stop gets an instrument
+
+**Added 2026-10-16**, homing `vg-536`, which was filed that day while Task 15.6 was homing `vg-415` and
+`vg-420`. It belongs to this phase rather than to Phase 15 because it is a **new instrument over the
+repo's own source**, which is what Phase 21 is for — Phase 15 fixed the four instruments that were
+silent about a class of defect, and this one did not exist at all.
+
+**Files:**
+- Modify: `scripts/` (a new check, chained into `gates:self-test` the way the other eleven are)
+
+**Interfaces:**
+- Produces: `vg-536` closed
+
+- [ ] **Step 1: Land the decision note** claiming the new script's path — `scripts/` is on the reuse gate's own watchlist, and `vg-535` records that the hook does not block, so the note is owed on the merits rather than enforced.
+- [ ] **Step 2: The measure reports the over-stop set, not a row per file.** `vg-536` measured **47 tracked `src/web` files past the 800-line stop, 33 of them named by no register row** at `5ad08048`, and the finding is not the count: the one-row-per-file policy closed `vg-209`'s file while `layer-panel.dom.test.tsx` grew to 1968 unnamed and `vg-374`'s while `editor-session.dom.test.ts` reached 1707. **A filing per file per growth does not converge**; a reported set with a ceiling that falls does.
+- [ ] **Step 3: The cut is authored versus generated, not product versus test.** `vg-426`'s token ratchet excludes tests and fixtures because a test asserting a hex is a test *about* a literal — but this stop applies to test files too (`vg-415`, `vg-420`, `vg-394`, `vg-395` are all test files), so a measure that excluded them would not have seen four of its own rows. `font-trios.generated.ts` (28284) is the case the other cut exists for.
+- [ ] **Step 4: Give the ceiling a finish, and prove it red** by growing a file past it, then close.
 
 ---
 
