@@ -37,10 +37,11 @@ ledger did.
 
 ## Last completed change
 
-- **Triage batch I applied: three rows withdrawn, each on what removed its subject** — `vg-477` (the dead `LicenceLedger.design` field, removed by `6069e7ba`), `vg-485` (the six `exact: true` locators, removed by `786ef12b`), and `vg-500`, whose own premise is now false because the ruling on `vg-501` already withdrew the two rows it names.
-- **A withdrawn row carries no `artefacts`** — the field claims "this work exists on the mainline", which only a `verified` row can claim; `vg-482`'s earlier park taught the same lesson when it was first written with an unrelated sha.
-- **The register is at 193 open, 34 parked, 22 withdrawn** — from 207 open when the triage began, and the 66-row measurement pass is what made both numbers move.
-- **What the pass found is the shape of the remainder: the orphan backlog is dominated by rows that need a decision, not by rows whose subject is gone** — 22 of the 66 parked with their two options named, 3 withdrawn, and 16 real findings that still need a phase.
+- **Phase 16 authored, and the two triage phases now carry every row the passes returned as real work** — eighteen behaviour findings in five tasks, grouped by owner rather than by row number.
+- **The census moved three times as far as the open count did** — at 193 open: 136 named by a task block, 57 by no phase, **108 with no home**, against 150 at 207 open; homing a row and parking it both count, and neither is a close.
+- **The triage has now decided 53 rows — fourteen closed, five withdrawn, thirty-four parked** — over nine batches, and what the passes found is the shape of the remainder: dominated by rows that need a decision, not by rows whose subject is gone.
+- **Phase 16's constraints are the ones its rows taught**: every row was measured by a pass that ran nothing, so each task reproduces its own case first; and where a drawing and the design language disagree, the drawing loses unless the user has ruled — which is `vg-496` and `vg-498`.
+- **Phases 15 and 16 are both queued behind Phase 12**, which is the only phase that has not closed.
 
 ## Next
 

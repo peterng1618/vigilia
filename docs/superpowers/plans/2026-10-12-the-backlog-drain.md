@@ -63,11 +63,13 @@ Eleven phases, in this order:
 | 9 | W8 — structural stops and the plans directory | 4 | parallel-safe |
 | 10 | W9 — the unowned mockup-parity plan | 2 | gated on D4 and D3/D6 |
 
-**Four phases were added after that table was written, so the table records the order rather than the
+**Five phases were added after that table was written, so the table records the order rather than the
 count**: Phase 12 (the 2026-10-14 rulings no phase carried), Phases 13 and 14 (the user's 2026-10-14
-GUI list, items 1–9 and 10–18), and **Phase 15, the instrument gaps the triage decided** — which is the
-phase the `# The rows no phase carries` section's own rule names, authored from measurements taken on
-2026-10-16 rather than from titles.
+GUI list, items 1–9 and 10–18), and **Phases 15 and 16, which are the phases the triage's own verdicts
+named** — the `# The rows no phase carries` section rules that a triaged row is fixed *in a phase named
+here*, withdrawn or parked, so the rows a measurement pass returned as real work became Phase 15 (nine
+instrument gaps) and Phase 16 (eighteen behaviour findings). Both are authored from measurements taken
+on 2026-10-16 rather than from titles.
 
 **Rulings open first, work opens at W1.** The close phase precedes everything because it needs no build, no suite and no ruling, and because it is where the register mechanics are exercised before 100+ rows depend on them. The ruling phase precedes the work phases for one reason: D8 gates W5, D1 decides whether W3's gates count, and D4/D3/D6 gate W9. A work phase whose gating cluster is unanswered stays queued — do not start it and hope.
 
@@ -1923,6 +1925,111 @@ parity suite on a built bundle for Tasks 15.1 and 15.5.
 
 ---
 
+# Phase 16 — W11: the behaviour findings the triage measured
+
+**Outcome:** the eighteen rows a measurement pass reproduced at HEAD are fixed, and the two it could not
+settle are settled by a run rather than by another reading.
+
+**This phase exists because the pass changed what the remainder looks like.** Of the 66 orphan rows four
+agents measured on 2026-10-16, **22 parked** with the options they wait on, **3 were withdrawn** because
+their subject was gone, and **18 came back real and still true**. A real finding with no home is the one
+state the plan's `# The rows no phase carries` section exists to end, so they get a phase rather than a
+position statement.
+
+**Owners:** the shell stylesheet (`src/web/packages/editor/src/editor-shell/editor-shell.css`), the
+control primitives (`src/web/packages/editor/src/components/ui/`), the drawings
+(`docs/design/mockups/current/`), and the session's own write paths (`editor-shell/bridge.ts`,
+`grouping-manager/index.ts`, `panes/composition/kind-mark.tsx`, `selection-inspector/`).
+
+**Constraints:** **queued behind Phases 12 and 15**, because one phase is active at a time. Every row
+here was measured by a pass that read the tree and **ran nothing**, so a task's first step is to
+reproduce its own case rather than trusting the pass's line numbers — several rows cite lines that have
+moved, and `vg-487` cites the wrong file for the hook it names (the removal hook is
+`SelectableCanvas.ts`, not `Canvas.ts`). **Task 16.3 changes drawings or `DESIGN.md`, which is a
+design-language act**: where a drawing and the design language disagree, the drawing loses unless the
+user has ruled otherwise, and `vg-496` and `vg-498` are two rows of exactly that shape.
+
+**Acceptance:** each row's own `check` passes and is recorded on its line; the four instrument-shaped
+rows (`vg-491`, `vg-492`, `vg-494`, `vg-499`) each carry a case that fails when the fix is disabled;
+`npm run gate` exit 0 with its exit code named in the close commit, and the browser suite named
+separately because `gate`'s `test` is `vitest run`.
+
+**Failure modes:** repainting a drawing to match a product bug; a fix that makes the product agree with a
+drawing the design language contradicts; treating a pass's line number as a landmark.
+
+**Verify:** `npm run gate` (exit code read from `$?` into a file, never through a pipe), plus the
+browser suite for Tasks 16.1, 16.3 and 16.5 on a rebuilt bundle.
+
+### Task 16.1: The shell's scrollbars
+
+**Files:**
+- Modify: `src/web/packages/editor/src/editor-shell/editor-shell.css`; `src/web/tests/e2e/shell-appearance.spec.ts`
+
+**Interfaces:**
+- Produces: `vg-479`, `vg-480` and `vg-491` closed
+
+- [ ] **Step 1: `vg-479` — the three `--vigilia-scrollbar-*` tokens are declared once on `:root` as literals** (`#c9c2b1`, its hover, `transparent`), and no palette block declares them, so a dark OS resolves the light thumb. Move them into the palette set.
+- [ ] **Step 2: `vg-480` — the two portalled scrollers keep the platform scrollbar.** `.editor-shell-menu-popup` and `.editor-shell-dialog` both set `overflow-y: auto` and neither class is in the scrollbar rule, which names only `.editor-shell-panel` and `.editor-shell-inspector`.
+- [ ] **Step 3: `vg-491` — the four `::-webkit-scrollbar*` rules are read by nothing.** The browser case reads the standard `scrollbarWidth`/`scrollbarColor` pair, so deleting the pseudo-element family leaves it green. Give them a case or delete them, and say which.
+- [ ] **Step 4: Rebuild, run the appearance suite, and close the three.**
+
+### Task 16.2: The control primitives' own contract
+
+**Files:**
+- Modify: `src/web/packages/editor/src/components/ui/`
+
+**Interfaces:**
+- Produces: `vg-483`, `vg-493`, `vg-494` and `vg-498` closed
+
+- [ ] **Step 1: `vg-483` — `ControlWell` declares `describedById` and `ControlIconButton` never reads it**, so the prop is inert on the one control that draws a reason.
+- [ ] **Step 2: `vg-493` — the gradient stop's offset is a bounded `ControlNumber`**, a text box where the sibling spacing controls carry a track.
+- [ ] **Step 3: `vg-494` — the wheel handler returns early out of range while the thumb clamps to `max` and the well reads the stored value**, so the two halves of one control disagree about what it holds.
+- [ ] **Step 4: `vg-498` — code pads 6, both drawings pad 6, and `DESIGN.md`'s §3 table says 4.** The table is the side that moves; say so on the row.
+- [ ] **Step 5: Prove each of the four with a case that fails when the fix is disabled.**
+
+### Task 16.3: The drawings against the design language
+
+**Files:**
+- Modify: `docs/design/mockups/current/controls.html`, `controls-editorial.html`, `shell.html`; `DESIGN.md`; `src/web/packages/editor/src/editor-shell/editor-shell.css`
+
+**Interfaces:**
+- Consumes: the drawings README's refresh rule
+- Produces: `vg-496`, `vg-497` and `vg-492` closed
+
+- [ ] **Step 1: `vg-496` — both control drawings draw the well at 36 where `DESIGN.md` §5 says 40.** Decide which is the intent and move one, recording why on the row; this is the one step in the phase that may change a drawing.
+- [ ] **Step 2: `vg-497` — an unauthored precision renders 0 on the slider while the renderer draws at most one decimal**, so the field shows a value the scene does not hold.
+- [ ] **Step 3: `vg-492` — the layer row's fourth-button arm is unreachable** (the row draws at most three), and the prose beside it still says "a row that draws four". Delete the arm and correct the sentence.
+- [ ] **Step 4: Rebuild, run the design-language suite, and close the three.**
+
+### Task 16.4: The silent paths
+
+**Files:**
+- Modify: `src/web/packages/editor/src/editor-shell/bridge.ts`; `grouping-manager/index.ts`; `panes/composition/kind-mark.tsx`; `selection-inspector/`
+
+**Interfaces:**
+- Produces: `vg-484`, `vg-486`, `vg-489` and `vg-499` closed
+
+- [ ] **Step 1: `vg-484` — the footer's route through `bridge.run` is unwrapped**, so a construction refusal (no palette token) is silent; `constructing()` now lives in `new-object-panel.ts`, not in `add-pane.tsx`.
+- [ ] **Step 2: `vg-486` — `group()` removes each member with `canvas.remove`**, and `scene-fabric/src/adapter.ts` disposes any `object:removed` target, so grouping disposes the objects it groups.
+- [ ] **Step 3: `vg-489` — an unknown chart family falls back to the bar glyph**, which is the bar kind's own mark, so two kinds draw the same mark.
+- [ ] **Step 4: `vg-499` — the inspector's reveal button and all its wiring are gone** and no scroll-to-preset route replaced it; either restore the route or record that the affordance was retired deliberately.
+- [ ] **Step 5: Close the four**, saying for `vg-499` which of the two it was.
+
+### Task 16.5: The readings the passes could not take
+
+**Files:**
+- Modify: nothing until the runs answer; then whatever each row names
+
+**Interfaces:**
+- Produces: `vg-487`, `vg-490` and `vg-495` closed or refiled on what the runs show
+
+- [ ] **Step 1: `vg-487` — Fabric's `_hoveredActualTarget` is never cleared on removal.** The pass corrected the row's citation: the removal hook is `SelectableCanvas.ts`, not `Canvas.ts`. Establish whether the leak is reachable from this product before fixing an upstream fact.
+- [ ] **Step 2: `vg-490` — the pass could not settle the negative claim** ("no browser case") item by item, and found one item already falsified: a browser case asserting the section header's trailing rule exists at `inspector-sections.spec.ts:1055` and predates the row. Re-read the row against that, then either narrow it or close it.
+- [ ] **Step 3: `vg-495` — the claim is a runtime ordering one** (red in the full suite, green alone) that a read-only pass cannot reproduce. One run settles it.
+- [ ] **Step 4: Rebuild, run each case alone and then in the suite**, and close or refile on what the two samples show — a single sample of a flaky spec is not a measurement.
+
+---
+
 # The rows no phase carries — the drain's own by-products (90 open, re-measured 2026-10-15)
 
 **Counted rather than estimated, because the count is the point of this plan.** The register holds
@@ -1980,18 +2087,18 @@ position rather than a phase, exactly as the parked rows below are:
 - **What is explicitly not the answer:** a phase that carries all 51 because they exist. That converts
   a queue into a backlog again.
 
-**The triage is now running, and Phase 15 is where its fix-verdicts went.** Batches A–G on 2026-10-16
-decided 27 rows by measurement — fourteen closed, two withdrawn, eleven parked — and the nine rows whose
-verdict was *real work with no home* became **Phase 15**, authored from those measurements rather than
-from titles. **So this section's rule is no longer a plan for later; it has a phase.** The parks and the
-withdrawals are recorded on the rows themselves, which is where a ruling lives.
+**The triage is now running, and Phases 15 and 16 are where its fix-verdicts went.** Batches A–I on
+2026-10-16 decided **53 rows — fourteen closed, five withdrawn, thirty-four parked** — and the rows whose
+verdict was *real work with no home* became two phases authored from those measurements rather than from
+titles: **Phase 15** (nine instrument gaps) and **Phase 16** (eighteen behaviour findings). **So this
+section's rule is no longer a plan for later; it has phases, and the parks and withdrawals are recorded
+on the rows themselves**, which is where a ruling lives.
 
-**Re-measured 2026-10-16 after Phase 15 was authored, at `37e72f0a` plus that edit: 195 open, 118 named
-by a `### Task` block, 77 named by no phase, and 128 with no home** (77 unnamed + 51 named only by
-Phase 1). The pair moved for three different reasons at once and each is worth separating: the open
-count fell by twelve (fourteen closes, two withdrawals, and two rows filed), **Phase 15 homed nine**,
-and the unnamed count fell by twenty for the same reason — so a census that reported only the open count
-would have shown a smaller improvement than the one that happened.
+**Re-measured 2026-10-16 after both phases were authored: 193 open, 136 named by a `### Task` block, 57
+named by no phase, and 108 with no home** (57 unnamed + 51 named only by Phase 1). **The pair moved from
+207/150 to 193/108, and the second number moved three times as far as the first** — the open count fell
+by fourteen while the no-home count fell by forty-two, because homing a row and parking it both count and
+neither is a close. A census that reported only the open count would have shown a third of the movement.
 
 **The measure of the drain is therefore two numbers, and both belong in the final report:** the open
 count, and how many of those no phase carries. Re-measured 2026-10-15 they are **204** and **90** —
