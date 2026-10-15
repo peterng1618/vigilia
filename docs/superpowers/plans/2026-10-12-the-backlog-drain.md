@@ -1966,9 +1966,22 @@ the third is a recorded exception rather than a silent one.**
 - Modify: the Line-endpoint geometry field's probe (`vg-401`); the mockup captures under `docs/design/mockups/current/` (`vg-402`, `vg-504`)
 
 - [ ] **Step 1: Settle `vg-401`'s two readings** with one browser probe: whether the field was in a refused state (a mundane `readOnly` explanation, no defect) or not (an untypeable field, a real one). The row says the reading was never taken; take it.
-- [ ] **Step 2: Re-shoot the three captures `vg-402` names** — `shell-capture-graphite.png`, `settings-capture-graphite.png` and `settings-capture-editorial.png` — whose last-touch commits are ancestors of Task 2's weight collapse `ef81b183`. **`vg-504`'s remaining half is the same act on the same three files** — its drawing is fixed and its captures are not — so it lands here rather than in a task of its own.
+- [ ] **Step 2: Re-shoot the three captures `vg-402` names** — `shell-capture-graphite.png`, `settings-capture-graphite.png` and `settings-capture-editorial.png` — whose last-touch commits are ancestors of Task 2's weight collapse `ef81b183`. **`vg-504`'s remaining half is the same act on the same three files** — its drawing is fixed and its captures are not — so it lands here rather than in a task of its own. **Corrected 2026-10-16, at the task's close: this sentence had the ancestry backwards, and the task's own seat measured it.** `ef81b183` is an *ancestor of* `64871ccd` and of `e412c98d`, not the other way round — those commits came after the collapse, so neither is an ancestor of it. The relation the row needs is the one `vg-504`'s own measurement uses and it is the sound one: the captures' last-touch commit predates the commit that changed the string they show. **The re-scope to `vg-504`'s three shell files is the correct one and `vg-402`'s settings pair was not in this task's scope.**
 - [ ] **Step 3: Rebuild the affected bundles first**, since Playwright's `webServer` is `vite preview` and reads `dist`.
 - [ ] **Step 4: Close both rows**, or close `vg-401` as a non-defect if the first reading holds — which is a legitimate outcome and must say so on the row.
+
+**Annotated 2026-10-16, at the task's close: `vg-401` and `vg-504` are `verified` and `vg-402` is not.**
+**`vg-401` closed as a non-defect, and neither of the row's two readings was the one taken**: `fill`
+completes in 42 ms with `readOnly: false`, so no actionability check fails, and the control refuses the
+draft itself on blur (`aria-invalid`, `not a number`) rather than being untypeable. **Structurally the
+field cannot be refused on this surface** — `refused` is set only by the chart manager, and
+`control-number.tsx` is `readOnly={refused !== undefined}` — so the 2026-10-12 observation was the
+probe's rather than the product's. The close carries a browser case proved red by planting
+`readOnly={true}`. **`vg-504`'s three captures were re-shot** and the controller verified all eleven
+drawings-adjacent pairs byte-identical to their evidence twins with `cmp`. **`vg-402` stays open**: its
+documentation half landed (the README now states the copy step and carries the eleven pairs, and its
+three false "produced by the registered actions" passages are corrected) but **its title's claim is
+still true** — nothing re-shoots them — and the mechanism is Task 21.3's, so the row is homed there.
 
 ### Task 15.6: The two files past the stop, second half
 
@@ -2582,8 +2595,7 @@ file, never through a pipe.
 - Modify: `docs/evidence/screenshots/README.md` and the registry; add a scanner under `scripts/`
 
 **Interfaces:**
-- Produces: `vg-287` closed
-
+- Produces: `vg-287` closed, and **`vg-402`'s mechanism half** — added 2026-10-16, when Task 15.5 landed `vg-402`'s documentation half at `2ce8ef1e` (the README now states the copy step and carries the eleven name pairs) and left the row open because **its title's claim is still true**: writing a step down is not an instrument. **And one measurement narrows what this check can be**: two runs of `captures the settings modal's three tabs` on one bundle produce different bytes at identical dimensions, so a byte-diff scanner reports that capture stale on every run — the check keys on geometry or on the recorded commit, not on bytes.
 - [ ] **Step 1: Each registered capture records the commit it was taken at and the surface paths it shows**, and the scanner reports a capture whose surface paths have commits after that sha, so a stale image is a finding rather than a habit.
 - [ ] **Step 2: Both READMEs today name an action and a file and nothing about the product generation** — which is how the shell-palette and keyboard-reference images could contradict the product for two plans with every gate green.
 - [ ] **Step 3: Close it**, with the scanner's own `--self-test` and one deliberately stale capture reported.
