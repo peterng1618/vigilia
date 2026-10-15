@@ -99,11 +99,14 @@ export function rendersExtra(extra: ExtraView): boolean {
  * its own here, and folding it into `group` would make the column describe a
  * multi-selection as though the author had selected a single thing.
  *
- * **Total by construction.** `perKindColumn` builds the same questions for
- * whatever kind it is handed, and each body decides what that kind can carry, so a
- * kind added here reaches the column with an answer rather than an empty section.
- * The per-kind question record that used to gate this went with the read-only
- * section, whose "is this appearance its children's" was its only question.
+ * **Total by construction**, and two owners hold that up rather than this
+ * docblock: `view.ts`'s `KIND_WORD` is a record over this union, so a kind added
+ * here fails to compile until it is given a word, and `index.dom.test.ts`'s
+ * `EXAMPLE` record — also over the union — drives "answers a %s with a column
+ * rather than an empty one", which asks every kind for a column and fails one
+ * that yields an empty section. The per-kind question record that used to gate
+ * this here went with the read-only section, whose "is this appearance its
+ * children's" was its only question.
  */
 export const SELECTION_KINDS = [
   "shape",

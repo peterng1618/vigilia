@@ -280,11 +280,13 @@ thing actually raises**, and describes what the thing *is*:
   not open with a chrome label, and **the kind is that glyph, not a line of its
   own**: `vg-466`, the user's item 9, took the type label away for the icon.
 - **A section with nothing in it is not rendered** — no header, no zero count.
-- **Every section opens; none starts closed.** Position was the one exception,
-  on the reasoning that geometry is set once — but a new object's position is
-  what it is usually selected *for*, so the asymmetry cost more than it saved.
-  The column stops deciding this for the author; a reader may still close a
-  section, and §8 keeps that disclosure.
+- **Every section opens; none starts closed**, with one exception: the
+  `advanced` treatment, a disclosure a caller mounts deliberately and that a
+  selection never asks for, so it opens closed and counted. Position used to be
+  closed for the same kind of reason — geometry is set once — but a new object's
+  position is what it is usually selected *for*, so that asymmetry cost more than
+  it saved. The column stops deciding this for the author; a reader may still
+  close a section, and §8 keeps that disclosure.
 - **A property a kind does not have is not shown as a field.** Where the
   capability exists but this selection cannot carry it, the row renders refused
   with the reason (see §5.3).

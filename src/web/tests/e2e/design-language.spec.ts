@@ -1989,6 +1989,37 @@ test("captures each pane of the four-slot rail in the design language", async ({
       `${slot}: a native range input is in the pane`,
     ).toHaveCount(0);
 
+    // **The removed read-only section has to be shown gone, not just absent
+    // from an assertion nobody reads.** Its own suite died with it, so this file
+    // is the only reader left for the Document half of "neither read-only
+    // section renders anywhere", and the frame below is the reader an author
+    // trusts. The pane holds two regions now; the third named itself twice — its
+    // own `data-vigilia-panel="references"` handle and its "This document"
+    // heading — so both are read here, at the moment the frame is written.
+    if (panel === "document") {
+      const regions = pane.locator("[data-vigilia-section]");
+      await expect(regions, "the Document pane's own regions").toHaveCount(2);
+      expect(
+        await regions.evaluateAll((elements) =>
+          elements.map((element) => element.getAttribute("data-vigilia-section")),
+        ),
+        "the Document pane is Theme settings and the artboard, and nothing else",
+      ).toEqual(["theme", "artboard"]);
+      await expect(
+        pane.locator('[data-vigilia-panel="references"]'),
+        "the document's own references sub-panel is back",
+      ).toHaveCount(0);
+      // The section rendered *last* in the pane — `editor-session.ts` appended
+      // its host under `panelHosts.document` after the pane's own React root —
+      // so it lived below the 636px fold and the top-of-pane frame this capture
+      // used to take showed the same pixels with it and without it. Scrolled to
+      // the end, the frame lands on where it was: the artboard's tail now, the
+      // collapsed "This document" header before item 17.
+      await column.evaluate((element) => {
+        element.scrollTop = element.scrollHeight;
+      });
+    }
+
     // Park the pointer over the stage before the shot, for the reason the
     // shell capture gives: `openPane` left it hovering a rail slot, and that
     // slot's tooltip opens over the rail/pane boundary after 600ms.

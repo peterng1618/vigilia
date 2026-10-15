@@ -426,7 +426,7 @@ async function selectStarterGauge(page: Page): Promise<void> {
 }
 
 test.describe("the per-kind inspector column", () => {
-  test("asks the starter card's questions in order, with Position closed", async ({
+  test("asks the starter card's questions in order, Position open like the rest", async ({
     page,
   }, testInfo) => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");

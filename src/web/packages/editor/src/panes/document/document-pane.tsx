@@ -17,8 +17,10 @@ import { MetadataFields } from "./metadata-fields.js";
  * **The pane's identity is not written here.** `Pane` is the one owner of
  * `data-vigilia-panel` (`editor-shell/pane.tsx:43`), and this renders inside it;
  * a second element under that name is a strict-mode failure for every locator
- * that browses by it. The References section Task 9 adds is a sibling of this
- * tree's sections, under the same pane host.
+ * that browses by it. This tree is the pane's whole body: the References
+ * sub-panel that used to be appended to the same host as a sibling of these
+ * sections went with item 17 (`vg-474`), and what is left is what this file
+ * returns.
  *
  * The heading is the panel's own word and a plain `<h2>`: `panel-labels.spec.ts`
  * reads every `section h2` and matches the panel's name against it, and the
