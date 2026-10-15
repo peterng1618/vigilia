@@ -6,7 +6,6 @@ import type {
 } from "@vigilia/renderer-core";
 import {
   defaultGaugeSettings,
-  defaultPieSettings,
   instantIn,
   MAX_OBJECT_NAME_LENGTH,
 } from "@vigilia/renderer-core";
@@ -39,7 +38,6 @@ import { idleCrop } from "./idle-crop.test-stage.js";
 import { createSelectionInspector } from "./index.js";
 import {
   type ChartFieldsPort,
-  KIND_QUESTIONS,
   perKindColumn,
   rendersExtra,
   SELECTION_KINDS,
@@ -125,7 +123,6 @@ function setup(
     errorManager: { warn: vi.fn(), error: vi.fn() },
     cropManager: idleCrop(),
   };
-  const revealTypePresets = vi.fn();
   const inspector = createSelectionInspector(host, {
     editor: editor as never,
     globals: {
@@ -139,11 +136,10 @@ function setup(
         },
       },
     } as never,
-    revealTypePresets,
     refreshGlass: vi.fn(),
     ...options,
   });
-  return { inspector, host, history, editor, revealTypePresets };
+  return { inspector, host, history, editor };
 }
 
 /**
@@ -490,72 +486,6 @@ describe("the selection inspector", () => {
     expect(editor.canvas.fire).not.toHaveBeenCalled();
   });
 
-  it("names what a paint reference resolves to", () => {
-    rect.set({ vigiliaPaint: { fill: "palette.ink" } });
-    const { host } = setup(rect);
-    const line = host.querySelector("[data-vigilia-resolution]");
-
-    // The author chose a token by its name; they must see what it means under
-    // that name. `palette.ink` is what the document stores, not what it says.
-    expect(line?.textContent).toContain("Ink");
-    expect(line?.textContent).not.toContain("palette.ink");
-    expect(line?.textContent).toContain("#e8ecf3");
-  });
-
-  it("renders a resolution row with no editable control", () => {
-    rect.set({ vigiliaPaint: { fill: "palette.ink" } });
-    const { host } = setup(rect);
-    const value = host.querySelector<HTMLElement>(
-      '[data-vigilia-resolution="Paint"]',
-    );
-    const row = value?.parentElement ?? null;
-
-    // A row, not a control. The hook rides the value element itself, so the
-    // element a suite reads is the element that carries the value — a hook on
-    // the row's wrapper would find the label instead.
-    expect(value?.tagName).toBe("SPAN");
-    expect(value?.className).toContain("font-mono");
-    expect(value?.textContent).toContain("Ink");
-    // The proof is scoped from the row, where a well would land: a border means
-    // editable (DESIGN.md §5.1), and the row's own class list counts too.
-    expect(row?.classList.contains("border")).toBe(false);
-    expect(row?.querySelector('[class~="border"]')).toBeNull();
-    expect(row?.querySelector("input, select, button, textarea")).toBeNull();
-  });
-
-  it("baseline-aligns a read-only row, the one alignment DESIGN.md names", () => {
-    const { host } = setup(rect);
-    const row =
-      host.querySelector('[data-vigilia-resolution="Paint"]')?.parentElement ??
-      null;
-
-    // §5.2: "Read-only rows are label + mono value, baseline-aligned,
-    // right-aligned." A centre line would drop the mono value below the label.
-    expect(row?.classList.contains("items-baseline")).toBe(true);
-    expect(row?.classList.contains("items-center")).toBe(false);
-  });
-
-  it("reports a reference that no longer resolves rather than blanking it", () => {
-    rect.set({ vigiliaPaint: { fill: "palette.gone" } });
-    const { host } = setup(rect);
-
-    expect(
-      host.querySelector("[data-vigilia-resolution]")?.textContent,
-    ).toContain("no longer resolves");
-  });
-
-  it("prints the raw reference for a token that no longer exists, since no name is left", () => {
-    rect.set({ vigiliaPaint: { fill: "palette.gone" } });
-    const { host } = setup(rect);
-
-    // A deleted token has no authored name, so the reference is the only thing
-    // that still identifies it — and the author needs it to find the dangling
-    // use. This is the one surface where the ref is the subject.
-    expect(
-      host.querySelector("[data-vigilia-resolution]")?.textContent,
-    ).toContain("palette.gone");
-  });
-
   /**
    * §13.1's **long unresolved reference**: the whole reference and the reason,
    * both read off one row.
@@ -567,125 +497,9 @@ describe("the selection inspector", () => {
    * render. A reference written onto a live object afterwards is worse than
    * unrendered: the shell's own `snapshot()` re-validates the serialised theme
    * and throws, and selecting the object takes the whole inspector column down
-   * with it. The rendering is still the product's, and this is the surface where
-   * it can be read — the same place the two cases above read the short ref.
+   * with it. The rendering was the read-only section's, and item 17 removed that
+   * section with the last case that read it.
    */
-  it("keeps a long unresolved reference whole, reason and all", () => {
-    const long =
-      "palette.companion-display-orientation-override-token-that-no-longer-exists";
-    rect.set({ vigiliaPaint: { fill: long } });
-    const { host } = setup(rect);
-
-    const text =
-      host.querySelector("[data-vigilia-resolution]")?.textContent ?? "";
-    // Both halves, and each in full: the reference is all that is left to find
-    // the dangling use, and the reason is why the row exists. A reference
-    // shortened to fit, or a reason dropped, fails on one of these.
-    expect(text).toContain(long);
-    expect(text).toContain(uiCopy.inspectorFields.unresolved);
-  });
-
-  it("names the paint a chart keeps in its own settings", () => {
-    const chart = chartOf("gauge", {
-      ...defaultGaugeSettings,
-      track: { ref: "palette.track" },
-      progress: { ref: "palette.ink" },
-    });
-    const { host } = setup(chart);
-
-    // `vigiliaPaint` is where a box or a text run keeps its colour; a chart
-    // keeps it in the settings its family owns, so reading only the former
-    // reported every chart in every theme as unpainted.
-    const progress = host.querySelector(
-      '[data-vigilia-resolution="Progress paint"]',
-    );
-    expect(progress?.textContent).toContain("Ink");
-    expect(progress?.textContent).toContain("#e8ecf3");
-    expect(host.textContent).not.toContain(uiCopy.inspectorFields.notSet);
-  });
-
-  it("names each of a chart's own paints, and reports one that no longer resolves", () => {
-    const chart = chartOf("pie", {
-      ...defaultPieSettings,
-      palette: [{ ref: "palette.ink" }, { ref: "palette.gone" }],
-    });
-    const { host } = setup(chart);
-
-    // One line per entry, under the field descriptor that owns its name, so a
-    // pie's slices are told apart from its remainder.
-    expect(
-      host.querySelector('[data-vigilia-resolution="Slice paint 1"]')
-        ?.textContent,
-    ).toContain("Ink");
-    expect(
-      host.querySelector('[data-vigilia-resolution="Slice paint 2"]')
-        ?.textContent,
-    ).toContain("no longer resolves");
-  });
-
-  it("names the type preset a text object is set in, and what it resolves to", () => {
-    const text = new IText("Hi", { left: 0, top: 0 });
-    text.set({
-      vigiliaText: {
-        runs: [{ kind: "literal", text: "Hi", typePreset: "typePresets.body" }],
-      },
-    });
-    const { host } = setup(text);
-
-    // The object's type is its first authored run's preset — the same run
-    // `applyObjectTypePresets` reads — shown with what it means.
-    //
-    // This line printed `typePresets.body` while the panel beside it printed
-    // `Body` and both dropdowns printed `Body`, which is what made vg-089 look
-    // like a mis-bound dropdown: the screenshot had caught this line, not the
-    // control it was blamed on.
-    const line = host.querySelector('[data-vigilia-resolution="Type preset"]');
-    expect(line?.textContent).toContain("Body");
-    expect(line?.textContent).not.toContain("typePresets.body");
-    expect(line?.textContent).toContain("Inter");
-  });
-
-  it("reports a text object whose type preset no longer resolves", () => {
-    const text = new IText("Hi", { left: 0, top: 0 });
-    text.set({
-      vigiliaText: {
-        runs: [{ kind: "literal", text: "Hi", typePreset: "typePresets.gone" }],
-      },
-    });
-    const { host } = setup(text);
-
-    expect(
-      host.querySelector('[data-vigilia-resolution="Type preset"]')
-        ?.textContent,
-    ).toContain("no longer resolves");
-  });
-
-  it("offers a shape no type preset, because a shape has no type", () => {
-    const { host } = setup(rect);
-
-    expect(
-      host.querySelector('[data-vigilia-resolution="Type preset"]'),
-    ).toBeNull();
-  });
-
-  it("reveals the type-preset panel rather than duplicating its fields", () => {
-    const text = new IText("Hi", { left: 0, top: 0 });
-    text.set({
-      vigiliaText: {
-        runs: [{ kind: "literal", text: "Hi", typePreset: "typePresets.body" }],
-      },
-    });
-    const { host, revealTypePresets } = setup(text);
-
-    // Activating the control is what makes the panel reachable; the fields
-    // themselves stay owned by the panel.
-    host
-      .querySelector<HTMLButtonElement>("[data-vigilia-reveal-type-presets]")
-      ?.click();
-
-    expect(revealTypePresets).toHaveBeenCalled();
-  });
-
   it("offers a shape none of a text object's fields", () => {
     const { host } = setup(rect);
 
@@ -694,7 +508,6 @@ describe("the selection inspector", () => {
       "[data-vigilia-text-align]",
       "[data-vigilia-text-wrap]",
       "[data-vigilia-text-overflow]",
-      '[data-vigilia-resolution="Type preset"]',
     ]) {
       expect(host.querySelector(field)).toBeNull();
     }
@@ -794,8 +607,6 @@ describe("the selection inspector", () => {
       expect(host.querySelector(selector), selector).toBeNull();
     }
     expect(host.textContent).toContain("locked");
-    // Read-only: the author still needs to see what the object resolves to.
-    expect(host.querySelector("[data-vigilia-resolution]")).not.toBeNull();
   });
 
   it("republishes when the object is locked from the layer row (vg-148)", () => {
@@ -1055,20 +866,15 @@ describe("the column's sections", () => {
       `[data-vigilia-section="${id}"] > h2 > button`,
     )!;
 
-  it("asks the five questions in order, and only Position starts closed", () => {
+  it("asks the four questions in order, and opens every one of them", () => {
     const { host } = setup(rect);
 
-    expect(ids(host)).toEqual([
-      "content",
-      "position",
-      "layer",
-      "paint",
-      "spends",
-    ]);
-    // Geometry is adjusted once and the binding is chosen constantly, so the
-    // one section that is not asked repeatedly is the one put away.
-    expect(isOpen(host, "position")).toBe(false);
-    for (const id of ["content", "layer", "paint", "spends"]) {
+    expect(ids(host)).toEqual(["content", "position", "layer", "paint"]);
+    // Position was the one section put away, on the reasoning that geometry is
+    // set once. An object is usually selected *for* its position, so it opens
+    // with the rest (item 13) — and the author may still close what they are
+    // not using.
+    for (const id of ["content", "position", "layer", "paint"]) {
       expect(isOpen(host, id), id).toBe(true);
     }
   });
@@ -1094,23 +900,24 @@ describe("the column's sections", () => {
     expect(rows).toBeGreaterThan(0);
   });
 
-  it("keeps the sections the author opened across a re-publish", () => {
+  it("keeps the disclosure the author chose across a re-publish", () => {
     const { host, inspector } = setup(rect);
+    // Position now opens like the rest (item 13), so the arrangement under test
+    // is the author's: one closed, one left open.
     act(() => {
       summaryOf(host, "position").click();
-      summaryOf(host, "paint").click();
     });
-    expect(isOpen(host, "position")).toBe(true);
-    expect(isOpen(host, "paint")).toBe(false);
+    expect(isOpen(host, "position")).toBe(false);
+    expect(isOpen(host, "paint")).toBe(true);
 
     inspector.render();
 
     // The author's own arrangement, not a fresh default: a re-publish that
-    // rebuilt the sections would collapse Position again and reopen Paint under
+    // rebuilt the sections would open Position again and collapse Paint under
     // their hands. React keeps the open state; the projection only says what a
     // fresh section starts as.
-    expect(isOpen(host, "position")).toBe(true);
-    expect(isOpen(host, "paint")).toBe(false);
+    expect(isOpen(host, "position")).toBe(false);
+    expect(isOpen(host, "paint")).toBe(true);
   });
 
   it("keeps the caret in the field being typed into", () => {
@@ -1278,16 +1085,20 @@ describe("the column's sections", () => {
   });
 
   it("renders no header at all for a section with nothing in it", () => {
-    rect.set({ locked: true });
-    const { host } = setup(rect);
+    const locked = new Rect({ left: 0, top: 0, width: 40, height: 20 });
+    locked.set("locked", true);
+    const { host } = setup(locked);
 
-    // Every field that writes is withheld, so Content has no question left to
-    // ask and must not stand a header over nothing.
-    expect(host.querySelector('[data-vigilia-section="content"]')).toBeNull();
-    // Read-only, so the author still sees what the object resolves to.
-    expect(
-      host.querySelector('[data-vigilia-section="spends"]'),
-    ).not.toBeNull();
+    // Every field that writes is withheld, so no question has anything left to
+    // ask and none of them stands a header over nothing. **An inspector may be
+    // empty**: until item 17 removed the read-only section, a locked object kept
+    // one and this column never showed zero sections, so the empty answer is the
+    // one §7.4's rule and the removed section together produce. The lead block
+    // above the sections still names the lock.
+    expect(locked.get("locked")).toBe(true);
+    expect(host.querySelector("[data-vigilia-locked]")).not.toBeNull();
+    expect(host.querySelectorAll("[data-vigilia-section]")).toHaveLength(0);
+    expect(host.querySelector("[data-vigilia-name]")).toBeNull();
   });
 
   it("puts each field under the question it answers", () => {
@@ -1308,34 +1119,10 @@ describe("the column's sections", () => {
     ).not.toBeNull();
     expect(inSection("layer", "[data-vigilia-opacity]")).not.toBeNull();
     expect(inSection("paint", "[data-vigilia-panel-fill]")).not.toBeNull();
-    expect(inSection("spends", "[data-vigilia-resolution]")).not.toBeNull();
 
-    // ...and nowhere else: rotation is not a position, and what an object
-    // resolves to is not how it is painted.
+    // ...and nowhere else: rotation is not a position.
     expect(inSection("position", '[data-vigilia-geometry="angle"]')).toBeNull();
-    expect(inSection("paint", "[data-vigilia-resolution]")).toBeNull();
-  });
-
-  it("renders Spends as a read-only section, and says so in its header", () => {
-    const { host } = setup(rect);
-    const header = host.querySelector(
-      '[data-vigilia-section="spends"] > h2 > button',
-    );
-
-    // §5 rule 1: the section says it cannot be edited **in words**, before it is
-    // opened, rather than leaving the author to infer it from absent controls.
-    expect(header?.textContent).toContain("Read-only");
-    // The marker is the section's, not another section's: no other question is
-    // read-only, so a header elsewhere must not carry it. The header is asserted
-    // present first — a selector that missed would leave `undefined`, which
-    // passes a negative assertion vacuously (vg-251).
-    for (const id of ["content", "position", "layer", "paint"]) {
-      const header = host.querySelector(
-        `[data-vigilia-section="${id}"] > h2 > button`,
-      );
-      expect(header, id).not.toBeNull();
-      expect(header?.textContent, id).not.toContain("Read-only");
-    }
+    expect(inSection("layer", '[data-vigilia-geometry="width"]')).toBeNull();
   });
 
   it("is a plan a test can read as data, before anything renders", () => {
@@ -1356,7 +1143,6 @@ describe("the column's sections", () => {
       stillTarget: () => true,
       commit: () => {},
       rerender: () => {},
-      revealTypePresets: undefined,
       refreshGlass: () => {},
       nodeBindings: undefined,
       onNodeBindingsChange: undefined,
@@ -1368,20 +1154,18 @@ describe("the column's sections", () => {
       "position",
       "layer",
       "paint",
-      "spends",
     ]);
+    // Every one of them, Position included — no section starts closed.
     expect(
       sections
         .filter((section) => section.defaultOpen)
         .map((section) => section.id),
-    ).toEqual(["content", "layer", "paint", "spends"]);
+    ).toEqual(["content", "position", "layer", "paint"]);
     for (const section of sections) {
-      // The count is every row the section renders — its fields, its extras and
-      // its reveal — and the header's count has to agree.
+      // The count is every row the section renders — its fields and its extras
+      // — and the header's count has to agree.
       expect(section.count, section.id).toBe(
-        section.fields.length +
-          section.extras.length +
-          (section.revealLabel === undefined ? 0 : 1),
+        section.fields.length + section.extras.length,
       );
     }
   });
@@ -1420,7 +1204,6 @@ describe("the column's sections", () => {
       stillTarget: () => true,
       commit: () => {},
       rerender: () => {},
-      revealTypePresets: undefined,
       refreshGlass: () => {},
       nodeBindings: undefined,
       onNodeBindingsChange: undefined,
@@ -1449,11 +1232,7 @@ describe("the column's sections", () => {
     // each section is what tells the two apart when both are mounted. The
     // chart's own extra counts once, however many controls it carries.
     for (const name of ["content", "paint"]) {
-      expect(section(name).count, name).toBe(
-        section(name).fields.length +
-          1 +
-          (section(name).revealLabel === undefined ? 0 : 1),
-      );
+      expect(section(name).count, name).toBe(section(name).fields.length + 1);
     }
   });
 });
@@ -1744,7 +1523,7 @@ describe("the column a kind gets", () => {
    * and would agree with a bug.
    *
    * The gates are `perKindColumn`'s own: a locked object loses Content's name
-   * and all of Position, Layer and Paint while Spends, being read-only, stays.
+   * and all of Position, Layer and Paint.
    *
    * **The glass control left this shared floor with `vg-465`.** It used to be
    * offered for every unlocked selection, because its refusal is why it was
@@ -1765,22 +1544,25 @@ describe("the column a kind gets", () => {
    * - `crop.dom.test.ts`, `runs.dom.test.ts`, `panel.dom.test.ts`,
    *   `glass.dom.test.ts`, `artboard-panel.dom.test.ts` — the per-domain fields
    *   (crop handles, run rows, the paint and radius wells, the glass toggle and
-   *   blur, the resolution and reveal controls), each asserted where its owner
-   *   lives;
+   *   blur), each asserted where its owner lives;
    * - `tests/e2e/*.spec.ts` — the same hooks again against a built bundle, which
    *   is what proves the surface renders them, not only that jsdom's tree does.
    *
    * So the count here is deliberately the shared floor, not the ceiling — and
-   * the figures are exact so the parts sum to the whole. This table names **19**
-   * distinct hooks: six in `EVERY_OBJECT` (`geometry`'s five selectors are one
-   * name), five added by `shape`, seven by `text`, one by `image`. The pre-plan
-   * inspector at `190dc1a4` rendered **46** distinct `data-vigilia-*` names.
-   * The census (`git grep -oh 'data-vigilia-[a-zA-Z-]*' 190dc1a4 --
+   * the figures are exact so the parts sum to the whole. This table names **17**
+   * distinct hooks: four in `EVERY_OBJECT` (`geometry`'s five selectors are one
+   * name), six added by `shape`, six by `text`, one by `image`. It named 19 while
+   * the read-only section stood, and item 17 removed the two that were its:
+   * `data-vigilia-resolution` (`EVERY_OBJECT` and `text`'s Type-preset row) and
+   * `data-vigilia-reveal-type-presets` (`text`). The pre-plan inspector at
+   * `190dc1a4` rendered **46** distinct `data-vigilia-*` names. The census
+   * (`git grep -oh 'data-vigilia-[a-zA-Z-]*' 190dc1a4 --
    * src/web/packages/editor/src/selection-inspector | sort -u | wc -l`) prints
    * 47 — one high: a docblock at `190dc1a4:selection-inspector/index.ts:230`
    * quotes the bare prefix `data-vigilia-`, which the pattern counts as a name.
-   * So the remaining **27** are carried by the per-domain tests and the e2e
-   * specs. Reading the 19 as the inventory would understate the coverage by 27.
+   * So the remaining **29** are 27 carried by the per-domain tests and the e2e
+   * specs and those **2** the product no longer renders at all. Reading the 17 as
+   * the inventory would understate the coverage by 29.
    */
   const EVERY_OBJECT: readonly string[] = [
     "[data-vigilia-name]",
@@ -1791,7 +1573,6 @@ describe("the column a kind gets", () => {
     '[data-vigilia-geometry="angle"]',
     "[data-vigilia-opacity]",
     "[data-vigilia-bleeds]",
-    "[data-vigilia-resolution]",
   ];
 
   const PRE_PLAN: Readonly<Record<SelectionKind, readonly string[]>> = {
@@ -1815,8 +1596,6 @@ describe("the column a kind gets", () => {
       "[data-vigilia-text-wrap]",
       "[data-vigilia-text-overflow]",
       "[data-vigilia-run-source]",
-      '[data-vigilia-resolution="Type preset"]',
-      "[data-vigilia-reveal-type-presets]",
     ],
     chart: [...EVERY_OBJECT],
     image: [...EVERY_OBJECT, "[data-vigilia-crop]"],
@@ -1870,14 +1649,6 @@ describe("the column a kind gets", () => {
     },
   );
 
-  it("has a rule for every kind it lists, so none reaches the column unhandled", () => {
-    // The runtime half of a compile-time claim: a kind in the list with no entry
-    // in `KIND_QUESTIONS` is a type error, and this is the same fact at runtime.
-    expect(Object.keys(KIND_QUESTIONS).sort()).toEqual(
-      [...SELECTION_KINDS].sort(),
-    );
-  });
-
   it("answers a locked object rather than standing a header over nothing", () => {
     const locked = new Rect({
       left: 0,
@@ -1888,10 +1659,9 @@ describe("the column a kind gets", () => {
     });
     const { host } = setup(locked);
 
-    // Every field that writes is withheld, so one section is left — the
-    // read-only one — and it has a body rather than a count of zero.
-    expect(host.querySelectorAll("[data-vigilia-section]")).toHaveLength(1);
-    expect(host.querySelector("[data-vigilia-resolution]")).not.toBeNull();
+    // Every field that writes is withheld, so nothing is left to render and
+    // the column stands no header over it.
+    expect(host.querySelectorAll("[data-vigilia-section]")).toHaveLength(0);
     expect(host.querySelector("[data-vigilia-name]")).toBeNull();
   });
 
@@ -1949,7 +1719,7 @@ describe("the column a kind gets", () => {
     ];
 
     it.each(CONTAINERS)(
-      "shows bounds and the children's appearance for a %s, and not the questions it lacks",
+      "shows bounds for a %s, and not the questions it lacks",
       (_kind, make) => {
         const { host } = setup(make());
 
@@ -1962,18 +1732,12 @@ describe("the column a kind gets", () => {
           host.querySelector('[data-vigilia-geometry="left"]'),
         ).not.toBeNull();
 
-        // The children's appearance, read off the children: the container has no
-        // ink of its own, so a line about its own fill could only say "none"
-        // while the canvas behind it is painted.
-        expect(
-          host.querySelector('[data-vigilia-resolution="Paint"]')?.textContent,
-        ).toContain("Ink");
-        expect(
-          host.querySelector('[data-vigilia-resolution="Type preset"]')
-            ?.textContent,
-        ).toContain("Body");
-
-        // ...and the questions this kind genuinely does not have, which is what
+        // **The children's appearance is no longer read here.** That line was
+        // the read-only section's, and item 17 removed it: a container's ink is
+        // now visible only on the children it belongs to, which is the surface
+        // the line was reading in the first place. What is left for this kind is
+        // its own bounds and the questions it genuinely does not have, which is
+        // what
         // "not a lesser selection" means for a kind that lacks them: nothing is
         // shown, rather than a control that would accept an edit and apply none.
         for (const absent of [
@@ -2001,31 +1765,5 @@ describe("the column a kind gets", () => {
         expect(host.querySelector("[data-vigilia-crop]")).toBeNull();
       },
     );
-
-    it("still says a container resolves to nothing when none of its children is painted", () => {
-      const { host } = setup(new Group([new Rect({ width: 10, height: 10 })]));
-
-      // The line the container carried before it learned to read its children:
-      // the question is still asked, and the answer is still "none".
-      expect(
-        host.querySelector('[data-vigilia-resolution="Paint"]')?.textContent,
-      ).toContain(uiCopy.inspectorFields.notSet);
-    });
-
-    it("answers one line per token, not one per child", () => {
-      const card = new Group([
-        paintedRect("panel-1"),
-        paintedRect("panel-2"),
-        paintedRect("panel-3"),
-      ]);
-      const { host } = setup(card);
-
-      // Three children sharing one token resolve to that one token; repeating it
-      // three times would make the section a copy of the canvas rather than an
-      // answer to what the selection is made of.
-      expect(
-        host.querySelectorAll('[data-vigilia-resolution="Paint"]'),
-      ).toHaveLength(1);
-    });
   });
 });

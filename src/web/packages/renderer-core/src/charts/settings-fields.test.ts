@@ -281,13 +281,14 @@ describe("the collapsed-and-counted treatment", () => {
 });
 
 describe("the section vocabulary", () => {
-  it("orders the five questions, each with a label", () => {
+  it("orders the four questions, each with a label", () => {
+    // Four, not five: `spends` was the read-only section's and item 17 removed
+    // the section, the question and the vocabulary member together.
     expect(SETTINGS_SECTIONS.map((section) => section.id)).toEqual([
       "content",
       "position",
       "layer",
       "paint",
-      "spends",
     ]);
     expect(SETTINGS_SECTIONS.every((section) => section.label.length > 0)).toBe(
       true,

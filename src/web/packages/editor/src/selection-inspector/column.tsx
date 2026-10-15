@@ -177,19 +177,6 @@ function fieldControl(
           {...refused}
         />
       );
-    case "readOnly":
-      // A read-only row is not a control: no well, no border, because a border
-      // means editable (DESIGN.md §5.1). The hook is on the value element itself —
-      // never a wrapper, or it is a broken locator wearing a passing test — and
-      // the row is baseline-aligned, the one alignment §5.2 names for it.
-      return (
-        <div className="flex items-baseline gap-[var(--space-8)]">
-          <span className="text-xs text-muted">{field.label}</span>
-          <span className="ml-auto font-mono text-sm text-text" {...field.data}>
-            {field.value}
-          </span>
-        </div>
-      );
   }
 }
 
@@ -261,31 +248,20 @@ function Section(props: {
   readonly runs: RunEdits;
   readonly chart: ChartEdits;
   readonly crop: CropEdits;
-  readonly revealTypePresets: (() => void) | undefined;
   readonly revision: number;
   readonly idPrefix: string;
   /** The section's place in the column: the first one sits under the subject
       block, whose own hairline is the boundary between them (`vg-466`). */
   readonly index: number;
 }): React.JSX.Element {
-  const {
-    section,
-    edits,
-    runs,
-    chart,
-    crop,
-    revealTypePresets,
-    revision,
-    idPrefix,
-    index,
-  } = props;
+  const { section, edits, runs, chart, crop, revision, idPrefix, index } =
+    props;
 
   return (
     <InspectorSection
       id={section.id}
       idPrefix={idPrefix}
       title={section.title}
-      readOnly={section.readOnly}
       defaultOpen={section.defaultOpen}
       count={section.count}
       first={index === 0}
@@ -336,19 +312,6 @@ function Section(props: {
             return null;
         }
       })}
-      {section.revealLabel === undefined ? null : (
-        // The one way out of a section: it opens the panel that owns the type
-        // preset's fields rather than growing a second set here. The hook is the
-        // one the imperative button carried, so the locators that read it still
-        // find the control.
-        <button
-          type="button"
-          data-vigilia-reveal-type-presets=""
-          onClick={() => revealTypePresets?.()}
-        >
-          {section.revealLabel}
-        </button>
-      )}
     </InspectorSection>
   );
 }
@@ -359,13 +322,8 @@ export function SelectionColumn(props: {
   readonly runs: RunEdits;
   readonly chart: ChartEdits;
   readonly crop: CropEdits;
-  /** The write port a section's reveal reaches, beside the three above.
-      `undefined` when no host offered one; the projection only writes a
-      section's reveal label for a host that answered, so a view naming a reveal
-      and this port cannot disagree. */
-  readonly revealTypePresets: (() => void) | undefined;
 }): React.JSX.Element {
-  const { view, edits, runs, chart, crop, revealTypePresets } = props;
+  const { view, edits, runs, chart, crop } = props;
   // A column is one selection's, and two columns can be mounted at once (the
   // accessibility audit mounts two). `${id}-header` is document-global, so the
   // aria pair is scoped to this instance or the second column's `aria-controls`
@@ -383,7 +341,6 @@ export function SelectionColumn(props: {
           runs={runs}
           chart={chart}
           crop={crop}
-          revealTypePresets={revealTypePresets}
           revision={view.targetRevision}
           idPrefix={idPrefix}
         />
@@ -393,8 +350,8 @@ export function SelectionColumn(props: {
 }
 
 /**
- * The column's React root. `index.ts` publishes the projected view here, with
- * the write ports a section's reveal reaches.
+ * The column's React root. `index.ts` publishes the projected view here, with the
+ * write ports the column's rows reach.
  *
  * A publish is flushed synchronously, the same contract the subject's root keeps:
  * a caller that reads the column straight after a selection change sees it.
@@ -406,14 +363,13 @@ export function createSelectionColumnRoot(host: HTMLElement): {
     runs: RunEdits,
     chart: ChartEdits,
     crop: CropEdits,
-    revealTypePresets: (() => void) | undefined,
   ) => void;
   readonly destroy: () => void;
 } {
   const root: Root = createRoot(host);
 
   return {
-    publish(view, edits, runs, chart, crop, revealTypePresets) {
+    publish(view, edits, runs, chart, crop) {
       flushSync(() => {
         root.render(
           <SelectionColumn
@@ -422,7 +378,6 @@ export function createSelectionColumnRoot(host: HTMLElement): {
             runs={runs}
             chart={chart}
             crop={crop}
-            revealTypePresets={revealTypePresets}
           />,
         );
       });

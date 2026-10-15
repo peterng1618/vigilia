@@ -21,13 +21,8 @@ import { uiCopy } from "../ui-copy.js";
 import {
   type AppearanceContext,
   nameField,
-  nameOfRef,
   opacityField,
-  paintReferencesOf,
-  resolutionField,
   resolveToken,
-  resolveTypePreset,
-  typePresetOf,
 } from "./appearance.js";
 import { bleedField } from "./bleed.js";
 import { cropView } from "./crop.js";
@@ -46,16 +41,18 @@ import type {
  * order the questions are asked. A test enumerates this rather than reading the
  * DOM, and the column renders exactly the sections it returns.
  *
- * The five questions are §4's — Content is what it shows, Position is where it
- * sits and how big, Layer is how it presents, Paint is what ink, Spends is what
- * it resolves to — and they come in `SETTINGS_SECTIONS` order, the one place
- * that order is decided. `advanced` is not a sixth question: it is the
- * collapsed-and-counted treatment, and it goes last when it exists.
+ * The four questions are §7.4's — Content is what it shows, Position is where it
+ * sits and how big, Layer is how it presents, Paint is what ink — and they come
+ * in `SETTINGS_SECTIONS` order, the one place that order is decided. `advanced`
+ * is not a fifth question: it is the collapsed-and-counted treatment, and it
+ * goes last when it exists.
  *
- * **Position alone starts closed.** An author adjusts geometry once and chooses
- * the binding constantly, so the one section that is not asked repeatedly is the
- * one that starts out of the way — for every kind, a shape included. Collapsed
- * is not hidden: the summary carries the count.
+ * **No section starts closed.** Position was the one that did, on the reasoning
+ * that geometry is set once and the binding is chosen constantly. §8 allows
+ * putting a section away when it is adjusted rarely, and a new object's position
+ * is the thing the author selected it to write — so the asymmetry cost more than
+ * it saved and `defaultOpenOf` answers the same for every question. A reader may
+ * still close a section; the column only stops deciding that for them.
  */
 
 /**
@@ -67,11 +64,10 @@ import type {
  */
 export type ColumnSectionId = SettingsSection | "advanced";
 
-/** What one section holds, as values: its rows, and the label of its reveal. */
+/** What one section holds, as values: its rows. */
 interface SectionParts {
   readonly fields?: readonly FieldView[];
   readonly extras?: readonly ExtraView[];
-  readonly revealLabel?: string;
 }
 
 /**
@@ -103,10 +99,11 @@ export function rendersExtra(extra: ExtraView): boolean {
  * its own here, and folding it into `group` would make the column describe a
  * multi-selection as though the author had selected a single thing.
  *
- * **Total by construction.** Every kind needs an entry in `KIND_QUESTIONS`, so
- * extending this list without deciding what the new kind asks does not compile —
- * the alternative is a kind that silently renders an empty column, which is the
- * unreachability defect wearing a new cause.
+ * **Total by construction.** `perKindColumn` builds the same questions for
+ * whatever kind it is handed, and each body decides what that kind can carry, so a
+ * kind added here reaches the column with an answer rather than an empty section.
+ * The per-kind question record that used to gate this went with the read-only
+ * section, whose "is this appearance its children's" was its only question.
  */
 export const SELECTION_KINDS = [
   "shape",
@@ -140,42 +137,6 @@ export function selectionKindOf(target: FabricObject): SelectionKind {
   if (target instanceof FabricImage) return "image";
   return "shape";
 }
-
-/**
- * What a kind asks that no gate can answer for it.
- *
- * Everything else a kind decides is already owned elsewhere, and is asked rather
- * than restated: `supportsPanelFields` says whether it has material,
- * `createShapeGeometryFields` whether it has geometry of its own, `canCrop`
- * whether it can hold a crop, `supportsGlassControl` whether its backdrop can be
- * sampled, `typePresetOf` whether it carries type. A copy of any of those here
- * would agree with its owner only until someone widened it.
- */
-interface KindQuestions {
-  /**
-   * Whether this selection's appearance is its children's rather than its own.
-   *
-   * A group and a multi-selection are the two selections with no ink, no type
-   * and no material of their own — Fabric gives a group nothing to paint with —
-   * so the read-only section that says what the selection resolves to has
-   * nothing to read on the selection and reads its children instead. A single
-   * object is asked the other way round: its own property *is* the answer, and
-   * walking a rectangle's children would be the same "a question this kind does
-   * not have" defect in reverse.
-   */
-  readonly childrenAppearance: boolean;
-}
-
-/** Total over `SELECTION_KINDS`: a kind added there and not here is a compile
-    error, so a Fabric kind nobody thought about cannot reach an empty column. */
-export const KIND_QUESTIONS: Readonly<Record<SelectionKind, KindQuestions>> = {
-  shape: { childrenAppearance: false },
-  text: { childrenAppearance: false },
-  chart: { childrenAppearance: false },
-  image: { childrenAppearance: false },
-  group: { childrenAppearance: true },
-  activeSelection: { childrenAppearance: true },
-};
 
 /** The five geometry fields, in whole artboard units. */
 export type GeometryKey = "left" | "top" | "width" | "height" | "angle";
@@ -222,7 +183,6 @@ export interface ColumnContext {
   readonly commit: () => void;
   /** Re-reads the object, so the fields show what was just written. */
   readonly rerender: () => void;
-  readonly revealTypePresets: (() => void) | undefined;
   readonly refreshGlass: () => void;
   readonly nodeBindings: ((nodeId: string) => readonly Binding[]) | undefined;
   readonly onNodeBindingsChange:
@@ -237,10 +197,12 @@ export interface ColumnContext {
   readonly chartFields?: ChartFieldsPort;
 }
 
-/** Position is the one section closed by default; `advanced`, when a caller
-    mounts it, is the collapsed-and-counted treatment and starts closed too. */
+/** Every section is open when the column answers with it. `advanced`, when a
+    caller mounts it, is the collapsed-and-counted treatment and starts closed —
+    the one disclosure the author is not given a choice about, because the section
+    exists to be put away. */
 function defaultOpenOf(id: ColumnSectionId): boolean {
-  return id !== "position" && id !== "advanced";
+  return id !== "advanced";
 }
 
 function sectionOrder(id: ColumnSectionId): number {
@@ -478,146 +440,6 @@ function paintBody(
   return { fields, extras };
 }
 
-/** Every object under this one, at any depth, in document order. A kind with no
-    children answers with an empty list rather than an error: asking is not the
-    same as having something to find. */
-function descendantsOf(target: FabricObject): readonly FabricObject[] {
-  const children =
-    (target as { getObjects?: () => FabricObject[] }).getObjects?.() ?? [];
-  return children.flatMap((child) => [child, ...descendantsOf(child)]);
-}
-
-/**
- * What a container resolves to, read from its children.
- *
- * Deduplicated by reference: a card whose five labels share one token resolves
- * to that one token, and repeating it five times would make the section a copy
- * of the canvas rather than an answer to "what is this made of". Each line keeps
- * the label its own reader gave it, so a chart child's paint is named by its
- * family's field descriptor and a shape's by the Paint field.
- */
-function childrenResolution(
-  target: FabricObject,
-  context: ColumnContext,
-): {
-  readonly paints: readonly FieldView[];
-  readonly presets: readonly FieldView[];
-} {
-  const paints = new Map<string, string>();
-  const presets = new Set<string>();
-
-  for (const child of descendantsOf(target)) {
-    for (const { label, ref } of paintReferencesOf(child)) {
-      if (!paints.has(ref)) paints.set(ref, label);
-    }
-    const preset = typePresetOf(child);
-    if (preset !== undefined) presets.add(preset);
-  }
-
-  return {
-    // The ordinal is the row's id, not its hook: two distinct tokens can share
-    // one label, and the rows still have to be told apart by React.
-    paints: [...paints].map(([ref, label], index) =>
-      resolutionField(
-        `resolution-paint-${index}`,
-        label,
-        nameOfRef(context.globals, ref),
-        resolveToken(context.globals, ref),
-      ),
-    ),
-    presets: [...presets].map((preset, index) =>
-      resolutionField(
-        `resolution-preset-${index}`,
-        uiCopy.inspectorFields.runPreset,
-        nameOfRef(context.globals, preset),
-        resolveTypePreset(context.globals, preset),
-      ),
-    ),
-  };
-}
-
-/** What it resolves to. Read-only, so a locked object still gets it: the author
-    can see what the object is made of even when they cannot move it. */
-function spendsBody(
-  target: FabricObject,
-  context: ColumnContext,
-  questions: KindQuestions,
-): SectionParts {
-  const fields: FieldView[] = [];
-  let revealLabel: string | undefined;
-
-  if (questions.childrenAppearance) {
-    const { paints, presets } = childrenResolution(target, context);
-    // A container whose children resolve to nothing still answers the paint
-    // question — with "none" — exactly as a single unpainted object does, so the
-    // section keeps the line it had before it learned to read the children.
-    if (paints.length === 0) {
-      fields.push(
-        resolutionField(
-          "resolution-paint",
-          uiCopy.inspectorFields.paint,
-          undefined,
-          undefined,
-        ),
-      );
-    } else {
-      fields.push(...paints);
-    }
-    fields.push(...presets);
-    return { fields };
-  }
-
-  const references = paintReferencesOf(target);
-
-  if (references.length === 0) {
-    fields.push(
-      resolutionField(
-        "resolution-paint",
-        uiCopy.inspectorFields.paint,
-        undefined,
-        undefined,
-      ),
-    );
-  } else {
-    for (const [index, { label, ref }] of references.entries()) {
-      fields.push(
-        resolutionField(
-          `resolution-paint-${index}`,
-          label,
-          nameOfRef(context.globals, ref),
-          resolveToken(context.globals, ref),
-        ),
-      );
-    }
-  }
-
-  // Type belongs to a text object; a shape has none, so it gets no line.
-  const preset = typePresetOf(target);
-  if (preset !== undefined) {
-    // `nameOfRef`, because this line printed `typePresets.24-400` while the
-    // panel beside it and both dropdowns printed `Card title`. That is what
-    // made vg-089 read as a mis-bound dropdown: the screenshot had caught
-    // this line, not the control it was blamed on.
-    fields.push(
-      resolutionField(
-        "resolution-preset",
-        uiCopy.inspectorFields.runPreset,
-        nameOfRef(context.globals, preset),
-        resolveTypePreset(context.globals, preset),
-      ),
-    );
-    // The link into the panel that owns the preset's fields is offered only when
-    // a host handed the column the way to reach it; the label is the whole of
-    // what the section says about it, and the button is the column's to render.
-    revealLabel =
-      context.revealTypePresets === undefined
-        ? undefined
-        : uiCopy.inspectorFields.editTypePresets;
-  }
-
-  return revealLabel === undefined ? { fields } : { fields, revealLabel };
-}
-
 /**
  * The sections this selection gets, in the order the questions are asked.
  *
@@ -632,10 +454,6 @@ export function perKindColumn(
   context: ColumnContext,
 ): readonly ColumnSectionView[] {
   const locked = isLocked(target);
-  // The selection's kind is asked once, and its answers are read by name — so a
-  // kind that reaches here without a rule cannot have been added to
-  // `SELECTION_KINDS` without a compile error. See `KIND_QUESTIONS`.
-  const questions = KIND_QUESTIONS[selectionKindOf(target)];
 
   // Built in question order already; sorted anyway so the order is a statement
   // this module makes rather than one it inherits from the lines above.
@@ -644,13 +462,11 @@ export function perKindColumn(
     ["position", positionBody(target, context, locked)],
     ["layer", layerBody(target, context, locked)],
     ["paint", paintBody(target, context, locked)],
-    ["spends", spendsBody(target, context, questions)],
   ];
 
   const sizeOf = (parts: SectionParts): number =>
     (parts.fields?.length ?? 0) +
-    (parts.extras?.filter(rendersExtra).length ?? 0) +
-    (parts.revealLabel === undefined ? 0 : 1);
+    (parts.extras?.filter(rendersExtra).length ?? 0);
 
   return bodies
     .filter(([, parts]) => sizeOf(parts) > 0)
@@ -658,16 +474,9 @@ export function perKindColumn(
     .map(([id, parts]) => ({
       id,
       title: titleOf(id),
-      // Spends is the one question the author cannot answer by an edit — every
-      // value in it is edited where it is owned, not here — so its header is
-      // the one that says so before the section is opened (DESIGN.md §5 rule 1).
-      readOnly: id === "spends",
       defaultOpen: defaultOpenOf(id),
-      // One number over one section, counted from the same parts the section is
-      // built from — a reveal is one of those rows.
       count: sizeOf(parts),
       fields: parts.fields ?? [],
       extras: parts.extras ?? [],
-      revealLabel: parts.revealLabel,
     }));
 }

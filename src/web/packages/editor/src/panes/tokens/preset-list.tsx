@@ -127,17 +127,6 @@ function Binding(props: {
   );
 }
 
-/**
- * The selector a reveal is aimed at: the row of one preset, or the whole list
- * when the selection names no preset. One owner for the row's hook, so the
- * session that asks for the reveal does not spell it a second time.
- */
-export function presetRevealTarget(presetId: string | undefined): string {
-  if (presetId === undefined) return "[data-vigilia-type-presets]";
-  const quoted = typeof CSS === "undefined" ? presetId : CSS.escape(presetId);
-  return `[data-vigilia-type-preset-row="${quoted}"]`;
-}
-
 export function PresetList(props: PresetListProps): React.JSX.Element {
   const { presets, onChange, onDelete, fontActions, selection } = props;
   const ids = Object.keys(presets);
@@ -197,8 +186,8 @@ export function PresetList(props: PresetListProps): React.JSX.Element {
         onChange={(id) => setPicked(id)}
       />
       {/* The resolution rows. Each is a label and a mono value and nothing
-          else — the well-free treatment §5.1 gives a read-only line, so the
-          border below is the only thing that says "editable". */}
+          else — the well-free treatment §5 rule 1 gives a value with no well,
+          so the border below is the only thing that says "editable". */}
       <ul className="flex flex-col gap-[var(--space-4)]">
         {ids.map((id) => (
           <li key={id}>

@@ -46,9 +46,8 @@ const EDITOR = "http://127.0.0.1:4174/";
  * The column element a capture photographs.
  *
  * The viewport shot truncates the column at the fold — its own scroller hides
- * everything past what fits — so the read-only `Spends` section (§5 rule 1's
- * standing example) never reached the image. Capturing the inspector column
- * puts the whole column in the frame.
+ * everything past what fits, so the last section never reached the image.
+ * Capturing the inspector column puts the whole column in the frame.
  */
 const COLUMN = ".editor-shell-inspector";
 
@@ -56,9 +55,9 @@ const COLUMN = ".editor-shell-inspector";
  * The column, photographed in full.
  *
  * The shell clips the inspector at the fold, so a 1280×720 frame stops at
- * `--bg`'s paint and the read-only `Spends` section never reaches the image.
- * Grow the frame until the scroller has nothing left to hide, then capture the
- * column element itself. Scoped to this spec only: every other caller of
+ * `--bg`'s paint and the sections below it never reach the image. Grow the frame
+ * until the scroller has nothing left to hide, then capture the column element
+ * itself. Scoped to this spec only: every other caller of
  * `captureVisualReview` still writes a viewport shot.
  */
 async function captureColumn(
@@ -115,8 +114,7 @@ async function isOpen(page: Page, id: string): Promise<boolean> {
 
 /** Every field control inside a section — the whole column by default, or one
  *  section when a scope is named. The section's own disclosure header is a
- *  button in its `h2`, not a field, so it is excluded: a read-only section such
- *  as `spends` has rows but no control, and this count has to say 0 for it.
+ *  button in its `h2`, not a field, so it is excluded rather than counted.
  *  Scoped to the column for the reason `sectionIds` states. */
 async function controlCount(
   page: Page,
@@ -444,20 +442,14 @@ test.describe("the per-kind inspector column", () => {
     expect(rows).toHaveLength(10);
 
     await page.locator('[data-vigilia-layer="group-cpu-card"]').click();
-    // **Four, not five: the card is a Group, and a Group has no render boundary
+    // **Three, not four: the card is a Group, and a Group has no render boundary
     // for the treatment to reach.** `vg-465` (item 8) withholds the section there
     // and says so in the lead block instead, so it is gone rather than empty.
-    expect(await sectionIds(page)).toEqual([
-      "content",
-      "position",
-      "layer",
-      "spends",
-    ]);
+    expect(await sectionIds(page)).toEqual(["content", "position", "layer"]);
 
-    // Geometry is adjusted once and the binding chosen constantly, so the one
-    // question an author does not return to is put away rather than hidden.
-    expect(await isOpen(page, "position")).toBe(false);
-    for (const id of ["content", "layer", "spends"]) {
+    // Every one of them open, Position included: no section starts closed
+    // (item 13), and the author may still close what they are not using.
+    for (const id of ["content", "position", "layer"]) {
       expect(await isOpen(page, id), id).toBe(true);
     }
 
@@ -1108,9 +1100,9 @@ test.describe("the per-kind inspector column", () => {
 
     // The header's trailing rule, which every current drawing draws between the
     // count and the chevron (`controls.html:31` and five siblings). Nothing
-    // argued against it, so it is a difference the drawing wins; the read-only
-    // rows' omitted dashed divider is the neighbouring case where a cited rule
-    // (`column.tsx`'s §5.1 note) wins instead.
+    // argued against it, so it is a difference the drawing wins. Its neighbouring
+    // case — the read-only rows' omitted dashed divider, where `column.tsx`'s
+    // §5.1 note won instead — left with the read-only section (item 17).
     const rule = page.locator(
       '[data-vigilia-section="position"] [data-vigilia-section-rule]',
     );
@@ -1142,7 +1134,7 @@ test.describe("the per-kind inspector column", () => {
     await expect(page.locator("[data-vigilia-geometry]")).toHaveCount(0);
   });
 
-  test("withholds a locked object's writing fields and keeps its read-only ones", async ({
+  test("withholds a locked object's writing fields, and stands no section at all", async ({
     page,
   }, testInfo) => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
@@ -1160,21 +1152,16 @@ test.describe("the per-kind inspector column", () => {
 
     await expect(page.locator("[data-vigilia-locked]")).toBeVisible();
 
-    // Everything that writes is gone, so a question with nothing under it does
-    // not stand a header over nothing: Spends is the only one left.
-    expect(await sectionIds(page)).toEqual(["spends"]);
+    // Everything that writes is gone, so no question has anything left under it
+    // and none of them stands a header over nothing. **An inspector may be
+    // empty**: while the read-only section stood it kept one, and §7.4's
+    // empty-section rule is what says the column shows nothing rather than a
+    // header over a locked object's absent rows. The lead block still names the
+    // lock, which is the surface that says why.
+    expect(await sectionIds(page)).toEqual([]);
     await expect(page.locator("[data-vigilia-name]")).toHaveCount(0);
     await expect(page.locator("[data-vigilia-geometry]")).toHaveCount(0);
     await expect(page.locator("[data-vigilia-panel-fill]")).toHaveCount(0);
-
-    // Read-only, so the author still sees what the object resolves to. The hook
-    // is the contract; `.vigilia-resolution` was the imperative body's class and
-    // died with it (`index.dom.test.ts` reads the hook the same way).
-    await expect(
-      page
-        .locator('[data-vigilia-section="spends"] [data-vigilia-resolution]')
-        .first(),
-    ).toBeVisible();
   });
 
   test("undoes a chart settings edit, in the column and on the canvas", async ({
@@ -1223,33 +1210,18 @@ test.describe("the per-kind inspector column", () => {
     await page.locator('[data-vigilia-layer="group-cpu-card"]').click();
 
     // The picture is the rebuilt column, so the column is asserted first. The
-    // subject leads, the card's questions render with Position closed (DESIGN.md
-    // §7.4: geometry is collapsed by default), and Spends is read-only — its
-    // rows carry a value and nothing to type into. A projection that returned
-    // no sections would otherwise photograph an empty column and pass.
-    // **Four questions, not five, and again because the card is a Group**
+    // subject leads, the card's questions render and each of them is open
+    // (item 13), and there is no read-only section left to photograph (item 17).
+    // A projection that returned no sections would otherwise photograph an empty
+    // column and pass.
+    // **Three questions, not four, and again because the card is a Group**
     // (`vg-465`, item 8): the treatment section is withheld where there is no
     // render boundary for it to reach, and the refusal is said in the lead block.
     expect(await subjectLeadsColumn(page)).toBe(true);
-    expect(await sectionIds(page)).toEqual([
-      "content",
-      "position",
-      "layer",
-      "spends",
-    ]);
-    expect(await isOpen(page, "position")).toBe(false);
-    for (const id of ["content", "layer", "spends"]) {
+    expect(await sectionIds(page)).toEqual(["content", "position", "layer"]);
+    for (const id of ["content", "position", "layer"]) {
       expect(await isOpen(page, id), id).toBe(true);
     }
-    await expect(
-      page
-        .locator('[data-vigilia-section="spends"] [data-vigilia-resolution]')
-        .first(),
-    ).toBeVisible();
-    expect(
-      await controlCount(page, '[data-vigilia-section="spends"]'),
-      "a read-only Spends row carries no editable control",
-    ).toBe(0);
 
     await captureColumn(page, testInfo, "editor-inspector-card");
   });
@@ -1267,10 +1239,10 @@ test.describe("the per-kind inspector column", () => {
     ).toBeVisible();
 
     // The same preconditions, to the degree they apply: the subject leads and
-    // the questions render, with Position closed as §7.4 puts it.
+    // the questions render, Position open like every other (item 13).
     expect(await subjectLeadsColumn(page)).toBe(true);
     expect(await sectionIds(page)).not.toHaveLength(0);
-    expect(await isOpen(page, "position")).toBe(false);
+    expect(await isOpen(page, "position")).toBe(true);
 
     await captureColumn(page, testInfo, "editor-inspector-shape");
   });
@@ -1286,7 +1258,7 @@ test.describe("the per-kind inspector column", () => {
 
     expect(await subjectLeadsColumn(page)).toBe(true);
     expect(await sectionIds(page)).not.toHaveLength(0);
-    expect(await isOpen(page, "position")).toBe(false);
+    expect(await isOpen(page, "position")).toBe(true);
 
     await captureColumn(page, testInfo, "editor-inspector-chart");
   });
@@ -1307,7 +1279,7 @@ test.describe("the per-kind inspector column", () => {
     ).toBeVisible();
 
     expect(await subjectLeadsColumn(page)).toBe(true);
-    expect(await isOpen(page, "position")).toBe(false);
+    expect(await isOpen(page, "position")).toBe(true);
 
     await captureColumn(page, testInfo, "editor-inspector-chart-graphite");
   });

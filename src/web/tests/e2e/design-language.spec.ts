@@ -1613,10 +1613,12 @@ test("captures the shell with the Add pane open and nothing selected", async ({
   // bare `[data-vigilia-panel]` count of six panes is not "one pane showing".
   // `:visible`, not a bare count: every pane stays mounted and the ones that
   // are not showing carry `hidden` (`display: none`), which is not showing.
-  // **A direct child**, because a sub-panel names itself with the same
-  // attribute: the Document pane's References section writes
-  // `data-vigilia-panel="references"`, so the descendant form counts 2 the moment
-  // this capture is pointed at Document (the rail-pane capture measures it).
+  // **A direct child of the rail's column**, because the document carries more
+  // panes than the rail's four: the inspector's `style` and `selection` panels
+  // are `Pane`s of their own, and a bare `[data-vigilia-panel]` count of six is
+  // not "one pane showing". The Document pane's own References section was the
+  // one sub-panel that named itself `data-vigilia-panel="references"`, and it
+  // went with item 17 (`vg-474`).
   await expect(
     page.locator(".editor-shell-panel > [data-vigilia-panel]:visible"),
   ).toHaveCount(1);
@@ -1965,13 +1967,14 @@ test("captures each pane of the four-slot rail in the design language", async ({
     const column = page.locator(".editor-shell-panel");
     const pane = page.locator(`[data-vigilia-panel="${panel}"]`);
     await expect(pane, `${slot}: its pane is not showing`).toBeVisible();
-    // One pane out, read as a **direct child** of the rail's column. The
-    // descendant form counts a sub-panel as a pane: the Document pane's own
-    // References section names itself `data-vigilia-panel="references"`
-    // (`panes/document/references.tsx`), so with Document showing a descendant
-    // match is 2 — measured, `["document", "references"]` — and `"references"`'s
-    // parent carries no column class. A visible `pane` plus one visible direct
-    // child is what says it is the one the rail has out.
+    // One pane out, read as a **direct child** of the rail's column: the
+    // inspector's `style` and `selection` panels are `Pane`s of their own, so
+    // the rail's column is what says which of the four is showing. The
+    // Document pane's own References section was the one sub-panel that named
+    // itself `data-vigilia-panel="references"`, making a descendant match read
+    // 2 — measured, `["document", "references"]` — until item 17 removed it
+    // (`vg-474`). A visible `pane` plus one visible direct child is what says
+    // it is the one the rail has out.
     await expect(
       page.locator(".editor-shell-panel > [data-vigilia-panel]:visible"),
       `${slot} is not the pane the rail has out`,

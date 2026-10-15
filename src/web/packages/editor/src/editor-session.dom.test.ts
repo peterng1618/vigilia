@@ -864,83 +864,19 @@ describe("EditorSession", () => {
     hydrate.mockRestore();
   });
 
-  it("reveals the Tokens pane, at the row the selection's own preset sits in", () => {
-    // The join between the inspector's reveal and the shell's pane is one slot
-    // name and one selector, and a wrong one of either opens the wrong pane in
-    // silence. Both are asserted from the outside: the row is named by the key
-    // the selection actually carries, not by a spelling repeated here.
-    const text = new IText("Hi", { left: 0, top: 0 });
-    text.set({
-      vigiliaText: {
-        runs: [{ kind: "literal", text: "Hi", typePreset: "typePresets.body" }],
-      },
-    });
-    const onRevealPane = vi.fn();
-    const extensions = new EditorSession({
-      assetManager: new AssetManager(),
-      shell: {
-        editor: {
-          canvas: {
-            on: vi.fn(),
-            off: vi.fn(),
-            getActiveObject: () => text,
-            getObjects: () => [text],
-            requestRenderAll: vi.fn(),
-          },
-          clipboardManager: { setImageImporter: vi.fn(), setBindings: vi.fn() },
-          textManager: {
-            addText: vi.fn(),
-            setAuthoringView: vi.fn(),
-            setRepaint: vi.fn(),
-          },
-          cropManager: idleCrop(),
-        },
-        scene: {},
-        snapshot: vi.fn(() => envelope),
-        setBackgroundMedia: vi.fn(),
-      } as never,
-      source: {} as never,
-      envelope,
-      panelHosts: {
-        add: document.body,
-        document: document.body,
-        tokens: document.body,
-        selection: document.body,
-      },
-      onNew: vi.fn(),
-      onNewFromStarter: vi.fn(),
-      onSaved: vi.fn(),
-      onRevealPane,
-      selection: {
-        subscribe: vi.fn(() => () => {}),
-        get: () => ({
-          selectedCount: 1,
-          activeKind: "object" as const,
-          selectionPresetId: "body",
-        }),
-      },
-    });
-
-    // Activating the control is what makes the pane reachable; the reveal is
-    // the inspector's to ask for and the shell's to perform.
-    document.body
-      .querySelector<HTMLButtonElement>("[data-vigilia-reveal-type-presets]")
-      ?.click();
-
-    expect(onRevealPane).toHaveBeenCalledWith(
-      "tokens",
-      '[data-vigilia-type-preset-row="body"]',
-    );
-    extensions.destroy();
-  });
-
-  it("reaches every globals consumer when a type preset is renamed, so the inspector's Spends line follows", () => {
+  it("reaches every globals consumer when a type preset is renamed, so the inspector follows", () => {
     // vg-232. The receivers were listed inline once per setter and the lists
     // disagreed: `setTypes` told three, never the inspector. The inspector
     // reads a preset's name out of `context.globals`, and `setGlobals` is the
-    // only thing that updates it, so a rename left the Spends line printing the
-    // old name until an unrelated `object:modified` re-rendered it. This reads
-    // the surface the author reads rather than counting the calls.
+    // only thing that updates it, so a rename left the surface printing the old
+    // name until an unrelated `object:modified` re-rendered it. This reads the
+    // surface the author reads rather than counting the calls.
+    //
+    // **It read the Spends line until 2026-10-15.** Item 17 removed that
+    // section, so the surface is the run editor's own preset control — which
+    // names its presets out of the same `context.globals`, through the same
+    // `selection.setGlobals` this row's fix introduced. The claim is unchanged;
+    // only the element that prints it moved.
     const text = new IText("Hi", { left: 0, top: 0 });
     text.set({
       vigiliaText: {
@@ -996,15 +932,16 @@ describe("EditorSession", () => {
     });
 
     const printed = (): string =>
-      selectionHost.querySelector('[data-vigilia-resolution="Type preset"]')
-        ?.textContent ?? "";
+      selectionHost
+        .querySelector('[data-vigilia-run-preset="0"] [data-vigilia-value]')
+        ?.textContent?.trim() ?? "";
 
-    expect(printed()).toContain("Body");
+    expect(printed()).toBe("Body");
 
     // The panel's own field writes the whole map, which is what a rename is.
     typePresetPortMock.change?.(presets("Body Renamed"));
 
-    expect(printed()).toContain("Body Renamed");
+    expect(printed()).toBe("Body Renamed");
     extensions.destroy();
   });
 

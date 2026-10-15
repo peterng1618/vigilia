@@ -1004,7 +1004,7 @@ it("gives an icon button its name and its tooltip from one label", async () => {
   expect(document.querySelector(".editor-shell-tooltip")).toBeNull();
 });
 
-it("toggles an inspector section whose header says whether it is read-only", async () => {
+it("toggles an inspector section from its header", async () => {
   await mount(
     <InspectorSection id="content" title="Content">
       <span>Position</span>
@@ -1019,15 +1019,6 @@ it("toggles an inspector section whose header says whether it is read-only", asy
   expect(header?.getAttribute("aria-expanded")).toBe("false");
   expect(document.getElementById("content-panel")?.hasAttribute("hidden")).toBe(
     true,
-  );
-
-  await mount(
-    <InspectorSection id="spends" title="Spends" readOnly>
-      <span>3.2 GB</span>
-    </InspectorSection>,
-  );
-  expect(document.querySelector("#spends-header")?.textContent).toContain(
-    "Read-only",
   );
 });
 

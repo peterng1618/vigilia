@@ -352,33 +352,14 @@ test("keeps the document's own controls reachable while a card is selected", asy
 
   await openPane(page, "Document");
 
-  // The artboard's controls and the document's own resolved tokens are both in
-  // this pane, with the selection still standing. Neither is behind the
-  // selection's surface, so neither can be hidden by making a selection — the
-  // property the `keepMounted` Design tab used to carry.
+  // The artboard's controls are in this pane, with the selection still standing:
+  // they are not behind the selection's surface, so they cannot be hidden by
+  // making a selection — the property the `keepMounted` Design tab used to carry.
+  // The document's own resolved references were the other half of this case, and
+  // both they and their `data-vigilia-globals` hook went with item 17 (`vg-474`):
+  // the artboard's controls are what is left to read, in the same pane.
+  await expect(page.locator('[data-vigilia-panel="document"]')).toBeVisible();
   await expect(page.locator("[data-vigilia-artboard-width]")).toBeVisible();
-  await expect(page.locator("[data-vigilia-globals]")).toBeVisible();
-
-  // **And the tokens are resolved, not merely listed.** The section is the
-  // document's own references read back through the document's palette, so a
-  // count of zero rows would mean a heading over nothing. Read from the DOM
-  // rather than restated: the starter declares nine palette tokens, and this
-  // counts whatever it is given.
-  const resolved = page.locator(
-    "[data-vigilia-globals] [data-vigilia-resolution]",
-  );
-  const tokenCount = await resolved.count();
-  expect(tokenCount, "the document's own tokens").toBeGreaterThan(0);
-  const resolutionTexts = await resolved.allTextContents();
-  for (const text of resolutionTexts) {
-    expect(text.trim().length, "a row with a reference on it").toBeGreaterThan(
-      0,
-    );
-  }
-  // Every entry a token, resolved to a value: `resolutionValue` builds
-  // `label: ref → value`, and an unresolvable one says `(unresolved)` instead.
-  const resolving = resolutionTexts.filter((text) => text.includes("→"));
-  expect(resolving.length, "tokens resolved to a value").toBeGreaterThan(0);
 
   await captureVisualReview(page, testInfo, "composition-panel-document");
 });

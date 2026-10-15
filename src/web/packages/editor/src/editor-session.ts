@@ -15,7 +15,6 @@ import {
 } from "./canvas-nudge.js";
 import { ChartManager } from "./chart-manager/index.js";
 import { EditorDocument } from "./editor-document.js";
-import type { RailSlot } from "./editor-shell/rail.js";
 import type { EditorActionFacade } from "./editor-shell/session-facade.js";
 import { type EditorShell } from "./editor-shell.js";
 import { type CuratedFontFace } from "./font-catalog.js";
@@ -37,14 +36,7 @@ import {
   type PalettePanel,
   paletteTokenUsage,
 } from "./palette-manager/index.js";
-import {
-  createDocumentReferencesPanel,
-  type DocumentReferencesPanel,
-} from "./panes/document/references.js";
-import {
-  type PresetSelection,
-  presetRevealTarget,
-} from "./panes/tokens/preset-list.js";
+import type { PresetSelection } from "./panes/tokens/preset-list.js";
 import type { RunDisplayMode } from "./run-placeholder.js";
 import {
   createSelectionInspector,
@@ -113,12 +105,6 @@ interface EditorSessionOptions {
    *  second, deliberate press. Optional, like the one above, so a session built
    *  without a shell's chrome simply has no publish chord. */
   readonly onPublishSurface?: () => void;
-  /** Brings a pane into view, opening it first. §7.2's slots belong to
-   *  `createShellLayout`, and the inspector's reveal is what asks — a pane that
-   *  is not showing has no scroll target, so the two steps are one gesture.
-   *  Optional, so a session built without a shell's chrome simply has no
-   *  reveal. */
-  readonly onRevealPane?: (slot: RailSlot, target?: string) => void;
   /** The shell's own projection of the selection, handed to the preset list so
    *  its chooser opens on the preset the selection is set in rather than on the
    *  first declared one (`vg-094`). Optional for the same reason as above. */
@@ -145,7 +131,6 @@ export class EditorSession {
   readonly #types: TypePresetPanel;
   readonly #newObjects: NewObjectPanel;
   readonly #selection: SelectionInspector;
-  readonly #documentReferences: DocumentReferencesPanel;
   readonly #snapping: SnapManager;
   readonly #indicators: IndicatorManager;
   readonly #assets: AssetManager;
@@ -181,7 +166,6 @@ export class EditorSession {
         palette: () => this.#palette,
         types: () => this.#types,
         selection: () => this.#selection,
-        documentReferences: () => this.#documentReferences,
       },
     });
 
@@ -337,17 +321,6 @@ export class EditorSession {
       // Pulled, not held: the inspector must see the source the runtime is
       // using, not the one the session was constructed with.
       sampleSource: () => this.#source,
-      // The panel already owns a preset's fields and sits in the same tab, so
-      // revealing it is bringing the author to it, not drawing a second copy.
-      // Two steps through one owner: the pane is opened, then the row the
-      // selection is set in is scrolled to — a pane that is not showing has no
-      // scroll target to reach.
-      revealTypePresets: () => {
-        options.onRevealPane?.(
-          "tokens",
-          presetRevealTarget(options.selection?.get().selectionPresetId),
-        );
-      },
       // The shell owns the glass handle; the inspector writes the property and
       // asks it to re-resolve.
       refreshGlass: () => options.shell.refreshGlass(),
@@ -369,12 +342,6 @@ export class EditorSession {
     // authored runs belong. The runtime owns what an object paints, so the
     // put-back goes through it rather than a second repaint path here.
     options.shell.editor.textManager.setRepaint(() => this.#runtime.refresh());
-    this.#documentReferences = createDocumentReferencesPanel(
-      options.panelHosts.document,
-      // Pulled, not held: the panel is mounted for the session and read-only, so
-      // this cannot show a copy of globals that a theme edit has since changed.
-      { globals: () => this.#document.envelope.globals },
-    );
     this.#newObjects = createNewObjectPanel(
       options.panelHosts.add,
       options.shell.editor,
@@ -636,7 +603,6 @@ export class EditorSession {
     releaseFontPreview();
     this.charts.destroy();
     this.#selection.root.remove();
-    this.#documentReferences.destroy();
     this.#artboard.destroy();
     this.#palette.destroy();
     this.#types.destroy();

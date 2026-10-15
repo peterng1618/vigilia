@@ -15,7 +15,6 @@ import {
   type EditorShellBridge,
   openedStatusText,
 } from "./editor-shell/bridge.js";
-import type { RailSlot } from "./editor-shell/rail.js";
 import type { EditorViewControls } from "./editor-shell/session-facade.js";
 import { createShellLayout } from "./editor-shell/shell-layout.js";
 import { mountEditorShell } from "./editor-shell.js";
@@ -263,10 +262,6 @@ async function start(): Promise<void> {
       // both open the surface, and the switch inside it is the one owner of
       // whether the host is serving.
       onPublishSurface: () => layout.showPublishing(),
-      // The rail's slots and the pane's scroll live in `createShellLayout`; the
-      // reveal is the inspector's gesture routed to that one owner.
-      onRevealPane: (slot: RailSlot, target?: string) =>
-        layout.reveal(slot, target),
       // The shell's selection projection, so the Tokens pane opens on the
       // preset the selection is set in rather than on the first declared one.
       selection: layout.selection,

@@ -13,10 +13,6 @@ import { hitTargetClasses } from "./control-well.js";
  * publication that redrew the panel, would take a half-typed draft with it
  * (§5, "stable identity keeps work in place").
  *
- * A read-only section says so in its header, in words: §5 rule 1 makes
- * "this cannot be edited" a property of the section rather than something a
- * reader infers from the absence of a well.
- *
  * The header is a target, so it carries §5's 24×24 through `hitTargetClasses`:
  * a 10px eyebrow on a 12px line is 18px of button.
  *
@@ -27,7 +23,6 @@ import { hitTargetClasses } from "./control-well.js";
 export function InspectorSection(props: {
   readonly id: string;
   readonly title: string;
-  readonly readOnly?: boolean;
   readonly defaultOpen?: boolean;
   readonly count?: number;
   /**
@@ -54,7 +49,6 @@ export function InspectorSection(props: {
   const {
     id,
     title,
-    readOnly,
     defaultOpen = true,
     count,
     first = false,
@@ -88,16 +82,10 @@ export function InspectorSection(props: {
               {count}
             </span>
           )}
-          {readOnly === true ? (
-            <span className="text-2xs text-muted">Read-only</span>
-          ) : null}
           {/* The header's trailing rule, drawn in every current mockup
               (`controls.html:31`, `:43`, `:119`, `:126`, `:152`, `:171` as
               `flex:1;height:1px;background:var(--edge2)`). Nothing in the
-              product or in DESIGN.md argued against it — the read-only row's
-              omitted divider is the different case, where `column.tsx` cites
-              §5.1 ("a border means editable") and the drawing is the stale
-              side. */}
+              product or in DESIGN.md argued against it. */}
           <span
             aria-hidden
             className="h-px flex-1 bg-edge-2"

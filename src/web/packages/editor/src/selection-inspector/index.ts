@@ -110,11 +110,6 @@ interface SelectionInspectorOptions {
    */
   readonly sampleSource?: () => SampleSource;
   /**
-   * Brings the existing type-preset panel into view. The panel owns a preset's
-   * fields, so a text selection links there instead of duplicating them.
-   */
-  readonly revealTypePresets?: () => void;
-  /**
    * Re-resolves the glass lifecycle. The handle belongs to the shell that
    * created it and re-resolves on its own only when the canvas gains or loses
    * an object, so an authored treatment written on a panel that is already
@@ -629,7 +624,6 @@ export function createSelectionInspector(
       stillTarget,
       commit,
       rerender: render,
-      revealTypePresets: options.revealTypePresets,
       refreshGlass: options.refreshGlass,
       nodeBindings: options.nodeBindings,
       onNodeBindingsChange: options.onNodeBindingsChange,
@@ -710,8 +704,7 @@ export function createSelectionInspector(
     // All three roots read the same selection: the subject root renders the
     // subject and the empty state, the lead renders what the selection itself
     // has to say, and the section root renders the sections and every row in
-    // them. `revealTypePresets` reaches the column as a port, the same way the
-    // three edit ports do — the view carries the label, never the callback.
+    // them.
     column.publish(view, edits);
     lead.publish(
       {
@@ -723,14 +716,7 @@ export function createSelectionInspector(
       },
       runArrange,
     );
-    sectionColumn.publish(
-      view,
-      edits,
-      runEdits,
-      chartEdits(),
-      cropEdits,
-      options.revealTypePresets,
-    );
+    sectionColumn.publish(view, edits, runEdits, chartEdits(), cropEdits);
   };
 
   // Fabric reports a finished drag/resize/rotate as `object:modified`; the fields

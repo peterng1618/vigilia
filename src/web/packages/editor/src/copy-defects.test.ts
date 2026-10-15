@@ -30,7 +30,6 @@ import { PublishIndicator } from "./editor-shell/publish-indicator.js";
 import { SaveState } from "./editor-shell/save-state.js";
 import type { EditorActionFacade } from "./editor-shell/session-facade.js";
 import type { PublishSurfaceStore } from "./editor-shell/shell-stores.js";
-import { resolutionValue } from "./selection-inspector/appearance.js";
 import { projectRuns, RunEditor } from "./selection-inspector/runs.js";
 import type { RunEdits } from "./selection-inspector/view.js";
 import { shortcutLabel } from "./shortcut-manager/display.js";
@@ -169,12 +168,11 @@ interface AbsentReading {
 /**
  * The absence kinds this case **renders**, and the ones it does not.
  *
- * **Rendered here (eight):** an unread host on two surfaces (`PublishIndicator`
+ * **Rendered here (six):** an unread host on two surfaces (`PublishIndicator`
  * and `PublishControl` draw nothing), a saved document (`SaveState` draws
  * nothing), a sample that has not arrived and a binding this object does not
- * declare (both stated in words by `runs.tsx`'s `bindingStateOf`), the two lines
- * `resolutionValue` answers (`notSet`, and `"{shown} (no longer resolves)"`), and
- * an unauthored optional chart setting, whose select renders the table's own gap
+ * declare (both stated in words by `runs.tsx`'s `bindingStateOf`), and an
+ * unauthored optional chart setting, whose select renders the table's own gap
  * word (`settings-field.ts:206`).
  *
  * **Not rendered here, the absence already owned and asserted elsewhere.** The
@@ -248,16 +246,6 @@ async function absentReadings(): Promise<AbsentReading[]> {
       expect: "gap",
     },
     {
-      name: "the selection's resolution line, nothing spent",
-      text: resolutionValue(undefined, undefined),
-      expect: "gap",
-    },
-    {
-      name: "the selection's resolution line, a reference that no longer resolves",
-      text: resolutionValue("Ink", undefined),
-      expect: "gap",
-    },
-    {
       name: "an unauthored optional chart setting",
       text: unsetSettingWord(),
       expect: "gap",
@@ -268,9 +256,11 @@ async function absentReadings(): Promise<AbsentReading[]> {
 it("states a missing reading as a gap rather than a zero or a dash", async () => {
   const readings = await absentReadings();
   // The count is the number of absence kinds covered, not a prediction: a kind
-  // dropped from the table is this red rather than a loop that checked less.
-  expect(readings).toHaveLength(8);
-  expect(readings.filter((reading) => reading.expect === "gap").length).toBe(5);
+  // dropped from the table is this red rather than a loop that checked less. It
+  // fell from eight to six when `resolutionValue`'s two lines went with the
+  // read-only section that rendered them (the selection's Spends, 2026-10-15).
+  expect(readings).toHaveLength(6);
+  expect(readings.filter((reading) => reading.expect === "gap").length).toBe(3);
 
   for (const reading of readings) {
     const text = reading.text.trim();

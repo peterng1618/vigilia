@@ -36,7 +36,6 @@
     "src/web/packages/editor/src/panes/document/document-pane.tsx",
     "src/web/packages/editor/src/panes/document/metadata-fields.tsx",
     "src/web/packages/editor/src/panes/document/artboard-fields.tsx",
-    "src/web/packages/editor/src/panes/document/references.tsx",
     "src/web/packages/editor/src/new-object-panel.ts",
     "src/web/packages/editor/src/artboard-panel.ts",
     "src/web/packages/editor/src/palette-manager/panel.ts",

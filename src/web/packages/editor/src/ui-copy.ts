@@ -286,8 +286,6 @@ export const uiCopy = {
         is the run's own preset reference, as the run list above names it. */
     runTrackingNotSeparate: (preset: string) =>
       `Tracking on "${preset}" is not shown separately — a text object carries one tracking value, from its first run.`,
-    editTypePresets: "Edit type presets",
-    documentStyle: "This document",
     runColour: "Colour",
     runSource: "Reads",
     staticText: "Static text",

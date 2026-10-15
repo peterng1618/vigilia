@@ -27,11 +27,7 @@ import type {
   TypePresets,
 } from "../../type-preset-manager/panel.js";
 import { uiCopy } from "../../ui-copy.js";
-import {
-  PresetList,
-  type PresetListProps,
-  presetRevealTarget,
-} from "./preset-list.js";
+import { PresetList, type PresetListProps } from "./preset-list.js";
 
 // Base UI's popups need three browser APIs jsdom has none of — the same three
 // `paint-list.dom.test.tsx` supplies, for the same reason.
@@ -433,13 +429,6 @@ it("opens the chooser on the preset the selection is set in, and stays browseabl
 
   expect(chooser()).toBe("body");
   expect(binding(host).textContent).toContain(withNumbers["24-400"]!.name);
-});
-
-it("aims a reveal at the preset's own row, and at the list when none is named", () => {
-  expect(presetRevealTarget("24-400")).toBe(
-    '[data-vigilia-type-preset-row="24-400"]',
-  );
-  expect(presetRevealTarget(undefined)).toBe("[data-vigilia-type-presets]");
 });
 
 it("drops an optional field when the author empties it, rather than writing an empty string", async () => {

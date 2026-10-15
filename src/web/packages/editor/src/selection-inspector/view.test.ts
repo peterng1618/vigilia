@@ -113,12 +113,10 @@ function chartSection(extras: readonly ExtraView[]): ColumnSectionView {
   return {
     id: "content",
     title: "Content",
-    readOnly: false,
     defaultOpen: true,
     count: extras.length,
     fields: [],
     extras,
-    revealLabel: undefined,
   };
 }
 
@@ -148,12 +146,10 @@ describe("projectSelection", () => {
     const section: ColumnSectionView = {
       id: "content",
       title: "Content",
-      readOnly: false,
       defaultOpen: true,
       count: 1,
       fields: [],
       extras: [],
-      revealLabel: undefined,
     };
     const view = projectSelection(rect, 1, ports(), [section]);
 

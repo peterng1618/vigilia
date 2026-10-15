@@ -26,7 +26,6 @@ import {
   type PalettePanel,
   reassignPaletteToken,
 } from "./palette-manager/index.js";
-import type { DocumentReferencesPanel } from "./panes/document/references.js";
 import { serializeThemePackage } from "./persist.js";
 import {
   confirmDocumentReplacement,
@@ -95,7 +94,6 @@ interface EditorDocumentConsumers {
   readonly palette: () => PalettePanel;
   readonly types: () => TypePresetPanel;
   readonly selection: () => SelectionInspector;
-  readonly documentReferences: () => DocumentReferencesPanel;
 }
 
 interface EditorDocumentOptions {
@@ -465,11 +463,10 @@ export class EditorDocument {
    *
    * The receivers used to be listed inline, once per setter, and the lists
    * disagreed: `setPalette` reached six, `setTypes` three, `deleteType` two.
-   * A consumer a setter did not happen to name stopped updating, which is
-   * exactly how a renamed type preset left the inspector's Spends line printing
-   * the old name — `setTypes` never told the selection inspector (`vg-232`).
-   * One list is what makes the omission unrepresentable: a setter cannot drop a
-   * receiver by not naming it.
+   * A consumer a setter did not happen to name stopped updating — `setTypes`
+   * never told the selection inspector, which then painted a renamed type preset
+   * from the globals it already held (`vg-232`). One list is what makes the
+   * omission unrepresentable: a setter cannot drop a receiver by not naming it.
    */
   #globalsChanged(): void {
     const globals = this.#envelope.globals;
@@ -487,7 +484,6 @@ export class EditorDocument {
       globals: { ...this.#envelope.globals, palette },
     });
     this.#globalsChanged();
-    this.#consumers.documentReferences().render();
     this.#consumers.palette().render(palette);
   }
 
@@ -508,7 +504,6 @@ export class EditorDocument {
     });
     this.#shell.setArtboard(artboard);
     this.#globalsChanged();
-    this.#consumers.documentReferences().render();
     this.#consumers.artboard().render(artboard);
     this.#consumers.palette().render(palette);
   }
@@ -520,7 +515,6 @@ export class EditorDocument {
     });
     this.#globalsChanged();
     this.#consumers.types().render(typePresets);
-    this.#consumers.documentReferences().render();
   }
 
   deleteType(id: string, replacement: string): void {
@@ -537,7 +531,6 @@ export class EditorDocument {
     });
     this.#globalsChanged();
     this.#consumers.types().render(typePresets);
-    this.#consumers.documentReferences().render();
   }
 
   async applyFontTrio(id: string): Promise<FabricThemeEnvelope> {

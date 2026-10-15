@@ -89,7 +89,7 @@ two apart is the judgement the map cannot make for itself.
 | **The card units a document can be built from, and what they are called** — the card vocabulary and its names | `editor/src/card-library.ts` (`CARD_LIBRARY`) |
 | The Add panel's construction actions | `editor/src/new-object-panel.ts` |
 | Shape material fields (fill, stroke, border, shadow, radius) and each shape's own geometry | `editor/src/selection-inspector/panel.ts` |
-| **Which sections a selection gets** — the per-kind questions and the order they are asked in, total over every selection kind by construction | `editor/src/selection-inspector/per-kind-column.ts` |
+| **Which sections a selection gets** — the questions a kind is asked and the order they are asked in, total over every selection kind by construction | `editor/src/selection-inspector/per-kind-column.ts` |
 | **The refusal a document edit earns** — stale, locked, unknown or invalid, decided before anything is written | `editor/src/selection-inspector/view.ts` (`editRefusal`) |
 | Frosted-glass control (enable, blur radius), and which subjects are offered one at all | `editor/src/selection-inspector/glass.ts` |
 | Glass lifecycle re-resolve, asked for by that control | `editor/src/editor-shell.ts` (`EditorShell.refreshGlass`) |
@@ -110,7 +110,6 @@ two apart is the judgement the map cannot make for itself.
 | Selection snapshot, the document's identity and dock eligibility, and the layer writes: `name`, `visible` and the lock, plus the move — the restack and the reparent, which Fabric's own group math performs (`vg-461`) | `editor/src/editor-shell/bridge.ts` |
 | **The block the column leads with, under the subject** — the arrange actions for a multi-selection and the reason a subject is offered no frosted-glass section, with its own closing edge | `editor/src/selection-inspector/selection-lead.tsx` |
 | Selection geometry, appearance, runs and text layout | `editor/src/selection-inspector/` |
-| The Document pane's own resolved references | `editor/src/selection-inspector/style.ts` |
 | Authoring-time value-run tokens | `editor/src/run-placeholder.ts` |
 | The languages an author may pick | `editor/src/theme-languages.ts` |
 | Which theme a host displays | `host/src/settings/active-theme.ts` |

@@ -1392,17 +1392,16 @@ body,
    well 4px off the column the drawing draws. The React column owns its own
    treatment now (DESIGN.md §5 — the well *is* the box), and what is left here is the
    handful of buttons the inspector still renders as plain DOM: the runs'
-   add/remove, the chart's remove-series, the crop row and the type-preset
-   reveal. Add a hook here rather than widening the selector back to the
-   ancestor. */
+   add/remove, the chart's remove-series and the crop row — the type-preset
+   reveal went with item 17's read-only section (`vg-474`). Add a hook here
+   rather than widening the selector back to the ancestor. */
 .editor-shell-inspector [data-vigilia-run-add],
 .editor-shell-inspector [data-vigilia-run-remove],
 .editor-shell-inspector [data-vigilia-chart-binding-remove],
 .editor-shell-inspector [data-vigilia-crop],
 .editor-shell-inspector [data-vigilia-crop-aspect],
 .editor-shell-inspector [data-vigilia-crop-apply],
-.editor-shell-inspector [data-vigilia-crop-cancel],
-.editor-shell-inspector [data-vigilia-reveal-type-presets] {
+.editor-shell-inspector [data-vigilia-crop-cancel] {
   max-width: 100%;
   min-height: 30px;
   margin: 3px 4px 3px 0;
@@ -1423,8 +1422,7 @@ body,
 .editor-shell-inspector [data-vigilia-crop]:hover,
 .editor-shell-inspector [data-vigilia-crop-aspect]:hover,
 .editor-shell-inspector [data-vigilia-crop-apply]:hover,
-.editor-shell-inspector [data-vigilia-crop-cancel]:hover,
-.editor-shell-inspector [data-vigilia-reveal-type-presets]:hover {
+.editor-shell-inspector [data-vigilia-crop-cancel]:hover {
   border-color: var(--shell-accent);
   color: var(--shell-accent);
 }

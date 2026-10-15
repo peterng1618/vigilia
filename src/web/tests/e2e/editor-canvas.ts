@@ -314,10 +314,9 @@ export async function clearSceneX(
  *
  * **An optional `scope` photographs one element rather than the viewport.** The
  * inspector column is taller than a 1280×720 fold and its own scroller clips the
- * rest, so a viewport shot of it stops at whatever fits — the read-only `Spends`
- * section, DESIGN.md §5 rule 1's standing example, never reaches the frame. Passing
- * the column element captures the whole column. With no scope the output is the
- * viewport shot every existing caller already produced.
+ * rest, so a viewport shot of it stops at whatever fits — the last section never
+ * reaches the frame. Passing the column element captures the whole column. With
+ * no scope the output is the viewport shot every existing caller already produced.
  *
  * **An optional `ground` names the palette the frame must be on, and is asserted
  * before the shot.** `page.screenshot` does not wait for the OS listener's

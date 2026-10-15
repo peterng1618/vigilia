@@ -24,7 +24,7 @@ import { ANIMATION_EASINGS, type AnimationEasing } from "./animation.js";
  *
  * A long list is a navigability problem and navigation is the answer: a field is
  * grouped, never trimmed. Every descriptor answers one **question** — its
- * `section` — and the five questions are ordered in one place,
+ * `section` — and the four questions are ordered in one place,
  * `SETTINGS_SECTIONS`. A chart's own settings answer Content, because they are
  * what the chart shows; paint answers Paint. A `hint` is **required**: it says
  * what the setting does in the author's language, so the label never has to
@@ -82,12 +82,7 @@ import { ANIMATION_EASINGS, type AnimationEasing } from "./animation.js";
 export type SettingsFieldKind = "number" | "boolean" | "select";
 
 /** The question a settings field answers, in the order a surface shows them. */
-export type SettingsSection =
-  | "content"
-  | "position"
-  | "layer"
-  | "paint"
-  | "spends";
+export type SettingsSection = "content" | "position" | "layer" | "paint";
 
 export interface SettingsSectionDefinition {
   readonly id: SettingsSection;
@@ -96,18 +91,21 @@ export interface SettingsSectionDefinition {
 }
 
 /**
- * The five questions, ordered — **the one place section order is decided**.
+ * The four questions, ordered — **the one place section order is decided**.
  *
  * Position and Layer stay separate because moving a thing and scaling it are
  * different mistakes (§4). A field's own place inside its section is its order
  * in the family array below, so this list orders the sections and nothing else.
+ *
+ * It carried a fifth, `spends`, until item 17 removed the read-only section that
+ * was its only surface: no descriptor ever declared it, and the column that read
+ * this order stopped asking the question.
  */
 export const SETTINGS_SECTIONS: readonly SettingsSectionDefinition[] = [
   { id: "content", label: "Content" },
   { id: "position", label: "Position" },
   { id: "layer", label: "Layer" },
   { id: "paint", label: "Paint" },
-  { id: "spends", label: "Spends" },
 ];
 
 export interface SettingsFieldDescriptor {

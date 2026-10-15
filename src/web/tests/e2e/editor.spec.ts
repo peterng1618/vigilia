@@ -739,7 +739,7 @@ test.describe("Fabric editor route", () => {
     expect(boxes.sizeRowHeight).toBeLessThanOrEqual(boxes.positionRowHeight);
   });
 
-  test("collapses Position on a fresh selection and leaves the other questions open", async ({
+  test("opens Position on a fresh selection, with the geometry already in it", async ({
     page,
   }, testInfo) => {
     test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
@@ -749,20 +749,22 @@ test.describe("Fabric editor route", () => {
 
     const isOpen = (id: string): Promise<boolean> => sectionExpanded(page, id);
 
-    // Geometry is adjusted once and the binding is chosen constantly, so the
-    // one question an author does not return to is the one put away — and it
-    // is put away rather than hidden: the header carries the count.
+    // Position was the one section put away, on the reasoning that geometry is
+    // set once and the binding chosen constantly. The author's item 13 reverses
+    // it: the section an object is usually selected *for* is not one to hide
+    // behind a disclosure, and the default is now the same for every question.
     await expect(
       page.locator('[data-vigilia-section="position"]'),
     ).toBeVisible();
-    expect(await isOpen("position")).toBe(false);
-    // **Three questions, not four, because the wordmark is a text run.** A
-    // text object's only Paint row was the glass refusal, and `vg-465` moved
-    // that sentence into the lead block above the sections rather than leaving
-    // a section standing over one refusal — so `per-kind-column.ts`'s
+    expect(await isOpen("position")).toBe(true);
+    // **Two questions, not four, because the wordmark is a text run.** A text
+    // object's only Paint row was the glass refusal, and `vg-465` moved that
+    // sentence into the lead block above the sections rather than leaving a
+    // section standing over one refusal — so `per-kind-column.ts`'s
     // empty-section rule takes the whole section away, and asking for it here
-    // would be asking for the surface `vg-006` was reversed to remove.
-    for (const id of ["content", "layer", "spends"]) {
+    // would be asking for the surface `vg-006` was reversed to remove. The
+    // read-only question is gone outright (item 17).
+    for (const id of ["content", "layer"]) {
       expect(await isOpen(id), id).toBe(true);
     }
     await expect(
@@ -771,12 +773,8 @@ test.describe("Fabric editor route", () => {
       ),
     ).not.toHaveText("0");
 
-    // The section opens, and the geometry it was always made of is inside it.
-    // The disclosure's header is the button (DESIGN.md §5), not a `<summary>`.
-    await page
-      .locator('[data-vigilia-section="position"] button[aria-expanded]')
-      .first()
-      .click();
+    // The geometry it was always made of is inside it, with no click needed to
+    // reach it — which is the whole of what item 13 asks for.
     await expect(page.locator('[data-vigilia-geometry="left"]')).toBeVisible();
     await expect(page.locator('[data-vigilia-geometry="width"]')).toBeVisible();
   });
@@ -2442,95 +2440,6 @@ test.describe("Fabric editor route", () => {
     await expect(chosen).toHaveAttribute("data-vigilia-value", "cover");
     await chooseIn(page, "[data-vigilia-background-media-fit]", "contain");
     await expect(chosen).toHaveAttribute("data-vigilia-value", "contain");
-  });
-
-  test("lists the document's references, and the selection's own in its Spends column", async ({
-    page,
-  }, testInfo) => {
-    test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
-
-    await page.goto(EDITOR);
-    await setThemePackage(page, "document-references.vigilia-theme", {
-      schemaVersion: 2,
-      fabricVersion: "7.4.0",
-      id: "document-references",
-      metadata: { themeLanguage: "en" },
-      artboard: {
-        width: 320,
-        height: 180,
-        background: { ref: "palette.background" },
-        barColor: { ref: "palette.none" },
-      },
-      globals: {
-        palette: {
-          none: {
-            name: "None",
-            value: { kind: "solid", color: "transparent" },
-          },
-          background: {
-            name: "Background",
-            value: { kind: "solid", color: BACKGROUND_PAINT },
-          },
-          ink: { name: "Ink", value: { kind: "solid", color: ACCENT_PAINT } },
-        },
-        typePresets: {
-          body: { name: "Body", value: { family: "sans-serif", size: 16 } },
-        },
-      },
-      scene: {
-        version: "7.4.0",
-        objects: [
-          {
-            type: "Textbox",
-            id: "cpu-label",
-            left: 20,
-            top: 20,
-            width: 200,
-            text: "CPU",
-            originX: "left",
-            originY: "top",
-            fill: ACCENT_PAINT,
-            vigiliaPaint: { fill: "palette.ink" },
-            vigiliaText: {
-              runs: [
-                {
-                  kind: "literal",
-                  text: "CPU",
-                  typePreset: "typePresets.body",
-                  style: { color: { ref: "palette.ink" } },
-                },
-              ],
-            },
-          },
-        ],
-      },
-    });
-
-    // The document's own references, in the left column's Document pane: what
-    // the document offers before the author has picked anything.
-    await openPane(page, "Document");
-    const references = page.locator('[data-vigilia-panel="references"]');
-    // The panel names the token and its value, not the `palette.ink` string the
-    // reference is written as. `Ink → #00b8d9` is the same fact in the author's
-    // words, and asserting it keeps both halves of the claim — which token, and
-    // what it resolves to here.
-    await expect(references).toContainText("Ink");
-    await expect(references).toContainText(ACCENT_PAINT);
-    await expect(references).toContainText("Body");
-    // It lists the document the same way whatever is selected, so its globals
-    // stay put — the selection's own resolution is a different column.
-    await expect(references.locator("[data-vigilia-globals]")).toHaveCount(1);
-
-    // Selecting the text shows its own resolution in the Spends section, not in
-    // the document panel, which cannot see a selection. Select through the layer
-    // row: the canvas origin is not a stable coordinate to click, because the
-    // stage letterboxes the artboard inside its host. The tree lives in the
-    // Composition pane, so the row is only clickable once that pane is showing.
-    await openPane(page, "Composition");
-    await page.locator('[data-vigilia-layer="cpu-label"]').click();
-    const spends = page.locator('[data-vigilia-section="spends"]');
-    await expect(spends).toContainText("Ink");
-    await expect(spends).toContainText("Body → sans-serif 16px");
   });
 
   test("persists a selected chart binding", async ({ page }, testInfo) => {

@@ -22,8 +22,7 @@ export interface PaletteTokenOption {
  *
  * A token the document no longer declares a name for has nothing left to label
  * it, so **the reference is the label**: the one case a picker is handed a
- * reference where it offered a name, and the one the Document pane's own walk
- * (`editor/selection-inspector/style.ts`) already pins.
+ * reference where it offered a name, and `palette-tokens.test.ts` pins it.
  */
 export function paletteTokenOptions(
   palette: FabricPalette | undefined,

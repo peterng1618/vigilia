@@ -192,12 +192,6 @@ function Fixture(): React.JSX.Element {
               </RadioGroup>
             </div>
           </InspectorSection>
-
-          <InspectorSection id="spends" title="Spends" readOnly>
-            <p className="m-0 font-mono text-xs text-muted">
-              resolves to ink · 12/400
-            </p>
-          </InspectorSection>
         </aside>
 
         <aside className="editor-shell-inspector w-[276px] bg-panel p-[var(--space-12)]">

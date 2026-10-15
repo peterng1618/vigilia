@@ -90,14 +90,20 @@ test.describe("the reference composition, built from blank", () => {
       ).toBeGreaterThan(0);
     }
 
-    // The document's own read of what it offers, in the Document pane beside
-    // the palette it lists, so "populated" is measured rather than assumed.
-    await openPane(page, "Document");
-    const offered = await page
-      .locator("[data-vigilia-resolution]")
-      .allInnerTexts();
-    expect(offered.length).toBeGreaterThanOrEqual(20);
-    expect(offered.join(" ")).not.toContain("not set");
+    // The blank theme's own inventory is read where it is owned: the palette
+    // and the presets are the Tokens pane's two lists, and "populated" is
+    // measured rather than assumed. **This read the Document pane's resolved
+    // references until item 17 removed that section** (`vg-474`): the pane no
+    // longer offers a read of what the document references.
+    await openPane(page, "Tokens");
+    const offered = page.locator(
+      "[data-vigilia-palette-token-row], [data-vigilia-type-preset-row]",
+    );
+    await expect(offered.first()).toBeVisible();
+    // The same two sets the removed section resolved — the theme's own palette
+    // and its own presets — read from the lists that own them.
+    expect(await offered.count()).toBeGreaterThanOrEqual(20);
+    await expect(page.locator("[data-vigilia-type-presets]")).toHaveCount(1);
 
     await page.screenshot({ path: SHOT("01-blank") });
   });

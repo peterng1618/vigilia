@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { SETTINGS_SECTIONS } from "@vigilia/renderer-core";
-import { type FabricObject, Rect } from "fabric/es";
+import { type FabricObject, IText, Rect } from "fabric/es";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
@@ -93,7 +93,6 @@ function context(): ColumnContext {
     stillTarget: () => true,
     commit: () => {},
     rerender: () => {},
-    revealTypePresets: undefined,
     refreshGlass: () => {},
     nodeBindings: undefined,
     onNodeBindingsChange: undefined,
@@ -130,7 +129,6 @@ function renderedSections(view: SelectionView): HTMLElement[] {
         runs={runs}
         chart={chart}
         crop={crop}
-        revealTypePresets={undefined}
       />,
     );
   });
@@ -146,7 +144,7 @@ const isOpen = (id: string): boolean =>
   headerOf(id).getAttribute("aria-expanded") === "true";
 
 describe("SelectionColumn", () => {
-  it("renders the five questions in the order SETTINGS_SECTIONS decides", () => {
+  it("renders the questions in the order SETTINGS_SECTIONS decides", () => {
     const ids = renderedSections(
       viewOf(new Rect({ width: 40, height: 20 })),
     ).map((element) => element.dataset["vigiliaSection"]);
@@ -155,28 +153,35 @@ describe("SelectionColumn", () => {
   });
 
   it("renders no header at all for a section with nothing in it", () => {
-    // Every field that writes is withheld from a locked object, so the projection
-    // drops Content rather than emitting an empty one; React must render exactly
-    // the sections it is given and stand no header over nothing.
-    const view = viewOf(
-      new Rect({ left: 0, top: 0, width: 40, height: 20, locked: true }),
-    );
+    // A text object has no Paint row of its own: `vg-465` moved the glass
+    // refusal into the lead block above the sections, and this rule takes the
+    // whole section away rather than standing a header over one sentence. A
+    // locked object drops every section at once, which is the case asserted
+    // beside this one (`index.dom.test.ts`).
+    const text = new IText("", { left: 0, top: 0 });
+    text.set({
+      vigiliaText: {
+        runs: [{ kind: "literal", text: "Hi", typePreset: "typePresets.body" }],
+      },
+    });
+    const view = viewOf(text);
     const ids = renderedSections(view).map(
       (element) => element.dataset["vigiliaSection"],
     );
 
-    expect(ids).not.toContain("content");
-    expect(ids).toContain("spends");
+    expect(ids).not.toContain("paint");
+    expect(ids).toContain("content");
     expect(ids).toEqual(view.sections.map((section) => section.id));
   });
 
-  it("starts Position closed and every other section open", () => {
+  it("starts every section open, Position included", () => {
     renderedSections(viewOf(new Rect({ width: 40, height: 20 })));
 
-    // Geometry is adjusted once and the binding chosen constantly, so the one
-    // question that is not asked repeatedly is the one put away.
-    expect(isOpen("position")).toBe(false);
-    for (const id of ["content", "layer", "paint", "spends"]) {
+    // Position was the one section put away, on the reasoning that geometry is
+    // set once. It is what an object is usually selected *for*, so it is open —
+    // and so is every other question: the column stops deciding that for the
+    // author (item 13, DESIGN.md §7.4).
+    for (const id of ["content", "position", "layer", "paint"]) {
       expect(isOpen(id), id).toBe(true);
     }
   });
@@ -207,21 +212,20 @@ describe("SelectionColumn", () => {
     }
   });
 
-  it("keeps the section the author opened across a re-publish", () => {
+  it("keeps the disclosure the author chose across a re-publish", () => {
     const view = viewOf(new Rect({ width: 40, height: 20 }));
     renderedSections(view);
 
     act(() => headerOf("position").click());
-    act(() => headerOf("paint").click());
-    expect(isOpen("position")).toBe(true);
-    expect(isOpen("paint")).toBe(false);
+    expect(isOpen("position")).toBe(false);
+    expect(isOpen("paint")).toBe(true);
 
     // A re-publish is a new view on the same tree, the way a selection change
-    // reaches the column. Rebuilding the sections would collapse Position again
-    // and reopen Paint under the author's hands.
+    // reaches the column. Rebuilding the sections would return Position to its
+    // default and collapse Paint under the author's hands.
     renderedSections({ ...view, targetRevision: 2 });
 
-    expect(isOpen("position")).toBe(true);
-    expect(isOpen("paint")).toBe(false);
+    expect(isOpen("position")).toBe(false);
+    expect(isOpen("paint")).toBe(true);
   });
 });

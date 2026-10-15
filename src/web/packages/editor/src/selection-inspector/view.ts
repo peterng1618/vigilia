@@ -55,34 +55,22 @@ export interface SubjectView {
 export interface ColumnSectionView {
   readonly id: ColumnSectionId;
   readonly title: string;
-  readonly readOnly: boolean;
   readonly defaultOpen: boolean;
   /**
-   * How many rows the section holds: its fields, its extras and its reveal. An
-   * extra counts once however many controls it carries — it is one row in this
-   * count's vocabulary, the same way a run editor is — and it counts only while
+   * How many rows the section holds: its fields and its extras. An extra counts
+   * once however many controls it carries — it is one row in this count's
+   * vocabulary, the same way a run editor is — and it counts only while
    * `rendersExtra` says the column renders it, so the header can never claim a
    * row that is not there.
    *
    * It lives in the value because the header prints it: collapsing a section is
-   * ordering, not removal, so a closed Position still says how much it holds.
+   * ordering, not removal, so a closed section still says how much it holds.
    */
   readonly count: number;
   /** Flat, one control each. */
   readonly fields: readonly FieldView[];
   /** The sub-surfaces that are not one control. */
   readonly extras: readonly ExtraView[];
-  /**
-   * The label of the one link out of this section, when it has one — Spends
-   * offers a way into the panel that owns a type preset rather than a second
-   * copy of its fields.
-   *
-   * A **label**, not the button and not its callback: the column renders the
-   * control from the view's own vocabulary the way it renders every row, so
-   * nothing imperative crosses into a `SelectionView`. The callback is a write
-   * port and reaches the column as a prop, beside `edits`, `runs` and `chart`.
-   */
-  readonly revealLabel: string | undefined;
 }
 
 /**
@@ -188,8 +176,7 @@ export type FieldView =
       readonly value: string;
       readonly options: readonly FieldOption[];
       readonly colour: string;
-    })
-  | (FieldBase & { readonly control: "readOnly"; readonly value: string });
+    });
 
 /** One entry in a run editor's dropdowns: the stored reference, and its name. */
 export interface RunOptionView {
