@@ -2211,12 +2211,11 @@ body,
   justify-content: center;
   overflow: hidden;
 }
-/* The name is the row's identity and it is the column that yields, because
-   DESIGN.md §7.3 is explicit: "a row yields its name and its key before it
-   yields a control", and the role beside it "is never the column that gives
-   way". The `6ch` floor below is the *resting* row's — the row that draws no
-   control has no strip to pay for, and the floor is what keeps a deep,
-   key-heavy row from crushing its name. */
+/* The name is the row's identity and it is the first column to yield, because
+   DESIGN.md §7.3 orders the whole row: "A row yields its name and its key before
+   it yields a control, and it yields the role last." The `6ch` floor below is
+   the *resting* row's — a row that draws no control has no strip to pay for, and
+   the floor is what keeps a deep, key-heavy row from crushing its name. */
 .vigilia-layer-name {
   flex: 1 1 auto;
   min-width: 6ch;
@@ -2224,22 +2223,38 @@ body,
   text-overflow: ellipsis;
   white-space: nowrap;
 }
-/* **The attended row lowers that floor**, which is the whole of `vg-447`: a row
-   drawing state controls reserves their strip out of the flex line (the `:has`
-   arms further down), and where the reservation is wider than the mark, the
-   role and the key can spare, the in-flow line overflows to the right and the
-   slot paints over the role. The role cannot be the column that yields — it is
-   `flex: none`, and a covered role says nothing at all — so the name pays, and
-   it pays by ellipsising, which `overflow`/`text-overflow` above already do.
-
-   `0` and not a smaller floor: any positive floor is still a width the row may
-   not have, and the row that cannot pay it overflows again. The name loses
-   nothing where there is room to take: `flex-grow: 1` still gives it every
-   free pixel on every row that has any, so the floor only ever mattered when
-   the line was shrinking. Scoped to the attended row rather than removed
-   outright, because at rest there is no strip to pay for. */
+/* **The attended row, where the strip has to come out of the line** (`vg-447`).
+   Scoped to the rows that reserve one, so no row at rest changes at all
+   (`vg-265`), and `0` rather than a smaller floor because any positive floor is
+   still a width the row may not have. The name loses nothing where there is room
+   to take: `flex-grow: 1` still gives it every free pixel, so the floor only ever
+   mattered while the line was shrinking. */
 .vigilia-layer-row:has(.vigilia-layer-state button) .vigilia-layer-name {
   min-width: 0;
+}
+/* §7.3's order is a precedence, and these two declarations are what make it one
+   rather than a hope. Flexbox charges each column `flex-shrink × its base size`,
+   and the name and the role are both around 95px on the starter's worst row — so
+   at the default shrink of `1` the name would keep roughly half of what §7.3 says
+   it must give up whole, and the role would clip while a name was still readable.
+   `999` is not a measurement: it is a weight large enough that the two columns
+   which yield first take the whole violation and freeze at their zero minimum,
+   leaving the residue to the role. */
+.vigilia-layer-row:has(.vigilia-layer-state button) .vigilia-layer-name,
+.vigilia-layer-row:has(.vigilia-layer-state button) .vigilia-layer-bound {
+  flex-shrink: 999;
+}
+/* **And the role yields last, and it clips rather than being covered** — §7.3's
+   other amended half. On a row whose role is wider than the pane can hold beside
+   the strip, every column that may yield has already yielded, and a role the slot
+   paints over says nothing at all where one that ellipsises says what it can.
+   `overflow: hidden` is what makes it clip: a shrunken box with `visible`
+   overflow still paints its text past its own edge. */
+.vigilia-layer-row:has(.vigilia-layer-state button) .vigilia-layer-role {
+  flex-shrink: 1;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 /* A group holds others, and a bold name says so without a mark repeating it. */
 .vigilia-layer-row[data-kind="group"] .vigilia-layer-name {
@@ -2251,10 +2266,10 @@ body,
    five this span is the only thing a screen reader hears about the row's kind,
    because the mark beside the name is `aria-hidden` or absent.
 
-   `flex: none`, so it is never the element that gives up width: a role that
-   clipped or ellipsised would say nothing, and the name and the key already
-   have the row's shrinking to do. Muted and 11px like the key, so the name
-   still leads the row.
+   `flex: none` at rest, so the row's ordinary shrinking is the name's and the
+   key's. The attended row is where it yields, and it yields last and by clipping
+   rather than being covered — the scoped rule above. Muted and 11px like the key,
+   so the name still leads the row.
 
    These words are the measured ones. In the 340px this panel shipped before
    the role existed, the short form costs the starter's names 4 of 60 against
@@ -2318,7 +2333,8 @@ body,
 
 /* What the row reads. Muted so a name still leads the row, and flexible so a
    three-key chart gives way before the layer's own name does — the one thing a
-   layer list must never ellipsise. */
+   layer list must never ellipsise. On the attended row the two shrink together,
+   §7.3 ordering the key against the controls and never against the name. */
 .vigilia-layer-bound {
   flex: 0 1 auto;
   min-width: 0;

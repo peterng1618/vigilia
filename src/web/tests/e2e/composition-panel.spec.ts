@@ -210,6 +210,13 @@ test("the state slot does not cover the role, at rest or with the row attended",
 }, testInfo) => {
   test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
 
+  // The attended half walks all sixty rows and hovers each one, which is real
+  // work rather than a wait: the panel re-renders on every pointer move, and
+  // each hover pays Playwright's stability and hit-target checks on the row it
+  // just re-rendered. It is over the default budget and not slow for a reason
+  // worth fixing.
+  test.slow();
+
   await openStarterEditor(page);
 
   // `openEveryGroup` clicks twisties, and the row it last clicked keeps both
@@ -254,13 +261,54 @@ test("the state slot does not cover the role, at rest or with the row attended",
     "rows whose role the slot paints over at rest",
   ).toEqual([]);
 
-  // The attended row is a second defect and is NOT this one: there the slot
-  // holds real controls, and on a row whose reserved strip is wider than what
-  // its columns can spare — a group's four controls, or a chart's three — the
-  // in-flow line overflows under them, because the mark, the name's 6ch floor
-  // and the role are each recorded as never giving way. Which of the three
-  // yields is a design question, and it is filed as `vg-447`; this case asserts
-  // the state `vg-265` measured and the three captures beside the drawings show.
+  // **The attended row, and it is the same predicate.** Hovering is what draws
+  // a row's controls, so the slot paints a real surface over the row's right
+  // edge and the row that pays is the one the pointer is on. `vg-447`'s ruling
+  // is what makes this hold: the name's `6ch` floor is the *resting* row's, and
+  // an attended row lowers it to zero so the name ellipsises rather than the
+  // slot painting over the role (DESIGN.md §7.3 — "A row yields its name and its
+  // key before it yields a control, and it yields the role last").
+  //
+  // Every row is walked rather than a hand-picked sample, because which row is
+  // over budget is the row's own role and key rather than a property of the
+  // sample. Only one row is attended at a time, so the helper's own filter
+  // returns the row just hovered: every other row is at rest, and a slot
+  // drawing no control paints nothing.
+  const ids = await rows.evaluateAll((elements) =>
+    elements.map((row) => row.getAttribute("data-vigilia-layer") ?? ""),
+  );
+  for (const id of ids) {
+    const row = page.locator(`[data-vigilia-layer="${id}"]`);
+    // The leading edge rather than the centre: a centred hover lands on the
+    // slot once a wide strip is reserved, and the twisty's own tooltip would
+    // sit over the row it is being measured on.
+    await row.hover({ position: { x: 10, y: 13 } });
+    expect(
+      await overlaps(),
+      `rows whose role the slot paints over while "${id}" is attended`,
+    ).toEqual([]);
+
+    // **And §7.3's order, which the outcome above cannot see.** A role that
+    // clips is only legitimate once the name and the key have nothing left, and
+    // a proportional shrink would leave the name readable while the role
+    // clipped while still fitting the line — the outcome would pass and the
+    // order would be gone. Read on the row just hovered, because that is the
+    // only row the strip's weight is charged to.
+    const yielded = await row.evaluate((element) => {
+      const role = element.querySelector(".vigilia-layer-role") as HTMLElement;
+      const name = element.querySelector(".vigilia-layer-name") as HTMLElement;
+      const key = element.querySelector(".vigilia-layer-bound");
+      return {
+        roleClipped: role.scrollWidth > role.clientWidth,
+        nameLeft: Math.round(name.getBoundingClientRect().width),
+        keyLeft: Math.round(key?.getBoundingClientRect().width ?? 0),
+      };
+    });
+    expect(
+      yielded.roleClipped && yielded.nameLeft + yielded.keyLeft > 0,
+      `"${id}" clips its role with ${yielded.nameLeft}px of name and ${yielded.keyLeft}px of key left`,
+    ).toBe(false);
+  }
 });
 
 test("the shipped column is DESIGN.md's, and its clipping is measured against the one it supersedes", async ({
