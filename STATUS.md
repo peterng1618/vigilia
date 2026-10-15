@@ -37,11 +37,11 @@ ledger did.
 
 ## Last completed change
 
-- **Two rows closed on the same shape: an instrument that read green over something it should have refused** — `vg-520` (the local gate omitted a CI step) and `vg-513` (a test asserted through an always-true ternary).
-- **`vg-520` fixed, and its own count corrected**: `npm run gate` now chains `npm run status:check`, and **`hooks:check` was already reached** — `gates:self-test` chains `sdd-checkpoint.mjs --self-check`, which is exactly what `hooks:check` runs — so two steps were genuinely missing, not the three the row named.
-- **`vg-513` fixed by the row's own first option** — the ternary is replaced by the literal it always evaluated to, since the case has no variable it means to read.
-- **Both proofs are two-directional and both were wrong first.** `vg-520`'s break hit the HTML comment that *documents* the active-plan marker rather than the bullet, so it proved nothing until it was anchored to the line start; `vg-513`'s fix changes no outcome, so its proof shows the assertion still reddens (exit 1) when pointed at a wrong label, rather than only that the file passes.
-- **The register is at 191 open, 34 parked, 22 withdrawn** — from 207 open when the triage began.
+- **Phase 17 authored, and every open row now has a phase, a park, or a ruling that says it is the user's** — eighteen rows in five tasks, grouped by owner: the boot and draft lifecycle, the glass and capture paths, the parity instrument, the register's own checker, and two design-language residues.
+- **The census gained a fifth correction, and it is a correction in the drain's own favour**: **a parked row is not a homeless one.** Counting the 36 parked rows as homeless overstated the gap, so the plan now states the number with the park held out.
+- **The precise reading at 190 open**: 36 parked, 101 carried by an implementing phase, **51 ruled only** (Phase 1 names them, so they hold a decision and no home), and **2 named by no phase at all — `vg-388` and `vg-405`, both the user's own and both already ordered ahead of the triage**.
+- **So the pair is now 190/53, from 207/150** — and the remaining structural work is the 51 ruled-only rows, a different job: each carries a ruling, so triaging one means reading what it was ruled to be rather than measuring whether its subject still exists.
+- **The triage has decided 58 rows — seventeen closed, five withdrawn, thirty-six parked** — and `vg-535` parks on the user, because `.claude/settings.json` is theirs to authorise.
 
 ## Next
 

@@ -63,13 +63,14 @@ Eleven phases, in this order:
 | 9 | W8 — structural stops and the plans directory | 4 | parallel-safe |
 | 10 | W9 — the unowned mockup-parity plan | 2 | gated on D4 and D3/D6 |
 
-**Five phases were added after that table was written, so the table records the order rather than the
+**Six phases were added after that table was written, so the table records the order rather than the
 count**: Phase 12 (the 2026-10-14 rulings no phase carried), Phases 13 and 14 (the user's 2026-10-14
-GUI list, items 1–9 and 10–18), and **Phases 15 and 16, which are the phases the triage's own verdicts
-named** — the `# The rows no phase carries` section rules that a triaged row is fixed *in a phase named
-here*, withdrawn or parked, so the rows a measurement pass returned as real work became Phase 15 (nine
-instrument gaps) and Phase 16 (eighteen behaviour findings). Both are authored from measurements taken
-on 2026-10-16 rather than from titles.
+GUI list, items 1–9 and 10–18), and **Phases 15, 16 and 17, which are the phases the triage's own
+verdicts named** — the `# The rows no phase carries` section rules that a triaged row is fixed *in a
+phase named here*, withdrawn or parked, so the rows a measurement pass returned as real work became
+Phase 15 (nine instrument gaps), Phase 16 (eighteen behaviour findings) and Phase 17 (the eighteen the
+first two left standing). All three are authored from measurements taken on 2026-10-16 rather than from
+titles.
 
 **Rulings open first, work opens at W1.** The close phase precedes everything because it needs no build, no suite and no ruling, and because it is where the register mechanics are exercised before 100+ rows depend on them. The ruling phase precedes the work phases for one reason: D8 gates W5, D1 decides whether W3's gates count, and D4/D3/D6 gate W9. A work phase whose gating cluster is unanswered stays queued — do not start it and hope.
 
@@ -2030,6 +2031,112 @@ browser suite for Tasks 16.1, 16.3 and 16.5 on a rebuilt bundle.
 
 ---
 
+# Phase 17 — W12: the rows the measurement passes left standing
+
+**Outcome:** the eighteen rows the 2026-10-16 measurement passes reproduced at HEAD — and which neither
+Phase 15 nor Phase 16 homes — are fixed, and the parity and register instruments stop reading green over
+the gaps they were written to catch.
+
+**Why a third phase rather than more tasks in the other two.** Phase 15 homed the instrument gaps and
+Phase 16 the behaviour findings the passes returned *first*; these eighteen came back from the same
+passes and were left when those phases were scoped. Adding them to either would push a phase past the
+plan's own 3–5 task shape, and their owners are different again: the editor's boot path, the glass and
+capture path, the parity instrument, and the register's own checker.
+
+**Owners:** `src/web/packages/editor/src/editor-main.ts` with `draft-store.ts` and
+`scene-fabric/src/chart-refresh.ts`; `src/web/packages/scene-fabric/src/glass.ts` with
+`editor/src/thumbnail-capture.ts`; `src/web/tests/e2e/`; and `scripts/backlog-check.mjs`.
+
+**Constraints:** **queued behind Phases 12, 15 and 16**, because one phase is active at a time.
+**Task 17.4 edits `scripts/backlog-check.mjs`, which is on `scripts/reuse-gate.mjs`'s watchlist**, so it
+lands a decision note before its first write — and note that `vg-535` records the gate's hook not
+blocking, so the note is owed on the merits rather than enforced. **Every row here was measured by a pass
+that ran nothing**, so each task reproduces its own case first: several rows cite lines that have moved,
+and the pass corrected `vg-487`'s file for the same reason.
+
+**Acceptance:** each row's own `check` passes and is recorded on its line; the four instrument rows
+(`vg-391`, `vg-398`, `vg-502`, `vg-514`) each carry a case that fails when the fix is disabled;
+`npm run gate` exit 0 with its exit code named in the close commit, and any browser run named separately.
+
+**Failure modes:** widening an instrument until it accepts the failure it was written to catch — which is
+`vg-502`'s and `vg-514`'s whole subject; treating a pass's line number as a landmark; and closing a row
+on "the case passes" where the case could not have failed.
+
+**Verify:** `npm run gate` (exit code read from `$?` into a file, never through a pipe), plus the browser
+suite for Tasks 17.1, 17.2 and 17.3 on a rebuilt bundle.
+
+### Task 17.1: The editor's boot and draft lifecycle
+
+**Files:**
+- Modify: `src/web/packages/editor/src/editor-main.ts`; `draft-store.ts`; `src/web/packages/scene-fabric/src/chart-refresh.ts`
+
+**Interfaces:**
+- Produces: `vg-510`, `vg-511` and `vg-512` closed
+
+- [ ] **Step 1: `vg-510` — `pagehide` disposes the chart refresh under `{ once: true }` and stops the publisher, and no `pageshow` restarts either**, so a restored page keeps a disposed refresh; `startChartRefresh` returns `setRate` and `dispose` with `disposed` never reset.
+- [ ] **Step 2: `vg-511` — a failed draft restore writes its message and `bootTheme` then overwrites the same status element**, so the author is told the draft failed and then told something else.
+- [ ] **Step 3: `vg-512` — the draft's single slot is written whenever the document is dirty with no transition gate**, so a theme switch can persist the outgoing document's draft over the incoming one's.
+- [ ] **Step 4: Close the three**, each against the commit that fixes it.
+
+### Task 17.2: The glass and capture paths
+
+**Files:**
+- Modify: `src/web/packages/scene-fabric/src/glass.ts`; `src/web/packages/editor/src/thumbnail-capture.ts`
+
+**Interfaces:**
+- Consumes: `vg-023`'s settled two-paint-context ruling
+- Produces: `vg-515`, `vg-516`, `vg-505` and `vg-527` closed
+
+- [ ] **Step 1: `vg-515` — `blurRadius` scales by `Math.hypot(own[0], own[1])`**, which at angle 0 is `|scaleX × viewport × retina|` with `scaleY` absent, while the inspector's Size arms write both scales.
+- [ ] **Step 2: `vg-516` — the glass-circle parity probe's two readings differ by 3.6% and its own report says "Cause not established"**; the 462 rim pixels are named at rows 236–239 and 319–320, columns 52–54 and 201–203. Establish the cause or record the reading as the instrument's limit.
+- [ ] **Step 3: `vg-505` — the host-player strip case at `host-player.spec.ts:1280` was red in the Phase 14 boundary pass and no row named it.** The pass confirmed the case, both assertions and the conditional strip exist unchanged; the red itself was never re-run, so reproduce it before fixing.
+- [ ] **Step 4: `vg-527` — nothing lifts the entered-group dim on the capture path**, so a package saved while a group is entered stores a dimmed thumbnail; the 2026-10-15 ruling is implemented nowhere.
+- [ ] **Step 5: Rebuild and run each case alone, then close the four.**
+
+### Task 17.3: The parity instrument's remaining gaps
+
+**Files:**
+- Modify: `src/web/tests/e2e/`
+
+**Interfaces:**
+- Produces: `vg-391`, `vg-393`, `vg-398`, `vg-421` and `vg-451` closed
+
+- [ ] **Step 1: `vg-391` — no spec requires a sample to repaint the artboard**, and the surviving player case requires two paused frames to be byte-identical. **Its supporting claims are corrected on the row**: `openPaused` does have a caller, at `host-player.spec.ts:923`, and `installFixedClock`'s sites are `editor.spec.ts:5188` and `:5271`.
+- [ ] **Step 2: `vg-393` — the resize case's numbers reproduce from the retained report** (sub-unit ask 118.4, landed 145.2285, `renderedWidth` 27.2285), and the cause is still unestablished; the row is a browser investigation, not a patch.
+- [ ] **Step 3: `vg-398` — the triage documents' `--grep` values are not all case titles.** `vg-028`'s cell greps `"playback"`, which matches no case title in `editor.spec.ts`, and `vg-259`'s pattern occurs only as an assertion message. Sweep the 36 occurrences and correct or drop each.
+- [ ] **Step 4: `vg-421` — the font catalogue's facet filter keeps untagged entries reachable** and the plan's step asserts it; decide whether the filter or the assertion is the intent.
+- [ ] **Step 5: `vg-451` — `${solidOf.background}` is interpolated into a `setContent` document with no guard**, and the neighbouring assertions cannot fail on an absent key.
+- [ ] **Step 6: Rebuild, run the affected suites, and close the five.**
+
+### Task 17.4: The register's and the context menu's own instruments
+
+**Files:**
+- Modify: `scripts/backlog-check.mjs`; `src/web/tests/e2e/editor-context-menu.spec.ts`; `src/web/tests/e2e/editor.spec.ts`
+
+**Interfaces:**
+- Produces: `vg-502`, `vg-503`, `vg-514` and `vg-519` closed
+
+- [ ] **Step 1: Land the decision note** claiming `scripts/backlog-check.mjs`.
+- [ ] **Step 2: `vg-502` — the checker validates membership and not continuity**, so a row that vanishes passes and the printed "all valid" is the only set-level number. Decide what continuity means before writing the rule.
+- [ ] **Step 3: `vg-514` — the `check`/`artefacts` rules are gated on `state === "verified"`**, so an open row can carry a check nothing validates; refuse it or say why it is allowed.
+- [ ] **Step 4: `vg-503` — both empty-canvas helpers return unrounded fractions** where the object-menu helper rounds, so two helpers in one file disagree about what a point is.
+- [ ] **Step 5: `vg-519` — one of a pair of reload cases carries the dismiss fix and the other is untouched**, and no sweep of the other reloads happened. Sweep them.
+- [ ] **Step 6: Prove each rule with a case that fails when it is disabled, then close the four.**
+
+### Task 17.5: The two design-language residues
+
+**Files:**
+- Modify: `src/web/packages/editor/src/editor-shell/editor-shell.css`; `docs/design/mockups/current/settings.html`; `src/web/tests/e2e/design-language.spec.ts`
+
+**Interfaces:**
+- Produces: `vg-509` and `vg-440` closed
+
+- [ ] **Step 1: `vg-509` — the palette pane's heading is drawn as a `12px/1` sentence-case heading** where the other settings tabs draw the `10px/.11em/uppercase` eyebrow, and the product styles one `<h3>` as the eyebrow. `DESIGN.md` §2 reserves uppercase for a region eyebrow, so decide which side the pane heading is.
+- [ ] **Step 2: `vg-440` — the about drawing's page body declares `font: 12px/1.45`** and the comparison reads no `line-height`, so the value is unmeasured; `vg-437` settled the companion at 1.4, which makes the drawing the stale side by the drawings README's own rule.
+- [ ] **Step 3: Rebuild, run the design-language suite, and close the two.**
+
+---
+
 # The rows no phase carries — the drain's own by-products (90 open, re-measured 2026-10-15)
 
 **Counted rather than estimated, because the count is the point of this plan.** The register holds
@@ -2087,18 +2194,32 @@ position rather than a phase, exactly as the parked rows below are:
 - **What is explicitly not the answer:** a phase that carries all 51 because they exist. That converts
   a queue into a backlog again.
 
-**The triage is now running, and Phases 15 and 16 are where its fix-verdicts went.** Batches A–I on
-2026-10-16 decided **53 rows — fourteen closed, five withdrawn, thirty-four parked** — and the rows whose
-verdict was *real work with no home* became two phases authored from those measurements rather than from
-titles: **Phase 15** (nine instrument gaps) and **Phase 16** (eighteen behaviour findings). **So this
-section's rule is no longer a plan for later; it has phases, and the parks and withdrawals are recorded
-on the rows themselves**, which is where a ruling lives.
+**The triage is now running, and Phases 15, 16 and 17 are where its fix-verdicts went.** Batches A–K on
+2026-10-16 decided **58 rows — seventeen closed, five withdrawn, thirty-six parked** — and the rows whose
+verdict was *real work with no home* became three phases authored from those measurements rather than
+from titles: **Phase 15** (nine instrument gaps), **Phase 16** (eighteen behaviour findings) and
+**Phase 17** (the eighteen those two left standing). **So this section's rule is no longer a plan for
+later; it has phases, and the parks and withdrawals are recorded on the rows themselves.**
 
-**Re-measured 2026-10-16 after both phases were authored: 193 open, 136 named by a `### Task` block, 57
-named by no phase, and 108 with no home** (57 unnamed + 51 named only by Phase 1). **The pair moved from
-207/150 to 193/108, and the second number moved three times as far as the first** — the open count fell
-by fourteen while the no-home count fell by forty-two, because homing a row and parking it both count and
-neither is a close. A census that reported only the open count would have shown a third of the movement.
+**The fifth correction to the method, measured 2026-10-16, is that a parked row is not a homeless one.**
+The census counts "named by no phase", and after the triage most of the rows in that count are **parked**
+— their home is the park, and decision `0045` exists precisely so the census can tell "known, not
+scheduled" from "to do". Counting them as homeless overstates the gap in the direction that makes the
+drain look unfinished. Measured with the park held out:
+
+| | rows |
+|---|---|
+| open | **190** |
+| parked — known, not scheduled | 36 |
+| carried by an implementing phase | 101 |
+| **ruled only** — Phase 1 names it, so it has a decision and no home | **51** |
+| named by no phase at all | **2** (`vg-388`, `vg-405`, both the user's own and both already ordered ahead of the triage) |
+| **no home** | **53** |
+
+**So the drain's remaining structural work is the 51 ruled-only rows**, and it is a different job from the
+one just done: each carries a ruling, so triaging one means reading what it was ruled to be — fix, park or
+withdraw — rather than measuring whether its subject still exists. The pair that was 207/150 is now
+**190/53**, and the second number fell by 97 while the first fell by 17.
 
 **The measure of the drain is therefore two numbers, and both belong in the final report:** the open
 count, and how many of those no phase carries. Re-measured 2026-10-15 they are **204** and **90** —
