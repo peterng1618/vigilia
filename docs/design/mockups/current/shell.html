@@ -368,16 +368,20 @@
     </div>
   </div>
 
-  <!-- §7.6: readouts only, the counts on the left and the save state and live
-       mark on the right. Copy is the product's own (uiCopy.statusBar,
-       uiCopy.saveState). -->
+  <!-- §7.6: readouts only — the counts on the left, the save state and the live
+       mark on the right. The counts are the left's resting content and the
+       status message is added beside them, so this row carries both: the
+       product's message span is never empty after a boot. Copy is the product's
+       own (uiCopy.statusBar, uiCopy.saveState, and `editor-main`'s boot line).
+       The live mark is §6's filled 12px check, which `PublishIndicator` draws. -->
   <div style="height:26px;flex:0 0 auto;border-top:1px solid var(--edge);background:#0e1217;display:flex;align-items:center;gap:14px;padding:0 12px;font:400 11px ui-monospace,Menlo,monospace;color:var(--faint)">
     <span>52 objects</span>
     <span>0 selected</span>
+    <span>Editor ready</span>
     <span style="flex:1"></span>
     <span>Unsaved changes</span>
-    <span style="display:flex;align-items:center;gap:5px">
-      <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--accent)" stroke-width="2.2"><path d="m5 13 4 4L19 7"/></svg><span style="color:var(--accent)">live</span></span>
+    <span style="display:flex;align-items:center;gap:6px">
+      <svg width="12" height="12" viewBox="0 0 24 24" fill="var(--accent)" stroke="var(--accent)" stroke-width="1.8"><path d="M20 6 9 17l-5-5"/></svg><span style="color:var(--accent)">live</span></span>
   </div>
 </div>
 </body>

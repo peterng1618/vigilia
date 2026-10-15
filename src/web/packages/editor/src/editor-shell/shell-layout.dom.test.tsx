@@ -812,6 +812,7 @@ it("puts the document's identity in the stage's top-left corner", async () => {
   const listeners = new Set<() => void>();
   const bridge = bridgeStub({
     snapshot: () => ({
+      objectCount: 1,
       selectedCount: 0,
       locked: false,
       activeKind: "none",
@@ -874,6 +875,7 @@ it("shows one pane at a time and routes the dock through the bridge", async () =
   // The dock renders the registry's answer, so eligibility comes from `target`.
   const bridge = bridgeStub({
     snapshot: () => ({
+      objectCount: 1,
       selectedCount: 1,
       locked: false,
       activeKind: "object",
@@ -943,6 +945,7 @@ it("draws no arrange action for a multi-selection either, whatever the bridge sa
   // read there), and a toolbar that grew its half back would fail here.
   const bridge = bridgeStub({
     snapshot: () => ({
+      objectCount: 2,
       selectedCount: 2,
       locked: false,
       activeKind: "group",
@@ -979,6 +982,7 @@ it("keeps a chart's fields in the Design column, with no Data tab to reach for",
   const listeners = new Set<() => void>();
   const bridge = bridgeStub({
     snapshot: () => ({
+      objectCount: 1,
       selectedCount: kind === "none" ? 0 : 1,
       locked: false,
       activeKind: kind,

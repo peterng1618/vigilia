@@ -404,6 +404,9 @@ test("the status bar is the window's full-width bottom edge", async ({
  * to be there. What they read is the scene's own — compared against the
  * bridge's snapshot rather than against a number this test remembers — so a
  * strip that kept its own tally would fail here the moment the two drifted.
+ * That they are on the **left** is a rendered fact, so it is measured: the
+ * footer's first content begins at its own left padding, and both counts come
+ * before the message that follows them.
  *
  * The message is a distinct element now, so it is read where it is written.
  * `#status`'s own text is the footer's: the counts, the message, the diagnostic
@@ -430,6 +433,36 @@ test("the status bar reads the scene's counts, and still carries its message", a
   await expect(selected).toBeVisible();
   await expect(selected).toHaveText("0 selected");
   await expect(page.locator("#status-message")).toHaveText("Editor ready");
+
+  // On the left, measured rather than assumed: the first thing in the strip is
+  // the counts, and they begin at the footer's own left padding. A readout that
+  // drifted to the right half would still be visible and still read the scene,
+  // and would fail here.
+  const lefts = await page.evaluate(() => {
+    const footer = document.querySelector("#status") as HTMLElement;
+    const at = (selector: string): number =>
+      (document.querySelector(selector) as HTMLElement).getBoundingClientRect()
+        .left;
+    return {
+      footer: footer.getBoundingClientRect().left,
+      padding: Number.parseFloat(getComputedStyle(footer).paddingLeft),
+      objects: at("[data-vigilia-status-objects]"),
+      selected: at("[data-vigilia-status-selected]"),
+      message: at("#status-message"),
+    };
+  });
+  expect(
+    lefts.objects,
+    "the counts are the strip's first content, at its own left padding",
+  ).toBeCloseTo(lefts.footer + lefts.padding, 0);
+  expect(
+    lefts.selected,
+    "the selection count sits beside the object count, and to its right",
+  ).toBeGreaterThan(lefts.objects);
+  expect(
+    lefts.message,
+    "the message comes after both counts, so neither was moved to the right half",
+  ).toBeGreaterThan(lefts.selected);
 
   // The reading is the scene's, not a tally the strip keeps. The starter is the
   // document this route boots, so it holds something.
