@@ -429,6 +429,16 @@ export const uiCopy = {
     discard: "Discard",
     cancel: "Cancel",
   },
+  /** The prompt after the editor stopped with work unsaved (`vg-040`). The lead
+   *  is the dialog's own visible name, so it names what is at stake — the theme
+   *  and the moment the copy was written — rather than asking about "recovery",
+   *  which names the mechanism and not the work the author might get back. */
+  draftRecovery: {
+    lead: (name: string, written: string): string =>
+      `${name} was edited and not saved. This browser kept a copy written ${written}.`,
+    restore: "Restore",
+    discard: "Discard",
+  },
   saveState: { unsaved: "Unsaved changes" },
   /** The status bar's own readings. `live` is the one word on the host mark the
    *  strip draws when the LAN is serving this document. */

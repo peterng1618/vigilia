@@ -501,6 +501,14 @@ export class EditorSession {
     return this.#document.envelope;
   }
 
+  /** The document as the author last left it: what a save ships, and what the
+   *  draft holds (`vg-040`). Read here rather than composed at the caller, so
+   *  the authored-JSON merge the snapshot is stays the document's — a second
+   *  one at the boot path would drop the asset declarations with it. */
+  snapshot(): FabricThemeEnvelope {
+    return this.#document.snapshot();
+  }
+
   /** Reachability only: the shell menus dispatch through the existing owners,
    * including the private document actions the panel section used to call. */
   actionFacade(): EditorActionFacade {

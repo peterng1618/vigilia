@@ -114,7 +114,11 @@ function Host({
   return <div ref={slot} hidden={hidden} />;
 }
 
-function readStorage(): Storage | undefined {
+/** The browser's own storage, or nothing where it refuses to hand it over — a
+ *  private window throws on the accessor itself. Exported because the decision
+ *  is about this page and not about the shell: the draft is built over the same
+ *  answer rather than asking a second time. */
+export function readStorage(): Storage | undefined {
   try {
     return window.localStorage;
   } catch {

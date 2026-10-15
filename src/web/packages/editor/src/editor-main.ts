@@ -12,14 +12,17 @@ import { AssetManager } from "./asset-manager/index.js";
 import { EditorSession } from "./editor-session.js";
 import {
   createEditorShellBridge,
+  documentNameOf,
   type EditorShellBridge,
   openedStatusText,
 } from "./editor-shell/bridge.js";
 import type { EditorViewControls } from "./editor-shell/session-facade.js";
-import { createShellLayout } from "./editor-shell/shell-layout.js";
+import { createShellLayout, readStorage } from "./editor-shell/shell-layout.js";
 import { mountEditorShell } from "./editor-shell.js";
 import "./editor-shell/editor-shell.css";
 import { type BootThemeOutcome, bootTheme } from "./boot-theme.js";
+import { confirmDraftRecovery } from "./draft-recovery-prompt.js";
+import { type Draft, DraftStore, startDraftAutosave } from "./draft-store.js";
 import { createEditorSource } from "./live-source.js";
 import type { NewDocumentAnswer } from "./new-document-chooser.js";
 import {
@@ -57,6 +60,27 @@ async function start(): Promise<void> {
   const layout = createShellLayout(root);
   const host = layout.hosts.canvas;
   const status = layout.hosts.status;
+  // The draft: the unsaved document, kept in browser storage so a crash costs
+  // the last half-minute of work rather than all of it (`vg-040`). One slot for
+  // the whole editor, because the author has one editor, and a browser that
+  // refuses its own storage has no draft rather than an error to report.
+  const draftStore = new DraftStore(readStorage());
+  /** The document's draft, or nothing while it is clean. Writing a clean
+   *  document is what makes a recovery prompt fire over work already saved —
+   *  the failure the unload warning below already names in its own words. */
+  const captureDraft = (): Draft | undefined => {
+    if (active === undefined || !active.extensions.isDirty()) return undefined;
+    const content = active.extensions.snapshot();
+    return {
+      name: documentNameOf({ name: content.metadata?.name, id: content.id }),
+      savedAt: new Date().toISOString(),
+      content,
+    };
+  };
+  const autosave = startDraftAutosave({
+    store: draftStore,
+    capture: captureDraft,
+  });
   // A pointer gesture owns the canvas for its duration. The refresh loop runs
   // at 30fps and a full repaint erases Fabric's drag marquee — which is drawn
   // straight onto the context, not into the scene — so the marquee survived
@@ -282,6 +306,11 @@ async function start(): Promise<void> {
         });
       },
       onSaved: (msg: string | undefined) => {
+        // Every save in the editor reports here — the package, the library and
+        // the release — so this is the one place the draft is cleared, rather
+        // than each of them having to remember. Work the author has kept is not
+        // work to recover, and a draft left behind offers to restore it.
+        draftStore.clear();
         status.textContent = msg ?? "Theme saved";
       },
       onError: (msg: string) => {
@@ -375,6 +404,14 @@ async function start(): Promise<void> {
   window.addEventListener("pagehide", () => chartRefresh.dispose(), {
     once: true,
   });
+  // The timer's last tick can be half a minute behind the edit that mattered,
+  // so the draft is written again while the author is leaving. `pagehide` and
+  // not `beforeunload`: it fires for a backgrounded tab and for a killed one,
+  // and this write is synchronous by design.
+  window.addEventListener("pagehide", () => {
+    autosave.writeNow();
+    autosave.stop();
+  });
   // Publishing stops when the author does. The host holds the document in its
   // own memory, so an editor that goes away without saying so leaves a phone
   // showing something nobody is editing any more.
@@ -390,6 +427,34 @@ async function start(): Promise<void> {
     event.preventDefault();
     event.returnValue = "";
   });
+  // The draft is offered before anything opens, because the answer decides what
+  // opens: restoring mounts the draft in place of the document the boot would
+  // have built, where mounting both would load the fonts and the canvas twice
+  // and show the author a theme that is about to be replaced.
+  const draft = draftStore.read();
+  if (draft !== undefined) {
+    const answer = await confirmDraftRecovery(draft);
+    if (answer === "discard") {
+      draftStore.clear();
+    } else {
+      try {
+        await mount({
+          input: envelopeInputFor(draft.content),
+          envelope: draft.content,
+        });
+        status.textContent = openedStatusText({
+          name: draft.content.metadata?.name,
+          id: draft.content.id,
+        });
+        return;
+      } catch (error) {
+        // A draft this build cannot render is not a boot failure: the document
+        // the boot would have opened is still the author's, and the draft stays
+        // where a build that can read it will find it.
+        status.textContent = `Could not restore the draft: ${error instanceof Error ? error.message : String(error)}`;
+      }
+    }
+  }
   // A saved theme the author came back to, rather than the reference
   // composition the editor ships. Nothing is open yet, so there is nothing to
   // confirm over; the document this replaces is the one that never opened.
