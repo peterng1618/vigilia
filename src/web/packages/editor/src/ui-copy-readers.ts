@@ -1,0 +1,141 @@
+import { uiCopy } from "./ui-copy.js";
+
+/**
+ * What a surface says, for the copy net's cases.
+ *
+ * Responsibility: the shared readers only — `spokenIn` for a mounted tree's
+ * labels, accessible names and buttons, `saidIn` and `paragraphsOf` for the
+ * paragraphs `spokenIn` does not read, `spokenText` for one element's own words
+ * with its decoration stripped, and `copy` for every string the table can
+ * produce. The rules are asserted by the three files that read through them:
+ * `ui-copy.test.ts` (the table's own), `ui-copy-panels.test.ts` (the imperative
+ * panels and the picker they mount) and `ui-copy-surfaces.test.ts` (the landed
+ * React surfaces).
+ *
+ * **Importing this module also patches the jsdom gaps below.** Every file that
+ * reads a mounted surface needs them, because the words are read through Base UI
+ * popups — the panels' paint kinds and unit display lists, the shell's menus and
+ * the Settings tabs — and jsdom has none of the three browser APIs a popup
+ * needs.
+ */
+
+// The run editor's unit list is a Base UI select, so opening it needs the three
+// browser APIs jsdom has none of — the same three `control.dom.test.tsx` and
+// `runs.test-stage.tsx` supply, for the same reason.
+globalThis.ResizeObserver ??= class {
+  observe(): void {}
+  unobserve(): void {}
+  disconnect(): void {}
+} as never;
+Element.prototype.getAnimations ??= (): never[] => [];
+window.PointerEvent ??= MouseEvent as never;
+const nativeMatches = Element.prototype.matches;
+Element.prototype.matches = Object.assign(function (
+  this: Element,
+  selector: string,
+): boolean {
+  if (selector === ":modal" || selector === ":popover-open") return false;
+  return nativeMatches.call(this, selector);
+}, nativeMatches);
+(
+  globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
+).IS_REACT_ACT_ENVIRONMENT = true;
+
+/** A button's or a menu row's own words. A section's disclosure chrome is an
+ *  `aria-hidden` `▾`, which is decoration the way a select's chevron is, and a
+ *  `kbd` prints a chord the binding table owns — the words beside them are what
+ *  this table has to hold, not the glyph or the key they are printed next to. */
+export function spokenText(element: Element): string {
+  const words = element.cloneNode(true) as Element;
+  for (const hidden of words.querySelectorAll('[aria-hidden="true"], kbd'))
+    hidden.remove();
+  return words.textContent ?? "";
+}
+
+/** Everything a surface says: what `spokenIn` reads, and the paragraphs it does
+ *  not. The About tab's words are all in one paragraph, so a read without this
+ *  would agree with itself by finding nothing. */
+export function saidIn(element: Element): string[] {
+  return [...spokenIn(element), ...paragraphsOf(element)];
+}
+
+/** The words a surface prints in paragraphs of its own, empty ones dropped. */
+export function paragraphsOf(element: Element): string[] {
+  return Array.from(
+    element.querySelectorAll("p"),
+    (paragraph) => paragraph.textContent?.trim() ?? "",
+  ).filter((text) => text !== "");
+}
+
+/**
+ * Every string the table can produce. A function entry is called with the
+ * argument shapes the panels pass it — a count and a name — over the counts
+ * this panel renders, which yields a superset of what they show: extra entries
+ * only loosen the net, they cannot break it.
+ */
+export function copy(): string[] {
+  const out: string[] = [];
+  const walk = (value: unknown): void => {
+    if (typeof value === "string") out.push(value);
+    else if (typeof value === "function")
+      for (const argument of [1, 2, 3, 4, "x"]) {
+        const produced: unknown = (value as (a: unknown) => unknown)(argument);
+        if (typeof produced === "string") out.push(produced);
+      }
+    else if (Array.isArray(value)) value.forEach(walk);
+    else if (typeof value === "object" && value !== null)
+      Object.values(value).forEach(walk);
+  };
+  walk(uiCopy);
+  return out;
+}
+
+/**
+ * Every string the landed React surfaces say: a field's own label, a control's
+ * accessible name and a button's words — minus the three whose content is not
+ * copy. A section header is excluded because its text is an uppercase eyebrow
+ * (§2) and a count, neither a word the table owns; a converted select's trigger
+ * is excluded because it prints the chosen value; and a token well is excluded
+ * as the panel net excludes it, because it prints the document's own name.
+ */
+export function spokenIn(element: Element): string[] {
+  const out: string[] = [];
+  for (const label of element.querySelectorAll("label"))
+    out.push(label.textContent?.trim() ?? "");
+  for (const named of element.querySelectorAll("[aria-label]")) {
+    // A control named by its own `data-testid` (the picker's tracks) is a
+    // driver's hook, not a word of copy.
+    if (named.getAttribute("aria-label") === named.getAttribute("data-testid"))
+      continue;
+    // A `kbd`'s label is the chord the binding table prints, not a word.
+    if (named.closest("kbd") !== null) continue;
+    const name = named.getAttribute("aria-label") ?? "";
+    // The camera's readout is the concept and then the reading, the way a
+    // select's trigger prints the chosen value. The concept is a word this table
+    // must hold, so it is read; the reading is dropped by its own shape — and a
+    // reading in a shape this does not know is pushed whole and goes red, so a
+    // change to the readout cannot quietly take the concept out of the net.
+    out.push(
+      named.hasAttribute("data-vigilia-zoom")
+        ? name.replace(/: \d+(?:\.\d+)?%$/, "")
+        : name,
+    );
+  }
+  for (const button of element.querySelectorAll("button")) {
+    if (button.getAttribute("data-vigilia-palette-token-row") !== null)
+      continue;
+    if (button.querySelector("[data-vigilia-value]") !== null) continue;
+    if (button.hasAttribute("aria-controls")) continue;
+    // The readout's trigger prints the reading alone, so the button half has no
+    // words of its own; the concept above is where its name is read.
+    if (button.hasAttribute("data-vigilia-zoom")) continue;
+    out.push(spokenText(button).trim());
+  }
+  // An opened menu's rows, which are not buttons and carry no accessible name
+  // of their own: their words are their text, minus the chord printed beside.
+  for (const item of element.querySelectorAll(
+    '[role="menuitem"], [role="menuitemradio"]',
+  ))
+    out.push(spokenText(item).trim());
+  return out.filter((text) => text !== "" && !/^[\d.v-]+$/.test(text));
+}

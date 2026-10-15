@@ -1,0 +1,420 @@
+// @vitest-environment jsdom
+/**
+ * The copy net over the landed React surfaces: every word they show comes from
+ * `uiCopy`, or is data — a token's name, a locale's, an asset's, a preset's.
+ *
+ * **What this half reads.** The shell is mounted whole with a bridge and a
+ * selection, so the chrome it prints only then is in the tree at all; Settings is
+ * read on its Appearance, Keyboard and About tabs; the colour picker is mounted
+ * open; the selection column is mounted on a text object and a shape; and the
+ * three menubar menus and the canvas context menu are opened and read in turn.
+ *
+ * **What it deliberately does not read, and why.** Two owners of words are
+ * carved out by name, because the words are theirs and not this table's:
+ * `shellPalettes`' stored ids (`isStoredName`) and the shortcut reference's
+ * action words (`isShortcutWord`). And only the shell's paragraphs are read:
+ * the inspector, the picker and the panes print data in paragraphs of their
+ * own — a run's binding id, a colour's reading — which is the same carve-out
+ * the panel net makes for a select's trigger.
+ *
+ * Surfaces this file does not mount are not read here: the `?` reference sheet,
+ * the publish popover, and the library and new-document dialogs. The table's own
+ * rules are `ui-copy.test.ts`, and the imperative panels and the picker they
+ * mount are `ui-copy-panels.test.ts`.
+ */
+import { Canvas, type FabricObject, Rect, Textbox } from "fabric/es";
+import { act, createElement } from "react";
+import { createRoot, type Root } from "react-dom/client";
+import { expect, it } from "vitest";
+import { ColourPicker } from "./components/ui/colour-picker.js";
+import type { EditorShellBridge } from "./editor-shell/bridge.js";
+import { CanvasContextMenu } from "./editor-shell/canvas-context-menu.js";
+import {
+  DEFAULT_SHELL_PALETTE,
+  shellPalettes,
+} from "./editor-shell/palette.js";
+import { Settings } from "./editor-shell/settings.js";
+import { createShellLayout } from "./editor-shell/shell-layout.js";
+import { createSelectionInspector } from "./selection-inspector/index.js";
+// The reference table owns the words for actions no menu prints, so the walk
+// reads the Keyboard tab through its carve-out rather than demanding the copy
+// table own the shortcut registry.
+import { SHORTCUT_LABELS } from "./shortcut-manager/reference.js";
+import { uiCopy } from "./ui-copy.js";
+import { copy, paragraphsOf, saidIn, spokenIn } from "./ui-copy-readers.js";
+
+/**
+ * The React surfaces plans 1–5 landed say no word the table does not hold.
+ *
+ * The three panels are imperative and are read for their own DOM by
+ * `ui-copy-panels.test.ts`; these are the shell, the Settings modal, the colour
+ * picker and the selection column, which that net never reached. A literal in a
+ * React surface is invisible to a reviewer reading `ui-copy.ts` and to the
+ * pictograph rule, exactly as one in a panel is — and the cost is the same: a
+ * word an author reads has no owner, so a rename fixes one surface and silently
+ * misses the other.
+ *
+ * **The list below is the coverage, and every surface is asserted non-empty by
+ * its own selector.** A surface that failed to mount contributes nothing and
+ * would satisfy the walk by being absent (Review Focus 3), so absence is made a
+ * failure rather than a pass.
+ */
+it("leaves the React surfaces with no copy of their own", async () => {
+  const { root, shell, destroy } = await mountLandedSurfaces();
+  const owned = new Set(copy());
+  expect(
+    spokenIn(root).filter((text) => !owned.has(text) && !isStoredName(text)),
+  ).toEqual([]);
+  for (const surface of LANDED_SURFACES) {
+    const found = root.querySelector(surface);
+    if (found === null) throw new Error(`no ${surface} surface rendered`);
+    expect(spokenIn(found), surface).not.toEqual([]);
+  }
+  // `vg-338`: the shell's own paragraphs, which `spokenIn` reads none of. Only
+  // the shell's are read here — the header says why — and the sentence had no
+  // net at all while it was a literal.
+  const hints = paragraphsOf(shell);
+  expect(hints.length).toBeGreaterThan(0);
+  expect(hints.filter((text) => !owned.has(text))).toEqual([]);
+  destroy();
+});
+
+/**
+ * The surfaces `vg-335` found reachable but unread say no word the table does
+ * not hold: an opened menu popup, the Settings Keyboard and About tabs, and the
+ * canvas context menu. `spokenIn` read the closed chrome, so a literal written
+ * into any of the four had no net at all — and each is opened here, read for
+ * its own words, and asserted non-empty first, so a surface that failed to open
+ * is a failure rather than a walk that agreed with nothing.
+ *
+ * The menu read pays no stall: `vg-135`'s 50-90 s per open is jsdom's
+ * unanswerable `:modal`/`:popover-open` selectors, and `ui-copy-readers.ts`
+ * patches them on import for exactly that reason.
+ */
+it("reads the opened menus, the Settings tabs and the canvas context menu", async () => {
+  const { root, destroy } = await mountLandedSurfaces();
+  const owned = new Set(copy());
+
+  for (const menu of [
+    uiCopy.menus.file,
+    uiCopy.menus.edit,
+    uiCopy.menus.view,
+  ]) {
+    menubarEntry(root, menu).click();
+    await Promise.resolve();
+    const popup = root.querySelector<HTMLElement>(
+      ".editor-shell-menu-popup[data-open]",
+    );
+    if (popup === null) throw new Error(`the ${menu} menu opened no popup`);
+    expect(spokenIn(popup), menu).not.toEqual([]);
+    expect(
+      spokenIn(popup).filter((text) => !owned.has(text)),
+      menu,
+    ).toEqual([]);
+  }
+
+  const { keyboard, about } = uiCopy.settings;
+  for (const tab of [keyboard, about]) {
+    const panel = openSettingsTab(tab);
+    const said = saidIn(panel);
+    expect(said, tab).not.toEqual([]);
+    expect(
+      said.filter(
+        (text) =>
+          !owned.has(text) && !isShortcutWord(text) && !isStoredName(text),
+      ),
+      tab,
+    ).toEqual([]);
+  }
+  destroy();
+
+  // The canvas context menu, which mounts on a bridge of its own rather than
+  // inside the shell — the shell's own copy of it renders no rows until a
+  // right-click arrives on a real upper canvas.
+  const bridge = selectionBridge();
+  const host = document.createElement("div");
+  document.body.append(host);
+  const menuRoot = createRoot(host);
+  menuRoot.render(createElement(CanvasContextMenu, { bridge }));
+  await flushTasks();
+  const upper = bridge.editor.canvas.upperCanvasEl as unknown as HTMLElement;
+  upper.dispatchEvent(
+    new MouseEvent("contextmenu", {
+      bubbles: true,
+      cancelable: true,
+      clientX: 120,
+      clientY: 90,
+    }),
+  );
+  await flushTasks();
+  const items = Array.from(
+    document.querySelectorAll<HTMLElement>('[role="menuitem"]'),
+  );
+  // Without this the read below passes on a menu that rendered nothing.
+  expect(items.length).toBeGreaterThan(0);
+  const spoken = spokenIn(document.body);
+  expect(spoken).not.toEqual([]);
+  expect(
+    spoken.filter((text) => !owned.has(text) && !isStoredName(text)),
+  ).toEqual([]);
+  await act(async () => menuRoot.unmount());
+  document.body.replaceChildren();
+});
+
+/** The menubar trigger for a menu, found by the text it carries. */
+function menubarEntry(root: HTMLElement, label: string): HTMLButtonElement {
+  const entry = Array.from(
+    root.querySelectorAll<HTMLButtonElement>(".editor-shell-menubar button"),
+  ).find((button) => button.textContent === label);
+  if (entry === undefined) throw new Error(`No "${label}" menu.`);
+  return entry;
+}
+
+/** The Settings modal's tab named `label`, clicked the way a reader opens it,
+ *  returning the panel the tab points at — not the first `tabpanel`, which is
+ *  the Appearance tab's while Base UI still holds it. */
+function openSettingsTab(label: string): HTMLElement {
+  const tab = Array.from(
+    document.querySelectorAll<HTMLElement>('[role="tab"]'),
+  ).find((element) => element.textContent?.trim() === label);
+  if (tab === undefined) throw new Error(`No "${label}" tab in the modal.`);
+  act(() => {
+    tab.click();
+  });
+  const controlled = tab.getAttribute("aria-controls");
+  const panel =
+    controlled === null ? null : document.getElementById(controlled);
+  if (panel === null) throw new Error(`the ${label} tab points at no panel`);
+  return panel;
+}
+
+/** React schedules outside `act` and floating-ui's measurement never settles
+ *  inside one, so a popup is flushed with macrotasks instead. */
+async function flushTasks(): Promise<void> {
+  for (let round = 0; round < 3; round += 1)
+    await new Promise((resolve) => setTimeout(resolve, 0));
+}
+
+/** The shell's chrome, in the surfaces the walk reads. Each is a selector the
+ *  mounted tree answers, so a surface dropped from `mountLandedSurfaces` is the
+ *  `null` this file already fails on rather than a silent gap. */
+const LANDED_SURFACES = [
+  ".editor-shell-menubar",
+  ".editor-shell-stage",
+  ".editor-shell-rail",
+  "[data-vigilia-canvas-toolbar]",
+  ".editor-shell-panel",
+  ".editor-shell-settings",
+  "[data-vigilia-section]",
+  '[data-testid="colour-picker"]',
+] as const;
+
+/** A shell palette's name is the id `shellPalettes` stores — the same string
+ *  the swatch's `data-shell-palette` carries — so it is a preset's own name,
+ *  the data the carve-out above deliberately leaves out of the table. */
+function isStoredName(text: string): boolean {
+  return (shellPalettes as readonly string[]).includes(text);
+}
+
+/** A shortcut's action word is the reference table's. `SHORTCUT_LABELS` reuses
+ *  `uiCopy`'s names and owns the five no menu prints (`Select all` and the four
+ *  nudges), so the Keyboard tab names its rows from there and the copy table is
+ *  not their owner. */
+function isShortcutWord(text: string): boolean {
+  return (Object.values(SHORTCUT_LABELS) as readonly string[]).includes(text);
+}
+
+/**
+ * The shell's bridge, cut to what a mounted shell reaches.
+ *
+ * A walk that reads words mounts the shell whole, and the shell mounts the
+ * composition pane, so the pane's reads are here too. It reports a selection
+ * because the shell prints some of its chrome only then — `vg-338`'s hint
+ * paragraph among it, which no net could read while the shell mounted with no
+ * selection at all. Everything answers empty: this file reads copy, not state.
+ */
+function selectionBridge(): EditorShellBridge {
+  const noop = (): undefined => undefined;
+  return {
+    snapshot: () => ({
+      selectedCount: 1,
+      locked: false,
+      activeKind: "text",
+      documentName: undefined,
+      selectionPresetId: undefined,
+    }),
+    capture: noop,
+    target: () => ({
+      kind: "text",
+      locked: false,
+      memberCount: 1,
+      isGroup: false,
+    }),
+    can: () => false,
+    canArrange: () => false,
+    layers: () => [],
+    groupContext: () => [],
+    selectLayer: noop,
+    enterGroup: noop,
+    exitGroup: noop,
+    setLayerVisible: noop,
+    setLayerLocked: noop,
+    setCollapsed: noop,
+    renameLayer: noop,
+    layerDrop: () => undefined,
+    moveLayer: () => false,
+    subscribe: () => () => undefined,
+    run: noop,
+    destroy: noop,
+    session: {
+      newDocument: noop,
+      newFromStarter: noop,
+      openPackage: noop,
+      savePackage: noop,
+      releasePackage: noop,
+      openLibrary: noop,
+      saveLibrary: noop,
+      addText: noop,
+      addShape: noop,
+      addChart: noop,
+      insertCard: noop,
+      arrange: () => true,
+      canArrange: () => true,
+      undo: noop,
+      redo: noop,
+      copy: noop,
+      cut: noop,
+      deleteActive: noop,
+      duplicate: noop,
+      group: noop,
+      ungroup: noop,
+      isDirty: () => false,
+      publishableDocument: () => undefined,
+      subscribeDocumentChange: () => () => undefined,
+    },
+    editor: {
+      artboard: () => ({ width: 1280, height: 720 }),
+      viewport: {
+        zoom: () => 1,
+        display: () => undefined,
+        isFitted: () => false,
+        onChange: () => () => undefined,
+      },
+      canvas: {
+        upperCanvasEl: document.createElement("canvas"),
+        findTarget: () => ({ target: undefined }),
+        on: noop,
+        off: noop,
+      },
+    },
+  } as unknown as EditorShellBridge;
+}
+
+/**
+ * The React surfaces plans 1–5 landed, mounted at once.
+ *
+ * The shell is assembled whole (`createShellLayout`) rather than piece by piece,
+ * because three of the strings this net exists to catch — the menubar's name,
+ * the stage's name and the canvas toolbar — are the shell's own markup; the
+ * Settings modal and the colour picker are mounted open, because a closed modal
+ * and an unopened popover render nothing and would pass the walk by being
+ * absent. The selection column is mounted on a text object and a shape, the two
+ * disjoint field sets. The shell is given a bridge, so the chrome it prints
+ * only for a selection is in the tree rather than absent.
+ */
+async function mountLandedSurfaces(): Promise<{
+  readonly root: HTMLElement;
+  readonly shell: HTMLElement;
+  readonly destroy: () => void;
+}> {
+  const shellRoot = document.createElement("div");
+  document.body.append(shellRoot);
+  const layout = createShellLayout(shellRoot);
+  layout.setBridge(selectionBridge(), undefined);
+
+  const settingsHost = document.createElement("div");
+  document.body.append(settingsHost);
+  const settingsRoot = createRoot(settingsHost);
+  await act(async () => {
+    settingsRoot.render(
+      createElement(Settings, {
+        open: true,
+        onOpenChange: () => undefined,
+        storage: undefined,
+        palette: DEFAULT_SHELL_PALETTE,
+        following: true,
+        onPalette: () => undefined,
+        onFollowing: () => undefined,
+        overrides: {},
+        onOverrides: () => undefined,
+        releaseVersion: undefined,
+      }),
+    );
+  });
+
+  const pickerHost = document.createElement("div");
+  document.body.append(pickerHost);
+  const pickerRoot: Root = createRoot(pickerHost);
+  await act(async () => {
+    pickerRoot.render(
+      createElement(ColourPicker, {
+        value: "#123456",
+        onChange: () => undefined,
+        label: uiCopy.panels.colourPicker,
+      }),
+    );
+  });
+  const trigger = pickerHost.querySelector<HTMLElement>(
+    '[data-testid="picker-trigger"]',
+  );
+  if (trigger === null)
+    throw new Error("the colour picker rendered no trigger");
+  await act(async () => trigger.click());
+
+  // Plan 3's selection column. A text object whose run reads a clock is the
+  // richest selection, and a shape renders the other half of the field set.
+  for (const selection of [
+    new Textbox("", { id: "clock-label" }) as FabricObject,
+    new Rect({ left: 0, top: 0, width: 40, height: 20 }) as FabricObject,
+  ]) {
+    selection.set("vigiliaText", {
+      align: "centre",
+      runs: [{ kind: "value", bindingId: "clock-time" }],
+    });
+    selection.set("vigiliaGlass", { blurRadius: 16 });
+    const canvas = new Canvas(document.createElement("canvas"));
+    canvas.add(selection);
+    canvas.setActiveObject(selection);
+    const host = document.createElement("div");
+    document.body.append(host);
+    createSelectionInspector(host, {
+      editor: {
+        canvas,
+        historyManager: { saveState: () => undefined },
+        errorManager: { warn: () => undefined, error: () => undefined },
+        cropManager: { active: false, target: undefined },
+      } as never,
+      globals: {
+        palette: {
+          ink: { name: "Ink", value: { kind: "solid", color: "#ffffff" } },
+        },
+        typePresets: {
+          body: { name: "Body", value: { family: "Inter", size: 16 } },
+        },
+      } as never,
+      nodeBindings: () => [{ id: "clock-time", semanticKey: "date.today" }],
+      refreshGlass: () => undefined,
+    });
+  }
+
+  return {
+    root: document.body,
+    shell: shellRoot,
+    destroy: () => {
+      layout.destroy();
+      act(() => pickerRoot.unmount());
+      act(() => settingsRoot.unmount());
+      document.body.replaceChildren();
+    },
+  };
+}
