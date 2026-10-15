@@ -37,11 +37,10 @@ ledger did.
 
 ## Last completed change
 
-- **Triage batch H applied: 22 rows parked, each naming the options it waits on** — a measurement pass over 66 orphan rows found the family dominated by **needs-a-decision**, not by dead subjects, so the park marker is doing exactly the job decision `0045` built it for.
-- **`vg-507`, `vg-508` and `vg-422` are one gap seen from three owners** — `DESIGN.md`'s §5 vocabulary defines no labelled button at all, so the CSS rule and the React `ACTION_BUTTON` each invented one; they park together with `vg-441` on one design-language decision.
-- **Three rows' stale sub-claims are corrected on the rows themselves** — `vg-391` (its "no player spec installs a clock" is now false), `vg-405` (the raw literal moved to `var(--edge)`), and `vg-520` (the typecheck third is fixed by `vg-455`, so its residue is two CI steps, not three).
-- **`vg-535` filed and opened as issue #34: the reuse gate's PreToolUse hook does not block** — the gate refuses the same payload on stdin with exit 2, but an `Edit` to that exact watchlisted, unclaimed path succeeded; cause not established, and `.claude/settings.json` is user-owned so the repair is the user's to authorise.
-- **The register is at 196 open with 34 parked** — and the parks are the triage's own output, not a count reduction: each says what it waits on.
+- **Triage batch I applied: three rows withdrawn, each on what removed its subject** — `vg-477` (the dead `LicenceLedger.design` field, removed by `6069e7ba`), `vg-485` (the six `exact: true` locators, removed by `786ef12b`), and `vg-500`, whose own premise is now false because the ruling on `vg-501` already withdrew the two rows it names.
+- **A withdrawn row carries no `artefacts`** — the field claims "this work exists on the mainline", which only a `verified` row can claim; `vg-482`'s earlier park taught the same lesson when it was first written with an unrelated sha.
+- **The register is at 193 open, 34 parked, 22 withdrawn** — from 207 open when the triage began, and the 66-row measurement pass is what made both numbers move.
+- **What the pass found is the shape of the remainder: the orphan backlog is dominated by rows that need a decision, not by rows whose subject is gone** — 22 of the 66 parked with their two options named, 3 withdrawn, and 16 real findings that still need a phase.
 
 ## Next
 
