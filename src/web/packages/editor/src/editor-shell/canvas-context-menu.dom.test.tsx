@@ -1,9 +1,19 @@
 // @vitest-environment jsdom
 import type { FabricObject } from "fabric/es";
+import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { beforeAll, expect, it, vi } from "vitest";
+import { afterEach, beforeAll, expect, it, vi } from "vitest";
 import { insertGroups } from "../new-object-panel.js";
 import { OBJECT_ACTIONS, type ObjectTarget } from "../object-actions.js";
+import {
+  resolveShortcuts,
+  setActiveShortcuts,
+} from "../shortcut-manager/bindings.js";
+import { shortcutLabel } from "../shortcut-manager/display.js";
+import {
+  PRODUCT_SHORTCUTS,
+  type ShortcutBinding,
+} from "../shortcut-manager/index.js";
 import { uiCopy } from "../ui-copy.js";
 import type { EditorShellBridge } from "./bridge.js";
 import { CanvasContextMenu } from "./canvas-context-menu.js";
@@ -21,6 +31,11 @@ beforeAll(() => {
     if (selector === ":modal" || selector === ":popover-open") return false;
     return matches.call(this, selector);
   }, matches);
+});
+
+afterEach(() => {
+  // The live binding table is module state, so a case that rebinds puts it back.
+  setActiveShortcuts(PRODUCT_SHORTCUTS);
 });
 
 const CHART_TARGET: ObjectTarget = {
@@ -149,6 +164,12 @@ async function openMenu(options: {
   };
 }
 
+/** The chord chip a row draws — the `.editor-shell-menu-key` span the Edit
+ *  menu's own rows carry — or `undefined` where the row draws none. */
+function chip(item: HTMLElement | undefined): string | undefined {
+  return item?.querySelector("kbd")?.textContent ?? undefined;
+}
+
 it("renders exactly the registry's eligible entries for the object under the pointer", async () => {
   const chart = {} as unknown as FabricObject;
   const opened = await openMenu({ hit: chart, target: CHART_TARGET });
@@ -185,6 +206,103 @@ it("marks the registry's destructive entry, and only it", async () => {
     .map((item) => item.getAttribute("aria-label"));
   await opened.close();
   expect(marked).toEqual([uiCopy.actions.delete]);
+});
+
+/**
+ * The chords, which the Edit menu has printed since the shortcut table became
+ * one owner of a mark. This menu draws the same four — Copy, Cut, Duplicate,
+ * Delete — and drew none of them, so the row a reader met first named no key.
+ *
+ * Every chip is compared with what the *table* renders for the action the row
+ * runs, and the rows the registry binds nothing for are asserted to draw none:
+ * a chord written into this file would agree with itself and redden on nothing.
+ */
+it("draws each bound row's own chord, and none on a row the table binds nothing for", async () => {
+  const opened = await openMenu({
+    hit: {} as unknown as FabricObject,
+    target: CHART_TARGET,
+  });
+  const drawn = new Map(
+    opened.items.map((item) => [
+      item.getAttribute("aria-label"),
+      item.querySelector("kbd")?.textContent ?? undefined,
+    ]),
+  );
+  // The spoken name is `aria-label` on the chip, as it is on the Edit menu's:
+  // a `kbd` reading `Ctrl+D` is a screen reader saying "control D" at best.
+  const spoken = new Map(
+    opened.items.map((item) => [
+      item.getAttribute("aria-label"),
+      item.querySelector("kbd")?.getAttribute("aria-label") ?? undefined,
+    ]),
+  );
+  await opened.close();
+
+  const eligible = OBJECT_ACTIONS.filter((action) =>
+    action.eligible(CHART_TARGET),
+  );
+  // Without this the loop below passes on an eligible set with no bound row.
+  expect(
+    eligible.filter((action) => action.shortcut !== undefined).length,
+    "the object menu has at least one bound row to draw",
+  ).toBeGreaterThan(0);
+
+  for (const action of eligible) {
+    if (action.shortcut === undefined) {
+      expect(drawn.get(action.label), `${action.label} binds nothing`).toBe(
+        undefined,
+      );
+      continue;
+    }
+    expect(drawn.get(action.label), `${action.label}'s own chord`).toBe(
+      shortcutLabel(action.shortcut),
+    );
+    expect(spoken.get(action.label), `${action.label} spoken`).toBeTruthy();
+  }
+});
+
+it("re-reads the chord after a rebind rather than holding the one it drew with", async () => {
+  // Review Focus 3 on this surface: the context menu is the third thing that
+  // prints a chord. The chip is built from the table on the render that opens
+  // the menu, so what this proves is that the row *reads* the table — a chord
+  // restated here would keep naming a key that no longer runs the row.
+  const first = await openMenu({
+    hit: {} as unknown as FabricObject,
+    target: CHART_TARGET,
+  });
+  const before = chip(
+    first.items.find(
+      (item) => item.getAttribute("aria-label") === uiCopy.actions.duplicate,
+    ),
+  );
+  await first.close();
+  expect(before).toBe(shortcutLabel("edit.duplicate"));
+
+  const moved: ShortcutBinding = {
+    key: "j",
+    modifier: true,
+    shift: false,
+    action: "edit.duplicate",
+  };
+  await act(async () => {
+    setActiveShortcuts(resolveShortcuts({ "edit.duplicate": moved }));
+  });
+
+  const second = await openMenu({
+    hit: {} as unknown as FabricObject,
+    target: CHART_TARGET,
+  });
+  const after = chip(
+    second.items.find(
+      (item) => item.getAttribute("aria-label") === uiCopy.actions.duplicate,
+    ),
+  );
+  await second.close();
+
+  // Compared with the rebound table rather than with a spelling of it: the
+  // printed caps are the platform's, and `Ctrl+J` is not what a Mac prints.
+  expect(after).toBe(shortcutLabel("edit.duplicate"));
+  expect(after).not.toBe(before);
 });
 
 it("dispatches the clicked entry through the bridge's own run", async () => {

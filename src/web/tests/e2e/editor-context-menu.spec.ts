@@ -1,4 +1,4 @@
-import { expect, type Page, test } from "@playwright/test";
+import { expect, type Locator, type Page, test } from "@playwright/test";
 import { isDesktopSurface } from "./surface.js";
 
 /**
@@ -207,6 +207,149 @@ async function readMenu(page: Page): Promise<{
     };
   });
 }
+
+/**
+ * A client point on the upper canvas that *holds* an object, so a right-click
+ * there opens that object's own menu.
+ *
+ * Read off Fabric rather than a fixed coordinate, for the same reason as the
+ * empty-point helper below: an object's position is the starter's, and a
+ * hard-coded point would assert the starter's layout instead of the menu.
+ *
+ * **An interior point, on integer coordinates.** The scan steps in fractions of
+ * the canvas, and the browser rounds a click's coordinates to integers: the
+ * first point whose `findTarget` answers yes is the object's own edge, and a
+ * 0.4px round put the pointer just outside it — the click then opened the
+ * *creation* menu, and the case below read that as a menu with no `Copy` row
+ * (measured 2026-10-15, `chromium` at DPR 1.25, point `410.4` → `410`). So a
+ * candidate is taken only when Fabric answers for it and for its neighbours 3px
+ * away, and the returned point is already rounded.
+ */
+async function objectPoint(page: Page): Promise<{ x: number; y: number }> {
+  const point = await page.evaluate(() => {
+    const canvas = document.querySelector<HTMLCanvasElement>(
+      "#vigilia-fabric-editor canvas.upper-canvas",
+    );
+    if (canvas === null) throw new Error("The editor's upper canvas is gone.");
+    const rect = canvas.getBoundingClientRect();
+    const editorCanvas = (
+      window as unknown as {
+        vigiliaEditorBridge: {
+          editor: {
+            canvas: { findTarget(event: unknown): { target?: unknown } };
+          };
+        };
+      }
+    ).vigiliaEditorBridge.editor.canvas;
+    const overObject = (x: number, y: number): boolean =>
+      editorCanvas.findTarget({ clientX: x, clientY: y }).target !== undefined;
+    for (let fy = 0.05; fy < 0.95; fy += 0.01) {
+      for (let fx = 0.05; fx < 0.95; fx += 0.01) {
+        const x = Math.round(rect.left + rect.width * fx);
+        const y = Math.round(rect.top + rect.height * fy);
+        if (document.elementFromPoint(x, y) !== canvas) continue;
+        if (
+          overObject(x, y) &&
+          overObject(x - 3, y) &&
+          overObject(x + 3, y) &&
+          overObject(x, y - 3) &&
+          overObject(x, y + 3)
+        )
+          return { x, y };
+      }
+    }
+    return null;
+  });
+  if (point === null)
+    throw new Error(
+      "No object on the canvas to right-click: the starter is empty.",
+    );
+  return point;
+}
+
+/** A row's own label with its chord chip taken out of the text. The Edit menu's
+ *  rows carry no `aria-label`, and the chip is *inside* the row's text, so a
+ *  naive `textContent` reads `DuplicateCtrl+D`. */
+function readLabelWithoutChord(element: Element): string {
+  const clone = element.cloneNode(true) as Element;
+  for (const chip of Array.from(clone.querySelectorAll("kbd"))) chip.remove();
+  return clone.textContent ?? "";
+}
+
+/** Every row of one open popup, as `label → the chord it prints`. Read off the
+ *  rendered menu, which is the only thing that says what a reader sees.
+ *
+ *  `allTextContents`, not `textContent`: a row the table binds nothing for has
+ *  no chip at all, and `textContent` on a missing locator *waits for one* until
+ *  the case times out instead of reading the absent chord this asks about. */
+async function menuChords(popup: Locator): Promise<Record<string, string>> {
+  const rows: Record<string, string> = {};
+  for (const row of await popup.getByRole("menuitem").all()) {
+    const label = (
+      (await row.getAttribute("aria-label")) ??
+      (await row.evaluate(readLabelWithoutChord))
+    ).trim();
+    rows[label] = (await row.locator("kbd").allTextContents())[0] ?? "";
+  }
+  return rows;
+}
+
+/**
+ * Item 14 of the GUI defect list: the canvas context menu drew no chords, while
+ * the Edit menu drew one on each of the four rows they share — so the surface a
+ * reader meets first, with no menu bar to look at, named no key at all.
+ *
+ * Compared against the Edit menu *as the same build renders it*, rather than
+ * against a chord spelled here: the claim is that the two surfaces read one
+ * binding, and a literal would pass on a menu that restated the chord and could
+ * not follow a rebind.
+ */
+test("an object's own menu prints the chords the Edit menu prints", async ({
+  page,
+}, testInfo) => {
+  test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+
+  await page.setViewportSize(TALL_WINDOW);
+  await page.goto(EDITOR);
+  await expect(
+    page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+  ).toBeVisible();
+
+  const point = await objectPoint(page);
+  await page.mouse.click(point.x, point.y, { button: "right" });
+  const objectWindow = page.getByRole("menu", { name: "Canvas actions" });
+  await expect(objectWindow).toBeVisible();
+  const objectMenu = await menuChords(objectWindow);
+  await page.keyboard.press("Escape");
+  await expect(objectWindow).toBeHidden();
+
+  // The Edit menu, through the product's own trigger.
+  await page.getByRole("button", { name: "Edit", exact: true }).click();
+  const editMenu = await menuChords(
+    page.locator('[role="menu"]:visible').first(),
+  );
+  await page.keyboard.press("Escape");
+
+  const shared = Object.keys(objectMenu).filter((label) => label in editMenu);
+  // The four rows the two surfaces share and the chord the defect was filed on.
+  // Named rather than counted: an eligible set that carried no bound row would
+  // make the loop below vacuous.
+  for (const label of ["Copy", "Cut", "Duplicate", "Delete"]) {
+    expect(shared, `the object menu has a ${label} row`).toContain(label);
+    expect(
+      objectMenu[label],
+      `the object menu's ${label} prints the Edit menu's chord`,
+    ).toBe(editMenu[label]);
+    expect(objectMenu[label], `${label} prints a chord`).not.toBe("");
+  }
+
+  // And the whole intersection agrees, so a fifth shared row is covered too.
+  for (const label of shared) {
+    expect(objectMenu[label], `${label} across both menus`).toBe(
+      editMenu[label],
+    );
+  }
+});
 
 test("the last entry is reachable in a window too short to hold the menu", async ({
   page,

@@ -2,6 +2,12 @@ import { ContextMenu } from "@base-ui/react/context-menu";
 import { useEffect, useMemo, useState } from "react";
 import { insertGroups } from "../new-object-panel.js";
 import { destructiveMarker, objectActionsFor } from "../object-actions.js";
+import { useActiveShortcuts } from "../shortcut-manager/bindings.js";
+import {
+  shortcutLabel,
+  shortcutSpokenLabel,
+} from "../shortcut-manager/display.js";
+import type { ProductShortcutId } from "../shortcut-manager/index.js";
 import { uiCopy } from "../ui-copy.js";
 import type { EditorShellBridge } from "./bridge.js";
 import type { EditorActionFacade } from "./session-facade.js";
@@ -21,6 +27,10 @@ interface MenuEntry {
   /** §4's destructive mark for a registry action, spread onto the item; empty
    *  for a creation entry, which is not an object action. */
   readonly mark: Readonly<Record<`data-${string}`, string>>;
+  /** The *action* the row's chord belongs to — the registry's own answer, never
+   *  a printed chord, so a rebind redraws this row. Omitted for a creation
+   *  entry, which is not an object action and has nothing the table can bind. */
+  readonly shortcut?: ProductShortcutId;
 }
 
 /** A heading's worth of them, or `undefined` for an entry that stands alone. */
@@ -77,6 +87,7 @@ function creationGroups(session: EditorActionFacade): readonly MenuGroup[] {
 /** One entry. `aria-label` and the text agree, so the name is the same whether
  *  a screen reader reads the row or the reader looks at it. */
 function entryItem(entry: MenuEntry): React.JSX.Element {
+  const { shortcut } = entry;
   return (
     <ContextMenu.Item
       key={entry.id}
@@ -86,6 +97,18 @@ function entryItem(entry: MenuEntry): React.JSX.Element {
       onClick={entry.run}
     >
       {entry.label}
+      {/* The Edit menu's own reading of a chord, from the same route: the
+          label functions, on the id the registry binds. Right alignment is
+          `.editor-shell-menu-key`'s, which the popup's flex row already gives
+          a context-menu item. */}
+      {shortcut === undefined ? null : (
+        <kbd
+          className="editor-shell-menu-key"
+          aria-label={shortcutSpokenLabel(shortcut)}
+        >
+          {shortcutLabel(shortcut)}
+        </kbd>
+      )}
     </ContextMenu.Item>
   );
 }
@@ -120,6 +143,10 @@ export function CanvasContextMenu({
   readonly bridge: EditorShellBridge | undefined;
 }): React.JSX.Element {
   const [menu, setMenu] = useState<OpenMenu | undefined>(undefined);
+  // Subscribed rather than sampled, so a rebind redraws these rows too: the
+  // label functions read the live table, and without this a menu opened after a
+  // rebind would be the only surface still printing the old chord.
+  useActiveShortcuts();
   const canvas = bridge?.editor.canvas;
 
   useEffect(() => {
@@ -168,6 +195,9 @@ export function CanvasContextMenu({
       : objectActionsFor(bridge).map((action) => ({
           id: action.id,
           label: action.label,
+          ...(action.shortcut === undefined
+            ? {}
+            : { shortcut: action.shortcut }),
           mark: destructiveMarker(action),
           run: () => bridge.run(action.id),
         }));
