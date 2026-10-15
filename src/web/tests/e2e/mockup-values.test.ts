@@ -396,6 +396,31 @@ test("a shorthand for a property a row reads fails loudly rather than reading as
   // because it declares neither a shorthand nor the longhand.
   expect(mockupDeclaredOrNull(drawing, BODY, "padding-top")).toBeNull();
   expect(mockupDeclaredOrNull(drawing, BODY, "column-gap")).toBeNull();
+
+  // **And the shorthand that went unlisted, which is `vg-442`'s type half.** The
+  // controls drawing states the plain-DOM button box's type as
+  // `font:400 12px system-ui` (`current/controls.html:112`), and the map named no
+  // font longhand — so a row naming `font-size` read the drawing's **silence**
+  // (`null`, which the parity table reads as `0`) where the drawing drew a size.
+  // The refusal now covers `font`'s longhands. **What it still refuses is the
+  // comparison, not the reading**: the drawing writes the shorthand and the
+  // product writes a scale token (`var(--text-sm)`), so no row can put the two
+  // sides in one string, and the drawing's type is a declaration the instrument
+  // says it does not compare rather than one it silently reports as absent.
+  const BOX =
+    '[style*="flex:1;text-align:center;border:1px solid var(--well-edge);border-radius:6px;background:var(--well);padding:4px 8px"]';
+  const controls = readMockup(CONTROLS_MOCKUP_PATH);
+  // The shorthand itself is still a readable property: the refusal is about a row
+  // asking for a longhand of it, not about the declaration being invisible.
+  expect(mockupDeclaredOrNull(controls, BOX, "font")).toBe(
+    "400 12px system-ui",
+  );
+  expect(() => mockupDeclaredOrNull(controls, BOX, "font-size")).toThrow(
+    /shorthand that sets `font-size`/,
+  );
+  expect(() => mockupDeclaredOrNull(controls, BOX, "line-height")).toThrow(
+    /shorthand that sets `line-height`/,
+  );
 });
 
 test("the current set is enumerated by directory, and every drawing in it reads", () => {

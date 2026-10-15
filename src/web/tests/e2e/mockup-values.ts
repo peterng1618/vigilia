@@ -384,6 +384,18 @@ const SHORTHANDS_SETTING: Readonly<Record<string, readonly string[]>> = {
   "margin-left": ["margin"],
   "row-gap": ["gap"],
   "column-gap": ["gap"],
+  // **`font` is the same shape one property over, and it went unlisted.** The
+  // controls drawing states the plain-DOM button box's type as the shorthand
+  // (`current/controls.html:112` `font:400 12px system-ui`), so a row naming
+  // `font-size` read the drawing's **silence** where the drawing drew a size —
+  // the inversion this table exists to refuse, one property over from the
+  // padding case (`vg-442`'s type half). The longhands listed are the ones a row
+  // could name; `font-variant` and `font-stretch` are named by no row.
+  "font-size": ["font"],
+  "font-family": ["font"],
+  "font-weight": ["font"],
+  "font-style": ["font"],
+  "line-height": ["font"],
 };
 
 /** The value the drawing last declares for `property` under `selector`, or
@@ -1165,6 +1177,40 @@ export const PARITY: readonly ParityRegion[] = [
     designLanguageSection: "§7.5",
     licensed:
       '§7.5: "Subtle palette-derived stage texture is permitted when it stays behind the artwork and does not obscure controls; neither texture nor a flat ground is mandatory."',
+  },
+  /* ── The view cluster's camera step (`vg-456`) ──────────────────────────────
+     The three zoom/fit squares at `current/shell.html:160,163,166` were read by
+     nothing: the drawings README states their 26px as prose, `PARITY` carried no
+     region for the cluster, and `mockup-values.test.ts` reads drawing values only
+     through `PARITY` rows — so the squares could return to 22px with every check
+     still green.
+
+     **The address has to carry one of the two dimensions, and this is the one it
+     can carry.** The three squares' `style` attributes are identical, so an
+     address is a substring of them; the substring naming neither dimension
+     (`border-radius:6px;display:flex;align-items:center;justify-content:center`)
+     also matches the bottom cluster's 30px squares, and one naming `width` alone
+     also matches the switch at `:338` (`width:26px;height:14px`), so `addressed`
+     refuses either. Carrying `height` settles the three squares alone, which is
+     why both rows read through it: the **width** row then compares a value, and
+     a height regression is the address going stale. */
+  {
+    region: "view cluster — the camera step's width",
+    mockupSelector:
+      '[style*="height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center"]',
+    mockupProperty: "width",
+    productSelector: ".editor-shell-view-step",
+    designLanguageSection:
+      "§5 — 'Icon button — A 26–30px square at `--radius-md`, glyph only'",
+  },
+  {
+    region: "view cluster — the camera step's height",
+    mockupSelector:
+      '[style*="height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center"]',
+    mockupProperty: "height",
+    productSelector: ".editor-shell-view-step",
+    designLanguageSection:
+      "§5 — 'Icon button — A 26–30px square at `--radius-md`, glyph only'",
   },
   /* **The control set's own drawing, read on the fixture.** Both files are the
      inspector column and both declare the same row: a label column of
