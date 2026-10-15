@@ -34,17 +34,22 @@ import { describe, expect, it, vi } from "vitest";
 
 const THEME_ID = "late-rejection";
 
-/** The document `index.html` ships, which `main.ts` reads at module scope. */
+/** The document `index.html` ships, in its own order: the top band, the artboard
+ *  host, then the bottom band. All three, so "the body was replaced" is a claim
+ *  about the shipped document rather than about the elements built here. */
 function skeleton(): HTMLElement {
   document.body.replaceChildren();
-  const band = document.createElement("div");
-  band.id = "vigilia-chrome-top";
-  band.dataset["vigiliaChrome"] = "top";
+  const top = document.createElement("div");
+  top.id = "vigilia-chrome-top";
+  top.dataset["vigiliaChrome"] = "top";
   const host = document.createElement("div");
   host.id = "artboard";
   Object.defineProperty(host, "clientWidth", { value: 412 });
   Object.defineProperty(host, "clientHeight", { value: 839 });
-  document.body.append(band, host);
+  const bottom = document.createElement("div");
+  bottom.id = "vigilia-chrome-bottom";
+  bottom.dataset["vigiliaChrome"] = "bottom";
+  document.body.append(top, host, bottom);
   return host;
 }
 
@@ -117,6 +122,10 @@ describe("a rejection that arrives after the scene mounted", () => {
 
     // The display was mounted and had its canvas before that rejection landed —
     // without this the case would be an early failure wearing a late one's name.
+    // The assertion establishes that the canvas *existed*, not that it existed
+    // before the refusal; the discrimination between an early and a late refusal
+    // comes from the deliberate break (hoisting the check above the mount), not
+    // from this assertion.
     expect(
       host.querySelector('canvas[data-vigilia="artboard"]'),
       "the scene never mounted, so this is not the post-mount path",
@@ -126,6 +135,7 @@ describe("a rejection that arrives after the scene mounted", () => {
     // its chrome and the mounted scene are all gone.
     expect(host.isConnected).toBe(false);
     expect(document.getElementById("vigilia-chrome-top")).toBeNull();
+    expect(document.getElementById("vigilia-chrome-bottom")).toBeNull();
     expect(
       document.querySelector("[data-vigilia-load-failure]")?.parentElement,
     ).toBe(document.body);
