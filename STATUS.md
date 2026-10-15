@@ -37,11 +37,11 @@ ledger did.
 
 ## Last completed change
 
-- **`vg-414` closes and the register is 175 open** — the row's own remedy taken in its second form: one `afterEach` plus a shared `mount()` wrapper, not a `try/finally` across every case in the file.
+- **`vg-414` closes and the register is 176 open** — the row's own remedy taken in its second form: one `afterEach` plus a shared `mount()` wrapper, not a `try/finally` across every case in the file.
 - **`editor-shell.dom.test.ts`'s 16 cases reached `shell.destroy()` as their own last statement**, so an assertion failing earlier left the mounted editor alive — canvas, listeners and the `window` entry `mountEditorShell` publishes — and the next case reading that entry failed on the previous case's leak; the 10 last-statement destroys are gone, and **the 3 that are not last now clear the slot too**, because the `afterEach` would otherwise dispose the same Fabric canvas a second time.
-- **Proved both directions on the committed bytes**: a throw injected into the first case fails **1 case with the `afterEach` and 2 without** — the second is the row's defect reproducing — with the restore verified by an equality assert and the file green at **15 passed**.
-- **`npm run gate` exit 0 on this commit** (258 files, 3441 tests), and **the first run was red**: `biome check` rejected the blank lines the rewrite left where each removed `destroy()` had been, so the red proof was re-run after formatting rather than left describing a draft.
-- **What this leaves, plainly**: **175 open, 36 parked**, and the census's eighth correction still stands — the remaining rows of its 44 are fixes rather than triage, and none of the passes this drain has run has ever been the instrument that shrinks the register. **`vg-415` (1039 lines) and `vg-420` (1512) are still past the 800-line stop**, and `vg-310`, `vg-324` and `vg-308` each carry a ruling that has not been applied.
+- **Proved both directions on the committed bytes**: a throw injected into the first case fails **1 case with the `afterEach` and 2 without** — the second is the row's defect reproducing — with the restore verified by an equality assert, and **`npm run gate` exit 0** (258 files, 3441 tests). **The first gate run was red**: `biome check` rejected the blank lines the rewrite left where each removed `destroy()` had been, so the red proof was re-run after formatting rather than left describing a draft.
+- **Task 15.4's own framing was two rows short, so Task 15.6 homes `vg-415` and `vg-420`** (`5ad08048`) — and homing them turned up the class behind them: **47 tracked `src/web` files are past the 800-line stop and 33 are named by no row**, filed as **`vg-536`** (`2cdc0497`), because the one-row-per-file policy closed `vg-209`'s file while its test grew to 1968 unnamed and `vg-374`'s while its test reached 1707.
+- **What this leaves, plainly**: **176 open, 36 parked**; **Task 15.1 is dispatched** for `vg-419`, `vg-456` and `vg-442`, Tasks 15.5 and 15.6 are the phase's remainder, and `vg-310`, `vg-324` and `vg-308` each carry a ruling that has not been applied.
 
 ## Next
 
