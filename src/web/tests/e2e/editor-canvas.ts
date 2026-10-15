@@ -255,12 +255,21 @@ export async function worldRightOf(page: Page, id: string): Promise<number> {
  * every snap candidate, so "the raw landing survived" is a real no-snap
  * assertion — a guide drawn there would be a snap with no line to snap to.
  *
- * **The candidates read here are the root objects, and on every fixture this
- * is used with they are every candidate.** `snap-manager` walks a group's own
- * parts as well (`vg-123`), but a group wrapped around a single part has
- * exactly that part's box, so the parts offer no line its group does not
- * already offer. A fixture that gave a part its own line would make this read
- * narrower than the product's set, and a resize aimed here could then snap.
+ * **The lines read here are the product's own candidate set**, because a set
+ * narrower than the one the gesture snaps against is a helper that lies:
+ * `collectSnapSources` walks every root *and* each group's parts since
+ * `vg-123`, and a part's box is not its group's. A part's box carries its own
+ * stroke, so a card's panel offers edges the card's declared box does not
+ * (probed on the starter's shape: the card's 360×200 against its panel's
+ * 362×202), and a card's labels and charts offer lines inside it that no root
+ * object has. Read roots alone (`vg-123`'s first pass) and the aim can sit
+ * clear of all of them while a part line is inside the acquire threshold —
+ * which is exactly the no-snap control that then snapped.
+ *
+ * The dragged object's own subtree and its ancestors are left out, as
+ * `collectExcludedObjects` excludes them; they are not candidates of its own
+ * gesture, and an aim chosen around lines it cannot reach would be further
+ * from a real one than it needs to be.
  */
 export async function clearSceneX(
   page: Page,
@@ -271,26 +280,55 @@ export async function clearSceneX(
 ): Promise<{ x: number; distance: number }> {
   return page.evaluate(
     ([objectId, start, end, artboard]: [string, number, number, number]) => {
+      type SceneObject = {
+        id?: string;
+        parent?: SceneObject;
+        getObjects?: () => SceneObject[];
+        getBoundingRect(): { left: number; width: number };
+      };
       const bridge = (
         window as unknown as {
           vigiliaEditorBridge: {
-            editor: {
-              canvas: {
-                getObjects(): Array<{
-                  id?: string;
-                  getBoundingRect(): { left: number; width: number };
-                }>;
-              };
-            };
+            editor: { canvas: { getObjects(): SceneObject[] } };
           };
         }
       ).vigiliaEditorBridge;
+      const canvas = bridge.editor.canvas;
+
+      // Every root and its parts, in the order `collectSnapSources` offers them.
+      const all: SceneObject[] = [];
+      const walk = (object: SceneObject): void => {
+        all.push(object);
+        for (const part of object.getObjects?.() ?? []) walk(part);
+      };
+      for (const object of canvas.getObjects()) walk(object);
+
+      const excluded = new Set<SceneObject>();
+      const target = all.find((object) => object.id === objectId);
+      if (target) {
+        excluded.add(target);
+        for (
+          let ancestor = target.parent;
+          ancestor !== undefined;
+          ancestor = ancestor.parent
+        ) {
+          excluded.add(ancestor);
+        }
+        const collect = (object: SceneObject): void => {
+          for (const part of object.getObjects?.() ?? []) {
+            excluded.add(part);
+            collect(part);
+          }
+        };
+        collect(target);
+      }
+
       // The artboard is a snap source too; every test in this file treats the
       // scene as the starter's artboard wide, so its edges and centre belong
       // here. Passed in rather than closed over: this runs in the page.
       const lines = [0, artboard / 2, artboard];
-      for (const object of bridge.editor.canvas.getObjects()) {
-        if (object.id === objectId) continue;
+      for (const object of all) {
+        if (excluded.has(object)) continue;
         const rect = object.getBoundingRect();
         lines.push(
           rect.left,

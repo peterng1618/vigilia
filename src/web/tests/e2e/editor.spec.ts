@@ -3967,6 +3967,13 @@ test.describe("Fabric editor route", () => {
     // threshold, so a live resize path pulls the edge onto the line and a dead
     // one leaves it 2px short.
     await page.goto(EDITOR);
+    // **The first half edited the document, so this reload is offered its own
+    // draft back** (`draft-store.ts` writes on the page-hide, and
+    // `editor-main.ts` asks before anything mounts). The reload is the test's,
+    // not a crash, so Discard is the only answer that leaves the starter the
+    // second half measures. Without it the recovery prompt owns the viewport and
+    // the canvas below is not there to be asserted.
+    await answerDialogIfShown(page, "Discard");
     await expect(
       page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
     ).toBeVisible();

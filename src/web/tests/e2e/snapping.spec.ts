@@ -800,12 +800,25 @@ async function resizeTextSideTo(
  * **The instrument landed as a resize and this block keeps it as one**, because
  * a gesture *inside* the group reaches no candidate at all: both paths refuse a
  * group child before the candidate set is consulted. A resize is refused by the
- * scale path's `isSupportedScaleTarget`; a drag is refused by the movement
- * path's baseline check, which reads the child's canvas-plane bounds against its
- * group-plane position and reports "Movement raw intent must be a translation of
- * the baseline". So the reading the instrument records — landed short of the
- * part line, no guide — is about those refusals rather than about which objects
- * are candidates.
+ * scale path's `isSupportedScaleTarget`.
+ *
+ * **A drag is refused too, and the reason is Fabric's, not the planes'.** The
+ * movement path's `assertRawIntentMatchesBaseline` requires the object's world
+ * box to be its gesture-start box translated by the change in its own `left`/
+ * `top`, and a drag *inside* a group is not that translation: Fabric re-fits the
+ * group around the dragged child as it goes. Measured on the nested fixture's
+ * `left-card-part`, whose group is identity (`scaleX` 1, `angle` 0): over one
+ * drag the child's own `left` went 60 → −30.5 while its world box went
+ * 360 → 893.33, and the card's own box collapsed from 400×200 onto the part. So
+ * the two deltas differ, every step throws "Movement raw intent must be a
+ * translation of the gesture baseline", and the guard in `createSnapManager`
+ * swallows it — the drag lands raw. **An identity group is not enough**, which
+ * is why the plane story this comment used to tell was the wrong one: measured,
+ * the plane is not what moves.
+ *
+ * So the reading the instrument records — landed short of the part line, no
+ * guide — is about those refusals rather than about which objects are
+ * candidates.
  *
  * The case below asks the row's own question through the gesture that can reach
  * the candidates today: **a card snapping to a part inside the neighbouring
