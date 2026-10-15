@@ -41,6 +41,13 @@
  * 5. Both registers run these rules. A row acquires `verified` as it *leaves*
  *    the live file for `backlog-archive.jsonl`, so a checker reading only the
  *    live file never enforces rules 2–4 on any row they were written for.
+ * 6. **The split is by state, and each file refuses the other's rows.** The live
+ *    file holds what can still be worked; the archive holds `verified` and
+ *    `withdrawn`. This was stated and not enforced, which is how `vg-505` was
+ *    written into the archive carrying `state: "open"` — a live row invalid to
+ *    work, invisible to any census of the live file, and unclosable, since no
+ *    phase reads the archive. A rule the checker knows and does not test is a
+ *    convention, and a convention loses to whoever is in a hurry.
  */
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
@@ -187,6 +194,32 @@ export function check(items) {
 }
 
 /**
+ * Which file a row may sit in, because the split is by state.
+ *
+ * A row that reaches a closed state leaves the live file; a row that is not
+ * closed has no business in the archive. Both directions are failures: a live
+ * row in the archive is invisible to every reader of the live file and can
+ * never be triaged, and a closed row in the live file is counted as work that
+ * still needs doing.
+ */
+export function checkPlacement(register, items) {
+  const problems = [];
+  if (!Array.isArray(items)) return problems;
+  const inArchive = register.endsWith("backlog-archive.jsonl");
+  for (const item of items) {
+    if (item?.state === undefined) continue;
+    const closed = item.state === "verified" || item.state === "withdrawn";
+    if (inArchive && !closed) {
+      problems.push(`${item?.id ?? "?"}: state "${item.state}" in the archive — it holds verified and withdrawn rows only, so this row can never be worked or triaged`);
+    }
+    if (!inArchive && closed) {
+      problems.push(`${item?.id ?? "?"}: state "${item.state}" in the live file — a closed row belongs in the archive, or it is counted as work still to do`);
+    }
+  }
+  return problems;
+}
+
+/**
  * One register's rows and problems, from its text.
  *
  * A register that cannot be read, or holds no rows, is a failure like any
@@ -224,7 +257,9 @@ if (process.argv[1]?.endsWith("backlog-check.mjs")) {
   // false green the whole split was meant to prevent.
   const registers = [FILE, ARCHIVE].map(readRegister);
   const problems = registers.flatMap(({ name, items, problems: readProblems }) =>
-    [...readProblems, ...check(items)].map((problem) => `${name}: ${problem}`),
+    [...readProblems, ...check(items), ...checkPlacement(name, items)].map(
+      (problem) => `${name}: ${problem}`,
+    ),
   );
   const items = registers.reduce((count, register) => count + register.items.length, 0);
 
@@ -263,6 +298,14 @@ if (process.argv[1]?.endsWith("backlog-check.mjs")) {
       // live file alone is the change this check exists to fail, and it is the
       // one no rule inside check() can see, because check() never knew the set.
       ["both registers are read, live and archive", registers.map((r) => r.name).join(",") === "docs/product/backlog.jsonl,docs/product/backlog-archive.jsonl"],
+      // Rule 6, and the first of these is the case that happened: `vg-505` was
+      // written into the archive carrying `state: "open"`, where it was invalid
+      // to work and invisible to every reader of the live file.
+      ["an open row in the archive fails", checkPlacement("docs/product/backlog-archive.jsonl", [{ id: "vg-x", state: "open" }]).length > 0],
+      ["an open row in the live file passes", checkPlacement("docs/product/backlog.jsonl", [{ id: "vg-x", state: "open" }]).length === 0],
+      ["a verified row in the archive passes", checkPlacement("docs/product/backlog-archive.jsonl", [{ id: "vg-x", state: "verified" }]).length === 0],
+      ["a withdrawn row in the archive passes", checkPlacement("docs/product/backlog-archive.jsonl", [{ id: "vg-x", state: "withdrawn" }]).length === 0],
+      ["a verified row left in the live file fails", checkPlacement("docs/product/backlog.jsonl", [{ id: "vg-x", state: "verified" }]).length > 0],
       ["an unreadable register is a labelled failure", registerRows("docs/product/backlog.jsonl", null).problems.some((p) => /unreadable/.test(p))],
       ["an empty register is a failure, not all-valid", registerRows("docs/product/backlog.jsonl", "\n\n").problems.some((p) => /empty/.test(p))],
       // The two cases above call registerRows directly, so the catch that stops
