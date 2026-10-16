@@ -3,6 +3,16 @@ import { fileURLToPath } from "node:url";
 import { expect, type Page, test } from "@playwright/test";
 import { writeThemePackage } from "@vigilia/theme-package";
 import { frost as FROST } from "../../packages/editor/src/new-fabric-theme-globals.js";
+import {
+  type Box,
+  boxOf,
+  decode,
+  type Frame,
+  frostBox,
+  frostWithin,
+  luma,
+  outlineDifference,
+} from "./frame-diff.js";
 import { GLASS_BAR, glassStripesPng } from "./glass-fixture.js";
 
 /**
@@ -48,6 +58,10 @@ const EDITOR = "http://127.0.0.1:4174/";
  * probe about 70 px from the shape, so every number it printed described a
  * patch of bare photograph and the two shapes agreed because the probe was on
  * neither of them.
+ *
+ * The file carries a second, separate question below: `vg-516`, whether that
+ * differencing instrument reads the same whichever untreated capture is its
+ * baseline. The shared frame measure is `./frame-diff.js`.
  */
 
 /** The reference theme's own artboard and backdrop, where the report was seen. */
@@ -69,25 +83,47 @@ type Backdrop = "photograph" | "stripes";
  * `stacked` and `reversed` are the two frosted shapes at one position, in each
  * paint order. They are the control that separates a fault in the circle's own
  * composite from the density of two panels sharing one spot.
+ *
+ * `pair-*` are the **side-by-side** scene at two positions, and they exist for
+ * `vg-516`: the two frost-extent methods differ only in which untreated capture
+ * is the baseline, and telling that apart from a threshold effect needs both
+ * baselines over the same frosted page.
  */
-type Scene = Kind | "stacked" | "reversed" | `${Kind}-bare`;
+type Scene =
+  | Kind
+  | "stacked"
+  | "reversed"
+  | `${Kind}-bare`
+  | `pair-${Kind | "bare"}`;
 
-function objectFor(kind: Kind, frosted: boolean): Record<string, unknown> {
+/** The circle's own box in the side-by-side scene, clear of the rect's. */
+const PAIR_LEFT = 900;
+
+/** The rect of the reported repro; the pair scenes' second object is the circle. */
+const PROBE = "probe";
+const PAIR_CIRCLE = "pair-circle";
+
+function objectFor(
+  kind: Kind,
+  frosted: boolean,
+  left = BOX.left,
+  id = PROBE,
+): Record<string, unknown> {
   const common = {
     version: "7.4.0" as const,
     originX: "left" as const,
     originY: "top" as const,
-    left: BOX.left,
+    left,
     top: BOX.top,
     vigiliaPaint: { fill: "palette.frost" },
     fill: FROST,
     ...(frosted ? { vigiliaGlass: { blurRadius: RADIUS } } : {}),
   };
   if (kind === "Circle")
-    return { ...common, id: "probe", type: "Circle", radius: BOX.size / 2 };
+    return { ...common, id, type: "Circle", radius: BOX.size / 2 };
   return {
     ...common,
-    id: "probe",
+    id,
     type: "Rect",
     width: BOX.size,
     height: BOX.size,
@@ -116,6 +152,21 @@ function objectsFor(scene: Scene): Record<string, unknown>[] {
       return [objectFor("Rect", false)];
     case "Circle-bare":
       return [objectFor("Circle", false)];
+    case "pair-rect":
+      return [
+        objectFor("Rect", true),
+        objectFor("Circle", false, PAIR_LEFT, PAIR_CIRCLE),
+      ];
+    case "pair-circle":
+      return [
+        objectFor("Rect", false),
+        objectFor("Circle", true, PAIR_LEFT, PAIR_CIRCLE),
+      ];
+    case "pair-bare":
+      return [
+        objectFor("Rect", false),
+        objectFor("Circle", false, PAIR_LEFT, PAIR_CIRCLE),
+      ];
   }
 }
 
@@ -232,67 +283,6 @@ async function shoot(page: Page, scene: Scene, backdrop: Backdrop) {
   return page.locator("canvas.lower-canvas").screenshot();
 }
 
-/**
- * 6/255: above what a PNG round-trip and the 1.5 % grain leave behind, and far
- * below the tens of luma a 30 % tint and a blur of this backdrop move.
- */
-const THRESHOLD = 6;
-
-interface Frame {
-  readonly width: number;
-  readonly height: number;
-  readonly data: Uint8ClampedArray;
-}
-
-async function decode(shot: Buffer): Promise<Frame> {
-  const { createCanvas, loadImage } = await import("canvas");
-  const image = await loadImage(shot);
-  const surface = createCanvas(image.width, image.height);
-  const context = surface.getContext("2d");
-  context.drawImage(image, 0, 0);
-  return {
-    width: image.width,
-    height: image.height,
-    data: context.getImageData(0, 0, image.width, image.height).data,
-  };
-}
-
-const luma = (frame: Frame, x: number, y: number): number => {
-  const i = (y * frame.width + x) * 4;
-  return (
-    0.2126 * (frame.data[i] ?? 0) +
-    0.7152 * (frame.data[i + 1] ?? 0) +
-    0.0722 * (frame.data[i + 2] ?? 0)
-  );
-};
-
-/** Where the treatment landed: the box of the pixels the two captures differ on. */
-interface Box {
-  readonly left: number;
-  readonly top: number;
-  readonly right: number;
-  readonly bottom: number;
-}
-
-function frostBox(frosted: Frame, bare: Frame): Box | undefined {
-  let left = Number.POSITIVE_INFINITY;
-  let right = Number.NEGATIVE_INFINITY;
-  let top = Number.POSITIVE_INFINITY;
-  let bottom = Number.NEGATIVE_INFINITY;
-  let area = 0;
-  for (let y = 0; y < frosted.height; y += 1)
-    for (let x = 0; x < frosted.width; x += 1)
-      if (Math.abs(luma(frosted, x, y) - luma(bare, x, y)) > THRESHOLD) {
-        area += 1;
-        if (x < left) left = x;
-        if (x > right) right = x;
-        if (y < top) top = y;
-        if (y > bottom) bottom = y;
-      }
-  // A scene the treatment never reached measures nothing.
-  return area === 0 ? undefined : { left, top, right, bottom };
-}
-
 /** A capture's field over a disc, which is what two shapes can be compared on. */
 interface Field {
   readonly mean: number;
@@ -355,6 +345,122 @@ function commonDisc(
     cy: (top + bottom) / 2,
     radius: 0.45 * Math.min(right - left, bottom - top),
   };
+}
+
+/**
+ * The object's own box in the **capture's** pixels, read from the page rather
+ * than from the frost.
+ *
+ * `vg-516` is a question about the instrument, and a region derived from one
+ * method's own reading would be the instrument compared with itself.
+ * `getBoundingRect` is in scene units, `viewportTransform` carries them to the
+ * canvas element's pixels and the capture's own scale is the PNG's width over
+ * that element's backing width.
+ */
+async function objectBox(
+  page: Page,
+  id: string,
+): Promise<{ box: Box; elementWidth: number }> {
+  return page.evaluate((objectId) => {
+    const scope = window as unknown as Record<string, unknown>;
+    const key =
+      Object.keys(scope).find((c) => c.startsWith("vigilia-fabric-editor")) ??
+      "";
+    const canvas = (
+      scope[key] as
+        | {
+            canvas: {
+              getObjects(): Array<{
+                get(name: string): unknown;
+                getBoundingRect(): {
+                  left: number;
+                  top: number;
+                  width: number;
+                  height: number;
+                };
+              }>;
+              lowerCanvasEl: HTMLCanvasElement;
+              viewportTransform: number[];
+              getRetinaScaling(): number;
+            };
+          }
+        | undefined
+    )?.canvas;
+    if (canvas === undefined) throw new Error("no editor canvas is mounted");
+    const object = canvas.getObjects().find((o) => o.get("id") === objectId);
+    if (object === undefined) throw new Error(`no object "${objectId}"`);
+    const bounds = object.getBoundingRect();
+    const view = canvas.viewportTransform;
+    const retina = canvas.getRetinaScaling();
+    const left =
+      (bounds.left * view[0] + bounds.top * view[2] + view[4]) * retina;
+    const top =
+      (bounds.left * view[1] + bounds.top * view[3] + view[5]) * retina;
+    return {
+      box: {
+        left,
+        top,
+        right: left + bounds.width * view[0] * retina,
+        bottom: top + bounds.height * view[3] * retina,
+      },
+      elementWidth: canvas.lowerCanvasEl.width,
+    };
+  }, id);
+}
+
+/**
+ * Edits one object **in the page that is already open** and repaints.
+ *
+ * `lift` clears the panel's authored treatment, which is the baseline that
+ * shares the frosted capture's own rendering: no second page load, so nothing
+ * outside the treatment can differ between the two captures. `composite()`
+ * re-reads the treatment every frame, so clearing the property is the whole
+ * change — no listener to unhook, no cache to invalidate.
+ *
+ * `uncache` only turns the object's own cache off, which is the state the glass
+ * path leaves a panel in (`uncacheChain`, on attach). It separates the
+ * treatment's own edge from the cache state the treatment implies, and that is
+ * the difference `vg-516`'s rim turns out to be made of.
+ */
+async function editObject(
+  page: Page,
+  id: string,
+  mode: "lift" | "uncache",
+): Promise<void> {
+  await page.evaluate(
+    (input) => {
+      const scope = window as unknown as Record<string, unknown>;
+      const key =
+        Object.keys(scope).find((c) => c.startsWith("vigilia-fabric-editor")) ??
+        "";
+      const canvas = (
+        scope[key] as
+          | {
+              canvas: {
+                getObjects(): Array<{
+                  get(name: string): unknown;
+                  set(name: string, value: unknown): void;
+                }>;
+                renderAll(): void;
+              };
+            }
+          | undefined
+      )?.canvas;
+      if (canvas === undefined) throw new Error("no editor canvas is mounted");
+      const object = canvas.getObjects().find((o) => o.get("id") === input.id);
+      if (object === undefined) throw new Error(`no object "${input.id}"`);
+      if (input.mode === "lift") object.set("vigiliaGlass", undefined);
+      else object.set("objectCaching", false);
+      canvas.renderAll();
+    },
+    { id, mode },
+  );
+  await page.evaluate(
+    () =>
+      new Promise<void>((resolve) =>
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+      ),
+  );
 }
 
 test.describe("a frosted circle and a frosted rect of the same box", () => {
@@ -465,4 +571,151 @@ test.describe("a frosted circle and a frosted rect of the same box", () => {
         "and both are denser than either shape alone",
       ).toBeLessThan(fields.rect.mean - 10);
     });
+});
+
+/**
+ * `vg-516`: the instrument's two baselines.
+ *
+ * The row is that one harness read the rect's frost as 13,228 px and another as
+ * 12,766 px, differing at exactly the rect box's outer rim — 462 px, rows
+ * 236-239 and 319-320, columns 52-54 and 201-203 — with nothing the per-shape
+ * pair found that the cross-page pair did not. The cause was never established
+ * and both harnesses are gone from the tree.
+ *
+ * They are rebuilt here against **one** frosted capture. `pair-rect` (rect
+ * frosted, circle bare) is what all four readings difference; only the
+ * untreated capture changes:
+ *
+ *  - `pair-bare`, nothing frosted — the per-shape pair's baseline;
+ *  - `pair-circle`, the circle frosted instead — the cross-page pair's baseline,
+ *    and the one difference the two lost harnesses actually had;
+ *  - the same page's own rect with its treatment lifted — the baseline neither
+ *    harness had, and the one carrying no between-page variable at all;
+ *  - the bare page's own rect with only its object cache turned off, which is
+ *    the state attaching the treatment leaves it in.
+ *
+ * The last two are what separate "which page was the baseline" from "the
+ * treatment's own edge" and from the cache state the treatment brings with it.
+ * The region is the rect's own box read from the page rather than from the
+ * frost, so the instrument is not compared with itself.
+ */
+test.describe("the frost-extent instrument", () => {
+  test.setTimeout(240_000);
+  test("reads the same extent whichever untreated capture is the baseline", async ({
+    page,
+  }) => {
+    await page.goto(EDITOR);
+    await open(page, "pair-rect", "stripes");
+    const rectFrosted = await page.locator("canvas.lower-canvas").screenshot();
+    const measured = await objectBox(page, PROBE);
+    await editObject(page, PROBE, "lift");
+    const rectLifted = await page.locator("canvas.lower-canvas").screenshot();
+
+    const circleFrosted = await shoot(page, "pair-circle", "stripes");
+    const bothBare = await shoot(page, "pair-bare", "stripes");
+    // The bare page again with the rect's own cache off, which is the state the
+    // frosted page's rect is in. `shoot` leaves this page open.
+    await editObject(page, PROBE, "uncache");
+    const bareUncached = await page.locator("canvas.lower-canvas").screenshot();
+
+    const frames = {
+      rectFrosted: await decode(rectFrosted),
+      rectLifted: await decode(rectLifted),
+      circleFrosted: await decode(circleFrosted),
+      bothBare: await decode(bothBare),
+      bareUncached: await decode(bareUncached),
+    };
+    const frosted = frames.rectFrosted;
+    const perCapture = frosted.width / measured.elementWidth;
+    // The rect's own box, padded, so the frost's own edge is inside the region
+    // rather than on its boundary and the count cannot be clipped by it.
+    const PAD = 4;
+    const region: Box = {
+      left: Math.max(0, Math.floor(measured.box.left * perCapture) - PAD),
+      top: Math.max(0, Math.floor(measured.box.top * perCapture) - PAD),
+      right: Math.min(
+        frosted.width - 1,
+        Math.ceil(measured.box.right * perCapture) + PAD,
+      ),
+      bottom: Math.min(
+        frosted.height - 1,
+        Math.ceil(measured.box.bottom * perCapture) + PAD,
+      ),
+    };
+
+    const methods = {
+      perShape: frostWithin(frosted, frames.bothBare, region),
+      crossPage: frostWithin(frosted, frames.circleFrosted, region),
+      samePage: frostWithin(frosted, frames.rectLifted, region),
+      uncached: frostWithin(frosted, frames.bareUncached, region),
+    };
+    const labels: Record<keyof typeof methods, string> = {
+      perShape: "per-shape (bare page)",
+      crossPage: "cross-page (circle frosted)",
+      samePage: "same page (treatment lifted)",
+      uncached: "per-shape, cache off too",
+    };
+    for (const name of Object.keys(methods) as Array<keyof typeof methods>) {
+      const box = boxOf(frosted, methods[name]);
+      console.log(
+        `FROST EXTENT ${labels[name].padEnd(28)} area=${methods[name].size} ` +
+          `box=${box === undefined ? "none" : `${box.left},${box.top}-${box.right},${box.bottom}`}`,
+      );
+      expect(
+        methods[name].size,
+        `${labels[name]} reached the backdrop at all`,
+      ).toBeGreaterThan(0);
+    }
+
+    const { perShape, crossPage, samePage, uncached } = methods;
+    const perShapeBox = boxOf(frosted, perShape);
+    if (perShapeBox === undefined) return;
+    /** A pixel of rasteriser drift is not a finding. The row's own defect was
+     *  3.6 percent of the area, and this bound is a tenth of one percent. */
+    const RIM_TOLERANCE = Math.max(1, Math.round(perShape.size * 0.001));
+
+    // **The claim.** The baseline page's own contents are not part of the
+    // reading: the circle's frost is hundreds of pixels from the rect, so a
+    // baseline carrying it measures the rect the same as one that does not.
+    // These two are the baselines the lost harnesses actually used, and this is
+    // what says the row's 462 px was not the choice between them.
+    const across = outlineDifference(crossPage, perShape, frosted, perShapeBox);
+    console.log(
+      `FROST EXTENT cross-page vs per-shape: ${across.only} px differ, ` +
+        `deepest ${across.deepest} from the frost's own outline`,
+    );
+    expect(
+      across.only,
+      `the rect's extent does not depend on what else the baseline page holds (per-shape ${perShape.size} vs cross-page ${crossPage.size}, ${across.only} px differ)`,
+    ).toBeLessThanOrEqual(RIM_TOLERANCE);
+
+    // **What the rim is made of.** The lifted baseline is the one that differs
+    // from a bare page in nothing but the treatment — and the treatment is not
+    // only a blur: attaching it turns the panel's own object cache off, so the
+    // frosted page's rect paints uncached where a bare page's rect paints
+    // through its cache. Holding that equal is what says the residual is the
+    // cache state the treatment brings and not the blur.
+    const cached = outlineDifference(uncached, perShape, frosted, perShapeBox);
+    console.log(
+      `FROST EXTENT cache-off vs bare page: ${cached.only} px differ, ` +
+        `deepest ${cached.deepest} from the frost's own outline`,
+    );
+    const lifted = outlineDifference(samePage, uncached, frosted, perShapeBox);
+    console.log(
+      `FROST EXTENT same-page vs cache-off: ${lifted.only} px differ, ` +
+        `deepest ${lifted.deepest} from the frost's own outline`,
+    );
+    expect(
+      lifted.only,
+      `with the cache held equal, the lifted treatment reads the same as a bare page (lifted ${samePage.size} vs cache-off ${uncached.size}, ${lifted.only} px differ)`,
+    ).toBeLessThanOrEqual(RIM_TOLERANCE);
+
+    // Whatever either disagreement is made of, it is the frost's own outline
+    // and not its interior: a rim is where the coverage is fractional, so a
+    // baseline a luma apart flips those pixels and no others.
+    expect(
+      Math.max(across.deepest, lifted.deepest),
+      `and neither disagreement reaches the frost's interior (deepest ${across.deepest} and ${lifted.deepest})`,
+    ).toBeLessThanOrEqual(4);
+  });
 });
