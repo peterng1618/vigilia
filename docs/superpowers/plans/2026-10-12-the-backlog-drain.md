@@ -3592,6 +3592,12 @@ the gate's `covers()` is now an exact-file match, and the 14 notes that claimed 
 their files. **`vg-425` closed with it**, which this phase's task list did not name: its park waited on
 exactly that convention, so it is discharged by work that landed rather than by a task authored for it.
 
+**Task 21.2 landed the same day at `c536b25a` with decision note `0060`**, closing `vg-352` — the
+citation namespace is now declared by source, six prefixes beside `CITE_NUMBERS`, and no bare `§N` from a
+self-numbering document claims a `DESIGN.md` marker. It filed `vg-560`: the redesign spec is in the set
+and numbers its own `§1`–`§13`, so its own `§2`, `§6` and `§7` still claim, which is `vg-352`'s shape one
+document over and is recorded as a known limit in `0060` and in `CITE_SOURCES`' docblock.
+
 **Why a phase of its own.** All six edit `scripts/` or a registry under `docs/evidence/`, and the three
 sweep rows (`vg-380`, `vg-382`, `vg-386`) are **one instrument read three ways** — its selector direction,
 its `redundant-export` tier and its `barrel-only-export` tier. Phase 15 homed instrument gaps a
@@ -3610,6 +3616,10 @@ re-run is a sweep of its own**: the newly visible rows are adjudicated, not repo
 
 **Acceptance:** each row's own `check` passes; `vg-144`, `vg-380` and `vg-382` each carry a case that
 fails when the fix is disabled; `vg-386`'s re-run count is recorded as a measurement with its command.
+**[Corrected 2026-10-17: `vg-352` carries one too, and this line did not name it. Task 21.2's brief read
+the omission as an instruction and was wrong to — the case landed because the row's own failure shape
+needs one, which is the right reason and not this line's. The list is widened rather than left to
+mislead the next seat.]**
 
 **Failure modes:** widening the reuse gate until it refuses the tree, which `vg-144`'s own ruling rejects
 — the blunt presence-only reading stays and only the *unit* a claim is made in changes; a citation source
@@ -3671,6 +3681,43 @@ discharged by this** — it measures the hook not blocking at all, which is a di
 - [ ] **Step 1: The check takes a SOURCE SET** — the documents whose `§N` are design-language citations, declared where the canonical range is declared. `requirements.md` is not in it, because a document about the product's requirements is not a document about the design language and its numbers belong to itself.
 - [ ] **Step 2: State the two consequences so they are not rediscovered:** `DESIGN.md` is the target and never a source, and the sweep's guard stands — a `requirements.md` `§N` is not re-pointed as though it were a bible citation. Over-exclusion is the risk the row names, and the set bounds it: a document joins by being *about* the design language, which a reviewer can check, unlike a number.
 - [ ] **Step 3: Close it, proving both directions**: a `requirements.md` §7 passes as its own number, and a design-language document's §7 still cites `DESIGN.md`.
+
+**[Closed 2026-10-17 at `c536b25a`, decision note `0060`.]** `CITE_SOURCES` is declared beside
+`CITE_NUMBERS`, as the ruling says it must be, and `isCitationSource` is the set's one rule applied to
+the path each citation was read from. **Six prefixes**: `src/`, `scripts/`, `docs/decisions/`,
+`docs/design/`, `docs/superpowers/`, `docs/product/triage/`. **The near-misses are the evidence the set
+was argued rather than guessed** — `requirements.md` (the ruling's own exclusion), `tester-runbook.md`
+(its own `## 0.`–`## 6.`), `docs/product/probes/README.md` (cites the runbook's §0),
+`docs/architecture/` (both censuses number their own `## 1.`–`## 4.`), `docs/evidence/` (no in-range `§N`
+at all), the registers (already out by `CITE_EXTENSIONS`), `DESIGN.md` and `CITE_EXCLUDE`'s two files.
+
+**Step 3's first direction is proved and its reproduction on the real tree is impossible, which is a
+measurement rather than a gap.** §7 carries 179 claims, so removing all but `requirements.md`'s is not a
+tree edit; what replaced it is the count that makes the point — **193 tracked files carry an in-range
+`§N` and nine documents number their own sections and carry one, yet 0 of the 18 markers is claimed only
+by one area**, so every candidate set passes today and the set has to be argued. The delta is recorded:
+§7 179→178, the one dropped being `requirements.md:20`'s own heading, and no marker lost all its claims.
+**The controller re-ran the red proof rather than taking it**: disabling `isCitationSource` reddens three
+self-test cases at exit 1, restored byte-identical, green again.
+
+**Two premises of this task's brief were false.** `docs/design/design-language.md` — the brief's first
+"obvious in" — **does not exist**; it was deleted at `db000c40`, retired for `DESIGN.md`. And the brief's
+claim that *"a case that fails when the fix is disabled is Phase 21's Acceptance for `vg-352`
+specifically"* is **false**: the phase's Acceptance names `vg-144`, `vg-380` and `vg-382` only, so the
+case landed because the row's failure shape needs one, not because the phase asked. **The Acceptance is
+corrected below rather than left to mislead the next seat.**
+
+**A third premise is a genuine tension inside the row and is recorded rather than smoothed.** `vg-352`'s
+detail names the redesign spec as a *foreign-numbering* document whose `§N` must not count; the ruling
+names the redesign spec as a member of the set. The task resolved toward the ruling, because excluding a
+document that genuinely cites `DESIGN.md` is the over-exclusion the row names as the risk, and the
+residual — the spec's own `§2`, `§6` and `§7` still claim — is `vg-560`.
+
+**The sweep guard holds, measured**: no `DESIGN.md`/bible attribution to a `requirements.md` number ≥31
+exists anywhere in `docs/`, `src/` or `scripts/`.
+
+**Verify:** `node scripts/design-md.mjs --cite` exit 0; `node scripts/design-md.mjs --self-test` exit 0
+(44 cases); `npm run docs:check` exit 0; `npm run gate` exit 0 (263 files, 3483 tests).
 
 ### Task 21.3: The capture registry owns a freshness check
 

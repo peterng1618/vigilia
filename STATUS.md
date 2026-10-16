@@ -37,11 +37,11 @@ ledger did.
 
 ## Last completed change
 
-- **Task 21.2 closed `vg-352` with decision note `0060`** — the citation check's sources are now declared where its range is: `CITE_SOURCES` names the documents whose `§N` are `DESIGN.md` citations, and a citation counts only from one of them.
-- **`requirements.md`'s own `## §7` heading no longer claims the marker** — 179 `§7` claims before and 178 after, and the one dropped is that heading's; the other five markers that lost a claim lost only an architecture census's or the runbook's own numbering.
-- **A citation now carries the document it came from** — `collectCitations` records `{ path, text }` and `citedIn` filters by the set, so the failure shape is a case the check can prove: with the filter disabled, three self-test cases fail at exit 1, and the file was restored byte-identical (`cmp`) before the green re-run.
-- **Both of the brief's named "obvious ins" fail against the disk, and one is reported rather than worked around** — `docs/design/design-language.md` does not exist (retired at `db000c40`) and `2026-10-08-editor-design-language-design.md` numbers its own `§1`–`§13`, so it is in the set only because it genuinely cites the bible; that residual is recorded in `0060`, not solved here.
-- **`vg-352` is not in Phase 21's Acceptance red-proof list** — that line names `vg-144`, `vg-380` and `vg-382` only, so the case landed because the row's failure shape needs one; `npm run gate` exit 0 (263 files, 3483 tests), `--cite` exit 0 over 336 sources.
+- **Task 21.2 closed `vg-352` at `c536b25a` with decision note `0060`** — the citation namespace is declared by source: `CITE_SOURCES` sits beside `CITE_NUMBERS` with six prefixes (`src/`, `scripts/`, `docs/decisions/`, `docs/design/`, `docs/superpowers/`, `docs/product/triage/`), and `isCitationSource` filters every citation by the path it was read from.
+- **The near-misses are the evidence the set was argued rather than guessed** — `requirements.md` (the ruling's own exclusion), `tester-runbook.md`, `docs/product/probes/README.md`, `docs/architecture/`, `docs/evidence/`, the two registers, `DESIGN.md` and `CITE_EXCLUDE`'s two files.
+- **The reproduction the brief asked for is impossible on the real tree, and the count that replaced it is the point** — §7 carries 179 claims, so removing all but `requirements.md`'s is not a tree edit; 193 tracked files carry an in-range `§N` and nine documents number their own sections, yet **0 of the 18 markers is claimed only by one area**, which is why every candidate set passes today.
+- **Two brief premises were false and the seat said so** — `docs/design/design-language.md` does not exist (deleted at `db000c40`), and Phase 21's Acceptance names `vg-144`, `vg-380` and `vg-382` only, so `vg-352`'s red case landed because its own failure shape needs one; the Acceptance is corrected in the plan. The controller re-ran the red proof: disabling `isCitationSource` reddens three cases at exit 1, restored byte-identical, green again.
+- **The register stands at 129 live rows with 38 parked**, `npm run backlog:check` exit 0 (560 items), and `vg-560` is filed from the commit's own trailer: the redesign spec is in the set and numbers its own `§1`–`§13`, so its own `§2`, `§6` and `§7` still claim — `vg-352`'s shape one document over, recorded as a known limit in `0060`.
 
 ## Next
 
