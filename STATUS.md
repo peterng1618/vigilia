@@ -37,11 +37,10 @@ ledger did.
 
 ## Last completed change
 
-- **Task 19.1 closed at `055c7ecc`, so the register is 134 open** — `vg-268` and `vg-283` are `verified` together, since they file one question, and both red proofs were re-run by the controller rather than taken from the report.
-- **The mount is the fix and nothing was deleted** — `FontPicker` is rendered by a new `selection-inspector/font-face-field.tsx` from the column's content section, and the field is a fifth `ExtraView` member rather than a second face picker.
-- **The write goes to the preset, not the object** — a text object has no face of its own, so the field writes through the Tokens pane's existing `TypePresetFontActions`; dropping `fontFace` from `rendersExtra` reads 1 failed of 331 exit 1, restored byte-identically with `cmp` to green.
-- **The mount brought a client the host was already serving** — `/api/font-favorites` had a store and no editor-side reader, so `favorites-client.ts` is the catalogue plan's own unbuilt Task 7 artifact; the copy census needed the same two-row carve-out `ui-copy-panels.test.ts` already makes.
-- **A finding the landing made visible is filed as `vg-549`** — `applyPresetFace` writes family, weight and `face.assetId` while the Tokens pane leaves family and weight editable, so an author can type a family that contradicts the bound face.
+- **Task 19.2 closed, and `vg-142`'s own mechanism description is stale** — there is no `sizeNote.textContent` at `artboard-panel.ts:336` and no `refreshNote` writer; the note is React-rendered from `sceneBoxes`, and the row's *subject* is what reproduces, not its line numbers.
+- **The panel now subscribes to `object:moving`, coalesced onto one animation frame** — `follow` arms a single `requestAnimationFrame` however many events that frame carries, `destroy()` releases the listener and cancels the armed frame, and `object:modified` still draws immediately.
+- **The defect reproduced before the fix, by holding the drag** — mid-drag read the rule text alone, the release read `1 of 54 objects are now outside`; after the fix the mid-drag read already carries the figure, which is the whole of the row.
+- **The frame budget holds: the coalesced recompute is ~2.5 ms** — measured in Chromium by timing the frame callbacks each `object:moving` dispatch registers (median 2.5, p95 3.9, max 4.0 against a 16.7 ms frame; the canvas repaint in the same frame is 20–30 ms), and the browser case asserts p95 under one frame.
 
 ## Next
 

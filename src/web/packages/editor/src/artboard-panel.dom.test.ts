@@ -107,6 +107,13 @@ async function flush(): Promise<void> {
   }
 }
 
+/** One animation frame, which is where a drag's recompute is coalesced to. */
+async function frame(): Promise<void> {
+  await act(async () => {
+    await new Promise((resolve) => requestAnimationFrame(() => resolve(null)));
+  });
+}
+
 async function click(target: Element, detail = 0): Promise<void> {
   await act(async () => {
     target.dispatchEvent(
@@ -709,6 +716,57 @@ describe("artboard presets in the panel", () => {
     ).not.toHaveBeenCalled();
   });
 
+  it("follows a drag frame by frame instead of waiting for its release", async () => {
+    // Fabric reports a gesture as `object:moving` once per frame and announces
+    // only its end as `object:modified`, so a panel subscribed to the release
+    // alone prints a figure that stands still for the whole drag. Nothing here
+    // fires `object:modified`: the figure has to move while the button is down.
+    const canvas = canvasStub();
+    const boxes: SceneBox[] = [
+      {
+        visible: true,
+        bleeds: false,
+        left: 100,
+        top: 100,
+        width: 100,
+        height: 100,
+        depth: 0,
+      },
+    ];
+    const read = vi.fn((): readonly SceneBox[] => boxes);
+    await mount(undefined, { canvasEvents: canvas.events, sceneBoxes: read });
+    const note = (): string =>
+      document.querySelector("[data-vigilia-artboard-note]")?.textContent ?? "";
+
+    await draw({ width: 1000, height: 1000 });
+    expect(note(), "the scene fits to begin with").not.toContain(
+      "are now outside",
+    );
+
+    // The object crosses the edge mid-gesture, and the canvas says so once per
+    // frame — several times over, which is what the coalescing is for.
+    boxes[0] = { ...boxes[0]!, left: 950 };
+    const drawn = read.mock.calls.length;
+    await act(async () => {
+      canvas.fire("object:moving");
+      canvas.fire("object:moving");
+      canvas.fire("object:moving");
+    });
+
+    // Nothing yet: the recompute rides the frame rather than the event.
+    expect(read.mock.calls.length, "no draw before the frame").toBe(drawn);
+    await frame();
+
+    // Three events, one frame, one recompute — coalesced rather than dropped,
+    // and not three draws of the whole pane.
+    expect(read.mock.calls.length, "one recompute for the frame").toBe(
+      drawn + 1,
+    );
+    expect(note(), "the figure moved before the button came up").toContain(
+      "1 of 1 objects are now outside",
+    );
+  });
+
   it("releases the canvas subscription and the tree when it is destroyed", async () => {
     // The one line of lifecycle this panel's own contract promises. `destroy()`
     // releases a subscription on a canvas that outlives the panel — the session
@@ -748,6 +806,11 @@ describe("artboard presets in the panel", () => {
     canvas.fire("object:modified");
     expect(note(), "a live panel follows the scene").not.toBe(outside);
 
+    // A drag still in progress, so a frame is armed for a tree about to be
+    // unmounted: the pane is replaced on every document, and a drag that ends
+    // after the replacement would otherwise draw into a released root.
+    canvas.fire("object:moving");
+
     await act(async () => panel?.destroy());
     const released = document.querySelector("[data-vigilia-artboard-note]");
     expect(
@@ -757,6 +820,12 @@ describe("artboard presets in the panel", () => {
     // The handler really left the canvas's set, so nothing masked a second
     // listener still holding the pane's `draw`.
     expect(canvas.count("object:modified")).toBe(0);
+    expect(canvas.count("object:moving")).toBe(0);
+    // And the armed frame is cancelled with it, which is the half a `count` of
+    // listeners cannot see: the frame would draw whether or not anyone is left
+    // listening.
+    await frame();
+    expect(document.querySelector("[data-vigilia-artboard-note]")).toBeNull();
   });
 });
 

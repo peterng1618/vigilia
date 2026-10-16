@@ -92,9 +92,10 @@ export function createArtboardPanel(
           assets,
           // Read at the moment of the draw: a fresh reading is what makes the
           // note follow the scene, and this is the only place that knows a draw
-          // happened. It is also why an `object:modified` may redraw the whole
-          // pane — the control set keeps an author's half-typed draft in its own
-          // state, so a draw no longer rebuilds the field out from under them.
+          // happened. It is also why an `object:modified` — or the frame of a
+          // drag — may redraw the whole pane: the control set keeps an author's
+          // half-typed draft in its own state, so a draw no longer rebuilds the
+          // field out from under them.
           boxes: options.sceneBoxes?.(),
           onArtboard: (next) => {
             // Held before the session is told, so the controls show what was
@@ -114,6 +115,23 @@ export function createArtboardPanel(
   };
 
   options.canvasEvents?.on("object:modified", draw);
+
+  /** The drag's own event, coalesced onto the frame the canvas paints next.
+   *
+   *  Fabric reports a gesture as `object:moving` once per frame and only
+   *  announces its end as `object:modified`, so a figure subscribed to the
+   *  release alone stands still for the whole drag. The stream is coalesced
+   *  rather than dropped: one recompute per animation frame, however many
+   *  events that frame carries. */
+  let pending: number | undefined;
+  const follow = (): void => {
+    if (pending !== undefined) return;
+    pending = requestAnimationFrame(() => {
+      pending = undefined;
+      draw();
+    });
+  };
+  options.canvasEvents?.on("object:moving", follow);
 
   return {
     root,
@@ -135,6 +153,10 @@ export function createArtboardPanel(
     },
     destroy() {
       options.canvasEvents?.off("object:modified", draw);
+      options.canvasEvents?.off("object:moving", follow);
+      // The frame is the second half of the subscription: one armed for a drag
+      // that has not finished would draw a tree this call is about to unmount.
+      if (pending !== undefined) cancelAnimationFrame(pending);
       // Unmount first, then remove: a React root subscribes, and removing its
       // container unsubscribes nothing, so the tree would outlive the pane for
       // the page's lifetime.
