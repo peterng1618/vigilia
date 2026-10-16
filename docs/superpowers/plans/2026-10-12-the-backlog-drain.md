@@ -2359,6 +2359,63 @@ reload, and *reload versus re-arm* is a bigger ruling than it looks.
 - [ ] **Step 4: `vg-527` — nothing lifts the entered-group dim on the capture path**, so a package saved while a group is entered stores a dimmed thumbnail; the 2026-10-15 ruling is implemented nowhere.
 - [ ] **Step 5: Rebuild and run each case alone, then close the four.**
 
+**Annotated 2026-10-16, at the task's close: all four rows are `verified`, and two of the four were closed
+by refuting the row rather than by satisfying it.**
+
+**`vg-515` took the decision the row said was missing, and took it on an invariance rather than on taste.**
+`blurRadius` was the matrix's x row alone — `Math.hypot(own[0], own[1])`, which is `scaleX` — and is now
+`Math.sqrt(Math.abs(own[0] * own[3] - own[1] * own[2]))`, **the determinant's root**. A filter takes one
+length and the draw is at identity, so two scales have to become one number; the equal-area scale is the
+only rotation-independent choice that is **unchanged whenever the scale is uniform**, which keeps every
+uniformly scaled panel painting exactly as it did. Decision `0053` landed before the first write to the
+watchlisted file. **Red-proved twice**: the unit cases read `blur(96px)` for 4×1 and `blur(24px)` for 1×4
+where 48 is required, and the browser parity case read **2.375 against 9.164** with the fix off against
+**6.000 against 6.075** with it on — the pair is asserted close rather than equal, because two panels'
+own rasterisation differs by a fraction at one blur.
+
+**`vg-516`'s 462 px is NOT reproduced, and the row is closed on a rebuilt measurement rather than on its
+own.** The row's two harnesses no longer exist, so the 3.6 percent was re-taken from baselines rebuilt
+in-tree: both the bare page and the circle-frosted page read **11,631 px, 0 px differing**. **What the
+probe records for the original number is the same class of effect at a different capture scale, marked as
+inference** — a later reader who needs the 462 needs harnesses no commit holds. The cause found is real
+and is **the cache, not the frost**: attaching the treatment calls `uncacheChain`, so a frosted page's
+rect paints uncached where a bare page's paints through its cache; lifting the treatment on one page moves
+11,631 → 11,620 with **all 53 px on the frost's own outline**, and a bare page with only `objectCaching`
+off lands on the same 11,620 with 0 px between them. So the rim is a threshold effect at a soft edge, the
+instrument's limit is written where the number is (the outermost 2–4 px of a thresholded frost box is not
+a measurement of the frost), and the frame measure moved to `tests/e2e/frame-diff.ts` so one instrument
+serves both questions.
+
+**`vg-505`'s premise is refuted, and the refutation was the work.** The row says the case *finds no
+connection strip to assert*; the case in fact **never refused the stream** —
+`page.route("**/ws")` is globbed against the whole URL and the stream's is `…/ws?keys=…&session=…`, so the
+route matched nothing and the case caught the ordinary *Connecting to the host — 1 sensors requested*
+strip at about 250 ms. **So this was a defect in the case rather than in the player**, which is why the
+ordered-suite red and the isolation red were identical: the isolation re-run the row leans on could not
+tell a product defect from a setup that never ran. Fixed with `url.pathname.endsWith(SAMPLE_STREAM_PATH)`.
+**The row's three neighbours (`vg-431`, `vg-258`, `vg-212`) are not this row and stay red.**
+
+**`vg-527` implemented the 2026-10-15 ruling rather than re-taking it**, after settling the row's own
+unmeasured clause first: *whether the thumbnail is regenerated on exit rather than only on save* — it is
+the **save** that captures, so the defect is reachable in the common path and not in a corner.
+`grouping-manager` gains `suspendDim()` returning a release; `captureCanvas`/`captureThumbnail` take it and
+hold it **across `toCanvasElement` alone**, so the live canvas keeps its dim and only the captured pixels
+are undimmed. Red-proved on both halves: the unit case read `['shot']` where `['lift','shot','restore']` is
+required, and the browser case read alpha **115** in the capture where the document's paint is **255**,
+with the live canvas correctly 115 in both runs.
+
+**Two rows filed rather than folded in.** **`vg-542`** — `host-player.spec.ts:550`'s palette case read ink
+**496** against a floor of **500** in the ordered run and passed twice alone, so the floor is one sample
+from a load-sensitive red; it is filed rather than fixed because the two remedies (lower the floor, or stop
+the read racing the first paint) are opposite products of a question the row that set 500 does not answer.
+**`vg-543`** — two more specs still carry their own frame-decode helpers now that `frame-diff.ts` is the
+shared owner, which is how `vg-516`'s class of finding comes back.
+
+**`glass.ts` is 854 lines and was already over the 800 stop before this task** (846 at `5ad08048`), so the
+task added 8 lines to a file that is already one of `vg-536`'s *33 named by no row* — **no new row is owed
+and none was filed**. An independent recount of files over 800 lines at `5ad08048` returns **exactly 47**,
+reproducing `vg-536`'s stated census. `thumbnail-capture.ts` is 101 lines and `frame-diff.ts` 159.
+
 ### Task 17.3: The parity instrument's remaining gaps
 
 **Files:**
