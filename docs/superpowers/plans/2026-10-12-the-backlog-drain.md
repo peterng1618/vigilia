@@ -3074,7 +3074,13 @@ elevation ladder survives, `--shell-warm` is readable in every palette, `--shell
 drawings agree with the product where they had invented or drifted. **[Annotated 2026-10-16: two of the
 seven cannot land as their rulings read, so Tasks 20.5 and 20.6 are blocked on decisions their own rulings
 declined to make and both are annotated in place below; Tasks 20.1–20.4 are the dispatchable work, and
-**Task 20.7 was added mid-phase** for `vg-552`, which a seat found while doing 20.2.]**
+**Task 20.7 was added mid-phase** for `vg-552`, which a seat found while doing 20.2.]** **[Closed in part
+2026-10-16: Tasks 20.1, 20.2 and 20.3 landed as `b9566db1`, `ed4d6ee8` and `0c1f559e`, closing `vg-261`,
+`vg-201` and `vg-312`. All three red proofs were re-run by the controller rather than taken from the seat's
+report — except 20.1's, which could not be run because **the deletion it makes has no guard**; that is
+`vg-553`, homed on Task 20.7. Task 20.2's ruling turned out to have an inert half: `--vigilia-accent` does
+alias `--shell-warm`, but no rule reads it, so *"let the canvas accent move with it"* moves nothing — that
+is `vg-552`, also Task 20.7.]**
 
 **Why a phase of its own.** Six of the seven edit `editor-shell.css` or a drawing under
 `docs/design/mockups/`, and the seventh edits the design-language reader. They are one subject: what the
@@ -3140,6 +3146,18 @@ seat also found two test sites the brief's sweep would have missed** — `editor
 **throw** on an absent token rather than passing vacuously, so a `grep` for `var(--shadow-raised)` was not the
 sweep the deletion needed.
 
+**CLOSED 2026-10-16 at `b9566db1`, Phase 20's Task 20.1, `vg-261` verified.** The surviving step is
+**`--elev-2` and not the numerically nearer `--elev-1`**: DESIGN.md §3's row 2 is *"Menus, popovers,
+tooltips"*, which is what both consumers are, and taking `--elev-1` would have left `--elev-2` declared and
+consumed by nothing — the state the block's own comment says the ratchet exists to shrink. Both re-pointed
+surfaces, `.editor-shell-publish-popup` and `.editor-shell-menu-popup`, resolve
+`rgba(0, 0, 0, 0.6) 0px 18px 44px 0px` in the browser against the real host. **This is the one task of the
+three whose red proof could not be run, and the reason is itself a finding: the deletion is unguarded.**
+The `@theme` value pin is `expect(Object.fromEntries(values)).toMatchObject({ … })`, which is
+non-exhaustive, so re-declaring `--shadow-raised` in `@theme static` reddens nothing; the not-on-`:root`
+list is a forbidden list over the type scale, and `design-tokens.mjs` checks literals rather than the
+vocabulary. Filed as **`vg-553`** and homed on Task 20.7 below.
+
 ### Task 20.2: `--shell-warm` is readable in every palette
 
 **Files:**
@@ -3164,6 +3182,17 @@ moss `:360` `#e4efd9`/`#e8c56a`; plum `:390` `#ece3f7`/`#ffb2a1`; light `:420` `
 var(--shell-warm)` appears in every palette block, so those inherit the fix. The seat measures all six
 palettes rather than assuming only the three the row names move.
 
+**CLOSED 2026-10-16 at `ed4d6ee8`, Phase 20's Task 20.2, `vg-201` verified.** Measured on `--shell-surface`:
+ember `#b81400` **5.34:1**, moss `#7a5800` **5.47:1**, plum `#b82100` **5.19:1**; the browser probe is 8
+passed, exit 0. **The controller ran the red proof itself**, green → cut → red → `cmp`-identical restore →
+green: with ember's `--shell-warm` back at the pastel `#ff7e6e`, `design-language-contrast.spec.ts` fails
+`ember: invalid is 1.98:1, below 4.5:1 — rgb(255, 126, 110) on rgb(247,226,210)` (1 failed, 7 passed, exit
+1), and the restored tree re-runs 8 passed exit 0. **Step 2's clause is inert and is recorded as such rather
+than closed as met**: `--vigilia-accent: var(--shell-warm)` is declared (`:115`), but the token is read by
+no rule, so deepening `--shell-warm` moves no canvas accent at all. That is **`vg-552`**, filed from this
+task's trailer, expanded by the controller to **ten** unread `--vigilia-*` tokens rather than the two the
+seat named, and homed on Task 20.7.
+
 ### Task 20.3: The token that lies goes
 
 **Files:**
@@ -3185,6 +3214,15 @@ becomes false when the declarations go and is part of this task. The test names 
 `:277` (a list) and `:459` (`NOT_A_COLOUR`, read at `:464`) — the ruling's `:398` is stale, **this step's
 `:459` is right**, and the ruling's `:78` is right. The seat re-verifies the crux itself: that nothing reads
 `var(--shell-flat)` and that the flat treatment is selector-driven.
+
+**CLOSED 2026-10-16 at `0c1f559e`, Phase 20's Task 20.3, `vg-312` verified.** All eight declarations, all
+four test mentions and the five prose sites go in one commit. **The controller ran the red proof itself**,
+green → cut → red → `cmp`-identical restore → green: re-adding `--shell-flat: 1;` to the bare `:root` block
+fails `the exclusion set is hiding a colour: expected [ '--shell-surface', …(11) ] to have a length of 11 but
+got 12` at `editor-shell.tokens.test.ts:456` (1 failed, 12 passed, exit 1), and the restored file re-runs
+13/13 exit 0. **This is the phase's only guard of its shape, and it is incidental rather than designed**:
+the `NOT_A_COLOUR` exclusion set is a length assertion, so it happens to notice an addition.
+`vg-553` asks for the deliberate version.
 
 ### Task 20.4: The drawings agree with the product's composed paint
 
@@ -3293,14 +3331,17 @@ not dispatched until it is answered.
 **Added 2026-10-16 mid-phase**, homing `vg-552`, which the seat doing Task 20.2 filed as a
 `Discovered, not fixed:` trailer naming two tokens and which the controller expanded by measurement to
 **ten of the fifteen** the control block declares. It belongs to this phase for Task 21.7's reason: it was
-found by a measurement rather than by a ruling, and its subject is the token vocabulary.
+found by a measurement rather than by a ruling, and its subject is the token vocabulary. **It carries a
+second row, `vg-553`, added the same day at Tasks 20.1–20.3's close**: nothing guards the `@theme static`
+block's *absences*, so a retired name can be declared again with every gate green — which is why Task 20.1's
+red proof could not be run at all.
 
 **Files:**
 - Modify: `src/web/packages/editor/src/editor-shell/editor-shell.css`; `editor-shell.tokens.test.ts`; and
   whatever reads the tokens that stay
 
 **Interfaces:**
-- Produces: `vg-552` closed
+- Produces: `vg-552` and `vg-553` closed
 
 - [ ] **Step 1: Re-run the measurement; the negative is searched, not assumed.** Per token by name,
       `grep -rn "var(--vigilia-<t>)" src/web --include=*.ts --include=*.tsx --include=*.css` with `dist/`
@@ -3321,6 +3362,14 @@ found by a measurement rather than by a ruling, and its subject is the token voc
       measurement command.** Note that `vg-201`'s ruling's *"let the canvas accent move with it"* is inert
       while `--vigilia-accent` has no reader, so whichever way this lands, that half of the ruling is
       discharged or corrected in the same commit.
+- [ ] **Step 4: `vg-553` — the vocabulary's absences get a guard, and its granularity is the decision.**
+      Today the surviving guard is one-directional: `shell-palette-tokens.spec.ts`'s `themeToken()` throws on
+      an absent token, so a *removal* is caught and an *addition* never is, while the `@theme` value pin is
+      `toMatchObject` and the not-on-`:root` list is a forbidden list over the type scale. An exhaustive
+      assertion over the whole `@theme static` block is **not** the fix — the block also carries the
+      `--color-*` aliases and the type scale, so it would redden on every legitimate addition. Choose the
+      granularity (a closed set per family, a per-retirement absence assertion, or something else), land it,
+      and **prove it red** by re-declaring a name this phase retired.
 
 ---
 
