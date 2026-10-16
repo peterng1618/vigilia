@@ -3598,6 +3598,20 @@ self-numbering document claims a `DESIGN.md` marker. It filed `vg-560`: the rede
 and numbers its own `§1`–`§13`, so its own `§2`, `§6` and `§7` still claim, which is `vg-352`'s shape one
 document over and is recorded as a known limit in `0060` and in `CITE_SOURCES`' docblock.
 
+**Task 21.3 landed the same day at `6952bad4` with decision note `0061`**, closing `vg-287` — **the registry
+owns a capture's freshness, and the check is a recorded sha against the surface it depicts**. The manifest
+is the README's own copy table widened by two columns rather than a `registry.json` beside it, because a
+second file would be the same eleven captures twice and adding one would mean editing two files, which is
+the drift the instrument exists to catch. **Its first live run is a finding and the seat reported it rather
+than tuning it green: 11 registered captures, 11 stale, 0 broken, exit 1** — every one moved by
+`editor-shell.css` (17 commits, newest `7874e879`) because **Phase 20's own token and elevation work is the
+cause**. The eleven are left alone: re-shooting is the action owner's job. **`vg-402` stays open and this is
+the phase's one deliberate half-close** — the row's question is answered on the instrument side and its
+closing condition (*"each stale capture re-shot"*) is not, so the measurement is written onto the row rather
+than the row closed around it. Two gaps are filed rather than left in the note: **`vg-561`** (the same
+README claims the two copies are the same bytes and nothing checks it) and **`vg-562`** (the three shell
+captures' surface sets omit the package that paints the stage they show).
+
 **Why a phase of its own.** All six edit `scripts/` or a registry under `docs/evidence/`, and the three
 sweep rows (`vg-380`, `vg-382`, `vg-386`) are **one instrument read three ways** — its selector direction,
 its `redundant-export` tier and its `barrel-only-export` tier. Phase 15 homed instrument gaps a
@@ -3619,7 +3633,12 @@ fails when the fix is disabled; `vg-386`'s re-run count is recorded as a measure
 **[Corrected 2026-10-17: `vg-352` carries one too, and this line did not name it. Task 21.2's brief read
 the omission as an instruction and was wrong to — the case landed because the row's own failure shape
 needs one, which is the right reason and not this line's. The list is widened rather than left to
-mislead the next seat.]**
+mislead the next seat.]** **[Corrected again the same day, when Task 21.3 landed `vg-287` with one and this
+line still did not name it: **the rule is that every row in this phase whose failure shape permits a red
+case carries one, and the three names above are instances of it rather than the set.** The list has now
+been widened twice for the same reason, so it is stated as the rule and left incomplete on purpose — a
+seat that reads a list of three as an exhaustive contract is reading it wrong, and the row's own failure
+shape is what decides.]**
 
 **Failure modes:** widening the reuse gate until it refuses the tree, which `vg-144`'s own ruling rejects
 — the blunt presence-only reading stays and only the *unit* a claim is made in changes; a citation source
@@ -3729,6 +3748,61 @@ exists anywhere in `docs/`, `src/` or `scripts/`.
 - [ ] **Step 1: Each registered capture records the commit it was taken at and the surface paths it shows**, and the scanner reports a capture whose surface paths have commits after that sha, so a stale image is a finding rather than a habit.
 - [ ] **Step 2: Both READMEs today name an action and a file and nothing about the product generation** — which is how the shell-palette and keyboard-reference images could contradict the product for two plans with every gate green.
 - [ ] **Step 3: Close it**, with the scanner's own `--self-test` and one deliberately stale capture reported.
+
+**[Closed 2026-10-17 at `6952bad4`, base `ed6b32d7`, decision note `0061`. `vg-287` closes; `vg-402` does
+not, and the half it leaves is named below.]** The ruling's shape is what landed: **the registry owns a
+capture's freshness, and the check is a recorded sha against the surface it depicts** —
+`scripts/capture-freshness.mjs` (309 lines) reads each capture's `Taken at` sha and `Surfaces` paths, runs
+`git log <sha>..HEAD -- <path>` per surface, and exits 1 on a finding.
+
+**The manifest is the copy table itself, and the argument for that is the row's own cost-if-wrong.** The
+README's table gained two columns — `Taken at` (the commit that last wrote the action's own file) and
+`Surfaces` (backticked repo-relative paths) — rather than a `registry.json` beside it. A second file would
+be the same eleven captures twice, and adding a capture would mean editing two files, which is exactly the
+drift the instrument exists to catch. **The table does not re-list the actions either**: those are
+Playwright titles in `src/web/tests/e2e/*.spec.ts`, which the capture workflow's `grep` input names, so a
+manifest repeating them would be a third list that can disagree with two.
+
+**Bytes are never compared, and that is the measurement the brief carried rather than a preference.** Two
+runs of `captures the settings modal's three tabs` on one bundle produce different bytes at identical
+dimensions, so a byte-diff scanner reports that capture stale on every run and the instrument becomes
+noise. The check keys on the recorded commit and the surface paths.
+
+**The first live run is the finding, and it was reported rather than tuned green.** `node
+scripts/capture-freshness.mjs` exits **1** with **11 registered captures, 11 stale, 0 broken**. Every one
+is moved by `editor-shell.css` (17 commits since the recorded sha, newest `7874e879` — Task 20.7's token
+retirement) and by `editor-shell/` and `components/ui/`, so **Phase 20's own token and elevation work is
+the cause**. The eleven are left alone: re-shooting is the action owner's job and needs built bundles, one
+worker and `VIGILIA_CAPTURE=1`, and this task is not a re-shoot.
+
+**The self-test is chained into `gates:self-test`** (`src/web/package.json:40`) rather than left as a
+script nobody runs. The live run is a **command rather than a gate step**, because gating on it would hold
+every commit red until the eleven are re-shot — the same distinction Task 21.7 states for its own
+instrument.
+
+**The red proof was re-run by the controller rather than taken from the seat.** With `commitsAfter`
+returning `[]`, the self-test reddens the named case at exit 1 (`FAIL reports a stale capture (expected
+exit 1 and "1 stale", got exit 0: … 0 stale, 0 broken)`) and the live run goes silent at `0 stale`, exit 0
+— which is the defect itself — and the file was restored byte-identical before the green re-run.
+
+**`vg-402` stays open and this is a deliberate half-close, not an omission.** The row's question is
+*whether it becomes a checked instrument or a scheduled act*, and only the instrument half is answered:
+its title's claim (*"nothing in the repo re-shoots the captures beside the drawings"*) is still true and
+its closing condition (*"each stale capture re-shot"*) is unmet. The measurement is written onto the row —
+11 of 11 stale — rather than the row closed around it, and **whether a re-shoot becomes a scheduled act is
+a scheduling ruling the scanner deliberately does not make.**
+
+**Two gaps are filed from this task rather than left in the note.** **`vg-561`**: the same README states
+that each capture's two copies are the same bytes and stay that way, and nothing checks it — a *copy* of a
+committed file is byte-comparable even though a *render* is not, so it is a cheap second instrument.
+**`vg-562`**: the three shell captures' `Surfaces` sets omit `scene-fabric`, which paints the stage those
+frames show, so a renderer change leaves them reported **fresh** — the unsafe direction. The seat recorded
+that rather than writing a plausible list, because the stage shows a *scene* and the honest bound is not a
+directory list; it is stated in `0061`'s limits and in the README's prose so it is not rediscovered as a
+defect.
+
+**Verify:** `node scripts/capture-freshness.mjs --self-test` exit 0 (5 cases); `npm run gate` exit 0;
+`npm run docs:check` exit 0; `npm run backlog:check` exit 0 (562 items).
 
 ### Task 21.4: The sweep reads class writes
 
