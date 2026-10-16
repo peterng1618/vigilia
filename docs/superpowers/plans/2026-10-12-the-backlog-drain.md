@@ -3612,6 +3612,18 @@ than the row closed around it. Two gaps are filed rather than left in the note: 
 README claims the two copies are the same bytes and nothing checks it) and **`vg-562`** (the three shell
 captures' surface sets omit the package that paints the stage they show).
 
+**Task 21.4 landed the same day at `137bfeb3` with decision note `0062`**, closing `vg-380` — **the reverse
+direction is in scope, and the selector instrument widens to class writes**. **Its own `Files:` line named a
+thing that does not exist**, and correcting that is what the task turned out to be about: the instrument was
+a one-off `node -e` command pasted into `docs/architecture/dead-selectors.md`, so Step 3's case — which a
+pasted command cannot carry — forced the question of where it lives. It is now
+`scripts/dead-selectors.mjs`, self-test chained into `gates:self-test`, live run left a command. **The row's
+own measurement was off by ten and the seat measured it rather than inheriting it**: the reverse direction
+reports **eleven** classes production source writes that neither stylesheet defines, not the one the row
+names, and none is a visible defect at HEAD. The forward direction's `PRODUCT` column is now keyed on
+**writes** rather than spellings, which is the ruling's second clause, and the document's stale §3 table
+(135 at `a7ef0c3a`, **130** at HEAD) is corrected with it. One gap filed: **`vg-563`**.
+
 **Why a phase of its own.** All six edit `scripts/` or a registry under `docs/evidence/`, and the three
 sweep rows (`vg-380`, `vg-382`, `vg-386`) are **one instrument read three ways** — its selector direction,
 its `redundant-export` tier and its `barrel-only-export` tier. Phase 15 homed instrument gaps a
@@ -3807,7 +3819,11 @@ defect.
 ### Task 21.4: The sweep reads class writes
 
 **Files:**
-- Modify: the sweep script's selector instrument
+- Modify: the selector instrument — **[corrected 2026-10-17: this line read "Modify: the sweep script's
+  selector instrument", which names a thing that does not exist.** `scripts/dead-code-sweep.mjs` contains
+  0 occurrences of `selector`, `className`, `classList` or `class=`; the instrument was a one-off `node -e`
+  command pasted into `docs/architecture/dead-selectors.md`. The task's real question was therefore *where
+  the instrument lives*, and it is answered in `0062`: `scripts/dead-selectors.mjs`.**]
 
 **Interfaces:**
 - Produces: `vg-380` closed
@@ -3815,6 +3831,49 @@ defect.
 - [ ] **Step 1: Read `className` and `classList` writes alongside `class=` literals**, so a class production writes that no stylesheet defines becomes visible and the PRODUCT column stops depending on whether a name happens to appear in prose.
 - [ ] **Step 2: Record the one measured instance in the report rather than dropping it** — it is harmless by accident, which is why the gap is closed before an instance arrives that is not.
 - [ ] **Step 3: Close it**, with a case that fails when the widened reading is disabled.
+
+**[Closed 2026-10-17 at `137bfeb3`, base `caa7ee86`, decision note `0062`. `vg-380` closes.]** The ruling's
+shape is what landed: **the reverse direction is in scope, and the selector instrument widens to class
+writes.** The instrument is now `scripts/dead-selectors.mjs` (423 lines) — **and the `Files:` line above
+named a thing that does not exist**, which is the task's real finding. Step 3 asks for a case that fails
+when the widened reading is disabled, and a pasted command cannot carry a fixture, which is what forced
+the question of where the instrument lives. The document keeps its reasoning and loses its command, so
+there is one executable copy; `--self-test` (7 cases) is chained into `gates:self-test`, and the live run
+is a **command** because it exits 1 at HEAD.
+
+**This row's own measurement was wrong and the seat measured it rather than inheriting it.** The row says
+`vigilia-field-hint` *"occurs exactly ONCE in the entire checkout"* — true of the **string**, not of the
+**direction**. The reverse reading reports **eleven** classes; the other ten had never been counted. All
+eleven are real DOM writes, none is defined in either stylesheet, and none is a visible defect at HEAD:
+four are unstyled hooks a test queries, two are painted inline, one is hidden by inline `cssText`, and
+four carry Tailwind utilities on the same element. **A task that finds its own premise off by ten is the
+reason the ruling was written as a direction rather than as an instance.**
+
+**The forward direction's second clause landed too**: the `PRODUCT` column is keyed on **writes** rather
+than spellings, and its bucket is corrected so `.html`/`.htm` under `src/web` counts as `PRODUCT` — a host
+page writing `class="hint"` is the product applying it — which removes the `.hint`/`.lead`/`.elsewhere`/
+`.theme-list` hand-clearing the document had recorded as its own limit. The shipped report is **5 of 130
+unapplied: the same five `data-*` attributes as before, and 0 of 97 classes**.
+
+**The narrowing is a judgement and is recorded as one.** 331 classes are written by production source and
+234 are undefined, so the reading is narrowed to the stylesheets' own namespaces (`editor-`, `vigilia-`,
+`theme-`): **11 named, 223 counted**. The prior art (`cssguard`, `gulp-check-unused-css`, `blok`) all needs
+a hand-kept list, and a report with 234 findings is one nobody reads. `data-*` deliberately keeps the
+spelling reading, because the ruling names classes and `dataset`'s camelCase form has no single write
+shape; the asymmetry is in `0062`.
+
+**The document was also stale where it was read as current**, and the seat measured it rather than
+inheriting it: §3's table is 84+32+17+2 = 135 at `a7ef0c3a` and **130** at HEAD (80+31+17+2), because
+Phase 20's token work retired four classes and one attribute, and `editor-shell.css` is 2,826 lines rather
+than the 2,558 it states.
+
+**The red proof was re-run by the controller rather than taken from the seat**: with `classWrites`
+returning no writes, **5 of the 7 self-test cases fail at exit 1**, and the two survivors are the attribute
+half and the unreadable-stylesheet case, which do not depend on the widening. One gap is filed rather than
+left in the report: **`vg-563`** (three passes in that document and only one of them is a script).
+
+**Verify:** `node scripts/dead-selectors.mjs --self-test` exit 0 (7 cases); `npm run gate` exit 0 (263
+files, 3483 tests); `npm run docs:check` exit 0; `npm run backlog:check` exit 0.
 
 ### Task 21.5: A declaration is not a use
 
