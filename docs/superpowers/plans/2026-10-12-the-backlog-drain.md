@@ -2761,6 +2761,22 @@ because this fixture's document carries none and §9's missing reading is a gap 
 - [ ] **Step 3: Do not add a persisted save counter** — it would add a column to every theme document to cover two saves inside one millisecond, and `id` is already stable, unique and persisted.
 - [ ] **Step 4: Close it against that case.**
 
+**Annotated 2026-10-16, at the task's close: `vg-363` is `verified` at `e836a9ee`.** **Step 1's
+composition held, so nothing normative was wrong** — the ruling's answer is real, it is just **composed
+from two files rather than written in the one the ruling named**, which is why a source reading could not
+close the row. **Step 2's case is the whole deliverable and it pins both halves**: cutting the reduce to
+`>=` and reversing the store's sort each read **1 failed exit 1**, `expected 'theme-b' to be 'theme-a'` —
+the assertion rather than a compile error — restored byte-identically with `cmp` to **87 passed exit 0**.
+**The Files line above was corrected by the landing**: the case went to `host/src/themes/store.test.ts`,
+inside the suite's existing `tmpDir` harness, **because `packages/editor/tsconfig.json` carries no
+`@types/node`** (the `renderer-core` shim has no `node:fs/promises`), so the host is the one program where
+the real store and the real mount are both reachable — a relative import of `boot-theme.js` and a
+three-line why-comment. **Step 3 held**: no persisted field and no save counter. **One claim on the row was
+stale and is corrected on the row** — `seedHostTheme` writes **eleven** fixture themes, not ten. **What the
+row never measured is still unmeasured and the row says so**: whether the two original runs straddled two
+milliseconds is not recoverable, so what closed is the tie-break, not that race. **This task ran in
+parallel with Task 18.5** on disjoint scopes — the phase's first parallel dispatch.
+
 ---
 
 # Phase 19 — W14: the surfaces the editor has not wired, and the ones it draws wrong
