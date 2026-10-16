@@ -50,7 +50,7 @@
  *                            runtime is invisible here, which is the known
  *                            false positive of this kind.
  *
- * Usage:  node scripts/dead-code-sweep.mjs [--json <path>] [--self-test]
+ * Usage:  node scripts/dead-code-sweep.mjs [--json <path>] [--root <dir>] [--self-test]
  *
  *   --json <path>  the CANDIDATE report, written in every mode, `--self-test`
  *                  included. The self-test result never goes to this path: its
@@ -58,6 +58,12 @@
  *                  `src/web/test-results/dead-code-sweep-self-test.json`, so a
  *                  run that asks for both cannot silently overwrite the counts
  *                  a later phase is budgeting against.
+ *   --root <dir>   scan this directory instead of the repository this script
+ *                  lives in. The self-test's fixture run is the only caller: it
+ *                  writes a small tree to a temp directory and runs this script
+ *                  again against it, so the kind-fires checks name a file the
+ *                  test owns rather than one the product may legitimately change
+ *                  (decision `0067`).
  *   --self-test    run the checks below and exit non-zero on any failure. Both
  *                  this file and the `--json` one are overwritten with an
  *                  incomplete marker before the run starts (see below), and the
@@ -65,17 +71,30 @@
  *                  in-progress document, then the result — so moving any of
  *                  those writes is a change to the crash story, not a tidy-up.
  */
-import { mkdirSync, readFileSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { spawnSync } from "node:child_process";
+import { mkdirSync, mkdtempSync, readFileSync, readdirSync, renameSync, rmSync, statSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-
-const ROOT = resolve(fileURLToPath(new URL("..", import.meta.url)));
-const WEB = join(ROOT, "src/web");
 
 const argv = process.argv.slice(2);
 const jsonAt = argv.indexOf("--json");
 const jsonPath = jsonAt === -1 ? null : argv[jsonAt + 1];
+const rootAt = argv.indexOf("--root");
 const SELF_TEST = argv.includes("--self-test");
+
+/**
+ * The tree to scan. `--root` exists for the self-test's fixture run and is the
+ * whole of its fixture mechanism (decision `0067`): the checks that a kind fires
+ * are asserted against a tree the test owns, and that tree is analysed by *this
+ * program run again* rather than by a second classifier that could drift from it.
+ */
+if (rootAt !== -1 && argv[rootAt + 1] === undefined) {
+  process.stderr.write("--root needs a directory\n");
+  process.exit(2);
+}
+const ROOT = rootAt === -1 ? resolve(fileURLToPath(new URL("..", import.meta.url))) : resolve(argv[rootAt + 1]);
+const WEB = join(ROOT, "src/web");
 
 // ---------------------------------------------------------------------------
 // A crash must not read as a pass
@@ -962,30 +981,99 @@ if (!SELF_TEST) process.stdout.write(renderReport(report));
  * reported as unused. The route case proves the following, not the firing.
  */
 if (SELF_TEST) {
-  const at = (kind, file, symbol) =>
-    candidates.some(
+  /**
+   * The kind-fires checks run against a fixture tree this self-test writes, not
+   * against live source files (`vg-550`, decision `0067`). Two of the four files
+   * they used to name were invalidated by work the product wanted:
+   * `font-picker.tsx` by the mount that closed `vg-268`/`vg-283`, and
+   * `boot-theme.ts`, the *negative* fixture, by an export that reddened the whole
+   * of Phase 6. A check naming a live file is a check the product can break by
+   * improving, so the fixture is the contract instead.
+   *
+   * It is analysed by **this script, run again** (`--root`) rather than by a
+   * second classifier in this process: the child is the same program over a
+   * different root, so there is no second implementation for it to drift from.
+   *
+   * The shape, and each file earns its place:
+   *
+   *   live.ts    a module a *production* file imports — the negative case, and
+   *              the one file no kind may report.
+   *   reader.ts  imported only by a test file — `test-only-consumer`.
+   *   field.ts   a production file imports it, so it is not test-only; but
+   *              nothing imports `settingsField` and its own file never reads
+   *              it — `dead-export`.
+   *   card.ts    the same, except its own file calls `instantiateCard` once —
+   *              `redundant-export`, and the row whose evidence number must be
+   *              1 against 2 raw occurrences.
+   *
+   * `field.ts` and `card.ts` import each other: that is what gives each a
+   * production importer without a third file, which would itself be a candidate
+   * and add a row these checks do not name.
+   */
+  const FIXTURE_PKG = "src/web/packages/sweep-fixture/src";
+  /**
+   * `import { names } from "<spec>"`. The specifier is passed rather than spelled
+   * so this file's own text does not read as four unresolved relative imports:
+   * the sweep scans `scripts/`, so the graph these checks exercise is the very
+   * one that would report them, and `unresolvedRelativeSpecifiers` is a
+   * diagnostic a phase reads.
+   */
+  const importFrom = (names, spec) => `import { ${names} } from ${JSON.stringify(spec)};\n`;
+  const FIXTURE_FILES = {
+    [`${FIXTURE_PKG}/live.ts`]: "export const live = 1;\n",
+    [`${FIXTURE_PKG}/reader.ts`]: `${importFrom("live", "./live")}export const read = () => live;\n`,
+    [`${FIXTURE_PKG}/reader.test.ts`]: `${importFrom("read", "./reader")}read();\n`,
+    [`${FIXTURE_PKG}/field.ts`]: `${importFrom("usedCard", "./card")}export const usedField = 1;\nexport function settingsField() {\n  return usedCard + 2;\n}\n`,
+    [`${FIXTURE_PKG}/card.ts`]: `${importFrom("usedField", "./field")}export const usedCard = 1;\nexport function instantiateCard() {\n  return usedField + 2;\n}\ninstantiateCard();\n`,
+  };
+
+  const fixtureRoot = mkdtempSync(join(tmpdir(), "dead-code-sweep-fixture-"));
+  let fixtureExit = null;
+  let fixtureCandidates = [];
+  try {
+    for (const [rel, body] of Object.entries(FIXTURE_FILES)) {
+      const full = join(fixtureRoot, rel);
+      mkdirSync(dirname(full), { recursive: true });
+      writeFileSync(full, body, "utf8");
+    }
+    // The report sits at the fixture root, which the walk never visits: it scans
+    // `src/web/packages/*/src`, `src/web/tests`, `src/web/scripts` and `scripts`.
+    const fixtureJson = join(fixtureRoot, "fixture-report.json");
+    const child = spawnSync(
+      process.execPath,
+      [fileURLToPath(import.meta.url), "--root", fixtureRoot, "--json", fixtureJson],
+      { encoding: "utf8" },
+    );
+    fixtureExit = child.status;
+    const doc = readJsonDoc(fixtureJson);
+    fixtureCandidates = Array.isArray(doc?.candidates) ? doc.candidates : [];
+  } finally {
+    rmSync(fixtureRoot, { recursive: true, force: true });
+  }
+
+  const fixtureAt = (kind, file, symbol) =>
+    fixtureCandidates.some(
       (candidate) =>
         candidate.kind === kind &&
         candidate.file === file &&
         (symbol === undefined || candidate.symbol === symbol),
     );
-  const inAnyKind = (file) => candidates.filter((candidate) => candidate.file === file);
-
-  const CARD_LIBRARY = "src/web/packages/editor/src/card-library.ts";
-  const UI_COPY_READERS = "src/web/packages/editor/src/ui-copy-readers.ts";
-  const SETTINGS_FIELD = "src/web/packages/editor/src/editor-shell/controls/settings-field.ts";
-  const LIVE = "src/web/packages/editor/src/boot-theme.ts";
 
   const checks = [
     ["the walk found the tree", all.length > 400],
     ["the walk found the test suite", all.filter(isTestFile).length > 200],
     [
-      // Pinned to a file whose test-only status is permanent rather than
-      // incidental. `font-picker.tsx` held this check until Task 19.1 mounted
-      // it — the mount was the fix two rows existed for, so the check was
-      // asserting the bug and went red on the improvement (`0058`).
-      "test-only-consumer lands on ui-copy-readers.ts",
-      at("test-only-consumer", UI_COPY_READERS),
+      // The guard on the fixture run itself: a child that crashed, or one whose
+      // report was the start-up marker, would leave `fixtureCandidates` empty and
+      // every kind-fires check below red for a reason that is not the sweep's.
+      "the fixture tree is analysed (the child run finished and reported candidates)",
+      fixtureExit === 0 && fixtureCandidates.length > 0,
+    ],
+    [
+      // A module only a test file imports. The real file this named held it only
+      // until the product mounted it, which is `vg-550`'s whole point.
+      "test-only-consumer fires on the fixture (a module only a test file imports)",
+      fixtureAt("test-only-consumer", `${FIXTURE_PKG}/reader.ts`),
     ],
     [
       "no test file is ever a candidate (discovery is an edge)",
@@ -1000,32 +1088,34 @@ if (SELF_TEST) {
     ],
     ["no ambient .d.ts is a candidate", candidates.every((candidate) => !isAmbientTypes(candidate.file))],
     [
-      "dead-export lands on settingsField() (its own file never uses it)",
-      at("dead-export", SETTINGS_FIELD, "settingsField"),
+      "dead-export fires on the fixture (its own file never reads the symbol, and no production file imports it)",
+      fixtureAt("dead-export", `${FIXTURE_PKG}/field.ts`, "settingsField"),
     ],
     [
-      "redundant-export lands on instantiateCard (its own file calls it)",
-      at("redundant-export", CARD_LIBRARY, "instantiateCard"),
+      "redundant-export fires on the fixture (its own file calls the symbol)",
+      fixtureAt("redundant-export", `${FIXTURE_PKG}/card.ts`, "instantiateCard"),
     ],
     /**
      * The number in a redundant row is evidence a Phase 2 reader acts on, so it
-     * must mean what its sentence says. `instantiateCard` is declared once and
-     * called once: the raw occurrence count is 2, and a row reporting 2 says a
-     * second call site exists when it does not. This fails the moment the
-     * declaration is counted again — the raw count is asserted here separately,
-     * so the check is not a restatement of the emitter.
+     * must mean what its sentence says. The fixture's `instantiateCard` is
+     * declared once and called once: the raw occurrence count is 2, and a row
+     * reporting 2 says a second call site exists when it does not. This fails the
+     * moment the declaration is counted again — the raw count is read off the
+     * fixture body this test wrote, not off the emitter, so the check is not a
+     * restatement of it.
      */
     [
-      "a redundant row reports uses, not occurrences (instantiateCard is declared once and called once, so 1)",
+      "a redundant row reports uses, not occurrences (the fixture's instantiateCard is declared once and called once, so 1)",
       (() => {
-        const row = candidates.find(
+        const row = fixtureCandidates.find(
           (candidate) =>
-            candidate.kind === "redundant-export" &&
-            candidate.file === CARD_LIBRARY &&
-            candidate.symbol === "instantiateCard",
+            candidate.kind === "redundant-export" && candidate.file === `${FIXTURE_PKG}/card.ts`,
         );
         const claimed = /\((\d+) occurrence/.exec(row?.evidence ?? "")?.[1];
-        return claimed === "1" && usesIn(selfUse.get(CARD_LIBRARY), "instantiateCard") === 2;
+        return (
+          claimed === "1" &&
+          usesIn(stripStrings(FIXTURE_FILES[`${FIXTURE_PKG}/card.ts`]), "instantiateCard") === 2
+        );
       })(),
     ],
     /**
@@ -1084,8 +1174,13 @@ if (SELF_TEST) {
       ),
     ],
     [
-      "the negative case is absent from every kind",
-      inAnyKind(LIVE).length === 0,
+      // The fixture's `live.ts` is imported by `reader.ts`, a production file, so
+      // it is live and no kind may report it. Its real counterpart held this
+      // check until `BootThemeOutcome` was exported from `boot-theme.ts` with no
+      // production importer — a *negative* fixture that is a real file is the
+      // same defect wearing the opposite sign, and it reddened all of Phase 6.
+      "the negative case is absent from every kind (the fixture's live.ts is imported by a production file)",
+      fixtureCandidates.every((candidate) => candidate.file !== `${FIXTURE_PKG}/live.ts`),
     ],
     [
       "every candidate carries kind, file and the search that found it",
