@@ -2053,6 +2053,43 @@ separately because `gate`'s `test` is `vitest run`.
 **Failure modes:** repainting a drawing to match a product bug; a fix that makes the product agree with a
 drawing the design language contradicts; treating a pass's line number as a landmark.
 
+**Annotated 2026-10-16, at the phase's close: every task has run, the phase's fifteen rows stand at
+thirteen `verified`, one `withdrawn` and one still open, and the Acceptance's instrument clause is met by
+two of the four rows it names.** Phase 16's rows closed across Tasks 16.1–16.5 — `vg-479`, `vg-480`,
+`vg-491`; `vg-483`, `vg-493`, `vg-494`, `vg-498`; `vg-496`, `vg-497`, `vg-492`; `vg-484`, `vg-486`,
+`vg-489`, `vg-499`; `vg-487`, `vg-495` — and the two that do not close here are stated rather than
+smoothed: **`vg-490` stays `open`, narrowed**, and `vg-499` is `withdrawn`.
+
+**The Acceptance's four instrument-shaped rows, taken one at a time, because two of them cannot carry the
+case it asks for and a close that claims four would be false.**
+
+- **`vg-494` and `vg-492` carry it, and both were proved red.** `vg-494` fails at the out-of-range note
+  while its two disagreement assertions above it pass, so the proof shows the note is what the case reads;
+  `vg-492` reddens at `expected [ '1', '2', '3', '4' ] to deeply equal [ '1', '2', '3' ]` when the arm is
+  put back.
+- **`vg-491`'s fix was a deletion, so the clause cannot be taken in the direction it is written.** The row
+  measured that deleting the four `::-webkit-scrollbar*` rules **reddens three existing cases** rather than
+  leaving every check green — which is the same evidence with the sign flipped, and it also falsified two
+  of the row's own claims. There is no fix to disable: the rules were dead declarations no browser this
+  repo runs would read.
+- **`vg-499` was `withdrawn`, so it owes no case at all.** Its measurement made the row's second clause
+  false — the Tokens pane already derives and names the selection's preset — and a `verified` row whose
+  title asserts an absence that does not exist would have needed a `check` for a capability that was never
+  gone. **The phase's instrument clause should not be read as having been met four times.**
+
+**Two of the phase's rows were falsified by the work rather than fixed by it, and both are on the row.**
+`vg-496`'s cascade clause — that raising a drawing pulls its capture — is wrong, because a capture beside a
+drawing is a copy of the built product and the product was already right; and `vg-499`'s premise is wrong
+outright. **Three of the phase's briefs carried a pointer the seat falsified**: `vg-496`'s two drawings
+were three, `vg-492`'s `editor-shell.css:2339` was `:2441`, and Task 16.5's `inspector-sections.spec.ts:1055`
+was `:1102`. `vg-489`'s premise held and `vg-487`'s citation did not, which is the pass's correction being
+right about a file the row named wrongly.
+
+**The phase's Verify line was run as written**: `npm run gate` exit 0 with its code read from `$?` into a
+file at every close — 261 files and 3444, 3448, 3450, 3454 tests across the five tasks, the count rising as
+each added cases — and the browser suite named separately for 16.1, 16.3 and 16.5 on rebuilt bundles with
+`control-fixture.html` present.
+
 **Verify:** `npm run gate` (exit code read from `$?` into a file, never through a pipe), plus the
 browser suite for Tasks 16.1, 16.3 and 16.5 on a rebuilt bundle.
 
