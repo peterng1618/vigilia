@@ -2903,6 +2903,25 @@ bytes from a CDN the suite does not own.
 - [ ] **Step 2: Coalesce the recompute to the animation frame** the canvas already paints rather than dropping the event, and measure the drag's frame budget. If the per-frame recompute costs it, the answer is a cheaper recompute, not a return to release-only tracking.
 - [ ] **Step 3: Close it.**
 
+**Annotated 2026-10-16, at the task's close: `vg-142` is `verified` at `be181f68`.** **Step 1's premise is
+the phase's fifth stale row description**: there is no `sizeNote.textContent` at `artboard-panel.ts:336` and
+no `refreshNote` writer — the file is **145 lines** and the note is React-rendered (`sizeNote` is a pure
+function at `panes/document/artboard-fields.tsx:236`, rendered at `:198` from `boxes`, which
+`artboard-panel.ts:98` reads from `sceneBoxes()` at the moment of the draw). **The subject reproduces exactly
+and the mechanism is the subscription alone**: `on("object:modified", draw)` was the only canvas
+subscription, and Fabric fires that on release. The mid-drag reading with the button still down was the rule
+text alone before and the figure after. **Step 2 landed as coalescing rather than dropping**, and
+**`destroy()` cancels the armed frame** as well as releasing the listener. **Step 3's frame-budget clause was
+measured and does not fire**: the recompute reads **2.3–3.2 ms median against a 16.7 ms frame**, with the
+callback split proven on a no-subscription build, so no cheaper recompute is owed. **Red-proved and re-run by
+the controller**: cutting the subscription reads **1 failed / 24 passed exit 1**,
+`one recompute for the frame: expected 1 to be 2`; restored byte-identically with `cmp` to **25 passed exit
+0**, and the browser case reads **1 passed exit 0**. **One stale pointer in this task's brief was the
+controller's own** — it cited `bleed.ts` for the `object:modified` write, and that file is 62 lines with no
+fire in it; the write and its comment are `selection-inspector/index.ts:414` and `:417-419`. **Not verified**:
+the drag was desktop-only, the frame numbers are one machine's, and the cross-batch repaint comparison is not
+trustworthy.
+
 ### Task 19.3: A pane's chrome stops scrolling with its body
 
 **Files:**
