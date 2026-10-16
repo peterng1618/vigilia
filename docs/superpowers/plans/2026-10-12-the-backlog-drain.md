@@ -2861,7 +2861,7 @@ bundle.
 
 **Files:**
 - Modify: the selection inspector's text section (the new text face field)
-- Read: `src/web/packages/editor/src/components/ui/font-picker.tsx`
+- Read: `src/web/packages/editor/src/font-picker/font-picker.tsx` (**corrected 2026-10-16 at `e2897f16`: this line said `components/ui/font-picker.tsx`, and the component has never lived there — `FontPickerProps` is at `:95` and `FontPicker` at `:119` of the path above**)
 
 **Interfaces:**
 - Produces: `vg-268`, `vg-283` closed
