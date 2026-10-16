@@ -3083,7 +3083,11 @@ alias `--shell-warm`, but no rule reads it, so *"let the canvas accent move with
 is `vg-552`, also Task 20.7.]** **[Closed in part further 2026-10-16: Task 20.4 landed as `5ea10439`, closing `vg-301` on its
 chord half and `vg-202` with no edit owed — the `5px 8px` wells the ruling wanted corrected exist only in
 the two frozen originals. The segmented control's half of `vg-301` did not reproduce, so it is split out as
-`vg-554` and homed on a new **Task 20.8**.]**
+`vg-554` and homed on a new **Task 20.8**.]** **[Task 20.7 closed the same day at `7874e879` and `150ad617`,
+retiring all ten unread `--vigilia-*` declarations and adding the first assertion in the token test that
+fails on an ADDITION rather than a removal. Its measurement corrected `vg-201`'s ruling: the canvas accent
+is the theme document's `palette.accent`, so no CSS custom property can move it, and that clause is
+unreachable rather than merely inert.]**
 
 **Why a phase of its own.** Six of the seven edit `editor-shell.css` or a drawing under
 `docs/design/mockups/`, and the seventh edits the design-language reader. They are one subject: what the
@@ -3373,6 +3377,45 @@ red proof could not be run at all.
       `--color-*` aliases and the type scale, so it would redden on every legitimate addition. Choose the
       granularity (a closed set per family, a per-retirement absence assertion, or something else), land it,
       and **prove it red** by re-declaring a name this phase retired.
+
+## Task 20.7 — closed 2026-10-16
+
+**CLOSED at `7874e879` (`vg-552`) and `150ad617` (`vg-553`). All ten tokens are retired and none is wired**,
+because the seat checked each named surface against the product and **none exists**: the five plain aliases
+duplicate `--shell-*` roles every surface already reads directly; `--vigilia-input-bg`'s "text field's own
+white" has no white surface, the field being `bg-transparent` inside `ControlWell`, which is `bg-panel-2`
+inside `border-edge`; `--vigilia-selection-bg` has no reader because the selected layer row paints
+`color-mix(in srgb, var(--shell-text) 14%, transparent)`; and `--vigilia-guide` has no reader because guides
+are Fabric's `GUIDE_COLOR`. **The footprint was one declaration each**, unlike `vg-312`'s eight — every one
+declared once in the `:root` block, no test mention, no mockup mention — plus two prose sites corrected in
+the same commit.
+
+**`vg-201`'s ruling's second clause is UNREACHABLE THROUGH THIS MECHANISM, and that is a stronger finding
+than the row's "inert".** The alias `--vigilia-accent: var(--shell-warm)` was real and read by nothing, but
+the reason no wiring could fix it is structural: the canvas is Fabric-painted from the theme document, whose
+accent is **`palette.accent`** — a persisted theme value read by `renderer-core` (`scene/plan.ts`,
+`charts/chart-paint.ts`) and not by any stylesheet. **No CSS custom property can move the canvas accent,
+whatever reads it.** What the ruling did land is the half that mattered: `--shell-warm` is deepened and
+every `--warn` text moved with it. **What is left open and is not this row's**: whether the shell's warm
+should also move the theme document's `palette.accent` is a question about persisted theme data, and nobody
+has ruled on it. Recorded as a dated note on `vg-201`'s archived row.
+
+**The guard is a per-retirement list, and the controller re-ran its red proof on one name per retirement
+commit** rather than trusting the seat's sweep of thirteen: `--shadow-raised` (20.1), `--shell-flat` (20.3)
+and `--vigilia-accent` (20.7) each read **exit 1** with the case's own message, baseline is **14/14 exit 0**,
+and every restore is `cmp`-identical. **An exhaustive assertion over `@theme static` was refused with a
+reason**: that block also carries the type scale and the `--color-*` aliases, so a closed set over it would
+redden on every legitimate addition. `RETIRED_TOKENS` is the vocabulary this phase closed, and a name joins
+it when it is retired — the one moment the fact is known.
+
+**One pointer in this plan is stale and is corrected here rather than in the closed tasks that carry it:**
+`tests/e2e/shell-appearance.spec.ts` **is not on disk** — it was split at `81426c44` into
+`tests/e2e/shell-surfaces.spec.ts` and `tests/e2e/shell-palette-appearance.spec.ts`. The name appears in
+Tasks 2.3, 2.5, 13.5 and 15.x, where it is **accurate history** for work those tasks did at the time, so
+those lines are left as written; what changes is that a live reader now has the current names here.
+`docs:check` does not catch this and is not meant to — `scripts/check-doc-references.mjs` resolves
+`plans/*.md` references only. **Fixed on the fly rather than filed**: the cause is named, the fix sits in
+one document, and no test could assert a prose pointer.
 
 ### Task 20.8: The segmented control's drawn treatment, and the capture that never shows it
 
