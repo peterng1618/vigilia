@@ -468,6 +468,54 @@ it("edits a gradient's angle, its stops and an added stop", async () => {
   });
 });
 
+it("gives a gradient stop's bounded offset a track, and keeps the fraction the well types", async () => {
+  // `vg-493`. The offset is bounded at 0 and 1 — the two ends of the value's own
+  // range — and DESIGN.md §5's vocabulary gives a bounded number a track, which
+  // this row drew as a text box while the inspector's bounded numbers carried
+  // one. It is not the artboard's case: 16384 there is a validity ceiling rather
+  // than a range anyone drags, so a track with sixteen thousand steps would be
+  // no control at all.
+  const { host, change } = await mount(GLOW_GRADIENT, { usage: undefined });
+
+  const track = host.querySelector<HTMLInputElement>(
+    "[data-vigilia-palette-stop-offset]",
+  );
+  expect(track, "the offset is not a track's own range input").not.toBeNull();
+  expect(track?.type, "the offset is still a text box").toBe("range");
+  expect(track?.min).toBe("0");
+  expect(track?.max).toBe("1");
+  // The control set's default step of 1 would leave a 0–1 track holding only its
+  // two ends, so the offset's own granularity has to reach the slider.
+  expect(
+    Number(track?.step),
+    "a 0–1 track with no fractional step",
+  ).toBeGreaterThan(0);
+  expect(Number(track?.step)).toBeLessThan(1);
+
+  // The typed route is the same control's other half, and it is the one that
+  // carries the value unchanged: a percentage projection would show 37 for a
+  // stored 0.375, which is the shown/stored gap `vg-494` is about.
+  await type(
+    document.querySelector<HTMLInputElement>(
+      "[data-vigilia-palette-stop-offset-well]",
+    )!,
+    "0.375",
+  );
+  expect(change).toHaveBeenLastCalledWith({
+    glow: {
+      name: "Glow",
+      value: {
+        kind: "gradient",
+        angle: 0,
+        stops: [
+          { offset: 0.375, color: BACKGROUND_PAINT },
+          { offset: 1, color: BACKGROUND_PAINT },
+        ],
+      },
+    },
+  });
+});
+
 it("carries a replacement into the delete, and deletes through the port", async () => {
   const remove = vi.fn();
   const { host } = await mount(PAINT_LIST_PALETTE, {

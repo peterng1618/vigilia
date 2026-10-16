@@ -1,7 +1,12 @@
 import type * as React from "react";
 import { useEffect, useRef } from "react";
 import { tooltip } from "../../editor-shell/controls/tooltip.js";
-import { type ControlProps, isBlocked, useControlIds } from "./control-well.js";
+import {
+  type ControlProps,
+  describedBy,
+  isBlocked,
+  useControlIds,
+} from "./control-well.js";
 
 /**
  * One string, two consumers: a control hands this its `label` and gets the
@@ -63,6 +68,7 @@ export function ControlIconButton(
     id,
     disabled,
     refused,
+    describedById,
     data,
     destructive,
     shortcut,
@@ -89,7 +95,15 @@ export function ControlIconButton(
         type="button"
         aria-label={label}
         aria-disabled={refused === undefined ? undefined : true}
-        aria-describedby={refused === undefined ? undefined : ids.reason}
+        // The pane's own note first, then the row's refusal, in `describedBy`'s
+        // reading order. `describedById` is the one route a note the control
+        // cannot mint reaches a screen reader by, and this button is the one
+        // control that *draws* its reason — so accepting the prop and dropping
+        // it lost a standing note silently (`vg-483`).
+        aria-describedby={describedBy(
+          describedById,
+          refused === undefined ? undefined : ids.reason,
+        )}
         disabled={disabled}
         onClick={() => {
           if (blocked) return;

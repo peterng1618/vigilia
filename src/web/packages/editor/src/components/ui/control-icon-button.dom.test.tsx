@@ -251,6 +251,51 @@ describe("the control set's own icon button", () => {
     const button = container.querySelector("button")!;
     expect(tooltipActionText(tooltipFor(button)!)).toBe("Delete layer");
   });
+
+  it("describes itself by the pane's standing note, and by its refusal beside it", () => {
+    // `vg-483`. `ControlProps.describedById` is the one route a note whose id
+    // the control cannot mint reaches a screen reader by, and this control —
+    // the one that also *draws* its refusal — accepted the prop and never read
+    // it, so an icon button handed a pane's standing note was announced without
+    // it and nothing failed.
+    const container = mount(
+      <ControlIconButton
+        label="Delete layer"
+        describedById="vigilia-pane-note"
+        refused="the layer is locked"
+        onClick={vi.fn()}
+      >
+        <Glyph icon={PENCIL_GLYPH} size={15} />
+      </ControlIconButton>,
+    );
+    const button = container.querySelector("button")!;
+    const reason = container.querySelector<HTMLElement>("span[id$='-reason']");
+    expect(
+      reason,
+      "the refusal is not drawn, so this is not the state",
+    ).not.toBeNull();
+    // Both, in `describedBy`'s reading order: the note outside the control
+    // first, then the row's own reason.
+    expect(
+      (button.getAttribute("aria-describedby") ?? "").split(" "),
+      "the note and the refusal are not both on the button",
+    ).toEqual(["vigilia-pane-note", reason?.id]);
+
+    // And the note alone is still the description: it is not a field the
+    // refusal happens to carry.
+    const bare = mount(
+      <ControlIconButton
+        label="Duplicate layer"
+        describedById="vigilia-pane-note"
+        onClick={vi.fn()}
+      >
+        <Glyph icon={STACK_GLYPH} size={15} />
+      </ControlIconButton>,
+    );
+    expect(bare.querySelector("button")?.getAttribute("aria-describedby")).toBe(
+      "vigilia-pane-note",
+    );
+  });
 });
 
 /** Mounts one node into a fresh host, for the single-control case above. */

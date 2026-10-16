@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import { readFileSync } from "node:fs";
+import { dirname, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { RadioGroup } from "@base-ui/react/radio-group";
 import { act } from "react";
@@ -17,6 +18,24 @@ import { ControlText } from "./control-text.js";
 import { ControlToggle } from "./control-toggle.js";
 import { wellClasses } from "./control-well.js";
 import { InspectorSection } from "./inspector-section.js";
+
+/** `DESIGN.md`, seven levels above this file — the same way `design-md.test.ts`
+ *  reaches the root `scripts/`. §3's spacing table is normative for the control
+ *  set, and nothing compared it to what the set writes (`vg-498`).
+ *
+ *  `dirname` on the file's own path rather than `new URL(relative, …)`: under
+ *  jsdom the *global* `URL` is the environment's, and a `../`-prefixed
+ *  specifier resolves against its `http://localhost:3000/` base rather than
+ *  against the file's — which `fileURLToPath` then refuses. */
+function design(): string {
+  return readFileSync(
+    resolve(
+      dirname(fileURLToPath(import.meta.url)),
+      "../../../../../../../DESIGN.md",
+    ),
+    "utf8",
+  );
+}
 
 /**
  * The shared rules of the one control set — the two that are defects rather
@@ -969,6 +988,83 @@ it("does nothing on a wheel while the value sits outside the control's own range
   expect(onCommit).not.toHaveBeenCalled();
 });
 
+it("states the stored value its own track cannot reach, rather than drawing a different one", async () => {
+  // `vg-494`. The state another owner's measure leaves behind, the one the wheel
+  // case above is the other half of: a panel carrying a border of 100 whose box
+  // is typed down to a drawn edge of 40 has `max` 40 and a stored value of 100.
+  // The two halves of one control then read two different numbers, and the track
+  // cannot stop doing that — the platform clamps an `input[type=range]` to its
+  // own bounds, and ARIA will not let a slider report a value outside them
+  // either. So the control says which of the two is the document's.
+  await mount(
+    <ControlSlider
+      label="Border"
+      value={100}
+      min={0}
+      max={40}
+      onCommit={() => {}}
+    />,
+  );
+  const track = document.querySelector<HTMLInputElement>('input[type="range"]');
+  const well = document.querySelector<HTMLInputElement>('input[type="text"]');
+  expect(track, "the track is not a range input").toBeTruthy();
+  expect(well, "the well is not an input").toBeTruthy();
+  if (track === null || well === null) return;
+  // The disagreement itself, read off one mounted control: the thumb at the
+  // bound and the well on the document's value.
+  expect(track.value, "the platform no longer clamps the thumb").toBe("40");
+  expect(well.value).toBe("100");
+
+  const note = document.querySelector<HTMLElement>(
+    "[data-vigilia-slider-out-of-range]",
+  );
+  expect(
+    note,
+    "the track draws the bound and says nothing about the value it cannot " +
+      "reach, so the two halves of the control disagree in silence",
+  ).not.toBeNull();
+  expect(note?.textContent).toContain("100");
+  expect(note?.textContent).toContain("40");
+  // Connected to both halves: the thumb is the element that cannot report the
+  // value, and the well is the element that reads it.
+  expect(track.getAttribute("aria-describedby")?.split(" ")).toContain(
+    note?.id,
+  );
+  expect(well.getAttribute("aria-describedby")?.split(" ")).toContain(note?.id);
+
+  // The other direction, and the same state: a stored value under the floor.
+  await mount(
+    <ControlSlider
+      label="Angle"
+      value={-500}
+      min={-360}
+      max={360}
+      onCommit={() => {}}
+    />,
+  );
+  const under = document.querySelector<HTMLElement>(
+    "[data-vigilia-slider-out-of-range]",
+  );
+  expect(under?.textContent).toContain("-500");
+  expect(under?.textContent).toContain("-360");
+
+  // And nothing is said where the two halves agree: a note on every slider
+  // would be a row of prose under every bounded number in the product.
+  await mount(
+    <ControlSlider
+      label="Opacity"
+      value={5}
+      min={0}
+      max={10}
+      onCommit={() => {}}
+    />,
+  );
+  expect(
+    document.querySelector("[data-vigilia-slider-out-of-range]"),
+    "an in-range slider carries the out-of-range note",
+  ).toBeNull();
+});
+
 it("gives an icon button its name and its tooltip from one label", async () => {
   await mount(
     <ControlIconButton
@@ -1046,6 +1142,36 @@ it("raises the well's edge on hover, except when the control is blocked", () => 
   // A blocked control (disabled or refused) must not advertise a change it
   // will not make, so the caller suppresses the raise.
   expect(wellClasses("panel", true)).not.toContain("hover:border-muted");
+});
+
+it("pads a well with the step §3's table names for it", () => {
+  // `vg-498`. Code padded 6, both current drawings draw `padding:4px 6px`, and
+  // §3's table gave the 4px step to well padding — three sources against one
+  // table cell, with no case reading either side of the split, so nothing ever
+  // reddened on it. `design-tokens.mjs` holds a surface to §3's *steps* and
+  // never compares that list to the table's own assignment, and
+  // `design-language-controls.spec.ts` reads the well's right edge against the
+  // row, which passes at either width. This is the missing read: the table's
+  // assignment and the class the well is built from, against each other.
+  //
+  // The table moves rather than the pad, and that is the row's own ruling: the
+  // code and *both* drawings write 6 horizontally, so the cell is the odd one
+  // out. The read is anchored on the table row's own words rather than on a
+  // line, because a line number here rots and this one has already moved.
+  const row =
+    /^\|\s*(\d+)\s*\|\s*([^|]*well's horizontal padding[^|]*)\|$/m.exec(
+      design(),
+    );
+  expect(
+    row,
+    "§3's table names no step for a well's horizontal padding, so the padding " +
+      "the wells write is sanctioned by nothing",
+  ).not.toBeNull();
+  expect(
+    wellClasses("panel"),
+    `§3's table names the ${row?.[1]}px step for a well's horizontal padding, ` +
+      "which the well does not write",
+  ).toContain(`px-[var(--space-${row?.[1]})]`);
 });
 
 /**

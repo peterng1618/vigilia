@@ -52,6 +52,14 @@ export function ControlSlider(
     /** The owner says the value is whole; the well refuses a fraction the way
      *  every other number field does, and the track already steps by 1. */
     readonly integer?: boolean;
+    /**
+     * The drag's step, when the value's own range is finer than one. A 0–1
+     * fraction is a bounded number like any other (`vg-493`), and the control
+     * set's default step of 1 would leave it holding only its two ends. Read
+     * back off the range input by the wheel, so the gesture and the drag cannot
+     * step differently.
+     */
+    readonly step?: number;
     /** The owner can take the key away again — an absent optional setting. The
      *  track has no empty state, so the well is where that act lives. */
     readonly onClear?: () => void;
@@ -72,6 +80,7 @@ export function ControlSlider(
     min,
     max,
     integer,
+    step,
     onClear,
     onPreview,
     onCancel,
@@ -79,6 +88,28 @@ export function ControlSlider(
   } = props;
   const ids = useControlIds(id);
   const blocked = isBlocked({ disabled, refused });
+  /**
+   * The stored value sits outside the range this control was handed — another
+   * owner's measure moved the bound and left the value where it was, so the
+   * track cannot draw what the document holds.
+   *
+   * **The track is the wrong half, not the well.** The well is a field reading
+   * the document's own value; the thumb is a projection whose range has moved
+   * out from under it. Neither of the two ways of making the track agree is
+   * open: the platform clamps an `input[type=range]` to its own `min`/`max`,
+   * and ARIA will not let a slider report a value outside them either. So the
+   * control states which of the two is real rather than drawing the bound in
+   * silence. The value is not rewritten — the author typed it, and it is
+   * another owner's measure that moved the range — and the track stays
+   * operable, because dragging it down is the repair.
+   */
+  const outOfRange =
+    value > max
+      ? `stored ${value}, above the ${max} this track can reach`
+      : value < min
+        ? `stored ${value}, below the ${min} this track can reach`
+        : undefined;
+  const rangeNoteId = `${ids.control}-range`;
   // A press in flight, and whether Escape ended it. The release that follows a
   // cancel must add no history, so the flag is consumed by the commit rather
   // than cleared by it; a keyboard step is never part of a pointer gesture and
@@ -178,6 +209,7 @@ export function ControlSlider(
         value={shown}
         min={min}
         max={max}
+        step={step}
         disabled={disabled}
         aria-disabled={refused === undefined ? undefined : true}
         onPointerDown={() => {
@@ -233,10 +265,13 @@ export function ControlSlider(
             // The hint and the refusal are the two notes the row owns, and the
             // range input is the element a screen reader reaches: a hint that
             // stayed on the wrapper would reach nobody (§5.3 keeps a refusal out
-            // of a tooltip for the same reason).
+            // of a tooltip for the same reason). The out-of-range note joins
+            // them because it is a statement about *this* element's value, and
+            // the thumb is the element that cannot report it.
             aria-describedby={describedBy(
               hint === undefined ? undefined : ids.hint,
               refused === undefined ? undefined : ids.reason,
+              outOfRange === undefined ? undefined : rangeNoteId,
             )}
             className="size-[10px] rounded-sm border border-panel bg-text focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
           />
@@ -263,8 +298,24 @@ export function ControlSlider(
           {...(integer === undefined ? {} : { integer })}
           {...(density === undefined ? {} : { density })}
           {...(onClear === undefined ? {} : { onClear })}
+          // The well is the half that reads the document, so it is described by
+          // the same note: the number it shows is the one the track cannot
+          // reach, and the words saying so belong to both halves.
+          {...(outOfRange === undefined ? {} : { describedById: rangeNoteId })}
           onCommit={onCommit}
         />
+        {/* Last in the root, not between the track and the well: the root wraps,
+            and a full-width child placed earlier would push the well onto a line
+            of its own. */}
+        {outOfRange === undefined ? null : (
+          <p
+            id={rangeNoteId}
+            data-vigilia-slider-out-of-range=""
+            className="w-full text-xs text-muted"
+          >
+            {outOfRange}
+          </p>
+        )}
       </Slider.Root>
     </ControlRow>
   );

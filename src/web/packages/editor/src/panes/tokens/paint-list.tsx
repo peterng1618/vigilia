@@ -7,6 +7,7 @@ import { Fragment, useState } from "react";
 import { ColourPicker } from "../../components/ui/colour-picker.js";
 import { ControlNumber } from "../../components/ui/control-number.js";
 import { ControlSelect } from "../../components/ui/control-select.js";
+import { ControlSlider } from "../../components/ui/control-slider.js";
 import { ControlText } from "../../components/ui/control-text.js";
 import { GradientEditor } from "../../components/ui/gradient-editor.js";
 import { newTokenPaint } from "../../new-fabric-theme-globals.js";
@@ -316,12 +317,17 @@ function GradientFields(props: {
       </div>
       {value.stops.map((stop, index) => (
         <Fragment key={index}>
-          <ControlNumber
+          {/* A bounded number, so DESIGN.md §5's vocabulary gives it a track
+              (`vg-493`). The step is the offset's own: 0 and 1 are the two ends
+              of a fraction, and the control set's default step of 1 would leave
+              the track holding nothing between them. */}
+          <ControlSlider
             label={uiCopy.panels.stopPosition(index + 1)}
             data={{ "data-vigilia-palette-stop-offset": "" }}
             value={stop.offset}
             min={0}
             max={1}
+            step={0.01}
             onCommit={(offset) => update(index, { offset, color: stop.color })}
           />
           <ControlText

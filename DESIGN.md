@@ -180,8 +180,8 @@ layout is being tuned by eye and should be re-derived.
 
 | Step | Use |
 |---|---|
-| 4 | Inside a control (well padding, icon button) |
-| 6 | Between the rows of one section |
+| 4 | Inside a control (an icon button, a well's vertical padding) |
+| 6 | Between the rows of one section; a well's horizontal padding |
 | 8 | Between a label and its control |
 | 12–14 | Section padding, panel gutter |
 | 16 | Between sections |
@@ -470,11 +470,11 @@ The vocabulary is closed. A control is one of these, or it is not a control.
 
 **The slider row's well is 40px and not 36, and the arithmetic is what fixes it.** The well
 carries an editable field now, so the 24×24 target below binds it: the control pads its wells with
-`px-[var(--space-6)]` (`control-well.tsx`'s `wellClasses`, 6px at `editor-shell.css:465`)
-and the border 1px, leaving the field `well − 12 − 2` — 22px at 36 and 24 at 38, which is the floor,
-so 40 keeps a pixel either side of the box that rule measures. **§3's table is the odd one out here**
-— it names the 4px step for well padding, while both current drawings draw 6
-(`padding:4px 6px`) and the code agrees with them; `vg-498` carries that drift and the choice it owes.
+`px-[var(--space-6)]` (`control-well.tsx`'s `wellClasses`, the 6px step at
+`editor-shell.css`'s `--space-6`) and the border 1px, leaving the field `well − 12 − 2` — 22px at
+36 and 24 at 38, which is the floor, so 40 keeps a pixel either side of the box that rule measures.
+**§3's table names the same step**: a well's horizontal padding is 6, which is what both drawings
+draw (`padding:4px 6px`) and what `wellClasses` writes.
 
 **Rules that make it readable:**
 
