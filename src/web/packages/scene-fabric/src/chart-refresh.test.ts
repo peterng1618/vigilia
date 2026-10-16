@@ -90,6 +90,72 @@ describe("startChartRefresh", () => {
     scheduler.dispose();
   });
 
+  it("repaints again after the page goes away and comes back", () => {
+    const callbacks = new Map<number, FrameRequestCallback>();
+    let nextFrame = 0;
+    const requestFrame = vi.fn((callback: FrameRequestCallback) => {
+      nextFrame += 1;
+      callbacks.set(nextFrame, callback);
+      return nextFrame;
+    });
+    const cancelFrame = vi.fn((frame: number) => callbacks.delete(frame));
+    const refresh = vi.fn();
+    const scheduler = startChartRefresh(refresh, 30, {
+      requestFrame,
+      cancelFrame,
+    });
+    const run = (nowMs: number): void => {
+      const frame = callbacks.keys().next().value;
+      if (frame === undefined) throw new Error("The loop has no frame.");
+      callbacks.get(frame)?.(nowMs);
+      callbacks.delete(frame);
+    };
+
+    run(0);
+    expect(refresh).toHaveBeenCalledTimes(1);
+
+    // The page is going away: the editor's own `pagehide`. At HEAD this was
+    // `dispose`, which is one-way — and a page restored from the back/forward
+    // cache came back to a loop that could never run again (vg-510).
+    scheduler.stop();
+    expect(cancelFrame).toHaveBeenCalledTimes(1);
+    expect(callbacks.size).toBe(0);
+
+    // Nothing is scheduled while the page is away, and nothing repaints.
+    expect(refresh).toHaveBeenCalledTimes(1);
+
+    // The page came back — `pageshow`. The loop has to be running again.
+    scheduler.start();
+    run(1_000);
+    expect(refresh).toHaveBeenCalledTimes(2);
+  });
+
+  it("leaves a running loop alone when the page comes back", () => {
+    const callbacks = new Map<number, FrameRequestCallback>();
+    let nextFrame = 0;
+    const requestFrame = vi.fn((callback: FrameRequestCallback) => {
+      nextFrame += 1;
+      callbacks.set(nextFrame, callback);
+      return nextFrame;
+    });
+    const cancelFrame = vi.fn((frame: number) => callbacks.delete(frame));
+    const refresh = vi.fn();
+    const scheduler = startChartRefresh(refresh, 30, {
+      requestFrame,
+      cancelFrame,
+    });
+
+    const frame = callbacks.keys().next().value;
+    // `pageshow` fires on the first load as well as on a return, so the editor
+    // calls `start` on both. A second frame here would double the loop's work
+    // for the rest of the session — the same reason `startDraftAutosave`'s
+    // arming is idempotent (`draft-store.ts`).
+    scheduler.start();
+    expect(requestFrame).toHaveBeenCalledTimes(1);
+    expect(callbacks.keys().next().value).toBe(frame);
+    scheduler.dispose();
+  });
+
   it("says so when a repaint fails even with nothing listening", () => {
     const callbacks = new Map<number, FrameRequestCallback>();
     let nextFrame = 0;

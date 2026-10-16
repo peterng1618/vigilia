@@ -428,14 +428,25 @@ async function start(): Promise<void> {
     });
   });
 
-  window.addEventListener("pagehide", () => chartRefresh.dispose(), {
-    once: true,
-  });
-  // Publishing stops when the author does. The host holds the document in its
-  // own memory, so an editor that goes away without saying so leaves a phone
-  // showing something nobody is editing any more.
+  // **The page's own lifetime, bound as a pair** (vg-510). `pagehide` is the
+  // last event a page gets before it is unloaded or frozen into the
+  // back/forward cache; a page restored from that cache comes back with its
+  // state intact and no reload, so a stop with no re-arm left the editor with a
+  // dead repaint loop and a host told to stop following it. The draft's timer is
+  // bound the same way, in `draft-store.ts` (`bindDraftAutosave`).
   window.addEventListener("pagehide", () => {
+    chartRefresh.stop();
+    // Publishing stops when the author does. The host holds the document in its
+    // own memory, so an editor that goes away without saying so leaves a phone
+    // showing something nobody is editing any more.
     void publisher.stop();
+  });
+  // `pageshow` fires on the first load too, so both are no-ops on a fresh page:
+  // the loop is already running and nothing has been offered while publishing
+  // is off.
+  window.addEventListener("pageshow", () => {
+    chartRefresh.start();
+    offerOpenDocument();
   });
   // The browser owns this dialog's wording and leaves no room to say what would
   // be lost, so it can only ask. It asks the session's own comparison rather

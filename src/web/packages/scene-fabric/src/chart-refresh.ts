@@ -21,16 +21,28 @@ export function startChartRefresh(
     cancelFrame: window.cancelAnimationFrame.bind(window),
   },
   options: ChartRefreshOptions = {},
-): { setRate(rate: ChartRefreshRate): void; dispose(): void } {
+): {
+  setRate(rate: ChartRefreshRate): void;
+  /** Stops repainting until `start()`: the page is going away. */
+  stop(): void;
+  /** Re-arms a stopped loop. Idempotent, because `pageshow` fires on the first
+   *  load as well as on a return from the back/forward cache. */
+  start(): void;
+  /** Ends the loop for good. `start()` after this does nothing. */
+  dispose(): void;
+} {
   let rate = initialRate;
   let lastRefreshMs: number | undefined;
   let frame: number | undefined;
-  let disposed = false;
+  // Three lifetimes, not two. The page's own (`stop`/`start`) is separate from
+  // the editor's, because a page frozen into the back/forward cache comes back
+  // — and a loop that could only be stopped came back dead (vg-510).
+  let state: "running" | "stopped" | "disposed" = "running";
   // Deduped, because a failing chart would otherwise report every frame.
   const reported = new Set<string>();
 
   const tick = (nowMs: number): void => {
-    if (disposed) return;
+    if (state !== "running") return;
     // **Scheduled before the refresh, not after.** A refresh that throws would
     // otherwise end the loop, and because every repaint in the scene goes
     // through this one function — charts, bound text, the clock — the whole
@@ -57,9 +69,21 @@ export function startChartRefresh(
     setRate(nextRate: ChartRefreshRate): void {
       rate = nextRate;
     },
-    dispose(): void {
-      disposed = true;
+    stop(): void {
+      if (state !== "running") return;
+      state = "stopped";
       if (frame !== undefined) frames.cancelFrame(frame);
+      frame = undefined;
+    },
+    start(): void {
+      if (state !== "stopped") return;
+      state = "running";
+      frame = frames.requestFrame(tick);
+    },
+    dispose(): void {
+      state = "disposed";
+      if (frame !== undefined) frames.cancelFrame(frame);
+      frame = undefined;
     },
   };
 }

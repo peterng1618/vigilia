@@ -413,4 +413,50 @@ test.describe("the publish loop", () => {
 
     await display.close();
   });
+
+  /**
+   * `vg-510`'s publishing half, as the sequence the row is about.
+   *
+   * `pagehide` is where a page is frozen into the back/forward cache, and the
+   * editor stops the publisher on it — the host holds the document in its own
+   * memory, so an editor that goes away without saying so leaves a phone
+   * showing something nobody is editing any more. What was missing was the
+   * other half: a page restored from that cache comes back with its state
+   * intact and **no reload**, so nothing re-offered the document and the host
+   * went on serving the stored theme for the rest of the session.
+   *
+   * The two events are dispatched rather than taken from a real navigation,
+   * which is the honest ceiling: the browser fires them for us on a real
+   * back/forward, and this is the same listener reading the same pair. The
+   * repaint loop is stopped and re-armed by the same pair and has no reading of
+   * its own here — its re-arm is proved in `chart-refresh.test.ts`.
+   */
+  test("a page that goes away and comes back is followed again", async ({
+    page,
+  }) => {
+    test.setTimeout(180_000);
+
+    await page.goto(`${HOST}/editor/`);
+    await startPublishing(page);
+
+    // The host is following this document. Offered when the switch went on, and
+    // PUT 400 ms later (`publish-client.ts`).
+    await expect
+      .poll(() => readPublishedId(page), { timeout: 15_000 })
+      .toBe(THEME_ID);
+
+    // The author leaves: the page is frozen, and the editor says so.
+    await page.evaluate(() => window.dispatchEvent(new Event("pagehide")));
+    await expect
+      .poll(() => readPublishedId(page), { timeout: 15_000 })
+      .toBeNull();
+
+    // And comes back, without a reload. The host has to be following the same
+    // document again — at HEAD this poll is the whole failure: nothing listened
+    // for `pageshow`, so the host sat on the stored theme.
+    await page.evaluate(() => window.dispatchEvent(new Event("pageshow")));
+    await expect
+      .poll(() => readPublishedId(page), { timeout: 15_000 })
+      .toBe(THEME_ID);
+  });
 });
