@@ -3624,6 +3624,18 @@ names, and none is a visible defect at HEAD. The forward direction's `PRODUCT` c
 **writes** rather than spellings, which is the ruling's second clause, and the document's stale §3 table
 (135 at `a7ef0c3a`, **130** at HEAD) is corrected with it. One gap filed: **`vg-563`**.
 
+**Task 21.5 landed the same day at `c76b9445` with decision note `0063`**, closing `vg-382` — **a declaration
+is not a use**: the self-use test now excludes the declaration site, an import or export specifier, and an
+object key, so a symbol kept alive only by its own key or its own re-export reads as dead. **Its Step 2
+answer is the empty set and that is a measurement**: the two instances the row names are already gone, and a
+base-to-HEAD diff of the sweep's `--json` report shows the four tier counts identical with 0 rows added, 0
+removed and 0 evidence numbers changed. **The row's own text carried two false claims and both are corrected
+on the row**: its *"CORRECTION TO THE TRAILER"* overrode a correct quote with a wrong one and named a
+function that never existed, and its *"typecheck is the backstop"* names the wrong owner — no tsconfig
+enables `noUnusedLocals`, and the rule that fired is Biome's `noUnusedVariables`. **The seat's stated red
+recipe did not reproduce and the controller re-ran it in place**; the result does. One finding filed:
+**`vg-564`**, the fourth instance of documents citing line numbers that rot.
+
 **Why a phase of its own.** All six edit `scripts/` or a registry under `docs/evidence/`, and the three
 sweep rows (`vg-380`, `vg-382`, `vg-386`) are **one instrument read three ways** — its selector direction,
 its `redundant-export` tier and its `barrel-only-export` tier. Phase 15 homed instrument gaps a
@@ -3886,6 +3898,52 @@ files, 3483 tests); `npm run docs:check` exit 0; `npm run backlog:check` exit 0.
 - [ ] **Step 1: The self-use test excludes declaration-shaped occurrences**, so an object key or a re-export stops counting as a read of the name it declares, and the tier reports a symbol kept alive only by its own declaration.
 - [ ] **Step 2: Re-run the sweep and record the newly reported symbols** as rows, not as a count.
 - [ ] **Step 3: Close it.**
+
+**[Closed 2026-10-17 at `c76b9445`, base `3eacbdfd`, decision note `0063`. `vg-382` closes, and its `Files:`
+line was accurate this time — unlike Task 21.4's.]** The ruling's shape is what landed: **a declaration is
+not a use**. `readsOutsideDeclaration` excludes exactly three shapes, each one that structurally cannot be
+a read of the binding — the declaration site, a specifier in an import or export list (the re-export
+instance), and an object key, whose `:` is the whole guard because without it `case name:` and
+`cond ? name : x` are swallowed. **The false-positive cost is the unsafe direction and the note states it**:
+the two export tiers take opposite remedies, so an exclusion firing on a read moves a live symbol onto the
+removal list.
+
+**Step 2's answer is the empty set, and it is measured rather than asserted.** The two instances the row
+names are already gone (`panel` deleted at `93bb2c5f`, the re-export at `c9ed9dcc`), and a base-to-HEAD diff
+of the sweep's own `--json` report shows the four tier counts identical — dead-export 6, redundant-export
+99, test-only-consumer 11, unreachable-branch 5 — with **0 rows added, 0 removed and 0 evidence numbers
+changed**; 105 evidence *sentences* were reworded, which is the fix's own text and not a finding. The
+classifier was proved against the two historical file contents instead: `panel` at `93bb2c5f^` goes 3
+occurrences → **0 reads**, and `countable` and `EDGE_TOLERANCE` at `c9ed9dcc^` each go 2 → **0**.
+
+**The two self-test cases the brief flagged as a trap were handled rather than weakened.** `a redundant row
+reports uses, not occurrences` passes unchanged; `every redundant row's number is its use count` became
+`...its read count`, asserting `readsOutsideDeclaration(...)` where it asserted `usesIn(...) - 1` — **the old
+assertion was the wrong one**, because it counted a declaration-shaped occurrence as a use. The self-test
+went from 22 cases to 25.
+
+**The row's own text carried two false claims, corrected on the row rather than left for the next reader.**
+Its *"CORRECTION TO THE TRAILER"* asserts the scanner prints 1 where the trailer quoted 2, *"because
+`usesDeclaration` subtracts the import specifier"* — but **`usesDeclaration` never existed in this repo**,
+and the pre-fix body printed 2, so the trailer was right and the correction that overrode it was wrong. And
+its *"typecheck is the backstop"* names the wrong owner: **no tsconfig enables `noUnusedLocals`**; the rule
+that fired on `panel` is Biome's `noUnusedVariables` (`biome.json:14`), whose sibling `noUnusedImports`
+(`:15`) covers the re-export class the same way — so the backstop holds for both classes, and it fires one
+commit *after* the wrong remedy is applied.
+
+**The red proof was re-run by the controller, and the seat's stated recipe does not reproduce.** A copy of
+the script outside the repo cannot find the tree — the sweep resolves its root from its own directory — so
+the copy reddens 14 of 25 cases for the wrong reason. Patched **in place** the result reproduces exactly:
+**22 of 25 pass, exit 1**, the three failures being the three new fixtures, and the file was restored
+byte-identical before the green re-run.
+
+**One finding is filed rather than left in the commit**: **`vg-564`** — four documents cite line numbers into
+`scripts/dead-code-sweep.mjs` that were already off by three before this change, and this is the fourth
+instance of a shape three archived rows (`vg-371`, `vg-432`, `vg-517`) each fixed once by re-pointing the
+number.
+
+**Verify:** `node scripts/dead-code-sweep.mjs --self-test` exit 0 (25 cases); `npm run gate` exit 0 (263
+files, 3483 tests); `npm run docs:check` exit 0; `npm run backlog:check` exit 0.
 
 ### Task 21.6: The barrel-only tier means no production consumer
 
