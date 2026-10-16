@@ -2747,6 +2747,27 @@ because this fixture's document carries none and §9's missing reading is a gap 
 - [ ] **Step 2: `vg-249` — the persisted text-run model gains no per-run id, and the inspector reconciles survivors at mutation time as `vg-044` did.** An id added to persisted runs is editor bookkeeping written into the theme file, which is the line `AGENTS.md` draws.
 - [ ] **Step 3: Close the two.**
 
+**Annotated 2026-10-16, at the task's close: `vg-254` and `vg-249` are `verified` at `6508ac42`.** **Step
+1 landed as one funnel rather than one field** — `SelectionEdits` gains `preview` and `cancelPreview` beside
+`commit`, mirroring the sibling `CropEdits`, and all three go through `writeField` plus `applyField`, so only
+`commit` records history. A preview does not re-publish the column, which is what keeps `field.value` at the
+gesture's start, and a frame does not call `refreshGlass` — the glass case reddens otherwise, twice per
+keyboard step, while a drag would walk the scene sixty times a second. **`vg-254`'s own measurement was
+stale**: its `aria-valuenow` and well half was already fixed by `vg-449` (`f849c425`), so the surviving
+subject is the document; unwiring the preview reads **2 failed / 19 passed exit 1**,
+`the document did not follow the pointer: 1, 1, 1`, restored byte-identically with `cmp` and rebuilt to **21
+passed exit 0**. **Step 2's precedent clause could not be honoured as written and the seat said so**: `vg-044`
+reconciles with a pure function of (previous, next), and **no pure function of the run array can do this job**
+— two literal runs sharing a preset are the same fields, so a content key is ambiguous and a repeat counter
+is positional. The identity is therefore the run's own object in a runtime `WeakMap`
+(`selection-inspector/run-identity.ts`), handed across each write, so **the reconciliation is at mutation
+time as ruled while no id is persisted**; disabling the carry reads **1 failed / 4 passed exit 1** with focus
+on `<body>`, restored with `cmp` to **5 passed exit 0**. **A fourth brief pointer was wrong**: the `onPreview`
+case is `control.dom.test.tsx:828-849`, not `:659-676`, which is `ControlNumber`'s copy-table refusal case.
+**`vg-548` is filed from the landing**: a gesture ending with neither a commit nor a cancel leaves the
+previewed value in the document with no history entry. **`selection-inspector/index.ts` is 796 lines**, past
+the 500-line signal and under the 800-line stop; the seat trimmed comments rather than splitting it.
+
 ### Task 18.6: The theme list's tie-break, pinned
 
 **Files:**
