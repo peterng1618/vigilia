@@ -90,23 +90,22 @@ export const TEXT_MIN = 4.5;
 export const BOUNDARY_MIN = 3;
 
 /**
- * The one measured palette defect this gate pins rather than blesses — a
- * ratchet, not a waiver.
+ * The measured palette defects this gate pins rather than blesses — a ratchet,
+ * not a waiver. **Empty, and that is the mechanism working rather than being
+ * abandoned**: §5's minimum now holds for every probe in every palette, so
+ * there is nothing left to pin, and the map stays here for the next row that
+ * needs one. `minimumFor` answers the floor when a probe is absent from it.
  *
- * DESIGN.md §5's minimum holds for every probe in every palette except the rows
- * named here, and this is a **token** defect with a register row of its own
- * rather than a control the control set can fix:
- *
- * - `invalid` is a rejected draft's reason, painted `--warn`. `--shell-warm` is
- *   a pastel in ember, moss and plum (`#ff7e6e`, `#e8c56a`, `#ffb2a1`) while
- *   those palettes' paper is light, so the reason reads at 1.4–2.0:1. The
- *   control is not the error: the shell already paints
- *   `.editor-shell-diagnostic` and `.editor-shell-save-state` with the same
- *   role. Deepening the hue is what `--shell-accent` got in the same three
- *   palettes, and that is the ruling the row needs — `vg-201`.
- *
- * A pinned floor is deleted — the minimum restored — when its row is fixed.
- * The numbers are the measurement, so a regression still fails.
+ * It held one entry until `vg-201` was fixed. `invalid` is a rejected draft's
+ * reason, painted `--warn`; `--shell-warm` was a pastel in ember, moss and plum
+ * (`#ff7e6e`, `#e8c56a`, `#ffb2a1`) while those palettes' paper is light, so the
+ * reason read at 1.4–2.0:1 and the row was pinned at ember 1.9, moss 1.35, plum
+ * 1.35. The control was never the error: the shell paints
+ * `.editor-shell-diagnostic` and `.editor-shell-save-state` with the same role,
+ * and `--vigilia-accent` aliases it. Deepening the hue is what `--shell-accent`
+ * got in the same three palettes, and it is what `--shell-warm` now gets, so the
+ * pin is deleted and the 4.5:1 minimum is restored — the rule this file states
+ * for every pin.
  *
  * **The `boundary` pin is gone, and it is not a waiver.** The user ruled §5's
  * 3:1 the **narrow** reading (2026-10-11, `vg-200`/`vg-318`): it binds the focus
@@ -118,9 +117,7 @@ export const BOUNDARY_MIN = 3;
  */
 export const PINNED_FLOOR: Readonly<
   Record<string, Partial<Record<Palette, number>>>
-> = {
-  invalid: { ember: 1.9, moss: 1.35, plum: 1.35 },
-};
+> = {};
 
 /** DESIGN.md §5's minimum for a probe, or `null` where §5 requires none.
  *

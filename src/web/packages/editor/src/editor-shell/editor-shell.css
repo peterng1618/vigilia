@@ -323,7 +323,14 @@ body,
 
    Each names `--shell-display` and `--shell-flat` at the values it used to
    inherit from `:root`, which is what leaves the dark base free to carry
-   graphite's pair (`vg-357`). */
+   graphite's pair (`vg-357`).
+
+   **`--shell-warm` is deepened by that same rule, and was the one role left
+   out of it** (`vg-201`): it stayed the pastel it was named for, so a rejected
+   draft's reason — the first `text-warn` in the product — read at 1.98, 1.40
+   and 1.39:1 on these three papers. The hue is held and the lightness taken
+   down until the value clears §5's 4.5:1, which also moves `--vigilia-accent`
+   and `--warn`, the roles that alias it. */
 [data-shell-palette="ember"] {
   --shell-backdrop: #e9cdb4;
   --shell-surface: #f7e2d2;
@@ -332,7 +339,10 @@ body,
   --shell-text: #2e1a0f;
   --shell-muted: #6d5138;
   --shell-accent: #8f4208;
-  --shell-warm: #ff7e6e;
+  /* §5's 4.5:1 rather than the pastel: `#ff7e6e` read at 1.98:1 on this paper.
+     The hue is held and the lightness deepened; `#b81400` measures 5.34:1 on
+     `--shell-surface` and 4.88:1 on the cluster's 95% fill over the canvas. */
+  --shell-warm: #b81400;
   /* Derived: graphite's `--hot` held at §5's ratio on this palette's own paper.
      40% `#ff7e6e` mixed into ember's `--shell-text` measures 5.7:1 against
      `--shell-accent`'s paper and clears 4.5:1 on it — the mix is what carries
@@ -365,7 +375,9 @@ body,
   --shell-text: #1c2a12;
   --shell-muted: #4f6242;
   --shell-accent: #38601a;
-  --shell-warm: #e8c56a;
+  /* Deepened as ember's, from `#e8c56a` at 1.40:1: 5.47:1 on the surface,
+     4.99:1 on the cluster fill. */
+  --shell-warm: #7a5800;
   /* Derived as ember's: graphite's `--hot` 40% into moss's `--shell-text`. */
   --shell-danger: color-mix(in srgb, #ff7e6e 40%, var(--shell-text));
   --shell-primary-bg: var(--shell-accent);
@@ -395,7 +407,9 @@ body,
   --shell-text: #241634;
   --shell-muted: #5a4870;
   --shell-accent: #543484;
-  --shell-warm: #ffb2a1;
+  /* Deepened as ember's, from `#ffb2a1` at 1.39:1: 5.19:1 on the surface,
+     4.74:1 on the cluster fill. */
+  --shell-warm: #b82100;
   /* Derived as ember's: graphite's `--hot` 40% into plum's `--shell-text`. */
   --shell-danger: color-mix(in srgb, #ff7e6e 40%, var(--shell-text));
   --shell-primary-bg: var(--shell-accent);
