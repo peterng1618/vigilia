@@ -2717,8 +2717,23 @@ shortcut list and Firefox's `browser-sets.inc` and the date, which is what the r
 - Produces: `vg-223`, `vg-279` closed
 
 - [ ] **Step 1: `vg-223` — the chip loses its unsaved-changes marker and keeps the coloured indicator dot.** The marker was the fixed part that overflowed once the name truncated, and the dirty state is already carried by the status bar; the chip loses the text rather than dropping, shortening, wrapping or accepting a clip. Neither `vg-219` nor `vg-230` is absorbed.
-- [ ] **Step 2: `vg-279` — the workspace manifest's `version` is the product's version, and both readers take it from there.** The host reads `src/web/package.json`; the editor bundle takes it through Vite's `define` at build time. Two things the fix must not do: `SUPPORTED_SCHEMA_VERSION` stays a separate fact and the About tab keeps labelling it as what it is, and the open document's release version is never presented as Vigilia's own.
+- [ ] **Step 2: `vg-279` — the workspace manifest's `version` is the product's version, and both readers take it from there.** **Corrected 2026-10-16, before the task ran: the manifest has no product version to own.** Every manifest in the workspace reads `0.0.0` — `src/web/package.json` and all seven packages — there is no root manifest, and the only real version string in the tree is the host's hardcoded `const VERSION = "0.1.0"` at `packages/host/src/main.ts:34`. So the product version had to be *chosen* before it could be given an owner; the task took the incumbent `0.1.0` into `src/web/package.json`, which invents no number. The host reads `src/web/package.json` at run time; the editor bundle takes it through Vite's `define` at build time. Two things the fix must not do: `SUPPORTED_SCHEMA_VERSION` stays a separate fact and the About tab keeps labelling it as what it is, and the open document's release version is never presented as Vigilia's own.
 - [ ] **Step 3: Close the two.**
+
+**Annotated 2026-10-16, at the task's close: both rows are `verified` at `5da31012`, and both red proofs
+were re-run by the controller.** Restoring the chip's marker reads 1 failed / 2 passed exit 1; cutting the
+`define` reads 5 failed / 13 passed exit 1 with `ReferenceError: __VIGILIA_VERSION__ is not defined`; each
+restored byte-identically with `cmp`, green at 21 passed exit 0. **Step 1's premise moved rather than held**:
+the clip does not reproduce at 640x360 any more — the layout has moved about 10px and the marker fits with
+5.8px to spare — and it reproduces one step narrower, at 560x360, where the marker painted 65px past the
+chip's right edge. The row's numbers are corrected on the row. **Step 2's decision is recorded because the
+row assumed it away**: the product version is `0.1.0`, owned by `src/web/package.json`, and `define` feeds
+the bundle while the host reads the manifest at run time — three levels up from either `src/` or `dist/`,
+which is why one path serves both. **The step's two prohibitions held**: the schema version and the open
+document's release version stay separate facts with their own labels, and the About tab's new row was
+verified in a re-taken capture showing `Product version 0.1.0` beside `Schema version 2` and no release row,
+because this fixture's document carries none and §9's missing reading is a gap stated by absence.
+`docs/architecture/ownership.md` gained the row, which is what that map is for when a concept has two readers.
 
 ### Task 18.5: The selection column's live-value paths
 

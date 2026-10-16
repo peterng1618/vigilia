@@ -37,11 +37,11 @@ ledger did.
 
 ## Last completed change
 
-- **Task 18.3 closed at `c0b0ceb7`, so the register is 140 open** — `vg-252` and `vg-290` are `verified`, both red-proved, and both proofs were re-run by the controller rather than taken from the report.
-- **The shape the brief asked about is not the obvious one** — the consumption rule became the deferral's owner, the coarse predicate stayed for the camera, and `activatesOnSpace` got its own stated rule, because the third call site was not asking a third question: its `!isTextEntryTarget` was unreachable behind a tautology.
-- **Two claims the task corrected** — `vg-252`'s breadth is overstated (the deferral is action-scoped for modified chords, so `Ctrl+S`/`Ctrl+C`/`Ctrl+O`/`Ctrl+D` were never swallowed) and is corrected on the row; and `editor.spec.ts`'s blur block, whose comment explained that a focused range swallowed the chord, was already a no-op because `typeIntoControl` fills *and blurs*.
-- **`vg-290`'s provenance is a documentation check and is recorded as one** — the seat's headless Chromium probe delivered every chord including `Ctrl+W`, so a headless browser cannot observe its own accelerators, and no Firefox is installed here; the comment names Chrome's shortcut list, Firefox's `browser-sets.inc` and the date, which is what the ruling asked for.
-- **The plan's own Step 1 rule could not be implemented literally** — "a text-like target consumes printable keys" fails three existing cases, so the implemented rule is "a text field consumes every key the table binds"; the plan carries the correction.
+- **Task 18.4 closed at `5da31012`, so the register is 138 open** — `vg-223` and `vg-279` are `verified`, both red proofs re-run by the controller rather than taken from the report.
+- **`vg-223`'s breakpoint moved rather than held** — the clip no longer reproduces at 640x360 (the layout moved ~10px and the marker fits with 5.8px to spare) and reproduces at 560x360, where it painted 65px past the chip's edge; the row's numbers are corrected on the row.
+- **`vg-279`'s premise was false and the decision it forced is recorded** — every manifest read `0.0.0`, so the product version is now `0.1.0` owned by `src/web/package.json`, taking the host's incumbent value rather than inventing one; the host reads the manifest at run time and the bundle gets it by `define`.
+- **The two things the step forbade are kept apart** — `SUPPORTED_SCHEMA_VERSION` and the open document's `metadata.version` stay separate facts with their own labels, and the About tab's new row was verified in a re-taken capture showing `Product version 0.1.0` beside `Schema version 2` with no release row.
+- **A second brief pointer was wrong and is recorded** — `accessible-names.dom.test.ts` never reads the chip (its `identity()` is an unrelated local helper), so that claim in the brief was carried rather than read; the chip's real readers are `document-identity.dom.test.tsx` and `shell-layout.dom.test.tsx`.
 
 ## Next
 
