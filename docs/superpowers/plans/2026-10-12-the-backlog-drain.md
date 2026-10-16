@@ -2934,6 +2934,36 @@ trustworthy.
 - [ ] **Step 2: Restore the per-pane offset and disclosure state through the body**, and change `shell-layout-scroll.dom.test.ts` in the same commit as the structure it pins.
 - [ ] **Step 3: Close it.** The ruling names this restructure as the row's owner and records why it is not a one-line fix; the severity stays low for behaviour, since the footer is still reachable by scrolling.
 
+**Annotated 2026-10-16, at the task's close: `vg-208` is `verified` at `46e022ae`.** **Step 1 landed as
+ruled**, and the row's ruling is what it implements: the pane's frame is a flex column, the title bar and the
+footer are `flex: none` so a tall body's shrink cannot squeeze them, the body takes `min-height: 0` because a
+flex child's `min-height` is `auto` — without it the body refuses to shrink and the column grows instead,
+which is the same defect wearing the fix — and the column takes `overflow: hidden` while keeping the 12px
+padding, so the chrome keeps the inset it had (`editor-shell.css:2186-2197`). **Step 2's "restore through the
+body" was the whole of the work rather than a follow-on**: `choosePane` reads and writes each pane's offset
+off the box that scrolls, so `paneBody` now names the body it was always called after, through an optional
+`bodyRef` on `Pane` that only the showing pane attaches — the other three are `hidden`, and a `display: none`
+box answers `scrollTop` 0, which is what would write the author's place back as the top of the list; the save
+still runs before the column is hidden. `shell-layout-scroll.dom.test.ts` changed in the same commit as the
+structure it pins, as the ruling requires. **Step 3's severity clause held**: the defect was measured on the
+base bundle first — at `607c9623` the column overflows by 1026px and a 300px scroll moves the title bar 54 →
+-246 and the footer 1643 → 1343, the footer resting 949px below the column's own bottom edge — and after, the
+body carries the overflow (1026 over a 534px client, the column 0 over 652) with both holding at 54 and 617.
+**Red-proved and re-run by the controller**: `editor-rail.spec.ts:117` reads **1 passed exit 0**; the body
+rule's `overflow: auto` cut to `visible` reads **1 failed exit 1** on the case's own mechanism assertion,
+`the pane's column is still a scroller, so §7.7's rule is still on the wrong box: expected 0, received 300`;
+restored byte-identically with `cmp`, rebuilt and re-run, **1 passed exit 0**. **One clause of the row was
+falsified and corrected on the row**: it cites `layer-panel.tsx:809-810` for the "toolbar stays put while the
+list scrolls beneath it" comment, and that file is **60 lines** with no such text — the claim is
+`layer-panel.dom.test.tsx:628`, in the case asserting the tree draws no action footer of its own. **This
+task's `Files:` line names `editor-shell/layer-tree.ts` and nothing in the task touches it** — 433 lines with
+no scroll code and no scroll comment; the plan's two citations of `.editor-shell-panel` and
+`.editor-shell-inspector` as the owner of the scrollbar rule (Task 13.1b step 1, Task 16.1 step 2) are left
+standing, both sitting inside tasks that are complete. **Not verified**: the browser reading is
+desktop-chromium only, the offsets are one machine's, and the case reads which box overflows, whether setting
+its `scrollTop` moves it and where the chrome is before and after, so the numbers say which box is the scroll
+owner rather than the case saying it.
+
 ### Task 19.4: The Add pane's shape controls get their own scope
 
 **Files:**
