@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 import { uiCopy } from "../../packages/editor/src/ui-copy.js";
-import { openPane } from "./editor-rail.js";
+import { openEveryGroup, openPane, paneBody } from "./editor-rail.js";
 import { selectLayer } from "./rebuild-driver.js";
 import { isDesktopSurface } from "./surface.js";
 
@@ -99,6 +99,112 @@ test("shows the theme's own panel in the left column, and swaps away from it", a
   await expect(page.locator("[data-vigilia-artboard-width]")).toBeVisible();
 });
 
+/** §7.7's "Chrome stays still", and the ruling `vg-208` carries, on a real box.
+ *
+ *  The rule the row is about put the pane's one `overflow: auto` on the *column*,
+ *  so the column scrolled the title bar and the footer along with the list. The
+ *  ruling settles the other way: the **body** owns the scroll and the title bar
+ *  and the footer sit outside it. Only a rendered box can say which element that
+ *  is — jsdom has no layout, so `shell-layout-scroll.dom.test.ts` pins the offset
+ *  surviving a swap and nothing about who scrolls.
+ *
+ *  The measurement is the report's evidence and it reads three things rather
+ *  than assuming any of them: which box the list overflows, whether setting that
+ *  box's `scrollTop` moves it, and where the chrome is before and after. Both
+ *  boxes are scrolled in the one reading, so the numbers say which of the two is
+ *  the scroll owner instead of the case saying it.
+ */
+test("a pane's title bar and footer stay put while its body scrolls", async ({
+  page,
+}, testInfo) => {
+  test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+
+  await page.goto(EDITOR);
+  await expect(
+    page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+  ).toBeVisible();
+  await openEveryGroup(page);
+
+  const measured = await page.evaluate(() => {
+    const column = document.querySelector<HTMLElement>(".editor-shell-panel");
+    const pane = column?.querySelector<HTMLElement>(
+      ".editor-shell-pane:not([hidden])",
+    );
+    const body = pane?.querySelector<HTMLElement>(".editor-shell-pane-body");
+    const title = pane?.querySelector<HTMLElement>(".editor-shell-pane-title");
+    const footer = pane?.querySelector<HTMLElement>(
+      ".editor-shell-pane-actions",
+    );
+    if (
+      column === null ||
+      body === null ||
+      title === null ||
+      footer === null ||
+      pane === null
+    ) {
+      throw new Error("no pane column, body, title bar or footer");
+    }
+    const chrome = () => ({
+      title: Math.round(title.getBoundingClientRect().top),
+      footer: Math.round(footer.getBoundingClientRect().top),
+    });
+    // The expand clicks above scroll the column to reach each twisty, so the
+    // reading starts by putting it back at the top — the position the chrome is
+    // asked to hold.
+    column.scrollTop = 0;
+    const atTop = chrome();
+    column.scrollTop = 300;
+    const columnScrolled = { offset: column.scrollTop, ...chrome() };
+    column.scrollTop = 0;
+    body.scrollTop = 300;
+    const bodyScrolled = { offset: body.scrollTop, ...chrome() };
+    body.scrollTop = 0;
+    const box = (node: HTMLElement) => ({
+      overflow: node.scrollHeight - node.clientHeight,
+      client: node.clientHeight,
+      bottom: Math.round(node.getBoundingClientRect().bottom),
+    });
+    return {
+      atTop,
+      columnScrolled,
+      bodyScrolled,
+      column: box(column),
+      body: box(body),
+    };
+  });
+  const report = JSON.stringify(measured);
+  console.log(`pane-chrome ${report}`);
+  testInfo.annotations.push({ type: "pane-chrome", description: report });
+
+  expect(
+    measured.body.overflow,
+    "the list overflows the pane's column, not its body",
+  ).toBeGreaterThan(0);
+  expect(
+    measured.columnScrolled.offset,
+    "the pane's column is still a scroller, so §7.7's rule is still on the wrong box",
+  ).toBe(0);
+  expect(
+    measured.bodyScrolled.offset,
+    "the pane's body is not the scroller",
+  ).toBeGreaterThan(0);
+  expect(
+    measured.bodyScrolled.title,
+    "the title bar scrolled with the body",
+  ).toBe(measured.atTop.title);
+  expect(
+    measured.bodyScrolled.footer,
+    "the footer scrolled with the body",
+  ).toBe(measured.atTop.footer);
+  // At rest the footer is the pane's bottom edge, not the end of the list: the
+  // property the row is about is that the toolbar stays put while the list
+  // scrolls beneath it.
+  expect(
+    measured.atTop.footer,
+    `the footer is drawn outside the pane's box (${report})`,
+  ).toBeLessThan(measured.column.bottom);
+});
+
 test("a collapse between two swaps does not lose the list's scroll", async ({
   page,
 }, testInfo) => {
@@ -122,14 +228,14 @@ test("a collapse between two swaps does not lose the list's scroll", async ({
   // about a document the starter stopped being. Opening every group restores a
   // tree long enough to scroll *and* keeps the guard's teeth: a panel that
   // stopped laying out rows at all still fails this.
-  const twisties = page.locator(
-    '[data-vigilia-layer] button[aria-label^="Expand"]',
-  );
-  for (let opened = await twisties.count(); opened > 0; opened -= 1) {
-    await twisties.first().click();
-  }
+  await openEveryGroup(page);
 
-  const list = page.locator(".editor-shell-panel");
+  // The offset lives on the showing pane's **body** (§7.7, `vg-208`), so the
+  // scroll is taken there. The column is what goes `hidden` on a collapse and
+  // the body is hidden with it, which is what makes the restore below the pin
+  // it is: a real browser discards a `display: none` box's scroll position, so
+  // only the shell's own write can bring it back.
+  const list = paneBody(page);
   const offset = await list.evaluate((node) => {
     node.scrollTop = 300;
     return node.scrollTop;
@@ -280,17 +386,20 @@ test("every pane's title bar sits at the same top offset", async ({
 });
 
 /**
- * A pane's column does not scroll sideways — `vg-270`, and the reading that
- * closed it.
+ * A pane does not scroll sideways — `vg-270`, and the reading that closed it.
  *
  * The row measured the Tokens pane's column at `scrollWidth` 449 against a
  * `clientWidth` of 244, a 205px sideways scroll, and named the cause as a flex
  * item with `white-space: nowrap` and no `min-w-0`: the min-content width of
  * "Yaldevi Libre Franklin — Yaldevi + Libre" became the pane's own width. The
  * reading on 2026-10-12 found the overflow gone and `min-w-0` present on that
- * row. Nothing watched for its return, which is what this case is: a column
- * that scrolls sideways clips whatever the author cannot scroll to, and the
- * capture cannot show it because the column image is the scroll origin.
+ * row. Nothing watched for its return, which is what this case is: a box that
+ * scrolls sideways clips whatever the author cannot scroll to, and the capture
+ * cannot show it because the column image is the scroll origin.
+ *
+ * **The box read is the pane's body**, which is what scrolls since `vg-208`
+ * moved the scroll off the column. Reading the column would now pass whatever
+ * the pane drew: it clips, so its own `scrollWidth` stops at its `clientWidth`.
  *
  * The panes are read one at a time for the reason the case above gives — only
  * the chosen slot's pane is laid out.
@@ -306,9 +415,9 @@ test("no pane's column scrolls sideways", async ({ page }, testInfo) => {
   const overflow: [string, number][] = [];
   for (const slot of ["Composition", "Add", "Tokens", "Document"]) {
     await openPane(page, slot);
-    const column = page.locator(".editor-shell-panel");
-    await expect(column, `${slot}'s column is showing`).toHaveCount(1);
-    const scroll = await column.evaluate((element) =>
+    const body = paneBody(page);
+    await expect(body, `${slot}'s body is showing`).toHaveCount(1);
+    const scroll = await body.evaluate((element) =>
       Math.round(element.scrollWidth - element.clientWidth),
     );
     // The measurement names the pane it belongs to: a bare number in the
@@ -316,7 +425,7 @@ test("no pane's column scrolls sideways", async ({ page }, testInfo) => {
     if (scroll > 0) overflow.push([slot, scroll]);
   }
 
-  expect(overflow, "panes whose column scrolls sideways").toEqual([]);
+  expect(overflow, "panes whose body scrolls sideways").toEqual([]);
 });
 
 /**

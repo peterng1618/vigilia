@@ -363,7 +363,7 @@ menus.** Anything actionable belongs to a region that owns it.
   inspector sections share one vertical scroller. Preserve per-pane offsets and
   disclosure state across routine updates. Use native scrollbars and reserve
   their gutter where necessary; no custom scrollbar and no scroll-jacking owner,
-  with one exception — the shell's own two scrollers, the pane column and the
+  with one exception — the shell's own two scrollers, the pane's body and the
   inspector, restyle that native bar from the three `--vigilia-scrollbar-*`
   tokens (`vg-458`), which is what those tokens were declared for. No other
   surface paints a scrollbar, and none is a scroll-jacking owner.

@@ -1,5 +1,30 @@
 import { type Locator, type Page } from "@playwright/test";
 
+/** §7.7's scroller, and `vg-208`'s ruling: the showing pane's **body**, not the
+ *  column around it — the column clips, so reading it would pass whatever the
+ *  pane drew. Scoped to the pane's column so a `Pane` elsewhere in the shell
+ *  cannot answer. */
+export const PANE_BODY =
+  ".editor-shell-panel .editor-shell-pane:not([hidden]) > .editor-shell-pane-body";
+
+/** The box `PANE_BODY` names, for a case that scrolls or measures it. */
+export function paneBody(page: Page): Locator {
+  return page.locator(PANE_BODY);
+}
+
+/** Every group opened, so the layer tree is long enough to scroll: ten collapsed
+ *  cards no longer overflow a 721px panel, and a list that fits proves nothing
+ *  about a scroller. Counted down so a tree that keeps producing twisties cannot
+ *  spin. */
+export async function openEveryGroup(page: Page): Promise<void> {
+  const twisties = page.locator(
+    '[data-vigilia-layer] button[aria-label^="Expand"]',
+  );
+  for (let opened = await twisties.count(); opened > 0; opened -= 1) {
+    await twisties.first().click();
+  }
+}
+
 /** The rail's slot for one pane.
  *
  *  Scoped to the rail because "Add" is two controls' names while the Insert

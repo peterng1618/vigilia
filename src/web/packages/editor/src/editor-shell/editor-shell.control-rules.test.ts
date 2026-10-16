@@ -360,10 +360,12 @@ describe("the shell's focus fallback", () => {
  * absence.
  */
 describe("the scrollers' scrollbar", () => {
-  /** The four the rows name: the two shell columns, and the two surfaces Base UI
-   *  portals out of `.editor-shell`. This is the rule's own selector list. */
+  /** The four the rows name: the pane's body and the inspector — the shell's own
+   *  two scrollers, the first of which is the body rather than the column around
+   *  it (`vg-208`) — and the two surfaces Base UI portals out of
+   *  `.editor-shell`. This is the rule's own selector list. */
   const SCROLLERS = [
-    ".editor-shell-panel",
+    ".editor-shell-pane-body",
     ".editor-shell-inspector",
     ".editor-shell-menu-popup",
     ".editor-shell-dialog",

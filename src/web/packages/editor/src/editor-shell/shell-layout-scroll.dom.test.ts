@@ -13,8 +13,27 @@ function segment(root: HTMLElement, id: RailSlot): HTMLButtonElement {
   )!;
 }
 
+/** The pane's column, which clips rather than scrolls and is what a collapse
+ *  hides. */
 function panel(root: HTMLElement): HTMLElement {
   return root.querySelector<HTMLElement>("aside.editor-shell-panel")!;
+}
+
+/** The box §7.7 leaves the scroll to: the showing pane's body. `choosePane`
+ *  reads and writes each pane's offset through it. */
+function scroller(root: HTMLElement): HTMLElement {
+  return root.querySelector<HTMLElement>(
+    ".editor-shell-pane:not([hidden]) > .editor-shell-pane-body",
+  )!;
+}
+
+/** The Composition pane's body whether or not it is the pane showing, so the
+ *  restore can be asserted on a box the case has just zeroed — a pass then
+ *  cannot come from the element remembering what the case wrote into it. */
+function layersBody(root: HTMLElement): HTMLElement {
+  return root.querySelector<HTMLElement>(
+    '[data-vigilia-panel="layers"] > .editor-shell-pane-body',
+  )!;
 }
 
 /** One frame, which is when `choosePane` restores. */
@@ -31,11 +50,15 @@ async function frame(): Promise<void> {
  *  behaviour therefore passes whether or not the offset survives a collapse,
  *  which is the defect under test; this is the one pin in this file that can
  *  fail. `editor-rail.spec.ts` pins the same thing against a real browser,
- *  where the model below is not needed to make it bite. */
+ *  where the model below is not needed to make it bite.
+ *
+ *  The body is hidden by the **column** rather than by its own attribute — the
+ *  pane is the one showing and the column is `hidden` — so `node.hidden` alone
+ *  would never fire and the model would pin nothing. */
 function modelHiddenScrollTop(node: HTMLElement): void {
   let offset = 0;
   Object.defineProperty(node, "scrollTop", {
-    get: () => (node.hidden ? 0 : offset),
+    get: () => (node.closest("[hidden]") === null ? offset : 0),
     set: (value: number) => {
       offset = value;
     },
@@ -43,14 +66,14 @@ function modelHiddenScrollTop(node: HTMLElement): void {
   });
 }
 
-/** A shell in a detached-from-layout document, with the layer list's scrollable
- *  height stated: jsdom does not lay out, and what is under test is the offset
- *  surviving the swap, not the height that makes it scrollable. */
+/** A shell in a detached-from-layout document, with the showing pane's body's
+ *  scrollable height stated: jsdom does not lay out, and what is under test is
+ *  the offset surviving the swap, not the height that makes it scrollable. */
 function mount(): { readonly layout: ShellLayout; readonly root: HTMLElement } {
   const root = document.createElement("div");
   document.body.append(root);
   const layout = createShellLayout(root);
-  Object.defineProperty(panel(root), "scrollHeight", {
+  Object.defineProperty(scroller(root), "scrollHeight", {
     value: 5000,
     configurable: true,
   });
@@ -63,19 +86,26 @@ function mount(): { readonly layout: ShellLayout; readonly root: HTMLElement } {
  * the canvas handles all survive that swap; only the scroll did not, and with
  * the Starter's 52 rows — more in a theme an author has built — finding your
  * place again is the whole cost of glancing at the assets.
+ *
+ * The offset lives on the showing pane's **body** (§7.7, `vg-208`), so each
+ * case reads and writes it there rather than on the column around it.
  */
 describe("the rail keeps each pane where you left it", () => {
   it("returns the layer list to the offset it was scrolled to", async () => {
     const { layout, root } = mount();
-    panel(root).scrollTop = 499;
+    scroller(root).scrollTop = 499;
 
     segment(root, "add").click();
     await frame();
-    expect(panel(root).scrollTop).toBe(0);
+    expect(scroller(root).scrollTop).toBe(0);
+
+    // Zeroed while the pane is off screen, so the assertion below is the
+    // shell's own restore and not the box remembering the case's write.
+    layersBody(root).scrollTop = 0;
 
     segment(root, "composition").click();
     await frame();
-    expect(panel(root).scrollTop).toBe(499);
+    expect(scroller(root).scrollTop).toBe(499);
 
     layout.destroy();
     root.remove();
@@ -83,10 +113,10 @@ describe("the rail keeps each pane where you left it", () => {
 
   it("returns it there too when the panel was closed in between", async () => {
     const { layout, root } = mount();
-    modelHiddenScrollTop(panel(root));
-    panel(root).scrollTop = 499;
+    modelHiddenScrollTop(scroller(root));
+    scroller(root).scrollTop = 499;
 
-    // Collapsing is the step that loses the place. The panel goes `display:
+    // Collapsing is the step that loses the place. The column goes `display:
     // none`, so the offset is only readable before this, and the swap that
     // follows must not save over what was read here with the 0 a hidden box
     // answers with.
@@ -95,11 +125,11 @@ describe("the rail keeps each pane where you left it", () => {
 
     await act(async () => segment(root, "add").click());
     await frame();
-    expect(panel(root).scrollTop).toBe(0);
+    expect(scroller(root).scrollTop).toBe(0);
 
     await act(async () => segment(root, "composition").click());
     await frame();
-    expect(panel(root).scrollTop).toBe(499);
+    expect(scroller(root).scrollTop).toBe(499);
 
     layout.destroy();
     root.remove();

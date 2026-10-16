@@ -230,7 +230,12 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
      * the Starter's 52 rows and more in a theme an author has built, finding
      * your place again after a glance at the assets is the whole cost of it. */
     const scrollOf = useRef(new Map<RailSlot, number>());
-    const paneBody = useRef<HTMLElement | null>(null);
+    /** The box that scrolls, which is the showing pane's **body** and not the
+     *  column around it (§7.7, `vg-208`): the column clips, so its own
+     *  `scrollTop` is always 0 and the offset has to come off the body inside
+     *  it. Only the showing pane's body carries this — the other three are
+     *  `hidden`, so their bodies are not scrollable boxes at all. */
+    const paneBody = useRef<HTMLDivElement | null>(null);
 
     /** The OS gets a vote only while the author has not cast one.
      *
@@ -315,11 +320,7 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
             onChoose={choosePane}
             onOpenSettings={() => setSettingsOpen(true)}
           />
-          <aside
-            className="editor-shell-panel editor-glass"
-            hidden={collapsed}
-            ref={paneBody}
-          >
+          <aside className="editor-shell-panel editor-glass" hidden={collapsed}>
             {/* Every pane wears the same chrome — a title bar, a body and a
                 footer toolbar — and each is `hidden` rather than unmounted,
                 because the persistent hosts below live inside them and React
@@ -362,6 +363,7 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
                   : uiCopy.statusBar.objects(objectCount)
               }
               hidden={slot !== "composition"}
+              bodyRef={paneBody}
               footer={<LayerActions bridge={store.bridge} />}
             >
               <CompositionPane bridge={store.bridge} />
@@ -376,6 +378,7 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
               icon={RAIL_GLYPHS.add}
               count={uiCopy.paneCounts.units(CARD_LIBRARY.length)}
               hidden={slot !== "add"}
+              bodyRef={paneBody}
             >
               <Host node={hosts.add} hidden={slot !== "add"} />
             </Pane>
@@ -389,6 +392,7 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
                   : uiCopy.paneCounts.tokens(tokenCount)
               }
               hidden={slot !== "tokens"}
+              bodyRef={paneBody}
             >
               <Host node={hosts.tokens} hidden={slot !== "tokens"} />
             </Pane>
@@ -397,6 +401,7 @@ export function createShellLayout(root: HTMLElement): ShellLayout {
               title={uiCopy.rail.slots.document}
               icon={RAIL_GLYPHS.document}
               hidden={slot !== "document"}
+              bodyRef={paneBody}
             >
               <Host node={hosts.document} hidden={slot !== "document"} />
             </Pane>

@@ -1,4 +1,5 @@
 import { expect, type Page, test } from "@playwright/test";
+import { PANE_BODY } from "./editor-rail.js";
 import {
   choosePalette,
   openAppearance,
@@ -52,8 +53,13 @@ test.describe("shell palettes", () => {
   });
 
   /** `vg-458` (item 1): the `--vigilia-scrollbar-*` tokens were declared for
-   *  the shell's own scrollers and read by nothing, so `.editor-shell-panel`
-   *  and `.editor-shell-inspector` painted the OS default.
+   *  the shell's own scrollers and read by nothing, so the pane's column and the
+   *  inspector painted the OS default.
+   *
+   *  **`vg-208` moved the pane's scroller off the column.** §7.7 puts the scroll
+   *  on the pane's *body*, so the shell's two scrollers are that body and the
+   *  inspector, and the column is read no more: a computed style on a box with no
+   *  scrollbar to paint is a reading that would pass whatever the pane drew.
    *
    *  `vg-480`: two more scrollers are **portalled out of `.editor-shell`** — the
    *  menu popup and the settings sheet — so the rule names them and this case
@@ -83,11 +89,11 @@ test.describe("shell palettes", () => {
     await openShell(page);
 
     const columns = await scrollbarReading(page, [
-      ".editor-shell-panel",
+      PANE_BODY,
       ".editor-shell-inspector",
     ]);
     expectScrollbarTokens(columns, {
-      ".editor-shell-panel": "the panel scroller",
+      [PANE_BODY]: "the pane's body, which is what scrolls",
       ".editor-shell-inspector": "the inspector scroller",
     });
 

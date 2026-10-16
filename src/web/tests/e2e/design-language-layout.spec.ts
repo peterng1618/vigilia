@@ -9,7 +9,7 @@ import {
   setPalette,
 } from "./design-language-readers.js";
 import { captureVisualReview } from "./editor-canvas.js";
-import { openPane } from "./editor-rail.js";
+import { openPane, paneBody } from "./editor-rail.js";
 import { SETTINGS_DIALOG, SETTINGS_GEAR } from "./shell-palette.js";
 import { isDesktopSurface } from "./surface.js";
 
@@ -314,12 +314,13 @@ test("captures each pane of the four-slot rail in the design language", async ({
     await openPane(page, slot);
 
     // The pane's surface is the rail's own column, not the `section` inside it.
-    // The column is the scroll owner (§7.7) and is the box the author sees: it
-    // is 246×636 against a viewport of 1280×720, and a pane taller or wider
-    // than it is clipped there. Photographing the inner `section` instead
-    // captures the pane's whole *layout* box with that clip ignored — measured,
-    // the Tokens pane is 220×2166, so its image was 1800px of blank page and
-    // the status bar, none of which an author ever sees.
+    // The column is the box the author sees — 246×636 against a viewport of
+    // 1280×720 — and it clips whatever the pane draws, the pane's own body
+    // included; the body is what scrolls (§7.7, `vg-208`), and the column is
+    // what says how much of it is on screen. Photographing the inner `section`
+    // instead captures the pane's whole *layout* box with that clip ignored —
+    // measured, the Tokens pane is 220×2166, so its image was 1800px of blank
+    // page and the status bar, none of which an author ever sees.
     const column = page.locator(".editor-shell-panel");
     const pane = page.locator(`[data-vigilia-panel="${panel}"]`);
     await expect(pane, `${slot}: its pane is not showing`).toBeVisible();
@@ -373,7 +374,10 @@ test("captures each pane of the four-slot rail in the design language", async ({
       // used to take showed the same pixels with it and without it. Scrolled to
       // the end, the frame lands on where it was: the artboard's tail now, the
       // collapsed "This document" header before item 17.
-      await column.evaluate((element) => {
+      // The scroll belongs to the pane's **body** since `vg-208`: the column
+      // clips, so setting its `scrollTop` is a no-op and the frame would land on
+      // the pane's top rather than its tail.
+      await paneBody(page).evaluate((element) => {
         element.scrollTop = element.scrollHeight;
       });
     }

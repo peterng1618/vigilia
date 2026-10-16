@@ -37,11 +37,11 @@ ledger did.
 
 ## Last completed change
 
-- **Task 19.2 closed at `be181f68`, so the register is 133 open** — `vg-142` is `verified` and its red proof was re-run by the controller rather than taken from the report.
-- **The panel subscribes to `object:moving`, coalesced onto one animation frame** — `follow` arms a single `requestAnimationFrame` however many events that frame carries, and `destroy()` releases the listener and cancels the armed frame; cutting the subscription reads 1 failed of 25 exit 1, restored byte-identically with `cmp` to green.
-- **The frame budget holds and the ruling's cost-if-wrong does not fire** — the coalesced recompute measures 2.3–3.2 ms median against a 16.7 ms frame, with the split proven on a no-subscription build, so no cheaper recompute is owed.
-- **The row's own mechanism description was stale for the fifth time this phase** — there is no `sizeNote.textContent` at `artboard-panel.ts:336` and no `refreshNote` writer; the note is React-rendered from `sceneBoxes`, and the subject reproduces while the line numbers do not.
-- **One of the five stale pointers was the controller's own** — the brief cited `bleed.ts` for the `object:modified` write, and that file is 62 lines with no fire in it; the seat found the write at `selection-inspector/index.ts:414` and reported it rather than working around it.
+- **Task 19.3 closed: the pane's body owns the scroll, so the chrome stays put** — `overflow: auto` and `min-height: 0` move off the shared `.editor-shell-panel`/`.editor-shell-inspector` rule onto `.editor-shell-pane-body`, the pane becomes a flex column whose chrome is `flex: none`, and the column takes `overflow: hidden`; decision note `0057` claims `shell-layout.tsx` and landed before the first write.
+- **Step 1 measured the defect reproducing before anything changed** — on the base bundle the column overflows by 1026px, and scrolling it 300px moves the title bar (54 → -246) and the footer (1643 → 1343) by exactly that; after the change the body takes the offset and both hold at 54 and 617, the footer inside the pane's box for the first time.
+- **The `paneBody` ref names the body it is named for** — an optional `bodyRef` on `Pane`, attached only while that pane is showing, because the other three are `hidden` and a `display: none` box answers `scrollTop` 0; the collapse save still happens before the column is hidden.
+- **`layer-tree.ts` is untouched, and the plan's `Files:` line naming it is wrong** — 433 lines with no scroll code, no scroll comment and no `stays put` text, and the comment the row cites at `layer-panel.tsx:809-810` lives at `layer-panel.dom.test.tsx:628` in a 60-line file.
+- **Five browser specs that read the column as the scroller moved to the body** — `editor-rail.spec.ts` (plus a new chrome case), `composition-panel.spec.ts`, `shell-palette-tokens.spec.ts`, `design-language-layout.spec.ts` and `editor-rail.ts`, which now owns `PANE_BODY` and `openEveryGroup`; 20 rail+layout cases, 3 touched cases and the two design-language specs pass.
 
 ## Next
 

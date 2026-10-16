@@ -1138,11 +1138,17 @@ body,
   color: var(--muted);
 }
 /* The pane's own column, and the owner of the pane|stage hairline (the §3
-   elevation-0 block above draws it). */
+   elevation-0 block above draws it). It **clips and does not scroll**: §7.7's
+   scroll belongs to the pane's body, so the title bar and the footer stay
+   outside the box that moves (`vg-208`). The 12px padding stays on the column
+   rather than moving onto the body, so the title bar and the footer keep the
+   inset they had; the one visible difference is that the body's scrollbar is
+   drawn at the body's own edge, 12px inside the column's. */
 .editor-shell-panel {
   grid-area: panel;
   padding: 12px;
   color: var(--shell-muted);
+  overflow: hidden;
 }
 .editor-shell-stage {
   grid-area: stage;
@@ -1151,9 +1157,16 @@ body,
 .editor-shell-inspector {
   grid-area: inspector;
 }
+/* `min-height: 0` is the height model both columns need as grid items, so
+   neither grows past the row it was given. **The scroll is no longer shared
+   between them** (`vg-208`): §7.7 gives the pane's column no scrollbar at all —
+   the pane's *body* owns it, which is what keeps the title bar and the footer
+   still — and the inspector's sections are the one scroller they always were. */
 .editor-shell-panel,
 .editor-shell-inspector {
   min-height: 0;
+}
+.editor-shell-inspector {
   overflow: auto;
 }
 /* The scrollbar is the shell's, not the platform's: the `--vigilia-scrollbar-*`
@@ -1166,6 +1179,9 @@ body,
    every scrollable surface in the host page; the cost is a list that can go
    stale, and `editor-shell.control-rules.test.ts` is what holds it.
 
+   **The pane's scroller is the pane's body** (`vg-208`), so the list names that
+   and not the column it sits in — the column has no scrollbar to style.
+
    **The standard pair is the whole styling (`vg-491`).** The
    `::-webkit-scrollbar*` family stood here and painted nothing: measured in
    this Chromium, either property being non-`auto` disables the family for that
@@ -1175,7 +1191,7 @@ body,
    never read the family. A hover colour is what the pair cannot express, and
    nothing else can either: the family that had one is inert wherever the pair
    is declared. The thumb is those tokens and never a literal of its own. */
-.editor-shell-panel,
+.editor-shell-pane-body,
 .editor-shell-inspector,
 .editor-shell-menu-popup,
 .editor-shell-dialog {
@@ -1244,9 +1260,10 @@ body,
 }
 /* A pane is a section too, but it is the column's own frame rather than a
    section *inside* one, so it is excluded from the rule above and sits flush at
-   the top. Its `hidden` is made explicit: nothing else in this file sets a
-   display on a pane, so the UA rule would do — this keeps it true if one ever
-   does. */
+   the top. Its `hidden` is made explicit because the frame rule below sets
+   `display: flex` on every pane: the UA rule would no longer do, and the three
+   panes that are not the chosen slot have to leave the tree rather than stack
+   under it. */
 .editor-shell-pane[hidden] {
   display: none;
 }
@@ -2157,6 +2174,26 @@ body,
      two resets have to be spelled here rather than assumed dropped. */
   border-bottom: 0;
   padding-bottom: 0;
+}
+/* **The frame is a column and the body owns the scroll** (`vg-208`, §7.7's
+   "Chrome stays still"): the title bar and the footer are `flex: none`, so a
+   tall body's shrink cannot squeeze them, and the body takes `min-height: 0`
+   because a flex child's `min-height` is `auto` — without it the body refuses to
+   shrink below its content and the column grows instead, which is the same
+   defect wearing the fix. The body needs no `flex` value of its own: `0 1 auto`
+   is what the initial value already is, and it is what keeps a short list's
+   footer under the list rather than pinned to the pane's floor. */
+.editor-shell-pane {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+.editor-shell-pane > :not(.editor-shell-pane-body) {
+  flex: none;
+}
+.editor-shell-pane-body {
+  min-height: 0;
+  overflow: auto;
 }
 .editor-shell-pane-title {
   display: flex;

@@ -13,7 +13,12 @@ import {
   enterLayer,
   readSceneObject,
 } from "./editor-canvas.js";
-import { openPane } from "./editor-rail.js";
+import {
+  openEveryGroup,
+  openPane,
+  PANE_BODY,
+  paneBody,
+} from "./editor-rail.js";
 import { selectLayer } from "./rebuild-driver.js";
 import { rulePx } from "./shell-tokens.js";
 import { isDesktopSurface } from "./surface.js";
@@ -86,16 +91,6 @@ const SUPERSEDED_WIDTH = 360;
 // taken with the scrollbar in place. The list here overflows at every width
 // tested, so this is the difference between the author's layout and a wider one.
 test.use({ launchOptions: { ignoreDefaultArgs: ["--hide-scrollbars"] } });
-
-/** Every group open, counted down so a tree that keeps producing twisties cannot spin. */
-async function openEveryGroup(page: Page): Promise<void> {
-  const twisties = page.locator(
-    '[data-vigilia-layer] button[aria-label^="Expand"]',
-  );
-  for (let opened = await twisties.count(); opened > 0; opened -= 1) {
-    await twisties.first().click();
-  }
-}
 
 /**
  * The measurement the stylesheet's comment records: a name is clipped when its
@@ -563,18 +558,26 @@ async function authoredBox(
  * Whether a row's box is inside the panel's scrolling box right now — the
  * question `isVisible()` does not answer, because a row scrolled past the end is
  * still visible in the CSS sense.
+ *
+ * The scrolling box is the pane's **body** since `vg-208` moved the scroll off
+ * the column (§7.7). Read on the column it would answer for the wrong box: the
+ * column clips, so a row scrolled past the body's end is still inside the
+ * column's own rect and would read as on screen.
  */
 async function rowInScroller(page: Page, id: string): Promise<boolean> {
-  return page.evaluate((rowId) => {
-    const scroller = document.querySelector<HTMLElement>(".editor-shell-panel");
-    const row = document.querySelector<HTMLElement>(
-      `[data-vigilia-layer="${rowId}"]`,
-    );
-    if (scroller === null || row === null) return false;
-    const outer = scroller.getBoundingClientRect();
-    const inner = row.getBoundingClientRect();
-    return inner.top >= outer.top - 1 && inner.bottom <= outer.bottom + 1;
-  }, id);
+  return page.evaluate(
+    ({ selector, rowId }) => {
+      const scroller = document.querySelector<HTMLElement>(selector);
+      const row = document.querySelector<HTMLElement>(
+        `[data-vigilia-layer="${rowId}"]`,
+      );
+      if (scroller === null || row === null) return false;
+      const outer = scroller.getBoundingClientRect();
+      const inner = row.getBoundingClientRect();
+      return inner.top >= outer.top - 1 && inner.bottom <= outer.bottom + 1;
+    },
+    { selector: PANE_BODY, rowId: id },
+  );
 }
 
 /** Whole milliseconds since `started`, for a wall-clock reading. */
@@ -1068,9 +1071,10 @@ test("two hundred loose shapes, re-measured", async ({ page }, testInfo) => {
   );
 
   // **A scroll to each end, with the end row still on screen.** The wheel is
-  // read on the panel's own scroller, and the assertion is the row's box being
-  // inside the scroller's — `isVisible()` would pass on a row scrolled past.
-  const scroller = page.locator(".editor-shell-panel");
+  // read on the pane's own scroller — its body, since `vg-208` — and the
+  // assertion is the row's box being inside the scroller's; `isVisible()` would
+  // pass on a row scrolled past.
+  const scroller = paneBody(page);
   const scroll = await scroller.evaluate((element) => ({
     scrollHeight: element.scrollHeight,
     clientHeight: element.clientHeight,
