@@ -2617,6 +2617,31 @@ measurement the ruling asks for.
 **Verify:** `npm run gate` (exit code read from `$?` into a file, never through a pipe); the browser suite
 for the chip, the slider preview and the picker tracks, on a rebuilt bundle.
 
+**Closed 2026-10-16, base `6508ac42`.** **The Acceptance is met and every clause was checked rather than
+assumed.** All **twelve** rows the phase produces are `verified` and each carries a `check` on its own line —
+`vg-264`, `vg-336`, `vg-263` (`ee82150a`); `vg-289`, `vg-272` (`f5788e86`); `vg-252`, `vg-290` (`c0b0ceb7`);
+`vg-223`, `vg-279` (`5da31012`); `vg-254`, `vg-249` (`6508ac42`); `vg-363` (`e836a9ee`) — and all six
+`artefacts` shas resolve and are ancestors of HEAD. **The copy-rows clause was not met when it was first
+read and is met now**: `vg-264` named `uiCopy.controls`, the key it added, but `vg-336` named only the table
+it read from; `ee82150a`'s `ui-copy.ts` diff is **+22 lines and is entirely these nine keys**, so both rows
+name them (`ce265904`). **`vg-252` and `vg-290` each carry a case that fails when the fix is disabled, and
+both were re-run by the controller rather than taken from the reports.** `npm run backlog:check` **exit 0**
+(548 items, 136 open). `npm run gate` **exit 0** — 262 files, **3474 tests**, and `typecheck` across all
+seven workspaces. **The browser suite is named separately, because `gate`'s `test` is `vitest run` and never
+runs Playwright**: `npx playwright test --workers=1` reads **exit 1, 336 passed / 3 failed / 255 skipped in
+22.7m**, and **all three reds are rows the register already owns** — `vg-431`
+(`glass-lifecycle.spec.ts:25`, desktop-chromium), `vg-258` (`editor-display.spec.ts:659`, phone-chromium)
+and `vg-212` (`publish-loop.spec.ts:349`, own-host). No new red. **What the phase found about itself is
+worth more than its rows**: **five of its own premises were false or stale and every one was caught by the
+seat that had to implement it** — `dialog.tsx` declares no `ACTION_BUTTON` and there were four declarations
+rather than three; `vg-279`'s manifest carried no product version at all; `vg-223`'s breakpoint had moved
+from 640x360 to 560x360; `vg-252`'s breadth was overstated because the deferral is action-scoped; and
+`vg-254`'s `aria-valuenow` half had already been fixed by `vg-449`. **Four briefs in a row carried a pointer
+that was not read off the disk**, which is the brief-facts rule failing in the seat that writes the briefs;
+the last two briefs read every pointer off the disk and still lost one (`control.dom.test.tsx:659-676`).
+**Two rows were filed from the landings rather than lost** — `vg-545` and `vg-548` — and one watchlist entry
+was found dead (`selection-inspector/style.ts`, deleted at `aa5edf96`, filed as `vg-544`).
+
 ### Task 18.1: The control set's copy and its invalid-value channel
 
 **Files:**
