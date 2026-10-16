@@ -2682,9 +2682,30 @@ stylesheet order; that is `vg-547`.
 **Interfaces:**
 - Produces: `vg-252`, `vg-290` closed
 
-- [ ] **Step 1: `vg-252` — the predicate answers "does this target consume this key", not "is this a text-entry target".** A text field consumes everything printable, so the coarse question happens to work there; a range consumes its own navigation keys and nothing else. The predicate is `isTextEntryTarget` at `shortcut-manager/index.ts:237` (the row cites `:192-213`, which is stale). The repair is a consumption rule per target shape, **enumerated as data beside the control set**: a text-like target consumes printable keys, a range consumes exactly the four arrows, Home, End, Page Up and Page Down, and every other control consumes nothing. That keeps the camera keys on a focused slider and gives `Ctrl+Z` back, which is the half the row measured as broken.
+- [ ] **Step 1: `vg-252` — the predicate answers "does this target consume this key", not "is this a text-entry target".** A text field consumes everything printable, so the coarse question happens to work there; a range consumes its own navigation keys and nothing else. The predicate is `isTextEntryTarget` at `shortcut-manager/index.ts:237` (the row cites `:192-213`, which is stale). The repair is a consumption rule per target shape, **enumerated as data beside the control set**. **Corrected 2026-10-16, after the task ran: the rule as first written here — "a text-like target consumes printable keys, a range consumes exactly the four arrows, Home, End, Page Up and Page Down, and every other control consumes nothing" — cannot be implemented literally, because three existing cases fail against it** (`index.dom.test.ts:214` Delete on a textarea, `:382` Escape, `:323` ArrowLeft). The implemented rule is **"a text field consumes every key the table binds"** — printable characters are its own, and Delete, the arrows and Escape are its editing keys — which is the honest reading of why the coarse question happened to work there. What keeps the camera keys on a focused slider and gives `Ctrl+Z` back is unchanged: a range consumes its own keys and no modifier chord whatever the key.
 - [ ] **Step 2: `vg-290` — `RESERVED_LETTERS` becomes two sets.** It is at `shortcut-manager/bindings.ts:75` and the refusal that reads it at `:302`, both as the row says. The blanket `shift !== true` exclusion was never a measurement; it is an assumption that Shift makes a chord safe, and three of the four chords most likely to be tried are exactly the Shift variants the browser keeps. Membership is measured against Chromium's documented page-unreachable accelerators — `Ctrl+Shift+N`, `Ctrl+Shift+R`, `Ctrl+Shift+T`, `Ctrl+Shift+W` — and Firefox is checked against them, because the host opens the editor in the author's own browser. **The comment carries the browser and the date it was measured against**; a reserved set with no provenance is the claim-without-a-reason shape this row already names.
 - [ ] **Step 3: Close the two**, each with a case that fails when the fix is disabled.
+
+**Annotated 2026-10-16, at the task's close: both rows are `verified` at `c0b0ceb7`, and both red proofs
+were re-run by the controller rather than taken from the report.** Cutting the deferral back to the coarse
+predicate reads 1 failed / 70 passed exit 1, and the browser case that presses `Ctrl+Z` with the track still
+focused reads 1 unexpected; collapsing the two reserved sets back into the old `shift !== true` rule reads
+1 failed / 70 passed exit 1, failing the right way — `Ctrl+Shift+N` came back as `taken`/`file.new`, so the
+old rule blamed another binding for a chord the browser owns. Each restored byte-identically with `cmp`,
+green at 71 passed exit 0. **The shape the brief asked about, and the answer is not the obvious one**: the
+consumption rule became the deferral's owner, the coarse predicate was left for the camera, and
+`activatesOnSpace` was given its own stated rule — because **the third call site was not asking a third
+question**. `viewport-manager/navigation.ts:56`'s `!isTextEntryTarget(target)` was unreachable behind a
+tautology, since the guard at `:182-186` tests the same target first, so it is now `return true` with the
+reason written down and no camera behaviour moved. **Two claims this task corrected**: `vg-252`'s breadth
+("every shortcut the manager owns is swallowed") is overstated — the deferral is action-scoped for modified
+chords, so only the four `MODIFIED_KEY_DEFERRED_ACTION_IDS` actions' chords plus every unmodified binding
+were swallowed; and `editor.spec.ts`'s blur block, whose comment explained that a focused range swallowed
+the chord, **was already a no-op** because `typeIntoControl` fills *and blurs* a range
+(`control-set.ts:225-227`). **`vg-290`'s provenance is a documentation check and is recorded as one**: the
+seat's headless Chromium probe delivered every chord to the page including `Ctrl+W`, so a headless browser
+cannot observe its own accelerators and no Firefox is installed on this box; the comment names Chrome's
+shortcut list and Firefox's `browser-sets.inc` and the date, which is what the ruling asked for.
 
 ### Task 18.4: The identity chip and the version line
 

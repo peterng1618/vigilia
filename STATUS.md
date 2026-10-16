@@ -37,11 +37,11 @@ ledger did.
 
 ## Last completed change
 
-- **Task 18.2 closed at `f5788e86`, so the register is 142 open** — `vg-289` and `vg-272` are `verified`, `npm run backlog:check` exit 0, and `ACTION_BUTTON` and `plainButtonClasses` each have one owner.
-- **The task found a third false premise in the plan, in both directions at once** — `ACTION_BUTTON` was declared *four* times, not three (`draft-recovery-prompt.tsx:15` was unnamed by the plan, the task's `Files:` line and `vg-289`'s own title), and the step also asserted a declaration in `dialog.tsx` that never existed. `vg-289`'s title is corrected in the register.
-- **Its red proof was re-run rather than taken from the report** — cutting the shared token's horizontal pad reads 40/43 with exactly the three new rendered-class cases failing, restored byte-identically with `cmp`, green at 43/43 exit 0.
-- **Two of Task 18.2's brief paths were wrong and the brief now records it** — `theme-library-dialog.dom.test` and `new-document-chooser.dom.test` are `.ts`, not `.tsx`, so its Verification commands would have matched no files and read green over nothing; the paths were carried from the plan's prose instead of read off the disk.
-- **`vg-547` files the trailer** — `preset-list.tsx:450` composes the shared token with `text-hot`, so two conflicting colour utilities on one element resolve by stylesheet order, and no test reads either delete button's resolved colour.
+- **Task 18.3 closed at `c0b0ceb7`, so the register is 140 open** — `vg-252` and `vg-290` are `verified`, both red-proved, and both proofs were re-run by the controller rather than taken from the report.
+- **The shape the brief asked about is not the obvious one** — the consumption rule became the deferral's owner, the coarse predicate stayed for the camera, and `activatesOnSpace` got its own stated rule, because the third call site was not asking a third question: its `!isTextEntryTarget` was unreachable behind a tautology.
+- **Two claims the task corrected** — `vg-252`'s breadth is overstated (the deferral is action-scoped for modified chords, so `Ctrl+S`/`Ctrl+C`/`Ctrl+O`/`Ctrl+D` were never swallowed) and is corrected on the row; and `editor.spec.ts`'s blur block, whose comment explained that a focused range swallowed the chord, was already a no-op because `typeIntoControl` fills *and blurs*.
+- **`vg-290`'s provenance is a documentation check and is recorded as one** — the seat's headless Chromium probe delivered every chord including `Ctrl+W`, so a headless browser cannot observe its own accelerators, and no Firefox is installed here; the comment names Chrome's shortcut list, Firefox's `browser-sets.inc` and the date, which is what the ruling asked for.
+- **The plan's own Step 1 rule could not be implemented literally** — "a text-like target consumes printable keys" fails three existing cases, so the implemented rule is "a text field consumes every key the table binds"; the plan carries the correction.
 
 ## Next
 
