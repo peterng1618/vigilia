@@ -2589,15 +2589,21 @@ and one subject: a shared control expressing its states the way the rest of the 
 homed behaviour findings *in the panes*; these are the controls those panes are built from.
 
 **Owners:** `src/web/packages/editor/src/components/ui/` (`control-*.tsx`, `dialog.tsx`),
-`src/web/packages/editor/src/selection-inspector/` (`index.ts`, `style.ts`), the editor shell's shortcut
+`src/web/packages/editor/src/selection-inspector/` (`index.ts` — `style.ts` was deleted at `aa5edf96`
+and `scripts/reuse-gate.mjs`'s watchlist still names it), the editor shell's shortcut
 manager and identity chip, `src/web/packages/editor/src/ui-copy.ts`, `host/src/themes/store.ts` and
 `editor/src/boot-theme.ts` for the tie-break.
 
 **Constraints:** **queued behind Phases 12 and 15–17**, because one phase is active at a time.
-**`components/ui/` and `selection-inspector/style.ts` are on `scripts/reuse-gate.mjs`'s watchlist**, so
-Tasks 18.1 and 18.5 land a decision note before their first write. **Every row here was ruled in Phase 1
+**`components/ui/` is on `scripts/reuse-gate.mjs`'s watchlist**, so Task 18.1 lands a decision note before
+its first write — landed as `0056`, which also found that the channel `vg-263` asks for already exists in
+`ControlNumber`. **The watchlist's second editor entry, `selection-inspector/style.ts`, is a dead path**
+(deleted at `aa5edf96`), so Task 18.5 owes no note for it and its subject is `index.ts`'s field funnel.
+**Every row here was ruled in Phase 1
 on 2026-10-12 and none has been measured since**, so each task reproduces its own case first: several
-rulings cite line numbers taken that day.
+rulings cite line numbers taken that day. **The same is true of this phase's own `Files:` lines and
+premises — re-read at `eb705a9f`, four named paths did not exist and two of Task 18.2's premises were
+false**; the corrections are annotated on the tasks themselves.
 
 **Acceptance:** each row's own `check` passes and is recorded on its line; the copy rows name the census
 key they added or moved; `vg-252` and `vg-290` each carry a case that fails when the fix is disabled;
@@ -2614,7 +2620,7 @@ for the chip, the slider preview and the picker tracks, on a rebuilt bundle.
 ### Task 18.1: The control set's copy and its invalid-value channel
 
 **Files:**
-- Modify: `src/web/packages/editor/src/components/ui/control-*.tsx`; `src/web/packages/editor/src/ui-copy.ts`; the copy census test beside it
+- Modify: `src/web/packages/editor/src/components/ui/control-*.tsx`; `src/web/packages/editor/src/ui-copy.ts`; the copy census test beside it; `src/web/packages/editor/src/panes/tokens/paint-list.tsx` (Step 3's rewiring — the row and this plan both say `panes/add/`, and the file is under `panes/tokens/`)
 
 **Interfaces:**
 - Produces: `vg-264`, `vg-263`, `vg-336` closed
@@ -2627,13 +2633,13 @@ for the chip, the slider preview and the picker tracks, on a rebuilt bundle.
 ### Task 18.2: One owner for the two button idioms
 
 **Files:**
-- Modify: `src/web/packages/editor/src/components/ui/dialog.tsx`; `new-document-chooser.tsx`; `replace-document-prompt.tsx`; `theme-library-dialog.tsx`; `panes/add/paint-list.tsx`; `panes/add/preset-list.tsx`
+- Modify: `src/web/packages/editor/src/components/ui/dialog.tsx`; `new-document-chooser.tsx`; `persistence-manager/replace-document-prompt.tsx`; `theme-library-dialog.tsx`; `panes/tokens/paint-list.tsx`; `panes/tokens/preset-list.tsx`
 
 **Interfaces:**
 - Produces: `vg-289`, `vg-272` closed
 
-- [ ] **Step 1: `vg-289` — the shared dialog primitive owns `ACTION_BUTTON`.** It is already declared in `dialog.tsx:43` and every one of the three dialogs already imports that primitive; the three declarations were already drifting, so their own copies are deleted and the token imported. A new `components/ui` module is rejected — the primitive every consumer already depends on is the owner it already has.
-- [ ] **Step 2: `vg-272` — one shared class token for the plain-button idiom, owned by the control set.** The four copies are the same Tailwind string with no behaviour to own, so a component would be a wrapper with one product and a pass-through prop set. `paint-list.tsx:127`, `:339` and `:391` and `preset-list.tsx:468` import it and stop carrying their own. Revisit only if the button acquires behaviour (disabled, aria, a variant).
+- [ ] **Step 1: `vg-289` — the shared dialog primitive owns `ACTION_BUTTON`.** **Corrected 2026-10-16: the primitive does not declare it today** — the three declarations are `new-document-chooser.tsx:41`, `persistence-manager/replace-document-prompt.tsx:13` and `theme-library-dialog.tsx:51`, and `dialog.tsx:43` is a line inside `DialogPrimitive.Root`. What is already true is the second half: all three dialogs import that primitive, and **the three declarations were already drifting** — the first two are byte-identical while the third carries `enabled:hover:` and `disabled:text-faint`. So the token moves into the primitive the three already depend on and their own copies are deleted. A new `components/ui` module is rejected — the primitive every consumer already depends on is the owner it already has.
+- [ ] **Step 2: `vg-272` — one shared class token for the plain-button idiom, owned by the control set.** **Corrected 2026-10-16: it is three copies and one different string, not four of one.** `paint-list.tsx:132`, `:349` and `preset-list.tsx:458` are identical (`text-text`); **`paint-list.tsx:401` is `text-hot` with a `disabled:text-faint` variant** — a second idiom that already has behaviour, which is the case this step's own "revisit only if the button acquires behaviour" clause excludes. So the three import the token and stop carrying their own, and `:401` is left as its own idiom and said to be. Revisit only if the button acquires behaviour (disabled, aria, a variant).
 - [ ] **Step 3: Close the two.**
 
 ### Task 18.3: The shell's keyboard rules
@@ -2644,8 +2650,8 @@ for the chip, the slider preview and the picker tracks, on a rebuilt bundle.
 **Interfaces:**
 - Produces: `vg-252`, `vg-290` closed
 
-- [ ] **Step 1: `vg-252` — the predicate answers "does this target consume this key", not "is this a text-entry target".** A text field consumes everything printable, so the coarse question happens to work there; a range consumes its own navigation keys and nothing else. The repair is a consumption rule per target shape, **enumerated as data beside the control set**: a text-like target consumes printable keys, a range consumes exactly the four arrows, Home, End, Page Up and Page Down, and every other control consumes nothing. That keeps the camera keys on a focused slider and gives `Ctrl+Z` back, which is the half the row measured as broken.
-- [ ] **Step 2: `vg-290` — `RESERVED_LETTERS` becomes two sets.** The blanket `shift !== true` exclusion was never a measurement; it is an assumption that Shift makes a chord safe, and three of the four chords most likely to be tried are exactly the Shift variants the browser keeps. Membership is measured against Chromium's documented page-unreachable accelerators — `Ctrl+Shift+N`, `Ctrl+Shift+R`, `Ctrl+Shift+T`, `Ctrl+Shift+W` — and Firefox is checked against them, because the host opens the editor in the author's own browser. **The comment carries the browser and the date it was measured against**; a reserved set with no provenance is the claim-without-a-reason shape this row already names.
+- [ ] **Step 1: `vg-252` — the predicate answers "does this target consume this key", not "is this a text-entry target".** A text field consumes everything printable, so the coarse question happens to work there; a range consumes its own navigation keys and nothing else. The predicate is `isTextEntryTarget` at `shortcut-manager/index.ts:237` (the row cites `:192-213`, which is stale). The repair is a consumption rule per target shape, **enumerated as data beside the control set**: a text-like target consumes printable keys, a range consumes exactly the four arrows, Home, End, Page Up and Page Down, and every other control consumes nothing. That keeps the camera keys on a focused slider and gives `Ctrl+Z` back, which is the half the row measured as broken.
+- [ ] **Step 2: `vg-290` — `RESERVED_LETTERS` becomes two sets.** It is at `shortcut-manager/bindings.ts:75` and the refusal that reads it at `:302`, both as the row says. The blanket `shift !== true` exclusion was never a measurement; it is an assumption that Shift makes a chord safe, and three of the four chords most likely to be tried are exactly the Shift variants the browser keeps. Membership is measured against Chromium's documented page-unreachable accelerators — `Ctrl+Shift+N`, `Ctrl+Shift+R`, `Ctrl+Shift+T`, `Ctrl+Shift+W` — and Firefox is checked against them, because the host opens the editor in the author's own browser. **The comment carries the browser and the date it was measured against**; a reserved set with no provenance is the claim-without-a-reason shape this row already names.
 - [ ] **Step 3: Close the two**, each with a case that fails when the fix is disabled.
 
 ### Task 18.4: The identity chip and the version line
