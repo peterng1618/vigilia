@@ -3071,7 +3071,9 @@ Acceptance names the browser suite for Tasks 19.1–19.4 only.
 
 **Outcome:** the seven ruled rows whose owner is the token vocabulary or a drawing are landed — one
 elevation ladder survives, `--shell-warm` is readable in every palette, `--shell-flat` goes, and the
-drawings agree with the product where they had invented or drifted.
+drawings agree with the product where they had invented or drifted. **[Annotated 2026-10-16: two of the
+seven cannot land as their rulings read, so Tasks 20.5 and 20.6 are blocked on decisions their own rulings
+declined to make and both are annotated in place below; Tasks 20.1–20.4 are the dispatchable work.]**
 
 **Why a phase of its own.** Six of the seven edit `editor-shell.css` or a drawing under
 `docs/design/mockups/`, and the seventh edits the design-language reader. They are one subject: what the
@@ -3212,6 +3214,24 @@ step has nothing to correct and says so rather than inventing an edit. This is t
 - [ ] **Step 1: The light palette's bar becomes a solid `background-color` like the other five**, so one ground per palette and one rule in the reader.
 - [ ] **Step 2: Do not grow the reader a gradient comparator** plus a ruling on which stop is the ground. `vg-322` still owns which role a palette preview ground bar depicts and is not absorbed.
 - [ ] **Step 3: Close it**, with the parity check reading all six bars.
+
+**Annotated 2026-10-16 before dispatch: the ruling's action cannot produce the ruling's outcome, and the step
+is BLOCKED on the one decision the ruling declined to make.** `vg-350` says *"THE LIGHT PALETTE'S BAR BECOMES
+A SOLID `background-color` LIKE THE OTHER FIVE. One ground per palette and one rule in the reader, so the
+drawing is corrected to the shape the other five already have rather than the parity reader growing a
+gradient comparator plus a ruling on which stop is the ground."* **The reader compares the product's rendered
+value, not the drawing's.** `.editor-shell-palette-swatch` paints `background: var(--shell-backdrop)`
+(`editor-shell.css:973-976`), which under `light` is `linear-gradient(145deg, #d8ebe4, #afd4d1)` (light's
+block, `:420`), so the product's computed `background-color` is `rgba(0, 0, 0, 0)` — and that is precisely
+what `tests/e2e/mockup-parity.ts:437-450` already records, with the reason light is deliberately absent from
+the five colour rows: *"a colour row would fail on a surface that is correct"*. So making the **drawing**
+solid leaves the mismatch exactly where it was and moves it to the other side; it cannot give *"one rule in
+the reader"*. **The only reading that satisfies the ruling's own outcome is that the light palette's product
+ground becomes one solid colour and the drawing follows** — which is the decision the ruling's own sentence
+refuses (*"rather than … a ruling on which stop is the ground"*). The row stays `open` and the task is not
+briefed until the light palette's ground colour is decided. **One stale citation comes with it**:
+`mockup-parity.ts:443` cites `editor-shell.css:281` for light's ground, and `:281` is inside graphite's block
+(graphite's selector is at `:278`); light's block is `:420`. The measurement is recorded on `vg-350`.
 
 ### Task 20.6: `DESIGN.md`'s front matter and the CSS agree
 
