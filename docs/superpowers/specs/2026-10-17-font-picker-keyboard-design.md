@@ -78,11 +78,35 @@ status bar, the header and the rail, which is the shell's own tab order rather t
 stop count (the plan's own Step 1 sentence) and must sit above 330 for model A or 301 for model B. A
 Step 3 that lands a model and leaves `TAB_BOUND = 200` still has a red step 5.
 
+### 5.1 The ruling this review has to make, because the plan says both things
+
+**Task 21.9 carries a contradiction and this is where it lands.** Its Step 1 says the bound *"is derived
+from the shell's own stop count"*, while its closing clause — *"What this task does not do"* — says it
+*"does not widen `TAB_BOUND` to make the red go away"*, because *"raising it would hide the defect rather
+than fix it"*. **The measurement says the second clause cannot hold if the first is honoured**: the
+defect is the picker's 758 stops, and fixing it fully still leaves 301–330 presses, so a Step 3 that
+fixes the picker and leaves the bound at 200 leaves step 5 red and `vg-551` unclosable.
+
+**So the review is asked to rule on the bound, not only on the model**, and the two candidate readings
+are:
+
+- **The bound is derived** — `TAB_BOUND` becomes a measured value above the shell's legitimate stop
+  count, and the plan's *"does not do"* clause is read as refusing a *round-number* raise that hides an
+  unfixed defect rather than refusing derivation. `vg-551` then closes on the picker's own delta:
+  1058 → 330 or 301.
+- **The bound stays 200** — and `vg-551` cannot close on this task, so Step 3 must be re-scoped: either
+  step 5's walk gets its own target closer than the pane, or the row closes on the picker's stop count
+  (758 → 30 or 1) measured directly rather than through the walk.
+
+**Both readings close `vg-551` on a measurement rather than on a pass**, which is what the plan's Step 3
+requires; they differ in *which* measurement, and that is the decision.
+
 ## 6. What this does not decide
 
 - **Which model.** That is the review's, and §3–§5 are what it needs.
-- **The bound's value.** §5 predicts the two counts; the value the constant takes is Step 3's, and it is
-  above both.
+- **The bound's value, and whether it moves at all.** §5.1 states the contradiction and the two readings;
+  the review's ruling there is what makes Step 3's acceptance satisfiable, so it is asked for **with** the
+  model rather than after it.
 - **Whether the face list's own window is also a defect.** It is the same shape — a list whose tail Tab
   alone does not reach, and whose search is the only keyboard route to it — and the model chosen here
   would answer for it too, but the row is about the trio list and nothing here changes the faces.

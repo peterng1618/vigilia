@@ -4160,6 +4160,12 @@ measured.
       nothing about how far it got. Phase 19's close measured the real census — rail 6 and 53, step 2's pane
       5, step 4's inspector 34, **step 5's pane 1058**, step 6 102 — so the bound is derived from the shell's
       own stop count, and a walk that still does not match reports the presses it took and the regions it saw.
+      **One census figure is corrected at Task 21.9's Step 1 landing: "step 6 102" mislabels the step** — the
+      walk's own log maps 1:1 to its 7 `tabUntil` and 13 `tabToMark` calls, and step 6 measures **65** while
+      the real **102** is step 9's File-menu `tabUntil`; all six figures exist in the walk and one was
+      attributed to the wrong step. **"So the bound is derived from the shell's own stop count" is the
+      sentence Step 3's correction turns on** — read against the clause under *What this task does not do*,
+      the two say different things.
       **`tabUntil` also refuses to continue past an element it has already marked**, so the count is a
       one-sweep distance rather than a cycle, and the report says which.
 - [ ] **Step 2: The reason is the font picker's trio list, and its keyboard model is a decision rather than a
@@ -4171,11 +4177,31 @@ measured.
       consequence of each, and **get it reviewed before implementing** — the answer changes the control's
       keyboard contract, which is why `vg-551` was filed rather than fixed on the fly.
 - [ ] **Step 3: Land the chosen model and close `vg-551` against the measurement, not against a pass** — the
-      number that closes it is step 5's press count in the shell walk, before and after.
+      number that closes it is step 5's press count in the shell walk, before and after. **Corrected
+      2026-10-17 at Task 21.9's Step 1 landing: this acceptance cannot be met while the bound stays 200, and
+      the contradiction is with the clause below rather than with the measurement.** Step 5 is **1058**
+      presses and the picker's trio list is **758** of them, so the best model leaves **301** (roving
+      tabindex) or **330** (windowing) — both still over the budget, because the remaining ~300 presses are
+      the shell's own tab order. **So a Step 3 that lands a model and leaves `TAB_BOUND = 200` leaves step 5
+      red and `vg-551` unclosable.** The two readings and the ruling they need are stated at
+      `docs/superpowers/specs/2026-10-17-font-picker-keyboard-design.md` §5.1, and **that ruling is the
+      user's, because it decides what this task's acceptance means**; it is asked for with the model rather
+      than after it.
 
 **What this task does not do:** it does not widen `TAB_BOUND` to make the red go away. The row says in terms
 that the walk's fixed budget is the same finding's other face, and raising it would hide the defect rather
-than fix it.
+than fix it. **Annotated 2026-10-17 at Step 1's landing: as written this clause and Step 1's *"the bound is
+derived from the shell's own stop count"* cannot both hold, and the measurement is what shows it.** Fixing
+the picker completely still leaves step 5 at 301–330 against a 200 budget, so honouring this clause means
+`vg-551` cannot close on this task at all. **Both readings, and which measurement each closes the row on, are
+at the spec's §5.1**; the ruling is the user's and is asked for with the model.
+
+**One judgement Step 1's landing made and recorded, against this block's `Files:` line.** The line names
+`walkthrough-focus.ts` alone, and `TAB_BOUND` is hand-rolled into `walkthrough-shell.ts`'s own loops
+(`focusLayerRow`, `editFieldThenCancel`'s field search). **Those loops were deliberately left alone**: each
+runs *after* a `tabUntil` has already landed focus in the target region, so a region census there would print
+one region and add nothing, and each already names the bound it exhausted. The failure the task is about is
+`tabUntil`'s, reached from `walkthrough-shell.ts`'s `enterGroup`.
 
 ### Task 21.10: The watchlist names a path that is gone
 
