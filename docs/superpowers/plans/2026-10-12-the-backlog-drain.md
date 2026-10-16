@@ -3631,6 +3631,44 @@ the triage's two negative passes already showed that reading is wrong. It claims
 a phase the ledger records closed, so nothing will land them, and that the number is now 78 rather than the
 50 this section last recorded.
 
+**The ninth correction to the method, measured 2026-10-16 at `7da6f1c3`, and it is that the eighth
+correction's own extractor is broken by the sentence that documents its trap.** The eighth excluded a
+suspended phase with a pre-pass that deleted any phase whose number sat within 80 characters of a word
+starting `suspend`. The ledger holds a line whose whole job is to warn about that trap — *"`Phase 16
+closes` is present tense and a `/closed/` regex misses it, and `Phase 12 is suspended`"* — and the pre-pass
+read the warning as evidence, so **Phase 16, which the ledger closes at `# Phase 16 closes (2026-10-16)`,
+was counted open.** Two open rows moved with it: `vg-490` and `vg-539` have Phase 16 as their only home, and
+with Phase 16 read as live they counted as carried by work that will run. **The corrected census is
+147 open / 39 named by no phase at all / 36 named only by phases the ledger records closed / 72 named by at
+least one live phase**, against the 147 / 39 / 34 / 74 this section recorded at `6517346e`: **the open
+count is unchanged and the rows with no live home are 75, not 73.** The repaired extractor keeps only the
+pattern whose parts are in the right order — the phase number, then the close word, on one line, with a
+negation guard inside the window — and it was checked against the ledger's own headings (`# Phase 16
+closes`, `## Phase 15 closed; Phase 16 opened`, `## Phase 1 CLOSES`) and against the task-status banner,
+which agree on 0–11 and 13–16 closed, 12 suspended by ruling and 17 active. **What the repair does not fix
+is stated rather than left as an impression of proof: most of its own evidence lines are still false
+positives that happen to agree** — *"Phase 3 closes the rows the map now answers"* closes rows and not the
+phase, and *"Phase 8 close — the checklist, written before it is run"* is a checklist written ahead of a
+close that landed 250 lines later. **The set is right because the headings say so, not because the
+derivation proves it**, and a census reporting the set without the headings is reporting a coincidence.
+
+**The tenth correction to the method, measured at the same commit, and it is that a `### Task` block which
+names a row in order to disclaim it is counted as carrying it.** The carry rule is *a row is carried when a
+`### Task` block names it*, and **Phase 17's five `Produces:` lines name 18 rows — 14 closed and 4 open —
+while the phase names 16 open rows in total.** The other twelve are named and not owned: Task 17.2's block
+reads *"The row's three neighbours (`vg-431`, `vg-258`, `vg-212`) are not this row and stay red"*, three
+rows named to say they are **not** the task's, and the same phase names `vg-542` and `vg-543` as *filed
+rather than folded in*, `vg-536` as the census a line count reproduces, `vg-540` and `vg-541` as the two
+trailers its own work filed, and `vg-204`, `vg-259`, `vg-281` and `vg-370` as the triage documents' examples
+and as what an earlier step unblocked. **So those twelve are not made homeless by Phase 17 closing — they
+were homeless before it named them**, and a census taken after the close will show the homeless count rise
+by twelve for no change in the register. **This compounds with the eighth correction rather than repeating
+it**: the eighth says a close turns a carried row homeless, and this one says *carried* includes rows the
+phase never owned, so **part of the rise a close produces is bookkeeping rather than loss.** What the close
+owes is therefore narrower than the eighth implied: **the four rows Phase 17 owns are the ones to re-home**,
+and the twelve it merely names need the carry rule to stop counting a disclaimer — which is a plan edit,
+not a phase's work.
+
 # Parked rows — held, not a phase
 
 **`vg-330` was parked by the user on 2026-10-11 and UNPARKED by the user on 2026-10-14**, and this
