@@ -13,7 +13,10 @@ type EditorErrorCategory =
   | "background-media"
   | "theme-library"
   | "paint"
-  | "glass";
+  | "glass"
+  /** The unsaved document the browser kept, and the boot that could not read
+   *  it (`draft-store.ts`, `vg-511`). */
+  | "draft";
 
 export interface EditorDiagnostic {
   readonly category: EditorErrorCategory;

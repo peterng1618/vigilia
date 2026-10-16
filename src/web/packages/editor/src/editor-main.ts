@@ -70,6 +70,12 @@ async function start(): Promise<void> {
   // the whole editor, because the author has one editor, and a browser that
   // refuses its own storage has no draft rather than an error to report.
   const draftStore = new DraftStore(readStorage());
+  /** A draft this build could not render, held until the shell that can say so
+   *  is mounted. **The status line cannot carry it**: the boot writes that
+   *  element last, and the element carries what is open rather than what failed
+   *  — the refusal is reported through the shell's own diagnostic line, which
+   *  nothing in the boot writes (vg-511). */
+  let refusedDraftRestore: string | undefined;
   /** The open document as the autosave asks it. `isDirty` is the session's own,
    *  pulled rather than held, so nothing here re-derives what "saved" means. */
   const draftDocument = (): DraftSource | undefined => {
@@ -385,6 +391,17 @@ async function start(): Promise<void> {
     bridge.session.subscribeDocumentChange(offerOpenDocument);
     offerOpenDocument();
     layout.setBridge(bridge, viewControls, publish);
+    // **After the bridge, and only here.** The diagnostic line is a subscription
+    // on this canvas, so the refusal is reported once the mount that replaced
+    // the draft has handed the shell its bridge — which is also the first moment
+    // there is a shell to report through (vg-511). The draft it names is still
+    // in the slot at this point, and is replaced by this document's first edit
+    // (`draft-store.ts`).
+    if (refusedDraftRestore !== undefined) {
+      const message = refusedDraftRestore;
+      refusedDraftRestore = undefined;
+      shell.editor.errorManager.warn("draft", message);
+    }
     // Bound per document, because the canvas is torn down and rebuilt with it.
     const canvas = shell.editor.canvas;
     canvas.on(
@@ -481,8 +498,13 @@ async function start(): Promise<void> {
       } catch (error) {
         // A draft this build cannot render is not a boot failure: the boot opens
         // the document it would have, and the draft survives until the fallback
-        // document's first edit takes the slot (`draft-store.ts`).
-        status.textContent = `Could not restore the draft: ${error instanceof Error ? error.message : String(error)}`;
+        // document's first edit takes the slot (`draft-store.ts`). The author is
+        // owed the reason and the fate — one slot means the draft that could not
+        // be opened here is replaced by the first edit of the one that could —
+        // and both are said once the shell exists to say them.
+        refusedDraftRestore = `Could not restore the draft "${draft.name}": ${
+          error instanceof Error ? error.message : String(error)
+        }. Editing this document will replace it.`;
       }
     }
   }
