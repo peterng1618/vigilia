@@ -2630,6 +2630,22 @@ for the chip, the slider preview and the picker tracks, on a rebuilt bundle.
 - [ ] **Step 3: `vg-263` — an invalid-but-editable value becomes a named member of the control set**, rather than the platform's `reportValidity()` carrying it, so the state is expressed and reviewed the way every other control state is.
 - [ ] **Step 4: Close the three**, each naming the census key it added or moved.
 
+**Annotated 2026-10-16, at the task's close: all three rows are `verified` at `ee82150a`.** **Step 3's
+premise was the phase's most useful correction: the channel the row asked the set to invent already
+existed**, in `ControlNumber` since `e3b19da4` — `aria-invalid`, an `aria-describedby` reason, the field
+left editable — so the work was generalising it onto `ControlProps` rather than designing it. **Step 1
+owes no red proof and says so**: the five words are unchanged, so a case can only redden against a changed
+literal, never against the indirection the ruling asked for. **Step 2 is red-proved** (2 failed, exit 1,
+with the fix disabled) and keeps the copy walk's skip rule untouched, which was the row's condition.
+**Step 3's close condition was verified in Chromium** — `editor.spec.ts:981`'s palette case, rebuilt
+bundle, 1 passed exit 0 — because jsdom cannot see the platform bubble the row is about; the spec's
+locator moved off the deleted `data-vigilia-palette-error` onto the `aria-invalid` + described-by pair,
+which is the honest replacement: the old assertion was that a sibling existed, the new one is that the
+field is described. **One defect this landing made visible is filed rather than fixed** — `vg-545`: the
+reason is sticky when the author edits back to the value already held, because `ControlText` declines to
+report a commit that changes nothing and `invalid` is a prop it cannot clear; the fix is a design decision
+about who owns a repairable refusal, so it is not this task's.
+
 ### Task 18.2: One owner for the two button idioms
 
 **Files:**
