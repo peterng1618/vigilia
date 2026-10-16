@@ -3664,6 +3664,25 @@ and rejected on shape**: Biome 2.5.14 ships `style/noExcessiveLinesPerFile`, who
 for this task was stale by two** (`"the other eleven"` where the chain held thirteen) and is corrected in
 place.
 
+**Task 21.10 landed the same day at `a5a2d0ab` with decision note `0066`**, closing `vg-544` — **the
+watchlist's dead entry is repointed and every entry is now proved to exist.** The entry named
+`editor/src/selection-inspector/style.ts`, deleted at `aa5edf96`, and it now names
+`editor/src/selection-inspector/view.ts` — the live selection-inspector owner `ownership.md` calls a mechanism
+boundary, and **no note claims it**, so the entry actually refuses (exit 2) where the dead path reads exit 0.
+**The dead entry was inert twice over, which the row stated only half of**: the path is gone *and* note `0030`
+still claimed it, so restoring the file would not have made the entry fire — and `aa5edf96` deleted `0030`'s
+whole subject, so that decision **dissolved rather than relocating**. Rejected and recorded: `appearance.ts`
+and `index.ts` (neither has an ownership row), **a bare deletion**, and a wider rescope to
+`editor-document.ts`. **The durable half is the row's own FIX line** — *"every watchlist entry names a path
+that exists"*, read against the **live `WATCHLIST` rather than a synthetic array** and **by the rule each
+entry matches by** (`0025`: anchored by `existsSync`, bare by a tracked-path segment at any depth), which
+took `--self-test` from 12 cases to 16. **Both red proofs were re-run by the controller**, patched in place
+and restored byte-identical under `cmp`. **One brief premise was false and the seat caught it**: a naive
+`existsSync(entry)` does *not* red on the non-path entries — 19 of the 20 resolve as root paths — though the
+check was made shape-aware anyway, because a bare entry's *matching* rule differs from a root-path reading
+and a future bare entry with no root instance would red falsely and invite narrowing the list. **One row is
+filed from this task**: `vg-565`, the notes' own `Paths:` claims, which nothing reads.
+
 **Why a phase of its own.** All six edit `scripts/` or a registry under `docs/evidence/`, and the three
 sweep rows (`vg-380`, `vg-382`, `vg-386`) are **one instrument read three ways** — its selector direction,
 its `redundant-export` tier and its `barrel-only-export` tier. Phase 15 homed instrument gaps a
@@ -4171,7 +4190,7 @@ else.
 - Produces: `vg-544` closed
 
 - [ ] **Step 1: The watchlist's editor entry names a file that no longer exists.** `scripts/reuse-gate.mjs:56` lists `src/web/packages/editor/src/selection-inspector/style.ts`, deleted at `aa5edf96`, so the gate can never refuse a write to it and the list reads as covering an owner it does not. Re-read the file before editing: the entry's line number is this plan's, not the file's.
-- [ ] **Step 2: Decide the entry's replacement rather than deleting it.** The list's own comment records the opposite failure — a pass that found it covered no editor path at all while the editor is where most of these decisions now live — so the row's second half is which live editor path takes the dead entry's place, and a deletion with nothing put back re-opens that finding.
+- [ ] **Step 2: Decide the entry's replacement rather than deleting it.** The list's own comment records the opposite failure — a pass that found it covered no editor path at all while the editor is where most of these decisions now live — so the row's second half is which live editor path takes the dead entry's place, and a deletion with nothing put back re-opens that finding. **Corrected 2026-10-17 at Task 21.10's close: the stated reason does not hold as written.** Five editor entries would have remained after a deletion, so deleting could not have re-opened *"covered no editor path at all"*; the replacement was still made, because a genuine live boundary exists (`selection-inspector/view.ts`) and because the row's own FIX line offers repointing as the better half of *"drop the dead entry or repoint it"*.
 - [ ] **Step 3: Close it**, with the gate's own `--self-test` and one case proving a write to the replacement path is refused.
 
 ---
