@@ -75,9 +75,9 @@ function declarationBlock(palette: string): string {
  *  `--shell-*` role or its §4 alias can name. The eleven colours plus the
  *  primary button's pair.
  *
- *  `--shell-display` and `--shell-flat` are deliberately absent: both are
- *  declared once on the baseline and inherited, neither is a colour, and
- *  requiring them per block would be a declaration for nothing — the state
+ *  `--shell-display` is deliberately absent: it is declared once on the
+ *  baseline and inherited, it is not a colour, and requiring it per block
+ *  would be a declaration for nothing — the state
  *  `design-tokens.gated.json` exists to shrink. */
 const SOURCE_TOKENS = [
   "--shell-backdrop",
@@ -225,13 +225,12 @@ describe("shell token stylesheet", () => {
         "equal specificity for every palette",
     ).toBeLessThan(palettesAt);
 
-    // The three `vg-357` gave `light` its own declaration for, so the base
+    // The two `vg-357` gave `light` its own declaration for, so the base
     // frame is still compared to the palette it mirrors *value for value*: a
     // key comparison would let a `--shell-*` colour drift on the bare root while
     // `light`'s block kept its own, which is the drift this case exists to see.
     const companions: ReadonlySet<string> = new Set([
       "--shell-display",
-      "--shell-flat",
       "--vigilia-control-bg",
     ]);
     expect(
@@ -246,7 +245,7 @@ describe("shell token stylesheet", () => {
       ),
     );
 
-    // Every token graphite declares, the three beyond its colours included
+    // Every token graphite declares, the two beyond its colours included
     // (`vg-357`). A token declared in the dark base wins over the palette
     // blocks below at equal specificity, so carrying graphite's three is only
     // safe while each palette that used to inherit them declares its own — and
@@ -272,11 +271,7 @@ describe("shell token stylesheet", () => {
       }
     };
     for (const palette of shellPalettes) {
-      inheritsNothing(
-        palette,
-        ["--shell-display", "--shell-flat"],
-        "bare :root",
-      );
+      inheritsNothing(palette, ["--shell-display"], "bare :root");
       // Graphite is the palette the dark base mirrors; the other five paint a
       // control surface of their own, editorial's and light's coming from
       // `:root`'s control block until `vg-357` restated them here.
@@ -446,13 +441,12 @@ describe("shell token stylesheet", () => {
       /^[ \t]*@theme[ \t]+inline[ \t]*\{([^}]*)\}/m.exec(css)?.[1] ?? "";
     expect(inline, "the palette is not in an @theme inline block").not.toBe("");
 
-    // **Two tokens are not colours, and a `--color-*` name for either would
-    // compile a broken utility** — Tailwind's namespaces are per type, so a
-    // font stack belongs in `--font-*` and a bare number belongs in none.
-    // Measured: the file declares thirteen `--shell-*` tokens and eleven of
-    // them are colours, which the count below pins so this exclusion cannot
-    // quietly grow to swallow one.
-    const NOT_A_COLOUR = new Set(["--shell-display", "--shell-flat"]);
+    // **One token is not a colour, and a `--color-*` name for it would compile
+    // a broken utility** — Tailwind's namespaces are per type, so a font stack
+    // belongs in `--font-*`. Measured: the file declares twelve `--shell-*`
+    // tokens and eleven of them are colours, which the count below pins so
+    // this exclusion cannot quietly grow to swallow one.
+    const NOT_A_COLOUR = new Set(["--shell-display"]);
     const declared = [...css.matchAll(/^\s*(--shell-[a-z-]+)\s*:/gm)].map(
       (match) => match[1] ?? "",
     );

@@ -292,8 +292,8 @@ test.describe("shell palettes", () => {
    *  palette in the set — so a fresh profile flashed cream and then snapped to
    *  graphite. `vg-357` was the same frame painted with the right palette and
    *  three of its tokens coming from somewhere else: the dark base carried
-   *  graphite's colours and left `--shell-display`, `--shell-flat` and
-   *  `--vigilia-control-bg` to the bare root, so a dark OS's first frame took
+   *  graphite's colours and left `--shell-display` and `--vigilia-control-bg`
+   *  to the bare root, so a dark OS's first frame took
    *  the editorial display face and control paper.
    *
    *  The bundle is blocked rather than raced: with no script the attribute is
@@ -326,7 +326,7 @@ test.describe("shell palettes", () => {
         };
         const token = (element: Element, name: string): string =>
           getComputedStyle(element).getPropertyValue(name).trim();
-        // `vg-357`: the three tokens beyond graphite's colours are read with
+        // `vg-357`: the two tokens beyond graphite's colours are read with
         // the two that paint. A dark base that omits one resolves it from a
         // `:root` block instead, which is the base frame's value and not the
         // palette the OS resolved — the pre-attribute frame took the editorial
@@ -337,7 +337,6 @@ test.describe("shell palettes", () => {
             "--shell-backdrop",
             "--shell-text",
             "--shell-display",
-            "--shell-flat",
             "--vigilia-control-bg",
           ]
             .map((name) => token(element, name))

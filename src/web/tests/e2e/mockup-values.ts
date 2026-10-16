@@ -178,7 +178,7 @@ export const SETTINGS_DIALOG_SELECTOR = '[style*="width:560px"]';
  *  the same value.
  *
  *  **A product role the drawing names no token for is absent, not invented**:
- *  `--warn` (`--shell-warm`), `--shell-display`, `--shell-flat` and
+ *  `--warn` (`--shell-warm`), `--shell-display` and
  *  `--vigilia-control-bg` have no drawing value to compare against. */
 export const SHELL_ROLES: readonly {
   readonly drawingToken: string;

@@ -58,17 +58,18 @@ body,
   --edge-2: color-mix(in srgb, var(--edge) 55%, transparent);
 }
 
-/* The two `--shell-*` tokens that are not colours. They are on bare `:root`
-   because neither belongs in a palette: a display face and a flatness flag are
-   not a palette's colours. This block is what a node under *no* palette
-   resolves; every one of the six palette blocks now declares both for itself,
-   which is what lets the dark base below carry graphite's pair without moving a
-   palette that had inherited this one (`vg-357`). Editorial's is the same
-   declaration a second time because a swatch is a self-contained scope that
-   declares every token it can paint with. */
+/* The `--shell-*` token that is not a colour. It is on bare `:root` because a
+   display face does not belong in a palette. This block is what a node under
+   *no* palette resolves; every one of the six palette blocks now declares it
+   for itself, which is what lets the dark base below carry graphite's without
+   moving a palette that had inherited this one (`vg-357`). Editorial's is the
+   same declaration a second time because a swatch is a self-contained scope
+   that declares every token it can paint with.
+   `--shell-flat` stood beside it and is gone (`vg-312`): a per-palette flag no
+   `var()` read, while the flat treatment is selector-driven, is a knob that
+   lies — changing it moved nothing and failed nothing. */
 :root {
   --shell-display: ui-serif, Georgia, "Times New Roman", serif;
-  --shell-flat: 1;
 }
 
 /* Editor-wide control tokens, so the existing panel controls inherit the
@@ -145,11 +146,11 @@ body,
    equal specificity — the dark one included: it matches the root with a palette
    resolved exactly as it does without one.
 
-   It carries every token graphite declares, the three beyond its colours
+   It carries every token graphite declares, the two beyond its colours
    included. A token declared here wins over the palette blocks below at equal
-   specificity, so carrying those three is only safe while every palette that
+   specificity, so carrying those two is only safe while every palette that
    inherited one states its own — which `vg-357` made true: ember, moss, plum
-   and light name the display/flat pair they took from the `:root` block above,
+   and light name the display face they took from the `:root` block above,
    and editorial and light name the control paper. That block precedes this one
    for the same reason: had the control tokens' `:root` stayed below, its
    `--vigilia-control-bg` would have outranked this one by source order at equal
@@ -169,7 +170,6 @@ body,
     --shell-primary-bg: var(--shell-accent);
     --shell-primary-text: #06131a;
     --shell-display: system-ui, sans-serif;
-    --shell-flat: 0;
     --vigilia-control-bg: #0a1116c9;
     --bg: var(--shell-backdrop);
     --panel: var(--shell-surface);
@@ -217,9 +217,8 @@ body,
   --shell-primary-bg: var(--shell-accent);
   --shell-primary-text: #f5f1e8;
   --shell-display: ui-serif, Georgia, "Times New Roman", serif;
-  --shell-flat: 1;
   /* `vg-357`: editorial's control paper, declared for the same reason as the
-     pair above and at the value `:root` already gave it, so the dark base can
+     token above and at the value `:root` already gave it, so the dark base can
      carry graphite's. */
   --vigilia-control-bg: #f5f1e8;
   /* DESIGN.md §4's role vocabulary, aliased per palette and never once at `:root`:
@@ -272,7 +271,7 @@ body,
    literal carries its derivation in the comment beside it.
 
    **What the drawing does not name is not invented.** `--warn`
-   (`--shell-warm`), `--shell-display`, `--shell-flat` and graphite's one
+   (`--shell-warm`), `--shell-display` and graphite's one
    `--vigilia-control-bg` override have no drawing token: they are the product's
    own roles and the report says so rather than this block inventing a value. */
 [data-shell-palette="graphite"] {
@@ -288,7 +287,6 @@ body,
   --shell-primary-bg: var(--shell-accent); /* the chip's `background` */
   --shell-primary-text: #06131a; /* the chip's `color`, `:32` */
   --shell-display: system-ui, sans-serif;
-  --shell-flat: 0;
   /* The only `--vigilia-*` token a palette overrides. Editorial's paper
      control is unreadable on graphite's dark chrome, and the backdrop cannot
      be aliased here because it is a flat colour here and editorial's paper. */
@@ -321,9 +319,8 @@ body,
    retired with the glass chrome, plan 7 Task 5 — and the ring still reads as
    ember, moss or plum.
 
-   Each names `--shell-display` and `--shell-flat` at the values it used to
-   inherit from `:root`, which is what leaves the dark base free to carry
-   graphite's pair (`vg-357`).
+   Each names `--shell-display` at the value it used to inherit from `:root`,
+   which is what leaves the dark base free to carry graphite's (`vg-357`).
 
    **`--shell-warm` is deepened by that same rule, and was the one role left
    out of it** (`vg-201`): it stayed the pastel it was named for, so a rejected
@@ -351,7 +348,6 @@ body,
   --shell-primary-bg: var(--shell-accent);
   --shell-primary-text: #f7e2d2;
   --shell-display: ui-serif, Georgia, "Times New Roman", serif;
-  --shell-flat: 1;
   --vigilia-control-bg: #f0d3bc;
   --bg: var(--shell-backdrop);
   --panel: var(--shell-surface);
@@ -383,7 +379,6 @@ body,
   --shell-primary-bg: var(--shell-accent);
   --shell-primary-text: #e4efd9;
   --shell-display: ui-serif, Georgia, "Times New Roman", serif;
-  --shell-flat: 1;
   --vigilia-control-bg: #d8e8c8;
   --bg: var(--shell-backdrop);
   --panel: var(--shell-surface);
@@ -415,7 +410,6 @@ body,
   --shell-primary-bg: var(--shell-accent);
   --shell-primary-text: #ece3f7;
   --shell-display: ui-serif, Georgia, "Times New Roman", serif;
-  --shell-flat: 1;
   --vigilia-control-bg: #ded1ef;
   --bg: var(--shell-backdrop);
   --panel: var(--shell-surface);
@@ -449,11 +443,10 @@ body,
   --shell-danger: color-mix(in srgb, #ff7e6e 40%, var(--shell-text));
   --shell-primary-bg: var(--shell-accent);
   --shell-primary-text: #eefaf3;
-  /* The three tokens `light` inherited from the two `:root` blocks above,
-     declared here at the values it already resolved to so the dark base can
-     carry graphite's without moving this palette (`vg-357`). */
+  /* The two tokens `light` inherited from the `:root` blocks above, declared
+     here at the values it already resolved to so the dark base can carry
+     graphite's without moving this palette (`vg-357`). */
   --shell-display: ui-serif, Georgia, "Times New Roman", serif;
-  --shell-flat: 1;
   --vigilia-control-bg: #f5f1e8;
   --bg: var(--shell-backdrop);
   --panel: var(--shell-surface);
