@@ -3587,6 +3587,11 @@ ninth, `vg-551`, added the same day: the shell walk's budget becomes a measureme
 number, and the font picker's 758 tab stops are the reason it has to be.** **Task 21.10 adds a tenth,
 `vg-544`, added 2026-10-17 at Phase 20's close: the watchlist names a path that is gone.**
 
+**Phase 21 opened 2026-10-17 with Task 21.1 at `4a8c4d12` and decision note `0059`**, closing `vg-144` —
+the gate's `covers()` is now an exact-file match, and the 14 notes that claimed a directory now claim
+their files. **`vg-425` closed with it**, which this phase's task list did not name: its park waited on
+exactly that convention, so it is discharged by work that landed rather than by a task authored for it.
+
 **Why a phase of its own.** All six edit `scripts/` or a registry under `docs/evidence/`, and the three
 sweep rows (`vg-380`, `vg-382`, `vg-386`) are **one instrument read three ways** — its selector direction,
 its `redundant-export` tier and its `barrel-only-export` tier. Phase 15 homed instrument gaps a
@@ -3619,11 +3624,41 @@ file, never through a pipe.
 - Modify: `scripts/reuse-gate.mjs` (`claimedPaths`, `covers`); the decision notes' `- **Paths:**` bullets
 
 **Interfaces:**
-- Produces: `vg-144` closed
+- Produces: `vg-144` closed, and **`vg-425` closed with it** — its park waited on exactly this
+  convention, so it is discharged here rather than left parked on work that has landed
 
 - [ ] **Step 1: A path claim matches the file being written rather than a directory prefix**, so `0005`'s claim on `charts/` stops licensing every later change in it and the gate answers the question it appears to answer. The blunt, presence-only reading stays; what changes is the unit a claim is made in.
 - [ ] **Step 2: A trailing `/` claim currently matches everything beneath it.** Re-point the notes that rely on one, **in the same commit**, or the gate refuses paths it used to allow.
 - [ ] **Step 3: Close it**, with a case proving a sibling file under a formerly-claimed directory is now refused — and note that a test which picks a path some note *does* claim proves nothing, so the case must use a watchlisted path no note claims.
+
+**[Closed 2026-10-17 at `4a8c4d12`, decision note `0059`. Phase 21 opens with it.]** `covers()` is now
+`claimed.some((c) => rel === c)` — a claim names the file being written and only that file. **Both
+suspect branches were deleted rather than narrowed, and both were measured before the deletion**: the
+trailing-slash branch's `rel.startsWith(base)` has no separator, so a claim on `charts/` would also have
+covered a sibling named `chartsomething`, and no such sibling exists, which makes it real in code and
+unreachable in fact; the non-slash arm's `startsWith(base + "/")` was **dead**, checked pairwise over all
+63 claims, none of which is a prefix-directory of another. **Step 2 is the half that could have gone
+wrong and did not**: 14 notes carried 15 directory claims and now carry 80 distinct file claims and no
+directory claim at all, each list read from the note and the commit that landed it rather than guessed.
+
+**The brief's expected probe value was wrong and the seat said so rather than working around it.** It
+predicted `charts/settings-fields.ts` would return EXIT=2 after the fix; it returns EXIT=0, and correctly
+— `0028` is the note whose decision IS the descriptor table in that file, and it claims that file after
+the re-point. The fix's effect is visible on `charts/grid.ts`, which no note claims: EXIT=0 before,
+EXIT=2 after. **The controller re-ran the red proof rather than taking the seat's**: with `covers()`
+reverted, the self-test reports `FAIL refuses a file under a directory claim (expected 2, got 0)` at exit
+1, and the file restored byte-identical before the green re-run.
+
+**`vg-425` closes with it and is not named by this task's Interfaces line.** Its park waited on exactly
+this convention — a per-file claim a directory entry cannot satisfy, and a self-test that can see the live
+registry — so both halves landed here. **Its park's own count was re-derived rather than inherited**: the
+park recorded that the 16-of-20 measurement could not be re-derived because the probe lived outside the
+tree and is gone, and a fresh probe puts a brand-new file under each of the five directory entries and
+gets EXIT=2 five times out of five, where the trailing-slash branch allowed all five. **`vg-535` is not
+discharged by this** — it measures the hook not blocking at all, which is a different defect.
+
+**Verify:** `node scripts/reuse-gate.mjs --self-test` exit 0 (12 cases, from 10); the row's own
+`printf … | node scripts/reuse-gate.mjs` probe; `npm run gate` exit 0 (263 files, 3482 tests).
 
 ### Task 21.2: The citation namespace is declared by source
 
