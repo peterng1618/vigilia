@@ -304,6 +304,26 @@ describe("the library chooser", () => {
     await pressButton("[data-vigilia-library-cancel]");
     await expect(pending).resolves.toBeUndefined();
   });
+
+  it("draws its answers in the dialog family's one button treatment", async () => {
+    const pending = open([]);
+
+    // Read off the rendered button rather than compared with the token, so a
+    // dialog that stopped importing the treatment and wrote the string again is
+    // caught. The four dialogs each had their own copy and this one had drifted:
+    // its delete is the only one that is ever disabled, so its `disabled:` mark
+    // is the variant the shared treatment had to keep.
+    const button = document.querySelector<HTMLButtonElement>(
+      "[data-vigilia-library-open]",
+    );
+    if (button === null) throw new Error("no open button");
+    expect(button.className).toContain("px-[var(--space-12)]");
+    expect(button.className).toContain("enabled:hover:border-accent");
+    expect(button.className).toContain("disabled:text-faint");
+
+    await pressButton("[data-vigilia-library-cancel]");
+    await expect(pending).resolves.toBeUndefined();
+  });
 });
 
 /**

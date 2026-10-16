@@ -9,6 +9,7 @@ import { ControlNumber } from "../../components/ui/control-number.js";
 import { ControlSelect } from "../../components/ui/control-select.js";
 import { ControlSlider } from "../../components/ui/control-slider.js";
 import { ControlText } from "../../components/ui/control-text.js";
+import { plainButtonClasses } from "../../components/ui/control-well.js";
 import { GradientEditor } from "../../components/ui/gradient-editor.js";
 import { newTokenPaint } from "../../new-fabric-theme-globals.js";
 import type { PaletteTokenUse } from "../../palette-manager/panel.js";
@@ -129,7 +130,7 @@ export function PaintList(props: PaintListProps): React.JSX.Element {
         type="button"
         data-vigilia-palette-add=""
         onClick={add}
-        className="self-start rounded-md border border-edge bg-panel-2 px-[var(--space-6)] py-[var(--space-4)] text-sm text-text hover:border-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+        className={plainButtonClasses}
       >
         {uiCopy.panels.addColour}
       </button>
@@ -346,7 +347,7 @@ function GradientFields(props: {
         <button
           type="button"
           data-vigilia-palette-add-stop=""
-          className="self-start rounded-md border border-edge bg-panel-2 px-[var(--space-6)] py-[var(--space-4)] text-sm text-text hover:border-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent"
+          className={plainButtonClasses}
           onClick={() => {
             commit({
               ...entry,

@@ -3,7 +3,7 @@ import {
   type ControlOption,
   ControlSelect,
 } from "./components/ui/control-select.js";
-import { Dialog } from "./components/ui/dialog.js";
+import { ACTION_BUTTON, Dialog } from "./components/ui/dialog.js";
 import type { ModalSettle } from "./components/ui/modal-host.js";
 import { openModal } from "./components/ui/modal-host.js";
 import { STARTER_TEMPLATE } from "./new-fabric-theme.js";
@@ -43,13 +43,6 @@ function confirmWords(id: string, name: string | undefined): string {
  *  because the copy table's owner is another surface's concern and this string
  *  exists only beside the button it names. */
 const DELETE_LABEL = "Delete";
-
-/** The one control treatment a dialog's own buttons share, in tokens. A dialog
- *  button is not in the closed control vocabulary (§5) — it is chrome around an
- *  answer — so it carries the well's surface and edge rather than a `Control`
- *  component. */
-const ACTION_BUTTON =
-  "rounded-sm border border-edge bg-panel-2 px-[var(--space-12)] py-[var(--space-6)] text-sm text-text enabled:hover:border-accent enabled:hover:text-accent disabled:text-faint";
 
 /** The client a removal goes through, or undefined when there is none — in
  *  which case the chooser offers no deletion rather than failing when the

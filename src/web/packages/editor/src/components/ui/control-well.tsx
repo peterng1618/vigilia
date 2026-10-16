@@ -107,6 +107,19 @@ export function wellClasses(
 export const hitTargetClasses =
   "relative before:absolute before:top-1/2 before:left-1/2 before:size-[24px] before:-translate-x-1/2 before:-translate-y-1/2 before:content-['']";
 
+/**
+ * The one treatment a plain button in a pane wears, in tokens.
+ *
+ * A plain button is not a `Control` — it acts rather than holds a value, so it
+ * has no well, no label and no reason — but its paint is still the set's: three
+ * panes had written this string by hand and each could drift alone. The token
+ * rather than a `ControlButton` component, because there is no behaviour for a
+ * component to own; the signal to promote it is the button acquiring one
+ * (disabled, aria, a variant).
+ */
+export const plainButtonClasses =
+  "self-start rounded-md border border-edge bg-panel-2 px-[var(--space-6)] py-[var(--space-4)] text-sm text-text hover:border-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent";
+
 export function ControlWell(props: {
   readonly density?: ControlDensity | undefined;
   readonly blocked?: boolean | undefined;

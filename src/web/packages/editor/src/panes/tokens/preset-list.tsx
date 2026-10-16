@@ -3,6 +3,7 @@ import { useCallback, useState, useSyncExternalStore } from "react";
 import { ControlNumber } from "../../components/ui/control-number.js";
 import { ControlSelect } from "../../components/ui/control-select.js";
 import { ControlText } from "../../components/ui/control-text.js";
+import { plainButtonClasses } from "../../components/ui/control-well.js";
 import type { ActiveKind } from "../../editor-shell/bridge.js";
 import { catalogFaces, fontTrios } from "../../font-catalog.js";
 import { newPresetType } from "../../new-fabric-theme-globals.js";
@@ -212,7 +213,7 @@ export function PresetList(props: PresetListProps): React.JSX.Element {
         type="button"
         data-vigilia-type-preset-add=""
         onClick={add}
-        className={buttonClass}
+        className={plainButtonClasses}
       >
         {uiCopy.panels.addType}
       </button>
@@ -373,7 +374,7 @@ function FontControls(props: {
           onClick={() => {
             if (face !== undefined) void fontActions.preview(face);
           }}
-          className={buttonClass}
+          className={plainButtonClasses}
         >
           {uiCopy.panels.previewFont}
         </button>
@@ -383,7 +384,7 @@ function FontControls(props: {
           onClick={() => {
             if (face !== undefined) void fontActions.applyFace(selected, face);
           }}
-          className={buttonClass}
+          className={plainButtonClasses}
         >
           {uiCopy.panels.applyFont}
         </button>
@@ -404,7 +405,7 @@ function FontControls(props: {
         onClick={() => {
           void fontActions.applyTrio(trioId);
         }}
-        className={buttonClass}
+        className={plainButtonClasses}
       >
         {uiCopy.panels.applyTrio}
       </button>
@@ -446,16 +447,13 @@ function DeletionControls(props: {
         onClick={() => {
           if (replacement !== undefined) onDelete(selected, replacement);
         }}
-        className={`${buttonClass} text-hot disabled:text-faint`}
+        className={`${plainButtonClasses} text-hot disabled:text-faint`}
       >
         {uiCopy.panels.deleteType}
       </button>
     </>
   );
 }
-
-const buttonClass =
-  "self-start rounded-md border border-edge bg-panel-2 px-[var(--space-6)] py-[var(--space-4)] text-sm text-text hover:border-muted focus-visible:outline focus-visible:outline-2 focus-visible:outline-accent";
 
 /** The first free `type`, `type-2`, … — the ids are stable keys references are
  *  written against, so a new preset never reuses a deleted one's id. */

@@ -1,4 +1,4 @@
-import { Dialog } from "../components/ui/dialog.js";
+import { ACTION_BUTTON, Dialog } from "../components/ui/dialog.js";
 import type { ModalSettle } from "../components/ui/modal-host.js";
 import { uiCopy } from "../ui-copy.js";
 
@@ -6,12 +6,6 @@ import { uiCopy } from "../ui-copy.js";
  *  dismissal is one, so the session that awaits this can never read a closed
  *  dialog as consent to lose the work. */
 export type ReplacementAnswer = "save" | "discard" | "cancel";
-
-/** The one control treatment a dialog's own buttons share, in tokens. A dialog
- *  button is chrome around an answer rather than a `Control` component, so the
- *  three dialogs that render one take this string rather than the control set. */
-const ACTION_BUTTON =
-  "rounded-sm border border-edge bg-panel-2 px-[var(--space-12)] py-[var(--space-6)] text-sm text-text hover:border-accent hover:text-accent";
 
 /** The three answers, in the order they are drawn. Discard last, with Cancel
  *  beside it, because it is the one that loses work: a slip toward the edge of

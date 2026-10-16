@@ -1,5 +1,5 @@
 import { createElement } from "react";
-import { Dialog } from "./components/ui/dialog.js";
+import { ACTION_BUTTON, Dialog } from "./components/ui/dialog.js";
 import { type ModalSettle, openModal } from "./components/ui/modal-host.js";
 import type { Draft } from "./draft-store.js";
 import { uiCopy } from "./ui-copy.js";
@@ -8,12 +8,6 @@ import { uiCopy } from "./ui-copy.js";
  *  `confirmDraftRecovery` — because `discard` is the only answer that destroys
  *  anything: the library still holds the document the draft would replace. */
 export type DraftRecoveryAnswer = "restore" | "discard";
-
-/** The one control treatment a dialog's own buttons share, in tokens. A dialog
- *  button is chrome around an answer rather than a `Control` component, so the
- *  dialogs that render one take this string rather than the control set. */
-const ACTION_BUTTON =
-  "rounded-sm border border-edge bg-panel-2 px-[var(--space-12)] py-[var(--space-6)] text-sm text-text hover:border-accent hover:text-accent";
 
 /** The two answers, in the order they are drawn. Discard last, because it is
  *  the one that loses work: a slip toward the edge of the row lands on the

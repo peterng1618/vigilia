@@ -1,6 +1,21 @@
 import { Dialog as DialogPrimitive } from "@base-ui/react/dialog";
 import type * as React from "react";
 
+/** The one control treatment a dialog's own buttons share, in tokens.
+ *
+ * Here rather than in a module of its own because every dialog that renders an
+ * action button already imports this primitive — four copies of this string had
+ * drifted apart before it moved. A dialog button is chrome around an answer
+ * rather than a `Control` component, so it carries the well's surface and edge
+ * and stays outside the closed control vocabulary (§5).
+ *
+ * The string is the drifted copy's, because it is the superset: `enabled:hover:`
+ * is `hover:` on a button that is never disabled, and `disabled:text-faint` is
+ * the variant the library chooser's delete actually needs.
+ */
+export const ACTION_BUTTON =
+  "rounded-sm border border-edge bg-panel-2 px-[var(--space-12)] py-[var(--space-6)] text-sm text-text enabled:hover:border-accent enabled:hover:text-accent disabled:text-faint";
+
 /** shadcn's Dialog, hand-owned and reduced to what the one sheet needs.
  *
  * Decision `0038` rules Base UI the editor's one primitive library, and

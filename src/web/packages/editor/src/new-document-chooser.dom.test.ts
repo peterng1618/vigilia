@@ -389,6 +389,21 @@ describe("the new-document chooser", () => {
     await expect(pending).resolves.toBeUndefined();
     expect(document.querySelector('[role="dialog"]')).toBeNull();
   });
+
+  it("draws its answers in the dialog family's one button treatment", () => {
+    void open();
+
+    // Read off the rendered button rather than compared with the token, so a
+    // dialog that stopped importing the treatment and wrote the string again is
+    // caught. The four dialogs each had their own copy and one had already
+    // drifted, which is the divergence this reads for.
+    const button = document.querySelector<HTMLButtonElement>(
+      "[data-vigilia-new-document-create]",
+    );
+    if (button === null) throw new Error("no create button");
+    expect(button.className).toContain("px-[var(--space-12)]");
+    expect(button.className).toContain("enabled:hover:border-accent");
+  });
 });
 
 /** The chooser, opened the way the session opens it. */

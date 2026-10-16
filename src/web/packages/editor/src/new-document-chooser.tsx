@@ -19,7 +19,7 @@ import {
   type ControlOption,
   ControlSelect,
 } from "./components/ui/control-select.js";
-import { Dialog } from "./components/ui/dialog.js";
+import { ACTION_BUTTON, Dialog } from "./components/ui/dialog.js";
 import type { ModalSettle } from "./components/ui/modal-host.js";
 import { openModal } from "./components/ui/modal-host.js";
 import {
@@ -34,12 +34,6 @@ import { uiCopy } from "./ui-copy.js";
  *  display takes the default resolution — see `DisplayLens.shape` — and the
  *  author changes it in the panel. */
 const CUSTOM = "";
-
-/** The one control treatment a dialog's own buttons share, in tokens. A dialog
- *  button is chrome around an answer rather than a `Control` component, so the
- *  three dialogs that render one take this string rather than the control set. */
-const ACTION_BUTTON =
-  "rounded-sm border border-edge bg-panel-2 px-[var(--space-12)] py-[var(--space-6)] text-sm text-text hover:border-accent hover:text-accent";
 
 /** A reading, not a choice: an author cannot ask for a size that is not a preset
  *  and cannot get stuck on one they chose by accident. Same shape as the
