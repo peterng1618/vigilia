@@ -421,107 +421,131 @@ export function createSelectionInspector(
   };
 
   /**
-   * The column's one way to write, from the React surface.
+   * One field, written by the owner that owns it: the funnel a slider's preview
+   * and its release share, so the two cannot take different routes to the
+   * document (`vg-254`).
    *
-   * The revision, lock and field rules are `view.ts`'s `editRefusal`, read here
-   * against the live target **at call time**: a control whose draft outlived its
-   * selection is refused before the write funnel is reached, because the funnel
-   * would otherwise resolve the *current* target and write an old draft into a
-   * newly selected object. A refusal publishes the current view and writes
-   * nothing; an invalid value is reported in the row's own words.
+   * `settled` marks the settled write rather than a frame of one. A frame
+   * announces no refusal — sixty times a second is a log, not a report — and
+   * re-resolves no glass lifecycle, because `sync` answers *which* objects carry
+   * a treatment and a blur inside an existing one cannot change that answer.
+   */
+  const writeField = (
+    object: FabricObject,
+    fieldId: string,
+    value: string | number | boolean,
+    settled: boolean,
+  ): boolean => {
+    if (fieldId === "name") {
+      writeName(object, value);
+      return true;
+    }
+    if (fieldId === "opacity") return writeOpacity(object, value);
+    if (fieldId === "bleeds") return writeBleed(object, value === true);
+    if (GEOMETRY_KEYS.has(fieldId)) {
+      write(object, fieldId as GeometryKey, value as number);
+      return true;
+    }
+
+    let applied: boolean;
+    if (fieldId.startsWith("panel-")) {
+      // The panel's material writes — resolve a reference, create a default
+      // shadow, move a live one — are `panel.ts`'s; this funnel only asks.
+      applied = writePanelField(
+        object,
+        { editor, globals },
+        fieldId,
+        value as string | number,
+      );
+    } else if (fieldId.startsWith("glass-")) {
+      // The treatment writes are `glass.ts`'s. Nothing else re-resolves the
+      // lifecycle: a property written on a panel that is already there is
+      // neither a gain nor a loss of an object, so the control asks — once.
+      applied = writeGlassField(object, { editor, globals }, fieldId, value);
+      if (applied && settled) options.refreshGlass();
+    } else {
+      // A shape's own geometry: the parse, the bound and the scale it adopts are
+      // its owner's, and this is the funnel that asks for the write.
+      applied = writeShapeGeometryField(
+        object,
+        fieldId,
+        value as string | number,
+      );
+      // Every field here moves a corner, a handle or an endpoint, and a stale
+      // control box outlives the render.
+      if (applied) object.setCoords();
+    }
+
+    if (!applied && settled) {
+      editor.errorManager.warn("controls", uiCopy.inspectorFields.invalidValue);
+    }
+    return applied;
+  };
+
+  /**
+   * The guard in front of the write funnel, then the write.
+   *
+   * `editRefusal` is `view.ts`'s, read against the live target **at call time**:
+   * a control whose draft outlived its selection is refused before the funnel is
+   * reached, because the funnel would otherwise resolve the *current* target and
+   * write an old draft into a newly selected object. **Nothing here records
+   * history** — `commit` is the only caller that saves it.
+   */
+  const applyField = (
+    expectedRevision: number,
+    fieldId: string,
+    value: string | number | boolean,
+    settled: boolean,
+  ): boolean => {
+    const object = described;
+    if (object === undefined) return false;
+
+    const refusal = editRefusal(
+      { expectedRevision, fieldId, value },
+      { targetRevision, locked: isLocked(object) },
+    );
+    if (refusal !== undefined) {
+      if (settled && refusal === "invalid") {
+        editor.errorManager.warn(
+          "controls",
+          fieldId === "name"
+            ? uiCopy.inspectorFields.invalidName
+            : uiCopy.inspectorFields.invalidValue,
+        );
+      }
+      return false;
+    }
+
+    return writeField(object, fieldId, value, settled);
+  };
+
+  /**
+   * The column's three write routes, on one funnel.
+   *
+   * A preview and its cancel are the gesture's own halves (§5): the preview
+   * writes the field and repaints without re-publishing the column, so the
+   * control's moving value stays its own state; the cancel writes the start
+   * value back and re-publishes once. Neither records a history entry.
    */
   const edits: SelectionEdits = {
     commit(expectedRevision, fieldId, value) {
-      const object = described;
-      if (object === undefined) {
+      if (!applyField(expectedRevision, fieldId, value, true)) {
         render();
         return false;
       }
-
-      const refusal = editRefusal(
-        { expectedRevision, fieldId, value },
-        { targetRevision, locked: isLocked(object) },
-      );
-      if (refusal !== undefined) {
-        if (refusal === "invalid") {
-          editor.errorManager.warn(
-            "controls",
-            fieldId === "name"
-              ? uiCopy.inspectorFields.invalidName
-              : uiCopy.inspectorFields.invalidValue,
-          );
-        }
-        render();
-        return false;
-      }
-
-      let applied = true;
-      if (fieldId === "name") {
-        writeName(object, value);
-      } else if (fieldId === "opacity") {
-        applied = writeOpacity(object, value);
-      } else if (fieldId === "bleeds") {
-        applied = writeBleed(object, value === true);
-      } else if (GEOMETRY_KEYS.has(fieldId)) {
-        write(object, fieldId as GeometryKey, value as number);
-      } else if (fieldId.startsWith("panel-")) {
-        // The panel's material writes — resolve a reference, create a default
-        // shadow, move a live one — are `panel.ts`'s; this funnel only asks. The
-        // whole-canvas paint pass and its reporter ride with the write.
-        applied = writePanelField(
-          object,
-          { editor, globals },
-          fieldId,
-          value as string | number,
-        );
-        if (!applied) {
-          editor.errorManager.warn(
-            "controls",
-            uiCopy.inspectorFields.invalidValue,
-          );
-        }
-      } else if (fieldId.startsWith("glass-")) {
-        // The treatment writes are `glass.ts`'s. The lifecycle is re-resolved
-        // here because nothing else does it: a property written on a panel that
-        // is already there is neither a gain nor a loss of an object, so the
-        // control that changed it is what has to ask.
-        applied = writeGlassField(object, { editor, globals }, fieldId, value);
-        if (!applied) {
-          editor.errorManager.warn(
-            "controls",
-            uiCopy.inspectorFields.invalidValue,
-          );
-        } else {
-          options.refreshGlass();
-        }
-      } else {
-        // A shape's own geometry: the parse, the bound and the scale it adopts
-        // are its owner's, and this is the funnel that asks for the write.
-        applied = writeShapeGeometryField(
-          object,
-          fieldId,
-          value as string | number,
-        );
-        if (!applied) {
-          editor.errorManager.warn(
-            "controls",
-            uiCopy.inspectorFields.invalidValue,
-          );
-        } else {
-          // Every field here moves a corner, a handle or an endpoint, and a
-          // stale control box outlives the render.
-          object.setCoords();
-        }
-      }
-
-      if (!applied) {
-        render();
-        return false;
-      }
-
       commit();
       render();
       return true;
+    },
+    preview(expectedRevision, fieldId, value) {
+      if (!applyField(expectedRevision, fieldId, value, false)) return false;
+      editor.canvas.requestRenderAll();
+      return true;
+    },
+    cancelPreview(expectedRevision, fieldId, value) {
+      if (!applyField(expectedRevision, fieldId, value, false)) return;
+      editor.canvas.requestRenderAll();
+      render();
     },
   };
 

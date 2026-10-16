@@ -181,6 +181,27 @@ async function idOf(locator: Locator): Promise<string> {
   return (await locator.getAttribute("id")) ?? "";
 }
 
+/**
+ * The opacity slider's track, as a box the pointer can be driven at.
+ *
+ * Read from the row's own accessible input rather than by a chain of classes: a
+ * drag has to start on the track the author sees, and the control is three
+ * nested divs around a visually hidden `input[type="range"]`.
+ */
+async function opacityTrackBox(
+  page: Page,
+): Promise<{ x: number; y: number; width: number; height: number } | null> {
+  return page.evaluate(() => {
+    const input = document.querySelector<HTMLInputElement>(
+      'input[type="range"][data-vigilia-opacity]',
+    );
+    const box = input?.parentElement?.parentElement?.getBoundingClientRect();
+    return box === undefined
+      ? null
+      : { x: box.x, y: box.y, width: box.width, height: box.height };
+  });
+}
+
 async function propertyOf(
   page: Page,
   name: string,
@@ -551,6 +572,98 @@ test.describe("the per-kind inspector column", () => {
 
     // One value lands for the gesture, and it is the one the pointer left.
     await expect.poll(async () => (await slider()).readout).toBe(during[2]);
+  });
+
+  /**
+   * `vg-254`, and the half `vg-449` did not cover.
+   *
+   * `vg-449` made the moving value the control's *own* state, so the well and
+   * the accessible input already follow the pointer. What did not move was the
+   * **document**: the canvas repainted only when the button came up, so the
+   * author read a number they could not see. This reads the object's own
+   * `opacity` between moves with the button still down — a property the control
+   * never touches — and then that the whole gesture is *one* undo step, because
+   * a preview that recorded history per frame would leave the undo landing on an
+   * intermediate number instead of the start.
+   */
+  test("moves the document while the opacity slider is dragged, and lands one undo step", async ({
+    page,
+  }, testInfo) => {
+    test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+    await page.goto(EDITOR);
+    await page.waitForFunction(() => "vigiliaEditorBridge" in window);
+    await page.locator('[data-vigilia-layer="group-cpu-card"]').click();
+
+    const box = await opacityTrackBox(page);
+    expect(box, "the Layer section draws no opacity slider").not.toBeNull();
+    const track = box ?? { x: 0, y: 0, width: 0, height: 0 };
+    const y = track.y + track.height / 2;
+    const opacity = async (): Promise<number> =>
+      Number(await propertyOf(page, "group-cpu-card", "opacity"));
+    await expect.poll(opacity).toBeCloseTo(1, 5);
+
+    await page.mouse.move(track.x + track.width * 0.8, y);
+    await page.mouse.down();
+    const during: number[] = [];
+    for (const fraction of [0.6, 0.45, 0.3]) {
+      await page.mouse.move(track.x + track.width * fraction, y);
+      during.push(await opacity());
+    }
+    await page.mouse.up();
+
+    expect(
+      new Set(during).size,
+      `the document did not follow the pointer: ${during.join(", ")}`,
+    ).toBe(3);
+    expect(during[0]).toBeGreaterThan(during[1] as number);
+    expect(during[1]).toBeGreaterThan(during[2] as number);
+
+    // The release lands the value the pointer left, and the gesture is one
+    // entry: one undo puts the whole drag back to full.
+    await expect.poll(opacity).toBeCloseTo(during[2] as number, 5);
+    await page.keyboard.press("Control+z");
+    await expect.poll(opacity).toBeCloseTo(1, 5);
+  });
+
+  /**
+   * §5's other half: "cancellation restores the start value and adds no
+   * history". The gesture is abandoned mid-drag, so the preview has already
+   * written the document — what the restore has to reach is the document, not
+   * just the control. The typed edit before it is what makes "no entry" tellable
+   * from "one entry": the undo behind the abandoned gesture has to step over
+   * that edit, not over a frame of the gesture nobody made.
+   */
+  test("restores the start value when an opacity drag is abandoned, and records nothing", async ({
+    page,
+  }, testInfo) => {
+    test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+    await page.goto(EDITOR);
+    await page.waitForFunction(() => "vigiliaEditorBridge" in window);
+    await page.locator('[data-vigilia-layer="group-cpu-card"]').click();
+
+    const well = page.locator("input[data-vigilia-opacity-well]");
+    await well.fill("40");
+    await well.blur();
+    const opacity = async (): Promise<number> =>
+      Number(await propertyOf(page, "group-cpu-card", "opacity"));
+    await expect.poll(opacity).toBeCloseTo(0.4, 5);
+
+    const box = await opacityTrackBox(page);
+    const track = box ?? { x: 0, y: 0, width: 0, height: 0 };
+    const y = track.y + track.height / 2;
+    await page.mouse.move(track.x + track.width * 0.4, y);
+    await page.mouse.down();
+    await page.mouse.move(track.x + track.width * 0.8, y);
+    // The preview reached the document first, or the restore below would be
+    // indistinguishable from a gesture that never wrote anything.
+    await expect.poll(opacity).not.toBeCloseTo(0.4, 2);
+
+    await page.keyboard.press("Escape");
+    await page.mouse.up();
+
+    await expect.poll(opacity).toBeCloseTo(0.4, 5);
+    await page.keyboard.press("Control+z");
+    await expect.poll(opacity).toBeCloseTo(1, 5);
   });
 
   test("commits a value typed into the slider's well, and refuses one past its bound", async ({

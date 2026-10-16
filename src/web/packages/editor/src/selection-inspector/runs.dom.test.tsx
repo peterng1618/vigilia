@@ -98,11 +98,9 @@ describe("the run editor's own state", () => {
   });
 
   it("keeps a draft on its own run when an earlier one is removed", async () => {
-    // The three runs carry distinct presets on purpose. The row identity is the
-    // run's preset (and never its text, so an Enter cannot remount the row
-    // under the caret), which means this case is covered for runs the identity
-    // tells apart. Two literals sharing a preset are the residual `projectRuns`
-    // names: their keys are positional among themselves and can still shift.
+    // The three runs carry distinct presets on purpose: this is the case a
+    // spelling of the run's fields can already tell apart. The pair that shares
+    // a preset is the harder half, and it is the next case.
     const box = mountRunEditor({
       runs: [
         { kind: "literal", text: "A", typePreset: "typePresets.plain" },
@@ -130,6 +128,36 @@ describe("the run editor's own state", () => {
     await blur(field);
     expect(box.runs()[0]).toMatchObject({ kind: "literal", text: "GPU " });
     expect(box.runs()[1]).toMatchObject({ kind: "literal", text: "C" });
+    return box.dispose();
+  });
+
+  it("keeps a draft on its own run when a twin of it is removed", async () => {
+    // Two literals sharing a preset are the same spelling, so a key derived from
+    // the run's fields cannot tell them apart and counting repeats is
+    // positional: removing the first renames the second, React reuses the
+    // removed row for the survivor, and the survivor's draft is destroyed while
+    // the removed row's is shown against it (vg-249).
+    const box = mountRunEditor({
+      runs: [
+        { kind: "literal", text: "A", typePreset: "typePresets.plain" },
+        { kind: "literal", text: "B", typePreset: "typePresets.plain" },
+      ],
+      globals: RUN_GLOBALS,
+    });
+    const field = box.pick<HTMLInputElement>('[data-vigilia-run-text="1"]');
+    await typeInto(field, "GPU ");
+
+    await clickHook(box.host, 'data-vigilia-run-remove="0"');
+    expect(box.runs()).toHaveLength(1);
+    // The draft is the survivor's, and the survivor is the run it was typed
+    // into — not the row that moved up under it. The element itself is asserted
+    // too: a value that came back through a remount would have dropped focus.
+    const after = box.pick<HTMLInputElement>('[data-vigilia-run-text="0"]');
+    expect(after.value).toBe("GPU ");
+    expect(after).toBe(field);
+
+    await blur(after);
+    expect(box.runs()[0]).toMatchObject({ kind: "literal", text: "GPU " });
     return box.dispose();
   });
 });

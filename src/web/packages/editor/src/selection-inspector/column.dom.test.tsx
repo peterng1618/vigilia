@@ -3,7 +3,7 @@ import { SETTINGS_SECTIONS } from "@vigilia/renderer-core";
 import { type FabricObject, IText, Rect } from "fabric/es";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import type { ChartEdits } from "../chart-manager/chart-fields.js";
 import { SelectionColumn } from "./column.js";
 import { idleCrop, idleCropEdits } from "./idle-crop.test-stage.js";
@@ -32,7 +32,11 @@ import {
   globalThis as { IS_REACT_ACT_ENVIRONMENT?: boolean }
 ).IS_REACT_ACT_ENVIRONMENT = true;
 
-const edits: SelectionEdits = { commit: () => false };
+const edits: SelectionEdits = {
+  commit: () => false,
+  preview: () => false,
+  cancelPreview: () => {},
+};
 
 /** A run-editor port that records nothing: this file reads the chrome, not writes. */
 const runs: RunEdits = {
@@ -227,5 +231,70 @@ describe("SelectionColumn", () => {
 
     expect(isOpen("position")).toBe(false);
     expect(isOpen("paint")).toBe(true);
+  });
+
+  /**
+   * `vg-254`: the slider is the one row that reaches all three write routes — a
+   * preview while the gesture moves, one commit when it ends, and a cancel that
+   * puts the value the press started from back. A pointer *drag* is a gesture
+   * jsdom has no layout to resolve (see `ControlSlider`), so this pins the
+   * wiring and `inspector-sections.spec.ts` pins the drag itself.
+   */
+  it("drives a slider's preview, commit and cancel through the edit port", async () => {
+    const commit = vi.fn(() => false);
+    const preview = vi.fn(() => false);
+    const cancelPreview = vi.fn();
+    const port: SelectionEdits = { commit, preview, cancelPreview };
+
+    const rect = new Rect({ width: 40, height: 20 });
+    rect.set({ opacity: 0.5 });
+    act(() => {
+      root.render(
+        <SelectionColumn
+          view={viewOf(rect)}
+          edits={port}
+          runs={runs}
+          chart={chart}
+          crop={crop}
+        />,
+      );
+    });
+    const track = host.querySelector<HTMLInputElement>(
+      "[data-vigilia-opacity]",
+    )!;
+
+    // One keyboard step: the moving value reaches the preview and the release
+    // reaches the commit, with the same field and the same number.
+    await act(async () => track.focus());
+    await act(async () => {
+      track.dispatchEvent(
+        new KeyboardEvent("keydown", {
+          key: "ArrowRight",
+          bubbles: true,
+          cancelable: true,
+        }),
+      );
+    });
+    expect(preview).toHaveBeenCalledWith(1, "opacity", 51);
+    expect(commit).toHaveBeenCalledWith(1, "opacity", 51);
+
+    // Escape during a press abandons it: the cancel carries the value the press
+    // started from, which is the view's — not the number the preview last wrote.
+    await act(async () => {
+      track.dispatchEvent(
+        new MouseEvent("pointerdown", { bubbles: true, button: 0 }),
+      );
+    });
+    await act(async () => {
+      track.dispatchEvent(
+        new KeyboardEvent("keydown", {
+          key: "Escape",
+          bubbles: true,
+          cancelable: true,
+        }),
+      );
+    });
+    expect(cancelPreview).toHaveBeenCalledTimes(1);
+    expect(cancelPreview).toHaveBeenCalledWith(1, "opacity", 50);
   });
 });

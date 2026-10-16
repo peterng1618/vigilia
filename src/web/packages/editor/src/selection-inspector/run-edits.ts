@@ -6,6 +6,7 @@ import {
   lookOfRun,
   type ObjectWithText,
 } from "./authored-text.js";
+import { carryRunIdentity } from "./run-identity.js";
 
 /**
  * What a run edit does to the object, as plain writes.
@@ -67,17 +68,25 @@ function replaceRuns(target: RunTarget, runs: readonly TextRun[]): void {
   });
 }
 
-/** Rewrites one run in place, keeping the rest of the authored content. */
+/** Rewrites one run in place, keeping the rest of the authored content.
+ *
+ * The replacement takes the run's row identity with it: a row keyed by the run
+ * object would otherwise be remounted by every edit, and `ControlText` commits
+ * on Enter — the field would lose the caret on the common path (`vg-249`). */
 function rewriteRun(
   target: RunTarget,
   index: number,
   change: (run: TextRun) => TextRun,
 ): boolean {
   const runs = authoredRunsOf(target.object);
-  if (runs[index] === undefined) return false;
+  const previous = runs[index];
+  if (previous === undefined) return false;
+
+  const replacement = change(previous);
+  carryRunIdentity(previous, replacement);
   replaceRuns(
     target,
-    runs.map((run, at) => (at === index ? change(run) : run)),
+    runs.map((run, at) => (at === index ? replacement : run)),
   );
   return true;
 }
@@ -161,28 +170,22 @@ export function writeRunSource(
   if (semanticKey === "") {
     // Back to prose: the run keeps its look, and the reading it named goes with
     // it, because nothing else can be reading that binding.
-    replaceRuns(
-      target,
-      runs.map((candidate, at) =>
-        at === index
-          ? { kind: "literal", text: "", ...lookOfRun(candidate) }
-          : candidate,
-      ),
-    );
+    rewriteRun(target, index, (candidate) => ({
+      kind: "literal",
+      text: "",
+      ...lookOfRun(candidate),
+    }));
     target.setBindings(bindings.filter((binding) => binding.id !== bound?.id));
     return true;
   }
 
   const id = bound?.id ?? `binding-${crypto.randomUUID()}`;
   if (run.kind !== "value" || run.bindingId !== id) {
-    replaceRuns(
-      target,
-      runs.map((candidate, at) =>
-        at === index
-          ? { kind: "value", bindingId: id, ...lookOfRun(candidate) }
-          : candidate,
-      ),
-    );
+    rewriteRun(target, index, (candidate) => ({
+      kind: "value",
+      bindingId: id,
+      ...lookOfRun(candidate),
+    }));
   }
   target.setBindings(
     bound === undefined

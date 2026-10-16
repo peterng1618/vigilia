@@ -76,7 +76,13 @@ export function ControlSlider(
      */
     readonly unauthored?: boolean;
     readonly onPreview?: (value: number) => void;
-    readonly onCancel?: () => void;
+    /**
+     * The gesture abandoned: it takes the value the press started from, because
+     * §5's cancellation *restores the start value* and the prop cannot carry it
+     * — a re-publish mid-gesture moves `value` onto the previewed number. The
+     * owner writes it back through the funnel and records nothing.
+     */
+    readonly onCancel?: (start: number) => void;
     readonly onCommit: (value: number) => void;
   },
 ): React.JSX.Element {
@@ -129,6 +135,10 @@ export function ControlSlider(
   // clears it, which is what stops a stale cancel from eating a later commit.
   const pressing = useRef(false);
   const cancelled = useRef(false);
+  // What the press started from, for `onCancel`. Read at the press rather than
+  // from `value` when Escape arrives: a preview writes the document, and a
+  // re-publish between them would have moved the prop onto the previewed number.
+  const started = useRef(value);
   // What the pointer is holding, until the committed value arrives. The two are
   // cleared together at the end of the gesture, so a refusal — which writes
   // nothing — cannot strand the thumb on a value the document never took.
@@ -234,6 +244,7 @@ export function ControlSlider(
         onPointerDown={() => {
           pressing.current = true;
           cancelled.current = false;
+          started.current = value;
         }}
         onPointerUp={() => {
           pressing.current = false;
@@ -244,7 +255,7 @@ export function ControlSlider(
           pressing.current = false;
           cancelled.current = true;
           setDragging(null);
-          onCancel?.();
+          onCancel?.(started.current);
         }}
         onValueChange={(next, details) => {
           if (blocked) {

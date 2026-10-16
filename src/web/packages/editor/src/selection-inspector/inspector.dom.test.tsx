@@ -14,7 +14,11 @@ import type { SelectionEdits, SelectionView } from "./view.js";
  * and the edit port, and a publish is what makes React re-render — nothing else.
  */
 
-const edits: SelectionEdits = { commit: () => false };
+const edits: SelectionEdits = {
+  commit: () => false,
+  preview: () => false,
+  cancelPreview: () => {},
+};
 
 function view(overrides: Partial<SelectionView> = {}): SelectionView {
   return {
@@ -179,7 +183,11 @@ describe("createInspectorRoot", () => {
     const host = document.createElement("div");
     const root = createInspectorRoot(host);
 
-    root.publish(view(), { commit });
+    root.publish(view(), {
+      commit,
+      preview: () => false,
+      cancelPreview: () => {},
+    });
 
     // The port is a value the surface writes through; rendering it is not a
     // write, and a render that reached the funnel would save history per paint.

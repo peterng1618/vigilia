@@ -173,6 +173,14 @@ function fieldControl(
           min={field.min}
           max={field.max}
           {...(field.integer === undefined ? {} : { integer: field.integer })}
+          // The gesture writes the document as it moves, so the canvas shows
+          // what the author is choosing and not only the well (§5). The preview
+          // records nothing, so the release is the gesture's one undo boundary,
+          // and Escape puts the value the press started from back through the
+          // same writer. `field.value` is the *start* value here rather than the
+          // last previewed one, because a preview does not re-publish the column.
+          onPreview={(value) => edits.preview(revision, field.id, value)}
+          onCancel={(start) => edits.cancelPreview(revision, field.id, start)}
           onCommit={(value) => commit(value)}
           {...refused}
         />

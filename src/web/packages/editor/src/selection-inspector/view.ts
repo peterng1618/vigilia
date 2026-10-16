@@ -193,12 +193,15 @@ export interface RunOptionView {
  */
 export interface RunRowView {
   /**
-   * What the row *is*, for React's key: a run carries no id, so the projection
-   * derives one from the run's identity fields and disambiguates a repeat.
-   * Keying by `index` instead reconciles a draft onto the wrong run the moment
-   * a run that is not the last is removed; keying by the text remounts the row
-   * under the caret, because `ControlText` commits on Enter. `projectRuns`
-   * carries the rule and its residual.
+   * What the row *is*, for React's key.
+   *
+   * A run carries no id in the persisted model, and the ruling keeps it that
+   * way, so the identity is the run's own object — minted by `run-identity.ts`
+   * and carried across the writes that replace one. It is deliberately not a
+   * spelling of the run's fields: two literal runs sharing a type preset are the
+   * same fields, and a removal then hands the survivor the removed row's draft.
+   * Keying by `index` has the same failure on every removal; keying by the text
+   * remounts the row under the caret, because `ControlText` commits on Enter.
    */
   readonly id: string;
   readonly index: number;
@@ -340,6 +343,14 @@ export type ProjectionPorts = Pick<
  * the target revision the view was projected from; the dispatcher compares it
  * with the live target before it writes, so a control whose draft outlived its
  * selection is refused rather than writing an old value into a new object.
+ *
+ * **Three routes, one funnel, and only one of them records.** A gesture in
+ * flight previews through `preview` — the same write as `commit`, with no
+ * history entry and no re-publish — so the canvas shows what the author is
+ * choosing while the column's own value stays the last committed one. `commit`
+ * is the release: one changed value, one entry (§5's one undo boundary).
+ * `cancelPreview` puts the value the gesture started from back, through the same
+ * writer, and records nothing, because nothing was recorded to undo.
  */
 export interface SelectionEdits {
   readonly commit: (
@@ -347,6 +358,16 @@ export interface SelectionEdits {
     fieldId: string,
     value: string | number | boolean,
   ) => boolean;
+  readonly preview: (
+    expectedRevision: number,
+    fieldId: string,
+    value: string | number | boolean,
+  ) => boolean;
+  readonly cancelPreview: (
+    expectedRevision: number,
+    fieldId: string,
+    value: string | number | boolean,
+  ) => void;
 }
 
 /**

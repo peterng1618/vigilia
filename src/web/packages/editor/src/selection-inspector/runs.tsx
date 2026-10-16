@@ -29,6 +29,7 @@ import {
   type ObjectWithText,
   textRunsOf,
 } from "./authored-text.js";
+import { runIdentity } from "./run-identity.js";
 import type { RunEdits, RunOptionView, RunRowView, RunsView } from "./view.js";
 
 /**
@@ -197,23 +198,6 @@ export function projectRuns(
   const bindings = bindable ? (context.nodeBindings?.(nodeId) ?? []) : [];
 
   const pinnedZones: string[] = [];
-  // A run has no id of its own, so the row's identity is what the run *is*, and
-  // an index would only be stable while rows were appended or removed last.
-  //
-  // **The run's text is deliberately not part of it.** A text run is the one
-  // field a person types into continuously, and `ControlText` commits on Enter
-  // as well as blur — identity that moved with the text would remount the row
-  // under the caret on every Enter, which is the common path, and React's own
-  // focus does not survive a remount. Where it does move (a preset or source
-  // change remounts that row) the cost is one lost caret on a discrete act.
-  //
-  // The residual, named rather than hidden: a truly edit-stable key needs a run
-  // id, and the persisted run model has none — adding one is a schema change
-  // this task does not own. So two literal runs sharing a type preset are the
-  // same identity, and a middle removal can still shift them (the counter below
-  // is what keeps their *rows* distinct, and it is positional). That is
-  // narrower than index keys, which shift on every removal.
-  const seen = new Map<string, number>();
   const rows = runs.map((run, index) => {
     const bound =
       run.kind === "value"
@@ -223,13 +207,6 @@ export function projectRuns(
       (run.style?.["color"] as { readonly ref?: string } | undefined)?.ref ??
       palettes[0]?.ref ??
       "";
-    const identity =
-      run.kind === "value"
-        ? `value:${run.bindingId}`
-        : `literal:${run.typePreset ?? ""}`;
-    const repeat = seen.get(identity) ?? 0;
-    seen.set(identity, repeat + 1);
-
     const row: {
       id: string;
       index: number;
@@ -247,7 +224,10 @@ export function projectRuns(
       formatDefault?: string;
       zone?: string;
     } = {
-      id: repeat === 0 ? identity : `${identity}#${repeat}`,
+      // The row's identity is the run's own object, minted on first sight and
+      // carried across the writes that replace one — never a spelling of the
+      // run's fields, which two runs can share (`run-identity.ts`, `vg-249`).
+      id: runIdentity(run),
       index,
       kind: run.kind,
       label: describeRun(run),
