@@ -48,6 +48,20 @@
  *    work, invisible to any census of the live file, and unclosable, since no
  *    phase reads the archive. A rule the checker knows and does not test is a
  *    convention, and a convention loses to whoever is in a hurry.
+ * 7. A row lives in one register, never both.
+ * 8. A parked row is `open` and carries a well-formed `PARKED <date>:` marker.
+ * 9. **The register never loses a row.** Every row is checked and none of them
+ *    is the set: an append script that cut the last row while adding another
+ *    reported the same count before and after, so the gate was green with a
+ *    finding gone (`vg-502`). The id set is compared against `HEAD`, and the
+ *    comparison is against **both** registers because a close only ever *moves*
+ *    a row between the two files. See docs/decisions/0054.
+ * 10. **A `check` belongs to a closed row.** It is evidence of a close, so an
+ *    `open` row carrying one holds a claim that does not stand — and it is
+ *    unvalidated by construction, since the rules above it are gated on
+ *    `verified` (`vg-514`). Closed means `verified` or `withdrawn`: a withdrawn
+ *    row's check records what was examined before its subject turned out to be
+ *    gone, which is worth keeping. See docs/decisions/0055.
  */
 import { execFileSync } from "node:child_process";
 import { readFileSync } from "node:fs";
@@ -139,6 +153,23 @@ export function check(items) {
     }
     if (seen.has(item.id)) problems.push(`${where}: duplicate id`);
     seen.add(item.id);
+
+    // Rule 10. The `verified` branch below validates what a check *says*; this
+    // one refuses it where there is no close for it to be evidence of. The axis
+    // is closed rather than `verified`, which is the same pair `checkPlacement`
+    // computes — a `withdrawn` row's check is a record of what was examined
+    // before its subject turned out to be gone, and deleting that to satisfy a
+    // rule about closes would be the wrong trade. See docs/decisions/0055.
+    if (item.state !== "verified" && item.state !== "withdrawn") {
+      for (const field of ["check", "artefacts"]) {
+        if (item[field] === undefined) continue;
+        problems.push(
+          `${where}: ${field} on a row in state "${item.state}" — it is evidence of a close, so it ` +
+            `belongs to a verified or withdrawn row; a close REPLACES it rather than leaving it for ` +
+            `the next one to inherit`,
+        );
+      }
+    }
 
     if (item.state === "verified") {
       const said = wordsOf(item.title);
@@ -311,6 +342,74 @@ export function checkDisjoint(registers) {
 }
 
 /**
+ * Rule 9: the register never loses a row.
+ *
+ * Every rule above validates a row and none of them sees the set. An append
+ * script of the controller's own used `lastIndexOf` to find the last line's
+ * start and cut the register's final row instead of appending after it, and the
+ * gate printed the same count before and after — the deletion and the addition
+ * cancelled in the only number it prints, so a filed finding was gone and the
+ * run was green (`vg-502`).
+ *
+ * **The union of both registers, not the live file alone**: every close moves a
+ * row from live to archive, so a rule reading one file would fire on the
+ * register's normal operation. The invariant is that a row is never *lost*, and
+ * the two files are one register split by state.
+ *
+ * Pure, so the self-test can drive it without git. See docs/decisions/0054.
+ */
+export function checkContinuity(previous, current) {
+  const problems = [];
+  if (!(previous instanceof Set) || !(current instanceof Set)) return problems;
+  for (const id of previous) {
+    if (current.has(id)) continue;
+    problems.push(
+      `${id}: was in a register at HEAD and is in neither now — a row that vanishes is the one ` +
+        `thing membership cannot see, and a close MOVES a row between the files rather than removing it`,
+    );
+  }
+  return problems;
+}
+
+/**
+ * Every id either register carried at a revision, and whether that could be read.
+ *
+ * `checked: false` means the comparison could not run, and the caller must not
+ * report a green over it — a summary line that reads `all valid` above a check
+ * that never ran is the same false green `registerRows` refuses one level up. A
+ * register whose HEAD copy does not parse is unreadable for this purpose rather
+ * than a source of missing ids, which would report every one of its rows as
+ * having vanished.
+ */
+export function idsAtHead(rev = "HEAD") {
+  const ids = new Set();
+  for (const path of ["docs/product/backlog.jsonl", "docs/product/backlog-archive.jsonl"]) {
+    let text;
+    try {
+      // `maxBuffer` is explicit because the default is 1 MiB and the archive
+      // passed it on 2026-10-16 (1.25 MB) — which threw `ENOBUFS` and would have
+      // silently reported the comparison as unchecked. `readFileSync`, which the
+      // rest of this file uses, has no such ceiling, so the two paths disagree
+      // about what a register may weigh unless this is named.
+      text = execFileSync("git", ["show", `${rev}:${path}`], {
+        cwd: ROOT,
+        encoding: "utf8",
+        maxBuffer: 64 * 1024 * 1024,
+      });
+    } catch (error) {
+      const reason = String(error?.message ?? error).split("\n")[0];
+      return { ids, checked: false, why: `${rev}:${path} could not be read — ${reason}` };
+    }
+    const { items, problems } = parse(text);
+    if (problems.length > 0) {
+      return { ids, checked: false, why: `${rev}:${path} does not parse — ${problems[0]}` };
+    }
+    for (const item of items) if (item?.id !== undefined) ids.add(item.id);
+  }
+  return { ids, checked: true, why: "" };
+}
+
+/**
  * One register's rows and problems, from its text.
  *
  * A register that cannot be read, or holds no rows, is a failure like any
@@ -347,6 +446,10 @@ if (process.argv[1]?.endsWith("backlog-check.mjs")) {
   // error, not a warning — a gate that tolerates the drift it finds is the
   // false green the whole split was meant to prevent.
   const registers = [FILE, ARCHIVE].map(readRegister);
+  const head = idsAtHead();
+  const live = new Set(
+    registers.flatMap(({ items: rows }) => rows.map((row) => row?.id)).filter((id) => id !== undefined),
+  );
   const problems = [
     ...registers.flatMap(({ name, items, problems: readProblems }) =>
       [...readProblems, ...check(items), ...checkPlacement(name, items), ...checkParked(items)].map(
@@ -354,6 +457,7 @@ if (process.argv[1]?.endsWith("backlog-check.mjs")) {
       ),
     ),
     ...checkDisjoint(registers),
+    ...checkContinuity(head.ids, live),
   ];
   const items = registers.reduce((count, register) => count + register.items.length, 0);
   const parked = registers.reduce((count, register) => count + parkedCount(register.items), 0);
@@ -389,7 +493,10 @@ if (process.argv[1]?.endsWith("backlog-check.mjs")) {
       // is valid in every other respect.
       ["a row whose detail is an array fails", problem({ ...valid, detail: ["the finding", "the ruling"] }, /detail must be a string/)],
       ["a row whose detail is a string passes", ok({ ...valid, detail: "why it was closed" })],
-      ["an open item needs no check", ok({ ...valid, state: "open", check: undefined })],
+      // Rule 10 changed this case's premise: an open row needs no check, and it
+      // may not carry one either — nor an `artefacts`, which is the same claim
+      // in a different field. The case keeps its intent and now drops both.
+      ["an open item needs no check, and carries neither close field", ok({ ...valid, state: "open", check: undefined, artefacts: undefined })],
       ["unverified with no note fails", bad({ ...valid, state: "unverified", check: undefined })],
       // The sha rule answers what the check cannot: does the work still exist.
       ["verified with no artefact commit fails", bad({ ...valid, artefacts: [] })],
@@ -427,6 +534,23 @@ if (process.argv[1]?.endsWith("backlog-check.mjs")) {
       ["a parked withdrawn row fails", parkedProblem({ id: "vg-x", state: "withdrawn", detail: "PARKED 2026-10-16: low value" }, /stays open/)],
       ["PARKED as prose passes, because it is not a marker attempt", checkParked([{ id: "vg-x", state: "open", detail: "MINOR 5 WAS PARKED, NOT FIXED: the count stays optional." }]).length === 0],
       ["parkedCount counts markers and not prose", parkedCount([{ id: "a", state: "open", detail: "PARKED 2026-10-16: x" }, { id: "b", state: "open", detail: "was PARKED by the controller" }]) === 1],
+      // Rule 10: a check is evidence of a close, and the axis is *closed* rather
+      // than `verified`. The withdrawn case is the one that keeps the rule
+      // honest — a rule written on "not verified" would fail it, and seven real
+      // rows carry a check there as the record of what was examined.
+      ["a check on an open row fails", problem({ ...valid, state: "open", check: "ran the linter" }, /evidence of a close/)],
+      ["artefacts on an open row fails", problem({ ...valid, state: "open", artefacts: ["HEAD"] }, /evidence of a close/)],
+      ["a check on an in-progress row fails", problem({ ...valid, state: "in progress", check: "ran the linter" }, /evidence of a close/)],
+      ["a check on a withdrawn row passes, because it records what was examined", ok({ ...valid, state: "withdrawn" })],
+      // Rule 9: the register never loses a row. The middle case is the incident
+      // itself — the count was identical before and after, so only the id set
+      // can see it.
+      ["a row that vanished from both registers fails", checkContinuity(new Set(["vg-a", "vg-b"]), new Set(["vg-b"])).length > 0],
+      ["a row that moved between the registers passes", checkContinuity(new Set(["vg-a"]), new Set(["vg-a"])).length === 0],
+      ["a row added since HEAD passes", checkContinuity(new Set(["vg-a"]), new Set(["vg-a", "vg-b"])).length === 0],
+      // The comparison is only worth its green if it ran, so the read itself is
+      // a case: this fails if `git show HEAD:<register>` stops resolving.
+      ["HEAD's registers can be read, so continuity is compared and not assumed", idsAtHead().checked === true],
       // The two cases above call registerRows directly, so the catch that stops
       // a missing file from throwing is exercised by neither. This one reads a
       // real path that does not exist, so the throwing path itself is covered.
@@ -446,7 +570,10 @@ if (process.argv[1]?.endsWith("backlog-check.mjs")) {
     process.exit(1);
   }
   process.stdout.write(
-    `backlog-check: ${items} items across both registers, all valid` +
+    `backlog-check: ${items} items across both registers, ` +
+      (head.checked
+        ? "all valid"
+        : `valid by shape, continuity NOT checked (${head.why})`) +
       ` (${parked} parked, ${items - parked} to work or closed)\n`,
   );
 }
