@@ -5019,6 +5019,24 @@ claim**: its phase-closure set is hard-coded from `STATUS.md`'s phase states rat
 ledger, so it is a weaker derivation than the ninth correction's repaired extractor and is declared rather
 than presented as proved.
 
+**The twelfth correction, measured 2026-10-17 at `d4147298`, and its contribution is a negative one worth
+having: the homeless total is invariant while both of its halves move.** Re-derived with the same cut:
+**129 open / 94 named by a task block / 58 named only by closed phases / 36 with a live home / 35 named
+nowhere, of which 32 are parked — so 93 homeless and 56 unparked, leaving 56 to home.** The eleventh's 93 is
+unchanged and its 58 is now 56, because the register shrank while the split moved by more. **The eleventh's
+seven nowhere-and-unparked rows are down to two**: `vg-544` closed, `vg-417`, `vg-418`, `vg-438` and `vg-409`
+were homed at Phase 20's close, `vg-538` was parked on 2026-10-17, and **`vg-546` and `vg-559` remain** —
+`vg-559` filed after the eleventh was taken. **A triage of all 35 nowhere rows ran the same day and closed
+none of them**: 32 were already parked, `vg-538` was parked, and the two that remain are real with **no open
+phase whose Outcome reaches their owner** — `vg-546`'s is the editor's copy (Phase 18's subject, closed) and
+`vg-559`'s is `scripts/check-status.mjs` together with the `AGENTS.md` sentence that bounds it, which is
+user-owned. **So the authoring pass is still 56 rows rather than the two**, and the two are the subset that is
+also unowned *and* unscheduled.
+
+**Phase 11 is the trap the extraction rule would catch and it is worth naming here**: it has no `# Phase 11`
+heading, so a heading-only extractor assigns its three tasks to Phase 10 — **and its three rows (`vg-228`,
+`vg-267`, `vg-286`) are all closed, so nothing open turns on it.**
+
 # Parked rows — held, not a phase
 
 **`vg-330` was parked by the user on 2026-10-11 and UNPARKED by the user on 2026-10-14**, and this
