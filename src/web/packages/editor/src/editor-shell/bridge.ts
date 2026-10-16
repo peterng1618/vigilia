@@ -700,6 +700,13 @@ export function createEditorShellBridge(input: {
         // the Add pane's tiles do — so the footer cannot build a poorer object
         // than the pane one gesture away. The new object's own `object:added` is
         // what republishes the tree, so this closes without a second notify.
+        //
+        // **A refusal is reported by the façade, not here** (`vg-484`): both
+        // routes are wrapped in `new-object-panel.ts`'s `constructing`, the one
+        // owner of a construction's refusal, so a theme with no usable token
+        // says why instead of throwing out of this arm into a click handler.
+        // This call is the footer's only route to a construction; the canvas
+        // context menu's is the same façade method.
         const shape = constructedShape(action);
         if (shape === undefined) input.session.addText();
         else input.session.addShape(shape);

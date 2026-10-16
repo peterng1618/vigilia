@@ -31,6 +31,7 @@ import { createClipboardManager } from "./clipboard-manager/index.js";
 import { createDeletionManager } from "./deletion-manager/index.js";
 import { EditorSession } from "./editor-session.js";
 import type { EditorShellBridge } from "./editor-shell/bridge.js";
+import { createEditorShellBridge } from "./editor-shell/bridge.js";
 import { CanvasContextMenu } from "./editor-shell/canvas-context-menu.js";
 import { createErrorManager } from "./error-manager/index.js";
 import { createBlankFabricTheme } from "./new-fabric-theme.js";
@@ -75,6 +76,10 @@ const BLANK = createBlankFabricTheme(
   artboardSize("16:9", "1080p", "landscape"),
 );
 
+/** The same theme with no palette at all: the bare case `vg-484` names, where
+ *  every construction refuses before it builds anything. */
+const BARE = { ...BLANK, globals: { ...BLANK.globals, palette: {} } };
+
 /** React schedules outside `act`, and floating-ui's measurement never settles
  * inside one, so a popup is flushed with macrotasks instead. */
 async function flush(): Promise<void> {
@@ -90,7 +95,7 @@ interface Wired {
 }
 
 /** A real session on a real blank theme, over a real Fabric canvas. */
-function wiredSession(): Wired {
+function wiredSession(envelope: typeof BLANK = BLANK): Wired {
   const element = document.createElement("canvas");
   element.width = 1920;
   element.height = 1080;
@@ -140,7 +145,7 @@ function wiredSession(): Wired {
       setBackgroundMedia: vi.fn(),
     } as never,
     source: {} as never,
-    envelope: BLANK,
+    envelope,
     panelHosts: {
       add: document.body,
       tokens: document.body,
@@ -279,6 +284,46 @@ describe("an insert the Add pane cannot reach its owner for", () => {
     expect(told.join(" ")).toContain("card library");
     expect(told.join(" ")).toContain("chart families");
     expect(canvas.getObjects()).toHaveLength(0);
+  });
+});
+
+/* ---- a construction the theme cannot express ---- */
+
+/**
+ * `vg-484`: a construction dispatched through `bridge.run` reaches the session
+ * façade unwrapped, so a refusal was silent from the footer. The row's own bare
+ * case is a theme with no usable token — `firstPalette` throws "New objects
+ * require a palette token." before any object is built.
+ */
+describe("a construction the theme cannot express", () => {
+  it("is refused in words, from the footer's own route", async () => {
+    const { session, facade, errors, canvas } = wiredSession(BARE);
+    const bridge = createEditorShellBridge({
+      editor: editorOf(canvas, errors),
+      session: facade,
+      capture: () => undefined,
+    } as never);
+
+    bridge.run("new-text");
+    await flush();
+
+    expect(told.join(" ")).toContain("palette token");
+    expect(canvas.getObjects()).toHaveLength(0);
+    bridge.destroy();
+    session.destroy();
+  });
+
+  it("is refused in words, from the canvas context menu's own route", async () => {
+    // The menu dispatches a construction through the façade's own `addText`
+    // (`canvas-context-menu.tsx`'s `creationGroups`), so the two surfaces share
+    // one method: this is the second caller, not a second implementation.
+    const { session, facade } = wiredSession(BARE);
+
+    facade.addText();
+    await flush();
+
+    expect(told.join(" ")).toContain("palette token");
+    session.destroy();
   });
 });
 

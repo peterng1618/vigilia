@@ -26,6 +26,7 @@ import {
 import { LiveRuntime } from "./live-runtime.js";
 import type { NewDocumentAnswer } from "./new-document-chooser.js";
 import {
+  constructing,
   createNewObjectPanel,
   insertNewShape,
   insertNewText,
@@ -524,10 +525,22 @@ export class EditorSession {
       releasePackage: () => this.#document.release(),
       openLibrary: () => this.#document.openLibrary(),
       saveLibrary: () => this.#document.saveLibrary(),
-      addText: () => insertNewText(editor, this.#document.envelope.globals),
+      // The three constructions the shell dispatches are wrapped in the one
+      // owner of a construction's refusal (`new-object-panel.ts`), because the
+      // surfaces that reach them — the layer footer through `bridge.run`, and
+      // the canvas context menu through `creationGroups` — both hold a `void`
+      // and cannot report a throw themselves (`vg-484`). `insertCard` is not
+      // wrapped: the document reports that one at its own owner.
+      addText: () =>
+        constructing(editor, () =>
+          insertNewText(editor, this.#document.envelope.globals),
+        ),
       addShape: (kind) =>
-        insertNewShape(editor, this.#document.envelope.globals, kind),
-      addChart: (family) => this.charts.addChart(family),
+        constructing(editor, () =>
+          insertNewShape(editor, this.#document.envelope.globals, kind),
+        ),
+      addChart: (family) =>
+        constructing(editor, () => this.charts.addChart(family)),
       insertCard: (cardId) => this.#document.insertCard(cardId),
       arrange: (action) => applyArrange(editor, action),
       canArrange: (action) => canArrange(editor, action),

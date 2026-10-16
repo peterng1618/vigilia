@@ -211,13 +211,20 @@ export function insertNewShape(
  * through the editor's own diagnostics, because a throw out of a click handler
  * leaves the author with a button that silently does nothing.
  *
- * Every construction in the pane goes through it, charts included:
- * `ChartManager.addChart` calls `newChart` into `createNewChartDefaults` with no
- * handler of its own, so an unwrapped chart tile would be the only one here that
- * fails silently. A card's own refusal is reported by the session, which owns
- * it, so there is nothing here for this to report twice.
+ * **Exported, and the one owner of a construction's refusal** (`vg-484`). Two
+ * surfaces construct outside this pane — the layer footer and the canvas context
+ * menu — and neither can report a refusal itself: the footer's `bridge.run` arm
+ * and the menu's `creationGroups` both hold a `void`, so the throw reached
+ * nobody and the control silently did nothing. The session façade delegates
+ * every construction here rather than growing a second catcher, so the words are
+ * this function's wherever a construction is dispatched from.
+ *
+ * This pane's own `insertObject` still routes through it, for the chart arm
+ * (`ChartManager.addChart` throws its own refusal) and for the two "needs the
+ * editor session" wiring refusals below. A card's own refusal is reported by the
+ * session, which owns it, so there is nothing here for this to report twice.
  */
-function constructing(
+export function constructing(
   editor: EditorInteraction,
   build: () => void | Promise<void>,
 ): void {
