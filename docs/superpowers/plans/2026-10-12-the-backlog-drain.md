@@ -3090,7 +3090,23 @@ is the theme document's `palette.accent`, so no CSS custom property can move it,
 unreachable rather than merely inert.]** **[Task 20.8 closed 2026-10-17 at `e4785eaa`, redrawing the
 segmented control's four rows in all three `current/` drawings that draw it to the product's composed
 treatment — eight declarations, not the six `vg-554` named — and answering the capture clause with "none is
-owed". Its two trailers are `vg-555` and `vg-556`, homed on a new **Task 20.9**.]**
+owed". Its two trailers are `vg-555` and `vg-556`, homed on a new **Task 20.9**.]** **[Phase 20 closed
+2026-10-17 on its Acceptance, carrying three rows rather than closing them — `vg-556`, `vg-350` and
+`vg-354` — and Task 20.9 is where the phase's own sentence about the drawings turned out to be the
+defect. It is annotated here so it is not re-used: "the drawings agree with the product where they had
+invented or drifted" is **true only where a DESIGN.md rule positively requires the product's
+treatment**, which is `README.md:102`'s exception and what licensed Tasks 20.4 and 20.8. Where §5 is
+silent the same README's default runs the other way — *"the drawing governs and the product is the
+defect"* (`:102`), *"never redrawn from the product"* (`:124`) — and Task 20.9's Step 2 was briefed and
+implemented on the unqualified sentence before being reverted at `e0e7624b`. `vg-557` is the general
+case.]**
+
+**Nine rows closed in this phase and seven filed within it** — `vg-261`, `vg-201`, `vg-312`, `vg-301`,
+`vg-202`, `vg-552`, `vg-553`, `vg-554` and `vg-555` closed; `vg-552`–`vg-556`, `vg-557` and `vg-558`
+filed by its own tasks. **The three it carries are carried for two different reasons**: `vg-350` and
+`vg-354` are Tasks 20.5 and 20.6, whose own rulings decline to make the decision their outcome needs,
+so they wait on the user's word; `vg-556` needs the product changed, and no open phase owns the
+editor's control set.
 
 **Why a phase of its own.** Six of the seven edit `editor-shell.css` or a drawing under
 `docs/design/mockups/`, and the seventh edits the design-language reader. They are one subject: what the
@@ -3492,7 +3508,7 @@ and a subject — what a `current/` drawing claims the product renders — which
   the second clause
 
 **Interfaces:**
-- Produces: `vg-555` and `vg-556` closed
+- Produces: `vg-555` closed, `vg-556` carried open, and `vg-557` and `vg-558` filed
 
 - [ ] **Step 1: `vg-555` — the editorial twin's token table, and the question is whether its ground is the
       product's.** Its `--bg` and `--panel2` are **swapped** against the roles `SHELL_ROLES` assigns them, so
@@ -3508,9 +3524,54 @@ and a subject — what a `current/` drawing claims the product renders — which
       this. Decide whether the drawings follow the product or the divergence is documented.
 - [ ] **Step 3: Close both**, naming the file and the element each correction touches.
 
-**Verify:** `npx vitest run tests/e2e/mockup-values.test.ts`; `npx playwright test
-tests/e2e/design-language-parity.spec.ts --workers=1`; a browser reading of the corrected drawing against
-the built product, palette settled.
+**[Closed 2026-10-17: Step 1 landed and `vg-555` is `verified` at `22d9f91a`; Step 2's change was
+reverted at `e0e7624b` and `vg-556` stays open with the direction reversed; Step 3's "close both" did
+not hold, because one of the two rows turned out to be a question about what the drawings are for
+rather than a drawing defect. `vg-557` and `vg-558` are filed from it.]**
+
+**Step 2 was briefed in the wrong direction by the controller, and the seat said so.** The brief
+asserted the drawing should follow the product and told the seat to confirm or refuse it; the seat
+made the change, and its own commit recorded the counter-reading. The revert rests on three
+sentences in `docs/design/mockups/README.md` against one in this phase's Outcome: `:102` *"Where the
+written rules are silent, the drawing governs and the product is the defect"*, `:124` *"**The
+treatment is the target and is never redrawn from the product** … When the product differs, the
+product is the defect"*, and `:119`, which forbids drawing a surface *"in a treatment of the
+product's devising"*. `DESIGN.md:465`'s Segmented row names the well and the lift and is silent on a
+chip's width, so §5 licenses nothing here. **The Outcome's sentence is the weaker authority and is
+annotated below rather than left to be re-used.**
+
+**Step 1's licence was not the one the task named, and the stronger one was found in the product.**
+The editorial palette block aliases §4's whole vocabulary per palette, so it declares the drawing's
+own names — `--bg: var(--shell-backdrop)`, `--panel-2: var(--shell-surface-strong)`, `--edge:
+var(--shell-edge)`, `--accent: var(--shell-accent)`. The twin's table is therefore not merely *meant
+to be* editorial's; the product states the mapping, and two declarations contradicted it.
+**`vg-436`'s ruling was read before the correction was accepted**, because it says the drawing's
+token table stays editorial and nothing is redrawn: its rejected option (a) was a redraw against
+`light`'s mint, and its stated cost was that a redraw *"would change what the parity instrument
+checks for that row in exchange for fixing a name"*. This correction moves the table toward the
+editorial reading `vg-436` chose and changes no instrument row, so it is not contravened.
+
+**The seat refuted five premises of its brief, and four of the five hold on re-reading.** The brief's
+"no product counterpart" list is wrong three ways — `--edge2` *is* mapped (`SHELL_ROLES` `:190`), and
+`--well`/`--well-edge` do have counterparts (`wellClasses`' `bg-panel-2 border-edge` and §5's Well row
+at `DESIGN.md:458`), which makes them mismatches to report rather than values with nothing to compare
+against. The brief's "each is an equal third" describes the drawing and not the product, whose `Align`
+group holds two chips, not three. And `vg-436` had already measured this table and refused the
+redraw, which is why that ruling is quoted above.
+
+**Carried out of this task, all three on the record rather than silently:** `vg-556` stays open with
+the product as the defect and **no home in an open phase**, because Phase 18 owned the editor's
+control set and closed with all twelve of its rows `verified`; `vg-557` files the README's own
+`current/`-is-the-target-versus-as-it-renders-today tension, which is what made Step 2 arguable at
+all; and `vg-558` files the twin's four remaining stale declarations, of which `--accent` is the one
+`vg-436` left knowingly and needs the user's word.
+
+**Verify:** `npx vitest run tests/e2e/mockup-values.test.ts` exit 0 (31 passed); `npx playwright test
+tests/e2e/design-language-parity.spec.ts --workers=1` exit 0 (1 passed, 1 skipped); `npx playwright
+test tests/e2e/design-language-drawings.spec.ts --workers=1` exit 0 (4 passed); a browser reading of
+the corrected twin against the built fixture, palette settled — the twin's group fill
+`rgb(255,253,247)` and pressed chip `rgb(245,241,232)`, matching the product's editorial, where both
+were inverted before.
 
 ---
 
