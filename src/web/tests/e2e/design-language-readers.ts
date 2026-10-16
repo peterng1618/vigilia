@@ -101,8 +101,10 @@ export const BOUNDARY_MIN = 3;
  * (`#ff7e6e`, `#e8c56a`, `#ffb2a1`) while those palettes' paper is light, so the
  * reason read at 1.4–2.0:1 and the row was pinned at ember 1.9, moss 1.35, plum
  * 1.35. The control was never the error: the shell paints
- * `.editor-shell-diagnostic` and `.editor-shell-save-state` with the same role,
- * and `--vigilia-accent` aliases it. Deepening the hue is what `--shell-accent`
+ * `.editor-shell-diagnostic` and `.editor-shell-save-state` with the same role.
+ * (The row also justified the deepening by `--vigilia-accent` aliasing
+ * `--shell-warm`, but that token was read by no rule and is retired — `vg-552`.)
+ * Deepening the hue is what `--shell-accent`
  * got in the same three palettes, and it is what `--shell-warm` now gets, so the
  * pin is deleted and the 4.5:1 minimum is restored — the rule this file states
  * for every pin.

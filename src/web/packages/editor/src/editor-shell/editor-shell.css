@@ -88,33 +88,22 @@ body,
    would outrank the dark base and a dark-reporting OS would paint this block's
    editorial paper in the pre-attribute frame.
 
-   The values with no `--shell-*` counterpart keep literals because no shell
-   token is that colour: `--vigilia-input-bg` is a text field's own white,
-   `--vigilia-subdued` and `--vigilia-selection-bg` sit between the shell's
-   muted and its surface. The scrollbar pair is the exception that proves the
-   rule (`vg-479`): it is *derived* rather than literal, from `--shell-text`,
-   because a literal is the one thing a palette cannot reach.
-   `--vigilia-accent` is editorial's *warm*, not its accent — the control
-   layer's highlight was brown, and reading it as `--shell-accent` would have
-   repainted it ink. `--vigilia-control-bg` cannot alias `--shell-backdrop`
-   either: that holds this same colour under editorial and light's gradient and
-   graphite's dark flat ground everywhere else, so aliasing it painted the wrong
-   surface onto every button. A palette that needs a different control surface
-   declares one below. */
+   Five tokens, down from fifteen (`vg-552`). The ten that went —
+   `--vigilia-text`, `-panel-bg`, `-panel-border`, `-control-border`,
+   `-input-bg`, `-muted`, `-selection-bg`, `-accent`, `-accent-dim` and `-guide`
+   — each named a job the React control set now holds through §4's roles, so
+   every one was a declaration no rule read: the knob that lies `--shell-flat`
+   was (`vg-312`). The five that stay each have a reader, and the literals among
+   them stay literals because no shell token is that colour. `--vigilia-subdued` sits
+   between the shell's muted and its surface, and `--vigilia-control-bg` cannot
+   alias `--shell-backdrop`: that holds this same colour under editorial and
+   light's gradient and graphite's dark flat ground everywhere else, so aliasing
+   it painted the wrong surface onto every button. A palette that needs a
+   different control surface declares one below. */
 :root {
   --vigilia-canvas-bg: #26241f;
-  --vigilia-text: var(--shell-text);
-  --vigilia-panel-bg: var(--shell-surface);
-  --vigilia-panel-border: var(--shell-edge);
   --vigilia-control-bg: #f5f1e8;
-  --vigilia-control-border: var(--shell-edge);
-  --vigilia-input-bg: #ffffff;
-  --vigilia-muted: var(--shell-muted);
   --vigilia-subdued: #8a8272;
-  --vigilia-selection-bg: #e4ddcb;
-  --vigilia-accent: var(--shell-warm);
-  --vigilia-accent-dim: #8a5a2b22;
-  --vigilia-guide: var(--shell-danger);
   /* `vg-479`: both were literals, so a dark shell painted `#c9c2b1` against its
      own ground — no palette could reach them. `--shell-text` is a role every
      palette declares, so an ink over the surface follows the palette from this
@@ -326,8 +315,8 @@ body,
    out of it** (`vg-201`): it stayed the pastel it was named for, so a rejected
    draft's reason — the first `text-warn` in the product — read at 1.98, 1.40
    and 1.39:1 on these three papers. The hue is held and the lightness taken
-   down until the value clears §5's 4.5:1, which also moves `--vigilia-accent`
-   and `--warn`, the roles that alias it. */
+   down until the value clears §5's 4.5:1, which also moves `--warn`, the role
+   that aliases it. */
 [data-shell-palette="ember"] {
   --shell-backdrop: #e9cdb4;
   --shell-surface: #f7e2d2;
