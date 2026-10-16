@@ -380,7 +380,7 @@ it is a statement about which questions apply, not about which objects may exist
   ids, remapped bindings preserving semantic keys, and recorded provenance; it borrows only
   the id rule, `createWidgetIdAllocator`, from `instantiateWidget`, so the copy stays Fabric
   JSON rather than a second scene tree.
-- **Primitives** — text, shape, chart, image, video, exactly as today.
+- **Primitives** — text, shape, chart, image, exactly as today.
 
 Neither is the fallback for the other. The unit is the fast path for the common case; the
 primitive is the tool for the case nobody anticipated, which is the case this product is
