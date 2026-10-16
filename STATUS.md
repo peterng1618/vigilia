@@ -37,11 +37,11 @@ ledger did.
 
 ## Last completed change
 
-- **Phase 20's Task 20.7 landed at `7874e879` and `150ad617`, closing `vg-552` and `vg-553`** — all ten unread `--vigilia-*` declarations are retired, the block's comment now describes only the five that stay, and `RETIRED_TOKENS` in `editor-shell.tokens.test.ts` names all thirteen names this phase retired.
-- **Every reader count reproduces and the five survivors each have one** — `--vigilia-canvas-bg` 1, `--vigilia-control-bg` 5, `--vigilia-subdued` 1, `--vigilia-scrollbar-thumb` 3, `--vigilia-scrollbar-track` 3; the ten are declared nowhere, and each was declared exactly once, unlike `vg-312`'s eight.
-- **The guard is the first assertion in the file that fails on an addition rather than a removal** — a per-retirement list rather than a closed set over `@theme static`, which also carries the type scale and the `--color-*` aliases and would redden on every legitimate addition.
-- **The controller re-ran the red proof on one name per retirement commit** — `--shadow-raised` (20.1), `--shell-flat` (20.3) and `--vigilia-accent` (20.7) each read exit 1 with the case's own message, baseline 14/14 exit 0, every restore `cmp`-identical.
-- **`vg-201`'s ruling's second clause is unreachable rather than merely inert, and that is now measured** — the canvas is Fabric-painted from the theme document, whose accent is `palette.accent`, a persisted value read by `renderer-core`, so no CSS custom property can move it; recorded as a dated note on `vg-201`'s archived row.
+- **Phase 20's Task 20.8 landed, redrawing the segmented control to the product's composed treatment** — the container gains `--panel2` fill, `4px` padding and `4px` gap, each chip gains `--radius-sm` and `4px 8px` padding, the pressed chip is filled `--bg` (`--stage`'s role) at weight `400`, and the drawn hairlines and the pressed `500` are gone.
+- **The rule the redraw follows predates it**: DESIGN.md §5's Segmented row — "a `--panel-2` well holding 2–4 labels, the active one lifted to `--stage`" — and the chip draws no border at all, so `vg-301`'s named "chip border as `color-mix(currentColor 45%)`" is not this control's.
+- **Graphite matches the product declaration for declaration**, read in a browser with the palette settled: container `rgb(23,28,35)`, `4px`, `4px`, `6px`, `1px solid rgb(36,43,52)`; pressed chip `rgb(11,14,18)`, `rgb(232,236,243)`, `4px 8px`, `4px`, `400`, `11px`; unpressed `rgb(138,151,171)`.
+- **`current/shell.html` draws the same four rows and is named by no task's Files list** — corrected in the same commit, because the current set must not draw one control two ways; the plan's Files list needs that third file.
+- **No capture is owed for either clause** — the product is unchanged by a drawing correction, `control-set`'s registered capture already sits beside `controls.html`, and no registered action reaches the header's publish trigger.
 
 ## Next
 
