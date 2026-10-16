@@ -2431,6 +2431,76 @@ reproducing `vg-536`'s stated census. `thumbnail-capture.ts` is 101 lines and `f
 - [ ] **Step 5: `vg-451` — `${solidOf.background}` is interpolated into a `setContent` document with no guard**, and the neighbouring assertions cannot fail on an absent key.
 - [ ] **Step 6: Rebuild, run the affected suites, and close the five.**
 
+**Annotated 2026-10-16, at the task's close: all five rows are `verified`, and the task's most useful
+finding is one the controller's own verification produced rather than the implementer's.**
+
+**`vg-391` got the case rather than the *coverage not wanted* close**, so the first of the two options its
+own text leaves open was taken. `host-player.spec.ts:802` screenshots `#artboard canvas.lower-canvas`,
+waits for a consumed batch, polls for a painted clock reading, and requires a second sample to move both
+the reading **and the pixels** (`Buffer.compare(...) !== 0`). A screenshot rather than the text property,
+because the property moves whether or not anything repaints.
+
+**THE ROW'S OWNER POINTER IS INCOMPLETE, AND NO SINGLE CUT DISABLES THE REPAINT.** The row names
+`player/src/main.ts`'s `refresh()` as the owner. But `refreshBoundText` ends with an unconditional
+`canvas.requestRenderAll()` (`scene-fabric/src/fabric-text.ts:397`) **and** the player calls it again at
+`main.ts:174`. Measured over four rebuilds: the player's call cut alone → **green**; the helper's call cut
+alone → **green**; **both cut → red**, on the pixel assertion. Either call subsumes the other.
+
+**That measurement exists because the implementer's red proof was wrong, and the wrongness is the phase's
+own failure mode arriving from the other side.** The new case read the clock **once** after the connection
+strip disappeared; the strip disappearing says a batch was **consumed**, not that the repaint carrying the
+reading has been scheduled and run, so the read raced that frame and saw the placeholder `—`. It passed at
+1.5 s and failed at 319 ms — about two runs in three. **So a case that failed on a single cut failed for
+the race, not the cut**, and the cut does not produce that failure. The controller found it on the first
+independent re-run, fixed it in place at `2f5bd37c` with a poll (the idiom the two assertions three lines
+below already use), and re-ran the four-way cut measurement. **The lesson is not *a case that could not
+have failed* but its mirror: a red read as the red you were looking for.** Every red proof in this phase
+should be re-run by whoever closes the row.
+
+**Two line numbers in Step 1 above are stale, and the row's own 2026-10-16 correction carries the same
+stale ones.** `installFixedClock`'s sites are **`editor.spec.ts:5251` and `:5334`**, not `:5188`/`:5271`,
+and `openPaused`'s caller is **`host-player.spec.ts:925`**, not `:923` (`openPaused` is defined at
+`clock.ts:124`). The claim the correction was making — that the surviving player case asserts frame
+*equality* rather than repaint — holds, and the new case now asserts the repaint beside it.
+
+**`vg-393` closed on an established cause, so the row's second candidate is refuted rather than left
+open.** The trace, against the built preview with `getScenePoint` and the object's `set` instrumented: the
+12-step drag runs scene 455.371 → **117.034** in 28.19-unit steps, and the ask (`left + 0.4` = 118.4) is
+**0.17 client px** at this zoom where a whole client px is 2.35 scene units — so Chromium's rounded pointer
+lands **left of the object's own left edge at 118**, where Fabric's `changeObjectWidth` refuses a pointer on
+the far side of the origin, and the width left behind is **the previous step's**. Candidate 2 (*the editor
+re-derives the width after `guardBoxWidth`*) is refuted: every traced write's requested value equals the
+value left behind. Candidate 1's shape is right but its mechanism is **the previous step of the same drag**,
+not another frame. **This settles what `vg-370` was blocked on**: the box the `value < 1` refusal would floor
+is **unreachable by a pointer at this zoom**, not skipped. The controller reproduced the row's numbers
+against the retained report (`145.22846441947564` and `27.228464419657`); the implementer's run reproduced
+both while landing on a different Fabric width (36.137 against 35.637) because its drag ran at `scaleX`
+0.73319 rather than 0.74320 — reported rather than smoothed.
+
+**`vg-398`'s scale is 27 commands, not 36, and the row understated the prose by seven.** Of the 36 `--grep`
+occurrences, **nine are prose or a column header** (the row said two), leaving 27 command values, 26
+distinct. Three collect nothing and each is recorded on its own cell: `vg-028` (`"playback"` — and no title
+anywhere carries it, so the repro needs a new case), `vg-259` (a value that is an assertion **message**;
+Playwright matches titles) and `vg-360` (its case was rewritten). Two more were loose and corrected:
+`vg-281` (`"New"` matched two titles) and `vg-284` (`"sheet"` matched three). **The instrument is
+`tests/e2e/triage-cells.test.ts`** (3 cases) and it is the answer to *how many of the rest collect nothing
+is NOT established* — it fails when a value matches no title and the cell does not say so. **The controller
+red-proved it independently**: breaking a corrected value makes it fail with
+`triage-B2.md:62 vg-204 --grep "…"`, naming both the file and the row, restored byte-identically by `cmp`.
+
+**`vg-421` is documentary and has no red proof, which is said rather than manufactured.** The plan's step
+was the stale side: its title, its comment and its assertion all now state the shipped rule, and the
+assertion changed from `toBeGreaterThanOrEqual` — **which passed under either rule** — to `toBe(tagged.length)`,
+which is false under a union. That is the whole defect: a step that could not fail, fixed by making it able to.
+
+**`vg-451` took the assertion rather than the throwing reader**, and the reason is a boundary rather than a
+preference: `shell-tokens.ts`'s `themeToken` throws because it parses a **stylesheet** where an absent name
+is a reader bug, while this value comes from a **product module** with exactly one consumer, so the guard
+belongs at the point of use. `reference-theme.spec.ts:1401` binds `const backdrop = solidOf.background` and
+`:1402` asserts `toMatch(/^\S+$/)` before `:1404` interpolates the local. **The row's *worth a look
+wherever a product value is templated into CSS text* is answered, not implied**: three sites in the browser
+suite write CSS text and this is the only one interpolating a product value.
+
 ### Task 17.4: The register's and the context menu's own instruments
 
 **Files:**
