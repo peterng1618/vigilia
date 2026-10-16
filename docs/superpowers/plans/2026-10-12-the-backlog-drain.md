@@ -2160,6 +2160,45 @@ stylesheet, still states the attended four-control row's numbers and still waits
 - [ ] **Step 4: `vg-499` — the inspector's reveal button and all its wiring are gone** and no scroll-to-preset route replaced it; either restore the route or record that the affordance was retired deliberately.
 - [ ] **Step 5: Close the four**, saying for `vg-499` which of the two it was.
 
+**Annotated 2026-10-16, at the task's close: three rows are `verified`, `vg-499` is `withdrawn`, and the
+task's Step 1 pointer was right.** Two decision notes landed before the first write to each watchlisted
+path — `0051-a-construction-refusal-is-reported-by-the-session-facade.md` and
+`0052-the-party-that-removes-disposes.md` — in one commit (`a01b27b2`), and `0051` claims `bridge.ts` on
+the basis of a comment rather than a behaviour change, which is stated on the row because a note claiming
+a watched path should not be read as a change to it.
+
+**`vg-484` took the row's first candidate**: the session façade owns a construction's refusal, and
+`constructing` (`new-object-panel.ts:227`) is now exported and delegated to by `addText`, `addShape` and
+`addChart`. The Add pane keeps its own call because it reaches `insertNewText`/`insertNewShape`
+**directly** rather than through the façade, so no path is wrapped twice; `insertCard` is unwrapped
+because the document already reports it at its own owner.
+
+**`vg-486` is the phase's largest change and the row's re-review is why.** The adapter's
+`object:removed` subscription is deleted and **six sites now dispose what they remove**;
+`deletion-manager` gained a disposal it was missing (a member removed from a group leaves the root without
+firing the event, so that leak never announced itself). One existing case changed with the behaviour it
+read: `bridge.dom.test.ts`'s parity reference now disposes explicitly.
+
+**`vg-489` took *a neutral chart glyph* over *no mark at all***, on the row's own comparison — the shape
+arm already falls back to the kind's generic mark, and an empty slot would make the mark vanish rather
+than abstain. The fix moves `KIND_GLYPHS.chart` as well as the fallback, because they were one constant
+and that identity *is* the collision the row names.
+
+**`vg-499` is `withdrawn` because the measurement makes its second clause false, not because the work was
+deferred.** `preset-list.tsx:139` derives the preset it browses from `stage.selectionPresetId` and `:176`
+prints *the selection is set to <name>*, so the Tokens rail slot is one click and the pane opens on the
+selection's own preset — the capability the row says nothing offers. The ruling is the row's own third
+candidate (**nowhere**), with the Content-section row and the panel's own search declined rather than
+overlooked. **`verified` was not available to it**: the title asserts an absence that does not exist, so a
+`verified` row would have to carry a `check` asserting a capability that was never gone.
+
+**Two browser reds were re-measured at the base commit with this task's changes stashed and rebuilt**, and
+neither is this task's: `inspector-sections.spec.ts`'s *gives every kind a column* belongs to `vg-519`,
+which already records that file as a third instance of its shape, and `editor.spec.ts:4012`'s
+*Ctrl-resizes near a neighbour…* is added to `vg-519` as evidence rather than filed as a row, **because
+whether it is that row's second case or a canvas-mount defect is not established** — the discriminator is
+the page snapshot, which the run did not capture.
+
 ### Task 16.5: The readings the passes could not take
 
 **Files:**
