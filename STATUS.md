@@ -37,10 +37,11 @@ ledger did.
 
 ## Last completed change
 
-- **Task 19.2 closed, and `vg-142`'s own mechanism description is stale** — there is no `sizeNote.textContent` at `artboard-panel.ts:336` and no `refreshNote` writer; the note is React-rendered from `sceneBoxes`, and the row's *subject* is what reproduces, not its line numbers.
-- **The panel now subscribes to `object:moving`, coalesced onto one animation frame** — `follow` arms a single `requestAnimationFrame` however many events that frame carries, `destroy()` releases the listener and cancels the armed frame, and `object:modified` still draws immediately.
-- **The defect reproduced before the fix, by holding the drag** — mid-drag read the rule text alone, the release read `1 of 54 objects are now outside`; after the fix the mid-drag read already carries the figure, which is the whole of the row.
-- **The frame budget holds: the coalesced recompute is ~2.5 ms** — measured in Chromium by timing the frame callbacks each `object:moving` dispatch registers (median 2.5, p95 3.9, max 4.0 against a 16.7 ms frame; the canvas repaint in the same frame is 20–30 ms), and the browser case asserts p95 under one frame.
+- **Task 19.2 closed at `be181f68`, so the register is 133 open** — `vg-142` is `verified` and its red proof was re-run by the controller rather than taken from the report.
+- **The panel subscribes to `object:moving`, coalesced onto one animation frame** — `follow` arms a single `requestAnimationFrame` however many events that frame carries, and `destroy()` releases the listener and cancels the armed frame; cutting the subscription reads 1 failed of 25 exit 1, restored byte-identically with `cmp` to green.
+- **The frame budget holds and the ruling's cost-if-wrong does not fire** — the coalesced recompute measures 2.3–3.2 ms median against a 16.7 ms frame, with the split proven on a no-subscription build, so no cheaper recompute is owed.
+- **The row's own mechanism description was stale for the fifth time this phase** — there is no `sizeNote.textContent` at `artboard-panel.ts:336` and no `refreshNote` writer; the note is React-rendered from `sceneBoxes`, and the subject reproduces while the line numbers do not.
+- **One of the five stale pointers was the controller's own** — the brief cited `bleed.ts` for the `object:modified` write, and that file is 62 lines with no fire in it; the seat found the write at `selection-inspector/index.ts:414` and reported it rather than working around it.
 
 ## Next
 
