@@ -2857,6 +2857,40 @@ ruling names; treating `vg-208` as a one-line fix, which its own ruling says it 
 **Verify:** `npm run gate` (exit code read from `$?`); the browser suite for Tasks 19.1–19.4 on a rebuilt
 bundle.
 
+**Annotated 2026-10-16, at the phase's close: all five tasks have run and the phase's six rows stand at
+six `verified` — `vg-268` and `vg-283` (`055c7ecc`), `vg-142` (`be181f68`), `vg-208` (`46e022ae`),
+`vg-211` (`014d38b3`), `vg-163` (`b2c4f1e7`) — but its Acceptance is met only in part, and the part it
+misses is a regression the phase itself caused.** `npm run gate` **exit 0** (263 files, 3481 tests), read
+from `$?` into a file. **The browser suite named separately as `npx playwright test --workers=1` over all
+projects: exit 1 — 338 passed / 4 failed / 258 skipped, 23.7 minutes.** Three of the four reds are rows the
+register already owns and were matched by the case each row names: `glass-lifecycle.spec.ts:25` is
+`vg-431`, `editor-display.spec.ts:659` is `vg-258`, `publish-loop.spec.ts:349` is `vg-212`. **The fourth
+is new, it is this phase's, and it is filed rather than smoothed**: `host-walkthrough.spec.ts:516` (§13.1's
+nine interactions on the real host) fails at step 5 with `nothing matched in 200 presses`. It is
+**bisected, not guessed** — the case passes at `b2c4f1e7` and fails at `055c7ecc` (Task 19.1) and at every
+commit after it, each point rebuilt — and then **measured**: with `TAB_BOUND` raised to 2000 and the case's
+clock to 600 s it passes (exit 0, 4.4 m) and prints its own census, in which step 5's sweep to the pane is
+**1058 presses**. Task 19.1's mount put `FontPicker` in the inspector, and `font-picker.tsx:355-376`
+renders all 379 trios unwindowed — 758 tab stops — while the face list above it is windowed to 15. Filed as
+**`vg-551`** and **not fixed here, because the correct behaviour is not already specified**: the `WINDOW`
+docblock gives the face list's reason as `FontFace` objects to keep rather than tab stops, and the picker
+carries no `role`, no `tabIndex` and no key handling, so the fix is a decision about the picker's keyboard
+model for a 379-row list — a spec, not a task. **The Acceptance's own `vg-211` clause is a count and it is
+wrong**: it says "four locators" and the measured set at close is 12 shape call sites through `insert` and
+`addButton` across `author-journey-rebuild.spec.ts`, `inspector-sections.spec.ts`, `rebuild-composition.ts`
+and `rebuild-driver.ts`, plus three in-file sites in `editor.spec.ts`; the clause's **substance holds** —
+every shape reach is scoped to `data-vigilia-add-group="shape"`, and the pane-wide form survives only for
+the Text row and the chart families, which Task 19.4's trailer records as the same hazard left standing.
+**Two stale claims the close corrected rather than inherited.** The phase's `Owners:` line names
+`layer-tree.ts`, and **no Phase 19 commit touched it** (`git log 591e2954..HEAD -- layer-tree.ts` is
+empty): Task 19.3's owner was `pane.tsx`, `editor-shell.css` and `shell-layout.tsx`. And **the gate was red
+inside this phase** — `npm run gates:self-test` stood at 21/22 on `dead-code-sweep.mjs`'s
+test-only-consumer case, which pinned `font-picker.tsx`, the very file Task 19.1 legitimately mounted, so
+the check was asserting the bug two rows existed to fix; fixed at `58c1cb14` under decision note `0058`,
+with the residual filed as `vg-550` and Phase 21's new Task 21.8. **Every red proof on this phase's rows,
+and the new red, were re-run by the controller rather than taken from a report** — each green, then cut,
+then red, then restored and proved byte-identical with `cmp`, then green again.
+
 ### Task 19.1: `FontPicker` reaches the field it was written for
 
 **Files:**
