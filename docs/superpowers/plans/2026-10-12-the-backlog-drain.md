@@ -3259,13 +3259,22 @@ line-height only (`--text-2xs` … `--text-xl` at `:498-506`) with **no family a
 at `:60-68` calls the pair it holds *"a display face and a flatness flag"*. So the six entries are not a
 transcription of `--shell-display`: syncing them against it would make the normative document declare the
 serif display stack as the family of six UI text steps, which is a claim the CSS does not make and which the
-row itself already says is *"CORRECT TODAY"*. **Two mechanisms survive, and choosing between them is a
-decision about what DESIGN.md normatively says about typography, so it is not taken here**: (a) the shell
-gains a token for the stack those six steps actually inherit, and the front matter transcribes that — the
-row's own first option, and the one the ruling's rejected alternative named; or (b) `fontFamily` is dropped
-from the six entries and `--sync` requires only `fontSize` and `lineHeight`, which the ruling explicitly
-refused. **`vg-354` stays `open` and the re-decision is recorded on it**; Task 20.6 is not dispatched until
-it is answered.
+row itself already says is *"CORRECT TODAY"*. **And the front matter is not sourced from the CSS at all**,
+which the same reading found: **`DESIGN.md`'s own §2 (Typography)** declares the three families, the first
+being *"UI sans (`system-ui` stack) — Everything a person reads as language: Labels, menus, headings, panel
+copy"*, and the six entries carry exactly that string. `--shell-display` is a **different fact** — the
+palette's display face, serif under editorial, graphite, ember, moss and plum and `system-ui` under light and
+the dark base — and §2's table names **no serif family at all**, so the front matter transcribes §2's prose
+rather than a CSS token and the ruling's target is the wrong owner. **Two mechanisms survive, and choosing
+between them is a decision about what DESIGN.md normatively says about typography, so it is not taken here**:
+(a) the shell declares a token for the UI sans stack and `--sync` compares the front matter against it, which
+also gives §2's first family a CSS owner; or (b) the front matter stays a transcription of §2 and the linter
+requires the key to equal §2's declared UI sans string — a prose-to-front-matter check rather than a CSS one.
+Neither is the mechanism the ruling names, and the ruling's own rejected alternative (drop the key from the
+six entries) is a third. **A third finding comes with it and is not this row's**: §2 names no serif family
+while `--shell-display` applies one to chrome headings at three sites, so the CSS declares a face the
+normative table does not list. **`vg-354` stays `open` and the re-decision is recorded on it**; Task 20.6 is
+not dispatched until it is answered.
 
 ---
 
