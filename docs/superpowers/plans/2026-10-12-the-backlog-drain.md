@@ -2919,6 +2919,20 @@ bundle.
 - [ ] **Step 2: Correct the sentence to the primitives that exist.** `isPlaceable` (`panes/add/file-section.tsx:266`) is the two-element allowlist image or svg, and `ADR-0008` decided video is background media rather than a scene object — so the sentence drops video, rather than the product gaining a video object kind, which is `vg-154`'s question and not this row's.
 - [ ] **Step 3: Close it** against the corrected sentence, with a check naming the row's own problem rather than the retired premise.
 
+**Annotated 2026-10-16, at the task's close: `vg-163` is `verified` at `b2c4f1e7`.** **Step 1's correction is
+stronger than this task stated and the measurement is the difference.** The step says
+`docs/design/design-language.md` "was replaced by `DESIGN.md`"; **the file does not exist at all** — deleted
+at `db000c40`, and `docs/design/` now holds only `mockups/` — so the ruling's `grep -i video DESIGN.md` read
+a file that never held the sentence, and the last on-disk version of the file it *did* name has no `video`
+either. **The conclusion is unchanged and the reason is cleaner: the retirement was never valid, because the
+row cited the spec and the spec was never edited.** **A second citation on the row was stale and is
+corrected on the row**: it names `isPlaceable` at `asset-manager/panel.ts:232-236`, and that directory holds
+only `index.ts` and `index.dom.test.ts` — the allowlist is `panes/add/file-section.tsx:266`, called at
+`:111`. **Step 2 landed as written**: the sentence drops video and the product gains no object kind.
+**`DESIGN.md` carries neither `Primitives` nor `video`**, which is why the fix is in the spec — the phase's
+own failure mode. **`npm run docs:check` exit 0**, and **no test or browser run is claimed**, because the
+Acceptance names the browser suite for Tasks 19.1–19.4 only.
+
 ---
 
 # Phase 20 — W15: the design tokens and the drawings they came from
