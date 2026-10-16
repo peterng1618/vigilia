@@ -63,6 +63,18 @@ export function ControlSlider(
     /** The owner can take the key away again — an absent optional setting. The
      *  track has no empty state, so the well is where that act lives. */
     readonly onClear?: () => void;
+    /**
+     * `value` is a fallback the owner supplied, not one the document holds: an
+     * optional setting with nothing authored.
+     *
+     * The track has to sit somewhere and the platform and ARIA forbid it
+     * reporting an absence, so the owner hands it what a first edit would write —
+     * and **the well reads the document alone**, rendering empty until something
+     * is stored. An unauthored `0` and an authored one are different documents
+     * and must not read alike (`vg-497`); the well's empty draft is the route
+     * back, as it is for every other optional field (`0049`).
+     */
+    readonly unauthored?: boolean;
     readonly onPreview?: (value: number) => void;
     readonly onCancel?: () => void;
     readonly onCommit: (value: number) => void;
@@ -82,6 +94,7 @@ export function ControlSlider(
     integer,
     step,
     onClear,
+    unauthored,
     onPreview,
     onCancel,
     onCommit,
@@ -121,6 +134,12 @@ export function ControlSlider(
   // nothing — cannot strand the thumb on a value the document never took.
   const [dragging, setDragging] = useState<number | null>(null);
   const shown = dragging ?? value;
+  // The well reads the document, so a value the document does not hold leaves it
+  // empty — the track's fallback is not something the author wrote (`vg-497`).
+  // The gesture is the one exception: while a drag is in flight the moving value
+  // is this control's own state (`vg-449`), and a blank field beside a moving
+  // thumb would read as a broken control rather than as an empty document.
+  const wellEmpty = unauthored === true && dragging === null;
   // Base UI's slider is not the accessible element: the nested `input[type=range]`
   // is, and most aria props land on the thumb `div` beside it. So the refusal
   // state is written onto the input directly, or a screen reader never hears it.
@@ -292,7 +311,7 @@ export function ControlSlider(
           label={label}
           {...(hooks === undefined ? {} : { data: hooks })}
           wellClassName="w-[40px] flex-none"
-          value={shown}
+          value={wellEmpty ? undefined : shown}
           min={min}
           max={max}
           {...(integer === undefined ? {} : { integer })}

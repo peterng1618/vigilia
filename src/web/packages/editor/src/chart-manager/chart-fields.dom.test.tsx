@@ -600,12 +600,21 @@ describe("a chart's series", () => {
 
     await edit(precision, "3");
     expect(calls.bindings.at(-1)).toMatchObject({ precision: 3 });
+
+    // And the empty draft is the route back to absent — the one way to say "the
+    // renderer decides again" from a value the author did set.
+    await edit(precision, "");
+    expect(calls.bindings.at(-1)).not.toHaveProperty("precision");
   });
 
-  it("shows the floor for a series whose precision the author never set", async () => {
+  it("shows the floor on the track and nothing in the well for a precision the author never set", async () => {
     // The renderer's rule for an absent precision is "at most one decimal",
-    // which is not a member of this integer range, so the track shows the range's
-    // own floor and the well's empty draft is the route back to absent.
+    // which is not a member of this integer range: a track has to sit somewhere,
+    // so it takes the range's own floor — and the *well*, the half that reads
+    // the document, reads empty, because the document holds nothing (`vg-497`).
+    // An authored `0` and an unauthored one are different documents and must not
+    // read alike: the hazard is an author who drags `0 → 2 → 0` to put the number
+    // back and writes a whole-number precision nobody meant.
     const { stage, calls } = over(gauge);
     const track = pick<HTMLInputElement>(
       stage.host,
@@ -617,8 +626,17 @@ describe("a chart's series", () => {
       stage.host,
       'data-vigilia-binding-field-well="cpu.precision"',
     );
-    await edit(well, "");
-    expect(calls.bindings.at(-1)).not.toHaveProperty("precision");
+    expect(
+      well.value,
+      "the well reads the floor for a precision the document does not hold, so " +
+        "an unauthored 0 and an authored one are indistinguishable",
+    ).toBe("");
+
+    // The floor is still authorable on purpose — typing the `0` the track sits
+    // on writes it — which is what makes the two states tellable apart. There is
+    // nothing to clear from here: the field is already the empty document.
+    await edit(well, "0");
+    expect(calls.bindings.at(-1)).toMatchObject({ precision: 0 });
   });
 });
 

@@ -47,16 +47,16 @@ const MAX_PRECISION = 6;
  *
  * The renderer's rule for an absent precision is "at most one decimal" —
  * per-value, and not a member of this integer range — so the track shows the
- * range's own floor and the well's empty draft is the route back to absent. It
- * is the same fallback the chart settings state for an optional number with no
- * family default (`chart-manager/panel.ts`'s `settingRows`).
+ * range's own floor. It is the same fallback the chart settings state for an
+ * optional number with no family default (`chart-manager/panel.ts`'s
+ * `settingRows`).
  *
- * **The floor is not the absent state, and a drag cannot say so.** A slider has
- * no unauthored position, so an author who drags `0 → 2 → 0` to put the number
- * back writes `precision: 0` and switches the chart from "at most one decimal"
- * to whole numbers; the empty draft is the only route back and the field then
- * re-reads `0`, so neither state is distinguishable from the other (`vg-497`
- * carries what a slider is missing).
+ * **The floor is the track's, and the well reads the document.** The field beside
+ * the track renders empty while the binding carries no precision, so the state
+ * the author is in is tellable from the one they left: dragging `0 → 2 → 0` to
+ * put the number back writes `precision: 0` and switches the chart from "at most
+ * one decimal" to whole numbers, and the `0` that lands in the field is what says
+ * so. The empty draft is still the route back to absent (`vg-497`).
  */
 const PRECISION_FLOOR = MIN_PRECISION;
 
@@ -94,8 +94,10 @@ export type ChartSettingView =
       readonly control: "slider";
       /**
        * Always a number, where the number arm's may be absent: a track has no
-       * empty state, so an unauthored setting shows what the renderer draws
-       * with rather than nothing.
+       * empty state, so an unauthored setting shows the family's own default
+       * rather than nothing. The setting rows keep that fallback in the well too
+       * — a series' precision does not, because its fallback is not what the
+       * renderer draws (`vg-497`).
        */
       readonly value: number;
       readonly min: number;
@@ -320,6 +322,7 @@ function ChartSeriesRow(props: {
         id={`vigilia-chart-binding-${binding.id}-precision`}
         data={{ "data-vigilia-binding-field": field("precision") }}
         value={binding.precision ?? PRECISION_FLOOR}
+        unauthored={binding.precision === undefined}
         min={MIN_PRECISION}
         max={MAX_PRECISION}
         integer
