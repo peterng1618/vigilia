@@ -3584,7 +3584,8 @@ which no ruling named: the 800-line stop gets an instrument.** **Task 21.8 adds 
 added 2026-10-16 at Phase 19's close: the sweep's self-test stops pinning live source files, because
 two of the four it pins have already been invalidated by work the product wanted.** **Task 21.9 adds a
 ninth, `vg-551`, added the same day: the shell walk's budget becomes a measurement rather than a round
-number, and the font picker's 758 tab stops are the reason it has to be.**
+number, and the font picker's 758 tab stops are the reason it has to be.** **Task 21.10 adds a tenth,
+`vg-544`, added 2026-10-17 at Phase 20's close: the watchlist names a path that is gone.**
 
 **Why a phase of its own.** All six edit `scripts/` or a registry under `docs/evidence/`, and the three
 sweep rows (`vg-380`, `vg-382`, `vg-386`) are **one instrument read three ways** — its selector direction,
@@ -3767,6 +3768,22 @@ measured.
 that the walk's fixed budget is the same finding's other face, and raising it would hide the defect rather
 than fix it.
 
+### Task 21.10: The watchlist names a path that is gone
+
+**Added 2026-10-17 at Phase 20's close**, homing `vg-544`, filed by the controller on 2026-10-16 while
+opening Phase 18 and left named by no task since. It is Phase 21's by its owner — a script — and by nothing
+else.
+
+**Files:**
+- Modify: `scripts/reuse-gate.mjs` (`WATCHLIST`)
+
+**Interfaces:**
+- Produces: `vg-544` closed
+
+- [ ] **Step 1: The watchlist's editor entry names a file that no longer exists.** `scripts/reuse-gate.mjs:56` lists `src/web/packages/editor/src/selection-inspector/style.ts`, deleted at `aa5edf96`, so the gate can never refuse a write to it and the list reads as covering an owner it does not. Re-read the file before editing: the entry's line number is this plan's, not the file's.
+- [ ] **Step 2: Decide the entry's replacement rather than deleting it.** The list's own comment records the opposite failure — a pass that found it covered no editor path at all while the editor is where most of these decisions now live — so the row's second half is which live editor path takes the dead entry's place, and a deletion with nothing put back re-opens that finding.
+- [ ] **Step 3: Close it**, with the gate's own `--self-test` and one case proving a write to the replacement path is refused.
+
 ---
 
 # Phase 22 — W17: the proofs the plans owe, and the test configuration
@@ -3774,6 +3791,9 @@ than fix it.
 **Outcome:** the seven ruled rows whose owner is a test or a test config are landed — one project timeout
 covers the rebuild journey, the json reporter takes its path from the environment, `tests/e2e/` joins a
 typecheck program, and three assertions and bullets that cannot fail are replaced by ones that can.
+**Tasks 22.9 and 22.10 add two more, added 2026-10-17 at Phase 20's close: the copy walk's keyed
+functions and its four unmounted surfaces (`vg-417`, `vg-418`), and the fixture page a `build`-only
+bundle lacks (`vg-438`).**
 
 **Why a phase of its own.** Every row here is a claim about **evidence** rather than about product
 behaviour, and three of them (`vg-167`, `vg-168`, `vg-159`) are the same finding: an assertion or a
@@ -3905,6 +3925,37 @@ this phase because it is a **test driver**, and the phase's own subject is the p
 - [ ] **Step 3: Read the Add pane's structure rather than reordering its tiles**, and prove the driver red by asking for the shape's Line and asserting the inserted object's kind.
 - [ ] **Step 4: Close it.**
 
+### Task 22.9: The copy walk probes the functions it cannot enumerate, and mounts four surfaces it does not read
+
+**Added 2026-10-17 at Phase 20's close**, homing `vg-417` and `vg-418`. Both were found by Task 7.1's
+review on 2026-10-13 and both are `ui-copy.test.ts`'s — one instrument, two holes — which is why they are
+one task and not two.
+
+**Files:**
+- Modify: `src/web/packages/editor/src/editor-shell/ui-copy.test.ts`
+
+**Interfaces:**
+- Produces: `vg-417` and `vg-418` closed
+
+- [ ] **Step 1: `vg-417` — the probe, not the module.** `copy()` calls each exported copy function with generic arguments to enumerate the strings a surface could print, and a function whose result depends on a key cannot be enumerated that way: `glassRefusals` and `chartFamilyLabels` take a key and are never collected. The consequence's direction is the safe one — a surface printing one of those strings reads as a literal with no owner, so the walk goes falsely **red**, not falsely green — which is why the row is low and why it still needs fixing: a net that reddens on a correct surface is one a reader learns to ignore.
+- [ ] **Step 2: `vg-418` — the four surfaces the walk does not mount.** It mounts the shell, the Settings Appearance/Keyboard/About tabs, the canvas context menu, the opened menu popups and the colour picker, and not the `?` shortcut sheet, the publish popover, the library dialog or the new-document dialog. A literal in one of those is owned by nothing. **The header is not the fix** — it now states these four are not mounted, and a comment can vanish silently where a mount cannot.
+- [ ] **Step 3: Close both**, with a case that fails when the keyed enumeration is disabled and one that fails when a mount is removed.
+
+### Task 22.10: A built bundle has no fixture page, and the drawings specs read that as a product regression
+
+**Added 2026-10-17 at Phase 20's close**, homing `vg-438`, found by the controller on 2026-10-13 while
+reading the acceptance section's verdicts.
+
+**Files:**
+- Modify: the build scripts, or the fixture-mounting specs' own precondition
+
+**Interfaces:**
+- Produces: `vg-438` closed
+
+- [ ] **Step 1: The trap, measured rather than argued.** `npm run build -w @vigilia/editor` exit 0 leaves `packages/editor/dist` holding `assets/`, `favicon.svg` and `index.html`; `npm run build:fixture -w @vigilia/editor` exit 0 then adds `control-fixture.html`. So a whole-suite browser run against a bundle built by `build` alone fails the fixture-mounting `design-language-*.spec.ts` specs as a missing page and reads as a product regression.
+- [ ] **Step 2: The cause is deliberate and documented**, in `packages/editor/vite.config.fixture.ts`: the fixture is a second invocation rather than a second `rollupOptions.input` so the production build emits exactly the bundle graph it emitted before the fixture existed and does not ship test scaffolding. **So the fix is not to fold the fixture into the production build** — it is to make the missing page say so, or to make the run produce it.
+- [ ] **Step 3: Close it**, by running the whole suite against a `build`-only bundle and reading what the fixture-mounting specs report.
+
 ---
 
 # Phase 23 — W18: the host, the schema, the persisted model, and the records
@@ -3912,7 +3963,8 @@ this phase because it is a **test driver**, and the phase's own subject is the p
 **Outcome:** the ten ruled rows whose owner is the host, the published schema, the persisted model or a
 document are landed — `lanAddress` prefers the default-route interface, a LAN move cannot deadlock, the
 schema refuses an empty theme name, the chart validator refuses at the envelope boundary, and five records
-say what they were ruled to say.
+say what they were ruled to say. **Task 23.11 adds an eleventh, `vg-409`, added 2026-10-17 at Phase 20's
+close: an over-large theme file is answered as absent.**
 
 **Why a phase of its own.** Nine of the ten are one of two things: a `host/src/` behaviour, or a document
 stating a fact the repo relies on. They share no file with Phases 18–22, and two of them (`vg-171`,
@@ -4064,6 +4116,20 @@ schema's sync test for Task 23.3.
 - [ ] **Step 1: Relocate the directory outside the tree**, so the filesystem skew ends for every scanner at once — a gitignore rule hides a directory from git, not from a walk.
 - [ ] **Step 2: The eight files — browser probes, screenshots and a vitest report that may be the only copy — are kept rather than deleted.**
 - [ ] **Step 3: Close it**, showing a filesystem walk no longer sees the directory.
+
+### Task 23.11: An over-large theme file is answered as absent
+
+**Added 2026-10-17 at Phase 20's close**, homing `vg-409`, found by Task 5.3's reviewer on 2026-10-13.
+
+**Files:**
+- Modify: `src/web/packages/host/src/themes/store.ts` (`readStored`, `readStoredOrAbsent`)
+
+**Interfaces:**
+- Produces: `vg-409` closed
+
+- [ ] **Step 1: The cause is established and its landmarks were re-read at this task's authoring.** `readStored` (`:494`) returns `undefined` when the file exceeds `MAX_THEME_FILE_BYTES` (`:163`, 32 MiB) — before validation runs — and `readStoredOrAbsent` (`:522`) folds that into the same absence the listing and the write path use. So `bootTheme` returns `none` and the editor mounts the template under a success report over a theme it never opened: the visible defect `vg-110` fixed, one trigger over.
+- [ ] **Step 2: The size bound's own comment says the choice is deliberate** — "an over-large document is not a validation failure, and naming it one here would be a different decision" — so the fix is not to reclassify it as one. What the choice costs is that a refusal by size is indistinguishable from a file that is not there, and the task is to make the two distinguishable without changing which one it is.
+- [ ] **Step 3: Close it**, with a case that fails when the size branch is folded back into absence, and one browser reading of the editor booting against an over-large file.
 
 ---
 
