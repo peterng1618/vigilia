@@ -425,3 +425,35 @@ describe("the scrollers' scrollbar", () => {
     ).not.toMatch(/#[0-9a-fA-F]{3,8}(?![\w-])/);
   });
 });
+
+/** The layer row's reserve: one arm per control the row can draw, and none past
+ *  that count (`vg-492`).
+ *
+ *  **The row draws at most three controls, so the fourth arm could not match.**
+ *  `RowAffordances` renders a visibility control and, where the row is attended,
+ *  selected or locked, a lock control; `composition-pane.tsx` adds at most one
+ *  entry control beside them. The fourth button the arm was written for was the
+ *  rename pen, and `vg-462` removed it — the caret's job moved onto the row
+ *  itself — so `padding-right: 126px` has been unreachable since `e572c302`.
+ *
+ *  **A dead selector moves no pixel, which is why this reads the text.** Nothing
+ *  can redden for a rule that cannot match: every rendered reading of the layer
+ *  row is identical with the arm present and with it gone, so the instrument has
+ *  to be the count. Both directions are read — an arm with no control to match
+ *  fails, and so does a control count the stylesheet has no arm for — and the
+ *  rendered ceiling this rests on is `row-affordances.dom.test.tsx`'s own case. */
+describe("the layer row's control reserve", () => {
+  it("has one arm per control the row draws, and no arm past its ceiling", () => {
+    const counts = [
+      ...cssNoComments.matchAll(
+        /^\.vigilia-layer-row:has\(\.vigilia-layer-state button(?::nth-child\((\d+)\))?\)\s*\{/gm,
+      ),
+    ].map((match) => match[1] ?? "1");
+
+    expect(
+      counts,
+      "the arms are not one per control the row draws — the row's ceiling is " +
+        "three (the eye and the lock, and at most one entry control beside them)",
+    ).toEqual(["1", "2", "3"]);
+  });
+});

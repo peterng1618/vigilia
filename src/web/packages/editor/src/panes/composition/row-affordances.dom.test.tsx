@@ -278,6 +278,41 @@ it("draws no rename control on an attended row, and the name still opens for typ
   host.remove();
 });
 
+it("draws at most three controls in the state slot, whatever the row's state", async () => {
+  // The ceiling `editor-shell.css`'s reserve is written against (`vg-492`): the
+  // two state controls, and the pane's one entry control beside them. The row is
+  // drawn in the one state that shows all three — entered, so the entry control
+  // is up without attention, and selected, hidden and locked, so each state
+  // control says something. A fourth `:has` arm cannot match against this count,
+  // which is why the arm's own case reads the stylesheet rather than a render.
+  const host = await renderPane(
+    [
+      row({
+        id: "group-a",
+        name: "group-a",
+        kind: "group",
+        mark: { kind: "group" },
+        role: { kind: "group", unit: undefined },
+        hasChildren: true,
+        selected: true,
+        visible: false,
+        locked: true,
+      }),
+    ],
+    { groupContext: () => ["group-a"] },
+  );
+
+  expect(
+    affordanceLabels(host),
+    "the state slot draws a control the row's reserve is not written for",
+  ).toEqual([
+    `${uiCopy.panels.leave} group-a`,
+    uiCopy.panels.show,
+    uiCopy.actions.unlock,
+  ]);
+  host.remove();
+});
+
 it("offers the object actions this selection can run plus the constructions, and asks the registry", async () => {
   // The footer decides nothing: eligibility is `objectActionsFor`'s, and the
   // expected column below is that function's own answer rather than a copy of
