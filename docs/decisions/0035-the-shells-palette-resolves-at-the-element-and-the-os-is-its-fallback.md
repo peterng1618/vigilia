@@ -175,3 +175,16 @@ Three reasons, and the first is the one that decided it:
    palette list, where `ownership.md` already says it belongs. The pre-paint frame is handled by
    restating one background and one ink under a media query — two literals, which is the shape that
    block already has — rather than by exporting the mapping into an untestable inline script.
+
+## Extended 2026-10-16 — the spec this note cites was split
+
+Four citations above name `tests/e2e/shell-appearance.spec.ts`, which **no longer exists**: Task 15.4
+(`81426c44`) split its 1044 lines into `shell-palette-tokens.spec.ts` (502 — how each palette's
+`--vigilia-*` tokens resolve and reach the surfaces that consume them) and
+`shell-palette-appearance.spec.ts` (440 — what the chrome looks like under a palette, and which palette
+wins on boot, outlasts the OS and is captured), over `shell-palette-readers.ts`.
+
+**The contract this note is about lives in the first file**, and the `:180-237` and `:205` line numbers
+are stale for the reason any line number is: the split moved every case. The `describe` name was kept as
+`shell palettes` in both files so the collection stayed comparable, and the test bodies are verbatim
+slices, so the contract is the same one — the note's decision is unchanged and only its pointer moved.

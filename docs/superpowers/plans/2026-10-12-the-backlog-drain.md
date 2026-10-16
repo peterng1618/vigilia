@@ -2064,6 +2064,24 @@ browser suite for Tasks 16.1, 16.3 and 16.5 on a rebuilt bundle.
 **Interfaces:**
 - Produces: `vg-479`, `vg-480` and `vg-491` closed
 
+**Annotated 2026-10-16, at the task's close: all three closed, and `vg-491` was wrong on three
+measured counts.** The `Files:` line above named `shell-appearance.spec.ts`, which **Task 15.4 split at
+`81426c44`** into `shell-palette-tokens.spec.ts` and `shell-palette-appearance.spec.ts` — the case lives
+in the first. **`vg-479` took the row's second option, derived rather than six new per-palette values**:
+`--vigilia-scrollbar-thumb` is `color-mix(in srgb, var(--shell-text) 24%, transparent)`, so one
+declaration follows every palette and adds no literal. **`vg-480` names the two portalled classes in a
+scrollbar-only rule** while the layout half keeps its two selectors, because the shared `overflow: auto`
+would turn the popup's own `overflow-y: auto` into horizontal scrolling — and the class it names is
+shared by four menus, not the row's two surfaces. **`vg-491` is deleted rather than pinned, and the row
+was wrong three times**: deleting the four `::-webkit-scrollbar*` rules **reddens three cases** in
+`editor-shell.control-rules.test.ts` rather than leaving every case green, the standard pair was already
+the whole paint so deletion moves no pixel, and the pseudo-element read is not the trap the row
+describes. **The measurement that makes the deletion right** is that either standard property being
+non-`auto` disables the family, so the 10px width, the radius and the hover colour were declarations no
+browser this repo runs would read — and the stylesheet's own comment claimed the reverse, which is
+corrected in the same commit. `--vigilia-scrollbar-thumb-hover` went with them: `scrollbar-color` states
+a thumb and a track, so a hover colour is what the pair cannot express.
+
 - [ ] **Step 1: `vg-479` — the three `--vigilia-scrollbar-*` tokens are declared once on `:root` as literals** (`#c9c2b1`, its hover, `transparent`), and no palette block declares them, so a dark OS resolves the light thumb. Move them into the palette set.
 - [ ] **Step 2: `vg-480` — the two portalled scrollers keep the platform scrollbar.** `.editor-shell-menu-popup` and `.editor-shell-dialog` both set `overflow-y: auto` and neither class is in the scrollbar rule, which names only `.editor-shell-panel` and `.editor-shell-inspector`.
 - [ ] **Step 3: `vg-491` — the four `::-webkit-scrollbar*` rules are read by nothing.** The browser case reads the standard `scrollbarWidth`/`scrollbarColor` pair, so deleting the pseudo-element family leaves it green. Give them a case or delete them, and say which.
