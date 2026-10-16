@@ -74,23 +74,45 @@ test.describe("a deliberate bleed on a display", () => {
     // disc, not a hole where one used to be.
     await openDisplay(page);
 
-    const painted = await page.evaluate(() => {
-      const canvas = document.querySelector<HTMLCanvasElement>(
-        "#artboard canvas.lower-canvas",
-      );
-      if (canvas === null) throw new Error("no lower canvas");
-      const context = canvas.getContext("2d");
-      if (context === null) throw new Error("no 2d context");
-      const { data } = context.getImageData(0, 0, canvas.width, canvas.height);
-      let lit = 0;
-      for (let index = 3; index < data.length; index += 4) {
-        if (data[index] > 127) lit += 1;
-      }
-      return lit;
-    });
+    const painted = (): Promise<number> =>
+      page.evaluate(() => {
+        const canvas = document.querySelector<HTMLCanvasElement>(
+          "#artboard canvas.lower-canvas",
+        );
+        if (canvas === null) throw new Error("no lower canvas");
+        const context = canvas.getContext("2d");
+        if (context === null) throw new Error("no 2d context");
+        const { data } = context.getImageData(
+          0,
+          0,
+          canvas.width,
+          canvas.height,
+        );
+        let lit = 0;
+        for (let index = 3; index < data.length; index += 4) {
+          if (data[index] > 127) lit += 1;
+        }
+        return lit;
+      });
 
     // Something is drawn at all — a blank frame passes every "is there a
     // notice" assertion while showing the author nothing.
-    expect(painted).toBeGreaterThan(1000);
+    //
+    // **Polled, because the canvas element is published before the scene is
+    // drawn** (`vg-495`). `openDisplay` waits for `lower-canvas` to be visible,
+    // and at that instant every pixel of it is still transparent: measured at
+    // `919c8fa9` over eight loads, `lit` is 0 the moment the element exists and
+    // the ground lands 21–85 ms later, so a single read there is a race the
+    // harness's own round trip decides — the row's red reported `Received: 0`
+    // on a run whose read landed inside the window. What this case is about is
+    // the clip, not the first frame, so it waits for a painted one; a display
+    // that never paints still fails here, at the timeout.
+    await expect
+      .poll(painted, {
+        message:
+          "the artboard never painted its quarter — a blank frame passes every notice assertion",
+        timeout: 5_000,
+      })
+      .toBeGreaterThan(1000);
   });
 });

@@ -1159,6 +1159,81 @@ test.describe("the per-kind inspector column", () => {
     ).not.toBe("rgba(0, 0, 0, 0)");
   });
 
+  test("the subject block heads the column with the kind's glyph, and is the one boundary under it", async ({
+    page,
+  }, testInfo) => {
+    test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+    await page.goto(EDITOR);
+    await page.waitForFunction(() => "vigiliaEditorBridge" in window);
+    await openBlank(page);
+    await addChart(page, {
+      family: "Line",
+      name: "line",
+      x: 100,
+      y: 100,
+      w: 300,
+      h: 200,
+      series: ["cpu.load"],
+    });
+
+    // ── `vg-466`'s first half: the kind is a mark, not a word ────────────────
+    //
+    // What the header draws for the kind before `3328ae33` was the word
+    // `KIND_WORD`'s entry for it, joined to the binding key ("Chart ·
+    // cpu.load"). The regression is a header that draws that word where the
+    // mark goes, so the assertion is on the *rendered sibling* the mark is and
+    // the text the block is left with — a class check would pin the shape and
+    // not the glyph family.
+    const name = page.locator("[data-vigilia-subject-name]");
+    await expect(name).toBeVisible();
+    const block = await name.evaluate((node) => {
+      const mark = node.previousElementSibling;
+      return {
+        markTag: mark?.tagName.toLowerCase() ?? null,
+        markClasses: mark?.getAttribute("class") ?? "",
+        text: (node.parentElement?.textContent ?? "").trim(),
+      };
+    });
+    expect(block.markTag, "no mark precedes the subject name").toBe("svg");
+    expect(
+      block.markClasses,
+      "the kind's mark is not from the one icon family",
+    ).toContain("lucide");
+    expect(block.text, "the block still names the kind in words").not.toMatch(
+      /chart/i,
+    );
+
+    // ── `vg-466`'s second half: one boundary, not two ────────────────────────
+    //
+    // The subject block's own `border-b` is the column's boundary between the
+    // header and the fields, so the first section draws none and every one
+    // below it draws its own. **Computed rather than read off the class list**:
+    // the whole reason this row exists is that the fix is a rendered boundary,
+    // and no jsdom case applies the stylesheet that decides it — a rule that
+    // put a border back on `[data-vigilia-section]` would leave every one of
+    // them green.
+    const borders = await page
+      .locator(`${COLUMN} [data-vigilia-section]`)
+      .evaluateAll((nodes) =>
+        nodes.map((node) => ({
+          id: node.getAttribute("data-vigilia-section") ?? "",
+          top: getComputedStyle(node).borderTopWidth,
+        })),
+      );
+    expect(
+      borders.length,
+      "the column draws no sections to read a boundary on",
+    ).toBeGreaterThan(1);
+    expect(
+      borders[0]?.top,
+      `the first section (${borders[0]?.id}) draws a rule of its own beside the subject block's`,
+    ).toBe("0px");
+    expect(
+      borders.slice(1).every((section) => section.top !== "0px"),
+      `a section below the first draws no boundary between them: ${JSON.stringify(borders)}`,
+    ).toBe(true);
+  });
+
   test("names where to choose from when nothing is selected", async ({
     page,
   }, testInfo) => {
