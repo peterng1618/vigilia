@@ -125,5 +125,11 @@ believed.
   spacing, radii, type, elevation, hairlines, flush regions and the palette,
   navigation and dock treatments are copied from the original drawings. When the
   product differs, the product is the defect.
+- **Every drawn text element states its token's companion, and the page
+  furniture carries no ratio.** §2 gives each of the six sizes its own
+  line-height, so one page-body ratio cannot express them: the `<style>` block's
+  `font` sets a size only, and each element holding its own text writes the
+  `line-height` of the size it resolves to (`vg-440`). An element that omits it
+  renders at `normal`, which no gate reads.
 - **The originals are never edited again.** They are the record of the first cut;
   Git stores the history.

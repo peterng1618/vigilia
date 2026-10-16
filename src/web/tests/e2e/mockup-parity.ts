@@ -595,7 +595,7 @@ export const PARITY: readonly ParityRegion[] = [
     region: "keyboard — the chord mark's radius",
     mockupPath: SETTINGS_KEYBOARD_MOCKUP_PATH,
     mockupSelector:
-      '[style*="border:1px solid var(--edge);border-radius:4px;padding:4px;font:400 11px/1.2 ui-monospace,Menlo,monospace;color:var(--muted)"]',
+      '[style*="border:1px solid var(--edge);border-radius:4px;padding:4px;font:400 11px/1.3 ui-monospace,Menlo,monospace;color:var(--muted)"]',
     mockupProperty: "border-radius",
     productSelector: ".editor-shell-keyboard kbd",
     designLanguageSection:
@@ -606,7 +606,7 @@ export const PARITY: readonly ParityRegion[] = [
     region: "keyboard — the chord mark's inset",
     mockupPath: SETTINGS_KEYBOARD_MOCKUP_PATH,
     mockupSelector:
-      '[style*="border:1px solid var(--edge);border-radius:4px;padding:4px;font:400 11px/1.2 ui-monospace,Menlo,monospace;color:var(--muted)"]',
+      '[style*="border:1px solid var(--edge);border-radius:4px;padding:4px;font:400 11px/1.3 ui-monospace,Menlo,monospace;color:var(--muted)"]',
     mockupProperty: "padding",
     productSelector: ".editor-shell-keyboard kbd",
     designLanguageSection:

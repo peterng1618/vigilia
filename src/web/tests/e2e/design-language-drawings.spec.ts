@@ -135,9 +135,12 @@ import { themeToken } from "./shell-tokens.js";
  *
  * **What this row cannot read, and does not claim.** `line-height`,
  * `font-weight` and `letter-spacing`: §2 states a line-height and a weight per
- * role, but a drawing's `/1` on a one-line label is a box rather than a reading
- * step, and a size is what a role is chosen by. The drawings' **page furniture**
- * — each drawing's `<style>` block (`body { margin: 0; … font: 12px/1.45 … }`)
+ * role, and a size is what a role is chosen by. **`line-height` is the one of
+ * the three the drawings now state and this row still does not read** — every
+ * text element in all six carries its token's companion (`vg-440`), so the
+ * property is present to read and an arm for it is a separate row rather than
+ * this one's. The drawings' **page furniture**
+ * — each drawing's `<style>` block (`body { margin: 0; … font: 12px … }`)
  * and the token table the outermost element carries — is read like everything
  * else, because `mockupDeclarations` gives no structural split between the page
  * and the drawn surface inside it. That is the reading's own limit, and it is

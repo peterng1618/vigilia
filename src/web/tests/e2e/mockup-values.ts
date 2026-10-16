@@ -388,7 +388,7 @@ const SHORTHANDS_SETTING: Readonly<Record<string, readonly string[]>> = {
   "column-gap": ["gap"],
   // **`font` is the same shape one property over, and it went unlisted.** The
   // controls drawing states the plain-DOM button box's type as the shorthand
-  // (`current/controls.html:112` `font:400 12px system-ui`), so a row naming
+  // (`current/controls.html` `font:400 12px/1.4 system-ui`), so a row naming
   // `font-size` read the drawing's **silence** where the drawing drew a size —
   // the inversion this table exists to refuse, one property over from the
   // padding case (`vg-442`'s type half). The longhands listed are the ones a row

@@ -401,7 +401,7 @@ test("a shorthand for a property a row reads fails loudly rather than reading as
 
   // **And the shorthand that went unlisted, which is `vg-442`'s type half.** The
   // controls drawing states the plain-DOM button box's type as
-  // `font:400 12px system-ui` (`current/controls.html:112`), and the map named no
+  // `font:400 12px/1.4 system-ui` (`current/controls.html`), and the map named no
   // font longhand — so a row naming `font-size` read the drawing's **silence**
   // (`null`, which the parity table reads as `0`) where the drawing drew a size.
   // The refusal now covers `font`'s longhands. **What it still refuses is the
@@ -415,7 +415,7 @@ test("a shorthand for a property a row reads fails loudly rather than reading as
   // The shorthand itself is still a readable property: the refusal is about a row
   // asking for a longhand of it, not about the declaration being invisible.
   expect(mockupDeclaredOrNull(controls, BOX, "font")).toBe(
-    "400 12px system-ui",
+    "400 12px/1.4 system-ui",
   );
   expect(() => mockupDeclaredOrNull(controls, BOX, "font-size")).toThrow(
     /shorthand that sets `font-size`/,

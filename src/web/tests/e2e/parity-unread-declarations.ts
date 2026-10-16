@@ -157,14 +157,14 @@ export const UNREAD_DECLARATIONS: readonly UnreadDeclaration[] = [
     drawing: "docs/design/mockups/current/controls-editorial.html",
     selector:
       '[style*="width:74px;flex:0 0 auto;color:var(--muted);font-size:11px;padding-top:4px"]',
-    properties: ["flex", "color", "font-size", "padding-top"],
+    properties: ["flex", "color", "font-size", "padding-top", "line-height"],
   },
   // docs/design/mockups/current/controls.html
   {
     drawing: "docs/design/mockups/current/controls.html",
     selector:
       '[style*="width:74px;flex:0 0 auto;color:var(--muted);font-size:11px;padding-top:4px"]',
-    properties: ["flex", "color", "font-size", "padding-top"],
+    properties: ["flex", "color", "font-size", "padding-top", "line-height"],
   },
   // docs/design/mockups/current/settings-about.html
   {
@@ -177,7 +177,7 @@ export const UNREAD_DECLARATIONS: readonly UnreadDeclaration[] = [
   {
     drawing: "docs/design/mockups/current/settings-keyboard.html",
     selector:
-      '[style*="border:1px solid var(--edge);border-radius:4px;padding:4px;font:400 11px/1.2 ui-monospace,Menlo,monospace;color:var(--muted)"]',
+      '[style*="border:1px solid var(--edge);border-radius:4px;padding:4px;font:400 11px/1.3 ui-monospace,Menlo,monospace;color:var(--muted)"]',
     properties: ["border", "font", "color"],
   },
   {
