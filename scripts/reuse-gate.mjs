@@ -13,7 +13,8 @@
  * VIGILIA_SKIP_REUSE_GATE=1 for the invocation. It is deliberately awkward, so
  * using it is visible in the transcript.
  */
-import { readFileSync, readdirSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { join, relative, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -45,7 +46,11 @@ const WATCHLIST = [
   // covered no editor path at all while the editor is where most of these
   // decisions now live: the Fabric/React boundary, the row projection, the
   // persistent-host shell, the session lifecycle, the one primitive library
-  // the spec rules on, and the references panel that is read-only by design.
+  // the spec rules on, and the column's read-only projection with the refusal a
+  // document edit earns. That last entry named `selection-inspector/style.ts`
+  // until 0066: the file went at `aa5edf96`, the entry was inert twice over (a
+  // path that is gone, and a note that still claimed it), and it is repointed
+  // rather than deleted.
   // The editor's ordinary layout and copy are deliberately absent — a wrong
   // decision there is visible on the next render rather than invisible.
   "src/web/packages/editor/src/editor-shell/bridge.ts",
@@ -53,7 +58,7 @@ const WATCHLIST = [
   "src/web/packages/editor/src/editor-shell/shell-layout.tsx",
   "src/web/packages/editor/src/editor-session.ts",
   "src/web/packages/editor/src/components/ui/",
-  "src/web/packages/editor/src/selection-inspector/style.ts",
+  "src/web/packages/editor/src/selection-inspector/view.ts",
   "scripts/",
 ];
 
@@ -86,6 +91,27 @@ function matchesDirectory(entry, rel) {
   const base = entry.replace(/\/$/, "");
   if (!base.includes("/")) return rel.split("/").includes(base);
   return rel === base || rel.startsWith(`${base}/`);
+}
+
+/**
+ * Every entry must name something that exists, or the list reads as coverage it
+ * does not have (vg-544): the dead entry was inert twice over and nothing on the
+ * write side can see it. Each shape is read by the rule `isWatched` matches it
+ * by (0025) — an anchored entry is a path from the root, and a bare name matches
+ * at any depth, so reading a bare name at the root alone would red on a live
+ * entry and invite the wrong repair, narrowing the list.
+ */
+function entryExists(entry) {
+  const base = entry.replace(/\/$/, "");
+  if (base.includes("/")) return existsSync(resolve(ROOT, base));
+  return trackedPaths().some((rel) => rel.split("/").includes(base));
+}
+
+/** The tracked set: the walker this repo already uses for every path in the tree. */
+function trackedPaths() {
+  return execFileSync("git", ["ls-files"], { cwd: ROOT, encoding: "utf8" })
+    .split("\n")
+    .filter((rel) => rel !== "");
 }
 
 /**
@@ -175,6 +201,10 @@ if (process.argv.includes("--self-test")) {
     // directory claim in the array is what used to allow it.
     ["refuses a file under a directory claim", abs("src/web/packages/renderer-core/src/charts/grid.ts"), 2],
     ["refuses a watchlisted path with no note", abs("src/web/packages/host/src/providers/lhm.ts"), 2],
+    // vg-544: the entry that replaced the dead one must actually refuse. A dead
+    // entry cannot be seen from here, which is what the existence cases below
+    // are for.
+    ["refuses the replacement path with no note", abs("src/web/packages/editor/src/selection-inspector/view.ts"), 2],
     ["allows a path outside the watchlist", abs("src/web/packages/editor/src/ui-copy.ts"), 0],
     ["allows a test on a watchlisted path", abs("src/web/packages/host/src/providers/lhm.test.ts"), 0],
     ["refuses a watchlisted file in a watched directory", abs("scripts/anything.mjs"), 2],
@@ -208,6 +238,31 @@ if (process.argv.includes("--self-test")) {
     if (!ok) failed += 1;
     console.log(`${ok ? "ok  " : "FAIL"} ${name}${ok ? "" : ` (expected ${expected}, got ${got})`}`);
   }
+
+  // vg-544, the durable half: a dead entry reads as coverage and no write-side
+  // case can see it. Read the live WATCHLIST, not a synthetic array, and read
+  // each entry by the rule it matches by (0025) rather than by `existsSync`
+  // alone. The two cases after the first prove the check can fail, so a whole
+  // list that reads green is not vacuous. The bare name is found rather than
+  // pinned: a name that occurs only below the root, which a root-only reading
+  // would call dead.
+  const nested =
+    trackedPaths()
+      .flatMap((rel) => rel.split("/").slice(0, -1))
+      .find((name) => name !== "" && !existsSync(resolve(ROOT, name))) ?? "";
+  const integrity = [
+    ["every watchlist entry names a path that exists", WATCHLIST.filter((e) => !entryExists(e)), []],
+    ["reads a bare name at any depth, not at the root", nested !== "" && entryExists(`${nested}/`), true],
+    ["finds an entry that is nowhere in the tree", entryExists("src/web/nothing/here.ts"), false],
+  ];
+  for (const [name, got, expected] of integrity) {
+    const ok = JSON.stringify(got) === JSON.stringify(expected);
+    if (!ok) failed += 1;
+    console.log(
+      `${ok ? "ok  " : "FAIL"} ${name}${ok ? "" : ` (expected ${JSON.stringify(expected)}, got ${JSON.stringify(got)})`}`,
+    );
+  }
+
   if (failed > 0) {
     console.error(`reuse-gate self-test: ${failed} case(s) wrong`);
     process.exit(1);
