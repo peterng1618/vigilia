@@ -1391,8 +1391,17 @@ test.describe("the reference composition, captured", () => {
     // conditions — and the screenshot is taken of that. Registered in
     // `docs/evidence/screenshots/README.md` and inspected before it is kept.
     expect(capture.png.length).toBeGreaterThan(1000);
+    // **The paint is read before it is written into CSS** (`vg-451`). A palette
+    // entry that is renamed or absent would interpolate as `undefined`, which
+    // the browser drops as an invalid declaration — the page falls back to
+    // white and every assertion below still passes, because the screenshot is a
+    // review rather than a golden file. `shell-tokens.ts`'s `themeToken` throws
+    // on the same vacuity where the value comes from a stylesheet; this is the
+    // one place it comes from a product module, so the guard sits here.
+    const backdrop = solidOf.background;
+    expect(backdrop, "the palette names a solid background").toMatch(/^\S+$/);
     await page.setContent(
-      `<body style="margin:0;background:${solidOf.background};display:flex;align-items:center;justify-content:center;height:100vh">` +
+      `<body style="margin:0;background:${backdrop};display:flex;align-items:center;justify-content:center;height:100vh">` +
         `<img src="${capture.png}" style="image-rendering:pixelated;transform:scale(2);transform-origin:center">` +
         `</body>`,
     );
