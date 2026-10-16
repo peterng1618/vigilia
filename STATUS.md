@@ -37,11 +37,11 @@ ledger did.
 
 ## Last completed change
 
-- **Phase 18 closed on its Acceptance at `6508ac42`, so the register is 136 open** — all twelve of its rows are `verified` with a `check` on each line and all six `artefacts` shas ancestors of HEAD.
-- **`npm run gate` exit 0** — 262 files, 3474 tests, and `typecheck` across all seven workspaces; `npm run backlog:check` exit 0 over 548 items.
-- **The browser suite is named separately because `gate` never runs Playwright** — `npx playwright test --workers=1` reads exit 1, 336 passed / 3 failed / 255 skipped in 22.7m, and all three reds are rows the register already owns (`vg-431`, `vg-258`, `vg-212`), so the phase adds no new red.
-- **The copy-rows clause was not met when first read and is met now** — `vg-336` named only the table it read from, and `ee82150a`'s `ui-copy.ts` diff is +22 lines and is entirely the nine keys, so both copy rows name them (`ce265904`).
-- **What the phase found about itself outlasts its rows** — five of its own premises were false or stale, every one caught by the seat implementing it, and four briefs in a row carried a pointer that was never read off the disk; two rows were filed from the landings (`vg-545`, `vg-548`) and one dead watchlist entry found (`vg-544`).
+- **Task 19.5 closed at `b2c4f1e7`, so the register is 135 open** — `vg-163` is `verified` and the spec's §5 primitives bullet stops naming video.
+- **The correction this task owed is stronger than its brief stated** — `docs/design/design-language.md` does not merely lack the sentence, it does not exist (deleted at `db000c40`), so the ruling's `grep -i video DESIGN.md` read a file that never held it.
+- **A second citation on the row was stale** — `isPlaceable` is `panes/add/file-section.tsx:266`; the row's `asset-manager/panel.ts:232-236` names a file that is not on disk.
+- **The fix follows the ruling's substance rather than its premise** — video is dropped from the sentence rather than the product gaining a video kind, which is `vg-154`'s question, and `DESIGN.md` carries neither word, which is why the sentence is in the spec.
+- **`npm run docs:check` exit 0, and no test or browser run is claimed** — the Acceptance names the browser suite for Tasks 19.1–19.4 only, and this task changed one sentence in a design document.
 
 ## Next
 
