@@ -118,10 +118,12 @@ export const uiCopy = {
     about: "About",
     close: "Close",
     /** §7's About tab: what the editor is, and the facts this build can read.
-     *  The provenance is one sentence naming the product; the release fact's
-     *  *label* is the Document pane's own word (`panels.releaseVersion`),
-     *  reused rather than respelled so one fact keeps one word (§9). */
+     *  The provenance is one sentence naming the product; the three fact labels
+     *  say which fact each row is, and the release fact's *label* is the
+     *  Document pane's own word (`panels.releaseVersion`), reused rather than
+     *  respelled so one fact keeps one word (§9). */
     aboutProvenance: "Vigilia, a dashboard theme editor.",
+    aboutProductVersion: "Product version",
     aboutSchemaVersion: "Schema version",
     /** §7's Appearance tab. `palette` is the name the header chip's trigger
         already used for this same choice — the trigger said

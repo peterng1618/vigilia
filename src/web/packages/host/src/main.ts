@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { DEFAULT_HOST, isLoopbackHost, parseArgs } from "./cli/args.js";
@@ -31,11 +32,24 @@ function style(code: string, text: string): string {
   return process.stdout.isTTY ? `\u001b[${code}m${text}\u001b[0m` : text;
 }
 
-const VERSION = "0.1.0";
+/** This module's own directory: `dist/` in the built host, `src/` under test.
+ *  Both sit at the same depth below the workspace root, which is why the two
+ *  paths below resolve the same way from either. */
+const here = path.dirname(fileURLToPath(import.meta.url));
+
+const VERSION = productVersion();
+
+/** The product's version, read from the workspace manifest — the one place a
+ *  release writes it (`vg-279`). The editor bundle reads the same field through
+ *  Vite's `define`, so neither reader carries a copy of the number. */
+function productVersion(): string {
+  const manifest = path.join(here, "..", "..", "..", "package.json");
+  return (JSON.parse(readFileSync(manifest, "utf8")) as { version: string })
+    .version;
+}
 
 /** The staged LibreHardwareMonitor, for setup commands that need a default. */
 function defaultLhmExecutable(): string {
-  const here = path.dirname(fileURLToPath(import.meta.url));
   return path.join(here, "..", "vendor", "lhm", "LibreHardwareMonitor.exe");
 }
 

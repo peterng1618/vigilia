@@ -474,6 +474,13 @@ test("captures the settings modal's three tabs in the design language", async ({
   await expect(
     dialog.locator('[data-vigilia-about-fact="schema-version"]'),
   ).toHaveText(/\S/);
+  // The product version is the workspace manifest's, injected by Vite's `define`
+  // at build time, so a bundle built without that step shows no version at all —
+  // asserted as a version shape rather than as "some text", which `undefined`
+  // would satisfy (`vg-279`).
+  await expect(
+    dialog.locator('[data-vigilia-about-fact="product-version"]'),
+  ).toHaveText(/^\d+\.\d+\.\d+/);
   // **The release row must be absent, and this assertion is what says so.** It
   // renders only where the open document carries `metadata.version`
   // (`settings.tsx`'s `versionFacts`), and no document this suite can load has

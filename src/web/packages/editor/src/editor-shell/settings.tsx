@@ -56,27 +56,40 @@ const PALETTE_GROUP_ID = "vigilia-settings-palette";
 /** One fact the About tab renders, identified by the id it renders it under so
  *  a test reads the row by what it is rather than by its position. */
 interface VersionFact {
-  readonly id: "schema-version" | "release-version";
+  readonly id: "product-version" | "schema-version" | "release-version";
   /** The fact's own value: the schema version is a number
-   *  (`SUPPORTED_SCHEMA_VERSION`), the release version a string. The tab
+   *  (`SUPPORTED_SCHEMA_VERSION`), the other two are strings. The tab
    *  stringifies where it renders. */
   readonly value: string | number;
 }
 
+/** Each fact's label, by the id it renders under. One owner of "what this row
+ *  is called": the release row keeps the Document pane's own word for that fact
+ *  (`panels.releaseVersion`), reused rather than respelled so one fact keeps one
+ *  word (§9). */
+const VERSION_FACT_LABELS: Readonly<Record<VersionFact["id"], string>> = {
+  "product-version": uiCopy.settings.aboutProductVersion,
+  "schema-version": uiCopy.settings.aboutSchemaVersion,
+  "release-version": uiCopy.panels.releaseVersion,
+};
+
 /** The version facts this build can honestly read, in the order they render.
  *
  *  **Every value is traceable to an owner**, which is what keeps the tab from
- *  inventing one: the schema version is `SUPPORTED_SCHEMA_VERSION`, the fact a
- *  reader supporting an old package needs, and the release version is the open
- *  document's own `metadata.version` — the same fact the Document pane's
- *  `releaseVersion` row reads. A document that carries no release version (a new
- *  or unsaved theme, or one whose stored version is empty) contributes no row:
- *  DESIGN.md §9's missing reading is a gap stated by absence, never a placeholder
- *  that could read as data. */
+ *  inventing one: the product version is the workspace manifest's `version`,
+ *  substituted here by Vite's `define` (the host reads the same field, so one
+ *  number has one home); the schema version is `SUPPORTED_SCHEMA_VERSION`, the
+ *  fact a reader supporting an old package needs; and the release version is the
+ *  open document's own `metadata.version` — the same fact the Document pane's
+ *  `releaseVersion` row reads, and never the product's. A document that carries
+ *  no release version (a new or unsaved theme, or one whose stored version is
+ *  empty) contributes no row: DESIGN.md §9's missing reading is a gap stated by
+ *  absence, never a placeholder that could read as data. */
 export function versionFacts(
   releaseVersion: string | undefined,
 ): readonly VersionFact[] {
   const facts: VersionFact[] = [
+    { id: "product-version", value: __VIGILIA_VERSION__ },
     { id: "schema-version", value: SUPPORTED_SCHEMA_VERSION },
   ];
   if (releaseVersion !== undefined && releaseVersion !== "") {
@@ -235,11 +248,7 @@ function AboutTab({
       <dl>
         {versionFacts(releaseVersion).map((fact) => (
           <div key={fact.id}>
-            <dt>
-              {fact.id === "schema-version"
-                ? uiCopy.settings.aboutSchemaVersion
-                : uiCopy.panels.releaseVersion}
-            </dt>
+            <dt>{VERSION_FACT_LABELS[fact.id]}</dt>
             <dd
               className="font-mono text-text"
               data-vigilia-about-fact={fact.id}

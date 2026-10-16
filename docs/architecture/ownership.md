@@ -167,6 +167,7 @@ adapter does not own catalog, preview or adoption semantics.
 | **What a valid object name is** — the emptiness and length rule two rename writers must agree on | `renderer-core/src/theme/object-name.ts` (`isObjectName`) |
 | **The shape an asset path must have** — the pattern it must match, hand-spelled a second time outside this module | `renderer-core/src/theme/document.ts` (`ASSET_PATH_PATTERN`) |
 | Provider contract | `host/src/providers/provider.ts` |
+| **The product's version** — one number for the host CLI and the editor bundle alike, in the manifest a release already edits; the host reads it at run time and the editor's bundle is given it by Vite's `define` (`vg-279`) | `src/web/package.json` (`version`) |
 
 ### Fabric renderer
 

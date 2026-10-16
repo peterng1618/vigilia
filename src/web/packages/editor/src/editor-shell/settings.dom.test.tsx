@@ -578,10 +578,11 @@ describe("Settings", () => {
 });
 
 /** §7's About tab. The rule that matters is that every string is traceable to
- *  an owner — the schema version to `SUPPORTED_SCHEMA_VERSION`, the release
- *  version to the open document — and the tab invents none. The harness drives
- *  the prop the shell fills from its snapshot, so what is proven here is the
- *  tab's rendering, not a copy of the bridge. */
+ *  an owner — the product version to the workspace manifest's `version`, the
+ *  schema version to `SUPPORTED_SCHEMA_VERSION`, the release version to the open
+ *  document — and the tab invents none. The harness drives the prop the shell
+ *  fills from its snapshot, so what is proven here is the tab's rendering, not a
+ *  copy of the bridge. */
 describe("About", () => {
   it("shows the version facts the build owns, and invents none", async () => {
     // A version a hand-typed literal would not produce, so a literal in the tab
@@ -592,10 +593,14 @@ describe("About", () => {
     await openTab(uiCopy.settings.about);
 
     expect(versionFacts(released)).toEqual([
+      { id: "product-version", value: __VIGILIA_VERSION__ },
       { id: "schema-version", value: SUPPORTED_SCHEMA_VERSION },
       { id: "release-version", value: released },
     ]);
     // And what the tab renders is those facts, each string on its own owner.
+    expect(aboutField("product-version")?.textContent).toBe(
+      __VIGILIA_VERSION__,
+    );
     expect(aboutField("schema-version")?.textContent).toBe(
       String(SUPPORTED_SCHEMA_VERSION),
     );
@@ -615,13 +620,18 @@ describe("About", () => {
     await press(gear(host));
     await openTab(uiCopy.settings.about);
 
-    // The schema version is this build's own fact and is always shown.
+    // The product and schema versions are this build's own facts and are always
+    // shown.
+    expect(aboutField("product-version")?.textContent).toBe(
+      __VIGILIA_VERSION__,
+    );
     expect(aboutField("schema-version")?.textContent).toBe(
       String(SUPPORTED_SCHEMA_VERSION),
     );
     // The release version is absent, and absence is a gap stated by rendering
     // nothing — never `panels.notSet`, never a dash that could read as data.
     expect(versionFacts(undefined)).toEqual([
+      { id: "product-version", value: __VIGILIA_VERSION__ },
       { id: "schema-version", value: SUPPORTED_SCHEMA_VERSION },
     ]);
     expect(aboutField("release-version")).toBeNull();

@@ -1,8 +1,19 @@
+import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import tailwindcss from "@tailwindcss/vite";
 import { defineConfig } from "vite";
 
+/** The product's version, read from the workspace manifest — the one place a
+ *  release writes it — and injected as a constant so the About tab can name it
+ *  with no module to import it from and no second copy to forget (`vg-279`).
+ *  `vitest.config.ts` injects the same constant for the unit suite, which does
+ *  not build through this file. */
+const { version } = JSON.parse(
+  readFileSync(new URL("../../package.json", import.meta.url), "utf8"),
+) as { version: string };
+
 export default defineConfig({
+  define: { __VIGILIA_VERSION__: JSON.stringify(version) },
   plugins: [tailwindcss()],
   resolve: {
     alias: {

@@ -117,9 +117,12 @@ describe("the document's identity", () => {
   });
 
   it("reads the edited state from the same fact the status bar reads", () => {
-    // One fact, two readings: the cluster's dot and word, and `SaveState` in
-    // the status bar, are all `isDirty()`. Rendering both against one session
-    // is what says so — a second source would show one dirty and one clean.
+    // One fact, two readings: the cluster's dot and `SaveState` in the status
+    // bar are both `isDirty()`. Rendering both against one session is what says
+    // so — a second source would show one dirty and one clean. The chip's word
+    // was a third reading, and the one part that could not shrink with the name,
+    // so `vg-223` removed it: the marker is asserted absent at both states,
+    // which is what reddens if it is ever put back.
     let saved = true;
     const session = stubSession(() => !saved);
     const store = new SelectionStore();
@@ -135,21 +138,24 @@ describe("the document's identity", () => {
     );
     const chip = (): Element | null =>
       mounted.querySelector(".editor-shell-identity");
-    const edited = (): string =>
-      mounted.querySelector(".editor-shell-identity-edited")?.textContent ?? "";
+    const dot = (): Element | null =>
+      mounted.querySelector(".editor-shell-identity-dot");
+    const edited = (): Element | null =>
+      mounted.querySelector(".editor-shell-identity-edited");
     const saveState = (): string =>
       mounted.querySelector(".editor-shell-save-state")?.textContent ?? "";
 
     expect(chip()?.getAttribute("data-dirty")).toBe("false");
-    expect(edited()).toBe("");
+    expect(dot()).not.toBeNull();
+    expect(edited()).toBeNull();
     expect(saveState()).toBe("");
 
     saved = false;
     act(() => session.announce());
 
     expect(chip()?.getAttribute("data-dirty")).toBe("true");
-    expect(edited()).toBe("Unsaved changes");
-    expect(edited()).toBe(uiCopy.saveState.unsaved);
+    expect(dot()).not.toBeNull();
+    expect(edited()).toBeNull();
     expect(saveState()).toBe(uiCopy.saveState.unsaved);
   });
 });

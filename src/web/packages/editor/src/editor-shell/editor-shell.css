@@ -2495,14 +2495,10 @@ body,
    cluster off the stage. */
 .editor-shell-identity {
   min-width: 0;
-  /* `min-width: 0` lets the chip shrink below the floor its non-shrinkable
-     children — the dot, the edited marker — set, so at a squeezed width the
-     trailing "Unsaved changes" used to paint past the chip's own edge and into
-     the view cluster. Clipping makes the chip's box the whole of what it draws,
-     which is §7.7's non-collision as a layout fact rather than a reserved
-     number. The name still ellipsises first: it is the only child that can
-     shrink. Past that the name is zero and the fixed marker still overflows, so
-     the clip cuts it mid-word; that state is filed, not solved here (`vg-223`). */
+  /* `min-width: 0` lets the chip shrink below its content, and the name is the
+     only child that can shrink with it, so this clip is a backstop rather than
+     a state the chip reaches: the fixed "Unsaved changes" marker it used to
+     hold was the part that could not shrink, and `vg-223` removed it. */
   overflow: hidden;
   margin: 0;
   display: flex;
@@ -2537,15 +2533,6 @@ body,
   color: var(--text);
   font-size: var(--text-sm);
   line-height: var(--text-sm--line-height);
-}
-/* The word the status bar's `SaveState` also shows, and reads from the same
-   `isDirty()`; `nowrap` so a name ellipsises before this does. */
-.editor-shell-identity-edited {
-  flex: none;
-  white-space: nowrap;
-  color: var(--warn);
-  font-size: var(--text-xs);
-  line-height: var(--text-xs--line-height);
 }
 .editor-shell-stage #canvas-host {
   position: absolute;
