@@ -3650,6 +3650,20 @@ the seat measured all three** — the report is hand-authored rather than genera
 this tree"* phrase had already left before the base, and the row's 133 and its 76/57 split are 132 and 105/27
 at HEAD.
 
+**Task 21.7 landed the same day at `d4089b0d` with decision note `0065`**, closing `vg-536` — **`AGENTS.md`'s
+800-line stop now has an instrument**, `scripts/oversize-files.mjs` with a stored 45-path ceiling, chained as
+the 14th `gates:self-test` step. **The ceiling fails on an addition only**, which is what makes it not the
+one-row-per-file policy in a new coat: a breach that is split clears the failure with **no edit at all**,
+because the path was never in the ceiling. **The re-measurement at HEAD is 667 tracked files, 46 over the stop
+before the cut, 45 authored over it, 9 named by a row title against 37 named by none** — and two
+disagreements with the controller's cross-check were reconciled rather than picked, both being fault lines in
+the row's own method. **The cut is authored versus generated** and lets an unmarked generated file land *in*
+the set, visible, rather than dropping it by a convention nothing enforces. **The closest prior art was found
+and rejected on shape**: Biome 2.5.14 ships `style/noExcessiveLinesPerFile`, whose escape hatch is one
+`biome-ignore` per file — this row's defect relocated into the linter config. **The plan's own `Files:` line
+for this task was stale by two** (`"the other eleven"` where the chain held thirteen) and is corrected in
+place.
+
 **Why a phase of its own.** All six edit `scripts/` or a registry under `docs/evidence/`, and the three
 sweep rows (`vg-380`, `vg-382`, `vg-386`) are **one instrument read three ways** — its selector direction,
 its `redundant-export` tier and its `barrel-only-export` tier. Phase 15 homed instrument gaps a
@@ -4025,7 +4039,10 @@ repo's own source**, which is what Phase 21 is for — Phase 15 fixed the four i
 silent about a class of defect, and this one did not exist at all.
 
 **Files:**
-- Modify: `scripts/` (a new check, chained into `gates:self-test` the way the other eleven are)
+- Modify: `scripts/` (a new check, chained into `gates:self-test` the way the other twelve are) — **[the
+  count read "the other eleven" and was stale by two when Task 21.7 ran: the chain held thirteen scripts
+  before it and fourteen after, `capture-freshness.mjs` and `dead-selectors.mjs` having joined earlier in
+  this phase. Corrected 2026-10-17 rather than filed, because it is this plan's own text.]**
 
 **Interfaces:**
 - Produces: `vg-536` closed
@@ -4034,6 +4051,46 @@ silent about a class of defect, and this one did not exist at all.
 - [ ] **Step 2: The measure reports the over-stop set, not a row per file.** `vg-536` measured **47 tracked `src/web` files past the 800-line stop, 33 of them named by no register row** at `5ad08048`, and the finding is not the count: the one-row-per-file policy closed `vg-209`'s file while `layer-panel.dom.test.tsx` grew to 1968 unnamed and `vg-374`'s while `editor-session.dom.test.ts` reached 1707. **A filing per file per growth does not converge**; a reported set with a ceiling that falls does.
 - [ ] **Step 3: The cut is authored versus generated, not product versus test.** `vg-426`'s token ratchet excludes tests and fixtures because a test asserting a hex is a test *about* a literal — but this stop applies to test files too (`vg-415`, `vg-420`, `vg-394`, `vg-395` are all test files), so a measure that excluded them would not have seen four of its own rows. `font-trios.generated.ts` (28284) is the case the other cut exists for.
 - [ ] **Step 4: Give the ceiling a finish, and prove it red** by growing a file past it, then close.
+
+**[Closed 2026-10-17 at `d4089b0d`, base `5742a071`, decision note `0065`. `vg-536` closes, and no row is
+filed from it.]** The instrument is `scripts/oversize-files.mjs` with `scripts/oversize-files.ceiling.json`
+(45 paths), chained into `gates:self-test` as its **14th** step.
+
+**The ceiling is a set ratchet that fails on an addition only** — a path over the stop that the ceiling does
+not name exits 1, while a ceiling entry no longer over the stop is **reported and never required to be
+removed**. **That is what makes it not Step 2's *"edit on every split"***: a breach that is split clears the
+failure with **no edit at all**, because the path was never in the ceiling, so the ceiling does not grow with
+the codebase. Rejected and recorded: a **count ratchet** (splitting one file and growing another keeps it
+flat, so the next breach is a discovery — this row's own failure) and **report-only** (nothing makes anyone
+run it).
+
+**The re-measurement is 667 tracked files, 46 over the stop before the cut, 1 generated, 45 authored over it,
+109 past the 500 signal — and 9 named by a row title against 37 named by none.** Two disagreements with the
+controller's cross-check were reconciled rather than picked, and both are fault lines in the row's own
+method: the named/unnamed split is 9/37 and not 10/36, because `shell-layout.dom.test.tsx` is named by no
+title while `vg-276`'s carries `shell-layout.tsx`, so a stem reading counts it — **the row is internally
+inconsistent on that one file**; and every line count is one lower than the row's, because a trailing newline
+is not a line.
+
+**The cut is authored versus generated**, as Step 3 requires: a file is generated when its first five lines
+carry **both** a generation claim and a do-not-edit notice, and the generator emits that header, so the rule
+is self-maintaining. **What it lets through is the point** — an unmarked generated file lands *in* the
+over-stop set, visible, rather than being silently dropped by a filename convention nothing enforces.
+**Both `AGENTS.md` numbers are computed**: the stop as a set, the 500 signal as a count only.
+
+**The closest prior art was found and rejected on shape, not on absence.** Biome 2.5.14 ships
+`style/noExcessiveLinesPerFile` (added 2.3.12, declared source ESLint's `max-lines`); it is per-file and
+all-or-nothing at lint time, its escape hatch is one `overrides` entry or `biome-ignore` per file — **which is
+this row's defect relocated into the linter config** — and it reads `AnyJsRoot` only, so `.css` is outside its
+reach and it has no notion of generated. `0065`'s rung 4 records the search.
+
+**The red proof is two ways and neither touches a tracked file**: an empty `--ceiling` reports **45 `NEW`
+rows at exit 1**, and a fixture git repo holding a 700-line file passes at exit 0 and is named at exit 1 once
+grown to 900. The controller re-ran both.
+
+**Verify:** `node scripts/oversize-files.mjs --self-test` exit 0 (9 cases); the live run exit 0 (45 accepted,
+0 additions); `npm run gate` exit 0 (263 files, 3483 tests); `npm run docs:check` exit 0; `npm run
+backlog:check` exit 0.
 
 ### Task 21.8: The sweep's self-test stops pinning live files
 
