@@ -1,4 +1,6 @@
 import { expect, type Page, test } from "@playwright/test";
+import { SAMPLE_STREAM_PATH } from "@vigilia/renderer-core";
+import { uiCopy } from "../../packages/player/src/ui-copy.js";
 import { canvasProp, sceneBounds, sceneProperty } from "./canvas-probe.js";
 import { openPaused } from "./clock.js";
 import { captureVisualReview } from "./editor-canvas.js";
@@ -1293,25 +1295,42 @@ test.describe("a display fed by the real host", () => {
     // reader. Blocking the route is the platform's own network layer and does
     // fail the connection, which is the state this exercises.
     //
+    // **The matcher is a predicate because the URL carries a query.** It was
+    // `"**/ws"`, and Playwright's glob is matched against the whole URL, which
+    // for this stream is `…/ws?keys=…&session=…` — so **nothing was ever
+    // refused**. The strip the case then caught was the ordinary
+    // `"Connecting to the host — 1 sensors requested"` one `main.ts` draws
+    // before the first batch, cleared about 250 ms later by the first sample;
+    // every claim below was satisfied by an ordinary live stream, and the case
+    // passed or failed on whether it looked inside that window (`vg-505`:
+    // measured here as a strip present at 0 ms and gone from 250 ms on, with
+    // the route still aborting). With the refusal real, the same window reads
+    // `"Lost the host…"` and stays.
+    //
     // What is **not** covered: an established connection dying mid-stream. The
     // state machine under test (`live-source.ts`) is the same either way — the
     // `error` listener sets `reconnecting` and the browser's own retry brings
     // it back — but the drop here happens at connect time.
-    await page.route("**/ws", (route) => route.abort());
+    const refusesTheStream = (url: URL): boolean =>
+      url.pathname.endsWith(SAMPLE_STREAM_PATH);
+    await page.route(refusesTheStream, (route) => route.abort());
     await page.goto(`${HOST}/?theme=${HOST_THEME_ID}&data=live`);
     await expect(page.locator("#vigilia-connection")).toBeVisible({
       timeout: 30_000,
     });
     // The banner names the state, so a page that merely failed to load cannot
-    // pass it.
+    // pass it — **and neither can the connecting copy.** `/reconnect|connect/i`
+    // matched `"Connecting to the host…"`, which is how the broken matcher
+    // above went unnoticed for so long: the two states are two sentences, and
+    // the assertion is the reconnecting one, from the copy's own owner.
     await expect(page.locator("#vigilia-connection")).toHaveText(
-      /reconnect|connect/i,
+      uiCopy.connection.reconnecting,
     );
 
     // **And it recovers by itself.** The retry is the browser's, not a reload:
     // the page is never navigated again, so a passing banner only means the
     // stream came back.
-    await page.unroute("**/ws");
+    await page.unroute(refusesTheStream);
     await expect(page.locator("#vigilia-connection")).toHaveCount(0, {
       timeout: 60_000,
     });
