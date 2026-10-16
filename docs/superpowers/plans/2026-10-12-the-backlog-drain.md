@@ -2298,6 +2298,52 @@ suite for Tasks 17.1, 17.2 and 17.3 on a rebuilt bundle.
 - [ ] **Step 3: `vg-512` — the draft's single slot is written whenever the document is dirty with no transition gate**, so a theme switch can persist the outgoing document's draft over the incoming one's.
 - [ ] **Step 4: Close the three**, each against the commit that fixes it.
 
+**Annotated 2026-10-16, at the task's close: all three rows are `verified`, and two of the three took
+none of the shapes their row sketched.**
+
+**`vg-510`'s three sketched candidates were all declined.** The loop gained **`stop()`/`start()` beside a
+one-way `dispose()`**, because `dispose` is called by the player's own mount teardown
+(`player/src/main.ts:203`) — so making it reversible makes the name a lie and lets a stray call revive a
+torn-down loop — and re-creating the loop would mean `editor-main` holding the `refresh` callback and
+`onError` for a second construction. The `{ once: true }` goes with it, which is the clause the row itself
+identified as making a second firing moot. The state is three lifetimes rather than two
+(`running`/`stopped`/`disposed`), and the idiom is the one this repo already fixed this defect with:
+`DraftAutosave.start`/`stop` on `4a8e339b`.
+
+**`vg-511`'s ruling is that the refusal reports on the shell's diagnostic line, not the status line.** The
+status element is last-writer-wins by design and the boot writes it last, so any ordering fix is undone by
+the next writer; the diagnostic line is held until the first committed edit, which is exactly as long as
+the refusal is true. Decision `0051` is the precedent — *a toast would be a second message surface for a
+refusal that already has one* — so this adds no surface. `error-manager/index.ts` gained a `draft`
+category.
+
+**`vg-512` changed no store behaviour, and the row says so rather than being glossed.** Its
+WHAT-WOULD-CLOSE-IT asked for a ruling and *the store changed to match it*; the ruling is that the slot
+owes **the announcement, not a different slot**, so the store needed no change and the announcement is what
+changed — it rides `vg-511`'s message, which names the draft, the reason, and the fact that editing the
+document replaces it. All three of the row's candidates are rejected on the row's own ground: a second slot
+reverses `vg-040`'s decision 1, and a pin or a refusal-to-draft both leave the document the author **is**
+editing undrafted, which the row calls strictly worse. **No red proof, and none is claimed** — the change
+is a ruling plus a characterisation case that passes at HEAD by design.
+
+**Step 3 and `vg-512` did not describe the same symptom, and the gap is filed rather than closed.**
+Step 3's own subject is *a theme switch can persist the outgoing document's draft over the incoming one's*,
+which is a draft the build **can** read; `vg-512` is a draft it **cannot**. So **`vg-541`** records the
+un-gated transition the step names, with the mechanism read rather than measured: the autosave is
+constructed once (`editor-main.ts:99`, from a `start()` called once at `:583`), so it survives a document
+switch, and its single `dirty` flag then describes the outgoing document while `writeNow` reads the
+incoming one. **The observable outcome is unmeasured**, and the row names the one tick that would settle
+it.
+
+**The task's own third trailer is filed too**: **`vg-540`** — the player tears its whole mount down on
+`pagehide` under `{ once: true }`, so a display restored from the back/forward cache is frozen until a
+reload, and *reload versus re-arm* is a bigger ruling than it looks.
+
+**The pointers moved by six to twenty lines, and the row's numbers are the stale ones.** `vg-510` cites
+`editor-main.ts:426-428` for the hook (actual 431) and `draft-store.ts:169-180` for `bindDraftAutosave`
+(actual 189-200); `vg-511` cites `:465-470`/`:476`/`:488-489` (actual 470-474, 481, 494); `vg-512` cites
+`editor-main.ts:465` (actual 477) and `draft-store.ts:146`/`:147` (actual 150-157).
+
 ### Task 17.2: The glass and capture paths
 
 **Files:**
