@@ -813,11 +813,15 @@ test.describe("hosted player over the real host", () => {
     await expect(page.locator("#vigilia-connection")).toHaveCount(0, {
       timeout: 15_000,
     });
+    // Polled rather than read once. The strip disappearing says a batch was
+    // consumed, not that the repaint carrying the reading has been scheduled and
+    // run — `requestRenderAll` puts it on a frame, so a single read raced that
+    // frame and saw the placeholder. Read once this failed about two runs in
+    // three; the poll is the same remedy the two assertions below already use.
+    await expect
+      .poll(() => shownClock(page), { timeout: 15_000 })
+      .toMatch(/^\d{2}:\d{2}:\d{2}$/);
     const firstReading = await shownClock(page);
-    expect(
-      firstReading,
-      "the clock was painted before the frame is read",
-    ).toMatch(/^\d{2}:\d{2}:\d{2}$/);
     await page.evaluate(() => document.fonts.ready);
     const batches = await liveBatches(page);
     const firstFrame = await artboard.screenshot();
