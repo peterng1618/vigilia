@@ -617,4 +617,58 @@ describe("shell token stylesheet", () => {
       ).toBeGreaterThanOrEqual(4.5);
     }
   });
+
+  /** `vg-553`: a name this phase retired can be declared again with every gate
+   *  green.
+   *
+   *  Every surviving guard is one-directional. `shell-palette-tokens.spec.ts`'s
+   *  `themeToken()` throws on an *absent* token, so it catches a removal and
+   *  never an addition; the value pin above is `toMatchObject`, so an added name
+   *  never fails; the not-on-`:root` list is a forbidden list over the type
+   *  scale, whose purpose is `:root` beating `@layer theme`. An addition is the
+   *  direction a retired name re-enters by, and this is the assertion `vg-261`'s
+   *  red proof found missing.
+   *
+   *  The granularity is a list rather than an exhaustive assertion over a whole
+   *  block: `@theme static` also carries the type scale and the `--color-*`
+   *  aliases, and the `:root` control block carries the §4 roles, so a
+   *  closed-set assertion over either would redden on every legitimate addition.
+   *  A name joins this list when it is retired, and the list is the vocabulary
+   *  the phase has closed. */
+  it("declares no retired token", () => {
+    const RETIRED_TOKENS = [
+      // Task 20.1, `vg-261`: one elevation ladder survives.
+      "--shadow-raised",
+      "--shadow-overlay",
+      // Task 20.3, `vg-312`: a per-palette flag no `var()` read.
+      "--shell-flat",
+      // Task 20.7, `vg-552`: the control block's ten unread declarations.
+      "--vigilia-text",
+      "--vigilia-panel-bg",
+      "--vigilia-panel-border",
+      "--vigilia-control-border",
+      "--vigilia-input-bg",
+      "--vigilia-muted",
+      "--vigilia-selection-bg",
+      "--vigilia-accent",
+      "--vigilia-accent-dim",
+      "--vigilia-guide",
+    ] as const;
+    // Comments carry `:` and `;`, so a prose mention of a retired name reads as a
+    // declaration to the regexes below. They are blanked rather than removed, so
+    // a line number in a failure message stays the line number.
+    const source = css.replace(/\/\*[\s\S]*?\*\//g, (comment) =>
+      comment.replace(/[^\n]/g, " "),
+    );
+    for (const token of RETIRED_TOKENS) {
+      expect(
+        source,
+        `${token} is declared again, so a name this phase retired is back`,
+      ).not.toMatch(new RegExp(`^\\s*${token}\\s*:`, "m"));
+      expect(
+        source,
+        `${token} is read again, so a rule resolves a name this phase retired`,
+      ).not.toMatch(new RegExp(`var\\(\\s*${token}\\s*[),]`));
+    }
+  });
 });
