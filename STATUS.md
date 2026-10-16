@@ -37,11 +37,11 @@ ledger did.
 
 ## Last completed change
 
-- **Phase 18 opened and Task 18.1 is closed at `ee82150a`, so the register is 142 open** — `vg-264`, `vg-336` and `vg-263` are `verified`, and `npm run backlog:check` is exit 0.
-- **The channel `vg-263` asked the control set to invent already existed** — `ControlNumber` has carried `aria-invalid` + an `aria-describedby` reason with the field left editable since `e3b19da4`, so the work was generalising it onto `ControlProps`; decision note `0056` records the search.
-- **`vg-263`'s close condition was verified in Chromium, which is where it had to be** — `editor.spec.ts:981`'s palette case on a rebuilt bundle, 1 passed exit 0; jsdom cannot see the platform bubble the row is about, and the spec's locator moved onto the `aria-invalid` + described-by pair.
-- **One defect the landing made visible is filed rather than fixed** — `vg-545`: the reason is sticky when the author edits back to the value already held, because `ControlText` declines to report a commit that changes nothing and `invalid` is a prop it cannot clear; the fix is a design decision about who owns a repairable refusal.
-- **Phase 18's own `Files:` lines needed correcting before its first dispatch** — four named paths did not exist, `dialog.tsx` declares no `ACTION_BUTTON` at all, and the plain-button idiom is three copies and one different string; `5ff54db0` carries the corrections and `vg-544` files the dead watchlist entry they exposed.
+- **Task 18.2 closed at `f5788e86`, so the register is 142 open** — `vg-289` and `vg-272` are `verified`, `npm run backlog:check` exit 0, and `ACTION_BUTTON` and `plainButtonClasses` each have one owner.
+- **The task found a third false premise in the plan, in both directions at once** — `ACTION_BUTTON` was declared *four* times, not three (`draft-recovery-prompt.tsx:15` was unnamed by the plan, the task's `Files:` line and `vg-289`'s own title), and the step also asserted a declaration in `dialog.tsx` that never existed. `vg-289`'s title is corrected in the register.
+- **Its red proof was re-run rather than taken from the report** — cutting the shared token's horizontal pad reads 40/43 with exactly the three new rendered-class cases failing, restored byte-identically with `cmp`, green at 43/43 exit 0.
+- **Two of Task 18.2's brief paths were wrong and the brief now records it** — `theme-library-dialog.dom.test` and `new-document-chooser.dom.test` are `.ts`, not `.tsx`, so its Verification commands would have matched no files and read green over nothing; the paths were carried from the plan's prose instead of read off the disk.
+- **`vg-547` files the trailer** — `preset-list.tsx:450` composes the shared token with `text-hot`, so two conflicting colour utilities on one element resolve by stylesheet order, and no test reads either delete button's resolved colour.
 
 ## Next
 

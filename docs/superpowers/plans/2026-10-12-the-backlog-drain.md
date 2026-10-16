@@ -2658,6 +2658,22 @@ about who owns a repairable refusal, so it is not this task's.
 - [ ] **Step 2: `vg-272` — one shared class token for the plain-button idiom, owned by the control set.** **Corrected 2026-10-16: it is three copies and one different string, not four of one.** `paint-list.tsx:132`, `:349` and `preset-list.tsx:458` are identical (`text-text`); **`paint-list.tsx:401` is `text-hot` with a `disabled:text-faint` variant** — a second idiom that already has behaviour, which is the case this step's own "revisit only if the button acquires behaviour" clause excludes. So the three import the token and stop carrying their own, and `:401` is left as its own idiom and said to be. Revisit only if the button acquires behaviour (disabled, aria, a variant).
 - [ ] **Step 3: Close the two.**
 
+**Annotated 2026-10-16, at the task's close: both rows are `verified` at `f5788e86`, and the task found a
+third false premise — `ACTION_BUTTON` was declared four times, not three.** `draft-recovery-prompt.tsx:15`
+carried a fourth copy, byte-identical to the chooser's and the replace prompt's, and neither Step 1, nor
+this task's `Files:` line, nor `vg-289`'s own title named it; **`vg-289`'s title is corrected to four** and
+the fourth was folded in, because leaving it would have left the drift the row names live. **The shared
+string is the drifted copy's, and the reason is that it is the superset**: the library chooser's copy
+carried `enabled:hover:` and `disabled:text-faint`, its delete button is the only one ever disabled, and
+`enabled:hover:` is `hover:` on a button that is never disabled — so taking the majority literal would have
+stripped the disabled delete's colour. **No test read either class string**, so nothing was extended: the
+copy nets read words rather than class names, and three cases were added that read the *rendered* button's
+class list. **The red proof was re-run by the controller rather than taken from the report**: cutting the
+token's horizontal pad reads 40/43 with exactly the three new cases failing, restored byte-identically with
+`cmp`, green at 43/43 exit 0. **Step 2's fourth site is filed, not folded** — `preset-list.tsx:450`
+composes the shared token with `text-hot`, so two conflicting colour utilities on one element resolve by
+stylesheet order; that is `vg-547`.
+
 ### Task 18.3: The shell's keyboard rules
 
 **Files:**
