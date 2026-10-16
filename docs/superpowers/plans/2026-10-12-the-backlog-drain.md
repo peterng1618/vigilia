@@ -3523,6 +3523,44 @@ script. The two sweeps' limits are recorded with them: pass 1 reads **titles**, 
 whose title is prose is invisible to it, and pass 2 matches only on backticked identifiers, so two rows
 describing one defect in different words are not caught.
 
+**The eighth correction to the method, measured 2026-10-16 at `6517346e`, and it is that the second number
+is partly manufactured by the drain itself.** Re-derived with the plan's own carry rule — a row is carried
+when a `### Task` block names it, and the count is cut at this section's own heading — and with phase
+closure read from the ledger rather than from the `- [ ]` boxes:
+
+| | count |
+|---|---|
+| open rows | **152** |
+| named by no phase at all | **39** |
+| named only by phases the ledger records closed | **39** |
+| named by at least one live phase | **74** |
+| **open with no live home** (39 + 39) | **78** |
+
+**The open count fell from 185 to 152 and the homeless count rose from 50 to 78, and the two are not
+unrelated.** **A phase that closes while still carrying open rows turns those rows homeless**: Phase 16
+closed on 2026-10-16 carrying `vg-490` and `vg-539`, and Phase 15 closed carrying `vg-442` — three of the
+78 are rows whose home was a phase this drain closed, and the same will happen to every row Phase 17 leaves
+standing. **So the second number rises with every close, and a census that re-derives it without saying so
+will read as the drain going backwards while it is going forwards.** The rule this implies is one line:
+**re-home a phase's still-open rows at its close**, which is the same rule Phase 12's Acceptance already
+states for a different purpose (*every row closes on the phase that lands its change*), applied to the rows
+that phase does not close.
+
+**Two extraction traps, both of which changed the answer, and both are the fourth correction's lesson
+again** — the count is only as good as the form it reads. **`Phase 16 closes (2026-10-16)` is present
+tense**, so a `/Phase N .* closed/` regex misses the most recent close in the ledger. **`Phase 12 is
+suspended, not closed` is a negation**, so the same regex counts it *as* a close — which would have
+reported a suspended phase as done and hidden its rows. A first pass over this same ledger made both
+mistakes at once and returned 34 / 44 / 74; the corrected extractor returns 39 / 39 / 74. **The five rows
+that moved are the difference between counting a mention anywhere in a phase and counting one inside a
+`### Task` block** — correction (i)'s rule, which a phase's own Outcome, Owners, Constraints and Acceptance
+lines otherwise violate.
+
+**What this correction does not claim:** that the 39 named by no phase are 39 findings without a subject —
+the triage's two negative passes already showed that reading is wrong. It claims only that their *home* is
+a phase the ledger records closed, so nothing will land them, and that the number is now 78 rather than the
+50 this section last recorded.
+
 # Parked rows — held, not a phase
 
 **`vg-330` was parked by the user on 2026-10-11 and UNPARKED by the user on 2026-10-14**, and this
