@@ -88,6 +88,15 @@ export type InsertableObject =
 
 /** One heading's worth of them. A heading is what makes "Line" unambiguous. */
 export interface InsertGroup {
+  /**
+   * The kind every object in the group is — a group is homogeneous by
+   * construction, because that is what merges one. **This is the group's
+   * identity, and the heading is not:** the pane scopes a group by it
+   * (`data-vigilia-add-group`), and a scope derived from the heading would move
+   * the day an author's copy did, which is what the hook exists to stop
+   * (`vg-211`).
+   */
+  readonly kind: InsertableObject["kind"];
   /** The heading, or undefined for an object that stands on its own. */
   readonly label: string | undefined;
   readonly objects: readonly InsertableObject[];
@@ -129,18 +138,27 @@ export function insertGroups(): readonly InsertGroup[] {
 
   const groups: InsertGroup[] = [];
   for (const object of objects) {
+    const { kind } = object;
     const label = groupOf(object);
     const last = groups[groups.length - 1];
-    if (last !== undefined && last.label === label) {
-      groups[groups.length - 1] = { label, objects: [...last.objects, object] };
+    // Merged by kind rather than by heading: the heading is copy, and two
+    // groups drawn under one word would be one group.
+    if (last !== undefined && last.kind === kind) {
+      groups[groups.length - 1] = {
+        kind,
+        label,
+        objects: [...last.objects, object],
+      };
     } else {
-      groups.push({ label, objects: [object] });
+      groups.push({ kind, label, objects: [object] });
     }
   }
 
   return groups;
 }
 
+/** The heading a group is drawn under, or undefined where its object stands
+ *  alone. The heading is not the group's identity — `kind` is. */
 function groupOf(object: InsertableObject): string | undefined {
   switch (object.kind) {
     case "text":

@@ -185,7 +185,7 @@ test.describe("the reference composition, built from blank", () => {
 
     // The rule under it. A `Path` takes its data as SVG commands, which is the
     // only way a hairline is drawn at all.
-    await insert(page, "Path");
+    await insert(page, "Path", "shape");
     await setName(page, "time-rule");
     await place(page, { x: 72, y: 352, w: 306, h: 2 });
     // A rule is a stroke, not a shape. On a path that arrives with no fill the
@@ -263,7 +263,7 @@ test.describe("the reference composition, built from blank", () => {
     });
 
     // The chip icon. A `Path` is the only shape that draws a glyph.
-    await insert(page, "Path");
+    await insert(page, "Path", "shape");
     await setName(page, "cpu-card-icon");
     await place(page, { x: 452, y: 218, w: 28, h: 28 });
     // A path with no fill paints its stroke, so this one control is both.
@@ -347,7 +347,7 @@ async function glyph(
   data: string,
   token: string,
 ): Promise<void> {
-  await insert(page, "Path");
+  await insert(page, "Path", "shape");
   await setName(page, name);
   await place(page, box);
   // A path with no fill paints its stroke, so this one control is both.

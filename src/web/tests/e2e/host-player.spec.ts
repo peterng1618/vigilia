@@ -488,7 +488,7 @@ test.describe("hosted player over the real host", () => {
     ).toBeVisible();
     await openPane(page, "Add");
     await page
-      .locator('[data-vigilia-panel="add"]')
+      .locator('[data-vigilia-add-group="shape"]')
       .getByRole("button", { name: "Rectangle", exact: true })
       .click();
     await page.getByRole("button", { name: "File", exact: true }).click();

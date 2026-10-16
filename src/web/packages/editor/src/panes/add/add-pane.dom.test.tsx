@@ -98,6 +98,30 @@ describe("the Add pane's insert surface", () => {
     );
   });
 
+  it("scopes each group by its kind, and the scope is not the heading", () => {
+    const { pane } = mount();
+
+    // The e2e locators reach a tile through this hook (`vg-211`), and the
+    // heading above a group is copy. A hook derived from the heading would move
+    // the day an author's copy did — which is the one thing it exists to stop.
+    const scopes = [...pane.querySelectorAll("fieldset")].map((group) =>
+      group.getAttribute("data-vigilia-add-group"),
+    );
+    expect(scopes).toEqual(
+      insertGroups()
+        .filter((group) => group.label !== undefined)
+        .map((group) => group.kind),
+    );
+    expect(scopes).not.toContain(uiCopy.panels.shapes);
+
+    // And the shapes section — the one the row is about — is reachable by the
+    // hook while still carrying its heading.
+    const shapes = pane.querySelector('[data-vigilia-add-group="shape"]');
+    expect(shapes?.querySelector("legend")?.textContent).toBe(
+      uiCopy.panels.shapes,
+    );
+  });
+
   it("names a card unit with the library's own label, never a literal", () => {
     const { pane } = mount();
 

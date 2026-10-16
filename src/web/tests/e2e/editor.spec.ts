@@ -49,11 +49,14 @@ import { openPosition } from "./rebuild-driver.js";
 import { choosePalette } from "./shell-palette.js";
 import { isDesktopSurface } from "./surface.js";
 
-/** Clicks one primitive in the Add pane's shape group. */
+/** Clicks one primitive in the Add pane's shape group.
+ *
+ *  Reached through the group's own hook rather than by its heading: the heading
+ *  is `uiCopy.panels.shapes`, so a locator read off it moves the day the copy
+ *  does (`vg-211`). */
 async function insertShape(page: Page, name: string): Promise<void> {
   await page
-    .locator('[data-vigilia-panel="add"]')
-    .getByRole("group", { name: "Shape" })
+    .locator('[data-vigilia-add-group="shape"]')
     .getByRole("button", { name, exact: true })
     .click();
 }
@@ -1358,9 +1361,9 @@ test.describe("Fabric editor route", () => {
     // nothing else. The six this used to expect were the list before the swept
     // pair arrived, which is the same count the list had after circle and
     // triangle were folded into their families (vg-078).
-    const shapes = page
-      .locator('[data-vigilia-panel="add"]')
-      .getByRole("group", { name: "Shape" });
+    // Reached through the group's own hook, not its heading: the heading is
+    // copy, and the pane holds the file path's controls as well (`vg-211`).
+    const shapes = page.locator('[data-vigilia-add-group="shape"]');
     await expect(shapes.getByRole("button")).toHaveCount(8);
     // Both lists are groups, so neither is orphaned under the other's legend
     // and the two "Line" buttons are told apart by the group they sit in.
@@ -1370,7 +1373,7 @@ test.describe("Fabric editor route", () => {
     await expect(charts.getByRole("button")).toHaveCount(4);
     await expect(
       page
-        .locator('[data-vigilia-panel="add"]')
+        .locator("[data-vigilia-add-group]")
         .getByRole("button", { name: "Line", exact: true }),
     ).toHaveCount(2);
 
@@ -1616,15 +1619,9 @@ test.describe("Fabric editor route", () => {
     ).toBeVisible();
 
     await openPane(page, "Add");
-    await page
-      .locator('[data-vigilia-panel="add"]')
-      .getByRole("button", { name: "Arc", exact: true })
-      .click();
+    await insertShape(page, "Arc");
     await openPane(page, "Add");
-    await page
-      .locator('[data-vigilia-panel="add"]')
-      .getByRole("button", { name: "Wedge", exact: true })
-      .click();
+    await insertShape(page, "Wedge");
 
     // Both arrived at the quarter turn the Add pane hands over, and they are
     // not the same shape: an open sweep has no interior to fill, so it is

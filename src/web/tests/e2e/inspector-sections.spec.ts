@@ -717,7 +717,7 @@ test.describe("the per-kind inspector column", () => {
     await page.goto(EDITOR);
     await page.waitForFunction(() => "vigiliaEditorBridge" in window);
     await openBlank(page);
-    await insert(page, "Rectangle");
+    await insert(page, "Rectangle", "shape");
 
     // The wheel's own case (item 11). The step is read off the range input
     // rather than declared beside it, so the gesture and the drag cannot step
@@ -764,7 +764,7 @@ test.describe("the per-kind inspector column", () => {
     await page.goto(EDITOR);
     await page.waitForFunction(() => "vigiliaEditorBridge" in window);
     await openBlank(page);
-    await insert(page, "Rectangle");
+    await insert(page, "Rectangle", "shape");
 
     // A shadow's blur and offset are only offered while there is a shadow for
     // them to change, so the census asks for one the way an author does: through
@@ -1119,7 +1119,7 @@ test.describe("the per-kind inspector column", () => {
     };
 
     // A free shape: its own geometry and ink, at the same density.
-    await insert(page, "Rectangle");
+    await insert(page, "Rectangle", "shape");
     await report("shape");
     await expect(page.locator("[data-vigilia-panel-fill]")).toHaveCount(1);
     await expect(page.locator("[data-vigilia-crop]")).toHaveCount(0);
@@ -1181,8 +1181,7 @@ test.describe("the per-kind inspector column", () => {
     // which is the chart.
     await openPane(page, "Add");
     await page
-      .locator('[data-vigilia-panel="add"]')
-      .getByRole("group", { name: "Shape" })
+      .locator('[data-vigilia-add-group="shape"]')
       .getByRole("button", { name: "Line", exact: true })
       .click();
 
@@ -1516,7 +1515,7 @@ test.describe("the per-kind inspector column", () => {
     await expect.poll(async () => rows.count()).toBeGreaterThan(0);
 
     // A shape has no face, so it is offered no browser over one.
-    await insert(page, "Rectangle");
+    await insert(page, "Rectangle", "shape");
     await expect(page.locator("[data-vigilia-font-face-field]")).toHaveCount(0);
   });
 
@@ -1527,7 +1526,7 @@ test.describe("the per-kind inspector column", () => {
     await page.goto(EDITOR);
     await page.waitForFunction(() => "vigiliaEditorBridge" in window);
     await openBlank(page);
-    await insert(page, "Rectangle");
+    await insert(page, "Rectangle", "shape");
     await expect(
       page.locator("[data-vigilia-panel-fill]").first(),
     ).toBeVisible();

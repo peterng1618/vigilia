@@ -422,7 +422,7 @@ test.describe("the reference composition, authored", () => {
     // "Shape" group to tell it from the "Line" chart, so a plain name is
     // unambiguous here and stays readable.
     await page
-      .locator('[data-vigilia-panel="add"]')
+      .locator('[data-vigilia-add-group="shape"]')
       .getByRole("button", { name: "Rectangle", exact: true })
       .click();
     const authored = (await activeId(page)) ?? "";
@@ -543,7 +543,7 @@ test.describe("the reference composition, authored", () => {
       .click();
     const textId = (await activeId(page)) ?? "";
     await page
-      .locator('[data-vigilia-panel="add"]')
+      .locator('[data-vigilia-add-group="shape"]')
       .getByRole("button", { name: "Rectangle", exact: true })
       .click();
     const panelId = (await activeId(page)) ?? "";
@@ -697,7 +697,7 @@ test.describe("the reference composition, authored", () => {
 
     await openPane(page, "Add");
     await page
-      .locator('[data-vigilia-panel="add"]')
+      .locator('[data-vigilia-add-group="shape"]')
       .getByRole("button", { name: "Rectangle", exact: true })
       .click();
     const panelId = (await activeId(page)) ?? "";

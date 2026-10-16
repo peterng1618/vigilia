@@ -146,21 +146,36 @@ export async function openBlank(
  *  pane's shape and chart tiles are glyph-led (DESIGN.md §6), so a `Path` or a
  *  `Gauge` tile draws a glyph and carries its word in its name, not on it. The
  *  cards and Text show their word, and a name is what a reader is told for
- *  either. */
-export function addButton(page: Page, label: string): Locator {
-  return page
-    .locator('[data-vigilia-panel="add"]')
-    .getByRole("button", { name: label, exact: true });
+ *  either.
+ *
+ *  **Scoped to the object's own group, not to the pane** (`vg-211`): the pane
+ *  holds the file path's controls as well, so a pane-wide name lookup is one
+ *  asset button labelled with a shape word away from matching two — silently,
+ *  and in this file alone. `group` is the group's `data-vigilia-add-group`
+ *  value. It is omitted for the Text row, which `insertGroups()` draws in no
+ *  group at all, and for a chart family — the ruling reaches the shape controls,
+ *  and `vg-211`'s trailer records the rest as the same hazard left standing. */
+export function addButton(page: Page, label: string, group?: string): Locator {
+  const scope =
+    group === undefined
+      ? page.locator('[data-vigilia-panel="add"]')
+      : page.locator(`[data-vigilia-add-group="${group}"]`);
+  return scope.getByRole("button", { name: label, exact: true });
 }
 
-/** Inserts an object from the Add pane, by the word on the control. */
-export async function insert(page: Page, label: string): Promise<void> {
+/** Inserts an object from the Add pane, by the word on the control. `group` is
+ *  the group to reach it in — see `addButton`. */
+export async function insert(
+  page: Page,
+  label: string,
+  group?: string,
+): Promise<void> {
   // The rail shows one pane, and selecting a layer switches it to Composition
   // — so an author comes back to Add the same way this does. The selection's
   // own fields are in the right column, which no pane affects.
   await openPane(page, "Add");
   const before = (await readScene(page)).length;
-  const button = addButton(page, label);
+  const button = addButton(page, label, group);
   // "Line" is a shape and a chart, and the legend above each is what tells them
   // apart — the same distinction F1.17 made the screen.
   await ((await button.count()) > 1 ? button.last() : button).click();
@@ -420,7 +435,7 @@ export async function addCard(
     readonly stroke?: string;
   },
 ): Promise<void> {
-  await insert(page, "Rectangle");
+  await insert(page, "Rectangle", "shape");
   await setName(page, card.name);
   await place(page, card);
   if (card.radius !== undefined)

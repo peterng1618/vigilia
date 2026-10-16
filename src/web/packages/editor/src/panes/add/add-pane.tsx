@@ -27,6 +27,11 @@ import { CARD_DIAGRAMS } from "./card-diagrams.js";
  * button: `data-vigilia-panel-add="<shape>"` and
  * `data-vigilia-panel-card="<card id>"`. `data-vigilia-panel="add"` is the
  * pane's, written by `Pane`, and is deliberately not written again here.
+ *
+ * A group is scoped by `data-vigilia-add-group="<kind>"` — the group's own
+ * identity, never the heading above it, which is copy an author reads and a
+ * copy change moves. The pane holds the file path as well as this list, so a
+ * locator scoped to the pane reaches controls that are not insert controls.
  */
 export function AddPane({
   groups,
@@ -61,7 +66,11 @@ export function AddPane({
           );
         }
         return (
-          <fieldset key={group.label} className="vigilia-add-group">
+          <fieldset
+            key={group.label}
+            className="vigilia-add-group"
+            data-vigilia-add-group={group.kind}
+          >
             <legend className="vigilia-add-eyebrow">{group.label}</legend>
             <div className="vigilia-add-grid">{tiles}</div>
           </fieldset>
