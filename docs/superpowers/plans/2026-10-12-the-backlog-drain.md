@@ -3636,6 +3636,20 @@ enables `noUnusedLocals`, and the rule that fired is Biome's `noUnusedVariables`
 recipe did not reproduce and the controller re-ran it in place**; the result does. One finding filed:
 **`vg-564`**, the fourth instance of documents citing line numbers that rot.
 
+**Task 21.6 landed the same day at `24abe87a` with decision note `0064`**, closing `vg-386` — the
+`barrel-only-export` tier now means **no production consumer other than the barrel, with test consumers
+disclosed**, and the fix is one condition: the file's own barrel no longer counts as a production consumer
+of the shape the branch exists to report. **Its measurement is the one this phase's Acceptance asks for by
+name**: `node scripts/dead-code-sweep.mjs --json <path>` reports **253** rows where the base reported 121 —
+`barrel-only-export` **0 → 132**, the other four kinds identical at 11 / 6 / 99 / 5, so the 132 are pure
+additions. **Step 2's adjudication is grouped by package barrel with its warrant stated**, 132 rows across
+38 files and 5 packages, and **nothing was deleted**. The two comments that recorded the branch as
+*"unreachable by construction"* were rewritten and **`vg-386` is named in neither**, because the case
+beneath them exercises `barrelRoutes` and nothing would have reddened. **Three brief premises were false and
+the seat measured all three** — the report is hand-authored rather than generated, its *"has never fired in
+this tree"* phrase had already left before the base, and the row's 133 and its 76/57 split are 132 and 105/27
+at HEAD.
+
 **Why a phase of its own.** All six edit `scripts/` or a registry under `docs/evidence/`, and the three
 sweep rows (`vg-380`, `vg-382`, `vg-386`) are **one instrument read three ways** — its selector direction,
 its `redundant-export` tier and its `barrel-only-export` tier. Phase 15 homed instrument gaps a
@@ -3956,6 +3970,52 @@ files, 3483 tests); `npm run docs:check` exit 0; `npm run backlog:check` exit 0.
 - [ ] **Step 1: The tier means no production consumer other than the barrel, with test consumers disclosed** — 133 candidates, not the plan's literal sole-importer shape's 76. A test importing a barrel export is disclosed in the report and does not hide the export from the tier, because a survivor costs a ticket and a deleted live symbol costs the product, so the bias stays on detection.
 - [ ] **Step 2: The newly visible rows are adjudicated as a sweep of its own**, not reported and left.
 - [ ] **Step 3: Close it**, with the count recorded as a measurement and its command.
+
+**[Closed 2026-10-17 at `24abe87a`, base `89c9a035`, decision note `0064`. `vg-386` closes.]** The ruling's
+shape is what landed: **the tier means no production consumer other than the barrel, with test consumers
+disclosed.** **The fix is one condition** — `consumers.filter((file_) => !isTestFile(file_))` became
+`... && file_ !== barrel`, and the branch's now-vacuous `prodConsumers.length === 0 &&` clause was dropped
+with it.
+
+**The measurement this Acceptance asks for**: the command is `node scripts/dead-code-sweep.mjs --json
+<path>`, and at `89c9a035` it reports **253** rows against the base's 121 — `barrel-only-export` **0 → 132**,
+with the other four kinds **identical at 11 / 6 / 99 / 5**, so **0 rows were added outside the tier and 0
+removed**. By package: editor 1, fake-source 2, host 21, renderer-core 90, scene-fabric 18. The row's 133
+is historical; HEAD is 132 because the tree moved.
+
+**Step 2's adjudication is grouped and its warrant is stated**: every row is a name its package's
+`src/index.ts` re-exports and no production file imports, so the grouping is by package barrel — 132 rows
+across 38 files and 5 packages. A word-boundary name search found **8 collisions, all dismissed on
+inspection**; a quoted-string and kebab-case search found **none** of the string-resolved shapes the sweep's
+header lists. Per row: **85 live in their own file and test-consumed, 26 live with no consumer, 20 declared
+and read by nothing but a test (named in §3.4), and 1 with no reader at all** — `host/src/server.ts`'s
+`HostingPeer`. **Nothing was deleted**, which the row's own text demands. The invisibility limit is stated in
+§3.4 rather than implied.
+
+**The two comments that recorded the unreachability were rewritten and `vg-386` is named in neither.** Both
+asserted the branch *"is unreachable by construction"* and cited this row by name, and **nothing would have
+reddened to say so**, because the case beneath them exercises `barrelRoutes` rather than the tier. A file
+that still claims its own branch is unreachable is a worse artefact than the bug. A new case pins the fix —
+`barrel-only-export fires` — as a **count rather than a pinned file**, so Task 21.8 can still move the
+kind-fires checks.
+
+**The report is hand-authored and was corrected in place**, which was itself a false premise in this task's
+brief: nothing generates `docs/architecture/dead-code-candidates.md`. §1.1, §1.3 and §3.4 were rewritten and
+§4's `ROOT`-pinned recipe removed. **Two further brief premises were false and the seat measured them**: the
+report's *"has never fired in this tree"* phrase is **absent at HEAD** (it left before the base), so what was
+actually stale was the present-tense *"the tier cannot fire"* claim; and the brief carried the row's 133 and
+its 76/57 test-consumed split as current, where HEAD is **132** and **105/27**.
+
+**The red proof was re-run by the controller**: with the filter reverted in place, `--self-test` is **25 of
+26, exit 1**, failing exactly `barrel-only-export fires`, and the file was restored byte-identical before the
+green re-run (26 of 26).
+
+**Two documents were deliberately left alone and the reasoning is recorded**: `docs/product/triage/triage-B6.md`
+and the plan's own design spec still say *"today it reports zero"*, and both are dated records of this row's
+state at the sha they describe rather than current-truth documents.
+
+**Verify:** `node scripts/dead-code-sweep.mjs --self-test` exit 0 (26 cases); `npm run gate` exit 0 (263
+files, 3483 tests); `npm run docs:check` exit 0; `npm run backlog:check` exit 0.
 
 ### Task 21.7: The 800-line stop gets an instrument
 
