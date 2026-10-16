@@ -367,9 +367,14 @@ async function start(): Promise<void> {
         version: extensions.envelope.metadata?.version,
       }),
       capture: () =>
-        captureCanvas(shell.editor.canvas, shell.backdrop())?.toDataURL(
-          "image/png",
-        ),
+        captureCanvas(
+          shell.editor.canvas,
+          shell.backdrop(),
+          undefined,
+          // The bridge's own picture is a read of the document too: the
+          // entered-group dim is lifted for it (0053, `vg-527`).
+          () => shell.editor.groupingManager.suspendDim(),
+        )?.toDataURL("image/png"),
       // The theme's paints, for the Tokens pane's title-bar count (§7.3). The
       // session owns the document, so this is pulled at each snapshot rather
       // than copied: a token added, renamed or deleted moves the number, and

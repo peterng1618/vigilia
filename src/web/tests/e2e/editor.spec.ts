@@ -3585,64 +3585,7 @@ test.describe("Fabric editor route", () => {
     // The same two rectangles the case above enters, with nothing else on the
     // canvas: one is the group's own part and one is what entering puts out of
     // reach, so the two pixels below are the whole of what the rule acts on.
-    await setThemePackage(page, "group-dim.vigilia-theme", {
-      schemaVersion: 2,
-      fabricVersion: "7.4.0",
-      id: "group-dim",
-      metadata: { themeLanguage: "en" },
-      artboard: { width: 320, height: 180 },
-      globals: {
-        palette: {
-          none: {
-            name: "None",
-            value: { kind: "solid", color: "transparent" },
-          },
-          accent: {
-            name: "Accent",
-            value: { kind: "solid", color: ACCENT_PAINT },
-          },
-        },
-      },
-      scene: {
-        version: "7.4.0",
-        objects: [
-          {
-            type: "Group",
-            id: "grp",
-            left: 40,
-            top: 40,
-            width: 30,
-            height: 30,
-            objects: [
-              {
-                type: "Rect",
-                id: "child",
-                left: 0,
-                top: 0,
-                width: 30,
-                height: 30,
-                fill: ACCENT_PAINT,
-                vigiliaPaint: { fill: "palette.accent" },
-                originX: "left",
-                originY: "top",
-              },
-            ],
-          },
-          {
-            type: "Rect",
-            id: "outside",
-            left: 240,
-            top: 40,
-            width: 30,
-            height: 30,
-            fill: ACCENT_PAINT,
-            vigiliaPaint: { fill: "palette.accent" },
-            originX: "left",
-            originY: "top",
-          },
-        ],
-      },
-    });
+    await setThemePackage(page, "group-dim.vigilia-theme", groupDimEnvelope());
     await expect(page.locator("#status-message")).toHaveText(
       "Opened group-dim.vigilia-theme",
     );
@@ -3674,6 +3617,126 @@ test.describe("Fabric editor route", () => {
     await expect
       .poll(async () => pixelAtObjectCentre(page, "outside"))
       .toEqual(untouched);
+  });
+
+  test("keeps the entered-group dim out of the picture a save ships", async ({
+    page,
+  }, testInfo) => {
+    test.skip(!isDesktopSurface(testInfo), "desktop surface");
+    await page.goto(EDITOR);
+    await setThemePackage(page, "group-dim.vigilia-theme", groupDimEnvelope());
+    await expect(page.locator("#status-message")).toHaveText(
+      "Opened group-dim.vigilia-theme",
+    );
+
+    // Entered the way an author does: a double-click inside the group's part.
+    const inside = await sceneToClient(page, 320, 55, 55);
+    await page.mouse.dblclick(inside.x, inside.y);
+    // The screen dims — the case above owns that reading in full. This one
+    // needs only to know the view state is on before it reads the picture.
+    await expect
+      .poll(async () => (await pixelAtObjectCentre(page, "outside"))[3])
+      .toBe(115);
+
+    // **A capture reads the document, not the screen** (0053, `vg-527`).
+    // `bridge.capture` is the product's own capture — the one a theme package's
+    // thumbnail and the library card both come from — so this reads the
+    // artifact an author would hand somebody rather than the mechanism under
+    // it. Both pixels are the same point of the same object: the live canvas
+    // one, and that point in the capture.
+    const [live, shot] = await page.evaluate(async () => {
+      type ProbeObject = {
+        id?: string;
+        getObjects?(): unknown[];
+        getBoundingRect(): { left: number; top: number; width: number };
+      };
+      const bridge = (
+        window as unknown as {
+          vigiliaEditorBridge: {
+            capture(): string | undefined;
+            editor: {
+              canvas: { getObjects(): ProbeObject[] };
+              viewport: {
+                artboardScreenRect(): {
+                  left: number;
+                  top: number;
+                  width: number;
+                };
+              };
+            };
+          };
+        }
+      ).vigiliaEditorBridge;
+      const find = (
+        candidates: readonly ProbeObject[],
+      ): ProbeObject | undefined => {
+        for (const candidate of candidates) {
+          if (candidate.id === "outside") return candidate;
+          const found = find(
+            (candidate.getObjects?.() ?? []) as readonly ProbeObject[],
+          );
+          if (found !== undefined) return found;
+        }
+        return undefined;
+      };
+      const object = find(bridge.editor.canvas.getObjects());
+      if (object === undefined) throw new Error("no object with id outside");
+      const element = document.querySelector<HTMLCanvasElement>(
+        "#vigilia-fabric-editor canvas.lower-canvas",
+      );
+      const context = element?.getContext("2d");
+      if (element === null || context === null || context === undefined)
+        throw new Error("no lower canvas");
+
+      const rect = object.getBoundingRect();
+      const view = bridge.editor.viewport.artboardScreenRect();
+      const ratio = element.width / element.getBoundingClientRect().width;
+      // The artboard the fixture authors, which is what `view.width` frames.
+      const scale = view.width / 320;
+      const x = Math.round(
+        (view.left + (rect.left + rect.width / 2) * scale) * ratio,
+      );
+      const y = Math.round(
+        (view.top + (rect.top + rect.height / 2) * scale) * ratio,
+      );
+      const read = (data: Uint8ClampedArray): number[] => [
+        data[0] ?? -1,
+        data[1] ?? -1,
+        data[2] ?? -1,
+        data[3] ?? -1,
+      ];
+      const live = read(context.getImageData(x, y, 1, 1).data);
+
+      const url = bridge.capture();
+      if (url === undefined) throw new Error("the capture returned nothing");
+      const image = new Image();
+      image.src = url;
+      await image.decode();
+      const surface = document.createElement("canvas");
+      surface.width = image.naturalWidth;
+      surface.height = image.naturalHeight;
+      const surfaceContext = surface.getContext("2d");
+      if (surfaceContext === null) throw new Error("no capture context");
+      surfaceContext.drawImage(image, 0, 0);
+      // The capture is the canvas at the export multiplier, so the same point
+      // moves with it rather than being assumed to be the same pixel.
+      const exported = image.naturalWidth / element.width;
+      const shot = read(
+        surfaceContext.getImageData(
+          Math.round(x * exported),
+          Math.round(y * exported),
+          1,
+          1,
+        ).data,
+      );
+      return [live, shot];
+    });
+
+    // The screen is still dimmed, so the two readings cannot both be right for
+    // the wrong reason: one of them is the view state and the other is not.
+    expect(live[3]).toBe(115);
+    // **255 is the object's own authored paint, and 115 would be the dim.**
+    expect(shot[3], "the capture shows the document, not the dim").toBe(255);
   });
 
   test("rehydrates a chart runtime after undo", async ({ page }, testInfo) => {
@@ -5437,6 +5500,74 @@ async function savePackage(page: Page): Promise<{
   for await (const chunk of stream) chunks.push(Buffer.from(chunk));
   const bytes = Buffer.concat(chunks);
   return { parsed: readThemePackage(bytes), bytes };
+}
+
+/**
+ * The two-rectangle document both entered-group cases drive: one rectangle
+ * inside a group's own part and one outside it, with nothing else on the
+ * canvas, so a pixel at either centre is the whole of what entering reaches.
+ */
+function groupDimEnvelope(): Parameters<
+  typeof writeThemePackage
+>[0]["envelope"] {
+  return {
+    schemaVersion: 2,
+    fabricVersion: "7.4.0",
+    id: "group-dim",
+    metadata: { themeLanguage: "en" },
+    artboard: { width: 320, height: 180 },
+    globals: {
+      palette: {
+        none: {
+          name: "None",
+          value: { kind: "solid", color: "transparent" },
+        },
+        accent: {
+          name: "Accent",
+          value: { kind: "solid", color: ACCENT_PAINT },
+        },
+      },
+    },
+    scene: {
+      version: "7.4.0",
+      objects: [
+        {
+          type: "Group",
+          id: "grp",
+          left: 40,
+          top: 40,
+          width: 30,
+          height: 30,
+          objects: [
+            {
+              type: "Rect",
+              id: "child",
+              left: 0,
+              top: 0,
+              width: 30,
+              height: 30,
+              fill: ACCENT_PAINT,
+              vigiliaPaint: { fill: "palette.accent" },
+              originX: "left",
+              originY: "top",
+            },
+          ],
+        },
+        {
+          type: "Rect",
+          id: "outside",
+          left: 240,
+          top: 40,
+          width: 30,
+          height: 30,
+          fill: ACCENT_PAINT,
+          vigiliaPaint: { fill: "palette.accent" },
+          originX: "left",
+          originY: "top",
+        },
+      ],
+    },
+  };
 }
 
 async function setThemePackage(

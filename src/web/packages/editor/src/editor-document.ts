@@ -244,6 +244,9 @@ export class EditorDocument {
         this.#shell.editor.canvas,
         undefined,
         this.#shell.backdrop(),
+        // A package saved from inside an entered group ships the document, not
+        // the dim the author is working behind (0053, `vg-527`).
+        () => this.#shell.editor.groupingManager.suspendDim(),
       );
     } catch {
       return undefined;

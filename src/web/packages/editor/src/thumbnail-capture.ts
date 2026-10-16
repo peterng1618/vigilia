@@ -20,6 +20,14 @@ export function captureCanvas(
   canvas: Canvas,
   backdrop: BackdropMedia | undefined,
   maxEdge = MAX_EDGE,
+  /**
+   * Suspends the canvas's view state — the entered-group dim — for the shot and
+   * restores it after. **A capture reads the document, not the screen** (0053),
+   * and lifting the view state is the canvas's own mechanism rather than a
+   * second renderer's: the caller passes the suspension it wants, and the
+   * default no-op is what a canvas with no view state to lift needs.
+   */
+  suspendViewState: () => () => void = () => () => {},
 ): HTMLCanvasElement | undefined {
   const width = canvas.width;
   const height = canvas.height;
@@ -30,7 +38,15 @@ export function captureCanvas(
   }
 
   const scale = Math.min(1, maxEdge / Math.max(width, height));
-  const scene = canvas.toCanvasElement(scale);
+  // Only the shot is taken with the view state lifted: everything below is the
+  // media the canvas cannot see, which carries no view state of its own.
+  const release = suspendViewState();
+  let scene: HTMLCanvasElement;
+  try {
+    scene = canvas.toCanvasElement(scale);
+  } finally {
+    release();
+  }
   if (backdrop === undefined) return scene;
 
   const context = scene.getContext("2d");
@@ -66,8 +82,9 @@ export async function captureThumbnail(
   canvas: Canvas,
   maxEdge = MAX_EDGE,
   backdrop?: BackdropMedia,
+  suspendViewState: () => () => void = () => () => {},
 ): Promise<Uint8Array | undefined> {
-  const source = captureCanvas(canvas, backdrop, maxEdge);
+  const source = captureCanvas(canvas, backdrop, maxEdge, suspendViewState);
   if (source === undefined) {
     return undefined;
   }

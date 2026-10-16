@@ -21,6 +21,12 @@ export interface GroupingManager {
   }): FabricObject | undefined;
   /** Steps back out one level, clearing the through-selection flags. */
   exitGroup(): readonly FabricObject[] | undefined;
+  /**
+   * Lifts the artboard's dim for the duration of a capture and puts it back.
+   * The dim is a view state, and a capture is the one reader that outlives the
+   * view: it reads the document, not the screen (0053).
+   */
+  suspendDim(): () => void;
   readonly groupContext: () => readonly FabricObject[];
   /** Releases the canvas listeners and the transient state they maintain. */
   destroy(): void;
@@ -187,6 +193,25 @@ export function createGroupingManager(
       object.dirty = true;
     }
     dimmed.clear();
+  };
+
+  /**
+   * Lifts the dim for a capture and puts it back (0053). The dim is *painted* —
+   * a cached object carries it in its own cache — so lifting it is a repaint
+   * rather than an unsubscribe: `restoreDim` marks the caches dirty, the
+   * capture's frame repaints them clean, and the re-apply leaves the next live
+   * frame exactly what the author was looking at. Nothing repaints the live
+   * canvas in between, because this pair is synchronous.
+   */
+  const suspendDim = (): (() => void) => {
+    if (dimmed.size === 0) return () => {};
+    restoreDim();
+    return () => {
+      const entry = context[0];
+      if (entry instanceof Group)
+        for (const object of canvas.getObjects()) dimOutside(object, entry);
+      canvas.requestRenderAll();
+    };
   };
 
   /**
@@ -378,6 +403,8 @@ export function createGroupingManager(
     },
 
     groupContext: () => context,
+
+    suspendDim,
 
     destroy(): void {
       canvas.off("object:added" as never, onObjectAdded as never);

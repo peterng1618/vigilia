@@ -236,6 +236,27 @@ describe("entering a group", () => {
     expect(paintedAt(text)).toBe(1);
   });
 
+  it("lifts the dim for a capture and puts it back", () => {
+    // A capture reads the document, not the screen (0053, `vg-527`): a package
+    // saved from inside an entered group ships a thumbnail, and a view state
+    // must not reach an artifact that outlives the session.
+    const { canvas, group, outsider } = scene();
+    const grouping = manager(canvas);
+    grouping.enterGroup({ object: group });
+    expect(paintedAt(outsider)).toBeCloseTo(0.45, 5);
+
+    const release = grouping.suspendDim();
+
+    expect(paintedAt(outsider)).toBe(1);
+
+    release();
+
+    // The screen is what the author was looking at, so the dim is back rather
+    // than merely unsubscribed.
+    expect(paintedAt(outsider)).toBeCloseTo(0.45, 5);
+    expect(grouping.groupContext()).toEqual([group]);
+  });
+
   it("dims an object under an outside group once, not once per group", () => {
     // The layer list's own rule: an object *under* an outside group is outside,
     // and the two dims do not stack on each other.

@@ -72,3 +72,53 @@ describe("the capture's artboard plane", () => {
     ).toThrow("the backdrop was never painted");
   });
 });
+
+describe("the capture's view state", () => {
+  /** A canvas that records the order of the calls the capture makes around it. */
+  function recording(canvas: { readonly shoot: () => void }): {
+    canvas: Canvas;
+    order: string[];
+  } {
+    const order: string[] = [];
+    return {
+      order,
+      canvas: {
+        width: 100,
+        height: 100,
+        viewportTransform: [1, 0, 0, 1, 0, 0],
+        toCanvasElement: () => {
+          order.push("shot");
+          canvas.shoot();
+          return document.createElement("canvas");
+        },
+      } as unknown as Canvas,
+    };
+  }
+
+  const suspend = (order: string[]) => (): (() => void) => {
+    order.push("lift");
+    return () => order.push("restore");
+  };
+
+  it("takes the shot with the view state lifted and puts it back", () => {
+    // The capture reads the document, not the screen (0053, `vg-527`): the
+    // entered-group dim is lifted for the shot itself and never longer.
+    const { canvas, order } = recording({ shoot: () => undefined });
+    captureCanvas(canvas, undefined, 640, suspend(order));
+    expect(order).toEqual(["lift", "shot", "restore"]);
+  });
+
+  it("puts the view state back when the shot throws", () => {
+    // A lift that outlives a failure would leave the canvas undimmed for the
+    // rest of the session with nothing left to put it back.
+    const { canvas, order } = recording({
+      shoot: () => {
+        throw new Error("tainted canvases may not be exported");
+      },
+    });
+    expect(() => captureCanvas(canvas, undefined, 640, suspend(order))).toThrow(
+      "tainted canvases",
+    );
+    expect(order).toEqual(["lift", "shot", "restore"]);
+  });
+});
