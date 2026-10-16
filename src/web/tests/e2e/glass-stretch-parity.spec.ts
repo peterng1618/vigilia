@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import { writeThemePackage } from "@vigilia/theme-package";
-import { assertBlur, readGlass } from "./glass-probe.js";
 import { GLASS_ENVELOPE, glassStripesPng } from "./glass-fixture.js";
+import { assertBlur, readGlass } from "./glass-probe.js";
 
 /**
  * The browser proof that a panel's **own scale** decides how far it diffuses,
@@ -48,8 +48,22 @@ interface Placement {
 }
 
 const PANELS = [
-  { id: "wide", left: 20, top: 300, scaleX: 4, scaleY: 1, band: { left: 60, width: 240 } },
-  { id: "tall", left: 510, top: 60, scaleX: 1, scaleY: 4, band: { left: 520, width: 100 } },
+  {
+    id: "wide",
+    left: 20,
+    top: 300,
+    scaleX: 4,
+    scaleY: 1,
+    band: { left: 60, width: 240 },
+  },
+  {
+    id: "tall",
+    left: 510,
+    top: 60,
+    scaleX: 1,
+    scaleY: 4,
+    band: { left: 520, width: 100 },
+  },
 ] as const satisfies readonly Placement[];
 
 function panelOf(placement: Placement): Record<string, unknown> {
