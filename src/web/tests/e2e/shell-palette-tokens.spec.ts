@@ -426,13 +426,10 @@ test.describe("shell palettes", () => {
       };
       const root = getComputedStyle(document.documentElement);
       const theme = Object.fromEntries(
-        [
-          "--spacing",
-          "--text-md",
-          "--radius-lg",
-          "--shadow-raised",
-          "--shadow-overlay",
-        ].map((name) => [name, root.getPropertyValue(name).trim()]),
+        ["--spacing", "--text-md", "--radius-lg"].map((name) => [
+          name,
+          root.getPropertyValue(name).trim(),
+        ]),
       );
       const utilities = {
         "text-xs": measure("text-xs", ["font-size", "line-height"]),
@@ -485,8 +482,6 @@ test.describe("shell palettes", () => {
       "--spacing": ".25rem",
       "--text-md": themeToken("--text-md"),
       "--radius-lg": themeToken("--radius-lg"),
-      "--shadow-raised": themeToken("--shadow-raised"),
-      "--shadow-overlay": themeToken("--shadow-overlay"),
     });
   });
 

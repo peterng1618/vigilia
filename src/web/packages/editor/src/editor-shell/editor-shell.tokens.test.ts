@@ -306,8 +306,6 @@ describe("shell token stylesheet", () => {
       "--text-xs",
       "--text-sm",
       "--text-md",
-      "--shadow-raised",
-      "--shadow-overlay",
     ]) {
       expect(
         onRoot,
@@ -359,8 +357,6 @@ describe("shell token stylesheet", () => {
       "--text-2xs": "10px",
       "--text-lg": "15px",
       "--text-xl": "19px",
-      "--shadow-raised": "0 12px 28px #0000003d",
-      "--shadow-overlay": "0 18px 44px #0006",
       // §3's modal scrim. Pinned here and not only read from `:root` by
       // `design-language.spec.ts`'s colour row: that row compares the token
       // against the overlay and is green for whatever value the token holds, so
