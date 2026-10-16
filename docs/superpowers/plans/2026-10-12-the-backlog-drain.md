@@ -3683,6 +3683,28 @@ check was made shape-aware anyway, because a bare entry's *matching* rule differ
 and a future bare entry with no root instance would red falsely and invite narrowing the list. **One row is
 filed from this task**: `vg-565`, the notes' own `Paths:` claims, which nothing reads.
 
+**Task 21.9's Steps 1 and 2 landed the same day at `6a9f3141`** — **the walk reports the presses it reached
+and the regions it saw**, where `tabUntil` read `nothing matched in 200 presses` and nothing else;
+`seenRegions` was already in scope at that line and discarded. **`walkthrough-shell.ts` was deliberately left
+alone** against this block's `Files:` line, because its hand-rolled loops all run *after* a `tabUntil` has
+landed focus in the target region. **The census reproduced with one mislabel**: rail 6 and 53, pane 5,
+inspector 34 and step 5's 1058 hold, while *"step 6 102"* is step 9's File-menu walk and step 6 measures 65.
+**And Step 3 cannot close as written** — see the correction on that step: the picker is 758 of step 5's 1058
+presses, so the best model leaves 301 and the walk stays red at a bound of 200. **`vg-551` stays open on the
+user's review of `2026-10-17-font-picker-keyboard-design.md`**, whose §5.1 asks for the bound ruling.
+
+**Task 21.8 landed the same day at `b7b5c29d` with decision note `0067`**, closing `vg-550` — **the
+kind-fires checks run against a fixture tree the tool owns and both real-tree walks stay**, which is the
+split the row asked for rather than the replacement its Step 3 refuses. **The fixture is analysed by running
+the sweep again over a temp root** (`--root <tmp> --json`), so the child is the same program and there is
+nothing to drift from — that is the honesty question `0058` left open. **The row's `NOT ESTABLISHED` is now
+measured**: the child costs **66–73 ms** against the real tree's **406–433 ms**, so `--self-test` is
+**458–538 ms** and the second walk is **~16%**. **Five checks moved, not the four this block names**, and
+**the real-tree candidate report is byte-identical to the base** — verified by the controller with a
+`git worktree` at `07dd4676`, which is also what proves a false positive the seat introduced and fixed is
+gone. **One row is filed from this task**: `vg-566`, the sweep's own report naming itself as a
+file with an unresolved import.
+
 **Why a phase of its own.** All six edit `scripts/` or a registry under `docs/evidence/`, and the three
 sweep rows (`vg-380`, `vg-382`, `vg-386`) are **one instrument read three ways** — its selector direction,
 its `redundant-export` tier and its `barrel-only-export` tier. Phase 15 homed instrument gaps a
@@ -4137,6 +4159,12 @@ repo's own source, and this one did not exist rather than having gone silent.
       other would trade a fragile pin for a check that proves nothing.**
 - [ ] **Step 4: The other three file-pinning checks move with it** — `settings-field.ts`, `card-library.ts`
       and `boot-theme.ts`, the last of which is the first instance of this shape (Phase 5's Acceptance).
+      **Corrected 2026-10-17 at Task 21.8's close: five checks moved, not four.** The four bindings were read
+      by five checks, because `card-library.ts` was pinned **both** by `at("redundant-export", …)` and by
+      `a redundant row reports uses, not occurrences`; both moved. **A sixth live-path pin was deliberately
+      left in place** — `a barrel's re-export is followed as a route` names `charts/settings-fields.ts`
+      inline, and it asserts a route mechanism rather than a kind firing, which neither `vg-550` nor this
+      step names.
 - [ ] **Step 5: Prove it red both ways** — a fixture's expected finding removed, and a real-tree invariant
       broken — then close.
 
