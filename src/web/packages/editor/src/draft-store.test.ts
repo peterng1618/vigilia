@@ -210,6 +210,46 @@ describe("the draft's autosave", () => {
     autosave.stop();
   });
 
+  it("holds a pending draft until the fallback document's own draft is written", () => {
+    vi.useFakeTimers();
+    const store = new DraftStore(memoryStorage());
+    /** The document the boot opened after the draft it could not render — a
+     *  different document, so which one the slot holds is readable. */
+    const FALLBACK: Draft = {
+      name: "Untitled",
+      savedAt: "2026-10-16T00:00:00.000Z",
+      content: { ...ENVELOPE, id: "untitled" },
+    };
+    let dirty = false;
+    const autosave = autosaveOver(store, () => ({
+      isDirty: () => dirty,
+      draft: () => FALLBACK,
+    }));
+    // The refused restore: the build could not open this draft, so the boot
+    // opened the document it would have, and the draft is still the slot's.
+    store.write(DRAFT);
+
+    // The fallback's own ticks leave it alone, because it never adopted the
+    // draft — the transition rule `vg-040`'s R2 put on the clear.
+    vi.advanceTimersByTime(30_000);
+    expect(store.read(), "untouched while the fallback is clean").toEqual(
+      DRAFT,
+    );
+
+    // **The first edit is what supersedes it**, and this is the moment the
+    // boot's report named: one slot, so the document the author is working in
+    // takes it and the draft the build cannot render is gone (`vg-512`).
+    dirty = true;
+    vi.advanceTimersByTime(30_000);
+    expect(store.read(), "the fallback document's own draft").toEqual(FALLBACK);
+    expect(
+      store.read(),
+      "and not the one that could not be opened",
+    ).not.toEqual(DRAFT);
+
+    autosave.stop();
+  });
+
   it("writes on the way out, and resumes when the page comes back", () => {
     vi.useFakeTimers();
     const store = new DraftStore(memoryStorage());
