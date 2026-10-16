@@ -185,6 +185,10 @@ it("gives every kind a mark no other kind wears", () => {
     { kind: "group" },
     { kind: "shape", shape: undefined },
     ...SHAPE_KINDS.map((shape) => ({ kind: "shape", shape }) as const),
+    // The unnamed family, in the set rather than after it: `vg-489` was this
+    // mark colliding with `bar`'s, and a pair compared outside the loop could
+    // still collide with a third mark the loop never saw.
+    { kind: "chart", family: undefined },
     ...CHART_FAMILIES.map((family) => ({ kind: "chart", family }) as const),
   ];
   const drawn = marks.map((mark) => ({
@@ -192,8 +196,9 @@ it("gives every kind a mark no other kind wears", () => {
     glyph: armGlyph(mark) ?? "",
   }));
   // A loop over a short list would pass for the wrong reason: the count is one
-  // mark per primitive, one per family, and the four kinds that wear one mark.
-  expect(drawn).toHaveLength(SHAPE_KINDS.length + CHART_FAMILIES.length + 4);
+  // mark per primitive, one per family, the unnamed chart and the four kinds
+  // that wear one mark.
+  expect(drawn).toHaveLength(SHAPE_KINDS.length + CHART_FAMILIES.length + 5);
   for (const { name, glyph } of drawn) {
     expect(glyph, `the ${name} mark drew no glyph`).not.toBe("");
   }
@@ -208,14 +213,18 @@ it("gives every kind a mark no other kind wears", () => {
     }
   }
 
-  // The one sharing this set leaves out, stated rather than hidden: a chart
-  // whose family this build cannot name wears `bar`'s mark, because
-  // `chartFamilyGlyph`'s fallback *is* `CHART_BAR_GLYPH` — no glyph exists for a
-  // family no build can name. **Nothing else on the row corrects it**: the role
-  // abstains and reads the kind word ("Chart", `ui-copy.ts`), so the row claims
-  // `bar` through the mark alone. That is a defect and not a licence — filed as
-  // `vg-489` — and this assertion is the one a fix flips.
+  // `vg-489` was here, asserted as a collision: a chart whose family this build
+  // cannot name wore `bar`'s mark, because `chartFamilyGlyph`'s fallback *was*
+  // `CHART_BAR_GLYPH` — and `KIND_GLYPHS.chart` was the same constant, so the
+  // kind's generic mark and the unknown family's mark were one glyph. Nothing
+  // else on the row corrected it: the role abstains and reads the kind word
+  // ("Chart", `ui-copy.ts`), so the row claimed `bar` through the mark alone.
+  // The unnamed chart now wears the *kind's* generic mark, which is what the
+  // shape arm above already does for a shape kind it cannot name.
   expect(armGlyph({ kind: "chart", family: undefined })).toBe(
+    lucideClass(KIND_GLYPHS.chart),
+  );
+  expect(armGlyph({ kind: "chart", family: undefined })).not.toBe(
     armGlyph({ kind: "chart", family: "bar" }),
   );
 });

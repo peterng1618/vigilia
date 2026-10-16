@@ -26,7 +26,6 @@ const CHART_ICONS: Readonly<Record<string, LucideIcon>> = {
   bar: CHART_BAR_GLYPH,
   pie: CHART_PIE_GLYPH,
 };
-const CHART_FALLBACK: LucideIcon = CHART_BAR_GLYPH;
 
 /**
  * The glyph a chart family wears, wherever one is drawn.
@@ -34,13 +33,19 @@ const CHART_FALLBACK: LucideIcon = CHART_BAR_GLYPH;
  * One owner, because two surfaces draw these four: the layer row's mark and the
  * Add pane's tile. A family that wore a gauge in the row and a column on the
  * tile would be two answers to one question, and the author would have to learn
- * both. A family this build does not know draws the fallback, so a mark still
- * says what it is rather than what it is not.
+ * both.
+ *
+ * **A family this build does not know wears the kind's generic mark, not bar's**
+ * (`vg-489`). The fallback used to be `CHART_BAR_GLYPH`, which named a family the
+ * document never named — and because `KIND_GLYPHS.chart` was the same constant,
+ * the generic kind mark and the unknown-family mark were one glyph. This is the
+ * rule the shape arm below already follows: an unnamed kind gets the kind's own
+ * mark, which is honest about being unable to name it.
  */
 export function chartFamilyGlyph(family: string | undefined): LucideIcon {
   return family === undefined
-    ? CHART_FALLBACK
-    : (CHART_ICONS[family] ?? CHART_FALLBACK);
+    ? KIND_GLYPHS.chart
+    : (CHART_ICONS[family] ?? KIND_GLYPHS.chart);
 }
 
 /**

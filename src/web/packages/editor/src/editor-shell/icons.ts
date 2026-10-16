@@ -2,6 +2,7 @@ import {
   Activity,
   ChartColumn,
   ChartLine,
+  ChartNoAxesCombined,
   ChartPie,
   Check,
   ChevronDown,
@@ -224,11 +225,20 @@ export const RAIL_GLYPHS: Readonly<Record<RailSlot, LucideIcon>> = {
  * kind the build does not know); and `chart` answers a different question — the
  * *family* — through `chartFamilyGlyph`, so `chart` here is the kind's generic
  * mark rather than the one four chart rows wear.
+ *
+ * **`chart` is `ChartNoAxesCombined`, and it used to be `CHART_BAR_GLYPH`**
+ * (`vg-489`). A chart whose family this build cannot name falls back here, and
+ * while this entry *was* bar's glyph the fallback claimed a family the document
+ * never named — `chartMark` reports an unrecognised family as `undefined`
+ * precisely so the row cannot do that, and the role abstains to the word
+ * "Chart", so the mark was the only thing on the row claiming `bar`. The
+ * generic mark is now the one lucide glyph that draws several families at once
+ * and no axes, so it names no single family — the chart arm's `Shapes`.
  */
 export const KIND_GLYPHS = {
   text: Type,
   shape: Shapes,
-  chart: CHART_BAR_GLYPH,
+  chart: ChartNoAxesCombined,
   group: STACK_GLYPH,
   image: ImageIcon,
 } satisfies Readonly<Record<LayerKind, LucideIcon>>;
