@@ -9,6 +9,12 @@ that delta, which is the only thing that changed in this document's numbers. The
 other half — which stylesheet selectors the product still reaches — is
 [`dead-selectors.md`](dead-selectors.md), taken at `a7ef0c3a`.
 
+**§3.4 was corrected 2026-10-17** (Task 21.6 of the backlog-drain plan, row
+`vg-386`, decision note `0064`): the `barrel-only-export` tier was unreachable at
+the trees above and now fires. The re-measurement below is at `89c9a035`. §1's
+tables are still the `f7900f5c` run and their numbers are that run's; §3.4
+carries the corrected measurement and the adjudication of the rows it adds.
+
 **These are candidates, not verdicts, and this document modifies nothing** — no
 file was deleted, and no row here has been re-established as dead. The scanner's
 own header names the reason (`scripts/dead-code-sweep.mjs:14-22`): the
@@ -64,9 +70,9 @@ root `scripts/` (10).
 | `no-importer-file` | **0** | A module nothing imports, entry points and runner globs set aside |
 | `dead-export` | **8** | A symbol nothing imports *and* whose own file never uses — a declaration to delete |
 | `redundant-export` | **83** | A symbol nothing imports but whose own file *does* use — one keyword to delete, **never the symbol** |
-| `barrel-only-export` | **0** | An export reached only through its own package barrel and taken from there by nobody — **this zero is a detector limit, not a count**: the tier cannot fire at all, see §3.4 and `vg-386` |
+| `barrel-only-export` | **0** | An export reached only through its own package barrel and taken from there by nobody. **At `f7900f5c` this zero was a detector limit, not a count** — the tier could not fire, see §3.4; corrected 2026-10-17, it reports **132** at `89c9a035` |
 | `unreachable-branch` | **9** | A closed union's member whose literal appears nowhere else — **7 distinct literals**, since `"image-cover"` and `"scale-montage"` are each declared in two files |
-| **Total** | **107** | A floor rather than a measurement: the tier above cannot fire, and a corrected detector reports 133 more (§3.4) |
+| **Total** | **107** | A floor rather than a measurement: the tier above could not fire at `f7900f5c`. The corrected detector reports **253** candidates at `89c9a035`, **132** of them this tier (§3.4) |
 
 ### 1.2 By package
 
@@ -98,7 +104,7 @@ By kind:
 | `no-importer-file` | 1 | 0 | −1 |
 | `dead-export` | 14 | 8 | −6 |
 | `redundant-export` | 280 | 83 | −197 |
-| `barrel-only-export` | 0 | 0 | 0 — both zeros are the unreachable tier of §3.4, not a measurement that nothing changed |
+| `barrel-only-export` | 0 | 0 | 0 — both zeros are the tier that could not fire at `aa9d7b96` and `f7900f5c`, not a measurement that nothing changed (§3.4) |
 | `unreachable-branch` | 10 (8 distinct literals) | 9 (7 distinct) | −1 |
 
 By package:
@@ -137,10 +143,11 @@ Two things did **not** move, and their staying still is part of the picture.
 `test-only-consumer` is unchanged at 7: the removal tasks kept every one of them
 deliberately — five are shared test helpers under `src/` whose basenames miss
 both runners' globs, and `font-picker/font-picker.tsx` is the decision case the
-register already holds twice (`vg-268`, `vg-283`). `barrel-only-export` is **0 because the tier cannot fire at all**, and that is a
-detector incapability rather than a measurement that this tree has none. §3.4
-gives the mechanism, the 133 rows a corrected filter reports, and why the zero
-may not be read either way; `vg-386` owns it.
+register already holds twice (`vg-268`, `vg-283`). `barrel-only-export` was **0 because the tier could not fire at all** at this tree, and that was a
+detector incapability rather than a measurement that this tree had none. §3.4
+gives the mechanism, the correction landed 2026-10-17, and the 132 rows the
+corrected filter reports at `89c9a035` — where the total is 253, not 107 plus
+132, because the tree moved as well.
 
 **Verdicts are not in this table.** A surviving row is not a claim that the
 symbol is dead; several of §2.1's rows are deliberate keeps or decisions whose
@@ -407,51 +414,96 @@ string of emitted source text is read as this file's own import. It resolved to
 nothing here; a specifier that did resolve would put a phantom importer on its
 target.
 
-### 3.4 `barrel-only-export` — the tier cannot fire, so its zero is not a count
+### 3.4 `barrel-only-export` — the tier that could not fire, and what it reports now
 
-The most important limit in this document, because it is the one that made a
-number look like a measurement. `scripts/dead-code-sweep.mjs:705` is
-`if (prodConsumers.length > 0) continue;`, and it runs **before** the
-`barrel-only-export` branch at `:708`. A file's own package barrel reaches it by
-a re-export edge the scanner does follow, and the barrel is not a test file — so
-`prodConsumers` is non-empty for exactly the shape `:708` exists to report, and
-its condition can only ever be evaluated when it is already false. **The tier
-cannot fire for any input.** That is structural, not a property of this tree: an
-unexercised kind might fire tomorrow, this one cannot fire at all.
+**The defect, and it was structural rather than a property of this tree.** At
+`f7900f5c` the gate `if (prodConsumers.length > 0) continue;` ran **before** the
+`barrel-only-export` branch, and a file's own package barrel reaches it by a
+re-export edge the scanner follows and is not a test file — so `prodConsumers`
+was non-empty for exactly the shape the branch exists to report, and the branch's
+condition could only ever be evaluated when it was already false. **The tier
+could not fire for any input**, and the `0` in §1.1 and §1.3 was that
+incapability rather than a count of nothing.
 
-**A corrected detector changes the picture, and the correction is one filter.**
-Excluding the file's own barrel from `prodConsumers`, then running over the same
-tree at `93fa9a5a`, reports **240 candidates** — `barrel-only-export` **133**,
-with the other four kinds at exactly their counts above (8, 83, 7 and 9). The 133
-are therefore pure additions and none of the 107 reclassifies. By package:
-editor 1, fake-source 2, host 21, renderer-core 91, scene-fabric 18.
+**Corrected 2026-10-17; re-measured at `89c9a035`** (Task 21.6 of the
+backlog-drain plan, row `vg-386`, decision note `0064`). The ruling fixed the
+definition first: the tier means **no production consumer other than the barrel,
+with test consumers disclosed in the row**. The correction is one filter — the
+gate excludes the file's own barrel and nothing else:
 
-**Two defensible definitions, which is why this is filed rather than corrected
-here.** The plan's literal wording — the only importer is the barrel, tests
-included — yields **76**, the rows whose evidence names no test importer. The
-code's own intent at `:708` — no *production* consumer other than the barrel,
-test consumers disclosed in the row — yields all **133**. Both were measured: 76
-rows have an empty test-importer list and 57 name test importers. Deciding which
-the tier means is a decision, and a corrected detector emits 133 unverified
-candidates whose adjudication is a sweep of its own.
+```js
+const prodConsumers = consumers.filter((file_) => !isTestFile(file_) && file_ !== barrel);
+```
 
-**Reproducing this section, because its numbers come from a filter and not from
-the command in §4.** Copy `scripts/dead-code-sweep.mjs` to a directory *outside*
-the repo, set its `ROOT` constant to the absolute repo path, and change the one
-filter that decides `prodConsumers` so the file's own barrel is excluded from it
-(`!isTestFile(file_) && file_ !== barrel`), then run it with `--json`. The
-unmodified scanner reports the 107 of §1.1; the corrected one reports 240, and
-the difference is this tier. **The `ROOT` pin is not optional**: the script
-resolves its own root from its file URL, so an unpinned copy scans its own
-parent directory and reports zero candidates without failing.
+**Re-measured at HEAD, and the count is a measurement with its command:**
 
-**Nothing here is a verdict and nothing may be deleted on this section alone.**
-renderer-core's 91 (49 strict, 42 test-consumed) is consistent with a private
-library barrel wider than its consumers, but no row was adjudicated, and the
-string-resolved vocabulary this repo resolves at runtime is invisible to the
-graph (§3). The removals the sweep made are unaffected: none of them was reported
-by this tier, so they stand. What does not stand is the picture — **§1's total is
-a floor, not a measurement of what remains**, and `vg-386` records the defect.
+```
+node scripts/dead-code-sweep.mjs --json <scratch>/candidates.json
+```
+
+| | at `89c9a035` |
+|---|---|
+| Total candidates | 121 → **253** |
+| `test-only-consumer` / `dead-export` / `redundant-export` / `unreachable-branch` | **11 / 6 / 99 / 5 — identical before and after** |
+| `barrel-only-export` | 0 → **132** |
+| Rows added outside the tier, rows removed | **0 and 0** |
+
+So the 132 are **pure additions at HEAD** and no existing row reclassifies —
+which is the difference between a fix that adds a tier and one that reshuffles
+the report. The row's own measurement was 133 at `93fa9a5a`; at HEAD it is 132,
+because the tree moved. By package: editor 1, fake-source 2, host 21,
+renderer-core 90, scene-fabric 18.
+
+**The 132, adjudicated.** Grouped by package barrel, because that is what the
+rows have in common: every one is a name its package's `src/index.ts` re-exports
+by name and no production file imports, directly or through that barrel. Two
+whole-tree checks were run over every production `.ts`/`.tsx`/`.mjs` (packages,
+`tests/`, `scripts/`), outside each row's declaring file and its barrel:
+
+- A word-boundary search for the name found **8 collisions, all dismissed on
+  inspection**: `ArtboardSize` and `Point` (each package declares its own, of the
+  same name), `Interpolation` (a `label:` string), `PieTotal` and
+  `MEASUREMENT_SYSTEMS` (comments), and `bottom` / `right` / `countable` (common
+  words, plus the sweep's own `barrelRoutes` fixture).
+- A search for the name as a quoted string and as a kebab-case token found
+  **none** of the string-resolved shapes: no row's name is a `data-vigilia-*`
+  attribute, a `--vigilia-*`/`--shell-*` custom property, a `KIND_*` registry
+  constant, a Fabric JSON key, or a class composed by template literal.
+
+Then each row was asked two questions — does its own declaring file read the
+name, and does any test take it from the barrel:
+
+| Group | Rows | What it is |
+|---|---|---|
+| Live in its own file, a test takes it | 85 | The symbol is live in production — its own module reads it — so only the barrel re-export and the `export` keyword are redundant for external consumers |
+| Live in its own file, nothing takes it | 26 | The same, with no test either: still live, and only the barrel re-export is unused |
+| Declared and never read, a test takes it | 20 | The symbol's only readers are tests — the `test-only-consumer` shape at symbol granularity, which the file-level tier cannot report because the barrel reaches the file in production |
+| Declared and never read, no consumer at all | 1 | `src/web/packages/host/src/server.ts`'s `HostingPeer`, a type alias with no reader anywhere in the tree |
+
+**The exceptions, named.** The 20 declaration-only, test-consumed rows are
+`fake-source/src/demo.ts`'s `createDemoSource` and 19 in `renderer-core`:
+`artboard.ts`'s `documentToViewport`, `isFullyVisible`, `toCssTransform` and
+`viewportToDocument`; `charts/settings-fields.ts`'s `settingsKeyFor`;
+`data/semantic-keys.ts`'s `isKnownSemanticKey`, `labelForSemanticKey` and
+`semanticKeysByFamily`; `scene/fonts.ts`'s `isGenericFamily`, `parseFontStack`
+and `unavailableFontFamilies`; `theme/assets.ts`'s `noAssets`;
+`theme/capabilities.ts`'s `allowsStyleProperty`, `anyHasCapability`,
+`isDerivedCapability`, `isKnownStyleProperty`, `stylePropertiesFor` and
+`transformPropertiesFor`; and `theme/document.ts`'s `isSemanticVersion`. The
+single no-consumer row is `HostingPeer`, above.
+
+**What this adjudication cannot see is §3's limit, unchanged.** The graph is
+text: a name reached by a shape the scanner does not read is invisible here, and
+the two checks above are searches for the shapes it does miss, not a proof of
+death. `renderer-core`'s 90 — every one taken by a test, 19 of them declared and
+read by nothing else — is consistent with a private library barrel wider than its
+consumers, and **no row here is a verdict**: a candidate is not a deletion, and
+this document modifies nothing.
+
+**The removals the sweep made are unaffected**, because none of them was reported
+by this tier. What changed is the picture: §1's 107 is a floor for the
+`f7900f5c` run, and the corrected detector's 253 at `89c9a035` is a count of
+candidates rather than of dead code.
 
 ## 4. Reproducing
 
@@ -460,8 +512,13 @@ From the repository root, on a clean tree:
 ```
 git rev-parse HEAD          # f7900f5c for the numbers above
 node scripts/dead-code-sweep.mjs --json <scratch>/candidates.json
-node scripts/dead-code-sweep.mjs --self-test   # separate invocation; expect 22/22
+node scripts/dead-code-sweep.mjs --self-test   # separate invocation; 22/22 at f7900f5c
 ```
+
+**§3.4's 132 needs no filter any more** — the `barrel-only-export` tier fires on
+the unmodified script since 2026-10-17, so the command above is what reports it.
+The `ROOT`-pinned copy that section used to describe was the recipe for a
+detector that could not fire, and is no longer part of reproducing anything.
 
 Then, for a run at a new HEAD: `scanned`, `countsByKind`, `countsByPackage`,
 `unreachableBranchDistinctLiterals` and `unresolvedRelativeSpecifiers` are the

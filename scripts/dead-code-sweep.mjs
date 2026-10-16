@@ -40,8 +40,10 @@
  *                            rather than one. Reporting them together as "unused
  *                            exports" invites a phase that deletes a symbol that
  *                            is in use, or claims a reduction that never lands.
- *   - `barrel-only-export` — an export whose only importer is its own package's
- *                            `index.ts`, and which no one then takes from it.
+ *   - `barrel-only-export` — an export whose only *production* importer is its
+ *                            own package's `index.ts`, and which no production
+ *                            file then takes from it. A test importer is
+ *                            disclosed in the row and does not hide the export.
  *   - `unreachable-branch` — a member of a closed string-literal union whose
  *                            literal appears nowhere else in production code.
  *                            Literal-text only: a discriminant composed at
@@ -749,16 +751,19 @@ for (const file of all) {
       }
     }
     const consumers = [...new Set([...direct.map((e) => e.from), ...through])];
-    const prodConsumers = consumers.filter((file_) => !isTestFile(file_));
+    // The file's own barrel is the one production consumer this tier looks
+    // past — a barrel is a door a name is reached through, not a consumer — and
+    // counting it skipped every input the tier exists to report (`0064`).
+    const prodConsumers = consumers.filter((file_) => !isTestFile(file_) && file_ !== barrel);
     if (prodConsumers.length > 0) continue;
 
     const testConsumers = consumers.filter(isTestFile);
-    if (prodConsumers.length === 0 && consumers.includes(barrel)) {
+    if (consumers.includes(barrel)) {
       candidates.push({
         kind: "barrel-only-export",
         file,
         symbol: name,
-        evidence: `imported only by its own package barrel ${barrel}, and no file takes "${name}" from that barrel. Search: importer graph (${IMPORTERS}) plus named-import tracking through re-export chains. Test importers: ${list(testConsumers)}.`,
+        evidence: `imported only by its own package barrel ${barrel}, and no production file takes "${name}" from that barrel. Search: importer graph (${IMPORTERS}) plus named-import tracking through re-export chains. Test importers: ${list(testConsumers)}.`,
       });
       continue;
     }
@@ -950,11 +955,11 @@ if (!SELF_TEST) process.stdout.write(renderReport(report));
  * in this environment, so a count read from the terminal is not evidence. That
  * file has its own fixed path and is never the `--json` path.
  *
- * What these checks do NOT establish: the branch that emits a `barrel-only-export`
- * candidate **cannot fire at all** — the production-consumer gate above it skips
- * every input that branch would report (see `vg-386`) — so no check here can
- * exercise it, and the barrel check below proves a route is *followed*, not that
- * the kind can fire.
+ * What these checks establish, and the two halves are separate: the
+ * `barrel-only-export` tier is reachable and fires on this tree (the gate
+ * excludes the file's own barrel, `0064`), and a barrel's re-export is followed
+ * as a route — so an export consumed through its own package barrel is not
+ * reported as unused. The route case proves the following, not the firing.
  */
 if (SELF_TEST) {
   const at = (kind, file, symbol) =>
@@ -1114,15 +1119,25 @@ if (SELF_TEST) {
      * is *followed* as a route — so an export consumed through its own package
      * barrel is not reported as unused — for the real case of `settingsFieldsFor`
      * through `renderer-core/src/index.ts`. It does NOT exercise the branch that
-     * emits a `barrel-only-export` candidate, and it cannot: that branch is
-     * unreachable by construction, because the production-consumer gate runs
-     * before it and its own barrel counts as a production consumer (`vg-386`).
+     * emits a `barrel-only-export` candidate; that branch has its own check, and
+     * this one would still pass with the tier switched off (`0064`).
      */
     [
       "a barrel's re-export is followed as a route (an import is not)",
       barrelRoutes("src/web/packages/renderer-core/src/charts/settings-fields.ts")
         .get("src/web/packages/renderer-core/src/index.ts")
         ?.has("settingsFieldsFor") === true,
+    ],
+    /**
+     * The tier's reachability, asserted directly rather than through a pinned
+     * file: before `0064` this was zero and could never be anything else, and the
+     * only way to reach zero again is to count the file's own barrel as a
+     * production consumer. A count rather than a file, so Task 21.8 can move the
+     * kind-fires checks to a fixture tree without this one going stale.
+     */
+    [
+      "barrel-only-export fires (the production-consumer gate looks past the file's own barrel)",
+      report.countsByKind["barrel-only-export"] > 0,
     ],
     [
       "every kind is reported, including the ones that found nothing",
