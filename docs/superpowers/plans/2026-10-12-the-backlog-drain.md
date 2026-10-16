@@ -4270,6 +4270,24 @@ owes is therefore narrower than the eighth implied: **the four rows Phase 17 own
 and the twelve it merely names need the carry rule to stop counting a disclaimer — which is a plan edit,
 not a phase's work.
 
+**The eleventh correction to the method, measured 2026-10-16 at `d0d23c57`, and it is that the rows named
+nowhere are no longer exactly the parked set.** Re-derived with the carry rule cut at this section's own
+heading: **132 open / 41 named by no task block at all / 52 named only by phases that have closed / 39 with
+a live home — so 93 homeless, of which 35 are parked, leaving 58 to home.** The parked split is the fifth
+correction's rule, and it is now the difference between a 93-row job and a 58-row one. **The claim at the
+end of the fifth correction — *"The 33 rows named nowhere are exactly the parked set"* — no longer holds**:
+34 of the 41 are parked and **seven are not** — `vg-409`, `vg-417`, `vg-418`, `vg-438`, `vg-538`, `vg-544`
+and `vg-546` — each filed or raised by a task that then closed without re-homing it, which is the eighth
+correction's rule failing in the one place it was not applied. **None of the seven fits a task that already
+exists**, so homing them is an authoring pass rather than an edit of a list. **Two extraction traps are
+recorded with the numbers**: the cut is this section's **heading**, and the phrase also appears in prose
+above it, so a first-occurrence `indexOf` truncates the plan and finds no phase headings at all; and a task
+block's phase is **its own major number**, not the nearest preceding `# Phase N` heading, because there is
+no `# Phase 11` and its three tasks sit physically under Phase 10's. **What this correction does not
+claim**: its phase-closure set is hard-coded from `STATUS.md`'s phase states rather than derived from the
+ledger, so it is a weaker derivation than the ninth correction's repaired extractor and is declared rather
+than presented as proved.
+
 # Parked rows — held, not a phase
 
 **`vg-330` was parked by the user on 2026-10-11 and UNPARKED by the user on 2026-10-14**, and this
