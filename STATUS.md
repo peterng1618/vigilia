@@ -37,11 +37,11 @@ ledger did.
 
 ## Last completed change
 
-- **`vg-503` and `vg-519` close and the register is 145 open** — Task 17.4's steps 4–6, at `be7cad93` and `31f6865d`, with the four affected e2e files re-run by the controller at **130 passed, exit 0** (6.8 min).
-- **`vg-519`'s own premise was corrected by that re-run: the red is one case, not two** — with the dismiss removed, `inspector-sections.spec.ts`'s case is red deterministically (exit 1, the draft dialog in the snapshot), while `editor.spec.ts`'s Ctrl-resizes case passes alone and in its file and the leftover prompt breaks a *later* case instead, twice identically.
-- **`vg-503`'s fix is a latent-hazard removal and claims no red proof** — both helpers round the candidate before probing it, so the point a case tests is the point the browser clicks; the 0.02 grid lands on no fractional point whose rounding is not also empty, and the seat's red was a temporary case, which is said rather than implied.
-- **The drain's census was wrong in two ways, landed as the plan's ninth and tenth corrections** — the eighth correction's `suspend` pre-pass ate Phase 16's close so `vg-490` and `vg-539` counted as homed (75 homeless, not 73); and the carry rule counts a row a task block names only to *disclaim* it, so Phase 17 owns **four** of the sixteen open rows it names.
-- **Phase 17's close owes four rows, and its checklist is written into the ledger** — the five browser red proofs (`vg-505`, `vg-516`, `vg-515`, `vg-527`, `vg-511`) are re-run before it, then Task 17.5 (`vg-509`, `vg-440`) whose brief is written and held.
+- **`vg-509` and `vg-440` close and the register is 143 open** — Task 17.5 at `ffabe6ff`, the last two rows Phase 17 owned; `npm run gate` exit 0 (262 files, 3463 tests) and the design-language suites re-run by the controller at **27 passed, exit 0**.
+- **`vg-440`'s re-shoot clause was measured rather than assumed** — the frames beside the drawings are *product* captures, not renders of them (`settings-capture-graphite.png` is 408x304 where the drawn modal is 560px wide), so correcting a drawing's own rhythm stales nothing; nothing was re-shot and `vg-402` is untouched.
+- **Re-derived independently without a browser and it holds** — of the drawings' elements that declare a size, 245 declare one and **0** state no `line-height`, **0** state a ratio off §2's companion, and all six page-furniture blocks are ratio-free; the product's own `--text-*--line-height` tokens are the same table.
+- **`vg-509` has no red proof and the reason is narrower than the brief guessed** — the drawings gate holds a size to §2's six and 12px and 10px are *both* on it, and `mockup-parity.ts` has no row addressing that heading, so nothing compares it with the product either. Not filed as a row: the parity instrument samples the drawings rather than pinning every element.
+- **One thing the correction overrode is recorded rather than left to be rediscovered** — 25 eyebrows drawn `/1`, a 1.5 reading rhythm, a 13px/1.2 section title and a 13px/1 brand mark carried deliberate per-element ratios and now state §2's companion; the row asks for exactly that and §2 is normative, but no gate reads the property. `vg-326`'s clause reading the furniture as stating a ratio is falsified and corrected in place.
 
 ## Next
 
