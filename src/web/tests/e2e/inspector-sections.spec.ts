@@ -13,6 +13,7 @@ import {
   typeIntoControl,
 } from "./control-set.js";
 import {
+  answerDialogIfShown,
   captureVisualReview,
   chooseAssetFile,
   enterLayer,
@@ -1045,6 +1046,9 @@ test.describe("the per-kind inspector column", () => {
     // A group: its bounds and its children's effective appearance, never a
     // panel material — a card is not a rectangle.
     await page.goto(EDITOR);
+    // The inserts above dirtied the document, so this reload is offered its own
+    // draft back.
+    await answerDialogIfShown(page, "Discard");
     await page.waitForFunction(() => "vigiliaEditorBridge" in window);
     await page.locator('[data-vigilia-layer="group-cpu-card"]').click();
     await report("group");

@@ -4125,6 +4125,9 @@ test.describe("Fabric editor route", () => {
     // Compare same modifier against drag: both gestures must keep raw geometry
     // inside snap threshold rather than joining the neighbour's line.
     await page.goto(EDITOR);
+    // The resize above dirtied the document, so this reload is offered its own
+    // draft back.
+    await answerDialogIfShown(page, "Discard");
     await expect(
       page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
     ).toBeVisible();
