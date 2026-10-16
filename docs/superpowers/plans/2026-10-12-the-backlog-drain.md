@@ -2976,6 +2976,34 @@ owner rather than the case saying it.
 - [ ] **Step 2: Do not rename the asset host's labels** — changing product copy to suit a test is explicitly not the fix.
 - [ ] **Step 3: Close it**, with the spec churn in the same commit.
 
+**Annotated 2026-10-16, at the task's close: `vg-211` is `verified` at `014d38b3`.** **Step 1's "four
+locators" is a count and not a measurement, and the measured set is larger.** Measured at `5a16aad4`:
+**15 whole-pane control reaches**, of which **10 reach a shape** — `rebuild-driver.ts`'s `addButton`/`insert`
+(the row's own named hazard), `editor.spec.ts`'s `insertShape`, its shapes count, its `Line` count of 2 and its
+`Arc`/`Wedge`, plus **five the controller's brief did not list** (`host-player.spec.ts:491`,
+`inspector-sections.spec.ts:1183`, `reference-theme.spec.ts:425`, `:541`, `:700`) — and **12 shape call sites
+of the shared helper**. All ten moved to the hook and **no assertion changed anywhere**. **The hook is
+`data-vigilia-add-group="<kind>"` on each labelled group's `fieldset` (`add-pane.tsx:72`), and its owner is
+`InsertGroup.kind` (`new-object-panel.ts:99`)** — the merge already compared the heading, and since the
+heading is copy the merge now compares `kind` (`new-object-panel.ts:144-155`) with `groupOf` returning the
+heading alone. The pane's own alternative (reading `group.objects[0].kind`) was refused: it infers the group's
+identity from a member under a homogeneity invariant stated only in a comment. **Step 2's constraint held** —
+the asset host's labels are untouched. **No CSS was owed and that is confirmed rather than assumed**: no rule
+mentions the new attribute, and every rule on `data-vigilia-panel` is `="layers"` (`editor-shell.css:2054`,
+`:2100`, `:2107`, `:2113`). **The row's own pointers are all stale (read 2026-10-09)**: `rebuild-driver.ts:139`
+is `:150-153` and uses `getByRole`, not `hasText /^label$/`, `editor.spec.ts:31/789/838` have moved, and
+**`asset-manager/panel.ts:30-35` no longer exists** — the host is `panes/add/file-section.tsx:208`, `:215`,
+`:222`. **Red-proved and re-run by the controller**: `editor.spec.ts:1350` reads **1 passed exit 0**; deleting
+the hook reads **1 failed exit 1** at `expected 8, received 0` for
+`locator('[data-vigilia-add-group="shape"]').getByRole('button')` — the hook's own absence rather than a
+missing draw; restored byte-identically with `cmp`, rebuilt and re-run, **1 passed exit 0**. **The row's
+hazard is closed for shapes and left standing for everything else**, which the row says rather than implying a
+whole fix: the chart-family `insert(page, chart.family)` (`rebuild-driver.ts:462`), the Text row, the
+chart-group locators and the pane-visibility uses keep the whole-pane scope. **Not verified** by this task:
+`npm run gate` and the full browser suite, which are the controller's phase-boundary job. **One sentence of
+the task's own comment was corrected by the controller before landing**: `addButton`'s docblock said the group
+is omitted "only for the Text row", and the chart-family insert omits it as well.
+
 ### Task 19.5: The spec stops promising video
 
 **Files:**
@@ -3115,7 +3143,9 @@ corrected drawings, rebuilt.
 **Outcome:** the six ruled rows whose owner is a script or a registry are landed — the reuse gate's path
 claim becomes a file claim, the citation check declares its sources, the capture registry owns a freshness
 check, and the sweep's three tiers report what they claim — **and Task 21.7 adds a seventh, `vg-536`,
-which no ruling named: the 800-line stop gets an instrument.**
+which no ruling named: the 800-line stop gets an instrument.** **Task 21.8 adds an eighth, `vg-550`,
+added 2026-10-16 at Phase 19's close: the sweep's self-test stops pinning live source files, because
+two of the four it pins have already been invalidated by work the product wanted.**
 
 **Why a phase of its own.** All six edit `scripts/` or a registry under `docs/evidence/`, and the three
 sweep rows (`vg-380`, `vg-382`, `vg-386`) are **one instrument read three ways** — its selector direction,
@@ -3231,6 +3261,35 @@ silent about a class of defect, and this one did not exist at all.
 - [ ] **Step 2: The measure reports the over-stop set, not a row per file.** `vg-536` measured **47 tracked `src/web` files past the 800-line stop, 33 of them named by no register row** at `5ad08048`, and the finding is not the count: the one-row-per-file policy closed `vg-209`'s file while `layer-panel.dom.test.tsx` grew to 1968 unnamed and `vg-374`'s while `editor-session.dom.test.ts` reached 1707. **A filing per file per growth does not converge**; a reported set with a ceiling that falls does.
 - [ ] **Step 3: The cut is authored versus generated, not product versus test.** `vg-426`'s token ratchet excludes tests and fixtures because a test asserting a hex is a test *about* a literal — but this stop applies to test files too (`vg-415`, `vg-420`, `vg-394`, `vg-395` are all test files), so a measure that excluded them would not have seen four of its own rows. `font-trios.generated.ts` (28284) is the case the other cut exists for.
 - [ ] **Step 4: Give the ceiling a finish, and prove it red** by growing a file past it, then close.
+
+### Task 21.8: The sweep's self-test stops pinning live files
+
+**Added 2026-10-16 at Phase 19's close**, homing `vg-550`, which the controller filed there after running
+`npm run gate` and reading `gates:self-test` **21/22 passed**, `failed: ['test-only-consumer lands on
+font-picker.tsx']`. It belongs to this phase for Task 21.7's reason: it is a new instrument over the
+repo's own source, and this one did not exist rather than having gone silent.
+
+**Files:**
+- Modify: `scripts/dead-code-sweep.mjs` (the self-test block and its fixture tree)
+
+**Interfaces:**
+- Produces: `vg-550` closed
+
+- [ ] **Step 1: Land the decision note** claiming the paths this writes — `scripts/` is on the reuse gate's
+      own watchlist. **`0058` already carries the searches** (rungs 1–6, including the ecosystem one the
+      row turns on), so this is a note that supersedes or extends it rather than a fresh search.
+- [ ] **Step 2: A synthetic fixture tree owns the kind-fires checks**, so a case that proves
+      `test-only-consumer` fires names a file the *test* owns — which is what the field does (`repowise`'s
+      `tests/fixtures/ts_sample`, `pruneguard`'s per-fixture `expected.json`, `locrin`'s `fixture(...)`,
+      `astro-cli` planting a dead function and reading the gate fail).
+- [ ] **Step 3: The real tree keeps the invariants.** `no test file is ever a candidate`, `no package
+      barrel is a no-importer-file` and `no ambient .d.ts is a candidate` are claims about *this* tree and
+      are vacuous against a synthetic one, so both walks stay. **A self-test that replaced one with the
+      other would trade a fragile pin for a check that proves nothing.**
+- [ ] **Step 4: The other three file-pinning checks move with it** — `settings-field.ts`, `card-library.ts`
+      and `boot-theme.ts`, the last of which is the first instance of this shape (Phase 5's Acceptance).
+- [ ] **Step 5: Prove it red both ways** — a fixture's expected finding removed, and a real-tree invariant
+      broken — then close.
 
 ---
 
