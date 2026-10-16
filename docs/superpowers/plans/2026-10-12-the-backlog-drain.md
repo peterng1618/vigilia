@@ -3285,7 +3285,9 @@ claim becomes a file claim, the citation check declares its sources, the capture
 check, and the sweep's three tiers report what they claim — **and Task 21.7 adds a seventh, `vg-536`,
 which no ruling named: the 800-line stop gets an instrument.** **Task 21.8 adds an eighth, `vg-550`,
 added 2026-10-16 at Phase 19's close: the sweep's self-test stops pinning live source files, because
-two of the four it pins have already been invalidated by work the product wanted.**
+two of the four it pins have already been invalidated by work the product wanted.** **Task 21.9 adds a
+ninth, `vg-551`, added the same day: the shell walk's budget becomes a measurement rather than a round
+number, and the font picker's 758 tab stops are the reason it has to be.**
 
 **Why a phase of its own.** All six edit `scripts/` or a registry under `docs/evidence/`, and the three
 sweep rows (`vg-380`, `vg-382`, `vg-386`) are **one instrument read three ways** — its selector direction,
@@ -3430,6 +3432,43 @@ repo's own source, and this one did not exist rather than having gone silent.
       and `boot-theme.ts`, the last of which is the first instance of this shape (Phase 5's Acceptance).
 - [ ] **Step 5: Prove it red both ways** — a fixture's expected finding removed, and a real-tree invariant
       broken — then close.
+
+### Task 21.9: The walk's budget is a measurement, and the picker's tab order is why
+
+**Added 2026-10-16 at Phase 19's close**, homing `vg-551`, which the controller filed there after diagnosing
+the browser suite's fourth red. It belongs to this phase for Task 21.7's and Task 21.8's reason: it is an
+**instrument that reported wrongly** — the shell walk — and what it reported wrongly was a count nobody had
+measured.
+
+**Files:**
+- Modify: `src/web/tests/e2e/walkthrough-focus.ts` (`TAB_BOUND`, `tabUntil`)
+- Write: `docs/superpowers/specs/` (the picker's keyboard model, commissioned here)
+- Modify: `src/web/packages/editor/src/font-picker/font-picker.tsx` and its dom test
+
+**Interfaces:**
+- Produces: `vg-551` closed
+
+- [ ] **Step 1: The walk reports the count it reached.** `TAB_BOUND = 200` is a round number no measurement
+      derives, and when a walk exceeds it the failure reads `nothing matched in 200 presses`, which says
+      nothing about how far it got. Phase 19's close measured the real census — rail 6 and 53, step 2's pane
+      5, step 4's inspector 34, **step 5's pane 1058**, step 6 102 — so the bound is derived from the shell's
+      own stop count, and a walk that still does not match reports the presses it took and the regions it saw.
+      **`tabUntil` also refuses to continue past an element it has already marked**, so the count is a
+      one-sweep distance rather than a cycle, and the report says which.
+- [ ] **Step 2: The reason is the font picker's trio list, and its keyboard model is a decision rather than a
+      task.** `font-picker.tsx` renders `visibleTrios` in full — 379 trios, a favourite button and a row
+      button each, **758 tab stops** — while the face list directly above it windows to `WINDOW = 15`; the
+      picker carries no `role`, no `tabIndex` and no key handling at all. **Commission the spec**:
+      `docs/superpowers/specs/<date>-font-picker-keyboard-design.md`, naming the two candidate models (window
+      the trio list as the faces are windowed; or a roving tabindex / listbox model) with the keyboard
+      consequence of each, and **get it reviewed before implementing** — the answer changes the control's
+      keyboard contract, which is why `vg-551` was filed rather than fixed on the fly.
+- [ ] **Step 3: Land the chosen model and close `vg-551` against the measurement, not against a pass** — the
+      number that closes it is step 5's press count in the shell walk, before and after.
+
+**What this task does not do:** it does not widen `TAB_BOUND` to make the red go away. The row says in terms
+that the walk's fixed budget is the same finding's other face, and raising it would hide the defect rather
+than fix it.
 
 ---
 
