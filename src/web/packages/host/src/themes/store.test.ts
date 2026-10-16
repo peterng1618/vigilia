@@ -5,6 +5,10 @@ import path from "node:path";
 import type { FabricThemeEnvelope } from "@vigilia/renderer-core";
 import { writeThemePackage } from "@vigilia/theme-package";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+// The editor package cannot type-check `node:fs`, so this is the one suite where
+// the store's listing and the mount's pick are in the same program — and the
+// bare mount's answer is a composition of the two (`vg-363`).
+import { bootTheme } from "../../../editor/src/boot-theme.js";
 import {
   createThemeStore,
   isValidThemeId,
@@ -219,6 +223,49 @@ describe("ThemeStore", () => {
 
     // Reading it properly still refuses, so the list is not hiding a fault.
     expect(await store.read("theme-c")).toBeUndefined();
+  });
+
+  /**
+   * The bare mount's answer has to be reproducible, and a tie is ordinary here
+   * rather than exotic: the e2e fixtures seed the whole library in one pass and
+   * `updatedAt` is `stat.mtime` to the millisecond. The ruling ranks by recency
+   * with `id` ascending as the tie-break, so this pins the two halves together —
+   * the store's listing order and the mount's pick — rather than either alone.
+   */
+  it("opens the lower id when two themes share a modified time", async () => {
+    const store = createThemeStore(tmpDir);
+    // Saved higher-id-first, so a listing in write order would name `theme-b`:
+    // the id sort has to be doing the work here, not insertion order.
+    await store.write("theme-b", {
+      envelope: envelopeFor("theme-b", "Theme Beta"),
+      assets: {},
+    });
+    await store.write("theme-a", {
+      envelope: envelopeFor("theme-a", "Theme Alpha"),
+      assets: {},
+    });
+    // One instant, written after both saves so neither folder is the newer one.
+    const sameMillisecond = new Date("2026-10-12T01:16:55.827Z");
+    for (const id of ["theme-a", "theme-b"]) {
+      await fs.utimes(path.join(tmpDir, id), sameMillisecond, sameMillisecond);
+    }
+
+    const outcome = await bootTheme("", {
+      list: () => store.list(),
+      open: async (id) => {
+        const stored = await store.read(id);
+        if (stored === undefined) throw new Error(`no theme "${id}"`);
+        return stored;
+      },
+      save: async () => "base-after-save",
+    });
+
+    // The document the mount opened, not the argument it passed: which theme
+    // the author is handed is the claim.
+    if (outcome.kind !== "opened") {
+      throw new Error(`expected an opened theme, got "${outcome.kind}"`);
+    }
+    expect(outcome.content.envelope.id).toBe("theme-a");
   });
 
   it("ignores an archive left in the library, as ruled: there is no migration", async () => {
