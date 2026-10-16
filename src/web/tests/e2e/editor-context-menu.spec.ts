@@ -59,8 +59,12 @@ async function emptyCanvasPoint(page: Page): Promise<{ x: number; y: number }> {
     ).vigiliaEditorBridge.editor.canvas;
     for (let fy = 0.95; fy > 0.02; fy -= 0.02) {
       for (let fx = 0.9; fx > 0.02; fx -= 0.02) {
-        const x = rect.left + rect.width * fx;
-        const y = rect.top + rect.height * fy;
+        // Rounded *before* it is tested, and tested at the rounded point: the
+        // browser rounds a click's `clientX`/`clientY` to integers, so a
+        // fraction returned here is not the point the click lands on — and the
+        // miss can be onto an object, whose own menu opens at the same place.
+        const x = Math.round(rect.left + rect.width * fx);
+        const y = Math.round(rect.top + rect.height * fy);
         if (document.elementFromPoint(x, y) !== canvas) continue;
         if (
           editorCanvas.findTarget({ clientX: x, clientY: y }).target !==
@@ -140,9 +144,11 @@ async function emptyCanvasPointHigh(
       ).vigiliaEditorBridge.editor.canvas;
       for (let fy = 0.02; fy < topBand; fy += 0.02) {
         for (let fx = 0.02; fx < 0.95; fx += 0.02) {
-          const x = rect.left + rect.width * fx;
+          // Rounded before it is tested, for the reason `emptyCanvasPoint`
+          // gives above: the tested point has to be the clicked one.
+          const x = Math.round(rect.left + rect.width * fx);
           if (x < minimumX) continue;
-          const y = rect.top + rect.height * fy;
+          const y = Math.round(rect.top + rect.height * fy);
           if (document.elementFromPoint(x, y) !== canvas) continue;
           if (
             editorCanvas.findTarget({ clientX: x, clientY: y }).target !==
