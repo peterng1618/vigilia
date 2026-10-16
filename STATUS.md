@@ -37,11 +37,11 @@ ledger did.
 
 ## Last completed change
 
-- **Task 19.5 closed at `b2c4f1e7`, so the register is 135 open** — `vg-163` is `verified` and the spec's §5 primitives bullet stops naming video.
-- **The correction this task owed is stronger than its brief stated** — `docs/design/design-language.md` does not merely lack the sentence, it does not exist (deleted at `db000c40`), so the ruling's `grep -i video DESIGN.md` read a file that never held it.
-- **A second citation on the row was stale** — `isPlaceable` is `panes/add/file-section.tsx:266`; the row's `asset-manager/panel.ts:232-236` names a file that is not on disk.
-- **The fix follows the ruling's substance rather than its premise** — video is dropped from the sentence rather than the product gaining a video kind, which is `vg-154`'s question, and `DESIGN.md` carries neither word, which is why the sentence is in the spec.
-- **`npm run docs:check` exit 0, and no test or browser run is claimed** — the Acceptance names the browser suite for Tasks 19.1–19.4 only, and this task changed one sentence in a design document.
+- **Task 19.1 landed: `FontPicker` is mounted on the selection inspector's text face field**, the field `vg-268`'s 2026-10-12 ruling named as its owner — the two rows file one question, so the controller closes `vg-268` and `vg-283` together.
+- **The field is a fifth `ExtraView` member, not a `FieldView`**: it carries the preset the object is set in and nothing else, and the write goes to that preset through the Tokens pane's own `TypePresetFontActions` — a text object has no face of its own, a run names a preset and the preset carries the face, so no second face picker was written.
+- **The mount brought the favourites client the host was already serving** — `/api/font-favorites` had a store and no editor-side reader, so `favorites-client.ts` is the font-trio plan's own Task 7 artifact; without it the picker's star and its "Favourites only" box would have shipped dead.
+- **The copy census needed a carve-out this task's brief did not predict**: `spokenIn` reads every button, and a face row's text is a family and a weight, so the catalogue's two data rows are carved out exactly as `ui-copy-panels.test.ts` already carved them out of its own net.
+- **Evidence: `npx vitest run` 3479/3479 exit 0, `npm run typecheck` exit 0, and `npx playwright test tests/e2e/inspector-sections.spec.ts --project=desktop-chromium --workers=1` 22 passed exit 0 on a rebuilt bundle** — with the new case red at exit 1 when the mount is disabled; **unverified: the face a row applies is not exercised in the browser**, because applying one downloads it from a CDN the suite does not own, so the write is pinned in jsdom and in the session's own `applyPresetFace` case instead.
 
 ## Next
 

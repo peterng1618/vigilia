@@ -14,12 +14,14 @@ import type { FabricObject } from "fabric/es";
 import { type ArrangeAction, canArrange } from "../arrange.js";
 import type { ChartEdits } from "../chart-manager/chart-fields.js";
 import type { EditorInteraction } from "../editor-interaction.js";
+import type { FavoritesClient } from "../favorites-client.js";
 import {
   arrangeActions,
   type ObjectActionId,
   objectAction,
 } from "../object-actions.js";
 import { OBJECT_LOCK_CHANGED_EVENT } from "../object-lock-manager/index.js";
+import type { TypePresetFontActions } from "../type-preset-manager/panel.js";
 import { uiCopy } from "../ui-copy.js";
 import { writeMark } from "./bleed.js";
 import { createSelectionColumnRoot } from "./column.js";
@@ -53,6 +55,7 @@ import {
 import {
   type CropEdits,
   editRefusal,
+  type FontFaceEdits,
   isTextObject,
   type ProjectionPorts,
   projectSelection,
@@ -136,6 +139,24 @@ interface SelectionInspectorOptions {
    * revision guard has nothing to compare and is not the rule here.
    */
   readonly chartEdits?: () => ChartEdits | undefined;
+  /**
+   * The font catalogue's writes, from the owner that already performs them for
+   * the Tokens pane.
+   *
+   * The same two actions and no second implementation: a face is bound to a
+   * preset and a trio rewrites every preset that names a role, so the rule is
+   * the type-preset owner's and this asks for it. **Absent means no face field**
+   * — a catalogue browser whose every press did nothing would be worse than the
+   * field being absent, so the column is told the capability rather than handed
+   * a port that swallows it.
+   */
+  readonly fontActions?: TypePresetFontActions;
+  /**
+   * The author's favourite trios, which the host keeps rather than the document.
+   * Absent reads as none and stores none, which is the standalone editor's own
+   * answer rather than a failure.
+   */
+  readonly favoritesClient?: FavoritesClient;
 }
 
 /** The geometry keys the funnel writes directly; every other id is a shape's
@@ -658,6 +679,7 @@ export function createSelectionInspector(
       nodeBindings: options.nodeBindings,
       onNodeBindingsChange: options.onNodeBindingsChange,
       sampleSource: options.sampleSource,
+      canWriteFontFace: options.fontActions !== undefined,
       ...(chartFields === undefined ? {} : { chartFields }),
     };
   };
@@ -678,6 +700,30 @@ export function createSelectionInspector(
       onAddBinding: () => {},
       onRemoveBinding: () => {},
     };
+
+  /**
+   * The face field's port, built once so the field's own effects — the
+   * favourites read and the specimen cache — are not re-run by a fresh object
+   * on every publish.
+   *
+   * A missing action is a no-op rather than a refusal the author sees: the
+   * column only projects the field when `canWriteFontFace` says an owner is
+   * mounted, so the absent case is a column built without one and never a press
+   * that silently did nothing.
+   */
+  const fontEdits: FontFaceEdits = {
+    applyFace: async (presetId, face) => {
+      await options.fontActions?.applyFace(presetId, face);
+    },
+    applyTrio: async (trioId) => {
+      await options.fontActions?.applyTrio(trioId);
+    },
+    listFavorites: async () => (await options.favoritesClient?.list()) ?? [],
+    // With no store the list stays what the author has this session: the star
+    // still answers, and nothing claims to have been saved.
+    saveFavorites: async (ids) =>
+      (await options.favoritesClient?.save(ids)) ?? ids,
+  };
 
   /**
    * The arrange actions, in the registry's order, each with its own answer — and
@@ -746,7 +792,14 @@ export function createSelectionInspector(
       },
       runArrange,
     );
-    sectionColumn.publish(view, edits, runEdits, chartEdits(), cropEdits);
+    sectionColumn.publish(
+      view,
+      edits,
+      runEdits,
+      chartEdits(),
+      cropEdits,
+      fontEdits,
+    );
   };
 
   // Fabric reports a finished drag/resize/rotate as `object:modified`; the fields

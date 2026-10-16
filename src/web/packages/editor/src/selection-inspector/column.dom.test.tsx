@@ -9,6 +9,7 @@ import { SelectionColumn } from "./column.js";
 import { idleCrop, idleCropEdits } from "./idle-crop.test-stage.js";
 import { type ColumnContext, perKindColumn } from "./per-kind-column.js";
 import {
+  type FontFaceEdits,
   type ProjectionPorts,
   projectSelection,
   type RunEdits,
@@ -64,6 +65,14 @@ const chart: ChartEdits = {
 /** A crop port that records nothing: this file reads the chrome, not writes. */
 const crop = idleCropEdits();
 
+/** A face-field port that records nothing, for the same reason. */
+const font: FontFaceEdits = {
+  applyFace: async () => undefined,
+  applyTrio: async () => undefined,
+  listFavorites: async () => [],
+  saveFavorites: async (ids) => ids,
+};
+
 function ports(): ProjectionPorts {
   return {
     globals: undefined,
@@ -101,6 +110,9 @@ function context(): ColumnContext {
     nodeBindings: undefined,
     onNodeBindingsChange: undefined,
     sampleSource: undefined,
+    // An owner that can write a face, so a text object's column is the one the
+    // editor builds rather than one with the field withheld.
+    canWriteFontFace: true,
   };
 }
 
@@ -133,6 +145,7 @@ function renderedSections(view: SelectionView): HTMLElement[] {
         runs={runs}
         chart={chart}
         crop={crop}
+        font={font}
       />,
     );
   });
@@ -256,6 +269,7 @@ describe("SelectionColumn", () => {
           runs={runs}
           chart={chart}
           crop={crop}
+          font={font}
         />,
       );
     });
@@ -296,5 +310,53 @@ describe("SelectionColumn", () => {
     });
     expect(cancelPreview).toHaveBeenCalledTimes(1);
     expect(cancelPreview).toHaveBeenCalledWith(1, "opacity", 50);
+  });
+
+  /**
+   * `vg-268`/`vg-283`: the face picker the font catalogue plan shipped is
+   * mounted on the field the ruling named as its owner, and the face it picks is
+   * applied to the preset the object is set in — a text object has no face of
+   * its own, a run names a preset and the preset carries the face. This pins the
+   * mount and the write, which is the whole of what the two rows asked for.
+   */
+  it("offers the text object's face field and writes through to its preset", async () => {
+    // The field's own cache fetches the visible rows' specimens. This case is
+    // about the mount rather than the catalogue's bytes, so the network refuses
+    // — which is also the case `ensure` has to survive.
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(() => Promise.reject(new Error("offline"))),
+    );
+    const applyFace = vi.fn(async () => undefined);
+    const text = new IText("", { left: 0, top: 0 });
+    text.set({
+      vigiliaText: {
+        runs: [{ kind: "literal", text: "Hi", typePreset: "typePresets.body" }],
+      },
+    });
+
+    await act(async () => {
+      root.render(
+        <SelectionColumn
+          view={viewOf(text)}
+          edits={edits}
+          runs={runs}
+          chart={chart}
+          crop={crop}
+          font={{ ...font, applyFace }}
+        />,
+      );
+    });
+
+    const field = host.querySelector("[data-vigilia-font-face-field]");
+    expect(field).not.toBeNull();
+    const row = field?.querySelector<HTMLButtonElement>(
+      "[data-vigilia-font-face-row]",
+    );
+    expect(row).toBeTruthy();
+    await act(async () => row?.click());
+
+    expect(applyFace).toHaveBeenCalledWith("body", expect.anything());
+    vi.unstubAllGlobals();
   });
 });

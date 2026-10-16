@@ -17,6 +17,7 @@ import { ChartManager } from "./chart-manager/index.js";
 import { EditorDocument } from "./editor-document.js";
 import type { EditorActionFacade } from "./editor-shell/session-facade.js";
 import { type EditorShell } from "./editor-shell.js";
+import type { FavoritesClient } from "./favorites-client.js";
 import { type CuratedFontFace } from "./font-catalog.js";
 import { previewFontFace, releaseFontPreview } from "./font-preview.js";
 import {
@@ -48,6 +49,7 @@ import { createSnapManager, type SnapManager } from "./snap-manager/index.js";
 import type { ThemeLibraryClient } from "./theme-library-client.js";
 import {
   createTypePresetPanel,
+  type TypePresetFontActions,
   type TypePresetPanel,
   type TypePresets,
 } from "./type-preset-manager/index.js";
@@ -84,6 +86,10 @@ interface EditorSessionOptions {
   readonly thumbnail?: Uint8Array;
   readonly panelHosts: EditorPanelHosts;
   readonly libraryClient?: ThemeLibraryClient;
+  /** Where the author's favourite font trios live — the host's settings, not
+   *  the document. Absent reads as none, which is what a standalone editor
+   *  has. */
+  readonly favoritesClient?: FavoritesClient;
   /** The stored document this one was opened from, when it was opened from
    *  the library. Every save made from here is checked against it. */
   readonly libraryBase?: string;
@@ -268,25 +274,30 @@ export class EditorSession {
       },
     );
     this.#palette.render(this.#document.envelope.globals?.palette);
+    // The catalogue's three writes, built once because two surfaces ask this
+    // session for them: the Tokens pane's own controls and the selection
+    // inspector's face field are the same owner answering the same question
+    // (`vg-268`), so neither re-implements a face or trio write.
+    const fontActions: TypePresetFontActions = {
+      preview: async (face) => {
+        await this.#document.runFontAction(() => previewFontFace(face));
+      },
+      applyFace: async (id, face) => {
+        await this.#document.runFontAction(() =>
+          this.#document.applyPresetFace(id, face),
+        );
+      },
+      applyTrio: async (id) => {
+        await this.#document.runFontAction(() =>
+          this.#document.applyFontTrio(id),
+        );
+      },
+    };
     this.#types = createTypePresetPanel(
       options.panelHosts.tokens,
       (presets) => this.#document.setTypes(presets),
       (id, replacement) => this.#document.deleteType(id, replacement),
-      {
-        preview: async (face) => {
-          await this.#document.runFontAction(() => previewFontFace(face));
-        },
-        applyFace: async (id, face) => {
-          await this.#document.runFontAction(() =>
-            this.#document.applyPresetFace(id, face),
-          );
-        },
-        applyTrio: async (id) => {
-          await this.#document.runFontAction(() =>
-            this.#document.applyFontTrio(id),
-          );
-        },
-      },
+      fontActions,
       // The shell's own selection projection, so the list's chooser opens on
       // what the selection is set in. Pulled from the live snapshot rather than
       // a copy held here, because the selection is Fabric's.
@@ -333,6 +344,12 @@ export class EditorSession {
       // above, before the inspector that reads it.
       chartFields: () => this.charts.fields,
       chartEdits: () => this.charts.edits,
+      // The face field's writes are the catalogue's own, above; the favourites
+      // it browses by are the host's, so the client travels rather than a list.
+      fontActions,
+      ...(options.favoritesClient === undefined
+        ? {}
+        : { favoritesClient: options.favoritesClient }),
     });
     this.#selection.setLocale(this.#document.envelope.metadata?.themeLanguage);
     // Entering inline editing asks the runtime for the authoring view: the

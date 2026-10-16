@@ -124,6 +124,15 @@ export function spokenIn(element: Element): string[] {
   for (const button of element.querySelectorAll("button")) {
     if (button.getAttribute("data-vigilia-palette-token-row") !== null)
       continue;
+    // A font picker's face and trio rows print the catalogue's own words — a
+    // family, a weight, a trio's name — which is data of the same kind as a
+    // token's name, and `ui-copy-panels.test.ts` carves the same two rows out
+    // of its own button net for the same reason.
+    if (
+      button.hasAttribute("data-vigilia-font-face-row") ||
+      button.hasAttribute("data-vigilia-font-trio-row")
+    )
+      continue;
     if (button.querySelector("[data-vigilia-value]") !== null) continue;
     if (button.hasAttribute("aria-controls")) continue;
     // The readout's trigger prints the reading alone, so the button half has no

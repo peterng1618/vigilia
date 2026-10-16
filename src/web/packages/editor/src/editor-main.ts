@@ -28,6 +28,7 @@ import {
   DraftStore,
   startDraftAutosave,
 } from "./draft-store.js";
+import { createFavoritesClient } from "./favorites-client.js";
 import { createEditorSource } from "./live-source.js";
 import type { NewDocumentAnswer } from "./new-document-chooser.js";
 import {
@@ -58,6 +59,10 @@ async function start(): Promise<void> {
   }
 
   const libraryClient = createThemeLibraryClient();
+  // The author's favourite font trios, which the host keeps in its settings
+  // folder. The client reads empty from a host without the store, so a
+  // standalone editor still browses the whole catalogue.
+  const favoritesClient = createFavoritesClient();
   let mode: "preview" | "live" = "preview";
   let active: ActiveEditor | undefined;
   let chartRefreshRate: ChartRefreshRate = 30;
@@ -282,6 +287,7 @@ async function start(): Promise<void> {
         selection: layout.hosts.selection,
       },
       libraryClient,
+      favoritesClient,
       onBindingsChange: replaceSource,
       onNew: async (answer: NewDocumentAnswer) => {
         const fresh = createBlankFabricTheme(answer.size);

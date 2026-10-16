@@ -18,12 +18,14 @@ import { ControlToggle } from "../components/ui/control-toggle.js";
 import { InspectorSection } from "../components/ui/inspector-section.js";
 import { uiCopy } from "../ui-copy.js";
 import { CROP_ASPECTS } from "./crop.js";
+import { FontFaceField } from "./font-face-field.js";
 import { rendersExtra } from "./per-kind-column.js";
 import { RunEditor } from "./runs.js";
 import type {
   ColumnSectionView,
   CropEdits,
   FieldView,
+  FontFaceEdits,
   RunEdits,
   SelectionEdits,
   SelectionView,
@@ -256,13 +258,14 @@ function Section(props: {
   readonly runs: RunEdits;
   readonly chart: ChartEdits;
   readonly crop: CropEdits;
+  readonly font: FontFaceEdits;
   readonly revision: number;
   readonly idPrefix: string;
   /** The section's place in the column: the first one sits under the subject
       block, whose own hairline is the boundary between them (`vg-466`). */
   readonly index: number;
 }): React.JSX.Element {
-  const { section, edits, runs, chart, crop, revision, idPrefix, index } =
+  const { section, edits, runs, chart, crop, font, revision, idPrefix, index } =
     props;
 
   return (
@@ -316,6 +319,16 @@ function Section(props: {
                 edits={crop}
               />
             );
+          case "fontFace":
+            // The text object's face, browsed through the catalogue control the
+            // ruling gave this field (`vg-268`).
+            return (
+              <FontFaceField
+                key={`${revision}:fontFace`}
+                view={extra.font}
+                edits={font}
+              />
+            );
           default:
             return null;
         }
@@ -330,8 +343,9 @@ export function SelectionColumn(props: {
   readonly runs: RunEdits;
   readonly chart: ChartEdits;
   readonly crop: CropEdits;
+  readonly font: FontFaceEdits;
 }): React.JSX.Element {
-  const { view, edits, runs, chart, crop } = props;
+  const { view, edits, runs, chart, crop, font } = props;
   // A column is one selection's, and two columns can be mounted at once (the
   // accessibility audit mounts two). `${id}-header` is document-global, so the
   // aria pair is scoped to this instance or the second column's `aria-controls`
@@ -349,6 +363,7 @@ export function SelectionColumn(props: {
           runs={runs}
           chart={chart}
           crop={crop}
+          font={font}
           revision={view.targetRevision}
           idPrefix={idPrefix}
         />
@@ -371,13 +386,14 @@ export function createSelectionColumnRoot(host: HTMLElement): {
     runs: RunEdits,
     chart: ChartEdits,
     crop: CropEdits,
+    font: FontFaceEdits,
   ) => void;
   readonly destroy: () => void;
 } {
   const root: Root = createRoot(host);
 
   return {
-    publish(view, edits, runs, chart, crop) {
+    publish(view, edits, runs, chart, crop, font) {
       flushSync(() => {
         root.render(
           <SelectionColumn
@@ -386,6 +402,7 @@ export function createSelectionColumnRoot(host: HTMLElement): {
             runs={runs}
             chart={chart}
             crop={crop}
+            font={font}
           />,
         );
       });

@@ -1465,6 +1465,61 @@ test.describe("the per-kind inspector column", () => {
     await captureColumn(page, testInfo, "editor-inspector-card");
   });
 
+  /**
+   * `vg-268`/`vg-283`: the catalogue browser the font-trio plan shipped is
+   * mounted on the field the ruling named as its owner — the selection
+   * inspector's face field for a text object — and it is that control rather
+   * than a second face picker written beside it.
+   *
+   * **Reachability is the claim, and it is about a rendered surface.** The field
+   * is inside the text object's Content section, it is the catalogue (its rows
+   * name real families, and its search narrows them), and a shape — which has no
+   * face to change — is offered none. The write a face row makes is pinned in
+   * jsdom (`column.dom.test.tsx`) and in the session's own `applyPresetFace`
+   * test; applying one here would download the face from a CDN, which is a
+   * network the suite does not own.
+   */
+  test("reaches the font catalogue from a text object's face field, and offers a shape none", async ({
+    page,
+  }, testInfo) => {
+    test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
+    await page.goto(EDITOR);
+    await page.waitForFunction(() => "vigiliaEditorBridge" in window);
+    await openBlank(page);
+    await insert(page, "Text");
+
+    // Scoped to Content: the field is the text section's, and a field that
+    // rendered anywhere in the column would satisfy an unscoped read.
+    const field = page.locator(
+      '[data-vigilia-section="content"] [data-vigilia-font-face-field]',
+    );
+    await expect(field).toBeVisible();
+
+    // The catalogue itself, not an empty list standing in for one.
+    const rows = field.locator("[data-vigilia-font-face-row]");
+    await expect(rows.first()).toBeVisible();
+    expect(
+      await rows.first().getAttribute("data-vigilia-font-family"),
+    ).toBeTruthy();
+    // The trio half and the facet choosers belong to the same control, so a
+    // field that reached only the face list would be a partial mount.
+    await expect(field.locator("[data-vigilia-font-trio]")).toHaveCount(1);
+    await expect(field.locator("[data-vigilia-font-sort]")).toHaveCount(1);
+
+    // Operable, not merely present: the search is bound to the query the rows
+    // are drawn from, so a term no family holds empties the window and clearing
+    // it fills the window again.
+    const search = field.locator('input[type="search"]');
+    await search.fill("zzzzzzzz");
+    await expect(rows).toHaveCount(0);
+    await search.fill("");
+    await expect.poll(async () => rows.count()).toBeGreaterThan(0);
+
+    // A shape has no face, so it is offered no browser over one.
+    await insert(page, "Rectangle");
+    await expect(page.locator("[data-vigilia-font-face-field]")).toHaveCount(0);
+  });
+
   test("captures the sectioned column a shape gets", async ({
     page,
   }, testInfo) => {
