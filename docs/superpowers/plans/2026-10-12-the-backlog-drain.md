@@ -3080,7 +3080,10 @@ declined to make and both are annotated in place below; Tasks 20.1–20.4 are th
 report — except 20.1's, which could not be run because **the deletion it makes has no guard**; that is
 `vg-553`, homed on Task 20.7. Task 20.2's ruling turned out to have an inert half: `--vigilia-accent` does
 alias `--shell-warm`, but no rule reads it, so *"let the canvas accent move with it"* moves nothing — that
-is `vg-552`, also Task 20.7.]**
+is `vg-552`, also Task 20.7.]** **[Closed in part further 2026-10-16: Task 20.4 landed as `5ea10439`, closing `vg-301` on its
+chord half and `vg-202` with no edit owed — the `5px 8px` wells the ruling wanted corrected exist only in
+the two frozen originals. The segmented control's half of `vg-301` did not reproduce, so it is split out as
+`vg-554` and homed on a new **Task 20.8**.]**
 
 **Why a phase of its own.** Six of the seven edit `editor-shell.css` or a drawing under
 `docs/design/mockups/`, and the seventh edits the design-language reader. They are one subject: what the
@@ -3370,6 +3373,44 @@ red proof could not be run at all.
       `--color-*` aliases and the type scale, so it would redden on every legitimate addition. Choose the
       granularity (a closed set per family, a per-retirement absence assertion, or something else), land it,
       and **prove it red** by re-declaring a name this phase retired.
+
+### Task 20.8: The segmented control's drawn treatment, and the capture that never shows it
+
+**Added 2026-10-16 at Task 20.4's close**, homing `vg-554`, which Task 20.4's seat filed as a
+`Discovered, not fixed:` trailer on `5ea10439` rather than redrawing a control the ruling described as one
+declaration away. It belongs to this phase for the phase's own reason: its subject is a drawing and the
+treatment the design language gives a control.
+
+**Files:**
+- Modify: `docs/design/mockups/current/controls.html` and `current/controls-editorial.html`; and whatever
+  the capture registry's owner is, for the second clause
+
+**Interfaces:**
+- Produces: `vg-554` closed
+
+- [ ] **Step 1: Settle the treatment, because the ruling's own sentence does not.** `vg-301`'s ruling reads
+      *"the drawings are corrected where they differ"*, which read literally covers this — but the
+      difference is **six declarations**, not one, so the choice is between redrawing the drawn control to
+      the product's composed treatment and ruling the drawn treatment as the target. **The ruling's named
+      difference does not exist here**: the segmented chip draws no border at all, and the container's
+      `--well-edge` equals `--shell-edge` under graphite, so *"the chip border as
+      `color-mix(currentColor 45%)`"* is `.editor-shell-primary-key`'s rule and not this control's.
+- [ ] **Step 2: Re-measure with the palette settled.** `.editor-shell button` carries a 140 ms
+      `background-color` transition, so an unsettled probe returns an **interpolated** colour — the seat's
+      first two reads gave `rgb(11,14,18)` and `rgb(155,154,150)` for the same chip. Settle before reading.
+      Note the entanglement the seat found: under editorial `--well` is already `#f5f1e8` and equals
+      `--stage`, and that drawing's `--bg`/`--panel2` are swapped against the product's editorial palette,
+      so the pressed fill cannot be corrected alone.
+- [ ] **Step 3: The capture clause.** No registered capture shows the header's publish trigger at all —
+      `shell-capture-add.png`, `shell-capture-graphite.png` and `shell-capture-glyphs.png` are taken on the
+      editor preview, where `PublishControl` returns `null` because no host answers `/api/hosting`. Decide
+      whether a capture is owed, and **if one is, it goes through the registry in
+      `docs/evidence/screenshots/README.md`** rather than being added here. Rebuilding the three PNGs
+      unchanged is clock-dependent churn and is not the fix.
+
+**Verify:** `npx vitest run tests/e2e/mockup-values.test.ts`; `npx playwright test
+tests/e2e/design-language-drawings.spec.ts --workers=1`; the parity captures rebuilt **only** if Step 3
+registers one.
 
 ---
 
