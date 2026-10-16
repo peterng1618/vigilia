@@ -305,6 +305,11 @@ export function createGroupingManager(
         // `removeAll` bakes the group transform into each child.
         const members = active.removeAll();
         canvas.remove(active);
+        // The `Group` object leaves the document, so it is disposed here —
+        // the scene adapter no longer disposes whatever anyone removes
+        // (`vg-486`, ADR-0052). Safe because `removeAll` emptied it first:
+        // `Group.dispose` would otherwise cascade into the members below.
+        active.dispose();
         for (const member of members) {
           member.setCoords();
           canvas.add(member);

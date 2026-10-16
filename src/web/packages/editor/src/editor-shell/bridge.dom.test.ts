@@ -1119,10 +1119,14 @@ it("leaves the canvas in the state a removal leaves, except the object itself", 
       .filter((key) => JSON.stringify(left[key]) !== JSON.stringify(right[key]))
       .sort();
 
-  // The reference: what Fabric's own removal leaves, which is the path
-  // `moveLayer` took before `detachFromRoot` existed.
+  // The reference: what a deletion leaves, which is the path `moveLayer` took
+  // before `detachFromRoot` existed. The dispose is the remover's own since
+  // `vg-486` (ADR-0052) — the scene adapter used to dispose whatever anyone
+  // removed, and no longer does — so a bare `canvas.remove` is now the *detach*
+  // half of a deletion and the deleting owner says the other half.
   const removed = build();
   removed.canvas.remove(removed.chart);
+  removed.chart.dispose();
   removed.group.insertAt(1, removed.chart);
   removed.canvas.requestRenderAll();
 

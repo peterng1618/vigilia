@@ -58,10 +58,22 @@ export function createSceneAdapter(options: SceneAdapterOptions): SceneAdapter {
     1,
   );
 
-  // `canvas.remove()` does not dispose; charts must release ECharts/backing pixels.
-  canvas.on("object:removed", ({ target }) => {
-    target.dispose();
-  });
+  /**
+   * **The party that removes an object disposes it** (`vg-486`, ADR-0052).
+   *
+   * This used to subscribe `canvas.on("object:removed", ({ target }) =>
+   * target.dispose())`, because `canvas.remove()` disposes nothing and a chart
+   * must release its ECharts instance and backing pixels. **The event carries no
+   * intent**, so the listener disposed what *anyone* removed — and
+   * `grouping-manager.group()` takes each member off the root with the same
+   * `canvas.remove` that a deletion uses, while the member is moving into the new
+   * `Group` and the document still holds it. The scene serialized identically
+   * either way, which is why the defect was invisible.
+   *
+   * So disposal is explicit at the three sites below that genuinely remove a
+   * node, and every other remover owns its own. `Group.dispose()` cascades into
+   * its children, so disposing a root object covers its subtree.
+   */
 
   adoptExisting(canvas, objects);
   const applyArtboard = createApplyArtboard(canvas);
@@ -102,7 +114,12 @@ export function createSceneAdapter(options: SceneAdapterOptions): SceneAdapter {
   }
 
   function clear(): void {
-    canvas.remove(...canvas.getObjects());
+    // Disposed, not merely removed: this is a rebuild or a teardown, so nothing
+    // here is coming back. A root `Group` takes its children with it. The list
+    // is copied first because `getObjects()` is the canvas's own array.
+    const roots = [...canvas.getObjects()];
+    canvas.remove(...roots);
+    for (const object of roots) object.dispose();
     objects.clear();
     applied.clear();
     boxes.clear();
@@ -221,6 +238,7 @@ export function createSceneAdapter(options: SceneAdapterOptions): SceneAdapter {
       existing.dispose();
     } else {
       canvas.remove(existing);
+      existing.dispose();
     }
 
     return undefined;
@@ -244,6 +262,7 @@ export function createSceneAdapter(options: SceneAdapterOptions): SceneAdapter {
         object.dispose();
       } else {
         canvas.remove(object);
+        object.dispose();
       }
     }
   }

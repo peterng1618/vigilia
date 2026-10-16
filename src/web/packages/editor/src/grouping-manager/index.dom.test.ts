@@ -1,7 +1,21 @@
 // @vitest-environment jsdom
+import { createSceneAdapter, VigiliaChart } from "@vigilia/scene-fabric";
 import { ActiveSelection, Canvas, Group, Rect } from "fabric/es";
 import { describe, expect, it, vi } from "vitest";
 import { createGroupingManager, GROUP_CONTEXT_EVENT } from "./index.js";
+
+/** A chart, because dispose is what releases its ECharts instance and backing
+ *  pixels: a plain `Rect` makes the defect invisible. */
+function chart(id: string, left: number): VigiliaChart {
+  return new VigiliaChart({
+    id,
+    left,
+    width: 100,
+    height: 60,
+    family: "bar",
+    settings: {},
+  } as never);
+}
 
 function setup() {
   const canvas = new Canvas(document.createElement("canvas"));
@@ -166,5 +180,73 @@ describe("GroupingManager announces its context", () => {
     expect(seen).toHaveLength(2);
 
     canvas.off(GROUP_CONTEXT_EVENT as never, onChange);
+  });
+});
+
+/**
+ * `vg-486`: `group()` takes each member off the root with the same
+ * `canvas.remove` that a genuine deletion uses, and the scene adapter used to
+ * dispose **any** `object:removed` target — so a grouped chart was disposed
+ * exactly as a deleted one was. The symptom is invisible: the grouping is
+ * correct, the serialized scene is correct, and only the rendered backing canvas
+ * is gone. So the probe is the row's own measurement, `{grouped, disposed}`.
+ */
+describe("GroupingManager against the scene adapter", () => {
+  it("leaves a grouped chart alive in the scene the adapter is drawing", () => {
+    const canvas = new Canvas(document.createElement("canvas"));
+    const first = chart("a", 0);
+    const second = chart("b", 60);
+    canvas.add(first, second);
+    const adapter = createSceneAdapter({ canvas });
+    const grouping = createGroupingManager({
+      canvas,
+      save: vi.fn(),
+      suspend: () => vi.fn(),
+    });
+    canvas.setActiveObject(new ActiveSelection([first, second], { canvas }));
+
+    const group = grouping.group();
+
+    expect({
+      grouped: group instanceof Group,
+      disposed: first.disposed || second.disposed,
+    }).toEqual({ grouped: true, disposed: false });
+    // Still one scene: the group is the root's only entry, and both members
+    // still serialize inside it.
+    expect(canvas.getObjects()).toEqual([group]);
+    expect(
+      JSON.stringify(canvas.toObject(["id"])).match(/"id":"[ab]"/g),
+    ).toHaveLength(2);
+
+    adapter.dispose();
+  });
+
+  it("disposes the group ungroup() discards, and none of its members", () => {
+    // The other half of the same rule: the fix moves the disposal obligation
+    // onto every removal site, and `ungroup` is one — the `Group` object leaves
+    // the document. `removeAll()` empties it first, so disposing it does not
+    // cascade into the members now on the canvas.
+    const canvas = new Canvas(document.createElement("canvas"));
+    const first = chart("a", 0);
+    const second = chart("b", 60);
+    const group = new Group([first, second]);
+    group.set("id", "group-1");
+    canvas.add(group);
+    const adapter = createSceneAdapter({ canvas });
+    const grouping = createGroupingManager({
+      canvas,
+      save: vi.fn(),
+      suspend: () => vi.fn(),
+    });
+    canvas.setActiveObject(group);
+
+    expect(grouping.ungroup()).toHaveLength(2);
+
+    expect(canvas.getObjects()).toEqual([first, second]);
+    expect({
+      disposed: [first.disposed, second.disposed],
+    }).toEqual({ disposed: [false, false] });
+
+    adapter.dispose();
   });
 });

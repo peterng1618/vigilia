@@ -81,7 +81,14 @@ export function createCropManager(options: CropManagerOptions): CropManager {
   let release: (() => void) | undefined;
 
   const end = (): void => {
-    if (frame !== undefined) canvas.remove(frame);
+    if (frame !== undefined) {
+      canvas.remove(frame);
+      // A locally-constructed transient that was never a document object, so
+      // disposing it is correct — and with the scene adapter no longer
+      // disposing whatever anyone removes (`vg-486`, ADR-0052), it has to be
+      // said here or nothing says it.
+      frame.dispose();
+    }
     frame = undefined;
     image = undefined;
     release?.();
