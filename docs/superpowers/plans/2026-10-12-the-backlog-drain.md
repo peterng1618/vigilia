@@ -2115,6 +2115,37 @@ a thumb and a track, so a hover colour is what the pair cannot express.
 - [ ] **Step 3: `vg-492` — the layer row's fourth-button arm is unreachable** (the row draws at most three), and the prose beside it still says "a row that draws four". Delete the arm and correct the sentence.
 - [ ] **Step 4: Rebuild, run the design-language suite, and close the three.**
 
+**Annotated 2026-10-16, at the task's close: all three rows are `verified` and the task's own Step 1 was
+one drawing short.** It says *both* control drawings; there are **three** — `current/shell.html:323` draws
+the same slider row (`Opacity %`) at the same 36px on the shell ground's tokens, which this task's own
+`Files:` line names, so the third site was expected even though the step and the row both counted two.
+`vg-496`'s title is corrected in the register and the three drawings now read 40.
+
+**`vg-496`'s cascade clause was wrong and the measurement is what shows it.** The row said raising the
+drawing pulls *its capture* behind it; a capture beside a drawing is a copy of the **built product**, and
+the product's well has been 40 since `vg-469`'s item 10 (`dc0fa28d`, re-shot `2ce8ef1e`). `cmp` reads both
+control-set pairs byte-identical, so **no capture moved and the drawing was the only 36** — which is why
+the step's own *decide which is the intent* had one answer rather than two.
+
+**`vg-497` took the row's first candidate, and `0049`'s ruling is why.** The track draws the renderer's
+fallback and the well reads empty: `ControlNumber` — which the well **is** — already owns absence for every
+other optional field, and a fourth control state would be a second vocabulary for one fact three lines
+from the first. The track cannot hold the state (MDN's range input is never empty, ARIA requires
+`aria-valuenow` for `slider`, Base UI clamps a number), so the disagreement is allowed to stand and is
+stated where it can be. Note `0050` carries **all seven rungs with rung 4 run** — four ecosystem answers —
+where `0049` recorded its rung 4 as unrun for want of a web search.
+
+**`vg-492`'s third clause is discharged, and two of its three parts were discharged before the task ran.**
+`vg-447` is `verified`, not open, and its 2026-10-15 re-measurement already carried the correction
+verbatim; `vg-260` is `withdrawn`. Both now carry a dated clause naming the sentences that describe the
+retired four-control row, and neither row's arithmetic was rewritten — a withdrawn row's figures are a
+dated record, so the repair is a marker rather than new numbers.
+
+**One row was filed rather than folded in** (`vg-539`): the mark slot's own comment, four lines up the same
+stylesheet, still states the attended four-control row's numbers and still waits on a ruling that landed
+2026-10-13. It is the same family of stale prose and a different comment about a different subject, so
+`vg-492`'s close would have claimed more than the row names.
+
 ### Task 16.4: The silent paths
 
 **Files:**
