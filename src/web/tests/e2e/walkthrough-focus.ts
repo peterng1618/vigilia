@@ -270,7 +270,8 @@ export async function keyboardReach(page: Page): Promise<readonly Focus[]> {
  *
  * The helper later tasks reach a control with. It asks what a control *is*
  * rather than where it sits in an order the shell is free to change, and it
- * fails saying how many presses it spent rather than running out of a loop.
+ * fails saying how many presses it spent **and which regions it saw**, so a
+ * walk stuck inside one region reads as that rather than as a bare count.
  *
  * Re-entrant for the reason {@link keyboardReach} is: it clears the marks of
  * whatever walk came before it, so a `tabUntil` after a `keyboardReach` — which
@@ -307,7 +308,15 @@ export async function tabUntil(
     const focus: Focus = { ...step, press: pressed };
     if (matches(focus)) return focus;
   }
-  throw new Error(`nothing matched in ${limit} presses`);
+  // The regions are the half that says how far the walk got: a count alone
+  // cannot be told apart from a walk that never left its starting region, which
+  // is exactly how the 758-stop font picker read as "nothing matched in 200
+  // presses" rather than as a walk stuck in the inspector (`vg-551`).
+  throw new Error(
+    `nothing matched in ${pressed} presses; regions seen: ${
+      seenRegions.length === 0 ? "none" : seenRegions.join(", ")
+    }`,
+  );
 }
 
 /** What a control carries so the walk can reach it by what it *is* rather than
