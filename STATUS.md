@@ -37,11 +37,11 @@ ledger did.
 
 ## Last completed change
 
-- **Phase 20's Task 20.9's `vg-555` landed, correcting the editorial twin's two inverted fill roles** — `current/controls-editorial.html` declared `--bg:#fffdf7` and `--panel2:#f5f1e8` where the product's editorial palette has `#f5f1e8` under `--shell-backdrop` and `#fffdf7` under `--shell-surface-strong`, so the two fills Task 20.8 landed rendered inverted.
-- **The rule that licenses it predates the finding** — DESIGN.md §4's role meanings, §5's Segmented row, and the drawings README's *"Where the current set and DESIGN.md disagree, DESIGN.md wins and the file is stale"*; the two values written are the palette's own, not invented.
-- **Measured in a browser against the built fixture, palette settled** — the drawing's group filled `rgb(245,241,232)` and its pressed chip `rgb(255,253,247)`, where the product renders `rgb(255,253,247)` and `rgb(245,241,232)`; after the correction all four groups agree.
-- **Six more declarations in that table are the original `inspector-language.html`'s values rather than editorial's, and none is a swap** — reported rather than corrected, because that is the palette-wide redraw `vg-436`'s ruling refused.
-- **The same file's four segmented groups draw `1px var(--well-edge)` where §5's Well row and the product write `--edge`** — a third finding, invisible in the graphite twin, where the two tokens are the same `#242b34`.
+- **Phase 20's Task 20.9 landed, closing `vg-555` and `vg-556`** — the editorial twin's `--bg` and `--panel2` take the editorial palette's own values, and the drawn segmented chips hug their labels as the product's do.
+- **`vg-556`: all three drawings gave every chip `flex:1`, where the product declares no flex and hugs its text** — removed from 33 chips, and measured in a browser at 34.1px "Left", 48.1px "Centre" and 41.7px "Right" against the product's 34.1px and 48.1px.
+- **The direction is the phase's, and is recorded as a call rather than a citation** — §5 is silent on the chip width, so README's *"where the written rules are silent, the drawing governs and the product is the defect"* reads the other way; the phase's own outcome and Task 20.8's precedent moved the drawing.
+- **Six more declarations in the twin's table are the original `inspector-language.html`'s values, and its four segmented groups draw `1px var(--well-edge)` where §5's Well row and the product write `--edge`** — both reported rather than corrected.
+- **No instrument can catch the chip width** — all eleven chips in a drawing share two attribute forms, so no `[style*="…"]` selector settles one chip and `PARITY` carries no row over a flex factor.
 
 ## Next
 
