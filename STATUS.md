@@ -37,11 +37,11 @@ ledger did.
 
 ## Last completed change
 
-- **Phase 20's Task 20.8 landed at `e4785eaa`, closing `vg-554`** — the segmented control's four rows are redrawn to the product's composed treatment in **all three** `current/` drawings that draw them, and the row's own count is corrected: **eight** declarations differed, not six.
-- **The redraw is grounded in a normative source rather than in the product's CSS alone** — DESIGN.md §5's Segmented row (`:465`) reads *"A `--panel-2` well holding 2–4 labels, the active one lifted to `--stage`"*, and the drawings' own token table maps `--panel2` to `--shell-surface-strong` and `--bg` to `--shell-backdrop`, so no token was added and no value invented.
-- **The two the brief told the seat to settle were settled deliberately** — the middle chips' hairlines are an addition the product does not draw and are removed, and the pressed chip's `font:500` is the drawing's invention because §5 names the lift as the fill and no weight, so the product's `400` stands.
-- **`current/shell.html` draws the same four rows and no task's `Files:` list named it** — corrected in the same commit, because the current set must not draw one control two ways; the plan's Files line is corrected too.
-- **Two findings were split out rather than extended into, and both are now rows** — `vg-555` (the editorial twin's token table has `--bg` and `--panel2` swapped against the roles `SHELL_ROLES` assigns, so its fills render inverted) and `vg-556` (the drawn chips stretch to equal widths where the product's hug their text), both homed on a new **Task 20.9**.
+- **Phase 20's Task 20.9's `vg-555` landed, correcting the editorial twin's two inverted fill roles** — `current/controls-editorial.html` declared `--bg:#fffdf7` and `--panel2:#f5f1e8` where the product's editorial palette has `#f5f1e8` under `--shell-backdrop` and `#fffdf7` under `--shell-surface-strong`, so the two fills Task 20.8 landed rendered inverted.
+- **The rule that licenses it predates the finding** — DESIGN.md §4's role meanings, §5's Segmented row, and the drawings README's *"Where the current set and DESIGN.md disagree, DESIGN.md wins and the file is stale"*; the two values written are the palette's own, not invented.
+- **Measured in a browser against the built fixture, palette settled** — the drawing's group filled `rgb(245,241,232)` and its pressed chip `rgb(255,253,247)`, where the product renders `rgb(255,253,247)` and `rgb(245,241,232)`; after the correction all four groups agree.
+- **Six more declarations in that table are the original `inspector-language.html`'s values rather than editorial's, and none is a swap** — reported rather than corrected, because that is the palette-wide redraw `vg-436`'s ruling refused.
+- **The same file's four segmented groups draw `1px var(--well-edge)` where §5's Well row and the product write `--edge`** — a third finding, invisible in the graphite twin, where the two tokens are the same `#242b34`.
 
 ## Next
 
