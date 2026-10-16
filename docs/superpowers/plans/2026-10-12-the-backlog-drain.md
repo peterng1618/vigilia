@@ -2870,6 +2870,27 @@ bundle.
 - [ ] **Step 2: Do not delete the control, and leave the test consumers alone.** The consumer grep returns three test mounts, including `components/ui/control-icon-button.dom.test.tsx`; no product surface renders it, which is the finding.
 - [ ] **Step 3: Close the two together** — they file one question, ruled once, and neither closes without the other.
 
+**Annotated 2026-10-16, at the task's close: `vg-268` and `vg-283` are `verified` at `055c7ecc`.** **Step 1
+landed as the ruling's own reasoning rather than a literal reading**: the field is a **fifth `ExtraView`
+member** (`kind: "fontFace"`), not a `FieldView`, because a `FieldView` select would be **a second face
+picker**, which the ruling forbids. The extra carries only `presetId`, and **the write goes to the preset
+rather than the object** — a text object has no face of its own, a run names a preset and the preset carries
+the face — through the Tokens pane's existing `TypePresetFontActions`. **Step 2 held**: nothing was deleted
+and the three test consumers are untouched. **Both red proofs were re-run by the controller**: dropping
+`fontFace` from `rendersExtra` reads **1 failed / 330 passed exit 1**, and disabling the `contentBody` emit
+reads **1 failed / 21 passed exit 1** in the browser; each restored byte-identically with `cmp`, green at
+**331 passed** and **22 passed exit 0**. **Three things the plan did not know.** (i) **The control's star and
+its "Favourites only" box need a favourites client, and the host already served `/api/font-favorites` with no
+editor-side reader** — so `favorites-client.ts` was built as the catalogue plan's own unbuilt **Task 7**
+artifact, without which the mount would have shipped a dead star. (ii) **The copy census needed a carve-out**:
+`spokenIn` reads every button and a face row's text is catalogue data, so the two rows are carved out exactly
+as `ui-copy-panels.test.ts:246-247` already carves the same two attributes out of its own net. (iii) **"No
+other control provides it" holds at object level only** — `preset-list.tsx`'s `FontControls` chooses a face
+for a preset, and the object-level field is the gap. **`vg-549` is filed from the landing**: `applyPresetFace`
+writes family, weight and `face.assetId` while the Tokens pane leaves family and weight editable. **Not
+verified**: the browser does not exercise the write a face row makes, because applying a face downloads font
+bytes from a CDN the suite does not own.
+
 ### Task 19.2: The artboard's crop figure tracks the drag
 
 **Files:**
