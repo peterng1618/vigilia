@@ -6,8 +6,11 @@
  * that no product code mounts but that stay green because their own test file
  * imports them. That class is invisible to both obvious questions — it is not
  * "no importer" (a test imports it) and not "no file" (the file is right there)
- * — and it is the class this repo actually produces: `font-picker.tsx` is kept
- * alive by a 984-line test and no mount, filed twice as `vg-268` and `vg-283`.
+ * — and it is the class this repo actually produces: `font-picker.tsx` was kept
+ * alive by a 984-line test and no mount for long enough to be filed twice as
+ * `vg-268` and `vg-283`, until Phase 19's Task 19.1 mounted it and both closed.
+ * `ui-copy-readers.ts` is the same class today, and permanently so — a test
+ * reader is supposed to have no production importer (`docs/decisions/0058`).
  *
  * What this is NOT: a verdict. Every hit is a candidate, printed with the search
  * that found it, and a human or an agent has to say whether the code is dead.
@@ -919,7 +922,7 @@ if (SELF_TEST) {
   const inAnyKind = (file) => candidates.filter((candidate) => candidate.file === file);
 
   const CARD_LIBRARY = "src/web/packages/editor/src/card-library.ts";
-  const FONT_PICKER = "src/web/packages/editor/src/font-picker/font-picker.tsx";
+  const UI_COPY_READERS = "src/web/packages/editor/src/ui-copy-readers.ts";
   const SETTINGS_FIELD = "src/web/packages/editor/src/editor-shell/controls/settings-field.ts";
   const LIVE = "src/web/packages/editor/src/boot-theme.ts";
 
@@ -927,8 +930,12 @@ if (SELF_TEST) {
     ["the walk found the tree", all.length > 400],
     ["the walk found the test suite", all.filter(isTestFile).length > 200],
     [
-      "test-only-consumer lands on font-picker.tsx",
-      at("test-only-consumer", FONT_PICKER),
+      // Pinned to a file whose test-only status is permanent rather than
+      // incidental. `font-picker.tsx` held this check until Task 19.1 mounted
+      // it — the mount was the fix two rows existed for, so the check was
+      // asserting the bug and went red on the improvement (`0058`).
+      "test-only-consumer lands on ui-copy-readers.ts",
+      at("test-only-consumer", UI_COPY_READERS),
     ],
     [
       "no test file is ever a candidate (discovery is an edge)",
