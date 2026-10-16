@@ -3431,13 +3431,17 @@ treatment the design language gives a control.
 **Interfaces:**
 - Produces: `vg-554` closed
 
-- [ ] **Step 1: Settle the treatment, because the ruling's own sentence does not.** `vg-301`'s ruling reads
-      *"the drawings are corrected where they differ"*, which read literally covers this — but the
-      difference is **six declarations**, not one, so the choice is between redrawing the drawn control to
-      the product's composed treatment and ruling the drawn treatment as the target. **The ruling's named
-      difference does not exist here**: the segmented chip draws no border at all, and the container's
-      `--well-edge` equals `--shell-edge` under graphite, so *"the chip border as
-      `color-mix(currentColor 45%)`"* is `.editor-shell-primary-key`'s rule and not this control's.
+- [ ] **Step 1: The ruling settles the direction; the SCOPE is what is open.** `vg-301`'s ruling reads
+      *"the drawings are corrected where they differ, rather than a drawn value being ruled for them"*, so
+      the product's composed treatment is the target and the drawings move — **the seat doing Task 20.4 was
+      right to stop short of it, but not because the direction is undecided**: what it could not settle from
+      the ruling is that the difference is **six declarations** rather than the one the ruling names, and
+      that correcting one of them is entangled with a second defect. **The ruling's named difference does
+      not exist here**: the segmented chip draws no border at all, and the container's `--well-edge` equals
+      `--shell-edge` under graphite, so *"the chip border as `color-mix(currentColor 45%)`"* is
+      `.editor-shell-primary-key`'s rule and not this control's. Record the scope before editing, and if a
+      seventh declaration turns out to be entangled with a value nobody ruled, **stop and report rather than
+      extending the redraw** — that is this phase's named failure mode.
 - [ ] **Step 2: Re-measure with the palette settled.** `.editor-shell button` carries a 140 ms
       `background-color` transition, so an unsettled probe returns an **interpolated** colour — the seat's
       first two reads gave `rgb(11,14,18)` and `rgb(155,154,150)` for the same chip. Settle before reading.
