@@ -19,22 +19,47 @@ cp ../../docs/evidence/screenshots/<the action's file> \
    ../../docs/design/mockups/current/<the drawing's file>
 ```
 
-| Action's file (this directory) | Beside the drawing (`docs/design/mockups/current/`) |
-|---|---|
-| `editor-shell-add-desktop-chromium.png` | `shell-capture-add.png` |
-| `shell-palette-graphite-desktop-chromium.png` | `shell-capture-graphite.png` |
-| `editor-shell-glyphs-desktop-chromium.png` | `shell-capture-glyphs.png` |
-| `settings-appearance-desktop-chromium.png` | `settings-capture-graphite.png` |
-| `settings-appearance-editorial-desktop-chromium.png` | `settings-capture-editorial.png` |
-| `settings-keyboard-desktop-chromium.png` | `settings-keyboard-capture-graphite.png` |
-| `settings-keyboard-editorial-desktop-chromium.png` | `settings-keyboard-capture-editorial.png` |
-| `settings-about-desktop-chromium.png` | `settings-about-capture-graphite.png` |
-| `settings-about-editorial-desktop-chromium.png` | `settings-about-capture-editorial.png` |
-| `control-set-desktop-chromium.png` | `controls-capture-graphite.png` |
-| `control-set-editorial-desktop-chromium.png` | `controls-capture-editorial.png` |
+| Action's file (this directory) | Beside the drawing (`docs/design/mockups/current/`) | Taken at | Surfaces |
+|---|---|---|---|
+| `editor-shell-add-desktop-chromium.png` | `shell-capture-add.png` | `2ce8ef1e664218f03795f1e1894705f8abc0f2f1` | `src/web/packages/editor/src/editor-shell/`, `src/web/packages/editor/src/panes/`, `src/web/packages/editor/src/components/ui/`, `src/web/packages/editor/src/card-library.ts`, `src/web/packages/editor/src/ui-copy.ts` |
+| `shell-palette-graphite-desktop-chromium.png` | `shell-capture-graphite.png` | `2ce8ef1e664218f03795f1e1894705f8abc0f2f1` | `src/web/packages/editor/src/editor-shell/`, `src/web/packages/editor/src/panes/`, `src/web/packages/editor/src/components/ui/`, `src/web/packages/editor/src/card-library.ts`, `src/web/packages/editor/src/ui-copy.ts` |
+| `editor-shell-glyphs-desktop-chromium.png` | `shell-capture-glyphs.png` | `2ce8ef1e664218f03795f1e1894705f8abc0f2f1` | `src/web/packages/editor/src/editor-shell/`, `src/web/packages/editor/src/panes/`, `src/web/packages/editor/src/components/ui/`, `src/web/packages/editor/src/card-library.ts`, `src/web/packages/editor/src/ui-copy.ts` |
+| `settings-appearance-desktop-chromium.png` | `settings-capture-graphite.png` | `8c4c79b9f709ef8f04a23dc8642619e3af45a3e7` | `src/web/packages/editor/src/editor-shell/settings.tsx`, `src/web/packages/editor/src/editor-shell/settings-keyboard.tsx`, `src/web/packages/editor/src/editor-shell/icons.ts`, `src/web/packages/editor/src/editor-shell/editor-shell.css`, `src/web/packages/editor/src/components/ui/`, `src/web/packages/editor/src/ui-copy.ts` |
+| `settings-appearance-editorial-desktop-chromium.png` | `settings-capture-editorial.png` | `8c4c79b9f709ef8f04a23dc8642619e3af45a3e7` | `src/web/packages/editor/src/editor-shell/settings.tsx`, `src/web/packages/editor/src/editor-shell/settings-keyboard.tsx`, `src/web/packages/editor/src/editor-shell/icons.ts`, `src/web/packages/editor/src/editor-shell/editor-shell.css`, `src/web/packages/editor/src/components/ui/`, `src/web/packages/editor/src/ui-copy.ts` |
+| `settings-keyboard-desktop-chromium.png` | `settings-keyboard-capture-graphite.png` | `8c4c79b9f709ef8f04a23dc8642619e3af45a3e7` | `src/web/packages/editor/src/editor-shell/settings.tsx`, `src/web/packages/editor/src/editor-shell/settings-keyboard.tsx`, `src/web/packages/editor/src/editor-shell/icons.ts`, `src/web/packages/editor/src/editor-shell/editor-shell.css`, `src/web/packages/editor/src/components/ui/`, `src/web/packages/editor/src/ui-copy.ts` |
+| `settings-keyboard-editorial-desktop-chromium.png` | `settings-keyboard-capture-editorial.png` | `8c4c79b9f709ef8f04a23dc8642619e3af45a3e7` | `src/web/packages/editor/src/editor-shell/settings.tsx`, `src/web/packages/editor/src/editor-shell/settings-keyboard.tsx`, `src/web/packages/editor/src/editor-shell/icons.ts`, `src/web/packages/editor/src/editor-shell/editor-shell.css`, `src/web/packages/editor/src/components/ui/`, `src/web/packages/editor/src/ui-copy.ts` |
+| `settings-about-desktop-chromium.png` | `settings-about-capture-graphite.png` | `5da31012a8ea16458be5aa06ce98644d600a8297` | `src/web/packages/editor/src/editor-shell/settings.tsx`, `src/web/packages/editor/src/editor-shell/settings-keyboard.tsx`, `src/web/packages/editor/src/editor-shell/icons.ts`, `src/web/packages/editor/src/editor-shell/editor-shell.css`, `src/web/packages/editor/src/components/ui/`, `src/web/packages/editor/src/ui-copy.ts` |
+| `settings-about-editorial-desktop-chromium.png` | `settings-about-capture-editorial.png` | `5da31012a8ea16458be5aa06ce98644d600a8297` | `src/web/packages/editor/src/editor-shell/settings.tsx`, `src/web/packages/editor/src/editor-shell/settings-keyboard.tsx`, `src/web/packages/editor/src/editor-shell/icons.ts`, `src/web/packages/editor/src/editor-shell/editor-shell.css`, `src/web/packages/editor/src/components/ui/`, `src/web/packages/editor/src/ui-copy.ts` |
+| `control-set-desktop-chromium.png` | `controls-capture-graphite.png` | `aa5edf96b4807fddeb6e1f4e9d99b0fde426d628` | `src/web/packages/editor/control-fixture.html`, `src/web/packages/editor/src/control-fixture.tsx`, `src/web/packages/editor/src/components/ui/`, `src/web/packages/editor/src/editor-shell/editor-shell.css` |
+| `control-set-editorial-desktop-chromium.png` | `controls-capture-editorial.png` | `aa5edf96b4807fddeb6e1f4e9d99b0fde426d628` | `src/web/packages/editor/control-fixture.html`, `src/web/packages/editor/src/control-fixture.tsx`, `src/web/packages/editor/src/components/ui/`, `src/web/packages/editor/src/editor-shell/editor-shell.css` |
 
 The two copies of each capture are the same bytes and stay that way; a drawings-adjacent file that
 has drifted from its twin is a copy nobody refreshed, not a second render.
+
+**These eleven are the captures this table registers** — the ones placed beside a drawing. The rest
+of the directory is registered by the checklist below as an action's output and carries no `Taken at`
+and no `Surfaces`; only these eleven are checked.
+
+**The last two columns are the freshness check, and `scripts/capture-freshness.mjs` reads them.**
+`Taken at` is the commit the capture was taken at: the commit that last wrote the action's own file
+(`git log -1 --format=%H -- <that path>`), which is when the action produced those bytes, not when a
+copy moved them. `Surfaces` names the repo-relative paths that produce what the image shows, read per
+capture from the spec that writes it and the components the surface composes.
+
+```bash
+node scripts/capture-freshness.mjs
+```
+
+Exit 0 is every registered capture fresh, 1 is a finding, and 2 is a registry it cannot read — a
+missing or malformed table is a finding rather than a silent pass. **It never compares bytes**: two
+runs of one capture on one bundle differ in bytes at identical dimensions, so `cmp` would report that
+capture stale on every run. A surface path with commits after the recorded sha is the finding, and the
+report names the count and the newest commit.
+
+**What the surfaces do not bound.** The three whole-shell captures are viewport frames, so they show
+the stage, whose pixels come from the scene renderer rather than from the shell's own source. The
+chrome each frame composes is claimed; the stage is not, and a change under `scene-fabric` moves those
+pixels while this check stays silent.
 
 Build player and editor first: Playwright previews both built outputs. Use one
 worker to avoid capture collisions. Select only captures affected by the current
