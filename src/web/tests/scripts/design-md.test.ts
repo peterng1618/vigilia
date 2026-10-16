@@ -15,10 +15,12 @@ import {
  * (`--sync` and `--cite` shown to bite in the task's Step 5).
  */
 
+type Citation = { readonly path: string; readonly text: string };
+
 type Read = {
   readonly design?: string;
   readonly css?: string;
-  readonly citations?: readonly string[];
+  readonly citations?: readonly Citation[];
   readonly mapping?: ReadonlyMap<string, readonly string[]>;
 };
 
@@ -26,6 +28,10 @@ type Read = {
 function fixture(partial: Read): Read {
   return { design: "", css: "", citations: [], ...partial };
 }
+
+/** A citation as the collector records it: text, with the document it came from. */
+const cited = (...texts: string[]): Citation[] =>
+  texts.map((text) => ({ path: "docs/design/mockups/README.md", text }));
 
 const whats = (findings: readonly { readonly what: string }[]) =>
   findings.map((f) => f.what);
@@ -46,7 +52,7 @@ it("fails a declared marker that the file no longer carries", () => {
 
 it("fails a marker no citation in the repo claims", () => {
   const read = fixture({
-    citations: ["§5"],
+    citations: cited("§5"),
     design: "<!-- §1 -->\n<!-- §5 -->\n",
   });
   expect(checkCitations(read).map((f) => f.what)).toContain("§1");
@@ -106,7 +112,7 @@ it("ignores a number outside the canonical range", () => {
   // The redesign spec's §75/§141 share the `§` and must not be re-pointed.
   const read = fixture({
     design: "<!-- §9 -->\n",
-    citations: ["§75", "§141", "DESIGN.md §9"],
+    citations: cited("§75", "§141", "DESIGN.md §9"),
   });
   expect(
     whats(checkCitations(read, { numbers: ["9"], uncitedOk: [] })),
@@ -132,7 +138,7 @@ it("fails a marker moved under a heading its mapping does not name", () => {
   // which the mapping does not allow.
   const read = fixture({
     design: "## Overview\n\n<!-- §1 -->\n\n## Copy\n\n<!-- §4 -->\n",
-    citations: ["§1", "§4"],
+    citations: cited("§1", "§4"),
     mapping,
   });
   const findings = checkCitations(read, { numbers: ["1", "4"], uncitedOk: [] });
@@ -146,7 +152,7 @@ it("fails a marker that drifts into a `###` the mapped `##` does not name", () =
   // admitted it.
   const read = fixture({
     design: "## Layout\n\n### The header\n\n<!-- §7.1 -->\n",
-    citations: ["§7.1"],
+    citations: cited("§7.1"),
     mapping: new Map([["7", ["## Layout"]]]),
   });
   const findings = checkCitations(read, { numbers: ["7.1"], uncitedOk: [] });
@@ -157,7 +163,7 @@ it("fails a marker that drifts into a `###` the mapped `##` does not name", () =
 it("passes a marker under the exact `###` its mapping names", () => {
   const read = fixture({
     design: "## Layout\n\n### The header\n\n<!-- §7.1 -->\n",
-    citations: ["§7.1"],
+    citations: cited("§7.1"),
     mapping: new Map([["7.1", ["## Layout", "### The header"]]]),
   });
   expect(checkCitations(read, { numbers: ["7.1"], uncitedOk: [] })).toEqual([]);
@@ -168,7 +174,7 @@ it("fails a marker under a duplicated heading its mapping names", () => {
   // the file would otherwise let a marker parked under it pass unchecked.
   const read = fixture({
     design: "## Colors\n\n## Copy\n\n## Colors\n\n<!-- §4 -->\n",
-    citations: ["§4"],
+    citations: cited("§4"),
     mapping: new Map([["4", ["## Colors"]]]),
   });
   const findings = checkCitations(read, { numbers: ["4"], uncitedOk: [] });
@@ -179,7 +185,7 @@ it("fails a marker under a duplicated heading its mapping names", () => {
 it("fails a number the section mapping has no row for, rather than skipping it", () => {
   const read = fixture({
     design: "## Colors\n\n<!-- §4 -->\n\n## Copy\n\n<!-- §9 -->\n",
-    citations: ["§4", "§9"],
+    citations: cited("§4", "§9"),
     mapping: new Map([["4", ["## Colors"]]]),
   });
   expect(
@@ -195,8 +201,42 @@ it("keeps the register's .jsonl out of the citation scan", () => {
   expect(CITE_EXTENSIONS.test("data.json")).toBe(true);
 });
 
+it("claims a marker only from a document that speaks the design language", () => {
+  // vg-352, both directions. `docs/product/requirements.md` numbers its own
+  // requirements `## §N — title`, so its §7 is its own section and must not keep
+  // rule 3 silent for a DESIGN.md marker nothing cited; a design-language
+  // document's §7 is the claim that marker needs. Deleting the source filter
+  // makes the first half of this case pass with no findings.
+  const opts = { numbers: ["7"], uncitedOk: [] };
+  const design = "<!-- §7 -->\n";
+  expect(
+    whats(
+      checkCitations(
+        fixture({
+          design,
+          citations: [
+            {
+              path: "docs/product/requirements.md",
+              text: "## §7 — Product and scope\n",
+            },
+          ],
+        }),
+        opts,
+      ),
+    ),
+  ).toEqual(["§7"]);
+  expect(
+    whats(
+      checkCitations(
+        fixture({ design, citations: cited("§7's three tabs") }),
+        opts,
+      ),
+    ),
+  ).toEqual([]);
+});
+
 it("merges a rule-1 and a rule-2 finding for one number into one line", () => {
-  const read = fixture({ design: "", citations: ["§9"] });
+  const read = fixture({ design: "", citations: cited("§9") });
   const findings = checkCitations(read, { numbers: ["1", "9"], uncitedOk: [] });
   const nine = findings.filter((f) => f.what === "§9");
   expect(nine).toHaveLength(1);

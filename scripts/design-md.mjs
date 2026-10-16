@@ -31,6 +31,11 @@
  * but it is kept because it names the *citation*, and its per-`§N` reason is
  * merged with rule 1's rather than printed as a second line.
  *
+ * A *citation* is a `§N` in a document `CITE_SOURCES` declares, and only there:
+ * the number alone cannot say which document is speaking, and a document that
+ * numbers its own sections would otherwise claim a marker nothing cited
+ * (`vg-352`).
+ *
  * A marker's *placement* is part of the contract too. `§3` keeps meaning what it
  * meant only while it sits under the heading the section mapping names, so a
  * fourth rule reads that mapping from the spec (`### Section mapping`) and fails a
@@ -55,8 +60,9 @@
  * The canonical range lives HERE and is never read from DESIGN.md: if it were
  * read from the file, deleting a marker would shrink the range it is checked
  * against and the deletion would pass. `§1`–`§10` with `§7.1`–`§7.9` is
- * DESIGN.md's own numbering (D3); every other `§N` in the repo belongs to the
- * redesign spec and is ignored.
+ * DESIGN.md's own numbering (D3). The documents whose `§N` are citations of it
+ * are declared beside it in `CITE_SOURCES`, for the same reason — a shared
+ * namespace is not something a number can answer for.
  *
  * Both checks fail on their own findings, never on a proxy for them: the
  * `@google/design.md` linter's exit code is unusable — 0 for clean and 0 for
@@ -78,9 +84,40 @@ const CSS_REL = "src/web/packages/editor/src/editor-shell/editor-shell.css";
 /** The spec's `### Section mapping` table is where a marker's heading is declared. */
 const SPEC_REL = "docs/superpowers/specs/2026-10-10-design-md-replaces-the-bible-design.md";
 
-/** The trees a citation may live in. DESIGN.md itself is not scanned, so it
- *  cannot claim its own markers with the citations in its prose. */
-const CITE_TREES = ["docs", "src", "scripts"];
+/**
+ * The documents whose `§N` are citations of DESIGN.md — the source set, declared
+ * here beside the range for the reason the range is declared here: `§1`–`§10` is
+ * a *shared* namespace, so a number cannot say which document is speaking.
+ * `docs/product/requirements.md` numbers its own requirements `## §N — title`,
+ * `docs/product/tester-runbook.md` its own `## 0.`–`## 6.`, and
+ * `docs/architecture/`'s two censuses their own `## 1.`–`## 4.` — a bare `§7`
+ * from any of them would otherwise satisfy rule 3 for a marker nothing cited
+ * (`vg-352`). Membership is the property a reviewer checks: the document is
+ * *about* the design language. The near-misses, and why each is out:
+ * `docs/product/` outside `triage/` is the product's requirements and its
+ * verification; `docs/architecture/` is the product's structure;
+ * `docs/evidence/` names captures rather than sections; the two registers are
+ * already out by `CITE_EXTENSIONS`; `DESIGN.md` is the target and never a
+ * source; this file and its test are `CITE_EXCLUDE`.
+ *
+ * **Known limit, stated so it is not rediscovered as a defect.** A document that
+ * is about the design language *and* numbers its own sections still claims with
+ * its own numbers: `2026-10-08-editor-design-language-design.md` is `§1`–`§13`,
+ * and its `§2`, `§6` and `§7` are its own sections. It stays in the set because
+ * it genuinely cites the bible (§5, §7.1, §7.8), and leaving it out is the
+ * over-exclusion this set exists to bound. `docs/decisions/0060`.
+ */
+export const CITE_SOURCES = [
+  "src/",
+  "scripts/",
+  "docs/decisions/",
+  "docs/design/",
+  "docs/superpowers/",
+  "docs/product/triage/",
+];
+
+/** A path is a source when a listed prefix opens it — the set's one rule. */
+const isCitationSource = (rel) => CITE_SOURCES.some((prefix) => rel.startsWith(prefix));
 /**
  * The extension of a citation source. `.jsonl` is deliberately absent, and the
  * self-test below fails if a later widening admits it: the two register files
@@ -329,10 +366,16 @@ export function sectionTexts(design) {
   return found;
 }
 
+/**
+ * `§N` citations, each with the document it was read from. Only a source's text
+ * is read as a claim: a document that numbers its own sections cites itself, and
+ * a `§7` of its own must not answer for DESIGN.md's `§7` (`vg-352`).
+ */
 function citedIn(sources, known) {
   const found = new Set();
   for (const source of sources ?? []) {
-    for (const match of String(source).matchAll(CITATION)) {
+    if (!isCitationSource(source.path)) continue;
+    for (const match of String(source.text).matchAll(CITATION)) {
       if (known.has(match[1])) found.add(match[1]);
     }
   }
@@ -460,6 +503,8 @@ function orderFindings(entries) {
  * gathers the reason from whichever rules caught it. `opts.numbers` and
  * `opts.uncitedOk` and `opts.mappingExempt` default to the constants and exist so
  * a self-test can shrink the range to one number; the real CLI never sets them.
+ * `read.citations` is `{ path, text }` — the document a citation was read from is
+ * what makes it a claim, and `CITE_SOURCES` decides which documents those are.
  * `read.mapping` — marker number → heading path — is optional, and when present a
  * marker under the wrong heading is a finding too: a citation's number keeps its
  * meaning only while its marker sits where the mapping says. It also fails a number
@@ -494,7 +539,7 @@ export function checkCitations(read, opts = {}) {
     if (!known.has(number) || cited.has(number) || uncitedOk.has(number)) continue;
     entries.push({
       what: `§${number}`,
-      reason: `\`§${number}\` is a marker in DESIGN.md that no citation in \`docs/\`, \`src/\` or \`scripts/\` claims`,
+      reason: `\`§${number}\` is a marker in DESIGN.md that no citation in a declared source claims`,
     });
   }
   if (mapping !== undefined) {
@@ -529,16 +574,17 @@ export function checkCitations(read, opts = {}) {
 }
 
 /**
- * The citation sources: the tracked text files under the citation trees that
- * carry a `§`. The list comes from `git ls-files`, not a directory walk, so the
- * check reads tracked files only — untracked scratch under `src/` (a captured
- * `.vitest` report, an `.agent-scratch` note) cannot make the gate's verdict
- * depend on what happens to be lying on the disk. `git` failing is a failure,
- * not an empty read.
+ * The citation sources: the tracked text files under `CITE_SOURCES` that carry a
+ * `§`, each read with the path it came from so the claim test can tell which
+ * document is speaking. The list comes from `git ls-files`, not a directory walk,
+ * so the check reads tracked files only — untracked scratch under `src/` (a
+ * captured `.vitest` report, an `.agent-scratch` note) cannot make the gate's
+ * verdict depend on what happens to be lying on the disk. `git` failing is a
+ * failure, not an empty read.
  */
 function trackedPaths() {
   try {
-    return execFileSync("git", ["ls-files", "--", ...CITE_TREES], { cwd: ROOT, encoding: "utf8" })
+    return execFileSync("git", ["ls-files", "--", ...CITE_SOURCES], { cwd: ROOT, encoding: "utf8" })
       .split("\n")
       .filter((line) => line !== "");
   } catch (error) {
@@ -557,7 +603,7 @@ async function collectCitations(out) {
   for (const relPath of trackedPaths()) {
     if (CITE_EXCLUDE.has(relPath) || !CITE_EXTENSIONS.test(relPath)) continue;
     const text = await readFile(resolve(ROOT, relPath), "utf8").catch(() => null);
-    if (text !== null && text.includes("§")) out.push(text);
+    if (text !== null && text.includes("§")) out.push({ path: relPath, text });
   }
 }
 
@@ -595,6 +641,10 @@ function selfTest() {
     const why = found.map((f) => f.why).join(" | ");
     report(name, JSON.stringify(got) === JSON.stringify(expected) && (whyIncludes === undefined || why.includes(whyIncludes)), `expected ${JSON.stringify(expected)}${whyIncludes ? ` with why ~ ${JSON.stringify(whyIncludes)}` : ""}, got ${JSON.stringify(got)} (${why})`);
   };
+  /** A citation read from a document that speaks the design language. */
+  const cited = (...texts) => texts.map((text) => ({ path: "docs/design/mockups/README.md", text }));
+  /** A citation read from a document whose `§N` are its own numbering. */
+  const foreign = (path, text) => [{ path, text }];
 
   // --sync: a value that differs, a name on one side only, :root ignored.
   sync("a value the stylesheet and the front matter disagree on", { css: "@theme static {\n  --space-16: 15px;\n}\n", design: "spacing:\n  16: 16px\n" }, ["space-16"]);
@@ -607,11 +657,21 @@ function selfTest() {
 
   // --cite: each rule fires; a non-range number is ignored.
   cite("rule 1 — a range number with no marker", { design: "## Copy\n\nNo marker here.\n" }, { numbers: ["9"], uncitedOk: [] }, ["§9"], "canonical range");
-  cite("rule 2 — a citation with no marker to resolve it", { design: "", citations: ["§9 is here"] }, { numbers: ["9"], uncitedOk: [] }, ["§9"], "the repo cites");
-  cite("rule 3 — a marker no citation claims", { design: "<!-- §9 -->\n", citations: [] }, { numbers: ["9"], uncitedOk: [] }, ["§9"], "no citation");
-  cite("a non-range number is ignored", { design: "<!-- §9 -->\n", citations: ["§9", "§75", "§141"] }, { numbers: ["9"], uncitedOk: [] }, []);
-  cite("a claimed marker and a cited number agree", { design: "<!-- §9 -->\n", citations: ["DESIGN.md §9"] }, { numbers: ["9"], uncitedOk: [] }, []);
-  cite("UNCITED_OK silences rule 3 only", { design: "<!-- §9 -->\n", citations: [] }, { numbers: ["9"], uncitedOk: ["9"] }, []);
+  cite("rule 2 — a citation with no marker to resolve it", { design: "", citations: cited("§9 is here") }, { numbers: ["9"], uncitedOk: [] }, ["§9"], "the repo cites");
+  cite("rule 3 — a marker no citation claims", { design: "<!-- §9 -->\n", citations: cited() }, { numbers: ["9"], uncitedOk: [] }, ["§9"], "no citation");
+  cite("a non-range number is ignored", { design: "<!-- §9 -->\n", citations: cited("§9", "§75", "§141") }, { numbers: ["9"], uncitedOk: [] }, []);
+  cite("a claimed marker and a cited number agree", { design: "<!-- §9 -->\n", citations: cited("DESIGN.md §9") }, { numbers: ["9"], uncitedOk: [] }, []);
+  cite("UNCITED_OK silences rule 3 only", { design: "<!-- §9 -->\n", citations: cited() }, { numbers: ["9"], uncitedOk: ["9"] }, []);
+
+  // vg-352: a citation counts only from a document whose `§N` are DESIGN.md's.
+  // Both directions are the point — requirements.md's own `## §7` heading must
+  // not keep rule 3 silent for a marker nothing cited, and a design-language
+  // document's `§7` must still claim it.
+  cite("a requirements.md §7 passes as its own number, and claims nothing", { design: "<!-- §7 -->\n", citations: foreign("docs/product/requirements.md", "## §7 — Product and scope\n") }, { numbers: ["7"], uncitedOk: [] }, ["§7"], "no citation");
+  cite("a design-language document's §7 still cites DESIGN.md", { design: "<!-- §7 -->\n", citations: cited("§7's three tabs") }, { numbers: ["7"], uncitedOk: [] }, []);
+  cite("the runbook's own §2 and §3 claim nothing", { design: "<!-- §2 -->\n<!-- §3 -->\n", citations: foreign("docs/product/tester-runbook.md", "See §2 and §3.\n") }, { numbers: ["2", "3"], uncitedOk: [] }, ["§2", "§3"], "no citation");
+  cite("an architecture census's own §3 claims nothing", { design: "<!-- §3 -->\n", citations: foreign("docs/architecture/manager-census.md", "the module re-spells (§3)\n") }, { numbers: ["3"], uncitedOk: [] }, ["§3"], "no citation");
+  cite("a triage row's §7.7 is a claim — its path is in the set", { design: "<!-- §7.7 -->\n", citations: foreign("docs/product/triage/triage-B3.md", "the bible (§7.7)\n") }, { numbers: ["7.7"], uncitedOk: [] }, []);
 
   // --cite placement: a marker's heading is checked against the spec's mapping,
   // and read from it rather than invented here.
@@ -621,15 +681,15 @@ function selfTest() {
     ["7", ["## Layout"]],
     ["3", ["## Layout", "### The scales"]],
   ]);
-  cite("a moved marker fails", { design: "## Colors\n\n<!-- §1 -->\n", citations: ["§1"], mapping }, { numbers: ["1"], uncitedOk: [] }, ["§1"], "sits under");
-  cite("a marker in its mapped heading passes", { design: "## Colors\n\n<!-- §4 -->\n", citations: ["§4"], mapping }, { numbers: ["4"], uncitedOk: [] }, []);
-  cite("a mapped `###` passes only where the mapping says", { design: "## Layout\n\n### The scales\n\n<!-- §3 -->\n", citations: ["§3"], mapping }, { numbers: ["3"], uncitedOk: [] }, []);
-  cite("a marker mapped at a `##` no longer drifts into a `###` beneath it", { design: "## Layout\n\n### The header\n\n<!-- §7.1 -->\n", citations: ["§7.1"], mapping }, { numbers: ["7.1"], uncitedOk: [] }, ["§7.1"], "sits under");
-  cite("a marker mapped at its exact `###` passes", { design: "## Layout\n\n### The header\n\n<!-- §7.1 -->\n", citations: ["§7.1"], mapping: new Map([["7.1", ["## Layout", "### The header"]]]) }, { numbers: ["7.1"], uncitedOk: [] }, []);
-  cite("no mapping means no placement finding", { design: "## Colors\n\n<!-- §1 -->\n", citations: ["§1"] }, { numbers: ["1"], uncitedOk: [] }, []);
-  cite("a number with no mapping row fails rather than going unchecked", { design: "## Colors\n\n<!-- §4 -->\n\n## Copy\n\n<!-- §9 -->\n", citations: ["§4", "§9"], mapping }, { numbers: ["4", "9"], uncitedOk: [] }, ["§9"], "no row in the spec's section mapping");
-  cite("an exempt number with no mapping row is not a finding", { design: "## Colors\n\n<!-- §4 -->\n\n## Copy\n\n<!-- §9 -->\n", citations: ["§4", "§9"], mapping }, { numbers: ["4", "9"], uncitedOk: [], mappingExempt: [{ number: "9", reason: "fixture" }] }, []);
-  cite("a marker under a duplicated heading fails", { design: "## Colors\n\n## Copy\n\n## Colors\n\n<!-- §4 -->\n", citations: ["§4"], mapping }, { numbers: ["4"], uncitedOk: [] }, ["§4"], "appears more than once");
+  cite("a moved marker fails", { design: "## Colors\n\n<!-- §1 -->\n", citations: cited("§1"), mapping }, { numbers: ["1"], uncitedOk: [] }, ["§1"], "sits under");
+  cite("a marker in its mapped heading passes", { design: "## Colors\n\n<!-- §4 -->\n", citations: cited("§4"), mapping }, { numbers: ["4"], uncitedOk: [] }, []);
+  cite("a mapped `###` passes only where the mapping says", { design: "## Layout\n\n### The scales\n\n<!-- §3 -->\n", citations: cited("§3"), mapping }, { numbers: ["3"], uncitedOk: [] }, []);
+  cite("a marker mapped at a `##` no longer drifts into a `###` beneath it", { design: "## Layout\n\n### The header\n\n<!-- §7.1 -->\n", citations: cited("§7.1"), mapping }, { numbers: ["7.1"], uncitedOk: [] }, ["§7.1"], "sits under");
+  cite("a marker mapped at its exact `###` passes", { design: "## Layout\n\n### The header\n\n<!-- §7.1 -->\n", citations: cited("§7.1"), mapping: new Map([["7.1", ["## Layout", "### The header"]]]) }, { numbers: ["7.1"], uncitedOk: [] }, []);
+  cite("no mapping means no placement finding", { design: "## Colors\n\n<!-- §1 -->\n", citations: cited("§1") }, { numbers: ["1"], uncitedOk: [] }, []);
+  cite("a number with no mapping row fails rather than going unchecked", { design: "## Colors\n\n<!-- §4 -->\n\n## Copy\n\n<!-- §9 -->\n", citations: cited("§4", "§9"), mapping }, { numbers: ["4", "9"], uncitedOk: [] }, ["§9"], "no row in the spec's section mapping");
+  cite("an exempt number with no mapping row is not a finding", { design: "## Colors\n\n<!-- §4 -->\n\n## Copy\n\n<!-- §9 -->\n", citations: cited("§4", "§9"), mapping }, { numbers: ["4", "9"], uncitedOk: [], mappingExempt: [{ number: "9", reason: "fixture" }] }, []);
+  cite("a marker under a duplicated heading fails", { design: "## Colors\n\n## Copy\n\n## Colors\n\n<!-- §4 -->\n", citations: cited("§4"), mapping }, { numbers: ["4"], uncitedOk: [] }, ["§4"], "appears more than once");
 
   // --sectionTexts: the span a marker opens, which a citation quoting a rule is
   // read against. The two directions a section reader can be wrong in are both

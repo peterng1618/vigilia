@@ -838,6 +838,10 @@ const DESIGN_TEXT = readFileSync(resolve(REPO_ROOT, "DESIGN.md"), "utf8");
  *  the one that moved it — a move must not re-date a licence forward past the
  *  rule it quotes. */
 const LICENCE_PATHSPEC = "src/web/tests/e2e/";
+/** Where a `licensed` string is written, named for the citation checker: it
+ *  claims a marker only from a declared source, and a licence quotes DESIGN.md
+ *  from this reader (`docs/decisions/0060`). */
+const LICENCE_SOURCE = "src/web/tests/e2e/mockup-parity.ts";
 /** The commit that added §5's "Bare readout" row and left `<!-- §5 -->` alone —
  *  the real amendment the predating limb exists for. Named, not inferred: the
  *  assertion below is that the rule's own line blames to *this* commit where the
@@ -1020,7 +1024,7 @@ test("every licence names a resolvable rule, quotes it, and predates its row", (
       .filter((number) => CITE_NUMBERS.includes(number));
     expect(
       checkCitations(
-        { design: DESIGN_TEXT, citations: [text] },
+        { design: DESIGN_TEXT, citations: [{ path: LICENCE_SOURCE, text }] },
         { numbers, uncitedOk: [...CITE_NUMBERS] },
       ).map((finding) => `${finding.what}: ${finding.why}`),
       `${row.region}: the licence names a section that does not resolve`,
