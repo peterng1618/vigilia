@@ -3087,7 +3087,10 @@ the two frozen originals. The segmented control's half of `vg-301` did not repro
 retiring all ten unread `--vigilia-*` declarations and adding the first assertion in the token test that
 fails on an ADDITION rather than a removal. Its measurement corrected `vg-201`'s ruling: the canvas accent
 is the theme document's `palette.accent`, so no CSS custom property can move it, and that clause is
-unreachable rather than merely inert.]**
+unreachable rather than merely inert.]** **[Task 20.8 closed 2026-10-17 at `e4785eaa`, redrawing the
+segmented control's four rows in all three `current/` drawings that draw it to the product's composed
+treatment — eight declarations, not the six `vg-554` named — and answering the capture clause with "none is
+owed". Its two trailers are `vg-555` and `vg-556`, homed on a new **Task 20.9**.]**
 
 **Why a phase of its own.** Six of the seven edit `editor-shell.css` or a drawing under
 `docs/design/mockups/`, and the seventh edits the design-language reader. They are one subject: what the
@@ -3425,8 +3428,10 @@ declaration away. It belongs to this phase for the phase's own reason: its subje
 treatment the design language gives a control.
 
 **Files:**
-- Modify: `docs/design/mockups/current/controls.html` and `current/controls-editorial.html`; and whatever
-  the capture registry's owner is, for the second clause
+- Modify: `docs/design/mockups/current/controls.html`, `current/controls-editorial.html` **and
+  `current/shell.html`** — corrected 2026-10-17 at the task's close: this line named two drawings and
+  **`current/shell.html` draws the same four segmented rows**, so leaving it would have had the current set
+  draw one control two ways; and whatever the capture registry's owner is, for the second clause
 
 **Interfaces:**
 - Produces: `vg-554` closed
@@ -3458,6 +3463,54 @@ treatment the design language gives a control.
 **Verify:** `npx vitest run tests/e2e/mockup-values.test.ts`; `npx playwright test
 tests/e2e/design-language-drawings.spec.ts --workers=1`; the parity captures rebuilt **only** if Step 3
 registers one.
+
+**CLOSED 2026-10-17 at `e4785eaa`, Phase 20's Task 20.8, `vg-554` verified — and the row's own count was
+wrong.** The drawn treatment differed in **eight** declarations, not the six the row named: the two the
+brief told the seat to settle were the middle chips' **`border-left`/`border-right` hairlines**, which the
+product does not draw at all, and the pressed chip's **`font:500`**, which is the drawing's invention —
+DESIGN.md §5's Segmented row names the lift as the fill and no weight, so the product's `400` stands. The
+redraw is grounded in a normative source rather than in the product's CSS alone, which is what keeps it out
+of this phase's failure mode: §5's row at `DESIGN.md:465` reads *"A `--panel-2` well holding 2–4 labels,
+the active one lifted to `--stage`"*, and the drawings' token table maps `--panel2` to
+`--shell-surface-strong` and `--bg` to `--shell-backdrop` (`mockup-values.ts`'s `SHELL_ROLES`), so no token
+was added and no value invented. **A third drawing was corrected and this task's `Files:` line did not name
+it** — see the correction above. **No capture is owed for either clause**, and both reasons are measurements:
+the product is unchanged by a drawing correction, `control-set`'s registered action already photographs the
+product's segmented treatment beside `controls.html`, and no registered action reaches the header's publish
+trigger, which needs a host answering `/api/hosting` — that registry is Task 21.3's. **Two findings are
+split out rather than extended into**: the editorial twin's palette table (`vg-555`) and the drawn chip
+widths (`vg-556`), both homed on Task 20.9 below.
+
+### Task 20.9: The editorial twin's table, and the drawn chip widths
+
+**Added 2026-10-17 at Task 20.8's close**, homing `vg-555` and `vg-556`, both filed as
+`Discovered, not fixed:` trailers on `e4785eaa` rather than extended into the redraw. They share a file set
+and a subject — what a `current/` drawing claims the product renders — which is this phase's own subject.
+
+**Files:**
+- Modify: `docs/design/mockups/current/controls-editorial.html`; and the three drawings' segmented rows for
+  the second clause
+
+**Interfaces:**
+- Produces: `vg-555` and `vg-556` closed
+
+- [ ] **Step 1: `vg-555` — the editorial twin's token table, and the question is whether its ground is the
+      product's.** Its `--bg` and `--panel2` are **swapped** against the roles `SHELL_ROLES` assigns them, so
+      the two fills Task 20.8 landed render inverted; `--edge` and `--accent` diverge from the product's
+      editorial values too, and `--well-edge` has no counterpart to compare against. `README.md:25` says the
+      file is *"the same column on the editorial ground — the same file with the token table swapped, so a
+      hard-coded colour cannot hide in it"*, which is what makes the swap a defect rather than a style —
+      **but confirm that reading before correcting a palette-wide table**, because the alternative is that
+      the ground is hand-drawn and the table is deliberate.
+- [ ] **Step 2: `vg-556` — the chip widths.** The product's chips are `flex: 0 1 auto` and hug their labels
+      (**34.1px "Left", 48.1px "Center" in a 170px group**); all three drawings give every chip `flex:1`.
+      `mockup-values.test.ts` compares declared values and has no row over a flex factor, so nothing catches
+      this. Decide whether the drawings follow the product or the divergence is documented.
+- [ ] **Step 3: Close both**, naming the file and the element each correction touches.
+
+**Verify:** `npx vitest run tests/e2e/mockup-values.test.ts`; `npx playwright test
+tests/e2e/design-language-parity.spec.ts --workers=1`; a browser reading of the corrected drawing against
+the built product, palette settled.
 
 ---
 
