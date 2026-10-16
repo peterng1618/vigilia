@@ -185,7 +185,7 @@ export class ShortcutManager {
       binding !== undefined &&
       (!binding.modifier ||
         MODIFIED_KEY_DEFERRED_ACTION_IDS.has(binding.action)) &&
-      isTextEntryTarget(event.target);
+      consumesKey(event.target, event);
 
     if (handler === undefined || deferred || this.#modalOpenAtDispatchStart) {
       return;
@@ -232,8 +232,14 @@ export class ShortcutManager {
   }
 }
 
-/** Save/Open deliberately override text-entry defaults; New does not.
- * Bare-key canvas listeners (camera keys) defer through this same predicate. */
+/** The coarse question the camera's bare-key listeners ask: does this target own
+ * the characters they take? A range is counted here too, which is over-broad but
+ * conservative — none of the camera's own keys (Space, `+`, `-`, `!`, `1`) is
+ * one a slider has any use for.
+ *
+ * Save/Open deliberately override text-entry defaults; New does not. **The
+ * dispatcher's deferral does not read this**: it asks `consumesKey`, because a
+ * range owns its own arrows and no modifier chord. */
 export function isTextEntryTarget(target: EventTarget | null): boolean {
   if (!(target instanceof HTMLElement)) return false;
   if (target.isContentEditable) return true;
@@ -255,6 +261,51 @@ export function isTextEntryTarget(target: EventTarget | null): boolean {
       "submit",
     ]).has(target.type.toLowerCase())
   );
+}
+
+/** The keys a focused `range` handles itself. It is the one control in the set
+ * whose own key handling the table has to step around, and every other key it
+ * sees is the browser's rather than the slider's. */
+const RANGE_CONSUMED_KEYS: ReadonlySet<string> = new Set([
+  "arrowdown",
+  "arrowleft",
+  "arrowright",
+  "arrowup",
+  "end",
+  "home",
+  "pagedown",
+  "pageup",
+]);
+
+/**
+ * Whether the target handles this key itself, so the manager must leave it
+ * alone.
+ *
+ * **The question is per key, not per target.** A text field owns every key the
+ * table binds — printable characters are its own, and Delete, the arrows and
+ * Escape are its editing keys — while a range owns only the keys it moves on.
+ * Asking the coarse question instead is what swallowed `Ctrl+Z` over a focused
+ * slider (`vg-252`): a range is not a text field, and a modifier chord is not a
+ * key it has any use for.
+ */
+function consumesKey(
+  target: EventTarget | null,
+  event: KeyboardEvent,
+): boolean {
+  if (
+    target instanceof HTMLInputElement &&
+    target.type.toLowerCase() === "range"
+  ) {
+    // A modifier chord is never the slider's, whatever the key: `Ctrl+ArrowLeft`
+    // is the browser's word-jump, not a step.
+    return (
+      !event.ctrlKey &&
+      !event.metaKey &&
+      !event.altKey &&
+      RANGE_CONSUMED_KEYS.has(event.key.toLowerCase())
+    );
+  }
+  return isTextEntryTarget(target);
 }
 
 /**

@@ -360,6 +360,56 @@ describe("ShortcutManager unmodified keys", () => {
     expect(nudge).toHaveBeenCalledTimes(2);
     manager.destroy();
   });
+
+  it("takes a modifier chord back from a focused range, and leaves the range its own keys", () => {
+    // A slider is not a text field, so `Ctrl+Z` is not a key it has any use for
+    // and the manager must take it — which is what a focused range swallowed
+    // (`vg-252`). The arrows are the other half: a range moves on them, so they
+    // stay its own, and that is why a range was in the deferral at all.
+    const manager = new ShortcutManager();
+    const undo = vi.fn();
+    const nudge = vi.fn();
+    const remove = vi.fn();
+    manager.register("edit.undo", undo);
+    manager.register("canvas.nudge-left", nudge);
+    manager.register("edit.delete", remove);
+    const slider = document.createElement("input");
+    slider.type = "range";
+    document.body.append(slider);
+    slider.focus();
+
+    const chord = new KeyboardEvent("keydown", {
+      key: "z",
+      ctrlKey: true,
+      bubbles: true,
+      cancelable: true,
+    });
+    slider.dispatchEvent(chord);
+    expect(undo).toHaveBeenCalledOnce();
+    expect(chord.defaultPrevented).toBe(true);
+
+    const arrow = new KeyboardEvent("keydown", {
+      key: "ArrowLeft",
+      bubbles: true,
+      cancelable: true,
+    });
+    slider.dispatchEvent(arrow);
+    expect(nudge).not.toHaveBeenCalled();
+    expect(arrow.defaultPrevented).toBe(false);
+
+    // Nothing else the table binds is the slider's either.
+    slider.dispatchEvent(
+      new KeyboardEvent("keydown", {
+        key: "Delete",
+        bubbles: true,
+        cancelable: true,
+      }),
+    );
+    expect(remove).toHaveBeenCalledOnce();
+
+    slider.remove();
+    manager.destroy();
+  });
 });
 
 describe("ShortcutManager context bindings", () => {

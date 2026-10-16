@@ -51,9 +51,10 @@ function activatesOnSpace(target: EventTarget | null): boolean {
     target.tagName === "SUMMARY"
   )
     return true;
-  // `isTextEntryTarget` is false for exactly the `<input>` types that consume
-  // Space as their own activation, so the negative case reuses that owner.
-  if (target instanceof HTMLInputElement) return !isTextEntryTarget(target);
+  // Every `<input>` that reaches here is a control type: the caller's
+  // `isTextEntryTarget` guard has already turned away the field types, and
+  // `range` with them, and each of those types takes Space as its activation.
+  if (target instanceof HTMLInputElement) return true;
   return SPACE_ACTIVATED_ROLES.has(target.getAttribute("role") ?? "");
 }
 

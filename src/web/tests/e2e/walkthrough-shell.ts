@@ -722,9 +722,10 @@ export async function exitGroup(page: Page): Promise<string> {
  * control when {@link enterGroup} has just run.
  *
  * It exists because a text entry is what makes `view.exit-group`'s deferral
- * observable: the binding is deferred while `isTextEntryTarget` holds, and with
- * nothing entered an Escape that reached it and one that did not look the
- * same — `exitGroup()` on an empty context is a no-op.
+ * observable: the binding is deferred while the target consumes the key
+ * (`consumesKey`, true for every key a text field owns), and with nothing
+ * entered an Escape that reached it and one that did not look the same —
+ * `exitGroup()` on an empty context is a no-op.
  */
 export async function openLayerRenameField(page: Page): Promise<void> {
   for (let press = 0; press < ROW_BOUND; press++) {

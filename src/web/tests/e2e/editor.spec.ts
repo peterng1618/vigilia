@@ -1289,15 +1289,12 @@ test.describe("Fabric editor route", () => {
 
     // Keyboard: the last edit, so the undo below is that edit and not the panel.
     await typeInto(page, border, "3");
-    // `edit.undo` **defers to a focused text entry target**, and a range counts
-    // as one (`isTextEntryTarget`), so a chord pressed with a control still
-    // focused edits nothing and the assertion below would read as a failing
-    // undo rather than a deferred one. Blurring the focused element is what an
-    // author does before an undo that is about the document.
-    await page.evaluate(() => {
-      const active = document.activeElement;
-      if (active instanceof HTMLElement) active.blur();
-    });
+    // **The chord is pressed with the track still focused, which is `vg-252`'s
+    // own reproduction** — click the slider, press Ctrl+Z. `edit.undo` defers
+    // only to a target that *consumes the key*: a range consumes its own arrows
+    // and no modifier chord, so this undo is the manager's. (It used to blur
+    // first, because a focused range counted as a text-entry target.)
+    await border.focus();
 
     await captureVisualReview(page, testInfo, "editor-panel-authoring");
 

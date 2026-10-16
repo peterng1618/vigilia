@@ -352,8 +352,8 @@ test.describe("the shell, reached by keyboard alone", () => {
    *
    * **The deferral, which needed a group to be entered to be observable.** Task
    * 3's review found the one outer owner Escape can reach from a text field:
-   * the window-level `view.exit-group` binding, deferred while
-   * `isTextEntryTarget` holds. With nothing entered `exitGroup()` is a no-op, so
+   * the window-level `view.exit-group` binding, deferred while the target
+   * consumes the key. With nothing entered `exitGroup()` is a no-op, so
    * no assertion could tell a deferred Escape from one that ran. Here a group is
    * entered first, so the Escape from the row's own rename field is the case
    * that distinguishes them: the field's draft goes and the context does not.

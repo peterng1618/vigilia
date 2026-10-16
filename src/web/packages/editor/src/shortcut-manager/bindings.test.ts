@@ -441,6 +441,37 @@ describe("bindingRefusal", () => {
     ).toEqual({ kind: "reserved", chord: "Ctrl+R" });
   });
 
+  it("refuses a letter whose Shift variant the browser keeps too", () => {
+    // The blanket Shift exclusion these replace was never a measurement: it
+    // assumed Shift made a chord safe, and `Ctrl+Shift+T` — reopen the closed
+    // tab — is one of the chords most likely to be tried (`vg-290`).
+    for (const key of ["n", "r", "t", "w"]) {
+      expect(
+        bindingRefusal(
+          "publish.surface",
+          { key, modifier: true, shift: true, action: "publish.surface" },
+          {},
+        ),
+        key,
+      ).toEqual({
+        kind: "reserved",
+        chord: `Ctrl+Shift+${key.toUpperCase()}`,
+      });
+    }
+  });
+
+  it("leaves a Shift variant the browser does not keep bindable", () => {
+    // Over-refusing is its own defect: `Ctrl+Shift+P` is Firefox's private
+    // window and Chromium leaves it free, so it stays the author's to take.
+    expect(
+      bindingRefusal(
+        "publish.surface",
+        { key: "p", modifier: true, shift: true, action: "publish.surface" },
+        {},
+      ),
+    ).toBeUndefined();
+  });
+
   it("refuses a function key the browser keeps, naming the key it keeps", () => {
     // `keyCap` names `f5`, so this refusal is reachable and says what it means:
     // the browser keeps F5. Without the name the key reads unprintable, which is

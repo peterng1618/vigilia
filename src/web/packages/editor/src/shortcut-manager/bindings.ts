@@ -65,8 +65,8 @@ const MODIFIER_KEYS: ReadonlySet<string> = new Set([
 ]);
 
 /** Chords the browser or the OS keeps for itself, so a page listener never sees
- *  them. The letters are refused only with a modifier and no Shift — bare
- *  letters are ordinary typing — and the function keys are refused either way.
+ *  them. A letter is refused only with a modifier — bare letters are ordinary
+ *  typing — and the function keys are refused either way.
  *
  *  `ponytail:` a JavaScript listener cannot promise capture of every OS chord;
  *  this is the set known to be unreachable, and the refusal says where the
@@ -82,6 +82,25 @@ const RESERVED_LETTERS: ReadonlySet<string> = new Set([
   "w",
 ]);
 const RESERVED_KEYS: ReadonlySet<string> = new Set(["f5", "f11", "f12"]);
+
+/** The letters whose **Shift** variant the browser keeps as well, so
+ *  `Ctrl+Shift+R` is exactly as unreachable as `Ctrl+R`.
+ *
+ *  The blanket `shift !== true` exclusion these replace was never a measurement:
+ *  it assumed Shift made a chord safe, and three of the four chords most likely
+ *  to be tried are the Shift variants a browser keeps. **Chromium and Firefox
+ *  both keep these four** — new private window / undo close window, reload
+ *  ignoring cache, reopen the closed tab, close the window — checked 2026-10-16
+ *  against Chrome's shortcut list and Firefox's own `browser-sets.inc` key
+ *  definitions. `p` is deliberately absent: Firefox's private window is
+ *  `Ctrl+Shift+P` and Chromium leaves that chord free, so refusing it would
+ *  reject a chord that works in the browser most authors open. */
+const SHIFT_RESERVED_LETTERS: ReadonlySet<string> = new Set([
+  "n",
+  "r",
+  "t",
+  "w",
+]);
 
 /** The key a stored entry may carry: one character `bindingFor` can match — it
  *  lowercases `event.key`, so a stored `P` is a binding that never fires — or
@@ -294,13 +313,15 @@ export function bindingRefusal(
     : { kind: "taken", action: taken.action };
 }
 
+/** Two chords, two sets: a plain-modifier letter and its Shift variant are
+ *  different chords and a browser may keep one and not the other (`Ctrl+P` is
+ *  free where `Ctrl+Shift+P` is Firefox's private window). */
 function reserved(binding: ShortcutBinding): boolean {
   if (RESERVED_KEYS.has(binding.key)) return true;
-  return (
-    binding.modifier &&
-    binding.shift !== true &&
-    RESERVED_LETTERS.has(binding.key)
-  );
+  if (!binding.modifier) return false;
+  return binding.shift === true
+    ? SHIFT_RESERVED_LETTERS.has(binding.key)
+    : RESERVED_LETTERS.has(binding.key);
 }
 
 /** The stored object, or nothing where it is not one. A `Storage` read throws
