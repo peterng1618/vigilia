@@ -37,11 +37,11 @@ ledger did.
 
 ## Last completed change
 
-- **Task 19.1 landed: `FontPicker` is mounted on the selection inspector's text face field**, the field `vg-268`'s 2026-10-12 ruling named as its owner — the two rows file one question, so the controller closes `vg-268` and `vg-283` together.
-- **The field is a fifth `ExtraView` member, not a `FieldView`**: it carries the preset the object is set in and nothing else, and the write goes to that preset through the Tokens pane's own `TypePresetFontActions` — a text object has no face of its own, a run names a preset and the preset carries the face, so no second face picker was written.
-- **The mount brought the favourites client the host was already serving** — `/api/font-favorites` had a store and no editor-side reader, so `favorites-client.ts` is the font-trio plan's own Task 7 artifact; without it the picker's star and its "Favourites only" box would have shipped dead.
-- **The copy census needed a carve-out this task's brief did not predict**: `spokenIn` reads every button, and a face row's text is a family and a weight, so the catalogue's two data rows are carved out exactly as `ui-copy-panels.test.ts` already carved them out of its own net.
-- **Evidence: `npx vitest run` 3479/3479 exit 0, `npm run typecheck` exit 0, and `npx playwright test tests/e2e/inspector-sections.spec.ts --project=desktop-chromium --workers=1` 22 passed exit 0 on a rebuilt bundle** — with the new case red at exit 1 when the mount is disabled; **unverified: the face a row applies is not exercised in the browser**, because applying one downloads it from a CDN the suite does not own, so the write is pinned in jsdom and in the session's own `applyPresetFace` case instead.
+- **Task 19.1 closed at `055c7ecc`, so the register is 134 open** — `vg-268` and `vg-283` are `verified` together, since they file one question, and both red proofs were re-run by the controller rather than taken from the report.
+- **The mount is the fix and nothing was deleted** — `FontPicker` is rendered by a new `selection-inspector/font-face-field.tsx` from the column's content section, and the field is a fifth `ExtraView` member rather than a second face picker.
+- **The write goes to the preset, not the object** — a text object has no face of its own, so the field writes through the Tokens pane's existing `TypePresetFontActions`; dropping `fontFace` from `rendersExtra` reads 1 failed of 331 exit 1, restored byte-identically with `cmp` to green.
+- **The mount brought a client the host was already serving** — `/api/font-favorites` had a store and no editor-side reader, so `favorites-client.ts` is the catalogue plan's own unbuilt Task 7 artifact; the copy census needed the same two-row carve-out `ui-copy-panels.test.ts` already makes.
+- **A finding the landing made visible is filed as `vg-549`** — `applyPresetFace` writes family, weight and `face.assetId` while the Tokens pane leaves family and weight editable, so an author can type a family that contradicts the bound face.
 
 ## Next
 
