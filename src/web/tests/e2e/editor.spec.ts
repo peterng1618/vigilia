@@ -4433,8 +4433,14 @@ test.describe("Fabric editor route", () => {
    * found is that no sub-unit width is ever produced — the drag asked to put the
    * edge 0.4 units from the left edge and landed it tens of scene units away, so
    * the box was written rather than skipped and the refusal was never reached.
-   * That landing-versus-request gap is its own finding (`vg-393`) and this case
-   * concludes nothing about its cause.
+   * That landing-versus-request gap is `vg-393`, and its cause is measured
+   * (2026-10-16): the ask is 0.4 scene units, which is 0.17 client px at this
+   * zoom, and a whole client px is 2.35 scene units — so the pointer lands at
+   * scene 117.0, *left of the object's own left edge at 118*, and Fabric's
+   * `changeObjectWidth` refuses a pointer on the far side of the origin
+   * (`index.mjs` `changeObjectDimensionGen`). The width left behind is the
+   * previous step's, 36.137 for a pointer at scene 145.2. The box the refusal
+   * would have floored is therefore unreachable by a pointer here, not skipped.
    */
   test("resizes a scaled text by its side handle, and reopens the box it wrote", async ({
     page,
