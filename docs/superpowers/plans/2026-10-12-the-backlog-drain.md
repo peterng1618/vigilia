@@ -3073,7 +3073,8 @@ Acceptance names the browser suite for Tasks 19.1–19.4 only.
 elevation ladder survives, `--shell-warm` is readable in every palette, `--shell-flat` goes, and the
 drawings agree with the product where they had invented or drifted. **[Annotated 2026-10-16: two of the
 seven cannot land as their rulings read, so Tasks 20.5 and 20.6 are blocked on decisions their own rulings
-declined to make and both are annotated in place below; Tasks 20.1–20.4 are the dispatchable work.]**
+declined to make and both are annotated in place below; Tasks 20.1–20.4 are the dispatchable work, and
+**Task 20.7 was added mid-phase** for `vg-552`, which a seat found while doing 20.2.]**
 
 **Why a phase of its own.** Six of the seven edit `editor-shell.css` or a drawing under
 `docs/design/mockups/`, and the seventh edits the design-language reader. They are one subject: what the
@@ -3122,11 +3123,22 @@ nothing in that file; `--elev-3` declared `:514`, consumed `:1625` (**one**). So
 `components/ui/control-select.tsx:183`; the seat re-sweeps `packages/` and `tests/`). The ruling's line
 citation `:465` for `--elev-2`'s value has moved to `:513` with the value unchanged. **The operative decision
 is unaffected** — one ladder survives and both old names go — so only the counts are corrected, on the rows
-and not by rewriting ruling text. **And the two consumers are `.editor-shell-publish-popup` (`:785`, shadow
-`:791`) and `.editor-shell-publish-label` (`:875`, shadow `:881`), with a stale comment at `:778-780` calling
-`--shadow-raised` "the menu popup's own lift" when the menu popup rides `--elev-3`** — so "nearest ladder
-step" is a judgement between the numerically nearest and the semantically nearest, and the comment cannot be
-the reason for either.
+and not by rewriting ruling text. **And the two consumers are `.editor-shell-publish-popup` (selector `:781`,
+shadow `:791`) and `.editor-shell-menu-popup` (selector `:863`, shadow `:881`)** — so "nearest ladder step" is
+a judgement between the numerically nearest and the semantically nearest.
+
+**CORRECTED 2026-10-16 at the task's close, and the error was the controller's brief rather than the plan's
+step.** This annotation first read that the second consumer was `.editor-shell-publish-label` and that the
+comment at `:778-780` was stale because "the menu popup rides `--elev-3`". **Both halves were wrong.** The
+second consumer is `.editor-shell-menu-popup`, and `--elev-3` is `.editor-shell-dialog`'s (`:1624`); the
+comment — *"`--shadow-raised` is the menu popup's own lift, so the two portalled surfaces float the same
+way"* — was **true**, and it is the reason the two popovers took the same step. The seat refused the brief's
+claim rather than following it, which is what kept a true invariant from being deleted; the cause was a
+controller reading two concatenated `sed` ranges and assigning the wrong selector to the second one. **The
+seat also found two test sites the brief's sweep would have missed** — `editor-shell.tokens.test.ts`'s
+`@theme` value pin and not-on-`:root` list, and `shell-palette-tokens.spec.ts`'s theme sample — and both
+**throw** on an absent token rather than passing vacuously, so a `grep` for `var(--shadow-raised)` was not the
+sweep the deletion needed.
 
 ### Task 20.2: `--shell-warm` is readable in every palette
 
@@ -3275,6 +3287,40 @@ six entries) is a third. **A third finding comes with it and is not this row's**
 while `--shell-display` applies one to chrome headings at three sites, so the CSS declares a face the
 normative table does not list. **`vg-354` stays `open` and the re-decision is recorded on it**; Task 20.6 is
 not dispatched until it is answered.
+
+### Task 20.7: The shell's `--vigilia-*` vocabulary is read or retired
+
+**Added 2026-10-16 mid-phase**, homing `vg-552`, which the seat doing Task 20.2 filed as a
+`Discovered, not fixed:` trailer naming two tokens and which the controller expanded by measurement to
+**ten of the fifteen** the control block declares. It belongs to this phase for Task 21.7's reason: it was
+found by a measurement rather than by a ruling, and its subject is the token vocabulary.
+
+**Files:**
+- Modify: `src/web/packages/editor/src/editor-shell/editor-shell.css`; `editor-shell.tokens.test.ts`; and
+  whatever reads the tokens that stay
+
+**Interfaces:**
+- Produces: `vg-552` closed
+
+- [ ] **Step 1: Re-run the measurement; the negative is searched, not assumed.** Per token by name,
+      `grep -rn "var(--vigilia-<t>)" src/web --include=*.ts --include=*.tsx --include=*.css` with `dist/`
+      and `node_modules/` excluded: `canvas-bg` 1, `control-bg` 5, `subdued` 1, `scrollbar-thumb` 3,
+      `scrollbar-track` 3 — and **zero** for `text`, `panel-bg`, `panel-border`, `control-border`,
+      `input-bg`, `muted`, `selection-bg`, `accent`, `accent-dim` and `guide`. The four things that make the
+      negative hold are part of the measurement rather than a footnote: the block is on a plain `:root` and
+      **not** inside `@theme`, so Tailwind generates no utility from these names; there is no `setProperty`
+      for a theme token anywhere in `src/web`; no template constructs a `--vigilia-…` name; and a sweep for
+      `vigilia-` not preceded by `--` returns only DOM element ids.
+- [ ] **Step 2: Decide per token, with evidence, and do not accept a comment as the reason.** The block's own
+      comment at `:91-99` describes live jobs for tokens nothing reads — `--vigilia-input-bg` is "a text
+      field's own white", `--vigilia-accent` is "the control layer's highlight". Each of the ten is either
+      retired the way `--shell-flat` was, or wired to the surface its comment names. **A token kept because a
+      comment describes it is not a decision**; the reason has to be a rule that reads it or a surface that
+      will.
+- [ ] **Step 3: Land the disposition and close `vg-552` naming the count before and after and the same
+      measurement command.** Note that `vg-201`'s ruling's *"let the canvas accent move with it"* is inert
+      while `--vigilia-accent` has no reader, so whichever way this lands, that half of the ruling is
+      discharged or corrected in the same commit.
 
 ---
 
