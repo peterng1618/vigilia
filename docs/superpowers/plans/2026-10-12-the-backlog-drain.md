@@ -3078,7 +3078,8 @@ drawings agree with the product where they had invented or drifted.
 design language declares, and what the drawings show.
 
 **Owners:** `src/web/packages/editor/src/editor-shell/editor-shell.css`; its token test
-(`editor-shell.tokens.test.ts`); `design-language.spec.ts` (`PINNED_FLOOR`); `docs/design/mockups/`;
+(`editor-shell.tokens.test.ts`); `tests/e2e/design-language-readers.ts` (`PINNED_FLOOR` — corrected
+2026-10-16: this line named `design-language.spec.ts`, which is not on disk); `docs/design/mockups/`;
 `scripts/design-md.mjs` and the `--sync` reader.
 
 **Constraints:** **queued behind Phases 12 and 15–19.** **`renderer-core/src/theme/` is on the reuse
@@ -3109,6 +3110,22 @@ corrected drawings, rebuilt.
 - [ ] **Step 2: Correct the row's count.** It does not reproduce: measured in source with `dist` and `node_modules` excluded, each `--elev-N` has one consumer, `--shadow-raised` two and `--shadow-overlay` none — not three unconsumed of five. Record the measurement on the row.
 - [ ] **Step 3: Close it**, with the two surfaces that shift by a step checked in the browser.
 
+**Annotated 2026-10-16 before dispatch, because Step 2's corrected count is itself wrong and the ruling's is
+too.** Measured by the controller at `58be6688` in `editor-shell.css`: `--shadow-raised` declared `:510`,
+consumed `:791` and `:881` (**two**); `--shadow-overlay` declared `:511`, consumed by nothing (**zero**);
+`--elev-1` declared `:512`, consumed `:675` and `:2548` (**two**); `--elev-2` declared `:513`, consumed by
+nothing in that file; `--elev-3` declared `:514`, consumed `:1625` (**one**). So the ruling's *"each of
+`--elev-1/2/3` has one consumer"* and this step's *"each `--elev-N` has one consumer"* are both refuted —
+`--elev-1` has two and `--elev-2` has none here (the ledger records it reaching
+`components/ui/control-select.tsx:183`; the seat re-sweeps `packages/` and `tests/`). The ruling's line
+citation `:465` for `--elev-2`'s value has moved to `:513` with the value unchanged. **The operative decision
+is unaffected** — one ladder survives and both old names go — so only the counts are corrected, on the rows
+and not by rewriting ruling text. **And the two consumers are `.editor-shell-publish-popup` (`:785`, shadow
+`:791`) and `.editor-shell-publish-label` (`:875`, shadow `:881`), with a stale comment at `:778-780` calling
+`--shadow-raised` "the menu popup's own lift" when the menu popup rides `--elev-3`** — so "nearest ladder
+step" is a judgement between the numerically nearest and the semantically nearest, and the comment cannot be
+the reason for either.
+
 ### Task 20.2: `--shell-warm` is readable in every palette
 
 **Files:**
@@ -3120,6 +3137,18 @@ corrected drawings, rebuilt.
 - [ ] **Step 1: Deepen `--shell-warm` to at least 4.5:1** against each palette's own `--shell-surface` and against the glass overlay.
 - [ ] **Step 2: `--vigilia-accent` aliases `--shell-warm` on the canvas side**, so the readable value moves the canvas accent rather than the alias being broken.
 - [ ] **Step 3: Delete `PINNED_FLOOR.invalid`'s three values and replace them with the 4.5:1 minimum**, and close it with the measured ratios named for all three palettes and the overlay.
+
+**Annotated 2026-10-16 before dispatch: this task's `Files:` line names a file that does not exist.**
+`tests/e2e/design-language.spec.ts` is not on disk — `PINNED_FLOOR` is declared at
+**`tests/e2e/design-language-readers.ts:119`** and read by `tests/e2e/design-language-contrast.spec.ts` at
+`:9`, `:47` and `:739`. `PINNED_FLOOR.invalid` is `{ ember: 1.9, moss: 1.35, plum: 1.35 }`, so the ruling's
+values are right and only the path is stale. **Measured at `58be6688`**, the six palettes' own pair:
+editorial `:206` `#fffdf7`/`#8a5a2b`; graphite `:278` `#12161c`/`#f3aa64`; ember `:327` `#f7e2d2`/`#ff7e6e`;
+moss `:360` `#e4efd9`/`#e8c56a`; plum `:390` `#ece3f7`/`#ffb2a1`; light `:420` `#eff9f2bf`/`#8a5a2b`.
+`--vigilia-accent: var(--shell-warm)` is **already the alias**, declared once at `:114`, so the ruling's
+"let the canvas accent move with it" is met by keeping it rather than by adding one; and `--warn:
+var(--shell-warm)` appears in every palette block, so those inherit the fix. The seat measures all six
+palettes rather than assuming only the three the row names move.
 
 ### Task 20.3: The token that lies goes
 
@@ -3133,6 +3162,16 @@ corrected drawings, rebuilt.
 - [ ] **Step 2: Confirm it is not one of `ADR-0040`'s three roles declared ahead of a consumer** — those are named and this is not among them.
 - [ ] **Step 3: Close it.**
 
+**Annotated 2026-10-16 before dispatch: Step 1's count is stale by a factor of four, and the test names the
+token in four places rather than one.** `--shell-flat` is declared **eight** times at `58be6688` — `:71`,
+`:172`, `:220`, `:291`, `:344`, `:374`, `:404`, `:442` (values `1`, `0`, `1`, `0`, `1`, `1`, `1`, `1`) — not
+the two the ruling and this step both state. Two further mentions are **prose**, at `:275` and `:324`, and
+`:324` reads *"Each names `--shell-display` and `--shell-flat` at the values it used to …"*, so that sentence
+becomes false when the declarations go and is part of this task. The test names it at `:78` (prose), `:234`,
+`:277` (a list) and `:459` (`NOT_A_COLOUR`, read at `:464`) — the ruling's `:398` is stale, **this step's
+`:459` is right**, and the ruling's `:78` is right. The seat re-verifies the crux itself: that nothing reads
+`var(--shell-flat)` and that the flat treatment is selector-driven.
+
 ### Task 20.4: The drawings agree with the product's composed paint
 
 **Files:**
@@ -3144,6 +3183,23 @@ corrected drawings, rebuilt.
 - [ ] **Step 1: `vg-301` — the product's composed values stand as the drawings' values.** The segmented control and the in-button chord keep the composed paint — the chip border as `color-mix(currentColor 45%)` — and the drawings are corrected where they differ, rather than a drawn value being ruled for them.
 - [ ] **Step 2: `vg-202` — the well's horizontal padding stays 6px**, and the mockup's `5px 8px` wells are the half that is corrected. Section 3's 4px is the step inside a control rather than this row's horizontal padding, and the drawing's own well already draws `4px 6px` for the same element.
 - [ ] **Step 3: Close the two**, each naming the file and the element its correction touches.
+
+**Annotated 2026-10-16 before dispatch: Step 2's premise is refuted by the drawings' own README, and the
+step as written would have edited a frozen file.** The `5px 8px` wells exist in exactly **two** files —
+`docs/design/mockups/inspector-controls.html` (9 occurrences) and `docs/design/mockups/inspector-language.html`
+(6) — and **both are originals**, which `docs/design/mockups/README.md:29-33` calls *"not the current target"*
+and *"never edited again — not to correct a value, not to remove a specimen, not to follow a ruling"*, with
+`:48` adding *"The originals are never corrected, by this rule or any other."* The target file,
+`current/controls.html` (`README.md:24`, *"The inspector column as it renders … wells, a slider, segmented
+rows"*), **contains no `5px 8px` at all** and already draws `4px 6px` for the same element (2 occurrences,
+also present once in each original) — which is the value the ruling names as agreeing with the product. So
+**`vg-202` closes with no drawing edit owed**, and Step 2's *"the mockup's `5px 8px` wells are the half that
+is corrected"* is corrected to say what is actually done. **Step 1's subject is product-only**: `color-mix`
+appears in **no** drawing and `45%` in none of the three either, so *"the drawings are corrected where they
+differ"* first requires measuring what `current/controls.html` and `current/controls-editorial.html` actually
+draw for the segmented control's chip border and the in-button chord — and if they draw no border there, the
+step has nothing to correct and says so rather than inventing an edit. This is the plan's own failure mode
+(*"correcting a drawing to a value nobody ruled"*) caught before it was dispatched.
 
 ### Task 20.5: One ground per palette
 
@@ -3169,6 +3225,27 @@ corrected drawings, rebuilt.
 - [ ] **Step 1: The front matter's `fontFamily` syncs against the shell's default display stack.** The shell already declares `--shell-display` per palette, so `--sync` compares them and the linter requires the key — one fact declared once, rather than a field no consumer reads.
 - [ ] **Step 2: The change sits inside the existing `--sync` reader**, so no new module and no new dependency.
 - [ ] **Step 3: Close it with both directions proved**: a front matter that disagrees fails the sync, and one that agrees passes.
+
+**Annotated 2026-10-16 before dispatch: Step 1 cannot be implemented as written, and it is BLOCKED pending a
+re-decision rather than briefed.** `vg-354`'s ruling says *"the shell already declares its display stack per
+palette (`--shell-display`), so the front matter's `fontFamily` syncs against the shell's default display
+stack"*. **The premise is true and the inference from it is false.** Measured at `58be6688`:
+`--shell-display` is declared **eight** times — `:70` on bare `:root` (the default,
+`ui-serif, Georgia, "Times New Roman", serif`), `:171` in the dark base and `:290` graphite
+(`system-ui, sans-serif`), and `:219`, `:343`, `:373`, `:403`, `:441` (`ui-serif, …`) — and its three
+consumers are **display surfaces**: `:773`, `:1238`, `:1651`. The front matter's six `typography` entries
+(`2xs`, `xs`, `sm`, `md`, `lg`, `xl`) are the **text scale**, and the CSS declares that scale as size and
+line-height only (`--text-2xs` … `--text-xl` at `:498-506`) with **no family at all**; `:root`'s own comment
+at `:60-68` calls the pair it holds *"a display face and a flatness flag"*. So the six entries are not a
+transcription of `--shell-display`: syncing them against it would make the normative document declare the
+serif display stack as the family of six UI text steps, which is a claim the CSS does not make and which the
+row itself already says is *"CORRECT TODAY"*. **Two mechanisms survive, and choosing between them is a
+decision about what DESIGN.md normatively says about typography, so it is not taken here**: (a) the shell
+gains a token for the stack those six steps actually inherit, and the front matter transcribes that — the
+row's own first option, and the one the ruling's rejected alternative named; or (b) `fontFamily` is dropped
+from the six entries and `--sync` requires only `fontSize` and `lineHeight`, which the ruling explicitly
+refused. **`vg-354` stays `open` and the re-decision is recorded on it**; Task 20.6 is not dispatched until
+it is answered.
 
 ---
 
