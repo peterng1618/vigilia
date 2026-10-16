@@ -535,14 +535,59 @@ const usesIn = (text, name) =>
   (text.match(new RegExp(`\\b${escapeRe(name)}\\b`, "g")) ?? []).length;
 
 /**
- * What the `redundant-export` evidence sentence claims: occurrences of the name
- * in its own file outside quoted strings, minus the declaration's own mention of
- * it. Counting the declaration reported `instantiateCard` as 2 occurrences for a
- * single call site, which sends a Phase 2 reader hunting a call site that does
- * not exist. The tier decision keeps the raw count — a use beyond the
- * declaration is exactly what makes the export redundant.
+ * A declaration is not a use (`vg-382`, decision `0063`). These are the shapes
+ * that NAME a symbol without reaching it: its own declaration site, a specifier
+ * in an import or an export list — `declaredExports` reads `export { x }` as a
+ * declared export, so counting that line made a re-export evidence that the name
+ * it forwards is live — and an object key, which names a property of the object
+ * rather than the binding.
+ *
+ * Every rule here is one that cannot match a read, and that is the test rather
+ * than a judgement about likelihood: the two tiers take opposite remedies, so an
+ * exclusion that fires on a read moves a live symbol onto the removal list. The
+ * key rule's `:` is the whole guard — without it, `case name:` and
+ * `cond ? name : x` would be swallowed. A member access (`obj.name`) reaches a
+ * property rather than the binding and is deliberately NOT excluded, because the
+ * ruling names two shapes and a third exclusion is a decision it did not make.
  */
-const usesOutsideDeclaration = (text, name) => Math.max(0, usesIn(text, name) - 1);
+const DECLARATION_SITE =
+  /(?:^|[\s;({,])(?:export\s+)?(?:default\s+)?(?:abstract\s+)?(?:async\s+)?(?:function|class|const|let|var|interface|type|enum|namespace)\s*\*?\s*$/;
+
+/** True when the occurrence of a name at this position declares rather than reads it. */
+function declares(before, after) {
+  if (DECLARATION_SITE.test(before)) return true;
+  if (/^\s*:/.test(after)) {
+    const line = before.slice(before.lastIndexOf("\n") + 1);
+    if (/^\s*$/.test(line) || /[{,]\s*$/.test(before)) return true;
+  }
+  const open = before.lastIndexOf("{");
+  if (
+    open > before.lastIndexOf("}") &&
+    /(?:^|[\s;])(?:import|export)\s+(?:type\s+)?$/.test(before.slice(0, open))
+  ) {
+    return true;
+  }
+  if (/(?:^|[\s;])import\s+\*\s+as\s*$/.test(before)) return true;
+  return (
+    /(?:^|[\s;])import\s+(?:type\s+)?$/.test(before) &&
+    /^\s*(?:,\s*\{[^}]*\})?\s*from\s*["']/.test(after)
+  );
+}
+
+/**
+ * Occurrences of `name` in its own file that read it rather than declare it. This
+ * is the tier's liveness test AND the number its evidence sentence reports, so
+ * the number means what the sentence says: `instantiateCard` is declared once and
+ * called once, and a row reporting 2 sends a Phase 2 reader hunting a second call
+ * site that does not exist.
+ */
+function readsOutsideDeclaration(text, name) {
+  let reads = 0;
+  for (const m of text.matchAll(new RegExp(`\\b${escapeRe(name)}\\b`, "g"))) {
+    if (!declares(text.slice(0, m.index), text.slice(m.index + name.length))) reads += 1;
+  }
+  return reads;
+}
 
 /** consumedBy[target] = [{ from, names }] where names === null is the whole module. */
 const consumedBy = new Map(all.map((file) => [file, []]));
@@ -724,20 +769,20 @@ for (const file of all) {
     // in the dead tier — an `export default function foo()` whose `foo` is used in
     // its own module would be tiered dead-export. No default row exists at HEAD.
     // The two tiers take opposite actions, so they are two kinds, not one.
-    const ownUses = name === "default" ? 0 : usesIn(selfUse.get(file), name);
-    if (ownUses > 1) {
+    const ownReads = name === "default" ? 0 : readsOutsideDeclaration(selfUse.get(file), name);
+    if (ownReads > 0) {
       candidates.push({
         kind: "redundant-export",
         file,
         symbol: name,
-        evidence: `the symbol is LIVE: its own declaring file uses it (${usesOutsideDeclaration(selfUse.get(file), name)} occurrence(s) of the name outside quoted strings, the declaration that names it excluded) and no other production file imports it. Only the "export" keyword is unnecessary — do not delete the symbol. ${importerSearch}`,
+        evidence: `the symbol is LIVE: its own declaring file reads it (${ownReads} occurrence(s) of the name outside quoted strings, every declaration-shaped occurrence excluded — its own declaration, an object key, an import or an export specifier) and no other production file imports it. Only the "export" keyword is unnecessary — do not delete the symbol. ${importerSearch}`,
       });
     } else {
       candidates.push({
         kind: "dead-export",
         file,
         symbol: name,
-        evidence: `the symbol is dead: ${name === "default" ? "a default export carries no name to search for" : "its own declaring file never uses it outside quoted strings (1 occurrence — the declaration itself)"}, so nothing in its own module reaches it either. ${importerSearch}`,
+        evidence: `the symbol is dead: ${name === "default" ? "a default export carries no name to search for" : "its own declaring file never reads it outside quoted strings (every occurrence of the name is declaration-shaped — its own declaration, an object key, an import or an export specifier)"}, so nothing in its own module reaches it either. ${importerSearch}`,
       });
     }
   }
@@ -978,15 +1023,51 @@ if (SELF_TEST) {
         return claimed === "1" && usesIn(selfUse.get(CARD_LIBRARY), "instantiateCard") === 2;
       })(),
     ],
+    /**
+     * `vg-382` widened the number this pins: it is a count of *reads*, so it
+     * excludes the declaration site, an object key and an import or export
+     * specifier. It asserted `claimed === usesIn(…) - 1` before the widening,
+     * which is false for any row whose own file names the symbol as a key as
+     * well — and that assertion was the wrong one, because `usesIn - 1` counts a
+     * declaration-shaped occurrence as a use. `claimed < raw` is the half that
+     * does not restate the emitter: no row may claim as many reads as it has
+     * occurrences, and no row may claim none.
+     */
     [
-      "every redundant row's number is its use count, not its occurrence count",
+      "every redundant row's number is its read count, not its occurrence count",
       candidates
         .filter((candidate) => candidate.kind === "redundant-export")
-        .every(
-          (candidate) =>
-            Number(/\((\d+) occurrence/.exec(candidate.evidence)?.[1]) ===
-            usesIn(selfUse.get(candidate.file), candidate.symbol) - 1,
-        ),
+        .every((candidate) => {
+          const claimed = Number(/\((\d+) occurrence/.exec(candidate.evidence)?.[1]);
+          const raw = usesIn(selfUse.get(candidate.file), candidate.symbol);
+          return (
+            claimed >= 1 &&
+            claimed < raw &&
+            claimed === readsOutsideDeclaration(selfUse.get(candidate.file), candidate.symbol)
+          );
+        }),
+    ],
+    /**
+     * A declaration is not a use (`vg-382`), on fixtures: the repo's own contents
+     * change, the shape does not. The first two are the red proof — reverted to
+     * the pre-widening `usesIn - 1` they claim 2 and 1 where the answer is 0. The
+     * third is the other direction, and the one that matters: an exclusion that
+     * swallowed a read would put a live symbol on the removal list.
+     */
+    [
+      "an object key is not a read (a const its own file only names as a key has no reader)",
+      readsOutsideDeclaration(
+        "export const panel = 1;\nconst a = { panel: 1 };\nconst b = { panel: 2 };\n",
+        "panel",
+      ) === 0,
+    ],
+    [
+      "a re-export of an imported name is not a read (the file only forwards it)",
+      readsOutsideDeclaration('import { countable } from "./x";\nexport { countable };\n', "countable") === 0,
+    ],
+    [
+      "a value beside a key is still a read (an object literal is not excluded wholesale)",
+      readsOutsideDeclaration("export const panel = 1;\nconst b = { panel: 2, fill: panel };\n", "panel") === 1,
     ],
     [
       "the two export tiers are disjoint (opposite remedies, one row never both)",
