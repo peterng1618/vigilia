@@ -4,8 +4,9 @@
 - **Status:** superseded by [0038](0038-base-ui-is-the-editors-one-primitive-library-on-the-users-ruling.md)
   — **its rungs 4 and 6 remain the survey and are still the evidence of record; only its decision is
   superseded**
-- **Paths:** `src/web/packages/editor/src/components/ui/` (`dialog.tsx`,
-  `popover.tsx`, `colour-picker.tsx`),
+- **Paths:** `src/web/packages/editor/src/components/ui/dialog.tsx`,
+  `src/web/packages/editor/src/components/ui/popover.tsx`,
+  `src/web/packages/editor/src/components/ui/colour-picker.tsx`,
   `src/web/packages/editor/src/editor-shell/shell-layout.tsx`
 - **Supersedes:** `0036-base-ui-is-the-editors-single-primitive-library.md`
 

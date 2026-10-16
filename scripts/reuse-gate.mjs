@@ -128,12 +128,19 @@ function claimedPaths() {
   return claimed;
 }
 
+/**
+ * A claim names the file being written, and only that file.
+ *
+ * A claim ending in `/` used to license every path beneath it, which made the
+ * gate a one-shot latch per directory: the first change to a boundary was
+ * guarded and nothing after it was, so a note on `charts/` covered a file the
+ * note never discusses and that did not exist when it was written. The blunt,
+ * presence-only reading stays; the unit a claim is made in is a file. A claim
+ * ending in `/` therefore names nothing, and a note that relied on one names
+ * its files instead. See docs/decisions/0059.
+ */
 function covers(rel, claimed) {
-  return claimed.some((c) => {
-    const cDir = c.endsWith("/");
-    const base = cDir ? c.slice(0, -1) : c;
-    return cDir ? rel.startsWith(base) : rel === base || rel.startsWith(`${base}/`);
-  });
+  return claimed.some((c) => rel === c);
 }
 
 function readStdin() {
@@ -157,13 +164,16 @@ if (process.argv.includes("--self-test")) {
   // gate that cannot refuse is worse than no gate, so prove it still can.
   const claimed = [
     "src/web/packages/scene-fabric/src/glass.ts",
-    "src/web/packages/renderer-core/src/theme/",
+    "src/web/packages/renderer-core/src/charts/",
     "src/web/scripts/generate-font-trios.mjs",
   ];
   const abs = (p) => `${ROOT}/${p}`;
   const cases = [
     ["allows a path claimed by a note", abs("src/web/packages/scene-fabric/src/glass.ts"), 0],
-    ["allows a path under a claimed directory", abs("src/web/packages/renderer-core/src/theme/glass.ts"), 0],
+    // vg-144's own shape. `charts/grid.ts` is watchlisted and named by NO note,
+    // so the refusal is this rule's doing rather than another note's, and the
+    // directory claim in the array is what used to allow it.
+    ["refuses a file under a directory claim", abs("src/web/packages/renderer-core/src/charts/grid.ts"), 2],
     ["refuses a watchlisted path with no note", abs("src/web/packages/host/src/providers/lhm.ts"), 2],
     ["allows a path outside the watchlist", abs("src/web/packages/editor/src/ui-copy.ts"), 0],
     ["allows a test on a watchlisted path", abs("src/web/packages/host/src/providers/lhm.test.ts"), 0],
@@ -173,9 +183,27 @@ if (process.argv.includes("--self-test")) {
     ["still anchors an entry that carries a path", abs("src/web/packages/scene-fabric/src/unrelated.ts"), 0],
     ["allows an empty path", "", 0],
   ];
+  // The array above is synthetic, so no case in it sees the live registry
+  // (vg-425's gap, from this side). These two do, and the pair is the point: a
+  // chart file a note names is allowed, and one no note names is refused. A
+  // registry that answers the same to both is the defect this rule exists to
+  // prevent - it is latched by a directory claim, or it names nothing at all.
+  // Both paths are found rather than pinned, so a later note naming one does
+  // not turn this red for the wrong reason.
+  const live = claimedPaths();
+  const chartsDir = "src/web/packages/renderer-core/src/charts";
+  const chartFiles = readdirSync(join(ROOT, chartsDir))
+    .filter((f) => !/\.(test|dom\.test)\.[cm]?[jt]sx?$/.test(f))
+    .map((f) => `${chartsDir}/${f}`)
+    .filter((p) => isWatched(abs(p)));
+  const unclaimed = chartFiles.filter((p) => !covers(p, live));
+  cases.push(
+    ["refuses a chart file no note names (live registry)", abs(unclaimed[0] ?? `${chartsDir}/nothing.ts`), 2, live],
+    ["allows a chart file a note names (live registry)", abs(chartFiles.find((p) => covers(p, live)) ?? `${chartsDir}/nothing.ts`), 0, live],
+  );
   let failed = 0;
-  for (const [name, path, expected] of cases) {
-    const got = decide(path, claimed);
+  for (const [name, path, expected, pool = claimed] of cases) {
+    const got = decide(path, pool);
     const ok = got === expected;
     if (!ok) failed += 1;
     console.log(`${ok ? "ok  " : "FAIL"} ${name}${ok ? "" : ` (expected ${expected}, got ${got})`}`);

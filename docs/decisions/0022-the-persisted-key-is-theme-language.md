@@ -2,7 +2,9 @@
 
 - **Date:** 2026-10-01
 - **Status:** accepted
-- **Paths:** `src/web/packages/renderer-core/src/theme/`
+- **Paths:** `src/web/packages/renderer-core/src/theme/document.ts`
+  `src/web/packages/renderer-core/src/theme/validate.ts`
+  `src/web/packages/renderer-core/src/theme/fabric-envelope-validate.ts`
   `src/web/packages/renderer-core/src/scene/plan.ts`
   `src/web/packages/renderer-core/src/scene/datetime/format.ts`
   `src/web/packages/scene-fabric/src/fabric-text.ts`

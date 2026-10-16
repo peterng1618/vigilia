@@ -2,7 +2,15 @@
 
 - **Date:** 2026-10-11
 - **Status:** accepted
-- **Paths:** `src/web/packages/renderer-core/src/theme/`
+- **Paths:** `src/web/packages/renderer-core/src/theme/bleed.ts`
+  `src/web/packages/renderer-core/src/theme/document.ts`
+  `src/web/packages/renderer-core/src/theme/envelope-keys.ts`
+  `src/web/packages/renderer-core/src/theme/envelope-semantics.ts`
+  `src/web/packages/renderer-core/src/theme/fabric-envelope-validate.ts`
+  `src/web/packages/renderer-core/src/theme/fabric-envelope.ts`
+  `src/web/packages/renderer-core/src/theme/serialize.ts`
+  `src/web/packages/renderer-core/src/theme/validate.ts`
+  `src/web/packages/renderer-core/src/theme/widget.ts`
 
 ## The problem
 

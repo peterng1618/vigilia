@@ -2,7 +2,7 @@
 
 - **Date:** 2026-10-07
 - **Status:** accepted
-- **Paths:** `src/web/packages/editor/src/components/ui/`,
+- **Paths:** `src/web/packages/editor/src/components/ui/dialog.tsx`,
   `src/web/packages/editor/src/editor-shell/shell-layout.tsx`,
   `src/web/packages/editor/src/editor-session.ts`
 

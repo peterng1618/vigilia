@@ -1,6 +1,6 @@
 # Vigilia status
 
-Updated: 2026-10-16
+Updated: 2026-10-17
 Branch: `develop`
 
 ## Current objective
@@ -37,11 +37,11 @@ ledger did.
 
 ## Last completed change
 
-- **Phase 20 closed on its Acceptance, carrying three rows and closing nine** — Task 20.9 closed `vg-555` at `22d9f91a` (the editorial twin's `--bg` and `--panel2` were swapped against the roles `SHELL_ROLES` assigns them) and filed `vg-557` and `vg-558`; `vg-556`, `vg-350` and `vg-354` are carried, the first because its fix is a product change no open phase owns and the other two because their own rulings decline the decision their outcome needs.
-- **Task 20.9's Step 2 was briefed in the wrong direction by the controller, and the seat said so in its own commit** — the drawings' chips were moved to the product's hugging width, and `e0e7624b` puts `flex:1` back on all 33 of them; the drawings now differ from `d407c090` by the twin's two fill values and nothing else.
-- **The revert rests on three sentences in `docs/design/mockups/README.md` against one in Phase 20's Outcome** — `:102` "where the written rules are silent, the drawing governs and the product is the defect", `:124` "never redrawn from the product", `:119` "never in a treatment of the product's devising"; `DESIGN.md:465`'s Segmented row is silent on a chip's width, so §5 licenses nothing here, and the Outcome's sentence is annotated in the plan so it is not re-used.
-- **`vg-555`'s licence turned out to be stronger than the one its row named** — the editorial palette block aliases §4's whole vocabulary per palette, so the product states the drawing's own names (`--bg: var(--shell-backdrop)`, `--panel-2: var(--shell-surface-strong)`), and `vg-436`'s ruling was read before the correction was accepted and is not contravened: its rejected option was a redraw against `light`'s mint.
-- **Phase 21 is the next phase and is not blocked** — Phase 12's suspension was ruled so that Phases 15–24 could run under the one-phase-at-a-time rule, and Phases 15–20 have run under it; the register stands at 131 live rows with 39 parked, `npm run backlog:check` exit 0 (559 items, after `vg-559` was filed from this close).
+- **Task 21.1 closed `vg-144` — a decision note claims the file, not the directory** — `covers()` is now `rel === c`, so a claim ending in `/` names nothing, and the 15 directory claims across 14 notes were re-pointed to the files each note's change was made in, read from the note and the commit that landed it.
+- **The gate's `--self-test` proves the rule red both ways** — one case refuses a watchlisted path no note claims under a synthetic directory claim (red when `covers()` is reverted, `expected 2, got 0`), and a live-registry pair asserts a chart file a note names is allowed and one no note names is refused, because the synthetic array cannot see the registry (`vg-425`).
+- **The brief's own probe expectation is false against the disk and is corrected rather than worked around** — `charts/settings-fields.ts` is claimed by `0028`, the note whose decision *is* that file, so it stays allowed while `charts/grid.ts`, which no note names, is refused; the brief predicted `2` for it.
+- **`npm run gate` exit 0** (263 files, 3482 tests), `node scripts/reuse-gate.mjs --self-test` 12 cases exit 0, and decision note `0059` landed before the first write to `scripts/`.
+- **Phase 21 is the active phase and is not blocked** — Phase 12's suspension was ruled so that Phases 15–24 could run under the one-phase-at-a-time rule, and Phases 15–20 have run under it; the register stands at 131 live rows with 39 parked, `npm run backlog:check` exit 0 (559 items).
 
 ## Next
 

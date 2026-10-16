@@ -2,7 +2,8 @@
 
 - **Date:** 2026-10-02
 - **Status:** accepted
-- **Paths:** `src/web/packages/renderer-core/src/theme/`
+- **Paths:** `src/web/packages/renderer-core/src/theme/validate.ts`
+  `src/web/packages/renderer-core/src/theme/fabric-envelope-validate.ts`
   `schema/theme-document.schema.json`
 
 ## The problem

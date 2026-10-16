@@ -3,8 +3,9 @@
 - **Date:** 2026-10-08
 - **Status:** superseded by [0038](0038-base-ui-is-the-editors-one-primitive-library-on-the-users-ruling.md),
   which reinstates this note's ruling — Base UI — with the premise below corrected
-- **Paths:** `src/web/packages/editor/src/components/ui/`
-  (`dialog.tsx`, `popover.tsx`, `colour-picker.tsx`),
+- **Paths:** `src/web/packages/editor/src/components/ui/dialog.tsx`,
+  `src/web/packages/editor/src/components/ui/popover.tsx`,
+  `src/web/packages/editor/src/components/ui/colour-picker.tsx`,
   `src/web/packages/editor/src/editor-shell/shell-layout.tsx`
 - **Note (2026-10-12):** `palette-menu.tsx`, one of the four Base UI import sites
   in the table below, was deleted on 2026-10-10 (`64fea389`). The other three

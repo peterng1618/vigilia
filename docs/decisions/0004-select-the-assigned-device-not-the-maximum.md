@@ -2,7 +2,10 @@
 
 - **Date:** 2026-09-28
 - **Status:** accepted
-- **Paths:** `src/web/packages/host/src/providers/`,
+- **Paths:** `src/web/packages/host/src/providers/lhm.ts`,
+  `src/web/packages/host/src/providers/lhm-mapping.ts`,
+  `src/web/packages/host/src/providers/library.ts`,
+  `src/web/packages/host/src/providers/library-devices.ts`,
   `src/web/packages/host/src/server.ts`,
   `src/web/packages/host/src/settings/devices.ts`,
   `src/web/packages/host/src/main.ts`,

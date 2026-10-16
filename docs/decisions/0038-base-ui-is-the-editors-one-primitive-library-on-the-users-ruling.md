@@ -2,8 +2,8 @@
 
 - **Date:** 2026-10-08
 - **Status:** accepted
-- **Paths:** `src/web/packages/editor/src/components/ui/` (`dialog.tsx`,
-  `popover.tsx`, `colour-picker.tsx`),
+- **Paths:** `src/web/packages/editor/src/components/ui/dialog.tsx`,
+  `src/web/packages/editor/src/components/ui/colour-picker.tsx`,
   `src/web/packages/editor/src/editor-shell/shell-layout.tsx`
 - **Supersedes:** `0037-react-aria-is-the-editors-one-primitive-library.md`
   and `0036-base-ui-is-the-editors-single-primitive-library.md`

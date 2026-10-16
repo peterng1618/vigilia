@@ -2,7 +2,10 @@
 
 - **Date:** 2026-10-16
 - **Status:** accepted
-- **Paths:** `src/web/packages/editor/src/components/ui/`
+- **Paths:** `src/web/packages/editor/src/components/ui/colour-picker.tsx`,
+  `src/web/packages/editor/src/components/ui/control-number.tsx`,
+  `src/web/packages/editor/src/components/ui/control-text.tsx`,
+  `src/web/packages/editor/src/components/ui/control-well.tsx`
 - **Task:** Phase 18.1 of `docs/superpowers/plans/2026-10-12-the-backlog-drain.md`
   (rows `vg-263`, `vg-264`, `vg-336`)
 

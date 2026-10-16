@@ -2,7 +2,7 @@
 
 - **Date:** 2026-10-16
 - **Status:** accepted
-- **Paths:** `src/web/packages/editor/src/components/ui/`
+- **Paths:** `src/web/packages/editor/src/components/ui/control-slider.tsx`
 - **Task:** Phase 16.3 of `docs/superpowers/plans/2026-10-12-the-backlog-drain.md`
   (rows `vg-496`, `vg-497`, `vg-492`)
 

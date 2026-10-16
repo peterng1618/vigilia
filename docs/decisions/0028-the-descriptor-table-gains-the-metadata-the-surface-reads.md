@@ -2,8 +2,9 @@
 
 - **Date:** 2026-10-06
 - **Status:** accepted
-- **Paths:** `src/web/packages/renderer-core/src/charts/`,
-  `src/web/packages/renderer-core/src/theme/`
+- **Paths:** `src/web/packages/renderer-core/src/charts/settings-fields.ts`,
+  `src/web/packages/renderer-core/src/charts/settings-path.ts`,
+  `src/web/packages/renderer-core/src/theme/validate.ts`
 
 ## The problem
 

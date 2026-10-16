@@ -2,7 +2,12 @@
 
 - **Date:** 2026-09-28
 - **Status:** accepted
-- **Paths:** `src/web/packages/renderer-core/src/charts/`, `src/web/packages/scene-fabric/src/chart-object.ts`
+- **Paths:** `src/web/packages/renderer-core/src/charts/line.ts`,
+  `src/web/packages/renderer-core/src/charts/bar.ts`,
+  `src/web/packages/renderer-core/src/charts/pie.ts`,
+  `src/web/packages/renderer-core/src/charts/gauge.ts`,
+  `src/web/packages/renderer-core/src/charts/engine-option.ts`,
+  `src/web/packages/scene-fabric/src/chart-object.ts`
 
 ## The problem
 
