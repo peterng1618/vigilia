@@ -2285,6 +2285,26 @@ on "the case passes" where the case could not have failed.
 **Verify:** `npm run gate` (exit code read from `$?` into a file, never through a pipe), plus the browser
 suite for Tasks 17.1, 17.2 and 17.3 on a rebuilt bundle.
 
+**Annotated 2026-10-16, at the phase's close: all five tasks have run, the phase's eighteen rows stand at
+eighteen `verified`, and its Acceptance is met.** `npm run gate` **exit 0** (262 files, 3463 tests), read
+from `$?` into a file; **the browser suite named separately as `npx playwright test --workers=1` over all
+projects, exit 1 — 334 passed / 253 skipped / 3 failed, 20.6 minutes — and all three reds are rows the
+register already owns, matched by the case each row names**: `glass-lifecycle.spec.ts:25` is `vg-431`,
+`editor-display.spec.ts:659` is `vg-258`, and `publish-loop.spec.ts:349` is `vg-212` down to the
+`Received: "e2e-publish-loop"` its own detail quotes. **The Acceptance's instrument clause was
+verified row by row rather than taken from the reports**: `vg-391`'s case was cut four ways and only
+cutting *both* repaint calls turns it red, `vg-398`'s instrument was red-proved by the controller inside
+Task 17.3, and `vg-502`'s and `vg-514`'s cases are `backlog-check.mjs`'s own self-test cases — disabling
+rule 9 reddens *a row that vanished from both registers fails*, and disabling rule 10 reddens *a check on
+an open row fails* and two more, each restored byte-identically with `cmp`. **This phase is where the
+drain's own verification rule was written**: Task 17.3's implementer reported a red proof that was a race
+rather than the cut it had made, so every red proof in this phase is re-run by whoever closes the row —
+and the eight that predated the rule were re-run at `3adfb8bf`, five of them rebuilding `dist` for the cut
+and rebuilding it back. **One of them corrected a row's premise rather than confirming it**: `vg-519`'s
+second case passes with its fix disabled. **The close owes no re-homing** — the four rows the phase owned
+are all closed, and the twelve it merely names were homeless before it named them (the tenth correction),
+so a census taken after this close will report them as newly homeless when nothing was lost.
+
 ### Task 17.1: The editor's boot and draft lifecycle
 
 **Files:**
@@ -2516,6 +2536,18 @@ suite write CSS text and this is the only one interpolating a product value.
 - [ ] **Step 5: `vg-519` — one of a pair of reload cases carries the dismiss fix and the other is untouched**, and no sweep of the other reloads happened. Sweep them.
 - [ ] **Step 6: Prove each rule with a case that fails when it is disabled, then close the four.**
 
+**Annotated 2026-10-16, at the task's close: all four rows are `verified`, and the task's premise about
+`vg-519` did not survive its re-run.** `vg-503` takes the first of the two candidates the row names — both
+helpers round the candidate and probe at that rounded point — and claims no red proof, because the
+helpers' own 0.02 grid lands on no fractional point whose rounding is not also empty; the hazard is real at
+a 0.002 step and the seat measured three concrete points. **`vg-519`'s red is one case, not two**: with the
+dismiss removed, `inspector-sections.spec.ts`'s case times out with the draft dialog in the snapshot, while
+`editor.spec.ts`'s own case passes alone and in its file and the missing dismiss breaks a *later* case
+instead — twice identically, at `captures the theme-library chooser over a stubbed library for visual
+review`, which passes alone at HEAD. `answerDialogIfShown`'s own owner records why: the dirty guard
+resolves before it asks, so some rounds ask and some do not. The four affected files read **130 passed,
+exit 0**. Steps 1–3's two rules were red-proved here as well — see the phase's annotation.
+
 ### Task 17.5: The two design-language residues
 
 **Files:**
@@ -2527,6 +2559,22 @@ suite write CSS text and this is the only one interpolating a product value.
 - [ ] **Step 1: `vg-509` — the palette pane's heading is drawn as a `12px/1` sentence-case heading** where the other settings tabs draw the `10px/.11em/uppercase` eyebrow, and the product styles one `<h3>` as the eyebrow. `DESIGN.md` §2 reserves uppercase for a region eyebrow, so decide which side the pane heading is.
 - [ ] **Step 2: `vg-440` — the about drawing's page body declares `font: 12px/1.45`** and the comparison reads no `line-height`, so the value is unmeasured; `vg-437` settled the companion at 1.4, which makes the drawing the stale side by the drawings README's own rule.
 - [ ] **Step 3: Rebuild, run the design-language suite, and close the two.**
+
+**Annotated 2026-10-16, at the task's close: both rows are `verified`, and this task's Files line named a
+file that does not exist.** `src/web/tests/e2e/design-language.spec.ts` was split into
+`design-language-*.spec.ts` before the task ran, and `editor-shell.css` was not touched — the fix is the
+drawings'. **`vg-509` has no red proof, and the reason is narrower than the brief guessed**: the drawings
+gate holds a size to §2's six and both 12px and 10px are on that list, so it cannot tell the two drawings
+apart — and `mockup-parity.ts` has no row addressing that heading, so nothing compares it with the product
+either. That absence is not filed as a row: the parity instrument samples the drawings rather than pinning
+every element. **`vg-440` met both halves of its condition**, and its re-shoot clause was measured rather
+than assumed — the frames beside the drawings are product captures, not renders of them
+(`settings-capture-graphite.png` is 408x304 where the drawn modal is 560px wide), so nothing was re-shot
+and `vg-402` is untouched. **What the correction overrode is recorded on the row**: 25 eyebrows drawn `/1`,
+a 1.5 reading rhythm, a 13px/1.2 section title and a 13px/1 brand mark carried deliberate per-element
+ratios and now state §2's companion; the row's condition is literal about that and §2 is normative, but no
+gate reads the property, so nothing else will catch a disagreement. `vg-326`'s clause reading the furniture
+as stating a ratio is falsified by this and corrected in place.
 
 ---
 
