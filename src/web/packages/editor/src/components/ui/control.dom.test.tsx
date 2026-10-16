@@ -7,6 +7,7 @@ import { RadioGroup } from "@base-ui/react/radio-group";
 import { act } from "react";
 import { createRoot, type Root } from "react-dom/client";
 import { afterEach, beforeAll, expect, it, vi } from "vitest";
+import { uiCopy } from "../../ui-copy.js";
 import { ControlChoiceRow } from "./control-choice-row.js";
 import { ControlIconButton } from "./control-icon-button.js";
 import { ControlNumber } from "./control-number.js";
@@ -645,6 +646,45 @@ it("does not commit a number outside the field owner's bounds", async () => {
   expect(onCommit).not.toHaveBeenCalled();
   expect(field.value).toBe("4000");
   expect(description(field)).toContain("1000");
+});
+
+/**
+ * `vg-264`: the control set's five refusals are the copy table's words, not
+ * literals of its own. Each is asserted against its `uiCopy.controls` entry, so
+ * a refusal reworded in the set and not in the table — or the reverse — is this
+ * red rather than a second vocabulary an author meets on one surface and not
+ * another.
+ */
+it("takes its five refusals from the copy table rather than printing its own English", async () => {
+  const onCommit = vi.fn();
+  await mount(
+    <ControlNumber
+      label="Width"
+      value={299}
+      min={0}
+      max={1000}
+      integer
+      onCommit={onCommit}
+    />,
+  );
+  const field = labelled("Width") as HTMLInputElement;
+  const refuse = async (draft: string): Promise<string> => {
+    await type(field, draft);
+    await press(field, "Enter");
+    return description(field);
+  };
+  expect(await refuse("abc")).toBe(uiCopy.controls.notANumber);
+  expect(await refuse("45.5")).toBe(uiCopy.controls.wholeNumber);
+  expect(await refuse("2000")).toBe(uiCopy.controls.atMost(1000));
+  expect(await refuse("-1")).toBe(uiCopy.controls.atLeast(0));
+
+  // The empty draft is the fifth, and it needs a field with no `onClear` to
+  // empty it through.
+  await mount(<ControlNumber label="Width" value={299} onCommit={onCommit} />);
+  const required = labelled("Width") as HTMLInputElement;
+  await type(required, "");
+  await press(required, "Enter");
+  expect(description(required)).toBe(uiCopy.controls.valueRequired);
 });
 
 it("commits once on Enter, and not again on the blur that follows", async () => {

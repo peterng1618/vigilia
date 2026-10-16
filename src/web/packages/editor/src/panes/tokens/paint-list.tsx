@@ -238,6 +238,11 @@ function SolidFields(props: {
         label={uiCopy.panels.colour}
         data={{ "data-vigilia-palette-color": "" }}
         value={value.color}
+        // The refusal is the control set's own editable-invalid channel, so the
+        // field carries `aria-invalid` and describes itself by the reason rather
+        // than the pane drawing a sibling `<p>` nothing was associated with
+        // (`vg-263`).
+        {...(error === undefined ? {} : { invalid: error })}
         onCommit={(next) => {
           const typed = next.trim();
           if (typed === "") return;
@@ -256,11 +261,6 @@ function SolidFields(props: {
           put(typed);
         }}
       />
-      {error === undefined ? null : (
-        <p data-vigilia-palette-error="" className="text-xs text-warn">
-          {error}
-        </p>
-      )}
       {/* The swatch opens the picker. The field stays, because a value can be
           typed exactly and a picker cannot always be dragged to it. */}
       <div data-vigilia-palette-picker="" className="flex items-center">

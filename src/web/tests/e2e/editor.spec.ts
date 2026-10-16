@@ -990,19 +990,16 @@ test.describe("Fabric editor route", () => {
     await openPane(page, "Tokens");
     await page.getByRole("button", { name: "Add colour" }).click();
     const field = page.locator("[data-vigilia-palette-color]");
-    // The reason is the Tokens pane's own line beside the field now. The
-    // imperative panel put it in the platform's validation bubble
-    // (`setCustomValidity` + `reportValidity`), which a React field cannot keep:
-    // `ControlText` owns its draft and hands the committed value up, so the
-    // refusal is the parent's to state.
-    const refusal = page.locator("[data-vigilia-palette-error]");
+    // The reason is the control set's own editable-invalid channel now
+    // (`vg-263`): the field carries `aria-invalid` and describes itself by the
+    // reason, which the pane's bare sibling `<p>` never associated.
 
     // jsdom has no `CSS` object, so this refusal can only be proven where the
     // predicate actually lives: the browser that will paint the value.
     await field.fill(PALETTE_FIELD_PAINT);
     await field.press("Tab");
     await expect(field).toHaveValue(PALETTE_FIELD_PAINT);
-    await expect(refusal).toHaveCount(0);
+    await expect(field).not.toHaveAttribute("aria-invalid", "true");
 
     // A value the engine rejects is refused with a message that names it, and
     // `ctx.fillStyle` would have kept the PREVIOUS colour — so accepting it
@@ -1010,14 +1007,17 @@ test.describe("Fabric editor route", () => {
     // colour the document still holds; the reason sits beside it.
     await field.fill("not-a-colour");
     await field.press("Tab");
-    await expect(refusal).toHaveText(/not-a-colour/);
+    await expect(field).toHaveAttribute("aria-invalid", "true");
+    const describedBy = await field.getAttribute("aria-describedby");
+    expect(describedBy).not.toBeNull();
+    await expect(page.locator(`#${describedBy}`)).toHaveText(/not-a-colour/);
     await expect(field).toHaveValue(PALETTE_FIELD_PAINT);
 
     // The refusal is not sticky: a value the engine can paint clears it.
     await field.fill("rgb(1, 2, 3)");
     await field.press("Tab");
     await expect(field).toHaveValue("rgb(1, 2, 3)");
-    await expect(refusal).toHaveCount(0);
+    await expect(field).not.toHaveAttribute("aria-invalid", "true");
   });
 
   test("mounts the adopted editor shell on the editor stage", async ({

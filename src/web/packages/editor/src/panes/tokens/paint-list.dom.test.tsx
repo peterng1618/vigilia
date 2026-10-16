@@ -249,8 +249,6 @@ const pickerHost = (host: HTMLElement): Element | null =>
   host.querySelector("[data-vigilia-palette-picker]");
 const fieldsHost = (host: HTMLElement): Element | null =>
   host.querySelector("[data-vigilia-palette-fields]");
-const fieldError = (host: HTMLElement): Element | null =>
-  host.querySelector("[data-vigilia-palette-error]");
 
 it("lists every token with its name and its usage figure, and skips the none token", async () => {
   const { host } = await mount(PAINT_LIST_PALETTE, {
@@ -344,7 +342,7 @@ it("rebuilds the field set when the token changes, so the picker cannot show the
   );
 });
 
-it("refuses a colour the engine cannot paint, and says so beside the field", async () => {
+it("refuses a colour the engine cannot paint, and associates the reason with the field", async () => {
   const { host, change } = await mount(PAINT_LIST_PALETTE, {
     usage: undefined,
   });
@@ -352,7 +350,23 @@ it("refuses a colour the engine cannot paint, and says so beside the field", asy
   await commitField("[data-vigilia-palette-color]", "not-a-colour");
 
   expect(change).not.toHaveBeenCalled();
-  expect(fieldError(host)?.textContent?.trim()).not.toBe("");
+  const field = host.querySelector<HTMLInputElement>(
+    "[data-vigilia-palette-color]",
+  );
+  expect(field, "the colour field is not an input").not.toBeNull();
+  if (field === null) return;
+  // The control set's editable-invalid channel (`vg-263`): the refusal is
+  // announced — `aria-invalid` plus a described-by reason — and the field stays
+  // editable, so the author can type a different colour. Before this the pane
+  // drew a sibling `<p>` associated with nothing.
+  expect(field.getAttribute("aria-invalid")).toBe("true");
+  expect(field.readOnly, "the field must stay editable").toBe(false);
+  const described = (field.getAttribute("aria-describedby") ?? "")
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((id) => document.getElementById(id)?.textContent ?? "")
+    .join(" ");
+  expect(described).toContain("not-a-colour");
 });
 
 it("edits the token the author picks, and commits it under its own stable id", async () => {

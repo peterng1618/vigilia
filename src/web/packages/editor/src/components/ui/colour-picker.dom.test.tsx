@@ -2,6 +2,7 @@
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { beforeAll, expect, it, vi } from "vitest";
+import { uiCopy } from "../../ui-copy.js";
 import { ColourPicker } from "./colour-picker.js";
 import { GREY, PURE_RED } from "./colour-picker-fixture.js";
 
@@ -130,6 +131,31 @@ it("steps downward, and clamps at both ends rather than wrapping", async () => {
   await press(hue, "Home");
   expect(picker.read("picker-hue").now, "Home is the bottom").toBe(0);
 
+  await picker.close();
+});
+
+/**
+ * `vg-336`: each track announces a word from the copy table, and keeps its
+ * `data-testid` hook so the specs that address it do not move. The two facts are
+ * independent — the copy walk's skip rule (an element whose `aria-label` equals
+ * its `data-testid`) is correct and is not weakened by this — which is why the
+ * name is asserted apart from the hook rather than through it.
+ */
+it("names each track with a word from the copy table, and keeps its testid hook", async () => {
+  const picker = await openPicker(GREY);
+  const names: Readonly<Record<string, string>> = {
+    "picker-saturation": uiCopy.panels.pickerSaturation,
+    "picker-value": uiCopy.panels.pickerValue,
+    "picker-hue": uiCopy.panels.pickerHue,
+    "picker-alpha": uiCopy.panels.pickerAlpha,
+  };
+  for (const [testId, name] of Object.entries(names)) {
+    const track = picker.track(testId);
+    expect(track.getAttribute("aria-label"), testId).toBe(name);
+    // The name is a word, not the selector-shaped token the hook spells.
+    expect(track.getAttribute("aria-label"), testId).not.toBe(testId);
+    expect(track.getAttribute("data-testid"), testId).toBe(testId);
+  }
   await picker.close();
 });
 

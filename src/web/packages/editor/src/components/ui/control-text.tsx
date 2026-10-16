@@ -2,8 +2,10 @@ import type * as React from "react";
 import { useState } from "react";
 import {
   type ControlProps,
+  ControlReason,
   ControlRow,
   ControlWell,
+  describedBy,
   isBlocked,
   useControlIds,
   useDraftCommit,
@@ -40,6 +42,7 @@ export function ControlText(
     id,
     disabled,
     refused,
+    invalid,
     density,
     data,
     value,
@@ -70,7 +73,11 @@ export function ControlText(
     readOnly: refused !== undefined,
     disabled,
     "aria-disabled": refused === undefined ? undefined : true,
-    "aria-describedby": refused === undefined ? undefined : ids.reason,
+    "aria-invalid": invalid === undefined ? undefined : true,
+    "aria-describedby": describedBy(
+      refused === undefined ? undefined : ids.reason,
+      invalid === undefined ? undefined : ids.invalid,
+    ),
     onChange: (event: { target: { value: string } }) =>
       setDraft(event.target.value),
     ...keys,
@@ -101,6 +108,9 @@ export function ControlText(
             className="h-full w-full bg-transparent text-sm text-text outline-none"
           />
         </ControlWell>
+      )}
+      {invalid === undefined ? null : (
+        <ControlReason id={ids.invalid}>{invalid}</ControlReason>
       )}
     </ControlRow>
   );

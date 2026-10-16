@@ -26,6 +26,14 @@ export type ControlProps = {
   readonly id?: string;
   readonly disabled?: boolean;
   readonly refused?: string;
+  /**
+   * A refusal the author can repair: the engine will not take the value, but the
+   * field stays editable so they can type a different one (`vg-263`). Distinct
+   * from `refused`, which blocks mutation — the distinction the set carries is
+   * **who refused**, the document or the engine, not how loudly. The caller
+   * passes the words; the set renders them as the field's described-by reason.
+   */
+  readonly invalid?: string;
   readonly hint?: string;
   /**
    * An element outside this control that describes it — the pane's own standing
@@ -127,6 +135,8 @@ type ControlIds = {
   readonly label: string;
   readonly reason: string;
   readonly hint: string;
+  /** Where an editable refusal's words sit, for `aria-describedby` to name. */
+  readonly invalid: string;
 };
 
 /** Generated once from `useId` when the caller has not named the control
@@ -140,6 +150,7 @@ export function useControlIds(id: string | undefined): ControlIds {
     label: `${control}-label`,
     reason: `${control}-reason`,
     hint: `${control}-hint`,
+    invalid: `${control}-invalid`,
   };
 }
 
@@ -296,6 +307,25 @@ export function describedBy(
 ): string | undefined {
   const present = ids.filter((id): id is string => id !== undefined);
   return present.length === 0 ? undefined : present.join(" ");
+}
+
+/**
+ * The reason for a value the engine will not take but the author can repair,
+ * rendered once for the whole set so the two fields cannot drift (`vg-263`).
+ *
+ * **Not a live region.** The node is already the field's `aria-describedby`
+ * target, so an `aria-live` here would announce every refusal twice — once when
+ * it changes and again when focus arrives.
+ */
+export function ControlReason(props: {
+  readonly id: string;
+  readonly children: React.ReactNode;
+}): React.JSX.Element {
+  return (
+    <p id={props.id} className="w-full text-xs text-warn">
+      {props.children}
+    </p>
+  );
 }
 
 /**

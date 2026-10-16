@@ -1,7 +1,9 @@
 import type * as React from "react";
 import { useState } from "react";
+import { uiCopy } from "../../ui-copy.js";
 import {
   type ControlProps,
+  ControlReason,
   ControlRow,
   ControlWell,
   describedBy,
@@ -87,7 +89,6 @@ export function ControlNumber(
   const [draft, setDraft] = useState<string | null>(null);
   const [invalid, setInvalid] = useState<string | undefined>(undefined);
   const shown = draft ?? format(value);
-  const invalidId = `${ids.control}-invalid`;
 
   const commit = (): void => {
     // Nothing was edited, so there is nothing to validate: a blur of a field
@@ -102,24 +103,24 @@ export function ControlNumber(
         onClear();
         return;
       }
-      setInvalid("a value is required");
+      setInvalid(uiCopy.controls.valueRequired);
       return;
     }
     const parsed = parse(text);
     if (parsed === undefined) {
-      setInvalid("not a number");
+      setInvalid(uiCopy.controls.notANumber);
       return;
     }
     if (integer === true && !Number.isInteger(parsed)) {
-      setInvalid("a whole number");
+      setInvalid(uiCopy.controls.wholeNumber);
       return;
     }
     if (min !== undefined && parsed < min) {
-      setInvalid(`at least ${min}`);
+      setInvalid(uiCopy.controls.atLeast(min));
       return;
     }
     if (max !== undefined && parsed > max) {
-      setInvalid(`at most ${max}`);
+      setInvalid(uiCopy.controls.atMost(max));
       return;
     }
     setInvalid(undefined);
@@ -162,7 +163,7 @@ export function ControlNumber(
             describedById,
             hint === undefined ? undefined : ids.hint,
             refused === undefined ? undefined : ids.reason,
-            invalid === undefined ? undefined : invalidId,
+            invalid === undefined ? undefined : ids.invalid,
           )}
           onChange={(event) => {
             setDraft(event.target.value);
@@ -176,9 +177,7 @@ export function ControlNumber(
         )}
       </ControlWell>
       {invalid === undefined ? null : (
-        <p id={invalidId} className="w-full text-xs text-warn">
-          {invalid}
-        </p>
+        <ControlReason id={ids.invalid}>{invalid}</ControlReason>
       )}
     </>
   );

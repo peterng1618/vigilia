@@ -570,6 +570,20 @@ export const uiCopy = {
   /** The shell's one sentence about the dock, printed under the selection
    *  column while a selection exists — chrome copy, not the selection's own. */
   selectionHint: "Move and lock the selection with the canvas dock.",
+  /** The shared control set's refusal copy. A control that refuses a value the
+   *  author can repair says why, and those words are user-visible text, so they
+   *  belong here rather than as literals inside `components/ui/` (`vg-264`).
+   *
+   *  `atLeast`/`atMost` carry the field's own bound because the author has to
+   *  see which number refused them. */
+  controls: {
+    /** An empty field with no `onClear` to empty it through. */
+    valueRequired: "a value is required",
+    notANumber: "not a number",
+    wholeNumber: "a whole number",
+    atLeast: (min: number) => `at least ${min}`,
+    atMost: (max: number) => `at most ${max}`,
+  },
   /** The stage camera's control: the display the stage looks through, and the
    *  two framings that are not a display. `label` names what the control is;
    *  the trigger appends the readout it shows, because an accessible name that
@@ -834,6 +848,14 @@ export const uiCopy = {
      *  itself, because the author has to be able to see which of several they
      *  mistyped. */
     colourPicker: "Pick a colour",
+    /** The four tracks of the picker's popup, as accessible names. The
+     *  `data-testid` hooks (`picker-saturation` and its three siblings) stay
+     *  as they are, so a spec addresses them unchanged; the announced name is a
+     *  word rather than that selector-shaped token (`vg-336`). */
+    pickerSaturation: "Saturation",
+    pickerValue: "Value",
+    pickerHue: "Hue",
+    pickerAlpha: "Alpha",
     /** The hex field inside the picker's popup. Named so the author who types a
      *  colour knows the field takes a hex, not the swatch's other channels. */
     colourHex: "Hex colour",

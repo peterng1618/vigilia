@@ -50,12 +50,16 @@ function Track({
   onPick,
   className,
   testId,
+  label,
 }: {
   readonly background: string;
   readonly value: number;
   readonly onPick: (ratio: number) => void;
   readonly className?: string;
   readonly testId: string;
+  /** The accessible name, a word from `uiCopy` — `testId` is a driver's hook
+   *  and reads as a selector, not as something to announce (`vg-336`). */
+  readonly label: string;
 }): React.JSX.Element {
   const ref = useRef<HTMLDivElement | null>(null);
   const pick = useCallback(
@@ -72,7 +76,7 @@ function Track({
       data-testid={testId}
       role="slider"
       tabIndex={0}
-      aria-label={testId}
+      aria-label={label}
       aria-valuemin={0}
       aria-valuemax={100}
       aria-valuenow={Math.round(value * 100)}
@@ -207,6 +211,7 @@ export function ColourPicker({
           >
             <Track
               testId="picker-saturation"
+              label={uiCopy.panels.pickerSaturation}
               className="h-28"
               value={hsva.s}
               background={`linear-gradient(to right, #fff, hsl(${hsva.h} 100% 50%))`}
@@ -215,6 +220,7 @@ export function ColourPicker({
             {/* Brightness, over the saturation the track above just set. */}
             <Track
               testId="picker-value"
+              label={uiCopy.panels.pickerValue}
               className="h-24"
               value={hsva.v}
               background={`linear-gradient(to top, #000, transparent), linear-gradient(to right, #fff, transparent), hsl(${hsva.h} 100% 50%)`}
@@ -222,12 +228,14 @@ export function ColourPicker({
             />
             <Track
               testId="picker-hue"
+              label={uiCopy.panels.pickerHue}
               value={hsva.h / 360}
               background="linear-gradient(to right, #f00, #ff0, #0f0, #0ff, #00f, #f0f, #f00)"
               onPick={(ratio) => emit({ ...hsva, h: ratio * 360 })}
             />
             <Track
               testId="picker-alpha"
+              label={uiCopy.panels.pickerAlpha}
               // A checkerboard, so a translucent value is visibly translucent.
               background={`linear-gradient(to right, transparent, ${toHex({ ...hsvaToRgba(hsva), a: 1 })}), repeating-conic-gradient(#666 0% 25%, #999 0% 50%) 0 0 / 8px 8px`}
               value={hsva.a}
