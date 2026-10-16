@@ -401,6 +401,18 @@ describe("glass composition", () => {
     scaled.canvas.add(panel({ scaleX: 2, scaleY: 2, left: 60, top: 60 }));
     scaled.canvas.renderAll();
     expect(scaled.draws[0]?.filter).toBe("blur(48px) saturate(1.6)");
+    // **A non-uniform scale takes the equal-area factor of the two axes**, not
+    // `scaleX` (`vg-515`, 0053). These two panels cover the same area — one
+    // stretched horizontally, one vertically — so they must blur by the same
+    // amount; before the ruling the first read 96 device px and the second 24.
+    const wide = stage({});
+    wide.canvas.add(panel({ scaleX: 4, scaleY: 1, left: 60, top: 60 }));
+    wide.canvas.renderAll();
+    expect(wide.draws[0]?.filter).toBe("blur(48px) saturate(1.6)");
+    const tall = stage({});
+    tall.canvas.add(panel({ scaleX: 1, scaleY: 4, left: 60, top: 60 }));
+    tall.canvas.renderAll();
+    expect(tall.draws[0]?.filter).toBe("blur(48px) saturate(1.6)");
     // The retina leg, which every other case here leaves at 1 — so both
     // `* retina` terms would otherwise be unexercised. The collaborator Fabric
     // reads the ratio through is stubbed rather than the global, which

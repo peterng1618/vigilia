@@ -373,7 +373,15 @@ export function createGlass(options: GlassOptions): GlassHandle {
     if (treatment === undefined) return;
     const own = deviceMatrix(object, canvas);
     const plane = planeMatrix(canvas);
-    const blurRadius = treatment.blurRadius * Math.hypot(own[0], own[1]);
+    // **The equal-area scale of the two axes, not one of them** (0053). A
+    // filter takes one length and this draw is at identity, so the panel's two
+    // scales have to become one number here; the determinant's root is the only
+    // rotation-independent one that is unchanged whenever the scale is uniform.
+    // It followed the matrix's x row alone, which is `scaleX`: a 4x1 panel
+    // blurred 4x a 1x4 one at one authored value (vg-515).
+    const blurRadius =
+      treatment.blurRadius *
+      Math.sqrt(Math.abs(own[0] * own[3] - own[1] * own[2]));
 
     const region = sampleRegion(object, plane, blurRadius, target);
     if (region === undefined) return;
