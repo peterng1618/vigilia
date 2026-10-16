@@ -780,7 +780,80 @@ test.describe("hosted player over the real host", () => {
     );
     expect(batchCount).toBeGreaterThan(0);
   });
+
+  /**
+   * `vg-391`: no other case in the suite requires a sample to *repaint*.
+   *
+   * The case above proves a batch arrives and the connection banner goes, and
+   * the paused-clock case requires two frames to be byte-identical. Neither
+   * notices the update loop ceasing to reach the canvas, which is what
+   * `display-fabric.spec.ts`'s deleted `keeps repainting as samples arrive`
+   * covered — verified by sabotage in its own comment. This is its replacement,
+   * and the row's own WHAT-SETTLES-IT: read the artboard, drive a sample, read
+   * it again, require the pixels to differ.
+   *
+   * **The read is a screenshot of the Fabric canvas, not a property.** The
+   * painted clock's *value* is a bound text the refresh updates whether or not
+   * anything repaints, so `shownClock` alone would pass with the repaint cut;
+   * the bitmap is what the author sees. Both are required, because either alone
+   * has a green failure: `batchCount` moves on a batch that painted nothing, and
+   * a moved reading moves without a repaint.
+   */
+  test("a live sample repaints the artboard", async ({ page }, testInfo) => {
+    test.skip(
+      !isDesktopSurface(testInfo),
+      "one desktop pass is enough for the host path",
+    );
+
+    await page.goto(`${HOST}/?theme=${HOST_THEME_ID}&data=live`);
+    const artboard = page.locator("#artboard canvas.lower-canvas");
+    await expect(artboard).toBeVisible();
+    // A batch has arrived and been consumed, so the first frame is a painted
+    // reading rather than the blank artboard a first paint would also move.
+    await expect(page.locator("#vigilia-connection")).toHaveCount(0, {
+      timeout: 15_000,
+    });
+    const firstReading = await shownClock(page);
+    expect(
+      firstReading,
+      "the clock was painted before the frame is read",
+    ).toMatch(/^\d{2}:\d{2}:\d{2}$/);
+    await page.evaluate(() => document.fonts.ready);
+    const batches = await liveBatches(page);
+    const firstFrame = await artboard.screenshot();
+
+    // A sample the display had not yet consumed, and the reading it moved to.
+    await expect
+      .poll(() => liveBatches(page), { timeout: 20_000 })
+      .toBeGreaterThan(batches);
+    await expect
+      .poll(() => shownClock(page), { timeout: 20_000 })
+      .not.toBe(firstReading);
+    // Fabric's `requestRenderAll` schedules the paint on a frame, so the
+    // screenshot is taken after the frame that carries it rather than in the
+    // same tick as the property write.
+    await page.evaluate(
+      () =>
+        new Promise<void>((resolve) =>
+          requestAnimationFrame(() => requestAnimationFrame(() => resolve())),
+        ),
+    );
+
+    expect(
+      Buffer.compare(firstFrame, await artboard.screenshot()),
+      "the reading a sample moved to reached the artboard's pixels",
+    ).not.toBe(0);
+  });
 });
+
+/** The batches the display has consumed, as the display counts them. */
+function liveBatches(page: Page): Promise<number> {
+  return page.evaluate(
+    () =>
+      (window as unknown as { vigilia?: { live?: { batchCount?: number } } })
+        .vigilia?.live?.batchCount ?? 0,
+  );
+}
 
 /** A `HH:mm:ss` reading as seconds past midnight; not a clock face means none. */
 function secondsOf(reading: string): number | undefined {
