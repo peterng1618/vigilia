@@ -826,13 +826,14 @@ describe("catalogue query", () => {
     expect(hits.length).toBeGreaterThan(0);
   });
 
-  it("keeps untagged entries reachable when a facet is chosen", () => {
-    // A facet narrows; it never removes an entry that carries no such tag.
+  it("narrows to the entries a facet tags", () => {
+    // A facet is a filter, not a union: `matchesFacet` keeps a trio only when
+    // its own values carry the tag, so an untagged trio is dropped.
     const facets = catalogFacets();
     const mood = facets.find((facet) => facet.field === "mood")!;
     const filtered = queryTrios({ ...none, facet: { field: "mood", value: mood.options[0]!.value } }, []);
     const tagged = fontTrios().filter((trio) => trio.mood.includes(mood.options[0]!.value));
-    expect(filtered.length).toBeGreaterThanOrEqual(tagged.length);
+    expect(filtered.length).toBe(tagged.length);
   });
 
   it("derives facets from the data and drops singletons", () => {
@@ -937,8 +938,7 @@ function matches(trio: FontTrio, term: string): boolean {
     .includes(term);
 }
 
-/** A trio with no matching tag is kept: a facet narrows the list, it does not
- * decide what exists. */
+/** A facet is a filter: a trio whose own values carry no such tag is dropped. */
 function matchesFacet(trio: FontTrio, facet: CatalogQuery["facet"]): boolean {
   if (facet === undefined) return true;
   const values = facet.field === "superfamily" ? [trio.superfamily] : trio[facet.field];
