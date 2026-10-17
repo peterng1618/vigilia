@@ -377,23 +377,37 @@ idle, which is a fact about a PC running a monitor rather than about a phone som
 is holding. Warning about the second on a phone would be noise, and noise is how a
 warning stops being read.
 
-**Both facts are readable from the theme, so the decision is pure.** A video
+**Both facts are readable from the theme, so the detection is pure.** A video
 background is `artboard.backgroundMedia.assetId` resolved against `assets` to an
 entry whose `kind` is `video` — the envelope already refuses a `backgroundMedia`
 pointing at anything else (`validateBackgroundMedia` allows `image`, `svg`, `video`).
 Glass is an object carrying a glass treatment, which `renderer-core` owns the
-vocabulary for (`glassTreatment`). So the detection is a function of the envelope
-alone, with no renderer, no DOM and no Fabric: it lives in **`renderer-core`**,
-which is the only layer both the host and a catalogue Action may import, and it
-answers a list of costs rather than a boolean so the surface can say *which* one.
+vocabulary for (`glassTreatment`). So detection is a function of the envelope alone,
+with no renderer, no DOM and no Fabric: `performanceCostsOf(envelope)` lives in
+**`renderer-core`**, beside the theme model it reads, and answers a list of costs
+rather than a boolean so the surface can say *which* one.
 
-**It is a notice, not a confirm.** The warning appears in the assign surface as soon
-as the theme-and-display pair matches, before the assignment lands — which is the
-moment it is useful — and it does not block. It is advice about a cost, not a
-refusal: a modal on every video theme would be dismissed by reflex within a week and
-would teach people to dismiss the ones that matter. Open question 8 still owns
-whether a video background should ever be refused outright, and the answer to that
-is not this notice's job to pre-empt.
+**The warning is not a second alert system, because the editor already has one.**
+`editor/src/error-manager/` owns structured editor diagnostics
+(`docs/architecture/ownership.md`), its `warn(category, message)` already logs under
+`[vigilia:theme-library]` and fires `editor:warning` on the canvas, and
+`editor-shell/diagnostic-message.tsx` is the one place those become a line a person
+reads. **Its category union already carries `theme-library`**, so this adds no
+category, no manager and no surface — only a sentence, and the sentence is copy, so it
+lives in `uiCopy` with the rest of the editor's words while `renderer-core` answers
+codes rather than prose. A `costWarnings(): readonly string[]` in the rendering core
+would have been a second owner of "tell the author something", which is the
+duplication this section exists to avoid. The policy joining a cost to a kind is a
+fact about *displays*, so it stays in the editor: `renderer-core` is Fabric-free by
+contract and has no display concept to hang it on.
+
+**It is a notice, not a confirm.** It is raised as soon as the theme-and-display pair
+is chosen, before the assignment lands — which is the moment it is useful — and it
+does not block. It is advice about a cost, not a refusal: a modal on every video theme
+would be dismissed by reflex within a week and would teach people to dismiss the ones
+that matter. The line's lifetime is the diagnostic channel's own, and this change does
+not alter it. Open question 8 still owns whether a video background should ever be
+refused outright, and the answer to that is not this notice's job to pre-empt.
 
 ## Two hosts on one network
 
@@ -813,6 +827,11 @@ reusing a slug would inherit a stranger's answers.
   an identity to point a display at and the geometry to tell a browser — so the
   second kind of display adds **no dependency**, and the reuse gate's rung 4 is
   passed by the manifest rather than by argument.
+- **The editor's diagnostic channel** — `editor/src/error-manager/` owns structured
+  editor diagnostics, `DiagnosticMessage` is the one place they become a line a reader
+  sees, and its category union already carries `theme-library`. The assignment's cost
+  warning is raised through it rather than through a second manager or a
+  string-returning helper (spec § "What the assignment warns about").
 - **`requiredDeviceGroups`** already derives a theme's slots from its bindings;
   this document changes *whose* answers are read, not how they are derived.
 - **The publish poll** — `publish-follower.ts` and `/api/published`.
@@ -943,6 +962,12 @@ from the session, so a display writes its own key or nothing.
   reported on monitors that are not this one are all reasoned rather than observed.
   A local monitor is the feature most exposed to that gap, and the plan's first
   test on a two-monitor PC is what closes it.
+- **That the assign surface can show the editor's diagnostic line.** The cost warning
+  is raised through `ErrorManager` and rendered by `DiagnosticMessage`, which belongs
+  to the editor shell; the store is a mode of that shell. **That the two are on screen
+  together has not been checked**, and if they are not, the answer is a surface
+  decision for the store's own plan rather than a second warning manager. Task 4.8
+  checks it and reports it either way.
 
 ## Acceptance
 
@@ -1016,5 +1041,8 @@ from the session, so a display writes its own key or nothing.
   for a local monitor and **does not** warn for a remote display; glass alone warns
   for neither, and a theme with neither warns for neither; the warning names which
   cost it is rather than saying "performance"; it appears before the assignment
-  lands and does not block it; and the detection is a function of the envelope, so
-  it answers the same for a theme the store has not rendered.
+  lands and does not block it; the detection is a function of the envelope, so it
+  answers the same for a theme the store has not rendered; and **it is raised through
+  the editor's existing diagnostic channel** — `ErrorManager.warn` under the
+  `theme-library` category — rather than through a manager, a category or a surface of
+  its own.
