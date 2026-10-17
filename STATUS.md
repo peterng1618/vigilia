@@ -18,9 +18,9 @@ Drain `docs/product/backlog.jsonl` through the active Superpowers plan. Editor r
 
 ## Last completed change
 
-- Triage at `0e358235`: 35 rows named by no task block comprised 32 already parked, `vg-538` parked by this pass, and two unresolved decisions (`vg-546`, `vg-559`). No unsupported closes.
-- `vg-546` needs a decision on specific numeric-bound copy versus generic shell refusal; `vg-559` concerns unbounded STATUS bullet length and the user-owned AGENTS rule.
-- Recorded proof: `npm run gate` exit 0 (264 files, 3486 tests); `npm run backlog:check` exit 0 (566 items, 39 parked).
+- Filed user report `vg-567` and [GitHub issue 35](https://github.com/peterng1618/vigilia/issues/35): starter no longer initial editor document and unavailable for phone-publish selection; runtime reproduction pending.
+- Source shows starter host entry uses bare `/editor/`, which resumes latest saved theme under `vg-060`; explicit starter navigation needs proof without reversing saved-work policy.
+- Phone publishing requires saved library identity; no bypass or product fix landed. Exact user URL and selection surface remain unanswered.
 
 ## Next
 
