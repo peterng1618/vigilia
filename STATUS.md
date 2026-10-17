@@ -25,7 +25,7 @@ Drain `docs/product/backlog.jsonl` through the active Superpowers plan. Editor r
 
 ## Next
 
-1. Execute Phase 25 serially, one seat at a time: 25.6 the PWA, 25.7 the crop notice and bleed toggle removed (which is also the event that closes vg-572), 25.8 the secure origin that gates keep-awake and the PWA.
+1. Execute Phase 25 serially, one seat at a time, in the plan's own order: 25.7 the crop notice and bleed toggle removed (which is also the event that closes vg-572), then 25.8 the secure origin that gates keep-awake and the PWA, then 25.6 the PWA — 25.8 runs before 25.6 because a service worker needs a secure context, and nothing orders 25.6 against 25.7.
 2. Review each task against its brief and evidence; run phase gate with exit code and browser results named separately.
 3. Resume Phase 21 after font-picker spec approval and budget ruling; resume Phase 12 after settings-pane spec review.
 4. Re-home unparked rows carried only by closed phases; never treat a mention as a live implementation home.
