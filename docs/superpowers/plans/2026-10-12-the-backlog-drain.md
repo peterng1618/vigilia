@@ -5104,10 +5104,10 @@ phase boundary.
 **Interfaces:**
 - Produces: `vg-570` closed
 
-- [ ] **Step 1: The constructions leave the footer.** `CONSTRUCTION_ACTIONS` was added to `LayerActions` by `e572c302` to answer `vg-460`'s open question, and the user has ruled that answer wrong.
-- [ ] **Step 2: With nothing selected the footer draws the registry's object commands disabled** — not absent, and not empty. That is the ruling the user gave when asked directly. Whether ineligible commands also grey while a selection exists is not ruled, and the registry's documented rule is that an action the selection cannot run is absent rather than greyed, so the minimal reading is the no-selection state alone.
-- [ ] **Step 3: The tests that pin the footer's set move to the new rule** — `vg-460`'s check compares the footer against the Add pane's tiles and must be rewritten rather than left contradicting the ruling — and the bridge's construction exemption is assessed: `vg-484` is about a construction reaching the session façade unwrapped through this path, so if the footer was its only caller that exemption becomes dead code rather than a live defect.
-- [ ] **Step 4: Close it**, with a case that fails when the no-selection footer is emptied again.
+- [x] **Step 1: The constructions leave the footer.** `CONSTRUCTION_ACTIONS` was added to `LayerActions` by `e572c302` to answer `vg-460`'s open question, and the user has ruled that answer wrong.
+- [x] **Step 2: With nothing selected the footer draws the registry's object commands disabled** — not absent, and not empty. That is the ruling the user gave when asked directly. Whether ineligible commands also grey while a selection exists is not ruled, and the registry's documented rule is that an action the selection cannot run is absent rather than greyed, so the minimal reading is the no-selection state alone.
+- [x] **Step 3: The tests that pin the footer's set move to the new rule** — `vg-460`'s check compares the footer against the Add pane's tiles and must be rewritten rather than left contradicting the ruling — and the bridge's construction exemption is assessed: `vg-484` is about a construction reaching the session façade unwrapped through this path, so if the footer was its only caller that exemption becomes dead code rather than a live defect.
+- [x] **Step 4: Close it**, with a case that fails when the no-selection footer is emptied again.
 
 ### Task 25.2: The player's warning banner clears itself
 
