@@ -198,14 +198,101 @@ nobody had to add.
 
 **Adding one is a Host settings action**: name it, pick a monitor from what
 `graphics().displays` reports, and the host answers with the URL to open and the
-monitor's geometry. **The host does not launch the browser** — it specifies the
-display, which is the user's own word for it, and hands over the command line
-(with `--window-position` and `--window-size` from the reported geometry) for a
-shortcut or a Startup entry. Launching another application's window on a chosen
-monitor is platform-specific, needs process supervision and a lifecycle of its own,
-and `cli/net.ts`'s `openBrowser` opens a URL with no placement control — so it is a
-separate subsystem rather than a step here. Open question 6 records the choice and
-what would change it.
+monitor's geometry.
+
+**Ruling 13: the host launches the display, and it registers itself to start at
+sign-in.** The user ruled this on 2026-10-18, overruling this document's earlier
+recommendation that the owner run a shortcut: *"It needs to survive host app
+restarts & computer reboots, else it's useless if user have to manually reopen it
+everytime."* That is right, and the earlier recommendation was wrong for the
+reason it gave — a wall display nobody reopens is not a display.
+
+**The launcher is not a new subsystem: this codebase already launches and
+registers a child process.** `providers/lhm-launcher.ts` does every part of it for
+LibreHardwareMonitor — `registerLhmTask` creates a `schtasks /SC ONLOGON` entry,
+`hasLhmStartupTask` reads the task store to see whether it exists, `launchChild`
+spawns a host-owned child (`detached: false`), and `launchLhm` **probes before
+launching** so an already-running instance keeps ownership of itself and reports
+`{ started, reason, stop }`. So the display launcher is that shape with a browser in
+place of LHM, and the reuse gate's rung 4 is passed by an existing file rather than
+by argument. (`cli/net.ts`'s `openBrowser` detaches and unrefs instead, because it
+opens a browser *for the owner* that must outlive the host — the opposite case, and
+worth not copying here.)
+
+Four properties it has to have, each with the mechanism that gives it:
+
+- **One registration, not one per monitor.** The **host** is what is registered at
+  sign-in, and the host then ensures its monitors. A monitor added later is covered
+  without a second approval, and there is one entry for the owner to find and
+  remove. On Windows that is the `schtasks` call `registerLhmTask` already makes;
+  macOS's launchd and Linux's systemd-user or XDG autostart are their own work and
+  are named as such rather than assumed.
+- **Comes back after a host restart, because the host starts it again.** The user's
+  own clarification, 2026-10-18: *"When I say it survive a host restart, I simply
+  mean the host relaunch the browser on the right monitor again."* So the browser is
+  the **host's own child** — `detached: false`, which is `lhm-launcher.ts`'s
+  `launchChild` and not `openBrowser`'s detach — and the reconcile pass on host
+  start is what brings it back. Nothing has to outlive anything, which is simpler
+  and is the honest reading of what a display is: a window the host owns.
+- **Never launches twice, and this is what makes the crash case safe.** A host that
+  is killed rather than closed can leave its browser orphaned on Windows, so a
+  relaunch on start would otherwise put a second window on the same monitor. The
+  liveness check is already free and already stored: a local display that polled
+  within the last few seconds **is running**, so `lastSeenAt` — the field § "The
+  host's own monitors" already wanted for the settings surface — is what stops the
+  second window. This is `launchLhm`'s reachability probe replaced by a fact the
+  host already has, which is why the reconcile step is a comparison rather than a
+  process scan.
+- **Comes back after a crash, and goes away when removed.** The same reconcile pass
+  re-checks each local display and relaunches the missing ones, so a crashed or
+  accidentally-closed window returns. **Removal must stop it too** — deleting a
+  local display has to close its window, or "remove" leaves a browser on the screen
+  forever, which is the half of supervision that is easiest to forget. And because
+  the child is the host's own, `close` is unambiguous: a browser the host started is
+  the host's to kill, and one the owner started is not, which is `launchLhm`'s "an
+  LHM the owner already runs keeps ownership of itself" applied to a browser.
+
+**What renders it, and what that costs.** The user's other question, 2026-10-18:
+the app exists to report on a machine's load, so the display must not become a
+load of its own. Read from the code, the cost is **not** where the host is:
+
+- **The host already idles correctly.** `server.ts`'s `tick` returns immediately
+  when `connections.size === 0`, and it polls the **union** of every display's keys
+  once and offers one already-serialized payload to each. A second local monitor
+  costs one more write, not a second sampling cycle; the only host-side growth is
+  keys a new theme binds that no existing theme did.
+- **Repaint rate is the dominant client cost, not the engine.** `ChartRefreshRate`
+  is `1 | 30`, and every repaint in a scene goes through `startChartRefresh`'s one
+  loop. A local monitor should default to **1 fps** and the rate should be
+  per-display, because a dashboard nobody is touching has no reason to draw thirty
+  times a second.
+- **The loop as written does not idle, and that is the defect to fix here.**
+  `startChartRefresh`'s `tick` re-arms `requestAnimationFrame` on **every frame**
+  and returns early when the rate has not elapsed — so at 1 fps it still wakes the
+  process ~60 times a second to decide to do nothing. A monitor that wakes a
+  process 60 times a second is exactly the app that degrades the machine it is
+  reporting on. At rate 1 the loop should be a `setInterval` and let the browser
+  go idle between updates; the rAF loop is right for 30 and wrong for 1.
+- **Animation is a bigger cost than the browser.** Any continuously animating
+  element forces repaint at the display's refresh rate and keeps the compositor and
+  the GPU process awake. A local monitor's theme should be static between samples.
+- **Pixels are a cost.** The artboard is authored at a fixed size and scaled, so a
+  local monitor on a HiDPI screen should render at 1× rather than 2× device pixel
+  ratio — a quarter of the raster work for a dashboard nobody is reading at
+  retina distance.
+- **One browser, N windows.** If a PC has several local monitors, they share one
+  browser process with a separate profile rather than one independent engine tree
+  each, which shares the browser, network and GPU processes and adds a renderer
+  per screen.
+
+**A browser is the floor here, and that is a deliberate choice.** The cheapest
+possible client would be a native renderer, which means reimplementing the Fabric
+scene per platform; a WebView2/WebKitGTK shell would have a lower baseline than a
+full browser at the cost of three platform implementations. Neither is worth it
+against a repaint-rate fix that costs one function. `--disable-gpu` is **not**
+recommended without measuring: for a mostly-static 1 fps canvas, software raster
+may use less power than keeping a GPU process alive, and that is a probe rather
+than a conclusion.
 
 ## Two hosts on one network
 
@@ -580,9 +667,10 @@ outranks the map for exactly as long as it is in the URL.
 | `POST /api/pairing/sessions?label=` | loopback | a new display, its durable credential and a one-time code |
 | `POST /api/pairing/sessions?displayId=` | loopback | **replaces** that display's credential — rotation — keeping its record, its theme and its answers |
 | `PATCH /api/displays/:id` | loopback | `{ label }` — **renames, and changes nothing else**; the id does not move |
-| `POST /api/displays` | loopback | `{ label, monitor }` — **a local monitor**, a display with no credential |
+| `POST /api/displays` | loopback | `{ label, monitor }` — **a local monitor**, a display with no credential, launched at once |
 | `GET /api/displays/monitors` | loopback | what `systeminformation` reports is attached, for the owner to pick from |
-| `DELETE /api/displays/:id` | loopback | **removes the client**: the record, its credential, its assignment and its answers |
+| `POST /api/displays/autostart` | loopback | registers the **host** to start at sign-in, so every local monitor survives a reboot |
+| `DELETE /api/displays/:id` | loopback | **removes the client**: the record, its credential, its assignment, its answers, **and its window** |
 | `GET /api/themes/active` | loopback | the default, each display with its theme, the library, the templates |
 | `PUT /api/themes/active` | loopback | `{ display: "<id>" \| "default", id }` — any display, and the default |
 | `PUT /api/themes/active` | paired | `{ id }` — **its own entry only**, named by its session |
@@ -683,15 +771,21 @@ from the session, so a display writes its own key or nothing.
    **Not needed for the feature to work**, because the name route and the re-find
    ladder both work without it, so it is deferred rather than designed. Browsers
    cannot resolve `.local` except Safari, so it would never be the whole answer.
-6. **Whether the host should launch the browser on a local monitor itself.** This
-   design specifies the display and hands over the command line, which is what the
-   user asked for ("the host just needs to specify them"), and launching is
-   platform-specific, needs process supervision, and has no placement control in
-   anything the host already has (`cli/net.ts`'s `openBrowser` opens a URL and
-   nothing more). **Recommended: do not build it**, because a Startup shortcut the
-   owner can see and edit is more debuggable than a supervised child process, and
-   the failure of a launched browser is invisible from the host's own log. What
-   would change the answer is a second screen the owner cannot put a shortcut on.
+6. ~~**Whether the host should launch the browser on a local monitor itself.**~~
+   **Ruled on 2026-10-18: it does** — ruling 13, § "The host's own monitors". The
+   earlier recommendation against it was wrong for the reason it gave: a wall
+   display nobody reopens is not a display, so surviving a host restart and a
+   reboot is a requirement rather than a nicety. The launcher reuses
+   `lhm-launcher.ts`'s shape rather than inventing one. **Still open within it:**
+   which browser executable to prefer when several are installed, and whether
+   macOS and Linux autostart land with the Windows path or after it.
+7. **Whether the 1 fps repaint path should be a `setInterval` rather than a
+   re-armed `requestAnimationFrame`.** § "The host's own monitors" says the loop as
+   written wakes the process ~60 times a second to decide to do nothing, which is
+   the defect that makes a monitor app cost more than it reports. **Recommended:
+   change it**, and the change is one function — but it is `scene-fabric`'s, it
+   affects the editor's live view too, and it wants its own measurement rather than
+   being folded into this design.
 
 ## Not verified, and must be before this is planned
 
@@ -721,6 +815,17 @@ from the session, so a display writes its own key or nothing.
 - **That a cross-origin sweep can read `GET /api/host`.** The CORS header is
   designed rather than tested, and a preflight or a private-network rule could
   refuse it. Unverified from this environment.
+- **That a relaunched browser lands on the right monitor.** The launch shape is
+  `lhm-launcher.ts`'s and the registration is its `schtasks /SC ONLOGON` call — but
+  neither has been exercised for a *browser* on a *second* monitor, and
+  `--window-position` against a monitor Windows has renumbered is exactly the kind
+  of thing that works until it does not. Nothing here has been driven through a real
+  sign-out and sign-in.
+- **That 1 fps is the right default, and that the rAF loop is what costs.** The
+  ~60-wakeups-a-second reading is from `chart-refresh.ts`'s source, not from a
+  profiler; the relative cost of engine baseline, repaint rate, device pixel ratio
+  and GPU process residency on this machine is **unmeasured**. Open question 7 owns
+  the change; a measurement is what should decide it.
 - **That `systeminformation` reports every attached monitor usefully.** Probed on
   this PC at 5.33.13: it answers one entry with `deviceName`, `serial`, `main`,
   `positionX`/`positionY` and `currentResX`/`currentResY`, which is the shape this
@@ -778,3 +883,15 @@ from the session, so a display writes its own key or nothing.
   monitor's record whose monitor is no longer attached **stays in the list with its
   theme**, and the settings surface says it is not on a screen; and a local monitor
   is unaffected by the host's address changing, because it reaches `127.0.0.1`.
+- **9 (launching, ruling 13)** — adding a local monitor opens a window on the named
+  monitor; **restarting the host brings it back on the right monitor**, and does not
+  open a second one, because a display seen recently is a display already running —
+  including the case where a killed host left an orphan behind; a window that is
+  closed comes back on the next reconcile; **removing the display closes its
+  window**; the host registers itself at sign-in with one entry that covers every
+  monitor, including one added later; and a PC with no browser the host can find
+  says so rather than showing nothing.
+- **10 (cost)** — a local monitor defaults to **1 fps**, the rate is per-display, and
+  a local monitor's idle state does not repaint; the host samples nothing while no
+  display is connected; and adding a second local monitor whose theme binds no new
+  key does not increase the host's sampling.

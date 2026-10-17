@@ -49,10 +49,19 @@ plan argues from the spec, so read both. Register row: `vg-574`.
   `kind` is checked as well as the origin: the parameter names `local` records and
   never a paired one, so it cannot be used to impersonate a display that has a
   credential. This is the property that lets a local display exist without one.
+- **Ruling 13: the host launches a local monitor and registers itself at sign-in.**
+  A wall display nobody reopens is not a display. Spawn a **host-owned** child
+  (no `detached`), relaunch on start, and **only ever close a window this launcher
+  opened** — a browser the owner started is not the host's to kill. One autostart
+  entry covers every monitor.
+- **A local monitor's client must not become the load it reports.** Default it to
+  1 fps, never leave it animating when idle, and do not raise the host's sampling
+  cadence for it. `server.ts`'s `tick` returning on `connections.size === 0` is a
+  property to keep, not to work around.
 
 ## Review Focus
 
-Ten inputs and conditions the spec implies and no task's own tests exercise.
+Twelve inputs and conditions the spec implies and no task's own tests exercise.
 Each gets its test in the task named beside it.
 1. **A display whose assigned theme was deleted** — a person removes a theme from
    the library while a wall screen holds it. The display must fall to the default
@@ -88,6 +97,15 @@ Each gets its test in the task named beside it.
     thing that could identify a credentialless display, so it is the only way to
     impersonate one. It must be refused off loopback, and it must not resolve a
     paired display at all. (Task 2.2)
+11. **A host restarted while a wall display is already up** — the restart must not
+    open a second window on that monitor, **including when a killed host left an
+    orphan behind**, and it must not close the first. This is the case a naive
+    launcher gets wrong in both directions, and the reason the liveness check is
+    `lastSeenAt` rather than a process scan. (Task 1.8)
+12. **Removing a local display, and a browser the owner started themselves** —
+    removal must close the window the host opened, and must never kill a browser it
+    did not launch. Getting this backwards closes someone's own browsing session.
+    (Task 1.8)
 
 ---
 
@@ -100,6 +118,7 @@ Each gets its test in the task named beside it.
 | `packages/host/src/settings/theme-settings.ts` (modify) | Answers gain a display level above their theme level |
 | `packages/host/src/settings/active-theme.ts` (modify) | One map from display key to theme id, `default` reserved |
 | `packages/host/src/settings/monitors.ts` (create) | What `systeminformation` reports is attached, and the hint and command line a local display needs |
+| `packages/host/src/serve/display-launcher.ts` (create) | Launches, reconciles and closes the browser for each local display, and registers the host at sign-in |
 | `packages/host/src/session/pairing.ts` (modify) | The CSPRNG mint and the constant-time compare, and nothing that expires |
 | `packages/host/src/session/pairing-code.ts` (create) | The one-time code: its alphabet, its expiry, and the claim that consumes it |
 | `packages/host/public/pair.html` (create) | The page a camera-less display types the code into |
@@ -888,14 +907,16 @@ that cannot change; the command is a Chromium-family command line with
 `--window-position` and `--window-size` from the monitor, `--start-fullscreen`, and
 a comment naming it as advice for a shortcut rather than something the host runs.
 
-**The host does not launch it** (spec open question 6). The route answers the URL
-and the command; the owner puts it in a shortcut or a Startup entry. Do not add a
-child process here.
+**The host launches it** — ruling 13, Task 1.8. This task produces the URL, the
+command line and the geometry; it does not spawn anything. Keep the two apart so
+the pure part is testable without a process.
 
 **A record whose hint matches nothing stays.** `GET /api/displays/monitors` answers
 what is attached, and the surface compares — the host does not delete a display
 because a cable moved, because that would throw away the person's theme to report a
-fact about the furniture.
+fact about the furniture. **Nor does it relaunch one whose monitor is gone** (Task
+1.8): a window on a monitor that is not attached has nowhere to go, and the record
+waiting in the list is the honest state.
 
 - [ ] **Step 4: Run test to verify it passes**
 
@@ -907,6 +928,172 @@ Expected: PASS.
 ```bash
 git add src/web/packages/host/src/settings/monitors.ts src/web/packages/host/src/settings/monitors.test.ts src/web/packages/host/src/server.ts src/web/packages/host/src/server.test.ts
 git commit -m "feat(host): a second kind of display, specified rather than paired"
+```
+
+### Task 1.8: The host launches it, and comes back after a reboot
+
+Spec § "The host's own monitors", ruling 13: the user overruled the earlier
+recommendation that the owner run a shortcut — *"It needs to survive host app
+restarts & computer reboots, else it's useless if user have to manually reopen it
+everytime."* This is `lhm-launcher.ts`'s shape with a browser where LHM was.
+
+**Files:**
+- Create: `src/web/packages/host/src/serve/display-launcher.ts`
+- Create: `src/web/packages/host/src/serve/display-launcher.test.ts`
+- Modify: `src/web/packages/host/src/server.ts`
+- Modify: `src/web/packages/host/src/main.ts`
+- Test: `src/web/packages/host/src/server.test.ts`
+
+**Interfaces:**
+- Consumes: `DisplayStore.list`/`find`/`touch` (Task 1.1); `listMonitors`,
+  `isAttached`, `launchFor` (Task 1.7).
+- Produces:
+
+```ts
+export interface Launcher {
+  /** Ensures every attached local display has a window; never a second one. */
+  reconcile(): Promise<void>;
+  /** Closes the window this launcher opened for a display, if any. */
+  close(displayId: string): void;
+  stop(): void;
+}
+export function findBrowser(platform?: NodeJS.Platform): string | undefined;
+export function browserCommand(browser: string, monitor: Monitor, port: number, displayId: string): { readonly file: string; readonly args: readonly string[] };
+/** Registers the *host* at sign-in, so every local monitor survives a reboot. */
+export function registerHostAutostart(command: string): Promise<{ readonly ok: boolean; readonly message: string }>;
+export const LIVE_WINDOW_MS = 15_000;
+export function createDisplayLauncher(input: { readonly displays: DisplayStore; readonly port: number; readonly spawn?: typeof spawn; readonly now?: () => number }): Launcher;
+```
+
+- [ ] **Step 1: Write the failing test**
+
+```ts
+// display-launcher.test.ts — a fake store, a fake clock, a recording spawn.
+it("launches a local display that has not been seen recently", async () => {
+  // A local record with lastSeenAt older than LIVE_WINDOW_MS -> one spawn, and
+  //   the args carry the monitor's position and size.
+});
+
+it("does not launch a display that was seen recently", async () => {
+  // lastSeenAt inside LIVE_WINDOW_MS -> no spawn at all. This is the check that
+  //   makes a host restart not open a second window.
+});
+
+it("does not launch one whose monitor is not attached", async () => {
+  // Hint matches nothing -> no spawn, and the record is untouched.
+});
+
+it("never launches a paired display", async () => {
+  // kind "paired" -> no spawn, whatever its lastSeenAt says.
+});
+
+it("brings back a window that went away", async () => {
+  // Launch, then lastSeenAt goes stale again -> a second spawn on the next
+  //   reconcile, because a closed window is a stale display.
+});
+
+it("does not open a second window when a killed host left an orphan behind", async () => {
+  // A stale in-memory child map (a fresh launcher, as after a restart) but a
+  //   *fresh* lastSeenAt -> no spawn. The orphan is still polling, so it is the
+  //   window this display already has.
+});
+
+it("spawns a host-owned child, not a detached one", async () => {
+  // The spawn options do NOT carry detached: the browser is the host's own child,
+  //   which is what makes close() unambiguous.
+});
+
+it("closes the window it opened when the display is removed", async () => {
+  // launch(id), then close(id) -> the recorded child was killed; close again is
+  //   a no-op rather than an error.
+});
+
+it("only ever closes a window it opened itself", async () => {
+  // close() for a display this launcher never launched -> no kill, no throw.
+});
+
+it("stops reconciling after stop()", async () => {
+  // stop(), then reconcile() -> no spawn.
+});
+
+it("answers undefined when no browser is installed, rather than guessing", () => {
+  expect(findBrowser("linux")).toBeUndefined();   // with no candidate on PATH
+});
+
+// server.test.ts
+it("launches a local display when it is added", async () => {
+  // POST /api/displays -> one spawn for the new display.
+});
+
+it("closes the window when the display is removed", async () => {
+  // DELETE /api/displays/<local id> -> the child was killed.
+});
+
+it("registers the host at sign-in, once", async () => {
+  // POST /api/displays/autostart -> the registration ran, and its message is
+  //   the one the surface shows.
+});
+```
+
+- [ ] **Step 2: Run test to verify it fails**
+
+Run: `npx vitest run packages/host/src/serve/display-launcher.test.ts`
+Expected: FAIL — cannot resolve `./display-launcher.js`.
+
+- [ ] **Step 3: Implement**
+
+`findBrowser` looks for a Chromium-family executable at the platform's known
+install paths and on `PATH`, and answers `undefined` rather than guessing — a
+guessed path is a display that silently never appears. `browserCommand` reuses
+Task 1.7's `launchFor` for the URL and geometry and adds `--app=<url>`,
+`--start-fullscreen`, `--user-data-dir=<settings>/display-<id>` (a separate profile
+per display, so the wall screen does not carry the owner's session or extensions),
+`--no-first-run`, `--no-default-browser-check`, and `--disable-extensions`.
+
+**`reconcile` is a comparison, not a process scan.** For each record with
+`kind: "local"` whose monitor is attached, it launches when `lastSeenAt` is older
+than `LIVE_WINDOW_MS` and this launcher holds no live child for it. `lastSeenAt` is
+already written on every authenticated request (`displayFor`, Task 1.2) and a local
+display's page polls continuously, so *seen recently* is *running* — which is
+`launchLhm`'s reachability probe replaced by a fact the host already has. Run it on
+start, when a local display is added, and on an interval; a closed window goes stale
+and comes back on the next pass, and a window on a monitor that is not attached is
+not launched at all.
+
+**The child is the host's own: spawn without `detached`, which is `launchChild`'s
+choice rather than `openBrowser`'s.** The user's clarification is the reason — *"the
+host relaunch the browser on the right monitor again"* — so nothing has to outlive
+the host and the reconcile pass on start is the whole of the restart behaviour. The
+launcher keeps the child handle per display id so `close` can kill **only a window it
+opened itself**: a browser the owner started is not the host's to close, which is
+`launchLhm`'s "an LHM the owner already runs keeps ownership of itself" applied to a
+browser.
+
+**`lastSeenAt` is what makes a killed host safe.** A host that is killed rather than
+closed can leave its browser orphaned, and a fresh launcher has an empty child map —
+so without the liveness check, restarting would put a second window on the monitor
+the orphan is already on. Test it explicitly: a fresh launcher over a *fresh*
+`lastSeenAt` must spawn nothing.
+
+**`registerHostAutostart` registers the host, not the monitor.** One entry at
+sign-in covers every local monitor including one added later, and the owner has one
+thing to find and remove. On Windows it is the `schtasks /Create /TN ... /SC
+ONLOGON /F` call `registerLhmTask` already makes, with the host's own command;
+macOS's launchd and Linux's systemd-user or XDG autostart **are not in this task** —
+return `{ ok: false, message }` naming the platform, the way `registerLhmTask`
+answers "LibreOfficeHardwareMonitor only runs on Windows." for a non-Windows host.
+Do not silently do nothing on a platform that is not implemented.
+
+- [ ] **Step 4: Run test to verify it passes**
+
+Run: `npx vitest run packages/host/src/serve/display-launcher.test.ts packages/host/src/server.test.ts packages/host/src/providers/lhm-launcher.test.ts`
+Expected: PASS.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add src/web/packages/host/src/serve/display-launcher.ts src/web/packages/host/src/serve/display-launcher.test.ts src/web/packages/host/src/server.ts src/web/packages/host/src/server.test.ts src/web/packages/host/src/main.ts
+git commit -m "feat(host): launch a local monitor's browser, and come back after a reboot"
 ```
 
 ---
