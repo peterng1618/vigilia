@@ -6,7 +6,7 @@ import type { EditorShellBridge } from "../../editor-shell/bridge.js";
 import { LayerActions } from "../../editor-shell/layer-panel.js";
 import type { LayerRow } from "../../editor-shell/layer-tree.js";
 import {
-  CONSTRUCTION_ACTIONS,
+  OBJECT_ACTIONS,
   type ObjectTarget,
   objectActionsFor,
 } from "../../object-actions.js";
@@ -313,17 +313,19 @@ it("draws at most three controls in the state slot, whatever the row's state", a
   host.remove();
 });
 
-it("offers the object actions this selection can run plus the constructions, and asks the registry", async () => {
+it("draws the registry's commands disabled with nothing selected, and its filter's answer with one", async () => {
   // The footer decides nothing: eligibility is `objectActionsFor`'s, and the
   // expected column below is that function's own answer rather than a copy of
   // its rule. A surface that re-spelled the filter would agree with it on one
-  // selection and diverge on another — which is why three selections are asked,
-  // one of them a locked object, where the delete half of the registry refuses.
+  // selection and diverge on another — which is why a locked object is asked as
+  // well as an unlocked one, where the delete half of the registry refuses.
   //
-  // The other half is `CONSTRUCTION_ACTIONS`, and it is drawn in every one of
-  // those states: a construction needs no subject, so the filter has nothing to
-  // say about it (`vg-460`). It leads the row, because it is the half that does
-  // not move as the selection changes.
+  // **The no-selection case is `vg-570`'s ruling.** The footer keeps the
+  // registry's own commands and draws them disabled — not the Add pane's
+  // constructions (`vg-460`'s answer, which the user never asked for) and not an
+  // empty row. So there the expected column is the whole registry and every
+  // button in it is disabled; where a subject exists the filter has already
+  // removed what the selection cannot run, so nothing is left to grey.
   const cases: readonly {
     readonly what: string;
     readonly target: ObjectTarget;
@@ -352,6 +354,7 @@ it("offers the object actions this selection can run plus the constructions, and
   ): Promise<{
     readonly host: HTMLElement;
     readonly labels: readonly (string | null)[];
+    readonly disabled: readonly boolean[];
     readonly offered: ReturnType<typeof objectActionsFor>;
     readonly run: ReturnType<typeof vi.fn>;
   }> => {
@@ -367,50 +370,42 @@ it("offers the object actions this selection can run plus the constructions, and
         <LayerActions bridge={bridge} />,
       ),
     );
+    const buttons = [...host.querySelectorAll<HTMLButtonElement>("button")];
     return {
       host,
       run,
       offered: objectActionsFor(bridge),
-      labels: [...host.querySelectorAll<HTMLElement>("button")].map((button) =>
-        button.getAttribute("aria-label"),
-      ),
+      labels: buttons.map((button) => button.getAttribute("aria-label")),
+      disabled: buttons.map((button) => button.disabled),
     };
   };
 
   for (const { what, target } of cases) {
-    const { host, labels, offered, run } = await renderFooter(target);
-    // The rendered order is the constructions first, then the commands.
-    const expected = [...CONSTRUCTION_ACTIONS, ...offered].map(
+    const { host, labels, disabled, offered, run } = await renderFooter(target);
+    const nothing = target.kind === "none";
+    const expected = (nothing ? OBJECT_ACTIONS : offered).map(
       (action) => action.label,
     );
     expect(labels, what).toEqual(expected);
+    expect(disabled, what).toEqual(expected.map(() => nothing));
     // The press carries the registry's own id, so the footer is rendering the
-    // registry's entries rather than a list of its own that happens to match.
-    const first = [...CONSTRUCTION_ACTIONS, ...offered][0];
+    // registry's entries rather than a list of its own that happens to match —
+    // and a disabled control carries nothing at all.
+    const first = (nothing ? OBJECT_ACTIONS : offered)[0];
     if (first !== undefined) {
       await act(async () =>
         host.querySelector<HTMLButtonElement>("button")?.click(),
       );
-      expect(run.mock.calls, what).toEqual([[first.id]]);
+      expect(run.mock.calls, what).toEqual(nothing ? [] : [[first.id]]);
     }
     host.remove();
   }
 
-  // The absences the filter buys, said outright: a locked object is offered no
-  // Delete and no Lock, and a selection of nothing is offered no command at all.
-  // Rendering the whole registry instead would put a control on the footer that
-  // the selection cannot run — and the constructions below are the difference
-  // between that and a footer that is *present* without being useful.
-  const none = await renderFooter({
-    kind: "none",
-    locked: false,
-    memberCount: 0,
-    isGroup: false,
-  });
-  expect(none.labels).toEqual(
-    CONSTRUCTION_ACTIONS.map((action) => action.label),
-  );
-
+  // The absences the filter buys once there is a subject, said outright: a locked
+  // object is offered no Delete and no Lock, and it is offered Unlock. The
+  // no-selection row is the one that does not filter, and the disabled flags
+  // above are what say so — rendering the registry and leaving it *enabled*
+  // would put a control on the footer that the selection cannot run.
   const locked = await renderFooter({
     kind: "object",
     locked: true,

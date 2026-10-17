@@ -4,7 +4,7 @@ import { createRoot } from "react-dom/client";
 import { expect, it } from "vitest";
 import {
   type ActionGate,
-  CONSTRUCTION_ACTIONS,
+  OBJECT_ACTIONS,
   type ObjectTarget,
   objectActionsFor,
 } from "../object-actions.js";
@@ -87,31 +87,39 @@ it("names the section and draws the title bar DESIGN.md's panes wear", () => {
   act(() => root.unmount());
 });
 
-it("offers the object actions this selection can run, and the constructions whatever it is", () => {
-  // Nothing selected: no *command* — an action the selection cannot run is
-  // **absent, not greyed**, and the arrange half is the one that greys, on the
-  // inspector's lead. What is there is the constructions, which need no subject
-  // at all (`vg-460`): the footer after this task is not present-but-empty, it
-  // is present and usable.
+it("draws the registry's commands disabled with nothing selected, never an empty row", () => {
+  // **This is `vg-570`'s regression case.** The user ruled on 2026-10-17 that a
+  // footer with nothing selected keeps the layer's own object commands and draws
+  // them disabled — not the Add pane's constructions (`vg-460`'s answer, which
+  // was never asked for), and not an empty row. Emptying this footer again, or
+  // putting the constructions back, reddens here: the labels are the registry's
+  // own list and every one of them is disabled.
   const empty = render(bridge(nothing()));
-  const emptyLabels = [
+  const emptyButtons = [
     ...(empty.host
       .querySelector("[data-vigilia-layer-actions]")
       ?.querySelectorAll("button") ?? []),
-  ].map((button) => button.getAttribute("aria-label"));
-  expect(emptyLabels).toEqual(
-    CONSTRUCTION_ACTIONS.map((action) => action.label),
+  ];
+  expect(
+    emptyButtons.map((button) => button.getAttribute("aria-label")),
+  ).toEqual(OBJECT_ACTIONS.map((action) => action.label));
+  expect(emptyButtons.map((button) => button.disabled)).toEqual(
+    OBJECT_ACTIONS.map(() => true),
   );
 
-  // One unlocked object: the registry's answer on top of them, and it is not
-  // empty.
+  // One unlocked object: the registry's own filter answers, and what it keeps is
+  // enabled — the absent-not-greyed rule is unchanged once a subject exists.
   const filled = render(bridge(object()));
-  const filledLabels = [
+  const filledButtons = [
     ...(filled.host
       .querySelector("[data-vigilia-layer-actions]")
       ?.querySelectorAll("button") ?? []),
-  ].map((button) => button.getAttribute("aria-label"));
-  expect(filledLabels.length).toBeGreaterThan(emptyLabels.length);
+  ];
+  expect(
+    filledButtons.map((button) => button.getAttribute("aria-label")),
+  ).toEqual(objectActionsFor(bridge(object())).map((action) => action.label));
+  expect(filledButtons.every((button) => button.disabled)).toBe(false);
+  expect(filledButtons.length).toBeGreaterThan(0);
 
   act(() => empty.root.unmount());
   act(() => filled.root.unmount());
@@ -123,12 +131,9 @@ it("asks the registry for eligibility and decides nothing itself", () => {
 
   // Derived rather than written out: a literal list would pass if the footer
   // re-derived eligibility, which is the drift this pins. `objectActionsFor` is
-  // the dock's own filter, so the two surfaces cannot disagree about the command
-  // half; `CONSTRUCTION_ACTIONS` is the half the dock does not draw.
-  const expected = [
-    ...CONSTRUCTION_ACTIONS,
-    ...objectActionsFor(gate as unknown as ActionGate),
-  ]
+  // the dock's own filter, so the two surfaces cannot disagree about the set —
+  // and with a selection it is the only source, the no-selection branch aside.
+  const expected = objectActionsFor(gate as unknown as ActionGate)
     .map((action) => action.label)
     .sort();
   const rendered = Array.from(

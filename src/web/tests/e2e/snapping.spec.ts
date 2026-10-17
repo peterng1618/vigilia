@@ -558,15 +558,31 @@ test("layer-panel object actions match canvas dock", async ({
 }, testInfo) => {
   test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
   await openFixture(page, "shape");
-  const centre = await clientOfScene(page, "mover", ARTBOARD_WIDTH);
-  await page.mouse.click(centre.x, centre.y);
-  await expectActiveTarget(page);
   const panel = page.locator('[data-vigilia-panel="layers"]');
   const footer = panel.locator("[data-vigilia-layer-actions]");
   const dock = page.locator("[data-vigilia-canvas-toolbar]");
   await expect(panel).toBeVisible();
   await expect(footer).toBeVisible();
   await expect(dock).toBeVisible();
+
+  // Nothing is selected yet, and the footer is a row anyway: the registry's own
+  // commands, every one of them disabled (`vg-570`, ruled 2026-10-17). `vg-460`'s
+  // ask was that the toolbar always be *visible*; the Add pane's constructions
+  // built to answer it were never asked for, so what the no-selection footer
+  // carries is the commands and no constructions. A footer that emptied itself
+  // reddens on the count, and one that went back to the constructions reddens on
+  // the comparison with the dock below.
+  const idleDisabled = await footer
+    .getByRole("button")
+    .evaluateAll((buttons) =>
+      buttons.map((button) => (button as HTMLButtonElement).disabled),
+    );
+  expect(idleDisabled.length).toBeGreaterThan(0);
+  expect(idleDisabled.every(Boolean)).toBe(true);
+
+  const centre = await clientOfScene(page, "mover", ARTBOARD_WIDTH);
+  await page.mouse.click(centre.x, centre.y);
+  await expectActiveTarget(page);
   expect(
     await footer.evaluate(
       (element) => element.closest("[data-vigilia-layer]") === null,
@@ -589,26 +605,13 @@ test("layer-panel object actions match canvas dock", async ({
     buttons.map((button) => button.getAttribute("aria-label") ?? "").sort();
   const footerEntries = await footer.getByRole("button").evaluateAll(entries);
   expect(footerEntries).not.toEqual([]);
-  // The layer footer offers the object commands *and* the constructions, and the
-  // dock offers the commands alone (`vg-460`): a construction needs no subject,
-  // so a surface that only ever draws what a selection can run had nothing to
-  // draw with nothing selected. The two sets are therefore no longer equal, and
-  // the difference is not a stray action — it is the Add pane's primitives, read
-  // off the pane's own tiles rather than listed here, so a primitive added to
-  // the Add pane fails this until the footer carries it too. `vg-463` moved the
-  // eight arrange actions out of the toolbar and into the inspector, so the
-  // command halves are still comparable directly.
-  const add = page.locator('[data-vigilia-panel="add"]');
-  const constructions = [
-    ...(await add.locator(".vigilia-add-text").evaluateAll(entries)),
-    ...(await add.locator("[data-vigilia-panel-add]").evaluateAll(entries)),
-  ];
-  expect(constructions.length).toBeGreaterThan(1);
+  // With a selection the two surfaces are the same set: both render
+  // `objectActionsFor`, the registry's own filter, and nothing else. `vg-463`
+  // moved the eight arrange actions out of the toolbar and into the inspector, so
+  // the command halves are comparable directly — and a construction appearing in
+  // the footer again would put the Add pane's primitives on this side alone.
   expect(footerEntries).toEqual(
-    [
-      ...(await dock.locator("button").evaluateAll(entries)),
-      ...constructions,
-    ].sort(),
+    await dock.locator("button").evaluateAll(entries),
   );
 });
 
