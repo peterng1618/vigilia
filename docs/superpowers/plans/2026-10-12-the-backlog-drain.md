@@ -5057,9 +5057,9 @@ measurement measures a container that will not exist, and `vg-322`'s whole subje
 
 **Outcome:** the five things the user found while testing their own machine are landed — the layer
 footer keeps its own commands greyed rather than the Add pane's constructions, the player's warning
-banner clears itself after three seconds, the phone player gains a tap-revealed fullscreen control
-with an honest unsupported path, and the live line chart's edge and the phone's re-fit are measured
-before either is changed.
+banner clears itself after three seconds, the phone player gains tap-revealed chrome (fullscreen,
+keep-awake and a dimmer) with an honest unsupported path, the player installs as a PWA, and the live
+line chart's edge and the phone's re-fit are measured before either is changed.
 
 **Why its own phase, ahead of Phase 22's remainder.** Every row here is a user report from one
 session of testing on 2026-10-17, and the user ordered them ahead of the remaining proof repairs the
@@ -5067,25 +5067,30 @@ same day. Phase 22 is suspended, not closed, and resumes after this phase; Phase
 suspensions are untouched by this one.
 
 **Owners:** `editor/src/object-actions.ts` with `editor-shell/layer-panel.tsx`; `player/src/chrome.ts`,
-`player/src/main.ts`, `player/src/availability-notice.ts`, `player/index.html` and
-`player/src/ui-copy.ts`; `renderer-core/src/data/live-source.ts` with `renderer-core/src/charts/line.ts`.
+`player/src/main.ts`, `player/src/availability-notice.ts`, `player/index.html`, `player/src/ui-copy.ts`
+and `player/public/`; `host/src/serve/static-path.ts`; `renderer-core/src/data/live-source.ts` with
+`renderer-core/src/charts/line.ts`.
 
 **Constraints:** one implementation seat at a time. **`vg-571` and `vg-572` each begin with a
 measurement, not a fix**: both need a per-frame reader of the artboard's box, the canvas
 `viewportTransform` and the chart's own rect, against a rebuilt bundle, and neither may be closed by
 re-running an existing case — `vg-028`'s notice case already passes and does not cover a viewport
-change. A browser run needs rebuilt bundles, `--workers=1` and its own JSON report.
+change. A browser run needs rebuilt bundles, `--workers=1` and its own JSON report. **Task 25.6's
+first write into `host/src/serve/static-path.ts` is refused by `scripts/reuse-gate.mjs` until a
+decision note claims that path**, so the note lands before the content type does.
 
 **Acceptance:** each row's own `check` passes; `vg-570`'s footer shows the registry's commands
 disabled with nothing selected and carries no construction button; `vg-569`'s banner is gone three
-seconds after it is raised with the composition unmoved; `vg-568`'s control is reachable by tap,
-toggles, auto-hides, and explains itself where the client cannot enter fullscreen; `vg-571` and
-`vg-572` each carry a measurement that names what moved before any code changed.
+seconds after it is raised with the composition unmoved; `vg-568`'s controls are reachable by tap,
+toggle, auto-hide, and explain themselves where the client cannot honour them; `vg-577`'s player
+installs and its service worker caches no telemetry; `vg-571` and `vg-572` each carry a measurement
+that names what moved before any code changed.
 
 **Failure modes:** reverting `vg-460` silently by deleting the constructions and leaving the row
-empty; a three-second timer that also hides a refusal a reader still needs; a fullscreen control that
-is dead on iPhone Safari rather than honest about it; treating a single sample of a flaky browser case
-as a measurement.
+empty; a three-second timer that also hides a refusal a reader still needs; chrome that is dead on
+iPhone Safari rather than honest about it; a dimmer described as device brightness, which a browser
+cannot set; a service worker that caches the live stream, so an offline display shows old numbers as
+though they were current; treating a single sample of a flaky browser case as a measurement.
 
 **Verify:** focused unit and DOM cases during implementation; the browser cases each task names,
 against a rebuilt bundle with `--workers=1`; `npm run gate` with its exit code read from `$?` at the
@@ -5117,7 +5122,7 @@ phase boundary.
 - [ ] **Step 3: Reproduce the resize the user reported before changing anything about placement.** The source already overlays the amber strip, so a resize means either a bundle built before `476d8db7` or the crop strip; say which, from a rebuilt bundle.
 - [ ] **Step 4: Close it**, with the browser case showing the banner absent after the delay and the artboard's box unchanged.
 
-### Task 25.3: The phone player's fullscreen control
+### Task 25.3: The phone player's chrome controls
 
 **Files:**
 - Modify: `player/index.html`; `player/src/chrome.ts`; `player/src/main.ts`; `player/src/ui-copy.ts`
@@ -5125,10 +5130,13 @@ phase boundary.
 **Interfaces:**
 - Produces: `vg-568` closed
 
-- [ ] **Step 1: A semi-translucent control in the top-right, revealed by tap and hidden again after three seconds**, which is what the user asked for on 2026-10-17; the three-second duration and the auto-hide exclusion for keyboard focus are the design presented rather than separately ruled.
-- [ ] **Step 2: Entering and leaving fullscreen is one control's toggle**, and the control never takes room from the composition.
-- [ ] **Step 3: Capability is detected and the unsupported case explains itself**, because iPhone Safari does not expose arbitrary-element fullscreen; a control that does nothing is the failure this step exists to prevent.
-- [ ] **Step 4: Close it**, with the browser case naming what the client it ran on can actually do.
+- [ ] **Step 1: Semi-translucent chrome in the top-right, revealed by tap and hidden again after three seconds**, which is what the user asked for on 2026-10-17; the three-second duration and the auto-hide exclusion for keyboard focus are the design presented rather than separately ruled.
+- [ ] **Step 2: Three controls, no settings modal.** Ruled by the user on 2026-10-17 when they answered the settings-panel question: fullscreen, keep-awake and a brightness control live in the chrome instead, and `vg-576` stays open until all three exist.
+- [ ] **Step 3: Entering and leaving fullscreen is one control's toggle**, and the chrome never takes room from the composition.
+- [ ] **Step 4: Keep-awake is a re-acquiring loop, not a switch.** The Screen Wake Lock API releases its lock whenever the page is hidden, so the control re-requests on `visibilitychange` and reports the lock it actually holds; a control that claims a lock it lost is the failure here.
+- [ ] **Step 5: The brightness control is a dimming overlay over the rendered display, and says so.** A browser cannot set a device's panel brightness, so the honest control is an alpha over the composition — never labelled as the device's own brightness, and never persisted.
+- [ ] **Step 6: Capability is detected and the unsupported case explains itself**, because iPhone Safari does not expose arbitrary-element fullscreen; Task 25.6's standalone mode is that client's honest path, so the refusal may name it.
+- [ ] **Step 7: Close it**, with the browser case naming what the client it ran on can actually do.
 
 ### Task 25.4: The live line chart's edge
 
@@ -5155,3 +5163,16 @@ phase boundary.
 - [ ] **Step 2: The leading candidate is the viewport rather than a notice** — a phone's browser chrome showing or hiding changes the host's height and the `ResizeObserver` re-fits the scene — but the trigger is not established, so it is measured rather than assumed.
 - [ ] **Step 3: Do not close this with `vg-028`'s notice case**, which already passes and covers a different mechanism.
 - [ ] **Step 4: Close it — or, if the measurement shows the re-fit is correct behaviour for a viewport change, correct the claim instead.** A row's subject is a claim, and this one's claim is that the slide is a defect.
+### Task 25.6: The player installs as a PWA
+
+**Files:**
+- Modify: `player/public/`; `player/index.html`; `host/src/serve/static-path.ts`; `docs/decisions/`
+
+**Interfaces:**
+- Produces: `vg-577` closed
+
+- [ ] **Step 1: The decision note lands first.** `host/src/serve/static-path.ts` is a mechanism boundary in `scripts/reuse-gate.mjs`, so the note at `docs/decisions/NNNN-<slug>.md` claims the path before the content type is added, and it records what was searched rather than three libraries.
+- [ ] **Step 2: A manifest and its icons**, served with a content type browsers accept — `.webmanifest` is not in `CONTENT_TYPES` today, so it would arrive as `application/octet-stream` and every browser would refuse it. `display: standalone` is the point, not a detail: it is what draws without browser chrome on a client that has no fullscreen API.
+- [ ] **Step 3: A root-scoped service worker that caches the shell and never the telemetry.** The player is served at the host's root, so `/` scope is available; `/api/**` and the event stream are excluded, because an offline display showing old numbers as though they were live is the fabrication the project forbids.
+- [ ] **Step 4: Close it**, with the install path exercised on a real client and the offline behaviour named — including, if the honest answer is that offline shows nothing, that nothing is what it shows.
+
