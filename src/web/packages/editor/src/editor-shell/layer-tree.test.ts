@@ -709,9 +709,9 @@ describe("the starter theme", () => {
 
   it("names the unit on every card row, and nothing else anywhere", async () => {
     const roots = await starter();
-    // Every card opened, so a part is a row too: the claim below includes that
-    // no part carries a stamp of its own, and a part behind a shut group is not
-    // a row the panel ever renders.
+    // Every card opened, so a part is a row too: a part behind a shut group is
+    // not a row the panel ever renders, and the kinds beside the cards are read
+    // from the rows this opens.
     const rows = projectLayers({
       ...base,
       expanded: new Set(
@@ -745,10 +745,6 @@ describe("the starter theme", () => {
         .filter((row) => row.role.kind !== "group")
         .map((row) => row.role.kind),
     ).toEqual(expect.arrayContaining(["text", "shape", "chart"]));
-    // And no group under a card carries a stamp the root alone should hold.
-    expect(
-      rows.filter((row) => row.kind === "group" && row.depth > 0),
-    ).toHaveLength(0);
   });
 
   it("tells two copies of one unit apart, and neither loses its stamp", async () => {
@@ -936,6 +932,34 @@ describe("the row's role, in the document's own terms", () => {
     expect(at("odd-card")).toEqual({ kind: "group", unit: undefined });
     expect(at("blank-card")).toEqual({ kind: "group", unit: undefined });
     expect(at("spaces-card")).toEqual({ kind: "group", unit: undefined });
+  });
+
+  it("reads a nested group's own stamp, and lends it to nothing beneath", () => {
+    // A constructed document, because the starter holds no nested group and a
+    // starter assertion about one could only fail if a card legitimately gained
+    // it — vg-167. The card's stamp belongs to the card: a group inside it that
+    // names a unit of its own reads that one, and one that names none reads the
+    // bare arm rather than borrowing the stamp above it, which would claim a
+    // unit the document never wrote there.
+    const stamp = (widgetName: string) => ({ widgetId: "unit", widgetName });
+    const nested = new Group([new Rect({ width: 10, height: 10 })]);
+    nested.set("id", "nested");
+    nested.set("provenance", stamp("GPU"));
+    const bare = new Group([new Rect({ width: 10, height: 10 })]);
+    bare.set("id", "bare");
+    const card = new Group([nested, bare]);
+    card.set("id", "card");
+    card.set("provenance", stamp("CPU"));
+
+    const rows = projectLayers({
+      ...opened("card", "nested", "bare"),
+      root: [card],
+    });
+    const at = (id: string): LayerRole | undefined =>
+      rows.find((row) => row.id === id)?.role;
+    expect(at("card")).toEqual({ kind: "group", unit: "CPU" });
+    expect(at("nested")).toEqual({ kind: "group", unit: "GPU" });
+    expect(at("bare")).toEqual({ kind: "group", unit: undefined });
   });
 
   it("gives every kind the projection can return a role arm of its own", () => {
