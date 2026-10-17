@@ -5085,8 +5085,10 @@ disabled with nothing selected and carries no construction button; `vg-569`'s ba
 seconds after it is raised with the composition unmoved; `vg-568`'s controls are reachable by tap,
 toggle, auto-hide, and explain themselves where the client cannot honour them; `vg-577`'s player
 installs and its service worker caches no telemetry; `vg-578`'s removal leaves no crop notice on the
-display, no bleed toggle in the inspector, and no saved theme stranded by the persisted key; `vg-571`
-and `vg-572` each carry a measurement that names what moved before any code changed.
+display, no bleed toggle in the inspector, and no saved theme stranded by the persisted key; `vg-580`
+settles the origin, so keep-awake and the PWA either work on a phone or are ruled absent there rather
+than presented as controls that cannot work; `vg-571` and `vg-572` each carry a measurement that names
+what moved before any code changed.
 
 **Failure modes:** reverting `vg-460` silently by deleting the constructions and leaving the row
 empty; a three-second timer that also hides a refusal a reader still needs; chrome that is dead on
@@ -5137,7 +5139,7 @@ phase boundary.
 - [ ] **Step 1: Semi-translucent chrome in the top-right, revealed by tap and hidden again after three seconds**, which is what the user asked for on 2026-10-17; the three-second duration and the auto-hide exclusion for keyboard focus are the design presented rather than separately ruled.
 - [ ] **Step 2: Three controls, no settings modal.** Ruled by the user on 2026-10-17 when they answered the settings-panel question: fullscreen, keep-awake and a brightness control live in the chrome instead, and `vg-576` stays open until all three exist.
 - [ ] **Step 3: Entering and leaving fullscreen is one control's toggle**, and the chrome never takes room from the composition.
-- [ ] **Step 4: Keep-awake is a re-acquiring loop, not a switch.** The Screen Wake Lock API releases its lock whenever the page is hidden, so the control re-requests on `visibilitychange` and reports the lock it actually holds; a control that claims a lock it lost is the failure here.
+- [ ] **Step 4: Keep-awake is a re-acquiring loop, not a switch, and it may not exist at all on the origin a phone uses.** The Screen Wake Lock API releases its lock whenever the page is hidden, so the control re-requests on `visibilitychange` and reports the lock it actually holds; a control that claims a lock it lost is the failure here. It is also gated on a secure context (`vg-580`, Task 25.8), and the host serves plain http, so on a LAN address the API is absent — the control says so rather than appearing broken, and a proof that ran on `localhost` proves nothing about the phone it is for.
 - [ ] **Step 5: The brightness control is a dimming overlay over the rendered display, and says so.** A browser cannot set a device's panel brightness, so the honest control is an alpha over the composition — never labelled as the device's own brightness, and never persisted.
 - [ ] **Step 6: Capability is detected and the unsupported case explains itself**, because iPhone Safari does not expose arbitrary-element fullscreen; Task 25.6's standalone mode is that client's honest path, so the refusal may name it.
 - [ ] **Step 7: Close it**, with the browser case naming what the client it ran on can actually do.
@@ -5176,7 +5178,7 @@ phase boundary.
 - Produces: `vg-577` closed
 
 - [ ] **Step 1: The decision note lands first.** `host/src/serve/static-path.ts` is a mechanism boundary in `scripts/reuse-gate.mjs`, so the note at `docs/decisions/NNNN-<slug>.md` claims the path before the content type is added, and it records what was searched rather than three libraries.
-- [ ] **Step 2: A manifest and its icons**, served with a content type browsers accept — `.webmanifest` is not in `CONTENT_TYPES` today, so it would arrive as `application/octet-stream` and every browser would refuse it. `display: standalone` is the point, not a detail: it is what draws without browser chrome on a client that has no fullscreen API.
+- [ ] **Step 2: A manifest and its icons**, served with a content type browsers accept — `.webmanifest` is not in `CONTENT_TYPES` today, so it would arrive as `application/octet-stream` and every browser would refuse it. `display: standalone` is the point, not a detail: it is what draws without browser chrome on a client that has no fullscreen API. **Installability needs a service worker and a secure context, so Task 25.8 gates this step** — a manifest served over plain http to a LAN address yields no install prompt, whatever it contains.
 - [ ] **Step 3: A root-scoped service worker that caches the shell and never the telemetry.** The player is served at the host's root, so `/` scope is available; `/api/**` and the event stream are excluded, because an offline display showing old numbers as though they were live is the fabrication the project forbids.
 - [ ] **Step 4: Close it**, with the install path exercised on a real client and the offline behaviour named — including, if the honest answer is that offline shows nothing, that nothing is what it shows.
 
@@ -5193,3 +5195,18 @@ phase boundary.
 - [ ] **Step 2: The display stops saying it.** `cropNoticeText` and `showCropNotice` go, with the `vigilia-crop` strip and the rules that paint it. This is the half that removes a signal a reader currently gets, so the browser reading that closes it is the display showing a cropped composition and saying nothing about it.
 - [ ] **Step 3: The persisted key is RULED gone, and the evidence that made it safe is already gathered.** The user ruled on 2026-10-18: remove `vigiliaBleeds` from the published schema (`schema/theme-document.schema.json:156`), from `validate.ts`'s hand-maintained keys and from every existing theme. No authored work is stranded by it — `git grep` finds the key in the schema, the source, decision 0027 and the tests, and in no tracked theme file; the only two theme files carrying it are gitignored and written by the specs that exercise the notice; and the author's own app folder (`~/.vigilia/themes/`, four themes) carries none. `fabric-envelope-schema-sync.test.ts` is the case that keeps the schema and `validate.ts` in step, so it is what proves the two moved together. Record the consequence rather than leaving it to be discovered: with the mark gone the count cannot exclude a deliberate bleed, so an object that runs off the edge on purpose reads as a fault for as long as it stands, and the user ruled the count stays anyway because it is actionable.
 - [ ] **Step 4: Propagate in one pass, not three.** Decision 0027 is superseded by a note of its own; the plans and specs that require the notice or the mark are corrected where they are current truth and left alone where they are dated records; `vg-191`'s subject loses one half, so the row is narrowed or withdrawn rather than left asking for a fixture that no longer describes anything. The artboard panel's crop figure STAYS — ruled by the controller, open to the user — because it is the editor's own count on the surface where the figure is actionable; what changes there is that nothing is excluded from it.
+
+### Task 25.8: The host serves a secure origin, or the two features it gates are ruled absent
+
+**Runs before Task 25.6**, which cannot register a service worker without it, and before Task 25.3's keep-awake step is anything but an honest refusal.
+
+**Files:**
+- Modify: `host/src/hosting.ts`; `host/src/server.ts`; the host's startup and settings surface; `player/src/chrome.ts` on the receiving end
+
+**Interfaces:**
+- Produces: `vg-580` closed
+
+- [ ] **Step 1: Establish the origin a display actually uses, and prove the loss before fixing it.** `navigator.wakeLock` and `navigator.serviceWorker` are both gated on a secure context, and the host is plain `http.createServer` on a LAN port, so a phone gets neither. **`localhost` is a secure context, which is the trap**: a seat testing on the host machine sees both present and concludes the feature works. Every proof for this task, for Task 25.3's keep-awake and for Task 25.6 must name the origin it ran against, and a `localhost` run proves nothing about a phone.
+- [ ] **Step 2: The certificate is a decision with a per-device cost, so it is made rather than assumed.** A self-signed certificate earns a browser warning per device and per browser profile until it is trusted by hand; a local CA (the mkcert shape) removes the warning at the cost of a setup step on each display; plain http means ruling keep-awake and the PWA absent on a phone, which is the honest reading of the host today. The task records which was chosen and what it costs a user adding a second display.
+- [ ] **Step 3: Whatever is decided reaches the surfaces that depend on it.** If the origin becomes secure, Task 25.3's keep-awake control holds a real lock and Task 25.6 installs; if it does not, both say so where a reader meets them rather than presenting controls that cannot work, and `vg-576` and `vg-577` are corrected to match rather than left claiming a capability the origin forbids.
+- [ ] **Step 4: Close it**, with the proof naming the origin, the client, and what that client reported for each of the two APIs.
