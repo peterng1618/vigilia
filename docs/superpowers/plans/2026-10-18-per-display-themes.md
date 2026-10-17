@@ -2,14 +2,16 @@
 
 > **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:subagent-driven-development (recommended) or superpowers:executing-plans to implement this plan task-by-task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
-**Goal:** Each display client holds its own theme and its own answers, and both
-survive a restart of the host.
+**Goal:** Each display client holds its own theme and its own answers, a display
+may change its own theme without touching any other, and all of it survives a
+restart of the host.
 
 **Architecture:** A display becomes a persisted record with a stable id, separate
 from the short-lived session token that names it on the wire. The active theme
 becomes one map keyed by display id plus a reserved `default` key, the answers
 file gains a display level above its theme level, and `GET /` resolves the asking
-display's entry before the default.
+display's entry before the default. The one map has two writers, and the second
+one's authority is derived from its session rather than claimed in a body.
 
 **Tech Stack:** TypeScript, Node 22.12+ (ESM, `node:fs/promises`), Vitest,
 Playwright, Biome. npm workspace under `src/web/`.
@@ -52,9 +54,10 @@ Each gets its test in the task named beside it.
 4. **Two displays that both answer a question, then one display's record is
    deleted** — the other display's answers must be untouched, and the deleted
    display's must be gone rather than orphaned. (Task 3.2)
-5. **A paired client that sends another display's id** — the pairing route is
-   loopback-only, so it must refuse before it reads the parameter, not after.
-   (Task 1.3)
+5. **A client that names a display it does not own** — on the pairing route, or in
+   the body of a theme write. Pairing must refuse before it reads the parameter,
+   and a theme write must take the display from the session and ignore the body
+   rather than trust it. (Tasks 1.3, 4.1, 4.5)
 
 ---
 
@@ -69,6 +72,7 @@ Each gets its test in the task named beside it.
 | `packages/host/src/session/pairing.ts` (modify) | A session names a display; it still owns nothing else |
 | `packages/host/src/server.ts` (modify) | Which display is asking; the routes; the resolution order |
 | `packages/player/src/publish-follower.ts` (modify) | A display follows its own reassignment |
+| `packages/player/src/theme-chooser.ts` (create) | The display's own chooser: a chrome control that lists this host's themes and writes the one chosen |
 | `packages/host/public/library.html`, `settings.html` (modify) | The two host pages write the display they name |
 
 ---
@@ -561,11 +565,15 @@ git commit -m "feat(host): resolve device assignments for the asking display"
 - Test: `src/web/packages/host/src/server.test.ts`
 
 **Interfaces:**
-- Consumes: `ActiveThemeStore.readAll` (Task 2.1), `DisplayStore.list` (Task 1.1).
+- Consumes: `ActiveThemeStore.readAll` (Task 2.1), `DisplayStore.list` (Task 1.1),
+  `SessionStore.find` (Task 1.2).
 - Produces: `GET` answers
   `{ default: string | null, displays: readonly { id: string; label: string; theme: string | null }[], themes, templates }`;
-  `PUT` takes `{ display: string, id: string }` where `display` is a display id or
-  `"default"`, and answers `{ ok: true, default, displays }` in the same shape.
+  `PUT` answers `{ ok: true, default, displays }` in the same shape, and takes
+  **two bodies from two callers**: loopback sends
+  `{ display: string, id: string }` where `display` is a display id or `"default"`,
+  and a paired session sends `{ id: string }` alone. **The admin `GET` stays
+  loopback-only.**
 
 - [ ] **Step 1: Write the failing test**
 
@@ -587,8 +595,22 @@ it("refuses a display it does not know, and a theme it does not have", async () 
   // PUT { display: "this-pc", id: "nope" } -> 404.
 });
 
-it("stays loopback only", async () => {
+it("stays loopback only for the admin read", async () => {
   // A paired non-loopback GET -> 403 "Settings are available on this PC only."
+});
+
+it("lets a paired session set its own entry, and only its own", async () => {
+  // PUT { id: "kitchen-strip" } with the kitchen tablet's session -> that entry
+  // changes; the other display's and the default do not.
+});
+
+it("ignores a display named in the body by a session", async () => {
+  // PUT { display: "this-pc", id: "x" } with a session -> this-pc is unchanged
+  // and the session's own entry is what changed.
+});
+
+it("refuses a session that has expired", async () => {
+  // An expired token -> 403, and no entry changes.
 });
 ```
 
@@ -602,6 +624,15 @@ Expected: FAIL.
 `this-pc` is always present in `displays` with `label` from `uiCopy`'s word for
 this PC and never from the display store; a stored record with that id is not
 possible because Task 1.1 refuses to mint it.
+
+**The write's authority is derived, never claimed.** Loopback is the admin path and
+reads `display` from the body. A paired session takes the display key from
+`sessions.find(token).displayId` and **ignores `display` entirely if the body
+carries one** — ignoring rather than refusing, so a client that sends both gets the
+safe answer instead of a distinction it could probe. The two keys a session can
+never reach are `default` and `this-pc`, and they are unreachable by construction:
+a session's `displayId` is its own record's id, and Task 1.1 refuses to mint either
+reserved word.
 
 - [ ] **Step 4: Run test to verify it passes**
 
@@ -769,6 +800,75 @@ Expected: PASS.
 ```bash
 git add src/web/packages/editor/src/theme-library-client.ts src/web/packages/editor/src/theme-library-client.test.ts
 git commit -m "feat(editor): assign a theme to a named display"
+```
+
+---
+
+### Task 4.5: The display's own chooser
+
+**Files:**
+- Create: `src/web/packages/player/src/theme-chooser.ts`
+- Create: `src/web/packages/player/src/theme-chooser.dom.test.ts`
+- Modify: `src/web/packages/player/src/chrome.ts`
+- Modify: `src/web/packages/player/src/main.ts`
+
+**Interfaces:**
+- Consumes: `session.ts`'s existing session object, which already carries `fetch`
+  (`publish-follower.ts` uses it); `chrome.ts`'s `chromeBand(side)`; Task 4.1's
+  paired `PUT`.
+- Produces:
+  - `export interface ThemeChoice { readonly id: string; readonly name: string }`
+  - `export function createThemeChooser(input: { readonly session: PlayerSession; readonly side: ChromeSide; readonly current: string; readonly onChosen: (id: string) => void }): { readonly dispose: () => void }`
+  - `export async function listLocalThemes(session: PlayerSession): Promise<readonly ThemeChoice[]>`
+  - `export async function chooseOwnTheme(session: PlayerSession, id: string): Promise<void>`
+
+- [ ] **Step 1: Write the failing test**
+
+```ts
+it("writes the theme and names no display", async () => {
+  // chooseOwnTheme(session, "kitchen-strip") -> one PUT to /api/themes/active
+  // whose body is exactly { id: "kitchen-strip" }.
+});
+
+it("does not offer a chooser to a session-less reader", async () => {
+  // No token -> createThemeChooser renders no control and requests nothing.
+});
+
+it("reports the host's refusal in the host's own words", async () => {
+  // A 403 reaches onError with the host's message rather than a bare status.
+});
+
+it("lists the host's themes with their names", async () => {
+  // listLocalThemes reads /api/themes and answers one choice per theme.
+});
+```
+
+- [ ] **Step 2: Run test to verify it fails**
+
+Run: `npx vitest run packages/player/src/theme-chooser.dom.test.ts`
+Expected: FAIL.
+
+- [ ] **Step 3: Implement**
+
+The control joins the player's existing chrome rather than becoming a settings
+modal — `chrome.ts` already owns "the display's own chrome: what a reader is told,
+and the room it takes", so the chooser is one more strip in a band and takes its
+room the same way. **The body carries the id and nothing else**: the display it is
+written for is the one the session names, and a client that sent a `display` key
+would be a client trying to name someone else's screen. A session-less reader gets
+no control at all rather than a control that fails, which is the same rule the
+editor's `ThemeLibraryClient.remove` follows for a client that cannot delete.
+
+- [ ] **Step 4: Run test to verify it passes**
+
+Run: `npx vitest run packages/player/src/theme-chooser.dom.test.ts packages/player/src/chrome.dom.test.ts`
+Expected: PASS.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add src/web/packages/player/src/theme-chooser.ts src/web/packages/player/src/theme-chooser.dom.test.ts src/web/packages/player/src/chrome.ts src/web/packages/player/src/main.ts
+git commit -m "feat(player): let a display choose its own theme"
 ```
 
 ---

@@ -18,9 +18,9 @@ Drain `docs/product/backlog.jsonl` through the active Superpowers plan. Editor r
 
 ## Last completed change
 
-- The per-display spec and plan are written: a display becomes a persisted record with a stable id apart from its short-lived token, the active theme becomes one map with a reserved `default`, and answers gain a display level.
-- The theme store's plan is written for the spec's phase A only — the three-mode shell, the local gallery, the facet record, the pager and the item modal — with B–G named as plans of their own.
-- Both are queued behind Phase 25, per-display first because the store's assign action is its Task 4.4; `docs:check`, `status:check` and `npm run gate` exit 0.
+- Ruling 11: a paired display may change its own theme, chosen from this host's local themes. It costs one branch on one route because `GET /api/themes` is already display-guarded, so only the write was missing.
+- The write's authority is derived, not claimed: a session's display key comes from its own record and a `display` key in the body is ignored, so `default` and `this-pc` are unreachable from a session by construction.
+- The per-display plan gains Task 4.5 (the player's chrome-control chooser) and its acceptance item 5; `docs:check`, `status:check`, `design-md --cite` exit 0.
 
 ## Next
 

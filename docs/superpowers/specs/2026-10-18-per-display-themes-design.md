@@ -42,7 +42,11 @@ theme asks are asked once per display rather than once per PC.
   in an in-memory `Map` with a 12-hour TTL, deliberately: *"a leaked token must
   stop working on its own."* The token rides in the page URL as `?session=`.
 - **Loopback is trusted admin and is never paired** (`allowed()`), and
-  `/api/themes/active` is loopback-only.
+  `/api/themes/active` is loopback-only for both its read and its write.
+- **The library is not loopback-only.** `GET /api/themes` sits behind the *display*
+  guard (`server.ts`), so a paired display can already list this host's themes.
+  That one fact is why ruling 11 costs a branch rather than a surface: the chooser's
+  contents are already reachable, and only the write was missing.
 - **A display already polls for change.** `player/src/publish-follower.ts` reads
   `/api/published`, which answers `{ id, revision }`.
 
@@ -55,13 +59,13 @@ everything that can hold an assignment is a client — and the code can only eve
 see a client. The objective's "detect connected displays" is therefore satisfied
 by naming the clients that are showing something, not by enumerating monitors.
 
-**Pairing registers a display; the host decides what it shows.** These are the two
-halves of the model and they are deliberately not the same act. Pairing is how a
-client becomes *known* — it gets a name on this PC and appears in the list. What
-that display shows is this PC's decision, made in the Host settings mode and the
-store's local tab, and **a display has no route that writes its own theme**: every
-write is on a loopback-only route, so the only client that can change an
-assignment is the one sitting at this PC.
+**Pairing registers a display; the assignment is a key in one map, and it has two
+writers.** Pairing is how a client becomes *known* — it gets a name on this PC and
+appears in the list. What that display shows is a separate fact: **this PC** may
+set any display's theme or the default, and **the display itself** may set its own
+and nothing else. The second writer is ruling 11 (§ "A display may change its own
+theme"), and it costs one branch on one route because the authority is *derived*
+from the session rather than claimed in the body.
 
 Two clients are displays, and a third is not:
 
@@ -135,6 +139,49 @@ the one client that cannot be given a theme of its own, which is the client the
 author is looking at. It is never paired and has no record; the map simply
 accepts it as a key.
 
+## A display may change its own theme
+
+Ruled 2026-10-18 by the user: a display may change to a different theme for
+itself, chosen from the themes this host holds locally, without changing any other
+display's.
+
+**It costs one branch, because the authority is derived rather than claimed.**
+`GET /api/themes` is already behind the *display* guard rather than the loopback
+one, so a paired display can already list this host's themes and nothing new is
+needed to populate a chooser. What was missing is the write, and it is the same
+route with a second caller:
+
+| Caller | Sends | May set |
+|---|---|---|
+| loopback — this PC | `{ display: "<id>" \| "default", id }` | any display, and the default |
+| a paired session | `{ id }` | **only its own entry** |
+
+**A display's own id comes from its session and never from the body.** That is the
+whole security property, and it is why this is a branch rather than a second
+authority model: a client that could name the display it writes would be a client
+that could take another display's theme — the rule the pairing route already
+follows. Two keys are therefore unreachable from a session *by construction*
+rather than by a check: `default`, and `this-pc`.
+
+**An unpaired reader cannot do this**, and that is the honest consequence rather
+than an omission: it has no entry to write. A reader that wants a theme of its own
+becomes a display by being paired once — the same gate every other LAN read
+already passes.
+
+**The display's choice and this PC's are the same key, so the later write wins.**
+There is deliberately no second layer of *the display's own preference that the
+host's assignment outranks*: the Host settings mode would then show a theme the
+display is not showing, and a list that lies about what is on a wall is worse than
+one that changes under the person editing it. What this costs is that a display
+can override an assignment its owner just made — and the owner can see that in the
+same list, because the list reads the key rather than remembering an intent.
+
+**The chooser is a chrome control on the display**, following the idiom the player
+already uses for fullscreen and that `vg-576` rules on for the rest: a control on
+the surface itself rather than a settings modal. It lists this host's themes by
+name and picture and writes the one chosen. When `vg-576`'s panel lands, the
+chooser becomes one of its rows rather than a second surface.
+
 ## The answers belong to a display's use of a theme
 
 `theme-answers.json` becomes
@@ -185,7 +232,9 @@ outranks the map for exactly as long as it is in the URL.
 | `POST /api/pairing/sessions?displayId=` | loopback | a session for an existing display |
 | `DELETE /api/pairing/sessions/:token` | loopback | revokes the session; **the display record stays** |
 | `GET /api/themes/active` | loopback | the default, each display with its theme, the library, the templates |
-| `PUT /api/themes/active` | loopback | `{ display: "<id>" \| "default", id }` |
+| `PUT /api/themes/active` | loopback | `{ display: "<id>" \| "default", id }` — any display, and the default |
+| `PUT /api/themes/active` | paired | `{ id }` — **its own entry only**, named by its session |
+| `GET /api/themes` | loopback or paired | the library, for the display's own chooser. **Already the case** (`server.ts`'s display guard), so nothing is added |
 | `GET /api/published` | loopback or paired | `{ id, revision, display: { id, theme } }` |
 
 **Revoking a session does not delete a display**, and that asymmetry is the point
@@ -220,7 +269,7 @@ One plan, and it is a prerequisite of the store's phase A rather than a sibling:
 | **1** | the display record, pairing against it, and the persisted display list | — |
 | **2** | the per-display map, the default, and `GET /`'s resolution | 1 |
 | **3** | the answers keyed by display and theme, through `currentAssignment` | 2 |
-| **4** | the routes, the reassignment read on `/api/published`, and the two host pages rewritten against the model | 3 |
+| **4** | the routes, the display's own write and its chooser (ruling 11), the reassignment read on `/api/published`, and the two host pages rewritten against the model | 3 |
 
 **Phase 2 is the one that must not be built against a model that does not exist**,
 which is `vg-574`'s own reason for landing first. Phases 1 and 2 are the pair the
@@ -229,13 +278,12 @@ correct, and nothing in the store spec depends on them.
 
 ## Open questions
 
-1. **Whether a display should be able to choose for itself.** The model above has
-   every assignment made from this PC, which is what the pairing route's loopback
-   guard already implies. A display that could pick its own theme would need the
-   display list to be readable by a paired client, and would make the wall screen
-   self-service at the cost of a paired client being able to take a theme that is
-   not its own. Not ruled.
-2. **What a display's record should carry beyond `label` and `createdAt`** — a
+**A display choosing for itself was open question 1 and is now ruling 11** — the
+user ruled it on 2026-10-18, and § "A display may change its own theme" is the
+answer. What that ruling needed to be safe was already true: the authority comes
+from the session, so a display writes its own key or nothing.
+
+1. **What a display's record should carry beyond `label` and `createdAt`** — a
    last-seen time is the obvious candidate and is the thing the Host settings mode
    would want in order to say *this one is online*. Deferred until that surface is
    drawn, so the field is added by the thing that reads it.
@@ -268,3 +316,8 @@ correct, and nothing in the store spec depends on them.
   touching it; a display on an explicit `?theme=` link is not moved; the display
   list, each display's theme and the default survive a host restart; and
   `library.html`'s chooser writes the display it names rather than the host.
+- **5** — a paired display changes its own theme from a control on the display,
+  and only its own: the second display's theme and the default are unchanged; the
+  same request naming another display in the body changes nothing; a request from
+  a display whose session has expired is refused; and an unpaired reader is
+  offered no chooser at all.
