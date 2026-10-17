@@ -1,6 +1,7 @@
 import { ControlIconButton } from "../components/ui/control-icon-button.js";
 import {
   destructiveMarker,
+  hasSelection,
   OBJECT_ACTIONS,
   objectActionsFor,
 } from "../object-actions.js";
@@ -40,7 +41,7 @@ export function LayerActions({
   // No bridge is no document, and so no selection either: both routes to
   // "nothing selected" take this branch, which is what keeps the footer from
   // ever being the empty row `vg-460` reported.
-  const selected = bridge !== undefined && bridge.target().kind !== "none";
+  const selected = bridge !== undefined && hasSelection(bridge.target());
   const actions =
     bridge === undefined || !selected
       ? OBJECT_ACTIONS

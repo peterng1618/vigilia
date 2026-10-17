@@ -196,8 +196,15 @@ const MARKABLE_CONTROL_ALLOWLIST: readonly string[] = [
 
 describe("§4's destructive mark", () => {
   it("paints --hot from the shared marker, and from one rule that no surface scopes", () => {
+    // The mark is painted **only where the control can run** (`vg-570`): the
+    // footer draws the registry's commands disabled with nothing selected, and
+    // an unqualified rule outranks `ControlIconButton`'s own blocked `text-faint`
+    // — the "mark present, paint wrong" failure `vg-226` recorded. The rendered
+    // half of this is the browser case in `snapping.spec.ts`.
     expect(
-      ruleBodies("[data-vigilia-destructive]"),
+      ruleBodies(
+        '[data-vigilia-destructive]:not([disabled]):not([aria-disabled="true"])',
+      ),
       "no rule keys §4's `--hot` on the shared `data-vigilia-destructive`, so a " +
         "surface the bare selector cannot be beaten to — the portalled context " +
         "menu — paints its destructive action as ordinary text",

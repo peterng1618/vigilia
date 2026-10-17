@@ -134,10 +134,12 @@ describe("object action registry", () => {
 
 describe("the constructions", () => {
   it("is the Add pane's own primitives, in its own order and its own words", () => {
-    // The one thing that could silently drift: a shape the Add pane offers and
-    // the footer does not, or two spellings of one kind. Read off `insertGroups`
-    // — the Add pane's one owner of the list — rather than written out here, so
-    // a primitive added to the pane fails this until the footer carries it too.
+    // The one thing that could silently drift: two spellings of one kind, or a
+    // primitive the Add pane offers and the registry cannot name. Read off
+    // `insertGroups` — the Add pane's one owner of the list — rather than written
+    // out here, so a primitive added to the pane fails this until the registry's
+    // ids carry it too. No surface draws the registry (`vg-570`); the agreement is
+    // what makes a construction id's word the pane's own.
     const primitives = insertGroups()
       .flatMap((group) => group.objects)
       .filter((object) => object.kind === "text" || object.kind === "shape");

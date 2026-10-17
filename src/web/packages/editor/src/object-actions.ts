@@ -106,7 +106,11 @@ export interface ConstructionAction extends ActionIdentity {
   readonly id: ConstructionActionId;
 }
 
-const hasSelection = (target: ObjectTarget): boolean => target.kind !== "none";
+/** Whether there is a subject at all: the floor `hasUnlockedSelection` and
+ *  `hasLockedSelection` are built on, and the question the layer footer asks
+ *  before it draws the registry greyed (`vg-570`). */
+export const hasSelection = (target: ObjectTarget): boolean =>
+  target.kind !== "none";
 
 /** Eligibility's own question: is there a selection this control may offer
  *  itself against. The lock term is the shared `locked` fact the projection
@@ -326,13 +330,13 @@ export function arrangeActions(): readonly ObjectAction[] {
  *
  * **The set is the Add pane's primitives, and the words are the Add pane's own**
  * (`uiCopy.shapeKinds`, `uiCopy.panels.text` — the labels `insertGroups()` hands
- * its tiles), so a shape is one kind in both surfaces rather than two spellings
- * of it, and a test pins the two lists equal. Cards and charts are deliberately
- * not here, and not for size: a chart family's word collides with a shape's
- * ("Line" is both) and the flat row they were built for has no heading to tell
- * them apart — the Add pane's own rule is that a heading is what makes "Line"
- * unambiguous. A card unit's mark is a hand-drawn diagram the Add pane owns, and
- * inserting one needs the document's bindings.
+ * its tiles), so a shape's id names the pane's own kind rather than a second
+ * spelling of it, and a test pins the two lists equal. Cards and charts are
+ * deliberately not here, and not for size: a chart family's word collides with a
+ * shape's ("Line" is both) and the flat row these were built for had no heading
+ * to tell them apart — the Add pane's own rule is that a heading is what makes
+ * "Line" unambiguous. A card unit's mark is a hand-drawn diagram the Add pane
+ * owns, and inserting one needs the document's bindings.
  */
 export const CONSTRUCTION_ACTIONS: readonly ConstructionAction[] = [
   { id: "new-text", label: uiCopy.panels.text, icon: KIND_GLYPHS.text },

@@ -572,13 +572,30 @@ test("layer-panel object actions match canvas dock", async ({
   // carries is the commands and no constructions. A footer that emptied itself
   // reddens on the count, and one that went back to the constructions reddens on
   // the comparison with the dock below.
-  const idleDisabled = await footer
-    .getByRole("button")
-    .evaluateAll((buttons) =>
-      buttons.map((button) => (button as HTMLButtonElement).disabled),
-    );
-  expect(idleDisabled.length).toBeGreaterThan(0);
-  expect(idleDisabled.every(Boolean)).toBe(true);
+  const idle = await footer.getByRole("button").evaluateAll((buttons) =>
+    buttons.map((button) => ({
+      label: button.getAttribute("aria-label") ?? "",
+      disabled: (button as HTMLButtonElement).disabled,
+      destructive: button.hasAttribute("data-vigilia-destructive"),
+      // The **paint**, not the attribute. `vg-226`'s failure class is the mark
+      // present and the paint wrong, and it is invisible to a `disabled` read:
+      // `[data-vigilia-destructive]` is unlayered and outranks the `text-faint`
+      // a blocked control computes, so a dead Delete painted `--hot` while the
+      // other eleven painted `--faint`. Nothing but a computed colour sees it.
+      colour: getComputedStyle(button).color,
+    })),
+  );
+  console.log(`IDLE_FOOTER=${JSON.stringify(idle)}`);
+  expect(idle.length).toBeGreaterThan(0);
+  expect(idle.every((button) => button.disabled)).toBe(true);
+  // Delete is in the row, so the comparison below is about the mark and not
+  // about a footer that happened to draw no destructive action at all.
+  expect(idle.some((button) => button.destructive)).toBe(true);
+  expect(
+    [...new Set(idle.map((button) => button.colour))],
+    "a blocked control keeps the tone the control computed, whatever mark it " +
+      "carries: one colour across the idle footer, and it is not Delete's --hot",
+  ).toHaveLength(1);
 
   const centre = await clientOfScene(page, "mover", ARTBOARD_WIDTH);
   await page.mouse.click(centre.x, centre.y);

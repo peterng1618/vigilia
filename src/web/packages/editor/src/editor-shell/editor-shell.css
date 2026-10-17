@@ -618,13 +618,17 @@ body,
      colour on the menu first, and on the dock the moment this rule stopped being
      dock-scoped. Inheritance never has that effect.
 
-   A blocked control never carries the mark here, so §4's "a disabled destructive
-   control stays `--faint`" is not fought by this rule. What holds that is **no
-   surface passes `disabled` or `refused` for a destructive action** — an
-   omission, not an invariant: nothing in the registry or these rules would stop
-   the next surface that renders a blocked Delete from marking it and painting it
-   `--hot` anyway. */
-[data-vigilia-destructive] {
+   **The mark is painted only where the control can run.** `ControlIconButton`
+   computes `text-faint` for a `disabled` or `refused` control, and that class is
+   in `@layer utilities` — so an unqualified rule here outranks it and paints a
+   dead Delete `--hot`, the "mark present, paint wrong" failure `vg-226` recorded.
+   The layer footer draws the registry's commands disabled with nothing selected
+   (`vg-570`), which is no longer hypothetical: measured in the built editor, the
+   idle Delete computed the same colour as the live one until this selector
+   refused it. A blocked destructive control therefore keeps its own tone, and
+   §4's "a disabled destructive control stays `--faint`" is held by the rule
+   rather than by no surface happening to pass `disabled`. */
+[data-vigilia-destructive]:not([disabled]):not([aria-disabled="true"]) {
   color: var(--hot);
 }
 
