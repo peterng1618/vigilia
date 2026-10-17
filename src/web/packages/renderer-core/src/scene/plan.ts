@@ -4,7 +4,7 @@ import type { ChartOptionByFamily } from "../charts/engine-option.js";
 import { buildGaugeOption } from "../charts/gauge.js";
 import {
   buildLineOption,
-  linePlaybackDelayMs,
+  lineHistorySeconds,
   type SeriesInput,
 } from "../charts/line.js";
 import { buildPieOption, type PieSliceInput } from "../charts/pie.js";
@@ -454,9 +454,13 @@ export function buildChartPlan(
     }
 
     case "line": {
-      const historySeconds =
-        content.settings.windowSeconds +
-        linePlaybackDelayMs(context.source.chartPlaybackDelayMs) / 1000;
+      // The line owns how much history it needs, including the one sample its
+      // left edge is drawn from; asking for less starts the line inside the
+      // plot (vg-571).
+      const historySeconds = lineHistorySeconds(
+        content.settings.windowSeconds,
+        context.source.chartPlaybackDelayMs,
+      );
       const series: SeriesInput[] = bindings.map((binding) => ({
         sensorId: binding.semanticKey,
         samples: context.source

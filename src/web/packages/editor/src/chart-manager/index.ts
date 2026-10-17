@@ -5,7 +5,7 @@ import {
   type ChartFamily,
   carriedPaintFor,
   type FabricGlobals,
-  linePlaybackDelayMs,
+  lineHistorySeconds,
   reassignChartPaintReferences,
   type SampleSource,
   seriesPaintFor,
@@ -553,9 +553,10 @@ export class ChartManager {
             ? this.#source
                 .history(
                   binding.semanticKey,
-                  content.settings.windowSeconds +
-                    linePlaybackDelayMs(this.#source.chartPlaybackDelayMs) /
-                      1000,
+                  lineHistorySeconds(
+                    content.settings.windowSeconds,
+                    this.#source.chartPlaybackDelayMs,
+                  ),
                 )
                 .at(-1)
             : this.#source.latest(binding.semanticKey);

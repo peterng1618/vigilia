@@ -79,6 +79,7 @@ export type {
 export {
   buildLineOption,
   defaultLineSettings,
+  lineHistorySeconds,
   linePlaybackDelayMs,
   toEngineColor,
   toSeriesPoints,

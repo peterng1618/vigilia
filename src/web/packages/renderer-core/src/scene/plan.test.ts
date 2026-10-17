@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { defaultBarSettings } from "../charts/bar.js";
 import { defaultLineSettings } from "../charts/line.js";
+import { LIVE_SOURCE_CHART_PLAYBACK_DELAY_MS } from "../data/live-source.js";
 import type { SampleSource } from "../data/source.js";
 import { emptySampleSource } from "../data/source.js";
 import { SampleStore } from "../data/store.js";
@@ -715,8 +716,73 @@ describe("charts", () => {
       [],
     );
 
-    expect(windows).toEqual([defaultLineSettings.windowSeconds + 1]);
+    // The axis window plus one cadence: the window alone leaves the sample
+    // `toSeriesPoints` keeps for the left edge below the source's own cutoff.
+    expect(windows).toEqual([defaultLineSettings.windowSeconds + 2]);
   });
+
+  /**
+   * **The quantisation, not a duration.** A source answers a trailing window at
+   * its own cadence, so the oldest sample it returns sits somewhere inside the
+   * first cadence above the cutoff it was handed — and the axis slides under a
+   * frame clock while the series advances a whole batch at a time. The line
+   * therefore has to be drawn to its window's left edge on *every* frame of a
+   * cadence, for any cadence the source's own delay allows, not merely for one
+   * whose samples happen to line up with the cutoff (`vg-571`).
+   */
+  it.each([700, 950, 1_018])(
+    "draws the line to its window's left edge at every frame of a %i ms cadence",
+    (cadenceMs) => {
+      const store = new SampleStore();
+      const start = Date.parse("2026-01-01T00:10:00Z");
+      // Two minutes, so the 60 s window is full for every frame below.
+      const lastElapsed = Math.floor(120_000 / cadenceMs) * cadenceMs;
+      for (let elapsed = 0; elapsed <= lastElapsed; elapsed += cadenceMs) {
+        store.ingest(
+          [
+            [
+              "cpu.load",
+              {
+                sensorId: "os:cpu.load",
+                timestamp: new Date(start + elapsed).toISOString(),
+                status: "ok" as const,
+                value: 40,
+                unit: "%",
+              },
+            ],
+          ],
+          start + elapsed,
+        );
+      }
+      const source = {
+        chartPlaybackDelayMs: LIVE_SOURCE_CHART_PLAYBACK_DELAY_MS,
+        latest: (key: string) => store.latest(key),
+        history: (key: string, windowSeconds: number) =>
+          store.history(key, windowSeconds),
+      };
+
+      // Every frame of one whole cadence measured from the newest batch, as
+      // the display's 30 fps loop walks it.
+      for (let frame = 0; frame <= 30; frame += 1) {
+        const nowMs = start + lastElapsed + (frame * cadenceMs) / 30;
+        const chart = buildChartPlan(
+          "line",
+          { family: "line", settings: defaultLineSettings },
+          [{ id: "b", semanticKey: "cpu.load" }],
+          { source, nowMs },
+          [],
+        );
+        if (chart.family !== "line") throw new Error("expected a line chart");
+        const data = chart.option.series[0]!.data;
+
+        expect(data.length).toBeGreaterThan(0);
+        expect(
+          data[0]![0],
+          `frame ${frame}: the series starts after the axis does, so the line begins inside the plot`,
+        ).toBeLessThanOrEqual(chart.option.xAxis.min);
+      }
+    },
+  );
 
   it("gives a bar chart one category per binding, in order", () => {
     const { chart } = chartPlan(

@@ -15,10 +15,11 @@ import { HOST_APP_DIR, HOST_PORT } from "./tests/e2e/host-theme.js";
  * full parallelism. The host specs and the preview specs also share no port or
  * store, so no dependency phase is needed between the projects.
  *
- * Only `phone-host` is limited to `host-player.spec.ts`: the host's three
- * viewport-independent HTTP checks were duplicated across both viewports for no
- * viewport reason, and the host's own phone rendering is covered by
- * `/api/sensors` rather than a layout that would differ. `host-media.spec.ts`
+ * Only `phone-host` is limited to `host-player.spec.ts` and the live chart's
+ * edge probe: the host's three viewport-independent HTTP checks were duplicated
+ * across both viewports for no viewport reason, and the host's own phone
+ * rendering is covered by `/api/sensors` rather than a layout that would
+ * differ. `host-media.spec.ts`
  * joins `HOST_SPECS` for the reason the others do — it boots a real host and
  * writes theme packages into the shared themes directory — and reads only on
  * `desktop-host`, because `phone-host` is not matched for it. It still guards
@@ -33,6 +34,15 @@ import { HOST_APP_DIR, HOST_PORT } from "./tests/e2e/host-theme.js";
 // second one. `phone-host` matches `host-player` alone and is unaffected.
 const HOST_SPECS =
   /host-(player|settings|media|bleed|chrome|walkthrough).spec.ts/;
+
+/**
+ * The live chart's edge probe is a phone measurement and is not a second copy of
+ * a viewport-independent check, so it runs on `phone-host` alone rather than
+ * joining `HOST_SPECS`, whose `desktop-host` project would run it a second time
+ * at a size the reading is not about (`vg-571`). The preview projects ignore it
+ * for the reason they ignore the rest: it needs the real host.
+ */
+const EDGE_PROBE_SPEC = /live-chart-edge\.spec\.ts/;
 
 /**
  * The own-host editor proofs each start their own host on its own port and drive
@@ -128,7 +138,7 @@ export default defineConfig({
         viewport: { width: 1280, height: 720 },
       },
       testIgnore: new RegExp(
-        `${HOST_SPECS.source}|${REBUILD_SPEC.source}|${DISPLAY_SPEC.source}|${OWN_HOST_SPEC.source}`,
+        `${HOST_SPECS.source}|${REBUILD_SPEC.source}|${DISPLAY_SPEC.source}|${OWN_HOST_SPEC.source}|${EDGE_PROBE_SPEC.source}`,
       ),
     },
     {
@@ -136,7 +146,7 @@ export default defineConfig({
       name: "phone-chromium",
       use: { ...devices["Pixel 7"] },
       testIgnore: new RegExp(
-        `${HOST_SPECS.source}|${REBUILD_SPEC.source}|${DISPLAY_SPEC.source}|${OWN_HOST_SPEC.source}`,
+        `${HOST_SPECS.source}|${REBUILD_SPEC.source}|${DISPLAY_SPEC.source}|${OWN_HOST_SPEC.source}|${EDGE_PROBE_SPEC.source}`,
       ),
     },
     {
@@ -152,7 +162,7 @@ export default defineConfig({
     {
       name: "phone-host",
       use: { ...devices["Pixel 7"] },
-      testMatch: /host-player\.spec\.ts/,
+      testMatch: /host-player\.spec\.ts|live-chart-edge\.spec\.ts/,
       workers: 1,
     },
     {

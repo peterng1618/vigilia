@@ -1,0 +1,235 @@
+import { mkdirSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
+import path from "node:path";
+import { expect, type Page, test } from "@playwright/test";
+import { HOST_PORT } from "./host-theme.js";
+
+/**
+ * **A probe, not a proof** — the per-frame reader `vg-571` needs before any fix.
+ *
+ * The report is that a live line chart's right edge corrects itself and its left
+ * edge drops points early. Both are claims about *motion*, and no assertion
+ * about a single option object can see motion: the axis window, the series'
+ * timestamps and the chart's rect all have to be read on the same frame, many
+ * frames in a row. This records that series and writes it to a file; the reading
+ * is the evidence, and what it shows decides whether there is anything to fix.
+ *
+ * **The overscan gutter is why the pixels are read and not just the times.** The
+ * visible window is not `xAxis.min..max`: `VigiliaChart._render` blits only the
+ * left `_visibleBackingWidth()` px of an ECharts canvas that is `overscan` px
+ * wider, so the axis's right end is off the visible surface by design. A reading
+ * of `xAxis.max` alone would report the window's right edge as the newest
+ * sample's own x, which is the one thing it is not. `convertToPixel` is the
+ * engine's own mapping, so the pixel column of a timestamp is measured rather
+ * than recomputed here.
+ */
+
+const HOST = `http://127.0.0.1:${HOST_PORT}`;
+const STARTER_THEME_ID = "vigilia-demo-dashboard";
+/** The reference composition's performance chart: three live series, axes on. */
+const CHART_NODE_ID = "trends-chart";
+/** Long enough for the 61 s window to fill, so the LEFT edge is observable. */
+const RUN_MS = 80_000;
+
+/** The readings file, outside the repository. Named per run so a second run
+    does not overwrite the first — before and after are two files. */
+const OUT = path.join(
+  tmpdir(),
+  "vigilia-live-edge",
+  `${process.env["VIGILIA_PROBE_TAG"] ?? "reading"}.json`,
+);
+
+/**
+ * The starter, saved through the host's own library route.
+ *
+ * Duplicated from `host-player.spec.ts` rather than imported: that file's
+ * helper is local, and exporting it would put this spec's needs into a file
+ * every other display spec reads.
+ */
+async function saveStarterThroughTheHost(page: Page): Promise<void> {
+  await page.goto(`${HOST}/editor/`);
+  await expect(
+    page.locator("#vigilia-fabric-editor canvas.upper-canvas"),
+  ).toBeVisible();
+  await page.getByRole("button", { name: "File", exact: true }).click();
+  await page.getByRole("menuitem", { name: "New from starter" }).click();
+  await expect(page.locator("#status")).toContainText(
+    "New theme from the starter",
+  );
+  await page.getByRole("button", { name: "File", exact: true }).click();
+  await page.getByRole("menuitem", { name: "Save to library" }).click();
+  await expect(page.locator("#status")).toContainText("Saved to library", {
+    timeout: 20_000,
+  });
+}
+
+test.describe("the live line chart's edge", () => {
+  test("a per-frame reading of the axis window, the series and the rect", async ({
+    page,
+  }, testInfo) => {
+    test.setTimeout(240_000);
+    await page.addInitScript(() => {
+      const frames: unknown[] = [];
+      Reflect.set(window, "__vigiliaEdge", frames);
+      const globals = window as unknown as {
+        vigilia?: {
+          handle?: { canvas?: { getObjects(): unknown[] } };
+          live?: { batchCount?: number };
+        };
+      };
+
+      const read = (object: {
+        option?: Record<string, unknown>;
+        width: number;
+        height: number;
+        renderScale: number;
+        getBoundingRect(): {
+          left: number;
+          top: number;
+          width: number;
+          height: number;
+        };
+        _chart?: { convertToPixel(finder: unknown, value: number): number };
+        _element?: { width: number };
+        _visibleBackingWidth?: () => number;
+      }): void => {
+        const option = object.option;
+        const axis = option?.["xAxis"] as
+          | { min: number; max: number }
+          | undefined;
+        const series = option?.["series"] as
+          | readonly { data: readonly (readonly [number, number | null])[] }[]
+          | undefined;
+        if (axis === undefined || series === undefined) return;
+
+        const engine = object._chart;
+        const toPixel = (time: number | undefined): number | null => {
+          if (time === undefined || engine === undefined) return null;
+          try {
+            return engine.convertToPixel({ xAxisIndex: 0 }, time);
+          } catch {
+            return null;
+          }
+        };
+
+        const readings = series.map((one) => {
+          const times = one.data.map((point) => point[0]);
+          const seen = new Map<number, number>();
+          for (const time of times) seen.set(time, (seen.get(time) ?? 0) + 1);
+          const repeated = [...seen.entries()]
+            .filter(([, count]) => count > 1)
+            .map(([time, count]) => ({ time, count }));
+          return {
+            points: times.length,
+            first: times[0] ?? null,
+            second: times[1] ?? null,
+            last: times.at(-1) ?? null,
+            distinct: seen.size,
+            repeated,
+            nulls: one.data.filter((point) => point[1] === null).length,
+            tail: times.slice(-4),
+          };
+        });
+        const last = readings[0]?.last ?? undefined;
+        const rect = object.getBoundingRect();
+
+        frames.push({
+          at: Date.now(),
+          batches: globals.vigilia?.live?.batchCount ?? null,
+          axisMin: axis.min,
+          axisMax: axis.max,
+          overscan: (option?.["renderOverscanRightMs"] as number) ?? 0,
+          grid: option?.["grid"] as unknown,
+          readings,
+          width: object.width,
+          height: object.height,
+          renderScale: object.renderScale,
+          canvasWidth: object._element?.width ?? null,
+          visibleWidth:
+            typeof object._visibleBackingWidth === "function"
+              ? object._visibleBackingWidth()
+              : null,
+          pxMin: toPixel(axis.min),
+          pxMax: toPixel(axis.max),
+          pxFirst: toPixel(readings[0]?.first ?? undefined),
+          pxSecond: toPixel(readings[0]?.second ?? undefined),
+          pxLast: toPixel(last ?? undefined),
+          rect: {
+            left: rect.left,
+            top: rect.top,
+            width: rect.width,
+            height: rect.height,
+          },
+        });
+      };
+
+      const walk = (objects: readonly unknown[]): void => {
+        for (const object of objects) {
+          try {
+            read(object as Parameters<typeof read>[0]);
+          } catch {
+            /* a chart mid-teardown is not a reading */
+          }
+          const group = object as { getObjects?: () => unknown[] };
+          if (typeof group.getObjects === "function") walk(group.getObjects());
+        }
+      };
+
+      const tick = (): void => {
+        try {
+          const canvas = globals.vigilia?.handle?.canvas;
+          if (canvas !== undefined) walk(canvas.getObjects());
+        } catch {
+          /* the scene is not mounted yet */
+        }
+        window.requestAnimationFrame(tick);
+      };
+      window.requestAnimationFrame(tick);
+    });
+
+    await saveStarterThroughTheHost(page);
+    await page.goto(`${HOST}/?theme=${STARTER_THEME_ID}&data=live`);
+    await expect(page.locator("#artboard canvas.lower-canvas")).toBeVisible();
+    await expect
+      .poll(
+        () =>
+          page.evaluate(
+            () =>
+              (
+                window as unknown as {
+                  vigilia?: { live?: { batchCount?: number } };
+                }
+              ).vigilia?.live?.batchCount ?? 0,
+          ),
+        { timeout: 30_000 },
+      )
+      .toBeGreaterThan(2);
+
+    await page.waitForTimeout(RUN_MS);
+
+    const frames = await page.evaluate(() =>
+      (
+        (window as unknown as { __vigiliaEdge?: unknown[] }).__vigiliaEdge ?? []
+      ).slice(),
+    );
+
+    mkdirSync(path.dirname(OUT), { recursive: true });
+    writeFileSync(
+      OUT,
+      JSON.stringify(
+        {
+          origin: HOST,
+          viewport: page.viewportSize(),
+          chart: CHART_NODE_ID,
+          runMs: RUN_MS,
+          frames,
+        },
+        null,
+        1,
+      ),
+    );
+
+    expect(frames.length, `readings written to ${OUT}`).toBeGreaterThan(100);
+    expect(testInfo.project.name).toBeTruthy();
+  });
+});

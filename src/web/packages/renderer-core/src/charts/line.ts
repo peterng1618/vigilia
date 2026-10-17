@@ -81,6 +81,27 @@ export function linePlaybackDelayMs(delayMs: number | undefined): number {
     : 0;
 }
 
+/**
+ * Seconds of history a line must be handed, for the axis this file draws.
+ *
+ * **The axis window plus one cadence, and the cadence is the delay.** The axis
+ * spans `windowSeconds` plus the source's playback delay, and `toSeriesPoints`
+ * keeps one sample *before* that window so the line is drawn reaching the left
+ * clip edge instead of beginning inside it. A source answers a trailing window
+ * at its own sampling cadence, so the oldest sample it returns can sit up to
+ * one cadence above the cutoff it was given; a request that ends exactly at the
+ * axis start therefore usually has nothing to offer, and the line's left end
+ * floats — measured at a mean of 0.65 s on a live host (`vg-571`). The delay is
+ * the source's own statement of how far one batch may lag, so it is also the
+ * slack the predecessor needs. The right edge already assumes the same bound.
+ */
+export function lineHistorySeconds(
+  windowSeconds: number,
+  chartPlaybackDelayMs: number | undefined,
+): number {
+  return windowSeconds + 2 * (linePlaybackDelayMs(chartPlaybackDelayMs) / 1000);
+}
+
 /** Local emitted shape keeps raw engine options out of the theme model (§87). */
 export interface LineOption extends EngineAnimation {
   /** Runtime-only future interval rendered outside Fabric's authored crop. */
