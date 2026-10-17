@@ -180,7 +180,10 @@ admin choosing one.
 **A local monitor is immune to everything in § "Finding the host after its address
 changes"**: it is on this PC, reaching `127.0.0.1`, so there is no address to
 change, no name to resolve, no sweep, and no code. It is the one display that
-cannot be lost by a router handing out a new lease.
+cannot be lost by a router handing out a new lease. **Its origin is also the only one
+of the two that is a secure context**, so it keeps wake lock and an installable app
+shell while a paired display over the same plain-http host has neither (§ "The origin
+decides what a display can do").
 
 **The monitor a display points at is a hint, and losing it must not lose the
 theme.** The record stores what the owner chose — `serial` when the monitor reports
@@ -418,6 +421,49 @@ own reload is a warning that was never read. Open question 8 still owns whether 
 background should ever be refused outright, and the answer to that is not this notice's
 job to pre-empt.
 
+## The origin decides what a display can do
+
+**A secure context is a property of the origin, and the two kinds of display do not
+share one.** `127.0.0.1` is potentially trustworthy by the platform's own rule, so a
+local monitor has one; a LAN address has none, because the host is `http.createServer`
+on a port and nothing in `hosting.ts` or `server.ts` carries TLS. So `navigator.wakeLock`
+and `navigator.serviceWorker` are present for a local monitor and absent for a paired
+display, and no work in the player changes that — the origin decides, not the code that
+asks. Filed as **`vg-580`** and carried by Phase 25's Task 25.8, which owns the ruling;
+this section records only what that ruling does to *this* design.
+
+**It lands here in two places, and one of them is a fallback this document already
+leans on.**
+
+- **§ "Finding the host after its address changes" names an app shell as the answer for
+  a display that reloads while its host is elsewhere**, and that shell is `vg-577`'s PWA
+  — which needs a service worker. On a **paired** display over plain http there is no
+  service worker, so that fallback does not exist there and a reload after the host moves
+  is back to the code route. On a **local** monitor it does exist, because loopback is
+  secure. The fallback is available to one kind of display and not the other, and the
+  section says so rather than assuming it for both.
+- **The re-find probes cross-origin**, which a certificate changes. A certificate the
+  display does not trust makes every probe fail, so a display whose host moved could not
+  re-find it at all: the certificate would break the one mechanism that exists for the
+  move. A certificate must therefore be valid for the **name** the display uses — which
+  is the answer § "Finding the host after its address changes" already prefers over an
+  address — because a certificate pinned to an address breaks on the first new lease,
+  which is that section's whole premise.
+
+**And the local route needs none of this.** A local monitor has wake lock and a service
+worker today, with no TLS anywhere, because its origin is loopback. That is worth
+recording on its own: the features asked for are already available on the displays that
+live on this PC, and the certificate question is only about phones and tablets.
+
+**The preference, offered as a preference and not a ruling.** Do not put the host behind
+TLS for this. If a paired display must have both features, a certificate valid for the
+host's **name** is the one that survives an address change, and the two ways to get one
+are both a per-display setup step — a self-signed interstitial accepted by hand on each
+device, or a local CA whose root is installed on each device. That is the cost this
+design avoids everywhere else (a pairing that never expires, a re-find with no code, a
+launch the host performs itself), which is the reason it is named here rather than
+discovered at the phone.
+
 ## Two hosts on one network
 
 The user asked whether **two PCs, each running a host on the same LAN**, and their
@@ -493,6 +539,13 @@ the URL is a **name** (above), or the display runs an **app shell cached by a
 service worker**, which is `vg-577`'s PWA. **This makes the PWA load-bearing rather
 than a nicety**: without it, a camera-less display whose host moved is back to
 typing a code, and the code route is the only thing that still works.
+
+**On a phone, that second answer is not available.** A service worker needs a secure
+context, and a paired display reaches the host over plain http on a LAN address — so the
+app shell exists for a local monitor (loopback is secure) and not for a paired display,
+which is § "The origin decides what a display can do" and `vg-580`. **So the name is not
+one of two answers on a phone, it is the only one**, and a display that is reached by an
+address is the case that has no reload path at all.
 
 **Two limitations, stated rather than discovered later.** A browser cannot read its
 own address, so the sweep derives its range from the last-known host address and
@@ -952,7 +1005,16 @@ from the session, so a display writes its own key or nothing.
   changed.
 - **That a cross-origin sweep can read `GET /api/host`.** The CORS header is
   designed rather than tested, and a preflight or a private-network rule could
-  refuse it. Unverified from this environment.
+  refuse it. Unverified from this environment. **The certificate case is the one that
+  matters here**: a probe to an origin whose certificate the display does not trust
+  fails, and that has not been driven either — see § "The origin decides what a display
+  can do".
+- **That a phone has neither a wake lock nor a service worker at this host's origin.**
+  Read from the platform's secure-context rule and from `http.createServer` with no TLS
+  anywhere in `hosting.ts` or `server.ts` (`vg-580`); not driven, because no phone was
+  used. **`localhost` is a secure context, so a run on this machine shows both APIs
+  present and proves nothing about the phone** — every proof of either feature must name
+  the origin it ran on.
 - **That a relaunched browser lands on the right monitor.** The launch shape is
   `lhm-launcher.ts`'s and the registration is its `schtasks /SC ONLOGON` call — but
   neither has been exercised for a *browser* on a *second* monitor, and
@@ -1055,3 +1117,9 @@ from the session, so a display writes its own key or nothing.
   for a display, before the write lands, does not block it, and is still on screen
   after the page settles; the detection is a function of the envelope, so it answers
   the same for a theme nothing has rendered; and **the editor raises none of this**.
+- **13 (the origin)** — a local monitor at `127.0.0.1` has a secure context and a paired
+  display at a LAN address does not, so wake lock and the installable app shell are
+  available to the first and not the second, and no player code changes that; a
+  certificate the display does not trust makes every re-find probe fail, so the code
+  route is the answer for that display; and **every proof of either feature names the
+  origin it ran on**, because a `localhost` run proves nothing about a phone.

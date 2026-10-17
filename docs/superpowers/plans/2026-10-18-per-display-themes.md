@@ -37,6 +37,14 @@ plan argues from the spec, so read both. Register row: `vg-574`.
   on the reuse gate's watchlist (`scripts/reuse-gate.mjs`): a note at
   `docs/decisions/NNNN-<slug>.md` must claim the path first, and the note records the
   searches that were run rather than the conclusion alone.
+- **A browser proof names the origin it ran on.** The host serves plain http
+  (`http.createServer`, no TLS), so a **local monitor at `127.0.0.1` is a secure context
+  and a paired display at a LAN address is not** — `navigator.wakeLock` and
+  `navigator.serviceWorker` are present in the first and absent in the second. Playwright
+  runs on localhost, so **a run here shows both APIs present and proves nothing about a
+  phone**. This plan adds no TLS and makes no ruling on it: `vg-580` and Phase 25's
+  Task 25.8 own that decision. What this plan must not do is claim a phone behaviour from
+  a localhost run, and its re-find proofs must name their origin.
 - This plan lands before `2026-10-18-theme-store.md`, which consumes Task 4.4's
   assign action and does not restate this model.
 - **Ruling 12: a pairing lasts until the host removes the client.** Nothing in this
@@ -79,9 +87,8 @@ plan argues from the spec, so read both. Register row: `vg-574`.
 
 ## Review Focus
 
-Sixteen inputs and conditions the spec implies and no task's own tests exercise.
-Each gets its test in the task named beside it.
-1. **A display whose assigned theme was deleted** — a person removes a theme from
+Seventeen inputs and conditions the spec implies and no task's own tests exercise.
+Each gets its test in the task named beside it.1. **A display whose assigned theme was deleted** — a person removes a theme from
    the library while a wall screen holds it. The display must fall to the default
    and keep showing something, never an error page or a blank stage. (Task 2.2)
 2. **A label that mints no usable id** — `"???"`, `"---"`, a 200-character name, an
@@ -142,6 +149,10 @@ Each gets its test in the task named beside it.
     infer an asset's type from its path. A detector that sniffed the extension would
     warn about a theme that costs nothing and stay silent about one that does.
     (Task 4.8)
+17. **A display whose host moved and whose certificate it does not trust** — every
+    re-find probe fails against an untrusted origin, so the ladder answers nothing and
+    the code route is the answer. The proof must name the origin it ran on, because a
+    `localhost` run is a secure context and a phone is not (`vg-580`). (Task 4.6)
 
 ---
 
@@ -1876,6 +1887,13 @@ routine only runs from a page that is already loaded — or from a cached app sh
 which is `vg-577`'s PWA and not this plan's work. The URL being a name instead of
 an address is the deployment answer the pairing card recommends (Task 4.3), and it
 is the only answer that covers the reload case without the PWA.
+
+**And on a paired display the app shell is not available at all.** A service worker needs
+a secure context, and a LAN origin over this host's plain http is not one — so the name is
+not one of two answers on a phone, it is the only one (`vg-580`, spec § "The origin decides
+what a display can do"). A certificate the display does not trust fails every probe in the
+ladder, so the proof for this task **names the origin it ran on** and does not report a
+localhost result as a phone result.
 
 - [ ] **Step 4: Run test to verify it passes**
 
