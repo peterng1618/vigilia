@@ -55,13 +55,28 @@ everything that can hold an assignment is a client — and the code can only eve
 see a client. The objective's "detect connected displays" is therefore satisfied
 by naming the clients that are showing something, not by enumerating monitors.
 
-Three kinds of client exist, and all three are displays:
+**Pairing registers a display; the host decides what it shows.** These are the two
+halves of the model and they are deliberately not the same act. Pairing is how a
+client becomes *known* — it gets a name on this PC and appears in the list. What
+that display shows is this PC's decision, made in the Host settings mode and the
+store's local tab, and **a display has no route that writes its own theme**: every
+write is on a loopback-only route, so the only client that can change an
+assignment is the one sitting at this PC.
 
-| Display | Identity | Paired |
-|---|---|---|
-| **This PC's own screen** — the root page on loopback | the reserved id `this-pc` | never; loopback is already trusted |
-| **A paired LAN client** — a phone, tablet, TV or installed player | a display record's id | yes |
-| **An unpaired reader** — anyone else who opens the root page on the LAN | none | no; it gets the default |
+Two clients are displays, and a third is not:
+
+| Client | Identity | Registered | Its theme |
+|---|---|---|---|
+| **This PC's own screen** — the root page on loopback | the reserved id `this-pc` | implicitly; never paired, because loopback is already trusted admin | assigned like any other, and the default until it is |
+| **A paired LAN client** — a phone, tablet, TV or installed player | a display record's id, minted at pairing | by pairing, which is the only way to get a record | assigned from this PC; the default until it is |
+| **An unpaired reader** — anyone else who opens the root page on the LAN | none | **no, and it is not a display** | it reads the default, because a reader with no record cannot be assigned to |
+
+**The third row is the one worth stating plainly**: an unpaired reader is not a
+display that has been given a theme, it is a page being served the default. It
+becomes a display by being paired, and until then there is nothing to assign a
+theme to. That is also why pairing is an admin action on this PC rather than
+something a client can do for itself — a client that could register itself could
+give itself a name on the list.
 
 ## Identity: the token is a credential, not a name
 
