@@ -5147,15 +5147,17 @@ phase boundary.
 ### Task 25.4: The live line chart's edge
 
 **Files:**
-- Modify: `renderer-core/src/data/live-source.ts`; `renderer-core/src/charts/line.ts`; `player/src/main.ts`
+- Modify: `renderer-core/src/charts/line.ts`; `renderer-core/src/scene/plan.ts`; `renderer-core/src/scene/plan.test.ts`; `renderer-core/src/index.ts`; `editor/src/chart-manager/index.ts`; `playwright.config.ts`; `docs/decisions/`
+- Add: `tests/e2e/live-chart-edge.spec.ts`
+- **The measurement moved the owners, which is the point of Step 1**: this task originally named `renderer-core/src/data/live-source.ts` and `player/src/main.ts`, and neither was touched — the defect was in the window the chart asks the source for, not in the timestamp the source writes.
 
 **Interfaces:**
 - Produces: `vg-571` closed
 
-- [ ] **Step 1: Measure before deciding.** The row's source reading is that `createLiveSource` overwrites every sample's `presentationTimestamp` with the browser clock at batch arrival, so a batch's points share one x while the axis slides every frame. The host's cadence and the half-second figures the user reported are unmeasured.
-- [ ] **Step 2: Name which symptom the measurement shows** — a right edge that trails and jumps, a left edge that drops points together, or both — because the fix differs between the timestamp and the window.
-- [ ] **Step 3: Fix the cause the measurement names**, keeping `toSeriesPoints`' gap preservation and the playback delay's purpose intact.
-- [ ] **Step 4: Close it**, with the before and after probe readings.
+- [x] **Step 1: Measure before deciding.** The row's source reading is that `createLiveSource` overwrites every sample's `presentationTimestamp` with the browser clock at batch arrival, so a batch's points share one x while the axis slides every frame. The host's cadence and the half-second figures the user reported are unmeasured. **Measured, and the reading was refuted**: the host sends one sample per key per batch, so a batch cannot put several points of one series on one x.
+- [x] **Step 2: Name which symptom the measurement shows** — a right edge that trails and jumps, a left edge that drops points together, or both — because the fix differs between the timestamp and the window. **Both, and they are two defects with two owners**: the left edge was the window (fixed here) and the right edge is the overscan gutter, filed as `vg-582`.
+- [x] **Step 3: Fix the cause the measurement names**, keeping `toSeriesPoints`' gap preservation and the playback delay's purpose intact.
+- [x] **Step 4: Close it**, with the before and after probe readings.
 
 ### Task 25.5: The display re-fit on a phone viewport
 

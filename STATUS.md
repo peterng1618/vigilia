@@ -1,6 +1,6 @@
 # Vigilia status
 
-Updated: 2026-10-17
+Updated: 2026-10-18
 Branch: `develop`
 
 ## Current objective
@@ -10,7 +10,7 @@ Drain `docs/product/backlog.jsonl` through the active Superpowers plan. Editor r
 ## Active work
 
 - **Active plan:** `2026-10-12-the-backlog-drain.md` — [plan](docs/superpowers/plans/2026-10-12-the-backlog-drain.md); execution ledger: `.superpowers/sdd/2026-10-12-the-backlog-drain/progress.md`.
-- Phase 25 is active: the user's five 2026-10-17 reports (vg-568–vg-572), which they ordered ahead of Phase 22's remainder the same day; Tasks 25.1–25.3 are closed (vg-570, vg-569, vg-568, vg-576) and 25.4–25.8 remain. Phase 22 is suspended with Tasks 22.1–22.5 closed (vg-147, vg-150, vg-192, vg-167, vg-168) and 22.6–22.10 pending, and it resumes after Phase 25. Phases 0–11 and 13–20 are closed; Phase 12, Phase 21 and Phase 22 are suspended, not closed; Phase 23 is queued.
+- Phase 25 is active: the user's five 2026-10-17 reports (vg-568–vg-572), which they ordered ahead of Phase 22's remainder the same day; Tasks 25.1–25.4 are closed (vg-570, vg-569, vg-568, vg-576, vg-571) and 25.5–25.8 remain. Phase 22 is suspended with Tasks 22.1–22.5 closed (vg-147, vg-150, vg-192, vg-167, vg-168) and 22.6–22.10 pending, and it resumes after Phase 25. Phases 0–11 and 13–20 are closed; Phase 12, Phase 21 and Phase 22 are suspended, not closed; Phase 23 is queued.
 - Phase 21 owes only Task 21.9 Step 3: font-picker keyboard implementation after user spec review and the separate `TAB_BOUND` ruling. Suspension changes scheduling, not either decision.
 - **Plan queue, in order:** [`2026-10-18-per-display-themes.md`](docs/superpowers/plans/2026-10-18-per-display-themes.md) (its [spec](docs/superpowers/specs/2026-10-18-per-display-themes-design.md) is unreviewed; four phases and twenty tasks, and the store's assign action is its Task 4.4), then [`2026-10-18-theme-store.md`](docs/superpowers/plans/2026-10-18-theme-store.md) (the store spec's phase A only — B–G each need their own plan, G before C). The colour/gradient spec is still unreviewed and has no plan.
 - Register rulings and parked markers live on rows; ledger records completions/rulings, and `dispatch-*.md` records running seats. One phase and one implementation seat at a time.
@@ -18,14 +18,14 @@ Drain `docs/product/backlog.jsonl` through the active Superpowers plan. Editor r
 
 ## Last completed change
 
-- The phone player gains three tap-revealed chrome controls in its top-right — fullscreen, keep-awake and a dimmer — and no settings modal, which is how the user answered the settings question (`vg-568`, `vg-576`).
-- Keep-awake is a re-acquiring loop because the Screen Wake Lock API drops its lock whenever the page is hidden, and the control reports the lock it holds rather than the one it asked for; the dimmer is named as an overlay over the picture, not the screen's own brightness.
-- The origin decides whether either works: at the LAN address the client reported `secureContext: false` and `wakeLock: "undefined"`, while `localhost` reported both present — and headless Chromium refused the lock with `NotAllowedError` even on a secure origin, so the refusal path is reachable on https too.
-- A review found the composition regression passed with the control in flow: it compared three readings inside one page load, so a permanently in-flow bar shrank the artboard at all three; it now asserts the column's structure absolutely and fails on that break (`vg-581` files the two checks that cannot see an `.html` file).
+- The live line chart now asks the source for the history its own left edge is drawn from: the request ended exactly at `xAxis.min`, so the sample below the window that starts the line was never asked for and 72.2 % of steady frames began inside the plot (`vg-571`).
+- It is 16.0 / 19.5 / 8.3 % after, the mean inverted from +199 ms inside the plot to −367 ms at or before the edge; the residual is the host's cadence, whose measured gaps run p50 1006–1021 ms and up to 3243 ms against the 1000 ms the playback delay stands in for.
+- The user's one report was two defects: the right edge is the overscan gutter, a different owner, and it keeps `vg-582` — corrected there after an independent review showed the row's numbers and its stated cause were both wrong.
+- The probe that measured this is opt-in behind `VIGILIA_EDGE_PROBE`: it asserts nothing about the defect and cost ~100 s of every `phone-host` and CI run while nothing in the repo read what it wrote.
 
 ## Next
 
-1. Execute Phase 25 serially, one seat at a time: 25.4 the chart's edge, 25.5 the phone re-fit, 25.6 the PWA, 25.7 the crop notice and bleed toggle removed, 25.8 the secure origin that gates keep-awake and the PWA.
+1. Execute Phase 25 serially, one seat at a time: 25.5 the phone re-fit, 25.6 the PWA, 25.7 the crop notice and bleed toggle removed, 25.8 the secure origin that gates keep-awake and the PWA.
 2. Review each task against its brief and evidence; run phase gate with exit code and browser results named separately.
 3. Resume Phase 21 after font-picker spec approval and budget ruling; resume Phase 12 after settings-pane spec review.
 4. Re-home unparked rows carried only by closed phases; never treat a mention as a live implementation home.
@@ -34,7 +34,7 @@ Drain `docs/product/backlog.jsonl` through the active Superpowers plan. Editor r
 ## Blockers / unverified
 
 - User review pending: [per-display themes](docs/superpowers/specs/2026-10-18-per-display-themes-design.md), [theme store](docs/superpowers/specs/2026-10-12-theme-store-design.md), [settings pane](docs/superpowers/specs/2026-10-16-settings-pane-design.md), [colour and gradient rebuild](docs/superpowers/specs/2026-10-12-colour-and-gradient-rebuild-design.md) and [font-picker keyboard model and budget](docs/superpowers/specs/2026-10-17-font-picker-keyboard-design.md); decisions remain for `vg-546`, `vg-559`, `vg-350` and `vg-354`, and Phase 20 carried `vg-556` without closing it — do not invent approval or edit AGENTS.md.
-- Phase 25 owns the five 2026-10-17 user reports (`vg-568`–`vg-572`) and none is yet reproduced in a browser; `vg-576` is ruled (no settings modal — keep-awake, brightness and fullscreen are chrome) and `vg-577` makes the player an installable PWA, whose first write into the watched `host/src/serve/static-path.ts` needs a decision note first; `vg-578` removes the crop notice and the bleed toggle, and its persisted-key question is a data decision to settle with evidence; brightness is a dimming overlay, never device backlight, and every client-support claim is unverified from this environment.
+- Phase 25 owns the five 2026-10-17 user reports (`vg-568`–`vg-572`); `vg-568`–`vg-571` are closed on browser runs at a 412x839 viewport and `vg-572` is not yet reproduced, because a phone's own viewport change has never been driven on this box and no run has used a physical phone; `vg-582`, filed by Task 25.4, is open with no phase owning it; `vg-576` is ruled (no settings modal — keep-awake, brightness and fullscreen are chrome) and `vg-577` makes the player an installable PWA, whose first write into the watched `host/src/serve/static-path.ts` needs a decision note first; `vg-578` removes the crop notice and the bleed toggle, and its persisted-key question is a data decision to settle with evidence; brightness is a dimming overlay, never device backlight, and every client-support claim is unverified from this environment.
 - `vg-580` blocks two of the user's rulings from existing on a phone at all: the host serves plain http, and `navigator.wakeLock` and `navigator.serviceWorker` are both gated on a secure context, so keep-awake and the PWA need an https origin; `localhost` is secure, so a proof run there proves nothing about the phone it is for. Full browser suite's prior reds remain register-owned; `gate` runs unit tests, not Playwright. Browser proof needs rebuilt bundles, one worker, and each run's own JSON report.
 - `vg-023`'s cancelled review requires explicit user request to restart; Fabric two-paint-context evidence remains controller browser proof. `vg-370` resize refusal remains unestablished.
 - No push authorised. `develop` remains ahead of `origin/develop`; preserve local work and untracked SDD records.
