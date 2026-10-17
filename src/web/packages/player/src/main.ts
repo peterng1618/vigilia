@@ -28,6 +28,7 @@ import {
   showConnectionState,
   showCropNotice,
 } from "./chrome.js";
+import { mountDisplayControls } from "./display-controls.js";
 import { envelopePlan } from "./hosted-plan.js";
 import { showLoadFailure } from "./load-failure.js";
 import { followPublished } from "./publish-follower.js";
@@ -184,6 +185,10 @@ async function startHostedTheme(
   // the canvas are the saved ones, not the ones the display will draw.
   showCropNotice(handle, theme.artboard);
   showConnectionState("connecting", keys.length);
+  // The controls a reader operates, mounted with the rest of the chrome: they
+  // overlay the composition rather than take room from it, and one of them can
+  // hold the phone awake, so the display's own teardown has to release it.
+  const controls = mountDisplayControls();
   // Only a host-served display follows a publish: a fixture theme is not
   // something an author is editing.
   const stopFollowing = followPublished(
@@ -208,6 +213,9 @@ async function startHostedTheme(
       // poll running for every display parked in the back/forward cache.
       stopFollowing();
       liveHandle.close();
+      // Before the scene goes: the controls' own listeners and any wake lock
+      // are theirs to release, and a discarded page must not keep a phone awake.
+      controls.dispose();
       // The scene owns the glass handle, the media layer and any video frame
       // callback, and none of them is released by the teardown above.
       handle.dispose();

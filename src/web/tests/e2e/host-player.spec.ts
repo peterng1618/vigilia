@@ -1,3 +1,8 @@
+import { readFile } from "node:fs/promises";
+import { createServer, type Server } from "node:http";
+import { networkInterfaces } from "node:os";
+import { extname, join } from "node:path";
+import { fileURLToPath } from "node:url";
 import { expect, type Page, test } from "@playwright/test";
 import { SAMPLE_STREAM_PATH } from "@vigilia/renderer-core";
 import { uiCopy } from "../../packages/player/src/ui-copy.js";
@@ -2606,4 +2611,444 @@ function setGroupCaching(page: Page, caching: boolean): Promise<boolean> {
     },
     [GROUPED_GROUP_ID, caching] as const,
   );
+}
+
+/**
+ * The three controls a reader operates on a display: fullscreen, keep-awake and
+ * a dimmer (`vg-568`, `vg-576`).
+ *
+ * **The origin is the point, and every case here names the one it ran
+ * against.** The host serves plain http on a LAN port (`vg-580`), and both APIs
+ * the controls want are gated on a secure context — but `localhost` IS one, so
+ * a run at `http://127.0.0.1:4175` sees the wake lock present and proves
+ * nothing about the phone the control is for. The last case below measures the
+ * origin a phone actually uses, in this same browser.
+ */
+test.describe("the display's own controls", () => {
+  test("reveals three controls on a tap, and never moves the composition", async ({
+    page,
+  }, testInfo) => {
+    await openSeededDisplay(page);
+    const canvas = page.locator("#artboard canvas.lower-canvas");
+    await expect(canvas).toBeVisible();
+
+    await recordCapabilities(page, testInfo);
+
+    const bar = page.locator("[data-vigilia-controls]");
+    await expect(bar).toHaveCount(1);
+    await expect(page.locator("[data-vigilia-dimmer]")).toHaveCount(1);
+    expect(await barOpacity(page)).toBe("0");
+
+    const before = await canvas.boundingBox();
+
+    await tapTheDisplay(page);
+    await expect.poll(() => barOpacity(page)).toBe("1");
+
+    // **Up, and the composition has not moved.** This is the property the whole
+    // overlay is for: a strip in a chrome band takes its room from the artboard
+    // and re-fits the scene, which measured 16-25px of ink movement on the
+    // built display (vg-028).
+    expect(await canvas.boundingBox()).toEqual(before);
+
+    // Three seconds, and it is gone again — with the composition still exactly
+    // where it was.
+    await expect.poll(() => barOpacity(page), { timeout: 6_000 }).toBe("0");
+    expect(await canvas.boundingBox()).toEqual(before);
+  });
+
+  test("enters and leaves fullscreen on one control, where the client has it", async ({
+    page,
+  }, testInfo) => {
+    await openSeededDisplay(page);
+    await expect(page.locator("#artboard canvas.lower-canvas")).toBeVisible();
+
+    const supported = await page.evaluate(
+      () => typeof document.documentElement.requestFullscreen === "function",
+    );
+    testInfo.annotations.push({
+      type: "fullscreen",
+      description: String(supported),
+    });
+
+    const button = page.locator("[data-vigilia-fullscreen]");
+    await expect(button).toHaveCount(1);
+    await tapTheDisplay(page);
+
+    if (!supported) {
+      // The refusal, on the client that has none: the sentence names the path
+      // this client does have rather than leaving a control that does nothing.
+      await button.click();
+      await expect(page.locator("[data-vigilia-controls-say]")).toHaveText(
+        uiCopy.controls.fullscreen.unavailable,
+      );
+      return;
+    }
+
+    await button.click();
+    await expect
+      .poll(() => page.evaluate(() => document.fullscreenElement !== null))
+      .toBe(true);
+    await expect(button).toHaveAttribute("aria-pressed", "true");
+
+    await button.click();
+    await expect
+      .poll(() => page.evaluate(() => document.fullscreenElement !== null))
+      .toBe(false);
+    await expect(button).toHaveAttribute("aria-pressed", "false");
+  });
+
+  test("re-acquires the wake lock across a hide and a show, and reports the lock it holds", async ({
+    page,
+  }, testInfo) => {
+    // Counted and captured in the page, because the control's claim is about
+    // the lock it *holds*: the number of requests it made is the re-acquisition,
+    // and the sentinel is what a release has to be fired on.
+    await page.addInitScript(() => {
+      const state = {
+        requests: 0,
+        sentinel: null as unknown,
+        failed: null as string | null,
+      };
+      Reflect.set(window, "__vigiliaWake", state);
+      const api = (
+        navigator as unknown as {
+          wakeLock?: { request(type: string): Promise<unknown> };
+        }
+      ).wakeLock;
+      if (api === undefined) return;
+      const request = api.request.bind(api);
+      api.request = async (type: string) => {
+        state.requests += 1;
+        try {
+          const sentinel = await request(type);
+          state.sentinel = sentinel;
+          return sentinel;
+        } catch (error) {
+          // Recorded rather than swallowed: whether this client grants a lock
+          // at all is the answer this case reports, and a silent catch would
+          // read as a timeout.
+          state.failed = error instanceof Error ? error.name : String(error);
+          throw error;
+        }
+      };
+    });
+
+    await openSeededDisplay(page);
+    await expect(page.locator("#artboard canvas.lower-canvas")).toBeVisible();
+    await recordCapabilities(page, testInfo);
+    await tapTheDisplay(page);
+
+    const keepAwake = page.locator("[data-vigilia-keep-awake]");
+    await expect(keepAwake).toHaveCount(1);
+    await keepAwake.click();
+
+    // The request is settled, one way or the other, before the control's claim
+    // is read: a sentinel captured mid-flight would read as a refusal.
+    await expect.poll(() => wakeSettled(page), { timeout: 10_000 }).toBe(true);
+
+    if (!(await wakeLockHeld(page))) {
+      // **This client refused the lock**, which is a real answer and not a
+      // failure: the control must then report that it holds nothing rather than
+      // claiming the lock it asked for.
+      testInfo.annotations.push({
+        type: "wake-lock",
+        description: `refused by this client (${await wakeFailure(page)})`,
+      });
+      await expect(keepAwake).toHaveAttribute("data-vigilia-waiting", "");
+      return;
+    }
+
+    await expect(keepAwake).not.toHaveAttribute("data-vigilia-waiting", "");
+
+    // **The API drops the lock whenever the page is hidden, and this is that
+    // release.** Nothing about the control may survive it but the reader's own
+    // intent.
+    await page.evaluate(() => {
+      Object.defineProperty(document, "visibilityState", {
+        configurable: true,
+        get: () => "hidden",
+      });
+      document.dispatchEvent(new Event("visibilitychange"));
+      (
+        window as unknown as { __vigiliaWake: { sentinel: EventTarget } }
+      ).__vigiliaWake.sentinel.dispatchEvent(new Event("release"));
+    });
+    await expect(keepAwake).toHaveAttribute("data-vigilia-waiting", "");
+    expect(await wakeRequests(page)).toBe(1);
+
+    // Back on screen and still wanted: the re-acquisition is the whole control.
+    await page.evaluate(() => {
+      Object.defineProperty(document, "visibilityState", {
+        configurable: true,
+        get: () => "visible",
+      });
+      document.dispatchEvent(new Event("visibilitychange"));
+    });
+    await expect.poll(() => wakeRequests(page), { timeout: 10_000 }).toBe(2);
+    await expect(keepAwake).not.toHaveAttribute("data-vigilia-waiting", "");
+  });
+
+  test("says why, on a client with neither API, and does not pretend otherwise", async ({
+    page,
+  }, testInfo) => {
+    // iPhone Safari's shape, forced: no `Element.requestFullscreen`, and no
+    // wake lock because the origin is not secure. The init script is what makes
+    // the refusal reachable on a client that has both.
+    await page.addInitScript(() => {
+      Object.defineProperty(navigator, "wakeLock", {
+        configurable: true,
+        value: undefined,
+      });
+      Reflect.deleteProperty(Element.prototype, "requestFullscreen");
+    });
+
+    await openSeededDisplay(page);
+    await expect(page.locator("#artboard canvas.lower-canvas")).toBeVisible();
+
+    // The forcing really took, so a green case here is not a no-op.
+    expect(
+      await page.evaluate(() => [
+        typeof (navigator as unknown as { wakeLock?: unknown }).wakeLock,
+        typeof document.documentElement.requestFullscreen,
+      ]),
+    ).toEqual(["undefined", "undefined"]);
+    testInfo.annotations.push({
+      type: "capabilities-forced",
+      description: "wakeLock and requestFullscreen removed",
+    });
+
+    await tapTheDisplay(page);
+    await page.locator("[data-vigilia-fullscreen]").click();
+    await expect(page.locator("[data-vigilia-controls-say]")).toHaveText(
+      uiCopy.controls.fullscreen.unavailable,
+    );
+
+    await page.locator("[data-vigilia-keep-awake]").click();
+    await expect(page.locator("[data-vigilia-controls-say]")).toHaveText(
+      uiCopy.controls.keepAwake.unavailable,
+    );
+  });
+
+  test("dims the picture with an overlay, and the composition stays where it was", async ({
+    page,
+  }) => {
+    await openSeededDisplay(page);
+    const canvas = page.locator("#artboard canvas.lower-canvas");
+    await expect(canvas).toBeVisible();
+    await tapTheDisplay(page);
+
+    const shade = page.locator("[data-vigilia-dimmer]");
+    await expect(shade).toHaveCount(1);
+    expect(await shadeOpacity(page)).toBe("0");
+
+    const before = await canvas.boundingBox();
+    await page.locator("[data-vigilia-dim]").fill("50");
+
+    await expect
+      .poll(async () => Number(await shadeOpacity(page)))
+      .toBeGreaterThan(0.4);
+    // Dimmed, and unmoved: the overlay is a filter over the picture rather than
+    // a resize of it.
+    expect(await canvas.boundingBox()).toEqual(before);
+  });
+
+  test("the origin a phone uses is not a secure context, and this browser says so", async ({
+    page,
+  }, testInfo) => {
+    // **The trap this case exists for.** `127.0.0.1` is a secure context, so
+    // every reading above it shows the wake lock present; a phone opens
+    // `http://<lan-ip>:<port>`, which is not one. The player's own bundle is
+    // served here over plain http on the LAN address, so the reading is the
+    // browser's answer about the origin rather than a claim about it.
+    const address = lanAddress();
+    test.skip(address === undefined, "this machine has no LAN address");
+
+    const bundle = await servePlayerBundle(address as string);
+    try {
+      await page.goto(`${bundle.origin}/`);
+      const reported = await page.evaluate(() => ({
+        origin: location.origin,
+        secureContext: window.isSecureContext,
+        wakeLock: typeof (navigator as unknown as { wakeLock?: unknown })
+          .wakeLock,
+        fullscreen:
+          typeof document.documentElement.requestFullscreen === "function",
+      }));
+      testInfo.annotations.push({
+        type: "lan-origin",
+        description: JSON.stringify(reported),
+      });
+
+      expect(
+        reported.secureContext,
+        "a LAN address is not a secure context",
+      ).toBe(false);
+      expect(reported.wakeLock).toBe("undefined");
+    } finally {
+      await bundle.close();
+    }
+  });
+});
+
+/** What this client reported, kept in the JSON report rather than in a comment
+ *  that a later reader cannot check. */
+async function recordCapabilities(
+  page: Page,
+  testInfo: {
+    annotations: { type: string; description?: string }[];
+  },
+): Promise<void> {
+  const reported = await page.evaluate(() => ({
+    origin: location.origin,
+    viewport: `${window.innerWidth}x${window.innerHeight}`,
+    secureContext: window.isSecureContext,
+    fullscreen:
+      typeof document.documentElement.requestFullscreen === "function",
+    wakeLock:
+      typeof (navigator as unknown as { wakeLock?: unknown }).wakeLock ===
+      "object",
+  }));
+  testInfo.annotations.push({
+    type: "capabilities",
+    description: JSON.stringify(reported),
+  });
+}
+
+/**
+ * A seeded theme on the display, opened straight from the host.
+ *
+ * These cases are about the chrome the display draws, not about an authored
+ * document, so none of them needs the editor: `seedHostTheme` has already put
+ * this theme in the host's library by the time a worker starts
+ * (`tests/e2e/global-setup.ts`).
+ */
+async function openSeededDisplay(page: Page): Promise<void> {
+  await page.goto(`${HOST}/?theme=${HOST_CHART_THEME_ID}`);
+  await expect(page.locator("#artboard canvas.lower-canvas")).toBeVisible();
+}
+
+/** A tap on the composition, which is what a reader has to press. */
+async function tapTheDisplay(page: Page): Promise<void> {
+  const box = await page.locator("#artboard").boundingBox();
+  if (box === null) throw new Error("the display has no artboard to tap");
+  await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+}
+
+function barOpacity(page: Page): Promise<string> {
+  return page.evaluate(
+    () =>
+      document.querySelector<HTMLElement>("[data-vigilia-controls]")?.style
+        .opacity ?? "missing",
+  );
+}
+
+function shadeOpacity(page: Page): Promise<string> {
+  return page.evaluate(
+    () =>
+      document.querySelector<HTMLElement>("[data-vigilia-dimmer]")?.style
+        .opacity ?? "missing",
+  );
+}
+
+function wakeRequests(page: Page): Promise<number> {
+  return page.evaluate(
+    () =>
+      (window as unknown as { __vigiliaWake?: { requests: number } })
+        .__vigiliaWake?.requests ?? 0,
+  );
+}
+
+function wakeLockHeld(page: Page): Promise<boolean> {
+  return page.evaluate(
+    () =>
+      (window as unknown as { __vigiliaWake?: { sentinel: unknown } })
+        .__vigiliaWake?.sentinel !== null,
+  );
+}
+
+/** Whether the request has come back, granted or refused. */
+function wakeSettled(page: Page): Promise<boolean> {
+  return page.evaluate(() => {
+    const state = (
+      window as unknown as {
+        __vigiliaWake?: { sentinel: unknown; failed: string | null };
+      }
+    ).__vigiliaWake;
+    return (
+      state !== undefined && (state.sentinel !== null || state.failed !== null)
+    );
+  });
+}
+
+function wakeFailure(page: Page): Promise<string> {
+  return page.evaluate(
+    () =>
+      (window as unknown as { __vigiliaWake?: { failed: string | null } })
+        .__vigiliaWake?.failed ?? "no failure recorded",
+  );
+}
+
+/** The first non-loopback IPv4 address, which is the address a phone is told to
+ *  open. `undefined` on a machine that has none, and the case skips. */
+function lanAddress(): string | undefined {
+  for (const entries of Object.values(networkInterfaces())) {
+    for (const entry of entries ?? []) {
+      if (entry.family === "IPv4" && !entry.internal) return entry.address;
+    }
+  }
+  return undefined;
+}
+
+const PLAYER_CONTENT_TYPES: Readonly<Record<string, string>> = {
+  ".html": "text/html; charset=utf-8",
+  ".js": "text/javascript",
+  ".css": "text/css",
+  ".json": "application/json",
+  ".svg": "image/svg+xml",
+  ".png": "image/png",
+  ".woff2": "font/woff2",
+};
+
+/**
+ * The built player, over plain http on the LAN address — the origin a phone
+ * actually opens, and the one the host's own `http.createServer` gives it
+ * (`vg-580`). Served from the spec rather than by a second host so that the
+ * only thing under test is the origin: the display cannot load a theme from
+ * here, and does not need to for a reading that is a property of the origin.
+ */
+async function servePlayerBundle(
+  address: string,
+): Promise<{ origin: string; close: () => Promise<void> }> {
+  const root = fileURLToPath(
+    new URL("../../packages/player/dist/", import.meta.url),
+  );
+  const server: Server = createServer((request, response) => {
+    const path = (request.url ?? "/").split("?")[0] ?? "/";
+    const file = join(root, path === "/" ? "index.html" : path);
+    void readFile(file)
+      .then((bytes) => {
+        response.writeHead(200, {
+          "content-type":
+            PLAYER_CONTENT_TYPES[extname(file)] ?? "application/octet-stream",
+        });
+        response.end(bytes);
+      })
+      .catch(() => {
+        response.writeHead(404);
+        response.end();
+      });
+  });
+
+  await new Promise<void>((settle) => {
+    server.listen(0, "0.0.0.0", settle);
+  });
+  const port = (server.address() as { port: number }).port;
+
+  return {
+    origin: `http://${address}:${port}`,
+    close: () =>
+      new Promise<void>((settle) => {
+        server.close(() => settle());
+      }),
+  };
 }

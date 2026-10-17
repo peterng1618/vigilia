@@ -88,6 +88,40 @@ export const uiCopy = {
     /** Stands in for the transport address a provider named in its reason. */
     address: "its configured address",
   },
+  /**
+   * The three controls a reader operates, and what a control says when it
+   * cannot do its job (`display-controls.ts`).
+   *
+   * A refusal is written where the control is, so it names the thing the reader
+   * can act on rather than a mechanism: the wake lock's sentence names the
+   * *origin* the display was served from, because that is what a phone at
+   * `http://<lan-ip>:<port>` lacks and no setting on the phone can change it.
+   * The dimmer's label names the overlay and says outright that it is not the
+   * screen's own brightness — a browser cannot set that, and a control that
+   * implied otherwise would be lying to the reader in front of it.
+   */
+  controls: {
+    /** Names the bar itself, for a reader who arrives at it by keyboard. */
+    group: "Display controls",
+    fullscreen: {
+      label: "Fullscreen",
+      /** iPhone Safari has no `Element.requestFullscreen`; Task 25.6's
+       *  standalone mode is what that client gets instead, so it is named. */
+      unavailable:
+        "This browser cannot show a page fullscreen. Adding the display to the home screen is how the browser's own chrome is hidden here.",
+      refused: "Fullscreen was refused. Try again.",
+    },
+    keepAwake: {
+      label: "Awake",
+      /** The origin, not the phone: this is the half a reader can act on. */
+      unavailable:
+        "This browser has no wake lock. The host must serve this display over a secure origin (https, or a certificate this phone trusts) before the screen can be held awake.",
+    },
+    dim: {
+      label:
+        "Dim the display — an overlay over the picture, not the screen's own brightness",
+    },
+  },
   /** Objects the artboard does not contain, so the display never painted
    *  them. Distinct from `availability` on purpose (§97): a missing sensor is
    *  a gap in the *data*, a crop is a gap in the *composition*, and a reader
