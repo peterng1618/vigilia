@@ -28,8 +28,9 @@ widget store is still a later piece of work; it is no longer a later *storefront
 
 ## Rulings taken 2026-10-17
 
-Nine decisions, all the user's, taken across three passes the same day. Each one
-changes a section below rather than adding to it, which is why they are first.
+Ten decisions, all the user's, taken across four passes on 2026-10-17 and
+2026-10-18. Each one changes a section below rather than adding to it, which is why
+they are first.
 
 1. **The store interface shows online themes and local themes together** — the
    catalogue, and the themes made here or imported offline, in one surface. This
@@ -68,8 +69,18 @@ changes a section below rather than adding to it, which is why they are first.
    responsive by CSS rather than by breakpoints, and the pager shows the five pages
    nearest the current one rather than only a step back and a step forward.
 9. **An item opens a detail modal** — § "The item's own surface". The gallery shows
-   what a theme looks like; the modal is where a theme is *read*: its preview at its
-   own ratio, its description, and the facts the grid has no room for.
+   what a theme looks like; the modal is where a theme is *read*: a fixed preview
+   stage the theme is contained in, its description, and the facts the grid has no
+   room for. (Amended the next day: the first cut sized the stage to the theme's own
+   ratio, which makes the modal change height as a person steps between themes.)
+10. **The item kind is an extension point, and a second kind is an addition rather
+    than a rewrite** — § "Adding a kind, and what keeps it cheap". `kind` is already
+    the seam a client reads, and v1 ships one kind, so the ruling fixes what the
+    first kind must leave open: a stable wire value distinct from the display word,
+    one handler table whose missing row *is* the degradation rule, a store instance
+    per kind rather than a `kind` field on the theme store, and a facet set that is
+    each kind's own rather than a union. It builds no second kind and designs no
+    second format — open question 6 still owns both addenda.
 
 **What ruling 6 supersedes.** The draft said the three-mode top bar "needs its
 own spec, not a section of this one"; the user folded it in on 2026-10-17, so
@@ -106,6 +117,12 @@ about the dashboard theme's package answers what this artifact is, so its
 addendum has to settle that first. `DESIGN.md` is the design language's contract
 and the ratchet in `scripts/design-tokens.mjs` guards the chrome, so an editor
 theme is a *token* artifact that those instruments can read — not a stylesheet.
+
+**Each kind's wire identifier is fixed here** — `dashboard-theme`, `widget-preset`,
+and the editor theme's once its addendum names the artifact — because
+§ "Adding a kind" makes the identifier a value on the wire that a client older than
+the kind must still be able to print. What a kind is *called* in the interface is
+`uiCopy`'s word for it and can change without a format change.
 
 **Why v1 is one kind.** This document's central leverage claim is that the store
 defines no format, no validator and no size policy, because it reuses the ones
@@ -227,6 +244,63 @@ item declares and refuses what it does not recognise, because the two addenda
 will add kinds to a catalogue that already has items in it. This is the one place
 v1 pays for kinds it does not ship, and it is cheaper than a migration later: a
 client that cannot parse an item must skip it and say so, not fail the listing.
+
+### Adding a kind, and what keeps it cheap
+
+v1 ships one kind and two more are already named, so the question is not whether a
+second arrives but whether it arrives as an addition. Five things decide that, and
+none of them builds a second kind.
+
+**The wire value and the display word are different things.** `item.json`'s `kind`
+is a stable identifier (`dashboard-theme`, `widget-preset`), never a word a person
+reads; the badge in a cell and the kind badge in the modal read `uiCopy`'s word for
+it. So renaming what a kind is *called* is not a change to what it *is* — and a
+build older than a kind still has something true to print, which is why the browse
+drawing's skipped-kind line quotes the identifier: a client that does not know a
+kind cannot know its name either.
+
+**One table, and the fallback is the row that is missing.** The client resolves a
+kind through a table — one handler per kind, supplying how an item is validated,
+installed and presented — and the absence of a row *is* the degradation rule above:
+skip it, count it, name the kind that was skipped. v1's table has exactly one row
+and is written as a table rather than a branch, because the fallback already
+exists: a lookup with a default is the shape that grows a second row as data, and a
+branch is the shape that grows a second `if` in every surface that reads one.
+
+**A kind gets its own store rather than a field on this one.**
+`host/src/themes/store.ts` is the *theme* store: one folder file name
+(`theme.json`), one validator (`validateFabricThemeEnvelope`), and
+`readStoredOrAbsent` answers a folder that is not a theme envelope as **absent**.
+A second kind written under the same root would therefore not degrade — `list()`
+would omit it silently, which is worse than a refusal because nothing reports it.
+`createThemeStore(directory)` already takes its directory, so the decision is that a
+kind is a second call rather than a `kind` field on the first, and that the local
+half reads items through the set of registered stores rather than through
+`ThemeStore` directly. **That indirection is this ruling's whole cost at phase A**,
+and it is one hop: without it the local half is written against one store, and the
+second kind rewrites the tab.
+
+**The facets a kind has are its own, and the ones it lacks are absent rather than
+defaulted.** A widget preset is the envelope minus the artboard, so it has no
+orientation, no aspect ratio and no pixel size, and no background to derive a colour
+mode from. Those facets are **not offered** for such an item, and it matches no
+selection in them — the rule the sensors facet already carries, that a theme binding
+nothing matches no sensor selection. A row showing every kind's facets at once would
+be mostly empty controls, and would make "nothing matched" and "not applicable" the
+same answer.
+
+**`item.json` splits into a header the storefront owns and a body the kind owns.**
+The header is what every cell, every filter and every sort needs, so it is the
+storefront's: the id, the kind, the name, the author, the version, the dates, the
+counts, the thumbnail, and the derived facet record. The body is the kind's and the
+storefront never reads inside it, which is what keeps the absence-of-artboard case a
+question about the header rather than a per-kind branch in the UI.
+
+**What this does not do.** It designs no second kind and builds none: open question
+6 still owns the two addenda, and each is settled by the document that owns its
+format. What it buys is that an addendum's work is a new store, a new handler row
+and a new `item.json` body, rather than a second reading of every surface this
+document specifies.
 
 ### The trust ladder
 
@@ -984,10 +1058,12 @@ each on its own phase gate, and each item below is something a person can see:
   sensor, and a theme with no derivable ground or an unbucketed ratio is still
   reachable under "any" and "Other"; paging holds, its numbers show the pages
   nearest the current one, and the page size a viewer chose is still theirs after a
-  reload while a filter is not; a cell opens the item's modal, which shows the
-  theme's preview at its own ratio and closes back onto the same page, filter and
+  reload while a filter is not; a cell opens the item's modal, which contains the
+  theme in a fixed preview stage and closes back onto the same page, filter and
   sort; a package imported from a file appears in that list and survives closing the
-  editor; a theme is assigned to a display from its cell; switching modes with an
+  editor; a theme is assigned to a display from its cell; the local half reads items
+  through a kind's own source rather than through `ThemeStore` directly, so a second
+  kind is a second source and not a rewrite of the tab; switching modes with an
   unsaved document loses nothing; the grid is checked at 1280×720, 1440×900 and 200%
   zoom with every facet still reachable; and `settings.html` no longer lists themes
   while `/settings` and `/library` still work in a plain browser.

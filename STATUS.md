@@ -18,9 +18,9 @@ Drain `docs/product/backlog.jsonl` through the active Superpowers plan. Editor r
 
 ## Last completed change
 
-- The store's gallery is one cell box for both halves — 2/1 picture, 26px facts band, a 272px minimum derived from the online half — so switching tabs cannot change the grid's shape.
-- Ruling 9 amended: the item modal is a viewer, 960px with a fixed stage the theme is contained in, and the facts are pills in three groups instead of a row each.
-- Four drawings updated, `store-detail.html` redrawn; drawings gate and parity exit 0, 34 passed.
+- Ruling 10 makes the item kind an extension point: a stable wire value apart from the display word, one handler table whose missing row is the degradation rule, and a store per kind.
+- The theme store's own `readStoredOrAbsent` answers a non-theme folder as absent, so a second kind under that root would vanish from `list()` rather than be refused — the reason a kind gets its own root.
+- Phase A's acceptance gains the kind-source clause; `store-browse.html`'s skipped-kind line quotes the identifier; drawings gate and parity exit 0, 34 passed.
 
 ## Next
 
