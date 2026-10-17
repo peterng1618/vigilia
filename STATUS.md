@@ -10,7 +10,7 @@ Drain `docs/product/backlog.jsonl` through the active Superpowers plan. Editor r
 ## Active work
 
 - **Active plan:** `2026-10-12-the-backlog-drain.md` — [plan](docs/superpowers/plans/2026-10-12-the-backlog-drain.md); execution ledger: `.superpowers/sdd/2026-10-12-the-backlog-drain/progress.md`.
-- Phase 22 is active; Tasks 22.1–22.3 are closed (vg-147, vg-150, vg-192); Tasks 22.4–22.10 remain pending. Phases 0–11 and 13–20 are closed; Phase 12 and Phase 21 are suspended, not closed; Phase 23 is queued.
+- Phase 22 is active; Tasks 22.1–22.4 are closed (vg-147, vg-150, vg-192, vg-167); Tasks 22.5–22.10 remain pending. Phases 0–11 and 13–20 are closed; Phase 12 and Phase 21 are suspended, not closed; Phase 23 is queued.
 - Phase 21 owes only Task 21.9 Step 3: font-picker keyboard implementation after user spec review and the separate `TAB_BOUND` ruling. Suspension changes scheduling, not either decision.
 - Phase 24's store and colour/gradient work retains user priority; the store spec is revised for acceptance and the colour/gradient one is not, and each needs its own plan before implementation.
 - Register rulings and parked markers live on rows; ledger records completions/rulings, and `dispatch-*.md` records running seats. One phase and one implementation seat at a time.
@@ -18,14 +18,13 @@ Drain `docs/product/backlog.jsonl` through the active Superpowers plan. Editor r
 
 ## Last completed change
 
-- Theme store spec revised 2026-10-17 for acceptance: six user rulings recorded, the three-mode shell folded in, an acceptance section and a six-phase landing order written.
-- The store now shows online and local themes together: import lands in the library, the halves are tabs, and install provenance gets its own consumer-state record (`theme-origins.json`).
-- Three new checked drawings (`store-themes`, `store-browse`, `host-settings`) and `shell.html`'s header; `npm run gate` exit 0, 264 unit files and 3486 tests, drawings gate exit 0.
-- Filed `vg-574` (per-display theme assignment, which lands first) and `vg-575` (Phase 24's acceptance for `vg-388` contradicts the spec's shipping set).
+- Task 22.4 replaces `layer-tree.test.ts`'s structurally empty nested-group assertion with a walk over a constructed card; `vg-167` is verified at ancestor `51c91b07`.
+- Its case fails alone (1 of 50) when the stamp walk in `groupRole` is disabled, and the restore is byte-identical by binary compare and hash; the starter is not read by it.
+- Independent review reproduced the red, the restore and the two surviving assertions, and found no defect; `npm run gate` exit 0 with 264 files and 3487 tests.
 
 ## Next
 
-1. Execute Phase 22 serially: the behavioural proof and fixture repairs, Tasks 22.4–22.10.
+1. Execute Phase 22 serially: the behavioural proof and fixture repairs, Tasks 22.5–22.10.
 2. Review each task against its brief and evidence; run phase gate with exit code and browser results named separately.
 3. Resume Phase 21 after font-picker spec approval and budget ruling; resume Phase 12 after settings-pane spec review.
 4. Re-home unparked rows carried only by closed phases; never treat a mention as a live implementation home.

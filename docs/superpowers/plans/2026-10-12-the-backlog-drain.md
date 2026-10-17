@@ -4329,9 +4329,9 @@ project timeout so wide it hides a real hang.
 **Interfaces:**
 - Produces: `vg-167` closed
 
-- [ ] **Step 1: The assertion the row names is structurally empty.** It filters `row.kind === "group" && row.depth > 0` and expects length 0, which can only fail if the starter gains a nested group by accident, so it asserts nothing about the stamp rule it sits beside.
-- [ ] **Step 2: Walk the projection against a CONSTRUCTED document containing a nested group**, and keep the starter out of it — the starter is product content and its shape is not a test's to choose.
-- [ ] **Step 3: Close it**, having shown the new case fails when the stamp walk is disabled.
+- [x] **Step 1: The assertion the row names is structurally empty.** It filters `row.kind === "group" && row.depth > 0` and expects length 0, which can only fail if the starter gains a nested group by accident, so it asserts nothing about the stamp rule it sits beside.
+- [x] **Step 2: Walk the projection against a CONSTRUCTED document containing a nested group**, and keep the starter out of it — the starter is product content and its shape is not a test's to choose.
+- [x] **Step 3: Close it**, having shown the new case fails when the stamp walk is disabled.
 
 ### Task 22.5: The card-library tautology goes
 
