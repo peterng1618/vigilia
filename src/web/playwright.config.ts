@@ -89,7 +89,7 @@ export default defineConfig({
   // JSON summary feeds dev-status without rerunning the browser suite.
   reporter: [
     [process.env["CI"] === undefined ? "list" : "github"],
-    ["json", { outputFile: "test-results/summary.json" }],
+    ["json"],
   ],
 
   use: {
