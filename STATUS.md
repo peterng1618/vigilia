@@ -18,9 +18,9 @@ Drain `docs/product/backlog.jsonl` through the active Superpowers plan. Editor r
 
 ## Last completed change
 
-- Task 22.1 gives the rebuild project one 60-second budget and removes the memory-rings test's redundant `test.slow()`; assertion deadlines remain unchanged.
-- Measured baseline: memory rings 37.556s; wordmark 27.154s, GPU 24.432s, storage 24.771s. Removing the marker reproduced the 30-second timeout; the project budget passed all nine journey cases.
-- `npm run gate` exit 0: 264 unit files, 3486 tests passed; journey JSON outside the repository records nine passes. Register closure follows the implementation commit's ancestor SHA.
+- Task 22.1 closes `vg-147` as verified and moves its row immediately to the archive; artefacts cite implementation ancestor `05d7c6e2`.
+- Its check records the measured sibling times, 60-second project budget, focused 30-second red and nine-pass journey JSON; `npm run backlog:check` exits 0.
+- Implementation proof: `npm run gate` exit 0, 264 unit files and 3486 tests; Phase 22 scheduling and suspended Phase 21 decisions remain unchanged.
 
 ## Next
 
