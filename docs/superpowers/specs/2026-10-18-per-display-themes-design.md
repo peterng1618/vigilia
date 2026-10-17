@@ -355,7 +355,45 @@ player:
 local monitor rather than a default**, because it is the one theme feature that
 prevents the display from ever idling. The rate setting cannot bound it, so the
 surface that turns it on should say what it costs rather than leaving the person to
-discover it in their power bill. This is open question 8.
+discover it in their power bill.
+
+### What the assignment warns about
+
+**Ruled by the user on 2026-10-18**, asked what a background video does: warn on the
+two combinations that cost, and only those.
+
+| The theme | Assigning to a local monitor | Assigning to a remote display |
+|---|---|---|
+| **glass and a video background** | **warn** — a full-canvas repaint per decoded video frame | **warn** — the same repaint, on a device that is often on battery |
+| **a video background, no glass** | **warn** — the display can never idle, so this PC never reaches its low-power states | nothing — the video is a DOM element the browser composites for free, and a phone showing video is doing what a phone does |
+| glass, no video | nothing | nothing |
+| neither | nothing | nothing |
+
+**The two rows are different problems and the table is why the warning is not one
+rule.** A video *with* glass pays the per-frame canvas repaint — the cost Task 4.7
+narrows to the case that needs it — and that cost is real on any device. A video
+*without* glass pays no repaint at all, and its cost is that the machine cannot
+idle, which is a fact about a PC running a monitor rather than about a phone someone
+is holding. Warning about the second on a phone would be noise, and noise is how a
+warning stops being read.
+
+**Both facts are readable from the theme, so the decision is pure.** A video
+background is `artboard.backgroundMedia.assetId` resolved against `assets` to an
+entry whose `kind` is `video` — the envelope already refuses a `backgroundMedia`
+pointing at anything else (`validateBackgroundMedia` allows `image`, `svg`, `video`).
+Glass is an object carrying a glass treatment, which `renderer-core` owns the
+vocabulary for (`glassTreatment`). So the detection is a function of the envelope
+alone, with no renderer, no DOM and no Fabric: it lives in **`renderer-core`**,
+which is the only layer both the host and a catalogue Action may import, and it
+answers a list of costs rather than a boolean so the surface can say *which* one.
+
+**It is a notice, not a confirm.** The warning appears in the assign surface as soon
+as the theme-and-display pair matches, before the assignment lands — which is the
+moment it is useful — and it does not block. It is advice about a cost, not a
+refusal: a modal on every video theme would be dismissed by reflex within a week and
+would teach people to dismiss the ones that matter. Open question 8 still owns
+whether a video background should ever be refused outright, and the answer to that
+is not this notice's job to pre-empt.
 
 ## Two hosts on one network
 
@@ -973,3 +1011,10 @@ from the session, so a display writes its own key or nothing.
   theme **with** a glass panel does repaint per video frame, which is the price of
   the effect; and a video background does not change the display's configured rate,
   because the rate governs the sample-driven loop and not the video's own cadence.
+- **12 (the assignment warning)** — glass **and** a video background warns for a
+  local monitor **and** for a remote display; a video background with no glass warns
+  for a local monitor and **does not** warn for a remote display; glass alone warns
+  for neither, and a theme with neither warns for neither; the warning names which
+  cost it is rather than saying "performance"; it appears before the assignment
+  lands and does not block it; and the detection is a function of the envelope, so
+  it answers the same for a theme the store has not rendered.

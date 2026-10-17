@@ -63,11 +63,17 @@ plan argues from the spec, so read both. Register row: `vg-574`.
 - **A per-frame repaint needs a reader.** `onFrame`'s `requestRenderAll` exists so a
   glass panel over a video is not a frozen frame, so it is subscribed only when
   something samples the backdrop — and re-evaluated when the scene changes, because
-  a theme can gain a glass panel after mount.
+  a theme can gain a glass panel after mount. **Task 4.7 must leave a video
+  background with no glass repainting zero times**, not merely fewer.
+- **The assignment warns about the two combinations that cost, and only those.**
+  Glass **and** a video background warns for any display; a video background alone
+  warns for a host monitor only; glass alone and neither warn for nothing. The
+  detection is a pure function of the envelope in `renderer-core`, it answers costs
+  rather than a boolean, and it never throws on a theme nothing has validated.
 
 ## Review Focus
 
-Fourteen inputs and conditions the spec implies and no task's own tests exercise.
+Sixteen inputs and conditions the spec implies and no task's own tests exercise.
 Each gets its test in the task named beside it.
 1. **A display whose assigned theme was deleted** — a person removes a theme from
    the library while a wall screen holds it. The display must fall to the default
@@ -120,6 +126,16 @@ Each gets its test in the task named beside it.
 14. **A theme that gains a glass panel after the scene has mounted** — the gate is
     re-evaluated on `update()`, or a video behind a newly-added blur freezes, which
     is the bug the repaint loop was written to fix. (Task 4.7)
+15. **A theme the store fetched but nothing has validated** — the cost detector runs
+    on an envelope the host has not checked, so it must answer "no costs" for
+    anything malformed rather than throwing on a surface that is only trying to be
+    helpful. A warning path that can crash the assign surface is worse than no
+    warning. (Task 4.8)
+16. **An image background declared with a `.mp4` path, and a video declared as
+    `image`** — the declared `kind` decides, because the model already refuses to
+    infer an asset's type from its path. A detector that sniffed the extension would
+    warn about a theme that costs nothing and stay silent about one that does.
+    (Task 4.8)
 
 ---
 
@@ -1853,11 +1869,19 @@ git add src/web/packages/player/src/host-refind.ts src/web/packages/player/src/h
 git commit -m "feat(player): find the host again after its address changes"
 ```
 
-### Task 4.7: The player honours its own rate, and a video stops repainting for nothing
+### Task 4.7: The player honours its own rate, and the unconditional repaint is fixed
 
 Spec § "The host's own monitors" and § "A video background defeats the rate". Two
 changes that only matter together: the rate becomes the display's, and the one thing
 that ignores the rate stops ignoring it.
+
+**This task fixes the unconditional repaint**, and that is a required outcome rather
+than a side effect: `scene.ts` subscribes `onFrame` with no reader at all today, so a
+video background repaints the whole canvas per decoded frame even when nothing
+consumes the result. After this task a video background with no glass repaints the
+canvas **zero** times for it. The one case that still repaints per frame — glass over
+a video — is the effect's own price, and Task 4.8 warns about it rather than this
+task hiding it.
 
 **Files:**
 - Modify: `src/web/packages/host/src/server.ts` (`/api/published` carries the rate)
@@ -1943,6 +1967,129 @@ Expected: PASS.
 ```bash
 git add src/web/packages/host/src/server.ts src/web/packages/host/src/server.test.ts src/web/packages/player/src/main.ts src/web/packages/player/src/main.test.ts src/web/packages/scene-fabric/src/scene.ts src/web/packages/scene-fabric/src/scene.dom.test.ts
 git commit -m "feat(player): refresh at the display's own rate, and stop repainting for a video nobody samples"
+```
+
+### Task 4.8: The assignment says what the theme will cost
+
+Spec § "What the assignment warns about". The user's rule, 2026-10-18: glass **and**
+a video background warns for any display; a video background alone warns for a host
+monitor only.
+
+**Files:**
+- Create: `src/web/packages/renderer-core/src/theme/performance-cost.ts`
+- Create: `src/web/packages/renderer-core/src/theme/performance-cost.test.ts`
+- Modify: `src/web/packages/renderer-core/src/index.ts` (the public barrel)
+- Modify: `src/web/packages/editor/src/theme-library-client.ts`
+- Test: `src/web/packages/editor/src/theme-library-client.test.ts`
+
+**Interfaces:**
+- Consumes: `glassTreatment`, `VIGILIA_GLASS_PROPERTY` (`renderer-core/src/theme/glass.ts`);
+  the envelope's `artboard.backgroundMedia` and `assets`; `DisplayKind` (Task 1.1).
+- Produces:
+
+```ts
+export type PerformanceCost = "glass-over-video" | "video-background";
+/** What this theme costs to display, read from the envelope alone. */
+export function performanceCostsOf(envelope: unknown): readonly PerformanceCost[];
+/** Which of those costs matter for a display of this kind. */
+export function costsFor(kind: DisplayKind, costs: readonly PerformanceCost[]): readonly PerformanceCost[];
+/** The sentence a surface shows, one per cost. Empty when there is nothing to say. */
+export function costWarnings(kind: DisplayKind, costs: readonly PerformanceCost[]): readonly string[];
+```
+
+- [ ] **Step 1: Write the failing test**
+
+```ts
+// performance-cost.test.ts — envelopes built inline, no renderer, no DOM.
+it("finds a video background and no glass", () => {
+  expect(performanceCostsOf(videoOnly)).toEqual(["video-background"]);
+});
+
+it("finds glass over a video", () => {
+  expect(performanceCostsOf(videoWithGlass)).toEqual(["glass-over-video"]);
+});
+
+it("finds neither for a plain theme, and neither for glass over an image", () => {
+  expect(performanceCostsOf(plain)).toEqual([]);
+  expect(performanceCostsOf(glassOverImage)).toEqual([]);
+});
+
+it("does not call an image background a video one", () => {
+  // The same envelope with asset.kind "image" -> no cost. The declaration is what
+  //   decides, not the file extension, which the model already refuses to infer.
+});
+
+it("warns about glass over video for both kinds of display", () => {
+  for (const kind of ["local", "paired"] as const) {
+    expect(costWarnings(kind, ["glass-over-video"])).toHaveLength(1);
+  }
+});
+
+it("warns about a video background only for a local monitor", () => {
+  expect(costWarnings("local", ["video-background"])).toHaveLength(1);
+  expect(costWarnings("paired", ["video-background"])).toEqual([]);
+});
+
+it("says nothing for a theme with no cost", () => {
+  expect(costWarnings("local", [])).toEqual([]);
+});
+
+it("names the cost rather than saying 'performance'", () => {
+  // Each sentence names the repaint or the idle, so the reader can act on it.
+  for (const cost of ["glass-over-video", "video-background"] as const) {
+    expect(costWarnings("local", [cost])[0]).toMatch(/repaint|idle|never/i);
+  }
+});
+
+// theme-library-client.test.ts
+it("reports the warnings with the display list, so the surface can show them", async () => {
+  // listDisplays() (Task 4.4) gains the costs per display, or assign() answers
+  //   them — either way the surface has them before the assignment lands.
+});
+```
+
+- [ ] **Step 2: Run test to verify it fails**
+
+Run: `npx vitest run packages/renderer-core/src/theme/performance-cost.test.ts`
+Expected: FAIL — cannot resolve `./performance-cost.js`.
+
+- [ ] **Step 3: Implement**
+
+`performanceCostsOf` reads the envelope and answers costs, in a fixed order so the
+surface's output is stable. A video background is `artboard.backgroundMedia.assetId`
+resolved against `assets` to an entry whose **declared** `kind` is `"video"` — the
+declaration decides, because the model already refuses to infer an asset's type from
+its path (`AssetKind`'s own comment). Glass is any object carrying a treatment under
+`VIGILIA_GLASS_PROPERTY`, found by walking the scene the way `glass.ts`'s own
+`walk` does — but **reuse `glassTreatment` rather than re-testing the property**, so
+the vocabulary keeps one owner.
+
+**The function takes `unknown`, not an envelope.** It is called on a theme the store
+fetched and has not validated, so it must answer for anything and never throw: a
+malformed envelope has no costs rather than an exception on a surface that is only
+trying to be helpful.
+
+`costWarnings` is the user's table and nothing else: `glass-over-video` warns for
+both kinds, `video-background` only for `local`. **One sentence per cost, naming the
+cost** — "repaints the whole canvas for every video frame" and "cannot idle, so this
+PC never reaches its low-power states" — because a warning that says "performance"
+is a warning nobody can act on.
+
+The assign surface shows them **beside the assign control as soon as the pair
+matches**, before the assignment lands, and does not block it. It is a notice: a
+modal on every video theme would be dismissed by reflex and would train people to
+dismiss the ones that matter.
+
+- [ ] **Step 4: Run test to verify it passes**
+
+Run: `npx vitest run packages/renderer-core/src/theme/performance-cost.test.ts packages/editor/src/theme-library-client.test.ts`
+Expected: PASS.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add src/web/packages/renderer-core/src/theme/performance-cost.ts src/web/packages/renderer-core/src/theme/performance-cost.test.ts src/web/packages/renderer-core/src/index.ts src/web/packages/editor/src/theme-library-client.ts src/web/packages/editor/src/theme-library-client.test.ts
+git commit -m "feat(store): the assignment says what the theme will cost the display"
 ```
 
 ---
