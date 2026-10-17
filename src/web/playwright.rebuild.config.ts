@@ -43,5 +43,7 @@ export default defineConfig({
     timeout: 60_000,
   },
 
-  projects: [{ name: "rebuild" }],
+  // Memory rings measured 37.6s; wordmark/GPU/storage 24.4–27.2s (vg-147).
+  // One minute leaves headroom without tripling individual tests' budgets.
+  projects: [{ name: "rebuild", timeout: 60_000 }],
 });

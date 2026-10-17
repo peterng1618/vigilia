@@ -18,9 +18,10 @@ Drain `docs/product/backlog.jsonl` through the active Superpowers plan. Editor r
 
 ## Last completed change
 
-- Filed user request `vg-568`: tap-revealed semi-translucent fullscreen control at phone player's top-right; bounded behavior proposed, approval pending, no product code changed.
-- Reproduced `vg-567` on rebuilt disposable host: Starter link opens saved sentinel; File → New from starter → Save to library creates selectable System dashboard. Physical phone not tested; issue 35 updated.
-- Starter routing fix also awaits bounded approval; existing resume-latest-save policy and stored-theme publishing guard remain intact.
+- Task 22.1 closes `vg-147` as verified and moves its row immediately to the archive; artefacts cite implementation ancestor `05d7c6e2`.
+- Its check records the measured sibling times, 60-second project budget, focused 30-second red and nine-pass journey JSON; `npm run backlog:check` exits 0.
+- Implementation proof: `npm run gate` exit 0, 264 unit files and 3486 tests; Phase 22 scheduling and suspended Phase 21 decisions remain unchanged.
+- Filed user requests `vg-567` and `vg-568`: starter routing reproduced on rebuilt disposable host; phone fullscreen control remains proposed and unimplemented.
 
 ## Next
 
