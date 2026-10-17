@@ -54,14 +54,20 @@ plan argues from the spec, so read both. Register row: `vg-574`.
   (no `detached`), relaunch on start, and **only ever close a window this launcher
   opened** — a browser the owner started is not the host's to kill. One autostart
   entry covers every monitor.
-- **A local monitor's client must not become the load it reports.** Default it to
-  1 fps, never leave it animating when idle, and do not raise the host's sampling
-  cadence for it. `server.ts`'s `tick` returning on `connections.size === 0` is a
-  property to keep, not to work around.
+- **A local monitor's client must not become the load it reports.** The chart rate
+  is **per display** — a local monitor defaults to 1 fps, a remote display to 30 —
+  and it is read from `chartFpsFor`, never re-decided by a caller and never
+  hardcoded in the player. Never leave a local monitor animating when idle, and do
+  not raise the host's sampling cadence for it. `server.ts`'s `tick` returning on
+  `connections.size === 0` is a property to keep, not to work around.
+- **A per-frame repaint needs a reader.** `onFrame`'s `requestRenderAll` exists so a
+  glass panel over a video is not a frozen frame, so it is subscribed only when
+  something samples the backdrop — and re-evaluated when the scene changes, because
+  a theme can gain a glass panel after mount.
 
 ## Review Focus
 
-Twelve inputs and conditions the spec implies and no task's own tests exercise.
+Fourteen inputs and conditions the spec implies and no task's own tests exercise.
 Each gets its test in the task named beside it.
 1. **A display whose assigned theme was deleted** — a person removes a theme from
    the library while a wall screen holds it. The display must fall to the default
@@ -106,6 +112,14 @@ Each gets its test in the task named beside it.
     removal must close the window the host opened, and must never kill a browser it
     did not launch. Getting this backwards closes someone's own browsing session.
     (Task 1.8)
+13. **A video background with no glass panel** — the per-frame canvas repaint exists
+    only so a blur over a video is not a frozen frame, so a theme with no glass must
+    repaint zero times for it. A 60 fps background repainting a 1440p canvas 60 times
+    a second is the largest single cost this product can impose on itself, and it is
+    imposed for nothing. (Task 4.7)
+14. **A theme that gains a glass panel after the scene has mounted** — the gate is
+    re-evaluated on `update()`, or a video behind a newly-added blur freezes, which
+    is the bug the repaint loop was written to fix. (Task 4.7)
 
 ---
 
@@ -151,8 +165,10 @@ Each gets its test in the task named beside it.
     - `export const DEFAULT_DISPLAY = "default"`
     - `export type DisplayKind = "paired" | "local"`
     - `export interface MonitorHint { readonly serial?: string; readonly deviceName: string }`
-    - `export interface DisplayRecord { readonly id: string; readonly label: string; readonly kind: DisplayKind; readonly createdAt: string; readonly lastSeenAt: string; readonly tokenHash?: string; readonly monitor?: MonitorHint }`
-    - `export interface DisplayStore { list(): Promise<readonly DisplayRecord[]>; create(label: string, token: string): Promise<DisplayRecord>; createLocal(label: string, monitor: MonitorHint): Promise<DisplayRecord>; find(id: string): Promise<DisplayRecord | undefined>; authenticate(token: string): Promise<DisplayRecord | undefined>; rotate(id: string, token: string): Promise<DisplayRecord | undefined>; rename(id: string, label: string): Promise<DisplayRecord | undefined>; touch(id: string, at: string): Promise<void>; remove(id: string): Promise<boolean> }`
+    - `export interface DisplayRecord { readonly id: string; readonly label: string; readonly kind: DisplayKind; readonly createdAt: string; readonly lastSeenAt: string; readonly tokenHash?: string; readonly monitor?: MonitorHint; readonly chartFps?: ChartRefreshRate }`
+    - `export function chartFpsFor(record: Pick<DisplayRecord, "kind" | "chartFps">): ChartRefreshRate` — the record's own rate, else `1` for `local` and `30` for `paired`. One function, so no caller re-decides the default.
+    - `export interface DisplayStore { list(): Promise<readonly DisplayRecord[]>; create(label: string, token: string): Promise<DisplayRecord>; createLocal(label: string, monitor: MonitorHint): Promise<DisplayRecord>; find(id: string): Promise<DisplayRecord | undefined>; authenticate(token: string): Promise<DisplayRecord | undefined>; rotate(id: string, token: string): Promise<DisplayRecord | undefined>; update(id: string, patch: DisplayPatch): Promise<DisplayRecord | undefined>; touch(id: string, at: string): Promise<void>; remove(id: string): Promise<boolean> }`
+    - `export interface DisplayPatch { readonly label?: string; readonly chartFps?: ChartRefreshRate }` — one mutator for the two things a person edits, because both are "change this field and nothing else" and neither may touch the id.
     - `export function normalizeLabel(input: unknown): string` — trims, refuses empty and over-64, and is **not** the slug rule (spec § "Renaming a display").
     - `export function hashToken(token: string): string` — `createHash("sha256").update(token).digest("base64url")`, so nothing else in the tree decides how a credential is stored.
     - `export function createDisplayStore(directory: string, options?: { readonly now?: () => number; readonly randomSuffix?: () => string }): DisplayStore`
@@ -234,7 +250,7 @@ describe("createDisplayStore", () => {
   // Renaming: the label moves, the id does not.
   it("renames without moving the id or the creation time", async () => {
     const before = await store.create("office tv", "tok");
-    const after = await store.rename(before.id, "Kitchen");
+    const after = await store.update(before.id, { label: "Kitchen" });
     expect(after).toMatchObject({ id: before.id, label: "Kitchen", createdAt: before.createdAt });
     expect((await store.find(before.id))?.label).toBe("Kitchen");
   });
@@ -242,24 +258,24 @@ describe("createDisplayStore", () => {
   it("refuses a label that is empty or only whitespace", async () => {
     const record = await store.create("office tv", "tok");
     for (const label of ["", "   ", "\t\n"]) {
-      await expect(store.rename(record.id, label)).rejects.toThrow(/label/);
+      await expect(store.update(record.id, { label })).rejects.toThrow(/label/);
     }
     expect((await store.find(record.id))?.label).toBe("office tv");
   });
 
   it("trims a label, and accepts one the slug rule would refuse", async () => {
     const record = await store.create("office tv", "tok");
-    expect((await store.rename(record.id, "  Living Room (TV)  "))?.label).toBe("Living Room (TV)");
+    expect((await store.update(record.id, { label: "  Living Room (TV)  " }))?.label).toBe("Living Room (TV)");
   });
 
   it("answers undefined for renaming a display it does not know", async () => {
-    expect(await store.rename("nobody", "Kitchen")).toBeUndefined();
+    expect(await store.update("nobody", { label: "Kitchen" })).toBeUndefined();
   });
 
   it("lets two displays hold the same label", async () => {
     const a = await store.create("Kitchen", "t1");
     const b = await store.create("Kitchen", "t2");
-    await store.rename(b.id, "Kitchen");
+    await store.update(b.id, { label: "Kitchen" });
     expect(a.id).not.toBe(b.id);
     expect((await store.list()).filter((d) => d.label === "Kitchen")).toHaveLength(2);
   });
@@ -275,6 +291,20 @@ describe("createDisplayStore", () => {
 
   it("refuses to mint a local display for a reserved id", async () => {
     await expect(store.createLocal("this pc", { deviceName: "\\\\.\\DISPLAY2" })).rejects.toThrow(/reserved/);
+  });
+
+  // The rate is per display, defaulted by kind (ruling, 2026-10-18).
+  it("defaults the rate by kind and lets a record override it", () => {
+    expect(chartFpsFor({ kind: "local" })).toBe(1);
+    expect(chartFpsFor({ kind: "paired" })).toBe(30);
+    expect(chartFpsFor({ kind: "local", chartFps: 30 })).toBe(30);
+    expect(chartFpsFor({ kind: "paired", chartFps: 1 })).toBe(1);
+  });
+
+  it("keeps a stored rate and refuses one that is not 1 or 30", async () => {
+    // update(id, { chartFps: 1 }) survives a new store over the same directory; a stored
+    //   chartFps of 7 is dropped on read rather than carried, so the kind's
+    //   default answers instead of a rate the player cannot run.
   });
 });
 ```
@@ -326,7 +356,7 @@ the host's own single process.
 add**, and both are small because the record already carries everything they need.
 `createLocal(label, monitor)` is `create` minus the token: it slugs the id the same
 way, refuses the same two reserved ids, and writes `kind: "local"` with a `monitor`
-hint and no `tokenHash`. `rename(id, label)` runs `normalizeLabel` and writes the
+hint and no `tokenHash`. `update(id, patch)` runs `normalizeLabel` on a label and validates a rate, and writes the
 label **and nothing else** — not the id, not `createdAt`, not the assignment, which
 is the invariant the spec's § "Renaming a display" is entirely about.
 `normalizeLabel` trims, refuses a result shorter than 1 or longer than 64, and
@@ -521,7 +551,7 @@ record and calls `displays.rotate(id, newToken())`. Both answer 201 with
 `{ display, token }` — the token is returned exactly once, because only its hash is
 stored. `GET` answers `{ displays }`. `DELETE /api/displays/:id` calls
 `displays.remove(id)`, and refuses `LOCAL_DISPLAY_ID`. `PATCH /api/displays/:id`
-calls `displays.rename(id, body.label)` and answers the updated record, so the
+calls `displays.update(id, body)` and answers the updated record, so the
 surface does not have to refetch the list to redraw one row.
 
 **Rotation is why the answer carries a token and the list never does.** `GET
@@ -1821,6 +1851,98 @@ Expected: PASS.
 ```bash
 git add src/web/packages/player/src/host-refind.ts src/web/packages/player/src/host-refind.test.ts src/web/packages/player/src/session.ts src/web/packages/player/src/session.test.ts src/web/packages/player/src/main.ts
 git commit -m "feat(player): find the host again after its address changes"
+```
+
+### Task 4.7: The player honours its own rate, and a video stops repainting for nothing
+
+Spec § "The host's own monitors" and § "A video background defeats the rate". Two
+changes that only matter together: the rate becomes the display's, and the one thing
+that ignores the rate stops ignoring it.
+
+**Files:**
+- Modify: `src/web/packages/host/src/server.ts` (`/api/published` carries the rate)
+- Test: `src/web/packages/host/src/server.test.ts`
+- Modify: `src/web/packages/player/src/main.ts`
+- Test: `src/web/packages/player/src/main.test.ts`
+- Modify: `src/web/packages/scene-fabric/src/scene.ts`
+- Test: `src/web/packages/scene-fabric/src/scene.dom.test.ts`
+
+**Interfaces:**
+- Consumes: `chartFpsFor` (Task 1.1); `/api/published` (Task 4.2); `startChartRefresh`
+  and `ChartRefreshRate` (`scene-fabric`).
+- Produces:
+  - `/api/published`'s `display` gains `readonly chartFps: ChartRefreshRate`.
+  - `mountFabricScene` subscribes `onFrame` **only when a backdrop reader exists**:
+    `FabricSceneOptions` gains `readonly samplesBackdrop?: () => boolean`, and
+    `scene.ts` passes `onFrame` only when it answers true at mount.
+
+- [ ] **Step 1: Write the failing test**
+
+```ts
+// server.test.ts
+it("carries the display's rate on the poll the player already makes", async () => {
+  // A local display with no rate set -> /api/published's display.chartFps is 1.
+  // The same display after update(id, { chartFps: 30 }) -> 30.
+});
+
+// main.test.ts
+it("starts the refresh loop at the rate the host gave it", async () => {
+  // A published display with chartFps 1 -> startChartRefresh called with 1, not
+  //   the 30 the player used to hardcode.
+});
+
+it("follows a rate change without a reload", async () => {
+  // The poll answers a new rate -> setRate is called on the existing loop.
+});
+
+// scene.dom.test.ts
+it("starts no per-frame repaint when nothing samples the backdrop", async () => {
+  // A video background and samplesBackdrop() === false -> no
+  //   requestVideoFrameCallback was ever registered, so a 60 fps video repaints
+  //   the canvas zero times.
+});
+
+it("still repaints per frame when a glass panel samples the backdrop", async () => {
+  // samplesBackdrop() === true -> one callback per decoded frame, because a
+  //   frozen frame behind a blur is the bug the loop exists to prevent.
+});
+```
+
+- [ ] **Step 2: Run test to verify it fails**
+
+Run: `npx vitest run packages/player/src/main.test.ts packages/scene-fabric/src/scene.dom.test.ts`
+Expected: FAIL — `chartFps` is undefined; the frame callback is registered either way.
+
+- [ ] **Step 3: Implement**
+
+`/api/published` answers `chartFpsFor(record)` for the asking display, so the player
+reads its rate from the poll it already makes and no new route appears. The player
+passes it to `startChartRefresh` and calls `setRate` when a later poll changes it —
+the loop already has `setRate`, so this is a call and not a restart.
+
+**The gate is `samplesBackdrop`, and it is the point of the task.** `scene.ts` today
+passes `onFrame: () => canvas.requestRenderAll()` unconditionally, and
+`background-media.ts` drives it from `requestVideoFrameCallback`, so a 60 fps video
+repaints the whole canvas 60 times a second whether or not anything reads the
+backdrop. Only glass does — `createGlass` is the one consumer, through
+`backdrop()`. So the caller answers whether any object in the scene carries a glass
+treatment, and `scene.ts` subscribes `onFrame` only then. **Re-evaluate it on
+`update()`**, because a theme can gain a glass panel after mount, and a frozen frame
+behind a blur is exactly the bug the loop was added for.
+
+Keep `background-media.ts` unchanged: it already starts no loop unless a video is the
+media and an `onFrame` was given, which is the same reasoning one level up.
+
+- [ ] **Step 4: Run test to verify it passes**
+
+Run: `npx vitest run packages/player/src/main.test.ts packages/scene-fabric/src/scene.dom.test.ts packages/scene-fabric/src/background-media.dom.test.ts packages/host/src/server.test.ts`
+Expected: PASS.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add src/web/packages/host/src/server.ts src/web/packages/host/src/server.test.ts src/web/packages/player/src/main.ts src/web/packages/player/src/main.test.ts src/web/packages/scene-fabric/src/scene.ts src/web/packages/scene-fabric/src/scene.dom.test.ts
+git commit -m "feat(player): refresh at the display's own rate, and stop repainting for a video nobody samples"
 ```
 
 ---

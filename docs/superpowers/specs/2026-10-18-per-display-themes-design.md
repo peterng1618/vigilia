@@ -261,11 +261,18 @@ load of its own. Read from the code, the cost is **not** where the host is:
   once and offers one already-serialized payload to each. A second local monitor
   costs one more write, not a second sampling cycle; the only host-side growth is
   keys a new theme binds that no existing theme did.
-- **Repaint rate is the dominant client cost, not the engine.** `ChartRefreshRate`
-  is `1 | 30`, and every repaint in a scene goes through `startChartRefresh`'s one
-  loop. A local monitor should default to **1 fps** and the rate should be
-  per-display, because a dashboard nobody is touching has no reason to draw thirty
-  times a second.
+- **Repaint rate is the dominant client cost, not the engine, and it is a
+  per-display setting.** `ChartRefreshRate` is `1 | 30` and every repaint in a scene
+  goes through `startChartRefresh`'s one loop. **Ruled by the user on 2026-10-18:
+  the rate belongs to the display, a local monitor defaults to 1 fps, and a remote
+  display defaults to 30.** That is the right split because the two cases are not
+  the same product: a wall screen on this PC is glanced at, while a phone or tablet
+  someone is holding is looked at, and a dashboard nobody is touching has no reason
+  to draw thirty times a second. So the rate is a field on the display record,
+  defaulted by `kind`, carried to the player on the poll it already makes
+  (`/api/published`), and overridable per display — not a constant in the player and
+  not a property of the theme, because two displays showing one theme want different
+  rates.
 - **The loop as written does not idle, and that is the defect to fix here.**
   `startChartRefresh`'s `tick` re-arms `requestAnimationFrame` on **every frame**
   and returns early when the rate has not elapsed — so at 1 fps it still wakes the
@@ -292,7 +299,63 @@ full browser at the cost of three platform implementations. Neither is worth it
 against a repaint-rate fix that costs one function. `--disable-gpu` is **not**
 recommended without measuring: for a mostly-static 1 fps canvas, software raster
 may use less power than keeping a GPU process alive, and that is a probe rather
-than a conclusion.
+than a conclusion — **and it is off the table entirely for a theme with a video
+background**, because hardware decode is what makes video cheap on the CPU.
+
+### A video background defeats the rate, and mostly for nothing
+
+The user asked on 2026-10-18 what a background video does to all of this. Read from
+the code, the answer is that **1 fps does not survive a video, and the reason is a
+repaint nobody asked for.**
+
+`scene.ts` mounts the artboard's media with
+`onFrame: () => canvas.requestRenderAll()`, and `background-media.ts`'s
+`followFrames` drives that from `requestVideoFrameCallback` — one callback per
+*decoded video frame*. So a 60 fps background repaints the whole Fabric canvas 60
+times a second, and the per-display rate never applies: the loop `startChartRefresh`
+owns is not the loop the video is on. On a 2560×1440 canvas that is 60 full-canvas
+rasters a second, which is precisely the load this product must not add.
+
+**And the repaint is only needed for glass.** The file says why it exists:
+*"Fabric cannot see a `<video>` that is a DOM sibling rather than an object, so
+nothing repaints and the glass keeps a still frame of a moving background."* That
+is a statement about **glass panels**, which sample the media layer through
+`backdrop()` — a panel blurring a video has to be re-composited as the video moves,
+or it shows one frozen frame. A theme with a video background and **no glass panel**
+has no such reader: the video is a plain DOM element below a transparent canvas, the
+browser composites it on the GPU for free, and every one of those 60 repaints a
+second is pure waste.
+
+So the fix is a gate rather than a rate: **subscribe `onFrame` only when something
+actually samples the backdrop**, which is the same "nothing subscribes unless a
+video is the media" reasoning the file already applies one level up — an image
+background starts no loop at all. With the gate, a video background with no glass
+costs what a video costs and no more; with glass it costs a repaint per frame, which
+is the price of the effect and is worth saying out loud on the surface.
+
+**What the video costs regardless, and cannot be tuned away.** Decode and composite
+at the video's own frame rate, forever — it cannot idle, because idling it is
+pausing the thing the theme is for. The levers are all in the **asset**, not the
+player:
+
+- **Frame rate and resolution of the file.** A 60 fps 4K background on a 1080p
+  screen is 4× the decode for pixels nobody sees; 24–30 fps at the screen's own size
+  is the honest authoring target, and it is the theme author's choice rather than a
+  runtime setting.
+- **Codec.** One the platform hardware-decodes (H.264/H.265 in MP4) is
+  dramatically cheaper on the CPU than one it does not — and this is a property of
+  what an author puts in a package, so it belongs in the store's own guidance for
+  the kind rather than in the player.
+- **It is one video at most.** `Artboard` carries a single `backgroundMedia`, so
+  there is no stacking case to design for.
+- **`muted`, `autoplay`, `loop` and `playsInline` are already set**, so there is no
+  audio path and no autoplay-policy stall to fix.
+
+**The honest recommendation is that a video background is a deliberate choice on a
+local monitor rather than a default**, because it is the one theme feature that
+prevents the display from ever idling. The rate setting cannot bound it, so the
+surface that turns it on should say what it costs rather than leaving the person to
+discover it in their power bill. This is open question 8.
 
 ## Two hosts on one network
 
@@ -666,8 +729,8 @@ outranks the map for exactly as long as it is in the URL.
 | `GET /api/pairing/sessions` | loopback | the live codes **and** the known displays |
 | `POST /api/pairing/sessions?label=` | loopback | a new display, its durable credential and a one-time code |
 | `POST /api/pairing/sessions?displayId=` | loopback | **replaces** that display's credential — rotation — keeping its record, its theme and its answers |
-| `PATCH /api/displays/:id` | loopback | `{ label }` — **renames, and changes nothing else**; the id does not move |
-| `POST /api/displays` | loopback | `{ label, monitor }` — **a local monitor**, a display with no credential, launched at once |
+| `PATCH /api/displays/:id` | loopback | `{ label?, chartFps? }` — **renames and sets the rate, and changes nothing else**; the id does not move |
+| `POST /api/displays` | loopback | `{ label, monitor, chartFps? }` — **a local monitor**, a display with no credential, launched at once |
 | `GET /api/displays/monitors` | loopback | what `systeminformation` reports is attached, for the owner to pick from |
 | `POST /api/displays/autostart` | loopback | registers the **host** to start at sign-in, so every local monitor survives a reboot |
 | `DELETE /api/displays/:id` | loopback | **removes the client**: the record, its credential, its assignment, its answers, **and its window** |
@@ -675,7 +738,7 @@ outranks the map for exactly as long as it is in the URL.
 | `PUT /api/themes/active` | loopback | `{ display: "<id>" \| "default", id }` — any display, and the default |
 | `PUT /api/themes/active` | paired | `{ id }` — **its own entry only**, named by its session |
 | `GET /api/themes` | loopback or paired | the library, for the display's own chooser. **Already the case** (`server.ts`'s display guard), so nothing is added |
-| `GET /api/published` | loopback or paired | `{ id, revision, display: { id, theme } }` |
+| `GET /api/published` | loopback or paired | `{ id, revision, display: { id, theme, chartFps } }` — the poll the player already makes carries its own rate |
 
 **Two routes are reachable unpaired, and each is deliberately boring.** `GET
 /api/host` says only what a re-find needs and never what a stranger would want; the
@@ -786,6 +849,14 @@ from the session, so a display writes its own key or nothing.
    change it**, and the change is one function — but it is `scene-fabric`'s, it
    affects the editor's live view too, and it wants its own measurement rather than
    being folded into this design.
+8. **Whether a video background is allowed on a local monitor, warned about, or
+   refused.** § "A video background defeats the rate" establishes that it is the one
+   theme feature the per-display rate cannot bound, and that it prevents the display
+   from ever idling. **Recommended: allowed and stated**, because a video background
+   is a legitimate look and the person choosing it is the one paying for it — but
+   the Host settings surface should say so beside the monitor rather than leaving it
+   to be discovered. What would change the answer is a measured power cost large
+   enough that the honest thing is a refusal.
 
 ## Not verified, and must be before this is planned
 
@@ -891,7 +962,14 @@ from the session, so a display writes its own key or nothing.
   window**; the host registers itself at sign-in with one entry that covers every
   monitor, including one added later; and a PC with no browser the host can find
   says so rather than showing nothing.
-- **10 (cost)** — a local monitor defaults to **1 fps**, the rate is per-display, and
-  a local monitor's idle state does not repaint; the host samples nothing while no
-  display is connected; and adding a second local monitor whose theme binds no new
-  key does not increase the host's sampling.
+- **10 (cost)** — the chart rate is **per display**: a local monitor defaults to 1
+  fps and a remote display to 30, a display's rate survives a restart, changing it
+  for one display does not change another's, and the player honours the rate it was
+  given rather than a constant; a local monitor's idle state does not repaint; the
+  host samples nothing while no display is connected; and adding a second local
+  monitor whose theme binds no new key does not increase the host's sampling.
+- **11 (video)** — a theme with a video background and **no glass panel** starts no
+  per-frame canvas repaint at all, because nothing samples the backdrop; the same
+  theme **with** a glass panel does repaint per video frame, which is the price of
+  the effect; and a video background does not change the display's configured rate,
+  because the rate governs the sample-driven loop and not the video's own cadence.
