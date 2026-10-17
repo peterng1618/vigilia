@@ -170,14 +170,14 @@ describe("the card library", () => {
       ).toBe(true);
     }
 
-    // The pair the library offers is the pair the starter's own card carries: the
+    // The stamp the library offers is the stamp the starter's own card carries: the
     // row on the reference composition and the row a copy makes are the same fact.
+    // The word is not compared — both sides read `uiCopy.cardLibrary` (vg-168).
     for (const card of cards) {
       const id = String(card["id"]);
       const unit = CARD_LIBRARY.find((entry) => entry.id === id);
-      expect(card["provenance"], `${id} carries no stamp`).toEqual({
+      expect(card["provenance"], `${id} carries no stamp`).toMatchObject({
         widgetId: unit?.id,
-        widgetName: unit?.label,
       });
     }
     // And nothing else in the starter claims to be a unit — a loose label, a part

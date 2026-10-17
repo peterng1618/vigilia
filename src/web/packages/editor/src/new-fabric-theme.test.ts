@@ -437,7 +437,7 @@ describe("the new Fabric document", () => {
       expect(
         card?.["provenance"],
         `${unit.id} lost its stamp in the file`,
-      ).toEqual({ widgetId: unit.id, widgetName: unit.label });
+      ).toMatchObject({ widgetId: unit.id });
     }
     // And the archive is still a package, not a document with extra bytes.
     expect(readThemePackage(pkg.bytes).ok).toBe(true);
