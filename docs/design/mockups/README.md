@@ -1,7 +1,7 @@
 # Design mockups
 
 **`current/` is the target.** The editor is being rebuilt towards the original
-visual direction as those nine files draw it, and they are **checked at every
+visual direction as those eleven files draw it, and they are **checked at every
 plan gate** — not read once and remembered. The three originals below them are
 the record of the first cut, not the target.
 
@@ -23,8 +23,10 @@ guess between them.
 | [`current/settings-about.html`](current/settings-about.html) | The same modal with §7's About panel showing: what the editor is, and the version facts this build can read |
 | [`current/controls.html`](current/controls.html) | The inspector column as it renders, in the reference palette: wells, a slider, segmented rows, the read-only treatment, a refusal |
 | [`current/controls-editorial.html`](current/controls-editorial.html) | The same column on the editorial ground — the same file with the token table swapped, so a hard-coded colour cannot hide in it |
-| [`current/store-themes.html`](current/store-themes.html) | The shell in its Themes mode, Your themes half: the mode switch in the header, the two halves as tabs beside the filter and the sort, and library rows carrying their origin badge |
-| [`current/store-browse.html`](current/store-browse.html) | The same mode's Store half: catalogue rows with their kind, their counts and their dates, Install, Installed and Update, and the line that says which kinds this build skipped |
+| [`current/store-themes.html`](current/store-themes.html) | The shell in its Themes mode, Your themes half: the mode switch in the header, the two halves as tabs beside the search box, the five facet buttons and the sort, a four-column gallery of cells carrying their origin badge, and the numbered pager |
+| [`current/store-browse.html`](current/store-browse.html) | The same mode's Store half with the Sensors facet chosen — two values, so every cell drawn reads both: cells with their kind, their counts and their dates, Install, Installed and Update, the pager's five-nearest-pages case with its ellipses, and the line that says which kinds this build skipped |
+| [`current/store-facets.html`](current/store-facets.html) | The one new control on its own: a facet button open, drawn on Shape because that is the facet with three groups — orientation, aspect ratio and pixel size, each with its counts, each group's values summing to the catalogue, and `Other` carrying the long tail |
+| [`current/store-detail.html`](current/store-detail.html) | The item's own surface: one modal for every kind, the preview at the theme's own ratio, and the description, the sensors, the shape, the tags and the local facts a cell has no room for |
 | [`current/host-settings.html`](current/host-settings.html) | The shell in its This PC mode: the displays and the theme each shows, the device groups and their names, the display settings, and one theme's unanswered question |
 
 ## The originals — the record

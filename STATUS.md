@@ -18,9 +18,9 @@ Drain `docs/product/backlog.jsonl` through the active Superpowers plan. Editor r
 
 ## Last completed change
 
-- Task 22.4 replaces `layer-tree.test.ts`'s structurally empty nested-group assertion with a walk over a constructed card; `vg-167` is verified at ancestor `51c91b07`.
-- Its case fails alone (1 of 50) when the stamp walk in `groupRole` is disabled, and the restore is byte-identical by binary compare and hash; the starter is not read by it.
-- Independent review reproduced the red, the restore and the two surviving assertions, and found no defect; `npm run gate` exit 0 with 264 files and 3487 tests.
+- Theme store spec gains the third-pass rulings: a Shape facet, tags picked rather than typed, a responsive grid, a numbered pager, and the item detail modal.
+- The tag model changed from an enum to shape validation plus a pick-or-propose field, so a tag the vocabulary does not know is writable before the vocabulary grows to hold it.
+- The store mode is four drawings now, `store-facets.html` and `store-detail.html` new; drawings gate exit 0, parity 34 passed.
 
 ## Next
 

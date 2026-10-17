@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Vigilia theme store — a theme</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #0b0e12; font: 12px system-ui, -apple-system, 'Segoe UI', sans-serif; }
+</style>
+</head>
+<body>
+<!-- The item's own surface, drawn on its own the way the settings drawings are:
+     a cell in the gallery answers *what does this look like*, and it has room for
+     a name, an author and a badge — not for the description, the version, the
+     sensors and the shape that decide whether someone wants the thing.
+
+     **One modal for every kind.** The subject is an item, not a theme: `kind` is
+     already the seam the storefront reads, so this is the first of three modals
+     rather than a surface the widget preset will need its own version of. What
+     changes with the kind is which sections appear, not which modal it is.
+
+     Elevation level 3 like the settings modal — radius 8, `0 24px 60px` over the
+     scrim, §3's dialog padding, `--text-lg` for the title — and the dialog's own row
+     rhythm is 30px, which is what the fact rows below use.
+
+     **The preview is at the theme's own ratio**, which is the one place a portrait
+     artboard is seen uncropped: the grid's boxes are uniform and cover the picture,
+     so this box is the reason `Other` is an acceptable answer in the Shape facet.
+     A theme's exact size lives here rather than in the facet, which is the other
+     half of that bargain.
+
+     Copy: uiCopy.library (yourThemes, open), uiCopy.actions.delete,
+     uiCopy.file.savePackage. The store's own words are new and land in ui-copy.ts
+     with this file. -->
+<div style="--bg:#0b0e12;--hdr:#12161c;--panel:#12161c;--panel2:#171c23;--edge:#242b34;--edge2:#1b212a;
+            --text:#e8ecf3;--muted:#8a97ab;--faint:#5a6675;--accent:#72e0c0;--hot:#ff7e6e;--warn:#f3aa64;
+            min-height:100vh;background:var(--bg);color:var(--text);display:flex;align-items:center;justify-content:center;padding:24px">
+
+  <div style="width:760px;display:flex;flex-direction:column;border:1px solid var(--edge);border-radius:8px;background:var(--panel);box-shadow:0 24px 60px #000000b3;overflow:hidden">
+
+    <!-- the title is the item's own name, and the only control beside it is the
+         way out: Escape does the same thing and returns focus to the cell -->
+    <div style="display:flex;align-items:center;gap:12px;padding:16px 24px;border-bottom:1px solid var(--edge)">
+      <span style="flex:1;min-width:0;font:600 15px/1.3 system-ui;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Kitchen strip</span>
+      <span style="width:26px;height:26px;flex:0 0 auto;border-radius:6px;display:flex;align-items:center;justify-content:center">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.7"><path d="M6 6l12 12M18 6 6 18"/></svg></span>
+    </div>
+
+    <div style="display:flex;gap:20px;padding:24px">
+
+      <div style="flex:1;min-width:0;display:flex;flex-direction:column;gap:16px">
+        <!-- the artboard's own ratio, never the grid's uniform box -->
+        <span style="aspect-ratio:16/9;border-radius:6px;background:linear-gradient(170deg,#1d2410,#3d4a18 42%,#7a8c1e 68%,#c9d94a)"></span>
+        <span style="display:flex;flex-direction:column;gap:6px">
+          <span style="font:600 10px/1.2 system-ui;letter-spacing:.11em;text-transform:uppercase;color:var(--faint)">About</span>
+          <span style="font:400 12px/1.4 system-ui;color:var(--muted)">A wide strip for a wall-mounted kitchen panel: clocks, load and disk at a glance, sized for reading from across the room.</span>
+        </span>
+      </div>
+
+      <div style="width:300px;flex:0 0 auto;display:flex;flex-direction:column;gap:16px">
+
+        <!-- the derived facets, spelled out. The semantic key is the accessible
+             name of each row rather than a second line of text: the descriptor's
+             label is what a person reads, and §1 keeps text out of the interface -->
+        <span style="display:flex;flex-direction:column;gap:6px">
+          <span style="font:600 10px/1.2 system-ui;letter-spacing:.11em;text-transform:uppercase;color:var(--faint)">Reads</span>
+          <span style="display:flex;align-items:center;gap:8px;height:30px">
+            <span style="flex:1;font:400 11px/1.3 system-ui;color:var(--muted)">Processor</span>
+            <span style="font:400 12px/1.4 system-ui">CPU load</span>
+          </span>
+          <span style="display:flex;align-items:center;gap:8px;height:30px">
+            <span style="flex:1;font:400 11px/1.3 system-ui;color:var(--muted)">Graphics</span>
+            <span style="font:400 12px/1.4 system-ui">GPU load</span>
+          </span>
+          <span style="display:flex;align-items:center;gap:8px;height:30px">
+            <span style="flex:1;font:400 11px/1.3 system-ui;color:var(--muted)">Disk</span>
+            <span style="font:400 12px/1.4 system-ui">Disk usage</span>
+          </span>
+        </span>
+
+        <span style="display:flex;flex-direction:column;gap:6px">
+          <span style="font:600 10px/1.2 system-ui;letter-spacing:.11em;text-transform:uppercase;color:var(--faint)">Shape</span>
+          <span style="display:flex;align-items:center;gap:8px;height:30px">
+            <span style="flex:1;font:400 11px/1.3 system-ui;color:var(--muted)">Ground</span>
+            <span style="font:400 12px/1.4 system-ui">Dark</span>
+          </span>
+          <span style="display:flex;align-items:center;gap:8px;height:30px">
+            <span style="flex:1;font:400 11px/1.3 system-ui;color:var(--muted)">Orientation</span>
+            <span style="font:400 12px/1.4 system-ui">Landscape</span>
+          </span>
+          <span style="display:flex;align-items:center;gap:8px;height:30px">
+            <span style="flex:1;font:400 11px/1.3 system-ui;color:var(--muted)">Aspect ratio</span>
+            <span style="font:400 12px/1.4 system-ui">16:9</span>
+          </span>
+          <span style="display:flex;align-items:center;gap:8px;height:30px">
+            <span style="flex:1;font:400 11px/1.3 system-ui;color:var(--muted)">Size</span>
+            <span style="font:400 12px/1.4 ui-monospace,Menlo,monospace">1920×1080</span>
+          </span>
+        </span>
+
+        <span style="display:flex;flex-direction:column;gap:6px">
+          <span style="font:600 10px/1.2 system-ui;letter-spacing:.11em;text-transform:uppercase;color:var(--faint)">Style</span>
+          <span style="display:flex;align-items:center;gap:6px">
+            <span style="font:500 11px/1.3 system-ui;color:var(--muted);background:var(--panel2);border:1px solid var(--edge);border-radius:999px;padding:4px 10px">futuristic</span>
+            <span style="font:500 11px/1.3 system-ui;color:var(--muted);background:var(--panel2);border:1px solid var(--edge);border-radius:999px;padding:4px 10px">cityscape</span>
+          </span>
+        </span>
+
+        <span style="display:flex;flex-direction:column;gap:6px">
+          <span style="font:600 10px/1.2 system-ui;letter-spacing:.11em;text-transform:uppercase;color:var(--faint)">This PC</span>
+          <span style="display:flex;align-items:center;gap:8px;height:30px">
+            <span style="flex:1;font:400 11px/1.3 system-ui;color:var(--muted)">Author</span>
+            <span style="font:400 12px/1.4 system-ui">@huyng</span>
+          </span>
+          <span style="display:flex;align-items:center;gap:8px;height:30px">
+            <span style="flex:1;font:400 11px/1.3 system-ui;color:var(--muted)">Version</span>
+            <span style="font:400 12px/1.4 ui-monospace,Menlo,monospace">1.4.0</span>
+          </span>
+          <span style="display:flex;align-items:center;gap:8px;height:30px">
+            <span style="flex:1;font:400 11px/1.3 system-ui;color:var(--muted)">Changed</span>
+            <span style="font:400 12px/1.4 ui-monospace,Menlo,monospace">2026-10-14 21:40</span>
+          </span>
+          <span style="display:flex;align-items:center;gap:8px;height:30px">
+            <span style="flex:1;font:400 11px/1.3 system-ui;color:var(--muted)">Shows on</span>
+            <span style="font:400 12px/1.4 system-ui">Kitchen tablet</span>
+          </span>
+        </span>
+      </div>
+    </div>
+
+    <!-- the same commands the cell offers. One command reached two ways is not two
+         owners: the cell keeps them because they are frequent (§8), and the modal
+         shows them because this is the surface someone is looking at when they have
+         just read enough to decide. The one accent fill in the region is the act
+         this surface exists for -->
+    <div style="display:flex;align-items:center;gap:8px;padding:16px 24px;border-top:1px solid var(--edge)">
+      <span style="flex:1"></span>
+      <span style="display:flex;align-items:center;gap:6px;padding:4px 10px">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--hot)" stroke-width="1.7"><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13"/></svg>
+        <span style="font:400 12px/1.4 system-ui;color:var(--hot)">Delete</span>
+      </span>
+      <span style="display:flex;align-items:center;gap:6px;border:1px solid var(--edge);border-radius:6px;background:var(--panel2);padding:4px 10px">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.7"><path d="M12 4v11M8 11l4 4 4-4M4 20h16"/></svg>
+        <span style="font:400 12px/1.4 system-ui">Export package</span>
+      </span>
+      <span style="display:flex;align-items:center;gap:6px;border:1px solid var(--edge);border-radius:6px;background:var(--panel2);padding:4px 10px">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.7"><rect x="3" y="5" width="18" height="12" rx="2"/><path d="M9 21h6"/><path d="M12 17v4"/></svg>
+        <span style="font:400 12px/1.4 system-ui">Assign to display</span>
+      </span>
+      <span style="display:flex;align-items:center;gap:6px;border:1px solid var(--edge);border-radius:6px;background:var(--panel2);padding:4px 10px">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.7"><path d="M4 6h6l2 2h8v10H4z"/></svg>
+        <span style="font:400 12px/1.4 system-ui">Open in editor</span>
+      </span>
+    </div>
+  </div>
+</div>
+</body>
+</html>
