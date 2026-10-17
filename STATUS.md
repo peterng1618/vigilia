@@ -12,15 +12,15 @@ Drain `docs/product/backlog.jsonl` through the active Superpowers plan. Editor r
 - **Active plan:** `2026-10-12-the-backlog-drain.md` — [plan](docs/superpowers/plans/2026-10-12-the-backlog-drain.md); execution ledger: `.superpowers/sdd/2026-10-12-the-backlog-drain/progress.md`.
 - Phase 25 is active: the user's five 2026-10-17 reports (vg-568–vg-572), which they ordered ahead of Phase 22's remainder the same day; Phase 22 is suspended with Tasks 22.1–22.5 closed (vg-147, vg-150, vg-192, vg-167, vg-168) and 22.6–22.10 pending, and it resumes after Phase 25. Phases 0–11 and 13–20 are closed; Phase 12, Phase 21 and Phase 22 are suspended, not closed; Phase 23 is queued.
 - Phase 21 owes only Task 21.9 Step 3: font-picker keyboard implementation after user spec review and the separate `TAB_BOUND` ruling. Suspension changes scheduling, not either decision.
-- Phase 24's store and colour/gradient work retains user priority; the store spec is revised for acceptance and the colour/gradient one is not, and each needs its own plan before implementation.
+- **Plan queue, in order:** [`2026-10-18-per-display-themes.md`](docs/superpowers/plans/2026-10-18-per-display-themes.md) (its [spec](docs/superpowers/specs/2026-10-18-per-display-themes-design.md) is unreviewed; four phases, and the store's assign action is its Task 4.4), then [`2026-10-18-theme-store.md`](docs/superpowers/plans/2026-10-18-theme-store.md) (the store spec's phase A only — B–G each need their own plan, G before C). The colour/gradient spec is still unreviewed and has no plan.
 - Register rulings and parked markers live on rows; ledger records completions/rulings, and `dispatch-*.md` records running seats. One phase and one implementation seat at a time.
 - Last census at `d4147298`: 129 open, 38 parked, 93 homeless, 56 homeless and unparked; subsequent `vg-538` parking makes that census historical. Re-derive before quoting current totals.
 
 ## Last completed change
 
-- Ruling 10 makes the item kind an extension point: a stable wire value apart from the display word, one handler table whose missing row is the degradation rule, and a store per kind.
-- The theme store's own `readStoredOrAbsent` answers a non-theme folder as absent, so a second kind under that root would vanish from `list()` rather than be refused — the reason a kind gets its own root.
-- Phase A's acceptance gains the kind-source clause; `store-browse.html`'s skipped-kind line quotes the identifier; drawings gate and parity exit 0, 34 passed.
+- The per-display spec and plan are written: a display becomes a persisted record with a stable id apart from its short-lived token, the active theme becomes one map with a reserved `default`, and answers gain a display level.
+- The theme store's plan is written for the spec's phase A only — the three-mode shell, the local gallery, the facet record, the pager and the item modal — with B–G named as plans of their own.
+- Both are queued behind Phase 25, per-display first because the store's assign action is its Task 4.4; `docs:check`, `status:check` and `npm run gate` exit 0.
 
 ## Next
 
