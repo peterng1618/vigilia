@@ -23,8 +23,11 @@ import { isDesktopSurface } from "./surface.js";
  * So this measures it. One scene, two clips, **one document** through both
  * surfaces: the editor opens the exported package through its own `Open package`
  * control, and a real host serves the same document to the player. The claim is
- * not "both clip at the artboard" — `host-bleed.spec.ts` already carries that.
- * It is the narrower one the row asks for: the artboard clip does not
+ * not "both clip at the artboard". That was `host-bleed.spec.ts`'s, and it went
+ * with the crop notice (`docs/decisions/0069`); the cases below read it on both
+ * surfaces' own pixels now, and the player's mount of the clip is
+ * `packages/player/src/artboard-clip.dom.test.ts`. It is the narrower one the
+ * row asks for: the artboard clip does not
  * *interfere* with a clip that already existed, and the two surfaces agree on
  * the pixels.
  *
