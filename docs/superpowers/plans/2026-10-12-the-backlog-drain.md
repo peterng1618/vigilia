@@ -4267,7 +4267,7 @@ these are the proofs those findings were supposed to come from.
 `typecheck` script; `layer-tree.test.ts`; `bridge.dom.test.ts`; `src/web/tests/e2e/` fixtures; and the
 verification bullets of the plan `vg-159` names.
 
-**Constraints:** **queued behind Phases 12 and 15–21.** **`vg-192` wires the new project into `typecheck`
+**Constraints:** **Active 2026-10-17 by scheduling ruling: Phases 12 and 21 are suspended, not closed, on user spec review; Phases 15–20 are closed.** Phase 21's font-picker model and `TAB_BOUND` ruling remain untouched; one phase runs at a time. **`vg-192` wires the new project into `typecheck`
 in the same commit, or the project exists and nothing runs it** — and `gate` runs `typecheck`, so the
 wiring is what makes the check real. **`vg-147` and `vg-150` change how the browser suites run**, so no
 other task in this phase runs a browser suite concurrently.
