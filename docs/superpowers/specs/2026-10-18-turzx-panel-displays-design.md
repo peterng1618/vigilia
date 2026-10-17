@@ -98,6 +98,82 @@ widget's box (`library/lcd/lcd_comm.py`), so the reference's wire cost tracks **
 area, not screen area**. This is the single most important design fact here, and the
 next section is why.
 
+## The same protocol is Lian Li's, not only TURZX's
+
+Searched on 2026-10-18 because the user asked what replaces L-Connect 3, and the answer
+changes this document's scope. **Lian Li's newer LCDs speak the TUR_USB protocol above,
+byte for byte.**
+
+| Device | VID:PID | Transport | Protocol |
+|---|---|---|---|
+| UNI FAN TL LCD, 400×400 | `04FC:7393` | HID, 512-byte reports | **its own** — see below |
+| Galahad II LCD, HydroShift LCD, 480×480 | `0416:7395` | HID | not read |
+| HydroShift II LCD-C, 480×480 | `1CBE:A021` | bulk `0x01`/`0x81` | **TUR_USB** |
+| Lancool 207 LCD | `1CBE:A065` | bulk `0x01`/`0x81` | **TUR_USB** |
+| Universal Screen 8.8" 1920×480, Vision 9.2", TL/SL-INF Flex | not read | bulk (WinUSB) | **TUR_USB**, by inference — see below |
+
+The UNI FAN TL LCD is a genuinely different protocol, and `kewe87/casehud`'s
+`internal/panel/tllcd.go` documents it: 512-byte output reports at report ID `0x02` with
+an 11-byte header (command, big-endian total size, packet number, payload length, ≤501
+bytes of payload), JPEG frames of 400×400 under 65535 bytes chunked over several reports,
+commands 60/61/62/64 plus `0x41` write-with-acks and `0x46` streaming, and **one mutex
+across every fan on the chain** because interleaved transfers corrupt frames.
+
+The TUR_USB identity is not a resemblance. **Three independent implementations agree on
+all of it**: a 500-byte header, **DES-CBC with key = IV = `slv3tuzx`**, PKCS7, a 512-byte
+frame, bytes 510–511 `0xA1 0x1A`, magic `0x1A 0x6D` at offset 2, a little-endian
+timestamp at offset 4, and the same opcodes — `0x65`/101 JPEG, `0x66`/102 PNG, `0x79`
+play. `deyloop/lianli_207_lcd`'s `PROTOCOL.md` documents it field by field;
+`andyjusa/hydroshift2-rs` encodes it in Rust with the same constants; the TURZX
+reference's own source reads `VENDOR_ID = 0x1cbe`. The two panels' *product* IDs differ
+(`0x0028`…`0x0123` against `0xA021`), which is why this was two research tracks until
+now, and the protocol is one.
+
+**Three consequences, and the third is the one that matters.**
+
+1. This is not a TURZX feature. The panels people actually own are Lian Li's, and they are
+   in the fast family — so the DES question cannot be avoided by choosing another vendor.
+2. One implementation of the fast family serves both vendors. The slow serial families are
+   the ones nobody asked for.
+3. **The panels worth driving are also the ones with the harder protocol** — which this
+   document already said, for the wrong reason (see the DES measurement below).
+
+## What GitHub already has, and what it does not
+
+Asked whether anyone has built anything that replaces the native app: **yes, many, and
+none of them in JavaScript.** Read on 2026-10-18:
+
+- `sgtaziz/lian-li-linux` — Rust. The fullest replacement: fan, RGB, LCD and pump across
+  HID and wireless devices, with a Tauri GUI whose frontend is Vue/TypeScript.
+- `kewe87/casehud` — Go. **The closest analogue to this product**: a sensor dashboard for
+  the Lian Li LCDs, with its own renderer, fonts, theme and layout (`internal/lcd/`), and
+  a device table that already splits HID from WinUSB.
+- `andyjusa/hydroshift2-rs` — Rust. A **library** rather than an app: a stateless packet
+  encoder plus a controller, with the protocol constants exported.
+- `hyperb1iss/hypercolor` — Rust, carrying
+  `docs/specs/80-lian-li-tl-lcd-wireless-driver.md` and
+  `84-lian-li-universal-screen-driver.md`: the same "write a driver spec before the
+  driver" convention this repo uses.
+- `habibrehmansg/infopanel` — C#, with a `PANELS.md` model database and a `TuringPanel`
+  device layer: the nearest thing to a panel table, and the nearest thing to the TURZX
+  reference's own `PRODUCT_ID` map.
+- `deyloop/lianli_207_lcd` — Python, and the only one of these with a written
+  `PROTOCOL.md`.
+- `CihanStudio/lian-li-windows` — PowerShell, through Windows' own HID stack.
+- `totmin/galahad2lcd`, `H4rk3nz0/GalahadII_LCD_Linux`, `sbulav/galahad-linux-control`,
+  `suraj-lab/lianli-hydroshift-macos`, `ozgurce/LianliThemeEditor` — Go, Python and C#.
+
+**The negative, searched rather than assumed.** `slv3tuzx` across GitHub code search
+returns **zero TypeScript files and zero JavaScript files**; the only TS/JS repositories
+matching "Lian Li" are LED-only SignalRGB plugins and an Electron RGB app. So there is
+**no JS/TS implementation of this protocol to depend on**, and the packet layer is ours
+to write.
+
+**And none of them renders this product's scene.** Every project above brings its own
+scene model — `casehud`'s renderer draws *its* themes — so the reusable half is the packet
+layer, which is the small half, and the renderer, which is the large half, has no prior
+art to borrow in any language.
+
 ## The constraint that decides everything: wire time
 
 115200 8N1 carries **11,520 bytes/s**. RGB565 is 2 bytes per pixel. So a **full frame**
@@ -159,11 +235,22 @@ crypto.createCipheriv('des-cbc', Buffer.from('slv3tuzx'), Buffer.alloc(8))
 ```
 
 DES moved to OpenSSL 3's legacy provider, so the TUR_USB header cannot be built with
-`node:crypto` as it stands. The ways out are a hand-written DES (small, well-specified,
-and a thing to own forever), forcing the legacy provider on, or not supporting that
-family — and forcing a provider on is not something to require of a user's machine. So
-**the cheap-to-reach family is the slow one and the fast family is the awkward one**,
-which is the honest reason this is long-term rather than next.
+`node:crypto` by default. **But it is one startup flag, not a cryptography project**, and
+that is measured rather than reasoned:
+
+```
+node --openssl-legacy-provider -e '<des-cbc, key and IV slv3tuzx, 500 zero bytes>'
+  → OK, encrypted bytes: 504
+```
+
+504 is exactly the `ENCRYPTED_SIZE` constant both independent implementations carry, which
+is the cross-check that this is the right primitive and not merely a cipher that runs. So
+the ways out are: launch the host with the flag (or have `bin/vigilia.js` re-exec itself
+with it), take a pure-JS DES (`@li0ard/des`, `node-forge` — both MIT), or not support the
+family. **The earlier reading of this paragraph — "the fast family is the awkward one" —
+is refuted by that measurement**, and it was doing load-bearing work: it was offered as
+the honest reason this is long-term. The honest reason is blocker 1 alone, the missing
+renderer, which no flag fixes.
 
 **3. Transports are a new shipped dependency either way** — `serialport` or `usb`, both
 MIT — which means a licence check, `THIRD-PARTY-NOTICES.md` and
@@ -176,7 +263,8 @@ Ordered by cost, and stated as shape rather than as tasks:
 1. **Decide which family is worth supporting at all.** Supporting Rev A and Rev B
    (serial, RGB565, two packet formats, two endiannesses, a sub-revision handshake) is
    a different project from supporting TUR_USB (bulk, PNG, DES). Doing all of them is
-   likely three times the work of doing the one anyone actually owns.
+   likely three times the work of doing the one anyone actually owns — and the search
+   above answers which that is: **the fast family, because it is Lian Li's.**
 2. **A headless renderer that can render a region**, which is the same renderer a
    panel needs for its initial draw, and which nothing in the product has today.
 3. **A dirty-region scheduler.** The host already knows which semantic keys a theme
@@ -228,14 +316,43 @@ can be wrong rather than as a fact.
   was confirmed against hardware or a firmware version.
 - **That a panel's declared size can be trusted.** The reference's own workaround says
   otherwise for at least one revision.
+- **The Lian Li rows, at the strength each was read.** The HydroShift II constants are read
+  from `andyjusa/hydroshift2-rs`'s `src/protocol.rs`; the Lancool 207 field table from
+  `deyloop/lianli_207_lcd`'s `PROTOCOL.md`; the UNI FAN TL LCD packet format from
+  `kewe87/casehud`'s `internal/panel/tllcd.go`, which is itself ported from
+  `sgtaziz/lian-li-linux`. **The Universal Screen 8.8", Vision 9.2" and the Flex LCDs are
+  inferred** — `casehud` groups them with the HydroShift II as WinUSB and has not
+  implemented them — so their protocol is *not* read and must not be assumed. `0416:7395`
+  is read from `totmin/galahad2lcd`'s shipped config, not from a protocol document.
+- **That `--openssl-legacy-provider` is acceptable to ship.** It was measured to work on
+  Node 24.13.0 / OpenSSL 3.5.4 in this shell. Whether the host's own launch path can carry
+  the flag — `bin/vigilia.js`, any packaged form, and whether a future Node drops it — was
+  not investigated.
+- **That no JS/TS implementation exists.** That is a GitHub code search for the literal key
+  `slv3tuzx` with `--language typescript` and `--language javascript`, both empty, plus a
+  repository search. A project that implements the protocol without ever writing the key as
+  a literal — reading it from a device, or obfuscating it — would not appear.
 
-## The reuse gate has not been run
+## The reuse gate: the ecosystem rungs are now run
 
-**This is the first thing to do before any planning, and it is not done.** The seven
-rungs need a real search, and **web search was unavailable in the session that wrote
-this**, so rungs 4 and 5 in particular — *has anyone already solved this shape, in this
-renderer, against this host* — are **undischarged**. The specific question that matters:
-whether a maintained JavaScript/TypeScript implementation of this protocol already
-exists, because if one does, the transport and packet work above is not ours to write.
-Note also that the reference is GPL-3.0-or-later, so a JS library's licence decides
-whether it can be used at all rather than merely whether it should be.
+**Partly discharged on 2026-10-18.** The earlier session could not search — web search was
+unavailable and it said so rather than guessing — so rungs 4 and 5 were undischarged. The
+GitHub search above is that pass, and it returns a clean negative on the rung that
+mattered: **no JavaScript or TypeScript implementation of this protocol exists**, so the
+packet layer is ours to write, and the transport dependency plus its licence check is the
+remaining cost rather than a cipher to own.
+
+**What that does not discharge is rung 5's harder half** — whether anyone has solved
+"render a Vigilia theme into a region of a panel". Nobody has, in any language: the
+projects above all render their own scene model, and `casehud` is the closest and is still
+Go with its own themes. The mechanism boundary this design named — a dirty-region
+scheduler where a wrong box is a stale region on a wall — has no prior art to borrow.
+
+**Still not run:** rungs 1–3 and 6–7 as a recorded pass, and any probe against hardware.
+No panel is attached to this machine and nothing has been driven against one.
+
+**The licence note stands, and matters less than it looked.** The reference is
+GPL-3.0-or-later, so its *code* is unusable here; but the search found no JS/TS
+implementation to consider either way, so no library licence is now deciding anything. What
+a future one would decide is whether a transport implementation can be used at all rather
+than merely whether it should be.
