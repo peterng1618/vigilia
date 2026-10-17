@@ -87,10 +87,7 @@ export default defineConfig({
   // is what turned the long `clock.runFor` waits into 30 s timeouts under load.
   // The two host projects below pin their own `workers: 1` instead.
   // JSON summary feeds dev-status without rerunning the browser suite.
-  reporter: [
-    [process.env["CI"] === undefined ? "list" : "github"],
-    ["json"],
-  ],
+  reporter: [[process.env["CI"] === undefined ? "list" : "github"], ["json"]],
 
   use: {
     baseURL: "http://127.0.0.1:4173",
