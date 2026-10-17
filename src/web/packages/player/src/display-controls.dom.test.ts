@@ -249,6 +249,9 @@ describe("the keep-awake control", () => {
     setVisibility("hidden");
     lock.sentinels[0]?.fireRelease();
     expect(button.dataset["vigiliaWaiting"]).toBeDefined();
+    // Holding nothing, and saying so: `aria-pressed` follows the lock, not the
+    // reader's intent, which is what the whole control is about.
+    expect(button.getAttribute("aria-pressed")).toBe("false");
     expect(lock.request).toHaveBeenCalledTimes(1);
 
     // Back on screen and still wanted: the re-acquisition is the whole control.
@@ -258,7 +261,12 @@ describe("the keep-awake control", () => {
     expect(button.dataset["vigiliaWaiting"]).toBeUndefined();
   });
 
-  it("reports nothing held when the browser refused the request", async () => {
+  it("reports nothing held, and says why, when the browser refused the request", async () => {
+    // **The API exists and the client said no.** Reachable on a secure origin —
+    // headless Chromium answers `NotAllowedError` — and the case where the
+    // control used to tell assistive tech something untrue: it read
+    // `aria-pressed` from the reader's intent rather than from the lock it held,
+    // so a reader was given "Awake, pressed" over an unlabelled amber.
     const lock = fakeWakeLock({ refuse: true });
     controls = mountDisplayControls();
     const button = part<HTMLButtonElement>(AWAKE);
@@ -266,10 +274,10 @@ describe("the keep-awake control", () => {
     button.click();
     await vi.waitFor(() => expect(lock.request).toHaveBeenCalledTimes(1));
 
-    // Asked for, and holding nothing: the state the control exists to be able
-    // to show.
-    expect(button.getAttribute("aria-pressed")).toBe("true");
+    expect(button.getAttribute("aria-pressed")).toBe("false");
     expect(button.dataset["vigiliaWaiting"]).toBeDefined();
+    expect(part(SAY).textContent).toBe(uiCopy.controls.keepAwake.refused);
+    expect(uiCopy.controls.keepAwake.refused).toMatch(/not being held/);
   });
 
   it("releases the lock when the reader turns it off, and when the page goes", async () => {

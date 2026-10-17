@@ -232,11 +232,16 @@ export function mountDisplayControls(): DisplayControls {
 
   function paintAwake(): void {
     if (!canWake) return;
-    awake.setAttribute("aria-pressed", wantAwake ? "true" : "false");
-    // Wanted and not held is the ordinary state this API produces — the browser
-    // drops the lock when the page is hidden — and it is drawn apart from "off"
-    // so the control never claims a lock it lost.
-    if (wantAwake && held === undefined) awake.dataset["vigiliaWaiting"] = "";
+    // **The lock this display holds, never the one it asked for.** `aria-pressed`
+    // is read from `held` and not from `wantAwake`: a reader told "pressed" while
+    // the browser holds nothing is being told something untrue, and that is the
+    // case this control exists to be able to report — the page being hidden, or
+    // the request simply refused.
+    const holding = held !== undefined;
+    awake.setAttribute("aria-pressed", holding ? "true" : "false");
+    // Wanted and not held is the ordinary state this API produces, and it is
+    // drawn apart from "off" so the reader can tell the two apart.
+    if (wantAwake && !holding) awake.dataset["vigiliaWaiting"] = "";
     else delete awake.dataset["vigiliaWaiting"];
   }
 
@@ -275,8 +280,11 @@ export function mountDisplayControls(): DisplayControls {
       });
     } catch {
       // Refused — a browser policy, a battery saver, no user activation. No
-      // lock, and the control says so.
+      // lock, and the reader is told so: `paintAwake` alone would leave an
+      // amber control with no sentence, which reads as "on" to assistive tech
+      // and as nothing at all to anyone else.
       held = undefined;
+      explain(uiCopy.controls.keepAwake.refused);
     }
     paintAwake();
   }

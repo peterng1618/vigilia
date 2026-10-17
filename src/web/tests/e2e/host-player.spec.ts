@@ -2639,21 +2639,43 @@ test.describe("the display's own controls", () => {
     await expect(page.locator("[data-vigilia-dimmer]")).toHaveCount(1);
     expect(await barOpacity(page)).toBe("0");
 
-    const before = await canvas.boundingBox();
+    // **The column holds the two declared bands and the artboard, and nothing
+    // else.** Absolute, not a comparison against an earlier reading of the same
+    // page: a control that is in flow for the whole load shrinks the artboard at
+    // *every* reading, and three equal readings are exactly what a broken build
+    // produces. Measured from the document's own structure, so a control that is
+    // in flow fails here whether it arrived at mount or at reveal.
+    const before = await column(page);
+    expect(before.otherColumns).toEqual([]);
+    expect(
+      Math.abs(before.artboardHeight - (before.bodyHeight - before.bandHeight)),
+      "the artboard fills what the two bands leave",
+    ).toBeLessThan(1);
 
     await tapTheDisplay(page);
     await expect.poll(() => barOpacity(page)).toBe("1");
 
-    // **Up, and the composition has not moved.** This is the property the whole
-    // overlay is for: a strip in a chrome band takes its room from the artboard
-    // and re-fits the scene, which measured 16-25px of ink movement on the
-    // built display (vg-028).
-    expect(await canvas.boundingBox()).toEqual(before);
+    // **Up, and the composition has not moved.** A strip in a chrome band takes
+    // its room from the artboard and re-fits the scene, which measured 16-25px
+    // of ink movement on the built display (vg-028).
+    const up = await column(page);
+    expect(up.otherColumns).toEqual([]);
+    expect(
+      Math.abs(up.artboardHeight - (up.bodyHeight - up.bandHeight)),
+      "the artboard still fills what the two bands leave",
+    ).toBeLessThan(1);
+    expect(up.artboardHeight).toBeCloseTo(before.artboardHeight, 1);
 
     // Three seconds, and it is gone again — with the composition still exactly
     // where it was.
     await expect.poll(() => barOpacity(page), { timeout: 6_000 }).toBe("0");
-    expect(await canvas.boundingBox()).toEqual(before);
+    const gone = await column(page);
+    expect(gone.otherColumns).toEqual([]);
+    expect(
+      Math.abs(gone.artboardHeight - (gone.bodyHeight - gone.bandHeight)),
+      "the artboard still fills what the two bands leave",
+    ).toBeLessThan(1);
+    expect(gone.artboardHeight).toBeCloseTo(before.artboardHeight, 1);
   });
 
   test("enters and leaves fullscreen on one control, where the client has it", async ({
@@ -2754,10 +2776,17 @@ test.describe("the display's own controls", () => {
         type: "wake-lock",
         description: `refused by this client (${await wakeFailure(page)})`,
       });
+      // The lock is not held, so the control must not say it is — and the
+      // reader must be told why rather than left with an unlabelled amber.
+      await expect(keepAwake).toHaveAttribute("aria-pressed", "false");
       await expect(keepAwake).toHaveAttribute("data-vigilia-waiting", "");
+      await expect(page.locator("[data-vigilia-controls-say]")).toHaveText(
+        uiCopy.controls.keepAwake.refused,
+      );
       return;
     }
 
+    await expect(keepAwake).toHaveAttribute("aria-pressed", "true");
     await expect(keepAwake).not.toHaveAttribute("data-vigilia-waiting", "");
 
     // **The API drops the lock whenever the page is hidden, and this is that
@@ -2773,6 +2802,7 @@ test.describe("the display's own controls", () => {
         window as unknown as { __vigiliaWake: { sentinel: EventTarget } }
       ).__vigiliaWake.sentinel.dispatchEvent(new Event("release"));
     });
+    await expect(keepAwake).toHaveAttribute("aria-pressed", "false");
     await expect(keepAwake).toHaveAttribute("data-vigilia-waiting", "");
     expect(await wakeRequests(page)).toBe(1);
 
@@ -2785,6 +2815,7 @@ test.describe("the display's own controls", () => {
       document.dispatchEvent(new Event("visibilitychange"));
     });
     await expect.poll(() => wakeRequests(page), { timeout: 10_000 }).toBe(2);
+    await expect(keepAwake).toHaveAttribute("aria-pressed", "true");
     await expect(keepAwake).not.toHaveAttribute("data-vigilia-waiting", "");
   });
 
@@ -2841,15 +2872,22 @@ test.describe("the display's own controls", () => {
     await expect(shade).toHaveCount(1);
     expect(await shadeOpacity(page)).toBe("0");
 
-    const before = await canvas.boundingBox();
+    const before = await column(page);
     await page.locator("[data-vigilia-dim]").fill("50");
 
     await expect
       .poll(async () => Number(await shadeOpacity(page)))
       .toBeGreaterThan(0.4);
     // Dimmed, and unmoved: the overlay is a filter over the picture rather than
-    // a resize of it.
-    expect(await canvas.boundingBox()).toEqual(before);
+    // a resize of it. Asserted the absolute way for the reason `column` gives —
+    // a self-comparison is green on a build that was already the wrong size.
+    const dimmed = await column(page);
+    expect(dimmed.otherColumns).toEqual([]);
+    expect(
+      Math.abs(dimmed.artboardHeight - (dimmed.bodyHeight - dimmed.bandHeight)),
+      "the artboard still fills what the two bands leave",
+    ).toBeLessThan(1);
+    expect(dimmed.artboardHeight).toBeCloseTo(before.artboardHeight, 1);
   });
 
   test("the origin a phone uses is not a secure context, and this browser says so", async ({
@@ -2932,6 +2970,58 @@ async function tapTheDisplay(page: Page): Promise<void> {
   const box = await page.locator("#artboard").boundingBox();
   if (box === null) throw new Error("the display has no artboard to tap");
   await page.mouse.click(box.x + box.width / 2, box.y + box.height / 2);
+}
+
+/**
+ * The display's column, measured from the document rather than from a reading
+ * taken earlier in the same load.
+ *
+ * **This is absolute on purpose, and the reason is a defect the review found.**
+ * The case used to compare three readings of the canvas's box against each
+ * other, so a build where a control is in flow for the whole load shrank the
+ * artboard in all three and the comparison came out equal — the regression this
+ * case exists for, passing while the composition lost 40.8px. What the column
+ * asserts instead is a fact about the page: everything in flow under `body` is
+ * the two declared chrome bands and `#artboard`, and the artboard's height is
+ * what the bands leave. A control that is `position: fixed` is not a flex item,
+ * which is the whole invariant; one that is `static` shows up here immediately,
+ * whenever it arrived.
+ */
+function column(page: Page): Promise<{
+  readonly otherColumns: readonly string[];
+  readonly artboardHeight: number;
+  readonly bodyHeight: number;
+  readonly bandHeight: number;
+}> {
+  return page.evaluate(() => {
+    const body = document.body;
+    const artboard = document.getElementById("artboard");
+    if (artboard === null) throw new Error("the display has no artboard");
+    const children = [...body.children];
+    const bands = children.filter((child) =>
+      child.hasAttribute("data-vigilia-chrome"),
+    );
+    const heightOf = (element: Element): number =>
+      element.getBoundingClientRect().height;
+    return {
+      // Named by tag and id so a failure says which element joined the column.
+      otherColumns: children
+        .filter((child) => {
+          const position = getComputedStyle(child).position;
+          // A fixed or absolute child is out of flow and takes no room; a
+          // static or relative one is a flex item and does.
+          if (position === "fixed" || position === "absolute") return false;
+          return child !== artboard && !bands.includes(child);
+        })
+        .map(
+          (child) =>
+            `${child.tagName.toLowerCase()}${child.id === "" ? "" : `#${child.id}`}`,
+        ),
+      artboardHeight: heightOf(artboard),
+      bodyHeight: heightOf(body),
+      bandHeight: bands.reduce((total, band) => total + heightOf(band), 0),
+    };
+  });
 }
 
 function barOpacity(page: Page): Promise<string> {

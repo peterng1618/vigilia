@@ -116,6 +116,12 @@ export const uiCopy = {
       /** The origin, not the phone: this is the half a reader can act on. */
       unavailable:
         "This browser has no wake lock. The host must serve this display over a secure origin (https, or a certificate this phone trusts) before the screen can be held awake.",
+      /** The API exists and the client said no — a policy, a battery saver, a
+       *  request with no user activation left. The reader has to be told the
+       *  lock is not held, because the button's own state is the only place
+       *  that could be said and "pressed" would be untrue. */
+      refused:
+        "This browser would not hold the screen awake, so it is not being held. This display's own screen-off setting still applies.",
     },
     dim: {
       label:
