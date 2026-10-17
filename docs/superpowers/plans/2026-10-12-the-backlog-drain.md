@@ -4316,10 +4316,10 @@ project timeout so wide it hides a real hang.
 **Interfaces:**
 - Produces: `vg-192` closed
 
-- [ ] **Step 1: `tests/e2e/` joins a tsconfig program as its OWN project**, not by folding into the editor's — the e2e project needs Playwright's types and the DOM, and pulling those into the editor's program would trade one missing check for a weaker one.
-- [ ] **Step 2: Wire it into `typecheck` in the same commit**, or the project exists and nothing runs it.
-- [ ] **Step 3: Prove it with a deliberate type error in a spec** — `npm run typecheck` exit 1 — then revert it and prove the restore byte-for-byte, because a Windows text-mode write leaves CRLF where git normalises, so `cmp` sees it and `git diff` does not.
-- [ ] **Step 4: Close it**, naming both exit codes.
+- [x] **Step 1: `tests/e2e/` joins a tsconfig program as its OWN project**, not by folding into the editor's — the e2e project needs Playwright's types and the DOM, and pulling those into the editor's program would trade one missing check for a weaker one.
+- [x] **Step 2: Wire it into `typecheck` in the same commit**, or the project exists and nothing runs it.
+- [x] **Step 3: Prove it with a deliberate type error in a spec** — `npm run typecheck` exit 1 — then revert it and prove the restore byte-for-byte, because a Windows text-mode write leaves CRLF where git normalises, so `cmp` sees it and `git diff` does not.
+- [x] **Step 4: Close it**, naming both exit codes.
 
 ### Task 22.4: The nested-group stamp walk
 
