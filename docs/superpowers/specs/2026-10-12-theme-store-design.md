@@ -538,14 +538,36 @@ thumbnail, the name, the author and the badges, in a cell sized by the window.
 `repeat(auto-fill, minmax(<cell>, 1fr))` answers the column count from the
 available width, so there is no resize listener, no measured column count, and no
 second copy of the window's size to keep in step — and no invented breakpoints
-either. **The minimum is the cell's content, not a column count**: a cell has to
-hold a name, a badge and four 26px actions inside its own padding, and 240px is
-where that lands. §7.8's rule is the one that binds — *measure labels, hit areas
-and contrast at the real pane width before changing column count; reduce columns
-only for an observed overflow or readability failure* — so the column count is
-observed rather than asserted, and the proof is §7.7's own: 1280×720, 1440×900 and
-200% browser zoom. **The phone layout is `vg-172`'s recorded limitation and this
-design does not claim to fix it.**
+either. §7.8's rule is the one that binds — *measure labels, hit areas and contrast
+at the real pane width before changing column count; reduce columns only for an
+observed overflow or readability failure* — so the column count is observed rather
+than asserted, and the proof is §7.7's own: 1280×720, 1440×900 and 200% browser
+zoom. **The phone layout is `vg-172`'s recorded limitation and this design does not
+claim to fix it.**
+
+**The cell is one box, and both halves use it.** A person switching tabs must not
+watch the grid change shape under them, so the local cell and the online cell are
+the same width and the same height, and the anatomy is stated once:
+
+| Band | Height | Holds |
+|---|---|---|
+| the picture | `aspect-ratio: 2/1` | the thumbnail, or the theme's own ground when it has none |
+| the name | 17px | the name, ellipsized, with its full value as the accessible name (§7.7) |
+| the author | 15px | the author in mono, or *No author* — an imported package has none |
+| the facts | 26px | badges and counts left, actions right |
+| the inset | 10px at each end | |
+
+**The minimum comes from the wider of the two halves, which is the online one.** Its
+facts band is the busiest — a kind badge, both counts and the longest action label —
+and **272px is where that lands** once the inset is counted, rounded up to a multiple
+of 8 for the slack §7.8's own measurement will want. A local cell needs less, four
+26px icon buttons, and takes the same minimum anyway, because the two grids are one
+grid. **That is the reason to derive it rather than pick it**: a minimum chosen for
+the local half alone is a grid that overflows the moment the catalogue's cells arrive
+in it, and the two halves would then be two sizes, which is the thing this paragraph
+exists to prevent. The facts band is also why the badge sits there and not beside the
+name: in the name row it would make the two halves' cells different heights, and the
+row has only the name's own room.
 
 **What is not automatic is the facet row, and that is the one responsive decision
 made here.** It wraps to a second line rather than dropping a control, because a
@@ -617,30 +639,47 @@ rather than a surface the widget preset will need its own version of. What chang
 with the kind is which sections the modal has, not which modal it is.
 
 It is § "Elevation & Depth"'s level 3, like the settings modal: radius 8, the
-`0 24px 60px` shadow over the scrim, dialog padding from §3's 20–24 band, and a
-`--text-lg` title. It holds:
+`0 24px 60px` shadow over the scrim, dialog padding from §3's 20–24 band. **960px
+wide against the settings modal's 560**, because its subject is a picture.
 
-- **The preview at the theme's own ratio**, which is the one place a portrait
-  artboard is seen uncropped — the grid's boxes are uniform and cover the picture,
-  and § "Finding a theme: the five facets" says why.
-- **What it is**: the name, the author, the description, the `kind`, the version,
-  and the dates.
-- **What it reads**: the derived facets, spelled out rather than as facet values —
-  the colour mode, the orientation, the aspect ratio, the pixel size, and every
-  semantic key with its descriptor's own label.
-- **Its tags**, and where a proposed tag says so.
-- **Its counts and its state** on the online half, and the origin and local state
-  on the local half.
-- **Its actions**, which are the same commands its cell offers. That is one command
-  reached two ways rather than two owners: the cell keeps them because they are
-  frequent (§8), and the modal shows them because it is the surface someone is
-  looking at when they have just read enough to decide.
+**The preview is a fixed stage, and the theme is contained in it.** The stage is one
+height for every theme, and the picture sits inside it at its own ratio, letterboxed
+against a ground darker than the modal's own surface. Sizing the stage to the theme's
+ratio instead would make the modal change height as a person steps from theme to
+theme, which is the one thing a viewer must not do. **This is also where the grid's
+crop is paid back**: the cells are uniform and cover the picture, so the stage is the
+place a portrait artboard is seen entire.
 
-**Opening it is not a document change and not a mode change.** Escape closes it and
-returns focus to the cell that opened it (§5's keyboard rules already say so for a
-popup and its trigger), and it does not disturb the filter, the sort or the page
-underneath — closing it puts the viewer back exactly where they were, which is the
-same invariant the mode switch has.
+**The facts are pills, not rows.** A row per sensor spends a 30px line and a label
+column to say four words, and the modal has a picture to give that room to. So the
+caption band is three groups of pills under §2's eyebrow — **Reads**, **Shape** and
+**Style** — and each group is exactly the facet it comes from, which is why its words
+are the words the filter offered. A sensor pill carries the descriptor's own label, a
+shape pill one reading, and a style pill one tag, with **a proposed tag saying so on
+its own pill** rather than being indistinguishable from a settled one.
+
+**Above the band, one line: what the thing is called and who made it.** The name at
+§2's `--text-lg`, the author beside it, and the kind as a badge, with the version and
+the date it changed pushed to that line's other end — three facts that belong to the
+item rather than to any facet, so they take the caption's own line instead of a group.
+There is no title bar — the close control floats over the stage's corner the way a
+viewer's does, and Escape does the same thing and returns focus to the cell that
+opened it.
+
+**Under the groups, one line of provenance**: where the item came from and where it
+shows, as a sentence rather than four more rows. This is the origin record's own
+surface (§ "Provenance"), and it is the reason the modal is not just a picture with
+tags: a cell can say *Installed* and cannot say *installed from where*.
+
+**Below it, the actions**, which are the same commands the cell offers, written in
+words rather than glyphs because a footer has the room and the glyph was only ever a
+space saving. That is one command reached two ways rather than two owners: the cell
+keeps them because they are frequent (§8), and the modal shows them because it is the
+surface someone is looking at when they have just read enough to decide.
+
+**Opening it is not a document change and not a mode change.** It does not disturb
+the filter, the sort or the page underneath, so closing it puts the viewer back
+exactly where they were — the same invariant the mode switch has.
 
 ## Import lands in the library
 

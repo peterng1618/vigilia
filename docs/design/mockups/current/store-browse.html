@@ -27,7 +27,14 @@
      theme, and the library owns that: it is the local half's Delete. This half
      installs and updates, and an act with two owners is the thing the ownership
      map exists to prevent. Counts are mono (§2). The skipped-kind note is §9's
-     gap, stated once. -->
+     gap, stated once.
+
+     **This cell is store-themes.html's cell.** Same picture band at 2/1, same
+     name and author lines, same 26px facts band, same 272px minimum — the kind
+     badge lives in that band rather than beside the name precisely so the two
+     halves cannot come out different heights. The band is at its widest here
+     (badge, download count, an action with a word in it), which is where the
+     272px minimum comes from. -->
 <div style="--bg:#0b0e12;--hdr:#12161c;--panel:#12161c;--panel2:#171c23;--edge:#242b34;--edge2:#1b212a;
             --text:#e8ecf3;--muted:#8a97ab;--faint:#5a6675;--accent:#72e0c0;--hot:#ff7e6e;--warn:#f3aa64;
             width:1180px;height:900px;display:flex;flex-direction:column;background:var(--bg);color:var(--text)">
@@ -97,18 +104,18 @@
     <div style="height:1px;background:var(--edge);margin:12px 16px 0"></div>
 
     <div style="flex:1;min-height:0;overflow:auto;padding:12px 16px 16px">
-      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:12px">
+      <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(272px,1fr));gap:12px">
 
         <!-- installed and current: the state is a mark, not a button, because
              there is nothing to do. Install is absent rather than refused — the
              dock's registry-filtered idiom (§7.5) is the one exception to §5's
              refuse-in-words rule, and this is not it: this cell has no action -->
         <div style="display:flex;flex-direction:column;background:var(--panel2);border:1px solid var(--edge);border-radius:8px;overflow:hidden">
-          <span style="height:139px;background:linear-gradient(170deg,#2a1030,#6b2418 42%,#c2601a 68%,#f0a63c)"></span>
+          <span style="aspect-ratio:2/1;background:linear-gradient(170deg,#2a1030,#6b2418 42%,#c2601a 68%,#f0a63c)"></span>
           <span style="display:flex;flex-direction:column;gap:6px;padding:10px">
             <span style="font:500 12px/1.4 system-ui;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Living room</span>
             <span style="font:400 11px/1.3 ui-monospace,Menlo,monospace;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">@mira-k · 2026-10-15</span>
-            <span style="display:flex;align-items:center;gap:6px">
+            <span style="display:flex;align-items:center;gap:6px;height:26px">
               <span style="flex:0 0 auto;font:500 10px/1.2 system-ui;color:var(--muted);border:1px solid var(--edge);border-radius:999px;padding:4px 8px">Theme</span>
               <span style="flex:0 0 auto;display:flex;align-items:center;gap:4px;font:400 11px/1.3 ui-monospace,Menlo,monospace;color:var(--muted)">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--faint)" stroke-width="1.8"><path d="M12 4v11M8 11l4 4 4-4M4 20h16"/></svg>1,204
@@ -124,11 +131,11 @@
         <!-- installed, one version behind: the action appears exactly when there
              is something to do, and it is not accent — accent is rationed (§4) -->
         <div style="display:flex;flex-direction:column;background:var(--panel2);border:1px solid var(--edge);border-radius:8px;overflow:hidden">
-          <span style="height:139px;background:linear-gradient(170deg,#101c2a,#18406b 42%,#1a7cc2 68%,#3cbdf0)"></span>
+          <span style="aspect-ratio:2/1;background:linear-gradient(170deg,#101c2a,#18406b 42%,#1a7cc2 68%,#3cbdf0)"></span>
           <span style="display:flex;flex-direction:column;gap:6px;padding:10px">
             <span style="font:500 12px/1.4 system-ui;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Office wall</span>
             <span style="font:400 11px/1.3 ui-monospace,Menlo,monospace;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">@mira-k · 2026-10-16</span>
-            <span style="display:flex;align-items:center;gap:6px">
+            <span style="display:flex;align-items:center;gap:6px;height:26px">
               <span style="flex:0 0 auto;font:500 10px/1.2 system-ui;color:var(--muted);border:1px solid var(--edge);border-radius:999px;padding:4px 8px">Theme</span>
               <span style="flex:0 0 auto;display:flex;align-items:center;gap:4px;font:400 11px/1.3 ui-monospace,Menlo,monospace;color:var(--muted)">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--faint)" stroke-width="1.8"><path d="M12 4v11M8 11l4 4 4-4M4 20h16"/></svg>862
@@ -143,11 +150,11 @@
         </div>
 
         <div style="display:flex;flex-direction:column;background:var(--panel2);border:1px solid var(--edge);border-radius:8px;overflow:hidden">
-          <span style="height:139px;background:linear-gradient(170deg,#141024,#2c1c58 42%,#5a34b0 68%,#a07af0)"></span>
+          <span style="aspect-ratio:2/1;background:linear-gradient(170deg,#141024,#2c1c58 42%,#5a34b0 68%,#a07af0)"></span>
           <span style="display:flex;flex-direction:column;gap:6px;padding:10px">
             <span style="font:500 12px/1.4 system-ui;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Night shift</span>
             <span style="font:400 11px/1.3 ui-monospace,Menlo,monospace;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">@tobias · 2026-10-16</span>
-            <span style="display:flex;align-items:center;gap:6px">
+            <span style="display:flex;align-items:center;gap:6px;height:26px">
               <span style="flex:0 0 auto;font:500 10px/1.2 system-ui;color:var(--muted);border:1px solid var(--edge);border-radius:999px;padding:4px 8px">Theme</span>
               <span style="flex:0 0 auto;display:flex;align-items:center;gap:4px;font:400 11px/1.3 ui-monospace,Menlo,monospace;color:var(--muted)">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--faint)" stroke-width="1.8"><path d="M12 4v11M8 11l4 4 4-4M4 20h16"/></svg>431
@@ -162,11 +169,11 @@
         </div>
 
         <div style="display:flex;flex-direction:column;background:var(--panel2);border:1px solid var(--edge);border-radius:8px;overflow:hidden">
-          <span style="height:139px;background:linear-gradient(170deg,#1d2410,#3d4a18 42%,#7a8c1e 68%,#c9d94a)"></span>
+          <span style="aspect-ratio:2/1;background:linear-gradient(170deg,#1d2410,#3d4a18 42%,#7a8c1e 68%,#c9d94a)"></span>
           <span style="display:flex;flex-direction:column;gap:6px;padding:10px">
             <span style="font:500 12px/1.4 system-ui;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Greenhouse</span>
             <span style="font:400 11px/1.3 ui-monospace,Menlo,monospace;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">@lindqvist · 2026-10-12</span>
-            <span style="display:flex;align-items:center;gap:6px">
+            <span style="display:flex;align-items:center;gap:6px;height:26px">
               <span style="flex:0 0 auto;font:500 10px/1.2 system-ui;color:var(--muted);border:1px solid var(--edge);border-radius:999px;padding:4px 8px">Theme</span>
               <span style="flex:0 0 auto;display:flex;align-items:center;gap:4px;font:400 11px/1.3 ui-monospace,Menlo,monospace;color:var(--muted)">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--faint)" stroke-width="1.8"><path d="M12 4v11M8 11l4 4 4-4M4 20h16"/></svg>210
@@ -181,11 +188,11 @@
         </div>
 
         <div style="display:flex;flex-direction:column;background:var(--panel2);border:1px solid var(--edge);border-radius:8px;overflow:hidden">
-          <span style="height:139px;background:linear-gradient(170deg,#241408,#4a2a0e,#8c5214 68%,#d99a3c)"></span>
+          <span style="aspect-ratio:2/1;background:linear-gradient(170deg,#241408,#4a2a0e,#8c5214 68%,#d99a3c)"></span>
           <span style="display:flex;flex-direction:column;gap:6px;padding:10px">
             <span style="font:500 12px/1.4 system-ui;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">F1 telemetry</span>
             <span style="font:400 11px/1.3 ui-monospace,Menlo,monospace;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">@mira-k · 2026-10-14</span>
-            <span style="display:flex;align-items:center;gap:6px">
+            <span style="display:flex;align-items:center;gap:6px;height:26px">
               <span style="flex:0 0 auto;font:500 10px/1.2 system-ui;color:var(--muted);border:1px solid var(--edge);border-radius:999px;padding:4px 8px">Theme</span>
               <span style="flex:0 0 auto;display:flex;align-items:center;gap:4px;font:400 11px/1.3 ui-monospace,Menlo,monospace;color:var(--muted)">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--faint)" stroke-width="1.8"><path d="M12 4v11M8 11l4 4 4-4M4 20h16"/></svg>1,890
@@ -200,11 +207,11 @@
         </div>
 
         <div style="display:flex;flex-direction:column;background:var(--panel2);border:1px solid var(--edge);border-radius:8px;overflow:hidden">
-          <span style="height:139px;background:linear-gradient(170deg,#151a1f,#2a3540 42%,#48586a 68%,#8296aa)"></span>
+          <span style="aspect-ratio:2/1;background:linear-gradient(170deg,#151a1f,#2a3540 42%,#48586a 68%,#8296aa)"></span>
           <span style="display:flex;flex-direction:column;gap:6px;padding:10px">
             <span style="font:500 12px/1.4 system-ui;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Homelab</span>
             <span style="font:400 11px/1.3 ui-monospace,Menlo,monospace;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">@huyng · 2026-10-13</span>
-            <span style="display:flex;align-items:center;gap:6px">
+            <span style="display:flex;align-items:center;gap:6px;height:26px">
               <span style="flex:0 0 auto;font:500 10px/1.2 system-ui;color:var(--muted);border:1px solid var(--edge);border-radius:999px;padding:4px 8px">Theme</span>
               <span style="flex:0 0 auto;display:flex;align-items:center;gap:4px;font:400 11px/1.3 ui-monospace,Menlo,monospace;color:var(--muted)">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--faint)" stroke-width="1.8"><path d="M12 4v11M8 11l4 4 4-4M4 20h16"/></svg>733
@@ -219,11 +226,11 @@
         </div>
 
         <div style="display:flex;flex-direction:column;background:var(--panel2);border:1px solid var(--edge);border-radius:8px;overflow:hidden">
-          <span style="height:139px;background:linear-gradient(170deg,#0e1c24,#144a5a 42%,#1e8ca0 68%,#4ad0e0)"></span>
+          <span style="aspect-ratio:2/1;background:linear-gradient(170deg,#0e1c24,#144a5a 42%,#1e8ca0 68%,#4ad0e0)"></span>
           <span style="display:flex;flex-direction:column;gap:6px;padding:10px">
             <span style="font:500 12px/1.4 system-ui;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Weather wall</span>
             <span style="font:400 11px/1.3 ui-monospace,Menlo,monospace;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">@lindqvist · 2026-10-11</span>
-            <span style="display:flex;align-items:center;gap:6px">
+            <span style="display:flex;align-items:center;gap:6px;height:26px">
               <span style="flex:0 0 auto;font:500 10px/1.2 system-ui;color:var(--muted);border:1px solid var(--edge);border-radius:999px;padding:4px 8px">Theme</span>
               <span style="flex:0 0 auto;display:flex;align-items:center;gap:4px;font:400 11px/1.3 ui-monospace,Menlo,monospace;color:var(--muted)">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--faint)" stroke-width="1.8"><path d="M12 4v11M8 11l4 4 4-4M4 20h16"/></svg>604
@@ -238,11 +245,11 @@
         </div>
 
         <div style="display:flex;flex-direction:column;background:var(--panel2);border:1px solid var(--edge);border-radius:8px;overflow:hidden">
-          <span style="height:139px;background:linear-gradient(170deg,#12200e,#1e4a24 42%,#2f8c3a 68%,#5fd96a)"></span>
+          <span style="aspect-ratio:2/1;background:linear-gradient(170deg,#12200e,#1e4a24 42%,#2f8c3a 68%,#5fd96a)"></span>
           <span style="display:flex;flex-direction:column;gap:6px;padding:10px">
             <span style="font:500 12px/1.4 system-ui;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Trading desk</span>
             <span style="font:400 11px/1.3 ui-monospace,Menlo,monospace;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">@tobias · 2026-10-10</span>
-            <span style="display:flex;align-items:center;gap:6px">
+            <span style="display:flex;align-items:center;gap:6px;height:26px">
               <span style="flex:0 0 auto;font:500 10px/1.2 system-ui;color:var(--muted);border:1px solid var(--edge);border-radius:999px;padding:4px 8px">Theme</span>
               <span style="flex:0 0 auto;display:flex;align-items:center;gap:4px;font:400 11px/1.3 ui-monospace,Menlo,monospace;color:var(--muted)">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--faint)" stroke-width="1.8"><path d="M12 4v11M8 11l4 4 4-4M4 20h16"/></svg>512
@@ -257,11 +264,11 @@
         </div>
 
         <div style="display:flex;flex-direction:column;background:var(--panel2);border:1px solid var(--edge);border-radius:8px;overflow:hidden">
-          <span style="height:139px;background:linear-gradient(170deg,#241030,#4a1860 42%,#8c1e9c 68%,#d94ad0)"></span>
+          <span style="aspect-ratio:2/1;background:linear-gradient(170deg,#241030,#4a1860 42%,#8c1e9c 68%,#d94ad0)"></span>
           <span style="display:flex;flex-direction:column;gap:6px;padding:10px">
             <span style="font:500 12px/1.4 system-ui;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Retro terminal</span>
             <span style="font:400 11px/1.3 ui-monospace,Menlo,monospace;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">@mira-k · 2026-10-08</span>
-            <span style="display:flex;align-items:center;gap:6px">
+            <span style="display:flex;align-items:center;gap:6px;height:26px">
               <span style="flex:0 0 auto;font:500 10px/1.2 system-ui;color:var(--muted);border:1px solid var(--edge);border-radius:999px;padding:4px 8px">Theme</span>
               <span style="flex:0 0 auto;display:flex;align-items:center;gap:4px;font:400 11px/1.3 ui-monospace,Menlo,monospace;color:var(--muted)">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--faint)" stroke-width="1.8"><path d="M12 4v11M8 11l4 4 4-4M4 20h16"/></svg>498
@@ -276,11 +283,11 @@
         </div>
 
         <div style="display:flex;flex-direction:column;background:var(--panel2);border:1px solid var(--edge);border-radius:8px;overflow:hidden">
-          <span style="height:139px;background:linear-gradient(170deg,#101228,#1e2458 42%,#3a44b0 68%,#7a86f0)"></span>
+          <span style="aspect-ratio:2/1;background:linear-gradient(170deg,#101228,#1e2458 42%,#3a44b0 68%,#7a86f0)"></span>
           <span style="display:flex;flex-direction:column;gap:6px;padding:10px">
             <span style="font:500 12px/1.4 system-ui;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">City grid</span>
             <span style="font:400 11px/1.3 ui-monospace,Menlo,monospace;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">@huyng · 2026-10-07</span>
-            <span style="display:flex;align-items:center;gap:6px">
+            <span style="display:flex;align-items:center;gap:6px;height:26px">
               <span style="flex:0 0 auto;font:500 10px/1.2 system-ui;color:var(--muted);border:1px solid var(--edge);border-radius:999px;padding:4px 8px">Theme</span>
               <span style="flex:0 0 auto;display:flex;align-items:center;gap:4px;font:400 11px/1.3 ui-monospace,Menlo,monospace;color:var(--muted)">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--faint)" stroke-width="1.8"><path d="M12 4v11M8 11l4 4 4-4M4 20h16"/></svg>455
@@ -295,11 +302,11 @@
         </div>
 
         <div style="display:flex;flex-direction:column;background:var(--panel2);border:1px solid var(--edge);border-radius:8px;overflow:hidden">
-          <span style="height:139px;background:linear-gradient(170deg,#0d1f22,#124a4a 42%,#1a8c86 68%,#3cd9c4)"></span>
+          <span style="aspect-ratio:2/1;background:linear-gradient(170deg,#0d1f22,#124a4a 42%,#1a8c86 68%,#3cd9c4)"></span>
           <span style="display:flex;flex-direction:column;gap:6px;padding:10px">
             <span style="font:500 12px/1.4 system-ui;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Studio clock</span>
             <span style="font:400 11px/1.3 ui-monospace,Menlo,monospace;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">@lindqvist · 2026-10-04</span>
-            <span style="display:flex;align-items:center;gap:6px">
+            <span style="display:flex;align-items:center;gap:6px;height:26px">
               <span style="flex:0 0 auto;font:500 10px/1.2 system-ui;color:var(--muted);border:1px solid var(--edge);border-radius:999px;padding:4px 8px">Theme</span>
               <span style="flex:0 0 auto;display:flex;align-items:center;gap:4px;font:400 11px/1.3 ui-monospace,Menlo,monospace;color:var(--muted)">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--faint)" stroke-width="1.8"><path d="M12 4v11M8 11l4 4 4-4M4 20h16"/></svg>380
@@ -314,11 +321,11 @@
         </div>
 
         <div style="display:flex;flex-direction:column;background:var(--panel2);border:1px solid var(--edge);border-radius:8px;overflow:hidden">
-          <span style="height:139px;background:linear-gradient(170deg,#241010,#4a1818 42%,#8c2020 68%,#d94a4a)"></span>
+          <span style="aspect-ratio:2/1;background:linear-gradient(170deg,#241010,#4a1818 42%,#8c2020 68%,#d94a4a)"></span>
           <span style="display:flex;flex-direction:column;gap:6px;padding:10px">
             <span style="font:500 12px/1.4 system-ui;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Server room</span>
             <span style="font:400 11px/1.3 ui-monospace,Menlo,monospace;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">@tobias · 2026-10-02</span>
-            <span style="display:flex;align-items:center;gap:6px">
+            <span style="display:flex;align-items:center;gap:6px;height:26px">
               <span style="flex:0 0 auto;font:500 10px/1.2 system-ui;color:var(--muted);border:1px solid var(--edge);border-radius:999px;padding:4px 8px">Theme</span>
               <span style="flex:0 0 auto;display:flex;align-items:center;gap:4px;font:400 11px/1.3 ui-monospace,Menlo,monospace;color:var(--muted)">
                 <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--faint)" stroke-width="1.8"><path d="M12 4v11M8 11l4 4 4-4M4 20h16"/></svg>344

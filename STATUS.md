@@ -18,9 +18,9 @@ Drain `docs/product/backlog.jsonl` through the active Superpowers plan. Editor r
 
 ## Last completed change
 
-- Task 22.5 removes the tautological `widgetName` comparison from both sites that carried it; `vg-168` is verified at ancestor `52a505ee`.
-- The row's `Files` entry named the wrong file: the seat stopped for a scope ruling, and the ruling fixed both real sites while leaving `layer-tree.test.ts`'s cross-path comparison, which still reddens on a spelled literal.
-- Review reproduced the surviving red (same two cases when `cardGroup` drops its stamp) and judged the `toMatchObject` widening bounded by the stamp's declared shape; gate exit 0, 264 files, 3487 tests.
+- The store's gallery is one cell box for both halves — 2/1 picture, 26px facts band, a 272px minimum derived from the online half — so switching tabs cannot change the grid's shape.
+- Ruling 9 amended: the item modal is a viewer, 960px with a fixed stage the theme is contained in, and the facts are pills in three groups instead of a row each.
+- Four drawings updated, `store-detail.html` redrawn; drawings gate and parity exit 0, 34 passed.
 
 ## Next
 
