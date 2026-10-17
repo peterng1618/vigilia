@@ -9,12 +9,14 @@
 ## What this is, and is not
 
 **It is** the model for a display client: what one is, how it is named, which
-theme it holds, and which answers that theme's questions on that display.
+theme it holds, and which answers that theme's questions on that display — for
+both kinds of client, a paired one on the LAN and the host's own monitors.
 
 **It is not** the storefront (the store spec), the display's own settings panel
-or keep-awake (`vg-576`), the installable player (`vg-577`), or where the
-assignment is drawn — the store spec's Host settings mode and its local tab own
-that surface.
+or keep-awake (`vg-576`), the installable player (`vg-577`), launching a browser
+on a local monitor (§ "The host's own monitors" specifies the display and hands
+over a command line), or where the assignment is drawn — the store spec's Host
+settings mode and its local tab own that surface.
 
 ## The intent
 
@@ -103,31 +105,107 @@ device *transport* does not transfer at all.
 showing the same page is one display; two browsers on one PC are two. This is
 worth stating because "display" in the user's own words means the screens, while
 everything that can hold an assignment is a client — and the code can only ever
-see a client. The objective's "detect connected displays" is therefore satisfied
-by naming the clients that are showing something, not by enumerating monitors.
+see a client. **A monitor is a place a client is asked to appear, not an
+identity**: the same page dragged to another screen is the same display, and a
+screen with nothing on it is not a display at all.
 
-**Pairing registers a display; the assignment is a key in one map, and it has two
-writers.** Pairing is how a client becomes *known* — it gets a name on this PC and
-appears in the list. What that display shows is a separate fact: **this PC** may
-set any display's theme or the default, and **the display itself** may set its own
-and nothing else. The second writer is ruling 11 (§ "A display may change its own
-theme"), and it costs one branch on one route because the authority is *derived*
-from the session rather than claimed in the body.
+**There are two ways a client becomes known**, and the difference is only how it
+was admitted:
 
-Two clients are displays, and a third is not:
+- **Pairing** admits a client on the LAN, which needs a credential because the
+  host cannot otherwise tell one client from another.
+- **The host's own monitors** are admitted by being *specified* on this PC
+  (§ "The host's own monitors"): no code, no credential, because the host is
+  starting a client on its own machine for itself.
+
+**Admission is the only difference; everything after it is shared.** A local
+monitor is a display with no credential, so the per-display map, the answers map,
+the resolution order and the two writers all apply to it unchanged. That is the
+whole reason the kind is a field on one record rather than a second subsystem.
+
+**The assignment is a key in one map, and it has two writers.** Admission is how a
+client becomes *known* — it gets a name on this PC and appears in the list. What
+that display shows is a separate fact: **this PC** may set any display's theme or
+the default, and **the display itself** may set its own and nothing else. The
+second writer is ruling 11 (§ "A display may change its own theme"), and it costs
+one branch on one route because the authority is *derived* from the session rather
+than claimed in the body.
+
+Three clients are displays, and a fourth is not:
 
 | Client | Identity | Registered | Its theme |
 |---|---|---|---|
 | **This PC's own screen** — the root page on loopback | the reserved id `this-pc` | implicitly; never paired, because loopback is already trusted admin | assigned like any other, and the default until it is |
-| **A paired LAN client** — a phone, tablet, TV or installed player | a display record's id, minted at pairing | by pairing, which is the only way to get a record | assigned from this PC; the default until it is |
+| **A local monitor** — a browser the host specified, on this PC's own second screen | a display record's id, minted when the owner adds it | by being specified on this PC; no code, no credential | assigned like any other |
+| **A paired LAN client** — a phone, tablet, TV or installed player | a display record's id, minted at pairing | by pairing, which is the only way a LAN client gets a record | assigned from this PC; the default until it is |
 | **An unpaired reader** — anyone else who opens the root page on the LAN | none | **no, and it is not a display** | it reads the default, because a reader with no record cannot be assigned to |
 
-**The third row is the one worth stating plainly**: an unpaired reader is not a
+**The last row is the one worth stating plainly**: an unpaired reader is not a
 display that has been given a theme, it is a page being served the default. It
 becomes a display by being paired, and until then there is nothing to assign a
 theme to. That is also why pairing is an admin action on this PC rather than
 something a client can do for itself — a client that could register itself could
 give itself a name on the list.
+
+## The host's own monitors
+
+The user's second requirement, 2026-10-18: beside a remote display over the LAN,
+**a host's own secondary monitor running a lightweight fullscreen browser**, which
+needs no pairing because it is the host's own screen — the host just specifies it.
+
+**The host can already enumerate monitors, with no new dependency.**
+`systeminformation` is a host dependency today (`packages/host/package.json`), and
+its `graphics().displays` answers per-monitor facts — probed on this PC, 5.33.13
+returns one entry carrying `deviceName` (`\\.\DISPLAY1`), `model`, `serial`,
+`main`, `positionX`/`positionY` and `currentResX`/`currentResY`. Those are exactly
+the two things this needs: an identity to point a display at, and the geometry a
+fullscreen browser has to be told. **Only one display is attached to this PC**, so
+the multi-monitor case is reasoned from the shape of that answer rather than
+observed, and it is in the unverified list.
+
+**A local monitor is a display record with `kind: "local"` and no `tokenHash`**,
+minted when the owner adds it, and removable like any other. Its id obeys the same
+pattern and is minted from the same slug rule, so the answers file accepts it and
+nothing downstream learns a second shape.
+
+**It is resolvable only from loopback, and that is the invariant that makes a
+credentialless display safe.** A local monitor is reached at
+`http://127.0.0.1:<port>/?display=<id>`; a request that names a local display from
+off this PC is refused, because otherwise anyone on the LAN could send
+`?display=<id>` and take that screen's theme — the exact claim § "Identity" says a
+client may never make. Loopback is already trusted admin (`allowed()`), so a
+loopback request naming a display is not a client claiming an identity, it is the
+admin choosing one.
+
+**A local monitor is immune to everything in § "Finding the host after its address
+changes"**: it is on this PC, reaching `127.0.0.1`, so there is no address to
+change, no name to resolve, no sweep, and no code. It is the one display that
+cannot be lost by a router handing out a new lease.
+
+**The monitor a display points at is a hint, and losing it must not lose the
+theme.** The record stores what the owner chose — `serial` when the monitor reports
+one, otherwise `deviceName` — and the geometry is re-read on each start rather than
+stored, because a resolution change is not an identity change. A record whose hint
+matches no attached monitor **stays in the list and keeps its theme**; it simply
+is not on a screen, and the Host settings mode says so. The alternative — deleting
+a display because a cable moved — would throw away the person's configuration to
+report a fact about the furniture.
+
+**`this-pc` is the same kind, and stays reserved.** It is the local display for
+whatever screen the host's own page is on, which is why the reserved id and the
+specified monitors are one concept rather than two: `this-pc` is the local display
+nobody had to add.
+
+**Adding one is a Host settings action**: name it, pick a monitor from what
+`graphics().displays` reports, and the host answers with the URL to open and the
+monitor's geometry. **The host does not launch the browser** — it specifies the
+display, which is the user's own word for it, and hands over the command line
+(with `--window-position` and `--window-size` from the reported geometry) for a
+shortcut or a Startup entry. Launching another application's window on a chosen
+monitor is platform-specific, needs process supervision and a lifecycle of its own,
+and `cli/net.ts`'s `openBrowser` opens a URL with no placement control — so it is a
+separate subsystem rather than a step here. Open question 6 records the choice and
+what would change it.
 
 ## Two hosts on one network
 
@@ -152,7 +230,8 @@ somebody else's PC.
 `DEFAULT_APP_DIR` is `~/.vigilia` with `themes/` and `settings/` inside it
 (`cli/args.ts`), and `--app-dir` is the only thing that separates two installs. Two
 hosts started on this PC with no flags share one `settings/`, so they share
-`active-theme.json`, `theme-answers.json` and the `displays.json` this design adds
+`active-theme.json`, `theme-answers.json` and the `display-clients.json` this
+design adds
 — the same display ids and assignments under two servers. `MAX_PORT_ATTEMPTS`
 makes it worse rather than better: the second host walks to the next free port,
 starts successfully, and looks like a second host while sharing the first's state.
@@ -235,8 +314,14 @@ things and stay separate, whichever of them is durable.
 
 So the two are separated:
 
-- **Pairing mints a display record** — `{ id, label, createdAt, tokenHash,
+- **Pairing mints a display record** — `{ id, label, kind, createdAt, tokenHash,
   lastSeenAt }` — and persists it. The id is the name an assignment is keyed by.
+  **Its file is `display-clients.json`, not `displays.json`**: `settings/display.ts`
+  already owns `display.json` in the same directory for a completely different
+  thing — how readings are displayed, its time zone and its measurement system —
+  and two files one character apart with different owners is a defect waiting for
+  a tired reader. The incumbent keeps its name; the new one is the one that says
+  which it is.
 - **The session carries a `displayId` beside its token**, so a request resolves to
   the record and not to the credential.
 - **Re-pairing a known display issues a new session for the existing record**,
@@ -264,7 +349,7 @@ it and each is part of the ruling rather than an extra:
   The display list is where a client is removed, and removing it deletes the
   credential with the record.
 - **The token is stored hashed**, never in the clear: the record holds
-  `sha256(token)`, so reading `displays.json` — a backup, a synced folder, a
+  `sha256(token)`, so reading `display-clients.json` — a backup, a synced folder, a
   screenshot — yields a list of displays rather than a set of usable credentials.
   Verification compares the hash, and the existing timing-safe comparison stays.
 - **The token stops living in the URL after the first visit.** A twelve-hour token
@@ -282,8 +367,9 @@ it and each is part of the ruling rather than an extra:
 
 **The sweep and the TTL constant go with it.** `DEFAULT_SESSION_TTL_MS`, `sweep()`
 and the expiry field are removed rather than left unused, because a TTL that is not
-enforced reads as one that is. `revoke(token)` stays and now means *this credential
-stops working*; removing the display is the separate act the routes table describes.
+enforced reads as one that is. There is no separate `revoke` left to keep: with one
+credential per display and no expiry, revoking *is* removing, and the routes table
+carries the one act that does it.
 
 **This is the second credential this product stores, and the first one's questions
 come with it.** The store spec says the GitHub token is the first, with its file,
@@ -298,6 +384,38 @@ already is rather than deciding it twice.
 random suffix when the slug is taken. Reusing the pattern is not decoration: the
 answers file already refuses a key that does not match it, so a display id that
 did not would be unanswerable.
+
+## Renaming a display, and why the id does not move
+
+The user asked on 2026-10-18 for a display to be **renamed to something easy to
+recognise after pairing**, as 9remote allows. Today the label is what the id was
+minted *from*, so a naive rename would either leave the id stale or mint a new one
+— and a new id would move the display's theme and every answer it has given to a
+record nobody is looking at.
+
+**So the label is mutable and the id is not.** They were only ever related by
+history: the id is the key that the assignment map and the answers file both use,
+and the label is what a person reads in a list. One route renames — loopback only,
+since it is an admin act like pairing — and it changes `label` and nothing else.
+Renaming is therefore free of consequences for a display's theme, its answers, or
+which record it is, and the same route works for a paired client and a local
+monitor because both are records.
+
+**The id stays as it was, including when it no longer resembles the name.** An
+`office-tv` renamed to *Kitchen* keeps the id `office-tv`, and that is the correct
+outcome rather than a wart: the id is a key, keys do not get rewritten because a
+person changed their mind, and anything that needs the human name already has the
+label. A display whose label is ambiguous — two renamed *Kitchen* — is a display
+list's problem to draw, not an id's problem to solve, because **labels are not
+keys and duplicates are allowed**.
+
+**A rename is validated as text, not as an id.** Trimmed, at least one character
+after trimming, at most 64, and refused rather than silently emptied — the label is
+the only thing in the record a person types, and `exactOptionalPropertyTypes` plus
+"refuse invalid input rather than coercing it" both point the same way. It is *not*
+run through the slug rule: that rule exists to mint ids, and applying it here would
+refuse a perfectly good name like `Living Room (TV)` for no reason a person could
+act on.
 
 ## Pairing a display that has no camera
 
@@ -461,6 +579,9 @@ outranks the map for exactly as long as it is in the URL.
 | `GET /api/pairing/sessions` | loopback | the live codes **and** the known displays |
 | `POST /api/pairing/sessions?label=` | loopback | a new display, its durable credential and a one-time code |
 | `POST /api/pairing/sessions?displayId=` | loopback | **replaces** that display's credential — rotation — keeping its record, its theme and its answers |
+| `PATCH /api/displays/:id` | loopback | `{ label }` — **renames, and changes nothing else**; the id does not move |
+| `POST /api/displays` | loopback | `{ label, monitor }` — **a local monitor**, a display with no credential |
+| `GET /api/displays/monitors` | loopback | what `systeminformation` reports is attached, for the owner to pick from |
 | `DELETE /api/displays/:id` | loopback | **removes the client**: the record, its credential, its assignment and its answers |
 | `GET /api/themes/active` | loopback | the default, each display with its theme, the library, the templates |
 | `PUT /api/themes/active` | loopback | `{ display: "<id>" \| "default", id }` — any display, and the default |
@@ -498,6 +619,11 @@ reusing a slug would inherit a stranger's answers.
 - **The answer fallback** — `perTheme[group] ?? stored.assigned[group]`
   (`server.ts`'s `currentAssignment`).
 - **The id pattern** — `settings/devices.ts`'s `ID_PATTERN`.
+- **`systeminformation`, already a host dependency**, for enumerating monitors.
+  `graphics().displays` is the whole of what § "The host's own monitors" needs —
+  an identity to point a display at and the geometry to tell a browser — so the
+  second kind of display adds **no dependency**, and the reuse gate's rung 4 is
+  passed by the manifest rather than by argument.
 - **`requiredDeviceGroups`** already derives a theme's slots from its bindings;
   this document changes *whose* answers are read, not how they are derived.
 - **The publish poll** — `publish-follower.ts` and `/api/published`.
@@ -511,8 +637,8 @@ One plan, and it is a prerequisite of the store's phase A rather than a sibling:
 
 | Phase | Lands | Needs |
 |---|---|---|
-| **1** | the display record with its hashed durable credential (ruling 12), pairing against it, the persisted display list and its removal route, the one-time code and its `/pair` route as the camera-less path, the host's own identity and lock in the app folder, and `GET /api/host` | — |
-| **2** | the per-display map, the default, and `GET /`'s resolution | 1 |
+| **1** | the display record with its hashed durable credential (ruling 12), pairing against it, the persisted display list, its removal and **rename** routes, the one-time code and its `/pair` route as the camera-less path, **the host's own monitors as credentialless displays**, the host's own identity and lock in the app folder, and `GET /api/host` | — |
+| **2** | the per-display map, the default, and `GET /`'s resolution — including a loopback request naming a local display, which is the only way a local display is ever resolved | 1 |
 | **3** | the answers keyed by display and theme, through `currentAssignment` | 2 |
 | **4** | the routes, the display's own write and its chooser (ruling 11), the reassignment read on `/api/published`, the display's re-find ladder, and the two host pages rewritten against the model | 3 |
 
@@ -557,6 +683,15 @@ from the session, so a display writes its own key or nothing.
    **Not needed for the feature to work**, because the name route and the re-find
    ladder both work without it, so it is deferred rather than designed. Browsers
    cannot resolve `.local` except Safari, so it would never be the whole answer.
+6. **Whether the host should launch the browser on a local monitor itself.** This
+   design specifies the display and hands over the command line, which is what the
+   user asked for ("the host just needs to specify them"), and launching is
+   platform-specific, needs process supervision, and has no placement control in
+   anything the host already has (`cli/net.ts`'s `openBrowser` opens a URL and
+   nothing more). **Recommended: do not build it**, because a Startup shortcut the
+   owner can see and edit is more debuggable than a supervised child process, and
+   the failure of a launched browser is invisible from the host's own log. What
+   would change the answer is a second screen the owner cannot put a shortcut on.
 
 ## Not verified, and must be before this is planned
 
@@ -586,6 +721,14 @@ from the session, so a display writes its own key or nothing.
 - **That a cross-origin sweep can read `GET /api/host`.** The CORS header is
   designed rather than tested, and a preflight or a private-network rule could
   refuse it. Unverified from this environment.
+- **That `systeminformation` reports every attached monitor usefully.** Probed on
+  this PC at 5.33.13: it answers one entry with `deviceName`, `serial`, `main`,
+  `positionX`/`positionY` and `currentResX`/`currentResY`, which is the shape this
+  design needs. **Only one monitor is attached here**, so the multi-monitor case,
+  the stability of `deviceName` across a cable change, and whether `serial` is
+  reported on monitors that are not this one are all reasoned rather than observed.
+  A local monitor is the feature most exposed to that gap, and the plan's first
+  test on a two-monitor PC is what closes it.
 
 ## Acceptance
 
@@ -624,3 +767,14 @@ from the session, so a display writes its own key or nothing.
   one; a display that matches nothing is offered the code route rather than a dead
   page; `GET /api/host` answers only `{ id, name, port }`, and is readable
   cross-origin.
+- **7 (renaming)** — renaming a display changes its label and **nothing else**: its
+  id, its theme and every answer it has given are unchanged, and the assignment map
+  still resolves it; an empty or whitespace-only label is refused rather than
+  stored; two displays may hold the same label; a rename from off loopback is
+  refused; and a rename survives a host restart.
+- **8 (local monitors)** — a local monitor added on this PC needs no code and shows
+  the theme assigned to it; **a request from off this PC naming a local display is
+  refused**, so `?display=<id>` cannot be used to take that screen's theme; a local
+  monitor's record whose monitor is no longer attached **stays in the list with its
+  theme**, and the settings surface says it is not on a screen; and a local monitor
+  is unaffected by the host's address changing, because it reaches `127.0.0.1`.

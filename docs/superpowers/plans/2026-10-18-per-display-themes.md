@@ -41,12 +41,19 @@ plan argues from the spec, so read both. Register row: `vg-574`.
   and any expiry field are deleted rather than left unenforced. A credential is
   stored as `hashToken(token)` and never in the clear, and a route never echoes a
   stored hash.
+- **The display list is `display-clients.json`, never `displays.json`.**
+  `settings/display.ts` already owns `display.json` in the same directory for how
+  readings are displayed; two files one character apart with different owners is a
+  defect waiting for a tired reader. Do not rename the incumbent.
+- **A local display is resolved only from loopback, and only by `?display=`.** Its
+  `kind` is checked as well as the origin: the parameter names `local` records and
+  never a paired one, so it cannot be used to impersonate a display that has a
+  credential. This is the property that lets a local display exist without one.
 
 ## Review Focus
 
-Eight inputs and conditions the spec implies and no task's own tests exercise.
+Ten inputs and conditions the spec implies and no task's own tests exercise.
 Each gets its test in the task named beside it.
-
 1. **A display whose assigned theme was deleted** — a person removes a theme from
    the library while a wall screen holds it. The display must fall to the default
    and keep showing something, never an error page or a blank stage. (Task 2.2)
@@ -73,6 +80,14 @@ Each gets its test in the task named beside it.
 8. **A second host on the same LAN answering a sweep** — a display re-finding its
    host must match the id it stored, not the first host that replies, or the
    two-host no-tangle property the spec claims is gone. (Task 4.6)
+9. **A rename that collides with a label already in the list** — two displays
+   called *Kitchen* are allowed, and neither may lose its theme, its answers or its
+   own identity to the other. The list disambiguates; the ids stay distinct. (Task
+   1.3)
+10. **A request naming a local display from off this PC** — `?display=` is the only
+    thing that could identify a credentialless display, so it is the only way to
+    impersonate one. It must be refused off loopback, and it must not resolve a
+    paired display at all. (Task 2.2)
 
 ---
 
@@ -80,10 +95,11 @@ Each gets its test in the task named beside it.
 
 | File | Responsibility |
 |---|---|
-| `packages/host/src/settings/displays.ts` (create) | The display record: its id, its durable hashed credential, its minting rules, and the persisted list |
+| `packages/host/src/settings/displays.ts` (create) | The display record: its id, its kind, its durable hashed credential, its minting, renaming and removal rules, and the persisted list in `display-clients.json` |
 | `packages/host/src/settings/devices.ts` (modify) | Exports `DEVICE_ID_PATTERN`, the one id shape the host accepts |
 | `packages/host/src/settings/theme-settings.ts` (modify) | Answers gain a display level above their theme level |
 | `packages/host/src/settings/active-theme.ts` (modify) | One map from display key to theme id, `default` reserved |
+| `packages/host/src/settings/monitors.ts` (create) | What `systeminformation` reports is attached, and the hint and command line a local display needs |
 | `packages/host/src/session/pairing.ts` (modify) | The CSPRNG mint and the constant-time compare, and nothing that expires |
 | `packages/host/src/session/pairing-code.ts` (create) | The one-time code: its alphabet, its expiry, and the claim that consumes it |
 | `packages/host/public/pair.html` (create) | The page a camera-less display types the code into |
@@ -114,8 +130,11 @@ Each gets its test in the task named beside it.
   - `displays.ts`:
     - `export const LOCAL_DISPLAY_ID = "this-pc"`
     - `export const DEFAULT_DISPLAY = "default"`
-    - `export interface DisplayRecord { readonly id: string; readonly label: string; readonly createdAt: string; readonly tokenHash: string; readonly lastSeenAt: string }`
-    - `export interface DisplayStore { list(): Promise<readonly DisplayRecord[]>; create(label: string, token: string): Promise<DisplayRecord>; find(id: string): Promise<DisplayRecord | undefined>; authenticate(token: string): Promise<DisplayRecord | undefined>; rotate(id: string, token: string): Promise<DisplayRecord | undefined>; touch(id: string, at: string): Promise<void>; remove(id: string): Promise<boolean> }`
+    - `export type DisplayKind = "paired" | "local"`
+    - `export interface MonitorHint { readonly serial?: string; readonly deviceName: string }`
+    - `export interface DisplayRecord { readonly id: string; readonly label: string; readonly kind: DisplayKind; readonly createdAt: string; readonly lastSeenAt: string; readonly tokenHash?: string; readonly monitor?: MonitorHint }`
+    - `export interface DisplayStore { list(): Promise<readonly DisplayRecord[]>; create(label: string, token: string): Promise<DisplayRecord>; createLocal(label: string, monitor: MonitorHint): Promise<DisplayRecord>; find(id: string): Promise<DisplayRecord | undefined>; authenticate(token: string): Promise<DisplayRecord | undefined>; rotate(id: string, token: string): Promise<DisplayRecord | undefined>; rename(id: string, label: string): Promise<DisplayRecord | undefined>; touch(id: string, at: string): Promise<void>; remove(id: string): Promise<boolean> }`
+    - `export function normalizeLabel(input: unknown): string` — trims, refuses empty and over-64, and is **not** the slug rule (spec § "Renaming a display").
     - `export function hashToken(token: string): string` — `createHash("sha256").update(token).digest("base64url")`, so nothing else in the tree decides how a credential is stored.
     - `export function createDisplayStore(directory: string, options?: { readonly now?: () => number; readonly randomSuffix?: () => string }): DisplayStore`
     - `export function displayIdFrom(label: string, suffix: string): string` — the slug rule, pure, so its refusals are unit-testable.
@@ -125,7 +144,7 @@ Each gets its test in the task named beside it.
 ```ts
 // displays.test.ts
 import { describe, expect, it } from "vitest";
-import { createDisplayStore, displayIdFrom, hashToken } from "./displays.js";
+import { createDisplayStore, displayIdFrom, hashToken, normalizeLabel } from "./displays.js";
 
 describe("displayIdFrom", () => {
   it("slugs a label into the host's one id shape", () => {
@@ -159,7 +178,7 @@ describe("createDisplayStore", () => {
   it("never writes the token to the file", async () => {
     const token = "a-token-nobody-should-read";
     await store.create("Kitchen tablet", token);
-    const raw = await readFile(path.join(directory, "displays.json"), "utf8");
+    const raw = await readFile(path.join(directory, "display-clients.json"), "utf8");
     expect(raw).not.toContain(token);
     expect(raw).toContain(hashToken(token));
   });
@@ -192,6 +211,52 @@ describe("createDisplayStore", () => {
   });
 
   it("drops a stored record whose tokenHash is missing", async () => { /* hand-written file, no tokenHash -> dropped, not authenticated */ });
+
+  // Renaming: the label moves, the id does not.
+  it("renames without moving the id or the creation time", async () => {
+    const before = await store.create("office tv", "tok");
+    const after = await store.rename(before.id, "Kitchen");
+    expect(after).toMatchObject({ id: before.id, label: "Kitchen", createdAt: before.createdAt });
+    expect((await store.find(before.id))?.label).toBe("Kitchen");
+  });
+
+  it("refuses a label that is empty or only whitespace", async () => {
+    const record = await store.create("office tv", "tok");
+    for (const label of ["", "   ", "\t\n"]) {
+      await expect(store.rename(record.id, label)).rejects.toThrow(/label/);
+    }
+    expect((await store.find(record.id))?.label).toBe("office tv");
+  });
+
+  it("trims a label, and accepts one the slug rule would refuse", async () => {
+    const record = await store.create("office tv", "tok");
+    expect((await store.rename(record.id, "  Living Room (TV)  "))?.label).toBe("Living Room (TV)");
+  });
+
+  it("answers undefined for renaming a display it does not know", async () => {
+    expect(await store.rename("nobody", "Kitchen")).toBeUndefined();
+  });
+
+  it("lets two displays hold the same label", async () => {
+    const a = await store.create("Kitchen", "t1");
+    const b = await store.create("Kitchen", "t2");
+    await store.rename(b.id, "Kitchen");
+    expect(a.id).not.toBe(b.id);
+    expect((await store.list()).filter((d) => d.label === "Kitchen")).toHaveLength(2);
+  });
+
+  // A local monitor is a display with no credential.
+  it("mints a local display with no tokenHash, and it never authenticates", async () => {
+    const local = await store.createLocal("Left screen", { deviceName: "\\\\.\\DISPLAY2", serial: "abc" });
+    expect(local.kind).toBe("local");
+    expect(local.tokenHash).toBeUndefined();
+    expect(local.monitor).toEqual({ deviceName: "\\\\.\\DISPLAY2", serial: "abc" });
+    expect(await store.authenticate("")).toBeUndefined();
+  });
+
+  it("refuses to mint a local display for a reserved id", async () => {
+    await expect(store.createLocal("this pc", { deviceName: "\\\\.\\DISPLAY2" })).rejects.toThrow(/reserved/);
+  });
 });
 ```
 
@@ -202,13 +267,21 @@ Expected: FAIL — cannot resolve `./displays.js`.
 
 - [ ] **Step 3: Implement the store**
 
-`displays.ts` owns one file, `displays.json`, holding
+`displays.ts` owns one file, **`display-clients.json`**, holding
 `{ displays: DisplayRecord[] }`. Read it the way `devices.ts` reads its own:
 a missing or unreadable file is an empty list, and every record is normalised on
 read (an id failing `DEVICE_ID_PATTERN`, a non-string label, a label longer than
-64 characters, a missing or non-string `tokenHash`, or a duplicate id is dropped)
-— a hand-edited file must not be able to introduce a display nothing else accepts,
-and a record with no `tokenHash` is a display nothing can authenticate as.
+64 characters, a duplicate id, a `kind` that is neither `paired` nor `local`, a
+`paired` record with no `tokenHash`, or a `local` record that carries one, is
+dropped) — a hand-edited file must not be able to introduce a display nothing else
+accepts, a `paired` record with no hash is a display nothing can authenticate as,
+and a `local` record carrying a hash is a credentialless display pretending
+otherwise.
+
+**The file is not `displays.json`.** `settings/display.ts` already owns
+`display.json` in this same directory for a different concept — how readings are
+displayed — and two files one character apart with different owners is a defect
+waiting for a tired reader (spec § "Identity"). The incumbent keeps its name.
 
 `create` slugs the label, and appends `-<suffix>` when the slug is taken, where
 the suffix is `options.randomSuffix?.() ?? randomBytes(2).toString("hex")`. It
@@ -222,13 +295,24 @@ prevent.
 **The credential is stored as `hashToken(token)` and never in the clear**
 (ruling 12). `authenticate` hashes what it was given and compares it against the
 stored hashes, answering the first match; a token of 32 CSPRNG bytes has no
-dictionary to attack, so the hash's job is that reading `displays.json` — a
+dictionary to attack, so the hash's job is that reading `display-clients.json` — a
 backup, a synced folder, a screenshot — yields a list of displays rather than a
 set of usable credentials. `rotate` replaces one record's `tokenHash` in place and
 returns the updated record; `touch` sets `lastSeenAt`. Both are written through
 the same read-modify-write the other mutators use, so two of them racing lose one
 write rather than corrupting the file — acceptable here because the only writer is
 the host's own single process.
+
+**`createLocal` and `rename` are the two mutators the user's 2026-10-18 requests
+add**, and both are small because the record already carries everything they need.
+`createLocal(label, monitor)` is `create` minus the token: it slugs the id the same
+way, refuses the same two reserved ids, and writes `kind: "local"` with a `monitor`
+hint and no `tokenHash`. `rename(id, label)` runs `normalizeLabel` and writes the
+label **and nothing else** — not the id, not `createdAt`, not the assignment, which
+is the invariant the spec's § "Renaming a display" is entirely about.
+`normalizeLabel` trims, refuses a result shorter than 1 or longer than 64, and
+**does not slug**: `Living Room (TV)` is a name a person may have, and refusing it
+because it contains a space and a bracket would be a rule nobody could act on.
 
 - [ ] **Step 4: Run test to verify it passes**
 
@@ -375,9 +459,23 @@ it("removes a client and its credential", async () => {
   //   /api/pairing/sessions no longer lists it.
 });
 
+it("renames a display without moving it", async () => {
+  // PATCH /api/displays/office-tv { label: "Kitchen" } -> 200 with the same id
+  //   and the new label; GET lists it under "Kitchen" and its theme is unchanged.
+});
+
+it("refuses an empty label rather than storing it", async () => {
+  // PATCH { label: "   " } -> 400, and the stored label is still the old one.
+});
+
+it("refuses a rename from off loopback", async () => {
+  // A non-loopback PATCH -> 403, and the label is unchanged.
+});
+
 it("answers 404 for a displayId it does not know, on both routes", async () => {
   // POST ?displayId=nobody -> 404, no credential minted.
   // DELETE /api/displays/nobody -> 404.
+  // PATCH /api/displays/nobody -> 404.
 });
 
 it("refuses a displayId from off loopback before reading it", async () => {
@@ -403,7 +501,9 @@ guard precedes the parameter read. `POST` with `label` mints a token with
 record and calls `displays.rotate(id, newToken())`. Both answer 201 with
 `{ display, token }` — the token is returned exactly once, because only its hash is
 stored. `GET` answers `{ displays }`. `DELETE /api/displays/:id` calls
-`displays.remove(id)`, and refuses `LOCAL_DISPLAY_ID`.
+`displays.remove(id)`, and refuses `LOCAL_DISPLAY_ID`. `PATCH /api/displays/:id`
+calls `displays.rename(id, body.label)` and answers the updated record, so the
+surface does not have to refetch the list to redraw one row.
 
 **Rotation is why the answer carries a token and the list never does.** `GET
 /api/pairing/sessions` answers displays, and a display's `tokenHash` is not part of
@@ -694,6 +794,121 @@ git add src/web/packages/host/src/server.ts src/web/packages/host/src/server.tes
 git commit -m "feat(host): answer the identity a display re-finds its host by"
 ```
 
+### Task 1.7: The host's own monitors
+
+Spec § "The host's own monitors". A second kind of display: the host's own screen,
+running a browser the host specified, with **no code and no credential** because it
+is on this PC. No new dependency — `systeminformation` is already here.
+
+**Files:**
+- Create: `src/web/packages/host/src/settings/monitors.ts`
+- Create: `src/web/packages/host/src/settings/monitors.test.ts`
+- Modify: `src/web/packages/host/src/server.ts`
+- Test: `src/web/packages/host/src/server.test.ts`
+
+**Interfaces:**
+- Consumes: `DisplayStore.createLocal` (Task 1.1); `LOCAL_DISPLAY_ID` (Task 1.1).
+- Produces:
+
+```ts
+export interface Monitor { readonly deviceName: string; readonly serial?: string; readonly main: boolean; readonly positionX: number; readonly positionY: number; readonly currentResX: number; readonly currentResY: number }
+/** What is attached now, from `systeminformation`'s `graphics()`. */
+export async function listMonitors(): Promise<readonly Monitor[]>;
+/** The hint a record stores: serial when the monitor reports one, else deviceName. */
+export function hintFor(monitor: Monitor): MonitorHint;
+/** Whether a stored hint still matches something attached. */
+export function isAttached(hint: MonitorHint, monitors: readonly Monitor[]): boolean;
+/** The URL to open, and the command line that puts it on that monitor. */
+export function launchFor(monitor: Monitor, port: number, displayId: string): { readonly url: string; readonly command: string };
+```
+
+- [ ] **Step 1: Write the failing test**
+
+```ts
+// monitors.test.ts — pure, over a fixture shaped like the probe's real answer.
+const ATTACHED: Monitor[] = [
+  { deviceName: "\\\\.\\DISPLAY1", serial: "4790810010513", main: true,  positionX: 0,    positionY: 0, currentResX: 2560, currentResY: 1440 },
+  { deviceName: "\\\\.\\DISPLAY2", main: false, positionX: 2560, positionY: 0, currentResX: 1920, currentResY: 1080 },
+];
+
+it("prefers the serial, because a device name moves when cables do", () => {
+  expect(hintFor(ATTACHED[0]!)).toEqual({ serial: "4790810010513", deviceName: "\\\\.\\DISPLAY1" });
+  expect(hintFor(ATTACHED[1]!)).toEqual({ deviceName: "\\\\.\\DISPLAY2" });
+});
+
+it("matches a hint on serial when it has one, and on deviceName when it does not", () => {
+  expect(isAttached({ serial: "4790810010513", deviceName: "\\\\.\\DISPLAY1" }, ATTACHED)).toBe(true);
+  expect(isAttached({ serial: "gone", deviceName: "\\\\.\\DISPLAY1" }, ATTACHED)).toBe(false);
+  expect(isAttached({ deviceName: "\\\\.\\DISPLAY2" }, ATTACHED)).toBe(true);
+  expect(isAttached({ deviceName: "\\\\.\\DISPLAY9" }, ATTACHED)).toBe(false);
+});
+
+it("builds a URL on loopback and a command that targets the monitor", () => {
+  const { url, command } = launchFor(ATTACHED[1]!, 5227, "left-screen");
+  expect(url).toBe("http://127.0.0.1:5227/?display=left-screen");
+  expect(command).toContain("--window-position=2560,0");
+  expect(command).toContain("--window-size=1920,1080");
+  expect(command).toContain(url);
+});
+
+// server.test.ts
+it("adds a local monitor with no credential", async () => {
+  // POST /api/displays { label: "Left screen", monitor: {...} } -> 201 with
+  //   kind "local", no token in the body, and the display listed.
+});
+
+it("answers what is attached, for the owner to pick from", async () => {
+  // GET /api/displays/monitors -> 200 with one entry per monitor.
+});
+
+it("refuses a local display from off loopback, on every route", async () => {
+  // A non-loopback POST /api/displays -> 403; the list is unchanged.
+});
+
+it("keeps a display whose monitor is no longer attached", async () => {
+  // A record hinting at a monitor not in the fixture: GET lists it, its theme is
+  //   unchanged, and the monitor list does not contain it.
+});
+```
+
+- [ ] **Step 2: Run test to verify it fails**
+
+Run: `npx vitest run packages/host/src/settings/monitors.test.ts packages/host/src/server.test.ts -t "monitor"`
+Expected: FAIL — cannot resolve `./monitors.js`.
+
+- [ ] **Step 3: Implement**
+
+`listMonitors` calls `graphics()` and maps `displays` to `Monitor`, reading
+`deviceName`, `serial`, `main`, `positionX`, `positionY`, `currentResX` and
+`currentResY`. **Geometry is read live and never stored on the record** — a
+resolution change is not an identity change, and a stored `currentResX` would go
+stale silently. `launchFor` builds the URL on `127.0.0.1` rather than the LAN
+address, because a local monitor is on this PC and the loopback address is the one
+that cannot change; the command is a Chromium-family command line with
+`--window-position` and `--window-size` from the monitor, `--start-fullscreen`, and
+a comment naming it as advice for a shortcut rather than something the host runs.
+
+**The host does not launch it** (spec open question 6). The route answers the URL
+and the command; the owner puts it in a shortcut or a Startup entry. Do not add a
+child process here.
+
+**A record whose hint matches nothing stays.** `GET /api/displays/monitors` answers
+what is attached, and the surface compares — the host does not delete a display
+because a cable moved, because that would throw away the person's theme to report a
+fact about the furniture.
+
+- [ ] **Step 4: Run test to verify it passes**
+
+Run: `npx vitest run packages/host/src/settings/monitors.test.ts packages/host/src/server.test.ts`
+Expected: PASS.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add src/web/packages/host/src/settings/monitors.ts src/web/packages/host/src/settings/monitors.test.ts src/web/packages/host/src/server.ts src/web/packages/host/src/server.test.ts
+git commit -m "feat(host): a second kind of display, specified rather than paired"
+```
+
 ---
 
 ## Phase 2 — The per-display map
@@ -774,10 +989,12 @@ git commit -m "feat(host): hold a theme per display, with a default"
 
 **Interfaces:**
 - Consumes: `ActiveThemeStore.read(display, exists)` (Task 2.1);
-  `SessionStore.find` (Task 1.2); `LOCAL_DISPLAY_ID`, `DEFAULT_DISPLAY` (Task 1.1).
-- Produces: `export function displayKeyFor(request: http.IncomingMessage, url: URL, sessions: SessionStore | undefined): string`
-  — loopback answers `LOCAL_DISPLAY_ID`, a live session answers its `displayId`,
-  anything else answers `DEFAULT_DISPLAY`.
+  `DisplayStore.find` (Task 1.1); `LOCAL_DISPLAY_ID`, `DEFAULT_DISPLAY` (Task 1.1).
+- Produces: `export function displayKeyFor(request: http.IncomingMessage, url: URL, displays: DisplayStore | undefined): Promise<string>`
+  — loopback answers `url.searchParams.get("display")` when it names a **local**
+  display, else `LOCAL_DISPLAY_ID`; a credential answers its own display's id;
+  anything else answers `DEFAULT_DISPLAY`. It is async because the display lookup
+  is, and a caller that ignores that would resolve a `Promise` to a key.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -800,8 +1017,25 @@ it("lets an explicit ?theme= outrank the assignment", async () => {
   // write("this-pc", a); GET /?theme=b -> b.
 });
 
-it("answers displayKeyFor for the three kinds of caller", () => {
-  // loopback -> "this-pc"; live token -> its displayId; no token, not loopback -> "default".
+it("resolves a local monitor from loopback", async () => {
+  // A local display "left-screen" with its own theme; GET /?display=left-screen on
+  //   loopback renders that theme.
+});
+
+it("refuses to resolve a local monitor from off this PC", async () => {
+  // GET /?display=left-screen from the LAN, with no credential -> the *default*
+  //   theme, not the local monitor's. Naming a display is not a way to become one.
+});
+
+it("refuses to resolve a *paired* display from loopback by naming it", async () => {
+  // GET /?display=kitchen-tablet on loopback -> "this-pc"'s theme, because
+  //   ?display= names local displays only. A paired display is reached by its
+  //   credential, so a stray query parameter cannot impersonate one.
+});
+
+it("answers displayKeyFor for the four kinds of caller", async () => {
+  // loopback -> "this-pc"; loopback + a local display's id -> that id;
+  //   credential -> its display's id; no credential, not loopback -> "default".
 });
 ```
 
@@ -814,8 +1048,18 @@ Expected: FAIL.
 
 The root route's order becomes published, `?theme=`, this display's entry, the
 default, the only theme, the chooser. Only step three and the new step four change;
-`displayKeyFor` is a module-level function so its three answers are unit-testable
-without a server.
+`displayKeyFor` is a module-level function so its answers are unit-testable without
+a server.
+
+**`?display=` names local displays only, and that restriction is the security
+property rather than a nicety.** A local monitor has no credential, so the query
+parameter is the only thing that could identify it — which means the parameter is
+also the only way to impersonate one. Two rules close that: the parameter is read
+**only on loopback**, and it is matched **only against records whose `kind` is
+`local`**. So a LAN client cannot name a local monitor, and no one at all can name
+a paired display through the parameter, because a paired display is reached by the
+credential it was given and by nothing else. Write the reason in a comment: a
+future reader who loosens either rule has removed the reason the credential exists.
 
 - [ ] **Step 4: Run test to verify it passes**
 
