@@ -68,15 +68,14 @@ plan argues from the spec, so read both. Register row: `vg-574`.
   something samples the backdrop — and re-evaluated when the scene changes, because
   a theme can gain a glass panel after mount. **Task 4.7 must leave a video
   background with no glass repainting zero times**, not merely fewer.
-- **The assignment warns about the two combinations that cost, and only those.**
-  Glass **and** a video background warns for any display; a video background alone
-  warns for a host monitor only; glass alone and neither warn for nothing. Detection
-  is `performanceCostsOf(envelope)` in `renderer-core` — pure, answering cost codes
-  rather than a boolean, and never throwing on a theme nothing has validated. **The
-  warning is raised through the editor's existing `ErrorManager`**
-  (`warn("theme-library", …)`, rendered by `DiagnosticMessage`) and the sentence is
-  `uiCopy`'s: no new category, no new manager, and nothing that returns a string for a
-  surface to render.
+- **The assignment warns about the two combinations that cost, and only those, on the
+  host's own page.** Glass **and** a video background warns for any display; a video
+  background alone warns for a host monitor only; glass alone and neither warn for
+  nothing; the default row warns for every cost, because it has no kind. Detection is
+  `performanceCostsOf(envelope)` in `renderer-core` — pure, answering cost codes rather
+  than a boolean, and never throwing on a theme nothing has validated. **The editor
+  raises none of it** (the user narrowed this on 2026-10-18): the warning is the host
+  theme row's own note, through `theme-list.js`'s existing `role="status"` pattern.
 
 ## Review Focus
 
@@ -133,11 +132,11 @@ Each gets its test in the task named beside it.
 14. **A theme that gains a glass panel after the scene has mounted** — the gate is
     re-evaluated on `update()`, or a video behind a newly-added blur freezes, which
     is the bug the repaint loop was written to fix. (Task 4.7)
-15. **A theme the store fetched but nothing has validated** — the cost detector runs
-    on an envelope the host has not checked, so it must answer "no costs" for
-    anything malformed rather than throwing inside a path that is only trying to be
-    helpful. A warning path that can crash the assign surface is worse than no
-    warning. (Task 4.8)
+15. **A `theme.json` that parses but is not a theme** — `list()` drops it before a cost
+    is ever asked, because `readEnvelope` validates. The guard is still owed by the
+    function itself: it is exported from `renderer-core` and typed `unknown`, so a caller
+    handing it raw JSON must get no costs rather than an exception thrown in the middle
+    of a listing that was otherwise fine. (Task 4.8)
 16. **An image background declared with a `.mp4` path, and a video declared as
     `image`** — the declared `kind` decides, because the model already refuses to
     infer an asset's type from its path. A detector that sniffed the extension would
@@ -165,9 +164,9 @@ Each gets its test in the task named beside it.
 | `packages/player/src/publish-follower.ts` (modify) | A display follows its own reassignment |
 | `packages/player/src/theme-chooser.ts` (create) | The display's own chooser: a chrome control that lists this host's themes and writes the one chosen |
 | `packages/player/src/host-refind.ts` (create) | The ladder that finds this display's own host again after its address changes |
-| `packages/editor/src/theme-library-manager/index.ts` (modify) | Which costs matter for a display of each kind, and raising them through the editor's own diagnostic channel |
-| `packages/editor/src/ui-copy.ts` (modify) | The one sentence per cost the assignment warning shows |
-| `packages/host/public/library.html`, `settings.html` (modify) | The two host pages write the display they name |
+| `packages/host/src/themes/store.ts` (modify) | A listed theme carries what displaying it costs, read from the envelope `list()` already reads |
+| `packages/host/public/theme-list.js` (modify) | The theme row itself: the display column it offers (Task 4.3), and which costs matter for a display of each kind, the sentence each shows and the row note that says it (Task 4.8) |
+| `packages/host/public/library.html`, `settings.html` (modify) | The two host pages write the display they name, and hand the row the kind of the display it is assigning to |
 
 ---
 
@@ -1448,7 +1447,11 @@ git commit -m "feat(host): resolve device assignments for the asking display"
 - Consumes: `ActiveThemeStore.readAll` (Task 2.1), `DisplayStore.list` (Task 1.1),
   `SessionStore.find` (Task 1.2).
 - Produces: `GET` answers
-  `{ default: string | null, displays: readonly { id: string; label: string; theme: string | null }[], themes, templates }`;
+  `{ default: string | null, displays: readonly { id: string; label: string; kind: DisplayKind; theme: string | null }[], themes, templates }`;
+  **`kind` is carried because the host page's warning table is keyed on it** (Task 4.8)
+  and the page cannot ask a display what it is. `themes` is `themeStore.list()`
+  unchanged, so anything an entry carries rides this response already — **Task 4.8's
+  costs arrive here without this route being touched again.**
   `PUT` answers `{ ok: true, default, displays }` in the same shape, and takes
   **two bodies from two callers**: loopback sends
   `{ display: string, id: string }` where `display` is a display id or `"default"`,
@@ -1594,6 +1597,9 @@ git commit -m "feat(player): follow the theme this display was assigned"
 **Files:**
 - Modify: `src/web/packages/host/public/library.html`
 - Modify: `src/web/packages/host/public/settings.html`
+- Modify: `src/web/packages/host/public/theme-list.js` — **the rows are drawn there**, so
+  a display column cannot be added to a page without it. It gains the `displays` option
+  the column offers and reports `(display, id)` on choose.
 - Test: `src/web/tests/e2e/host-settings.spec.ts` (the existing spec covering the
   host's own pages)
 
@@ -1620,6 +1626,10 @@ first, then one row per display from the route's `displays`. A write sends
 `{ display, id }`. `settings.html`'s answers form sends the display it is showing
 for, and reads the answers for that display's use of the active theme.
 
+**The column is drawn by `theme-list.js`**, so that module gains the option and the
+pages only pass it. The display's `kind` travels with it and is read by Task 4.8's
+warning; the warning itself is not this task's, and this task must not add one.
+
 - [ ] **Step 4: Run it to verify it passes**
 
 Run: `npx playwright test tests/e2e/host-settings.spec.ts --workers=1`
@@ -1643,11 +1653,10 @@ git commit -m "feat(host): choose a theme per display from the host's own pages"
 - Consumes: Task 4.1's `PUT`.
 - Produces: `ThemeLibraryClient` gains
   `assign(display: string, id: string): Promise<void>` and
-  `listDisplays(): Promise<readonly { id: string; label: string; kind: "paired" | "local"; theme: string | null }[]>`.
-  **`kind` is carried because the warning table is keyed on it** (Task 4.8): the same
-  theme is worth a warning on a host monitor and silence on a phone.
+  `listDisplays(): Promise<readonly { id: string; label: string; theme: string | null }[]>`.
   **This is the seam `2026-10-18-theme-store.md` consumes; it must not be
-  re-implemented there.**
+  re-implemented there.** It carries no cost warning: the warning is the host page's
+  (Task 4.8), and the editor raises nothing.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -1984,39 +1993,48 @@ git commit -m "feat(player): refresh at the display's own rate, and stop repaint
 
 Spec § "What the assignment warns about". The user's rule, 2026-10-18: glass **and**
 a video background warns for any display; a video background alone warns for a host
-monitor only.
+monitor only — and, narrowed the same day, *"the warning only needs to appear on the
+host, when the user assign a theme to a device."* **So the editor raises none of it.**
 
-**The warning goes through the editor's existing diagnostic owner, not a new one.**
-`editor/src/error-manager/` owns structured editor diagnostics
-(`docs/architecture/ownership.md`), its `warn(category, message)` already fires
-`editor:warning` and logs under `[vigilia:theme-library]`, and
-`editor-shell/diagnostic-message.tsx` is the one place those become a line a reader
-sees. **Its category union already carries `theme-library`**, so this task adds no
-category, no manager and no surface — only a sentence, and the sentence is copy, so it
-lives in `uiCopy` beside the rest of the editor's words. Nothing here returns a string
-for a surface to render.
+**Nothing new is read to know this.** `ThemeStore.list()` already reads every theme's
+`theme.json` to build its rows (`readEnvelope` inside `list`), and `/api/themes/active`
+already answers `themes: await themeStore.list()`. So an entry carries its costs and the
+page's existing fetch delivers them.
+
+**And the page already has the message shape.** `theme-list.js` gives a row its own note
+— `theme-delete-note`, `role="status"`, `hidden` until it has something to say — with
+the comment *"Said on the row rather than in a page-level status line: it belongs to
+this theme"*. The cost warning is that pattern rather than a second one.
 
 **Files:**
-- Create: `docs/decisions/0069-a-cost-is-detected-in-the-model-and-announced-by-the-diagnostic-channel.md`
+- Create: `docs/decisions/0069-a-themes-cost-is-read-from-the-envelope-alone.md`
 - Create: `src/web/packages/renderer-core/src/theme/performance-cost.ts`
 - Create: `src/web/packages/renderer-core/src/theme/performance-cost.test.ts`
 - Modify: `src/web/packages/renderer-core/src/index.ts` (the public barrel)
-- Modify: `src/web/packages/editor/src/ui-copy.ts` (the two sentences)
-- Modify: `src/web/packages/editor/src/theme-library-manager/index.ts` (the policy and the raise)
-- Test: `src/web/packages/editor/src/theme-library-manager/index.test.ts`
+- Modify: `src/web/packages/host/src/themes/store.ts` (`ThemeStoreEntry` gains `costs`)
+- Modify: `src/web/packages/host/public/theme-list.js` (the policy, the sentence, the note)
+- Modify: `src/web/packages/host/public/library.html` (pass the row's display kind)
+- Modify: `src/web/packages/host/public/settings.html` (the same)
+- Test: `src/web/packages/host/src/themes/store.test.ts`
+- Test: `src/web/packages/host/src/theme-list.dom.test.ts`
+- Test: `src/web/tests/e2e/host-settings.spec.ts` (the browser proof)
 
 **Interfaces:**
 - Consumes: `glassTreatment`, `VIGILIA_GLASS_PROPERTY` (`renderer-core/src/theme/glass.ts`);
-  the envelope's `artboard.backgroundMedia` and `assets`; `ErrorManager`
-  (`editor/src/error-manager/index.ts`); the display row's `kind` (Task 4.4).
+  the envelope's `artboard.backgroundMedia` and its asset declarations;
+  `ThemeStore.list()`'s existing `readEnvelope`; the display row's `kind` (Task 4.1).
 - Produces:
   - `renderer-core/src/theme/performance-cost.ts`:
     - `export type PerformanceCost = "glass-over-video" | "video-background"`
     - `export function performanceCostsOf(envelope: unknown): readonly PerformanceCost[]`
-  - `theme-library-manager/index.ts`:
-    - `export function costsFor(kind: "paired" | "local", costs: readonly PerformanceCost[]): readonly PerformanceCost[]`
-    - `export function warnAssignmentCost(errors: ErrorManager, kind: "paired" | "local", envelope: unknown): void`
-  - `ui-copy.ts`: `uiCopy.assignmentCost: Readonly<Record<PerformanceCost, string>>`
+  - `host/src/themes/store.ts`: `ThemeStoreEntry` gains
+    `readonly costs: readonly PerformanceCost[]` — computed in `entryFor` from the
+    envelope it is already handed, so `list()`, `read` and `write` all carry it.
+  - `host/public/theme-list.js`:
+    - `export function costsFor(kind: "paired" | "local" | "default", costs: readonly PerformanceCost[]): readonly PerformanceCost[]`
+    - `export function costWarning(kind: "paired" | "local" | "default", costs: readonly PerformanceCost[]): string | undefined`
+    - `themeList(themes, { …, displayKind })` — the kind of the display this list is
+      assigning to, so a row can say what that display will pay.
 
 - [ ] **Step 1: Write the failing test**
 
@@ -2046,104 +2064,96 @@ it("answers no costs for anything malformed, and never throws", () => {
   }
 });
 
-// theme-library-manager/index.test.ts — a stub ErrorManager records what it was told.
-it("warns about glass over video for both kinds of display", () => {
-  for (const kind of ["local", "paired"] as const) {
-    const { errors, warned } = harness();
-    warnAssignmentCost(errors, kind, videoWithGlass);
-    expect(warned).toHaveLength(1);
+// theme-list.dom.test.ts — the policy and the sentence.
+it("warns about glass over video for every kind of row", () => {
+  for (const kind of ["local", "paired", "default"] as const) {
+    expect(costWarning(kind, ["glass-over-video"])).toMatch(/repaint/i);
   }
 });
 
-it("warns about a video background only for a host monitor", () => {
-  const local = harness();
-  warnAssignmentCost(local.errors, "local", videoOnly);
-  expect(local.warned).toHaveLength(1);
-  const paired = harness();
-  warnAssignmentCost(paired.errors, "paired", videoOnly);
-  expect(paired.warned).toEqual([]);
+it("warns about a video background only for a host monitor, and for the default", () => {
+  expect(costWarning("local", ["video-background"])).toMatch(/idle|never/i);
+  expect(costWarning("paired", ["video-background"])).toBeUndefined();
+  // The default has no kind and may land on a host monitor, so it is told.
+  expect(costWarning("default", ["video-background"])).toMatch(/idle|never/i);
 });
 
 it("says nothing for a theme with no cost", () => {
-  const { errors, warned } = harness();
-  warnAssignmentCost(errors, "local", plain);
-  expect(warned).toEqual([]);
+  expect(costWarning("local", [])).toBeUndefined();
+  expect(costWarning("local", ["glass-over-video"])).not.toMatch(/performance/i);
 });
 
-it("raises through the existing channel, under the existing category", () => {
-  // The stub is called with "theme-library", and the message is uiCopy's own
-  //   sentence for that cost — so no surface has to render a returned string.
-});
-
-it("names the cost rather than saying 'performance'", () => {
-  for (const cost of ["glass-over-video", "video-background"] as const) {
-    expect(uiCopy.assignmentCost[cost]).toMatch(/repaint|idle|never/i);
-  }
+// themes/store.test.ts — the costs ride the listing the route already sends.
+it("carries each theme's costs on the entry it already built", async () => {
+  // A video theme's entry.costs is ["video-background"]; a plain theme's is [].
+  //   No second read of theme.json: list() already reads it for the row.
 });
 ```
 
 - [ ] **Step 2: Run test to verify it fails**
 
-Run: `npx vitest run packages/renderer-core/src/theme/performance-cost.test.ts packages/editor/src/theme-library-manager/index.test.ts`
+Run: `npx vitest run packages/renderer-core/src/theme/performance-cost.test.ts packages/host/src/theme-list.dom.test.ts packages/host/src/themes/store.test.ts`
 Expected: FAIL — cannot resolve `./performance-cost.js`.
 
 - [ ] **Step 3: Implement**
 
 **The decision note comes first**, because `renderer-core/src/theme/` is on the reuse
 gate's watchlist and the hook refuses the write until a note claims the path
-(`0069-a-cost-is-detected-in-the-model-and-announced-by-the-diagnostic-channel.md`).
-It records all seven reuse-gate rungs, including the rungs that found nothing: the
-searches are the evidence, and a note that names a conclusion without saying what was
-searched is worth nothing. Rungs 1–2 are the load-bearing ones here — `glassTreatment`
-and `validateBackgroundMedia` already read these same two facts, so the note says why
-this is a third reader of the envelope rather than a second owner of either.
+(`0069-a-themes-cost-is-read-from-the-envelope-alone.md`). It records all seven
+reuse-gate rungs, including the rungs that found nothing: the searches are the evidence,
+and a note that names a conclusion without saying what was searched is worth nothing.
+Rungs 1–2 are the load-bearing ones — `glassTreatment` and `validateBackgroundMedia`
+already read these same two facts, so the note says why this is a third reader of the
+envelope rather than a second owner of either.
 
 `performanceCostsOf` reads the envelope and answers costs, in a fixed order so the
 output is stable. A video background is `artboard.backgroundMedia.assetId` resolved
-against `assets` to an entry whose **declared** `kind` is `"video"` — the declaration
-decides, because the model already refuses to infer an asset's type from its path
-(`AssetKind`'s own comment). Glass is any object carrying a treatment under
-`VIGILIA_GLASS_PROPERTY`, found by walking the scene the way `glass.ts`'s own `walk`
-does — but **reuse `glassTreatment` rather than re-testing the property**, so the
-vocabulary keeps one owner.
+against the envelope's own asset declarations to an entry whose **declared** `kind` is
+`"video"` — the declaration decides, because the model already refuses to infer an
+asset's type from its path (`AssetKind`'s own comment). Glass is any object carrying a
+treatment under `VIGILIA_GLASS_PROPERTY`, found by walking the scene the way `glass.ts`'s
+own `walk` does — but **reuse `glassTreatment` rather than re-testing the property**, so
+the vocabulary keeps one owner.
 
-**It takes `unknown`, not an envelope, and never throws.** It is called on a theme the
-store fetched and nothing has validated, so it answers for anything: a malformed
-envelope has no costs rather than an exception raised inside a warning path.
+**It takes `unknown`, not an envelope, and never throws.** It runs on a theme the host
+has on disk, and a listing is the wrong place to raise: a malformed envelope has no
+costs rather than an exception that would fail the whole list.
 
-`costsFor` is the user's table and nothing else: `glass-over-video` is a cost for both
-kinds, `video-background` only for `"local"`. It lives in the editor rather than beside
-the detector because it is a policy about *displays*, and `renderer-core` is
-Fabric-free by contract with no display concept to hang it on.
+**`ThemeStoreEntry.costs` is computed where the envelope already is** — `entryFor` is
+handed it, so `list()` pays nothing new for this. `entryFor`'s callers are `list`, `read`
+and `write`; all three get the field, and only `list`'s reaches the page.
 
-`warnAssignmentCost` is the whole of the delivery: for each cost `costsFor` keeps, one
-`errors.warn("theme-library", uiCopy.assignmentCost[cost])`. **One sentence per cost,
-naming the cost** — the repaint, or the idle — because a warning that says
-"performance" is a warning nobody can act on. It returns nothing and renders nothing:
-the line is `DiagnosticMessage`'s.
+`costsFor` and `costWarning` live in `theme-list.js`, because that is the one place a
+cost is ever shown: `glass-over-video` is a cost for every kind, `video-background` for
+`"local"` and for `"default"`, which has no kind and may land on a host monitor. **One
+sentence per cost, naming the cost** — the repaint, or the idle — because a warning that
+says "performance" is a warning nobody can act on. The sentence is taken from the
+editor's own copy rather than imported, which is what `DELETE_LEAD` in the same file
+already does and for the same reason: the host serves this module with no build step.
 
-**The caller hands it the candidate theme's envelope**, which the store's surface reads
-with the client's existing `open(id)` when a theme is picked for a display — one read
-per pick, and assigning is a deliberate act rather than a hover. A cost field on the
-host's theme list would save that read; it is not worth a second owner of the detector
-for one request per assignment.
+`themeList` gains `displayKind` and puts `costWarning(displayKind, theme.costs)` on the
+row as a note, hidden while there is nothing to say. **The note is raised when the row
+is chosen for a display and before the write lands**, and it is the row's, so it is still
+on screen after the page settles — `library.html` reloads on a successful choice today,
+and a warning wiped by that reload is a warning nobody read.
 
-**What this task must check rather than assume.** The assign surface is the store's own
-mode and the diagnostic line belongs to the shell, so the mode has to be able to show
-it. If the store's surface turns out to sit outside the shell that renders that line,
-that is a finding for `2026-10-18-theme-store.md` to settle with its own surface —
-**not** a reason to raise a second manager here.
+**What this task must check rather than assume.** The reload above: whether the note
+survives it, or whether the reload has to wait for the reader, is decided by the browser
+test and not by reading `library.html`. **Report which it turned out to be.**
 
 - [ ] **Step 4: Run test to verify it passes**
 
-Run: `npx vitest run packages/renderer-core/src/theme/performance-cost.test.ts packages/editor/src/theme-library-manager/index.test.ts`
-Expected: PASS.
+Run: `npx vitest run packages/renderer-core/src/theme/performance-cost.test.ts packages/host/src/theme-list.dom.test.ts packages/host/src/themes/store.test.ts`
+Expected: PASS. Then the browser proof, against rebuilt bundles and one worker:
+`npx playwright test tests/e2e/host-settings.spec.ts --workers=1` — the note appears when
+a video theme is chosen for a host monitor, does not for a remote display, and is still
+on screen after the page settles.
 
 - [ ] **Step 5: Commit**
 
 ```bash
-git add docs/decisions/0069-a-cost-is-detected-in-the-model-and-announced-by-the-diagnostic-channel.md src/web/packages/renderer-core/src/theme/performance-cost.ts src/web/packages/renderer-core/src/theme/performance-cost.test.ts src/web/packages/renderer-core/src/index.ts src/web/packages/editor/src/ui-copy.ts src/web/packages/editor/src/theme-library-manager/index.ts src/web/packages/editor/src/theme-library-manager/index.test.ts
-git commit -m "feat(editor): the assignment says what the theme will cost the display"
+git add docs/decisions/0069-a-themes-cost-is-read-from-the-envelope-alone.md src/web/packages/renderer-core/src/theme/performance-cost.ts src/web/packages/renderer-core/src/theme/performance-cost.test.ts src/web/packages/renderer-core/src/index.ts src/web/packages/host/src/themes/store.ts src/web/packages/host/src/themes/store.test.ts src/web/packages/host/public/theme-list.js src/web/packages/host/src/theme-list.dom.test.ts src/web/packages/host/public/library.html src/web/packages/host/public/settings.html src/web/tests/e2e/host-settings.spec.ts
+git commit -m "feat(host): the assignment says what the theme will cost the display"
 ```
 
 ---

@@ -378,36 +378,45 @@ is holding. Warning about the second on a phone would be noise, and noise is how
 warning stops being read.
 
 **Both facts are readable from the theme, so the detection is pure.** A video
-background is `artboard.backgroundMedia.assetId` resolved against `assets` to an
-entry whose `kind` is `video` — the envelope already refuses a `backgroundMedia`
-pointing at anything else (`validateBackgroundMedia` allows `image`, `svg`, `video`).
-Glass is an object carrying a glass treatment, which `renderer-core` owns the
-vocabulary for (`glassTreatment`). So detection is a function of the envelope alone,
-with no renderer, no DOM and no Fabric: `performanceCostsOf(envelope)` lives in
-**`renderer-core`**, beside the theme model it reads, and answers a list of costs
-rather than a boolean so the surface can say *which* one.
+background is `artboard.backgroundMedia.assetId` resolved against the envelope's own
+asset declarations to an entry whose `kind` is `video` — the envelope already refuses
+a `backgroundMedia` pointing at anything else (`validateBackgroundMedia` allows
+`image`, `svg`, `video`). Glass is an object carrying a glass treatment, which
+`renderer-core` owns the vocabulary for (`glassTreatment`). So detection is a function
+of the envelope alone, with no renderer, no DOM and no Fabric: `performanceCostsOf`
+lives in **`renderer-core`**, beside the theme model it reads, and answers a list of
+costs rather than a boolean so the surface can say *which* one.
 
-**The warning is not a second alert system, because the editor already has one.**
-`editor/src/error-manager/` owns structured editor diagnostics
-(`docs/architecture/ownership.md`), its `warn(category, message)` already logs under
-`[vigilia:theme-library]` and fires `editor:warning` on the canvas, and
-`editor-shell/diagnostic-message.tsx` is the one place those become a line a person
-reads. **Its category union already carries `theme-library`**, so this adds no
-category, no manager and no surface — only a sentence, and the sentence is copy, so it
-lives in `uiCopy` with the rest of the editor's words while `renderer-core` answers
-codes rather than prose. A `costWarnings(): readonly string[]` in the rendering core
-would have been a second owner of "tell the author something", which is the
-duplication this section exists to avoid. The policy joining a cost to a kind is a
-fact about *displays*, so it stays in the editor: `renderer-core` is Fabric-free by
-contract and has no display concept to hang it on.
+**It is shown on the host, where the assignment is made.** Narrowed by the user on
+2026-10-18 — *"the warning only needs to appear on the host, when the user assign a
+theme to a device"* — so the editor raises nothing, and a display is assigned from the
+host's own pages. **The envelope is already in hand there**: `ThemeStore.list()` reads
+every theme's `theme.json` to build its rows, so an entry can carry its costs for no
+extra I/O, and `/api/themes/active` already answers `themes: await themeStore.list()`,
+so the facts ride a response the page is already fetching. Nothing new is read to know
+this.
 
-**It is a notice, not a confirm.** It is raised as soon as the theme-and-display pair
-is chosen, before the assignment lands — which is the moment it is useful — and it
-does not block. It is advice about a cost, not a refusal: a modal on every video theme
-would be dismissed by reflex within a week and would teach people to dismiss the ones
-that matter. The line's lifetime is the diagnostic channel's own, and this change does
-not alter it. Open question 8 still owns whether a video background should ever be
-refused outright, and the answer to that is not this notice's job to pre-empt.
+**And the page already has the shape of message it needs.** `theme-list.js` gives a row
+its own note — `theme-delete-note`, `role="status"`, hidden until it has something to
+say — with the comment *"Said on the row rather than in a page-level status line: it
+belongs to this theme"*. The cost warning is that pattern and not a second one: the row
+being assigned says what the display it names will pay. That module is dependency-free
+source the host serves with no build step, so its sentence is taken from the editor's
+copy rather than imported — the hand-copying `DELETE_LEAD` already does, for the same
+reason.
+
+**The default row warns for every cost, because it has no kind.** A default is what an
+unassigned display gets, and that display can be a host monitor, so the one row that
+cannot be asked *which* display is the one row that must be told about both costs.
+
+**It is a notice, not a confirm.** It is raised as soon as a theme is chosen for a
+display and before the write lands, so the choice is made knowing the price, and it does
+not block: the assignment still happens. A modal on every video theme would be dismissed
+by reflex within a week and would teach people to dismiss the ones that matter. The note
+is the row's, so it survives whatever the page does next — a warning wiped by the page's
+own reload is a warning that was never read. Open question 8 still owns whether a video
+background should ever be refused outright, and the answer to that is not this notice's
+job to pre-empt.
 
 ## Two hosts on one network
 
@@ -786,7 +795,7 @@ outranks the map for exactly as long as it is in the URL.
 | `GET /api/displays/monitors` | loopback | what `systeminformation` reports is attached, for the owner to pick from |
 | `POST /api/displays/autostart` | loopback | registers the **host** to start at sign-in, so every local monitor survives a reboot |
 | `DELETE /api/displays/:id` | loopback | **removes the client**: the record, its credential, its assignment, its answers, **and its window** |
-| `GET /api/themes/active` | loopback | the default, each display with its theme, the library, the templates |
+| `GET /api/themes/active` | loopback | the default, each display with its theme **and its kind**, the library **with what each theme costs to display**, the templates |
 | `PUT /api/themes/active` | loopback | `{ display: "<id>" \| "default", id }` — any display, and the default |
 | `PUT /api/themes/active` | paired | `{ id }` — **its own entry only**, named by its session |
 | `GET /api/themes` | loopback or paired | the library, for the display's own chooser. **Already the case** (`server.ts`'s display guard), so nothing is added |
@@ -827,11 +836,12 @@ reusing a slug would inherit a stranger's answers.
   an identity to point a display at and the geometry to tell a browser — so the
   second kind of display adds **no dependency**, and the reuse gate's rung 4 is
   passed by the manifest rather than by argument.
-- **The editor's diagnostic channel** — `editor/src/error-manager/` owns structured
-  editor diagnostics, `DiagnosticMessage` is the one place they become a line a reader
-  sees, and its category union already carries `theme-library`. The assignment's cost
-  warning is raised through it rather than through a second manager or a
-  string-returning helper (spec § "What the assignment warns about").
+- **The host page's per-row note, and the envelope its theme list already reads.**
+  `theme-list.js` gives a row its own `role="status"` note (the `theme-delete-note`
+  pattern), and `ThemeStore.list()` already reads every theme's `theme.json` to build
+  the rows `/api/themes/active` answers. The assignment's cost warning is that note on
+  that list, so it needs no new surface, no new read and no second alert system
+  (spec § "What the assignment warns about").
 - **`requiredDeviceGroups`** already derives a theme's slots from its bindings;
   this document changes *whose* answers are read, not how they are derived.
 - **The publish poll** — `publish-follower.ts` and `/api/published`.
@@ -962,12 +972,12 @@ from the session, so a display writes its own key or nothing.
   reported on monitors that are not this one are all reasoned rather than observed.
   A local monitor is the feature most exposed to that gap, and the plan's first
   test on a two-monitor PC is what closes it.
-- **That the assign surface can show the editor's diagnostic line.** The cost warning
-  is raised through `ErrorManager` and rendered by `DiagnosticMessage`, which belongs
-  to the editor shell; the store is a mode of that shell. **That the two are on screen
-  together has not been checked**, and if they are not, the answer is a surface
-  decision for the store's own plan rather than a second warning manager. Task 4.8
-  checks it and reports it either way.
+- **That the host page can show the warning before the write and keep it after.** The
+  note is the row's, so it should outlive the page's own reload — and `library.html`
+  reloads on a successful choice today, which would wipe it. **Not driven in a browser
+  here**: Task 4.8 raises it before the write and its browser test checks the note is
+  still on screen afterwards, which is what decides whether the reload has to wait for
+  the reader.
 
 ## Acceptance
 
@@ -1039,10 +1049,9 @@ from the session, so a display writes its own key or nothing.
 - **12 (the assignment warning)** — glass **and** a video background warns for a
   local monitor **and** for a remote display; a video background with no glass warns
   for a local monitor and **does not** warn for a remote display; glass alone warns
-  for neither, and a theme with neither warns for neither; the warning names which
-  cost it is rather than saying "performance"; it appears before the assignment
-  lands and does not block it; the detection is a function of the envelope, so it
-  answers the same for a theme the store has not rendered; and **it is raised through
-  the editor's existing diagnostic channel** — `ErrorManager.warn` under the
-  `theme-library` category — rather than through a manager, a category or a surface of
-  its own.
+  for neither, and a theme with neither warns for neither; the default row warns for
+  every cost, because a default has no kind; the warning names which cost it is rather
+  than saying "performance"; it appears on the host's own page when a theme is chosen
+  for a display, before the write lands, does not block it, and is still on screen
+  after the page settles; the detection is a function of the envelope, so it answers
+  the same for a theme nothing has rendered; and **the editor raises none of this**.

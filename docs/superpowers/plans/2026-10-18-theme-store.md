@@ -26,7 +26,7 @@ plan implements its **phase A** only. Register row: `vg-388`.
 - Run every command from `src/web/`. Scripts are `package.json`'s.
 - **One plan is active at a time.** This plan is **queued** behind
   `2026-10-18-per-display-themes.md`, which lands first and supplies Task A.9's
-  assign action and the cost warning it raises.
+  assign action.
 - `exactOptionalPropertyTypes` and `noUncheckedIndexedAccess` are enabled.
 - **Fabric stays imperative behind the editor boundary.** Never mirror a Fabric
   object in React. The store mode renders no canvas at all.
@@ -619,8 +619,7 @@ git commit -m "feat(shell): show this PC as a mode of its own"
 
 **Interfaces:**
 - Consumes: `ThemeLibraryClient.assign`, `listDisplays` (the per-display plan's
-  Task 4.4); `warnAssignmentCost` and `uiCopy.assignmentCost` (its Task 4.8), and the
-  `ErrorManager` the shell already holds.
+  Task 4.4).
 - Produces: the cell's third action opens a display choice and calls `assign`.
 
 - [ ] **Step 1: Write the failing test**
@@ -634,10 +633,6 @@ it("offers the default as one of the choices", () => {
 });
 it("reports the host's refusal in the host's own words", () => {
   // A rejected assign surfaces the message the host sent.
-});
-it("warns about a theme that costs this display, before the assignment lands", () => {
-  // A video theme picked for a host monitor raises the warning through the shell's
-  //   ErrorManager; the same theme picked for a remote display raises nothing.
 });
 ```
 
@@ -653,10 +648,10 @@ The choice is §5's control for a small exclusive set, and it is populated from
 answer is not offered, because an assignment to a display that does not exist is a
 404 the person would read as a bug in the gallery.
 
-**The cost warning is raised, not rendered.** Picking a display for a theme calls
-`warnAssignmentCost(errors, display.kind, envelope)` — the envelope read with the
-client's existing `open(id)`, one read per pick — so the line comes from the editor's
-own diagnostic channel and this surface holds no warning copy of its own.
+**The cost warning is not here.** The user narrowed it to the host's own pages on
+2026-10-18 (*"the warning only needs to appear on the host, when the user assign a theme
+to a device"*), so the per-display plan's Task 4.8 owns it and this surface raises
+nothing.
 
 - [ ] **Step 4: Run test to verify it passes**
 
