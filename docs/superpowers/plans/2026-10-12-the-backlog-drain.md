@@ -4267,7 +4267,7 @@ these are the proofs those findings were supposed to come from.
 `typecheck` script; `layer-tree.test.ts`; `bridge.dom.test.ts`; `src/web/tests/e2e/` fixtures; and the
 verification bullets of the plan `vg-159` names.
 
-**Constraints:** **Active 2026-10-17 by scheduling ruling: Phases 12 and 21 are suspended, not closed, on user spec review; Phases 15–20 are closed.** Phase 21's font-picker model and `TAB_BOUND` ruling remain untouched; one phase runs at a time. **`vg-192` wires the new project into `typecheck`
+**Constraints:** **SUSPENDED 2026-10-17 by scheduling ruling: the user prioritised their own 2026-10-17 reports, so Phase 25 runs first and Tasks 22.6–22.10 resume after it.** Tasks 22.1–22.5 are closed; the phase is suspended, not closed, and its remaining rows are untouched. Previously: **Active 2026-10-17 by scheduling ruling: Phases 12 and 21 are suspended, not closed, on user spec review; Phases 15–20 are closed.** Phase 21's font-picker model and `TAB_BOUND` ruling remain untouched; one phase runs at a time. **`vg-192` wires the new project into `typecheck`
 in the same commit, or the project exists and nothing runs it** — and `gate` runs `typecheck`, so the
 wiring is what makes the check real. **`vg-147` and `vg-150` change how the browser suites run**, so no
 other task in this phase runs a browser suite concurrently.
@@ -5050,3 +5050,108 @@ committed beside the shipped pane). **Nothing here waits for permission that was
 change invalidates are revisited **inside that spec rather than before it**: `vg-318`'s scrim
 measurement measures a container that will not exist, and `vg-322`'s whole subject is the modal's width.
 **No phase owns them.** `vg-322`'s rule in §5.1's owner table stays unbuilt until `vg-330` is unparked, and W9's `vg-292`/`vg-293` are independent of it. They are named in the drain's final report so the count is legible: 22 closed, 0 withdrawn unless a D9 ruling withdraws one, 109 worked, 2 parked.
+
+---
+
+# Phase 25 — W20: the user's 2026-10-17 reports
+
+**Outcome:** the five things the user found while testing their own machine are landed — the layer
+footer keeps its own commands greyed rather than the Add pane's constructions, the player's warning
+banner clears itself after three seconds, the phone player gains a tap-revealed fullscreen control
+with an honest unsupported path, and the live line chart's edge and the phone's re-fit are measured
+before either is changed.
+
+**Why its own phase, ahead of Phase 22's remainder.** Every row here is a user report from one
+session of testing on 2026-10-17, and the user ordered them ahead of the remaining proof repairs the
+same day. Phase 22 is suspended, not closed, and resumes after this phase; Phase 21's and Phase 12's
+suspensions are untouched by this one.
+
+**Owners:** `editor/src/object-actions.ts` with `editor-shell/layer-panel.tsx`; `player/src/chrome.ts`,
+`player/src/main.ts`, `player/src/availability-notice.ts`, `player/index.html` and
+`player/src/ui-copy.ts`; `renderer-core/src/data/live-source.ts` with `renderer-core/src/charts/line.ts`.
+
+**Constraints:** one implementation seat at a time. **`vg-571` and `vg-572` each begin with a
+measurement, not a fix**: both need a per-frame reader of the artboard's box, the canvas
+`viewportTransform` and the chart's own rect, against a rebuilt bundle, and neither may be closed by
+re-running an existing case — `vg-028`'s notice case already passes and does not cover a viewport
+change. A browser run needs rebuilt bundles, `--workers=1` and its own JSON report.
+
+**Acceptance:** each row's own `check` passes; `vg-570`'s footer shows the registry's commands
+disabled with nothing selected and carries no construction button; `vg-569`'s banner is gone three
+seconds after it is raised with the composition unmoved; `vg-568`'s control is reachable by tap,
+toggles, auto-hides, and explains itself where the client cannot enter fullscreen; `vg-571` and
+`vg-572` each carry a measurement that names what moved before any code changed.
+
+**Failure modes:** reverting `vg-460` silently by deleting the constructions and leaving the row
+empty; a three-second timer that also hides a refusal a reader still needs; a fullscreen control that
+is dead on iPhone Safari rather than honest about it; treating a single sample of a flaky browser case
+as a measurement.
+
+**Verify:** focused unit and DOM cases during implementation; the browser cases each task names,
+against a rebuilt bundle with `--workers=1`; `npm run gate` with its exit code read from `$?` at the
+phase boundary.
+
+### Task 25.1: The layer footer keeps its commands, greyed
+
+**Files:**
+- Modify: `object-actions.ts`; `editor-shell/layer-panel.tsx`; `layer-panel.dom.test.tsx`; `pane.dom.test.tsx`; `tests/e2e/snapping.spec.ts`
+
+**Interfaces:**
+- Produces: `vg-570` closed
+
+- [ ] **Step 1: The constructions leave the footer.** `CONSTRUCTION_ACTIONS` was added to `LayerActions` by `e572c302` to answer `vg-460`'s open question, and the user has ruled that answer wrong.
+- [ ] **Step 2: With nothing selected the footer draws the registry's object commands disabled** — not absent, and not empty. That is the ruling the user gave when asked directly. Whether ineligible commands also grey while a selection exists is not ruled, and the registry's documented rule is that an action the selection cannot run is absent rather than greyed, so the minimal reading is the no-selection state alone.
+- [ ] **Step 3: The tests that pin the footer's set move to the new rule** — `vg-460`'s check compares the footer against the Add pane's tiles and must be rewritten rather than left contradicting the ruling — and the bridge's construction exemption is assessed: `vg-484` is about a construction reaching the session façade unwrapped through this path, so if the footer was its only caller that exemption becomes dead code rather than a live defect.
+- [ ] **Step 4: Close it**, with a case that fails when the no-selection footer is emptied again.
+
+### Task 25.2: The player's warning banner clears itself
+
+**Files:**
+- Modify: `player/src/chrome.ts`; `player/src/main.ts`; `player/src/availability-notice.ts`; `player/src/chrome.dom.test.ts`
+
+**Interfaces:**
+- Produces: `vg-569` closed
+
+- [ ] **Step 1: The availability warning clears three seconds after it is raised**, and the composition does not move when it does: the strip already overlays, so the dismissal is the change and the overlay is the invariant to keep.
+- [ ] **Step 2: The crop notice is not given the same treatment.** §97 requires a cropped object to stay legible as a different gap from an unreadable sensor, and the user's report named the warning.
+- [ ] **Step 3: Reproduce the resize the user reported before changing anything about placement.** The source already overlays the amber strip, so a resize means either a bundle built before `476d8db7` or the crop strip; say which, from a rebuilt bundle.
+- [ ] **Step 4: Close it**, with the browser case showing the banner absent after the delay and the artboard's box unchanged.
+
+### Task 25.3: The phone player's fullscreen control
+
+**Files:**
+- Modify: `player/index.html`; `player/src/chrome.ts`; `player/src/main.ts`; `player/src/ui-copy.ts`
+
+**Interfaces:**
+- Produces: `vg-568` closed
+
+- [ ] **Step 1: A semi-translucent control in the top-right, revealed by tap and hidden again after three seconds**, which is what the user asked for on 2026-10-17; the three-second duration and the auto-hide exclusion for keyboard focus are the design presented rather than separately ruled.
+- [ ] **Step 2: Entering and leaving fullscreen is one control's toggle**, and the control never takes room from the composition.
+- [ ] **Step 3: Capability is detected and the unsupported case explains itself**, because iPhone Safari does not expose arbitrary-element fullscreen; a control that does nothing is the failure this step exists to prevent.
+- [ ] **Step 4: Close it**, with the browser case naming what the client it ran on can actually do.
+
+### Task 25.4: The live line chart's edge
+
+**Files:**
+- Modify: `renderer-core/src/data/live-source.ts`; `renderer-core/src/charts/line.ts`; `player/src/main.ts`
+
+**Interfaces:**
+- Produces: `vg-571` closed
+
+- [ ] **Step 1: Measure before deciding.** The row's source reading is that `createLiveSource` overwrites every sample's `presentationTimestamp` with the browser clock at batch arrival, so a batch's points share one x while the axis slides every frame. The host's cadence and the half-second figures the user reported are unmeasured.
+- [ ] **Step 2: Name which symptom the measurement shows** — a right edge that trails and jumps, a left edge that drops points together, or both — because the fix differs between the timestamp and the window.
+- [ ] **Step 3: Fix the cause the measurement names**, keeping `toSeriesPoints`' gap preservation and the playback delay's purpose intact.
+- [ ] **Step 4: Close it**, with the before and after probe readings.
+
+### Task 25.5: The display re-fit on a phone viewport
+
+**Files:**
+- Modify: `player/src/main.ts`; `player/src/chrome.ts`; `player/index.html`
+
+**Interfaces:**
+- Produces: `vg-572` closed
+
+- [ ] **Step 1: Run the measurement `vg-028` asked for and never took.** A per-frame reader of the artboard's box, the canvas `viewportTransform` and the object's rect, on a phone-sized viewport whose height changes under the page, for longer than the thirty seconds that failed to reproduce the original.
+- [ ] **Step 2: The leading candidate is the viewport rather than a notice** — a phone's browser chrome showing or hiding changes the host's height and the `ResizeObserver` re-fits the scene — but the trigger is not established, so it is measured rather than assumed.
+- [ ] **Step 3: Do not close this with `vg-028`'s notice case**, which already passes and covers a different mechanism.
+- [ ] **Step 4: Close it — or, if the measurement shows the re-fit is correct behaviour for a viewport change, correct the claim instead.** A row's subject is a claim, and this one's claim is that the slide is a defect.
