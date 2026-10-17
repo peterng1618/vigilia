@@ -25,7 +25,7 @@ Drain `docs/product/backlog.jsonl` through the active Superpowers plan. Editor r
 
 ## Next
 
-1. Execute Phase 25 serially, one seat at a time: 25.2 the banner's three-second clear, 25.3 the chrome controls (fullscreen, keep-awake, dimmer), 25.4 the chart's edge, 25.5 the phone re-fit, 25.6 the PWA.
+1. Execute Phase 25 serially, one seat at a time: 25.2 the banner's three-second clear, 25.3 the chrome controls (fullscreen, keep-awake, dimmer), 25.4 the chart's edge, 25.5 the phone re-fit, 25.6 the PWA, 25.7 the crop notice and bleed toggle removed.
 2. Review each task against its brief and evidence; run phase gate with exit code and browser results named separately.
 3. Resume Phase 21 after font-picker spec approval and budget ruling; resume Phase 12 after settings-pane spec review.
 4. Re-home unparked rows carried only by closed phases; never treat a mention as a live implementation home.
@@ -34,7 +34,7 @@ Drain `docs/product/backlog.jsonl` through the active Superpowers plan. Editor r
 ## Blockers / unverified
 
 - User review pending: [per-display themes](docs/superpowers/specs/2026-10-18-per-display-themes-design.md), [theme store](docs/superpowers/specs/2026-10-12-theme-store-design.md), [settings pane](docs/superpowers/specs/2026-10-16-settings-pane-design.md), [colour and gradient rebuild](docs/superpowers/specs/2026-10-12-colour-and-gradient-rebuild-design.md) and [font-picker keyboard model and budget](docs/superpowers/specs/2026-10-17-font-picker-keyboard-design.md); decisions remain for `vg-546`, `vg-559`, `vg-350` and `vg-354`, and Phase 20 carried `vg-556` without closing it — do not invent approval or edit AGENTS.md.
-- Phase 25 owns the five 2026-10-17 user reports (`vg-568`–`vg-572`) and none is yet reproduced in a browser; `vg-576` is ruled (no settings modal — keep-awake, brightness and fullscreen are chrome) and `vg-577` makes the player an installable PWA, whose first write into the watched `host/src/serve/static-path.ts` needs a decision note first; brightness is a dimming overlay, never device backlight, and every client-support claim is unverified from this environment.
+- Phase 25 owns the five 2026-10-17 user reports (`vg-568`–`vg-572`) and none is yet reproduced in a browser; `vg-576` is ruled (no settings modal — keep-awake, brightness and fullscreen are chrome) and `vg-577` makes the player an installable PWA, whose first write into the watched `host/src/serve/static-path.ts` needs a decision note first; `vg-578` removes the crop notice and the bleed toggle, and its persisted-key question is a data decision to settle with evidence; brightness is a dimming overlay, never device backlight, and every client-support claim is unverified from this environment.
 - Full browser suite's prior reds remain register-owned; `gate` runs unit tests, not Playwright. Browser proof needs rebuilt bundles, one worker, and each run's own JSON report.
 - `vg-023`'s cancelled review requires explicit user request to restart; Fabric two-paint-context evidence remains controller browser proof. `vg-370` resize refusal remains unestablished.
 - No push authorised. `develop` remains ahead of `origin/develop`; preserve local work and untracked SDD records.

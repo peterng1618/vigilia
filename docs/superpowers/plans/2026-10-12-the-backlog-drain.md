@@ -5059,7 +5059,8 @@ measurement measures a container that will not exist, and `vg-322`'s whole subje
 footer keeps its own commands greyed rather than the Add pane's constructions, the player's warning
 banner clears itself after three seconds, the phone player gains tap-revealed chrome (fullscreen,
 keep-awake and a dimmer) with an honest unsupported path, the player installs as a PWA, and the live
-line chart's edge and the phone's re-fit are measured before either is changed.
+line chart's edge and the phone's re-fit are measured before either is changed — and the crop notice and
+the bleed toggle are gone, which the user ruled in the same session.
 
 **Why its own phase, ahead of Phase 22's remainder.** Every row here is a user report from one
 session of testing on 2026-10-17, and the user ordered them ahead of the remaining proof repairs the
@@ -5083,14 +5084,17 @@ decision note claims that path**, so the note lands before the content type does
 disabled with nothing selected and carries no construction button; `vg-569`'s banner is gone three
 seconds after it is raised with the composition unmoved; `vg-568`'s controls are reachable by tap,
 toggle, auto-hide, and explain themselves where the client cannot honour them; `vg-577`'s player
-installs and its service worker caches no telemetry; `vg-571` and `vg-572` each carry a measurement
-that names what moved before any code changed.
+installs and its service worker caches no telemetry; `vg-578`'s removal leaves no crop notice on the
+display, no bleed toggle in the inspector, and no saved theme stranded by the persisted key; `vg-571`
+and `vg-572` each carry a measurement that names what moved before any code changed.
 
 **Failure modes:** reverting `vg-460` silently by deleting the constructions and leaving the row
 empty; a three-second timer that also hides a refusal a reader still needs; chrome that is dead on
 iPhone Safari rather than honest about it; a dimmer described as device brightness, which a browser
 cannot set; a service worker that caches the live stream, so an offline display shows old numbers as
-though they were current; treating a single sample of a flaky browser case as a measurement.
+though they were current; deleting the bleed mark without settling what happens to a theme that already
+carries it, which strands authored work rather than removing an unreachable branch; treating a single
+sample of a flaky browser case as a measurement.
 
 **Verify:** focused unit and DOM cases during implementation; the browser cases each task names,
 against a rebuilt bundle with `--workers=1`; `npm run gate` with its exit code read from `$?` at the
@@ -5118,7 +5122,7 @@ phase boundary.
 - Produces: `vg-569` closed
 
 - [ ] **Step 1: The availability warning clears three seconds after it is raised**, and the composition does not move when it does: the strip already overlays, so the dismissal is the change and the overlay is the invariant to keep.
-- [ ] **Step 2: The crop notice is not given the same treatment.** §97 requires a cropped object to stay legible as a different gap from an unreadable sensor, and the user's report named the warning.
+- [ ] **Step 2: The crop notice is not given the same treatment — it is being removed instead.** SUPERSEDED 2026-10-18 by the user's ruling (`vg-578`, Task 25.7): the crop notice and the bleed toggle are to be gone, so this task neither dismisses the crop notice nor preserves it as a standing requirement. Leave `showCropNotice` exactly as it is and give it no shared helper a later caller could inherit; its removal is Task 25.7's, with its own propagation, because decision 0027 and the plans that built the notice all rest on it.
 - [ ] **Step 3: The resize half is closed by the user, not by a reproduction.** They confirmed on 2026-10-18 that the strip does not resize the artboard, so the report named a bundle built before `476d8db7` and this task makes no placement change. The artboard's box not moving is the invariant the dismissal must preserve, not a fault to repair — and if the seat's own browser run shows it moving, that is a finding to report rather than a reason to change placement.
 - [ ] **Step 4: Close it**, with the browser case showing the banner absent after the delay and the artboard's box unchanged.
 
@@ -5176,3 +5180,16 @@ phase boundary.
 - [ ] **Step 3: A root-scoped service worker that caches the shell and never the telemetry.** The player is served at the host's root, so `/` scope is available; `/api/**` and the event stream are excluded, because an offline display showing old numbers as though they were live is the fabrication the project forbids.
 - [ ] **Step 4: Close it**, with the install path exercised on a real client and the offline behaviour named — including, if the honest answer is that offline shows nothing, that nothing is what it shows.
 
+
+### Task 25.7: The crop notice and the bleed toggle are gone
+
+**Files:**
+- Modify: `player/src/chrome.ts`; `player/src/artboard-crop.ts`; `renderer-core/src/theme/bleed.ts`; `renderer-core/src/theme/fabric-envelope-validate.ts`; `scene-fabric/src/artboard-crop.ts`; `editor/src/selection-inspector/bleed.ts`; `docs/decisions/`; `docs/superpowers/specs/`
+
+**Interfaces:**
+- Produces: `vg-578` closed, `vg-191` narrowed or withdrawn, decision 0027 superseded
+
+- [ ] **Step 1: The mark goes, and with it the toggle.** `VIGILIA_BLEEDS_PROPERTY`, `objectBleeds` and `isBleedMark` leave `renderer-core/src/theme/bleed.ts`; the envelope validator stops pinning the mark; `SceneBox.bleeds` and the `bleeds` term in `countable` leave `scene-fabric/src/artboard-crop.ts`; `selection-inspector/bleed.ts` and the Position row that renders it are deleted. Nothing is marked any more, so every overhang counts as cropped.
+- [ ] **Step 2: The display stops saying it.** `cropNoticeText` and `showCropNotice` go, with the `vigilia-crop` strip and the rules that paint it. This is the half that removes a signal a reader currently gets, so the browser reading that closes it is the display showing a cropped composition and saying nothing about it.
+- [ ] **Step 3: The persisted key is a data decision, settled with evidence rather than preference.** `vigiliaBleeds` is authored state on the object, and the validator refuses unknown keys, so what is allowed for that key decides whether a theme saved with the mark still loads. Establish whether any theme in the repo or on this box carries it, then choose between refusing the key and dropping it on read — and record what was found, because a refusal that strands a saved theme is data loss and not the same act as deleting an unreachable branch.
+- [ ] **Step 4: Propagate in one pass, not three.** Decision 0027 is superseded by a note of its own; the plans and specs that require the notice or the mark are corrected where they are current truth and left alone where they are dated records; `vg-191`'s subject loses one half, so the row is narrowed or withdrawn rather than left asking for a fixture that no longer describes anything. The artboard panel's crop figure STAYS — ruled by the controller, open to the user — because it is the editor's own count on the surface where the figure is actionable; what changes there is that nothing is excluded from it.
