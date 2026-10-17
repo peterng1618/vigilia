@@ -58,6 +58,9 @@ Each gets its test in the task named beside it.
    the body of a theme write. Pairing must refuse before it reads the parameter,
    and a theme write must take the display from the session and ignore the body
    rather than trust it. (Tasks 1.3, 4.1, 4.5)
+6. **Anyone on the LAN hammering the code-claim route** — guessing must not close a
+   pairing window someone is using, and the refusal must not say whether the code
+   they guessed exists. (Task 1.4)
 
 ---
 
@@ -70,6 +73,9 @@ Each gets its test in the task named beside it.
 | `packages/host/src/settings/theme-settings.ts` (modify) | Answers gain a display level above their theme level |
 | `packages/host/src/settings/active-theme.ts` (modify) | One map from display key to theme id, `default` reserved |
 | `packages/host/src/session/pairing.ts` (modify) | A session names a display; it still owns nothing else |
+| `packages/host/src/session/pairing-code.ts` (create) | The one-time code: its alphabet, its expiry, and the claim that consumes it |
+| `packages/host/public/pair.html` (create) | The page a camera-less display types the code into |
+| `packages/host/src/settings/host-lock.ts` (create) | One app folder is one host |
 | `packages/host/src/server.ts` (modify) | Which display is asking; the routes; the resolution order |
 | `packages/player/src/publish-follower.ts` (modify) | A display follows its own reassignment |
 | `packages/player/src/theme-chooser.ts` (create) | The display's own chooser: a chrome control that lists this host's themes and writes the one chosen |
@@ -298,6 +304,165 @@ Expected: PASS.
 ```bash
 git add src/web/packages/host/src/server.ts src/web/packages/host/src/server.test.ts docs/decisions/0068-display-identity-in-the-server.md
 git commit -m "feat(host): pair a session against a persisted display"
+```
+
+### Task 1.4: The one-time code, and `/pair`
+
+**Files:**
+- Create: `src/web/packages/host/src/session/pairing-code.ts`
+- Create: `src/web/packages/host/src/session/pairing-code.test.ts`
+- Create: `src/web/packages/host/public/pair.html`
+- Modify: `src/web/packages/host/src/server.ts`
+- Modify: `src/web/packages/editor/src/editor-shell/publish-control.tsx`
+- Test: `src/web/packages/host/src/server.test.ts`,
+  `src/web/packages/editor/src/editor-shell/publish-control.dom.test.tsx`
+
+**Interfaces:**
+- Consumes: `DisplayStore.create`/`find` (Task 1.1), `SessionStore.create` (Task 1.2).
+- Produces:
+
+```ts
+/** No I, L, O, 0 or 1: the glyphs a person reads off one screen and types on another. */
+export const PAIRING_CODE_ALPHABET = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
+export const PAIRING_CODE_LENGTH = 6;
+export interface PairingCode { readonly code: string; readonly expiresAt: string }
+export interface PairingCodeStore {
+  mint(): PairingCode;
+  /** Consumes the live code on a match. A mismatch never consumes it. */
+  claim(code: string): boolean;
+  current(): PairingCode | undefined;
+}
+export function createPairingCodeStore(options?: {
+  readonly ttlMs?: number;
+  readonly now?: () => number;
+  readonly randomCode?: () => string;
+}): PairingCodeStore;
+```
+
+  Routes: `GET /api/pairing/code` (loopback) answers
+  `{ code: string | null, expiresAt: string | null }`; `POST /api/pairing/claim`
+  takes `{ code, label }`, is **reachable unpaired**, and answers
+  `{ displayId, token, expiresAt }` or a 404 that says nothing about whether a code
+  exists.
+
+- [ ] **Step 1: Write the failing test**
+
+```ts
+// pairing-code.test.ts
+it("draws only from the alphabet a person can read back", () => {
+  // 2000 draws: every character is in PAIRING_CODE_ALPHABET, and no draw contains
+  // I, L, O, 0 or 1.
+});
+it("consumes on a match and never on a mismatch", () => {
+  // claim(wrong) -> false and current() is still the same code;
+  // claim(right) -> true and current() is undefined.
+});
+it("expires", () => { /* now advances past ttlMs -> claim(right) false */ });
+
+// server.test.ts
+it("pairs a camera-less display from the code alone", async () => {
+  // POST /api/pairing/claim { code, label } from off-loopback with no session ->
+  // 200 carrying a displayId and a token, and the display is listed.
+});
+it("says nothing about whether a code exists", async () => {
+  // An unknown code and an expired one answer the same status and the same text.
+});
+it("does not let a wrong guess close the window", async () => {
+  // Five wrong claims, then the right one still succeeds.
+});
+it("keeps the QR and the code in step", () => {
+  // publish-control's QR label carries the same code the card shows.
+});
+```
+
+- [ ] **Step 2: Run test to verify it fails**
+
+Run: `npx vitest run packages/host/src/session/pairing-code.test.ts packages/host/src/server.test.ts -t "claim"`
+Expected: FAIL.
+
+- [ ] **Step 3: Implement**
+
+**The QR carries the code, not the token.** `publish-control.tsx` renders the QR
+today as `http://<address>:<port>/?session=<token>`; it becomes
+`http://<address>:<port>/pair?code=<code>`, and the card writes the address out
+beside it so a camera-less device has somewhere to go. One mint, two presentations
+— that is the whole point of the split.
+
+`POST /api/pairing/claim` is **the one route reachable unpaired**, so it does no
+listing, returns no theme and no device fact, and its refusal is the same sentence
+for an unknown code, an expired code and a consumed code. Rate limiting is per
+source and per code with a growing penalty, never a lockout: a lockout is a way to
+aim a denial at the person trying to pair. A mismatch never consumes the live code,
+so nobody on the LAN can close a pairing window by guessing wrong.
+
+- [ ] **Step 4: Run test to verify it passes**
+
+Run: `npx vitest run packages/host/src/session/pairing-code.test.ts packages/host/src/server.test.ts packages/editor/src/editor-shell/publish-control.dom.test.tsx`
+Expected: PASS.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add src/web/packages/host/src/session/pairing-code.ts src/web/packages/host/src/session/pairing-code.test.ts src/web/packages/host/public/pair.html src/web/packages/host/src/server.ts src/web/packages/host/src/server.test.ts src/web/packages/editor/src/editor-shell/publish-control.tsx src/web/packages/editor/src/editor-shell/publish-control.dom.test.tsx
+git commit -m "feat(host): pair a display that has no camera by typing a code"
+```
+
+### Task 1.5: One app folder is one host
+
+**Files:**
+- Create: `src/web/packages/host/src/settings/host-lock.ts`
+- Create: `src/web/packages/host/src/settings/host-lock.test.ts`
+- Modify: `src/web/packages/host/src/cli/args.ts` (the refusal's message)
+- Test: `src/web/packages/host/src/settings/host-lock.test.ts`
+
+**Interfaces:**
+- Consumes: nothing.
+- Produces:
+
+```ts
+export interface HostLock { readonly release: () => Promise<void> }
+/** Holds the folder for this process, or answers why another host has it. */
+export async function acquireHostLock(settingsDir: string, port: number): Promise<{ readonly ok: true; readonly lock: HostLock } | { readonly ok: false; readonly reason: string }>;
+```
+
+- [ ] **Step 1: Write the failing test**
+
+```ts
+it("refuses a folder a live host already holds", async () => {
+  // acquire(dir) then acquire(dir) -> ok: false, and the reason names --app-dir.
+});
+it("takes the folder back after the holder releases", async () => {
+  // release(), then acquire -> ok: true.
+});
+it("takes a folder whose holder is gone", async () => {
+  // Write a lock naming a pid that is not running -> ok: true.
+});
+```
+
+- [ ] **Step 2: Run test to verify it fails**
+
+Run: `npx vitest run packages/host/src/settings/host-lock.test.ts`
+Expected: FAIL.
+
+- [ ] **Step 3: Implement**
+
+The lock is a file in the settings directory naming the holding pid and port, and
+it is *stale-tolerant*: a lock whose pid is not running is taken rather than
+respected, so a crash does not lock someone out of their own library. The refusal's
+message names the folder, the port the other host is on, and `--app-dir` — the flag
+that already exists to separate two installs. The host acquires it before it
+listens and releases it on exit.
+
+- [ ] **Step 4: Run test to verify it passes**
+
+Run: `npx vitest run packages/host/src/settings/host-lock.test.ts`
+Expected: PASS.
+
+- [ ] **Step 5: Commit**
+
+```bash
+git add src/web/packages/host/src/settings/host-lock.ts src/web/packages/host/src/settings/host-lock.test.ts src/web/packages/host/src/cli/args.ts
+git commit -m "feat(host): one app folder is one host"
 ```
 
 ---

@@ -25,6 +25,53 @@ reworked later. Success is that a second screen shows a different theme from the
 first, that the choice survives a restart of the host, and that the questions a
 theme asks are asked once per display rather than once per PC.
 
+## What the 9remote study contributes, and what it does not
+
+`decolua/9remote` was read on 2026-10-18 at the user's suggestion, for its device
+pairing and management, at `033dd6e3`. What it actually does, read from its files
+rather than its README:
+
+- **Two credentials with two lifetimes, side by side.** A **one-time key** with a
+  live countdown and an expiry, and a **permanent key** beside it. Regenerating the
+  one-time key warns that the current one expires immediately; regenerating the
+  permanent one warns that it **disconnects every existing session**
+  (`host/ui/src/components/QRCard.jsx`).
+- **The one-time key is drawn to be typed**, not only scanned: monospace,
+  `letter-spacing: 0.18em`, a countdown, and an expired key shown as dots rather
+  than as a dead value. The QR is one route to the same key, and the card writes the
+  endpoint out beside it.
+- **The human alphabet excludes the glyphs people confuse** —
+  `ABCDEFGHIJKLMNPQRSTUVWXYZ123456789`, so no `O` and no `0`
+  (`host/lib/pairingCode.js`).
+- **A short code is defended by rate limiting rather than by length**: five failures
+  per key head, an exponential penalty from one second to sixty, a one-hour window,
+  a pending cap, and a twenty-second proof deadline.
+- **A mismatch burns the code only when the presenter named *this* code**, so a
+  stale code's wrong guess cannot kill the live pairing window.
+- **Admission is one decision table for every carrier** (`gateDevice`): approved,
+  auto, rejected or unknown, over a persisted `approvedDevices.json`. A **kicked**
+  device asks again even with auto-approve on — *"the host's explicit Disconnect
+  must not be instantly undone"* — and rejected and kicked are RAM-only, so a
+  restart clears them.
+- **A reserved local-UI id** is dropped from legacy files because it is *"never a
+  real client"*.
+
+**What transfers.** The two-key split, which is the answer to § "Pairing a display
+that has no camera"; the unambiguous alphabet; the countdown and the
+hidden-when-expired rule; rate limiting and burn-on-mismatch as the defence for a
+code short enough to type; one admission table in which kicked outranks
+auto-approve; and the reserved local id, which this design had reached
+independently as `this-pc`.
+
+**What does not transfer, and why it matters.** 9remote pairs a device to a **cloud
+relay** — a Worker, a `workerUrl`, a hosted endpoint — so its one-time code is
+revoked *at the Worker* and its permanent key is a bearer credential for a service
+somebody runs. Vigilia's premise is the opposite: no server, no recurring cost, and
+browsing that touches no API. A one-time code here is revoked in the host's own
+process and expiry is the only revocation it needs, and the card has no endpoint to
+write but this PC's own address. Their device *management* transfers whole; their
+device *transport* does not transfer at all.
+
 ## Today, read from the code
 
 - **One theme per host.** `host/src/settings/active-theme.ts` stores
@@ -82,6 +129,40 @@ theme to. That is also why pairing is an admin action on this PC rather than
 something a client can do for itself — a client that could register itself could
 give itself a name on the list.
 
+## Two hosts on one network
+
+The user asked whether two hosts on one LAN, and their displays, get tangled. The
+answer has two halves and only one of them is comfortable.
+
+**Across machines, no — and the boundary is the origin.** A display is a client
+that loaded a particular host's page, so its URL names the host it belongs to; and
+a session token verifies only in the process that minted it, because
+`session/pairing.ts` holds its sessions in an in-memory `Map` per process. Host A's
+token presented to host B is a token B never issued. Nothing is discovered and
+nothing is shared, so there is nothing to tangle.
+
+**On one machine, yes — and today nothing stops it.** `DEFAULT_APP_DIR` is
+`~/.vigilia`, with `themes/` and `settings/` inside it (`cli/args.ts`), and
+`--app-dir` is the only thing that separates two installs. Two hosts started on
+this PC with no flags share one `settings/`, so they share `active-theme.json`,
+`theme-answers.json` and the `displays.json` this design adds: the same display
+ids, the same assignments, the same answers, under two servers. The port fallback
+makes it worse rather than better — `MAX_PORT_ATTEMPTS` walks a second host up to
+the next free port, so it starts successfully, looks like a second host, and is
+sharing the first one's state.
+
+**The fix is to make the app folder the host's identity and say so.** One app
+folder is one host: the settings directory carries the host's own record, and a
+second host starting against a folder a live host already holds is **refused with
+the reason and the flag that fixes it** (`--app-dir`), rather than started into
+shared state. That is one lock and one refusal, and it turns a silent tangle into a
+sentence someone can act on.
+
+**The one thing that would tangle across machines is discovery**, and nothing has
+it: a display reaches a host by a URL someone scanned or typed. If discovery is
+ever added, the origin stops being the boundary and this section is rewritten
+rather than extended.
+
 ## Identity: the token is a credential, not a name
 
 **The assignment cannot be keyed by the session token**, and this is the one
@@ -112,6 +193,47 @@ So the two are separated:
 random suffix when the slug is taken. Reusing the pattern is not decoration: the
 answers file already refuses a key that does not match it, so a display id that
 did not would be unanswerable.
+
+## Pairing a display that has no camera
+
+The pairing route today is a QR. `editor-shell/publish-control.tsx` renders a
+`QrCode` whose label is `QR code: http://<address>:<port>/?session=<token>`, and
+that token is 32 bytes of CSPRNG output as base64url — about forty-three
+characters. **That is a QR's payload, not a person's.** A display with no camera
+would have to type it, so the one route that exists is the one route a camera-less
+device cannot take.
+
+**So pairing gets a second route, and the code is designed for a keyboard.** The
+host shows a **one-time code** — short, uppercase, from an alphabet with no `O` and
+no `0` — with a countdown and an expiry. The display opens the host's address, types
+the code, and the host answers with a session. **The QR stays, and carries the same
+code rather than the token**, so there is one thing to mint and two ways to present
+it — 9remote's arrangement, and the reason its card can put a QR and a typeable
+value side by side without minting twice.
+
+Five rules make a code short enough to type safe enough to use:
+
+- **It expires, and it is single-use.** Minutes rather than hours, and the first
+  successful claim burns it.
+- **A wrong guess never burns the window; only a successful claim does.** This is
+  where the design deliberately diverges from 9remote. Their code is two
+  characters, so they *must* burn on a mismatch to stop brute force, and their own
+  comment records the bug that follows — a stale code's wrong guess killing the
+  live window, which they patch by burning only when the presenter named that code.
+  With one live window there is nothing to name, and burning on a mismatch would
+  hand anyone on the LAN a way to close a pairing window by guessing wrong. So the
+  code is longer, rate limiting carries the defence, and only success consumes.
+- **Guessing is rate-limited**, per code and per source, with a penalty that grows
+  rather than a lockout that can be aimed at someone else.
+- **The exchange is the one route reachable unpaired**, so it is the route that must
+  be boring: no listing, no theme, no device facts, and a refusal that says nothing
+  about whether a code exists.
+- **The code is not a session.** It is exchanged once for the real credential, so a
+  code read over someone's shoulder is worth one pairing and no more.
+
+**A display that must stay paired needs a credential that outlives a session**, and
+that is open question 3 below — the one thing this section cannot settle alone,
+because it is a decision about persisting a secret rather than about a code's shape.
 
 ## The model: a default, and an override per display
 
@@ -266,7 +388,7 @@ One plan, and it is a prerequisite of the store's phase A rather than a sibling:
 
 | Phase | Lands | Needs |
 |---|---|---|
-| **1** | the display record, pairing against it, and the persisted display list | — |
+| **1** | the display record, pairing against it, the persisted display list, the one-time code and its `/pair` route as the camera-less path, and the app folder as the host's identity | — |
 | **2** | the per-display map, the default, and `GET /`'s resolution | 1 |
 | **3** | the answers keyed by display and theme, through `currentAssignment` | 2 |
 | **4** | the routes, the display's own write and its chooser (ruling 11), the reassignment read on `/api/published`, and the two host pages rewritten against the model | 3 |
@@ -287,9 +409,26 @@ from the session, so a display writes its own key or nothing.
    last-seen time is the obvious candidate and is the thing the Host settings mode
    would want in order to say *this one is online*. Deferred until that surface is
    drawn, so the field is added by the thing that reads it.
-3. **Whether an assignment should survive deleting the display's record** — the
+2. **Whether an assignment should survive deleting the display's record** — the
    answer above is no (the answers go with it), and the theme assignment going
    too is the consistent reading rather than a decided one.
+3. **Whether a display's credential should outlive a session — and today it does
+   not.** `DEFAULT_SESSION_TTL_MS` is twelve hours and the session map is in
+   memory, so a wall display is unpaired every twelve hours and after every restart
+   of the host. This design makes the *assignment* durable and leaves the
+   *credential* ephemeral, which means the display falls to the default and asks to
+   be paired again: the goal survives and the experience of it does not. 9remote's
+   answer is a permanent key beside the one-time code. Ours would be the **second
+   credential this product stores**, and the store spec's own words are that the
+   GitHub token is the first, with its file, its permissions, whether it is
+   encrypted at rest and what it does on revocation being a design's business rather
+   than an implementation detail. **Not decided**, and it wants deciding before
+   phase 4 rather than being discovered on a wall.
+4. **Whether hosts should be discoverable on a LAN** — § "Two hosts on one network"
+   says the origin is the boundary *because nothing discovers hosts*. mDNS or a
+   beacon would let a phone find a host without a URL, and would put every host on
+   the network into one reachable set — the tangle that section says cannot happen
+   today. Not ruled, and nothing here needs it.
 
 ## Not verified, and must be before this is planned
 
@@ -300,13 +439,26 @@ from the session, so a display writes its own key or nothing.
 - **That `this-pc` cannot collide with a minted display id.** The reserved word is
   safe only if minting refuses it, which the plan must make true rather than
   assume.
+- **That the code's length and its rate limit are the right pair.** Both are chosen
+  rather than measured: 9remote's numbers defend a *two-character* code, and this
+  design's is longer, so copying their thresholds would be copying a defence sized
+  for a different lock. The plan sets them, and the first LAN pairing is what tests
+  them.
+- **That a browser can hold a session across a reload.** A display that reloads
+  loses its token unless it is stored somewhere, which is the same question as open
+  question 3 and is not answered here.
 
 ## Acceptance
 
 - **1** — pairing twice with the same label creates two displays; pairing with a
   `displayId` creates a session for the existing one and no new display; revoking
   a session leaves the display in the list; a client that sends a `displayId` to
-  the pairing route from off-loopback is refused.
+  the pairing route from off-loopback is refused; **a display with no camera pairs
+  by typing the one-time code at `/pair`**, the code is refused a second time, a
+  wrong code does not burn a live window it did not name, and the exchange route
+  answers nothing about whether a code exists; **a second host started against a
+  folder a live host holds is refused**, and `--app-dir` is the message's own
+  remedy.
 - **2** — two displays hold two themes and each `GET /` answers its own; a display
   with no entry gets the default; an entry naming a deleted theme falls back to the
   default rather than erroring; the local root page is assignable as `this-pc`.

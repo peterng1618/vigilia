@@ -18,9 +18,9 @@ Drain `docs/product/backlog.jsonl` through the active Superpowers plan. Editor r
 
 ## Last completed change
 
-- Ruling 11: a paired display may change its own theme, chosen from this host's local themes. It costs one branch on one route because `GET /api/themes` is already display-guarded, so only the write was missing.
-- The write's authority is derived, not claimed: a session's display key comes from its own record and a `display` key in the body is ignored, so `default` and `this-pc` are unreachable from a session by construction.
-- The per-display plan gains Task 4.5 (the player's chrome-control chooser) and its acceptance item 5; `docs:check`, `status:check`, `design-md --cite` exit 0.
+- Pairing gains a camera-less route: a one-time typed code minted beside the QR, with the QR carrying the code rather than the token; plan Tasks 1.4 and 1.5.
+- Two hosts on one PC currently share `~/.vigilia/settings` and would share `displays.json` — `MAX_PORT_ATTEMPTS` lets the second start anyway; the spec now makes one app folder one host, refused with `--app-dir` as the remedy.
+- The 9remote study is in the spec at `033dd6e3`; it also exposes that the 12h in-memory session leaves a wall display unpaired daily, now open question 3.
 
 ## Next
 
