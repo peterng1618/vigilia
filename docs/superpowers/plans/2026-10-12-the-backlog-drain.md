@@ -5136,13 +5136,13 @@ phase boundary.
 **Interfaces:**
 - Produces: `vg-568` closed
 
-- [ ] **Step 1: Semi-translucent chrome in the top-right, revealed by tap and hidden again after three seconds**, which is what the user asked for on 2026-10-17; the three-second duration and the auto-hide exclusion for keyboard focus are the design presented rather than separately ruled.
-- [ ] **Step 2: Three controls, no settings modal.** Ruled by the user on 2026-10-17 when they answered the settings-panel question: fullscreen, keep-awake and a brightness control live in the chrome instead, and `vg-576` stays open until all three exist.
-- [ ] **Step 3: Entering and leaving fullscreen is one control's toggle**, and the chrome never takes room from the composition.
-- [ ] **Step 4: Keep-awake is a re-acquiring loop, not a switch, and it may not exist at all on the origin a phone uses.** The Screen Wake Lock API releases its lock whenever the page is hidden, so the control re-requests on `visibilitychange` and reports the lock it actually holds; a control that claims a lock it lost is the failure here. It is also gated on a secure context (`vg-580`, Task 25.8), and the host serves plain http, so on a LAN address the API is absent — the control says so rather than appearing broken, and a proof that ran on `localhost` proves nothing about the phone it is for.
-- [ ] **Step 5: The brightness control is a dimming overlay over the rendered display, and says so.** A browser cannot set a device's panel brightness, so the honest control is an alpha over the composition — never labelled as the device's own brightness, and never persisted.
-- [ ] **Step 6: Capability is detected and the unsupported case explains itself**, because iPhone Safari does not expose arbitrary-element fullscreen; Task 25.6's standalone mode is that client's honest path, so the refusal may name it.
-- [ ] **Step 7: Close it**, with the browser case naming what the client it ran on can actually do.
+- [x] **Step 1: Semi-translucent chrome in the top-right, revealed by tap and hidden again after three seconds**, which is what the user asked for on 2026-10-17; the three-second duration and the auto-hide exclusion for keyboard focus are the design presented rather than separately ruled.
+- [x] **Step 2: Three controls, no settings modal.** Ruled by the user on 2026-10-17 when they answered the settings-panel question: fullscreen, keep-awake and a brightness control live in the chrome instead, and `vg-576` stays open until all three exist.
+- [x] **Step 3: Entering and leaving fullscreen is one control's toggle**, and the chrome never takes room from the composition.
+- [x] **Step 4: Keep-awake is a re-acquiring loop, not a switch, and it may not exist at all on the origin a phone uses.** The Screen Wake Lock API releases its lock whenever the page is hidden, so the control re-requests on `visibilitychange` and reports the lock it actually holds; a control that claims a lock it lost is the failure here. It is also gated on a secure context (`vg-580`, Task 25.8), and the host serves plain http, so on a LAN address the API is absent — the control says so rather than appearing broken, and a proof that ran on `localhost` proves nothing about the phone it is for.
+- [x] **Step 5: The brightness control is a dimming overlay over the rendered display, and says so.** A browser cannot set a device's panel brightness, so the honest control is an alpha over the composition — never labelled as the device's own brightness, and never persisted.
+- [x] **Step 6: Capability is detected and the unsupported case explains itself**, because iPhone Safari does not expose arbitrary-element fullscreen; Task 25.6's standalone mode is that client's honest path, so the refusal may name it.
+- [x] **Step 7: Close it**, with the browser case naming what the client it ran on can actually do.
 
 ### Task 25.4: The live line chart's edge
 
