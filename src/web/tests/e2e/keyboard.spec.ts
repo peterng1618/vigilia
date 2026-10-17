@@ -96,6 +96,8 @@ test("the Keyboard tab arms a row into the modal's trap, on a ring that clears c
     expect(probe.outlineWidth, palette).toBeGreaterThanOrEqual(2);
 
     const [ring, surface] = await pixelsAt(page, [probe.ring, probe.surface]);
+    if (ring === undefined || surface === undefined)
+      throw new Error("the pixel reader returned fewer than two samples");
     const measured = round(contrast(ring, surface));
     readings.push(
       `${palette} armed-ring ${measured}:1 (outline ${probe.outline} on the modal surface ${rgba(surface)})`,
@@ -184,13 +186,18 @@ async function pixelsAt(
           1,
           1,
         ).data;
-        return [data[0] ?? 0, data[1] ?? 0, data[2] ?? 0, data[3] ?? 0];
+        return [
+          data[0] ?? 0,
+          data[1] ?? 0,
+          data[2] ?? 0,
+          data[3] ?? 0,
+        ] as const;
       });
     },
     { b64, points: points as { x: number; y: number }[] },
   );
   if (read === null) throw new Error("the viewport could not be captured");
-  return read as readonly Rgba[];
+  return read;
 }
 
 test("the Keyboard tab's four states, and the sheet's chord mark that did not move", async ({

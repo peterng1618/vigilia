@@ -8,6 +8,15 @@ import {
 } from "../../packages/editor/src/new-fabric-theme-globals.js";
 import { GLASS_BAR } from "./glass-fixture.js";
 
+/** `solidOf` is a `Record<string, string>`, so a key read is `string | undefined`
+ *  even though the map is a literal. The panel token is required here. */
+function panelPaint(): string {
+  const paint = solidOf["panel"];
+  if (paint === undefined)
+    throw new Error("new-fabric-theme-globals lost its panel paint");
+  return paint;
+}
+
 /**
  * The browser proof that a frosted **Circle** and a frosted **Triangle** are
  * genuinely frosted, over a real photograph.
@@ -147,7 +156,7 @@ function envelope(fill: "panel" | "frost" | "none", withGlass: boolean) {
         // would make it a statement about that copy.
         panel: {
           name: "Panel",
-          value: { kind: "solid" as const, color: solidOf.panel },
+          value: { kind: "solid" as const, color: panelPaint() },
         },
         frost: {
           name: "Frost",
@@ -263,7 +272,14 @@ async function locate(page: Page): Promise<Probes> {
         scope[key ?? ""] as
           | {
               canvas: {
-                viewportTransform: number[];
+                viewportTransform: readonly [
+                  number,
+                  number,
+                  number,
+                  number,
+                  number,
+                  number,
+                ];
                 getRetinaScaling(): number;
                 getObjects(): Array<
                   Record<string, unknown> & { getBoundingRect(): Box }

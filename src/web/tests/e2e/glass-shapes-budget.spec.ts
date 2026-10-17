@@ -282,7 +282,16 @@ async function measure(page: Page): Promise<Reading[]> {
         scope[key ?? ""] as
           | {
               canvas: {
-                getObjects(): Array<Record<string, unknown>>;
+                getObjects(): Array<
+                  Record<string, unknown> & {
+                    getBoundingRect(): {
+                      left: number;
+                      top: number;
+                      width: number;
+                      height: number;
+                    };
+                  }
+                >;
                 renderAll(): void;
                 add(...objects: unknown[]): void;
                 remove(...objects: unknown[]): void;
@@ -298,7 +307,17 @@ async function measure(page: Page): Promise<Reading[]> {
       )?.canvas;
       if (editor === undefined) throw new Error("no editor canvas is mounted");
 
-      const targets = new Map<string, Record<string, unknown>>();
+      const targets = new Map<
+        string,
+        Record<string, unknown> & {
+          getBoundingRect(): {
+            left: number;
+            top: number;
+            width: number;
+            height: number;
+          };
+        }
+      >();
       for (const object of editor.getObjects())
         if (object["vigiliaGlass"] !== undefined)
           targets.set(String(object["id"]), object);

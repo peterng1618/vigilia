@@ -108,9 +108,13 @@ async function curve(
       scope[key ?? ""] as
         | {
             canvas: {
-              getObjects(): Array<Record<string, unknown>>;
+              getObjects(): Array<
+                Record<string, unknown> & {
+                  set(name: string, value: unknown): void;
+                }
+              >;
               renderAll(): void;
-              add(object: unknown): void;
+              add(...objects: unknown[]): void;
               remove(...objects: unknown[]): void;
               set(key: string, value: unknown): void;
             };
@@ -124,7 +128,8 @@ async function curve(
     const panels = editor
       .getObjects()
       .filter((object) => object["vigiliaGlass"] !== undefined);
-    if (panels.length === 0) throw new Error("the fixture has no glass panel");
+    if (panels.length === 0 || panels[0] === undefined)
+      throw new Error("the fixture has no glass panel");
     const panel = panels[0];
 
     const time = (samples: number, frames: number): number => {

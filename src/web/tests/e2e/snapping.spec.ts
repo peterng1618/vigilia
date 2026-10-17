@@ -363,7 +363,14 @@ async function liveZoom(page: Page): Promise<number> {
           editor: {
             canvas: {
               getZoom?(): number;
-              viewportTransform: number[];
+              viewportTransform: readonly [
+                number,
+                number,
+                number,
+                number,
+                number,
+                number,
+              ];
             };
           };
         };
@@ -392,7 +399,10 @@ async function sceneTravel(
   to: { x: number; y: number },
 ): Promise<number> {
   return page.evaluate(
-    ([start, end]) => {
+    ([start, end]: readonly [
+      { x: number; y: number },
+      { x: number; y: number },
+    ]) => {
       const canvas = (
         window as unknown as {
           vigiliaEditorBridge: {
@@ -411,7 +421,7 @@ async function sceneTravel(
         canvas.getScenePoint({ clientX: start.x, clientY: start.y }).x
       );
     },
-    [from, to],
+    [from, to] as const,
   );
 }
 

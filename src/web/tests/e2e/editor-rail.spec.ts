@@ -137,10 +137,13 @@ test("a pane's title bar and footer stay put while its body scrolls", async ({
     );
     if (
       column === null ||
+      pane === undefined ||
       body === null ||
+      body === undefined ||
       title === null ||
+      title === undefined ||
       footer === null ||
-      pane === null
+      footer === undefined
     ) {
       throw new Error("no pane column, body, title bar or footer");
     }

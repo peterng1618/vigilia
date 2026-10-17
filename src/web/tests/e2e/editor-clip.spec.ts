@@ -89,7 +89,7 @@ type Bridge = {
  */
 async function alphaAt(page: Page, x: number, y: number): Promise<number> {
   return page.evaluate(
-    ([cx, cy]: [number, number]) => {
+    ([cx, cy]: readonly [number, number]) => {
       const canvas = document.querySelector<HTMLCanvasElement>(
         "#vigilia-fabric-editor canvas.lower-canvas",
       );
@@ -108,7 +108,7 @@ async function alphaAt(page: Page, x: number, y: number): Promise<number> {
       ).data;
       return data[3] ?? 0;
     },
-    [x, y],
+    [x, y] as const,
   );
 }
 
@@ -119,7 +119,7 @@ async function sceneToClient(
   y: number,
 ): Promise<{ x: number; y: number }> {
   return page.evaluate(
-    ([sx, sy]: [number, number]) => {
+    ([sx, sy]: readonly [number, number]) => {
       const bridge = (window as unknown as { vigiliaEditorBridge: Bridge })
         .vigiliaEditorBridge;
       const vpt = bridge.editor.canvas.viewportTransform;
@@ -133,7 +133,7 @@ async function sceneToClient(
         y: box.y + (vpt[5] ?? 0) + sy * (vpt[3] ?? 1),
       };
     },
-    [x, y],
+    [x, y] as const,
   );
 }
 
@@ -188,7 +188,7 @@ async function arrangeOverhang(page: Page): Promise<{
   stageWidth: number;
 }> {
   const measured = await page.evaluate(
-    ([cardId, boardWidth, past]: [string, number, number]) => {
+    ([cardId, boardWidth, past]: readonly [string, number, number]) => {
       const bridge = (window as unknown as { vigiliaEditorBridge: Bridge })
         .vigiliaEditorBridge;
       const canvas = bridge.editor.canvas;
@@ -226,7 +226,7 @@ async function arrangeOverhang(page: Page): Promise<{
         stageWidth: canvas.getWidth(),
       };
     },
-    [OVERHANG_CARD, STARTER_BOARD_WIDTH, OVERHANG_PAST_EDGE],
+    [OVERHANG_CARD, STARTER_BOARD_WIDTH, OVERHANG_PAST_EDGE] as const,
   );
   await page.waitForTimeout(300);
   return measured;

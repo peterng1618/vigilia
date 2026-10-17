@@ -75,7 +75,7 @@ interface FabricCanvas {
   getObjects(): Array<{ get(name: string): unknown }>;
   getElement(): HTMLCanvasElement;
   lowerCanvasEl?: HTMLCanvasElement;
-  viewportTransform: number[];
+  viewportTransform: readonly [number, number, number, number, number, number];
   getRetinaScaling(): number;
   renderAll(): void;
 }
@@ -163,7 +163,9 @@ export async function readGlass(
       const data = context.getImageData(0, 0, width, element.height).data;
       const luma = (x: number, y: number): number => {
         const i = (y * width + x) * 4;
-        return 0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2];
+        return (
+          0.2126 * data[i]! + 0.7152 * data[i + 1]! + 0.0722 * data[i + 2]!
+        );
       };
 
       const layer = document.querySelector<HTMLElement>(
@@ -209,9 +211,9 @@ export async function readGlass(
       const referenceLuma = (x: number, y: number): number => {
         const i = (y * width + x) * 4;
         return (
-          0.2126 * referenceData[i] +
-          0.7152 * referenceData[i + 1] +
-          0.0722 * referenceData[i + 2]
+          0.2126 * referenceData[i]! +
+          0.7152 * referenceData[i + 1]! +
+          0.0722 * referenceData[i + 2]!
         );
       };
 
@@ -281,12 +283,12 @@ export async function readGlass(
         const columns = Math.max(1, right - left + 1);
         const means = new Array<number>(columns).fill(0);
         for (let y = bandTop; y <= bandBottom; y += 1)
-          for (let x = left; x <= right; x += 1) means[x - left] += read(x, y);
+          for (let x = left; x <= right; x += 1) means[x - left]! += read(x, y);
         const rows = bandBottom - bandTop + 1;
-        for (let i = 0; i < columns; i += 1) means[i] /= rows;
+        for (let i = 0; i < columns; i += 1) means[i]! /= rows;
         let peakGradient = 0;
         for (let i = 1; i < columns; i += 1) {
-          const step = Math.abs(means[i] - means[i - 1]);
+          const step = Math.abs(means[i]! - means[i - 1]!);
           if (step > peakGradient) peakGradient = step;
         }
         return {

@@ -326,7 +326,12 @@ export async function pixelsAt(
           1,
           1,
         ).data;
-        return [data[0] ?? 0, data[1] ?? 0, data[2] ?? 0, data[3] ?? 0];
+        return [
+          data[0] ?? 0,
+          data[1] ?? 0,
+          data[2] ?? 0,
+          data[3] ?? 0,
+        ] as const;
       });
     },
     { b64, points },

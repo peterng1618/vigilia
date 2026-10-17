@@ -22,7 +22,7 @@
     "format:check": "biome format ..",
     "lint": "biome lint ..",
     "lint:fix": "biome lint --write ..",
-    "typecheck": "npm run typecheck --workspaces --if-present",
+    "typecheck": "npm run typecheck --workspaces --if-present && tsc --noEmit -p tsconfig.e2e.json",
     "test": "vitest run",
     "test:e2e": "playwright test",
     "test:rebuild": "playwright test --config playwright.rebuild.config.ts --workers=1",

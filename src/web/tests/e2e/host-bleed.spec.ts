@@ -90,7 +90,7 @@ test.describe("a deliberate bleed on a display", () => {
         );
         let lit = 0;
         for (let index = 3; index < data.length; index += 4) {
-          if (data[index] > 127) lit += 1;
+          if (data[index]! > 127) lit += 1;
         }
         return lit;
       });

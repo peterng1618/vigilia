@@ -10,7 +10,7 @@ import {
   pixelsAt,
   prepareControls,
   probes,
-  Rgba,
+  type Rgba,
   ratioAgainstPixel,
   round,
   setPalette,

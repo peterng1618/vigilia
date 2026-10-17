@@ -108,8 +108,8 @@ const envelopeFor = (
     width: 640,
     height: 360,
     contentFit: "contain" as const,
-    background: { ref: "palette.bar" },
-    barColor: { ref: "palette.bar" },
+    background: { ref: "palette.bar" as const },
+    barColor: { ref: "palette.bar" as const },
   },
   globals: {
     palette: {
@@ -272,8 +272,8 @@ const chartEnvelope = {
     width: 640,
     height: 360,
     contentFit: "contain" as const,
-    background: { ref: "palette.bar" },
-    barColor: { ref: "palette.bar" },
+    background: { ref: "palette.bar" as const },
+    barColor: { ref: "palette.bar" as const },
   },
   globals: {
     palette: {

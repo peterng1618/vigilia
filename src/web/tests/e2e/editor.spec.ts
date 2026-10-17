@@ -326,6 +326,11 @@ async function pixelAtObjectCentre(
       await new Promise((resolve) => {
         requestAnimationFrame(() => requestAnimationFrame(resolve));
       });
+      type SceneNode = {
+        id?: string;
+        getObjects?(): SceneNode[];
+        getBoundingRect(): ArtboardRect;
+      };
       const bridge = (
         window as unknown as {
           vigiliaEditorBridge: {
@@ -335,31 +340,22 @@ async function pixelAtObjectCentre(
                   left: number;
                   top: number;
                   width: number;
+                  height: number;
                 };
               };
               canvas: {
-                getObjects(): Array<{
-                  id?: string;
-                  getObjects?(): Array<{ id?: string }>;
-                  getBoundingRect(): ArtboardRect;
-                }>;
+                getObjects(): SceneNode[];
               };
             };
           };
         }
       ).vigiliaEditorBridge;
       const find = (
-        candidates: ReadonlyArray<{
-          id?: string;
-          getObjects?(): Array<{ id?: string }>;
-          getBoundingRect(): ArtboardRect;
-        }>,
-      ): (typeof candidates)[number] | undefined => {
+        candidates: readonly SceneNode[],
+      ): SceneNode | undefined => {
         for (const candidate of candidates) {
           if (candidate.id === objectId) return candidate;
-          const found = find(
-            (candidate.getObjects?.() ?? []) as typeof candidates,
-          );
+          const found = find(candidate.getObjects?.() ?? []);
           if (found !== undefined) return found;
         }
         return undefined;
@@ -902,7 +898,7 @@ test.describe("Fabric editor route", () => {
           canvas.height,
         ).data;
         let sum = 0;
-        for (let i = 0; i < data.length; i += 64) sum += data[i];
+        for (let i = 0; i < data.length; i += 64) sum += data[i]!;
         return sum;
       });
 
@@ -1192,7 +1188,7 @@ test.describe("Fabric editor route", () => {
     const saved = await savePackage(page);
     expect(saved.parsed.ok).toBe(true);
     if (!saved.parsed.ok) return;
-    const chart = saved.parsed.envelope.scene.objects
+    const chart = sceneObjects(saved.parsed.envelope)
       .filter((object) => object["type"] === "VigiliaChart")
       .at(-1);
     // A chart takes a content token for its data and a surface token for its
@@ -1310,7 +1306,7 @@ test.describe("Fabric editor route", () => {
     const saved = await savePackage(page);
     expect(saved.parsed.ok).toBe(true);
     if (!saved.parsed.ok) return;
-    const panel = saved.parsed.envelope.scene.objects.find(
+    const panel = sceneObjects(saved.parsed.envelope).find(
       (object) => object["vigiliaPaint"] !== undefined && object["rx"] === 24,
     );
     // Every field the author touched survives the save as authored state: the
@@ -2775,9 +2771,9 @@ test.describe("Fabric editor route", () => {
             index += 4
           ) {
             if (
-              pixels[index] < 32 &&
-              pixels[index + 1] > 100 &&
-              pixels[index + 2] > 100
+              pixels[index]! < 32 &&
+              pixels[index + 1]! > 100 &&
+              pixels[index + 2]! > 100
             )
               ink += 1;
           }
@@ -2843,7 +2839,7 @@ test.describe("Fabric editor route", () => {
 
     await page.goto(EDITOR);
     const envelope = {
-      schemaVersion: 2,
+      schemaVersion: 2 as const,
       fabricVersion: "7.4.0",
       id: "opened",
       metadata: { themeLanguage: "en" },
@@ -2985,13 +2981,8 @@ test.describe("Fabric editor route", () => {
     const parsed = readThemePackage(saved);
     expect(parsed.ok).toBe(true);
     if (!parsed.ok) return;
-    const envelope = parsed.envelope as {
-      id: string;
-      scene: { objects: Array<{ id?: string }> };
-    };
-
-    expect(envelope.id).toBe("source");
-    expect(envelope.scene.objects).toEqual(
+    expect(parsed.envelope.id).toBe("source");
+    expect(sceneObjects(parsed.envelope)).toEqual(
       expect.arrayContaining([expect.objectContaining({ id: "panel" })]),
     );
 
@@ -3118,6 +3109,13 @@ test.describe("Fabric editor route", () => {
     ]);
     await expect(
       page.evaluate(() => {
+        type SelectedObject = {
+          hasBorders: boolean;
+          hasControls: boolean;
+          controls: Record<string, { visible?: boolean }>;
+          get(name: string): unknown;
+          getCoords(): Array<{ x: number; y: number }>;
+        };
         const editor = Object.entries(
           window as unknown as Record<string, unknown>,
         ).find(
@@ -3127,16 +3125,8 @@ test.describe("Fabric editor route", () => {
               .upperCanvasEl?.isConnected,
         )?.[1] as {
           canvas: {
-            getActiveObject():
-              | {
-                  hasBorders: boolean;
-                  hasControls: boolean;
-                  controls: Record<string, { visible?: boolean }>;
-                  get(name: string): unknown;
-                  getCoords(): Array<{ x: number; y: number }>;
-                }
-              | undefined;
-            getObjects(): Array<{ get(name: string): unknown }>;
+            getActiveObject(): SelectedObject | undefined;
+            getObjects(): SelectedObject[];
             setActiveObject(object: unknown): void;
           };
         };
@@ -3642,7 +3632,12 @@ test.describe("Fabric editor route", () => {
       type ProbeObject = {
         id?: string;
         getObjects?(): unknown[];
-        getBoundingRect(): { left: number; top: number; width: number };
+        getBoundingRect(): {
+          left: number;
+          top: number;
+          width: number;
+          height: number;
+        };
       };
       const bridge = (
         window as unknown as {
@@ -3655,6 +3650,7 @@ test.describe("Fabric editor route", () => {
                   left: number;
                   top: number;
                   width: number;
+                  height: number;
                 };
               };
             };
@@ -3760,6 +3756,10 @@ test.describe("Fabric editor route", () => {
     await expect
       .poll(() =>
         page.evaluate(() => {
+          type SceneNode = {
+            get(name: string): unknown;
+            getObjects?(): SceneNode[];
+          };
           const editor = Object.entries(
             window as unknown as Record<string, unknown>,
           ).find(
@@ -3767,17 +3767,10 @@ test.describe("Fabric editor route", () => {
               key.startsWith("vigilia-fabric-editor-") &&
               (value as { canvas: { upperCanvasEl?: HTMLCanvasElement } })
                 .canvas.upperCanvasEl?.isConnected,
-          )?.[1] as
-            | {
-                canvas: { getObjects(): Array<{ get(name: string): unknown }> };
-              }
-            | undefined;
+          )?.[1] as { canvas: { getObjects(): SceneNode[] } } | undefined;
           const find = (
-            objects: readonly {
-              get(name: string): unknown;
-              getObjects?: () => unknown[];
-            }[],
-          ): unknown => {
+            objects: readonly SceneNode[],
+          ): SceneNode | undefined => {
             for (const candidate of objects) {
               if (candidate.get("id") === "ram-gauge") return candidate;
               const found = find(candidate.getObjects?.() ?? []);
@@ -3904,7 +3897,7 @@ test.describe("Fabric editor route", () => {
     /** Whether the background geometrically covers a point, page coordinates. */
     const covers = async (point: { x: number; y: number }): Promise<boolean> =>
       page.evaluate(
-        ([clientX, clientY]) => {
+        ([clientX, clientY]: readonly [number, number]) => {
           const editor = Object.entries(
             window as unknown as Record<string, unknown>,
           ).find(([key]) => key.startsWith("vigilia-fabric-editor-"))?.[1] as
@@ -3929,7 +3922,7 @@ test.describe("Fabric editor route", () => {
             editor.canvas.getScenePoint({ clientX: clientX, clientY: clientY }),
           );
         },
-        [point.x, point.y],
+        [point.x, point.y] as const,
       );
 
     const selected = async (): Promise<unknown> =>
@@ -5120,10 +5113,13 @@ test.describe("Fabric editor route", () => {
     // editor opens. Copied from the `movable.vigilia-theme` fixture at `:1322`.
     const paint = {
       palette: {
-        none: { name: "None", value: { kind: "solid", color: "transparent" } },
+        none: {
+          name: "None",
+          value: { kind: "solid" as const, color: "transparent" },
+        },
         accent: {
           name: "Accent",
-          value: { kind: "solid", color: ACCENT_PAINT },
+          value: { kind: "solid" as const, color: ACCENT_PAINT },
         },
       },
     };

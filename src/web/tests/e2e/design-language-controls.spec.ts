@@ -368,7 +368,8 @@ test("control targets have non-overlapping 24×24 hit areas (§5)", async ({
       "[data-fixture='slider'] input[type=range]",
     );
     const chain: string[] = [];
-    for (let node = range; node !== null && chain.length < 5; ) {
+    let node: HTMLElement | null = range;
+    for (; node !== null && chain.length < 5; ) {
       const rect = node.getBoundingClientRect();
       chain.push(
         `${node.tagName.toLowerCase()}.${String(node.className).slice(0, 20)} ${Math.round(rect.width)}x${Math.round(rect.height)}`,

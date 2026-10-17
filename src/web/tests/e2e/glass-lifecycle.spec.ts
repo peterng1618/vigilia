@@ -69,8 +69,10 @@ test.describe("glass lifecycle in the real editor", () => {
           | {
               canvas: {
                 getObjects(): Array<Record<string, unknown>>;
+                add(...objects: unknown[]): void;
                 remove(...objects: unknown[]): void;
                 renderAll(): void;
+                getContext(): CanvasRenderingContext2D;
               };
             }
           | undefined

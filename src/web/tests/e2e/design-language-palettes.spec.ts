@@ -1,7 +1,7 @@
 import { expect, test } from "@playwright/test";
 import {
   PALETTES,
-  Palette,
+  type Palette,
   setPalette,
   surfaceLuminance,
 } from "./design-language-readers.js";

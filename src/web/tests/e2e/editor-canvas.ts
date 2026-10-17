@@ -279,7 +279,12 @@ export async function clearSceneX(
   artboardWidth: number,
 ): Promise<{ x: number; distance: number }> {
   return page.evaluate(
-    ([objectId, start, end, artboard]: [string, number, number, number]) => {
+    ([objectId, start, end, artboard]: readonly [
+      string,
+      number,
+      number,
+      number,
+    ]) => {
       type SceneObject = {
         id?: string;
         parent?: SceneObject;
@@ -346,7 +351,7 @@ export async function clearSceneX(
       }
       return best;
     },
-    [excludeId, from, to, artboardWidth],
+    [excludeId, from, to, artboardWidth] as const,
   );
 }
 

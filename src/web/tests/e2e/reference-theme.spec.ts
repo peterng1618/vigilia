@@ -1,4 +1,5 @@
 import { expect, type Page, type TestInfo, test } from "@playwright/test";
+import type { FontAssetReference } from "@vigilia/renderer-core";
 import { readThemePackage, writeThemePackage } from "@vigilia/theme-package";
 import { strToU8, zipSync } from "fflate";
 import { solidOf } from "../../packages/editor/src/new-fabric-theme-globals.js";
@@ -67,6 +68,25 @@ const REFERENCE_IDS = [
   "storage-card",
   "network-card",
 ] as const;
+
+/** Declared as a font asset so its `family` is part of the contract rather than
+ * an excess property on a plain `AssetReference`. The bytes are not a font. */
+const BROKEN_FONT_ASSET: FontAssetReference = {
+  id: "broken",
+  kind: "font",
+  path: "assets/broken.woff2",
+  family: "Broken Test Face",
+  weight: 400,
+  style: "normal",
+  format: "woff2",
+  sourceUrl:
+    "https://cdn.jsdelivr.net/fontsource/fonts/inter@5.1.1/latin-400-normal.woff2",
+  license: {
+    name: "SIL Open Font License 1.1",
+    url: "https://openfontlicense.org/",
+    attribution: "Not a real face; a Vigilia test fixture.",
+  },
+};
 
 const desktop = (testInfo: TestInfo): void => {
   test.skip(!isDesktopSurface(testInfo), "the editor is a desktop surface");
@@ -244,7 +264,12 @@ async function waitForMedia(page: Page): Promise<void> {
       >(
         "[data-vigilia-background-media] img, [data-vigilia-background-media] video",
       );
-      return element !== null && element.complete;
+      return (
+        element !== null &&
+        (element instanceof HTMLVideoElement
+          ? element.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA
+          : element.complete)
+      );
     },
     undefined,
     { timeout: 20_000 },
@@ -340,7 +365,7 @@ function forbiddenKeys(envelope: unknown): readonly string[] {
  * authored state, and the fact that it is *not* stable across two saves is
  * pinned by its own test rather than hidden by this exclusion.
  */
-function authoredOnly(envelope: Record<string, unknown>): unknown {
+function authoredOnly(envelope: unknown): unknown {
   const copy = JSON.parse(JSON.stringify(envelope)) as {
     scene?: { objects?: Array<Record<string, unknown>> };
   };
@@ -360,12 +385,17 @@ function authoredOnly(envelope: Record<string, unknown>): unknown {
   return copy;
 }
 
-function objectsOf(
-  envelope: Record<string, unknown>,
-): readonly Record<string, unknown>[] {
-  const scene = envelope["scene"] as {
-    objects: ReadonlyArray<Record<string, unknown>>;
-  };
+function sceneObjectsOf(envelope: unknown): readonly Record<string, unknown>[] {
+  const scene = (envelope as { scene?: { objects?: unknown } }).scene;
+  const objects = scene?.objects;
+  return Array.isArray(objects)
+    ? // Elements were validated as a Fabric scene when the package was read.
+      (objects as readonly Record<string, unknown>[])
+    : [];
+}
+
+function objectsOf(envelope: unknown): readonly Record<string, unknown>[] {
+  const scene = { objects: sceneObjectsOf(envelope) };
   // **Groups descended.** A card is a group, so a card's parts are not at the
   // top level and a flat read reported `[]` for "every object carrying a derived
   // style table" — the assertion passing vacuously rather than failing, which
@@ -516,10 +546,9 @@ test.describe("the reference composition, authored", () => {
     const afterNew = readThemePackage(saved.bytes);
     expect(afterNew.ok).toBe(true);
     if (afterNew.ok) {
-      expect(
-        (afterNew.envelope as { scene: { objects: Record<string, unknown>[] } })
-          .scene.objects,
-      ).toContainEqual(expect.objectContaining({ id: authored, rx: 18 }));
+      expect(sceneObjectsOf(afterNew.envelope)).toContainEqual(
+        expect.objectContaining({ id: authored, rx: 18 }),
+      );
     }
 
     await captureVisualReview(page, testInfo, "editor-reference-new");
@@ -684,7 +713,9 @@ test.describe("the reference composition, authored", () => {
     // **Export again** and confirm the second export carries the same document.
     const exported = await savePackage(page);
     expect(forbiddenKeys(exported.envelope)).toEqual([]);
-    expect(idsOf(objectsOf(exported.envelope))).toEqual(ids);
+    expect(objectsOf(exported.envelope).map((object) => object["id"])).toEqual(
+      ids,
+    );
 
     await captureVisualReview(page, testInfo, "editor-reference-journey");
   });
@@ -761,27 +792,7 @@ test.describe("the reference composition, authored", () => {
       envelope: {
         ...GLASS_ENVELOPE,
         id: "e2e-broken-font",
-        assets: [
-          ...GLASS_ENVELOPE.assets,
-          {
-            id: "broken",
-            kind: "font" as const,
-            path: "assets/broken.woff2",
-            family: "Broken Test Face",
-            weight: 400,
-            style: "normal" as const,
-            format: "woff2" as const,
-            // The declaration is well formed; the bytes behind it are not, which
-            // is the only way to make the browser refuse the face.
-            sourceUrl:
-              "https://cdn.jsdelivr.net/fontsource/fonts/inter@5.1.1/latin-400-normal.woff2",
-            license: {
-              name: "SIL Open Font License 1.1",
-              url: "https://openfontlicense.org/",
-              attribution: "Not a real face; a Vigilia test fixture.",
-            },
-          },
-        ],
+        assets: [...GLASS_ENVELOPE.assets, BROKEN_FONT_ASSET],
       },
       assets: {
         "assets/stripes.png": glassStripesPng(),
@@ -1042,7 +1053,14 @@ function artboardTransparencyOfCapture(
                 height: number;
                 renderAll(): void;
                 getZoom(): number;
-                viewportTransform: number[];
+                viewportTransform: readonly [
+                  number,
+                  number,
+                  number,
+                  number,
+                  number,
+                  number,
+                ];
               };
             };
           };
@@ -1242,7 +1260,14 @@ function bandStats(
                 lowerCanvasEl: HTMLCanvasElement;
                 renderAll(): void;
                 getRetinaScaling(): number;
-                viewportTransform: number[];
+                viewportTransform: readonly [
+                  number,
+                  number,
+                  number,
+                  number,
+                  number,
+                  number,
+                ];
               };
             };
           };
@@ -1282,10 +1307,10 @@ function bandStats(
       for (let y = 0; y < height; y += 1)
         for (let x = 0; x < width; x += 1) {
           const i = (y * width + x) * 4;
-          means[x] +=
-            0.2126 * data[i] + 0.7152 * data[i + 1] + 0.0722 * data[i + 2];
+          means[x]! +=
+            0.2126 * data[i]! + 0.7152 * data[i + 1]! + 0.0722 * data[i + 2]!;
         }
-      for (let x = 0; x < width; x += 1) means[x] /= height;
+      for (let x = 0; x < width; x += 1) means[x]! /= height;
       let peak = 0;
       for (let x = 1; x < width; x += 1)
         peak = Math.max(peak, Math.abs(means[x]! - means[x - 1]!));
@@ -1420,7 +1445,7 @@ test.describe("the reference composition, captured", () => {
     // rather than relying on Fabric to see it.
     await openCaptureFixture(page);
     const layer = await page.evaluate(() => {
-      const element = document.querySelector<HTMLElement>(
+      const element = document.querySelector<HTMLImageElement>(
         "[data-vigilia-background-media] img",
       );
       return element === null
@@ -1488,7 +1513,14 @@ test.describe("the reference composition, captured", () => {
                 lowerCanvasEl: HTMLCanvasElement;
                 renderAll(): void;
                 getRetinaScaling(): number;
-                viewportTransform: number[];
+                viewportTransform: readonly [
+                  number,
+                  number,
+                  number,
+                  number,
+                  number,
+                  number,
+                ];
               };
             };
           };
@@ -1538,7 +1570,7 @@ test.describe("the reference composition, captured", () => {
         text.set("visible", visible);
         canvas.renderAll();
         const luma = (d: Uint8ClampedArray, i: number): number =>
-          0.2126 * d[i] + 0.7152 * d[i + 1] + 0.0722 * d[i + 2];
+          0.2126 * d[i]! + 0.7152 * d[i + 1]! + 0.0722 * d[i + 2]!;
         const widths: number[] = [];
         for (let y = 0; y < height; y += 1) {
           const diff = new Array<number>(width);
@@ -1857,6 +1889,7 @@ function starterBackdropBands(page: Page): Promise<{
     type Obj = {
       get(n: string): unknown;
       set(n: string, v: unknown): void;
+      getObjects?(): Obj[];
       getBoundingRect(): {
         left: number;
         top: number;
@@ -1873,7 +1906,14 @@ function starterBackdropBands(page: Page): Promise<{
               lowerCanvasEl: HTMLCanvasElement;
               renderAll(): void;
               getRetinaScaling(): number;
-              viewportTransform: number[];
+              viewportTransform: readonly [
+                number,
+                number,
+                number,
+                number,
+                number,
+                number,
+              ];
             };
           };
         };
@@ -1881,28 +1921,15 @@ function starterBackdropBands(page: Page): Promise<{
     ).vigiliaEditorBridge.editor.canvas;
     // Groups descended: the frosted panel is a part of the CPU card, and a
     // search of the root list said the starter had lost it.
-    const find = (
-      objects: ReadonlyArray<{
-        get(name: string): unknown;
-        getObjects?: () => unknown[];
-      }>,
-    ): { get(name: string): unknown } | undefined => {
+    const find = (objects: readonly Obj[]): Obj | undefined => {
       for (const candidate of objects) {
         if (candidate.get("id") === "cpu-card") return candidate;
-        const found = find(
-          (candidate.getObjects?.() ?? []) as ReadonlyArray<{
-            get(name: string): unknown;
-          }>,
-        );
+        const found = find(candidate.getObjects?.() ?? []);
         if (found !== undefined) return found;
       }
       return undefined;
     };
-    const card = find(
-      canvas.getObjects() as ReadonlyArray<
-        Obj & { getObjects?: () => readonly Obj[] }
-      >,
-    );
+    const card = find(canvas.getObjects());
     if (card === undefined)
       throw new Error("the starter lost its frosted card");
     const box = card.getBoundingRect();
@@ -1953,7 +1980,9 @@ function starterBackdropBands(page: Page): Promise<{
           centreInside(entry.object),
       )
       .map((entry) => entry.object);
-    const restore = hidden.map((object) => [object, object.get("visible")]);
+    const restore = hidden.map(
+      (object) => [object, object.get("visible")] as const,
+    );
 
     const vp = canvas.viewportTransform;
     const retina = canvas.getRetinaScaling();
@@ -2019,7 +2048,7 @@ function starterBackdropBands(page: Page): Promise<{
     const clearSharp = measure();
     card.set("fill", authoredFill);
     card.set("vigiliaGlass", authored);
-    for (const [object, visible] of restore) object?.set("visible", visible);
+    for (const [object, visible] of restore) object.set("visible", visible);
 
     // **Sharpness of what sits above the glass.** The object's own coverage:
     // the frame with it minus the frame without it, which cancels the backdrop

@@ -94,7 +94,9 @@ type Scene =
   | "stacked"
   | "reversed"
   | `${Kind}-bare`
-  | `pair-${Kind | "bare"}`;
+  | "pair-rect"
+  | "pair-circle"
+  | "pair-bare";
 
 /** The circle's own box in the side-by-side scene, clear of the rect's. */
 const PAIR_LEFT = 900;
@@ -106,7 +108,7 @@ const PAIR_CIRCLE = "pair-circle";
 function objectFor(
   kind: Kind,
   frosted: boolean,
-  left = BOX.left,
+  left: number = BOX.left,
   id = PROBE,
 ): Record<string, unknown> {
   const common = {
@@ -380,7 +382,14 @@ async function objectBox(
                 };
               }>;
               lowerCanvasEl: HTMLCanvasElement;
-              viewportTransform: number[];
+              viewportTransform: readonly [
+                number,
+                number,
+                number,
+                number,
+                number,
+                number,
+              ];
               getRetinaScaling(): number;
             };
           }

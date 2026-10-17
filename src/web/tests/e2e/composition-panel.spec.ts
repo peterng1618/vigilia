@@ -248,7 +248,10 @@ test("the state slot does not cover the role, at rest or with the row attended",
             overlap: Math.round((role.right - slot.left) * 10) / 10,
           };
         })
-        .filter((row) => row !== undefined && row.overlap > 0.5),
+        .filter(
+          (row): row is { readonly name: string; readonly overlap: number } =>
+            row !== undefined && row.overlap > 0.5,
+        ),
     );
 
   expect(

@@ -1106,8 +1106,8 @@ async function paintsIn(
       const sample = bridge?.live?.source?.latest("gpu.temp") as
         | { value?: number; unit?: string }
         | undefined;
-      const object = bridge?.handle.canvas
-        .getObjects()
+      const object = bridge?.handle?.canvas
+        ?.getObjects()
         .find((entry) => entry.get("id") === nodeId);
 
       if (sample?.value === undefined || object === undefined) {
@@ -2252,7 +2252,7 @@ function panelBand(
       for (let y = 0; y < height; y += 1)
         for (let x = 0; x < width; x += 1) {
           const i = (y * width + x) * 4;
-          means[x] +=
+          means[x]! +=
             0.2126 * data[i]! + 0.7152 * data[i + 1]! + 0.0722 * data[i + 2]!;
         }
       for (let x = 0; x < width; x += 1) means[x]! /= height;

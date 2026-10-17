@@ -119,15 +119,12 @@ async function clearOfHandles(
   const centre = await clientOfScene(page, id, GLASS_ARTBOARD.width);
   const halfWidth = await page.evaluate(
     ([objectId]) => {
-      const find = (
-        objects: ReadonlyArray<{
-          get(name: string): unknown;
-          getObjects?: () => ReadonlyArray<{
-            get(name: string): unknown;
-            getBoundingRect(): { width: number };
-          }>;
-        }>,
-      ): { getBoundingRect(): { width: number } } | undefined => {
+      type SceneLike = {
+        get(name: string): unknown;
+        getBoundingRect(): { width: number };
+        getObjects?(): SceneLike[];
+      };
+      const find = (objects: readonly SceneLike[]): SceneLike | undefined => {
         for (const candidate of objects) {
           if (candidate.get("id") === objectId) return candidate;
           const found = find(candidate.getObjects?.() ?? []);
@@ -140,15 +137,16 @@ async function clearOfHandles(
           vigiliaEditorBridge: {
             editor: {
               canvas: {
-                getObjects(): Array<{
-                  get(name: string): unknown;
-                  getObjects?: () => Array<{
-                    get(name: string): unknown;
-                    getBoundingRect(): { width: number };
-                  }>;
-                }>;
+                getObjects(): SceneLike[];
                 getZoom?(): number;
-                viewportTransform: number[];
+                viewportTransform: readonly [
+                  number,
+                  number,
+                  number,
+                  number,
+                  number,
+                  number,
+                ];
               };
             };
           };

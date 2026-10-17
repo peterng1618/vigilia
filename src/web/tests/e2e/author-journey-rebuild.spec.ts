@@ -118,7 +118,7 @@ test.describe("the reference composition, built from blank", () => {
       ["GPU violet", "#a970ff"],
       ["RAM teal", "#2fd6a8"],
       ["VRAM magenta", "#d24bf0"],
-    ])
+    ] as const)
       await addColour(page, name, hex);
 
     await openPane(page, "Add");
@@ -247,7 +247,7 @@ test.describe("the reference composition, built from blank", () => {
       ["GPU violet", "#a970ff"],
       ["RAM teal", "#2fd6a8"],
       ["VRAM magenta", "#d24bf0"],
-    ])
+    ] as const)
       await addColour(page, name, hex);
     await openPane(page, "Add");
 

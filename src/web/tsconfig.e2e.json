@@ -1,0 +1,16 @@
+{
+  // The e2e suite is its own program: it needs Playwright's types and the DOM,
+  // and folding them into an editor program would weaken what that one checks.
+  "extends": "./tsconfig.base.json",
+  "compilerOptions": {
+    "noEmit": true,
+    // `mockup-values.test.ts` imports a repository script that only exists as
+    // `.mjs`; allowJs infers its exports. checkJs stays off — the script is not
+    // this program's source to check.
+    "allowJs": true,
+    // Installed by the host workspace only (see docs/engineering/dependencies.md);
+    // named here rather than pulling Node globals into every browser program.
+    "types": ["./packages/host/node_modules/@types/node"]
+  },
+  "include": ["tests/e2e/**/*.ts"]
+}

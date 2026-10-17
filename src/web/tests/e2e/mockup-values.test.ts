@@ -996,7 +996,7 @@ function rowLicence(region: string): string {
  *  than transcribed, so the case cannot drift from the rule it names. */
 const BARE_READOUT = (SECTIONS.get("5") ?? "")
   .split("\n")
-  .find((line) => line.includes("Bare readout"))
+  .find((line: string) => line.includes("Bare readout"))
   ?.trim();
 
 test("every licence names a resolvable rule, quotes it, and predates its row", () => {

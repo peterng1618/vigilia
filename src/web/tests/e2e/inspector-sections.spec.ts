@@ -748,7 +748,9 @@ test.describe("the per-kind inspector column", () => {
 
     // Past the ceiling the wheel writes nothing at all, rather than writing the
     // ceiling again or running away above it.
-    await well.fill(await track.getAttribute("max"));
+    const max = await track.getAttribute("max");
+    if (max === null) throw new Error("the stroke-width track has no max");
+    await well.fill(max);
     await well.blur();
     const ceiling = Number(await well.inputValue());
     await page.mouse.move(at.x, at.y);
