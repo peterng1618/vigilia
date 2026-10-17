@@ -230,9 +230,9 @@ export function ArtboardFields(props: ArtboardFieldsProps): React.JSX.Element {
 }
 
 /** The rule, and the figure when the scene is available to read. Never a count
- *  this panel worked out for itself: `outsideCount` is `scene-fabric`'s, which
- *  is the same walk the player's notice is made of, and a box the author marked
- *  as bleeding is left out of it by the mark's owner rather than here. */
+ *  this panel worked out for itself: `outsideCount` is `scene-fabric`'s, and
+ *  every countable object is in it — nothing is excluded since the deliberate
+ *  bleed mark went (`docs/decisions/0069`). */
 function sizeNote(
   artboard: Artboard,
   boxes: readonly SceneBox[] | undefined,

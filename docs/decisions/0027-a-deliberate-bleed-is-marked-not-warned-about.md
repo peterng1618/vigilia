@@ -1,7 +1,11 @@
 # 0027 — A deliberate bleed is marked on the object, so the diagnostic stays honest
 
 - **Date:** 2026-10-06
-- **Status:** accepted
+- **Status:** superseded by
+  [0069](0069-the-crop-notice-and-the-bleed-mark-are-removed.md) — the mark this
+  note created is what the user ruled out on 2026-10-18. Its rungs remain the
+  survey of record for why the mark had no analogue to reuse; only its decision
+  is superseded.
 - **Paths:** `src/web/packages/renderer-core/src/theme/bleed.ts`,
   `src/web/packages/renderer-core/src/theme/fabric-envelope-validate.ts`,
   `src/web/packages/scene-fabric/src/artboard-crop.ts`,

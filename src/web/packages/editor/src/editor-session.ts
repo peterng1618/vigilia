@@ -245,8 +245,8 @@ export class EditorSession {
           sceneBoxesOf(options.shell.editor.canvas.getObjects()),
         // The figure is derived, so it needs the event that says the scene
         // moved. Without it the panel prints a number that only refreshes when
-        // the artboard changes, and an author marking a deliberate bleed sees
-        // no change on the surface they are looking at.
+        // the artboard changes, and an author moving an object across the edge
+        // sees no change on the surface they are looking at.
         canvasEvents: {
           on: (event, handler) =>
             options.shell.editor.canvas.on(event as never, handler as never),

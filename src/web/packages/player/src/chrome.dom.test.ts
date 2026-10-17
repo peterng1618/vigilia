@@ -1,7 +1,6 @@
 // @vitest-environment jsdom
 
 import type { Sample, SampleSource } from "@vigilia/renderer-core";
-import type { FabricSceneHandle } from "@vigilia/scene-fabric";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   chromeBand,
@@ -9,7 +8,6 @@ import {
   removeStrip,
   showAvailabilityNotice,
   showConnectionState,
-  showCropNotice,
 } from "./chrome.js";
 
 /**
@@ -46,16 +44,16 @@ describe("the display's chrome", () => {
   it("puts a strip in the band it names, and nowhere else", () => {
     putStrip({
       side: "top",
-      id: "vigilia-crop",
-      text: "1 of 2 objects",
-      background: "#1d2230",
-      color: "#c3cde3",
+      id: "vigilia-connection",
+      text: "Reconnecting",
+      background: "#003a4a",
+      color: "#7fdce9",
     });
 
     expect(stripsIn("top")).toHaveLength(1);
     expect(stripsIn("bottom")).toHaveLength(0);
-    expect(document.getElementById("vigilia-crop")?.textContent).toBe(
-      "1 of 2 objects",
+    expect(document.getElementById("vigilia-connection")?.textContent).toBe(
+      "Reconnecting",
     );
   });
 
@@ -66,21 +64,23 @@ describe("the display's chrome", () => {
     // by hand.
     putStrip({
       side: "top",
-      id: "vigilia-crop",
+      id: "vigilia-connection",
       text: "first",
-      background: "#1d2230",
-      color: "#c3cde3",
+      background: "#003a4a",
+      color: "#7fdce9",
     });
     putStrip({
       side: "top",
-      id: "vigilia-crop",
+      id: "vigilia-connection",
       text: "second",
-      background: "#1d2230",
-      color: "#c3cde3",
+      background: "#003a4a",
+      color: "#7fdce9",
     });
 
-    expect(document.querySelectorAll("#vigilia-crop")).toHaveLength(1);
-    expect(document.getElementById("vigilia-crop")?.textContent).toBe("second");
+    expect(document.querySelectorAll("#vigilia-connection")).toHaveLength(1);
+    expect(document.getElementById("vigilia-connection")?.textContent).toBe(
+      "second",
+    );
   });
 
   it("leaves an empty band empty, so a quiet display costs no room", () => {
@@ -91,7 +91,7 @@ describe("the display's chrome", () => {
     expect(stripsIn("bottom")).toHaveLength(0);
   });
 
-  it("keeps the order the strips were put in, so the two gaps stay legible apart", () => {
+  it("keeps the order the strips were put in, so two notices stay legible apart", () => {
     putStrip({
       side: "top",
       id: "vigilia-availability",
@@ -101,15 +101,15 @@ describe("the display's chrome", () => {
     });
     putStrip({
       side: "top",
-      id: "vigilia-crop",
+      id: "vigilia-connection",
       text: "b",
-      background: "#1d2230",
-      color: "#c3cde3",
+      background: "#003a4a",
+      color: "#7fdce9",
     });
 
     expect(stripsIn("top").map((strip) => strip.id)).toEqual([
       "vigilia-availability",
-      "vigilia-crop",
+      "vigilia-connection",
     ]);
   });
 
@@ -155,47 +155,22 @@ describe("the strips the display is told by", () => {
     expect(stripsIn("bottom")).toHaveLength(0);
   });
 
-  it("overlays the notices that can flash, and leaves the crop strip in flow", () => {
+  it("overlays every notice it raises, so raising one cannot re-fit the scene", () => {
     // A strip in flow takes room, and taking room re-fits the scene: 16-25px of
     // movement on the built display, right as the notice arrives and left as it
-    // leaves (vg-028). The transport and availability notices do that on any
-    // reconnect, so they are fixed to the display's edge instead; the crop strip
-    // describes the composition and is told once, so it keeps its room.
+    // leaves (vg-028). Every strip left here is a transport or availability
+    // notice, which can flash on any reconnect, so each is fixed to the
+    // display's edge instead of laid out in the band. The one strip that took
+    // room was the crop notice, and it is gone (`docs/decisions/0069`).
     showConnectionState("reconnecting", 3);
     expect(document.getElementById("vigilia-connection")?.style.position).toBe(
       "fixed",
     );
-
-    showCropNotice(
-      {
-        canvas: {
-          getObjects: () => [
-            {
-              visible: true,
-              get: () => undefined,
-              getBoundingRect: () => ({
-                left: 0,
-                top: 0,
-                width: 2000,
-                height: 100,
-              }),
-            },
-          ],
-        },
-      } as unknown as FabricSceneHandle,
-      { width: 1024, height: 768 },
-    );
-    expect(document.getElementById("vigilia-crop")?.style.position).toBe("");
   });
 
   it("says nothing at all when there is nothing to say", () => {
-    // The quiet display: a connection that is live raises no strip, and a theme
-    // whose objects are inside its artboard raises no crop strip.
+    // The quiet display: a connection that is live raises no strip.
     showConnectionState("live", 3);
-    showCropNotice(
-      { canvas: { getObjects: () => [] } } as unknown as FabricSceneHandle,
-      { width: 1024, height: 768 },
-    );
 
     expect(stripsIn("top")).toHaveLength(0);
     expect(stripsIn("bottom")).toHaveLength(0);
@@ -225,26 +200,6 @@ const recoveredSource: SampleSource = {
   }),
   history: () => [],
 };
-
-/** A scene with one object hanging off the right edge, so the crop strip is up. */
-function overflowingHandle(): FabricSceneHandle {
-  return {
-    canvas: {
-      getObjects: () => [
-        {
-          visible: true,
-          get: () => undefined,
-          getBoundingRect: () => ({
-            left: 0,
-            top: 0,
-            width: 2000,
-            height: 100,
-          }),
-        },
-      ],
-    },
-  } as unknown as FabricSceneHandle;
-}
 
 describe("the availability warning's own lifetime", () => {
   beforeEach(() => {
@@ -308,15 +263,13 @@ describe("the availability warning's own lifetime", () => {
     ).toBe("fixed");
   });
 
-  it("gives no other strip a lifetime: the crop notice is unchanged by this", () => {
-    // This task changed one strip's behaviour and left the rest alone. Whether
-    // the crop notice should keep its own persistence is not this task's to
-    // decide, and a shared helper that quietly handed it a timer would be that
-    // decision made by accident.
-    showCropNotice(overflowingHandle(), { width: 1024, height: 768 });
-    expect(document.getElementById("vigilia-crop")).not.toBeNull();
+  it("gives no other strip a lifetime: the transport notice is unchanged by this", () => {
+    // One strip has a dismissal timer and the rest do not. A shared helper that
+    // quietly handed every strip one would be that decision made by accident.
+    showConnectionState("reconnecting", 3);
+    expect(document.getElementById("vigilia-connection")).not.toBeNull();
 
     vi.advanceTimersByTime(60_000);
-    expect(document.getElementById("vigilia-crop")).not.toBeNull();
+    expect(document.getElementById("vigilia-connection")).not.toBeNull();
   });
 });

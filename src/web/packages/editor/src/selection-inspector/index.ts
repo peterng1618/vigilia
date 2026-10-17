@@ -23,7 +23,6 @@ import {
 import { OBJECT_LOCK_CHANGED_EVENT } from "../object-lock-manager/index.js";
 import type { TypePresetFontActions } from "../type-preset-manager/panel.js";
 import { uiCopy } from "../ui-copy.js";
-import { writeMark } from "./bleed.js";
 import { createSelectionColumnRoot } from "./column.js";
 import { glassRefusal, writeGlassField } from "./glass.js";
 import { createInspectorRoot } from "./inspector.js";
@@ -414,15 +413,6 @@ export function createSelectionInspector(
     editor.canvas.fire("object:modified" as never, { target: object } as never);
   };
 
-  /** Writes the deliberate-bleed mark, and tells the surfaces that count it.
-      The figure the artboard panel prints is derived from the scene, so it has
-      to be told the scene moved or it keeps showing the number from before. */
-  const writeBleed = (object: FabricObject, next: boolean): boolean => {
-    if (!writeMark(object, next)) return false;
-    editor.canvas.fire("object:modified" as never, { target: object } as never);
-    return true;
-  };
-
   /**
    * Writes opacity from a percentage, refusing a value outside Fabric's 0–1.
    */
@@ -462,7 +452,6 @@ export function createSelectionInspector(
       return true;
     }
     if (fieldId === "opacity") return writeOpacity(object, value);
-    if (fieldId === "bleeds") return writeBleed(object, value === true);
     if (GEOMETRY_KEYS.has(fieldId)) {
       write(object, fieldId as GeometryKey, value as number);
       return true;

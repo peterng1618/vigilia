@@ -261,16 +261,15 @@ describe("editor panels", () => {
       "INPUT[type=][aria-hidden]", // Reads
       "INPUT[type=][aria-hidden]", // Unit display
       "INPUT[type=][aria-hidden]", // Zone
-      // The inspector's three toggles: deliberate bleed on both mounts, and
-      // frosted glass on the shape alone. The text run's frost toggle is gone
-      // with its section — a `Textbox` cannot be frosted, so `vg-465` offers it
-      // no glass section at all rather than a switch that writes nothing.
-      "INPUT[type=checkbox][aria-hidden]", // Deliberate bleed, text run
-      "INPUT[type=checkbox][aria-hidden]", // Deliberate bleed, shape
       // The shape's three paint selects: `ControlSelect` again.
       "INPUT[type=][aria-hidden]", // Fill
       "INPUT[type=][aria-hidden]", // Stroke
       "INPUT[type=][aria-hidden]", // Shadow
+      // The inspector's one toggle. It was three: deliberate bleed on both
+      // mounts, which went with its mark (`docs/decisions/0069`), and frosted
+      // glass on the shape alone. The text run's frost toggle is gone with its
+      // section — a `Textbox` cannot be frosted, so `vg-465` offers it no glass
+      // section at all rather than a switch that writes nothing.
       "INPUT[type=checkbox][aria-hidden]", // Frosted glass, shape
       // The Add pane's file section: its declared-asset chooser is a
       // `ControlSelect` now that the list moved onto the control set, so a Base

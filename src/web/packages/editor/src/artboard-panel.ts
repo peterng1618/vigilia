@@ -57,7 +57,7 @@ export function createArtboardPanel(
     readonly sceneBoxes?: () => readonly SceneBox[];
     /** Subscribed so the figure follows the scene. Without it the panel is a
      *  rule with a number that only refreshes when the artboard itself changes,
-     *  so an author marking a deliberate bleed sees no change at all. */
+     *  so an author moving an object across the edge sees no change at all. */
     readonly canvasEvents?: CanvasEvents;
   } = {},
 ): ArtboardPanel {

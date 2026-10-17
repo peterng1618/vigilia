@@ -1,6 +1,4 @@
 import type { LiveSourceStatus, SampleSource } from "@vigilia/renderer-core";
-import { type FabricSceneHandle, sceneBoxesOf } from "@vigilia/scene-fabric";
-import { type ArtboardSize, cropNoticeText } from "./artboard-crop.js";
 import { availabilityNoticeText } from "./availability-notice.js";
 import { uiCopy } from "./ui-copy.js";
 
@@ -20,18 +18,17 @@ import { uiCopy } from "./ui-copy.js";
  * band is zero tall. Nothing here measures anything: the browser lays the
  * column out, and the scene's own `ResizeObserver` (`main.ts`) refits to the
  * box that is left. Nothing here decides what a strip says either — the words
- * and the colours are `ui-copy.ts`'s and the counting is `scene-fabric`'s.
+ * and the colours are `ui-copy.ts`'s.
  *
- * **Room is for the composition's own chrome; a notice that comes and goes
- * overlays instead.** Taking room re-fits the scene, and a re-fit moves the
- * whole picture: measured on the built player at 1920×1080, a 29px strip takes
- * the artboard from 1051 to 1022 and moves the ink 16–25px, right when the
- * notice arrives and left when it leaves (vg-028, measured and ruled
- * 2026-10-14). That is the right trade for the crop strip, which is told once
- * and describes what the display is showing; it is the wrong one for a
- * transport or availability notice, which can flash on any reconnect and would
- * move a dashboard nobody touched. So those two `overlay` — they sit at the
- * display's edge and the composition stays put.
+ * **A notice that comes and goes overlays.** Taking room re-fits the scene, and
+ * a re-fit moves the whole picture: measured on the built player at 1920×1080,
+ * a 29px strip takes the artboard from 1051 to 1022 and moves the ink 16–25px,
+ * right when the notice arrives and left when it leaves (vg-028, measured and
+ * ruled 2026-10-14). Every strip left here is a transport or availability
+ * notice, which can flash on any reconnect and would move a dashboard nobody
+ * touched, so every one of them `overlay`s — they sit at the display's edge and
+ * the composition stays put. The one strip that took room was the crop notice,
+ * and it is gone (decision 0069, `vg-578`).
  */
 
 type ChromeSide = "top" | "bottom";
@@ -170,39 +167,6 @@ export function showAvailabilityNotice(
     availabilityNotice = "dismissed";
     removeStrip("vigilia-availability");
   }, AVAILABILITY_VISIBLE_MS);
-}
-
-/**
- * Says what this artboard does not contain, and that it is not being shown.
- *
- * The other strips here all describe the *transport* — a sensor with no
- * reading, a host that went away. This one describes the *composition*, and it
- * is told once and left: no reading arriving will bring a cropped panel back,
- * and a strip that came and went would read as a fault the display recovered
- * from. Only a re-saved theme can change it. Slate rather than the availability
- * strip's amber, because §97 requires the two gaps not to read as the same kind
- * of gap.
- */
-export function showCropNotice(
-  handle: FabricSceneHandle,
-  artboard: ArtboardSize,
-): void {
-  removeStrip("vigilia-crop");
-
-  const text = cropNoticeText(
-    sceneBoxesOf(handle.canvas.getObjects()),
-    artboard,
-  );
-  if (text === undefined) return;
-
-  const strip = putStrip({
-    side: "top",
-    id: "vigilia-crop",
-    text,
-    background: "#1d2230",
-    color: "#c3cde3",
-  });
-  strip.dataset["vigiliaCrop"] = "";
 }
 
 /** Shows non-live connection states; a healthy live display needs no badge. */

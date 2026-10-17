@@ -25,7 +25,6 @@ import {
   resolveToken,
   typePresetOf,
 } from "./appearance.js";
-import { bleedField } from "./bleed.js";
 import { cropView } from "./crop.js";
 import { glassFields } from "./glass.js";
 import { createShapeGeometryFields, panelMaterialFields } from "./panel.js";
@@ -381,7 +380,7 @@ function contentBody(
   return { fields, extras };
 }
 
-/** Where it sits and how big: the two pairs, crop, bleed, and this shape's own
+/** Where it sits and how big: the two pairs, crop, and this shape's own
     geometry. Every row is a value; the writes reach the object through the one
     funnel in `index.ts`, so the rules that scale a shape, write a text box or
     adopt new geometry stay in one place. */
@@ -409,10 +408,7 @@ function positionBody(
     ),
   ];
 
-  // The mark that says this object's overhang is deliberate. It is beside crop
-  // rather than under appearance because what it changes is the crop notice
-  // both surfaces print, not how the object paints.
-  fields.push(bleedField(target), ...createShapeGeometryFields(target));
+  fields.push(...createShapeGeometryFields(target));
 
   // Crop sits with the geometry it changes, and only for a selection that can
   // hold one — an image, which is the only kind `canCrop` admits. A session

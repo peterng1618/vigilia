@@ -648,15 +648,13 @@ describe("artboard presets in the panel", () => {
     expect(note.getAttribute("role")).toBe("note");
   });
 
-  it("counts the scene it is given, and leaves a marked object out of it", async () => {
-    // The panel's half of the defect. It reads `sceneBoxesOf`'s output, so the
-    // mark has to arrive on the box rather than being re-derived here — a second
-    // reader of the property would be a second chance for the editor's figure
-    // and the player's notice to disagree about the same theme.
+  it("counts the scene it is given, and follows it when it moves", async () => {
+    // The panel's half of the count: it reads `sceneBoxesOf`'s output rather
+    // than working out a figure for itself, which is what keeps the editor's
+    // number and a display's the same measurement.
     const boxes: SceneBox[] = [
       {
         visible: true,
-        bleeds: false,
         left: 950,
         top: 100,
         width: 100,
@@ -671,7 +669,9 @@ describe("artboard presets in the panel", () => {
     await draw({ width: 1000, height: 1000 });
     expect(note()).toContain("1 of 1 objects are now outside");
 
-    boxes[0] = { ...boxes[0]!, bleeds: true };
+    // Moved back inside, so the panel is shown to recompute rather than to have
+    // cached the first reading.
+    boxes[0] = { ...boxes[0]!, left: 100 };
     await draw({ width: 1000, height: 1000 });
 
     expect(note()).not.toContain("are now outside");
@@ -725,7 +725,6 @@ describe("artboard presets in the panel", () => {
     const boxes: SceneBox[] = [
       {
         visible: true,
-        bleeds: false,
         left: 100,
         top: 100,
         width: 100,
@@ -777,7 +776,6 @@ describe("artboard presets in the panel", () => {
     const boxes: SceneBox[] = [
       {
         visible: true,
-        bleeds: false,
         left: 950,
         top: 100,
         width: 100,
@@ -802,7 +800,7 @@ describe("artboard presets in the panel", () => {
     // different moves, one before and one after `destroy()`, because firing the
     // same scene twice changes nothing and would make the second half of this
     // test pass for the wrong reason.
-    boxes[0] = { ...boxes[0]!, bleeds: true };
+    boxes[0] = { ...boxes[0]!, left: 100 };
     canvas.fire("object:modified");
     expect(note(), "a live panel follows the scene").not.toBe(outside);
 

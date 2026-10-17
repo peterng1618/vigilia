@@ -1641,7 +1641,8 @@ test.describe("Fabric editor route", () => {
         type: String(object["type"] ?? "").toLowerCase(),
         // Zero is Fabric's own default, and the serialiser writes authored
         // deviations only — so an absent `startAngle` **is** a start of 0. The
-        // same rule that keeps a document free of `vigiliaBleeds: false`.
+        // same rule that keeps an object's own `locked: false` out of a saved
+        // document.
         startAngle: object["startAngle"] ?? 0,
         endAngle: object["endAngle"],
         // `null` is how Fabric spells "no fill", and the Add pane writes exactly that

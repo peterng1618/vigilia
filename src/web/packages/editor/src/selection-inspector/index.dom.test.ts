@@ -1154,7 +1154,6 @@ describe("the column's sections", () => {
     expect(
       inSection("position", '[data-vigilia-geometry="width"]'),
     ).not.toBeNull();
-    expect(inSection("position", "[data-vigilia-bleeds]")).not.toBeNull();
     expect(
       inSection("layer", '[data-vigilia-geometry="angle"]'),
     ).not.toBeNull();
@@ -1164,6 +1163,11 @@ describe("the column's sections", () => {
     // ...and nowhere else: rotation is not a position.
     expect(inSection("position", '[data-vigilia-geometry="angle"]')).toBeNull();
     expect(inSection("layer", '[data-vigilia-geometry="width"]')).toBeNull();
+    // The deliberate bleed toggle left Position with its mark, and the user
+    // ruled it out of every surface rather than only the display
+    // (`docs/decisions/0069`, `vg-578`). Asserted rather than left to the
+    // absence of a symbol, because this row is where it used to be.
+    expect(inSection("position", "[data-vigilia-bleeds]")).toBeNull();
   });
 
   it("is a plan a test can read as data, before anything renders", () => {
@@ -1590,20 +1594,22 @@ describe("the column a kind gets", () => {
    *   is what proves the surface renders them, not only that jsdom's tree does.
    *
    * So the count here is deliberately the shared floor, not the ceiling — and
-   * the figures are exact so the parts sum to the whole. This table names **17**
-   * distinct hooks: four in `EVERY_OBJECT` (`geometry`'s five selectors are one
+   * the figures are exact so the parts sum to the whole. This table names **16**
+   * distinct hooks: three in `EVERY_OBJECT` (`geometry`'s five selectors are one
    * name), six added by `shape`, six by `text`, one by `image`. It named 19 while
    * the read-only section stood, and item 17 removed the two that were its:
    * `data-vigilia-resolution` (`EVERY_OBJECT` and `text`'s Type-preset row) and
-   * `data-vigilia-reveal-type-presets` (`text`). The pre-plan inspector at
+   * `data-vigilia-reveal-type-presets` (`text`). It named 17 until Task 25.7,
+   * which removed `data-vigilia-bleeds` from `EVERY_OBJECT` with the deliberate
+   * bleed control (`docs/decisions/0069`). The pre-plan inspector at
    * `190dc1a4` rendered **46** distinct `data-vigilia-*` names. The census
    * (`git grep -oh 'data-vigilia-[a-zA-Z-]*' 190dc1a4 --
    * src/web/packages/editor/src/selection-inspector | sort -u | wc -l`) prints
    * 47 — one high: a docblock at `190dc1a4:selection-inspector/index.ts:230`
    * quotes the bare prefix `data-vigilia-`, which the pattern counts as a name.
-   * So the remaining **29** are 27 carried by the per-domain tests and the e2e
-   * specs and those **2** the product no longer renders at all. Reading the 17 as
-   * the inventory would understate the coverage by 29.
+   * So the remaining **30** are 27 carried by the per-domain tests and the e2e
+   * specs and those **3** the product no longer renders at all. Reading the 16 as
+   * the inventory would understate the coverage by 30.
    */
   const EVERY_OBJECT: readonly string[] = [
     "[data-vigilia-name]",
@@ -1613,7 +1619,6 @@ describe("the column a kind gets", () => {
     '[data-vigilia-geometry="height"]',
     '[data-vigilia-geometry="angle"]',
     "[data-vigilia-opacity]",
-    "[data-vigilia-bleeds]",
   ];
 
   const PRE_PLAN: Readonly<Record<SelectionKind, readonly string[]>> = {
@@ -1794,16 +1799,17 @@ describe("the column a kind gets", () => {
     );
 
     it.each(CONTAINERS)(
-      "offers a %s no crop, and carries the bleed mark in its Position",
+      "offers a %s no crop, and no bleed toggle",
       (_kind, make) => {
         const { host } = setup(make());
 
-        // A container is a selection like any other for the bleed mark: the
-        // question is about an object's overhang, not about what it is made of.
-        expect(host.querySelector("[data-vigilia-bleeds]")).not.toBeNull();
-        // A crop is about an image's own frame, and a container has none — a
-        // row that offered one would write a clip nothing there can hold.
+        // A crop is about an image's own frame, and a container has none — a row
+        // that offered one would write a clip nothing there can hold.
         expect(host.querySelector("[data-vigilia-crop]")).toBeNull();
+        // The toggle used to be offered for every selection, containers included,
+        // because every object can overhang. Nothing is marked any more
+        // (`docs/decisions/0069`).
+        expect(host.querySelector("[data-vigilia-bleeds]")).toBeNull();
       },
     );
   });

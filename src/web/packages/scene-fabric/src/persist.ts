@@ -2,7 +2,6 @@ import {
   type FabricThemeEnvelope,
   type FabricThemeEnvelopeInput,
   SUPPORTED_SCHEMA_VERSION,
-  VIGILIA_BLEEDS_PROPERTY,
   VIGILIA_GLASS_PROPERTY,
   VIGILIA_NAME_PROPERTY,
 } from "@vigilia/renderer-core";
@@ -64,11 +63,6 @@ export const SCENE_PERSISTED_PROPERTIES = [
   VIGILIA_PAINT_PROPERTY,
   VIGILIA_ASSET_PROPERTY,
   VIGILIA_GLASS_PROPERTY,
-  // A crop the author meant. Listed because Fabric persists only the properties
-  // it is given: omit it and the mark is dropped on save with no error, leaving
-  // the editor — which never re-reads its own file — perfectly happy and every
-  // other machine warning about a deliberate composition.
-  VIGILIA_BLEEDS_PROPERTY,
   // The unit a card was authored as, on the starter and on a copy (§77). An
   // authored fact about the document, so it has to survive the save like every
   // other authored key — a copy whose origin is remembered only until the first

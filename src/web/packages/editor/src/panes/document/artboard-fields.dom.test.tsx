@@ -196,13 +196,13 @@ async function chooseIn(control: string, id: string): Promise<void> {
   await flush();
 }
 
-/** The boxes a scene reports, one of them wholly outside a 1000 × 1000 board. */
-function scene(bleeds: boolean): readonly SceneBox[] {
+/** The boxes a scene reports: one object, outside the 1000 × 1000 board when
+ *  `outside`, wholly inside it otherwise. */
+function scene(outside: boolean): readonly SceneBox[] {
   return [
     {
       visible: true,
-      bleeds,
-      left: 950,
+      left: outside ? 950 : 100,
       top: 100,
       width: 100,
       height: 100,
@@ -260,16 +260,16 @@ it("derives the size note rather than printing a stored figure", async () => {
   // The note is `sceneBoxes`', so it moves when the boxes move and cannot go
   // stale on disk: the same board says one thing for a scene that fits and
   // another for one that does not.
-  const boxes = scene(false);
+  const boxes = scene(true);
   const { host } = await mount({ sceneBoxes: () => boxes });
   await draw({ width: 1000, height: 1000 });
 
   expect(note(host)).toBe(noteFor(boxes));
-  expect(note(host)).not.toBe(noteFor(scene(true)));
+  expect(note(host)).not.toBe(noteFor(scene(false)));
 
   // And the rule alone when nothing is outside, which is the arm the figure
   // would otherwise hide behind a count of zero.
-  const { host: fitting } = await mount({ sceneBoxes: () => scene(true) });
+  const { host: fitting } = await mount({ sceneBoxes: () => scene(false) });
   await draw({ width: 1000, height: 1000 });
   expect(note(fitting)).toBe(uiCopy.panels.artboardSizeNote);
 });

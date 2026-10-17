@@ -32,8 +32,7 @@ import { HOST_APP_DIR, HOST_PORT } from "./tests/e2e/host-theme.js";
 // `desktop-chromium`/`phone-chromium` `testIgnore`, so widening it keeps the
 // walkthrough out of the two preview projects rather than pulling it into a
 // second one. `phone-host` matches `host-player` alone and is unaffected.
-const HOST_SPECS =
-  /host-(player|settings|media|bleed|chrome|walkthrough).spec.ts/;
+const HOST_SPECS = /host-(player|settings|media|chrome|walkthrough).spec.ts/;
 
 /**
  * The live chart's edge probe is a phone measurement and is not a second copy of

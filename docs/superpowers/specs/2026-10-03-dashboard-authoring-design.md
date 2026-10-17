@@ -180,6 +180,9 @@ three fixes, none of which constrains anything:
 - **A `bleeds` flag** on the object. Marked, it is excluded from the crop count and the
   phone's notice; unmarked, it still warns — so the diagnostic stays honest and stops
   crying wolf over composition, not just over mistakes.
+  **Reversed 2026-10-18 by the user** (`docs/decisions/0069`): the flag, the toggle and
+  the notice are gone, and every overhang counts. The editor's count stays, because it is
+  the one surface where the figure is actionable.
 - **Arc and wedge in `SHAPE_KINDS`**, with start and end angle in the inspector.
 
 §57's "no automatic reflow" already permits this and nothing has to change about the
@@ -617,8 +620,9 @@ Rendered observation in a real browser (§33).
   with no descriptor fails a test, so a property cannot be quietly dropped from the surface
   without a red gate — the two holes filed today would not have survived it.
 - **A quarter-disc with three quarters of it outside the artboard is authorable, and the
-  editor shows exactly the quarter the phone shows.** Marked as bleeding it raises no crop
-  notice; unmarked it still does.
+  editor shows exactly the quarter the phone shows.** It raises no notice on a display at
+  all — the bleed mark that used to suppress one per object was removed on 2026-10-18
+  (`docs/decisions/0069`) — while the editor's artboard panel still counts it.
 - The phone shows the theme while the editor has it open.
 - Six palettes are distinguishable by surface, verified by screenshot rather than by
   computed value — a computed-value assertion passes on three palettes that are

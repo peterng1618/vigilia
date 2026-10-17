@@ -23,11 +23,7 @@ import {
 } from "@vigilia/scene-fabric";
 import { Group } from "fabric/es";
 import { boundSemanticKeys } from "./bound-keys.js";
-import {
-  showAvailabilityNotice,
-  showConnectionState,
-  showCropNotice,
-} from "./chrome.js";
+import { showAvailabilityNotice, showConnectionState } from "./chrome.js";
 import { mountDisplayControls } from "./display-controls.js";
 import { envelopePlan } from "./hosted-plan.js";
 import { showLoadFailure } from "./load-failure.js";
@@ -181,9 +177,6 @@ async function startHostedTheme(
   };
 
   refresh();
-  // Measured after revival and the first text pass: before them the boxes on
-  // the canvas are the saved ones, not the ones the display will draw.
-  showCropNotice(handle, theme.artboard);
   showConnectionState("connecting", keys.length);
   // The controls a reader operates, mounted with the rest of the chrome: they
   // overlay the composition rather than take room from it, and one of them can

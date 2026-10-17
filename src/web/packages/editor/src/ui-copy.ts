@@ -259,8 +259,6 @@ export const uiCopy = {
     glassRefused: (kind: string) =>
       glassRefusals[kind] ??
       `${kind} is not a shape frosted glass can be applied to.`,
-    /** Named as what the author is describing, not as "ignore the warning". */
-    bleeds: "Deliberate bleed",
     opacity: "Opacity %",
     paint: "Paint",
     notSet: "not set",

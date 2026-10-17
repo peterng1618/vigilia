@@ -3,7 +3,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { expect, type Page, test } from "@playwright/test";
 import {
-  HOST_BLEED_THEME_ID,
+  HOST_OVERHANG_THEME_ID,
   HOST_PORT,
   HOST_THEMES_DIR,
 } from "./host-theme.js";
@@ -74,7 +74,10 @@ import {
  * `webServer` list is the config's, not a project's.
  *
  * **What it read, on `e2e-bleed` (640×360) served by the real host, one 54 s
- * recording per viewport.** In the steady state on either side of each drive a
+ * recording per viewport** — the theme is now `e2e-overhang`, the same
+ * composition with the deliberate bleed mark removed (`docs/decisions/0069`),
+ * so a later run is comparable frame for frame with the numbers below. In the
+ * steady state on either side of each drive a
  * driven height change re-fits and returns exactly, and the re-fit lands 15–18 ms
  * (one frame) after the box moves.
  * *Landscape 844×390*, where the artboard is height-limited: the host box goes
@@ -94,13 +97,35 @@ import {
  * **What it refutes, and what it does not.** These readings refute the viewport
  * as the *mechanism* behind a left slide on a portrait phone — a height change
  * there cannot move the composition horizontally at all. They do not explain the
- * user's observation and **do not close `vg-572`**. What the same recording does
- * still show moving the composition is permanent chrome: on the landscape run the
+ * user's observation and **do not close `vg-572`**. What the same recording did
+ * still show moving the composition was permanent chrome: on the landscape run the
  * crop strip taking its room at mount moved `stray-quarter` +30.6111 px,
  * `bleeding-quarter` −8.0556 px and `open-arc` +17.7222 px at t=102, the frame
  * before the fit at t=116 and long before the baseline at t≈9068 — which is
- * exactly why the reading above excludes it. That is `vg-028`'s ruling kept on
- * purpose, permanent chrome stays in flow, and removing the strip is Task 25.7's.
+ * exactly why the reading above excluded it.
+ *
+ * **The strip is gone, and the mount frames are what the next run reads.**
+ * Task 25.7 removed the crop notice (`docs/decisions/0069`, `vg-578`), so the
+ * frames before the baseline are the reading `vg-572` waits on: the composition
+ * must hold still where a strip used to take room. The instrument is unchanged,
+ * which is what makes the two runs comparable — the frames, the slices and the
+ * object rects are recorded the same way, and only the display's chrome differs.
+ *
+ * **The reading, taken 2026-10-18 on `e2e-overhang` (`task-25.7`), against the
+ * same probe on `e2e-bleed` before the removal.** Portrait: 539 frames between
+ * the first mount frame (t=261) and the baseline, and every one of them carries
+ * one value of `tr.oy` (312.3125), one painted height (219.375) and one `sy` per
+ * object — nothing moved. Landscape: 537 mounted frames from t=94, likewise one
+ * value each (scale 1.0833333333333333, ox 75.33333333333337, painted 390). The
+ * pre-removal run on the same probe had **two** values of each over the same
+ * window — portrait `tr.oy` 289.3125 → 312.3125 with every object's `sy` moving
+ * 23 px (394.46875 → 371.46875), landscape painted 361 → 390 with scale and ox
+ * both changing — and its first mount frame carried a `vigilia-crop` strip of
+ * height 45.59375 taking that room. Across the whole new run no frame carries a
+ * `vigilia-crop` strip at all, where both old runs carried one in 3249 frames.
+ * The transport notice is still there in the new run (h=28.796875 at the first
+ * mount frame) and moves nothing, which is the control that a notice taking no
+ * room is what the reading is about rather than a quiet display.
  */
 
 const HOST = `http://127.0.0.1:${HOST_PORT}`;
@@ -486,7 +511,7 @@ for (const recording of RECORDINGS) {
     page,
   }, testInfo) => {
     test.setTimeout(300_000);
-    const artboard = artboardOf(HOST_BLEED_THEME_ID);
+    const artboard = artboardOf(HOST_OVERHANG_THEME_ID);
     const height = recording.viewport.height;
 
     await page.setViewportSize(recording.viewport);
@@ -503,7 +528,7 @@ for (const recording of RECORDINGS) {
         label,
       );
 
-    await page.goto(`${HOST}/?theme=${HOST_BLEED_THEME_ID}&data=live`);
+    await page.goto(`${HOST}/?theme=${HOST_OVERHANG_THEME_ID}&data=live`);
     await expect(page.locator("#artboard canvas.lower-canvas")).toBeVisible();
     // The stream must be live before the baseline: a strip arriving later is a
     // different mechanism, and this run is about the viewport.
@@ -522,8 +547,8 @@ for (const recording of RECORDINGS) {
       )
       .toBeGreaterThan(2);
 
-    // Long enough for the crop strip and the connection strip to have settled,
-    // so the baseline is the display at rest rather than mid-mount.
+    // Long enough for the mount to have settled — the frames before this are
+    // the mount reading, and the baseline is the display at rest.
     await page.waitForTimeout(6_000);
     await page.evaluate(() =>
       (
@@ -601,7 +626,7 @@ for (const recording of RECORDINGS) {
       JSON.stringify(
         {
           origin: HOST,
-          theme: HOST_BLEED_THEME_ID,
+          theme: HOST_OVERHANG_THEME_ID,
           artboard,
           recording: recording.name,
           viewport: recording.viewport,

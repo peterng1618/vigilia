@@ -438,11 +438,10 @@ const WRITABLE_FIELD_IDS: ReadonlyMap<string, WritableKind> = new Map([
   ["angle", "integer"],
   ["opacity", "number"],
   ["name", "name"],
-  // The bleed mark, and a shape's own geometry. The pre-plan surface refused a
-  // typed fraction on every one of these (`numberField`'s unconditional
-  // `Number.isInteger`), so the boundary copies that rule rather than trusting
-  // the control to have kept it.
-  ["bleeds", "boolean"],
+  // A shape's own geometry. The pre-plan surface refused a typed fraction on
+  // every one of these (`numberField`'s unconditional `Number.isInteger`), so
+  // the boundary copies that rule rather than trusting the control to have kept
+  // it.
   ["shape-sides", "integer"],
   ["shape-line-x1", "integer"],
   ["shape-line-y1", "integer"],

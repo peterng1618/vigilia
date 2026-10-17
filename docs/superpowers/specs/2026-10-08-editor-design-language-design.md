@@ -310,14 +310,14 @@ prose rather than to the code.
 | Section | A group |
 |---|---|
 | Content | its name |
-| Position | left, top, width, height, **and the bleed mark** (offered for every selection; it renders for a group) |
+| Position | left, top, width, height (the bleed mark this row carried went on 2026-10-18, `docs/decisions/0069`) |
 | Layer | rotation — the `angle` field — and opacity |
 | Paint | no material fields (`supportsPanelFields()` lists ten shape classes and no `Group`); glass present but **refused with its reason** (`!(object instanceof Group)`, `glass.ts:85`) |
 | Spends | read-only: its descendants' effective paint and type presets |
 
-That is name, transform, the bleed mark, opacity, and what the children resolve
-to — which is exactly the per-building-block model, and it is already
-implemented. The user's ruling confirms it; it does not change it.
+That is name, transform, opacity, and what the children resolve to — which is
+exactly the per-building-block model, and it is already implemented. The user's
+ruling confirms it; it does not change it.
 
 **The trade, stated because it is the whole cost:** answering *"which sensor"*
 for a card costs one Enter, because the question is asked on the child that
