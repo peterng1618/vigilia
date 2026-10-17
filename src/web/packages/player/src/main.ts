@@ -173,7 +173,9 @@ async function startHostedTheme(
     );
     handle.canvas.requestRenderAll();
     // Refreshed here because a provider's reason exists only once data has
-    // arrived; the notice removes itself when nothing is unreadable.
+    // arrived. The notice owns its own lifetime from there: it removes itself
+    // when nothing is unreadable, and clears itself three seconds after it is
+    // raised without this cadence re-raising it while the gap persists.
     showAvailabilityNotice(liveHandle.source, keys);
   };
 

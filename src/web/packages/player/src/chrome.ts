@@ -96,26 +96,62 @@ export function removeStrip(id: string): void {
   document.getElementById(id)?.remove();
 }
 
+/** How long the availability warning is up before it clears itself, ruled by
+ *  the user on 2026-10-17. The strip overlays, so clearing it is not a re-fit. */
+const AVAILABILITY_VISIBLE_MS = 3_000;
+
+/**
+ * Whether the warning is up, and whether this failure has already been told.
+ *
+ * Module state rather than a caller's, because the caller is a repaint loop
+ * running at the frame rate: it re-says the same warning every frame, so a
+ * timer armed on each call would be pushed back forever and a strip rebuilt on
+ * each call would flicker. `dismissed` is what makes "told once per failure"
+ * survive that loop; the condition clearing is what ends it, so a sensor that
+ * recovers and fails again is told again. Runtime chrome only, never persisted.
+ */
+type AvailabilityNoticeState = "idle" | "up" | "dismissed";
+
+let availabilityNotice: AvailabilityNoticeState = "idle";
+let availabilityTimer: ReturnType<typeof setTimeout> | undefined;
+
+function clearAvailabilityTimer(): void {
+  if (availabilityTimer === undefined) return;
+  clearTimeout(availabilityTimer);
+  availabilityTimer = undefined;
+}
+
 /**
  * Names the sensors this display cannot read, and why. Section 97 requires an
  * unavailable sensor to explain itself; without this the consumer sees empty
  * charts and no reason for them.
  *
- * The leading `removeStrip` is what clears a stale notice when the reading
- * comes back: the write below is skipped when there is nothing to say, so the
- * removal cannot move inside it. The wording is `availabilityNoticeText`'s,
+ * Called on every refresh cadence, so it is idempotent by state rather than by
+ * argument: the warning goes up once, clears itself three seconds later, and
+ * stays down while the same sensors stay unreadable — a warning that came back
+ * every frame is one nobody reads. The wording is `availabilityNoticeText`'s,
  * which groups by cause so a reason shared by several sensors is said once.
  */
 export function showAvailabilityNotice(
   source: SampleSource,
   semanticKeys: readonly string[],
 ): void {
-  removeStrip("vigilia-availability");
-
   const text = availabilityNoticeText(
     semanticKeys.map((key) => source.latest(key)),
   );
-  if (text === undefined) return;
+
+  if (text === undefined) {
+    // Every requested sensor answers again: the warning is no longer owed, the
+    // strip that may still be up is stale, and the next failure is a new one.
+    clearAvailabilityTimer();
+    availabilityNotice = "idle";
+    removeStrip("vigilia-availability");
+    return;
+  }
+
+  // Up, or already told for this failure. Either way this cadence has nothing
+  // to add — rebuilding here is what would keep the timer from ever firing.
+  if (availabilityNotice !== "idle") return;
 
   const strip = putStrip({
     side: "top",
@@ -128,6 +164,12 @@ export function showAvailabilityNotice(
     overlay: true,
   });
   strip.dataset["vigiliaAvailability"] = "";
+  availabilityNotice = "up";
+  availabilityTimer = setTimeout(() => {
+    availabilityTimer = undefined;
+    availabilityNotice = "dismissed";
+    removeStrip("vigilia-availability");
+  }, AVAILABILITY_VISIBLE_MS);
 }
 
 /**

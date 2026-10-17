@@ -96,23 +96,29 @@ function overlap(a: Box, b: Box): number {
 
 const HOST = `http://127.0.0.1:${HOST_PORT}`;
 
-test("a notice that arrives after the fit does not move the composition", async ({
+test("a notice that arrives after the fit clears itself without moving the composition", async ({
   page,
 }) => {
   // The availability strip is raised from the refresh cadence, not at mount
-  // (`main.ts:220-222`), so on a real display the first fit happens with no
+  // (`main.ts:156-179`), so on a real display the first fit happens with no
   // chrome. This is that display: its only binding is a key no provider on this
   // PC reports.
   //
-  // **The fit must not change when it appears** (vg-028, measured and ruled
-  // 2026-10-14). A strip in flow takes its room from the artboard, the scene's
-  // `ResizeObserver` re-fits, and the whole composition moves 16-25px as the
-  // notice arrives and back as it leaves — read off the built display's own
-  // pixels at 1920x1080. A transport or availability notice can flash on any
-  // reconnect, so it overlays its edge instead: the host keeps the viewport's
-  // height and the notice covers the artboard while it is up. That is the
-  // assertion this replaces (`painted.h` strictly less than the viewport, and
-  // no strip over the artboard), which is what the flow behaviour measured.
+  // **The fit must not change when it appears or when it goes** (vg-028,
+  // measured and ruled 2026-10-14). A strip in flow takes its room from the
+  // artboard, the scene's `ResizeObserver` re-fits, and the whole composition
+  // moves 16-25px as the notice arrives and back as it leaves — read off the
+  // built display's own pixels at 1920x1080. A transport or availability notice
+  // can flash on any reconnect, so it overlays its edge instead: the host keeps
+  // the viewport's height and the notice covers the artboard while it is up.
+  //
+  // **And it clears itself three seconds later** (vg-569, asked by the user on
+  // 2026-10-17). The dismissal is runtime chrome only: the refresh loop keeps
+  // re-saying the same gap at the frame rate, so the warning goes up once, is
+  // gone by the time the reader has read it, and stays down while the gap
+  // persists. Both halves are read here, because "the composition did not move"
+  // is only a claim worth making while the strip is actually there and again
+  // once it is not.
   //
   // `&data=live` is load-bearing: the demo source fabricates a reading for
   // every key it is asked for, and the availability notice is raised on the
@@ -125,20 +131,37 @@ test("a notice that arrives after the fit does not move the composition", async 
     timeout: 30_000,
   });
 
-  const geometry = await chromeGeometry(page, { width: 640, height: 360 });
+  const raised = await chromeGeometry(page, { width: 640, height: 360 });
   // The whole viewport, exactly as a display with nothing to say gets it: a
   // fit that moved here is the slide the author reported.
-  expect([geometry.host.w, geometry.host.h]).toEqual([
+  expect([raised.host.w, raised.host.h]).toEqual([
     PHONE.landscape.width,
     PHONE.landscape.height,
   ]);
 
-  const [strip] = geometry.strips;
+  const [strip] = raised.strips;
   if (strip === undefined) throw new Error("the notice was not drawn");
   expect(strip.id).toBe("vigilia-availability");
   // At the display's top edge, over the artboard rather than beside it.
   expect(strip.box.y).toBe(0);
-  expect(overlap(strip.box, geometry.painted)).toBeGreaterThan(0);
+  expect(overlap(strip.box, raised.painted)).toBeGreaterThan(0);
+
+  await expect(page.locator("[data-vigilia-availability]")).toHaveCount(0, {
+    timeout: 15_000,
+  });
+  const cleared = await chromeGeometry(page, { width: 640, height: 360 });
+  // The same box, to the pixel: the strip overlaid rather than taking room, so
+  // clearing it is not a re-fit and the ink has not moved.
+  expect(cleared.host).toEqual(raised.host);
+  expect(cleared.painted).toEqual(raised.painted);
+  // And nothing took its place: this display has no other gap to report.
+  expect(cleared.strips).toHaveLength(0);
+  // The reading itself, so the two boxes are numbers in the report rather than
+  // only an equality between them.
+  test.info().annotations.push({
+    type: "measured",
+    description: `host ${JSON.stringify(cleared.host)} painted ${JSON.stringify(cleared.painted)}`,
+  });
 });
 
 test("two strips at once leave the artboard more than half the phone", async ({

@@ -1,11 +1,13 @@
 // @vitest-environment jsdom
 
+import type { Sample, SampleSource } from "@vigilia/renderer-core";
 import type { FabricSceneHandle } from "@vigilia/scene-fabric";
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   chromeBand,
   putStrip,
   removeStrip,
+  showAvailabilityNotice,
   showConnectionState,
   showCropNotice,
 } from "./chrome.js";
@@ -197,5 +199,124 @@ describe("the strips the display is told by", () => {
 
     expect(stripsIn("top")).toHaveLength(0);
     expect(stripsIn("bottom")).toHaveLength(0);
+  });
+});
+
+/** The display the warning exists for: one bound key nothing on this PC reports. */
+const GAP_KEYS = ["host:cpu.temp.1"];
+
+function gapSource(): SampleSource {
+  const sample: Sample = {
+    sensorId: GAP_KEYS[0] ?? "",
+    timestamp: "2026-10-17T00:00:00.000Z",
+    status: "missing",
+    message: "no provider on this PC reports that sensor",
+  };
+  return { latest: () => sample, history: () => [] };
+}
+
+/** The same display with its reading back — the condition clearing. */
+const recoveredSource: SampleSource = {
+  latest: () => ({
+    sensorId: GAP_KEYS[0] ?? "",
+    timestamp: "2026-10-17T00:00:00.000Z",
+    status: "ok",
+    value: 1,
+  }),
+  history: () => [],
+};
+
+/** A scene with one object hanging off the right edge, so the crop strip is up. */
+function overflowingHandle(): FabricSceneHandle {
+  return {
+    canvas: {
+      getObjects: () => [
+        {
+          visible: true,
+          get: () => undefined,
+          getBoundingRect: () => ({
+            left: 0,
+            top: 0,
+            width: 2000,
+            height: 100,
+          }),
+        },
+      ],
+    },
+  } as unknown as FabricSceneHandle;
+}
+
+describe("the availability warning's own lifetime", () => {
+  beforeEach(() => {
+    skeleton();
+    vi.useFakeTimers();
+    // The dismissal is module state, and a test file gets one module: each case
+    // starts from the condition clearing, which is also the re-arm path.
+    showAvailabilityNotice(recoveredSource, GAP_KEYS);
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
+  it("clears itself three seconds after it is raised", () => {
+    showAvailabilityNotice(gapSource(), GAP_KEYS);
+    expect(document.getElementById("vigilia-availability")).not.toBeNull();
+
+    vi.advanceTimersByTime(2_999);
+    expect(document.getElementById("vigilia-availability")).not.toBeNull();
+
+    vi.advanceTimersByTime(1);
+    expect(document.getElementById("vigilia-availability")).toBeNull();
+  });
+
+  it("does not re-raise it while the condition persists", () => {
+    // The refresh cadence calls this at the frame rate. A warning rebuilt on the
+    // next call would flicker back every frame, and one that re-armed its timer
+    // on every call would never clear at all — which is the defect a bare
+    // `setTimeout` here would have shipped.
+    const source = gapSource();
+    showAvailabilityNotice(source, GAP_KEYS);
+    vi.advanceTimersByTime(3_000);
+
+    for (let call = 0; call < 30; call += 1) {
+      showAvailabilityNotice(source, GAP_KEYS);
+      expect(document.getElementById("vigilia-availability")).toBeNull();
+    }
+
+    vi.advanceTimersByTime(30_000);
+    expect(stripsIn("top")).toHaveLength(0);
+  });
+
+  it("raises it again when the condition has cleared and returns", () => {
+    showAvailabilityNotice(gapSource(), GAP_KEYS);
+    vi.advanceTimersByTime(3_000);
+    showAvailabilityNotice(recoveredSource, GAP_KEYS);
+    showAvailabilityNotice(gapSource(), GAP_KEYS);
+
+    expect(document.getElementById("vigilia-availability")).not.toBeNull();
+  });
+
+  it("overlays it, so raising or clearing it cannot re-fit the scene", () => {
+    // The half of the report that landed in `476d8db7`: a strip in flow takes
+    // its room from the artboard and the scene re-fits, which moves the whole
+    // composition. This is the half that must survive the dismissal.
+    showAvailabilityNotice(gapSource(), GAP_KEYS);
+
+    expect(
+      document.getElementById("vigilia-availability")?.style.position,
+    ).toBe("fixed");
+  });
+
+  it("gives no other strip a lifetime: the crop notice is unchanged by this", () => {
+    // This task changed one strip's behaviour and left the rest alone. Whether
+    // the crop notice should keep its own persistence is not this task's to
+    // decide, and a shared helper that quietly handed it a timer would be that
+    // decision made by accident.
+    showCropNotice(overflowingHandle(), { width: 1024, height: 768 });
+    expect(document.getElementById("vigilia-crop")).not.toBeNull();
+
+    vi.advanceTimersByTime(60_000);
+    expect(document.getElementById("vigilia-crop")).not.toBeNull();
   });
 });
