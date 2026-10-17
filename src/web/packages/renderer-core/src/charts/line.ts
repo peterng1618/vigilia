@@ -84,16 +84,22 @@ export function linePlaybackDelayMs(delayMs: number | undefined): number {
 /**
  * Seconds of history a line must be handed, for the axis this file draws.
  *
- * **The axis window plus one cadence, and the cadence is the delay.** The axis
- * spans `windowSeconds` plus the source's playback delay, and `toSeriesPoints`
- * keeps one sample *before* that window so the line is drawn reaching the left
- * clip edge instead of beginning inside it. A source answers a trailing window
- * at its own sampling cadence, so the oldest sample it returns can sit up to
- * one cadence above the cutoff it was given; a request that ends exactly at the
- * axis start therefore usually has nothing to offer, and the line's left end
- * floats — measured at a mean of 0.65 s on a live host (`vg-571`). The delay is
- * the source's own statement of how far one batch may lag, so it is also the
- * slack the predecessor needs. The right edge already assumes the same bound.
+ * **The axis window plus two delays.** The axis spans `windowSeconds` plus the
+ * source's playback delay, and `toSeriesPoints` keeps one sample *before* that
+ * window so the line is drawn reaching the left clip edge instead of beginning
+ * inside it. A source answers a trailing window at its own batch cadence, so the
+ * oldest sample it returns can sit up to one cadence above the cutoff it was
+ * given; a request that ends exactly at the axis start therefore usually has
+ * nothing to offer, and the line's left end floats — measured on 72 % of
+ * steady-state frames of a live host (`vg-571`).
+ *
+ * **The delay stands in for a cadence the source never declares.** It is a
+ * nominal one: `LIVE_SOURCE_CHART_PLAYBACK_DELAY_MS` is a fixed 1 000 ms, while
+ * the host's own batch interval measured p50 1 006–1 021 ms and up to 3 243 ms
+ * on a live display, so more than half of its gaps already exceed the number.
+ * Two delays is the most this file can honestly ask for without a cadence to ask
+ * for, and the frames where a gap outruns it are the 16–19.5 % that still begin
+ * inside the plot. The right edge leans on the same nominal figure.
  */
 export function lineHistorySeconds(
   windowSeconds: number,

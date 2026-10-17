@@ -40,7 +40,10 @@ const HOST_SPECS =
  * a viewport-independent check, so it runs on `phone-host` alone rather than
  * joining `HOST_SPECS`, whose `desktop-host` project would run it a second time
  * at a size the reading is not about (`vg-571`). The preview projects ignore it
- * for the reason they ignore the rest: it needs the real host.
+ * for the reason they ignore the rest: it needs the real host. The file itself
+ * skips unless `VIGILIA_EDGE_PROBE` is set, and a run whose every selected test
+ * is skipped starts no `webServer` — so the default path costs neither the
+ * hundred seconds nor a host.
  */
 const EDGE_PROBE_SPEC = /live-chart-edge\.spec\.ts/;
 

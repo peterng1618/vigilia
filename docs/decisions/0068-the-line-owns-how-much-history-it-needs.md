@@ -150,8 +150,13 @@ out. It returns `windowSeconds + 2 × delay`.
 window's start and keeps one sample *before* it. A source answers a trailing
 window at its own cadence, so the oldest sample it returns can be up to one
 cadence *above* the cutoff it was given — and the cutoff a request of
-`windowSeconds + delay` produces is exactly `xAxis.min`. One extra cadence puts
-a sample below the window start for any cadence up to the delay, which is the
-same assumption the right edge already makes: the delay is the source's own
-declaration of how far one batch may lag. The number therefore belongs beside
-`linePlaybackDelayMs`, in the file that places the axis it has to cover.
+`windowSeconds + delay` produces is exactly `xAxis.min`. One extra delay puts a
+sample below the window start for any gap up to that delay. **The delay is not a
+declared bound, and this is the part of the fix that is a guess:**
+`LIVE_SOURCE_CHART_PLAYBACK_DELAY_MS` is a fixed 1 000 ms standing in for a
+cadence no source declares, and the host's measured inter-batch gaps were p50
+1 006–1 021 ms with a maximum of 3 243 ms — more than half of them already past
+the number. Two delays is the most this file can ask for without a cadence to ask
+for, and the 16–19.5 % of frames that still begin inside the plot are the gaps
+that outrun it. The number therefore belongs beside `linePlaybackDelayMs`, in the
+file that places the axis it has to cover.

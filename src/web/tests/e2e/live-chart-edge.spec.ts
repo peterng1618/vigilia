@@ -22,6 +22,20 @@ import { HOST_PORT } from "./host-theme.js";
  * sample's own x, which is the one thing it is not. `convertToPixel` is the
  * engine's own mapping, so the pixel column of a timestamp is measured rather
  * than recomputed here.
+ *
+ * **Opt-in, because it is a measurement and not a check.** It costs about
+ * 100 seconds, it asserts nothing about the defect it reads, and nothing in the
+ * repository consumes what it writes — so a regression at either edge would
+ * leave it green. It is collected only when `VIGILIA_EDGE_PROBE` is set (the
+ * `phone-host` project in `playwright.config.ts` states the gate), and it writes
+ * its readings to `<os temp>/vigilia-live-edge/<VIGILIA_PROBE_TAG>.json` —
+ * `reading.json` when the tag is unset, and the absolute path is named in the
+ * run's own output. One run:
+ *
+ * ```
+ * VIGILIA_EDGE_PROBE=1 VIGILIA_PROBE_TAG=my-run \
+ *   npx playwright test --project=phone-host tests/e2e/live-chart-edge.spec.ts
+ * ```
  */
 
 const HOST = `http://127.0.0.1:${HOST_PORT}`;
@@ -37,6 +51,11 @@ const OUT = path.join(
   tmpdir(),
   "vigilia-live-edge",
   `${process.env["VIGILIA_PROBE_TAG"] ?? "reading"}.json`,
+);
+
+test.skip(
+  process.env["VIGILIA_EDGE_PROBE"] === undefined,
+  "a measurement, not a check: set VIGILIA_EDGE_PROBE to collect it",
 );
 
 /**
