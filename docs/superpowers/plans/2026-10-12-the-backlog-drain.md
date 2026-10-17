@@ -5119,7 +5119,7 @@ phase boundary.
 
 - [ ] **Step 1: The availability warning clears three seconds after it is raised**, and the composition does not move when it does: the strip already overlays, so the dismissal is the change and the overlay is the invariant to keep.
 - [ ] **Step 2: The crop notice is not given the same treatment.** §97 requires a cropped object to stay legible as a different gap from an unreadable sensor, and the user's report named the warning.
-- [ ] **Step 3: Reproduce the resize the user reported before changing anything about placement.** The source already overlays the amber strip, so a resize means either a bundle built before `476d8db7` or the crop strip; say which, from a rebuilt bundle.
+- [ ] **Step 3: The resize half is closed by the user, not by a reproduction.** They confirmed on 2026-10-18 that the strip does not resize the artboard, so the report named a bundle built before `476d8db7` and this task makes no placement change. The artboard's box not moving is the invariant the dismissal must preserve, not a fault to repair — and if the seat's own browser run shows it moving, that is a finding to report rather than a reason to change placement.
 - [ ] **Step 4: Close it**, with the browser case showing the banner absent after the delay and the artboard's box unchanged.
 
 ### Task 25.3: The phone player's chrome controls
