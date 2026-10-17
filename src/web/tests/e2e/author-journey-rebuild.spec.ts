@@ -497,12 +497,6 @@ test.describe("the rest of the composition", () => {
   test("the two memory rings: a partial gauge and a full one", async ({
     page,
   }) => {
-    // Measured at 45–52s, against a 30s default: thirteen authored objects, two
-    // of them charts, and this test was already over budget before the fields
-    // moved — at the previous commit it times out on the way to the assertion it
-    // was failing. The work is real, so the budget follows it rather than the
-    // test being cut down to fit.
-    test.slow();
     await addCard(page, {
       name: "ram-card",
       x: 1018,

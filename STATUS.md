@@ -18,9 +18,9 @@ Drain `docs/product/backlog.jsonl` through the active Superpowers plan. Editor r
 
 ## Last completed change
 
-- Triage at `0e358235`: 35 rows named by no task block comprised 32 already parked, `vg-538` parked by this pass, and two unresolved decisions (`vg-546`, `vg-559`). No unsupported closes.
-- `vg-546` needs a decision on specific numeric-bound copy versus generic shell refusal; `vg-559` concerns unbounded STATUS bullet length and the user-owned AGENTS rule.
-- Recorded proof: `npm run gate` exit 0 (264 files, 3486 tests); `npm run backlog:check` exit 0 (566 items, 39 parked).
+- Task 22.1 gives the rebuild project one 60-second budget and removes the memory-rings test's redundant `test.slow()`; assertion deadlines remain unchanged.
+- Measured baseline: memory rings 37.556s; wordmark 27.154s, GPU 24.432s, storage 24.771s. Removing the marker reproduced the 30-second timeout; the project budget passed all nine journey cases.
+- `npm run gate` exit 0: 264 unit files, 3486 tests passed; journey JSON outside the repository records nine passes. Register closure follows the implementation commit's ancestor SHA.
 
 ## Next
 
