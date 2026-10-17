@@ -131,61 +131,166 @@ give itself a name on the list.
 
 ## Two hosts on one network
 
-The user asked whether two hosts on one LAN, and their displays, get tangled. The
-answer has two halves and only one of them is comfortable.
+The user asked whether **two PCs, each running a host on the same LAN**, and their
+displays, get tangled. **No — and the boundary is the origin, which is structural
+rather than a rule anyone has to keep.** A display is a client that loaded one
+host's page, so its own URL names the host it belongs to; and a session token
+verifies only in the process that minted it, because `session/pairing.ts` holds its
+sessions in an in-memory `Map` per process. Host A's token presented to host B is a
+token B never issued. The two hosts share no file, no port and no map: separate
+machines, separate app folders.
 
-**Across machines, no — and the boundary is the origin.** A display is a client
-that loaded a particular host's page, so its URL names the host it belongs to; and
-a session token verifies only in the process that minted it, because
-`session/pairing.ts` holds its sessions in an in-memory `Map` per process. Host A's
-token presented to host B is a token B never issued. Nothing is discovered and
-nothing is shared, so there is nothing to tangle.
+**What makes that fragile is discovery, and this design adds one** (§ "Finding the
+host after its address changes"). A display that re-finds its host by scanning the
+LAN is a display that can find *the wrong host*, and today nothing distinguishes
+two hosts on one network. **That is why a host needs a durable identity of its
+own**, and it is the same id in both places: the reason a re-find is a *re*-find
+rather than a fresh pairing, and the reason a scan cannot attach a display to
+somebody else's PC.
 
-**On one machine, yes — and today nothing stops it.** `DEFAULT_APP_DIR` is
-`~/.vigilia`, with `themes/` and `settings/` inside it (`cli/args.ts`), and
-`--app-dir` is the only thing that separates two installs. Two hosts started on
-this PC with no flags share one `settings/`, so they share `active-theme.json`,
-`theme-answers.json` and the `displays.json` this design adds: the same display
-ids, the same assignments, the same answers, under two servers. The port fallback
-makes it worse rather than better — `MAX_PORT_ATTEMPTS` walks a second host up to
-the next free port, so it starts successfully, looks like a second host, and is
-sharing the first one's state.
+**A second host on one machine is a different question, and today it is broken.**
+`DEFAULT_APP_DIR` is `~/.vigilia` with `themes/` and `settings/` inside it
+(`cli/args.ts`), and `--app-dir` is the only thing that separates two installs. Two
+hosts started on this PC with no flags share one `settings/`, so they share
+`active-theme.json`, `theme-answers.json` and the `displays.json` this design adds
+— the same display ids and assignments under two servers. `MAX_PORT_ATTEMPTS`
+makes it worse rather than better: the second host walks to the next free port,
+starts successfully, and looks like a second host while sharing the first's state.
+**One app folder is one host**: the settings directory carries the host's record
+and a lock, and a second host starting against a folder a live host holds is
+refused with the reason and the flag that fixes it.
 
-**The fix is to make the app folder the host's identity and say so.** One app
-folder is one host: the settings directory carries the host's own record, and a
-second host starting against a folder a live host already holds is **refused with
-the reason and the flag that fixes it** (`--app-dir`), rather than started into
-shared state. That is one lock and one refusal, and it turns a silent tangle into a
-sentence someone can act on.
+## Finding the host after its address changes
 
-**The one thing that would tangle across machines is discovery**, and nothing has
-it: a display reaches a host by a URL someone scanned or typed. If discovery is
-ever added, the origin stops being the boundary and this section is rewritten
-rather than extended.
+DHCP is the normal case on a home LAN, so a host's address changes and a display's
+saved URL dies with it. The code says how much of the problem is real:
+`lanAddress()` returns the **first non-internal IPv4 address**
+(`cli/net.ts:90`), which a new lease replaces — and `hosting.ts` is explicit that
+**"The port never moves."** So the port is stable by design and only the address is
+in question, which is half the problem gone before anything is built.
+
+**The display stores an identity, not an address.** Today the QR carries
+`http://<address>:<port>/?session=<token>`, so the address is baked into the one
+thing the display remembers. Pairing instead records
+`{ hostId, hostName, port, token }`, and the address becomes a hint that can be
+wrong.
+
+**The cheapest durable answer is a name, and the network already has it.** A DHCP
+reservation, or a name the router assigns to the host's MAC, makes the display's
+URL `http://<name>:5227` and an address change invisible — in every browser, with
+no code. **The pairing card should say so**, because it is the one step that makes
+this feature unnecessary and it is the owner's to take.
+
+**Where no name resolves, the display re-finds its host by identity**, in order:
+the last-known address first, because it is free when nothing changed; then
+`http://<hostName>.local:<port>`; then a sweep of the last-known address's /24 for
+`GET /api/host`, matching `hostId`. The first match wins, and no match offers the
+one-time code again rather than a dead page.
+
+**`GET /api/host` is the second route reachable unpaired**, and it is deliberately
+boring: `{ id, name, port }` and nothing else — no theme, no library, no device
+facts, no count of anything. It must send `Access-Control-Allow-Origin: *`, because
+a sweep is cross-origin by construction, and the response is safe to expose for
+exactly the reason it is boring. **A scan that could read anything else would be a
+directory of every host on the LAN**, which is the thing this design has otherwise
+avoided.
+
+**A reload is the hard case, and it is the one that needs the app shell.** A
+display that reloads while the host is elsewhere is served the *browser's* error
+page, not ours — so a re-find routine written into the page cannot run, because the
+page never loaded. There are two answers and both are named rather than assumed:
+the URL is a **name** (above), or the display runs an **app shell cached by a
+service worker**, which is `vg-577`'s PWA. **This makes the PWA load-bearing rather
+than a nicety**: without it, a camera-less display whose host moved is back to
+typing a code, and the code route is the only thing that still works.
+
+**Two limitations, stated rather than discovered later.** A browser cannot read its
+own address, so the sweep derives its range from the last-known host address and
+**assumes a /24** — a host that moved to a different subnet is not found by
+sweeping, and is found by the code route instead. And `lanAddress()`'s "first
+non-internal IPv4" is the wrong answer on a PC with Docker, WSL, Hyper-V or a VPN
+adapter, so the pairing card can print an address no display can reach; the
+address a card shows is worth verifying against the one a phone actually reaches.
+
+**Vice versa is already answered.** The host never opens a connection to a display,
+so it does not need to *reach* one — it needs to *tell them apart*, which display
+ids do. What it gains is each display's **last-seen address**, recorded on each
+poll, so the Host settings mode can show where a display was last seen; that is the
+field open question 1 already names, and this is the reader that wants it.
+
+**mDNS advertising is not in this design.** The host announcing
+`_vigilia._tcp.local` would give the name above for free on networks with no
+router-assigned name — but **a browser cannot resolve `.local` except Safari**, so
+it is a bonus for OS-level clients and never the whole answer, and it costs a
+shipped dependency (licence review, `THIRD-PARTY-NOTICES.md`,
+`docs/engineering/dependencies.md`). It is open question 5.
 
 ## Identity: the token is a credential, not a name
 
-**The assignment cannot be keyed by the session token**, and this is the one
-decision the rest of the model hangs on: the token lives in memory for twelve
-hours, so a theme assigned to it would evaporate at the first restart — and the
-person would have to walk to the display and re-choose, which is exactly the work
-this feature exists to remove. Loosening the token's lifetime to fix that would
-spend a security property to buy a convenience.
+**The assignment cannot be keyed by the session token.** The token is a bearer
+credential and the record is a name; a theme keyed by the credential would be a
+theme keyed by the thing that gets rotated, and rotating it — for any reason, at
+any time — would silently move a wall display to the default. The two are separate
+things and stay separate, whichever of them is durable.
 
 So the two are separated:
 
-- **Pairing mints a display record** — `{ id, label, createdAt }` — and persists
-  it. The id is the name an assignment is keyed by.
-- **The session carries a `displayId` beside its token.** Tokens stay short-lived
-  and in memory; nothing about their security changes.
+- **Pairing mints a display record** — `{ id, label, createdAt, tokenHash,
+  lastSeenAt }` — and persists it. The id is the name an assignment is keyed by.
+- **The session carries a `displayId` beside its token**, so a request resolves to
+  the record and not to the credential.
 - **Re-pairing a known display issues a new session for the existing record**,
   rather than minting a second display: `POST /api/pairing/sessions` takes either
-  a `label` (a new display) or a `displayId` (another session for that one). A
-  host restart therefore costs a re-pair and not an assignment.
+  a `label` (a new display) or a `displayId` (another session for that one).
 - **Re-attaching is the admin's choice, never the client's claim.** The client
   cannot name a `displayId`; only the loopback-only pairing route accepts one. A
   client that could name a display would be a client that could take another
   display's theme.
+
+**Ruling 12: a pairing does not expire.** The user ruled on 2026-10-18 that a
+display stays paired *until the host removes the client*. That ends the twelve-hour
+TTL and the in-memory session map for displays, and it is the change that makes the
+rest of this document true rather than aspirational — with a twelve-hour credential
+a wall display falls to the default twice a day and after every restart, so
+"a display holds its own theme" would have been true of the configuration and false
+of the screen.
+
+**What the ruling spends, stated rather than discovered later.** `pairing.ts`'s own
+comment is that sessions are short-lived *"so a leaked token must stop working on
+its own"*. A credential that never expires does not do that, so three things replace
+it and each is part of the ruling rather than an extra:
+
+- **Removal is explicit, and it is the host's act** — the sentence the user wrote.
+  The display list is where a client is removed, and removing it deletes the
+  credential with the record.
+- **The token is stored hashed**, never in the clear: the record holds
+  `sha256(token)`, so reading `displays.json` — a backup, a synced folder, a
+  screenshot — yields a list of displays rather than a set of usable credentials.
+  Verification compares the hash, and the existing timing-safe comparison stays.
+- **The token stops living in the URL after the first visit.** A twelve-hour token
+  in `?session=` is a link; a permanent one in a URL is a permanent credential in
+  the browser's history, in a bookmark, and in whatever chat it was pasted into.
+  The display stores what it is given and resolves later requests from storage.
+  **The QR route never puts a token in a URL at all** — it carries a one-time code
+  to `/pair`, and the credential comes back over the exchange — so `?session=` is
+  only the path for a display someone handed a URL to directly.
+- **The `?session=` parameter keeps its name in this design.** It now carries a
+  durable credential rather than a session, so the name is stale; renaming it is a
+  wire change across the QR, the player and the host's own console with no
+  behaviour in it, and it belongs in a commit about naming rather than in one about
+  durability. Recorded here so it is a decision rather than an oversight.
+
+**The sweep and the TTL constant go with it.** `DEFAULT_SESSION_TTL_MS`, `sweep()`
+and the expiry field are removed rather than left unused, because a TTL that is not
+enforced reads as one that is. `revoke(token)` stays and now means *this credential
+stops working*; removing the display is the separate act the routes table describes.
+
+**This is the second credential this product stores, and the first one's questions
+come with it.** The store spec says the GitHub token is the first, with its file,
+its permissions, whether it is encrypted at rest and what happens on revocation
+being a design's business. Hashing answers the at-rest question for *this* one —
+the file holds no secret — and leaves permissions as the shared open question it
+already is rather than deciding it twice.
 
 **The id's shape is the one this codebase already uses for a device id** —
 `[a-z0-9][a-z0-9-]{0,63}` (`settings/devices.ts`'s `ID_PATTERN`,
@@ -231,9 +336,11 @@ Five rules make a code short enough to type safe enough to use:
 - **The code is not a session.** It is exchanged once for the real credential, so a
   code read over someone's shoulder is worth one pairing and no more.
 
-**A display that must stay paired needs a credential that outlives a session**, and
-that is open question 3 below — the one thing this section cannot settle alone,
-because it is a decision about persisting a secret rather than about a code's shape.
+**The code is exchanged for a durable credential**, which is ruling 12: a display
+that must stay on a wall cannot be asked to type a code twice a day, so the thing
+the code buys is not a twelve-hour session. That is also why the code can be
+short — it is the *only* short-lived secret in this exchange, and everything
+after it is a credential the host can see and revoke by name.
 
 ## The model: a default, and an override per display
 
@@ -349,27 +456,43 @@ outranks the map for exactly as long as it is in the URL.
 
 | Route | Who | Answers |
 |---|---|---|
-| `GET /api/pairing/sessions` | loopback | the live sessions **and** the known displays |
-| `POST /api/pairing/sessions?label=` | loopback | a new display and a session for it |
-| `POST /api/pairing/sessions?displayId=` | loopback | a session for an existing display |
-| `DELETE /api/pairing/sessions/:token` | loopback | revokes the session; **the display record stays** |
+| `GET /api/host` | **anyone** | `{ id, name, port }` and nothing else, with permissive CORS — the re-find probe of § "Finding the host after its address changes" |
+| `POST /api/pairing/claim` | **anyone**, rate-limited | exchanges a one-time code for a durable credential; says nothing about whether a code exists |
+| `GET /api/pairing/sessions` | loopback | the live codes **and** the known displays |
+| `POST /api/pairing/sessions?label=` | loopback | a new display, its durable credential and a one-time code |
+| `POST /api/pairing/sessions?displayId=` | loopback | **replaces** that display's credential — rotation — keeping its record, its theme and its answers |
+| `DELETE /api/displays/:id` | loopback | **removes the client**: the record, its credential, its assignment and its answers |
 | `GET /api/themes/active` | loopback | the default, each display with its theme, the library, the templates |
 | `PUT /api/themes/active` | loopback | `{ display: "<id>" \| "default", id }` — any display, and the default |
 | `PUT /api/themes/active` | paired | `{ id }` — **its own entry only**, named by its session |
 | `GET /api/themes` | loopback or paired | the library, for the display's own chooser. **Already the case** (`server.ts`'s display guard), so nothing is added |
 | `GET /api/published` | loopback or paired | `{ id, revision, display: { id, theme } }` |
 
-**Revoking a session does not delete a display**, and that asymmetry is the point
-of the split: revoking is taking away a credential, while the display and its
-theme are the person's configuration. Deleting a display is its own act on the
-displays route, and it removes that display's answers with it — otherwise a new
-display reusing a slug would inherit a stranger's answers.
+**Two routes are reachable unpaired, and each is deliberately boring.** `GET
+/api/host` says only what a re-find needs and never what a stranger would want; the
+code exchange answers nothing about whether a code exists. Everything else that a
+display may call requires its credential, and everything that administers requires
+loopback — so an unpaired client on the LAN can learn that a host exists and can
+try to pair, and nothing else.
+
+**Ruling 12 collapses "revoke" and "remove" into one act, so there is one route.**
+Under the ephemeral model the two were different: revoking took away a credential
+while the display and its theme stayed. A credential that lasts until the host
+removes the client has no separate revocation to perform — and the case that would
+have wanted one, *this screen is broken and a new one replaces it*, is already
+served by `?displayId=`, which mints a fresh credential for the same record and
+leaves the theme where it was. One route, one act, and the person's configuration
+goes with the client they removed rather than being orphaned by it.
+
+**Removing a display removes its answers with it** — otherwise a new display
+reusing a slug would inherit a stranger's answers.
 
 ## What already exists, and must not be rebuilt
 
 - **The pairing mechanism, its loopback guard and its token discipline.**
   `session/pairing.ts` is extended with a `displayId` on the session and a
-  persisted display list; its constant-time comparison, TTL and sweep stay.
+  persisted display list; its constant-time comparison stays. **Its TTL and sweep
+  do not** — ruling 12 removes both.
 - **The staleness rule** — a chosen theme that is no longer in the library is no
   choice (`active-theme.ts`'s `read(exists)`).
 - **The answer fallback** — `perTheme[group] ?? stored.assigned[group]`
@@ -388,10 +511,10 @@ One plan, and it is a prerequisite of the store's phase A rather than a sibling:
 
 | Phase | Lands | Needs |
 |---|---|---|
-| **1** | the display record, pairing against it, the persisted display list, the one-time code and its `/pair` route as the camera-less path, and the app folder as the host's identity | — |
+| **1** | the display record with its hashed durable credential (ruling 12), pairing against it, the persisted display list and its removal route, the one-time code and its `/pair` route as the camera-less path, the host's own identity and lock in the app folder, and `GET /api/host` | — |
 | **2** | the per-display map, the default, and `GET /`'s resolution | 1 |
 | **3** | the answers keyed by display and theme, through `currentAssignment` | 2 |
-| **4** | the routes, the display's own write and its chooser (ruling 11), the reassignment read on `/api/published`, and the two host pages rewritten against the model | 3 |
+| **4** | the routes, the display's own write and its chooser (ruling 11), the reassignment read on `/api/published`, the display's re-find ladder, and the two host pages rewritten against the model | 3 |
 
 **Phase 2 is the one that must not be built against a model that does not exist**,
 which is `vg-574`'s own reason for landing first. Phases 1 and 2 are the pair the
@@ -412,23 +535,28 @@ from the session, so a display writes its own key or nothing.
 2. **Whether an assignment should survive deleting the display's record** — the
    answer above is no (the answers go with it), and the theme assignment going
    too is the consistent reading rather than a decided one.
-3. **Whether a display's credential should outlive a session — and today it does
-   not.** `DEFAULT_SESSION_TTL_MS` is twelve hours and the session map is in
-   memory, so a wall display is unpaired every twelve hours and after every restart
-   of the host. This design makes the *assignment* durable and leaves the
-   *credential* ephemeral, which means the display falls to the default and asks to
-   be paired again: the goal survives and the experience of it does not. 9remote's
-   answer is a permanent key beside the one-time code. Ours would be the **second
-   credential this product stores**, and the store spec's own words are that the
-   GitHub token is the first, with its file, its permissions, whether it is
-   encrypted at rest and what it does on revocation being a design's business rather
-   than an implementation detail. **Not decided**, and it wants deciding before
-   phase 4 rather than being discovered on a wall.
-4. **Whether hosts should be discoverable on a LAN** — § "Two hosts on one network"
-   says the origin is the boundary *because nothing discovers hosts*. mDNS or a
-   beacon would let a phone find a host without a URL, and would put every host on
-   the network into one reachable set — the tangle that section says cannot happen
-   today. Not ruled, and nothing here needs it.
+3. ~~**Whether a display's credential should outlive a session.**~~ **Ruled on
+   2026-10-18: it does, until the host removes the client** — ruling 12, §
+   "Identity: the token is a credential, not a name". What was open question 3 is
+   now a decision with its costs named beside it: the credential is persisted,
+   hashed, removable only by the host, and no longer carried in a URL after the
+   first visit. `DEFAULT_SESSION_TTL_MS` and `sweep()` are deleted rather than
+   left unenforced.
+4. **Whether hosts should be discoverable on a LAN** — § "Two hosts on one
+   network" says the origin is the boundary *because nothing discovers hosts*. This
+   design now adds the narrowest possible discovery: a display that has **already
+   paired** re-finds *its own* host by matching a `hostId` it stored, and the only
+   unpaired thing a host answers is `GET /api/host`. That is a re-find, not a
+   discovery service — nothing enumerates hosts for a stranger. **A general beacon
+   is still open**, and it is the thing that would put every host on the network
+   into one reachable set.
+5. **Whether the host should advertise itself over mDNS.** It would give the
+   address-free name in § "Finding the host after its address changes" for free on
+   networks with no router-assigned name, and it costs a shipped dependency —
+   licence review, `THIRD-PARTY-NOTICES.md`, `docs/engineering/dependencies.md`.
+   **Not needed for the feature to work**, because the name route and the re-find
+   ladder both work without it, so it is deferred rather than designed. Browsers
+   cannot resolve `.local` except Safari, so it would never be the whole answer.
 
 ## Not verified, and must be before this is planned
 
@@ -444,21 +572,38 @@ from the session, so a display writes its own key or nothing.
   design's is longer, so copying their thresholds would be copying a defence sized
   for a different lock. The plan sets them, and the first LAN pairing is what tests
   them.
-- **That a browser can hold a session across a reload.** A display that reloads
-  loses its token unless it is stored somewhere, which is the same question as open
-  question 3 and is not answered here.
+- **That a browser holds a durable credential across a reload.** Ruling 12 makes
+  this load-bearing rather than incidental: the credential must survive a reload,
+  a browser restart and a reboot of the display, which means storage the display
+  controls. Not driven in a browser here, and it is the first thing phase 1's
+  tests must show.
+- **That a display can be told its host moved.** § "Finding the host after its
+  address changes" reasons from `lanAddress()` and `hosting.ts` that only the
+  address changes; **the browser's own behaviour on a stale address is not
+  observed here**, and it decides whether the re-find can run from our page or
+  needs a cached app shell. Nothing has been driven against a host whose lease
+  changed.
+- **That a cross-origin sweep can read `GET /api/host`.** The CORS header is
+  designed rather than tested, and a preflight or a private-network rule could
+  refuse it. Unverified from this environment.
 
 ## Acceptance
 
 - **1** — pairing twice with the same label creates two displays; pairing with a
-  `displayId` creates a session for the existing one and no new display; revoking
-  a session leaves the display in the list; a client that sends a `displayId` to
-  the pairing route from off-loopback is refused; **a display with no camera pairs
-  by typing the one-time code at `/pair`**, the code is refused a second time, a
-  wrong code does not burn a live window it did not name, and the exchange route
-  answers nothing about whether a code exists; **a second host started against a
-  folder a live host holds is refused**, and `--app-dir` is the message's own
-  remedy.
+  `displayId` creates a session for the existing one and no new display; a client
+  that sends a `displayId` to the pairing route from off-loopback is refused;
+  **a display with no camera pairs by typing the one-time code at `/pair`**, the
+  code is refused a second time, a wrong code does not burn a live window it did
+  not name, and the exchange route answers nothing about whether a code exists;
+  **a second host started against a folder a live host holds is refused**, and
+  `--app-dir` is the message's own remedy.
+- **1a (ruling 12)** — a paired display is **still paired after the host restarts
+  and after any elapsed time**, with no code retyped; the stored record holds no
+  usable token (the file's own bytes do not contain the credential the display
+  presents); `POST ?displayId=` kills the previous credential — the old token is
+  refused, the new one works, and the display's theme and answers are unchanged;
+  removing the display makes its credential stop working and takes its assignment
+  and its answers with it; `DEFAULT_SESSION_TTL_MS` and `sweep()` no longer exist.
 - **2** — two displays hold two themes and each `GET /` answers its own; a display
   with no entry gets the default; an entry naming a deleted theme falls back to the
   default rather than erroring; the local root page is assignable as `this-pc`.
@@ -471,5 +616,11 @@ from the session, so a display writes its own key or nothing.
 - **5** — a paired display changes its own theme from a control on the display,
   and only its own: the second display's theme and the default are unchanged; the
   same request naming another display in the body changes nothing; a request from
-  a display whose session has expired is refused; and an unpaired reader is
+  a display whose session has been removed is refused; and an unpaired reader is
   offered no chooser at all.
+- **6 (address changes)** — a display whose saved address is stale reaches its host
+  again without a code, and reaches **its own** host: with two hosts answering on
+  the LAN, a re-find matches the stored `hostId` and never attaches to the other
+  one; a display that matches nothing is offered the code route rather than a dead
+  page; `GET /api/host` answers only `{ id, name, port }`, and is readable
+  cross-origin.
