@@ -90,8 +90,8 @@ interface ObjectAction extends ActionIdentity {
 }
 
 /**
- * An action that needs no selection: it constructs rather than commands, so a
- * surface may offer it with nothing selected at all (`vg-460`).
+ * An action that needs no selection: it constructs rather than commands, so it
+ * is not gated on a subject (`vg-460`).
  *
  * **It carries no `eligible` and no `run`, and both absences are the fact.**
  * There is no rule to state, because the whole of this action's eligibility is
@@ -317,18 +317,20 @@ export function arrangeActions(): readonly ObjectAction[] {
 
 /**
  * The constructions, in the Add pane's own order: text, then one entry per
- * primitive. **These are what the layer footer offers with nothing selected**,
- * which is the whole of `vg-460`'s ask — the footer was present but empty until
- * a layer was, and an action whose manager needs no subject is the half that
- * does not depend on one.
+ * primitive. **No surface draws these** — the layer footer did, and the user
+ * ruled that answer wrong on 2026-10-17 (`vg-570`): `vg-460` asked only that the
+ * footer always show, and with nothing selected it draws the registry's commands
+ * disabled instead. What is left is the id list `isConstructionAction` answers
+ * from, so a construction reaching `bridge.can`/`bridge.run` still takes the
+ * session façade's own route rather than the selection gate.
  *
  * **The set is the Add pane's primitives, and the words are the Add pane's own**
  * (`uiCopy.shapeKinds`, `uiCopy.panels.text` — the labels `insertGroups()` hands
  * its tiles), so a shape is one kind in both surfaces rather than two spellings
  * of it, and a test pins the two lists equal. Cards and charts are deliberately
  * not here, and not for size: a chart family's word collides with a shape's
- * ("Line" is both) and the footer is a flat row with no heading to tell them
- * apart — the Add pane's own rule is that a heading is what makes "Line"
+ * ("Line" is both) and the flat row they were built for has no heading to tell
+ * them apart — the Add pane's own rule is that a heading is what makes "Line"
  * unambiguous. A card unit's mark is a hand-drawn diagram the Add pane owns, and
  * inserting one needs the document's bindings.
  */
