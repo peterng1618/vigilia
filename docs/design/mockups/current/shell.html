@@ -18,9 +18,20 @@
             --text:#e8ecf3;--muted:#8a97ab;--faint:#5a6675;--accent:#72e0c0;--hot:#ff7e6e;
             width:1180px;height:1040px;display:flex;flex-direction:column;background:var(--bg);color:var(--text)">
 
-  <!-- header: brand, the three menus, the publish control -->
+  <!-- header: brand, the mode switch, then this mode's own actions. The switch
+       is the header's own control (§5 Segmented) rather than a strip under the
+       header, because §7.2 forbids a second horizontal bar and §10 lists one as
+       a don't. The right-hand region is per-mode: the three menus and the
+       publish chord are the editor's, and the store mode carries its own there
+       (`store-themes.html`). -->
   <div style="height:42px;flex:0 0 auto;display:flex;align-items:center;gap:12px;padding:0 12px;background:var(--hdr);border-bottom:1px solid var(--edge)">
     <span style="font:700 13px/1.3 system-ui;letter-spacing:.02em">Vigilia</span>
+    <span style="width:1px;height:18px;background:var(--edge);margin:0 4px"></span>
+    <span style="display:flex;gap:4px;padding:4px;background:var(--panel2);border:1px solid var(--edge);border-radius:6px">
+      <span style="padding:4px 10px;font:500 12px/1.4 system-ui;border-radius:4px;background:var(--bg)">Editor</span>
+      <span style="padding:4px 10px;font:500 12px/1.4 system-ui;border-radius:4px;color:var(--muted)">Themes</span>
+      <span style="padding:4px 10px;font:500 12px/1.4 system-ui;border-radius:4px;color:var(--muted)">This PC</span>
+    </span>
     <span style="width:1px;height:18px;background:var(--edge);margin:0 4px"></span>
     <span style="display:flex;gap:14px">
       <span style="font-weight:500;line-height:1.4">File</span>

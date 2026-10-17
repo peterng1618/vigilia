@@ -1,0 +1,176 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Vigilia theme store — your themes</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: #0b0e12; font: 12px system-ui, -apple-system, 'Segoe UI', sans-serif; }
+</style>
+</head>
+<body>
+<!-- The shell in its Themes mode, Your themes half. The mode switch is the
+     header's own Segmented (§5), not a strip under the header — §7.2 forbids a
+     second horizontal bar. The two halves are underlined tabs inside the
+     content region's own header row, beside the filter and the sort: a region's
+     control over what it lists, where the shell's navigation is the header.
+     Copy: uiCopy.library (yourThemes, open), uiCopy.actions.delete,
+     uiCopy.file.savePackage. The store's own words (Import package, Assign to
+     display, the origin badges) are new and land in ui-copy.ts with this file. -->
+<div style="--bg:#0b0e12;--hdr:#12161c;--panel:#12161c;--panel2:#171c23;--edge:#242b34;--edge2:#1b212a;
+            --text:#e8ecf3;--muted:#8a97ab;--faint:#5a6675;--accent:#72e0c0;--hot:#ff7e6e;--warn:#f3aa64;
+            width:1180px;height:820px;display:flex;flex-direction:column;background:var(--bg);color:var(--text)">
+
+  <!-- header: brand, the mode switch, then the mode's own actions -->
+  <div style="height:42px;flex:0 0 auto;display:flex;align-items:center;gap:12px;padding:0 12px;background:var(--hdr);border-bottom:1px solid var(--edge)">
+    <span style="font:700 13px/1.3 system-ui;letter-spacing:.02em">Vigilia</span>
+    <span style="width:1px;height:18px;background:var(--edge);margin:0 4px"></span>
+    <span style="display:flex;gap:4px;padding:4px;background:var(--panel2);border:1px solid var(--edge);border-radius:6px">
+      <span style="padding:4px 10px;font:500 12px/1.4 system-ui;border-radius:4px;color:var(--muted)">Editor</span>
+      <span style="padding:4px 10px;font:500 12px/1.4 system-ui;border-radius:4px;background:var(--bg)">Themes</span>
+      <span style="padding:4px 10px;font:500 12px/1.4 system-ui;border-radius:4px;color:var(--muted)">This PC</span>
+    </span>
+    <span style="flex:1"></span>
+    <span style="display:flex;align-items:center;gap:8px;border:1px solid var(--edge);border-radius:6px;background:var(--panel2);padding:4px 10px">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.7"><path d="M12 15V4M8 8l4-4 4 4"/><path d="M4 15v3a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-3"/></svg>
+      <span style="font:400 12px/1.4 system-ui">Import package</span>
+    </span>
+  </div>
+
+  <!-- content: the region's own header row, then the list. No rail, no pane and
+       no inspector: those are the editor's chrome and there is no document here -->
+  <div style="flex:1;min-height:0;display:flex;flex-direction:column">
+
+    <div style="flex:0 0 auto;display:flex;align-items:center;gap:16px;padding:12px 16px 0">
+      <!-- the two halves: a tab row inside the region, marked by a 2px accent
+           bar under the active label — a bar element, not a 2px border, because
+           the hairline arm holds every border to 1px -->
+      <span style="display:flex;gap:16px">
+        <span style="display:flex;flex-direction:column;gap:8px">
+          <span style="font:500 13px/1.3 system-ui">Your themes</span>
+          <span style="height:2px;background:var(--accent)"></span>
+        </span>
+        <span style="display:flex;flex-direction:column;gap:8px">
+          <span style="font:500 13px/1.3 system-ui;color:var(--muted)">Store</span>
+          <span style="height:2px;background:transparent"></span>
+        </span>
+      </span>
+      <span style="flex:1"></span>
+      <span style="display:flex;align-items:center;gap:8px;background:var(--panel2);border:1px solid var(--edge);border-radius:6px;padding:4px 8px;width:220px">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="var(--faint)" stroke-width="1.8"><circle cx="11" cy="11" r="7"/><path d="m20 20-4.3-4.3"/></svg>
+        <span style="flex:1;font:400 12px/1.4 system-ui;color:var(--faint)">Filter themes</span>
+      </span>
+      <span style="display:flex;align-items:center;gap:6px;background:var(--panel2);border:1px solid var(--edge);border-radius:6px;padding:4px 8px;width:150px">
+        <span style="flex:1;font:400 12px/1.4 system-ui">Updated</span>
+        <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="var(--faint)" stroke-width="2"><path d="m6 9 6 6 6-6"/></svg>
+      </span>
+    </div>
+    <div style="height:1px;background:var(--edge);margin:0 16px"></div>
+
+    <div style="flex:1;overflow:auto;padding:12px 16px 16px;display:flex;flex-direction:column;gap:6px">
+
+      <!-- a theme this PC downloaded: the origin badge is what the provenance
+           record buys, and the row's actions are the library's own -->
+      <div style="display:flex;align-items:center;gap:12px;padding:8px 10px;background:var(--panel2);border:1px solid var(--edge);border-radius:8px">
+        <span style="width:52px;height:29px;flex:0 0 auto;border-radius:4px;background:linear-gradient(170deg,#2a1030,#6b2418 42%,#c2601a 68%,#f0a63c)"></span>
+        <span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px">
+          <span style="font:500 12px/1.4 system-ui;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Living room</span>
+          <span style="font:400 11px/1.3 ui-monospace,Menlo,monospace;color:var(--muted)">@mira-k · 2026-10-15 09:12</span>
+        </span>
+        <span style="font:500 10px/1.2 system-ui;color:var(--muted);background:var(--panel);border:1px solid var(--edge);border-radius:999px;padding:4px 8px">From the store</span>
+        <span style="display:flex;gap:4px">
+          <span style="width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.7"><path d="M4 6h6l2 2h8v10H4z"/></svg></span>
+          <span style="width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.7"><rect x="3" y="5" width="18" height="12" rx="2"/><path d="M9 21h6"/><path d="M12 17v4"/></svg></span>
+          <span style="width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.7"><path d="M12 4v11M8 11l4 4 4-4M4 20h16"/></svg></span>
+          <span style="width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--hot)" stroke-width="1.7"><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13"/></svg></span>
+        </span>
+      </div>
+
+      <!-- the same record, one version behind: the third state the origin
+           record answers, marked --warn because it is attention and not an
+           error, and not an error the author caused -->
+      <div style="display:flex;align-items:center;gap:12px;padding:8px 10px;background:var(--panel2);border:1px solid var(--edge);border-radius:8px">
+        <span style="width:52px;height:29px;flex:0 0 auto;border-radius:4px;background:linear-gradient(170deg,#101c2a,#18406b 42%,#1a7cc2 68%,#3cbdf0)"></span>
+        <span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px">
+          <span style="font:500 12px/1.4 system-ui;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Office wall</span>
+          <span style="font:400 11px/1.3 ui-monospace,Menlo,monospace;color:var(--muted)">@mira-k · 2026-10-11 08:05</span>
+        </span>
+        <span style="font:500 10px/1.2 system-ui;color:var(--warn);background:var(--panel);border:1px solid var(--edge);border-radius:999px;padding:4px 8px">Update available</span>
+        <span style="display:flex;gap:4px">
+          <span style="width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.7"><path d="M4 6h6l2 2h8v10H4z"/></svg></span>
+          <span style="width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.7"><rect x="3" y="5" width="18" height="12" rx="2"/><path d="M9 21h6"/><path d="M12 17v4"/></svg></span>
+          <span style="width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.7"><path d="M12 4v11M8 11l4 4 4-4M4 20h16"/></svg></span>
+          <span style="width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--hot)" stroke-width="1.7"><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13"/></svg></span>
+        </span>
+      </div>
+
+      <!-- a theme made here: no origin, so no badge. Its absence is the
+           statement, and it is why the badge is a mark rather than a column -->
+      <div style="display:flex;align-items:center;gap:12px;padding:8px 10px;background:var(--panel2);border:1px solid var(--edge);border-radius:8px">
+        <span style="width:52px;height:29px;flex:0 0 auto;border-radius:4px;background:linear-gradient(170deg,#1d2410,#3d4a18 42%,#7a8c1e 68%,#c9d94a)"></span>
+        <span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px">
+          <span style="font:500 12px/1.4 system-ui;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Kitchen strip</span>
+          <span style="font:400 11px/1.3 ui-monospace,Menlo,monospace;color:var(--muted)">@huyng · 2026-10-14 21:40</span>
+        </span>
+        <span style="display:flex;gap:4px">
+          <span style="width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.7"><path d="M4 6h6l2 2h8v10H4z"/></svg></span>
+          <span style="width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.7"><rect x="3" y="5" width="18" height="12" rx="2"/><path d="M9 21h6"/><path d="M12 17v4"/></svg></span>
+          <span style="width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.7"><path d="M12 4v11M8 11l4 4 4-4M4 20h16"/></svg></span>
+          <span style="width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--hot)" stroke-width="1.7"><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13"/></svg></span>
+        </span>
+      </div>
+
+      <!-- an imported package: ruling 2 put it in the library, so it is a row
+           here and not a document the editor happens to hold -->
+      <div style="display:flex;align-items:center;gap:12px;padding:8px 10px;background:var(--panel2);border:1px solid var(--edge);border-radius:8px">
+        <span style="width:52px;height:29px;flex:0 0 auto;border-radius:4px;background:linear-gradient(170deg,#241030,#4a1860 42%,#8c1e9c 68%,#d94ad0)"></span>
+        <span style="flex:1;min-width:0;display:flex;flex-direction:column;gap:4px">
+          <span style="font:500 12px/1.4 system-ui;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">Workshop bench</span>
+          <span style="font:400 11px/1.3 ui-monospace,Menlo,monospace;color:var(--muted)">2026-10-09 17:22</span>
+        </span>
+        <span style="display:flex;gap:4px">
+          <span style="width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.7"><path d="M4 6h6l2 2h8v10H4z"/></svg></span>
+          <span style="width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.7"><rect x="3" y="5" width="18" height="12" rx="2"/><path d="M9 21h6"/><path d="M12 17v4"/></svg></span>
+          <span style="width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--muted)" stroke-width="1.7"><path d="M12 4v11M8 11l4 4 4-4M4 20h16"/></svg></span>
+          <span style="width:26px;height:26px;border-radius:6px;display:flex;align-items:center;justify-content:center">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--hot)" stroke-width="1.7"><path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13"/></svg></span>
+        </span>
+      </div>
+
+      <!-- the empty state, drawn because a first run is a state a person sees:
+           §9's gap stated once and quietly, never a zero -->
+      <div style="margin-top:8px;padding:24px;border:1px dashed var(--edge);border-radius:8px;display:flex;flex-direction:column;align-items:center;gap:6px">
+        <span style="font:400 12px/1.4 system-ui;color:var(--muted)">No themes are saved on this PC yet.</span>
+        <span style="font:400 12px/1.4 system-ui;color:var(--faint)">Build one in the editor, or import a package.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- §7.6: readouts only. The shell keeps its status bar in every mode so the
+       frame does not move under the author; the readouts are this mode's -->
+  <div style="height:26px;flex:0 0 auto;border-top:1px solid var(--edge);background:#0e1217;display:flex;align-items:center;gap:14px;padding:0 12px;font:400 11px ui-monospace,Menlo,monospace;color:var(--faint)">
+    <span style="line-height:1.3">4 themes</span>
+    <span style="line-height:1.3">1 update available</span>
+    <span style="flex:1"></span>
+    <span style="line-height:1.3">Store: 48 themes</span>
+  </div>
+</div>
+</body>
+</html>

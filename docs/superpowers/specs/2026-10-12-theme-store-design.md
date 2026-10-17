@@ -1,13 +1,15 @@
 # A theme store for Vigilia
 
-- **Status:** draft — a starting point, not accepted requirements, with no plan
+- **Status:** revised 2026-10-17 for acceptance; no plan yet
 - **Date:** 2026-10-12, **revised 2026-10-16** after the `hydralauncher/hydra-themes`
-  study and the rulings below
-- **Scope:** the **storefront**, specified kind-agnostically. Three kinds are in
-  view — dashboard themes, widget presets and editor themes — and **v1 ships the
-  dashboard theme only**, because it is the only kind with an exchange unit. The
-  other two get an addendum each, and the reason they can wait is that this
-  document's leverage claim depends on an exchange unit existing.
+  study, **revised again 2026-10-17** after the rulings in the next section
+- **Scope:** two subjects that are one shell. **The storefront**, specified
+  kind-agnostically — three kinds are in view, dashboard themes, widget presets
+  and editor themes, and **v1 ships the dashboard theme only**, because it is the
+  only kind with an exchange unit; the other two get an addendum each. And **the
+  three-mode shell** the storefront is a mode of. A third subject, **per-display
+  theme assignment**, is deliberately not here: it is its own spec and it lands
+  first, per ruling 6 below.
 
 ## What this is, and is not
 
@@ -23,6 +25,40 @@ later spec that this one must not pre-empt", and `vg-388` said in as many words
 that widgets are out of scope. The user ruled on 2026-10-15 that **the store
 carries three kinds and the spec is scoped storefront-now, kinds-follow**. The
 widget store is still a later piece of work; it is no longer a later *storefront*.
+
+## Rulings taken 2026-10-17
+
+Six decisions, all the user's. Each one changes a section below rather than
+adding to it, which is why they are first.
+
+1. **The store interface shows online themes and local themes together** — the
+   catalogue, and the themes made here or imported offline, in one surface. This
+   is the requirement the rest of the revision is arranged around.
+2. **Import lands in the library.** A package brought in offline is written into
+   the host's theme library, so the local list is exactly the library.
+3. **The store mode's two halves are tabs** — local and online. A downloaded
+   theme *is* a local theme (see "Provenance"), so the two views of one fact are
+   never on screen together. That cost is accepted rather than argued.
+4. **The third mode is this PC** — devices, display and theme questions, rebuilt
+   in the shell. Its Themes section and `library.html`'s activate job move to the
+   store mode's local tab, so one surface owns the theme list. `Editor Settings`
+   keeps the editor's own chrome, and the two names stop conflicting because the
+   subjects are disjoint: the mode owns the machine, the pane owns the editor.
+   `settings.html` and `library.html` stay served, so a browser with no editor
+   open can still pick and administer.
+5. **Activation is per-display from the start.** The local tab assigns a theme to
+   a display client, or to a default for unassigned ones. `active-theme.json`'s
+   one id for the host becomes a per-display map and `/api/themes/active` changes
+   shape with it, so no activation work is built against the single-theme model
+   and then reworked.
+6. **Per-display assignment is its own spec and lands first.** This document
+   consumes its assign action and does not restate its model.
+
+**What ruling 6 supersedes.** The draft said the three-mode top bar "needs its
+own spec, not a section of this one"; the user folded it in on 2026-10-17, so
+that sentence is superseded and the shell is specified here. Ruling 5's subject
+is the queued multi-device objective, which has no register row: it gets one, and
+its spec is the first thing this work owes.
 
 ## The intent
 
@@ -229,25 +265,142 @@ in a browser. No token reaches the app at all. It is not the ruling; it remains
 the fallback if the OAuth app becomes a burden, and the client should be written
 so the submission step is one seam rather than a path threaded through the UI.
 
-## The client surface, and the three-mode top bar
+## The shell: three modes, and what each surface owns
 
-The user ruled on 2026-10-15/16 that the storefront is a **mode of the editor
-shell**, and that **the three-mode top bar lands first**: one shell whose top bar
-switches between **theme store**, **theme editor** and **host settings**. The
-store is therefore a sibling of the editor rather than something inside it, and it
-is never built inside a shell it will leave.
+One shell whose top bar switches between **theme store**, **theme editor** and
+**host settings**. The store is a sibling of the editor rather than something
+inside it, and it is never built inside a shell it will leave.
 
-**This makes the top bar a prerequisite, and it is not a small one.** Two
-consequences the spec records rather than leaves to the implementer:
+**The switch is the header, because a second bar is forbidden.** §7.2 says the
+rail replaced the horizontal pane bar and "a second horizontal bar under the
+header is forbidden", and §10 lists one as a don't. So there is no mode strip
+under the header: the header itself gains the mode switch and its action region
+becomes per-mode — `File`/`Edit`/`View` and the publish chord in editor mode, the
+store's own actions in the store mode, nothing but the switch where a mode has no
+action of its own. §7.1 is amended in the same commit, which is what it asks for
+when a surface needs something it does not have.
 
-- **Two settings surfaces must be reconciled.** The host serves its own
-  admin/settings page today (`BundleRoots.admin`), and the editor shell has its
-  own settings pane — the one the user named `Editor Settings` on 2026-10-15 while
-  ruling on `vg-330`. A mode called *host settings* cannot ship beside a pane
-  called *Editor Settings* without saying which one owns what.
-- It restructures `editor-shell/`'s header and rail, which `vg-269` and `vg-330`
-  are already touching. The three-mode work and `vg-330`'s spec must not be
-  written as if the other does not exist.
+**The switch is a `Segmented`** — §5's "small exclusive choice where both options
+must be readable" — not a new control, because §10 forbids inventing one. Its
+labels are the modes' names, and **the names are the one thing here that needs
+the user's word**: the draft's names are *theme store*, *theme editor* and *host
+settings*, and the proposal the drawings carry is **Editor · Themes · This PC**,
+which reuses the product's own words for two of the three (`uiCopy.menus`'s
+editor, and the host page's `This PC`) and keeps `Editor Settings` for the pane.
+
+**The store's two halves are a `Segmented` in the region's own header row**, not a
+second bar: it sits inside the content region beside the filter and the sort, the
+way a pane's title bar sits inside its pane. That reading is stated because a
+reviewer is right to ask whether it is the forbidden second bar — it is a region's
+own control over what the region lists, not navigation between shell surfaces,
+and the shell's navigation is the header.
+
+| Surface | Owns | Loses |
+|---|---|---|
+| Theme store mode | the theme list — the local tab over the host library, the online tab over the catalogue — plus import, export, install, removal and submission | — |
+| Host settings mode | this PC: devices, display, and the theme questions **per display** | its Themes section, to the store's local tab |
+| Theme editor | the document | — |
+| `Editor Settings` pane (its own spec) | the editor's own chrome: appearance, keyboard, about | — |
+
+**The reconciliation the draft asked for, answered.** The mode owns the machine
+and what it displays; the pane owns the editor's own chrome. Nothing is owned by
+both, so no subject moves twice and neither name is a lie. Themes are the one
+list that moves: today `settings.html` lists them, `library.html` chooses the
+active one and `ThemeLibraryChooser` opens one, and afterwards the store mode's
+local tab is where a theme is listed, opened, activated, exported or removed.
+
+**Per-display assignment reaches the answers, not only the theme.** The user's
+words are that each display client holds "their own theme & its theme-specific
+settings", so `theme-answers.json` stops being keyed by theme alone: an answer
+belongs to a display's use of a theme. That is the per-display spec's model to
+define — this document records only that the Host settings mode is where the
+answers are given, and that the key change is why the mode's third section is not
+the same section it is today.
+
+**`settings.html` and `library.html` are not deleted.** They are served from
+`BundleRoots.admin` and are the only surfaces a phone, or a browser with no editor
+open, can reach — so a consumer who never opens the editor keeps the path they
+have. The shell's mode is the author's path to the same facts.
+
+**One invariant: a mode switch never loses an unsaved document.** The editor's
+existing dirty guard is the instrument; a mode switch is not a document
+replacement and must not read as one.
+
+**Two costs, named rather than discovered.** The bar restructures
+`editor-shell/`'s header and rail, which `vg-269` and `vg-330` are already
+touching, and `editor-shell/shell-layout.tsx` is a watched path — a decision note
+must claim it before the first write there. And the third mode is a rebuild of
+four sections in the shell's own React, not an iframe over the host's page.
+
+## The store mode
+
+Two tabs, and the whole surface is those two lists.
+
+**Local** — the host's library, exactly: `ThemeStore.list()` plus the origin
+record. A row is a thumbnail, the name, the author and `updatedAt`, with actions
+**Open in editor**, **Assign to display**, **Export package** and **Delete**. The
+mode carries one action of its own: **Import package**.
+
+**Online** — the catalogue's `index.json`. A row is a thumbnail, the name, the
+author, the item's `kind`, its download and favorite counts and when it changed,
+with **Install** — or, when the item is installed, **Installed** and **Update
+available**, with Update and Remove.
+
+A name filter over each list, and a sort per list, because the two halves share no
+sort key: online sorts by created, updated, downloads and favorites (§ "Views are
+dropped"), local by name and `updatedAt`.
+
+**Every action here already has an owner.** Open, export, delete and assign are
+the library's existing operations, import is § "Import lands in the library" and
+install is § "Provenance". The store mode composes them and invents none.
+
+## Import lands in the library
+
+Today a package the author brings in becomes an open *document*
+(`editor-main.ts`'s picker → `parseThemePackage`) and reaches the library only if
+they then press Save to library. Ruling 2 makes import a library write, so an
+imported theme survives the editor closing and appears in the local list.
+
+The host gains one route: package bytes in, `readThemePackage` — the §141 reader
+it already depends on — then `ThemeStore.write` and `ThumbnailStore.write`. **The
+host validates, not the browser**, because the host owns the folder the bytes land
+in and §141 is its contract.
+
+**The id rule.** The envelope's own `id` when it is valid and free; otherwise the
+next free id derived from `metadata.name`; otherwise a suffixed one. **Import
+never overwrites.** A taken id gets a suffix, so re-importing your own export
+makes a second entry rather than replacing the first. Additive is the safe
+direction and the duplicate is visible and deletable, where a silent replace is
+data loss with no undo.
+
+## Provenance: what makes "Installed" true
+
+Nothing today links a library folder to the catalogue item it came from. Without
+that link the surface cannot tell a theme you made from one you downloaded, cannot
+offer an update, and cannot say *Installed* at all — which is the whole of what
+ruling 1 asks the online tab to show.
+
+**The record is consumer state**, beside `active-theme.json` and
+`theme-answers.json`: a `theme-origins.json` keyed by library id, holding the
+catalogue id, the version installed and when. It is swept when the theme is
+removed, exactly as `ThemeSettingsStore.remove` sweeps answers.
+
+**Why not a stamp inside `theme.json`.** That would change the exchange unit, the
+validator and the package — the one thing this design's leverage claim rests on.
+Where a theme came from is a fact about *this machine's copy*, the same category
+as the per-theme answers already stored that way, and ADR-0017 forbids a silent
+folder↔package sync.
+
+**What it answers in v1:** *Installed*, and *Update available* when the
+catalogue's version is newer than the recorded one. **What it does not answer
+yet:** *modified locally*, which needs a content hash stable across a store round
+trip — a property `contentId` may or may not have, and therefore a one-line probe
+during implementation rather than a promise now. If the probe passes the row
+gains the third state; if it fails, the third state needs its own decision.
+
+The listing route joins origins onto `/api/themes`, so the client needs one fetch
+for the local half. `ThemeStore` itself stays unaware of origins: it owns folders,
+not where they came from.
 
 ## Media: two of three caps exist, and the third is what makes them reachable
 
@@ -313,25 +466,50 @@ shipped dependency but requires the author to install it; a bundled static build
 is convenient but carries GPL parts such as x264, which pulls in
 `THIRD-PARTY-NOTICES.md` and packaging obligations. Leaning: probe and refuse.
 
-## Two prerequisites that land alone
+## The rename, which still lands alone
 
-Both are refactors of existing behaviour with no store dependency, so either can
-land before any of the rest without committing to it.
+`publish` currently means *editor → host, so the paired phone or display shows
+it* (`POST /api/publish`, `/api/published`, `publish.surface`,
+`publishableDocument`, `publish-loop.spec.ts`). Two different acts sharing one
+word is the problem, and the owner's ruling of 2026-10-12 is that the existing
+route is renamed rather than the store finding a second word: **publish** — an
+author sends an item to the store; **submission** — a publish from an unverified
+author, awaiting review; **listed** — passed review and in the catalogue.
 
-1. **The rename.** `publish` currently means *editor → host, so the paired phone
-   or display shows it* (`POST /api/publish`, `/api/published`, `publish.surface`,
-   `publishableDocument`, `publish-loop.spec.ts`). Two different acts sharing one
-   word is the problem, and the owner's ruling of 2026-10-12 is that the existing
-   route is renamed rather than the store finding a second word:
-   **publish** — an author sends an item to the store; **submission** — a publish
-   from an unverified author, awaiting review; **listed** — passed review and in
-   the catalogue. The replacement word for the existing route is **not yet
-   decided**; `activate` collides with keyboard-activating a focused control in
-   `viewport-manager/navigation.ts`, and `cast` and `go live` are the clear
-   candidates. The rename is a family — the route, the `published` store in
-   `server.ts`, its revision accessor, the `publish.surface` chord and
-   `publish-loop.spec.ts` — and it touches `host/src/server.ts`, a watched path.
-2. **The three-mode top bar**, per the section above — and it needs **its own spec**, not a section of this one. It is a shell restructure that reconciles two settings surfaces and rebases `vg-269` and `vg-330`; this document states the requirement and the constraint it puts on the store (the storefront is a mode, so the bar exists first), and nothing more.
+The replacement word is **still not decided**: `activate` collides with
+keyboard-activating a focused control in `viewport-manager/navigation.ts`, and
+`cast` and `go live` are the clear candidates. The rename is a family — the
+route, the `published` store in `server.ts`, its revision accessor, the
+`publish.surface` chord and `publish-loop.spec.ts` — and it touches
+`host/src/server.ts`, a watched path, so it needs its own decision note.
+
+**It is not on this work's critical path**, which is why it stays a prerequisite
+that can land alone rather than a phase below. The one thing it must not do is
+land *after* submission ships, because then the store owns a word the route
+already uses.
+
+The three-mode top bar was the second prerequisite. The rulings above fold it
+into this document, so it is now § "The shell" and the first phase below rather
+than a spec of its own.
+
+## Landing order
+
+Per-display assignment first — its own spec and plan, per ruling 6 — then this
+document's plan, in phases that are each useful on their own:
+
+| Phase | Lands | Needs |
+|---|---|---|
+| **A** | the three-mode shell, the store mode's local tab, and the Host settings mode absorbing this PC | the per-display spec's assign action; `shell-layout.tsx`'s decision note |
+| **B** | the origin record and the *Installed* badge | A |
+| **C** | the online tab, read-only: the catalogue repo exists, `index.json` is generated, browse, filter and sort work | a public repo and one Action; **not** open question 1 |
+| **D** | install: download, validate, write to the library, record the origin | C, and **open question 1 decided** |
+| **E** | submission: the device flow, the fork-and-PR client, CI validation and the auto-merge Action | D |
+| **F** | the publish-time normalizer and the duration and resolution caps | E, and open question 2 |
+
+**A is the phase that answers ruling 1**, and it needs no catalogue, no token, no
+`index.json` and no hosting decision. **C is the last phase that dodges open
+question 1**; everything after it depends on where the bytes live, which is why
+that question is the first thing D waits on rather than a footnote.
 
 ## Open questions
 
@@ -409,12 +587,58 @@ Free-tier limits decide feasibility, so each is a probe rather than an assumptio
   client), which the reference does not exercise at all.
 - `host/src/server.ts` is a watched path in `scripts/reuse-gate.mjs`, so a
   decision note must claim it before the first edit there.
-- **The rename and the three-mode top bar can each land alone**, and the top bar
-  is a prerequisite rather than an optional first step.
+- **The rename can still land alone.** The top bar no longer can: the rulings
+  above fold it into this document, so it is the first phase rather than a
+  prerequisite that ships separately.
+- **The drawings are part of this design, not decoration.** The store mode, the
+  Host settings mode and the bar are new surfaces, so the checked set at
+  `docs/design/mockups/current/` gains a file per new view, `shell.html` is
+  redrawn because the bar changes its header and rail, and the README's table and
+  count move with them. Three rules bind that work rather than being discovered
+  during it: **every new drawing is read by something** — `mockup-values.ts` holds
+  a path per drawing and `PARITY` rows over them, and a drawing nothing reads is a
+  drawing that rots; **the copy is the product's own**, taken string by string
+  from `ui-copy.ts`, so a new surface's words are decided here and land in
+  `ui-copy.ts` in the same change as its drawing; and **one drawn view per file**,
+  because the reader's `[style*="…"]` selector refuses to settle between two
+  elements carrying the same declaration. The pending settings-pane redraw touches
+  the same set, and neither change may be written as if the other does not exist.
 - One implementation plan is active at a time. When this is picked up it becomes
   a plan that queues behind whatever `STATUS.md` names that day.
 
 ## Acceptance
 
-Not written. Acceptance is for accepted work, and this spec is not accepted yet —
-writing it now would be inventing evidence for a decision nobody has made.
+The spec is accepted when the user says so. **The work is accepted per phase**,
+each on its own phase gate, and each item below is something a person can see:
+
+- **A** — the top bar switches between the three modes; the local tab lists the
+  host's themes with their thumbnails; a package imported from a file appears in
+  that list and survives closing the editor; a theme is assigned to a display from
+  its row; switching modes with an unsaved document loses nothing; and
+  `settings.html` no longer lists themes while `/settings` and `/library` still
+  work in a plain browser.
+- **B** — a theme installed from a catalogue item reads *Installed*, and the mark
+  survives a restart because it is read from the origin record rather than held in
+  the session.
+- **C** — the online tab lists the catalogue's items with their kind, counts and
+  dates, and filters and sorts them; an item whose `kind` this build does not know
+  is skipped with the reason shown rather than breaking the listing.
+- **D** — Install puts a working theme in the library and records its origin, and
+  the item then reads *Installed*; a package that fails §141 is refused with the
+  reason and the library is unchanged.
+- **E** — an author with a GitHub account submits a theme from the library and the
+  PR appears; an unverified author's PR waits for review; a verified author's own
+  PR auto-merges only when validation is green *and* the diff touches only their
+  own `catalogue/<id>/` path.
+- **F** — a video past the duration or resolution bound is refused before
+  submission with the bound named, and one inside it is copied byte-for-byte on a
+  second run.
+
+**What closing `vg-388` means, and the conflict this settles.** Phase 24 of the
+backlog drain says `vg-388` closes when the store "carries all three kinds as
+specified rather than the theme half alone", and v1 cannot satisfy that: it ships
+the dashboard theme, with the widget preset and the editor theme as addenda. So
+the row's closure condition is **the storefront plus the dashboard theme**, and
+the two addenda become rows of their own. The plan's acceptance line and its
+failure-mode line are the text that must move with it; leaving them is how a row
+stays open against work that is done.

@@ -1,7 +1,7 @@
 # Design mockups
 
 **`current/` is the target.** The editor is being rebuilt towards the original
-visual direction as those six files draw it, and they are **checked at every
+visual direction as those nine files draw it, and they are **checked at every
 plan gate** — not read once and remembered. The three originals below them are
 the record of the first cut, not the target.
 
@@ -17,12 +17,15 @@ guess between them.
 
 | File | Shows |
 |---|---|
-| [`current/shell.html`](current/shell.html) | The whole shell: header and menubar, the four-slot rail, the Add pane, the stage and its floating clusters, the inspector, the status strip |
+| [`current/shell.html`](current/shell.html) | The whole shell in its Editor mode: the header with the mode switch, the menubar, the four-slot rail, the Add pane, the stage and its floating clusters, the inspector, the status strip |
 | [`current/settings.html`](current/settings.html) | The settings surface on its own, with §7's three tabs and the six-palette grid |
 | [`current/settings-keyboard.html`](current/settings-keyboard.html) | The same modal with §7's Keyboard panel showing: its header bar and return-to-default action, and the reference's own rows with their chord marks and per-row controls |
 | [`current/settings-about.html`](current/settings-about.html) | The same modal with §7's About panel showing: what the editor is, and the version facts this build can read |
 | [`current/controls.html`](current/controls.html) | The inspector column as it renders, in the reference palette: wells, a slider, segmented rows, the read-only treatment, a refusal |
 | [`current/controls-editorial.html`](current/controls-editorial.html) | The same column on the editorial ground — the same file with the token table swapped, so a hard-coded colour cannot hide in it |
+| [`current/store-themes.html`](current/store-themes.html) | The shell in its Themes mode, Your themes half: the mode switch in the header, the two halves as tabs beside the filter and the sort, and library rows carrying their origin badge |
+| [`current/store-browse.html`](current/store-browse.html) | The same mode's Store half: catalogue rows with their kind, their counts and their dates, Install, Installed and Update, and the line that says which kinds this build skipped |
+| [`current/host-settings.html`](current/host-settings.html) | The shell in its This PC mode: the displays and the theme each shows, the device groups and their names, the display settings, and one theme's unanswered question |
 
 ## The originals — the record
 
