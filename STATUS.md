@@ -10,7 +10,7 @@ Drain `docs/product/backlog.jsonl` through the active Superpowers plan. Editor r
 ## Active work
 
 - **Active plan:** `2026-10-12-the-backlog-drain.md` — [plan](docs/superpowers/plans/2026-10-12-the-backlog-drain.md); execution ledger: `.superpowers/sdd/2026-10-12-the-backlog-drain/progress.md`.
-- Phase 22 is active; Task 22.1 is next. Phases 0–11 and 13–20 are closed; Phase 12 and Phase 21 are suspended, not closed; Phase 23 is queued.
+- Phase 22 is active; Task 22.1 is integrated on e48c7f36, Tasks 22.2–22.10 remain pending. Phases 0–11 and 13–20 are closed; Phase 12 and Phase 21 are suspended, not closed; Phase 23 is queued.
 - Phase 21 owes only Task 21.9 Step 3: font-picker keyboard implementation after user spec review and the separate `TAB_BOUND` ruling. Suspension changes scheduling, not either decision.
 - Phase 24's store and colour/gradient work retains user priority; both tasks require accepted specs and their own plans before implementation.
 - Register rulings and parked markers live on rows; ledger records completions/rulings, and `dispatch-*.md` records running seats. One phase and one implementation seat at a time.
@@ -25,7 +25,7 @@ Drain `docs/product/backlog.jsonl` through the active Superpowers plan. Editor r
 
 ## Next
 
-1. Execute Phase 22 serially: rebuild timeout, JSON report ownership, e2e typecheck, then behavioural proof/fixture repairs.
+1. Execute Phase 22 serially: JSON report ownership, e2e typecheck, then behavioural proof/fixture repairs.
 2. Review each task against its brief and evidence; run phase gate with exit code and browser results named separately.
 3. Resume Phase 21 after font-picker spec approval and budget ruling; resume Phase 12 after settings-pane spec review.
 4. Re-home unparked rows carried only by closed phases; never treat a mention as a live implementation home.
