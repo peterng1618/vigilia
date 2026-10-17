@@ -4342,10 +4342,10 @@ project timeout so wide it hides a real hang.
 **Interfaces:**
 - Produces: `vg-168` closed
 
-- [ ] **Step 1: Remove the tautology.** `uiCopy.cardLibrary` compared against the library resolves one object on both sides, so the comparison holds for every value that object could ever take: it cannot fail for the reason it claims to check.
-- [ ] **Step 2: Do NOT replace it with a source-shape assertion.** Source-reading is rejected: this suite's business is behaviour, and an assertion over a builder's spelling pins the text of a file rather than what the product does.
-- [ ] **Step 3: Keep the two assertions the break proved real** — the stamp is present at all, and its `widgetId` — and leave the cross-path comparison as the one that covers agreement.
-- [ ] **Step 4: Close it.**
+- [x] **Step 1: Remove the tautology.** `uiCopy.cardLibrary` compared against the library resolves one object on both sides, so the comparison holds for every value that object could ever take: it cannot fail for the reason it claims to check.
+- [x] **Step 2: Do NOT replace it with a source-shape assertion.** Source-reading is rejected: this suite's business is behaviour, and an assertion over a builder's spelling pins the text of a file rather than what the product does.
+- [x] **Step 3: Keep the two assertions the break proved real** — the stamp is present at all, and its `widgetId` — and leave the cross-path comparison as the one that covers agreement.
+- [x] **Step 4: Close it.**
 
 ### Task 22.6: The bullets plan 4 wrote are discharged
 
