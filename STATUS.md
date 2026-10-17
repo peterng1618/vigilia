@@ -18,9 +18,9 @@ Drain `docs/product/backlog.jsonl` through the active Superpowers plan. Editor r
 
 ## Last completed change
 
-- Filed user report `vg-567` and [GitHub issue 35](https://github.com/peterng1618/vigilia/issues/35): starter no longer initial editor document and unavailable for phone-publish selection; runtime reproduction pending.
-- Source shows starter host entry uses bare `/editor/`, which resumes latest saved theme under `vg-060`; explicit starter navigation needs proof without reversing saved-work policy.
-- Phone publishing requires saved library identity; no bypass or product fix landed. Exact user URL and selection surface remain unanswered.
+- Filed user request `vg-568`: tap-revealed semi-translucent fullscreen control at phone player's top-right; bounded behavior proposed, approval pending, no product code changed.
+- Reproduced `vg-567` on rebuilt disposable host: Starter link opens saved sentinel; File → New from starter → Save to library creates selectable System dashboard. Physical phone not tested; issue 35 updated.
+- Starter routing fix also awaits bounded approval; existing resume-latest-save policy and stored-theme publishing guard remain intact.
 
 ## Next
 
