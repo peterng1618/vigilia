@@ -4405,7 +4405,7 @@ review on 2026-10-13 and both are the copy walk's — one instrument, two holes 
 one task and not two.
 
 **Files:**
-- Modify: `src/web/packages/editor/src/ui-copy-readers.ts` (`copy()` is the probe), `src/web/packages/editor/src/ui-copy-surfaces.test.ts` (the surface walk), `src/web/packages/editor/src/ui-copy-panels.test.ts`
+- Modify: `src/web/packages/editor/src/ui-copy.ts` (the refused kinds, exported), `src/web/packages/editor/src/ui-copy-readers.ts` (the probe and the reader), `src/web/packages/editor/src/ui-copy.test.ts` (the table's rules), `src/web/packages/editor/src/ui-copy-surfaces.test.ts` (the surface walk)
 
 **Path corrected 2026-10-18 by the controller, before the seat ran**: this task and both rows named a single
 `ui-copy.test.ts`, which is the table's own rules (sentence case, pictographs, menu rows) and neither hole.
@@ -4413,7 +4413,8 @@ The walk is three files — `ui-copy-readers.ts` holds `copy()`, `ui-copy-surfac
 walk and the header stating the four unmounted surfaces, `ui-copy-panels.test.ts` holds the imperative panels
 and the picker. The plan's path (`editor-shell/ui-copy.test.ts`) does not exist; the rows' OWNER field is
 stale in the same direction. Neither row's defect is affected — `vg-417` is still `copy()`'s argument list and
-`vg-418` is still the four unmounted surfaces.
+`vg-418` is still the four unmounted surfaces. **The landed commit touches four files**, and the list above is
+the corrected one: `ui-copy-panels.test.ts` needed no change, and `ui-copy.ts` and `ui-copy.test.ts` did.
 
 **Interfaces:**
 - Produces: `vg-417` and `vg-418` closed
