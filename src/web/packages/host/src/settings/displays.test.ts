@@ -10,6 +10,7 @@ import {
   displayIdFrom,
   hashToken,
   normalizeLabel,
+  normalizeMonitor,
 } from "./displays.js";
 
 const FILE = "display-clients.json";
@@ -289,6 +290,15 @@ describe("createDisplayStore", () => {
     expect(await store.authenticate("")).toBeUndefined();
     // A credentialless display has no token to rotate.
     expect(await store.rotate(local.id, "new")).toBeUndefined();
+
+    // R27: a serial that is blank is absence, not a value — a hint carrying ""
+    // matches nothing, so the display would read as detached for ever (vg-616).
+    expect(
+      normalizeMonitor({ deviceName: "\\\\.\\DISPLAY2", serial: "   " }),
+    ).toStrictEqual({ deviceName: "\\\\.\\DISPLAY2" });
+    expect(
+      normalizeMonitor({ deviceName: "\\\\.\\DISPLAY2", serial: " 4790 " }),
+    ).toStrictEqual({ deviceName: "\\\\.\\DISPLAY2", serial: "4790" });
   });
 
   it("refuses to mint a local display for a reserved id", async () => {

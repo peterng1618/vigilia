@@ -7,7 +7,7 @@
  * rather than stored, because a resolution change is not an identity change.
  */
 
-import type { MonitorHint } from "./displays.js";
+import { type MonitorHint, reportedSerial } from "./displays.js";
 
 /** A monitor as the settings surface needs it. */
 export interface Monitor {
@@ -35,16 +35,6 @@ interface ProbeDisplay {
   readonly positionY?: number;
   readonly currentResX?: number | null;
   readonly currentResY?: number | null;
-}
-
-/**
- * A serial that is blank is no serial: `MonitorHint.serial` is optional, and a
- * hint carrying `""` matches nothing, so the display would read as detached for
- * ever — `vg-616`'s class, a value where absence was meant.
- */
-function reportedSerial(serial: string | undefined): string | undefined {
-  const trimmed = serial?.trim();
-  return trimmed === undefined || trimmed.length === 0 ? undefined : trimmed;
 }
 
 /**
@@ -88,7 +78,9 @@ function monitorFrom(entry: ProbeDisplay): Monitor | undefined {
  *
  * A probe that fails throws rather than answering `[]`: "nothing is attached"
  * and "the host could not find out" are different facts, and the route turns
- * the first into an empty list and the second into a 500.
+ * the first into an empty list and the second into a 500. An answer with no list
+ * in it is the second fact, not the first — `[]` is the empty answer and only
+ * `[]` is.
  */
 export async function listMonitors(): Promise<readonly Monitor[]> {
   // Loaded lazily, as this package's other `systeminformation` readers do: a
@@ -99,9 +91,13 @@ export async function listMonitors(): Promise<readonly Monitor[]> {
   };
   const { displays } = await si.graphics();
 
+  if (!Array.isArray(displays)) {
+    throw new Error("The graphics probe answered no display list.");
+  }
+
   const monitors: Monitor[] = [];
 
-  for (const entry of displays ?? []) {
+  for (const entry of displays) {
     const monitor = monitorFrom(entry);
     if (monitor !== undefined) monitors.push(monitor);
   }
@@ -141,10 +137,11 @@ export function isAttached(
 }
 
 /**
- * The URL to open on that monitor, and the command line that puts it there.
+ * The URL to open on that monitor, and where on the desktop its window goes.
  *
- * The command is advice for a shortcut, not something this host runs: spawning
- * is the launcher's (Task 1.8).
+ * The browser, its flags and the per-display profile are the launcher's (Task
+ * 1.8), which composes them with this URL and geometry rather than being handed
+ * a command line it would have to parse back (R33).
  *
  * Plain `http` on loopback is deliberate, not an oversight about TLS. A loopback
  * origin is a secure context by the platform's own rule, so this display keeps
@@ -156,19 +153,18 @@ export function launchFor(
   monitor: Monitor,
   port: number,
   displayId: string,
-): { readonly url: string; readonly command: string } {
+): {
+  readonly url: string;
+  readonly position: readonly [number, number];
+  readonly size: readonly [number, number];
+} {
   // Loopback rather than the LAN address: this display is on this PC, and
   // `127.0.0.1` is the one address a router's lease cannot move.
   const url = `http://127.0.0.1:${port}/?display=${displayId}`;
-  const command = [
-    // The executable is whichever browser the launcher resolves (Task 1.8);
-    // naming a path here would be a second, guessed answer to that question.
-    "<browser>",
-    url,
-    `--window-position=${monitor.positionX},${monitor.positionY}`,
-    `--window-size=${monitor.currentResX},${monitor.currentResY}`,
-    "--start-fullscreen",
-  ].join(" ");
 
-  return { url, command };
+  return {
+    url,
+    position: [monitor.positionX, monitor.positionY],
+    size: [monitor.currentResX, monitor.currentResY],
+  };
 }

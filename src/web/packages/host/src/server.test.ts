@@ -2107,6 +2107,30 @@ describe("A local monitor is specified rather than paired", () => {
     }
   });
 
+  it("names the methods the path it answered actually supports", async () => {
+    // A caller told GET is supported on the collection path, or PATCH on the
+    // monitors path, has been told nothing true.
+    const collection = await request(hosted.server, "GET", "/api/displays");
+    expect(collection.status).toBe(405);
+    expect(collection.text()).toBe("This path supports POST.");
+
+    const monitors = await request(
+      hosted.server,
+      "POST",
+      "/api/displays/monitors",
+    );
+    expect(monitors.status).toBe(405);
+    expect(monitors.text()).toBe("This path supports GET.");
+
+    const record = await request(
+      hosted.server,
+      "POST",
+      "/api/displays/left-screen",
+    );
+    expect(record.status).toBe(405);
+    expect(record.text()).toBe("This path supports PATCH and DELETE.");
+  });
+
   it("answers the monitor list even when a display is named Monitors", async () => {
     // `monitors` is not reserved, so a display may legitimately mint it
     // (`mintedDisplayId`); the route is a path of its own rather than an id.

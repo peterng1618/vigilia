@@ -117,13 +117,16 @@ describe("the host's own monitors", () => {
     expect(isAttached({ deviceName: "\\\\.\\DISPLAY9" }, ATTACHED)).toBe(false);
   });
 
-  it("builds a URL on loopback and a command that targets the monitor", () => {
-    const { url, command } = launchFor(ATTACHED[1]!, 5227, "left-screen");
+  it("builds a URL on loopback and the geometry that targets the monitor", () => {
+    const { url, position, size } = launchFor(
+      ATTACHED[1]!,
+      5227,
+      "left-screen",
+    );
 
     expect(url).toBe("http://127.0.0.1:5227/?display=left-screen");
-    expect(command).toContain("--window-position=2560,0");
-    expect(command).toContain("--window-size=1920,1080");
-    expect(command).toContain(url);
+    expect(position).toEqual([2560, 0]);
+    expect(size).toEqual([1920, 1080]);
   });
 
   describe("reading what is attached", () => {
@@ -171,6 +174,16 @@ describe("the host's own monitors", () => {
       mockGraphics.mockRejectedValue(new Error("wmic is not on PATH"));
 
       await expect(listMonitors()).rejects.toThrow("wmic is not on PATH");
+    });
+
+    // A resolved answer with no list is the same fact as a rejection: the host
+    // could not find out, which `[]` must never be made to say.
+    it("throws when the probe answered without a display list", async () => {
+      mockGraphics.mockResolvedValue({});
+      await expect(listMonitors()).rejects.toThrow(/display list/);
+
+      mockGraphics.mockResolvedValue({ displays: null });
+      await expect(listMonitors()).rejects.toThrow(/display list/);
     });
   });
 });

@@ -1155,11 +1155,16 @@ export function createHostServer(options: HostServerOptions): HostServer {
         return;
       }
 
-      sendText(
-        response,
-        405,
-        "Only GET, POST, PATCH and DELETE are supported.",
-      );
+      // Named by the path it answered rather than by the block: a caller told
+      // that GET is supported on a path without it is told nothing true.
+      const supported =
+        url.pathname === "/api/displays/monitors"
+          ? "GET"
+          : url.pathname === "/api/displays"
+            ? "POST"
+            : "PATCH and DELETE";
+
+      sendText(response, 405, `This path supports ${supported}.`);
       return;
     }
 

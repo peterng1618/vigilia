@@ -171,6 +171,17 @@ export function mintedDisplayId(label: unknown): string {
 }
 
 /**
+ * A serial that is blank is no serial: `MonitorHint.serial` is optional, and a
+ * hint carrying `""` matches nothing, so the display would read as detached for
+ * ever — `vg-616`'s class, a value where absence was meant. One owner, because
+ * the reader below and the probe's own `hintFor` must agree about it.
+ */
+export function reportedSerial(serial: string | undefined): string | undefined {
+  const trimmed = serial?.trim();
+  return trimmed === undefined || trimmed.length === 0 ? undefined : trimmed;
+}
+
+/**
  * A monitor hint, or nothing when the value carries no usable device name.
  *
  * Exported for the route that adds a local display: a hint the file's own reader
@@ -190,11 +201,14 @@ export function normalizeMonitor(input: unknown): MonitorHint | undefined {
     return undefined;
   }
 
-  const serial = raw["serial"];
+  const rawSerial = raw["serial"];
+  const serial = reportedSerial(
+    typeof rawSerial === "string" ? rawSerial : undefined,
+  );
 
   return {
     deviceName,
-    ...(typeof serial === "string" ? { serial } : {}),
+    ...(serial === undefined ? {} : { serial }),
   };
 }
 
