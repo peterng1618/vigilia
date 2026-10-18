@@ -89,14 +89,25 @@ export async function createSecureOrigin(
   };
 }
 
-/** A serial number that is positive, which RFC 5280 requires and a random
- *  16-byte integer is not: with the top bit set, the DER INTEGER reads as
- *  negative and Node reports it with a leading `-`. */
-function serialNumber(): string {
-  const leading = randomBytes(1)[0] ?? 0;
+/**
+ * Sixteen random bytes whose first is in `0x01..0x7f`.
+ *
+ * Two constraints, and both are about the DER rather than about the value. The
+ * top bit of the first byte has to be clear, or the INTEGER reads as negative
+ * and Node reports the serial with a leading `-`. The first byte also has to be
+ * non-zero: a leading `00` is a non-minimal encoding unless the byte after it
+ * has its own top bit set, and the expression that only cleared the top bit
+ * emitted one in 169 of 20,000 serials — half of those non-minimal, and none of
+ * it visible through `X509Certificate.serialNumber`, which strips the byte.
+ *
+ * Exported for its own case: the fault is a one-in-a-hundred draw, so the check
+ * has to be thousands of draws rather than one certificate.
+ */
+export function serialNumber(): string {
+  const leading = (randomBytes(1)[0] ?? 0) & 0x7f || 1;
+
   return (
-    (leading & 0x7f).toString(16).padStart(2, "0") +
-    randomBytes(15).toString("hex")
+    leading.toString(16).padStart(2, "0") + randomBytes(15).toString("hex")
   );
 }
 

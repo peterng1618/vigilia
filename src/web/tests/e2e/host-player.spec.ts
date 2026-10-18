@@ -2618,11 +2618,14 @@ function setGroupCaching(page: Page, caching: boolean): Promise<boolean> {
  * a dimmer (`vg-568`, `vg-576`).
  *
  * **The origin is the point, and every case here names the one it ran
- * against.** The host serves plain http on a LAN port (`vg-580`), and both APIs
- * the controls want are gated on a secure context — but `localhost` IS one, so
+ * against.** A display at `http://<lan-ip>:<port>` is not a secure context,
+ * and both APIs the controls want are gated on one — but `localhost` IS one, so
  * a run at `http://127.0.0.1:4175` sees the wake lock present and proves
- * nothing about the phone the control is for. The last case below measures the
- * origin a phone actually uses, in this same browser.
+ * nothing about the phone the control is for. The host does serve https beside
+ * http on that same port now, from a root it issues itself (`vg-580`,
+ * `docs/decisions/0070`); the address the console prints is still the plain
+ * one, so the case below still measures what a phone gets from it. The last
+ * case measures the origin a phone actually uses, in this same browser.
  */
 test.describe("the display's own controls", () => {
   test("reveals three controls on a tap, and never moves the composition", async ({
@@ -3100,11 +3103,12 @@ const PLAYER_CONTENT_TYPES: Readonly<Record<string, string>> = {
 };
 
 /**
- * The built player, over plain http on the LAN address — the origin a phone
- * actually opens, and the one the host's own `http.createServer` gives it
- * (`vg-580`). Served from the spec rather than by a second host so that the
- * only thing under test is the origin: the display cannot load a theme from
- * here, and does not need to for a reading that is a property of the origin.
+ * The built player, over plain http on the LAN address — the origin a display
+ * still reaches by opening the address the host prints, which the host answers
+ * on the same port as its secure one (`vg-580`, `docs/decisions/0070`). Served
+ * from the spec rather than by a second host so that the only thing under test
+ * is the origin: the display cannot load a theme from here, and does not need
+ * to for a reading that is a property of the origin.
  */
 async function servePlayerBundle(
   address: string,

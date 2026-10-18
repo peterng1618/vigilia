@@ -312,6 +312,13 @@ export async function run(argv: readonly string[]): Promise<number> {
   // step. The path is named as well as the URL because a browser on this PC
   // would meet the warning it is being asked to remove, while an installer can
   // read the file directly.
+  //
+  // **Two addresses, because they are two different steps and one of them is a
+  // trap.** The root is fetched over plain http: the route answers before every
+  // gate and on both protocols on this same port, so the owner never has to
+  // bypass the certificate warning in order to install the certificate that
+  // removes it. `https://` is the origin to reload afterwards, and both lines
+  // say which is which.
   console.log(
     style(
       "2",
@@ -319,7 +326,10 @@ export async function run(argv: readonly string[]): Promise<number> {
         `\n  This host serves https on the same port, and a display holds the` +
         `\n  screen awake and installs as an app only there. Install this root` +
         `\n  once per device, this PC included:` +
-        `\n    https://${lan ?? displayHost}:${bound}${CA_CERTIFICATE_PATH}` +
+        `\n    Fetch the root over http, so no warning is in the way:` +
+        `\n      http://${lan ?? displayHost}:${bound}${CA_CERTIFICATE_PATH}` +
+        `\n    Then open the display at:` +
+        `\n      https://${lan ?? displayHost}:${bound}` +
         "\n  A device without it shows a certificate warning, not a broken display.",
     ),
   );

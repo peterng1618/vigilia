@@ -245,6 +245,18 @@ editor's host switch stayed off — `vg-173`'s shape arrived at from the other e
 So the port closes the sockets it accepted, and learns which are mid-response
 from the inner servers' `request` events rather than from a private field.
 
+**And identity across that handover is the connection's four-tuple, not the
+object.** An https server reports its `request` event's socket as a
+`tls.TLSSocket` wrapping the one the port accepted, so a set of accepted sockets
+never matches one of those: the mid-response guard silently does nothing over
+TLS and the port prunes a response in flight — which is the LAN toggle resetting
+a display mid-fetch. Found by review, after the first cut of this note had
+claimed the guard worked. Measured over a real TLS socket: the two objects
+differ and their `remoteAddress`, `remotePort`, `localAddress` and `localPort`
+are equal, and over plain http they are the same object. `TLSSocket#_parent`
+would answer it too and is deliberately not used — a private field is not a
+contract, and this is a transport path.
+
 Keeping plain http is **a cost accepted under a scoping ruling, not a feature.**
 On a LAN it is an origin with no wake lock and no service worker, which is the
 state `vg-580` exists to remove, and the alternative — serving https alone —

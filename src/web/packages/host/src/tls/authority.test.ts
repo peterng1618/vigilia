@@ -3,7 +3,7 @@ import { mkdtemp, readdir, rm, stat, writeFile } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { createSecureOrigin } from "./authority.js";
+import { createSecureOrigin, serialNumber } from "./authority.js";
 
 /**
  * The chain is checked by **Node's own X.509 verifier**, never by the library
@@ -27,6 +27,22 @@ afterEach(async () => {
 const NAMES = ["localhost", "127.0.0.1", "192.168.2.56"] as const;
 
 describe("the host's own certificate authority", () => {
+  it("writes a serial that is minimal DER, over thousands of draws", () => {
+    // Twenty thousand, because the fault this replaced was a draw of about one
+    // in a hundred and no single certificate would have shown it. A first byte
+    // of `00` is a non-minimal INTEGER, and one of `80` or above reads as
+    // negative; `X509Certificate.serialNumber` strips the first byte, so a
+    // certificate cannot be asked about either.
+    const bad = Array.from({ length: 20_000 }, serialNumber).filter(
+      (serial) => {
+        const first = Number.parseInt(serial.slice(0, 2), 16);
+        return serial.length !== 32 || first === 0 || first >= 0x80;
+      },
+    );
+
+    expect(bad).toEqual([]);
+  });
+
   it("signs a leaf that Node accepts as coming from the root", async () => {
     const origin = await createSecureOrigin(directory, NAMES);
     const authority = new X509Certificate(origin.certificate);

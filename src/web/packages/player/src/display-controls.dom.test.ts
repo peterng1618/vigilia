@@ -298,9 +298,11 @@ describe("the keep-awake control", () => {
   });
 
   it("says why not where the origin has no wake lock, and names the origin", () => {
-    // The shape a phone actually gets: the host serves plain http on a LAN
-    // port, so `navigator.wakeLock` is absent. jsdom has no such API either,
-    // which is why this is the default state in this file.
+    // The shape a phone gets when it opens the address the console prints:
+    // plain http on a LAN port, where `navigator.wakeLock` is absent. The host
+    // serves https beside it on that port (`vg-580`, `docs/decisions/0070`),
+    // and this is the other half of what the copy has to say. jsdom has no such
+    // API either, which is why this is the default state in this file.
     controls = mountDisplayControls();
     const button = part<HTMLButtonElement>(AWAKE);
     expect(button.dataset["vigiliaUnavailable"]).toBeDefined();
