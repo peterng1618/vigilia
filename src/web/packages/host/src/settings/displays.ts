@@ -26,6 +26,16 @@ export const DEFAULT_DISPLAY = "default";
 export type DisplayKind = "paired" | "local";
 
 /**
+ * A local display already holds the monitor this record would claim.
+ *
+ * A type rather than a message, because the route has to *answer* it: a second
+ * record for one screen is not a body the store would not read (400) but the
+ * request conflicting with what this host holds (409), and the two are told
+ * apart here rather than by matching on words.
+ */
+export class MonitorAlreadyHeldError extends Error {}
+
+/**
  * What identifies the physical screen behind a local display.
  *
  * A monitor has no name a person would recognise, so both halves are hints: the
@@ -210,6 +220,22 @@ export function normalizeMonitor(input: unknown): MonitorHint | undefined {
     deviceName,
     ...(serial === undefined ? {} : { serial }),
   };
+}
+
+/**
+ * Whether two stored hints name the same screen, by the rule `isAttached`
+ * applies to a live monitor: the serial is the identity when both ends have
+ * one — a device name moves when cables do — and the device name is all either
+ * end has otherwise. A blank serial is no serial, or two hints the reader would
+ * have normalised apart would compare equal.
+ */
+function sameHint(first: MonitorHint, second: MonitorHint): boolean {
+  const serial = reportedSerial(first.serial);
+  const other = reportedSerial(second.serial);
+
+  return serial !== undefined && other !== undefined
+    ? serial === other
+    : first.deviceName === second.deviceName;
 }
 
 /**
@@ -468,8 +494,34 @@ export function createDisplayStore(
       );
     },
 
+    /**
+     * A local display for a monitor, refused when one already holds it.
+     *
+     * The hint *is* a local display's identity: two records holding one match
+     * the same attached monitor, so the second has no window the first does not
+     * already have, and the launcher would open two fullscreen windows on one
+     * screen — one hidden behind the other and both polling. Refusing the write
+     * is the repair; keying the launcher by hint instead would leave the second
+     * record in the list for ever with no window and no explanation.
+     */
     createLocal(label, monitor): Promise<DisplayRecord> {
-      return writeExclusively(() => add(label, { kind: "local", monitor }));
+      return writeExclusively(async () => {
+        const displays = await readOrThrow();
+        const held = displays.some(
+          (record) =>
+            record.kind === "local" &&
+            record.monitor !== undefined &&
+            sameHint(record.monitor, monitor),
+        );
+
+        if (held) {
+          throw new MonitorAlreadyHeldError(
+            "A local display already holds that monitor.",
+          );
+        }
+
+        return add(label, { kind: "local", monitor });
+      });
     },
 
     async find(id): Promise<DisplayRecord | undefined> {

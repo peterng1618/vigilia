@@ -15,6 +15,11 @@ import { LhmSensorProvider } from "./providers/lhm.js";
 import { launchLhm, registerLhmTask } from "./providers/lhm-launcher.js";
 import { LibrarySensorProvider } from "./providers/library.js";
 import { ProviderRegistry } from "./providers/registry.js";
+import {
+  createDisplayLauncher,
+  type Launcher,
+  registerHostAutostart,
+} from "./serve/display-launcher.js";
 import { CA_CERTIFICATE_PATH, createHostServer } from "./server.js";
 import { createPairingCodeStore } from "./session/pairing-code.js";
 import { createActiveThemeStore } from "./settings/active-theme.js";
@@ -56,6 +61,25 @@ function productVersion(): string {
 /** The staged LibreHardwareMonitor, for setup commands that need a default. */
 function defaultLhmExecutable(): string {
   return path.join(here, "..", "vendor", "lhm", "LibreHardwareMonitor.exe");
+}
+
+/**
+ * The command that starts this host again, for the sign-in task: this
+ * interpreter, the shim it was started through, and the flags this run was
+ * given, so the host that comes back is the same host with the same app folder.
+ *
+ * `-n` because a host that starts at sign-in is bringing back the displays; a
+ * dashboard tab in the default browser at every login is not part of that.
+ */
+function hostCommand(argv: readonly string[]): string {
+  return [
+    process.execPath,
+    path.join(here, "..", "bin", "vigilia.js"),
+    ...argv,
+    "-n",
+  ]
+    .map((part) => `"${part}"`)
+    .join(" ");
 }
 
 export async function run(argv: readonly string[]): Promise<number> {
@@ -195,6 +219,11 @@ export async function run(argv: readonly string[]): Promise<number> {
   // binding exists reads `undefined`, which the route already answers.
   let lanBinding: HostBinding | undefined;
 
+  // The launcher needs the port the socket actually took, and the server needs
+  // the launcher, so this is a getter over the variable below — the same reason
+  // `hosting` is one.
+  let launcher: Launcher | undefined;
+
   const hosted = createHostServer({
     registry,
     // The leaf, signed by the root a display installs once. In memory only:
@@ -205,6 +234,14 @@ export async function run(argv: readonly string[]): Promise<number> {
     caCertificate: origin.certificate,
     // Who this host is, so a display that has lost its address can ask.
     host: hostRecord,
+    // The host's own windows on its local monitors (§ "The host's own monitors").
+    get launcher() {
+      return launcher;
+    },
+    // One entry at sign-in covers every local monitor, including one added
+    // later. Registering needs an elevated shell, so this only ever asks; a
+    // refusal is answered with the registrar's own message.
+    registerAutostart: () => registerHostAutostart(hostCommand(argv)),
     // Where a phone should point, whether one can reach this host at all, and
     // how to move it there.
     get hosting() {
@@ -316,6 +353,13 @@ export async function run(argv: readonly string[]): Promise<number> {
     await held.lock.release();
     return 1;
   }
+
+  // After the server answers, so a window that opens on a local monitor has
+  // something to load. Every attached local display gets its window back, on the
+  // monitor it is on; one that is already up is seen as running and left alone,
+  // which is the whole of the restart behaviour.
+  launcher = createDisplayLauncher({ displays, port: bound });
+  await launcher.reconcile();
 
   const displayHost =
     initialHost === "0.0.0.0" || initialHost === "::"
@@ -436,6 +480,9 @@ export async function run(argv: readonly string[]): Promise<number> {
       console.log("\nStopping.");
       // Stop only the LHM this run started; one the owner already ran is theirs.
       lhm.stop();
+      // The windows stay up: a browser the host started is still the display's
+      // own window, and the next run finds it running rather than replacing it.
+      launcher?.stop();
       void hosted.close().then(resolve, resolve);
     };
 

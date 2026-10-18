@@ -301,6 +301,48 @@ describe("createDisplayStore", () => {
     ).toStrictEqual({ deviceName: "\\\\.\\DISPLAY2", serial: "4790" });
   });
 
+  // One monitor holds one local display (ruling 32): the hint *is* a local
+  // display's identity, so a second record for one screen has no window the
+  // first does not already have.
+  it("refuses a second local display for a monitor one already holds", async () => {
+    await store.createLocal("Left screen", {
+      deviceName: "\\\\.\\DISPLAY2",
+      serial: "4790810010513",
+    });
+
+    await expect(
+      store.createLocal("Left screen again", {
+        deviceName: "\\\\.\\DISPLAY2",
+        serial: "4790810010513",
+      }),
+    ).rejects.toThrow(/already holds/);
+    expect(await store.list()).toHaveLength(1);
+
+    // A blank serial is no serial, so a hint carrying one is the same hint — and
+    // a device name that moved is the same screen when both ends have a serial.
+    await expect(
+      store.createLocal("Left screen again", {
+        deviceName: "\\\\.\\DISPLAY9",
+        serial: " 4790810010513 ",
+      }),
+    ).rejects.toThrow(/already holds/);
+    await expect(
+      store.createLocal("Left screen again", {
+        deviceName: "\\\\.\\DISPLAY2",
+      }),
+    ).rejects.toThrow(/already holds/);
+    expect(await store.list()).toHaveLength(1);
+
+    // A different monitor is a different display, and a paired record carries no
+    // hint at all, so neither is refused.
+    const other = await store.createLocal("Right screen", {
+      deviceName: "\\\\.\\DISPLAY3",
+    });
+    expect(other.kind).toBe("local");
+    expect(await store.create("Kitchen tablet", "tok")).toBeDefined();
+    expect(await store.list()).toHaveLength(3);
+  });
+
   it("refuses to mint a local display for a reserved id", async () => {
     await expect(
       store.createLocal("this pc", { deviceName: "\\\\.\\DISPLAY2" }),

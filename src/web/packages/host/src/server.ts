@@ -14,6 +14,7 @@ import type { HostBinding } from "./cli/hosting.js";
 import type { ListenableServer } from "./cli/net.js";
 import type { DeviceAssignment } from "./providers/lhm-mapping.js";
 import { ProviderRegistry, unionOfKeys } from "./providers/registry.js";
+import type { Launcher } from "./serve/display-launcher.js";
 import {
   createPublishedStore,
   type PublishedStore,
@@ -45,6 +46,7 @@ import type {
 } from "./settings/displays.js";
 import {
   LOCAL_DISPLAY_ID,
+  MonitorAlreadyHeldError,
   mintedDisplayId,
   normalizeMonitor,
   normalizePatch,
@@ -135,6 +137,20 @@ export interface HostServerOptions {
    *  probe; supplied so a case can hold a fixture rather than this machine's
    *  screens, and so a host that enumerates its own way can say so. */
   readonly monitors?: () => Promise<readonly Monitor[]>;
+  /** The host's own windows on its local monitors, so a display that is added
+   *  gets one and one that is removed loses it. Omitted when this host opens no
+   *  windows; the records are then managed without any. **Included as
+   *  `undefined` explicitly** because the launcher needs the port the socket
+   *  actually took, so `main` hands over a getter read per request — the same
+   *  reason `hosting` is one. */
+  readonly launcher?: Launcher | undefined;
+  /** Registers this host to start at sign-in, so every local monitor comes back
+   *  after a reboot. Omitted when this host cannot register itself: the route
+   *  then says so rather than reporting a registration that did not happen. */
+  readonly registerAutostart?: () => Promise<{
+    readonly ok: boolean;
+    readonly message: string;
+  }>;
   /** Where a phone should point, whether it can reach this host at all, and how
    *  to move it there. Supplied rather than introspected: `server.address()` is
    *  null for a server that is not listening, which is every test, and the
@@ -1010,9 +1026,9 @@ export function createHostServer(options: HostServerOptions): HostServer {
         return;
       }
 
-      // Before the id below, because `monitors` is not a reserved id: a display
-      // named "Monitors" legitimately mints it (`mintedDisplayId`), so this route
-      // has to be found before anything reads the segment as one.
+      // Before the id below, because neither is a reserved id: a display named
+      // "Monitors" or "Autostart" legitimately mints one (`mintedDisplayId`), so
+      // these routes have to be found before anything reads the segment as an id.
       if (
         url.pathname === "/api/displays/monitors" &&
         request.method === "GET"
@@ -1021,9 +1037,32 @@ export function createHostServer(options: HostServerOptions): HostServer {
         return;
       }
 
+      // The host, not a monitor: one entry at sign-in covers every local display
+      // including one added later. The answer is the registrar's own message,
+      // because that is what the surface has to show.
+      if (
+        url.pathname === "/api/displays/autostart" &&
+        request.method === "POST"
+      ) {
+        const register = options.registerAutostart;
+
+        if (register === undefined) {
+          sendText(
+            response,
+            404,
+            "This host cannot register itself to start at sign-in.",
+          );
+          return;
+        }
+
+        // A registration the OS refused is not a bad request: the outcome
+        // travels with its own message either way.
+        sendJson(response, 200, await register());
+        return;
+      }
+
       // A local monitor: the host's own screen, so it is specified rather than
-      // paired and has no credential to answer with. Nothing is spawned here —
-      // the launcher owns the window (Task 1.8).
+      // paired and has no credential to answer with.
       if (url.pathname === "/api/displays" && request.method === "POST") {
         let body: { readonly label: string; readonly monitor: unknown };
 
@@ -1067,13 +1106,21 @@ export function createHostServer(options: HostServerOptions): HostServer {
         try {
           display = await displays.createLocal(body.label, monitor);
         } catch (error) {
+          // A monitor a local display already holds is the request conflicting
+          // with what this host holds, not a body the store would not read —
+          // and it is a conflict rather than a success, because two records for
+          // one screen would put two windows on it.
           sendText(
             response,
-            400,
+            error instanceof MonitorAlreadyHeldError ? 409 : 400,
             error instanceof Error ? error.message : String(error),
           );
           return;
         }
+
+        // The window is the host's own, so it opens one now: a display the owner
+        // just added is the one case `lastSeenAt` cannot speak for.
+        await options.launcher?.reconcile();
 
         sendJson(response, 201, { display: peerOf(display) });
         return;
@@ -1151,6 +1198,10 @@ export function createHostServer(options: HostServerOptions): HostServer {
           return;
         }
 
+        // The window goes with the record, and only a window this host opened
+        // is the host's to close.
+        options.launcher?.close(id);
+
         sendJson(response, 200, { ok: true });
         return;
       }
@@ -1160,12 +1211,23 @@ export function createHostServer(options: HostServerOptions): HostServer {
       const supported =
         url.pathname === "/api/displays/monitors"
           ? "GET"
-          : url.pathname === "/api/displays"
+          : url.pathname === "/api/displays/autostart"
             ? "POST"
-            : "PATCH and DELETE";
+            : url.pathname === "/api/displays"
+              ? "POST"
+              : id === undefined
+                ? undefined
+                : "PATCH and DELETE";
 
-      sendText(response, 405, `This path supports ${supported}.`);
-      return;
+      if (supported !== undefined) {
+        sendText(response, 405, `This path supports ${supported}.`);
+        return;
+      }
+
+      // A path that is no route of its own — `/api/displays/` or
+      // `/api/displays/a/b` — has no method set to state: both routes that need
+      // an id need one this path does not carry. It falls through to the answer
+      // every unknown path gets rather than asserting methods for it.
     }
 
     if (url.pathname === SAMPLE_STREAM_PATH) {

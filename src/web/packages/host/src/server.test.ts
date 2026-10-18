@@ -1,3 +1,8 @@
+import {
+  type ChildProcess,
+  type SpawnOptions,
+  spawn,
+} from "node:child_process";
 import { createHash } from "node:crypto";
 import fs from "node:fs/promises";
 import http from "node:http";
@@ -18,6 +23,7 @@ import { createHostBinding, type HostBinding } from "./cli/hosting.js";
 import { type ListenableServer, listenWithFallback } from "./cli/net.js";
 import type { DeviceAssignment } from "./providers/lhm-mapping.js";
 import { ProviderRegistry } from "./providers/registry.js";
+import { createDisplayLauncher } from "./serve/display-launcher.js";
 import {
   CA_CERTIFICATE_PATH,
   createHostServer,
@@ -1898,6 +1904,34 @@ describe("A local monitor is specified rather than paired", () => {
     });
   }
 
+  /** A launcher that opens nothing: what these cases need is whether a window
+   *  was opened and closed, and the launcher's own suite covers its command
+   *  line. */
+  function windowsOver(
+    opened: { readonly kill: ReturnType<typeof vi.fn> }[],
+  ): ReturnType<typeof createDisplayLauncher> {
+    return createDisplayLauncher({
+      displays,
+      port: 5227,
+      browser: "/fake/chrome.exe",
+      spawn: ((
+        _file: string,
+        _args: readonly string[],
+        _options: SpawnOptions,
+      ) => {
+        const kill = vi.fn();
+        opened.push({ kill });
+
+        return {
+          killed: false,
+          kill,
+          once: (): void => undefined,
+        } as unknown as ChildProcess;
+      }) as unknown as typeof spawn,
+      monitors: () => Promise.resolve(ATTACHED),
+    });
+  }
+
   beforeEach(async () => {
     dir = await fs.mkdtemp(path.join(os.tmpdir(), "vigilia-local-monitor-"));
     displays = createDisplayStore(dir);
@@ -2129,6 +2163,143 @@ describe("A local monitor is specified rather than paired", () => {
     );
     expect(record.status).toBe(405);
     expect(record.text()).toBe("This path supports PATCH and DELETE.");
+
+    const autostart = await request(
+      hosted.server,
+      "GET",
+      "/api/displays/autostart",
+    );
+    expect(autostart.status).toBe(405);
+    expect(autostart.text()).toBe("This path supports POST.");
+  });
+
+  it("refuses a second local display for a monitor one already holds", async () => {
+    const first = await request(
+      hosted.server,
+      "POST",
+      "/api/displays",
+      json({
+        label: "Left screen",
+        monitor: { deviceName: "\\\\.\\DISPLAY2" },
+      }),
+    );
+    expect(first.status).toBe(201);
+
+    // A conflict with what this host holds, not a body the store would not
+    // read: two records for one screen would put two windows on it.
+    const second = await request(
+      hosted.server,
+      "POST",
+      "/api/displays",
+      json({
+        label: "Left screen again",
+        monitor: { deviceName: "\\\\.\\DISPLAY2" },
+      }),
+    );
+    expect(second.status).toBe(409);
+    expect(second.text()).toMatch(/already holds/);
+    expect(await listed()).toHaveLength(1);
+  });
+
+  it("launches a local display when it is added", async () => {
+    const opened: { readonly kill: ReturnType<typeof vi.fn> }[] = [];
+    const hosting = host({ launcher: windowsOver(opened) });
+
+    try {
+      const answer = await request(
+        hosting.server,
+        "POST",
+        "/api/displays",
+        json({
+          label: "Left screen",
+          monitor: { deviceName: "\\\\.\\DISPLAY2" },
+        }),
+      );
+      expect(answer.status).toBe(201);
+
+      // The record the POST wrote has never been seen, so the sighting is not
+      // evidence of a window: the host opens one now, on that monitor.
+      expect(opened).toHaveLength(1);
+    } finally {
+      await hosting.close();
+    }
+  });
+
+  it("closes the window when the display is removed", async () => {
+    const opened: { readonly kill: ReturnType<typeof vi.fn> }[] = [];
+    const hosting = host({ launcher: windowsOver(opened) });
+
+    try {
+      await request(
+        hosting.server,
+        "POST",
+        "/api/displays",
+        json({
+          label: "Left screen",
+          monitor: { deviceName: "\\\\.\\DISPLAY2" },
+        }),
+      );
+
+      const answer = await request(
+        hosting.server,
+        "DELETE",
+        "/api/displays/left-screen",
+      );
+      expect(answer.status).toBe(200);
+      expect(opened[0]?.kill).toHaveBeenCalled();
+      expect(await listed(hosting)).toEqual([]);
+    } finally {
+      await hosting.close();
+    }
+  });
+
+  it("registers the host at sign-in, once", async () => {
+    const message =
+      "Registered. Windows starts Vigilia at sign-in, so every local monitor " +
+      "comes back with it.";
+    const register = vi.fn(async () => ({ ok: true, message }));
+    const hosting = host({ registerAutostart: register });
+
+    try {
+      const answer = await request(
+        hosting.server,
+        "POST",
+        "/api/displays/autostart",
+      );
+      expect(answer.status).toBe(200);
+      // The registrar's own message is the answer: it is what the surface shows.
+      expect(answer.json()).toEqual({ ok: true, message });
+      expect(register).toHaveBeenCalledTimes(1);
+    } finally {
+      await hosting.close();
+    }
+  });
+
+  it("says so when this host cannot register itself", async () => {
+    const answer = await request(
+      hosted.server,
+      "POST",
+      "/api/displays/autostart",
+    );
+
+    expect(answer.status).toBe(404);
+    expect(answer.text()).toMatch(/start at sign-in/);
+  });
+
+  it("answers a path that is no route the way it answers any unknown path", async () => {
+    // Neither path matches a route of its own nor the id path, so a method set
+    // would be a claim about a path that needs an id segment it does not carry:
+    // the answer is whatever this server answers any path it does not know.
+    for (const method of ["POST", "GET"]) {
+      const unknown = await request(hosted.server, method, "/no-such-path");
+      expect(unknown.status).toBeGreaterThanOrEqual(400);
+
+      for (const pathname of ["/api/displays/", "/api/displays/a/b"]) {
+        const answer = await request(hosted.server, method, pathname);
+        expect(answer.status).toBe(unknown.status);
+        expect(answer.text()).toBe(unknown.text());
+      }
+    }
   });
 
   it("answers the monitor list even when a display is named Monitors", async () => {
