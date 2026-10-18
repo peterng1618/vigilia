@@ -208,11 +208,11 @@ it("carries the document's name, and republishes it when the theme is renamed", 
 it("names a document that reports no name by its id, never by nothing", () => {
   // The field's contract says `documentName` is never `""` — a chip rendering
   // an empty name is the nameless claim §9 forbids, and `DocumentIdentity`
-  // hides only on `undefined`, so `""` would render one. The schema is why
-  // this is reachable: `metadata.name` is `maxLength: 200` with no `minLength`,
-  // so an imported or hand-edited envelope may store an empty name, while the
-  // `stableId` behind it requires 1–64 characters. `??` alone would pass the
-  // empty string straight through, which is the defect this pins.
+  // hides only on `undefined`, so `""` would render one. An envelope can still
+  // hold one: the schema refuses an empty `metadata.name` and the loader
+  // supplies the id (`vg-221`), but this reads whatever the document holds,
+  // while the `stableId` behind it requires 1–64 characters. `??` alone would
+  // pass the empty string straight through, which is the defect this pins.
   const { bridge } = bridgeFor(
     undefined,
     {},

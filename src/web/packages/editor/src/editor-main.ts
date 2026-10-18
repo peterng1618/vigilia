@@ -362,9 +362,11 @@ async function start(): Promise<void> {
       // the row naming a key the document no longer declares.
       bindings: () => extensions.envelope.bindings ?? {},
       // The theme's name is the document's identity; a theme the author has not
-      // named — including one whose stored name is empty, which the schema
-      // permits — is identified by its own id. The status line takes the same
-      // reading (`openedStatusText`), so the two name one document one way.
+      // named is identified by its own id. The schema refuses an empty name and
+      // the loader supplies one (`vg-221`), but this reads whatever the document
+      // holds, so an empty one is still read as unnamed. The status line takes
+      // the same reading (`openedStatusText`), so the two name one document one
+      // way.
       documentIdentity: () => ({
         name: extensions.envelope.metadata?.name,
         id: extensions.envelope.id,

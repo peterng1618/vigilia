@@ -458,8 +458,9 @@ describe("ThemeStore", () => {
 
     const read = await store.read("nameless");
     expect(read?.envelope.metadata?.name).toBe("nameless");
-    // The label is the document's own id, so the library line names it the way
-    // it already did before the migration existed — nothing new is invented.
+    // The label is the document's own id, and the library line takes the same
+    // repair: `entryFor`'s `??` does not fall back on `""`, so before this the
+    // line read empty rather than naming the theme.
     expect((await store.list()).map((entry) => entry.name)).toEqual([
       "nameless",
     ]);

@@ -330,6 +330,19 @@ describe("naming a document that carries none", () => {
     // loads: a second load cannot rename a theme the author already named.
     expect(again).toBe(named);
   });
+
+  it("names a document whose stored name is not a string at all", () => {
+    // A foreign `theme.json` can carry `null` here, and the loader is the last
+    // place a stored document is allowed to stop loading: reading the name as
+    // "present" rather than as a string threw out of it, and the store's
+    // listing catches to `[]`, so one such document emptied the library.
+    const nullName = {
+      ...baseEnvelope(),
+      metadata: { themeLanguage: "en", name: null },
+    } as unknown as FabricThemeEnvelope;
+
+    expect(namedEnvelope(nullName).metadata?.name).toBe("demo-theme");
+  });
 });
 
 describe("issue reporting", () => {

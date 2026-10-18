@@ -186,12 +186,16 @@ export function validateEnvelopeSemantics(
  *
  * Idempotent by construction: an envelope that already carries a name is
  * returned as it is, so a second load cannot rename a theme.
+ *
+ * The name is read as a string rather than as "present", because a foreign
+ * document can carry `null` there and the loader is the last place a stored
+ * document is allowed to stop loading — `null.length` would throw out of it.
  */
 export function namedEnvelope(
   envelope: FabricThemeEnvelope,
 ): FabricThemeEnvelope {
   const metadata = envelope.metadata ?? {};
-  if (metadata.name !== undefined && metadata.name.length > 0) {
+  if (typeof metadata.name === "string" && metadata.name.length > 0) {
     return envelope;
   }
   return { ...envelope, metadata: { ...metadata, name: envelope.id } };
