@@ -4471,7 +4471,13 @@ note for `vg-366`; and wherever the live indicator's contract is written.
 
 **Constraints:** **queued behind Phases 12 and 15–22.** **`host/src/server.ts` and
 `renderer-core/src/charts/` are on the reuse gate's watchlist**, so Tasks 23.2 and 23.4 land a decision
-note before their first write. **`vg-221` must not make a document that validates today unloadable**: the
+note before their first write. **[Corrected 2026-10-18: the pairing is wrong for Task 23.2 and right for
+23.4.** Task 23.2's files are `cli/hosting.ts` and `cli/net.ts`, neither on the watchlist, and `covers()`
+matches exact paths — so its writes went through clean and no note was owed; the review proved it by piping
+a `tool_input` naming `cli/hosting.ts` into `scripts/reuse-gate.mjs` and reading exit 0, with
+`providers/clock.ts` exiting 2 as the control. `server.ts` is still watchlisted, and nine existing notes
+already claim it, so a correction *to* it is free — Task 23.2's seat believed otherwise and left a stale
+comment standing until the review measured the gate.**]** **`vg-221` must not make a document that validates today unloadable**: the
 schema refuses an empty name and the loader names what it finds unnamed, in one commit. **`vg-174`'s fix
 is decided by the repo's own rule rather than by taste** — answering from `state()` before the move
 settles would have the host assert something it knows to be stale.
@@ -4507,9 +4513,9 @@ schema's sync test for Task 23.3.
 **Interfaces:**
 - Produces: `vg-174` closed
 
-- [ ] **Step 1: Destroy the remaining connections rather than letting `server.close` wait for them.** `move()` calls `closeIdleConnections()` and then `server.close(cb)`, and close waits for ACTIVE connections — so a GET arriving during the move blocks the callback, the move blocks the GET, and the host never listens again. That is a deadlock reachable by any second client, not a race.
-- [ ] **Step 2: Accept the trade `vg-173` already measured**: whichever request was unlucky gets an empty reply, and its bounded re-read recovers. Do **not** answer from `state()` before the move settles — that would have the host assert something it knows to be stale.
-- [ ] **Step 3: Close it**, with a case that fails when the fix is disabled.
+- [x] **Step 1: Destroy the remaining connections rather than letting `server.close` wait for them.** `move()` calls `closeIdleConnections()` and then `server.close(cb)`, and close waits for ACTIVE connections — so a GET arriving during the move blocks the callback, the move blocks the GET, and the host never listens again. That is a deadlock reachable by any second client, not a race. **Done — `closeAllConnections()` replaces `closeIdleConnections()` and nothing else about the move changed.** **The reachability argument the seat offered was refuted by the review, which then built the case**: a socket mid-request at the move moment is *spared* by `closeIdleConnections()`, goes idle-and-alive, and a **second** request on it parks on `idle()` — so the row's mechanism is reachable after all, and the case reproduces it. **No decision note was needed and none was written**: `cli/hosting.ts` and `cli/net.ts` are not on the watchlist, `covers()` is exact-path, and every write went through the gate clean — which is the proof. The Phase 23 constraint pairing `server.ts` with this task is wrong for it.
+- [x] **Step 2: Accept the trade `vg-173` already measured**: whichever request was unlucky gets an empty reply, and its bounded re-read recovers. Do **not** answer from `state()` before the move settles — that would have the host assert something it knows to be stale. **Done, and the trade is smaller than the comment it replaced claimed**: the move starts on `response.once("finish")`, so the asking PUT's bytes are already with the OS before any socket is destroyed, and its `200` arrives with the fix absent too. The review measured that rather than reading the assert, and also measured a pipelined PUT+GET on one socket arriving whole. The rejected branch was not taken.
+- [x] **Step 3: Close it**, with a case that fails when the fix is disabled. **Done, and the case was replaced once the review showed the first one proved a weaker thing.** The landed case parks a second request on the socket the move spared, and the proof is that arrangement failing when the fix is disabled: reproduced by the controller on the integrated tree, `npx vitest run packages/host/src/server.test.ts -t "does not leave a request parked"` exits 1 with `AssertionError: expected { ended: false, controlAnswered: true } to match object { ended: true }` — the socket alive and dispatching while `/api/hosting` never answers — and the restore is proved by `cmp` and a SHA-256. `npm run gate` exit 0 — 265 test files, 3502 tests. `vg-174` is verified, and what it leaves is filed: `vg-599` (the pruning machinery is production-dead and decision 0070's paragraph justifies a capability nothing invokes) and `vg-600` (whether a display's SSE stream still ends gracefully, since the move destroys the socket just after the stream closes).
 
 ### Task 23.3: The schema refuses an empty theme name
 
