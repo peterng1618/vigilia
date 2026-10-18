@@ -164,8 +164,18 @@ export type AddGroup = "card" | "text" | "shape" | "chart";
  *  followed grew either way. It is also the scope that keeps a pane-wide name
  *  from matching twice (`vg-211`): the pane holds the file path's controls as
  *  well, so a pane-wide name lookup is one asset button labelled with a shape
- *  word away from matching two — silently, and in this file alone. */
+ *  word away from matching two — silently, and in this file alone. That is why
+ *  every kind but `"text"` is scoped to its own fieldset, and why the one that
+ *  is not carries the note below. */
 export function addButton(page: Page, label: string, group: AddGroup): Locator {
+  // **The `"text"` scope is the pane, and that is a hazard rather than a tidy
+  // one.** A card tile renders *inside* the pane's subtree — `insertGroups()`
+  // puts the cards in a `card` fieldset that is a descendant of it — so a card
+  // ever labelled `Text` would give this lookup two matches. It would then fail
+  // **loudly**, as Playwright's strict-mode violation on the click, and not as
+  // the silent wrong-kind insert `vg-537` was: a broken driver rather than a
+  // lying one. `uiCopy.cardLibrary` carries no `Text` today, which is all that
+  // holds it.
   const scope =
     group === "text"
       ? page.locator('[data-vigilia-panel="add"]')
