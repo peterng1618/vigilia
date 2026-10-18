@@ -9,6 +9,7 @@ import {
 import { uiCopy } from "../ui-copy.js";
 import { documentNameOf } from "./bridge.js";
 import type { HostingStore } from "./hosting-store.js";
+import { QrCode } from "./qr-symbol.js";
 import type { EditorActionFacade } from "./session-facade.js";
 import type { PublishSurfaceStore } from "./shell-stores.js";
 
@@ -114,8 +115,8 @@ export function PublishControl({
   // **The address is the host's, not a credential's.** It exists only while the
   // LAN is on, so turning it off takes the URL off the screen rather than leaving
   // a stale one behind — and it is drawn whether or not anything is paired,
-  // because the address is what a display has to reach. The code that pairs it
-  // arrives with Task 1.4's exchange; until then this surface claims no link.
+  // because the address is what a display has to reach. It appears as text and as
+  // a QR symbol; the code that pairs a display arrives with Task 1.4's exchange.
   const shown =
     open && answer.address !== null && answer.port !== null
       ? { address: answer.address, port: answer.port }
@@ -199,6 +200,16 @@ export function PublishControl({
                   {uiCopy.publish.address}
                 </span>
                 <code className="editor-shell-publish-url">{`http://${shown.address}:${shown.port}`}</code>
+                {/* **The address again, as a symbol — never a credential.** A QR
+                    of the host's own address is an affordance, so it stays while
+                    the code flow that pairs a display is missing. 5 px per module
+                    because the address alone is a shorter payload than the URL
+                    this used to carry, and a camera needs the same target: the
+                    dom test asserts the box. Task 1.4 re-points it at the code. */}
+                <QrCode
+                  text={`http://${shown.address}:${shown.port}`}
+                  modulePitch={5}
+                />
               </>
             )}
           </Popover.Popup>

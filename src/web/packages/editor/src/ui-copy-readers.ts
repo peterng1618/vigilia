@@ -73,7 +73,9 @@ export function paragraphsOf(element: Element): string[] {
  * **What the walk covers.** A function entry is called with **one** argument —
  * a count the panels render, or a name — so a function of one argument whose
  * answer does not depend on a key is collected whole, and extra entries only
- * loosen the net, they cannot break it.
+ * loosen the net, they cannot break it. The empty string is one of them: it
+ * collects the sentence a template composes *around* its value, which is the
+ * concept `spokenIn` reads in place of a label that ends in a reading.
  *
  * **What it cannot cover.** A keyed function's answer is chosen by its key, so a
  * generic argument reaches only its fallback: `glassRefused` is probed over
@@ -94,7 +96,7 @@ export function copy(): string[] {
   const walk = (value: unknown): void => {
     if (typeof value === "string") out.push(value);
     else if (typeof value === "function")
-      for (const argument of [1, 2, 3, 4, "x"]) {
+      for (const argument of [1, 2, 3, 4, "x", ""]) {
         const produced: unknown = (value as (a: unknown) => unknown)(argument);
         if (typeof produced === "string") out.push(produced);
       }
@@ -137,7 +139,14 @@ export function spokenIn(element: Element): string[] {
     out.push(
       named.hasAttribute("data-vigilia-zoom")
         ? name.replace(/: \d+(?:\.\d+)?%$/, "")
-        : name,
+        : named.hasAttribute("data-vigilia-qr")
+          ? // The code's label is the concept and then the address it encodes,
+            // which is a reading: the address is dropped by its own shape, and
+            // what is left is compared against the sentence the table composes
+            // around an empty value — so a rename in the table still reaches
+            // this label, and the address never has to have an owner.
+            name.replace(/\S+$/, "")
+          : name,
     );
   }
   for (const button of element.querySelectorAll("button")) {

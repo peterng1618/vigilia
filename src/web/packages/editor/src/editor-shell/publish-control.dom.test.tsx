@@ -278,10 +278,14 @@ it("opens the surface without moving the host, and keeps every fact behind the p
 
   expect(hostSwitch()?.getAttribute("aria-pressed")).toBe("true");
   expect(popupText()).toContain(`http://${ADDRESS}:${PORT}`);
-  // The address is the host's and needs no credential; the code that pairs a
-  // phone is Task 1.4's exchange, so no link is claimed until it lands.
-  expect(document.querySelector("[data-vigilia-qr]")).toBeNull();
-  expect(popupText()).not.toContain(uiCopy.publish.expires(EXPIRES));
+  // The address again, as a symbol: a QR of the host's own address is an
+  // affordance, not a credential, and the code Task 1.4 adds re-points it.
+  const qr = document.querySelector("[data-vigilia-qr]");
+  expect(qr?.getAttribute("aria-label")).toBe(
+    `QR code: http://${ADDRESS}:${PORT}`,
+  );
+  // A camera needs modules, not a thumbnail.
+  expect(Number(qr?.getAttribute("width"))).toBeGreaterThanOrEqual(120);
 });
 
 it("opens the surface from the header's chord, and moves no host state", async () => {
@@ -342,11 +346,13 @@ it("turns the host on from inside the surface, and shows what it is serving", as
   );
   expect(fake.putCalls()).toBe(1);
   // The move does not shut the surface: the facts appear where the choice was
-  // made, rather than behind a second press. The address is one of them; the
-  // pairing link is not, until Task 1.4's exchange exists.
+  // made, rather than behind a second press. The address is one of them, as text
+  // and as the symbol beside it.
   expect(popupOpen()).toBe(true);
   expect(popupText()).toContain(`http://${ADDRESS}:${PORT}`);
-  expect(document.querySelector("[data-vigilia-qr]")).toBeNull();
+  expect(
+    document.querySelector("[data-vigilia-qr]")?.getAttribute("aria-label"),
+  ).toBe(`QR code: http://${ADDRESS}:${PORT}`);
 });
 
 it("binds the §145 warning to the control that makes the choice", async () => {
@@ -408,7 +414,7 @@ it("shows the host's refusal when the move it accepted did not happen", async ()
   expect(hostSwitch()?.textContent).toBe(uiCopy.publish.start);
 });
 
-it("shows the address the host named, and claims no code for it yet", async () => {
+it("shows the address the host named, with a code for it", async () => {
   hostServing({ lan: true });
   const container = await mount();
   await openSurface(container);
@@ -416,9 +422,12 @@ it("shows the address the host named, and claims no code for it yet", async () =
   await vi.waitFor(() =>
     expect(popupText()).toContain(`http://${ADDRESS}:${PORT}`),
   );
-  // A durable credential is answered once and stored hashed, so the surface
-  // cannot mint one per read; the code a phone types arrives with Task 1.4.
-  expect(document.querySelector("[data-vigilia-qr]")).toBeNull();
+  // The symbol carries the address and nothing else: the credential is answered
+  // once and stored hashed, so there is none to encode here, and the code a phone
+  // types arrives with Task 1.4.
+  expect(
+    document.querySelector("[data-vigilia-qr]")?.getAttribute("aria-label"),
+  ).toBe(`QR code: http://${ADDRESS}:${PORT}`);
   expect(popupText()).toContain(uiCopy.publish.warning);
 });
 
