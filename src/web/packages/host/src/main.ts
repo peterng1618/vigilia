@@ -22,6 +22,7 @@ import { createDeviceSettingsStore } from "./settings/devices.js";
 import { createDisplaySettingsStore } from "./settings/display.js";
 import { createDisplayStore } from "./settings/displays.js";
 import { createFontFavoritesStore } from "./settings/font-favorites.js";
+import { acquireHostLock } from "./settings/host-lock.js";
 import { createHostingSettingsStore } from "./settings/hosting.js";
 import { createThemeSettingsStore } from "./settings/theme-settings.js";
 import { createThemeStore } from "./themes/store.js";
@@ -89,6 +90,17 @@ export async function run(argv: readonly string[]): Promise<number> {
     );
     console.log(outcome.message);
     return outcome.ok ? 0 : 1;
+  }
+
+  // One app folder is one host (§ "Two hosts on one network"), and the lock is
+  // taken before anything reads the folder: a second host against a held folder
+  // would answer the same display ids and the same active theme as the first,
+  // and the port fallback would let it start looking like a second machine.
+  const held = await acquireHostLock(settingsDir, wanted);
+
+  if (!held.ok) {
+    console.error(held.reason);
+    return 1;
   }
 
   // Launching LHM is opt-in via `--lhm-exe`, never automatic: its manifest
@@ -276,6 +288,7 @@ export async function run(argv: readonly string[]): Promise<number> {
     bound = await listenWithFallback(hosted.server, wanted, initialHost);
   } catch (error) {
     console.error(error instanceof Error ? error.message : String(error));
+    await held.lock.release();
     return 1;
   }
 
@@ -291,6 +304,7 @@ export async function run(argv: readonly string[]): Promise<number> {
       `The server bound port ${bound} but never answered. Giving up.`,
     );
     await hosted.close();
+    await held.lock.release();
     return 1;
   }
 
@@ -420,5 +434,6 @@ export async function run(argv: readonly string[]): Promise<number> {
     process.once("SIGTERM", stop);
   });
 
+  await held.lock.release();
   return 0;
 }
