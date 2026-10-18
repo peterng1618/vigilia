@@ -31,7 +31,11 @@ import {
   createDeviceSettingsStore,
 } from "./settings/devices.js";
 import { createDisplaySettingsStore } from "./settings/display.js";
-import { createDisplayStore, hashToken } from "./settings/displays.js";
+import {
+  createDisplayStore,
+  hashToken,
+  LOCAL_DISPLAY_ID,
+} from "./settings/displays.js";
 import { createFontFavoritesStore } from "./settings/font-favorites.js";
 import { createThemeSettingsStore } from "./settings/theme-settings.js";
 import { createThemeStore, type ThemeContent } from "./themes/store.js";
@@ -943,10 +947,15 @@ describe("Host theme routes", () => {
 
     it("refuses a credential the host has removed", async () => {
       const token = await pair();
+      // Ruling 12 collapses revoking into removing, so the act is the display's
+      // removal and the credential goes with the record (the case that used to
+      // drive `DELETE /api/pairing/sessions/:token`, retired with the session
+      // store).
+      const held = await displays.authenticate(token);
       const removed = await request(
         paired.server,
         "DELETE",
-        `/api/pairing/sessions/${encodeURIComponent(token)}`,
+        `/api/displays/${held?.id ?? ""}`,
       );
       expect(removed.status).toBe(200);
 
@@ -1297,6 +1306,296 @@ describe("A display's credential outlives the host that minted it", () => {
     expect((await request(hosted.server, "GET", "/api/health")).status).toBe(
       200,
     );
+  });
+});
+
+/**
+ * Ruling 12: pairing mints a *display*, and the credential is that record's own.
+ * These cases drive the routes that manage one — mint, rotate, rename, remove —
+ * against a real store on disk, because the id a label mints is the store's rule
+ * and a route keeping its own copy of it would be a second thing to keep true.
+ */
+describe("The pairing routes mint, rotate, rename and remove displays (ruling 12)", () => {
+  let dir: string;
+  let displays: ReturnType<typeof createDisplayStore>;
+  let hosted: ReturnType<typeof createHostServer>;
+
+  const LAN = { remoteAddress: "192.168.1.50" };
+
+  beforeEach(async () => {
+    dir = await fs.mkdtemp(path.join(os.tmpdir(), "vigilia-display-routes-"));
+    displays = createDisplayStore(dir);
+    hosted = createHostServer({
+      registry: new ProviderRegistry([]),
+      bundles: { player: dir, editor: dir },
+      themeStore: createThemeStore(dir),
+      displays,
+    });
+  });
+
+  afterEach(async () => {
+    await hosted.close();
+    await fs.rm(dir, { recursive: true, force: true });
+  });
+
+  /** The display list as a surface reads it, which is the redacted shape. */
+  async function listed(): Promise<readonly Record<string, unknown>[]> {
+    const answer = await request(hosted.server, "GET", "/api/pairing/sessions");
+    return (answer.json() as { displays: readonly Record<string, unknown>[] })
+      .displays;
+  }
+
+  /** Pairs a new display through the route, answering what it minted. */
+  async function mint(label: string): Promise<{ id: string; token: string }> {
+    const answer = await request(
+      hosted.server,
+      "POST",
+      `/api/pairing/sessions?label=${encodeURIComponent(label)}`,
+    );
+    const body = answer.json() as {
+      display: { id: string };
+      token: string;
+    };
+    return { id: body.display.id, token: body.token };
+  }
+
+  it("mints a display and a credential for it", async () => {
+    const answer = await request(
+      hosted.server,
+      "POST",
+      "/api/pairing/sessions?label=Kitchen+tablet",
+    );
+    expect(answer.status).toBe(201);
+
+    const body = answer.json() as {
+      display: { id: string };
+      token: string;
+    };
+    expect(body.display.id).toBe("kitchen-tablet");
+
+    // The credential is the record's, so the store is what answers for it.
+    expect((await displays.authenticate(body.token))?.id).toBe(
+      "kitchen-tablet",
+    );
+    expect((await listed()).map((row) => row["id"])).toEqual([
+      "kitchen-tablet",
+    ]);
+  });
+
+  it("rotates an existing display's credential rather than minting a second display", async () => {
+    const first = await mint("Kitchen tablet");
+    const rotated = await request(
+      hosted.server,
+      "POST",
+      "/api/pairing/sessions?displayId=kitchen-tablet",
+    );
+    expect(rotated.status).toBe(201);
+
+    const body = rotated.json() as {
+      display: { id: string };
+      token: string;
+    };
+    expect(body.display.id).toBe("kitchen-tablet");
+    expect(body.token).not.toBe(first.token);
+
+    // Rotation replaces what proves the display is itself, not the display: the
+    // old credential is refused and the new one is the phone's way in.
+    expect(await displays.authenticate(first.token)).toBeUndefined();
+    expect((await displays.authenticate(body.token))?.id).toBe(
+      "kitchen-tablet",
+    );
+    expect(
+      (
+        await request(hosted.server, "GET", "/api/themes", undefined, {
+          ...LAN,
+          headers: { "x-vigilia-session": first.token },
+        })
+      ).status,
+    ).toBe(403);
+    expect(await listed()).toHaveLength(1);
+  });
+
+  it("removes a client and its credential", async () => {
+    const { id, token } = await mint("Kitchen tablet");
+
+    expect(
+      (await request(hosted.server, "DELETE", `/api/displays/${id}`)).status,
+    ).toBe(200);
+
+    expect(await displays.authenticate(token)).toBeUndefined();
+    expect(await listed()).toEqual([]);
+    expect(
+      (
+        await request(hosted.server, "GET", "/api/themes", undefined, {
+          ...LAN,
+          headers: { "x-vigilia-session": token },
+        })
+      ).status,
+    ).toBe(403);
+  });
+
+  it("renames a display without moving it", async () => {
+    const { id } = await mint("Office TV");
+    expect(id).toBe("office-tv");
+    const before = await displays.find("office-tv");
+
+    const renamed = await request(
+      hosted.server,
+      "PATCH",
+      `/api/displays/${id}`,
+      json({ label: "Kitchen" }),
+    );
+    expect(renamed.status).toBe(200);
+
+    const body = renamed.json() as {
+      id: string;
+      label: string;
+      createdAt: string;
+    };
+    expect(body.id).toBe("office-tv");
+    expect(body.label).toBe("Kitchen");
+    // Everything else is keyed by the id, so a rename that moved it would orphan
+    // them: the id and the creation time are the identity it does not touch.
+    expect(body.createdAt).toBe(before?.createdAt);
+    expect(await listed()).toEqual([
+      expect.objectContaining({ id: "office-tv", label: "Kitchen" }),
+    ]);
+  });
+
+  it("refuses an empty label rather than storing it", async () => {
+    await mint("Office TV");
+
+    const refused = await request(
+      hosted.server,
+      "PATCH",
+      "/api/displays/office-tv",
+      json({ label: "   " }),
+    );
+    expect(refused.status).toBe(400);
+    expect(refused.text()).toMatch(/label/);
+    expect(await listed()).toEqual([
+      expect.objectContaining({ label: "Office TV" }),
+    ]);
+  });
+
+  it("refuses a rename from off loopback", async () => {
+    await mint("Office TV");
+
+    const refused = await request(
+      hosted.server,
+      "PATCH",
+      "/api/displays/office-tv",
+      json({ label: "Kitchen" }),
+      LAN,
+    );
+    expect(refused.status).toBe(403);
+    // The displays' own guard, not the generic one every unknown path falls
+    // through: a 403 from a route that does not exist is not a refusal.
+    expect(refused.text()).toBe("Displays are available on this PC only.");
+    expect(await listed()).toEqual([
+      expect.objectContaining({ label: "Office TV" }),
+    ]);
+  });
+
+  it("answers 404 for a displayId it does not know, on both routes", async () => {
+    expect(
+      (
+        await request(
+          hosted.server,
+          "POST",
+          "/api/pairing/sessions?displayId=nobody",
+        )
+      ).status,
+    ).toBe(404);
+    expect(
+      (await request(hosted.server, "DELETE", "/api/displays/nobody")).status,
+    ).toBe(404);
+    expect(
+      (
+        await request(
+          hosted.server,
+          "PATCH",
+          "/api/displays/nobody",
+          json({ label: "Kitchen" }),
+        )
+      ).status,
+    ).toBe(404);
+
+    // A refused rotation minted nothing: no display, and no credential.
+    expect(await listed()).toEqual([]);
+  });
+
+  it("refuses a displayId from off loopback before reading it", async () => {
+    await mint("Kitchen tablet");
+
+    // The guard precedes the parameter read, and a store that records its calls
+    // is how that is checkable: a route reading the id first leaves a mark.
+    const calls: string[] = [];
+    const watching = createHostServer({
+      registry: new ProviderRegistry([]),
+      bundles: { player: dir, editor: dir },
+      themeStore: createThemeStore(dir),
+      displays: {
+        ...displays,
+        find: (id) => {
+          calls.push(`find:${id}`);
+          return Promise.resolve(undefined);
+        },
+        rotate: (id) => {
+          calls.push(`rotate:${id}`);
+          return Promise.resolve(undefined);
+        },
+      },
+    });
+
+    try {
+      const refused = await request(
+        watching.server,
+        "POST",
+        "/api/pairing/sessions?displayId=kitchen-tablet",
+        undefined,
+        LAN,
+      );
+      expect(refused.status).toBe(403);
+      expect(refused.text()).toBe("Pairing is available on this PC only.");
+      expect(calls).toEqual([]);
+    } finally {
+      await watching.close();
+    }
+
+    expect(await listed()).toEqual([
+      expect.objectContaining({ id: "kitchen-tablet" }),
+    ]);
+  });
+
+  it("refuses to remove the reserved local display", async () => {
+    const refused = await request(
+      hosted.server,
+      "DELETE",
+      `/api/displays/${LOCAL_DISPLAY_ID}`,
+    );
+    expect(refused.status).toBe(409);
+    expect(refused.text()).toMatch(/This PC/);
+  });
+
+  it("never echoes a stored hash, and carries a token only where it mints one", async () => {
+    const { token } = await mint("Kitchen tablet");
+    const rotated = await request(
+      hosted.server,
+      "POST",
+      "/api/pairing/sessions?displayId=kitchen-tablet",
+    );
+    expect(rotated.status).toBe(201);
+    const fresh = (rotated.json() as { token: string }).token;
+    expect(fresh).not.toBe(token);
+
+    // Rotation is the one moment a credential is in the clear. The list a
+    // surface repaints from carries neither the token nor the hash it is stored
+    // as: echoing the hash would undo the reason it is hashed.
+    const list = await request(hosted.server, "GET", "/api/pairing/sessions");
+    expect(list.text()).not.toContain(fresh);
+    expect(list.text()).not.toContain(hashToken(fresh));
+    expect((await listed())[0]).not.toHaveProperty("tokenHash");
   });
 });
 

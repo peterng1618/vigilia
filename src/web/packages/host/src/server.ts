@@ -34,8 +34,16 @@ import type {
   DisplaySettings,
   DisplaySettingsStore,
 } from "./settings/display.js";
-import type { DisplayRecord, DisplayStore } from "./settings/displays.js";
-import { mintedDisplayId } from "./settings/displays.js";
+import type {
+  DisplayPatch,
+  DisplayRecord,
+  DisplayStore,
+} from "./settings/displays.js";
+import {
+  LOCAL_DISPLAY_ID,
+  mintedDisplayId,
+  normalizeLabel,
+} from "./settings/displays.js";
 import type { FontFavoritesStore } from "./settings/font-favorites.js";
 import { requiredDeviceGroups } from "./settings/required-devices.js";
 import type { ThemeSettingsStore } from "./settings/theme-settings.js";
@@ -761,6 +769,26 @@ export function createHostServer(options: HostServerOptions): HostServer {
         url.pathname === "/api/pairing/sessions" &&
         request.method === "POST"
       ) {
+        // The credential is answered exactly once: only its hash is stored, so
+        // this is the one moment it can be handed to the display it belongs to.
+        const token = newToken();
+        const known = url.searchParams.get("displayId");
+
+        // Rotation replaces what proves the display is itself and keeps the
+        // record: everything else — a theme, a set of answers — is keyed by the
+        // id, so a re-pairing that minted a second display would orphan it.
+        if (known !== null) {
+          const rotated = await displays.rotate(known, token);
+
+          if (rotated === undefined) {
+            sendText(response, 404, "No such display.");
+            return;
+          }
+
+          sendJson(response, 201, { display: peerOf(rotated), token });
+          return;
+        }
+
         const label = url.searchParams.get("label") ?? "display";
         // A label the store would refuse is answered rather than thrown: the
         // store's own rules decide, so the route and the file agree, and the
@@ -776,31 +804,109 @@ export function createHostServer(options: HostServerOptions): HostServer {
           return;
         }
 
-        // The credential is answered exactly once: only its hash is stored, so
-        // this is the one moment it can be handed to the display it belongs to.
-        const token = newToken();
         const display = await displays.create(label, token);
         sendJson(response, 201, { display: peerOf(display), token });
         return;
       }
 
-      // Revoking *is* removing (ruling 12): a display holds one credential, and
-      // the record goes with it.
-      const revokeMatch = url.pathname.match(
-        /^\/api\/pairing\/sessions\/([^/]+)$/,
-      );
-      if (revokeMatch && request.method === "DELETE") {
-        const token = decodeURIComponent(revokeMatch[1] ?? "");
-        const held = await displays.authenticate(token);
-        if (held === undefined || !(await displays.remove(held.id))) {
+      sendText(response, 405, "Only GET and POST are supported.");
+      return;
+    }
+
+    // A display's own record, addressed by the id a rename never moves. Removing
+    // one takes its credential with it — revoking *is* removing (ruling 12) —
+    // which is why there is no second route that revokes.
+    if (url.pathname.startsWith("/api/displays")) {
+      if (!isLoopbackRemote(request.socket.remoteAddress)) {
+        sendText(response, 403, "Displays are available on this PC only.");
+        return;
+      }
+
+      if (displays === undefined) {
+        sendText(
+          response,
+          404,
+          "Display management is not enabled on this host.",
+        );
+        return;
+      }
+
+      const match = url.pathname.match(/^\/api\/displays\/([^/]+)$/);
+      const id =
+        match === null ? undefined : decodeURIComponent(match[1] ?? "");
+
+      if (id !== undefined && request.method === "PATCH") {
+        let patch: DisplayPatch;
+
+        try {
+          const parsed: unknown = JSON.parse(await readBody(request));
+          // A body that is not an object holds no patch, and reading a field
+          // off one would be a TypeError rather than a refusal.
+          if (
+            typeof parsed !== "object" ||
+            parsed === null ||
+            Array.isArray(parsed)
+          ) {
+            throw new Error("That is not a display setting.");
+          }
+          patch = parsed as DisplayPatch;
+        } catch (error) {
+          sendText(
+            response,
+            400,
+            error instanceof Error ? error.message : String(error),
+          );
+          return;
+        }
+
+        // The label rule, not the id rule: the id was minted when the display
+        // was created and a rename does not mint another one, so a name the id
+        // rule would refuse — a space, a bracket — is still a name here.
+        if (patch.label !== undefined) {
+          try {
+            normalizeLabel(patch.label);
+          } catch (error) {
+            sendText(
+              response,
+              400,
+              error instanceof Error ? error.message : String(error),
+            );
+            return;
+          }
+        }
+
+        const updated = await displays.update(id, patch);
+
+        if (updated === undefined) {
           sendText(response, 404, "No such display.");
           return;
         }
+
+        // The answer is the record itself, so a surface redraws one row without
+        // refetching the list it already has.
+        sendJson(response, 200, peerOf(updated));
+        return;
+      }
+
+      if (id !== undefined && request.method === "DELETE") {
+        // This PC is the display the host *is*, not a client anyone paired: it
+        // has no credential to remove, and it is the one display that cannot be
+        // re-paired if it goes.
+        if (id === LOCAL_DISPLAY_ID) {
+          sendText(response, 409, "This PC is not a paired client.");
+          return;
+        }
+
+        if (!(await displays.remove(id))) {
+          sendText(response, 404, "No such display.");
+          return;
+        }
+
         sendJson(response, 200, { ok: true });
         return;
       }
 
-      sendText(response, 405, "Only GET, POST and DELETE are supported.");
+      sendText(response, 405, "Only PATCH and DELETE are supported.");
       return;
     }
 
