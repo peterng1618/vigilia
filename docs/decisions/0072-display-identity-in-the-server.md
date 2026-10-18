@@ -68,7 +68,8 @@ exists is not a decision discharged.
 ## Rung 4 — ecosystem
 
 Searched: how a local-first host models a durable per-device credential and the
-routes around it — Jellyfin's Quick Connect
+routes around it — the study this design already rests on, `decolua/9remote` at
+`033dd6e3` (the spec's own section, `:30`), Jellyfin's Quick Connect
 (`Emby.Server.Implementations/QuickConnect/QuickConnectManager.cs` in
 `github.com/jellyfin/jellyfin`, and `jellyfin.org/docs/general/server/quick-connect/`),
 Syncthing's device ids (`docs.syncthing.net/dev/device-ids.html`) and
@@ -77,8 +78,23 @@ local gateway, Revka (`revka.ai/docs/gateway-api/pairing-and-auth/`). Also the
 obvious route-matcher candidates by name (`express`, `find-my-way`, `hono`)
 against what this server already does.
 
-Found: **one project has solved this exact shape.** Revka's gateway persists
-paired devices in a file and answers `GET /api/devices`, `DELETE /api/devices/{id}`
+Found: **the closest prior art is already in this repo.** The design studies
+`decolua/9remote` — read 2026-10-18 at the user's suggestion at `033dd6e3` — in
+"What the 9remote study contributes, and what it does not"
+(`docs/superpowers/specs/2026-10-18-per-display-themes-design.md:30`), and leans
+on it four times after that. It pairs and manages devices, splits a one-time code
+from a durable credential, defends a code short enough to type by rate limiting
+rather than by length, and keeps one admission table in which a kicked device
+outranks auto-approve — most of what Task 1.4 builds. **What does not transfer is
+where the credential lives**: 9remote pairs to a cloud relay, so its one-time code
+is revoked at a Worker and its permanent key is a bearer credential for a service
+somebody runs, where this host is the only thing that can revoke anything. That
+divergence is also why it is not a candidate in rung 5: its dispatch belongs to a
+relay. The study is cited here, not restated.
+
+**One project outside this repo has solved the route shape itself.** Revka's
+gateway persists paired devices in a file and answers `GET /api/devices`,
+`DELETE /api/devices/{id}`
 for revocation and `POST /api/devices/{id}/token/rotate` to issue a fresh
 credential **in place, keeping the record** — the same three acts, the same
 address-by-id, the same split between "the record survives" and "the credential
@@ -124,7 +140,8 @@ Two measurements, both from this task's own runs rather than from reasoning.
    code alone proves.
 2. **The old behaviour is what the new tests catch.** Before the routes existed,
    `POST /api/pairing/sessions?displayId=nobody` answered **201** (measured:
-   `expected 404 to be 201`, `server.test.ts:1510`) — the parameter was ignored
+   `expected 404 to be 201`, in the case "answers 404 for a displayId it does not
+   know, on both routes") — the parameter was ignored
    and a display named `display` was minted. After the change the same request is
    404 and the display list is unchanged. A case that passed before and after
    would have been evidence of nothing.
