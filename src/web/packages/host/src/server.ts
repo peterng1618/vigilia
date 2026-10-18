@@ -795,12 +795,8 @@ export function createHostServer(options: HostServerOptions): HostServer {
     // So it answers before every gate below — the display guard in particular —
     // and its body is fixed by that promise: the identity, the port, and nothing
     // else this host holds. The name is one character from `/api/hosting`, the
-    // LAN on/off setting, deliberately and not by accident (R24).
-    //
-    // **Not registered when this host has no identity**, so it answers 404 like
-    // any unknown path: an id minted to fill the field would be one no display
-    // could have stored, and a host with nothing to say should not be found by a
-    // sweep at all (R23).
+    // LAN on/off setting, deliberately and not by accident (R24). A host with no
+    // identity is not registered at all, for the reason the `host` option gives.
     if (
       hostRecord !== undefined &&
       url.pathname === "/api/host" &&
