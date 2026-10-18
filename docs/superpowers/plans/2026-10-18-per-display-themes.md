@@ -694,10 +694,14 @@ beside it so a camera-less device has somewhere to go. One mint, two presentatio
 this address in the router, or give the host a name, and the display's URL never
 breaks (spec § "Finding the host after its address changes"). One line of copy on
 the card, because the card is the only moment the owner is thinking about it.
-**The address the card prints is `lanAddress()`'s** — the first non-internal IPv4 —
-which is the wrong one on a PC with Docker, WSL, Hyper-V or a VPN adapter. Do not
-fix that here; check the printed address against the one a phone actually reaches,
-and file it if it is wrong rather than widening this task.
+**The address the card prints is `lanAddress()`'s.** **[Corrected 2026-10-18: this paragraph read "— the first
+non-internal IPv4 — which is the wrong one on a PC with Docker, WSL, Hyper-V or a VPN adapter. Do not fix
+that here; check the printed address against the one a phone actually reaches, and file it if it is wrong
+rather than widening this task." That premise is gone: Task 23.1 of the backlog drain landed `vg-171`'s ruling
+as `7dc4332e`, so `lanAddress()` now drops virtual adapters by name and prefers the interface carrying the
+default IPv4 route, and a tie-break warns with the alternatives. What remains for this task is the card's
+copy, not a suspect address — and if a printed address is ever wrong on a real machine, that is a row against
+`rankLanAddresses`, not something to widen this task into.]**
 
 `POST /api/pairing/claim` is **one of the two routes reachable unpaired** — with
 `GET /api/host` (Task 1.6) — so it does no listing, returns no theme and no device

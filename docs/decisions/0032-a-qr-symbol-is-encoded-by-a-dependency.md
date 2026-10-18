@@ -30,7 +30,7 @@ Searched: `rg -i "qrcode|QRCode|qr-code|\bqr\b"` across `src/web/packages`
 
 Found: **nothing.** No encoder, no renderer, no caller, no fixture, no test. The
 two owners this feature *consumes* do exist and are the reason the payload is
-the size it is: `lanAddress()` (`src/web/packages/host/src/cli/net.ts:90`)
+the size it is: `lanAddress()` (`src/web/packages/host/src/cli/net.ts`)
 supplies the address, and `createSessionStore().create()` (`src/web/packages/host/src/session/pairing.ts:70`)
 supplies a 43-character base64url token.
 

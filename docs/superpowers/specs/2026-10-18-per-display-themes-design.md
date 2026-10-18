@@ -500,8 +500,11 @@ refused with the reason and the flag that fixes it.
 
 DHCP is the normal case on a home LAN, so a host's address changes and a display's
 saved URL dies with it. The code says how much of the problem is real:
-`lanAddress()` returns the **first non-internal IPv4 address**
-(`cli/net.ts:90`), which a new lease replaces — and `hosting.ts` is explicit that
+`lanAddress()` returns **one address a phone on the same LAN can reach**
+(`cli/net.ts`) — **[corrected 2026-10-18: this read "the **first non-internal IPv4
+address**", and Task 23.1 of the backlog drain landed `vg-171`'s ruling as
+`7dc4332e`, so the function now drops virtual adapters by name and prefers the
+interface carrying the default IPv4 route]** — which a new lease replaces — and `hosting.ts` is explicit that
 **"The port never moves."** So the port is stable by design and only the address is
 in question, which is half the problem gone before anything is built.
 
@@ -550,10 +553,17 @@ address is the case that has no reload path at all.
 **Two limitations, stated rather than discovered later.** A browser cannot read its
 own address, so the sweep derives its range from the last-known host address and
 **assumes a /24** — a host that moved to a different subnet is not found by
-sweeping, and is found by the code route instead. And `lanAddress()`'s "first
-non-internal IPv4" is the wrong answer on a PC with Docker, WSL, Hyper-V or a VPN
-adapter, so the pairing card can print an address no display can reach; the
-address a card shows is worth verifying against the one a phone actually reaches.
+sweeping, and is found by the code route instead. **[Corrected 2026-10-18: the
+second limitation was "`lanAddress()`'s 'first non-internal IPv4' is the wrong
+answer on a PC with Docker, WSL, Hyper-V or a VPN adapter, so the pairing card can
+print an address no display can reach; the address a card shows is worth verifying
+against the one a phone actually reaches." Task 23.1 of the backlog drain landed
+`vg-171`'s ruling as `7dc4332e` and closed it: the ranking drops virtual adapters by
+name and prefers the interface carrying the default route. What survives is
+narrower and is filed rather than assumed away — `systeminformation`'s route query
+falls back to the first non-internal interface when it fails, and `readLanSource`
+cannot tell that from a real answer, so the warning is suppressed on a machine whose
+route query fails.]**
 
 **Vice versa is already answered.** The host never opens a connection to a display,
 so it does not need to *reach* one — it needs to *tell them apart*, which display
