@@ -39,6 +39,7 @@ import {
 } from "./settings/displays.js";
 import { createFontFavoritesStore } from "./settings/font-favorites.js";
 import type { HostRecord } from "./settings/host-record.js";
+import type { Monitor } from "./settings/monitors.js";
 import { createThemeSettingsStore } from "./settings/theme-settings.js";
 import { createThemeStore, type ThemeContent } from "./themes/store.js";
 import { encodeThemeContent } from "./themes/wire.js";
@@ -1850,6 +1851,280 @@ describe("The pairing routes mint, rotate, rename and remove displays (ruling 12
     expect(list.text()).not.toContain(fresh);
     expect(list.text()).not.toContain(hashToken(fresh));
     expect((await listed())[0]).not.toHaveProperty("tokenHash");
+  });
+});
+
+/**
+ * Spec § "The host's own monitors": a second kind of display, *specified* rather
+ * than paired. It is the host's own screen, so it carries no credential, and the
+ * list it is chosen from is a probe of this PC rather than anything stored.
+ */
+describe("A local monitor is specified rather than paired", () => {
+  let dir: string;
+  let displays: ReturnType<typeof createDisplayStore>;
+  let hosted: ReturnType<typeof createHostServer>;
+
+  const LAN = { remoteAddress: "192.168.1.50" };
+  const ATTACHED: readonly Monitor[] = [
+    {
+      deviceName: "\\\\.\\DISPLAY1",
+      serial: "4790810010513",
+      main: true,
+      positionX: 0,
+      positionY: 0,
+      currentResX: 2560,
+      currentResY: 1440,
+    },
+    {
+      deviceName: "\\\\.\\DISPLAY2",
+      main: false,
+      positionX: 2560,
+      positionY: 0,
+      currentResX: 1920,
+      currentResY: 1080,
+    },
+  ];
+
+  function host(
+    overrides: Partial<HostServerOptions> = {},
+  ): ReturnType<typeof createHostServer> {
+    return createHostServer({
+      registry: new ProviderRegistry([]),
+      bundles: { player: dir, editor: dir },
+      themeStore: createThemeStore(dir),
+      displays,
+      monitors: () => Promise.resolve(ATTACHED),
+      ...overrides,
+    });
+  }
+
+  beforeEach(async () => {
+    dir = await fs.mkdtemp(path.join(os.tmpdir(), "vigilia-local-monitor-"));
+    displays = createDisplayStore(dir);
+    hosted = host();
+  });
+
+  afterEach(async () => {
+    await hosted.close();
+    await fs.rm(dir, { recursive: true, force: true });
+  });
+
+  /** The display list as a surface reads it, which is the redacted shape. */
+  async function listed(
+    from: ReturnType<typeof createHostServer> = hosted,
+  ): Promise<readonly Record<string, unknown>[]> {
+    const answer = await request(from.server, "GET", "/api/pairing/sessions");
+    return (answer.json() as { displays: readonly Record<string, unknown>[] })
+      .displays;
+  }
+
+  it("adds a local monitor with no credential", async () => {
+    const answer = await request(
+      hosted.server,
+      "POST",
+      "/api/displays",
+      json({
+        label: "Left screen",
+        monitor: { deviceName: "\\\\.\\DISPLAY2" },
+      }),
+    );
+    expect(answer.status).toBe(201);
+
+    const body = answer.json() as {
+      display: { id: string; kind: string; monitor: unknown };
+    };
+    expect(body.display.id).toBe("left-screen");
+    expect(body.display.kind).toBe("local");
+    expect(body.display.monitor).toEqual({ deviceName: "\\\\.\\DISPLAY2" });
+    // Nothing to hand out: this display proves itself by being on this PC.
+    expect(Object.keys(body)).toEqual(["display"]);
+    expect(body.display).not.toHaveProperty("tokenHash");
+    expect(await listed()).toEqual([
+      expect.objectContaining({ id: "left-screen", kind: "local" }),
+    ]);
+  });
+
+  it("refuses a body the file's own reader would drop", async () => {
+    const refused = await request(
+      hosted.server,
+      "POST",
+      "/api/displays",
+      json({ label: "Left screen", monitor: { serial: "4790810010513" } }),
+    );
+    expect(refused.status).toBe(400);
+    expect(refused.text()).toMatch(/monitor/);
+    // Written only if the next read would find it: a record the file drops is a
+    // display that disappears, which is `vg-616`'s class of bug.
+    expect(await listed()).toEqual([]);
+  });
+
+  it("answers what is attached, for the owner to pick from", async () => {
+    const answer = await request(
+      hosted.server,
+      "GET",
+      "/api/displays/monitors",
+    );
+    expect(answer.status).toBe(200);
+    expect((answer.json() as { monitors: unknown }).monitors).toEqual(ATTACHED);
+  });
+
+  it("refuses a local display from off loopback, on every route", async () => {
+    const refused = await request(
+      hosted.server,
+      "POST",
+      "/api/displays",
+      json({
+        label: "Left screen",
+        monitor: { deviceName: "\\\\.\\DISPLAY2" },
+      }),
+      LAN,
+    );
+    expect(refused.status).toBe(403);
+    expect(refused.text()).toBe("Displays are available on this PC only.");
+    expect(
+      (
+        await request(
+          hosted.server,
+          "GET",
+          "/api/displays/monitors",
+          undefined,
+          LAN,
+        )
+      ).status,
+    ).toBe(403);
+    expect(await listed()).toEqual([]);
+  });
+
+  it("refuses an off-loopback request before reading its body", async () => {
+    const calls: string[] = [];
+    const watching = host({
+      displays: {
+        ...displays,
+        createLocal: (label, monitor) => {
+          calls.push(`createLocal:${label}`);
+          return displays.createLocal(label, monitor);
+        },
+      },
+      monitors: () => {
+        calls.push("monitors");
+        return Promise.resolve(ATTACHED);
+      },
+    });
+
+    try {
+      // A body that is not JSON: a guard that ran after the read would answer
+      // the parse's 400 rather than its own 403.
+      const refused = await request(
+        watching.server,
+        "POST",
+        "/api/displays",
+        "{ not json",
+        LAN,
+      );
+      expect(refused.status).toBe(403);
+      expect(refused.text()).toBe("Displays are available on this PC only.");
+      expect(
+        (
+          await request(
+            watching.server,
+            "GET",
+            "/api/displays/monitors",
+            undefined,
+            LAN,
+          )
+        ).status,
+      ).toBe(403);
+      expect(calls).toEqual([]);
+    } finally {
+      await watching.close();
+    }
+  });
+
+  it("keeps a display whose monitor is no longer attached", async () => {
+    await request(
+      hosted.server,
+      "POST",
+      "/api/displays",
+      json({
+        label: "Left screen",
+        monitor: { deviceName: "\\\\.\\DISPLAY2", serial: "4790810010513" },
+      }),
+    );
+
+    // The cable is out: the probe no longer reports that monitor.
+    const unplugged = host({ monitors: () => Promise.resolve([ATTACHED[0]!]) });
+
+    try {
+      const answer = await request(
+        unplugged.server,
+        "GET",
+        "/api/displays/monitors",
+      );
+      expect(
+        (answer.json() as { monitors: readonly unknown[] }).monitors,
+      ).toEqual([ATTACHED[0]]);
+
+      // The record stays, with its hint: deleting it would throw away the
+      // person's configuration to report a fact about the furniture.
+      expect(await listed(unplugged)).toEqual([
+        expect.objectContaining({
+          id: "left-screen",
+          monitor: { deviceName: "\\\\.\\DISPLAY2", serial: "4790810010513" },
+        }),
+      ]);
+    } finally {
+      await unplugged.close();
+    }
+  });
+
+  it("answers an empty list for a probe that found nothing, and 500 for one that failed", async () => {
+    const empty = host({ monitors: () => Promise.resolve([]) });
+    const failed = host({
+      monitors: () => Promise.reject(new Error("graphics() failed")),
+    });
+
+    try {
+      const nothing = await request(
+        empty.server,
+        "GET",
+        "/api/displays/monitors",
+      );
+      expect(nothing.status).toBe(200);
+      expect(nothing.json()).toEqual({ monitors: [] });
+
+      // Not `[]`: an empty list would tell the owner nothing is attached when
+      // the truth is that the host could not find out.
+      const refused = await request(
+        failed.server,
+        "GET",
+        "/api/displays/monitors",
+      );
+      expect(refused.status).toBe(500);
+      expect(refused.text()).toBe("The host could not answer that request.");
+    } finally {
+      await empty.close();
+      await failed.close();
+    }
+  });
+
+  it("answers the monitor list even when a display is named Monitors", async () => {
+    // `monitors` is not reserved, so a display may legitimately mint it
+    // (`mintedDisplayId`); the route is a path of its own rather than an id.
+    await request(
+      hosted.server,
+      "POST",
+      "/api/displays",
+      json({ label: "Monitors", monitor: { deviceName: "\\\\.\\DISPLAY2" } }),
+    );
+    expect((await listed())[0]).toMatchObject({ id: "monitors" });
+
+    const answer = await request(
+      hosted.server,
+      "GET",
+      "/api/displays/monitors",
+    );
+    expect(answer.status).toBe(200);
+    expect((answer.json() as { monitors: unknown }).monitors).toEqual(ATTACHED);
   });
 });
 

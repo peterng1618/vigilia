@@ -170,7 +170,15 @@ export function mintedDisplayId(label: unknown): string {
   return id;
 }
 
-function normalizeMonitor(input: unknown): MonitorHint | undefined {
+/**
+ * A monitor hint, or nothing when the value carries no usable device name.
+ *
+ * Exported for the route that adds a local display: a hint the file's own reader
+ * would drop is a record that disappears on the next read, so the request is
+ * refused rather than written — and a second copy of this rule in the route
+ * would be a second thing to keep true.
+ */
+export function normalizeMonitor(input: unknown): MonitorHint | undefined {
   if (typeof input !== "object" || input === null || Array.isArray(input)) {
     return undefined;
   }

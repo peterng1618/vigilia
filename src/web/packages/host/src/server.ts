@@ -46,10 +46,12 @@ import type {
 import {
   LOCAL_DISPLAY_ID,
   mintedDisplayId,
+  normalizeMonitor,
   normalizePatch,
 } from "./settings/displays.js";
 import type { FontFavoritesStore } from "./settings/font-favorites.js";
 import type { HostRecord } from "./settings/host-record.js";
+import { listMonitors, type Monitor } from "./settings/monitors.js";
 import { requiredDeviceGroups } from "./settings/required-devices.js";
 import type { ThemeSettingsStore } from "./settings/theme-settings.js";
 import {
@@ -128,6 +130,11 @@ export interface HostServerOptions {
     readonly gpus: readonly { readonly id: string; readonly name: string }[];
     readonly disks: readonly { readonly id: string; readonly name: string }[];
   }>;
+  /** What is attached to this PC right now (§ "The host's own monitors"), for
+   *  the owner to point a local display at. Omitted uses the real `graphics()`
+   *  probe; supplied so a case can hold a fixture rather than this machine's
+   *  screens, and so a host that enumerates its own way can say so. */
+  readonly monitors?: () => Promise<readonly Monitor[]>;
   /** Where a phone should point, whether it can reach this host at all, and how
    *  to move it there. Supplied rather than introspected: `server.address()` is
    *  null for a server that is not listening, which is every test, and the
@@ -580,6 +587,7 @@ export function createHostServer(options: HostServerOptions): HostServer {
   /** Keys no provider answered in the last poll; surfaced through `/api/health`. */
   let lastUnmapped: readonly string[] = [];
   const displays = options.displays;
+  const monitors = options.monitors ?? listMonitors;
   const pairingCodes = options.pairingCodes ?? createPairingCodeStore();
   const saved = options.rememberLan;
   const devices = options.devices;
@@ -1002,6 +1010,75 @@ export function createHostServer(options: HostServerOptions): HostServer {
         return;
       }
 
+      // Before the id below, because `monitors` is not a reserved id: a display
+      // named "Monitors" legitimately mints it (`mintedDisplayId`), so this route
+      // has to be found before anything reads the segment as one.
+      if (
+        url.pathname === "/api/displays/monitors" &&
+        request.method === "GET"
+      ) {
+        sendJson(response, 200, { monitors: await monitors() });
+        return;
+      }
+
+      // A local monitor: the host's own screen, so it is specified rather than
+      // paired and has no credential to answer with. Nothing is spawned here —
+      // the launcher owns the window (Task 1.8).
+      if (url.pathname === "/api/displays" && request.method === "POST") {
+        let body: { readonly label: string; readonly monitor: unknown };
+
+        try {
+          const parsed: unknown = JSON.parse(await readBody(request));
+          if (
+            typeof parsed !== "object" ||
+            parsed === null ||
+            Array.isArray(parsed)
+          ) {
+            throw new Error("That is not a display setting.");
+          }
+          body = parsed as {
+            readonly label: string;
+            readonly monitor: unknown;
+          };
+        } catch (error) {
+          sendText(
+            response,
+            400,
+            error instanceof Error ? error.message : String(error),
+          );
+          return;
+        }
+
+        // The hint's own rule, from the store that has to read it back: a record
+        // the file would drop on the next read must not be written at all.
+        const monitor = normalizeMonitor(body.monitor);
+
+        if (monitor === undefined) {
+          sendText(
+            response,
+            400,
+            "A local display needs the monitor it is on.",
+          );
+          return;
+        }
+
+        let display: DisplayRecord;
+
+        try {
+          display = await displays.createLocal(body.label, monitor);
+        } catch (error) {
+          sendText(
+            response,
+            400,
+            error instanceof Error ? error.message : String(error),
+          );
+          return;
+        }
+
+        sendJson(response, 201, { display: peerOf(display) });
+        return;
+      }
+
       const match = url.pathname.match(/^\/api\/displays\/([^/]+)$/);
       const id =
         match === null ? undefined : decodeURIComponent(match[1] ?? "");
@@ -1078,7 +1155,11 @@ export function createHostServer(options: HostServerOptions): HostServer {
         return;
       }
 
-      sendText(response, 405, "Only PATCH and DELETE are supported.");
+      sendText(
+        response,
+        405,
+        "Only GET, POST, PATCH and DELETE are supported.",
+      );
       return;
     }
 
