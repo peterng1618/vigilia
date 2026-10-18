@@ -1020,13 +1020,15 @@ everytime."* This is `lhm-launcher.ts`'s shape with a browser where LHM was.
 **Files:**
 - Create: `src/web/packages/host/src/serve/display-launcher.ts`
 - Create: `src/web/packages/host/src/serve/display-launcher.test.ts`
+- Modify: `src/web/packages/host/src/settings/displays.ts`
+- Test: `src/web/packages/host/src/settings/displays.test.ts`
 - Modify: `src/web/packages/host/src/server.ts`
 - Modify: `src/web/packages/host/src/main.ts`
 - Test: `src/web/packages/host/src/server.test.ts`
 
 **Interfaces:**
-- Consumes: `DisplayStore.list`/`find`/`touch` (Task 1.1); `listMonitors`,
-  `isAttached`, `launchFor` (Task 1.7).
+- Consumes: `DisplayStore.list`/`find`/`touch`/`createLocal` (Task 1.1, ruling 32);
+  `listMonitors`, `isAttached`, `launchFor` (Task 1.7).
 - Produces:
 
 ```ts
@@ -1061,6 +1063,13 @@ it("does not launch a display that was seen recently", async () => {
 
 it("does not launch one whose monitor is not attached", async () => {
   // Hint matches nothing -> no spawn, and the record is untouched.
+});
+
+// displays.test.ts
+it("refuses a second local display for a monitor one already holds", async () => {
+  // Two creates with the same hint -> the second is refused and the list still
+  //   holds one. A hint is a local display's identity, so a second record has no
+  //   window the first does not already have, and reconcile would open two.
 });
 
 it("never launches a paired display", async () => {
@@ -1130,6 +1139,19 @@ Task 1.7's `launchFor` for the URL and geometry and adds `--app=<url>`,
 per display, so the wall screen does not carry the owner's session or extensions),
 `--no-first-run`, `--no-default-browser-check`, and `--disable-extensions`.
 
+**One monitor holds one local display, and the store is what says so** (ruling 32,
+from Task 1.7's own trailer). The hint *is* a local display's identity, so a second
+record for a monitor an existing local display already holds is a state with no
+meaning: `reconcile` would open two fullscreen windows on one screen, one hidden
+behind the other and both polling. `DisplayStore.createLocal` refuses it, so the record
+cannot be written at all — the route turns that refusal into a 409, beside the 400
+`normalizeMonitor` already produces for a hint the reader would drop. Equality on the
+stored hint is the whole check: two records holding the same hint match the same
+attached monitor, so no separate attached-ness test is needed. Paired displays carry
+no hint and are unaffected. Keying the launcher's child map by hint instead would be
+the wrong repair: the second record would then sit in the list for ever with no
+window and no explanation.
+
 **`reconcile` is a comparison, not a process scan.** For each record with
 `kind: "local"` whose monitor is attached, it launches when `lastSeenAt` is older
 than `LIVE_WINDOW_MS` and this launcher holds no live child for it. `lastSeenAt` is
@@ -1172,7 +1194,7 @@ Expected: PASS.
 - [ ] **Step 5: Commit**
 
 ```bash
-git add src/web/packages/host/src/serve/display-launcher.ts src/web/packages/host/src/serve/display-launcher.test.ts src/web/packages/host/src/server.ts src/web/packages/host/src/server.test.ts src/web/packages/host/src/main.ts
+git add src/web/packages/host/src/serve/display-launcher.ts src/web/packages/host/src/serve/display-launcher.test.ts src/web/packages/host/src/settings/displays.ts src/web/packages/host/src/settings/displays.test.ts src/web/packages/host/src/server.ts src/web/packages/host/src/server.test.ts src/web/packages/host/src/main.ts
 git commit -m "feat(host): launch a local monitor's browser, and come back after a reboot"
 ```
 
