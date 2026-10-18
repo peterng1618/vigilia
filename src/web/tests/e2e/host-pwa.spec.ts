@@ -320,4 +320,49 @@ test.describe("the player as an installed app", () => {
     await context.setOffline(false);
     await page.close();
   });
+
+  test("keeps the display's session out of the cache it writes", async () => {
+    const page = await browser.newPage();
+
+    await page.goto(displayUrl(origin, token), {
+      waitUntil: "domcontentloaded",
+    });
+    await page.waitForFunction(
+      () => navigator.serviceWorker?.controller != null,
+      undefined,
+      { timeout: 30_000 },
+    );
+    // The navigation that writes the entry is one the worker controls.
+    await page.reload({ waitUntil: "load" });
+
+    const cached = await page.evaluate(async () => {
+      const urls: string[] = [];
+      for (const name of await caches.keys()) {
+        const cache = await caches.open(name);
+        for (const request of await cache.keys()) urls.push(request.url);
+      }
+      return urls;
+    });
+
+    await test.info().attach("pwa-cache-keys.json", {
+      body: JSON.stringify(
+        { client: `Chromium ${clientVersion}`, token, cached },
+        null,
+        2,
+      ),
+      contentType: "application/json",
+    });
+
+    // **The credential, not the entry count, and asserted first** so that the
+    // case fails on the token rather than on the shape of the key. The
+    // display's URL carries its session, so keying the entry by that URL
+    // writes the token to a store that outlives clearing history and that the
+    // host cannot reach to clear on revoke. Every key in every cache.
+    expect(cached.filter((url) => url.includes(token))).toEqual([]);
+    // And the document *is* cached — otherwise "no credential in the cache"
+    // would pass on a cache that holds nothing.
+    expect(cached).toContain(`${origin}/`);
+
+    await page.close();
+  });
 });

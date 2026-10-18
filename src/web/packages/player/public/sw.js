@@ -18,10 +18,24 @@
  * the one the browser is given rather than a build of it.
  */
 
-const SHELL_CACHE = "vigilia-shell-v1";
+// v2 because v1 keyed the document by its own URL and so holds a display's
+// session token. `activate` deletes every other `vigilia-*` cache, which is
+// what clears a credential already on a display's disk.
+const SHELL_CACHE = "vigilia-shell-v2";
 /** Stable names, so they can be precached without a build-time list. The
  *  content-hashed bundle assets are cached as they are fetched instead. */
 const SHELL_FILES = ["/manifest.webmanifest", "/favicon.svg"];
+/**
+ * The document's cache key, and deliberately **not** the URL that asked for it.
+ *
+ * The display's URL carries `?session=<token>`, and keying the entry by that
+ * URL writes the display's credential to disk — into a store that outlives
+ * clearing history and that the host cannot reach to clear when the display is
+ * revoked. The document is the same bytes whatever the query asked for (the
+ * theme is read from the query at runtime, and the HTML names neither), so it
+ * is stored once under what it *is*, and read back by that same key.
+ */
+const SHELL_DOCUMENT = "/";
 
 self.addEventListener("install", (event) => {
   event.waitUntil(
@@ -77,13 +91,15 @@ self.addEventListener("fetch", (event) => {
     event.respondWith(
       fetch(request)
         .then((response) => {
-          if (response.ok) void remember(request, response.clone());
+          // Under `SHELL_DOCUMENT` and not under `request`: the request's URL
+          // is the display's own, credential included.
+          if (response.ok) void remember(SHELL_DOCUMENT, response.clone());
           return response;
         })
         .catch(async () => {
-          // The display URL carries its theme and its session, so the cached
-          // document is under a different query than the one being asked for.
-          const cached = await caches.match(request, { ignoreSearch: true });
+          // `ignoreSearch` because the display URL carries a theme and a
+          // session the stored key does not, and both are the same document.
+          const cached = await caches.match(SHELL_DOCUMENT);
           return cached ?? Response.error();
         }),
     );

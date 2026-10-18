@@ -121,7 +121,7 @@ Found:
   Vite config, generates the manifest and the icon set, and emits a precache
   list of *this build's* files. That last part is the part this repo already
   has — Vite's content-hashed filenames in `/assets/` — and the rest is a
-  build-time dependency for a 24-line manifest and a 60-line worker.
+  build-time dependency for one manifest and one worker.
 
 ## Rung 5 — comparison
 
@@ -173,17 +173,33 @@ from — the reading the acceptance asks for, taken at the LAN address in
 
 ## Rung 7 — build
 
-What "write it ourselves" is, counted from what was actually written: a 24-line
-manifest, a 60-line worker doing navigation and `/assets/**` routing with one
-exclusion, and a 20-line registration module. The worker's hard part is not the
-Cache API — it is the two rules that are this project's rather than the
-platform's: `/api/**` is never cached, and the document is the host's `no-store`
-page so the network answers first and the cache is only the offline fallback.
+What "write it ourselves" is: a manifest of a few hundred bytes, a worker that
+routes navigations and `/assets/**`, and a registration module of a few lines.
+The worker's hard part is not the Cache API — it is the three rules that are
+this project's rather than the platform's:
+
+- **`/api/**` is never cached.** The theme document, its packaged assets and
+  the sample stream are the live data, and a cache of them is the fabrication.
+- **The document is the host's `no-store` page**, so the network answers first
+  and the cache is only the offline fallback.
+- **The document is keyed by what it is, not by the URL that asked for it.**
+  That URL carries the display's session token, and keying the entry by the
+  request writes the credential to a store that outlives clearing history and
+  that the host cannot reach when the display is revoked. The document is the
+  same bytes whatever the query asked for, so it is stored once under `/`.
 
 A build-time alternative (workbox, `vite-plugin-pwa`, or a hand-rolled precache
-list) would move that into the build for no gain here: the shell's assets are
-already content-hashed by Vite, so a runtime cache of `/assets/**` cannot go
-stale in a way a precache list would prevent. That is why rung 5 rejects both.
+list) would move those into the build, and it is worth saying exactly what the
+runtime cache cannot do, because "Vite hashes it" is only half true. **Only
+Vite's own bundle output under `/assets/` is content-hashed.**
+`packages/player/public/` is copied verbatim, so `public/assets/ring.png` and
+`public/assets/thermometer.svg` are tracked, stable-named files under that same
+prefix, and a cache-first read of `/assets/**` cannot tell a changed one from an
+unchanged one — it has no revision to compare. **Nothing fetches either today**:
+a grep of `packages/`, `tests/` and the built bundle finds no reference to
+them, so the risk is real and unexercised rather than absent. The day something
+does fetch one, that is the day a revision-bearing precache list earns its
+cost, hand-rolled or bought with rung 5's 30 packages.
 
 ## Decision
 
@@ -222,3 +238,7 @@ and never stored, because an offline display showing yesterday's numbers as
 though they were live is the fabrication this project forbids. What an offline
 display shows is the shell it already had and the player's own load-failure
 page: it says it could not load the theme, and it shows no reading at all.
+
+**And the cached document is keyed by `/`, never by the display's own URL**,
+which carries the session. A cache entry is the one copy of the credential this
+display would keep where the host cannot reach it to revoke.
