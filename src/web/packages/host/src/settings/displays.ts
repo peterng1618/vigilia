@@ -313,6 +313,29 @@ function rateOrThrow(value: unknown): ChartRefreshRate {
   throw new Error(`A chart rate must be 1 or 30, not "${String(value)}".`);
 }
 
+/**
+ * A patch with both fields checked, refused with the store's own words when
+ * either cannot be one.
+ *
+ * Exported for the same reason `mintedDisplayId` is: the route has to *answer* a
+ * patch the store would refuse rather than let it throw — a rejected request
+ * handler is an uncaught exception in Node, and the wrapper's 500 tells a caller
+ * who sent `chartFps: 5` that the host failed. A second copy of either rule in
+ * the route would be a second thing to keep true, so both rules are asked here,
+ * in one call.
+ */
+export function normalizePatch(patch: DisplayPatch): DisplayPatch {
+  const label =
+    patch.label === undefined ? undefined : normalizeLabel(patch.label);
+  const chartFps =
+    patch.chartFps === undefined ? undefined : rateOrThrow(patch.chartFps);
+
+  return {
+    ...(label === undefined ? {} : { label }),
+    ...(chartFps === undefined ? {} : { chartFps }),
+  };
+}
+
 export function createDisplayStore(
   directory: string,
   options: {

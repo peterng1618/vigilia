@@ -1462,6 +1462,56 @@ describe("The pairing routes mint, rotate, rename and remove displays (ruling 12
     ]);
   });
 
+  it("refuses a chart rate the player cannot run, and leaves the stored one alone", async () => {
+    await mint("Office TV");
+    expect(
+      (
+        await request(
+          hosted.server,
+          "PATCH",
+          "/api/displays/office-tv",
+          json({ chartFps: 1 }),
+        )
+      ).status,
+    ).toBe(200);
+
+    const refused = await request(
+      hosted.server,
+      "PATCH",
+      "/api/displays/office-tv",
+      json({ chartFps: 5 }),
+    );
+    // The caller's typo and not a host fault: the wrapper's 500 would tell them
+    // "the host could not answer that request", which is not what happened.
+    expect(refused.status).toBe(400);
+    // The store's own words, so a caller reads their own mistake rather than
+    // the wrapper's "the host could not answer that request".
+    expect(refused.text()).toBe('A chart rate must be 1 or 30, not "5".');
+    expect((await displays.find("office-tv"))?.chartFps).toBe(1);
+  });
+
+  it("sets a chart rate the player can run, and answers the redacted record", async () => {
+    const { token } = await mint("Office TV");
+
+    const answered = await request(
+      hosted.server,
+      "PATCH",
+      "/api/displays/office-tv",
+      json({ chartFps: 30 }),
+    );
+    expect(answered.status).toBe(200);
+
+    const body = answered.json() as { id: string; chartFps: number };
+    expect(body.id).toBe("office-tv");
+    expect(body.chartFps).toBe(30);
+    expect((await displays.find("office-tv"))?.chartFps).toBe(30);
+
+    // The answer is a record a surface repaints from, so it goes through the
+    // same redaction every other route that could echo a record does.
+    expect(answered.text()).not.toContain(hashToken(token));
+    expect(body).not.toHaveProperty("tokenHash");
+  });
+
   it("refuses an empty label rather than storing it", async () => {
     await mint("Office TV");
 

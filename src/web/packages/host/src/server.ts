@@ -42,7 +42,7 @@ import type {
 import {
   LOCAL_DISPLAY_ID,
   mintedDisplayId,
-  normalizeLabel,
+  normalizePatch,
 } from "./settings/displays.js";
 import type { FontFavoritesStore } from "./settings/font-favorites.js";
 import { requiredDeviceGroups } from "./settings/required-devices.js";
@@ -859,20 +859,21 @@ export function createHostServer(options: HostServerOptions): HostServer {
           return;
         }
 
-        // The label rule, not the id rule: the id was minted when the display
-        // was created and a rename does not mint another one, so a name the id
-        // rule would refuse — a space, a bracket — is still a name here.
-        if (patch.label !== undefined) {
-          try {
-            normalizeLabel(patch.label);
-          } catch (error) {
-            sendText(
-              response,
-              400,
-              error instanceof Error ? error.message : String(error),
-            );
-            return;
-          }
+        // The store's own rules, asked once for both fields: a patch it would
+        // refuse is a 400 — the caller's typo, not a host fault, which is what
+        // the wrapper's 500 would say — and a refused handler is an uncaught
+        // exception in Node. The label rule is `normalizeLabel` and not the id
+        // rule: the id was minted when the display was created, a rename mints
+        // no other one, and a name the id rule would refuse is still a name.
+        try {
+          patch = normalizePatch(patch);
+        } catch (error) {
+          sendText(
+            response,
+            400,
+            error instanceof Error ? error.message : String(error),
+          );
+          return;
         }
 
         const updated = await displays.update(id, patch);

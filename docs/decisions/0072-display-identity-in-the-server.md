@@ -1,4 +1,4 @@
-# 0068 — Display management lives in the route table `server.ts` already has
+# 0072 — Display management lives in the route table `server.ts` already has
 
 - **Date:** 2026-10-18
 - **Status:** accepted
@@ -34,9 +34,10 @@ path segment to a record**: every existing route is a literal path or a
 `^/api/themes/([^/]+)/…$` regex over a theme id, and no route anywhere answers
 `PATCH` (the only `"PATCH"` strings in the tree are the tests this task writes).
 There is no router module and no per-route object; the route table is one
-`if`-chain inside `handle`, which eleven existing notes already claim on this
-watchlisted path (`0004`, `0009`–`0011`, `0017`–`0019`, `0021`, `0043`, `0064`,
-`0070`, `0071`).
+`if`-chain inside `handle`, which ten existing notes already claim on this
+watchlisted path — `0004`, `0009`–`0010`, `0017`–`0019`, `0021`, `0043`, `0070`,
+`0071`, read from each note's own `Paths:` bullet rather than counted, and this
+note is the eleventh claim.
 
 ## Rung 2 — dependencies
 
@@ -67,11 +68,14 @@ exists is not a decision discharged.
 ## Rung 4 — ecosystem
 
 Searched: how a local-first host models a durable per-device credential and the
-routes around it — Jellyfin's Quick Connect (`QuickConnectManager.cs`, the
-Jellyfin Quick Connect docs), Syncthing's device ids and `lib/api/tokenmanager.go`
-plus its authentication page, and a pairing/registry API reference for a
-comparable local gateway (Revka). Also the obvious route-matcher candidates by
-name (`express`, `find-my-way`, `hono`) against what this server already does.
+routes around it — Jellyfin's Quick Connect
+(`Emby.Server.Implementations/QuickConnect/QuickConnectManager.cs` in
+`github.com/jellyfin/jellyfin`, and `jellyfin.org/docs/general/server/quick-connect/`),
+Syncthing's device ids (`docs.syncthing.net/dev/device-ids.html`) and
+`lib/api/tokenmanager.go`, and the pairing/registry reference of a comparable
+local gateway, Revka (`revka.ai/docs/gateway-api/pairing-and-auth/`). Also the
+obvious route-matcher candidates by name (`express`, `find-my-way`, `hono`)
+against what this server already does.
 
 Found: **one project has solved this exact shape.** Revka's gateway persists
 paired devices in a file and answers `GET /api/devices`, `DELETE /api/devices/{id}`
@@ -82,6 +86,9 @@ does not". Their record carries `id`, `name`, `paired_at`, `last_seen`: ours is
 `id`, `label`, `createdAt`, `lastSeenAt` plus `kind` and `monitor`. The
 independent arrival at the same shape is the strongest evidence available that
 the shape is right, and it is the reason this task rotates instead of re-minting.
+**The rotate-in-place decision itself rests on ruling 12**, which the user made
+without reference to any of these projects; the citation is what makes the shape
+checkable rather than a claim to have derived it.
 
 **Syncthing is the model ruling 12 rejected, and it says why.** Its
 `tokenManager` holds tokens in a map keyed by the token itself, with a lifetime
